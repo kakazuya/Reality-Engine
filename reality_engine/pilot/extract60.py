@@ -39,6 +39,7 @@ Env:
   REALITY_EXTRACT_SINCE earliest known_at date (YYYY-MM-DD) a document may carry
   REALITY_EXTRACT_ARM   label for the arm ledger row (A|B|C); empty = no ledger row
   REALITY_EXTRACT_TOKENS hard input-token cap for the reader (default 3,000,000)
+  REALITY_EXTRACT_TIMEOUT seconds per reader call (default 300)
 """
 from __future__ import annotations
 
@@ -72,6 +73,9 @@ PRICE_IN, PRICE_OUT = 0.15, 0.60          # $/M off-peak (Go), same as concall_d
 SPEND_CAP = float(os.environ.get("REALITY_EXTRACT_SPEND", "1.50"))
 TOKEN_CAP = int(os.environ.get("REALITY_EXTRACT_TOKENS", "3000000"))
 MAX_WORKERS = int(os.environ.get("REALITY_EXTRACT_WORKERS", "6"))
+#: Seconds per reader call. 90 failed every call at max effort on 2 Nov (121 to 164 s), and low
+#: took up to 93 s on a large document; a timed-out call was silently an empty document.
+CALL_TIMEOUT = int(os.environ.get("REALITY_EXTRACT_TIMEOUT", "300"))
 MAX_CALLS_PER_TABLE = int(os.environ.get("REALITY_EXTRACT_LIMIT", "0"))
 MAX_PASSAGES, MAX_PASSAGE_CHARS = 12, 9000
 #: T-016 recall: a number-dense page is sent to the reader WHOLE instead of
@@ -1786,7 +1790,7 @@ class Reader:
             self._next += 1
             return key
 
-    def ask(self, prompt: str, timeout: int = 90, meta: dict | None = None) -> dict | None:
+    def ask(self, prompt: str, timeout: int = CALL_TIMEOUT, meta: dict | None = None) -> dict | None:
         """One call -> parsed JSON dict, or None on any failure (recorded, never raised)."""
         if not self.available:
             return None
@@ -2067,7 +2071,7 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
                          "in_tok": reader.in_tok, "cost_usd": round(reader.cost, 3),
                          "errors": dict(reader.errors)}, indent=1), encoding="utf-8")
                     print(f"  {table}: {done}/{len(futures)} docs, {len(model_rows)} rows, "
-                          f"{reader.calls} calls, {reader.in_tok} in-tok, "
+                          f"{reader.calls} calls, {sum(reader.errors.values())} errors, {reader.in_tok} in-tok, "
                           f"{round(reader.cost, 3)} USD", flush=True)
         _write(con, table, model_rows, inserted, rejected, docs)
         con.executemany(

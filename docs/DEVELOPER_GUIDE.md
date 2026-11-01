@@ -228,6 +228,8 @@ python -m reality_engine.pilot.proto3 dryrun
 table is over 90%. The biggest reject class is `measure_term_absent`: a chart-axis or table-cell
 quote prints the number but not the word that says what it is.
 
+`REALITY_EXTRACT_TIMEOUT` sets seconds per reader call in `reality_engine/pilot/extract60.py` (default 300). At the old 90 seconds, every max-effort call timed out (121 to 164 s measured on 2 Nov) and counted as an empty document, and one max-effort call spent all 32,000 output tokens and returned no text, so the reader runs at `~low`. Progress lines now show errors.
+
 #### Page OCR overlay for thin deck pages (T-034)
 
 The HP job writes one row per page to `tasks/pilot60/proto3_text/ocr_pages.jsonl.gz`

@@ -20,6 +20,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 - Page-reading subagents: batches of 8 pages, never past 100k context, medium effort for Haiku.
 - Bring ranked ideas from measurements unprompted. Do not idle machines: RAM under 90% or CPU under 70% used means start useful work. Report compute waste.
 - A new task from Shivam becomes a ticket in `tasks/TASKS.md` before work starts. Commits on `main` name a real ticket or give a reason. [check: commit-msg]
+- While any worker or job runs, keep a live watch that fires on finish, stall or errors, and check real status and progress before saying anything about it; a run with no check of its first minutes is a failure (Shivam, 2 Nov, after the fourth miss).
 - Do not stop to ask what you can decide. Do not argue a ruling: figure out how to do it.
 - Log every dsh worker and Claude session in `tasks/efficiency/WORKER_REVIEW_LOG.xlsx`: tool calls, tokens on thinking and output, job type, time, what Claude would have done itself, and how to improve the prompt, permissions and scope. Analyse it continuously and apply it to the next brief (Shivam, 2 Nov).
 
