@@ -26,11 +26,13 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-024 | LOOKING | P3 | Check if still open: index membership history | accept: Shivam | from: tasks/PIPELINE_TODO.md Phase C | opened 2026-11-02
 - T-025 | LOOKING | P3 | Check if still open: parse value, customer and execution period from exchange order-win filings | accept: Shivam | from: tasks/PIPELINE_TODO.md Phase C | opened 2026-11-02
 - T-037 | OPEN | P1 | Fetch KEC's call transcripts from kecrpg.com; its 10 filed concalls are cover letters | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
+- T-041 | OPEN | P2 | All 74 results_notes docs in chunks_v3_pilot point at a deleted worktree; raw PDFs are gone. 3 pilot ones refetched to D but their hash differs from the stored one, so check pages and fix raw_path | accept: Shivam | from: T-040 2 Nov | opened 2026-11-02
 
 ## OCR and extraction
 - T-020 | OPEN | P2 | OCR after workspace step 4: TextRecognizer first pass, stronger reader for low-confidence numbers; last accuracy pilot failed its gate | accept: Shivam | from: RULINGS, GATE_STATE | opened 2026-11-02
 - T-029 | OPEN | P3 | When OCR resumes after workspace step 4: decide a second Haiku baseline on about 100 fresh pages, batches of 8; first run: 100 pages, 995,856 tokens | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-034 | DOING Wolf | P1 | Pilot: page text for the thin BAJFINANCE, HINDALCO and KEC documents, by HP TextRecognizer | accept: Shivam | from: PROTOTYPE3 grade change 2 | opened 2026-11-02
+- T-040 | OPEN | P1 | Pilot: OCR every page of the 3 companies and mark each extracted number confirmed or disputed against the text layer | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 
 ## Schema and question map
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02

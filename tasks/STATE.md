@@ -4,12 +4,12 @@
 **Pilot test on BAJFINANCE, HINDALCO and KEC, by Shivam's order of 2 Nov.** Workspace tickets no longer block it. The last prototype failed: 0 of 40 sampled answers right, 78% of numbers missed: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`.
 
 ## Next action
-1. HP job `proto3-ocr-pages`: 572 deck pages under 400 characters on the PDF page, plus 100 check pages. When it ends, `hp_run fetch 'C:\RE\jobs\proto3-ocr-pages\ocr_pages.jsonl.gz' --dest tasks/pilot60/proto3_text/ocr_pages.jsonl.gz`, then `python -m reality_engine.pilot.proto3 dryrun`. The check pages measure how wrong hidden text layers are. T-034's overlay is merged: OCR pages are added as extra passages and never replace text.
-2. Worker `20261101T210210Z-521b20a9` (T-038): review, merge, then run `tasks/pilot60/proto3_text/kec_load.py` on `chunks_v3_pilot.db` after a backup. T-037: all 42 KEC transcripts are in `D:\RealityEngine\raw\kec_transcripts`; `_known_at.json` pairs the 10 since Q4 FY24 with their filings. They are not in the store until that load runs.
-3. T-035: rerun extraction, hard stop $8, DeepSeek; answer the same questions; grade by reading. Before it, read the cost estimate in the dryrun: every OCR page goes whole to every table, and many are section dividers.
+1. HP job `proto3-all-pages`: OCR of all 4,167 pages. When it ends, `hp_run fetch 'C:\RE\jobs\proto3-all-pages\ocr_pages.jsonl.gz' --dest tasks/pilot60/proto3_text/ocr_pages.jsonl.gz`, replacing the 672-page file now there, then `python -m reality_engine.pilot.proto3 dryrun`.
+2. Worker `20261101T211651Z-042ff303` (T-040): review and merge, then make `load_fact.py` skip disputed numbers.
+3. T-035: rerun extraction, hard stop $8, DeepSeek; recheck disputes; load facts; answer the same questions; grade by reading. KEC's 10 transcripts are now in `chunks_v3_pilot.db` (T-037); backup in `D:\RealityEngine\backups`.
 
 ## Running
-HP job `proto3-ocr-pages`; T-038 worker. The dsh-worker server still has the old start gate until restarted.
+HP job `proto3-all-pages`; T-040 worker. The dsh-worker server still has the old start gate until restarted.
 
 ## Where the project stands
 Golden rule step 3, schema design, with the question bank accepted (1,901 questions, frozen). Gate on the old pilot: 12.7% contract strict, but 0 of 127 answered rows right on hand reading. Prototype on 3 companies failed its grade: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`. Full record: `tasks/arch_v4/GATE_STATE_2026-11-01.md`. Decisions: `D:\RealityEngine\plans\DECISION_LOG.md`, last 5 entries.

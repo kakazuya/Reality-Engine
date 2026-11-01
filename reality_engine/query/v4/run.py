@@ -37,6 +37,10 @@ from .decompose import decompose_case, load_registry
 REPO = Path(__file__).resolve().parents[3]
 DATA = Path(os.environ.get("REALITY_DATA_ROOT") or (REPO / "reality_engine" / "data"))
 V4_ROOT = Path(os.environ.get("REALITY_V4_PILOT") or (DATA / "pilot" / "v4"))
+#: the chunk store a narrative ask retrieves from (REALITY_CHUNKS_V3, the repo convention);
+#: absent -> a narrative part is a typed refusal, never an invented quote.
+CHUNKS = Path(os.environ.get("REALITY_CHUNKS_V3")
+              or (DATA / "pilot" / "pilot60" / "chunks_v3_pilot.db"))
 UNIVERSE_CSV = REPO / "tasks" / "pilot60" / "UNIVERSE.csv"
 
 #: A blank ``as_of`` defaults to this declared snapshot date and the answer says so.
@@ -55,6 +59,8 @@ _V4_TABLE = re.compile(r"\b(?:from|join)\s+(?:%s)\b" % "|".join(V4_TABLES), re.I
 #: a per-exchange delivered quantity are read from the panel (read-only) and say so.
 MARKET_TABLES = ("daily_price_delivery", "mkt_bse_eq_daily", "mkt_bse_delivery_daily")
 _MARKET_TABLE = re.compile(r"\b(?:from|join)\s+(?:%s)\b" % "|".join(MARKET_TABLES), re.I)
+#: the narrative side: a passage query reads the chunk store, not the fact store.
+_CHUNK_TABLE = re.compile(r"\b(?:from|join)\s+chunk\b", re.I)
 #: one-value operators read one entity; these read a set.
 CROSS_ENTITY = {"rank", "screen", "compare", "join_entity_set", "count", "exists",
                 "list_distinct", "aggregate", "walk"}
@@ -71,13 +77,18 @@ def _uri(path: Path) -> str:
 class Stores:
     """The executor's one connection, routed to the read-only build that owns each table."""
 
-    def __init__(self, root: Path | None = None, market: Path | None = None):
+    def __init__(self, root: Path | None = None, market: Path | None = None,
+                 chunks: Path | None = None):
         root = Path(root or V4_ROOT)
         self.fact = sqlite3.connect(_uri(root / "fact_v4_pilot.db"), uri=True)
         self.v4 = sqlite3.connect(_uri(root / "v4.db"), uri=True)
         #: macro.oi lives in its own side file (fact_oi.sql), same table shape as fact.
         oi_path = root / "fact_v4_pilot_oi.db"
         self.oi = sqlite3.connect(_uri(oi_path), uri=True) if oi_path.is_file() else None
+        #: the narrative store: one `chunk` table, read only by a passage part.
+        chunks_path = Path(chunks) if chunks is not None else CHUNKS
+        self.chunks = (sqlite3.connect(_uri(chunks_path), uri=True)
+                       if chunks_path.is_file() else None)
         #: the printed market panel is a live store, so it opens mode=ro through connect_ro
         #: (never immutable: it is not a snapshot).
         self.market = None
@@ -95,6 +106,8 @@ class Stores:
         params = tuple(params)
         if self.market is not None and _MARKET_TABLE.search(sql):
             target = self.market
+        elif self.chunks is not None and _CHUNK_TABLE.search(sql):
+            target = self.chunks
         elif _V4_TABLE.search(sql):
             target = self.v4
         elif self.oi is not None and (OI_ATOM in sql or OI_ATOM in params):
@@ -109,6 +122,8 @@ class Stores:
             self.v4.close()
             if self.oi is not None:
                 self.oi.close()
+            if self.chunks is not None:
+                self.chunks.close()
             if self.market is not None:
                 self.market.close()
             self.closed = True
@@ -376,7 +391,7 @@ def run_case(case: Mapping[str, Any], stores: Stores | None = None,
                 part, ask.as_of, stores, windows=windows,
                 entity=None if cross else isin, entities=found if cross else None,
                 registry=registry if registry is not None else execute_registry(),
-                part_index=index))
+                part_index=index, question=ask.question))
     text = render.render_run(results, question=ask.question, as_of=ask.as_of,
                              assumption=assumed or None)
     row = {
