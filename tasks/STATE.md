@@ -4,11 +4,11 @@
 **Workspace fix first, by Shivam's order: `tasks/WORKSPACE_FIX_2026-11-01.md`.** OCR, extraction and database design wait until its step 4 passes.
 
 ## Next action
-Review and merge the two step 2 workers below, restart the dsh-worker server, then do step 3.
+Review and merge the start gate worker below, fix the pack wording in `context_pack.py` `STANDING_HEADER` (it says "repo/data/test/sandbox map"), restart the dsh-worker server, then do step 3.
 
 ## Running
+Context pack merged: 84 KB down to 5.6 KB.
 - `20261101T122310Z-b9dd8380` MSI: start gate. Lease to about 19:53 IST; renew if it needs longer.
-- `20261101T122321Z-c0a2d041` MSI: smaller context pack.
 
 ## Waiting on Shivam
 - Haiku on about 100 fresh OCR pages, batches of 8: `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md`.

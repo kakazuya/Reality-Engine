@@ -15,7 +15,6 @@ import subprocess
 import sys
 import time
 import unittest
-from unittest import mock
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -2525,10 +2524,6 @@ class WorkerContextBuilderTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.out = tasks / "worker_context"
-        log = mock.patch.object(build_worker_context, "DECISION_LOG",
-                                self.data / "hotline" / "decisions.md")
-        log.start()
-        self.addCleanup(log.stop)
 
     def _build(self, hour: int = 12):
         return build_worker_context.build(
@@ -2543,31 +2538,32 @@ class WorkerContextBuilderTests(unittest.TestCase):
         text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
         headings = [line for line in text.splitlines() if line.startswith("## ")]
         self.assertEqual(len(headings), 7, headings)
-        self.assertLessEqual(stats["tokens_estimate"], 20_000)
-        self.assertLess(stats["seconds"], 60)
+        self.assertLessEqual(stats["bytes"], 20_000)
+        self.assertEqual(stats["bytes"], len(text.encode("utf-8")))
+        self.assertFalse(stats["over_budget"])
         self.assertEqual(stats["databases"], 2)
-        self.assertIn("security_master", text)
-        self.assertIn("2.3M", text)
-        self.assertIn("reality_engine/db/readonly.py", text)
-        self.assertIn("Read-only SQLite connections.", text)
-        self.assertIn("test_readonly.py", text)
-        self.assertIn("Second section", text)
-        self.assertIn("2019-01-01..2026-10-19", text)
-        # The secret filter drops secret values, not every line mentioning one;
-        # the legitimate decision line survives (only its sk- value is masked).
-        self.assertNotIn("sk-secretvalue", text)
-        self.assertIn("task-notification", text)
-        self.assertNotIn("line(s) omitted", text)
-        self.assertNotIn("KEY", text)
-        self.assertNotIn("TOKEN", text)
+        # Sections 1-2 teach the lookup tools; they no longer embed a repo/data map.
+        for needle in (
+            "the brief names the files",
+            "module_map(package)",
+            "symbols(file=...)",
+            "catalog()",
+            "schema(table",
+            "tasks/STATE.md",
+        ):
+            self.assertIn(needle, text)
+        self.assertNotIn("security_master", text)
+        self.assertNotIn("2.3M", text)
+        self.assertNotIn("reality_engine/db/readonly.py", text)
         # The connect_ro snippet must be runnable as pasted.
         self.assertIn('DATA = Path(os.environ["REALITY_DATA_ROOT"])', text)
         self.assertIn("import os", text)
-        # A WITHOUT ROWID/view has no rowid: rows come from a bounded COUNT(*).
-        self.assertIn("| equity_intelligence.shareholding | 3 |", text)
+        # Column lists and bounded row counts still land beside the pack.
         schema = self.out / "schemas" / "equity_intelligence.md"
         self.assertTrue(schema.is_file())
-        self.assertIn("chunk_id", schema.read_text(encoding="utf-8"))
+        schema_text = schema.read_text(encoding="utf-8")
+        self.assertIn("chunk_id", schema_text)
+        self.assertIn("rows: 3 ·", schema_text)
         # Same content, different clock: identical except the generated header line.
         again = self._build(hour=13)
         text2 = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
@@ -2583,30 +2579,23 @@ class WorkerContextBuilderTests(unittest.TestCase):
             "plugins/reality-data/catalog_descriptions.yaml",
         )
         self._build()
-        text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
-        self.assertIn("Curated identity table.", text)
-        self.assertIn("Curated adjusted-price table.", text)
-        self.assertIn("Curated main DB.", text)
+        equity = (self.out / "schemas" / "equity_intelligence.md").read_text(encoding="utf-8")
+        truth = (self.out / "schemas" / "truth_duckdb.md").read_text(encoding="utf-8")
+        self.assertIn("Curated main DB.", equity)
+        self.assertIn("Curated identity table.", equity)
+        self.assertIn("Curated adjusted-price table.", truth)
         # Curated key columns win over the PREFERRED_KEYS projection.
-        self.assertIn("`symbol`, `isin`", text)
+        self.assertIn("key columns: symbol, isin", equity)
 
-    def test_repo_map_python_counts_prune_skipped_dirs(self):
+    def test_pack_does_not_survey_the_repo(self):
         self._build()
         text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
-        # plugins/fake has server/core.py plus an ignored runtime/ fixture.
-        self.assertIn("fake/ (1 py)", text)
-
-    def test_repo_map_trimmed_and_tools_listed(self):
-        self._build()
-        text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
-        self.assertIn("### Tools", text)
+        self.assertIn("Do not survey the repo", text)
         self.assertIn("mcp__code-intel__", text)
-        self.assertIn("reality_engine/toolbelt/README.md", text)
-        # Script modules collapse to one summary line; only the ranked few remain.
-        self.assertIn("1 data-job modules", text)
-        self.assertNotIn("reality_engine/scripts/run_thing.py` —", text)
-        # Leaf dirs without a docstring (tasks/ subdirs) are dropped from the tree.
-        self.assertNotIn("  worker_context/", text)
+        # The fixture's module docstrings and test files are not enumerated.
+        self.assertNotIn("Fake plugin core.", text)
+        self.assertNotIn("run_thing.py", text)
+        self.assertNotIn("test_readonly.py", text)
 
     def test_sandbox_section_is_a_short_digest(self):
         sandbox = self.out / "SANDBOX.md"
