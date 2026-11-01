@@ -1116,6 +1116,54 @@ ranked entities, a series, a path, or a verdict — never "some rows, let the as
 out". That single rule is what kills the "unrelated rows" failure class (~1,500 findings): a
 row that is not a part's result has nowhere to come from.
 
+### D.1.1 The measure asked is compared with the measure found (T-033, 2 Nov)
+
+A part carries the clause it was read from (`Part.clause`, set by the decomposer). Before any
+store read, `execute.measure_mismatch` compares that clause with the atom the decomposer chose.
+A part that would answer a *nearby* measure is a typed NID that names both the measure asked and
+the measure found:
+
+| what the clause does | real bank row | result |
+|---|---|---|
+| names a measure only to rule it out | `MB0231#L` "delivered quantity (not total traded quantity)" | `price.volume` refuses: it is exactly the reading the question excludes |
+| asks for a split of a figure the store holds whole | `MB0550#MS` "EPC vs HAM kitna hai", `MB0544#MS` "does the order book include orders awaiting approval" | `fin.order_book` / `fin.order_intake` refuse: one total per period, no split reading |
+
+`asked_surface` takes the atom's **longest** label/synonym present in the clause, so a short
+shared synonym ("quantity" inside "traded quantity") cannot make a negation apply to the wrong
+atom. Residue stays the decomposer's: a narrative ask with no `dims.topic` refuses instead of
+returning the latest claims. The 2 Nov run over the 153 three-company rows fully answered 29
+rows and refused 124 with at least one typed refusal; the reason counts are printed by
+`tasks/pilot60/run_proto3_bank.py` and each row carries its own `reasons`
+(`tasks/pilot60/PROTOTYPE3_ENGINE_ANSWERS_2026-11-02.jsonl`).
+
+### D.1.2 Where a close level and a delivered quantity are read (T-033)
+
+The fact view's `price.close` is the build's adjusted series: the T1 rebuild that would persist
+`company_state_daily.raw_close` failed (rows lost, stopped before the swap), so the live store
+still carries the old panel and `raw_close` is not a column of it; its `price.delivery_qty` rows
+are BSE-sparse. `execute.traded_close` and `execute.panel_delivery` therefore read the printed
+panel in `equity_intelligence.db` (`daily_price_delivery` for NSE; `mkt_bse_eq_daily` +
+`mkt_bse_delivery_daily` for BSE) through the third read-only connection `run.Stores.market`
+(`mode=ro`, never `immutable=1`: it is a live store). Consequences:
+
+- a close **level** is the traded close, `numbers.close_basis = raw`, and the store's adjusted
+  level is reported beside it as `store_close` when the two differ;
+- a question that **names more than one date** ("on 21 September and 22 September") answers a
+  series, one point per named session: a level would drop every date but the last. The signal
+  is the window basis `named dates`, so a one-date ask still answers a level;
+- `exchange=sum` is the sum of the dim's **declared** readings: when BSE (or NSE) has no row for
+  the session the part refuses, instead of passing one exchange off as the combined total, and
+  a summed point names **every** store it summed in `source_ref`;
+- returns still use `price_basis` over the fact view's series (adjusted at query time) and say so.
+
+No live store is rebuilt for either. A store without the panel (a test fixture) degrades to the
+fact view, unchanged.
+
+Code: `reality_engine/query/v4/execute.py` (`measure_mismatch`, `traded_close`,
+`panel_delivery`), `reality_engine/query/v4/run.py` (`Stores.market`). Check:
+`reality_engine/tests/test_proto3_engine.py` (the real bank rows, values read from its fixture).
+Run: `python tasks/pilot60/run_proto3_bank.py` (no model calls, no grading).
+
 ## D.2 Special engines (each small, each a stored table)
 
 | engine | what it does | reads |

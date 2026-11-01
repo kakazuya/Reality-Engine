@@ -49,6 +49,12 @@ V4_TABLES = ("claim", "own_estimate", "own_estimate_band", "own_estimate_band_pr
              "hypothesis", "attention", "reaction_lag")
 OI_ATOM = "macro.oi"
 _V4_TABLE = re.compile(r"\b(?:from|join)\s+(?:%s)\b" % "|".join(V4_TABLES), re.I)
+#: tables of the printed market panel in ``equity_intelligence.db``: the traded close and
+#: the delivered quantity per exchange.  The fact view's price.close is the build's
+#: adjusted series and its BSE delivery rows cover a handful of names, so a close level and
+#: a per-exchange delivered quantity are read from the panel (read-only) and say so.
+MARKET_TABLES = ("daily_price_delivery", "mkt_bse_eq_daily", "mkt_bse_delivery_daily")
+_MARKET_TABLE = re.compile(r"\b(?:from|join)\s+(?:%s)\b" % "|".join(MARKET_TABLES), re.I)
 #: one-value operators read one entity; these read a set.
 CROSS_ENTITY = {"rank", "screen", "compare", "join_entity_set", "count", "exists",
                 "list_distinct", "aggregate", "walk"}
@@ -65,18 +71,31 @@ def _uri(path: Path) -> str:
 class Stores:
     """The executor's one connection, routed to the read-only build that owns each table."""
 
-    def __init__(self, root: Path | None = None):
+    def __init__(self, root: Path | None = None, market: Path | None = None):
         root = Path(root or V4_ROOT)
         self.fact = sqlite3.connect(_uri(root / "fact_v4_pilot.db"), uri=True)
         self.v4 = sqlite3.connect(_uri(root / "v4.db"), uri=True)
         #: macro.oi lives in its own side file (fact_oi.sql), same table shape as fact.
         oi_path = root / "fact_v4_pilot_oi.db"
         self.oi = sqlite3.connect(_uri(oi_path), uri=True) if oi_path.is_file() else None
+        #: the printed market panel is a live store, so it opens mode=ro through connect_ro
+        #: (never immutable: it is not a snapshot).
+        self.market = None
+        market_path = Path(market) if market is not None else (DATA / "equity_intelligence.db")
+        if market_path.is_file():
+            try:
+                from reality_engine.db.readonly import connect_ro
+
+                self.market = connect_ro(market_path, timeout_s=60)
+            except Exception:  # noqa: BLE001 - a missing panel only costs its own measures
+                self.market = None
         self.closed = False
 
     def execute(self, sql: str, params: Any = ()):
         params = tuple(params)
-        if _V4_TABLE.search(sql):
+        if self.market is not None and _MARKET_TABLE.search(sql):
+            target = self.market
+        elif _V4_TABLE.search(sql):
             target = self.v4
         elif self.oi is not None and (OI_ATOM in sql or OI_ATOM in params):
             target = self.oi
@@ -90,6 +109,8 @@ class Stores:
             self.v4.close()
             if self.oi is not None:
                 self.oi.close()
+            if self.market is not None:
+                self.market.close()
             self.closed = True
 
     def __enter__(self) -> "Stores":
