@@ -853,8 +853,23 @@ def poll_once(job_id: str) -> dict:
         progress["done"] = phase in FINAL_PHASES
         progress["succeeded"] = phase == "finished"
     if phase in FINAL_PHASES:
-        if fetch_result(job_id):
-            _enrich_from_status(job_id, status)
+        # A result fetch is bounded but can still time out or lose the network.
+        # The final phase must land regardless: losing it kept a job that had
+        # already written rc=0 in job.log showing "running" for hours.
+        fetched: list[str] = []
+        try:
+            fetched = fetch_result(job_id)
+        except Exception as exc:  # noqa: BLE001 - never lose the final state
+            message = f"result fetch failed ({type(exc).__name__}: {exc})"[:300]
+            progress["summary"] = f"{summary}; {message}"
+            status["warnings"] = list(status.get("warnings") or [])[-4:] + [message]
+        if fetched:
+            try:
+                _enrich_from_status(job_id, status)
+            except Exception as exc:  # noqa: BLE001 - enrichment is optional
+                status["warnings"] = list(status.get("warnings") or [])[-4:] + [
+                    f"result enrich failed ({type(exc).__name__})"
+                ]
             progress = dict(status.get("progress") or progress)
         else:
             progress["summary"] = f"{summary}; result fetch failed"

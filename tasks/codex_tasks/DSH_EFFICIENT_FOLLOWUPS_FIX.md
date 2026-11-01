@@ -1,5 +1,9 @@
 # Efficient same-conversation follow-ups — Shivam, 21 October 2026
 
+> Superseded 1 Nov 2026: the controller lease is renewed by the supervisor itself and
+> `hard_timeout_seconds` (default 4 h) is the real limit. See `tasks/WORKSPACE_FIX_2026-11-01.md`
+> and `plugins/dsh-worker/README.md`. Kept as the historical brief.
+
 You are the off-peak implementation worker (DeepSeek/dsh/xhigh); Codex reviews and tests. Read AGENTS.md, tasks/FRAMEWORK.md, tasks/STATE.md, tasks/codex_tasks/WORKING_PROTOCOL.md and the plugin skill relevant sections. No H01 today. Preserve all unrelated dirty changes. Never edit FRAMEWORK, secrets, databases, security settings; no push/upload/install/cache edits or additional model workers/calls. Finish after focused checks/report, avoid repeated self-review or broad binary/filesystem scans.
 
 User asks to fix the wasted model steps in the single-conversation capital-question test. Evidence: tasks/codex_tasks/DSH_SINGLE_SESSION_CACHE_TEST_2026-10-21.md and data/logs/dsh_single_session_cache_audit.json; job 20261020T235050Z-c60cc959. Ten sequential MCP followups retained one conversation and caching worked, but there were 15 model steps. Codex's test brief asked the model to call pwsh Start-Sleep after each answer to keep it alive. Read-only constrained PowerShell rejected those calls; model emitted retries/status/summary steps. This is a bad orchestration pattern, not a reason to weaken sandboxing or increase permissions.

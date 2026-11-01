@@ -291,7 +291,7 @@ def cancel_only() -> dict:
     env["DSH_WORKER_REPO_ROOT"] = str(REPO)
     env["DSH_WORKER_RUNTIME_DIR"] = str(hp_worker.runtime_dir())
     manager = core.Manager(core.load_config(env))
-    started = manager.start_worker(brief=MCP_CANCEL_BRIEF, host="hp",
+    started = manager.start_worker(brief=MCP_CANCEL_BRIEF, host="hp", permission="read-only",
                                    permission="read-only", hard_timeout_seconds=900)
     job_id = started["job_id"]
     deadline = time.monotonic() + 180

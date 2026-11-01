@@ -4,13 +4,13 @@
 **Workspace fix first, by Shivam's order: `tasks/WORKSPACE_FIX_2026-11-01.md`.** OCR, extraction and database design wait until its step 4 passes.
 
 ## Next action
-Review and merge the start gate worker below, fix the pack wording in `context_pack.py` `STANDING_HEADER` (it says "repo/data/test/sandbox map"), restart the dsh-worker server, then do step 3.
+In a fresh session, which restarts the dsh-worker server with the start gate: (1) Shivam quizzes it on his rulings. (2) Enforce worker tool-call budgets in code: the start gate worker used 266+ against 120. (3) Run the full test suite on the HP, not the MSI, and find why it reaches 7.5 GB; `test_commit_replays_the_identity...` fails only when the launcher's `GIT_AUTHOR_NAME` is set. (4) Do step 3 of the plan. (5) Step 4, question map.
 
 ## Running
-Context pack merged: 84 KB down to 5.6 KB.
-- `20261101T122310Z-b9dd8380` MSI: start gate. Lease to about 19:53 IST; renew if it needs longer.
+Nothing. Context pack (84 KB to 5.6 KB) and start gate are merged.
 
 ## Waiting on Shivam
+- Keep the HP unlocked, with the screensaver lock off, to repeat the headless proof. At 18:15 on 1 Nov it had re-locked, so nothing ran. Brief: job `hp-20261101T181205-06ed5d`.
 - Quiz a fresh session on his rulings, to test `tasks/RULINGS.md`.
 - Haiku on about 100 fresh OCR pages, batches of 8: `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md`.
 - Blank `as_of` default, truth panel, reader kill: see `tasks/arch_v4/GATE_STATE_2026-11-01.md`.

@@ -71,7 +71,7 @@ query_only, temp_store=MEMORY, per-statement timeout raising `QueryTimeout`). Or
 |---|---|
 | `tempfile.mkdtemp()` dirs unwritable (Windows DACL of the sandbox token) | create `./.tmp/` inside your workspace and pass it explicitly (`dir=`); set `TMP`/`TEMP` to it for subprocesses |
 | Worktree cannot write `reality_engine/data`, `D:\RealityEngine`, `~/.dsh`, `~/.claude`, the Startup folder | stage outputs in the worktree; Claude installs/copies after review |
-| `git commit` from a worktree blocked when its index lives in the main `.git` | leave changes uncommitted; the supervisor auto-commits a non-empty diff when you finish successfully |
+| `git commit` from a worktree blocked when its index lives in the main `.git` | leave changes uncommitted; the supervisor auto-commits a non-empty diff when you finish. Since 1 Nov it also commits failed/cancelled/lease-expired ends with subject prefix `WIP ended <reason>:` |
 | npm/npx write a cache into the repo (`.cache/npm`) | set `npm_config_cache` to `./.tmp/npm-cache`; it is gitignored there |
 | Long processes started from a shell die with the parent | for anything that must outlive you, write the command for Claude (who launches via WMI) |
 | `message_worker` status pings could end your run | you will not be pinged for status any more; a follow-up is a real instruction — handle it and continue |

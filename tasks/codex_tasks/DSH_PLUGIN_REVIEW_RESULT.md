@@ -1,5 +1,9 @@
 # Reviewed and installed dsh-worker — 2026-10-21
 
+> Superseded 1 Nov 2026: `start_worker` now requires an explicit `permission` (no read-only default) and a
+> five-field brief, and the supervisor renews its own lease with a 4 h default hard timeout. See
+> `tasks/WORKSPACE_FIX_2026-11-01.md` and `plugins/dsh-worker/README.md`. Kept as the historical review.
+
 DeepSeek implemented the plugin, heartbeat and fixes. Codex reviewed source, returned defects, ran independent checks, registered the catalog, installed the plugin and verified the installed backend. No Git push, Drive upload or antivirus exclusion was made.
 
 ## Outcome

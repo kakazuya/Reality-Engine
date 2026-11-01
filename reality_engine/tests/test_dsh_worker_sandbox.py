@@ -29,6 +29,13 @@ import supervisor  # noqa: E402
 from dsh_worker_testenv import make_temp_dir, remove_tree  # noqa: E402
 
 OFF_PEAK = "2026-10-21T03:00:00+05:30"
+BRIEF = (
+    "Goal: exercise the dsh-worker path\n"
+    "Files: none\n"
+    "Accept: the fake launcher exits 0\n"
+    "Stop if: the fake launcher fails\n"
+    "Budget: 120 tool calls\n"
+)
 FAKE_LAUNCHER = FIXTURES / "dsh_worker_fake_launcher.py"
 
 
@@ -136,7 +143,7 @@ class WriteScopeValidationTests(unittest.TestCase):
 
     def test_data_scope_needs_confirmation(self) -> None:
         with self.assertRaises(core.PluginError) as raised:
-            self.manager.start_worker(brief="probe", write_scope="data")
+            self.manager.start_worker(brief=BRIEF, write_scope="data", permission="read-only")
         self.assertEqual(raised.exception.code, "confirm_data_write_required")
 
     def test_data_scope_requires_named_writes(self) -> None:
@@ -144,21 +151,21 @@ class WriteScopeValidationTests(unittest.TestCase):
         # refuse it instead of silently granting un-locked full access.
         with self.assertRaises(core.PluginError) as raised:
             self.manager.start_worker(
-                brief="probe", write_scope="data", confirm_data_write=True
-            )
+                brief=BRIEF, write_scope="data", confirm_data_write=True
+            , permission="read-only")
         self.assertEqual(raised.exception.code, "writes_required")
 
     def test_full_scope_needs_confirmation(self) -> None:
         with self.assertRaises(core.PluginError) as raised:
-            self.manager.start_worker(brief="probe", write_scope="full")
+            self.manager.start_worker(brief=BRIEF, write_scope="full", permission="read-only")
         self.assertEqual(raised.exception.code, "confirm_full_access_required")
 
     def test_unknown_scope_and_misplaced_writes_are_refused(self) -> None:
         with self.assertRaises(core.PluginError) as raised:
-            self.manager.start_worker(brief="probe", write_scope="root")
+            self.manager.start_worker(brief=BRIEF, write_scope="root", permission="read-only")
         self.assertEqual(raised.exception.code, "write_scope_invalid")
         with self.assertRaises(core.PluginError) as raised:
-            self.manager.start_worker(brief="probe", writes=["equity_intelligence.db"])
+            self.manager.start_worker(brief=BRIEF, writes=["equity_intelligence.db"], permission="read-only")
         self.assertEqual(raised.exception.code, "writes_requires_data_scope")
 
     def test_status_progress_and_list_show_the_first_edit_metric(self) -> None:
@@ -173,7 +180,7 @@ class WriteScopeValidationTests(unittest.TestCase):
         )
         manager = core.Manager(core.load_config(self.env))
         started = manager.start_worker(
-            brief="orientation probe",
+            brief=BRIEF,
             workspace=".",
             permission="workspace-write",
             confirm_repo_root_write=True,
@@ -218,7 +225,7 @@ class WriteScopeValidationTests(unittest.TestCase):
         # A worker whose workspace is the main checkout can edit job.json; the
         # supervisor's status.json is the launch-time record and must win.
         started = self.manager.start_worker(
-            brief="scope spoof probe",
+            brief=BRIEF,
             permission="workspace-write",
             confirm_repo_root_write=True,
         )
@@ -239,12 +246,12 @@ class WriteScopeValidationTests(unittest.TestCase):
         # supervisor.py, .git/config and other jobs' records, so it needs an
         # explicit confirmation flag.  Read-only workers are unaffected.
         with self.assertRaises(core.PluginError) as raised:
-            self.manager.start_worker(brief="root writer", permission="workspace-write")
+            self.manager.start_worker(brief=BRIEF, permission="workspace-write")
         self.assertEqual(
             raised.exception.code, "repo_root_write_requires_confirmation"
         )
         started = self.manager.start_worker(
-            brief="root writer",
+            brief=BRIEF,
             permission="workspace-write",
             confirm_repo_root_write=True,
         )
@@ -261,7 +268,7 @@ class WriteScopeValidationTests(unittest.TestCase):
         row = next(item for item in rows if item["job_id"] == started["job_id"])
         self.assertTrue(row["confirm_repo_root_write"])
         # A read-only repo-root worker writes nothing and needs no flag.
-        reader = self.manager.start_worker(brief="reader", permission="read-only")
+        reader = self.manager.start_worker(brief=BRIEF, permission="read-only")
         self.addCleanup(
             self.manager.cancel_worker, reader["job_id"], True, "test cleanup"
         )
@@ -283,7 +290,7 @@ class WriteScopeValidationTests(unittest.TestCase):
             f"open({str(marker)!r}, 'w').write('ran')\n", encoding="utf-8"
         )
         writer = self.manager.start_worker(
-            brief="root writer",
+            brief=BRIEF,
             permission="workspace-write",
             confirm_repo_root_write=True,
             context_pack=True,
@@ -306,7 +313,7 @@ class WriteScopeValidationTests(unittest.TestCase):
             time.sleep(0.1)
         self.assertTrue(self.manager._repo_root_writer_active())
         reader = self.manager.start_worker(
-            brief="Goal: read only", permission="read-only", context_pack=True
+            brief=BRIEF, permission="read-only", context_pack=True
         )
         self.addCleanup(
             self.manager.cancel_worker, reader["job_id"], True, "test cleanup"
@@ -338,13 +345,13 @@ class WriteScopeValidationTests(unittest.TestCase):
 
     def test_data_job_records_scope_and_holds_db_lock(self) -> None:
         started = self.manager.start_worker(
-            brief="data probe",
+            brief=BRIEF,
             write_scope="data",
             confirm_data_write=True,
             confirm_repo_root_write=True,
             writes=["db:probe.db"],
             approved_by="Shivam (test approval)",
-        )
+        permission="read-only")
         self.addCleanup(
             self.manager.cancel_worker, started["job_id"], True, "test cleanup"
         )
@@ -376,12 +383,12 @@ class WriteScopeValidationTests(unittest.TestCase):
         # second start is refused immediately -- no need to wait for running.
         with self.assertRaises(core.PluginError) as raised:
             self.manager.start_worker(
-                brief="second data probe",
+                brief=BRIEF,
                 write_scope="data",
                 confirm_data_write=True,
                 confirm_repo_root_write=True,
                 writes=["probe.db"],
-            )
+            permission="read-only")
         self.assertEqual(raised.exception.code, "resource_busy")
 
 
