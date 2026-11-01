@@ -1,20 +1,12 @@
-# Staged dsh profile changes (2026-10-24)
+# dsh profile patches
 
-These are full copies of the two live profile patch layers. Claude installs them
-after review by replacing `~/.dsh/profiles/<name>/cordis.patch.yml`; the current
-file is backed up first (as with the earlier `*-20261024` backups).
+The live profiles are `~/.dsh/profiles/headless/cordis.patch.yml` and `~/.dsh/profiles/web/cordis.patch.yml`. Workers cannot write them; Claude changes them, backing up first and then checking `dsh --profile <name> --dump-config`.
 
-- `headless.cordis.patch.yml` — copy of `~/.dsh/profiles/headless/cordis.patch.yml`
-  plus the `pwsh-sandbox` row below.
-- `web.cordis.patch.yml` — copy of `~/.dsh/profiles/web/cordis.patch.yml`
-  plus the same row.
+The copies here, `headless.cordis.patch.yml` and `web.cordis.patch.yml`, are the 24 Oct versions and have drifted: on 2 Nov the live files differed from them. The live files are the authority. `code-intel.insert.yml` is the row that adds code intelligence (`plugins/code-intel/README.md`).
 
-## Shell tool-call cap (staged)
+## Shell tool-call cap
 
-`dsh-pwsh-local` / `dsh-pwsh-sandbox` expose `timeoutMs` (default 120,000 ms) and
-`maxTimeoutMs` (default 600,000 ms, the ceiling for a per-call override).
-`dsh-base` mounts `pwsh-sandbox` without config, so the live profile gets the
-defaults. The staged row pins the requested 10-minute cap explicitly:
+`dsh-pwsh-local` / `dsh-pwsh-sandbox` expose `timeoutMs` (default 120,000 ms) and `maxTimeoutMs` (default 600,000 ms, the ceiling for a per-call override). Both live profiles pin them and turn promotion off (checked 2 Nov), so a command that reaches the 10-minute deadline is killed, not handed to a background job:
 
 ```yaml
 - id: pwsh-sandbox
@@ -22,81 +14,20 @@ defaults. The staged row pins the requested 10-minute cap explicitly:
   config:
     timeoutMs: 600000
     maxTimeoutMs: 600000
-```
-
-Residual gap: `dsh-tool-pwsh` defaults to `promoteOnTimeout: true`, so a command
-that reaches the 10-minute deadline is handed to a background job and the tool
-call returns, but the process keeps running; a `run_in_background` call never
-has a timeout. Task 03 stages `promoteOnTimeout: false` so the deadline is a real
-kill instead of a hand-off:
-
-```yaml
 - id: tool-pwsh
   name: "@deepseek-ai/dsh-tool-pwsh"
   config:
     promoteOnTimeout: false
 ```
 
-The staged row also raises the default foreground budget from 2 to 10 minutes;
-if that is too long, drop `timeoutMs` and keep only `maxTimeoutMs: 600000`.
-A worker that genuinely needs a process to outlive its shell uses the
-supervisor's `.tmp/launch.request.json` WMI path (`write_scope` data/full), not
-timeout promotion.
+A `run_in_background` call never has a timeout. A worker that needs a process to outlive its shell uses the supervisor's `.tmp/launch.request.json` path (`write_scope` data or full; `tasks/worker_context/SANDBOX.md`).
 
-## Per-child wall-clock cap (no setting exists)
+## Per-child wall-clock cap: no setting exists
 
-In dsh 0.2.1 (`dsh-subagent`, `dsh-subagent-spawn-in-process`,
-`dsh-tool-subagent`, `dsh-base`) there is **no per-child wall-clock limit** and no
-per-child timeout config:
+In dsh 0.2.1 (`dsh-subagent`, `dsh-subagent-spawn-in-process`, `dsh-tool-subagent`, `dsh-base`) there is no per-child wall-clock limit:
 
-- `dsh-subagent` host config has only `maxDepth` (default 1) and
-  `maxActiveSubagents` (default 8).
-- `dsh-tool-subagent` config has `provider`, `toolName`,
-  `modelSelectionSettings`, `agentOptions`, `agentPreset`,
-  `allowedAgentPresets`, `maxDepth`.
-- `dsh-subagent-spawn-in-process` has no timeout setting; a start returns the
-  child id immediately and the parent gets a completion notice later.
+- `dsh-subagent` host config has only `maxDepth` (default 1) and `maxActiveSubagents` (default 8).
+- `dsh-tool-subagent` config has `provider`, `toolName`, `modelSelectionSettings`, `agentOptions`, `agentPreset`, `allowedAgentPresets`, `maxDepth`.
+- `dsh-subagent-spawn-in-process` has no timeout setting; a start returns the child id immediately and the parent gets a completion notice later.
 
-`dsh-tool-call-timeout-policy` only enforces a `timeoutMs` declared on a tool's
-`ToolDefinition`; it is cooperative and cannot hard-stop a tool that ignores
-cancellation. The shell executors declare their own per-call timeout (above);
-the subagent start tool declares none.
-
-Smallest alternative (already added to `AGENTS.md` §3): the parent must call
-`interrupt_agent` on a child that has run over 15 minutes. `interrupt_agent`
-works through the runtime and reaches a child stuck inside a tool call, unlike a
-steering `send_message`.
-
-## Validation
-
-Staged `DSH_HOME` with both profiles copied (including `node_modules`):
-
-```powershell
-$env:DSH_HOME = "<staged home>"
-dsh --profile headless --dump-config   # exit 0, no warnings
-dsh --profile web --dump-config        # exit 0, no warnings
-```
-
-Both dumps show the `pwsh-sandbox` row with `timeoutMs: 600000` and
-`maxTimeoutMs: 600000`, and the `tool-pwsh` row with `promoteOnTimeout: false`.
-
-## Install these profiles + pip/uv config (Claude runs this; the worker cannot)
-
-The worker sandbox cannot write `~/.dsh` or `%APPDATA%`; Claude installs the
-staged files after review. Back up the live files first, then copy and validate:
-
-```powershell
-$stamp = Get-Date -Format yyyyMMddHHmmss
-$dsh = Join-Path $env:USERPROFILE ".dsh\profiles"
-foreach ($profile in "headless", "web") {
-    Copy-Item "$dsh\$profile\cordis.patch.yml" "$dsh\$profile\cordis.patch.yml.$stamp.bak"
-    Copy-Item "tasks\dsh_profiles\$profile.cordis.patch.yml" "$dsh\$profile\cordis.patch.yml" -Force
-}
-New-Item -ItemType Directory -Force "$env:APPDATA\pip", "$env:APPDATA\uv" | Out-Null
-Copy-Item "tasks\worker_context\pip.ini" "$env:APPDATA\pip\pip.ini" -Force
-Copy-Item "tasks\worker_context\uv.toml" "$env:APPDATA\uv\uv.toml" -Force
-dsh --profile headless --dump-config | Select-String "pwsh-sandbox|tool-pwsh|timeoutMs|promoteOnTimeout"
-dsh --profile web --dump-config      | Select-String "pwsh-sandbox|tool-pwsh|timeoutMs|promoteOnTimeout"
-```
-
-Roll back by copying each `cordis.patch.yml.<stamp>.bak` back over the profile.
+`dsh-tool-call-timeout-policy` only enforces a `timeoutMs` declared on a tool's `ToolDefinition`; it is cooperative and cannot hard-stop a tool that ignores cancellation. The subagent start tool declares none. So the parent must call `interrupt_agent` on a child that has run over 15 minutes; it reaches a child stuck inside a tool call, unlike a steering `send_message`.

@@ -315,7 +315,7 @@ its `KILL_ON_JOB_CLOSE` job object.
    newly dirty; a file already dirty at start is omitted even if it changed
    again, and concurrent edits may appear. Never treat the hint as attribution.
    For a worktree job, review the committed `dsh/<job_id>` branch and its
-   reported `files_changed`; the plugin never merges it.
+   reported `files_changed`. It merges only when you call `merge_worker`.
 3. Send concrete defects back with a real `message_worker` follow-up when the
    heartbeat adapter is available. Otherwise report the pending transport seam
    or start a fresh job with the new context; do not fake a message.

@@ -1,10 +1,12 @@
 # Worker sandbox, temp, write scopes and detached processes
 
 Written 2026-10-25 (Task 03) from the live dsh 0.2.1 sources and the two profile
-patches. Read this before starting a worker that needs to install packages,
+patches; `dsh --version` still gave 0.2.1-rc.2 on 2 Nov. Read this before starting a worker that needs to install packages,
 write outside the worktree, commit, or launch something long-lived.
 
 ## 1. What `permission` actually does (verified mapping)
+
+Every start must name `permission`; a start without it is refused with `permission_required`.
 
 `start_worker(permission=...)` → `run_deepseek_harness.py --permission` → the
 launcher sets `DSH_PERMISSION_MODE` → `dsh-base/cordis.patch.yml` reads it in two
@@ -13,7 +15,7 @@ rows:
 | `permission` | `dsh-sandbox-policy.mode` | `dsh-user-approval.policy` | Effect |
 |---|---|---|---|
 | `read-only` | `read-only` | `ask` | No write grants. Confined pwsh gets no private temp either, so `tempfile.mkdtemp()` fails. |
-| `workspace-write` (default for mutating jobs) | `workspace-write` | `ask` | Writes under the session cwd (the `--cwd` workspace) plus a per-session private temp dir; `dsh-pwsh-sandbox` rewrites `TMP`/`TEMP` to that private dir for every confined command. |
+| `workspace-write` | `workspace-write` | `ask` | Writes under the session cwd (the `--cwd` workspace) plus a per-session private temp dir; `dsh-pwsh-sandbox` rewrites `TMP`/`TEMP` to that private dir for every confined command. |
 | `danger-full-access` | `danger-full-access` | `never` | No confinement; the sandbox provider is never consulted. |
 
 Key facts:
@@ -65,7 +67,7 @@ Two sandbox facts drive the rest of the setup:
   directories only when that marker is present: under the write-restricted
   token that DACL cuts off the inherited workspace capability, so
   `tempfile.mkdtemp()` could create a directory but not write inside it
-  (`python -S`` bypasses this, and an ordinary Python process is never patched).
+  (`python -S` bypasses this, and an ordinary Python process is never patched).
 - `DSH_WORKER_PROGRESS_NOTES` points at `<workspace>/.tmp/PROGRESS_NOTES.md`,
   not the job directory (outside the sandbox). Digests read the new path first
   and fall back to the legacy `<job_dir>/PROGRESS_NOTES.md`.
@@ -233,7 +235,7 @@ workspace-write token that the session already holds. The Task 03 probe is
 - `requirements-worker.txt` (repo root): pymupdf, pyyaml, requests, numpy,
   pandas, duckdb, openpyxl, xlrd. All have a cp314/abi3 Windows wheel
   (`setup_worker_env.py --dry-run` prints the exact filename). `rapidocr` is
-  excluded: its onnxruntime backend has no cp314 wheel. No pytest (unittest).
+  excluded: its onnxruntime backend has no cp314 wheel. pytest is not in this file.
 - `python reality_engine/scripts/setup_worker_env.py` installs missing packages
   into the user site with `--timeout 120 --retries 5`; it is idempotent and
   prints what changed. `--dry-run` installs nothing.
@@ -246,14 +248,12 @@ workspace-write token that the session already holds. The Task 03 probe is
 ## 7. Files Claude must install outside the worker sandbox
 
 The worker cannot write `~/.dsh`, `%APPDATA%`, or the main checkout's `.git`.
-Claude (unconfined) installs these after review; exact commands are in the Task
-03 report and in `tasks/dsh_profiles/README.md`:
 
-- `tasks/dsh_profiles/headless.cordis.patch.yml` → `~/.dsh/profiles/headless/cordis.patch.yml`
-- `tasks/dsh_profiles/web.cordis.patch.yml` → `~/.dsh/profiles/web/cordis.patch.yml`
-- `tasks/worker_context/pip.ini` → `%APPDATA%\pip\pip.ini`
-- `tasks/worker_context/uv.toml` → `%APPDATA%\uv\uv.toml`
+The live profiles `~/.dsh/profiles/headless/cordis.patch.yml` and
+`~/.dsh/profiles/web/cordis.patch.yml` carry the 10-minute pwsh cap and
+`promoteOnTimeout: false` (checked 2 Nov), so a command that reaches the cap is
+killed instead of being promoted to a background job. See
+`tasks/dsh_profiles/README.md`.
 
-Back up each existing file first. The profile change adds the 10-minute pwsh cap
-and turns `promoteOnTimeout` off, so a command that reaches the cap is killed
-instead of being promoted to a background job.
+`tasks/worker_context/pip.ini` and `uv.toml` are not installed under `%APPDATA%`
+(checked 2 Nov); workers get the same timeouts through the environment.

@@ -2,7 +2,8 @@
 
 > Worked example converted from `tasks/dsh_tasks/WATCHDOG_LAPTOP_2026-10-24.md` into
 > `tasks/worker_context/BRIEF_TEMPLATE.md`. The six labelled fields below are required; the task content
-> is unchanged. Extra explanatory sections may follow them.
+> is unchanged. Extra explanatory sections may follow them. Its machine and job facts are those of 24 Oct; use it for the
+> shape of a brief, not for facts.
 
 Goal: Make `resource_watchdog.py` safe on this laptop. It monitors jobs and cleans up orphans, but never
 restarts or starts a managed job on the laptop profile, and never auto-starts a paid, GPU or PC-only job.

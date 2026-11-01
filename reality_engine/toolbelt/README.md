@@ -19,4 +19,7 @@ Databases resolve through `REALITY_DATA_ROOT` when set (the main checkout's
 | `job_peek` | Compact dsh job view: phase, elapsed, tool calls by tool, last activity, latest progress digest, `result.md` head — tail-read only. | `python -m reality_engine.toolbelt.job_peek <job_dir>` |
 | `coverage_peek` | Per-symbol row count + earliest/latest date across filings, BSE announcements, concall transcripts/facts, annual reports/AR facts, decks/deck figures, quarterly XBRL and NSE prices; table by default, `--json` for machines, exit 2 on an unknown symbol. | `python -m reality_engine.toolbelt.coverage_peek --symbol DEEDEV` |
 
+| `lookup_docs` | Shell form of the document MCP tools: `docs`, `doc_page`, `doc_find`. | `python -m reality_engine.toolbelt.lookup_docs doc_page 540879 2026-10-24 21` |
+| `lookup_market` | Shell form of the market MCP tools: `delivery`, `price_extreme`, `holding`. | `python -m reality_engine.toolbelt.lookup_market holding LUMAXTECH --as-of 2026-09-30` |
+
 Tests: `python -m unittest reality_engine.tests.test_toolbelt`.

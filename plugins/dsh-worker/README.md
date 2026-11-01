@@ -219,8 +219,9 @@ MAIN checkout's absolute path, so a worktree worker reads the same pack without
 the file being committed (a merge no longer has to commit CONTEXT.md first).
 `context_pack=false` sends the original brief only. Every brief is checked
 against `tasks/worker_context/BRIEF_TEMPLATE.md`: it must contain `Goal:`,
-`Files:`, `Accept:` (or `Test command(s):`), `Stop if:` and `Budget:`, or the
-start is refused with `brief_incomplete` naming the missing fields.
+`Files:`, `Accept:` (or `Test command(s):`), `Stop if:`, `Budget:` and `Ticket:`
+(or `No-ticket:`), or the start is refused with `brief_incomplete` naming the
+missing fields.
 `small_fix=true` accepts a one-line brief that carries an accept command.
 The worked example is `tasks/worker_context/EXAMPLE_BRIEF.md`.
 
@@ -471,8 +472,7 @@ Two honest limits:
 - The message client was verified against the landed `dsh-heartbeat-control/1`
   wire contract with a deterministic fake control server, and the fixture was
   cross-checked with the landed `dsh_heartbeat.ControlTransport` client. A live
-  dsh smoke test remains a Codex/reviewer step; this worker did not spend paid
-  tokens.
+  dsh smoke test remains a reviewer step.
 
 ## Progress and visibility (2026-10-22)
 

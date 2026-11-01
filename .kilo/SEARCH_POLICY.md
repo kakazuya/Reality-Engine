@@ -15,12 +15,7 @@ This project has **two** web search tools active:
 ## Tavily MCP Details
 
 - Server: `https://mcp.tavily.com/mcp` (remote, `type: remote`)
-- Auth: URL `?tavilyApiKey=${TAVILY_API_KEY}` + `Authorization: Bearer ${TAVILY_API_KEY}` — set env var `TAVILY_API_KEY` **before VS Code starts**.
-  - **Why your reload failed:** `$env:TAVILY_API_KEY="..."` in a PowerShell terminal does NOT propagate to the already-running `Code.exe` process. You must launch VS Code from that same terminal, or set a persistent env var.
-  - Option A (quick test, current window): In the SAME PowerShell where you set the key, run `code "C:\Users\warri\Downloads\Info_Diffusion_Model"` then `Reload Window` (`Ctrl+Shift+P` → `Developer: Reload Window`). Do NOT launch Kilo from old VS Code shortcut.
-  - Option B (persistent, recommended): `setx TAVILY_API_KEY "tvly-..."` → close all VS Code → reopen. Verify with new PowerShell: `echo $env:TAVILY_API_KEY`.
-  - Option C (no env expansion, most reliable): Edit `.kilo/kilo.jsonc` and replace `${TAVILY_API_KEY}` literally with your key in BOTH `url` and `headers.Authorization` — e.g. `https://mcp.tavily.com/mcp/?tavilyApiKey=tvly-abc123` and `"Authorization": "Bearer tvly-abc123"`. Restart VS Code. Do not commit the file with real key.
-  - bash / Agent Manager worktree: `TAVILY_API_KEY=tvly-... kilo` or put `TAVILY_API_KEY=tvly-...` in `.env` at repo root (copied to worktrees via `setup-script`).
+- Auth: URL `?tavilyApiKey=${TAVILY_API_KEY}` + `Authorization: Bearer ${TAVILY_API_KEY}`. Set `TAVILY_API_KEY` as a persistent environment variable before VS Code starts; a value set in a terminal does not reach a running `Code.exe`. Never write the key into a file.
 - Defaults injected via `DEFAULT_PARAMETERS` header: `{"max_results":10,"search_depth":"advanced","include_answer":true}`
 
 ## Fallback Local Alternative
@@ -44,9 +39,4 @@ Requires Node.js >=20 (`node --version`).
 
 ## Verification
 
-- **Your screenshot is VS Code's palette, not Kilo's.** Do this instead: Click the Kilo Code icon in the Activity Bar (left sidebar) to focus Kilo, then either:
-  - Press `Ctrl+P` **while Kilo input is focused** → `Toggle MCPs`, OR
-  - Type `/mcps` **in the Kilo chat input at the bottom** (the `Type a message...` box) and press Enter.
-- VS Code's top bar `Ctrl+P` → `/mcps` will always say `No matching results` — that's expected.
-- Expected: `tavily-heavy` shows `connected`, tools: `tavily-search`, `tavily-extract`, `tavily-crawl`, `tavily-map`. If it shows `error` or `disconnected`, check `Output` panel → `Kilo` logs for `tavily-heavy: failed to fetch headers/Authorization`.
-- `web_search` stays enabled for light queries (check `Settings > Plugins > Web search`).
+Type `/mcps` in the Kilo chat input. Expected: `tavily-heavy` shows `connected`, with tools `tavily-search`, `tavily-extract`, `tavily-crawl`, `tavily-map`. On an error, read the `Kilo` output panel.

@@ -14,9 +14,8 @@ Write scope: this repository. Read-only outside it. Do not push anywhere.
 1. The attached **brief** (`data/logs/loop/<date>/brief_<HHMM>.md`) — the facts for this slot.
 2. `reality_engine/data/logs/loop/STATE.md` — the previous pass' handoff. If it does not exist, this
    is the first run: your first job is to establish a baseline and write it.
-3. `.kilo/LANES.md` — file/table ownership. **Never edit a file owned by another lane.**
-4. `tasks/STATE.md` "Next" and `tasks/handoff/QUEUE_2026-10-31.md` — the standing task list.
-5. `git status --porcelain` and `git log --oneline -5` — what is in flight right now.
+3. `tasks/STATE.md` "Next action" and `tasks/TASKS.md` — the standing task list.
+4. `git status --porcelain` and `git log --oneline -5` — what is in flight right now.
 
 ## 2. Work the harness (highest priority, mechanical, always do this first)
 
@@ -79,7 +78,7 @@ Keep "Awaiting human" honest: if you were blocked on a decision, it belongs ther
 - Do not widen scope to "while I'm here" refactors. If you spot unrelated breakage, record it.
 - If a step is destructive, ambiguous, or needs credentials, **skip it and record it** — do not
   improvise unattended.
-- Never edit another lane's files (`.kilo/LANES.md`); never edit the live DB schema.
+- Never edit the live DB schema.
 - If the brief shows missing trading days or a failed nightly stage, fixing data freshness outranks
   idea refinement this run.
 
