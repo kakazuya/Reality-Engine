@@ -17,6 +17,12 @@ Engine adapters live here rather than in ``hp_ocr_check`` because they have
 different dependencies (Windows.Media.Ocr, a C# Windows App SDK helper, ONNX
 runtime providers) and only this script needs the common metric.
 
+The Windows App SDK ``TextRecognizer`` adapter below is superseded by
+``reality_engine.scripts.hp_ocr_large`` and the packaged helper in
+``reality_engine/tools/textrec/``: the engine only answers from a signed MSIX
+with package identity launched in the interactive session, so the plain
+subprocess call in this module cannot reach it.
+
     python -m reality_engine.scripts.hp_ocr_bench --engine qnn --mode textlayer \
         --models C:\\RE\\models_fixed --out C:\\RE\\bench\\out
 
