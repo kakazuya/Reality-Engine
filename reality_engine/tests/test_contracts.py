@@ -35,6 +35,10 @@ class FalseRowTest(unittest.TestCase):
         ok, reason = contracts.check("lender_metrics", bad)
         self.assertFalse(ok)
         self.assertIn("value_above_range", reason)
+        # Even in range, the number must sit next to the measure's word.
+        ok, reason = contracts.check("lender_metrics", {**bad, "value": 30.0})
+        self.assertFalse(ok)
+        self.assertIn("measure_term_absent", reason)
         good = {**bad, "value": 9.5, "quote": "NIM of 9.5% for the quarter"}
         ok, reason = contracts.check("lender_metrics", good)
         self.assertTrue(ok, reason)
