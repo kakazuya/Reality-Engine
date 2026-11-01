@@ -21,6 +21,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 - Bring ranked ideas from measurements unprompted. Do not idle machines: RAM under 90% or CPU under 70% used means start useful work. Report compute waste.
 - A new task from Shivam becomes a ticket in `tasks/TASKS.md` before work starts. Commits on `main` name a real ticket or give a reason. [check: commit-msg]
 - Do not stop to ask what you can decide. Do not argue a ruling: figure out how to do it.
+- Log every dsh worker and Claude session in `tasks/efficiency/WORKER_REVIEW_LOG.xlsx`: tool calls, tokens on thinking and output, job type, time, what Claude would have done itself, and how to improve the prompt, permissions and scope. Analyse it continuously and apply it to the next brief (Shivam, 2 Nov).
 
 ## Never
 - Print or copy keys. Read `D:\Shivam_Private\Manual Dumps` or send it to the HP or a model; it stays outside the workspace, or put amounts in the repo or decision log.

@@ -658,6 +658,7 @@ class Manager:
             detail = f" (it cannot be read: {exc})"
         match = re.search(rf"(?m)^- {re.escape(ticket)} \|.*$", text)
         if match is None:
+            self._log_refusal("ticket", "ticket_unknown", ticket)
             raise PluginError(
                 "ticket_unknown",
                 f"ticket {ticket} is not in {path}{detail}; add it with "
@@ -667,6 +668,17 @@ class Manager:
                 path=str(path),
             )
         return match.group(0)
+
+    def _log_refusal(self, rule: str, code: str, detail: str = "") -> None:
+        """Record one start-gate refusal; never turns a refusal into a second failure."""
+        try:
+            if str(self.config.repo_root) not in sys.path:
+                sys.path.insert(0, str(self.config.repo_root))
+            from reality_engine.scripts.rule_ledger import log_event
+
+            log_event(rule, "block", "dsh-worker", f"{code}: {detail}")
+        except Exception:
+            return
 
     def _launcher_command(self) -> list[str]:
         if self.config.launcher_path is not None:
@@ -1086,12 +1098,14 @@ class Manager:
         if not isinstance(small_fix, bool):
             raise PluginError("small_fix_flag_invalid", "small_fix must be true or false")
         if permission is None:
+            self._log_refusal("start_gate_permission", "permission_required")
             raise PluginError(
                 "permission_required",
                 "permission is required: pass read-only, workspace-write or "
                 "danger-full-access explicitly; a start no longer defaults one",
             )
         if permission not in PERMISSIONS:
+            self._log_refusal("start_gate_permission", "permission_invalid", str(permission))
             raise PluginError("permission_invalid", f"permission must be one of {PERMISSIONS}")
         if not isinstance(context_pack, bool):
             raise PluginError("context_pack_flag_invalid", "context_pack must be true or false")
@@ -1109,6 +1123,7 @@ class Manager:
             )
         now = self.config.now()
         if is_peak(now):
+            self._log_refusal("start_gate_peak", "peak_hours")
             raise PluginError(
                 "peak_hours",
                 "DeepSeek worker starts are refused during peak hours "
@@ -1118,6 +1133,7 @@ class Manager:
             # The harness re-checks the real clock when it starts; a start at
             # 06:29:59 could be refused by the launcher a moment later and
             # surface as a launcher failure instead of a clear refusal.
+            self._log_refusal("start_gate_peak", "peak_hours_imminent")
             raise PluginError(
                 "peak_hours_imminent",
                 f"a DeepSeek peak window starts within {PEAK_START_MARGIN_SECONDS}s; "
@@ -1128,6 +1144,7 @@ class Manager:
         text, task_relative = self._read_brief(brief, task_file)
         missing_fields = brief_missing_fields(text, small_fix=small_fix)
         if missing_fields:
+            self._log_refusal("start_gate_brief", "brief_incomplete", ", ".join(missing_fields))
             raise PluginError(
                 "brief_incomplete",
                 "the brief is missing required fields: " + ", ".join(missing_fields),

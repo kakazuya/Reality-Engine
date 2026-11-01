@@ -416,3 +416,42 @@ brief) with its field check in `plugins/dsh-worker/server/context_pack.py`, and 
 in `plugins/dsh-worker/server/plugin_server.py` states the same field.
 `reality_engine/scripts/context_guard.py` is the PostToolUse hook that asks Claude to write the
 wrap-up at 400,000 tokens and again at 440,000 (session limit 450,000), once each per session.
+
+## 4. Rule and chain-of-command ledger (T-042)
+
+Every gate pass or block is one JSON line in `tasks/efficiency/rule_events.jsonl`
+(gitignored, created on demand); `$DSH_RULE_EVENTS` overrides the path.
+
+- `reality_engine/scripts/doc_gate.py` logs one event per pre-commit run on `main` (rule
+  `doc_gate`, or `start_files` when the line limit is the block) and one per commit-msg run
+  (rule `ticket`, carrying the commit's short subject).
+- `plugins/dsh-worker/server/core.py` logs every start refusal: `permission_required` and
+  `permission_invalid` (`start_gate_permission`), `brief_incomplete` (`start_gate_brief`),
+  `ticket_unknown` (`ticket`), and `peak_hours` / `peak_hours_imminent` (`start_gate_peak`).
+
+`log_event` never raises into the caller, so a full or unwritable log cannot change a gate's
+answer.
+
+Daily report (reads existing records only, no model call):
+
+```bash
+python -m reality_engine.scripts.rule_ledger report --since 2026-11-01 --out .tmp/rule_ledger.xlsx
+```
+
+Sheets: `Rules` (one row per bullet in `tasks/RULINGS.md`: how enforced, passed, blocked,
+sidelined with up to 3 examples, and a state of `enforced`, `followed unenforced`,
+`sidelined` or `not measured`); `Workers` (budget parsed from the brief's `Budget:` line,
+actual calls from `result.md.events.jsonl`, the worker's own reported counts, over-budget
+flags, code-intel calls, outcome, finish-to-merge hours); `Chain of command` (per day,
+worker-branch merges against direct commits on `main`, `.py` and other lines, the direct
+commits that changed code, and possible `--no-verify` bypasses dated after the log began);
+`Efficiency` (the FIX_TRACKER rates from `tool_usage_report.metrics`, not recomputed); and
+`Notes` (state and bypass definitions).
+
+A `[check: X]` rule counts as enforced only when X is wired to this ledger (`doc_gate`,
+`start gate`, `commit-msg`). `HP work runs headless` names `[check: test_hp_headless]`, which
+is `reality_engine/tests/test_hp_headless.py`; it writes no events here, so the report states
+`not measured` for it. Every report run re-checks two measured budgets: jobs
+`20261101T210210Z-521b20a9` (90 total, 20 before the first edit) and
+`20261101T205730Z-172d7dec` (45, 12). Test:
+`python -m pytest reality_engine/tests/test_rule_ledger.py reality_engine/tests/test_doc_gate.py -q`.

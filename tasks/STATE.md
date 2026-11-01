@@ -5,11 +5,11 @@
 
 ## Next action
 1. HP job `proto3-all-pages`: OCR of all 4,167 pages. When it ends, `hp_run fetch 'C:\RE\jobs\proto3-all-pages\ocr_pages.jsonl.gz' --dest tasks/pilot60/proto3_text/ocr_pages.jsonl.gz`, replacing the 672-page file now there, then `python -m reality_engine.pilot.proto3 dryrun`.
-2. T-042 worker: review and merge the rule ledger.
+2. T-043 worker: review and merge the worker review log, then drop the overlapping Workers sheet from `reality_engine/scripts/rule_ledger.py` (T-042, merged). The ledger's start-gate logging needs the dsh-worker server restarted. On every worker finish, add its row to `tasks/efficiency/worker_reviews.jsonl`.
 3. T-035: rerun extraction, hard stop $8, DeepSeek; recheck disputes; load facts; answer the same questions; grade by reading. KEC's 10 transcripts are now in `chunks_v3_pilot.db` (T-037); backup in `D:\RealityEngine\backups`.
 
 ## Running
-HP job `proto3-all-pages`; T-042 worker. The dsh-worker server still has the old start gate until restarted.
+HP job `proto3-all-pages`; T-043 worker. The dsh-worker server still has the old start gate until restarted.
 
 ## Where the project stands
 Golden rule step 3, schema design, with the question bank accepted (1,901 questions, frozen). Gate on the old pilot: 12.7% contract strict, but 0 of 127 answered rows right on hand reading. Prototype on 3 companies failed its grade: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`. Full record: `tasks/arch_v4/GATE_STATE_2026-11-01.md`. Decisions: `D:\RealityEngine\plans\DECISION_LOG.md`, last 5 entries.
