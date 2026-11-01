@@ -33,7 +33,7 @@ P0–P3 run now. P4 starts when P1 merges. P5–P7 wait for the decision named. 
 
 | # | Package (status) | Goal and dependency | Worker-hours (E) | Machine | Truth points (E) | Kill check | Measure of done |
 |---|---|---|---|---|---|---|---|
-| P0 | Truth instrument, `V4_TRUTH_GRADER` (running) | Truth grade, 150 + 40 panel, shape checks; no dependency | 3–5 | MSI | 0 direct; it measures | Rubric agrees with hand check on <30/40 → panel only | 3 numbers, panel, named failures, RIGHT wrongly failed 0/listed |
+| P0 | Truth instrument, `V4_TRUTH_GRADER` (done 31 Oct: store-backed v2) | Truth grade, 150 + 40 panel, shape checks; no dependency | 3–5 | MSI | 0 direct; it measures | Rubric agrees with hand check on <30/40 → panel only | 3 numbers, panel, named failures, RIGHT wrongly failed 0/listed; v2 adds 0 false RIGHT on the 111 read questions (`TRUTH_RULE_V2_2026-10-31.md`) |
 | P1 | Lookup repair, `V4_LOOKUP_REPAIR` (running) | `as_of`, dims, dates, YTD, CAGR, holdings via ISIN history; P0 to measure, D5 item 1 | 6–9 | MSI | +6–12 | 20-row hand grade after items 1–2 <8 RIGHT → stop after item 2; test holdings separately | Before/after per item, PIT 0, tests |
 | P2 | Reader test, `V4_READER_TEST` (running) | 40 passage questions, FTS + Beam, verbatim quote; P0 grading | 1–4 | MSI (HP if pilot stores are synced) | 0 now; enables +8–15 in P7 | <50% RIGHT → kill the model reader | 40 graded, list pre-committed, retrieval/reading split, tests |
 | P3 | WP2c missing atoms (in flight) | Banking, corp action, CWIP/CFO and quarterly fix; no dependency | 0 new | MSI | +0–3, not separately sized | <1 truth point after merge → stop the remaining atom build | Atoms built, panel re-run, PIT 0 |

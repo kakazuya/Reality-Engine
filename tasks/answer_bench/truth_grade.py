@@ -1,9 +1,22 @@
-"""Truth grade beside the contract count: rubric, answer shape, and a stratified panel.
+"""Truth grade beside the contract count: shape, a store read, and a stratified panel.
 
 The strict grader (``grade_v2.py``) certifies the *contract*: every part of the
 decomposer's own Ask carries §D.4 fields.  That is the system marking its own
 homework — a decomposer that emits fewer parts scores higher.  This module adds the
-three pieces the contract cannot see, and no check here loosens a contract check:
+pieces the contract cannot see, and no check here loosens a contract check.  Since
+2026-10-31 the RIGHT branch also **re-reads the store**:
+
+* the answer's entity, measure, period and value must equal a separate read of the
+  pilot fact store within :data:`VALUE_TOLERANCE_REL` (0.5%);
+* a value the store cannot settle is ``PARTIAL`` (``TRUTH_VALUE_UNVERIFIED``), never
+  RIGHT;
+* a premise the stores contradict, or a question that names another company, is
+  ``ILL_POSED`` — its own column, always in the denominator, never RIGHT;
+* the lexical rubric is retired as a verdict input.  ``rubric_score`` stays only as
+  the diagnostic ``--rubric40`` cheap test; a prose ``ground_truth`` is ignored, and a
+  numeric one must appear in the answer.
+
+The shape checks still read the question text alone:
 
 1. **Answer shape** (:func:`question_shapes`, :func:`shape_failures`).  The shape is
    read from the *question text alone* — never from the Ask and never from what the
@@ -14,29 +27,33 @@ three pieces the contract cannot see, and no check here loosens a contract check
    ``list_distinct`` dump past its limit with no aggregation; a forecast answered
    with a spot price; and a returned period that is not the one asked.
 
-2. **Rubric** (:func:`rubric_score`).  Scores an answer against the bank's own
-   ``rubric.required_steps`` / ``forbidden`` / ``ground_truth``.  It is deliberately
-   a *lexical* scorer: the steps are prose, so it can only check that the words of
-   each step appear in the answer.  :func:`rubric40` measures it against the 40
-   hand-checked rows and reports the agreement, because the brief's cheap test says
-   to abandon rubric scoring if it agrees on fewer than 30.
+2. **Rubric** (:func:`rubric_score`).  **Retired as a verdict input** on 2026-10-31:
+   it agreed with the 40 hand verdicts on 8/40 and fired on 30 answered panel rows,
+   none of them RIGHT.  It stays only as the ``--rubric40`` diagnostic and is not
+   called by :func:`truth_verdict`.  A ``ground_truth`` is used only when it carries a
+   number and the answer carries that number.
 
-3. **Truth** (:func:`truth_verdict`).  RIGHT / PARTIAL / WRONG for one graded row
-   from the contract status plus (1) and text-derived checks: the question's own
-   company vs the entity the answer is about, a measure the question names that no
-   part answers, and the gold reading when the rubric quotes one.  The panel
-   (:func:`build_panel`) is the authority; the numbers it produces are printed with
-   a Wilson interval.
+3. **Truth** (:func:`truth_verdict`).  RIGHT / PARTIAL / WRONG / ILL_POSED for one
+   graded row.  ILL_POSED comes first (premise audit + entity mismatch); then the
+   shape checks, a measure/part coverage test, and the independent store read.  A
+   RIGHT requires every part to be answered and every numeric value to be reproduced
+   from the store.  The panel (:func:`build_panel`) is the authority; the numbers it
+   produces are printed with a Wilson interval, and ILL_POSED is reported in its own
+   column, never as RIGHT, never out of the denominator.
 
-Nothing here reads a database.  It reads graded rows (``GATE_RESULTS_v4_strict.jsonl``),
-the bank (``MASTER_BANK.jsonl``) and the instances (``INSTANCES.jsonl``).
+It reads graded rows (``GATE_RESULTS_v4_strict.jsonl``), the bank, the instances, the
+premise audit and the read-only pilot store (``fact_v4_pilot.db`` / ``v4.db``).  The
+store is opened ``mode=ro&immutable=1`` and by entity/measure/period, never from the
+answer's own ``source_ref``.
 """
 from __future__ import annotations
 
 import json
 import math
+import os
 import random
 import re
+import sqlite3
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -47,6 +64,16 @@ BANK = REPO / "tasks" / "master_bank" / "MASTER_BANK.jsonl"
 INSTANCES = REPO / "tasks" / "pilot60" / "INSTANCES.jsonl"
 SAMPLE40_MD = REPO / "tasks" / "arch_v4" / "GATE_V4_SAMPLE40.md"
 PANEL = REPO / "tasks" / "arch_v4" / "TRUTH_PANEL_2026-10-31.jsonl"
+PREMISE_AUDIT = REPO / "tasks" / "pilot60" / "PREMISE_AUDIT_2026-10-31.jsonl"
+READ_PANEL = REPO / "tasks" / "arch_v4" / "TRUTH_PANEL_READ_2026-10-31.jsonl"
+DATA = Path(os.environ.get("REALITY_DATA_ROOT") or (REPO / "reality_engine" / "data"))
+V4_ROOT = Path(os.environ.get("REALITY_V4_PILOT") or (DATA / "pilot" / "v4"))
+
+#: a value matches the store when ``|answer - store| <= max(ABS, REL * |store|)``.
+#: 0.5% is stated here so every tolerance in the report has one source.
+VALUE_TOLERANCE_ABS = 0.005
+VALUE_TOLERANCE_REL = 0.005
+
 
 #: committed seed: the fixed 150-row panel is the same rows on every run.
 SEED_PANEL = 20261031
@@ -86,16 +113,29 @@ _SET_RE = re.compile(
 _COMPARE_RE = re.compile(
     r"\b(versus|vs\.?|compare[sd]?|compared (with|to)|the two companies|both companies"
     r"|either company|which (one|is) (is )?more)\b", re.I)
-_COMPARE_OFF_RE = re.compile(r"\bvs\.? (the )?(stored|last|previous)\b", re.I)
+_COMPARE_OFF_RE = re.compile(
+    r"\bvs\.?\s+(the\s+)?(stored|computed|reported|derived|last|previous)\b"
+    r"|\b(stored|computed|reported|derived)\b[^?.]{0,25}\bvs\.?\b", re.I)
+#: "stored vs computed" is a comparison of two measures on one entity, not a
+#: two-company ask.  Kept apart so `SHAPE_COMPARE_ONE_SIDE` can skip it while the
+#: answer is still required to show both sides (`measure_shortfall`).
+_MEASURE_VS_RE = re.compile(
+    r"\b(stored|computed|reported|derived|market|book)\b[^?.]{0,30}\bvs\.?\b"
+    r"|\bvs\.?\s+(the\s+)?(stored|computed|reported|derived|market|book)\b", re.I)
 _JUDGEMENT_RE = re.compile(
     r"(\b(is|are|was|were)\b[^?.]{0,90}\b(cheap|expensive|good|bad|safe|risky|fair"
     r"|justified|sustainable|credible|consistent|valid|warning|noise|distribution"
-    r"|absorption|overvalued|undervalued|premium|thesis)\b"
+    r"|absorption|overvalued|undervalued|premium|thesis|driven|accumulation|intraday)\b"
+    r"|\b(is|are|was|were)\b[^?.]{0,80}\b(being|getting)\b[^?.]{0,40}\b(driven|sold|bought)\b"
+    r"|\b(did|does|do|has|have|had)\b[^?.]{0,90}\b(hold|held|break|broken|reverse|sustain"
+    r"|confirm|follow through|retest)\b"
     r"|\bcheap or\b|\bsasta\b|\bwarning or noise\b"
-    r"|\bwhat would (break|it take|happen)\b|\bwhat would .{0,60}\bdo\b"
+    r"|\bwhat would (break|it take|happen)\b|\bwhat would .{0,70}\b(change|mean|imply|matter)\b"
     r"|\bneeds? to show\b|\bis (that|this) (a|the)?\s?(warning|noise|bottom|top)\b"
     r"|\bdeserves?\b|\bworth (it|buying)\b|\bdo(es)? .* flatter\b"
     r"|\bwho (gains|wins|is more)\b|\bkaun (jeetta|peeche)\b)", re.I)
+#: an N-day average the question names; the answer must name the same window.
+_DAY_AVG_RE = re.compile(r"\b(\d{1,3})[- ]day\b", re.I)
 _RULE_RE = re.compile(
     r"\bwhat is the correct\b|\bwhat('s| is) the right\b|\bhow should\b"
     r"|\bwhat price should\b|\bwhich rule\b|\bwhat rule\b"
@@ -262,10 +302,13 @@ def question_shapes(question: str) -> dict[str, Any]:
     """The shape flags the question text implies (no Ask, no executor output)."""
     text = str(question or "")
     periods = asked_periods(text)
-    compare = bool(_COMPARE_RE.search(text)) and not _COMPARE_OFF_RE.search(text)
+    measure_vs = bool(_MEASURE_VS_RE.search(text))
+    compare = (bool(_COMPARE_RE.search(text))
+               and not _COMPARE_OFF_RE.search(text) and not measure_vs)
     return {
         "set": bool(_SET_RE.search(text)),
         "compare": compare,
+        "measure_vs": measure_vs,
         "judgement": bool(_JUDGEMENT_RE.search(text)),
         "rule": bool(_RULE_RE.search(text)),
         "forecast": bool(_FORECAST_RE.search(text)),
@@ -365,6 +408,10 @@ def _set_one_entity(row: Mapping[str, Any], shapes: Mapping[str, Any]) -> dict |
 
 def _compare_one_side(row: Mapping[str, Any], shapes: Mapping[str, Any]) -> dict | None:
     if not shapes.get("compare"):
+        return None
+    # A "stored vs computed" ask on one entity is two measures, not two companies.
+    # It still has to show both sides, but that is `measure_shortfall`, not this check.
+    if shapes.get("measure_vs"):
         return None
     results = _results(row)
     if not results:
@@ -576,7 +623,7 @@ def shape_reasons(row: Mapping[str, Any],
 # ---------------------------------------------------------------------------
 def _answer_text(row: Mapping[str, Any]) -> str:
     """The answer plus every quote/value it carries: what a judge would read."""
-    parts = [str(row.get("answer") or "")]
+    parts = [str(row.get("answer_full") or row.get("answer") or "")]
     for result in _results(row):
         if result.get("rule_used"):
             parts.append(str(result["rule_used"]))
@@ -756,13 +803,17 @@ def entity_text_mismatch(row: Mapping[str, Any],
     """
     if not parent:
         return None
-    instance = (row.get("kind") or "") != "original"
-    if not instance:
+    # ``as_is`` rows run on the parent's own entities; only a substituted instance
+    # (``stock`` / ``sector`` …) can keep the parent's company in a renamed question.
+    if str(row.get("kind") or "") in ("", "original", "as_is"):
         return None
     parent_entities = [e for e in parent.get("entities") or [] if isinstance(e, Mapping)]
     parent_isins = {str(e.get("isin")) for e in parent_entities if e.get("isin")}
     answer_isin = str(row.get("entity") or "")
-    if answer_isin and answer_isin in parent_isins:
+    # an index/sector row names no company: nothing to compare the text with
+    if not answer_isin:
+        return None
+    if answer_isin in parent_isins:
         return None
     text = _norm(row.get("question"))
     for entity in parent_entities:
@@ -772,6 +823,11 @@ def entity_text_mismatch(row: Mapping[str, Any],
                 continue
             words = [w for w in re.findall(r"[a-z0-9]+", token) if w not in _STOP]
             candidates = {token, " ".join(words[:2]) if len(words) >= 2 else token}
+            # "State Bank of India" -> SBI: the instance text often keeps the parent's
+            # acronym while the row entity has been renamed (MB1027#L: SBI -> BAJFINANCE).
+            acronym = "".join(word[0] for word in words)
+            if len(acronym) >= 3:
+                candidates.add(acronym)
             if any(candidate and candidate in text for candidate in candidates):
                 return _fail(
                     "TRUTH_ENTITY_TEXT_MISMATCH",
@@ -795,28 +851,87 @@ def _evidence_text(row: Mapping[str, Any]) -> str:
         for value in result.get("values") or []:
             if isinstance(value, Mapping):
                 parts += [str(value.get("quote") or ""), str(value.get("metric") or "")]
+                parts += [f"{key} {item}" for key, item in (value.get("dims") or {}).items()]
     return " ".join(parts)
 
 
-def measure_shortfall(row: Mapping[str, Any]) -> dict[str, str] | None:
-    """A derived measure the question names that no part or passage answers."""
+def _sma_windows(row: Mapping[str, Any]) -> set[str]:
+    """The SMA windows an answer actually declares (result or row dims)."""
+    out: set[str] = set()
+    for result in _covered_results(row):
+        if str(result.get("atom") or "") != "price.sma":
+            continue
+        sources = [result.get("dims") or {}]
+        sources += [value.get("dims") or {} for value in result.get("values") or []
+                    if isinstance(value, Mapping)]
+        for source in sources:
+            for key in ("window", "window_days", "lag"):
+                if source.get(key) not in (None, ""):
+                    out.add(str(source[key]))
+        for key in ("window", "window_days", "lag"):
+            if result.get(key) not in (None, ""):
+                out.add(str(result[key]))
+    return out
+
+
+def measure_shortfall(row: Mapping[str, Any],
+                      shapes: Mapping[str, Any] | None = None) -> dict[str, str] | None:
+    """A measure the question names that no part or passage answers.
+
+    Two outcomes, both stated in the returned dict:
+    * a one-entity "stored vs computed" ask with fewer than two distinct values is
+      ``PARTIAL`` — half the comparison is missing (the read's MB0064 class);
+    * a derived measure the question names and no part carries is ``WRONG`` — the
+      answer returned a nearby measure (the read's dominant failure).
+    """
     question = _norm(row.get("question"))
     text = _norm(_evidence_text(row))
-    if re.search(r"\bvs\.?\s+(the\s+)?stored\b", question):
+    shapes = shapes or question_shapes(row.get("question") or "")
+    if shapes.get("measure_vs") or re.search(r"\bvs\.?\s+(the\s+)?stored\b", question):
         values = {round(value, 6) for result in _covered_results(row)
                   for value in [_num(result.get("value"))] if value is not None}
         if len(values) < 2:
-            return _fail("TRUTH_MEASURE_MISSING",
-                         "the question compares with the stored reading; the answer "
-                         "carries one value")
+            return {"reason": "TRUTH_MEASURE_MISSING", "verdict": "PARTIAL",
+                    "detail": "the question compares two measure readings; the answer "
+                              "carries one value"}
+    if any(str(result.get("atom") or "") == "price.sma" for result in _covered_results(row)):
+        windows = _sma_windows(row)
+        for match in _DAY_AVG_RE.finditer(question):
+            window = match.group(1)
+            if window in windows:
+                continue
+            return {"reason": "TRUTH_MEASURE_MISSING",
+                    "verdict": "WRONG" if windows else "PARTIAL",
+                    "detail": f"the question names the {window}-day average; the answer's "
+                              f"SMA result declares {sorted(windows) if windows else 'no window'}"}
     for label, synonyms in _MEASURE_TERMS:
         if not any(synonym in question for synonym in synonyms):
             continue
         if any(synonym in text for synonym in synonyms):
             continue
-        return _fail("TRUTH_MEASURE_MISSING",
-                     f"the question asks for {label}; no part or passage carries it")
+        return {"reason": "TRUTH_MEASURE_MISSING", "verdict": "WRONG",
+                "detail": f"the question asks for {label}; no part or passage carries it"}
     return None
+
+
+def question_part_shortfall(row: Mapping[str, Any],
+                            shapes: Mapping[str, Any]) -> dict[str, str] | None:
+    """A two-ask question answered with fewer than two measured parts.
+
+    ``_MULTI_RE`` reads "..., and what was ..." from the question text alone.  The
+    decomposer's own Ask does not have to emit that second part, so the contract check
+    cannot see the gap; this is the read's ``PART_MISSING`` class (MB0031#MS).
+    """
+    if not shapes.get("multi"):
+        return None
+    asked = max(2, str(row.get("question") or "").count("?"))
+    answered = int(row.get("real_answered") or 0)
+    if answered < asked:
+        return {"reason": "TRUTH_PART_MISSING", "verdict": "PARTIAL",
+                "detail": f"the question asks {asked} things; {answered} measured part(s) "
+                          "were answered"}
+    return None
+
 
 
 def part_other_entity(row: Mapping[str, Any],
@@ -872,18 +987,389 @@ def row_dim_mismatch(row: Mapping[str, Any]) -> dict[str, str] | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# 4. premise audit and the independent store read
+# ---------------------------------------------------------------------------
+_AUDIT_CACHE: dict[str, dict[str, dict]] = {}
+
+
+def load_premise_audit(path: Path | str = PREMISE_AUDIT) -> dict[str, dict]:
+    """``mid -> audit row`` from the committed premise audit (empty when absent)."""
+    key = str(Path(path))
+    if key not in _AUDIT_CACHE:
+        out: dict[str, dict] = {}
+        target = Path(path)
+        if target.exists():
+            with target.open(encoding="utf-8") as handle:
+                for line in handle:
+                    if not line.strip():
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    out[str(row.get("mid"))] = row
+        _AUDIT_CACHE[key] = out
+    return _AUDIT_CACHE[key]
+
+
+def premise_verdict(row: Mapping[str, Any], parent: Mapping[str, Any] | None,
+                    audit: Mapping[str, dict] | None = None) -> dict[str, str] | None:
+    """ILL_POSED when the stores contradict the question's premise.
+
+    Two independent pieces of evidence, both deterministic:
+    * the premise audit says ``false`` (the held stores contradict the stated fact);
+    * the question text names the parent's company while the answer is another one.
+    ``cannot_check`` is not evidence either way and never raises ILL_POSED.
+    """
+    mid = str(row.get("mid") or "")
+    audit_row = (audit if audit is not None else load_premise_audit()).get(mid) or {}
+    if str(audit_row.get("verdict") or "") == "false":
+        evidence = (audit_row.get("evidence") or [{}])[0]
+        reason = str(audit_row.get("reason") or "premise_false")
+        detail = str(evidence.get("value") or reason)
+        return {"verdict": "ILL_POSED", "reason": "ILL_POSED_PREMISE_FALSE",
+                "detail": f"premise audit: {reason}: {detail}"[:500]}
+    mismatch = entity_text_mismatch(row, parent)
+    if mismatch:
+        return {"verdict": "ILL_POSED", "reason": "ILL_POSED_ENTITY_MISMATCH",
+                "detail": mismatch["detail"]}
+    return None
+
+
+def _row_dims(text: Any) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for part in str(text or "").split(";"):
+        if "=" in part:
+            key, value = part.split("=", 1)
+            out[key.strip().lower()] = value.strip().lower()
+    return out
+
+
+#: dims the pilot fact rows actually carry and a result may name.  Virtual dims the
+#: executor adds (``basis=adjusted`` on a close) are not in the row and are ignored.
+_STORE_DIMS = {"holder_class", "topic", "doctype", "basis", "period_kind", "derived",
+               "consolidation", "event_kind"}
+
+
+class StoreReader:
+    """Read-only pilot store, by entity/measure/period — never by ``source_ref``."""
+
+    def __init__(self, root: Path | str | None = None):
+        self.root = Path(root or V4_ROOT)
+        self.fact = self._open(self.root / "fact_v4_pilot.db")
+        self.v4 = self._open(self.root / "v4.db")
+        self._cache: dict[tuple, list[dict[str, Any]]] = {}
+
+    @staticmethod
+    def _open(path: Path):
+        if not path.is_file():
+            return None
+        try:
+            return sqlite3.connect(f"file:{path.as_posix()}?mode=ro&immutable=1", uri=True)
+        except sqlite3.Error:
+            return None
+
+    @property
+    def available(self) -> bool:
+        return self.fact is not None
+
+    def fact_rows(self, isin: str, atom: str, start: str, end: str) -> list[dict[str, Any]]:
+        """Rows for one entity/atom over a period window, ordered by period end."""
+        if not self.fact or not isin or not atom:
+            return []
+        key = (isin, atom, start, end)
+        if key in self._cache:
+            return self._cache[key]
+        try:
+            rows = self.fact.execute(
+                "SELECT entity_id, atom, dims, period_start, period_end, value, unit, known_at "
+                "FROM fact WHERE entity_id=? AND atom=? AND period_end>=? AND period_end<=? "
+                "ORDER BY period_end", (isin, atom, start, end)).fetchall()
+        except sqlite3.Error:
+            rows = []
+        out = [dict(zip(("entity_id", "atom", "dims", "period_start", "period_end",
+                         "value", "unit", "known_at"), row)) for row in rows]
+        self._cache[key] = out
+        return out
+
+    def close(self) -> None:
+        for connection in (self.fact, self.v4):
+            if connection is not None:
+                try:
+                    connection.close()
+                except sqlite3.Error:
+                    pass
+        self.fact = self.v4 = None
+
+    def __enter__(self) -> "StoreReader":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+
+def _match_dims(rows: list[dict[str, Any]], dims: Mapping[str, Any] | None) -> list[dict[str, Any]]:
+    """Filter rows to the named dims the rows actually carry (virtual dims ignored)."""
+    asked = {str(key).lower(): str(value).lower()
+             for key, value in (dims or {}).items()
+             if str(key).lower() in _STORE_DIMS
+             and str(value).lower() not in ("", "each", "sum", "all")}
+    if not asked:
+        return rows
+    carried = {key for row in rows for key in _row_dims(row.get("dims"))}
+    wanted = {key: value for key, value in asked.items() if key in carried}
+    if not wanted:
+        return rows
+    return [row for row in rows
+            if all(_row_dims(row.get("dims")).get(key) == value
+                   for key, value in wanted.items())]
+
+
+def _value_close(answer: Any, store_value: Any) -> bool:
+    answer_num, store_num = _num(answer), _num(store_value)
+    if answer_num is None or store_num is None:
+        return False
+    return abs(answer_num - store_num) <= max(
+        VALUE_TOLERANCE_ABS, VALUE_TOLERANCE_REL * abs(store_num))
+
+
+def _candidate_values(rows: list[dict[str, Any]]) -> list[float]:
+    return [value for value in (_num(row.get("value")) for row in rows) if value is not None]
+
+
+def _compare_rows(rows: list[dict[str, Any]], answer: Any) -> tuple[str, str]:
+    """Match / mismatch / unverified for one value against its store candidates."""
+    values = _candidate_values(rows)
+    if not values:
+        return "unverified", "the store has no numeric row for this measure and period"
+    distinct = {round(value, 9) for value in values}
+    matches = [value for value in values if _value_close(answer, value)]
+    if len(matches) == len(values):
+        return "match", f"store {values[0]:,.6g}"
+    if len(distinct) == 1:
+        return "mismatch", f"store {values[0]:,.6g} vs answer {answer}"
+    if len(matches) == 1:
+        return "unverified", (
+            f"the store carries {len(values)} slices at this period "
+            f"({', '.join(f'{value:,.6g}' for value in values)}); the answer names no slice")
+    return "mismatch", f"store {values[0]:,.6g} vs answer {answer}"
+
+
+def _result_entity(row: Mapping[str, Any], result: Mapping[str, Any]) -> str:
+    return str(result.get("isin") or row.get("entity") or "")
+
+
+def _unverified(detail: str) -> dict[str, str]:
+    return {"status": "unverified", "detail": detail}
+
+
+def _mismatch(detail: str) -> dict[str, str]:
+    return {"status": "mismatch", "detail": detail}
+
+
+def _match(detail: str) -> dict[str, str]:
+    return {"status": "match", "detail": detail}
+
+
+def _verify_cagr(store: StoreReader, result: Mapping[str, Any], isin: str,
+                 question: str) -> dict[str, str]:
+    years = re.search(r"(\d+(?:\.\d+)?)[- ]year", question, re.I)
+    end = (_day(result.get("period"))
+           or max((period["end"] for period in asked_periods(question)), default=""))
+    if not years or not end or not isin:
+        return _unverified("a CAGR needs the question's stated years, end date and entity")
+    from datetime import date, timedelta
+    try:
+        start_target = (date.fromisoformat(end)
+                        - timedelta(days=round(365.25 * float(years.group(1))))).isoformat()
+    except ValueError:
+        return _unverified("the CAGR end date is not a date")
+    rows = store.fact_rows(isin, "price.close", "1900-01-01", end)
+    if not rows:
+        return _unverified("the store has no close series for the entity")
+    before_end = [row for row in rows if (_day(row.get("period_end")) or "") and
+                  _day(row.get("period_end")) <= end]
+    before_start = [row for row in before_end
+                    if (_day(row.get("period_end")) or "") <= start_target]
+    if not before_end or not before_start:
+        return _unverified("the store has no close on or before an endpoint")
+    first, last = before_start[-1], before_end[-1]
+    first_value, last_value = _num(first.get("value")), _num(last.get("value"))
+    if not first_value or last_value is None:
+        return _unverified("the store endpoints carry no number")
+    store_cagr = ((last_value / first_value) ** (1.0 / float(years.group(1))) - 1.0) * 100.0
+    detail = (f"{_day(first.get('period_end'))} {first_value:,.2f} -> "
+              f"{_day(last.get('period_end'))} {last_value:,.2f} = {store_cagr:,.4g}%")
+    if _value_close(result.get("value"), store_cagr):
+        return _match(detail)
+    return _mismatch(f"{detail}; answer {result.get('value')}")
+
+
+def verify_result(store: StoreReader, row: Mapping[str, Any],
+                  result: Mapping[str, Any], question: str) -> dict[str, str]:
+    """Reproduce one result's value from the store, or say why it cannot be.
+
+    ``match`` certifies the value; ``mismatch`` is a wrong value; ``unverified`` is
+    everything the independent read cannot settle (text, an estimate, an ambiguous
+    slice).  Only ``match`` can contribute to RIGHT.
+    """
+    operator = str(result.get("operator") or "value_at")
+    atom = str(result.get("atom") or "")
+    formula = str(result.get("formula") or "")
+    isin = _result_entity(row, result)
+    if str(result.get("answer_type") or "") == "estimate":
+        return _unverified("an estimate is our own forecast; the store holds no realised value")
+    if atom.startswith("claim.") or atom == "text.passage" or result.get("value") is None:
+        return _unverified("a text part carries no numeric store value")
+    if formula == "f.cagr" or atom == "f.cagr":
+        return _verify_cagr(store, result, isin, question)
+    if formula or not atom:
+        return _unverified(f"no independent read for formula {formula or atom or 'unknown'}")
+    if atom == "price.shares_out":
+        return _unverified("the fact store carries the XBRL-rounded count; the exact "
+                           "filing count is the authority")
+    if not store.available:
+        return _unverified("the pilot store is not available")
+    dims = result.get("dims") or {}
+
+    if operator in ("value_at", "series", "last_visible", "first_visible"):
+        period = _day(result.get("period"))
+        if not period:
+            return _unverified("the result names no period")
+        rows = _match_dims(store.fact_rows(isin, atom, period, period), dims)
+        if operator in ("last_visible", "first_visible"):
+            history = _match_dims(store.fact_rows(isin, atom, "1900-01-01", period), dims)
+            if not history:
+                return _unverified("the store has no row at or before this period")
+            edge = history[-1] if operator == "last_visible" else history[0]
+            edge_period = _day(edge.get("period_end"))
+            if edge_period != period:
+                side = "last" if operator == "last_visible" else "first"
+                return _mismatch(f"the store's {side} row is {edge_period}, "
+                                 f"the answer says {period}")
+            rows = [row for row in history if _day(row.get("period_end")) == edge_period]
+        status, detail = _compare_rows(rows, result.get("value"))
+        return {"status": status, "detail": detail}
+
+    if operator in ("change", "pct_change", "growth"):
+        numbers = result.get("numbers") or {}
+        start, end = _day(numbers.get("from")), _day(numbers.get("to"))
+        if not start or not end:
+            return _unverified("the result names no endpoints")
+        first_rows = _match_dims(store.fact_rows(isin, atom, start, start), dims)
+        last_rows = _match_dims(store.fact_rows(isin, atom, end, end), dims)
+        first_status, first_detail = _compare_rows(first_rows, numbers.get("first"))
+        last_status, last_detail = _compare_rows(last_rows, numbers.get("last"))
+        if first_status != "match" or last_status != "match":
+            if "mismatch" in (first_status, last_status):
+                return _mismatch(f"{first_detail}; {last_detail}")
+            return _unverified(f"{first_detail}; {last_detail}")
+        first_value = _num(first_rows[0].get("value"))
+        last_value = _num(last_rows[0].get("value"))
+        if first_value is None or last_value is None:
+            return _unverified("an endpoint carries no number")
+        if operator == "change":
+            store_value = last_value - first_value
+        else:
+            if not first_value:
+                return _unverified("the first endpoint is zero")
+            store_value = 100.0 * (last_value - first_value) / abs(first_value)
+        detail = f"{start} {first_value:,.6g} -> {end} {last_value:,.6g} = {store_value:,.6g}"
+        if _value_close(result.get("value"), store_value):
+            return _match(detail)
+        return _mismatch(f"{detail}; answer {result.get('value')}")
+
+    if operator in ("max_with_date", "min_with_date"):
+        window = result.get("window") or {}
+        start = _day(window.get("from") or window.get("start"))
+        end = _day(window.get("to") or window.get("end"))
+        if not start or not end:
+            periods = asked_periods(question)
+            if not periods:
+                return _unverified("the extreme names no window")
+            start = min(period["start"] for period in periods)
+            end = max(period["end"] for period in periods)
+        rows = _match_dims(store.fact_rows(isin, atom, start, end), dims)
+        values = [(value, _day(row.get("period_end"))) for row in rows
+                  for value in [_num(row.get("value"))] if value is not None]
+        if not values:
+            return _unverified("the store has no rows in the window")
+        pick = (max if operator == "max_with_date" else min)(values, key=lambda pair: pair[0])
+        detail = f"{pick[0]:,.6g} on {pick[1]}"
+        if _value_close(result.get("value"), pick[0]) and (
+                not _day(result.get("period")) or _day(result.get("period")) == pick[1]):
+            return _match(detail)
+        return _mismatch(f"{detail}; answer {result.get('value')} "
+                         f"on {_day(result.get('period')) or 'no date'}")
+
+    return _unverified(f"no independent read for operator {operator}")
+
+
+def store_verdict(row: Mapping[str, Any], store: StoreReader | None,
+                  question: str) -> dict[str, str]:
+    """RIGHT only when every measured part is reproduced from the store."""
+    results = _covered_results(row)
+    if not results:
+        return {"verdict": "PARTIAL", "reason": "TRUTH_VALUE_UNVERIFIED",
+                "detail": "no measured part to compare with the store"}
+    if store is None:
+        return {"verdict": "PARTIAL", "reason": "TRUTH_VALUE_UNVERIFIED",
+                "detail": "no independent store read was supplied"}
+    outcomes = [verify_result(store, row, result, question) for result in results]
+    mismatches = [outcome["detail"] for outcome in outcomes if outcome["status"] == "mismatch"]
+    if mismatches:
+        return {"verdict": "WRONG", "reason": "TRUTH_VALUE_WRONG",
+                "detail": "; ".join(mismatches)[:500]}
+    unverified = [outcome["detail"] for outcome in outcomes
+                  if outcome["status"] == "unverified"]
+    if unverified:
+        return {"verdict": "PARTIAL", "reason": "TRUTH_VALUE_UNVERIFIED",
+                "detail": "; ".join(unverified)[:500]}
+    return {"verdict": "RIGHT", "reason": "TRUTH_OK",
+            "detail": f"all {len(outcomes)} part(s) reproduced from the store within "
+                      f"{100 * VALUE_TOLERANCE_REL:g}%"}
+
+
+def _gold_numbers(value: Any) -> list[str]:
+    """Only numeric gold readings are used; a prose gold is retired with the rubric."""
+    if not value:
+        return []
+    gold = value if isinstance(value, str) else "; ".join(map(str, value))
+    return [number for number in re.findall(r"\b\d[\d,.]{2,}\b", gold)
+            if not re.fullmatch(r"20\d\d", number)]
+
+
+def _gold_present_numeric(value: Any, text: str) -> bool:
+    numbers = _gold_numbers(value)
+    if not numbers:
+        return True
+    haystack = text.replace(",", "")
+    return any(number.replace(",", "") in haystack for number in numbers)
+
+
+
 def truth_verdict(row: Mapping[str, Any], parent: Mapping[str, Any] | None = None,
-                  shapes: Mapping[str, Any] | None = None) -> dict[str, Any]:
-    """RIGHT / PARTIAL / WRONG for one graded row, with a one-line reason."""
+                  shapes: Mapping[str, Any] | None = None,
+                  store: StoreReader | None = None,
+                  audit: Mapping[str, dict] | None = None) -> dict[str, Any]:
+    """RIGHT / PARTIAL / WRONG / ILL_POSED for one graded row, with a one-line reason.
+
+    Order matters and is deliberately strict: ILL_POSED first (no answer can be right
+    when the question is false), then a part read for another company, the named shape
+    failures, the measure/part coverage tests, and only then the independent store
+    read.  A RIGHT needs every measured part reproduced from the store; a text part,
+    an estimate or an ambiguous slice is PARTIAL, never RIGHT.
+    """
     shapes = shapes or question_shapes(row.get("question") or "")
     if not row.get("covered"):
         reasons = row.get("reasons") or []
         first = re.sub(r"\(.*", "", str(reasons[0])).strip() if reasons else "not covered"
         return {"verdict": "WRONG", "reason": "TRUTH_NOT_ANSWERED", "detail": first or "no answer"}
 
-    mismatch = entity_text_mismatch(row, parent)
-    if mismatch:
-        return mismatch | {"verdict": "WRONG"}
+    premise = premise_verdict(row, parent, audit)
+    if premise:
+        return premise
     other = part_other_entity(row, shapes)
     if other:
         return other | {"verdict": "WRONG"}
@@ -892,29 +1378,23 @@ def truth_verdict(row: Mapping[str, Any], parent: Mapping[str, Any] | None = Non
         first = failures[0]
         return {"verdict": "WRONG", "reason": first["reason"], "detail": first["detail"]}
 
-    shortfall = measure_shortfall(row)
+    shortfall = measure_shortfall(row, shapes)
     if shortfall:
-        return shortfall | {"verdict": "PARTIAL"}
+        return shortfall
+    missing = question_part_shortfall(row, shapes)
+    if missing:
+        return missing
     dims = row_dim_mismatch(row)
     if dims:
         return dims | {"verdict": "WRONG"}
 
     rubric = (parent or {}).get("rubric") or {}
     gold = rubric.get("ground_truth")
-    if gold:
-        words = set(_words(_answer_text(row)))
-        if not _gold_present(gold, words, _norm(_answer_text(row))):
-            return {"verdict": "PARTIAL", "reason": "TRUTH_GOLD_MISSING",
-                    "detail": "the rubric's gold reading is not in the answer"}
-    steps = _steps_of(rubric.get("required_steps"))
-    if steps:
-        words = set(_words(_answer_text(row)))
-        covered = sum(1 for step in steps if _coverage(step, words) >= 0.34)
-        if covered < len(steps):
-            return {"verdict": "PARTIAL", "reason": "TRUTH_RUBRIC_STEPS_MISSING",
-                    "detail": f"{covered}/{len(steps)} required rubric steps appear"}
-    return {"verdict": "RIGHT", "reason": "TRUTH_OK",
-            "detail": f"{int(row.get('real_answered') or 0)} part(s) answered, shape holds"}
+    if gold and not _gold_present_numeric(gold, _norm(_answer_text(row))):
+        return {"verdict": "PARTIAL", "reason": "TRUTH_GOLD_MISSING",
+                "detail": "the rubric's numeric gold reading is not in the answer"}
+    return store_verdict(row, store, str(row.get("question") or ""))
+
 
 
 # ---------------------------------------------------------------------------
@@ -1000,10 +1480,17 @@ def _pick(pools: Mapping[tuple, list[dict]], seed: int, total: int) -> list[dict
 
 
 def _panel_row(row: Mapping[str, Any], parent: Mapping[str, Any], panel: str,
-               seed: int) -> dict[str, Any]:
+               seed: int, store: StoreReader | None = None,
+               audit: Mapping[str, dict] | None = None) -> dict[str, Any]:
     shapes = question_shapes(row.get("question") or "")
-    verdict = truth_verdict(row, parent, shapes)
+    verdict = truth_verdict(row, parent, shapes, store=store, audit=audit)
     failures = shape_failures(row, shapes)
+    if verdict["verdict"] == "ILL_POSED":
+        # the split: a premise failure is reported as a premise failure, not as a
+        # missing rule_used block (the read's SHAPE_JUDGEMENT_NO_RULE half)
+        failures = [failure for failure in failures
+                    if failure["reason"] != "SHAPE_JUDGEMENT_NO_RULE"]
+    full = re.sub(r"\s+", " ", str(row.get("answer") or ""))
     return {
         "panel": panel, "seed": seed, "mid": row.get("mid"),
         "parent_mid": row.get("parent_mid") or str(row.get("mid")).split("#")[0],
@@ -1013,23 +1500,67 @@ def _panel_row(row: Mapping[str, Any], parent: Mapping[str, Any], panel: str,
         "real_answered": int(row.get("real_answered") or 0),
         "as_of": row.get("as_of"), "entity": row.get("entity"),
         "question": str(row.get("question") or "")[:240],
-        "answer": re.sub(r"\s+", " ", str(row.get("answer") or ""))[:400],
+        "answer": full[:400],
+        #: the full render, beside the display copy: 82 of 127 read-graded rows were
+        #: truncated at 400 characters, which hides later parts from a reader.
+        "answer_full": full,
         "verdict": verdict["verdict"], "reason": verdict["reason"],
         "detail": verdict.get("detail") or "",
+        "premise": (verdict.get("detail") or "") if verdict["verdict"] == "ILL_POSED" else "",
         "shape_failures": [failure["reason"] for failure in failures],
     }
 
 
+def _panel_summary(graded: list[dict[str, Any]], stats: Mapping[str, Any]) -> dict[str, Any]:
+    """Per-panel counts.  ILL_POSED has its own column and stays in `answered`."""
+    report: dict[str, Any] = {
+        "rows": len(graded),
+        "fixed": sum(1 for row in graded if row["panel"] == "fixed"),
+        "fresh": sum(1 for row in graded if row["panel"] == "fresh40"),
+        "answered": sum(1 for row in graded if row["contract"]),
+        "bank_rows": stats["rows"], "bank_answered": stats["answered"],
+    }
+    for panel_name in ("fixed", "fresh40", "all"):
+        subset = [row for row in graded if panel_name == "all" or row["panel"] == panel_name]
+        answered = [row for row in subset if row["contract"]]
+        answered_right = sum(1 for row in answered if row["verdict"] == "RIGHT")
+        ill_posed = sum(1 for row in answered if row["verdict"] == "ILL_POSED")
+        low, high = wilson(answered_right, len(answered))
+        share = stats["answered"] / max(1, stats["rows"])
+        report[panel_name] = {
+            "rows": len(subset),
+            "right": sum(1 for row in subset if row["verdict"] == "RIGHT"),
+            "answered": len(answered), "answered_right": answered_right,
+            "ill_posed": ill_posed,
+            "ill_posed_share": round(100.0 * ill_posed / max(1, len(answered)), 2),
+            "answered_precision": round(100.0 * answered_right / max(1, len(answered)), 2),
+            "wilson_answered": [round(100.0 * low, 2), round(100.0 * high, 2)],
+            "truth_pct": round(100.0 * share * answered_right / max(1, len(answered)), 2),
+            "truth_wilson": [round(100.0 * share * low, 2), round(100.0 * share * high, 2)],
+            "right_mids": [row["mid"] for row in subset if row["verdict"] == "RIGHT"],
+            "ill_posed_mids": [row["mid"] for row in answered
+                               if row["verdict"] == "ILL_POSED"],
+            "by_reason": dict(Counter(row["reason"] for row in subset
+                                      if row["verdict"] != "RIGHT").most_common(20)),
+        }
+    return report
+
+
 def build_panel(graded_path: Path, out_path: Path = PANEL, fresh_seed: int | None = None,
                 fixed_seed: int = SEED_PANEL, panel_n: int = PANEL_N,
-                fresh_n: int = FRESH_N, verbose: bool = True) -> dict[str, Any]:
+                fresh_n: int = FRESH_N, verbose: bool = True,
+                store: StoreReader | None = None,
+                audit: Mapping[str, dict] | None = None) -> dict[str, Any]:
     """Draw the fixed 150-row panel plus a fresh 40 and grade every row.
 
     Pass 1 indexes the strata, pass 2 reads back only the picked rows.  The fixed block
     is the same rows (same seed) on every run; the fresh block's seed is printed and
-    written into every one of its rows.
+    written into every one of its rows.  Every verdict is re-derived with the store
+    read; ``answer_full`` rides beside the 400-character display copy.
     """
     bank, instances = load_maps()
+    store = store if store is not None else StoreReader()
+    audit = audit if audit is not None else load_premise_audit()
     pools, stats = panel_index(graded_path)
     fixed = _pick(pools, fixed_seed, panel_n)
     fresh_seed = fresh_seed if fresh_seed is not None else random.SystemRandom().randrange(1, 10**9)
@@ -1038,7 +1569,6 @@ def build_panel(graded_path: Path, out_path: Path = PANEL, fresh_seed: int | Non
         fresh_seed += 1
     fresh = _pick(pools, fresh_seed, fresh_n)
     wanted = {row["mid"] for row in fixed} | {row["mid"] for row in fresh}
-    fresh_only = {row["mid"] for row in fresh}
     rows: dict[str, dict] = {}
     with Path(graded_path).open(encoding="utf-8") as handle:
         for line in handle:
@@ -1056,46 +1586,128 @@ def build_panel(graded_path: Path, out_path: Path = PANEL, fresh_seed: int | Non
         row = rows.get(pick["mid"])
         if row is not None:
             graded.append(_panel_row(row, parent_of(pick["mid"], bank, instances),
-                                     "fixed", fixed_seed))
+                                     "fixed", fixed_seed, store=store, audit=audit))
     for pick in fresh:
         row = rows.get(pick["mid"])
         if row is not None:
             graded.append(_panel_row(row, parent_of(pick["mid"], bank, instances),
-                                     "fresh40", fresh_seed))
+                                     "fresh40", fresh_seed, store=store, audit=audit))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("".join(json.dumps(row, ensure_ascii=False, default=str) + "\n"
                                 for row in graded), encoding="utf-8")
-    report = {"rows": len(graded), "fixed": sum(1 for r in graded if r["panel"] == "fixed"),
-              "fresh": sum(1 for r in graded if r["panel"] == "fresh40"),
-              "answered": sum(1 for r in graded if r["contract"]),
-              "fresh_seed": fresh_seed, "bank_rows": stats["rows"],
-              "bank_answered": stats["answered"]}
-    for panel_name in ("fixed", "fresh40", "all"):
-        subset = [r for r in graded if panel_name == "all" or r["panel"] == panel_name]
-        right = sum(1 for r in subset if r["verdict"] == "RIGHT")
-        answered = [r for r in subset if r["contract"]]
-        answered_right = sum(1 for r in answered if r["verdict"] == "RIGHT")
-        low, high = wilson(answered_right, len(answered))
-        share = stats["answered"] / max(1, stats["rows"])
-        report[panel_name] = {
-            "rows": len(subset), "right": right,
-            "answered": len(answered), "answered_right": answered_right,
-            "answered_precision": round(100.0 * answered_right / max(1, len(answered)), 2),
-            "wilson_answered": [round(100.0 * low, 2), round(100.0 * high, 2)],
-            "truth_pct": round(100.0 * share * answered_right / max(1, len(answered)), 2),
-            "truth_wilson": [round(100.0 * share * low, 2), round(100.0 * share * high, 2)],
-            "right_mids": [r["mid"] for r in subset if r["verdict"] == "RIGHT"],
-            "by_reason": dict(Counter(r["reason"] for r in subset
-                                      if r["verdict"] != "RIGHT").most_common(20)),
-        }
+    report = _panel_summary(graded, stats)
+    report["fresh_seed"] = fresh_seed
+    report["store_available"] = bool(store.available)
+    if verbose and not store.available:
+        print("panel: WARNING the pilot store is not available; every value stays "
+              "PARTIAL (TRUTH_VALUE_UNVERIFIED)", flush=True)
     if verbose:
         for name in ("fixed", "fresh40", "all"):
             block = report[name]
             print(f"panel {name}: {block['rows']} rows, {block['right']} RIGHT, "
+                  f"ILL_POSED {block['ill_posed']}/{block['answered']}, "
                   f"answered {block['answered']} ({block['answered_right']} RIGHT = "
                   f"{block['answered_precision']}%, Wilson {block['wilson_answered']}), "
                   f"truth {block['truth_pct']}% {block['truth_wilson']}", flush=True)
     return report
+
+
+
+def read_confusion(graded_path: Path, read_path: Path = READ_PANEL,
+                   store: StoreReader | None = None,
+                   audit: Mapping[str, dict] | None = None) -> dict[str, Any]:
+    """Run the new rules on the read-graded questions and tabulate read x new.
+
+    ``read_path`` is ``TRUTH_PANEL_READ_2026-10-31.jsonl`` (the authority), one row per
+    mid.  The graded file supplies the full answer, the results and the contract flags;
+    the read file is never used as a grader input, only as the truth column.  A row is
+    included when the read graded it and the contract answered it, so the denominator
+    is the read's answered set.
+    """
+    read: dict[str, dict] = {}
+    with Path(read_path).open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            read[str(row.get("mid"))] = row
+    bank, instances = load_maps()
+    store = store if store is not None else StoreReader()
+    audit = audit if audit is not None else load_premise_audit()
+    table: Counter = Counter()
+    false_right: list[dict[str, Any]] = []
+    missed_ill: list[dict[str, Any]] = []
+    reasons: Counter = Counter()
+    rows = 0
+    with Path(graded_path).open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            mid = str(row.get("mid"))
+            truth = read.get(mid)
+            if truth is None or not row.get("covered"):
+                continue
+            verdict = truth_verdict(row, parent_of(mid, bank, instances),
+                                    store=store, audit=audit)
+            read_verdict = str(truth.get("verdict") or "UNVERIFIED")
+            table[(read_verdict, verdict["verdict"])] += 1
+            reasons[verdict["reason"]] += 1
+            rows += 1
+            if verdict["verdict"] == "RIGHT" and read_verdict != "RIGHT":
+                false_right.append({
+                    "mid": mid, "read": read_verdict, "read_reason": truth.get("reason_code"),
+                    "reason": verdict["reason"], "detail": verdict.get("detail"),
+                    "looked_up": truth.get("looked_up"),
+                })
+            if read_verdict == "ILL_POSED" and verdict["verdict"] != "ILL_POSED":
+                missed_ill.append({
+                    "mid": mid, "new": verdict["verdict"], "reason": verdict["reason"],
+                    "read_reason": truth.get("reason_code"),
+                    "read_evidence": str(truth.get("looked_up") or "")[:240],
+                })
+    read_rows = list(read.values())
+    return {
+        "rows": rows,
+        "read_rows": len(read_rows),
+        "read_right": sum(1 for row in read_rows if row.get("verdict") == "RIGHT"),
+        "read_ill_posed": sum(1 for row in read_rows if row.get("verdict") == "ILL_POSED"),
+        "new_ill_posed": sum(1 for (truth, new), count in table.items()
+                             if new == "ILL_POSED" for _ in range(count)),
+        "table": {f"{truth}|{new}": count for (truth, new), count in sorted(table.items())},
+        "by_read": dict(Counter(
+            truth for (truth, _new), count in table.items() for _ in range(count)).most_common()),
+        "by_new": dict(Counter(
+            new for (_truth, new), count in table.items() for _ in range(count)).most_common()),
+        "false_right": false_right,
+        "missed_ill_posed": missed_ill,
+        "by_reason": dict(reasons.most_common(20)),
+        "store_available": store.available,
+        "graded": str(graded_path),
+    }
+
+
+def confusion_markdown(result: Mapping[str, Any]) -> str:
+    """A compact read x new table for the report."""
+    columns = ("RIGHT", "PARTIAL", "WRONG", "ILL_POSED")
+    rows = ("RIGHT", "PARTIAL", "WRONG", "ILL_POSED")
+    table = result.get("table") or {}
+    lines = ["| read \\ new | " + " | ".join(columns) + " | total |",
+             "|---|" + "---:|" * (len(columns) + 1)]
+    for read in rows:
+        cells = [int(table.get(f"{read}|{new}", 0)) for new in columns]
+        lines.append(f"| {read} | " + " | ".join(str(cell) for cell in cells)
+                     + f" | {sum(cells)} |")
+    totals = [sum(int(table.get(f"{read}|{new}", 0)) for read in rows) for new in columns]
+    lines.append("| total | " + " | ".join(str(cell) for cell in totals)
+                 + f" | {sum(totals)} |")
+    return "\n".join(lines)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1105,22 +1717,39 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--graded", type=Path,
                         default=BENCH / "GATE_RESULTS_v4_strict.jsonl")
     parser.add_argument("--rubric40", action="store_true",
-                        help="the cheap test: rubric verdicts vs the 40 hand verdicts")
+                        help="the retired rubric's cheap test (diagnostic only)")
     parser.add_argument("--panel", action="store_true", help="build the truth panel")
+    parser.add_argument("--read-check", action="store_true",
+                        help="run the new rules on the read-graded questions")
+    parser.add_argument("--read-panel", type=Path, default=READ_PANEL)
+    parser.add_argument("--store-root", type=Path,
+                        help="directory holding fact_v4_pilot.db / v4.db")
+    parser.add_argument("--markdown", action="store_true", help="print the confusion table")
     parser.add_argument("--fresh-seed", type=int)
     args = parser.parse_args(list(argv) if argv is not None else None)
     bank, _ = load_maps()
+    store = StoreReader(args.store_root)
     if args.rubric40:
         result = rubric40(args.graded, bank)
         print(json.dumps(result, indent=1, default=str))
         return 0
+    if not args.graded.exists():
+        print(f"no graded run at {args.graded}; the raw v4 run is gitignored — "
+              "regenerate it with `python tasks/pilot60/gate_run.py v4`", flush=True)
+        return 2
+    if args.read_check:
+        result = read_confusion(args.graded, args.read_panel, store=store)
+        print(confusion_markdown(result) if args.markdown else "")
+        print(json.dumps(result, indent=1, default=str))
+        return 0
     if args.panel:
-        report = build_panel(args.graded, fresh_seed=args.fresh_seed)
+        report = build_panel(args.graded, fresh_seed=args.fresh_seed, store=store)
         print(json.dumps({key: value for key, value in report.items() if key != "fresh_seed"},
                          indent=1, default=str))
         return 0
-    parser.error("pass --rubric40 or --panel")
+    parser.error("pass --read-check, --panel or --rubric40")
     return 2
+
 
 
 if __name__ == "__main__":

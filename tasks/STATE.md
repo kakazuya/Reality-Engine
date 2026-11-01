@@ -1,4 +1,4 @@
-# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-10-31 15:20 IST (HP analyst-test worker)
+# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-10-31 15:45 IST (HP truth-rule-v2 worker)
 
 Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or the stores, then fix the wrong one.
 
@@ -16,10 +16,11 @@ Golden rule step 5, 60-name pilot, 2,681 rows. Gate is not passed; the 30% check
 |---|---:|---|
 | Contract strict | 341/2681 = 12.7% | gate on main `17234a4`, 31 Oct 14:30 |
 | Contract + shape checks | 237/2681 = 8.8% | same run |
-| Rule grade, not reliable | 0.6% [0.28, 1.26] | `tasks/arch_v4/TRUTH_GRADE_2026-10-31.md`, same run |
+| Rule grade v1, retired | 0.6% [0.28, 1.26] | old run; its RIGHT never compared a store and the read overturned all 4 rule-RIGHTs in its 127-row set |
+| Rule grade v2 (store-backed) | not re-run; **0 RIGHT, 0 false RIGHT** on the 111 read questions | `tasks/arch_v4/TRUTH_RULE_V2_2026-10-31.md`; full read × new table needs the raw run |
 | **Read grade: the number to trust** | **0/127 answered rows RIGHT, 0.00% [0.00, 0.40] of the bank; 42/127 ill-posed** | `tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md`, on the 13:00 run (13.5% contract); not yet repeated on later answers |
 
-The contract count measures answer shape, not truth, and fell because stale and wrong-period values stopped counting. Largest cause in the read grade: 66 of 127 answered rows return a nearby measure, not the one asked. Any earlier number (8.2%, 10.2%, 13.5%, 1.0%) is out of date.
+The contract count measures answer shape, not truth, and fell because stale and wrong-period values stopped counting. Largest cause in the read grade: 66 of 127 answered rows return a nearby measure, not the one asked. Any earlier number (8.2%, 10.2%, 13.5%, 1.0%) is out of date. Rule v2 does not change the read: on the 111 read questions it returns 0 RIGHT and 0 false RIGHT, and it catches 25 of the 38 read ILL_POSED rows.
 
 ## Stores, `reality_engine/data/pilot/v4/`
 - `fact_v4_pilot.db`: core facts. `hold.pct` has promoter and public (57 of 60 names) plus FII, DII, MF and insurance (56); `hold.pledge_pct` has 57. **`price.close` is split/bonus-adjusted (`adj_close`, using later actions) while `price.open`, `price.high` and `price.low` are raw: POWERGRID 2023-09-11 stores 198.375, traded 264.50.** Returns are sound; levels before an action are not traded prices. Fix queued. No point-in-time corporate action atom.
@@ -30,10 +31,10 @@ The contract count measures answer shape, not truth, and fell because stale and 
 ## Findings that change what to do
 - **Analyst agent test (free Beam + typed PIT tools): KILL.** 7/24 RIGHT (29.2%, Wilson 14.9–49.2) of rows not ILL_POSED and not CORRECT_NOT_IN_DATA; 7 PARTIAL, 10 WRONG, 11 ILL_POSED, 5 CORRECT_NOT_IN_DATA. All 40 answered (native tool calls) at 8.2 s and 19.7k input tokens per question; 0 PIT breaches. Main gaps: premise substitution (11), data gaps (10), no sort/aggregate/chart tools (6). `tasks/arch_v4/ANALYST_AGENT_TEST_2026-10-31.md`.
 - Reader test: 13/40 RIGHT (32.5%), killed by its fixed rule; 13 more correctly said not stated, mostly missing documents, and 4 were WRONG. `tasks/arch_v4/READER_TEST_2026-10-31.md`.
-- "Latest" now means the most recent period known by `as_of`, within limits in `execute.py` `LATEST_LIMIT_DAYS` (hold 200, fin 400, price 10, flows 100, macro and text 400 days). Named periods are strict, with no older fallback. Lifts pledge questions; removes years-old values given as latest, so the contract count fell 369 to 352 on that run.
-- "Latest" now means the most recent period known by `as_of`, within limits in `execute.py` `LATEST_LIMIT_DAYS` (hold 200, fin 400, price 10, flows 100, macro and text 400 days). Named periods are strict, with no older fallback. Lifts pledge questions and removes years-old values given as latest, so that run's contract count fell from 369 to 352.
+- "Latest" now means the most recent period known by `as_of`, within limits in `execute.py` `LATEST_LIMIT_DAYS` (hold 200, fin 400, price 10, flows 100, macro and text 400 days). Named periods are strict, with no older fallback. It lifts pledge questions and removes years-old values given as latest; the contract count fell 369 to 352 on that run.
 - Returns over closes state their basis and name a held split or bonus (`execute.py` `price_basis`). An unexplained single-session fall of 30% or more is a typed NID. Its "raw close" label is wrong for adjusted closes: fix queued in `V4_ANSWER_LABELS`.
-- Rubric scoring is not usable (8 of 40 agreement). Premise audit: 219 of 2,098 instances provably false. `tasks/pilot60/PREMISE_AUDIT_2026-10-31.jsonl`.
+- Truth rule v2 (31 Oct): RIGHT re-reads the pilot store by entity/measure/period within 0.5%; a text part, an estimate, an ambiguous slice or a rounded share count is PARTIAL, never RIGHT. ILL_POSED is its own verdict (premise audit + entity-text check) and stays in the denominator. The lexical rubric is retired as a verdict input; `ground_truth` votes only when numeric. Tests: 59 passed, 1 skipped. The raw v4 run is not on the HP, so the full read × new table is the controller's `--read-check` command. `tasks/arch_v4/TRUTH_RULE_V2_2026-10-31.md`.
+- Rubric scoring is retired as a verdict input (9 of 40 agreement on the old run, 8 of 40 in the read). Premise audit: 219 of 2,098 instances provably false; rule v2 catches 25 of the 38 read ILL_POSED rows with it. `tasks/pilot60/PREMISE_AUDIT_2026-10-31.jsonl`.
 - near_high operator: 4 right, 1 partial, 1 wrong of 6. `tasks/arch_v4/STUDY_OPERATOR_TEST_2026-10-31.md`.
 - Scope: 945 of 1,073 parents name a stock outside the pilot, 450 names. `tasks/arch_v4/SCOPE_OPTIONS_2026-10-31.md`. Shivam has said no re-scope.
 - OCR: Windows.Media.Ocr on the HP CPU, 186.7 pages/min, number recall 0.964. Running the 1,073 files is Shivam's call.
