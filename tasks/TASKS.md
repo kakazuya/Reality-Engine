@@ -28,8 +28,8 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-025 | LOOKING | P3 | Check if still open: parse value, customer and execution period from exchange order-win filings | accept: Shivam | from: tasks/PIPELINE_TODO.md Phase C | opened 2026-11-02
 
 ## OCR and extraction
-- T-019 | WAITING Shivam | P1 | Approve Haiku on about 100 fresh OCR pages, batches of 8: tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md | accept: Shivam | from: STATE 1 Nov | opened 2026-11-02
 - T-020 | OPEN | P2 | OCR after workspace step 4: TextRecognizer first pass, stronger reader for low-confidence numbers; last accuracy pilot failed its gate | accept: Shivam | from: RULINGS, GATE_STATE | opened 2026-11-02
+- T-029 | OPEN | P3 | When OCR resumes after workspace step 4: decide a second Haiku baseline on about 100 fresh pages, batches of 8; first run: 100 pages, 995,856 tokens | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 
 ## Schema and question map
 - T-014 | OPEN | P1 | Question map for the 3 prototype companies: every bank question naming them has a row (workspace step 4) | accept: python -m pytest reality_engine/tests/test_question_map.py -q | from: workspace plan step 4 | opened 2026-11-02
@@ -45,4 +45,4 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-027 | OPEN | P3 | Trading limits module the test harness cannot run without, when backtests resume | accept: python -m pytest reality_engine/tests/test_trading_limits.py -q | from: tasks/FRAMEWORK.md | opened 2026-11-02
 
 ## Machines
-- T-013 | WAITING Shivam | P2 | Decide use of the Claude cloud credit that memory says expires 5 Nov; only Shivam can start that session | accept: Shivam | from: memory, not rechecked | opened 2026-11-02
+- T-030 | WAITING Shivam | P2 | Shivam uses the Claude cloud credit himself on the Eagle account, Tuesday 3 Nov | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
