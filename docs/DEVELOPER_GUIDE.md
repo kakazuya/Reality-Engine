@@ -184,6 +184,50 @@ Both scripts print an `ALL CHECKS PASSED` block and are idempotent. Read peers b
 `peer_graph.neighbours(conn, "TITAGARH")` — every row carries similarity, coverage, shared
 families, the anchor's baseline (so `lift` is interpretable) and the features that drove the match.
 
+### I. Pilot extraction: write contracts and whole-page recall (T-016)
+
+The pilot-60 extraction stores 16 measure tables (`reality_engine.pilot.extract60.TABLES`).
+Code: `reality_engine/contracts.py` (the contracts), `reality_engine/pilot/extract60.py` (selection,
+prompts, the single write path), `reality_engine/pilot/proto3.py` (the dry run),
+`reality_engine/tests/test_contracts.py` (acceptance checks).
+Each measure now has a typed contract in `reality_engine/contracts.py`: allowed unit, numeric
+range, and the words its own quote must print within 60 characters of the number. The number
+must be in the quote; a digit that only appears inside a label (`Q4` read as 4.0) is rejected.
+Evidence is typed: a document page (`page >= 1`), an XBRL filing (`source == "results_xbrl"`,
+whose quote prints rupees and is compared at /1e7), or a BSE announcement headline
+(`source_doc_id` starts with `bse_ann:`; announcement tables may carry a headline instead of a
+page). Every row still needs `known_at` and its period.
+
+`extract60._write` is the only INSERT path for the measure tables (Arm A code rows, the
+announcement regex pass, the BSE rating feed, the model reader and `repair` all go through it):
+it runs `contracts.check` first, and a rejected row goes to `extract_reject` with the reason
+`contract:<measure>:<code>` (counted per measure) — never dropped silently. `proto3.py` has no
+direct measure-table INSERT.
+
+Recall: a number-dense chunk is sent to the reader whole instead of through the passage picker.
+Measured on the 3-company store (2026-11-02): 4,265 chunks, density p50 9.2, p75 22.4, p90 39.2
+numbers per 100 words; the rule is `>= DENSE_MIN_NUMBERS (20)` numbers and
+`>= DENSE_PER_100_WORDS (30.0)` per 100 words, which marks 622 chunks. A whole page is never cut;
+a prompt splits only at `READER_INPUT_LIMIT_TOKENS (100,000)`. A dry run with no model calls
+prices it at 3,356,735 input tokens / $0.5035 for the three companies (dense pages alone:
+3,053,429 tokens / $0.458); the previous passage-picker Arm B run used 667,305 input tokens.
+
+```bash
+# New contract tests (16 passed)
+python -m pytest reality_engine/tests/test_contracts.py -q
+# Existing module tests (30 passed, 6 skipped: artifact/report tests need a built DB)
+python -m pytest reality_engine/tests/test_extraction_pilot60.py -q
+# Read-only dry run: stored rows vs contracts + whole-page token/cost estimate (no model call)
+python -m reality_engine.pilot.proto3 dryrun
+```
+
+`dryrun` reads `extract_proto3.db` from the worktree when present, else from
+`REALITY_DATA_ROOT`, and writes only `.tmp/proto3/dryrun.json`. Its 2026-11-02 read:
+1,042 rows kept and 158 rejected (13.2%); the top tables are `capex_project` 1/4,
+`company_price_revision` 2/6, `company_segment_pnl` 25/72 and `rating_action` 7/16, and no
+table is over 90%. The biggest reject class is `measure_term_absent`: a chart-axis or table-cell
+quote prints the number but not the word that says what it is.
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):

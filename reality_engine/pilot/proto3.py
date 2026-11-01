@@ -14,9 +14,11 @@ compares the held Haiku deck facts, DeepSeek and CPU OCR on the same slides.
     python -m reality_engine.pilot.proto3 effort    # 30 passages at low and max
     python -m reality_engine.pilot.proto3 bank      # answers for the bank rows
     python -m reality_engine.pilot.proto3 report    # tasks/pilot60/PROTOTYPE3_REPORT_...
+    python -m reality_engine.pilot.proto3 dryrun    # contracts vs stored rows + recall cost
 
 Read-only on every input; writes only ``reality_engine/data/extract_proto3.db``
 (Arm A/B), ``tasks/pilot60/PROTOTYPE3_*`` outputs and ``.tmp/proto3`` scratch.
+``dryrun`` is the exception: it only reads (no model call, no store write).
 """
 from __future__ import annotations
 
@@ -686,9 +688,8 @@ def cmd_effort(n: int = 30, workers: int = 4) -> dict:
     for table in x.TABLES:
         for row in x.selection_rows(table, docs, by_doc):
             doc = docs[row["doc_id"]]
-            prompt = x.build_prompt(table, doc, row["_passages"])
-            if prompt:
-                tasks.append((table, doc, row["_passages"], prompt))
+            for block, prompt in x.prompt_blocks(table, doc, row["_passages"]):
+                tasks.append((table, doc, block, prompt))
     random.Random(20261101).shuffle(tasks)
     tasks = tasks[:n]
     results = {}
@@ -1303,11 +1304,72 @@ def _report_markdown(m: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+# --------------------------------------------------------------------------- dry run
+def cmd_dryrun(samples: int = 10) -> dict:
+    """Read-only: re-check the stored rows against the contracts, then cost recall.
+
+    No model calls and no write to any store.  Every stored row goes through
+    ``contracts.check``; kept/rejected are counted per table and per measure, and
+    a few rejects are quoted with their reason.  ``extract60.whole_page_estimate``
+    then prices one pass over the three companies with the number-dense pages
+    sent whole, so the recall fix is costed before a reader call.
+    """
+    from reality_engine import contracts
+    from reality_engine.db.readonly import connect_ro
+    # A worktree has no gitignored DB: read the live one under REALITY_DATA_ROOT.
+    db = DB if DB.is_file() else x.data_root() / "extract_proto3.db"
+    if not db.is_file():
+        raise SystemExit(f"{db} is missing")
+    con = connect_ro(db, timeout_s=60)
+    con.row_factory = sqlite3.Row
+    per: dict[str, dict] = {}
+    rejects_by_measure: Counter = Counter()
+    pending: list[dict] = []
+    try:
+        for table in x.TABLES:
+            kept, rejected = 0, Counter()
+            cursor = con.execute(f"SELECT * FROM {table}")
+            for raw in (cursor.fetchall() if cursor is not None else []):
+                row = {str(key): raw[key] for key in raw.keys()}
+                ok, reason = contracts.check(table, row)
+                if ok:
+                    kept += 1
+                    continue
+                rejected[reason] += 1
+                if len(pending) < samples * 3:
+                    pending.append({"table": table, "reason": reason,
+                                    "row": {k: row.get(k) for k in
+                                            ("isin", "metric", "line_item", "item", "product",
+                                             "period_end", "value", "value_cr", "amount_cr",
+                                             "quantity", "capacity", "capacity_unit", "unit",
+                                             "direction", "page", "quote")
+                                            if row.get(k) is not None}})
+                rejects_by_measure[contracts.measure_of(reason)] += 1
+            n_rejected = sum(rejected.values())
+            per[table] = {"kept": kept, "rejected": n_rejected,
+                          "rejected_percent": round(
+                              100.0 * n_rejected / max(1, kept + n_rejected), 1),
+                          "reasons": dict(rejected.most_common(5))}
+    finally:
+        con.close()
+    docs, chunks = _scope_docs()
+    estimate = x.whole_page_estimate(docs, _by_doc(chunks))
+    out = {"db": str(db), "read_only": True, "per_table": per,
+           "totals": {"kept": sum(v["kept"] for v in per.values()),
+                      "rejected": sum(v["rejected"] for v in per.values())},
+           "rejects_by_measure": dict(sorted(rejects_by_measure.items(),
+                                             key=lambda kv: (-kv[1], kv[0]))),
+           "sample_rejects": pending[:samples],
+           "recall_estimate": estimate}
+    (SCRATCH / "dryrun.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
+    return out
+
+
 # --------------------------------------------------------------------------- main
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("command", choices=["docs", "scope", "accuracy", "recall", "arm-c",
-                                            "effort", "bank", "report", "all"])
+                                            "effort", "bank", "report", "dryrun", "all"])
     parser.add_argument("--n", type=int, default=30)
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args(argv)
@@ -1328,6 +1390,14 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(cmd_bank(), indent=1))
     if args.command in ("report", "all"):
         print(json.dumps(cmd_report(), indent=1))
+    if args.command in ("dryrun", "all"):
+        out = cmd_dryrun()
+        for table, row in out["per_table"].items():
+            print(f"{table}: kept {row['kept']}, rejected {row['rejected']} "
+                  f"({row['rejected_percent']}%)", flush=True)
+        print(json.dumps({k: out[k] for k in ("db", "read_only", "totals",
+                                              "rejects_by_measure", "sample_rejects",
+                                              "recall_estimate")}, indent=1))
     return 0
 
 

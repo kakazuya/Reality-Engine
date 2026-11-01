@@ -1,11 +1,14 @@
 """Targeted fact extraction for the pilot-60 universe — build-time tables.
 
 Golden-rule step 4 (pilot) + step 3 (schema): the master bank's remaining
-``needs_new_table`` blockers become plain SQL tables here. DeepSeek reads ONLY
-the targeted passages (keyword + ``chunks_v3`` section/tag), never whole
-documents; every row carries doc_id, page, a verbatim quote of <=25 words and
-known_at, and passes a deterministic validator (units, magnitudes, period vs
-the doc's own date) before it is written.
+``needs_new_table`` blockers become plain SQL tables here. DeepSeek reads the
+targeted passages (keyword + ``chunks_v3`` section/tag), and a number-dense page
+(``DENSE_MIN_NUMBERS`` / ``DENSE_PER_100_WORDS``) whole, since the passage picker
+missed 78% of the numbers (T-016). Every row carries doc_id, page, a verbatim
+quote of <=25 words and known_at, and passes the typed write contract in
+``reality_engine.contracts`` (value, unit, range, a measure term next to the
+number) at ``_write`` before it is stored; a rejected row goes to
+``extract_reject`` with its reason and is counted per measure.
 
 Tables (SCHEMA_V3 names, 16): ``company_operating_metrics``, ``company_segment_pnl``,
 ``company_cost_structure``, ``order_intake``, ``order_book_contract``,
@@ -54,6 +57,8 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
+from reality_engine import contracts
+
 REPO = Path(__file__).resolve().parents[2]
 OUT_DIR = REPO / ".tmp" / "pilot60"
 UNIVERSE = REPO / "tasks" / "pilot60" / "UNIVERSE.csv"
@@ -67,6 +72,16 @@ TOKEN_CAP = int(os.environ.get("REALITY_EXTRACT_TOKENS", "3000000"))
 MAX_WORKERS = int(os.environ.get("REALITY_EXTRACT_WORKERS", "6"))
 MAX_CALLS_PER_TABLE = int(os.environ.get("REALITY_EXTRACT_LIMIT", "0"))
 MAX_PASSAGES, MAX_PASSAGE_CHARS = 12, 9000
+#: T-016 recall: a number-dense page is sent to the reader WHOLE instead of
+#: through the picker (the picker missed 78% of the numbers, Claude's grade,
+#: 1 Nov).  Measured on the 3-company store by ``proto3 dryrun``: density
+#: percentiles there are p50 9.2, p75 22.4, p90 39.2 numbers per 100 words, so
+#: the rule below is about the densest fifth of pages.  Raising it saves cost,
+#: lowering it catches more pages.
+DENSE_MIN_NUMBERS, DENSE_PER_100_WORDS = 20, 30.0
+#: The reader's own input limit; a whole-page block is split only here.
+READER_INPUT_LIMIT_TOKENS = 100_000
+READER_INPUT_LIMIT_CHARS = READER_INPUT_LIMIT_TOKENS * 4
 #: proto3 scope: only these ISINs, only documents first known on/after SINCE.
 SCOPE_ISINS = tuple(x.strip() for x in os.environ.get("REALITY_EXTRACT_ISINS", "").split(",")
                     if x.strip())
@@ -668,13 +683,29 @@ def load_store(path: Path) -> tuple[dict[str, dict], list[dict]]:
     return docs, chunks
 
 
+def number_density(text: str) -> tuple[int, int, float]:
+    """(printed numbers, words, numbers per 100 words) for a passage."""
+    body = text or ""
+    words = len(body.split())
+    numbers = len(_NUM.findall(body))
+    return numbers, words, (100.0 * numbers / words if words else 0.0)
+
+
+def is_number_dense(chunk: dict) -> bool:
+    """A page dense enough that the ranked picker is the recall risk (T-016)."""
+    numbers, _, per_100 = number_density(chunk.get("body") or "")
+    return numbers >= DENSE_MIN_NUMBERS and per_100 >= DENSE_PER_100_WORDS
+
+
 def select_passages(spec: dict, doc: dict, chunks: list[dict]) -> list[dict]:
     """Deterministic passage pick: doc type, section/tag, keyword set, number density.
 
-    ``chunks`` are the doc's own chunks.  A passage must hit at least one keyword
-    and, when the table needs a number, carry one.  Ranked by (tag hits + section
-    hit) then number count, then page order, so the model reads a bounded,
-    reproducible subset and the selector is auditable.
+    ``chunks`` are the doc's own chunks.  Every number-dense chunk is returned
+    whole (marked ``dense``), regardless of the keyword/rank filter, because the
+    picker missed most numbers on such pages; the rest must hit at least one
+    keyword and, when the table needs a number, carry one.  Ranked by (tag hits +
+    section hit) then number count, then page order, so the ordinary part is a
+    bounded, reproducible subset and the selector is auditable.
     """
     if doc["doc_type"] not in spec["docs"]:
         return []
@@ -682,9 +713,12 @@ def select_passages(spec: dict, doc: dict, chunks: list[dict]) -> list[dict]:
     sections = tuple(s.lower() for s in (spec.get("sections") or ()))
     term = spec.get("_term") or re.compile(spec["terms"], re.I)
     spec["_term"] = term
-    picked = []
+    picked, dense = [], []
     for chunk in chunks:
         body = chunk["body"] or ""
+        if is_number_dense(chunk):
+            dense.append({**chunk, "dense": True})
+            continue
         matches = list(term.finditer(body))
         if not matches:
             continue
@@ -702,7 +736,9 @@ def select_passages(spec: dict, doc: dict, chunks: list[dict]) -> list[dict]:
                    if _NUM.search(body[max(0, match.start() - 160):match.end() + 160]))
         picked.append(((near, hits, len(matches), -(chunk.get("page_from") or 0)), chunk))
     picked.sort(key=lambda item: item[0], reverse=True)
-    return [item[1] for item in picked[:spec.get("max_passages") or MAX_PASSAGES]]
+    ranked = [item[1] for item in picked[:spec.get("max_passages") or MAX_PASSAGES]]
+    seen = {chunk["chunk_id"] for chunk in dense}
+    return dense + [chunk for chunk in ranked if chunk["chunk_id"] not in seen]
 
 
 def selection_rows(table: str, docs: dict, chunks_by_doc: dict[str, list[dict]]) -> list[dict]:
@@ -745,29 +781,111 @@ Passages:
 
 
 def passage_block(passages: list[dict]) -> tuple[str, int]:
-    lines, used = [], 0
-    for index, passage in enumerate(passages, 1):
+    """Passage text for one call: a dense passage whole; only the input limit cuts."""
+    lines, used, plain = [], 0, 0
+    for passage in passages:
         page = passage.get("page_from")
         body = (passage["body"] or "").strip()
-        if used + len(body) > MAX_PASSAGE_CHARS:
-            body = body[:max(0, MAX_PASSAGE_CHARS - used)]
-        if not body:
-            break
+        if not body or used >= READER_INPUT_LIMIT_CHARS:
+            continue
+        if passage.get("dense"):
+            body = body[:READER_INPUT_LIMIT_CHARS - used]   # whole page, model limit only
+        else:
+            room = min(MAX_PASSAGE_CHARS - plain, READER_INPUT_LIMIT_CHARS - used)
+            if room <= 0:
+                continue
+            body = body[:room]
+            plain += len(body)
         used += len(body)
         lines.append(f"[passage p{page}]\n{body}")
     return "\n\n".join(lines), used
 
 
-def build_prompt(table: str, doc: dict, passages: list[dict]) -> str | None:
+def split_passages(passages: list[dict]) -> list[list[dict]]:
+    """Split a passage list only at the reader's own input limit."""
+    blocks: list[list[dict]] = []
+    current: list[dict] = []
+    used = 0
+    for passage in passages:
+        size = len(passage.get("body") or "")
+        if current and used + size > READER_INPUT_LIMIT_CHARS:
+            blocks.append(current)
+            current, used = [], 0
+        current.append(passage)
+        used += size
+    if current:
+        blocks.append(current)
+    return blocks
+
+
+def prompt_blocks(table: str, doc: dict, passages: list[dict]) -> list[tuple[list[dict], str]]:
+    """One ``(passages, prompt)`` per reader call; split only at the input limit."""
     spec = SPECS[table]
-    block, used = passage_block(passages)
-    if not block:
-        return None
-    return PROMPT_HEAD.format(table=table, instruction=spec["instruction"],
-                              fields=", ".join(spec["fields"]), doc_type=doc["doc_type"],
-                              symbol=doc["symbol_at_time"], isin=doc["isin"],
-                              known_at=doc["known_at"], fiscal_period=doc["fiscal_period"],
-                              passages=block)
+    out = []
+    for block in split_passages(passages):
+        text, _used = passage_block(block)
+        if not text:
+            continue
+        prompt = PROMPT_HEAD.format(table=table, instruction=spec["instruction"],
+                                    fields=", ".join(spec["fields"]), doc_type=doc["doc_type"],
+                                    symbol=doc["symbol_at_time"], isin=doc["isin"],
+                                    known_at=doc["known_at"],
+                                    fiscal_period=doc["fiscal_period"], passages=text)
+        out.append((block, prompt))
+    return out
+
+
+def build_prompt(table: str, doc: dict, passages: list[dict]) -> str | None:
+    """The first reader prompt for this selection (None when nothing to read)."""
+    cards = prompt_blocks(table, doc, passages)
+    return cards[0][1] if cards else None
+
+
+def whole_page_estimate(docs: dict, chunks_by_doc: dict[str, list[dict]],
+                        tables: Iterable[str] | None = None) -> dict:
+    """No model calls: input tokens and $ for one pass over this selection.
+
+    Counts the prompt text ``build`` would send, including the number-dense pages
+    sent whole, so the recall fix is costed before any reader call.
+    """
+    per: dict[str, dict] = {}
+    totals: Counter = Counter()
+    dense_chunks = [chunk for doc_id, chunk_list in chunks_by_doc.items() if doc_id in docs
+                    for chunk in chunk_list if is_number_dense(chunk)]
+    dense_chars = sum(len(chunk.get("body") or "") for chunk in dense_chunks)
+    corpus = {"chunks": sum(len(chunks_by_doc.get(doc_id) or []) for doc_id in docs),
+              "dense_chunks": len(dense_chunks), "dense_chars": dense_chars,
+              "dense_tokens": max(1, round(dense_chars / 4))}
+    for table in (tables or TABLES):
+        calls = tokens = dense_calls = dense_tokens = 0
+        docs_selected = 0
+        for row in selection_rows(table, docs, chunks_by_doc):
+            docs_selected += 1
+            doc = docs[row["doc_id"]]
+            for block, prompt in prompt_blocks(table, doc, row["_passages"]):
+                size = est_tokens(prompt)
+                calls += 1
+                tokens += size
+                if any(passage.get("dense") for passage in block):
+                    dense_calls += 1
+                    dense_tokens += size
+        per[table] = {"docs": docs_selected, "calls": calls, "input_tokens": tokens,
+                      "dense_calls": dense_calls, "dense_input_tokens": dense_tokens,
+                      "cost_usd": round(tokens / 1e6 * PRICE_IN, 4),
+                      "dense_cost_usd": round(dense_tokens / 1e6 * PRICE_IN, 4)}
+        totals.update({"calls": calls, "input_tokens": tokens,
+                       "dense_calls": dense_calls, "dense_input_tokens": dense_tokens})
+    return {"tables": per,
+            "calls": totals["calls"], "input_tokens": totals["input_tokens"],
+            "dense_calls": totals["dense_calls"],
+            "dense_input_tokens": totals["dense_input_tokens"],
+            "cost_usd": round(totals["input_tokens"] / 1e6 * PRICE_IN, 4),
+            "dense_cost_usd": round(totals["dense_input_tokens"] / 1e6 * PRICE_IN, 4),
+            "price_in_per_musd": PRICE_IN,
+            "reader_input_limit_tokens": READER_INPUT_LIMIT_TOKENS,
+            "dense_threshold": {"min_numbers": DENSE_MIN_NUMBERS,
+                                "per_100_words": DENSE_PER_100_WORDS},
+            "corpus": corpus}
 
 
 # --------------------------------------------------------------------------- validation
@@ -1547,9 +1665,8 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
             if limit_docs and len(tasks) >= limit_docs:
                 break
             doc = docs[row["doc_id"]]
-            prompt = build_prompt(table, doc, row["_passages"])
-            if prompt:
-                tasks.append((doc, row["_passages"], prompt))
+            for block, prompt in prompt_blocks(table, doc, row["_passages"]):
+                tasks.append((doc, block, prompt))
         if MAX_CALLS_PER_TABLE:
             tasks = tasks[:MAX_CALLS_PER_TABLE]
         model_rows = []
@@ -1665,6 +1782,7 @@ def _arm_row(con: sqlite3.Connection, table: str, before: int, started: float,
 
 def _write(con: sqlite3.Connection, table: str, rows: list[dict],
            inserted: Counter, rejected: Counter) -> None:
+    """The only INSERT path for a measure table; every row passes the contract first."""
     sql = INSERT_SQL[table]
     for row in rows:
         if "__reject__" in row:
@@ -1672,7 +1790,14 @@ def _write(con: sqlite3.Connection, table: str, rows: list[dict],
             rejected[f"{table}:{meta['reason']}"] += 1
             con.execute("INSERT INTO extract_reject VALUES (?,?,?,?)",
                         (table, meta["doc_id"], meta["reason"],
-                         json.dumps(meta["row"])[:4000]))
+                         json.dumps(meta["row"], default=str)[:4000]))
+            continue
+        ok, reason = contracts.check(table, row)
+        if not ok:
+            rejected[f"{table}:{reason}"] += 1
+            con.execute("INSERT INTO extract_reject VALUES (?,?,?,?)",
+                        (table, str(row.get("source_doc_id") or row.get("doc_id") or ""),
+                         reason, json.dumps(row, default=str)[:4000]))
             continue
         params = {k: v for k, v in row.items() if not k.startswith("_") and f":{k}" in sql}
         try:
@@ -1680,6 +1805,9 @@ def _write(con: sqlite3.Connection, table: str, rows: list[dict],
             inserted[table] += 1
         except sqlite3.Error as exc:
             rejected[f"{table}:insert:{str(exc)[:60]}"] += 1
+            con.execute("INSERT INTO extract_reject VALUES (?,?,?,?)",
+                        (table, str(row.get("source_doc_id") or row.get("doc_id") or ""),
+                         f"insert:{str(exc)[:120]}", json.dumps(row, default=str)[:4000]))
 
 
 def _announcement_rating_pass(con: sqlite3.Connection, inserted: Counter,
