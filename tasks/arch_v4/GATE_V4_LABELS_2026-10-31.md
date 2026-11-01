@@ -89,6 +89,15 @@ A level can only be the traded close after the T1 pilot file carries `raw_close`
 The v4 fact store cannot be fixed in place (read-only, and the source column is
 missing). On a machine with the pilot stores:
 
+> **Corrected 2 Nov (T-033):** a price *level* no longer waits for this rebuild.
+> `execute.traded_close` reads the printed close from
+> `equity_intelligence.daily_price_delivery` (BSE from `mkt_bse_eq_daily`) through
+> `run.Stores.market`, so a level answers the traded close and states `basis=raw`, and the
+> store's adjusted level is reported beside it as `store_close` (`QUERY_V4_DESIGN.md`
+> §D.1.2). The rebuild below is still the controller's for the fact view's *returns* basis
+> and for anything else that reads `price.close` directly; it is not a prerequisite for a
+> close level.
+
 ```bash
 # 1. T1 rebuild IN PLACE (back up market_state_pilot.db first). company_state_daily
 #    gains raw_close; the schema is additive and the rows are the same.

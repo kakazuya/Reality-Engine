@@ -34,7 +34,6 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 ## Schema and question map
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02
 - T-032 | OPEN | P2 | Gate reports show only the hand-read score: tasks/pilot60/gate_run.py still prints the format score | accept: Shivam | from: Shivam ruling 2 Nov | opened 2026-11-02
-- T-033 | DOING Wolf | P1 | Pilot: engine routes each measure to its store and refuses a nearby measure, on a 3-company fact store | accept: python -m pytest reality_engine/tests/test_proto3_engine.py -q | from: PROTOTYPE3 grade change 4 | opened 2026-11-02
 - T-035 | OPEN | P1 | Pilot: rerun extraction on the 3 companies, answer the same questions, grade by reading | accept: Shivam | from: PROTOTYPE3 grade change 5 | opened 2026-11-02
 - T-036 | OPEN | P2 | Split fact.value into numeric and text, and test metric_citations on the prototype | accept: Shivam | from: T-016 | opened 2026-11-02
 

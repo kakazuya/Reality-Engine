@@ -22,6 +22,7 @@ count stops being bounded by the window — the SQL shape is already narrow.
 from __future__ import annotations
 
 import json
+import re
 import statistics
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass, field
@@ -52,6 +53,9 @@ class Part:
     rule: str | None = None
     entity: str | None = None
     entities: list[str] = field(default_factory=list)
+    #: the question fragment this part was read from: the executor compares the measure the
+    #: clause asks for with the measure the store holds, and refuses when they differ.
+    clause: str | None = None
 
     @property
     def measure(self) -> str:
@@ -88,7 +92,7 @@ def as_part(obj: Any, index: int | None = None) -> Part:
                 window=_get(obj, "window"), operator=operator, shape=shape,
                 judgement=bool(_get(obj, "judgement")), rule=rule,
                 index=int(index if index is not None else (_get(obj, "index", 0) or 0)),
-                entity=ent, entities=entities)
+                entity=ent, entities=entities, clause=_get(obj, "clause"))
 
 
 # ---------------------------------------------------------------------------
@@ -448,6 +452,205 @@ def _apply_soft(rows: Sequence[Mapping[str, Any]],
     return out
 
 
+# ---------------------------------------------------------------------------
+# the measure asked vs the measure found
+# ---------------------------------------------------------------------------
+#: A clause naming a measure only to rule it out ("delivered quantity (not total traded
+#: quantity)") does not ask for that measure.  The negation sits a few words before the
+#: phrase, so the phrase itself is the evidence, not the clause's opening word.
+_NEGATED = re.compile(r"\b(?:not|no|excluding|except|excl\.)\b(?:\s+[a-z][\w-]*){0,3}\s*$",
+                      re.I)
+#: A split of one figure is a different measure from the figure: "EPC vs HAM kitna hai",
+#: "does the order book include orders awaiting approval".  Capitalised sides keep this
+#: from firing on prose ("KEC vs Kalpataru", a company comparison).
+#: ponytail: both checks are surface rules over the clause, not typed dims.  Upgrade when
+#: the registry declares the split reading (contract_type / approval_status) for the order
+#: book: the reading, not the wording, should then decide.
+SPLIT_ASK = re.compile(r"\b[A-Z]{2,6}\s+(?:vs\.?|versus)\s+[A-Z]{2,6}\b|\bbreakdown\b|"
+                       r"\btypes?\b|\b(?:does|do|did)\b[^.?]*\binclude\b", re.I)
+#: The order-book family is held as one total per period, with no split reading (contract
+#: type, approval status) in this store: an ask for its split is refused, never answered by
+#: the total it is asking to break down.
+SPLIT_ONLY_TOTALS = ("fin.order_book", "fin.order_intake")
+
+
+def asked_surface(part: Part, registry: Mapping[str, Any]) -> str | None:
+    """The longest label/synonym of the part's atom that its clause actually contains.
+
+    The worst case for a lexicon hit is a synonym shared with a shorter phrase ("quantity"
+    inside "traded quantity"); taking the longest present surface reads the phrase the
+    clause most specifically names, which is the one the negation test then applies to.
+    """
+    clause = str(part.clause or "").lower()
+    atom = str(part.atom or "")
+    if not clause or not atom:
+        return None
+    row = _atom_row(registry, atom)
+    surfaces = [str(row.get("label") or "")]
+    surfaces.extend(str(item) for item in row.get("synonyms") or [])
+    found = [surface for surface in surfaces
+             if len(surface) >= 4 and re.search(
+                 r"(?<![a-z0-9])" + re.escape(surface.lower()) + r"(?![a-z0-9])", clause)]
+    return max(found, key=len).lower() if found else None
+
+
+def measure_mismatch(part: Part, registry: Mapping[str, Any]) -> tuple[str, str] | None:
+    """(why, to_close) when the clause asks for a measure the found atom does not hold.
+
+    Two readings are a different measure, not a qualifier: a measure the clause *excludes*,
+    and a split of a figure the store holds only whole.  Both are typed NIDs that name the
+    measure asked, never an answer with the nearby one this store happens to hold.
+    """
+    atom = str(part.atom or "")
+    clause = str(part.clause or "").lower()
+    if not atom or not clause:
+        return None
+    if atom in ("claim.claim", "text.passage") or part.shape == "passage":
+        return None
+    surface = asked_surface(part, registry)
+    if surface:
+        for match in re.finditer(r"(?<![a-z0-9])" + re.escape(surface) + r"(?![a-z0-9])",
+                                 clause):
+            if _NEGATED.search(clause[:match.start()]):
+                return (f"the ask rules {surface!r} out (\"not ... {surface}\"): {atom} is "
+                        f"exactly that measure, so answering it would answer the reading the "
+                        f"question excludes",
+                        f"read the measure the ask names, not its excluded reading ({atom})")
+    if atom in SPLIT_ONLY_TOTALS:
+        found = SPLIT_ASK.search(clause)
+        if found:
+            return (f"the ask wants {atom} split ({found.group(0)!r}); this store holds one "
+                    f"total per period with no split reading, and a total is a different "
+                    f"measure from the split asked for",
+                    f"hold {atom} split by the reading the ask names (contract type / "
+                    f"approval status)")
+    return None
+
+
+# ---------------------------------------------------------------------------
+# the printed market panel: the traded close and the per-exchange delivered quantity
+# ---------------------------------------------------------------------------
+#: `equity_intelligence` holds the printed bhavcopies: `daily_price_delivery` is the NSE
+#: file, `mkt_bse_eq_daily` + `mkt_bse_delivery_daily` the BSE one.  The fact view's
+#: `price.close` is the build's adjusted series (the T1 rebuild that would carry the traded
+#: `raw_close` did not land, so the live panel still holds `close` only), and its BSE
+#: delivery rows cover a handful of names.  A close level and a per-exchange delivered
+#: quantity are therefore read here, read-only, and the answer names the panel.
+DELIVERY_ATOMS = ("price.delivery_qty", "price.delivery_pct")
+NSE_DELIVERY_COLUMN = {"price.delivery_qty": "deliverable_volume",
+                       "price.delivery_pct": "delivery_pct"}
+BSE_DELIVERY_COLUMN = {"price.delivery_qty": "deliverable_qty",
+                       "price.delivery_pct": "delivery_pct"}
+
+
+def traded_close(conn: Any, isin: str, day: str) -> dict[str, Any] | None:
+    """The printed close for one session: NSE first, BSE when NSE has no row."""
+    if conn is None or not isin or not day:
+        return None
+    for exchange, sql, store in (
+            ("NSE", "SELECT close AS value FROM daily_price_delivery WHERE isin = ? AND "
+                    "date = ? AND close IS NOT NULL",
+             "equity_intelligence.daily_price_delivery"),
+            ("BSE", "SELECT close AS value FROM mkt_bse_eq_daily WHERE isin = ? AND date = ? "
+                    "AND close IS NOT NULL",
+             "equity_intelligence.mkt_bse_eq_daily")):
+        rows = db_rows(conn, sql + " LIMIT 1", (isin, day))
+        if rows:
+            value = _num(rows[0].get("value"))
+            if value is not None:
+                return {"value": value, "exchange": exchange, "store": store}
+    return None
+
+
+def panel_delivery(conn: Any, isin: str, lo: str | None, hi: str | None,
+                   atom: str) -> list[dict[str, Any]]:
+    """Per-exchange delivered quantity/percent from the printed panel; [] when absent."""
+    if conn is None or not isin or not lo or not hi:
+        return []
+    nse_col = NSE_DELIVERY_COLUMN[atom]
+    bse_col = BSE_DELIVERY_COLUMN[atom]
+    unit = "%" if atom == "price.delivery_pct" else "shares"
+    nse = db_rows(conn,
+                  f"SELECT date AS period_end, 'NSE' AS exchange, {nse_col} AS value "
+                  "FROM daily_price_delivery WHERE isin = ? AND date BETWEEN ? AND ? "
+                  f"AND {nse_col} IS NOT NULL", (isin, lo, hi))
+    bse = db_rows(conn,
+                  f"SELECT e.date AS period_end, 'BSE' AS exchange, dv.{bse_col} AS value "
+                  "FROM mkt_bse_eq_daily e JOIN mkt_bse_delivery_daily dv "
+                  "ON dv.sc_code = e.sc_code AND dv.date = e.date "
+                  f"WHERE e.isin = ? AND e.date BETWEEN ? AND ? AND dv.{bse_col} IS NOT NULL",
+                  (isin, lo, hi))
+    if nse is None and bse is None:
+        return []
+    out: list[dict[str, Any]] = []
+    for rows, store in ((nse or [], "equity_intelligence.daily_price_delivery"),
+                        (bse or [], "equity_intelligence.mkt_bse_delivery_daily")):
+        for row in rows:
+            day = _day(row.get("period_end"))
+            out.append({"entity_id": isin, "atom": atom, "period_start": day,
+                        "period_end": day, "value": _num(row.get("value")), "unit": unit,
+                        "dims": {"exchange": row.get("exchange")}, "known_at": day,
+                        "source_ref": store})
+    out.sort(key=lambda row: (row["period_end"] or "", str(row["dims"]["exchange"])))
+    return out
+
+
+def _declared_values(registry: Mapping[str, Any], dim_id: str) -> set[str]:
+    """The reading values a dim declares in the registry (§A.2), minus each/sum."""
+    for row in registry.get("dims") or []:
+        values = row.get("values")
+        if row.get("dim_id") == dim_id and isinstance(values, list):
+            return {str(value).upper() for value in values
+                    if str(value).lower() not in SPECIAL_DIMS}
+    return set()
+
+
+def _partial_total(atom: str, rows: Sequence[Mapping[str, Any]],
+                   registry: Mapping[str, Any]) -> tuple[list[str], list[str]]:
+    """(missing exchanges, periods whose sum would be partial) for an exchange=sum part."""
+    need = _declared_values(registry, "exchange")
+    if not need:
+        return [], []
+    have: dict[str, set[str]] = {}
+    for row in rows:
+        period = _day(row.get("period_end")) or ""
+        have.setdefault(period, set()).add(str(row_dims(row).get("exchange") or "").upper())
+    partial = sorted(period for period, got in have.items() if need - got)
+    seen: set[str] = set()
+    for got in have.values():
+        seen |= got
+    return sorted(need - seen), partial
+
+
+def _with_traded_close(result: Result, conn: Any, isin: str | None) -> Result:
+    """A close *level* is the traded close: read it from the panel and name its basis."""
+    if result.answer_type != "measured" or not isin or not result.period:
+        return result
+    traded = traded_close(conn, isin, str(result.period))
+    if traded is None:
+        return result
+    stored = _num(result.value)
+    numbers = dict(result.numbers or {})
+    numbers.update(close_basis="raw", exchange=traded["exchange"],
+                   close_store=traded["store"])
+    note = (f"{RAW_CLOSE}: the traded {traded['exchange']} close on {result.period} is "
+            f"{traded['value']:g}, read from {traded['store']}")
+    if stored is not None and abs(stored - traded["value"]) > 0.005:
+        # The fact store's level is the build's adjusted series: a different measure from
+        # the traded close, so it is reported beside it, never as it.
+        numbers["store_close"] = stored
+        numbers["store_close_basis"] = "adjusted"
+        note += (f"; the fact store's price.close is {stored:g}, the "
+                 f"{ADJUSTED_CLOSE}")
+    result.value = traded["value"]
+    result.unit = "INR"
+    result.source_ref = traded["store"]
+    result.known_at = str(result.period)
+    result.numbers = numbers
+    result.assumption = note
+    return result
+
+
 def _window_bounds(window: Any, windows: Sequence[Any] | None) -> tuple[str | None, str | None]:
     if window is None:
         return None, None
@@ -544,11 +747,19 @@ def _series(rows: Sequence[Mapping[str, Any]], dims: Mapping[str, Any]) -> list[
             if slot is None:
                 slot = {"period": period, "value": 0.0, "unit": row.get("unit"),
                         "dims": dict(dims), "known_at": row.get("known_at"),
-                        "source_ref": row.get("source_ref"), "entity_id": row.get("entity_id")}
+                        "source_ref": row.get("source_ref"),
+                        "row_sources": set(), "entity_id": row.get("entity_id")}
                 buckets[key] = slot
+            if row.get("source_ref"):
+                slot["row_sources"].add(str(row.get("source_ref")))
             number = _num(row.get("value"))
             if number is not None:
                 slot["value"] += number
+        for slot in buckets.values():
+            # A total over several rows names every store it summed, never one of them.
+            sources = sorted(slot.pop("row_sources", set()))
+            if sources:
+                slot["source_ref"] = " + ".join(sources)
         values = list(buckets.values())
     else:
         for row in rows:
@@ -878,6 +1089,8 @@ def _op_series(part, values, ctx):
                   shape="series", answer_type="measured",
                   values=[dict(row) for row in values], unit=values[0].get("unit"),
                   period=_day(values[-1].get("period")),
+                  isin=(values[0].get("entity_id") if len(
+                      {str(row.get("entity_id")) for row in values}) == 1 else None),
                   source_ref=values[-1].get("source_ref"),
                   known_at=max((_day(row.get("known_at")) or "") for row in values),
                   numbers={"n": len(values), "span_days": _span_days(values)})
@@ -912,14 +1125,19 @@ def _op_extreme(part, values, ctx, highest: bool):
     if not numbered:
         raise _Empty()
     pick = (max if highest else min)(numbered, key=lambda pair: pair[0])[1]
-    return Result(part_index=part.index, atom=part.atom, formula=part.formula,
-                  dims=part.dims, window=ctx["window"], operator=part.operator,
-                  shape="one value + one date", answer_type="measured",
-                  value=_num(pick.get("value")), values=[dict(row) for row in values],
-                  unit=pick.get("unit"), period=_day(pick.get("period")),
-                  isin=pick.get("entity_id"), source_ref=pick.get("source_ref"),
-                  known_at=_day(pick.get("known_at")),
-                  numbers={"n": len(numbered)})
+    exchange = row_dims(pick).get("exchange")
+    result = Result(part_index=part.index, atom=part.atom, formula=part.formula,
+                    dims=part.dims, window=ctx["window"], operator=part.operator,
+                    shape="one value + one date", answer_type="measured",
+                    value=_num(pick.get("value")), values=[dict(row) for row in values],
+                    unit=pick.get("unit"), period=_day(pick.get("period")),
+                    isin=pick.get("entity_id"), source_ref=pick.get("source_ref"),
+                    known_at=_day(pick.get("known_at")),
+                    numbers={"n": len(numbered), "exchange": exchange})
+    if exchange:
+        # A high/low is exchange-specific: the value is not "the" high until it says whose.
+        result.assumption = f"exchange of the extreme: {exchange}"
+    return result
 
 
 def _op_max_with_date(part, values, ctx):
@@ -2477,6 +2695,12 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
             # A one-day window is the document/event date for a quarterly or FY reading: it
             # bounds the value's date (known_at is cut at as_of), not its period_end.
             lo = None
+    if (basis == "named dates" and grain == "day" and lo and hi and lo != hi
+            and p.operator in ("value_at", "last_visible")):
+        # The question named more than one date ("on 21 September and 22 September"): a
+        # level would answer only the last one and drop the dates the ask names.  A series
+        # states every named session; a one-date ask still answers a level.
+        p.operator = "series"
     if str(p.dims.get("lag") or "").lower() == "ytd" and hi and not _passage_like(p):
         # "YTD high": the year of the asked date to that date, never the whole history.
         lo = f"{hi[:4]}-01-01"
@@ -2584,6 +2808,13 @@ def _passage_like(part: Part) -> bool:
 def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | None,
               hi: str | None, entity: str | None, entities: Sequence[str],
               registry: Mapping[str, Any], basis: str = "") -> Result:
+    mismatch = measure_mismatch(p, registry)
+    if mismatch is not None:
+        why, to_close = mismatch
+        return _nid(p, window, why,
+                    [_tried("registry", f"asked {p.clause or p.measure!r}: {why[:160]}", 0,
+                            as_of)],
+                    to_close)
     if p.operator == "walk":
         return _execute_walk(conn, p, as_of, entity, window, entities)
     if p.operator == "rule" or p.judgement:
@@ -2621,6 +2852,12 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
         return _nid(p, window, "the fact view is not built in this store",
                     [_tried("fact", "view absent", None, as_of)],
                     "WP2a fact_view.sql (§H.2)")
+    if atom in DELIVERY_ATOMS and entity and (lo or hi):
+        # The per-exchange delivered quantity is a printed bhavcopy measure: read it from
+        # the panel that holds both exchanges, not from the fact view's NSE-only rows.
+        printed = panel_delivery(conn, entity, lo, hi, atom)
+        if printed:
+            rows = printed
     carried = carried_dims(rows)
     unserved = _unserved(p.dims, carried)
     if unserved:
@@ -2636,6 +2873,20 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
     rows = _apply_soft(rows, p.dims)
     rows = _apply_defaults(rows, p.dims, registry, lo, hi, basis,
                            _grain_of(p, registry))
+    if atom in DELIVERY_ATOMS and str(p.dims.get("exchange") or "").lower() == "sum":
+        # A combined total is the sum of the dim's declared readings.  When one of them is
+        # not held the sum is one exchange passed off as the combined total: refuse it.
+        missing, partial = _partial_total(atom, rows, registry)
+        if partial:
+            return _nid(p, window,
+                        f"the combined {atom} is not held: "
+                        f"{', '.join(missing) or 'one declared exchange'} rows are missing "
+                        f"for {', '.join(partial[:3])}, so the total would be the held "
+                        f"exchange(s) passed off as the combined total",
+                        [_tried("fact", f"atom={atom}, exchange=sum, window={lo}..{hi}",
+                                len(rows), as_of)],
+                        f"hold the {atom} rows of every declared exchange "
+                        f"({', '.join(sorted(_declared_values(registry, 'exchange')))})")
     split = _unnamed_split(rows, p.dims) if p.operator in SCALAR_ONE else []
     if split:
         # A one-value ask over several readings of a dim it never named would answer
@@ -2715,7 +2966,12 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
     if basis is not None:
         return _with_price_basis(result, basis)
     if atom == "price.close":
-        return _with_close_basis(result, conn, values)
+        result = _with_close_basis(result, conn, values)
+        if p.operator in ("value_at", "last_visible", "first_visible"):
+            # A close *level* is the traded close (§D.2): read the printed close for the
+            # answered session and name it, instead of a build-adjusted series.
+            result = _with_traded_close(result, conn, entity)
+        return result
     return result
 
 

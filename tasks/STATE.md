@@ -7,7 +7,7 @@
 Apply that grade's five changes, rerun the same 3 companies, and grade the same questions by reading. Tickets in `tasks/TASKS.md`, section Schema and question map.
 
 ## Running
-Write contracts merged. Engine routing worker `20261101T202200Z-e545d45a` (T-033) and HP page text `hp-20261102T015327-7b1c9e` (T-034) run; a third worker loads that text. `reality_engine/data/pilot60_history_manifest.db` is a temporary copy for the HP mirror: delete it after T-034.
+Write contracts and engine routing merged. OCR overlay worker `20261101T204312Z-47a63343` runs. First HP OCR job was cancelled: my brief named the 2019 to Feb 2024 set, not the prototype's documents. Stored text is fine except 352 thin deck pages and KEC's 10 concalls, which are cover letters. The 1 Nov report's character column was wrong.
 
 ## Where the project stands
 Golden rule step 3, schema design, with the question bank accepted (1,901 questions, frozen). Gate on the old pilot: 12.7% contract strict, but 0 of 127 answered rows right on hand reading. Prototype on 3 companies failed its grade: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`. Full record: `tasks/arch_v4/GATE_STATE_2026-11-01.md`. Decisions: `D:\RealityEngine\plans\DECISION_LOG.md`, last 5 entries.
