@@ -12,15 +12,16 @@ sys.path.insert(0, "reality_engine/scripts")
 import hp_run  # noqa: E402
 
 ISINS = ("INE296A01032", "INE038A01020", "INE389H01022")
-OUT = Path(r"C:\Users\warri\AppData\Local\Temp\claude\C--Users-warri-Downloads-Info-Diffusion-Model\b8444ef0-b222-4eab-a05a-1767a1698f9d\scratchpad\thin")
-OUT.mkdir(exist_ok=True)
+THIN_CHARS = 400  # characters on the PDF page; all 352 pages under 200 sit inside multi-page chunks, so chunk length cannot show this
+OUT = Path(".tmp/proto3/thin")
+OUT.mkdir(parents=True, exist_ok=True)
 c = sqlite3.connect("file:reality_engine/data/pilot/pilot60/chunks_v3_pilot.db?mode=ro", uri=True)
 plan, pool = [], []
 for isin, sym, dt, sha, path, known in c.execute("select isin, symbol_at_time, doc_type, sha256, raw_path, known_at from doc where isin in (?,?,?) and doc_type='deck'", ISINS).fetchall():
     with pymupdf.open(path) as pdf:
         for i, page in enumerate(pdf, 1):
             row = {"isin": isin, "symbol": sym, "doc_type": dt, "doc_date": str(known)[:10], "sha256": sha, "page": i, "existing_chars": len(page.get_text()), "existing_text": page.get_text()}
-            if row["existing_chars"] < 200:
+            if row["existing_chars"] < THIN_CHARS:
                 plan.append({**row, "why": "thin"})
             elif page.get_images():
                 pool.append({**row, "why": "layer_check"})
@@ -46,7 +47,9 @@ with tarfile.open(tar_path, "w") as tar:
     (OUT / "plan.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in plan), encoding="utf-8")
     tar.add(OUT / "plan.jsonl", arcname="plan.jsonl")
 print("pages", len(plan), "thin", sum(r["why"] == "thin" for r in plan), "tar MB", round(tar_path.stat().st_size / 1e6, 1))
-print(hp_run._ssh(["powershell", "-NoProfile", "-Command", "New-Item -ItemType Directory -Force C:/RE/raw/proto3_pages | Out-Null; 'ok'"]).stdout)
-done = hp_run._ssh(["tar", "-xf", "-", "-C", "C:/RE/raw/proto3_pages"], input_bytes=tar_path.read_bytes())
+# The HP's ssh shell is cmd, which took the "|" for itself, so the folder was never made and tar had nowhere to extract. hp_run.ps encodes the script.
+dest = hp_run.remote("raw", "proto3_pages")
+hp_run.ps(f"New-Item -ItemType Directory -Force -Path '{dest}' | Out-Null")
+done = hp_run._ssh(["tar", "-xf", "-", "-C", dest], input_bytes=tar_path.read_bytes())
 print("untar rc", done.returncode, done.stderr[:200])
-print(hp_run._ssh(["powershell", "-NoProfile", "-Command", "(Get-ChildItem C:/RE/raw/proto3_pages).Count"]).stdout)
+print("files on HP", hp_run.ps(f"(Get-ChildItem '{dest}').Count").strip(), "expected", len(plan) + 1)

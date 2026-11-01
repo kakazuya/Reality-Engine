@@ -233,3 +233,4 @@ tasks/codex_tasks/*.log
 tasks/codex_tasks/*.status.json
 tasks/codex_tasks/*.control.json
 *.bak-*
+tasks/pilot60/proto3_text/ocr_pages.jsonl.gz
