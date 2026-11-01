@@ -34,6 +34,11 @@ Before this fix, no hook loaded anything. Memory held 69 files of 122 KB, but on
 - A ruling or correction goes in the file before the next action. A rule that can have a check gets one. `reality_engine/scripts/build_worker_context.py` points workers at the file.
 - **Test:** a fresh session answers Shivam's quiz on rulings using only what it loaded. Each repeat correction goes in the decision log and is counted.
 
+## Enforcement order (Shivam asked, 1 Nov: do md rules even work?)
+Written rules are the weakest layer. Use the strongest that fits: make the wrong action impossible (tool defaults, OS and file permissions), block it at the moment (`PreToolUse` hook, permission deny), refuse it at commit or merge (gates, tests), reject bad data at write time (typed contracts, database constraints), then an independent check. `tasks/RULINGS.md` is only for judgement rules and context.
+
+Add in step 3, each from a failure we have had: hook blocks on `git push` without his OK, any read of `Manual Dumps/`, keys printed to output, and edits to hooks or gates by agents; worker OS write roots excluding `Manual Dumps/`; a bank rebuild refused when ruled rows change; the full test suite refused on the MSI while workers run. As each check lands, shorten its line in `tasks/RULINGS.md` to `[check]`. Hook matching is best-effort, so hard denials use permissions as well.
+
 ## Steps
 | # | Work | Exit test | Status |
 |---|---|---|---|
