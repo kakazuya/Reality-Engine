@@ -651,6 +651,11 @@ For the 1,073-file job EasyOCR is therefore a non-starter on time alone: at
 
 ### 11.4 Recommendation for the 1,073 scanned files
 
+> **HP only — the engine ranking below does not hold on x64.** §12 re-measured
+> `Windows.Media.Ocr` against `RapidOCR` on the MSI over the same measure (number
+> recall/precision on financial-table pages): RapidOCR wins 0.916/0.910 vs
+> 0.818/0.852. The "MediaOcr is the only usable engine" line is an ARM finding.
+
 Use **`Windows.Media.Ocr` as the first pass**, not the NPU pipeline:
 
 - **Time:** 171–187 pages/min measured ⇒ 13,300 pages in **~1.2–1.3 h**; allow
@@ -705,4 +710,161 @@ Add-AppxPackage -Register pkg\AppxManifest.xml        # loose MSIX, systemAIMode
   the 1,073-file recommendation.
 - The scanned-page score still rests on 10 hand-read number sets. A text-layer
   truth for scanned pages would make the comparison exact.
+
+## 12. MSI, 2026-11-01 — does RapidOCR CPU clear the number gate Windows OCR failed?
+
+**Answer: no. RapidOCR 3.10 on the CPU reads financial-table pages better than
+`Windows.Media.Ocr` (number recall 0.916 vs 0.818, precision 0.910 vs 0.852 on the
+same 110 table pages) but misses both gates (recall 0.95, precision 0.98). The
+rotation retry and a larger raster change nothing on these pages. 4,922 of the
+13,169 pages in `is_scanned_guess=1` PDFs are the pages that actually need OCR
+(37.4%); at the measured 12.07 pages/min end to end that is 6.8 h on this CPU, or
+33 min with Windows OCR.**
+
+Host: MSI, x64 Windows, Python 3.14.7. Engines: `rapidocr` 3.10.0 (PP-OCRv6
+`det_small` + `rec_small` + cls, onnxruntime CPU execution provider, the package
+defaults: 2000-px preprocess cap, text score 0.5) and `Windows.Media.Ocr` through
+PyWinRT 10.0.28000 (`winrt` is not installed on the box; the projection wheels were
+fetched into `.tmp/pylib`, which is 3 MB, not an install). One process at a time.
+
+### 12.1 Method (the same measure Windows OCR was scored with)
+
+Truth is the PDF text layer, rendered with pypdfium2 at **3x** (A4 → 1788×2526 px).
+Numbers are the **distinct** tokens matching `\d[\d,]*(\.\d+)?` with the commas
+stripped; recall = truth numbers found in the OCR, precision = OCR numbers present
+in the truth. Micro (pooled counts) is the gate number; macro (mean of per-page
+scores) is given beside it.
+
+A page is a **table page** when its text layer has ≥15 numeric tokens, ≥8 of them
+with 3+ digits, and numbers are ≥12% of its words. Sample: `seed=20261031` over the
+local PDFs of `pilot60_history_manifest.db`, quotas annual reports 30, quarterly
+results 45, investor presentations 30, concall transcripts 5 (=110), plus 40 prose
+pages (11/16/9/4). Drawn: **150 pages, 63 PDFs, 34 symbols**, quotas exact.
+
+```
+python -m reality_engine.scripts.ocr_number_bench sample --out .tmp/ocr_bench --scale 3
+python -m reality_engine.scripts.ocr_number_bench ocr    --out .tmp/ocr_bench --config asis3
+python -m reality_engine.scripts.ocr_number_bench ocr    --out .tmp/ocr_bench --config windows3 --engine windows
+python -m reality_engine.scripts.ocr_number_bench score  --out .tmp/ocr_bench
+python -m reality_engine.scripts.ocr_number_bench census --out .tmp/ocr_bench
+```
+
+### 12.2 Results — table pages only, by document type
+
+| engine | AR (30) | results (45) | decks (30) | transcripts (5) | **all table (110)** |
+|---|---|---|---|---|---|
+| RapidOCR CPU, as shipped | 0.9817 / 0.9762 | **0.8644 / 0.8581** | 0.9800 / 0.9846 | 0.9837 / 0.8521 | **0.9161 / 0.9098** |
+| Windows.Media.Ocr | 0.8060 / 0.9379 | 0.7914 / 0.7896 | 0.8873 / 0.9514 | 0.9593 / 0.8252 | 0.8184 / 0.8522 |
+
+Recall / precision. Gate: 0.95 / 0.98. Both engines **fail**; RapidOCR fails only on
+the dense quarterly-results statements (0.864) while annual-report and deck tables
+are already at 0.98.
+
+| engine | all 150 | prose 40 | recall (macro) | precision (macro) | OCR pages/min | + render | pages/min end to end |
+|---|---|---|---:|---:|---:|---:|---:|
+| RapidOCR CPU, as shipped | 0.9195 / 0.9152 | 0.9573 / 0.9782 | 0.9291 | 0.9314 | 12.48 | 0.165 s/page | **12.07** |
+| RapidOCR, 90°/270° retry | identical | identical | — | — | — | — | — |
+| RapidOCR, 3x with cap 3200 (30-page probe) | 0.9127 / 0.8873 | — | — | — | 10.81 | — | 10.47 |
+| Windows.Media.Ocr | 0.8268 / 0.8603 | 0.9212 / 0.9508 | 0.8616 | 0.8840 | **252.26** | — | **148.94** |
+
+- **The rotation retry never fires on this sample:** the shortest OCR output is 280
+  characters and every page has ≥3 word-like tokens, for both engines (Windows OCR
+  minimum 173). Text-bearing table pages are upright by construction — a rotated
+  page has no text layer and therefore cannot qualify as a table page. Rotation is
+  a scanned-page concern (§10.5's GMR page), not measurable here.
+- **More pixels do not help:** 3x rendered without RapidOCR's 2000-px downscale
+  (cap 3200) on every 5th page scored 0.9127 / 0.8873 against 0.9097 / 0.8883 for
+  the same 30 pages as shipped, and ran 14% slower. RapidOCR's recogniser is at its
+  ceiling on this content, not short of resolution.
+- Windows OCR is **12× faster** and reads prose better than tables (0.921 vs 0.818);
+  its number loss is skipping text (13.6% of truth numbers are simply absent), while
+  RapidOCR's is cell-boundary merging (next section).
+
+### 12.3 Where the loss is
+
+Every distinct truth number on the table pages, classified against the OCR output
+(occurrence-level, so it explains the direction rather than replacing 12.2):
+
+| engine | exact token | inside a longer token (cells merged) | not read at all |
+|---|---:|---:|---:|
+| RapidOCR CPU | **91.6%** | 3.6% | 4.8% |
+| Windows.Media.Ocr | 81.8% | 4.6% | 13.6% |
+
+On the emitted side, 92.8% of RapidOCR's numbers are true, 1.1% are merges of two
+cells and 6.1% are numbers that are not in the text layer at all. **With perfect
+cell splitting RapidOCR would reach ≈0.952 recall — the gate's edge** — so the next
+thing to measure is a box/cell-aware post-pass, not another engine.
+
+Failure examples (worst table pages, RapidOCR as shipped):
+
+| page | doc | recall | what happened |
+|---|---|---:|---|
+| `075_quarte_4` RAJESHEXPO | results | 0.312 | cells merged: `3691` → `36911`, `17077` → `017077`, `498.38` → `1021498.38` |
+| `073_quarte_5` DDEVPLSTIK | results | 0.569 | 89 numbers emitted where truth has 51 — the same merges split differently |
+| `079_quarte_5` ASHIANA | results | 0.667 | small-font column misread: `0.29` → `0.20`, `9.23` → `1.35` |
+| `068_quarte_0` KIMS | results | 0.423 | `51330` → `543308`, `0101` → `01017`: two adjacent cells read as one |
+
+The truth layer is not clean either: some results pages carry a run-together date
+column (`2282374414513671`) that no OCR can reproduce, so part of the results-page
+error belongs to the truth, not the engine.
+
+### 12.4 How many pages truly need OCR
+
+Read-only census of every `is_scanned_guess=1` PDF in `pilot60_history_manifest.db`
+(1,145 held files, 13,169 pages, 0 unreadable), pages with **under 100 characters**
+of text layer:
+
+| document type | docs | pages | pages under 100 chars | share |
+|---|---:|---:|---:|---:|
+| material_filing | 1,019 | 6,060 | **4,084** | 67.4% |
+| quarterly_results | 70 | 1,003 | **585** | 58.3% |
+| investor_presentation | 20 | 491 | 114 | 23.2% |
+| results_press_release | 7 | 24 | 7 | 29.2% |
+| annual_report | 24 | 5,529 | 127 | 2.3% |
+| concall_transcript | 4 | 61 | 4 | 6.6% |
+| concall_audio_link | 1 | 1 | 1 | 100% |
+| **total** | **1,145** | **13,169** | **4,922** | **37.4%** |
+
+The earlier sample said 4,647 of 11,728: the same picture on a slightly smaller set.
+Most of the OCR need is the Reg 29/31 `material_filing` forms, not the annual
+reports (whose scanned-guess PDFs are 97.7% text-bearing).
+
+### 12.5 Time forecast for those 4,922 pages (this MSI, one process)
+
+| engine | rate | 4,922 pages | note |
+|---|---:|---:|---|
+| RapidOCR CPU, as shipped | 12.07 /min | **6.8 h** | 6.6 h if the render is reused |
+| RapidOCR + 90/270 retry | — | **10–20 h** | retry fires on real scans (none on this text sample); +1–2 passes |
+| RapidOCR, cap 3200 | 10.47 /min | 7.8 h | no accuracy gain; rejected |
+| Windows.Media.Ocr | 148.94 /min | **33 min** | 12× faster, worse numbers |
+
+Memory: the RapidOCR run peaks at ~0.3 GB. The brief's 1.5 GB free-RAM stop fired
+mid-run — the operator's browser holds 5.5 GB — so the remaining pages ran in
+10-page batches with the stop lowered to 900 MB; free RAM touched 419 MB once
+between batches, no page-fault storm, no other job was started.
+
+### 12.6 Verdict
+
+- **RapidOCR CPU as-is: FAIL** the 0.95 recall / 0.98 precision gate —
+  0.9161 / 0.9098 on the 110 table pages (0.9195 / 0.9152 over all 150).
+- **Windows.Media.Ocr re-measured on the same pages: FAIL, and worse** —
+  0.8184 / 0.8522. It lands near the earlier 110-page run (0.839 / 0.896); the gap
+  is the page sample and the absent bbox line sort, not the engine.
+- **Retry and resolution: no effect** (0 pages trigger; +0.3 pt for +14% time).
+- Neither engine can be used for blind figure extraction from table pages. The loss
+  is cell boundaries, not digits — a box-aware post-pass is the next experiment,
+  and its ceiling on this sample is ≈0.952 recall.
+
+### 12.7 What was not run
+
+- A per-page route between the two engines (Windows OCR for prose, RapidOCR for
+  tables) — the table above only prices each engine alone.
+- Any post-pass over RapidOCR's boxes (the ≈0.952 ceiling is arithmetic from 12.3).
+- Rotated scans, where the retry actually pays: no text-layer truth exists for them.
+- The 4,922-page run itself (accuracy test only, per the brief).
+
+Artifacts: `.tmp/ocr_bench/{sample.jsonl,ocr_asis3.jsonl,ocr_windows3.jsonl,ocr_hi3.jsonl,scores_*.jsonl,summary.json,failures.json,census.json}`,
+rendered pages in `.tmp/ocr_bench/pages/`. Script:
+`reality_engine/scripts/ocr_number_bench.py`, test:
+`reality_engine/tests/test_ocr_number_bench.py`.
 
