@@ -1,8 +1,13 @@
-"""Fetch the full 2019-01-01..2024-03-31 BSE document history for the pilot-60 names.
+"""Fetch the BSE document history for a pilot universe (default: the pilot-60 names).
 
 Raw fetch only (no extraction, chunking or LLM): BSE announcement metadata -> bucket
 -> attachment PDFs under ``D:\\RealityEngine\\raw\\pilot60_history\\<symbol>\\<bucket>\\<newsid>.pdf``
 with a CSV manifest and a SQLite manifest at ``reality_engine/data/pilot/pilot60_history_manifest.db``.
+
+The universe is ``tasks/pilot60/UNIVERSE.csv`` by default; ``--universe`` points at another
+CSV (e.g. ``tasks/pilot60/UNIVERSE_ADD3.csv`` for the three names added on 2026-11-01).
+``--window-start/--window-end`` move the filing window (default 2019-01-01..2024-04-01, the
+period the 60's FY2024-25-onward documents were already held).
 
 Metadata comes from the existing ``bse_announcements.db`` plus the BSE
 ``AnnSubCategoryGetData`` API (the DB feed starts 2020-01-01, the window starts
@@ -240,10 +245,10 @@ def fiscal_year(ts, bucket, text=""):
 
 
 # --------------------------------------------------------------------- universe
-def load_universe():
-    """The 60 pilot rows; nine MICRO rows carry only an ISIN, so the NSE symbol is
+def load_universe(path=UNIVERSE_CSV):
+    """Rows of the universe CSV; nine MICRO rows carry only an ISIN, so the NSE symbol is
     resolved from the live master (name/symbol history first, then symbol history)."""
-    with UNIVERSE_CSV.open(newline="", encoding="utf-8-sig") as f:
+    with Path(path).open(newline="", encoding="utf-8-sig") as f:
         rows = [r for r in csv.DictReader(f) if r.get("isin")]
     blanks = [r for r in rows if not (r.get("symbol") or "").strip()]
     if blanks:
@@ -908,17 +913,24 @@ def verify_files(manifest, resolved, sample=40, seed=20261030, out_path=None):
 
 
 # -------------------------------------------------------------------- coverage
-FY_START, FY_END = 2019, 2024
 MATRIX_BUCKETS = BUCKETS
 
 
-def coverage(manifest, out_path):
+def fiscal_window():
+    """(first FY, last FY) the fetch window touches; FY = the calendar year it ends in."""
+    first = WINDOW_START.year + (1 if WINDOW_START.month >= 4 else 0)
+    last = WINDOW_END - timedelta(days=1)
+    return first, last.year + (1 if last.month >= 4 else 0)
+
+
+def coverage(manifest, out_path, universe=None):
     rows = manifest.rows()
-    universe = load_universe()
+    universe = universe if universe is not None else load_universe()
     symbols = [r["symbol"] for r in universe]
-    held = {b: {s: {fy: 0 for fy in range(FY_START, FY_END + 1)} for s in symbols}
+    fy_start, fy_end = fiscal_window()
+    held = {b: {s: {fy: 0 for fy in range(fy_start, fy_end + 1)} for s in symbols}
             for b in MATRIX_BUCKETS}
-    planned = {b: {s: {fy: set() for fy in range(FY_START, FY_END + 1)} for s in symbols}
+    planned = {b: {s: {fy: set() for fy in range(fy_start, fy_end + 1)} for s in symbols}
                for b in MATRIX_BUCKETS}
     errors = {}
     no_file = set()
@@ -944,16 +956,16 @@ def coverage(manifest, out_path):
     def pct(n, d):
         return f"{n}/{d}" if d else "0/0"
 
-    lines = ["# Pilot-60 document history coverage (2019-01-01 .. 2024-03-31 filing window)", "",
+    lines = [f"# {out_path.stem}: document coverage "
+             f"({WINDOW_START} .. {WINDOW_END - timedelta(days=1)} filing window)", "",
              f"Generated {datetime.now().isoformat(timespec='seconds')} from "
              f"`{MANIFEST_DB}`.", "",
              "FY = the fiscal year the filing belongs to (FY ends in March). Annual reports use the",
              "2022-23 label in the headline when present; quarterly results are inferred from the",
              "filing month (Q4 Apr-Jun, Q1 Jul-Sep, Q2 Oct-Dec, Q3 Jan-Mar); other buckets use the",
-             "fiscal year in which the filing was made. FY19 therefore only contains filings from",
-             "Jan-May 2019 and FY24 stops at 2024-03-31 (Q4FY24 results and FY24 annual reports",
-             "fall after the window; 2024-04-01 onward is already held).", ""]
-    fys = list(range(FY_START, FY_END + 1))
+             "fiscal year in which the filing was made. A cell is held/listed; empty cells are",
+             "broken down below.", ""]
+    fys = list(range(fy_start, fy_end + 1))
     for bucket in MATRIX_BUCKETS:
         lines += [f"## {bucket}", "",
                   "| company | " + " | ".join(f"FY{fy % 100:02d}" for fy in fys) + " | total |",
@@ -1037,6 +1049,7 @@ def setup_logging(log_path=None):
 
 
 def main(argv=None):
+    global WINDOW_START, WINDOW_END
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--measure", action="store_true", help="metadata only; no downloads")
@@ -1047,6 +1060,11 @@ def main(argv=None):
                     help="also list NSE announcements for names with no BSE feed")
     ap.add_argument("--verify", type=int, default=0,
                     help="open N random held PDFs and write the content check markdown")
+    ap.add_argument("--universe", default=str(UNIVERSE_CSV),
+                    help="universe CSV (default: tasks/pilot60/UNIVERSE.csv)")
+    ap.add_argument("--window-start", default=WINDOW_START.isoformat())
+    ap.add_argument("--window-end", default=WINDOW_END.isoformat(),
+                    help="exclusive end date (default 2024-04-01)")
     ap.add_argument("--symbols", default="", help="comma list to limit the run")
     ap.add_argument("--limit", type=int, default=0, help="download at most N rows")
     ap.add_argument("--workers", type=int, default=8)
@@ -1059,7 +1077,9 @@ def main(argv=None):
     args = ap.parse_args(argv)
     setup_logging(LOG_DIR / f"{datetime.now():%Y%m%d_%H%M%S}.log" if args.fetch else None)
 
-    universe = load_universe()
+    WINDOW_START = date.fromisoformat(args.window_start)
+    WINDOW_END = date.fromisoformat(args.window_end)
+    universe = load_universe(Path(args.universe))
     if args.symbols:
         wanted = {s.strip().upper() for s in args.symbols.split(",") if s.strip()}
         universe = [r for r in universe if r["symbol"].upper() in wanted]
@@ -1112,7 +1132,7 @@ def main(argv=None):
     if args.scan and not args.fetch:
         logger.info("scan: %s", scan_pass(manifest))
     if args.coverage:
-        logger.info("coverage: %s", coverage(manifest, Path(args.out)))
+        logger.info("coverage: %s", coverage(manifest, Path(args.out), universe))
         manifest.write_csv()
     if not (args.fetch or args.scan or args.coverage or args.measure):
         ap.error("pick one of --measure, --fetch, --scan, --coverage, --verify")

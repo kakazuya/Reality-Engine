@@ -220,3 +220,13 @@ Ordered so that each step unblocks the next. Nothing below needs the GPU; only r
 ---
 
 *skipped: live Task Scheduler query (sandbox blocks CIM/registry — marked unverified rather than guessed). Add when a session can run `schtasks /query /fo LIST /v` with normal access: the enabled/LastResult columns for the 11 task names above.*
+
+## 8. Update 2026-11-01 (raw-fetch worker: ADD3 documents, NSDL fortnight, Vahan)
+
+| # | Job | Entry point (exact) | Writes | Cadence | Last evidence | Latest data | Verdict |
+|---|---|---|---|---|---|---|---|
+| 43 | Vahan public dashboard: monthly EV two-wheeler registrations by maker | `python -m reality_engine.scripts.fetch_vahan_raw [--makers "..."] [--all-makers]` | `D:\RealityEngine\raw\vahan\` (raw JSON, combined CSV, manifest; no DB) | on demand | 2026-11-01 01:53 run: 5 makers, 2,008 month rows, 0 errors, `--check` 5/5 top-5 totals matched | latest month 2026-10 (Ola Electric 11,610 EV 2W) | **new / working** |
+
+- **NSDL FPI fortnight** (row 4 covers the daily feed only): fetched `FIIInvestSector_Oct152026.html` (328,945 B) with `fetch_nsdl_raw --datasets nsdl_fpi_fortnight --start 2026-10-01`, then loaded with `load_market_raw --sources nsdl_fpi_fortnight` into the live DB (`REALITY_ENGINE_DB_PATH` must point at it when run from a worktree): 2,901 cells in `mkt_report_cells`, `mkt_load_log` now 187 files, latest file date 2026-10-15. The 31 Oct fortnight is not listed on the site yet.
+- **Pilot ADD3 raw documents**: `fetch_pilot60_history` now takes `--universe` (default `tasks/pilot60/UNIVERSE.csv`) and `--window-start/--window-end`; `tasks/pilot60/UNIVERSE_ADD3.csv` produced 1,270 PDFs for APOLLOHOSP/KIMS/OLAELEC, 0 fetch errors, 41 text-only announcements. Coverage: `tasks/pilot60/DOC_COVERAGE_ADD3_2026-11-01.md` plus the two per-FY matrices.
+- **Legacy VAHAN 4 JSF page** (`vahan.parivahan.gov.in/vahan4dashboard`) is not usable for two-wheelers: every Month Wise refresh fails with server-side `javax.faces.el.EvaluationException: Not supported yet.` and its category filter lists 4W codes only. Evidence and the working analytics endpoints: `tasks/VAHAN_COVERAGE_2026-11-01.md`.

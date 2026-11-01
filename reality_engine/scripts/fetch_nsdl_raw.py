@@ -17,7 +17,8 @@ Saves HTML pages from fpi.nsdl.co.in into ``RAW_ROOT/raw_market/<dataset>/``:
                        breach list. Saved with today's date so repeated runs build
                        a history going forward.
 
-Resumable via ``_manifest.csv`` for the daily and fortnightly sets.
+Resumable via ``_manifest.csv`` for the daily and fortnightly sets. The fortnightly
+listing and each file are retried with backoff: the site times out at its own pace.
 
 Usage:
     python -m reality_engine.scripts.fetch_nsdl_raw --datasets all
@@ -122,7 +123,13 @@ def fetch_fortnightly(start: date):
     out.mkdir(parents=True, exist_ok=True)
     m = Manifest(out)
     s = session()
-    page = s.get(BASE + "Reports/FPI_Fortnightly_Selection.aspx", timeout=60).text
+    page = ""
+    for attempt in range(4):  # the site times out at its own pace; back off and retry
+        try:
+            page = s.get(BASE + "Reports/FPI_Fortnightly_Selection.aspx", timeout=90).text
+            break
+        except Exception:
+            time.sleep(PACE_SEC * (2 ** (attempt + 1)))
     options = re.findall(r'<option[^>]*value="(~/StaticReports/[^"]+)"[^>]*>([^<]*)', page)
     counts = {"ok": 0, "error": 0, "skipped": 0, "before_start": 0}
     for path, label in options:
@@ -141,11 +148,13 @@ def fetch_fortnightly(start: date):
             counts["skipped"] += 1
             continue
         status, body = "error", b""
-        try:
-            body = s.get(BASE + path[2:], timeout=90).content
-            status = "ok" if len(body) > 5000 else "error"
-        except Exception:
-            pass
+        for attempt in range(4):
+            try:
+                body = s.get(BASE + path[2:], timeout=120).content
+                status = "ok" if len(body) > 5000 else "error"
+                break
+            except Exception:
+                time.sleep(PACE_SEC * (2 ** (attempt + 1)))
         if status == "ok":
             (out / key).write_bytes(body)
         m.record(key, status, len(body))
