@@ -69,6 +69,7 @@ Copy keys into files or print them. Send `Manual Dumps/` to the HP or any model,
 Review by meaning; a report without `Docs updated:` is not merged. `git merge --no-ff --no-commit <branch>`, drop `PROGRESS_NOTES.md`, keep ours on `query/v4/__init__.py`, run the tests, update this file and each affected doc, commit ending `By: Wolf` and the co-author line. Copy `.tmp` DBs first, then remove the worktree and branch. Log to the decision log and `rclone copy D:\RealityEngine\plans gdrive:InfoDiffusion_archive/plans`. HP: `hp_worker fetch-patch <job>` gives branch `dsh-hp/<job>`.
 
 ## Merged in the 1 Nov clean-up
+- `dsh-hp/hp-20261101T040329-6fce13`: all OCR methods on one page set, HP.
 - `dsh/20261031T222045Z-a1c65afb`: RapidOCR number bench on the MSI.
 - `dsh/20261031T200654Z-2d667ad0`: raw fetch for 3 new pilot names, Vahan series, NSDL fortnights.
 

@@ -526,18 +526,20 @@ harness could not import `reality_engine` (fix: `set PYTHONPATH=C:\RE\repo`), an
 inside the command sent `exit.txt` to the repo root, where the wave poller never saw the
 job finish. Both fixed in the driver; a wave now reports `problems` if a job has no clean
 answer.
-## 11. Snapdragon OCR engines — Windows AI, Qualcomm EasyOCR, baseline (2026-10-31)
+## 11. Snapdragon OCR engines — Windows AI, Qualcomm EasyOCR, baseline (2026-10-31, unblocked 2026-11-01)
 
-**Measured answer: neither hardware-specific engine beats the current pipeline; the
-best deployable change is Windows' own `Windows.Media.Ocr`, which is CPU-only but
-4× faster and much better on figures.** The Windows App SDK `TextRecognizer` is the
-API Microsoft intends for this NPU, but on this build it is gated: an unpackaged
-process gets `E_ACCESSDENIED` at `GetReadyState()` before any image is touched, and a
-loose MSIX with `systemAIModels` could not be made to start. Qualcomm's AI Hub
-EasyOCR *does* run on the NPU (both graphs) under `onnxruntime-qnn`, but its
-pre-exported detector/recogniser pair, decoded with the numpy CRAFT post-processing
-available here, scores 0.291 and runs at 1.5 pages/min — 30× slower than the
-baseline and 4× worse.
+**Measured answer (2026-10-31 set): Windows' own `Windows.Media.Ocr` beat both
+hardware-specific engines on speed and figures; the Windows App SDK
+`TextRecognizer` was gated.** That gate was lifted on 2026-11-01 with a properly
+signed MSIX: `TextRecognizer` now runs on this HP with package identity, reports
+`Ready`, and on the frozen 150-page table set (§12) is the best engine measured —
+table number recall 0.9378, precision 0.9242, 161 pages/min — though it still
+misses the 0.95/0.98 gate. Qualcomm's AI Hub EasyOCR *does* run on the NPU (both
+graphs) under `onnxruntime-qnn`, but its pre-exported detector/recogniser pair,
+decoded with the numpy CRAFT post-processing available here, scores 0.291 and
+runs at 1.5 pages/min — 30× slower than the baseline and 4× worse. The §11.1
+numbers below remain the 2026-10-31 20-page measurements; §12 is the frozen-set
+gate result and supersedes them where the two differ.
 
 Host: HP OmniBook, Snapdragon X X1-26-100 (Hexagon NPU), Windows 11 26H2 build
 26300.9818, Python 3.14.7 ARM64, `onnxruntime` 1.31.1 + `onnxruntime-qnn` 2.7.0,
@@ -559,7 +561,10 @@ normalisation. 17 letters, 2 statutory annexures, 1 presentation page.
 | **Windows.Media.Ocr** | CPU | **186.7** | **0.6703** | **0.8782** | **0.9640** | **0.6802** | 0.4217 | **0.9983** |
 | Windows.Media.Ocr, lines sorted by bbox | CPU | 186.7 | 0.7072 | 0.8782 | 0.9640 | — | — | — |
 | Qualcomm AI Hub EasyOCR | NPU+CPU | 1.49 | 0.2910 | 0.2809 | 0.3601 | 0.2907 | 0.2811 | 0.3162 |
-| Windows AI `TextRecognizer` | (NPU) | — | — | — | — | — | — | — |
+| Windows AI `TextRecognizer` | Windows AI | 161.5 | — | — | 0.9378* | — | — | — |
+
+`*` 150-page frozen table set (§12), not this 20-page set. The API ran only after the
+signed-MSIX fix in §11.2; the earlier `—` row is superseded.
 
 Scanned pages: no text layer, so scored on the ten pages with hand-read key numbers
 from §10.6 (key-number recall) and on output volume:
@@ -578,43 +583,60 @@ i.e. the classic CPU OCR. The QNN sessions also run with
 `session.disable_cpu_ep_fallback=1`, so a graph that did not compile on HTP would
 fail rather than silently fall back.
 
-### 11.2 Windows App SDK `TextRecognizer` — present but gated
+### 11.2 Windows App SDK `TextRecognizer` — gated on 31 Oct, unblocked 1 Nov
 
 The API is **not** in `Microsoft.Windows.AI.Text` on this build (that winmd has
 `LanguageModel`, `TextRewriter`, `TextSummarizer`, `TextToTableConverter`). It is
 `Microsoft.Windows.AI.Imaging.TextRecognizer` in the installed Windows App SDK 1.8
-runtime (`8000.836.2153.0`): `GetReadyState` / `EnsureReadyAsync` / `CreateAsync`,
+runtime: `GetReadyState` / `EnsureReadyAsync` / `CreateAsync`,
 `RecognizeTextFromImageAsync(ImageBuffer)`, returning `RecognizedText` with
-`Lines` and `TextAngle`; `ImageBuffer.CreateForSoftwareBitmap` is the input path.
+`Lines`, `TextAngle` and per-line `BoundingBox` (four `Windows.Foundation.Point`
+corners); `ImageBuffer.CreateForSoftwareBitmap` is the input path.
 
-A C# helper (built with .NET 8.0.427 against `Microsoft.WindowsAppSDK`
-1.8.260921001, `Microsoft.Windows.AI.Imaging.Projection.dll`) starts, resolves the
-types and then gets, before any image:
+**31 Oct (history).** An unpackaged C# helper got
+`E_ACCESSDENIED` at `GetReadyState` before touching an image, and a loose MSIX with
+`runFullTrust` + `systemAIModels` and `uap10:RuntimeBehavior="win32App"` never
+reached `Main` (`0x80070032`). No image was recognised.
 
-```
-ready_state: System.UnauthorizedAccessException: Access is denied.
-   at ABI.Microsoft.Windows.AI.Imaging.ITextRecognizerStaticsMethods.GetReadyState(...)
-```
+**1 Nov (resolution).** A signed MSIX with package identity runs it. The exact
+working build:
 
-That is E_ACCESSDENIED from the AI capability check (`AICapabilities.dll`,
-`WindowsUdk.AI.PlatformCapabilities`), not a missing model. Four launch shapes were
-tried:
-
-1. **Unpackaged exe** (the brief's question): `Package.Current` invalid, then
-   `E_ACCESSDENIED` at `GetReadyState`. **It does not run from an unpackaged app.**
-2. **Loose MSIX, developer mode**, `runFullTrust` + `systemAIModels`,
-   `uap10:RuntimeBehavior="win32App"`, execution alias: registration succeeds
-   (`RETextRecBench 1.0.0.3`), but direct launch still has no identity, the alias
-   exits `0x80070032` before `Main`, and Explorer activation creates a process and
-   AppContainer that are destroyed within the same second without reaching `Main`.
-3. `Invoke-CommandInDesktopPackage`: no process.
-4. Same helper on the shell: no process.
-
-So no image was ever recognised, no NPU evidence exists, and the engine is **not
-scored**. The honest conclusion is that Windows AI OCR needs a properly signed
-packaged app with package identity and the `systemAIModels` capability; the loose
-MSIX route used here is not enough on 26H2. The unpackaged answer is definitive:
-E_ACCESSDENIED.
+1. **Certificate:** self-signed, `CN=REBench` (must equal the manifest
+   `Publisher`), Code Signing EKU, installed to `Cert:\LocalMachine\Root` **and**
+   `Cert:\LocalMachine\TrustedPeople` (admin). Thumbprint
+   `12D0B68EB482079BF006722B057F1F50B3A2CFC6`, 7-day validity — test only.
+2. **Manifest:** `Identity Name="RETextRecBench" Publisher="CN=REBench"
+   ProcessorArchitecture="arm64"`, `uap10:RuntimeBehavior="packagedClassicApp"`,
+   `uap10:TrustLevel="mediumIL"`, capabilities `runFullTrust` + `systemAIModels`,
+   dependency `Microsoft.WindowsAppRuntime.1.8`, execution alias `textrec.exe`.
+3. **Build:** .NET 8.0.427, `Microsoft.WindowsAppSDK` 1.8.260921001,
+   `WindowsPackageType=None`, and — the critical fix —
+   `<WindowsAppSDKBootstrapInitialize>false</WindowsAppSDKBootstrapInitialize>`.
+   With the default auto-bootstrapper the packaged app died before `Main` with
+   `ERROR 0x80070032: Bootstrapper initialization failed while looking for version
+   1.8 (MSIX package version >= 8000.994.2142.0)`, even though 8000.994.2142.0 is
+   installed; a packaged app has the framework package in its graph and must not
+   run the unpackaged bootstrapper.
+4. **Pack/sign:** `makeappx.exe` + `signtool.exe` from
+   `Microsoft.Windows.SDK.BuildTools` 10.0.26100.4948 (the Windows Kits copy is not
+   installed on this box): `makeappx pack /d pkg /p app.msix /o`, then
+   `signtool sign /fd SHA256 /f cert.pfx /p <pw> app.msix`.
+5. **Install/launch:** `Add-AppxPackage app.msix`; launch the execution alias from a
+   scheduled task with `/IT` (runs in zen7s's session 1, not the SSH session 0).
+   `Package.Current` now returns
+   `RETextRecBench_1.0.0.8_arm64__yxzf4xjhhje0p`, `GetReadyState()=Ready`, and
+   `EnsureReadyAsync()` returns `Success (already ready)` — no model download was
+   needed. Loaded modules are `Microsoft.Windows.AI.Imaging.dll`,
+   `Microsoft.Windows.AI.Projection.dll` and
+   `Microsoft.Windows.AI.Imaging.Projection.dll`; no QNN DLL is loaded, and CPU time
+   was 0.047 s per 0.49 s wall on T0001. The API exposes no device name, so NPU use
+   is inferred, not proven.
+6. **Result:** all 150 frozen pages ran at 161.5 pages/min (recognition time from
+   `raw_all.jsonl`, model startup excluded). Table-page number recall 0.9378,
+   precision 0.9242; annual reports 0.9936/0.9736; scanned key numbers 0.9889 on
+   the 10 hand-read pages. Full breakdown in §12.
+7. **Cleanup:** the test package and certificate are removed after the run; the
+   pfx/cer stay under `C:\RE\bench\textrec\` only until then.
 
 ### 11.3 Qualcomm AI Hub EasyOCR — runs on the NPU, loses on speed and accuracy
 
@@ -657,27 +679,32 @@ For the 1,073-file job EasyOCR is therefore a non-starter on time alone: at
 > 0.818/0.852. The "MediaOcr is the only usable engine" line is an ARM finding.
 
 Use **`Windows.Media.Ocr` as the first pass**, not the NPU pipeline:
+Use **Windows AI `TextRecognizer` as the first pass** now that the signed package
+runs; keep **`Windows.Media.Ocr` as the fallback** where the package cannot be
+installed. Neither reaches the 0.95/0.98 gate on the frozen table set (§12), so a
+bulk run still needs Shivam's decision.
 
-- **Time:** 171–187 pages/min measured ⇒ 13,300 pages in **~1.2–1.3 h**; allow
-  **~1.5 h** once the 90°/270° retry is added. The current NPU baseline is
-  38.6–43.9 pages/min ⇒ **5.0–5.7 h**. EasyOCR: ~150 h, rejected.
-- **Accuracy:** on the pages with truth, 0.670 plain / **0.878 order-free** /
-  **0.964 exact-number recall** (baseline: 0.667 / 0.624 / 0.754). On the scanned
-  key numbers, 0.625 vs the baseline's 0.486. It is the only engine whose figure
-  recall is usable for filings, which is the point of the exercise.
-- **Two fixes are mandatory, both already in `hp_ocr_check.py`:** retry 90°/270°
-  when a page yields <40 characters (MediaOcr produced garbage on the rotated GMR
-  page, where the baseline recovers it), and sort the returned lines by their
-  bounding boxes (+3.7 points of plain accuracy on the truth set).
-- **Keep the NPU path for two cases:** tabular/annexure pages, where the baseline
-  is better (0.595 vs 0.422), and any page still under 40 characters after the
-  rotation retry. A per-page route on layout is cheaper than making one engine do
-  both.
-
-Expected for the 1,073 files: ~1.5 h, ~0.67 plain / ~0.88 order-free character
-accuracy on text-bearing pages, number recall ~0.96 on clean pages and ~0.62 on
-scans — i.e. better figures than today, in a quarter of the time, on the CPU that
-is otherwise idle while the NPU pipeline post-processes in numpy.
+- **Time:** Windows AI 161.5 pages/min (recognition only) ⇒ 13,300 pages in
+  **~1.4 h**. MediaOcr 270.7 pages/min OCR-only ⇒ **~0.8 h**; add rendering
+  (~0.15 s/page) for the wall-clock figure. The QNN baseline is 44.7 pages/min ⇒
+  **5.0 h**. EasyOCR ~2.9 pages/min ⇒ ~76 h, rejected.
+- **Accuracy on the frozen set:** Windows AI 0.9378 number recall / 0.9242
+  precision on table pages; MediaOcr 0.8807 / 0.8980; QNN 0.7354 / 0.7356. On the
+  10 hand-read scanned pages: Windows AI 0.9889 key-number recall, MediaOcr 0.4556
+  on the kept `C:\RE\ocr_pages` PNGs (the 0.625 in §11.1 was a different PDF render,
+  not these PNGs).
+- **Media tuning did not close the gap:** 3x/4x/5x, contrast, binarise and
+  table-line row crops all sit at 0.795–0.886 recall and 0.887–0.899 precision;
+  row crops add 0.006 recall and lose 0.011 precision. Details in §12.
+- **The QNN path is no longer the table fallback:** on 110 table pages it scores
+  0.7354 / 0.7356, below both Windows engines. Keep it only for pages where the
+  package cannot run at all.
+- **Two MediaOcr fixes remain mandatory** if it is used: retry 90°/270° when a page
+  yields <40 characters, and sort returned lines by bounding box (+3.7 points of
+  plain accuracy on the 20-page truth set).
+- **Gate:** no engine and no pair of engines reaches 0.95 recall / 0.98 precision;
+  the best agreement pair caps precision at 0.944 while losing recall. Do not start
+  the 1,073-file run on the strength of these numbers.
 
 The NPU is not the bottleneck in the current pipeline: the baseline uses 0.27 CPU-s
 per page at 43.9 pages/min, while MediaOcr uses 0.22 CPU-s at 186.7 pages/min.
@@ -695,19 +722,26 @@ python -m reality_engine.scripts.hp_ocr_bench --engine qnn  --mode scanned --lis
 python -m reality_engine.scripts.hp_ocr_bench --engine media --mode scanned --list C:\RE\pages30.txt --base C:\RE\raw\pilot60_history --keys C:\RE\bench\scanned_keys.json --limit 20 --out C:\RE\bench\out
 
 # Windows App SDK TextRecognizer helper (source in the job dir, not committed)
-dotnet publish -c Release -o pkg            # Microsoft.WindowsAppSDK 1.8.260921001
-Add-AppxPackage -Register pkg\AppxManifest.xml        # loose MSIX, systemAIModels
+dotnet publish -c Release -o pkg            # WindowsPackageType=None, WindowsAppSDKBootstrapInitialize=false
+makeappx pack /d pkg /p RETextRecBench.msix /o
+signtool sign /fd SHA256 /f rebench.pfx /p <pw> RETextRecBench.msix
+Add-AppxPackage RETextRecBench.msix
+schtasks /Create /TN RETextRecAll /TR "$env:LOCALAPPDATA\Microsoft\WindowsApps\textrec.exe --manifest C:\RE\ocr_test\windowsai\manifest_all.txt --out C:\RE\ocr_test\windowsai\raw_all.jsonl" /SC ONCE /ST 23:59 /IT /F
 ```
 
 ### 11.6 Still open
 
-- `TextRecognizer` needs a signed MSIX (or a Store identity) before it will answer;
-  the capability gate, not the NPU, is what blocked it. A signed build is the next
-  experiment, and it should also expose whether the API reports an NPU device.
+- **The gate is still unmet.** Windows AI is closest at 0.9378/0.9242; the best
+  agreement pair reaches 0.9429 precision with recall collapsed to 0.8701, and the
+  best union reaches 0.9501 recall at 0.7743 precision. A column-aware number
+  repair or a better detector is needed before 4,647/13,300 pages are run.
+- **The test certificate is self-signed and must not ship.** A machine-trusted or
+  Store identity is required for a fleet install; the test package and certificate
+  are removed after §12.
 - EasyOCR's real accuracy needs `cv2`/`pyclipper` CRAFT decoding. Neither has a
   win_arm64 cp314 wheel today; an x64-emulated Python or a small C++ box decoder
-  would be needed. Given 1.49 pages/min, even a large accuracy gain does not change
-  the 1,073-file recommendation.
+  would be needed. At 2.91 pages/min measured, even a large accuracy gain does not
+  change the 1,073-file recommendation.
 - The scanned-page score still rests on 10 hand-read number sets. A text-layer
   truth for scanned pages would make the comparison exact.
 
@@ -867,4 +901,255 @@ Artifacts: `.tmp/ocr_bench/{sample.jsonl,ocr_asis3.jsonl,ocr_windows3.jsonl,ocr_
 rendered pages in `.tmp/ocr_bench/pages/`. Script:
 `reality_engine/scripts/ocr_number_bench.py`, test:
 `reality_engine/tests/test_ocr_number_bench.py`.
+## 12. Frozen OCR gate test — every method on one page set (2026-11-01)
+
+Goal: find an engine or combination that reaches **number recall ≥ 0.95 and number
+precision ≥ 0.98 on table pages**. Nothing was allowed to change the page set, no
+full OCR run was made, and no paid model or model API was called.
+
+### 12.1 The frozen set
+
+`C:\RE\ocr_test\pages.json` — 150 pages, seed **20261101**, built once and never
+edited: **110 table pages** (annual reports 30, results 45, decks 30, transcripts 5)
+and **40 prose pages** (10 / 15 / 10 / 5). The builder refuses to overwrite an
+existing `pages.json` unless `--force` is passed. One page per PDF, drawn from
+`C:\RE\raw\pilot60_history` after shuffling the PDFs with `random.Random(20261101)`;
+annual reports and decks inspect at most 40 unseen pages per PDF, results and
+transcripts every page.
+
+Table-page rule (all four): ≥100 characters, ≥15 numeric tokens, ≥8 tokens with
+≥3 digits, numeric tokens ≥12% of words. Prose rule: ≥300 characters, ≥60 words,
+≤8 numeric tokens, numeric share ≤6%, ≤2 tokens with 3+ digits. Truth is the PDF
+text layer; each page was rendered once at **3x** with pypdfium2 (typically
+1785×2526; 126 MB of PNGs) into `C:\RE\ocr_test\images\`, with truth in
+`C:\RE\ocr_test\truth\`. `C:\RE\ocr_test\subset30_table.json` freezes the same
+30-table-page subset (AR 8, results 12, deck 8, transcript 2) used for the slow
+engines.
+
+Metric: numbers are distinct `\d[\d,]*(\.\d+)?` tokens with commas stripped (the
+`hp_ocr_check.py`/`hp_ocr_bench.py` definition). Recall = truth numbers found in
+OCR / truth numbers; precision = found / OCR numbers. Character accuracy is
+1 - Levenshtein / truth length on whitespace-normalised, case-folded text; `order
+free` sorts the words of both sides first, so a table read column-by-column is not
+punished twice.
+
+### 12.2 Results
+
+All runs on the HP OmniBook (Snapdragon X X1-26-100, Windows 11 26H2, Python
+3.14.7 ARM64), 2026-11-01. `ppm` is the sum of per-page OCR seconds (pre-rendered
+3x PNGs for every engine except Windows AI, whose helper decodes the PNG itself);
+PDF rendering is additional. The 30-page rows are the frozen subset, so their
+`overall` equals their table score.
+
+| engine | device | pages | ppm | table acc | table order-free | table recall | table precision | overall acc | overall recall | overall precision | gate |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| **Windows AI `TextRecognizer` 1.8** | Windows AI | 150 | **161.5** | 0.6597 | 0.8843 | **0.9378** | **0.9242** | 0.6893 | **0.9423** | **0.9051** | fail |
+| **Windows.Media.Ocr** (3x, rotation retry) | CPU | 150 | **270.7** | 0.6543 | 0.8627 | 0.8807 | 0.8980 | 0.6863 | 0.8919 | 0.8787 | fail |
+| **Tesseract 5.4.0** (psm 6, main pass) | CPU x64 emulated | 150 | 11.3 | 0.2219 | 0.7828 | 0.8139 | 0.8733 | 0.2419 | 0.8441 | 0.8444 | fail |
+| **RapidOCR ONNX** (det960 + rec32_960) | NPU QNN HTP | 150 | 44.7 | 0.5841 | 0.6087 | 0.7354 | 0.7356 | 0.6163 | 0.7085 | 0.6940 | fail |
+| **RapidOCR ONNX** (same graphs) | CPU | 30 | 4.6 | 0.5979 | 0.6013 | 0.7099 | 0.7197 | 0.5979 | 0.7099 | 0.7197 | fail |
+| **Qualcomm AI Hub EasyOCR** | NPU det + CPU rec | 30 | 2.9 | 0.2322 | 0.2305 | 0.2718 | 0.3618 | 0.2322 | 0.2718 | 0.3618 | fail |
+| **PP-OCRv5 hybrid** (v5 rec + RapidOCR det) | CPU | 30 | 4.8 | 0.4216 | 0.2941 | 0.6466 | 0.6204 | 0.4216 | 0.6466 | 0.6204 | fail |
+| PP-OCRv5 det+rec (pure) | CPU | 1 | – | – | – | 0.365 | 0.575 | – | – | – | abandoned |
+
+**RapidOCR on CPU** is the same det960 + rec32_960 graph pair as the QNN row, run
+on the frozen 30-page subset: 391 s, **4.62 pages/min**, 8–36 s per page, table
+number recall 0.7099 / precision 0.7197. The full 150 pages were stopped at 9
+pages (~20 s/page, ~45 min projected): the subset already fixes the accuracy and
+the full run did not fit the budget.
+
+**PP-OCRv5 pure detection failed and was not run over the set.** The official
+PaddlePaddle ONNX exports (det 4.8 MB, rec 16.5 MB, dict 18,383 chars, no account)
+recognise a clean crop perfectly (25/25 numeric crops matched on T0001), but their
+detector probability map decoded with axis-aligned connected components (no `cv2`
+or `pyclipper` on win_arm64 cp314, so no DB unclip) gives boxes that clip digits:
+T0001 recall 0.365, precision 0.575. The scored row is a hybrid: PP-OCRv5
+recogniser over the RapidOCR det960 boxes (proper numpy post-processing), which was
+the only way to give the v5 recogniser a fair test without `cv2`.
+
+**MediaOcr tuning variants** (all 150 pages; group of six):
+
+| variant | table recall | table precision | ppm |
+|---|---:|---:|---:|
+| 3x (selected) | 0.8807 | 0.8980 | 270.7 |
+| 4x | 0.8785 | 0.8982 | 171.6 |
+| 5x | 0.8813 | 0.8944 | 117.1 |
+| 3x + contrast | 0.8800 | 0.8991 | 164.9 |
+| 3x + binarise | 0.7950 | 0.8872 | 288.8 |
+| 3x + table-line row crops | 0.8864 | 0.8871 | 170.1 |
+
+None is close to the gate. Row crops buy 0.006 recall and lose 0.011 precision;
+binarising loses 0.086 recall. The maximum MediaOcr image dimension is **10,000 px**
+(`OcrEngine.max_image_dimension`), so 3x/4x/5x pages are never downscaled.
+
+**Tesseract** is x64 under emulation: no native ARM64 Windows build exists. `psm 6`
+(uniform block, the table mode) was used at 4x with `preserve_interword_spaces=1`;
+the digits-only pass (`tessedit_char_whitelist=0123456789.,()-+%`) was run and
+**removed** because it added 0.008 recall but cost 0.151 precision (0.8733 → 0.7223).
+Its plain character accuracy is low (0.22) because TSV reading order puts column
+headers before row values; order-free is 0.783.
+
+#### By document type (table pages only)
+
+| engine | annual reports n / acc / R / P | results | decks | transcripts |
+|---|---|---|---|---|
+| Windows AI | 30 / 0.7830 / 0.9936 / 0.9736 | 45 / 0.7166 / 0.8827 / 0.8835 | 30 / 0.4675 / 0.9544 / 0.9554 | 5 / 0.5608 / 1.0000 / 0.8070 |
+| MediaOcr | 30 / 0.7575 / 0.9299 / 0.9392 | 45 / 0.7157 / 0.8634 / 0.8645 | 30 / 0.4651 / 0.8375 / 0.9221 | 5 / 0.6176 / 1.0000 / 0.8080 |
+| Tesseract | 30 / 0.2409 / 0.9049 / 0.9444 | 45 / 0.2273 / 0.7650 / 0.8353 | 30 / 0.2131 / 0.7669 / 0.8708 | 5 / 0.1123 / 0.9889 / 0.8039 |
+| RapidOCR QNN | 30 / 0.6858 / 0.8674 / 0.8480 | 45 / 0.6339 / 0.6348 / 0.6624 | 30 / 0.4092 / 0.7498 / 0.7639 | 5 / 0.5744 / 0.7620 / 0.5501 |
+| EasyOCR | 8 / 0.3334 / 0.2429 / 0.3694 | 12 / 0.2071 / 0.1865 / 0.3547 | 8 / 0.1815 / 0.3676 / 0.3735 | 2 / 0.1812 / 0.5161 / 0.3280 |
+| PP-OCRv5 hybrid | 8 / 0.4918 / 0.7638 / 0.7092 | 12 / 0.5022 / 0.5709 / 0.5543 | 8 / 0.2654 / 0.6554 / 0.6824 | 2 / 0.2818 / 0.5965 / 0.4145 |
+| RapidOCR CPU | 8 / 0.6914 / 0.8541 / 0.8124 | 12 / 0.6807 / 0.5749 / 0.6037 | 8 / 0.3978 / 0.7503 / 0.8280 | 2 / 0.5279 / 0.7807 / 0.6117 |
+
+Results pages are the weak spot for every engine; annual reports are the strong
+spot (Windows AI 0.9936 recall / 0.9736 precision on 30 pages). The 5-page
+transcript row is noisy and should not drive a choice.
+
+#### Scanned pages (10 hand-read key-number sets, `C:\RE\ocr_pages`)
+
+Scored on the same 10 pages as §10.6/§11.1, but on the kept PNGs, not a fresh PDF
+render; that is why these numbers differ from §11.1.
+
+| engine | key-number recall | pages/min (recognition time) |
+|---|---:|---:|
+| Windows AI TextRecognizer | **0.9889** | 72.8 |
+| Windows.Media.Ocr | 0.4556 | 545.0 |
+| RapidOCR QNN | 0.4067 | 33.6 (wall, 35.7 s for 20 PNGs) |
+
+Windows AI reads the scanned key numbers almost perfectly; the CPU engines lose
+more than half. The earlier §11.1 values (Media 0.625, QNN 0.486) were measured on
+PDF renders of the pages, not on `C:\RE\ocr_pages`; use these for the PNG set.
+
+### 12.3 Combinations (computed from saved rows, no rerun)
+
+Each pair accepts the numbers both engines produced (`agree`) or either engine's
+numbers (`union`). `flagged` is the share of the 110 table pages where the two
+engines' number sets differ or the page's `total` line fails a column-sum check
+(heuristic: a line containing "total" whose last numeric column matches no sum of
+the three-to-eight numeric lines above it, 1% tolerance).
+
+| pair | agree recall | agree precision | union recall | union precision | flagged | disagree | columns fail |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Windows AI × MediaOcr | 0.8701 | 0.9429 | 0.9484 | 0.8875 | 0.873 | 0.873 | 0.100 |
+| Windows AI × Tesseract | 0.8032 | 0.9408 | 0.9485 | 0.8799 | 0.855 | 0.855 | 0.082 |
+| Windows AI × RapidOCR QNN | 0.7231 | **0.9440** | **0.9501** | 0.7743 | 0.991 | 0.991 | 0.082 |
+| MediaOcr × Tesseract | 0.7579 | 0.9430 | 0.9367 | 0.8574 | 0.964 | 0.964 | 0.109 |
+| MediaOcr × RapidOCR QNN | 0.6812 | 0.9414 | 0.9349 | 0.7569 | 1.000 | 1.000 | 0.109 |
+| Tesseract × RapidOCR QNN | 0.6355 | 0.9343 | 0.9137 | 0.7433 | 1.000 | 1.000 | 0.064 |
+| Windows AI × RapidOCR CPU* | 0.7041 | 0.9415 | 0.9357 | 0.7702 | 1.000 | 1.000 | – |
+
+`*` 30 common table pages (the CPU subset), not 110; the column check was not run
+for this pair.
+
+**No pair reaches the gate.** The best agreement precision is 0.9440 (Windows AI ×
+QNN) but it keeps only 72.3% of the truth numbers; the best union recall is 0.9501
+but precision collapses to 0.7743. Engines disagree on 85–100% of table pages, so
+agreement is a strong precision filter that throws away too much recall. The
+column-sum heuristic flags only 6–11% of pages, i.e. most OCR tables that look
+well-formed still contain wrong numbers — adding up is a weak validator here.
+
+### 12.4 Failure examples (top three engines)
+
+**Windows AI** (worst table pages):
+- `T0078` (deck) recall 0.550, precision 1.000 — missing `100, 200, 300, 400, 500,
+  600` (the page's honest text layer lists them; the image likely puts them in a
+  chart/label the recogniser did not read).
+- `T0104` (deck) 0.556/0.769 — missing `08, 10, 11, 20, 21, 202`; extras `7, 2021,
+  100` (small axis labels).
+- `T0073` (results) 0.575/0.670 — missing concatenated dates `312019, 302019,
+  312018, 12019, 12018, 0`; the recogniser split them differently.
+
+**MediaOcr**:
+- `T0002` (annual report) 0.290/0.800 — missing `300000, 400000, 135043868,
+  128100142, 47681127, 5488081`; extras `3, 4, 48, 13526, 14255` (leading digits
+  dropped and columns merged, exactly the failure the tuning tried to fix).
+- `T0076` (deck) 0.482/1.000 — missing `18, 64, 61, 41, 63.5, 84.6` (no extras:
+  silence is scored as recall loss, not precision gain).
+- `T0078` (deck) 0.500/0.909 — missing `2, 100, 200, 300, 400, 500`; extra `02`.
+
+**Tesseract**:
+- `T0085` (deck) 0.024/0.222 — missing `29, 2048.6, 1598.9, 273.2, 262.2, 28.5`;
+  extras `0, 3, 00, 86, 4, 7200888`.
+- `T0057` (results) 0.031/0.063 — missing `01, 04, 2020, 30, 09, 31`; extras `6,
+  119, 91, 51109, 1981, 034212`.
+- `T0016` (annual report) 0.096/1.000 — missing `273, 17986.92, 16388.54, 3386.83,
+  4088.57, 1598.38`; no extras.
+
+### 12.5 Forecast for 4,647 pages
+
+Hours = 4,647 / ppm / 60, before PDF rendering (~0.15 s/page ≈ 0.19 h total).
+
+| engine | ppm | hours | note |
+|---|---:|---:|---|
+| Windows AI TextRecognizer | 161.5 | **0.48** | model startup ~5 s once per process |
+| Windows.Media.Ocr | 270.7 | **0.29** | OCR-only; add rendering |
+| RapidOCR QNN | 44.7 | 1.73 | NPU pipeline |
+| Tesseract 5.4 x64 | 11.3 | 6.85 | x64 emulation |
+| PP-OCRv5 hybrid | 4.8 | 16.0 | 30-page rate |
+| RapidOCR CPU | 4.6 | 16.8 | 30-page rate |
+| Qualcomm EasyOCR | 2.9 | 26.6 | 30-page rate |
+
+Speed is not the blocker for any of the top three; accuracy is. At Windows AI's
+rate the whole 4,647-page pass is under half an hour of recognition.
+
+### 12.6 What was installed or changed on the HP
+
+- **Tesseract 5.4.0.20240606** (UB-Mannheim x64 installer, `C:\Program Files\
+  Tesseract-OCR`, `eng.traineddata` present). No native ARM64 build exists; it runs
+  under x64 emulation.
+- **PP-OCRv5 mobile det/rec ONNX** (official `PaddlePaddle/PP-OCRv5_mobile_det_onnx`
+  and `_rec_onnx`, plus `ppocrv5_dict.txt`) in `C:\RE\models_ppocrv5\`; downloaded
+  without an account.
+- **Microsoft.Windows.SDK.BuildTools 10.0.26100.4948** (makeappx/signtool) in
+  `C:\RE\bench\sdkbuildtools\`.
+- **Test MSIX** `RETextRecBench 1.0.0.8` (arm64) signed with self-signed
+  `CN=REBench`, thumbprint `12D0B68EB482079BF006722B057F1F50B3A2CFC6`, installed to
+  `LocalMachine\Root` and `TrustedPeople`; scheduled tasks `RETextRecAll`,
+  `RETextRecScanned`, `RETextRecActivate*`. **Removed after the run:** the package,
+  all three certificate copies, the eight scheduled tasks and the pfx/cer/msix files
+  are gone; `Get-AppxPackage RETextRecBench` is empty and neither machine store has
+  `CN=REBench`. The rows and `raw_all.jsonl` were saved first.
+- **Python packages:** none added for OCR. Used the existing `pypdfium2` 5.14.0,
+  `onnxruntime` 1.31.1 + `onnxruntime-qnn` 2.7.0, Pillow 13.0.0, numpy 2.5.4,
+  `winrt` (PyWinRT) for Windows.Media.Ocr. `cv2`, `pyclipper`, `shapely`,
+  `pytesseract` are absent and were not installed (no win_arm64 cp314 wheels).
+  `pandas` 3.1.0 and `openpyxl` 3.1.5 were installed later only so the standing
+  pytest collection could import the suite. `pymupdf` would not install (no cp314
+  ARM64 wheel), so 9 test modules still fail collection and the two
+  `test_pua_fallback` OCR tests fail on `import fitz`; that is an environment gap,
+  not an OCR-engine failure.
+- **Frozen assets:** `C:\RE\ocr_test\` (pages.json 150 pages, images/, truth/,
+  subset30_table.json, one `rows.jsonl` per engine with raw text and line boxes,
+  `variants/` for tuning runs, `metrics.json` per engine, `combo_*.json`).
+
+Nothing in the repo imports these engines at runtime; the runners are opt-in
+scripts. `pages.json` is the path the MSI should use to score RapidOCR on the
+identical list: **`C:\RE\ocr_test\pages.json`**.
+
+### 12.7 Commands
+
+```powershell
+python -m reality_engine.scripts.hp_ocr_gate build --out C:\RE\ocr_test --seed 20261101
+python -m reality_engine.scripts.hp_ocr_methods run --engine media --variant 3x  --out C:\RE\ocr_test
+python -m reality_engine.scripts.hp_ocr_methods run --engine qnn   --variant 3x  --out C:\RE\ocr_test
+python -m reality_engine.scripts.hp_ocr_methods run --engine cpu   --variant 3x_sub30 --subset C:\RE\ocr_test\subset30_table.json --out C:\RE\ocr_test
+python -m reality_engine.scripts.hp_ocr_methods run --engine tesseract --variant psm6 --psm 6 --out C:\RE\ocr_test
+python -m reality_engine.scripts.hp_ocr_methods run --engine easyocr --subset C:\RE\ocr_test\subset30_table.json --out C:\RE\ocr_test
+python -m reality_engine.scripts.hp_ocr_methods run --engine ppocr --variant hybrid --subset C:\RE\ocr_test\subset30_table.json --out C:\RE\ocr_test
+python -m reality_engine.scripts.hp_ocr_methods convert-windowsai --raw C:\RE\ocr_test\windowsai\raw_all.jsonl
+python -m reality_engine.scripts.hp_ocr_gate score --engine C:\RE\ocr_test\windowsai
+python -m reality_engine.scripts.hp_ocr_gate combine --a C:\RE\ocr_test\windowsai --b C:\RE\ocr_test\media
+python -m pytest reality_engine/tests -q -k ocr
+```
+
+### 12.8 Verdict
+
+**No engine and no pair reaches the 0.95 recall / 0.98 precision gate.** Windows AI
+is closest (0.9378 / 0.9242): it misses recall by 0.0122 and precision by 0.0558.
+Precision is the binding constraint, driven by split comma groups, dropped leading
+digits, date concatenation and small axis/note numbers. Combining engines buys
+precision only by discarding recall. The 4,647-page pass is fast enough with
+Windows AI (~0.5 h), so the work is accuracy, not throughput: a column-aware number
+validator (align cells, repair comma groups/decimal points, reject numbers no column
+can place) is the next experiment, scored on this same frozen set.
 
