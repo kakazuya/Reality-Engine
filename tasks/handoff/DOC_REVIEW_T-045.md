@@ -22,6 +22,8 @@ This will not fit in one session, so:
 - Grade reports and measurements that are the only record of a result: keep the result; a stale surrounding claim can go.
 - `D:\Shivam_Private\Manual Dumps`: never read it.
 
+`tasks/archive/` is in scope: Shivam gave permission on 2 Nov. The project settings still deny reading it (`Read(tasks/archive/**)` in `.claude/settings.json`), so that rule has to be lifted before this folder is reviewed. Do not work around it.
+
 If a file looks like generated data, not documentation (`tasks/ar_study` may be), read enough to be sure, then ask Shivam before deleting the whole folder.
 
 ## Working next to the other session

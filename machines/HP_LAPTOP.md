@@ -1,6 +1,6 @@
 # HP laptop
 
-HP OmniBook 5, Windows 11 on ARM64, Snapdragon X with 8 cores, 16 GB. Shivam may be using it, and access was agreed through Monday morning, 2 Nov 2026.
+HP OmniBook 5, Windows 11 on ARM64, Snapdragon X with 8 cores, 16 GB. Shivam may be using it, and access is agreed until 15 Nov 2026 (Shivam, 2 Nov).
 
 ## Headless rule (Shivam, 1 Nov 2026)
 **No work may come onto this laptop's screen or take focus.** Prefer session 0, meaning SSH or a non-interactive task. An API that needs the interactive session gets a `WinExe` program launched hidden. Fix: job `hp-20261101T172002-15e0f2`. Proof on an unlocked desktop passed on 1 Nov: `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md` section 14.7.

@@ -61,7 +61,7 @@ Claude is the backbone at every stage: it turns raw data into engines that run c
 
 ## 8. Operating model
 
-- **Automation:** scheduled jobs on this PC (end-of-day data update, correction run, overnight research run) are set up alongside the existing jobs; the existing annual-report drain and CapacityLoop keep running.
+- **Automation:** the goal is scheduled jobs on this PC (end-of-day data update, correction run, overnight research run). None of it runs yet, and we are not close (Shivam, 2 Nov 2026): checked that day, no scheduled task is registered, every job in `plugins/dsh-worker/jobs.yaml` is disabled and starts only by hand, and the annual-report drain and CapacityLoop are not running.
 - **Tools:** no new tools unless Claude recommends them (plugins and skills are welcome where useful).
 - **Files:** this file is the authority. `tasks/STATE.md` is the one live hand-off file. Old plans, closeouts and desk files that do not match this framework are to be deleted (Shivam approved 2026-10-08; the command is in `tasks/STATE.md`). Until then they are historical record only.
 - **DII data:** DII daily cash history may come from a third-party archive.
