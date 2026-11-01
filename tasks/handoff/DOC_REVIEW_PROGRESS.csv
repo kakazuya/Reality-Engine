@@ -9,7 +9,7 @@ machines/HP_LAPTOP.md,35,35,changed,"textrec source is on main",0bf9453
 machines/MSI_LAPTOP.md,28,28,changed,"Worker cap per ruling; duplicate start-gate section removed",0bf9453
 machines/REMOTE_ACCESS_SETUP.md,9,9,kept,"Correct",
 machines/HP_ACCEL_BENCH_2026-10-31.md,1243,1243,changed,"Duplicate sections 11 and 12 merged and numbered; stale recommendations removed; measurements kept",0bf9453
-tasks/FRAMEWORK.md,78,78,kept,"Only Shivam changes it; 2 stale lines reported to him: section 8 AR drain and CapacityLoop; deletion command in STATE",
+tasks/FRAMEWORK.md,78,78,changed,"Automation line corrected by Shivam's order of 2 Nov; deletion command line still reported to him",5abd443
 tasks/TASKS.md,57,57,kept,"Direct edits are denied; closing T-004 T-011 T-037 is Shivam's accept",
 tasks/TASKS_DONE.md,11,11,kept,"Record",
 tasks/arch_v4/decompose_gold_corrections.md,30,30,kept,Record,
