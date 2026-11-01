@@ -508,3 +508,31 @@ helper, PE guard, `.done` error handling, `--exe`/`--package`),
 `plugins/dsh-worker/server/supervisor.py` (hidden WMI start-up info),
 `reality_engine/tests/test_hp_headless.py` (new guard).  Docs:
 `reality_engine/tools/textrec/README.md`, this doc, `tasks/STATE.md`.
+
+### 14.6 Unlocked-desktop repeat — not run: the desktop was still locked (1 Nov, 18:15 IST)
+
+Job `hp-20261101T181205-06ed5d` asked for the same proof with the desktop
+unlocked.  It stopped before any package work, under the brief's own rule ("if it
+is locked, stop and report").  Evidence:
+
+| check | command | result |
+|---|---|---|
+| session | WTS `WTSEnumerateSessions` (`qwinsta` and `query.exe` are **not present** on this image, so the WTS API is the equivalent) | session 0 Disconnected, **session 1 Active** |
+| lock flag | `WTSQuerySessionInformation(..., WTSSessionInfoEx)` for session 1 | `SessionFlags=0` = **WTS_SESSIONSTATE_LOCK** |
+| foreground / windows | `probe.exe` (`WinExe`, hidden `RETextRecProbe` task in session 1, 100 ms, 8 s) | `foreground: null` in all **54** samples (max gap 114 ms), `visible_count=0`, `windows=[]` |
+| lock-screen processes | session-1 process table from the probe | `LockApp.exe` pid 18572; `PhotoScreensaver.scr` pid 19308, parent `winlogon.exe` 2068 |
+| PE pre-check | `hp_ocr_large.pe_subsystem()` | `textrec.exe` **2**, `probe.exe` **2** |
+
+`LogonUI.exe` was not running, but the session flag and the null foreground agree
+with the lock-screen processes: the session was locked, not merely idle.
+Nothing was signed or installed and no `textrec` task was registered.  The probe
+task was unregistered in the same command, then cleanup was confirmed by command:
+**0** `RETextRecBench` packages, **0** `RETextRec*` tasks, **0** REBench
+certificates in `LocalMachine\Root` / `TrustedPeople` / `CurrentUser\My`, no
+`rebench.pfx` / `rebench.cer`, and **0** `textrec.exe` / `conhost.exe` in
+session 1.  `C:\RE\ocr_large\rows` is untouched (`base200` 15:46, `gray300`
+16:03).
+
+The `headless20b` run in 14.3 therefore remains the locked-desktop proof; the
+unlocked-desktop repeat is still open and needs the session unlocked (and kept
+unlocked) before it can run.

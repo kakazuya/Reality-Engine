@@ -11,6 +11,7 @@ Context pack merged: 84 KB down to 5.6 KB.
 - `20261101T122310Z-b9dd8380` MSI: start gate. Lease to about 19:53 IST; renew if it needs longer.
 
 ## Waiting on Shivam
+- Unlock the HP session for the unlocked-desktop headless OCR proof: at 18:15 it was still locked (WTS `SessionFlags=0`, probe foreground null, `LockApp` + winlogon screensaver). Nothing was installed; see `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md` §14.6.
 - Haiku on about 100 fresh OCR pages, batches of 8: `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md`.
 - Blank `as_of` default, truth panel, reader kill: see `tasks/arch_v4/GATE_STATE_2026-11-01.md`.
 
