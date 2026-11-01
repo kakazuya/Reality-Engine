@@ -442,16 +442,17 @@ python -m reality_engine.scripts.job_watch add backfill .tmp/backfill.log --pid 
 `status.json` changed in the last 48 hours. Lines are `RUNNING <job> <minutes>m,
 <tool calls> tool calls`; `STALLED` when a running job's `worker_activity_at` is
 older than 10 minutes; `ENDED BADLY ...` for failed, lost, cancelled or
-lease-expired jobs; and `FINISHED, NEEDS REVIEW <job> <branch>` when a job
-finished in the last 48 hours, has no review row (`id`) and its branch is not
-merged (one local `git` check, skipped when nothing needs it). Newest state
-sorts first, so the 12-line cap drops the oldest history first. A registered
+lease-expired jobs with no review row; and `FINISHED, NEEDS REVIEW <job> <branch>` when a job
+finished in the last 48 hours, has no review row (`id`), and neither its branch nor
+its job id shows as merged (one local `git` check, skipped when nothing needs it). STALLED and
+RUNNING come first whatever their age; the rest sort newest first, so the
+12-line cap drops the oldest history and never a live job. A registered
 non-worker process is `STALLED` when its log has not changed for 5 minutes and
 `ENDED` when its `--pid` is gone; its record is `.tmp/job_watch.json`. Exit code
 is 0 in every case and a corrupt record is skipped. First measured run
 (2026-11-02, 284 job folders): 0.36 s wall (0.29 s in process), one running job
 and eleven failed/needs-review lines. Test:
-`python -m pytest reality_engine/tests/test_job_watch.py -q` (17 tests).
+`python -m pytest reality_engine/tests/test_job_watch.py -q` (20 tests).
 
 ## 3. Ticket tracker
 

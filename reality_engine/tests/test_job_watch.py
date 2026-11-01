@@ -321,6 +321,45 @@ def test_output_never_exceeds_twelve_lines(root: Path):
     assert len(lines) == job_watch.MAX_LINES == 12
 
 
+def test_old_live_jobs_stay_above_the_cap_ahead_of_newer_failures(root: Path):
+    jobs_dir = root / "jobs"
+    for index in range(15):
+        _write_job(
+            jobs_dir,
+            f"20261102T09{index:02d}00Z-aaaaaaaa",
+            phase="failed",
+            started=_ago(minutes=60 - index),
+            outcome="error",
+        )
+    _write_job(jobs_dir, "20261102T010000Z-bbbbbbbb", phase="running", started=_ago(minutes=100), activity=_ago(minutes=1))
+    _write_job(jobs_dir, "20261102T020000Z-cccccccc", phase="running", started=_ago(minutes=90), activity=_ago(minutes=30))
+    lines = job_watch.status(jobs_dir, _empty_reviews(root), root / "state.json", root, now=NOW)
+    assert len(lines) == 12
+    assert lines[0].startswith("STALLED 20261102T020000Z-cccccccc")
+    assert lines[1].startswith("RUNNING 20261102T010000Z-bbbbbbbb")
+
+
+def test_failed_job_with_a_review_row_is_silent(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261102T090000Z-dddddddd"
+    _write_job(jobs_dir, job_id, phase="failed", started=_ago(hours=1), outcome="error")
+    reviews = root / "reviews.jsonl"
+    reviews.write_text(json.dumps({"id": job_id}) + "\n", encoding="utf-8")
+    assert job_watch.status(jobs_dir, reviews, root / "state.json", root, now=NOW) == []
+
+
+def test_merge_subject_naming_the_job_or_its_branch_silences_it(root: Path, monkeypatch):
+    jobs_dir = root / "jobs"
+    hp_job = "hp-20261101T172002-15e0f2"
+    _write_job(jobs_dir, hp_job, phase="finished", started=_ago(hours=4), finished=_ago(hours=3), outcome="ok", host="hp")
+    continued = "20261102T070000Z-aaaaaaaa"
+    first = "dsh/20261102T060000Z-bbbbbbbb"
+    _write_job(jobs_dir, continued, phase="finished", started=_ago(hours=3), finished=_ago(hours=2), outcome="completed", branch=first)
+    subjects = f"merge: dsh-hp/{hp_job} reviewed\nMerge {first} [dsh 20261102T060000Z-bbbbbbbb]\n"
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), subjects))
+    assert job_watch.status(jobs_dir, _empty_reviews(root), root / "state.json", root, now=NOW) == []
+
+
 def test_registered_log_that_went_quiet_is_stalled(root: Path):
     jobs_dir = root / "jobs"
     log = root / "backfill.log"

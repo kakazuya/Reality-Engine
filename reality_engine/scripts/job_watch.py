@@ -175,9 +175,10 @@ def _merge_snapshot(repo_root: Path) -> tuple[set[str], str]:
     return merged, _git(repo_root, "log", "--merges", "--format=%s", "-n", "500")
 
 
-def _merged(snapshot: tuple[set[str], str], branch: str, job_id: str) -> bool:
+def _merged(snapshot: tuple[set[str], str], branch: str | None, job_id: str) -> bool:
+    """HP jobs have no branch record, and a continued job reuses its first job's branch."""
     merged, subjects = snapshot
-    return branch in merged or job_id in subjects
+    return job_id in subjects or (branch is not None and (branch in merged or branch in subjects))
 
 
 def _merged_snapshot(repo_root: Path, holder: list[Any]) -> tuple[set[str], str]:
@@ -205,6 +206,8 @@ def _job_line(
 
     if phase in ACTIVE_PHASES:
         if _lease_expired(status, now):
+            if job_id in reviewed:
+                return None
             return 0, recent, f"ENDED BADLY {job_id} lease expired with no renewal"
         idle_since = activity or started
         if idle_since is not None and now - idle_since > timedelta(minutes=STALL_MINUTES):
@@ -217,6 +220,8 @@ def _job_line(
         return 3, recent, f"RUNNING {job_id} {minutes}m, {tool_text}"
 
     if phase in BAD_PHASES or outcome in BAD_OUTCOMES:
+        if job_id in reviewed:
+            return None
         detail = status.get("error") or outcome or phase
         when = _epoch(finished) or recent
         return 0, when, f"ENDED BADLY {job_id} {phase or outcome}: {str(detail)[:100]}"
@@ -228,7 +233,7 @@ def _job_line(
     if finished is not None and now - finished > timedelta(hours=RECENT_HOURS):
         return None
     branch = _branch(job_dir)
-    if branch is not None and _merged(_merged_snapshot(repo_root, snapshot), branch, job_id):
+    if _merged(_merged_snapshot(repo_root, snapshot), branch, job_id):
         return None
     return 2, _epoch(finished) or recent, f"FINISHED, NEEDS REVIEW {job_id} {branch or 'branch unknown'}"
 
@@ -315,9 +320,10 @@ def status(
         if line is not None:
             lines.append(line)
     lines.extend(_registered_lines(_load_state(Path(state_path or STATE_PATH)), now))
-    # Newest state first, so a fresh failure or a just-finished job beats the
-    # historical tail; the severity only breaks ties at the same timestamp.
-    lines.sort(key=lambda item: (-item[1], item[0], item[2]))
+    # Stalled, then running, whatever their age: a live job must never fall off
+    # the cap behind old failures. The rest sort newest first.
+    live_rank = {1: 0, 3: 1}
+    lines.sort(key=lambda item: (live_rank.get(item[0], 2), -item[1], item[0], item[2]))
     return [text for _priority, _when, text in lines[:MAX_LINES]]
 
 
