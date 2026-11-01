@@ -12,6 +12,8 @@ import sys
 from pathlib import Path
 
 STATE = "tasks/STATE.md"
+# Start files stay short so every session begins small (Shivam, 2026-11-01).
+LINE_LIMITS = {STATE: 40, "AGENTS.md": 150}
 CODE_SUFFIXES = (".py", ".sql")
 #: briefs say what to do, not what is true, so they do not count as documentation
 NOT_DOCS = ("tasks/dsh_tasks/", "tasks/archive/")
@@ -41,6 +43,11 @@ def check(staged: list[str], *, branch: str, merging: bool, read=lambda name: ""
     """
     if branch != "main":
         return None
+    for name, limit in LINE_LIMITS.items():
+        if name in staged:
+            lines = len(read(name).splitlines())
+            if lines > limit:
+                return f"{name} has {lines} lines, limit {limit}: move detail to docs/ or a dated record"
     if merging and STATE not in staged:
         return f"merge on main without {STATE}: put the current state in it"
     docs = [n for n in staged if n.endswith(".md") and not n.startswith(NOT_DOCS) and not (merging and n == STATE)]

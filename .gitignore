@@ -221,7 +221,8 @@ tasks/pilot60/RESULTS_INSTANCES*
 tasks/ledgers/spend.jsonl
 
 # Local tool folders and outputs that do not belong in git (1 Nov 2026)
-.claude/
+.claude/*
+!.claude/settings.json
 .codex-remote-attachments/
 tmp_*.py
 tasks/backtests/*.gz

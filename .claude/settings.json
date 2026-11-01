@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(tasks/archive/**)",
+      "Read(.tmp/**)",
+      "Read(plugins/dsh-worker/runtime/**)"
+    ]
+  }
+}

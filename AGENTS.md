@@ -15,7 +15,7 @@
 > 5. **Re-run every question on the pilot.** At least **95% must be answered** (NOT IN DATA counts only where the data truly doesn't exist), and the pilot must pass the checklist (tags, point in time, search speed, precision).
 > 6. **Only then the full run: chunking, then re-embedding.**
 >
-> No full chunking, tagging, embedding or loading of any dataset before step 5 passes. Every decision and every deviation is appended, dated, to `D:\RealityEngine\plans\DECISION_LOG.md` (also on `gdrive:InfoDiffusion_archive/plans`). Read it at the start of every session. Details are in `tasks/NEXT_SESSIONS_PLAN_2026-10-27.md` and `tasks/QUERY_TEMPLATES_2026-10-27.md`.
+> No full chunking, tagging, embedding or loading of any dataset before step 5 passes. Every decision and every deviation is appended, dated, to `D:\RealityEngine\plans\DECISION_LOG.md` (also on `gdrive:InfoDiffusion_archive/plans`). At session start, read its last 5 entries only. Details are in `tasks/NEXT_SESSIONS_PLAN_2026-10-27.md` and `tasks/QUERY_TEMPLATES_2026-10-27.md`.
 
 > **DOCUMENTATION RULE (Shivam, 2026-10-31, strict).** Any work that is touched goes into the documentation in the same change, for Claude and for dsh workers on both laptops. `tasks/STATE.md` is the one live state: short, current, overwritten in place. Update every doc that states what changed, and remove or archive stale copies to `tasks/archive/`: an old copy beside a new one is a defect. Check any number taken from a doc against the repo or stores. `.git/hooks/pre-commit` (`reality_engine/scripts/doc_gate.py`) refuses a merge on `main` without `tasks/STATE.md`, and any commit on `main` whose code files are not named in a doc changed by that same commit (on a merge, `tasks/STATE.md` alone does not count).
 >
@@ -25,195 +25,16 @@
 
 > **Read `tasks/FRAMEWORK.md` first.** It is the authority file (set by Shivam, 2026-10-08) and overrides this guide wherever they disagree: cash-only long book, risk limits, benchmark, proof rules, and the order of work. Live status and next steps are in `tasks/STATE.md`. Moat / ENI / ripple seeds are set aside until a tested strategy beats them. Note: rule 1 below ("ISINs remain immutable") is wrong in practice. ISINs change on splits and face-value changes, so price history needs an ISIN-history map.
 
-Reality Engine — Fundamental Reality Engine is a **dense-substrate, all-peers ensemble** Indian-equity intelligence platform with **continuous self-correction**. It ingests a lot of data (price, financials, concalls/PPT/Vahan/MF/RBI/Budget/PIB/YouTube) but does NOT reason over raw inside the limited LLM context window — raw is kept only as audit trail / replay source. Every signal is **quantized into a dense feature substrate**, then reasoned over by a competing ensemble of peer lenses (FF5 is one peer among many, not the trunk). Decisions are revisable continuously: the market-closed window is used to densely process/reason whatever data exists, even if incomplete — that is the stock-prediction ballgame. Multimodal ingestion (Budget/RBI/Concall audio/YouTube via yt-dlp+Whisper) and hybrid dense + FTS5 search (NumPy vector indexes) feed the substrate, not the decision context directly.
+## Start here, and read nothing else first
+1. `tasks/STATE.md`: current step, exact next action, running jobs, blockers.
+2. The brief or the one plan it names.
+3. Only the files that brief names. Find code with code-intel (`definition`, `symbols`, `module_map`) and data with reality-data (`catalog`, `schema`). Do not survey the repo, and do not read `tasks/archive/`, `.tmp/` or job folders unless the task names them.
 
----
+Finish one step per session. Commit it and write the next action into `tasks/STATE.md`. Hand off by about 150k tokens. Scripts print summaries; details go in files.
 
-## 1. System Architecture & Directory Map
+Reference, only when needed: `docs/DEVELOPER_GUIDE.md`, `docs/RAW_DATA_FAMILIES.md`, `machines/README.md`, `tasks/DATA_INVENTORY.md`.
 
-```
-btask01/
-├── reality_engine/
-│   ├── db/                 # SQLite (WAL) live databases + FTS5, repository (no PostgreSQL is installed or used)
-│   │   ├── schema.sql      # SQLite DDL (live): business_model_profiles, moat_evaluations, geographic_exposure, regulatory_political_risks, raw_documents, document_chunks, macro_events, ripple_effects (self-ref DAG)
-│   │   ├── postgres_schema.sql # UNUSED: Postgres DDL kept for reference only; nothing runs on it (countries, industries, companies, business_model_profiles, moat_evaluations, raw_documents, document_chunks ivfflat, macro_events, ripple_effects PN/MN/S, financial_metrics, model_explainer_rankings, lens_activation_log, pruning_decay_config)
-│   │   ├── delivered_filings.py  # DELIVERED (normalized) filings/price/financial facts vs raw_documents (audit/replay) separation — raw is never the decision context
-│   │   └── repository.py   # Query API & atomic persistence (moat_score GENERATED, ENI, ripple CTE, model rankings, dense substrate promotion)
-│   ├── ingestion/          # Multimodal feeds with yt-dlp+Whisper & layout PDF parsing
-│   │   ├── master_sync.py  # NSE & BSE scrip list synchronizer (ISIN anchor)
-│   │   ├── nse_client.py   # NSE Full Bhavcopy, deliverable volume, PIT insider trades
-│   │   ├── bse_client.py   # BSE Bhavcopy, corporate filings, announcements
-│   │   ├── fundamentals_client.py # Quarterly/annual financials & balance sheet metrics → peer_financial_metrics
-│   │   ├── financially_free_client.py # Advance/decline & market breadth aggregator
-│   │   ├── headless_fetcher.py # Headless (no-browser) fetch of Vahan/MF/RBI/PIB/Budget aux feeds → raw_documents (no GPU needed)
-│   │   ├── telegram_client.py # Thread listener with mock/offline fallback mode
-│   │   ├── youtube_transcriber.py # yt-dlp + Whisper (local) + RapidOCR DirectML diarization (budget/RBI/Concall MP4) — RX 6700 XT, no cloud
-│   │   └── pdf_ingestor.py      # Layout-aware PyMuPDF/Marker for Budget/Economic Survey
-│   ├── processing/         # Analytics, distillation, ensemble, self-correction & causal reasoning
-│   │   ├── technical_engine.py    # Rolling SMAs, RSI(14), delivery spike ratios (cutoff excludes plain noise)
-│   │   ├── fundamental_engine.py  # YoY/QoQ revenue & PAT acceleration scores → financial_metrics
-│   │   ├── financial_validator.py # Financial figure sanity/validation before dense-substrate promotion
-│   │   ├── business_profiler.py   # Builds business_model_profiles archetype/recurrence/pricing_power
-│   │   ├── composite_screener.py  # All-peers weighted ensemble ranker (FF5 + quality/policy/supply lenses), NOT top-down-only
-│   │   ├── moat_scorer.py         # Moat=0.25*SC+0.25*NE+0.20*CA+0.20*IA+0.10*ES, width/trajectory
-│   │   ├── policy_engine.py       # ENI=Severity(±5)×Prob, regulatory_political_risks aggregator
-│   │   ├── distillation_engine.py # EAV + JSON business cyclicality & supply chain parameters → DENSE SUBSTRATE
-│   │   ├── distillation_pruner.py # Raw→dense promotion + decayed-signal pruning helper
-│   │   ├── vision_engine.py       # Multimodal vision-language extraction (slides/charts/tours) → visual_evidence_artifacts
-│   │   ├── causal_engine.py       # Recursive CTE ripple_chain: PN=∏Pi, MN=RawN×PN×β, S=|MN|×20/(1+ln(1+Lag))
-│   │   ├── macro_simulator.py     # Macro policy shock propagation & impact matrix
-│   │   ├── pruning_engine.py      # Raw→dense promotion, decay λ; OWNS prune_decayed_signals(); structural-milestone (is_structural_milestone=1, T½ INF) survival
-│   │   ├── ocr_engine.py          # RapidOCR / DirectML image & document text extractor
-│   │   ├── document_parser.py     # PDF & presentation parser with section chunking → document_chunks (SQLite) + FTS5
-│   │   ├── event_graph.py         # (planned — Task 15/16) Transient event-graph spawner: parse %/date/exceptions, 2nd-order fwd/back supply chain
-│   │   ├── ensemble_ranker.py     # (planned — Task 15/16) Per-stock/sector/geo/time+conditions + investor-majority model_explainer_rankings
-│   │   ├── eod_corrector.py       # (planned — Task 15/16) Continuous self-correction: EOD price+FII/DII+event batch, per-scrip learned noise floor
-│   │   ├── substrate_hygiene.py   # Trust layer: quarantines test/demo/synthetic-ISIN rows, reports structural degradation (constant features, template-less policy coverage); owns substrate_quarantine
-│   │   ├── peer_graph.py          # Analog peer graph: precomputed nearest neighbours over quantified substrate with feature-signal gating, per-pair coverage, drivers and anchor baselines; owns company_peer_graph/company_peer_features/company_peer_runs
-│   │   └── structural_theories.py # (planned — Task 15/16) Abstraction for permanent priors (profit-jump spotting, cheap-value traps); concept already defined in pruning_decay_config.is_structural_milestone, not a separate module yet
-│   ├── pipeline/           # End-to-end operational pipelines
-│   │   ├── phase1_runner.py       # Ingestion, distillation to dense substrate, and checkpoint audit runner
-│   │   ├── backfill.py            # Historical Bhavcopy session backfiller
-│   │   ├── panic_monitor.py       # Market drawdown & crisis bargain absorption scanner
-│   │   └── inbox_runner.py        # Local inbox PDF/image scanning & indexing → raw_documents
-│   ├── search/             # Hybrid lexical & vector retrieval
-│   │   └── hybrid_search.py       # legacy search (LanceDB/bge + FTS5); the live search is plugins/reality-data/server/search_docs.py
-│   ├── agent/              # High-context AI agent orchestration & deterministic tools
-│   │   ├── schemas.py             # Generalized Pydantic lens contracts (MacroEventExtraction, AdjacentPossibleExtraction, VideoIntelligenceExtraction, any lens)
-│   │   ├── tools.py               # Deterministic quantitative & causal tools (moat, ENI, ripple CTE, ensemble rank, event-graph)
-│   │   └── orchestrator.py        # Multi-lens thesis synthesizer (dense substrate → peer ensemble → transient graph → MoE ranking → correction loop)
-│   ├── reporting/          # Multi-format output exporters
-│   │   └── writer.py              # JSON, Markdown, and HTML report generator
-│   ├── ui/                 # Interactive financial terminal
-│   │   └── dashboard.py           # Streamlit 6-tab analytical web application
-│   ├── tests/              # Comprehensive test suite
-│   ├── cli.py              # Unified CLI entry point
-│   └── config.py           # Paths, PRAGMAs, API headers, and thresholds
-├── .kilo/
-│   ├── command/            # Project slash commands (/test, /bootstrap, /dashboard, etc.)
-│   ├── agent/              # Specialized agents (quant-analyst, macro-graph, pipeline-tester)
-│   ├── setup-script.ps1    # Agent Manager worktree setup (PowerShell)
-│   ├── setup-script.sh     # Agent Manager worktree setup (POSIX)
-│   ├── run-script.ps1      # Agent Manager run/dashboard trigger (PowerShell)
-│   ├── run-script.sh       # Agent Manager run/dashboard trigger (POSIX)
-│   └── kilo.jsonc          # Project configuration & schema
-```
-
----
-
-## 2. Core Workflows & Operational Commands
-
-### A. Testing & Verification
-Execute the test suite to verify ingestion, distillation, ensemble screening, causal reasoning, self-correction, agent synthesis, and UI contracts:
-```bash
-# Run all unit tests
-python -m unittest discover -s reality_engine/tests -p "test_*.py"
-
-# Run a specific test module
-python -m unittest reality_engine.tests.test_phase1
-python -m unittest reality_engine.tests.test_quant_hardening
-python -m unittest reality_engine.tests.test_agent_and_reporting
-python -m unittest reality_engine.tests.test_cli_and_dashboard
-python -m unittest reality_engine.tests.test_derived_substrate
-python -m unittest reality_engine.tests.test_peer_graph_and_hygiene
-```
-
-### B. Bootstrap & Data Ingestion
-Initialize the database, ontologies, and historical market data:
-```bash
-# 1. Seed dynamic parameter ontologies and canonical causal graph nodes
-python reality_engine/cli.py seed-ontologies
-
-# 2. Synchronize master company directory across NSE and BSE
-python reality_engine/cli.py sync-master
-
-# 3. Backfill 25 historical Bhavcopy sessions
-python reality_engine/cli.py backfill --days 25
-
-# 4. Run full Phase 1 pipeline (Ingestion + Distillation to dense substrate + Top 200 checkpoint)
-python reality_engine/cli.py run-phase1 --days 25 --top 200 --workers 8
-
-# 5. Audit Top 200 data completeness checkpoint (DELIVERED facts + dense substrate)
-python reality_engine/cli.py verify-checkpoint
-```
-
-### C. Visual Dashboard Workflow
-Launch the interactive Streamlit dashboard:
-```bash
-python reality_engine/cli.py dashboard --port 8501 --host localhost
-# Web interface available at http://localhost:8501
-```
-
-### D. All-Peers Ensemble Screening & Alpha Generation
-```bash
-# Screen top 20 candidates via ALL-PEERS weighted ensemble (FF5 + quality/policy/supply lenses)
-python reality_engine/cli.py screen --universe nifty200 --top 20 --ensemble
-
-# Scan for panic/crisis bargain candidates (drawdown absorption)
-python reality_engine/cli.py screen --crisis
-python reality_engine/cli.py monitor-panic
-
-# Synthesize daily high-conviction multi-lens thesis and export JSON/MD/HTML reports
-python reality_engine/cli.py run-daily-alpha --universe nifty200 --top 20 --top-theses 5 --ensemble
-
-# Inspect full intelligence dossier for a single stock (dense substrate + rankings)
-python reality_engine/cli.py inspect-stock HAL
-```
-
-### E. Transient Event-Graph & Causal Reasoning
-```bash
-# Trace downstream transmission walk from a macro/policy node
-python reality_engine/cli.py trace-causal-chain --node UNION_BUDGET_2026_RAIL_CAPEX --max-hops 3
-
-# Simulate shock propagation across sectors and companies
-python reality_engine/cli.py simulate-macro-shock --shock COMMODITY_CRUDE_OIL --sector ALL
-
-# Spawn a transient event-graph (e.g. US tariff removal): parse %/date/exceptions, 2nd-order fwd/back supply chain
-python reality_engine/cli.py spawn-event-graph --event US_TARIFF_TEXTILE_RELIEF --max-hops 3
-
-# Inspect per-stock/sector/geo + investor-majority model rankings
-python reality_engine/cli.py rank-models --symbol HAL --investor-majority FII
-```
-
-### F. Continuous Self-Correction (EOD + Event)
-```bash
-# EOD correction batch: EOD price + FII/DII + major event → re-rank lenses, mutate embeddings, update substrate
-python reality_engine/cli.py correct-eod --universe nifty200
-
-# Event-driven correction (material news only, NOT intraday noise)
-python reality_engine/cli.py correct-event --event US_TARIFF_TEXTILE_RELIEF
-
-# Show learned per-scrip noise floors
-python reality_engine/cli.py noise-floor --symbol TITAGARH
-```
-
-### G. Inbox Ingestion & Concall Search
-```bash
-# Process research reports and charts from reality_engine/data/inbox/
-python reality_engine/cli.py process-inbox
-
-# Headless fetch of auxiliary feeds (Vahan/MF/RBI/PIB) without a browser
-python reality_engine/cli.py fetch-headless --feeds vahan,mf,rbi,pib
-
-# Search concall transcripts and investor presentations (hybrid lexical + vector)
-python reality_engine/cli.py search-concall --query "order book capex margin guidance" --symbol TITAGARH
-```
-
-### H. Substrate Trust & Analog Peers
-```bash
-# Materialize the quarantine key set and print the degradation report
-# (test fixtures, demo seeds, synthetic-ISIN companies; constant features, etc.)
-python -m reality_engine.scripts.run_substrate_hygiene
-
-# Precompute analog nearest neighbours over the dense substrate (structural families)
-python -m reality_engine.scripts.run_peer_graph --top-k 20
-python -m reality_engine.scripts.run_peer_graph --dry-run    # gate report only, no writes
-```
-Both scripts print an `ALL CHECKS PASSED` block and are idempotent. Read peers back with
-`peer_graph.neighbours(conn, "TITAGARH")` — every row carries similarity, coverage, shared
-families, the anchor's baseline (so `lift` is interpretable) and the features that drove the match.
-
----
+A new rule here needs a repeat failure and a check that enforces it. Once a check enforces a rule, shorten its text here.
 
 ## 3. Key Design Rules & Conventions
 
@@ -234,34 +55,3 @@ families, the anchor's baseline (so `lift` is interpretable) and the features th
 11. **Strict Solvency Gate (Secondary)**: After ensemble ranking, filter `promoter pledge >15% OR interest_coverage <2.5× OR D/E >1.5×` before thesis synthesis.
 12. **No Git Stash in Worktrees**: In Agent Manager worktree workflows, never use `git stash` across checkouts as stashes are globally shared.
 13. **Trust Layer Before Substrate Reads**: Any consumer that presents substrate rows to an inference model (analysis, dossier, brief, ranking) must first exclude rows keyed in `substrate_quarantine` (test fixtures, `PHASE5_DEMO_*` seeds, `INE_AUTO*` synthetic ISINs) and exclude the `*_demo` / `seed_*_demo` tables wholesale. Quarantine never deletes source rows; it is re-materialized idempotently by `substrate_hygiene.apply()`. Degradation counts (constant features, template-less policy coverage, single-country geo splits, unconditional `regime_tag='*'` rankings) are *reported alongside* answers, never hidden — they state how much of the answer the substrate can actually support. `peer_graph.py` applies the same rule: it drops near-constant features instead of weighting them, refuses to emit neighbours when fewer than `MIN_ACTIVE_FEATURES` survive gating (recording the refusal in `company_peer_runs`), and never imputes a missing feature to zero.
-
----
-
-## 4. Raw Data Families on `D:\RealityEngine\raw`
-
-`reality_engine/config.py` sets `RAW_ROOT` from `REALITY_RAW_ROOT` (default `D:\RealityEngine\raw`) and `raw_dir(source)` creates one folder per family. Raw files are the audit/replay copy (rule 4), and `reality_engine/raw_store.py` content-addresses identical bytes. `plugins/dsh-worker/jobs.yaml` schedules the daily fetchers. **This HP worker has no `D:` copy**, so the file counts and volumes below are the dated 27-31 Oct task-record measurements, not re-counted here; they are marked where they matter. Before this section AGENTS.md named none of these families; only task docs and `tasks/STATE.md` named a few.
-
-| Family | What it holds | Written / read by |
-|---|---|---|
-| `raw_market/` | Exchange API and bhavcopy dumps, one file per day/month/window: NSE CM/full bhavcopy + delivery, BSE bhavcopy + deliverables, index closes, participant OI/volume, FII derivative stats, SME, PIT/SAST/corporate-action/bulk-block-short/results-XBRL JSON and CSV, plus `masters/`, board meetings, `mc_fiidii/`. | `fetch_market_raw.py`, `fetch_nse_api_raw.py`, `load_market_raw.py`; daily jobs in `jobs.yaml`. |
-| `bhavcopy/` | Legacy NSE/BSE bhavcopy backups (`BHAVCOPY_DIR`): `sec_bhavdata_full_DDMMYYYY.csv`, `ind_close_all_DDMMYYYY.csv`, `BhavCopy_BSE_DDMMYYYY.csv`, kept for replay/audit and the historical backfill. | Written by `ingestion/nse_client.py` and `ingestion/bse_client.py`; read by `pipeline/data_audit.py` and the backfill path. |
-| `fo_bhavcopy/` | Daily NSE F&O bhavcopy: one row per contract with OHLC, open interest and its change, volume and settlement, 2019 onwards. | `fetch_fo_bhavcopy.py`; parsed into `market_state_b.fno_oi_daily` (task docs: 1,930 days, 16.2M rows — unverified here). |
-| `index_constituents/` | Current index-member CSVs from niftyindices.com: exactly three `*_current.csv` files (Nifty 50, Nifty 100, Midcap 150) on 30 Oct. Current members only, no history, so a backtest on it has survivorship bias. | `load_index_membership.py`. |
-| `index_history/` | Dated Nifty constituent-change notices (PDFs, ~444 equity notices from 2019) plus current-member anchor CSVs, used to rebuild valid_from/valid_to intervals. | `fetch_index_history.py`. |
-| `price_bands/` | One NSE `sec_list_DDMMYYYY.csv` per session: symbol/series, circuit band (2/5/10/20/40% or No Band) and GSM remarks; the band-hit itself is derived later from OHLC. | `fetch_price_bands.py`; loaded into `price_bands`. |
-| `raw_market/nsdl_fpi_daily/`, `raw_market/nsdl_fpi_fortnight/` | Daily FPI flows by route, and fortnightly sector-wise FPI holdings (AUC) plus net flows as static HTML per fortnight. Sibling sets: `nsdl_reports/` (AUC country/category, ODI/P-note totals) and `nsdl_limits/` (per-company foreign-investment limits, current snapshot only). | `fetch_nsdl_raw.py`; only `nsdl_fpi_daily` is a daily `jobs.yaml` job. |
-| `tax_sources/` | Enacted Finance Act / Gazette PDFs. Every `tax_rule` row carries the source URL, page and a verbatim quote; missing years are listed by `--check`. | `build_tax_rules.py`. |
-| `input_cost_series/`, `commodity_series/` | Commodity prices, WPI item series, IMD rainfall and news price points behind the factor spine/input-cost work (CSV/JSON, dated). | `fetch_commodity_series.py`, `fetch_wpi_items.py`, `fetch_imd_rainfall.py`, `extract_news_prices.py`. |
-| `user_research/`, `user_research_drive/` | Drive research material — broker reports, user spreadsheets/docs, videos, downloaded zips and the extracted tree. No registry points at it; the 27 Oct census counted 3,181 local + 237 Drive files while the 30 Oct v4 design counted 529 Drive files, so the count is unverified here. | Manual/rclone; `tasks/archive/optimizations/HANDOFF_2026-10-26.md` records the extraction. |
-| `decks_full/` | Investor-presentation PDFs, content-addressed as `<sha[:2]>/<sha>.pdf`; BSE filings plus NSE-only decks. 23,321 files / 116 GB on 27 Oct. | `fetch_decks.py`; `load_deck_chunks.py`; raw NSE announcement JSON in `raw_market/nse_announcements/`. |
-| `results_pdfs/` | Quarterly-results PDFs, `<quarter_end>/<sha256>.pdf`. 6,279 on D and 14,169 on Drive on 27 Oct (16,680 of 17,007 registry rows, 98.1%, including Drive). | `results_notes.py`; Drive copy at `gdrive:InfoDiffusion_archive/results_pdfs`. |
-| `concall_pdfs/` | Concall transcript PDFs, content-addressed as `<sha[:2]>/<sha256>.pdf`, with `_manifest.jsonl` (corporate_documents id, ISIN, sha, known_at). The sibling `concall_pdfs_probe/` holds 773 probe downloads (27 Oct). | `concall_refetch.py`. |
-| `material_announcement/` | Material-announcement PDFs under `<kind>/<symbol>/<key>.pdf`, downloaded from the original URL by the same generic downloader as decks/ARs/RBI. The 27 Oct census found only 2 of 15,250 window filings held, so this is mostly a fetch target, not a populated store. | `fetch_originals.py`. |
-| `nse_announcements/` | Raw NSE corporate-announcement JSONL per run and symbol (subject, description, exchange dissemination time, attachment URL, bucket), plus downloaded attachments. Used to find NSE-only decks and transcripts. | `nse_announcements.py`; `fetch_decks.py` reads `raw_market/nse_announcements/`. |
-| `raw_market/amfi_nav/` | AMFI NAV history, one gzipped file per calendar month (`YYYY-MM.txt.gz`, all schemes); NAV of day d is known at the end of d, never before. | `fetch_etf_nav.py`; builds `fund_nav`, `etf_premium`, `etf_inav`. |
-| `ar_queue/` | Annual-report ingestion queue and state: vocabulary, placeholder-ISIN map, wrong-company scan outputs and temporary text. | `ar_queue.py`, `ingest_annual_reports.py`. |
-| `macro_pdfs/` | RBI, Union and state budget, and Economic Survey PDFs. The 27 Oct census found 493 files on Drive and 373 registered. | `ingestion/macro_pdf_fetcher.py`; `MACRO_PDFS_DIR`. |
-| `pilot60_history/` | BSE 2019-01-01..2024-03-31 document history for the pilot-60: `<symbol>/<bucket>/<newsid>.pdf` with a CSV and a SQLite manifest. | `fetch_pilot60_history.py`. |
-| `nse_shp_xbrl_pilot/` | Raw shareholding XBRL for the pilot: 563 gzipped filings downloaded from 566 indexed (3 fetch 404s), parsed into `shp_xbrl_pilot.db` and copied into the core v4 store. | `fetch_shp_xbrl_pilot.py`; `tasks/arch_v4/SHP_XBRL_PILOT_REPORT_2026-10-31.md`, `tasks/STATE.md`. |
-| `reddit/` | Reddit question-mining dumps used to build the question bank. | `fetch_reddit_questions.py`. |
-| `D:\RealityEngine\pdfs` (outside `raw/`) | Legacy annual-report PDF pile, 5,364 files on 27 Oct, reused rather than duplicated under `raw/pdfs`. | `PDFS_DIR` in `reality_engine/config.py`; `ingest_annual_reports.py`. |

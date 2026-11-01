@@ -26,6 +26,8 @@ Every session must make steady progress without loading the repo. A session star
 - **Fences:** `tasks/archive`, `.tmp` and data folders are blocked from Claude's reads and hidden from search unless a task names them.
 - **Rules move into checks:** once a check enforces a rule, its memory entry and `AGENTS.md` text go away.
 
+Checks in place: `reality_engine/scripts/doc_gate.py` refuses a `tasks/STATE.md` over 40 lines or an `AGENTS.md` over 150. `.ignore` hides archive, job and data folders from search, and `.claude/settings.json` denies reading archive, `.tmp` and job folders.
+
 ## Steps
 | # | Work | Exit test | Status |
 |---|---|---|---|

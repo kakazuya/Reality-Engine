@@ -1,0 +1,5 @@
+# Hidden from ripgrep and the Grep tool so searches stay small. Name a path directly to search it.
+tasks/archive/
+plugins/dsh-worker/runtime/
+.tmp/
+reality_engine/data/

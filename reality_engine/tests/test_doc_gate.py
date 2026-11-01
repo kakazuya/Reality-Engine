@@ -34,3 +34,12 @@ def test_tests_need_no_doc():
 def test_docs_alone_and_worker_branches_pass():
     assert check(["tasks/dsh_tasks/BRIEF.md"], branch="main", merging=False) is None
     assert check(["reality_engine/x.py"], branch="dsh/20261031T000000Z-abc", merging=False) is None
+
+
+def test_start_files_have_line_limits():
+    def lines(n):
+        return lambda name: chr(10).join(["x"] * n)
+
+    assert "limit 40" in check(["tasks/STATE.md"], branch="main", merging=False, read=lines(41))
+    assert check(["AGENTS.md"], branch="main", merging=False, read=lines(41)) is None
+    assert "limit 150" in check(["AGENTS.md"], branch="main", merging=False, read=lines(151))
