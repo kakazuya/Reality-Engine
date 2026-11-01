@@ -1,7 +1,7 @@
 # Task — v4 decomposer: fresh blind split and a Beam-suggested lexicon
 
 ## Goal
-The decomposer's blind score is 77.6% recall, 84.8% precision. Hand-added synonyms overfit, and that blind split is now spent. Get an honest new number with a lexicon that generalises. First read `tasks/dsh_tasks/V4_COMMON_2026-10-31.md` and `tasks/archive/dsh_tasks/V4_LEXICON_GROWTH_2026-10-31.md`.
+The decomposer's blind score is 77.6% recall, 84.8% precision. Hand-added synonyms overfit, and that blind split is now spent. Get an honest new number with a lexicon that generalises. First read `tasks/dsh_tasks/V4_COMMON_2026-10-31.md`.
 
 ## Work
 1. **Blind split first, in its own commit:** 200 new cases, none in any earlier gold file, with `required` and `evidence` labelled from the question alone by a fixed seed. Do not read or score it until step 4. All earlier splits count as dev.
