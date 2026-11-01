@@ -5,5 +5,18 @@
       "Read(.tmp/**)",
       "Read(plugins/dsh-worker/runtime/**)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/reality_engine/scripts/load_context.py\""
+          }
+        ]
+      }
+    ]
   }
 }

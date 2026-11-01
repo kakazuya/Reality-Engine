@@ -11,6 +11,7 @@ Context pack merged: 84 KB down to 5.6 KB.
 - `20261101T122310Z-b9dd8380` MSI: start gate. Lease to about 19:53 IST; renew if it needs longer.
 
 ## Waiting on Shivam
+- Quiz a fresh session on his rulings, to test `tasks/RULINGS.md`.
 - Haiku on about 100 fresh OCR pages, batches of 8: `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md`.
 - Blank `as_of` default, truth panel, reader kill: see `tasks/arch_v4/GATE_STATE_2026-11-01.md`.
 

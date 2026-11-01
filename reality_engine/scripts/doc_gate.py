@@ -13,7 +13,7 @@ from pathlib import Path
 
 STATE = "tasks/STATE.md"
 # Start files stay short so every session begins small (Shivam, 2026-11-01).
-LINE_LIMITS = {STATE: 40, "AGENTS.md": 150}
+LINE_LIMITS = {STATE: 40, "AGENTS.md": 150, "tasks/RULINGS.md": 40}
 CODE_SUFFIXES = (".py", ".sql")
 #: briefs say what to do, not what is true, so they do not count as documentation
 NOT_DOCS = ("tasks/dsh_tasks/", "tasks/archive/")

@@ -1,0 +1,33 @@
+# Shivam's rulings: loaded into every session, also after compaction. Under 40 lines.
+When Shivam rules or corrects something, write it here before the next action. `[check]` means code enforces it; the rest rely on this file.
+
+## Order and scope
+- Golden order: raw data, banks, schema, pilot, re-run at 95% answered plus checklist, and only then the full run. No full run before that.
+- Workspace fix comes before database design: `tasks/WORKSPACE_FIX_2026-11-01.md`. Prototype on 2-3 companies before any wider run.
+- Scope is query AND compute. A number the filings do not state is a formula to define. Empty store means not extracted: never report it as a gap or "not held" without checking `tasks/DATA_INVENTORY.md` and raw text.
+- Bank rulings bind; diff any bank rebuild against the frozen 1,901-question bank. Do not change bank, labels or scope without his ruling. Questions use pilot stocks only.
+- Proxy is the last resort, reported apart from real answers. Do not loosen a grader to raise a score.
+
+## How we work
+- Claude reviews, workers build. DeepSeek on `dsh` at max effort; read the clock for off-peak yourself (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST). Do not give pilot bank reasoning to a worker.
+- Lean: nothing gets added unless it stops a failure we have already had. At most 2 code workers at once; data and research jobs use idle machines. Finished branches merged or deleted within 24 hours.
+- No docs, no merge; doc sweep and data inventory at session close, for Wolf, Eagle and every worker. [check: doc_gate]
+- Start files stay short: `STATE.md` 40 lines, `AGENTS.md` 150, this file 40. [check: doc_gate]
+- Set `permission` on every worker start and read it back. Renew MSI leases. [check coming: start gate]
+- HP work runs headless: nothing on its screen, no focus loss. [check: test_hp_headless]
+- Page-reading subagents: batches of 8 pages, never past 100k context, medium effort for Haiku.
+- Bring ranked ideas from measurements unprompted. Do not idle machines: RAM under 90% or CPU under 70% used means start useful work. Report compute waste.
+- Do not stop to ask what you can decide. Do not argue a ruling: figure out how to do it.
+
+## Never
+- Print or copy keys. Send `Manual Dumps/` to the HP or a model, or put amounts in the repo or decision log.
+- Push without his OK. Use paid models or DeepInfra without his OK, including Haiku beyond an approved run.
+
+## Telling Shivam
+- Lists go in Excel, PDF, DOCX or RTF, never markdown. Explain with real questions and examples, never internal codes.
+- State failures plainly, with full sample sizes; no scores from small samples without saying so.
+
+## Agreed direction, not yet built
+- Typed write contracts at write time (unit, range, label), splitting `fact.value`; test `metric_citations` on the prototype.
+- Merge gate with hidden evaluation and rulings diff; tool-call budgets enforced in code; read limit if the median stays above 10 calls before first edit.
+- OCR: Microsoft TextRecognizer first pass at 300 DPI grayscale, a stronger reader for low-confidence numbers. No PostgreSQL for now; revisit with measurements after the gate.

@@ -411,7 +411,7 @@ def _conventions_section() -> str:
 def _current_state_section() -> str:
     return """## 7. Current state
 
-Current step, next action, running jobs and blockers: `tasks/STATE.md`.
+Current step, next action, running jobs and blockers: `tasks/STATE.md`. Shivam's rulings bind you: read `tasks/RULINGS.md`.
 Trading and risk rules: `tasks/FRAMEWORK.md`. Dated decisions:
 `D:\\RealityEngine\\plans\\DECISION_LOG.md`."""
 

@@ -26,7 +26,7 @@
 > **Read `tasks/FRAMEWORK.md` first.** It is the authority file (set by Shivam, 2026-10-08) and overrides this guide wherever they disagree: cash-only long book, risk limits, benchmark, proof rules, and the order of work. Live status and next steps are in `tasks/STATE.md`. Moat / ENI / ripple seeds are set aside until a tested strategy beats them. Note: rule 1 below ("ISINs remain immutable") is wrong in practice. ISINs change on splits and face-value changes, so price history needs an ISIN-history map.
 
 ## Start here, and read nothing else first
-1. `tasks/STATE.md`: current step, exact next action, running jobs, blockers.
+1. `tasks/RULINGS.md` and `tasks/STATE.md`: Shivam's rulings, current step, exact next action, running jobs, blockers. A session start hook (`reality_engine/scripts/load_context.py`) loads both, also after compaction.
 2. The brief or the one plan it names.
 3. Only the files that brief names. Find code with code-intel (`definition`, `symbols`, `module_map`) and data with reality-data (`catalog`, `schema`). Do not survey the repo, and do not read `tasks/archive/`, `.tmp/` or job folders unless the task names them.
 

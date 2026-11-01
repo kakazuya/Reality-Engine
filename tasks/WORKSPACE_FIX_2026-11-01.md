@@ -28,6 +28,12 @@ Every session must make steady progress without loading the repo. A session star
 
 Checks in place: `reality_engine/scripts/doc_gate.py` refuses a `tasks/STATE.md` over 40 lines or an `AGENTS.md` over 150. `.ignore` hides archive, job and data folders from search, and `.claude/settings.json` denies reading archive, `.tmp` and job folders.
 
+## Carrying rulings forward (Shivam, 1 Nov: his main problem)
+Before this fix, no hook loaded anything. Memory held 69 files of 122 KB, but only a list of titles reached a session, and the bodies were read only if Claude chose to.
+- `tasks/RULINGS.md`: his active rulings, under 40 lines. `reality_engine/scripts/load_context.py` loads it with `tasks/STATE.md` at every start and after every compaction, within the 10,000-character hook cap. `reality_engine/tests/test_load_context.py` guards this.
+- A ruling or correction goes in the file before the next action. A rule that can have a check gets one. `reality_engine/scripts/build_worker_context.py` points workers at the file.
+- **Test:** a fresh session answers Shivam's quiz on rulings using only what it loaded. Each repeat correction goes in the decision log and is counted.
+
 ## Steps
 | # | Work | Exit test | Status |
 |---|---|---|---|
