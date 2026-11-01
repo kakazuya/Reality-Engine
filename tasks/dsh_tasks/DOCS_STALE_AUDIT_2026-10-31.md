@@ -10,7 +10,7 @@ Shivam found workers reading old copies and giving wrong assumptions. `tasks/STA
    - **Report of its date:** a dated record that is still true as a record. Keep it, and if a later result overrides its headline, add one line at the top naming the newer file. For example `tasks/arch_v4/GATE_V4_2026-10-31.md` (8.2%), `tasks/arch_v4/REVAMPED_PLAN_2026-10-31.md` (baseline and "running" labels), `tasks/arch_v4/TRUTH_GRADE_2026-10-31.md` (calls the rule panel the authority; the read grade replaces it), and `machines/HP_ACCEL_BENCH_2026-10-31.md` (says the HP needs Python 3.13 for `cryptography`, but `cryptography` and `mcp` are on its 3.14).
    - **Stale:** an old hand-off or plan that points workers at finished or abandoned work. Move it with `git mv` to `tasks/archive/`, and fix any link to it.
 3. Search live docs for references to moved files and for old headline numbers (`8.2%`, `10.2%`, `1.0%` gate, "read tasks/HANDOFF_", "read tasks/optimizations/HANDOFF"). Fix each one.
-4. Briefs under `tasks/dsh_tasks/` for finished work: list them and move those whose job is merged to `tasks/archive/dsh_tasks/`. Keep briefs named in `tasks/handoff/QUEUE_2026-10-31.md` and `V4_COMMON_2026-10-31.md`. Keep all briefs that are not clearly finished.
+4. Briefs under `tasks/dsh_tasks/` for finished work: list them and move those whose job is merged to `tasks/archive/dsh_tasks/`. Keep briefs named in `V4_COMMON_2026-10-31.md` and in a handoff queue (`tasks/handoff/QUEUE_2026-10-31.md` is not in the repo). Keep all briefs that are not clearly finished.
 5. Write `tasks/archive/README.md`: one line per moved file, with why it moved and what replaces it.
 
 ## Limits
