@@ -18,6 +18,16 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/reality_engine/scripts/context_guard.py\""
+          }
+        ]
+      }
     ]
   }
 }

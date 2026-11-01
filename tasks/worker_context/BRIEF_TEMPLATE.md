@@ -1,6 +1,6 @@
-# Brief template — five labelled lines
+# Brief template — six labelled lines
 
-Every `start_worker` brief (inline `brief` or `task_file`) must carry these five labelled lines or
+Every `start_worker` brief (inline `brief` or `task_file`) must carry these six labelled lines or
 sections. A start missing any of them is refused with `brief_incomplete`, naming the missing ones.
 Copy this file and fill each line; delete the guidance in italics.
 
@@ -14,9 +14,13 @@ Stop if: *the conditions that must stop the work and report instead, e.g. a chan
 
 Budget: *tool calls before the first edit, total tool calls, paid $, wall time. "No paid calls" when true.*
 
+Ticket: *the row this work closes: `Ticket: T-014`, or `No-ticket: <reason>` when no open row fits.
+An unknown T-number is refused with `ticket_unknown`; add the row first with
+`python -m reality_engine.scripts.task_board add`. The worker's brief then carries that one row.*
+
 ## Small fixes
 
-`small_fix=true` allows a one-line brief as long as it carries an accept command:
+`small_fix=true` allows a one-line brief as long as it carries an accept command; it needs no ticket:
 
 `Fix the typo in tasks/STATE.md. Accept: python -m pytest reality_engine/tests/test_dsh_worker_plugin.py -q`
 

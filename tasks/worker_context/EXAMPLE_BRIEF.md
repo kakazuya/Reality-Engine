@@ -1,7 +1,7 @@
 # Brief — resource watchdog safe for this laptop (monitor-only for unapproved work)
 
 > Worked example converted from `tasks/dsh_tasks/WATCHDOG_LAPTOP_2026-10-24.md` into
-> `tasks/worker_context/BRIEF_TEMPLATE.md`. The five labelled fields below are required; the task content
+> `tasks/worker_context/BRIEF_TEMPLATE.md`. The six labelled fields below are required; the task content
 > is unchanged. Extra explanatory sections may follow them.
 
 Goal: Make `resource_watchdog.py` safe on this laptop. It monitors jobs and cleans up orphans, but never
@@ -66,6 +66,9 @@ Stop if: a change needs files outside the list above, a live scheduled task or S
 the watchdog would start anything on this laptop.
 
 Budget: ≤ 25 tool calls before the first edit; ≤ 120 total; ≤ 60 min wall; $0 paid calls.
+
+No-ticket: the worked example predates the tracker; add its row with
+`python -m reality_engine.scripts.task_board add` and name it with `Ticket: T-<digits>` when the work starts.
 
 Report format:
 1. What each job is and its new setting.

@@ -14,7 +14,7 @@ import sqlite3
 import subprocess
 import sys
 import time
-import unittest
+import unittest
 from unittest import mock
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -282,7 +282,8 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "brief_incomplete")
         self.assertEqual(
             set(ctx.exception.details["missing"]),
-            {"Files:", "Accept: (or Test command(s):)", "Stop if:", "Budget:"},
+            {"Files:", "Accept: (or Test command(s):)", "Stop if:", "Budget:",
+             "Ticket: (or No-ticket: <reason>)"},
         )
         self.assertIn("Files:", ctx.exception.message)
         self.assertIn("Budget:", ctx.exception.message)
@@ -305,13 +306,27 @@ class PluginTests(unittest.TestCase):
         )
         self.assertTrue(started["ok"], started)
         self._wait_status(started["job_id"], lambda s: s["final"])
-        # The same one line without small_fix is refused by the five-field gate.
+        # The same one line without small_fix is refused by the six-field gate.
         with self.assertRaises(core.PluginError) as ctx:
             self._manager_instance().start_worker(
                 brief="Fix the typo in tasks/STATE.md. Accept: python -m pytest -q",
                 permission="read-only",
             )
         self.assertEqual(ctx.exception.code, "brief_incomplete")
+
+    def test_start_refuses_an_unknown_ticket(self):
+        brief = (
+            "Goal: close a ticket that does not exist\n"
+            "Files: none\n"
+            "Accept: the fake launcher exits 0\n"
+            "Stop if: the fake launcher fails\n"
+            "Budget: 1 call\n"
+            "Ticket: T-999\n"
+        )
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(brief=brief, permission="read-only")
+        self.assertEqual(ctx.exception.code, "ticket_unknown")
+        self.assertEqual(ctx.exception.details["ticket"], "T-999")
 
     def test_start_defaults_argv_and_result(self):
         started = self._manager_instance().start_worker(
@@ -1583,7 +1598,7 @@ class PluginTests(unittest.TestCase):
 
     @staticmethod
     def _brief(first: str = "fake task") -> str:
-        """A five-field brief; the first line stays the commit subject."""
+        """A six-field brief; the first line stays the commit subject."""
         return (
             f"{first}\n"
             f"Goal: {first}\n"
@@ -1591,6 +1606,7 @@ class PluginTests(unittest.TestCase):
             "Accept: the fake launcher exits 0 and writes its output\n"
             "Stop if: the fake launcher fails\n"
             "Budget: 120 tool calls\n"
+            "No-ticket: the fixture repository has no tracker\n"
         )
 
     def _start_worktree_job(
@@ -1908,6 +1924,7 @@ class PluginTests(unittest.TestCase):
         body = self._git("show", "-s", "--format=%B", result["head"])
         self.assertIn(f"[dsh {job_id}]", body.splitlines()[0])
         self.assertIn(f"DSH-Job: {job_id}", body)
+        self.assertIn(f"No-ticket: merge of {job_id}", body)
         self.assertTrue((self.root / "merged.txt").is_file())
         self.assertEqual(result["files_changed"], 1)
         self.assertEqual(result["files_changed_paths"], ["merged.txt"])
@@ -1924,6 +1941,28 @@ class PluginTests(unittest.TestCase):
         self.assertTrue(removed["branch_deleted"], removed)
         self.assertFalse(Path(started["workspace"]).exists())
         self.assertEqual(self._git("branch", "--list", f"dsh/{job_id}"), "")
+
+    def test_merge_commit_carries_the_brief_ticket(self):
+        self._init_git_repo()
+        self.env["DSH_WORKER_MERGIRAF"] = "0"
+        (self.root / "tasks").mkdir()
+        (self.root / "tasks" / "TASKS.md").write_text(
+            "- T-001 | OPEN | P1 | fixture ticket | accept: Shivam | from: test | opened 2026-11-01\n",
+            encoding="utf-8",
+        )
+        self._commit_main("tasks/TASKS.md", (self.root / "tasks" / "TASKS.md").read_text(encoding="utf-8"),
+                          "T-001 add the fixture ticket")
+        brief = self._brief("ticketed change").replace(
+            "No-ticket: the fixture repository has no tracker", "Ticket: T-001")
+        started, _final = self._start_worktree_job(write_file="ticketed.txt", brief=brief)
+        brief_text = (Path(started["status_path"]).parent / "brief.md").read_text(encoding="utf-8")
+        self.assertIn("- T-001 |", brief_text, "the brief carries its own ticket row")
+        result = self._manager_instance().merge_worker(started["job_id"], run_tests=False)
+        self.assertTrue(result["merged"], result)
+        body = self._git("show", "-s", "--format=%B", result["head"])
+        self.assertIn("Ticket: T-001", body)
+        live = (self.root / "tasks" / "TASKS.md").read_text(encoding="utf-8")
+        self.assertIn("| OPEN |", live, "merging must not close the ticket")
 
     def test_merge_worker_default_quick_suite_runs(self):
         self._init_git_repo()
@@ -2204,6 +2243,7 @@ class PluginTests(unittest.TestCase):
                 "Accept: the fake launcher exits 0\n"
                 "Stop if: the fake launcher fails\n"
                 "Budget: 120 tool calls\n"
+                "No-ticket: the fixture repository has no tracker\n"
             ),
             context_pack=True,
             permission="read-only",
@@ -2838,10 +2878,11 @@ class WorkerContextBuilderTests(unittest.TestCase):
     def test_brief_fields(self):
         conformant = (
             "Goal: x\nFiles: a.py\nAccept: y\nStop if: blocked\nBudget: 10 calls\n"
+            "No-ticket: fixture\n"
         )
         self.assertEqual(context_pack.brief_missing_fields(conformant), [])
         missing = context_pack.brief_missing_fields("just do it")
-        self.assertEqual(len(missing), 5, missing)
+        self.assertEqual(len(missing), 6, missing)
         self.assertIn("Goal:", missing)
         self.assertIn("Files:", missing)
         self.assertIn("Budget:", missing)
@@ -2849,7 +2890,7 @@ class WorkerContextBuilderTests(unittest.TestCase):
         self.assertEqual(
             context_pack.brief_missing_fields(
                 "Goal: x\nFiles: a.py\n## Test command(s)\npython -m pytest -q\n"
-                "Stop if: blocked\nBudget: 10 calls"
+                "Stop if: blocked\nBudget: 10 calls\nNo-ticket: fixture"
             ),
             [],
         )

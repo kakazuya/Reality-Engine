@@ -1,7 +1,10 @@
-"""Pre-commit gate for the documentation rule (Shivam, 2026-10-31): no undocumented work on main.
+"""Gates for the documentation and ticket rules (Shivam, 2026-10-31 and 2026-11-01).
 
-A merge on ``main`` must stage ``tasks/STATE.md``.  A code commit on ``main`` must stage a doc.
-Worker branches are checked when they merge.  Install with ``python <this file> --install``.
+A merge on ``main`` must stage ``tasks/STATE.md``.  A code commit on ``main`` must stage a doc
+naming it.  A commit that stages a tracker file is linted like ``task_board lint``.  A commit
+message on ``main`` must name a ticket (``T-<digits>``) or say why it has none
+(``No-ticket: <reason>``).  Worker branches are checked when they merge.
+Install with ``python <this file> --install``.
 """
 
 from __future__ import annotations
@@ -12,15 +15,22 @@ import sys
 from pathlib import Path
 
 STATE = "tasks/STATE.md"
+TRACKERS = ("tasks/TASKS.md", "tasks/TASKS_DONE.md")
 # Start files stay short so every session begins small (Shivam, 2026-11-01).
-LINE_LIMITS = {STATE: 40, "AGENTS.md": 150, "tasks/RULINGS.md": 40}
+LINE_LIMITS = {STATE: 40, "AGENTS.md": 150, "tasks/RULINGS.md": 40, "tasks/TASKS.md": 150}
 CODE_SUFFIXES = (".py", ".sql")
 #: briefs say what to do, not what is true, so they do not count as documentation
 NOT_DOCS = ("tasks/dsh_tasks/", "tasks/archive/")
+TICKET = re.compile(r"\bT-\d+\b")
+NO_TICKET = re.compile(r"(?im)^\s*No-ticket:\s*\S")
 #: a worker worktree may predate this file, so the hook only calls it on main
 HOOK = """#!/bin/sh
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
 exec python "$(git rev-parse --show-toplevel)/reality_engine/scripts/doc_gate.py"
+"""
+HOOK_MESSAGE = """#!/bin/sh
+[ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
+exec python "$(git rev-parse --show-toplevel)/reality_engine/scripts/doc_gate.py" --commit-msg "$1"
 """
 
 
@@ -35,7 +45,21 @@ def undocumented(code: list[str], doc_text: str) -> list[str]:
     return [c for c in code if _needs_doc(c) and Path(c).stem not in doc_text]
 
 
-def check(staged: list[str], *, branch: str, merging: bool, read=lambda name: "") -> str | None:
+def tracker_problem(staged: list[str], root: Path | None = None) -> str | None:
+    """The tracker lint refusal for this commit, or None when neither tracker is staged."""
+    if not any(name in staged for name in TRACKERS):
+        return None
+    root = root or Path(__file__).resolve().parents[2]
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+    from reality_engine.scripts import task_board
+
+    problems = task_board.lint_problems(root)
+    return "tracker lint failed: " + "; ".join(problems[:10]) if problems else None
+
+
+def check(staged: list[str], *, branch: str, merging: bool, read=lambda name: "",
+          root: Path | None = None) -> str | None:
     """The refusal message for this commit, or None when it may go ahead.
 
     Shivam, 2026-11-01: no merge without docs. Every changed code file must be named in a doc
@@ -48,6 +72,9 @@ def check(staged: list[str], *, branch: str, merging: bool, read=lambda name: ""
             lines = len(read(name).splitlines())
             if lines > limit:
                 return f"{name} has {lines} lines, limit {limit}: move detail to docs/ or a dated record"
+    problem = tracker_problem(staged, root)
+    if problem:
+        return problem
     if merging and STATE not in staged:
         return f"merge on main without {STATE}: put the current state in it"
     docs = [n for n in staged if n.endswith(".md") and not n.startswith(NOT_DOCS) and not (merging and n == STATE)]
@@ -55,6 +82,16 @@ def check(staged: list[str], *, branch: str, merging: bool, read=lambda name: ""
     if missing:
         return "code not named in any doc in this commit, update the doc that describes it: " + ", ".join(missing[:15])
     return None
+
+
+def check_message(message: str, *, branch: str) -> str | None:
+    """A commit on main names its ticket, or says why it has none. Branches are not checked."""
+    if branch != "main":
+        return None
+    if TICKET.search(message) or NO_TICKET.search(message):
+        return None
+    return ("commit message on main needs a ticket: name its T-<digits> or add a line "
+            "'No-ticket: <reason>'")
 
 
 def _git(*args: str) -> str:
@@ -86,13 +123,27 @@ def sweep(root: Path) -> int:
 
 
 def main(argv: list[str]) -> int:
+    if argv[:1] == ["--commit-msg"]:
+        message = ""
+        if len(argv) > 1:
+            try:
+                message = Path(argv[1]).read_text(encoding="utf-8", errors="replace")
+            except OSError as exc:
+                print(f"doc_gate: cannot read the commit message: {exc}", file=sys.stderr)
+                return 1
+        problem = check_message(message, branch=_git("rev-parse", "--abbrev-ref", "HEAD"))
+        if problem:
+            print(f"doc_gate: {problem}", file=sys.stderr)
+            return 1
+        return 0
     if "--sweep" in argv:
         return sweep(Path(_git("rev-parse", "--show-toplevel")))
     if "--install" in argv:
         hooks = Path(_git("rev-parse", "--git-common-dir")) / "hooks"
         hooks.mkdir(exist_ok=True)
-        (hooks / "pre-commit").write_text(HOOK, encoding="utf-8", newline="\n")
-        print(f"installed {hooks / 'pre-commit'}")
+        for name, body in (("pre-commit", HOOK), ("commit-msg", HOOK_MESSAGE)):
+            (hooks / name).write_text(body, encoding="utf-8", newline="\n")
+            print(f"installed {hooks / name}")
         return 0
     message = check(_git("diff", "--cached", "--name-only").splitlines(),
                     branch=_git("rev-parse", "--abbrev-ref", "HEAD"),

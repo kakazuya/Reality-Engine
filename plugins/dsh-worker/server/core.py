@@ -26,7 +26,7 @@ import heartbeat
 import jobs
 import procutil
 import progress
-from context_pack import attach_brief as attach_context_pack, brief_missing_fields
+from context_pack import attach_brief as attach_context_pack, brief_missing_fields, brief_ticket
 from store import (
     JOB_LOCK_NAME,
     LEASE_FILE,
@@ -647,6 +647,27 @@ class Manager:
             raise PluginError("brief_empty", "brief is empty")
         return brief, None
 
+    def _ticket_row(self, ticket: str) -> str:
+        """The row of ``ticket`` in the MAIN checkout's tasks/TASKS.md; unknown ids are refused."""
+        path = Path(self.config.repo_root) / "tasks" / "TASKS.md"
+        detail = ""
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            text = ""
+            detail = f" (it cannot be read: {exc})"
+        match = re.search(rf"(?m)^- {re.escape(ticket)} \|.*$", text)
+        if match is None:
+            raise PluginError(
+                "ticket_unknown",
+                f"ticket {ticket} is not in {path}{detail}; add it with "
+                "`python -m reality_engine.scripts.task_board add ...` or write "
+                "`No-ticket: <reason>` instead",
+                ticket=ticket,
+                path=str(path),
+            )
+        return match.group(0)
+
     def _launcher_command(self) -> list[str]:
         if self.config.launcher_path is not None:
             return [sys.executable, str(self.config.launcher_path)]
@@ -1113,11 +1134,16 @@ class Manager:
                 missing=missing_fields,
                 template=str(Path(self.config.repo_root) / "tasks" / "worker_context" / "BRIEF_TEMPLATE.md"),
                 hint=(
-                    "write the five labelled lines Goal:, Files:, Accept: (or Test "
-                    "command(s):), Stop if:, Budget:; small_fix=true allows a "
-                    "one-line brief with an accept command"
+                    "write the six labelled lines Goal:, Files:, Accept: (or Test "
+                    "command(s):), Stop if:, Budget:, Ticket: (or No-ticket: <reason>); "
+                    "small_fix=true allows a one-line brief with an accept command"
                 ),
             )
+        ticket = brief_ticket(text)
+        ticket_row = self._ticket_row(ticket) if ticket else None
+        if ticket_row:
+            # The worker sees only its own tracker row, never the whole board.
+            text = f"{text.rstrip()}\n\n== Your ticket ==\n{ticket_row}\n"
         brief_first_line = _first_line(text)
         if host == "hp":
             # HP jobs keep their own launcher, peak refusal and lease-like hard
@@ -1492,6 +1518,7 @@ class Manager:
                 "controller_lease_owner_id": owner_id,
                 "owner_session": self.config.session_label,
                 "brief_first_line": brief_first_line,
+                "ticket": ticket,
                 "worktree": worktree_record,
                 "git": git_identity,
                 "approved_by": approved_by,
@@ -3603,7 +3630,11 @@ class Manager:
         if mergiraf:
             attributes_file = self.config.locks_dir / "mergiraf.attributes"
             atomic_write_text(attributes_file, "* merge=mergiraf\n")
-        message = f"Merge {branch} [dsh {job_id}]\n\nDSH-Job: {job_id}"
+        # The commit-msg gate on main needs a ticket or a stated reason; the merge
+        # carries the brief's ticket but never closes it.
+        ticket = job.get("ticket")
+        reason = f"Ticket: {ticket}" if ticket else f"No-ticket: merge of {job_id}"
+        message = f"Merge {branch} [dsh {job_id}]\n\nDSH-Job: {job_id}\n{reason}"
         code, out, err = gitutil.merge_no_ff(
             repo, branch, message, mergiraf=mergiraf, attributes_file=attributes_file
         )

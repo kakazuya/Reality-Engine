@@ -34,13 +34,16 @@ it does not replace the launcher, change Codex's model, or add a provider route.
 ## Writing briefs
 
 Use `tasks/worker_context/BRIEF_TEMPLATE.md`; `tasks/worker_context/EXAMPLE_BRIEF.md`
-is a worked conversion. A brief must carry five labelled fields: **Goal:**
+is a worked conversion. A brief must carry six labelled fields: **Goal:**
 (one outcome) · **Files:** (exact paths + a "do not touch" list) · **Accept:**
 (or **Test command(s):**; numbered, testable) · **Stop if:** (when to stop and
-report) · **Budget:** (tool calls, paid $, wall time). A missing field refuses the
-start with `brief_incomplete`, naming the missing fields. `small_fix=true`
-allows a one-line brief instead, as long as that line carries an accept command.
-Put any longer rationale or step list after the five fields.
+report) · **Budget:** (tool calls, paid $, wall time) · **Ticket:** (`Ticket:
+T-014`, or `No-ticket: <reason>`). A missing field refuses the start with
+`brief_incomplete`, naming the missing fields; a T-number absent from the main
+checkout's `tasks/TASKS.md` is refused as `ticket_unknown`, and the brief then
+carries that one row. `small_fix=true` allows a one-line brief instead, as long
+as that line carries an accept command. Put any longer rationale or step list
+after the six fields.
 
 The worker receives a standing header + the absolute
 `tasks/worker_context/CONTEXT.md` path before your brief by default; pass
