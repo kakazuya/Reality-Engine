@@ -234,6 +234,20 @@ def _measured(result) -> str:
             f"known_at {_known(result)}{_inputs_text(result)}{_assumed(result)}")
 
 
+def _passages(result) -> str:
+    """A narrative answer: the retrieved passages, each quoted, never a number."""
+    head = f"P{result.part_index + 1} passages — {_entity(result)}"
+    quotes = []
+    for row in result.values[:5]:
+        quote = str(row.get("quote") or "").strip()
+        page = row.get("page_no")
+        quotes.append(f"{quote}"
+                      f"{f' (p.{page})' if page else ''} "
+                      f"[{row.get('doc_id') or '—'}, known {row.get('known_at') or '—'}]")
+    return (f"{head}: {len(result.values)} passage(s), not an answered value — "
+            + " | ".join(quotes) + f"; source {_source(result)}")
+
+
 def _estimate(result) -> str:
     inputs = result.inputs
     if isinstance(inputs, dict):
@@ -296,7 +310,7 @@ def _not_in_data(result) -> str:
 
 
 BLOCKS = {"measured": _measured, "estimate": _estimate, "proxy": _proxy,
-          "not_in_data": _not_in_data}
+          "passages": _passages, "not_in_data": _not_in_data}
 
 
 def render(result: Any) -> str:
@@ -325,6 +339,7 @@ def render_run(results: Iterable[Any], *, question: str | None = None,
     header.append(
         f"Parts: {counts['parts']} · real_answered: {counts['real_answered']} · "
         f"proxy_answered: {counts['proxy_answered']} · "
+        f"passages: {counts['passages']} · "
         f"not_answered: {counts['not_answered']}"
         + (f" (unapproved proxy debt: {counts['unapproved_proxy']})"
            if counts["unapproved_proxy"] else "")

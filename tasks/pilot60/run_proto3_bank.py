@@ -9,8 +9,12 @@ answer file carried, so both runs cover the same questions.
 
 Writes ``tasks/pilot60/PROTOTYPE3_ENGINE_ANSWERS_2026-11-02.jsonl``, one row per question:
 ``mid``, ``question``, ``answer``, ``rows_used``, ``store``, ``status`` (+ the per-part typed
-outcome and the refusal reasons).  Prints one summary: rows, answered, refused by reason.
-It prints no score and grades nothing: the grade on this run is a separate, hand read.
+outcome, the refusal reasons and, for a narrative answer, the quoted passages).  ``status`` is
+``answered``, ``passages`` (retrieved passages with exact quotes, never counted as answered) or
+``refused``.  Prints the counts by status, the refusals by reason, and how many distinct
+questions each returned passage serves.  It prints no score and grades nothing: the grade on
+this run is a separate, hand read.  Stores come from ``REALITY_V4_PILOT`` and
+``REALITY_CHUNKS_V3`` when set.
 """
 from __future__ import annotations
 
@@ -97,7 +101,7 @@ def reason_key(reason: str) -> str:
 
 
 def parts_of(row: dict) -> list[dict]:
-    """One entry per part: its typed outcome and the rows it used (period + value)."""
+    """One entry per part: its typed outcome and the rows (or passages) it used."""
     out = []
     for result in row["results"]:
         item = {key: result.get(key) for key in
@@ -105,8 +109,13 @@ def parts_of(row: dict) -> list[dict]:
                  "nid_reason")}
         rows = [{"period": value.get("period"), "value": value.get("value")}
                 for value in (result.get("values") or [])[:8]]
-        if rows:
+        if rows and result.get("answer_type") != "passages":
             item["rows"] = rows
+        if result.get("answer_type") == "passages":
+            item["passages"] = [{"doc_id": value.get("doc_id"), "page": value.get("page_no"),
+                                 "known_at": value.get("known_at"),
+                                 "quote": value.get("quote")}
+                                for value in (result.get("values") or [])[:5]]
         out.append(item)
     return out
 
@@ -130,9 +139,14 @@ def main(argv: list[str] | None = None) -> int:
     rows = cases()
     if args.limit:
         rows = rows[:args.limit]
+    print(f"fact store {run.V4_ROOT}", flush=True)
+    print(f"chunk store {run.CHUNKS}", flush=True)
     written: list[dict] = []
     answered = 0
     reasons: Counter = Counter()
+    statuses: Counter = Counter()
+    passage_mids: dict[str, set[str]] = {}
+    passage_where: dict[str, str] = {}
     with run.Stores() as stores:
         resolver = run.Resolver(run.universe(), run.identities(), run.universe_isins())
         for index, case in enumerate(rows, 1):
@@ -142,6 +156,7 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 row = run.run_case(case, stores, resolver, run.execute_registry())
             except Exception as exc:  # noqa: BLE001 - one bad row must not stop the run
+                statuses["refused"] += 1
                 written.append({"mid": case.get("mid"), "question": case.get("question"),
                                 "answer": "", "rows_used": 0, "store": [],
                                 "status": "refused",
@@ -151,9 +166,24 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             nid = [result.get("nid_reason") or "" for result in row["results"]
                    if result.get("answer_type") == "not_in_data"]
-            status = "answered" if row["case_answered"] else "refused"
+            passages = [result for result in row["results"]
+                        if result.get("answer_type") == "passages"]
+            if passages:
+                # A narrative answer: retrieved passages, kept apart from the answered count.
+                status = "passages"
+            else:
+                status = "answered" if row["case_answered"] else "refused"
+            statuses[status] += 1
             if status == "answered":
                 answered += 1
+            for result in passages:
+                for value in result.get("values") or []:
+                    key = str(value.get("chunk_id") or value.get("doc_id") or "")
+                    if not key:
+                        continue
+                    passage_mids.setdefault(key, set()).add(str(row.get("mid") or ""))
+                    passage_where[key] = (f"{value.get('doc_id') or '—'} "
+                                          f"p{value.get('page_no') or '—'}")
             for reason in nid:
                 reasons[reason_key(reason)] += 1
             written.append({
@@ -173,10 +203,24 @@ def main(argv: list[str] | None = None) -> int:
             handle.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
     print(f"wrote {out}")
     print(f"rows {len(written)}")
+    for status, count in statuses.most_common():
+        print(f"{status} {count}")
     print(f"answered {answered}")
-    print(f"refused {len(written) - answered}")
+    print(f"refused {statuses.get('refused', 0)}")
     for reason, count in reasons.most_common():
         print(f"  {count:4d}  {reason}")
+    # T-038: the last prototype let the same two rows answer eight questions.  Count how
+    # many distinct questions each returned passage serves; a high repeat is the defect.
+    if passage_mids:
+        histogram: Counter = Counter(len(mids) for mids in passage_mids.values())
+        print(f"passages returned {len(passage_mids)}; distinct questions per passage: "
+              + ", ".join(f"{served} question(s): {count} passage(s)"
+                          for served, count in sorted(histogram.items())))
+        shared = sorted(passage_mids.items(), key=lambda item: -len(item[1]))
+        for key, mids in shared[:5]:
+            if len(mids) > 1:
+                print(f"  {passage_where[key]} served {len(mids)} distinct questions: "
+                      + ", ".join(sorted(mids)[:8]))
     return 0
 
 

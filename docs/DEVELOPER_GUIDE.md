@@ -228,6 +228,43 @@ python -m reality_engine.pilot.proto3 dryrun
 table is over 90%. The biggest reject class is `measure_term_absent`: a chart-axis or table-cell
 quote prints the number but not the word that says what it is.
 
+### J. Query layer v4: the extract-row load and passage answers (T-038)
+
+`extract_proto3.db` was built before the contracts, so the v4 loader re-checks every row and
+routes it with a declared measure map (`reality_engine/query/v4/load_fact.py`):
+
+```bash
+# load into a COPY of fact_v4_pilot.db (never the live store); prints loaded / existing /
+# contract-failing / unmapped counts
+python -m reality_engine.query.v4.load_fact --fact .tmp/proto3/v4/fact_v4_pilot.db
+```
+
+Its 2026-11-02 read of the three-company extract store: **218 rows loaded**, 3 already present,
+**108 refused by `contracts.check`** (the store's two `nim_pct` rows are both above 25% and stay
+out) and **844 rows over 375 measures with no mapping, listed and not loaded** — gross NPA is not
+loaded as the net-NPA atom. A loaded row keeps `known_at` (the executor cuts `known_at <= as_of`
+at read time) and its `doc_id`, `page` and `quote` in the additive `fact_provenance` table.
+
+A narrative question whose decomposer part names no topic or page is answered with
+`answer_type = passages`: local BM25 over that one company's chunk bodies, no embeddings, no
+model, no paid call, each quote a contiguous substring of the chunk `body`. A passage never
+counts as an answer (`case_answered` stays no) and a miss is a typed refusal. The chunk store is
+`REALITY_CHUNKS_V3` (`run.Stores.chunks`); a blank `as_of` is `2026-10-19`.
+
+```bash
+# KEC's 10 concall PDFs into a chunks store (idempotent on sha256; the raw dir is read-only)
+python tasks/pilot60/proto3_text/kec_load.py --db .tmp/proto3/chunks_v3_pilot.db
+# the 153 three-company bank rows against stores under .tmp: no model call, no score
+$env:REALITY_V4_PILOT=".tmp/proto3/v4"; $env:REALITY_CHUNKS_V3=".tmp/proto3/chunks_v3_pilot.db"
+python tasks/pilot60/run_proto3_bank.py
+```
+
+The 2026-11-02 run: 153 rows — **35 answered, 11 `passages`, 107 refused**; the top refusal is
+142 parts with no row in the store. It also prints how many distinct questions each passage
+serves (26 passages: 23 serve one question, 3 serve two — maximum two, against the previous
+prototype's two rows for eight questions). Check: `reality_engine/tests/test_proto3_wiring.py`
+(7 tests).
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):

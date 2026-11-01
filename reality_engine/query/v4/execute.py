@@ -30,9 +30,14 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-ANSWER_TYPES = ("measured", "estimate", "proxy", "not_in_data")
+from .passages import retrieve as _retrieve_passages
+from .passages import terms as _topic_terms
+
+ANSWER_TYPES = ("measured", "estimate", "proxy", "passages", "not_in_data")
 REAL = ("measured", "estimate")
 COUNTED = REAL + ("proxy",)
+#: a narrative answer: retrieved passages with exact quotes, never an answered value (§D.1)
+PASSAGES = "passages"
 MAX_HOPS = 5
 REGISTRY_PATH = Path(__file__).resolve().parents[3] / "tasks" / "arch_v4" / "concept_registry.json"
 
@@ -173,13 +178,14 @@ def counts_as_answered(result: Any) -> bool:
 
 
 def answer_counts(results: Iterable[Any]) -> dict[str, Any]:
-    """The gate's two counters (§D.4), plus the debt an unapproved proxy is."""
+    """The gate's counters (§D.4), plus the passages and the debt an unapproved proxy is."""
     rows = [as_result(r) for r in results]
     real = sum(1 for r in rows if r.answer_type in REAL)
     proxy = sum(1 for r in rows if approved_proxy(r))
-    not_answered = len(rows) - real - proxy
+    passages = sum(1 for r in rows if r.answer_type == PASSAGES)
+    not_answered = len(rows) - real - proxy - passages
     return {"parts": len(rows), "real_answered": real, "proxy_answered": proxy,
-            "not_answered": not_answered,
+            "passages": passages, "not_answered": not_answered,
             "unapproved_proxy": sum(1 for r in rows if r.answer_type == "proxy")
             - proxy,
             "case_answered": bool(rows) and real + proxy == len(rows)}
@@ -891,6 +897,48 @@ def _topic_stem(topic: str) -> str:
         if text.endswith(suffix) and len(text) > len(suffix) + 2:
             return text[: -len(suffix)] + stem
     return text
+
+
+def _execute_passages(conn: Any, part: Part, as_of: str, entity: str | None,
+                      window: dict[str, Any], question: str = "") -> Result:
+    """The narrative ask: top passages of that company, quoted exactly, status ``passages``.
+
+    Topic terms are the decomposer's ``dims.topic`` when it named one, else the question's
+    own words.  Retrieval is local BM25 over the company's chunk bodies (no embeddings, no
+    model, no paid call) and every quote is a substring of its chunk body.  Nothing here
+    turns a passage into a number or an answered value: a miss is a typed refusal.
+    """
+    terms = _topic_terms(question or part.clause, part.dims.get("topic"))
+    if not entity:
+        return _nid(part, window, "the narrative ask names no single entity",
+                    [_tried("chunks_v3", "entity unresolved", None, as_of)],
+                    "resolve the company before retrieving its passages")
+    if not terms:
+        return _nid(part, window,
+                    "the narrative ask names no topic and carries no word to retrieve on",
+                    [_tried("chunks_v3", f"entity={entity}", None, as_of)],
+                    "name the topic in the question")
+    if conn is None:
+        return _nid(part, window, "no database connection was supplied",
+                    [_tried("chunks_v3", "not queried", None, as_of)],
+                    "pass the store connection that holds the chunk table")
+    rows = _retrieve_passages(conn, entity, terms, as_of)
+    if rows is None:
+        return _nid(part, window, "the chunk store is not built in this run",
+                    [_tried("chunks_v3", "chunk table absent", None, as_of)],
+                    "build the chunks store (tasks/pilot_t2/build_chunks_v3.py)")
+    if not rows:
+        return _nid(part, window,
+                    f"no passage for {entity} matches the ask's terms "
+                    f"({', '.join(terms[:8])}) at {as_of}",
+                    [_tried("chunks_v3", f"entity={entity}, terms={terms[:8]}", 0, as_of)],
+                    "hold a document that states the asked topic for this company")
+    return Result(part_index=part.index, atom=part.atom, formula=part.formula,
+                  dims=part.dims, window=window, operator=part.operator,
+                  shape="passage", answer_type=PASSAGES, values=rows, unit=None,
+                  period=rows[0].get("known_at"), isin=entity,
+                  source_ref="chunks_v3.chunk", known_at=rows[0].get("known_at"),
+                  numbers={"n_passages": len(rows), "terms": terms})
 
 
 def _execute_claim(conn: Any, part: Part, as_of: str, entity: str | None,
@@ -2662,11 +2710,12 @@ def _last_session(conn: Any, day: str) -> str | None:
 def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] | None = None,
             entity: str | None = None, entities: Sequence[str] | None = None,
             registry: Any = None, proxy: Mapping[str, Any] | None = None,
-            part_index: int | None = None) -> Result:
+            part_index: int | None = None, question: str = "") -> Result:
     """Execute one part; always exactly one :class:`Result`, never an exception.
 
     ``proxy`` is the only way a proxy can enter: it is used only after the held
-    stores returned nothing, and it carries its own approval state.
+    stores returned nothing, and it carries its own approval state.  ``question`` is the
+    ask's own text: a narrative part with no decomposer topic retrieves on its words.
     """
     p = as_part(part, part_index)
     lo, hi = _window_bounds(p.window, windows)
@@ -2714,7 +2763,7 @@ def execute(part: Any, as_of: str, conn: Any = None, *, windows: Sequence[Any] |
     entity_set = list(entities or p.entities or [])
     try:
         result = _dispatch(p, as_of, conn, window, lo, hi, entity, entity_set, reg,
-                           basis=basis)
+                           basis=basis, question=question)
     except _Empty:
         result = _empty_result(p, as_of, conn, window, lo, hi, entity, reg)
     except _Missing as exc:
@@ -2807,7 +2856,7 @@ def _passage_like(part: Part) -> bool:
 
 def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | None,
               hi: str | None, entity: str | None, entities: Sequence[str],
-              registry: Mapping[str, Any], basis: str = "") -> Result:
+              registry: Mapping[str, Any], basis: str = "", question: str = "") -> Result:
     mismatch = measure_mismatch(p, registry)
     if mismatch is not None:
         why, to_close = mismatch
@@ -2822,7 +2871,13 @@ def _dispatch(p: Part, as_of: str, conn: Any, window: dict[str, Any], lo: str | 
     if p.atom == "own.estimate":
         return _execute_estimate(conn, p, as_of, lo, hi, entity, window)
     if p.atom in ("claim.claim", "text.passage") or p.shape == "passage":
-        return _execute_claim(conn, p, as_of, entity, window)
+        # A structured claim is the answer only when the decomposer named a topic or a
+        # page.  A bare document type ("concall") matches the latest claim of that type,
+        # which is exactly how two rows once answered eight different questions: an
+        # unnamed narrative ask retrieves the company's passages on its own words.
+        if p.atom != "text.passage" and (p.dims.get("topic") or p.dims.get("page")):
+            return _execute_claim(conn, p, as_of, entity, window)
+        return _execute_passages(conn, p, as_of, entity, window, question)
     if p.operator == "near_high":
         return _execute_near_high(conn, p, as_of, lo, hi, entity, window)
     if p.formula:

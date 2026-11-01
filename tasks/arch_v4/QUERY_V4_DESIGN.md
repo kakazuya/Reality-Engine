@@ -1105,7 +1105,7 @@ reasoning and not just the words.
 ```
 execute(part, as_of) -> Result            # exactly one per part, always
   Result = {part_index, atom, dims, window, unit, value(s), period, isin,
-            source_ref, known_at, shape, answer_type,   # measured | estimate | proxy | not_in_data
+            source_ref, known_at, shape, answer_type,   # measured | estimate | proxy | passages | not_in_data
             method?, inputs?, confidence?,               # estimate / proxy
             rule_used?, verdict?, nid_reason?, tried?}
 ```
@@ -1130,11 +1130,11 @@ the measure found:
 
 `asked_surface` takes the atom's **longest** label/synonym present in the clause, so a short
 shared synonym ("quantity" inside "traded quantity") cannot make a negation apply to the wrong
-atom. Residue stays the decomposer's: a narrative ask with no `dims.topic` refuses instead of
-returning the latest claims. The 2 Nov run over the 153 three-company rows fully answered 29
-rows and refused 124 with at least one typed refusal; the reason counts are printed by
-`tasks/pilot60/run_proto3_bank.py` and each row carries its own `reasons`
-(`tasks/pilot60/PROTOTYPE3_ENGINE_ANSWERS_2026-11-02.jsonl`).
+atom. Residue stays the decomposer's: a narrative ask with no `dims.topic` is retrieved as
+passages (§D.1.3), never as the latest claim. The 2 Nov run over the 153 three-company rows
+fully answered 35 rows, answered 11 as `passages` and refused 107 with at least one typed
+refusal; the reason counts are printed by `tasks/pilot60/run_proto3_bank.py` and each row
+carries its own `reasons` (`tasks/pilot60/PROTOTYPE3_ENGINE_ANSWERS_2026-11-02.jsonl`).
 
 ### D.1.2 Where a close level and a delivered quantity are read (T-033)
 
@@ -1163,6 +1163,50 @@ Code: `reality_engine/query/v4/execute.py` (`measure_mismatch`, `traded_close`,
 `panel_delivery`), `reality_engine/query/v4/run.py` (`Stores.market`). Check:
 `reality_engine/tests/test_proto3_engine.py` (the real bank rows, values read from its fixture).
 Run: `python tasks/pilot60/run_proto3_bank.py` (no model calls, no grading).
+
+### D.1.3 Contract-passing extract rows and the `passages` status (T-038, 2 Nov)
+
+**Fact rows.** `extract_proto3.db` was built before `reality_engine/contracts.py`, so every row
+is re-checked at load: `reality_engine/query/v4/load_fact.py` runs `contracts.check(table, row)`
+and a failing row never reaches `fact` (the store's own 2 Nov NIM rows are all over 25% and
+stay out; 108 rows are refused). Routing is the declared measure map in that module — one line
+per (extract table, measure column, key) → the registry atom whose `source` states it
+(`lender_metrics.nim_pct` → `fin.nim`, `nnpa_pct` → `fin.npa`, `tax_reconciliation.tax_expense`
+→ `fin.tax_expense`, …). A measure with no mapping is counted and listed, never loaded under a
+nearby atom: gross NPA (`gnpa_pct`) is not the net-NPA atom; 844 rows over 375 measures are
+listed. Each loaded row keeps its `known_at` (the executor's `known_at <= as_of` cut applies at
+read time), and its `doc_id`, `page` and `quote` go to the additive `fact_provenance` table under
+the fact row's own key — `fact` itself is unchanged. A row whose primary key already exists is
+counted as `existing`, never overwritten. Load into a **copy**:
+
+```bash
+python -m reality_engine.query.v4.load_fact --fact .tmp/proto3/v4/fact_v4_pilot.db
+```
+
+**Passages.** A narrative part (`claim.claim` / `text.passage` / `shape: passage`) whose
+decomposer dims name **no topic and no page** is answered by `execute._execute_passages` with
+`answer_type = passages`, kept apart from `answered` (`counts_as_answered` is false and
+`case_answered` never counts it). Retrieval is `reality_engine/query/v4/passages.py`: local BM25
+(k1 1.2, b 0.75) over the chunk bodies of that one ISIN, no embeddings, no model, no paid call.
+Topic terms are `dims.topic` when the decomposer named one, else the question's own words
+(stopwords, month names and bare numbers dropped). A term in more than 10% of the company's
+chunks names no topic and is not required; a passage must match at least 60% of the topical
+terms **and** at least one term specific to that company's filings, or the part is a typed
+refusal — unrelated text never fills the slot. Every quote is a contiguous substring of its
+chunk `body` (verified on the 2 Nov run: 33/33). Each value carries `doc_id`, `page_no`,
+`known_at`; the SQL cut is `substr(known_at,1,10) <= as_of`, and a blank `as_of` uses
+`run.DEFAULT_AS_OF` (`2026-10-19`). The chunk store is read through the fourth read-only
+connection `run.Stores.chunks` (`REALITY_CHUNKS_V3`); no chunks store means a typed refusal.
+
+The bank run prints how many distinct questions each returned passage serves (the last
+prototype let two rows answer eight questions): on the 2 Nov three-company run 26 passages were
+returned, 23 served one question and 3 served two, maximum two.
+
+Code: `reality_engine/query/v4/load_fact.py`, `passages.py`, `execute.py`, `run.py`,
+`render.py`. Check: `reality_engine/tests/test_proto3_wiring.py` (contract-failing NIM 90 not
+loaded; the passing row answers `fin.nim` and not `fin.npa`; a row and a passage after `as_of`
+are both excluded; exact quotes; a no-match refusal; the KEC loader's `known_at` and second
+run).
 
 ## D.2 Special engines (each small, each a stored table)
 
