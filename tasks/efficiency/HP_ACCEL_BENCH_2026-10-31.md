@@ -528,12 +528,13 @@ job finish. Both fixed in the driver; a wave now reports `problems` if a job has
 answer.
 ## 11. Snapdragon OCR engines — Windows AI, Qualcomm EasyOCR, baseline (2026-10-31)
 
-**Measured answer: neither hardware-specific engine beats the current pipeline; the
-best deployable change is Windows' own `Windows.Media.Ocr`, which is CPU-only but
-4× faster and much better on figures.** The Windows App SDK `TextRecognizer` is the
-API Microsoft intends for this NPU, but on this build it is gated: an unpackaged
-process gets `E_ACCESSDENIED` at `GetReadyState()` before any image is touched, and a
-loose MSIX with `systemAIModels` could not be made to start. Qualcomm's AI Hub
+**Measured answer (updated 2026-11-01): the Windows App SDK `TextRecognizer` is
+the most accurate engine measured and it now runs from a signed MSIX; Windows'
+`Windows.Media.Ocr` remains the fastest (CPU, 186.7 pages/min).** The earlier
+"gated" result in §11.2 was superseded on 2026-11-01 — **the engine runs from a
+signed MSIX launched in the interactive session (scheduled task `/IT`)**; on the
+larger 2,387-page sample its best setting reaches table-number
+recall/precision 0.9728/0.9761. Qualcomm's AI Hub
 EasyOCR *does* run on the NPU (both graphs) under `onnxruntime-qnn`, but its
 pre-exported detector/recogniser pair, decoded with the numpy CRAFT post-processing
 available here, scores 0.291 and runs at 1.5 pages/min — 30× slower than the
@@ -559,7 +560,12 @@ normalisation. 17 letters, 2 statutory annexures, 1 presentation page.
 | **Windows.Media.Ocr** | CPU | **186.7** | **0.6703** | **0.8782** | **0.9640** | **0.6802** | 0.4217 | **0.9983** |
 | Windows.Media.Ocr, lines sorted by bbox | CPU | 186.7 | 0.7072 | 0.8782 | 0.9640 | — | — | — |
 | Qualcomm AI Hub EasyOCR | NPU+CPU | 1.49 | 0.2910 | 0.2809 | 0.3601 | 0.2907 | 0.2811 | 0.3162 |
-| Windows AI `TextRecognizer` | (NPU) | — | — | — | — | — | — | — |
+| Windows AI `TextRecognizer` (signed MSIX) | NPU | not measured on these 20 pages | — | — | — | — | — | — | — |
+
+The `TextRecognizer` line is deliberately blank here: it was not scored on this
+20-page set.  On the larger 1,300-page sample it reaches table-number recall
+0.9728 / precision 0.9761 (300 DPI + grayscale) at 126 pages/min;
+`tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md` has the lever table and test rows.
 
 Scanned pages: no text layer, so scored on the ten pages with hand-read key numbers
 from §10.6 (key-number recall) and on output volume:
@@ -578,43 +584,36 @@ i.e. the classic CPU OCR. The QNN sessions also run with
 `session.disable_cpu_ep_fallback=1`, so a graph that did not compile on HTP would
 fail rather than silently fall back.
 
-### 11.2 Windows App SDK `TextRecognizer` — present but gated
+### 11.2 Windows App SDK `TextRecognizer` — runs from a signed MSIX
 
-The API is **not** in `Microsoft.Windows.AI.Text` on this build (that winmd has
-`LanguageModel`, `TextRewriter`, `TextSummarizer`, `TextToTableConverter`). It is
-`Microsoft.Windows.AI.Imaging.TextRecognizer` in the installed Windows App SDK 1.8
-runtime (`8000.836.2153.0`): `GetReadyState` / `EnsureReadyAsync` / `CreateAsync`,
-`RecognizeTextFromImageAsync(ImageBuffer)`, returning `RecognizedText` with
-`Lines` and `TextAngle`; `ImageBuffer.CreateForSoftwareBitmap` is the input path.
+**Current state (2026-11-01): it runs.**  The API is
+`Microsoft.Windows.AI.Imaging.TextRecognizer` in the installed Windows App SDK
+1.8 runtime (`8000.836.2153.0`): `GetReadyState` / `EnsureReadyAsync` /
+`CreateAsync`, `RecognizeTextFromImageAsync(ImageBuffer)`, returning
+`RecognizedText` with `Lines`, `TextAngle`.  A **signed** MSIX installed with
+`Add-AppxPackage` and launched through its execution alias **in the interactive
+session by a scheduled task with `/IT`** gets package identity, reports
+`ready_state=Ready`, and recognises images.
 
-A C# helper (built with .NET 8.0.427 against `Microsoft.WindowsAppSDK`
-1.8.260921001, `Microsoft.Windows.AI.Imaging.Projection.dll`) starts, resolves the
-types and then gets, before any image:
+The earlier result stands for what it tested: an **unpackaged** process gets
+`E_ACCESSDENIED` at `GetReadyState` before any image, and a **loose
+(unregistered, unsigned) MSIX** could not be made to start.  Those four launch
+shapes are the historical record.  The missing piece was a properly signed
+package plus an interactive-session launch, not a capability the API lacks.
 
-```
-ready_state: System.UnauthorizedAccessException: Access is denied.
-   at ABI.Microsoft.Windows.AI.Imaging.ITextRecognizerStaticsMethods.GetReadyState(...)
-```
+What the working run measures (full method and levers in
+`tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md`):
 
-That is E_ACCESSDENIED from the AI capability check (`AICapabilities.dll`,
-`WindowsUdk.AI.PlatformCapabilities`), not a missing model. Four launch shapes were
-tried:
-
-1. **Unpackaged exe** (the brief's question): `Package.Current` invalid, then
-   `E_ACCESSDENIED` at `GetReadyState`. **It does not run from an unpackaged app.**
-2. **Loose MSIX, developer mode**, `runFullTrust` + `systemAIModels`,
-   `uap10:RuntimeBehavior="win32App"`, execution alias: registration succeeds
-   (`RETextRecBench 1.0.0.3`), but direct launch still has no identity, the alias
-   exits `0x80070032` before `Main`, and Explorer activation creates a process and
-   AppContainer that are destroyed within the same second without reaching `Main`.
-3. `Invoke-CommandInDesktopPackage`: no process.
-4. Same helper on the shell: no process.
-
-So no image was ever recognised, no NPU evidence exists, and the engine is **not
-scored**. The honest conclusion is that Windows AI OCR needs a properly signed
-packaged app with package identity and the `systemAIModels` capability; the loose
-MSIX route used here is not enough on 26H2. The unpackaged answer is definitive:
-E_ACCESSDENIED.
+* 300 DPI + grayscale, defaults: tune rank 0.9680, table-number
+  recall/precision 0.9728/0.9761, table words 0.9819/0.9776, prose numbers
+  0.9924/0.9138, 126.1 OCR pages/min, 0 failed pages.
+* 200 DPI no clean-up baseline: rank 0.9640, numbers 0.9645/0.9766,
+  words 0.9786/0.9787, 149.5 pages/min.
+* Word-level `MatchConfidence` is usable (1.51% of 13,297 number tokens wrong);
+  `TextAngle` is 0 on every page and `RecognizedLineStyle` is `Handwritten` on
+  every printed line, so those two fields carry no signal on filings.
+* 400 DPI throws `NullReferenceException` on 10667×6000 px pages; 300 DPI
+  (8001×4500) is the practical ceiling on this box.
 
 ### 11.3 Qualcomm AI Hub EasyOCR — runs on the NPU, loses on speed and accuracy
 
@@ -651,15 +650,20 @@ For the 1,073-file job EasyOCR is therefore a non-starter on time alone: at
 
 ### 11.4 Recommendation for the 1,073 scanned files
 
-Use **`Windows.Media.Ocr` as the first pass**, not the NPU pipeline:
+Use **`Windows.Media.Ocr` as the first pass** for speed, and
+**`TextRecognizer` (300 DPI grayscale) where the figures matter**: it is 1.5×
+slower than MediaOcr but its exact-number accuracy is the best measured
+(table numbers 0.9728/0.9761; 0.8131 of scanned XBRL facts found vs 0.8103 for
+the 200 DPI baseline).  The current NPU pipeline stays last here.
 
 - **Time:** 171–187 pages/min measured ⇒ 13,300 pages in **~1.2–1.3 h**; allow
   **~1.5 h** once the 90°/270° retry is added. The current NPU baseline is
   38.6–43.9 pages/min ⇒ **5.0–5.7 h**. EasyOCR: ~150 h, rejected.
 - **Accuracy:** on the pages with truth, 0.670 plain / **0.878 order-free** /
   **0.964 exact-number recall** (baseline: 0.667 / 0.624 / 0.754). On the scanned
-  key numbers, 0.625 vs the baseline's 0.486. It is the only engine whose figure
-  recall is usable for filings, which is the point of the exercise.
+  key numbers, 0.625 vs the baseline's 0.486. Among the three engines in this
+  section it is the only one whose figure recall is usable for filings;
+  `TextRecognizer` now leads it (table-number recall 0.9728 on the larger set).
 - **Two fixes are mandatory, both already in `hp_ocr_check.py`:** retry 90°/270°
   when a page yields <40 characters (MediaOcr produced garbage on the rotated GMR
   page, where the baseline recovers it), and sort the returned lines by their
@@ -689,16 +693,24 @@ python -m reality_engine.scripts.hp_ocr_bench --engine easyocr --mode textlayer 
 python -m reality_engine.scripts.hp_ocr_bench --engine qnn  --mode scanned --list C:\RE\pages30.txt --base C:\RE\raw\pilot60_history --keys C:\RE\bench\scanned_keys.json --limit 20 --out C:\RE\bench\out
 python -m reality_engine.scripts.hp_ocr_bench --engine media --mode scanned --list C:\RE\pages30.txt --base C:\RE\raw\pilot60_history --keys C:\RE\bench\scanned_keys.json --limit 20 --out C:\RE\bench\out
 
-# Windows App SDK TextRecognizer helper (source in the job dir, not committed)
-dotnet publish -c Release -o pkg            # Microsoft.WindowsAppSDK 1.8.260921001
-Add-AppxPackage -Register pkg\AppxManifest.xml        # loose MSIX, systemAIModels
+# Windows App SDK TextRecognizer helper: source is now committed at
+# reality_engine/tools/textrec/, and it must be a signed MSIX launched in the
+# interactive session.  Full build/run/cleanup steps:
+# tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md
+C:\RE\dotnet\dotnet.exe publish reality_engine\tools\textrec\textrec.csproj -c Release -r win-arm64
+makeappx pack /d pkg /p textrec.msix /o
+signtool sign /fd SHA256 /a /f rebench.pfx /p <password> textrec.msix
+Add-AppxPackage -Path textrec.msix -ForceUpdateFromAnyVersion
 ```
 
-### 11.6 Still open
+### 11.6 Status and still open
 
-- `TextRecognizer` needs a signed MSIX (or a Store identity) before it will answer;
-  the capability gate, not the NPU, is what blocked it. A signed build is the next
-  experiment, and it should also expose whether the API reports an NPU device.
+- `TextRecognizer` runs from a signed MSIX launched in the interactive session
+  (`/IT` scheduled task through the execution alias): see
+  `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md` for the tune table, frozen
+  settings and the rebuild/cleanup steps.  `ImageScaler` is still blocked
+  (`COMException: Package dependency criteria could not be resolved`) and the
+  2.0 `TextRecognizerOptions` geometry modes are no-ops on this build.
 - EasyOCR's real accuracy needs `cv2`/`pyclipper` CRAFT decoding. Neither has a
   win_arm64 cp314 wheel today; an x64-emulated Python or a small C++ box decoder
   would be needed. Given 1.49 pages/min, even a large accuracy gain does not change

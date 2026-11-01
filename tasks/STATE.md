@@ -1,4 +1,4 @@
-# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-10-31 16:10 IST (Wolf)
+# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-11-01 16:00 IST (HP)
 
 Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or the stores, then fix the wrong one.
 
@@ -38,7 +38,7 @@ The contract count measures answer shape, not truth, and fell because stale and 
 - Rubric scoring is not usable (8 of 40 agreement). Premise audit: 219 of 2,098 instances provably false. `tasks/pilot60/PREMISE_AUDIT_2026-10-31.jsonl`.
 - near_high operator: 4 right, 1 partial, 1 wrong of 6. `tasks/arch_v4/STUDY_OPERATOR_TEST_2026-10-31.md`.
 - Scope: 945 of 1,073 parents name a stock outside the pilot, 450 names. `tasks/arch_v4/SCOPE_OPTIONS_2026-10-31.md`. Shivam has said no re-scope.
-- OCR: Windows.Media.Ocr on the HP CPU, 186.7 pages/min, number recall 0.964. Running the 1,073 files is Shivam's call.
+- OCR on the HP: `Windows.Media.Ocr` is 186.7 pages/min at 0.964 number recall on the 20-page set. **The Windows App SDK `TextRecognizer` now runs from a signed MSIX in the interactive session (`/IT` task): best is 300 DPI + grayscale, tune rank 0.9680, table numbers 0.9728/0.9761, 126.1 pages/min, 0.8131 scanned-XBRL recall; 200 DPI baseline 0.9640. Test rows: 1,826 per setting, 0 missing, 0 failed (`C:\RE\ocr_large\rows\{base200,gray300}`).** `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md`.
 
 ## Never
 Copy keys into files or print them. Send `Manual Dumps/` to the HP or any model, or put amounts in the repo or decision log. Loosen a grader to raise a score. Push without Shivam's OK. Spend DeepInfra or use paid models without his OK. Change the bank's instances, labels or scope without his ruling.
