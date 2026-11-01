@@ -8,9 +8,10 @@
 
 Pilot session, next, in order (the doc session is separate; coordinate on main):
 1. T-035 extraction finished 04:2x IST: `.tmp/proto3/extract_t035.db`, 830 calls, 0 errors, 1,476 checked or unchecked numbers, est. $2.09, DeepSeek at low effort. Number check: 783 confirmed, 222 disputed, 471 unchecked (456 are XBRL rows with no page). In a sample of 12 disputes the number was on neither reading of the cited page, so suspect a wrong page from multi-page chunks before suspecting misreads: test that first. Then `proto3 recheck` on it; `load_fact --extract` it into a copy of the fact store (`.tmp/proto3/v4`); `run_proto3_bank.py`; Claude grades by reading. `order_book_contract`, `supply_link` and `company_debt_mix` returned almost no rows: check why.
-2. T-044 worker `20261101T224005Z-22f89c1a`, branch unmerged, reviewed; fix before merge: list RUNNING and STALLED first regardless of time, and drop reviewed failed jobs. Then attach `job_watch status` to a hook on every prompt (project `.claude/settings.json`). Message the doc session before merging.
-3. Drop the Workers sheet from `reality_engine/scripts/rule_ledger.py`: `reality_engine/scripts/worker_review.py` covers it. On every worker finish add its row to `tasks/efficiency/worker_reviews.jsonl`, then `worker_review build`.
-4. Ask Shivam for the Console Usage screenshot to compare with `tasks/ledgers/spend.jsonl`, and for acceptance of T-042, T-043; T-034, T-037, T-038, T-040 after the grade.
+2. Drop the Workers sheet from `reality_engine/scripts/rule_ledger.py`: `reality_engine/scripts/worker_review.py` covers it. On every worker finish add its row to `tasks/efficiency/worker_reviews.jsonl`, then `worker_review build`.
+3. Ask Shivam for the Console Usage screenshot to compare with `tasks/ledgers/spend.jsonl`, and for acceptance of T-042, T-043; T-034, T-037, T-038, T-040 after the grade.
+
+T-044 is merged: `job_watch status` runs on every prompt through `.claude/settings.json`.
 
 ## Running
 No pilot job or worker. T-045 doc review runs in its own session.

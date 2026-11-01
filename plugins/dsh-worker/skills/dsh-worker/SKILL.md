@@ -165,7 +165,8 @@ the repo has moved on, and do not paste its contents into briefs.
 - `cancel_worker` — destructive; requires `confirm=true`. It validates the
   recorded supervisor PID and kernel creation time before killing the owned
   process tree. Never kill by image name.
-- `list_workers` — compact by default: up to 5 persisted jobs, newest first, one
+- `list_workers` — compact by default: up to 5 persisted jobs, running first then
+  newest started, one
   `{job_id, phase, line}` each; `workspace` narrows to the repository root or a
   registered worktree. Pass `verbose=true` for the full rows: one-line
   `summary`, `owner_session`, `last_steerer`, worktree branch, paths and the

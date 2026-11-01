@@ -434,7 +434,8 @@ def cancel_worker(
 @server.tool(
     name="list_workers",
     description=(
-        "List persisted jobs (default 5, newest first), optionally filtered to "
+        "List persisted jobs (default 5, running first then newest started), "
+        "optionally filtered to "
         "one workspace: one short line each (job_id, phase, latest digest or "
         "summary). verbose=true returns the full rows with owner session, "
         "steerer, worktree branch, paths and digest fields. Read-only."
