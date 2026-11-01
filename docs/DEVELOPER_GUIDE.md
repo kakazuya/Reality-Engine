@@ -184,12 +184,12 @@ Both scripts print an `ALL CHECKS PASSED` block and are idempotent. Read peers b
 `peer_graph.neighbours(conn, "TITAGARH")` — every row carries similarity, coverage, shared
 families, the anchor's baseline (so `lift` is interpretable) and the features that drove the match.
 
-### I. Pilot extraction: write contracts, whole-page recall (T-016) and page OCR (T-034)
+### I. Pilot extraction: write contracts, whole-page recall (T-016), page OCR (T-034) and the number check (T-040)
 
 The pilot-60 extraction stores 16 measure tables (`reality_engine.pilot.extract60.TABLES`).
 Code: `reality_engine/contracts.py` (the contracts), `reality_engine/pilot/extract60.py` (selection,
-prompts, the single write path), `reality_engine/pilot/proto3.py` (the dry run),
-`reality_engine/tests/test_contracts.py` (acceptance checks).
+prompts, the single write path), `reality_engine/pilot/proto3.py` (the dry run and the T-040
+re-read), `reality_engine/tests/test_contracts.py` (acceptance checks).
 Each measure now has a typed contract in `reality_engine/contracts.py`: allowed unit, numeric
 range, and the words its own quote must print within 60 characters of the number. The number
 must be in the quote; a digit that only appears inside a label (`Q4` read as 4.0) is rejected.
@@ -240,25 +240,30 @@ nothing. `REALITY_OCR_OVERLAY` overrides the path; an empty value disables the o
 - `why="thin"` means that PDF page has under 400 characters of text layer (measured on the
   three companies' 2,107 deck pages, 2026-11-02: every one of the 352 pages under 200
   characters sits inside a multi-page chunk, so thinness is a page property, not a chunk
-  length). Such a row is always applied: `load_store` adds a one-page chunk
-  `ocr:{doc_id}:{page}` with `section="ocr"`, `text_source="ocr"`, the real page and
-  `doc_id`, and `low_conf_numbers`. An existing chunk's body is never replaced or
-  edited, single-page or multi-page.
+  length). Such a row is applied as a one-page chunk `ocr:{doc_id}:{page}` with
+  `section="ocr"`, `text_source="ocr"`, the real page and `doc_id`, and
+  `low_conf_numbers` — unless its OCR text is blank or its row carries an `error` (T-040:
+  a failed page is no reading, and the number check marks its rows `unchecked`).
+  An existing chunk's body is never replaced or edited, single-page or multi-page.
 - `why="layer_check"` never changes what extraction reads; the numbers in the row's
   `existing_text` and in its OCR text are compared in both directions and logged per
   document in `OCR_STATS["per_doc"][doc_id]["numbers_only_in_text"]` /
   `["numbers_only_in_ocr"]`. Reading `existing_text` from the row means the check works
-  for pages inside multi-page chunks too.
+  for pages inside multi-page chunks too. An errored row is not compared at all.
 - A row without a valid `why` is counted in `OCR_STATS["pages"]["bad_rows"]` and not
   applied; a thin row whose `sha256` matches no document is counted in
   `["thin_unmatched"]`. `THIN_PAGE_CHARS` / `REALITY_OCR_THIN_CHARS` are gone —
-  `thin_pages.py` decides thinness.
+  `thin_pages.py` decides thinness. `load_ocr_pages` keeps every row, including a blank
+  text and an `error` row (they used to vanish, which made the number check report a
+  missing page as if it had never been read); `apply_ocr_overlay` is what skips them.
 - Every chunk carries `text_source` (`chunk` or `ocr`). The selector sends every whole
-  page whole — a number-dense chunk or a T-034 OCR chunk — in page order, so an added OCR
-  chunk reaches the reader even with empty `tags` and `section="ocr"`. `validate` sets
-  `source = 'ocr'` when the matched passage is the OCR chunk, and keeps `chunks_v3` when
-  the quote is found only in the original chunk (including a multi-page chunk covering
-  the same page).
+  page whole in page order, so an added OCR chunk reaches the reader even with empty
+  `tags` and `section="ocr"`. T-040 rule: an OCR chunk is whole only when its text holds
+  at least 2 distinct numbers (section dividers print 0 or 1 — 210 of the first 572 thin
+  pages — and take the ordinary keyword path); a `chunks_v3` chunk stays whole on the
+  number-density rule. `validate` sets `source = 'ocr'` when the matched passage is the
+  OCR chunk, and keeps `chunks_v3` when the quote is found only in the original chunk
+  (including a multi-page chunk covering the same page).
 - `build` prints the overlay summary and stores `OCR_STATS` in `extract_run.notes`;
   `proto3 dryrun` reports the same figures in `ocr_overlay` per company and doc type —
   thin rows applied and unmatched, layer-check pages compared, numbers only in the text
@@ -268,8 +273,69 @@ nothing. `REALITY_OCR_OVERLAY` overrides the path; an empty value disables the o
 ```bash
 # Page OCR overlay fixtures: thin page inside a two-page chunk, reader selection and
 # page order, OCR and chunks_v3 quote sources, layer-check numbers both ways, a row
-# without why, a missing file, a thin row unmatched to a document (8 passed)
+# without why, a missing file, a thin row unmatched to a document, and the T-040
+# whole-page rule (1 distinct number is not whole, 2 are) (10 passed)
 python -m pytest reality_engine/tests/test_ocr_overlay.py -q
+```
+
+#### Number check: confirmed, disputed or unchecked (T-040)
+
+Shivam's ruling (2 Nov): neither the PDF text layer nor the OCR reading is trusted alone,
+so every written number carries the verdict of both. T-034 only compared numbers on
+`layer_check` pages and logged the differences; T-040 compares each extracted number's
+own printed token at write time and records it in a table. Known text-layer faults it
+must catch: a Tata Elxsi page prints `0055.19` where the PDF shows `10,056.19` (the
+digits are a broken glyph run, not a value), and another page's font encoding yields
+`D00349` (not a number at all, so it is absent from both number sets).
+
+- Table `number_check` in the extract DB (DDL in `extract60.py`; additive, none of the
+  16 measure tables gains a column): `table_name`, `row_pk` (the measure row's primary
+  key as text — all 16 tables are `WITHOUT ROWID`, so there is no rowid), `doc_id`,
+  `page`, `printed_token`, `in_text_layer`, `in_ocr`, `quote_source`,
+  `ocr_mean_confidence`, `in_low_conf`, `other_token`, `status`, `reason`,
+  `resolved_value`, `resolved_by`.
+- The token is the one the row's own value came from, found in the row's quote through
+  the validator's matcher (`printed_tokens`, shared with `numbers_in`/`value_in`, so the
+  same regex and the same 2% tolerance apply). It is compared, normalised with
+  `_page_numbers` (`1,000` and `1000` are one reading), against that page's
+  `existing_text` (text layer) and `text` (OCR). `confirmed` when both carry it;
+  `disputed` when only one or neither does, including a blank OCR text with no error;
+  `unchecked` with a `reason` of `no_value`, `no_page`, `no_ocr_row`, `ocr_error` or
+  `no_printed_token`. `other_token` is the other source's reading of the same number —
+  a similarity pick, not a binding: it can only become `resolved_value` if a re-read
+  equals it exactly.
+- `_write` is still the only path that stores a measure row: after `contracts.check`
+  accepts it, the same call records the verdict. Rows already stored are not rewritten
+  (`INSERT OR IGNORE` → `rowcount == 0`), so re-running `build` keeps a resolution.
+  `repair` deletes and re-inserts the measured rows and therefore recomputes the
+  verdicts: run `recheck` again afterwards. No measure row is ever edited by the check.
+- `python -m reality_engine.pilot.proto3 recheck` re-reads each `disputed` row with the
+  existing RapidOCR engine on the MSI CPU (no model call, no network, no GPU): it renders
+  the PDF page from the doc's `raw_path`, locates `printed_token` with PyMuPDF
+  `search_for`, crops it with a 12 pt margin at 600 DPI and OCRs the crop; a token it
+  cannot locate falls back to the whole page at 400 DPI. The row resolves only when the
+  re-read equals exactly one of the two candidates (then `resolved_value` and
+  `resolved_by='rapidocr_crop'`); otherwise it stays `disputed`. It prints counts by
+  status and by which source won (the quote's own reading or the other one) and writes
+  `.tmp/proto3/recheck.json`. It edits only a copy under `.tmp` —
+  `REALITY_RECHECK_DB`, or a `REALITY_EXTRACT_DB` that points under `.tmp`, else
+  `.tmp/pilot60/extract_pilot60.db` — and refuses the live store.
+- `proto3 dryrun` gains a `number_check` block: counts by status per company and doc
+  type (joined to the doc by `doc_id`), totals, and the `unchecked` rows split by
+  `reason`. `{"present": false}` when the DB predates the table.
+
+```bash
+# Number-check fixtures: both readings confirmed; 10,056.19 vs 0055.19 disputed from
+# either quote source; 1,000 == 1000; no row and an errored row unchecked; blank OCR
+# disputed; write path stores the verdict and leaves the measure row alone; the dry-run
+# block's counts; recheck resolves on an exact candidate and stays disputed otherwise
+# (15 passed, engine stubbed)
+python -m pytest reality_engine/tests/test_number_check.py -q
+# The four pilot acceptance files together (71 passed, 6 skipped: artifact tests need a built DB)
+python -m pytest reality_engine/tests/test_number_check.py reality_engine/tests/test_ocr_overlay.py \
+    reality_engine/tests/test_contracts.py reality_engine/tests/test_extraction_pilot60.py -q
+# Disputed numbers re-read on an enlarged crop (free CPU OCR; needs the DB under .tmp)
+python -m reality_engine.pilot.proto3 recheck
 ```
 
 ## 3. Ticket tracker

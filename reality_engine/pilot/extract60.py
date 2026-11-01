@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures as cf
+import difflib
 import gzip
 import hashlib
 import json
@@ -92,6 +93,9 @@ OCR_REASONS = ("thin", "layer_check")
 #: Statistics of the last ``load_store`` call (thin rows applied/unmatched,
 #: layer-check pages and the numbers that differ, bad rows, token change).
 OCR_STATS: dict = {}
+#: T-040: the last overlay's ``sha256 -> page -> row`` map, so every written number can
+#: be compared with its own page's text layer and OCR reading at write time.
+OCR_PAGES: dict[str, dict[int, dict]] = {}
 #: proto3 scope: only these ISINs, only documents first known on/after SINCE.
 SCOPE_ISINS = tuple(x.strip() for x in os.environ.get("REALITY_EXTRACT_ISINS", "").split(",")
                     if x.strip())
@@ -107,6 +111,32 @@ TABLES = ["company_operating_metrics", "company_segment_pnl", "company_cost_stru
 CODE_TABLES = ("balance_sheet_lines", "cash_flow_lines", "tax_reconciliation")
 #: Tables whose blocker the deterministic announcement pass can close on its own.
 REGEX_TABLES = ("rating_action", "order_intake", "company_price_revision")
+#: Primary key columns per measure table (T-040 keys ``number_check`` on them; every
+#: measure table is ``WITHOUT ROWID``, so there is no rowid to point at).  proto3's
+#: Arm-A membership reads the same map.
+PKS = {
+    "company_segment_pnl": ("isin", "segment", "period_end", "metric", "basis"),
+    "company_operating_metrics": ("isin", "period_end", "metric"),
+    "company_cost_structure": ("isin", "period_end", "basis", "input_key"),
+    "company_debt_mix": ("isin", "period_end", "bucket"),
+    "company_capacity_utilisation": ("isin", "period_end", "product"),
+    "capex_project": ("isin", "project", "announced_on"),
+    "order_intake": ("isin", "period_end"),
+    "order_book_contract": ("isin", "contract_id"),
+    "company_price_revision": ("isin", "announced_on", "product", "source_doc_id"),
+    "rating_action": ("isin", "action_date", "agency", "instrument"),
+    "supply_link": ("src_isin", "dst_isin", "relation"),
+    "balance_sheet_lines": ("isin", "period_end", "basis", "line_item"),
+    "cash_flow_lines": ("isin", "period_end", "basis", "line_item"),
+    "tax_reconciliation": ("isin", "period_end", "basis", "item"),
+    "lender_metrics": ("isin", "period_end", "metric"),
+    "unit_volume": ("isin", "period_end", "product"),
+}
+#: Numeric columns the contracts do not declare as a measure (the two text-fact tables
+#: and the optional supply-link share): the number check still marks them when printed.
+FALLBACK_VALUE_FIELDS = ("revision_pct", "amount_cr", "share_of_cost_pct")
+#: T-040 verdicts.  ``unchecked`` is not a verdict: the row could not be read twice.
+NUMBER_STATUSES = ("confirmed", "disputed", "unchecked")
 
 
 # --------------------------------------------------------------------------- paths
@@ -171,30 +201,52 @@ _TO_CRORE = {"crore": 1.0, "cr": 1.0, "lakh": 0.01, "lac": 0.01, "million": 0.1,
              "mn": 0.1, "billion": 100.0, "bn": 100.0, "thousand": 0.001}
 
 
-def numbers_in(text: str) -> list[float]:
-    """Numbers in the passage, with an explicit money suffix converted to Rs crore."""
-    out = []
+def printed_tokens(text: str) -> list[tuple[str, float]]:
+    """``(as printed, Rs crore value)`` for every number, in reading order.
+
+    The one number matcher: ``numbers_in``, ``value_in`` and the T-040 number check
+    all read numbers through it, so "the token the row's value came from" is decided
+    by the same regex and the same 2% tolerance the validator accepts.
+    """
+    out: list[tuple[str, float]] = []
     # "Rs.1537" puts a dot right before the digits, which the number regex rejects as a
     # decimal/fraction boundary; drop the currency prefix before scanning.
-    text = re.sub(r"(?:Rs\.?|INR|₹)\s*", " ", text or "", flags=re.I)
-    for match in _NUM.finditer(text):
+    body = re.sub(r"(?:Rs\.?|INR|₹)\s*", " ", text or "", flags=re.I)
+    for match in _NUM.finditer(body):
         try:
             found = float(match.group(1).replace(",", ""))
         except ValueError:
             continue
         factor = _TO_CRORE.get((match.group(2) or "").strip().lower())
-        out.append(found if factor is None else found * factor)
+        out.append((match.group(1), found if factor is None else found * factor))
     return out
+
+
+def numbers_in(text: str) -> list[float]:
+    """Numbers in the passage, with an explicit money suffix converted to Rs crore."""
+    return [value for _printed, value in printed_tokens(text)]
+
+
+def same_number(found: float, value: float, tol: float = 0.02) -> bool:
+    """The validator's own equality: 2% tolerance, at least 0.011."""
+    return abs(found - value) <= max(abs(value) * tol, 0.011)
 
 
 def value_in(text: str, value: float, tol: float = 0.02) -> bool:
     """The number appears in the passage (2% tolerance for rounding)."""
     if value is None:
         return True
-    for found in numbers_in(text):
-        if abs(found - value) <= max(abs(value) * tol, 0.011):
-            return True
-    return False
+    return any(same_number(found, value, tol) for _printed, found in printed_tokens(text))
+
+
+def printed_token(text: str, value: float, tol: float = 0.02) -> str | None:
+    """The token as printed for ``value``, under the same match ``value_in`` accepts."""
+    if value is None:
+        return None
+    for printed, found in printed_tokens(text):
+        if same_number(found, value, tol):
+            return printed
+    return None
 
 
 def as_float(value: Any) -> float | None:
@@ -359,6 +411,18 @@ CREATE TABLE IF NOT EXISTS extract_recall (
 -- Resumability: a table's model pass is marked done after its commit.
 CREATE TABLE IF NOT EXISTS extract_done (
     table_name TEXT PRIMARY KEY, docs INTEGER, rows INTEGER, done_at TEXT) WITHOUT ROWID;
+-- T-040: one verdict per written number, keyed to the measure row's primary key.
+-- ``printed_token`` is the token the validator read the value from (its own quote);
+-- ``in_text_layer`` / ``in_ocr`` say which readings carry it.  ``other_token`` is the
+-- other source's reading of the same number (the candidate a re-read must equal exactly
+-- before ``resolved_value`` / ``resolved_by`` are set).  ``reason`` explains an
+-- ``unchecked`` row; the measure row itself is never edited by this table.
+CREATE TABLE IF NOT EXISTS number_check (
+    table_name TEXT NOT NULL, row_pk TEXT NOT NULL, doc_id TEXT, page INTEGER,
+    printed_token TEXT, in_text_layer INTEGER, in_ocr INTEGER, quote_source TEXT,
+    ocr_mean_confidence REAL, in_low_conf INTEGER, other_token TEXT,
+    status TEXT NOT NULL, reason TEXT, resolved_value TEXT, resolved_by TEXT,
+    PRIMARY KEY (table_name, row_pk)) WITHOUT ROWID;
 """
 
 
@@ -709,7 +773,10 @@ def load_ocr_pages(path: Path) -> dict[str, dict[int, dict]]:
                 continue
             sha = _sha256(row.get("sha256"))
             page = as_page(row.get("page"))
-            if sha and page and str(row.get("text") or "").strip():
+            # T-040 keeps every row, including a blank text or an ``error`` row: the
+            # number check must see that the page was read and failed, not that it was
+            # missing.  The thin-chunk path skips both (``apply_ocr_overlay``).
+            if sha and page:
                 pages[sha][int(page)] = row
     return dict(pages)
 
@@ -739,6 +806,7 @@ def apply_ocr_overlay(docs: dict[str, dict], chunks: list[dict],
     Returns the run's statistics (``load_store`` assigns them to ``OCR_STATS``).
     """
     overlay = ocr_overlay_path() if path is None else path
+    OCR_PAGES.clear()
     stats: dict = {"path": str(overlay) if overlay else None, "present": False,
                    "pages": Counter(), "per_company_doc_type": {}, "per_doc": {},
                    "input_token_delta": 0}
@@ -747,6 +815,7 @@ def apply_ocr_overlay(docs: dict[str, dict], chunks: list[dict],
     page_rows = load_ocr_pages(Path(overlay))
     if not page_rows:
         return stats
+    OCR_PAGES.update(page_rows)
     stats["present"] = True
     chunks_by_doc: dict[str, list[dict]] = defaultdict(list)
     for chunk in chunks:
@@ -774,6 +843,10 @@ def apply_ocr_overlay(docs: dict[str, dict], chunks: list[dict],
                 doc_stat["bad_rows"] += 1
                 continue
             text = str(row.get("text") or "").strip()
+            if row.get("error"):
+                # T-040: an errored page is no reading at all — it joins neither the
+                # layer-check diff nor the chunk list; number_check marks it unchecked.
+                continue
             if why == "layer_check":
                 have = _page_numbers(str(row.get("existing_text") or ""))
                 got = _page_numbers(text)
@@ -871,8 +944,121 @@ def is_number_dense(chunk: dict) -> bool:
 
 
 def is_whole_page(chunk: dict) -> bool:
-    """A page the reader gets whole: number-dense, or a T-034 thin-page OCR chunk."""
-    return chunk.get("text_source") == "ocr" or is_number_dense(chunk)
+    """A page the reader gets whole: number-dense, or an OCR chunk printing 2+ numbers.
+
+    T-040: an OCR chunk only goes whole when its text carries at least two distinct
+    numbers.  Section dividers print 0 or 1 (210 of the first 572 thin pages) and would
+    otherwise spend the reader's budget on a page with nothing to extract; those take
+    the ordinary keyword path instead.
+    """
+    if chunk.get("text_source") == "ocr":
+        return len(_page_numbers(chunk.get("body") or "")) >= 2
+    return is_number_dense(chunk)
+
+
+# --------------------------------------------------------------------------- number check
+def _norm_token(printed: str | None) -> str:
+    """The token in ``_page_numbers`` form, so "1,000" and "1000" compare equal."""
+    return next(iter(_page_numbers(printed or "")), "")
+
+
+def _value_field(table: str, row: dict) -> tuple[str, float] | tuple[None, None]:
+    """The stored number whose printed token the row's evidence quote carries."""
+    contract = contracts.CONTRACTS.get(table)
+    if contract is not None and contract.measures:
+        key = str(row.get(contract.key_field) or "").strip().lower() if contract.key_field else ""
+        measures = ([contract.measures[key]] if contract.vocab and key in contract.measures
+                    else list(contract.measures.values()))
+        for measure in measures:
+            value = as_float(row.get(measure.field))
+            if value is not None:
+                return measure.field, value
+    for field in FALLBACK_VALUE_FIELDS:
+        value = as_float(row.get(field))
+        if value is not None:
+            return field, value
+    return None, None
+
+
+def row_pk(table: str, row: dict) -> str:
+    """The measure row's primary key as text: every measure table is ``WITHOUT ROWID``."""
+    return "|".join(f"{column}={row.get(column)}" for column in PKS.get(table, ()))
+
+
+def other_reading(token: str, text: str) -> str | None:
+    """The other source's reading of the same number: its most similar printed token.
+
+    ponytail: a similarity pick, not an identity match.  A wrong pick cannot confirm
+    anything — ``proto3 recheck`` resolves only when the crop's re-read equals the
+    candidate exactly, so a bad guess leaves the row disputed.
+    """
+    options = [(norm, printed) for printed, norm in
+               ((printed, _norm_token(printed)) for printed, _v in printed_tokens(text)) if norm]
+    if not options:
+        return None
+    return max(options,
+               key=lambda item: difflib.SequenceMatcher(None, token, item[0]).ratio())[1]
+
+
+def number_check_row(table: str, row: dict, sha: str | None,
+                     page_rows: dict | None = None) -> dict:
+    """Mark the quote's printed token against the page's two independent readings.
+
+    ``existing_text`` is that page's PDF text layer and ``text`` its OCR reading, both
+    from the HP overlay row.  ``confirmed`` when both carry the token, ``disputed`` when
+    only one or neither does, ``unchecked`` when the row has no number, no page, no
+    overlay row for that page, or that row failed (``reason`` names which).  A blank OCR
+    text with no error is a reading that lacks the number, so it is disputed.
+    """
+    field, value = _value_field(table, row)
+    quote = str(row.get("quote") or row.get("evidence_quote") or "")
+    token = printed_token(quote, value) if value is not None else None
+    page = as_page(row.get("page"))
+    out = {"table_name": table, "row_pk": row_pk(table, row),
+           "doc_id": row.get("doc_id") or row.get("source_doc_id"),
+           "page": None if page is None else int(page), "printed_token": token,
+           "in_text_layer": None, "in_ocr": None, "quote_source": row.get("source"),
+           "ocr_mean_confidence": None, "in_low_conf": None, "other_token": None,
+           "status": "unchecked", "reason": None, "resolved_value": None,
+           "resolved_by": None}
+    if not field:
+        return {**out, "reason": "no_value"}
+    if page is None:
+        return {**out, "reason": "no_page"}
+    ocr = ((OCR_PAGES if page_rows is None else page_rows).get(sha or "") or {}).get(int(page))
+    if ocr is None:
+        return {**out, "reason": "no_ocr_row"}
+    if ocr.get("error"):
+        return {**out, "reason": "ocr_error"}
+    if not token:
+        return {**out, "reason": "no_printed_token"}
+    text_layer = _page_numbers(str(ocr.get("existing_text") or ""))
+    ocr_raw = str(ocr.get("text") or "")
+    in_ocr_text = _page_numbers(ocr_raw)
+    token_norm = _norm_token(token)
+    in_text, in_ocr = token_norm in text_layer, token_norm in in_ocr_text
+    low = " ".join(str(item) for item in (ocr.get("low_conf_numbers") or []))
+    out.update({"in_text_layer": int(in_text), "in_ocr": int(in_ocr),
+                "ocr_mean_confidence": ocr.get("mean_confidence"),
+                "in_low_conf": int(token_norm in _page_numbers(low)),
+                "other_token": None if (in_text and in_ocr)
+                else other_reading(token_norm, ocr_raw if not in_ocr
+                                   else str(ocr.get("existing_text") or ""))})
+    return {**out, "status": "confirmed" if (in_text and in_ocr) else "disputed"}
+
+
+def _write_number_check(con: sqlite3.Connection, table: str, row: dict,
+                        docs: dict | None) -> None:
+    """T-040: one verdict per written number.  The measure row is never touched."""
+    doc = (docs or {}).get(row.get("doc_id") or "") or {}
+    check = number_check_row(table, row, _sha256(doc.get("sha256")))
+    con.execute(
+        "INSERT OR REPLACE INTO number_check (table_name, row_pk, doc_id, page, "
+        "printed_token, in_text_layer, in_ocr, quote_source, ocr_mean_confidence, "
+        "in_low_conf, other_token, status, reason, resolved_value, resolved_by) VALUES "
+        "(:table_name,:row_pk,:doc_id,:page,:printed_token,:in_text_layer,:in_ocr,"
+        ":quote_source,:ocr_mean_confidence,:in_low_conf,:other_token,:status,:reason,"
+        ":resolved_value,:resolved_by)", check)
 
 
 def select_passages(spec: dict, doc: dict, chunks: list[dict]) -> list[dict]:
@@ -1832,7 +2018,7 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
                          for row in rows])
         selection_counts[table] = len(rows)
         # 1a. Arm A deterministic fill (XBRL statement lines + plain text-layer tables)
-        _write(con, table, by_code.get(table) or [], inserted, rejected)
+        _write(con, table, by_code.get(table) or [], inserted, rejected, docs)
         # 1b. deterministic regex subset (announcement headlines + text)
         regex_fn = REGEX_PASS.get(table)
         regex_rows = []
@@ -1842,7 +2028,7 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
                 for row in candidates:
                     row["_table"] = table
                     regex_rows.append(row)
-        _write(con, table, regex_rows, inserted, rejected)
+        _write(con, table, regex_rows, inserted, rejected, docs)
         # 2. model pass over the selected passages (only adds rows; never displaces Arm A)
         if no_model or not (reader and reader.available):
             _arm_row(con, table, before, started, reader, calls0, in0, out0, cost0,
@@ -1882,7 +2068,7 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
                     print(f"  {table}: {done}/{len(futures)} docs, {len(model_rows)} rows, "
                           f"{reader.calls} calls, {reader.in_tok} in-tok, "
                           f"{round(reader.cost, 3)} USD", flush=True)
-        _write(con, table, model_rows, inserted, rejected)
+        _write(con, table, model_rows, inserted, rejected, docs)
         con.executemany(
             "INSERT INTO extract_call (table_name, doc_id, model, prompt_chars, pages_sent, "
             "in_tok, out_tok, cost_usd, ok, error, ms, ran_at) "
@@ -1971,8 +2157,13 @@ def _arm_row(con: sqlite3.Connection, table: str, before: int, started: float,
 
 
 def _write(con: sqlite3.Connection, table: str, rows: list[dict],
-           inserted: Counter, rejected: Counter) -> None:
-    """The only INSERT path for a measure table; every row passes the contract first."""
+           inserted: Counter, rejected: Counter, docs: dict | None = None) -> None:
+    """The only INSERT path for a measure table; every row passes the contract first.
+
+    A row that lands also gets its T-040 ``number_check`` verdict (keyed on the measure
+    row's primary key); a row already stored is left alone, so a re-run never wipes a
+    ``recheck`` resolution.
+    """
     sql = INSERT_SQL[table]
     for row in rows:
         if "__reject__" in row:
@@ -1991,8 +2182,10 @@ def _write(con: sqlite3.Connection, table: str, rows: list[dict],
             continue
         params = {k: v for k, v in row.items() if not k.startswith("_") and f":{k}" in sql}
         try:
-            con.execute(sql, params)
+            cursor = con.execute(sql, params)
             inserted[table] += 1
+            if cursor.rowcount:
+                _write_number_check(con, table, row, docs)
         except sqlite3.Error as exc:
             rejected[f"{table}:insert:{str(exc)[:60]}"] += 1
             con.execute("INSERT INTO extract_reject VALUES (?,?,?,?)",
@@ -2402,7 +2595,7 @@ def repair(db_path: Path | None = None) -> dict:
                 con.execute("INSERT INTO extract_reject VALUES (?,?,?,?)",
                             (table, doc_id, f"repair:{reason}", json.dumps(row)[:4000]))
         con.execute(f"DELETE FROM {table}")
-        _write(con, table, kept, inserted, rejected)
+        _write(con, table, kept, inserted, rejected, docs)
         out["kept"][table] = inserted[table]
         out["dropped"][table] = len(rows) - inserted[table]
     # Deterministic rows: the announcement regex pass, then the held BSE rating feed.
@@ -2410,7 +2603,7 @@ def repair(db_path: Path | None = None) -> dict:
         inserted, rejected = Counter(), Counter()
         rows = [row for doc_id, doc in docs.items()
                 for row in REGEX_PASS[table](doc, chunks_by_doc.get(doc_id) or [])]
-        _write(con, table, rows, inserted, rejected)
+        _write(con, table, rows, inserted, rejected, docs)
         out["regex"][table] = inserted[table]
     inserted, rejected = Counter(), Counter()
     out["regex"]["rating_action_bse_feed"] = _announcement_rating_pass(con, inserted, rejected)
