@@ -9,7 +9,13 @@
 // smaller than the image width, the coordinates live in a smaller space.
 //
 // Runs only as a signed MSIX with package identity (see pkg/AppxManifest.xml);
-// launch it from the interactive session, e.g. a scheduled task with /IT.
+// the only thing that needs the interactive session is the engine, so the
+// scheduled task logs on interactively.  The executable itself is built as a
+// GUI-subsystem WinExe (both csproj files), so it never creates a console
+// window and never takes focus.  With no console, every line it used to print
+// goes to %LOCALAPPDATA%\RETextRecBench\status.log, and the run writes the
+// <out>.done sentinel on every exit path: a failed run carries "error" and a
+// nonzero exit code, a per-image failure an "error" row.
 //
 // Build variants:
 //   textrec.csproj                 Windows App SDK 1.8 (the baseline build)
@@ -35,11 +41,36 @@ using Windows.Storage.Streams;
 internal static class Program
 {
     private static string _logPath;
+    private static string _outPath;
+    private static int _rowsWritten;
+    private static int _rowErrors;
 
     private static void Note(string message)
     {
+        if (_logPath == null) return;
         try { File.AppendAllText(_logPath, $"{DateTime.Now:HH:mm:ss.fff} {message}\n"); }
         catch { /* logging must never kill the run */ }
+    }
+
+    /// <summary>Write the &lt;out&gt;.done sentinel; the driver waits on this file.</summary>
+    private static void WriteDone(Dictionary<string, object> payload)
+    {
+        if (string.IsNullOrEmpty(_outPath)) return;
+        try { File.WriteAllText(_outPath + ".done", JsonSerializer.Serialize(payload)); }
+        catch (Exception ex) { Note("done write failed: " + ex.GetType().Name + ": " + ex.Message); }
+    }
+
+    /// <summary>A failed run: log it, leave an "error" in .done, exit nonzero.</summary>
+    private static int Fail(int code, string message)
+    {
+        Note("FAILED " + message);
+        WriteDone(new Dictionary<string, object>
+        {
+            ["rows"] = _rowsWritten,
+            ["errors"] = _rowErrors,
+            ["error"] = message,
+        });
+        return code;
     }
 
     private sealed class Item
@@ -70,6 +101,27 @@ internal static class Program
 
     private static async Task<int> Main(string[] args)
     {
+        try
+        {
+            return await Run(args);
+        }
+        catch (Exception ex)
+        {
+            // No console, so never let an unhandled exception reach a Windows
+            // error dialog: log it, leave it in .done, exit nonzero.
+            Note("FATAL " + ex.GetType().Name + ": " + ex.Message);
+            WriteDone(new Dictionary<string, object>
+            {
+                ["rows"] = _rowsWritten,
+                ["errors"] = _rowErrors,
+                ["error"] = ex.GetType().Name + ": " + ex.Message,
+            });
+            return 1;
+        }
+    }
+
+    private static async Task<int> Run(string[] args)
+    {
         var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "RETextRecBench");
@@ -87,6 +139,7 @@ internal static class Program
             else if (args[i] == "--options") options = args[i + 1];
             else if (args[i] == "--timeout") int.TryParse(args[i + 1], out timeoutSeconds);
         }
+        _outPath = outPath;
 
         try
         {
@@ -106,7 +159,7 @@ internal static class Program
         catch (Exception ex)
         {
             Note("GetReadyState FAILED " + ex.GetType().Name + ": " + ex.Message);
-            return 3;
+            return Fail(3, "GetReadyState failed: " + ex.GetType().Name + ": " + ex.Message);
         }
         if (state != AIFeatureReadyState.Ready)
         {
@@ -124,9 +177,8 @@ internal static class Program
 
         if (manifest == null || outPath == null)
         {
-            Console.Error.WriteLine(
-                "usage: textrec --manifest list.txt --out rows.jsonl [--scale N] [--options k=v;...]");
-            return 2;
+            return Fail(2, "usage: textrec --manifest list.txt --out rows.jsonl "
+                           + "[--scale N] [--options k=v;...]");
         }
 
         var items = File.ReadAllLines(manifest)
@@ -316,14 +368,19 @@ internal static class Program
                 }));
                 writer.Flush();
                 rowCount++;
-                Console.WriteLine($"{Path.GetFileName(item.Path)} {watch.Elapsed.TotalSeconds:F2}s "
-                                  + $"lines={lineRows.Count} chars={text.Length} {error}");
+                _rowsWritten = rowCount;
+                if (error != null) _rowErrors++;
+                Note($"{Path.GetFileName(item.Path)} {watch.Elapsed.TotalSeconds:F2}s "
+                     + $"lines={lineRows.Count} chars={text.Length} {error}");
             }
         }
 
         var done = new Dictionary<string, object>
         {
             ["rows"] = rowCount,
+            ["errors"] = _rowErrors,
+            ["error"] = _rowErrors == 0 ? null
+                : $"{_rowErrors} of {rowCount} images failed; see the error rows and status.log",
             ["seconds"] = Math.Round(runStarted.Elapsed.TotalSeconds, 3),
             ["ready_state"] = state.ToString(),
             ["modules"] = modules,
@@ -331,7 +388,7 @@ internal static class Program
             ["scaler"] = scalerNote,
             ["options"] = options,
         };
-        File.WriteAllText(outPath + ".done", JsonSerializer.Serialize(done));
+        WriteDone(done);
         Note("done " + JsonSerializer.Serialize(done));
         return 0;
     }

@@ -7,6 +7,14 @@ manifest, registers/starts the ``RETextRecBench`` scheduled task (interactive
 logon token, action = the package execution alias), waits for the helper's
 ``<out>.done`` sentinel and reads the JSONL rows back.
 
+Headless rule (Shivam, 1 Nov 2026): nothing may reach the HP screen.  The helper
+is a GUI-subsystem WinExe, and ``start_batch`` reads the PE header of the
+*installed package's* EXE and refuses to launch unless the subsystem is GUI (2),
+so a bad build cannot put a console window on the screen.  The scheduled task is
+registered hidden and its action is never a ``.cmd`` or ``.ps1``.  A failed run
+leaves an ``error`` field in ``<out>.done`` and a nonzero task exit code, which
+``wait_done`` raises here.
+
 This module is the experiment driver, not the engine helper:
 
 * ``run`` renders a split (``tune`` or ``test``) at one DPI with one clean-up
@@ -27,6 +35,7 @@ import argparse
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 import time
@@ -38,8 +47,12 @@ WORK = ROOT / "work"
 ROWS = ROOT / "rows"
 SCORER = ROOT / "score_large.py"
 TASK = "RETextRecBench"
+PACKAGE = "RETextRecBench"
+EXE = "textrec.exe"
 ALIAS = Path(os.environ.get("LOCALAPPDATA", r"C:\Users\zen7s\AppData\Local")) / \
     "Microsoft" / "WindowsApps" / "textrec.exe"
+# IMAGE_OPTIONAL_HEADER.Subsystem, same offset in PE32 and PE32+.
+PE_GUI_SUBSYSTEM = 2
 
 
 def _current_user() -> str:
@@ -245,43 +258,120 @@ def _powershell(script: str) -> subprocess.CompletedProcess:
         capture_output=True, text=True, check=False)
 
 
+def pe_subsystem(path: Path) -> int:
+    """IMAGE_OPTIONAL_HEADER.Subsystem of a PE file: 2 = GUI, 3 = console."""
+    with open(path, "rb") as handle:
+        if handle.read(2) != b"MZ":
+            raise ValueError(f"{path} is not a PE file (no MZ header)")
+        handle.seek(0x3C)
+        header = handle.read(4)
+        if len(header) != 4:
+            raise ValueError(f"{path} is truncated before e_lfanew")
+        pe_offset = struct.unpack("<I", header)[0]
+        handle.seek(pe_offset)
+        if handle.read(4) != b"PE\0\0":
+            raise ValueError(f"{path} has no PE signature (the WindowsApps execution "
+                             "alias is not a PE file; read the packaged EXE)")
+        handle.seek(pe_offset + 4 + 20 + 68)
+        raw = handle.read(2)
+        if len(raw) != 2:
+            raise ValueError(f"{path} is truncated before the subsystem field")
+    return struct.unpack("<H", raw)[0]
+
+
+def packaged_exe(package: str = PACKAGE, exe: str = EXE) -> Path:
+    """The installed package's own EXE, not the WindowsApps execution alias."""
+    script = (f"$p = Get-AppxPackage -Name '{package}' | Select-Object -First 1; "
+              f"if ($p) {{ Join-Path $p.InstallLocation '{exe}' }}")
+    path = _powershell(script).stdout.strip()
+    if not path:
+        raise RuntimeError(f"package {package} is not installed; build and install it first")
+    return Path(path)
+
+
+def assert_gui_subsystem(exe: Path) -> int:
+    """Refuse to launch an EXE that could allocate a console window."""
+    subsystem = pe_subsystem(exe)
+    if subsystem != PE_GUI_SUBSYSTEM:
+        raise RuntimeError(
+            f"{exe} has PE subsystem {subsystem}, not GUI ({PE_GUI_SUBSYSTEM}): "
+            "refusing to launch it in the interactive session (it would show a window)")
+    return subsystem
+
+
+def interactive_task_script(alias: Path, args: str, task: str, user: str) -> str:
+    """The only place that puts anything into the interactive session.
+
+    TextRecognizer needs the logged-on user's session, so this task logs on
+    interactively.  It must never show a window: the action is the packaged
+    GUI-subsystem EXE (its PE header is checked before this is called), never a
+    ``.cmd``/``.ps1``/console program, and the task is registered hidden.
+    """
+    return (
+        "$ErrorActionPreference='Stop'; "
+        f"$a=New-ScheduledTaskAction -Execute '{alias}' -Argument '{args}'; "
+        f"$p=New-ScheduledTaskPrincipal -UserId '{user}' -LogonType Interactive -RunLevel Highest; "
+        "$s=New-ScheduledTaskSettingsSet -Hidden -AllowStartIfOnBatteries "
+        "-DontStopIfGoingOnBatteries; "
+        f"Register-ScheduledTask -TaskName '{task}' -Action $a -Principal $p -Settings $s "
+        "-Force | Out-Null; "
+        f"Start-ScheduledTask -TaskName '{task}'")
+
+
 def start_batch(manifest: Path, out: Path, alias: Path = ALIAS, task: str = TASK,
-                scale: int = 0, options: str | None = None) -> None:
+                scale: int = 0, options: str | None = None,
+                exe: Path | None = None, package: str = PACKAGE) -> None:
+    exe = Path(exe) if exe else packaged_exe(package)
+    assert_gui_subsystem(exe)
     args = f'--manifest "{manifest}" --out "{out}"'
     if scale:
         args += f" --scale {scale}"
     if options:
         args += f" --options \"{options}\""
-    script = (
-        "$ErrorActionPreference='Stop'; "
-        f"$a=New-ScheduledTaskAction -Execute '{alias}' -Argument '{args}'; "
-        f"$p=New-ScheduledTaskPrincipal -UserId '{USER}' -LogonType Interactive -RunLevel Highest; "
-        f"Register-ScheduledTask -TaskName '{task}' -Action $a -Principal $p -Force | Out-Null; "
-        f"Start-ScheduledTask -TaskName '{task}'")
-    result = _powershell(script)
+    result = _powershell(interactive_task_script(alias, args, task, USER))
     if result.returncode != 0:
         raise RuntimeError("task launch failed: " + result.stderr[-800:])
 
 
-def wait_done(out: Path, timeout: float) -> dict:
+def _task_diagnosis(task: str) -> str:
+    """Why a batch left no sentinel: the task exit code and the helper log tail."""
+    bits = []
+    info = _powershell(f"(Get-ScheduledTaskInfo -TaskName '{task}').LastTaskResult")
+    if info.stdout.strip():
+        bits.append(f"task {task} LastTaskResult={info.stdout.strip()}")
+    log = Path(os.environ.get("LOCALAPPDATA", ".")) / "RETextRecBench" / "status.log"
+    try:
+        tail = log.read_text(encoding="utf-8", errors="replace").splitlines()[-5:]
+    except OSError:
+        tail = []
+    if tail:
+        bits.append("status.log: " + " | ".join(tail))
+    return (" [" + "; ".join(bits) + "]") if bits else ""
+
+
+def wait_done(out: Path, timeout: float, task: str = TASK) -> dict:
     done = Path(str(out) + ".done")
     deadline = time.time() + timeout
     while time.time() < deadline:
         if done.exists():
             try:
-                return json.loads(done.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
+                payload = json.loads(done.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
                 time.sleep(0.5)
                 continue
+            if payload.get("error"):
+                raise RuntimeError(f"helper failed: {payload['error']}")
+            return payload
         time.sleep(1.0)
-    raise TimeoutError(f"no {done} after {timeout:.0f}s")
+    raise TimeoutError(f"no {done} after {timeout:.0f}s" + _task_diagnosis(task))
 
 
 def run_entries(name: str, entries: list[dict], scale: int = 0,
                 options: str | None = None, batch: int = 200,
                 timeout_per_page: float = 8.0, alias: Path = ALIAS,
                 task: str = TASK, key_field: str = "image",
-                retries: int = 2) -> list[dict]:
+                retries: int = 2, exe: Path | None = None,
+                package: str = PACKAGE) -> list[dict]:
     """Run the packaged helper over entries (each needs 'id' and key_field).
 
     TextRecognizer returns a sporadic NullReferenceException on a small share of
@@ -306,15 +396,17 @@ def run_entries(name: str, entries: list[dict], scale: int = 0,
             for entry in chunk) + "\n", encoding="utf-8")
         for path in (out, Path(str(out) + ".done")):
             path.unlink(missing_ok=True)
-        start_batch(manifest, out, alias=alias, task=task, scale=scale, options=options)
-        done = wait_done(out, timeout=max(300.0, len(chunk) * timeout_per_page))
+        start_batch(manifest, out, alias=alias, task=task, scale=scale,
+                    options=options, exe=exe, package=package)
+        done = wait_done(out, timeout=max(300.0, len(chunk) * timeout_per_page), task=task)
         got = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()
                if line.strip()]
         if len(got) != len(chunk):
             raise RuntimeError(f"{name} {tag}: {len(got)} rows for {len(chunk)} images")
         meta["batches"].append({"images": len(chunk), "seconds": done.get("seconds"),
                                 "scale": done.get("scale"), "scaler": done.get("scaler"),
-                                "modules": done.get("modules")})
+                                "modules": done.get("modules"),
+                                "errors": done.get("errors")})
         return got
 
     for index in range(0, len(entries), batch):
@@ -731,7 +823,9 @@ def command_run(args) -> int:
                                             for t in tiles],
                                 scale=args.scale, options=args.options,
                                 alias=Path(args.alias) if args.alias else ALIAS,
-                                task=args.task, key_field="image")
+                                task=args.task, key_field="image",
+                                exe=Path(args.exe) if args.exe else None,
+                                package=args.package)
         rows = merge_tiles(tile_rows, tile_meta, page_entries)
         # keep the tile geometry next to the result
         (folder / "tiles.json").write_text(json.dumps(tiles, indent=2), encoding="utf-8")
@@ -741,7 +835,9 @@ def command_run(args) -> int:
         rows = run_entries(args.name, entries, scale=args.scale,
                            options=args.options,
                            alias=Path(args.alias) if args.alias else ALIAS,
-                           task=args.task, batch=args.batch)
+                           task=args.task, batch=args.batch,
+                           exe=Path(args.exe) if args.exe else None,
+                           package=args.package)
     write_rows(args.name, rows)
     meta = {"name": args.name, "split": args.split, "dpi": args.dpi,
             "variant": args.variant, "tile": bool(args.tile), "scale": args.scale,
@@ -782,12 +878,16 @@ def command_test(args) -> int:
         page_entries = {entry["key"]: entry for entry in entries}
         tile_rows = run_entries(f"test_{args.setting}",
                                 [{"id": t["tile"], "image": t["path"]} for t in tiles],
-                                scale=args.scale, options=args.options)
+                                scale=args.scale, options=args.options,
+                                exe=Path(args.exe) if args.exe else None,
+                                package=args.package)
         rows = merge_tiles(tile_rows, tile_meta, page_entries)
     else:
         entries = render_pages(entries, args.dpi, args.variant, folder / "images", force=True)
         rows = run_entries(f"test_{args.setting}", entries, scale=args.scale,
-                           options=args.options)
+                           options=args.options,
+                           exe=Path(args.exe) if args.exe else None,
+                           package=args.package)
     out = ROWS / args.setting
     out.mkdir(parents=True, exist_ok=True)
     (out / "test.jsonl").write_text("\n".join(
@@ -825,7 +925,9 @@ def command_scan_check(args) -> int:
     gray = np.asarray(image.convert("L"))
     dark = float((gray < 200).mean())
     entry = {"id": f"{doc['pdf']}#{args.page}", "path": str(path), "key": "scan"}
-    rows = run_entries("scan_check", [entry], batch=1, key_field="path")
+    rows = run_entries("scan_check", [entry], batch=1, key_field="path",
+                       exe=Path(args.exe) if args.exe else None,
+                       package=args.package)
     row = rows[0]
     report = {"pdf": doc["pdf"], "page": args.page, "image": str(path),
               "image_size": list(image.size), "dark_share": round(dark, 4),
@@ -853,6 +955,9 @@ def main() -> int:
     run.add_argument("--options", default=None)
     run.add_argument("--alias", default=None)
     run.add_argument("--task", default=TASK)
+    run.add_argument("--exe", default=None,
+                     help="packaged EXE to PE-check (default: resolve the installed package)")
+    run.add_argument("--package", default=PACKAGE)
     run.add_argument("--limit", type=int, default=0)
     run.add_argument("--batch", type=int, default=200)
     run.add_argument("--force", action="store_true")
@@ -874,11 +979,16 @@ def main() -> int:
     test.add_argument("--tile", action="store_true")
     test.add_argument("--scale", type=int, default=0)
     test.add_argument("--options", default=None)
+    test.add_argument("--exe", default=None,
+                      help="packaged EXE to PE-check (default: resolve the installed package)")
+    test.add_argument("--package", default=PACKAGE)
     test.set_defaults(func=command_test)
 
     check = sub.add_parser("scan-check")
     check.add_argument("--page", type=int, default=0)
     check.add_argument("--dpi", type=int, default=300)
+    check.add_argument("--exe", default=None)
+    check.add_argument("--package", default=PACKAGE)
     check.set_defaults(func=command_scan_check)
 
     args = parser.parse_args()

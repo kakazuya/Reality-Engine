@@ -153,8 +153,12 @@ def build_run_script(name: str, command: str, method: str = "schtasks") -> str:
         ]
     elif method == "wmi":
         lines += [
+            # hidden start-up info: a detached run.cmd must not pop a console
+            # window if this is ever launched from the interactive session
+            '$si = Get-CimClass -ClassName Win32_ProcessStartup | New-CimInstance -ClientOnly',
+            '$si.ShowWindow = [uint16]0',
             '$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create '
-            f'-Arguments @{{ CommandLine = "cmd /c `"$d\\run.cmd`"" }}',
+            f'-Arguments @{{ CommandLine = "cmd /c `"$d\\run.cmd`""; ProcessStartupInformation = $si }}',
             "if ($r.ReturnValue -ne 0) { throw \"WMI create failed: $($r.ReturnValue)\" }",
             '[IO.File]::WriteAllText("$d\\pid.txt", "$($r.ProcessId)")',
             '"method=wmi pid=$($r.ProcessId)"',

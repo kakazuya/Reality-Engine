@@ -14,9 +14,12 @@ Four of the five clean-up levers made accuracy worse or flat; grayscale is the
 only keeper.
 
 The engine **does run here** from a signed MSIX with package identity, launched
-in the interactive session by a scheduled task with `/IT` (execution alias).  An
-unpackaged process still gets `E_ACCESSDENIED`; that is the earlier doc's result,
-not this one.
+in the interactive session by a scheduled task (execution alias): the engine
+needs the logged-on user's session, nothing else does.  An unpackaged process
+still gets `E_ACCESSDENIED`; that is the earlier doc's result, not this one.
+**From the headless fix (Section 14) the helper is a GUI-subsystem `WinExe` and
+the task is registered hidden**, so the interactive logon no longer puts a
+console window on the screen.
 
 Two settings are frozen (Section 9): the baseline `base200` and the tuned
 `gray300`.  The test rows are in `C:\RE\ocr_large\rows\<setting>\`.
@@ -33,9 +36,12 @@ Two settings are frozen (Section 9): the baseline `base200` and the tuned
   one row; scanned filings contribute every page, id `<pdf>#<page>`.
 * OCR: the packaged helper (`reality_engine/tools/textrec/`) reads a manifest of
   PNGs and writes one JSON row per image.  It is started by
-  `Register-ScheduledTask -LogonType Interactive` (the `/IT` equivalent) with the
-  package execution alias as the action; the driver waits for `<out>.done`.
-  One NPU process at a time.
+  `Register-ScheduledTask -LogonType Interactive` with the package execution
+  alias as the action, from the one helper
+  `hp_ocr_large.interactive_task_script()`; the driver waits for `<out>.done`.
+  One NPU process at a time.  (From the headless fix, Section 14: the action is
+  a GUI-subsystem EXE whose PE header the driver checks first, and the task is
+  registered hidden.)
 * Batches: 200 images normally (25 for adaptive B&W after the hang described in
   Section 5).  Failed rows are re-run in a fresh process up to 2 times; the
   frozen test batches use the same rule.  A per-image 120 s timeout was added
@@ -286,7 +292,8 @@ keys are not on this machine) and were not re-run with another setting.
 
 ## 11. Rebuild the signed package
 
-Working directory below: `C:\RE\jobs\hp-20261101T140451-175638\repo`.  The .NET 8
+Working directory below: the checkout you are editing (the headless run used
+`C:\RE\jobs\hp-20261101T172002-15e0f2\repo`).  The .NET 8
 SDK is at `C:\RE\dotnet\dotnet.exe`; the Windows SDK build tools are at
 `C:\RE\bench\sdkbuildtools\bin\10.0.26100.0\arm64\{makeappx,signtool}.exe`.
 
@@ -311,13 +318,15 @@ Import-Certificate -FilePath <build>\rebench.cer -CertStoreLocation Cert:\LocalM
 & signtool sign /fd SHA256 /a /f <build>\rebench.pfx /p reb-2026 <build>\textrec.msix
 Add-AppxPackage -Path <build>\textrec.msix -ForceUpdateFromAnyVersion
 
-# 4. run a batch in the interactive session (the only way the engine answers)
-$alias = "$env:LOCALAPPDATA\Microsoft\WindowsApps\textrec.exe"
-$a = New-ScheduledTaskAction -Execute $alias -Argument '--manifest <m> --out <out>'
-$p = New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$env:USERNAME" -LogonType Interactive -RunLevel Highest
-Register-ScheduledTask -TaskName RETextRecBench -Action $a -Principal $p -Force
-Start-ScheduledTask -TaskName RETextRecBench
-# wait for <out>.done
+# 4. PE-check, then run a batch in the interactive session (the only way the
+#    engine answers).  The driver does both; shown here so nobody runs a console
+#    build by hand.
+python -m reality_engine.scripts.hp_ocr_large run --name smoke --split test `
+  --only digital --dpi 300 --variant gray --limit 20
+# It resolves the installed package's EXE, refuses a non-GUI one (PE subsystem
+# != 2), registers RETextRecBench hidden with the interactive logon the engine
+# requires, starts it and waits for <out>.done.  Progress is in
+# %LOCALAPPDATA%\RETextRecBench\status.log, because the helper has no console.
 ```
 
 The 2.0 experimental package uses the same certificate and
@@ -344,8 +353,10 @@ added after a 13-minute hang); 1.0.0.9 lacked it.
 
 * `reality_engine/tools/textrec/Program.cs` — helper: word rows (`MatchConfidence`,
   box), line style/`style_confidence`, `TextAngle`, image/box extent, JSON
-  manifest ids, `--scale`, `--options`, per-image timeout, `<out>.done`.
-* `reality_engine/tools/textrec/textrec.csproj` — 1.8 build.
+  manifest ids, `--scale`, `--options`, per-image timeout, `<out>.done`; now a
+  console-free GUI subsystem, so every line it printed goes to `status.log`, and
+  `.done` plus a nonzero exit code carry a failure.
+* `reality_engine/tools/textrec/textrec.csproj` — 1.8 build, `OutputType=WinExe`.
 * `reality_engine/tools/textrec/pkg/AppxManifest.xml` — 1.8 identity/capabilities.
 * `reality_engine/tools/textrec/experimental/textrec20.csproj` — 2.0 experimental
   build (`TEXTREG_OPTIONS`).
@@ -354,13 +365,34 @@ added after a 13-minute hang); 1.0.0.9 lacked it.
 * `reality_engine/tools/textrec/README.md` — source layout and run notes.
 * `reality_engine/scripts/hp_ocr_large.py` — driver: render/variants/tiles,
   scheduled-task launch, retries/timeout, scoring, confidence and flag reports,
-  test publisher.
+  test publisher; the one interactive-task helper (`interactive_task_script()`,
+  hidden settings), the PE subsystem guard, and `.done` error raising.
+* `reality_engine/tools/textrec/probe/probe.csproj`,
+  `reality_engine/tools/textrec/probe/HeadlessProbe.cs` — windowless evidence
+  probe run in session 1 (foreground window, every `WS_VISIBLE` watched window,
+  session process table at 100 ms).
+* `reality_engine/tools/textrec/probe/summarise.py` — the acceptance counts from
+  a probe log.
+* `reality_engine/scripts/hp_run.py`, `reality_engine/scripts/hp_worker.py` — the
+  WMI detach now passes hidden start-up info (`Win32_ProcessStartup.ShowWindow=0`).
+* `plugins/dsh-worker/server/supervisor.py` — same hidden start-up info for the
+  detached supervisor.
+* `reality_engine/tests/test_hp_headless.py` — the guard: `WinExe` projects, no
+  interactive task outside the one helper, hidden `Start-Process`/WMI, and the
+  driver's PE check.  No HP and no build needed.
 
 Earlier helper at `C:\RE\bench\textrec\` is left in place for reference; the repo
 copy is now the source of truth and the only copy without binaries.
 
 ## 13. Cleanup and open problems
 
+* **Headless-run cleanup (1 Nov, Section 14), confirmed by command:**
+  `RETextRecBench` uninstalled (0 packages), the `RETextRecBench` and
+  `RETextRecProbe` tasks unregistered (0 tasks), the test certificate
+  (thumbprint `746E613EDC0129ED897ABCB5DB207ED3D7309EAA`) removed from
+  `Cert:\LocalMachine\Root`, `Cert:\LocalMachine\TrustedPeople` and
+  `Cert:\CurrentUser\My` (0 in each), PFX/CER deleted and the WindowsApps alias
+  gone.  `C:\RE\ocr_large\rows` still holds only `base200` and `gray300`.
 * MSIX packages and the test certificate **were removed after the runs**: both
   `RETextRecBench` (1.0.1.0) and `RETextRecBench20` were uninstalled, the PFX/CER
   deleted, and the self-signed certificate (thumbprint
@@ -379,3 +411,100 @@ copy is now the source of truth and the only copy without binaries.
   have no per-page truth on this machine, so their confidence is untested.
 * The totals flag needs a table model; the current arithmetic check has 0 true
   catches and 15 false alarms.
+
+## 14. Headless fix (Shivam's ruling, 1 Nov 2026): nothing on the screen
+
+**The ruling.** No work may come onto the HP laptop's screen: it distracts the
+person using the laptop and takes keyboard focus.  All HP work runs headless.
+`textrec.exe` was a console program started in the interactive session by a
+scheduled task, so every batch opened a console window.  The same job that
+produced this doc built it that way; this section is the fix and its proof.
+
+### 14.1 Audit: every way HP work could reach the interactive session
+
+| launcher | where | session | can it show a window? | fix |
+|---|---|---|---|---|
+| `interactive_task_script()` — `New-ScheduledTaskAction` (execution alias) + `New-ScheduledTaskPrincipal -LogonType Interactive` + `Register-ScheduledTask` + `Start-ScheduledTask` | `hp_ocr_large.py` | 1 — the engine requires it | **Yes**: the action was a console-subsystem `textrec.exe`, so every batch opened a console window and could take focus | `OutputType=WinExe` in both csproj files; the driver reads the *installed* EXE's PE header and refuses subsystem ≠ 2 before every launch; the task is registered `-Hidden`; this is now the only place that starts an interactive task; all console output moved to `status.log` + `.done` |
+| `schtasks /Create /TR <job>\run.cmd /RU SYSTEM` | `hp_run.py` | 0 (SYSTEM) | No: service session, no interactive token; the wrapper writes `job.log` | unchanged; the guard now refuses any `schtasks /Create` that is not `/RU SYSTEM` |
+| WMI `Win32_Process.Create "cmd /c run.cmd"` | `hp_run.py`, `hp_worker.py`, `plugins/dsh-worker/server/supervisor.py` | the caller's (0 over SSH; 1 if started from the desktop) | **Yes if the caller is in session 1**: no window hint was passed | hidden start-up info: `Win32_ProcessStartup.ShowWindow = 0` |
+| `Start-Process cmd.exe … -WindowStyle Hidden` | `hp_run.py` `--method start` | 0 over SSH | No: already a hidden window style | unchanged; the guard requires `-WindowStyle Hidden` on every `Start-Process` |
+| `RE_hpjob_surv_schtasks`, `RE_hpjob_surv_schtasks2`, `RE_hpjob_surv_start`, `RE_hpjob_surv_wmi` (existing tasks) | this machine, made by this project | 0 (SYSTEM `ServiceAccount`) | No: no interactive token, so nothing can appear on the user's desktop | audited, not changed |
+| `RETextRecProbe` (evidence only) | this run | 1 | No: `probe.exe` is a `WinExe`, PE subsystem 2 | created for the run, unregistered afterwards |
+
+No task outside `RE*`, and no task not made by this project, was changed or
+deleted.  The WindowsApps execution alias is a reparse point, not a PE file, so
+the PE check reads the packaged EXE (`(Get-AppxPackage RETextRecBench).InstallLocation\textrec.exe`).
+
+### 14.2 PE header checked before anything entered session 1
+
+```
+textrec.exe  subsystem 2 (GUI)  C:\Program Files\WindowsApps\RETextRecBench_1.0.1.0_arm64__yxzf4xjhhje0p\textrec.exe
+probe.exe    subsystem 2 (GUI)  C:\RE\ocr_large\probe\pkg\probe.exe
+```
+
+`hp_ocr_large.pe_subsystem()` / `assert_gui_subsystem()` do this; `start_batch()`
+calls the guard on every chunk, so a build that regressed to a console EXE is
+refused instead of launched.  The old (pre-fix) projects fail the same check:
+reading the earlier checkout's `reality_engine/tools/textrec` with the guard's
+csproj rule returns, for both files,
+`OutputType=Exe, want WinExe`.
+
+### 14.3 The 20-page run (gray300 render path)
+
+Command (the package was rebuilt from these sources, signed with a new
+self-signed test certificate and installed as 1.0.1.0 first):
+
+```powershell
+python -m reality_engine.scripts.hp_ocr_large run --name headless20b `
+  --split test --only digital --dpi 300 --variant gray --limit 20
+```
+
+20 pages (`D00000`–`D00020`), 20 rows, 9.98 s of OCR, driver exit 0, task
+`LastTaskResult` 0.  During the run two independent observers recorded:
+
+| observer | where | result |
+|---|---|---|
+| `probe.exe` (`WinExe`, no console) | session 1, every 100 ms | **134 samples**, 0.100–0.127 s apart (max gap **127 ms**); **0** samples with a visible window owned by textrec/conhost/cmd/powershell/pwsh/python; **0** focus changes to them; `textrec.exe` pid 15168 seen in the session process table; **no `conhost.exe` at all** in session 1 |
+| `Get-CimInstance Win32_Process -Filter "SessionId = 1"` | session 0, ~1 s | 29 polls; `textrec.exe` pid **15168**, parent **4008**, command line the alias with `--manifest … --out …`; **no** `conhost.exe`, `cmd.exe`, `powershell.exe`, `pwsh.exe` or `python.exe` in session 1 |
+
+Text check: the 20 rows compared against `C:\RE\ocr_large\rows\gray300\test.jsonl`
+by id — **20 compared, 0 differences** (`text` identical).
+
+**Caveat, stated rather than hidden:** the desktop was locked for the whole run
+(`LockApp.exe` in session 1, no foreground window, `visible_count` 0 in every
+sample).  "0 visible windows" is therefore measured on a locked desktop, where a
+window would also be invisible to a person.  The proof does not rest on that
+alone: (a) a GUI-subsystem process cannot allocate a console, (b) no
+`conhost.exe` existed in session 1 at any poll, and (c) the probe counts
+`WS_VISIBLE` top-level windows *without* the DWM cloak filter, so a console
+window created on a locked desktop would still have been counted.  A repeat with
+the desktop unlocked is the remaining gap.
+
+### 14.4 The check that keeps it fixed
+
+`python -m pytest reality_engine/tests/test_hp_headless.py -q` → **9 passed**.
+It needs no HP and no build, and it fails when:
+
+* any csproj under `reality_engine/tools/textrec` is not `WinExe` (the self-test
+  runs it against the old `OutputType=Exe` project and expects the failure);
+* HP launcher code (`reality_engine/scripts/hp_*.py`, `reality_engine/tools/`)
+  starts an interactive task or uses the interactive-task flag outside
+  `hp_ocr_large.interactive_task_script()`, or that helper stops applying the
+  hidden settings;
+* a `schtasks /Create` is not `/RU SYSTEM`, a `Start-Process` is not hidden, or a
+  WMI `Win32_Process.Create` passes no hidden start-up info;
+* the driver's PE guard stops rejecting a console EXE.
+
+### 14.5 What changed for the headless fix
+
+`reality_engine/tools/textrec/textrec.csproj`,
+`reality_engine/tools/textrec/experimental/textrec20.csproj` (`WinExe`),
+`reality_engine/tools/textrec/Program.cs` (console-free: log + `.done` + nonzero
+exit), `reality_engine/scripts/hp_ocr_large.py` (one hidden interactive-task
+helper, PE guard, `.done` error handling, `--exe`/`--package`),
+`reality_engine/tools/textrec/probe/{probe.csproj,HeadlessProbe.cs,summarise.py}`
+(new evidence probe), `reality_engine/scripts/hp_run.py`,
+`reality_engine/scripts/hp_worker.py`,
+`plugins/dsh-worker/server/supervisor.py` (hidden WMI start-up info),
+`reality_engine/tests/test_hp_headless.py` (new guard).  Docs:
+`reality_engine/tools/textrec/README.md`, this doc, `tasks/STATE.md`.

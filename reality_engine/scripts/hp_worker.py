@@ -532,8 +532,11 @@ def launch_script(job_id: str) -> str:
         f"$d = '{directory}'",
         'Remove-Item "$d\\exit.txt" -ErrorAction SilentlyContinue',
         'Remove-Item "$d\\pid.txt" -ErrorAction SilentlyContinue',
+        # hidden start-up info: run.cmd must not pop a console window
+        '$si = Get-CimClass -ClassName Win32_ProcessStartup | New-CimInstance -ClientOnly',
+        '$si.ShowWindow = [uint16]0',
         '$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create '
-        '-Arguments @{ CommandLine = "cmd /c `"$d\\run.cmd`"" }',
+        '-Arguments @{ CommandLine = "cmd /c `"$d\\run.cmd`""; ProcessStartupInformation = $si }',
         'if ($r.ReturnValue -ne 0) { throw "WMI create failed: $($r.ReturnValue)" }',
         '[IO.File]::WriteAllText("$d\\pid.txt", "$($r.ProcessId)")',
         '"method=wmi pid=$($r.ProcessId)"',

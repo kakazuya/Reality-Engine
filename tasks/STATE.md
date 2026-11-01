@@ -69,6 +69,7 @@ Copy keys into files or print them. Send `Manual Dumps/` to the HP or any model,
 Review by meaning; a report without `Docs updated:` is not merged. `git merge --no-ff --no-commit <branch>`, drop `PROGRESS_NOTES.md`, keep ours on `query/v4/__init__.py`, run the tests, update this file and each affected doc, commit ending `By: Wolf` and the co-author line. Copy `.tmp` DBs first, then remove the worktree and branch. Log to the decision log and `rclone copy D:\RealityEngine\plans gdrive:InfoDiffusion_archive/plans`. HP: `hp_worker fetch-patch <job>` gives branch `dsh-hp/<job>`.
 
 ## Merged in the 1 Nov clean-up
+- `dsh-hp/hp-20261101T172002-15e0f2`: all HP work runs headless: WinExe, hidden launchers, guard test.
 - `dsh-hp/hp-20261101T140451-175638`: larger TextRecognizer test: helper, driver, report.
 - `dsh-hp/hp-20261101T034935-31ca45`: named formulas and concept registry, not wired into answers.
 - `dsh-hp/hp-20261101T040329-6fce13`: all OCR methods on one page set, HP.
