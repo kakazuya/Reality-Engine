@@ -10,6 +10,7 @@ Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or
 - Outside review of this workspace, 1 Nov (outside practice vs our evidence, and a hard grade): `tasks/management/WORKSPACE_REVIEW_2026-11-01.xlsx`; one-page verdict beside it in `WORKSPACE_REVIEW_2026-11-01.md`.
 - v4 design: `tasks/arch_v4/QUERY_V4_DESIGN.md`. Review of how to reach 95%: `tasks/arch_v4/GATE95_REVIEW_2026-10-31.md`.
 - Docs: stale hand-offs, state snapshots and merged briefs moved to `tasks/archive/` on 31 Oct; the move list is `tasks/archive/README.md`. Old gate numbers (8.2%, 10.2%, 1.0%) are out of date.
+- Dead-path audit, 1 Nov: 63 backticked `reality_engine/`/`tasks/`/`plugins/` paths in live `.md` did not exist; 24 pointers were fixed in place and 39 left as generated/transient/planned (worker-context pack, runtime jobs, ledgers, planned outputs). `AGENTS.md` §4 now names the raw families on `D:\RealityEngine\raw`; its counts are dated 27-31 Oct and were not re-counted on this HP (no D: mount).
 
 ## Latest results: `tasks/MORNING_RESULTS_2026-11-01.md`
 Hidden OCR text layers on scanned PDFs can be wrong, so scores on those pages and stores built from them are suspect. Size of the problem not yet measured.

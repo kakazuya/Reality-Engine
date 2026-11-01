@@ -46,4 +46,4 @@ Sources: [DeepInfra live model metadata](https://api.deepinfra.com/models/list),
 
 Fetched GitHub and fast-forwarded main from d62ef62 to **c980314**. Local changes and untracked H01 artifacts were preserved; HEAD matches origin/main. No push or stash.
 
-Claude Desktop is installed. No Claude MCP tool is exposed to this chat, and no Claude Code CLI was found on PATH or in the standard checked CLI locations. The existing advisor route remains a dated question in `tasks/codex_tasks/ask_claude.md` relayed by Shivam. No Claude inference request was made during this check; the user reports its weekly usage is 95%.
+Claude Desktop is installed. No Claude MCP tool is exposed to this chat, and no Claude Code CLI was found on PATH or in the standard checked CLI locations. The existing advisor route remains a dated question relayed by Shivam (no committed `ask_claude.md` file exists). No Claude inference request was made during this check; the user reports its weekly usage is 95%.

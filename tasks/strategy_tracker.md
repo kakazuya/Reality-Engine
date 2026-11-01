@@ -1,7 +1,7 @@
-# Strategy Tracker — tested / results / pending / improvements (living doc)
+# Strategy Tracker — tested / results / pending / improvements (kept as killed-strategy history; last updated 2026-09-23)
 
-> Last updated: 2026-09-23 (T12 embed verdict KEEP small; SELL promotion REVOKED — see T4/T5 + next_wave_plan_2026-09-23.md §2A; promotion bar §5)
-> Rule: update this file after every strategy test (result + evidence + next). Promotion bar (revised 2026-09-23, full form in `tasks/next_wave_plan_2026-09-23.md` §5): cohort-clustered mean excess ≥ +500bps net of **measured** cost, ≥ 30 weekly cohorts across ≥ 2 index regimes, hit-rate CI lower bound > 0.5, same sign in both regimes, plus a shuffle-entry-date placebo ≈ 0. The old single-line bar ("walk-forward folds + `apply_if_improved` + net ≥ +500bps net of 50bps") was satisfied by a framing artifact — see the revocation below.
+> Last updated: 2026-09-23 (T12 embed verdict KEEP small; SELL promotion REVOKED — see T4/T5 and the 2026-09-23 next-wave plan §2A, no longer in the repo; promotion bar §5)
+> Rule: update this file after every strategy test (result + evidence + next). Promotion bar (revised 2026-09-23, full form in the 2026-09-23 next-wave plan §5, no longer in the repo): cohort-clustered mean excess ≥ +500bps net of **measured** cost, ≥ 30 weekly cohorts across ≥ 2 index regimes, hit-rate CI lower bound > 0.5, same sign in both regimes, plus a shuffle-entry-date placebo ≈ 0. The old single-line bar ("walk-forward folds + `apply_if_improved` + net ≥ +500bps net of 50bps") was satisfied by a framing artifact — see the revocation below.
 
 ## Tested strategies (with live results)
 
@@ -34,7 +34,7 @@
 
 ## Improvement backlog (subsequent tests)
 
-0. **BLOCKER — level framing.** SELL rows carry long-framed terms; `mark_to_market`'s mirrored trigger books a stop-out as a gain. Fix at the terms layer (SELL ⇒ `target < entry < stop`, mirroring the long's risk unit) + a `record_action` invariant + regression test. Then re-seed and re-run T4/T5. Full plan: `tasks/next_wave_plan_2026-09-23.md` §4 P0.
+0. **BLOCKER — level framing.** SELL rows carry long-framed terms; `mark_to_market`'s mirrored trigger books a stop-out as a gain. Fix at the terms layer (SELL ⇒ `target < entry < stop`, mirroring the long's risk unit) + a `record_action` invariant + regression test. Then re-seed and re-run T4/T5. Full plan: the 2026-09-23 next-wave plan §4 P0 (no longer in the repo).
 0b. **BLOCKER — fixed 18%/6% bracket.** All 5,139 call rows use the same bracket regardless of vol; **43/44** closed BUYs exited at `stop_loss` (median ~12 sessions), so BUY 1/44 is bracket geometry, not a lens verdict. Vol-scale per scrip (GARCH(1,1) or trailing-σ, clamped) before any horizon/lens study.
 0c. **BLOCKER — quarantine join.** `seed_track_record` has none; `move_attribution` carries **4,770** rows and `eod_scrip_calls` **7** rows on quarantined synthetic `INE_AUTO_*` masters. `portfolio_actions` is clean only incidentally. AGENTS.md §13 requires the exclusion before any inference read.
 1. **BUY leg still −500bps.** New-gate BUYs (dislocation + factor agreement) are open; if they close red, add Beneish/accrual veto before any timing tweak (timing already proven dead). Needs 09-21/09-22 EOD ingested first (CSVs already on disk).
@@ -44,7 +44,7 @@
 5. **Substrate versioning.** moat/ENI/ripple lack history columns — true delta predictors unobservable; add versioning so flows can vote honestly (prerequisite for T2's "flows VOTE" half).
 6. **Slippage audit.** Measure realized slippage vs the 50bps prior; shrink it with data (mechanism-design lens).
 7. **Benchmark coverage.** Only 50 masters `is_nifty50=1`, 5,909 are the MICRO default bucket, 101 LARGE non-Nifty50 silently `unmapped-universe`. Print per-universe n + the unmapped list with every excess table.
-8. **Test-suite speed.** 738 passed but 199s under xdist (contention-bound); serial-profile bootstrap ~60s first — see `tasks/test_perf_baseline_2026-09-22.md`.
+8. **Test-suite speed.** 738 passed but 199s under xdist (contention-bound); serial-profile bootstrap ~60s first — see the 2026-09-22 test baseline (no longer in the repo).
 
 ## Promotion log
 

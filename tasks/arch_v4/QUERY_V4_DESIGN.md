@@ -1312,9 +1312,9 @@ A "no edge" result is a result: the pilot is 60 names and 28 sectors, so the hon
 outcome is that most edges are inconclusive — the purpose is to prove the machinery and to
 find the handful that survive, not to force a verdict.
 
-The pilot backtest report is `tasks/arch_v4/PILOT_BACKTEST.md` (built by the backtest worker
-on this specification); it is the document Shivam reviews before the full schema is approved
-(§H.0).
+The pilot backtest report (planned as `PILOT_BACKTEST.md` in this directory; not started) is
+built by the backtest worker on this specification; it is the document Shivam reviews before the
+full schema is approved (§H.0, §H.10).
 
 ---
 
@@ -1692,8 +1692,8 @@ shares of the *failure-reason findings* (2,681-case run: `ask_match` 2,884, sub-
 
 1. **Pilot first.** The pilot stores (60 ISINs) already answer the WP1–WP4 acceptance tests;
    nothing in this document is built at full scale before the pilot gate passes.
-2. **Discovery pilot backtest** on the pilot universe (§E.5) → report
-   `tasks/arch_v4/PILOT_BACKTEST.md`.
+2. **Discovery pilot backtest** on the pilot universe (§E.5) → the report planned as
+   `PILOT_BACKTEST.md` in this directory (not started, §H.10).
 3. **Shivam approves the full schema** (the approved artifact is the DDL + the pilot reports:
    `registry_coverage.md`, `VOCAB_PASS1.md`, `PILOT_BACKTEST.md`, `NID_TRIAGE.md`).
 4. **Only then the full database**: chunking, tagging, embedding, loading — the golden rule's
@@ -1858,7 +1858,7 @@ is the benchmark it must beat before it is called useful.
 
 ## H.10 WP10 — pilot discovery backtest (§E.5)
 
-Machinery + four folds + the report `tasks/arch_v4/PILOT_BACKTEST.md`. **5–7 worker-hours**
+Machinery + four folds + the report (`PILOT_BACKTEST.md` in this directory; not started). **5–7 worker-hours**
 (the machinery exists in `bench_screen.py`, and the GPU worker's 1.58 h for seven
 correctness-checked workloads is the measured anchor for "a fold loop plus a null pass"; the
 work is the fold loop, the `known_at` replay check, the block-permutation null and the
