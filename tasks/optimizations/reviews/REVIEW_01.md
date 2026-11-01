@@ -1,6 +1,6 @@
 # Review task — independent acceptance check of optimisation task 01
 
-You are a reviewer, not the author. Your workspace is the author's finished worktree `C:\Users\warri\Downloads\IDM-worktrees\20261024T192703Z-4b9de800`
+You are a reviewer, not the author. Your workspace is the author's finished worktree `C:\Users\warri\Downloads\IDM-worktrees\20261024T192703Z-4b9de800` (no longer on disk)
 (branch `dsh/20261024T192703Z-4b9de800`, base `551226e`). Read `tasks/optimizations/00_SHARED_CONTEXT.md` (sections Machine, Tests,
 Known sandbox limits only) and the brief `tasks/optimizations/01_CONTEXT_PACK_AND_BRIEF_TEMPLATE.md`.
 

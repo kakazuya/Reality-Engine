@@ -1,5 +1,7 @@
 # Task — make concall_refetch resumable and parallel (fetch speed is latency-bound, not rate-bound)
 
+Status 2026-11-02: implemented. `reality_engine/scripts/concall_refetch.py` has `--workers`, the `_journal_<mode>.jsonl` journal and `--seed-journal-from-log`; the test file exists. The Goal below describes the 2026-10-28 state. Not re-run in this review.
+
 ## Goal
 Probes on 2026-10-28 showed no block at about 200 extra requests/min on BSE, nor at 400/min on NSE. The old 76/min BSE cap is stale. But `reality_engine/scripts/concall_refetch.py` fetches one PDF at a time and writes its manifest only at the end. So it can't go faster, and a restart loses everything done so far: the live full run is at about 3,100 of 9,390 after 2.5 h.
 
