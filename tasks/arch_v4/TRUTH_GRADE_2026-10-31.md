@@ -1,6 +1,6 @@
 # v4 truth grade — 2026-10-31
 
-> **Rule grade, not the authority.** The verdicts below come from code rules that never compare a value with a store. The read grade is the number to trust: `tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md`.
+> **Rule grade, not the authority.** The verdicts below come from code rules that never compare a value with a store. The read grade is the number to trust: `tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md`. The store-backed replacement of these rules: `TRUTH_RULE_V2_2026-10-31.md`.
 
 Three numbers on the same 2,681-row bank with no check loosened. The contract number is the unchanged method (`tasks/answer_bench/grade_v2.py`); the shape number adds the named failures of `tasks/answer_bench/truth_grade.py`; the truth number is the truth panel, not the contract.
 
@@ -17,11 +17,11 @@ Three numbers on the same 2,681-row bank with no check loosened. The contract nu
 
 - fixed block: 150 rows, seed 20261031 (committed, same rows on every run); fresh block: 40 rows, seed 20261034 (printed in every fresh row) — 40 new answered/unanswered rows each run, so a grader cannot be tuned to the fixed block.
 - rows contract-answered: 127 of 190; the draw oversamples answered rows (2/3) because a bank-proportional panel would carry about twelve of them.
-- answered rows RIGHT: 6/127 = 4.72% (Wilson [2.18, 9.92]). The 40-row hand sample says 3/40 = 7.5% [2.6, 19.9]; both say true correctness is a small fraction of a percent of the bank, and the hand sample was drawn from the previous run's 221 answered rows, not this run's.
+- answered rows RIGHT: 6/127 = 4.72% (Wilson [2.18, 9.92]) — **pre-v2, retired.** This is this run's own panel; the read grade's 127-row set is a later panel and had 4 rule-RIGHTs, all overturned (3 PARTIAL, 1 WRONG). The 40-row hand sample says 3/40 = 7.5% [2.6, 19.9]; both say true correctness is a small fraction of a percent of the bank, and the hand sample was drawn from the previous run's 221 answered rows, not this run's.
 - bank answered share (measured on all rows): 12.7% (341/2681).
 - unanswered rows are never RIGHT: the truth estimate is the answered share times the answered RIGHT rate. The interval is the Wilson interval of that RIGHT rate, scaled by the measured share.
 - each row is graded against the question as written, the parent's rubric (`required_steps` / `forbidden` / `ground_truth`, where the bank has one), and the stored row behind the answer (entity, period, value, quote).
-- the panel's RIGHT rows this run: MB0005#L, MB0121#L, MB0005#MI, MB0110#MI, MB0124#MS, MB0005#L. Each is the value+date / passage shape the 40-row hand check calls RIGHT (#27, #11); a RIGHT row must be read against the store before it is trusted. Three false RIGHTs the first passes produced are now failed, and each is evidence the check is worth having: MB0275#MS answered Dalmia Bharat's share count with a 20,000-row `count` for another ISIN (the real count is 18,75,65,953; `holding("DALBHARAT")`), now `TRUTH_PART_OTHER_ENTITY`; MB0306#L answered Sun Pharma's 2026 YTD high with the 30 September row alone (1,863.6; the held NSE high is 2,046.9 on 31 July, `price_extreme`), now `SHAPE_PERIOD_MISMATCH`; MB0001#L answered IDEA "products" with `production` claim rows about cash, now `TRUTH_ROW_DIM_MISMATCH`.
+- the panel's RIGHT rows under this pre-v2 rule: MB0005#L, MB0121#L, MB0005#MI, MB0110#MI, MB0124#MS, MB0005#L — **retired.** The read grade's later panel does not contain these mids; under the v2 rule a passage is PARTIAL, so none of them can be RIGHT. Three false RIGHTs the first passes produced are failed by the other checks, and each is evidence the check is worth having: MB0275#MS answered Dalmia Bharat's share count with a 20,000-row `count` for another ISIN (the real count is 18,75,65,953; `holding("DALBHARAT")`), now `TRUTH_PART_OTHER_ENTITY`; MB0306#L answered Sun Pharma's 2026 YTD high with the 30 September row alone (1,863.6; the held NSE high is 2,046.9 on 31 July, `price_extreme`), now `SHAPE_PERIOD_MISMATCH`; MB0001#L answered IDEA "products" with `production` claim rows about cash, now `TRUTH_ROW_DIM_MISMATCH`.
 - RIGHT rows wrongly failed by a shape check: **0** of the 3 rows the 40-row hand check calls RIGHT (`MB0280#L`, `MB0005#MI`, `MB0303#MS`); `test_v4_truth_grade.py` re-runs that assertion whenever the graded file is present.
 
 ## Failure table by named reason (largest first)
@@ -47,7 +47,7 @@ Occurrences over all 2,681 rows (unanswered rows cannot answer a shape, so this 
 - the scorer's verdicts: {'PARTIAL': 24, 'WRONG': 8, 'None': 8} over 32 judged rows; it certifies 0/3 rows the hand check calls RIGHT, and cannot judge 8/40 at all (no steps, no gold).
 - of the 29 WRONG rows, 25 are not called RIGHT, but most are called PARTIAL: a prose step's words appear in a contract-complete answer even when the step's arithmetic was never done. That is the defect — the rubric describes a method, not a value to compare.
 - measured on: `python tasks/answer_bench/truth_grade.py --rubric40`.
-- verdict: rubric scoring is **NOT usable** as the truth metric. Where it exists it is one input to a panel verdict, never the verdict itself.
+- verdict: rubric scoring is **retired as a verdict input** (it agreed with the 40 hand verdicts on 8/40 in the read report; this run measured 9/40). The v2 rule keeps `ground_truth` only when it carries a number and the answer carries that number. `--rubric40` remains a diagnostic.
 
 ## Free-model judge (optional, item 4)
 

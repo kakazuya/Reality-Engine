@@ -11,7 +11,7 @@ Pilot session, next, in order (the doc session is separate; coordinate on main):
 2. Drop the Workers sheet from `reality_engine/scripts/rule_ledger.py`: `reality_engine/scripts/worker_review.py` covers it. On every worker finish add its row to `tasks/efficiency/worker_reviews.jsonl`, then `worker_review build`.
 3. Ask Shivam for the Console Usage screenshot to compare with `tasks/ledgers/spend.jsonl`, and for acceptance of T-042, T-043; T-034, T-037, T-038, T-040 after the grade.
 
-T-044 is merged: `job_watch status` runs on every prompt through `.claude/settings.json`.
+T-044 is merged: `job_watch status` runs on every prompt through `.claude/settings.json`. Truth rule v2 is merged as a tool (1 false RIGHT on 94 read rows, `tasks/arch_v4/TRUTH_RULE_V2_2026-10-31.md`); the hand-read grade stays the reported score.
 
 ## Running
 No pilot job or worker. T-045 doc review runs in its own session.

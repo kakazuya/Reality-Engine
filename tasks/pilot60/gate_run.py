@@ -1011,7 +1011,7 @@ def v4_truth(panel_seed: int | None = None) -> int:
                 if covered:
                     answered_counts[failure["reason"]] += 1
                 detail_examples.setdefault(failure["reason"], f"{row.get('mid')}: {failure['detail']}")
-    panel = tg.build_panel(V4_GRADED, fresh_seed=panel_seed)
+    panel = tg.build_panel(V4_GRADED, fresh_seed=panel_seed, store=tg.StoreReader())
     truth = panel["all"]
     rubric = tg.rubric40(V4_GRADED, bank) if V4_GRADED.exists() else {}
     contract_pct = round(100.0 * contract / rows, 1) if rows else 0.0
@@ -1025,7 +1025,9 @@ def v4_truth(panel_seed: int | None = None) -> int:
           f"[Wilson {truth['truth_wilson'][0]}, {truth['truth_wilson'][1]}]  "
           f"= answered share x RIGHT among answered "
           f"({truth['answered_right']}/{truth['answered']} = "
-          f"{truth['answered_precision']}%)", flush=True)
+          f"{truth['answered_precision']}%); ILL_POSED "
+          f"{truth['ill_posed']}/{truth['answered']} = {truth['ill_posed_share']}% "
+          f"(never RIGHT, still in the denominator)", flush=True)
     print(f"panel: {panel['fixed']} fixed + {panel['fresh']} fresh "
           f"(seed {panel['fresh_seed']}), {panel['answered']} answered rows", flush=True)
     print("\nfailure table (named shape reason, largest first):", flush=True)
@@ -1059,15 +1061,18 @@ def _write_truth_report(rows: int, contract: int, both: int, panel: dict,
     both_pct = round(100.0 * both / max(1, rows), 1)
     answered_share = round(100.0 * panel["bank_answered"] / max(1, panel["bank_rows"]), 1)
     lines = ["# v4 truth grade — 2026-10-31", "",
-             "> **Rule grade, not the authority.** The verdicts below come from code rules that "
-             "never compare a value with a store. The read grade is the number to trust: "
-             "`tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md`; current figures are in `tasks/STATE.md`.",
-             ""]
+             "> **Rule grade v2, store-backed.** Since 2026-10-31 the RIGHT branch re-reads "
+             "the pilot store: entity, measure, period and value within 0.5%; anything the "
+             "store cannot settle is PARTIAL, never RIGHT; a false premise is ILL_POSED, its "
+             "own column, never RIGHT, still in the denominator. The read grade remains the "
+             "authority until a read of later answers agrees with these rules: "
+             "`tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md`; current figures are in "
+             "`tasks/STATE.md`.", ""]
     lines.append("Three numbers on the same 2,681-row bank with no check loosened. The "
                  "contract number is the unchanged method (`tasks/answer_bench/grade_v2.py`); "
                  "the shape number adds the named failures of "
                  "`tasks/answer_bench/truth_grade.py`; the truth number is the truth panel, "
-                 "not the contract.")
+                 "with every RIGHT reproduced from the store, not the contract.")
     lines += ["", "| number | value | method |", "|---|---:|---|"]
     lines.append(f"| contract strict | {contract}/{rows} = {contract_pct}% "
                  "| every part of the decomposer's own Ask carries §D.4 (unchanged) |")
@@ -1098,19 +1103,27 @@ def _write_truth_report(rows: int, contract: int, both: int, panel: dict,
               f"40-row hand sample says 3/40 = 7.5% [2.6, 19.9]; both say true correctness "
               f"is a small fraction of a percent of the bank, and the hand sample was drawn "
               f"from the previous run's {221} answered rows, not this run's.",
+              f"- ILL_POSED: {truth['ill_posed']}/{truth['answered']} = "
+              f"{truth['ill_posed_share']}% of answered rows. It is its own verdict, never "
+              f"RIGHT, and every one of those rows stays in the denominator: the rate is "
+              f"still RIGHT / all answered rows, not RIGHT / (answered − ill-posed).",
               f"- bank answered share (measured on all rows): {answered_share}% "
               f"({panel['bank_answered']}/{panel['bank_rows']}).",
               "- unanswered rows are never RIGHT: the truth estimate is the answered share "
               "times the answered RIGHT rate. The interval is the Wilson interval of that "
               "RIGHT rate, scaled by the measured share.",
-              "- each row is graded against the question as written, the parent's rubric "
-              "(`required_steps` / `forbidden` / `ground_truth`, where the bank has one), "
-              "and the stored row behind the answer (entity, period, value, quote).",
+              "- each row is graded against the question as written, the premise audit "
+              "(`tasks/pilot60/PREMISE_AUDIT_2026-10-31.jsonl`), the parent's numeric "
+              "`ground_truth` where it has one, and an independent read of the pilot store "
+              "(entity / measure / period / value within 0.5%). The answer's own "
+              "`source_ref` is not used as the store value.",
+              f"- store read at grading time: "
+              f"{'available' if panel.get('store_available') else 'NOT available — every value is PARTIAL, so a zero here is a data-access zero, not a truth zero'}."
               f"- the panel's RIGHT rows this run: {', '.join(truth['right_mids']) or 'none'}. "
-              f"Each is the value+date / passage shape the 40-row hand check calls RIGHT "
-              f"(#27, #11); a RIGHT row must be read against the store before it is "
-              f"trusted. Three false RIGHTs the first passes produced are now failed, and "
-              f"each is evidence the check is worth having: MB0275#MS answered Dalmia "
+              f"A RIGHT is now a numeric value the store reproduces for every part; a"
+              f" passage or an estimate is PARTIAL (`TRUTH_VALUE_UNVERIFIED`), never RIGHT. "
+              f"Three false RIGHTs the first passes produced are failed by the other checks, "
+              f"and each is evidence the check is worth having: MB0275#MS answered Dalmia "
               f"Bharat's share count with a 20,000-row `count` for another ISIN (the real "
               f"count is 18,75,65,953; `holding(\"DALBHARAT\")`), now "
               f"`TRUTH_PART_OTHER_ENTITY`; MB0306#L answered Sun Pharma's 2026 YTD high "
@@ -1150,8 +1163,11 @@ def _write_truth_report(rows: int, contract: int, both: int, panel: dict,
                      "when the step's arithmetic was never done. That is the defect — the "
                      "rubric describes a method, not a value to compare.")
         lines.append("- measured on: `python tasks/answer_bench/truth_grade.py --rubric40`.")
-        lines.append("- verdict: rubric scoring is **NOT usable** as the truth metric. Where "
-                     "it exists it is one input to a panel verdict, never the verdict itself.")
+        lines.append("- verdict: rubric scoring is **retired as a verdict input** (it agreed "
+                     "with the 40 hand verdicts on 8/40 and fired on 30 answered panel rows, "
+                     "none of them RIGHT). It is kept only as this diagnostic; no truth "
+                     "verdict calls it. A `ground_truth` votes only when it carries a number "
+                     "and the answer carries that number.")
     lines += ["", "## Free-model judge (optional, item 4)", ""]
     try:
         import truth_judge

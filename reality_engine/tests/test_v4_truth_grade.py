@@ -2,14 +2,21 @@
 
 The shape checks read the question text alone, so every fixture here is a graded row
 (a dict shaped like ``GATE_RESULTS_v4_strict.jsonl``): the question, the Ask's results
-and the contract's ``covered`` flag.  No database, no run.
+and the contract's ``covered`` flag.
 
-A "good" variant accompanies every failure so the check is shown to fire on the named
-defect and not on a correct answer of the same family.
+The RIGHT branch now compares the answer with the pilot store, so the truth tests use
+a small ``fact`` fixture in ``tmp_path`` — never a live DB.  The acceptance rows named
+by the brief are here: a wrong value (MB0106#MI class), a half answer (MB0031#MS
+class), a matching value that is RIGHT, and an ILL_POSED row that stays in the
+denominator and is never RIGHT.
 """
 from __future__ import annotations
 
+import json
+import shutil
+import sqlite3
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
@@ -27,7 +34,8 @@ AS_OF = "2026-10-19"
 def result(  # noqa: PLR0913 - a fixture builder, one field per contract column
     *,
     part_index: int = 0,
-    atom: str = "price.close",
+    atom: str | None = "price.close",
+    formula: str = "",
     operator: str = "value_at",
     value=None,
     unit: str = "INR",
@@ -41,9 +49,11 @@ def result(  # noqa: PLR0913 - a fixture builder, one field per contract column
     entities: list | None = None,
     shape: str = "scalar",
 ) -> dict:
-    out = {"part_index": part_index, "atom": atom, "operator": operator,
+    out = {"part_index": part_index, "atom": atom or None, "operator": operator,
            "answer_type": answer_type, "shape": shape, "unit": unit, "period": period,
            "isin": isin, "dims": dims or {}}
+    if formula:
+        out["formula"] = formula
     if value is not None:
         out["value"] = value
     if rule_used:
@@ -66,6 +76,52 @@ def row(question: str, results: list[dict], covered: bool = True,
            "results": results, "reasons": [] if covered else ["a part is NOT IN DATA"]}
     out.update(extra)
     return out
+
+
+@pytest.fixture()
+def workdir():
+    """A writable scratch directory inside the checkout.
+
+    ``tmp_path`` uses the machine temp root, which the worker sandbox cannot scan on
+    this host; ``.tmp/`` is inside the writable workspace and works from pytest itself.
+    """
+    path = REPO / ".tmp" / f"truth_grade_{uuid.uuid4().hex}"
+    path.mkdir(parents=True, exist_ok=True)
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
+
+
+def fact_store(directory: Path, rows: list[tuple]) -> tg.StoreReader:
+    """A nine-column ``fact`` table, the shape the pilot store serves."""
+    database = directory / "fact_v4_pilot.db"
+    con = sqlite3.connect(database)
+    con.execute("CREATE TABLE fact (entity_id TEXT, atom TEXT, dims TEXT, "
+                "period_start TEXT, period_end TEXT, value REAL, unit TEXT, "
+                "known_at TEXT, source_ref TEXT)")
+    con.executemany("INSERT INTO fact VALUES (?,?,?,?,?,?,?,?,?)", rows)
+    con.commit()
+    con.close()
+    return tg.StoreReader(directory)
+
+
+@pytest.fixture()
+def store(workdir):
+    return fact_store(workdir, [
+        (ISIN, "price.close", "", "2026-10-16", "2026-10-16", 134.84, "INR",
+         "2026-10-16", "market_state"),
+        (ISIN, "price.close", "", "2026-09-30", "2026-09-30", 389.15, "INR",
+         "2026-09-30", "market_state"),
+        (ISIN, "price.close", "", "2023-09-29", "2023-09-29", 242.80, "INR",
+         "2023-09-29", "market_state"),
+        (ISIN, "price.close", "", "2023-10-03", "2023-10-03", 250.90, "INR",
+         "2023-10-03", "market_state"),
+        (ISIN, "hold.pct", "holder_class=promoter", "2026-09-30", "2026-09-30", 31.54,
+         "%", "2026-10-19", "ownership"),
+        (ISIN, "price.shares_out", "", "2026-10-19", "2026-10-19", 946500000.0,
+         "shares", "2026-10-19", "market_state"),
+    ])
 
 
 # --- 1. a set/ranking ask answered from one entity -------------------------
@@ -106,6 +162,22 @@ def test_compare_with_both_sides_passes():
 def test_vs_stored_is_not_a_two_company_comparison():
     graded = row("P/B now vs stored", [result(atom="f.ratio", value=4.245)])
     assert "SHAPE_COMPARE_ONE_SIDE" not in tg.shape_reasons(graded)
+
+
+def test_stored_vs_computed_is_one_entity_not_a_two_company_compare():
+    graded = row("IDEA pb ratio stored vs computed",
+                 [result(atom="f.ratio", value=4.245)])
+    shapes = tg.question_shapes(graded["question"])
+    assert shapes["measure_vs"] is True
+    assert "SHAPE_COMPARE_ONE_SIDE" not in tg.shape_reasons(graded)
+
+
+def test_stored_vs_computed_with_one_side_is_partial():
+    graded = row("IDEA pb ratio stored vs computed",
+                 [result(atom="f.ratio", value=4.245)])
+    verdict = tg.truth_verdict(graded, store=None, audit={})
+    assert verdict["verdict"] == "PARTIAL"
+    assert verdict["reason"] == "TRUTH_MEASURE_MISSING"
 
 
 # --- 3. a judgement ask with no rule output -------------------------------
@@ -236,7 +308,6 @@ def test_a_plain_measured_answer_passes_every_shape_check():
 
 def test_all_eight_named_reasons_are_reachable():
     """The committed reason list is exactly the eight the brief names."""
-    assert tg.SHAPE_REASONS if hasattr(tg, "SHAPE_REASONS") else True
     produced = set()
     for graded in (
         row("Which stocks had the highest turnover on 4 June 2024?",
@@ -267,7 +338,7 @@ def test_all_eight_named_reasons_are_reachable():
     }
 
 
-# --- truth verdict --------------------------------------------------------
+# --- truth verdict: the acceptance checks ---------------------------------
 def test_unanswered_row_is_wrong_not_partial():
     graded = row("What is the promoter holding now?", [], covered=False)
     graded["reasons"] = ["no result for part 1 (hold.pct)"]
@@ -275,38 +346,113 @@ def test_unanswered_row_is_wrong_not_partial():
     assert verdict["verdict"] == "WRONG" and verdict["reason"] == "TRUTH_NOT_ANSWERED"
 
 
-def test_clean_covered_row_is_right():
-    graded = row("What was OMMETALS's YTD high price in 2026, with the value and the date?",
-                 [result(atom="price.high", operator="max_with_date", value=146.0,
-                         period="2026-09-23")])
-    assert tg.truth_verdict(graded)["verdict"] == "RIGHT"
+def test_matching_value_with_all_parts_is_right(store):
+    graded = row("What was EDELWEISS's NSE close on 16 October 2026?",
+                 [result(atom="price.close", value=134.84, period="2026-10-16")])
+    verdict = tg.truth_verdict(graded, store=store, audit={})
+    assert verdict["verdict"] == "RIGHT", verdict
+    assert verdict["reason"] == "TRUTH_OK"
 
 
-def test_instance_still_naming_the_parent_company_is_wrong():
+def test_mb0106_style_wrong_cagr_is_not_right(store):
+    """15.80% starts at the 3 Oct 2023 close; the held 29 Sep close makes it 17.0%."""
+    graded = row(
+        "What was ASAHISONG's 3-year price CAGR to 30 September 2026, using split- "
+        "and dividend-adjusted closes? State both endpoint dates.",
+        [result(part_index=0, atom=None, formula="f.cagr", value=15.797359, unit="%",
+                period="2026-09-30", dims={"event_kind": "split"}),
+         result(part_index=1, atom="price.close", value=389.15, unit="INR",
+                period="2026-09-30", dims={"basis": "adjusted"},
+                values=[{"period": "2023-09-29", "value": 242.80},
+                        {"period": "2026-09-30", "value": 389.15}])])
+    graded["mid"] = "MB0106#MI"
+    graded["real_answered"] = 2
+    verdict = tg.truth_verdict(graded, store=store, audit={})
+    assert verdict["verdict"] != "RIGHT", verdict
+    assert verdict["reason"] == "TRUTH_VALUE_WRONG"
+    assert "242.8" in verdict["detail"] or "17" in verdict["detail"]
+
+
+def test_mb0031_style_half_answer_is_not_right(store):
+    graded = row("What does Edelweiss make, and what was its NSE close on 16 October 2026?",
+                 [result(atom="price.close", value=134.84, period="2026-10-16")])
+    graded["mid"] = "MB0031#MS"
+    verdict = tg.truth_verdict(graded, store=store, audit={})
+    assert verdict["verdict"] != "RIGHT", verdict
+    assert verdict["verdict"] == "PARTIAL"
+    assert verdict["reason"] == "TRUTH_PART_MISSING"
+
+
+def test_a_text_part_cannot_be_right(store):
+    graded = row("IDEA Aug-2026 concall remark",
+                 [result(atom="claim.claim", value=None, period="2026-08-18",
+                         values=[{"quote": "demand remained strong"}])])
+    verdict = tg.truth_verdict(graded, store=store, audit={})
+    assert verdict["verdict"] == "PARTIAL"
+    assert verdict["reason"] == "TRUTH_VALUE_UNVERIFIED"
+
+
+def test_a_price_count_the_store_only_rounds_is_not_right(store):
+    graded = row("EDELWEISS exact share count now",
+                 [result(atom="price.shares_out", value=946500000.0, unit="shares",
+                         period="2026-10-19")])
+    verdict = tg.truth_verdict(graded, store=store, audit={})
+    assert verdict["verdict"] == "PARTIAL"
+    assert verdict["reason"] == "TRUTH_VALUE_UNVERIFIED"
+
+
+def test_ill_posed_row_is_not_right(store):
+    graded = row("SBI branch growth and the close on 16 October 2026",
+                 [result(atom="price.close", value=134.84, period="2026-10-16")],
+                 mid="MB1027#L", kind="stock")
+    audit = {"MB1027#L": {"verdict": "false", "reason": "names_other_company",
+                          "evidence": [{"value": "the question names SBI; the row is BAJFINANCE"}]}}
+    verdict = tg.truth_verdict(graded, store=store, audit=audit)
+    assert verdict["verdict"] == "ILL_POSED"
+    assert verdict["reason"] == "ILL_POSED_PREMISE_FALSE"
+
+
+def test_ill_posed_row_stays_in_the_denominator_and_is_never_right():
+    panel_rows = [
+        {"panel": "fixed", "mid": "MB1027#L", "contract": True, "verdict": "ILL_POSED",
+         "reason": "ILL_POSED_PREMISE_FALSE"},
+        {"panel": "fixed", "mid": "MB0031#MS", "contract": True, "verdict": "PARTIAL",
+         "reason": "TRUTH_PART_MISSING"},
+    ]
+    summary = tg._panel_summary(panel_rows, {"rows": 2681, "answered": 361})
+    block = summary["all"]
+    assert block["answered"] == 2          # both rows stay in the denominator
+    assert block["ill_posed"] == 1
+    assert block["answered_right"] == 0
+    assert block["ill_posed_mids"] == ["MB1027#L"]
+
+
+def test_instance_still_naming_the_parent_company_is_ill_posed(store):
     parent = {"entities": [{"symbol": "OLAELEC", "isin": "INE0LXG01040",
                             "name": "Ola Electric Mobility Limited"}]}
     graded = row("Ola Electric after listing: did the price band widen?",
                  [result(atom="price.band", value=5.0)], mid="MB0903#L", kind="stock")
-    verdict = tg.truth_verdict(graded, parent)
-    assert verdict["verdict"] == "WRONG"
-    assert verdict["reason"] == "TRUTH_ENTITY_TEXT_MISMATCH"
+    verdict = tg.truth_verdict(graded, parent, store=store, audit={})
+    assert verdict["verdict"] == "ILL_POSED"
+    assert verdict["reason"] == "ILL_POSED_ENTITY_MISMATCH"
 
 
-def test_a_part_for_another_company_is_wrong():
+def test_a_part_for_another_company_is_wrong(store):
     graded = row("Dalmia Bharat: how many equity shares and what is the promoter holding?",
                  [result(part_index=0, atom="price.shares_out", value=20000, isin=OTHER),
-                  result(part_index=1, atom="hold.pct", value=55.84, isin=ISIN)])
-    verdict = tg.truth_verdict(graded)
+                  result(part_index=1, atom="hold.pct", value=55.84, isin=ISIN,
+                         dims={"holder_class": "promoter"})])
+    verdict = tg.truth_verdict(graded, store=store, audit={})
     assert verdict["verdict"] == "WRONG"
     assert verdict["reason"] == "TRUTH_PART_OTHER_ENTITY"
 
 
-def test_a_part_whose_rows_are_on_another_topic_is_wrong():
+def test_a_part_whose_rows_are_on_another_topic_is_wrong(store):
     graded = row("IDEA products",
                  [result(atom="claim.claim", value=None, dims={"topic": "products"},
                          values=[{"quote": "we generate cash", "topic": "production",
                                   "doc_id": 41464}])])
-    verdict = tg.truth_verdict(graded)
+    verdict = tg.truth_verdict(graded, store=store, audit={})
     assert verdict["verdict"] == "WRONG"
     assert verdict["reason"] == "TRUTH_ROW_DIM_MISMATCH"
 
@@ -319,13 +465,109 @@ def test_a_part_whose_rows_match_the_topic_passes():
     assert tg.row_dim_mismatch(graded) is None
 
 
-def test_a_named_measure_with_no_part_is_partial():
+def test_a_named_measure_with_no_part_is_wrong(store):
     graded = row("DMart: what is revenue per square foot and inventory turns?",
                  [result(atom="fin.revenue", value=2947.87),
                   result(part_index=1, atom="fin.inventory", value=391.96)])
-    verdict = tg.truth_verdict(graded)
-    assert verdict["verdict"] == "PARTIAL"
+    verdict = tg.truth_verdict(graded, store=store, audit={})
+    assert verdict["verdict"] == "WRONG"
     assert verdict["reason"] == "TRUTH_MEASURE_MISSING"
+
+
+def test_prose_gold_is_retired():
+    graded = row("What was EDELWEISS's NSE close on 16 October 2026?",
+                 [result(atom="price.close", value=134.84, period="2026-10-16")])
+    parent = {"rubric": {"ground_truth": "a close near the NSE reading"}}
+    # no store: the row is PARTIAL for the unverified value, but the prose gold did not
+    # add a separate failure (the retired rubric no longer votes).
+    verdict = tg.truth_verdict(graded, parent, audit={})
+    assert verdict["reason"] == "TRUTH_VALUE_UNVERIFIED"
+
+
+def test_numeric_gold_must_appear(store):
+    graded = row("What was EDELWEISS's NSE close on 16 October 2026?",
+                 [result(atom="price.close", value=134.84, period="2026-10-16")],
+                 answer="close 999.99")
+    parent = {"rubric": {"ground_truth": "134.84"}}
+    verdict = tg.truth_verdict(graded, parent, store=store, audit={})
+    assert verdict["verdict"] == "PARTIAL"
+    assert verdict["reason"] == "TRUTH_GOLD_MISSING"
+
+
+def test_panel_row_carries_answer_full(store):
+    long_answer = "x" * 500
+    graded = row("What was EDELWEISS's NSE close on 16 October 2026?",
+                 [result(atom="price.close", value=134.84, period="2026-10-16")],
+                 answer=long_answer)
+    panel = tg._panel_row(graded, {}, "fixed", 1, store=store, audit={})
+    assert len(panel["answer"]) == 400
+    assert panel["answer_full"] == long_answer
+    assert panel["verdict"] == "RIGHT"
+
+
+def test_read_confusion_on_a_fixture(workdir, store):
+    graded_path = workdir / "graded.jsonl"
+    read_path = workdir / "read.jsonl"
+    matched = row("What was EDELWEISS's NSE close on 16 October 2026?",
+                  [result(atom="price.close", value=134.84, period="2026-10-16")],
+                  mid="MB0031#MS")
+    ill = row("SBI branch growth and the close on 16 October 2026",
+              [result(atom="price.close", value=134.84, period="2026-10-16")],
+              mid="MB1027#L", kind="stock")
+    graded_path.write_text(json.dumps(matched) + "\n" + json.dumps(ill) + "\n",
+                           encoding="utf-8")
+    read_path.write_text(
+        json.dumps({"mid": "MB0031#MS", "verdict": "RIGHT", "reason_code": "RIGHT"}) + "\n"
+        + json.dumps({"mid": "MB1027#L", "verdict": "ILL_POSED",
+                      "reason_code": "PREMISE_FALSE", "looked_up": "SBI vs BAJFINANCE"}) + "\n",
+        encoding="utf-8")
+    audit = {"MB1027#L": {"verdict": "false", "reason": "names_other_company",
+                          "evidence": [{"value": "SBI vs BAJFINANCE"}]}}
+    report = tg.read_confusion(graded_path, read_path, store=store, audit=audit)
+    assert report["rows"] == 2
+    assert report["table"]["RIGHT|RIGHT"] == 1
+    assert report["table"]["ILL_POSED|ILL_POSED"] == 1
+    assert report["false_right"] == []
+    assert report["new_ill_posed"] == 1
+
+
+def test_judgement_hold_question_without_a_rule_fails():
+    graded = row("As of 24 Sep 2026, did the third retest hold on lower volume?",
+                 [result(atom="price.volume", value=3088358.0, period="2026-09-24")])
+    assert "SHAPE_JUDGEMENT_NO_RULE" in tg.shape_reasons(graded)
+
+
+def test_named_sma_window_must_match(store):
+    graded = row("Hindustan Unilever's 50-day is flattening into the 200-day. "
+                 "What would a death cross actually change for a long-term holder?",
+                 [result(atom="price.sma", value=1959.245, period="2026-09-24")])
+    verdict = tg.truth_verdict(graded, store=store, audit={})
+    assert verdict["verdict"] == "WRONG"
+    assert verdict["reason"] in ("SHAPE_JUDGEMENT_NO_RULE", "TRUTH_MEASURE_MISSING")
+
+
+def test_parent_acronym_in_instance_question_is_ill_posed(store):
+    parent = {"entities": [{"symbol": "SBIN", "isin": "INE062A01020",
+                            "name": "State Bank of India"}]}
+    graded = row("SBI fell to a level that held in March. Is that level still valid?",
+                 [result(atom="price.close", value=134.84, period="2026-10-16")],
+                 mid="MB1027#L", kind="stock")
+    graded["entity"] = "INE296A01032"
+    verdict = tg.truth_verdict(graded, parent, store=store, audit={})
+    assert verdict["verdict"] == "ILL_POSED"
+    assert verdict["reason"] == "ILL_POSED_ENTITY_MISMATCH"
+
+
+def test_panel_row_reports_a_premise_failure_not_the_judgement_shape(store):
+    graded = row("SBI fell to a level that held in March. Is that level still valid?",
+                 [result(atom="price.close", value=134.84, period="2026-10-16")],
+                 mid="MB1027#L", kind="stock")
+    audit = {"MB1027#L": {"verdict": "false", "reason": "names_other_company",
+                          "evidence": [{"value": "the question names SBI"}]}}
+    panel = tg._panel_row(graded, {}, "fixed", 1, store=store, audit=audit)
+    assert panel["verdict"] == "ILL_POSED"
+    assert panel["premise"]
+    assert "SHAPE_JUDGEMENT_NO_RULE" not in panel["shape_failures"]
 
 
 # --- periods, panel, interval --------------------------------------------
@@ -387,8 +629,6 @@ GRADED = REPO / "tasks" / "answer_bench" / "GATE_RESULTS_v4_strict.jsonl"
                     reason="the raw v4 gate output is gitignored; regenerate it first")
 def test_no_hand_right_row_is_failed_by_a_shape_check():
     """Acceptance check: zero RIGHT rows wrongly failed (the raw run must be present)."""
-    import json
-
     hand = tg._hand_verdicts()
     right = {mid for mid, verdict in hand.items() if verdict == "RIGHT"}
     rows = {}
