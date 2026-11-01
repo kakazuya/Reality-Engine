@@ -541,7 +541,7 @@ unlocked-desktop repeat was run on the same evening and is in 14.7.
 Job `hp-20261101T200233-336f17`.  Shivam unlocked the HP at about 20:00 IST and
 watched; nothing was allowed on the screen.  The flag is
 `WTSQuerySessionInformationW(..., WTSSessionInfoEx)` for console session 1,
-`SessionFlags` Int32 at byte offset 16 (`C:\RE\lockstate.ps1`).
+`SessionFlags` Int32 at byte offset 16 (method: `machines/HP_LAPTOP.md`).
 
 | check | before | immediately before run | immediately after run | after cleanup |
 |---|---|---|---|---|
