@@ -51,7 +51,7 @@ The contract count measures answer shape, not truth, and fell because stale and 
 ## Stores, `reality_engine/data/pilot/v4/`
 - `fact_v4_pilot.db`: core facts. `hold.pct` has promoter and public (57 of 60 names) plus FII, DII, MF and insurance (56); `hold.pledge_pct` has 57. **The built store's `price.close` is still split/bonus-adjusted (`adj_close`, using later actions) while `price.open`, `price.high` and `price.low` are raw: POWERGRID 2023-09-11 stores 198.375, traded 264.50.** `fact_view.sql` now loads `company_state_daily.raw_close` and states `basis=raw`; `build_t1.py` now persists that column. Until the controller rebuilds T1 and the fact view (steps in `tasks/arch_v4/GATE_V4_LABELS_2026-10-31.md`; 103,313 `price.close` rows), every close level says it is adjusted, never raw. Returns are computed over the adjusted series at query time (`price_basis`). No point-in-time corporate action atom.
 - `fact_v4_pilot_oi.db`: `macro.oi`. `v4.db`: claims and own estimates. `shp_xbrl_pilot.db`: parsed shareholding XBRL, copied into the core store by `build_membership --shp-xbrl-only`.
-- Blank `as_of` defaults to 2026-10-19, the last date all 60 names have a close (`run.py` `DEFAULT_AS_OF`). Shivam has not ruled on this yet.
+- Blank `as_of` defaults to 2026-10-19, the last date all 60 names have a close (`run.py` `DEFAULT_AS_OF`). Shivam ruled on 2 Nov: keep it for pilot tests; live answers use the latest data.
 - Raw shareholding XBRL: `D:\RealityEngine\raw\nse_shp_xbrl_pilot`.
 
 ## Findings that change what to do

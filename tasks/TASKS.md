@@ -33,16 +33,16 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 
 ## Schema and question map
 - T-014 | OPEN | P1 | Question map for the 3 prototype companies: every bank question naming them has a row (workspace step 4) | accept: python -m pytest reality_engine/tests/test_question_map.py -q | from: workspace plan step 4 | opened 2026-11-02
-- T-015 | WAITING Shivam | P1 | Decide blank as_of default, truth panel and reader kill: tasks/arch_v4/GATE_STATE_2026-11-01.md | accept: Shivam | from: STATE 1 Nov | opened 2026-11-02
 - T-016 | OPEN | P2 | Typed write contracts: unit, range, label, known_at; split fact.value; test metric_citations on the prototype | accept: python -m pytest reality_engine/tests/test_write_contracts.py -q | from: RULINGS agreed direction | opened 2026-11-02
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02
+- T-032 | OPEN | P2 | Gate reports show only the hand-read score: tasks/pilot60/gate_run.py still prints the format score | accept: Shivam | from: Shivam ruling 2 Nov | opened 2026-11-02
 
 ## Bank
 - T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02
 
 ## Research
-- T-026 | WAITING Shivam | P3 | Research library: delete OK for 256 duplicate copies (3.76 GB) and a bucket scheme; memory dated 27 Oct, recheck first | accept: Shivam | from: memory project_research_folder_import | opened 2026-11-02
 - T-027 | OPEN | P3 | Trading limits module the test harness cannot run without, when backtests resume | accept: python -m pytest reality_engine/tests/test_trading_limits.py -q | from: tasks/FRAMEWORK.md | opened 2026-11-02
+- T-031 | OPEN | P3 | Research library bucket scheme; duplicates deleted 2 Nov, list in _dupes_deleted_2026-11-02.csv | accept: Shivam | from: T-026 | opened 2026-11-02
 
 ## Machines
 - T-030 | WAITING Shivam | P2 | Shivam uses the Claude cloud credit himself on the Eagle account, Tuesday 3 Nov | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
