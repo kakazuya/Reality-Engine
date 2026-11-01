@@ -116,7 +116,7 @@ Every call is written to `tasks/ledgers/spend.jsonl` at $0 through `cost_ledger.
 
 ## 5. Hand check
 
-A stratified sample of 100 Beam mappings is in `vocab_pass2_sample.md`. Precision is **not** asserted here; the hand check is the controller's, and the worker's own reading is reported separately in that file.
+Precision is **not** asserted: the sample of 100 mappings this pass wrote was never hand-checked, and it was removed on 2 Nov. `map_vocab_beam` writes a new one on any rerun.
 
 ## 6. Round-2 disagreements (first 40)
 

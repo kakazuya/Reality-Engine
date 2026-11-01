@@ -97,8 +97,3 @@ Three distinct causes, each owned by a different piece:
    this class: its +34,552 cr matches the filing's own FY26 total comprehensive
    income (34,564 cr, `results_notes`, known 2026-08-10). It is a wrong *answer* to an
    accounting question, not a wrong row.
-
-Only 3 of the 40 are right, so **a 30% strict target is not reachable by tuning the
-contract checks**: the same run at 30% strict with this precision profile would still
-be ~2.3% truly correct. The honest next step is (a) stop grading a scalar as an answer
-when the ask is a judgement, and (b) fix the three pieces above, before raising volume.

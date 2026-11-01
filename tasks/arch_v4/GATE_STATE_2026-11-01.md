@@ -3,23 +3,11 @@
 The long `tasks/STATE.md` as it stood when it was cut to a short start file. A dated record: not kept current.
 
 
-Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or the stores, then fix the wrong one.
-
-## Authority
-- **No docs, no merge** (Shivam, 1 Nov): top of `AGENTS.md`. At session close run `reality_engine/scripts/doc_gate.py --sweep` and `data_inventory`, and fix what they list.
-- Order of work and the documentation rule: top of `AGENTS.md`. Trading and risk rules: `tasks/FRAMEWORK.md`.
-- Work queue, with what runs next and what waits for Shivam: `tasks/handoff/QUEUE_2026-10-31.md`.
-- Decision log: `D:\RealityEngine\plans\DECISION_LOG.md`, synced to Drive.
-- Outside review of this workspace, 1 Nov (outside practice vs our evidence, and a hard grade): `tasks/management/WORKSPACE_REVIEW_2026-11-01.xlsx`; one-page verdict beside it in `WORKSPACE_REVIEW_2026-11-01.md`.
-- v4 design: `tasks/arch_v4/QUERY_V4_DESIGN.md`. Review of how to reach 95%: `tasks/arch_v4/GATE95_REVIEW_2026-10-31.md`.
-- Docs: stale hand-offs, state snapshots and merged briefs moved to `tasks/archive/` on 31 Oct; the move list is `tasks/archive/README.md`. Old gate numbers (8.2%, 10.2%, 1.0%) are out of date.
-- Dead-path audit, 1 Nov: 63 backticked `reality_engine/`/`tasks/`/`plugins/` paths in live `.md` did not exist; 24 pointers were fixed in place and 39 left as generated/transient/planned (worker-context pack, runtime jobs, ledgers, planned outputs). `AGENTS.md` §4 now names the raw families on `D:\RealityEngine\raw`; its counts are dated 27-31 Oct and were not re-counted on this HP (no D: mount).
+Live rules, machines and the merge recipe are in `tasks/RULINGS.md`, `tasks/STATE.md` and `machines/`; this keeps the gate numbers, bank status, stores and findings of that date. The gate numbers are on the old 2,681-row bank, replaced by the 1,901-question bank.
 
 ## Latest results: `tasks/MORNING_RESULTS_2026-11-01.md`
 Hidden OCR text layers on scanned PDFs can be wrong, so scores on those pages and stores built from them are suspect. Size of the problem not yet measured.
-Larger Microsoft TextRecognizer test scored on held-out pages: 300 DPI grayscale found 96.65% and 97.16% correct (bar 95, 98), full findings in `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md` and its `.xlsx`. Branch `dsh-hp/hp-20261101T140451-175638` not merged. **Workspace fix first: `tasks/WORKSPACE_FIX_2026-11-01.md`; step 2 running.** Page-reading subagents use batches of 8 (Shivam, 1 Nov).
-All HP work runs headless, nothing on its screen (Shivam, 1 Nov); fix running as `hp-20261101T172002-15e0f2`.
-Workspace review, with grades, root causes and milestones: `tasks/management/WORKSPACE_REVIEW_2026-11-01.xlsx`. Its `Claude check` sheet lists corrections. Worker branch `dsh/20261101T085537Z-c725e0b4` not merged.
+Larger Microsoft TextRecognizer test scored on held-out pages: 300 DPI grayscale found 96.65% and 97.16% correct (bar 95, 98), full findings in `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md` and its `.xlsx`. Workspace review, with grades, root causes and milestones: `tasks/management/WORKSPACE_REVIEW_2026-11-01.xlsx`. Its `Claude check` sheet lists corrections.
 
 ## Prototype on 3 companies, 1 Nov
 Cost is fine, quality is not: 0 of 40 sampled answers right, 78% of numbers missed in the recall check, false rows passed the worker's accuracy check. No wider run. `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`.
@@ -37,14 +25,14 @@ Golden rule step 5, 60-name pilot, 2,681 rows. Gate is not passed; the 30% check
 Label fix merged after that run; its own run gave 327/2681 = 12.2% (`tasks/arch_v4/GATE_V4_LABELS_2026-10-31.md`). **The traded-close rebuild failed at 16:12 and no fresh gate ran:** `.tmp/traded_close.err` says `company_state_daily: rows lost, install stopped: {'rows': (7258000, 741967)}`. The safety check stopped it before the swap, so live stores are unchanged and `price.close` is still adjusted. Likely cause, not yet confirmed: `build_t1 --universe pilot` compared against a full-universe table. All numbers above are on the old 2,681-row bank.
 
 ## Question bank rewrite (Shivam's order, 31 Oct): Claude owns it
-Shivam ruled: the test uses only questions the 60 pilot stocks can answer, with no data for any other stock. Claude writes the questions and does the reasoning; DeepSeek only reads passages. Engine work waits for the next session.
+Shivam ruled: the test uses only questions the 60 pilot stocks can answer, with no data for any other stock. Claude writes the questions and does the reasoning; DeepSeek only reads passages.
 - Rules, by hand: `tasks/pilot60/pilot_bank/rules_a.py` to `rules_e.py`. Builder `run.py`, reads `reads.py`, audit `audit.py`. Output `tasks/pilot60/PILOT_BANK_2026-10-31.jsonl`, removed list `tasks/pilot60/PILOT_BANK_REMOVED_2026-10-31.jsonl`. `MASTER_BANK.jsonl` and `INSTANCES.jsonl` are untouched and stay as the old record.
 - Every figure, date and doc date in a question is read from the stores for that stock. Old text and evidence stay on each row.
 - A keyword match is not proof: SAIL's "change in control" hit was accounting boilerplate. A passage counts only if DeepSeek quotes it and the code finds the quote verbatim; the date and page in a question are those of that passage.
-- **Bank status, 1 Nov: Shivam accepted it as good enough to design the schema from.** 1,901 questions: the 1,899 he reviewed plus MB0579 (NSDL sector flows are held) and MB0222 (computed from tax notes). 95 removed. Scope rule at the top of `AGENTS.md`: the system computes what filings do not state; check `tasks/DATA_INVENTORY.md` before calling data absent. All 30 of Shivam's regression questions stay, in pilot form. Audit: no failures. Excel: `tasks/pilot60/PILOT_BANK_QUESTIONS_2026-10-31.xlsx`, with his comments and what happens to each; they live in `PILOT_BANK_REMOVED_RULINGS_2026-11-01.json`, and `rules_f.py` makes them binding. Next: prototype extraction on BAJFINANCE, HINDALCO and KEC (`tasks/dsh_tasks/PROTOTYPE3_EXTRACTION_2026-11-01.md`); no wider DeepSeek run before its report, by Shivam's order. Design: `tasks/SCHEMA_PILOT_DESIGN_2026-11-01.md`; the pilot goes to 63 names (Apollo Hospitals, KIMS, Ola Electric) once their raw data is in.
+- **Bank status, 1 Nov: Shivam accepted it as good enough to design the schema from.** 1,901 questions: the 1,899 he reviewed plus MB0579 (NSDL sector flows are held) and MB0222 (computed from tax notes). 95 removed. Scope rule at the top of `AGENTS.md`: the system computes what filings do not state; check `tasks/DATA_INVENTORY.md` before calling data absent. All 30 of Shivam's regression questions stay, in pilot form. Audit: no failures. Excel: `tasks/pilot60/PILOT_BANK_QUESTIONS_2026-10-31.xlsx`, with his comments and what happens to each; they live in `PILOT_BANK_REMOVED_RULINGS_2026-11-01.json`, and `rules_f.py` makes them binding. Next: prototype extraction on BAJFINANCE, HINDALCO and KEC (`tasks/archive/dsh_tasks/PROTOTYPE3_EXTRACTION_2026-11-01.md`); no wider DeepSeek run before its report, by Shivam's order. Design: `tasks/SCHEMA_PILOT_DESIGN_2026-11-01.md`; the pilot goes to 63 names (Apollo Hospitals, KIMS, Ola Electric) once their raw data is in.
 - `finish.py` re-reads leftover pairs and can change rows Shivam already reviewed (on 1 Nov it changed 4 and added rows). Diff against the current bank before accepting a rebuild.
 - Limits: hand checks of 80 document rows found about 1 in 7 passes weak (the quote is real, the question is not truly answered). The 758 data rows were checked for held data, not answered. Simbhaoli Sugars has no question; 4 more names have under 5. No question has been run through the engine, so there is no score on this bank yet, and the gate still reads the old files until it is pointed at this one.
-- Rebuild needs Go key: `python tasks/pilot60/pilot_bank/finish.py`, then `export_xlsx.py`. Reads are stored in `reads.jsonl`, so only new pairs are read. Nothing here is committed yet.
+- Rebuild needs Go key: `python tasks/pilot60/pilot_bank/finish.py`, then `export_xlsx.py`. Reads are stored in `reads.jsonl`, so only new pairs are read.
 
 The contract count measures answer shape, not truth, and fell because stale and wrong-period values stopped counting. Largest cause in the read grade: 66 of 127 answered rows return a nearby measure, not the one asked. Any earlier number (8.2%, 10.2%, 13.5%, 1.0%) is out of date.
 
@@ -65,23 +53,3 @@ The contract count measures answer shape, not truth, and fell because stale and 
 - Scope: 945 of 1,073 old parents named a stock outside the pilot. Not a data question: Shivam never asked for those stocks, and the rewrite above removes them.
 - OCR: Windows.Media.Ocr on the HP CPU, 186.7 pages/min, number recall 0.964. **1 Nov accuracy pilot FAILED the gate: 110 table pages, number recall 0.839, precision 0.896 (need 0.95, 0.98). Not run.** Bench figure 0.964 does not hold on our table pages. Only about 4,647 of the 1,073 files' 11,728 pages truly lack text. RapidOCR on CPU is being tested.
 
-## Never
-Copy keys into files or print them. Read `D:\Shivam_Private\Manual Dumps` or send it to the HP or any model, or put amounts in the repo or decision log. Loosen a grader to raise a score. Push without Shivam's OK. Spend DeepInfra or use paid models without his OK. Change the question bank, labels or scope without his ruling. Assign pilot bank reasoning to a worker: Claude owns it, DeepSeek only reads.
-
-## Merge recipe (Claude)
-Review by meaning; a report without `Docs updated:` is not merged. `git merge --no-ff --no-commit <branch>`, drop `PROGRESS_NOTES.md`, keep ours on `query/v4/__init__.py`, run the tests, update this file and each affected doc, commit ending `By: Wolf` and the co-author line. Copy `.tmp` DBs first, then remove the worktree and branch. Log to the decision log and `rclone copy D:\RealityEngine\plans gdrive:InfoDiffusion_archive/plans`. HP: `hp_worker fetch-patch <job>` gives branch `dsh-hp/<job>`.
-
-## Merged in the 1 Nov clean-up
-- `dsh/20261031T215040Z-4ef5184a`: prototype on 3 companies; failed Claude's grade, kept for the rerun.
-- `dsh-hp/hp-20261101T172002-15e0f2`: all HP work runs headless: WinExe, hidden launchers, guard test.
-- `dsh-hp/hp-20261101T140451-175638`: larger TextRecognizer test: helper, driver, report.
-- `dsh-hp/hp-20261101T034935-31ca45`: named formulas and concept registry, not wired into answers.
-- `dsh-hp/hp-20261101T040329-6fce13`: all OCR methods on one page set, HP.
-- `dsh/20261031T222045Z-a1c65afb`: RapidOCR number bench on the MSI.
-- `dsh/20261031T200654Z-2d667ad0`: raw fetch for 3 new pilot names, Vahan series, NSDL fortnights.
-
-## Machines
-How to operate each computer: `machines/README.md`.
-- MSI: Claude, dsh workers (Go account 2), merges, source data. 2-3 workers, at least 2.5 GB free. Closing the owning session can kill its workers.
-- HP: `python -m reality_engine.scripts.hp_worker start <brief> --dbs a,b --timeout N --test-cmd ...`, Go account 1, up to 5, at least 3 GB free. Hard stop is 1800 s unless `--timeout` is passed. Reachable on LAN 192.168.1.42 and Tailscale 100.78.87.112 (checked 31 Oct, after 16:10). If both time out, check its Wi-Fi is not Public (`Get-NetConnectionProfile`) and Tailscale is up. If only the LAN fails, set `HP_RUN_HOST=zen7s@100.78.87.112`; copying DBs does not fall back on its own.
-- Merged worktrees are removed. Nothing is pushed without Shivam's OK.

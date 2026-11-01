@@ -1,6 +1,6 @@
 # v4 truth grade — 2026-10-31
 
-> **Rule grade, not the authority.** The verdicts below come from code rules that never compare a value with a store. The read grade is the number to trust: `tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md`; current figures are in `tasks/STATE.md`.
+> **Rule grade, not the authority.** The verdicts below come from code rules that never compare a value with a store. The read grade is the number to trust: `tasks/arch_v4/TRUTH_READ_GRADE_2026-10-31.md`.
 
 Three numbers on the same 2,681-row bank with no check loosened. The contract number is the unchanged method (`tasks/answer_bench/grade_v2.py`); the shape number adds the named failures of `tasks/answer_bench/truth_grade.py`; the truth number is the truth panel, not the contract.
 

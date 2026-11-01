@@ -325,12 +325,6 @@ python -m tasks.arch_v4.analyst_test.report_stats
 # 133 tool calls, 151 model turns, 326.4 s, 789,400 / 22,937 tokens
 ```
 
-Worker metadata: **35 tool calls before the first task edit** (the 36th call created
-`select_questions.py`), **307 tool calls total** at the last check, and **2 code-intel calls**
-(`diagnostics(changed=True)`, which skipped the `tasks/` files because they are outside the pyright
-program). The 11 Python files pass `py_compile`; the context-pack 25-call budget for the first edit
-was exceeded by the sample-eligibility analysis (name/rename checks) and pilot-schema reads.
-
 ## 11. Limits and caveats
 
 - One grader, 40 rows; the Wilson interval is wide. The point estimate and the upper bound are both
@@ -365,6 +359,3 @@ was exceeded by the sample-eligibility analysis (name/rename checks) and pilot-s
 - `tasks/arch_v4/analyst_test/grades.jsonl` — 40 hand verdicts with looked-up values;
   `summary.json` — counts, rule, Wilson.
 - `tasks/arch_v4/ANALYST_AGENT_TEST_2026-10-31.md` — this report.
-
-**Docs updated:** `tasks/STATE.md`, `tasks/handoff/QUEUE_2026-10-31.md`,
-`tasks/arch_v4/ANALYST_AGENT_TEST_2026-10-31.md`, `PROGRESS_NOTES.md`.

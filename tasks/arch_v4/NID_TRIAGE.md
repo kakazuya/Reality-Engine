@@ -1,5 +1,7 @@
 # NID triage — every `not_in_data` case, 30 Oct 2026
 
+On the old 1,073-parent bank. Proxy is now the last resort, reported apart from real answers (`tasks/RULINGS.md`), so verdict b is a recipe list, not a plan.
+
 Rule under test (Shivam, 30 Oct 2026): **“not in data” is not an acceptable answer by itself.**
 Input: the 150 NID cases of the v4 registry (`tasks/arch_v4/concept_registry.json`, v4.1; 897 mapped /
 150 NID / 26 unmapped, reproduced exactly in memory by `build_concept_registry.build()`).

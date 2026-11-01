@@ -80,7 +80,7 @@ generated 2026-10-31T12:56:00 · source `equity_intelligence.shp_index` (read-on
 
 ## Status
 
-- filings indexed **566** · downloaded **563** · parsed **563** · error **3** · pending **0** · no-link rows **0** · names with a gap **6/60** · raw files 563 under `C:\Users\warri\Downloads\IDM-worktrees\20261031T014746Z-75bfd3df\.tmp\shp_xbrl_raw`
+- filings indexed **566** · downloaded **563** · parsed **563** · error **3** · pending **0** · no-link rows **0** · names with a gap **6/60** · raw files 563 under `D:\RealityEngine\raw\nse_shp_xbrl_pilot`
   - `ok`: 563
   - `error`: 3
 
@@ -123,7 +123,7 @@ generated 2026-10-31T12:56:00 · source `equity_intelligence.shp_index` (read-on
 
 ## Artifacts
 
-- raw XBRL, resumable (controller moves to `D:\RealityEngine\raw`): `C:\Users\warri\Downloads\IDM-worktrees\20261031T014746Z-75bfd3df\.tmp\shp_xbrl_raw` — 563 gzipped filings
-- parsed pilot store: `C:\Users\warri\Downloads\IDM-worktrees\20261031T014746Z-75bfd3df\.tmp\shp_xbrl_pilot.db`
+- raw XBRL: `D:\RealityEngine\raw\nse_shp_xbrl_pilot`, 563 gzipped filings
+- parsed pilot store: `reality_engine/data/pilot/v4/shp_xbrl_pilot.db`
 - independent re-read of the seed rows: `python -m reality_engine.scripts.verify_shp_xbrl_seed`
 - tests: `python -m pytest reality_engine/tests/test_v4_shp_xbrl.py -q`

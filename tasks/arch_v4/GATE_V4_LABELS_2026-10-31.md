@@ -85,6 +85,8 @@ changed list is in the branch report (`--json .tmp/changed_vs_head.json`).
 
 ## Controller steps: the one store build still required
 
+The rebuild below was tried on 31 Oct and stopped before the swap (`GATE_STATE_2026-11-01.md`), so it has not been done.
+
 A level can only be the traded close after the T1 pilot file carries `raw_close`.
 The v4 fact store cannot be fixed in place (read-only, and the source column is
 missing). On a machine with the pilot stores:
