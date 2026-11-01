@@ -17,7 +17,6 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-009 | OPEN | P2 | SessionEnd hook runs the doc sweep; next session start prints any failure | accept: python -m pytest reality_engine/tests/test_session_end_sweep.py -q | from: enforcement plan | opened 2026-11-02
 - T-010 | OPEN | P2 | One model-call function with an allowlist: free models and DeepSeek only | accept: python -m pytest reality_engine/tests/test_model_allowlist.py -q | from: Shivam ruling 1 Nov | opened 2026-11-02
 - T-011 | OPEN | P3 | Remove AGENTS conflicts: FRAMEWORK first against read nothing else first; rule 1 says ISINs never change | accept: Shivam | from: enforcement plan | opened 2026-11-02
-- T-012 | WAITING Shivam | P2 | Quiz a fresh session on the rulings, to test tasks/RULINGS.md | accept: Shivam | from: STATE 1 Nov | opened 2026-11-02
 - T-028 | OPEN | P2 | Clear the doc sweep: 26 references in old docs point at files that no longer exist | accept: python reality_engine/scripts/doc_gate.py --sweep | from: sweep 2 Nov | opened 2026-11-02
 
 ## Data

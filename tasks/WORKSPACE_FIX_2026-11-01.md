@@ -32,7 +32,7 @@ Checks in place: `reality_engine/scripts/doc_gate.py` refuses a `tasks/STATE.md`
 Before this fix, no hook loaded anything. Memory held 69 files of 122 KB, but only a list of titles reached a session, and the bodies were read only if Claude chose to.
 - `tasks/RULINGS.md`: his active rulings, under 40 lines. `reality_engine/scripts/load_context.py` loads it with `tasks/STATE.md` at every start and after every compaction, within the 10,000-character hook cap. `reality_engine/tests/test_load_context.py` guards this.
 - A ruling or correction goes in the file before the next action. A rule that can have a check gets one. `reality_engine/scripts/build_worker_context.py` points workers at the file.
-- **Test:** a fresh session answers Shivam's quiz on rulings using only what it loaded. Each repeat correction goes in the decision log and is counted.
+- **Test:** each repeat correction goes in the decision log and is counted. Shivam dropped the quiz on 2 Nov after reviewing the file.
 
 ## Enforcement order (Shivam asked, 1 Nov: do md rules even work?)
 Written rules are the weakest layer. Use the strongest that fits: make the wrong action impossible (tool defaults, OS and file permissions), block it at the moment (`PreToolUse` hook, permission deny), refuse it at commit or merge (gates, tests), reject bad data at write time (typed contracts, database constraints), then an independent check. `tasks/RULINGS.md` is only for judgement rules and context.
