@@ -1804,7 +1804,7 @@ The 1.5× exists because every term in that inequality is an estimate; below it 
 answer is not knowable. **A static allocation stays the benchmark**: the layer must beat its own
 silence to justify existing (§F.9 guardrails).
 
-**The nightly scoring (after close, ~21:00 IST, after the 19:35 price job).**
+**The nightly scoring (after close, after the end-of-day price update; no scheduled job runs yet, `tasks/FRAMEWORK.md`).**
 1. Load holdings read-only: the **official Kite MCP** for Zerodha and the **Angel One export**
    file. No order endpoints, no write scopes; a missing/stale export marks the account
    `as_of` stale and the run refuses to recommend a switch it cannot size.
@@ -1863,10 +1863,15 @@ Packages are disjoint files, each with its acceptance test. The gate-gain estima
 shares of the *failure-reason findings* (2,681-case run: `ask_match` 2,884, sub-question
 2,708, unrelated ~1,500, blocked 383, NID 132) — they overlap, so **they do not add**.
 
+**Status, 2 Nov 2026.** Code exists for WP1-WP4 and WP6-WP8 (`reality_engine/query/v4/`,
+`reality_engine/pilot/`), and it has not passed: 0 of 127 answered rows were right on the hand
+read, and the 3-company prototype failed its grade (`GATE_STATE_2026-11-01.md`). WP9 (§F.9) and
+WP10 (`PILOT_BACKTEST.md`) have no code. The quotes below are the original plan.
+
 ## H.0 Order of work (v4.1, binding)
 
-1. **Pilot first.** The pilot stores (60 ISINs) already answer the WP1–WP4 acceptance tests;
-   nothing in this document is built at full scale before the pilot gate passes.
+1. **Pilot first.** Nothing in this document is built at full scale before the pilot gate
+   passes. Prototype on 2-3 companies before any wider run (Shivam, 2 Nov).
 2. **Discovery pilot backtest** on the pilot universe (§E.5) → the report planned as
    `PILOT_BACKTEST.md` in this directory (not started, §H.10).
 3. **Shivam approves the full schema** (the approved artifact is the DDL + the pilot reports:
@@ -2090,8 +2095,8 @@ conservative end, never dividing by a factor below 1.
 | the NID ticket backlog (§H.5) | 31 classes, 121 human build-hours restated | 18–22 |
 | **total** | | **77–98 worker-hours** |
 
-With three or four workers running disjoint briefs in parallel — §H.0 keeps §E/§F behind the
-pilot gate, so the concurrency is real — that is **20–25 hours of wall clock**. The total is an
+At the limit of 2 code workers at once (`tasks/RULINGS.md`), that is **about 40–50 hours of wall
+clock**. The total is an
 estimate built on measured workers and is labelled as one: if a package overruns its quote by
 more than the p90–median spread (about 1 h), the brief was wrong, not the calibration.
 
@@ -2142,7 +2147,9 @@ python tasks/arch_v4/nid_retriage.py                        # writes nid_search_
 python tasks/arch_v4/bench_gpu.py                           # writes bench_gpu.md (§F.8; needs cupy, see §F.8)
 ```
 
-Inputs: `tasks/master_bank/MASTER_BANK.jsonl` (1,073 cases, sha `64d2f46318127f76`),
+Inputs: `tasks/master_bank/MASTER_BANK.jsonl` (1,073 cases, the old bank these counts come from;
+the sha the registry was generated from is `64d2f46318127f76`, the file matches it with CRLF line endings; the frozen 1,901-question
+bank is `tasks/pilot60/PILOT_BANK_2026-10-31.jsonl`),
 `tasks/pilot60/UNIVERSE.csv` (the 60 pilot ISINs), `tasks/SCHEMA_FINAL_2026-10-29.sql` (137
 tables), pilot stores under `reality_engine/data/pilot/pilot60/` (read-only,
 `mode=ro&immutable=1`). Gate counts from `tasks/answer_bench/GATE_RESULTS_*_strict.jsonl`. The
