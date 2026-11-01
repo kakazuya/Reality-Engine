@@ -33,6 +33,6 @@ When Shivam rules or corrects something, write it here before the next action. `
 - State failures plainly, with full sample sizes; no scores from small samples without saying so.
 
 ## Agreed direction, not yet built
-- Typed write contracts at write time (unit, range, label), splitting `fact.value`; test `metric_citations` on the prototype.
+- Split `fact.value` and test `metric_citations` on the prototype (T-036). Typed write contracts are built: `reality_engine/contracts.py`.
 - Merge gate with hidden evaluation and rulings diff; tool-call budgets enforced in code; read limit if the median stays above 10 calls before first edit.
 - OCR: Microsoft TextRecognizer first pass at 300 DPI grayscale, a stronger reader for low-confidence numbers. No PostgreSQL for now; revisit with measurements after the gate.

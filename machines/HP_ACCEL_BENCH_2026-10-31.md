@@ -1,22 +1,11 @@
-# HP OmniBook 5 — capacity, OCR accelerators, network (2026-10-31)
-
-> **Corrections later the same day:** the HP does **not** need Python 3.13 — `cryptography` 46.0.3 installs on its 3.14 ARM64 and `mcp` runs there (§10.1 below); §2 and §7's 3.13 requirement is stale. The LAN address `192.168.1.42` now times out; use `HP_RUN_HOST=zen7s@100.78.87.112` (`tasks/STATE.md`).
+# HP OmniBook 5: capacity, OCR accelerators, network (31 Oct to 1 Nov 2026)
 
 **Answers first**
 
-- **Capacity: yes, good enough. 8 simulated workers ran with 8.56 GB of commit left and every
-  task under 1.45× the 1-worker time; no step came near the 2× or 1.5 GB stop rules. Recommend
-  6–8 concurrent dsh workers, and heavy jobs (OCR, benches) can run beside them — the NPU OCR
-  run leaves the CPU mostly idle.**
-- **OCR: use the NPU (Hexagon HTP). 159.7 pages/min vs 15.1 on the CPU and 86.1 on the Adreno
-  GPU; NPU text agrees with CPU text at 0.971 mean character similarity, the GPU one at 0.611.**
-  The 1,073 scanned files are ~13,300 pages → **\~1.4 h on the NPU** (2.6 h GPU, 14.7 h CPU).
-- **dsh runs on the HP only under real Node, not under Bun** (Bun 1.4.4 is native but boots dsh
-  into `node-addon-require-builtin unsupported`; Node 24.22.2 win-arm64 runs it and made a real
-  Go call).
-- **Network is ~10 MB/s (80 Mbit/s)** to the HP, LAN or Tailscale; three parallel streams
-  aggregate 11.5 MB/s, so the limit is the Wi-Fi link, not SSH. A raw TCP port is not reachable
-  (Windows Firewall) and changing that is outside the fence.
+- **Capacity: 5 concurrent short workers, 6 when the work outlives startup.** A real dsh worker holds about 1.25 GB, and six together left 1.28 GB free (§10). Five added on top of four running showed no slowdown; the limit is local cold start (§10A).
+- **OCR: Windows App SDK `TextRecognizer` is the best engine measured; no engine passes the gate of 0.95 number recall and 0.98 precision.** 0.9378 / 0.9242 on the frozen 150-page set at 3x (§12), 0.9728 / 0.9761 at 300 DPI grayscale on the larger sample (`tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md`). The NPU RapidOCR path scores 0.7354 / 0.7356 on the frozen set; its 159.7 pages/min in §4 came from a broken path that produced gibberish (§10.5). On the MSI CPU, RapidOCR beats `Windows.Media.Ocr` (§13).
+- **dsh runs on the HP only under real Node, not under Bun** (§5).
+- **Network is about 10 MB/s (80 Mbit/s)**, LAN or Tailscale; the limit is the Wi-Fi link, not SSH (§6). `hp_run` tries the LAN address first and falls back to Tailscale.
 
 ---
 
@@ -41,26 +30,16 @@ the max across workers; memory is the summed RSS of every worker process tree.
 | 6 | 7.29 | 8.84 | 29.1 | 155 | 1.20× | 1.27× | 2.00× (0.14 s, noise) |
 | 8 | 7.03 | 8.56 | 16.8 | 155 | 1.21× | 1.45× | 1.43× |
 
-- **No step reached the stop rules** (task >2× or commit <1.5 GB), so 8 is a measured-safe
-  number, not the ceiling. At 155 MB/worker the memory ceiling is ~35 workers, but CPU (8 cores)
-  and the 2× rule would bite long before that. **Operating point: 6–8.**
-- **A real dsh runtime adds node on top**: one real `dsh` call measured 208 MB resident, 311 MB
-  peak (3 children) — so a real worker is ≈ **365 MB** (155 + 210), not 155. Eight real workers
-  ≈ 2.9 GB, still well inside 8.5 GB of commit left.
+- **No step reached the stop rules** (task >2× or commit <1.5 GB). This simulation understated a
+  worker by about 8×: real workers hold about 1.25 GB, so §10 and §10A replace its operating point.
 - **MSI reference given by Shivam: ~1.15 GB/worker (760 MB node + 390 MB python, 4 workers).**
-  The HP workers are much lighter here because the measurement holds the two children a worker
-  spawns, not the whole dsh bundle; a production dsh worker will sit between 0.4 and 1.15 GB.
-  Treat **8 workers** as the measured answer and 12–14 as the memory-feasible maximum.
 - **Heavy jobs beside workers: yes.** The NPU OCR run (159.7 pages/min) is one process and leaves
   the CPU mostly idle; the capacity run itself ran beside the raw copy (19,978 files) and the OCR
   runs without hitting the stop rules.
 
-**What was simulated, and the one real gap:** the two MCP servers could not be started as servers
-on this box — `mcp` imports `cryptography`, and there is **no cp314 win_arm64 wheel** (pip falls
-back to building from Rust source, which fails). The worker therefore holds the same children the
-MCP servers would start (`basedpyright-langserver`, and the `reality-data` modules + DB handle)
-without the ~20 MB MCP wrapper. Fix: a Python 3.13 ARM64 install for the MCP servers (3.13 has
-`cryptography` wheels); not installed in this run (python.org downloads stalled from the HP).
+**What was simulated:** the two MCP servers were not started as servers in this run. The worker
+held the same children they would start (`basedpyright-langserver`, and the `reality-data` modules
+plus a DB handle), without the ~20 MB MCP wrapper. §10 measures real workers with both servers.
 
 ## 2. Job runner — `reality_engine/scripts/hp_run.py`
 
@@ -174,39 +153,17 @@ Link rates are 351/780 Mbps and both laptops are on 5 GHz, so the measured ~80�
 cores sat at ~15% during the transfer). A 50 GB data root would take ~1.4 h to copy at this rate;
 the 128.7 MiB repo snapshot takes ~15 s.
 
-## 7. What the controller needs to start real workers on the HP
+## 7. What the HP has for real workers
 
-Working already (all native unless noted):
+All native unless noted:
 
-1. **Bun** 1.4.4 (`~\.bun\bin\bun.exe`) — native.
-2. **Node 24 ARM64** (`C:\RE\node24\node-v24.22.2-win-arm64\node.exe`) — required, dsh will not
-   run under Bun.
-3. **dsh** 0.2.1-rc.5 installed via bun, booted through Node.
-4. **`headless` profile** created from the shipped template at `~\.dsh\profiles\headless`
-   (cordis.yml + cordis.patch.yml + package.json + pnpm-workspace.yaml).
-5. **Python 3.14 ARM64** at `%LOCALAPPDATA%\Programs\Python\Python314-arm64` with
-   `onnxruntime`, `onnxruntime-qnn`, numpy, pillow, pypdfium2, duckdb, onnx,
-   rapidocr-onnxruntime (models + metadata), basedpyright 1.40.2, pytest, psutil.
-6. **`reality_engine/scripts/hp_run.py`** for sync/copy-db/run/status/fetch, and `C:\RE\repo`
-   as the code snapshot.
+1. **Bun** 1.4.4 (`~\.bun\bin\bun.exe`), used only to install dsh.
+2. **Node 24 ARM64** (`C:\RE\node24\node-v24.22.2-win-arm64\node.exe`), required: dsh will not run under Bun. A launcher replaces `dsh.exe` (§10.1).
+3. **dsh** 0.2.1-rc.5, installed via bun, booted through Node, with the `headless` profile at `~\.dsh\profiles\headless`.
+4. **Python 3.14 ARM64** at `%LOCALAPPDATA%\Programs\Python\Python314-arm64`, which also runs both MCP servers (§10.1).
+5. **`reality_engine/scripts/hp_run.py`** for sync/copy-db/run/status/fetch, and `C:\RE\repo` as the code snapshot. `hp_worker.py` starts real workers (§10.2).
 
-Still missing / broken on ARM:
-
-1. **MCP servers cannot import**: `mcp` → `cryptography` has no cp314 win_arm64 wheel. Needs a
-   **Python 3.13 ARM64** interpreter for the MCP servers (3.13 has the wheels). This is the one
-   blocker to a worker that can call code-intel/reality-data.
-2. **The harness's `DSH` path** must become a Node-based shim (Bun can't run dsh).
-3. **No git on the HP** — the controller's worktree/commit flow needs `git` installed (nothing
-   in this run used it; the runner syncs a tar).
-4. **reality-data needs data**: `REALITY_DATA_ROOT` + the DBs. Only the 21 MB pilot manifest DB
-   was copied; the live set is ~90 GB (≈2.5 h at the measured 10 MB/s), so copy only what the
-   workers read.
-5. **Heartbeat plugin / profile patches**: the per-run patch (provider, session id, effort) is
-   built by `run_deepseek_harness.py` and works; the heartbeat Cordis plugin
-   (`dsh_heartbeat_control.mjs`) is in the repo but its loopback mailbox was **not** exercised
-   here (no long run to supervise).
-6. **The `x-opencode-session` header** is emitted from the patch; it was present in both calls
-   (same id), so Go does not reject the HP.
+reality-data needs data: the live set is about 90 GB (about 2.5 h at 10 MB/s), so copy only what a job reads, through `dbs`.
 
 ## 8. Commands used
 
@@ -225,10 +182,7 @@ HP-side benchmark files (left in place): `C:\RE\ocr_bench.py`, `C:\RE\capacity2.
 
 ## 9. Not tested
 
-- Windows built-in OCR, and Python x64 under emulation for the cv2/pyclipper pipeline.
-- A real dsh worker holding its MCP servers (blocked by the `cryptography` wheel — see §7).
-- The heartbeat supervisor over a long run.
-- Token counts per call (not exposed by `--json`; read them from the Go ledger).
+- Python x64 under emulation for the cv2/pyclipper pipeline.
 - Sustained multi-hour thermal behaviour of the NPU.
 
 ---
@@ -251,8 +205,8 @@ applied cleanly on the MSI (`dsh-hp/<id>` branches, 524 B and 514 B).
 
 | item | state | note |
 |---|---|---|
-| Python for the MCP servers | **already fine on 3.14 ARM64** | The brief's 3.13 requirement is stale: `cryptography` 46.0.3 is installed from its `cp37-abi3-win_arm64` wheel and `pywin32` 312 has a cp314 win_arm64 wheel. The real blockers were four missing pure-Python packages: `pyjwt`, `uvicorn`, `httpx2`, `pyyaml`, now installed into `%LOCALAPPDATA%\Programs\Python\Python314-arm64`. **No 3.13 install was made.** |
-| `git` | already on PATH | `C:\Program Files\Git\cmd\git.exe` 2.56.0 (§7 item 3 is stale). HP job trees are owned by `BUILTIN\Administrators` while the ssh user is `zen7s`, so every runner git call passes `-c safe.directory=*`. |
+| Python for the MCP servers | **fine on 3.14 ARM64** | `cryptography` 46.0.3 is installed from its `cp37-abi3-win_arm64` wheel and `pywin32` 312 has a cp314 win_arm64 wheel. The real blockers were four missing pure-Python packages: `pyjwt`, `uvicorn`, `httpx2`, `pyyaml`, now installed into `%LOCALAPPDATA%\Programs\Python\Python314-arm64`. **No 3.13 install was made.** |
+| `git` | already on PATH | `C:\Program Files\Git\cmd\git.exe` 2.56.0. HP job trees are owned by `BUILTIN\Administrators` while the ssh user is `zen7s`, so every runner git call passes `-c safe.directory=*`. |
 | Node-backed `dsh` shim | built | 5.6 KB AnyCPU C# launcher compiled once with `csc.exe`; runs `node.exe` on the bun-installed `@deepseek-ai/dsh/lib/bin.js`. Bun's launcher is kept as `~\.bun\bin\dsh.bun.exe`. `dsh --version` → `0.2.1-rc.5`; `DSH_NODE` overrides the node path. |
 | code-intel MCP | **answers a real call** | stdio JSON-RPC `initialize` + `tools/call`: `symbols("connect_ro")` → `reality_engine/db/readonly.py:119`, `source: lsp`. |
 | reality-data MCP | answers; needs data | `catalog()` returned `{ok:false, code:"snapshot_missing"}` with an empty `C:\RE\data` — a correct answer for a data-less host. `--dbs` mounts named DBs (WAL-consistent `sqlite3.backup`, read-only attribute, copied only when the MSI DB is newer). |
@@ -271,7 +225,7 @@ The HP jobs run the same interpreter (3.14 ARM64), execute the job checkout's ow
 # start (refuses Mon-Fri 06:30-09:30 / 11:30-15:30 IST exactly like the MSI manager)
 python -m reality_engine.scripts.hp_worker start tasks/brief.md `
     [--dbs equity_intelligence.db,bse_announcements.db] [--test-cmd "python -m pytest ... -q"] `
-    [--commit HEAD] [--permission workspace-write|read-only] [--max-output-tokens N] [--timeout S] [--peak-ok]
+    [--commit HEAD] [--permission read-only|workspace-write|danger-full-access] [--max-output-tokens N] [--timeout S] [--peak-ok]
 
 python -m reality_engine.scripts.hp_worker status [hp-...]   # state, exit, result size, test tail
 python -m reality_engine.scripts.hp_worker result <id>       # fetch + print result.md, status, log
@@ -447,7 +401,7 @@ PDFs), `C:\RE\ocr_pages` (20 rendered pages), `C:\RE\ocr_check` (rows JSONL),
 - OCR: 0.93–0.95 on clean pages, not 0.95+ everywhere; the remaining loss is logos,
   all-caps letterheads, ruled tables and text-layer reading order, not recognition.
 
-## 11. Worker throughput — 1, 3 and 5 concurrent HP workers (2026-10-31, follow-up)
+## 10A. Worker throughput — 1, 3 and 5 concurrent HP workers (2026-10-31, follow-up)
 
 **Answer: the limit is local cold start, not the provider and not memory.** Five workers
 added on top of four already running finished in 8.0–9.7 s against 8.8 s for one — no
@@ -455,7 +409,7 @@ slowdown. The earlier "six workers, 4.5× slower" was a *tail* (the slowest job)
 58 s cold start plus one 60 s provider stall; the work phase stayed ~10 s in every job.
 Recommend **5 concurrent short workers**, or **6** for jobs whose work outlives startup.
 
-### 11.1 What was run
+### 10A.1 What was run
 
 05:38–05:40 IST, OpenCode Go **account 1**, `deepseek-v4.1-flash` at max effort. One shared,
 warm `C:\RE\repo` checkout (no per-job upload), one fixed brief: read
@@ -486,7 +440,7 @@ contains dsh cold start and is charged to `startup`; tool execution and teardown
   job's wall time and is per worker. Adding workers does not increase it on the shared
   warm checkout, but a cold checkout does (below).
 
-### 11.2 Why the earlier six-worker run felt 4.5× slower
+### 10A.2 Why the earlier six-worker run felt 4.5× slower
 
 That run (04:31–04:34, **account 2**, a fresh 129 MiB `git archive` + `git init` per job and
 both MCP servers in each worker) gave 17.1, 21.2, 68.1, 28.5, 76.9 and 20.8 s. Replaying
@@ -500,13 +454,13 @@ So the honest ratios are: mean 38.8 s = **2.3×** the fastest 17.1 s job; max 76
 penalty. The 13–26% CPU reading was sampled after the cold-start burst; startup is where
 the CPU goes, which is why CPU looked idle while walls stretched.
 
-### 11.3 Recommended operating point
+### 10A.3 Recommended operating point
 
 - **5 concurrent short HP workers** is the measured point: 2,078 finished tasks/h on this
   task shape, and per-worker rate (415/h) is unchanged from one worker (409/h).
-- **6** for jobs whose work outlives startup (the capacity section above measured 6–8 safe
-  on RAM/CPU); the only measured penalty of 6 is the extra cold start.
-- To make 6–8 pay for short jobs, fix startup rather than add workers: cache the per-commit
+- **6** for jobs whose work outlives startup (§10.4); the only measured penalty of 6 is the
+  extra cold start.
+- To make more than 5 pay for short jobs, fix startup rather than add workers: cache the per-commit
   archive on the HP (already in §10.8) and keep one warm checkout instead of a fresh
   `git init` per job — the warm-checkout bench needed no more wall time at 5 than at 1.
 
@@ -514,7 +468,7 @@ Caveats: four concurrent jobs from another worker share the box (real load, unkn
 `cpu_pct` is an instantaneous `Win32_Processor` sample and read 100 in every wave, so it is
 not used as a load measure; free RAM is one sample per wave at t ≈ 1.3 s.
 
-### 11.4 Driver
+### 10A.4 Driver
 
 ```powershell
 python tasks/efficiency/hp_bench_run.py bench --waves 1,3,5
@@ -526,31 +480,10 @@ harness could not import `reality_engine` (fix: `set PYTHONPATH=C:\RE\repo`), an
 inside the command sent `exit.txt` to the repo root, where the wave poller never saw the
 job finish. Both fixed in the driver; a wave now reports `problems` if a job has no clean
 answer.
-## 11. Snapdragon OCR engines — Windows AI, Qualcomm EasyOCR, baseline (2026-10-31, unblocked 2026-11-01)
 
-**Measured answer (2026-10-31 set): Windows' own `Windows.Media.Ocr` beat both
-hardware-specific engines on speed and figures; the Windows App SDK
-`TextRecognizer` was gated.** That gate was lifted on 2026-11-01 with a properly
-signed MSIX: `TextRecognizer` now runs on this HP with package identity, reports
-`Ready`, and on the frozen 150-page table set (§12) is the best engine measured —
-table number recall 0.9378, precision 0.9242, 161 pages/min — though it still
-misses the 0.95/0.98 gate. Qualcomm's AI Hub EasyOCR *does* run on the NPU (both
-graphs) under `onnxruntime-qnn`, but its pre-exported detector/recogniser pair,
-decoded with the numpy CRAFT post-processing available here, scores 0.291 and
-runs at 1.5 pages/min — 30× slower than the baseline and 4× worse. The §11.1
-numbers below remain the 2026-10-31 20-page measurements; §12 is the frozen-set
-gate result and supersedes them where the two differ.
-**Measured answer (updated 2026-11-01): the Windows App SDK `TextRecognizer` is
-the most accurate engine measured and it now runs from a signed MSIX; Windows'
-`Windows.Media.Ocr` remains the fastest (CPU, 186.7 pages/min).** The earlier
-"gated" result in §11.2 was superseded on 2026-11-01 — **the engine runs from a
-signed MSIX launched in the interactive session (scheduled task `/IT`)**; on the
-larger 2,387-page sample its best setting reaches table-number
-recall/precision 0.9728/0.9761. Qualcomm's AI Hub
-EasyOCR *does* run on the NPU (both graphs) under `onnxruntime-qnn`, but its
-pre-exported detector/recogniser pair, decoded with the numpy CRAFT post-processing
-available here, scores 0.291 and runs at 1.5 pages/min — 30× slower than the
-baseline and 4× worse.
+## 11. Snapdragon OCR engines: Windows AI, Qualcomm EasyOCR, baseline (31 Oct, unblocked 1 Nov)
+
+**Measured answer: the Windows App SDK `TextRecognizer` is the most accurate engine measured and runs from a signed MSIX; `Windows.Media.Ocr` is the fastest (CPU, 186.7 pages/min) with weaker numbers.** Qualcomm's AI Hub EasyOCR does run on the NPU (both graphs) under `onnxruntime-qnn`, but its pre-exported pair, decoded with the numpy CRAFT post-processing available here, scores 0.291 at 1.5 pages/min. §11.1 holds the 31 Oct 20-page measurements; §12 is the frozen-set result and supersedes them where they differ.
 
 Host: HP OmniBook, Snapdragon X X1-26-100 (Hexagon NPU), Windows 11 26H2 build
 26300.9818, Python 3.14.7 ARM64, `onnxruntime` 1.31.1 + `onnxruntime-qnn` 2.7.0,
@@ -574,14 +507,7 @@ normalisation. 17 letters, 2 statutory annexures, 1 presentation page.
 | Qualcomm AI Hub EasyOCR | NPU+CPU | 1.49 | 0.2910 | 0.2809 | 0.3601 | 0.2907 | 0.2811 | 0.3162 |
 | Windows AI `TextRecognizer` | Windows AI | 161.5 | — | — | 0.9378* | — | — | — |
 
-`*` 150-page frozen table set (§12), not this 20-page set. The API ran only after the
-signed-MSIX fix in §11.2; the earlier `—` row is superseded.
-| Windows AI `TextRecognizer` (signed MSIX) | NPU | not measured on these 20 pages | — | — | — | — | — | — | — |
-
-The `TextRecognizer` line is deliberately blank here: it was not scored on this
-20-page set.  On the larger 1,300-page sample it reaches table-number recall
-0.9728 / precision 0.9761 (300 DPI + grayscale) at 126 pages/min;
-`tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md` has the lever table and test rows.
+`*` 150-page frozen table set (§12), not this 20-page set; `TextRecognizer` was not scored on these 20 pages. On the larger sample it reaches table-number recall 0.9728 / precision 0.9761 (300 DPI + grayscale) at 126 pages/min: `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md`.
 
 Scanned pages: no text layer, so scored on the ten pages with hand-read key numbers
 from §10.6 (key-number recall) and on output volume:
@@ -654,22 +580,8 @@ working build:
    the 10 hand-read pages. Full breakdown in §12.
 7. **Cleanup:** the test package and certificate are removed after the run; the
    pfx/cer stay under `C:\RE\bench\textrec\` only until then.
-### 11.2 Windows App SDK `TextRecognizer` — runs from a signed MSIX
 
-**Current state (2026-11-01): it runs.**  The API is
-`Microsoft.Windows.AI.Imaging.TextRecognizer` in the installed Windows App SDK
-1.8 runtime (`8000.836.2153.0`): `GetReadyState` / `EnsureReadyAsync` /
-`CreateAsync`, `RecognizeTextFromImageAsync(ImageBuffer)`, returning
-`RecognizedText` with `Lines`, `TextAngle`.  A **signed** MSIX installed with
-`Add-AppxPackage` and launched through its execution alias **in the interactive
-session by a scheduled task with `/IT`** gets package identity, reports
-`ready_state=Ready`, and recognises images.
-
-The earlier result stands for what it tested: an **unpackaged** process gets
-`E_ACCESSDENIED` at `GetReadyState` before any image, and a **loose
-(unregistered, unsigned) MSIX** could not be made to start.  Those four launch
-shapes are the historical record.  The missing piece was a properly signed
-package plus an interactive-session launch, not a capability the API lacks.
+The `/IT` launch above put a window on the HP's screen; by Shivam's headless ruling it now runs as a hidden `WinExe`: `machines/HP_LAPTOP.md`.
 
 What the working run measures (full method and levers in
 `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md`):
@@ -720,16 +632,9 @@ For the 1,073-file job EasyOCR is therefore a non-starter on time alone: at
 
 ### 11.4 Recommendation for the 1,073 scanned files
 
-> **HP only — the engine ranking below does not hold on x64.** §12 re-measured
-> `Windows.Media.Ocr` against `RapidOCR` on the MSI over the same measure (number
-> recall/precision on financial-table pages): RapidOCR wins 0.916/0.910 vs
-> 0.818/0.852. The "MediaOcr is the only usable engine" line is an ARM finding.
+> **HP only: this engine ranking does not hold on x64.** §13 re-measured `Windows.Media.Ocr` against `RapidOCR` on the MSI on number recall/precision on financial-table pages: RapidOCR wins 0.916/0.910 vs 0.818/0.852.
 
-Use **`Windows.Media.Ocr` as the first pass**, not the NPU pipeline:
-Use **Windows AI `TextRecognizer` as the first pass** now that the signed package
-runs; keep **`Windows.Media.Ocr` as the fallback** where the package cannot be
-installed. Neither reaches the 0.95/0.98 gate on the frozen table set (§12), so a
-bulk run still needs Shivam's decision.
+Use **Windows AI `TextRecognizer` at 300 DPI grayscale as the first pass**, with a stronger reader for low-confidence numbers (Shivam's agreed direction, `tasks/RULINGS.md`); keep **`Windows.Media.Ocr` as the fallback** where the package cannot be installed. Neither reaches the 0.95/0.98 gate on the frozen table set (§12), so a bulk run still needs Shivam's decision.
 
 - **Time:** Windows AI 161.5 pages/min (recognition only) ⇒ 13,300 pages in
   **~1.4 h**. MediaOcr 270.7 pages/min OCR-only ⇒ **~0.8 h**; add rendering
@@ -752,33 +657,6 @@ bulk run still needs Shivam's decision.
 - **Gate:** no engine and no pair of engines reaches 0.95 recall / 0.98 precision;
   the best agreement pair caps precision at 0.944 while losing recall. Do not start
   the 1,073-file run on the strength of these numbers.
-Use **`Windows.Media.Ocr` as the first pass** for speed, and
-**`TextRecognizer` (300 DPI grayscale) where the figures matter**: it is 1.5×
-slower than MediaOcr but its exact-number accuracy is the best measured
-(table numbers 0.9728/0.9761; 0.8131 of scanned XBRL facts found vs 0.8103 for
-the 200 DPI baseline).  The current NPU pipeline stays last here.
-
-- **Time:** 171–187 pages/min measured ⇒ 13,300 pages in **~1.2–1.3 h**; allow
-  **~1.5 h** once the 90°/270° retry is added. The current NPU baseline is
-  38.6–43.9 pages/min ⇒ **5.0–5.7 h**. EasyOCR: ~150 h, rejected.
-- **Accuracy:** on the pages with truth, 0.670 plain / **0.878 order-free** /
-  **0.964 exact-number recall** (baseline: 0.667 / 0.624 / 0.754). On the scanned
-  key numbers, 0.625 vs the baseline's 0.486. Among the three engines in this
-  section it is the only one whose figure recall is usable for filings;
-  `TextRecognizer` now leads it (table-number recall 0.9728 on the larger set).
-- **Two fixes are mandatory, both already in `hp_ocr_check.py`:** retry 90°/270°
-  when a page yields <40 characters (MediaOcr produced garbage on the rotated GMR
-  page, where the baseline recovers it), and sort the returned lines by their
-  bounding boxes (+3.7 points of plain accuracy on the truth set).
-- **Keep the NPU path for two cases:** tabular/annexure pages, where the baseline
-  is better (0.595 vs 0.422), and any page still under 40 characters after the
-  rotation retry. A per-page route on layout is cheaper than making one engine do
-  both.
-
-Expected for the 1,073 files: ~1.5 h, ~0.67 plain / ~0.88 order-free character
-accuracy on text-bearing pages, number recall ~0.96 on clean pages and ~0.62 on
-scans — i.e. better figures than today, in a quarter of the time, on the CPU that
-is otherwise idle while the NPU pipeline post-processes in numpy.
 
 The NPU is not the bottleneck in the current pipeline: the baseline uses 0.27 CPU-s
 per page at 43.9 pages/min, while MediaOcr uses 0.22 CPU-s at 186.7 pages/min.
@@ -795,15 +673,8 @@ python -m reality_engine.scripts.hp_ocr_bench --engine easyocr --mode textlayer 
 python -m reality_engine.scripts.hp_ocr_bench --engine qnn  --mode scanned --list C:\RE\pages30.txt --base C:\RE\raw\pilot60_history --keys C:\RE\bench\scanned_keys.json --limit 20 --out C:\RE\bench\out
 python -m reality_engine.scripts.hp_ocr_bench --engine media --mode scanned --list C:\RE\pages30.txt --base C:\RE\raw\pilot60_history --keys C:\RE\bench\scanned_keys.json --limit 20 --out C:\RE\bench\out
 
-# Windows App SDK TextRecognizer helper (source in the job dir, not committed)
-dotnet publish -c Release -o pkg            # WindowsPackageType=None, WindowsAppSDKBootstrapInitialize=false
-makeappx pack /d pkg /p RETextRecBench.msix /o
-signtool sign /fd SHA256 /f rebench.pfx /p <pw> RETextRecBench.msix
-Add-AppxPackage RETextRecBench.msix
-schtasks /Create /TN RETextRecAll /TR "$env:LOCALAPPDATA\Microsoft\WindowsApps\textrec.exe --manifest C:\RE\ocr_test\windowsai\manifest_all.txt --out C:\RE\ocr_test\windowsai\raw_all.jsonl" /SC ONCE /ST 23:59 /IT /F
-# Windows App SDK TextRecognizer helper: source is now committed at
-# reality_engine/tools/textrec/, and it must be a signed MSIX launched in the
-# interactive session.  Full build/run/cleanup steps:
+# Windows App SDK TextRecognizer helper: source at reality_engine/tools/textrec/. It must be a
+# signed MSIX with package identity. Full build/run/cleanup steps:
 # tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md
 C:\RE\dotnet\dotnet.exe publish reality_engine\tools\textrec\textrec.csproj -c Release -r win-arm64
 makeappx pack /d pkg /p textrec.msix /o
@@ -833,162 +704,6 @@ Add-AppxPackage -Path textrec.msix -ForceUpdateFromAnyVersion
 - The scanned-page score still rests on 10 hand-read number sets. A text-layer
   truth for scanned pages would make the comparison exact.
 
-## 12. MSI, 2026-11-01 — does RapidOCR CPU clear the number gate Windows OCR failed?
-
-**Answer: no. RapidOCR 3.10 on the CPU reads financial-table pages better than
-`Windows.Media.Ocr` (number recall 0.916 vs 0.818, precision 0.910 vs 0.852 on the
-same 110 table pages) but misses both gates (recall 0.95, precision 0.98). The
-rotation retry and a larger raster change nothing on these pages. 4,922 of the
-13,169 pages in `is_scanned_guess=1` PDFs are the pages that actually need OCR
-(37.4%); at the measured 12.07 pages/min end to end that is 6.8 h on this CPU, or
-33 min with Windows OCR.**
-
-Host: MSI, x64 Windows, Python 3.14.7. Engines: `rapidocr` 3.10.0 (PP-OCRv6
-`det_small` + `rec_small` + cls, onnxruntime CPU execution provider, the package
-defaults: 2000-px preprocess cap, text score 0.5) and `Windows.Media.Ocr` through
-PyWinRT 10.0.28000 (`winrt` is not installed on the box; the projection wheels were
-fetched into `.tmp/pylib`, which is 3 MB, not an install). One process at a time.
-
-### 12.1 Method (the same measure Windows OCR was scored with)
-
-Truth is the PDF text layer, rendered with pypdfium2 at **3x** (A4 → 1788×2526 px).
-Numbers are the **distinct** tokens matching `\d[\d,]*(\.\d+)?` with the commas
-stripped; recall = truth numbers found in the OCR, precision = OCR numbers present
-in the truth. Micro (pooled counts) is the gate number; macro (mean of per-page
-scores) is given beside it.
-
-A page is a **table page** when its text layer has ≥15 numeric tokens, ≥8 of them
-with 3+ digits, and numbers are ≥12% of its words. Sample: `seed=20261031` over the
-local PDFs of `pilot60_history_manifest.db`, quotas annual reports 30, quarterly
-results 45, investor presentations 30, concall transcripts 5 (=110), plus 40 prose
-pages (11/16/9/4). Drawn: **150 pages, 63 PDFs, 34 symbols**, quotas exact.
-
-```
-python -m reality_engine.scripts.ocr_number_bench sample --out .tmp/ocr_bench --scale 3
-python -m reality_engine.scripts.ocr_number_bench ocr    --out .tmp/ocr_bench --config asis3
-python -m reality_engine.scripts.ocr_number_bench ocr    --out .tmp/ocr_bench --config windows3 --engine windows
-python -m reality_engine.scripts.ocr_number_bench score  --out .tmp/ocr_bench
-python -m reality_engine.scripts.ocr_number_bench census --out .tmp/ocr_bench
-```
-
-### 12.2 Results — table pages only, by document type
-
-| engine | AR (30) | results (45) | decks (30) | transcripts (5) | **all table (110)** |
-|---|---|---|---|---|---|
-| RapidOCR CPU, as shipped | 0.9817 / 0.9762 | **0.8644 / 0.8581** | 0.9800 / 0.9846 | 0.9837 / 0.8521 | **0.9161 / 0.9098** |
-| Windows.Media.Ocr | 0.8060 / 0.9379 | 0.7914 / 0.7896 | 0.8873 / 0.9514 | 0.9593 / 0.8252 | 0.8184 / 0.8522 |
-
-Recall / precision. Gate: 0.95 / 0.98. Both engines **fail**; RapidOCR fails only on
-the dense quarterly-results statements (0.864) while annual-report and deck tables
-are already at 0.98.
-
-| engine | all 150 | prose 40 | recall (macro) | precision (macro) | OCR pages/min | + render | pages/min end to end |
-|---|---|---|---:|---:|---:|---:|---:|
-| RapidOCR CPU, as shipped | 0.9195 / 0.9152 | 0.9573 / 0.9782 | 0.9291 | 0.9314 | 12.48 | 0.165 s/page | **12.07** |
-| RapidOCR, 90°/270° retry | identical | identical | — | — | — | — | — |
-| RapidOCR, 3x with cap 3200 (30-page probe) | 0.9127 / 0.8873 | — | — | — | 10.81 | — | 10.47 |
-| Windows.Media.Ocr | 0.8268 / 0.8603 | 0.9212 / 0.9508 | 0.8616 | 0.8840 | **252.26** | — | **148.94** |
-
-- **The rotation retry never fires on this sample:** the shortest OCR output is 280
-  characters and every page has ≥3 word-like tokens, for both engines (Windows OCR
-  minimum 173). Text-bearing table pages are upright by construction — a rotated
-  page has no text layer and therefore cannot qualify as a table page. Rotation is
-  a scanned-page concern (§10.5's GMR page), not measurable here.
-- **More pixels do not help:** 3x rendered without RapidOCR's 2000-px downscale
-  (cap 3200) on every 5th page scored 0.9127 / 0.8873 against 0.9097 / 0.8883 for
-  the same 30 pages as shipped, and ran 14% slower. RapidOCR's recogniser is at its
-  ceiling on this content, not short of resolution.
-- Windows OCR is **12× faster** and reads prose better than tables (0.921 vs 0.818);
-  its number loss is skipping text (13.6% of truth numbers are simply absent), while
-  RapidOCR's is cell-boundary merging (next section).
-
-### 12.3 Where the loss is
-
-Every distinct truth number on the table pages, classified against the OCR output
-(occurrence-level, so it explains the direction rather than replacing 12.2):
-
-| engine | exact token | inside a longer token (cells merged) | not read at all |
-|---|---:|---:|---:|
-| RapidOCR CPU | **91.6%** | 3.6% | 4.8% |
-| Windows.Media.Ocr | 81.8% | 4.6% | 13.6% |
-
-On the emitted side, 92.8% of RapidOCR's numbers are true, 1.1% are merges of two
-cells and 6.1% are numbers that are not in the text layer at all. **With perfect
-cell splitting RapidOCR would reach ≈0.952 recall — the gate's edge** — so the next
-thing to measure is a box/cell-aware post-pass, not another engine.
-
-Failure examples (worst table pages, RapidOCR as shipped):
-
-| page | doc | recall | what happened |
-|---|---|---:|---|
-| `075_quarte_4` RAJESHEXPO | results | 0.312 | cells merged: `3691` → `36911`, `17077` → `017077`, `498.38` → `1021498.38` |
-| `073_quarte_5` DDEVPLSTIK | results | 0.569 | 89 numbers emitted where truth has 51 — the same merges split differently |
-| `079_quarte_5` ASHIANA | results | 0.667 | small-font column misread: `0.29` → `0.20`, `9.23` → `1.35` |
-| `068_quarte_0` KIMS | results | 0.423 | `51330` → `543308`, `0101` → `01017`: two adjacent cells read as one |
-
-The truth layer is not clean either: some results pages carry a run-together date
-column (`2282374414513671`) that no OCR can reproduce, so part of the results-page
-error belongs to the truth, not the engine.
-
-### 12.4 How many pages truly need OCR
-
-Read-only census of every `is_scanned_guess=1` PDF in `pilot60_history_manifest.db`
-(1,145 held files, 13,169 pages, 0 unreadable), pages with **under 100 characters**
-of text layer:
-
-| document type | docs | pages | pages under 100 chars | share |
-|---|---:|---:|---:|---:|
-| material_filing | 1,019 | 6,060 | **4,084** | 67.4% |
-| quarterly_results | 70 | 1,003 | **585** | 58.3% |
-| investor_presentation | 20 | 491 | 114 | 23.2% |
-| results_press_release | 7 | 24 | 7 | 29.2% |
-| annual_report | 24 | 5,529 | 127 | 2.3% |
-| concall_transcript | 4 | 61 | 4 | 6.6% |
-| concall_audio_link | 1 | 1 | 1 | 100% |
-| **total** | **1,145** | **13,169** | **4,922** | **37.4%** |
-
-The earlier sample said 4,647 of 11,728: the same picture on a slightly smaller set.
-Most of the OCR need is the Reg 29/31 `material_filing` forms, not the annual
-reports (whose scanned-guess PDFs are 97.7% text-bearing).
-
-### 12.5 Time forecast for those 4,922 pages (this MSI, one process)
-
-| engine | rate | 4,922 pages | note |
-|---|---:|---:|---|
-| RapidOCR CPU, as shipped | 12.07 /min | **6.8 h** | 6.6 h if the render is reused |
-| RapidOCR + 90/270 retry | — | **10–20 h** | retry fires on real scans (none on this text sample); +1–2 passes |
-| RapidOCR, cap 3200 | 10.47 /min | 7.8 h | no accuracy gain; rejected |
-| Windows.Media.Ocr | 148.94 /min | **33 min** | 12× faster, worse numbers |
-
-Memory: the RapidOCR run peaks at ~0.3 GB. The brief's 1.5 GB free-RAM stop fired
-mid-run — the operator's browser holds 5.5 GB — so the remaining pages ran in
-10-page batches with the stop lowered to 900 MB; free RAM touched 419 MB once
-between batches, no page-fault storm, no other job was started.
-
-### 12.6 Verdict
-
-- **RapidOCR CPU as-is: FAIL** the 0.95 recall / 0.98 precision gate —
-  0.9161 / 0.9098 on the 110 table pages (0.9195 / 0.9152 over all 150).
-- **Windows.Media.Ocr re-measured on the same pages: FAIL, and worse** —
-  0.8184 / 0.8522. It lands near the earlier 110-page run (0.839 / 0.896); the gap
-  is the page sample and the absent bbox line sort, not the engine.
-- **Retry and resolution: no effect** (0 pages trigger; +0.3 pt for +14% time).
-- Neither engine can be used for blind figure extraction from table pages. The loss
-  is cell boundaries, not digits — a box-aware post-pass is the next experiment,
-  and its ceiling on this sample is ≈0.952 recall.
-
-### 12.7 What was not run
-
-- A per-page route between the two engines (Windows OCR for prose, RapidOCR for
-  tables) — the table above only prices each engine alone.
-- Any post-pass over RapidOCR's boxes (the ≈0.952 ceiling is arithmetic from 12.3).
-- Rotated scans, where the retry actually pays: no text-layer truth exists for them.
-- The 4,922-page run itself (accuracy test only, per the brief).
-
-Artifacts: `.tmp/ocr_bench/{sample.jsonl,ocr_asis3.jsonl,ocr_windows3.jsonl,ocr_hi3.jsonl,scores_*.jsonl,summary.json,failures.json,census.json}`,
-rendered pages in `.tmp/ocr_bench/pages/`. Script:
-`reality_engine/scripts/ocr_number_bench.py`, test:
-`reality_engine/tests/test_ocr_number_bench.py`.
 ## 12. Frozen OCR gate test — every method on one page set (2026-11-01)
 
 Goal: find an engine or combination that reaches **number recall ≥ 0.95 and number
@@ -1241,3 +956,159 @@ Windows AI (~0.5 h), so the work is accuracy, not throughput: a column-aware num
 validator (align cells, repair comma groups/decimal points, reject numbers no column
 can place) is the next experiment, scored on this same frozen set.
 
+## 13. MSI, 2026-11-01 — does RapidOCR CPU clear the number gate Windows OCR failed?
+
+**Answer: no. RapidOCR 3.10 on the CPU reads financial-table pages better than
+`Windows.Media.Ocr` (number recall 0.916 vs 0.818, precision 0.910 vs 0.852 on the
+same 110 table pages) but misses both gates (recall 0.95, precision 0.98). The
+rotation retry and a larger raster change nothing on these pages. 4,922 of the
+13,169 pages in `is_scanned_guess=1` PDFs are the pages that actually need OCR
+(37.4%); at the measured 12.07 pages/min end to end that is 6.8 h on this CPU, or
+33 min with Windows OCR.**
+
+Host: MSI, x64 Windows, Python 3.14.7. Engines: `rapidocr` 3.10.0 (PP-OCRv6
+`det_small` + `rec_small` + cls, onnxruntime CPU execution provider, the package
+defaults: 2000-px preprocess cap, text score 0.5) and `Windows.Media.Ocr` through
+PyWinRT 10.0.28000 (`winrt` is not installed on the box; the projection wheels were
+fetched into `.tmp/pylib`, which is 3 MB, not an install). One process at a time.
+
+### 13.1 Method (the same measure Windows OCR was scored with)
+
+Truth is the PDF text layer, rendered with pypdfium2 at **3x** (A4 → 1788×2526 px).
+Numbers are the **distinct** tokens matching `\d[\d,]*(\.\d+)?` with the commas
+stripped; recall = truth numbers found in the OCR, precision = OCR numbers present
+in the truth. Micro (pooled counts) is the gate number; macro (mean of per-page
+scores) is given beside it.
+
+A page is a **table page** when its text layer has ≥15 numeric tokens, ≥8 of them
+with 3+ digits, and numbers are ≥12% of its words. Sample: `seed=20261031` over the
+local PDFs of `pilot60_history_manifest.db`, quotas annual reports 30, quarterly
+results 45, investor presentations 30, concall transcripts 5 (=110), plus 40 prose
+pages (11/16/9/4). Drawn: **150 pages, 63 PDFs, 34 symbols**, quotas exact.
+
+```
+python -m reality_engine.scripts.ocr_number_bench sample --out .tmp/ocr_bench --scale 3
+python -m reality_engine.scripts.ocr_number_bench ocr    --out .tmp/ocr_bench --config asis3
+python -m reality_engine.scripts.ocr_number_bench ocr    --out .tmp/ocr_bench --config windows3 --engine windows
+python -m reality_engine.scripts.ocr_number_bench score  --out .tmp/ocr_bench
+python -m reality_engine.scripts.ocr_number_bench census --out .tmp/ocr_bench
+```
+
+### 13.2 Results — table pages only, by document type
+
+| engine | AR (30) | results (45) | decks (30) | transcripts (5) | **all table (110)** |
+|---|---|---|---|---|---|
+| RapidOCR CPU, as shipped | 0.9817 / 0.9762 | **0.8644 / 0.8581** | 0.9800 / 0.9846 | 0.9837 / 0.8521 | **0.9161 / 0.9098** |
+| Windows.Media.Ocr | 0.8060 / 0.9379 | 0.7914 / 0.7896 | 0.8873 / 0.9514 | 0.9593 / 0.8252 | 0.8184 / 0.8522 |
+
+Recall / precision. Gate: 0.95 / 0.98. Both engines **fail**; RapidOCR fails only on
+the dense quarterly-results statements (0.864) while annual-report and deck tables
+are already at 0.98.
+
+| engine | all 150 | prose 40 | recall (macro) | precision (macro) | OCR pages/min | + render | pages/min end to end |
+|---|---|---|---:|---:|---:|---:|---:|
+| RapidOCR CPU, as shipped | 0.9195 / 0.9152 | 0.9573 / 0.9782 | 0.9291 | 0.9314 | 12.48 | 0.165 s/page | **12.07** |
+| RapidOCR, 90°/270° retry | identical | identical | — | — | — | — | — |
+| RapidOCR, 3x with cap 3200 (30-page probe) | 0.9127 / 0.8873 | — | — | — | 10.81 | — | 10.47 |
+| Windows.Media.Ocr | 0.8268 / 0.8603 | 0.9212 / 0.9508 | 0.8616 | 0.8840 | **252.26** | — | **148.94** |
+
+- **The rotation retry never fires on this sample:** the shortest OCR output is 280
+  characters and every page has ≥3 word-like tokens, for both engines (Windows OCR
+  minimum 173). Text-bearing table pages are upright by construction — a rotated
+  page has no text layer and therefore cannot qualify as a table page. Rotation is
+  a scanned-page concern (§10.5's GMR page), not measurable here.
+- **More pixels do not help:** 3x rendered without RapidOCR's 2000-px downscale
+  (cap 3200) on every 5th page scored 0.9127 / 0.8873 against 0.9097 / 0.8883 for
+  the same 30 pages as shipped, and ran 14% slower. RapidOCR's recogniser is at its
+  ceiling on this content, not short of resolution.
+- Windows OCR is **12× faster** and reads prose better than tables (0.921 vs 0.818);
+  its number loss is skipping text (13.6% of truth numbers are simply absent), while
+  RapidOCR's is cell-boundary merging (next section).
+
+### 13.3 Where the loss is
+
+Every distinct truth number on the table pages, classified against the OCR output
+(occurrence-level, so it explains the direction rather than replacing 13.2):
+
+| engine | exact token | inside a longer token (cells merged) | not read at all |
+|---|---:|---:|---:|
+| RapidOCR CPU | **91.6%** | 3.6% | 4.8% |
+| Windows.Media.Ocr | 81.8% | 4.6% | 13.6% |
+
+On the emitted side, 92.8% of RapidOCR's numbers are true, 1.1% are merges of two
+cells and 6.1% are numbers that are not in the text layer at all. **With perfect
+cell splitting RapidOCR would reach ≈0.952 recall — the gate's edge** — so the next
+thing to measure is a box/cell-aware post-pass, not another engine.
+
+Failure examples (worst table pages, RapidOCR as shipped):
+
+| page | doc | recall | what happened |
+|---|---|---:|---|
+| `075_quarte_4` RAJESHEXPO | results | 0.312 | cells merged: `3691` → `36911`, `17077` → `017077`, `498.38` → `1021498.38` |
+| `073_quarte_5` DDEVPLSTIK | results | 0.569 | 89 numbers emitted where truth has 51 — the same merges split differently |
+| `079_quarte_5` ASHIANA | results | 0.667 | small-font column misread: `0.29` → `0.20`, `9.23` → `1.35` |
+| `068_quarte_0` KIMS | results | 0.423 | `51330` → `543308`, `0101` → `01017`: two adjacent cells read as one |
+
+The truth layer is not clean either: some results pages carry a run-together date
+column (`2282374414513671`) that no OCR can reproduce, so part of the results-page
+error belongs to the truth, not the engine.
+
+### 13.4 How many pages truly need OCR
+
+Read-only census of every `is_scanned_guess=1` PDF in `pilot60_history_manifest.db`
+(1,145 held files, 13,169 pages, 0 unreadable), pages with **under 100 characters**
+of text layer:
+
+| document type | docs | pages | pages under 100 chars | share |
+|---|---:|---:|---:|---:|
+| material_filing | 1,019 | 6,060 | **4,084** | 67.4% |
+| quarterly_results | 70 | 1,003 | **585** | 58.3% |
+| investor_presentation | 20 | 491 | 114 | 23.2% |
+| results_press_release | 7 | 24 | 7 | 29.2% |
+| annual_report | 24 | 5,529 | 127 | 2.3% |
+| concall_transcript | 4 | 61 | 4 | 6.6% |
+| concall_audio_link | 1 | 1 | 1 | 100% |
+| **total** | **1,145** | **13,169** | **4,922** | **37.4%** |
+
+The earlier sample said 4,647 of 11,728: the same picture on a slightly smaller set.
+Most of the OCR need is the Reg 29/31 `material_filing` forms, not the annual
+reports (whose scanned-guess PDFs are 97.7% text-bearing).
+
+### 13.5 Time forecast for those 4,922 pages (this MSI, one process)
+
+| engine | rate | 4,922 pages | note |
+|---|---:|---:|---|
+| RapidOCR CPU, as shipped | 12.07 /min | **6.8 h** | 6.6 h if the render is reused |
+| RapidOCR + 90/270 retry | — | **10–20 h** | retry fires on real scans (none on this text sample); +1–2 passes |
+| RapidOCR, cap 3200 | 10.47 /min | 7.8 h | no accuracy gain; rejected |
+| Windows.Media.Ocr | 148.94 /min | **33 min** | 12× faster, worse numbers |
+
+Memory: the RapidOCR run peaks at ~0.3 GB. The brief's 1.5 GB free-RAM stop fired
+mid-run — the operator's browser holds 5.5 GB — so the remaining pages ran in
+10-page batches with the stop lowered to 900 MB; free RAM touched 419 MB once
+between batches, no page-fault storm, no other job was started.
+
+### 13.6 Verdict
+
+- **RapidOCR CPU as-is: FAIL** the 0.95 recall / 0.98 precision gate —
+  0.9161 / 0.9098 on the 110 table pages (0.9195 / 0.9152 over all 150).
+- **Windows.Media.Ocr re-measured on the same pages: FAIL, and worse** —
+  0.8184 / 0.8522. It lands near the earlier 110-page run (0.839 / 0.896); the gap
+  is the page sample and the absent bbox line sort, not the engine.
+- **Retry and resolution: no effect** (0 pages trigger; +0.3 pt for +14% time).
+- Neither engine can be used for blind figure extraction from table pages. The loss
+  is cell boundaries, not digits — a box-aware post-pass is the next experiment,
+  and its ceiling on this sample is ≈0.952 recall.
+
+### 13.7 What was not run
+
+- A per-page route between the two engines (Windows OCR for prose, RapidOCR for
+  tables) — the table above only prices each engine alone.
+- Any post-pass over RapidOCR's boxes (the ≈0.952 ceiling is arithmetic from 13.3).
+- Rotated scans, where the retry actually pays: no text-layer truth exists for them.
+- The 4,922-page run itself (accuracy test only, per the brief).
+
+Artifacts: `.tmp/ocr_bench/{sample.jsonl,ocr_asis3.jsonl,ocr_windows3.jsonl,ocr_hi3.jsonl,scores_*.jsonl,summary.json,failures.json,census.json}`,
+rendered pages in `.tmp/ocr_bench/pages/`. Script:
+`reality_engine/scripts/ocr_number_bench.py`, test:
+`reality_engine/tests/test_ocr_number_bench.py`.

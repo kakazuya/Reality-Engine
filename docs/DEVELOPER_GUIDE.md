@@ -1,26 +1,28 @@
 # Developer guide
 
-Moved from `AGENTS.md` on 1 Nov 2026, unchanged, so agents do not load it at every start. Parts may be stale: check against the code. Look up code with code-intel first.
+Moved from `AGENTS.md` on 1 Nov 2026 so agents do not load it at every start; checked against the code on 2 Nov (T-045). Look up code with code-intel first.
 
 ## 1. System Architecture & Directory Map
 
+Sections 1 and 2A to 2H describe the older research engine, which is still in the repo. The pilot lives in `reality_engine/pilot/`, `reality_engine/query/` and `tasks/pilot60/`: sections 2I to 2K.
+
 ```
-btask01/
+repo root/
 ├── reality_engine/
 │   ├── db/                 # SQLite (WAL) live databases + FTS5, repository (no PostgreSQL is installed or used)
 │   │   ├── schema.sql      # SQLite DDL (live): business_model_profiles, moat_evaluations, geographic_exposure, regulatory_political_risks, raw_documents, document_chunks, macro_events, ripple_effects (self-ref DAG)
 │   │   ├── postgres_schema.sql # UNUSED: Postgres DDL kept for reference only; nothing runs on it (countries, industries, companies, business_model_profiles, moat_evaluations, raw_documents, document_chunks ivfflat, macro_events, ripple_effects PN/MN/S, financial_metrics, model_explainer_rankings, lens_activation_log, pruning_decay_config)
-│   │   ├── delivered_filings.py  # DELIVERED (normalized) filings/price/financial facts vs raw_documents (audit/replay) separation — raw is never the decision context
 │   │   └── repository.py   # Query API & atomic persistence (moat_score GENERATED, ENI, ripple CTE, model rankings, dense substrate promotion)
 │   ├── ingestion/          # Multimodal feeds with yt-dlp+Whisper & layout PDF parsing
 │   │   ├── master_sync.py  # NSE & BSE scrip list synchronizer (ISIN anchor)
 │   │   ├── nse_client.py   # NSE Full Bhavcopy, deliverable volume, PIT insider trades
 │   │   ├── bse_client.py   # BSE Bhavcopy, corporate filings, announcements
-│   │   ├── fundamentals_client.py # Quarterly/annual financials & balance sheet metrics → peer_financial_metrics
-│   │   ├── financially_free_client.py # Advance/decline & market breadth aggregator
-│   │   ├── headless_fetcher.py # Headless (no-browser) fetch of Vahan/MF/RBI/PIB/Budget aux feeds → raw_documents (no GPU needed)
+│   │   ├── fundamentals_client.py # Quarterly/annual financials, balance sheet and solvency metrics (yfinance + BSE/NSE filings)
+│   │   ├── financially_free_client.py # Advance/decline & market breadth, with fallback to local NSE index breadth
+│   │   ├── headless_fetcher.py # Headless browser takes cookies/JWT for blocked BSE/NSE endpoints, replays them over HTTP; fails closed without Playwright
+│   │   ├── macro_pdf_fetcher.py # Budget, PIB and RBI PDFs (cli: fetch-macro, alias fetch-headless)
 │   │   ├── telegram_client.py # Thread listener with mock/offline fallback mode
-│   │   ├── youtube_transcriber.py # yt-dlp + Whisper (local) + RapidOCR DirectML diarization (budget/RBI/Concall MP4) — RX 6700 XT, no cloud
+│   │   ├── youtube_transcriber.py # yt-dlp + Whisper (local) + RapidOCR diarization (budget/RBI/Concall MP4), no cloud
 │   │   └── pdf_ingestor.py      # Layout-aware PyMuPDF/Marker for Budget/Economic Survey
 │   ├── processing/         # Analytics, distillation, ensemble, self-correction & causal reasoning
 │   │   ├── technical_engine.py    # Rolling SMAs, RSI(14), delivery spike ratios (cutoff excludes plain noise)
@@ -36,14 +38,13 @@ btask01/
 │   │   ├── causal_engine.py       # Recursive CTE ripple_chain: PN=∏Pi, MN=RawN×PN×β, S=|MN|×20/(1+ln(1+Lag))
 │   │   ├── macro_simulator.py     # Macro policy shock propagation & impact matrix
 │   │   ├── pruning_engine.py      # Raw→dense promotion, decay λ; OWNS prune_decayed_signals(); structural-milestone (is_structural_milestone=1, T½ INF) survival
-│   │   ├── ocr_engine.py          # RapidOCR / DirectML image & document text extractor
+│   │   ├── ocr_engine.py          # RapidOCR on DirectML or CUDA, else CPU: image & document text extractor
 │   │   ├── document_parser.py     # PDF & presentation parser with section chunking → document_chunks (SQLite) + FTS5
-│   │   ├── event_graph.py         # (planned — Task 15/16) Transient event-graph spawner: parse %/date/exceptions, 2nd-order fwd/back supply chain
-│   │   ├── ensemble_ranker.py     # (planned — Task 15/16) Per-stock/sector/geo/time+conditions + investor-majority model_explainer_rankings
-│   │   ├── eod_corrector.py       # (planned — Task 15/16) Continuous self-correction: EOD price+FII/DII+event batch, per-scrip learned noise floor
+│   │   ├── event_graph.py         # Transient event-graph spawner: parse %/date/exceptions, 2nd-order fwd/back supply chain
+│   │   ├── ensemble_ranker.py     # Per-stock/sector/geo/time+conditions + investor-majority model_explainer_rankings
+│   │   ├── eod_corrector.py       # Continuous self-correction: EOD price+FII/DII+event batch, per-scrip learned noise floor
 │   │   ├── substrate_hygiene.py   # Trust layer: quarantines test/demo/synthetic-ISIN rows, reports structural degradation (constant features, template-less policy coverage); owns substrate_quarantine
-│   │   ├── peer_graph.py          # Analog peer graph: precomputed nearest neighbours over quantified substrate with feature-signal gating, per-pair coverage, drivers and anchor baselines; owns company_peer_graph/company_peer_features/company_peer_runs
-│   │   └── structural_theories.py # (planned — Task 15/16) Abstraction for permanent priors (profit-jump spotting, cheap-value traps); concept already defined in pruning_decay_config.is_structural_milestone, not a separate module yet
+│   │   └── peer_graph.py          # Analog peer graph: precomputed nearest neighbours over quantified substrate with feature-signal gating, per-pair coverage, drivers and anchor baselines; owns company_peer_graph/company_peer_features/company_peer_runs
 │   ├── pipeline/           # End-to-end operational pipelines
 │   │   ├── phase1_runner.py       # Ingestion, distillation to dense substrate, and checkpoint audit runner
 │   │   ├── backfill.py            # Historical Bhavcopy session backfiller
@@ -59,9 +60,18 @@ btask01/
 │   │   └── writer.py              # JSON, Markdown, and HTML report generator
 │   ├── ui/                 # Interactive financial terminal
 │   │   └── dashboard.py           # Streamlit 6-tab analytical web application
-│   ├── tests/              # Comprehensive test suite
+│   ├── pilot/              # Pilot extraction: extract60.py, proto3.py (section 2I)
+│   ├── query/              # Query layer, v4 in query/v4/ (section 2J)
+│   ├── scripts/            # Fetchers, loaders, gates and reports, run with python -m reality_engine.scripts.<name>
+│   ├── harness/, toolbelt/, tools/ # Test harness, shared helpers, tools/textrec (HP OCR helper)
+│   ├── tests/              # Test suite
 │   ├── cli.py              # Unified CLI entry point
+│   ├── contracts.py        # Typed write contracts for the pilot measures
+│   ├── raw_store.py        # Content-addressed raw files
 │   └── config.py           # Paths, PRAGMAs, API headers, and thresholds
+├── plugins/                # MCP servers: reality-data, dsh-worker and others
+├── machines/               # How to operate each computer
+├── tasks/                  # State, rulings, tickets, plans, reports
 ├── .kilo/
 │   ├── command/            # Project slash commands (/test, /bootstrap, /dashboard, etc.)
 │   ├── agent/              # Specialized agents (quant-analyst, macro-graph, pipeline-tester)
@@ -75,7 +85,7 @@ btask01/
 ## 2. Core Workflows & Operational Commands
 
 ### A. Testing & Verification
-Execute the test suite to verify ingestion, distillation, ensemble screening, causal reasoning, self-correction, agent synthesis, and UI contracts:
+The full suite reaches 7.5 GB (T-006), so run it on the HP, not the MSI; on the MSI run the module you changed.
 ```bash
 # Run all unit tests
 python -m unittest discover -s reality_engine/tests -p "test_*.py"
@@ -163,8 +173,8 @@ python reality_engine/cli.py noise-floor --symbol TITAGARH
 # Process research reports and charts from reality_engine/data/inbox/
 python reality_engine/cli.py process-inbox
 
-# Headless fetch of auxiliary feeds (Vahan/MF/RBI/PIB) without a browser
-python reality_engine/cli.py fetch-headless --feeds vahan,mf,rbi,pib
+# Macro feeds: central and state budgets, PIB, RBI (fetch-headless is an alias of fetch-macro)
+python reality_engine/cli.py fetch-macro --source pib
 
 # Search concall transcripts and investor presentations (hybrid lexical + vector)
 python reality_engine/cli.py search-concall --query "order book capex margin guidance" --symbol TITAGARH
@@ -375,7 +385,7 @@ The 2026-11-02 run: 153 rows — **35 answered, 11 `passages`, 107 refused**; th
 142 parts with no row in the store. It also prints how many distinct questions each passage
 serves (26 passages: 23 serve one question, 3 serve two — maximum two, against the previous
 prototype's two rows for eight questions). Check: `reality_engine/tests/test_proto3_wiring.py`
-(7 tests).
+(10 tests).
 
 A disputed number (T-040) is not loaded unless `proto3 recheck` settled on the number the row stored; the load prints how many it kept out.
 
