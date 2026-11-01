@@ -14,7 +14,7 @@ Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or
 
 ## Latest results: `tasks/MORNING_RESULTS_2026-11-01.md`
 Hidden OCR text layers on scanned PDFs can be wrong, so scores on those pages and stores built from them are suspect. Size of the problem not yet measured.
-Larger Microsoft TextRecognizer test scored on held-out pages: 300 DPI grayscale found 96.65% and 97.16% correct (bar 95, 98), full findings in `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md` and its `.xlsx`. Branch `dsh-hp/hp-20261101T140451-175638` not merged. Page-reading subagents use batches of 8 (Shivam, 1 Nov).
+Larger Microsoft TextRecognizer test scored on held-out pages: 300 DPI grayscale found 96.65% and 97.16% correct (bar 95, 98), full findings in `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md` and its `.xlsx`. Branch `dsh-hp/hp-20261101T140451-175638` not merged. **Workspace fix first: `tasks/WORKSPACE_FIX_2026-11-01.md`; step 2 running.** Page-reading subagents use batches of 8 (Shivam, 1 Nov).
 All HP work runs headless, nothing on its screen (Shivam, 1 Nov); fix running as `hp-20261101T172002-15e0f2`.
 Workspace review, with grades, root causes and milestones: `tasks/management/WORKSPACE_REVIEW_2026-11-01.xlsx`. Its `Claude check` sheet lists corrections. Worker branch `dsh/20261101T085537Z-c725e0b4` not merged.
 

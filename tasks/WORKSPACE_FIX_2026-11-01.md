@@ -18,11 +18,19 @@ The workspace gets fixed before database design. OCR and extraction wait until s
 
 Claude: `PreToolUse` hook and permission settings keep it out of `tasks/archive`. Workers commit progress when stopped or killed, not only on success.
 
+## Context limits (Shivam, 1 Nov)
+Every session must make steady progress without loading the repo. A session started at about 54k tokens in the last 5 sessions, before any work.
+- **Short start:** `tasks/STATE.md` holds the current step, the exact next action, running jobs and blockers. A check keeps it under 40 lines. History goes to the decision log.
+- **One step per session:** finish, commit and write the next action into `tasks/STATE.md`. Hand off by about 150k tokens.
+- **Results in files:** scripts print summaries, workers report one page, and details live in files read only when needed.
+- **Fences:** `tasks/archive`, `.tmp` and data folders are blocked from Claude's reads and hidden from search unless a task names them.
+- **Rules move into checks:** once a check enforces a rule, its memory entry and `AGENTS.md` text go away.
+
 ## Steps
 | # | Work | Exit test | Status |
 |---|---|---|---|
-| 1 | Clear unmerged branches, commit `main` | 0 work in limbo | Running |
-| 2 | Start gate, smaller pack | A bad brief is refused; pack about 5k tokens | |
+| 1 | Clear unmerged branches, commit `main` | 0 work in limbo | Done 1 Nov: 9 merged, 12 kept as `archive/` tags, 93 merged branches and 20 worktrees removed |
+| 2 | Start gate, smaller pack, context limits | A bad brief is refused; pack about 5k tokens; Claude starts from one short file | Running |
 | 3 | Merge gate, cut `AGENTS.md` | Deliberate violations are blocked; under 150 lines | |
 | 4 | Question map for the 3 prototype companies | Every bank question naming them has a row | |
 
