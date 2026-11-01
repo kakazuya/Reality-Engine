@@ -54,5 +54,5 @@ Sources for Ola: the Vahan dashboard page is reachable, but no fetcher has been 
 **Shivam, 1 Nov: prototype first.** Extraction runs on BAJFINANCE, HINDALCO and KEC with measured tokens and accuracy (`tasks/dsh_tasks/PROTOTYPE3_EXTRACTION_2026-11-01.md`). No DeepSeek run on all 60 until that report says it is worth it.
 
 1. Fetch raw documents for the three new names, and a Vahan series. Fetch the NSDL fortnight after 30 Sep 2026.
-2. Claude writes the question-by-question map: each question to its measures, source and table. Output in Excel.
+2. Claude writes the question-by-question map: each question to its measures, source and table. Output in Excel. Done for the 3 prototype companies on 2 Nov: `tasks/pilot60/question_map/rules.py` holds Claude's mapping, `tasks/pilot60/question_map/build_map.py` is the only thing that sets a status, and its result says what is held, not whether an answer is right.
 3. Final schema from that map, then a pilot on the 63 names. The checklist script and the 95% rule in `AGENTS.md` still decide whether any full run starts.

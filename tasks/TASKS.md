@@ -32,7 +32,6 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-034 | DOING Wolf | P1 | Pilot: page text for the thin BAJFINANCE, HINDALCO and KEC documents, by HP TextRecognizer | accept: Shivam | from: PROTOTYPE3 grade change 2 | opened 2026-11-02
 
 ## Schema and question map
-- T-014 | DOING Wolf | P1 | Question map for the 3 prototype companies: every bank question naming them has a row (workspace step 4) | accept: python -m pytest reality_engine/tests/test_question_map.py -q | from: workspace plan step 4 | opened 2026-11-02
 - T-016 | DOING Wolf | P2 | Typed write contracts: unit, range, label, known_at; split fact.value; test metric_citations on the prototype | accept: python -m pytest reality_engine/tests/test_write_contracts.py -q | from: RULINGS agreed direction | opened 2026-11-02
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02
 - T-032 | OPEN | P2 | Gate reports show only the hand-read score: tasks/pilot60/gate_run.py still prints the format score | accept: Shivam | from: Shivam ruling 2 Nov | opened 2026-11-02
