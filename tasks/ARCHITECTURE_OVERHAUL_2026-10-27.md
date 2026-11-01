@@ -163,8 +163,8 @@ Read that table twice: **88.6% of today's chunks are annual reports and offer do
 prioritised (P2 decks + concalls, P3 announcements) are under 10% of the store, and announcements are effectively
 missing (368 chunks against an announcement feed of ~1.95M rows — `bse_announcements.ann` max rowid 1,947,087).
 
-`document_chunks` is 2,939,096 rows, not the 2.3M in the context pack: `sqlite_stat1` says 2,260,817 because
-ANALYZE has not run since the last ingest. Pack drift, noted.
+`document_chunks` is 2,939,096 rows, not the old 2.3M estimate: `sqlite_stat1` says 2,260,817 because
+ANALYZE has not run since the last ingest.
 
 ### 2.2 `chunks_v3.db` DDL
 

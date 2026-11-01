@@ -9,7 +9,7 @@ The workspace gets fixed before database design. OCR and extraction wait until s
 ## Three code gates
 1. **Start:** `start_worker` refuses a brief missing those fields, requires an explicit permission, and renews leases itself.
 2. **Merge:** tests, doc gate, the accept check, a hidden evaluation for graded work, and a diff against Shivam's rulings.
-3. **Reading:** the 84 KB context pack shrinks to about 5k tokens. Add a hard read limit only if the median stays above 10 calls before first edit.
+3. **Reading:** the 84 KB context pack shrinks to about 5k tokens. Add a hard read limit only if the median stays above 10 calls before first edit. Done 1 Nov: 5,631 bytes (about 1.4k tokens), guarded by `reality_engine/tests/test_worker_context.py` at 20,000 bytes; the read limit stays unset.
 
 ## Three limits
 - At most 2 code workers at once. Research and data jobs do not count.
@@ -30,7 +30,7 @@ Every session must make steady progress without loading the repo. A session star
 | # | Work | Exit test | Status |
 |---|---|---|---|
 | 1 | Clear unmerged branches, commit `main` | 0 work in limbo | Done 1 Nov: 9 merged, 12 kept as `archive/` tags, 93 merged branches and 20 worktrees removed |
-| 2 | Start gate, smaller pack, context limits | A bad brief is refused; pack about 5k tokens; Claude starts from one short file | Running |
+| 2 | Start gate, smaller pack, context limits | A bad brief is refused; pack about 5k tokens; Claude starts from one short file | Running — pack done 1 Nov: 5,631 bytes, limit 20,000, test `reality_engine/tests/test_worker_context.py`; start gate and context limits open |
 | 3 | Merge gate, cut `AGENTS.md` | Deliberate violations are blocked; under 150 lines | |
 | 4 | Question map for the 3 prototype companies | Every bank question naming them has a row | |
 
