@@ -26,7 +26,7 @@ import heartbeat
 import jobs
 import procutil
 import progress
-from context_pack import attach_brief as attach_context_pack, lint_brief as lint_worker_brief
+from context_pack import attach_brief as attach_context_pack, brief_missing_fields
 from store import (
     JOB_LOCK_NAME,
     LEASE_FILE,
@@ -154,6 +154,14 @@ CODE_INTEL_INSTRUCTION = (
 )
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 1200
 MAX_PROGRESS_INTERVAL_SECONDS = 86_400
+# The real wall-clock limit of an MSI job (Shivam, 2026-11-01).  The supervisor
+# renews the controller lease on its own while the worker lives, so the hard
+# timeout -- not a forgotten renewal -- is what ends a long job.
+DEFAULT_HARD_TIMEOUT_SECONDS = 4 * 3600
+# A running HP job whose cached record is older than this is re-checked from its
+# remote job.log/result on the next worker_status call, because a dead poller
+# used to leave a finished job showing "running" for hours.
+HP_STATUS_REFRESH_SECONDS = 120
 # The supervisor's own status ping must never read as the end of the task.
 STATUS_CHECK_PREFIX = (
     "Status check — answer in one line, then continue your task; "
@@ -164,11 +172,12 @@ SERVER_SHUTDOWN_SEMANTICS = (
     "allows it (survives_server_exit=true), so closing or restarting this MCP "
     "server does not stop a running worker. The worker stays inside the "
     "supervisor's own KILL_ON_JOB_CLOSE job object, so if the supervisor dies "
-    "the worker dies too. The controller lease deadline remains the hard upper "
-    "bound: a restarted server sees the job via worker_status/list_workers and "
-    "must call claim_worker or renew_worker_lease(adopt=true) to own it. The "
-    "per-job control token is persisted DPAPI-encrypted (CurrentUser), so any "
-    "dsh-worker MCP server of this Windows user can message/cancel the job; "
+    "the worker dies too. The supervisor renews the controller lease itself "
+    "while the worker lives, and hard_timeout_seconds (default 4 h for MSI "
+    "jobs) is the hard upper bound: a restarted server sees the job via "
+    "worker_status/list_workers and must call claim_worker only to steer it. "
+    "The per-job control token is persisted DPAPI-encrypted (CurrentUser), so "
+    "any dsh-worker MCP server of this Windows user can message/cancel the job; "
     "the plaintext token is never returned or logged."
 )
 
@@ -1026,7 +1035,8 @@ class Manager:
         brief: str | None = None,
         task_file: str | None = None,
         workspace: str = ".",
-        permission: str = "read-only",
+        permission: str | None = None,
+        small_fix: bool = False,
         write_scope: str = "workspace",
         confirm_data_write: bool = False,
         confirm_full_access: bool = False,
@@ -1052,6 +1062,16 @@ class Manager:
     ) -> dict[str, Any]:
         if not isinstance(use_worktree, bool):
             raise PluginError("worktree_flag_invalid", "use_worktree must be true or false")
+        if not isinstance(small_fix, bool):
+            raise PluginError("small_fix_flag_invalid", "small_fix must be true or false")
+        if permission is None:
+            raise PluginError(
+                "permission_required",
+                "permission is required: pass read-only, workspace-write or "
+                "danger-full-access explicitly; a start no longer defaults one",
+            )
+        if permission not in PERMISSIONS:
+            raise PluginError("permission_invalid", f"permission must be one of {PERMISSIONS}")
         if not isinstance(context_pack, bool):
             raise PluginError("context_pack_flag_invalid", "context_pack must be true or false")
         if base is not None and (not isinstance(base, str) or not base.strip()):
@@ -1084,19 +1104,33 @@ class Manager:
             )
         if host not in ("msi", "hp"):
             raise PluginError("host_invalid", "host must be 'msi' (default) or 'hp'")
+        text, task_relative = self._read_brief(brief, task_file)
+        missing_fields = brief_missing_fields(text, small_fix=small_fix)
+        if missing_fields:
+            raise PluginError(
+                "brief_incomplete",
+                "the brief is missing required fields: " + ", ".join(missing_fields),
+                missing=missing_fields,
+                template=str(Path(self.config.repo_root) / "tasks" / "worker_context" / "BRIEF_TEMPLATE.md"),
+                hint=(
+                    "write the five labelled lines Goal:, Files:, Accept: (or Test "
+                    "command(s):), Stop if:, Budget:; small_fix=true allows a "
+                    "one-line brief with an accept command"
+                ),
+            )
+        brief_first_line = _first_line(text)
         if host == "hp":
             # HP jobs keep their own launcher, peak refusal and lease-like hard
             # stop (hp_worker.start); none of the MSI worktree/lock machinery
             # applies because the checkout lives on the other laptop.
-            hp_text, _ = self._read_brief(brief, task_file)
             return self._start_hp_worker(
-                hp_text,
+                text,
                 permission=permission,
                 test_cmd=test_cmd,
                 hard_timeout_seconds=hard_timeout_seconds,
                 dbs=dbs,
                 account=account,
-                brief_first_line=_first_line(hp_text),
+                brief_first_line=brief_first_line,
             )
         if use_worktree:
             # The worktree derives its own workspace; the repository root is
@@ -1123,11 +1157,6 @@ class Manager:
             ws = self.config.repo_root
         else:
             ws = self._workspace(workspace)
-        text, task_relative = self._read_brief(brief, task_file)
-        brief_first_line = _first_line(text)
-        brief_warnings = lint_worker_brief(text)
-        if permission not in PERMISSIONS:
-            raise PluginError("permission_invalid", f"permission must be one of {PERMISSIONS}")
         if write_scope not in WRITE_SCOPES:
             raise PluginError(
                 "write_scope_invalid", f"write_scope must be one of {WRITE_SCOPES}"
@@ -1221,17 +1250,26 @@ class Manager:
             raise PluginError(
                 "result_limit_invalid", f"max_result_bytes must be 256..{MAX_RESULT_BYTES}"
             )
+        testing = (self.config.environ or {}).get("DSH_WORKER_TESTING") == "1"
+        explicit_hard_timeout = hard_timeout_seconds is not None
+        minimum_timeout = 5 if testing else 60
         if hard_timeout_seconds is not None and (
             not isinstance(hard_timeout_seconds, int)
-            or not 60 <= hard_timeout_seconds <= 604_800
+            or not minimum_timeout <= hard_timeout_seconds <= 604_800
         ):
-            raise PluginError("timeout_invalid", "hard timeout must be 60..604800 seconds")
+            raise PluginError(
+                "timeout_invalid",
+                f"hard timeout must be {minimum_timeout}..604800 seconds",
+            )
+        if hard_timeout_seconds is None:
+            # The real limit of an MSI job: the supervisor renews the lease
+            # itself, so this is what ends a job whose controller forgot it.
+            hard_timeout_seconds = DEFAULT_HARD_TIMEOUT_SECONDS
         if not isinstance(followup_wait_seconds, int) or not 0 <= followup_wait_seconds <= 3600:
             raise PluginError(
                 "followup_wait_invalid",
                 "followup_wait_seconds must be 0 (disabled) or 1..3600 seconds",
             )
-        testing = (self.config.environ or {}).get("DSH_WORKER_TESTING") == "1"
         test_lease = (self.config.environ or {}).get("DSH_WORKER_TEST_LEASE_SECONDS")
         if testing and test_lease:
             try:
@@ -1309,7 +1347,7 @@ class Manager:
             # checkout's, so a worktree worker gets the same pack by absolute
             # path.  A stale pack is regenerated with a 60 s bound; failure is
             # a warning, never a refused start.
-            warnings: list[str] = list(brief_warnings)
+            warnings: list[str] = []
             context_info: dict[str, Any] = {
                 "enabled": False,
                 "path": None,
@@ -1380,10 +1418,9 @@ class Manager:
             argv += ["--control-token-env", heartbeat.CONTROL_TOKEN_ENV]
             if followup_wait_seconds:
                 argv += ["--followup-wait", str(followup_wait_seconds)]
-            if hard_timeout_seconds is not None:
-                # Explicit troubleshooting cutoff only; omission means no
-                # wall-clock kill at all, while heartbeat supervision remains.
-                argv += ["--timeout", str(hard_timeout_seconds)]
+            # hard_timeout_seconds is always set for MSI jobs (4 h default):
+            # it is the real limit, while the supervisor renews the lease.
+            argv += ["--timeout", str(hard_timeout_seconds)]
 
             provider_session = self._provider_session()
             owner_id = secrets.token_hex(16)
@@ -1475,9 +1512,7 @@ class Manager:
                     "max_output_tokens": max_output_tokens,
                     "max_result_bytes": max_result_bytes,
                     "hard_timeout_seconds": hard_timeout_seconds,
-                    "hard_timeout_kind": "explicit_only"
-                    if hard_timeout_seconds is not None
-                    else "none",
+                    "hard_timeout_kind": "explicit" if explicit_hard_timeout else "default_4h",
                     "followup_wait_seconds": followup_wait_seconds,
                     "controller_lease_seconds": controller_lease_seconds,
                     "brief_bytes": len(text.encode("utf-8")),
@@ -1852,19 +1887,43 @@ class Manager:
 
         return hp_worker
 
-    def _hp_status(self, job_id: str, job: dict[str, Any], job_dir: Path) -> dict[str, Any]:
-        """Status of an HP job from its local cache; never touches the network.
+    def _hp_status(
+        self, job_id: str, job: dict[str, Any], job_dir: Path, refresh: bool = False
+    ) -> dict[str, Any]:
+        """Status of an HP job from its local cache, refreshed when stale.
 
         ``hp_worker poll`` is the only writer of that cache and every ssh call it
         makes is bounded, so a laptop that is off leaves the last record here
-        with ``hp.reachable = false`` instead of hanging a controller read.
+        with ``hp.reachable = false`` instead of hanging a controller read.  A
+        ``worker_status`` call re-reads the remote job.log/exit state when the
+        cached record is stale and the last poll succeeded: a poller that died
+        used to leave a finished job showing ``running`` for hours.
         """
         status = self._read_status(job_dir)
         phase = str(status.get("phase") or "starting")
+        hp_state = dict(status.get("hp") or {})
+        refresh_error: str | None = None
+        if (
+            refresh
+            and phase not in FINAL_PHASES
+            and phase != "orphaned"
+            and hp_state.get("reachable") is not False
+        ):
+            cached_at = parse_iso(status.get("updated_at"))
+            cache_age = (
+                (utc_now() - cached_at).total_seconds() if cached_at else None
+            )
+            if cache_age is None or cache_age > HP_STATUS_REFRESH_SECONDS:
+                try:
+                    self._hp_module().poll_once(job_id)
+                except Exception as exc:  # noqa: BLE001 - a read must never fail
+                    refresh_error = f"{type(exc).__name__}: {exc}"[:200]
+                status = self._read_status(job_dir)
+                phase = str(status.get("phase") or "starting")
+                hp_state = dict(status.get("hp") or {})
         final = phase in FINAL_PHASES or phase == "orphaned"
         running = phase in ACTIVE_PHASES and not final
         hp_record = dict(job.get("hp") or {})
-        hp_state = dict(status.get("hp") or {})
         paths = dict(job.get("paths") or self._job_paths(job_id))
         result_path = Path(str(paths.get("result") or (job_dir / "result.md")))
         try:
@@ -1885,6 +1944,11 @@ class Manager:
             if parsed:
                 deadline = (parsed + timedelta(seconds=hard_timeout)).isoformat()
         warnings = list(status.get("warnings") or [])
+        if refresh_error:
+            warnings.append(
+                "HP status refresh failed; showing the last cached record "
+                f"({refresh_error})"
+            )
         cache_age = None
         parsed = parse_iso(status.get("updated_at"))
         if parsed:
@@ -2153,10 +2217,10 @@ class Manager:
             "detail": detail.get("detail"),
         }
 
-    def get_status(self, job_id: str) -> dict[str, Any]:
+    def get_status(self, job_id: str, *, hp_refresh: bool = False) -> dict[str, Any]:
         job, job_dir = self._load_job(job_id)
         if job.get("host") == "hp":
-            return self._hp_status(job_id, job, job_dir)
+            return self._hp_status(job_id, job, job_dir, refresh=hp_refresh)
         status = self._read_status(job_dir)
         heartbeat_live, heartbeat_error = heartbeat.read_heartbeat(job_dir)
         heartbeat_record = dict(job.get("heartbeat") or status.get("heartbeat") or {})
@@ -2752,10 +2816,25 @@ class Manager:
             raise PluginError(
                 "result_limit_invalid", f"max_bytes must be 256..{MAX_RESULT_BYTES}"
             )
-        status = self.get_status(job_id)
+        status = self.get_status(job_id, hp_refresh=True)
         result_path = job_dir / "result.md"
         text, truncated, total = read_text_bounded(result_path, max_bytes)
         warnings = list(status.get("warnings") or [])
+        if not text and job.get("host") == "hp" and status.get("final"):
+            # A final HP record whose result fetch failed earlier (ssh timeout)
+            # used to return empty content forever; read it again on demand.
+            try:
+                fetched = self._hp_module().fetch_result(job_id)
+            except Exception as exc:  # noqa: BLE001 - report, never fail the read
+                fetched = []
+                total = 0
+                warnings.append(
+                    "HP result fetch failed "
+                    f"({type(exc).__name__}: {exc})"[:300]
+                )
+            if fetched:
+                text, truncated, total = read_text_bounded(result_path, max_bytes)
+                warnings.append("HP result fetched on read: " + ", ".join(fetched))
         if not result_path.exists():
             warnings.append("result file does not exist yet")
         artifacts = status.get("artifacts")
@@ -2815,6 +2894,15 @@ class Manager:
             )
         if len(message.encode("utf-8", errors="replace")) > MAX_MESSAGE_BYTES:
             raise PluginError("message_too_large", "message exceeds 32 KiB")
+        job, job_dir = self._load_job(job_id)
+        if job.get("host") == "hp":
+            raise PluginError(
+                "not_supported_on_hp",
+                "HP jobs expose no dsh heartbeat/control channel; message_worker "
+                "supports MSI jobs only. Read worker_status/worker_result or "
+                "cancel the job instead.",
+                host="hp",
+            )
         status = self.get_status(job_id)
         if not status["running"]:
             raise PluginError(
@@ -2822,7 +2910,6 @@ class Manager:
                 "the worker is not running; start a new job instead of messaging a finished one",
                 phase=status["phase"],
             )
-        job, job_dir = self._load_job(job_id)
         heartbeat_live, _ = heartbeat.read_heartbeat(job_dir)
         response = heartbeat.send_nudge(
             Path(status["paths"]["control"]),
@@ -2855,13 +2942,13 @@ class Manager:
         extend_seconds: int = 1800,
         adopt: bool = False,
     ) -> dict[str, Any]:
-        """Explicitly renew the controller lease; never called by status reads.
+        """Explicitly extend a running job's controller lease; never by a read.
 
-        Allowed for the recorded owner session (``start_worker`` or
-        ``claim_worker``), for this process's in-memory ownership, or for any
-        caller passing ``adopt=true``.  Each call may extend by at most the
-        7200-second cap (Shivam, 2026-10-24), so indefinite work still needs
-        repeated explicit review rather than a background loop.
+        The supervisor renews the lease itself while the worker lives, so a
+        long job no longer dies from a forgotten renewal; the hard timeout is
+        the real limit.  This call remains for ownership changes (claim_worker)
+        and for a controller that wants a longer explicit extension.  Each call
+        may extend by at most the 7200-second cap (Shivam, 2026-10-24).
         """
         testing = (self.config.environ or {}).get("DSH_WORKER_TESTING") == "1"
         minimum = 1 if testing else 60
@@ -2959,10 +3046,11 @@ class Manager:
             "adopted": adopted,
             "owner_session": updated.get("owner_session"),
             "session_label": self.config.session_label,
-            "automatic_renewal": False,
+            "automatic_renewal": True,
             "note": (
-                "Renewal is explicit controller action only. Worker activity, "
-                "status/result/list reads and model calls never renew this lease."
+                "The supervisor renews this lease by itself while the worker "
+                "lives; hard_timeout_seconds is the real end of the job. This "
+                "call only changes ownership or extends the controller window."
             ),
         }
 
@@ -4003,8 +4091,10 @@ class Manager:
                 "limits": {
                     "max_output_tokens": None,
                     "max_result_bytes": DEFAULT_RESULT_BYTES,
-                    "hard_timeout_seconds": None,
-                    "hard_timeout_kind": "none",
+                    # The supervisor renews the lease itself, so every MSI job
+                    # gets the same real 4 h cap, data jobs included.
+                    "hard_timeout_seconds": DEFAULT_HARD_TIMEOUT_SECONDS,
+                    "hard_timeout_kind": "default_4h",
                     "followup_wait_seconds": 0,
                     "controller_lease_seconds": 7200,
                     "brief_bytes": 0,

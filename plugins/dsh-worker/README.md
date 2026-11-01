@@ -101,10 +101,16 @@ attribution.
 
 `start_worker` pins `deepseek-v4.1-flash`, `max`, account 2, and refuses
 Monday-Friday 06:30-09:30 / 11:30-15:30 IST. Exactly one of `brief` or
-`task_file` is required. Workspaces must be the repository root or a registered
-git worktree of it (arbitrary subdirectories are refused). The default
-permission is `read-only` (least privilege); pass `workspace-write` explicitly
-for an implementation worker. A **mutating worker in the main checkout root**
+`task_file` is required. `permission` is **required** on every start
+(`read-only`, `workspace-write` or `danger-full-access`); a start without it is
+refused with `permission_required` and there is no default. Every brief must
+carry the five labelled fields `Goal:`, `Files:`, `Accept:` (or `Test
+command(s):`), `Stop if:` and `Budget:`; a missing field refuses the start with
+`brief_incomplete`, naming the missing ones (see "Worker context pack").
+`small_fix=true` allows a one-line brief with an accept command instead.
+Workspaces must be the repository root or a registered
+git worktree of it (arbitrary subdirectories are refused). A **mutating worker
+in the main checkout root**
 additionally needs `confirm_repo_root_write=true` (refused as
 `repo_root_write_requires_confirmation` otherwise): that workspace contains code
 which later runs outside the sandbox — the context-pack builder,
@@ -119,17 +125,23 @@ exclude each other (read-only workers do not take the lock).
 
 `followup_wait_seconds` defaults to `0` (ordinary one-shot exit). A positive
 value enables the bounded `agent/turn-stopping` input wait described below.
-`controller_lease_seconds` defaults to `1800` and is an independent controller
-lease, not a task duration cap (maximum `7200`). `progress_interval_seconds`
+`controller_lease_seconds` defaults to `1800` (maximum `7200`); the supervisor
+renews that lease itself while the worker lives, so a forgotten controller
+renewal no longer kills a long job. `progress_interval_seconds`
 defaults to `1200` (20 minutes) and controls the supervisor's model-free
 progress digests; `0` disables them (see "Model-free progress digests").
 
 The call returns after the supervisor has published its initial status, not
-after the worker finishes. `hard_timeout_seconds` defaults to `None` and no
-`--timeout` argument is passed unless you explicitly request one. There is no
-automatic duration fallback: if the launcher lacks the required heartbeat or
-`--control-token-env` capability, `start_worker` refuses with an actionable
-`heartbeat_unavailable` / `control_token_unavailable` error.
+after the worker finishes. `hard_timeout_seconds` is the real wall-clock limit:
+it defaults to **14400 seconds (4 hours)** for an MSI worker (and for a data job)
+when none is given, is passed to the launcher as `--timeout`, and the supervisor
+kills the owned tree at that deadline (`outcome="timeout"`). An explicit value
+must be 60..604800 seconds (5..604800 in the offline test environment). There is
+no automatic duration fallback for a missing heartbeat capability: if the
+launcher lacks the required heartbeat or `--control-token-env` capability,
+`start_worker` refuses with an actionable `heartbeat_unavailable` /
+`control_token_unavailable` error. A dead supervisor still ends the job: its
+`KILL_ON_JOB_CLOSE` job object owns the worker process.
 
 ## Write scope, temp dir, detached processes
 
@@ -203,9 +215,11 @@ The pack is **generated**, not source: `tasks/worker_context/CONTEXT.md` and
 `tasks/worker_context/schemas/` are gitignored, and the header always names the
 MAIN checkout's absolute path, so a worktree worker reads the same pack without
 the file being committed (a merge no longer has to commit CONTEXT.md first).
-`context_pack=false` sends the original brief only. Briefs are also linted
-against `tasks/worker_context/BRIEF_TEMPLATE.md`: a missing Goal / Acceptance
-checks / Test command(s) section adds a `brief_lint:` warning, never a refusal.
+`context_pack=false` sends the original brief only. Every brief is checked
+against `tasks/worker_context/BRIEF_TEMPLATE.md`: it must contain `Goal:`,
+`Files:`, `Accept:` (or `Test command(s):`), `Stop if:` and `Budget:`, or the
+start is refused with `brief_incomplete` naming the missing fields.
+`small_fix=true` accepts a one-line brief that carries an accept command.
 The worked example is `tasks/worker_context/EXAMPLE_BRIEF.md`.
 
 The `worker_context` job in `jobs.yaml` (daily, `enabled: false` like every
@@ -254,22 +268,39 @@ new owner session and the reason in `job.json` and `steering.jsonl`, keeps the
 supervisor-validated stable owner id unchanged, and makes later
 `renew_worker_lease` calls work without `adopt=true`.
 
-## Controller lease
+## Controller lease and hard timeout
 
 The MCP server writes `controller_lease.json` with an absolute deadline (default
-30 minutes) and a stable owner id. `renew_worker_lease` is the only renewal path
-and may extend by at most **7200 seconds (2 hours)**; status/result/list reads,
-messaging, model/tool activity, and a restarted MCP server never renew it
-automatically. Renewal is allowed for the recorded owner session (the session
-that started or claimed the job) or with `adopt=true`. After a restart,
+30 minutes) and a stable owner id. **The supervisor renews the lease itself**
+while the worker is alive (at half-life, capped by the job's hard timeout), so a
+long job no longer dies because the controller forgot a renewal. The
+`hard_timeout_seconds` recorded in `job.json` (default 4 hours) is the real
+limit; when it is reached the supervisor kills the verified owned tree and the
+job ends `failed` with `outcome="timeout"`. A dead supervisor ends the job too:
+its `KILL_ON_JOB_CLOSE` job object owns the worker.
+
+`renew_worker_lease` still works for an explicit controller extension (at most
+**7200 seconds (2 hours)** per call) and for ownership: after a restart,
 `renew_worker_lease(adopt=true)` takes a still-valid lease over explicitly
 (recorded as `adoptions`), and `claim_worker` additionally transfers the
-recorded owner session; an expired lease cannot be adopted.
-Missing, expired, malformed, wrong-job or wrong-owner leases are refused. The
-supervisor checks the lease independently of model activity, kills the verified
-owned process tree on expiry, preserves partial output/artifacts, and reports
-`controller_lease_expired`. This is deliberate supervision, not a fixed task
-duration: a controller can keep renewing productive work.
+recorded owner session. Status/result/list reads and messaging never renew.
+Missing, expired, malformed, wrong-job or wrong-owner leases still fail closed:
+the supervisor kills the verified owned process tree, preserves
+partial output/artifacts, and reports `controller_lease_expired`.
+
+## HP jobs
+
+`start_worker(host="hp", ...)` routes the start to
+`reality_engine/scripts/hp_worker.py` and records the job in the same MSI runtime
+with `host: "hp"`. The `hp_worker poll` process keeps the local cache fresh over
+ssh. `worker_status` re-checks a **stale** running cache once (bounded, reading
+the remote `exit.txt`/`job.log` `rc=` line and fetching `result.md`), so a job
+that had ended still reports `finished` when the poller has died;
+`worker_result` re-fetches a final result that an earlier ssh timeout left
+missing. HP jobs have no dsh control channel, so `message_worker` returns
+`not_supported_on_hp` instead of failing on a missing control record. HP keeps
+its own launcher defaults: Go account 1 and a 1800 s hard stop unless
+`hard_timeout_seconds` is passed.
 
 ## Worktree writers
 
@@ -283,11 +314,15 @@ commit is recorded. `DSH_WORKTREES_ROOT` defaults to the repository's sibling
 The lock is per workspace path: the main checkout keeps its own lock and each
 worktree has its own, so multiple worktree writers run at once. The worker
 cannot write `.git/worktrees/<name>` (it is outside the worker sandbox), so the
-**supervisor auto-commits** when the worker ends successfully: `git add -A` in
+**supervisor auto-commits** when the worker ends: `git add -A` in
 the worktree, author/committer from the repository's git config, subject =
 first line of the brief + ` [dsh <job_id>]`, body trailer `DSH-Job: <job_id>`.
-An empty diff creates no commit. Failed/cancelled jobs leave their changes
-uncommitted for review. A worker that wants its own commit writes
+An empty diff creates no commit. **Every ended outcome commits its non-empty
+diff**: failed, cancelled, lease-expired and timeout jobs use the subject prefix
+`WIP ended <reason>: <brief first line> [dsh <job_id>]` (`reason` is the recorded
+outcome, e.g. `cancelled`, `launcher_error`, `controller_lease_expired`,
+`timeout`, `supervisor_error`), so stopped work is never left only as a dirty
+checkout. A worker that wants its own commit writes
 `<workspace>/.tmp/commit.request.json` (`{"message": "..."}`); the supervisor,
 which runs unconfined, commits on the next poll, appends the outcome to
 `status.worker_commits` (last 50 only) and writes `.tmp/commit.result.json`. This
@@ -365,8 +400,9 @@ job unless `confirm=true` (an explicit one-off), and also refuses paid/off-peak
 or market-hours jobs in a restricted window unless confirmed.
 
 `start_job(name, args=None, confirm=False)` runs the argv through the same
-supervisor/status/lease/steering machinery as a worker (7200 s lease, owner
-session, cancel/renew/claim all work), with no dsh model call, and returns
+supervisor/status/lease/steering machinery as a worker (the supervisor renews
+its own lease, the job still ends at the 4-hour hard timeout, owner session,
+cancel/renew/claim all work), with no dsh model call, and returns
 `run_id` (= job_id). The supervisor takes the named resource locks as OS
 byte-range locks for its whole lifetime — a crashed job cannot leave a stale
 lock, and a second job needing `db:equity_intelligence.db` or `gpu` is refused
@@ -393,8 +429,9 @@ seconds idle, `2` missed replies). It probes the launcher's real `--help`:
   `--status-file`, and `--control-token-env`; the plugin passes all of them. The
   actual launcher contract is `dsh-heartbeat-status/1` and
   `dsh-heartbeat-control/1`.
-- Missing capabilities are a hard refusal. There is no fallback hard-timeout
-  mode and no unconditional wall-clock kill.
+- Missing capabilities are a hard refusal. There is no fallback to a
+  heartbeat-less launcher: the hard timeout is the duration limit, not a
+  substitute for heartbeat supervision.
 
 `message_worker` posts to `/ping` for `kind="status"` or `/followup` for a
 genuine same-conversation question, using the actual loopback endpoint from
@@ -456,9 +493,9 @@ file is **not** completion. Use these instead:
   tool, failed tool results, model steps, output tokens, last tool and target,
   last 10 files written/edited. Never thinking text, tool output or shell
   command text.
-- `progress.latest_finish_by` is the hard upper bound (lease deadline or
-  explicit timeout). dsh gives no completion estimate, so `eta` is always null
-  rather than invented.
+- `progress.latest_finish_by` is the hard upper bound (the job's
+  `hard_timeout_seconds`, default 4 hours). dsh gives no completion estimate, so
+  `eta` is always null rather than invented.
 - `failure_reason` (failed/lost/cancelled jobs) gives the exit code, heartbeat
   failure, the last launcher stderr lines (reasoning lines dropped, token-like
   strings redacted) and a `likely_cause` such as `api_key_env_missing`,

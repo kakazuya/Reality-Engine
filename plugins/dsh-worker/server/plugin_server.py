@@ -47,10 +47,12 @@ INSTRUCTIONS = (
     "the same session. cancel_worker is destructive and needs confirm=true. "
     "Session independence: each server has a session_label and the per-job control "
     "token is persisted DPAPI-encrypted for this Windows user, so any dsh-worker "
-    "server can list/message/cancel a job; claim_worker takes lease ownership and "
-    "renew_worker_lease(adopt=true) is the explicit takeover alternative. "
+    "server can list/message/cancel a job; claim_worker takes lease ownership. "
+    "HP jobs have no control channel: message_worker returns not_supported_on_hp. "
     "worktree jobs (start_worker use_worktree=true) create dsh/<job_id> in "
-    "DSH_WORKTREES_ROOT, auto-commit on success, and read gitignored data from "
+    "DSH_WORKTREES_ROOT, auto-commit on success, and on any ended outcome (failed, "
+    "cancelled, lease-expired) commit a non-empty diff with the subject prefix "
+    "'WIP ended <reason>:', and read gitignored data from "
     "REALITY_DATA_ROOT read-only. merge_worker merges a finished worktree branch "
     "into the checked-out target under a repo-wide merge lock, runs its declared "
     "test command (or a compile-only default), and rolls the target back if tests "
@@ -62,7 +64,7 @@ INSTRUCTIONS = (
     "confirm=true is required), and job_log returns bounded stdout/stderr tails. "
     "Default policy: one mutating worker per workspace/checkout (each worktree has "
     "its own lock), DeepSeek V4.1 Flash at max effort, Go account 2, no peak-hour "
-    "starts, no implicit hard timeout, and no secrets in briefs."
+    "starts, a 4-hour hard timeout by default, and no secrets in briefs."
 )
 
 server = MCPServer(
@@ -183,8 +185,10 @@ def _compact_jobs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "Use use_worktree=true to create <DSH_WORKTREES_ROOT>/<job_id> on branch "
         "dsh/<job_id> from base (default HEAD); the supervisor auto-commits a "
         "non-empty diff when the worker finishes successfully. test_cmd is the "
-        "command merge_worker runs later for this job. Hard timeout "
-        "defaults to None. followup_wait_seconds=0 keeps ordinary one-shot exit; "
+        "command merge_worker runs later for this job. hard_timeout_seconds "
+        "defaults to 4 hours (14400 s) for MSI jobs and is the real limit; the "
+        "supervisor renews the controller lease itself while the worker lives. "
+        "followup_wait_seconds=0 keeps ordinary one-shot exit; "
         "a positive value adds a bounded host-side wait for explicit "
         "same-conversation follow-ups. progress_interval_seconds (default 1200, "
         "0=off) is the supervisor's model-free progress-digest cadence; every "
@@ -204,8 +208,13 @@ def _compact_jobs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "regenerates the pack when it is older than 26 h (bounded 60 s; failure is "
         "a warning); pass context_pack=false to opt out. The path is the main "
         "checkout's, so a worktree worker gets the same pack by absolute path. "
-        "Briefs missing Goal / Acceptance checks / Test command(s) get "
-        "brief_lint warnings, never a refusal. A mutating worker whose workspace is "
+        "Briefs must carry five labelled fields Goal:, Files:, Accept: (or Test "
+        "command(s):), Stop if: and Budget:; a start missing any is refused as "
+        "brief_incomplete (small_fix=true allows a one-line brief with an accept "
+        "command). permission is required on every start (read-only, "
+        "workspace-write or danger-full-access); there is no default and a start "
+        "without it is refused as permission_required. A mutating worker whose "
+        "workspace is "
         "the main checkout root needs confirm_repo_root_write=true (refused as "
         "repo_root_write_requires_confirmation otherwise): such a worker can "
         "rewrite code that later runs unsandboxed (the context-pack builder, "
@@ -225,7 +234,8 @@ def start_worker(
     brief: str | None = None,
     task_file: str | None = None,
     workspace: str = ".",
-    permission: str = "read-only",
+    permission: str | None = None,
+    small_fix: bool = False,
     write_scope: str = "workspace",
     confirm_data_write: bool = False,
     confirm_full_access: bool = False,
@@ -255,6 +265,7 @@ def start_worker(
             task_file=task_file,
             workspace=workspace,
             permission=permission,
+            small_fix=small_fix,
             write_scope=write_scope,
             confirm_data_write=confirm_data_write,
             confirm_full_access=confirm_full_access,
@@ -298,8 +309,8 @@ def start_worker(
 )
 def worker_status(job_id: str, verbose: bool = False) -> dict[str, Any]:
     if verbose:
-        return _safe(lambda: _get_manager().get_status(job_id))
-    status = _safe(lambda: _get_manager().get_status(job_id))
+        return _safe(lambda: _get_manager().get_status(job_id, hp_refresh=True))
+    status = _safe(lambda: _get_manager().get_status(job_id, hp_refresh=True))
     return status if not status.get("ok", True) else _safe(lambda: _compact_status(status))
 
 
@@ -340,7 +351,8 @@ def worker_result(
         "server of this Windows user: the per-job control token is persisted "
         "DPAPI-encrypted and the attempt is appended to job_dir/steering.jsonl. "
         "Fails explicitly with transport_unavailable when the adapter is not ready "
-        "or a legacy job has no persisted token."
+        "or a legacy job has no persisted token, and with not_supported_on_hp for "
+        "an HP job (those have no control channel)."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=True
@@ -363,13 +375,13 @@ def message_worker(
     name="renew_worker_lease",
     description=(
         "Explicitly extend the controller lease for a running job by at most 7200 "
-        "seconds (2 hours; default 1800). This is the only renewal path: worker "
-        "activity, model calls, status/result/list reads and a restarted MCP server "
-        "never renew it automatically. Renewal works for the recorded owner session; "
-        "after a restart pass adopt=true to take the still-valid lease over "
-        "explicitly, or call claim_worker first (an expired lease cannot be adopted). "
-        "Refuses finished, expired, malformed, or not-owned leases; the lease "
-        "deadline remains a hard upper bound even if the caller disappears."
+        "seconds (2 hours; default 1800). The supervisor renews the lease itself "
+        "while the worker lives, so this is only for ownership/takeover or an "
+        "explicit controller extension; the job's hard_timeout_seconds is the real "
+        "limit. Renewal works for the recorded owner session; after a restart pass "
+        "adopt=true to take the still-valid lease over explicitly, or call "
+        "claim_worker first (an expired lease cannot be adopted). Refuses finished, "
+        "expired, malformed, or not-owned leases."
     ),
     annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, open_world_hint=False

@@ -1,5 +1,9 @@
 # dsh-worker Codex plugin — implementation handoff
 
+> Superseded 1 Nov 2026 by the start gate in `tasks/WORKSPACE_FIX_2026-11-01.md` and
+> `plugins/dsh-worker/README.md`: `permission` is required, briefs need five labelled fields, the supervisor
+> renews its own lease, and `hard_timeout_seconds` defaults to 4 h. Kept as the historical brief.
+
 Date: 2026-10-21. Local desktop-only plugin under `plugins/dsh-worker/`. It wraps the existing
 `reality_engine/scripts/run_deepseek_harness.py`; it does not change the provider route, model, account,
 credentials, or Codex's main model. No plugin was registered globally and no paid model call was made.

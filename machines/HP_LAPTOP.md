@@ -11,11 +11,11 @@ HP OmniBook 5, Windows 11 on ARM64, Snapdragon X with 8 cores, 16 GB. Shivam may
 - If SSH times out after a Wi-Fi change, check that the network is set to Private. On 31 Oct both routes came back after that.
 
 ## Starting work
-- `start_worker(host="hp", permission="danger-full-access", hard_timeout_seconds=N, ...)`. Without `permission` it is read-only and does nothing. Without a timeout it stops at 1,800 s. Uses Go account 1 by default.
+- `start_worker(host="hp", permission="danger-full-access", hard_timeout_seconds=N, ...)`. `permission` is required; a start without it is refused as `permission_required`, not defaulted to read-only. Without a timeout it stops at 1,800 s. Uses Go account 1 by default.
 - Up to 5 workers, with at least 3 GB free. `dbs` takes bare file names and copies them read-only for the job.
 - Results: `python -m reality_engine.scripts.hp_worker fetch-patch <job>` gives branch `dsh-hp/<job>`.
-- The local `status.json` can stay at `running` after the job ends. Check `C:\RE\jobs\<job>\job.log` on the HP for `rc=`.
-- `message_worker` fails on HP jobs (`KeyError: control`), so a running HP worker cannot be steered.
+- `worker_status` re-checks a stale local record once by reading the remote `job.log`/`exit.txt` and fetching `result.md`; `worker_result` re-fetches a final result that an ssh timeout left missing. If a job still shows `running`, check `C:\RE\jobs\<job>\job.log` on the HP for `rc=`. Logic: `reality_engine/scripts/hp_worker.py` and `plugins/dsh-worker/server/core.py`.
+- `message_worker` returns `not_supported_on_hp` for HP jobs: they have no control channel, so a running HP worker cannot be steered.
 
 ## Layout
 `C:\RE\repo` code snapshot; `C:\RE\jobs\<job>` job runs; `C:\RE\raw\pilot60_history` raw PDFs; `C:\RE\ocr_large` OCR test. The MSI is the source of truth; the HP is disposable. Never copy `Manual Dumps/` here. Do not share SQLite over the network.

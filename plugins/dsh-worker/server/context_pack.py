@@ -2,9 +2,10 @@
 
 ``reality_engine/scripts/build_worker_context.py`` writes
 ``tasks/worker_context/CONTEXT.md``.  This module owns the standing header, the
-26-hour staleness rule, the bounded regeneration and the brief lint.  It never
-runs a model and never fails a start: a missing, stale or unregenerable pack is
-a warning in the job record, and the worker is launched anyway.
+26-hour staleness rule, the bounded regeneration and the brief field check used
+by the ``start_worker`` gate.  It never runs a model.  A missing, stale or
+unregenerable pack is a warning in the job record; the brief check is enforced
+by the caller.
 """
 from __future__ import annotations
 
@@ -205,26 +206,44 @@ def attach_brief(
 
 
 # ---------------------------------------------------------------- brief lint
-_SECTIONS = {
-    "Goal": re.compile(r"(?im)^\s{0,3}(#{1,6}\s*|\*\*\s*)?goal\b"),
-    "Acceptance checks": re.compile(r"(?im)^\s{0,3}(#{1,6}\s*|\*\*\s*)?acceptance\b"),
-    "Test command(s)": re.compile(r"(?im)^\s{0,3}(#{1,6}\s*|\*\*\s*)?test command"),
-}
+# A brief is refused unless it carries these five labelled lines or sections
+# (Shivam, 2026-11-01: the start gate, gate 1 of WORKSPACE_FIX_2026-11-01).
+_LABELLED = r"(?im)^\s{{0,3}}(?:#{{1,6}}\s*|\*\*\s*)?{}"
+_REQUIRED_FIELDS = (
+    ("Goal:", _LABELLED.format(r"goal\b")),
+    ("Files:", _LABELLED.format(r"files\b")),
+    (
+        "Accept: (or Test command(s):)",
+        _LABELLED.format(r"(?:accept(?:ance)?|test commands?)\b"),
+    ),
+    ("Stop if:", _LABELLED.format(r"stop\s+if\b")),
+    ("Budget:", _LABELLED.format(r"budget\b")),
+)
 _TEST_COMMAND = re.compile(
     r"(?im)^\s*[-*]?\s*(python(?:\.exe)?\s+-m\s+(?:unittest|pytest)|pytest\b|"
     r"python(?:\.exe)?\s+\S+\.py|claude\s+plugin\s+(?:test|validate))"
 )
+# The one-line form (small_fix=true) may state the accept command inline.
+_INLINE_COMMAND = re.compile(
+    r"(?i)\b(python(?:\.exe)?\s+-m\s+(?:unittest|pytest)|pytest\b|"
+    r"python(?:\.exe)?\s+\S+\.py)\b"
+)
 
 
-def lint_brief(text: str) -> list[str]:
-    """Warnings (never errors) for a brief missing the template's key sections."""
-    warnings: list[str] = []
-    for name, pattern in _SECTIONS.items():
-        if pattern.search(text):
-            continue
-        if name == "Test command(s)" and _TEST_COMMAND.search(text):
-            continue
-        warnings.append(
-            f'brief_lint: missing section "{name}" (see {TEMPLATE_RELATIVE.as_posix()})'
-        )
-    return warnings
+def brief_missing_fields(text: str, small_fix: bool = False) -> list[str]:
+    """Names of the required fields a brief does not carry (empty when complete).
+
+    ``small_fix=True`` is the one-line form: it only needs an accept command,
+    either labelled or inline, because the change itself is one line.
+    """
+    if small_fix:
+        if re.search(_REQUIRED_FIELDS[2][1], text):
+            return []
+        if _TEST_COMMAND.search(text) or _INLINE_COMMAND.search(text):
+            return []
+        return ["Accept: (or Test command(s):)"]
+    missing: list[str] = []
+    for name, pattern in _REQUIRED_FIELDS:
+        if not re.search(pattern, text):
+            missing.append(name)
+    return missing

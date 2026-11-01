@@ -284,6 +284,30 @@ def test_poll_once_fetches_the_result_and_enriches_a_finished_job(monkeypatch, t
     assert status["progress"]["events"]["tool_calls"] == 3
 
 
+def test_poll_once_keeps_final_state_when_the_result_fetch_fails(monkeypatch, tmp_path):
+    """A finished job must land as finished even if scp times out.
+
+    The old poll raised out of the loop before write_status, so a job whose
+    job.log already held rc=0 stayed "running" in the cache for hours.
+    """
+    make_record(monkeypatch, tmp_path)
+    monkeypatch.setattr(hp_worker, "_remote_row", lambda job_id: {
+        "job": job_id, "state": "done", "exit": "0", "result": "0", "last": "",
+        "note": "", "test": "", "activity": "", "pid": "4242",
+    })
+
+    def boom(job_id):
+        raise subprocess.TimeoutExpired("scp", 15)
+
+    monkeypatch.setattr(hp_worker, "fetch_result", boom)
+    status = hp_worker.poll_once(JOB_ID)
+    assert status["phase"] == "finished"
+    assert status["exit_code"] == 0
+    assert "result fetch failed" in status["progress"]["summary"]
+    on_disk = hp_worker.read_status(JOB_ID)
+    assert on_disk["phase"] == "finished"
+
+
 def test_poll_once_unreachable_keeps_the_cache_and_returns_fast(monkeypatch, tmp_path):
     make_record(monkeypatch, tmp_path)
 

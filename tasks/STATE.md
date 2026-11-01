@@ -1,4 +1,4 @@
-# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-11-01 17:00 IST (Wolf)
+# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-11-01 18:30 IST (dsh worker)
 
 Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or the stores, then fix the wrong one.
 
@@ -13,6 +13,7 @@ Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or
 - Dead-path audit, 1 Nov: 63 backticked `reality_engine/`/`tasks/`/`plugins/` paths in live `.md` did not exist; 24 pointers were fixed in place and 39 left as generated/transient/planned (worker-context pack, runtime jobs, ledgers, planned outputs). `AGENTS.md` §4 now names the raw families on `D:\RealityEngine\raw`; its counts are dated 27-31 Oct and were not re-counted on this HP (no D: mount).
 
 ## Latest results: `tasks/MORNING_RESULTS_2026-11-01.md`
+- dsh-worker **start gate** (1 Nov, branch `dsh/20261101T122310Z-b9dd8380`, not merged): `permission` is required (`permission_required`), a brief needs `Goal:`, `Files:`, `Accept:` or `Test command(s):`, `Stop if:`, `Budget:` (`brief_incomplete`; `small_fix=true` allows one line), the supervisor renews its own lease and `hard_timeout_seconds` defaults to 4 h, HP status re-reads a stale remote log/result and `message_worker` returns `not_supported_on_hp`, and every ended worktree job commits with `WIP ended <reason>:`. Files: `plugins/dsh-worker/server/core.py`, `plugins/dsh-worker/server/context_pack.py`, `plugins/dsh-worker/server/supervisor.py`, `plugins/dsh-worker/server/plugin_server.py`, `reality_engine/scripts/hp_worker.py`, `tasks/worker_context/BRIEF_TEMPLATE.md`. `python -m pytest reality_engine/tests/test_dsh_worker_plugin.py reality_engine/tests/test_hp_worker.py -q` 97 passed.
 Hidden OCR text layers on scanned PDFs can be wrong, so scores on those pages and stores built from them are suspect. Size of the problem not yet measured.
 Larger Microsoft TextRecognizer test scored on held-out pages: 300 DPI grayscale found 96.65% and 97.16% correct (bar 95, 98), full findings in `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md` and its `.xlsx`. Branch `dsh-hp/hp-20261101T140451-175638` not merged. **Workspace fix first: `tasks/WORKSPACE_FIX_2026-11-01.md`; step 2 running.** Page-reading subagents use batches of 8 (Shivam, 1 Nov).
 All HP work runs headless, nothing on its screen (Shivam, 1 Nov); fix running as `hp-20261101T172002-15e0f2`.

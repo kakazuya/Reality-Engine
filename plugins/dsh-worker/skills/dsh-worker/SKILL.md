@@ -18,8 +18,8 @@ it does not replace the launcher, change Codex's model, or add a provider route.
 2. Check that it is off-peak yourself: peak is Monday-Friday 06:30-09:30 and
    11:30-15:30 IST. `start_worker` refuses those windows.
 3. Choose the narrowest sufficient `permission` (`read-only`,
-   `workspace-write`, or `danger-full-access`). The default is `read-only`;
-   pass `workspace-write` explicitly for an implementation worker. Do not
+   `workspace-write`, or `danger-full-access`) and pass it: `permission` is
+   required, and a start without it is refused as `permission_required`. Do not
    broaden it without a reason.
 4. Respect the one-mutating-worker-per-workspace lock. The main checkout and
    each registered git worktree have their own lock, so do not start a second
@@ -34,12 +34,13 @@ it does not replace the launcher, change Codex's model, or add a provider route.
 ## Writing briefs
 
 Use `tasks/worker_context/BRIEF_TEMPLATE.md`; `tasks/worker_context/EXAMPLE_BRIEF.md`
-is a worked conversion. Required sections: **Goal** (1-3 lines) · **Why** ·
-**Files to touch** (exact paths + a "do not touch" list) · **Inputs/data** (exact
-tables/files) · **Steps** · **Acceptance checks** (numbered, testable) · **Test
-command(s)** · **Budget** (tool calls, paid $, wall time) · **Report format** ·
-**Out of scope**. `start_worker` lints for Goal / Acceptance checks / Test
-command(s) and returns `brief_lint:` warnings; they never block a start.
+is a worked conversion. A brief must carry five labelled fields: **Goal:**
+(one outcome) · **Files:** (exact paths + a "do not touch" list) · **Accept:**
+(or **Test command(s):**; numbered, testable) · **Stop if:** (when to stop and
+report) · **Budget:** (tool calls, paid $, wall time). A missing field refuses the
+start with `brief_incomplete`, naming the missing fields. `small_fix=true`
+allows a one-line brief instead, as long as that line carries an accept command.
+Put any longer rationale or step list after the five fields.
 
 The worker receives a standing header + the absolute
 `tasks/worker_context/CONTEXT.md` path before your brief by default; pass
@@ -52,14 +53,16 @@ the repo has moved on, and do not paste its contents into briefs.
 
 ## Tools
 
-- `start_worker` — pass exactly one of `brief` or `task_file`. It returns
-  promptly with `job_id`, `status_path`, `result_path`, and warnings. It pins
-  `deepseek-v4.1-flash`, max, Go account 2. Optional settings are bounded:
+- `start_worker` — pass exactly one of `brief` or `task_file`, and an explicit
+  `permission` (required; refused as `permission_required` when absent). It
+  returns promptly with `job_id`, `status_path`, `result_path`, and warnings. It
+  pins `deepseek-v4.1-flash`, max, Go account 2. Optional settings are bounded:
   `heartbeat_interval_seconds` (default 900), `missed_replies` (default 2),
-  `max_output_tokens`, `max_result_bytes`, optional `hard_timeout_seconds`
-  (default `None`; omit for pure heartbeat supervision, or pass an explicit
-  value for a deliberate wall-clock cutoff), `followup_wait_seconds` (default
-  0), `controller_lease_seconds` (default 1800, max 7200), `refresh_context`,
+  `max_output_tokens`, `max_result_bytes`, `hard_timeout_seconds` (default
+  14400 = 4 h; the real wall-clock limit, passed as `--timeout`),
+  `followup_wait_seconds` (default
+  0), `controller_lease_seconds` (default 1800, max 7200; the supervisor renews
+  it itself), `refresh_context`,
   `context_pack` (default true: prepends the CONTEXT.md header/path and
   regenerates the pack when older than 26 h; `false` sends the brief only),
   `progress_interval_seconds` (default 1200; `0` disables the supervisor's
@@ -95,9 +98,12 @@ the repo has moved on, and do not paste its contents into briefs.
   `result.md` streams while running, so never treat a non-empty result file as
   done (`result_ready` is only true once final). `progress.events` has tool-call
   counts, the last tool and recent file writes; `progress.latest_finish_by` is
-  the hard stop (lease/timeout), and `eta` is deliberately null. Failed jobs
+  the hard stop (`hard_timeout_seconds`, default 4 h), and `eta` is deliberately
+  null. Failed jobs
   carry `failure_reason.likely_cause`. Phase `unknown` means the status record
-  was momentarily unreadable: poll again, do not treat it as lost. The status
+  was momentarily unreadable: poll again, do not treat it as lost. HP jobs
+  re-check a stale cached record once from the remote log/result, so `finished`
+  is reported even when the HP poller died. The status
   also reports `write_scope`, `writes`, `write_roots`, `resource_locks`,
   `tmp_dir`, `worker_commits`, `detached`, and the orientation metric
   `tool_calls_before_first_edit` / `orientation_seconds`.
@@ -138,15 +144,18 @@ the repo has moved on, and do not paste its contents into briefs.
   answer. The per-job control token is persisted DPAPI-encrypted for this
   Windows user, so any dsh-worker MCP server can message a job it did not
   start (legacy token-less jobs return `transport_unavailable`); each delivery
-  is recorded in `job_dir/steering.jsonl`.
-- `renew_worker_lease` — the only controller-lease renewal path. Explicitly
-  extends a running job by at most 7200 seconds (2 hours; default 1800).
-  Worker/model activity, status/result/list reads, messaging, and a restarted
-  MCP server do not renew it. It works for the recorded owner session, or with
-  `adopt=true`. Missing, expired, malformed, wrong-job/wrong-owner leases are
-  refused. If the lease expires, the supervisor kills the verified owned tree,
-  preserves partial output/artifacts, and reports `controller_lease_expired`
-  distinctly. Renew after real review/status, not on a timer.
+  is recorded in `job_dir/steering.jsonl`. HP jobs have no control channel:
+  `message_worker` returns `not_supported_on_hp` instead of failing on a missing
+  control record.
+- `renew_worker_lease` — an explicit controller extension, and ownership after a
+  restart. The supervisor renews the lease by itself while the worker lives, so
+  `hard_timeout_seconds` (default 4 h) is the real job limit, not a forgotten
+  renewal. A call still extends a running job by at most 7200 seconds (2 hours;
+  default 1800) and works for the recorded owner session, or with `adopt=true`.
+  Missing, expired, malformed, wrong-job/wrong-owner leases are
+  refused. If the lease is missing or invalid, the supervisor kills the verified
+  owned tree, preserves partial output/artifacts, and reports
+  `controller_lease_expired` distinctly.
 - `claim_worker` — explicit takeover of a running job's lease ownership,
   recording the new owner session and reason in `job_dir/steering.jsonl`;
   after it, plain `renew_worker_lease` works without `adopt=true`.
@@ -223,7 +232,8 @@ mutation lock, so several worktree writers can run in parallel; the main
 checkout keeps its own lock. On a successful finish the supervisor auto-commits
 the worktree (`git add -A`, author from git config, subject
 `<brief first line> [dsh <job_id>]`, trailer `DSH-Job: <job_id>`); an empty diff
-makes no commit, and failed/cancelled jobs are left uncommitted for review.
+makes no commit. Every other end (failed, cancelled, lease-expired, timeout)
+also commits a non-empty diff, with the subject prefix `WIP ended <reason>:`.
 `worker_status`/`worker_result` report `worktree.branch`, `base`, `head`,
 `commits`, `files_changed`. A worker can commit its own change: write
 `<workspace>/.tmp/commit.request.json` with `{"message": "..."}`; the
@@ -262,7 +272,8 @@ freshness check and cadence staleness, so a job that exits 0 while writing
 nothing still shows stale. `start_job(name, args=None, confirm=True)` runs a
 disabled job only with `confirm=true`, takes its named db:/gpu/net: resource
 locks (refusing `resource_busy`), and uses the same supervisor/status/lease/
-steering machinery; `job_log(run_id)` shows the output. Never start a real
+steering machinery (the supervisor renews the lease; the 4-hour hard timeout
+still ends it); `job_log(run_id)` shows the output. Never start a real
 fetch/ingest job without Shivam's direction, and never from a test.
 
 ## Same-conversation follow-ups
@@ -278,20 +289,19 @@ conversation; the next model request is the answer to that question. When the
 bounded wait expires the turn closes and a one-shot worker exits normally. This
 is opt-in: leave `followup_wait_seconds` at 0 for ordinary one-shot work.
 
-## Controller lease
+## Controller lease and hard timeout
 
 Every job carries an independent controller lease (default 30 minutes, capped at
-7200 seconds / 2 hours per extension), renewed only by an explicit
-`renew_worker_lease` call after real review/status. It is not a task duration
-cap: productive multi-step/tool work may continue indefinitely while the
-controller keeps reviewing and renewing. If Codex/its quota disappears, the
-supervisor stops the verified owned tree at the persisted deadline even if the
-model is still responsive, preserves partial output/artifacts, and reports
-`controller_lease_expired`. Renewal works for the recorded owner session; a
-different session must call `claim_worker(job_id, reason)` or
-`renew_worker_lease(job_id, adopt=true)` once, deliberately, to take over a
-still-valid lease after a restart. Watch `progress.notes`: it warns when the
-lease has under 10 minutes left.
+7200 seconds / 2 hours per extension). **The supervisor renews it itself** while
+the worker is alive, capped by the job's `hard_timeout_seconds` (default 4 hours),
+which is the real task limit; a forgotten controller renewal no longer kills a
+long job. `renew_worker_lease` remains for an explicit controller extension and
+for ownership after a restart: a different session must call
+`claim_worker(job_id, reason)` or `renew_worker_lease(job_id, adopt=true)` once
+to take over a still-valid lease. A missing/invalid lease fails closed: the
+supervisor stops the verified owned tree, preserves partial output/artifacts, and
+reports `controller_lease_expired`. A dead supervisor also ends the job through
+its `KILL_ON_JOB_CLOSE` job object.
 
 ## Review loop
 

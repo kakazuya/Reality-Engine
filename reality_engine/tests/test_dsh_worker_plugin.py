@@ -237,41 +237,86 @@ class PluginTests(unittest.TestCase):
         peak_env = dict(self.env)
         peak_env["DSH_WORKER_FAKE_NOW"] = PEAK
         with self.assertRaises(core.PluginError) as ctx:
-            core.Manager(core.load_config(peak_env)).start_worker(brief="work", workspace=".")
+            core.Manager(core.load_config(peak_env)).start_worker(brief=self._brief('work'), workspace=".", permission="read-only")
         self.assertEqual(ctx.exception.code, "peak_hours")
 
         # An existing directory outside the configured repository is refused;
         # TEST_TMP is the parent of this test's temp repo.
         with self.assertRaises(core.PluginError) as ctx:
-            self._manager_instance().start_worker(brief="work", workspace=str(TEST_TMP))
+            self._manager_instance().start_worker(brief=self._brief('work'), workspace=str(TEST_TMP), permission="read-only")
         self.assertEqual(ctx.exception.code, "workspace_outside_repo")
         outside_brief = TEST_TMP / f"outside-brief-{os.getpid()}.md"
         outside_brief.write_text("outside", encoding="utf-8")
         self.addCleanup(lambda: outside_brief.unlink(missing_ok=True))
         with self.assertRaises(core.PluginError) as ctx:
-            self._manager_instance().start_worker(task_file=str(outside_brief))
+            self._manager_instance().start_worker(task_file=str(outside_brief), permission="read-only")
         self.assertEqual(ctx.exception.code, "task_file_outside_repo")
         with self.assertRaises(core.PluginError) as ctx:
-            self._manager_instance().start_worker(task_file=f"../{outside_brief.name}")
+            self._manager_instance().start_worker(task_file=f"../{outside_brief.name}", permission="read-only")
         self.assertEqual(ctx.exception.code, "task_file_outside_repo")
 
         with self.assertRaises(core.PluginError) as ctx:
-            self._manager_instance().start_worker(brief="a", task_file="brief.md")
+            self._manager_instance().start_worker(brief=self._brief('a'), task_file="brief.md", permission="read-only")
         self.assertEqual(ctx.exception.code, "brief_required")
         with self.assertRaises(core.PluginError) as ctx:
-            self._manager_instance().start_worker()
+            self._manager_instance().start_worker(permission="read-only")
         self.assertEqual(ctx.exception.code, "brief_required")
         with self.assertRaises(core.PluginError) as ctx:
-            self._manager_instance().start_worker(brief="   \n")
+            self._manager_instance().start_worker(brief="   \n", permission="read-only")
         self.assertEqual(ctx.exception.code, "brief_empty")
         with self.assertRaises(core.PluginError) as ctx:
             self._manager_instance().get_status("../escape")
         self.assertEqual(ctx.exception.code, "job_id_invalid")
 
+    def test_start_requires_an_explicit_permission(self):
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(brief=self._brief("no permission"))
+        self.assertEqual(ctx.exception.code, "permission_required")
+        self.assertIn("read-only", ctx.exception.message)
+
+    def test_start_refuses_an_incomplete_brief_naming_the_missing_fields(self):
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(
+                brief="Goal: only one field\n", permission="read-only"
+            )
+        self.assertEqual(ctx.exception.code, "brief_incomplete")
+        self.assertEqual(
+            set(ctx.exception.details["missing"]),
+            {"Files:", "Accept: (or Test command(s):)", "Stop if:", "Budget:"},
+        )
+        self.assertIn("Files:", ctx.exception.message)
+        self.assertIn("Budget:", ctx.exception.message)
+
+    def test_small_fix_allows_a_one_line_brief_with_an_accept_command(self):
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(
+                brief="Fix the typo in tasks/STATE.md",
+                permission="read-only",
+                small_fix=True,
+            )
+        self.assertEqual(ctx.exception.code, "brief_incomplete")
+        started = self._manager_instance().start_worker(
+            brief=(
+                "Fix the typo in tasks/STATE.md. "
+                "Accept: python -m pytest reality_engine/tests/test_dsh_worker_plugin.py -q"
+            ),
+            permission="read-only",
+            small_fix=True,
+        )
+        self.assertTrue(started["ok"], started)
+        self._wait_status(started["job_id"], lambda s: s["final"])
+        # The same one line without small_fix is refused by the five-field gate.
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(
+                brief="Fix the typo in tasks/STATE.md. Accept: python -m pytest -q",
+                permission="read-only",
+            )
+        self.assertEqual(ctx.exception.code, "brief_incomplete")
+
     def test_start_defaults_argv_and_result(self):
         started = self._manager_instance().start_worker(
-            brief="Do the fake task", workspace=".", max_result_bytes=1024
-        )
+            brief=self._brief('Do the fake task'), workspace=".", max_result_bytes=1024
+        , permission="read-only")
         self.assertTrue(started["ok"], started)
         job_id = started["job_id"]
         job = json.loads((Path(started["status_path"]).parent / "job.json").read_text(encoding="utf-8"))
@@ -283,8 +328,8 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(job["heartbeat"]["missed_replies_allowed"], 2)
         self.assertEqual(job["heartbeat"]["mode"], "launcher_heartbeat")
         self.assertFalse(job["heartbeat"]["degraded"])
-        self.assertIsNone(job["limits"]["hard_timeout_seconds"])
-        self.assertEqual(job["limits"]["hard_timeout_kind"], "none")
+        self.assertEqual(job["limits"]["hard_timeout_seconds"], 4 * 3600)
+        self.assertEqual(job["limits"]["hard_timeout_kind"], "default_4h")
         self.assertEqual(job["provider_session"], "provider-session-test")
         self.assertIsNone(job["conversation_id"])
         self.assertEqual(job["progress_interval_seconds"], 1200)
@@ -299,7 +344,7 @@ class PluginTests(unittest.TestCase):
         self.assertNotIn("--peak-ok", argv)
         self.assertIn("--heartbeat-interval", argv)
         self.assertIn("--control-token-env", argv)
-        self.assertNotIn("--timeout", argv, "omitted timeout must not add a wall-clock kill")
+        self.assertEqual(argv[argv.index("--timeout") + 1], str(4 * 3600))
         token = self._manager_instance()._control_tokens[job_id]
         self.assertNotIn(token, json.dumps(job))
         self.assertNotIn(token, (Path(started["status_path"]).parent / "job.json").read_text(encoding="utf-8"))
@@ -355,7 +400,7 @@ class PluginTests(unittest.TestCase):
         no_heartbeat["FAKE_HEARTBEAT_FLAGS"] = "0"
         no_heartbeat.pop("FAKE_NO_CONTROL_TOKEN_FLAG", None)
         with self.assertRaises(core.PluginError) as ctx:
-            core.Manager(core.load_config(no_heartbeat)).start_worker(brief="no heartbeat")
+            core.Manager(core.load_config(no_heartbeat)).start_worker(brief=self._brief('no heartbeat'), permission="read-only")
         self.assertEqual(ctx.exception.code, "heartbeat_unavailable")
         self.assertIn("automatic hard-timeout fallback was removed", ctx.exception.message)
 
@@ -363,7 +408,7 @@ class PluginTests(unittest.TestCase):
         no_control["FAKE_HEARTBEAT_FLAGS"] = "1"
         no_control["FAKE_NO_CONTROL_TOKEN_FLAG"] = "1"
         with self.assertRaises(core.PluginError) as ctx:
-            core.Manager(core.load_config(no_control)).start_worker(brief="no control token")
+            core.Manager(core.load_config(no_control)).start_worker(brief=self._brief('no control token'), permission="read-only")
         self.assertEqual(ctx.exception.code, "control_token_unavailable")
         self.assertIn("--control-token-env", ctx.exception.message)
 
@@ -475,32 +520,59 @@ class PluginTests(unittest.TestCase):
         fresh = manager.get_status(job_id)
         self.assertFalse(fresh["stale"], fresh)
 
-    def test_controller_lease_expiry_stops_endless_worker_and_preserves_partial(self):
+    def test_supervisor_renews_the_lease_so_a_long_job_survives(self):
         self.env["FAKE_LAUNCHER_MODE"] = "slow"
-        self.env["FAKE_LAUNCHER_SLEEP"] = "20"
-        self.env["DSH_WORKER_TEST_LEASE_SECONDS"] = "6"
+        self.env["FAKE_LAUNCHER_SLEEP"] = "6"
+        self.env["DSH_WORKER_TEST_LEASE_SECONDS"] = "2"
         self._reset_manager()
-        started = self._manager_instance().start_worker(brief="endless responsive task")
+        started = self._manager_instance().start_worker(
+            brief=self._brief("endless responsive task"), permission="read-only"
+        )
         job_id = started["job_id"]
         job_dir = Path(started["status_path"]).parent
         lease_path = job_dir / "controller_lease.json"
         self.assertTrue(lease_path.exists())
-        # The fake launcher needs to start and write its partial output before
-        # the lease expires; 2 s was a startup race on a loaded machine.
+        initial = json.loads(lease_path.read_text(encoding="utf-8"))
+        # The controller never renews: the short 2 s lease would have killed the
+        # 6 s worker under the old explicit-only rule.
+        time.sleep(3.0)
+        renewed = json.loads(lease_path.read_text(encoding="utf-8"))
+        self.assertGreater(
+            core.parse_iso(renewed["deadline"]), core.parse_iso(initial["deadline"])
+        )
+        self.assertEqual(renewed["renewed_by"], "supervisor")
+        self.assertGreater(renewed["renewals"], int(initial.get("renewals") or 0))
         final = self._wait_status(job_id, lambda s: s["final"], timeout=20.0)
-        self.assertEqual(final["phase"], "failed", final)
-        self.assertEqual(final["outcome"], "controller_lease_expired", final)
-        self.assertFalse(final["process"]["worker_alive"], final)
-        self.assertTrue(final["partial"], final)
-        self.assertIn("partial output", (job_dir / "result.md").read_text(encoding="utf-8"))
+        self.assertEqual(final["phase"], "finished", final)
+        self.assertEqual(final["exit_code"], 0)
         self.assertFalse(lease_path.exists(), "finalization must remove the lease")
+
+    def test_hard_timeout_ends_the_worker_even_when_the_lease_is_renewed(self):
+        self.env["FAKE_LAUNCHER_MODE"] = "slow"
+        self.env["FAKE_LAUNCHER_SLEEP"] = "30"
+        self._reset_manager()
+        started = self._manager_instance().start_worker(
+            brief=self._brief("hard timeout task"),
+            permission="read-only",
+            hard_timeout_seconds=5,
+        )
+        job_id = started["job_id"]
+        job = json.loads(
+            (Path(started["status_path"]).parent / "job.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(job["limits"]["hard_timeout_seconds"], 5)
+        self.assertEqual(job["limits"]["hard_timeout_kind"], "explicit")
+        final = self._wait_status(job_id, lambda s: s["final"], timeout=15.0)
+        self.assertEqual(final["phase"], "failed", final)
+        self.assertEqual(final["outcome"], "timeout", final)
+        self.assertFalse(final["process"]["worker_alive"], final)
 
     def test_missing_lease_stops_responsive_worker(self):
         self.env["FAKE_LAUNCHER_MODE"] = "slow"
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"
         self.env["DSH_WORKER_TEST_LEASE_SECONDS"] = "30"
         self._reset_manager()
-        started = self._manager_instance().start_worker(brief="missing lease task")
+        started = self._manager_instance().start_worker(brief=self._brief('missing lease task'), permission="read-only")
         job_id = started["job_id"]
         job_dir = Path(started["status_path"]).parent
         self._wait_status(job_id, lambda s: s["running"] and s["result_bytes"] > 0 and not s["result_ready"])
@@ -510,34 +582,34 @@ class PluginTests(unittest.TestCase):
         self.assertFalse(final["process"]["worker_alive"], final)
         self.assertTrue(final["partial"], final)
 
-    def test_controller_lease_renewal_is_explicit_and_restart_cannot_extend(self):
+    def test_controller_lease_renewal_requires_ownership(self):
         self.env["FAKE_LAUNCHER_MODE"] = "slow"
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"
-        self.env["DSH_WORKER_TEST_LEASE_SECONDS"] = "4"
+        self.env["DSH_WORKER_TEST_LEASE_SECONDS"] = "600"
         self._reset_manager()
-        started = self._manager_instance().start_worker(brief="renewable task")
+        started = self._manager_instance().start_worker(brief=self._brief('renewable task'), permission="read-only")
         job_id = started["job_id"]
         job_dir = Path(started["status_path"]).parent
         lease_path = job_dir / "controller_lease.json"
         before = json.loads(lease_path.read_text(encoding="utf-8"))
-        # Read-only status/result/list calls and fake worker activity must not
-        # renew.  The fake launcher keeps updating status/heartbeat files.
+        # Read-only status/result/list calls do not renew; only the supervisor
+        # does, and with a 30 s lease it has not reached the half-life yet.
         self._wait_status(job_id, lambda s: s["running"])
         self._manager_instance().worker_result(job_id, 1024)
         self._manager_instance().list_workers()
         time.sleep(0.3)
         unchanged = json.loads(lease_path.read_text(encoding="utf-8"))
         self.assertEqual(unchanged["deadline"], before["deadline"])
-        # Renewal is reset-from-now, not add-to-current-deadline, and the store
-        # records whole seconds.  Ask for an explicitly longer interval than the
-        # 4-second initial lease so the new deadline cannot tie the old one.
-        renewed = self._manager_instance().renew_worker_lease(job_id, extend_seconds=10)
+        # Renewal is reset-from-now, not add-to-current-deadline.  The 600 s
+        # initial lease keeps the supervisor's own half-life renewal out of the
+        # window this test inspects.
+        renewed = self._manager_instance().renew_worker_lease(job_id, extend_seconds=900)
         self.assertTrue(renewed["ok"], renewed)
         self.assertGreater(
             core.parse_iso(renewed["controller_lease"]["deadline"]),
             core.parse_iso(before["deadline"]),
         )
-        self.assertEqual(renewed["controller_lease"]["lease_seconds"], 10)
+        self.assertEqual(renewed["controller_lease"]["lease_seconds"], 900)
         self.assertEqual(renewed["controller_lease"]["renewals"], 1)
         after_renew = renewed["controller_lease"]["deadline"]
 
@@ -639,7 +711,7 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"
         self._reset_manager()
         first = self._manager_instance().start_worker(
-            brief="root writer",
+            brief=self._brief('root writer'),
             workspace=".",
             permission="workspace-write",
             confirm_repo_root_write=True,
@@ -648,7 +720,7 @@ class PluginTests(unittest.TestCase):
         # A subdirectory is not its own checkout, so it is not a workspace.
         with self.assertRaises(core.PluginError) as ctx:
             self._manager_instance().start_worker(
-                brief="subdir writer",
+                brief=self._brief('subdir writer'),
                 workspace="reality_engine",
                 permission="workspace-write",
             )
@@ -656,7 +728,7 @@ class PluginTests(unittest.TestCase):
         # The root workspace is a single checkout: a second root writer waits.
         with self.assertRaises(core.PluginError) as ctx:
             self._manager_instance().start_worker(
-                brief="second root writer",
+                brief=self._brief('second root writer'),
                 workspace=".",
                 permission="workspace-write",
                 confirm_repo_root_write=True,
@@ -795,7 +867,7 @@ class PluginTests(unittest.TestCase):
                 session,
                 "start_worker",
                 {
-                    "brief": "Slow fake task",
+                    "brief": self._brief('Slow fake task'),
                     "workspace": ".",
                     "permission": "workspace-write",
                     "confirm_repo_root_write": True,
@@ -842,7 +914,7 @@ class PluginTests(unittest.TestCase):
         self._reset_manager()
 
         async def start_only(session):
-            return await self._call(session, "start_worker", {"brief": "shutdown scope"})
+            return await self._call(session, "start_worker", {"brief": self._brief('shutdown scope'), "permission": "read-only"})
 
         started = self._run(self._with_session(start_only))
         job_id = started["job_id"]
@@ -861,7 +933,7 @@ class PluginTests(unittest.TestCase):
         self._reset_manager()
 
         async def unavailable(session):
-            started = await self._call(session, "start_worker", {"brief": "no control"})
+            started = await self._call(session, "start_worker", {"brief": self._brief('no control'), "permission": "read-only"})
             job_id = started["job_id"]
             await self._await_tool_status(session, job_id, lambda s: s["running"])
             response = await self._call(
@@ -879,7 +951,7 @@ class PluginTests(unittest.TestCase):
         self._reset_manager()
 
         async def control(session):
-            started = await self._call(session, "start_worker", {"brief": "control task"})
+            started = await self._call(session, "start_worker", {"brief": self._brief('control task'), "permission": "read-only"})
             job_id = started["job_id"]
             status = await self._await_tool_status(
                 session,
@@ -996,7 +1068,8 @@ class PluginTests(unittest.TestCase):
             started = await self._call(
                 session,
                 "start_worker",
-                {"brief": "progress surface", "progress_interval_seconds": 1},
+                {"brief": self._brief('progress surface'), "progress_interval_seconds": 1,
+                 "permission": "read-only"},
             )
             self.assertTrue(started["ok"], started)
             job_id = started["job_id"]
@@ -1093,7 +1166,7 @@ class PluginTests(unittest.TestCase):
     def test_worker_control_defaults_are_compact(self):
         """Default status/result/list views stay small; verbose=true keeps the old record."""
         self._reset_manager()
-        started = self._manager_instance().start_worker(brief="compact surface")
+        started = self._manager_instance().start_worker(brief=self._brief('compact surface'), permission="read-only")
         job_id = started["job_id"]
         self._wait_status(job_id, lambda s: s["final"])
 
@@ -1135,8 +1208,8 @@ class PluginTests(unittest.TestCase):
     def test_progress_interval_zero_disables_digests(self):
         self._reset_manager()
         started = self._manager_instance().start_worker(
-            brief="no digests", progress_interval_seconds=0
-        )
+            brief=self._brief('no digests'), progress_interval_seconds=0
+        , permission="read-only")
         self.assertEqual(started["progress_interval_seconds"], 0)
         final = self._wait_status(started["job_id"], lambda s: s["final"])
         self.assertEqual(final["phase"], "finished")
@@ -1153,7 +1226,7 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_SLEEP"] = "5"
         self._reset_manager()
 
-        started = self._manager_instance().start_worker(brief="heartbeat task")
+        started = self._manager_instance().start_worker(brief=self._brief('heartbeat task'), permission="read-only")
         job_id = started["job_id"]
         job = json.loads((Path(started["status_path"]).parent / "job.json").read_text(encoding="utf-8"))
         self.assertEqual(job["heartbeat"]["mode"], "launcher_heartbeat")
@@ -1192,8 +1265,8 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_MODE"] = "fast"
         self._reset_manager()
         started = self._manager_instance().start_worker(
-            brief="heartbeat with explicit cutoff", hard_timeout_seconds=120
-        )
+            brief=self._brief('heartbeat with explicit cutoff'), hard_timeout_seconds=120
+        , permission="read-only")
         job = json.loads((Path(started["status_path"]).parent / "job.json").read_text(encoding="utf-8"))
         argv = job["launcher"]["argv"]
         self.assertIn("--heartbeat-interval", argv)
@@ -1209,7 +1282,7 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_MODE"] = "control"
         self.env["FAKE_LAUNCHER_SLEEP"] = "5"
         self._reset_manager()
-        started = self._manager_instance().start_worker(brief="control contract cross-check")
+        started = self._manager_instance().start_worker(brief=self._brief('control contract cross-check'), permission="read-only")
         job_id = started["job_id"]
         self._wait_status(
             job_id, lambda s: s["running"] and s["heartbeat"].get("control_available")
@@ -1245,7 +1318,7 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_MODE"] = "fast"
         self.env["FAKE_LAUNCHER_OUTPUT"] = "x" * 200_000
         self._reset_manager()
-        started = self._manager_instance().start_worker(brief="big result")
+        started = self._manager_instance().start_worker(brief=self._brief('big result'), permission="read-only")
         job_id = started["job_id"]
         self._wait_status(job_id, lambda s: s["final"])
         bounded = self._manager_instance().worker_result(job_id, max_bytes=512)
@@ -1259,7 +1332,7 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_MODE"] = "fail"
         self.env["FAKE_LAUNCHER_OUTPUT"] = "unused"
         self._reset_manager()
-        failed = self._manager_instance().start_worker(brief="fail task")
+        failed = self._manager_instance().start_worker(brief=self._brief('fail task'), permission="read-only")
         failed_id = failed["job_id"]
         failed_status = self._wait_status(failed_id, lambda s: s["final"])
         self.assertEqual(failed_status["phase"], "failed")
@@ -1274,20 +1347,20 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"
         self._reset_manager()
         first = self._manager_instance().start_worker(
-            brief="writer one", permission="workspace-write", confirm_repo_root_write=True
+            brief=self._brief('writer one'), permission="workspace-write", confirm_repo_root_write=True
         )
         self.assertTrue(first["ok"], first)
         with self.assertRaises(core.PluginError) as ctx:
             self._manager_instance().start_worker(
-                brief="writer two", permission="workspace-write", confirm_repo_root_write=True
+                brief=self._brief('writer two'), permission="workspace-write", confirm_repo_root_write=True
             )
         self.assertEqual(ctx.exception.code, "workspace_busy")
-        read_only = self._manager_instance().start_worker(brief="reader", permission="read-only")
+        read_only = self._manager_instance().start_worker(brief=self._brief('reader'), permission="read-only")
         self.assertTrue(read_only["ok"], read_only)
         self._manager_instance().cancel_worker(read_only["job_id"], confirm=True)
         self._manager_instance().cancel_worker(first["job_id"], confirm=True)
         third = self._manager_instance().start_worker(
-            brief="writer three", permission="workspace-write", confirm_repo_root_write=True
+            brief=self._brief('writer three'), permission="workspace-write", confirm_repo_root_write=True
         )
         self.assertTrue(third["ok"], third)
         self._manager_instance().cancel_worker(third["job_id"], confirm=True)
@@ -1361,7 +1434,7 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_MODE"] = "control"
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"
         self._reset_manager()
-        started = self._manager_instance().start_worker(brief="shared control task")
+        started = self._manager_instance().start_worker(brief=self._brief('shared control task'), permission="read-only")
         job_id = started["job_id"]
         job_dir = Path(started["status_path"]).parent
         self.assertTrue(started["control_token_persisted"])
@@ -1508,9 +1581,22 @@ class PluginTests(unittest.TestCase):
         self._git("commit", "-m", "initial")
         return self._git("rev-parse", "HEAD")
 
+    @staticmethod
+    def _brief(first: str = "fake task") -> str:
+        """A five-field brief; the first line stays the commit subject."""
+        return (
+            f"{first}\n"
+            f"Goal: {first}\n"
+            "Files: the fixture files named in this test\n"
+            "Accept: the fake launcher exits 0 and writes its output\n"
+            "Stop if: the fake launcher fails\n"
+            "Budget: 120 tool calls\n"
+        )
+
     def _start_worktree_job(
-        self, write_file=None, write_text="worker change\n", brief="worktree task", test_cmd=None
+        self, write_file=None, write_text="worker change\n", brief=None, test_cmd=None
     ):
+        brief = brief or self._brief("worktree task")
         if write_file:
             self.env["FAKE_LAUNCHER_WRITE_FILE"] = write_file
             self.env["FAKE_LAUNCHER_WRITE_TEXT"] = write_text
@@ -1595,7 +1681,7 @@ class PluginTests(unittest.TestCase):
         self.env["FAKE_LAUNCHER_WRITE_TEXT"] = "written in the worktree\n"
         self._reset_manager()
         started = self._manager_instance().start_worker(
-            brief="Add worker file\n\nsecond line should not be the subject",
+            brief=self._brief("Add worker file\n\nsecond line should not be the subject"),
             permission="workspace-write",
             use_worktree=True,
         )
@@ -1680,7 +1766,7 @@ class PluginTests(unittest.TestCase):
         base_commit = self._init_git_repo()
         self._reset_manager()
         started = self._manager_instance().start_worker(
-            brief="No changes task", permission="workspace-write", use_worktree=True
+            brief=self._brief('No changes task'), permission="workspace-write", use_worktree=True
         )
         job_id = started["job_id"]
         final = self._wait_status(job_id, lambda s: s["final"])
@@ -1700,10 +1786,10 @@ class PluginTests(unittest.TestCase):
         self._reset_manager()
         manager = self._manager_instance()
         first = manager.start_worker(
-            brief="writer one", permission="workspace-write", use_worktree=True
+            brief=self._brief('writer one'), permission="workspace-write", use_worktree=True
         )
         second = manager.start_worker(
-            brief="writer two", permission="workspace-write", use_worktree=True
+            brief=self._brief('writer two'), permission="workspace-write", use_worktree=True
         )
         self.assertTrue(first["ok"], first)
         self.assertTrue(second["ok"], second)
@@ -1718,7 +1804,7 @@ class PluginTests(unittest.TestCase):
         # of a *writer* only because both are in worktrees.
         with self.assertRaises(core.PluginError) as ctx:
             manager.start_worker(
-                brief="same worktree",
+                brief=self._brief('same worktree'),
                 workspace=first["workspace"],
                 permission="workspace-write",
             )
@@ -1726,17 +1812,73 @@ class PluginTests(unittest.TestCase):
         cancelled = manager.cancel_worker(second["job_id"], confirm=True)
         self.assertTrue(cancelled["ok"], cancelled)
         self.assertTrue(manager.cancel_worker(first["job_id"], confirm=True)["ok"])
-        # Cancelled worktrees leave their changes uncommitted (no auto-commit).
+        # A cancelled worktree job still commits its non-empty diff, with the
+        # WIP subject prefix, so the work is not left only as a dirty checkout.
         second_dir = Path(second["status_path"]).parent
+        second_status = json.loads((second_dir / "status.json").read_text(encoding="utf-8"))
         job = json.loads((second_dir / "job.json").read_text(encoding="utf-8"))
         self.assertEqual(job["worktree"]["base_commit"], base_commit)
+        tree = second_status["worktree_commit"]
+        self.assertTrue(tree["committed"], tree)
+        self.assertTrue(
+            tree["message"].startswith("WIP ended cancelled:"), tree["message"]
+        )
+        subject = self._git("log", "-1", "--format=%s", f"dsh/{second['job_id']}")
+        self.assertTrue(subject.startswith("WIP ended cancelled:"), subject)
+
+    def test_failed_worktree_job_commits_wip(self):
+        self._init_git_repo()
+        self.env["FAKE_LAUNCHER_MODE"] = "fail"
+        self.env["FAKE_LAUNCHER_WRITE_FILE"] = "partial.txt"
+        self._reset_manager()
+        started = self._manager_instance().start_worker(
+            brief=self._brief("failing worker"), permission="workspace-write", use_worktree=True
+        )
+        job_id = started["job_id"]
+        final = self._wait_status(job_id, lambda s: s["final"])
+        self.assertEqual(final["phase"], "failed", final)
+        tree = final["worktree"]
+        self.assertTrue(tree["committed"], tree)
+        self.assertTrue(
+            tree["commit_message"].startswith("WIP ended launcher_error:"),
+            tree["commit_message"],
+        )
+        self.assertEqual(tree["files_changed_paths"], ["partial.txt"])
+        subject = self._git("log", "-1", "--format=%s", f"dsh/{job_id}")
+        self.assertTrue(subject.startswith("WIP ended launcher_error:"), subject)
+
+    def test_lease_expired_worktree_job_commits_wip(self):
+        self._init_git_repo()
+        self.env["FAKE_LAUNCHER_MODE"] = "slow"
+        self.env["FAKE_LAUNCHER_SLEEP"] = "20"
+        self.env["FAKE_LAUNCHER_WRITE_FILE"] = "lease_work.txt"
+        self.env["DSH_WORKER_TEST_LEASE_SECONDS"] = "30"
+        self._reset_manager()
+        started = self._manager_instance().start_worker(
+            brief=self._brief("leased worker"), permission="workspace-write", use_worktree=True
+        )
+        job_id = started["job_id"]
+        job_dir = Path(started["status_path"]).parent
+        self._wait_status(
+            job_id,
+            lambda s: s["running"] and s["result_bytes"] > 0 and not s["result_ready"],
+        )
+        (job_dir / "controller_lease.json").unlink()
+        final = self._wait_status(job_id, lambda s: s["final"], timeout=10.0)
+        self.assertEqual(final["outcome"], "controller_lease_expired", final)
+        tree = final["worktree"]
+        self.assertTrue(tree["committed"], tree)
+        self.assertTrue(
+            tree["commit_message"].startswith("WIP ended controller_lease_expired:"),
+            tree["commit_message"],
+        )
 
     def test_invalid_worktree_base_is_refused_without_leftovers(self):
         self._init_git_repo()
         self._reset_manager()
         with self.assertRaises(core.PluginError) as ctx:
             self._manager_instance().start_worker(
-                brief="bad base", permission="workspace-write", use_worktree=True, base="no-such-ref"
+                brief=self._brief('bad base'), permission="workspace-write", use_worktree=True, base="no-such-ref"
             )
         self.assertEqual(ctx.exception.code, "worktree_failed")
         worktrees_root = self.root / "worktrees"
@@ -2057,12 +2199,14 @@ class PluginTests(unittest.TestCase):
         pack = self._write_context_pack()
         started = self._manager_instance().start_worker(
             brief=(
-                "Goal: attach the pack\n\n"
-                "## Acceptance checks\n1. the brief starts with the header\n\n"
-                "## Test command(s)\n"
-                "python -m unittest reality_engine.tests.test_dsh_worker_plugin"
+                "Goal: attach the pack\n"
+                "Files: none\n"
+                "Accept: the fake launcher exits 0\n"
+                "Stop if: the fake launcher fails\n"
+                "Budget: 120 tool calls\n"
             ),
             context_pack=True,
+            permission="read-only",
         )
         self.assertTrue(started["ok"], started)
         self.assertFalse(started["context_pack"]["regenerated"], started["context_pack"])
@@ -2071,11 +2215,10 @@ class PluginTests(unittest.TestCase):
         self.assertTrue(brief.startswith("## Worker context pack (auto-attached)"), brief[:300])
         self.assertIn(str(pack), brief)
         self.assertIn("Goal: attach the pack", brief)
-        self.assertEqual([w for w in started["warnings"] if "brief_lint:" in w], [])
 
-    def test_start_worker_context_pack_false_and_lint_warning(self):
+    def test_start_worker_context_pack_false(self):
         started = self._manager_instance().start_worker(
-            brief="do the thing", context_pack=False
+            brief=self._brief("do the thing"), context_pack=False, permission="read-only"
         )
         self.assertTrue(started["ok"], started)
         self.assertEqual(started["context_pack"]["enabled"], False)
@@ -2083,17 +2226,12 @@ class PluginTests(unittest.TestCase):
         brief = (job_dir / "brief.md").read_text(encoding="utf-8")
         self.assertFalse(brief.startswith("## Worker context pack"), brief[:300])
         self.assertIn("do the thing", brief)
-        lint = [w for w in started["warnings"] if w.startswith("brief_lint:")]
-        self.assertEqual(len(lint), 3, lint)
-        self.assertTrue(any("Goal" in w for w in lint))
-        self.assertTrue(any("Acceptance checks" in w for w in lint))
-        self.assertTrue(any("Test command" in w for w in lint))
 
     def test_start_worker_context_pack_is_on_by_default(self):
         # A pack file exists and a start that does not pass the flag attaches it;
         # context_pack=false is the opt-out.
         self._write_context_pack()
-        started = self._manager_instance().start_worker(brief="default start")
+        started = self._manager_instance().start_worker(brief=self._brief('default start'), permission="read-only")
         self.assertTrue(started["ok"], started)
         self.assertEqual(started["context_pack"]["enabled"], True)
         brief = (Path(started["status_path"]).parent / "brief.md").read_text(encoding="utf-8")
@@ -2112,7 +2250,7 @@ class PluginTests(unittest.TestCase):
             "path.write_text('# regenerated by fake builder\\n', encoding='utf-8')\n",
             encoding="utf-8",
         )
-        started = self._manager_instance().start_worker(brief="Goal: x", context_pack=True)
+        started = self._manager_instance().start_worker(brief=self._brief('Goal: x'), context_pack=True, permission="read-only")
         self.assertTrue(started["ok"], started)
         self.assertTrue(started["context_pack"]["regenerated"], started["context_pack"])
         self.assertEqual(pack.read_text(encoding="utf-8"), "# regenerated by fake builder\n")
@@ -2120,7 +2258,7 @@ class PluginTests(unittest.TestCase):
     def test_start_worker_stale_pack_failure_is_warning(self):
         pack = self._write_context_pack("# old pack\n")
         self._age_path(pack, 30, datetime.fromisoformat(OFF_PEAK))
-        started = self._manager_instance().start_worker(brief="Goal: x", context_pack=True)
+        started = self._manager_instance().start_worker(brief=self._brief('Goal: x'), context_pack=True, permission="read-only")
         self.assertTrue(started["ok"], started)
         self.assertFalse(started["context_pack"]["regenerated"], started["context_pack"])
         self.assertTrue(
@@ -2351,7 +2489,7 @@ class PluginTests(unittest.TestCase):
                 return {"dir": str(self.root / "runtime" / "jobs" / job_id)}
 
         manager._hp_module = lambda: FakeHp
-        result = manager.start_worker(brief="# Task\n", host="hp", permission="read-only",
+        result = manager.start_worker(brief=self._brief("# Task"), host="hp", permission="read-only",
                                       test_cmd="python -m pytest -q", dbs=["pilot.db"],
                                       hard_timeout_seconds=900)
         self.assertTrue(result["ok"])
@@ -2368,7 +2506,7 @@ class PluginTests(unittest.TestCase):
         env["DSH_WORKER_FAKE_NOW"] = PEAK
         manager = core.Manager(core.load_config(env))
         with self.assertRaises(core.PluginError) as ctx:
-            manager.start_worker(brief="# Task\n", host="hp")
+            manager.start_worker(brief=self._brief("# Task"), host="hp", permission="read-only")
         self.assertEqual(ctx.exception.code, "peak_hours")
 
     def test_hp_cancel_requires_confirm_and_calls_the_hp_launcher(self):
@@ -2395,6 +2533,73 @@ class PluginTests(unittest.TestCase):
         self.assertTrue(done["cancelled"])
         self.assertEqual(calls, [("cancel", job_id), ("poll", job_id)])
         self.assertEqual(manager.get_status(job_id)["phase"], "cancelled")
+
+    def test_hp_message_worker_is_not_supported_instead_of_a_keyerror(self):
+        job_id = self._write_hp_record(phase="running")
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().message_worker(job_id, "status?")
+        self.assertEqual(ctx.exception.code, "not_supported_on_hp")
+        self.assertIn("HP", ctx.exception.message)
+
+    def test_hp_status_refreshes_a_stale_cache_and_finds_the_finished_job(self):
+        from reality_engine.scripts import hp_worker as hp_worker_module
+
+        job_id = self._write_hp_record(
+            phase="running", reachable=True, summary="HP worker running"
+        )
+        jobs_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / job_id
+        calls: list[str] = []
+
+        def fake_poll(name: str) -> dict:
+            calls.append(name)
+            status = json.loads((jobs_dir / "status.json").read_text(encoding="utf-8"))
+            status.update(
+                {
+                    "phase": "finished",
+                    "outcome": "ok",
+                    "exit_code": 0,
+                    "finished_at": core.iso(),
+                    "updated_at": core.iso(),
+                    "progress": {
+                        **(status.get("progress") or {}),
+                        "done": True,
+                        "succeeded": True,
+                        "summary": "finished (exit 0)",
+                    },
+                }
+            )
+            (jobs_dir / "status.json").write_text(json.dumps(status), encoding="utf-8")
+            (jobs_dir / "result.md").write_text("HP final answer\n", encoding="utf-8")
+            return status
+
+        with mock.patch.object(hp_worker_module, "poll_once", fake_poll):
+            status = self._manager_instance().get_status(job_id, hp_refresh=True)
+            result = self._manager_instance().worker_result(job_id)
+        self.assertEqual(calls, [job_id])
+        self.assertEqual(status["phase"], "finished")
+        self.assertTrue(status["final"])
+        self.assertTrue(status["result_ready"])
+        self.assertEqual(result["content"].strip(), "HP final answer")
+
+    def test_hp_worker_result_fetches_a_missing_final_result_on_read(self):
+        from reality_engine.scripts import hp_worker as hp_worker_module
+
+        job_id = self._write_hp_record(
+            phase="finished", result=None, summary="finished", outcome="ok", exit_code=0
+        )
+        jobs_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / job_id
+        calls: list[str] = []
+
+        def fake_fetch(name: str) -> list[str]:
+            calls.append(name)
+            (jobs_dir / "result.md").write_text("fetched HP answer\n", encoding="utf-8")
+            return ["result.md"]
+
+        with mock.patch.object(hp_worker_module, "fetch_result", fake_fetch):
+            result = self._manager_instance().worker_result(job_id)
+        self.assertEqual(calls, [job_id])
+        self.assertEqual(result["content"].strip(), "fetched HP answer")
+        self.assertTrue(any("fetched on read" in w for w in result["warnings"]), result["warnings"])
 
 
 class WorkerContextBuilderTests(unittest.TestCase):
@@ -2640,21 +2845,34 @@ class WorkerContextBuilderTests(unittest.TestCase):
         self.assertTrue(context_pack.is_stale(pack, base + timedelta(hours=27)))
         self.assertTrue(context_pack.is_stale(self.root / "missing.md", base))
 
-    def test_lint_brief(self):
+    def test_brief_fields(self):
         conformant = (
-            "## Goal\nx\n\n## Acceptance checks\n1. y\n\n"
-            "## Test command(s)\npython -m unittest x\n"
+            "Goal: x\nFiles: a.py\nAccept: y\nStop if: blocked\nBudget: 10 calls\n"
         )
-        self.assertEqual(context_pack.lint_brief(conformant), [])
-        warnings = context_pack.lint_brief("just do it")
-        self.assertEqual(len(warnings), 3, warnings)
-        self.assertTrue(all(w.startswith("brief_lint:") for w in warnings))
-        # A bare command line counts even without the heading.
+        self.assertEqual(context_pack.brief_missing_fields(conformant), [])
+        missing = context_pack.brief_missing_fields("just do it")
+        self.assertEqual(len(missing), 5, missing)
+        self.assertIn("Goal:", missing)
+        self.assertIn("Files:", missing)
+        self.assertIn("Budget:", missing)
+        # Test command(s): may replace Accept:, and a bare command line counts.
         self.assertEqual(
-            context_pack.lint_brief(
-                "## Goal\nx\n## Acceptance checks\n1. y\npython -m pytest -q"
+            context_pack.brief_missing_fields(
+                "Goal: x\nFiles: a.py\n## Test command(s)\npython -m pytest -q\n"
+                "Stop if: blocked\nBudget: 10 calls"
             ),
             [],
+        )
+        # The one-line small-fix form needs only an accept command.
+        self.assertEqual(
+            context_pack.brief_missing_fields(
+                "Fix the typo. Accept: python -m pytest -q", small_fix=True
+            ),
+            [],
+        )
+        self.assertEqual(
+            context_pack.brief_missing_fields("Fix the typo", small_fix=True),
+            ["Accept: (or Test command(s):)"],
         )
 
 

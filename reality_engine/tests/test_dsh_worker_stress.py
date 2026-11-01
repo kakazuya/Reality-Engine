@@ -40,6 +40,13 @@ import supervisor  # noqa: E402
 from dsh_worker_testenv import make_temp_dir, remove_tree, run_async  # noqa: E402
 
 OFF_PEAK = "2026-10-21T03:00:00+05:30"
+BRIEF = (
+    "Goal: exercise the dsh-worker path\n"
+    "Files: none\n"
+    "Accept: the fake launcher exits 0\n"
+    "Stop if: the fake launcher fails\n"
+    "Budget: 120 tool calls\n"
+)
 IST = timezone(timedelta(hours=5, minutes=30))
 
 
@@ -155,7 +162,7 @@ class RecordRobustnessTests(StressBase):
 
     def test_transiently_unreadable_status_is_unknown_not_lost(self):
         manager = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="6")
-        job_id = manager.start_worker(brief="lock test")["job_id"]
+        job_id = manager.start_worker(brief=BRIEF, permission="read-only")["job_id"]
         self.wait(manager, job_id, lambda s: s["running"])
         original = core.read_json_bounded
 
@@ -193,7 +200,7 @@ class RecordRobustnessTests(StressBase):
 class VisibilityTests(StressBase):
     def test_streaming_result_is_not_ready_and_progress_reports_events(self):
         manager = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="3", FAKE_LAUNCHER_EVENTS="1")
-        job_id = manager.start_worker(brief="progress test")["job_id"]
+        job_id = manager.start_worker(brief=BRIEF, permission="read-only")["job_id"]
         running = self.wait(manager, job_id, lambda s: s["running"] and s["result_bytes"] > 0)
         self.assertFalse(running["result_ready"])
         self.assertTrue(running["result_is_streaming"])
@@ -201,7 +208,9 @@ class VisibilityTests(StressBase):
         self.assertFalse(prog["done"])
         self.assertIn("streaming, not final", prog["summary"])
         self.assertIsNotNone(prog["latest_finish_by"])
-        self.assertEqual(prog["latest_finish_reason"], "controller_lease_deadline")
+        self.assertIn(
+            prog["latest_finish_reason"], {"hard_timeout", "controller_lease_deadline"}
+        )
         events = self.wait(
             manager, job_id, lambda s: (s["progress"]["events"] or {}).get("tool_calls") == 3
         )["progress"]["events"]
@@ -222,7 +231,7 @@ class VisibilityTests(StressBase):
 
     def test_empty_answer_is_flagged(self):
         manager = self.manager(FAKE_LAUNCHER_OUTPUT="")
-        job_id = manager.start_worker(brief="empty")["job_id"]
+        job_id = manager.start_worker(brief=BRIEF, permission="read-only")["job_id"]
         final = self.wait(manager, job_id, lambda s: s["final"])
         self.assertEqual(final["phase"], "finished")
         self.assertTrue(final["progress"]["answer_empty"])
@@ -232,7 +241,7 @@ class VisibilityTests(StressBase):
 
     def test_read_only_job_has_no_false_lock_retained_warning(self):
         manager = self.manager()
-        job_id = manager.start_worker(brief="ro")["job_id"]
+        job_id = manager.start_worker(brief=BRIEF, permission="read-only")["job_id"]
         final = self.wait(manager, job_id, lambda s: s["final"])
         self.assertFalse(any("lock retained" in w for w in final["warnings"]), final["warnings"])
 
@@ -249,7 +258,7 @@ class VisibilityTests(StressBase):
                 manager = self.manager(
                     FAKE_LAUNCHER_STDERR="dsh: reasoning: private chain\n" + message + " token=" + "a" * 40
                 )
-                job_id = manager.start_worker(brief="fail")["job_id"]
+                job_id = manager.start_worker(brief=BRIEF, permission="read-only")["job_id"]
                 final = self.wait(manager, job_id, lambda s: s["final"])
                 reason = final["failure_reason"]
                 self.assertEqual(reason["likely_cause"], cause, reason)
@@ -465,7 +474,7 @@ class ProgressDigestTests(StressBase):
         for bad in (-1, 86_401, True, "ten"):
             with self.subTest(value=bad):
                 with self.assertRaises(core.PluginError) as ctx:
-                    manager.start_worker(brief="bad cadence", progress_interval_seconds=bad)
+                    manager.start_worker(brief=BRIEF, progress_interval_seconds=bad, permission="read-only")
                 self.assertEqual(ctx.exception.code, "progress_interval_invalid")
         with self.assertRaises(core.PluginError):
             manager.start_job("no-such-job", progress_interval_seconds=-5)
@@ -495,16 +504,16 @@ class StartGuardTests(StressBase):
     def test_start_refused_just_before_peak_window(self):
         refused = self.manager(DSH_WORKER_FAKE_NOW="2026-10-21T06:28:30+05:30")
         with self.assertRaises(core.PluginError) as caught:
-            refused.start_worker(brief="x")
+            refused.start_worker(brief=BRIEF, permission="read-only")
         self.assertEqual(caught.exception.code, "peak_hours_imminent")
         allowed = self.manager(DSH_WORKER_FAKE_NOW="2026-10-21T06:27:30+05:30")
-        job_id = allowed.start_worker(brief="x")["job_id"]
+        job_id = allowed.start_worker(brief=BRIEF, permission="read-only")["job_id"]
         self.wait(allowed, job_id, lambda s: s["final"])
 
     def test_preflight_refuses_missing_dsh_and_missing_key(self):
         manager = self.manager(DSH_WORKER_PREFLIGHT="1", DSH_WORKER_DSH_PATH=str(self.root / "nope.exe"))
         with self.assertRaises(core.PluginError) as caught:
-            manager.start_worker(brief="x")
+            manager.start_worker(brief=BRIEF, permission="read-only")
         self.assertEqual(caught.exception.code, "dsh_missing")
         fake_dsh = self.root / "dsh.exe"
         fake_dsh.write_bytes(b"")
@@ -512,7 +521,7 @@ class StartGuardTests(StressBase):
         manager = self.manager(**env)
         manager.config.environ.pop(core.KEY_ENV, None)
         with self.assertRaises(core.PluginError) as caught:
-            manager.start_worker(brief="x")
+            manager.start_worker(brief=BRIEF, permission="read-only")
         self.assertEqual(caught.exception.code, "api_key_missing")
         self.assertNotIn("=", caught.exception.message)
 
@@ -528,7 +537,7 @@ class StartGuardTests(StressBase):
             try:
                 outcomes.append(
                     manager.start_worker(
-                        brief="w",
+                        brief=BRIEF,
                         permission="workspace-write",
                         confirm_repo_root_write=True,
                     )
@@ -545,13 +554,13 @@ class StartGuardTests(StressBase):
         self.assertEqual(len(started), 1, outcomes)
         self.assertEqual(sorted(o for o in outcomes if isinstance(o, str)), ["workspace_busy"] * 3)
         # A read-only worker may run alongside, with an explicit warning.
-        ro = managers[1].start_worker(brief="r")
+        ro = managers[1].start_worker(brief=BRIEF, permission="read-only")
         self.assertTrue(any("read-only worker" in w for w in ro["warnings"]))
         winner = next(m for m in managers if started[0]["job_id"] in m._control_tokens)
         self.wait(winner, started[0]["job_id"], lambda s: s["final"])
         # Lock is released after the writer finishes: a new writer starts.
         again = managers[2].start_worker(
-            brief="w2", permission="workspace-write", confirm_repo_root_write=True
+            brief=BRIEF, permission="workspace-write", confirm_repo_root_write=True
         )
         self.wait(managers[2], again["job_id"], lambda s: s["final"])
 
@@ -563,7 +572,7 @@ class LifecycleTests(StressBase):
             FAKE_LAUNCHER_SLEEP="20",
             DSH_SESSION_LABEL="session-first",
         )
-        job_id = first.start_worker(brief="adopt")["job_id"]
+        job_id = first.start_worker(brief=BRIEF, permission="read-only")["job_id"]
         self.wait(first, job_id, lambda s: s["running"] and s["heartbeat"].get("control_available"))
         restarted = self.manager(DSH_SESSION_LABEL="session-restarted")
         status = restarted.get_status(job_id)
@@ -596,8 +605,12 @@ class LifecycleTests(StressBase):
         self.assertTrue(restarted.cancel_worker(job_id, confirm=True)["ok"])
 
     def test_expired_lease_cannot_be_adopted(self):
-        first = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="30", DSH_WORKER_TEST_LEASE_SECONDS="2")
-        job_id = first.start_worker(brief="expire")["job_id"]
+        first = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="30", DSH_WORKER_TEST_LEASE_SECONDS="30")
+        job_id = first.start_worker(brief=BRIEF, permission="read-only")["job_id"]
+        self.wait(first, job_id, lambda s: s["running"])
+        # The supervisor renews the lease itself, so an unrenewed lease is
+        # produced the only way it can still happen: the lease file is gone.
+        (Path(first.config.jobs_dir) / job_id / "controller_lease.json").unlink()
         final = self.wait(first, job_id, lambda s: s["final"], timeout=30)
         self.assertEqual(final["outcome"], "controller_lease_expired")
         with self.assertRaises(core.PluginError) as caught:
@@ -606,7 +619,7 @@ class LifecycleTests(StressBase):
 
     def test_worker_killed_alone_fails_with_reason(self):
         manager = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="30")
-        job_id = manager.start_worker(brief="kill worker")["job_id"]
+        job_id = manager.start_worker(brief=BRIEF, permission="read-only")["job_id"]
         status = self.wait(manager, job_id, lambda s: s["process"]["worker_alive"])
         procutil.kill_tree(int(status["process"]["worker_pid"]))
         final = self.wait(manager, job_id, lambda s: s["final"])
@@ -654,7 +667,7 @@ class LifecycleTests(StressBase):
     def test_supervisor_killed_alone_frees_the_workspace_lock(self):
         manager = self.manager(FAKE_LAUNCHER_MODE="slow", FAKE_LAUNCHER_SLEEP="60")
         job_id = manager.start_worker(
-            brief="kill sup", permission="workspace-write", confirm_repo_root_write=True
+            brief=BRIEF, permission="workspace-write", confirm_repo_root_write=True
         )["job_id"]
         status = self.wait(manager, job_id, lambda s: s["process"]["worker_alive"])
         worker_pid = int(status["process"]["worker_pid"])
@@ -671,7 +684,7 @@ class LifecycleTests(StressBase):
         # the lock is released and the next writer starts without a cancel.
         fast = self.manager()
         follow = fast.start_worker(
-            brief="second", permission="workspace-write", confirm_repo_root_write=True
+            brief=BRIEF, permission="workspace-write", confirm_repo_root_write=True
         )
         self.wait(fast, follow["job_id"], lambda s: s["final"])
         released = manager.cancel_worker(job_id, confirm=True)
@@ -704,7 +717,7 @@ class LifecycleTests(StressBase):
         self.assertEqual(caught.exception.code, "job_not_found")
         with self.assertRaises(core.PluginError):
             manager.cancel_worker("dsh-20261022T010730-dea93bc4", confirm=True)  # harness run ids are not jobs
-        job_id = manager.start_worker(brief="done")["job_id"]
+        job_id = manager.start_worker(brief=BRIEF, permission="read-only")["job_id"]
         self.wait(manager, job_id, lambda s: s["final"])
         result = manager.cancel_worker(job_id, confirm=True)
         self.assertTrue(result["already_final"])
@@ -815,16 +828,16 @@ class McpSurfaceTests(StressBase):
             self.assertEqual(Path(info["repo_root"]), self.root.resolve())
             self.assertEqual(Path(info["cwd"]), foreign.resolve())
             self.assertTrue(info["launcher_capabilities"]["heartbeat_supported"])
-            bad_type = await self._call(session, "start_worker", {"brief": "x", "missed_replies": "two"})
+            bad_type = await self._call(session, "start_worker", {"brief": BRIEF, "permission": "read-only", "missed_replies": "two"})
             self.assertTrue(bad_type.get("is_error") or bad_type.get("ok") is False, bad_type)
             missing = await self._call(session, "worker_status", {})
             self.assertTrue(missing.get("is_error") or missing.get("ok") is False, missing)
-            both = await self._call(session, "start_worker", {"brief": "x", "task_file": "y"})
+            both = await self._call(session, "start_worker", {"brief": "x", "task_file": "y", "permission": "read-only"})
             self.assertEqual(both["error"]["code"], "brief_required")
-            big = await self._call(session, "start_worker", {"brief": "x" * 262_145})
+            big = await self._call(session, "start_worker", {"brief": "x" * 262_145, "permission": "read-only"})
             self.assertEqual(big["error"]["code"], "brief_too_large")
             started = await self._call(
-                session, "start_worker", {"brief": "हिंदी ब्रीफ ✓ 价格? क्यों", "context_pack": True}
+                session, "start_worker", {"brief": BRIEF + "\nहिंदी ब्रीफ ✓ 价格? क्यों", "permission": "read-only", "context_pack": True}
             )
             self.assertTrue(started["ok"], started)
             loop = asyncio.get_running_loop()
@@ -858,7 +871,7 @@ class McpSurfaceTests(StressBase):
         self.env.update({"FAKE_LAUNCHER_MODE": "slow", "FAKE_LAUNCHER_SLEEP": "20"})
 
         async def start(session):
-            return await self._call(session, "start_worker", {"brief": "server exit"})
+            return await self._call(session, "start_worker", {"brief": BRIEF, "permission": "read-only"})
 
         started = run_async(self._session(start), 60)
         self.assertIn("survives_server_exit", started)
@@ -978,7 +991,7 @@ class SharedControlProcessTests(StressBase):
                 session_x,
                 "start_worker",
                 {
-                    "brief": "Phase 1 acceptance worktree task",
+                    "brief": BRIEF + "\nPhase 1 acceptance worktree task",
                     "permission": "workspace-write",
                     "use_worktree": True,
                 },
@@ -1175,7 +1188,7 @@ class SharedControlProcessTests(StressBase):
 
         async def scenario(session_x, session_y, session_z):
             started = await self._call(
-                session_x, "start_worker", {"brief": "lease race", "permission": "read-only"}
+                session_x, "start_worker", {"brief": BRIEF + "\nlease race", "permission": "read-only"}
             )
             job_id = started["job_id"]
             await self._wait_tool_status(

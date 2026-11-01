@@ -1,49 +1,27 @@
-# Brief template — one shape for every worker task
+# Brief template — five labelled lines
 
-Every `start_worker` brief (inline `brief` or `task_file`) follows these sections. `start_worker` lints for
-**Goal**, **Acceptance checks** and **Test command(s)** and returns `brief_lint:` warnings when one is missing —
-a warning, never a refusal. Copy this file, keep the headings, delete the guidance in italics.
+Every `start_worker` brief (inline `brief` or `task_file`) must carry these five labelled lines or
+sections. A start missing any of them is refused with `brief_incomplete`, naming the missing ones.
+Copy this file and fill each line; delete the guidance in italics.
 
-## Goal
-*1–3 lines. What is true when this is done. One outcome, not a feature tour.*
+Goal: *one outcome, 1–3 lines: what is true when this is done.*
 
-## Why
-*The problem this fixes, who hits it, and what happens if it is not fixed. Keep it to a few lines.*
+Files: *exact paths to change, and which are new. Add a "Do not touch" list for files another task owns.*
 
-## Files to touch
-*Exact paths. Say which are new. Add a "Do not touch" list for files another task owns or that must stay stable.*
+Accept: *numbered, testable accept checks, each naming the command or the observable result. This is the definition of done. (`Test command(s):` may replace this label.)*
 
-- `path/to/file.py` — what changes
-- `path/to/new_file.py` — new
-- Do not touch: `plugins/dsh-worker/server/supervisor.py` (Task 03 owns it)
+Stop if: *the conditions that must stop the work and report instead, e.g. a change needs files outside the named list or breaks the running-job safety rule.*
 
-## Inputs/data
-*Exact tables, files, commands, docs. Name the DB and table, not "the database". Mark read-only inputs.*
+Budget: *tool calls before the first edit, total tool calls, paid $, wall time. "No paid calls" when true.*
 
-## Steps
-*Ordered, checkable steps. A step that cannot be verified is not a step.*
+## Small fixes
 
-## Acceptance checks
-*Numbered and testable. Each one names the command or the observable result. This is the definition of done.*
+`small_fix=true` allows a one-line brief as long as it carries an accept command:
 
-1. `<command>` exits 0 and prints `<expected>`.
-2. Running the change twice produces the same output.
-3. No writes outside `<allowed path>`.
-
-## Test command(s)
-*Exact copy-paste commands, including the narrowest first.*
-
-```bash
-python -m unittest reality_engine.tests.test_example
-python -m unittest discover -s reality_engine/tests -p "test_*.py"
-```
-
-## Budget
-*Tool calls before first edit, total tool calls, paid $, wall time. "No paid calls" when true.*
-
-- ≤ 25 tool calls before the first edit; ≤ 120 total; ≤ 60 min wall; $0 paid.
+`Fix the typo in tasks/STATE.md. Accept: python -m pytest reality_engine/tests/test_dsh_worker_plugin.py -q`
 
 ## Report format
+
 1. What changed (files, one line each).
 2. How it was verified (commands + exact pass counts).
 3. Anything the controller must install/run outside the worker sandbox.
@@ -52,4 +30,5 @@ python -m unittest discover -s reality_engine/tests -p "test_*.py"
 6. Docs updated: every doc changed for this work, and each stale copy fixed or removed. A branch without this is not merged.
 
 ## Out of scope
+
 *What the worker must not do, even if it looks related. Naming it prevents scope creep.*

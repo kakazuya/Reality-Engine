@@ -16,7 +16,7 @@ import signal
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -217,6 +217,9 @@ def _emit_digest(
 AUX_POLL_SECONDS = 2.0
 MAX_REQUEST_BYTES = 65_536
 MAX_DETACHED_ENV = 20
+# Legacy job records may predate the 4-hour default; the supervisor still needs
+# a real end, so it applies the same limit the manager now records.
+FALLBACK_HARD_TIMEOUT_SECONDS = 4 * 3600
 # Request history is bounded so a worker hammering the channels cannot grow
 # status.json without limit; the newest entries are the useful ones.
 MAX_REQUEST_HISTORY = 50
@@ -228,6 +231,57 @@ def _append_history(status: dict[str, Any], key: str, entry: dict[str, Any]) -> 
     history = list(history) if isinstance(history, list) else []
     history.append(entry)
     status[key] = history[-MAX_REQUEST_HISTORY:]
+
+
+def _renew_lease(
+    job_dir: Path,
+    job_id: str,
+    lease_owner: str | None,
+    lease: dict[str, Any],
+    deadline_cap: datetime | None = None,
+) -> dict[str, Any]:
+    """Renew the job's own lease from the supervisor while the worker lives.
+
+    The controller no longer has to remember a renewal (Shivam, 2026-11-01);
+    ``hard_timeout_seconds`` is the real limit.  The write happens under the
+    job lock and only against the same job/owner the supervisor started with,
+    so a copied or wrong-owner lease is never extended.
+    """
+    try:
+        lease_seconds = int(lease.get("lease_seconds"))
+    except (TypeError, ValueError):
+        return lease
+    if lease_seconds <= 0:
+        return lease
+    path = job_dir / LEASE_FILE
+    now = utc_now()
+    deadline = now + timedelta(seconds=lease_seconds)
+    if deadline_cap is not None and deadline > deadline_cap:
+        deadline = deadline_cap
+    with exclusive_lock(job_dir / JOB_LOCK_NAME):
+        fresh, error = read_lease(
+            path,
+            expected_job_id=job_id,
+            expected_owner_id=lease_owner,
+            max_seconds=7200,
+        )
+        if fresh is None or fresh.get("expired"):
+            return lease
+        updated = dict(fresh)
+        updated.pop("expired", None)
+        updated.pop("remaining_seconds", None)
+        updated["renewed_at"] = iso(now)
+        updated["deadline"] = iso(deadline)
+        updated["renewals"] = int(fresh.get("renewals") or 0) + 1
+        updated["renewed_by"] = "supervisor"
+        try:
+            atomic_write_json(path, updated)
+        except OSError as exc:
+            _log(f"lease renewal write failed ({type(exc).__name__}: {exc}); will retry")
+            return lease
+    updated["remaining_seconds"] = round((deadline - now).total_seconds(), 3)
+    updated["expired"] = updated["remaining_seconds"] <= 0
+    return updated
 
 
 def _workspace(job: dict[str, Any], job_dir: Path) -> Path:
@@ -614,6 +668,55 @@ def _create_status(job: dict[str, Any], job_dir: Path) -> dict[str, Any]:
     }
 
 
+def _commit_worktree(
+    job: dict[str, Any],
+    job_dir: Path,
+    status: dict[str, Any],
+    *,
+    ended_reason: str | None = None,
+) -> None:
+    """Commit a worktree job's non-empty diff to its branch.
+
+    Success keeps the ordinary subject.  Every other end (failed, cancelled,
+    lease-expired, timeout) still commits, with the ``WIP ended <reason>:``
+    prefix, so a stopped worker's work is never left only as a dirty checkout.
+    An empty diff creates no commit; a failed commit is reported, never a phase
+    change.
+    """
+    worktree = job.get("worktree")
+    if not isinstance(worktree, dict) or not worktree.get("enabled"):
+        return
+    subject = str(job.get("brief_first_line") or "").strip()
+    if not subject:
+        brief, _, _ = read_text_bounded(job_dir / "brief.md", 8192)
+        subject = next(
+            (line.strip() for line in brief.splitlines() if line.strip()), "dsh worker"
+        )
+    job_id = str(job.get("job_id") or job_dir.name)
+    prefix = f"WIP ended {ended_reason}: " if ended_reason else ""
+    try:
+        status["worktree_commit"] = gitutil.commit_worktree(
+            Path(str(worktree.get("path"))),
+            job_id=job_id,
+            subject=f"{prefix}{subject[:200]} [dsh {job_id}]",
+            base_commit=worktree.get("base_commit"),
+            # The manager-captured identity is the only commit target;
+            # see _handle_commit_request.
+            git=job.get("git"),
+            repo_root=job.get("repo_root"),
+        )
+    except Exception as exc:  # noqa: BLE001 - commit failure never changes the phase
+        status["worktree_commit"] = {
+            "committed": False,
+            "error": f"{type(exc).__name__}: {exc}"[:400],
+        }
+    commit_error = (status.get("worktree_commit") or {}).get("error")
+    if commit_error:
+        status.setdefault("warnings", []).append(
+            f"worktree auto-commit failed: {commit_error}"
+        )
+
+
 def _finalize(
     job: dict[str, Any],
     job_dir: Path,
@@ -622,10 +725,13 @@ def _finalize(
     cancel_requested: bool,
     extra_warnings: list[str] | None = None,
     lease_expired: bool = False,
+    timed_out: bool = False,
 ) -> dict[str, Any]:
     warnings = list(status.get("warnings") or []) + list(extra_warnings or [])
     if cancel_requested:
         phase, outcome = "cancelled", "cancelled"
+    elif timed_out:
+        phase, outcome = "failed", "timeout"
     elif lease_expired:
         phase, outcome = "failed", "controller_lease_expired"
     elif rc == 0:
@@ -650,7 +756,12 @@ def _finalize(
         }
     )
     if phase == "failed":
-        if lease_expired:
+        if timed_out:
+            status["error"] = (
+                "hard timeout reached; the supervisor terminated the owned process "
+                "tree (timeout)"
+            )
+        elif lease_expired:
             status["error"] = (
                 "controller lease expired or was missing/invalid; the supervisor "
                 "terminated the owned process tree (controller_lease_expired)"
@@ -691,41 +802,18 @@ def _finalize(
             "paths": [],
         }
     # Worktree auto-commit: the worker could not write .git/worktrees/<name>
-    # (outside its sandbox), so the supervisor commits only after a successful
-    # end.  Empty diffs create no commit; a failed commit is reported, never a
-    # phase change.
-    worktree = job.get("worktree")
-    if isinstance(worktree, dict) and worktree.get("enabled"):
-        if phase == "finished":
-            subject = str(job.get("brief_first_line") or "").strip()
-            if not subject:
-                brief, _, _ = read_text_bounded(job_dir / "brief.md", 8192)
-                subject = next((line.strip() for line in brief.splitlines() if line.strip()), "dsh worker")
-            job_id = str(job.get("job_id") or job_dir.name)
-            try:
-                status["worktree_commit"] = gitutil.commit_worktree(
-                    Path(str(worktree.get("path"))),
-                    job_id=job_id,
-                    subject=f"{subject[:200]} [dsh {job_id}]",
-                    base_commit=worktree.get("base_commit"),
-                    # The manager-captured identity is the only commit target;
-                    # see _handle_commit_request.
-                    git=job.get("git"),
-                    repo_root=job.get("repo_root"),
-                )
-            except Exception as exc:
-                status["worktree_commit"] = {
-                    "committed": False,
-                    "error": f"{type(exc).__name__}: {exc}"[:400],
-                }
-            commit_error = (status.get("worktree_commit") or {}).get("error")
-            if commit_error:
-                warnings.append(f"worktree auto-commit failed: {commit_error}")
-        else:
-            status["worktree_commit"] = {
-                "committed": False,
-                "reason": f"worker ended {phase}; changes left uncommitted",
-            }
+    # (outside its sandbox), so the supervisor commits at the end.  A successful
+    # end keeps the ordinary subject; every other end (failed, cancelled,
+    # lease-expired, timeout) still commits its non-empty diff with the
+    # ``WIP ended <reason>:`` prefix.  Empty diffs create no commit; a failed
+    # commit is reported, never a phase change.
+    if isinstance(job.get("worktree"), dict) and job["worktree"].get("enabled"):
+        _commit_worktree(
+            job,
+            job_dir,
+            status,
+            ended_reason=None if phase == "finished" else str(outcome),
+        )
     if phase != "finished":
         try:
             status["partial"] = (job_dir / "result.md").stat().st_size > 0
@@ -1042,6 +1130,22 @@ def main(argv: list[str] | None = None) -> int:
             last_write = 0.0
             cancel_requested = False
             lease_expired = False
+            timed_out = False
+            # The real end of the job.  The supervisor renews the controller
+            # lease itself while the worker lives; this deadline is what stops a
+            # forgotten or wedged job, and it is capped for legacy records.
+            try:
+                hard_timeout = int(
+                    (job.get("limits") or {}).get("hard_timeout_seconds")
+                    or FALLBACK_HARD_TIMEOUT_SECONDS
+                )
+            except (TypeError, ValueError):
+                hard_timeout = FALLBACK_HARD_TIMEOUT_SECONDS
+            hard_timeout = max(1, hard_timeout)
+            # Monotonic for the kill and wall clock only for the lease cap: the
+            # status record may carry a simulated (test) start time.
+            hard_monotonic = time.monotonic() + hard_timeout
+            hard_deadline = utc_now() + timedelta(seconds=hard_timeout)
             # Model-free progress digests: one JSON line + progress.md every
             # progress_interval_seconds.  Independent of any Claude/Codex
             # session and never a message into the worker's conversation.
@@ -1078,6 +1182,19 @@ def main(argv: list[str] | None = None) -> int:
                     except subprocess.TimeoutExpired:
                         _log("worker did not exit after taskkill")
                     break
+                if time.monotonic() >= hard_monotonic:
+                    timed_out = True
+                    status["phase"] = "cancelling"
+                    _write_status_soft(job_dir, status)
+                    _log(
+                        f"hard timeout ({hard_timeout}s) reached; terminating owned process tree"
+                    )
+                    procutil.kill_tree(worker_pid)
+                    try:
+                        process.wait(timeout=15)
+                    except subprocess.TimeoutExpired:
+                        _log("worker did not exit after hard-timeout kill")
+                    break
                 lease_now, lease_now_error = read_lease(
                     lease_path,
                     expected_job_id=job_id,
@@ -1085,10 +1202,8 @@ def main(argv: list[str] | None = None) -> int:
                     max_seconds=7200,
                 )
                 if lease_now is None or lease_now.get("expired"):
-                    # Independent of model activity: an unrenewed/missing/
-                    # malformed controller lease fails closed and stops the
-                    # verified owned tree.  A responsive worker cannot outlive
-                    # its controller.
+                    # Missing/malformed/expired leases still fail closed: a
+                    # supervisor that cannot prove its owner must stop the job.
                     lease_expired = True
                     status["phase"] = "cancelling"
                     status["controller_lease"] = lease_now
@@ -1104,6 +1219,17 @@ def main(argv: list[str] | None = None) -> int:
                     except subprocess.TimeoutExpired:
                         _log("worker did not exit after controller-lease kill")
                     break
+                remaining = lease_now.get("remaining_seconds")
+                lease_span = lease_now.get("lease_seconds")
+                if (
+                    isinstance(remaining, (int, float))
+                    and isinstance(lease_span, (int, float))
+                    and lease_span > 0
+                    and remaining < lease_span / 2
+                ):
+                    lease_now = _renew_lease(
+                        job_dir, job_id, lease_owner, lease_now, hard_deadline
+                    )
                 status["controller_lease"] = lease_now
                 rc = process.poll()
                 if rc is not None:
@@ -1139,7 +1265,15 @@ def main(argv: list[str] | None = None) -> int:
         rc = process.returncode if process is not None else None
         orientation.poll()
         orientation.apply(status)
-        status = _finalize(job, job_dir, status, rc, cancel_requested, lease_expired=lease_expired)
+        status = _finalize(
+            job,
+            job_dir,
+            status,
+            rc,
+            cancel_requested,
+            lease_expired=lease_expired,
+            timed_out=timed_out,
+        )
         if digest is not None:
             # The final digest always lands, even if the worker ended between
             # two intervals, so progress.md ends with the real outcome.
@@ -1169,6 +1303,10 @@ def main(argv: list[str] | None = None) -> int:
         status["phase"] = "failed"
         status["outcome"] = "supervisor_error"
         status["finished_at"] = iso()
+        if isinstance(job.get("worktree"), dict) and job["worktree"].get("enabled"):
+            _commit_worktree(
+                job, job_dir, status, ended_reason="supervisor_error"
+            )
         _write_status_final(job_dir, status, attempts=10)
         _release_lock(job_dir, job, status)
         _log(f"failed job={job_id}: {type(exc).__name__}")

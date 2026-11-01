@@ -30,7 +30,7 @@ Every session must make steady progress without loading the repo. A session star
 | # | Work | Exit test | Status |
 |---|---|---|---|
 | 1 | Clear unmerged branches, commit `main` | 0 work in limbo | Done 1 Nov: 9 merged, 12 kept as `archive/` tags, 93 merged branches and 20 worktrees removed |
-| 2 | Start gate, smaller pack, context limits | A bad brief is refused; pack about 5k tokens; Claude starts from one short file | Running |
+| 2 | Start gate, smaller pack, context limits | A bad brief is refused; pack about 5k tokens; Claude starts from one short file | Running: start gate landed 1 Nov (permission required, five-field briefs refused as `brief_incomplete`, supervisor-renewed lease + 4 h hard timeout, HP status/result refresh, WIP commit for ended worktrees; 97 tests). Pack size and context limits still open |
 | 3 | Merge gate, cut `AGENTS.md` | Deliberate violations are blocked; under 150 lines | |
 | 4 | Question map for the 3 prototype companies | Every bank question naming them has a row | |
 
