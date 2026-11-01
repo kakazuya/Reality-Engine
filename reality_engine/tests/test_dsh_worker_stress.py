@@ -46,6 +46,7 @@ BRIEF = (
     "Accept: the fake launcher exits 0\n"
     "Stop if: the fake launcher fails\n"
     "Budget: 120 tool calls\n"
+    "No-ticket: the fixture repository has no tracker\n"
 )
 IST = timezone(timedelta(hours=5, minutes=30))
 

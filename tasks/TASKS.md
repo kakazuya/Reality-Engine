@@ -1,0 +1,47 @@
+# Tickets
+
+One row per line, kept in its section: `- T-014 | DOING Wolf | P1 | title | accept: <command or Shivam> | from: <source> | opened 2026-11-01`
+Statuses: `OPEN`, `LOOKING`, `DOING <owner>`, `WAITING <who>`; priorities `P1`-`P3`. No `|` inside a field.
+Closed rows move to `tasks/TASKS_DONE.md`: `python -m reality_engine.scripts.task_board done T-014`.
+Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
+
+## Workspace
+- T-001 | OPEN | P1 | Enforce worker tool-call budgets in code; a worker used 266+ against 120, and another 181 against 150 | accept: python -m pytest reality_engine/tests/test_worker_budget.py -q | from: STATE 1 Nov | opened 2026-11-02
+- T-002 | OPEN | P1 | Block by hook: git push, private folder reads, printed keys, --no-verify, gate edits, git stash, full suite on the MSI | accept: python -m pytest reality_engine/tests/test_enforcement_hooks.py -q | from: enforcement plan | opened 2026-11-02
+- T-003 | OPEN | P1 | Merge gate: tests, doc gate, accept check, Docs updated line, hidden evaluation, rulings diff (workspace step 3) | accept: python -m pytest reality_engine/tests/test_merge_gate.py -q | from: workspace plan step 3 | opened 2026-11-02
+- T-004 | OPEN | P1 | Final count and verdict on the 9 efficiency fixes, due the night of 1 Nov | accept: Shivam | from: tasks/efficiency/FIX_TRACKER_2026-10-31.md | opened 2026-11-02
+- T-005 | OPEN | P2 | Cap code workers at 2 and refuse new ones while a branch is over 24 hours old | accept: python -m pytest reality_engine/tests/test_worker_limits.py -q | from: enforcement plan | opened 2026-11-02
+- T-006 | OPEN | P2 | Find why the full test suite reaches 7.5 GB; run it on the HP, not the MSI | accept: Shivam | from: STATE 1 Nov | opened 2026-11-02
+- T-007 | OPEN | P2 | Fix test_commit_replays_the_identity, which fails when the launcher sets GIT_AUTHOR_NAME | accept: python -m pytest reality_engine/tests/test_dsh_worker_sandbox.py reality_engine/tests/test_dsh_worker_stress.py -k test_commit_replays -q | from: STATE 1 Nov | opened 2026-11-02
+- T-008 | OPEN | P2 | Versioned git hooks with an install command and a session start warning when they differ | accept: python -m pytest reality_engine/tests/test_hooks_installed.py -q | from: enforcement plan | opened 2026-11-02
+- T-009 | OPEN | P2 | SessionEnd hook runs the doc sweep; next session start prints any failure | accept: python -m pytest reality_engine/tests/test_session_end_sweep.py -q | from: enforcement plan | opened 2026-11-02
+- T-010 | OPEN | P2 | One model-call function with an allowlist: free models and DeepSeek only | accept: python -m pytest reality_engine/tests/test_model_allowlist.py -q | from: Shivam ruling 1 Nov | opened 2026-11-02
+- T-011 | OPEN | P3 | Remove AGENTS conflicts: FRAMEWORK first against read nothing else first; rule 1 says ISINs never change | accept: Shivam | from: enforcement plan | opened 2026-11-02
+- T-012 | WAITING Shivam | P2 | Quiz a fresh session on the rulings, to test tasks/RULINGS.md | accept: Shivam | from: STATE 1 Nov | opened 2026-11-02
+
+## Data
+- T-021 | LOOKING | P3 | Check if still open: PIB phase 2, Hindi, Urdu and regional offices | accept: Shivam | from: tasks/PIPELINE_TODO.md A2 | opened 2026-11-02
+- T-022 | LOOKING | P3 | Check if still open: policy register at scale, with stage threads and company mapping | accept: Shivam | from: tasks/PIPELINE_TODO.md A3 | opened 2026-11-02
+- T-023 | LOOKING | P3 | Check if finished: shareholding and pledge backfill, marked running on 19 Oct | accept: Shivam | from: tasks/PIPELINE_TODO.md B3 | opened 2026-11-02
+- T-024 | LOOKING | P3 | Check if still open: index membership history | accept: Shivam | from: tasks/PIPELINE_TODO.md Phase C | opened 2026-11-02
+- T-025 | LOOKING | P3 | Check if still open: parse value, customer and execution period from exchange order-win filings | accept: Shivam | from: tasks/PIPELINE_TODO.md Phase C | opened 2026-11-02
+
+## OCR and extraction
+- T-019 | WAITING Shivam | P1 | Approve Haiku on about 100 fresh OCR pages, batches of 8: tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md | accept: Shivam | from: STATE 1 Nov | opened 2026-11-02
+- T-020 | OPEN | P2 | OCR after workspace step 4: TextRecognizer first pass, stronger reader for low-confidence numbers; last accuracy pilot failed its gate | accept: Shivam | from: RULINGS, GATE_STATE | opened 2026-11-02
+
+## Schema and question map
+- T-014 | OPEN | P1 | Question map for the 3 prototype companies: every bank question naming them has a row (workspace step 4) | accept: python -m pytest reality_engine/tests/test_question_map.py -q | from: workspace plan step 4 | opened 2026-11-02
+- T-015 | WAITING Shivam | P1 | Decide blank as_of default, truth panel and reader kill: tasks/arch_v4/GATE_STATE_2026-11-01.md | accept: Shivam | from: STATE 1 Nov | opened 2026-11-02
+- T-016 | OPEN | P2 | Typed write contracts: unit, range, label, known_at; split fact.value; test metric_citations on the prototype | accept: python -m pytest reality_engine/tests/test_write_contracts.py -q | from: RULINGS agreed direction | opened 2026-11-02
+- T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02
+
+## Bank
+- T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02
+
+## Research
+- T-026 | WAITING Shivam | P3 | Research library: delete OK for 256 duplicate copies (3.76 GB) and a bucket scheme; memory dated 27 Oct, recheck first | accept: Shivam | from: memory project_research_folder_import | opened 2026-11-02
+- T-027 | OPEN | P3 | Trading limits module the test harness cannot run without, when backtests resume | accept: python -m pytest reality_engine/tests/test_trading_limits.py -q | from: tasks/FRAMEWORK.md | opened 2026-11-02
+
+## Machines
+- T-013 | WAITING Shivam | P2 | Decide use of the Claude cloud credit that memory says expires 5 Nov; only Shivam can start that session | accept: Shivam | from: memory, not rechecked | opened 2026-11-02

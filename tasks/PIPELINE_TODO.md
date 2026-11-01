@@ -1,5 +1,7 @@
 # Pipeline to-do (phase-wise) — set by Shivam 2026-10-19
 
+**Open items are tracked in `tasks/TASKS.md` since 2026-11-02; this file keeps their detailed specs.**
+
 Authority stays `tasks/FRAMEWORK.md`; live status in `tasks/STATE.md`. Each item lists what to build, where it lands,
 and the check that says it is done. Tick an item only when its check passes. Point-in-time rule for every item:
 store the time the information became public (exchange / publication / posting time), never a crawl date.

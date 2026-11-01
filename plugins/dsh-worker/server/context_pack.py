@@ -206,8 +206,9 @@ def attach_brief(
 
 
 # ---------------------------------------------------------------- brief lint
-# A brief is refused unless it carries these five labelled lines or sections
-# (Shivam, 2026-11-01: the start gate, gate 1 of WORKSPACE_FIX_2026-11-01).
+# A brief is refused unless it carries these six labelled lines or sections
+# (Shivam, 2026-11-01: the start gate, gate 1 of WORKSPACE_FIX_2026-11-01; the
+# Ticket line is the tracker's start gate, approved 2026-11-01).
 _LABELLED = r"(?im)^\s{{0,3}}(?:#{{1,6}}\s*|\*\*\s*)?{}"
 _REQUIRED_FIELDS = (
     ("Goal:", _LABELLED.format(r"goal\b")),
@@ -218,7 +219,9 @@ _REQUIRED_FIELDS = (
     ),
     ("Stop if:", _LABELLED.format(r"stop\s+if\b")),
     ("Budget:", _LABELLED.format(r"budget\b")),
+    ("Ticket: (or No-ticket: <reason>)", _LABELLED.format(r"(?:ticket:\s*T-\d+|no-ticket:\s*\S)")),
 )
+_TICKET_ID = re.compile(r"(?im)^\s{0,3}(?:#{1,6}\s*|\*\*\s*)?ticket:\s*(T-\d+)\b")
 _TEST_COMMAND = re.compile(
     r"(?im)^\s*[-*]?\s*(python(?:\.exe)?\s+-m\s+(?:unittest|pytest)|pytest\b|"
     r"python(?:\.exe)?\s+\S+\.py|claude\s+plugin\s+(?:test|validate))"
@@ -247,3 +250,9 @@ def brief_missing_fields(text: str, small_fix: bool = False) -> list[str]:
         if not re.search(pattern, text):
             missing.append(name)
     return missing
+
+
+def brief_ticket(text: str) -> str | None:
+    """The ``T-<digits>`` a brief names on its Ticket line, or None for No-ticket / no line."""
+    match = _TICKET_ID.search(text)
+    return match.group(1) if match else None

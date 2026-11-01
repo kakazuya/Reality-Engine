@@ -30,6 +30,8 @@
 2. The brief or the one plan it names.
 3. Only the files that brief names. Find code with code-intel (`definition`, `symbols`, `module_map`) and data with reality-data (`catalog`, `schema`). Do not survey the repo, and do not read `tasks/archive/`, `.tmp/` or job folders unless the task names them.
 
+Open tickets are in `tasks/TASKS.md`; the session card is `python -m reality_engine.scripts.task_board card` and the rows `python -m reality_engine.scripts.task_board list`. A commit on `main` names its ticket (`T-<digits>`) or says `No-ticket: <reason>`, a worker start needs `Ticket:` or `No-ticket:`, and `done` runs the row's accept command.
+
 Finish one step per session. Commit it and write the next action into `tasks/STATE.md`. Write the wrap-up at 400k tokens; the session limit is 450k. Scripts print summaries; details go in files.
 
 Reference, only when needed: `docs/DEVELOPER_GUIDE.md`, `docs/RAW_DATA_FAMILIES.md`, `machines/README.md`, `tasks/DATA_INVENTORY.md`.

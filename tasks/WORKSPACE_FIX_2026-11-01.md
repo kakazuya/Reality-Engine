@@ -43,7 +43,7 @@ Add in step 3, each from a failure we have had: hook blocks on `git push` withou
 | # | Work | Exit test | Status |
 |---|---|---|---|
 | 1 | Clear unmerged branches, commit `main` | 0 work in limbo | Done 1 Nov: 9 merged, 12 kept as `archive/` tags, 93 merged branches and 20 worktrees removed |
-| 2 | Start gate, smaller pack, context limits | A bad brief is refused; pack about 5k tokens; Claude starts from one short file | Running — pack done 1 Nov: 5,631 bytes, limit 20,000, test `reality_engine/tests/test_worker_context.py`; start gate and context limits open |
+| 2 | Start gate, smaller pack, context limits | A bad brief is refused; pack about 5k tokens; Claude starts from one short file | Done 1 Nov: pack 5,631 bytes, limit 20,000, test `reality_engine/tests/test_worker_context.py`; start gate merged; session limit 450k with the wrap-up at 400k via `reality_engine/scripts/context_guard.py` |
 | 3 | Merge gate, cut `AGENTS.md` | Deliberate violations are blocked; under 150 lines | |
 | 4 | Question map for the 3 prototype companies | Every bank question naming them has a row | |
 

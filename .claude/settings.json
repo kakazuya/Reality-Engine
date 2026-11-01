@@ -1,10 +1,17 @@
 {
   "permissions": {
+    "ask": [
+      "Bash(python -m reality_engine.scripts.task_board done * --shivam*)"
+    ],
     "deny": [
       "Read(tasks/archive/**)",
       "Read(.tmp/**)",
       "Read(plugins/dsh-worker/runtime/**)",
-      "Read(//d/Shivam_Private/**)"
+      "Read(//d/Shivam_Private/**)",
+      "Edit(tasks/TASKS.md)",
+      "Edit(tasks/TASKS_DONE.md)",
+      "Write(tasks/TASKS.md)",
+      "Write(tasks/TASKS_DONE.md)"
     ]
   },
   "hooks": {
@@ -15,6 +22,16 @@
           {
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/reality_engine/scripts/load_context.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/reality_engine/scripts/context_guard.py\""
           }
         ]
       }

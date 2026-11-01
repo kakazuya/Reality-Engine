@@ -1,18 +1,13 @@
-# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-01 20:40 IST (Wolf)
+# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-02 (Wolf)
 
 ## Now
 **Workspace fix first, by Shivam's order: `tasks/WORKSPACE_FIX_2026-11-01.md`.** OCR, extraction and database design wait until its step 4 passes.
 
 ## Next action
-In a fresh session, which restarts the dsh-worker server with the start gate: (1) Shivam quizzes it on his rulings. (2) Enforce worker tool-call budgets in code: the start gate worker used 266+ against 120. (3) Run the full test suite on the HP, not the MSI, and find why it reaches 7.5 GB; `test_commit_replays_the_identity...` fails only when the launcher's `GIT_AUTHOR_NAME` is set. (4) Do step 3 of the plan. (5) Step 4, question map.
+Tickets live in `tasks/TASKS.md`, and the session card shows what is open and waiting on Shivam. Next: T-002 hook blocks, because later checks rely on them; then T-001 worker budgets, T-003 merge gate, T-014 question map. Start from a fresh session: the running dsh-worker server still has the old start gate, and only a restart enforces `Ticket:`.
 
 ## Running
-Nothing. Context pack (84 KB to 5.6 KB) and start gate are merged. HP headless proof on an unlocked desktop passed and is merged: section 14.7 of `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md`.
-
-## Waiting on Shivam
-- Quiz a fresh session on his rulings, to test `tasks/RULINGS.md`.
-- Haiku on about 100 fresh OCR pages, batches of 8: `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md`.
-- Blank `as_of` default, truth panel, reader kill: see `tasks/arch_v4/GATE_STATE_2026-11-01.md`.
+Nothing.
 
 ## Where the project stands
 Golden rule step 3, schema design, with the question bank accepted (1,901 questions, frozen). Gate on the old pilot: 12.7% contract strict, but 0 of 127 answered rows right on hand reading. Prototype on 3 companies failed its grade: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`. Full record: `tasks/arch_v4/GATE_STATE_2026-11-01.md`. Decisions: `D:\RealityEngine\plans\DECISION_LOG.md`, last 5 entries.

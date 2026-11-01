@@ -43,3 +43,12 @@ def test_start_files_have_line_limits():
     assert "limit 40" in check(["tasks/STATE.md"], branch="main", merging=False, read=lines(41))
     assert check(["AGENTS.md"], branch="main", merging=False, read=lines(41)) is None
     assert "limit 150" in check(["AGENTS.md"], branch="main", merging=False, read=lines(151))
+
+
+def test_commit_message_with_an_invented_ticket_is_refused_on_main():
+    from reality_engine.scripts.doc_gate import check_message
+
+    assert check_message("work T-999", branch="main", known={"T-001"})
+    assert check_message("work T-001", branch="main", known={"T-001"}) is None
+    assert check_message("No-ticket: typo", branch="main", known={"T-001"}) is None
+    assert check_message("work T-999", branch="dsh/x", known={"T-001"}) is None

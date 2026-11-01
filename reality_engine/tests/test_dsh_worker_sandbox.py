@@ -35,6 +35,7 @@ BRIEF = (
     "Accept: the fake launcher exits 0\n"
     "Stop if: the fake launcher fails\n"
     "Budget: 120 tool calls\n"
+    "No-ticket: the fixture repository has no tracker\n"
 )
 FAKE_LAUNCHER = FIXTURES / "dsh_worker_fake_launcher.py"
 

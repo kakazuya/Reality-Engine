@@ -104,9 +104,11 @@ Monday-Friday 06:30-09:30 / 11:30-15:30 IST. Exactly one of `brief` or
 `task_file` is required. `permission` is **required** on every start
 (`read-only`, `workspace-write` or `danger-full-access`); a start without it is
 refused with `permission_required` and there is no default. Every brief must
-carry the five labelled fields `Goal:`, `Files:`, `Accept:` (or `Test
-command(s):`), `Stop if:` and `Budget:`; a missing field refuses the start with
-`brief_incomplete`, naming the missing ones (see "Worker context pack").
+carry the six labelled fields `Goal:`, `Files:`, `Accept:` (or `Test
+command(s):`), `Stop if:`, `Budget:` and `Ticket:` (or `No-ticket: <reason>`); a missing field refuses the start with
+`brief_incomplete`, naming the missing ones, and a `Ticket:` naming a T-number
+absent from the main checkout's `tasks/TASKS.md` is refused as `ticket_unknown`
+(see "Worker context pack"). The worker's brief then carries that one ticket row.
 `small_fix=true` allows a one-line brief with an accept command instead.
 Workspaces must be the repository root or a registered
 git worktree of it (arbitrary subdirectories are refused). A **mutating worker

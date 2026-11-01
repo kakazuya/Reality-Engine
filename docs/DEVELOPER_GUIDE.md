@@ -183,3 +183,43 @@ python -m reality_engine.scripts.run_peer_graph --dry-run    # gate report only,
 Both scripts print an `ALL CHECKS PASSED` block and are idempotent. Read peers back with
 `peer_graph.neighbours(conn, "TITAGARH")` — every row carries similarity, coverage, shared
 families, the anchor's baseline (so `lift` is interpretable) and the features that drove the match.
+
+## 3. Ticket tracker
+
+One board for the sessions and the workers (a worker's brief carries only its own row):
+`tasks/TASKS.md` (open rows, one per line, kept in its section) and `tasks/TASKS_DONE.md` (closed
+rows). The id is the maximum across both files plus one, allocated under the `.tmp/task_board.lock`
+file lock.
+
+```bash
+python -m reality_engine.scripts.task_board card        # <= 600 characters; load_context.py prints it
+python -m reality_engine.scripts.task_board list [--section Data] [--status DOING]
+python -m reality_engine.scripts.task_board add --section Data --title "..." --accept "python -m pytest ... -q"
+python -m reality_engine.scripts.task_board set T-014 DOING Wolf
+python -m reality_engine.scripts.task_board done T-014  # runs `accept:`; a failure keeps the row open
+python -m reality_engine.scripts.task_board drop T-014 "reason"
+python -m reality_engine.scripts.task_board export tasks.xlsx
+python -m reality_engine.scripts.task_board lint
+```
+
+`done` runs the row's `accept:` command (with a timeout; the last 20 lines are printed on failure)
+and moves the row to `TASKS_DONE.md` with HEAD's short hash; an `accept: Shivam` row needs
+`done <id> --shivam`. `lint` reports malformed rows, an id in both files, a DONE/DROPPED row in the
+live file, a done row with no commit hash and a dropped row with no reason.
+
+Two gates enforce it, on `main` only; `python reality_engine/scripts/doc_gate.py --install` writes
+both hooks:
+
+- `.git/hooks/pre-commit` lints the board whenever either tracker file is staged, and keeps
+  `tasks/TASKS.md` at 150 lines or fewer.
+- `.git/hooks/commit-msg` refuses a message whose `T-<digits>` are all absent from both tracker files, or that names none and has no
+  `No-ticket: <reason>` line. `merge_worker` puts the brief's ticket into the merge commit; it does
+  not close it.
+
+A worker brief carries `Ticket: T-014` or `No-ticket: <reason>`; a T-number absent from the main
+checkout's `tasks/TASKS.md` is refused as `ticket_unknown`, and the brief then carries that one row.
+The start gate is `plugins/dsh-worker/server/core.py` (the refusal and the row attached to the
+brief) with its field check in `plugins/dsh-worker/server/context_pack.py`, and the tool description
+in `plugins/dsh-worker/server/plugin_server.py` states the same field.
+`reality_engine/scripts/context_guard.py` is the PostToolUse hook that asks Claude to write the
+wrap-up at 400,000 tokens and again at 440,000 (session limit 450,000), once each per session.

@@ -18,6 +18,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 - HP work runs headless: nothing on its screen, no focus loss. [check: test_hp_headless]
 - Page-reading subagents: batches of 8 pages, never past 100k context, medium effort for Haiku.
 - Bring ranked ideas from measurements unprompted. Do not idle machines: RAM under 90% or CPU under 70% used means start useful work. Report compute waste.
+- A new task from Shivam becomes a ticket in `tasks/TASKS.md` before work starts. Commits on `main` name a real ticket or give a reason. [check: commit-msg]
 - Do not stop to ask what you can decide. Do not argue a ruling: figure out how to do it.
 
 ## Never
