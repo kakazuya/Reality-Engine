@@ -478,7 +478,7 @@ alone: (a) a GUI-subsystem process cannot allocate a console, (b) no
 `conhost.exe` existed in session 1 at any poll, and (c) the probe counts
 `WS_VISIBLE` top-level windows *without* the DWM cloak filter, so a console
 window created on a locked desktop would still have been counted.  A repeat with
-the desktop unlocked is the remaining gap.
+the desktop unlocked was run afterwards; it is 14.7.
 
 ### 14.4 The check that keeps it fixed
 
@@ -533,6 +533,69 @@ certificates in `LocalMachine\Root` / `TrustedPeople` / `CurrentUser\My`, no
 session 1.  `C:\RE\ocr_large\rows` is untouched (`base200` 15:46, `gray300`
 16:03).
 
-The `headless20b` run in 14.3 therefore remains the locked-desktop proof; the
-unlocked-desktop repeat is still open and needs the session unlocked (and kept
-unlocked) before it can run.
+The `headless20b` run in 14.3 remains the locked-desktop proof; the
+unlocked-desktop repeat was run on the same evening and is in 14.7.
+
+### 14.7 Unlocked-desktop repeat — desktop stayed unlocked (1 Nov, 20:05–20:10 IST)
+
+Job `hp-20261101T200233-336f17`.  Shivam unlocked the HP at about 20:00 IST and
+watched; nothing was allowed on the screen.  The flag is
+`WTSQuerySessionInformationW(..., WTSSessionInfoEx)` for console session 1,
+`SessionFlags` Int32 at byte offset 16 (`C:\RE\lockstate.ps1`).
+
+| check | before | immediately before run | immediately after run | after cleanup |
+|---|---|---|---|---|
+| `SessionFlags` session 1 | **1** (unlocked) | **1** | **1** | **1** |
+
+It was **never 0** at any point of this run, so this is an unlocked proof.
+`LockApp.exe` pid 18572 was present at every check, which proves nothing either
+way, as the brief says; the flag and the non-null foreground decide it.
+
+Package: `textrec.msix` repacked from `C:\RE\ocr_large\textrec_build\pkg`, signed
+with a new `CN=REBench` certificate (thumbprint
+`40C2214BB5599D1C76F1D08D6EA794E563C11605`), installed as
+`RETextRecBench_1.0.1.0_arm64__yxzf4xjhhje0p`.  The **installed** EXE's PE
+subsystem was checked twice before any launch: driver `pe_subsystem()` **2**,
+raw header **2**.
+
+```powershell
+python -m reality_engine.scripts.hp_ocr_large run --name headless20c `
+  --split test --only digital --dpi 300 --variant gray --limit 20
+```
+
+20 pages, **20 rows**, 10.05 s of OCR, driver exit **0**, 14.8 s wall time.  A
+hidden `RETextRecProbe` task ran `probe.exe` (`WinExe`) in session 1 from 1.8 s
+before the batch until 0.9 s after it:
+
+| probe result | value |
+|---|---|
+| samples | **164** (0.100–0.128 s apart, max gap **127.9 ms**) |
+| foreground non-null | **164 / 164**, owner `explorer` every time (the real desktop; a locked session returns `null`, as 14.6 shows) |
+| visible windows owned by textrec/conhost/cmd/powershell/pwsh/python | **0** |
+| focus changes to those processes | **0** |
+| `conhost.exe` | **none** in the session table at any poll |
+| `textrec.exe` | pid **19204**, parent **4008** (Task Scheduler), no watched child |
+| other visible window | one `chrome.exe` (pid 9928, Shivam's own YouTube window) at start and end — not a watched process, and focus never moved to one |
+
+Text check: **20 compared, 0 differences** against
+`C:\RE\ocr_large\rows\gray300\test.jsonl` by id (identical `text`).
+
+Cleanup, each confirmed by command: package **0** (`Get-AppxPackage
+RETextRecBench`), `RETextRec*` tasks **0** (`RETextRecBench` and
+`RETextRecProbe` unregistered), certificate `40C2…1605` **0** in
+`Cert:\LocalMachine\Root`, `Cert:\LocalMachine\TrustedPeople` and
+`Cert:\CurrentUser\My`, `rebench.pfx` / `rebench.cer` **absent**, WindowsApps
+alias **absent**, session 1 **0** textrec/conhost/cmd/powershell/pwsh/python.
+`WindowsWorkload.TextRecognition.Qnn.1` (**1**) and the four
+`RE_hpjob_surv_*` tasks were left in place, no screensaver/lock/power setting
+was touched, and `C:\RE\ocr_large\rows` is untouched (`gray300\test.jsonl`
+mtime 16:03:28).
+
+**Tool defect found and fixed.**  `probe/summarise.py` compared the session
+table's `conhost.exe` / `cmd.exe` names against the bare names in `WATCHED`, so
+`conhost_pids_seen` and `watched_children_of_textrec` could never be non-empty:
+the "no conhost" claim was unfalsifiable.  It now strips the `.exe` suffix
+(`_base()`); re-run on both logs, the 17:37 locked run is unchanged (134
+samples, foreground `(none)` in 134/134) and this run passes with
+`watched_processes_present: ["textrec"]`.  `python -m pytest
+reality_engine/tests/test_hp_headless.py -q` → **9 passed**.

@@ -1,4 +1,4 @@
-# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-01 19:30 IST (Wolf)
+# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-01 20:11 IST (hp worker)
 
 ## Now
 **Workspace fix first, by Shivam's order: `tasks/WORKSPACE_FIX_2026-11-01.md`.** OCR, extraction and database design wait until its step 4 passes.
@@ -10,7 +10,7 @@ In a fresh session, which restarts the dsh-worker server with the start gate: (1
 Nothing. Context pack (84 KB to 5.6 KB) and start gate are merged.
 
 ## Waiting on Shivam
-- Keep the HP unlocked, with the screensaver lock off, to repeat the headless proof. At 18:15 on 1 Nov it had re-locked, so nothing ran. Brief: job `hp-20261101T181205-06ed5d`.
+- HP headless proof: the unlocked-desktop repeat **passed** 1 Nov 20:05–20:10 IST (`headless20c`): `SessionFlags` 1 before/during/after, 20/20 rows, 0 text diffs, 0 watched windows/focus, no `conhost`. Section 14.7 of `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md`.
 - Quiz a fresh session on his rulings, to test `tasks/RULINGS.md`.
 - Haiku on about 100 fresh OCR pages, batches of 8: `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md`.
 - Blank `as_of` default, truth panel, reader kill: see `tasks/arch_v4/GATE_STATE_2026-11-01.md`.

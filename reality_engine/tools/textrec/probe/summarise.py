@@ -20,6 +20,11 @@ from pathlib import Path
 WATCHED = {"textrec", "textrec20", "conhost", "cmd", "powershell", "pwsh", "python"}
 
 
+def _base(name: str) -> str:
+    """Process name without the ``.exe`` the session table records (``conhost.exe``)."""
+    return name.lower().removesuffix(".exe")
+
+
 def summarise(path: Path) -> dict:
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()
             if line.strip()]
@@ -48,14 +53,14 @@ def summarise(path: Path) -> dict:
         for entry in table.get("processes") or []:
             processes.setdefault(entry["pid"], entry)
     textrec_pids = {entry["pid"] for entry in processes.values()
-                    if entry["process"].lower().startswith("textrec")}
+                    if _base(entry["process"]).startswith("textrec")}
     watched_children = [
         entry for entry in processes.values()
-        if entry["ppid"] in textrec_pids and entry["process"].lower() in WATCHED]
+        if entry["ppid"] in textrec_pids and _base(entry["process"]) in WATCHED]
     conhosts = sorted(entry["pid"] for entry in processes.values()
-                      if entry["process"].lower() == "conhost")
-    watched_present = sorted({entry["process"].lower() for entry in processes.values()
-                              if entry["process"].lower() in WATCHED})
+                      if _base(entry["process"]) == "conhost")
+    watched_present = sorted({_base(entry["process"]) for entry in processes.values()
+                              if _base(entry["process"]) in WATCHED})
 
     return {
         "log": str(path),
