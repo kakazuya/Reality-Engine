@@ -1,11 +1,11 @@
 # T-045: Claude reads every doc line by line (Shivam, 2 Nov 2026)
 
-**This is the first task of the new session.** Shivam's words: "you personally read all the documentations line by line and delete older entries that have went stale and modify for latest codebase."
+**Shivam's ruling, 2 Nov, replaces "Claude reads it personally":** Haiku 5.5 reads, not Opus, in fresh sessions kept under 100k context. Run by `reality_engine/scripts/doc_review_loop.py` on branch `Wolf-t045-doc-review`; Opus reviews the branch before it merges to main.
 
 ## The rule for this task
-- Claude reads every line itself. No dsh worker, subagent or script reads or judges for it. A script may find candidates, such as references to missing files, but never decides.
-- For each doc: delete what is stale, and change what is wrong so it says what the code does now. Check claims against the code before keeping or changing them.
-- A doc that is entirely stale is deleted. Git history keeps it.
+- A script builds the queue and enforces the guards; only the reader judges a doc, and every changed claim is checked against the code first.
+- For each doc: delete what is stale, and change what is wrong so it says what the code does now.
+- The reader never deletes a whole file. It proposes `delete-proposed` in the progress file, and the reviewer applies those.
 
 ## Size, measured 2 Nov
 588 tracked `.md`, `.txt` and `.rst` files, 188,664 lines. `tasks/ar_study` alone is 97 files and 133,890 lines. Next largest: `tasks/arch_v4` 7,272; `tasks/archive` 4,870; `tasks/pilot60` 4,132; `tasks/optimizations` 3,667; `tasks/reddit_mining` 2,712; `tasks/dsh_tasks` 2,578; `tasks/master_bank` 2,265.
@@ -25,8 +25,3 @@ This will not fit in one session, so:
 `tasks/archive/` is in scope: Shivam gave permission on 2 Nov. The project settings still deny reading it (`Read(tasks/archive/**)` in `.claude/settings.json`), so that rule has to be lifted before this folder is reviewed. Do not work around it.
 
 If a file looks like generated data, not documentation (`tasks/ar_study` may be), read enough to be sure, then ask Shivam before deleting the whole folder.
-
-## Working next to the other session
-The session named `neo-Info_Diffusion_Model` is still running T-035 and T-044, and owns these until it says otherwise: `reality_engine/pilot/`, `reality_engine/query/`, `plugins/dsh-worker/`, `reality_engine/scripts/job_watch.py`, `rule_ledger.py`, `worker_review.py`, `tasks/pilot60/proto3_text/`, `tasks/efficiency/`. Its merges also edit `docs/DEVELOPER_GUIDE.md` and `tasks/STATE.md`. So before editing those two, message that session, and commit in small batches.
-
-Use your own prefixed worktree, or work on `main` in small commits after telling the other session. Do not close this session's jobs. Closing `neo-Info_Diffusion_Model` has killed workers before.

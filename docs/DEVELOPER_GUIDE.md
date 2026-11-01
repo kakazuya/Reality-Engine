@@ -465,6 +465,16 @@ is 0 in every case and a corrupt record is skipped. First measured run
 and eleven failed/needs-review lines. Test:
 `python -m pytest reality_engine/tests/test_job_watch.py -q` (20 tests).
 
+### M. Doc review loop and session hooks (T-045)
+
+`reality_engine/scripts/doc_review_loop.py` reviews docs with fresh Haiku 5.5 sessions (`claude -p`, medium effort, tools Read, Grep, Glob and Edit only). The queue is `git ls-files` minus `tasks/handoff/DOC_REVIEW_PROGRESS.csv`, smallest first, so a killed run resumes. It refuses to run on `main`.
+
+- **Size:** a batch is at most 90,000 characters and 12 files; a larger file is split across sessions. A session whose context reaches 95,000 tokens is killed and retried at half the size.
+- **Guards, in code:** edits outside the batch, new files, deletions and a net cut above 40% of a file are reverted. Rulings, the bank, the archive and the tracker are never sent; `tasks/ar_study/text/` is recorded as generated, unread.
+- **Stops:** usage limit sleeps 15 minutes; 3 failures in a row, or $25 estimated at list price, stops it. The log's last line starts `DONE`, `STOPPED` or `PAUSED`.
+
+`reality_engine/scripts/session_hooks.py` holds two hooks. `stop` blocks one stop while `job_watch` reports a stalled job, never twice in a row and never inside the loop. `precompact` prints what a summary must keep. Tests: `python -m pytest reality_engine/tests/test_doc_review_loop.py -q`.
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):

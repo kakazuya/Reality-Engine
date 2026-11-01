@@ -4,7 +4,7 @@
 **Pilot test on BAJFINANCE, HINDALCO and KEC, by Shivam's order of 2 Nov.** Workspace tickets no longer block it. The last prototype failed: 0 of 40 sampled answers right, 78% of numbers missed: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`.
 
 ## Next action
-**New session, first task, by Shivam's order of 2 Nov: T-045. Claude personally reads every doc line by line, deletes stale entries and corrects the rest to the current code. Brief: `tasks/handoff/DOC_REVIEW_T-045.md`. Resume from `tasks/handoff/DOC_REVIEW_PROGRESS.csv`: 70 files done. Next: check `plugins/dsh-worker/README.md` and `SKILL.md` against the code (read, marked partial), then the remaining folders smallest first, `tasks/ar_study` last. All worktrees are merged or removed (2 Nov).**
+**T-045 runs on Haiku (Shivam, 2 Nov): `doc_review_loop.py` on branch `Wolf-t045-doc-review`, worktree `C:\Users\warri\Downloads\IDM-worktrees\Wolf-t045-doc-review`, log `D:\RealityEngine\logs\doc_review_loop.log`. It resumes from `tasks/handoff/DOC_REVIEW_PROGRESS.csv` on that branch. When it ends, Opus samples the diff, applies or rejects `delete-proposed` rows, and merges.**
 
 Pilot session, next, in order (the doc session is separate; coordinate on main):
 1. T-035 extraction finished 04:2x IST: `.tmp/proto3/extract_t035.db`, 830 calls, 0 errors, 1,476 checked or unchecked numbers, est. $2.09, DeepSeek at low effort. Number check: 783 confirmed, 222 disputed, 471 unchecked (456 are XBRL rows with no page). In a sample of 12 disputes the number was on neither reading of the cited page, so suspect a wrong page from multi-page chunks before suspecting misreads: test that first. Then `proto3 recheck` on it; `load_fact --extract` it into a copy of the fact store (`.tmp/proto3/v4`); `run_proto3_bank.py`; Claude grades by reading. `order_book_contract`, `supply_link` and `company_debt_mix` returned almost no rows: check why.
@@ -14,7 +14,7 @@ Pilot session, next, in order (the doc session is separate; coordinate on main):
 T-044 is merged: `job_watch status` runs on every prompt through `.claude/settings.json`. Truth rule v2 is merged as a tool (1 false RIGHT on 94 read rows, `tasks/arch_v4/TRUTH_RULE_V2_2026-10-31.md`); the hand-read grade stays the reported score.
 
 ## Running
-No pilot job or worker. T-045 doc review runs in its own session.
+No pilot job or worker. T-045 doc loop: see Next action.
 
 ## Where the project stands
 Golden rule step 3, schema design, with the question bank accepted (1,901 questions, frozen). Gate on the old pilot: 12.7% contract strict, but 0 of 127 answered rows right on hand reading. Prototype on 3 companies failed its grade: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`. Full record: `tasks/arch_v4/GATE_STATE_2026-11-01.md`. Decisions: `D:\RealityEngine\plans\DECISION_LOG.md`, last 5 entries.

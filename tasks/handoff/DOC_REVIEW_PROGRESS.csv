@@ -67,5 +67,5 @@ tasks/worker_context/EXAMPLE_BRIEF.md,84,84,changed,"Marked its facts as 24 Oct"
 tasks/worker_context/SANDBOX.md,259,259,changed,"permission required, pytest, install state",
 tasks/handoff/DOC_REVIEW_T-045.md,32,32,kept,"Live brief",
 tasks/arch_v4/TRUTH_RULE_V2_2026-10-31.md,172,172,changed,"Written this session at merge",
-plugins/dsh-worker/README.md,688,688,changed-partial,"Brief field list, Codex line; claims not all checked against code",
-plugins/dsh-worker/skills/dsh-worker/SKILL.md,341,341,changed-partial,"merge_worker line; claims not all checked against code",
+plugins/dsh-worker/README.md,688,0,changed-partial,"Brief field list, Codex line; claims not all checked against code",
+plugins/dsh-worker/skills/dsh-worker/SKILL.md,341,0,changed-partial,"merge_worker line; claims not all checked against code",

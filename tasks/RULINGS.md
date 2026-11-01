@@ -18,6 +18,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 - Sessions run to 450k context. At 400k Claude writes the wrap-up: commit, next action in `tasks/STATE.md`, doc sweep. Replaces the older 150k, 100k and 40-45% session limits (Shivam, 1 Nov).
 - HP work runs headless: nothing on its screen, no focus loss. [check: test_hp_headless]
 - Page-reading subagents: batches of 8 pages, never past 100k context, medium effort for Haiku.
+- T-045 docs are read by Haiku 5.5 in fresh `claude -p` sessions under 100k context, not by Opus; this is an approved Haiku run (Shivam, 2 Nov). [check: test_doc_review_loop]
 - Bring ranked ideas from measurements unprompted. Do not idle machines: RAM under 90% or CPU under 70% used means start useful work. Report compute waste.
 - A new task from Shivam becomes a ticket in `tasks/TASKS.md` before work starts. Commits on `main` name a real ticket or give a reason. [check: commit-msg]
 - While any worker or job runs, keep a live watch that fires on finish, stall or errors, and check real status and progress before saying anything about it; a run with no check of its first minutes is a failure (Shivam, 2 Nov, after the fourth miss).
