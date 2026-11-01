@@ -20,6 +20,8 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-028 | OPEN | P2 | Clear the doc sweep: 26 references in old docs point at files that no longer exist | accept: python reality_engine/scripts/doc_gate.py --sweep | from: sweep 2 Nov | opened 2026-11-02
 - T-042 | OPEN | P1 | Rule and chain-of-command ledger: log every gate block, budget overrun, bypass and who did the work; daily report by rule of enforced, sidelined and unmeasured | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-043 | OPEN | P1 | Worker review log: tool calls, thinking and output tokens, job type, time, and Claude's review of prompt, permissions and scope, for every dsh worker and Claude session | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
+- T-044 | OPEN | P1 | Catch finished, stalled and failed jobs in code, at any effort level: list_workers shows the newest and running first, and a status command feeds a hook on every prompt | accept: python -m pytest reality_engine/tests/test_job_watch.py -q | from: Shivam 2 Nov | opened 2026-11-02
+- T-045 | OPEN | P1 | Claude personally reads every doc line by line, deletes stale entries and corrects the rest to the current code; no worker or subagent reads for it | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 
 ## Data
 - T-021 | LOOKING | P3 | Check if still open: PIB phase 2, Hindi, Urdu and regional offices | accept: Shivam | from: tasks/PIPELINE_TODO.md A2 | opened 2026-11-02
