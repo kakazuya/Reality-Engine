@@ -61,7 +61,7 @@ are now *tickets*, not answers (§H.5).
 
 ## 0. Why v4, in one paragraph
 
-The pilot gate when v4 was designed was **27/2,681 strict = 1.0%**; the current gate is **361/2,681 = 13.5% contract strict, 0.00% read** (`GATE_V4_2026-10-31.md`, `TRUTH_READ_GRADE_2026-10-31.md`). The failure reasons for that design-time run are almost all
+The pilot gate when v4 was designed was **27/2,681 strict = 1.0%**; the last gate on that bank was 341/2,681 = 12.7% contract strict, with 0 of 127 answered rows right on hand reading (`GATE_STATE_2026-11-01.md`, `TRUTH_READ_GRADE_2026-10-31.md`). That bank is now replaced by the frozen 1,901-question bank. The failure reasons for that design-time run are almost all
 *composition* failures: `GATE ask_match` 2,884, "sub-question N not addressed" 2,708,
 "unrelated rows" ~1,500, and only 383 blocked + 132 NOT IN DATA (`tasks/answer_bench/
 GATE_RESULTS_*_strict.jsonl`). The data is mostly there; what is missing is (a) one map from
@@ -304,7 +304,7 @@ The 14 **named deterministic judgement rules** each carry their stated rule in t
 | `distribution_absorption` | absorption if `delivery_pct z > 2` and `return >= 0`; distribution if `z > 2` and `return < 0` |
 | `margin_bottom` | "bottomed" if the claim direction is up after ≥2 consecutive periods of falling margin |
 | `control_change` | any holder class moves ≥5pp in one quarter, or promoter falls ≥5pp |
-| `solvency` | fail if pledge > 15% or interest cover < 2.5x or D/E > 1.5x (AGENTS.md §3.11) |
+| `solvency` | fail if pledge > 15% or interest cover < 2.5x or D/E > 1.5x (`AGENTS.md` rule 11) |
 | `valuation_premium` | premium if `pb > 1.2 * median(peer pb)` |
 | `receivables_quality` | deteriorating if `dso` rises while revenue growth ≤ 0, or `dso` +20% with falling cfo/revenue |
 | `say_vs_do` | credible if the guided direction held in ≥70% of tested periods; score = hit rate with n |
@@ -549,8 +549,8 @@ then pick the smallest topic set covering ≥95% of them with hand-checkable pre
 
 | measured | value |
 |---|---:|
-| verbatim surface distinct / occurrences | 148,652 / 1,691,352 |
-| surfaces carrying 95% of occurrences (the mapping workload) | 64,948 |
+| verbatim surface distinct / occurrences | 148,652 / 1,815,581 |
+| surfaces carrying 95% of occurrences (the mapping workload) | 62,601 |
 | topics needed for 95% with a declared vocabulary (method A) | 137 used, **64.8%** of occurrences |
 | coverage at 60 / 80 topics | 62.4% / 64.1% |
 | lexical clustering (no declared vocabulary) for 95% | 11,467 clusters |
@@ -558,7 +558,7 @@ then pick the smallest topic set covering ≥95% of them with hand-checkable pre
 
 **The finding is in the numbers:** 60–80 labels is the right operating size (60 topics cover
 62.4%, and the marginal topic after ~120 adds ~0), but **token matching saturates at ~65%**.
-The 95% must therefore be reached by a **semantic** mapping over the 64,948 head surfaces
+The 95% must therefore be reached by a **semantic** mapping over the 62,601 head surfaces
 (§H.8), with the tail as `other:<raw>` by construction.
 
 **The release gate (v4.2 decision 1 — option (b), the only option).** The gate is:
@@ -693,7 +693,7 @@ one quality vocabulary (`verified | measured_weak | plausible_untested | contrad
 1. `fact` view over the tables that need no new column (market, metric series, ownership,
    macro). Everything in §D already runs on it.
 2. `vocab.surface` + `vocab.label` + `vocab.map` (§A.9) over the three extractions; the head
-   64,948 surfaces labelled, the tail `other:<raw>`. `claim` follows immediately, topic =
+   62,601 surfaces labelled, the tail `other:<raw>`. `claim` follows immediately, topic =
    label id.
 3. `membership` from `company_membership_pit` + the **PIT sector build** (§B.6) — the
    2019-01-01 backcast is replaced, not reused.
