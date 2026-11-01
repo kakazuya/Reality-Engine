@@ -1,0 +1,14 @@
+file,lines,lines_read,outcome,reason,commit
+AGENTS.md,59,59,changed,"ISIN rule, FRAMEWORK start-order conflict (T-011), stores list, OCR and headless fallbacks, removed class AdjacentPossibleExtraction",0bf9453
+tasks/STATE.md,27,27,kept,"Live; the other session keeps Next action and Running",
+tasks/RULINGS.md,38,38,changed,"Stale fact only: typed write contracts are built",0bf9453
+docs/DEVELOPER_GUIDE.md,499,499,changed,"Directory map, planned labels, missing modules, wrong fetch flags, test count; sections I J K 3 4 checked",0bf9453
+docs/RAW_DATA_FAMILIES.md,30,30,changed,"Recounted on D; written from the HP without D access",0bf9453
+machines/README.md,12,12,kept,"Correct",
+machines/HP_LAPTOP.md,35,35,changed,"textrec source is on main",0bf9453
+machines/MSI_LAPTOP.md,28,28,changed,"Worker cap per ruling; duplicate start-gate section removed",0bf9453
+machines/REMOTE_ACCESS_SETUP.md,9,9,kept,"Correct",
+machines/HP_ACCEL_BENCH_2026-10-31.md,1243,1243,changed,"Duplicate sections 11 and 12 merged and numbered; stale recommendations removed; measurements kept",0bf9453
+tasks/FRAMEWORK.md,78,78,kept,"Only Shivam changes it; 2 stale lines reported to him: section 8 AR drain and CapacityLoop; deletion command in STATE",
+tasks/TASKS.md,57,57,kept,"Direct edits are denied; closing T-004 T-011 T-037 is Shivam's accept",
+tasks/TASKS_DONE.md,11,11,kept,"Record",
