@@ -1,7 +1,7 @@
 # Task — extend pilot index membership to every index in the notices, plus pre-FY23 share counts
 
 ## Goal
-The merged pilot T1 build (`reality_engine/pilot/build_t1.py`; DBs at `D:\RealityEngine\pilot\`) has two gaps:
+The merged pilot T1 build (`reality_engine/pilot/build_t1.py`; DBs at `D:\RealityEngine\pilot\`) had two gaps (before this task):
 - **`company_membership_pit` holds only 3 indices** (nifty50, nifty100, niftymidcap150). The master bank asks about Nifty 500, Smallcap 250, Midcap 100, Next 50, Bank, IT, PSU Bank, sector and thematic indices. The 446 notices in `D:\RealityEngine\raw\index_history` cover many more.
 - **mcap is NULL before FY23**, because XBRL paid-up capital is the only share-count source in use.
 
