@@ -274,6 +274,25 @@ _ATOMS = [
      "bond yield|g-sec|yield|bank rate|cost of funds|exchange price|plant load factor|plf|coal stock|"
      "power demand|import volume|series of|price series|macro series|commodity series|rate series"),
     # ---- measures the bank asks for that the pilot stores do not carry yet --
+    # The compute layer's extraction tables (§A.3): prototypes, not facts yet.
+    ("fin.tax_expense", "tax expense", "fundamental", "INR", "FY", "gap",
+     "prototype: tax_reconciliation.item='tax_expense'",
+     "tax expense|current tax|deferred tax|tax charge|total tax expense|income tax expense"),
+    ("fin.pretax_profit", "profit before tax", "fundamental", "INR", "FY", "gap",
+     "prototype: tax_reconciliation.item='profit_before_tax'",
+     "profit before tax|pbt|pre-tax profit|income before tax|earnings before tax"),
+    ("fin.statutory_rate", "statutory tax rate", "fundamental", "%", "FY", "gap",
+     "prototype: tax_reconciliation.item='statutory_rate'",
+     "statutory rate|statutory tax rate|corporate tax rate|applicable tax rate|tax rate"),
+    ("fin.total_assets", "total assets", "fundamental", "INR", "FY", "gap",
+     "prototype: balance_sheet_lines.line_item='total_assets'",
+     "total assets|assets|balance sheet size|asset base"),
+    ("fin.tax_reconciliation_item", "tax reconciliation item", "fundamental", "INR", "FY", "gap",
+     "prototype: tax_reconciliation item_kind deduction or addback",
+     "tax reconciliation|reconciling item|deduction|deductions|tax holiday|tax incentive|addback|disallowance"),
+    ("macro.fii_sector_net", "FII sector net flow (NSDL fortnight)", "macro", "INR", "span", "gap",
+     "prototype: nsdl_fortnight_cells.value",
+     "fii sector flow|fpi sector flow|nsdl sector flow|sector fii|fii net flow|fortnight fii|sector fpi"),
     ("fin.deposits", "bank deposits", "fundamental", "INR", "quarter", "gap",
      "metric_state.company_metric_series.value(metric_key=deposits)",
      "deposits|deposit mix|term deposits|casa|casa ratio|deposit franchise|deposit repricing"),
@@ -370,6 +389,8 @@ _DIMS = [
     ("est_atom", "open (registry atom ids)",
      "metric_state.own_estimate.est_atom", "the part's atom",
      "the estimated measure; 'beat/miss' compares the realised atom against this estimate."),
+    ("sector", "open", "nsdl_fortnight_cells.sector", "all",
+     "the NSDL sector label on a sector-level FII flow; the market-wide FII/DII flow is macro.flow."),
 ]
 
 
@@ -380,7 +401,8 @@ _DIMS = [
 _FORMULAS = [
     ("f.margin", "margin", "ebitda(pat) / revenue", ["fin.ebitda", "fin.pat", "fin.revenue"], "%"),
     ("f.ratio", "ratio", "num / den  (de, pb, pe, ev_ebitda, roic, roce, roe, icr)",
-     ["fin.total_debt", "fin.book_equity", "price.mcap", "fin.pat", "fin.ebitda"], "x"),
+     ["fin.total_debt", "fin.book_equity", "price.mcap", "fin.pat", "fin.ebitda",
+      "fin.interest_expense", "fin.cash"], "x"),
     ("f.dso", "debtor days", "receivables / revenue * 365", ["fin.receivables", "fin.revenue"], "days"),
     ("f.working_capital_cycle", "working capital cycle", "dso + inventory_days - payable_days",
      ["fin.receivables", "fin.inventory", "fin.payables", "fin.revenue"], "days"),
@@ -397,7 +419,183 @@ _FORMULAS = [
     ("f.cagr", "CAGR", "(end / start) ** (1 / years) - 1", ["price.close", "fin.revenue", "fin.pat"], "%"),
     ("f.excess_return", "excess return", "return(company) - return(benchmark)", ["price.close", "macro.index_close"], "%"),
     ("f.spread", "input-output spread", "output price - input cost", ["macro.commodity_close", "fin.revenue"], "INR"),
+    # ---- the compute layer over the prototyped extraction tables (§A.3) ----
+    # Each row is a named measure whose inputs are atoms plus dims, with one
+    # period rule and one typed refusal when an input is absent.
+    ("f.effective_tax_rate", "effective tax rate", "tax_expense / profit_before_tax * 100",
+     ["fin.tax_expense", "fin.pretax_profit"], "%"),
+    ("f.tax_gap", "tax gap at the statutory rate",
+     "(profit_before_tax * statutory_rate / 100) - tax_expense, attributed to reconciling items",
+     ["fin.pretax_profit", "fin.statutory_rate", "fin.tax_expense", "fin.tax_reconciliation_item"], "INR"),
+    ("f.cfo_to_profit", "operating cash flow to profit", "cfo / pat",
+     ["fin.cfo", "fin.pat"], "x"),
+    ("f.dio", "inventory days", "inventory / revenue * 365",
+     ["fin.inventory", "fin.revenue"], "days"),
+    ("f.dpo", "payable days", "payables / revenue * 365",
+     ["fin.payables", "fin.revenue"], "days"),
+    ("f.net_debt", "net debt", "total_debt - cash",
+     ["fin.total_debt", "fin.cash"], "INR"),
+    ("f.net_debt_to_ebitda", "net debt to EBITDA", "(total_debt - cash) / ebitda",
+     ["fin.total_debt", "fin.cash", "fin.ebitda"], "x"),
+    ("f.capex_to_sales", "capex to sales", "capex / revenue * 100",
+     ["fin.capex", "fin.revenue"], "%"),
+    ("f.asset_turnover", "asset turnover", "revenue / average(total_assets)",
+     ["fin.revenue", "fin.total_assets"], "x"),
+    ("f.order_book_to_revenue", "order book to revenue", "order_book / revenue",
+     ["fin.order_book", "fin.revenue"], "x"),
+    ("f.book_to_bill", "book-to-bill", "order_intake / revenue",
+     ["fin.order_intake", "fin.revenue"], "x"),
+    ("f.sotp_gap", "sum-of-the-parts gap", "sum(stated part value) - market cap",
+     ["fin.investments", "price.mcap"], "INR"),
+    ("f.revenue_per_unit", "revenue per unit volume", "revenue / units_sold",
+     ["fin.revenue", "fin.unit_volume"], "INR/unit"),
+    ("f.change", "change at a named lag", "(current - prior) / abs(prior) * 100",
+     ["fin.revenue", "fin.pat", "fin.cfo", "price.close"], "%"),
+    ("f.nsdl_fortnight_net_flow", "FII sector net flow, fortnight",
+     "sum(fii net) over one NSDL fortnight cell",
+     ["macro.fii_sector_net"], "INR"),
+    ("f.nsdl_month_net_flow", "FII sector net flow, month",
+     "sum(fii net) over the month's NSDL fortnight cells",
+     ["macro.fii_sector_net"], "INR"),
 ]
+
+
+def _inp(atom: str, table: str, key: str, **extra) -> dict:
+    return {"atom": atom, "table": table, "key": key, **extra}
+
+
+#: How the compute layer binds a formula to the extraction tables (§A.3).  This
+#: is registry data, not a second formula list: it names only the storage of the
+#: atoms the row already declares, and the one period rule its arithmetic uses.
+_FORMULA_META = {
+    "f.ratio": {
+        "inputs": [
+            _inp("fin.total_debt", "balance_sheet_lines", "total_debt"),
+            _inp("fin.book_equity", "balance_sheet_lines", "book_equity"),
+            _inp("price.mcap", "market_lines", "mcap"),
+            _inp("fin.pat", "lender_metrics", "pat"),
+            _inp("fin.ebitda", "lender_metrics", "ebitda"),
+            _inp("fin.interest_expense", "lender_metrics", "interest_expense"),
+            _inp("fin.cash", "balance_sheet_lines", "cash"),
+        ],
+        "period_rule": "selector",
+        "period_rules": {"de": "same_period", "icr": "same_period",
+                         "roe": "average_balance", "roce": "average_balance",
+                         "pb": "market_at_date", "pe": "market_at_date"},
+    },
+    "f.dso": {
+        "inputs": [_inp("fin.receivables", "balance_sheet_lines", "receivables"),
+                   _inp("fin.revenue", "lender_metrics", "revenue")],
+        "period_rule": "same_period",
+    },
+    "f.working_capital_cycle": {
+        "inputs": [_inp("fin.receivables", "balance_sheet_lines", "receivables"),
+                   _inp("fin.inventory", "balance_sheet_lines", "inventory"),
+                   _inp("fin.payables", "balance_sheet_lines", "payables"),
+                   _inp("fin.revenue", "lender_metrics", "revenue")],
+        "period_rule": "same_period",
+    },
+    "f.share_of": {
+        "inputs": [_inp("fin.segment_value", "lender_metrics", "segment_value",
+                        dim="segment"),
+                   _inp("fin.revenue", "lender_metrics", "revenue")],
+        "period_rule": "same_period",
+    },
+    "f.cagr": {
+        "inputs": [_inp("price.close", "market_lines", "close"),
+                   _inp("fin.revenue", "lender_metrics", "revenue"),
+                   _inp("fin.pat", "lender_metrics", "pat")],
+        "period_rule": "cagr_pair",
+    },
+    "f.change": {
+        "inputs": [_inp("fin.revenue", "lender_metrics", "revenue"),
+                   _inp("fin.pat", "lender_metrics", "pat"),
+                   _inp("fin.cfo", "cash_flow_lines", "cfo"),
+                   _inp("price.close", "market_lines", "close")],
+        "period_rule": "growth_pair",
+    },
+    "f.effective_tax_rate": {
+        "inputs": [_inp("fin.tax_expense", "tax_reconciliation", "tax_expense"),
+                   _inp("fin.pretax_profit", "tax_reconciliation", "profit_before_tax")],
+        "period_rule": "same_period",
+    },
+    "f.tax_gap": {
+        "inputs": [_inp("fin.tax_expense", "tax_reconciliation", "tax_expense"),
+                   _inp("fin.pretax_profit", "tax_reconciliation", "profit_before_tax"),
+                   _inp("fin.statutory_rate", "tax_reconciliation", "statutory_rate"),
+                   _inp("fin.tax_reconciliation_item", "tax_reconciliation", "*",
+                        kinds=["deduction", "addback"])],
+        "period_rule": "same_period",
+    },
+    "f.cfo_to_profit": {
+        "inputs": [_inp("fin.cfo", "cash_flow_lines", "cfo"),
+                   _inp("fin.pat", "lender_metrics", "pat")],
+        "period_rule": "same_period",
+    },
+    "f.dio": {
+        "inputs": [_inp("fin.inventory", "balance_sheet_lines", "inventory"),
+                   _inp("fin.revenue", "lender_metrics", "revenue")],
+        "period_rule": "same_period",
+    },
+    "f.dpo": {
+        "inputs": [_inp("fin.payables", "balance_sheet_lines", "payables"),
+                   _inp("fin.revenue", "lender_metrics", "revenue")],
+        "period_rule": "same_period",
+    },
+    "f.net_debt": {
+        "inputs": [_inp("fin.total_debt", "balance_sheet_lines", "total_debt"),
+                   _inp("fin.cash", "balance_sheet_lines", "cash")],
+        "period_rule": "same_period",
+    },
+    "f.net_debt_to_ebitda": {
+        "inputs": [_inp("fin.total_debt", "balance_sheet_lines", "total_debt"),
+                   _inp("fin.cash", "balance_sheet_lines", "cash"),
+                   _inp("fin.ebitda", "lender_metrics", "ebitda")],
+        "period_rule": "same_period",
+    },
+    "f.capex_to_sales": {
+        "inputs": [_inp("fin.capex", "cash_flow_lines", "capex"),
+                   _inp("fin.revenue", "lender_metrics", "revenue")],
+        "period_rule": "same_period",
+    },
+    "f.asset_turnover": {
+        "inputs": [_inp("fin.revenue", "lender_metrics", "revenue"),
+                   _inp("fin.total_assets", "balance_sheet_lines", "total_assets")],
+        "period_rule": "average_balance",
+    },
+    "f.order_book_to_revenue": {
+        "inputs": [_inp("fin.order_book", "lender_metrics", "order_book"),
+                   _inp("fin.revenue", "lender_metrics", "revenue")],
+        "period_rule": "same_period",
+    },
+    "f.book_to_bill": {
+        "inputs": [_inp("fin.order_intake", "lender_metrics", "order_intake"),
+                   _inp("fin.revenue", "lender_metrics", "revenue")],
+        "period_rule": "same_period",
+    },
+    "f.sotp_gap": {
+        "inputs": [_inp("fin.investments", "balance_sheet_lines", "investments"),
+                   _inp("price.mcap", "market_lines", "mcap")],
+        "period_rule": "market_at_date",
+    },
+    "f.revenue_per_unit": {
+        "inputs": [_inp("fin.revenue", "lender_metrics", "revenue"),
+                   _inp("fin.unit_volume", "unit_volume", "volume")],
+        "period_rule": "same_period",
+    },
+    "f.nsdl_fortnight_net_flow": {
+        "inputs": [_inp("macro.fii_sector_net", "nsdl_fortnight_cells", "fii_net",
+                        dim="sector")],
+        "period_rule": "fortnight_cell",
+    },
+    "f.nsdl_month_net_flow": {
+        "inputs": [_inp("macro.fii_sector_net", "nsdl_fortnight_cells", "fii_net",
+                        dim="sector")],
+        "period_rule": "month_cells",
+    },
+}
+for _formula_id in _FORMULA_META:
+    _FORMULA_META[_formula_id].setdefault("refusal", "input_missing")
 
 
 # --------------------------------------------------------------------------- #
@@ -915,8 +1113,15 @@ def build_dims() -> list[dict]:
 
 
 def build_formulas() -> list[dict]:
-    return [{"formula_id": f, "label": l, "expr": e, "over": a, "unit": u}
-            for f, l, e, a, u in _FORMULAS]
+    rows = []
+    for f, l, e, a, u in _FORMULAS:
+        row = {"formula_id": f, "label": l, "expr": e, "over": a, "unit": u}
+        meta = _FORMULA_META.get(f)
+        if meta:
+            row.update(meta)
+            row["executor"] = "extraction"
+        rows.append(row)
+    return rows
 
 
 def build_operators() -> list[dict]:

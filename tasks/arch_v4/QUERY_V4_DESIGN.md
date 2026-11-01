@@ -26,9 +26,10 @@ decision, the sections it changed, and the artifact that carries the measurement
 | The opinions store | **§A.8** | 529 raw files covering **1 of the 60 pilot ISINs**: the design now states exactly what `own.estimate` does without it instead of listing it as a method leg it will use |
 | `bench_screen.py`'s defect | §F.7 | it multiplied standardised returns by raw driver levels (abs max 55,385) and called the output a correlation |
 
-Numbers re-measured for this revision: **60 atoms, 19 dims, 13 formulas, 26 operators, 2,242
-lexicon rows**, coverage **897 mapped / 150 NID / 26 unmapped** unchanged, `--check`
-deterministic **PASS**. The screen benchmark was re-run after the standardisation fix.
+Numbers re-measured for this revision: **66 atoms, 20 dims, 29 formulas, 27 operators, 2,920
+lexicon rows** (the 1 Nov compute layer adds 6 atoms, 1 dim and 16 formulas), coverage
+**913 mapped / 146 NID / 14 unmapped**, `--check` deterministic **PASS**. The screen benchmark
+was re-run after the standardisation fix.
 
 Status: design (30 Oct 2026, v4.2). Supersedes the planner-patch line of work described in
 `tasks/arch_v3/QUERY_LAYER.md`. Every number marked *(measured)* was produced by a program in
@@ -52,10 +53,11 @@ output that was re-measured.
 | 6 | **GPU vs CPU is unmeasured.** Rewrite the GPU section as a thesis plus the test that decides it; assert no result | **§F.8 (rewritten)**, §H.0; the GPU benchmark worker writes `tasks/arch_v4/bench_gpu.md` |
 | E | **Evening portfolio decision layer** (design-only): `portfolio_positions`, `asset_universe`, `daily_scorecard`, `recommendation_log`; nightly scoring of holdings against alternatives after tax, costs and slippage; hold/trim/switch/exit with evidence, confidence and what would change the call; the log graded on later outcomes; signals only until the strategy tests pass out of sample; holdings read-only from the brokers (official Kite MCP for Zerodha; Angel One by its export) | **§F.9 (new)**, §E.2 (link 8: the recommendation log is graded like `say_vs_do`), §H.9 |
 
-Numbers re-measured for this revision: **60 atoms, 19 dims, 13 formulas, 26 operators, 2,242
-lexicon rows** (was 61/18: the two paid-consensus atoms became one `own.estimate` atom with an
-`est_atom` dim), coverage **897 mapped / 150 NID / 26 unmapped** unchanged, `--check`
-deterministic **PASS**. The 150 NID are now *tickets*, not answers (§H.5).
+Numbers re-measured for this revision: **66 atoms, 20 dims, 29 formulas, 27 operators, 2,920
+lexicon rows** (was 61/18 at the start of v4.1: the two paid-consensus atoms became one
+`own.estimate` atom with an `est_atom` dim; 1 Nov 2026 adds 6 atoms, 1 dim and 16 formulas),
+coverage **913 mapped / 146 NID / 14 unmapped**, `--check` deterministic **PASS**. The 146 NID
+are now *tickets*, not answers (§H.5).
 
 ## 0. Why v4, in one paragraph
 
@@ -66,14 +68,14 @@ GATE_RESULTS_*_strict.jsonl`). The data is mostly there; what is missing is (a) 
 the words a question uses to the measures the database holds, (b) a typed decomposition so
 that "promoter **and** public", "NSE **and** BSE **and** the sum", "raw **and** adjusted"
 become three parts that must each come back, and (c) an executor that returns exactly one
-result per part. v4 makes those three things data instead of code: a registry of **60 atoms,
-19 dims, 13 formulas, 26 operators and a mined lexicon**, one executor over one long-format
-fact view, and a decomposer that never sees a bank field. Measured on the whole bank: **897
-cases map (83.6%), 150 resolve to NOT IN DATA with the registry's stated reason (14.0%), 26
-stay unmapped (2.4%)** — i.e. the registry can express **97.6%** of the bank's asks before any
+result per part. v4 makes those three things data instead of code: a registry of **66 atoms,
+20 dims, 29 formulas, 27 operators and a mined lexicon**, one executor over one long-format
+fact view, and a decomposer that never sees a bank field. Measured on the whole bank: **913
+cases map (85.1%), 146 resolve to NOT IN DATA with the registry's stated reason (13.6%), 14
+stay unmapped (1.3%)** — i.e. the registry can express **98.7%** of the bank's asks before any
 data question is asked at all *(measured, §A.6)*.
 
-That 97.6% is an **expressiveness** ceiling, not an answer rate. v4.1 (decision 3) does not
+That 98.7% is an **expressiveness** ceiling, not an answer rate. v4.1 (decision 3) does not
 count a typed NID as answered, and v4.2 (decision 3) fixes the order in which a ticket is
 worked: **search everything held** (structured stores and raw document text) → **fetch** if the
 fetch is free within a day → **proxy** only after that search has failed and the controller has
@@ -105,26 +107,27 @@ Lakshmi Mills (NSE: LAKSHMIMIL) ka 2026 ka YTD high price kya tha, aur kis date 
 window: 2026-01-01..2026-10-19 ("year to date", by the existing `period_bounds`)
 ```
 
-## A.1 atoms — 60 rows *(measured)*
+## A.1 atoms — 66 rows *(measured)*
 
 One row per **raw measure**: `atom_id, label, kind, store, table, column, source, unit,
 grain, entity_key, pit, coverage, coverage_note, synonyms`. The generated table is
 `concept_registry.json["atoms"]`; the declarations are the `_ATOMS` list in
-`build_concept_registry.py` (hand-checked, 60 rows).
+`build_concept_registry.py` (hand-checked, 66 rows).
 
 | kind | atoms | examples |
 |---|---:|---|
 | `market` | 14 | `price.close`, `price.high`, `price.delivery_qty`, `price.delivery_pct`, `price.volume`, `price.traded_value`, `price.mcap`, `price.shares_out`, `price.band`, `price.rsi`, `price.sma` |
-| `fundamental` | 22 | `fin.revenue`, `fin.ebitda`, `fin.pat`, `fin.eps`, `fin.book_equity`, `fin.total_debt`, `fin.cwip`, `fin.nim`, `fin.npa`, `fin.order_book`, `fin.segment_value` |
+| `fundamental` | 27 | `fin.revenue`, `fin.ebitda`, `fin.pat`, `fin.eps`, `fin.book_equity`, `fin.total_debt`, `fin.cwip`, `fin.nim`, `fin.npa`, `fin.order_book`, `fin.segment_value`, `fin.tax_expense` (§A.3) |
 | `ownership` | 6 | `hold.pct` (holder class is a dim), `hold.pledge_pct`, `hold.fpi_limit_utilised`, `flows.net_inr`, `corp.amount_per_share` |
 | `narrative` | 2 | `claim.claim` (**topic is a dim**), `text.passage` (page is a dim) |
-| `macro` | 8 | `macro.policy`, `macro.claim`, `macro.commodity_close`, `macro.index_close`, `macro.flow`, `macro.oi`, `macro.etf_premium`, `macro.series` |
+| `macro` | 9 | `macro.policy`, `macro.claim`, `macro.commodity_close`, `macro.index_close`, `macro.flow`, `macro.oi`, `macro.etf_premium`, `macro.series`, `macro.fii_sector_net` (§A.3) |
 | `own` | 1 | `own.estimate` (**estimated atom and method are dims**, §A.8 — replaces `absent.consensus` / `absent.price_target`) |
 | `absent` | 5 | `absent.intraday`, `absent.investor_holdings`, `absent.refurb_sales`, `absent.forecast`, `absent.private_terms` |
 
-Coverage status per atom *(measured)*: **43 held**, **12 gap** (the registry knows the
-measure, the pilot store does not carry it yet — listed in §H.4), **5 absent** (nothing
-publishes it; the atom exists so the NOT IN DATA wording has a reason, not an apology).
+Coverage status per atom *(measured)*: **43 held**, **18 gap** (the registry knows the
+measure, the pilot store does not carry it yet — listed in §H.4 and, for the compute layer,
+in §A.3), **5 absent** (nothing publishes it; the atom exists so the NOT IN DATA wording has
+a reason, not an apology).
 
 Two design decisions carry most of the minimality:
 
@@ -141,7 +144,7 @@ Two design decisions carry most of the minimality:
    method, inputs and `known_at`), not a formula: it is the consensus that no free feed sells
    us (§A.8).
 
-## A.2 dims — 19 rows *(measured)*
+## A.2 dims — 20 rows *(measured)*
 
 A dim is a qualifier that lives **on** an atom. Each row: `dim_id, values, source, default,
 note`. The five the brief names plus the ones the bank actually needs:
@@ -167,15 +170,22 @@ note`. The five the brief names plus the ones the bank actually needs:
 | `page` | numeric | "page 41 of the deck" is a dim on `text.passage` |
 | `lookback` | 20, 50, 200 | the SMA length |
 | `est_atom` | open set of registry atom ids | **v4.1:** the measure an `own.estimate` is for; "beat consensus revenue" is one atom plus `est_atom=fin.revenue`, never a per-measure atom family |
+| `sector` | open set (NSDL sector label) | **1 Nov:** the sector a `macro.fii_sector_net` fortnight cell is reported for; the market-wide FII/DII flow stays `macro.flow` |
 
-## A.3 formulas — 13 rows *(measured)*
+## A.3 formulas — 29 rows *(measured)*
 
-Derived measures as expressions **over atoms**; never stored as data.
+Derived measures as expressions **over atoms**; never stored as data. The 13 v4.1 rows keep
+their expressions (`f.ratio`'s `over` now names the interest and cash atoms its icr and roce
+readings divide). The 1 Nov 2026 compute layer adds 16 rows over the prototyped extraction
+tables and executes the same registry (no second formula list):
+`reality_engine/query/v4/formulas.py` reads `concept_registry.json["formulas"]`, generated
+from `_FORMULAS`/`_FORMULA_META` in `build_concept_registry.py`. Rows this executor owns carry
+`executor: "extraction"`; the rows without it stay on the fact view in `execute.py`.
 
 | id | expression | over |
 |---|---|---|
 | `f.margin` | `ebitda(pat) / revenue` | fin.ebitda, fin.pat, fin.revenue |
-| `f.ratio` | `num/den` for de, pb, pe, ev_ebitda, roic, roce, roe, icr | debt, book equity, mcap, pat, ebitda |
+| `f.ratio` | `num/den` for de, pb, pe, ev_ebitda, roic, roce, roe, icr | debt, book equity, mcap, pat, ebitda, interest, cash |
 | `f.dso` | `receivables / revenue * 365` | fin.receivables, fin.revenue |
 | `f.working_capital_cycle` | `dso + inventory_days - payable_days` | receivables, inventory, payables, revenue |
 | `f.share_of` | `part / total * 100` | segment value, revenue, holding |
@@ -188,7 +198,79 @@ Derived measures as expressions **over atoms**; never stored as data.
 | `f.excess_return` | `return(company) - return(benchmark)` | close, index |
 | `f.spread` | `output price - input cost` | commodity, revenue |
 
-## A.4 operators — 26 rows *(measured)*, one closed set
+The 16 compute-layer rows (same registry, plus the period rule the arithmetic uses):
+
+| id | expression | over | unit | period rule |
+|---|---|---|---|---|
+| `f.effective_tax_rate` | `tax_expense / profit_before_tax * 100` | fin.tax_expense, fin.pretax_profit | % | same_period |
+| `f.tax_gap` | `profit_before_tax * statutory_rate/100 - tax_expense`, attributed to named reconciling items | fin.pretax_profit, fin.statutory_rate, fin.tax_expense, fin.tax_reconciliation_item | INR | same_period |
+| `f.cfo_to_profit` | `cfo / pat` | fin.cfo, fin.pat | x | same_period |
+| `f.dio` | `inventory / revenue * 365` | fin.inventory, fin.revenue | days | same_period |
+| `f.dpo` | `payables / revenue * 365` | fin.payables, fin.revenue | days | same_period |
+| `f.net_debt` | `total_debt - cash` | fin.total_debt, fin.cash | INR | same_period |
+| `f.net_debt_to_ebitda` | `(total_debt - cash) / ebitda` | fin.total_debt, fin.cash, fin.ebitda | x | same_period |
+| `f.capex_to_sales` | `capex / revenue * 100` | fin.capex, fin.revenue | % | same_period |
+| `f.asset_turnover` | `revenue / average(total_assets)` | fin.revenue, fin.total_assets | x | average_balance |
+| `f.order_book_to_revenue` | `order_book / revenue` | fin.order_book, fin.revenue | x | same_period |
+| `f.book_to_bill` | `order_intake / revenue` | fin.order_intake, fin.revenue | x | same_period |
+| `f.sotp_gap` | `sum(stated part value) - market cap` | fin.investments, price.mcap | INR | market_at_date |
+| `f.revenue_per_unit` | `revenue / units_sold` | fin.revenue, fin.unit_volume | INR/unit | same_period |
+| `f.change` | `(current - prior) / abs(prior) * 100` | fin.revenue, fin.pat, fin.cfo, price.close (dim `lag` = yoy / qoq) | % | growth_pair |
+| `f.nsdl_fortnight_net_flow` | `sum(fii net)` over one NSDL fortnight cell | macro.fii_sector_net (dim `sector`) | INR | fortnight_cell |
+| `f.nsdl_month_net_flow` | `sum(fii net)` over the month's fortnight cells | macro.fii_sector_net (dims `sector`, `month`) | INR | month_cells |
+
+**Storage contract.** An extraction row carries `inputs` (each input atom -> table, key and
+optional dim), `period_rule` and `refusal` next to the five registry fields. The tables are
+prototypes, not facts yet: `balance_sheet_lines`, `cash_flow_lines`, `lender_metrics`,
+`tax_reconciliation`, `unit_volume` (the five in the 1 Nov brief), plus `market_lines` (the
+valuation date a P/B or P/E needs) and `nsdl_fortnight_cells` (sector FII flows).
+`lender_metrics` is the reported scalar-metric series (revenue, PAT, EBITDA, interest, order
+book, order intake, segment values); `tax_reconciliation` carries profit before tax, tax
+expense, the statutory rate and the reconciling items; the other three carry the lines their
+names say. Every row carries `source` and `known_at`; a row known after `as_of` is refused
+(`input_after_as_of`), never dropped into a missing input, and every answer returns the
+inputs it used with their source and `known_at`.
+
+**Period rules.** `same_period` (all inputs at one common period); `average_balance` (the
+denominator is the mean of the current and prior period, `opening_balance_missing` if the
+prior is absent); `market_at_date` (market cap on the latest date <= `as_of`, fundamentals at
+the latest period <= `as_of`, `stale_fundamentals` past 400 days); `growth_pair` (latest
+period and the same period a year or a quarter earlier); `cagr_pair` (first and last dated
+observation, `years` = days / 365.25); `fortnight_cell`; and `month_cells` (all cells covering
+the calendar month — `incomplete_month` if they leave a gap or cross the month edge, which
+cannot be apportioned without daily cells). `f.sotp_gap` sums the stated part values under
+`fin.investments` against the market cap; no multiple is applied, so it is arithmetic, not a
+valuation estimate.
+
+**`f.ratio` readings.** The extraction executor implements `de`, `icr`, `roe`, `roce`, `pb`
+and `pe`. `ev_ebitda` and `roic` still need the peer/EV store; `execute.py` keeps `de`, `pb`,
+`pe` and `icr` over the fact view. `pe` and `pb` use the market cap on the latest date <=
+`as_of` and the latest fundamental period; both dates are in the result.
+
+**Wiring (open).** The new ids are in the registry and callable through
+`formulas.compute_formula`, but the decomposer's lexicon still maps "net debt to EBITDA",
+"interest cover" and the other new surfaces to `f.ratio` (or to the nearest held atom), and
+`execute.py` still reads the fact view. Re-pointing `_FORMULA_WORDS` and regenerating the
+lexicon and the facts executor is the next step; it needs the bank and data root that the full
+`build_concept_registry.py` run reads, and the extraction tables in a live store.
+
+**Typed refusals.** `input_missing`, `input_after_as_of`, `period_mismatch`,
+`insufficient_periods`, `opening_balance_missing`, `zero_denominator`, `negative_base`,
+`unit_mismatch`, `missing_dim`, `unsupported_selector`, `ambiguous_input`, `data_mismatch`,
+`stale_fundamentals`, `incomplete_month`, `store_missing`, `unknown_formula`, `no_executor`
+(`formulas.REFUSAL_CODES`). No formula imputes a zero, an average of one period or a peer
+multiple.
+
+**Tests.** `reality_engine/tests/test_v4_formulas.py` has one worked example per formula
+checked by hand arithmetic (27 tests), the look-ahead refusal, the missing-input refusal, the
+incomplete-month refusal, a PIT check over every computed answer, and a read-only fixture
+proving no store is written. The fixture is
+a small SQLite file under `.tmp/` with the seven tables above. Run
+`python -m pytest reality_engine/tests/test_v4_formulas.py -q`; the job's whole-directory
+command also collects unrelated modules whose pandas/pymupdf dependencies are not installed
+on the HP Python.
+
+## A.4 operators — 27 rows *(measured)*, one closed set
 
 Each row: `op_id, label, params, shape, template, default_atom` (+ `rules` for `rule`). The
 `default_atom` is what makes "how much did it move" or "has control changed" resolvable when
@@ -198,7 +280,8 @@ reads (`pct_change -> price.close`, `control_change -> hold.pct`, …).
 `value_at`, `series`, `max_with_date`, `min_with_date`, `change`, `pct_change`, `growth`,
 `rank`, `screen`, `compare`, `lag_between`, `event_window_return`, `first_visible`,
 `last_visible`, `zscore`, `count`, `correlate`, `aggregate`, `walk`, `rule`, `exists`,
-`join_entity_set`, `threshold_cross`, `span_days`, `list_distinct`, `describe_series`.
+`join_entity_set`, `threshold_cross`, `span_days`, `list_distinct`, `describe_series`,
+`near_high`.
 
 Every template is one line and reads the fact view only:
 
@@ -231,12 +314,12 @@ The 14 **named deterministic judgement rules** each carry their stated rule in t
 | `golden_cross` | `sma_50` crosses above `sma_200` in the window; death cross if below |
 | `support_resistance` | support = highest low of the last 60 sessions below the close; resistance = lowest high above; a "real" level needs ≥2 touches within 1% |
 
-## A.5 lexicon — 2,242 rows *(measured)*: surface → atom | formula | dim | operator | scope | period
+## A.5 lexicon — 2,920 rows *(measured)*: surface → atom | formula | dim | operator | scope | period
 
-One surface maps to one entry. Counts by target kind *(measured)*: atom 1,056, operator 381,
-claim_topic 223, formula 150, rule 134, dim 120, entity_set 104, period 74. 1,109 of the
+One surface maps to one entry. Counts by target kind *(measured)*: atom 1,572, operator 379,
+claim_topic 319, formula 226, dim 124, rule 124, entity_set 102, period 74. 1,449 of the
 rows are English plural/singular variants of another row (`fii`/`fiis`,
-`borrowings`/`borrowing`), so the **distinct surfaces** are ~1,133; the report states both.
+`borrowings`/`borrowing`), so the **distinct surfaces** are 1,471; the report states both.
 
 **Mining, as specified, and what it found.** The generator mines 1–3-grams from the 1,073
 questions, normalises them, and admits a surface only when it matches a FINAL-schema column
@@ -250,7 +333,7 @@ declared topics, and the *mining* deliverable is the opposite list — §A.7's r
 60 `mined_candidates` in the JSON: phrases the bank uses that the registry still lacks.
 
 **Two lexicons, not one (v4.1 decision 2).** The table above is the **query lexicon**: the
-words a *question* uses, mapped to atoms/formulas/dims/operators (2,242 rows). The words a
+words a *question* uses, mapped to atoms/formulas/dims/operators (2,920 rows). The words a
 *document* uses are a separate, much larger object — the **surface layer** of §A.9: every
 extracted phrase kept verbatim with no cap (148,652 distinct phrases for the 60 pilot
 companies, measured in `VOCAB_PASS1.md`), mapped to ~60–80 **label** ids that share ids with
@@ -267,23 +350,23 @@ From `python tasks/arch_v4/build_concept_registry.py --check` *(measured)*:
 
 | status | cases | share | meaning |
 |---|---:|---:|---|
-| mapped | 897 | 83.6% | every clause resolves to an atom/formula/rule; slots filled |
-| not_in_data | 150 | 14.0% | resolves, but a required atom is `absent`/`gap` → a **ticket** (§H.5), not an answer |
-| unmapped | 26 | 2.4% | a clause names a measure the registry cannot express |
-| **mapped + NID** | **1,047** | **97.6%** | the *expressiveness* ceiling |
+| mapped | 913 | 85.1% | every clause resolves to an atom/formula/rule; slots filled |
+| not_in_data | 146 | 13.6% | resolves, but a required atom is `absent`/`gap` → a **ticket** (§H.5), not an answer |
+| unmapped | 14 | 1.3% | a clause names a measure the registry cannot express |
+| **mapped + NID** | **1,059** | **98.7%** | the *expressiveness* ceiling |
 
-**Read the third column correctly (v4.1 decision 3, tightened by v4.2 decision 3).** 97.6% says
+**Read the third column correctly (v4.1 decision 3, tightened by v4.2 decision 3).** 98.7% says
 the registry can *write down* the ask; it is not the gate's expected answer rate. A typed NID is
 a to-do, and the order of work on it is fixed: **search everything held** (structured stores and
 the raw document text) → **fetch** if the fetch is free within one day → **proxy** only when
 both fail → **NOT IN DATA** listing what was tried. The triage output is
 `tasks/arch_v4/NID_TRIAGE.md`; the search evidence behind it is `nid_search_logs/`, one file per
-proxy ticket (§H.5). Until those tickets close, the honest answer rate is **83.6%** and the plan
+proxy ticket (§H.5). Until those tickets close, the honest answer rate is **85.1%** and the plan
 to raise it is the ticket list, not a bigger registry.
 
-By source bank *(measured)*: variations300 281/18/1, open300 268/18/14, reddit200
-208/22/13, ripple200 171/26/3, shivam30 28/2/0 (mapped / NID / unmapped). By entity level:
-stock 526/38/20, industry 163/16/2, policy 73/17/3, market-wide 85/6/4.
+By source bank *(measured)*: variations300 267/31/2, open300 263/31/6, reddit200
+194/46/3, ripple200 161/36/3, shivam30 28/2/0 (mapped / NID / unmapped). By entity level:
+stock 492/85/7, industry 159/20/2, policy 75/15/3, market-wide 80/14/1.
 
 **Size vs coverage** — greedy set cover over clause requirements, starting from an **empty**
 lexicon, each admitted entry having to match a schema column / held metric / declared surface:
@@ -304,7 +387,7 @@ lexicon, each admitted entry having to match a schema column / held metric / dec
 
 **80% at 159 rows, 90% at 235, 95% at 280** *(measured)*; the curve's ceiling is 98.97%.
 So *the registry size at which coverage reaches 95% is ~280 lexicon rows* — eight rows in ten
-of the current 2,242 are redundant synonyms. The build phase should ship the 280-row core and
+of the current 2,920 are redundant synonyms. The build phase should ship the 280-row core and
 grow it only when a case fails, which is the minimality rule with a number attached.
 
 What this measure is **not**: it is coverage of the *bank*, not of unseen wording, and it
@@ -618,7 +701,7 @@ one quality vocabulary (`verified | measured_weak | plausible_untested | contrad
    opinions store where a report exists.
 5. `claim` table backfill from `cc_items` (highest value first), then decks, then ARs.
 6. `edge` table (§E) — empty at first; `walk` answers "no typed edge" until it fills.
-7. `corporate_action_class` build (closes 4 of the 26 unmapped and ~10 of the NID cases).
+7. `corporate_action_class` build (closes 4 of the 14 unmapped and ~10 of the NID cases).
 
 ## B.6 Sector, exposure and peer build (v4.1 decision 4)
 
@@ -810,7 +893,7 @@ if one is wrong. The evaluator is a table join, not a model:
 
 Run on all 1,073 cases with no DB and no network. Ship criterion: recall ≥97%, precision ≥97%,
 dim completeness 100% on the dim-naming subset. Today's generator already computes the
-mapping side of this *(measured: 897 mapped, 150 NID, 26 unmapped)*; the precision side needs
+mapping side of this *(measured: 913 mapped, 146 NID, 14 unmapped)*; the precision side needs
 the rubric join, which is Work package 3.
 
 ## C.4 Twenty worked examples from failing cases
@@ -1709,7 +1792,7 @@ before the pilot gate and the backtest are reviewed.
 
 Files: `tasks/arch_v4/build_concept_registry.py`, `concept_registry.json`,
 `registry_coverage.md`. Acceptance: `--check` prints coverage, sizes and the curve; deterministic
-rebuild (`PASS`); 897 mapped / 150 NID / 26 unmapped.
+rebuild (`PASS`); 913 mapped / 146 NID / 14 unmapped.
 Attacks: the *vocabulary* half of `ask_match` (a concept the answer never carried). Estimated
 share: **15–25% of ask_match** (the concepts a registry row now names).
 
@@ -1972,9 +2055,10 @@ Inputs: `tasks/master_bank/MASTER_BANK.jsonl` (1,073 cases, sha `64d2f46318127f7
 tables), pilot stores under `reality_engine/data/pilot/pilot60/` (read-only,
 `mode=ro&immutable=1`). Gate counts from `tasks/answer_bench/GATE_RESULTS_*_strict.jsonl`. The
 generator is deterministic (byte-identical rebuild verified, `PASS`) and touches no database
-outside the pilot stores. `build_concept_registry.py` now emits **60 atoms / 19 dims** (v4.1:
-the two paid-consensus atoms became one `own.estimate` atom); coverage is unchanged at 897
-mapped / 150 NID / 26 unmapped.
+outside the pilot stores. `build_concept_registry.py` now emits **66 atoms / 20 dims / 29
+formulas** (v4.1: the two paid-consensus atoms became one `own.estimate` atom; 1 Nov 2026: the
+compute layer adds 6 atoms, 1 dim and 16 formulas); coverage is 913 mapped / 146 NID / 14
+unmapped.
 
 Companion artifacts in this directory, each produced by its own worker:
 

@@ -6,6 +6,14 @@ fills it lives in :mod:`reality_engine.query.v4.decompose`.  No DB, no model.
 from __future__ import annotations
 
 from .decompose import REGISTRY_PATH, Registry, decompose, decompose_case, load_registry
+from .formulas import (
+    FormulaEngine,
+    FormulaRefusal,
+    FormulaResult,
+    Refusal,
+    compute_formula,
+    extraction_formulas,
+)
 from .parts import ANSWER_TYPES, OPERATORS, SHAPES, STATUSES, Ask, Entity, Part, Result, Window
 
 __all__ = [
@@ -16,11 +24,17 @@ __all__ = [
     "STATUSES",
     "Ask",
     "Entity",
+    "FormulaEngine",
+    "FormulaRefusal",
+    "FormulaResult",
     "Part",
+    "Refusal",
     "Registry",
     "Result",
     "Window",
+    "compute_formula",
     "decompose",
     "decompose_case",
+    "extraction_formulas",
     "load_registry",
 ]
