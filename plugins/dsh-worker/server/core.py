@@ -3335,6 +3335,7 @@ class Manager:
             wanted = os.path.normcase(str(self._workspace(workspace)))
         jobs: list[dict[str, Any]] = []
         unreadable: list[dict[str, Any]] = []
+        ordered: list[tuple[bool, float, str, Path, dict[str, Any]]] = []
         try:
             entries = sorted(self.config.jobs_dir.iterdir(), key=lambda p: p.name, reverse=True)
         except OSError:
@@ -3355,6 +3356,20 @@ class Manager:
                 or os.path.normcase(str(Path(job_ws).resolve())) != wanted
             ):
                 continue
+            started = parse_iso(job.get("started_at"))
+            ordered.append(
+                (
+                    not bool(job.get("running")),
+                    -(started.timestamp() if started is not None else 0.0),
+                    entry.name,
+                    entry,
+                    job,
+                )
+            )
+        # Running first, then newest by start time: folder names sort `hp-` jobs
+        # ahead of every local job, so name order alone hid jobs that were live.
+        ordered.sort(key=lambda item: item[:3])
+        for _not_running, _negative_start, _name, entry, job in ordered[:limit]:
             digests = progress.read_digests(entry, limit=1, max_bytes=65_536)
             latest_digest = digests[0] if digests else None
             jobs.append(
@@ -3396,8 +3411,6 @@ class Manager:
                     "status_path": job["paths"]["status"],
                 }
             )
-            if len(jobs) >= limit:
-                break
         return {
             "ok": True,
             "jobs": jobs,

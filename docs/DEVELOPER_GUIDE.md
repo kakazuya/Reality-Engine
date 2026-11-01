@@ -419,6 +419,40 @@ First build (2026-11-02): 283 jobs, 37 Claude session transcripts, 6 reviews; jo
 agree), budget 90 and 20, 99,063 output tokens and 101 model steps. Test file:
 `reality_engine/tests/test_worker_review.py` (8 tests).
 
+### L. Watching jobs at every prompt: running, stalled, failed, unreviewed (T-044)
+
+`list_workers` returns **running jobs first, then the rest newest started**,
+across hosts and with or without a workspace filter
+(`plugins/dsh-worker/server/core.py`, `Manager.list_workers`; the MCP tool text
+in `plugins/dsh-worker/server/plugin_server.py` states the same order). The old order was
+the job-folder name, and because HP folders start with `hp-` they sorted ahead
+of every local folder, so a live overnight job could sit past the limit while
+25-Oct names filled the page.
+
+`reality_engine/scripts/job_watch.py` prints only the jobs that need attention,
+with no model call and no network call, so a prompt hook can run it each turn:
+
+```bash
+python -m reality_engine.scripts.job_watch status   # at most 12 lines; silent when healthy
+python -m reality_engine.scripts.job_watch add backfill .tmp/backfill.log --pid 1234
+```
+
+`status` reads `plugins/dsh-worker/runtime/jobs/*/status.json` and
+`tasks/efficiency/worker_reviews.jsonl`, and only job folders whose
+`status.json` changed in the last 48 hours. Lines are `RUNNING <job> <minutes>m,
+<tool calls> tool calls`; `STALLED` when a running job's `worker_activity_at` is
+older than 10 minutes; `ENDED BADLY ...` for failed, lost, cancelled or
+lease-expired jobs; and `FINISHED, NEEDS REVIEW <job> <branch>` when a job
+finished in the last 48 hours, has no review row (`id`) and its branch is not
+merged (one local `git` check, skipped when nothing needs it). Newest state
+sorts first, so the 12-line cap drops the oldest history first. A registered
+non-worker process is `STALLED` when its log has not changed for 5 minutes and
+`ENDED` when its `--pid` is gone; its record is `.tmp/job_watch.json`. Exit code
+is 0 in every case and a corrupt record is skipped. First measured run
+(2026-11-02, 284 job folders): 0.36 s wall (0.29 s in process), one running job
+and eleven failed/needs-review lines. Test:
+`python -m pytest reality_engine/tests/test_job_watch.py -q` (17 tests).
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):
