@@ -187,6 +187,9 @@ families, the anchor's baseline (so `lift` is interpretable) and the features th
 ### I. Pilot extraction: write contracts and whole-page recall (T-016)
 
 The pilot-60 extraction stores 16 measure tables (`reality_engine.pilot.extract60.TABLES`).
+Code: `reality_engine/contracts.py` (the contracts), `reality_engine/pilot/extract60.py` (selection,
+prompts, the single write path), `reality_engine/pilot/proto3.py` (the dry run),
+`reality_engine/tests/test_contracts.py` (acceptance checks).
 Each measure now has a typed contract in `reality_engine/contracts.py`: allowed unit, numeric
 range, and the words its own quote must print within 60 characters of the number. The number
 must be in the quote; a digit that only appears inside a label (`Q4` read as 4.0) is rejected.
