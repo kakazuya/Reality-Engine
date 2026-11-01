@@ -1,6 +1,6 @@
 # MSI laptop
 
-Main machine, hostname `Sumit`. Runs Claude, dsh workers, merges, GPU work and source data. Personal broker files in `Manual Dumps/` stay here only.
+Main machine, hostname `Sumit`. Runs Claude, dsh workers, merges, GPU work and source data. Personal broker files stay here only, outside the workspace, in `D:\Shivam_Private\Manual Dumps`.
 
 ## Workers
 - 2 to 3 workers, with at least 2.5 GB free. Uses Go account 2 by default.

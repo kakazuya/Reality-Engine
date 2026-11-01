@@ -30,7 +30,7 @@
 2. The brief or the one plan it names.
 3. Only the files that brief names. Find code with code-intel (`definition`, `symbols`, `module_map`) and data with reality-data (`catalog`, `schema`). Do not survey the repo, and do not read `tasks/archive/`, `.tmp/` or job folders unless the task names them.
 
-Finish one step per session. Commit it and write the next action into `tasks/STATE.md`. Hand off by about 150k tokens. Scripts print summaries; details go in files.
+Finish one step per session. Commit it and write the next action into `tasks/STATE.md`. Write the wrap-up at 400k tokens; the session limit is 450k. Scripts print summaries; details go in files.
 
 Reference, only when needed: `docs/DEVELOPER_GUIDE.md`, `docs/RAW_DATA_FAMILIES.md`, `machines/README.md`, `tasks/DATA_INVENTORY.md`.
 

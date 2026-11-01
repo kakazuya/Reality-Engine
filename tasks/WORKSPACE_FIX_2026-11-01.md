@@ -21,7 +21,7 @@ Claude: `PreToolUse` hook and permission settings keep it out of `tasks/archive`
 ## Context limits (Shivam, 1 Nov)
 Every session must make steady progress without loading the repo. A session started at about 54k tokens in the last 5 sessions, before any work.
 - **Short start:** `tasks/STATE.md` holds the current step, the exact next action, running jobs and blockers. A check keeps it under 40 lines. History goes to the decision log.
-- **One step per session:** finish, commit and write the next action into `tasks/STATE.md`. Hand off by about 150k tokens.
+- **One step per session:** finish, commit and write the next action into `tasks/STATE.md`. Write the wrap-up at 400k tokens; the session limit is 450k (Shivam, 1 Nov, replacing 150k).
 - **Results in files:** scripts print summaries, workers report one page, and details live in files read only when needed.
 - **Fences:** `tasks/archive`, `.tmp` and data folders are blocked from Claude's reads and hidden from search unless a task names them.
 - **Rules move into checks:** once a check enforces a rule, its memory entry and `AGENTS.md` text go away.
@@ -37,7 +37,7 @@ Before this fix, no hook loaded anything. Memory held 69 files of 122 KB, but on
 ## Enforcement order (Shivam asked, 1 Nov: do md rules even work?)
 Written rules are the weakest layer. Use the strongest that fits: make the wrong action impossible (tool defaults, OS and file permissions), block it at the moment (`PreToolUse` hook, permission deny), refuse it at commit or merge (gates, tests), reject bad data at write time (typed contracts, database constraints), then an independent check. `tasks/RULINGS.md` is only for judgement rules and context.
 
-Add in step 3, each from a failure we have had: hook blocks on `git push` without his OK, any read of `Manual Dumps/`, keys printed to output, and edits to hooks or gates by agents; worker OS write roots excluding `Manual Dumps/`; a bank rebuild refused when ruled rows change; the full test suite refused on the MSI while workers run. As each check lands, shorten its line in `tasks/RULINGS.md` to `[check]`. Hook matching is best-effort, so hard denials use permissions as well.
+Add in step 3, each from a failure we have had: hook blocks on `git push` without his OK, any read of `D:\Shivam_Private\Manual Dumps` (moved out of the repo on 1 Nov), keys printed to output, and edits to hooks or gates by agents; worker OS write roots excluding `Manual Dumps/`; a bank rebuild refused when ruled rows change; the full test suite refused on the MSI while workers run. As each check lands, shorten its line in `tasks/RULINGS.md` to `[check]`. Hook matching is best-effort, so hard denials use permissions as well.
 
 ## Steps
 | # | Work | Exit test | Status |

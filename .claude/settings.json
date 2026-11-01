@@ -3,7 +3,8 @@
     "deny": [
       "Read(tasks/archive/**)",
       "Read(.tmp/**)",
-      "Read(plugins/dsh-worker/runtime/**)"
+      "Read(plugins/dsh-worker/runtime/**)",
+      "Read(//d/Shivam_Private/**)"
     ]
   },
   "hooks": {

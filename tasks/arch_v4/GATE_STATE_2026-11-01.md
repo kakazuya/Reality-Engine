@@ -66,7 +66,7 @@ The contract count measures answer shape, not truth, and fell because stale and 
 - OCR: Windows.Media.Ocr on the HP CPU, 186.7 pages/min, number recall 0.964. **1 Nov accuracy pilot FAILED the gate: 110 table pages, number recall 0.839, precision 0.896 (need 0.95, 0.98). Not run.** Bench figure 0.964 does not hold on our table pages. Only about 4,647 of the 1,073 files' 11,728 pages truly lack text. RapidOCR on CPU is being tested.
 
 ## Never
-Copy keys into files or print them. Send `Manual Dumps/` to the HP or any model, or put amounts in the repo or decision log. Loosen a grader to raise a score. Push without Shivam's OK. Spend DeepInfra or use paid models without his OK. Change the question bank, labels or scope without his ruling. Assign pilot bank reasoning to a worker: Claude owns it, DeepSeek only reads.
+Copy keys into files or print them. Read `D:\Shivam_Private\Manual Dumps` or send it to the HP or any model, or put amounts in the repo or decision log. Loosen a grader to raise a score. Push without Shivam's OK. Spend DeepInfra or use paid models without his OK. Change the question bank, labels or scope without his ruling. Assign pilot bank reasoning to a worker: Claude owns it, DeepSeek only reads.
 
 ## Merge recipe (Claude)
 Review by meaning; a report without `Docs updated:` is not merged. `git merge --no-ff --no-commit <branch>`, drop `PROGRESS_NOTES.md`, keep ours on `query/v4/__init__.py`, run the tests, update this file and each affected doc, commit ending `By: Wolf` and the co-author line. Copy `.tmp` DBs first, then remove the worktree and branch. Log to the decision log and `rclone copy D:\RealityEngine\plans gdrive:InfoDiffusion_archive/plans`. HP: `hp_worker fetch-patch <job>` gives branch `dsh-hp/<job>`.
