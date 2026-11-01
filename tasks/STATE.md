@@ -4,14 +4,12 @@
 **Pilot test on BAJFINANCE, HINDALCO and KEC, by Shivam's order of 2 Nov.** Workspace tickets no longer block it. The last prototype failed: 0 of 40 sampled answers right, 78% of numbers missed: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`.
 
 ## Next action
-1. Overlay worker `20261101T204312Z-47a63343` (T-034) finished: 8 tests pass. Review and merge branch `dsh/20261101T204312Z-47a63343`. Its thin-page threshold is 400 characters per chunk, so compare that with the 352 pages under 200 before running OCR.
-2. HP OCR: `tasks/pilot60/proto3_text/thin_pages.py` cuts 352 thin deck pages plus 100 check pages; the copy to the HP failed (`tar` returned 1 on the `C:/` path, 0 files arrived). Fix that, then start an HP job writing `ocr_pages.jsonl.gz` for them. The 100 pages measure how wrong hidden text layers are.
-3. KEC transcripts (T-037): `tasks/pilot60/proto3_text/kec_fetch.py` found no links because the page's hrefs do not end in .pdf; listing saved at `D:\RealityEngine\raw\kec_transcripts\_listing.html`. Fix the pattern and fetch. known_at comes from the cover letter's filing, not the fetch.
-4. T-038: wire `extract_proto3.db` rows that pass contracts into the fact view, and answer narrative questions with retrieved passages and exact quotes, no model. Of 153 rows, 29 answered and 124 refused: 115 reasons were no row in the store, 47 narrative with no topic.
-5. T-035: rerun extraction, hard stop $8, DeepSeek; answer the same questions; grade by reading.
+1. HP job `proto3-ocr-pages`: 572 deck pages under 400 characters on the PDF page, plus 100 check pages. When it ends, `hp_run fetch 'C:\RE\jobs\proto3-ocr-pages\ocr_pages.jsonl.gz' --dest tasks/pilot60/proto3_text/ocr_pages.jsonl.gz`, then `python -m reality_engine.pilot.proto3 dryrun`. The check pages measure how wrong hidden text layers are. T-034's overlay is merged: OCR pages are added as extra passages and never replace text.
+2. Worker `20261101T210210Z-521b20a9` (T-038): review, merge, then run `tasks/pilot60/proto3_text/kec_load.py` on `chunks_v3_pilot.db` after a backup. T-037: all 42 KEC transcripts are in `D:\RealityEngine\raw\kec_transcripts`; `_known_at.json` pairs the 10 since Q4 FY24 with their filings. They are not in the store until that load runs.
+3. T-035: rerun extraction, hard stop $8, DeepSeek; answer the same questions; grade by reading. Before it, read the cost estimate in the dryrun: every OCR page goes whole to every table, and many are section dividers.
 
 ## Running
-Nothing. The dsh-worker server still has the old start gate until restarted.
+HP job `proto3-ocr-pages`; T-038 worker. The dsh-worker server still has the old start gate until restarted.
 
 ## Where the project stands
 Golden rule step 3, schema design, with the question bank accepted (1,901 questions, frozen). Gate on the old pilot: 12.7% contract strict, but 0 of 127 answered rows right on hand reading. Prototype on 3 companies failed its grade: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`. Full record: `tasks/arch_v4/GATE_STATE_2026-11-01.md`. Decisions: `D:\RealityEngine\plans\DECISION_LOG.md`, last 5 entries.

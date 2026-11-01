@@ -1354,13 +1354,21 @@ def cmd_dryrun(samples: int = 10) -> dict:
         con.close()
     docs, chunks = _scope_docs()
     estimate = x.whole_page_estimate(docs, _by_doc(chunks))
+    ocr = x.OCR_STATS or {}
     out = {"db": str(db), "read_only": True, "per_table": per,
            "totals": {"kept": sum(v["kept"] for v in per.values()),
                       "rejected": sum(v["rejected"] for v in per.values())},
            "rejects_by_measure": dict(sorted(rejects_by_measure.items(),
                                              key=lambda kv: (-kv[1], kv[0]))),
            "sample_rejects": pending[:samples],
-           "recall_estimate": estimate}
+           "recall_estimate": estimate,
+           # T-034: thin OCR rows applied and unmatched, layer-check pages and
+           # the numbers that differ in each direction, bad rows, token change.
+           "ocr_overlay": {
+               "path": ocr.get("path"), "present": bool(ocr.get("present")),
+               "pages": dict(ocr.get("pages") or {}),
+               "per_company_doc_type": ocr.get("per_company_doc_type") or {},
+               "input_token_delta": ocr.get("input_token_delta", 0)}}
     (SCRATCH / "dryrun.json").write_text(json.dumps(out, indent=1), encoding="utf-8")
     return out
 
@@ -1397,7 +1405,7 @@ def main(argv: list[str] | None = None) -> int:
                   f"({row['rejected_percent']}%)", flush=True)
         print(json.dumps({k: out[k] for k in ("db", "read_only", "totals",
                                               "rejects_by_measure", "sample_rejects",
-                                              "recall_estimate")}, indent=1))
+                                              "recall_estimate", "ocr_overlay")}, indent=1))
     return 0
 
 

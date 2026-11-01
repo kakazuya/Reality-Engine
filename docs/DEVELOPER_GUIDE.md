@@ -184,7 +184,7 @@ Both scripts print an `ALL CHECKS PASSED` block and are idempotent. Read peers b
 `peer_graph.neighbours(conn, "TITAGARH")` — every row carries similarity, coverage, shared
 families, the anchor's baseline (so `lift` is interpretable) and the features that drove the match.
 
-### I. Pilot extraction: write contracts and whole-page recall (T-016)
+### I. Pilot extraction: write contracts, whole-page recall (T-016) and page OCR (T-034)
 
 The pilot-60 extraction stores 16 measure tables (`reality_engine.pilot.extract60.TABLES`).
 Code: `reality_engine/contracts.py` (the contracts), `reality_engine/pilot/extract60.py` (selection,
@@ -227,6 +227,50 @@ python -m reality_engine.pilot.proto3 dryrun
 `company_price_revision` 2/6, `company_segment_pnl` 25/72 and `rating_action` 7/16, and no
 table is over 90%. The biggest reject class is `measure_term_absent`: a chart-axis or table-cell
 quote prints the number but not the word that says what it is.
+
+#### Page OCR overlay for thin deck pages (T-034)
+
+The HP job writes one row per page to `tasks/pilot60/proto3_text/ocr_pages.jsonl.gz`
+(`isin`, `symbol`, `doc_type`, `doc_date`, `file_name`, `sha256`, `page`, `text`,
+`mean_confidence`, `low_conf_numbers`, plus `why`, `existing_chars` and `existing_text`
+from `tasks/pilot60/proto3_text/thin_pages.py`). The file is optional at run time:
+`extract60.load_store` joins its rows to `doc` by `sha256`, and a missing file changes
+nothing. `REALITY_OCR_OVERLAY` overrides the path; an empty value disables the overlay.
+
+- `why="thin"` means that PDF page has under 400 characters of text layer (measured on the
+  three companies' 2,107 deck pages, 2026-11-02: every one of the 352 pages under 200
+  characters sits inside a multi-page chunk, so thinness is a page property, not a chunk
+  length). Such a row is always applied: `load_store` adds a one-page chunk
+  `ocr:{doc_id}:{page}` with `section="ocr"`, `text_source="ocr"`, the real page and
+  `doc_id`, and `low_conf_numbers`. An existing chunk's body is never replaced or
+  edited, single-page or multi-page.
+- `why="layer_check"` never changes what extraction reads; the numbers in the row's
+  `existing_text` and in its OCR text are compared in both directions and logged per
+  document in `OCR_STATS["per_doc"][doc_id]["numbers_only_in_text"]` /
+  `["numbers_only_in_ocr"]`. Reading `existing_text` from the row means the check works
+  for pages inside multi-page chunks too.
+- A row without a valid `why` is counted in `OCR_STATS["pages"]["bad_rows"]` and not
+  applied; a thin row whose `sha256` matches no document is counted in
+  `["thin_unmatched"]`. `THIN_PAGE_CHARS` / `REALITY_OCR_THIN_CHARS` are gone —
+  `thin_pages.py` decides thinness.
+- Every chunk carries `text_source` (`chunk` or `ocr`). The selector sends every whole
+  page whole — a number-dense chunk or a T-034 OCR chunk — in page order, so an added OCR
+  chunk reaches the reader even with empty `tags` and `section="ocr"`. `validate` sets
+  `source = 'ocr'` when the matched passage is the OCR chunk, and keeps `chunks_v3` when
+  the quote is found only in the original chunk (including a multi-page chunk covering
+  the same page).
+- `build` prints the overlay summary and stores `OCR_STATS` in `extract_run.notes`;
+  `proto3 dryrun` reports the same figures in `ocr_overlay` per company and doc type —
+  thin rows applied and unmatched, layer-check pages compared, numbers only in the text
+  layer, numbers only in OCR, bad rows, and the input-token change — in
+  `.tmp/proto3/dryrun.json` and on stdout.
+
+```bash
+# Page OCR overlay fixtures: thin page inside a two-page chunk, reader selection and
+# page order, OCR and chunks_v3 quote sources, layer-check numbers both ways, a row
+# without why, a missing file, a thin row unmatched to a document (8 passed)
+python -m pytest reality_engine/tests/test_ocr_overlay.py -q
+```
 
 ## 3. Ticket tracker
 
