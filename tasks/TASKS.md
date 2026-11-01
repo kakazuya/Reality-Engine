@@ -25,6 +25,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-023 | LOOKING | P3 | Check if finished: shareholding and pledge backfill, marked running on 19 Oct | accept: Shivam | from: tasks/PIPELINE_TODO.md B3 | opened 2026-11-02
 - T-024 | LOOKING | P3 | Check if still open: index membership history | accept: Shivam | from: tasks/PIPELINE_TODO.md Phase C | opened 2026-11-02
 - T-025 | LOOKING | P3 | Check if still open: parse value, customer and execution period from exchange order-win filings | accept: Shivam | from: tasks/PIPELINE_TODO.md Phase C | opened 2026-11-02
+- T-037 | OPEN | P1 | Fetch KEC's call transcripts from kecrpg.com; its 10 filed concalls are cover letters | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
 
 ## OCR and extraction
 - T-020 | OPEN | P2 | OCR after workspace step 4: TextRecognizer first pass, stronger reader for low-confidence numbers; last accuracy pilot failed its gate | accept: Shivam | from: RULINGS, GATE_STATE | opened 2026-11-02
@@ -36,9 +37,11 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-032 | OPEN | P2 | Gate reports show only the hand-read score: tasks/pilot60/gate_run.py still prints the format score | accept: Shivam | from: Shivam ruling 2 Nov | opened 2026-11-02
 - T-035 | OPEN | P1 | Pilot: rerun extraction on the 3 companies, answer the same questions, grade by reading | accept: Shivam | from: PROTOTYPE3 grade change 5 | opened 2026-11-02
 - T-036 | OPEN | P2 | Split fact.value into numeric and text, and test metric_citations on the prototype | accept: Shivam | from: T-016 | opened 2026-11-02
+- T-038 | OPEN | P1 | Wire contract-passing extract rows into the fact view; answer narrative questions with retrieved quoted passages, no model | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
 
 ## Bank
 - T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02
+- T-039 | WAITING Shivam | P2 | Rule on 21 NOT IN DATA labels with inputs held: 12 grouped with peers, 9 single-company, 13 carry evidence | accept: Shivam | from: Question map 2 Nov | opened 2026-11-02
 
 ## Research
 - T-027 | OPEN | P3 | Trading limits module the test harness cannot run without, when backtests resume | accept: python -m pytest reality_engine/tests/test_trading_limits.py -q | from: tasks/FRAMEWORK.md | opened 2026-11-02
