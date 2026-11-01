@@ -39,3 +39,4 @@ tasks/arch_v4/LEXICON_ADDITIONS.md,810,120,pending-generated,Generated diff tabl
 tasks/arch_v4/label_promotion_review.md,828,80,pending-generated,Generated proposal; asking Shivam,
 tasks/arch_v4/reader_test/review.md,1264,60,pending-generated,Generated grading packet; asking Shivam,
 tasks/handoff/QUEUE_2026-10-31.md,53,53,deleted,Replaced by the ticket board; open item moved to a ticket,7593ce8
+tasks/arch_v4/QUERY_V4_DESIGN.md,2176,1639,changed-partial,"Lines 1 to 1639 read; gate figure, vocabulary counts, rule pointer corrected. RESUME AT LINE 1640 of the pre-edit file, section F.8",546f941
