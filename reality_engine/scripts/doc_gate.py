@@ -4,11 +4,15 @@ A merge on ``main`` must stage ``tasks/STATE.md``.  A code commit on ``main`` mu
 naming it.  A commit that stages a tracker file is linted like ``task_board lint``.  A commit
 message on ``main`` must name a ticket (``T-<digits>``) or say why it has none
 (``No-ticket: <reason>``).  Worker branches are checked when they merge.
-Install with ``python <this file> --install``.
+
+Every pre-commit and commit-msg pass or block is appended to the rule ledger
+(``tasks/efficiency/rule_events.jsonl``, see ``rule_ledger.py``); logging never changes a
+gate result.  Install with ``python <this file> --install``.
 """
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -111,6 +115,33 @@ def check_message(message: str, *, branch: str, known: set[str] | None = None) -
     return None
 
 
+def gate_rule(problem: str | None) -> str:
+    """The RULINGS rule a pre-commit result belongs to: the block message names it."""
+    if problem:
+        for name in LINE_LIMITS:
+            if problem.startswith(f"{name} has "):
+                return "start_files"
+        if problem.startswith("tracker lint"):
+            return "tracker_lint"
+    return "doc_gate"
+
+
+def log_gate(rule: str, problem: str | None, *, subject: str = "", detail: str = "",
+             path: Path | None = None) -> bool:
+    """Record one gate result in the rule ledger; never raises and never changes the answer."""
+    try:
+        root = Path(__file__).resolve().parents[2]
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from reality_engine.scripts.rule_ledger import log_event
+
+        payload = json.dumps({"subject": subject[:300], "problem": (problem or "")[:300],
+                              "detail": detail[:300]}, ensure_ascii=False)
+        return log_event(rule, "block" if problem else "pass", "doc_gate", payload, path=path)
+    except Exception:
+        return False
+
+
 def _git(*args: str) -> str:
     return subprocess.run(["git", *args], capture_output=True, text=True, check=False, encoding="utf-8", errors="replace").stdout.strip()
 
@@ -148,7 +179,11 @@ def main(argv: list[str]) -> int:
             except OSError as exc:
                 print(f"doc_gate: cannot read the commit message: {exc}", file=sys.stderr)
                 return 1
-        problem = check_message(message, branch=_git("rev-parse", "--abbrev-ref", "HEAD"), known=known_tickets())
+        branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+        problem = check_message(message, branch=branch, known=known_tickets())
+        if branch == "main":
+            subject = next((line.strip() for line in message.splitlines() if line.strip()), "")
+            log_gate("ticket", problem, subject=subject, detail="commit-msg")
         if problem:
             print(f"doc_gate: {problem}", file=sys.stderr)
             return 1
@@ -162,10 +197,15 @@ def main(argv: list[str]) -> int:
             (hooks / name).write_text(body, encoding="utf-8", newline="\n")
             print(f"installed {hooks / name}")
         return 0
-    message = check(_git("diff", "--cached", "--name-only").splitlines(),
-                    branch=_git("rev-parse", "--abbrev-ref", "HEAD"),
+    staged = _git("diff", "--cached", "--name-only").splitlines()
+    branch = _git("rev-parse", "--abbrev-ref", "HEAD")
+    message = check(staged, branch=branch,
                     merging=Path(_git("rev-parse", "--git-path", "MERGE_HEAD")).exists(),
                     read=lambda name: _git("show", f":{name}"))
+    if branch == "main":
+        log_gate(gate_rule(message), message, detail="pre-commit: " + ", ".join(staged[:30]))
+        if message is None and any(name in LINE_LIMITS for name in staged):
+            log_gate("start_files", None, detail="line limits passed")
     if message:
         print(f"doc_gate: {message}", file=sys.stderr)
         return 1
