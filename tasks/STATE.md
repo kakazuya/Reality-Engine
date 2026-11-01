@@ -1,4 +1,4 @@
-# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-01 18:40 IST (Wolf)
+# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-01 19:30 IST (Wolf)
 
 ## Now
 **Workspace fix first, by Shivam's order: `tasks/WORKSPACE_FIX_2026-11-01.md`.** OCR, extraction and database design wait until its step 4 passes.
