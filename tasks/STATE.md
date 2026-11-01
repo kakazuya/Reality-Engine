@@ -1,4 +1,4 @@
-# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-10-31 16:10 IST (Wolf)
+# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-11-01 04:45 IST (dsh proto3 worker)
 
 Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or the stores, then fix the wrong one.
 
@@ -30,6 +30,18 @@ The contract count measures answer shape, not truth, and fell because stale and 
 - Raw shareholding XBRL: `D:\RealityEngine\raw\nse_shp_xbrl_pilot`.
 
 ## Findings that change what to do
+- **Prototype-3 (BAJFINANCE, HINDALCO, KEC; 94 documents from 2024-04-01): extraction measured, and the method is cheap but recall-bound.**
+  Arm A (XBRL + PDF text tables + regex + BSE feed) 565 rows at 0 model tokens; Arm B (Flash ~low) 635 rows for $0.7155 and 667,305 input
+  tokens = 29.9% of the whole text it read; accuracy 30/30 both arms. Recall is the weak end: one whole-document pass produced 117 valid
+  rows and the store misses 91 of them (`company_operating_metrics` 46, `unit_volume` 22, `lender_metrics` 13, `order_intake` 8,
+  `balance_sheet_lines` 2). Max effort is a loss: 2.1x the cost for 19 rows against low's 25. Cost per document: concall $0.008, deck
+  $0.010, annual report $0.011, so 60 names $12.97-25.93 and the whole universe $18.24-36.49. Answer file for the three names:
+  153 bank rows (45 answered, 99 evidence-only, 9 not found), ungraded: `tasks/pilot60/PROTOTYPE3_REPORT_2026-11-01.md`.
+- **`rating_action` scope defect (2026-11-01).** The BSE rating feed ignored the ISIN allow-list: 223 rows for 37 companies sat in the
+  3-company prototype store (207 outside scope in each of the two stores), written by code with 0 model tokens; the one model call on the
+  table accepted 0 rows. Fixed in `extract60.py` (`universe_symbols` honours its ISINs, `_announcement_rating_pass` defaults to
+  `SCOPE_ISINS`); `python -m reality_engine.pilot.proto3 scope` prunes and rebuilds the 16 in-scope rows. Record:
+  `tasks/pilot60/PROTOTYPE3_SCOPE_2026-11-01.json`.
 - **Analyst agent test (free Beam + typed PIT tools): KILL.** 7/24 RIGHT (29.2%, Wilson 14.9–49.2) of rows not ILL_POSED and not CORRECT_NOT_IN_DATA; 7 PARTIAL, 10 WRONG, 11 ILL_POSED, 5 CORRECT_NOT_IN_DATA. All 40 answered (native tool calls) at 8.2 s and 19.7k input tokens per question; 0 PIT breaches. Main gaps: premise substitution (11), data gaps (10), no sort/aggregate/chart tools (6). `tasks/arch_v4/ANALYST_AGENT_TEST_2026-10-31.md`.
 - Reader test: 13/40 RIGHT (32.5%), killed by its fixed rule; 13 more correctly said not stated, mostly missing documents, and 4 were WRONG. `tasks/arch_v4/READER_TEST_2026-10-31.md`.
 - "Latest" now means the most recent period known by `as_of`, within limits in `execute.py` `LATEST_LIMIT_DAYS` (hold 200, fin 400, price 10, flows 100, macro and text 400 days). Named periods are strict, with no older fallback. Lifts pledge questions and removes years-old values given as latest; the run that introduced it fell 369 to 352.

@@ -9,8 +9,10 @@ live databases.
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from reality_engine.pilot import extract60 as x
@@ -249,6 +251,134 @@ class ReportTest(unittest.TestCase):
         for table in x.TABLES:
             self.assertIn(table, text)
         for heading in ("Precision", "Recall", "Tokens", "Before / after"):
+            self.assertIn(heading, text)
+
+
+class Proto3Test(unittest.TestCase):
+    """Prototype-3 additions: 16 measures, the ISIN scope, and the new validators."""
+
+    def test_extract60_has_the_five_proto3_tables(self):
+        for table in ("balance_sheet_lines", "cash_flow_lines", "tax_reconciliation",
+                      "lender_metrics", "unit_volume"):
+            self.assertIn(table, x.TABLES)
+            self.assertIn(table, x.SPECS)
+            self.assertIn(table, x.INSERT_SQL)
+
+    def test_extract60_ddl_creates_every_target_table(self):
+        con = sqlite3.connect(":memory:")
+        con.executescript(x.DDL)
+        present = {r[0] for r in con.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+        for table in x.TABLES:
+            self.assertIn(table, present)
+        self.assertIn("extract_arm", present)
+        self.assertIn("extract_call", present)
+        con.close()
+
+    def test_extract60_scope_filters_isin_and_known_at(self):
+        doc = {**DOC, "isin": "INE296A01032", "known_at": "2024-06-01T10:00:00"}
+        with unittest.mock.patch.object(x, "SCOPE_ISINS", ("INE296A01032",)), \
+                unittest.mock.patch.object(x, "SINCE", "2024-04-01"):
+            self.assertTrue(x.in_scope(doc))
+            self.assertFalse(x.in_scope({**doc, "isin": "INE999999999"}))
+            self.assertFalse(x.in_scope({**doc, "known_at": "2024-03-31T10:00:00"}))
+
+    def test_extract60_universe_symbols_honours_its_isins(self):
+        """The BSE rating feed keys on this map; an unfiltered map wrote 34 foreign ISINs."""
+        path = REPO / ".tmp" / "pytest_universe_symbols.csv"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("isin,symbol\nINE111111111,AAA\nINE222222222,BBB\n", encoding="utf-8")
+        try:
+            with unittest.mock.patch.object(x, "UNIVERSE", path):
+                self.assertEqual(x.universe_symbols(["INE222222222"]), {"BBB": "INE222222222"})
+                self.assertEqual(x.universe_symbols([]), {})
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_extract60_lender_pair_reads_the_second_number_as_nnpa(self):
+        body = "GNPA and NNPA stood at 1.05% and 0.46% as of 31 March 2024."
+        match = x.LENDER_PAIR.search(body)
+        self.assertIsNotNone(match)
+        self.assertEqual(match.group(1), "1.05")
+        self.assertEqual(match.group(2), "0.46")
+
+    def test_extract60_stated_period_reads_the_sentence(self):
+        self.assertEqual(x._stated_period("GNPA of 0.96% as of 31 March 2026.", "2024-03-31"),
+                         "2026-03-31")
+        self.assertEqual(x._stated_period("NIM came in at 7.2% in Q1 FY25", "2024-03-31"),
+                         "2024-06-30")
+
+    def test_extract60_fiscal_label(self):
+        self.assertEqual(x.fy_label("2026-03-31"), "FY26")
+        self.assertEqual(x.fy_label(""), "")
+
+    def test_extract60_validator_balance_sheet_line(self):
+        chunk = {**CHUNK, "body": "Total assets 432,203.31 crore as at March 31, 2026.",
+                 "page_from": 272, "page_to": 272}
+        row = {"period_end": "2026-03-31", "basis": "consolidated",
+               "line_item": "total_assets", "value_cr": 432203.31, "page": 272,
+               "quote": "Total assets 432,203.31 crore"}
+        clean, reason = x.validate("balance_sheet_lines", row, DOC, [chunk])
+        self.assertIsNone(reason)
+        self.assertEqual(clean["line_item"], "total_assets")
+        bad = {**row, "line_item": "revenue"}
+        self.assertIsNone(x.validate("balance_sheet_lines", bad, DOC, [chunk])[0])
+
+    def test_extract60_validator_lender_pct_and_volume(self):
+        chunk = {**CHUNK, "body": "GNPA stood at 1.01% and shipments were 1,234 kt.",
+                 "page_from": 9, "page_to": 9}
+        clean, reason = x.validate(
+            "lender_metrics",
+            {"period_end": "2026-03-31", "metric": "gnpa_pct", "value": 1.01, "unit": "pct",
+             "page": 9, "quote": "GNPA stood at 1.01%"}, DOC, [chunk])
+        self.assertIsNone(reason)
+        self.assertEqual(clean["value"], 1.01)
+        clean, reason = x.validate(
+            "unit_volume",
+            {"period_end": "2026-03-31", "product": "aluminium", "quantity": 1234, "unit": "kt",
+             "page": 9, "quote": "shipments were 1,234 kt"}, DOC, [chunk])
+        self.assertIsNone(reason)
+        self.assertEqual(clean["quantity"], 1234)
+
+    def test_extract60_arm_ledger_records_rows_and_wall_time(self):
+        con = sqlite3.connect(":memory:")
+        con.executescript(x.DDL)
+        before = x._table_count(con, "lender_metrics")
+        con.execute("INSERT INTO lender_metrics VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    ("INE000000001", "2026-03-31", "gnpa_pct", 1.0, "pct", "chunks_v3",
+                     DOC["doc_id"], DOC["known_at"], "GNPA stood at 1.0%", 9))
+        with unittest.mock.patch.object(x, "ARM", "T"):
+            x._arm_row(con, "lender_metrics", before, 0.0, None, 0, 0, 0, 0.0, "code-only")
+        row = con.execute("SELECT * FROM extract_arm").fetchone()
+        self.assertEqual(row[0], "T")
+        self.assertEqual(row[3], 1)
+        con.close()
+
+    def test_extract60_call_log_schema(self):
+        con = sqlite3.connect(":memory:")
+        con.executescript(x.DDL)
+        columns = {r[1] for r in con.execute("PRAGMA table_info(extract_call)")}
+        for column in ("table_name", "doc_id", "in_tok", "out_tok", "cost_usd", "ok"):
+            self.assertIn(column, columns)
+        con.close()
+
+    def test_extract60_bank_rows_are_shaped(self):
+        from reality_engine.pilot import proto3
+        self.assertTrue(proto3.ANSWER_FILE.parent.is_dir())
+        row = {"mid": "MB0001#L", "status": "not_found", "rows": []}
+        self.assertEqual(row["status"], "not_found")
+        matched = [(table, metric) for pattern, table, metric in proto3.BANK_RULES
+                   if re.search(pattern, "What was the net NPA %", re.I)]
+        self.assertIn(("lender_metrics", "nnpa_pct"), matched)
+
+    def test_extract60_proto3_report_headings_when_written(self):
+        from reality_engine.pilot import proto3
+        if not proto3.REPORT_FILE.is_file():
+            self.skipTest("prototype-3 report not written")
+        text = proto3.REPORT_FILE.read_text(encoding="utf-8")
+        for heading in ("Scope and documents", "Per measure, by arm", "Reading cost",
+                        "Accuracy", "Recall", "Arm C", "Effort comparison", "Cost forecast",
+                        "Answers prepared for Claude", "Docs updated"):
             self.assertIn(heading, text)
 
 

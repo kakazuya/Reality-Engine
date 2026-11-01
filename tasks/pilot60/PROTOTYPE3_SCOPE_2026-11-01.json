@@ -1,0 +1,36 @@
+{
+ "defect": "rating_action carried rows for companies outside the 3-name prototype scope",
+ "found": "2026-11-01",
+ "pre_fix": {
+  "rows": 223,
+  "companies": 37,
+  "out_of_scope_isins": 34,
+  "out_of_scope_rows": 207,
+  "rows_per_store": {
+   "extract_proto3.db": 207,
+   "extract_proto3_arm_a.db": 207
+  },
+  "measured_by": "SELECT isin, count(*) FROM rating_action GROUP BY isin on both stores, before the prune"
+ },
+ "model_tokens": {
+  "calls": 1,
+  "in_tok": 2933,
+  "out_tok": 5821,
+  "cost_usd": 0.003933,
+  "rows_accepted": 0,
+  "note": "the 223 rows came from the code-only BSE feed pass; the one model call on this table accepted 0 rows"
+ },
+ "post_fix": {
+  "rows": 16,
+  "companies": 3,
+  "out_of_scope_rows": 0
+ },
+ "root_cause": "universe_symbols() ignored its isins argument and _announcement_rating_pass called universe_isins() (the 60-name pilot) instead of SCOPE_ISINS",
+ "fix": "extract60.universe_symbols filters by the ISINs it is given; _announcement_rating_pass defaults to SCOPE_ISINS; proto3 scope prunes every measure table and rebuilds the feed under the scope",
+ "scope_guard": {
+  "removed_rows_this_run": 0,
+  "feed_rows_rebuilt": 16,
+  "cost_usd": 0.0,
+  "note": "first guard run removed 414 rows (207 in each store); re-runs are idempotent and remove 0"
+ }
+}

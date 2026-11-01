@@ -1,5 +1,11 @@
 # Pilot-60 targeted fact extraction — build report
 
+> **Scope note (2026-11-01).** This report covers the 11-table pilot build. Prototype-3 added
+> `balance_sheet_lines`, `cash_flow_lines`, `tax_reconciliation`, `lender_metrics` and
+> `unit_volume` (16 tables in `reality_engine.pilot.extract60.TABLES`), measured on three
+> companies. Those numbers and the new method are in
+> `tasks/pilot60/PROTOTYPE3_REPORT_2026-11-01.md`; this file's row counts stay as built.
+
 Built by `python -m reality_engine.pilot.extract60 build`. Store: `extract_pilot60.db`. Reader: `deepseek-v4.1-flash~low` through the existing free Go path (`concall_pilot.call_go`), 528 calls over 2 model runs, 1,394,681 in / 668,296 out tokens, $0.61 off-peak.
 
 Every row carries `doc_id`, `page`, a verbatim `quote` (<=25 words) and `known_at`, and passed the deterministic validator (unit vocabulary, magnitude, period against the document's own date, quote verbatim, and the value printed on the page that carries the quote). Reads are point-in-time: `known_at <= as_of`.

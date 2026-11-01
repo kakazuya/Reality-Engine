@@ -7,14 +7,18 @@ documents; every row carries doc_id, page, a verbatim quote of <=25 words and
 known_at, and passes a deterministic validator (units, magnitudes, period vs
 the doc's own date) before it is written.
 
-Tables (SCHEMA_V3 names): ``company_operating_metrics``, ``company_segment_pnl``,
+Tables (SCHEMA_V3 names, 16): ``company_operating_metrics``, ``company_segment_pnl``,
 ``company_cost_structure``, ``order_intake``, ``order_book_contract``,
 ``company_capacity_utilisation``, ``capex_project``, ``company_price_revision``,
-``company_debt_mix``, ``rating_action``, ``supply_link``.
+``company_debt_mix``, ``rating_action``, ``supply_link``, plus the prototype-3 five
+``balance_sheet_lines``, ``cash_flow_lines``, ``tax_reconciliation``, ``lender_metrics``,
+``unit_volume``. ``REALITY_EXTRACT_ISINS`` narrows every pass (selector, model reader and
+the BSE rating feed) to an ISIN allow-list; ``REALITY_EXTRACT_SINCE`` narrows it by date.
 
 Reader: the repo's existing free Go path (``concall_pilot.call_go``,
 DeepSeek V4.1 Flash) — the same one the concall/AR pipelines use, no new paid
-path. Read-only on every input; writes only ``.tmp/pilot60/extract_pilot60.db``.
+path. Read-only on every input; writes only ``.tmp/pilot60/extract_pilot60.db``
+or ``REALITY_EXTRACT_DB`` when set.
 
     python -m reality_engine.pilot.extract60 select      # selector stats, no model
     python -m reality_engine.pilot.extract60 build       # regex + model -> db
@@ -28,6 +32,10 @@ Env:
   REALITY_EXTRACT_DB    output DB (default .tmp/pilot60/extract_pilot60.db)
   REALITY_EXTRACT_LIMIT cap model calls per table (0 = no cap)
   REALITY_EXTRACT_MODEL Go model alias (default deepseek-v4.1-flash)
+  REALITY_EXTRACT_ISINS comma-separated ISIN allow-list (proto3: 3 names)
+  REALITY_EXTRACT_SINCE earliest known_at date (YYYY-MM-DD) a document may carry
+  REALITY_EXTRACT_ARM   label for the arm ledger row (A|B|C); empty = no ledger row
+  REALITY_EXTRACT_TOKENS hard input-token cap for the reader (default 3,000,000)
 """
 from __future__ import annotations
 
@@ -55,14 +63,23 @@ REPORT_DIR = REPO / "tasks" / "pilot60"
 MODEL = os.environ.get("REALITY_EXTRACT_MODEL", "deepseek-v4.1-flash~low")
 PRICE_IN, PRICE_OUT = 0.15, 0.60          # $/M off-peak (Go), same as concall_deepseek
 SPEND_CAP = float(os.environ.get("REALITY_EXTRACT_SPEND", "1.50"))
+TOKEN_CAP = int(os.environ.get("REALITY_EXTRACT_TOKENS", "3000000"))
 MAX_WORKERS = int(os.environ.get("REALITY_EXTRACT_WORKERS", "6"))
 MAX_CALLS_PER_TABLE = int(os.environ.get("REALITY_EXTRACT_LIMIT", "0"))
 MAX_PASSAGES, MAX_PASSAGE_CHARS = 12, 9000
+#: proto3 scope: only these ISINs, only documents first known on/after SINCE.
+SCOPE_ISINS = tuple(x.strip() for x in os.environ.get("REALITY_EXTRACT_ISINS", "").split(",")
+                    if x.strip())
+SINCE = os.environ.get("REALITY_EXTRACT_SINCE", "")
+ARM = os.environ.get("REALITY_EXTRACT_ARM", "")
 
 TABLES = ["company_operating_metrics", "company_segment_pnl", "company_cost_structure",
           "order_intake", "order_book_contract", "company_capacity_utilisation",
           "capex_project", "company_price_revision", "company_debt_mix", "rating_action",
-          "supply_link"]
+          "supply_link", "balance_sheet_lines", "cash_flow_lines", "tax_reconciliation",
+          "lender_metrics", "unit_volume"]
+#: tables the deterministic pass (XBRL / text regex) can fill with zero model calls.
+CODE_TABLES = ("balance_sheet_lines", "cash_flow_lines", "tax_reconciliation")
 #: Tables whose blocker the deterministic announcement pass can close on its own.
 REGEX_TABLES = ("rating_action", "order_intake", "company_price_revision")
 
@@ -258,8 +275,44 @@ CREATE TABLE IF NOT EXISTS supply_link (
     src_isin TEXT NOT NULL, dst_isin TEXT NOT NULL, relation TEXT NOT NULL,
     share_of_cost_pct REAL, evidence_quote TEXT, known_at TEXT NOT NULL,
     source_doc_id TEXT, page INTEGER, PRIMARY KEY (src_isin, dst_isin, relation)) WITHOUT ROWID;
+-- proto3 additions: the statement lines and the two borrower/lender measures.
+CREATE TABLE IF NOT EXISTS balance_sheet_lines (
+    isin TEXT NOT NULL, period_end TEXT NOT NULL, basis TEXT NOT NULL,
+    line_item TEXT NOT NULL, value_cr REAL NOT NULL, source TEXT NOT NULL,
+    doc_id TEXT, known_at TEXT NOT NULL, quote TEXT, page INTEGER,
+    PRIMARY KEY (isin, period_end, basis, line_item)) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS ix_bsl_line ON balance_sheet_lines(line_item, period_end);
+CREATE TABLE IF NOT EXISTS cash_flow_lines (
+    isin TEXT NOT NULL, period_end TEXT NOT NULL, basis TEXT NOT NULL,
+    line_item TEXT NOT NULL, value_cr REAL NOT NULL, source TEXT NOT NULL,
+    doc_id TEXT, known_at TEXT NOT NULL, quote TEXT, page INTEGER,
+    PRIMARY KEY (isin, period_end, basis, line_item)) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS tax_reconciliation (
+    isin TEXT NOT NULL, period_end TEXT NOT NULL, basis TEXT NOT NULL, item TEXT NOT NULL,
+    amount_cr REAL, effective_rate_pct REAL, source TEXT NOT NULL, doc_id TEXT,
+    known_at TEXT NOT NULL, quote TEXT, page INTEGER,
+    PRIMARY KEY (isin, period_end, basis, item)) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS lender_metrics (
+    isin TEXT NOT NULL, period_end TEXT NOT NULL, metric TEXT NOT NULL, value REAL NOT NULL,
+    unit TEXT NOT NULL, source TEXT NOT NULL, doc_id TEXT, known_at TEXT NOT NULL,
+    quote TEXT, page INTEGER, PRIMARY KEY (isin, period_end, metric)) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS unit_volume (
+    isin TEXT NOT NULL, period_end TEXT NOT NULL, product TEXT NOT NULL, quantity REAL NOT NULL,
+    unit TEXT NOT NULL, source TEXT NOT NULL, doc_id TEXT, known_at TEXT NOT NULL,
+    quote TEXT, page INTEGER, PRIMARY KEY (isin, period_end, product)) WITHOUT ROWID;
 -- audit (additive, not part of SCHEMA_V3): what was read, what was rejected, what the
 -- reader cost, and the 20 hand-curated doc x table recall pairs.
+CREATE TABLE IF NOT EXISTS extract_arm (
+    arm TEXT NOT NULL, table_name TEXT NOT NULL, rows_before INTEGER NOT NULL,
+    rows_added INTEGER NOT NULL, rows_after INTEGER NOT NULL, calls INTEGER NOT NULL DEFAULT 0,
+    in_tok INTEGER NOT NULL DEFAULT 0, out_tok INTEGER NOT NULL DEFAULT 0,
+    cost_usd REAL NOT NULL DEFAULT 0.0, wall_s REAL NOT NULL DEFAULT 0.0, notes TEXT,
+    ran_at TEXT NOT NULL, PRIMARY KEY (arm, table_name, ran_at)) WITHOUT ROWID;
+-- One row per reader call: every token and second in a report is traceable to one of these.
+CREATE TABLE IF NOT EXISTS extract_call (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, table_name TEXT, doc_id TEXT, model TEXT,
+    prompt_chars INTEGER, pages_sent INTEGER, in_tok INTEGER, out_tok INTEGER,
+    cost_usd REAL, ok INTEGER, error TEXT, ms INTEGER, ran_at TEXT);
 CREATE TABLE IF NOT EXISTS extract_selection (
     table_name TEXT NOT NULL, doc_id TEXT NOT NULL, doc_type TEXT, isin TEXT, symbol TEXT,
     passages INTEGER NOT NULL, chars INTEGER NOT NULL, tokens INTEGER NOT NULL,
@@ -415,6 +468,68 @@ SPECS: dict[str, dict[str, Any]] = {
                         "share_of_cost_pct when printed."),
         "fields": ["dst_symbol", "relation", "share_of_cost_pct", "page", "quote"],
     },
+    "balance_sheet_lines": {
+        "docs": ("annual_report", "results_notes", "deck"),
+        "sections": ("balance sheet",), "tags": ("section:balance_sheet",),
+        "terms": r"total assets|total liabilities|total equity|borrowings|trade receivables|"
+                 r"inventories|cash and cash equivalents|share capital|equity and liabilities",
+        "needs_number": True, "max_passages": 8,
+        "instruction": ("Extract balance-sheet lines: one row per line_item. line_item is one of "
+                        "total_assets|total_liabilities|total_equity|equity_owners|borrowings|"
+                        "trade_receivables|inventories|cash_and_equivalents|paid_up_capital|"
+                        "equity_and_liabilities. value_cr in Rs crore (convert lakh/million/billion). "
+                        "basis is standalone or consolidated as the passage states."),
+        "fields": ["period_end", "basis", "line_item", "value_cr", "page", "quote"],
+    },
+    "cash_flow_lines": {
+        "docs": ("annual_report", "results_notes", "deck"),
+        "sections": ("cash flow",), "tags": ("section:cash_flow",),
+        "terms": r"net cash|cash flow|cash generated|cash used|operating activities|"
+                 r"investing activities|financing activities|depreciation",
+        "needs_number": True, "max_passages": 8,
+        "instruction": ("Extract cash-flow lines: one row per line_item. line_item is one of "
+                        "operating_activities|investing_activities|financing_activities|"
+                        "closing_cash|depreciation|capex. value_cr in Rs crore, negative for an "
+                        "outflow. basis is standalone or consolidated as the passage states."),
+        "fields": ["period_end", "basis", "line_item", "value_cr", "page", "quote"],
+    },
+    "tax_reconciliation": {
+        "docs": ("annual_report", "results_notes"),
+        "sections": ("tax",), "tags": ("section:tax",),
+        "terms": r"income tax|current tax|deferred tax|tax expense|effective tax|"
+                 r"profit before tax",
+        "needs_number": True, "max_passages": 8,
+        "instruction": ("Extract the tax reconciliation: one row per item. item is one of "
+                        "current_tax|deferred_tax|tax_expense|profit_before_tax|effective_tax_rate. "
+                        "amount_cr in Rs crore; effective_rate_pct only when printed or when "
+                        "tax_expense and profit_before_tax are both in the passage."),
+        "fields": ["period_end", "basis", "item", "amount_cr", "effective_rate_pct", "page",
+                   "quote"],
+    },
+    "lender_metrics": {
+        "docs": ("deck", "concall", "annual_report", "results_notes"),
+        "tags": ("margin", "demand"), "sections": ("financial", "kpi"),
+        "terms": r"GNPA|NNPA|gross NPA|net NPA|NIM|net interest margin|CASA|credit cost|"
+                 r"capital adequacy|provision coverage|loan book|advances|deposits",
+        "needs_number": True, "max_passages": 8,
+        "instruction": ("Extract lender metrics actually stated with a number: one row per metric. "
+                        "metric is one of gnpa_pct|nnpa_pct|nim_pct|casa_pct|credit_cost_pct|"
+                        "capital_adequacy_pct|provision_coverage_pct|loan_book_cr|advances_cr|"
+                        "deposits_cr. unit is pct for a percentage, inr_cr for a money amount."),
+        "fields": ["period_end", "metric", "value", "unit", "page", "quote"],
+    },
+    "unit_volume": {
+        "docs": ("deck", "concall", "annual_report", "results_notes"),
+        "tags": ("demand",), "sections": ("operations", "business"),
+        "terms": r"shipments?|production|volumes?|sales volume|tonnes|ktpa|kt\b|million tonnes|"
+                 r"units sold",
+        "needs_number": True, "max_passages": 8,
+        "instruction": ("Extract physical volume statements: one row per product. product is the "
+                        "commodity/segment named (aluminium, copper, rolled_products, ...). "
+                        "quantity and unit (kt|tonnes|mt|ktpa|units|lakh_units) as the passage "
+                        "prints them; period_end of the statement."),
+        "fields": ["period_end", "product", "quantity", "unit", "page", "quote"],
+    },
 }
 
 BASES = ("standalone", "consolidated")
@@ -426,6 +541,109 @@ RATING_DIRECTIONS = {"upgrade", "downgrade", "reaffirm", "watch", "default"}
 UNITS = {"count", "tonnes", "mt", "units", "sqft", "pct", "inr_cr", "inr_per_unit", "usd_mn",
          "kw", "mw", "kl", "days", "nos"}
 CAPEX_STATUS = {"announced", "under_construction", "commissioned", "shelved"}
+BS_LINES = {"total_assets", "total_liabilities", "total_equity", "equity_owners", "borrowings",
+            "trade_receivables", "inventories", "cash_and_equivalents", "paid_up_capital",
+            "equity_and_liabilities"}
+CF_LINES = {"operating_activities", "investing_activities", "financing_activities",
+            "closing_cash", "depreciation", "capex"}
+TAX_ITEMS = {"current_tax", "deferred_tax", "tax_expense", "profit_before_tax",
+             "effective_tax_rate"}
+LENDER_METRICS = {"gnpa_pct", "nnpa_pct", "nim_pct", "casa_pct", "credit_cost_pct",
+                  "capital_adequacy_pct", "provision_coverage_pct", "loan_book_cr",
+                  "advances_cr", "deposits_cr"}
+VOLUME_UNITS = {"kt", "tonnes", "mt", "ktpa", "units", "lakh_units", "mn_tonnes"}
+#: XBRL concept -> (table, line item). Only concepts that exist in NSE results filings.
+XBRL_MAP = {
+    "balance_sheet_lines": {
+        "Assets": "total_assets", "Liabilities": "total_liabilities",
+        "Equity": "total_equity", "EquityAttributableToOwnersOfParent": "equity_owners",
+        "EquityAndLiabilities": "equity_and_liabilities", "Inventories": "inventories",
+        "TradeReceivables": "trade_receivables",
+        "CashAndCashEquivalentsCashFlowStatement": "cash_and_equivalents",
+        "PaidUpValueOfEquityShareCapital": "paid_up_capital",
+    },
+    "cash_flow_lines": {
+        "CashFlowsFromUsedInOperatingActivities": "operating_activities",
+        "CashFlowsFromUsedInInvestingActivities": "investing_activities",
+        "CashFlowsFromUsedInFinancingActivities": "financing_activities",
+        "CashAndCashEquivalentsCashFlowStatement": "closing_cash",
+        "AdjustmentsForDepreciationAndAmortisationExpense": "depreciation",
+    },
+    "tax_reconciliation": {
+        "CurrentTax": "current_tax", "DeferredTax": "deferred_tax",
+        "TaxExpense": "tax_expense", "ProfitBeforeTax": "profit_before_tax",
+    },
+}
+#: Normalised statement-label -> line item, for the PDF text layer pass.
+BS_ALIASES = {
+    "total assets": "total_assets", "total liabilities": "total_liabilities",
+    "total equity": "total_equity", "equity attributable to owners of the parent": "equity_owners",
+    "borrowings": "borrowings", "total borrowings": "borrowings",
+    "trade receivables": "trade_receivables", "inventories": "inventories",
+    "cash and cash equivalents": "cash_and_equivalents",
+    "equity and liabilities": "equity_and_liabilities",
+}
+CF_ALIASES = {
+    "net cash generated from operating activities": "operating_activities",
+    "net cash from operating activities": "operating_activities",
+    "net cash used in operating activities": "operating_activities",
+    "net cash generated from investing activities": "investing_activities",
+    "net cash used in investing activities": "investing_activities",
+    "net cash generated from financing activities": "financing_activities",
+    "net cash used in financing activities": "financing_activities",
+    "cash and cash equivalents at the end of the year": "closing_cash",
+    "depreciation and amortisation expense": "depreciation",
+    "depreciation and amortization expense": "depreciation",
+}
+PRODUCT_ALIASES = {"aluminium": "aluminium", "copper": "copper", "novelis": "novelis",
+                   "rolled products": "rolled_products", "rolled product": "rolled_products",
+                   "frp": "frp", "alumina": "alumina"}
+#: "GNPA and NNPA stood at 1.05% and 0.46%": the shared verb lists the pair in order, so
+#: the second number is NNPA even though no keyword precedes it.
+LENDER_PAIR = re.compile(
+    r"\bGNPA\b[^.\n]{0,60}?\bNNPA\b[^.\n]{0,60}?(\d+(?:\.\d+)?)\s*%"
+    r"[^.\n]{0,40}?(?:and|&|,)\s*(\d+(?:\.\d+)?)\s*%", re.I)
+#: The gap must not cross a sentence ("lower credit cost only. 3% movement").
+NO_SENTENCE = r"(?:(?!\.\s)[^%&\n]){0,60}?"
+LENDER_PATTERNS = (
+    (re.compile(r"\b(?:GNPA|gross NPA|gross non[- ]performing)" + NO_SENTENCE
+                + r"(\d+(?:\.\d+)?)\s*%", re.I), "gnpa_pct"),
+    (re.compile(r"\b(?:NNPA|net NPA|net non[- ]performing)" + NO_SENTENCE
+                + r"(\d+(?:\.\d+)?)\s*%", re.I), "nnpa_pct"),
+    (re.compile(r"\b(?:NIM|net interest margin)" + NO_SENTENCE
+                + r"(\d+(?:\.\d+)?)\s*%", re.I), "nim_pct"),
+    (re.compile(r"\bCASA\b" + NO_SENTENCE + r"(\d+(?:\.\d+)?)\s*%", re.I), "casa_pct"),
+    (re.compile(r"\bcredit cost" + NO_SENTENCE + r"(\d+(?:\.\d+)?)\s*%", re.I),
+     "credit_cost_pct"),
+    (re.compile(r"\bcapital adequacy" + NO_SENTENCE + r"(\d+(?:\.\d+)?)\s*%", re.I),
+     "capital_adequacy_pct"),
+    (re.compile(r"\b(?:provision coverage|PCR)" + NO_SENTENCE + r"(\d+(?:\.\d+)?)\s*%", re.I),
+     "provision_coverage_pct"),
+)
+#: Between the metric word and its number these words mean the number is a growth rate
+#: or guidance, not the metric level (found on the BAJFINANCE pilot, 1 Nov).
+NOT_A_LEVEL = re.compile(
+    r"\bgrew\b|\bgrowth\b|\bup\b|\bdown\b|\brose\b|\bdeclin|\bimprov|\bexpan|\bincreas|"
+    r"\bdecreas|\bcompression|\bdrop\b|\bhigher\b|\blower\b|\bguidance\b|\bexpect|\bestimat|"
+    r"\bforecast|\boutlook\b|\bnext year\b", re.I)
+VOLUME_RE = re.compile(
+    r"\b(aluminium|copper|novelis|rolled products?|frp|alumina)\b[^.\n]{0,60}?"
+    r"(?:shipments?|production|sales volume|volumes?|output|dispatches?)[^.\n]{0,40}?"
+    r"(\d[\d,]*(?:\.\d+)?)\s*(ktpa|kt|mtpa|mt|million tonnes|tonnes|units|lakh units)\b", re.I)
+VOLUME_RE_OF = re.compile(
+    r"\b(?:shipments?|production|sales volume|volumes?|output|dispatches?)\s+of\s+"
+    r"(aluminium|copper|novelis|rolled products?|frp|alumina)\b[^.\n]{0,60}?"
+    r"(\d[\d,]*(?:\.\d+)?)\s*(ktpa|kt|mtpa|mt|million tonnes|tonnes|units|lakh units)\b", re.I)
+MONTHS = {name: number for number, name in enumerate(
+    ("january", "february", "march", "april", "may", "june", "july", "august",
+     "september", "october", "november", "december"), 1)}
+DATE_TEXT = re.compile(
+    r"\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|"
+    r"October|November|December)\s+(\d{4})\b", re.I)
+FY_TEXT = re.compile(r"\b(?:Q([1-4]))?\s*FY\s?'?(\d{2,4})\b", re.I)
+VOLUME_UNIT_MAP = {"kt": "kt", "tonnes": "tonnes", "mt": "mt", "ktpa": "ktpa",
+                   "units": "units", "lakh units": "lakh_units",
+                   "million tonnes": "mn_tonnes", "mtpa": "mt"}   # mtpa is the label's rate, value stays mt
 
 
 # --------------------------------------------------------------------------- selection
@@ -433,8 +651,8 @@ def load_store(path: Path) -> tuple[dict[str, dict], list[dict]]:
     """Docs and chunks from chunks_v3 (read-only, whole-store scan is 36k rows)."""
     con = connect(path)
     docs = {row["doc_id"]: dict(row) for row in con.execute(
-        "SELECT doc_id, doc_type, isin, symbol_at_time, title, event_date, known_at, "
-        "fiscal_period FROM doc")}
+        "SELECT doc_id, sha256, doc_type, isin, symbol_at_time, title, event_date, known_at, "
+        "fiscal_period, page_count, raw_path FROM doc")}
     tags: dict[int, list[str]] = defaultdict(list)
     for row in con.execute("SELECT chunk_id, tag FROM chunk_tag"):
         if row["chunk_id"] is not None:
@@ -876,6 +1094,100 @@ def validate(table: str, row: dict, doc: dict, passages: list[dict]) -> tuple[di
         return {**base, "dst_symbol": dst, "relation": relation,
                 "share_of_cost_pct": share, "evidence_quote": quote}, None
 
+    if table in ("balance_sheet_lines", "cash_flow_lines"):
+        line = re.sub(r"\s+", " ", str(row.get("line_item") or "").strip().lower())
+        value = as_float(row.get("value_cr"))
+        basis = str(row.get("basis") or "").strip().lower()
+        vocab = BS_LINES if table == "balance_sheet_lines" else CF_LINES
+        period = as_date(row.get("period_end")) or fiscal_end(doc.get("fiscal_period"),
+                                                              doc["known_at"][:10])
+        problem = _period_ok(period, doc)
+        if problem:
+            return None, problem
+        if line not in vocab:
+            return None, f"line_item {line!r} not in vocabulary"
+        if value is None or not (0.01 <= abs(value) <= 5e7):
+            return None, "value_magnitude"
+        if basis not in BASES:
+            return None, "basis_not_stated"
+        if not _has_unit(body):
+            return None, "no_money_unit_in_passage"
+        if not value_in(quote, value) and not value_in(body, value):
+            return None, "value_not_in_source"
+        return {**base, "period_end": period, "basis": basis, "line_item": line,
+                "value_cr": value}, None
+
+    if table == "tax_reconciliation":
+        item = str(row.get("item") or "").strip().lower()
+        amount = as_float(row.get("amount_cr"))
+        rate = as_float(row.get("effective_rate_pct"))
+        basis = str(row.get("basis") or "").strip().lower()
+        period = as_date(row.get("period_end")) or fiscal_end(doc.get("fiscal_period"),
+                                                              doc["known_at"][:10])
+        problem = _period_ok(period, doc)
+        if problem:
+            return None, problem
+        if item not in TAX_ITEMS:
+            return None, f"item {item!r} not in vocabulary"
+        if basis not in BASES:
+            return None, "basis_not_stated"
+        if item == "effective_tax_rate":
+            if rate is None or not (0 <= rate <= 100):
+                return None, "effective_rate_out_of_range"
+        else:
+            if amount is None or not (1e-3 <= abs(amount) <= 5e6):
+                return None, "amount_magnitude"
+            if not _has_unit(body):
+                return None, "no_money_unit_in_passage"
+            if not value_in(quote, amount) and not value_in(body, amount):
+                return None, "value_not_in_source"
+        return {**base, "period_end": period, "basis": basis, "item": item,
+                "amount_cr": amount, "effective_rate_pct": rate}, None
+
+    if table == "lender_metrics":
+        metric = str(row.get("metric") or "").strip().lower()
+        value = as_float(row.get("value"))
+        unit = str(row.get("unit") or "").strip().lower()
+        period = as_date(row.get("period_end")) or fiscal_end(doc.get("fiscal_period"),
+                                                              doc["known_at"][:10])
+        problem = _period_ok(period, doc)
+        if problem:
+            return None, problem
+        if metric not in LENDER_METRICS:
+            return None, f"metric {metric!r} not in vocabulary"
+        if value is None:
+            return None, "value_missing"
+        if unit == "pct" and not (0 <= value <= 100):
+            return None, "pct_out_of_range"
+        if unit == "inr_cr" and not (0.01 <= abs(value) <= 5e7):
+            return None, "value_magnitude"
+        if unit not in {"pct", "inr_cr"}:
+            return None, f"unit {unit!r} not in vocabulary"
+        if not value_in(quote, value) and not value_in(body, value):
+            return None, "value_not_in_source"
+        return {**base, "period_end": period, "metric": metric, "value": value,
+                "unit": unit}, None
+
+    if table == "unit_volume":
+        product = re.sub(r"\s+", " ", str(row.get("product") or "").strip().lower())[:60]
+        quantity = as_float(row.get("quantity"))
+        unit = str(row.get("unit") or "").strip().lower()
+        period = as_date(row.get("period_end")) or fiscal_end(doc.get("fiscal_period"),
+                                                              doc["known_at"][:10])
+        problem = _period_ok(period, doc)
+        if problem:
+            return None, problem
+        if not product:
+            return None, "product_missing"
+        if unit not in VOLUME_UNITS:
+            return None, f"unit {unit!r} not in vocabulary"
+        if quantity is None or not (0 < quantity <= 1e9):
+            return None, "quantity_magnitude"
+        if not value_in(quote, quantity) and not value_in(body, quantity):
+            return None, "value_not_in_source"
+        return {**base, "period_end": period, "product": product, "quantity": quantity,
+                "unit": unit}, None
+
     return None, "unknown_table"
 
 
@@ -932,6 +1244,27 @@ INSERT_SQL = {
         "INSERT OR IGNORE INTO supply_link (src_isin, dst_isin, relation, share_of_cost_pct, "
         "evidence_quote, known_at, source_doc_id, page) VALUES (:src_isin, :dst_isin, :relation, "
         ":share_of_cost_pct, :evidence_quote, :known_at, :source_doc_id, :page)"),
+    "balance_sheet_lines": (
+        "INSERT OR IGNORE INTO balance_sheet_lines (isin, period_end, basis, line_item, value_cr, "
+        "source, doc_id, known_at, quote, page) VALUES (:isin, :period_end, :basis, :line_item, "
+        ":value_cr, :source, :doc_id, :known_at, :quote, :page)"),
+    "cash_flow_lines": (
+        "INSERT OR IGNORE INTO cash_flow_lines (isin, period_end, basis, line_item, value_cr, "
+        "source, doc_id, known_at, quote, page) VALUES (:isin, :period_end, :basis, :line_item, "
+        ":value_cr, :source, :doc_id, :known_at, :quote, :page)"),
+    "tax_reconciliation": (
+        "INSERT OR IGNORE INTO tax_reconciliation (isin, period_end, basis, item, amount_cr, "
+        "effective_rate_pct, source, doc_id, known_at, quote, page) VALUES (:isin, :period_end, "
+        ":basis, :item, :amount_cr, :effective_rate_pct, :source, :doc_id, :known_at, :quote, "
+        ":page)"),
+    "lender_metrics": (
+        "INSERT OR IGNORE INTO lender_metrics (isin, period_end, metric, value, unit, source, "
+        "doc_id, known_at, quote, page) VALUES (:isin, :period_end, :metric, :value, :unit, "
+        ":source, :doc_id, :known_at, :quote, :page)"),
+    "unit_volume": (
+        "INSERT OR IGNORE INTO unit_volume (isin, period_end, product, quantity, unit, source, "
+        "doc_id, known_at, quote, page) VALUES (:isin, :period_end, :product, :quantity, :unit, "
+        ":source, :doc_id, :known_at, :quote, :page)"),
 }
 
 
@@ -945,6 +1278,7 @@ class Reader:
         self.calls = self.in_tok = self.out_tok = 0
         self.cost = 0.0
         self.errors: Counter = Counter()
+        self.call_log: list[dict] = []
         self._keys: list[str] = []
         self._next = 0
         try:
@@ -966,7 +1300,7 @@ class Reader:
             self._next += 1
             return key
 
-    def ask(self, prompt: str, timeout: int = 90) -> dict | None:
+    def ask(self, prompt: str, timeout: int = 90, meta: dict | None = None) -> dict | None:
         """One call -> parsed JSON dict, or None on any failure (recorded, never raised)."""
         if not self.available:
             return None
@@ -974,21 +1308,34 @@ class Reader:
             if self.cost >= self.cap:
                 self.errors["spend_cap"] += 1
                 return None
+            if self.in_tok >= TOKEN_CAP:
+                self.errors["token_cap"] += 1
+                return None
         from reality_engine.scripts.concall_pilot import call_go, parse_json
         for attempt in (1, 2):
+            started = time.time()
             try:
                 text, in_tok, out_tok = call_go(self.model, prompt, self._key(), timeout=timeout)
+                cost = ((int(in_tok or 0) / 1e6) * PRICE_IN + (int(out_tok or 0) / 1e6) * PRICE_OUT)
                 with self.lock:
                     self.calls += 1
                     self.in_tok += int(in_tok or 0)
                     self.out_tok += int(out_tok or 0)
-                    self.cost += ((int(in_tok or 0) / 1e6) * PRICE_IN
-                                  + (int(out_tok or 0) / 1e6) * PRICE_OUT)
+                    self.cost += cost
+                    self.call_log.append({
+                        "model": self.model, "prompt_chars": len(prompt),
+                        "in_tok": int(in_tok or 0), "out_tok": int(out_tok or 0),
+                        "cost_usd": round(cost, 6), "ok": 1, "error": None,
+                        "ms": round((time.time() - started) * 1000), **(meta or {})})
                 return parse_json(text)
             except Exception as exc:  # noqa: BLE001
                 message = f"{type(exc).__name__}: {str(exc)[:120]}"
                 with self.lock:
                     self.errors[message] += 1
+                    self.call_log.append({
+                        "model": self.model, "prompt_chars": len(prompt), "in_tok": 0,
+                        "out_tok": 0, "cost_usd": 0.0, "ok": 0, "error": message[:200],
+                        "ms": round((time.time() - started) * 1000), **(meta or {})})
                 if "429" in message or "HTTP 5" in message:
                     time.sleep(2)
                 continue
@@ -1139,6 +1486,8 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
     db = out_db_path()
     db.parent.mkdir(parents=True, exist_ok=True)
     docs, chunks = load_store(store)
+    known_at_stats = reconcile_known_at(docs)
+    docs = {doc_id: doc for doc_id, doc in docs.items() if in_scope(doc)}
     chunks_by_doc: dict[str, list[dict]] = defaultdict(list)
     for chunk in chunks:
         chunks_by_doc[chunk["doc_id"]].append(chunk)
@@ -1146,7 +1495,10 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
     reader = Reader() if not no_model else None
     wanted = [t for t in TABLES if not table_filter or t in set(table_filter)]
     con = sqlite3.connect(db)
+    con.execute("PRAGMA busy_timeout = 30000")
     con.executescript(DDL)
+    # Arm A's deterministic fill, computed once; a table's model pass only adds.
+    by_code = code_rows(docs, chunks_by_doc)
     selection_counts: dict[str, int] = {}
     inserted: Counter = Counter()
     rejected: Counter = Counter()
@@ -1157,6 +1509,12 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
                                      (table,)).fetchone():
             print(f"  {table}: already built (extract_done); --force to redo", flush=True)
             continue
+        started = time.time()
+        before = _table_count(con, table)
+        calls0 = reader.calls if reader else 0
+        in0 = reader.in_tok if reader else 0
+        out0 = reader.out_tok if reader else 0
+        cost0 = reader.cost if reader else 0.0
         rows = selection_rows(table, docs, chunks_by_doc)
         rows.sort(key=lambda row: (row["tokens"], row["doc_id"]), reverse=True)
         con.executemany("INSERT OR REPLACE INTO extract_selection VALUES "
@@ -1165,7 +1523,9 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
                         [{k: v for k, v in row.items() if not k.startswith("_")}
                          for row in rows])
         selection_counts[table] = len(rows)
-        # 1. deterministic regex subset (announcement headlines + text)
+        # 1a. Arm A deterministic fill (XBRL statement lines + plain text-layer tables)
+        _write(con, table, by_code.get(table) or [], inserted, rejected)
+        # 1b. deterministic regex subset (announcement headlines + text)
         regex_fn = REGEX_PASS.get(table)
         regex_rows = []
         if regex_fn:
@@ -1175,8 +1535,12 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
                     row["_table"] = table
                     regex_rows.append(row)
         _write(con, table, regex_rows, inserted, rejected)
-        # 2. model pass over the selected passages
+        # 2. model pass over the selected passages (only adds rows; never displaces Arm A)
         if no_model or not (reader and reader.available):
+            _arm_row(con, table, before, started, reader, calls0, in0, out0, cost0,
+                     "code-only" if no_model else "reader_unavailable")
+            con.commit()
+            built.append(table)
             continue
         tasks = []
         for row in rows:
@@ -1190,6 +1554,7 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
             tasks = tasks[:MAX_CALLS_PER_TABLE]
         model_rows = []
         done = 0
+        log_start = len(reader.call_log)
         progress = OUT_DIR / "build_progress.json"
         with cf.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
             futures = {pool.submit(_extract_one, reader, table, doc, passages, prompt):
@@ -1205,14 +1570,23 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
                     progress.write_text(json.dumps(
                         {"table": table, "docs_done": done, "docs_total": len(futures),
                          "rows": len(model_rows), "calls": reader.calls,
-                         "cost_usd": round(reader.cost, 3),
+                         "in_tok": reader.in_tok, "cost_usd": round(reader.cost, 3),
                          "errors": dict(reader.errors)}, indent=1), encoding="utf-8")
                     print(f"  {table}: {done}/{len(futures)} docs, {len(model_rows)} rows, "
-                          f"{reader.calls} calls, {round(reader.cost, 3)} USD", flush=True)
+                          f"{reader.calls} calls, {reader.in_tok} in-tok, "
+                          f"{round(reader.cost, 3)} USD", flush=True)
         _write(con, table, model_rows, inserted, rejected)
+        con.executemany(
+            "INSERT INTO extract_call (table_name, doc_id, model, prompt_chars, pages_sent, "
+            "in_tok, out_tok, cost_usd, ok, error, ms, ran_at) "
+            "VALUES (:table_name, :doc_id, :model, :prompt_chars, :pages_sent, :in_tok, "
+            ":out_tok, :cost_usd, :ok, :error, :ms, :ran_at)",
+            [{**call, "ran_at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+             for call in reader.call_log[log_start:]])
+        _arm_row(con, table, before, started, reader, calls0, in0, out0, cost0,
+                 f"model={MODEL}")
         con.execute("INSERT OR REPLACE INTO extract_done VALUES (?,?,?,?)",
-                    (table, len(tasks) if not no_model else 0,
-                     inserted[table], time.strftime("%Y-%m-%dT%H:%M:%S")))
+                    (table, len(tasks), inserted[table], time.strftime("%Y-%m-%dT%H:%M:%S")))
         con.commit()  # per table, so a killed run keeps the tables it finished
         built.append(table)
     extra = _announcement_rating_pass(con, inserted, rejected) \
@@ -1223,7 +1597,8 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
                  int(reader.in_tok if reader else 0), int(reader.out_tok if reader else 0),
                  round(reader.cost if reader else 0.0, 4), int(sum(inserted.values())),
                  json.dumps({"selection": selection_counts, "rejected": dict(rejected),
-                             "extra_ann": extra,
+                             "extra_ann": extra, "scope": list(SCOPE_ISINS), "since": SINCE,
+                             "known_at": known_at_stats,
                              "errors": dict(reader.errors) if reader else {}})))
     con.commit()
     con.close()
@@ -1237,7 +1612,10 @@ def build(no_model: bool = False, table_filter: Iterable[str] | None = None,
 
 def _extract_one(reader: Reader, table: str, doc: dict, passages: list[dict],
                  prompt: str) -> list[dict]:
-    answer = reader.ask(prompt)
+    pages = sum(max(0, int(p.get("page_to") or p.get("page_from") or 0)
+                    - int(p.get("page_from") or 0) + 1) for p in passages)
+    answer = reader.ask(prompt, meta={"table_name": table, "doc_id": doc["doc_id"],
+                                     "pages_sent": pages})
     if not answer:
         return []
     rows = answer.get("rows") if isinstance(answer, dict) else None
@@ -1262,6 +1640,27 @@ def _extract_one(reader: Reader, table: str, doc: dict, passages: list[dict],
             out.append({"__reject__": {"table": table, "doc_id": doc["doc_id"],
                                        "reason": reason, "row": row}})
     return out
+
+
+def _table_count(con: sqlite3.Connection, table: str) -> int:
+    return int(con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
+
+
+def _arm_row(con: sqlite3.Connection, table: str, before: int, started: float,
+             reader: "Reader | None", calls0: int, in0: int, out0: int,
+             cost0: float, notes: str = "") -> None:
+    """One arm-ledger row per table run: how much the arm added and what it cost."""
+    if not ARM:
+        return
+    after = _table_count(con, table)
+    con.execute(
+        "INSERT OR REPLACE INTO extract_arm VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (ARM, table, before, after - before, after,
+         (reader.calls - calls0) if reader else 0,
+         (reader.in_tok - in0) if reader else 0,
+         (reader.out_tok - out0) if reader else 0,
+         round((reader.cost - cost0), 6) if reader else 0.0,
+         round(time.time() - started, 2), notes, time.strftime("%Y-%m-%dT%H:%M:%S")))
 
 
 def _write(con: sqlite3.Connection, table: str, rows: list[dict],
@@ -1293,9 +1692,13 @@ def _announcement_rating_pass(con: sqlite3.Connection, inserted: Counter,
     ann = connect_data("bse_announcements.db")
     if ann is None:
         return 0
-    isins = universe_isins()
+    # The 60-name universe is the default; with an ISIN allow-list the feed must cover
+    # only those names, or the prototype's counts carry other companies (found 2026-11-01).
+    isins = list(SCOPE_ISINS) or universe_isins()
     if not isins:
+        ann.close()
         return 0
+    started = time.time()
     rows = []
     try:
         sym_to_isin = universe_symbols(isins)
@@ -1335,15 +1738,310 @@ def _announcement_rating_pass(con: sqlite3.Connection, inserted: Counter,
         return 0
     finally:
         ann.close()
+    before = _table_count(con, "rating_action")
     _write(con, "rating_action", rows, inserted, rejected)
+    if ARM == "A":  # code-only work, so it is ledgered against Arm A, not the model's arm
+        _arm_row(con, "rating_action", before, started, None, 0, 0, 0, 0.0,
+                 "code-only: bse_ann feed")
     return len(rows)
+
+
+def in_scope(doc: dict) -> bool:
+    """proto3 scope: the ISIN allow-list and the document's first-known date."""
+    if SCOPE_ISINS and doc.get("isin") not in SCOPE_ISINS:
+        return False
+    if SINCE and (doc.get("known_at") or doc.get("event_date") or "")[:10] < SINCE:
+        return False
+    return True
+
+
+def fy_label(fiscal_end_date: str) -> str:
+    try:
+        return f"FY{str(int(str(fiscal_end_date)[:4]))[-2:]}"
+    except (TypeError, ValueError):
+        return ""
+
+
+def reconcile_known_at(docs: dict) -> dict[str, int]:
+    """Take ``known_at`` from the filing record, not from a re-derived document date.
+
+    The chunks_v3 build attached the FY24 filing date (2024-06-26) to BAJFINANCE's FY26
+    annual report (sha256 5535038a...); ``ar_docs`` says 2026-07-07. The join on sha256
+    repairs the date and the fiscal label before anything is extracted, so no row can be
+    written under a date later than its own filing (the task's PIT rule).
+    """
+    stats: Counter = Counter()
+    ar = connect_data("ar_facts.db")
+    if ar is not None:
+        by_sha = {row["sha256"]: (row["filed_at"], row["fiscal_year"]) for row in ar.execute(
+            "SELECT sha256, filed_at, fiscal_year FROM ar_docs "
+            "WHERE sha256 IS NOT NULL AND filed_at IS NOT NULL")}
+        for doc in docs.values():
+            if doc.get("doc_type") != "annual_report":
+                continue
+            hit = by_sha.get(doc.get("sha256"))
+            if not hit:
+                stats["ar_unmatched"] += 1
+                continue
+            filed, fiscal = hit
+            if str(doc.get("known_at") or "")[:10] != str(filed)[:10]:
+                stats["ar_date_fixed"] += 1
+                doc["known_at"] = str(filed)[:19]
+                doc["event_date"] = str(filed)[:10]
+            label = fy_label(fiscal)
+            if label and doc.get("fiscal_period") != label:
+                stats["ar_period_fixed"] += 1
+                doc["fiscal_period"] = label
+            stats["ar_checked"] += 1
+        ar.close()
+    deck = connect_data("deck_figures.db")
+    if deck is not None:
+        by_sha = {row["sha256"]: row["known_at"] for row in deck.execute(
+            "SELECT sha256, known_at FROM deck_sources "
+            "WHERE sha256 IS NOT NULL AND known_at IS NOT NULL")}
+        for doc in docs.values():
+            if doc.get("doc_type") != "deck":
+                continue
+            known = by_sha.get(doc.get("sha256"))
+            if not known:
+                stats["deck_unmatched"] += 1
+                continue
+            if str(doc.get("known_at") or "")[:10] != str(known)[:10]:
+                stats["deck_date_fixed"] += 1
+                doc["known_at"] = str(known)[:19]
+            stats["deck_checked"] += 1
+        deck.close()
+    return dict(stats)
+
+
+def _filing_known(row: dict) -> str:
+    return str(row.get("known_at") or row.get("filing_ts") or "")[:19]
+
+
+def _best_fact(cands: list[dict], period_end: str) -> dict | None:
+    """The fact that represents the filing's own period: exact end, quarter context, shortest."""
+    if not cands:
+        return None
+
+    def key(fact: dict) -> tuple:
+        end = str(fact.get("period_end") or fact.get("instant") or "")[:10]
+        exact = 1 if end == (period_end or "")[:10] else 0
+        one_d = 1 if fact.get("context") == "OneD" else 0
+        days = 0
+        if fact.get("period_start") and end:
+            try:
+                days = (date.fromisoformat(end) - date.fromisoformat(
+                    str(fact["period_start"])[:10])).days
+            except ValueError:
+                days = 0
+        return (exact, one_d, -abs(days - 91) if days else -999)
+
+    return max(cands, key=key)
+
+
+def xbrl_rows(since: str | None = None) -> dict[str, list[dict]]:
+    """Arm A: statement lines straight from the held NSE results XBRL (zero model calls).
+
+    XBRL is structured, so the evidence is the concept and its printed value, not prose:
+    ``quote`` records ``concept=value unit``, ``doc_id`` the filing file and ``known_at``
+    the filing's broadcast/dissemination timestamp.
+    """
+    out: dict[str, list[dict]] = defaultdict(list)
+    con = connect_data("results_xbrl.db")
+    if con is None:
+        return out
+    isins = tuple(SCOPE_ISINS) or tuple(universe_isins())
+    if not isins:
+        return out
+    since = since or SINCE or "2024-06-30"
+    placeholders = ",".join("?" * len(isins))
+    filings = [dict(row) for row in con.execute(
+        f"SELECT file, isin, period_end, consolidated, "
+        f"COALESCE(broadcast_ts, dissem_ts, filing_ts) known_at FROM filings "
+        f"WHERE isin IN ({placeholders}) AND period_end >= ? ORDER BY period_end, file",
+        [*isins, since]).fetchall()]
+    concepts = sorted({c for mapping in XBRL_MAP.values() for c in mapping})
+    for filing in filings:
+        known = _filing_known(filing)
+        basis = "consolidated" if str(filing["consolidated"] or "").lower() == "consolidated" \
+            else "standalone"
+        rows = con.execute(
+            f"SELECT concept, context, period_start, period_end, instant, value, unit "
+            f"FROM facts WHERE file = ? AND concept IN ({','.join('?' * len(concepts))})",
+            [filing["file"], *concepts]).fetchall()
+        grouped: dict[str, list[dict]] = defaultdict(list)
+        for row in rows:
+            grouped[row["concept"]].append(dict(row))
+        picked = {concept: _best_fact(grouped.get(concept) or [], filing["period_end"])
+                  for concept in concepts}
+        for table, mapping in XBRL_MAP.items():
+            for concept, item in mapping.items():
+                fact = picked.get(concept)
+                if not fact or fact.get("value") is None:
+                    continue
+                value = float(fact["value"]) / 1e7          # XBRL money is rupees
+                if abs(value) < 0.01:
+                    continue
+                row = {"isin": filing["isin"], "period_end": filing["period_end"],
+                       "basis": basis, "source": "results_xbrl", "doc_id": filing["file"],
+                       "known_at": known, "page": None,
+                       "quote": f"{concept}[{fact.get('context')}]={float(fact['value']):.0f} "
+                                f"{fact.get('unit') or 'INR'} @"
+                                f"{str(fact.get('period_end') or fact.get('instant'))[:10]}"}
+                if table == "tax_reconciliation":
+                    row.update({"item": item, "amount_cr": round(value, 4),
+                                "effective_rate_pct": None})
+                else:
+                    row.update({"line_item": item, "value_cr": round(value, 4)})
+                out[table].append(row)
+        tax = picked.get("TaxExpense")
+        pbt = picked.get("ProfitBeforeTax")
+        if tax and pbt and tax.get("value") and pbt.get("value"):
+            rate = float(tax["value"]) / float(pbt["value"]) * 100.0
+            out["tax_reconciliation"].append(
+                {"isin": filing["isin"], "period_end": filing["period_end"], "basis": basis,
+                 "item": "effective_tax_rate", "amount_cr": None,
+                 "effective_rate_pct": round(rate, 4), "source": "results_xbrl",
+                 "doc_id": filing["file"], "known_at": known, "page": None,
+                 "quote": f"TaxExpense/ProfitBeforeTax = {float(tax['value']):.0f}/"
+                          f"{float(pbt['value']):.0f} INR ({rate:.2f}%)"})
+    for rows in out.values():
+        rows[:] = [row for row in rows if row["known_at"][:10] >= since[:10]]
+    con.close()
+    return out
+
+
+LINE_RE = re.compile(
+    r"^\s*(?P<label>[A-Za-z][A-Za-z &()./,\-]{2,70}?)\s+(?:Rs\.?\s*)?"
+    r"(?P<num>-?\d[\d,]*(?:\.\d+)?)\s*(?:Rs\.?|crore|cr|lakh|million)?\s*$", re.M)
+
+
+def _quote_window(body: str, start: int, end: int, words: int = 25) -> str:
+    text = re.sub(r"\s+", " ", body[max(0, start - 220):end + 20]).strip()
+    return " ".join(text.split()[-words:])
+
+
+def _stated_period(window: str, fallback: str) -> str:
+    """The period the sentence itself names ('as of 31 March 2026', 'Q1 FY25'), else fallback."""
+    match = DATE_TEXT.search(window)
+    if match:
+        try:
+            return date(int(match.group(3)), MONTHS[match.group(2).lower()],
+                        int(match.group(1))).isoformat()
+        except ValueError:
+            pass
+    match = FY_TEXT.search(window)
+    if match:
+        return fiscal_end(match.group(0), fallback)
+    return fallback
+
+
+def _text_rows(docs: dict, chunks_by_doc: dict[str, list[dict]]) -> dict[str, list[dict]]:
+    """Arm A: statement lines and KPIs the PDF text layer prints plainly.
+
+    Narrow and deterministic: a line counts only when its label is in the vocabulary,
+    the number is on the same line, and the chunk names the accounting basis.  KPI
+    rows need the metric word within 80 characters of a printed ``%``.
+    """
+    out: dict[str, list[dict]] = defaultdict(list)
+    for doc_id, doc in docs.items():
+        if doc["doc_type"] not in ("annual_report", "results_notes", "deck", "concall"):
+            continue
+        period = fiscal_end(doc.get("fiscal_period"),
+                            (doc.get("event_date") or doc["known_at"][:10])[:10])
+        for chunk in chunks_by_doc.get(doc_id) or []:
+            body = chunk["body"] or ""
+            page = chunk.get("page_from")
+            low = f"{chunk.get('section') or ''} {body[:400]}".lower()
+            basis = "standalone" if "standalone" in low else (
+                "consolidated" if "consolidated" in low else None)
+            if basis and doc["doc_type"] in ("annual_report", "results_notes"):
+                for match in LINE_RE.finditer(body):
+                    label = re.sub(r"\s+", " ", match.group("label").strip().lower())
+                    label = label.rstrip(".:")
+                    line_item = BS_ALIASES.get(label) or CF_ALIASES.get(label)
+                    if not line_item:
+                        continue
+                    table = "balance_sheet_lines" if label in BS_ALIASES else "cash_flow_lines"
+                    value = float(match.group("num").replace(",", ""))
+                    # A bare note reference ("Cash and cash equivalents 5.1") is not a
+                    # statement line: the figure needs a printed scale or a real magnitude.
+                    if "," not in match.group("num") and "." not in match.group("num") \
+                            and abs(value) < 1000:
+                        continue
+                    quote = " ".join(match.group(0).split())
+                    row = {"isin": doc["isin"], "period_end": period, "basis": basis,
+                           "line_item": line_item, "value_cr": value, "source": "chunks_v3",
+                           "doc_id": doc_id, "known_at": doc["known_at"], "quote": quote,
+                           "page": page}
+                    clean, _ = validate(table, row, doc, [chunk])
+                    if clean:
+                        out[table].append(clean)
+            pairs = list(LENDER_PAIR.finditer(body))
+            for pair in pairs:
+                for metric, group in (("gnpa_pct", 1), ("nnpa_pct", 2)):
+                    window = body[pair.start():pair.end() + 40]
+                    row = {"isin": doc["isin"], "period_end": _stated_period(window, period),
+                           "metric": metric, "value": float(pair.group(group)), "unit": "pct",
+                           "source": "chunks_v3", "doc_id": doc_id,
+                           "known_at": doc["known_at"], "page": page,
+                           "quote": _quote_window(body, pair.start(), pair.end())}
+                    clean, _ = validate("lender_metrics", row, doc, [chunk])
+                    if clean:
+                        out["lender_metrics"].append(clean)
+            for pattern, metric in LENDER_PATTERNS:
+                for match in pattern.finditer(body):
+                    if any(pair.start() <= match.start() and match.end() <= pair.end()
+                           for pair in pairs):
+                        continue
+                    between = body[match.start():match.end() - len(match.group(1)) - 1]
+                    after = body[match.end():match.end() + 30]
+                    if NOT_A_LEVEL.search(between) or NOT_A_LEVEL.search(after):
+                        continue
+                    window = body[match.start():match.end() + 40]
+                    quote = _quote_window(body, match.start(), match.end())
+                    row = {"isin": doc["isin"], "period_end": _stated_period(window, period),
+                           "metric": metric, "value": float(match.group(1)), "unit": "pct",
+                           "source": "chunks_v3", "doc_id": doc_id,
+                           "known_at": doc["known_at"], "page": page, "quote": quote}
+                    clean, _ = validate("lender_metrics", row, doc, [chunk])
+                    if clean:
+                        out["lender_metrics"].append(clean)
+            for pattern in (VOLUME_RE, VOLUME_RE_OF):
+                for match in pattern.finditer(body):
+                    product = PRODUCT_ALIASES.get(match.group(1).lower())
+                    if not product:
+                        continue
+                    window = body[match.start():match.end() + 40]
+                    row = {"isin": doc["isin"], "period_end": _stated_period(window, period),
+                           "product": product,
+                           "quantity": float(match.group(2).replace(",", "")),
+                           "unit": VOLUME_UNIT_MAP.get(match.group(3).lower(), "units"),
+                           "source": "chunks_v3", "doc_id": doc_id,
+                           "known_at": doc["known_at"], "page": page,
+                           "quote": _quote_window(body, match.start(), match.end())}
+                    clean, _ = validate("unit_volume", row, doc, [chunk])
+                    if clean:
+                        out["unit_volume"].append(clean)
+    return out
+
+
+def code_rows(docs: dict, chunks_by_doc: dict[str, list[dict]]) -> dict[str, list[dict]]:
+    """Everything code alone can fill before a model reads a passage (Arm A)."""
+    out: dict[str, list[dict]] = defaultdict(list)
+    for table, rows in xbrl_rows().items():
+        out[table].extend(rows)
+    for table, rows in _text_rows(docs, chunks_by_doc).items():
+        out[table].extend(rows)
+    return out
 
 
 #: Model-pass tables whose stored rows are re-gated by ``repair`` (no model calls).
 REPAIR_TABLES = ("company_operating_metrics", "company_segment_pnl",
                  "company_cost_structure", "order_intake", "order_book_contract",
                  "company_capacity_utilisation", "capex_project", "company_debt_mix",
-                 "rating_action")
+                 "rating_action", "balance_sheet_lines", "cash_flow_lines",
+                 "tax_reconciliation", "lender_metrics", "unit_volume")
 
 
 def repair(db_path: Path | None = None) -> dict:
@@ -1412,13 +2110,14 @@ def universe_isins() -> list[str]:
 
 
 def universe_symbols(isins: list[str]) -> dict[str, str]:
-    """symbol -> isin from UNIVERSE.csv (the pilot's own identity)."""
+    """symbol -> isin from UNIVERSE.csv (the pilot's own identity), limited to ``isins``."""
     if not UNIVERSE.is_file():
         return {}
     import csv
+    wanted = set(isins or ())
     out = {}
     for row in csv.DictReader(UNIVERSE.open(encoding="utf-8")):
-        if row.get("symbol") and row.get("isin"):
+        if row.get("symbol") and row.get("isin") and row["isin"].strip() in wanted:
             out[row["symbol"].strip().upper()] = row["isin"].strip()
     return out
 

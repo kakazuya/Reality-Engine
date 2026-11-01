@@ -1,0 +1,498 @@
+{
+ "n_tasks": 30,
+ "low": {
+  "model": "deepseek-v4.1-flash~low",
+  "calls": 30,
+  "in_tok": 63826,
+  "out_tok": 90879,
+  "cost_usd": 0.0641,
+  "wall_s": 148.7,
+  "rows": 25,
+  "wrong": 95,
+  "errors": {}
+ },
+ "max": {
+  "model": "deepseek-v4.1-flash~max",
+  "calls": 27,
+  "in_tok": 56866,
+  "out_tok": 214501,
+  "cost_usd": 0.1372,
+  "wall_s": 723.4,
+  "rows": 19,
+  "wrong": 51,
+  "errors": {
+   "ReadTimeout: HTTPSConnectionPool(host='opencode.ai', port=443): Read timed out. (read timeout=120)": 9
+  }
+ },
+ "found_in_both": 1,
+ "only_low": 21,
+ "only_max": 18,
+ "per_task": {
+  "low": [
+   {
+    "table": "tax_reconciliation",
+    "doc_id": "sha256:aa99b42c1d4e860b51d82fee5514c8479bddd3144ddd8f223ecbfce9470120f3",
+    "rows": 6,
+    "accepted": 5,
+    "wrong": 1
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_capacity_utilisation",
+    "doc_id": "sha256:ad09aa32bcbd8dbf01049bbbe316887198422b52f6f6b2820c5b30e0d8feb4d1",
+    "rows": 5,
+    "accepted": 2,
+    "wrong": 3
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:e2a6fa27648d4ff49ea6a70951865e7c04fc19a5b90f1b9401eb25184ee7c2ae",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:59cf60df21f094872942fd8590eedec121eb1fd47baecdc2d8aba20926e96884",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:f419471390ea3ea41ca2e676a93dfb064952979e0bb694ada0050fed2d4709d0",
+    "rows": 4,
+    "accepted": 0,
+    "wrong": 4
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:b950f7f76febf38a1f191fbc417b482cfe1989d731a7161e959965f4c992b6b5",
+    "rows": 20,
+    "accepted": 0,
+    "wrong": 20
+   },
+   {
+    "table": "company_capacity_utilisation",
+    "doc_id": "sha256:4d5df551be9ebe74017bceb92926c9a005aa6bfb6d5737a3ab2dcc7adf9fc245",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_operating_metrics",
+    "doc_id": "sha256:ee07757b67781a0604df5240fca3182925ae50a2f174ec4ee3d6280c8bf09ec5",
+    "rows": 4,
+    "accepted": 4,
+    "wrong": 0
+   },
+   {
+    "table": "company_capacity_utilisation",
+    "doc_id": "sha256:ba95bc171aaaeedd3845d9a3b82ee85271c05b50a359798db999b6aaf11356d6",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_segment_pnl",
+    "doc_id": "sha256:c6bba06190fefaa0e07dd13a2a02db9b05c2ad2cc96f5779b8378685f5052086",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_operating_metrics",
+    "doc_id": "sha256:722a9cb0c1fcbed6d20d313dccc8169ed29bd0faf42e9cc39ce724ab7c0ac72c",
+    "rows": 26,
+    "accepted": 6,
+    "wrong": 20
+   },
+   {
+    "table": "lender_metrics",
+    "doc_id": "sha256:d2ffe66e5da05373300f05d0bb87385f6f4b1c83091849cc129fe366b469d988",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "cash_flow_lines",
+    "doc_id": "sha256:3548c95f74d7f8a7bcf5de683b7494a52c72c227013053462000b06d69b5b444",
+    "rows": 2,
+    "accepted": 2,
+    "wrong": 0
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:ac3a8eaa74742c2a2a50d070d7740c8ae0264e757dbf93c53d39f6261e089746",
+    "rows": 6,
+    "accepted": 0,
+    "wrong": 6
+   },
+   {
+    "table": "unit_volume",
+    "doc_id": "sha256:28aaace6ecf860e5cf778977b4882005df7d960093072ce286fcdb71b648c047",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "unit_volume",
+    "doc_id": "sha256:4d5df551be9ebe74017bceb92926c9a005aa6bfb6d5737a3ab2dcc7adf9fc245",
+    "rows": 24,
+    "accepted": 4,
+    "wrong": 20
+   },
+   {
+    "table": "company_segment_pnl",
+    "doc_id": "sha256:8eac146d98a3257d3485a155c616e042a3fbe7a0bebe530e8b98f07094cd3aa0",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:b950f7f76febf38a1f191fbc417b482cfe1989d731a7161e959965f4c992b6b5",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:41381fe0f5d4c27a76bdaf5d84dd24a319cb74fb61997086aaeac4b868095e96",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_segment_pnl",
+    "doc_id": "sha256:93e2a70ebcf29278504edb0301bd18fc11c3c242a1dd571fd3d1144097c7174a",
+    "rows": 10,
+    "accepted": 0,
+    "wrong": 10
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:93e2a70ebcf29278504edb0301bd18fc11c3c242a1dd571fd3d1144097c7174a",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "cash_flow_lines",
+    "doc_id": "sha256:c9cf9bebb3f1389b22584881181c616a915dfc2ffbb59aab4fa2f4f3cd192848",
+    "rows": 6,
+    "accepted": 0,
+    "wrong": 6
+   },
+   {
+    "table": "company_capacity_utilisation",
+    "doc_id": "sha256:8718b97d2f87cd76e8dff6fac69badf78f56c6c8e09fe488f25f7d592debff51",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "supply_link",
+    "doc_id": "sha256:41381fe0f5d4c27a76bdaf5d84dd24a319cb74fb61997086aaeac4b868095e96",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "lender_metrics",
+    "doc_id": "sha256:ee07757b67781a0604df5240fca3182925ae50a2f174ec4ee3d6280c8bf09ec5",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:9390fe34ce19499ea1bc0e2bbacdc75598f2b0ec452343714561ceff54a311f7",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "balance_sheet_lines",
+    "doc_id": "sha256:dd1b660b2ac81163160e4ec02a7ceea62b9d01f53952d336c698865ffbe25b6c",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "order_intake",
+    "doc_id": "sha256:3a1d241f4e13dbd1b921c256bc8b567d50e4fd13b871d25a80eca6fa2410351f",
+    "rows": 2,
+    "accepted": 2,
+    "wrong": 0
+   }
+  ],
+  "max": [
+   {
+    "table": "tax_reconciliation",
+    "doc_id": "sha256:aa99b42c1d4e860b51d82fee5514c8479bddd3144ddd8f223ecbfce9470120f3",
+    "rows": 10,
+    "accepted": 9,
+    "wrong": 1
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:c14dba8a332614fb29a0a8c2c910fe926c60f3d2a5ae697dbe0cf9b0b9f5772e",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "company_capacity_utilisation",
+    "doc_id": "sha256:ad09aa32bcbd8dbf01049bbbe316887198422b52f6f6b2820c5b30e0d8feb4d1",
+    "rows": 5,
+    "accepted": 2,
+    "wrong": 3
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:e2a6fa27648d4ff49ea6a70951865e7c04fc19a5b90f1b9401eb25184ee7c2ae",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:59cf60df21f094872942fd8590eedec121eb1fd47baecdc2d8aba20926e96884",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:f419471390ea3ea41ca2e676a93dfb064952979e0bb694ada0050fed2d4709d0",
+    "rows": 4,
+    "accepted": 0,
+    "wrong": 4
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:b950f7f76febf38a1f191fbc417b482cfe1989d731a7161e959965f4c992b6b5",
+    "rows": 20,
+    "accepted": 0,
+    "wrong": 20
+   },
+   {
+    "table": "company_capacity_utilisation",
+    "doc_id": "sha256:4d5df551be9ebe74017bceb92926c9a005aa6bfb6d5737a3ab2dcc7adf9fc245",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_operating_metrics",
+    "doc_id": "sha256:ee07757b67781a0604df5240fca3182925ae50a2f174ec4ee3d6280c8bf09ec5",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_capacity_utilisation",
+    "doc_id": "sha256:ba95bc171aaaeedd3845d9a3b82ee85271c05b50a359798db999b6aaf11356d6",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_segment_pnl",
+    "doc_id": "sha256:c6bba06190fefaa0e07dd13a2a02db9b05c2ad2cc96f5779b8378685f5052086",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:00e1cd87e4a939a83425f6ebc9b310d7ceced3e38aa8e2931557af561717cafd",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_operating_metrics",
+    "doc_id": "sha256:722a9cb0c1fcbed6d20d313dccc8169ed29bd0faf42e9cc39ce724ab7c0ac72c",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "lender_metrics",
+    "doc_id": "sha256:d2ffe66e5da05373300f05d0bb87385f6f4b1c83091849cc129fe366b469d988",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "cash_flow_lines",
+    "doc_id": "sha256:3548c95f74d7f8a7bcf5de683b7494a52c72c227013053462000b06d69b5b444",
+    "rows": 2,
+    "accepted": 2,
+    "wrong": 0
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:ac3a8eaa74742c2a2a50d070d7740c8ae0264e757dbf93c53d39f6261e089746",
+    "rows": 7,
+    "accepted": 0,
+    "wrong": 7
+   },
+   {
+    "table": "unit_volume",
+    "doc_id": "sha256:28aaace6ecf860e5cf778977b4882005df7d960093072ce286fcdb71b648c047",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "unit_volume",
+    "doc_id": "sha256:4d5df551be9ebe74017bceb92926c9a005aa6bfb6d5737a3ab2dcc7adf9fc245",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_segment_pnl",
+    "doc_id": "sha256:8eac146d98a3257d3485a155c616e042a3fbe7a0bebe530e8b98f07094cd3aa0",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:b950f7f76febf38a1f191fbc417b482cfe1989d731a7161e959965f4c992b6b5",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:41381fe0f5d4c27a76bdaf5d84dd24a319cb74fb61997086aaeac4b868095e96",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "company_segment_pnl",
+    "doc_id": "sha256:93e2a70ebcf29278504edb0301bd18fc11c3c242a1dd571fd3d1144097c7174a",
+    "rows": 8,
+    "accepted": 0,
+    "wrong": 8
+   },
+   {
+    "table": "order_book_contract",
+    "doc_id": "sha256:93e2a70ebcf29278504edb0301bd18fc11c3c242a1dd571fd3d1144097c7174a",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "cash_flow_lines",
+    "doc_id": "sha256:c9cf9bebb3f1389b22584881181c616a915dfc2ffbb59aab4fa2f4f3cd192848",
+    "rows": 6,
+    "accepted": 3,
+    "wrong": 3
+   },
+   {
+    "table": "company_capacity_utilisation",
+    "doc_id": "sha256:8718b97d2f87cd76e8dff6fac69badf78f56c6c8e09fe488f25f7d592debff51",
+    "rows": 1,
+    "accepted": 0,
+    "wrong": 1
+   },
+   {
+    "table": "supply_link",
+    "doc_id": "sha256:41381fe0f5d4c27a76bdaf5d84dd24a319cb74fb61997086aaeac4b868095e96",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "lender_metrics",
+    "doc_id": "sha256:ee07757b67781a0604df5240fca3182925ae50a2f174ec4ee3d6280c8bf09ec5",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "capex_project",
+    "doc_id": "sha256:9390fe34ce19499ea1bc0e2bbacdc75598f2b0ec452343714561ceff54a311f7",
+    "rows": 0,
+    "accepted": 0,
+    "wrong": 0
+   },
+   {
+    "table": "balance_sheet_lines",
+    "doc_id": "sha256:dd1b660b2ac81163160e4ec02a7ceea62b9d01f53952d336c698865ffbe25b6c",
+    "rows": 1,
+    "accepted": 1,
+    "wrong": 0
+   },
+   {
+    "table": "order_intake",
+    "doc_id": "sha256:3a1d241f4e13dbd1b921c256bc8b567d50e4fd13b871d25a80eca6fa2410351f",
+    "rows": 2,
+    "accepted": 2,
+    "wrong": 0
+   }
+  ]
+ },
+ "only_max_rows": [
+  "{\"period_end\": \"2024-03-31\", \"quote\": \"Cash, cash equivalents and restricted cash \\u2014 end of period\\n$ \\n1,322\"}",
+  "{\"period_end\": \"2024-03-31\", \"quote\": \"Depreciation and amortization\\n \\n554\"}",
+  "{\"period_end\": \"2024-03-31\", \"quote\": \"Net cash provided by operating activities\\n$ \\n1,315\"}",
+  "{\"period_end\": \"2024-03-31\", \"quote\": \"taking the total RE capacity to 173 MW of solar and wind\"}",
+  "{\"period_end\": \"2024-12-31\", \"quote\": \"In Q3, standalone cost of funds was 7.98%\\n\\u2022 Borrowings stood at \\u20b9 2,55,755  crore\"}",
+  "{\"period_end\": \"2025-02-03\", \"quote\": \"(-) Depreciation \\n37\"}",
+  "{\"period_end\": \"2025-02-03\", \"quote\": \"(-) Depreciation \\n45\"}",
+  "{\"period_end\": \"2026-03-31\", \"quote\": \"Rs 25,280 Cr.\"}",
+  "{\"period_end\": \"2026-03-31\", \"quote\": \"Rs 36,267 Cr.\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Current tax expense 1,524\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Current tax expense 2,595\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Deferred tax expense/(benefrt) (net) 111\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Profit/ (Loss) before tax 9,393 3,451 5,676 18,496 Tax expenses Current tax expense 2,595 2,657 1,506 7,531 Deferred tax expense/ (benefit) (net) (215)\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Profit/ (Loss) before tax 9,393\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Profit/(loss) before tax 6,419 4,512 2,724 14,232 Tax expenses Current tax expense 1,524 1,867 858 4,766 Deferred tax expense/(benefrt) (net) 111\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Profit/(loss) before tax 6,419\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Tax expenses Current tax expense 1,524 1,867 858 4,766 Deferred tax expense/(benefrt) (net) 111\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Tax expenses Current tax expense 2,595 2,657 1,506 7,531 Deferred tax expense/ (benefit) (net) (215)\"}"
+ ],
+ "only_low_rows": [
+  "{\"period_end\": \"2023-03-31\", \"quote\": \"225 Kt versus 196 Kt in Q4 financial year '23\"}",
+  "{\"period_end\": \"2024-03-31\", \"quote\": \"21 MW of Wind based RE installed at Belagavi in Q4 FY24 taking the total RE capacity to 173 MW of solar and wind\"}",
+  "{\"period_end\": \"2024-03-31\", \"quote\": \"Indian downstream aluminum quarterly shipments were up 17% year-on-year at 105 Kt in Q4 financial year 2024\"}",
+  "{\"period_end\": \"2024-03-31\", \"quote\": \"On the domestic side in Q4 financial year '24, market demand increased by approximately 15% year-on-year to 225 Kt\"}",
+  "{\"period_end\": \"2024-03-31\", \"quote\": \"The overall metal shipments were at a record 135 Kt, up 16% year-on-year\"}",
+  "{\"period_end\": \"2024-06-30\", \"quote\": \"Domestic producer shares increased to 73% in Q1 FY '25 versus 71% in the same period of last year.\"}",
+  "{\"period_end\": \"2024-06-30\", \"quote\": \"the Q4 run rate will reach its capacity, which is 3,000 tons a month.\"}",
+  "{\"period_end\": \"2024-06-30\", \"quote\": \"this quarter, we'll be running at about 1,500 tons a month there\"}",
+  "{\"period_end\": \"2024-06-30\", \"quote\": \"we are now running at about 35%, 40% capacity by the end of the year\"}",
+  "{\"period_end\": \"2024-12-31\", \"quote\": \"(-) Depreciation \\n37\\n38\\n112\\n107\"}",
+  "{\"period_end\": \"2024-12-31\", \"quote\": \"(-) Depreciation \\n45\\n49\\n137\\n137\"}",
+  "{\"period_end\": \"2025-12-31\", \"quote\": \"AUM \\u20b9 485,883 Cr Growth 22%\"}",
+  "{\"period_end\": \"2025-12-31\", \"quote\": \"Opex to Net total income 32.8% Q3 FY25 33.1%\"}",
+  "{\"period_end\": \"2026-02-03\", \"quote\": \"3.2 - 3.5% Credit market share, 3.6 - 4.0% Retail market share, 6.5-7.5 PPC\"}",
+  "{\"period_end\": \"2026-03-31\", \"quote\": \"Order Book \\nRs 36,267 Cr.\"}",
+  "{\"period_end\": \"2026-03-31\", \"quote\": \"Order Intake \\nRs 25,280 Cr.\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Current tax expense 1,524 1,867 858 4,766\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Current tax expense 2,595 2,657 1,506 7,531\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Deferred tax expense/(benefrt) (net) 111 (289) 4 (614)\"}",
+  "{\"period_end\": \"2026-06-30\", \"quote\": \"Profit/ (Loss) before tax 9,393 3,451 5,676 18,496\"}"
+ ]
+}
