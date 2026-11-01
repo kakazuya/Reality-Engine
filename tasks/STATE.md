@@ -1,4 +1,4 @@
-# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-10-31 16:10 IST (Wolf)
+# STATE: the one live state. Overwrite in place; keep it short. Last updated 2026-11-01 17:45 IST (Wolf); HP headless rule from dsh job hp-20261101T172002-15e0f2.
 
 Old logs: `tasks/archive/`. If a doc disagrees with this file, check the repo or the stores, then fix the wrong one.
 
@@ -49,4 +49,5 @@ Review by meaning; a report without `Docs updated:` is not merged. `git merge --
 ## Machines
 - MSI: Claude, dsh workers (Go account 2), merges, source data. 2-3 workers, at least 2.5 GB free. Closing the owning session can kill its workers.
 - HP: `python -m reality_engine.scripts.hp_worker start <brief> --dbs a,b --timeout N --test-cmd ...`, Go account 1, up to 5, at least 3 GB free. Hard stop is 1800 s unless `--timeout` is passed. **Since 31 Oct 13:30 the LAN address 192.168.1.42 times out: set `HP_RUN_HOST=zen7s@100.78.87.112`;** copying DBs does not fall back on its own.
+- **ALL HP WORK RUNS HEADLESS — Shivam's ruling, 1 Nov 2026: no work may come onto the HP laptop's screen; it distracts the person using it and takes keyboard focus.** No console window, no visible window, no focus change. The packaged TextRecognizer helper is a GUI-subsystem `WinExe` and `hp_ocr_large` refuses to launch a non-GUI EXE in the interactive session; scheduled tasks, `schtasks`, `Start-Process` and WMI launches are guarded by `reality_engine/tests/test_hp_headless.py`. Detail, audit and proof: `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md` §14; helper notes: `reality_engine/tools/textrec/README.md`.
 - Merged worktrees are removed. Nothing is pushed without Shivam's OK.

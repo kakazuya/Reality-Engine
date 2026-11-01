@@ -491,8 +491,12 @@ def _launch_detached(
     shell = shutil.which("pwsh") or shutil.which("powershell") or "powershell.exe"
     ps = (
         "$ErrorActionPreference='Stop';"
+        # hidden start-up info: the detached worker must never show a console
+        "$si = Get-CimClass -ClassName Win32_ProcessStartup | New-CimInstance -ClientOnly;"
+        "$si.ShowWindow = [uint16]0;"
         "$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create "
-        "-Arguments @{CommandLine=$env:DSH_DETACH_CMD; CurrentDirectory=$env:DSH_DETACH_CWD};"
+        "-Arguments @{CommandLine=$env:DSH_DETACH_CMD; CurrentDirectory=$env:DSH_DETACH_CWD; "
+        "ProcessStartupInformation=$si};"
         "[Console]::Out.Write(('{0}|{1}' -f $r.ReturnValue, $r.ProcessId))"
     )
     env = dict(os.environ)

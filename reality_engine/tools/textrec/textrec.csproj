@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- GUI subsystem: the helper must never own a console window (Shivam's
+         ruling, 1 Nov 2026: all HP work runs headless, nothing on screen).
+         Everything it printed goes to %LOCALAPPDATA%\RETextRecBench\status.log
+         and the <out>.done sentinel; failures exit nonzero and write an
+         "error" field there.  Guarded by reality_engine/tests/test_hp_headless.py. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>ARM64</Platforms>
+    <RuntimeIdentifier>win-arm64</RuntimeIdentifier>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKBootstrapInitialize>false</WindowsAppSDKBootstrapInitialize>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <AssemblyName>textrec</AssemblyName>
+    <RootNamespace>textrec</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- probe/ is a separate WinExe with its own Main; never compile it into the
+         helper (the SDK would otherwise glob every .cs under this folder). -->
+    <Compile Remove="probe\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
+  </ItemGroup>
+</Project>

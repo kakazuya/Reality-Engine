@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Windows App SDK 2.0 experimental build: TextRecognizerOptions
+       (DetectorOutputGeometryMode + EnableWordLevelConfidence).  Same source as
+       the 1.8 baseline; TEXTREG_OPTIONS selects the options overload. -->
+  <PropertyGroup>
+    <!-- GUI subsystem: no console window (same ruling as the 1.8 build; see
+         textrec.csproj).  Guarded by reality_engine/tests/test_hp_headless.py. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>ARM64</Platforms>
+    <RuntimeIdentifier>win-arm64</RuntimeIdentifier>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKBootstrapInitialize>false</WindowsAppSDKBootstrapInitialize>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <AssemblyName>textrec20</AssemblyName>
+    <RootNamespace>textrec20</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DefineConstants>$(DefineConstants);TEXTREG_OPTIONS</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Program.cs" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.0.0-experimental7" />
+  </ItemGroup>
+</Project>

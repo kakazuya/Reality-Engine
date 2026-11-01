@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Windowless evidence probe for the "nothing on the HP screen" rule.
+       It runs in the interactive session (session 1) as a GUI-subsystem WinExe,
+       so it has no console and no window of its own, and samples what is on
+       screen.  Build it with `dotnet publish` on this csproj (Release,
+       win-arm64), as the textrec builds are done.
+       Every csproj under reality_engine/tools/textrec must be WinExe; that is
+       asserted by reality_engine/tests/test_hp_headless.py. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>ARM64</Platforms>
+    <RuntimeIdentifier>win-arm64</RuntimeIdentifier>
+    <AssemblyName>probe</AssemblyName>
+    <RootNamespace>probe</RootNamespace>
+  </PropertyGroup>
+</Project>
