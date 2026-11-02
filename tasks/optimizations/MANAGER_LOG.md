@@ -6,7 +6,7 @@ Goal from Shivam: optimisations in place by morning; maximum delegation; manage 
 ## Operating playbook (what I commit to)
 
 1. **Definition of done is the brief's "Acceptance checks".** I judge against those, nothing else.
-2. **Event-driven, not polling.** A model-free watcher (`watch_jobs.py`, 60 s file reads, zero tokens) wakes me only
+2. **Event-driven, not polling.** A model-free watcher (`watch_jobs.py`, 60 s file reads, zero tokens; no longer in the repo, `reality_engine/scripts/job_watch.py` does the stall and failure checks now) wakes me only
    on finish / stall >25 min / lease <20 min. No status pings (they can end a run).
 3. **Tiered QA, cheapest first.**
    - L0 automatic: `merge_worker` runs the job's test_cmd and rolls back on failure; diff-stat + file-ownership check
