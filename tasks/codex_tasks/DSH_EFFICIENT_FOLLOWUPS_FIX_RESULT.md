@@ -54,11 +54,11 @@ calling APIs. This is not a fixed task-duration cap.
 - Default `controller_lease_seconds=1800`. The MCP server writes
   `controller_lease.json` with an absolute real-wall-clock deadline (not the
   test fake-now used for off-peak gating), job/owner binding, and renewal count.
-- New MCP tool `renew_worker_lease(job_id, extend_seconds=1800)` is the only
-  renewal path. It may extend at most 30 minutes per explicit call. Status,
+- New MCP tool `renew_worker_lease(job_id, extend_seconds=1800)` is the explicit
+  renewal path; the supervisor also renews the lease itself while the worker lives (`supervisor.py` `_renew_lease`). It may extend by at most 7200 seconds per explicit call (the 30-minute cap was raised on 2026-10-24). Status,
   result, list, messaging, worker/model/tool activity, and background timers do
   not renew it. Renewal authority is memory-only, so a restarted MCP server
-  cannot extend an existing deadline.
+  cannot renew until it takes the lease over with `renew_worker_lease(adopt=true)`.
 - The supervisor reads the lease independently of model activity and validates
   schema, expected job id, expected owner id, parseable deadline, and a bounded
   future interval. Missing, malformed, copied/wrong-owner, arbitrarily future,
@@ -113,6 +113,15 @@ fake worker activity do not renew; restarted MCP server cannot renew; a
 copied/wrong-owner lease is refused without extending; cancellation removes the
 lease; partial output is preserved and reported.
 
+Test names changed after this run (checked 2026-11-02):
+`test_controller_lease_expiry_stops_endless_worker_and_preserves_partial` and
+`test_controller_lease_renewal_is_explicit_and_restart_cannot_extend` are not in
+`reality_engine/tests/test_dsh_worker_plugin.py`. The current lease tests include
+`test_controller_lease_renewal_requires_ownership`,
+`test_missing_lease_stops_responsive_worker` and
+`test_hard_timeout_ends_the_worker_even_when_the_lease_is_renewed`. The commands
+above are the record of what ran.
+
 ```powershell
 python -m py_compile <changed Python files>
 node --check reality_engine/scripts/dsh_heartbeat_control.mjs
@@ -137,9 +146,11 @@ node --check reality_engine/scripts/dsh_heartbeat_control.mjs
   contract. A full MCP-client-to-real-dsh smoke remains the reviewer step.
 - `followup_wait_seconds=0` is the default; any caller wanting sequential
   same-conversation follow-ups must opt in and send `kind="followup"`.
-- Lease renewal after MCP restart is deliberately refused. A productive job can
-  continue indefinitely only while its controller explicitly renews before the
-  current deadline; this is the intended Codex-disappearance guard.
+- Lease renewal after MCP restart is deliberately refused until `claim_worker` or
+  `renew_worker_lease(adopt=true)` takes ownership. The supervisor now renews the
+  lease itself while the worker lives (`test_supervisor_renews_the_lease_so_a_long_job_survives`),
+  so the hard timeout is the real limit (`renew_worker_lease` docstring in
+  `plugins/dsh-worker/server/core.py`).
 
 ## Follow-up: deterministic lease-renewal fixture (Codex 41-test run)
 

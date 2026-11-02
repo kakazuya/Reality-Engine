@@ -56,7 +56,7 @@ Static DB cannot hold this reasoning — it must spawn a **transient event-graph
 1. **Parse event nuances:** % reduction, effective date, exceptions, blanket vs conditional (e.g. conditional on US plant investment). Stored as `macro_events(event_id, category=TRADE_POLICY)` + `ripple_effects` 1st-order.
 2. **Fetch ALL remotely active stocks:** dyes / yarn / cotton suppliers, indirect revenue segments, machine-makers whose capex sales expand *more than* organic growth. Not just naive "buy textile" — `geographic_exposure` + `business_model_profiles` scan.
 3. **Quantize new reality:** `30% revenue hit → 30% recovery`, `lag_time_months` to financials, caveats. → `ripple_effects(raw_magnitude, probability, lag_time_months)`.
-4. **2nd-order forward/backward supply chain:** find who benefits **MORE than the primary** (e.g. upstream dye supplier with pricing power). Recursive CTE `postgres_schema.sql` `ripple_chain` computes `compound_probability, cumulative_magnitude, total_lag_months, significance_score` ordered `significance_score DESC`.
+4. **2nd-order forward/backward supply chain:** find who benefits **MORE than the primary** (e.g. upstream dye supplier with pricing power). Recursive CTE `causal_engine.py` `ripple_chain` computes `compound_probability, cumulative_magnitude, total_lag_months, significance_score` ordered `significance_score DESC`.
 5. **Lifecycle:** transient graph is promoted to dense substrate (§1) then decayed per §11 once superseded/invalidated.
 
 **Pydantic (event-graph):** `MacroEventExtraction{event_name, event_category, primary_effects:[PrimaryConsequence{target_type, target_name, transmission_channel, raw_magnitude, probability, lag_time_months, second_order_effects:[RippleConsequence{order_level≥2, downstream_ripples:[RippleConsequence]}]}]}` — emitted transactionally `repository.py` into `raw_documents→macro_events→ripple_effects`.
@@ -79,14 +79,14 @@ Embeddings will grow large — apply **brain-like competitive survival**: whatev
 * **Sparse gating (MoE):** Like a transformer's sparse firing — per *ask*, only some lens pathways/parameters fire, the rest stay silent. A gating network selects active peers per scrip/regime.
 * **Temperature = explore/exploit:** Each run applies small **pathway mutations** (explore) vs exploiting the current best explainer (exploit), controlled by a temperature parameter. Higher temp → test alternate decision trees/explainer paths; lower → consolidate winners.
 * **Survival:** losing pathways lose weight (`explanation_weight ↓`); winning pathways `↑`. This is the embedding-space analog of neural pruning/Hebbian "cells that fire together wire together."
-* **Schema hook:** `model_explainer_rankings.explanation_weight` + `lens_activation_log(temperature, fired_lenses)` for audit.
+* **Code/schema hook:** `explanation_weight` is set in `processing/ensemble_ranker.py` (not a `model_explainer_rankings` column) + `lens_activation_log(temperature, fired_lenses)` for audit.
 
 ---
 
 ## 7. Multimodal Ingestion Objective
 
 * **Sources:** Union Budget, RBI Economic Survey, MPC, YouTube analysis, earnings concall MP4, BSE announcements, Vahan/MF inflows, PIB.
-* **Pipeline:** `youtube_transcriber.py` `yt-dlp → ffmpeg splitter → Whisper Large-v3 (local) + RapidOCR DirectML (AMD RX 6700 XT, no cloud)` with `timestamp_start_sec` + `pdf_ingestor.py` `PyMuPDF/Marker` layout-aware → `raw_documents(title, source_type, published_date, fiscal_period, source_url, creator_or_ministry)` → chunked `document_chunks(content, embedding VECTOR(1536) ivfflat, sector/industry_id)` for hybrid RAG. All raw is then quantized into the dense substrate (§1) before reasoning.
+* **Pipeline:** `youtube_transcriber.py` `yt-dlp → ffmpeg splitter → Whisper (local, default model `base`) + RapidOCR DirectML (AMD RX 6700 XT, no cloud)` with `timestamp_start_sec` + `pdf_ingestor.py` `PyMuPDF/Marker` layout-aware → `raw_documents(title, source_type, published_date, fiscal_period, source_url, creator_or_ministry)` → chunked `document_chunks(content, embedding VECTOR(1536) ivfflat, sector/industry_id)` for hybrid RAG. All raw is then quantized into the dense substrate (§1) before reasoning.
 
 ---
 
@@ -94,7 +94,7 @@ Embeddings will grow large — apply **brain-like competitive survival**: whatev
 
 * **Schema:** `macro_events(event_id, doc_id, event_name, category) → ripple_effects(ripple_id, event_id, parent_ripple_id NULL for 1st-order, order_level 1..N, target_type, target_company_id/industry_id, transmission_channel, transmission_elasticity -2→2, raw_magnitude -5→5, probability 0→1, lag_time_months)`.
 * **Math:** `PN = ∏ Pi` `MN = RawN × PN × βTransmission` `S = |MN| × 20 / (1 + ln(1+Lag))`. Example steel duty: 1st +3.80 0m → 2nd -2.43 3m → 3rd -1.41 6m.
-* **Recursive CTE** `postgres_schema.sql` traverses `ripple_chain` ancestor→child. This is the **supply-chain/linkage peer** (§2.4), competing equally with FF5 and others.
+* **Recursive CTE** `causal_engine.py` traverses `ripple_chain` ancestor→child. This is the **supply-chain/linkage peer** (§2.4), competing equally with FF5 and others.
 
 ---
 
@@ -112,14 +112,11 @@ LLM must emit these schemas — never free-text — to populate `raw_documents�
 
 **Phase A — Objectives freeze (done):** `AGENTS.md`, `README.md`, `postgres_schema.sql` committed.
 **Phase B — Schema extension:** Run `psql -f reality_engine/db/postgres_schema.sql`; add `model_explainer_rankings`, `lens_activation_log`, `pruning_decay_config.is_structural_milestone`; backfill `business_model_profiles` Top 200.
-**Phase C — Quantification backfill:** `moat_scorer.py` → `moat_evaluations` (Polyplex SC4 NE1 CA3 IA3 ES2 → 2.75 Narrow); `policy_engine.py` ENI; seed FF5 baselines + peer weights.
+**Phase C — Quantification backfill:** `moat_scorer.py` → `moat_evaluations` (Polyplex SC4 NE1 CA3 IA3 ES2 → 2.65 Narrow); `policy_engine.py` ENI; seed FF5 baselines + peer weights.
 **Phase D — Ingestion switch:** `youtube_transcriber.py`+`pdf_ingestor.py` into `phase1_runner.py` → `raw_documents/document_chunks` → dense substrate promotion (§1).
 **Phase E — Causal DAG + Event-Graph activation:** `causal_engine.py` recursive CTE; transient event-graph spawner (§4) for material news; verify `trace-causal-chain --max-hops 3`.
 **Phase F — Ensemble cutover:** `composite_screener.py` refactored to **all-peers weighted ensemble** (not top-down-only); `orchestrator.py` synthesizes multi-lens thesis. Keep SQLite WAL `schema.sql` fallback until PG stable.
 **Phase G — Self-correction + MoE:** EOD+event batch re-ranker (§3), temperature-gated explore/exploit (§6).
-
-Track each phase with `python -m unittest reality_engine.tests.test_new_funnel`.
-
 ---
 
 ## 11. 4-Pillar Data Pruning & Lifecycle Framework (Generalized)
@@ -130,10 +127,10 @@ Track each phase with `python -m unittest reality_engine.tests.test_new_funnel`.
 |---|---|---|
 | **Tiering** | Hot 12m embeddings RAM → Warm 12-36m text only → Cold >36m Parquet S3 Glacier; Video MP4 never DB | `pruning_decay_config` |
 | **Exponential Decay** | `S(t)=S0·e^{-λΔt}` λ=ln2/T½: YouTube 3m λ0.231, Concall/MPC 6m λ0.115, Budget 12m λ0.058, **Structural INF** | `v_ripple_decayed` view |
-| **Partitioning** | `document_chunks PARTITION BY RANGE(published_date)` quarterly ivfflat → detach old partitions | Partition DDL |
+| **Partitioning** | `document_chunks PARTITION BY RANGE(published_date)` quarterly ivfflat → detach old partitions | Partition DDL (commented out, `db/postgres_schema.sql:409`) |
 | **Procedure** | `CALL prune_decayed_signals()` cron monthly: drop embeddings >12m (retain Structural Milestone), delete ripple `prob<0.10 OR raw*prob<0.50`, archive macro >24m | `pruning_engine.py` |
 
-Pruning rules: `PN<0.08` leaf cut, `S(t)<5.0` branch cut, status `Materialized/Superseded/Invalidated` per `processing/pruning_engine.py:30`.
+Pruning rules: `PN<0.08` leaf cut, `S(t)<5.0` branch cut (`should_prune_ripple` in `processing/pruning_engine.py:197`; `processing/causal_engine.py:151` sets the `pruned` flag).
 
 ---
 
@@ -155,7 +152,7 @@ Monthly batch: `[20 YouTube +4 Concalls] → LLM synthesis → UPDATE business_m
 
 Pipeline: `MP4 → ffmpeg scene-change → RapidOCR DirectML (RX 6700 XT) + OpenCV + Whisper → VisualArtifact` Pydantic `VideoIntelligenceExtraction{spoken_policy_signals[], visual_artifacts[]}` → `visual_evidence_artifacts(...)` `reality_engine/agent/schemas.py:344` + `postgres_schema.sql` — fully local. Concrete: Aerospace slide ₹450Cr vs ₹1,200Cr FY29 delay flagged `lag_time_months 36` via vision → DAG corrected.
 
-Track via `python -m unittest reality_engine/tests/test_pruning_vision` + monthly `CALL prune_decayed_signals()`.
+Track via `reality_engine/tests/test_lifecycle_pruning.py` (no vision test file exists) + monthly `CALL prune_decayed_signals()`.
 
 ---
 
@@ -164,7 +161,7 @@ Track via `python -m unittest reality_engine/tests/test_pruning_vision` + monthl
 Transcript `raw_documents: doc_id DEKO-619` → Pydantic `VideoIntelligenceExtraction`.
 
 * **Level 1 — Adjacent Possible + Graph:** `ripple_effects.parent_ripple_id ≈ adjacent nodes`; top-down funnel is just *one* graph traversal among many. `causal_engine.py` recursive CTE prunes `PN<0.08` unreachable paths.
-* **Level 2 — Serendipity + Exploration:** `inbox_runner.py`+`telegram_client.py` serendipitous filings (Polyplex PPT missed by category query). Exploration cron `run-inbox --explore` → exploit when `moat_updates>0.2`. Maps to §6 temperature explore.
+* **Level 2 — Serendipity + Exploration:** `inbox_runner.py`+`telegram_client.py` serendipitous filings (Polyplex PPT missed by category query). Exploration cron (planned, not built; the CLI has `process-inbox` and no `--explore`) → exploit when `moat_updates>0.2`. Maps to §6 temperature explore.
 * **Level 3 — Path Dependence + DP:** `moat_trajectory` memoized state; `distillation_runs` DP table increments, not from zero; `MN=RawN×PN×β` stateful product.
 * **Level 4 — Bayesian Updating + VoI:** `ENI=Severity×Probability` prior×likelihood → posterior; `significance_rank=|MN|×20/(1+ln(1+Lag))` discounts lag. Value-of-information cron: small `screen --top 5` before big bet.
 
@@ -180,13 +177,13 @@ Dashboards surface `adjacent nodes count`, `exploration vs exploitation ratio`, 
 3. **Sell More Units** `industries.secular_growth_score≥4` + capacity utilization `Factory_Floor_Tour`.
 4. **Acquire/Roll-up** Tollbooth/Platform synergy vs `debt_to_ebitda` gate.
 5. **New Markets/Products** `geographic_exposure revenue_share_pct` + Investor_Presentation tables.
-Every `quarterly_financials` recomputes `ΔEarnings = f(ΔPrice,ΔUnits,ΔCosts)`; `moat_scorer.py` tags structural vs cyclical.
+Every `quarterly_financials` recomputes `ΔEarnings = f(ΔPrice,ΔUnits,ΔCosts)`; `moat_scorer.py` tagging structural vs cyclical is planned, not built.
 
 ---
 
 ## 16. Lynch 6 Stock Types — Archetype & Lifecycle Filter (Investor52 `-XF-gs_SXnA`)
 
-6 shapes = revenue/earnings trajectories: **Stalwart** (steady 10-19%), **Fast Grower** (>20%), **Slow Grower** (<10%), **Cyclical** (wave, ~25% S&P), **Turnaround** (drop→recover), **Asset Play** (hidden value). Map to `lifecycle_stage`+`archetype`+`moat_evaluations`; `composite_screener.py` tags `stock_type` via 10y `yoy_revenue_growth_pct` + peer percentile. These are **lens features feeding the ensemble**, not a standalone funnel.
+6 shapes = revenue/earnings trajectories: **Stalwart** (steady 10-19%), **Fast Grower** (>20%), **Slow Grower** (<10%), **Cyclical** (wave, ~25% S&P), **Turnaround** (drop→recover), **Asset Play** (hidden value). Map to `lifecycle_stage`+`archetype`+`moat_evaluations`; Planned, not built: `composite_screener.py` to tag `stock_type` via 10y `yoy_revenue_growth_pct` + peer percentile. These are **lens features feeding the ensemble**, not a standalone funnel.
 
 ---
 

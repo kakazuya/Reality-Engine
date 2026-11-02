@@ -11,7 +11,7 @@ Final report format: 1) what changed (files, one line each) 2) how verified (com
 
 ## Goal
 `python -m unittest reality_engine.tests.test_dsh_worker_plugin reality_engine.tests.test_code_intel` passes in a
-single process (today it fails at import).
+single process (it failed at import until `test_code_intel.py` began loading its server modules under unique names, lines 33-48).
 
 ## Why
 `plugins/dsh-worker/server/core.py` and `plugins/code-intel/server/core.py` are both imported as the top-level module
@@ -29,7 +29,7 @@ full discovery) breaks.
 None (no databases).
 
 ## Steps
-1. Reproduce: run the Goal command, see the import failure.
+1. Reproduce: run the Goal command; before the fix it failed at import.
 2. Make the code-intel tests import its modules without claiming the global name `core` (e.g. `importlib.util`
    with a unique module name, or package-qualify), keeping the server runnable as a script.
 3. Confirm both orders work.

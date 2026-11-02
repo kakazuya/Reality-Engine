@@ -1,5 +1,7 @@
 # Task — v4 answers print false labels, and stale values pass as current
 
+Status 2026-11-02: class 5 is in code. `reality_engine/query/v4/fact_view.sql` builds `price.close` from `company_state_daily.raw_close` (basis=raw), and `execute.py` labels it `RAW_CLOSE`. The text below describes the 2026-10-31 state.
+
 ## Goal
 The read grade's rows show answers that state something untrue about themselves. A reader takes these as facts. Read `tasks/dsh_tasks/V4_COMMON_2026-10-31.md`, then trace each one in `reality_engine/query/v4/` (`execute.py`, `render.py`).
 

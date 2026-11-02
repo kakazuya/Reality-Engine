@@ -28,7 +28,7 @@ measurement tonight found no orientation benefit from the 27k pack, so smaller i
 2. Two runs identical except the `Generated:` line.
 3. The data map still has curated descriptions for every listed table (count them; report the number).
 4. `python -m unittest reality_engine.tests.test_dsh_worker_plugin` passes.
-5. `git diff --stat` touches only the files above (do not commit the regenerated CONTEXT.md; Claude does).
+5. `git diff --stat` touches only the files above (CONTEXT.md is gitignored, `.gitignore:202`; do not force-add it).
 
 ## Test command(s)
 ```bash

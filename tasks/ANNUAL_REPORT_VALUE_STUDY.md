@@ -39,7 +39,7 @@ into tables, the situational signals with examples, and an estimate of chunks pe
 
 ## 3. Reading method and budget
 
-- **Reader: Sonnet**, via the Agent tool with `model: "sonnet"`, reading the extracted text (not page images). The job
+- **Reader (superseded 2026-10-12):** bulk reading goes to free OpenCode Go / Kilo models, not Sonnet (`tasks/ar_study/HANDOFF_AR_PIPELINE.md`). The original brief was Sonnet, via the Agent tool with `model: "sonnet"`, reading the extracted text (not page images). The job
   is judgement (is this new? does a footnote hint at trouble?), where Sonnet is clearly better than Haiku.
 - A full AR does not fit one agent comfortably. Split each AR into its sections (§5) or into page ranges of ~40-60
   pages, one agent per part. Give every agent the same company's concall/PPT text for that year so it can judge

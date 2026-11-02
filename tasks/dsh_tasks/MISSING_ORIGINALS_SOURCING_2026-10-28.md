@@ -34,10 +34,10 @@ This is a raw fetch only. No chunking, tagging, embedding or DB loading (golden 
    - Arguments: `--exchange nse|bse|any`, `--interval` (NSE ≥3 s; BSE ≥2.5 s per stream), resume (skip files already present, `%PDF` magic check), back-off on 403/429/503, a manifest CSV.
    - Downloads go to D: only. **No DB writes.**
    - Offline tests in `reality_engine/tests/test_fetch_originals.py`.
-5. **Rate plan.** Total budgets: BSE ≤76/min, NSE ≤20/min. Already running:
+5. **Rate plan.** Total budgets: BSE ≤76/min, NSE ≤20/min. Already running on 2026-10-28:
    - BSE concall: 2.5 s, about 24/min;
    - BSE decks: `fetch_decks bse --pause 2.0`, about 20–25/min;
-   - NSE announcements: 3 s, 20/min, so NSE is full until about 08:00 tomorrow.
+   - NSE announcements: 3 s, 20/min, so NSE was full until about 08:00 on 2026-10-29.
 
    Propose the start order and intervals that keep both exchanges full without crossing their caps. For example: BSE ARs now at 4 s, NSE matches after the NSE announcement run.
 

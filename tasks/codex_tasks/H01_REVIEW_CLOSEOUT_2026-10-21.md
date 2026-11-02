@@ -1,6 +1,6 @@
 # H01 review and corrected backtest — 21 October 2026
 
-H01 is complete as a provisional historical subset test. **No variant is promoted.** H02 bulk/block deals is next in the register. No 2026 results were used.
+H01 is complete as a provisional historical subset test. **No variant is promoted.** H02 bulk/block deals was the next test and has since run (`tasks/backtests/H02_report.md`). No 2026 results were used.
 
 Codex implemented during peak time, per Shivam's standing workflow. No DeepSeek call, advisor request, commit, push, upload, or live/source database write was made.
 

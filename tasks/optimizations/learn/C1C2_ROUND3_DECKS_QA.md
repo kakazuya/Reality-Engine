@@ -24,12 +24,12 @@ removes the OS sandbox, so the rules below are the real fence. Keep them exactly
 ## Inputs
 - Round-2 code, merged on main: `chunker_v2.py`, `layout_gpu.py`, `eval_retrieval.py`, `test_chunker_v2.py`,
   `quality_set_v2.jsonl`. Pilot DBs from round 2 are in the round-2 worktree
-  `C:\Users\warri\Downloads\IDM-worktrees\20261025T161216Z-02376206\.tmp\c1\` (read; copy what you need).
+  `C:\Users\warri\Downloads\IDM-worktrees\20261025T161216Z-02376206\.tmp\c1\` (read; copy what you need). The worktree is gone (checked 2026-11-02), so these DBs are not on disk under that path.
 - **48 real investor decks:** `D:\RealityEngine\raw\deck_real_pilot\manifest.json` lists symbol, isin, known_at,
   title, sha256 and local `path`. Skip rows with `path: null`. Note: round 2's 50 "decks" were one-page
   announcements and must not be used as decks.
 - `.venv-layout` in the main checkout (`C:\Users\warri\Downloads\Info_Diffusion_Model\.venv-layout`), weights already
-  under the round-2 worktree's `.tmp/c1b/models/` (copy them). Gotchas: `import torch` before `onnxruntime`;
+  under the round-2 worktree's `.tmp/c1b/models/` (copy them; that worktree is gone as of 2026-11-02, so locate the weights before use). Gotchas: `import torch` before `onnxruntime`;
   set `YOLO_CONFIG_DIR`/`MPLCONFIGDIR` under `.tmp/`.
 
 ## Phase A — real deck questions

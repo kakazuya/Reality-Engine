@@ -1,6 +1,6 @@
 # Review task — independent acceptance check of optimisation task L1 (market lookups)
 
-You are a reviewer, not the author. Your workspace is the author's finished worktree `C:/Users/warri/Downloads/IDM-worktrees/20261025T074944Z-d9955304`
+You are a reviewer, not the author. Your workspace is the author's finished worktree `C:/Users/warri/Downloads/IDM-worktrees/20261025T074944Z-d9955304` (not on disk when checked)
 (branch `dsh/20261025T074944Z-d9955304`, base `2260df7`). Read `tasks/optimizations/00_SHARED_CONTEXT.md` (sections Machine, Tests,
 Known sandbox limits only) and the brief `tasks/optimizations/lookups/L1_MARKET_LOOKUPS.md`.
 

@@ -12,8 +12,8 @@ Evidence base used: `tasks/PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` (§3, §7, 
 **Position:** Right, but add a fourth test: **"we can name who loses to us and why they keep losing."** Also add drawdown and capacity to the scoreboard.
 **Why:**
 - "Has a reason" is too loose. Any story can be written after the fact. "The other side is slow or forced" can be checked: index funds must buy on inclusion, ASM-listed stocks force margin calls, retail under-reads late-evening filings.
-- Edges with no named loser decay fastest. The project's own results-drift estimate already shows decay by year: +96 bp (2023), +22/+24 (2022/2024), −11 (2025), −41 (2026) (`SESSION_CLOSEOUT_2026-10-05.md` §3).
-- A drawdown limit belongs in the north star, not only in sizing. The desk's 40% cash/gold buffer (`desk_macro_psych` header) already shows the user thinks this way.
+- Edges with no named loser decay fastest. The project's own results-drift estimate already shows decay by year: +96 bp (2023), +22/+24 (2022/2024), −11 (2025), −41 (2026) (2026-10-05 session closeout §3; no longer in the repo).
+- A drawdown limit belongs in the north star, not only in sizing. The desk's 40% cash/gold buffer (desk macro note, no longer in the repo) already shows the user thinks this way.
 **Confidence:** high
 
 ### Q2
@@ -52,7 +52,7 @@ Evidence base used: `tasks/PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` (§3, §7, 
 ### Q6
 **Position:** For research, use **matched peers** (same liquidity/size bucket, same day). For the decision book, use a **broad index** (Nifty 500 total return). Add a factor model (market, size, value, momentum) as a robustness check once the factor spine exists.
 **Why:**
-- The diffusion study showed that an equal-weight market proxy created spurious ±8 bp/day drifts between large and small caps. Liquidity-bucket matching fixed this (`DIFFUSION_STUDY` §2.1).
+- The diffusion study showed that an equal-weight market proxy created spurious ±8 bp/day drifts between large and small caps. Liquidity-bucket matching fixed this (`DIFFUSION_STUDY` §2).
 - The book's investor ultimately compares against an index fund, so the scoreboard should too.
 **Confidence:** med
 
@@ -92,7 +92,7 @@ Evidence base used: `tasks/PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` (§3, §7, 
 ### Q12
 **Position:** Set them aside as decision inputs. Keep the tables and the vision. Revive each one only through a hypothesis card that tests it.
 **Why:**
-- They cannot vote. Moat has 2 dates of history, policy has 1, and ripple `transmission_elasticity` is a constant 1.0 on 61/61 rows (`FACTOR_SPINE` §0; `PIT_LABEL_AUDIT`). `model_explainer_rankings` has `regime_tag='*'` on 100% of rows. The weights parked on these mute lenses (supply 0.358 + quality 0.271 = 63%) were noise (`desk_macro_psych` §0).
+- They cannot vote. Moat has 2 dates of history, policy has 1, and ripple `transmission_elasticity` is a constant 1.0 on 61/61 rows (`FACTOR_SPINE` §0; `PIT_LABEL_AUDIT`). `model_explainer_rankings` has `regime_tag='*'` on 100% of rows. The weights parked on these mute lenses (supply 0.358 + quality 0.271 = 63%) were noise (desk macro note, no longer in the repo, §0).
 - I defend the *ideas* — business quality and supply-chain transmission are real economics. But today's numbers are LLM-generated snapshots dated Aug–Sep 2026. Treating them as signals is look-ahead.
 - Best revival route: the tariff event card. It is a cheap, honest test of whether exposure-based reasoning predicts ordering of reactions at all.
 **Confidence:** high
@@ -131,7 +131,7 @@ Evidence base used: `tasks/PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` (§3, §7, 
 ## F. Evaluation engine
 
 ### Q16
-**Position:** Yes. Build the shared harness from the diffusion-study code. It already has the hard parts: point-in-time event timing, matched benchmark, clustered errors, false-discovery control, negative controls. Add a cost-aware long-only portfolio backtest and a cross-sectional test. Quant Lead's detail.
+**Position:** Yes. Build the shared harness from the diffusion-study code (`analysis/diffusion_study/`). It already has the hard parts: point-in-time event timing, matched benchmark, clustered errors, false-discovery control, negative controls. Add a cost-aware long-only portfolio backtest and a cross-sectional test. Quant Lead's detail.
 **Why:** It is the only code in the repo that has produced a result that survived its own controls (drift statistic: 0 of 20 control strata rejected).
 **Confidence:** med
 

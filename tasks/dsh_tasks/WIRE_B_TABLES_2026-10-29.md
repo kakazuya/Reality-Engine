@@ -14,7 +14,7 @@ The design (`tasks/pilot_b/cases_pilot_b.jsonl`) now classes 65 more cases as an
 
 ## Do
 1. `reality_engine/query/ctx.py`:
-   - add the store as a T1 alias (`market_state_b`, env `REALITY_MARKET_STATE_B`, default = the SSD path above when present);
+   - add the store as a T1 alias (`market_state_b`, env `REALITY_MARKET_STATE_B`, default = `<data root>/pilot/pilot60/market_state_b.db`, else `.tmp/pilot_b/`, when present: `market_state_b_path` in ctx.py);
    - open every T1 pilot DB read-only with `immutable=True`, so a read-only sandbox can't fail on the WAL `-shm`.
 2. Planners:
    - SERIES / COMPARE read commodity series (`series_observation` + `series_meta`) for commodity asks, and the F&O open interest / futures basis (`fno_oi_daily`) for OI, PCR and rollover asks;

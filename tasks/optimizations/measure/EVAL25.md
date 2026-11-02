@@ -2,7 +2,7 @@
 
 Tiers: **F** = pure fact, one store. **R1–R5** = fact + reasoning, denser as the number rises.
 "Needs" lists the stores a correct answer must cite. "Coverage" is what Claude checked on 2026-10-25.
-Reference answers (key) live in `EVAL25_KEY.md` and are verified by Claude before they are used to grade.
+Reference answers (key) were in `EVAL25_KEY.md`, which is not in the repo; Claude verifies any key before it is used to grade.
 
 | # | Tier | Question (short) | Needs | Coverage / known gap |
 |---|---|---|---|---|

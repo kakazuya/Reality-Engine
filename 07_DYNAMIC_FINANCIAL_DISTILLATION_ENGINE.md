@@ -86,12 +86,12 @@ Because SQLite natively supports `json_extract()` and JSON path operators (`->`)
 SELECT 
     symbol,
     json_extract(value_json, '$.is_cyclical') AS is_cyclical,
-    json_extract(value_json, '$.cycle_stage') AS cycle_stage,
+    json_extract(value_json, '$.cycle_current_stage') AS cycle_stage,
     json_extract(value_json, '$.cycle_duration_years') AS cycle_duration_years,
     json_extract(value_json, '$.key_revenue_drivers') AS key_drivers
 FROM company_distilled_parameters
 WHERE parameter_key = 'cyclicality_profile'
-  AND json_extract(value_json, '$.cycle_stage') IN ('EARLY_RECOVERY', 'MID_EXPANSION');
+  AND json_extract(value_json, '$.cycle_current_stage') IN ('Expansion');
 ```
 
 ---
@@ -225,7 +225,7 @@ WHERE parameter_key = 'cyclicality_profile'
 
 ## 5. Distillation Worker & Update Cycle
 
-The Distillation Engine runs as an asynchronous background worker when new disclosures land or on a weekly schedule.
+The Distillation Engine (`DistillationEngine`, `reality_engine/processing/distillation_engine.py`) runs from `pipeline/bootstrap.py` and in the nightly catch-up loop (`pipeline/catchup_scheduler.py`). It derives the profiles from financials and curated sources with no LLM call. The sketch below is not shipped code: it calls Gemini, and its fields differ from the code (e.g. `cycle_duration_years`, `margin_sensitivities` as a dict, `stage_conviction`).
 
 ```python
 from pydantic import BaseModel, Field
@@ -277,7 +277,7 @@ When the EOD Ranking Engine, Crisis Screener, and Cloud AI Agent evaluate candid
    - If `cycle_current_stage: "PEAK"`, technical breakouts are penalized for distribution risk.
 2. **Crisis & Shock Simulation Engine (The Asymmetric Fall Edge)**:
    - When a macro panic happens (e.g., Geopolitical tension in Taiwan, Red Sea freight spike, RBI interest rate surprises):
-     - The Agent runs `simulate_macro_shock(shock_name="RED_SEA_FREIGHT_SURGE")`.
+     - The Agent runs `simulate_macro_shock(shock_scenario="RED_SEA_FREIGHT_SURGE")`.
      - Queries `company_distilled_parameters` across all companies for `geopolitical_supply_chain`.
      - Separates companies with genuine earnings impairment from those with zero operational impact whose stock price fell purely due to market-wide beta dumping.
      - Emits the **Crisis Bargain List** (Resilient companies trading at steep panic discounts).

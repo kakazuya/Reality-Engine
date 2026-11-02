@@ -4,8 +4,8 @@ Written 2026-10-10. **Goal (Shivam):** every relevant fact in an annual report (
 quality. Window and token efficiency are secondary. Bulk reading goes to the free models on OpenCode Go and Kilo
 Gateway. Claude's job is to check whether their output is good enough.
 
-**Start:** after concall ingestion finishes (expected end of 2026-10-10). Until then concall ingestion is using the
-Kilo throttle, which is shared across both keys.
+**Start:** after concall ingestion finishes (planned for end of 2026-10-10; this file does not record whether it did).
+While it ran, concall ingestion used the Kilo throttle, which is shared across both keys.
 
 ## 1. Gold set (already built and checked by the main session)
 
@@ -116,11 +116,11 @@ Proposed. The quality test settles the fields.
   standalone/consolidated.
 
 Cash flow and balance-sheet detail are needed because the DB holds no cash-flow data today (yfinance OCF is 0 on 96%
-of rows; see STATE → Known data gaps). This changes if the NSE results XBRL is parsed first.
+of rows, as of 2026-10-10; the "Known data gaps" section of STATE.md it cited is no longer there). This changes if the NSE results XBRL is parsed first.
 
 ## 4. Open dependencies
 
-- The AR download stopped partway through the Nifty500 group (STATE → Known data gaps, item 1). Ingestion quality
+- The AR download stopped partway through the Nifty500 group (as of 2026-10-10; the STATE.md "Known data gaps" section it cited is no longer there). Ingestion quality
   is moot for reports we never downloaded.
 - Concall ingestion has to finish before free-model AR runs start (shared Kilo throttle).
 - Which pipeline to extend: the deck-figures extractor already handles the free-reader rotation, throttling and a

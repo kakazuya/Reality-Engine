@@ -4,9 +4,8 @@
 Fix defects N1–N10 from the re-review, and add a reconciled segment-sum denominator so that current-year refiner
 weights can be computed. Then G3 merges.
 
-Worktree: `C:\Users\warri\Downloads\IDM-worktrees\20261025T123302Z-e856c1b1` (HEAD `16c827c`).
-Read the re-review in full, including its section 5 rule:
-`C:\Users\warri\Downloads\Info_Diffusion_Model\plugins\dsh-worker\runtime\jobs\20261025T151433Z-2a0b16b1\result.md`.
+Worktree: removed after merge (was `20261025T123302Z-e856c1b1`, HEAD `16c827c`).
+Read the re-review in full, including its section 5 rule (dsh job `20261025T151433Z-2a0b16b1`, read with `worker_result`).
 
 ## Manager decisions
 - **N1 (wrong-file AR):** accept a weight only if the document names the company (its name or symbol appears in the

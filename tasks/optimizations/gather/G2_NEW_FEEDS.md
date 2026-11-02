@@ -32,7 +32,7 @@ Add three new deterministic jobs to `plugins/dsh-worker/jobs.yaml`. They fill da
    - Source: the results PDF attached to that filing's BSE announcement (`bse_announcements.db:ann`, category Result).
    - `known_at` is the announcement time.
 3. **etf_premium**
-   - Fills `equity_intelligence.db:etf_premium` from the `etf_px` close against the `fund_nav` NAV, matched on ISIN
+   - Fills `equity_intelligence.db:etf_premium_daily` (the `etf_premium` view stays owned by `etf_nav`) from the `etf_px` close against the `fund_nav` NAV, matched on ISIN
      and date.
    - Stores `premium_pct`, plus the iNAV gap from `etf_inav` when present.
    - Writes as an idempotent upsert.

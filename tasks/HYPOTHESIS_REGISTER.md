@@ -836,6 +836,8 @@ first five run.
 
 ## 8. Sources for the numbers in this file
 
+Note: `tasks/STATE.md` is overwritten in place; the 2026-10-19 entries cited below are no longer in it (checked 2026-11-02).
+
 - FRAMEWORK rules: `tasks/FRAMEWORK.md` §2–§6.
 - Evidence window, live 2026, proof rules: `tasks/FRAMEWORK.md` §5.
 - Results timing lag and the TITAGARH example: `tasks/STATE.md` (2026-10-19 05:50 entry).

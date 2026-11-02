@@ -4,11 +4,11 @@
 Independently check that the G3 fix commit `16c827c` resolves defects 1–10 from the first review and does not add new
 ones. Verdict: PASS, PASS-WITH-NOTES or FAIL.
 
-Worktree: `C:\Users\warri\Downloads\IDM-worktrees\20261025T123302Z-e856c1b1` (branch `dsh/20261025T123302Z-e856c1b1`).
+Worktree (no longer on disk): `C:\Users\warri\Downloads\IDM-worktrees\20261025T123302Z-e856c1b1` (branch `dsh/20261025T123302Z-e856c1b1`).
 - Diff to review: `git diff 5877b16..16c827c`.
 - First review, with defects and per-theme labels:
   `C:\Users\warri\Downloads\Info_Diffusion_Model\plugins\dsh-worker\runtime\jobs\20261025T135133Z-c01c539c\result.md`.
-- Fix brief with the manager decisions: `C:\Users\warri\Downloads\Info_Diffusion_Model\tasks\optimizations\reviews\FIX_G3.md`.
+- Fix brief with the manager decisions: `tasks/archive/optimizations/reviews/FIX_G3.md`.
 - The fixer's report: `C:\Users\warri\Downloads\Info_Diffusion_Model\plugins\dsh-worker\runtime\jobs\20261025T141901Z-c870a878\result.md`.
 
 ## Check

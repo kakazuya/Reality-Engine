@@ -130,7 +130,7 @@ whole report. That is roughly a fifth of today's input, aimed where the judgemen
 3. Free-model test on the LLM slice only: kept text plus sentence rows, scored against the gold set. Start after
    concall ingestion finishes.
 4. Bulk run: about 1 CPU-minute per report, so about 12.7k reports ≈ 210 CPU-hours, about 1 day on 10 workers.
-   This waits for the download job (STATE → Known data gaps, item 1).
+   This waits for the download job.
 
 ---
 
@@ -296,7 +296,7 @@ Rows inside passing tables must also have a label and a year (or be a % or count
 
    At 12.7k reports that is ~0.5-0.75M page-equivalents, roughly the size of the deck job, not half of it.
 
-## Next (for 2026-10-12)
+## Next (planned for 2026-10-12; not done: no `novelty` filter in reality_engine/scripts as of 2026-11-02)
 
 1. Tune the prose slice: novelty and lexicon as above. Re-measure must-find recall and the LLM share.
 2. Row-mode LLM pass design (prompt + output schema: canonical label, unit, keep/drop). Test on the 39 + 39

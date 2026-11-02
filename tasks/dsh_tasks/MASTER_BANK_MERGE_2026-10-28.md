@@ -6,7 +6,7 @@ This is step 2 of the golden rule (`AGENTS.md`, top). Shivam approves only ONE m
 - `tasks/QUESTION_BANK_300_2026-10-27.jsonl`: the variations.
 - `tasks/QUESTION_BANK_OPEN_2026-10-27.jsonl`: 300 open questions.
 - `tasks/QUESTION_BANK_RIPPLE_2026-10-28.jsonl`: 200 ripple questions, each with a hop chain.
-- **The Reddit bank (200 questions, a quarter technical) does not exist yet.** Build the pipeline so it can be re-run with the Reddit file added. Its expected path is `tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl`.
+- **The Reddit bank (200 questions, a quarter technical) exists now** (added after this brief was written). Build the pipeline so it can be re-run with the Reddit file added. Its path is `tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.jsonl`.
 
 ## Do
 1. **`tasks/master_bank/build_master_bank.py`:**

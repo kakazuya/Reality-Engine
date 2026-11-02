@@ -50,4 +50,4 @@ The practical next research step is a registered challenger that uses the broad 
 - The snapshot was read-only and unchanged. The corrected20/60 report is preserved. No2026 outcomes, paid worker, commit, push or upload.
 - Resource note: initial unittest discovery repeated10 imported fixture tests. The import was corrected and the final suite is97 tests. The long run used about1.6GB resident RAM and2 DuckDB threads. Compressed outcome/book audits use about11MB.
 
-Full detail: H01_long_report.md, H01_long_results.json, H01_long_verification.json, H01_selection_report.md, H01_selection_results.json and H01_selection_verification.json in this directory. Frozen plans are in tasks/codex_tasks/H01_LONG_HORIZON_PLAN_2026-10-21.md and H01_SELECTION_FOLLOWUP_PLAN_2026-10-21.md.
+Full detail: H01_long_report.md, H01_long_tests.json, H01_long_verification.json, H01_selection_report.md, H01_selection_results.json and H01_selection_verification.json in this directory. Frozen plans are in tasks/codex_tasks/H01_LONG_HORIZON_PLAN_2026-10-21.md and H01_SELECTION_FOLLOWUP_PLAN_2026-10-21.md.

@@ -15,7 +15,7 @@
   question about an older date sees that date's universe.
 
 ## Files to touch
-- `plugins/reality-data/server/core.py`: extend `resolve` (~line 393) and `resolve_one` (~line 462) with ETF/MF
+- `plugins/reality-data/server/core.py`: extend `resolve` (core.py:493) and `resolve_one` (core.py:573), as of 2026-11-02 with ETF/MF
   matches from `etf_master`, `bse_master` INF* codes and `fund_nav`. Each match gets `kind: equity|etf|mf`.
 - New: `plugins/reality-data/server/universe.py`, the `universe` tool.
 - `plugins/reality-data/server/server.py`: register the tool in one block delimited by

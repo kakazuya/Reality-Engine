@@ -1,7 +1,7 @@
 # Claude (advisor) review of H01 run — 2026-10-20 23:40 IST
 
 Reviewed: `tasks/backtests/H01_report.md`, `H01_events.csv` (22,868 event rows), snapshot spot checks.
-Verdict: **do not read the H01 numbers yet.** One clear bug and one design choice need fixing first.
+Verdict (for the pre-fix run only): **do not read the H01 numbers yet.** One clear bug and one design choice need fixing first. Both were fixed in the corrected run; see `H01_REVIEW_CLOSEOUT_2026-10-21.md`.
 
 ## 1. BUG: special trading sessions turn into -100% returns
 - 98 distinct ISINs (~1% of events, 18-33 per variant) have `exit_missing_loss_bound = True`, booked as -100% gross.

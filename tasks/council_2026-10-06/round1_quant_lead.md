@@ -1,6 +1,6 @@
 # Council round 1 — Quant Lead (statistics, research design)
 
-**My one-paragraph view.** The framework is right in shape. The biggest statistical risk is not a bad model. It is **too little independent history being used up by too many looks**. Price data runs 2021-10 → 2026-09 (about 5 years, 1,269 sessions). Dated fundamentals do not exist yet (`PIT_LABEL_AUDIT_2026-09-29.md`). The diffusion study already shows the classic warning sign: pooled drift is significant (q ≤ 0.003), but by year it is +96 bp (2023), +22/+24 (2022/2024, CIs include 0), −11 (2025), −41 (2026) (`SESSION_CLOSEOUT_2026-10-05.md` §3). One good year can carry a pooled t-stat. So my answers focus on three things: seal a holdout now, count every test, and judge signals by stability across years, not by pooled significance.
+**My one-paragraph view.** The framework is right in shape. The biggest statistical risk is not a bad model. It is **too little independent history being used up by too many looks**. Price data runs 2021-10 → 2026-09 (about 5 years, 1,269 sessions). Dated fundamentals do not exist yet (`PIT_LABEL_AUDIT_2026-09-29.md`). The diffusion study already shows the classic warning sign: pooled drift is significant (q ≤ 0.003), but by year it is +96 bp (2023), +22/+24 (2022/2024, CIs include 0), −11 (2025), −41 (2026) (2026-10-05 closeout report §3; file no longer in the repo). One good year can carry a pooled t-stat. So my answers focus on three things: seal a holdout now, count every test, and judge signals by stability across years, not by pooled significance.
 
 Terms used below: **holdout** = a stretch of data nobody looks at until a final, one-shot test. **FDR (false discovery rate)** = the share of "passed" ideas that are really luck. **Power** = the chance a test detects a real effect of a given size. **t-stat** = effect divided by its noise; |t| ≈ 2 is a 5% coin-flip bar, |t| ≈ 3 is the bar the finance literature now asks of new factors.
 
@@ -47,7 +47,7 @@ Terms used below: **holdout** = a stretch of data nobody looks at until a final,
 **Why:**
 - +500 bps means very different things over 5 days and 365 days. Use annualised net excess return *and* an information ratio (excess return ÷ its volatility); suggest IR ≥ 0.5 net of costs on the holdout, plus a positive-and-significant estimate in-sample.
 - Hit-rate CI > 0.5 is a poor rule for skewed returns: event strategies often win less than half the time but win big. It can reject real edges and pass fake ones. Keep it as a diagnostic only.
-- Keep: ≥ 30 independent cohorts, same sign across regimes, placebo ≈ 0. These are the parts that already did their job (the P1 grid placebos ≈ 0 caught nothing false; `desk_quant_2026-09-25.md` T-2).
+- Keep: ≥ 30 independent cohorts, same sign across regimes, placebo ≈ 0. These are the parts that already did their job (the P1 grid placebos ≈ 0 caught nothing false; desk quant note of 2026-09-25, T-2; not in this repo).
 - Add: **t ≥ 3 in-sample** (not 2) because we will run many tests (see Q8), and a stated maximum drawdown.
 - Same bar shape for every horizon; only the cohort definition changes (weekly for event book, monthly for fundamental book).
 **Confidence:** medium-high.
@@ -63,7 +63,7 @@ Terms used below: **holdout** = a stretch of data nobody looks at until a final,
 ### Q7
 **Position:** Use a **fixed, deliberately pessimistic** cost stack until there are real fills, then switch to measured costs. Score **pre-tax** for promotion; report post-tax alongside.
 **Why:**
-- Promotion is about whether the signal is real and tradable; tax depends on holding period and the investor's situation, and changes with law (the Finance Act 2024 change is cited in `desk_meeting_2026-09-25.md`). Mixing tax into the research test adds noise and policy risk to a statistical question.
+- Promotion is about whether the signal is real and tradable; tax depends on holding period and the investor's situation, and changes with law (the Finance Act 2024 change; the 2026-09-25 desk meeting note is not in this repo). Mixing tax into the research test adds noise and policy risk to a statistical question.
 - Post-tax matters for the go-live decision (Q20), so compute it there.
 - Run every test at 1× and 2× the assumed cost. An edge that dies at 2× is fragile.
 **Confidence:** medium (cost levels are the Trading Lead's area).
@@ -110,7 +110,7 @@ Terms used below: **holdout** = a stretch of data nobody looks at until a final,
 **Position:** **Set them aside** from all decision paths. Keep them as candidates in the registry; each needs its own card and test before use.
 **Why:**
 - They are snapshots generated in Aug–Sep 2026 with 1–2 history dates (PIT audit), so any backtest using them is look-ahead by construction.
-- The signal audit found the substrate explains 11% of moves on average and 0 rows explain more than half; quality/policy/supply voted almost nothing (`desk_quant` T-6). Evidence of usefulness is currently zero.
+- The signal audit found the substrate explains 11% of moves on average and 0 rows explain more than half; quality/policy/supply voted almost nothing (desk quant note T-6, not in this repo). Evidence of usefulness is currently zero.
 - Leaving untested features in the decision path silently adds untracked tests and noise.
 **Confidence:** high.
 

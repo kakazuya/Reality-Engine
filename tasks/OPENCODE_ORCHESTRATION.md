@@ -55,7 +55,7 @@ touching anything OpenCode-related. Companion files:
 
 - **Throughput measured:** Go LongCat ~56-69k AR pages/day per account; Zen ~6.5k pages/day in total. Go is ~10x Zen.
 - **Free models are time-limited promotions.** OpenCode announces them on X: LongCat, Space Bunny and Step each ran
-  for days to weeks. `new_reader_check.py`, run daily by the watchdog, diffs the model lists and auto-tests new Zen models.
+  for days to weeks. `new_reader_check.py`, run every 2 h by the watchdog, diffs the model lists and auto-tests new Zen models.
 
 ## 4. How the work is split and kept alive
 
@@ -81,7 +81,7 @@ touching anything OpenCode-related. Companion files:
     (`profile_tuner.py` waits for quota).
 - **Watching:**
   - `resource_watchdog.py` restarts dead or stuck jobs, including a job that logs but reads no pages for 30 min.
-  - It runs the daily reader check and an `ar_review.py` report every 200 finished reports.
+  - It runs the 2-hourly reader check and an `ar_review.py` report every 200 finished reports.
   - Claude's own Monitor watches expire after 30 min and must be re-armed. Keep them quiet: report only problems.
 
 ## 5. Things that went wrong (do not repeat)

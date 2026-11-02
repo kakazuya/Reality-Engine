@@ -6,8 +6,8 @@ Owner: Shivam (asked 2026-10-24: "fill the empty insider-trades table"). Reviewe
 
 - `insider_trades` (legacy; columns id, symbol, isin, acquirer_name, category_of_person, transaction_type, num_shares,
   value_inr_lacs, mode_of_acquisition, acquisition_date, intimation_date) has **0 rows**. Its only filler is
-  `NSEClient.fetch_insider_trades()` (`reality_engine/ingestion/nse_client.py:323`), whose NSE endpoint now returns
-  nothing. Its only reader is `repository.get_recent_insider_trades()` (`reality_engine/db/repository.py:1515`).
+  `NSEClient.fetch_insider_trades()` (`reality_engine/ingestion/nse_client.py:325`), whose NSE endpoint now returns
+  nothing. Its only reader is `repository.get_recent_insider_trades()` (`reality_engine/db/repository.py:1523`).
 - Real insider data is already loaded by `reality_engine/scripts/load_market_raw.py`:
   - `mkt_nse_insider`: 176,089 normalized NSE trades, 2,198 symbols, `disseminated_at` 2019-01-01 .. 2026-05-02
     (columns: did, pid, symbol, company, acquirer_name, person_category, security_type, transaction_type,

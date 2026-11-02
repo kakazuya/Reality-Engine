@@ -20,7 +20,7 @@ Owner: Shivam (2026-10-24). Reviewer: Claude (reviews your tests, merges, then i
 
 ## Do
 
-1. Inventory `JOBS` (and anything else the watchdog starts, e.g. the daily new-reader check after 09:00, rclone,
+1. Inventory `JOBS` (and anything else the watchdog starts, e.g. the 2-hourly new-reader check (`READER_CHECK_EVERY_S`), rclone,
    embedding re-runs). For each: what it runs, whether it is paid / GPU / network-heavy / PC-only (paths that don't
    exist here, D:\ paths, D: drive assumptions), and whether it still exists in the repo.
 2. Make restarts opt-in: add a per-job `auto_restart` flag (default False) and a machine profile (env

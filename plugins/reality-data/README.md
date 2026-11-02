@@ -58,7 +58,7 @@ them queryable:
   `nvidia/Nemotron-3-Embed-8B`, query prompt `"query: " + question`, key
   `DEEPINFRA_API_KEY`.
 - `qwen8b_ar`: Nebius `/embeddings` (tokenfactory, studio fallback), model
-  `Qwen/Qwen3-Embedding-8B`, query prompt `embed_model_test.QWEN_INSTRUCT +
+  `Qwen/Qwen3-Embedding-8B`, query prompt `query_embed.QWEN_INSTRUCT +
   question`, key `NEBIUS_API_KEY`.
 - Both return normalised float32 4096-d vectors and are LRU-cached (256
   entries, 10 s timeout, one retry); a missing key raises
@@ -85,7 +85,7 @@ tier-3 dense leg falls back to FTS until a valid key is installed.
   contract); `REALITY_DATA_REPO_ROOT` points at the checkout. Both default
   correctly with no environment.
 
-Backups made before the change:
+Backups made before the change on 2026-10-24 (not kept in this checkout; check the profile and repo folders):
 
 ```text
 .mcp.json.bak-20261024

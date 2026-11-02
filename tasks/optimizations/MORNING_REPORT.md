@@ -21,7 +21,7 @@ live profiles (backups `*.bak-20261025-task03`, verified with `--dump-config`); 
 is not a known uv key. The live `data`-scope probe was not run either; it writes `reality_engine/data/_sandbox_probe/` and
 needs your OK.
 
-**Restart the Claude app first.** Until then the running dsh-worker MCP server is the old code while the supervisor on
+**(Instruction of 2026-10-25) Restart the Claude app first.** Until then the running dsh-worker MCP server is the old code while the supervisor on
 disk is new. Worktree jobs started before the restart **will not auto-commit**: the new supervisor refuses git without
 an identity stored at job start, and the old manager never stores one. This was observed on the last job; I committed it by hand.
 The restart also loads the context pack, write scopes, the metric in `list_workers`, and code-intel for Claude.

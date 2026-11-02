@@ -10,7 +10,7 @@ ARs are read page by page by free models. Every fact is stored with its page and
 
 | Worker | Readers | Order | How it runs |
 |---|---|---|---|
-| Python run (`ingest_annual_reports.py`) | LongCat on OpenCode **Go**, Gemma 4 31B on 8 Google keys | newest filing first | detached process, kept alive by the resource watchdog |
+| Python run (`ingest_annual_reports.py`) | LongCat on OpenCode **Go**, Gemini 3.5 Flash-Lite (Gemma 4 31B as fallback) on 8 Google keys | newest filing first | detached process, kept alive by the resource watchdog |
 | Zen route (`ar_queue.py`) | OpenCode **Zen** free models | oldest filing first | `export` -> `drive` -> `import` |
 
 - **Claims keep the two apart.** `export` claims reports in table `ar_claims`. The Python run skips claimed reports,
@@ -30,8 +30,8 @@ ARs are read page by page by free models. Every fact is stored with its page and
 ## Rules
 
 1. Quality over speed. Numbers are copied exactly as printed; no reader computes, converts or adds.
-2. Only models that passed the admission test read production pieces. Passed: `longcat-2.5-preview-free`
-   (25/25 on the Go API route). Any other model needs a pass on this route first.
+2. Only models that passed the admission test read production pieces. Passed: every model with `status` `passed` in `reality_engine/scripts/zen_models.json`
+   (`longcat-2.5-preview-free` first: 25/25 on the Go API route). Any other model needs a pass on this route first.
 3. Never edit `ar_facts.db` rows by hand. All writes go through `ar_queue.py import`.
 4. Do not start, stop or edit the Python run, and do not change the prompt (`PROMPT` in `ingest_annual_reports.py`).
 5. Free models only. "Model access is disabled" means a paid model was named.
@@ -52,16 +52,17 @@ python -m reality_engine.scripts.ar_queue drive --run t-<short> --workers 1
 python -m reality_engine.scripts.ar_queue test-score --run t-<short>
 ```
 
-**Pass** means all three of:
+**Pass** means all four of:
 - 25/25 must-find facts;
 - under 1% of numbers not found in the text;
-- all 110 pieces answered.
+- all 110 pieces answered;
+- at least 4,500 facts extracted (depth rule, `DEPTH_MIN` in `ar_queue.py`, added 2026-10-13).
 
 The score is written to `t-<short>/SCORE.md`. Add one line to `tasks/ar_study/free_test/FINDINGS.md`.
 
 Zen free models on 2026-10-12 16:40 (`opencode models`):
 - `longcat-2.5-preview-free`: passed.
-- Tests running: `mimo-v2.6-flash-free`, `step-5-preview-free`, `muse-spark-1.3-contributor-free`,
+- Tests that day (outcomes now in `zen_models.json`): `mimo-v2.6-flash-free`, `step-5-preview-free`, `muse-spark-1.3-contributor-free`,
   `ling-3.1-flash-free`, `nemotron-3.5-lightning-free`, `nemotron-3-ultra-free`, `space-bunny-free`, `big-pickle`.
 - Dead: `exo-free` (deprecated) and `ling-3.0-flash-fin-free` (unavailable).
 - Gone from the list: `muse-spark-1.2-contributor-free` and `jev-1.13-free`.

@@ -1,8 +1,8 @@
 # Coverage — what the master bank can answer now, and after the new tables
 
 Built from `tasks/arch_v3/CASE_MAP.jsonl` (1,030 rows, one per master-bank case) and the
-read-only fill probes in §2. Every number below is reproducible: `python .tmp/stats.py` prints it
-from the JSONL; the probes are `.tmp/probe_fill.py`, `.tmp/probe_fill2.py`, `.tmp/probe_cols.py`.
+read-only fill probes in §2. The stats and probe scripts were scratch files in the git-ignored `.tmp/`
+and are not kept in the repo; the JSONL and the recorded probe results are the record.
 
 ---
 

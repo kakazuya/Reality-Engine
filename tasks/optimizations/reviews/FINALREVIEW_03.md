@@ -1,6 +1,6 @@
 # Final security check — task 03, round 3 (independent, write your OWN attacks)
 
-Workspace: `C:\Users\warri\Downloads\IDM-worktrees\20261024T192711Z-cecb3619`, branch HEAD = round-3 fix commit.
+Workspace: `C:\Users\warri\Downloads\IDM-worktrees\20261024T192711Z-cecb3619` (no longer on disk), branch HEAD = round-3 fix commit.
 Previous findings + decisions: `tasks/optimizations/reviews/FIX_03c.md`. The author re-ran the earlier reviewer's attack
 scripts in `.tmp/rereview/` and reports all BLOCKED — but the author also edited those scripts, so do **not** rely on
 them. Write fresh, minimal attacks under `.tmp/final/` (scratch repos + scratch worktrees you create there only).

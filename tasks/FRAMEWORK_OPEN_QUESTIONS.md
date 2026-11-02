@@ -156,7 +156,7 @@ _Written by the council chair on 2026-10-06, after two debate rounds. Sources: `
 ### Q1. Is the north star right?
 **Verdict:** Keep it, with five additions. Every edge must be: (1) found on data the market actually had at that moment; (2) stable across years, not just significant when all years are pooled; (3) positive after costs at a stated capital size, with an entry time Shivam could really have traded; (4) within a stated maximum drawdown; and (5) backed by a named counterparty, meaning someone identifiable who is slow or forced and keeps losing to it. The default alternative is a Nifty index fund. If nothing beats it after costs, the honest answer is "buy the index".
 **Why:**
-- Quant: "repeatable" must be testable. The drift is significant when pooled (q ≤ 0.003) but swings by year from +96 to −41 bp (`SESSION_CLOSEOUT_2026-10-05.md` §3).
+- Quant: "repeatable" must be testable. The drift is significant when pooled (q ≤ 0.003) but swings by year from +96 to −41 bp (`SESSION_CLOSEOUT_2026-10-05.md` §3; file no longer in the repository).
 - Trading: "survives costs" means nothing without a size. A 60 bp edge can be real at ₹25 lakh and gone at ₹10 cr.
 - Data: an edge found on look-ahead data is a bug, not an edge. Look-ahead means using information the market did not yet have.
 - Macro: "has a reason" is too easy to write after the fact. "Who is on the other side and why are they slow?" can be checked. CRO adopted this in round 2, and added the index fund as the bar the whole project must beat.
@@ -521,6 +521,7 @@ Sessions hand off by overwriting STATE and appending to the ledger, not by writi
 
 #### Q24. `AGENTS.md` conflicts with the freeze
 **Council recommendation:** `AGENTS.md` tells every new session that the mission is an all-peers ensemble, MoE temperature, event graphs and continuous self-correction, which steers agents back toward the frozen architecture. Its rule that "ISINs are immutable" is also false for Indian equities (a face-value split issues a new ISIN). Add a few lines at the top saying that `tasks/FRAMEWORK.md` overrides it, and correct the ISIN rule (CRO, Data, Macro). Not edited by the council.
+**Status (2026-11-02):** the override header is at `AGENTS.md:26` and the ISIN rule is corrected at `AGENTS.md:43`. Shivam's approval is not recorded in this file.
 **Shivam decides:** approve the `AGENTS.md` header change.
 **Shivam's call:** ☐ OK  ☐ LOOK MORE  ☐ DIDN'T UNDERSTAND — notes:
 
@@ -587,7 +588,7 @@ Otherwise they come back (CRO). Macro asks that guidance raises be **kept as a q
   - `substrate_quarantine` counts;
   - 574 of 5,710 ISINs ending before 2026-06;
   - the live DB modified at 12:40 today;
-  - BSE upload-to-publish lag (median 1 s, 99th percentile 61 s, 139,802 results filings; 6,311 after 21:00), from `analysis/bse_announcements.db`;
+  - BSE upload-to-publish lag (median 1 s, 99th percentile 61 s, 139,802 results filings; 6,311 after 21:00), from `analysis/bse_announcements.db` (gitignored; not re-checked here);
   - the `insider_trades` table having 0 rows, and SAST headlines carrying no direction.
 
   No other member queried the DB. The chair re-checked none of these.

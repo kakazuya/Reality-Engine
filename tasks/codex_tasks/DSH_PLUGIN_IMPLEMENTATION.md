@@ -12,12 +12,12 @@ credentials, or Codex's main model. No plugin was registered globally and no pai
 
 New:
 
-- `plugins/dsh-worker/.mcp.json` — stdio server launch with the pinned Python 3.14 interpreter, `${PLUGIN_ROOT}` paths, repo-root env. The Codex `.codex-plugin/plugin.json` compatibility manifest described in this 2026-10-21 handoff is no longer in the repo; the plugin is now loaded from `.mcp.json` plus `skills/dsh-worker/SKILL.md`.
+- `plugins/dsh-worker/.mcp.json` — stdio server launch with the pinned Python 3.14 interpreter, relative `server/` paths with `cwd` `.`, repo-root env. The Codex `.codex-plugin/plugin.json` compatibility manifest described in this 2026-10-21 handoff is no longer in the repo; the plugin is now loaded from `.mcp.json` plus `skills/dsh-worker/SKILL.md`.
 - `plugins/dsh-worker/requirements.txt` — `mcp>=2.3,<3` runtime dependency
 - `plugins/dsh-worker/README.md` — runtime, install, heartbeat, shutdown, registration notes
-- `plugins/dsh-worker/runtime/.gitignore` — ignores all job records
+- `plugins/dsh-worker/.gitignore` — ignores `runtime/`, which holds the job records
 - `plugins/dsh-worker/server/dsh_worker_mcp.py` — stdio entry point
-- `plugins/dsh-worker/server/plugin_server.py` — six MCP tools, instructions, annotations
+- `plugins/dsh-worker/server/plugin_server.py` — 17 MCP tools, instructions, annotations
 - `plugins/dsh-worker/server/core.py` — validation, persistent jobs, workspace lock, status/result/message/cancel
 - `plugins/dsh-worker/server/supervisor.py` — hidden detached supervisor, status writer, owned-tree cleanup
 - `plugins/dsh-worker/server/heartbeat.py` — actual `dsh-heartbeat-status/1` / `dsh-heartbeat-control/1` integration
@@ -37,10 +37,10 @@ No STATE/AGENTS/FRAMEWORK/memory/DB/global Codex config was edited. No commits, 
 
 `start_worker`, `worker_status`, `worker_result`, `message_worker`, `cancel_worker`, `list_workers`.
 
-- `start_worker` pins `deepseek-v4.1-flash`, `xhigh`, Go account 2. It accepts exactly one of `brief` or
+- `start_worker` pins `deepseek-v4.1-flash`, `max` effort (`core.py:66`), Go account 2. It accepts exactly one of `brief` or
   `task_file`, a repo-local `workspace`, bounded permission/heartbeat/output/result/timeout settings, and refuses
-  peak starts (Mon-Fri 06:30-09:30, 11:30-15:30 IST). The default permission is `read-only` (least privilege);
-  Codex must pass `workspace-write` explicitly for implementation. It returns after the supervisor publishes
+  peak starts (Mon-Fri 06:30-09:30, 11:30-15:30 IST). `permission` has no default: every start must pass `read-only`,
+  `workspace-write` or `danger-full-access`, or it is refused with `permission_required` (`core.py:1100-1106`). It returns after the supervisor publishes
   initial status, not after the job finishes.
 - `worker_status` reads persisted `job.json`/`status.json`/`heartbeat.json` and validates recorded PIDs against
   kernel creation times. It reports `starting`, `running`, `stale`, `cancelled`, `finished`, `failed`, `lost`, or
@@ -151,8 +151,8 @@ Results:
    `taskkill /T` path are Windows-specific; POSIX fallbacks are best-effort only.
 5. **Artifact hints are not attribution.** `artifacts.paths` list **newly dirty paths only**; a file already dirty
    at start is omitted even if it changed again, and concurrent edits may appear. Review the full diff.
-6. **Real launcher permission is not broadened.** The plugin defaults to `read-only` and passes exactly the
-   permission Codex chooses; pass `workspace-write` explicitly for implementation.
+6. **Real launcher permission is not broadened.** The plugin has no default permission (`core.py:1100`) and passes
+   exactly the permission Codex chooses; pass `workspace-write` explicitly for implementation.
 7. **Runtime location.** The durable repo-local `plugins/dsh-worker/runtime/` remains the default; it is
    gitignored and survives plugin cache reinstalls. Relocating it under `reality_engine/data/logs/` is optional
    and was not needed for this pass.

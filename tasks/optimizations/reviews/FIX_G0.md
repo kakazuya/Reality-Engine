@@ -1,7 +1,7 @@
 # Fix task — G0 raw-on-D review defects (verdict FAIL)
 
 ## Goal
-Fix the reviewer's defects below in this worktree (`C:\Users\warri\Downloads\IDM-worktrees\20261025T123252Z-e22819ec`,
+Fix the reviewer's defects below in a worktree since removed (`C:\Users\warri\Downloads\IDM-worktrees\20261025T123252Z-e22819ec`,
 branch `dsh/20261025T123252Z-e22819ec`), with tests, so that Claude can run one safe `--apply` that moves
 16.7 GB from C to D and deletes the C copies.
 

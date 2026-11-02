@@ -1,5 +1,7 @@
 # Module 06: Execution Roadmap & Verification Milestones
 
+> Status 2026-11-02: original plan, not what was built: `bhavcopy_downloader`, `run_eod_pipeline`, `quant_screener`, `cloud_agent` and `finfree_scraper` do not exist. Live state: `tasks/STATE.md`.
+
 ---
 
 ## 1. Phased Execution Matrix

@@ -8,7 +8,7 @@
 
 The system uses a hybrid local storage paradigm:
 1. **SQLite 3 (WAL Mode)**: Structured relational metadata, daily OHLCV and delivery time-series, quarterly financial statements, Telegram forum messages, and FTS5 full-text search indexes.
-2. **LanceDB**: Persistent, columnar Arrow-based vector store for high-dimensional text chunk embeddings.
+2. **Vector index (NumPy folders, not LanceDB)**: chunk embeddings in `vector_index_*` folders (Nemotron-8B, 4096-d), served by `reality-data` with SQLite FTS5 as fallback. LanceDB was the original design; `reality_engine/db/vector_store.py` remains from it.
 3. **Local NVMe Blob Storage**: Raw PDF concall transcripts, investor presentations, Bhavcopy CSV archives, and raw Telegram screenshot images.
 
 ---
@@ -20,12 +20,14 @@ To ensure zero database locks, sub-millisecond read times, and high concurrent w
 ```sql
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
-PRAGMA cache_size = -64000; -- 64 MB Page Cache in RAM
+PRAGMA cache_size = -256000; -- 256 MB Page Cache in RAM
 PRAGMA temp_store = MEMORY;
-PRAGMA mmap_size = 30000000000; -- 30 GB Memory-Mapped I/O for instant OS file reads
+PRAGMA mmap_size = 1073741824; -- 1 GB file-backed mmap (OS-evictable)
 PRAGMA foreign_keys = ON;
-PRAGMA busy_timeout = 5000; -- Wait 5 seconds before throwing lock error
+PRAGMA busy_timeout = 180000; -- Wait 3 min: a large PDF ingest holds one write txn ~50s
 ```
+
+Live values: `reality_engine/config.py` `SQLITE_PRAGMAS` (checked 2026-11-02).
 
 ---
 
@@ -260,7 +262,9 @@ CREATE INDEX IF NOT EXISTS idx_tg_post_time ON telegram_posts(post_timestamp DES
 
 ## 5. Storage Retention & Maintenance Policies
 
+Checked 2026-11-02: no code found for the retention steps below (archiving, pruning, purging); treat them as planned policy.
+
 1. **Daily Bhavcopy Flat Files**: Kept in `./data/bhavcopy/YYYY/` (Compressed to `.tar.gz` quarterly). Total footprint: $<1.5\text{ GB/Year}$.
-2. **PDF Documents**: Stored under `./data/pdfs/YYYY/MM/`. Concall PDFs older than 180 days have their raw text preserved in SQLite/LanceDB while raw PDF binaries are pruned.
+2. **PDF Documents**: Stored under `./data/pdfs/YYYY/MM/`. Concall PDFs older than 180 days have their raw text preserved in SQLite while raw PDF binaries are pruned.
 3. **Telegram Images**: Screenshots older than 60 days are purged from disk after ensuring OCR text and symbol associations are saved in `telegram_posts`.
-4. **SQLite Database Auto-Vacuum**: Run `PRAGMA optimize;` every Sunday during market off-hours.
+4. **SQLite Database Auto-Vacuum**: Planner stats: run `PRAGMA optimize;`, then `ANALYZE` only the tables whose row estimate has drifted (`reality_engine/db/database.py`, planner-stats refresh near line 596). Plain `PRAGMA optimize` is not enough. The Sunday schedule is not checked.

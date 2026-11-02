@@ -193,15 +193,3 @@ two-line fix.
   across lines is not.
 - The language server is per-MCP-server: Claude and each dsh profile get their
   own process (~640 MB each) if they run at the same time.
-- `mcp.server` / `mcp.types` show up as unresolved imports in
-  `diagnostics(files=["plugins/*/server/server.py"])`. That is the repo's
-  existing state (`plugins/reality-data/server/server.py` reports the same two
-  warnings) — pyright does not see the harness's `mcp` package. Only warnings.
-- Reference/definition positions assume ASCII columns (LSP columns are UTF-16
-  code units). A non-ASCII line before the symbol on the same line shifts the
-  column by one per astral character.
-- `callers` is a line heuristic (`name(` present, no `from`/`import` prefix), so
-  a function passed as a callback (`map(helper, xs)`) is listed but a call split
-  across lines is not.
-- The language server is per-MCP-server: Claude and each dsh profile get their
-  own process (~640 MB each) if they run at the same time.

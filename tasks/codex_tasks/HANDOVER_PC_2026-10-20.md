@@ -1,6 +1,6 @@
 # PC (perfect-machine, Hyderabad) hand-over to Codex — 2026-10-20 23:10 IST
 
-From the PC Claude session (now advisor; Codex / GPT-6.1 Sol leads until Fri 2026-10-23 23:30 IST, Shivam).
+From the PC Claude session (now advisor; Codex / GPT-6.1 Sol led until Fri 2026-10-23 23:30 IST, per Shivam; that window is over).
 The PC is reachable only from itself (no SSH server); the laptop reaches nothing on the PC except through Shivam/RDP
 or a Claude session on the PC. Repo on GitHub `kakazuya/Reality-Engine` main is current (this file included).
 

@@ -6,7 +6,7 @@ Builder: you. Tester: Claude (loads it live in the desktop app).
 
 ## Starting point
 
-v1 is merged at `plugins/dsh-workers-pane/` (register.tsx, rows.ts, tests, types). Same mod contract and docs as
+v1 is merged at `plugins/dsh-workers-pane/` (`hooks/register.tsx`, `hooks/rows.ts`, `hooks/*.test.ts`, `types/index.d.ts`). Same mod contract and docs as
 before: `C:/Users/warri/AppData/Local/Temp/claude/bundled-skills/2.1.308/c21103d36fbfb01c1e250e8defb51a48/plugin-authoring/`
 (`reference.md`, `examples/pane.tsx`, `types/claude-code.d.ts`). Shivam uses the **desktop** surface: its element
 table has `Box, Text, Button, Input, Select, Svg, Link, Code, Markdown, Client`; `Box`/`Text` take `color` /

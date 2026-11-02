@@ -18,7 +18,7 @@ metadata.
   `plugins/data-gather/tests/`, `plugins/data-gather/README.md`.
 - Reuse the job registry, runner and lock code rather than copying it:
   - `plugins/dsh-worker/server/jobs.py`;
-  - `core.py` (`start_job`, ~line 3475);
+  - `core.py` (`start_job`, ~line 4041);
   - `store.py`, `supervisor.py`.
 
   If importing it needs a small refactor, keep it backwards compatible and covered by the dsh-worker tests.

@@ -2,7 +2,7 @@
 
 Code: `analysis/diffusion_study/` (`01_build_events.py` → `02_event_engine.py` → `03_estimate.py`, shared `common.py`).
 Outputs (git-ignored, regenerate in about a minute): `analysis/diffusion_study/out/`. Everything is read-only on the databases and
-numpy/pandas only (no scipy/statsmodels needed), so it runs unchanged on the laptop. Run order is the file order; each stage prints its sample counts.
+numpy/pandas only in 01–04 (no scipy); 05 imports statsmodels. Run order is the file order; each stage prints its sample counts.
 
 ## 1. What was joined
 

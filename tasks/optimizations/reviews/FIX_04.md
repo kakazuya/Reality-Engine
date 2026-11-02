@@ -6,6 +6,8 @@ basedpyright is not installed in the main Python; the reviewer extracted it to `
 `PYTHONPATH=.tmp/bp` (or `CODE_INTEL_LANG_SERVER`) so the 7 LSP tests run instead of skipping.
 An independent review passed every acceptance check with these defects. Fix all three; nothing else.
 
+Status checked 2026-11-02: all three are in the code now. `core.py:514-523` searches the raw line; `core.py:491-500` polls the cold index; `lsp.py:142` and `lsp.py:148-149` close stdout and clear `_stderr_fh`. The root `PROGRESS_NOTES.md` is not in the checkout.
+
 DEFECTS:
 1. `plugins/code-intel/server/core.py:361` — `_name_position` searches the stripped line, so indented symbols land on `def`: `definition("start_worker")` col 5, `references("start_worker")` 0 hits, hover at that position errors. Fix: search the raw line (`_lines(path)[line0]`) — verified col 9, reference + hover work.
 2. `plugins/code-intel/server/core.py:339` — cold `workspace/symbol` can answer `[]` before pyright's file index exists: first-call `definition(symbol)` on the fixture returned `not_found` 6/6, and `test_definition_by_symbol` failed 3 consecutive full-suite runs before passing 3/3. Fix: retry `workspace/symbol` once after a short bounded wait when the client was just started (or block on the warm thread's first symbol result).

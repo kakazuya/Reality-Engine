@@ -1,6 +1,6 @@
 # Reality Engine — Testing Manual (Build Phases 1-6 + Likes + Visual + Lifecycle)
 
-**Locked core:** `FUNDAMENTAL_REALITY_ENGINE_OBJECTIVES.md:1` + `AGENTS.md:3` + `postgres_schema.sql:748`. **DB `reality_engine/data/equity_intelligence.db` 40.93 MB WAL 10477 pages 743 files 577 MB**. **Tests `57 OK`**.
+**Locked core:** `FUNDAMENTAL_REALITY_ENGINE_OBJECTIVES.md:1` + `AGENTS.md:3` + `postgres_schema.sql:748`. **DB `reality_engine/data/equity_intelligence.db`** (old snapshot: 40.93 MB, WAL 10477 pages, 743 files, 577 MB; 50.1 GB on 2026-10-24 per `tasks/FY26_AR_CHUNKING_2026-10-24.md` §4). **Tests `57 OK`**.
 
 ---
 
@@ -77,7 +77,7 @@ Get-ChildItem reality_engine/data/visual_snapshots -Recurse | Measure-Object
 
 ## 7. 4-Pillar Pruning & Lifecycle (§6)
 
-**DB:** `pruning_decay_config` YouTube 3m λ0.231 Concall 6m 0.115 Budget 12m 0.058 `v_ripple_decayed S(t)=S0·e^{-λt}` `document_chunks PARTITION BY RANGE 2026_q1..q4 ivfflat`
+**DB:** `pruning_decay_config` YouTube 3m λ0.231 Concall 6m 0.115 Budget 12m 0.058 `v_ripple_decayed S(t)=S0·e^{-λt}` `document_chunks` quarterly partitions (2026_q1..q4, ivfflat) exist only as commented-out PostgreSQL DDL in `reality_engine/db/postgres_schema.sql:385-417`
 
 **Test:**
 ```bash
@@ -154,7 +154,7 @@ python reality_engine/cli.py dashboard --port 8501
 
 ```bash
 Get-ChildItem reality_engine/data/equity_intelligence.db | Select @{N="SizeMB";E={[math]::Round($_.Length/1MB,2)}}
-# 40.93 MB 10477 pages WAL
+# old snapshot, see line 3: 40.93 MB 10477 pages WAL
 sqlite3 reality_engine/data/equity_intelligence.db "SELECT 'master',count(*) FROM master_companies UNION ALL SELECT 'daily',count(*) FROM daily_price_delivery UNION ALL SELECT 'quarterly',count(*) FROM quarterly_financials UNION ALL SELECT 'annual',count(*) FROM annual_financials UNION ALL SELECT 'forensic',count(*) FROM company_forensic_health UNION ALL SELECT 'corp',count(*) FROM corporate_documents UNION ALL SELECT 'fts',count(*) FROM intelligence_fts"
 # 2732/67371/1102/913/200/4003/836/343/100
 python -m unittest discover -s reality_engine/tests -p "test_*.py"

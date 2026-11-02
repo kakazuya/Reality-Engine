@@ -1,7 +1,7 @@
 # Fix task — G2 new-feeds review defects (verdict FAIL)
 
 ## Goal
-Fix all 7 reviewer defects below in this worktree (`C:\Users\warri\Downloads\IDM-worktrees\20261025T123258Z-007ac55f`,
+Fix all 7 reviewer defects below in its worktree (`C:\Users\warri\Downloads\IDM-worktrees\20261025T123258Z-007ac55f`, absent at the 2 Nov 2026 review;
 branch `dsh/20261025T123258Z-007ac55f`), with tests, and re-run the temp-copy dry runs.
 
 ## Reviewer defects (verbatim)

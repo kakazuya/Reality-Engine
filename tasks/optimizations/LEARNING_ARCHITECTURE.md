@@ -62,8 +62,8 @@ companies cannot pick their exposure to them: sudden tariffs, wars, unscheduled 
     | bge-small | 51.0% |
 
   - The AR Qwen index is only 4.5% done, so nothing is lost.
-  - The 2026-10-24 annual-report test (48 questions, all on DeepInfra) is in
-    `reality_engine/data/embed_test_ar/results.json` and `rerank_results.json`:
+  - The 2026-10-24 annual-report test (48 questions, all on DeepInfra) wrote `results.json` and
+    `rerank_results.json` to `reality_engine/data/embed_test_ar/` (those files are not in this repo; figures kept as recorded):
     - Nemotron-3.5-Embed-8B ties Nemotron-3-Embed-8B at $0.035/M: hit@5 95.8%, MRR 0.773 vs 0.775. 3.5 gives no
       gain, so the 340k index stays on 3.
     - The 1B models are both 87.5% at $0.015/M. The 1B NVFP4 is 85.4% at $0.01/M.

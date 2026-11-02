@@ -74,7 +74,7 @@ query_only, temp_store=MEMORY, per-statement timeout raising `QueryTimeout`). Or
 | `git commit` from a worktree blocked when its index lives in the main `.git` | leave changes uncommitted; the supervisor auto-commits a non-empty diff when you finish. Since 1 Nov it also commits failed/cancelled/lease-expired ends with subject prefix `WIP ended <reason>:` |
 | npm/npx write a cache into the repo (`.cache/npm`) | set `npm_config_cache` to `./.tmp/npm-cache`; it is gitignored there |
 | Long processes started from a shell die with the parent | for anything that must outlive you, write the command for Claude (who launches via WMI) |
-| `message_worker` status pings could end your run | you will not be pinged for status any more; a follow-up is a real instruction — handle it and continue |
+| `message_worker` status pings could end your run | the supervisor still sends a "Status check" ping (`plugins/dsh-worker/server/core.py` `STATUS_CHECK_PREFIX`): answer in one line and continue, it is not the end of your task; a follow-up from `message_worker` is a real instruction — handle it and continue |
 
 ## Conventions (non-negotiable)
 

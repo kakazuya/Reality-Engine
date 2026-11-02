@@ -15,7 +15,7 @@ lock owner PID that belongs to a process you cannot query). Fix the guard so it 
 verified, without making normal starts fail when no repo-root writer exists. Explain the root cause in one sentence.
 
 ## 2. LOW — `.tmp` junction (from the final review)
-`supervisor.py:~237-238` `_tmp_dir` and `:~295-298`: if `<workspace>/.tmp` is a reparse point (junction/symlink), refuse to
+`supervisor.py:291` `_tmp_dir` and `:297` (line numbers as of 2026-11-02): if `<workspace>/.tmp` is a reparse point (junction/symlink), refuse to
 read or answer requests (return None / record `tmp_reparse_point` in status), reusing `gitutil.reparse_point_path` /
 `_is_reparse_point`. Add a test with a junction (`mklink /J` via `cmd /c`, skip only if junction creation is impossible).
 

@@ -13,7 +13,7 @@ DeepSeek implemented the plugin, heartbeat and fixes. Codex reviewed source, ret
 - Editable source: `plugins/dsh-worker/`; local catalog `.agents/plugins/marketplace.json`.
 - Six MCP tools: `start_worker`, `worker_status`, `message_worker`, `worker_result`, `cancel_worker`, `list_workers`.
 - DeepSeek V4.1 Flash, xhigh, Go account 2, stable provider routing ID, off-peak start gate.
-- Heartbeat default: 900 seconds idle, then a genuine same-agent status request; two complete unanswered response windows before stop. No default hard duration limit. Explicit troubleshooting timeout remains optional.
+- Heartbeat default: 900 seconds idle, then a genuine same-agent status request; two complete unanswered response windows before stop. No default hard duration limit at review time (`hard_timeout_seconds` now defaults to 4 h, `plugins/dsh-worker/README.md:280`). Explicit troubleshooting timeout remains optional.
 - Corrected worker-progress timestamps, repository-wide mutation lock including parent/subdirectory overlap, fail-closed Windows containment and lock retention, exact adapter-sized Unicode message validation, pinned Python runtime and correct tool annotations.
 
 ## Verification
@@ -32,7 +32,7 @@ The correction worker's implementation/report were complete and reviewed; Codex 
 
 Restart Codex once to load the newly installed plugin's tools into chat. This running chat's tool inventory did not hot-load them; the installed stdio backend was verified separately through the MCP SDK.
 
-Supply a complete task file/context. Use explicit appropriate permissions for implementation; default is read-only. Codex reviews actual diffs and tests, returns off-peak fixes to DeepSeek, and never treats transport acknowledgement as a model response. Never start duplicate writers. Source remains uncommitted; no push authorized.
+Supply a complete task file/context. Use explicit appropriate permissions for implementation; at review time the default was read-only; now `permission` is required with no default (`plugins/dsh-worker/README.md:104`). Codex reviews actual diffs and tests, returns off-peak fixes to DeepSeek, and never treats transport acknowledgement as a model response. Never start duplicate writers. Source remains uncommitted; no push authorized.
 
 Control tokens are memory-only. After an MCP server restart, persisted status/results remain readable, but messaging an older running job requires the original server; otherwise the tool reports transport_unavailable. App/server shutdown can terminate its worker tree. Runtime records stay gitignored under the repository's `plugins/dsh-worker/runtime/` and survive plugin cache reinstalls.
 

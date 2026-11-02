@@ -101,4 +101,4 @@ The CPU does the bulk; LLMs get only what the CPU cannot verify.
   ingestion share CPU and the Kilo throttle. Never use the GPU.
 - **Python patching.** Patching these files via inline Python in bash broke `\b` into backspace characters several
   times. Use the Edit tool or a script file, and check with `s.count(chr(8)) == 0`.
-- **Uncommitted.** Nothing is committed. Two downloaded GESHIP PDFs were left in a scratch `tasks/ar_study/src/` directory (not committed), not in the DB.
+- **Uncommitted (as of 2026-10-12).** Nothing was committed at this hand-off. Two downloaded GESHIP PDFs were left in a scratch `tasks/ar_study/src/` directory, not in the DB; that directory is gone (checked 2026-11-02).

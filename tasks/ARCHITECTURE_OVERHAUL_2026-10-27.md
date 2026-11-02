@@ -610,11 +610,11 @@ exists.
 |---|---|
 | Inputs | `corporate_documents.doc_type='CONCALL_TRANSCRIPT'`: **21,778 rows** (measured). Parsed and chunked: `raw_documents` `CONCALL_TRANSCRIPT` **15,619 docs / 284,515 chunks** (measured). Gap to fetch: 6,086 known-but-unfetched (handoff 2026-10-27). |
 | Parser | PyMuPDF text layer. OCR (RapidOCR, CPU ~5.5 s/dense page) only when a page has <200 chars. |
-| Chunking | `chunker_v2.chunk_concall`, `QA_MAX_CHARS = 2200`, one Q&A pair per chunk with the question repeated in continuations (`chunker_v2.py:38,491`). |
+| Chunking | `chunker_v2.chunk_concall`, `QA_MAX_CHARS = 2200`, one Q&A pair per chunk with the question repeated in continuations (`chunker_v2.py:38,518,563`). |
 | Labels | `isin`/`symbol_at_time` (doc, symbol resolved through `symbol_isin_history`); `section` ∈ {Opening remarks, Q&A, Q&A (cont.), Discussion, Header} from `speaker_turns`; `speaker` + `speaker_role` from `_managers`/`_is_question` (management = top-50% word share); `fiscal_period` = quarter of `call_date` (deterministic) with XBRL period-end as cross-check; `content_tags`, `forward_looking` per §4. |
 | `known_at` | `bse_dissem_ts` (filled on **75,199 of 127,253** `corporate_documents` rows, measured) → else `publication_date` (47,294 filled) → else `call_date + 1 day`, `pit_confidence` 0.6. Never `doc_date` (crawl date). |
 | Quality grade | A: text layer, no OCR page, header present. B: ≥1 OCR page or `> 15%` non-alphanumeric chars. C: <500 chars, or body empty in >20% of chunks. |
-| Failure modes | (1) A one-off analyst is not detected as a speaker; the `_hoist_questions` rule recovers the trailing question (`chunker_v2.py:450`). (2) Two-column PDFs interleave. (3) `call_date` empty on 121,264 of 127,253 rows — fiscal period then comes from title/XBRL and confidence drops. (4) **Casing is fine**: measured on 60 concall docs / 992 chunks, "India" appears capitalised 228 times, lower-cased 0 — the briefing claim that concall chunks are stored lowercased does **not** hold for `document_chunks` (it does hold for PIB and RBI, §3.6/§3.8). |
+| Failure modes | (1) A one-off analyst is not detected as a speaker; the `_hoist_questions` rule recovers the trailing question (`chunker_v2.py:474`). (2) Two-column PDFs interleave. (3) `call_date` empty on 121,264 of 127,253 rows — fiscal period then comes from title/XBRL and confidence drops. (4) **Casing is broken in `document_chunks`**: in a 30,000-row sample, concalls are 80% all-lowercase (2,135 docs lowercase / 559 cased), so v3 chunks must come from original documents (Manager review §1). The earlier 60-doc check (992 chunks, "India" capitalised 228 times) is superseded. |
 | Volume today → target | 15,619 docs / 284,515 chunks → 21,778 docs / **~396k chunks** (target, 21,778 × 18.2 measured chunks/doc). |
 
 ### 3.2 Investor decks
@@ -623,7 +623,7 @@ exists.
 |---|---|
 | Inputs | `deck_figures.deck_sources` where `status='ok'`: **26,391 rows** (measured). On disk and chunked: **23,321 decks (23,299 ok + 22 no_text) / 203,368 chunks** in `chunks_v2.db` (measured). |
 | Parser | PyMuPDF per page on the local PDF (`D:\RealityEngine\raw\decks_full\<sha[:2]>\<sha>.pdf`, `load_deck_chunks.py:97`). Image-only slide (<40 chars) → OCR later, not a text chunk. |
-| Chunking | **Re-chunk with `chunker_v2.chunk_deck`** — one slide per chunk, short slides merge forward within a section, section title = nearest divider slide (`chunker_v2.py:642`). The wide test says v2 wins decks by 11.5 pts R@1 (.860 vs .745) — so the current old-chunker deck store is the one thing to replace, not keep. |
+| Chunking | **Re-chunk with `chunker_v2.chunk_deck`** — one slide per chunk, short slides merge forward within a section, section title = nearest divider slide (`chunker_v2.py:666`). The wide test says v2 wins decks by 11.5 pts R@1 (.860 vs .745) — so the current old-chunker deck store is the one thing to replace, not keep. |
 | Labels | `page_from`/`page_to` from `_page_lookup`; `section` = slide title (first line with ≥3 letters) or divider; `unit_kind='slide'`; `fiscal_period` from title/date, else from the deck's XBRL quarter; `content_tags` (§4) — this is where capacity, order book and margin tags earn their keep. |
 | `known_at` | `deck_sources.known_at` (BSE announcement timestamp; range 2021-01-04..2026-09-29). High confidence. |
 | Quality grade | A: text layer on ≥80% of pages. B: 20-50% image-only pages. C: >50% or `status='no_text'`. |
@@ -635,7 +635,7 @@ exists.
 | | |
 |---|---|
 | Inputs | `corporate_documents` ANNUAL_REPORT **46,573** (+ ANNUAL_REPORT_DEBT_ISSUER 409). Chunked today: `raw_documents` ANNUAL_REPORT **8,265 docs / 2,045,985 chunks** (measured — 70% of the whole store). |
-| Parser | PyMuPDF text + heading detection (`blocks_from_text`): a line is a heading when it matches `Note N`/`Schedule IV`/numbered heading or is ≥75% capitals (`chunker_v2.py:704`). GPU layout is **out of the plan**: 0.77 pages/s on the 1050 Ti ≈ 17 days for the corpus (C1C2 results), and GPU layout chunks were never stored. |
+| Parser | PyMuPDF text + heading detection (`blocks_from_text`): a line is a heading when it matches `Note N`/`Schedule IV`/numbered heading or is ≥75% capitals (regexes `chunker_v2.py:707-718`, capitals test `chunker_v2.py:747`). GPU layout is **out of the plan**: 0.77 pages/s on the 1050 Ti ≈ 17 days for the corpus (C1C2 results), and GPU layout chunks were never stored. |
 | Chunking | `chunker_v2.chunk_annual_report`: one note/schedule per chunk, tables protected from cuts, heading path joined with " > " into `section`. |
 | Labels | `section` (heading path) is the main retrieval win; `fiscal_period` from the report's FY; `content_tags` mostly `accounting_note`, `risk`, `related_party`, `capex`, `debt`; `has_numbers` true on most notes. |
 | `known_at` | Filing date from BSE/NSE (`bse_dissem_ts`); ARs also carry the AGM/board date in the body. `pit_confidence` 0.9 when dissemination exists, 0.7 when only the filename date (the analysis/ pipeline that does this exists — `apply_annual_report_pit.py`). |
@@ -756,7 +756,7 @@ exists.
 | Chunking | One post = one chunk; long posts split on paragraphs at 1,200 chars. |
 | Labels | `doc_type='opinion'`, `source_class='opinion'`; `thread_topic_name` → `source_id` and a topic tag; `detected_symbols_json` already exists (reuse); `known_at` = `post_timestamp` (exact, UTC). |
 | Quality grade | A for text, C for media-only posts (`has_media=1`, no OCR). |
-| Failure modes | The same content is often posted in General and in a topic → dedupe by (text hash, ±1 day). Private paid-community content must never reach GitHub — opinions.db lives under `REALITY_DATA_ROOT`, which is gitignored; add a `licence_note` and keep the file out of the repo. |
+| Failure modes | The same content is often posted in General and in a topic → dedupe by (text hash, ±1 day). Private paid-community content must never reach GitHub — opinions.db lives under `REALITY_DATA_ROOT`; the default `reality_engine/data/*.db` is gitignored (`.gitignore` lines 55-56), so add a `licence_note` and keep any copy out of the repo. |
 | Volume today → target | 4,527 posts / 0 chunks → **4,527 chunks**, plus media once downloaded. |
 
 ---
@@ -1154,7 +1154,7 @@ Each number in this document traces to one of these. All used `reality_engine.db
 
 `tasks/LABELS_TAGGING_PLAN_2026-10-27.md`; `tasks/FRAMEWORK.md`; `tasks/STATE.md` (first 140 lines);
 `tasks/archive/optimizations/HANDOFF_2026-10-26.md`; `tasks/optimizations/learn/C1C2_RESULTS_2026-10-26.md`;
-`tasks/worker_context/CONTEXT.md` (row counts and the 34.8k `raw_documents` figure);
+`tasks/worker_context/CONTEXT.md` (generated and gitignored; row counts and the 34.8k `raw_documents` figure);
 `reality_engine/processing/chunker_v2.py`; `reality_engine/scripts/load_deck_chunks.py`;
 `reality_engine/db/schema.sql` (lines 242-301, 395-444, 458-527, 641-660).
 
@@ -1163,7 +1163,7 @@ Each number in this document traces to one of these. All used `reality_engine.db
 The check extracts every `sql` block from this file, runs each schema block with
 `sqlite3.connect(":memory:").executescript(...)` on a fresh database, then builds all three schemas in one
 database and validates the five example queries with `EXPLAIN QUERY PLAN`. Script: `.tmp/check_ddl.py`
-(throwaway, not committed). Output, abridged — plan lines kept, subquery scaffolding dropped:
+(throwaway, never committed, no longer on disk). Output, abridged — plan lines kept, subquery scaffolding dropped:
 
 ```
 doc: tasks\ARCHITECTURE_OVERHAUL_2026-10-27.md  sql blocks found: 8
@@ -1206,7 +1206,7 @@ RESULT: ALL BLOCKS AND QUERIES PARSE
 
 Two things the run proves that reading could not: (a) the FTS5 table really indexes chunk text through its
 triggers (the smoke insert matched), and (b) every query resolves its columns against the proposed schema, with
-the index we intended. Q1 and Q3 currently drive from `ix_chunk_type_known`; with `ANALYZE` statistics they are
+the index we intended. Q1 and Q3 drove from `ix_chunk_type_known` on the 2026-10-27 run; with `ANALYZE` statistics they are
 expected to flip to `chunk_tag` first (§6 note) — the plan stays correct either way.
 
 ## Addendum (2026-10-27, Shivam)

@@ -10,7 +10,7 @@ The processing engine converts raw media, PDF documents, and images into structu
 
 The **AMD Radeon RX 6700 XT (12 GB VRAM)** accelerates two primary workloads:
 1. **Computer Vision & OCR**: Transcribing chart screenshots, broker notes, and financial tables from Telegram.
-2. **Dense Vector Embeddings**: Generating 1024-dimensional embeddings for Concall transcripts, investor presentations, and market research notes via `BAAI/bge-m3`.
+2. **Dense Vector Embeddings**: Generating dense embeddings for Concall transcripts, investor presentations, and market research notes. The live model is the Nemotron 8B index (4096-d, see the live-status note above); the bge-m3 1024-d design below is the original.
 
 ---
 
@@ -30,7 +30,7 @@ The **AMD Radeon RX 6700 XT (12 GB VRAM)** accelerates two primary workloads:
    - Whitespace and margin trimming.
 2. **Text & Bounding Box Extraction**:
    - RapidOCR line-level text detection + text recognition.
-   - Confidence scoring threshold: $\text{conf} \ge 0.65$.
+   - Confidence scoring threshold: $\text{conf} \ge 0.60$ (`reality_engine/processing/ocr_engine.py:15` default `confidence_threshold`).
 3. **Financial Entity Extraction**:
    - Regex ticker extraction: `\b[A-Z]{3,12}\b` (e.g., `TCS`, `RELIANCE`, `KAYNES`, `DIXON`).
    - Price targets and stop losses: `(?:Target|Tgt|SL|CMP|Buy above|Breakout)\s*[:=]?\s*(?:₹|INR|Rs\.?)?\s*([0-9]+(?:\.[0-9]+)?)`.

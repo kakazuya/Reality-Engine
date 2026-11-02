@@ -1,6 +1,6 @@
 # Prototype on 3 companies: Claude's grade, 1 Nov 2026
 
-Worker report: `tasks/pilot60/PROTOTYPE3_REPORT_2026-11-01.md`, in worktree `IDM-worktrees/20261031T215040Z-4ef5184a`, not merged. Graded by reading a random 25 of the 45 "answered" rows, 15 of the 99 "evidence" rows, and all 9 "not found" rows, from `PROTOTYPE3_ANSWERS_2026-11-01.jsonl`.
+Worker report: `tasks/pilot60/PROTOTYPE3_REPORT_2026-11-01.md`, Its source worktree `IDM-worktrees/20261031T215040Z-4ef5184a` no longer exists. Graded by reading a random 25 of the 45 "answered" rows, 15 of the 99 "evidence" rows, and all 9 "not found" rows, from `PROTOTYPE3_ANSWERS_2026-11-01.jsonl`.
 
 ## Verdict: cost is fine, quality is not. Do not scale yet.
 

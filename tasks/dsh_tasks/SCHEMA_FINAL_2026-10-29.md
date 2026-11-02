@@ -1,7 +1,7 @@
 # Task — the final database design: one schema where every master-bank question is answerable or NOT IN DATA with a reason
 
 ## Goal
-Golden-rule step 3 (AGENTS.md): the schema must be designed so that every question in the approved master bank (1,073 cases, `tasks/master_bank/`) can be answered from data we hold. Every gap is closed by a table or field, or marked NOT IN DATA with a reason. Shivam needs this **complete by 13:00 IST today (29 Oct)**.
+Golden-rule step 3 (AGENTS.md): the schema must be designed so that every question in the approved master bank (1,073 cases at the time, `tasks/master_bank/`; now 1,901 questions, see `tasks/SCHEMA_PILOT_DESIGN_2026-11-01.md`) can be answered from data we hold. Every gap is closed by a table or field, or marked NOT IN DATA with a reason. Shivam needs this **complete by 13:00 IST today (29 Oct)**.
 
 The pieces exist but are scattered. Consolidate them into ONE authoritative design:
 - `tasks/arch_v3/SCHEMA_V3.sql`, `CASE_MAP.jsonl`, `COVERAGE.md`, `QUERY_LAYER.md`, `PILOT_SPEC.md`, `INDEX_MIGRATION_V0.sql`, `SPEED_PLAN.md`;

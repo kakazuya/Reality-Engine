@@ -5,7 +5,7 @@
 **Headline.** The proposed framework (scoreboard → truth → evaluation → registry → decision) is the right *shape*. The risk is not the framework. It is the habits around it:
 - **Architecture before signal.** 25 commits, 41 processing modules, 81 test files and 40 task files exist. Not one signal has passed the bar.
 - **Results that were not real.** The one "pass" was a bug: `strategy_tracker.md` T4/T5, "46/46 wins" and +527 bps, which came out at −20 bps on actual market closes.
-- **Agent claims that were not checked.** Fabricated citations (`SESSION_CLOSEOUT_2026-09-29b.md` §5).
+- **Agent claims that were not checked.** Fabricated citations (a 2026-09-29 session closeout, §5; that file is no longer in the repo).
 - **Plans that pile up.** Each new plan file supersedes the last one.
 
 The framework needs three things it does not have yet: a **project-level kill switch**, a **test ledger** that also records failed and discarded tests, and **forward time as the only true holdout**. All price history from 2021-10 to 2026-09 has already been looked at.
@@ -16,7 +16,7 @@ The framework needs three things it does not have yet: a **project-level kill sw
 **Position:** Mostly right. Add four things: a drawdown/ruin limit, capacity, a project-level stop rule, and the passive index fund as the alternative the whole project must beat.
 **Why:**
 - "Has a reason" is dangerous if the reason is written *after* the result. The reason must be on the hypothesis card before the test runs.
-- The desk meeting set a 40% drawdown tolerance and a <25% simulated worst-drawdown cap (`desk_meeting_2026-09-25.md` §2). Neither appears in the north star.
+- The desk meeting set a 40% drawdown tolerance and a <25% simulated worst-drawdown cap (the 2026-09-25 desk meeting, §2; its notes are no longer in the repo). Neither appears in the north star.
 - The real competitor is a Nifty index fund plus Shivam's time. If nothing is promoted within a fixed budget, the honest outcome is "buy the index", and the north star should say so.
 - "Survives costs" should read "survives costs **on data not used to find it**".
 **Confidence:** high
@@ -63,7 +63,7 @@ Freeze the bar now. It has already been revised once after an embarrassment (202
 ### Q6
 **Position:** Primary benchmark is size- and liquidity-matched peer stocks, which the study already does. Always also report against the investable index. Use a factor model as a robustness check only.
 **Why:**
-- The matched-peer method is already built and tested (`PRICE_SIDE_DIFFUSION_STUDY` §7: raw returns and matched controls tell the same story).
+- The matched-peer method is already built and tested (`PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` §7: raw returns and matched controls tell the same story).
 - The factor spine is unvalidated. Making it the judge adds another untested component.
 - For a long-only book, the money question is always "did I beat the index fund after costs?" Report that number even when it is ugly.
 **Confidence:** med
@@ -114,14 +114,14 @@ Most of these are still unverified today.
 **Position:** The requirement is right. Define it as "first public at", not "computed at". Version only what the first hypothesis needs: the results filing date and point-in-time quarterly revenue/PAT.
 **Why:**
 - Versioning everything is another architecture project.
-- `test_findings_2026-09-24.md` §2 shows why it matters: lenses fed by values with no history can never vote.
+- the 2026-09-24 test findings, §2 (source file no longer in the repo) show why it matters: lenses fed by values with no history can never vote.
 - Only one feature family is on the critical path right now.
 **Confidence:** high
 
 ### Q12
 **Position:** Set them aside. Label them "unvalidated, excluded from all scoring". Do not delete them. They come back only through a hypothesis card.
 **Why:**
-- On 43,789 material moves, the quality, policy and supply lenses emitted **0** directional votes (`test_findings_2026-09-24.md` §1).
+- On 43,789 material moves, the quality, policy and supply lenses emitted **0** directional votes (2026-09-24 test findings, §1; source file no longer in the repo).
 - Moat history has 2 dates and policy history has 1. Geographic exposure has 37 USA rows out of 3,568. These are seeds, not measurements.
 - Keeping them as "candidates" lets them leak back into dossiers and theses as if they meant something.
 **Confidence:** high
