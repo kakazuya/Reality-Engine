@@ -2,7 +2,7 @@
 
 Whole sections (GESHIP v2 split) or 50-page chunks (COCHINSHIP, CONCOR) of the 3 gold FY24 reports, sent in the
 prompt to LongCat 2.5 Preview (OpenCode Go, free) and Dots 3 Note (Kilo key 2, free). Each returns every storable
-fact as CSV rows. Scores in `SCORES.md`, raw answers in `outputs/`, code in `free_reader_test.py`. Step was left out
+fact as CSV rows. Scores in `SCORES.md`, raw answers in `outputs/` (not kept in this repo), code in `free_reader_test.py`. Step was left out
 because the deck run's second readings use it.
 
 This is NOT the approved design's test (HANDOFF_AR_PIPELINE.md: CPU tables + gate, LLM on the slice and on compact
@@ -29,11 +29,11 @@ Problems:
 - **CSV breaks.** Unquoted commas (Indian grouping, labels) broke rows: LongCat CONCOR p351-400 had 144 of 160 rows
   malformed. The production format should be JSON lines or a stricter schema.
 - The checks here are digit matches. Label, unit (lakh/crore), period and standalone/consolidated correctness are
-  NOT scored yet. That needs the hand-checked rows (`challenger/hand_check_verdicts.csv`).
+  NOT scored yet. That needs the hand-checked rows (`challenger/hand_check_verdicts.csv`, not in this repo).
 - Gold-list fix: GESHIP CSR spent is ₹18.77 crore in the report (₹18,77,77,325), not 18.78.
 
 Takeaway: LongCat reads AR text well enough to find every checked fact, with few unsupported numbers. Dots needs a
-loop guard. Next is the approved design's row-mode test (suggestion 1) on the 39+39 hand-checked rows.
+loop guard. The approved design's row-mode test (suggestion 1, on the 39+39 hand-checked rows) was run next; see below.
 
 ## Nemotron and NVIDIA NIM (2026-10-11): dropped
 

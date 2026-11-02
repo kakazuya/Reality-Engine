@@ -53,7 +53,7 @@ test lives in `test_dsh_worker_stress.py` unless it says otherwise.
 | Lock released after writer finishes | new writer | starts | starts | n/a | same test |
 | Lease expiry | 2 s test lease, 30 s job | stopped, `controller_lease_expired` | correct | n/a | `test_expired_lease_cannot_be_adopted` + existing tests |
 | Lease renewal limits | existing tests (max 1800 s, owner-bound) | — | correct | n/a | `test_dsh_worker_plugin` |
-| Server restarted mid-job: renew | new Manager | some explicit path | **impossible: job always died at deadline** | `renew_worker_lease(adopt=true)`; an expired lease cannot be adopted; `adoptions` recorded | `test_restarted_server_adopts_lease_explicitly` |
+| Server restarted mid-job: renew | new Manager | some explicit path | **impossible: job always died at deadline** | `renew_worker_lease(adopt=true)`; an expired lease cannot be adopted; `adoptions` recorded | `test_other_session_claims_adopts_and_messages_after_restart` |
 | Server restarted mid-job: message | new Manager | explicit refusal | `transport_unavailable` | n/a (token stays memory-only by security decision) | same test |
 | Server killed while job runs | close the Python MCP client session | job survives or the loss is reported | worker died silently | breakaway attempt + `survives_server_exit` and warning (here false: the host refuses breakaway) | `test_server_exit_while_job_runs_is_reported` |
 | Supervisor killed alone | `taskkill /PID sup /F` (no /T) | worker dies, lock held | worker dies (job object), phase `lost`, lock held | n/a | `test_supervisor_killed_alone...` (also checks that cancel releases the lock and a new writer starts) |
@@ -80,7 +80,7 @@ test lives in `test_dsh_worker_stress.py` unless it says otherwise.
 ## Install (after H02 finishes — not done here)
 
 Merge the branch into the main checkout. The user-scope registration already
-points at the main checkout's `server/dsh_worker_mcp.py`, so the next server
+points at the main checkout's `plugins/dsh-worker/server/dsh_worker_mcp.py`, so the next server
 start picks it up. Then restart the session (or `/mcp` reconnect) and call
 `server_info`; it should report `version: 0.2.0`. No `~/.claude.json` edit is
 needed. Codex's server (PID seen tonight under `codex.exe`) also needs a restart.

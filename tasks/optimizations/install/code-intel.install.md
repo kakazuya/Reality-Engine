@@ -1,6 +1,6 @@
 # code-intel — install steps (Claude runs these; the worker sandbox cannot)
 
-Everything below is staged by Task 04. Nothing here is applied yet.
+Staged by Task 04. The project `.mcp.json` entry (section 3) is already in the repo; the other steps are not confirmed applied.
 
 ## 1. Language server (required)
 
@@ -117,7 +117,7 @@ matches the cold-start worst case (first call after a restart can wait for the i
 
 ## 6. Worker context (owned by Task 01)
 
-Append `code-intel.worker_context.md` to whatever `tasks/worker_context/` lands as —
+Append `code-intel.worker_context.md` to the worker context file Task 01 creates (`tasks/worker_context/` is not in the repo yet) —
 it is the "Use code-intel before grep" section with three examples.
 
 ## 7. Verify
@@ -128,5 +128,5 @@ C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe -m unittest re
 C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe plugins/code-intel/tests/acceptance_check.py
 ```
 
-Expected: 13 tests OK (none skipped once the language server is installed) and
+Expected: 16 tests OK (none skipped once the language server is installed) and
 `ALL CHECKS PASSED` with the numbers in `plugins/code-intel/README.md`.
