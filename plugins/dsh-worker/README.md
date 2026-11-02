@@ -10,9 +10,9 @@ provider route, credentials, or Codex's main model.
 - Python 3.14, pinned in `.mcp.json` to
   `C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe`. Do not
   rely on Codex's `PATH`: a bundled Python may not have the MCP dependency.
-- `mcp` Python SDK `>=2.3,<3` (declared in `requirements.txt`; verify with the
+- `mcp` Python SDK `>=2.3,<3` (declared in `plugins/dsh-worker/requirements.txt`; verify with the
   pinned interpreter: `<python.exe> -m pip show mcp`)
-- PyYAML `>=6,<7` for `jobs.yaml` (also declared in `requirements.txt`)
+- PyYAML `>=6,<7` for `jobs.yaml` (also declared in `plugins/dsh-worker/requirements.txt`)
 - Windows job objects, `taskkill` (with a native parent-PID fallback for
   restricted tokens) and DPAPI (`CryptProtectData`, ctypes) for owned-tree
   containment/cancellation and the persisted per-job control token
@@ -386,8 +386,8 @@ not configured.
 ## Data-job runner (Phase 2)
 
 `plugins/dsh-worker/jobs.yaml` is the shared registry for the recurring data jobs
-inventoried in `tasks/DATA_JOBS_AUDIT_2026-10-24.md` (all 57) plus the generated
-`worker_context` refresh (58). `DSH_WORKER_JOBS_FILE`
+inventoried in `tasks/DATA_JOBS_AUDIT_2026-10-24.md`, plus the generated
+`worker_context` refresh. `jobs.yaml` holds the live entry count (63 `- name:` entries on 2026-11-02). `DSH_WORKER_JOBS_FILE`
 overrides the registry path for isolated tests. Each entry has
 name, argv (with `{date}`/`{start}`/`{repo_root}`/`{data_root}` placeholders),
 cwd, env, description, writes, named resource locks (`db:<file>`, `gpu`,
