@@ -45,6 +45,20 @@ def child_env(extra: dict | None = None) -> dict:
     return env
 
 
+def hidden_console() -> dict:
+    """Popen arguments for a session nobody sees (Shivam, 2 Nov: no console pop-ups on this laptop).
+
+    ``CREATE_NO_WINDOW`` leaves the session with no console at all, so every Bash or Python tool
+    call it makes opens a new, visible window.  A new console that starts hidden is inherited by
+    those children instead, so they stay out of sight too."""
+    if os.name != "nt":
+        return {}
+    info = subprocess.STARTUPINFO()
+    info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    info.wShowWindow = 0  # SW_HIDE
+    return {"creationflags": subprocess.CREATE_NEW_CONSOLE, "startupinfo": info}
+
+
 def context_of(usage: dict) -> int:
     return sum(int(usage.get(k) or 0) for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
 
@@ -164,8 +178,7 @@ def run_session(
     started = time.time()
     proc = subprocess.Popen(
         cmd, cwd=str(cwd), env=env or child_env(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
-        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", **hidden_console(),
     )
     timed_out: list[bool] = [False]
 

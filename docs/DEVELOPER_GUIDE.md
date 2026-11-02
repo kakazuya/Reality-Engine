@@ -482,7 +482,7 @@ The stream/context runner is shared with the T-048 gap loop: `reality_engine/scr
 
 ### N. One-company gap loop (T-048)
 
-`reality_engine/gap_loop/` answers one company's question bank in rounds, finds why each answer failed, fills the gap by extraction from the company's own documents or by a formula on stored numbers, and answers again. KEC is the first company. Cheap models do the work and it escalates only on repeated failure. `reality_engine/gap_loop/__main__.py` is the `python -m` entry and calls `loop.main`.
+`reality_engine/gap_loop/` answers one company's question bank in rounds, finds why each answer failed, fills the gap by extraction from the company's own documents or by a formula on stored numbers, and answers again. KEC is the first company. Cheap models do the work and it escalates only on repeated failure. `reality_engine/gap_loop/__main__.py` is the `python -m` entry and calls `loop.main`. Sessions start through `reality_engine/scripts/session_runner.py` in a new console that is hidden (`hidden_console`), so the Bash and Python calls they make open no windows on this laptop; start the loop itself hidden too (`Win32_Process.Create` with `ShowWindow=0`, or `pythonw`).
 
 ```bash
 python -m reality_engine.gap_loop --sandbox D:\RealityEngine\sandbox\kec_loop --dry-run
