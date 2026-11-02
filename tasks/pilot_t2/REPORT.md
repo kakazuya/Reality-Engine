@@ -30,8 +30,8 @@ FTS5 `unicode61 remove_diacritics 2` + `chunk_tag` + `chunk_entity`. DDL from
   column header opened a new note, so the previous chunk ended inside the header. The three AR
   cases from the first hand check are now merged into their notes; one residual table-header
   cut survives in a long POLYCAB announcement (the single boundary failure).
-- Continuation pieces carry `unit_kind="note_cont"` and `(cont.)` in `section` and `header`
-  (v3 `_enrich`), so a filter can never mistake a continuation for the start of a note.
+- Continuation pieces carry a `unit_kind` ending in `_cont` (chunker_v2 appends it, e.g. `note_cont`) and
+  `(cont.)` in `section` (chunker_v3 `_enrich`), so a filter can never mistake a continuation for the start of a note.
 
 `reality_engine/processing/chunker_v3.py`:
 
@@ -109,8 +109,9 @@ because it did not resolve NSE attachment timestamps by seq id; the independent 
 
 ## 5. EVIDENCE planner wiring
 
-`reality_engine/query/planners/evidence.py` reads `REALITY_CHUNKS_V3` (a path to the pilot DB)
-when the variable is set and the file exists:
+`reality_engine/query/planners/evidence.py` reads the store through `ctx.chunks_v3()`
+(`reality_engine/query/ctx.py`): the path is `REALITY_CHUNKS_V3` if set, else the default in `ctx.py`,
+and it is used only when that file exists:
 
 1. the FTS5 match is materialised first (`WITH hits AS MATERIALIZED (...)`) and the filters
    are then pushed into SQL — `isin`, `doc_type`, `known_at <= as_of`, optional
@@ -119,8 +120,8 @@ when the variable is set and the file exists:
    keeps the top-3;
 3. no dense vectors. A clean answer needs half the ask's meaningful terms; a ranked chunk with
    one term is returned with a degradation note; a miss on a pilot ISIN returns NOT-IN-DATA
-   fast instead of falling back to the 2–6 s legacy `doc_find` over 13 stores. `doc_find` is
-   still the fallback when the env var is unset, the file is missing, or the search raises.
+   fast instead of falling back to the 2–6 s legacy `doc_find` over 13 stores. When the store file is
+   missing, the planner uses the bounded `intelligence_fts` path (`evidence.py` lines 1-13), not `doc_find`.
 
 Measured on the store: **50 ms** for an ISIN + 4-term query, **147 ms** with a tag + doc_type
 filter, 0 rows before the earliest `known_at` (PIT filter works). The first plan (filter

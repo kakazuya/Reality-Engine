@@ -296,7 +296,7 @@ Rows inside passing tables must also have a label and a year (or be a % or count
 
    At 12.7k reports that is ~0.5-0.75M page-equivalents, roughly the size of the deck job, not half of it.
 
-## Next (for 2026-10-12)
+## Next (planned for 2026-10-12; not done: no `novelty` filter in reality_engine/scripts as of 2026-11-02)
 
 1. Tune the prose slice: novelty and lexicon as above. Re-measure must-find recall and the LLM share.
 2. Row-mode LLM pass design (prompt + output schema: canonical label, unit, keep/drop). Test on the 39 + 39
