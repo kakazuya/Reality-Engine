@@ -538,4 +538,6 @@ tasks/answer_bench/before_event_ripple/GATE_RUN_2026-10-29.md,235,235,kept,"Date
 tasks/answer_bench/REPORT_v0.md,249,249,kept,"checked _facts_ar, snapshot_path cache, ar_facts_doc index, doc_find/docs/doc_page/facts, search_docs.warm and INDEX_MIGRATION_V0.sql indexes; all exist, numbers untouched",
 tasks/arch_v3/PILOT_SPEC.md,249,249,changed,"removed refs to missing .tmp/pick_pilot.py, verify_map.py, check_schema.py and toolbelt/run_master_bank.py (marked planned); removed dangling AGENTS.md §3.13; 1,030 count kept",
 tasks/backtests/H01_report.md,249,249,kept,run_h01 module and --placebo-draws 499 default exist; dated result numbers and off-repo DuckDB snapshot left as recorded,
-tasks/NEXT_SESSIONS_PLAN_2026-10-27.md,251,22,changed-partial,tasks/handoff/QUEUE_2026-10-31.md is gone; pointed live queue to tasks/TASKS.md and task_board list; AGENTS.md golden-rule citation verified,
+tasks/NEXT_SESSIONS_PLAN_2026-10-27.md,251,251,changed,"Checked results_notes/fetch_reddit/concall_refetch scripts and flags, audit and sector-pilot paths; fixed concall code location (now on main), bank status (per tasks/STATE.md)",
+tasks/arch_v3/COVERAGE.md,251,251,changed,"Checked CASE_MAP, SCHEMA_V3.sql, PILOT_SPEC §4, SPEED_PLAN §2; .tmp scripts are git-ignored and absent, so reworded the reproducibility claim, numbers kept",
+tasks/council_2026-10-06/round1_cro.md,252,67,changed-partial,"Checked PRICE_SIDE_DIFFUSION_STUDY §7 and is_nifty200 in PIT audit; SESSION_CLOSEOUT and desk_meeting files are missing repo-wide, so reworded those references",

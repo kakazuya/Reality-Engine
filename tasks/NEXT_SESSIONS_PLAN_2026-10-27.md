@@ -20,7 +20,7 @@ This is also written at the top of `AGENTS.md`.
 - **Banks so far**, merged in `tasks/` unless noted:
   - Shivam's 30 questions;
   - `QUESTION_BANK_300` (variations);
-  - `QUESTION_BANK_OPEN_2026-10-27` (300; awaiting approval);
+  - `QUESTION_BANK_OPEN_2026-10-27` (300; now merged into the master bank, which `tasks/STATE.md` records as accepted and frozen at 1,901 questions);
   - `QUESTION_BANK_RIPPLE_2026-10-28` (200), with `RIPPLE_SCHEMA_REQUIREMENTS_2026-10-28.md` (41 proposals, ranked);
   - Reddit bank: 200 questions, a quarter of them technical. Brief `tasks/dsh_tasks/REDDIT_QUESTION_MINING_2026-10-28.md`. It starts when the Reddit download in `D:\RealityEngine\raw\reddit` finishes.
 - **Bank approval process (Shivam, 2026-10-28):** no bank is approved on its own; the open bank is NOT pending approval by itself.
@@ -100,7 +100,7 @@ Read the last entry of `D:\RealityEngine\plans\DECISION_LOG.md` (also in `gdrive
 
 **3. Concall fetch (Shivam, 2026-10-28: fetch all of it, but plan it and run it in the CLI)**
 - **3a. BSE "Earnings Call Transcript" candidates:** 9,390 announcements, about 8,545 unique transcripts, about 6 h at ≤25 requests/min.
-  - The code is in worktree `IDM-worktrees/20261027T002757Z-52ef59af` (`concall_refetch.py`, pilot report `tasks/concall_refetch/report_pilot.md`); merge it to main first.
+  - The code is on main (`reality_engine/scripts/concall_refetch.py`); pilot report `tasks/concall_refetch/report_pilot.md`.
   - Run: `python -m reality_engine.scripts.concall_refetch --n 9390 --report tasks/concall_refetch/report_full.md`. PDFs go to `D:\RealityEngine\raw\concall_pdfs\`.
 - **3b. BSE transcripts filed under other subcategories:** 1,771 old-corpus rows, mostly "Analyst / Investor Meet" (1,437), then General (236) and others.
   - Widen the candidate query to those subcategories.
@@ -238,7 +238,7 @@ Gap IDs (G0–G12) are from audit §10. A session ends when its acceptance check
 - The full run happens only after it passes (core rule).
 
 ### S9 — Raw fetches that may run any time off-peak (keep total BSE load under 76 requests/min)
-- **Concalls:** `python -m reality_engine.scripts.concall_refetch --n 9390 --report tasks/concall_refetch/report_full.md` from the concall worktree, ≤25 requests/min. Settle the candidate-list scope first.
+- **Concalls:** `python -m reality_engine.scripts.concall_refetch --n 9390 --report tasks/concall_refetch/report_full.md` from the repo root, ≤25 requests/min. Settle the candidate-list scope first.
 - **From the inventory report:** 1,417 missing decks (re-run the harvester first; 979 are from 2026), 1,794 ARs, 108 RBI documents, and the filtered material announcements (~8,540).
 - **NSE-only companies (322):** need an NSE announcement source.
 
