@@ -588,3 +588,4 @@ tasks/ARCHITECTURE_OVERHAUL_2026-10-27.md,1225,1225,changed,"Line 1209 'currentl
 tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.md,2947,2947,changed,"Fixed theme count to eight (universes.yaml:22-212) and reworded supply_link as pilot-schema only (contracts.py:189, pilot/extract60.py:356); checked ipo_issue, pattern_match, gilt, free_float, known_at absent or as stated.",
 tasks/ar_study/COCHINSHIP_FY24_REFERENCE.txt,3147,1165,pending-generated,"PDF-extracted call transcript with page markers, not documentation; read before identified as generated, no edits made.",
 tasks/ar_study/CONCOR_FY24_REFERENCE.txt,3451,2096,pending-generated,"OCR dump of CONCOR earnings-call transcripts and exchange letters, read lines 1-2096 only; generated source data, not documentation",
+tasks/ar_study/GESHIP_FY24_REFERENCE.txt,7066,1362,pending-generated,"Page-tagged extracted filing and transcript text, not documentation; read lines 1-1362 only, no edits",
