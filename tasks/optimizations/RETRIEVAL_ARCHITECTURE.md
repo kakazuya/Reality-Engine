@@ -6,6 +6,8 @@ A question is answered in about 3–10 tool calls that each return compact, cite
 
 ## Layers
 
+Status (checked 2026-11-02): L0 `resolve` and `universe`, and the L1 lookups, exist in `plugins/reality-data/server/`. The L2 tools, the unified `search`, `policy_timeline`, `first_seen` and `cite_check` are not in the repo yet (build order W1–W5 below).
+
 ```
  question
    │  L5 eval harness: offline run, scoring, cheat detection, regression gate
@@ -74,7 +76,7 @@ A question is answered in about 3–10 tool calls that each return compact, cite
 - Results come back as compact tables (no raw JSON dumps), with a `found:false` + `nearest` + `hint` on misses.
 
 ### L5 Eval harness and anti-cheating
-- `eval/run.py --set EVAL25 --runs 2` starts read-only workers with the routing guide, collects answers, and scores
+- `eval/run.py --set EVAL25 --runs 2` (planned, W5; not in the repo yet) starts read-only workers with the routing guide, collects answers, and scores
   correctness against `EVAL25_KEY.md`, evidence validity (cite_check), tool calls, wall time and output tokens.
   It writes `eval/results/<date>.json` and a one-page diff against the last run.
 - **No internet:** four guards, any one of which disqualifies the run.
@@ -86,7 +88,7 @@ A question is answered in about 3–10 tool calls that each return compact, cite
      Any hit flags the run.
   4. **Citation gate:** a claim from memory or the web has no valid evidence id, so it scores 0 even if true.
 - **Gate:** a new tool, prompt or context change merges only if it does not lower accuracy and it improves tool
-  calls or wall time. This is the same rule that turned the context pack off.
+  calls or wall time. The context pack was judged this way and showed no benefit (MANAGER_LOG); its code default is still on (`context_pack=True`, `plugins/dsh-worker/server/core.py:1087`).
 
 ## Data gathering belongs to DeepSeek workers (Shivam, 2026-10-25)
 - New MCP server `data-gather`, loaded only in the dsh worker profile (not in Claude Code). It wraps the
@@ -98,7 +100,7 @@ A question is answered in about 3–10 tool calls that each return compact, cite
   - `gap_report()`.
 - Workers run and verify feeds; the fetch code stays deterministic, and models never write rows by hand.
 - Claude only reviews the verify reports and the code changes.
-- Write permission: only the feeds listed in `data-gather/approved.yaml` can run.
+- Write permission: only the feeds listed in `plugins/data-gather/approved.yaml` can run.
 
 ## Data jobs (writes; Shivam approved 2026-10-25)
 | job | unblocks |

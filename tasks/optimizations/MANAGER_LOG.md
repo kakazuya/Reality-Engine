@@ -64,7 +64,7 @@ before first edit → 8–12 on well-specified briefs). The context pack shows *
 (discovery task: treatment mean 33.5 vs control mean 20; small task: 8 vs 9), while adding a ~27k-token read to every
 worker. Variance between identical runs (12 vs 28; 25 vs 42) is larger than the treatment effect, so n=2 cannot prove
 harm either. Recommendation: keep the template + brief lint as the default; make the pack opt-in (`context_pack=false`
-default) or slim it to a 3–5k-token index (paths to schemas, rules, tools) and re-measure with ≥5 runs/arm on
+default; not done as of 2026-11-02, the code default is still `context_pack=True`, `plugins/dsh-worker/server/core.py:1087`) or slim it to a 3–5k-token index (paths to schemas, rules, tools) and re-measure with ≥5 runs/arm on
 discovery tasks. Toolbelt/code-intel usage was light in all runs; they help most when the brief names them.
 
 **Lesson L5:** a worker's "tests pass" is environment-bound. Running the suite once more outside the worker's sandbox
@@ -86,7 +86,7 @@ independent reviewer earned its cost on the first job (a silent data-correctness
 
 - S1: Workers cannot append to `PROGRESS_NOTES.md` — supervisor puts it in `runtime/jobs/<id>/`, outside the
   worker's sandbox (02 reported it). The standing instruction is unfulfillable; notes should live in the workspace
-  (e.g. `.tmp/PROGRESS_NOTES.md`) and the digest reader should look there. **19:55: sent to 03 as a scoped follow-up
+  (e.g. `.tmp/PROGRESS_NOTES.md`) and the digest reader should look there. (Status 2026-11-02: fixed. The supervisor sets `DSH_WORKER_PROGRESS_NOTES` to `<workspace>/.tmp/PROGRESS_NOTES.md`, `plugins/dsh-worker/server/supervisor.py:977-980`.) **19:55: sent to 03 as a scoped follow-up
   (its ownership area, one test, explicit fence around 01's brief assembly).** Delivered/steered.
 - S2 (manager cost): `worker_result` returns ~8 KB of heartbeat/path JSON around a ~4 KB report. Reading `result.md`
   directly is cheaper; tool should get a `content_only` flag.
