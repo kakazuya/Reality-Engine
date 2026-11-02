@@ -198,7 +198,7 @@ just leaves the bounded FTS fallback in place).
 ## 6. Deliberate deferrals
 
 - **SCREEN** still reads `daily_price_delivery` with one bounded query
-  (`LIMIT 30000`) and buckets in memory, not the pilot whole-market tables:
+  (row limit `max(30000, params * 400)`, `reality_engine/query/planners/screen.py:681`) and buckets in memory, not the pilot whole-market tables:
   `market_state_pilot.company_state_daily` has **489 ISINs** (2019-01-01..
   2026-10-19) against screens that ask the Nifty-500 / Nifty-Midcap-150 universe,
   so switching would silently shrink the universe and change grades.  SCREEN is
