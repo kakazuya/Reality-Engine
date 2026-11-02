@@ -5,10 +5,10 @@ Find out, with a trustworthy test, whether chunker_v2 (with or without GPU layou
 today's chunks.
 
 ## Where things stand
-Worktree `C:\Users\warri\Downloads\IDM-worktrees\20261025T161216Z-02376206`, HEAD = the WIP commit. It contains
-`reality_engine/processing/chunker_v2.py`, `reality_engine/scripts/eval_retrieval.py`,
-`reality_engine/tests/test_chunker_v2.py` (8 tests OK) and `tasks/optimizations/learn/quality_set_v1.jsonl`. The
-pilot DB, stats and eval JSONs are under `.tmp/c1/`. Read the original brief and the GPU brief from the main checkout (they are not in this
+Worktree `C:\Users\warri\Downloads\IDM-worktrees\20261025T161216Z-02376206` no longer exists (checked 2026-11-02). Its
+files are on this branch: `reality_engine/processing/chunker_v2.py`, `reality_engine/scripts/eval_retrieval.py`,
+`reality_engine/tests/test_chunker_v2.py` and `tasks/optimizations/learn/quality_set_v1.jsonl`. Its `.tmp/c1/` outputs
+(pilot DB, stats, eval JSONs) are not on this branch. Read the original brief and the GPU brief from the main checkout (they are not in this
 worktree):
 - `C:\Users\warri\Downloads\Info_Diffusion_Model\tasks\optimizations\learn\C1C2_CHUNKER_AND_QUALITY_SET.md`
 - `C:\Users\warri\Downloads\Info_Diffusion_Model\tasks\optimizations\learn\C1B_LAYOUT_GPU.md`
