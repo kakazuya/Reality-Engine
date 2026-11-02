@@ -20,7 +20,7 @@ Design for the query layer that sits on `SCHEMA_V3.sql`. Every rule here is chec
 | 5 | Pilot universe = "every company named in the master bank + 20 random" | The bank names **489 distinct ISINs / 502 symbols** (measured). "Every FY25+ document" for 489 companies is 9.4k concalls + 13k decks + 14.4k ARs + ~41k result PDFs ≈ 78k docs — that is not a pilot, it is the full run with a different name. | Two-tier pilot: **T1 = 30 ISINs** chosen for case coverage (one per archetype, all doc types) and **T2 = the full 489** for the cheap deterministic tables only (`company_state_daily`, `metric_series`, `event_day0`). See `PILOT_SPEC.md §1`. |
 | 6 | Gate "search p95 < 2 s" with no plan to measure it | No query set, no corpus scale, no distinction between entity-scoped and corpus-wide search. | 20 timed queries, 5 of them search, measured at live scale (2.3M-row FTS) plus a 10k-row prototype of the new tables; p95 computed and shown in `SPEED_PLAN.md §1`. |
 
-Two things the draft gets right and this design keeps: one function per planner in `reality-data`
+Two things the draft gets right and this design keeps: one `plan()` function per planner module in `reality_engine/query/planners/`
 (the master bank becomes the regression suite), and the PIT cutoff applied **in SQL at every hop**.
 
 One correction to `ARCHITECTURE_OVERHAUL_2026-10-27.md` that matters for queries: its
@@ -30,9 +30,9 @@ snapshot in the build, so the drift is recorded rather than silently joined.
 
 ---
 
-## 1. The eight planners
+## 1. The eight planners (plus `expectations`, which reads no store: no consensus or target-price store is held)
 
-Every planner is a pure function `(slots, as_of) -> rows + provenance`. All of them return the same
+Every planner is a function `plan(slots, as_of, ctx) -> rows + provenance` in its own module under `reality_engine/query/planners/`. All of them return the same
 envelope so the assembler can treat a hop uniformly:
 
 ```json
@@ -65,8 +65,8 @@ unanswered hop.
 
 ## 2. Router: master-bank fields → planner chain
 
-Deterministic, no model. Implemented in `.tmp/build_case_map.py` (kept in the worktree so the
-1,030-row map can be regenerated) and specified here.
+Deterministic, no model. Implemented in `reality_engine/query/router.py` (`route(case)`). `CASE_MAP.jsonl`
+(1,030 rows) is its output; the build script `.tmp/build_case_map.py` is not in the repo.
 
 ```
 1. entity resolution slot:
