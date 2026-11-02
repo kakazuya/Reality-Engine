@@ -1,8 +1,10 @@
 """The loop's SQLite store and the sandbox write guard (T-048).
 
-``kec.db`` holds ``doc_text``, ``facts``, ``formulas`` and ``answers``.  Every path the loop writes
-goes through ``inside()``: the sandbox root is the only writable place, and a path that resolves
-outside it raises ``SandboxViolation`` before anything is opened.
+``kec.db`` holds ``doc_text`` (and its FTS5 index), ``docs``, the KEC rows copied out of the
+read-only stores with their source recorded in ``sources``, and the loop's own ``facts``,
+``formulas`` and ``answers``.  Every path the loop writes goes through ``inside()``: the sandbox
+root is the only writable place, and a path that resolves outside it raises ``SandboxViolation``
+before anything is opened.
 """
 from __future__ import annotations
 
@@ -16,7 +18,14 @@ DB_NAME = "kec.db"
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS doc_text(
     doc_key TEXT NOT NULL, page INTEGER NOT NULL, text TEXT NOT NULL,
-    method TEXT NOT NULL, known_at TEXT NOT NULL, PRIMARY KEY(doc_key, page));
+    method TEXT NOT NULL, known_at TEXT, PRIMARY KEY(doc_key, page));
+CREATE TABLE IF NOT EXISTS docs(
+    doc_key TEXT PRIMARY KEY, doc_type TEXT NOT NULL DEFAULT '', title TEXT NOT NULL DEFAULT '',
+    filing_date TEXT, known_at TEXT, pages INTEGER NOT NULL DEFAULT 0,
+    source TEXT NOT NULL DEFAULT '', source_key TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS sources(
+    table_name TEXT PRIMARY KEY, source_db TEXT NOT NULL, source_table TEXT NOT NULL,
+    key TEXT NOT NULL DEFAULT '', rows INTEGER NOT NULL, built_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS facts(
     id INTEGER PRIMARY KEY AUTOINCREMENT, measure TEXT NOT NULL, value REAL NOT NULL,
     unit TEXT NOT NULL, period TEXT NOT NULL, basis TEXT NOT NULL DEFAULT '',
@@ -30,6 +39,18 @@ CREATE TABLE IF NOT EXISTS answers(
     answer_json TEXT NOT NULL, gap_type TEXT, tier INTEGER NOT NULL,
     PRIMARY KEY(round, qid));
 CREATE INDEX IF NOT EXISTS facts_measure ON facts(measure, period);
+CREATE INDEX IF NOT EXISTS docs_known_at ON docs(known_at);
+CREATE VIRTUAL TABLE IF NOT EXISTS doc_text_fts USING fts5(text);
+CREATE TRIGGER IF NOT EXISTS doc_text_ai AFTER INSERT ON doc_text BEGIN
+    INSERT INTO doc_text_fts(rowid, text) VALUES (new.rowid, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS doc_text_ad AFTER DELETE ON doc_text BEGIN
+    DELETE FROM doc_text_fts WHERE rowid = old.rowid;
+END;
+CREATE TRIGGER IF NOT EXISTS doc_text_au AFTER UPDATE ON doc_text BEGIN
+    DELETE FROM doc_text_fts WHERE rowid = old.rowid;
+    INSERT INTO doc_text_fts(rowid, text) VALUES (new.rowid, new.text);
+END;
 """
 
 
@@ -87,7 +108,56 @@ def page_lookup(conn: sqlite3.Connection):
     return lookup
 
 
-def put_doc_text(conn: sqlite3.Connection, doc_key: str, page: int, text: str, method: str, known_at: str) -> bool:
+def row_lookup(conn: sqlite3.Connection):
+    """A ``row_lookup(table, rowid) -> {column: value}`` over this store's own tables.
+
+    A number may cite a row of any table in ``kec.db`` instead of a page; the check reads that row
+    here.  The table name is validated and must exist, so it is safe in the statement.
+    """
+
+    def lookup(table, rowid):
+        name = str(table or "").strip()
+        if not (name.isidentifier() and not name.startswith("sqlite_")):
+            return None
+        try:
+            cursor = conn.execute(f'SELECT * FROM "{name}" WHERE rowid=?', (int(rowid),))
+        except (TypeError, ValueError, sqlite3.OperationalError):
+            return None
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return {column[0]: value for column, value in zip(cursor.description, row)}
+
+    return lookup
+
+
+def put_doc(conn: sqlite3.Connection, row: dict) -> None:
+    """One ``docs`` row per PDF under ``raw``."""
+    conn.execute(
+        "INSERT INTO docs(doc_key, doc_type, title, filing_date, known_at, pages, source, source_key) "
+        "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(doc_key) DO UPDATE SET doc_type=excluded.doc_type, "
+        "title=excluded.title, filing_date=excluded.filing_date, known_at=excluded.known_at, "
+        "pages=excluded.pages, source=excluded.source, source_key=excluded.source_key",
+        (row["doc_key"], row.get("doc_type") or "", row.get("title") or "", row.get("filing_date"),
+         row.get("known_at"), int(row.get("pages") or 0), row.get("source") or "",
+         row.get("source_key") or ""),
+    )
+
+
+def put_source(conn: sqlite3.Connection, table: str, source_db: str, source_table: str, key: str,
+               rows: int, built_at: str) -> None:
+    """Record which read-only table a copied ``kec.db`` table came from and how many rows it has."""
+    conn.execute(
+        "INSERT INTO sources(table_name, source_db, source_table, key, rows, built_at) VALUES(?,?,?,?,?,?) "
+        "ON CONFLICT(table_name) DO UPDATE SET source_db=excluded.source_db, "
+        "source_table=excluded.source_table, key=excluded.key, rows=excluded.rows, "
+        "built_at=excluded.built_at",
+        (table, source_db, source_table, key, int(rows), built_at),
+    )
+
+
+def put_doc_text(conn: sqlite3.Connection, doc_key: str, page: int, text: str, method: str,
+                 known_at: str | None) -> bool:
     """Insert one page; True when it is new, False when an existing page was replaced."""
     existed = conn.execute("SELECT 1 FROM doc_text WHERE doc_key=? AND page=?", (doc_key, page)).fetchone() is not None
     conn.execute(
@@ -96,6 +166,7 @@ def put_doc_text(conn: sqlite3.Connection, doc_key: str, page: int, text: str, m
         (doc_key, int(page), text, method, known_at),
     )
     return not existed
+
 
 
 def add_fact(conn: sqlite3.Connection, row: dict) -> int:
@@ -129,7 +200,7 @@ def put_answer(conn: sqlite3.Connection, round_no: int, row: dict) -> None:
 
 def counts(conn: sqlite3.Connection) -> dict[str, int]:
     return {table: int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
-            for table in ("doc_text", "facts", "formulas", "answers")}
+            for table in ("doc_text", "docs", "facts", "formulas", "answers")}
 
 
 def latest_answers(conn: sqlite3.Connection) -> dict[str, dict]:

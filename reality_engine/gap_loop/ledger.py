@@ -83,7 +83,7 @@ def opus_usage(path: Path, since: str) -> dict[str, int]:
 
 def summary(rows: list[dict], answered: int, opus: dict[str, int] | None = None) -> dict:
     tiers: dict[int, dict] = defaultdict(lambda: {
-        "units": set(), "attempts": 0, "ok": 0, "cost_usd": 0.0,
+        "units": set(), "attempts": 0, "ok": 0, "cost_usd": 0.0, "estimated": 0,
         "tokens": dict.fromkeys(TOKEN_FIELDS, 0), "models": set(), "missing_tokens": 0,
     })
     methods: Counter[str] = Counter()
@@ -94,6 +94,7 @@ def summary(rows: list[dict], answered: int, opus: dict[str, int] | None = None)
         bucket["attempts"] += 1
         bucket["ok"] += 1 if row.get("outcome") == "ok" else 0
         bucket["cost_usd"] += float(row.get("cost_usd") or 0)
+        bucket["estimated"] += 1 if row.get("cost_estimated") else 0
         bucket["models"].add(str(row.get("model") or "?"))
         token_row = tokens_of(row)
         for key in TOKEN_FIELDS:
@@ -127,11 +128,12 @@ def format_summary(result: dict) -> str:
     for tier, bucket in result["tiers"].items():
         tokens = bucket["tokens"]
         missing = f", tokens missing on {bucket['missing_tokens']} attempt(s)" if bucket["missing_tokens"] else ""
+        estimated = f", {bucket['estimated']} cost estimate(s)" if bucket["estimated"] else ""
         lines.append(
             f"tier {tier} ({', '.join(bucket['models'])}): units {bucket['units']}, attempts {bucket['attempts']}, "
             f"ok {bucket['ok']}, tokens input={tokens['input']:,} cache_read={tokens['cache_read']:,} "
             f"cache_creation={tokens['cache_creation']:,} output={tokens['output']:,} thinking={tokens['thinking']:,}, "
-            f"cost ${bucket['cost_usd']:.3f}{missing}"
+            f"cost ${bucket['cost_usd']:.3f}{estimated}{missing}"
         )
     if result["methods"]:
         lines.append("methods: " + ", ".join(f"{name}={count}" for name, count in result["methods"].items()))
