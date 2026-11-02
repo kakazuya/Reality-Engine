@@ -65,12 +65,14 @@ Every evening at $18:30\text{ IST}$, calculate the composite weighted rank:
 
 $$\text{Composite Score} = (0.45 \times \mathcal{S}_{\text{TechFlow}}) + (0.35 \times \mathcal{S}_{\text{Funda}}) + (0.20 \times \mathcal{S}_{\text{Alt}})$$
 
+The sketch below is not implemented: `compute_daily_screener` does not exist in the repo (checked 2026-11-02). Its DB path is the repo's `reality_engine/data/equity_intelligence.db` (`build_pack.py:8`).
+
 ```python
 import sqlite3
 import pandas as pd
 import numpy as np
 
-def compute_daily_screener(date_str: str, db_path: str = "./data/equity_intelligence.db") -> pd.DataFrame:
+def compute_daily_screener(date_str: str, db_path: str = "reality_engine/data/equity_intelligence.db") -> pd.DataFrame:
     conn = sqlite3.connect(db_path)
     
     # 1. Fetch Technical and Delivery metrics
