@@ -20,9 +20,9 @@ price/delivery data before and after. Measured on equity_intelligence.db and dec
    | mkt_nse_sme_daily | symbol | 2019-01-01 .. 2025-10-10 |
    | mkt_bse_delivery_daily | sc_code | 2019-01-01 .. 2026-10-09 |
    Sample of 400 deck filings, ±10 days: daily_price_delivery alone covers 75%; all sources joined give price for
-   93% and delivery for 99.8%. Symbol joins break on renames. There is no ISIN/symbol history map (AGENTS.md notes ISINs
+   93% and delivery for 99.8%. Symbol joins break on renames. A history map exists (`symbol_isin_history`, `isin_rekey_log`; AGENTS.md rule 1 notes ISINs
    change on splits and face-value changes).
-   Fix: an ISIN/symbol/sc_code history map plus one view `price_delivery_pit(isin, date, ...)` over all sources.
+   Fix: the view `price_delivery_pit(isin, date, ...)` over all sources is not built (no match in `reality_engine/`).
 
 2. **Placeholder ISINs in deck figures.** 47 companies, 54 decks, 1,226 pages, 14,426 final facts carry
    `INE_AUTO_*` ISINs. The trust layer (AGENTS rule 13) hides them, so they are invisible to analysis.

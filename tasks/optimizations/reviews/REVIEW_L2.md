@@ -1,6 +1,6 @@
 # Review task — independent acceptance check of optimisation task L2 (document lookups)
 
-You are a reviewer, not the author. Your workspace is the author's finished worktree `C:/Users/warri/Downloads/IDM-worktrees/20261025T074948Z-e3822c50`
+You are a reviewer, not the author. Your workspace is the author's finished worktree `C:/Users/warri/Downloads/IDM-worktrees/20261025T074948Z-e3822c50` (path no longer exists as of 2026-11-02)
 (branch `dsh/20261025T074948Z-e3822c50`, base `2260df7`). Read `tasks/optimizations/00_SHARED_CONTEXT.md` (sections Machine, Tests,
 Known sandbox limits only) and the brief `tasks/optimizations/lookups/L2_DOC_LOOKUPS.md`.
 
