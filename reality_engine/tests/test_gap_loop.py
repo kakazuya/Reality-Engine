@@ -85,6 +85,54 @@ def test_margin_stored_as_money_is_rejected():
     assert checks.check_unit("order intake growth", "pct")[0]
 
 
+def test_hindalco_and_bajaj_units_that_were_rejected_are_known_now():
+    # Verbatim rejections of 2 Nov (T-048): "is not a known unit".
+    price, capex = "LME aluminium spot price", "project capex"
+    for unit in ("usd_per_tonne", "usd_per_t", "usd_per_ton", "cents per lb", "inr_per_tonne",
+                 "inr_per_share"):
+        assert checks.check_unit(price, unit)[0], unit
+    for unit in ("INR_crore", "inr_crore", "usd_million", "usd_mn", "usd_bn", "inr_lakh"):
+        assert checks.check_unit(capex, unit)[0], unit
+    for unit in ("kt_per_year", "ktpa", "mtpa", "million_tonnes", "tonnes_per_year"):
+        assert checks.check_unit("installed capacity", unit)[0], unit
+    assert checks.check_unit("active customers", "million customers")[0]
+    assert checks.check_unit("branch network", "branches")[0]
+    assert checks.check_unit("date of commissioning", "date")[0]
+    assert not checks.check_unit("active customers", "furlongs")[0]
+
+
+def test_rate_measures_are_percentages_and_money_words_do_not_decide_them():
+    # "does not suit ... (a money measure)" and "(a pct measure, because of the word share)" (2 Nov).
+    assert checks.check_unit("cost of funds", "pct")[0]
+    assert checks.check_unit("credit cost (loan loss to average AUF)", "pct")[0]
+    assert checks.check_unit("loan loss to average AUF (credit cost)", "pct")[0]
+    assert not checks.check_unit("cost of funds", "inr_cr")[0]
+    assert checks.check_unit("face value per share before sub-division", "inr")[0]
+    assert checks.check_unit("BHFL share of consolidated profit after tax", "inr_cr")[0]
+    assert checks.check_unit("market share", "pct")[0]
+    # The two that must still fail: a margin stored as money, and a revenue stored as a percentage.
+    ok, reason = checks.check_unit("EBITDA margin", "inr_cr")
+    assert not ok and "does not suit" in reason
+    ok, reason = checks.check_unit("revenue", "pct")
+    assert not ok and "typed contract" in reason
+    # A USD number is not a rupee revenue: the contract's money unit must be the same currency.
+    assert not checks.check_unit("revenue", "usd_million")[0]
+
+
+def test_hindalco_and_bajaj_periods_are_accepted():
+    # Verbatim rejections of 2 Nov (T-048): "is not a period".
+    for period in ("Dec-2025", "Dec 2025", "12-month trailing", "trailing twelve months", "LTM"):
+        assert checks.check_period(period)[0], period
+
+
+def test_a_usd_number_is_read_in_its_own_scale():
+    quote = "Novelis revenue of US$1.2 billion in Q2"
+    assert checks.check_number(1200, "usd_million", quote)[0]
+    assert checks.check_number(1.2, "usd_bn", quote)[0]
+    assert checks.check_number(1200, "usd_mn", "revenue US$ 1,200 million")[0]
+    assert not checks.check_number(9999, "usd_million", quote)[0]
+
+
 def test_known_at_after_as_of_is_rejected():
     ok, reason = checks.check_known_at("2026-11-01", "2026-10-19")
     assert not ok and "after the as-of" in reason

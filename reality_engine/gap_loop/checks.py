@@ -24,26 +24,51 @@ MIN_QUOTE = 12
 MAX_QUOTE = 2000
 TOLERANCE = 0.002
 
-MONEY_UNITS = {"inr", "rs", "rupees", "inr_cr", "crore", "cr", "inr_mn", "million", "mn",
-               "billion", "bn", "lakh", "lac", "usd_mn"}
+MONEY_UNITS = {"inr", "rs", "rupees", "inr_cr", "inr_crore", "inr_lakh", "inr_billion", "crore",
+               "cr", "inr_mn", "million", "mn", "billion", "bn", "lakh", "lac", "usd", "usd_mn",
+               "usd_million", "usd_bn", "usd_billion", "eur_mn"}
 PCT_UNITS = {"pct", "%", "percent", "percentage"}
 COUNT_UNITS = {"count", "nos", "units", "no", "number", "mw", "kw", "kt", "mt", "tonnes",
                "tpa", "tpd", "sqft", "days", "years", "x", "ratio", "times", "inr_per_unit",
-               "inr_per_share", "rs_per_share", "per_share", "shares", "bps", "basis_points"}
+               "inr_per_share", "rs_per_share", "per_share", "shares", "bps", "basis_points",
+               # volume and capacity (T-048, Hindalco)
+               "ktpa", "mtpa", "kt_per_year", "mt_per_year", "million_tonnes", "tonnes_per_year",
+               # counts (T-048, Bajaj Finance and Hindalco)
+               "customers", "million_customers", "lakh_customers", "branches", "employees",
+               # a date-valued number
+               "date"}
+# A rate in a currency or cents per quantity: usd_per_tonne, usd_per_t, cents_per_lb, inr_per_share.
+_RATE_UNIT = re.compile(
+    r"^(?:usd|inr|eur|gbp|cny|jpy|aud|cad|rs|rupees|cents?|paise)_per_[a-z][a-z_]*$")
 KNOWN_UNITS = MONEY_UNITS | PCT_UNITS | COUNT_UNITS
+# Money units with no crore scale: the number is compared with these scales (absolute units).
+_ABS_UNITS = {"usd": 1.0, "usd_mn": 1e6, "usd_million": 1e6, "usd_bn": 1e9, "usd_billion": 1e9,
+              "eur_mn": 1e6}
+_ABS_WORD = {"thousand": 1e3, "lakh": 1e5, "lac": 1e5, "crore": 1e7, "cr": 1e7, "million": 1e6,
+             "mn": 1e6, "billion": 1e9, "bn": 1e9}
 
 _PERIOD = re.compile(
     r"\b(?:FY\s?'?\d{2,4}|Q[1-4]\s?'?FY\s?'?\d{2,4}|[QH][1-4]\s?(?:FY\s?'?\d{2,4})?"
     r"|(?:9M|6M|3M|H[12])\s?(?:FY\s?'?\d{2,4})?|CY\s?'?\d{2,4}|TTM|\d{4}-\d{2}-\d{2}"
-    r"|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}"
-    r"|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4})\b",
+    r"|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s-]+\d{4}"
+    r"|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}"
+    # Trailing twelve months, written as "12-month trailing", "trailing twelve months" or LTM (T-048).
+    r"|\d{1,2}[\s-]*months?[\s-]+trailing|trailing[\s-]+(?:twelve|\d{1,2})[\s-]+months?|LTM)\b",
     re.I,
 )
-_PCT_WORDS = re.compile(
-    # Whole words only: "operations" holds "ratio" and was read as a percentage (KEC run, 2 Nov).
-    r"\b(?:margins?|growth|yield|returns?|ratios?|rates?|percent|share(?!\s*price)|utili[sz]ation|cagr|drawdown|mix)\b",
+# Whole words only: "operations" holds "ratio" and was read as a percentage (KEC run, 2 Nov).
+# A strong rate word decides a percentage even beside a money word: "EBITDA margin", "cost of funds".
+_STRONG_PCT = re.compile(
+    r"\b(?:margins?|growth|yields?|returns?|ratios?|rates?|percent|utili[sz]ation|cagr|drawdown|mix"
+    r"|cost of (?:funds|borrowing)|credit costs?|loan loss(?:es)? to average|net interest margin"
+    r"|nim|roa|roe|gnpa|nnpa|coverage)\b",
     re.I,
 )
+# "share" alone is a percentage (market share); beside a money word it is ambiguous (T-048).
+_WEAK_PCT = re.compile(r"\bshare(?!\s*price)\b", re.I)
+# Money by name, whatever else the measure says: "face value per share" is money, not a percentage.
+_MONEY_PHRASES = re.compile(r"\bper share\b|\bface value\b", re.I)
+_PERCENT_PHRASE = re.compile(r"\bas a percentage\b|\bper ?cent\b", re.I)
 _MONEY_WORDS = re.compile(
     r"revenue|turnover|income|ebitda|\bpat\b|profit|order ?book|order intake|order inflow|"
     r"net worth|capex|capital expenditure|debt|cash|amount|value|cost|receivable|inventory|"
@@ -60,9 +85,9 @@ _NUM = re.compile(
 )
 _WS = re.compile(r"\s+")
 _DASHES = str.maketrans({"\u2013": "-", "\u2014": "-", "\u2212": "-", "\u00a0": " "})
-_CRORE = {"inr_cr": 1.0, "crore": 1.0, "cr": 1.0, "inr_mn": 0.1, "million": 0.1, "mn": 0.1,
-          "inr": 1e-7, "rs": 1e-7, "rupees": 1e-7, "billion": 100.0, "bn": 100.0,
-          "lakh": 0.01, "lac": 0.01}
+_CRORE = {"inr_cr": 1.0, "inr_crore": 1.0, "crore": 1.0, "cr": 1.0, "inr_mn": 0.1, "million": 0.1,
+          "mn": 0.1, "inr": 1e-7, "rs": 1e-7, "rupees": 1e-7, "billion": 100.0, "bn": 100.0,
+          "inr_billion": 100.0, "lakh": 0.01, "lac": 0.01, "inr_lakh": 0.01}
 
 
 def normalise(text: object) -> str:
@@ -70,7 +95,13 @@ def normalise(text: object) -> str:
 
 
 def _norm_unit(unit: object) -> str:
-    return normalise(unit).lower().strip(".")
+    # "INR_crore" == "inr_crore"; "cents per lb" == "cents_per_lb" (T-048).
+    return re.sub(r"[\s-]+", "_", normalise(unit).lower().strip("."))
+
+
+def _currency(unit: str) -> str:
+    """The currency a money unit is written in: a USD number never converts to a rupee measure."""
+    return "usd" if unit.startswith("usd") else "eur" if unit.startswith("eur") else "inr"
 
 
 def _contract_units(measure: str) -> set[str]:
@@ -87,13 +118,20 @@ def _contract_units(measure: str) -> set[str]:
 
 
 def measure_family(measure: str) -> str | None:
-    """'pct', 'money' or None.  Growth and margin words win over money words: order intake growth is a percentage."""
+    """'pct', 'money' or None.  Rate words win over money words ("order intake growth", "EBITDA margin",
+    "cost of funds" are percentages).  "per share" and "face value" are money.  "share" beside a money word
+    ("BHFL share of consolidated profit") is ambiguous, so no family: the unit is then not tested for fit."""
     text = measure or ""
-    if _PCT_WORDS.search(text) or "%" in text or re.search(r"\bas a percentage\b|\bper ?cent\b", text, re.I):
+    if "%" in text or _PERCENT_PHRASE.search(text):
         return "pct"
-    if _MONEY_WORDS.search(text):
+    if _MONEY_PHRASES.search(text):
         return "money"
-    return None
+    if _STRONG_PCT.search(text):
+        return "pct"
+    money = _MONEY_WORDS.search(text)
+    if _WEAK_PCT.search(text):
+        return None if money else "pct"
+    return "money" if money else None
 
 
 def unit_family(unit: str) -> str | None:
@@ -110,14 +148,15 @@ def check_unit(measure: str, unit: str) -> tuple[bool, str | None]:
     if not value:
         return False, "unit: missing"
     allowed = _contract_units(measure or "")
-    # A money unit converts to any other money unit (rupees to crore); the contract names one of them.
-    convertible = unit_family(value) == "money" and any(unit_family(u) == "money" for u in allowed)
+    # A money unit converts to another money unit of the same currency (rupees to crore); the contract names one.
+    convertible = unit_family(value) == "money" and any(
+        unit_family(u) == "money" and _currency(u) == _currency(value) for u in allowed)
     if allowed and value not in allowed and not convertible:
         return False, f"unit: {unit!r} is not in the typed contract for {measure!r} ({sorted(allowed)})"
     family, family_unit = measure_family(measure or ""), unit_family(value)
     if family and family_unit and family != family_unit:
         return False, f"unit: {unit!r} does not suit {measure!r} (a {family} measure)"
-    if family_unit is None and value not in KNOWN_UNITS and not allowed:
+    if family_unit is None and value not in KNOWN_UNITS and not allowed and not _RATE_UNIT.match(value):
         return False, f"unit: {unit!r} is not a known unit"
     return True, None
 
@@ -159,6 +198,17 @@ def _suffix_crore(suffix: str, compound: str) -> float | None:
     return None
 
 
+def _suffix_abs(suffix: str, compound: str) -> float | None:
+    """A printed money suffix as an absolute multiplier ("million" 1e6, "lakh crore" 1e12); None when none."""
+    word = (suffix or "").lower()
+    second = (compound or "").lower()
+    word = word[:-1] if word.endswith("s") else word
+    second = second[:-1] if second.endswith("s") else second
+    if word in ("lakh", "lac") and second in ("crore", "cr"):
+        return 1e12
+    return _ABS_WORD.get(word)
+
+
 def check_number(value: object, unit: str, quote: str) -> tuple[bool, str | None]:
     try:
         number = float(value)  # type: ignore[arg-type]
@@ -177,7 +227,14 @@ def check_number(value: object, unit: str, quote: str) -> tuple[bool, str | None
         compound = match.group(3) or ""
         pct_suffix = (match.group(4) or "").lower().rstrip(".")
         if family == "money":
-            if pct_suffix or target_crore is None:
+            if pct_suffix:
+                continue
+            if target_crore is None:
+                # A money unit with no crore scale (USD): compare in absolute units (T-048, Hindalco).
+                scale = _suffix_abs(suffix, compound)
+                if unit in _ABS_UNITS and (_close(raw, number) or (
+                        scale is not None and _close(raw * scale, number * _ABS_UNITS[unit]))):
+                    return True, None
                 continue
             if _close(raw, number):
                 return True, None
