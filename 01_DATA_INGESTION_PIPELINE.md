@@ -21,6 +21,8 @@ The Ingestion Pipeline is responsible for gathering raw data from exchanges, reg
 +-------------------+------------------------------------+------------------------------+
 ```
 
+The fixed IST times above are the 2026-08 plan, not code. The code runs routines from `reality_engine/pipeline/routines.py` (kinds: hourly, daily, weekdays, weekly; times set per routine) and `continuous_loop.py` (`TASK_INTERVAL_MINUTES = 30`).
+
 ---
 
 ## 2. Symbol Master Synchronization
@@ -33,7 +35,7 @@ Maintain an offline mapping dictionary between NSE Symbols, BSE Scrip Codes, ISI
   - NSE Equity Master: `https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv`
   - BSE Scrip Master: `https://www.bseindia.com/corporates/List_Scrips.html`
 - **Output Table**: `master_companies`
-- **Sync Cadence**: Weekly (Sunday night) or on discovery of an unknown ticker.
+- **Sync Cadence**: planned weekly (Sunday night) or on discovery of an unknown ticker; no such slot is set in code (`pipeline/routines.py` has only generic kinds).
 
 ```python
 # Primary Strategy: Automated Sync
@@ -63,7 +65,7 @@ def sync_symbol_master():
 
 ### B. Earnings Concall Transcripts & Investor Presentations
 * **Primary Source**: BSE Corporate Filings with Category `Company Update` / `Investor Presentation` / `Concall Transcript`.
-* **Download Path**: `./data/pdfs/YYYY-MM-DD/{SYMBOL}_concall_{ID}.pdf`
+* **Download Path**: `PDFS_DIR` (`reality_engine/config.py:32`, raw files on D:). The `{SYMBOL}_concall_{ID}.pdf` naming is not in code.
 * **Fallback 1**: NSE Corporate Filings attachments endpoint (`https://nsearchives.nseindia.com/corporate/...`).
 * **Fallback 2**: Dedicated Concall repositories (ResearchBytes / Trendlyne public URLs).
 
@@ -154,11 +156,11 @@ async def handle_incoming_telegram_message(event):
 
 ### B. Execution Flow
 1. **Initial Interactive Handshake (Run Once Manually)**:
-   - Script opens non-headless Chromium pointing to persistent folder `./data/browser_profile`.
+   - Script opens non-headless Chromium pointing to persistent folder `BROWSER_PROFILE_DIR` (`config.py:76`).
    - User logs in via Google OAuth.
    - Session tokens, local storage, and cookies are persisted on disk.
 2. **Automated Headless EOD Run (Daily 19:30 IST)**:
-   - Script launches headless Chromium using `./data/browser_profile`.
+   - Script launches headless Chromium using `BROWSER_PROFILE_DIR`.
    - Navigates directly to `https://www.financiallyfree.in/tools/market-overview`.
    - Intercepts AJAX/XHR JSON responses containing sector advance/decline, market breadth, and sector momentum metrics.
    - Extracts rendered tables into structured DataFrame $\to$ saved to SQLite.
@@ -170,7 +172,7 @@ from playwright.async_api import async_playwright
 async def scrape_financially_free():
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
-            user_data_dir="./data/browser_profile",
+            user_data_dir=BROWSER_PROFILE_DIR,
             headless=True,
             viewport={"width": 1920, "height": 1080}
         )
@@ -236,20 +238,20 @@ When initializing the database or analyzing multi-year structural cycles, the sy
 
 To allow effortless ingestion of external articles, institutional PDFs, macroeconomic essays, brokerage reports, and news clippings, the system maintains a **Dedicated Drop-In Folder**:
 
-$$\text{User drops file into } \texttt{./data/inbox/} \longrightarrow \text{Automated Evening Run} \longrightarrow \text{Auto-Classification} \longrightarrow \text{Knowledge Graph \& DB Enriched}$$
+$$\text{User drops file into } \texttt{reality_engine/data/inbox/} \longrightarrow \text{Automated Evening Run} \longrightarrow \text{Auto-Classification} \longrightarrow \text{Knowledge Graph \& DB Enriched}$$
 
 ```
 +----------------------------------------------------------------------------------------------------+
-|                                    USER DROP-IN INBOX (./data/inbox/)                               |
+|                                    USER DROP-IN INBOX (reality_engine/data/inbox/)                               |
 |        - Brokerage Reports (PDF), Industry Articles (TXT/MD), Scanned Excerpts (PNG/JPG)           |
 +-------------------------------------------------+--------------------------------------------------+
                                                   |
                                                   ▼
 +----------------------------------------------------------------------------------------------------+
 |                                 AUTONOMOUS INBOX PROCESSOR & PARSER                                |
-|  1. File Detection: Scans ./data/inbox/ on every daily evening run                                 |
+|  1. File Detection: Scans reality_engine/data/inbox/ on every daily evening run                                 |
 |  2. Extraction: PyMuPDF (PDFs) / RapidOCR on RX 6700 XT (Images) / Text Decoders                   |
-|  3. Deduplication: SHA-256 Hash check against processed_files registry                             |
+|  3. Deduplication: SHA-256 check against inbox_ingestion_manifest.file_hash                             |
 +-------------------------------------------------+--------------------------------------------------+
                                                   |
                                                   ▼
@@ -265,7 +267,7 @@ $$\text{User drops file into } \texttt{./data/inbox/} \longrightarrow \text{Auto
 |                                 MULTI-STORE DATABASE & GRAPH ENRICHMENT                            |
 |  - Injects distilled parameters into `company_distilled_parameters`                                |
 |  - Creates/updates nodes and causal relationships in `graph_nodes` & `graph_causal_edges`          |
-|  - Chunks and embeds text into `LanceDB` vector store with BGE-M3                                  |
+|  - Chunks and embeds text into `LanceDB` vector store with bge-small-en-v1.5 (ONNX)                                  |
 |  - Indexes full text into SQLite `intelligence_fts`                                                |
 |  - Moves processed file to `./data/processed/YYYY/MM/` with execution manifest log                 |
 +----------------------------------------------------------------------------------------------------+
