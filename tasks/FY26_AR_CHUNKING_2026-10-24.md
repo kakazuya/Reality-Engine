@@ -157,7 +157,7 @@ so 620 is a conservative upper bound.)
    vector store stubbed out (subprocess isolation), and the in-process bench arms appended to
    `vectors.f32`/`vectors_meta.jsonl` from multiple store instances. `document_chunks.embedding` and
    the on-disk `vectors.*` index should be treated as stale for those rows; the authoritative AR
-   vectors are the `vector_index_qwen8b_ar` folders built by the separate embedding job. `document_chunks`
+   vectors are the `vector_index_qwen8b_ar` folders built by the separate embedding job (as of 2026-10-24; AGENTS.md rule 2 now names the Nemotron 8B index as the live dense index). `document_chunks`
    + FTS (the search layer) are complete and unaffected.
 
 

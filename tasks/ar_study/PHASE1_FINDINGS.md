@@ -34,7 +34,7 @@ reader are in `READER_INSTRUCTIONS.md`.
 
 - `scores_COCHINSHIP_FY24.csv` (337 rows) and `scores_CONCOR_FY24.csv` (351 rows): the merged scoring sheets.
 - `notes_<SYMBOL>_FY24.md`: each reader's NOTES block (new facts, stress hints and contradictions, with page numbers).
-- `parts/`: the raw output from each reader. `text/`: the per-page extracted text.
+- `parts/`: the raw output from each reader (not in the repo now; the later GESHIP run's output is in `parts_v2/`). `text/`: the per-page extracted text.
 
 ## Scoring sheets summarised
 
@@ -165,4 +165,4 @@ the estimate is **about 35-50 chunks per AR**. That is under the 60 target. Phas
 5. **Before Phase 2, check whether our XBRL feed has the cash-flow statement and contract-liability lines.** That
    decides whether the negative operating cash flow and customer-advances signals are annual-report-only value.
 
-Stopped here and waiting for Shivam.
+Stopped here on 2026-10-10 and waiting for Shivam. The later shipping re-run on GESHIP is in `PHASE1B_GESHIP_FINDINGS.md`.
