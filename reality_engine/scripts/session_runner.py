@@ -55,17 +55,20 @@ class Heartbeat:
 
     A heartbeat never stops a session: every write is best effort."""
 
-    def __init__(self, pid: int, model: str, label: str, cwd: Path, started: float) -> None:
+    def __init__(self, pid: int, model: str, label: str, cwd: Path, started: float,
+                 description: str = "") -> None:
         self.path = HEARTBEAT_DIR / f"{pid}.json"
         self.base = {"pid": pid, "model": model, "label": label or Path(str(cwd)).name,
-                     "cwd": str(cwd), "started": started, "loop_pid": os.getpid()}
+                     "cwd": str(cwd), "started": started, "loop_pid": os.getpid(),
+                     "description": description[:120]}
         self.write(None)
 
     def write(self, result: "SessionResult | None") -> None:
         row = dict(self.base, updated=time.time())
         if result is not None:
             row.update(peak=result.peak, tool_calls=sum(result.tool_calls.values()),
-                       output_tokens=int(result.usage.get("output_tokens") or 0))
+                       output_tokens=int(result.usage.get("output_tokens") or 0),
+                       last=(result.bash_commands[-1] if result.bash_commands else "")[:80])
         try:
             HEARTBEAT_DIR.mkdir(parents=True, exist_ok=True)
             tmp = self.path.with_suffix(".tmp")
@@ -210,6 +213,7 @@ def run_session(
     model: str = MODEL,
     env: dict | None = None,
     label: str = "",
+    description: str = "",
 ) -> SessionResult:
     """Run one command, parse its stream, kill it at the context limit or after ``run_seconds``."""
     started = time.time()
@@ -217,7 +221,7 @@ def run_session(
         cmd, cwd=str(cwd), env=env or child_env(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", **hidden_console(),
     )
-    beat = Heartbeat(proc.pid, model, label, cwd, started)
+    beat = Heartbeat(proc.pid, model, label, cwd, started, description)
     timed_out: list[bool] = [False]
 
     def stop() -> None:

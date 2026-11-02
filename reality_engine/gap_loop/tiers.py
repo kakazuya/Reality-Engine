@@ -173,13 +173,26 @@ def run_tier2_sonnet(unit, logfile: Path | None) -> dict:
     return _run_claude(unit, SONNET, 2)
 
 
+def describe(unit) -> str:
+    """One short line for the headless-sessions mod: what this session is working on."""
+    if unit.stage == "fix":
+        return f"fixing {unit.gap} gaps for {len(unit.items)} questions"
+    first = unit.items[0] if unit.items else {}
+    ids = [str(q.get("id")) for q in unit.items if isinstance(q, dict)]
+    span = f"{ids[0]}-{ids[-1][-3:]}" if len(ids) > 1 else (ids[0] if ids else "")
+    text = str(first.get("question") or "") if isinstance(first, dict) else ""
+    verb = "re-answering" if unit.stage == "reanswer" else "answering"
+    return f"{verb} {span}: {text[:70]}"
+
+
 def _run_claude(unit, model: str, tier: int) -> dict:
     prompt = fix_prompt(unit) if unit.stage == "fix" else answer_prompt(unit)
     started = _iso()
     cmd = build_cmd(prompt, model=model, allowed_tools=ALLOWED_TOOLS, disallowed_tools=DISALLOWED_TOOLS,
                     mcp_config=mcp_config(unit.sandbox), max_turns=MAX_TURNS)
     env = child_env({"KEC_GAP_LOOP": "1"})
-    session = run_session(cmd, unit.sandbox, env=env, model=model, label=f"KEC loop {unit.id}")
+    session = run_session(cmd, unit.sandbox, env=env, model=model, label=f"KEC loop {unit.id}",
+                          description=describe(unit))
     payload = parse_json_block(session.final)
     error = session.error
     if payload is None and not error:
