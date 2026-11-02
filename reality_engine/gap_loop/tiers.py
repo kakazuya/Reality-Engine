@@ -26,6 +26,7 @@ DISALLOWED_TOOLS = ("WebFetch", "WebSearch", "Agent", "Skill", "NotebookEdit")
 TIER1_MAX_ATTEMPTS = 3
 DEEPSEEK_TIMEOUT = 3600
 DEEPSEEK_POLL = 30
+APPROVED_BY = "Shivam, 2 Nov: full permissions inside the T-048 sandbox"
 
 
 def _iso(moment: datetime | None = None) -> str:
@@ -74,7 +75,10 @@ Output: end with one fenced json block and nothing after it, one row per questio
   "sources": [{{"doc_key": "...", "page": 12, "note": ""}}],
   "gap_type": null, "gap_detail": ""}}]
 ```
-Every number needs its unit, its period and an exact quote on the cited page. A margin is a percentage; an order book is money. If you cannot answer, set status not_found and the gap_type; do not invent a number or a quote.
+A number has one of two sources.
+- A page in `kec.db` `doc_text`: give its `doc_key` and `page`, its `known_at` (the filing date) and `quote`, the exact sentence on that page that carries the value.
+- A `reality-data` tool: give `tool` and `args` (the exact arguments you called it with) instead of `doc_key`/`page`, e.g. {{"measure": "promoter holding", "value": 50.1, "unit": "pct", "period": "Q2FY26", "tool": "holding", "args": {{"symbol": "KEC", "as_of": "2026-10-19"}}, "known_at": "2026-10-16"}}. The loop re-runs that call in Python and keeps the number only if the value appears in the record it returns; `quote` is optional for a tool source, and when you give one it must appear in the record too. The record's own date must not be after the as-of date, so pass the as-of date in `args` where the tool takes one (`facts`, `holding` and `docs` do).
+Every number needs its unit, its period and a source. A margin is a percentage; an order book is money. If you cannot answer, set status not_found and the gap_type; do not invent a number or a quote.
 """
 
 
@@ -86,8 +90,11 @@ def unit_task(unit) -> str:
     questions = json.dumps([{"qid": q["id"], "question": q["question"], "as_of": q.get("as_of")}
                             for q in unit.items], ensure_ascii=False)
     return (f"Answer these questions: {questions}\n"
-            "The final json is a list of answer rows, one per qid, with status, answer, numbers "
-            "(measure, value, unit, period, basis, doc_key, page, known_at, quote), sources, gap_type.")
+            "The final json is a list of answer rows, one per qid, with status, answer, numbers, "
+            "sources, gap_type. Every number is sourced either by doc_key and page (with known_at and "
+            "quote, the exact sentence on that page) or by tool and args, a reality-data call the loop "
+            "re-runs, whose record must carry the value (and the quote when you give one) and be dated "
+            "on or before the as-of date.")
 
 
 def fix_prompt(unit) -> str:
@@ -188,6 +195,7 @@ def run_tier2(unit, logfile: Path | None, *, manager_factory=None, sleep=time.sl
             workspace=".",
             permission="danger-full-access",
             write_scope="data", confirm_data_write=True, writes=["kec_gap_loop.db"],
+            approved_by=APPROVED_BY,
             context_pack=False, use_worktree=False, hard_timeout_seconds=timeout,
         )
     except core.PluginError as exc:

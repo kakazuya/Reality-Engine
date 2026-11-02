@@ -5,8 +5,9 @@
     python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\kec_loop --ledger-summary \\
         --opus-transcript <managing session .jsonl> --since <ISO time>
 
-The loop, not the model, decides what is stored: an answer or fact that fails a check is a failed
-attempt, three failures go to DeepSeek, a DeepSeek failure goes to ``escalations.jsonl``.
+The loop, not the model, decides what is stored: a malformed report is a failed attempt, a number
+that fails its check leaves its row ``unverified``, three failed attempts go to DeepSeek, and a
+DeepSeek failure writes one escalation line per question to ``escalations.jsonl``.
 """
 from __future__ import annotations
 
@@ -28,13 +29,22 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 QUESTIONS = "questions/KEC_QUESTIONS.jsonl"
 AS_OF = "2026-10-19"
 BATCH = 10
+FIX_UNIT_MAX = 10
 MAX_ATTEMPTS = 3
 MAX_ROUNDS = 5
 BUDGET_USD = 15.0
 FIXED_REGRESSION = 10
 LOG = "logs/loop.log"
+APPROVED_BY = "Shivam, 2 Nov: full permissions inside the T-048 sandbox"
 
 FIX_INSTRUCTIONS = {
+    "unverified": (
+        "The answer's number failed a check. If the cited page is not in kec.db doc_text, put that "
+        "page's text there with its filing date, keyed so an answer can cite it. If the number comes "
+        "from a store, say in your summary which reality-data tool and args the re-answer must cite, "
+        "and quote the value and sentence exactly as that call returns them: the loop checks them "
+        "when the answer cites them."
+    ),
     "text_missing": (
         "Extract the text of the KEC documents the failed answers cite but cannot read, page by "
         "page, into kec.db doc_text; use fitz in a Python script and OCR only a page with no text "
@@ -136,13 +146,17 @@ def gap_groups(statuses: dict[str, dict]) -> dict[str, list[str]]:
 
 
 def fix_units(statuses: dict[str, dict], sandbox: Path) -> list[Unit]:
+    """At most ``FIX_UNIT_MAX`` questions per unit: a gap group of 25 is three units, not one."""
     units = []
     for gap, qids in sorted(gap_groups(statuses).items()):
         if gap == "absent":
             continue  # not in any document held: recorded, not fixed
         instruction = FIX_INSTRUCTIONS.get(gap, FIX_INSTRUCTIONS["not_extracted"])
-        units.append(Unit(id=f"fix-{gap}", stage="fix", sandbox=sandbox, items=sorted(qids),
-                          instruction=instruction, gap=gap))
+        ordered = sorted(qids)
+        for index in range(0, len(ordered), FIX_UNIT_MAX):
+            units.append(Unit(id=f"fix-{gap}-{index // FIX_UNIT_MAX + 1:02d}", stage="fix",
+                              sandbox=sandbox, items=ordered[index:index + FIX_UNIT_MAX],
+                              instruction=instruction, gap=gap))
     return units
 
 
@@ -158,19 +172,39 @@ def reanswer_units(questions: list[dict], statuses: dict[str, dict], sandbox: Pa
 
 
 def accept_answers(unit: Unit, payload, lookup, as_of: str, tier: int = 1):
+    """Accept one answer report.  A malformed report fails the unit; a failed number only its row.
+
+    The rows are rewritten here: a row whose number fails a check keeps the model's answer text but
+    is stored as ``unverified`` with the check's reason and gap type ``unverified``, so it is not
+    counted as answered and the next round re-answers or fixes it.
+    """
     if not isinstance(payload, list):
-        return False, "payload is not a JSON list", {}
+        reason = "payload is not a JSON list"
+        return False, reason, {"invalid": {q["id"]: f"{q['id']}: {reason}" for q in unit.items}}
     rows = {row.get("qid"): row for row in payload if isinstance(row, dict)}
-    checked = []
+    invalid: dict[str, str] = {}
+    unverified: dict[str, str] = {}
+    answered = 0
     for question in unit.items:
-        row = rows.get(question["id"])
+        qid = question["id"]
+        row = rows.get(qid)
         if row is None:
-            return False, f"{question['id']}: no row in the report", {}
-        ok, reason = checks.check_answer_row(row, lookup, question.get("as_of") or as_of)
-        if not ok:
-            return False, f"{question['id']}: {reason}", {}
-        checked.append(row)
-    return True, None, {"answers": len(checked)}
+            invalid[qid] = f"{qid}: no row in the report"
+            continue
+        malformed, reasons = checks.check_answer_row(row, lookup, question.get("as_of") or as_of)
+        if malformed:
+            invalid[qid] = f"{qid}: {malformed}"
+            continue
+        if reasons:
+            row["status"] = "unverified"
+            row["gap_type"] = "unverified"
+            row["reason"] = "; ".join(reasons)
+            unverified[qid] = f"{qid}: {'; '.join(reasons)}"
+        if row.get("status") == "answered":
+            answered += 1
+    if invalid:
+        return False, "; ".join(invalid.values()), {"invalid": invalid, "unverified": unverified}
+    return True, None, {"answers": answered, "unverified": unverified, "invalid": invalid}
 
 
 def accept_fix(unit: Unit, payload, sandbox: Path, conn, as_of: str, tier: int = 1):
@@ -289,6 +323,13 @@ def attempt_row(unit: Unit, result: dict, attempt: int, rows_added: dict) -> dic
     return row
 
 
+def _remember(reasons: dict[str, str], added: dict) -> None:
+    """Keep the last check reason per question, from one ``accept`` result."""
+    for group in ("invalid", "unverified"):
+        for qid, reason in (added.get(group) or {}).items():
+            reasons[str(qid)] = str(reason)
+
+
 def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, round_no: int,
              tier1=None, tier2=None, sleep=time.sleep) -> dict:
     """Up to three Haiku attempts (halving after an over-limit kill), then DeepSeek, then escalation."""
@@ -296,6 +337,7 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
     tier2 = tier2 or tiers.run_tier2
     attempts: list[dict] = []
     leftovers: list[Unit] = []
+    reasons: dict[str, str] = {}
     current = unit
     number = 0
     while number < MAX_ATTEMPTS:
@@ -312,6 +354,7 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
         if result.get("payload") is not None and not result.get("over_limit"):
             ok, reason, added = accept(result["payload"], 1)
             applied = {"ok": ok, "error": reason, "added": added}
+            _remember(reasons, added)
             result["ok"], result["error"] = ok, reason
         else:
             result["ok"] = False
@@ -338,6 +381,7 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
     if result.get("payload") is not None:
         ok, reason, added = accept(result["payload"], 2)
         applied = {"ok": ok, "error": reason, "added": added}
+        _remember(reasons, added)
         result["ok"], result["error"] = ok, reason
     else:
         result["ok"] = False
@@ -351,18 +395,20 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
     if result.get("ok"):
         return {"ok": True, "tier": 2, "payload": result.get("payload"), "attempts": attempts,
                 "leftovers": leftovers, "rows": added, "unit": current}
-    escalation = {
-        "at": _now_iso(), "stage": unit.stage, "unit": unit.id, "gap": unit.gap,
-        "questions": [q["id"] for q in unit.items] if unit.stage != "fix" else list(unit.items),
-        "instruction": unit.instruction, "tried": attempts,
-        "reason": "three Haiku attempts and one DeepSeek unit failed; Opus should review",
-    }
-    ledger.escalate(sandbox, escalation)
+    last_error = result.get("error") or "the unit produced no valid report"
+    escalated = [str(q["id"] if isinstance(q, dict) else q) for q in current.items]
+    for qid in escalated:  # one line per question, so the escalation names the question and its reason
+        ledger.escalate(sandbox, {
+            "at": _now_iso(), "stage": unit.stage, "unit": current.id, "gap": unit.gap,
+            "question": qid, "reason": reasons.get(qid) or last_error,
+            "instruction": unit.instruction, "tried": attempts,
+            "detail": "three Haiku attempts and one DeepSeek unit failed; Opus should review",
+        })
     row = attempt_row(current, {**result, "tier": 3, "model": "opus-pending", "ok": False}, 1, {})
     row["outcome"] = "escalated"
     attempts.append(row)
     return {"ok": False, "tier": 3, "payload": None, "attempts": attempts, "leftovers": leftovers,
-            "rows": {}, "unit": current, "escalated": True}
+            "rows": {}, "unit": current, "escalated": True, "escalated_qids": escalated}
 
 
 def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None, state: dict,
@@ -387,7 +433,7 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
         for leftover in outcome["leftovers"]:
             queue.appendleft(leftover)
         if outcome.get("escalated") and unit.stage != "fix":
-            state.setdefault("escalated", set()).update(str(q["id"]) for q in unit.items)
+            state.setdefault("escalated", set()).update(outcome.get("escalated_qids") or [])
         if outcome["ok"] and unit.stage in ("answer", "reanswer"):
             for answer in outcome["payload"]:
                 store.put_answer(conn, round_no, {**answer, "tier": outcome["tier"]})
@@ -408,7 +454,8 @@ def _round_line(round_no: int, statuses: dict[str, dict], closed: int, rows: lis
     deepseek = sum(1 for row in rows if row.get("tier") == 2 and row.get("job_id"))
     escalations = sum(1 for row in rows if row.get("tier") == 3)
     return (f"ROUND {round_no} answered={counts.get('answered', 0)} partial={counts.get('partial', 0)} "
-            f"not_found={counts.get('not_found', 0)} gaps_closed={closed} "
+            f"not_found={counts.get('not_found', 0)} unverified={counts.get('unverified', 0)} "
+            f"gaps_closed={closed} "
             f"units_by_tier={{1:{units_by_tier.get(1, 0)},2:{units_by_tier.get(2, 0)},3:{units_by_tier.get(3, 0)}}} "
             f"haiku_tokens={haiku:,} deepseek_jobs={deepseek} escalations={escalations} "
             f"spent=${state['spent']:.2f}")
@@ -506,11 +553,14 @@ def plan(sandbox: Path) -> list[str]:
     for unit in units:
         lines.append(f"  {unit.id}: {unit.size} questions, tier 1, {MODEL}")
     lines += [
+        "checks: a malformed report (not JSON, a qid missing, a bad status or gap type) fails the unit; "
+        "a number that fails a check is stored as unverified with its reason and is not counted as answered",
         f"tier 2: a unit failing {MAX_ATTEMPTS} tier-1 attempts goes to one DeepSeek dsh worker at a "
         "time; an over-limit kill halves the unit first; a peak-hour refusal queues it off-peak",
-        "tier 3: a unit that also fails on DeepSeek is appended to escalations.jsonl and the loop moves on",
-        "round 1 fixes: one unit per gap type (text_missing, not_extracted, needs_formula, wrong_store); "
-        "absent is recorded, not fixed",
+        "tier 3: a unit that also fails on DeepSeek writes one escalation line per question, with its "
+        "last check reason, and the loop moves on",
+        f"round 1 fixes: at most {FIX_UNIT_MAX} questions per fix unit, one group of units per gap type "
+        "(text_missing, not_extracted, needs_formula, wrong_store, unverified); absent is recorded, not fixed",
         f"rounds: fix + re-answer for at most {MAX_ROUNDS}, stop when two rounds close no gap",
         f"guards: as_of {AS_OF}, budget ${BUDGET_USD:.0f} Haiku list price, kill at 95,000 context "
         "tokens, usage-limit sleep 15 min, writes only inside the sandbox",

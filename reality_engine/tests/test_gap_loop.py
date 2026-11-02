@@ -1,15 +1,19 @@
-"""T-048: the gap loop's checks, escalation, halving, round stop, sandbox guard and dry-run plan.
+"""T-048: the gap loop's checks, store sources, escalation, halving, round stop, sandbox guard, plan.
 
 No model call: every tier is a fake or not reached.
 """
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import shutil
+import sys
 import tempfile
 import uuid
+from collections import deque
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -21,6 +25,11 @@ REPO = Path(__file__).resolve().parents[2]
 PAGE = ("Consolidated revenue from operations for FY26 was Rs 1,23,456 crore. "
         "EBITDA margin for FY26 was 8.7%.")
 QUOTE = "Consolidated revenue from operations for FY26 was Rs 1,23,456 crore."
+STORE_RECORD = {"ok": True, "found": True, "promoter": {"percent": 79.3, "known_at": "2026-07-15"},
+                "quote": "promoter holding 79.3% as at 30 June 2026"}
+STORE_NUMBER = {"measure": "promoter holding", "value": 79.3, "unit": "pct", "period": "Q2FY26",
+                "tool": "holding", "args": {"symbol": "KEC", "as_of": "2026-10-19"},
+                "known_at": "2026-07-15", "quote": "promoter holding 79.3%"}
 
 
 def sandbox() -> Path:
@@ -98,13 +107,52 @@ def test_a_checked_answer_row_needs_the_doc_text_page(root, conn):
            "numbers": [{"measure": "revenue", "value": 123456, "unit": "inr_cr", "period": "FY26",
                         "basis": "consolidated", "doc_key": "bse:1", "page": 4,
                         "known_at": "2026-05-15", "quote": QUOTE}]}
-    assert checks.check_answer_row(row, lookup, "2026-10-19")[0]
+    assert checks.check_answer_row(row, lookup, "2026-10-19") == (None, [])
     row["numbers"][0]["value"] = 9999
-    ok, reason = checks.check_answer_row(row, lookup, "2026-10-19")
-    assert not ok and "number" in reason
+    malformed, reasons = checks.check_answer_row(row, lookup, "2026-10-19")
+    assert malformed is None and reasons and "number" in reasons[0]
     missing = {**row, "numbers": [{**row["numbers"][0], "page": 99}]}
-    ok, reason = checks.check_answer_row(missing, lookup, "2026-10-19")
-    assert not ok and "page not in doc_text" in reason
+    malformed, reasons = checks.check_answer_row(missing, lookup, "2026-10-19")
+    assert malformed is None and "page not in doc_text" in reasons[0]
+    bad_status = {**row, "status": "probably"}
+    assert "status" in checks.check_answer_row(bad_status, lookup, "2026-10-19")[0]
+
+
+def test_a_store_sourced_number_is_re_run_and_must_be_in_the_record(root, conn, monkeypatch):
+    seen = {}
+
+    def fake(tool, args):
+        seen["call"] = (tool, args)
+        return STORE_RECORD
+
+    monkeypatch.setattr(checks, "call_tool", fake)
+    lookup = store.page_lookup(conn)  # doc_text is empty: a store number never needs a page
+    row = {"qid": "KEC001", "status": "answered", "answer": "Promoter holding was 79.3%.",
+           "numbers": [dict(STORE_NUMBER)]}
+    assert checks.check_answer_row(row, lookup, "2026-10-19") == (None, [])
+    assert seen["call"] == ("holding", {"symbol": "KEC", "as_of": "2026-10-19"})
+    monkeypatch.setattr(checks, "call_tool",
+                        lambda tool, args: {**STORE_RECORD, "promoter": {"percent": 42.0}})
+    malformed, reasons = checks.check_answer_row(row, lookup, "2026-10-19")
+    assert malformed is None and reasons and "not in the holding record" in reasons[0]
+
+
+def test_a_store_record_dated_after_as_of_fails(root, conn, monkeypatch):
+    monkeypatch.setattr(checks, "call_tool",
+                        lambda tool, args: {**STORE_RECORD, "known_at": "2026-11-01"})
+    row = {"qid": "KEC001", "status": "answered", "answer": "Promoter holding was 79.3%.",
+           "numbers": [dict(STORE_NUMBER)]}
+    malformed, reasons = checks.check_answer_row(row, store.page_lookup(conn), "2026-10-19")
+    assert malformed is None and reasons and "after the as-of" in reasons[0]
+
+
+def test_reality_data_tool_functions_import_without_the_mcp_server():
+    if str(checks.SERVER_DIR) not in sys.path:
+        sys.path.insert(0, str(checks.SERVER_DIR))
+    for module_name, function_name in set(checks.TOOL_FUNCTIONS.values()):
+        assert callable(getattr(importlib.import_module(module_name), function_name))
+    ok, reason = checks.check_store_fact({**STORE_NUMBER, "tool": "nope"}, "2026-10-19")
+    assert not ok and "unknown reality-data tool" in reason
 
 
 # --- tiers -------------------------------------------------------------------------------------
@@ -127,9 +175,12 @@ def test_three_haiku_failures_escalate_to_deepseek_then_opus(root, conn):
     haiku = [row for row in outcome["attempts"] if row["tier"] == 1]
     assert len(haiku) == 3 and haiku[0]["unit"] == "answer-01"
     assert [row["tier"] for row in outcome["attempts"]][-2:] == [2, 3]
-    rows = [json.loads(line) for line in (root / "escalations.jsonl").read_text(encoding="utf-8").splitlines()]
-    assert rows[0]["stage"] == "answer" and rows[0]["questions"] == [f"KEC{i:03d}" for i in range(1, 11)]
-    assert len(rows[0]["tried"]) >= 4
+    escalations = [json.loads(line) for line in
+                   (root / "escalations.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [row["question"] for row in escalations] == [f"KEC{i:03d}" for i in range(1, 11)]
+    assert all(row["reason"] and row["stage"] == "answer" for row in escalations)
+    assert outcome["escalated_qids"] == [f"KEC{i:03d}" for i in range(1, 11)]
+    assert len(escalations[0]["tried"]) >= 4
 
 
 def over_limit(*_, **__):
@@ -163,6 +214,65 @@ def test_a_fix_proposal_is_checked_then_stored(root, conn):
     ok, reason, added = loop.accept_fix(unit_, {"outcome": "fixed"}, root, conn, "2026-10-19")
     assert not ok and "quote" in reason
     assert conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0] == 1
+
+
+def test_25_questions_of_one_gap_type_become_three_fix_units(root):
+    statuses = {f"KEC{i:03d}": {"status": "not_found", "gap_type": "not_extracted"}
+                for i in range(1, 26)}
+    units = loop.fix_units(statuses, root)
+    assert [unit.size for unit in units] == [10, 10, 5]
+    assert len({unit.id for unit in units}) == 3
+    assert units[0].items == [f"KEC{i:03d}" for i in range(1, 11)]
+
+
+def test_one_unverified_row_does_not_fail_nine_good_rows(root, conn):
+    store.put_doc_text(conn, "bse:1", 4, PAGE, "text", "2026-05-15")
+    questions = loop.load_questions(root)[:10]
+    unit_ = loop.Unit(id="answer-01", stage="answer", sandbox=root, items=questions)
+    payload = [{"qid": q["id"], "status": "answered", "answer": "FY26 revenue was 1,23,456 crore.",
+                "numbers": [{"measure": "revenue", "value": 123456, "unit": "inr_cr",
+                             "period": "FY26", "basis": "consolidated", "doc_key": "bse:1",
+                             "page": 4, "known_at": "2026-05-15", "quote": QUOTE}]}
+               for q in questions]
+    payload[-1]["numbers"][0]["value"] = 9999  # not in the quote: one failed number, not a bad report
+
+    def tier1(unit_in, logfile):
+        return {"tier": 1, "model": MODEL, "ok": True, "payload": payload, "error": "",
+                "over_limit": False, "limited": False, "session": None, "started": None,
+                "ended": None}
+
+    state = {"spent": 0.0, "budget": 15.0, "as_of": "2026-10-19", "escalated": set()}
+    loop.drain(deque([unit_]), 1, root, conn, None, state, tier1=tier1, tier2=tier2_fail,
+               sleep=lambda s: None)
+    stored = store.latest_answers(conn)
+    assert stored["KEC010"]["status"] == "unverified"
+    assert stored["KEC010"]["gap_type"] == "unverified"
+    assert "does not occur" in stored["KEC010"]["answer"]["reason"]
+    assert all(stored[q["id"]]["status"] == "answered" for q in questions[:9])
+    assert not state["escalated"] and not (root / "escalations.jsonl").exists()
+
+
+def test_tier2_start_carries_approved_by(root, monkeypatch):
+    class Manager:
+        def __init__(self):
+            self.start: dict = {}
+
+        def start_worker(self, **kwargs):
+            self.start = kwargs
+            return {"job_id": "job-1"}
+
+        def get_status(self, job_id):
+            return {"done": True}
+
+    manager = Manager()
+    fake_core = SimpleNamespace(is_peak=lambda: False, load_config=lambda: {}, PluginError=Exception)
+    monkeypatch.setattr(tiers, "worker_core", lambda: fake_core)
+    work = loop.Unit(id="answer-01", stage="answer", sandbox=root,
+                     items=loop.load_questions(root)[:2])
+    tiers.run_tier2(work, None, manager_factory=lambda: manager, sleep=lambda s: None, timeout=1)
+    assert manager.start["approved_by"] == tiers.APPROVED_BY
+    assert manager.start["permission"] == "danger-full-access"
+    assert manager.start["write_scope"] == "data"
 
 
 # --- the round stop rule -----------------------------------------------------------------------

@@ -45,3 +45,13 @@ Stop if: the dsh start function cannot be called from Python without the MCP (re
 Budget: 4 hours, about 150 tool calls; no model calls except your own.
 
 Docs updated: required in your report, naming each doc section you changed.
+
+## Amendment after Claude's review (T-048 round 1, 2 Nov)
+
+The requirement above stands as given; the built code now differs in five reviewed ways (method: `docs/DEVELOPER_GUIDE.md` section N):
+
+- A unit fails only for a malformed report (not JSON, a qid missing, a bad status or gap type). A number whose check fails does not fail the unit: its row is stored `unverified` with the check's reason, it is not counted as answered, and it goes to the fix stage as gap type `unverified`.
+- A number may cite a `reality-data` tool call (`tool` + `args`) instead of a `doc_text` page. The loop re-runs the call in Python from `plugins/reality-data/server/` and passes only if the value, and the quote when given, are in the record returned, dated on or before the as-of date.
+- A fix unit holds at most 10 questions; a larger gap group is split into further units.
+- The tier-2 `start_worker` call passes `approved_by="Shivam, 2 Nov: full permissions inside the T-048 sandbox"`.
+- An escalated unit writes one line per question that got no valid row, with its last check reason, instead of one line per unit.
