@@ -47,7 +47,7 @@ For comparison, the earlier PPL test without the tools took 39 steps / 9.5 min f
    price date, or be computed on read.
 3. **No quarterly net worth**: `quarterly_financials` has no equity column, so book value lags price by up to a year.
 4. **Catalog errors**: it lists `company_forensic_health` and `financial_metrics` under the truth snapshot, but they live only in
-   equity_intelligence. This cost the worker 4 failed calls. Fix catalog_descriptions.yaml.
+   equity_intelligence. This cost the worker 4 failed calls. Fixed: both now sit under `equity_intelligence` in `plugins/reality-data/catalog_descriptions.yaml` (checked 2 Nov).
 5. **Search was keyword-only** during this test (paid embedding off). Q1-Q3 didn't need vectors. Turning on DeepInfra query
    embedding needs Shivam's permission.
 
