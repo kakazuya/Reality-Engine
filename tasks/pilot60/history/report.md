@@ -1,6 +1,6 @@
 # Pilot-60 history chunk store (2019-01-01 .. 2024-03-31 filing window)
 
-- store: `.tmp\pilot60\chunks_v3_history.db` (1.04 GB)
+- store: `reality_engine\data\pilot\pilot60\chunks_v3_history.db` (1.04 GB; was `.tmp\pilot60\`, no longer there)
 - documents: 18,031; chunks: 212,276; tags: 527,851
 - seconds/file (workers): 0.15; peak RAM: 548 MB; no text layer: 4.41%
 - shards: 4

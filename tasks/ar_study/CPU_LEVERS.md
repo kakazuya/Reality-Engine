@@ -1,8 +1,8 @@
 # Annual reports: CPU levers to raise quality and cut LLM, chunk and compute load
 
 Written 2026-10-11. Goal: only useful data goes to the free LLMs. Measured on 13 FY24 reports (the 3 study reports
-plus 10 unseen ones), each compared with the same company's FY23 report. Scripts: `challenger/redundancy*.py`,
-`challenger/llm_slice*.py`.
+plus 10 unseen ones), each compared with the same company's FY23 report. Scripts: `tasks/ar_study/challenger/redundancy*.py`,
+`tasks/ar_study/challenger/llm_slice*.py`.
 
 ## Measured
 
