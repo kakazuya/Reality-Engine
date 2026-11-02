@@ -96,6 +96,9 @@ A number has one of two sources.
     "table": "shp_index", "rowid": 42, "known_at": "2026-07-15"}}. The loop reads that row and keeps
   the number only if the value is in it, and the quote too when you give one; `known_at` must be the
   row's own date.
+For a computed answer (growth, ratio, days, share, change): list in `numbers` only the stated inputs, each
+with its own source and quote, and give the computed result and its formula in the answer sentence, for
+example "Revenue grew 7.6% (23,505.5 / 21,846.7 - 1)". A computed value has no quote, so never put it in `numbers`.
 Every number needs its unit, its period and a source. A margin is a percentage; an order book is
 money. If you cannot answer, set status not_found and the gap_type; never invent a number, a quote
 or a rowid.

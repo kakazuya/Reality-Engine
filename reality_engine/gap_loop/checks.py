@@ -27,7 +27,8 @@ MONEY_UNITS = {"inr", "rs", "rupees", "inr_cr", "crore", "cr", "inr_mn", "millio
                "billion", "bn", "lakh", "lac", "usd_mn"}
 PCT_UNITS = {"pct", "%", "percent", "percentage"}
 COUNT_UNITS = {"count", "nos", "units", "no", "number", "mw", "kw", "kt", "mt", "tonnes",
-               "tpa", "tpd", "sqft", "days", "years", "x", "ratio", "times", "inr_per_unit"}
+               "tpa", "tpd", "sqft", "days", "years", "x", "ratio", "times", "inr_per_unit",
+               "inr_per_share", "rs_per_share", "per_share", "shares", "bps"}
 KNOWN_UNITS = MONEY_UNITS | PCT_UNITS | COUNT_UNITS
 
 _PERIOD = re.compile(
@@ -38,7 +39,8 @@ _PERIOD = re.compile(
     re.I,
 )
 _PCT_WORDS = re.compile(
-    r"margin|growth|yield|return|ratio|rate|percent|share(?!\s*price)|utilisation|utilization|\bcagr\b|drawdown|\bmix\b",
+    # Whole words only: "operations" holds "ratio" and was read as a percentage (KEC run, 2 Nov).
+    r"\b(?:margins?|growth|yield|returns?|ratios?|rates?|percent|share(?!\s*price)|utili[sz]ation|cagr|drawdown|mix)\b",
     re.I,
 )
 _MONEY_WORDS = re.compile(
