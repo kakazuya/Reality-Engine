@@ -84,7 +84,8 @@ def run_remote(unit, model: str, tier: int) -> dict:
     allowed = tuple(t for t in tiers.ALLOWED_TOOLS if not t.startswith("mcp__"))
     cmd = build_remote_cmd(unit.id, model, allowed, tiers.DISALLOWED_TOOLS, tiers.MAX_TURNS)
     session = run_session(cmd, unit.sandbox, env=child_env({"KEC_GAP_LOOP": "1"}), model=model,
-                          label=f"HP {unit.id}", description=tiers.describe(unit))
+                          label=f"HP {unit.id}", description=tiers.describe(unit),
+                          transcript=tiers.transcript_path(unit, model, started))
     payload = parse_json_block(session.final)
     error = session.error
     if payload is None and not error:

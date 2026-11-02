@@ -10,6 +10,7 @@ Tier 3 is a JSON line in the sandbox's ``escalations.jsonl``; the loop moves on.
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -176,6 +177,12 @@ def run_tier2_sonnet(unit, logfile: Path | None) -> dict:
     return _run_claude(unit, SONNET, 2)
 
 
+def transcript_path(unit, model: str, started: str) -> Path:
+    """Where a session's full stream-json is kept: state/transcripts/<unit>__<model>__<start>.jsonl."""
+    stamp = re.sub(r"[^0-9T]", "", started)[:15]
+    return Path(unit.sandbox) / "state" / "transcripts" / f"{unit.id}__{model}__{stamp}.jsonl"
+
+
 def describe(unit) -> str:
     """One short line for the headless-sessions mod: what this session is working on."""
     if unit.stage == "fix":
@@ -195,7 +202,7 @@ def _run_claude(unit, model: str, tier: int) -> dict:
                     mcp_config=mcp_config(unit.sandbox), max_turns=MAX_TURNS)
     env = child_env({"KEC_GAP_LOOP": "1"})
     session = run_session(cmd, unit.sandbox, env=env, model=model, label=f"KEC loop {unit.id}",
-                          description=describe(unit))
+                          description=describe(unit), transcript=transcript_path(unit, model, started))
     payload = parse_json_block(session.final)
     error = session.error
     if payload is None and not error:

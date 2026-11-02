@@ -214,6 +214,7 @@ def run_session(
     env: dict | None = None,
     label: str = "",
     description: str = "",
+    transcript: Path | None = None,
 ) -> SessionResult:
     """Run one command, parse its stream, kill it at the context limit or after ``run_seconds``."""
     started = time.time()
@@ -222,6 +223,15 @@ def run_session(
         stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", **hidden_console(),
     )
     beat = Heartbeat(proc.pid, model, label, cwd, started, description)
+    # The full stream-json of the session, every tool call and result, kept so the methods can be
+    # mined later (Shivam, 2 Nov: learn the queries and schema from what the sessions did).
+    keep = None
+    if transcript is not None:
+        try:
+            Path(transcript).parent.mkdir(parents=True, exist_ok=True)
+            keep = Path(transcript).open("a", encoding="utf-8")
+        except OSError:
+            keep = None
     timed_out: list[bool] = [False]
 
     def stop() -> None:
@@ -234,6 +244,8 @@ def run_session(
     saw_result = False
     try:
         for raw in proc.stdout:  # type: ignore[union-attr]
+            if keep is not None:
+                keep.write(raw if raw.endswith("\n") else raw + "\n")
             result.tail = raw[:400]
             try:
                 event = json.loads(raw)
@@ -276,6 +288,8 @@ def run_session(
         timer.cancel()
         proc.wait()
         beat.close()
+        if keep is not None:
+            keep.close()
         result.duration_s = time.time() - started
     if not saw_result and (result.usage or result.over_limit):
         # Killed before the CLI's result event: price the tokens it did spend, and say so.
