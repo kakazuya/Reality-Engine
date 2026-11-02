@@ -54,11 +54,11 @@ calling APIs. This is not a fixed task-duration cap.
 - Default `controller_lease_seconds=1800`. The MCP server writes
   `controller_lease.json` with an absolute real-wall-clock deadline (not the
   test fake-now used for off-peak gating), job/owner binding, and renewal count.
-- New MCP tool `renew_worker_lease(job_id, extend_seconds=1800)` is the only
-  renewal path. It may extend at most 30 minutes per explicit call. Status,
+- New MCP tool `renew_worker_lease(job_id, extend_seconds=1800)` is the explicit
+  renewal path; the supervisor also renews the lease itself while the worker lives (`supervisor.py` `_renew_lease`). It may extend by at most 7200 seconds per explicit call (the 30-minute cap was raised on 2026-10-24). Status,
   result, list, messaging, worker/model/tool activity, and background timers do
   not renew it. Renewal authority is memory-only, so a restarted MCP server
-  cannot extend an existing deadline.
+  cannot renew until it takes the lease over with `renew_worker_lease(adopt=true)`.
 - The supervisor reads the lease independently of model activity and validates
   schema, expected job id, expected owner id, parseable deadline, and a bounded
   future interval. Missing, malformed, copied/wrong-owner, arbitrarily future,

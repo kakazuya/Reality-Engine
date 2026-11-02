@@ -156,13 +156,13 @@ Arm B build cost for the three companies: $0.7155 and 667,305 input tokens; ever
 
 - The reader's Go response does not expose reasoning tokens separately.
 - The Go account does not expose a usage/allowance endpoint here, so the percent of the allowance is not reported; only the brief's $1.50 cap is enforced.
-- `deck_figures` carries facts but no page text; Arm C OCR is the only way to re-check a slide that the text layer does not reproduce.
+- `deck_figures` carried facts but no page text when this ran; Arm C OCR was the only way to re-check a slide that the text layer does not reproduce. `build_deck_page_text.py` now writes a `deck_page_text` table to the same DB.
 - The chunks store attached the FY24 filing date (2024-06-26) to BAJFINANCE's FY26 annual report (sha256 5535038a...); `reconcile_known_at` now takes the date from `ar_docs` (2026-07-07) before extraction.
 - Three runs sit outside the per-call ledger: the aborted effort-max pass (killed on the row-pairing defect; the 9 read timeouts in the recorded max arm are its tail), the `supply_link` tail of the Arm B build (killed after its last committed table, no rows), and Arm C's 9 deck calls (made before `extract_call` existed). Together about $0.07-0.08, so real reader spend is about $1.16 against the $1.50 cap.
 
 ## 12. Docs updated
 
-- `tasks/STATE.md` — prototype-3 measured numbers and the `rating_action` fix.
+- `tasks/STATE.md` — links the prototype-3 grade file (`PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`); it does not repeat these numbers.
 - `tasks/pilot60/EXTRACTION_REPORT.md` — scope note: 16 tables, prototype-3 numbers live in this file.
 - `tasks/pilot60/PROTOTYPE3_REPORT_2026-11-01.md` (this file), `PROTOTYPE3_ANSWERS_2026-11-01.jsonl`, `PROTOTYPE3_MEASUREMENTS_2026-11-01.json`, `PROTOTYPE3_ACCURACY_2026-11-01.json`, `PROTOTYPE3_RECALL_2026-11-01.json`, `PROTOTYPE3_ARM_C_2026-11-01.json`, `PROTOTYPE3_ARM_C_HANDCHECK_2026-11-01.json`, `PROTOTYPE3_EFFORT_2026-11-01.json`, `PROTOTYPE3_SCOPE_2026-11-01.json`.
 
