@@ -33,7 +33,7 @@ KNOWN_UNITS = MONEY_UNITS | PCT_UNITS | COUNT_UNITS
 
 _PERIOD = re.compile(
     r"\b(?:FY\s?'?\d{2,4}|Q[1-4]\s?'?FY\s?'?\d{2,4}|[QH][1-4]\s?(?:FY\s?'?\d{2,4})?"
-    r"|9M|6M|3M|CY\s?'?\d{2,4}|TTM|\d{4}-\d{2}-\d{2}"
+    r"|(?:9M|6M|3M|H[12])\s?(?:FY\s?'?\d{2,4})?|CY\s?'?\d{2,4}|TTM|\d{4}-\d{2}-\d{2}"
     r"|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}"
     r"|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4})\b",
     re.I,
@@ -244,7 +244,8 @@ def check_fact(row: dict, page_text: str | None, doc_known_at: object, as_of: ob
         check_number(row.get("value"), str(row.get("unit") or ""), str(row.get("quote") or "")),
         check_unit(str(row.get("measure") or ""), str(row.get("unit") or "")),
         check_period(str(row.get("period") or "")),
-        check_known_at(row.get("known_at"), as_of, doc_known_at),
+        # The filing record decides the date, never the model (2 Nov: models wrote call dates).
+        check_known_at(doc_known_at or row.get("known_at"), as_of),
     ):
         if not ok:
             return False, reason
@@ -297,8 +298,15 @@ def check_row_fact(row: dict, as_of: object, row_lookup) -> tuple[bool, str | No
         number = float(row.get("value"))  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return False, "number: missing or not numeric"
-    if not any(_close(value, number) for _, leaf in leaves
-               if (value := _as_number(leaf)) is not None):
+    # A store row may hold money in rupees, lakh or million while the answer says crore (XBRL
+    # finance cost 1,640.3 mn = 164.03 cr), and a headline may carry the value in its text
+    # ("orders of Rs. 1,180 crores"): both count (KEC run, 2 Nov).
+    scales = (1.0, 10.0, 100.0, 1e7) if unit_family(str(row.get("unit") or "")) == "money" else (1.0,)
+    in_numbers = any(_close(value, number * s) for _, leaf in leaves
+                     if (value := _as_number(leaf)) is not None for s in scales)
+    in_text = any(check_number(number, str(row.get("unit") or ""), leaf)[0]
+                  for _, leaf in leaves if isinstance(leaf, str) and len(leaf) > 3)
+    if not (in_numbers or in_text):
         # ponytail: any number in the row counts, so a value beside the cited field (public_pct
         # for a promoter holding) also passes; match the field name if a wrong number gets through.
         return False, f"number: {number:g} is not in the {table} row"

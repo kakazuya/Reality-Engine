@@ -633,6 +633,31 @@ def run_loop(sandbox: Path, *, max_rounds: int = MAX_ROUNDS, budget: float = BUD
     return 0
 
 
+def recheck(sandbox: Path, as_of: str = AS_OF) -> tuple[int, int]:
+    """Run the current checks again on every unverified row, with no model call.
+
+    A check fixed after a row was judged (unit scales, headline numbers, filing dates) can clear it;
+    a cleared row is stored again as answered with ``rechecked: true``.  Returns (checked, cleared)."""
+    conn = store.connect(sandbox)
+    lookup, row_lookup = store.page_lookup(conn), store.row_lookup(conn)
+    rows = conn.execute(
+        "select round, qid, answer_json, tier from answers a where round = "
+        "(select max(round) from answers b where b.qid = a.qid) and status = 'unverified'").fetchall()
+    cleared = 0
+    for round_no, qid, raw, tier in rows:
+        row = json.loads(raw)
+        trial = {**row, "status": "answered", "gap_type": None}
+        malformed, reasons = checks.check_answer_row(trial, lookup, as_of, row_lookup)
+        if malformed or reasons:
+            continue
+        trial.pop("reason", None)
+        store.put_answer(conn, round_no, {**trial, "qid": qid, "tier": tier, "rechecked": True})
+        cleared += 1
+    conn.commit()
+    conn.close()
+    return len(rows), cleared
+
+
 def plan(sandbox: Path) -> list[str]:
     questions = load_questions(sandbox)
     units = answer_units(questions, sandbox)
@@ -690,6 +715,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
     parser.add_argument("--budget", type=float, default=BUDGET_USD)
     parser.add_argument("--as-of", default=AS_OF)
+    parser.add_argument("--recheck", action="store_true", help="re-run the checks on unverified rows; no model")
     parser.add_argument("--hp-slots", type=int, default=0, help="answer sessions to run on the HP laptop")
     args = parser.parse_args(argv)
     try:
@@ -707,6 +733,10 @@ def main(argv: list[str] | None = None) -> int:
             if stop:
                 print(f"STOPPED prepare: {stop}")
                 return 4
+            return 0
+        if args.recheck:
+            checked, cleared = recheck(sandbox, args.as_of)
+            print(f"rechecked {checked} unverified rows, {cleared} now pass")
             return 0
         if args.ledger_summary:
             print(ledger_summary(sandbox, args.opus_transcript, args.since))
