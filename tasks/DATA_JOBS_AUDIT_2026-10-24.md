@@ -105,7 +105,7 @@ Legend — **Task**: scheduled-task name (`disabled` = per STATE.md 2026-10-21 0
 | 52 | Capacity loop (report-only) | `run_capacity_loop.cmd` → `pipeline/capacity_loop` | `RealityEngine-CapacityLoop` (`--install`) | `data/logs/capacity/` (archived) | **unknown — no evidence since Sep** |
 | 53 | Continuous loop (30-min agent pass) | `run_continuous_loop.cmd` → `pipeline/continuous_loop --agent` | `RealityEngine-ContinuousLoop` (`--install`) | `data/logs/loop/<date>/` — last 2026-09-26 | **stopped** |
 | 54 | Forecast tester | `run_forecast_tester.cmd` → `pipeline/forecast_tester` | `RealityEngine-ForecastTester` (`--install`) | `data/logs/forecast/` (archived) | **unknown — no evidence since Sep** |
-| 55 | Routines dispatcher (5-min) | `run_routines.cmd` → `pipeline/routines --tick` | `RealityEngine-Routines` (`--install`) | `reality_engine/agent/routines.json` = `[]` | **installed but empty → does nothing** |
+| 55 | Routines dispatcher (5-min) | `run_routines.cmd` → `pipeline/routines --tick` | `RealityEngine-Routines` (`--install`) | `reality_engine/agent/routines.json`: `routines` list is empty (`{"version": 1, "routines": []}`) | **installed but empty → does nothing** |
 | 56 | Drive upload / archive | `run_pdf_upload.cmd`, `run_archive_to_drive.cmd` | none (rclone) | `pdf_upload.rclone.log` 2026-10-20 17:09 | **stopped** |
 | 57 | DB merge / one-off migrations | `merge_lane_db.py`, `merge_placeholder_isins.py`, `rekey_placeholder_isins.py`, `migrate_*`, `restore_*` | various | one-shot | 2026-10-21 restore session | **done, not recurring** |
 
