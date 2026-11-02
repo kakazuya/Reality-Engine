@@ -7,8 +7,8 @@ The input is posts from about 15 Indian-market subreddits since 2024-04-01. They
 
 Compare against:
 - `tasks/QUERY_TEMPLATES_2026-10-27.md` (families 1–20);
-- the open bank: `IDM-worktrees/20261027T173433Z-6b857b5a/tasks/QUESTION_BANK_OPEN_2026-10-27.md` (20 archetypes);
-- the ripple bank, if it exists by the time you run: `IDM-worktrees/20261027T193025Z-39b30996/tasks/QUESTION_BANK_RIPPLE_2026-10-28.md`.
+- the open bank: `tasks/dsh_tasks/QUESTION_BANK_OPEN_2026-10-27.md` (20 archetypes; the source worktree `20261027T173433Z-6b857b5a` is gone, checked 2026-11-02);
+- the ripple bank: `tasks/dsh_tasks/QUESTION_BANK_RIPPLE_2026-10-28.md` (the source worktree `20261027T193025Z-39b30996` is gone, checked 2026-11-02).
 
 **There are three groups of subreddits** (see `fetch.log` and `fetch_intl.log` in that folder). Empty subreddits print `+0`; skip them.
 - **Indian**, since 2024-04-01: IndianStockMarket, IndiaInvestments, DalalStreetTalks, StockMarketIndia, IndianStreetBets, NSEbets, mutualfunds, IndianEconomy, personalfinanceindia, FIREIndia, IndiaBusiness, indianstocks, ShareMarketIndia, IndiaTax, IPOIndia.

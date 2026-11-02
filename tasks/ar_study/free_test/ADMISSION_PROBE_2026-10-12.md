@@ -7,7 +7,7 @@ Handbook: `tasks/OPENCODE_AR_HANDBOOK.md`. Test runs pre-exported under `reality
 
 - `ar-reader` (LongCat) on `t-longcat/0001`: failed with
   `OpenCode's free tier can only be used from within OpenCode`.
-- The 8 pinned agents in `.opencode/agents/` (plural dir, not `agent/`) were never tried individually after
+- The 8 pinned agents in `.opencode/agents/` (plural dir, not `agent/`; that folder is not in the repo as of 2026-11-02) were never tried individually after
   that, but they use the same free-tier routing, so they are expected to fail the same way.
 - Handbook fallback (built-in `general` subagent + inline reader instructions) works:
   `t-longcat/0001.out.txt` = 35 facts.
@@ -30,7 +30,7 @@ Trivial "reply ok" probes via `general` + `model: opencode/<id>`:
 Models-tool lookup confirms: provider `opencode` (OpenCode Zen) lists only
 `muse-spark-1.3-contributor-free` for query "muse-spark"/"spark"; query "jev" returns zero models.
 So **muse12 and jev have no such Zen IDs (anymore?)**. Their agent files
-(`ar-reader-muse12.md`, `ar-reader-jev.md`) and test runs (`t-muse12`, `t-jev`) point at dead IDs.
+(`ar-reader-muse12.md`, `ar-reader-jev.md`) are no longer in the repo (checked 2026-11-02), and their test runs (`t-muse12`, `t-jev`) point at dead IDs.
 Action for Shivam: find the correct current IDs or drop these two models (leaving 6).
 
 ## 3. Real reader probes (piece 0002 of each model's own test run)
