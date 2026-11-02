@@ -3,6 +3,8 @@
 ## Now
 **Pilot test on BAJFINANCE, HINDALCO and KEC, by Shivam's order of 2 Nov.** Workspace tickets no longer block it. The last prototype failed: 0 of 40 sampled answers right, 78% of numbers missed: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`.
 
+**T-048 gap loop is built, not started.** `reality_engine/gap_loop/` (checks, store, tiers, ledger, loop, keeper) plus the shared `reality_engine/scripts/session_runner.py`; 12 tests pass and `--dry-run` on `D:\RealityEngine\sandbox\kec_loop` prints 10 answer units of 10 (tier 1 Haiku, then DeepSeek, then `escalations.jsonl`) with no model call. Claude starts the real run after review. Method: `docs/DEVELOPER_GUIDE.md` section N.
+
 ## Next action
 **T-045 doc review is done and closed** (Shivam, 2 Nov), archive included: 22 finished archive briefs deleted. Open with Shivam: delete `tasks/ar_study/text/` (32 FY24 annual-report extracts of the finished October AR study; no test or code reads them). Method: `docs/DEVELOPER_GUIDE.md` section M.
 

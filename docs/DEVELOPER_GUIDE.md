@@ -478,6 +478,32 @@ and eleven failed/needs-review lines. Test:
 
 `reality_engine/scripts/session_hooks.py` holds two hooks. `stop` blocks one stop while `job_watch` reports a stalled job, never twice in a row and never inside the loop. `precompact` prints what a summary must keep. Tests: `python -m pytest reality_engine/tests/test_doc_review_loop.py -q`.
 
+The stream/context runner is shared with the T-048 gap loop: `reality_engine/scripts/session_runner.py` owns `child_env`, `context_of`, `build_cmd` and `run_session` (process, stream-json parse, usage, tool calls, the 95,000-token kill); `doc_review_loop.run_batch` keeps only the doc queue and its prompt. Its tests still pass unchanged.
+
+### N. One-company gap loop (T-048)
+
+`reality_engine/gap_loop/` answers one company's question bank in rounds, finds why each answer failed, fills the gap by extraction from the company's own documents or by a formula on stored numbers, and answers again. KEC is the first company. Cheap models do the work and it escalates only on repeated failure.
+
+```bash
+python -m reality_engine.gap_loop --sandbox D:\RealityEngine\sandbox\kec_loop --dry-run
+python -m reality_engine.gap_loop --sandbox D:\RealityEngine\sandbox\kec_loop
+python -m reality_engine.gap_loop --sandbox D:\RealityEngine\sandbox\kec_loop --ledger-summary \
+    --opus-transcript <managing session .jsonl> --since <ISO time>
+python -m reality_engine.gap_loop.keeper --sandbox D:\RealityEngine\sandbox\kec_loop \
+    --log D:\RealityEngine\sandbox\kec_loop\logs\loop.log [--wait-pid N]
+```
+
+The dry run prints round 1's units, sizes and tiers and calls no model. Claude starts a real run after review; the loop never edits `questions\` and never writes outside the sandbox (the job_watch state file is the one exception the ticket asks for).
+
+- **Tiers.** Tier 1 is one fresh `claude -p` Haiku 5.5 session per unit (batch of at most 10 questions, `--effort medium`, stream-json, kill at 95,000 context tokens), with the `reality-data` MCP server from `.mcp.json` passed through a sandbox-local strict config and no paid-embedding flag. A unit that fails 3 times (bad JSON, over-limit kill, or a failed check) halves after each over-limit kill and then goes to tier 2. Tier 2 is the `Manager.start_worker` function behind the dsh-worker MCP `start_worker`, imported from `plugins/dsh-worker/server/core.py` with that folder on `sys.path` (no MCP round trip); one unit at a time, and a peak-hour refusal queues the unit until off-peak. Tier 3 appends the unit and everything tried to `escalations.jsonl` and the loop moves on; the run registers its log with `job_watch add` so the managing Opus session sees it.
+- **Dsh workspace limit.** `start_worker` refuses a workspace outside the repository, so a tier-2 unit starts at the repo root with `write_scope='data'` (danger-full-access) and a brief that pins every write to the sandbox. The dsh job record carries tool calls but no token counts, so the ledger writes `tokens: null` with a note instead of guessing.
+- **Checks, in code, before a row is stored or an answer counted** (`checks.py`): the quote occurs on the cited `doc_text` page; the number occurs in the quote (Indian digit grouping and crore/lakh/million words); the unit suits the measure (margin is a percent, order book is money, and `contracts.CONTRACTS` units are reused when a measure is named there); the period is stated; `known_at` is the cited page's filing date and not after the as-of date. A failed check fails the whole unit attempt.
+- **Gaps and fixes.** A `not_found`/`partial` answer carries one gap type: `text_missing`, `not_extracted`, `needs_formula`, `wrong_store` or `absent`. One fix unit is generated per gap group (absent is recorded, not fixed). Extraction scripts write page text straight into `doc_text` but only propose facts/formulas under `state\proposals\`; the loop checks and stores them, so a model never writes `facts`, `formulas` or `answers` directly.
+- **Rounds.** Round 1 answers all 100 questions; each later round runs the fix units and then re-answers only the questions not `answered` plus the first 10 answered as a regression. At most 5 rounds, and two rounds in a row that close no gap stop it with `DONE`. A round with no re-answerable question also stops it.
+- **Sandbox layout** (`D:\RealityEngine\sandbox\kec_loop\`): `questions\` (read-only bank), `raw\` and `text\` (KEC PDFs and their text), `kec.db` (`doc_text`, `facts`, `formulas`, `answers`), `state\` (`ledger.jsonl`, `mcp.json`, proposals, tier-2 unit results), `logs\loop.log`, `reports\round_N.xlsx`, `escalations.jsonl`.
+- **Ledger and reports.** Every unit attempt appends one row to `state\ledger.jsonl` and to the `ledger` sheet of that round's `reports\round_N.xlsx`: tier/model, times, attempt and outcome, input/cache-read/cache-creation/output/thinking tokens and the CLI's list-price cost, tool calls by name, Bash lines cut to 200 characters, method tags the loop proves from the run (`script_text`, `ocr`, `model_read` with read pages, `mcp_lookup`, `sql`, `formula`, `labelling`), pages by code against pages read by the model, rows added per table and files written. `--ledger-summary` totals these per tier and method and gives tokens per question answered; `--opus-transcript` with `--since` adds the managing session's usage blocks so the summary spans all three tiers.
+- **Stops and guards.** `$15` estimated Haiku list price per run, 15-minute usage-limit sleep, one DeepSeek unit at a time, no network fetch and no paid embedding, never `D:\Shivam_Private` or a key file, never a write outside the sandbox. The keeper restarts the loop 20 minutes after a crash at most 12 times. Log lines end with `DONE`, `STOPPED <reason>` or `PAUSED`. Tests, no model call: `python -m pytest reality_engine/tests/test_gap_loop.py -q`.
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):
