@@ -32,7 +32,7 @@ code gap, not a schema gap, and it is called out in §6.
 
 1. **ISIN anchor, never today's symbol.** Every table keys on `isin` at the time of the event.
    `market_state.isin_rekey_map` (old,new,effective_on,reason,verified) is the ISIN-history map;
-   `RESOLVE` consults it first, then `symbol_isin_history` for the window valid at `as_of`. An ISIN
+   `RESOLVE` reads `symbol_isin_history` for the window valid at `as_of`; it does not yet read `isin_rekey_map` (0 rows). An ISIN
    can change on a split/face-value change, so history is never rewritten (G0: 83 false changes,
    1,370 synthetic ISINs, 1,665 FY25+ ISINs absent from the master).
 2. **PIT rules.** `known_at` is the first instant the market could see the row and comes from the
