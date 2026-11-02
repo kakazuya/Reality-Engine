@@ -8,7 +8,7 @@ any production dataset beyond the pilot universe (golden rule step 4–5).
 
 ## 1. Pilot universe — exact ISINs
 
-Selection rule (deterministic, reproducible with `.tmp/pick_pilot.py`): score every ISIN named in the
+Selection rule (deterministic; the script `.tmp/pick_pilot.py` is no longer in the repo): score every ISIN named in the
 bank by `2 × cases + 3 if ARs held + 2 if concalls held + 1 if XBRL held + 1 if prices held + 2 if
 >20 docs`, take the top 20, then one company per open-bank archetype not yet represented until 30.
 These 30 ISINs are named in **362 of the 1,030 cases (35%)** — the pilot measures a third of the bank
@@ -165,7 +165,7 @@ extractor reads the original). That is why streams 1–3 can run while the raw o
 
 ## 5. Re-run harness — how 1,030 cases execute and are graded automatically
 
-One runner, no per-case hand work:
+One runner, no per-case hand work (planned: `reality_engine/toolbelt/run_master_bank.py` is not in the repo yet):
 
 ```
 python -m reality_engine.toolbelt.run_master_bank \
@@ -220,15 +220,15 @@ excused.
 
 | gate | pass condition | command / evidence |
 |---|---|---|
-| **CASE_MAP integrity** | 1,030 rows, unique mids, every row has `planner_chain` + `status`; every held `table.column` exists | `python -c "import json,sqlite3; ..."` (the acceptance check in the brief) and `.tmp/verify_map.py` → `bad columns: 0, unknown tables: 0` |
-| **schema parses** | `sqlite3 :memory: < SCHEMA_V3.sql` | `.tmp/check_schema.py` → `parse ok: tables 73 views 3 indexes 41` |
+| **CASE_MAP integrity** | 1,030 rows, unique mids, every row has `planner_chain` + `status`; every held `table.column` exists | `python -c "import json,sqlite3; ..."` (the acceptance check in the brief) and `.tmp/verify_map.py` (not in the repo) → `bad columns: 0, unknown tables: 0` |
+| **schema parses** | `sqlite3 :memory: < SCHEMA_V3.sql` | `.tmp/check_schema.py` (not in the repo) → `parse ok: tables 73 views 3 indexes 41` |
 | **answer rate** | ≥95% of 1,030 are `ANSWERED` or `ANSWERED_PARTIAL` (allowed) or `NOT_IN_DATA_JUSTIFIED`; `WRONG` = 0 | `rerun/<id>/results.jsonl` label counts |
 | **PIT** | 0 violations: 0 rows with `known_at > as_of` in any hop | `rerun/<id>/pit_violations.jsonl` empty |
 | **regressions** | **30/30** `regression=true` cases `ANSWERED` | `rerun/<id>/regressions.md` |
 | **search speed** | p95 < 2 s over all EVIDENCE calls; structured p95 < 300 ms | `rerun/<id>/timings.json` |
 | **tag precision** | ≥0.90 over 300 hand-checked chunks (Wilson 95% lower bound reported) | `rerun/<id>/tag_precision.csv` + `coverage_scorecard` |
 | **answer fidelity** | 100% of numbers/quotations trace to a returned row | harness assert per case |
-| **degradation honesty** | every answer using a thin source carries a degradation note (no silent gaps) | harness assert; AGENTS.md §3.13 |
+| **degradation honesty** | every answer using a thin source carries a degradation note (no silent gaps) | harness assert |
 
 If the answer rate lands below 95%, the run report must name the blocking statuses
 (`BLOCKED_SCHEMA` / `BLOCKED_FETCH` / `NOT_IN_DATA_UNJUSTIFIED`) and the cases, not "we ran out of

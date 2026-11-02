@@ -1,6 +1,6 @@
 # Next sessions plan (written 2026-10-27 evening, for new Claude Code CLI sessions)
 
-> **Historical plan (27 Oct):** steps 2–4 below are done. Live state is `tasks/STATE.md`; the live queue is `tasks/handoff/QUEUE_2026-10-31.md`. Kept because the golden rule in `AGENTS.md` cites it.
+> **Historical plan (27 Oct):** steps 2–4 below are done. Live state is `tasks/STATE.md`; the live queue is `tasks/TASKS.md` (`python -m reality_engine.scripts.task_board list`). Kept because the golden rule in `AGENTS.md` cites it.
 
 Read this first in every new session. Then read `tasks/FRAMEWORK.md` (the authority), `AGENTS.md` and the memory index.
 Each block below is **one session**: give a fresh CLI session the block's title plus "read tasks/NEXT_SESSIONS_PLAN_2026-10-27.md, do session S<n>".
