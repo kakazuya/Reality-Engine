@@ -48,7 +48,7 @@ was not opened in this job; field names below come from the loader DDL and the r
   only inside `item_json`. No DDL change, no column rename, no query change. Readers that ignore the field are unaffected;
   it is filled only for a confirmed analyst's figure (prompt rule 3).
 - The gate must read the item dict before insertion, not the `cc_items` row, so it sees `question_gist` and `purpose`.
-- **Wiring (checked 2026-11-02):** `concall_deepseek.py` line 41 still defaults to `PROMPT_FILE = "prompt_v2.md"`, which is not in the repo now. Run v3 with `--prompt prompt_v3.md` (help text, line 320). The gate in §3 is in `concall_pilot.py` `machine_check` (line 345), not in `save()`. This job did not edit the loader.
+- **Wiring (checked 2026-11-02):** `concall_deepseek.py` line 41 still defaults to `PROMPT_FILE = "prompt_v2.md"`, now only under `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/concall_pilot/`. Run v3 with `--prompt prompt_v3.md` (help text, line 320). The gate in §3 is in `concall_pilot.py` `machine_check` (line 345), not in `save()`. This job did not edit the loader.
 
 ## 3. 6.6 mechanical value-in-quote gate — precise spec
 

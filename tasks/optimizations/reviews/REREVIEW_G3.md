@@ -8,7 +8,7 @@ Worktree (no longer on disk): `C:\Users\warri\Downloads\IDM-worktrees\20261025T1
 - Diff to review: `git diff 5877b16..16c827c`.
 - First review, with defects and per-theme labels:
   `C:\Users\warri\Downloads\Info_Diffusion_Model\plugins\dsh-worker\runtime\jobs\20261025T135133Z-c01c539c\result.md`.
-- Fix brief with the manager decisions: `FIX_G3.md` is no longer in the repo; the decisions are in the fixer's report below.
+- Fix brief with the manager decisions: `tasks/archive/optimizations/reviews/FIX_G3.md`.
 - The fixer's report: `C:\Users\warri\Downloads\Info_Diffusion_Model\plugins\dsh-worker\runtime\jobs\20261025T141901Z-c870a878\result.md`.
 
 ## Check

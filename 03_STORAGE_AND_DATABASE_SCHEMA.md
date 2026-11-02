@@ -8,7 +8,7 @@
 
 The system uses a hybrid local storage paradigm:
 1. **SQLite 3 (WAL Mode)**: Structured relational metadata, daily OHLCV and delivery time-series, quarterly financial statements, Telegram forum messages, and FTS5 full-text search indexes.
-2. **Vector index (NumPy folders, not LanceDB)**: chunk embeddings in `vector_index_*` folders (Nemotron-8B, 4096-d), served by `reality-data` with SQLite FTS5 as fallback. LanceDB was the original design and is not used.
+2. **Vector index (NumPy folders, not LanceDB)**: chunk embeddings in `vector_index_*` folders (Nemotron-8B, 4096-d), served by `reality-data` with SQLite FTS5 as fallback. LanceDB was the original design; `reality_engine/db/vector_store.py` remains from it.
 3. **Local NVMe Blob Storage**: Raw PDF concall transcripts, investor presentations, Bhavcopy CSV archives, and raw Telegram screenshot images.
 
 ---

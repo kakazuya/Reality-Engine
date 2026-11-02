@@ -29,7 +29,7 @@ Problems:
 - **CSV breaks.** Unquoted commas (Indian grouping, labels) broke rows: LongCat CONCOR p351-400 had 144 of 160 rows
   malformed. The production format should be JSON lines or a stricter schema.
 - The checks here are digit matches. Label, unit (lakh/crore), period and standalone/consolidated correctness are
-  NOT scored yet. That needs the hand-checked rows (`challenger/hand_check_verdicts.csv`, not in this repo).
+  NOT scored yet. That needs the hand-checked rows (`tasks/ar_study/challenger/hand_check_verdicts.csv`).
 - Gold-list fix: GESHIP CSR spent is ₹18.77 crore in the report (₹18,77,77,325), not 18.78.
 
 Takeaway: LongCat reads AR text well enough to find every checked fact, with few unsupported numbers. Dots needs a

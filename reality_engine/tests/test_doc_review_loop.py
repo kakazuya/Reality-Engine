@@ -60,6 +60,8 @@ def test_protected_and_generated_are_recorded_not_queued(repo):
     state = {r["file"]: r["outcome"] for r in rows}
     assert state["tasks/master_bank/BANK.md"] == "skipped-protected"
     assert state["tasks/ar_study/text/AR.txt"] == "pending-generated"
+    assert loop.PROTECTED.match("tasks/QUESTION_BANK_300_2026-10-27.md")
+    assert loop.PROTECTED.match("tasks/reddit_mining/QUESTION_BANK_REDDIT_2026-10-28.md")
 
 
 def test_batch_cuts_a_large_file_at_the_budget(repo):

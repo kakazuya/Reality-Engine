@@ -33,7 +33,7 @@ Distinguish successful delivery/transport acknowledgement from an actual worker 
 - New `reality_engine/tests/test_dsh_heartbeat*.py` files if needed
 - New `tasks/codex_tasks/DSH_HEARTBEAT_IMPLEMENTATION.md` explaining the result
 
-Do not edit STATE, FRAMEWORK, AGENTS, memories, unrelated sources or the H01 harness. Codex will update state after review. A baseline copy of current wrapper/tests was kept under gitignored `reality_engine/data/logs/dsh_heartbeat_bootstrap/` (folder not present in this checkout) so the reviewer can distinguish your edits from earlier local modifications.
+Do not edit STATE, FRAMEWORK, AGENTS, memories, unrelated sources or the H01 harness. Codex will update state after review. A baseline copy of current wrapper/tests was kept under gitignored `reality_engine/data/logs/dsh_heartbeat_bootstrap/` so the reviewer can distinguish your edits from earlier local modifications.
 
 ## Delivery
 

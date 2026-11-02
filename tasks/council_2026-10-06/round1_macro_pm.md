@@ -131,8 +131,8 @@ Evidence base used: `tasks/PRICE_SIDE_DIFFUSION_STUDY_2026-10-03.md` (§3, §7, 
 ## F. Evaluation engine
 
 ### Q16
-**Position:** Yes. Build the shared harness from the diffusion-study method (its code is not in this repo). It already has the hard parts: point-in-time event timing, matched benchmark, clustered errors, false-discovery control, negative controls. Add a cost-aware long-only portfolio backtest and a cross-sectional test. Quant Lead's detail.
-**Why:** It is the only analysis in the project that has produced a result that survived its own controls (drift statistic: 0 of 20 control strata rejected).
+**Position:** Yes. Build the shared harness from the diffusion-study code (`analysis/diffusion_study/`). It already has the hard parts: point-in-time event timing, matched benchmark, clustered errors, false-discovery control, negative controls. Add a cost-aware long-only portfolio backtest and a cross-sectional test. Quant Lead's detail.
+**Why:** It is the only code in the repo that has produced a result that survived its own controls (drift statistic: 0 of 20 control strata rejected).
 **Confidence:** med
 
 ### Q17

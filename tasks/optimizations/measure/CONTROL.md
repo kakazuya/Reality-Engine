@@ -1,5 +1,7 @@
 # Task — run the dsh-worker and code-intel test suites in one process
 
+> Status 2026-11-02: the import failure this brief reproduces has been fixed; see `TREATMENT.md`.
+
 ## Goal
 `python -m unittest reality_engine.tests.test_dsh_worker_plugin reality_engine.tests.test_code_intel` passes in a
 single process (today it fails at import).

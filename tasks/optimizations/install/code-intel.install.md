@@ -117,7 +117,7 @@ matches the cold-start worst case (first call after a restart can wait for the i
 
 ## 6. Worker context (owned by Task 01)
 
-Append `code-intel.worker_context.md` to the worker context file Task 01 creates (`tasks/worker_context/` is not in the repo yet) —
+Append `code-intel.worker_context.md` to the generated `tasks/worker_context/CONTEXT.md` —
 it is the "Use code-intel before grep" section with three examples.
 
 ## 7. Verify

@@ -588,7 +588,7 @@ Otherwise they come back (CRO). Macro asks that guidance raises be **kept as a q
   - `substrate_quarantine` counts;
   - 574 of 5,710 ISINs ending before 2026-06;
   - the live DB modified at 12:40 today;
-  - BSE upload-to-publish lag (median 1 s, 99th percentile 61 s, 139,802 results filings; 6,311 after 21:00), from `analysis/bse_announcements.db` (DB not in the repository; not re-checked here);
+  - BSE upload-to-publish lag (median 1 s, 99th percentile 61 s, 139,802 results filings; 6,311 after 21:00), from `analysis/bse_announcements.db` (gitignored; not re-checked here);
   - the `insider_trades` table having 0 rows, and SAST headlines carrying no direction.
 
   No other member queried the DB. The chair re-checked none of these.

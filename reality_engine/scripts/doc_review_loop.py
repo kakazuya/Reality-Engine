@@ -43,7 +43,7 @@ DOC_SUFFIXES = (".md", ".txt", ".rst")
 # Never sent to the model: Shivam's rulings and records, or a read rule he has not lifted.
 PROTECTED = re.compile(
     r"^(tasks/RULINGS\.md|tasks/TASKS(_DONE)?\.md|tasks/STATE\.md|AGENTS\.md|tasks/master_bank/|tasks/pilot60/pilot_bank"
-    r"|tasks/pilot60/PILOT_BANK|tasks/archive/|tasks/handoff/DOC_REVIEW)"
+    r"|tasks/pilot60/PILOT_BANK|tasks/archive/|tasks/handoff/DOC_REVIEW|tasks/QUESTION_BANK_|tasks/reddit_mining/QUESTION_BANK_)"
 )
 # Annual-report text extracts, not documentation: deleting the folder is Shivam's call.
 GENERATED = re.compile(r"^tasks/ar_study/text/")
@@ -53,7 +53,7 @@ PROMPT = """You are reviewing project documentation for staleness. Task T-045. W
 Read every listed line yourself, with exactly the offset and limit given. Then, for each file:
 - Delete an entry that is stale. Correct a claim that is wrong so it says what the code does now.
 - Before keeping a doubtful claim or changing one, check it with Grep or Read: does the named file, function, flag or path exist and do what the doc says? Cite what you checked.
-- If a referenced file is gone and nothing replaces it, remove or reword that reference.
+- You run in a worktree with no gitignored files, and `tasks/archive/`, `.tmp/` and the dsh runtime folder are hidden from you. A path you cannot find there may still exist: never write that a file is gone or not in the repo, and leave the reference. Report it in your reason.
 - Do not rewrite for style. Small, exact edits only.
 
 Do not change:

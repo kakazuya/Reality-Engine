@@ -19,7 +19,7 @@ All figures queried today from `equity_intelligence.db` (mode=ro). Chunk figures
 The DB has good price history (2021-10 on) and dated raw text. It has no dated fundamentals or labels. A test that says "what did the market know about company X on date T" can be run on prices and document dates only. Fundamental, exposure and business-model features for past dates are today's values, so using them is look-ahead.
 
 ## Repair order (cheapest first)
-1. Apply `analysis/proposed_changes.csv` (7,019 rows: true call_date + publication_date from transcript bodies). Not applied yet, needs writer window. (The CSV is not in the repo now; `analysis/apply_pit_repair.py` reads that path.)
+1. Apply `analysis/proposed_changes.csv` (7,019 rows: true call_date + publication_date from transcript bodies). Not applied yet, needs writer window. (The only copy found on 2026-11-02 is `reality_engine/data/backups/drive_processed_2026-10-21/processed_analysis/proposed_changes.csv`; `analysis/apply_pit_repair.py` reads the path above.)
 2. Add a `filing_date` for results from the exchange result-announcement date (BSE/NSE, free), stored beside each quarter. Backfill quarters 2021-2026 from BSE XBRL, not yfinance.
 3. Add dated tables: `company_segment_revenue`, `company_industry_history`, `index_membership_history`, all keyed (isin, period, first_public_at).
 4. Populate chunk `industry_id` from master industry (single UPDATE by symbol, no LLM).

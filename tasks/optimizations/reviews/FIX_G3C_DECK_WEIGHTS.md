@@ -5,7 +5,7 @@ Deck-sourced theme weights must be a true share of the **company's** revenue. Me
 (G3b merged as `fef4278`); this round fixes the weights the manager review found wrong.
 
 ## Read first
-- The G3b report, especially section 6 (open problems): dsh job `20261025T161212Z-f74b42d5` (result not on disk, 2026-11-02).
+- The G3b report, especially section 6 (open problems): dsh job `20261025T161212Z-f74b42d5` (read with `worker_result`).
 - `reality_engine/scripts/build_universe_membership.py`: `_deck_evidence`, `_deck_tables`, `_deck_labels`,
   `_prefer_deck`. (`_clip` no longer exists in the builder.)
 

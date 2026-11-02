@@ -7,7 +7,7 @@ chunks and facts that any query can filter fast. Output one document, `tasks/ARC
 No code changes and no data writes.
 
 ## Read before writing (real state, not assumptions)
-- `tasks/FRAMEWORK.md` (authority), `tasks/STATE.md`,
+- `tasks/FRAMEWORK.md` (authority), `tasks/STATE.md`, `tasks/archive/optimizations/HANDOFF_2026-10-26.md`,
   `tasks/optimizations/learn/C1C2_RESULTS_2026-10-26.md`.
   - Wide test verdict: chunker_v2 + headers wins on decks and concalls.
   - LLM facts are not a search corpus.

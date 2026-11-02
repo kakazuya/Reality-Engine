@@ -1,6 +1,7 @@
 ## Worker context pack (auto-attached)
-Context pack: `tasks/worker_context/CONTEXT.md` is not in the repo now (checked 2 Nov); it was a generated file. Orient from the files the task names.
-Budget: reach your first useful edit within <= 25 tool calls. Read only the files the task names.
+Read the context pack FIRST, before any other orientation: C:\Users\warri\Downloads\Info_Diffusion_Model\tasks\worker_context\CONTEXT.md
+It is the generated repo/data/test/sandbox map for this checkout; do not rediscover it file by file.
+Budget: reach your first useful edit within <= 25 tool calls. Read the pack once, then only the files the task names.
 The pack is generated, so the repo wins if they disagree; note the drift in your report.
 Brief contract (when you write briefs): C:\Users\warri\Downloads\Info_Diffusion_Model\tasks\worker_context\BRIEF_TEMPLATE.md
 Final report format: 1) what changed (files, one line each) 2) how verified (commands + exact pass counts)

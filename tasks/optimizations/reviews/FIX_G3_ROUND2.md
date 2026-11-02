@@ -5,7 +5,7 @@ Fix defects N1–N10 from the re-review, and add a reconciled segment-sum denomi
 weights can be computed. Then G3 merges.
 
 Worktree: removed after merge (was `20261025T123302Z-e856c1b1`, HEAD `16c827c`).
-Read the re-review in full, including its section 5 rule (dsh job `20261025T151433Z-2a0b16b1`, result not on disk, 2026-11-02).
+Read the re-review in full, including its section 5 rule (dsh job `20261025T151433Z-2a0b16b1`, read with `worker_result`).
 
 ## Manager decisions
 - **N1 (wrong-file AR):** accept a weight only if the document names the company (its name or symbol appears in the

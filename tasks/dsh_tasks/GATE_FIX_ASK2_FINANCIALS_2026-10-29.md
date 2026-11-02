@@ -32,7 +32,7 @@ These fields are largely **held**:
 So the failure is routing and row-labelling in `reality_engine/query/planners/facts.py` and `reality_engine/query/metrics.py`, not missing data.
 
 ## Do
-1. For each concept above, take 5 failing cases from `tasks/answer_bench/BEFORE_2A_GATE_RESULTS_*_strict.jsonl`. Find where the held value lives for that ISIN and period. Then make FACTS fetch it and return a row whose `item`/`concept` names the concept, with the period, ISIN and source.
+1. For each concept above, take 5 failing cases from `tasks/answer_bench/GATE_RESULTS_*_strict.jsonl`. Find where the held value lives for that ISIN and period. Then make FACTS fetch it and return a row whose `item`/`concept` names the concept, with the period, ISIN and source.
    - Derived ratios are computed deterministically from held components: margin = EBITDA or PAT ÷ revenue; ROIC; working capital = inventory + receivables − payables; CFO; dividend per share. Add these to `reality_engine/query/compute.py`.
    - Banks: net NPA and loan growth from the XBRL bank schedules.
 2. When the concept is truly absent for that ISIN and period, return an explicit NOT IN DATA with a reason. Never return an unrelated row.

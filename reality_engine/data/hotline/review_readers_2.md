@@ -201,9 +201,9 @@ The content condition from review 1 is met **as intended**, not literally:
 
 ## 11. Reproduction
 
-- Sample: working files were in `reality_engine/data/hotline/_review_tmp2/`, which is not in this repository (seed 20261021; 8 docs; 8 items each, all fields). The sample cannot be re-read from here.
-- Transcripts (same folder, not kept): `txt/<doc_id>_<symbol>.txt` (pymupdf, one per doc).
-- Context windows (same folder, not kept): `ctx_<doc_id>.txt` (700 chars before / 900 after each quote, with item fields and `item_json` extras).
+- Sample: working files were in `reality_engine/data/hotline/_review_tmp2/`, now `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/hotline/_review_tmp2/` (seed 20261021; 8 docs; 8 items each, all fields).
+- Transcripts (same folder): `txt/<doc_id>_<symbol>.txt` (pymupdf, one per doc).
+- Context windows (same folder): `ctx_<doc_id>.txt` (700 chars before / 900 after each quote, with item fields and `item_json` extras).
 - Checks used: value-token-vs-quote scan (all items, 8 docs), guidance-direction scan, scope-marker scan, gate-coverage query, quote-verbatim check (64/64).
 - DB reads only: SQLite URI `mode=ro` on `concall_facts.db` and `equity_intelligence.db`; no writes, no status changes, no job control. The running Beam/MiniMax jobs were not touched.
 

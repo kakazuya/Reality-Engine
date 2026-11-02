@@ -130,7 +130,7 @@ LLM must emit these schemas — never free-text — to populate `raw_documents�
 | **Partitioning** | `document_chunks PARTITION BY RANGE(published_date)` quarterly ivfflat → detach old partitions | Partition DDL (commented out, `db/postgres_schema.sql:409`) |
 | **Procedure** | `CALL prune_decayed_signals()` cron monthly: drop embeddings >12m (retain Structural Milestone), delete ripple `prob<0.10 OR raw*prob<0.50`, archive macro >24m | `pruning_engine.py` |
 
-Pruning rules: `PN<0.08` leaf cut, `S(t)<5.0` branch cut (`processing/causal_engine.py:161`).
+Pruning rules: `PN<0.08` leaf cut, `S(t)<5.0` branch cut (`should_prune_ripple` in `processing/pruning_engine.py:197`; `processing/causal_engine.py:151` sets the `pruned` flag).
 
 ---
 
