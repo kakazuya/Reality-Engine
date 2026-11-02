@@ -3,7 +3,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 
 ## Order and scope
 - Golden order: raw data, banks, schema, pilot, re-run at 95% answered plus checklist, and only then the full run. No full run before that.
-- Pilot test resumes (Shivam, 2 Nov): the workspace issues are settled, and open workspace tickets no longer block it. Prototype on 2-3 companies before any wider run.
+- Next objective (Shivam, 3 Nov): replicate the pilot's AI answer quality with our own scripts on CPU/GPU/NPU, universal across KEC, BAJFINANCE and HINDALCO documents, writing facts into SQLite/DuckDB; every answer comes from that database via MCP, raw records only when absolutely necessary; a question the database cannot answer is a gap to fill in the database. AI OCR or model calls only to cut what scripts cannot do, within a budget that burns at most 1-2 months of subscription (OpenCode Go, DeepInfra or similar, with his OK).
 - Scope is query AND compute. A number the filings do not state is a formula to define. Empty store means not extracted: never report it as a gap or "not held" without checking `tasks/DATA_INVENTORY.md` and raw text.
 - Bank rulings bind; diff any bank rebuild against the frozen 1,901-question bank. Do not change bank, labels or scope without his ruling. Questions use pilot stocks only.
 - Pilot tests: a question with no date uses `as_of` 2026-10-19; live answers use the latest data. Report only the hand-read score, never the format score. The free-model reader is dropped for now: return retrieved passages with exact quotes (Shivam, 2 Nov).
