@@ -49,7 +49,7 @@ It continuously ingests and cross-correlates macro policy drivers with ground-le
 |                   | Grants, Fiscal Deficit Statements          | (PyMuPDF + Markdown Structured Parsing)            |
 +-------------------+--------------------------------------------+----------------------------------------------------+
 | RBI Disclosures   | RBI Annual Report, Economic Survey, MPC    | Bi-Monthly / Annual                                |
-|                   | Minutes, State of Economy Reports          | (RBI Bulletin RSS / Automated PDF Downloader)      |
+|                   | Minutes, State of Economy Reports          | (RBI listing pages + PDF download, macro_pdf_fetcher.py) |
 +-------------------+--------------------------------------------+----------------------------------------------------+
 | Institutional     | Top Institutional Brokerage Reports        | Daily / Weekly                                     |
 | Research          | (Motilal, Kotak, ICICI Sec, Jefferies, etc.)| (Telegram Research Threads + PDF Storage)          |
@@ -112,7 +112,7 @@ CREATE INDEX IF NOT EXISTS idx_edge_type ON graph_causal_edges(relationship_type
 
 ## 4. Multi-Hop Causal Propagation Engine
 
-When a macro policy shift, Union Budget announcement, or geopolitical crisis occurs, the system executes a **Recursive Common Table Expression (CTE) Graph Walk** in SQLite to trace the full propagation wave down to individual listed stocks:
+When a macro policy shift, Union Budget announcement, or geopolitical crisis occurs, the system executes a **Recursive Common Table Expression (CTE) Graph Walk** in SQLite to trace the full propagation wave down to individual listed stocks. The engine is `causal_engine.trace_causal_chain` (`reality_engine/processing/causal_engine.py`); the SQL below is a simplified sketch of it. The code adds a visited-node guard and takes the depth from `max_hops`.
 
 ```sql
 -- Recursive Multi-Hop Causal Traversal in SQLite
@@ -191,7 +191,7 @@ Your task is to ingest the following policy document (Budget Speech / RBI Survey
 3. Exact Transmission Mechanisms: Quantifiable mechanisms (e.g. "₹12,000 Cr allocation under PM Surya Ghar Yojana -> expands rooftop solar inverter demand by 45% -> directly benefits HAVELS, POLYCAB, WAAREE").
 4. Causal Direction & Magnitude: POSITIVE / NEGATIVE, and estimated elasticity score.
 
-Output the extracted entities and directed causal edges in strict Pydantic JSON matching the CausalGraphUpdate schema.
+Output the extracted entities and directed causal edges in strict Pydantic JSON. No `CausalGraphUpdate` class exists in the repository yet; the schema is still to be written.
 ```
 
 ---

@@ -25,7 +25,7 @@ You don't need to know any programming. Just follow these 3 steps:
 - On Windows, press the **Windows Key**, type **PowerShell** or **Terminal**, and hit **Enter**.
 - Make sure you are in the project folder:
 ```powershell
-cd C:\Users\vermashi\Documents\kiloai\btask01
+cd <the repository folder, the one that contains bootstrap.ps1>
 ```
 
 ### Step 2: Initialize & Bootstrap the System (Run Once)
@@ -52,24 +52,24 @@ The visual dashboard at `http://localhost:8501` is divided into 6 tabs:
 
 ```
 +--------------------------------------------------------------------------------------------------+
-|  [Tab 1] Market Overview   |  [Tab 2] Stock Screener   |  [Tab 3] Policy & Macro Graph           |
-|  [Tab 4] Stock Dossier     |  [Tab 5] Daily Alpha      |  [Tab 6] Document Drop-in Inbox         |
+|  [Tab 1] Market Overview   |  [Tab 2] Quantitative Screener   |  [Tab 3] Causal Graph & Shocks  |
+|  [Tab 4] Stock Intelligence Dossier  |  [Tab 5] EOD Alpha Reports  |  [Tab 6] Local Inbox Manager  |
 +--------------------------------------------------------------------------------------------------+
 ```
 
 ### Tab 1: Market Overview & Panic Radar
-- **Market Regime Badge**: Shows whether the overall market is in a healthy `BULLISH` mode, `ACCUMULATION` mode (institutions quietly buying), `DISTRIBUTION` (smart money selling), or `PANIC/VOLATILE`.
+- **Market Regime Badge**: Shows whether the overall market is in a healthy `BULLISH` mode, `ACCUMULATION` mode (institutions quietly buying), `DISTRIBUTION` (smart money selling), `NEUTRAL`, or `VOLATILE` (panic alerts are shown separately by the Panic Radar).
 - **Advance/Decline Ratio**: Shows how many stocks went up vs. down across the market today.
 - **Sector Performance**: Bar charts displaying which sectors (Defence, IT, Railways, Banking, Autos) are gaining or losing momentum.
-- **Panic Radar**: Alerts you if the market dropped heavily ($\ge 1.5\%$), activating the bargain finder.
+- **Panic Radar**: Alerts you if Nifty 50 or Nifty Midcap 100 falls 1.5% or more, or a sector index falls 3% or more (`reality_engine/pipeline/panic_monitor.py`), activating the bargain finder.
 
 ### Tab 2: Quantitative Stock Screener
 - **The Filterable Stock Table**: Displays top-ranked stocks scored out of 100 based on technical buying flow and fundamental acceleration.
 - **Interactive Controls**:
-  - Filter by Index: **Nifty 200** (Top 200 liquid stocks) or **Nifty 500** (Broader universe).
-  - Minimum Score Slider: Filter for stocks with high scores (e.g., Score $\ge 75$).
-  - Market Cap Tier: Large Cap, Mid Cap, Small Cap.
-- **Download to Excel/CSV**: Click the **Download Screener CSV** button to export the ranked list to Microsoft Excel.
+  - Universe Scope: **Nifty 200** (default, top 200 liquid stocks), **Nifty 500** (broader), **Nifty 50**, or **All**.
+  - Min Composite Score slider: Filter for stocks with high scores (e.g., Score $\ge 75$).
+  - Market Cap Tier: All, LARGE, MID, SMALL, MICRO.
+- **Download to Excel/CSV**: Click the **Export Screener Results to CSV** button to export the ranked list to Microsoft Excel.
 
 ### Tab 3: Causal Knowledge Graph & Policy Shocks
 - **Macro Trigger Dropdown**: Select an event (e.g., `UNION_BUDGET_2026_RAIL_CAPEX`, `COMMODITY_CRUDE_OIL`, `GEOPOLITICAL_RED_SEA_ATTACKS`, or `DEFENCE_INDIGENIZATION_DAP`).
