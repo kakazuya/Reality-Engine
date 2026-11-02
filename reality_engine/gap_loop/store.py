@@ -184,7 +184,10 @@ def add_formula(conn: sqlite3.Connection, row: dict) -> None:
         "INSERT INTO formulas(name, expression, inputs, description) VALUES(?,?,?,?) "
         "ON CONFLICT(name) DO UPDATE SET expression=excluded.expression, inputs=excluded.inputs, "
         "description=excluded.description",
-        (row["name"], row["expression"], row.get("inputs") or "", row.get("description") or ""),
+        # The model writes inputs as a list; the column holds text (KEC run 2 Nov crashed on a list).
+        (str(row["name"]), str(row["expression"]),
+         json.dumps(row["inputs"], ensure_ascii=False) if isinstance(row.get("inputs"), (list, dict))
+         else str(row.get("inputs") or ""), str(row.get("description") or "")),
     )
 
 

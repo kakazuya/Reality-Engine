@@ -689,8 +689,15 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as exc:
         print(str(exc), file=sys.stderr)
         return 4
-    except Exception as exc:  # a terminal line whatever went wrong
-        print(f"STOPPED {type(exc).__name__}: {str(exc)[:300]}", file=sys.stderr)
+    except Exception as exc:  # a terminal line whatever went wrong, in the log the watcher reads too
+        import traceback
+        line = f"STOPPED {type(exc).__name__}: {str(exc)[:300]}"
+        print(line, file=sys.stderr)
+        try:
+            log(store.inside(Path(args.sandbox).resolve(), LOG), line + " | " +
+                traceback.format_exc().strip().splitlines()[-3][:200])
+        except Exception:  # noqa: BLE001
+            pass
         return 1
 
 
