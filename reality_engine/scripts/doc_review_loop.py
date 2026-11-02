@@ -18,7 +18,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import os
 import re
 import subprocess
 import sys
@@ -28,17 +27,25 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-CLAUDE = r"C:\Users\warri\.local\bin\claude.exe"
-CONFIG_DIR = r"C:\Users\warri\.claude-neo"
-MODEL = "claude-haiku-5-5"
-CONTEXT_LIMIT = 95_000  # Shivam's limit is 100k; the process is killed before it.
+try:  # imported as a module by the tests and the keeper (keeper adds this folder to sys.path)
+    from . import session_runner
+    from .session_runner import LIMIT_SLEEP, MAX_TURNS, MODEL, build_cmd, run_session
+except ImportError:
+    import session_runner
+    from session_runner import LIMIT_SLEEP, MAX_TURNS, MODEL, build_cmd, run_session
+
 BATCH_CHARS = 90_000  # about 30k tokens of text on top of about 32k of starting context
 BATCH_FILES = 12
-RUN_SECONDS = 30 * 60
-MAX_TURNS = 60
 BUDGET_USD = 25.0  # list-price estimate from the CLI; the loop stops here
 MAX_FAILURES = 3
-LIMIT_SLEEP = 15 * 60
+
+
+def child_env() -> dict:
+    return session_runner.child_env({
+        "DOC_REVIEW_LOOP": "1",
+        "GIT_AUTHOR_NAME": "kakazuya (Wolf)",
+        "GIT_COMMITTER_NAME": "kakazuya (Wolf)",
+    })
 LARGE_CUT = 0.40
 PROGRESS = "tasks/handoff/DOC_REVIEW_PROGRESS.csv"
 FIELDS = ["file", "lines", "lines_read", "outcome", "reason", "commit"]
@@ -260,17 +267,6 @@ def next_batch(root: Path, queue: list[Item], max_chars: int = BATCH_CHARS) -> l
     return batch
 
 
-def child_env() -> dict:
-    env = {k: v for k, v in os.environ.items() if not k.startswith(("CLAUDE_CODE", "CLAUDE_PID", "CLAUDE_EFFORT")) and k != "CLAUDECODE"}
-    env.update(CLAUDE_CONFIG_DIR=CONFIG_DIR, DOC_REVIEW_LOOP="1", PYTHONUTF8="1")
-    env.update(GIT_AUTHOR_NAME="kakazuya (Wolf)", GIT_COMMITTER_NAME="kakazuya (Wolf)")
-    return env
-
-
-def context_of(usage: dict) -> int:
-    return sum(int(usage.get(k) or 0) for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
-
-
 def parse_rows(text: str) -> list[dict]:
     blocks = re.findall(r"```json\s*(.*?)```", text, re.S)
     if not blocks:
@@ -284,49 +280,22 @@ def parse_rows(text: str) -> list[dict]:
 
 def run_batch(root: Path, batch: list[Item], logfile: Path | None, archive: bool = False) -> Result:
     listing = "\n".join(f"- {i.file}: offset {i.start}, limit {i.end - i.start + 1} (file has {i.lines} lines)" for i in batch)
-    cmd = [
-        CLAUDE, "-p", (ARCHIVE_PROMPT if archive else PROMPT).format(files=listing), "--model", MODEL, "--effort", "medium",
-        "--output-format", "stream-json", "--verbose", "--max-turns", str(MAX_TURNS),
-        "--allowedTools", "Read,Grep,Glob" if archive else "Read,Grep,Glob,Edit",
-        "--disallowedTools", "Bash,PowerShell,Write,NotebookEdit,Agent,WebFetch,WebSearch,Skill" + (",Edit" if archive else ""),
-        "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--no-session-persistence",
-    ]
-    proc = subprocess.Popen(
-        cmd, cwd=root, env=child_env(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, encoding="utf-8", errors="replace", creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    cmd = build_cmd(
+        (ARCHIVE_PROMPT if archive else PROMPT).format(files=listing),
+        model=MODEL,
+        allowed_tools=("Read", "Grep", "Glob") if archive else ("Read", "Grep", "Glob", "Edit"),
+        disallowed_tools=("Bash", "PowerShell", "Write", "NotebookEdit", "Agent", "WebFetch", "WebSearch", "Skill")
+        + (("Edit",) if archive else ()),
+        mcp_config='{"mcpServers":{}}',
+        max_turns=MAX_TURNS,
     )
-    timer = threading.Timer(RUN_SECONDS, proc.kill)
-    timer.start()
-    result = Result()
-    final = ""
-    tail = ""
-    try:
-        for raw in proc.stdout:  # type: ignore[union-attr]
-            tail = raw[:400]
-            try:
-                event = json.loads(raw)
-            except ValueError:
-                continue
-            if event.get("type") == "assistant":
-                usage = (event.get("message") or {}).get("usage") or {}
-                result.peak = max(result.peak, context_of(usage))
-                if result.peak >= CONTEXT_LIMIT:
-                    result.over_limit = True
-                    proc.kill()
-                    break
-            elif event.get("type") == "result":
-                result.cost = float(event.get("total_cost_usd") or 0)
-                final = str(event.get("result") or "")
-                result.error = "" if not event.get("is_error") else final[:300]
-    finally:
-        timer.cancel()
-        proc.wait()
-    joined = (final + tail).lower()
-    result.limited = any(w in joined for w in ("usage limit", "rate limit", "limit reached", "hit your limit", "429", "overloaded"))
-    result.rows = parse_rows(final)
+    session = run_session(cmd, root, logfile=None, model=MODEL, env=child_env())
+    result = Result(cost=session.cost, peak=session.peak, limited=session.limited,
+                    over_limit=session.over_limit, error=session.error)
+    result.rows = parse_rows(session.final)
     result.ok = bool(result.rows) and not result.over_limit and not result.error
     if not result.ok and not result.error:
-        result.error = "over context limit" if result.over_limit else f"no report rows: {(final or tail)[:200]}"
+        result.error = "over context limit" if result.over_limit else f"no report rows: {(session.final or session.tail)[:200]}"
     log(logfile, f"batch files={len(batch)} peak={result.peak:,} cost=${result.cost:.3f} ok={result.ok} {result.error[:160]}")
     return result
 
