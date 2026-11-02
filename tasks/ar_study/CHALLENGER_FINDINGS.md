@@ -130,7 +130,7 @@ whole report. That is roughly a fifth of today's input, aimed where the judgemen
 3. Free-model test on the LLM slice only: kept text plus sentence rows, scored against the gold set. Start after
    concall ingestion finishes.
 4. Bulk run: about 1 CPU-minute per report, so about 12.7k reports ≈ 210 CPU-hours, about 1 day on 10 workers.
-   This waits for the download job (STATE → Known data gaps, item 1).
+   This waits for the download job.
 
 ---
 

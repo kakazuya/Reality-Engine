@@ -226,7 +226,9 @@ S4  ASSEMBLY: 6 passages max, ≤450 tokens each (≈2,700 tokens of text), 2 pe
     the degradation notes. Total answer context budget: 6,000 tokens.
 ```
 
-### 5.3 Interface
+### 5.3 Interface (target, not built)
+
+No `search_chunks` exists in the code. The live path is `reality_engine/query/planners/evidence.py` (CTEs on `chunk_fts MATCH` and `chunk_tag`, `CHECKED_V3`). The signature below is the target.
 
 ```
 search_chunks(q, *, isin=None, doc_type=None, known_at_to, tag=None, fiscal_period=None,

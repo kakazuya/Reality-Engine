@@ -4,7 +4,7 @@ Read-only census of every document type in the v3 re-chunk list: what fraction o
 need has a readable original on this laptop, on `D:`, or on Google Drive, and what must be re-fetched.
 
 - Data root: `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data` (2026-10-27, live SQLite)
-- Code: worktree `C:\Users\warri\Downloads\IDM-worktrees\20261027T002828Z-095da489`, census scripts in `.tmp/`
+- Code: worktree `C:\Users\warri\Downloads\IDM-worktrees\20261027T002828Z-095da489` (since removed; its census scripts in `.tmp/` are not in the repo)
 - Network used: `rclone lsf -R --files-only gdrive_ro:InfoDiffusion_archive/<folder>` only. rclone worked
   (it printed a harmless "failed to save config" error because the sandbox denies `%APPDATA%` writes).
 - Nothing written outside this worktree. No DB writes, no downloads, no commit.
@@ -244,7 +244,7 @@ corpus and halves the volume.
 
 ## 9. Queries and listings run (traceability)
 
-Files/scripts: `.tmp/index_files.py` (disk walk), `.tmp/census.py`, `.tmp/final_pass.py`,
+Files/scripts (in the removed worktree above, not in the repo): `.tmp/index_files.py` (disk walk), `.tmp/census.py`, `.tmp/final_pass.py`,
 `.tmp/roundup.py`, `.tmp/orphans3.py`, `.tmp/samples.py`, `.tmp/q*.py`; outputs `.tmp/*_out.json`,
 `.tmp/local_files.tsv`, `.tmp/drive_*.txt`.
 
