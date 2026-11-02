@@ -28,7 +28,7 @@ MONEY_UNITS = {"inr", "rs", "rupees", "inr_cr", "crore", "cr", "inr_mn", "millio
 PCT_UNITS = {"pct", "%", "percent", "percentage"}
 COUNT_UNITS = {"count", "nos", "units", "no", "number", "mw", "kw", "kt", "mt", "tonnes",
                "tpa", "tpd", "sqft", "days", "years", "x", "ratio", "times", "inr_per_unit",
-               "inr_per_share", "rs_per_share", "per_share", "shares", "bps"}
+               "inr_per_share", "rs_per_share", "per_share", "shares", "bps", "basis_points"}
 KNOWN_UNITS = MONEY_UNITS | PCT_UNITS | COUNT_UNITS
 
 _PERIOD = re.compile(
@@ -53,8 +53,8 @@ _NUM = re.compile(
     # A number is not part of a word or a decimal fraction.  A period before it only disqualifies
     # when a digit precedes that period, so "Rs.1,23,456 crore" is read and "1.56" is not split.
     r"(?<![\w])(?<!\d\.)(\d[\d,]*(?:\.\d+)?)\s*"
-    r"(?:(lakh|lac|crore|cr|million|mn|billion|bn|thousand)\b(?:\s*(crore|cr)\b)?"
-    r"|(%|percent|per\s*cent)\b)?",
+    r"(?:(lakhs?|lacs?|crores?|cr|millions?|mn|billions?|bn|thousands?)\b(?:\s*(crores?|cr)\b)?"
+    r"|(%|(?:percent|per\s*cent)\b))?",
     re.I,
 )
 _WS = re.compile(r"\s+")
@@ -88,7 +88,7 @@ def _contract_units(measure: str) -> set[str]:
 def measure_family(measure: str) -> str | None:
     """'pct', 'money' or None.  Growth and margin words win over money words: order intake growth is a percentage."""
     text = measure or ""
-    if _PCT_WORDS.search(text):
+    if _PCT_WORDS.search(text) or "%" in text or re.search(r"\bas a percentage\b|\bper ?cent\b", text, re.I):
         return "pct"
     if _MONEY_WORDS.search(text):
         return "money"
@@ -109,7 +109,9 @@ def check_unit(measure: str, unit: str) -> tuple[bool, str | None]:
     if not value:
         return False, "unit: missing"
     allowed = _contract_units(measure or "")
-    if allowed and value not in allowed:
+    # A money unit converts to any other money unit (rupees to crore); the contract names one of them.
+    convertible = unit_family(value) == "money" and any(unit_family(u) == "money" for u in allowed)
+    if allowed and value not in allowed and not convertible:
         return False, f"unit: {unit!r} is not in the typed contract for {measure!r} ({sorted(allowed)})"
     family, family_unit = measure_family(measure or ""), unit_family(value)
     if family and family_unit and family != family_unit:
@@ -141,6 +143,8 @@ def _suffix_crore(suffix: str, compound: str) -> float | None:
     """A printed money suffix in Rs crore; None when the token carries no money suffix."""
     word = (suffix or "").lower()
     second = (compound or "").lower()
+    word = word[:-1] if word.endswith("s") else word  # "crores", "lakhs", "millions"
+    second = second[:-1] if second.endswith("s") else second
     if word in ("lakh", "lac"):
         return 1e5 if second in ("crore", "cr") else 0.01
     if word in ("crore", "cr"):
@@ -162,7 +166,8 @@ def check_number(value: object, unit: str, quote: str) -> tuple[bool, str | None
     unit = _norm_unit(unit)
     family = unit_family(unit)
     target_crore = _CRORE.get(unit) if family == "money" else None
-    text = normalise(quote)
+    # "INR993 crores", "Rs.3,243", "₹1,659": a currency prefix glued to the digits hides the number.
+    text = re.sub(r"(INR|Rs\.?|₹|`)(?=\d)", r"\1 ", normalise(quote), flags=re.I)
     seen = False
     for match in _NUM.finditer(text):
         seen = True
