@@ -258,7 +258,7 @@ Three supporting commitments:
 
 ### 1.7 Quarantine and synthetic markers: how they interact
 
-**Yes — factor rows must be quarantine-eligible, and the existing mechanism absorbs them with zero DDL change.** `substrate_quarantine` has `PRIMARY KEY (rule_id, table_name, row_key)` (`substrate_hygiene.py:150-159`), so a new table is quarantined by writing `(rule_id, 'factor_observation', CAST(observation_id AS TEXT))` — exactly the pattern `QUARANTINE_RULES` already uses for `ripple_effects` (`substrate_hygiene.py:82-88`). No schema change to the trust layer is required.
+**Yes — factor rows must be quarantine-eligible, and the existing mechanism absorbs them with zero DDL change.** `substrate_quarantine` has `PRIMARY KEY (rule_id, table_name, row_key)` (`substrate_hygiene.py:209`), so a new table is quarantined by writing `(rule_id, 'factor_observation', CAST(observation_id AS TEXT))` — exactly the pattern `QUARANTINE_RULES` already uses for `ripple_effects` (`substrate_hygiene.py:82-88`). No schema change to the trust layer is required.
 
 New rules, appended to `QUARANTINE_RULES` in `substrate_hygiene.py` (additive, same tuple shape):
 
@@ -300,7 +300,7 @@ New **degradation** probes (reported, never hidden — `DEGRADATION_RULES` shape
 2. **A quarantined factor never becomes a silently-absent one.** `status` is part of the contract, so a caller can distinguish "this series is quarantined" (a data-integrity problem) from "this series has no data" (a coverage problem). They are different failures with different fixes.
 3. **The loader must be unable to write a future-dated observation.** `as_of_date > date('now')` is a look-ahead bug *at construction*. Reject it in Python at insert time and assert `as_of_date <= period_end` is NOT required (a series can be released after its ref period) but `as_of_date >= period_end` for `frequency IN ('monthly','quarterly','annual')` **is** required. Violations are refused, not warned.
 
-**A live gap the spine must not inherit.** The existing rule `demo_macro_events` is `where: "event_id LIKE 'PHASE5%'"` (`substrate_hygiene.py:70-75`), which misses `event_id='MEV_56' / event_name='PHASE5_DEMO_MILESTONE'`. Separately, `unresolvable_ripples` requires `target_type IS NULL` (`substrate_hygiene.py:89-98`) and therefore quarantines **3** rows while **35** rows declare an `Industry`/`Sector` target with a NULL FK and pass the trust layer. **This design does not fix either** (out of scope, and §3.3 says so), but the new rules above are written against the *value* of the source, not a naming convention of the key, precisely so the spine does not inherit the bug.
+**A live gap the spine must not inherit.** The existing rule `demo_macro_events` is `where: "event_id LIKE 'PHASE5%'"` (`substrate_hygiene.py:76-81`), which misses `event_id='MEV_56' / event_name='PHASE5_DEMO_MILESTONE'`. Separately, `unresolvable_ripples` requires `target_type`, `target_sector_id`, `target_industry_id` and `target_company_id` all NULL (`substrate_hygiene.py:89-98`) and therefore quarantines **3** rows while **35** rows declare an `Industry`/`Sector` target with a NULL FK and pass the trust layer. **This design does not fix either** (out of scope, and §3.3 says so), but the new rules above are written against the *value* of the source, not a naming convention of the key, precisely so the spine does not inherit the bug.
 
 ### 1.8 Linkage forward — the foreign-key reality, and what degrades gracefully
 
@@ -346,7 +346,7 @@ Soft-FK policy: **`symbol` is not an enforced FK.** `master_companies` is the au
 
 **What the spine does with `ripple_effects`:** nothing structural. It **does not read `transmission_elasticity`** (constant 1.0 on 61/61 rows — a constant is not a signal, and per `peer_graph.py:11-17` a near-constant feature must be *dropped*, not weighted). The spine supplies the missing half: a **dated, PIT-correct, actually-varying driver value** that the ripple graph could one day be calibrated against. `ripple_history` (76 rows / 5 dates) is likewise untouched.
 
-**FK enforcement — the honest statement.** SQLite defaults `PRAGMA foreign_keys = OFF`, and this repo never turns it on; the live 33 GB DB therefore **does not enforce any declared FK**, in the spine or anywhere else. A declared `FOREIGN KEY` in this codebase is a comment that PG will honour and SQLite will not. Therefore:
+**FK enforcement — the honest statement.** SQLite defaults `PRAGMA foreign_keys = OFF`. `config.py:363` sets it ON in `SQLITE_PRAGMAS`, but `factor_spine_schema.sql:32` records that it is ON only in some paths, so a declared `FOREIGN KEY` is **not guaranteed enforced**, in the spine or elsewhere. Therefore:
 
 1. Declare FKs in the DDL for PG parity and for the reader.
 2. **Enforce in application code** in the loader (`series_id` must resolve in `factor_series`; `source_doc_id` must resolve in `raw_documents` when non-NULL).
@@ -363,7 +363,7 @@ Soft-FK policy: **`symbol` is not an enforced FK.** `master_companies` is the au
 
 > A factor read is a function of `(series, T)`, never of "now". It returns **exactly one row per series, always** — carrying `value_usable` (the number, or NULL) plus a `status` that says why a NULL is NULL: `ok`, `stale_beyond_max_lookback`, `no_observation_known_at_T`, `null_value`, `quarantined_or_inactive_series`, or `unknown_series`. A value is usable **iff `status = 'ok'`**; consumers gate on `value_usable` and must never read the raw `value` column. Knowability is decided by `as_of_date <= T` and by nothing else — `period_end`, `retrieved_at`, and `is_latest` are never read predicates. Within a period, the vintage chosen is the highest `vintage` that was already public on `T`, which is not the same as the current `is_latest`. Levels and steps are carried forward (LVCF) only until they exceed the series' own declared `max_lookback_days`, after which the honest answer is NULL, not a stale number and never an interpolated one. Nothing is ever forward-filled across a gap that the declared staleness ceiling does not cover, and no consumer may reach the spine by any route other than these functions.
 
-**This paragraph is the contract. The SQL below is its only sanctioned implementation.** Any component that needs a factor value and does not call one of these two functions is a look-ahead defect by definition — which is exactly the failure `next_wave_plan` §2M documents, re-created in a new place.
+**This paragraph is the contract. The SQL below is the design it was checked against; the shipped implementation is `resolve_as_of` and `resolve_panel` in `reality_engine/processing/factor_spine.py`. The `v_factor_*` views named below were never created: `factor_releases`, `gap_audit` and `lookahead_audit` are functions there.** Any component that needs a factor value and does not call one of these two functions is a look-ahead defect by definition — which is exactly the failure an earlier wave plan (§2M, not in this repo) documents, re-created in a new place.
 
 ### 2.2 The rules, enumerated (each is a test)
 
@@ -378,7 +378,7 @@ Soft-FK policy: **`symbol` is not an enforced FK.** `master_companies` is the au
 - **R9 — Quarantine precedes LVCF, and refuses rather than falls back.** A quarantined/inactive series returns NULL + reason for the whole series. It never degrades into "the last value before the bad row".
 - **R10 — Exactly one row out, always.** Even for an unknown series id. A resolver that returns zero rows makes "no data" indistinguishable from "I forgot to write the query".
 
-### 2.3 The state resolver — `factor_state(series_id, as_of_date)` (SQLite, runnable)
+### 2.3 The state resolver — `factor_state(series_id, as_of_date)`, shipped as `resolve_as_of` (SQLite, runnable)
 
 ```sql
 -- v_factor_state : THE ONLY sanctioned way to read a factor value as of date T.
@@ -596,8 +596,8 @@ WHERE r.as_of_date > :asof_date;
 
 The verifier legitimately reads the future (it must, to measure error). The decision path must never. Distinguishing them by convention alone is weak, so make it mechanical:
 
-- Every function that may be called from a decision path is named `*_decision` (`factor_state_decision`, `factor_panel_decision`). Every function that reads forward returns is named `*_evaluation` (`factor_forward_return_evaluation`).
-- **A lint test greps the source of every `*_decision` function and asserts it contains no `retrieved_at`, no `is_latest =` in a `WHERE`, no `period_end <=` as a visibility gate, and no reference to `daily_price_delivery` with a future date predicate.** This is a source-level test, not a behavioural one, because the failure is a *shape* of the query, not a value.
+- The decision readers are the tuple `FACTOR_DECISION_READERS` (`factor_spine.py:966`: `resolve_as_of`, `resolve_panel`), pinned by `test_decision_readers_are_the_documented_pair`. Functions are not named `*_decision`, and no `*_evaluation` function exists yet (the verifier in §3.4 is unbuilt).
+- **A lint test greps the source of every decision reader and asserts it contains no `retrieved_at`, no `is_latest =` in a `WHERE`, no `period_end <=` as a visibility gate, and no reference to `daily_price_delivery` with a future date predicate.** This is a source-level test, not a behavioural one, because the failure is a *shape* of the query, not a value.
 - The evaluation ledger (`factor_forecast_log`, §3.4) is a **different table** from anything a decision read can join, so a mis-wired join fails loudly rather than returning plausible fiction.
 
 ---
@@ -611,14 +611,14 @@ The question: *"when a new shock happens, predict which stocks benefit and by ho
 | # | Defect | Verified evidence | Spine effect |
 |---|---|---|---|
 | D1 | **Constant transmission elasticity** | `SELECT DISTINCT transmission_elasticity FROM ripple_effects` → `{1.0}` on 61/61 | **Does not touch.** The spine has no elasticity and must not invent one. Per `peer_graph.py:11-17`, a near-constant feature is *dropped*, not weighted. Any β estimated off a constant-1.0 column is 1.0 by construction. |
-| D2 | **Ripple targets unresolvable** | 12 rows `target_type='Industry'` + 23 `'Sector'`, **all 35 with NULL FK**; real targets live in prose inside `transmission_channel`; only 19 `target_company_id` and those join the *surrogate* `moat_evaluations.company_id`, never `master_companies` | **Partially.** The spine supplies the missing *driver*: a dated, PIT-correct, genuinely varying input where the ripple graph has a constant and a string. It does **not** resolve ripple targets — that is `strategies.md` S3, unstarted. |
+| D2 | **Ripple targets unresolvable** | 12 rows `target_type='Industry'` + 23 `'Sector'`, **all 35 with NULL FK**; real targets live in prose inside `transmission_channel`; only 19 `target_company_id` and those join the *surrogate* `moat_evaluations.company_id`, never `master_companies` | **Partially.** The spine supplies the missing *driver*: a dated, PIT-correct, genuinely varying input where the ripple graph has a constant and a string. It does **not** resolve ripple targets — that is strategy item S3 in a planning doc not in this repo, unstarted. |
 | D3 | **`__NO_POLICY_TEMPLATE__` placeholders** | 3,239/5,470 = **59.2%**; `coverage_status='no_template'`, `severity_score` NULL on all 3,239; only 44 distinct real `policy_name` | **Partially.** The factor series carry the real macro number, so a policy lens can vote on a number instead of on a placeholder. The 3,239 sentinel rows remain and must keep being excluded by the existing predicate (`policy_name != '__NO_POLICY_TEMPLATE__'`, as in `postgres_schema.sql:343-345`). |
 | D4 | **Degenerate FK columns** | `moat_evaluations.company_id`→isin **0/2,653**; `business_model_profiles.company_id`→isin **0**; `geographic_exposure.company_id`→isin **0**; `document_chunks.industry_id`/`.sector_id` **0/2,031,900** | **Partially — by avoidance.** The spine links on `symbol` TEXT (the only key that resolves: 2,652 / 2,651 / 5,468 / 2,585) and adds **no** integer `company_id` FK. It does not repair the existing dangling FKs; it declines to extend them. |
-| D5 | **63% of ensemble weight on mute lenses** | material rows 43,789: quality 0, policy 0, supply 0 directions; factor 42,346. Weights: supply 0.358 + quality 0.271 = **0.629** (`desk_quant_2026-09-25.md:25`, `test_findings_2026-09-24.md:9`) | **Not fixed directly — supplies the missing input.** Mute lenses are mute because there is nothing dated for them to vote on. The spine is the *mechanism* by which `policy_macro`/`supply_chain` gain dated flows. It is not a *guarantee*: the weight distribution only moves once real history accumulates under the §4 promotion bar. |
+| D5 | **63% of ensemble weight on mute lenses** | material rows 43,789: quality 0, policy 0, supply 0 directions; factor 42,346. Weights: supply 0.358 + quality 0.271 = **0.629** (sources not in this repo; figures kept as recorded) | **Not fixed directly — supplies the missing input.** Mute lenses are mute because there is nothing dated for them to vote on. The spine is the *mechanism* by which `policy_macro`/`supply_chain` gain dated flows. It is not a *guarantee*: the weight distribution only moves once real history accumulates under the §4 promotion bar. |
 | D6 | **Levels without history** | `moat_history` 2,654 rows / **2** dates; `policy_eni_history` 5,470 / **1** date (all `2021-10-27`); `ripple_history` 76 / 5 dates | **Not fixed.** That is substrate *versioning* for moat/policy/ripple, a different workstream. The spine is a new table that is **born dated**; it cannot retro-date the others. |
 | D7 | **Unconditional regime** | `model_explainer_rankings` 69,500 rows, `regime_tag='*'` on **100%**; 4 lenses × exactly 17,375 | **Partially.** The spine can supply *real, dated* regime tags (e.g. `rates_up`, `crude_down`) as a derived classification. The ranking table stays degenerate until `EODCorrector` starts writing conditioned rows. |
 | D8 | **No sector taxonomy** | `master_companies.sector`: NULL 2,714 + `General Diversified` 1,868 + `Other` 1,363 = **5,945/6,445 = 92.2% unusable**; `industries` = 12 archetype rows | **Not fixed — explicitly out of scope.** The spine returns honest-NULL at company→sector and reports how many names that hides. Needs a user answer — **Q9**. |
-| D9 | **Quarantine leaks** | `event_id='MEV_56' / event_name='PHASE5_DEMO_MILESTONE'` escapes `where: "event_id LIKE 'PHASE5%'"` (`substrate_hygiene.py:70-75`); 35 declared-but-unresolvable ripples escape `unresolvable_ripples` (needs `target_type IS NULL`, `substrate_hygiene.py:89-98`) | **Not fixed** — but the spine's own rules (§1.7) key on **source value**, not key naming, precisely so this class is not reproduced. |
+| D9 | **Quarantine leaks** | `event_id='MEV_56' / event_name='PHASE5_DEMO_MILESTONE'` escapes `where: "event_id LIKE 'PHASE5%'"` (`substrate_hygiene.py:76-81`); 35 declared-but-unresolvable ripples escape `unresolvable_ripples` (needs all four target columns NULL, `substrate_hygiene.py:89-98`) | **Not fixed** — but the spine's own rules (§1.7) key on **source value**, not key naming, precisely so this class is not reproduced. |
 | D10 | **Macro substrate is thin and partly archived** | `macro_events` 30 rows, **11 already `'Archived'`** by `prune_decayed_signals()`'s 24-month rule; 3/30 with no `affected_nodes_json`; `macro_events.category`: Fiscal 13 / Archived 11 / Policy 2 / Trade 2 / Monetary 1 / Regulatory 1 | **Partially.** The spine is dated and is **not** subject to the 24-month archive rule (see **Q11**) — that is the point of building it separately. |
 
 ### 3.2 The honest summary of the spine's own value
@@ -639,11 +639,11 @@ Constant elasticities (D1), dangling numeric FKs elsewhere (D4), the 59.2% polic
 Ordered by how much each blocks the actual goal.
 
 1. **Exposure magnitudes** — `|∂return_ij / ∂factor_k|` per company. The spine supplies the shock; **nothing in the repo supplies the loading.** This is the single largest gap and it is the reason the spine alone answers nothing. Table: `factor_symbol_link` (§1.8), deferred.
-2. **Edge estimation** — the loading must be *estimated*, not asserted. Repo has no estimation harness. It needs a panel regression or binned event study run under the `strategies.md` §4 bar: ≥30 cohorts (≥13 at 20D), cohort-clustered mean ≥ +500bps net of measured costs, hit-rate CI lower > 0.5 cluster-robust, same sign in both regimes, shuffle-entry placebo ≈ 0. **An exposure asserted by an LLM is a placeholder wearing a number's clothes** — the same failure as D3, one layer up.
+2. **Edge estimation** — the loading must be *estimated*, not asserted. Repo has no estimation harness. It needs a panel regression or binned event study run under the bar set in a planning doc not in this repo (its §4): ≥30 cohorts (≥13 at 20D), cohort-clustered mean ≥ +500bps net of measured costs, hit-rate CI lower > 0.5 cluster-robust, same sign in both regimes, shuffle-entry placebo ≈ 0. **An exposure asserted by an LLM is a placeholder wearing a number's clothes** — the same failure as D3, one layer up.
 3. **Forward integrator** — a component that, given (new observation, exposure table, edge estimates), emits per-symbol predicted returns. Does not exist. Must be a `*_decision`-only consumer of §2.
 4. **Verifier** — record the prediction, realize the forward return, score the error. `model_validation_scores` and `move_attribution` are the wrong shapes: they score *lens agreement* and *residual attribution*, not *predicted magnitude vs realised magnitude*. Needs a new `factor_forecast_log(forecast_id, asof_date, series_id, symbol, predicted_return, predicted_horizon, is_point_in_time, created_at)` plus a scoring pass, carrying the same PIT guarantees — and it must be an `*_evaluation` consumer (§2.8), because reading the future is its entire job.
 5. **Sector taxonomy** (D8) — before any sector-level answer is possible at all.
-6. **Survivorship / universe discipline** — the universe map was found shifting (2,093/2,481 → Microcap 250, `next_wave_plan` §4). A forward-return join across a moving universe needs a dated membership table or the forward returns are not comparable across time. Cheap to get wrong, expensive to notice.
+6. **Survivorship / universe discipline** — the universe map was found shifting (2,093/2,481 → Microcap 250, planning doc not in this repo §4). A forward-return join across a moving universe needs a dated membership table or the forward returns are not comparable across time. Cheap to get wrong, expensive to notice.
 
 **Bottom line for the user: the factor spine is a necessary and sufficient *foundation* for "predict which stocks benefit" and a necessary-but-nowhere-near-sufficient piece of it. Items 1–4 above are the actual work.**
 
@@ -659,9 +659,9 @@ Three properties, in order of importance:
 - **A loader that cannot reach its source returns `[]` and records the failure; it never raises into the pipeline.** Follows `peer_graph`'s `insufficient_signal` discipline (`peer_graph.py:24-27`, recorded in `company_peer_runs`) and the `reality_intelligence` ingest pattern. A source being unreachable is a *reported* degradation, not an exception.
 - **With zero reachable sources the whole system still runs**: zero observations, every series honest-NULL, the verifier reports `n_observations=0` and refuses to produce a score. Nothing fabricates a zero, a neutral value, or a carry-forward from nothing.
 
-### 4.2 Components (all specified; none written by this task)
+### 4.2 Components (specified here; `factor_spine.py` now exists, names below differ where noted)
 
-**`reality_engine/processing/factor_spine.py`** — owns its DDL, following `substrate_hygiene.py:173-178` / `move_attributor.py:170-175` / `repository.py:3853-3874`:
+**`reality_engine/processing/factor_spine.py`** — reads its DDL from `reality_engine/db/factor_spine_schema.sql` (`read_spine_ddl`), following `substrate_hygiene.py:201-211` / `move_attributor.py:170-175` / `repository.py:4062`:
 
 ```python
 FACTOR_SERIES_REGISTRY: tuple[dict, ...] = (
@@ -679,14 +679,14 @@ FACTOR_SERIES_REGISTRY: tuple[dict, ...] = (
 )
 ```
 
-Public surface: `ensure_factor_spine_schema(manager=None)`, `register_series(manager)`, `upsert_observations(manager, series_key, rows) -> int`, `factor_state(manager, series_key, asof_date) -> dict`, `factor_panel(manager, asof_date) -> list[dict]`, `factor_releases(manager, asof_date, series_keys) -> list[dict]`, `gap_audit(manager, series_key, asof_date) -> list[dict]`, `lookahead_audit(manager, series_key, asof_date) -> dict`.
+Public surface (as shipped): `ensure_factor_spine_schema(manager=None)`, `register_series(manager=None, entries=None) -> int`, `upsert_observations(manager, series_key, rows, retrieved_at=None) -> int`, `resolve_as_of(manager, series_key, asof_date, max_lookback_override_days=None) -> dict`, `resolve_panel(manager, asof_date, series_keys) -> list[dict]`, `factor_releases(manager, asof_date, series_keys) -> list[dict]`, `gap_audit(manager, series_key, asof_date) -> list[dict]`, `lookahead_audit(manager, series_key, asof_date) -> dict`.
 
 `upsert_observations` guard (the load-time half of the anti-look-ahead contract):
 ```
 raise ValueError if as_of_date > today            # future knowledge is a bug at construction
 raise ValueError if source not in ALLOWED_SOURCES # no vendor:<name> without a license decision
 raise ValueError if series_id not resolved
-warn + record in factor_load_run if as_of_date < period_end for a monthly/quarterly series
+refuse the row if as_of_date < period_end for a monthly/quarterly/annual series (`factor_spine.py:418-419`)
 ```
 
 **Loader CLI** — a dedicated `run_factor_spine_load.py` was proposed here, in the style of
