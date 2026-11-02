@@ -1,6 +1,6 @@
 """The loop's SQLite store and the sandbox write guard (T-048).
 
-``kec.db`` holds ``doc_text`` (and its FTS5 index), ``docs``, the KEC rows copied out of the
+The company's database (``kec.db`` for KEC) holds ``doc_text`` (and its FTS5 index), ``docs``, the rows copied out of the
 read-only stores with their source recorded in ``sources``, and the loop's own ``facts``,
 ``formulas`` and ``answers``.  Every path the loop writes goes through ``inside()``: the sandbox
 root is the only writable place, and a path that resolves outside it raises ``SandboxViolation``
@@ -13,7 +13,7 @@ import os
 import sqlite3
 from pathlib import Path
 
-DB_NAME = "kec.db"
+from reality_engine.gap_loop.company import current
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS doc_text(
@@ -85,8 +85,8 @@ def append_jsonl_inside(root: Path, relative: str, row: dict) -> Path:
     return path
 
 
-def connect(root: Path, name: str = DB_NAME) -> sqlite3.Connection:
-    path = inside(root, name)
+def connect(root: Path, name: str | None = None) -> sqlite3.Connection:
+    path = inside(root, name or current().db_name)
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.executescript(SCHEMA)
