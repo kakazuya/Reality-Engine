@@ -443,8 +443,20 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
     except Exception:  # noqa: BLE001
         pass
     lock = threading.Lock()
+    hp = int(state.get("hp_slots") or 0) if stage in ("answer", "reanswer") and tier1 is None else 0
+    if hp:
+        from reality_engine.gap_loop import remote
+        problem = remote.sync_db(sandbox)
+        if problem:
+            log(logfile, f"HP slots off for this stage: {problem}")
+            hp = 0
+        else:
+            log(logfile, f"HP: kec.db copied, {hp} answer sessions there")
+            count += hp
 
-    def work() -> None:
+    def work(slot: int = 0) -> None:
+        on_hp = slot >= count - hp
+        t1, t2 = (remote.run_tier1, remote.run_tier2) if on_hp else (tier1, tier2)
         local = conn if count == 1 else _thread_conn(sandbox, conn)
         lookup = store.page_lookup(local)
         row_lookup = store.row_lookup(local)
@@ -465,7 +477,7 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
                 accept = lambda payload, tier=1, u=unit: accept_answers(
                     u, payload, lookup, state["as_of"], row_lookup, tier)
             outcome = run_unit(unit, accept, sandbox, local, logfile, round_no=round_no,
-                               tier1=tier1, tier2=tier2, sleep=sleep)
+                               tier1=t1, tier2=t2, sleep=sleep)
             with lock:
                 for row in outcome["attempts"]:
                     rows.append(row)
@@ -480,12 +492,13 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
                         store.put_answer(local, round_no, {**answer, "tier": outcome["tier"]})
                     local.commit()
                 log(logfile, f"unit {unit.id} stage={unit.stage} size={unit.size} "
-                             f"tier={outcome['tier']} ok={outcome['ok']}")
+                             f"tier={outcome['tier']} ok={outcome['ok']}{' host=hp' if on_hp else ''}")
 
     if count == 1:
         work()
         return rows
-    threads = [threading.Thread(target=work, name=f"gap-loop-{n}", daemon=True) for n in range(count)]
+    threads = [threading.Thread(target=work, args=(n,), name=f"gap-loop-{n}", daemon=True)
+               for n in range(count)]
     for thread in threads:
         thread.start()
         sleep(2)  # stagger starts so four sessions do not hit the CLI at the same instant
@@ -554,7 +567,7 @@ def write_report(sandbox: Path, round_no: int, questions: list[dict], statuses: 
 
 
 def run_loop(sandbox: Path, *, max_rounds: int = MAX_ROUNDS, budget: float = BUDGET_USD,
-             as_of: str = AS_OF, tier1=None, tier2=None, sleep=time.sleep) -> int:
+             as_of: str = AS_OF, tier1=None, tier2=None, sleep=time.sleep, hp_slots: int = 0) -> int:
     conn = store.connect(sandbox)
     logfile = store.inside(sandbox, LOG)
     logfile.parent.mkdir(parents=True, exist_ok=True)
@@ -564,7 +577,7 @@ def run_loop(sandbox: Path, *, max_rounds: int = MAX_ROUNDS, budget: float = BUD
     except Exception as exc:  # noqa: BLE001
         log(logfile, f"job_watch not registered: {type(exc).__name__}: {exc}")
     questions = load_questions(sandbox)
-    state = {"spent": 0.0, "budget": budget, "as_of": as_of, "escalated": set()}
+    state = {"spent": 0.0, "budget": budget, "as_of": as_of, "escalated": set(), "hp_slots": hp_slots}
     statuses: dict[str, dict] = {}
     previous: dict[str, str | None] = {}
     no_close = 0
@@ -665,6 +678,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-rounds", type=int, default=MAX_ROUNDS)
     parser.add_argument("--budget", type=float, default=BUDGET_USD)
     parser.add_argument("--as-of", default=AS_OF)
+    parser.add_argument("--hp-slots", type=int, default=0, help="answer sessions to run on the HP laptop")
     args = parser.parse_args(argv)
     try:
         sandbox = ensure_sandbox(args.sandbox)
@@ -685,7 +699,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.ledger_summary:
             print(ledger_summary(sandbox, args.opus_transcript, args.since))
             return 0
-        return run_loop(sandbox, max_rounds=args.max_rounds, budget=args.budget, as_of=args.as_of)
+        return run_loop(sandbox, max_rounds=args.max_rounds, budget=args.budget, as_of=args.as_of,
+                        hp_slots=args.hp_slots)
     except SystemExit as exc:
         print(str(exc), file=sys.stderr)
         return 4
