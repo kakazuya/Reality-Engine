@@ -114,14 +114,14 @@ Most of these are still unverified today.
 **Position:** The requirement is right. Define it as "first public at", not "computed at". Version only what the first hypothesis needs: the results filing date and point-in-time quarterly revenue/PAT.
 **Why:**
 - Versioning everything is another architecture project.
-- `test_findings_2026-09-24.md` §2 shows why it matters: lenses fed by values with no history can never vote.
+- the 2026-09-24 test findings, §2 (source file no longer in the repo) show why it matters: lenses fed by values with no history can never vote.
 - Only one feature family is on the critical path right now.
 **Confidence:** high
 
 ### Q12
 **Position:** Set them aside. Label them "unvalidated, excluded from all scoring". Do not delete them. They come back only through a hypothesis card.
 **Why:**
-- On 43,789 material moves, the quality, policy and supply lenses emitted **0** directional votes (`test_findings_2026-09-24.md` §1).
+- On 43,789 material moves, the quality, policy and supply lenses emitted **0** directional votes (2026-09-24 test findings, §1; source file no longer in the repo).
 - Moat history has 2 dates and policy history has 1. Geographic exposure has 37 USA rows out of 3,568. These are seeds, not measurements.
 - Keeping them as "candidates" lets them leak back into dossiers and theses as if they meant something.
 **Confidence:** high
