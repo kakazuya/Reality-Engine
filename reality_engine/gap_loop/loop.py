@@ -217,22 +217,34 @@ def accept_fix(unit: Unit, payload, sandbox: Path, conn, as_of: str, tier: int =
         return False, f"fix outcome {outcome!r} is not fixed/no_change", {}
     lookup = store.page_lookup(conn)
     facts: list[dict] = []
+    rejected: list[str] = []
+    lines = 0
     proposals = store.inside(sandbox, "state", "proposals", f"{unit.id}.jsonl")
     if proposals.exists():
+        # One bad proposal no longer sinks the unit (2 Nov: ten questions escalated over one line each);
+        # bad lines are counted and reported, good ones stored.
         for number, line in enumerate(proposals.read_text(encoding="utf-8").splitlines(), 1):
             if not line.strip():
                 continue
+            lines += 1
             try:
                 row = json.loads(line)
             except ValueError:
-                return False, f"proposal line {number} is not JSON", {}
+                rejected.append(f"line {number}: not JSON")
+                continue
             page = lookup(row.get("doc_key"), row.get("page"))
             if page is None:
-                return False, f"proposal line {number}: source: page not in doc_text", {}
+                rejected.append(f"line {number}: page not in doc_text")
+                continue
+            if page[1]:
+                row["known_at"] = page[1]  # the filing record decides, never the model
             ok, reason = checks.check_fact(row, page[0], page[1], as_of)
             if not ok:
-                return False, f"proposal line {number}: {reason}", {}
+                rejected.append(f"line {number}: {reason}")
+                continue
             facts.append(row)
+    if lines and not facts and outcome == "fixed":
+        return False, "every proposal failed its check: " + "; ".join(rejected[:3]), {}
     formulas: list[dict] = []
     formula_file = store.inside(sandbox, "state", "proposals", f"{unit.id}.formulas.json")
     if formula_file.exists():
@@ -250,7 +262,7 @@ def accept_fix(unit: Unit, payload, sandbox: Path, conn, as_of: str, tier: int =
         store.add_formula(conn, row)
     conn.commit()
     return True, None, {"facts": len(facts), "formulas": len(formulas),
-                        "answers": 0}
+                        "answers": 0, "rejected": len(rejected)}
 
 
 def _tokens(session) -> dict[str, int] | None:
