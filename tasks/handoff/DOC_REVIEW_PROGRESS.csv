@@ -522,4 +522,5 @@ tasks/backtests/H02_preregistration.md,195,195,kept,"pre-registered before outco
 tasks/codex_tasks/DSH_PLUGIN_IMPLEMENTATION.md,195,195,changed,effort xhigh→max (core.py:66); no default permission (core.py:1100-1106); limit 6 updated,
 tasks/answer_bench/REPORT.md,196,196,kept,"dated measured report; run_bench/recheck/rollup, PROPOSALS and reality-data tools all exist",
 plugins/code-intel/README.md,207,207,changed,"removed duplicated Known-gaps block; ci.py subcommands, --root, constants, paths, --stdio, pyrightconfig all verified",
-FUNDAMENTAL_REALITY_ENGINE_OBJECTIVES.md,208,4,kept-partial,"locked vision thesis, not a code claim; raw-on-D conflict flagged for Shivam, not edited",
+FUNDAMENTAL_REALITY_ENGINE_OBJECTIVES.md,208,208,changed,"Checked files, functions, tables, CLI commands and tests with Glob/Grep/Read; fixed moat sum to 2.65, CTE location, Whisper model, missing tests and CLI, and marked unbuilt tagging as planned",
+tasks/council_2026-10-06/round1_quant_lead.md,209,14,changed-partial,"Cited SESSION_CLOSEOUT_2026-10-05.md is absent from repo with no replacement; reworded citation, kept figures; PIT_LABEL_AUDIT file confirmed present",
