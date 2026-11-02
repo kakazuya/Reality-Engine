@@ -101,6 +101,29 @@ def test_parse_rows_takes_the_last_block():
     assert loop.parse_rows("no block") == []
 
 
+def test_archive_mode_queues_only_the_archive_and_lifts_its_rule_in_the_worktree_only(repo):
+    (repo / "tasks/archive").mkdir(parents=True)
+    (repo / "tasks/archive/OLD.md").write_text("old\n", encoding="utf-8")
+    (repo / ".claude").mkdir()
+    settings = {"permissions": {"deny": [loop.ARCHIVE_RULE, "Read(.tmp/**)"]}}
+    (repo / loop.SETTINGS).write_text(json.dumps(settings), encoding="utf-8")
+    run(repo, "add", "-A")
+    run(repo, "commit", "-q", "-m", "archive")
+    rows = loop.read_progress(repo)
+    loop.settle_unsent(repo, rows)
+    assert {r["file"]: r["outcome"] for r in rows}["tasks/archive/OLD.md"] == "skipped-protected"
+    assert [i.file for i in loop.build_queue(repo, rows, archive=True)] == ["tasks/archive/OLD.md"]
+    assert loop.lift_archive_rule(repo)
+    lifted = json.loads((repo / loop.SETTINGS).read_text(encoding="utf-8"))
+    assert lifted["permissions"]["deny"] == ["Read(.tmp/**)"]
+    assert loop.git(repo, "status", "--porcelain") == ""
+    (repo / "tasks/archive/OLD.md").write_text("edited\n", encoding="utf-8")
+    batch = [loop.Item("tasks/archive/OLD.md", 1, 1, 1)]
+    assert loop.guard_changes(repo, batch, None, archive=True) == {"tasks/archive/OLD.md": "archive is read-only"}
+    loop.restore_archive_rule(repo)
+    assert json.loads((repo / loop.SETTINGS).read_text(encoding="utf-8")) == settings
+
+
 def test_refuses_main(repo):
     run(repo, "branch", "-M", "main")
     assert loop.loop(repo, None, False, None) == 2

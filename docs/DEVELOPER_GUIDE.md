@@ -474,6 +474,7 @@ and eleven failed/needs-review lines. Test:
 - **Stops:** usage limit sleeps 15 minutes; 3 failures in a row, or $25 estimated at list price, stops it. The log's last line starts `DONE`, `STOPPED` or `PAUSED`. The estimate leaves out sessions killed at the context limit, which report no cost.
 - **Overnight:** `reality_engine/scripts/doc_review_keeper.py` restarts the loop 20 minutes after a failure or crash, at most 12 times, with no model call. Done, the budget stop and a file too large for a batch end it, with a `KEEPER ended` line in the log. Each restart counts its $25 afresh.
 - **Blind spot:** the reader sees a worktree with no gitignored files and cannot read the archive, `.tmp` or the dsh runtime folder. The first run wrote false "not in the repo" notes from this, so the prompt now forbids that claim; check any such note against the main checkout before merging.
+- **Archive:** `--archive` reviews only `tasks/archive/`, with Read, Grep and Glob and no Edit: archived records are history, so each file is kept or proposed for deletion. Shivam lifted the archive read rule for T-045 on 2 Nov; the loop drops it from the worktree's `.claude/settings.json` only (hidden from git with skip-worktree) and puts it back when the run ends. The rule stays on `main`.
 
 `reality_engine/scripts/session_hooks.py` holds two hooks. `stop` blocks one stop while `job_watch` reports a stalled job, never twice in a row and never inside the loop. `precompact` prints what a summary must keep. Tests: `python -m pytest reality_engine/tests/test_doc_review_loop.py -q`.
 

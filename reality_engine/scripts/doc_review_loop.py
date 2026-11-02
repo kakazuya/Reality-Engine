@@ -8,6 +8,10 @@ and a whole-file deletion is only proposed in the CSV.  Work stays on the review
 
     python reality_engine/scripts/doc_review_loop.py --root <worktree> --log <file>
     python reality_engine/scripts/doc_review_loop.py --root <worktree> --dry-run
+    python reality_engine/scripts/doc_review_loop.py --root <worktree> --archive --log <file>
+
+``--archive`` reviews only ``tasks/archive/``, read-only: Shivam lifted its read rule for T-045
+on 2 Nov.  The rule is lifted in the review worktree only, and put back when the run ends.
 """
 from __future__ import annotations
 
@@ -45,6 +49,9 @@ PROTECTED = re.compile(
     r"^(tasks/RULINGS\.md|tasks/TASKS(_DONE)?\.md|tasks/STATE\.md|AGENTS\.md|tasks/master_bank/|tasks/pilot60/pilot_bank"
     r"|tasks/pilot60/PILOT_BANK|tasks/archive/|tasks/handoff/DOC_REVIEW|tasks/QUESTION_BANK_|tasks/reddit_mining/QUESTION_BANK_)"
 )
+ARCHIVE = re.compile(r"^tasks/archive/")
+ARCHIVE_RULE = "Read(tasks/archive/**)"
+SETTINGS = ".claude/settings.json"
 # Annual-report text extracts, not documentation: deleting the folder is Shivam's call.
 GENERATED = re.compile(r"^tasks/ar_study/text/")
 
@@ -72,6 +79,50 @@ End with one fenced json block and nothing after it, one row per file:
 [{{"file": "path", "outcome": "kept|changed|delete-proposed|pending-generated", "reason": "one short line, naming what you checked"}}]
 ```
 """
+
+
+ARCHIVE_PROMPT = """You are reviewing archived project records for staleness. Task T-045. Work only on the listed files.
+
+Files in `tasks/archive/` are history. Do not edit them, even where they disagree with the code now.
+Read every listed line yourself, with exactly the offset and limit given. Then decide each file:
+- kept: it is still the record of a decision, result or measurement, or a file outside `tasks/archive/` names it.
+- delete-proposed: it is superseded, holds no result recorded nowhere else, and nothing outside `tasks/archive/` names it.
+Before proposing a delete, Grep for the file's name across the repository and cite what you found.
+You run in a worktree with no gitignored files, and `.tmp/` and the dsh runtime folder are hidden from you: never write that a file is gone.
+Never read D:\\Shivam_Private or any key.
+
+Files:
+{files}
+
+End with one fenced json block and nothing after it, one row per file:
+```json
+[{{"file": "path", "outcome": "kept|delete-proposed", "reason": "one short line, naming what you checked"}}]
+```
+"""
+
+
+def is_protected(name: str, archive: bool = False) -> bool:
+    return bool(PROTECTED.match(name)) and not (archive and ARCHIVE.match(name))
+
+
+def lift_archive_rule(root: Path) -> bool:
+    """Drop the archive read rule from the worktree's settings, hidden from git so no commit carries it."""
+    path = root / SETTINGS
+    if not path.exists():
+        return False
+    data = json.loads(path.read_text(encoding="utf-8"))
+    deny = data.get("permissions", {}).get("deny", [])
+    if ARCHIVE_RULE not in deny:
+        return False
+    deny.remove(ARCHIVE_RULE)
+    git(root, "update-index", "--skip-worktree", SETTINGS)
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
+def restore_archive_rule(root: Path) -> None:
+    git(root, "update-index", "--no-skip-worktree", SETTINGS)
+    git(root, "restore", "--", SETTINGS)
 
 
 @dataclass
@@ -136,14 +187,14 @@ def doc_files(root: Path) -> list[str]:
     return [f for f in git(root, "ls-files").splitlines() if f.lower().endswith(DOC_SUFFIXES)]
 
 
-def settle_unsent(root: Path, rows: list[dict]) -> int:
+def settle_unsent(root: Path, rows: list[dict], archive: bool = False) -> int:
     """Record protected and generated files without any model call."""
     seen = {r["file"] for r in rows}
     added = 0
     for name in doc_files(root):
         if name in seen:
             continue
-        if PROTECTED.match(name):
+        if is_protected(name, archive):
             outcome, reason = "skipped-protected", "Not sent to the model: ruling, record or blocked folder"
         elif GENERATED.match(name):
             outcome, reason = "pending-generated", "Annual-report text extract, not read; deleting is Shivam's call"
@@ -160,11 +211,15 @@ def line_count(path: Path) -> int:
         return sum(1 for _ in fh)
 
 
-def build_queue(root: Path, rows: list[dict]) -> list[Item]:
+def build_queue(root: Path, rows: list[dict], archive: bool = False) -> list[Item]:
     state = {r["file"]: r for r in rows}
     queue: list[Item] = []
     for name in doc_files(root):
+        if archive and not ARCHIVE.match(name):
+            continue
         row = state.get(name)
+        if archive and row and row["outcome"] == "skipped-protected":
+            row = None
         path = root / name
         if not path.exists():
             continue
@@ -227,13 +282,13 @@ def parse_rows(text: str) -> list[dict]:
     return [r for r in data if isinstance(r, dict) and r.get("file") and r.get("outcome")] if isinstance(data, list) else []
 
 
-def run_batch(root: Path, batch: list[Item], logfile: Path | None) -> Result:
+def run_batch(root: Path, batch: list[Item], logfile: Path | None, archive: bool = False) -> Result:
     listing = "\n".join(f"- {i.file}: offset {i.start}, limit {i.end - i.start + 1} (file has {i.lines} lines)" for i in batch)
     cmd = [
-        CLAUDE, "-p", PROMPT.format(files=listing), "--model", MODEL, "--effort", "medium",
+        CLAUDE, "-p", (ARCHIVE_PROMPT if archive else PROMPT).format(files=listing), "--model", MODEL, "--effort", "medium",
         "--output-format", "stream-json", "--verbose", "--max-turns", str(MAX_TURNS),
-        "--allowedTools", "Read,Grep,Glob,Edit",
-        "--disallowedTools", "Bash,PowerShell,Write,NotebookEdit,Agent,WebFetch,WebSearch,Skill",
+        "--allowedTools", "Read,Grep,Glob" if archive else "Read,Grep,Glob,Edit",
+        "--disallowedTools", "Bash,PowerShell,Write,NotebookEdit,Agent,WebFetch,WebSearch,Skill" + (",Edit" if archive else ""),
         "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--no-session-persistence",
     ]
     proc = subprocess.Popen(
@@ -276,7 +331,7 @@ def run_batch(root: Path, batch: list[Item], logfile: Path | None) -> Result:
     return result
 
 
-def guard_changes(root: Path, batch: list[Item], logfile: Path | None) -> dict[str, str]:
+def guard_changes(root: Path, batch: list[Item], logfile: Path | None, archive: bool = False) -> dict[str, str]:
     """Restore what the model must not have touched. Returns reverted file -> reason."""
     allowed = {i.file for i in batch}
     reverted: dict[str, str] = {}
@@ -285,8 +340,10 @@ def guard_changes(root: Path, batch: list[Item], logfile: Path | None) -> dict[s
         if name == PROGRESS:
             continue
         bad = None
-        if name not in allowed or PROTECTED.match(name):
+        if name not in allowed or is_protected(name, archive):
             bad = "outside the batch"
+        elif archive:
+            bad = "archive is read-only"
         elif "D" in status:
             bad = "deleted by the model"
         elif "?" in status:
@@ -334,11 +391,11 @@ def record(rows: list[dict], batch: list[Item], result: Result, reverted: dict[s
         upsert(rows, {"file": item.file, "lines": item.lines, "lines_read": lines_read, "outcome": outcome, "reason": reason[:300], "commit": ""})
 
 
-def commit(root: Path, batch: list[Item], logfile: Path | None) -> None:
+def commit(root: Path, batch: list[Item], logfile: Path | None, archive: bool = False) -> None:
     names = [i.file for i in batch if (root / i.file).exists()]
     git(root, "add", "--", PROGRESS, *names)
     message = (
-        f"T-045 Haiku review: {len(batch)} files, first {batch[0].file}\n\n"
+        f"T-045 Haiku {'archive ' if archive else ''}review: {len(batch)} files, first {batch[0].file}\n\n"
         "Co-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>\n"
     )
     done = subprocess.run(
@@ -354,22 +411,31 @@ def heartbeat(path: Path | None, stop: threading.Event) -> None:
         path.with_suffix(".beat").write_text(f"{time.time():.0f}", encoding="utf-8")
 
 
-def loop(root: Path, logfile: Path | None, dry_run: bool, max_batches: int | None) -> int:
-    stop = threading.Event()
-    threading.Thread(target=heartbeat, args=(logfile, stop), daemon=True).start()
+def loop(root: Path, logfile: Path | None, dry_run: bool, max_batches: int | None, archive: bool = False) -> int:
     if git(root, "rev-parse", "--abbrev-ref", "HEAD").strip() == "main":
         log(logfile, "STOPPED refusing to run on main")
         return 2
+    lifted = archive and not dry_run and lift_archive_rule(root)
+    try:
+        return run_loop(root, logfile, dry_run, max_batches, archive)
+    finally:
+        if lifted:
+            restore_archive_rule(root)
+
+
+def run_loop(root: Path, logfile: Path | None, dry_run: bool, max_batches: int | None, archive: bool) -> int:
+    stop = threading.Event()
+    threading.Thread(target=heartbeat, args=(logfile, stop), daemon=True).start()
     spent = 0.0
     failures = 0
     batches = 0
     chars = BATCH_CHARS
     rows = read_progress(root)
-    if settle_unsent(root, rows) and not dry_run:
+    if settle_unsent(root, rows, archive) and not dry_run:
         write_progress(root, rows)
         git(root, "add", "--", PROGRESS)
         subprocess.run(["git", "-C", str(root), "commit", "-q", "-m", "T-045 protected and generated files recorded, not read"], env=child_env(), check=True)
-    queue = build_queue(root, rows)
+    queue = build_queue(root, rows, archive)
     log(logfile, f"queue {len(queue)} files, {sum(i.end - i.start + 1 for i in queue):,} lines")
     if dry_run:
         for item in queue[:15]:
@@ -386,7 +452,7 @@ def loop(root: Path, logfile: Path | None, dry_run: bool, max_batches: int | Non
         if not batch:
             log(logfile, f"STOPPED cannot fit {queue[0].file} in a batch")
             return 4
-        result = run_batch(root, batch, logfile)
+        result = run_batch(root, batch, logfile, archive)
         spent += result.cost
         batches += 1
         if result.limited and not result.ok:
@@ -406,11 +472,11 @@ def loop(root: Path, logfile: Path | None, dry_run: bool, max_batches: int | Non
             continue
         failures = 0
         chars = BATCH_CHARS
-        reverted = guard_changes(root, batch, logfile)
+        reverted = guard_changes(root, batch, logfile, archive)
         record(rows, batch, result, reverted)
         write_progress(root, rows)
-        commit(root, batch, logfile)
-        queue = build_queue(root, rows)
+        commit(root, batch, logfile, archive)
+        queue = build_queue(root, rows, archive)
         log(logfile, f"committed; {len(queue)} files left, estimated ${spent:.2f}")
     log(logfile, f"DONE estimated ${spent:.2f}")
     stop.set()
@@ -423,9 +489,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--log", type=Path)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--max-batches", type=int)
+    parser.add_argument("--archive", action="store_true", help="review tasks/archive/ only, read-only")
     args = parser.parse_args(argv)
     try:
-        return loop(args.root.resolve(), args.log, args.dry_run, args.max_batches)
+        return loop(args.root.resolve(), args.log, args.dry_run, args.max_batches, args.archive)
     except Exception as exc:  # the watcher needs a terminal line whatever went wrong
         log(args.log, f"STOPPED {type(exc).__name__}: {str(exc)[:300]}")
         return 1
