@@ -6,7 +6,7 @@ case on Great Eastern Shipping and to find out why it was missed (answer in §5)
 ## 1. What was read
 
 - **The Great Eastern Shipping Co. (GESHIP)**, FY24 annual report, filed 2024-07-08. Downloaded from the BSE link
-  already in our index to `src/GESHIP_FY24_AR.pdf`. The DB and the ingestion job were not touched.
+  already in our index to `src/GESHIP_FY24_AR.pdf` (that PDF is not in this repo; the section texts are in `tasks/ar_study/text/`). The DB and the ingestion job were not touched.
   171 PDF pages (many are two-page spreads; printed page numbers run to about 300), 819k characters, 12 near-empty
   pages.
 - Compared against the Q3 FY24 call (2024-01-31), the Q4 FY24 call (2024-05-10) and both decks (from
@@ -110,15 +110,13 @@ works through Nifty200 → Nifty500 → rest, and **stopped partway through the 
 
 GESHIP is Nifty500 but not Nifty200. My Phase 1 candidate query only looked at downloaded files, so it skipped
 GESHIP without saying so, and I wrongly reported that GESHIP had no reports. Screener is right that the reports
-exist. Logged as an open item in `tasks/STATE.md` → Known data gaps.
-
+exist.
 **Cash flow.** There is no structured cash-flow data. `annual_financials.operating_cash_flow_inr_cr` (source:
 yfinance) is 0 or null on 12,432 of 13,015 rows, including all three study companies. `mkt_nse_pit_xbrl_facts` holds
 only insider-trade disclosures (no financial-statement fields). So Cochin's negative operating cash flow, customer
 advances, receivables, contingent liabilities and related-party figures **today exist only in the annual-report
-PDFs**. Two ways to fix it: parse the NSE results XBRL (STATE "Next" #1; it carries cash flow only half-yearly), or
-pull the cash flow, balance-sheet detail and key notes out of the reports into tables. Also logged in STATE.
-
+PDFs**. Two ways to fix it: parse the NSE results XBRL (it carries cash flow only half-yearly), or
+pull the cash flow, balance-sheet detail and key notes out of the reports into tables.
 ## 6. Cost: the revised method did not save tokens
 
 - 5-hour window: 58% → 71% (13 points for 1 report). This includes the main session's own work (downloading,
@@ -152,7 +150,7 @@ subsidiary P&L, audit-report modifications).
 ## 8. Decisions for Shivam
 
 1. Phase 2 (10-12 reports) with the heading-rule pre-filter, over two 5-hour windows?
-2. The download gap is in STATE for another session to own. Resuming the download is a separate decision (about
+2. Resuming the download is a separate decision (about
    12.7k reports, about 110 GB).
-3. Cash flow: get it from XBRL (Next #1) or from the reports? This decides whether the report extractor needs the
+3. Cash flow: get it from XBRL (first fix in §5) or from the reports? This decides whether the report extractor needs the
    main statements at all.
