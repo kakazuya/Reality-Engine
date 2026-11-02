@@ -139,6 +139,7 @@ Evidence and stores:
   A formula proposal is {{"name": "...", "expression": "...", "inputs": ["fact measure"], "description": "..."}} and goes to `{unit.sandbox}\\state\\proposals\\{unit.id}.formulas.json`.
 - The loop, not you, checks and stores those rows.
 
+Every script you write starts with a docstring of three lines, `SOURCE: <kind of raw record, e.g. investor deck PDF page text>`, `METHOD: <how, e.g. FTS search then regex on 'Rs. N crores'>`, `FIELDS: <what it pulls, e.g. order value, date, business>`: these scripts are the record of which extraction methods work, to be run later over every raw record.
 Scripted work is Python you write under `{unit.sandbox}\\state\\` and run with Bash (fitz for text; OCR only where a page has no text layer). Do not read a whole PDF into your own context when code can extract it. Never edit `questions\\`, never write outside the sandbox, no network fetches, never read D:\\Shivam_Private or any key file.
 
 Output: end with one fenced json block and nothing after it:
