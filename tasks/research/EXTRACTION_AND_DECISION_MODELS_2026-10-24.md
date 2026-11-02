@@ -110,7 +110,7 @@ If you only send the 9% CPU slice, divide the AR/deck columns by ~11: Clef-flash
 | **GLiNER2 / GLiNER2.5** | Schema-conditioned encoder: zero-shot NER, text classification, structured/JSON extraction, relation extraction, span attributes; 74M/0.2B/0.3B; CPU; 4,096 words; Apache 2.0 | Pre-label entities/relations; route chunks; build silver labels; cheap classification gates | No numeric normalization, no period/unit/standalone-consolidated logic, no open-ended “find every fact”; table cells are not its job. `[S6][S7]` |
 | **NuExtract 1.5/2.0/3** | Template-driven JSON extraction from text or page images; 2.0 4B/8B based on Qwen2.5-VL; NuExtract3 4B, 128K, Apache 2.0, local/API | Known fields: order book, capex, guidance, borrowing maturity, auditor modifications, BRSR rows | You must author the template; it fills values, it does not discover new fact families; Indian multi-column/notes formats unproven; output $5/M makes the API expensive for bulk. `[S5]` |
 | **Small instruction models** (Qwen3.5-9B, Llama-3.1-8B, Gemma-4-26B/12B, Phi-4) | General chat + JSON schema; cheap per token | Narrow classification/JSON on the CPU slice; fallback when free quota is exhausted | The repo’s small/free models needed exhaustive prompts and multiple readers to hit 25/25; Llama-8B-class is likely below the bar on depth/number fidelity. Use only after a pilot. `[S1][S2]` |
-| **Embeddings** (Nemotron-8B, Qwen3-8B, EmbeddingGemma) | Retrieve/chunk similarity | Route to the right 9% slice; dedupe; retrieve for QA | **They retrieve, they do not extract values.** A vector is not a fact; do not count an embedding pass as extraction. `tasks/STATE.md`, `AGENTS.md` §3 |
+| **Embeddings** (Nemotron-8B, Qwen3-8B, EmbeddingGemma) | Retrieve/chunk similarity | Route to the right 9% slice; dedupe; retrieve for QA | **They retrieve, they do not extract values.** A vector is not a fact; do not count an embedding pass as extraction. `tasks/STATE.md`, `AGENTS.md` rule 8 (search) |
 | **Table extraction** (Docling TableFormer, Table Transformer, PyMuPDF find_tables, Camelot, img2table) | Detect table structure/cells | Fixed-format statutory tables; XBRL cross-check | Scrambled columns in text layer; scanned tables need OCR; always validate subtotals/units against XBRL (`financial_validator.py`, `challenger/gate.py`). `[S25]` |
 | **Decision models** (Clef/Drex/Jev) | Score typed questions (`noul`, `choice`, `score`) with calibrated probabilities; no text | Triage/gates: capex/order/guidance change, red flags, routing | Cannot extract a value, quote or page; only answers the options you define; calibration transfer is unproven; no explanation. `[S31]` |
 
@@ -316,7 +316,7 @@ The reply mirrors the question keys:
 | **Solvency/red-flag** | `noul` going-concern/auditor qualification/pledge stress + `score` severity | After ensemble rank, beside the deterministic gate | May add a text flag/veto; may not override pledge >15%, IC <2.5, D/E >1.5. |
 | **Thesis check** | 6 atomic questions: customer concentration, guidance conditionality, capex funding, related-party dependence, accounting change, segment mix | In a hypothesis card / `composite_screener` | Probabilities become features; the card must still pass the harness. |
 | **Regime** | `choice` risk-on/neutral/risk-off + `score` confidence from a JSON state (rates, inflation, trend, FII/DII, breadth) | As an all-peers lens / conditional ranking | A peer lens, not the trunk; no hard market timing without a test. |
-| **Position sizing** | `score` conviction / `noul` “is the thesis intact?” | Only after calibration + backtest | May scale within the 10% ADV / 10% allocation / 8% kill limits; never set size directly from an uncalibrated probability. |
+| **Position sizing** | `score` conviction / `noul` “is the thesis intact?” | Only after calibration + backtest | May scale within the 10% allocation / 8% kill limits; never set size directly from an uncalibrated probability. |
 
 **Harness integration:** add a `DecisionGate` card under `reality_engine/harness/cards/`, consume only `state` fields known at `t` (PIT), pre-register the threshold and the question set, run the H0x pipeline (`book.py`, `costs_tax.py`, `stats.py`, `ledger.py`) with the same 30 bp/tax/benchmark and 499 placebos, and append every variant to the ledger. Run it across the four separate periods required by FRAMEWORK §6; do not fit thresholds on 2026 (2026 is live). A gate that only improves a backtest after seeing the test period is not a gate.
 
@@ -385,14 +385,14 @@ The reply mirrors the question keys:
 
 ### Repo (read-only)
 
-- `tasks/FRAMEWORK.md` — authority: cash-only long book, 10% allocation, 8% kill, 5%/8% portfolio DD, 10% ADV, 0.30% round trip, after-tax, 2021–2025 evidence, 2026 live, four periods, fluke control.
-- `AGENTS.md` §3 — all-peers ensemble; decision models are a peer/gate, not the trunk.
+- `tasks/FRAMEWORK.md` — authority: cash-only long book, 10% allocation, 8% kill, 5%/8% portfolio DD, 0.30% round trip, after-tax, 2021–2025 evidence, 2026 live, four periods, fluke control.
+- `AGENTS.md` §3 — all-peers ensemble (FF5 is one peer, not the trunk). Treating decision models as a peer/gate is this doc's recommendation, not stated in AGENTS.
 - `tasks/coverage/coverage_2026-10-24.json` — concall/deck/AR counts and gaps (main checkout).
 - `tasks/FY26_AR_CHUNKING_2026-10-24.md` — 5,361 FY26 ARs, 908,969 chunks, 563.6M tokens, 70 garbled-font reports, 1 SDC hang.
 - `tasks/ar_study/CPU_LEVERS.md` — 59% repeated text; ~9% LLM slice; 12–32 page-equivalents/report; ~5 s/report CPU.
 - `tasks/ar_study/READER_FINDINGS.md` — 25/25 gate, depth ≥4,500, <1% not in text, free-reader quotas and pass list.
 - `tasks/OPENCODE_AR_HANDBOOK.md`, `tasks/OPENCODE_ORCHESTRATION.md` — free-reader route, Go/Zen quotas, 56–69k AR pages/day/account.
-- `tasks/STATE.md` — DeepSeek pilot 10.6k in / 23.3k out, 25.2/30, $17.69 for 1,056, $338 for 21,695; deck 815,837 pages read, 11,995,750 facts.
+- `tasks/STATE.md` (figures as of 2026-10-24; the live file no longer carries them) — DeepSeek pilot 10.6k in / 23.3k out, 25.2/30, $17.69 for 1,056, $338 for 21,695; deck 815,837 pages read, 11,995,750 facts.
 - `reality_engine/scripts/concall_deepseek.py` — `PRICE_IN, PRICE_OUT = 0.15, 0.60`.
 - `reality_engine/harness/` — `book.py`, `costs_tax.py`, `stats.py`, `ledger.py`; H01/H02 reports and 499-draw placebo pattern.
 - `tasks/backtests/H01_report.md`, `H02_report.md` — ledger/BH/placebo conventions to reuse for a gate.
