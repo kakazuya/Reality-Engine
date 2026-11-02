@@ -173,7 +173,7 @@ def test_two_haiku_failures_escalate_to_tier2_then_opus(root, conn):
 def test_tier2_default_is_sonnet_at_medium(root, monkeypatch):
     seen = {}
 
-    def fake_run_session(cmd, cwd, env=None, model=None):
+    def fake_run_session(cmd, cwd, env=None, model=None, **_):
         seen["cmd"], seen["model"] = cmd, model
         return session_runner.SessionResult(final='```json\n[]\n```', model=model)
 

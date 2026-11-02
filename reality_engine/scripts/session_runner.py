@@ -45,6 +45,42 @@ def child_env(extra: dict | None = None) -> dict:
     return env
 
 
+# One small JSON file per live headless session, read by the `claude-headless` mod (Shivam, 2 Nov:
+# show which Claude CLI sub-sessions are running).  Shared by both accounts' config folders.
+HEARTBEAT_DIR = Path(os.environ.get("CLAUDE_HEADLESS_DIR") or r"C:\Users\warri\.claude\headless-sessions")
+
+
+class Heartbeat:
+    """Writes ``<pid>.json`` on each assistant event and removes it when the session ends.
+
+    A heartbeat never stops a session: every write is best effort."""
+
+    def __init__(self, pid: int, model: str, label: str, cwd: Path, started: float) -> None:
+        self.path = HEARTBEAT_DIR / f"{pid}.json"
+        self.base = {"pid": pid, "model": model, "label": label or Path(str(cwd)).name,
+                     "cwd": str(cwd), "started": started, "loop_pid": os.getpid()}
+        self.write(None)
+
+    def write(self, result: "SessionResult | None") -> None:
+        row = dict(self.base, updated=time.time())
+        if result is not None:
+            row.update(peak=result.peak, tool_calls=sum(result.tool_calls.values()),
+                       output_tokens=int(result.usage.get("output_tokens") or 0))
+        try:
+            HEARTBEAT_DIR.mkdir(parents=True, exist_ok=True)
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(row), encoding="utf-8")
+            os.replace(tmp, self.path)
+        except OSError:
+            pass
+
+    def close(self) -> None:
+        try:
+            self.path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def hidden_console() -> dict:
     """Popen arguments for a session nobody sees (Shivam, 2 Nov: no console pop-ups on this laptop).
 
@@ -173,6 +209,7 @@ def run_session(
     context_limit: int = CONTEXT_LIMIT,
     model: str = MODEL,
     env: dict | None = None,
+    label: str = "",
 ) -> SessionResult:
     """Run one command, parse its stream, kill it at the context limit or after ``run_seconds``."""
     started = time.time()
@@ -180,6 +217,7 @@ def run_session(
         cmd, cwd=str(cwd), env=env or child_env(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", **hidden_console(),
     )
+    beat = Heartbeat(proc.pid, model, label, cwd, started)
     timed_out: list[bool] = [False]
 
     def stop() -> None:
@@ -219,6 +257,7 @@ def run_session(
                                 result.pages_unknown += 1
                             else:
                                 result.pages_read += count
+                beat.write(result)
                 if result.peak >= context_limit:
                     result.over_limit = True
                     proc.kill()
@@ -232,6 +271,7 @@ def run_session(
     finally:
         timer.cancel()
         proc.wait()
+        beat.close()
         result.duration_s = time.time() - started
     if not saw_result and (result.usage or result.over_limit):
         # Killed before the CLI's result event: price the tokens it did spend, and say so.

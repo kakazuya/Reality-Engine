@@ -177,7 +177,7 @@ def _run_claude(unit, model: str, tier: int) -> dict:
     cmd = build_cmd(prompt, model=model, allowed_tools=ALLOWED_TOOLS, disallowed_tools=DISALLOWED_TOOLS,
                     mcp_config=mcp_config(unit.sandbox), max_turns=MAX_TURNS)
     env = child_env({"KEC_GAP_LOOP": "1"})
-    session = run_session(cmd, unit.sandbox, env=env, model=model)
+    session = run_session(cmd, unit.sandbox, env=env, model=model, label=f"KEC loop {unit.id}")
     payload = parse_json_block(session.final)
     error = session.error
     if payload is None and not error:
