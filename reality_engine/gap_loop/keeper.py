@@ -18,7 +18,7 @@ from pathlib import Path
 from reality_engine.gap_loop.loop import REPO_ROOT, log
 from reality_engine.scripts import job_watch
 
-FINAL_CODES = {3: "budget reached", 4: "refused sandbox"}
+FINAL_CODES = {3: "budget reached", 4: "refused sandbox or prepare"}
 MAX_RESTARTS = 12
 RESTART_WAIT = 20 * 60
 

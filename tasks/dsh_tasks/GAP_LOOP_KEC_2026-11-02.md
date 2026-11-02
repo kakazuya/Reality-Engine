@@ -10,7 +10,7 @@ Goal: Build `reality_engine/gap_loop/`, an unattended loop that answers 100 ques
 
 Sandbox: `D:\RealityEngine\sandbox\kec_loop\` (Shivam gave full permissions inside it). It holds:
 - `questions\KEC_QUESTIONS.jsonl`: 100 questions, written by Claude. Read only; never edit or reword them.
-- `raw\`: copies of KEC's PDFs: `history\` (annual reports, results, decks, transcripts, results press releases, 276 material filings; file names are BSE attachment ids, map them to date and title through `bse_announcements` / `corporate_documents` in the read-only stores), `company_site_transcripts\` (earnings call transcripts from KEC's site, with `_manifest.json` giving title and date), `extra_*`.
+- `raw\`: copies of KEC's PDFs: `history\` (annual reports, results, decks, transcripts, results press releases, 276 material filings; file names are BSE **NEWSIDs** — checked against `bse_announcements.ann` on 2 Nov, 433 of 436 files carry one — fall back to the attachment name and then to `corporate_documents`, and take the date from the filing record), `company_site_transcripts\` (earnings call transcripts from KEC's site, with `_manifest.json` / `_known_at.json` giving title and date by sha256), `extra_*`.
 - Everything the loop writes: `kec.db` (SQLite), `state\`, `logs\`, `reports\`.
 
 Stages, each made of small units that fit one Haiku session:
@@ -55,3 +55,16 @@ The requirement above stands as given; the built code now differs in five review
 - A fix unit holds at most 10 questions; a larger gap group is split into further units.
 - The tier-2 `start_worker` call passes `approved_by="Shivam, 2 Nov: full permissions inside the T-048 sandbox"`.
 - An escalated unit writes one line per question that got no valid row, with its last check reason, instead of one line per unit.
+
+## Amendment after the failed first real run (T-048 round 2, 2 Nov)
+
+The run of 2 Nov failed inside 3 minutes: three Haiku attempts at 95k on a 10-, then 5-, then 2-question unit, because one raw `reality-data` reply is tens of thousands of tokens; tier 2 was refused (`repo_root_write_requires_confirmation`); every ledger row had `cost_usd` 0. What changed (method: `docs\DEVELOPER_GUIDE.md` section N):
+
+- **Tier 1 reads a prepared store, not raw MCP replies.** `reality_engine/gap_loop/prepare.py`, code only and idempotent, runs before round 1 (and stand-alone as `--prepare-only`): every PDF under `raw\` into `kec.db` `doc_text` page by page with `fitz` (`needs_ocr` with empty text under 50 characters), an FTS5 index over it, a `docs` row per file with type, title, filing date and `known_at`, and KEC's rows copied out of the read-only stores (ar_facts, deck_figures, results_xbrl filings and quarterly, concall items, NSE/BSE prices and delivery, shareholding, BSE announcements), each recorded in `sources` with its source table and key. It logs one `tier=0` `prepare` ledger unit and stops the run before answering if more than a third of the `raw\history` PDFs cannot be dated.
+- **No `reality-data` MCP in tier 1**: the strict MCP config holds no servers; the session runs small SQL with `LIMIT` and FTS queries through Bash/Python.
+- **A number may cite a `kec.db` row** (`table` + `rowid`) instead of a `doc_text` page; the check reads that row and needs the value in it, and the quote when given. The `tool` + `args` re-run path is removed with it.
+- **The number matcher reads `Rs.1,23,456 crore`**: a period before a number now only disqualifies when a digit precedes it (a decimal), so a real transcript's `Rs.11,000 crores` is no longer rejected (and the earlier vacuous pass on the `000` of `11,000` goes with it).
+- **Answer units hold 5 questions**, not 10.
+- **Tier 2 start passes `confirm_repo_root_write=True`** as well as `approved_by`.
+- **Cost** comes from the session's `result` event `total_cost_usd`; a session killed before it is priced from its tokens at Haiku 5.5 list price (0.10 in, 0.50 out USD per MTok, cache read 0.1x and cache write 1.25x the input price) and the ledger row says `cost_estimated: true`.
+- First prepare run, 2 Nov: 436 files, 436 docs, 6,246 pages (6,180 script_text, 66 needs_ocr), 66 of 386 `raw\history` PDFs undated (under a third, so the run may answer), 272 s; tables ar_facts 22,422, deck_figures 9,849, results_filings 12, results_quarterly 12, concall_items 0 (the store has 7 KEC concall docs but no extracted items for the ISIN), shp_index 22, announcements 1,083, px_nse 1,926, px_bse 1,925.

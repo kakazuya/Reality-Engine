@@ -1,6 +1,7 @@
 """T-048 one-company gap loop: 100 questions, gaps, fix units, re-answer, ledger, reports.
 
     python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\kec_loop --dry-run
+    python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\kec_loop --prepare-only
     python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\kec_loop
     python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\kec_loop --ledger-summary \\
         --opus-transcript <managing session .jsonl> --since <ISO time>
@@ -22,13 +23,13 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-from reality_engine.gap_loop import checks, ledger, store, tiers
+from reality_engine.gap_loop import checks, ledger, prepare, store, tiers
 from reality_engine.scripts.session_runner import LIMIT_SLEEP, MODEL
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 QUESTIONS = "questions/KEC_QUESTIONS.jsonl"
 AS_OF = "2026-10-19"
-BATCH = 10
+BATCH = 5
 FIX_UNIT_MAX = 10
 MAX_ATTEMPTS = 3
 MAX_ROUNDS = 5
@@ -41,15 +42,14 @@ FIX_INSTRUCTIONS = {
     "unverified": (
         "The answer's number failed a check. If the cited page is not in kec.db doc_text, put that "
         "page's text there with its filing date, keyed so an answer can cite it. If the number comes "
-        "from a store, say in your summary which reality-data tool and args the re-answer must cite, "
-        "and quote the value and sentence exactly as that call returns them: the loop checks them "
-        "when the answer cites them."
+        "from a prepared store, say in your summary which kec.db table and rowid hold it, and quote "
+        "the value exactly as that row has it: the loop re-reads the row when the answer cites it."
     ),
     "text_missing": (
         "Extract the text of the KEC documents the failed answers cite but cannot read, page by "
         "page, into kec.db doc_text; use fitz in a Python script and OCR only a page with no text "
-        "layer. known_at comes from the filing record (bse_announcements/corporate_documents), never "
-        "the crawl date."
+        "layer. known_at comes from the filing record (kec.db docs, bse_announcements/"
+        "corporate_documents), never the crawl date."
     ),
     "not_extracted": (
         "Extract the numbers the failed answers need from the held documents (results tables first, "
@@ -57,13 +57,13 @@ FIX_INSTRUCTIONS = {
         "quote, page, unit, period and known_at. The loop checks and stores them."
     ),
     "needs_formula": (
-        "Define each missing measure as a formula over numbers already stored in kec.db facts, write "
-        "it to state/proposals/<unit>.formulas.json, and say which facts are its inputs. Do not invent "
-        "an input that is not stored."
+        "Define each missing measure as a formula over numbers already stored in kec.db facts or in a "
+        "prepared store table, write it to state/proposals/<unit>.formulas.json, and say which "
+        "inputs it uses. Do not invent an input that is not stored."
     ),
     "wrong_store": (
-        "The data is held but the tools did not reach it: find the store or table that has it (KEC's "
-        "own documents under raw, reality-data MCP, kec.db doc_text) and record the retrieval path in "
+        "The data is held but the query did not reach it: find the kec.db table that has it (see "
+        "`sources` for what each copy is, `docs` for the documents) and record the retrieval path in "
         "state/proposals/ as facts rows the loop can check."
     ),
 }
@@ -171,7 +171,7 @@ def reanswer_units(questions: list[dict], statuses: dict[str, dict], sandbox: Pa
     return answer_units([q for q in questions if q["id"] in chosen], sandbox, stage="reanswer")
 
 
-def accept_answers(unit: Unit, payload, lookup, as_of: str, tier: int = 1):
+def accept_answers(unit: Unit, payload, lookup, as_of: str, row_lookup=None, tier: int = 1):
     """Accept one answer report.  A malformed report fails the unit; a failed number only its row.
 
     The rows are rewritten here: a row whose number fails a check keeps the model's answer text but
@@ -191,7 +191,8 @@ def accept_answers(unit: Unit, payload, lookup, as_of: str, tier: int = 1):
         if row is None:
             invalid[qid] = f"{qid}: no row in the report"
             continue
-        malformed, reasons = checks.check_answer_row(row, lookup, question.get("as_of") or as_of)
+        malformed, reasons = checks.check_answer_row(row, lookup, question.get("as_of") or as_of,
+                                                     row_lookup)
         if malformed:
             invalid[qid] = f"{qid}: {malformed}"
             continue
@@ -267,11 +268,8 @@ def _tokens(session) -> dict[str, int] | None:
 def method_tags(unit: Unit, result: dict, rows_added: dict) -> list[str]:
     """Tags the loop can prove from the stream and the store, never from the model's own words."""
     session = result.get("session")
-    tool_calls = (session.tool_calls if session else result.get("tool_calls")) or {}
     commands = " ".join(session.bash_commands if session else []).lower()
     tags: list[str] = []
-    if any(str(name).startswith("mcp__reality-data") for name in tool_calls):
-        tags.append("mcp_lookup")
     if re.search(r"\bsqlite3?\b|\bselect\b", commands):
         tags.append("sql")
     if rows_added.get("doc_text"):
@@ -316,6 +314,8 @@ def attempt_row(unit: Unit, result: dict, attempt: int, rows_added: dict) -> dic
         "files_written": files_written,
         "job_id": result.get("job_id"),
     }
+    if session is not None and getattr(session, "cost_estimated", False):
+        row["cost_estimated"] = True
     if result.get("tokens_note"):
         row["tokens_note"] = result["tokens_note"]
     if result.get("over_limit"):
@@ -415,6 +415,7 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
           *, tier1=None, tier2=None, sleep=time.sleep) -> list[dict]:
     rows: list[dict] = []
     lookup = store.page_lookup(conn)
+    row_lookup = store.row_lookup(conn)
     while queue:
         if state["spent"] >= state["budget"]:
             log(logfile, f"STOPPED budget ${state['spent']:.2f} reached")
@@ -423,7 +424,8 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
         if unit.stage == "fix":
             accept = lambda payload, tier=1, u=unit: accept_fix(u, payload, sandbox, conn, state["as_of"], tier)
         else:
-            accept = lambda payload, tier=1: accept_answers(unit, payload, lookup, state["as_of"])
+            accept = lambda payload, tier=1, u=unit: accept_answers(
+                u, payload, lookup, state["as_of"], row_lookup, tier)
         outcome = run_unit(unit, accept, sandbox, conn, logfile, round_no=round_no,
                            tier1=tier1, tier2=tier2, sleep=sleep)
         for row in outcome["attempts"]:
@@ -480,8 +482,8 @@ def write_report(sandbox: Path, round_no: int, questions: list[dict], statuses: 
     sheet2 = book.create_sheet("ledger")
     headers = ["unit", "stage", "size", "attempt", "tier", "model", "outcome", "ts_start", "ts_end",
                "tokens_in", "cache_read", "cache_creation", "tokens_out", "thinking", "cost_usd",
-               "tool_calls", "bash", "methods", "pages_model", "pages_code", "rows_added",
-               "files_written", "error"]
+               "cost_estimated", "tool_calls", "bash", "methods", "pages_model", "pages_code",
+               "rows_added", "files_written", "error"]
     sheet2.append(headers)
     for row in rows:
         tokens = row.get("tokens") or {}
@@ -490,6 +492,7 @@ def write_report(sandbox: Path, round_no: int, questions: list[dict], statuses: 
             row.get("model"), row.get("outcome"), row.get("ts_start"), row.get("ts_end"),
             tokens.get("input"), tokens.get("cache_read"), tokens.get("cache_creation"),
             tokens.get("output"), tokens.get("thinking"), row.get("cost_usd"),
+            bool(row.get("cost_estimated")),
             json.dumps(row.get("tool_calls") or {}), json.dumps(row.get("bash") or []),
             ", ".join(row.get("methods") or []), row.get("pages_model"), row.get("pages_code"),
             json.dumps(row.get("rows_added") or {}), json.dumps(row.get("files_written") or []),
@@ -517,6 +520,12 @@ def run_loop(sandbox: Path, *, max_rounds: int = MAX_ROUNDS, budget: float = BUD
     previous: dict[str, str | None] = {}
     no_close = 0
     log(logfile, f"T-048 gap loop start: {len(questions)} questions, budget ${budget:.2f}, as_of {as_of}")
+    counts = prepare.prepare(sandbox, as_of=as_of)
+    log(logfile, prepare.summary(counts))
+    stop = prepare.blocked(counts)
+    if stop:
+        log(logfile, f"STOPPED prepare: {stop}")
+        return 4
     for round_no in range(1, max_rounds + 1):
         rows: list[dict] = []
         if round_no == 1:
@@ -553,6 +562,13 @@ def plan(sandbox: Path) -> list[str]:
     for unit in units:
         lines.append(f"  {unit.id}: {unit.size} questions, tier 1, {MODEL}")
     lines += [
+        "prepare (code only, no model): every PDF under raw into kec.db doc_text page by page, an FTS5 "
+        "index over it, a docs row per file with its type and filing date, and KEC's rows copied out "
+        "of the read-only stores with their source table in `sources`; idempotent, logged as a "
+        "tier-0 `prepare` unit; the run stops before answering when more than a third of the history "
+        "PDFs cannot be dated",
+        "tier 1 reads kec.db only: the strict MCP config has no servers, so no reality-data reply can "
+        "fill the context; SQL with LIMIT and FTS queries are run by Bash/Python",
         "checks: a malformed report (not JSON, a qid missing, a bad status or gap type) fails the unit; "
         "a number that fails a check is stored as unverified with its reason and is not counted as answered",
         f"tier 2: a unit failing {MAX_ATTEMPTS} tier-1 attempts goes to one DeepSeek dsh worker at a "
@@ -587,6 +603,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sandbox", type=Path, required=True)
     parser.add_argument("--dry-run", action="store_true", help="print the round-1 plan; no model call")
+    parser.add_argument("--prepare-only", action="store_true",
+                        help="run the prepare stage (code only, no model) and print its counts")
     parser.add_argument("--ledger-summary", action="store_true", help="print totals per tier and method")
     parser.add_argument("--opus-transcript", type=Path, help="managing Claude session transcript .jsonl")
     parser.add_argument("--since", help="ISO time; sum the transcript's usage from here on")
@@ -601,6 +619,14 @@ def main(argv: list[str] | None = None) -> int:
             return 4
         if args.dry_run:
             print("\n".join(plan(sandbox)))
+            return 0
+        if args.prepare_only:
+            counts = prepare.prepare(sandbox, as_of=args.as_of)
+            print(prepare.summary(counts))
+            stop = prepare.blocked(counts)
+            if stop:
+                print(f"STOPPED prepare: {stop}")
+                return 4
             return 0
         if args.ledger_summary:
             print(ledger_summary(sandbox, args.opus_transcript, args.since))

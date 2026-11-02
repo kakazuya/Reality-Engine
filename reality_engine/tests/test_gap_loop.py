@@ -1,10 +1,10 @@
-"""T-048: the gap loop's checks, store sources, escalation, halving, round stop, sandbox guard, plan.
+"""T-048: the gap loop's checks, kec.db row sources, prepare stage, escalation, halving, round stop,
+sandbox guard, plan and the estimated cost of a killed session.
 
 No model call: every tier is a fake or not reached.
 """
 from __future__ import annotations
 
-import importlib
 import json
 import os
 import shutil
@@ -17,19 +17,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from reality_engine.gap_loop import checks, loop, store, tiers
-from reality_engine.scripts import job_watch
+from reality_engine.gap_loop import checks, loop, prepare, store, tiers
+from reality_engine.scripts import job_watch, session_runner
 from reality_engine.scripts.session_runner import MODEL
 
 REPO = Path(__file__).resolve().parents[2]
 PAGE = ("Consolidated revenue from operations for FY26 was Rs 1,23,456 crore. "
         "EBITDA margin for FY26 was 8.7%.")
 QUOTE = "Consolidated revenue from operations for FY26 was Rs 1,23,456 crore."
-STORE_RECORD = {"ok": True, "found": True, "promoter": {"percent": 79.3, "known_at": "2026-07-15"},
-                "quote": "promoter holding 79.3% as at 30 June 2026"}
-STORE_NUMBER = {"measure": "promoter holding", "value": 79.3, "unit": "pct", "period": "Q2FY26",
-                "tool": "holding", "args": {"symbol": "KEC", "as_of": "2026-10-19"},
-                "known_at": "2026-07-15", "quote": "promoter holding 79.3%"}
 
 
 def sandbox() -> Path:
@@ -76,6 +71,10 @@ def test_number_not_in_quote_is_rejected():
     assert not ok and "does not occur" in reason
     assert checks.check_number(123456, "inr_cr", QUOTE)[0]          # Indian grouping + crore word
     assert checks.check_number(123000, "inr_cr", "order book of 1.23 lakh crore")[0]
+    # A real transcript writes "Rs.11,000 crores": the period is an abbreviation, not a decimal.
+    assert checks.check_number(11000, "inr_cr", "revenues have crossed Rs.11,000 crores")[0]
+    assert checks.check_number(123456, "inr_cr", "Rs.1,23,456 crore was the revenue")[0]
+    assert not checks.check_number(0.56, "pct", "margin of 1.56 percent")[0]
 
 
 def test_margin_stored_as_money_is_rejected():
@@ -118,41 +117,29 @@ def test_a_checked_answer_row_needs_the_doc_text_page(root, conn):
     assert "status" in checks.check_answer_row(bad_status, lookup, "2026-10-19")[0]
 
 
-def test_a_store_sourced_number_is_re_run_and_must_be_in_the_record(root, conn, monkeypatch):
-    seen = {}
-
-    def fake(tool, args):
-        seen["call"] = (tool, args)
-        return STORE_RECORD
-
-    monkeypatch.setattr(checks, "call_tool", fake)
-    lookup = store.page_lookup(conn)  # doc_text is empty: a store number never needs a page
-    row = {"qid": "KEC001", "status": "answered", "answer": "Promoter holding was 79.3%.",
-           "numbers": [dict(STORE_NUMBER)]}
-    assert checks.check_answer_row(row, lookup, "2026-10-19") == (None, [])
-    assert seen["call"] == ("holding", {"symbol": "KEC", "as_of": "2026-10-19"})
-    monkeypatch.setattr(checks, "call_tool",
-                        lambda tool, args: {**STORE_RECORD, "promoter": {"percent": 42.0}})
-    malformed, reasons = checks.check_answer_row(row, lookup, "2026-10-19")
-    assert malformed is None and reasons and "not in the holding record" in reasons[0]
-
-
-def test_a_store_record_dated_after_as_of_fails(root, conn, monkeypatch):
-    monkeypatch.setattr(checks, "call_tool",
-                        lambda tool, args: {**STORE_RECORD, "known_at": "2026-11-01"})
-    row = {"qid": "KEC001", "status": "answered", "answer": "Promoter holding was 79.3%.",
-           "numbers": [dict(STORE_NUMBER)]}
-    malformed, reasons = checks.check_answer_row(row, store.page_lookup(conn), "2026-10-19")
-    assert malformed is None and reasons and "after the as-of" in reasons[0]
-
-
-def test_reality_data_tool_functions_import_without_the_mcp_server():
-    if str(checks.SERVER_DIR) not in sys.path:
-        sys.path.insert(0, str(checks.SERVER_DIR))
-    for module_name, function_name in set(checks.TOOL_FUNCTIONS.values()):
-        assert callable(getattr(importlib.import_module(module_name), function_name))
-    ok, reason = checks.check_store_fact({**STORE_NUMBER, "tool": "nope"}, "2026-10-19")
-    assert not ok and "unknown reality-data tool" in reason
+def test_a_number_citing_a_kec_db_row_is_read_back(root, conn):
+    conn.execute("CREATE TABLE shp_index(quarter_end TEXT, promoter_pct REAL, known_at TEXT)")
+    conn.execute("INSERT INTO shp_index VALUES('2026-06-30', 51.7, '2026-07-15')")
+    rowid = conn.execute("SELECT rowid FROM shp_index").fetchone()[0]
+    lookup = store.page_lookup(conn)  # doc_text is empty: a row number never needs a page
+    rows = store.row_lookup(conn)
+    number = {"measure": "promoter holding", "value": 51.7, "unit": "pct", "period": "Q2FY26",
+              "table": "shp_index", "rowid": rowid, "known_at": "2026-07-15"}
+    row = {"qid": "KEC001", "status": "answered", "answer": "Promoter holding was 51.7%.",
+           "numbers": [number]}
+    assert checks.check_answer_row(row, lookup, "2026-10-19", rows) == (None, [])
+    wrong = {**row, "numbers": [{**number, "value": 42.0}]}
+    malformed, reasons = checks.check_answer_row(wrong, lookup, "2026-10-19", rows)
+    assert malformed is None and reasons and "not in the shp_index row" in reasons[0]
+    late = {**row, "numbers": [{**number, "known_at": "2026-11-01"}]}
+    assert "after the as-of" in checks.check_answer_row(late, lookup, "2026-10-19", rows)[1][0]
+    off_date = {**row, "numbers": [{**number, "known_at": "2026-07-16"}]}
+    assert "own date" in checks.check_answer_row(off_date, lookup, "2026-10-19", rows)[1][0]
+    missing = {**row, "numbers": [{**number, "rowid": 99}]}
+    assert "no shp_index row" in checks.check_answer_row(missing, lookup, "2026-10-19", rows)[1][0]
+    assert checks.check_row_fact({**number, "table": "nope"}, "2026-10-19", rows)[1].startswith("table:")
+    quoted = {**row, "numbers": [{**number, "quote": "promoter holding was 51.7 percent"}]}
+    assert "not in the shp_index row" in checks.check_answer_row(quoted, lookup, "2026-10-19", rows)[1][0]
 
 
 # --- tiers -------------------------------------------------------------------------------------
@@ -273,6 +260,86 @@ def test_tier2_start_carries_approved_by(root, monkeypatch):
     assert manager.start["approved_by"] == tiers.APPROVED_BY
     assert manager.start["permission"] == "danger-full-access"
     assert manager.start["write_scope"] == "data"
+    assert manager.start["confirm_repo_root_write"] is True
+
+
+# --- prepare stage (code only, no model) -------------------------------------------------------
+
+def make_pdf(path: Path, pages: list[str]) -> None:
+    """A small real PDF: one page per string, the text written when it is not empty."""
+    import fitz
+
+    doc = fitz.open()
+    for text in pages:
+        page = doc.new_page()
+        if text:
+            page.insert_text((72, 72), text)
+    doc.save(str(path))
+    doc.close()
+
+
+def test_prepare_fills_doc_text_flags_needs_ocr_and_builds_docs(root, monkeypatch):
+    monkeypatch.setattr(prepare, "STORE_COPIES", ())   # no read-only store in a test
+    monkeypatch.setattr(prepare, "DUCK_COPIES", ())
+    folder = root / "raw" / "history" / "quarterly_results"
+    folder.mkdir(parents=True)
+    make_pdf(folder / "dated.pdf", [PAGE, ""])          # page 1 has text, page 2 has none
+    (root / "raw" / "history" / "material_filing").mkdir(parents=True)
+    make_pdf(root / "raw" / "history" / "material_filing" / "blank.pdf", [""])
+
+    counts = prepare.prepare(root, as_of="2026-10-19")
+    assert counts["files"] == 2 and counts["docs"] == 2
+    assert counts["pages"] == 3 and counts["script_text"] == 1 and counts["needs_ocr"] == 2
+    assert counts["undated"] == 2 and counts["history_undated"] == 2
+    conn = store.connect(root)
+    try:
+        methods = dict(conn.execute("SELECT doc_key || ':' || page, method FROM doc_text").fetchall())
+        assert methods == {"history/quarterly_results/dated.pdf:1": "script_text",
+                           "history/quarterly_results/dated.pdf:2": "needs_ocr",
+                           "history/material_filing/blank.pdf:1": "needs_ocr"}
+        empty = conn.execute("SELECT text FROM doc_text WHERE method='needs_ocr'").fetchall()
+        assert [row[0] for row in empty] == ["", ""]
+        docs = dict(conn.execute("SELECT doc_key, pages FROM docs").fetchall())
+        assert docs == {"history/quarterly_results/dated.pdf": 2,
+                        "history/material_filing/blank.pdf": 1}
+        known = conn.execute("SELECT known_at FROM docs WHERE doc_key LIKE '%dated.pdf'").fetchone()[0]
+        assert known is None                              # undated: excluded from as-of answers
+        assert conn.execute("SELECT COUNT(*) FROM doc_text_fts WHERE doc_text_fts MATCH 'revenue'"
+                            ).fetchone()[0] == 1
+    finally:
+        conn.close()
+    rows = [json.loads(line) for line in
+            (root / "state" / "ledger.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert rows[-1]["tier"] == 0 and rows[-1]["unit"] == "prepare"
+    assert rows[-1]["rows_added"]["doc_text"] == 3 and rows[-1]["methods"] == ["script_text"]
+    again = prepare.prepare(root, as_of="2026-10-19")     # idempotent: nothing extracted twice
+    assert again["pages"] == 0 and again["script_text"] == 0
+    assert again["docs"] == 2
+
+
+def test_prepare_names_a_store_it_cannot_read(root, monkeypatch):
+    monkeypatch.setattr(prepare, "DUCK_COPIES", ())
+    monkeypatch.setattr(prepare, "STORE_COPIES", (
+        {"table": "ar_facts", "db": "missing.db", "source": "ar_facts", "key": "isin=X",
+         "sql": "select 1", "params": ()},))
+    with pytest.raises(RuntimeError, match="cannot read missing.db for KEC"):
+        prepare.prepare(root)
+
+
+def test_a_killed_session_gets_an_estimated_cost(root):
+    killed = [{"type": "assistant", "message": {"content": [],
+                                                "usage": {"input_tokens": 1000, "output_tokens": 200,
+                                                          "cache_read_input_tokens": 0,
+                                                          "cache_creation_input_tokens": 0}}}]
+    script = ";".join([f"print({json.dumps(json.dumps(event))})" for event in killed])
+    result = session_runner.run_session([sys.executable, "-c", script], root, model=MODEL)
+    assert result.cost_estimated and not result.error
+    assert result.cost == pytest.approx(session_runner.estimate_cost(result.usage))
+    assert result.cost == pytest.approx((1000 * 0.1 + 200 * 0.5) / 1e6)
+    finished = [{"type": "result", "total_cost_usd": 0.5, "result": "ok"}]
+    script = ";".join([f"print({json.dumps(json.dumps(event))})" for event in finished])
+    result = session_runner.run_session([sys.executable, "-c", script], root, model=MODEL)
+    assert result.cost == 0.5 and not result.cost_estimated
 
 
 # --- the round stop rule -----------------------------------------------------------------------
@@ -289,10 +356,28 @@ def fake_tier1(unit_: loop.Unit, logfile):
 
 def test_two_rounds_with_no_gap_closed_stop_with_done(root, monkeypatch):
     monkeypatch.setattr(job_watch, "add", lambda *args, **kwargs: None)
+    monkeypatch.setattr(loop.prepare, "prepare", lambda *args, **kwargs: {
+        "files": 0, "docs": 0, "pages": 0, "script_text": 0, "needs_ocr": 0, "known_at": 0,
+        "undated": 0, "history": 0, "history_undated": 0, "tables": {}, "seconds": 0.0})
     rc = loop.run_loop(root, tier1=fake_tier1, tier2=tier2_fail, sleep=lambda s: None)
     assert rc == 0
     text = (root / "logs" / "loop.log").read_text(encoding="utf-8")
     assert "ROUND 1" in text and "ROUND 2" in text and "DONE two rounds closed no gap" in text
+
+
+def test_the_run_stops_before_answering_when_the_documents_cannot_be_dated(root, monkeypatch):
+    monkeypatch.setattr(job_watch, "add", lambda *args, **kwargs: None)
+    monkeypatch.setattr(loop.prepare, "prepare", lambda *args, **kwargs: {
+        "files": 9, "docs": 9, "pages": 0, "script_text": 0, "needs_ocr": 0, "known_at": 3,
+        "undated": 6, "history": 9, "history_undated": 6, "tables": {}, "seconds": 0.0})
+
+    def boom(*args, **kwargs):
+        raise AssertionError("no model call when the prepare stop rule fires")
+
+    monkeypatch.setattr(tiers, "run_tier1", boom)
+    assert loop.run_loop(root, tier1=boom, tier2=boom, sleep=lambda s: None) == 4
+    text = (root / "logs" / "loop.log").read_text(encoding="utf-8")
+    assert "STOPPED prepare: 6 of 9 PDFs" in text
 
 
 # --- sandbox guard and dry run -----------------------------------------------------------------
@@ -318,8 +403,9 @@ def test_dry_run_prints_the_round_one_plan_and_calls_no_model(root, capsys, monk
     monkeypatch.setattr(tiers, "run_tier2", boom)
     assert loop.main(["--sandbox", str(root), "--dry-run"]) == 0
     out = capsys.readouterr().out
-    assert "round 1 plan: 100 questions in 10 answer units" in out
-    assert "answer-01: 10 questions, tier 1" in out
-    assert "answer-10: 10 questions, tier 1" in out
+    assert "round 1 plan: 100 questions in 20 answer units" in out
+    assert "answer-01: 5 questions, tier 1" in out
+    assert "answer-20: 5 questions, tier 1" in out
+    assert "prepare (code only, no model)" in out
     assert "tier 2" in out and "tier 3" in out
     assert not (root / store.DB_NAME).exists()

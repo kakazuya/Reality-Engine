@@ -2,20 +2,16 @@
 
 A number cites one of two sources.  A ``doc_text`` page: the quote occurs on it; the number occurs
 in the quote (Indian digit grouping and crore/lakh/million words allowed); ``known_at`` is the page's
-filing date and not after the as-of date.  A ``reality-data`` tool call (``tool`` + ``args``): the
-call is re-run in Python and the value, and the quote when one is given, must occur in the record it
-returns, whose own date is checked against the as-of date.  Both kinds also need a measure, a unit
-that suits it and a stated period.  A malformed row fails the report; a number that fails a check
-only makes its row ``unverified``.
+filing date and not after the as-of date.  A row of the sandbox's ``kec.db`` (``table`` + ``rowid``):
+the value, and the quote when one is given, must occur in that row, and the row's own ``known_at``
+is checked against the as-of date.  Both kinds also need a measure, a unit that suits it and a stated
+period.  A malformed row fails the report; a number that fails a check only makes its row
+``unverified``.
 """
 from __future__ import annotations
 
-import importlib
-import os
 import re
-import sys
 from datetime import date, datetime
-from pathlib import Path
 
 from reality_engine.contracts import CONTRACTS
 
@@ -23,26 +19,6 @@ STATUSES = ("answered", "partial", "not_found")
 GAP_TYPES = ("text_missing", "not_extracted", "needs_formula", "wrong_store", "absent")
 # A row the loop rewrote because a number failed a check.  Never reported by a model.
 UNVERIFIED = "unverified"
-SERVER_DIR = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
-# Every tool the reality-data MCP server exposes, as (co-located module, function).  server.py itself
-# imports the MCP framework, so the functions are imported from the modules they live in.
-TOOL_FUNCTIONS = {
-    "catalog": ("catalog", "catalog_view"),
-    "schema": ("catalog", "get_schema"),
-    "resolve": ("core", "resolve"),
-    "price": ("core", "price"),
-    "facts": ("core", "facts"),
-    "sql": ("core", "sql"),
-    "delivery": ("lookups_market", "delivery"),
-    "price_extreme": ("lookups_market", "price_extreme"),
-    "holding": ("lookups_market", "holding"),
-    "universe": ("universe", "universe"),
-    "docs": ("lookups_docs", "docs"),
-    "doc_page": ("lookups_docs", "doc_page"),
-    "doc_find": ("lookups_docs", "doc_find"),
-    "search_docs": ("search_docs", "search_docs"),
-}
-DATE_KEYS = {"known_at", "known_at_utc", "date", "filing_date", "published_date"}
 MIN_QUOTE = 12
 MAX_QUOTE = 2000
 TOLERANCE = 0.002
@@ -72,7 +48,9 @@ _MONEY_WORDS = re.compile(
     re.I,
 )
 _NUM = re.compile(
-    r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)\s*"
+    # A number is not part of a word or a decimal fraction.  A period before it only disqualifies
+    # when a digit precedes that period, so "Rs.1,23,456 crore" is read and "1.56" is not split.
+    r"(?<![\w])(?<!\d\.)(\d[\d,]*(?:\.\d+)?)\s*"
     r"(?:(lakh|lac|crore|cr|million|mn|billion|bn|thousand)\b(?:\s*(crore|cr)\b)?"
     r"|(%|percent|per\s*cent)\b)?",
     re.I,
@@ -266,20 +244,6 @@ def check_fact(row: dict, page_text: str | None, doc_known_at: object, as_of: ob
     return True, None
 
 
-def call_tool(tool: str, args: dict):
-    """Re-run one reality-data tool in Python: the server's own function, no MCP round trip.
-
-    Read-only and never on the paid-embedding path, whatever the parent environment says.
-    """
-    target = TOOL_FUNCTIONS.get(str(tool))
-    if target is None:
-        raise KeyError(f"unknown reality-data tool {tool!r}")
-    os.environ.pop("REALITY_DATA_ALLOW_PAID_EMBED", None)
-    if str(SERVER_DIR) not in sys.path:
-        sys.path.insert(0, str(SERVER_DIR))
-    return getattr(importlib.import_module(target[0]), target[1])(**args)
-
-
 def _leaves(node, key: str | None = None):
     """``(key, leaf)`` for every scalar in a nested record."""
     if isinstance(node, dict):
@@ -304,14 +268,11 @@ def _as_number(value: object) -> float | None:
         return None
 
 
-def check_store_fact(row: dict, as_of: object, call=None) -> tuple[bool, str | None]:
-    """A number sourced from a reality-data tool: re-run it; the value and any quote must be in the record."""
-    tool = normalise(row.get("tool"))
-    args = row.get("args")
-    if not tool:
-        return False, "tool: missing"
-    if not isinstance(args, dict):
-        return False, "tool: args must be a JSON object"
+def check_row_fact(row: dict, as_of: object, row_lookup) -> tuple[bool, str | None]:
+    """A number sourced from a ``kec.db`` row: the value, and the quote when given, must be in it."""
+    table = normalise(row.get("table"))
+    if not table:
+        return False, "table: missing"
     if not normalise(row.get("measure")):
         return False, "measure: missing, so its unit cannot be judged"
     for ok, reason in (check_unit(str(row.get("measure") or ""), str(row.get("unit") or "")),
@@ -319,17 +280,11 @@ def check_store_fact(row: dict, as_of: object, call=None) -> tuple[bool, str | N
         if not ok:
             return False, reason
     try:
-        record = (call or call_tool)(tool, dict(args))
-    except KeyError as exc:
-        return False, f"tool: {exc.args[0] if exc.args else exc}"
-    except Exception as exc:  # noqa: BLE001 -- a broken tool call is a failed check, never a crash
-        return False, f"tool: {tool} raised {type(exc).__name__}: {str(exc)[:200]}"
-    if not isinstance(record, dict):
-        return False, f"tool: {tool} returned no record"
-    error = record.get("error")
-    if record.get("ok") is False or error:
-        message = error.get("message") if isinstance(error, dict) else error
-        return False, f"tool: {tool} failed: {str(message or 'no record')[:200]}"
+        record = row_lookup(table, row.get("rowid")) if row_lookup else None
+    except Exception as exc:  # noqa: BLE001 -- a failed lookup is a failed check, never a crash
+        return False, f"table: {table} lookup raised {type(exc).__name__}: {str(exc)[:200]}"
+    if not isinstance(record, dict) or not record:
+        return False, f"table: no {table} row {row.get('rowid')!r} in kec.db"
     leaves = list(_leaves(record))
     try:
         number = float(row.get("value"))  # type: ignore[arg-type]
@@ -337,32 +292,30 @@ def check_store_fact(row: dict, as_of: object, call=None) -> tuple[bool, str | N
         return False, "number: missing or not numeric"
     if not any(_close(value, number) for _, leaf in leaves
                if (value := _as_number(leaf)) is not None):
-        # ponytail: any number in the record counts, so a value beside the cited field (public_pct
-        # for a promoter holding) also passes; match the field path if a wrong number gets through.
-        return False, f"number: {number:g} is not in the {tool} record"
+        # ponytail: any number in the row counts, so a value beside the cited field (public_pct
+        # for a promoter holding) also passes; match the field name if a wrong number gets through.
+        return False, f"number: {number:g} is not in the {table} row"
     quote = normalise(row.get("quote"))
     if quote:
         if len(quote) < MIN_QUOTE:
             return False, "quote: missing or shorter than 12 characters"
         if not any(quote in normalise(leaf) for _, leaf in leaves if isinstance(leaf, str)):
-            return False, f"quote: not in the {tool} record"
+            return False, f"quote: not in the {table} row"
     limit = _as_date(as_of)
     if limit is None:
         return False, "as_of: missing or not a date"
-    dates = [when for key, leaf in leaves if key in DATE_KEYS
-             if (when := _as_date(leaf)) is not None]
-    declared = _as_date(row.get("known_at"))
-    if declared is not None:
-        dates.append(declared)
-    if not dates:
-        return False, "known_at: neither the row nor the record carries a date"
-    late = [when for when in dates if when > limit]
-    if late:
-        return False, f"known_at: the {tool} record is dated {max(late)} after the as-of date"
+    when = _as_date(row.get("known_at"))
+    if when is None:
+        return False, "known_at: missing or not a date"
+    if when > limit:
+        return False, "known_at: after the as-of date"
+    row_known = _as_date(record.get("known_at"))
+    if row_known is not None and row_known != when:
+        return False, "known_at: not the cited row's own date"
     return True, None
 
 
-def check_answer_row(row: dict, page_lookup, as_of: object, call=None) -> tuple[str | None, list[str]]:
+def check_answer_row(row: dict, page_lookup, as_of: object, row_lookup=None) -> tuple[str | None, list[str]]:
     """``(malformed, number reasons)`` for one answer row.
 
     A malformed row -- a bad status, a bad gap type, an empty answer, a number that is not an object
@@ -383,8 +336,8 @@ def check_answer_row(row: dict, page_lookup, as_of: object, call=None) -> tuple[
         if not isinstance(number, dict):
             return "number: not an object", []
         fact = {**number, "measure": number.get("measure") or row.get("measure") or ""}
-        if normalise(number.get("tool")):
-            ok, reason = check_store_fact(fact, as_of, call)
+        if normalise(number.get("table")):
+            ok, reason = check_row_fact(fact, as_of, row_lookup)
         else:
             lookup = page_lookup(number.get("doc_key"), number.get("page")) if page_lookup else None
             if not lookup:

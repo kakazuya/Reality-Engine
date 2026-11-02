@@ -27,6 +27,14 @@ LIMIT_SLEEP = 15 * 60
 LIMIT_WORDS = ("usage limit", "rate limit", "limit reached", "hit your limit", "429", "overloaded")
 USAGE_KEYS = ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens", "output_tokens")
 SKIP_ENV = ("CLAUDE_CODE", "CLAUDE_PID", "CLAUDE_EFFORT")
+# Haiku 5.5 list price, USD per million tokens: tasks/kilo_model_pricing_2026-10-12.csv row
+# "anthropic/claude-haiku-5.5" (in 0.1, out 0.5).  Cache read is billed at 0.1x the input price and
+# cache creation at 1.25x, the Anthropic published multipliers.  Used only when a session is killed
+# before its ``result`` event carries the CLI's own ``total_cost_usd``.
+HAIKU_IN_USD_PER_MTOK = 0.1
+HAIKU_OUT_USD_PER_MTOK = 0.5
+CACHE_READ_MULTIPLIER = 0.1
+CACHE_WRITE_MULTIPLIER = 1.25
 
 
 def child_env(extra: dict | None = None) -> dict:
@@ -84,12 +92,24 @@ def _pages(arg: object) -> int | None:
     return 1 if text.isdigit() else None
 
 
+def estimate_cost(usage: dict) -> float:
+    """USD at Haiku 5.5 list price for a session killed before its ``result`` event."""
+    price = (
+        int(usage.get("input_tokens") or 0) * HAIKU_IN_USD_PER_MTOK
+        + int(usage.get("cache_read_input_tokens") or 0) * HAIKU_IN_USD_PER_MTOK * CACHE_READ_MULTIPLIER
+        + int(usage.get("cache_creation_input_tokens") or 0) * HAIKU_IN_USD_PER_MTOK * CACHE_WRITE_MULTIPLIER
+        + int(usage.get("output_tokens") or 0) * HAIKU_OUT_USD_PER_MTOK
+    )
+    return price / 1e6
+
+
 @dataclass
 class SessionResult:
     """What one killed-or-finished session did, as the ledger needs it."""
 
     peak: int = 0
     cost: float = 0.0
+    cost_estimated: bool = False
     final: str = ""
     tail: str = ""
     over_limit: bool = False
@@ -148,6 +168,7 @@ def run_session(
     timer = threading.Timer(run_seconds, stop)
     timer.start()
     result = SessionResult(model=model)
+    saw_result = False
     try:
         for raw in proc.stdout:  # type: ignore[union-attr]
             result.tail = raw[:400]
@@ -182,6 +203,7 @@ def run_session(
                     proc.kill()
                     break
             elif kind == "result":
+                saw_result = True
                 result.cost = float(event.get("total_cost_usd") or 0)
                 result.final = str(event.get("result") or "")
                 if event.get("is_error"):
@@ -190,6 +212,10 @@ def run_session(
         timer.cancel()
         proc.wait()
         result.duration_s = time.time() - started
+    if not saw_result and (result.usage or result.over_limit):
+        # Killed before the CLI's result event: price the tokens it did spend, and say so.
+        result.cost = round(estimate_cost(result.usage), 6)
+        result.cost_estimated = True
     if timed_out[0] and not result.over_limit:
         result.error = result.error or f"session ran longer than {run_seconds}s"
     joined = (result.final + result.tail).lower()
