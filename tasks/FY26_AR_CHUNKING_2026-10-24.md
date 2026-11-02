@@ -38,7 +38,7 @@ timestamps:
 - **The wall is the SQLite writer.** Persist is ~1 s/report and serialized (single writer, WAL);
   w4's 56.3 reports/min ≈ the 60/min ceiling implied by 1.0 s of write per report. Parse is fully
   hidden behind the writer at 4 workers, so the DB write path (chunk inserts + FTS5) is the limit.
-  Contention shows up as latency, not errors (`busy_timeout` 30 s absorbs it).
+  Contention shows up as latency, not errors (`busy_timeout` absorbs it; `reality_engine/config.py:364` now sets 180 s).
 - **Disk is not the limit** (guard reports 0% disk busy); the network copy is byte-wise irrelevant to
   chunking because rclone and the chunker touch different files.
 
@@ -46,7 +46,7 @@ timestamps:
 
 Serial CLI first (what the task asked for), then **4 workers** once it was clear serial cannot finish
 inside the window (the CLI managed 22-37 reports/min under restore+download contention). The parallel
-driver (`fy26_parallel.py`, scratch) calls the same `PDFIngestor.ingest_pdf` and sets `is_processed`
+driver (`fy26_parallel.py`, scratch, not committed to the repo) calls the same `PDFIngestor.ingest_pdf` and sets `is_processed`
 exactly like `_local_only`.
 
 Two hazards had to be fixed before 4 workers were safe, both found by running it:

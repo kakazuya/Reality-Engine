@@ -154,7 +154,7 @@ Do not delete or update those rows as part of this gate; quarantining existing w
 
 ## 4. Length
 
-`prompt_v3.md` is ~6.5 KB vs ~3.9 KB for v2: the 13-rule block, the two required short examples, and three optional
+`reality_engine/data/concall_pilot/prompt_v3.md` is ~6.5 KB vs ~3.9 KB for v2: the 13-rule block, the two required short examples, and three optional
 `question_gist` keys. No schema block was reflowed beyond adding those keys. At ~19,000 transcripts the extra
 prompt tokens are small relative to transcript tokens; the rules that cost the most (scope, analyst, gate) are the ones
 that prevent a wrong row, which is cheaper than re-reading a transcript.
