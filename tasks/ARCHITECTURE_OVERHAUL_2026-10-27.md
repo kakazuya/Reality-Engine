@@ -1206,7 +1206,7 @@ RESULT: ALL BLOCKS AND QUERIES PARSE
 
 Two things the run proves that reading could not: (a) the FTS5 table really indexes chunk text through its
 triggers (the smoke insert matched), and (b) every query resolves its columns against the proposed schema, with
-the index we intended. Q1 and Q3 currently drive from `ix_chunk_type_known`; with `ANALYZE` statistics they are
+the index we intended. Q1 and Q3 drove from `ix_chunk_type_known` on the 2026-10-27 run; with `ANALYZE` statistics they are
 expected to flip to `chunk_tag` first (§6 note) — the plan stays correct either way.
 
 ## Addendum (2026-10-27, Shivam)
