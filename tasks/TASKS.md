@@ -45,6 +45,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-035 | OPEN | P1 | Pilot: rerun extraction on the 3 companies, answer the same questions, grade by reading | accept: Shivam | from: PROTOTYPE3 grade change 5 | opened 2026-11-02
 - T-036 | OPEN | P2 | Split fact.value into numeric and text, and test metric_citations on the prototype | accept: Shivam | from: T-016 | opened 2026-11-02
 - T-038 | OPEN | P1 | Wire contract-passing extract rows into the fact view; answer narrative questions with retrieved quoted passages, no model | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
+- T-048 | OPEN | P1 | One-company gap loop: 100 sector-fit questions for KEC, Haiku sessions under 100k fill gaps by extraction or computation in a sandbox, Opus manages; replicate to 3, then 60 | accept: Shivam | from: Shivam, 2 Nov | opened 2026-11-02
 
 ## Bank
 - T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02
