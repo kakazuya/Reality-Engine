@@ -12,12 +12,12 @@ credentials, or Codex's main model. No plugin was registered globally and no pai
 
 New:
 
-- `plugins/dsh-worker/.mcp.json` — stdio server launch with the pinned Python 3.14 interpreter, `${PLUGIN_ROOT}` paths, repo-root env. The Codex `.codex-plugin/plugin.json` compatibility manifest described in this 2026-10-21 handoff is no longer in the repo; the plugin is now loaded from `.mcp.json` plus `skills/dsh-worker/SKILL.md`.
+- `plugins/dsh-worker/.mcp.json` — stdio server launch with the pinned Python 3.14 interpreter, relative `server/` paths with `cwd` `.`, repo-root env. The Codex `.codex-plugin/plugin.json` compatibility manifest described in this 2026-10-21 handoff is no longer in the repo; the plugin is now loaded from `.mcp.json` plus `skills/dsh-worker/SKILL.md`.
 - `plugins/dsh-worker/requirements.txt` — `mcp>=2.3,<3` runtime dependency
 - `plugins/dsh-worker/README.md` — runtime, install, heartbeat, shutdown, registration notes
-- `plugins/dsh-worker/runtime/.gitignore` — ignores all job records
+- `plugins/dsh-worker/.gitignore` — ignores `runtime/`, which holds the job records
 - `plugins/dsh-worker/server/dsh_worker_mcp.py` — stdio entry point
-- `plugins/dsh-worker/server/plugin_server.py` — six MCP tools, instructions, annotations
+- `plugins/dsh-worker/server/plugin_server.py` — 17 MCP tools, instructions, annotations
 - `plugins/dsh-worker/server/core.py` — validation, persistent jobs, workspace lock, status/result/message/cancel
 - `plugins/dsh-worker/server/supervisor.py` — hidden detached supervisor, status writer, owned-tree cleanup
 - `plugins/dsh-worker/server/heartbeat.py` — actual `dsh-heartbeat-status/1` / `dsh-heartbeat-control/1` integration

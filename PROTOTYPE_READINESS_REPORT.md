@@ -85,7 +85,7 @@ NESTLEIND) need a stale-year fallback.
 
 ## 2. Root cause: the top-down data layer was only ever built in PostgreSQL
 
-`postgres_schema.sql` (305 lines) is the source of truth for the new funnel. But PostgreSQL was never
+`postgres_schema.sql` (869 lines) is the source of truth for the new funnel. But PostgreSQL was never
 provisioned:
 
 - `config.py` contains **no** PostgreSQL settings at all — SQLite paths only.
@@ -128,7 +128,7 @@ Meanwhile the *legacy* tables are rich: `daily_price_delivery` 2,712,383 rows, `
    Nothing in the docs says so; `README.md` and `PROGRESS_MADE.md` still describe the bottom-up model.
 3. **Docs diverge from code in both directions.** Doc `04` specifies a 0.45/0.35/0.20 weighting with an
    alt-sentiment factor; `PROGRESS_MADE.md` documents 0.45/0.35/0.20 with smart-money; the code uses
-   smart-money. `pipeline/`, `agent/`, `search/` are absent from the `PROGRESS_MADE.md` file tree.
+   smart-money. `agent/` and `search/` are absent from the `PROGRESS_MADE.md` file tree (`pipeline/` is listed).
 4. **Environment is not reproducible.** No `.venv` and no lockfile. Tests only pass on the system
    Python 3.14 at `C:\Users\warri\AppData\Local\Programs\Python\Python314\python.exe`; the managed
    3.13.12 interpreter fails all 7 test modules on import (no pandas/PIL/streamlit).

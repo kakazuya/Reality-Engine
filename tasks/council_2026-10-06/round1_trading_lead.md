@@ -6,6 +6,8 @@
 
 Tax and regulatory numbers below are from memory unless a project file is cited. **They must be checked against current primary sources before they go into `FRAMEWORK.md`.** The Union Budget of Feb 2026 and SEBI's F&O changes from 2024–25 may have moved some of them.
 
+> Source check, 2026-11-02: the `desk_forensic_2026-09-25.md`, `desk_backtest_2026-09-25.md` and `desk_meeting_2026-09-25.md` files, the closeout file and the 100-hour study plan cited below are not in this repo, so their section numbers are the author's references only. Checked against code: `sip_backtest` TAX_SCHEDULE (20% STCG, 12.5% LTCG, ₹1,25,000 exemption) and `LIQ_MIN_TURNOVER_LACS = 50` in `analysis/diffusion_study/common.py`.
+
 ---
 
 ## A. North star and scope
