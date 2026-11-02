@@ -17,6 +17,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 from collections import Counter, deque
 from dataclasses import dataclass, field, replace
@@ -361,6 +362,8 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
         after = store.counts(conn)
         added = dict(applied["added"])
         for table in after:
+            if table == "answers":  # other threads write answers in parallel; accept() counts its own
+                continue
             delta = after[table] - before[table]
             if delta:
                 added[table] = added.get(table, 0) + delta
@@ -388,6 +391,8 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
     after = store.counts(conn)
     added = dict(applied["added"])
     for table in after:
+        if table == "answers":
+            continue
         delta = after[table] - before[table]
         if delta:
             added[table] = added.get(table, 0) + delta
@@ -411,37 +416,81 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
             "rows": {}, "unit": current, "escalated": True, "escalated_qids": escalated}
 
 
+# Sessions at once (Shivam, 2 Nov: run in parallel).  Answer units only read kec.db, so 4 run together;
+# fix units write doc_text, and run one at a time so each ledger row's added rows are its own.
+PARALLEL = {"answer": 4, "reanswer": 4, "fix": 1}
+
+
+def _thread_conn(sandbox: Path, conn):
+    """A connection for a worker thread (sqlite connections are per thread); tests pass ``conn`` through."""
+    if getattr(conn, "_gap_loop_shared", False):
+        return conn
+    local = store.connect(sandbox)
+    local.execute("PRAGMA busy_timeout = 30000")
+    return local
+
+
 def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None, state: dict,
-          *, tier1=None, tier2=None, sleep=time.sleep) -> list[dict]:
+          *, tier1=None, tier2=None, sleep=time.sleep, workers: int | None = None) -> list[dict]:
     rows: list[dict] = []
-    lookup = store.page_lookup(conn)
-    row_lookup = store.row_lookup(conn)
-    while queue:
-        if state["spent"] >= state["budget"]:
-            log(logfile, f"STOPPED budget ${state['spent']:.2f} reached")
-            break
-        unit = queue.popleft()
-        if unit.stage == "fix":
-            accept = lambda payload, tier=1, u=unit: accept_fix(u, payload, sandbox, conn, state["as_of"], tier)
-        else:
-            accept = lambda payload, tier=1, u=unit: accept_answers(
-                u, payload, lookup, state["as_of"], row_lookup, tier)
-        outcome = run_unit(unit, accept, sandbox, conn, logfile, round_no=round_no,
-                           tier1=tier1, tier2=tier2, sleep=sleep)
-        for row in outcome["attempts"]:
-            rows.append(row)
-            ledger.append(sandbox, row)
-            state["spent"] += float(row.get("cost_usd") or 0.0)
-        for leftover in outcome["leftovers"]:
-            queue.appendleft(leftover)
-        if outcome.get("escalated") and unit.stage != "fix":
-            state.setdefault("escalated", set()).update(outcome.get("escalated_qids") or [])
-        if outcome["ok"] and unit.stage in ("answer", "reanswer"):
-            for answer in outcome["payload"]:
-                store.put_answer(conn, round_no, {**answer, "tier": outcome["tier"]})
-            conn.commit()
-        log(logfile, f"unit {unit.id} stage={unit.stage} size={unit.size} "
-                     f"tier={outcome['tier']} ok={outcome['ok']}")
+    if not queue:
+        return rows
+    stage = queue[0].stage
+    count = workers or PARALLEL.get(stage, 1)
+    try:
+        conn.commit()  # an open write on this connection would lock the worker threads out
+        conn.execute("PRAGMA journal_mode = WAL")  # readers and one writer at a time, no lock errors
+    except Exception:  # noqa: BLE001
+        pass
+    lock = threading.Lock()
+
+    def work() -> None:
+        local = conn if count == 1 else _thread_conn(sandbox, conn)
+        lookup = store.page_lookup(local)
+        row_lookup = store.row_lookup(local)
+        while True:
+            with lock:
+                if not queue:
+                    return
+                if state["spent"] >= state["budget"]:
+                    if not state.get("budget_logged"):
+                        state["budget_logged"] = True
+                        log(logfile, f"STOPPED budget ${state['spent']:.2f} reached")
+                    return
+                unit = queue.popleft()
+            if unit.stage == "fix":
+                accept = lambda payload, tier=1, u=unit: accept_fix(
+                    u, payload, sandbox, local, state["as_of"], tier)
+            else:
+                accept = lambda payload, tier=1, u=unit: accept_answers(
+                    u, payload, lookup, state["as_of"], row_lookup, tier)
+            outcome = run_unit(unit, accept, sandbox, local, logfile, round_no=round_no,
+                               tier1=tier1, tier2=tier2, sleep=sleep)
+            with lock:
+                for row in outcome["attempts"]:
+                    rows.append(row)
+                    ledger.append(sandbox, row)
+                    state["spent"] += float(row.get("cost_usd") or 0.0)
+                for leftover in outcome["leftovers"]:
+                    queue.appendleft(leftover)
+                if outcome.get("escalated") and unit.stage != "fix":
+                    state.setdefault("escalated", set()).update(outcome.get("escalated_qids") or [])
+                if outcome["ok"] and unit.stage in ("answer", "reanswer"):
+                    for answer in outcome["payload"]:
+                        store.put_answer(local, round_no, {**answer, "tier": outcome["tier"]})
+                    local.commit()
+                log(logfile, f"unit {unit.id} stage={unit.stage} size={unit.size} "
+                             f"tier={outcome['tier']} ok={outcome['ok']}")
+
+    if count == 1:
+        work()
+        return rows
+    threads = [threading.Thread(target=work, name=f"gap-loop-{n}", daemon=True) for n in range(count)]
+    for thread in threads:
+        thread.start()
+        sleep(2)  # stagger starts so four sessions do not hit the CLI at the same instant
+    for thread in threads:
+        thread.join()
     return rows
 
 
@@ -529,7 +578,12 @@ def run_loop(sandbox: Path, *, max_rounds: int = MAX_ROUNDS, budget: float = BUD
     for round_no in range(1, max_rounds + 1):
         rows: list[dict] = []
         if round_no == 1:
-            queue = deque(answer_units(questions, sandbox))
+            # Resume: a restart does not answer again what round 1 already answered.
+            done = set(store.latest_answers(conn))
+            todo = [q for q in questions if q["id"] not in done]
+            if done:
+                log(logfile, f"resume: {len(done)} questions already answered in round 1, {len(todo)} to go")
+            queue = deque(answer_units(todo, sandbox))
         else:
             queue = deque(fix_units(statuses, sandbox))
             rows += drain(queue, round_no, sandbox, conn, logfile, state,
