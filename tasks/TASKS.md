@@ -21,7 +21,6 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-042 | OPEN | P1 | Rule and chain-of-command ledger: log every gate block, budget overrun, bypass and who did the work; daily report by rule of enforced, sidelined and unmeasured | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-043 | OPEN | P1 | Worker review log: tool calls, thinking and output tokens, job type, time, and Claude's review of prompt, permissions and scope, for every dsh worker and Claude session | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-044 | OPEN | P1 | Catch finished, stalled and failed jobs in code, at any effort level: list_workers shows the newest and running first, and a status command feeds a hook on every prompt | accept: python -m pytest reality_engine/tests/test_job_watch.py -q | from: Shivam 2 Nov | opened 2026-11-02
-- T-045 | OPEN | P1 | Claude personally reads every doc line by line, deletes stale entries and corrects the rest to the current code; no worker or subagent reads for it | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-047 | OPEN | P3 | Session titles: keep the sv/neo prefix, let each session choose the rest | accept: A new session started by claude-neo or claude-sv with no task shows <prefix>-<title chosen by that session> | from: Shivam, 2 Nov | opened 2026-11-02
 
 ## Data
