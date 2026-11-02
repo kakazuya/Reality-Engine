@@ -402,7 +402,7 @@ def _round_line(round_no: int, statuses: dict[str, dict], closed: int, rows: lis
     counts = Counter(row.get("status") for row in statuses.values())
     units_seen: dict[int, set[str]] = {}
     for row in rows:
-        units_seen.setdefault(int(row.get("tier") or 0), set()).add(row.get("unit"))
+        units_seen.setdefault(int(row.get("tier") or 0), set()).add(str(row.get("unit") or ""))
     units_by_tier = {tier: len(names) for tier, names in units_seen.items()}
     haiku = sum(sum((row.get("tokens") or {}).values()) for row in rows if row.get("tier") == 1)
     deepseek = sum(1 for row in rows if row.get("tier") == 2 and row.get("job_id"))
