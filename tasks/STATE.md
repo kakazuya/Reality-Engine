@@ -20,7 +20,7 @@ Pilot session, next, in order:
 T-044 is merged: `job_watch status` runs on every prompt through `.claude/settings.json`. Truth rule v2 is merged as a tool (1 false RIGHT on 94 read rows, `tasks/arch_v4/TRUTH_RULE_V2_2026-10-31.md`); the hand-read grade stays the reported score.
 
 ## Running
-T-049, 3 Nov from 04:05 IST, three headless Sonnet 5.5 sessions (Shivam: Claude quota this window, no dsh): A core db `../wt/Wolf-t049-A-core`, B KPI/transcripts `../wt/Wolf-t049-B-kpi`, C document collection `../wt/Wolf-t049-C-docs` (briefs `tasks/dsh_tasks/T049_*`). Streams: `D:\RealityEngine\sandbox\_sessions	049-*.jsonl`. Opus reviews and merges.
+T-049, 3 Nov from 04:05 IST, three headless Sonnet 5.5 sessions (Shivam: Claude quota this window, no dsh): A core db `../wt/Wolf-t049-A-core`, B KPI/transcripts `../wt/Wolf-t049-B-kpi`, C document collection `../wt/Wolf-t049-C-docs` (briefs `tasks/dsh_tasks/T049_*`). Streams: `D:\RealityEngine\sandbox\_sessions\t049-*.jsonl`. Opus reviews and merges.
 
 ## Where the project stands
 Golden rule step 3, schema design, with the question bank accepted (1,901 questions, frozen). Gate on the old pilot: 12.7% contract strict, but 0 of 127 answered rows right on hand reading. Prototype on 3 companies failed its grade: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`. Full record: `tasks/arch_v4/GATE_STATE_2026-11-01.md`. Decisions: `D:\RealityEngine\plans\DECISION_LOG.md`, last 5 entries.
