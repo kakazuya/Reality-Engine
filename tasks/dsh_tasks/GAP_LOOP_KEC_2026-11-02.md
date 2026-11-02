@@ -25,6 +25,15 @@ Store: `kec.db` tables `doc_text(doc_key, page, text, method, known_at)`, `facts
 
 Reports: after each round write `reports\round_N.xlsx` (one row per question: status, answer, sources, gap, tier that did it) and one line per round to the log: answered, partial, not found, gaps closed, units by tier, Haiku tokens, DeepSeek jobs, escalations. Log lines end with `DONE`, `STOPPED <reason>` or `PAUSED`.
 
+Ledger (Shivam wants to judge afterwards whether the result came from brute-force reading or from method): every unit appends one row to `state\ledger.jsonl` and to a `ledger` sheet in each round report:
+- tier and model; start and end time; attempt number and outcome;
+- tokens: input, cache read, cache creation, output, and thinking where the stream reports it; estimated list-price cost. For DeepSeek units take tokens and tool calls from the dsh job record; say so when a field is missing rather than guessing;
+- tool calls by name, and for Bash the command line cut to 200 characters;
+- method tags, set by the loop from what actually ran, not by the model: `script_text` (PDF text by code), `ocr`, `model_read` (pages the model read itself, with the count), `mcp_lookup`, `sql`, `formula`, `labelling`; plus pages processed by code against pages read by the model;
+- what changed: rows added to each `kec.db` table, files written.
+A `python -m reality_engine.gap_loop --sandbox ... --ledger-summary` command prints totals per tier and per method, and tokens per question answered.
+Opus usage: `--opus-transcript <path> --since <ISO time>` sums the `usage` blocks of the managing Claude session's transcript `.jsonl` from that time on, so the summary covers all three tiers. Count the build too: the DeepSeek job that builds this loop.
+
 Guards: never write outside the sandbox except the loop's code and tests in the repo; never edit `questions\`; never read `D:\Shivam_Private` or any key file; no network fetches (raw files are already held); no paid embedding; a budget stop at $15 estimated Haiku list price per run; usage-limit sleep 15 minutes; a keeper restart like `reality_engine/scripts/doc_review_keeper.py`.
 
 Files: `reality_engine/gap_loop/` (new package), `reality_engine/tests/test_gap_loop.py`, `docs/DEVELOPER_GUIDE.md` (new section: how to run it, tiers, checks, sandbox layout), and the shared session runner if you move it out of `doc_review_loop.py` (its tests must still pass).
