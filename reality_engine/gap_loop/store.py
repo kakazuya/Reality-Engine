@@ -31,6 +31,11 @@ CREATE TABLE IF NOT EXISTS facts(
     unit TEXT NOT NULL, period TEXT NOT NULL, basis TEXT NOT NULL DEFAULT '',
     doc_key TEXT NOT NULL, page INTEGER NOT NULL, quote TEXT NOT NULL,
     known_at TEXT NOT NULL, tier INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS row_facts(
+    id INTEGER PRIMARY KEY AUTOINCREMENT, measure TEXT NOT NULL, value REAL NOT NULL,
+    unit TEXT NOT NULL, period TEXT NOT NULL, basis TEXT NOT NULL DEFAULT '',
+    cited_table TEXT NOT NULL, cited_rowid INTEGER NOT NULL, quote TEXT NOT NULL DEFAULT '',
+    known_at TEXT NOT NULL, tier INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS formulas(
     name TEXT PRIMARY KEY, expression TEXT NOT NULL, inputs TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '');
@@ -179,6 +184,18 @@ def add_fact(conn: sqlite3.Connection, row: dict) -> int:
     return int(cur.lastrowid or 0)
 
 
+def add_row_fact(conn: sqlite3.Connection, row: dict) -> int:
+    """A fact cited as a row of this store's database (``table`` + ``rowid``), not as a page."""
+    cur = conn.execute(
+        "INSERT INTO row_facts(measure, value, unit, period, basis, cited_table, cited_rowid, quote, "
+        "known_at, tier) VALUES(?,?,?,?,?,?,?,?,?,?)",
+        (row["measure"], float(row["value"]), str(row.get("unit") or ""), str(row.get("period") or ""),
+         row.get("basis") or "", str(row["table"]), int(row["rowid"]), str(row.get("quote") or ""),
+         row["known_at"], int(row.get("tier") or 1)),
+    )
+    return int(cur.lastrowid or 0)
+
+
 def add_formula(conn: sqlite3.Connection, row: dict) -> None:
     conn.execute(
         "INSERT INTO formulas(name, expression, inputs, description) VALUES(?,?,?,?) "
@@ -203,7 +220,7 @@ def put_answer(conn: sqlite3.Connection, round_no: int, row: dict) -> None:
 
 def counts(conn: sqlite3.Connection) -> dict[str, int]:
     return {table: int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
-            for table in ("doc_text", "docs", "facts", "formulas", "answers")}
+            for table in ("doc_text", "docs", "facts", "row_facts", "formulas", "answers")}
 
 
 def latest_answers(conn: sqlite3.Connection) -> dict[str, dict]:

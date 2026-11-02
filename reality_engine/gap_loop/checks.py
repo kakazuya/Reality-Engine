@@ -372,7 +372,9 @@ def check_row_fact(row: dict, as_of: object, row_lookup) -> tuple[bool, str | No
     if quote:
         if len(quote) < MIN_QUOTE:
             return False, "quote: missing or shorter than 12 characters"
-        if not any(quote in normalise(leaf) for _, leaf in leaves if isinstance(leaf, str)):
+        # A numeric column is quoted as its own text ("7540000000.0"), so numbers count as well as text.
+        if not any(quote in normalise(leaf) for _, leaf in leaves
+                   if isinstance(leaf, (str, int, float)) and not isinstance(leaf, bool)):
             return False, f"quote: not in the {table} row"
     limit = _as_date(as_of)
     if limit is None:

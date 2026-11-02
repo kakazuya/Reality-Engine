@@ -226,8 +226,9 @@ def accept_fix(unit: Unit, payload, sandbox: Path, conn, as_of: str, tier: int =
     outcome = str(payload.get("outcome") or "")
     if outcome not in ("fixed", "no_change"):
         return False, f"fix outcome {outcome!r} is not fixed/no_change", {}
-    lookup = store.page_lookup(conn)
+    lookup, row_lookup = store.page_lookup(conn), store.row_lookup(conn)
     facts: list[dict] = []
+    row_facts: list[dict] = []
     rejected: list[str] = []
     lines = 0
     proposals = store.inside(sandbox, "state", "proposals", f"{unit.id}.jsonl")
@@ -243,6 +244,20 @@ def accept_fix(unit: Unit, payload, sandbox: Path, conn, as_of: str, tier: int =
             except ValueError:
                 rejected.append(f"line {number}: not JSON")
                 continue
+            if not isinstance(row, dict):
+                rejected.append(f"line {number}: not a JSON object")
+                continue
+            if row.get("table") and row.get("rowid") is not None:
+                # A row citation (2 Nov, Hindalco: a row proposal failed on "page not in doc_text").
+                # known_at comes from the cited row's filing record, never from the model.
+                record = row_lookup(row.get("table"), row.get("rowid"))
+                row["known_at"] = record.get("known_at") if isinstance(record, dict) else None
+                ok, reason = checks.check_row_fact(row, as_of, row_lookup)
+                if not ok:
+                    rejected.append(f"line {number}: {reason}")
+                    continue
+                row_facts.append(row)
+                continue
             page = lookup(row.get("doc_key"), row.get("page"))
             if page is None:
                 rejected.append(f"line {number}: page not in doc_text")
@@ -254,8 +269,6 @@ def accept_fix(unit: Unit, payload, sandbox: Path, conn, as_of: str, tier: int =
                 rejected.append(f"line {number}: {reason}")
                 continue
             facts.append(row)
-    if lines and not facts and outcome == "fixed":
-        return False, "every proposal failed its check: " + "; ".join(rejected[:3]), {}
     formulas: list[dict] = []
     formula_file = store.inside(sandbox, "state", "proposals", f"{unit.id}.formulas.json")
     if formula_file.exists():
@@ -267,12 +280,18 @@ def accept_fix(unit: Unit, payload, sandbox: Path, conn, as_of: str, tier: int =
             if not isinstance(row, dict) or not row.get("name") or not row.get("expression"):
                 return False, "a formula needs a name and an expression", {}
             formulas.append(row)
+    # Failed facts alone do not fail the unit: a valid formulas file is stored (2 Nov, Hindalco).
+    # The unit fails only when nothing at all was stored.
+    if lines and not facts and not row_facts and not formulas and outcome == "fixed":
+        return False, "every proposal failed its check: " + "; ".join(rejected[:3]), {}
     for row in facts:
         store.add_fact(conn, {**row, "tier": tier})
+    for row in row_facts:
+        store.add_row_fact(conn, {**row, "tier": tier})
     for row in formulas:
         store.add_formula(conn, row)
     conn.commit()
-    return True, None, {"facts": len(facts), "formulas": len(formulas),
+    return True, None, {"facts": len(facts), "row_facts": len(row_facts), "formulas": len(formulas),
                         "answers": 0, "rejected": len(rejected)}
 
 
