@@ -1,0 +1,278 @@
+"""ratio_panel (formula registry + materialised table) and valuation_daily, from the stores built by
+``stores.py``.  Pure Python arithmetic over the pilot3 tables: no model, no network.
+
+Point in time: a derived row's ``known_at`` is the latest ``known_at`` of its inputs, so a ratio never quotes
+a quarter it could not yet know.  ``input_refs`` lists the input rows as ``fq:<sym>:<period>:<basis>:<item>``
+(fin_quarter_xbrl) or ``fa:<sym>:<FYxx>:<basis>:<item>`` (fin_annual_line) or ``px:<sym>:<date>``."""
+from __future__ import annotations
+
+import json
+import sqlite3
+from bisect import bisect_right
+from collections import defaultdict
+from datetime import date, timedelta
+
+from reality_engine.pilot3 import SYMBOLS, schema
+
+# formula_id, metric, expression, inputs, unit, note
+FORMULAS = [
+    ("F_EBITDA", "ebitda", "pbt_before_exceptional + finance_cost + depreciation - other_income",
+     "pbt_before_exceptional,finance_cost,depreciation,other_income", "inr",
+     "Operating EBITDA excluding other income; matches KEC's reported Q1 FY27 EBITDA (291 crore)"),
+    ("F_EBIT", "ebit", "pbt_before_exceptional + finance_cost", "pbt_before_exceptional,finance_cost", "inr", ""),
+    ("F_EBITDA_M", "ebitda_margin_pct", "100 * ebitda / revenue_from_operations", "ebitda,revenue_from_operations", "pct", ""),
+    ("F_EBIT_M", "ebit_margin_pct", "100 * ebit / revenue_from_operations", "ebit,revenue_from_operations", "pct", ""),
+    ("F_PAT_M", "pat_margin_pct", "100 * pat / revenue_from_operations", "pat,revenue_from_operations", "pct", ""),
+    ("F_INT_COV", "interest_coverage", "ebitda / finance_cost", "ebitda,finance_cost", "x", ""),
+    ("F_REV_YOY", "revenue_growth_yoy_pct", "100 * (revenue / revenue_prior_year - 1)", "revenue_from_operations", "pct", ""),
+    ("F_PAT_YOY", "pat_growth_yoy_pct", "100 * (pat / pat_prior_year - 1)", "pat", "pct", ""),
+    ("F_FY_SUM", "fy_sum", "sum of the four quarters Q1..Q4 of the fiscal year", "quarterly line items", "inr",
+     "FY revenue, pat, ebitda, finance cost, depreciation, other income; needs all four quarters filed"),
+    ("F_EPS_FY", "eps_basic_fy", "sum of the four quarterly basic EPS", "eps_basic", "inr_per_share",
+     "Approximation: quarterly EPS summed (the annual EPS is a weighted average)"),
+    ("F_EPS_TTM", "eps_ttm", "sum of the last four quarterly basic EPS", "eps_basic", "inr_per_share", ""),
+    ("F_PAYOUT", "dividend_payout_pct", "100 * dividend_per_share / eps_basic_fy", "dividend_per_share,eps_basic_fy", "pct",
+     "Needs dividend_per_share in fin_annual_line"),
+    ("F_BVPS", "book_value_per_share", "net_worth / shares_outstanding", "net_worth,shares_outstanding", "inr_per_share",
+     "Needs net_worth in fin_annual_line"),
+    ("F_MCAP", "market_cap", "close * shares_outstanding", "close,shares_outstanding", "inr", "raw close, shares as filed"),
+    ("F_PE", "pe", "close / trailing_eps", "close,eps_basic", "x",
+     "EPS of each quarter restated to the valuation date's share basis by the cumulative split factor"),
+    ("F_PB", "pb", "market_cap / net_worth", "market_cap,net_worth", "x", "Needs net_worth"),
+    ("F_EV_EBITDA", "ev_ebitda", "(market_cap + net_debt) / trailing_ebitda", "market_cap,net_debt,ebitda", "x", "Needs net_debt"),
+]
+LENDERS = ("BAJFINANCE",)  # finance cost is the cost of goods for a lender: no EBITDA / EBIT metrics
+FLOW_ITEMS = ("revenue_from_operations", "pat", "ebitda", "ebit", "finance_cost", "depreciation", "other_income")
+
+
+def _quarters(conn: sqlite3.Connection, symbol: str) -> dict:
+    """``{(basis, period_end): {item: (value, known_at, period)}}`` (latest filed value per key) plus helpers."""
+    rows = conn.execute(
+        "SELECT basis, period_end, fiscal_period, line_item, value, known_at FROM fin_quarter_xbrl "
+        "WHERE symbol=? ORDER BY known_at", (symbol,)).fetchall()
+    out: dict = defaultdict(dict)
+    for basis, end, period, item, value, known in rows:
+        out[(basis, end)][item] = (value, known, period)
+    for (basis, end), items in out.items():
+        pbt, fin, dep, oth = (items.get(k) for k in ("pbt_before_exceptional", "finance_cost", "depreciation", "other_income"))
+        if pbt and fin and symbol not in LENDERS:
+            ks = [x[1] for x in (pbt, fin, dep, oth) if x]
+            period = pbt[2]
+            items["ebit"] = (pbt[0] + fin[0], max(ks), period)
+            if dep:
+                items["ebitda"] = (pbt[0] + fin[0] + dep[0] - (oth[0] if oth else 0.0), max(ks), period)
+    return out
+
+
+def _put(out: list, symbol, isin, period, ptype, start, end, basis, metric, value, unit, formula, refs, known):
+    if value is None:
+        return
+    out.append((symbol, isin, period, ptype, start, end, basis, metric, float(value), unit, 1.0, formula,
+                json.dumps(refs), known, "max(known_at of inputs)", 1))
+
+
+def _fy_of(end: str) -> str:
+    y, m = int(end[:4]), int(end[5:7])
+    return f"FY{str(y + 1 if m >= 4 else y)[2:]}"
+
+
+def _panel(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
+    q = _quarters(conn, symbol)
+    by_basis: dict = defaultdict(dict)
+    for (basis, end), items in q.items():
+        by_basis[basis][end] = items
+    for basis, periods in by_basis.items():
+        ends = sorted(periods)
+        flows: dict = {}
+        for end in ends:
+            items = periods[end]
+            rev = items.get("revenue_from_operations")
+            period = (rev or next(iter(items.values())))[2]
+            start = conn.execute("SELECT period_start FROM fin_quarter_xbrl WHERE symbol=? AND period_end=? LIMIT 1",
+                                 (symbol, end)).fetchone()[0]
+            ref = lambda i: f"fq:{symbol}:{period}:{basis}:{i}"  # noqa: E731
+            for item in FLOW_ITEMS:
+                if item in items:
+                    _put(out, symbol, isin, period, "Q", start, end, basis, item, items[item][0], "inr",
+                         {"ebitda": "F_EBITDA", "ebit": "F_EBIT"}.get(item), [ref(item)], items[item][1])
+            ebitda, ebit, pat, fin = items.get("ebitda"), items.get("ebit"), items.get("pat"), items.get("finance_cost")
+            if rev and rev[0]:
+                for metric, num, fid in (("ebitda_margin_pct", ebitda, "F_EBITDA_M"), ("ebit_margin_pct", ebit, "F_EBIT_M"),
+                                         ("pat_margin_pct", pat, "F_PAT_M")):
+                    if num:
+                        _put(out, symbol, isin, period, "Q", start, end, basis, metric, 100.0 * num[0] / rev[0], "pct",
+                             fid, [ref(metric.split("_margin")[0]), ref("revenue_from_operations")],
+                             max(num[1], rev[1]))
+            if ebitda and fin and fin[0]:
+                _put(out, symbol, isin, period, "Q", start, end, basis, "interest_coverage", ebitda[0] / fin[0], "x",
+                     "F_INT_COV", [ref("ebitda"), ref("finance_cost")], max(ebitda[1], fin[1]))
+            for item, metric, fid in (("revenue_from_operations", "revenue_growth_yoy_pct", "F_REV_YOY"),
+                                      ("pat", "pat_growth_yoy_pct", "F_PAT_YOY")):
+                prior_end = f"{int(end[:4]) - 1}{end[4:]}"
+                cur, prev = items.get(item), periods.get(prior_end, {}).get(item)
+                if cur and prev and prev[0]:
+                    _put(out, symbol, isin, period, "Q", start, end, basis, metric, 100.0 * (cur[0] / prev[0] - 1.0),
+                         "pct", fid, [ref(item), f"fq:{symbol}:{prev[2]}:{basis}:{item}"], max(cur[1], prev[1]))
+            eps = items.get("eps_basic")
+            if eps:
+                _put(out, symbol, isin, period, "Q", start, end, basis, "eps_basic", eps[0], "inr_per_share", None,
+                     [ref("eps_basic")], eps[1])
+            flows[end] = items
+        # fiscal years: all four quarters (Jun, Sep, Dec, Mar) filed
+        fys = defaultdict(list)
+        for end in ends:
+            fys[_fy_of(end)].append(end)
+        for fy, fy_ends in fys.items():
+            if len(fy_ends) != 4:
+                continue
+            start = f"{int(fy_ends[-1][:4]) - 1}-04-01"
+            agg = {}
+            for item in FLOW_ITEMS + ("eps_basic",):
+                parts = [periods[e].get(item) for e in fy_ends]
+                if all(parts):
+                    agg[item] = (sum(p[0] for p in parts), max(p[1] for p in parts))
+            refs = lambda i: [f"fq:{symbol}:{periods[e][i][2] if i in periods[e] else '?'}:{basis}:{i}" for e in fy_ends]  # noqa: E731
+            for item in FLOW_ITEMS:
+                if item in agg:
+                    _put(out, symbol, isin, fy, "FY", start, fy_ends[-1], basis, item, agg[item][0], "inr", "F_FY_SUM",
+                         refs(item), agg[item][1])
+            rev = agg.get("revenue_from_operations")
+            if rev and rev[0]:
+                for metric, item, fid in (("ebitda_margin_pct", "ebitda", "F_EBITDA_M"), ("ebit_margin_pct", "ebit", "F_EBIT_M"),
+                                          ("pat_margin_pct", "pat", "F_PAT_M")):
+                    if item in agg:
+                        _put(out, symbol, isin, fy, "FY", start, fy_ends[-1], basis, metric, 100.0 * agg[item][0] / rev[0],
+                             "pct", fid, refs(item) + refs("revenue_from_operations"), max(agg[item][1], rev[1]))
+            if "ebitda" in agg and "finance_cost" in agg and agg["finance_cost"][0]:
+                _put(out, symbol, isin, fy, "FY", start, fy_ends[-1], basis, "interest_coverage",
+                     agg["ebitda"][0] / agg["finance_cost"][0], "x", "F_INT_COV", refs("ebitda") + refs("finance_cost"),
+                     max(agg["ebitda"][1], agg["finance_cost"][1]))
+            if "eps_basic" in agg:
+                _put(out, symbol, isin, fy, "FY", start, fy_ends[-1], basis, "eps_basic_fy", agg["eps_basic"][0],
+                     "inr_per_share", "F_EPS_FY", refs("eps_basic"), agg["eps_basic"][1])
+            prev_fy = f"FY{int(fy[2:]) - 1:02d}"
+            prev_ends = fys.get(prev_fy, [])
+            for item, metric, fid in (("revenue_from_operations", "revenue_growth_yoy_pct", "F_REV_YOY"),
+                                      ("pat", "pat_growth_yoy_pct", "F_PAT_YOY")):
+                if len(prev_ends) == 4 and item in agg:
+                    parts = [periods[e].get(item) for e in prev_ends]
+                    if all(parts) and sum(p[0] for p in parts):
+                        _put(out, symbol, isin, fy, "FY", start, fy_ends[-1], basis, metric,
+                             100.0 * (agg[item][0] / sum(p[0] for p in parts) - 1.0), "pct", fid, refs(item),
+                             max(agg[item][1], max(p[1] for p in parts)))
+
+
+def build_ratios(conn: sqlite3.Connection) -> dict:
+    schema.create(conn, ("formula", "ratio_panel", "valuation_daily"))
+    conn.executemany("INSERT INTO formula VALUES (?,?,?,?,?,1,?)", FORMULAS)
+    counts = {}
+    for symbol in SYMBOLS:
+        isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
+        isin = isin[0] if isin else None
+        out: list = []
+        _panel(conn, symbol, isin, out)
+        _payout_bvps(conn, symbol, isin, out)
+        conn.executemany("INSERT INTO ratio_panel VALUES (" + ",".join("?" * 16) + ")", out)
+        counts[symbol] = {"ratio_panel": len(out), "valuation_daily": _valuation(conn, symbol, isin)}
+    conn.commit()
+    return counts
+
+
+def _payout_bvps(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
+    """Dividend payout (DPS / FY EPS) and book value per share, when the annual lines carry the inputs."""
+    for basis in ("consolidated", "standalone"):
+        fy_eps = {}
+        for row in out:
+            if row[7] == "eps_basic_fy" and row[6] == basis:
+                fy_eps[row[2]] = (row[8], row[13])
+        for fy, value, known, quote_id in conn.execute(
+                "SELECT fiscal_year, value, known_at, rowid FROM fin_annual_line WHERE symbol=? AND basis=? "
+                "AND line_item='dividend_per_share' AND unit IN ('inr','inr_per_share') ORDER BY fiscal_year, known_at",
+                (symbol, basis)).fetchall():
+            if fy in fy_eps and fy_eps[fy][0]:
+                _put(out, symbol, isin, fy, "FY", f"20{int(fy[2:]) - 1}-04-01", f"20{fy[2:]}-03-31", basis,
+                     "dividend_payout_pct", 100.0 * value / fy_eps[fy][0], "pct", "F_PAYOUT",
+                     [f"fa:{symbol}:{fy}:{basis}:dividend_per_share#{quote_id}", f"ratio:{symbol}:{fy}:{basis}:eps_basic_fy"],
+                     max(known or "", fy_eps[fy][1] or ""))
+        for fy, value, known, quote_id in conn.execute(
+                "SELECT fiscal_year, value*scale, known_at, rowid FROM fin_annual_line WHERE symbol=? AND basis=? "
+                "AND line_item='net_worth' AND unit='inr_crore' ORDER BY fiscal_year, known_at", (symbol, basis)).fetchall():
+            end = f"20{fy[2:]}-03-31"
+            sh = conn.execute(
+                "SELECT shares_outstanding, known_at FROM share_capital WHERE symbol=? AND event IS NULL AND basis=? "
+                "AND as_of_date<=? ORDER BY as_of_date DESC LIMIT 1", (symbol, basis, end)).fetchone()
+            if sh and sh[0]:
+                _put(out, symbol, isin, fy, "FY", f"20{int(fy[2:]) - 1}-04-01", end, basis, "book_value_per_share",
+                     value / sh[0], "inr_per_share", "F_BVPS",
+                     [f"fa:{symbol}:{fy}:{basis}:net_worth#{quote_id}", f"sc:{symbol}:{end}"], max(known or "", sh[1] or ""))
+
+
+def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
+    """valuation_daily: one row per NSE trading day, consolidated basis, every input filed by that day."""
+    basis = "consolidated"
+    prices = conn.execute("SELECT date, close, adj_factor FROM price_delivery WHERE symbol=? AND exchange='NSE' "
+                          "AND close IS NOT NULL ORDER BY date", (symbol,)).fetchall()
+    factor = {d: (f if f else 1.0) for d, _c, f in prices}
+    fdates = sorted(factor)
+
+    def factor_at(day: str) -> float:
+        i = bisect_right(fdates, day) - 1
+        return factor[fdates[max(i, 0)]]
+
+    quarters = _quarters(conn, symbol)
+    qs = sorted((end, items) for (b, end), items in quarters.items() if b == basis)
+    eps_rows = [(items["eps_basic"][1], end, items["eps_basic"][0]) for end, items in qs if "eps_basic" in items]
+    pat_rows = [(items["pat"][1], end, items["pat"][0]) for end, items in qs if "pat" in items]
+    ebitda_rows = [(items["ebitda"][1], end, items["ebitda"][0]) for end, items in qs if "ebitda" in items]
+    shares = conn.execute("SELECT known_at, shares_outstanding FROM share_capital WHERE symbol=? AND event IS NULL "
+                          "AND basis=? ORDER BY known_at", (symbol, basis)).fetchall()
+    annual = defaultdict(list)
+    for item, fy, value, scale, unit, known in conn.execute(
+            "SELECT line_item, fiscal_year, value, scale, unit, known_at FROM fin_annual_line WHERE symbol=? AND basis=? "
+            "AND line_item IN ('net_worth','net_debt','dividend_per_share') ORDER BY known_at", (symbol, basis)):
+        if unit in ("inr_crore", "inr", "inr_per_share"):
+            annual[item].append((known, fy, value * scale))
+
+    def last4(rows: list, day: str, key_factor: bool = False):
+        known = [r for r in rows if r[0][:10] <= day]
+        known.sort(key=lambda r: r[1])
+        pick = known[-4:]
+        if len(pick) < 4:
+            return None
+        ends = [date.fromisoformat(r[1]) for r in pick]
+        if any((b - a) > timedelta(days=110) or (b - a) < timedelta(days=70) for a, b in zip(ends, ends[1:])):
+            return None
+        return pick
+
+    n = 0
+    out = []
+    for day, close, _adj in prices:
+        sh = [s for s in shares if s[0][:10] <= day]
+        if not sh:
+            continue
+        shares_now = sh[-1][1]
+        eps4 = last4(eps_rows, day)
+        pat4 = last4(pat_rows, day)
+        ebitda4 = last4(ebitda_rows, day)
+        f_day = factor_at(day)
+        trailing_eps = sum(v * factor_at(k[:10]) / f_day for k, _e, v in eps4) if eps4 else None
+        trailing_pat = sum(v for _k, _e, v in pat4) if pat4 else None
+        trailing_ebitda = sum(v for _k, _e, v in ebitda4) if ebitda4 else None
+        mcap = close * shares_now
+        known = [day, sh[-1][0][:10]] + ([max(k for k, _e, _v in eps4)[:10]] if eps4 else [])
+        nw = [a for a in annual["net_worth"] if a[0][:10] <= day]
+        nd = [a for a in annual["net_debt"] if a[0][:10] <= day]
+        dps = [a for a in annual["dividend_per_share"] if a[0][:10] <= day]
+        net_worth = nw[-1][2] if nw else None
+        net_debt = nd[-1][2] if nd else None
+        pe = close / trailing_eps if trailing_eps and trailing_eps > 0 else None
+        pb = mcap / net_worth if net_worth and net_worth > 0 else None
+        ev = (mcap + net_debt) / trailing_ebitda if net_debt is not None and trailing_ebitda and trailing_ebitda > 0 else None
+        dy = 100.0 * dps[-1][2] / close if dps and close else None
+        refs = {"px": f"px:{symbol}:{day}", "shares": sh[-1][0], "quarters": [r[1] for r in (eps4 or [])]}
+        out.append((symbol, isin, day, basis, close, shares_now, mcap, trailing_eps, trailing_pat, net_worth, net_debt,
+                    trailing_ebitda, pe, pb, ev, dy, max(known), "max(price date, share count, EPS filing dates)",
+                    json.dumps(refs)))
+        n += 1
+    conn.executemany("INSERT INTO valuation_daily VALUES (" + ",".join("?" * 19) + ")", out)
+    return n
