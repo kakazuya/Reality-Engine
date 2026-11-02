@@ -352,7 +352,7 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
             continue
         applied = {"ok": False, "error": result.get("error"), "added": {}}
         if result.get("payload") is not None and not result.get("over_limit"):
-            ok, reason, added = accept(result["payload"], 1)
+            ok, reason, added = accept(result["payload"], 1, u=current)
             applied = {"ok": ok, "error": reason, "added": added}
             _remember(reasons, added)
             result["ok"], result["error"] = ok, reason
@@ -379,7 +379,7 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
     before = store.counts(conn)
     applied = {"ok": False, "error": result.get("error"), "added": {}}
     if result.get("payload") is not None:
-        ok, reason, added = accept(result["payload"], 2)
+        ok, reason, added = accept(result["payload"], 2, u=current)
         applied = {"ok": ok, "error": reason, "added": added}
         _remember(reasons, added)
         result["ok"], result["error"] = ok, reason

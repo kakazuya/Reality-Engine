@@ -156,7 +156,7 @@ def tier2_fail(*_, **__):
 
 
 def test_two_haiku_failures_escalate_to_tier2_then_opus(root, conn):
-    outcome = loop.run_unit(unit(root), lambda payload, tier=1: (True, None, {}), root, conn, None,
+    outcome = loop.run_unit(unit(root), lambda payload, tier=1, u=None: (True, None, {}), root, conn, None,
                             round_no=1, tier1=tier1_fail, tier2=tier2_fail, sleep=lambda s: None)
     assert outcome["escalated"] and not outcome["ok"]
     haiku = [row for row in outcome["attempts"] if row["tier"] == 1]
@@ -194,8 +194,22 @@ def over_limit(*_, **__):
             "limited": False, "session": None, "started": None, "ended": None}
 
 
+def test_after_a_halving_the_check_sees_the_halved_unit(root, conn):
+    calls = iter([over_limit, lambda *_, **__: {**tier1_fail(), "ok": True, "payload": []}])
+    seen = []
+
+    def accept(payload, tier=1, u=None):
+        seen.append(len(u.items))
+        return True, None, {}
+
+    outcome = loop.run_unit(unit(root, size=4), accept, root, conn, None, round_no=1,
+                            tier1=lambda *a, **k: next(calls)(*a, **k), tier2=tier2_fail,
+                            sleep=lambda s: None)
+    assert outcome["ok"] and seen == [2]
+
+
 def test_over_limit_kill_halves_the_unit(root, conn):
-    outcome = loop.run_unit(unit(root, size=10), lambda payload, tier=1: (True, None, {}), root, conn,
+    outcome = loop.run_unit(unit(root, size=10), lambda payload, tier=1, u=None: (True, None, {}), root, conn,
                             None, round_no=1, tier1=over_limit, tier2=tier2_fail, sleep=lambda s: None)
     sizes = [row["size"] for row in outcome["attempts"] if row["tier"] == 1]
     assert sizes == [10, 5]

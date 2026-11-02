@@ -52,7 +52,9 @@ Sandbox: {unit.sandbox} (the only place you may write). Questions, with their as
 
 All the evidence is in `{unit.sandbox}\\kec.db`, which the prepare stage filled from KEC's documents
 and the stores. Query it with small SQL through Bash/Python; never read a whole PDF into your
-context and never `SELECT *` a big table without LIMIT.
+context and never `SELECT *` a big table without LIMIT. Your context is capped near 95,000 tokens and the
+session is killed there: every command must print at most 20 rows and about 2,000 characters (select only the
+columns you need, cut long text with substr(text, 1, 400)), and search with FTS first, then read one page.
 - `doc_text(doc_key, page, text, method, known_at)`: every page of every held PDF. `docs(doc_key,
   doc_type, title, filing_date, known_at, pages)` says what each file is. A page with `method`
   `needs_ocr` has no text.
