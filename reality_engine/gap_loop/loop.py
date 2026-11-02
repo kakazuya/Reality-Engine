@@ -387,7 +387,7 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
         for leftover in outcome["leftovers"]:
             queue.appendleft(leftover)
         if outcome.get("escalated") and unit.stage != "fix":
-            state.setdefault("escalated", set()).update(q["id"] for q in unit.items)
+            state.setdefault("escalated", set()).update(str(q["id"]) for q in unit.items)
         if outcome["ok"] and unit.stage in ("answer", "reanswer"):
             for answer in outcome["payload"]:
                 store.put_answer(conn, round_no, {**answer, "tier": outcome["tier"]})
