@@ -4,7 +4,7 @@ Companion to `tasks/arch_v3/` (case map, schema, query layer). This file owns **
 becomes a searchable chunk** and **how those chunks are indexed**, measured on a 48-document
 sample of real originals. Implementation: `reality_engine/processing/chunker_v3.py`
 (reuses `chunker_v2` structure detection), prototype DB `.tmp/chunks_proto.db`, tests
-`reality_engine/tests/test_chunker_v3.py` (17 tests, offline).
+`reality_engine/tests/test_chunker_v3.py` (37 tests, offline).
 
 Read-only on D: and on every DB. No network, no embeddings computed, no commits.
 
@@ -83,8 +83,9 @@ larger hand-check or the model pass clears §4.6. `forward_looking` is 85% of co
 soft filter.
 
 Entity mentions: `EntityResolver` (built from `master_companies`, 6,172 names / 5,936 symbols)
-resolves exact normalised name and symbol mentions to ISIN in a separate table
-`chunk_entity(isin, symbol, chunk_id)`. A 6.8k-ISIN tag cannot live in `tag_vocab`; this is an
+resolves exact normalised name and symbol mentions to ISIN (`chunker_v3.py:332`). The rows go to a
+separate table `chunk_entity(isin, symbol, chunk_id)`, which `tasks/pilot_t2/build_chunks_v3.py`
+writes (line 594); `chunker_v3.py` does not write it. A 6.8k-ISIN tag cannot live in `tag_vocab`; this is an
 additive change to §2.2. The document's own ISIN is excluded from mentions.
 
 ---
@@ -127,7 +128,7 @@ grouping, then OR the ungrouped form) is a cheap follow-up if numeric passages a
 CREATE INDEX ix_chunk_isin_known ON chunk(isin, known_at);
 CREATE INDEX ix_chunk_type_known ON chunk(doc_type, known_at);
 CREATE INDEX ix_chunk_known      ON chunk(known_at);
-CREATE INDEX ix_chunk_fiscal     ON chunk(fiscal_period);
+CREATE INDEX ix_chunk_fiscal     ON chunk(fiscal_period, doc_type);
 CREATE INDEX ix_chunk_tag_chunk  ON chunk_tag(chunk_id);
 -- chunk_tag PK (tag, chunk_id): "all chunks with tag X" is a PK range scan
 CREATE TABLE chunk_entity(isin TEXT, symbol TEXT, chunk_id INTEGER,
@@ -298,10 +299,11 @@ heading, page/table break) and does not cut a sentence or a table row.
 | **total** | **41/50 = 0.82** | |
 
 The AR failures are all the same root cause: `chunker_v2._split_long` takes the last line boundary
-inside `MAX_CHARS`, and PyMuPDF text has few line breaks inside a note. Fix before the full run:
-extend the cut forward to the next sentence end within +15% of `MAX_CHARS` and mark the piece
-`note_cont` with `(cont.)` in `section`. That is a small change in v2's splitter, not in the unit
-detection, so it can be done without re-opening the 2.05M-chunk AR store.
+inside `MAX_CHARS`, and PyMuPDF text has few line breaks inside a note. Fix (now in code):
+`chunker_v2._split_long` (lines 213-221) extends the cut forward to the next sentence end within
++15% of `MAX_CHARS` and marks the continuation piece `<kind>_cont` (`note_cont` for notes);
+`chunker_v3` adds `(cont.)` to `section` (`chunker_v3.py:512`). It was a change in v2's splitter,
+not in the unit detection.
 
 Tag precision and its gate are in §2.
 
