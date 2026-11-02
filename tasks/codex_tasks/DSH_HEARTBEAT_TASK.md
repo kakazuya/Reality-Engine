@@ -6,7 +6,7 @@ You are DeepSeek V4.1 Flash at xhigh through dsh. Shivam explicitly delegates of
 
 Read `tasks/FRAMEWORK.md`, global/repo AGENTS instructions, `tasks/STATE.md`, `tasks/codex_tasks/WORKING_PROTOCOL.md`, and `tasks/codex_tasks/PROVIDER_PROBES_2026-10-21.md`. Project is Reality Engine on the hometown laptop Sumit (Windows, PowerShell, Python 3.14, Node 24 under C:/Program Files/nodejs). Live data just restored; H01 is provisional and awaits fixes after this infrastructure change. Do not open or write project databases/snapshots. Many unrelated local changes/untracked H01/Telegram artifacts exist; preserve all of them. No commit, stash, push, package install, cleanup or deletion. No keys or auth file reads. Go account 2 is approved for this project coding task. Stable IDs and xhigh must remain intact. Do not invoke paid APIs or make live model calls yourself: Codex will handle any necessary live verification. No GPU or bulk filesystem/DB scans.
 
-Current implementation: `reality_engine/scripts/run_deepseek_harness.py` starts dsh headless, buffers communicate(), and kills the process tree after --timeout (default 900 seconds). It has stable go_session IDs, xhigh defaults, optional output caps, optional local audit proxy for bounded smoke tests, Node24 PATH setup, and capped-run title suppression. Preserve these features. Existing checks are `reality_engine/tests/test_deepseek_harness_controls.py` (4 passed). Installed dsh is 0.2.1-rc.2 at `C:/Users/warri/.bun/bin/dsh.exe`; packages are under `C:/Users/warri/.bun/install/global/node_modules/@deepseek-ai/`.
+Implementation before this task: `reality_engine/scripts/run_deepseek_harness.py` starts dsh headless, buffers communicate(), and kills the process tree after --timeout (default 900 seconds). It has stable go_session IDs, xhigh defaults, optional output caps, optional local audit proxy for bounded smoke tests, Node24 PATH setup, and capped-run title suppression. Preserve these features. Existing checks are `reality_engine/tests/test_deepseek_harness_controls.py` (4 passed). Installed dsh is 0.2.1-rc.2 at `C:/Users/warri/.bun/bin/dsh.exe`; packages are under `C:/Users/warri/.bun/install/global/node_modules/@deepseek-ai/`.
 
 ## User request and interpretation
 
@@ -33,7 +33,7 @@ Distinguish successful delivery/transport acknowledgement from an actual worker 
 - New `reality_engine/tests/test_dsh_heartbeat*.py` files if needed
 - New `tasks/codex_tasks/DSH_HEARTBEAT_IMPLEMENTATION.md` explaining the result
 
-Do not edit STATE, FRAMEWORK, AGENTS, memories, unrelated sources or the H01 harness. Codex will update state after review. A baseline copy of current wrapper/tests is kept under gitignored `reality_engine/data/logs/dsh_heartbeat_bootstrap/` so the reviewer can distinguish your edits from earlier local modifications.
+Do not edit STATE, FRAMEWORK, AGENTS, memories, unrelated sources or the H01 harness. Codex will update state after review. A baseline copy of current wrapper/tests was kept under gitignored `reality_engine/data/logs/dsh_heartbeat_bootstrap/` (folder not present in this checkout) so the reviewer can distinguish your edits from earlier local modifications.
 
 ## Delivery
 

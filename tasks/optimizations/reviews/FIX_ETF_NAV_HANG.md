@@ -1,6 +1,6 @@
 # Fix task — `fetch_etf_nav.py` hangs with no output
 
-## Problem
+## Problem (state before the fix; fix in place: `fetch_etf_nav.py:43`, `:113`, `:312`)
 Job `etf_nav` (jobs.yaml) ran twice on 2026-10-25. The first run went 45 min, the second 16 min, and both were
 cancelled. Neither printed anything to stdout/stderr or wrote a raw file under `D:\RealityEngine\raw`.
 - `reality_engine/scripts/fetch_etf_nav.py:99-100` calls `requests.get(AMFI..., timeout=300)`. That timeout applies

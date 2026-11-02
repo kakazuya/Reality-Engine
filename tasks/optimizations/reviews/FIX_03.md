@@ -1,9 +1,9 @@
 # Fix task 03 — sandbox review: security defects (round 1)
 
-Workspace: finished task-03 worktree `C:\Users\warri\Downloads\IDM-worktrees\20261024T192711Z-cecb3619`
+Workspace: finished task-03 worktree `C:\Users\warri\Downloads\IDM-worktrees\20261024T192711Z-cecb3619` (not on disk when checked)
 (branch `dsh/20261024T192711Z-cecb3619`). Brief: `tasks/optimizations/03_SANDBOX_AND_FREEDOM.md`.
-An independent security review FAILED this branch. Its proof-of-concept is `.tmp/review/request_channel_poc.py` in this
-worktree — read it first and keep it working as a regression. Fix all eight defects below; nothing else.
+An independent security review FAILED this branch. Its proof-of-concept is `.tmp/review/request_channel_poc.py` in that
+worktree (not on disk when checked) — read it first and keep it working as a regression. Fix all eight defects below; nothing else.
 
 DEFECTS:
 1. CRITICAL `plugins/dsh-worker/server/supervisor.py:319-335,351,655` — the commit path trusts the workspace `.git` file; a default `workspace` job can rewrite `.git` to a worker-owned fake gitdir inside its workspace, and `_handle_commit_request` runs `git add -A`/`git commit` with the worker's hooks. Proven: fake `pre-commit` wrote `handler-hook-escaped.txt` and the handler returned `ok:true`; redirecting `.git` at a scratch main repo committed `poc redirected commit` onto its `master` and moved its HEAD. Fix: capture the real gitdir at job start (outside the worker), run git with `--git-dir=<stored> --work-tree=<workspace>`, require common dir `== <repo>/.git`, and add `--no-verify`/`core.hooksPath=`.

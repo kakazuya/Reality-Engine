@@ -11,7 +11,7 @@ Shivam saw "✕ 2 failed ✓ 74 finished" on the bar but "Finished 83". On disk:
 (non-zero exit) is counted under the ✓ tile today.
 
 ## Files to touch
-- `plugins/dsh-workers-pane/hooks/rows.ts` — `WorkerCounts` + the counts in `statusMeta` (~line 612): count by
+- `plugins/dsh-workers-pane/hooks/rows.ts` — `WorkerCounts` + the counts (`rows.ts` ~lines 635-641; `statusMeta` is at line 346): count by
   outcome: `finished` = outcome `ok`, `failed` = outcome `failed` (phase failed OR finished with failed outcome),
   new `cancelled` = outcome `cancelled`. Keep `running`/`stalled` as they are.
 - `plugins/dsh-workers-pane/hooks/register.tsx` — the tiles (~lines 520–620): add a cancelled tile (neutral/grey,
