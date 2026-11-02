@@ -61,4 +61,4 @@ Optional issuer caps and EOD risk policies are available in the shared cash-book
 - Read-only snapshot unchanged;2019–2020 warm-up,2021–2025 evidence only. No2026 outcomes, paid worker, commit, push or upload. No new resource-waste incident.
 - Run34f00e71-a320-4d97-88df-36ff8d2e3cee took33.8seconds. Eight new tests were appended; all216 earlier tests remain.
 
-Details: H01_wall_report.md, H01_wall_results.json, H01_wall_verification.json, H01_wall_books.jsonl.gz, H01_falls.csv.gz and H01_baseline_fall_attribution.csv in this directory. Frozen plan: tasks/codex_tasks/H01_DOWNSIDE_WALL_PLAN_2026-10-21.md.
+Details: H01_wall_report.md, H01_wall_results.json, H01_wall_verification.json, H01_falls.csv.gz and H01_baseline_fall_attribution.csv in this directory. Frozen plan: tasks/codex_tasks/H01_DOWNSIDE_WALL_PLAN_2026-10-21.md.
