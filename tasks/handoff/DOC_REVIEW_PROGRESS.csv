@@ -107,7 +107,7 @@ tasks/archive/HARD_AR_HAIKU_SESSION.md,73,73,kept,Named by reality_engine/script
 tasks/archive/LOCAL_HAIKU_SESSION.md,93,93,kept,"Only outside mention is DOC_REVIEW_PROGRESS.csv:107 (T-045 review log), which counts as naming it",
 tasks/archive/README.md,49,49,kept,"Grep: named outside archive only by tasks/handoff/DOC_REVIEW_PROGRESS.csv:108; it is the archive index, not superseded",
 tasks/archive/STATE_FOR_ANY_AI_2026-10-29.md,97,97,kept,"Lines 81-97 hold lesson 7 (hand-check 10+ rows), which no repo file outside archive records; the open decisions are stale, but the lesson is still unique.",
-tasks/archive/STATE_until_2026-10-27.md,1193,253,kept-partial,"Read only lines 1-253 of 1193; they hold unique results (21 Oct restore MD5 counts, 20 Oct cleanup of 66,364 files, H01 run IDs), the other 940 lines are unchecked, and only the review CSV names it.",
+tasks/archive/STATE_until_2026-10-27.md,1193,1008,kept-partial,"Named by tasks/handoff/DOC_REVIEW_PROGRESS.csv:110 (outside archive); lines 254-1008 hold measured results (embedding hit@k, judge scores, quota and incident records) I did not confirm elsewhere; lines 1009-1193 unreviewed.",
 tasks/archive/concall_refetch/report_full.md,204,204,kept,"Named outside archive by tasks/NEXT_SESSIONS_PLAN_2026-10-27.md:104 and :241 as the --report output path; also holds the 9,390-candidate and pilot numbers.",
 tasks/archive/concall_refetch/report_widen_tw_fetch.md,155,155,kept,"Dry-run measurements (89.7% recall, 80% classifier precision) recorded nowhere else; the fetch it plans has not run.",
 tasks/archive/dsh_tasks/ANSWER_RELEVANCE_GATE_2026-10-29.md,46,46,kept,Grep: named outside archive only by tasks/handoff/DOC_REVIEW_PROGRESS.csv:113 (skip row),
