@@ -1,7 +1,7 @@
 # Task — ripple question bank: 200 second- and third-order questions that find schema gaps
 
 ## Goal
-Shivam, 2026-10-28: "if we question harder, we will find more gaps." The open bank (`IDM-worktrees/20261027T173433Z-6b857b5a/tasks/QUESTION_BANK_OPEN_2026-10-27.*`) found 29 new gaps with mostly first-order questions.
+Shivam, 2026-10-28: "if we question harder, we will find more gaps." The open bank (`tasks/QUESTION_BANK_OPEN_2026-10-27.md`) found 29 new gaps with mostly first-order questions.
 
 This bank goes **two and three steps down the causal chain**. A move in X changes Y, which changes Z, which changes which listed companies win or lose, and when.
 
