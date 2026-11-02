@@ -169,5 +169,5 @@ one direction); magnitude is parsed from the source text, never re-measured.
 | `tasks/macro_pilot/review_sheet.json`, `handcheck_labels.json` | the 60-claim review and its labels/notes |
 
 Verification: `python -m unittest reality_engine.tests.test_macro_claim_target`
-→ 21 tests, OK.  No live database was written; the only writes are under `.tmp/` and
+→ 21 tests, OK on the 2026-10-28 build (the file has 38 `def test_` methods on 2026-11-02; rerun for the current count).  No live database was written; the only writes are under `.tmp/` and
 `tasks/macro_pilot/`.

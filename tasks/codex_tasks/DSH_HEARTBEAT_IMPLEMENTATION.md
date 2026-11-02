@@ -61,7 +61,7 @@ loads `dsh_heartbeat_control.mjs` through a temporary `--patch` insert using a `
 1. starts an HTTP server on `127.0.0.1` with an ephemeral port;
 2. binds the first runtime-root agent (`ctx.agents.roots()` and `agent/created`);
 3. writes `<out-file>.control.json` (`dsh-heartbeat-control/1`) with host, port, PID, run id, session id, state;
-4. accepts an authenticated `POST /ping` and calls `agent.steer({content:[...], source:{kind:"dsh-heartbeat"}})`.
+4. accepts an authenticated `POST /ping` (kind `dsh-heartbeat`) or `POST /followup` (kind `dsh-followup`) and calls `agent.steer(...)`.
 5. calls `server.unref()` so the listener cannot keep the one-shot process alive, and closes it on Cordis disposal.
 
 Security properties:
@@ -70,7 +70,7 @@ Security properties:
 - per-run 256-bit token from `DSH_HEARTBEAT_TOKEN`, compared with `crypto.timingSafeEqual`;
 - the token is **not** written to the patch, status file, control descriptor, or logs;
 - `run_id` and optional `session_id` must match the bound run/agent;
-- browser `Origin` headers are rejected; only `POST /ping` (and a token-protected `GET /health`) are served;
+- browser `Origin` headers are rejected; only `POST /ping`, `POST /followup` and a token-protected `GET /health` are served;
 - request bodies are capped at 64 KiB;
 - the descriptor file contains no secret;
 - the process is killed as a tree on stop, then the wrapper checks the port is closed.
