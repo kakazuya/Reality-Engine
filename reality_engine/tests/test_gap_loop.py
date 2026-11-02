@@ -368,6 +368,72 @@ def test_a_fix_proposal_is_checked_then_stored(root, conn):
     assert conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0] == 1
 
 
+def _results_row(conn, finance_costs: float = 7540000000.0) -> int:
+    # A row of the copied results table, as the Hindalco proposal cited it (table + rowid, no page).
+    conn.execute("CREATE TABLE IF NOT EXISTS results_quarterly(period TEXT, FinanceCosts REAL, known_at TEXT)")
+    cursor = conn.execute("INSERT INTO results_quarterly(period, FinanceCosts, known_at) VALUES(?,?,?)",
+                          ("Q1FY26", finance_costs, "2025-08-12"))
+    conn.commit()
+    return int(cursor.lastrowid)
+
+
+def _row_proposal(rowid: int, value: float = 7540000000.0) -> dict:
+    return {"measure": "FinanceCosts", "value": value, "unit": "inr", "period": "Q1FY26",
+            "basis": "consolidated", "doc_key": "hindalco.db:results_quarterly", "page": None,
+            "quote": "7540000000.0", "known_at": "2025-08-12", "table": "results_quarterly",
+            "rowid": rowid}
+
+
+def test_a_row_cited_fix_proposal_that_matches_its_row_is_stored(root, conn):
+    rowid = _results_row(conn)
+    proposals = root / "state" / "proposals"
+    proposals.mkdir(parents=True)
+    unit_ = loop.Unit(id="fix-not_extracted", stage="fix", sandbox=root, items=["KEC001"],
+                      gap="not_extracted")
+    (proposals / "fix-not_extracted.jsonl").write_text(json.dumps(_row_proposal(rowid)) + "\n",
+                                                       encoding="utf-8")
+    ok, reason, added = loop.accept_fix(unit_, {"outcome": "fixed"}, root, conn, "2026-10-19")
+    assert ok and added["row_facts"] == 1 and added["rejected"] == 0, reason
+    stored = conn.execute("SELECT cited_table, cited_rowid, known_at FROM row_facts").fetchall()
+    assert stored == [("results_quarterly", rowid, "2025-08-12")]
+    assert conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0] == 0
+
+
+def test_a_row_cited_fix_proposal_whose_value_is_not_in_the_row_is_rejected(root, conn):
+    rowid = _results_row(conn)
+    proposals = root / "state" / "proposals"
+    proposals.mkdir(parents=True)
+    unit_ = loop.Unit(id="fix-not_extracted", stage="fix", sandbox=root, items=["KEC001"],
+                      gap="not_extracted")
+    (proposals / "fix-not_extracted.jsonl").write_text(
+        json.dumps(_row_proposal(rowid, value=9999.0)) + "\n", encoding="utf-8")
+    ok, reason, added = loop.accept_fix(unit_, {"outcome": "fixed"}, root, conn, "2026-10-19")
+    assert not ok and "page not in doc_text" not in reason
+    assert "number: 9999 is not in the results_quarterly row" in reason
+    assert conn.execute("SELECT COUNT(*) FROM row_facts").fetchone()[0] == 0
+
+
+def test_formulas_are_stored_when_every_fact_fails(root, conn):
+    store.put_doc_text(conn, "bse:1", 4, PAGE, "text", "2026-05-15")
+    proposals = root / "state" / "proposals"
+    proposals.mkdir(parents=True)
+    unit_ = loop.Unit(id="fix-needs_formula", stage="fix", sandbox=root, items=["KEC001"],
+                      gap="needs_formula")
+    missing_page = {"measure": "revenue", "value": 123456, "unit": "inr_cr", "period": "FY26",
+                    "basis": "consolidated", "doc_key": "bse:1", "page": 99,
+                    "known_at": "2026-05-15", "quote": QUOTE}
+    (proposals / "fix-needs_formula.jsonl").write_text(json.dumps(missing_page) + "\n", encoding="utf-8")
+    # Facts all fail and no formulas file: nothing stored, so the unit still fails.
+    ok, reason, _ = loop.accept_fix(unit_, {"outcome": "fixed"}, root, conn, "2026-10-19")
+    assert not ok and "page not in doc_text" in reason
+    formula = {"name": "EBITDA_margin", "expression": "ebitda / revenue", "inputs": ["ebitda", "revenue"],
+               "description": "EBITDA over revenue"}
+    (proposals / "fix-needs_formula.formulas.json").write_text(json.dumps([formula]), encoding="utf-8")
+    ok, reason, added = loop.accept_fix(unit_, {"outcome": "fixed"}, root, conn, "2026-10-19")
+    assert ok and added["formulas"] == 1 and added["facts"] == 0 and added["rejected"] == 1, reason
+    assert conn.execute("SELECT name FROM formulas").fetchall() == [("EBITDA_margin",)]
+
+
 def test_25_questions_of_one_gap_type_become_three_fix_units(root):
     statuses = {f"KEC{i:03d}": {"status": "not_found", "gap_type": "not_extracted"}
                 for i in range(1, 26)}
