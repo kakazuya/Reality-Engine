@@ -1,7 +1,7 @@
 """The three tiers of the T-048 gap loop: Haiku session, DeepSeek dsh worker, escalation file.
 
 Tier 1 is one ``claude -p`` session (the shared runner from ``doc_review_loop``) that reads the
-sandbox's prepared ``kec.db`` only: a strict MCP config with no servers is passed, so none of the
+sandbox's prepared company database (``kec.db`` for KEC) only: a strict MCP config with no servers is passed, so none of the
 ``reality-data`` tools is reachable and no raw reply can blow the context.  Tier 2 is the same
 dsh-worker start function the MCP ``start_worker`` tool calls, imported from
 ``plugins/dsh-worker/server/core.py`` with that folder on ``sys.path`` -- no MCP round trip.
@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from reality_engine.gap_loop import store
+from reality_engine.gap_loop.company import current
 from reality_engine.scripts.session_runner import (
     MAX_TURNS, MODEL, build_cmd, child_env, parse_json_block, run_session,
 )
@@ -46,12 +47,14 @@ def mcp_config(sandbox: Path) -> str:
 def answer_prompt(unit) -> str:
     questions = json.dumps([{"qid": q["id"], "question": q["question"], "as_of": q.get("as_of")}
                             for q in unit.items], ensure_ascii=False, indent=1)
-    return f"""You answer questions about KEC Ltd from prepared data. Task T-048.
+    active = current()
+    db, name, symbol, qid = active.db_name, active.name, active.symbol, active.example_qid
+    return f"""You answer questions about {name} from prepared data. Task T-048.
 
 Sandbox: {unit.sandbox} (the only place you may write). Questions, with their as-of date:
 {questions}
 
-All the evidence is in `{unit.sandbox}\\kec.db`, which the prepare stage filled from KEC's documents
+All the evidence is in `{unit.sandbox}\\{db}`, which the prepare stage filled from {symbol}'s documents
 and the stores. Query it with small SQL through Bash/Python; never read a whole PDF into your
 context and never `SELECT *` a big table without LIMIT. Your context is capped near 95,000 tokens and the
 session is killed there: every command must print at most 20 rows and about 2,000 characters (select only the
@@ -78,11 +81,11 @@ Rules:
   D:\\Shivam_Private or any key file.
 - A gap is one of: text_missing (the document is not readable as text), not_extracted (text is
   there, the number is in no store), needs_formula (computable from stored numbers), wrong_store
-  (the data is held but not reached), absent (not in any KEC document held).
+  (the data is held but not reached), absent (not in any {symbol} document held).
 
 Output: end with one fenced json block and nothing after it, one row per question:
 ```json
-[{{"qid": "KEC001", "status": "answered|partial|not_found", "answer": "one plain sentence",
+[{{"qid": "{qid}", "status": "answered|partial|not_found", "answer": "one plain sentence",
   "numbers": [{{"measure": "revenue", "value": 1234.5, "unit": "inr_cr", "period": "FY26",
                "basis": "consolidated", "doc_key": "history/quarterly_results/x.pdf", "page": 12,
                "known_at": "2026-05-15", "quote": "the exact sentence on that page carrying the number"}}],
@@ -92,7 +95,7 @@ Output: end with one fenced json block and nothing after it, one row per questio
 A number has one of two sources.
 - A page in `doc_text`: give its `doc_key`, `page`, its `known_at` (the filing date from `docs`) and
   `quote`, the exact sentence on that page that carries the value.
-- A row of `kec.db`: give `table` and `rowid`, the row you read the value from, e.g.
+- A row of `{db}`: give `table` and `rowid`, the row you read the value from, e.g.
   {{"measure": "promoter holding", "value": 51.7, "unit": "pct", "period": "Q2FY26",
     "table": "shp_index", "rowid": 42, "known_at": "2026-07-15"}}. The loop reads that row and keeps
   the number only if the value is in it, and the quote too when you give one; `known_at` must be the
@@ -110,29 +113,31 @@ def unit_task(unit) -> str:
     """What the unit must do, in the form a DeepSeek brief or a fix prompt can carry."""
     if unit.stage == "fix":
         return (f"{unit.instruction}\nQuestions in this unit: {', '.join(unit.items)}. Read their latest "
-                "answers rows in kec.db to see what failed.")
+                f"answers rows in {current().db_name} to see what failed.")
     questions = json.dumps([{"qid": q["id"], "question": q["question"], "as_of": q.get("as_of")}
                             for q in unit.items], ensure_ascii=False)
     return (f"Answer these questions: {questions}\n"
             "The final json is a list of answer rows, one per qid, with status, answer, numbers, "
             "sources, gap_type. Every number is sourced either by doc_key and page (with known_at and "
-            "quote, the exact sentence on that page) or by table and rowid, a kec.db row whose value "
+            f"quote, the exact sentence on that page) or by table and rowid, a {current().db_name} row whose value "
             "must carry the number (and the quote when you give one) and whose known_at is on or "
             "before the as-of date.")
 
 
 def fix_prompt(unit) -> str:
-    return f"""You close one group of data gaps for KEC Ltd. Task T-048, fix unit {unit.id}.
+    active = current()
+    db, name = active.db_name, active.name
+    return f"""You close one group of data gaps for {name}. Task T-048, fix unit {unit.id}.
 
 Sandbox: {unit.sandbox} (the only place you may write).
 Gap type: {unit.gap}
 Instruction: {unit.instruction}
-Questions in this unit: {', '.join(unit.items)}. Read their latest `answers` rows in kec.db to see what failed.
+Questions in this unit: {', '.join(unit.items)}. Read their latest `answers` rows in {db} to see what failed.
 
 Evidence and stores:
-- `{unit.sandbox}\\kec.db` and `{unit.sandbox}\\raw\\`: kec.db is already prepared (doc_text, docs and
+- `{unit.sandbox}\\{db}` and `{unit.sandbox}\\raw\\`: {db} is already prepared (doc_text, docs and
   the copied stores listed in `sources`); raw\\ holds the PDFs themselves;
-- write extracted page text into `kec.db` `doc_text(doc_key, page, text, method, known_at)` yourself,
+- write extracted page text into `{db}` `doc_text(doc_key, page, text, method, known_at)` yourself,
   keyed so an answer can cite it; the FTS index follows it automatically;
 - do NOT insert into `facts`, `formulas` or `answers`. For every number or formula you would store, append one JSON object per line to `{unit.sandbox}\\state\\proposals\\{unit.id}.jsonl`:
   {{"measure": "...", "value": 1234.5, "unit": "inr_cr", "period": "FY26", "basis": "consolidated", "doc_key": "...", "page": 12, "quote": "exact quote on that page", "known_at": "YYYY-MM-DD"}}
@@ -150,8 +155,10 @@ Output: end with one fenced json block and nothing after it:
 
 
 def deepseek_brief(unit, result_path: Path) -> str:
-    return f"""Goal: Close one KEC data-gap unit (T-048, {unit.stage} {unit.id}, gap {unit.gap or 'answer'}) in the sandbox {unit.sandbox}, writing only there.
-Files: read {unit.sandbox}\\kec.db and {unit.sandbox}\\raw\\; write {unit.sandbox}\\kec.db doc_text and {result_path}.
+    active = current()
+    db, symbol = active.db_name, active.symbol
+    return f"""Goal: Close one {symbol} data-gap unit (T-048, {unit.stage} {unit.id}, gap {unit.gap or 'answer'}) in the sandbox {unit.sandbox}, writing only there.
+Files: read {unit.sandbox}\\{db} and {unit.sandbox}\\raw\\; write {unit.sandbox}\\{db} doc_text and {result_path}.
 Accept: {result_path} exists and parses as the JSON object this brief's task block describes; no write outside {unit.sandbox}.
 Stop if: the unit needs the network, a paid embedding, a key file, or a write outside {unit.sandbox}.
 Budget: one unit, one hour, cheap-model work.
@@ -202,7 +209,7 @@ def _run_claude(unit, model: str, tier: int) -> dict:
     cmd = build_cmd(prompt, model=model, allowed_tools=ALLOWED_TOOLS, disallowed_tools=DISALLOWED_TOOLS,
                     mcp_config=mcp_config(unit.sandbox), max_turns=MAX_TURNS)
     env = child_env({"KEC_GAP_LOOP": "1"})
-    session = run_session(cmd, unit.sandbox, env=env, model=model, label=f"KEC loop {unit.id}",
+    session = run_session(cmd, unit.sandbox, env=env, model=model, label=f"{current().symbol} loop {unit.id}",
                           description=describe(unit), transcript=transcript_path(unit, model, started))
     payload = parse_json_block(session.final)
     error = session.error
@@ -249,7 +256,7 @@ def run_tier2(unit, logfile: Path | None, *, manager_factory=None, sleep=time.sl
             brief=deepseek_brief(unit, result_path),
             workspace=".",
             permission="danger-full-access",
-            write_scope="data", confirm_data_write=True, writes=["kec_gap_loop.db"],
+            write_scope="data", confirm_data_write=True, writes=[f"{current().symbol.lower()}_gap_loop.db"],
             confirm_repo_root_write=True,
             approved_by=APPROVED_BY,
             context_pack=False, use_worktree=False, hard_timeout_seconds=timeout,

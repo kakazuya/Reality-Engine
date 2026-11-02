@@ -2,7 +2,7 @@
 
 A number cites one of two sources.  A ``doc_text`` page: the quote occurs on it; the number occurs
 in the quote (Indian digit grouping and crore/lakh/million words allowed); ``known_at`` is the page's
-filing date and not after the as-of date.  A row of the sandbox's ``kec.db`` (``table`` + ``rowid``):
+filing date and not after the as-of date.  A row of the sandbox's company database (``table`` + ``rowid``):
 the value, and the quote when one is given, must occur in that row, and the row's own ``known_at``
 is checked against the as-of date.  Both kinds also need a measure, a unit that suits it and a stated
 period.  A malformed row fails the report; a number that fails a check only makes its row
@@ -14,6 +14,7 @@ import re
 from datetime import date, datetime
 
 from reality_engine.contracts import CONTRACTS
+from reality_engine.gap_loop.company import current
 
 STATUSES = ("answered", "partial", "not_found")
 GAP_TYPES = ("text_missing", "not_extracted", "needs_formula", "wrong_store", "absent")
@@ -277,7 +278,7 @@ def _as_number(value: object) -> float | None:
 
 
 def check_row_fact(row: dict, as_of: object, row_lookup) -> tuple[bool, str | None]:
-    """A number sourced from a ``kec.db`` row: the value, and the quote when given, must be in it."""
+    """A number sourced from a company-database row: the value, and the quote when given, must be in it."""
     table = normalise(row.get("table"))
     if not table:
         return False, "table: missing"
@@ -292,7 +293,7 @@ def check_row_fact(row: dict, as_of: object, row_lookup) -> tuple[bool, str | No
     except Exception as exc:  # noqa: BLE001 -- a failed lookup is a failed check, never a crash
         return False, f"table: {table} lookup raised {type(exc).__name__}: {str(exc)[:200]}"
     if not isinstance(record, dict) or not record:
-        return False, f"table: no {table} row {row.get('rowid')!r} in kec.db"
+        return False, f"table: no {table} row {row.get('rowid')!r} in {current().db_name}"
     leaves = list(_leaves(record))
     try:
         number = float(row.get("value"))  # type: ignore[arg-type]

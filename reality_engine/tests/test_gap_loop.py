@@ -17,7 +17,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from reality_engine.gap_loop import checks, loop, prepare, store, tiers
+from reality_engine.gap_loop import checks, company, loop, prepare, store, tiers
 from reality_engine.scripts import job_watch, session_runner
 from reality_engine.scripts.session_runner import MODEL
 
@@ -312,8 +312,8 @@ def make_pdf(path: Path, pages: list[str]) -> None:
 
 
 def test_prepare_fills_doc_text_flags_needs_ocr_and_builds_docs(root, monkeypatch):
-    monkeypatch.setattr(prepare, "STORE_COPIES", ())   # no read-only store in a test
-    monkeypatch.setattr(prepare, "DUCK_COPIES", ())
+    monkeypatch.setattr(prepare, "store_copies", lambda company: ())   # no read-only store in a test
+    monkeypatch.setattr(prepare, "duck_copies", lambda company: ())
     folder = root / "raw" / "history" / "quarterly_results"
     folder.mkdir(parents=True)
     make_pdf(folder / "dated.pdf", [PAGE, ""])          # page 1 has text, page 2 has none
@@ -351,8 +351,8 @@ def test_prepare_fills_doc_text_flags_needs_ocr_and_builds_docs(root, monkeypatc
 
 
 def test_prepare_names_a_store_it_cannot_read(root, monkeypatch):
-    monkeypatch.setattr(prepare, "DUCK_COPIES", ())
-    monkeypatch.setattr(prepare, "STORE_COPIES", (
+    monkeypatch.setattr(prepare, "duck_copies", lambda company: ())
+    monkeypatch.setattr(prepare, "store_copies", lambda company: (
         {"table": "ar_facts", "db": "missing.db", "source": "ar_facts", "key": "isin=X",
          "sql": "select 1", "params": ()},))
     with pytest.raises(RuntimeError, match="cannot read missing.db for KEC"):
@@ -441,4 +441,4 @@ def test_dry_run_prints_the_round_one_plan_and_calls_no_model(root, capsys, monk
     assert "answer-20: 5 questions, tier 1" in out
     assert "prepare (code only, no model)" in out
     assert "tier 2" in out and "tier 3" in out
-    assert not (root / store.DB_NAME).exists()
+    assert not (root / company.current().db_name).exists()

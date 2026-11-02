@@ -1,10 +1,12 @@
 """T-048 one-company gap loop: 100 questions, gaps, fix units, re-answer, ledger, reports.
 
     python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\kec_loop --dry-run
-    python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\kec_loop --prepare-only
+    python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\bajfinance_loop --company BAJFINANCE --prepare-only
     python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\kec_loop
     python -m reality_engine.gap_loop --sandbox D:\\RealityEngine\\sandbox\\kec_loop --ledger-summary \\
         --opus-transcript <managing session .jsonl> --since <ISO time>
+
+``--company`` is KEC, BAJFINANCE or HINDALCO (default KEC): see ``reality_engine/gap_loop/company.py``.
 
 The loop, not the model, decides what is stored: a malformed report is a failed attempt, a number
 that fails its check leaves its row ``unverified``, two failed Haiku attempts go to Sonnet, and a
@@ -24,11 +26,10 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
-from reality_engine.gap_loop import checks, ledger, prepare, store, tiers
+from reality_engine.gap_loop import checks, company, ledger, prepare, store, tiers
 from reality_engine.scripts.session_runner import LIMIT_SLEEP, MODEL
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-QUESTIONS = "questions/KEC_QUESTIONS.jsonl"
 AS_OF = "2026-10-19"
 BATCH = 5
 FIX_UNIT_MAX = 10
@@ -39,17 +40,18 @@ FIXED_REGRESSION = 10
 LOG = "logs/loop.log"
 APPROVED_BY = "Shivam, 2 Nov: full permissions inside the T-048 sandbox"
 
+# Fix instructions by gap type; {db} and {symbol} are the active company's database and symbol.
 FIX_INSTRUCTIONS = {
     "unverified": (
-        "The answer's number failed a check. If the cited page is not in kec.db doc_text, put that "
+        "The answer's number failed a check. If the cited page is not in {db} doc_text, put that "
         "page's text there with its filing date, keyed so an answer can cite it. If the number comes "
-        "from a prepared store, say in your summary which kec.db table and rowid hold it, and quote "
+        "from a prepared store, say in your summary which {db} table and rowid hold it, and quote "
         "the value exactly as that row has it: the loop re-reads the row when the answer cites it."
     ),
     "text_missing": (
-        "Extract the text of the KEC documents the failed answers cite but cannot read, page by "
-        "page, into kec.db doc_text; use fitz in a Python script and OCR only a page with no text "
-        "layer. known_at comes from the filing record (kec.db docs, bse_announcements/"
+        "Extract the text of the {symbol} documents the failed answers cite but cannot read, page by "
+        "page, into {db} doc_text; use fitz in a Python script and OCR only a page with no text "
+        "layer. known_at comes from the filing record ({db} docs, bse_announcements/"
         "corporate_documents), never the crawl date."
     ),
     "not_extracted": (
@@ -58,16 +60,22 @@ FIX_INSTRUCTIONS = {
         "quote, page, unit, period and known_at. The loop checks and stores them."
     ),
     "needs_formula": (
-        "Define each missing measure as a formula over numbers already stored in kec.db facts or in a "
+        "Define each missing measure as a formula over numbers already stored in {db} facts or in a "
         "prepared store table, write it to state/proposals/<unit>.formulas.json, and say which "
         "inputs it uses. Do not invent an input that is not stored."
     ),
     "wrong_store": (
-        "The data is held but the query did not reach it: find the kec.db table that has it (see "
+        "The data is held but the query did not reach it: find the {db} table that has it (see "
         "`sources` for what each copy is, `docs` for the documents) and record the retrieval path in "
         "state/proposals/ as facts rows the loop can check."
     ),
 }
+
+
+def fix_instruction(gap: str) -> str:
+    """The instruction for one gap type, named for the active company's database and symbol."""
+    template = FIX_INSTRUCTIONS.get(gap, FIX_INSTRUCTIONS["not_extracted"])
+    return template.format(db=company.current().db_name, symbol=company.current().symbol)
 
 
 def _now_iso() -> str:
@@ -102,15 +110,17 @@ def log(path: Path | None, text: str) -> None:
             fh.write(line + "\n")
 
 
-def ensure_sandbox(path: Path) -> Path:
-    """An existing directory outside the repository, holding the question bank."""
+def ensure_sandbox(path: Path, *, questions_required: bool = True) -> Path:
+    """An existing directory outside the repository, holding the question bank (not needed to prepare)."""
     root = Path(path).expanduser().resolve()
     if not root.is_dir():
         raise SystemExit(f"STOPPED sandbox is not a directory: {root}")
     repo = os.path.normcase(str(REPO_ROOT.resolve()) + os.sep)
     if os.path.normcase(str(root) + os.sep).startswith(repo):
         raise SystemExit(f"STOPPED sandbox must be outside the repository: {root}")
-    question_file = store.inside(root, QUESTIONS)
+    if not questions_required:
+        return root
+    question_file = store.inside(root, company.current().questions)
     if not question_file.is_file():
         raise SystemExit(f"STOPPED question bank missing: {question_file}")
     return root
@@ -118,7 +128,7 @@ def ensure_sandbox(path: Path) -> Path:
 
 def load_questions(sandbox: Path) -> list[dict]:
     """Read-only: the bank is never edited or reworded."""
-    file = store.inside(sandbox, QUESTIONS)
+    file = store.inside(sandbox, company.current().questions)
     questions = []
     for line in file.read_text(encoding="utf-8").splitlines():
         if line.strip():
@@ -152,7 +162,7 @@ def fix_units(statuses: dict[str, dict], sandbox: Path) -> list[Unit]:
     for gap, qids in sorted(gap_groups(statuses).items()):
         if gap == "absent":
             continue  # not in any document held: recorded, not fixed
-        instruction = FIX_INSTRUCTIONS.get(gap, FIX_INSTRUCTIONS["not_extracted"])
+        instruction = fix_instruction(gap)
         ordered = sorted(qids)
         for index in range(0, len(ordered), FIX_UNIT_MAX):
             units.append(Unit(id=f"fix-{gap}-{index // FIX_UNIT_MAX + 1:02d}", stage="fix",
@@ -428,7 +438,7 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
             "rows": {}, "unit": current, "escalated": True, "escalated_qids": escalated}
 
 
-# Sessions at once (Shivam, 2 Nov: run in parallel).  Answer units only read kec.db, so 4 run together;
+# Sessions at once (Shivam, 2 Nov: run in parallel).  Answer units only read the company database, so 4 run together;
 # fix units write doc_text, and run one at a time so each ledger row's added rows are its own.
 PARALLEL = {"answer": 4, "reanswer": 4, "fix": 1}
 
@@ -463,7 +473,7 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
             log(logfile, f"HP slots off for this stage: {problem}")
             hp = 0
         else:
-            log(logfile, f"HP: kec.db copied, {hp} answer sessions there")
+            log(logfile, f"HP: {company.current().db_name} copied, {hp} answer sessions there")
             count += hp
 
     def work(slot: int = 0) -> None:
@@ -585,7 +595,7 @@ def run_loop(sandbox: Path, *, max_rounds: int = MAX_ROUNDS, budget: float = BUD
     logfile.parent.mkdir(parents=True, exist_ok=True)
     try:  # the Opus session sees the loop in job_watch; a failure here never stops the run
         from reality_engine.scripts import job_watch
-        job_watch.add("kec_gap_loop", str(logfile), pid=os.getpid())
+        job_watch.add(company.current().job_name, str(logfile), pid=os.getpid())
     except Exception as exc:  # noqa: BLE001
         log(logfile, f"job_watch not registered: {type(exc).__name__}: {exc}")
     questions = load_questions(sandbox)
@@ -659,6 +669,8 @@ def recheck(sandbox: Path, as_of: str = AS_OF) -> tuple[int, int]:
 
 
 def plan(sandbox: Path) -> list[str]:
+    active = company.current()
+    db, symbol = active.db_name, active.symbol
     questions = load_questions(sandbox)
     units = answer_units(questions, sandbox)
     lines = [f"round 1 plan: {len(questions)} questions in {len(units)} answer units "
@@ -666,12 +678,12 @@ def plan(sandbox: Path) -> list[str]:
     for unit in units:
         lines.append(f"  {unit.id}: {unit.size} questions, tier 1, {MODEL}")
     lines += [
-        "prepare (code only, no model): every PDF under raw into kec.db doc_text page by page, an FTS5 "
-        "index over it, a docs row per file with its type and filing date, and KEC's rows copied out "
+        f"prepare (code only, no model): every PDF under raw into {db} doc_text page by page, an FTS5 "
+        f"index over it, a docs row per file with its type and filing date, and {symbol}'s rows copied out "
         "of the read-only stores with their source table in `sources`; idempotent, logged as a "
         "tier-0 `prepare` unit; the run stops before answering when more than a third of the history "
         "PDFs cannot be dated",
-        "tier 1 reads kec.db only: the strict MCP config has no servers, so no reality-data reply can "
+        f"tier 1 reads {db} only: the strict MCP config has no servers, so no reality-data reply can "
         "fill the context; SQL with LIMIT and FTS queries are run by Bash/Python",
         "checks: a malformed report (not JSON, a qid missing, a bad status or gap type) fails the unit; "
         "a number that fails a check is stored as unverified with its reason and is not counted as answered",
@@ -691,7 +703,7 @@ def plan(sandbox: Path) -> list[str]:
 def ledger_summary(sandbox: Path, opus_path: Path | None = None, since: str | None = None,
                    answered: int | None = None) -> str:
     rows = ledger.read(sandbox)
-    db = store.inside(sandbox, store.DB_NAME)
+    db = store.inside(sandbox, company.current().db_name)
     if answered is None:
         answered = 0
         if db.exists():
@@ -706,6 +718,8 @@ def ledger_summary(sandbox: Path, opus_path: Path | None = None, since: str | No
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sandbox", type=Path, required=True)
+    parser.add_argument("--company", default=company.DEFAULT,
+                        help="KEC (default), BAJFINANCE or HINDALCO: which company's config to run")
     parser.add_argument("--dry-run", action="store_true", help="print the round-1 plan; no model call")
     parser.add_argument("--prepare-only", action="store_true",
                         help="run the prepare stage (code only, no model) and print its counts")
@@ -719,7 +733,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--hp-slots", type=int, default=0, help="answer sessions to run on the HP laptop")
     args = parser.parse_args(argv)
     try:
-        sandbox = ensure_sandbox(args.sandbox)
+        company.activate(args.company)
+        sandbox = ensure_sandbox(args.sandbox, questions_required=not args.prepare_only)
         if (args.opus_transcript is None) != (args.since is None):
             print("STOPPED --opus-transcript and --since go together", file=sys.stderr)
             return 4

@@ -2,16 +2,16 @@
 
 A raw ``reality-data`` reply is tens of thousands of tokens, so a 100k session cannot read the
 evidence directly.  This module does the bulk work once, in Python, and leaves small rows behind in
-the sandbox's ``kec.db``:
+the sandbox's company database (``kec.db`` for KEC):
 
 - every PDF under ``raw`` read page by page with ``fitz`` into ``doc_text`` (a page under 50
   characters of text is recorded ``method='needs_ocr'`` with empty text: OCR is a fix-stage job),
   with an FTS5 index over the text;
 - one ``docs`` row per PDF: ``doc_key`` (the path under ``raw``), doc type, title, filing date and
   ``known_at``, mapped from BSE's announcement records (file name = NEWSID, else the attachment
-  name) or KEC's own transcript manifest; a file that cannot be dated gets ``known_at`` NULL;
-- KEC's rows copied out of the read-only stores the ``reality-data`` server reads, each with its
-  source table and key in ``sources``.
+  name) or, for KEC only, its own transcript manifest; a file that cannot be dated gets ``known_at`` NULL;
+- the company's rows (every ISIN) copied out of the read-only stores the ``reality-data`` server
+  reads, each with its source table and key in ``sources``.
 
 Idempotent: a doc already extracted, a page already stored and a table already copied are skipped.
 Nothing here calls a model or touches the network.
@@ -29,10 +29,8 @@ from pathlib import Path
 
 from reality_engine.db.readonly import connect_ro
 from reality_engine.gap_loop import ledger, store
+from reality_engine.gap_loop.company import Company, current
 
-KEC_ISIN = "INE389H01022"
-KEC_SYMBOL = "KEC"
-KEC_BSE_CODE = "532714"
 RAW = "raw"
 MIN_PAGE_CHARS = 50
 UNDATED_LIMIT = 1.0 / 3.0
@@ -49,41 +47,53 @@ DOC_TYPES = {
     "concall_audio_link": "audio_link",
 }
 
-# One entry per table copied from a read-only SQLite store: the kec.db table, the store, the table
-# in it, the key the rows were filtered by, and the SELECT (which adds ``known_at``).
-STORE_COPIES = (
-    {"table": "ar_facts", "db": "ar_facts.db", "source": "ar_facts", "key": f"isin={KEC_ISIN}",
-     "sql": "SELECT *, filed_at AS known_at FROM ar_facts WHERE isin=?", "params": (KEC_ISIN,)},
-    {"table": "deck_figures", "db": "deck_figures.db", "source": "facts",
-     "key": f"isin={KEC_ISIN} via pages",
-     "sql": "SELECT f.*, p.known_at FROM facts f JOIN (SELECT sha256, MIN(known_at) AS known_at "
-            "FROM pages WHERE isin=? GROUP BY sha256) p ON p.sha256=f.sha256", "params": (KEC_ISIN,)},
-    {"table": "results_filings", "db": "results_xbrl.db", "source": "filings", "key": f"isin={KEC_ISIN}",
-     "sql": "SELECT *, coalesce(filing_ts, broadcast_ts, dissem_ts) AS known_at FROM filings "
-            "WHERE isin=?", "params": (KEC_ISIN,)},
-    {"table": "results_quarterly", "db": "results_xbrl.db", "source": "quarterly",
-     "key": f"isin={KEC_ISIN}",
-     "sql": "SELECT *, coalesce(dissem_ts, broadcast_ts) AS known_at FROM quarterly WHERE isin=?",
-     "params": (KEC_ISIN,)},
-    {"table": "concall_items", "db": "concall_facts.db", "source": "cc_items",
-     "key": f"isin={KEC_ISIN}",
-     "sql": "SELECT *, filed_at AS known_at FROM cc_items WHERE isin=?", "params": (KEC_ISIN,)},
-    {"table": "shp_index", "db": "equity_intelligence.db", "source": "shp_index",
-     "key": f"isin={KEC_ISIN}",
-     "sql": "SELECT *, coalesce(broadcast_at, submission_date) AS known_at FROM shp_index "
-            "WHERE isin=?", "params": (KEC_ISIN,)},
-    {"table": "announcements", "db": "bse_announcements.db", "source": "ann", "key": f"symbol={KEC_SYMBOL}",
-     "sql": "SELECT *, coalesce(DissemDT, News_submission_dt, NEWS_DT) AS known_at FROM ann "
-            "WHERE symbol=?", "params": (KEC_SYMBOL,)},
-)
-# Price and delivery rows live in the dated truth snapshot (DuckDB), not in a SQLite store.
-DUCK_COPIES = (
-    {"table": "px_nse", "source": "px_nse", "key": f"isin={KEC_ISIN}",
-     "sql": "SELECT *, CAST(date AS VARCHAR) AS known_at FROM px_nse WHERE isin=?", "params": (KEC_ISIN,)},
-    {"table": "px_bse", "source": "px_bse", "key": f"isin={KEC_ISIN} sc_code={KEC_BSE_CODE}",
-     "sql": "SELECT *, CAST(date AS VARCHAR) AS known_at FROM px_bse WHERE isin=? OR sc_code=?",
-     "params": (KEC_ISIN, KEC_BSE_CODE)},
-)
+
+def store_copies(company: Company) -> tuple[dict, ...]:
+    """One entry per table copied from a read-only SQLite store, filtered to this company's ISINs
+    (every ISIN, so a changed ISIN keeps its history): the table, the store, the table in it, the
+    key the rows were filtered by, and the SELECT (which adds ``known_at``)."""
+    isin = company.isin_clause()
+    params = company.isin_params
+    return (
+        {"table": "ar_facts", "db": "ar_facts.db", "source": "ar_facts", "key": company.isin_key,
+         "sql": f"SELECT *, filed_at AS known_at FROM ar_facts WHERE {isin}", "params": params},
+        {"table": "deck_figures", "db": "deck_figures.db", "source": "facts",
+         "key": f"{company.isin_key} via pages",
+         "sql": "SELECT f.*, p.known_at FROM facts f JOIN (SELECT sha256, MIN(known_at) AS known_at "
+                f"FROM pages WHERE {isin} GROUP BY sha256) p ON p.sha256=f.sha256", "params": params},
+        {"table": "results_filings", "db": "results_xbrl.db", "source": "filings",
+         "key": company.isin_key,
+         "sql": "SELECT *, coalesce(filing_ts, broadcast_ts, dissem_ts) AS known_at FROM filings "
+                f"WHERE {isin}", "params": params},
+        {"table": "results_quarterly", "db": "results_xbrl.db", "source": "quarterly",
+         "key": company.isin_key,
+         "sql": "SELECT *, coalesce(dissem_ts, broadcast_ts) AS known_at FROM quarterly "
+                f"WHERE {isin}", "params": params},
+        {"table": "concall_items", "db": "concall_facts.db", "source": "cc_items",
+         "key": company.isin_key,
+         "sql": f"SELECT *, filed_at AS known_at FROM cc_items WHERE {isin}", "params": params},
+        {"table": "shp_index", "db": "equity_intelligence.db", "source": "shp_index",
+         "key": company.isin_key,
+         "sql": "SELECT *, coalesce(broadcast_at, submission_date) AS known_at FROM shp_index "
+                f"WHERE {isin}", "params": params},
+        {"table": "announcements", "db": "bse_announcements.db", "source": "ann",
+         "key": f"symbol={company.symbol}",
+         "sql": "SELECT *, coalesce(DissemDT, News_submission_dt, NEWS_DT) AS known_at FROM ann "
+                "WHERE symbol=?", "params": (company.symbol,)},
+    )
+
+
+def duck_copies(company: Company) -> tuple[dict, ...]:
+    """Price and delivery rows live in the dated truth snapshot (DuckDB), not in a SQLite store."""
+    isin = company.isin_clause()
+    return (
+        {"table": "px_nse", "source": "px_nse", "key": company.isin_key,
+         "sql": f"SELECT *, CAST(date AS VARCHAR) AS known_at FROM px_nse WHERE {isin}",
+         "params": company.isin_params},
+        {"table": "px_bse", "source": "px_bse", "key": f"{company.isin_key} sc_code={company.bse_code}",
+         "sql": f"SELECT *, CAST(date AS VARCHAR) AS known_at FROM px_bse WHERE {isin} OR sc_code=?",
+         "params": company.isin_params + (company.bse_code,)},
+    )
 
 
 def _now_iso() -> str:
@@ -119,9 +129,12 @@ def _pdfs(sandbox: Path) -> list[Path]:
 
 
 def _transcripts(sandbox: Path) -> dict[str, dict]:
-    """``sha256 -> manifest row`` for KEC's own site transcripts, from the two json files beside them."""
+    """``sha256 -> manifest row`` for KEC's own site transcripts, from the two json files beside them.
+    Other companies have no such manifest: their folder is skipped."""
     folder = Path(sandbox) / RAW / "company_site_transcripts"
     known: dict[str, dict] = {}
+    if current().symbol != "KEC":
+        return known
     for name in ("_manifest.json", "_known_at.json"):
         file = folder / name
         if not file.is_file():
@@ -141,7 +154,8 @@ def _store_index(sandbox: Path) -> dict[str, dict]:
     """Lookup tables that date a held PDF, all from read-only stores (empty when copies are off)."""
     index: dict[str, dict] = {"transcripts": _transcripts(sandbox), "by_newsid": {}, "by_attachment": {},
                               "corp_by_newsid": {}, "corp_by_id": {}, "corp_by_sha": {}}
-    if not STORE_COPIES:
+    company = current()
+    if not store_copies(company):
         return index
     path = DATA_ROOT / "bse_announcements.db"
     if path.is_file():
@@ -149,7 +163,7 @@ def _store_index(sandbox: Path) -> dict[str, dict]:
         try:
             for newsid, attachment, headline, category, subcat, dissem, submitted, newsdt in con.execute(
                 "SELECT NEWSID, ATTACHMENTNAME, HEADLINE, CATEGORYNAME, SUBCATNAME, DissemDT, "
-                "News_submission_dt, NEWS_DT FROM ann WHERE symbol=?", (KEC_SYMBOL,)
+                "News_submission_dt, NEWS_DT FROM ann WHERE symbol=?", (company.symbol,)
             ):
                 row = {"NEWSID": newsid, "title": _title(subcat, category, headline),
                        "filing_date": _date_of(submitted or newsdt or dissem),
@@ -165,7 +179,8 @@ def _store_index(sandbox: Path) -> dict[str, dict]:
         try:  # doc_date is the crawl date, never a filing date: publication/dissemination only
             for doc_id, doc_type, title, publication, call_date, dissem, bse_newsid, sha in con.execute(
                 "SELECT id, doc_type, title, publication_date, call_date, bse_dissem_ts, bse_newsid, "
-                "sha256_hash FROM corporate_documents WHERE isin=?", (KEC_ISIN,)
+                f"sha256_hash FROM corporate_documents WHERE {company.isin_clause()}",
+                company.isin_params
             ):
                 when = dissem or publication or call_date
                 row = {"id": doc_id, "doc_type": str(doc_type or "").lower(), "title": _title(title),
@@ -272,7 +287,7 @@ def _write_table(conn: sqlite3.Connection, table: str, types: dict[str, str], ro
 def _read_sqlite(db: str, source: str, sql: str, params: tuple) -> tuple[list, dict[str, str]]:
     path = DATA_ROOT / db
     if not path.is_file():
-        raise RuntimeError(f"cannot read {db} for KEC: {path} is missing")
+        raise RuntimeError(f"cannot read {db} for {current().symbol}: {path} is missing")
     con = connect_ro(path, timeout_s=120)
     try:
         cursor = con.execute(sql, params)
@@ -286,7 +301,8 @@ def _read_sqlite(db: str, source: str, sql: str, params: tuple) -> tuple[list, d
 def _snapshot() -> Path:
     found = sorted((DATA_ROOT / "snapshots").glob("truth_*.duckdb"))
     if not found:
-        raise RuntimeError(f"cannot read the truth snapshot for KEC: no truth_*.duckdb under {DATA_ROOT}")
+        raise RuntimeError(f"cannot read the truth snapshot for {current().symbol}: "
+                           f"no truth_*.duckdb under {DATA_ROOT}")
     return found[-1]
 
 
@@ -320,7 +336,8 @@ def _copied(conn: sqlite3.Connection, table: str) -> int | None:
 def _copy_stores(conn: sqlite3.Connection) -> dict[str, int]:
     counts: dict[str, int] = {}
     now = _now_iso()
-    for spec in STORE_COPIES:
+    company = current()
+    for spec in store_copies(company):
         table = spec["table"]
         done = _copied(conn, table)
         if done is not None:
@@ -331,7 +348,7 @@ def _copy_stores(conn: sqlite3.Connection) -> dict[str, int]:
         store.put_source(conn, table, spec["db"], spec["source"], spec["key"], len(rows), now)
         conn.commit()
         counts[table] = len(rows)
-    for spec in DUCK_COPIES:
+    for spec in duck_copies(company):
         table = spec["table"]
         done = _copied(conn, table)
         if done is not None:
@@ -400,6 +417,6 @@ def prepare(sandbox: Path, *, as_of: str | None = None) -> dict:
         "pages_model": None, "pages_code": counts["pages"], "as_of": as_of,
         "rows_added": {"doc_text": counts["pages"], "docs": counts["docs"],
                        "needs_ocr": counts["needs_ocr"], **counts["tables"]},
-        "files_written": [store.DB_NAME, ledger.LEDGER], "seconds": counts["seconds"],
+        "files_written": [current().db_name, ledger.LEDGER], "seconds": counts["seconds"],
     })
     return counts

@@ -1,6 +1,6 @@
 """Run gap-loop answer sessions on the HP laptop (Shivam, 2 Nov: headless claude -p there too).
 
-Only answer and re-answer units go to the HP: they read ``kec.db`` and write nothing back, so a copy
+Only answer and re-answer units go to the HP: they read the company database and write nothing back, so a copy
 made before each answer stage is enough.  Fix units write ``doc_text`` and stay on this laptop.
 The HP's Claude CLI signs in through its own ``CLAUDE_CODE_OAUTH_TOKEN`` user variable, set by
 Shivam; nothing here reads or copies a key.  Every call is plain ``ssh``/``scp``: no window opens
@@ -15,8 +15,16 @@ import tempfile
 from dataclasses import replace
 from pathlib import Path
 
+from reality_engine.gap_loop.company import current
+
 HOST = "zen7s@100.78.87.112"  # Tailscale; machines/HP_LAPTOP.md
-SANDBOX = r"C:\RE\sandbox\kec_loop"
+
+
+def hp_sandbox() -> str:
+    """The sandbox folder on the HP for the active company: C:\\RE\\sandbox\\<symbol lower>_loop."""
+    return current().hp_sandbox
+
+
 CLAUDE = r"C:\Users\zen7s\.local\bin\claude.exe"
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15"]
 SCP = ["scp", "-q", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15"]
@@ -29,24 +37,26 @@ def _run(cmd: list[str], timeout: int = 600) -> subprocess.CompletedProcess:
 
 
 def _remote_path(name: str) -> str:
-    return f"{HOST}:{(SANDBOX + chr(92) + name).replace(chr(92), '/')}"
+    return f"{HOST}:{(hp_sandbox() + chr(92) + name).replace(chr(92), '/')}"
 
 
 def sync_db(sandbox: Path) -> str | None:
-    """Copy a consistent snapshot of kec.db to the HP.  Returns an error line, or None."""
-    snap = Path(tempfile.gettempdir()) / "kec_gap_loop_snapshot.db"
+    """Copy a consistent snapshot of the company database to the HP.  Returns an error line, or None."""
+    active = current()
+    snap = Path(tempfile.gettempdir()) / f"{active.symbol.lower()}_gap_loop_snapshot.db"
+    sandbox_dir = hp_sandbox()
     try:
-        src = sqlite3.connect(Path(sandbox) / "kec.db")
+        src = sqlite3.connect(Path(sandbox) / active.db_name)
         dst = sqlite3.connect(snap)
         src.backup(dst)
         dst.close()
         src.close()
-        made = _run(SSH + [HOST, f"mkdir {SANDBOX}\\prompts {SANDBOX}\\state 2>nul & echo ok"], 60)
+        made = _run(SSH + [HOST, f"mkdir {sandbox_dir}\\prompts {sandbox_dir}\\state 2>nul & echo ok"], 60)
         if "ok" not in made.stdout:
             return f"HP not reachable: {(made.stderr or made.stdout)[:200]}"
-        mcp = Path(tempfile.gettempdir()) / "kec_gap_loop_mcp.json"
+        mcp = Path(tempfile.gettempdir()) / f"{active.symbol.lower()}_gap_loop_mcp.json"
         mcp.write_text(json.dumps({"mcpServers": {}}), encoding="utf-8")
-        for local, name in ((snap, "kec.db"), (mcp, "mcp.json")):
+        for local, name in ((snap, active.db_name), (mcp, "mcp.json")):
             copied = _run(SCP + [str(local), _remote_path(name)], 900)
             if copied.returncode:
                 return f"scp {name} failed: {copied.stderr[:200]}"
@@ -58,10 +68,11 @@ def sync_db(sandbox: Path) -> str | None:
 def build_remote_cmd(unit_id: str, model: str, allowed: tuple[str, ...], disallowed: tuple[str, ...],
                      max_turns: int) -> list[str]:
     """The ssh command: the prompt file is piped into ``claude -p`` on the HP, stream-json comes back."""
-    line = (f'cd /d {SANDBOX} && type prompts\\{unit_id}.txt | "{CLAUDE}" -p --model {model} '
+    sandbox_dir = hp_sandbox()
+    line = (f'cd /d {sandbox_dir} && type prompts\\{unit_id}.txt | "{CLAUDE}" -p --model {model} '
             f"--effort medium --output-format stream-json --verbose --max-turns {max_turns} "
             f'--allowedTools "{",".join(allowed)}" --disallowedTools "{",".join(disallowed)}" '
-            f"--strict-mcp-config --mcp-config {SANDBOX}\\mcp.json --no-session-persistence")
+            f"--strict-mcp-config --mcp-config {sandbox_dir}\\mcp.json --no-session-persistence")
     return SSH + [HOST, line]
 
 
@@ -71,7 +82,7 @@ def run_remote(unit, model: str, tier: int) -> dict:
     from reality_engine.scripts.session_runner import child_env, parse_json_block, run_session
 
     started = tiers._iso()
-    there = replace(unit, sandbox=Path(SANDBOX))
+    there = replace(unit, sandbox=Path(hp_sandbox()))
     prompt = tiers.fix_prompt(there) if unit.stage == "fix" else tiers.answer_prompt(there)
     local = Path(unit.sandbox) / "state" / "remote_prompts" / f"{unit.id}.txt"
     local.parent.mkdir(parents=True, exist_ok=True)

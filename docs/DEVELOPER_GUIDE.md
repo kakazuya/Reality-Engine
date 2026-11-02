@@ -482,7 +482,7 @@ The stream/context runner is shared with the T-048 gap loop: `reality_engine/scr
 
 ### N. One-company gap loop (T-048)
 
-`reality_engine/gap_loop/` answers one company's question bank in rounds, finds why each answer failed, fills the gap by extraction from the company's own documents or by a formula on stored numbers, and answers again. KEC is the first company. Cheap models do the work and it escalates only on repeated failure. `reality_engine/gap_loop/__main__.py` is the `python -m` entry and calls `loop.main`. Sessions start through `reality_engine/scripts/session_runner.py` in a new console that is hidden (`hidden_console`), so the Bash and Python calls they make open no windows on this laptop; start the loop itself hidden too (`Win32_Process.Create` with `ShowWindow=0`, or `pythonw`). Each live session also keeps `C:\Users\warri\.claude\headless-sessions\<pid>.json` (model, label, a one-line description of the work from `tiers.describe`, start, last step, peak context, tool calls and the last Bash command; `Heartbeat` in the runner, removed when the session ends), which the `headless-sessions` Claude Code mod shows above the prompt and as `claude -p: N running` in the status line.
+`reality_engine/gap_loop/` answers one company's question bank in rounds, finds why each answer failed, fills the gap by extraction from the company's own documents or by a formula on stored numbers, and answers again. KEC is the first company; `--company BAJFINANCE` and `--company HINDALCO` run the same loop on those two (T-048, 2 Nov; `--company` defaults to KEC). Cheap models do the work and it escalates only on repeated failure. `reality_engine/gap_loop/__main__.py` is the `python -m` entry and calls `loop.main`. Sessions start through `reality_engine/scripts/session_runner.py` in a new console that is hidden (`hidden_console`), so the Bash and Python calls they make open no windows on this laptop; start the loop itself hidden too (`Win32_Process.Create` with `ShowWindow=0`, or `pythonw`). Each live session also keeps `C:\Users\warri\.claude\headless-sessions\<pid>.json` (model, label, a one-line description of the work from `tiers.describe`, start, last step, peak context, tool calls and the last Bash command; `Heartbeat` in the runner, removed when the session ends), which the `headless-sessions` Claude Code mod shows above the prompt and as `claude -p: N running` in the status line.
 
 ```bash
 python -m reality_engine.gap_loop --sandbox D:\RealityEngine\sandbox\kec_loop --dry-run
@@ -490,9 +490,20 @@ python -m reality_engine.gap_loop --sandbox D:\RealityEngine\sandbox\kec_loop --
 python -m reality_engine.gap_loop --sandbox D:\RealityEngine\sandbox\kec_loop
 python -m reality_engine.gap_loop --sandbox D:\RealityEngine\sandbox\kec_loop --ledger-summary \
     --opus-transcript <managing session .jsonl> --since <ISO time>
+python -m reality_engine.gap_loop --sandbox D:\RealityEngine\sandbox\bajfinance_loop --company BAJFINANCE --prepare-only
 python -m reality_engine.gap_loop.keeper --sandbox D:\RealityEngine\sandbox\kec_loop \
     --log D:\RealityEngine\sandbox\kec_loop\logs\loop.log [--wait-pid N]
 ```
+
+**Companies (`--company`, `reality_engine/gap_loop/company.py`).** `COMPANIES` holds one frozen `Company` per symbol: `symbol`, `name`, `isins` (a tuple), `bse_code`, `db_name`, `questions` (relative to the sandbox) and `raw_sources` (the `D:\RealityEngine\raw` folder the PDFs came from). `main` calls `company.activate(symbol)` once; every module then reads `company.current()` for its ISIN filter, symbol, BSE code, database name, prompt names, the `job_watch` name (`<symbol lower>_gap_loop`), the HP sandbox (`C:\RE\sandbox\<symbol lower>_loop`) and the DeepSeek write scope. An unknown symbol stops the run with `STOPPED unknown company`. The configured companies:
+
+| `--company` | Database | ISINs (all copied) | BSE code | Sandbox |
+|---|---|---|---|---|
+| KEC (default) | `kec.db` | `INE389H01022` | 532714 | `sandbox\kec_loop` (unchanged) |
+| BAJFINANCE | `bajfinance.db` | `INE296A01032`, `INE296A01024` (changed 2025-06-16 at the split) | 500034 | `sandbox\bajfinance_loop` |
+| HINDALCO | `hindalco.db` | `INE038A01020` | 500440 | `sandbox\hindalco_loop` |
+
+Every store copy filters with `isin IN (?,...)` over all the company's ISINs (`prepare.store_copies`, `prepare.duck_copies`). The `ann` copy filters on the symbol. KEC's own site-transcript manifest is read for KEC only. Each company's sandbox holds `raw\history\` (copied, not moved, from `D:\RealityEngine\raw\pilot60_history\<SYMBOL>\`, keeping its subfolders), `questions\` (written by Opus, never by the loop or prepare), `state\`, `logs\` and `reports\`. `--prepare-only` needs no question file, so a sandbox can be prepared before its bank exists; every other command needs `questions\<company's questions file>`. The KEC dry run prints the same plan as before this change. The prepare stage reads the read-only stores from `REALITY_DATA_ROOT` (default `reality_engine\data`), so set it to the checkout that holds the stores when running from a worktree. The `KEC_GAP_LOOP` environment variable keeps its name for every company (the session-title hook looks for it); the HP sandbox and the database copy sent there follow the company.
 
 The dry run prints round 1's units, sizes and tiers and calls no model. A real run first executes the prepare stage (code only, no model); `--prepare-only` runs just that stage and prints its counts. Claude starts a real run after review; the loop never edits `questions\` and never writes outside the sandbox (the job_watch state file is the one exception the ticket asks for).
 
