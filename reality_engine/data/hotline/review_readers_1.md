@@ -141,7 +141,7 @@ MiniMax's non-material defects cluster in three areas: **entity/scope** (parent,
 
 ## 6. Prompt v3 fixes (keyed to observed errors)
 
-These are additions/edits to `reality_engine/data/concall_pilot/prompt_v2.md`. 6.1–6.6 are must-fix; 6.7–6.10 are field lint.
+These are additions/edits to the v2 prompt, `reality_engine/data/concall_pilot/prompt_v2.md` (no longer in the repo; the v3 result is `reality_engine/data/concall_pilot/prompt_v3.md`, changes in `reality_engine/data/hotline/prompt_v3_changes.md`). 6.1–6.6 are must-fix; 6.7–6.10 are field lint.
 
 ### 6.1 Entity/scope block for capex and guidance
 
@@ -218,6 +218,8 @@ Why: Beam B1, MiniMax KAJARIACER `capex#0`.
 ---
 
 ## 8. Reproduction
+
+_The `_review_tmp/` folder below is not in the repository as of 2026-11-02; the files are listed for the record only._
 
 - Sample: `reality_engine/data/hotline/_review_tmp/sample.json` (seed 20261020; 10 docs; 8 items each with all fields).
 - Transcripts: `reality_engine/data/hotline/_review_tmp/txt/<doc_id>_<symbol>.txt` (pymupdf, one file per doc).

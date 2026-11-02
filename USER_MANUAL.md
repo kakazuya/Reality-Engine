@@ -81,7 +81,7 @@ The visual dashboard at `http://localhost:8501` is divided into 6 tabs:
 ### Tab 4: Stock Intelligence Dossier
 - **Search Any Stock**: Type any stock symbol (e.g., `HAL`, `TITAGARH`, `KAYNES`, `PIDILITIND`, `RELIANCE`).
 - **What You See**:
-  1. **Current Market Price & Delivery Flow**: Today's price, percentage change, and **Delivery Spike Ratio** (if $> 2.0\times$, institutions bought twice their usual volume).
+  1. **Current Market Price & Delivery Flow**: Today's price, percentage change, and **Delivery Spike Ratio** (if $\ge 2.0\times$ with delivery $\ge 50\%$, the top tier in `reality_engine/agent/tools.py:83`).
   2. **Quarterly P&L Trend**: Sales, profit growth, and profit margin trajectory over the past quarters.
   3. **Forensic Safety Status**: Green **APPROVED** badge if the company passed all debt and promoter pledge checks.
   4. **Distilled Business Profile**: Operating cyclicality, key revenue drivers, input sensitivities, and order book size.
@@ -90,9 +90,9 @@ The visual dashboard at `http://localhost:8501` is divided into 6 tabs:
 ### Tab 5: EOD Daily Alpha Reports
 - **Top 5 High-Conviction Setups**: Displays the system's top 5 stock picks of the day with exact trading levels:
   - **Recommended Entry Range**: Safe price window to enter without chasing highs.
-  - **Target Price**: Projected upside target (typically $+18\%$).
-  - **Stop Loss**: Safety cut-off level to protect capital (typically $-6\%$).
-  - **Risk-to-Reward Ratio**: Guaranteed minimum $1:2.5$ or $1:3.0$ ratio (you risk ₹1 to potentially make ₹3).
+  - **Target Price**: Projected upside target, sized from recent volatility (`reality_engine/agent/orchestrator.py:270`); falls back to $+18\%$ if that fails.
+  - **Stop Loss**: Safety cut-off level to protect capital; same volatility sizing, falls back to $-6\%$.
+  - **Risk-to-Reward Ratio**: Upside to target divided by downside to stop (`orchestrator.py:276`). The schema describes it as at least $1:2.5$; the orchestrator does not enforce that minimum.
 - **Catalysts & Downside Risks**: Clear bullet points explaining what will drive the stock up and what risks to watch for.
 - **Synthesize Fresh Report Button**: Click to run a new analysis on demand.
 
@@ -178,7 +178,7 @@ Every time you run the system, it automatically saves reports in standard files 
 You can teach the system about new research without writing any code:
 
 1. Open your File Explorer and navigate to:
-   `C:\Users\vermashi\Documents\kiloai\btask01\reality_engine\data\inbox`
+   `reality_engine\data\inbox` (inside the repository folder; `cli.py` line 458 names `./reality_engine/data/inbox/`)
 2. Drop your files into the appropriate subfolder:
    - **Chart Screenshots / Photos**: Put them in `data/inbox/images/`
    - **PDF Reports / Filings**: Put them in `data/inbox/pdfs/`
@@ -218,13 +218,13 @@ If something doesn't work as expected, refer to this guide to diagnose the issue
 ```
 
 ### Self-Diagnostic Check
-To verify that all 40 system checks and calculations are working properly, run:
+To run the system checks and calculation tests, run:
 ```powershell
 python -m unittest discover -s reality_engine/tests
 ```
-If everything is working, you will see:
+If everything is working, the last two lines will be:
 ```text
-Ran 40 tests in 3.0s
+Ran N tests in Xs
 OK
 ```
 If you ever see `FAILED` or an error, copy the last 5 lines of the terminal and share it in your feedback.

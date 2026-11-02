@@ -17,11 +17,11 @@
 
 ## 1. Machine state (verified except where marked)
 
-- `tasks/STATE.md:31`: *"all RealityEngine-* scheduled tasks disabled at Shivam's request, 01:30 IST. **Re-enable only on his word.** PC reported shut down until approximately 26/27-Nov. Laptop is the main workstation."* → every scheduled job below is presumed **disabled (unverified)**.
+- `tasks/STATE.md:31` (as recorded at audit time; the current `tasks/STATE.md` no longer carries this line): *"all RealityEngine-* scheduled tasks disabled at Shivam's request, 01:30 IST. **Re-enable only on his word.** PC reported shut down until approximately 26/27-Nov. Laptop is the main workstation."* → every scheduled job below is presumed **disabled (unverified)**.
 - The 2026-10-21 restore replaced `reality_engine/data/*.db` with the **19-Oct 16:50 PC copies**; only PIB / policy / concall tables were merged forward (`STATE.md:33-37`). **Anything ingested on the laptop after 19-Oct 16:50 and not merged is missing from the live DB** (it survives only inside `truth_2026-10-19.duckdb`). This alone explains several "regressions" below.
 - `reality_engine/data/raw_market/` **missing**; `data/bhavcopy/`, `data/pdfs/`, `data/macro_pdfs/` **empty (0 files)**. `data/snapshots/` holds **one** file: `truth_2026-10-19.duckdb`. Live DB mtimes: `equity_intelligence.db` 2026-10-21 14:38; `concall_facts.db` 2026-10-20 23:32; others 2026-10-19 16:2x.
 - Startup folder: no watchdog entry (only OneNote). `run_resource_watchdog` is not auto-started here.
-- No `plugins/dsh-worker/jobs.yaml` exists yet (Phase 2 deliverable).
+- No `plugins/dsh-worker/jobs.yaml` existed at audit time (Phase 2 deliverable); it is present in the repo now (`plugins/dsh-worker/jobs.yaml`, checked 2026-11-02).
 - `reality_engine/agent/routines.json` = `{"routines": []}` → the 5-minute `RealityEngine-Routines` tick dispatches **nothing**.
 
 ## 2. Answer to the question, in one paragraph
