@@ -756,7 +756,7 @@ exists.
 | Chunking | One post = one chunk; long posts split on paragraphs at 1,200 chars. |
 | Labels | `doc_type='opinion'`, `source_class='opinion'`; `thread_topic_name` → `source_id` and a topic tag; `detected_symbols_json` already exists (reuse); `known_at` = `post_timestamp` (exact, UTC). |
 | Quality grade | A for text, C for media-only posts (`has_media=1`, no OCR). |
-| Failure modes | The same content is often posted in General and in a topic → dedupe by (text hash, ±1 day). Private paid-community content must never reach GitHub — opinions.db lives under `REALITY_DATA_ROOT`, which is gitignored; add a `licence_note` and keep the file out of the repo. |
+| Failure modes | The same content is often posted in General and in a topic → dedupe by (text hash, ±1 day). Private paid-community content must never reach GitHub — opinions.db lives under `REALITY_DATA_ROOT`; the default `reality_engine/data/*.db` is gitignored (`.gitignore` lines 55-56), so add a `licence_note` and keep any copy out of the repo. |
 | Volume today → target | 4,527 posts / 0 chunks → **4,527 chunks**, plus media once downloaded. |
 
 ---
@@ -1153,8 +1153,8 @@ Each number in this document traces to one of these. All used `reality_engine.db
 ## Appendix B — files read
 
 `tasks/LABELS_TAGGING_PLAN_2026-10-27.md`; `tasks/FRAMEWORK.md`; `tasks/STATE.md` (first 140 lines);
-`tasks/archive/optimizations/HANDOFF_2026-10-26.md`; `tasks/optimizations/learn/C1C2_RESULTS_2026-10-26.md`;
-`tasks/worker_context/CONTEXT.md` (row counts and the 34.8k `raw_documents` figure);
+`tasks/archive/optimizations/HANDOFF_2026-10-26.md` (no longer in the repo); `tasks/optimizations/learn/C1C2_RESULTS_2026-10-26.md`;
+`tasks/worker_context/CONTEXT.md` (no longer in the repo; row counts and the 34.8k `raw_documents` figure);
 `reality_engine/processing/chunker_v2.py`; `reality_engine/scripts/load_deck_chunks.py`;
 `reality_engine/db/schema.sql` (lines 242-301, 395-444, 458-527, 641-660).
 
@@ -1163,7 +1163,7 @@ Each number in this document traces to one of these. All used `reality_engine.db
 The check extracts every `sql` block from this file, runs each schema block with
 `sqlite3.connect(":memory:").executescript(...)` on a fresh database, then builds all three schemas in one
 database and validates the five example queries with `EXPLAIN QUERY PLAN`. Script: `.tmp/check_ddl.py`
-(throwaway, not committed). Output, abridged — plan lines kept, subquery scaffolding dropped:
+(throwaway, never committed, no longer on disk). Output, abridged — plan lines kept, subquery scaffolding dropped:
 
 ```
 doc: tasks\ARCHITECTURE_OVERHAUL_2026-10-27.md  sql blocks found: 8
