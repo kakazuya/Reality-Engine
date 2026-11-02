@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-01 05:00 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 32 tables and 46 of 63 raw folders.
+Generated 2026-11-02 08:35 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 45 tables and 51 of 66 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -74,14 +74,14 @@ Undocumented: 32 tables and 46 of 63 raw folders.
 | equity_intelligence.db | `dynamic_parameter_definitions` | 5 | yes |
 | equity_intelligence.db | `entity_graph_runs` | 1 | yes |
 | equity_intelligence.db | `eod_correction_log` | 57 | yes |
-| equity_intelligence.db | `eod_scrip_calls` | 5,500 | yes |
+| equity_intelligence.db | `eod_scrip_calls` | 5,623 | yes |
 | equity_intelligence.db | `etf_inav` | 6,800 | yes |
 | equity_intelligence.db | `etf_master` | 432 | yes |
 | equity_intelligence.db | `etf_premium_daily` | 268,992 | yes |
 | equity_intelligence.db | `etf_px` | 315,259 | yes |
 | equity_intelligence.db | `financial_metrics` | 2,585 | yes |
 | equity_intelligence.db | `financially_free_breadth` | 0 | yes |
-| equity_intelligence.db | `forecast_skill_history` | 158 | yes |
+| equity_intelligence.db | `forecast_skill_history` | 161 | yes |
 | equity_intelligence.db | `fund_nav` | 349,647 | yes |
 | equity_intelligence.db | `geographic_exposure` | 3,568 | yes |
 | equity_intelligence.db | `graph_causal_edges` | 15 | yes |
@@ -123,7 +123,7 @@ Undocumented: 32 tables and 46 of 63 raw folders.
 | equity_intelligence.db | `moat_history` | 71,632 | yes |
 | equity_intelligence.db | `model_explainer_rankings` | 94,968 | yes |
 | equity_intelligence.db | `model_lens_weight_proposals` | 28 | yes |
-| equity_intelligence.db | `model_validation_scores` | 39,997 | yes |
+| equity_intelligence.db | `model_validation_scores` | 51,392 | yes |
 | equity_intelligence.db | `move_attribution` | 167,929 | yes |
 | equity_intelligence.db | `news_visual_artifacts` | 52 | yes |
 | equity_intelligence.db | `noise_floors` | 201 | yes |
@@ -165,6 +165,30 @@ Undocumented: 32 tables and 46 of 63 raw folders.
 | equity_intelligence.db | `tg_orders` | 219 | yes |
 | equity_intelligence.db | `tg_pead_signals` | 731 | yes |
 | equity_intelligence.db | `visual_evidence_artifacts` | 100 | yes |
+| extract_proto3.db | `balance_sheet_lines` | 173 | **undocumented** |
+| extract_proto3.db | `capex_project` | 4 | yes |
+| extract_proto3.db | `cash_flow_lines` | 91 | **undocumented** |
+| extract_proto3.db | `company_capacity_utilisation` | 156 | yes |
+| extract_proto3.db | `company_cost_structure` | 3 | yes |
+| extract_proto3.db | `company_debt_mix` | 6 | yes |
+| extract_proto3.db | `company_operating_metrics` | 378 | yes |
+| extract_proto3.db | `company_price_revision` | 6 | yes |
+| extract_proto3.db | `company_segment_pnl` | 72 | yes |
+| extract_proto3.db | `extract_arm` | 29 | **undocumented** |
+| extract_proto3.db | `extract_call` | 443 | **undocumented** |
+| extract_proto3.db | `extract_done` | 11 | **undocumented** |
+| extract_proto3.db | `extract_handcheck` | 0 | **undocumented** |
+| extract_proto3.db | `extract_recall` | 0 | **undocumented** |
+| extract_proto3.db | `extract_reject` | 634 | **undocumented** |
+| extract_proto3.db | `extract_run` | 2 | **undocumented** |
+| extract_proto3.db | `extract_selection` | 872 | **undocumented** |
+| extract_proto3.db | `lender_metrics` | 60 | **undocumented** |
+| extract_proto3.db | `order_book_contract` | 4 | yes |
+| extract_proto3.db | `order_intake` | 12 | yes |
+| extract_proto3.db | `rating_action` | 16 | yes |
+| extract_proto3.db | `supply_link` | 0 | yes |
+| extract_proto3.db | `tax_reconciliation` | 200 | **undocumented** |
+| extract_proto3.db | `unit_volume` | 19 | **undocumented** |
 | pilot/macro_all.db | `macro_claim` | 21,793 | yes |
 | pilot/macro_all.db | `macro_claim_target` | 44,742 | yes |
 | pilot/macro_all.db | `macro_doc` | 456 | yes |
@@ -179,12 +203,12 @@ Undocumented: 32 tables and 46 of 63 raw folders.
 | pilot/pilot60/chunks_v3_history.db | `result_note` | 0 | yes |
 | pilot/pilot60/chunks_v3_history.db | `tag_vocab` | 64 | yes |
 | pilot/pilot60/chunks_v3_pilot.db | `build_run` | 5 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `chunk` | 108,164 | yes |
+| pilot/pilot60/chunks_v3_pilot.db | `chunk` | 108,404 | yes |
 | pilot/pilot60/chunks_v3_pilot.db | `chunk_entity` | 304,625 | yes |
 | pilot/pilot60/chunks_v3_pilot.db | `chunk_tag` | 321,794 | yes |
 | pilot/pilot60/chunks_v3_pilot.db | `chunk_vec_ref` | 0 | yes |
 | pilot/pilot60/chunks_v3_pilot.db | `coverage_scorecard` | 0 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `doc` | 2,488 | yes |
+| pilot/pilot60/chunks_v3_pilot.db | `doc` | 2,498 | yes |
 | pilot/pilot60/chunks_v3_pilot.db | `result_note` | 0 | yes |
 | pilot/pilot60/chunks_v3_pilot.db | `tag_vocab` | 32 | yes |
 | pilot/pilot60/chunks_v3_pilot_capped.db | `build_run` | 2 | yes |
@@ -298,7 +322,7 @@ Undocumented: 32 tables and 46 of 63 raw folders.
 | _migration | 1 | 0.00 | 2026-10-25 `2026-10-25.json` | **undocumented** |
 | annual_report | 4,655 | 38.91 | 2026-10-28 `1712bec0-eb1b-4c0e-93cf-ffe2228ee187.pdf` | yes |
 | ar_queue | 340 | 0.01 | 2026-10-24 `SCORE.md` | **undocumented** |
-| bhavcopy | 29 | 0.01 | 2026-10-24 `ind_close_all_23102026.csv` | yes |
+| bhavcopy | 34 | 0.01 | 2026-11-01 `sec_bhavdata_full_26102026.csv` | yes |
 | bse_scrip_master | 1 | 0.00 | 2026-10-28 `scrip_master_equity_20261028.json` | **undocumented** |
 | commodity_series | 325 | 0.03 | 2026-10-29 `_manifest.csv` | **undocumented** |
 | concall_pdfs | 11,101 | 11.62 | 2026-10-28 `_manifest.jsonl` | **undocumented** |
@@ -314,9 +338,11 @@ Undocumented: 32 tables and 46 of 63 raw folders.
 | index_constituents | 3 | 0.00 | 2026-10-20 `niftymidcap150_current.csv` | **undocumented** |
 | index_history | 454 | 0.12 | 2026-10-28 `current_niftysmallcap250.csv` | **undocumented** |
 | input_cost_series | 22 | 0.00 | 2026-10-29 `wpi_items.csv` | **undocumented** |
+| kec_transcripts | 45 | 0.01 | 2026-11-02 `_known_at.json` | **undocumented** |
+| macro_pdfs | 0 | 0.00 | - | **undocumented** |
 | material_announcement | 6,621 | 16.73 | 2026-10-28 `105432.pdf` | **undocumented** |
 | nse_announcements | 19,593 | 33.12 | 2026-10-28 `_manifest.csv` | **undocumented** |
-| nse_shp_xbrl_pilot | 563 | 0.01 | 2026-10-31 `SHP_199080_1470050_24062025105707_WEB.xml.gz` | yes |
+| nse_shp_xbrl_pilot | 563 | 0.01 | 2026-10-31 `SHP_199080_1470050_24062025105707_WEB.xml.gz` | **undocumented** |
 | originals_lists | 20 | 0.01 | 2026-10-28 `todo_ann_part2.manifest.csv` | **undocumented** |
 | pilot60_history | 21,250 | 36.41 | 2026-11-01 `manifest.csv` | **undocumented** |
 | price_bands | 1,685 | 0.19 | 2026-10-28 `_manifest.jsonl` | yes |
@@ -351,9 +377,10 @@ Undocumented: 32 tables and 46 of 63 raw folders.
 | raw_market/nse_short | 7 | 0.00 | 2026-10-24 `_manifest.csv` | yes |
 | rbi | 106 | 0.06 | 2026-10-17 `12833.pdf` | yes |
 | reddit | 42 | 0.48 | 2026-10-28 `IndiaTax.jsonl` | yes |
+| results_notes_refetch | 3 | 0.02 | 2026-11-02 `483823e363b701d28b8d5d3d567695482ec330abdd454c7802` | **undocumented** |
 | results_pdfs | 158 | 0.97 | 2026-10-27 `2e96bdf76e8573130525883d589bea959fabc389710ad7fd99` | **undocumented** |
 | runners | 20 | 0.00 | 2026-10-29 `RESUME_2026-10-29.md` | **undocumented** |
 | tax_sources | 5 | 0.01 | 2026-10-20 `nse_circular_FATAX56235_stt_2023.pdf` | **undocumented** |
-| user_research | 1,047 | 36.34 | 2026-10-27 `qwen17_prompt_clip04.json` | **undocumented** |
-| user_research_drive | 237 | 0.60 | 2026-10-26 `_native_blocked.txt` | **undocumented** |
-| vahan | 8 | 0.00 | 2026-11-01 `monthly_2w_ev_by_maker.csv` | yes |
+| user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | **undocumented** |
+| user_research_drive | 236 | 0.60 | 2026-10-26 `_native_blocked.txt` | **undocumented** |
+| vahan | 8 | 0.00 | 2026-11-01 `monthly_2w_ev_by_maker.csv` | **undocumented** |
