@@ -34,6 +34,7 @@ AS_OF = "2026-10-19"
 BATCH = 5
 FIX_UNIT_MAX = 10
 MAX_ATTEMPTS = 2  # Haiku attempts before tier 2 (Shivam, 2 Nov: twice in a row, then Sonnet)
+MAX_LIMITED_REPLIES = 8  # usage-limit replies in a row in one unit (either tier) before the run pauses (T-048, 2 Nov)
 MAX_ROUNDS = 5
 BUDGET_USD = 15.0
 FIXED_REGRESSION = 10
@@ -353,9 +354,17 @@ def _remember(reasons: dict[str, str], added: dict) -> None:
             reasons[str(qid)] = str(reason)
 
 
+def _limited(result: dict) -> bool:
+    """A usage-limit reply that gave no valid report.  An over-limit kill is handled by halving instead."""
+    return bool(result.get("limited")) and not result.get("ok") and not result.get("over_limit")
+
+
 def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, round_no: int,
              tier1=None, tier2=None, sleep=time.sleep) -> dict:
-    """Up to two Haiku attempts (halving after an over-limit kill), then Sonnet, then escalation."""
+    """Up to two Haiku attempts (halving after an over-limit kill), then Sonnet, then escalation.
+
+    A usage-limit reply on either tier sleeps and retries the same tier: it is not an attempt and never
+    escalates.  After ``MAX_LIMITED_REPLIES`` in a row the unit returns ``paused`` and the run stops."""
     tier1 = tier1 or tiers.run_tier1
     tier2 = tier2 or tiers.run_tier2_sonnet
     attempts: list[dict] = []
@@ -363,16 +372,31 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
     reasons: dict[str, str] = {}
     current = unit
     number = 0
+    limit_streak = 0  # usage-limit replies in a row in this unit; any other reply resets it
+
+    def limit_sleep() -> bool:
+        """One limited reply: sleep (True), or pause the unit once the cap is reached (False)."""
+        nonlocal limit_streak
+        limit_streak += 1
+        if limit_streak >= MAX_LIMITED_REPLIES:
+            log(logfile, f"PAUSED usage limit: {limit_streak} limited replies in a row on {unit.id}; "
+                         "the run stops, a rerun resumes")
+            return False
+        log(logfile, f"usage limit: sleeping {LIMIT_SLEEP // 60} min ({limit_streak}/{MAX_LIMITED_REPLIES})")
+        sleep(LIMIT_SLEEP)
+        return True
+
     while number < MAX_ATTEMPTS:
         before = store.counts(conn)
         result = tier1(current, logfile)
-        number += 1
-        if result.get("limited") and not result.get("ok") and not result.get("over_limit"):
-            log(logfile, f"usage limit: sleeping {LIMIT_SLEEP // 60} min")
-            sleep(LIMIT_SLEEP)
-            number -= 1
+        if _limited(result):
             attempts.append(attempt_row(current, result, number + 1, {}))
-            continue
+            if limit_sleep():
+                continue
+            return {"ok": False, "tier": 1, "payload": None, "attempts": attempts, "leftovers": leftovers,
+                    "rows": {}, "unit": current, "paused": True}
+        limit_streak = 0
+        number += 1
         applied = {"ok": False, "error": result.get("error"), "added": {}}
         if result.get("payload") is not None and not result.get("over_limit"):
             ok, reason, added = accept(result["payload"], 1, u=current)
@@ -401,6 +425,13 @@ def run_unit(unit: Unit, accept, sandbox: Path, conn, logfile: Path | None, *, r
     if result.get("queued"):
         tiers.wait_offpeak(sleep=sleep)
         result = tier2(current, logfile)
+    while _limited(result):
+        attempts.append(attempt_row(current, result, 1, {}))
+        if not limit_sleep():
+            return {"ok": False, "tier": 2, "payload": None, "attempts": attempts, "leftovers": leftovers,
+                    "rows": {}, "unit": current, "paused": True}
+        result = tier2(current, logfile)
+    limit_streak = 0
     before = store.counts(conn)
     applied = {"ok": False, "error": result.get("error"), "added": {}}
     if result.get("payload") is not None:
@@ -484,7 +515,7 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
         row_lookup = store.row_lookup(local)
         while True:
             with lock:
-                if not queue:
+                if not queue or state.get("paused"):
                     return
                 if state["spent"] >= state["budget"]:
                     if not state.get("budget_logged"):
@@ -507,6 +538,9 @@ def drain(queue: deque, round_no: int, sandbox: Path, conn, logfile: Path | None
                     state["spent"] += float(row.get("cost_usd") or 0.0)
                 for leftover in outcome["leftovers"]:
                     queue.appendleft(leftover)
+                if outcome.get("paused"):  # usage limit held: nothing more starts; the rerun resumes
+                    state["paused"] = unit.id
+                    queue.clear()
                 if outcome.get("escalated") and unit.stage != "fix":
                     state.setdefault("escalated", set()).update(outcome.get("escalated_qids") or [])
                 if outcome["ok"] and unit.stage in ("answer", "reanswer"):
@@ -626,6 +660,9 @@ def run_loop(sandbox: Path, *, max_rounds: int = MAX_ROUNDS, budget: float = BUD
             queue = deque(reanswer_units(questions, statuses, sandbox, exclude=state.get("escalated")))
         rows += drain(queue, round_no, sandbox, conn, logfile, state,
                       tier1=tier1, tier2=tier2, sleep=sleep)
+        if state.get("paused"):
+            log(logfile, f"PAUSED usage limit: run stopped at unit {state['paused']}; rerun to resume")
+            return 5
         statuses = store.latest_answers(conn)
         closed = sum(1 for qid, row in statuses.items()
                      if row.get("status") == "answered" and previous.get(qid) != "answered")
