@@ -2775,7 +2775,7 @@ pattern-gap rows may name an index, sector, theme, commodity or policy instead.
 - Evidence: theme universe members; annual_financials segment revenue; concall_facts order commentary
 - Steps: list the held theme members -> separate direct suppliers from second-order -> rank by disclosed revenue share
 - Forbidden: treating a company mention in a call as theme revenue
-- Coverage: **partial** — nine themes are curated and dated; revenue attribution is still from segment text
+- Coverage: **partial** — eight themes are curated and dated; revenue attribution is still from segment text
 - Why: theme-proxy questions are the most common way retail asks for a basket
 
 ### RD-G-030 · theme_proxy_play · family 19,8 · `theme_proxy_play`
@@ -2883,7 +2883,7 @@ pattern-gap rows may name an index, sector, theme, commodity or policy instead.
 - Evidence: concall_facts order commentary; ar_facts segment revenue; announcements for order wins; ripple_effects
 - Steps: define the assumed build-out -> place KEI on the chain -> show disclosed order wins -> name the layer that takes spend first
 - Forbidden: assuming every cable order is data-centre demand
-- Coverage: **partial** — order wins sit in call and announcement text; no supply_link table exists
+- Coverage: **partial** — order wins sit in call and announcement text; supply_link is defined only in the pilot schema (contracts.py, pilot/extract60.py), not held in the store
 - Why: second-order questions need the chain, not just the beneficiary
 
 ### RD-G-039 · second_order_beneficiary · family 19 · `second_order_beneficiary`
