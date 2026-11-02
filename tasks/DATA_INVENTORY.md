@@ -14,6 +14,7 @@ Undocumented: 45 tables and 51 of 66 raw folders.
 
 | Database | Table | Rows (about) | Named in docs |
 |---|---|---:|---|
+| `.tmp/pilot3.db` (T-049, built by `python -m reality_engine.pilot3.build`; not under REALITY_DATA_ROOT, add by hand after a regenerate) | `company` 7, `doc` 1,432, `doc_page` 19,499, `share_capital` 180, `fin_quarter_xbrl` 3,640, `fin_annual_line` 641, `price_delivery` 11,557, `shp_category` 1,620, `ratio_panel` 2,669, `valuation_daily` 5,615 | 1 db | yes (`docs/DEVELOPER_GUIDE.md` section O) |
 | ar_facts.db | `ar_claims` | 140,322 | yes |
 | ar_facts.db | `ar_docs` | 140,692 | yes |
 | ar_facts.db | `ar_facts` | 32,981,115 | yes |
