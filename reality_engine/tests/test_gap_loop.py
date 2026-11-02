@@ -170,6 +170,90 @@ def test_two_haiku_failures_escalate_to_tier2_then_opus(root, conn):
     assert len(escalations[0]["tried"]) >= 3
 
 
+# --- usage-limit replies (T-048, 2 Nov: "You've hit your 5-hour limit · resets 10:50pm") -------------
+
+LIMIT_MESSAGE = "You've hit your 5-hour limit · resets 10:50pm (Asia/Kolkata)"
+
+
+def limited_reply(*_, **__):
+    return {"tier": 1, "model": MODEL, "ok": False, "payload": None, "error": LIMIT_MESSAGE,
+            "over_limit": False, "limited": True, "session": None, "started": None, "ended": None}
+
+
+def tier1_ok(*_, **__):
+    return {**tier1_fail(), "ok": True, "payload": []}
+
+
+def test_the_exact_five_hour_limit_reply_sets_limited(root):
+    event = {"type": "result", "is_error": True, "result": LIMIT_MESSAGE, "total_cost_usd": 0.0}
+    result = session_runner.run_session([sys.executable, "-c", f"print({json.dumps(json.dumps(event))})"],
+                                        root, model=MODEL)
+    assert result.limited
+    for text in ("You've hit your weekly limit", "Usage limit reached", "Rate limit exceeded",
+                 "API Error: 429", "Claude is Overloaded", "Limit reached for today", "Plan · resets 9pm"):
+        assert session_runner.LIMIT_PATTERN.search(text), text
+    assert not session_runner.LIMIT_PATTERN.search("Sales rose 12% to Rs 4,500 crore in Q2 FY26")
+
+
+def test_a_limited_tier1_reply_sleeps_then_succeeds_without_escalating(root, conn):
+    replies = iter([limited_reply, tier1_ok])
+    sleeps = []
+    outcome = loop.run_unit(unit(root), lambda payload, tier=1, u=None: (True, None, {}), root, conn, None,
+                            round_no=1, tier1=lambda *a, **k: next(replies)(*a, **k), tier2=tier2_fail,
+                            sleep=sleeps.append)
+    assert outcome["ok"] and outcome["tier"] == 1
+    assert sleeps == [session_runner.LIMIT_SLEEP]
+    assert not (root / "escalations.jsonl").exists()
+
+
+def test_a_limited_tier2_reply_sleeps_and_retries_sonnet(root, conn):
+    calls = []
+
+    def tier2(unit_, logfile):
+        calls.append(unit_.id)
+        if len(calls) == 1:
+            return limited_reply()
+        return {"tier": 2, "model": tiers.SONNET, "ok": True, "payload": [], "error": "", "over_limit": False,
+                "session": None, "started": None, "ended": None, "tokens": None}
+
+    sleeps = []
+    outcome = loop.run_unit(unit(root), lambda payload, tier=1, u=None: (True, None, {}), root, conn, None,
+                            round_no=1, tier1=tier1_fail, tier2=tier2, sleep=sleeps.append)
+    assert outcome["ok"] and outcome["tier"] == 2
+    assert len(calls) == 2 and sleeps == [session_runner.LIMIT_SLEEP]
+    assert not (root / "escalations.jsonl").exists()
+
+
+def test_eight_limited_replies_in_a_row_pause_the_unit_without_escalating(root, conn):
+    logfile = root / "logs" / "loop.log"
+    logfile.parent.mkdir(parents=True, exist_ok=True)
+    calls, sleeps = [], []
+
+    def tier2(*_, **__):
+        calls.append(1)
+        return tier2_fail()
+
+    outcome = loop.run_unit(unit(root), lambda payload, tier=1, u=None: (True, None, {}), root, conn, logfile,
+                            round_no=1, tier1=limited_reply, tier2=tier2, sleep=sleeps.append)
+    assert outcome["paused"] and not outcome["ok"] and not outcome.get("escalated")
+    assert sum(1 for row in outcome["attempts"] if row["error"] == LIMIT_MESSAGE) == loop.MAX_LIMITED_REPLIES
+    assert len(sleeps) == loop.MAX_LIMITED_REPLIES - 1 and not calls
+    assert not (root / "escalations.jsonl").exists()
+    text = logfile.read_text(encoding="utf-8")
+    assert "PAUSED usage limit" in text and "escalat" not in text
+
+
+def test_a_paused_unit_stops_the_run_with_rc_5_and_no_escalation(root, monkeypatch):
+    monkeypatch.setattr(job_watch, "add", lambda *args, **kwargs: None)
+    monkeypatch.setattr(loop.prepare, "prepare", lambda *args, **kwargs: {
+        "files": 0, "docs": 0, "pages": 0, "script_text": 0, "needs_ocr": 0, "known_at": 0,
+        "undated": 0, "history": 0, "history_undated": 0, "tables": {}, "seconds": 0.0})
+    rc = loop.run_loop(root, tier1=limited_reply, tier2=tier2_fail, sleep=lambda s: None)
+    assert rc == 5
+    text = (root / "logs" / "loop.log").read_text(encoding="utf-8")
+    assert "PAUSED usage limit" in text and "ROUND" not in text and "escalat" not in text
+
+
 def test_tier2_default_is_sonnet_at_medium(root, monkeypatch):
     seen = {}
 

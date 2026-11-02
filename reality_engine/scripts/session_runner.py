@@ -24,7 +24,12 @@ CONTEXT_LIMIT = 95_000  # Shivam's limit is 100k; the process is killed before i
 RUN_SECONDS = 30 * 60
 MAX_TURNS = 60
 LIMIT_SLEEP = 15 * 60
-LIMIT_WORDS = ("usage limit", "rate limit", "limit reached", "hit your limit", "429", "overloaded")
+# A limit reply from the CLI or the API, matched case-insensitively on the session's text.  The CLI says
+# "You've hit your 5-hour limit · resets 10:50pm (Asia/Kolkata)" (2 Nov).  "hit your weekly limit" and
+# "hit your limit" are the same reply.  A "· resets <time>" line is also taken as a limit reply.
+LIMIT_PATTERN = re.compile(
+    r"hit your (?:[\w-]+ )?limit|usage limit|limit reached|rate limit|429|overloaded|·\s*resets\s+\S",
+    re.IGNORECASE)
 USAGE_KEYS = ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens", "output_tokens")
 SKIP_ENV = ("CLAUDE_CODE", "CLAUDE_PID", "CLAUDE_EFFORT")
 # Haiku 5.5 list price, USD per million tokens: tasks/kilo_model_pricing_2026-10-12.csv row
@@ -298,7 +303,7 @@ def run_session(
     if timed_out[0] and not result.over_limit:
         result.error = result.error or f"session ran longer than {run_seconds}s"
     joined = (result.final + result.tail).lower()
-    result.limited = any(word in joined for word in LIMIT_WORDS)
+    result.limited = bool(LIMIT_PATTERN.search(joined))
     if logfile is not None:
         line = (f"{time.strftime('%Y-%m-%d %H:%M:%S')} session model={model} peak={result.peak:,} "
                 f"cost=${result.cost:.3f} over_limit={result.over_limit} error={result.error[:120]}")
