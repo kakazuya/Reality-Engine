@@ -19,7 +19,7 @@ joined `QUERY_TEMPLATES` mid-audit (§2.7).
    broken in one place; it is broken in three: the ISIN anchor (§3), the share count (§4) and the
    real sector classification (§6). The first two need no network fetch; the sector repair is 1,556
    free rows plus one BSE scrip-master fetch. All three must land before `company_state_daily`
-   (which does not exist) can be built.
+   (not built at audit time; `reality_engine/pilot/build_t1.py` now writes a pilot copy) can be built.
 2. **Layer 1 cannot be built on `document_chunks`.** The table has no `known_at`, `section`,
    `speaker`, `source_class`, `content_tags`, `forward_looking`, `has_numbers`, `quality_grade` or
    `pit_confidence` column at all — not "0% filled", absent. A tag that has no column cannot be
@@ -114,7 +114,7 @@ noted) · **History** = dated or snapshot · **PIT** = where "known at" comes fr
 | L2-12 | promoter %, pledge %, FII/DII/MF % | `shp_index` | P | 2,967 ISINs (45% of U_FY25), 40 quarters-ish but **1,451 distinct `quarter_end` values** (dirty key) | quarterly | `broadcast_at` 100% filled | HDFCBANK has **0** shp rows; `shareholding` table is a 40-row stub |
 | L2-13 | recent material events | `truth.events` / `bse_announcements.ann` | E | 822,936 FY25+ announcements across 5,069 ISINs | per event | exact `DissemDT` | JISLDVREQS `bse_dissem_ts` == `bse_ann.DissemDT` to the millisecond ✔ |
 | L2-14 | `shares_source` | none | **M** | 0% | — | — | no provenance column today |
-| L2-15 | `known_at` on the state row | none | **M** | 0% | — | — | table does not exist |
+| L2-15 | `known_at` on the state row | none | **M** | 0% | — | — | table not built at audit time; `reality_engine/pilot/build_t1.py` now writes `known_at` on `company_state_daily` (pilot copy) |
 
 ### 2.3 Layer-3 macro-link fields (`LABELS_TAGGING_PLAN` §6; DDL §2.3 `macro_claim*`)
 
