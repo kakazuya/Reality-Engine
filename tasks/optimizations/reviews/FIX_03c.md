@@ -1,6 +1,6 @@
 # Fix task 03 — round 3: security re-review findings
 
-Workspace: `C:\Users\warri\Downloads\IDM-worktrees\20261024T192711Z-cecb3619` (branch `dsh/20261024T192711Z-cecb3619`,
+Workspace (worktree since removed): `C:\Users\warri\Downloads\IDM-worktrees\20261024T192711Z-cecb3619` (branch `dsh/20261024T192711Z-cecb3619`,
 HEAD `4ac509b`). The security re-review FAILED. Its findings are in
 `C:\Users\warri\Downloads\Info_Diffusion_Model\plugins\dsh-worker\runtime\jobs\20261024T220404Z-1e48a1bd\result.md`
 (read it first if you can; the essentials are repeated below). Its attack scripts are in `.tmp/rereview/` of this

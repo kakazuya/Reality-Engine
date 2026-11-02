@@ -41,7 +41,7 @@ Grant more freedom only after 03 lands (its `write_scope` modes); `"full"` needs
 
 ## After the optimisations (paused work, now archived)
 
-The 24 Oct hand-offs are in `tasks/archive/handoff/`; the live queue is `tasks/handoff/QUEUE_2026-10-31.md`.
+The 24 Oct hand-offs were in `tasks/archive/handoff/` (no longer in the repo); the live queue is in `tasks/handoff/` (`QUEUE_2026-10-31.md` is no longer in the repo).
 
 Concall runner (`wip/concall-runner-2026-10-24`), chart/image pass (`dsh/20261024T180421Z-eed294f4`), local OCR
 pilot (`dsh/20261024T181301Z-e5311613`) — review, then resume with the new worker setup.

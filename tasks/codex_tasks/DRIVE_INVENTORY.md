@@ -3,7 +3,7 @@
 Drive: My Drive / `InfoDiffusion_archive/` (rclone remote `gdrive:` with `--drive-root-folder-id 1A3MOQnFsYw27Vk4DVmypfdIHR9ERydHB`;
 browser uploads also sit in folder `1aSQEfkMMGmpEpDDq7tI9MH7kmNJNemTH`). The upload remote (`gdrive:`, drive.file scope) only
 sees files rclone uploaded itself; the read-only remote `gdrive_ro:` sees everything: use gdrive_ro for any check or listing.
-Every item below was checked with `rclone check --one-way` (MD5) or name+size+MD5 (scripts/cleanup_verify.py).
+Every item below was checked with `rclone check --one-way` (MD5) or name+size+MD5 (reality_engine/scripts/cleanup_verify.py).
 
 | Data | On Drive (folder) | On the PC |
 |---|---|---|

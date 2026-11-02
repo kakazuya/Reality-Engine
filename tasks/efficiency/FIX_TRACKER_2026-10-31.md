@@ -24,7 +24,7 @@ started before the fixes when comparing dsh rates (`--exclude-jobs`).
 | 8 | Repeat test failures | pytest live 31 Oct 00:15; rest in round 2 | Tests/compile 234 of 819 failed | Failure rate | Small |
 | 9 | Shell reads to read/grep tools | Round 1 merge | 3,517 calls; shell 42% of calls | Shell share of calls | Small |
 
-## Interim count, 1 Nov 01:12 IST (final count due that night)
+## Interim count, 1 Nov 01:12 IST (final count: `tasks/efficiency/TOOL_USAGE_2026-11-01.md`)
 
 Window: 31 Oct 00:30 to 1 Nov 01:12, 235 Claude steps and 3,325 dsh steps. The 3 workers started before the fixes are still included. Report: `tasks/efficiency/TOOL_USAGE_2026-11-01.md`.
 

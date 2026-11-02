@@ -1,7 +1,7 @@
 # Fix task — G1 data-gather review defects
 
 ## Goal
-Fix all 7 reviewer defects below in this worktree (`C:\Users\warri\Downloads\IDM-worktrees\20261025T123255Z-3274fb3e`,
+Fix all 7 reviewer defects below in this worktree (worktree since removed: `C:\Users\warri\Downloads\IDM-worktrees\20261025T123255Z-3274fb3e`,
 branch `dsh/20261025T123255Z-3274fb3e`) with a test for each, and change nothing else.
 
 ## Why
