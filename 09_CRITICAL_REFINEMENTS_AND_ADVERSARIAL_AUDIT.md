@@ -35,7 +35,7 @@ To transform this system from a conceptual model into an industrial-grade, failu
 
 ### ❌ Subtraction 1: 3rd-Party Authenticated Scraping (`financiallyfree.in`)
 * **Critique**: Running a persistent Chromium browser via Playwright behind Google Gmail OAuth creates extreme fragility: Google session tokens expire every 14–30 days, headless Chromium consumes 500MB–1GB RAM, and DOM changes break parsers.
-* **Resolution**: The underlying data (Sector Advance/Decline, Nifty 500 breadth, index momentum) is generated natively by the exchange. We **eliminate** the third-party web dependency and ingest the authoritative ground-truth feeds directly:
+* **Resolution**: The underlying data (Sector Advance/Decline, Nifty 500 breadth, index momentum) is generated natively by the exchange. We **plan to eliminate** the third-party web dependency (not done yet: `reality_engine/ingestion/financially_free_client.py` is still referenced by `headless_fetcher.py`, `repository.py` and `config.py`) and ingest the authoritative ground-truth feeds directly:
   - **NSE Sector & Index Bhavcopy**: `https://nsearchives.nseindia.com/content/indices/ind_close_all_DDMMYYYY.csv`
   - **NSE Advance/Decline Feed**: `https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%20500`
 
