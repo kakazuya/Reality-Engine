@@ -4,7 +4,7 @@
 **Pilot test on BAJFINANCE, HINDALCO and KEC, by Shivam's order of 2 Nov.** Workspace tickets no longer block it. The last prototype failed: 0 of 40 sampled answers right, 78% of numbers missed: `tasks/pilot60/PROTOTYPE3_CLAUDE_GRADE_2026-11-01.md`.
 
 ## Next action
-**T-045 doc review is merged, waiting on Shivam's acceptance:** every tracked doc read by Haiku 5.5, reviewed by Opus. Left for him: lift the read rule on `tasks/archive/` so it can be reviewed, and decide whether `tasks/ar_study/text/` goes. Method and its blind spot: `docs/DEVELOPER_GUIDE.md` section M.
+**T-045 doc review is done and closed** (Shivam, 2 Nov), archive included: 22 finished archive briefs deleted. Open with Shivam: delete `tasks/ar_study/text/` (32 FY24 annual-report extracts of the finished October AR study; no test or code reads them). Method: `docs/DEVELOPER_GUIDE.md` section M.
 
 Pilot session, next, in order:
 1. T-035 extraction finished 04:2x IST: `.tmp/proto3/extract_t035.db`, 830 calls, 0 errors, 1,476 checked or unchecked numbers, est. $2.09, DeepSeek at low effort. Number check: 783 confirmed, 222 disputed, 471 unchecked (456 are XBRL rows with no page). In a sample of 12 disputes the number was on neither reading of the cited page, so suspect a wrong page from multi-page chunks before suspecting misreads: test that first. Then `proto3 recheck` on it; `load_fact --extract` it into a copy of the fact store (`.tmp/proto3/v4`); `run_proto3_bank.py`; Claude grades by reading. `order_book_contract`, `supply_link` and `company_debt_mix` returned almost no rows: check why.
