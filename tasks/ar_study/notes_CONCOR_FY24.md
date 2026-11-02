@@ -1,4 +1,4 @@
-## CONCOR_FY24_p1-50.csv
+## CONCOR FY24 AR pages 1-50 (page-text CSV not kept in repo)
 # NOTES
 - (a) Debtors (p.7): sundry debtors 213.10 to 329.45 cr (+55%) while operating income rose 6.5% (p.43). Derived debtor days ~9.6 to ~13.9. No call discusses receivables.
 - (a) Interest expense (p.7): 57.01 to 65.33 cr. The step from 0.74 (FY19) to 36.07 (FY20) fits the Ind AS 116 start (1 Apr 2019). Hypothesis only: lease interest on railway land and wagon leases. Short-term debt is nil (p.8). Verify in the lease note.
@@ -13,7 +13,7 @@
 - (c) AR internal: FY23 PBT is 1,557.73 cr on p.43 but 1,553.73 cr on p.7.
 
 
-## CONCOR_FY24_p51-100.csv
+## CONCOR FY24 AR pages 51-100 (page-text CSV not kept in repo)
 # NOTES
 - (a) Ind AS 116 gap: no ROU asset or lease liability booked for 26 IR-leased land parcels whose agreements are unexecuted (p.68). The one ROU asset in the title table is Nagalapalle, Rs 8.86 lakh (p.69).
 - (a) Tax exposure: AY2008-09 s.80IA rail-system disallowance Rs 284.16 cr + Rs 96.59 cr interest, about 31% of FY24 PAT of Rs 1,230.79 cr (p.73). Department filed a misc application on 27.12.2021 and CONCOR learnt of it only in Nov 2023 (p.74). AY2013-14 SFIS Rs 149.63 cr went CONCOR's way; DCIT gave effect on 30.04.2024 (p.74-75).
@@ -27,7 +27,7 @@
 - (c) Internal AR inconsistencies to check: throughput growth 8.23% vs 8.25% (p.82); NPM said to rise but table falls (p.85); Pipavav 17.37% growth on 0.64 to 7.31 mn TEU (p.82); DIN of Amrendra Chandra 10076613 (p.62) vs 10076614 (p.99); ICFR text cites 2022-23 (p.84).
 
 
-## CONCOR_FY24_p101-150.csv
+## CONCOR FY24 AR pages 101-150 (page-text CSV not kept in repo)
 # NOTES
 - (a) Dividends: FY24 declared Rs 2 + Rs 3 + Rs 4 interim and Rs 2.50 proposed final = Rs 11.50/share, about Rs 700 cr on 60.93 cr shares (my arithmetic), about 57% of PAT Rs 1,230.79 cr. None of this is in the calls. p.113.
 - (a) CSR shortfall: 2% obligation Rs 27.45 cr, spent Rs 6.14 cr (22%), Rs 21.31 cr moved to Unspent CSR account on 30.04.2024. Prior-year balances still open. Reason given: projects not complete, "not in the control of the Company". p.123-124.
@@ -40,7 +40,7 @@
 - (c) Caveat: Part B JV columns (p.135-136) may be misaligned in the text extraction (for example Angul Sukinda networth 1,021 cr against Rs 208 cr investment). Check the page image before storing these numbers. Arm's-length RPT amounts are not in this part; they sit in the notes to accounts (XBRL), which I did not check.
 
 
-## CONCOR_FY24_p151-200.csv
+## CONCOR FY24 AR pages 151-200 (page-text CSV not kept in repo)
 # NOTES
 - (a) Related-party share of purchases is 73.65% (FY23 76.36%) and related-party share of investments is 63.13% (62.77%) (p.161). The calls never mention either ratio, and this part does not name the counterparties.
 - (a) NSE and BSE fined CONCOR Rs 43.19 lakh for the independent-director shortfall under Reg 17(1); waiver requested (p.158-159). Small in amount, but it is a board-composition gap.
@@ -54,7 +54,7 @@
 - (c) Turnover denominator: energy, water and waste intensities imply turnover of about Rs 8.6-8.7k cr (p.180-183), against Rs 9,010.76 cr in REF Q4 p.3. The Scope 1+2 intensity of 0.04 (p.182) implies about 0.049 on the same base, so it looks truncated. Reconcile with XBRL revenue.
 
 
-## CONCOR_FY24_p201-250.csv
+## CONCOR FY24 AR pages 201-250 (page-text CSV not kept in repo)
 # NOTES
 - (a) SEIS: the export-incentive receivable of Rs 861.05 cr is carried gross with an equal allowance (p.237); DGFT disallowed the FY20 claim and the appeal is pending. It is 7.3% of FY24 equity and about 0.7x FY24 PAT, pre-tax. Neither call mentions it. It is upside only if the appeal succeeds.
 - (a) Capex and pipeline: unsecured capital advances Rs 1,052.77 cr (p.231), about 7.6% of total assets and not explained in this part; CWIP over 3 years Rs 233.73 cr of Rs 877.36 cr (p.223); capital commitments Rs 619.49 cr (p.222); MMLP Paradip civil Rs 190.15 cr and Jajpur Rs 54.48 cr still marked DOC overdue (p.223-224).
@@ -68,7 +68,7 @@
 - (c) Consistent: the Q4 call's rail freight margin of 25.1% (REF Q4 p.18) matches the AR's (6,555.14 - 4,910.09) / 6,555.14 (p.245-246); ROE of about 10.7% on average equity fits the "early 10s" raised on the Q3 call (REF Q3 p.14).
 
 
-## CONCOR_FY24_p251-300.csv
+## CONCOR FY24 AR pages 251-300 (page-text CSV not kept in repo)
 # NOTES
 - (a) Railway LLF is booked net at 373.06 cr after netting 68.20 cr of past provisions (p.281), so gross is about 441 cr. The auditor's KAM names three terminals: Tughlakabad 677.68, Phillaur 15.96, Moradabad 5.58 cr (p.293). Phillaur and Moradabad do not appear in the calls.
 - (a) Indian Railways holds 54.80% (p.275). Rail freight paid to IR 4,910.08 cr against rail freight income 6,555.14 cr (p.260) gives a 25.1% margin (FY23 26.2%, my arithmetic), matching the Q4 call. Advances to IR of 882.88 cr (p.276) are not explained in this part.
@@ -82,7 +82,7 @@
 - (c) Lease dates: in the Q3 call management said 'Lease dates we cannot give right now' (REFERENCE Q3 p.18), but AR p.287-288 gives expiry dates for three leases. Inconsistent within REFERENCE only, not AR: Mundra and Pipavav rail coefficients 36% and 45% (Q3 p.10) vs 26% and 63% (Q4 p.14); MMLP count 15 (Q3 p.13) vs 16 (Q4 p.9). Cut-offs: Note 36 starts before p.251 (outside this part); CARO Annexure A continues past p.300.
 
 
-## CONCOR_FY24_p301-350.csv
+## CONCOR FY24 AR pages 301-350 (page-text CSV not kept in repo)
 # NOTES
 - (a) Treasury: cash plus deposits about 3,296 cr at 31.03.2024 (cash 193.47 and other bank balances 3,102.62, p.310), of which 3,051.22 in 3-12 month deposits (p.347). Interest income 312.69 cr (p.317) is about 19% of PBT 1,668.54 (p.312).
 - (a) Capex is bigger than the 745 cr headline: gross additions 1,017.31 cr (p.333) include ROU plant additions of about 228 cr (p.334), and the ROU growth sits in operating cash flow (-231.71, p.317). Contractual PPE commitments are 624.45 cr (p.334); unsecured capital advances are 1,055.55 cr (p.343), counterparty not in this part.
