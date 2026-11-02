@@ -18,8 +18,7 @@ does not copy the job registry, the supervisor, the controller lease or the
 
 `run_feed` passes `window_start`/`window_end` to `Manager.start_job`, which
 threads them to `jobs.expand_argv`; the two new keyword arguments default to
-`None`, so existing callers keep the old behaviour (covered by
-`test_expand_argv_window_override` in the dsh-worker suite).
+`None`, so existing callers keep the old behaviour. No dsh-worker test covers the new arguments yet.
 
 ## Tools
 
