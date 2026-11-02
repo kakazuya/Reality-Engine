@@ -760,7 +760,7 @@ Four independent assertions, and the third line — `vintage == 1` while the tab
 
 ## 5. TEST PLAN
 
-New file `reality_engine/tests/test_factor_spine.py`, `unittest`, in-memory SQLite fixture (no live DB, no network), following the repo's `unittest discover -s reality_engine/tests -p "test_*.py"` pattern.
+File `reality_engine/tests/test_factor_spine.py` (exists; its test names differ from the plan below), `unittest`, in-memory SQLite fixture (no live DB, no network), following the repo's `unittest discover -s reality_engine/tests -p "test_*.py"` pattern.
 
 Fixture: a 3-series in-memory DB — `IN.RBI.REPO_RATE` (3 step observations + 1 restatement), `IN.RBI.SDF` (quarantined), `IN.CPI.YOY` (registered, zero observations) — the exact seed used to validate the SQL in §2.
 
@@ -831,7 +831,7 @@ Specifically: may it derive and persist `regime_tag` values into `model_explaine
 Without a real sector taxonomy (D8: 92.2% of `master_companies.sector` unusable; `industries` is 12 archetypes), no sector-level question can be answered. This requires **modifying an existing table**, which is beyond "additive only" and therefore a user call. Approve adding `sector_code TEXT` + a `sector_taxonomy` table seeded from the official NSE sector list, or confirm that sector-level answers are out of scope for now.
 
 **Q10 — Provenance floor: what counts as a citable source?**
-`strategies.md` §1 requires `symbol + fiscal + event_date + source_doc_id + chunk_span`. For a factor series pulled from a live API there is no `raw_documents` row. Options: (a) allow `source_url` alone, (b) require a `raw_documents` snapshot row for every series (audit-grade, more work, more storage), (c) allow `source_url` but mark the series `is_point_in_time=0`. *Recommendation:* (a) with `is_point_in_time=1` permitted only when the publisher states a release date. Confirm.
+The strategy brief's provenance rule (not in this repo) requires `symbol + fiscal + event_date + source_doc_id + chunk_span`. For a factor series pulled from a live API there is no `raw_documents` row. Options: (a) allow `source_url` alone, (b) require a `raw_documents` snapshot row for every series (audit-grade, more work, more storage), (c) allow `source_url` but mark the series `is_point_in_time=0`. *Recommendation:* (a) with `is_point_in_time=1` permitted only when the publisher states a release date. Confirm.
 
 **Q11 — Does the retention/pruning regime apply to the spine?**
 `prune_decayed_signals()` (`postgres_schema.sql:519-583`) archives `macro_events` older than 24 months and purges embeddings older than 12 months, and it has **already archived 11 of 30** macro events. If the same regime applies to `factor_observation`, the spine destroys the history that backtesting needs. *Recommendation:* **factor tables are exempt** — the spine is a time series, not a decaying signal, and its half-life is infinite by construction. But this contradicts an existing rule, so it needs explicit approval. Also: should `factor_observation` get an `is_structural_milestone`-style permanent-survival flag, consistent with `pruning_decay_config.is_structural_milestone`?
@@ -845,12 +845,12 @@ The spine can be declared "working" with one series. Should a *prediction* be ga
 
 | Artifact | Precedent to copy |
 |---|---|
-| DDL ownership + idempotent `ensure_*` | `substrate_hygiene.py:150-178`; `peer_graph.py:61-103`; `repository.py:3853-3874` |
+| DDL ownership + idempotent `ensure_*` | `substrate_hygiene.py:202-230`; `peer_graph.py:61-103`; `repository.py:3853-3874` |
 | Quarantine rule shape | `substrate_hygiene.py:60-106` (`QUARANTINE_RULES`), `:111-148` (`DEGRADATION_RULES`) |
-| Degradation probe shape (count + denominator + share) | `substrate_hygiene.py:208-232` |
+| Degradation probe shape (count + denominator + share) | `substrate_hygiene.py:233-283` |
 | Refuse-rather-than-emit discipline | `peer_graph.py:24-27` + `company_peer_runs.status='insufficient_signal'` |
 | Missing-is-missing, never imputed | `peer_graph.py:19-22` |
-| Additive-only tables beside live levels | `schema.sql:561-614` (`moat_history` / `policy_eni_history` / `ripple_history`) |
+| Additive-only tables beside live levels | `schema.sql:585-628` (`moat_history` / `policy_eni_history` / `ripple_history`) |
 | Version/revision convention | `ripple_effects.revision_count`/`last_revised_at`; `raw_documents.doc_version` |
 | TEXT dates in additive tables | `moat_history.asof_date`, `model_validation_scores.asof_date` |
 | Runner script shape | `reality_engine/scripts/run_substrate_hygiene.py`, `run_peer_graph.py` (`--dry-run`, `ALL CHECKS PASSED`, idempotent) |
