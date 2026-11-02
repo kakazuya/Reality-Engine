@@ -9,8 +9,7 @@ mostly revenue segment data too."
 
 ## Context
 - The builder is `reality_engine/scripts/build_universe_membership.py`; G3 is merged on `main`.
-  - Read its module docstring and the G3 round-2 report:
-    `C:\Users\warri\Downloads\Info_Diffusion_Model\plugins\dsh-worker\runtime\jobs\20261025T153116Z-48dc1df6\result.md`.
+  - Read its module docstring and the G3 round-2 report (dsh job `20261025T153116Z-48dc1df6`, result not on disk, 2026-11-02).
   - The rules from G3 still hold: in-document company check, `segment_industry_keywords` gate, gap-free chains,
     `segment_sum` reconciliation, pivot guard, `MIX_PATTERNS`/`BLOCKED`.
 - Deck figures live in `deck_figures.db` (table `facts`, FTS `facts_metric_fts`; see `catalog()` via the reality-data

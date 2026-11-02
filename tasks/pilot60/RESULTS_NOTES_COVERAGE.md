@@ -67,9 +67,9 @@ expected **78**, found **76** (97.4%)
 | INE930H01031 |  | 1 | 1 |
 | INE930P01018 | ANURAS | 1 | 1 |
 
-## Misses (0)
+## Misses (2)
 
-- none
+- INE321D01016 AGENTVENTURES: expected 3, found 1 (2 missing). All other ISINs match the table above.
 
 ## Miss reasons
 
