@@ -43,7 +43,7 @@ search p95 = 238 ms < 2,000 ms; structured lookups p95 = 5.4 ms < 300 ms.
 
 Search is the only path near a second. Its cost is dominated by the FTS `MATCH` over 2.3M rows,
 not by the filters (the isin filter alone is 0.08 ms, Q25). The dense rerank adds 1.62 ms for
-2,000 × 4096-d candidates (measured, `measure_dense.py`), i.e. under 1% of the search budget.
+2,000 × 4096-d candidates (measured; the `measure_dense.py` script is not in the repo), i.e. under 1% of the search budget.
 
 ---
 

@@ -44,11 +44,11 @@ then switch readers over. Never assume; measure.
 - policy_events: indexes on published_at, instrument, stage; FTS over policy_name + quote.
 - Check: each listed query in Q1 under limit.
 
-### Q4. One query entry point - v1 DONE 2026-10-19: leak 0 / 300, p95 0.16 s, 20 hand checks (53/53 vs raw); search() after the Gemma index
+### Q4. One query entry point - v1 DONE 2026-10-19: leak 0 / 300, p95 0.16 s, 20 hand checks (53/53 vs raw); search() not built yet (waits for the Gemma index)
 - `reality_engine/query/state.py`: `state(isin, t)` = everything known about a company at time t across all stores
   (latest results, guidance + computed direction, orders schedule, deck KPIs, AR facts, policy events touching its
-  sectors, ownership, prices up to t) - reading only rows public before t. `search(text, isin=None, t=None)` =
-  hybrid FTS + EmbeddingGemma vectors over all text with the same point-in-time filter.
+  sectors, ownership, prices up to t) - reading only rows public before t. Planned: `search(text, isin=None, t=None)` =
+  hybrid FTS + EmbeddingGemma vectors over all text with the same point-in-time filter (not in state.py yet; state.py line 17 says it comes later).
 - Needs the metric ontology (Phase C) for clean cross-source metrics; ship a first version on raw metrics.
 - Check: leak test (nothing filed after t returned), latency under limit, 20 hand-checked company snapshots.
 
