@@ -1,0 +1,18 @@
+# T-049 F: one pilot3.db from all parts, served by the reality-data MCP. Brief by Opus (Wolf), 3 Nov 2026
+
+Goal: Shivam's design: every question goes to the database through MCP first; raw records only when absolutely necessary. Make that real for the 3 pilot companies.
+1. Build: `python -m reality_engine.pilot3.build --out <db> --part all` must load documents and pages from `D:\RealityEngine\pilot3\pages.db` (1,999 docs, 23,257 pages, dated to 16-19 Oct 2026; built by `reality_engine/pilot3/docs_collect.py`) instead of the old sandbox copies, keep the sandbox pages only where pages.db lacks a document, and then run the KPI and transcript extractors (`reality_engine/pilot3/kpi.py`, `transcripts.py`) INTO the same db, so one file holds every pilot3 table. Output the real db at `C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\pilot3\pilot3.db` (processed DBs live on C; create the folder). A `--part extract` runs only the extractors. Time each part.
+2. MCP: in `plugins/reality-data/server/` add pilot3 tools (read-only, small replies, provenance on every row: table, source doc/page or store row, known_at): `pilot3_kpi(symbol, kpi, period=None, as_of=None)`, `pilot3_fin(symbol, measure, period=None, basis=None, definition=None, as_of=None)`, `pilot3_ratio(symbol, ratio, period=None, as_of=None)`, `pilot3_holding(symbol, as_of)`, `pilot3_statements(symbol, topic=None, terms=None, date_from=None, date_to=None, as_of=None, limit=10)` (exact quotes), `pilot3_docs(symbol, doc_type=None, date_from=None, date_to=None)`, `pilot3_search(symbol, query, as_of=None, limit=10)` (FTS over doc_page), and `pilot3_sql(query)` (bounded, read-only, LIMIT enforced). `as_of` drops rows with known_at after it. Update the server's instructions text so the model routes pilot3 symbols (KEC, BAJFINANCE, HINDALCO) to these tools first. Follow the server's existing patterns (read its code first; small replies; resolve symbols as it does).
+3. Answer check: `reality_engine/pilot3/answer_check.py` that, for each of the 300 questions in `D:\RealityEngine\sandbox\{kec,bajfinance,hindalco}_loop\questions\*_QUESTIONS.jsonl`, records which pilot3 tool call(s) and arguments answer it (a hand-written routing table per question shape, no model), runs them against the real db, and writes `D:\RealityEngine\pilot3\ANSWERABILITY.xlsx`: one row per question with the tool call, the returned value(s) and source, the loop's oracle value if any, and match / mismatch / no rows. This is the pre-check before Haiku re-answers through MCP.
+
+Files: `reality_engine/pilot3/build.py`, `registry.py`, `schema.py` (only to load pages.db and run the extractors), new `answer_check.py`, `plugins/reality-data/server/*` (pilot3 tools + tests in the plugin's existing test location), tests `reality_engine/tests/test_pilot3_core.py`, `docs/DEVELOPER_GUIDE.md` section O, `tasks/DATA_INVENTORY.md` (pilot3.db row). Another session is editing `kpi.py`, `transcripts.py`, `lexicon/`, `queries.py`, `ratios.py`, `oracle.py`, `ocr.py`: do not edit those; call them.
+
+Accept: the real db builds with no network and no model; MCP server starts and each pilot3 tool returns rows with provenance in its tests; ANSWERABILITY.xlsx written with counts per company of answered-by-tool / mismatch / no rows; tests pass. Final message: files changed, build times and table row counts, answerability counts, and "Docs updated: <files>".
+
+Stop if: a model or network call would be needed.
+
+Never use run_in_background for a command you need the result of: background processes die when your turn ends. Run long commands in the foreground with a Bash timeout up to 600000 ms, in chunks.
+
+Budget: 3 hours.
+
+Ticket: T-049
