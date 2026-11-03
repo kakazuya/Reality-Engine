@@ -107,7 +107,7 @@ def write_jsonl(path: Path, rows: list[dict[str, Any]]) -> Path:
     return path
 
 
-def write_vocab(work: Path, vocab: dict[str, dict[str, list[str]]] | None = None) -> Path:
+def write_vocab(work: Path, vocab: dict[str, Any] | None = None) -> Path:
     path = work / "sector_vocab.json"
     path.write_text(json.dumps(vocab or VOCAB), encoding="utf-8")
     return path
@@ -200,6 +200,16 @@ def test_qset_schema_validation():
     assert not report["ok"] and report["schema_errors"]
 
 
+def test_qset_skips_library_and_non_question_files():
+    work = workdir("library")
+    questions = work / "questions"
+    write_jsonl(questions / "KEC.jsonl", [question("q-real")])
+    write_jsonl(questions / "LIBRARY_universal_technical.jsonl", [question("lib-1")])
+    write_jsonl(questions / "notes.jsonl", [{"note": "not a question"}])
+    report = qset.check(questions, write_vocab(work))
+    assert report["questions"] == 1 and not report["schema_errors"]
+
+
 def test_q1_off_sector_metric_fails():
     work = workdir("q1")
     questions = work / "questions"
@@ -212,6 +222,25 @@ def test_q1_off_sector_metric_fails():
     assert ("q-off", "nim", "sector_fit") in found
     assert ("q-off", "nim", "need") in found
     assert not report["q1"]["ok"] and not report["ok"]
+
+
+def test_q1_list_vocabulary_adds_universal_and_technical():
+    work = workdir("q1_list")
+    questions = work / "questions"
+    vocab: dict[str, Any] = {"_note": "list form", "universal": ["market_cap", "pe"], "technical": ["close"],
+                             "metals_ferrous": ["order_book"]}
+    write_jsonl(questions / "KEC.jsonl", [
+        question("q-universal", sector="metals_ferrous", sector_fit=["pe"],
+                 needs=[row_need("valuation_daily", "market_cap", "2026-11-03", None)]),
+        question("q-technical", sector="metals_ferrous", sector_fit=["close"],
+                 needs=[row_need("price_delivery", "close", "2026-11-03", None)]),
+        question("q-own", sector="metals_ferrous", sector_fit=["order_book"]),
+        question("q-off", sector="metals_ferrous", sector_fit=["nim"]),
+    ])
+    report = qset.check(questions, write_vocab(work, vocab))
+    violations = [(v["qid"], v["metric"], v["kind"]) for v in report["q1"]["violations"]]
+    assert violations == [("q-off", "nim", "sector_fit")]
+    assert report["questions"] == 4
 
 
 def test_q2_order_rule_thirty_percent_passes_five_percent_fails():
@@ -242,6 +271,19 @@ def test_q3_near_duplicate_is_flagged():
     report = qset.q3_variations([question("q-dup-a", text=text, variations=variations),
                                  question("q-dup-b", text=text, variations=variations)])
     assert report["duplicates"] and report["duplicates"][0]["jaccard"] == 1.0
+    assert not report["ok"]
+
+
+def test_q3_duplicates_are_compared_only_within_one_symbol():
+    text = "what was revenue and ebitda margin in the september quarter"
+    variations = ["same form one", "same form two", "same form three"]
+    across = [question("q-across-a", symbol="KEC", text=text, variations=variations),
+              question("q-across-b", symbol="HINDALCO", text=text, variations=variations)]
+    assert qset.q3_variations(across)["duplicates"] == []
+    within = [question("q-within-a", symbol="KEC", text=text, variations=variations),
+              question("q-within-b", symbol="KEC", text=text, variations=variations)]
+    report = qset.q3_variations(within)
+    assert [(d["qid"], d["other"]) for d in report["duplicates"]] == [("q-within-a", "q-within-b")]
     assert not report["ok"]
 
 
@@ -280,6 +322,52 @@ def test_planted_row_turns_an_unmet_need_into_a_met_one():
     after = answerable.score([ask], db)
     db.close()
     assert after["a1"]["total"]["all"] == 1 and after["unmet"] == []
+
+
+def test_new_table_need_validates_and_scores_met_only_once_the_table_holds_a_row():
+    work = workdir("a1_new_table")
+    db_path = build_db(work / "pilot3.db")
+    need = {"kind": "row", "table": "insider_trade", "metric": "insider_trade", "period": "FY27",
+            "basis": None, "new_table": True}
+    ask = question("q-new-table", needs=[need])
+    assert qset.validate(ask) == []
+    db = answerable.Db(db_path)
+    before = answerable.score([ask], db)
+    db.close()
+    assert before["a1"]["total"]["none"] == 1
+    assert before["unmet"] == [{"key": "insider_trade.insider_trade", "count": 1}]
+    raw = sqlite3.connect(db_path)
+    raw.execute("CREATE TABLE insider_trade (symbol TEXT, insider TEXT, transaction_date TEXT, value REAL,"
+                " known_at TEXT)")
+    raw.execute("INSERT INTO insider_trade (symbol, insider, transaction_date, value, known_at)"
+                " VALUES ('KEC', 'promoter', '2026-09-01', 1.0, '2026-10-01')")
+    raw.commit()
+    raw.close()
+    db = answerable.Db(db_path)
+    after = answerable.score([ask], db)
+    db.close()
+    assert after["a1"]["total"]["all"] == 1 and after["unmet"] == []
+
+
+def test_valuation_daily_need_scores_met_on_a_fixture_row():
+    work = workdir("a1_valuation")
+    db_path = build_db(work / "pilot3.db")
+    raw = sqlite3.connect(db_path)
+    raw.execute("CREATE TABLE valuation_daily (symbol TEXT, isin TEXT, date TEXT, basis TEXT, close REAL,"
+                " shares_outstanding REAL, market_cap REAL, pe REAL, known_at TEXT)")
+    raw.execute("INSERT INTO valuation_daily (symbol, date, basis, close, market_cap, pe, known_at)"
+                " VALUES ('KEC', '2026-11-03', 'consolidated', 300.0, NULL, 22.5, '2026-11-03')")
+    raw.commit()
+    raw.close()
+    ask_pe = question("q-pe", as_of="2026-11-04", needs=[row_need("valuation_daily", "pe", "2026-11-03", None)])
+    ask_mcap = question("q-mcap", as_of="2026-11-04",
+                        needs=[row_need("valuation_daily", "market_cap", "2026-11-03", None)])
+    db = answerable.Db(db_path)
+    try:
+        assert answerable.score([ask_pe], db)["a1"]["total"]["all"] == 1
+        assert answerable.score([ask_mcap], db)["unmet"] == [{"key": "valuation_daily.market_cap", "count": 1}]
+    finally:
+        db.close()
 
 
 def test_text_need_uses_the_pilot3_search_and_hidden_prints_counts_only(capsys):

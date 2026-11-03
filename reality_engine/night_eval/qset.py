@@ -1,10 +1,12 @@
 """Q1-Q3: check the night loop's question set, and split it dev / hidden.
 
-The set is JSON Lines, one question per line (``tasks/night_loop/questions/<SYMBOL>.jsonl``).  ``check``
-validates every line's shape, then applies GOAL section 2: Q1 sector fit (every metric a question names is in
-its sector's vocabulary, ``tasks/night_loop/sector_vocab.json``), Q2 coverage (lenses, orders, needed document
-types) and Q3 variations (order-1 questions have >= 3 forms) and near-duplicates (normalised token Jaccard >
-0.8 between any two questions).  ``split`` is the fixed hash split: dev 70 %, hidden 30 %.
+The set is JSON Lines, one question per line (``tasks/night_loop/questions/<SYMBOL>.jsonl``; files named
+``LIBRARY_*`` are the master banks, not the set, and are skipped).  ``check`` validates every line's shape, then
+applies GOAL section 2: Q1 sector fit (every metric a question names is in its sector's vocabulary,
+``tasks/night_loop/questions/sector_vocab.json``: a sector's own list plus ``universal`` and ``technical``), Q2
+coverage (lenses, orders, needed document types) and Q3 variations (order-1 questions have >= 3 forms) and
+near-duplicates (normalised token Jaccard > 0.8 between two questions of the same symbol).  ``split`` is the
+fixed hash split: dev 70 %, hidden 30 %.
 
 Nothing here calls a model or the network, and a hidden question is never printed.
 """
@@ -20,11 +22,11 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 QUESTIONS = ROOT / "tasks" / "night_loop" / "questions"
-VOCAB = ROOT / "tasks" / "night_loop" / "sector_vocab.json"
+VOCAB = ROOT / "tasks" / "night_loop" / "questions" / "sector_vocab.json"
 HIDDEN_OUT = ROOT / ".tmp" / "night_eval" / "hidden.jsonl"
 
 ROW_TABLES = ("kpi_series", "fin_annual_line", "fin_quarter_xbrl", "ratio_panel", "guidance", "shp_category",
-              "share_capital", "dividend_event", "price_delivery")
+              "share_capital", "dividend_event", "price_delivery", "valuation_daily")
 DOC_TYPES = ("deck", "transcript", "annual_report", "results", "press_release", "announcement")
 ORDERS = (1, 2, 3)
 MIN_LENS = 10
@@ -78,8 +80,11 @@ def validate(q: dict[str, Any]) -> list[str]:
             continue
         kind = need.get("kind")
         if kind == "row":
-            if need.get("table") not in ROW_TABLES:
-                errors.append(f"{where}.table: {need.get('table')!r} is not a typed table")
+            table = need.get("table")
+            if not isinstance(table, str) or not table.strip():
+                errors.append(f"{where}.table: missing")
+            elif table not in ROW_TABLES and not need.get("new_table"):
+                errors.append(f"{where}.table: {table!r} is not a typed table")
             if not isinstance(need.get("metric"), (str, type(None))):
                 errors.append(f"{where}.metric: expected a string or null")
             if not str(need.get("period") or "").strip():
@@ -126,28 +131,47 @@ def load_dir(qdir: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     questions: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
     for path in sorted(qdir.glob("*.jsonl")):
-        if path.name.startswith(("dev", "hidden")):
+        if path.name.startswith(("dev", "hidden", "LIBRARY_")):
             continue
         found, problems, _ = load_file(path)
+        if not any(isinstance(q.get("qid"), str) and q["qid"].strip() for q in found):
+            continue   # the master-bank libraries and other non-question files are not the question set
         questions.extend(found)
         errors.extend(problems)
     return questions, errors
 
 
-def load_vocab(path: Path = VOCAB) -> dict[str, dict[str, list[str]]]:
+def load_vocab(path: Path = VOCAB) -> dict[str, Any]:
+    """The vocabulary file, in either shape: ``{sector: {metric: [synonyms]}}`` or the question set's own
+    ``{"_note": str, "universal": [ids], "technical": [ids], sector: [ids]}``."""
     if not path.is_file():
         return {}
     data = json.loads(path.read_text(encoding="utf-8"))
     return data if isinstance(data, dict) else {}
 
 
-def q1_sector_fit(questions: list[dict[str, Any]], vocab: dict[str, dict[str, list[str]]]) -> dict[str, Any]:
+def allowed_metrics(vocab: dict[str, Any], sector: str) -> set[str] | None:
+    """The metric ids this sector may name: its own list plus universal and technical, or None if unknown."""
+    entry = vocab.get(sector)
+    if isinstance(entry, dict):
+        return set(entry)
+    if not isinstance(entry, list):
+        return None
+    allowed = {str(metric) for metric in entry}
+    for key in ("universal", "technical"):
+        extra = vocab.get(key)
+        if isinstance(extra, list):
+            allowed.update(str(metric) for metric in extra)
+    return allowed
+
+
+def q1_sector_fit(questions: list[dict[str, Any]], vocab: dict[str, Any]) -> dict[str, Any]:
     """Every sector_fit metric and every row-need metric must key that sector's vocabulary."""
     violations = []
     for q in questions:
         sector = str(q.get("sector") or "")
-        allowed = vocab.get(sector)
-        if not allowed:
+        allowed = allowed_metrics(vocab, sector)
+        if allowed is None:
             violations.append({"qid": q.get("qid"), "sector": sector, "metric": None, "kind": "unknown_sector"})
             continue
         for metric in q.get("sector_fit") or []:
@@ -205,17 +229,19 @@ def q2_coverage(questions: list[dict[str, Any]], held: tuple[str, ...] = ()) -> 
 
 
 def q3_variations(questions: list[dict[str, Any]]) -> dict[str, Any]:
-    """Order-1 questions need >= 3 forms; any two questions above Jaccard 0.8 are near-duplicates."""
+    """Order-1 questions need >= 3 forms; two questions of ONE symbol above Jaccard 0.8 are near-duplicates."""
     short = [q.get("qid") for q in questions if q.get("order") == 1 and len(q.get("variations") or []) < 3]
     duplicates = []
-    forms = [(str(q.get("qid")),
-              [norm_tokens(str(q.get("text") or ""))] + [norm_tokens(str(v)) for v in q.get("variations") or []])
-             for q in questions]
-    for index, (qid, tokens) in enumerate(forms):
-        for other_qid, other in forms[index + 1:]:
-            score = max((jaccard(a, b) for a in tokens for b in other), default=0.0)
-            if score > JACCARD:
-                duplicates.append({"qid": qid, "other": other_qid, "jaccard": round(score, 3)})
+    by_symbol: dict[str, list[tuple[str, list[frozenset[str]]]]] = {}
+    for q in questions:
+        forms = [norm_tokens(str(q.get("text") or ""))] + [norm_tokens(str(v)) for v in q.get("variations") or []]
+        by_symbol.setdefault(str(q.get("symbol") or "?"), []).append((str(q.get("qid")), forms))
+    for group in by_symbol.values():
+        for index, (qid, tokens) in enumerate(group):
+            for other_qid, other in group[index + 1:]:
+                score = max((jaccard(a, b) for a in tokens for b in other), default=0.0)
+                if score > JACCARD:
+                    duplicates.append({"qid": qid, "other": other_qid, "jaccard": round(score, 3)})
     return {"short_variations": short, "duplicates": duplicates, "ok": not short and not duplicates}
 
 

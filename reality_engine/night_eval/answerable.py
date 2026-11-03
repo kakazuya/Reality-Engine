@@ -2,8 +2,10 @@
 
 Every question names data needs (a typed-table row, or a text search in one document type).  A row need is met
 when the table holds a row for that symbol, period, basis and metric with ``known_at`` <= the question's
-``as_of``; a text need is met when the pilot3 bm25 search returns a page, of the document type asked and known
-by ``as_of``, that carries every term.  The search is the ``pilot3_search`` tool's own function
+``as_of``; a need carrying ``new_table`` names a table Phase 2 must add and is met only once the database holds
+that table with a row for the symbol.  A text need is met when the pilot3 bm25 search returns a page, of the
+document type asked and known by ``as_of``, that carries every term.  The search is the ``pilot3_search``
+tool's own function
 (``plugins/reality-data/server/lookups_pilot3.py``), called directly, never through the MCP server.
 
 ``--hidden`` prints counts only (no qid, no question text); the dev run also groups the unmet needs by
@@ -36,6 +38,7 @@ ROW_TABLES: dict[str, tuple[str | None, str, str]] = {
     "share_capital": (None, "as_of_date", "date"),
     "dividend_event": (None, "fiscal_year", "label"),
     "price_delivery": (None, "date", "date"),
+    "valuation_daily": (None, "date", "date"),
 }
 
 _LABEL = re.compile(r"^(Q[1-4]|H1|H2|9M|FY)?FY'?(\d{2,4})$", re.I)
@@ -104,11 +107,27 @@ class Db:
         self.con.close()
 
 
+def new_table_met(db: Db, symbol: str, table: str, as_of: str) -> bool:
+    """A ``new_table`` need: met only when the database holds that table with a row for the symbol by as_of."""
+    columns = db.columns(table)
+    if not columns or "symbol" not in columns:
+        return False
+    where, args = ["symbol=?"], [symbol]
+    if "known_at" in columns:
+        where.append("known_at IS NOT NULL AND substr(known_at, 1, 10) <= ?")
+        args.append(as_of)
+    try:
+        return db.con.execute(f'SELECT 1 FROM "{table}" WHERE {" AND ".join(where)} LIMIT 1',
+                              tuple(args)).fetchone() is not None
+    except sqlite3.Error:
+        return False
+
+
 def row_need_met(db: Db, symbol: str, need: dict[str, Any], as_of: str) -> bool:
     """One typed-table need.  Unknown table, missing column or no point-in-time row means unmet."""
     table = str(need.get("table") or "")
     if table not in ROW_TABLES:
-        return False
+        return new_table_met(db, symbol, table, as_of) if need.get("new_table") else False
     metric_col, period_col, kind = ROW_TABLES[table]
     columns = db.columns(table)
     if period_col not in columns or "symbol" not in columns:
@@ -144,7 +163,7 @@ def row_need_met(db: Db, symbol: str, need: dict[str, Any], as_of: str) -> bool:
     if table == "guidance":
         where.append("(low IS NOT NULL OR high IS NOT NULL)")
     metric = need.get("metric")
-    if table == "price_delivery" and metric and str(metric).lower() in columns:
+    if metric_col is None and metric and str(metric).lower() in columns:
         where.append(f'"{str(metric).lower()}" IS NOT NULL')
     sql = f'SELECT 1 FROM "{table}" WHERE {" AND ".join(where)} LIMIT 1'
     try:
