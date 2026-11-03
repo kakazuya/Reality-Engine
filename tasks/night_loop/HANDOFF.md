@@ -18,14 +18,24 @@
 - Wrapper note 06:20 IST: T-055 merged to main (c17b5a4): `python -m reality_engine.night_eval.qset check
   tasks/night_loop/questions` runs from the main checkout; README `reality_engine/night_eval/README.md`.
 
+## Wrapper between loops 1 and 2 (05:00 IST)
+- Merged the qset fix worker (030725d): `qset check` on all 10 files: 1,305 questions, Q1 0 violations, Q2 every company
+  11 lenses, orders about 46/42/12%, Q3 0 short variations, 0 duplicates. Wrapper hand-read 24 random: 23 fine, one
+  typo fixed (Eternal "of NOV" -> "as a share of GOV").
+- **Split and frozen (9b5de23):** use only `tasks/night_loop/questions/dev.jsonl` (898 questions). The 407 hidden ones
+  and the full company files moved to `D:\RealityEngine\pilot10\eval_hidden\`: never read them, never `git show` the
+  old company files from history (audited). `qset check` expects per-company files; for the dev set use
+  `answerable.py --qset tasks/night_loop/questions/dev.jsonl`.
+- Rulings on loop 1's four questions (wrapper, by Shivam's "decide, don't ask"): (1) "orders" questions stay only for
+  companies that report orders or deals (EPC order book, IT deal TCV); elsewhere they are reworded or dropped later;
+  (2) the no-rating template stays: "no rated instrument found" is a valid answer only with the search shown;
+  (3) the vocabulary extension with stored table names is accepted; (4) 120-136 per company is fine.
+- Rejected worker b1c96638 removed. **Generalisation running:** dsh `20261103T232215Z-375ffabf` (T-056, brief
+  `loops/loop_01_worker_generalise.md`), started 04:52 IST on DeepSeek; it is loop 2's first worker slot.
+
 ## Next
-1. Wrapper: merge `dsh/20261103T231018Z-fa830b2b`, rerun `qset check` from main (correct its 1271 in `tasks/STATE.md`);
-   finish the raw fetch; rerun the coverage table.
-2. Add a new ticket for pilot3 generalisation, then restart it from `loops/loop_01_worker_generalise.md` with that ticket.
-   Loop 2 cannot build pilot10 without it.
-3. Close the store gaps: Sep 2026 shareholding for 4 companies (probably filed; the index stops about 16 Oct), prices and deals to date, a truth
-   snapshot, and SHP XBRL for all 10 (`stores.SHP_XBRL` holds the pilot folder only).
-4. Rule on: the `orders` reading outside EPC, the no-rating template, the vocabulary extension, size above 120 per company.
+Loop 2 (see `loops/loop_02_brief.md`): review the generalisation worker, build pilot10.db from its branch, baseline
+A1 on the dev set, close the store gaps, and brief the first gap fixes.
 
 ## Learnings (append one line each; newest last)
 - 3-4 Nov: full rebuilds (8 min) were the slow loop; per-company parts and fixed check pages are the fast loop.
