@@ -564,9 +564,9 @@ The dry run prints round 1's units, sizes and tiers and calls no model. A real r
 `reality_engine/pilot3/` builds ONE SQLite database for KEC, BAJFINANCE and HINDALCO by scripts only (no model, no network), so the pilot questions are answered by plain SQL. Part A (the core, this section) is `schema.py` (DDL), `registry.py`, `stores.py`, `ratios.py`, `queries.py`, `oracle.py`, `call_dates.py` (transcript call dates, used by `registry.py` and `kpi.py`) and `build.py`; part B (`kpi.py`, `transcripts.py`, `lexicon/`) is a separate worker's; part D is `statements.py` (below). `__init__.py` finds the read-only stores (`REALITY_DATA_ROOT`, else this checkout's `reality_engine/data`, else the main checkout's) and sets `REALITY_DATA_ROOT` before `gap_loop.prepare` is imported.
 
 ```bash
-python -m reality_engine.pilot3.build --out .tmp/pilot3.db --part all    # registry | pages | stores | ratios | all, about 50 s
+python -m reality_engine.pilot3.build --out .tmp/pilot3.db --part all    # registry | pages | stores | ratios | extract | kpi | transcripts | guidance | all; 484 s on 4 Nov 2026 (23,558 pages)
 python -m reality_engine.pilot3.oracle --db .tmp/pilot3.db --tables core [--detail]
-python -m pytest reality_engine/tests/test_pilot3_core.py -q              # 26 tests (23 fixture-level); the 3 integration ones build the real db (about 90 s)
+python -m pytest reality_engine/tests/test_pilot3_core.py -q              # 26 tests; the 2 integration ones build the real db (marked slow, about 8 min)
 ```
 
 - **Tables** (every fact row carries symbol, isin, period, basis, value, unit, scale, `known_at` from the filing record, and its source: doc + page, or source db + table + rowid/file). `company` (every ISIN a symbol has had: `symbol_isin_history` plus ISINs only other stores use, e.g. shareholding under `INE296A01016` / `IN9038A01010`), `doc`, `doc_page` + FTS5 `doc_page_fts` (copied from the collector's pages.db, the sandbox pages only for documents pages.db lacks; no PDF re-read; a `needs_ocr` page takes the OCR text and its `ocr_conf` from `build.py --ocr-db`, method `ocr_rapid`), `share_capital` (paid-up / face value per filing, plus split / bonus events and ISIN windows), `fin_quarter_xbrl` (every quarter of `results_xbrl.quarterly`, both bases, 21 XBRL items, long form; revised filings stay as separate rows keyed by `known_at`), `fin_annual_line` (closed caption lexicon over `ar_facts`, `stores.LEXICON`, plus the part D XBRL / deck / annual-report rows below; columns `definition` = reported / xbrl_reported / xbrl_derived / company_stated and `period_type` FY / H1 / Q), `dividend_event`, `price_delivery` (NSE and BSE daily OHLC, delivery, cumulative split factor and adjusted close, from the truth snapshot), `shp_category` (`shp_index` promoter/public per quarter plus holder categories from `D:\RealityEngine\raw\nse_shp_xbrl_pilot` parsed with the stdlib; 2025-05 taxonomy files give fractions, normalised to percent by checking promoter + public ~ 1), `formula` + `ratio_panel` (derived, `is_derived=1`, `formula_id`, `input_refs`, `known_at` = latest input), `valuation_daily` (market cap, trailing EPS restated to the day's share basis by the cumulative split factor, P/E; P/B, EV/EBITDA and dividend yield fill only where `fin_annual_line` has net worth, net debt or dividend per share), and `guidance` (one row per forward-looking numeric target; extractor and rules in O6). **Transcript dates (T-049 review, 4 Nov 2026):** a transcript's `filing_date` and `known_at` are raised to the call date printed in its first pages (`reality_engine/pilot3/call_dates.py`, `known_at = max(filing record, call date)`), because a filing record can date a transcription before the call it transcribes — KEC's Q4 FY26 call, held 18 May 2026, carried the company-site publish date 18 Feb 2026 and answers dated the call from it. `python -m reality_engine.pilot3.call_dates` prints the table (doc_key, stored filing, stored known_at, call date in the text, new dates) for every held transcript and lists the ones no call date was read for: 142 transcripts, 0 unread, 3 filing dates raised (all KEC), 0 known_at raised on 4 Nov 2026.
@@ -810,3 +810,42 @@ The 4 Nov re-answer grade (`D:\RealityEngine\reports\2026-11-04_mcp_reanswer_gra
   python -m pytest plugins/reality-data/tests reality_engine/tests -q -k "pilot3 or lookups"
   ```
   Tests: `plugins/reality-data/tests/test_reality_data.py` (8 databases in the catalog, `schema('kpi_series', db='pilot3')`), `plugins/reality-data/tests/test_lookups_pilot3.py` (22 tests: `max_chars` default/cap/`bad_max_chars`, the consolidated default with the basis label; the MCP stdio test skips only in a sandbox that blocks child-process pipes), `reality_engine/tests/test_pilot3_ratios.py` (new, 2 tests: the FY26 row with its inputs; no row when an input is missing), `reality_engine/tests/test_pilot3_docs.py` (an order press release becomes an announcement titled by its headline), `reality_engine/tests/test_pilot3_guidance.py` (9 tests incl. the wrong-row assertion). In this DSH sandbox the `tmp_path` tests cannot run at all (pytest's `mkdir(mode=0o700)` temp root is unlistable here): the selection gives 105 passed / 22 errors from fixture setup (`test_pilot3_docs` 3, `test_pilot3_kpi` 6, `test_pilot3_ocr` 13), the 3 docs tests were run through a driver with an ordinary directory and pass, and on the controller they run as written. The live `pilot3.db` still needs `docs_collect` + `build --part registry` (order typing) and `build --part guidance` (guidance rows) plus an MCP restart before sessions see them.
+
+### O9. Fast checks for a pilot3 extractor fix (T-049, 4 Nov 2026)
+
+A full rebuild is eight minutes and the whole-database integration tests build it, so a fix round checks one
+company and a fixed set of pages instead.
+
+```bash
+python -m pytest reality_engine/tests -q -k pilot3 -m "not slow"                          # fix round: 51 s in this sandbox (the tmp_path fixture errors are the sandbox's, see below)
+python -m pytest reality_engine/tests -q                                                  # at merge, slow tests included
+python -m reality_engine.pilot3.build --out .tmp/pilot3_kec.db --part kpi --symbols KEC   # one company: 125 s
+python -m reality_engine.pilot3.checkpages run                                            # fixed pages: found / missing, 5.5 s
+python -m reality_engine.pilot3.checkpages make                                           # regenerate the fixture and its baseline
+```
+
+- **One company (`build.py --symbols`).** Only the extractors are limited (`extract`, `kpi`, `transcripts`,
+  `guidance`); they already delete and rewrite one company's rows. `registry`, `pages`, `stores` and `ratios`
+  rebuild every company's rows and ignore `--symbols` (`--help` says so). Measured 4 Nov 2026 on a copy of the
+  live database (23,558 pages): full `--part kpi` **502.7 s**, `--part kpi --symbols KEC` **125.1 s**, and the
+  KEC rows are identical -- 6,876 rows, the same 6,824 `(metric, fiscal_period, value, doc_key, page)` keys with
+  no row on either side only.
+- **Fixed check pages (`reality_engine/pilot3/checkpages.py`).** `make` writes
+  `reality_engine/tests/fixtures/pilot3_checkpages.json` from the 4 Nov graded answers
+  (`D:\RealityEngine\pilot3\answer_run2`, new grade R or P only): every non-zero answer number whose quote maps
+  to one to three `doc_page` rows (the quote's first 120 normalised characters occur in the page) on a document
+  type an extractor reads -- 314 page numbers. `run` re-extracts only those pages (plus each document's first
+  three, so its reporting period is read as in a full build) with the current `kpi` and `guidance` code, from the
+  stored page text and, for the table and chart rules, the PDF word boxes of that same page. It works on a
+  throwaway copy under `.tmp/`; the live database is only opened read-only. It prints found / missing per company
+  with the missing list and takes about 6 s.
+- **Baseline, 4 Nov 2026** (recorded in the fixture): **145 / 314 found** -- KEC 29/78, BAJFINANCE 59/113,
+  HINDALCO 57/123. A missing number is not automatically a defect: many answers come from the tables and
+  narrative of the other sessions (annual-report prose, segment charts), so the count is a floor a change must
+  not drop below. `reality_engine/tests/test_pilot3_checkpages.py` runs `run` and asserts every company is at or
+  above it (skipped where the live database, the fixture or the raw PDFs are absent).
+- **Markers.** `reality_engine/tests/conftest.py` registers `slow`; the two `test_pilot3_core.py` integration
+  tests (module fixture `built` -> `build.build(db, "all")`, about 8 min) carry `@pytest.mark.slow`.
+  `test_pilot3_checkpages.py` is unmarked: three fast tests (quote mapping, value/unit match, `run` end to end on
+  a synthetic page) and the baseline test. In this DSH sandbox the selection gives 115 passed and 20 errors from
+  fixture setup only (the `tmp_path` root is denied, as in O8); the controller runs it as written.

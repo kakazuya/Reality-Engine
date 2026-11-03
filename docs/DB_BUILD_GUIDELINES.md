@@ -53,9 +53,9 @@ Change a rule only with a measurement that supports the change, and note it in `
   page 1 of a scan to classify, then the rest only if the document is in the core set. OCR runs on the HP.
 
 ## 9. Fast checks for every change
-- Rebuild only what changed: one build part, one company; extraction cached by document hash + extractor version.
-- Fixed check pages per extractor (about 50 hand-checked pages with expected rows) run in seconds.
-- The full rebuild and integration tests run once, at merge. Heavy test suites run one file per process under a RAM cap.
+- Rebuild only what changed: one build part, one company (`python -m reality_engine.pilot3.build --part kpi --symbols KEC`); extraction cached by document hash + extractor version.
+- Fixed check pages per extractor run in seconds (`python -m reality_engine.pilot3.checkpages run`: 314 pages, about 6 s); a fix round is `pytest reality_engine/tests -q -k pilot3 -m "not slow"`.
+- The full rebuild and integration tests (marked `slow`, `-m slow`) run once, at merge. Heavy test suites run one file per process under a RAM cap.
 
 ## 10. Prove by sector sample, not company by company
 - About 20 template questions per sector run as SQL against every company in it; empty or failing results are the gap
