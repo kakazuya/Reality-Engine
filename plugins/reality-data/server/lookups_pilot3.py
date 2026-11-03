@@ -499,8 +499,102 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
             "provenance": _prov("transcript_statement", f"{r['doc_key']} p{r['page']}", r["known_at"],
                                 title=r["title"], row_id=r["id"])} for r in rows]
     matched = any(topic in (row["topics"] or "") for row in out) if topic else None
-    return _reply(sym, out, "pilot3_statements",
+    fallback = None
+    if topic and not matched:
+        # the tagger never emitted this topic: search the calls' own page text before answering "nothing said"
+        alt = _call_page_hits(sym, topic, terms, rank_terms, date_from, date_to, as_of, latest, _cap(limit))
+        if alt:
+            out, fallback = alt, "doc_page_bm25"
+    return _reply(sym, out, "pilot3_statements", fallback=fallback,
                   topic_matched=matched, hint=None if out else "no statement in the held calls matches these arguments")
+
+
+def _call_page_hits(sym: str, topic: str, terms: str | None, rank_terms: str | None, date_from: str | None,
+                    date_to: str | None, as_of: str | None, latest: bool, cap: int) -> list[dict]:
+    """bm25 over the transcript ``doc_page`` text when ``transcript_statement`` has no row carrying the topic tag:
+    the page's own sentence around the match, newest call first.  Empty when the pages carry nothing either."""
+    words = [w for w in re.findall(r"[\w₹%&\-\.]+", " ".join(x for x in (topic, terms, rank_terms) if x or ""))
+             if len(w) > 2][:8]
+    if not words:
+        return []
+    match = _fts_query(" ".join(words), "and") or _fts_query(" ".join(words), "or")
+    if not match:
+        return []
+    extra, eargs = _asof(as_of, "COALESCE(p.known_at, d.known_at)")
+    date_sql, date_args = "", []
+    for col, val, op in (("d.filing_date", _day(date_from, "date_from"), ">="),
+                         ("d.filing_date", _day(date_to, "date_to"), "<=")):
+        if val:
+            date_sql += f" AND {col} {op} ?"
+            date_args.append(val)
+    latest_sql, latest_args = "", []
+    if latest:
+        latest_sql = (" AND COALESCE(d.known_at, d.filing_date)=(SELECT MAX(COALESCE(d2.known_at, d2.filing_date)) "
+                      "FROM doc d2 WHERE d2.symbol=? AND d2.doc_type='transcript')")
+        latest_args = [sym]
+    rows = _q(f"SELECT d.doc_key, d.title, d.filing_date, p.page, p.known_at, "
+              f"snippet(doc_page_fts, 0, '[', ']', ' … ', 40) snip FROM doc_page_fts f "
+              f"JOIN doc_page p ON p.rowid=f.rowid JOIN doc d ON d.doc_key=p.doc_key "
+              f"WHERE doc_page_fts MATCH ? AND p.symbol=? AND d.doc_type='transcript'{date_sql}{latest_sql}{extra} "
+              f"ORDER BY d.filing_date DESC, rank LIMIT ?",
+              (match, sym, *date_args, *latest_args, *eargs, cap))
+    return [{"call_date": r["filing_date"], "call_period": None, "speaker": None, "role": None,
+             "section": None, "topics": None, "period_discussed": None, "quote": _trim(r["snip"], QUOTE_CHARS),
+             "provenance": _prov("doc_page", f"{r['doc_key']} p{r['page']}", r["known_at"] or None,
+                                 title=_trim(r["title"], 120))} for r in rows]
+
+
+# --- pilot3_guidance --------------------------------------------------------------------------------
+GUIDANCE_METRICS = ("revenue_growth", "ebitda_margin", "order_intake", "nim", "credit_cost", "aum_growth",
+                    "capex", "cost_of_production", "interest_cost", "ebitda_per_tonne", "other")
+
+
+def guidance(symbol: str, metric: str | None = None, period: str | None = None, as_of: str | None = None,
+             limit: int = 12) -> dict[str, Any]:
+    """Rule-extracted forward guidance: one row per numeric target (metric, target period, low/high, unit,
+    direction, exact quote, speaker), newest first, with the row it revised (``revision_of`` and the previous
+    low/high/date, so "did the guidance change between the two calls" is one call)."""
+    sym = resolve_symbol(symbol)
+    names, allnames = ([], list(GUIDANCE_METRICS))
+    if metric:
+        names, allnames = _pick("guidance", "metric", sym, metric)
+        if not names:
+            return _reply(sym, [], "pilot3_guidance", available=allnames[:40], metric_asked=metric)
+    kind, label = norm_period(period)
+    where, args = "g.symbol=?", [sym]
+    if names:
+        where += f" AND g.metric IN ({','.join('?' * len(names))})"
+        args += names
+    if kind and label:
+        where += " AND g.target_period=?"
+        args.append(label)
+    extra, eargs = _asof(as_of, "g.known_at")
+    rows = _q(f"SELECT g.id, g.metric, g.target_period, g.low, g.high, g.unit, g.direction, g.said_on, g.doc_key, "
+              f"g.page, g.quote, g.speaker, g.known_at, g.revision_of, g.extractor_rule, d.title, d.doc_type, "
+              f"pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on, pv.direction prev_direction "
+              f"FROM guidance g LEFT JOIN doc d ON d.doc_key=g.doc_key "
+              f"LEFT JOIN guidance pv ON pv.id=g.revision_of WHERE {where}{extra} "
+              f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC LIMIT ?", (*args, *eargs, _cap(limit)))
+    out = []
+    for r in rows:
+        previous = None
+        if r["revision_of"] is not None:
+            previous = {"row_id": r["revision_of"], "low": r["prev_low"], "high": r["prev_high"],
+                        "said_on": r["prev_said_on"], "direction": r["prev_direction"]}
+        out.append({"metric": r["metric"], "period": r["target_period"], "low": r["low"], "high": r["high"],
+                    "unit": r["unit"], "direction": r["direction"], "said_on": r["said_on"],
+                    "quote": _trim(r["quote"]), "speaker": r["speaker"], "revision_of": r["revision_of"],
+                    "previous": previous,
+                    "changed": bool(previous and (previous["low"], previous["high"]) != (r["low"], r["high"])),
+                    "provenance": _prov("guidance", f"{r['doc_key']} p{r['page']}", r["known_at"],
+                                        doc_type=r["doc_type"], title=_trim(r["title"], 120), row_id=r["id"])})
+    held = None
+    if not out:   # say what the table does hold, so the next call can be exact
+        held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
+            f"SELECT metric, target_period, COUNT(*) FROM guidance WHERE symbol=?"
+            + (f" AND metric IN ({','.join('?' * len(names))})" if names else "")
+            + " GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
+    return _reply(sym, out, "pilot3_guidance", metrics_matched=names or None, held_options=held)
 
 
 # --- pilot3_docs ------------------------------------------------------------------------------------
@@ -579,7 +673,7 @@ def _rank_hits(rows: list[sqlite3.Row], exact: set[int], or_ids: set[int], perio
             score = 1.0                                   # an all-word hit outside the OR top
         if row["rid"] in exact:
             score += 0.20                                    # every query word is on the page
-        day = str(row["filing_date"] or row["known_at"] or "")[:10]
+        day = str(row["filing_date"] or row["pk"] or row["dk"] or "")[:10]
         if date_from and date_to and date_from <= day <= date_to:
             score += 0.35                                    # filed inside the window the question names
         if period and _period_in(row["text"], period):
@@ -605,7 +699,10 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
         dflt, dargs = " AND d.doc_type=?", (dtype,)
     start, end = _day(date_from, "date_from"), _day(date_to, "date_to")
     cap = _cap(limit)
-    labels = [period] if period else _period_labels(query)
+    # the period the caller names is normalised to the label the pages print (FY27, Q1FY27), never prefixed twice:
+    # norm_period('FY27') is ('FY', 'FY27'), so the reply can only ever echo a canonical label.
+    kind, label = norm_period(period)
+    labels = [label] if kind else _period_labels(query)
     period = labels[0] if labels else None
     select = (f"SELECT p.rowid rid, p.doc_key, p.page, p.text, p.known_at pk, d.known_at dk, d.doc_type, "
               f"d.title, d.filing_date, rank, snippet(doc_page_fts, 0, '[', ']', ' … ', 40) snip "

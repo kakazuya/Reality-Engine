@@ -58,7 +58,19 @@ TABLES: dict[str, str] = {
         market_cap REAL, trailing_eps REAL, trailing_pat REAL, net_worth REAL, net_debt REAL,
         trailing_ebitda REAL, pe REAL, pb REAL, ev_ebitda REAL, dividend_yield_pct REAL,
         known_at TEXT, known_at_source TEXT, input_refs TEXT)""",
+    # one row per forward-looking numeric target (guidance.py).  ``doc_key`` is the ticket's ``doc_id``; the
+    # column is named ``doc_key`` like every other pilot3 table.
+    "guidance": """CREATE TABLE guidance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        symbol TEXT, isin TEXT, metric TEXT, target_period TEXT, low REAL, high REAL, unit TEXT,
+        direction TEXT, said_on TEXT, doc_key TEXT, page INTEGER, quote TEXT, speaker TEXT,
+        known_at TEXT, known_at_source TEXT, revision_of INTEGER, extractor_rule TEXT)""",
 }
+
+GUIDANCE_INDEXES = (
+    "CREATE INDEX IF NOT EXISTS ix_gd ON guidance(symbol, metric, target_period)",
+    "CREATE INDEX IF NOT EXISTS ix_gd2 ON guidance(symbol, said_on)",
+)
 
 INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_page_sym ON doc_page(symbol, doc_key)",
@@ -70,6 +82,7 @@ INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_vd ON valuation_daily(symbol, date)",
     "CREATE INDEX IF NOT EXISTS ix_sc ON share_capital(symbol, as_of_date)",
     "CREATE INDEX IF NOT EXISTS ix_div ON dividend_event(symbol, ex_date)",
+    *GUIDANCE_INDEXES,
 )
 
 FTS = """CREATE VIRTUAL TABLE doc_page_fts USING fts5(text, content='doc_page', content_rowid='rowid',

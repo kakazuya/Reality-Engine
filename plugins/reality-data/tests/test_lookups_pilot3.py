@@ -29,7 +29,7 @@ from reality_engine.pilot3 import kpi as kpi_mod, schema, transcripts  # noqa: E
 
 DB = TMP / "pilot3_fixture.db"
 TOOLS = {"pilot3_kpi", "pilot3_fin", "pilot3_ratio", "pilot3_holding", "pilot3_statements", "pilot3_docs",
-         "pilot3_search", "pilot3_sql"}
+         "pilot3_search", "pilot3_guidance", "pilot3_sql"}
 
 
 def build_fixture() -> None:
@@ -47,7 +47,10 @@ def build_fixture() -> None:
         ("pdfs/KEC/deck2.pdf", "KEC", "INE389H01022", "deck", "deck", "Investor Presentation", "2026-08-10",
          "2026-08-10T17:00:00", 1, "sha2", "pages.db", "D:/raw/deck2.pdf"),
         ("KEC:old/call.pdf", "KEC", "INE389H01022", "transcript", "transcript", "Conference Call Q3 FY26",
-         "2026-02-12", "2026-02-14T10:00:00", 1, None, "sandbox", "k")])
+         "2026-02-12", "2026-02-14T10:00:00", 1, None, "sandbox", "k"),
+        # no filing record at all: pilot3_search must not crash on it (it has no known_at to sort on)
+        ("KEC:undated/call.pdf", "KEC", "INE389H01022", "transcript", "transcript", "Undated call", None,
+         None, 1, None, "sandbox", "k2")])
     c.execute("INSERT INTO doc_alias VALUES ('KEC','old/deck.pdf','pdfs/KEC/deck1.pdf')")
     pages = [("pdfs/KEC/deck1.pdf", 1, "Order book stood at Rs 40,000 crore as on 31 Dec 2025", "2026-02-10T17:00:00"),
              ("pdfs/KEC/deck1.pdf", 2, "Transmission and distribution revenue grew strongly", "2026-02-10T17:00:00"),
@@ -55,10 +58,27 @@ def build_fixture() -> None:
              # same words as page 1 of deck1 but printing the quarter: the period boost must lift it
              ("pdfs/KEC/deck2.pdf", 2, "Q3 FY26 update. The order book is discussed together with revenue, margins, "
                                        "capex, demand, capacity and working capital in the presentation.",
-              "2026-08-10T17:00:00")]
+              "2026-08-10T17:00:00"),
+             # a call page with a topic no statement tag carries: pilot3_statements falls back to it
+             ("KEC:old/call.pdf", 1, "Power transmission capacity is being expanded across the country.",
+              "2026-02-14T10:00:00"),
+             # the undated call page: no filing record, no known_at
+             ("KEC:undated/call.pdf", 1, "A special undated page about tariffs.", None)]
     for i, (dk, pg, text, k) in enumerate(pages):
         c.execute("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)", (dk, "KEC", pg, text, "script_text", len(text), k, None))
     c.execute("INSERT INTO doc_page_fts(rowid, text) SELECT rowid, text FROM doc_page")
+    c.executemany(
+        "INSERT INTO guidance(id,symbol,isin,metric,target_period,low,high,unit,direction,said_on,doc_key,page,quote,"
+        "speaker,known_at,known_at_source,revision_of,extractor_rule) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'t')", [
+            (1, "KEC", "INE389H01022", "revenue_growth", "FY27", 12.0, 15.0, "pct", "up", "2026-02-10",
+             "pdfs/KEC/deck1.pdf", 1, "We expect revenue growth of 12% to 15% for FY27.", None,
+             "2026-02-10T17:00:00", "doc.known_at", None),
+            (2, "KEC", "INE389H01022", "revenue_growth", "FY27", 12.0, 15.0, "pct", "up", "2026-08-10",
+             "pdfs/KEC/deck2.pdf", 1, "We still expect revenue growth of 12% to 15% for FY27.", "Vimal Kejriwal",
+             "2026-08-10T17:00:00", "doc.known_at", 1),
+            (3, "KEC", "INE389H01022", "ebitda_margin", "FY26", 7.0, 7.5, "pct", "down", "2026-02-12",
+             "KEC:old/call.pdf", 1, "We have cut our margin guidance for the year to 7% to 7.5%.", "Vimal Kejriwal",
+             "2026-02-14T10:00:00", "doc.known_at", None)])
     ins = ("INSERT INTO kpi_series(symbol,metric,dimension,value,unit,scale,period_type,fiscal_period,as_of_date,basis,"
            "doc_key,page,quote,known_at,known_at_source,is_reported,extractor_rule) "
            "VALUES ('KEC',?,?,?,?,1,'Q',?,?, 'consolidated',?,1,?,?,'docs.known_at',1,'t')")
@@ -205,6 +225,37 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertTrue(untagged["found"])
         self.assertFalse(untagged["topic_matched"])
 
+    def test_guidance_rows_and_revision_chain(self):
+        out = p3.guidance("KEC", metric="revenue")
+        self.assertTrue(out["found"])
+        self.assertEqual([r["said_on"] for r in out["rows"]], ["2026-08-10", "2026-02-10"])
+        latest = out["rows"][0]
+        self.assertEqual((latest["low"], latest["high"], latest["period"], latest["unit"]),
+                         (12.0, 15.0, "FY27", "pct"))
+        self.assertEqual(latest["revision_of"], 1)
+        self.assertEqual(latest["previous"]["said_on"], "2026-02-10")
+        self.assertFalse(latest["changed"])               # the same 12-15% repeated: nothing changed
+        self.assertProvenance(out["rows"])
+        margins = p3.guidance("KEC", metric="margin", period="FY26")
+        self.assertEqual((margins["rows"][0]["low"], margins["rows"][0]["high"], margins["rows"][0]["direction"]),
+                         (7.0, 7.5, "down"))
+        self.assertFalse(p3.guidance("KEC", metric="margin", as_of="2026-02-01")["found"])   # not public yet
+        miss = p3.guidance("KEC", metric="nonsense")
+        self.assertFalse(miss["found"])
+        self.assertIn("revenue_growth", miss["available"])
+
+    def test_statements_falls_back_to_the_call_page_text(self):
+        """A topic no statement tag carries is searched in the calls' own page text, not answered with nothing."""
+        out = p3.statements("KEC", topic="power")
+        self.assertTrue(out["found"])
+        self.assertFalse(out["topic_matched"])
+        self.assertEqual(out["fallback"], "doc_page_bm25")
+        self.assertEqual(out["rows"][0]["provenance"]["table"], "doc_page")
+        self.assertIn("transmission", out["rows"][0]["quote"].lower())
+        # a topic the tagger does carry keeps using the tagged statements, with no fallback
+        tagged = p3.statements("KEC", topic="margin")
+        self.assertIsNone(tagged["fallback"])
+
     def test_docs_listing(self):
         out = p3.docs("KEC", "decks")
         self.assertEqual([r["filing_date"] for r in out["rows"]], ["2026-08-10", "2026-02-10"])
@@ -239,6 +290,24 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertEqual(lifted["rows"][0]["provenance"]["source"], "pdfs/KEC/deck2.pdf p2")
         self.assertEqual(plain["rows"][0]["provenance"]["source"], "pdfs/KEC/deck2.pdf p1")   # bm25 alone
         self.assertEqual(lifted["period"], "Q3FY26")
+
+    def test_search_period_is_normalised_never_prefixed_twice(self):
+        """A period of FY26 / Q3 FY2026 goes through norm_period: the reply echoes FY26 / Q3FY26, never FYFY26."""
+        for asked, want in (("FY26", "FY26"), ("Q3 FY2026", "Q3FY26"), ("2025-26", "FY26")):
+            out = p3.search("KEC", "order book", period=asked)
+            self.assertEqual(out["period"], want, asked)
+            self.assertNotIn("FYFY", json.dumps(out))
+        # an unrecognised period is not a label: the query's own period is used instead
+        out = p3.search("KEC", "order book Q3FY26", period="next year")
+        self.assertEqual(out["period"], "Q3FY26")
+
+    def test_search_survives_a_document_without_a_filing_date(self):
+        """The ranker used to read a 'known_at' column the SELECT did not return: a page under an undated document
+        raised IndexError.  It now falls back to the page's known_at / the document's."""
+        out = p3.search("KEC", "special undated tariffs")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["rows"][0]["filing_date"], None)
+        self.assertProvenance(out["rows"])
 
     def test_search_fts_and_as_of(self):
         out = p3.search("KEC", "order book crore")
@@ -306,6 +375,7 @@ class Pilot3McpTests(unittest.TestCase):
                         "pilot3_ratio": {"symbol": "KEC", "ratio": "roe", "period": "FY25"},
                         "pilot3_holding": {"symbol": "KEC", "as_of": "2026-06-01"},
                         "pilot3_statements": {"symbol": "KEC", "topic": "margin"},
+                        "pilot3_guidance": {"symbol": "KEC", "metric": "revenue"},
                         "pilot3_docs": {"symbol": "KEC", "doc_type": "deck"},
                         "pilot3_search": {"symbol": "KEC", "query": "order book"},
                     }
@@ -315,7 +385,7 @@ class Pilot3McpTests(unittest.TestCase):
                         self.assertTrue(all(r["provenance"]["source"] for r in out["rows"]), name)
                     sql = payload(await session.call_tool("pilot3_sql", {"query": "select count(*) from doc"},
                                                           read_timeout_seconds=60))
-                    self.assertEqual(sql["rows"], [[3]])
+                    self.assertEqual(sql["rows"], [[4]])  # fixture has 4 docs since the undated-document test (T-049 guidance)
                     bad = payload(await session.call_tool("pilot3_sql", {"query": "drop table doc"},
                                                           read_timeout_seconds=60))
                     self.assertFalse(bad["ok"])
