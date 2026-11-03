@@ -1,11 +1,17 @@
 """Local OCR of the pages that have no text layer -> table ocr_page (T-049 E). RapidOCR (ONNX) only: no model call, no network.
 
 CLI: python -m reality_engine.pilot3.ocr --out <ocr.db> [--symbols KEC,BAJFINANCE,HINDALCO] [--max-seconds 540] [--limit N]
-                                          [--dpi 300] [--max-side 2400] [--device cpu|dml]
+                                          [--pages-db D:\\RealityEngine\\pilot3\\pages.db] [--dpi 300] [--max-side 2400]
+                                          [--device cpu|dml] [--reverse]
 
-Pages come from the same two places kpi.py reads: sandbox ``doc_text`` rows with method needs_ocr (PDF under
-``<sym>_loop/raw``), and the decks_full PDFs that deck_figures cites but docs does not hold, for pages whose text layer
-is empty.  Each page is rendered at 300 DPI in grayscale (PyMuPDF), read by RapidOCR, and stored with the page text, the
+Pages come from three places: (1) the real collection ``pages.db`` (``docs_collect.py``) -- its ``doc_page`` rows
+with method ``needs_ocr`` for the symbol, PDF path from ``doc.source_path``, the doc_key kept exactly as build.py
+writes it into ``doc_page`` so a rebuild can join the OCR text to that page; (2) sandbox ``doc_text`` rows with
+method needs_ocr (PDF under ``<sym>_loop/raw``) for documents pages.db does not hold; (3) the decks_full PDFs that
+deck_figures cites but docs does not hold, for pages whose text layer is empty.  A page already stored under a key
+that names the same document (a sandbox ``doc_alias`` key or the decks_full sha key) is skipped, so no page is read
+twice.  ``--pages-db ''`` disables source (1).
+Each page is rendered at 300 DPI in grayscale (PyMuPDF), read by RapidOCR, and stored with the page text, the
 word boxes in PDF points (so kpi.py's row/column tolerances behave as on a text layer) and the mean OCR confidence.
 The run is resumable: pages already in ``ocr_page`` are skipped, ``--max-seconds`` stops cleanly between pages.
 ``method`` is ``ocr_rapid``; kpi.py copies it and ``ocr_conf`` onto every kpi_series row read from such a page.
@@ -20,7 +26,7 @@ import sys
 import time
 from pathlib import Path
 
-from reality_engine.pilot3 import kpi
+from reality_engine.pilot3 import PAGES_DB, kpi
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS ocr_page (
@@ -42,13 +48,49 @@ def _fitz():
     return fitz
 
 
-def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set) -> list[tuple]:
-    """[(doc_key, page, doc_type, known_at, pdf_path)] still to OCR: decks_full first, then sandbox pages by doc type
-    (decks, results, press releases, ...) newest first."""
+def _open_ro(path: Path | str | None) -> sqlite3.Connection | None:
+    """Read-only connection to ``path``, or None when it is not set or not on this machine."""
+    p = Path(path) if path else None
+    return sqlite3.connect(f"file:{p.as_posix()}?mode=ro", uri=True) if p and p.is_file() else None
+
+
+def _sort_key(r) -> tuple:
+    """(doc_type, known_at, doc_key, page, pdf): decks, results, press releases, ... newest first."""
+    return (DOC_PRIORITY.get(r[0], 9), -int(str(r[1] or "0")[:10].replace("-", "") or 0), r[2], r[3])
+
+
+def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
+            pages_db: Path | str | None = None) -> list[tuple]:
+    """[(doc_key, page, doc_type, known_at, pdf_path)] still to OCR: pages.db needs_ocr pages (key = the doc_key
+    build.py writes to doc_page), then decks_full, then sandbox pages by doc type, newest first.  A page stored
+    already under a key that names the same document (sandbox alias, decks_full sha) is skipped."""
     fitz = _fitz()
     dbp = sandbox / f"{kpi.COMPANIES[sym]}_loop" / f"{kpi.COMPANIES[sym]}.db"
     con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
-    out = []
+    out: list[tuple] = []
+    claimed: set[tuple] = set()          # (pages.db doc_key, page) this list will OCR from pages.db
+    doc_keys: dict[str, set] = {}        # pages.db doc_key -> every key that page may already be stored under
+    alias: dict[str, str] = {}           # sandbox doc_key -> pages.db doc_key (same document)
+    pg = _open_ro(pages_db)
+    if pg is not None:
+        from reality_engine.pilot3 import registry
+
+        alias = {a: k for a, k in registry.plan_docs(sym, pg, con)["alias"].items() if not k.startswith(f"{sym}:")}
+        for dk, sha in pg.execute("SELECT doc_key, sha256 FROM doc WHERE symbol=?", (sym,)):
+            doc_keys[dk] = {dk} | {s for s, k in alias.items() if k == dk}
+            if sha:
+                doc_keys[dk].add(f"decks_full/{sha[:2]}/{sha}.pdf")
+        rows = pg.execute("SELECT p.doc_key, p.page, d.doc_type, d.known_at, d.source_path FROM doc_page p "
+                          "JOIN doc d ON d.doc_key=p.doc_key WHERE d.symbol=? AND p.method='needs_ocr'", (sym,)).fetchall()
+        for dk, page, doc_type, known_at, source_path in rows:
+            if any((k, page) in done for k in doc_keys.get(dk, (dk,))):
+                continue
+            path = Path(source_path) if source_path else None
+            if path is None or not path.is_file():
+                continue                                # no PDF on this machine: nothing to render
+            claimed.add((dk, page))
+            out.append((doc_type, known_at, dk, page, path))
+        pg.close()
     # 1) decks the sandbox does not hold (FY25-FY27 presentations): empty text-layer pages
     if raw_root is not None:
         held = {r[0] for r in con.execute("SELECT source_key FROM docs WHERE source_key IS NOT NULL")}
@@ -59,26 +101,32 @@ def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set) -> list[t
             if not path.exists():
                 continue
             key = f"decks_full/{sha[:2]}/{sha}.pdf"
+            keys = {key} | {dk for dk, ks in doc_keys.items() if key in ks}
             try:
                 pdf = fitz.open(str(path))
             except Exception:
                 continue
             for i in range(pdf.page_count):
-                if (key, i + 1) not in done and len(pdf[i].get_text("text").strip()) < 20:
-                    out.append((key, i + 1, "deck", known_at, path))
+                page = i + 1
+                if any((k, page) in done for k in keys) or any((dk, page) in claimed for dk in keys):
+                    continue
+                if len(pdf[i].get_text("text").strip()) < 20:
+                    out.append(("deck", known_at, key, page, path))
             pdf.close()
-    # 2) sandbox pages that doc_text marked needs_ocr
+    # 2) sandbox pages that doc_text marked needs_ocr, for documents pages.db does not hold
     rows = con.execute(
         f"SELECT t.doc_key, t.page, d.doc_type, d.known_at FROM doc_text t JOIN docs d USING(doc_key) "
         f"WHERE t.method='needs_ocr' AND d.doc_type IN ({','.join('?' * len(kpi.KPI_DOC_TYPES))})",
         kpi.KPI_DOC_TYPES).fetchall()
-    rows.sort(key=lambda r: (DOC_PRIORITY.get(r[2], 9), -int(str(r[3] or "0")[:10].replace("-", "") or 0), r[0], r[1]))
     for doc_key, page, doc_type, known_at in rows:
+        if doc_key in alias or (doc_key, page) in done:
+            continue
         p = sandbox / f"{kpi.COMPANIES[sym]}_loop" / "raw" / doc_key
-        if p.exists() and (doc_key, page) not in done:
-            out.append((doc_key, page, doc_type, known_at, p))
+        if p.exists():
+            out.append((doc_type, known_at, doc_key, page, p))
     con.close()
-    return out
+    out.sort(key=_sort_key)
+    return [(r[2], r[3], r[0], r[1], r[4]) for r in out]
 
 
 _ENG: list = []
@@ -142,7 +190,8 @@ def ocr_page(page, dpi: int = 300, device: str = "cpu", max_side: int = 2400) ->
 
 
 def run(out: str, symbols: list[str], sandbox: Path, raw_root: Path | None, max_seconds: float, limit: int | None,
-        dpi: int, device: str, max_side: int = 2400, reverse: bool = False) -> dict:
+        dpi: int, device: str, max_side: int = 2400, reverse: bool = False,
+        pages_db: Path | str | None = PAGES_DB) -> dict:
     fitz = _fitz()
     t0 = time.time()
     con = sqlite3.connect(out)
@@ -150,7 +199,7 @@ def run(out: str, symbols: list[str], sandbox: Path, raw_root: Path | None, max_
     stats: dict = {}
     for sym in symbols:
         done = {(r[0], r[1]) for r in con.execute("SELECT doc_key, page FROM ocr_page WHERE symbol=?", (sym,))}
-        todo = pending(sym, sandbox, raw_root, done)
+        todo = pending(sym, sandbox, raw_root, done, pages_db)
         st = stats.setdefault(sym, {"pending_at_start": len(todo), "done": 0, "seconds_ocr": 0.0, "boxes": 0, "empty": 0})
         if reverse:      # a second worker starting from the other end of the list (own --out db, merge afterwards)
             todo.reverse()
@@ -211,6 +260,7 @@ def main(argv=None):
     ap.add_argument("--symbols", default="KEC,BAJFINANCE,HINDALCO")
     ap.add_argument("--sandbox-root", default=str(kpi.SANDBOX_ROOT))
     ap.add_argument("--raw-root", default=str(kpi.RAW_ROOT), help="'' to skip the decks_full PDFs")
+    ap.add_argument("--pages-db", default=str(PAGES_DB), help="docs_collect pages.db: its needs_ocr pages are read too ('' disables)")
     ap.add_argument("--max-seconds", type=float, default=540)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--dpi", type=int, default=300)
@@ -219,7 +269,8 @@ def main(argv=None):
     ap.add_argument("--device", choices=["cpu", "dml"], default="cpu")
     a = ap.parse_args(argv)
     stats = run(a.out, [s.strip().upper() for s in a.symbols.split(",") if s.strip()], Path(a.sandbox_root),
-                Path(a.raw_root) if a.raw_root else None, a.max_seconds, a.limit, a.dpi, a.device, a.max_side, a.reverse)
+                Path(a.raw_root) if a.raw_root else None, a.max_seconds, a.limit, a.dpi, a.device, a.max_side, a.reverse,
+                Path(a.pages_db) if a.pages_db else None)
     for k, v in stats.items():
         print(k, v)
     return 0

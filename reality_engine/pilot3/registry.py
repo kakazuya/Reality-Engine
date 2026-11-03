@@ -3,7 +3,9 @@
 Pages come from ``pilot3/pages.db`` (every held document, ``docs_collect.py``); the gap loop's
 sandbox pages (``doc_text`` / ``docs``) are kept only for documents pages.db lacks.  They are copied, no PDF is
 re-read.  ``known_at`` is the filing-record date, never the crawl date.  ``doc_alias`` maps a sandbox doc_key (what
-the KPI and transcript extractors still cite) to the pilot3 ``doc.doc_key``."""
+the KPI and transcript extractors still cite) to the pilot3 ``doc.doc_key``.  ``build_pages`` replaces the text of a
+``needs_ocr`` page with the OCR text of ``build.py --ocr-db`` (method ``ocr_rapid``, ``ocr_conf`` kept), so FTS
+searches it like a text layer."""
 from __future__ import annotations
 
 import re
@@ -81,18 +83,22 @@ def _identity_index(pg: sqlite3.Connection) -> dict:
     return ids
 
 
-def plan_docs(symbol: str, pg: sqlite3.Connection | None = None) -> dict:
+def plan_docs(symbol: str, pg: sqlite3.Connection | None = None,
+              sb: sqlite3.Connection | None = None) -> dict:
     """Which documents pilot3 holds for a symbol and where each one's pages come from.
 
     ``pages_db``: every pages.db document of the symbol (key kept as pages.db has it).  ``sandbox``: sandbox
     documents pages.db does not hold (key ``SYMBOL:<sandbox key>``).  ``alias``: sandbox doc_key -> pilot3 doc_key,
-    so a KPI or statement row that cites a sandbox key can be joined to ``doc``."""
+    so a KPI or statement row that cites a sandbox key can be joined to ``doc``.  ``sb``: an already open read-only
+    sandbox connection, for a caller that holds one; it is left open."""
     own = pg is None
     pg = pg or _pages_db()
-    sb = _sandbox(symbol)
+    own_sb = sb is None
+    sb = sb or _sandbox(symbol)
     sandbox_docs = sb.execute("SELECT doc_key, doc_type, title, filing_date, known_at, pages, source, source_key "
                               "FROM docs").fetchall()
-    sb.close()
+    if own_sb:
+        sb.close()
     if pg is None:
         out = {"pages_db": [], "sandbox": sandbox_docs, "alias": {r[0]: f"{symbol}:{r[0]}" for r in sandbox_docs}}
         return out
@@ -139,28 +145,60 @@ def _insert_pages(conn: sqlite3.Connection, cur, mapper) -> int:
         batch = cur.fetchmany(2000)
         if not batch:
             return n
-        conn.executemany("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?)", [mapper(r) for r in batch])
+        conn.executemany("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)", [mapper(r) for r in batch])
         n += len(batch)
 
 
-def build_pages(conn: sqlite3.Connection) -> dict:
+def _ocr_pages(ocr_dbs, symbol: str, alias: dict) -> dict:
+    """``{(doc_page doc_key, page): (text, ocr_conf)}`` from the ``ocr_page`` tables of ``ocr_dbs``: a sandbox
+    key is mapped to the key ``doc_page`` actually stores, an alias key to its pages.db document."""
+    out: dict = {}
+    for db in ocr_dbs or ():
+        p = Path(db)
+        if not p.is_file():
+            continue
+        con = sqlite3.connect(f"file:{p.as_posix()}?mode=ro", uri=True)
+        try:
+            rows = con.execute("SELECT doc_key, page, text, ocr_conf FROM ocr_page WHERE symbol=? AND n_boxes>0",
+                               (symbol,)).fetchall()
+        except sqlite3.OperationalError:      # not an OCR database
+            con.close()
+            continue
+        for key, page, text, conf in rows:
+            out.setdefault((alias.get(key, key), page), (text, conf))
+        con.close()
+    return out
+
+
+def _page_row(symbol: str, ocr: dict, r) -> tuple:
+    """doc_page row from ``(doc_key, page, text, method, known_at)``, with the OCR text where that page has it."""
+    doc_key, page, text, method, known_at = r
+    conf = None
+    if method == "needs_ocr" and (doc_key, page) in ocr:
+        text, conf = ocr[(doc_key, page)]
+        method = "ocr_rapid"
+    return doc_key, symbol, page, text, method, len(text or ""), known_at, conf
+
+
+def build_pages(conn: sqlite3.Connection, ocr_dbs=()) -> dict:
     schema.create(conn, ("doc_page",))
     counts = {}
     pg = _pages_db()
     for symbol in SYMBOLS:
         plan = plan_docs(symbol, pg)
+        ocr = _ocr_pages(ocr_dbs, symbol, plan["alias"])
         n = 0
         if plan["pages_db"]:
             cur = pg.execute("SELECT p.doc_key, p.page, p.text, p.method, p.known_at FROM doc_page p "
                              "JOIN doc d ON d.doc_key=p.doc_key WHERE d.symbol=?", (symbol,))
-            n += _insert_pages(conn, cur, lambda r: (r[0], symbol, r[1], r[2], r[3], len(r[2] or ""), r[4]))
+            n += _insert_pages(conn, cur, lambda r: _page_row(symbol, ocr, r))
         kept = {r[0] for r in plan["sandbox"]}
         if kept:
             sb = _sandbox(symbol)
             cur = sb.execute("SELECT doc_key, page, text, method, known_at FROM doc_text")
             rows = [r for r in cur if r[0] in kept]
-            conn.executemany("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?)",
-                             [(f"{symbol}:{r[0]}", symbol, r[1], r[2], r[3], len(r[2] or ""), r[4]) for r in rows])
+            conn.executemany("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)",
+                             [_page_row(symbol, ocr, (f"{symbol}:{r[0]}", r[1], r[2], r[3], r[4])) for r in rows])
             n += len(rows)
             sb.close()
         counts[symbol] = n

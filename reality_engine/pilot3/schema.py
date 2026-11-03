@@ -14,6 +14,7 @@ TABLES: dict[str, str] = {
     "doc_alias": """CREATE TABLE doc_alias (symbol TEXT, alias_key TEXT, doc_key TEXT, PRIMARY KEY (symbol, alias_key))""",
     "doc_page": """CREATE TABLE doc_page (
         doc_key TEXT, symbol TEXT, page INTEGER, text TEXT, method TEXT, chars INTEGER, known_at TEXT,
+        ocr_conf REAL,
         PRIMARY KEY (doc_key, page))""",
     "share_capital": """CREATE TABLE share_capital (
         symbol TEXT, isin TEXT, as_of_date TEXT, basis TEXT, event TEXT, ratio TEXT,

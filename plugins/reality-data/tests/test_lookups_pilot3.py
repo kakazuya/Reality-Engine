@@ -53,7 +53,7 @@ def build_fixture() -> None:
              ("pdfs/KEC/deck1.pdf", 2, "Transmission and distribution revenue grew strongly", "2026-02-10T17:00:00"),
              ("pdfs/KEC/deck2.pdf", 1, "Order book reached Rs 45,000 crore in June 2026", "2026-08-10T17:00:00")]
     for i, (dk, pg, text, k) in enumerate(pages):
-        c.execute("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?)", (dk, "KEC", pg, text, "script_text", len(text), k))
+        c.execute("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)", (dk, "KEC", pg, text, "script_text", len(text), k, None))
     c.execute("INSERT INTO doc_page_fts(rowid, text) SELECT rowid, text FROM doc_page")
     ins = ("INSERT INTO kpi_series(symbol,metric,dimension,value,unit,scale,period_type,fiscal_period,as_of_date,basis,"
            "doc_key,page,quote,known_at,known_at_source,is_reported,extractor_rule) "
