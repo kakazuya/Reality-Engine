@@ -263,6 +263,12 @@ SENTENCES = [  # (line_item, unit, regex); group 1 = number
     ("net_debt", "inr_crore",
      re.compile(r"\bnet debt(?!,? \(?incl)(?! to)(?!/)[^\d%]{0,60}?(?:inr|rs\.?|₹)\s*" + _NUMBER + r"\s*(?:crores?|cr)\b", re.I)),
     ("net_debt_to_ebitda", "x", re.compile(r"net debt(?: to |/ ?)ebitda[^\d]{0,60}?(\d+(?:\.\d+)?)\s*x", re.I)),
+    # the company's own "cash flow from operations" (Q4 FY26 deck net-debt bridge: "Healthy Cash flow from
+    # operations at ₹21,858 crore"): a different measure from the audited XBRL operating cash flow, so it is stored
+    # as its own company_stated row beside it and neither replaces the other (T-049: the conflict had no definition).
+    ("cash_flow_from_operations", "inr_crore",
+     re.compile(r"cash flows? (?:from operations|amounting to)[^\d%]{0,40}(?:inr|rs\.?|₹)\s*" + _NUMBER +
+                r"\s*(?:crores?|cr)\b", re.I)),
 ]
 
 
@@ -421,6 +427,25 @@ def _plausible(conn: sqlite3.Connection, symbol: str, item: str, label: str, val
     return True
 
 
+def _first_period(text: str, limit: int = 2000):
+    """First match of _PERIOD that names a fiscal period (a bare "22nd May 2026" is a filing date, not a period)."""
+    for m in _PERIOD.finditer(text[:limit]):
+        p = _period_of(m)
+        if p:
+            return p
+    return None
+
+
+def _stated_periods(kind: str, label: str, item: str) -> list[tuple[str, str]]:
+    """Periods one company-stated figure belongs to: an annual flow stated in a Q4 document (net debt, operating
+    cash flow) is also the fiscal year, so a FY26 question finds the deck's Q4 FY26 slide."""
+    periods = [(kind, label)]
+    if kind == "Q" and label[1] == "4" and item in ("net_debt", "net_debt_incl_acceptances", "net_debt_to_ebitda",
+                                                    "cash_flow_from_operations"):
+        periods.append(("FY", f"FY{label[4:6]}"))
+    return periods
+
+
 def build_company_stated(conn: sqlite3.Connection) -> dict:
     """EBITDA, margin, net debt and leverage as the company prints them (deck tables, deck / call sentences):
     fin_annual_line rows with definition 'company_stated'; quarter rows have fiscal_year QnFYyy, period_type Q."""
@@ -432,18 +457,29 @@ def build_company_stated(conn: sqlite3.Connection) -> dict:
         doc_period: dict[str, tuple | None] = {}
         for dk, pg, text, known, dtype, title, src in _stated_pages(conn, symbol):
             if dk not in doc_period:
-                head = _PERIOD.search(text[:400]) if pg <= 3 else None
-                doc_period[dk] = _period_of(head) if head else None
+                if pg <= 3:
+                    head = _PERIOD.search(text[:400])
+                    doc_period[dk] = _period_of(head) if head else None
+                else:   # only a chart page of this document matched the filter: date it from its title pages
+                    first = conn.execute("SELECT text FROM doc_page WHERE doc_key=? AND page<=3 ORDER BY page",
+                                         (dk,)).fetchall()
+                    doc_period[dk] = _first_period(" ".join(t for (t,) in first)) if first else None
             first = _PERIOD.search(text[:300])
             page_period = _period_of(first) if first else None
             if page_period and page_period[0] != "Q":
                 page_period = None
             consolidated = "consolidated" if re.search(r"consolidated", text, re.I) else "not_stated"
             for item, kind, label, value, unit, quote in table_rows(text) + sentence_rows(text, page_period or doc_period.get(dk)):
-                periods = [(kind, label)]
-                if kind == "Q" and label[1] == "4" and item in ("net_debt", "net_debt_incl_acceptances", "net_debt_to_ebitda"):
-                    periods.append(("FY", f"FY{label[4:6]}"))
-                for pk, pl in periods:
+                if item == "cash_flow_from_operations":
+                    flat = re.sub(r"\s+", " ", text)
+                    pos = flat.find(quote) if quote else -1
+                    local = [_period_of(m) for m in _PERIOD.finditer(flat[max(0, pos - 160):pos + 80])] if pos >= 0 else []
+                    local = [p for p in local if p]
+                    if local:
+                        kind, label = local[-1]            # "In FY26, our businesses ... cash flows amounting to ..."
+                    elif doc_period.get(dk):
+                        kind, label = doc_period[dk]       # an annual flow belongs to the document's period
+                for pk, pl in _stated_periods(kind, label, item):
                     key = (consolidated, pl, item, round(value, 4))
                     if key not in found or (known or "") < (found[key][0] or ""):
                         found[key] = (known, dk, pg, quote, unit, pk, src)
@@ -453,8 +489,9 @@ def build_company_stated(conn: sqlite3.Connection) -> dict:
             if end is None or not _plausible(conn, symbol, item, pl, value, unit):
                 dropped += 1
                 continue
-            rows_out.append((symbol, isin, pl, end, basis, "P&L" if item.startswith("ebitda") else "BS", item,
-                             f"{item.replace('_', ' ')} as printed by the company", value, unit,
+            rows_out.append((symbol, isin, pl, end, basis,
+                             "CF" if item == "cash_flow_from_operations" else "P&L" if item.startswith("ebitda") else "BS",
+                             item, f"{item.replace('_', ' ')} as printed by the company", value, unit,
                              1e7 if unit == "inr_crore" else 1.0, dk, pg, quote, src, "doc_page", f"{dk}#{pg}", known,
                              "doc_page.known_at (filing record of the document)", 1, 0, "company_stated", pk))
         # pages taken from pages.db are copied into this database so every quote can be checked here

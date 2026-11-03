@@ -474,3 +474,158 @@ def test_change_by_is_not_the_level_and_respectively_pairs_labels():
     t2 = "GNPA and NNPA improving to 0.96% and 0.39%, respectively, as of 30 June 2026"
     got = {r.metric: r.value for r in kpi.sentence_rows(t2, 1, "BAJFINANCE", ENTRIES, DIMS, [])}
     assert got == {"gnpa_pct": 0.96, "nnpa_pct": 0.39}
+
+
+# --------------------------------------------------------------- T-049: the hand-read grade's five KPI defects
+def test_hindalco_consolidated_ebitda_is_not_tagged_with_the_page_title_segment():
+    """The Q1FY27 deck p35 (known 2026-08-07): the page title "Novelis, Aluminium and Copper Businesses" and the
+    "Copper 673 907 918" row used to label Revenue / Business Segment EBITDA / EBITDA copper; column 3 got novelis off
+    the title's "Novelis,".  The table is consolidated: totals are total, only the segment rows carry the segment."""
+    words = _words([
+        (48, [(725, "Novelis,"), (755, "Aluminium"), (795, "and"), (810, "Copper"), (838, "Businesses")]),
+        (81, [(119, "Particulars"), (509, "Q1"), (527, "FY26"), (578, "Q4"), (596, "FY26"), (644, "Q1"), (662, "FY27")]),
+        (111, [(119, "Revenue"), (168, "from"), (196, "Operations"), (525, "64,232"), (590, "78,133"), (659, "84,825")]),
+        (147, [(134, "Novelis*"), (532, "3,557"), (597, "4,202"), (666, "4,875")]),
+        (168, [(134, "Aluminium"), (193, "Upstream"), (532, "4,080"), (597, "5,448"), (666, "7,390")]),
+        (207, [(134, "Copper"), (541, "673"), (606, "907"), (675, "918")]),
+        (227, [(119, "Business"), (167, "Segment"), (216, "EBITDA"), (532, "8,539"), (590, "10,812"), (659, "13,481")]),
+        (282, [(119, "EBITDA"), (525, "8,673"), (590, "11,197"), (659, "14,989")]),
+    ])
+    text = ("Novelis, Aluminium and Copper Businesses\nParticulars\nQ1 FY26\nQ4 FY26\nQ1 FY27\n"
+            "Revenue from Operations\n64,232\n78,133\n84,825\nNovelis*\n3,557\n4,202\n4,875\n"
+            "Aluminium Upstream\n4,080\n5,448\n7,390\nCopper\n673\n907\n918\n"
+            "Business Segment EBITDA\n8,539\n10,812\n13,481\nEBITDA\n8,673\n11,197\n14,989\n")
+    rows = kpi.table_and_chart_rows(words, text, 35, "HINDALCO", ENTRIES, DIMS, [])
+    got = {(r.metric, r.fiscal_period, r.value, r.dimension) for r in rows}
+    assert ("ebitda", "Q4FY26", 10812.0, "total") in got
+    assert ("ebitda", "Q4FY26", 11197.0, "total") in got
+    assert ("ebitda", "Q1FY27", 13481.0, "total") in got
+    assert all(r.quote in text for r in rows)
+
+
+def test_order_book_dimension_comes_from_the_figures_own_sentence():
+    """KEC FY26: 36,267 is the Company's total order book and 23,000 the T&D business's.  Both used to be flipped:
+    the dimension was taken from the previous sentence's "T&D business"."""
+    t = ("The Company secured an order intake of ` 25,280 Crore during the year. Over 70% of this order intake is in the "
+         "T&D business. The Company has a well-diversified and healthy order book of ` 36,267 Crore as on March 31, 2026.\n"
+         "The Transmission & Distribution business continued to lead the Company's performance, delivering record "
+         "revenues of ` 15,883 Crore, while closing the year with an order book of ~ ` 23,000 Crore, including SAE "
+         "Towers.\n"
+         "Fresh orders of around ` 17,700 Crore, nearly 70% of total intake, lifted the order book to a ~ ` 23,000 "
+         "Crore on 31 March 2026, or 63% of our unexecuted order book.\n")
+    default = kpi.parse_periods("FY26")
+    rows = kpi.sentence_rows(t, 1, "KEC", ENTRIES, DIMS, default)
+    got = {(r.value, r.dimension) for r in rows if r.metric == "order_book"}
+    assert (36267.0, "total") in got                 # its own sentence names no segment
+    assert (23000.0, "T&D") in got                   # "Transmission & Distribution business ... order book of 23,000"
+
+
+def test_aum_mix_table_stores_each_segment_and_the_total():
+    """BAJFINANCE deck p64 "Business segment wise AUM - Consolidated": each line is a row with the segment as
+    dimension, the consolidated 31 Mar 2026 column as value, and the Total line as total."""
+    words = _words([
+        (17, [(7, "Business"), (60, "segment"), (110, "wise"), (150, "AUM"), (180, "-"), (195, "Consolidated")]),
+        (79, [(300, "Consolidated"), (400, "BFL"), (500, "BHFL"), (700, "Consolidated")]),
+        (113, [(300, "31"), (320, "Mar"), (345, "2025"), (400, "31"), (420, "Mar"), (445, "2026"), (500, "31"),
+               (520, "Mar"), (545, "2026"), (700, "31"), (720, "Mar"), (745, "2026")]),
+        (142, [(18, "Captive"), (70, "2W"), (90, "&"), (105, "3W"), (130, "Finance"), (305, "10,691"), (405, "4,288"),
+               (505, "0"), (705, "4,288")]),
+        (213, [(18, "Urban"), (60, "B2C"), (95, "Loans"), (300, "87,696"), (400, "1,02,566"), (500, "1,606"),
+               (700, "1,04,485")]),
+        (307, [(18, "Gold"), (60, "Loans"), (305, "8,307"), (405, "17,831"), (505, "0"), (705, "17,831")]),
+        (472, [(18, "Total"), (300, "4,16,661"), (400, "3,72,986"), (500, "1,40,706"), (700, "5,09,975")]),
+    ])
+    text = ("Business segment wise AUM - Consolidated\n₹ in Crore\nParticulars\nConsolidated\nBFL\nBHFL\n"
+            "Consolidated\n31 Mar 2025\n31 Mar 2026\n31 Mar 2026\n31 Mar 2026\n"
+            "Captive 2W & 3W Finance\n10,691\n4,288\n0\n4,288\nUrban B2C Loans\n87,696\n1,02,566\n1,606\n1,04,485\n"
+            "Gold Loans\n8,307\n17,831\n0\n17,831\nTotal\n4,16,661\n3,72,986\n1,40,706\n5,09,975\n")
+    rows = kpi.table_and_chart_rows(words, text, 64, "BAJFINANCE", ENTRIES, DIMS, [])
+    got = {(r.metric, r.dimension, r.value, r.fiscal_period, r.basis) for r in rows}
+    assert ("aum", "2w3w", 4288.0, "FY26", "consolidated") in got
+    assert ("aum", "consumer", 104485.0, "FY26", "consolidated") in got
+    assert ("aum", "gold", 17831.0, "FY26", "consolidated") in got
+    assert ("aum", "total", 509975.0, "FY26", "consolidated") in got
+    assert all(r.rule == "mix_v1" and r.quote in text for r in rows)
+
+
+def test_kec_order_book_and_intake_mix_from_the_donut_chart():
+    text = ("Order Intake & Order Book (Consolidated)\n70%\n20%\n2% 7%\n1%\nOrder Intake – FY26\n"
+            "Order Book – 31 Mar’26\n63%\n27%\n7% 2%1%\nOrder Book\nRs 36,267 Cr.\n"
+            "T&D\nCivil\nTransportation\nCables & \nConductors\nOthers\n")
+    rows = kpi.pie_mix_rows(text, 22, "KEC", ENTRIES, DIMS, "consolidated", kpi.parse_periods("FY26"))
+    got = {(r.metric, r.dimension, r.value, r.fiscal_period) for r in rows}
+    assert ("order_book_mix_pct", "T&D", 63.0, "FY26") in got
+    assert ("order_book_mix_pct", "civil", 27.0, "FY26") in got
+    assert ("order_book_mix_pct", "transportation", 7.0, "FY26") in got
+    assert ("order_intake_mix_pct", "T&D", 70.0, "FY26") in got
+    assert all(r.quote in text for r in rows)
+
+
+def test_business_wise_revenue_bullets_get_their_segment():
+    text = ("Key Business Highlights – FY26\n•Revenues of Rs. 15,883 Cr, growth of 24%\n"
+            "•Order intake of ~Rs. 17,700 Cr across India\n•Robust order book & L1 of over Rs. 25,000 Cr\nT&D\n"
+            "•Revenues of Rs. 3,823 Cr\n•Strong order book & L1 of over Rs. 10,000 Cr\nCivil\n"
+            "•Revenues of Rs. 2,217 Cr., growth of 23%\nCables & \nConductors\n")
+    rows = kpi.segment_revenue_rows(text, 13, "KEC", ENTRIES, DIMS, "consolidated", kpi.parse_periods("FY26"))
+    got = {(r.value, r.dimension) for r in rows}
+    assert (15883.0, "T&D") in got and (3823.0, "civil") in got and (2217.0, "cables") in got
+    assert all(r.quote in text for r in rows)
+
+
+def test_a_date_before_the_value_sets_the_period():
+    """"GNPA and Net NPA as of 30 September 2025 stood at 1.24% ...": the date sits between label and value and used
+    to be dropped, so the figure took the half-yearly report's FY26 default instead of Q2FY26."""
+    t = ("Gross NPA and Net NPA as of 30 September 2025 stood at 1.24% and 0.60% respectively, as against "
+         "1.06% and 0.46% as of 30 September 2024.")
+    rows = kpi.sentence_rows(t, 1, "BAJFINANCE", ENTRIES, DIMS, [])
+    got = {(r.metric, r.fiscal_period, r.value) for r in rows}
+    assert ("gnpa_pct", "Q2FY26", 1.24) in got
+    assert ("nnpa_pct", "Q2FY26", 0.60) in got
+    assert ("gnpa_pct", "Q2FY25", 1.06) in got      # the comparative keeps its own date
+
+
+def test_prose_under_a_table_is_not_read_as_a_table_row():
+    """BAJFINANCE p21: the running text "Gross NPA ... as of 31 March 2021 stood at 0.35%" sat under a table header
+    400pt above and was stored as its Q4FY20 column (one period early).  Prose stays with the sentence rule."""
+    hdr = [(240, [(120, "Particulars"), (300, "Q4'21"), (400, "Q4'20"), (500, "FY'21"), (600, "FY'20")])]
+    words = _words(hdr + [(650, [(70, "~"), (90, "Gross"), (130, "NPA"), (160, "and"), (190, "Net"), (220, "NPA"),
+                                 (250, "as"), (270, "of"), (290, "31"), (310, "March"), (350, "2021"), (390, "stood"),
+                                 (430, "at"), (460, "0.35%"), (520, "and"), (550, "0.22%")])])
+    text = ("Particulars\nQ4'21\nQ4'20\nFY'21\nFY'20\n"
+            "~ Gross NPA and Net NPA as of 31 March 2021 stood at 0.35% and 0.22%\n")
+    assert kpi.table_and_chart_rows(words, text, 1, "BAJFINANCE", ENTRIES, DIMS, []) == []
+    rows = kpi.sentence_rows(text, 1, "BAJFINANCE", ENTRIES, DIMS, kpi.parse_periods("FY21"))
+    assert ("gnpa_pct", "FY21") in {(r.metric, r.fiscal_period) for r in rows}
+
+
+def test_a_later_deck_restating_an_earlier_quarter_keeps_that_quarter():
+    """The Q1FY27 deck reprints Q1FY26 for comparison: the restated figure keeps Q1FY26 (its own filing date the
+    known_at) and does not take the later deck's Q1FY27 default."""
+    default = kpi.parse_periods("Q1 FY27")
+    t = ("GNPA and NNPA improving to 0.96% and 0.39%, respectively, as of 30 June 2026, compared with 1.03% and "
+         "0.50% as of 30 June 2025.")
+    rows = kpi.sentence_rows(t, 9, "BAJFINANCE", ENTRIES, DIMS, default)
+    got = {(r.metric, r.fiscal_period, r.value) for r in rows}
+    assert ("gnpa_pct", "Q1FY27", 0.96) in got
+    assert ("gnpa_pct", "Q1FY26", 1.03) in got
+
+
+def test_aum_entity_is_tagged_from_the_page_heading():
+    assert kpi.page_basis("Financial summary – Bajaj Housing Finance\n48\n₹ in Crore\nAUM 140,706") == "bhfl"
+    assert kpi.page_basis("Financial summary – Bajaj Finance\n47\nAUM 3,72,986") == "standalone"
+    assert kpi.page_basis("Business segment wise AUM - Consolidated\n₹ in Crore\nTotal 5,09,975") == "consolidated"
+    assert kpi.page_basis("Consolidated results\nRevenue 23,506") == "consolidated"
+    assert kpi.page_basis("A page with no entity word") == "not_stated"
+
+
+def test_company_stated_operating_cash_flow_is_its_own_row():
+    """HINDALCO: the audited XBRL operating cash flow (10,250 cr, consolidated FY26) and the company's net-debt
+    bridge "cash flow from operations" (21,858 cr) are different measures, so the company one is stored as its own
+    company_stated sentence with the deck's own period."""
+    from reality_engine.pilot3 import statements
+    got = statements.sentence_rows("Healthy Cash flow from operations at ₹21,858 crore (↑ 11% YoY)", ("Q", "Q4FY26"))
+    assert [g[:5] for g in got] == [("cash_flow_from_operations", "Q", "Q4FY26", 21858.0, "inr_crore")]
+    assert statements._stated_periods("Q", "Q4FY26", "cash_flow_from_operations") == [("Q", "Q4FY26"), ("FY", "FY26")]
+    got = statements.sentence_rows("our businesses continued to generate healthy cash flows amounting to "
+                                   "INR21,858 crores", ("Q", "Q4FY26"))
+    assert got and got[0][3] == 21858.0 and got[0][4] == "inr_crore"

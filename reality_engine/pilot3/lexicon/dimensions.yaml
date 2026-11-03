@@ -15,9 +15,15 @@ dimensions:
   - {dimension: oil_gas, patterns: ["oil\\s?(&|and)\\s?gas"], companies: [KEC]}
   - {dimension: international, patterns: ["international"], companies: [KEC]}
   - {dimension: mortgage, patterns: ["mortgages?\\b", "home loans?", "loan against property"], companies: [BAJFINANCE]}
+  - {dimension: rural_sales, patterns: ["rural sales finance"], companies: [BAJFINANCE]}
+  - {dimension: urban_sales, patterns: ["urban sales finance"], companies: [BAJFINANCE]}
+  - {dimension: 2w3w, patterns: ["[23]w\\b", "two[- ]wheeler", "three[- ]wheeler"], companies: [BAJFINANCE]}
+  - {dimension: las, patterns: ["loan against securities", "\\blas\\b"], companies: [BAJFINANCE]}
+  - {dimension: mfi, patterns: ["\\bmfi\\b", "micro ?finance"], companies: [BAJFINANCE]}
+  - {dimension: cv_tractor, patterns: ["cv (?:and|&) tractor", "\\bcv\\b", "tractor"], companies: [BAJFINANCE]}
   - {dimension: consumer, patterns: ["consumer durable", "consumer b2c", "urban b2c", "lifestyle finance"], companies: [BAJFINANCE]}
   - {dimension: rural, patterns: ["rural b2c", "rural"], companies: [BAJFINANCE]}
   - {dimension: sme, patterns: ["\\bsme\\b", "msme"], companies: [BAJFINANCE]}
   - {dimension: commercial, patterns: ["commercial lending", "commercial"], companies: [BAJFINANCE]}
-  - {dimension: auto, patterns: ["two[- ]wheeler", "three[- ]wheeler", "auto finance", "vehicle"], companies: [BAJFINANCE]}
-  - {dimension: gold, patterns: ["gold loan"], companies: [BAJFINANCE]}
+  - {dimension: auto, patterns: ["car loans?", "auto finance", "vehicle"], companies: [BAJFINANCE]}
+  - {dimension: gold, patterns: ["gold loans?"], companies: [BAJFINANCE]}
