@@ -38,7 +38,11 @@ def world(tmp_path: Path):
     ann.execute("CREATE TABLE ann(NEWSID, SCRIP_CD, ATTACHMENTNAME, NEWSSUB, HEADLINE, CATEGORYNAME, SUBCATNAME,"
                 " NEWS_DT, DT_TM, News_submission_dt, DissemDT, QUARTER_ID, Fld_Attachsize, ANNOUNCEMENT_TYPE, symbol)")
     rows = [
-        (GUID_A, 999001, f"{GUID_A}.pdf", "s", "Order win", "Company Update", "Award of Order / Receipt of Order",
+        # KEC files an order win as a Company Update / Press Release: the headline, not the sub-category,
+        # says it is an order (T-049, 4 Nov 2026)
+        (GUID_A, 999001, f"{GUID_A}.pdf", "s",
+         "We are pleased to enclose a copy of the press release with respect to new orders of Rs. 1,236 crores "
+         "secured by the Company.", "Company Update", "Press Release / Media Release",
          "2026-05-04T10:00:00", "", "2026-05-04T10:00:00", "2026-05-04T10:00:05", None, 100, "A", "TST"),
         (GUID_B, 999001, f"{GUID_B}.pdf", "s", "Presentation", "Company Update", "Investor Presentation",
          "2026-08-10T18:00:00", "", "2026-08-10T18:00:00", "2026-08-10T18:00:01", None, 100, "A", "TST"),
@@ -84,7 +88,10 @@ def test_collect_dates_dedupes_and_flags_ocr(world):
     docs = {r[0].split("/")[-1]: r for r in con.execute(
         "SELECT doc_key, doc_type, filing_date, known_at, isin, pages FROM doc")}
     order = docs[f"{GUID_A}.pdf"]
+    assert order[1] == "announcement"                                       # an order press release is an announcement
     assert order[2] == "2026-05-04" and order[3] == "2026-05-04T10:00:05"  # raw dissemination, not shifted
+    title = str(con.execute("SELECT title FROM doc WHERE doc_key LIKE ?", (f"%{GUID_A}.pdf",)).fetchone()[0])
+    assert title.startswith("We are pleased") and "1,236" in title          # titled by the order, not the sub-category
     meta = json.loads(con.execute("SELECT source_record FROM doc WHERE doc_key LIKE ?", (f"%{GUID_A}.pdf",)).fetchone()[0])
     assert {f["NEWSID"] for f in meta["filings"]} == {GUID_A, GUID_C}      # every filing of the same bytes kept
     assert order[4] == "INE000A01001" and order[5] == 2                    # symbol-at-time ISIN

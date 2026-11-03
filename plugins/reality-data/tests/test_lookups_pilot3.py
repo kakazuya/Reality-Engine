@@ -97,7 +97,14 @@ def build_fixture() -> None:
     c.executemany("INSERT INTO fin_annual_line VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
         ("KEC", "INE389H01022", "FY25", "2025-03-31", "consolidated", "PL", "pat", "PAT", 4.0e9, "inr", 1.0, "f.xml",
          None, "ProfitLoss = 4e9", "results_xbrl.db", "facts", "f.xml#1", "2025-05-20T10:00:00", "x", 1, 0,
-         "xbrl_reported", "FY")])
+         "xbrl_reported", "FY"),
+        # the same measure filed standalone and consolidated: no basis asked must mean the group statement
+        ("KEC", "INE389H01022", "FY25", "2025-03-31", "standalone", "PL", "eps_diluted", "Diluted EPS", 45.31,
+         "inr_per_share", 1.0, "s.xml", None, "Diluted EPS 45.31", "results_xbrl.db", "facts", "s.xml#1",
+         "2025-05-20T10:00:00", "x", 1, 0, "xbrl_reported", "FY"),
+        ("KEC", "INE389H01022", "FY25", "2025-03-31", "consolidated", "PL", "eps_diluted", "Diluted EPS", 60.20,
+         "inr_per_share", 1.0, "c.xml", None, "Diluted EPS 60.20", "results_xbrl.db", "facts", "c.xml#1",
+         "2025-05-20T10:00:00", "x", 1, 0, "xbrl_reported", "FY")])
     c.execute("INSERT INTO fin_quarter_xbrl VALUES ('KEC','INE389H01022','2025-10-01','2025-12-31','Q3FY26',"
               "'consolidated','a','PL','pat','Tag',1.5e9,'inr',1.0,'q.xml','results_xbrl.db','quarterly','q.xml',"
               "'2026-02-05T10:00:00','x',1)")
@@ -193,6 +200,18 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertFalse(p3.fin("KEC", "pat", "FY25", as_of="2025-05-01")["found"])
         both = p3.fin("KEC", "pat")
         self.assertEqual({r["provenance"]["table"] for r in both["rows"]}, {"fin_annual_line", "fin_quarter_xbrl"})
+
+    def test_fin_defaults_to_consolidated_and_labels_basis(self):
+        """No basis asked means the group statement (HINDALCO FY26 diluted EPS: consolidated 60.20, not 45.31),
+        and every row says which basis it is."""
+        out = p3.fin("KEC", "eps_diluted", "FY25")
+        self.assertEqual([(r["basis"], r["value"]) for r in out["rows"]], [("consolidated", 60.20)])
+        self.assertEqual(out["basis_assumed"], "consolidated")
+        self.assertProvenance(out["rows"])
+        standalone = p3.fin("KEC", "eps_diluted", "FY25", basis="standalone")
+        self.assertEqual([(r["basis"], r["value"]) for r in standalone["rows"]], [("standalone", 45.31)])
+        self.assertIsNone(standalone["basis_assumed"])
+        self.assertEqual(p3.fin("KEC", "pat", "FY25")["rows"][0]["basis"], "consolidated")  # single-basis measure
 
     def test_ratio_panel_and_valuation(self):
         roe = p3.ratio("KEC", "ROE", "FY25")
@@ -336,6 +355,19 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertIn("Tables:", ctx.exception.message)
         self.assertLessEqual(p3.sql("select * from doc_page", limit=10_000)["row_count"], 500)
 
+    def test_sql_max_chars_widens_text_and_is_capped(self):
+        """A text cell is cut at 400 by default; max_chars widens it to a hard cap of 8000 (T-049, 4 Nov 2026)."""
+        default = p3.sql("select hex(zeroblob(400)) as t")["rows"][0][0]
+        self.assertEqual(len(default), 402)                    # 400 + " …"
+        self.assertEqual(default[-2:], " …")
+        wide = p3.sql("select hex(zeroblob(400)) as t", max_chars=8000)
+        self.assertEqual((len(wide["rows"][0][0]), wide["max_chars"]), (800, 8000))
+        capped = p3.sql("select hex(zeroblob(5000)) as t", max_chars=99_999)
+        self.assertEqual((len(capped["rows"][0][0]), capped["max_chars"]), (8002, 8000))
+        with self.assertRaises(core.DataError) as ctx:
+            p3.sql("select 1", max_chars="lots")
+        self.assertEqual(ctx.exception.code, "bad_max_chars")
+
     def test_missing_db_is_a_clean_error(self):
         os.environ["REALITY_PILOT3_DB"] = str(TMP / "nope.db")
         try:
@@ -393,7 +425,11 @@ class Pilot3McpTests(unittest.TestCase):
                                                             read_timeout_seconds=60))
                     self.assertEqual(other["error"]["code"], "not_pilot3")
 
-        asyncio.run(asyncio.wait_for(scenario(), 120))
+        try:
+            asyncio.run(asyncio.wait_for(scenario(), 120))
+        except PermissionError as exc:
+            # a confined dsh worker cannot create child-process pipes (the same skip McpStdioTests uses)
+            self.skipTest(f"the sandbox denies child-process pipes: {exc}")
 
 
 if __name__ == "__main__":

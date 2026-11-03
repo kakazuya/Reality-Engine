@@ -31,7 +31,7 @@ import core
 
 INSTRUCTIONS = """Local reality-engine data search. The data is read-only and every answer carries provenance.
 
-PILOT3 FIRST: for KEC, BAJFINANCE and HINDALCO (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF holding, share count on a date -> pilot3_holding(symbol, as_of); what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, valuation_daily, shp_category, share_capital, dividend_event, price_delivery, transcript_statement, guidance, doc, doc_page). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A {"found": false} pilot3 answer lists what is available; read that list and retry, and only if still empty use the raw tools below or say NOT IN DATA. Do not open raw PDFs or the large databases when a pilot3 tool answers.
+PILOT3 FIRST: for KEC, BAJFINANCE and HINDALCO (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF holding, share count on a date -> pilot3_holding(symbol, as_of); what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, valuation_daily, shp_category, share_capital, dividend_event, price_delivery, transcript_statement, guidance, doc, doc_page). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A {"found": false} pilot3 answer lists what is available; read that list and retry, and only if still empty use the raw tools below or say NOT IN DATA. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
 
 ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) — one call each, before any sql():
 - delivery / delivered quantity on a date (NSE+BSE) -> delivery(symbol, dates)
@@ -43,7 +43,7 @@ ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) 
 - financial numbers, segments, guidance -> facts(symbol, kind, period); OHLCV range -> price(...)
 Symbols, BSE codes, ISINs and names all resolve inside each tool. A {"found": false} answer lists what was checked and the nearest documents: follow its hint, then say NOT IN DATA; do not hand-write SQL over the same tables. Filing dates can be the evening of, or a day after, the date a user names. Exact share counts come from filings; XBRL paid-up capital / face value is rounded.
 
-Use catalog() when you need the map: one line per database by default, with db= for that database's tables and query= for a word search across them. schema(table, db) gives one table's columns, types, row count, indexes and sample keys — use it instead of PRAGMA/sqlite_master probes. For a specific company go straight to the data tools; resolve is optional because price/facts resolve the symbol themselves. resolve(query) turns a symbol, company name or ISIN into the canonical identity (ISIN history included). price(symbol, start, end=None, adjusted=False) returns OHLCV, delivery quantity/percent and traded value; close is raw unless adjusted=True. facts(symbol, kind=None, period=None) returns annual-report segments/financials/KPIs, XBRL results, deck figures and concall guidance in one call; kind accepts segments, financials, kpis, guidance, results, deck, concall, ar, or free text; period accepts FY25, Q4FY26 or a date. search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10, as_of=None) returns text passages (as_of drops documents published after that date, and undated ones); sql(query, db) is a bounded read-only escape hatch.
+Use catalog() when you need the map: one line per database by default, with db= for that database's tables and query= for a word search across them (db='pilot3' lists the pilot3 store). schema(table, db) gives one table's columns, types, row count, indexes and sample keys — use it instead of PRAGMA/sqlite_master probes. For a specific company go straight to the data tools; resolve is optional because price/facts resolve the symbol themselves. resolve(query) turns a symbol, company name or ISIN into the canonical identity (ISIN history included). price(symbol, start, end=None, adjusted=False) returns OHLCV, delivery quantity/percent and traded value; close is raw unless adjusted=True. facts(symbol, kind=None, period=None) returns annual-report segments/financials/KPIs, XBRL results, deck figures and concall guidance in one call; kind accepts segments, financials, kpis, guidance, results, deck, concall, ar, or free text; period accepts FY25, Q4FY26 or a date. search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10, as_of=None) returns text passages (as_of drops documents published after that date, and undated ones); sql(query, db) is a bounded read-only escape hatch.
 
 Examples: price("PPL", "2026-03-30"); facts("PPL", kind="segments", period="FY25"); facts("PPL") for a broad fundamentals answer. Provenance names the database, table and snapshot; quarantine keys are applied to annual-report facts and demo tables are never presented as data."""
 
@@ -318,7 +318,7 @@ def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | No
     description=(
         "Read-only escape hatch for arbitrary SELECT/WITH queries. db: truth (DuckDB "
         "snapshot), equity_intelligence, ar_facts, deck_figures, concall_facts, "
-        "results_xbrl, bse_announcements. Single statement only, row-limited (default "
+        "results_xbrl, bse_announcements, pilot3. Single statement only, row-limited (default "
         "200, max 1000), 5 s timeout. Write/DDL keywords are rejected."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
@@ -436,7 +436,8 @@ def pilot3_kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | No
         "Reported / derived / company-stated financial lines for KEC, BAJFINANCE, HINDALCO: annual (FY26, H1FY26) "
         "from XBRL results and annual reports, quarterly (Q2FY26) from XBRL. measure e.g. revenue_from_operations, "
         "pat, ebitda, net_debt, total_borrowings, eps_basic, capex_payments, cash_flow_from_operations (a miss "
-        "lists the lines held). basis = standalone | consolidated; definition = xbrl_reported | xbrl_derived | "
+        "lists the lines held). basis = standalone | consolidated; when omitted it defaults to consolidated "
+        "(the group statement) and every row states its basis; definition = xbrl_reported | xbrl_derived | "
         "company_stated | reported (annual only). Rows carry value, unit, scale (value_inr for rupee lines), "
         "definition and provenance."
     ),
@@ -453,9 +454,10 @@ def pilot3_fin(symbol: str, measure: str, period: str | None = None, basis: str 
     description=(
         "Derived ratios with their formula: ebitda_margin_pct, pat_margin_pct, roe, roa, roce, debt_to_equity, "
         "interest_coverage, revenue_growth_yoy_pct, book_value_per_share, dividend_payout_pct, receivable/"
-        "inventory/payable days ... per quarter or fiscal year (ratio_panel); and PE, PB, EV/EBITDA, market cap, "
-        "dividend yield on a date (valuation_daily: give period or as_of as YYYY-MM-DD). Provenance names the "
-        "formula and its input rows."
+        "inventory/payable days, opex_to_net_total_income_pct (a lender's operating cost over net total income, "
+        "annual and with the input rows) ... per quarter or fiscal year (ratio_panel); and PE, PB, EV/EBITDA, "
+        "market cap, dividend yield on a date (valuation_daily: give period or as_of as YYYY-MM-DD). Provenance "
+        "names the formula and its input rows."
     ),
     annotations=_RO,
 )
@@ -559,12 +561,14 @@ def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int 
         "Bounded read-only SELECT/WITH over pilot3.db (limit enforced, default 100, max 500). Tables: company, "
         "doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, formula, "
         "valuation_daily, shp_category, share_capital, dividend_event, price_delivery, transcript_statement, "
-        "guidance. Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions."
+        "guidance. Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions. "
+        "Text cells are cut at max_chars (default 400, hard cap 8000): pass max_chars=8000 when the answer needs "
+        "long page text, a whole paragraph or a full quote."
     ),
     annotations=_RO,
 )
-def pilot3_sql(query: str, limit: int = 100) -> dict[str, Any]:
-    return _safe(lambda: _p3.sql(query, limit=limit))
+def pilot3_sql(query: str, limit: int = 100, max_chars: int = 400) -> dict[str, Any]:
+    return _safe(lambda: _p3.sql(query, limit=limit, max_chars=max_chars))
 # --- end lookups: pilot3 ---
 
 

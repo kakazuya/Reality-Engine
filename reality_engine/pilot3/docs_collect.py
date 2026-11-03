@@ -56,6 +56,11 @@ CORP_TYPES = {"ANNUAL_REPORT": "annual_report", "CONCALL_TRANSCRIPT": "transcrip
 SUBCAT_TYPES = {"investor presentation": "deck", "earnings call transcript": "transcript",
                 "financial results": "results", "press release / media release": "press_release",
                 "annual report": "annual_report", "audio recording of earnings call": "audio_link"}
+# KEC files an order win as a Company Update / Press Release and only now and then under "Award of Order", so
+# the sub-category alone loses most of a year's order filings (T-049, 4 Nov 2026: 5 of FY26's 18 were typed
+# press_release with the generic title and no order question could find them).  The headline names the win.
+ORDER_HEADLINE = re.compile(r"\bnew orders?\b.{0,40}\bsecured\b", re.I)
+GENERIC_SUBCATS = {"press release / media release", "general", "clarification"}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS doc(
@@ -200,7 +205,7 @@ class Records:
                 "News_submission_dt, NEWS_DT, Fld_Attachsize FROM ann WHERE symbol=? OR SCRIP_CD=?",
                 (company.symbol, company.bse_code)):
                 row = {"NEWSID": str(newsid), "attachment": att or "", "headline": _title(headline),
-                       "category": cat or "", "subcat": sub or "", "title": _title(sub, cat, headline),
+                       "category": cat or "", "subcat": sub or "", "title": _ann_title(sub, cat, headline),
                        "known_at": dissem or submitted or newsdt,
                        "filing_date": _date_of(dissem or submitted or newsdt), "size": size,
                        "source": "bse_announcements.ann"}
@@ -305,7 +310,7 @@ class Records:
                     continue
                 rec = {"NEWSID": row["newsid"], "attachment": row["url"].rsplit("/", 1)[-1] if row.get("url") else "",
                        "headline": _title(row.get("headline")), "category": row.get("category") or "",
-                       "subcat": row.get("subcat") or "", "title": _title(row.get("subcat"), row.get("category"), row.get("headline")),
+                       "subcat": row.get("subcat") or "", "title": _ann_title(row.get("subcat"), row.get("category"), row.get("headline")),
                        "known_at": row.get("dissem_ts"), "filing_date": _date_of(row.get("dissem_ts")),
                        "source": "pilot60_history/manifest.csv"}
                 self.ann_by_newsid.setdefault(rec["NEWSID"].lower(), rec)
@@ -423,14 +428,25 @@ def discover(cfg: Config, company: Company, records: Records) -> list[tuple[Path
     return sorted(found.values(), key=lambda item: str(item[0]))
 
 
+def _ann_title(subcat: object, category: object, headline: object) -> str:
+    """The doc title: the sub-category, unless it is the generic one -- then the headline, which is what an
+    order press release actually says ("new orders of Rs. 1,236 crores secured")."""
+    sub = str(subcat or "")
+    if sub.strip().lower() in GENERIC_SUBCATS:
+        return _title(headline, sub, category)
+    return _title(sub, category, headline)
+
+
 def _refine_type(dir_type: str, record: dict | None, sha_type: str = "") -> str:
     """What a store says about this exact file first (an annual report is also filed under the AGM
-    sub-category, a deck under the press-release one), then the BSE sub-category, the record's type and
-    finally the folder the file was fetched into."""
+    sub-category, a deck under the press-release one), then an order win in the headline, the BSE
+    sub-category, the record's type and finally the folder the file was fetched into."""
     if sha_type:
         return sha_type
     if record is None:
         return dir_type
+    if ORDER_HEADLINE.search(str(record.get("headline") or "")):
+        return "announcement"
     sub = SUBCAT_TYPES.get(str(record.get("subcat") or "").lower())
     if sub:
         return sub

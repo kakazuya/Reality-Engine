@@ -41,6 +41,7 @@ DB_SPECS: list[tuple[str, str]] = [
     ("concall_facts", "sqlite"),
     ("results_xbrl", "sqlite"),
     ("bse_announcements", "sqlite"),
+    ("pilot3", "sqlite"),
 ]
 
 DB_DESCRIPTIONS = {
@@ -54,6 +55,9 @@ DB_DESCRIPTIONS = {
     "deck_figures": "Investor-presentation facts: page metrics, sources and URLs.",
     "concall_facts": "Concall extraction: documents and guidance/KPI items with quotes.",
     "bse_announcements": "BSE announcement feed with dissemination timestamps.",
+    "pilot3": "The three pilot companies (KEC, BAJFINANCE, HINDALCO) in one script-built store: dated page "
+              "text, KPI series, reported/derived financial lines, ratios, shareholding, statements and "
+              "guidance. Read it through the pilot3_* tools; pilot3_sql is the bounded escape hatch.",
 }
 
 DEMO_TABLES = {
@@ -122,6 +126,13 @@ DATE_COLUMNS: dict[tuple[str, str], str] = {
     ("concall_facts", "cc_docs"): "filed_at", ("concall_facts", "cc_items"): "filed_at",
     ("results_xbrl", "filings"): "period_end", ("results_xbrl", "facts"): "period_end",
     ("bse_announcements", "ann"): "DT_TM",
+    ("pilot3", "doc"): "known_at", ("pilot3", "doc_page"): "known_at",
+    ("pilot3", "kpi_series"): "known_at", ("pilot3", "fin_annual_line"): "known_at",
+    ("pilot3", "fin_quarter_xbrl"): "known_at", ("pilot3", "ratio_panel"): "known_at",
+    ("pilot3", "valuation_daily"): "date", ("pilot3", "shp_category"): "known_at",
+    ("pilot3", "share_capital"): "known_at", ("pilot3", "dividend_event"): "ex_date",
+    ("pilot3", "price_delivery"): "date", ("pilot3", "transcript_statement"): "known_at",
+    ("pilot3", "guidance"): "known_at",
 }
 
 PREFERRED_KEYS = (
@@ -135,6 +146,9 @@ PREFERRED_KEYS = (
 def _skip_table(name: str) -> bool:
     low = name.lower()
     if low in DEMO_TABLES or low.startswith("sqlite_"):
+        return True
+    # pilot3's FTS mirror: its text is doc_page.text, which is catalogued
+    if low == "doc_page_fts":
         return True
     if low.endswith("_placeholder_archive"):
         return True
@@ -175,6 +189,23 @@ def _auto_description(db_key: str, table: str) -> str:
         "annual_financials": "Annual revenue/EBITDA/PAT/leverage table by fiscal year.",
         "daily_price_delivery": "Daily price + delivery + technical indicators by symbol.",
         "shareholding": "Quarterly shareholding pattern (promoter/FII/DII/retail).",
+        # pilot3 (one store for KEC, BAJFINANCE and HINDALCO)
+        "company": "pilot3 company register: symbol, ISIN, BSE code and name.",
+        "doc": "pilot3 document register: doc_key, type, filing date, known_at and source store.",
+        "doc_page": "pilot3 dated page text of every held document (one row per page).",
+        "doc_alias": "pilot3 alias key (the old doc key) -> doc_key.",
+        "kpi_series": "pilot3 company-stated KPI rows with period, dimension, basis, quote and page.",
+        "fin_annual_line": "pilot3 annual financial lines (XBRL, annual report) with definition and basis.",
+        "fin_quarter_xbrl": "pilot3 quarterly XBRL lines by period end, basis and line item.",
+        "ratio_panel": "pilot3 derived ratios with formula_id and the input rows they came from.",
+        "formula": "pilot3 formula registry: expression, inputs, unit and note per derived metric.",
+        "valuation_daily": "pilot3 daily PE/PB/EV-EBITDA/market cap with the inputs known that day.",
+        "shp_category": "pilot3 shareholding categories by quarter end (promoter, FPI, MF ...).",
+        "share_capital": "pilot3 shares outstanding, paid-up capital and face value on a date.",
+        "dividend_event": "pilot3 dividend events: ex-date, amount per share and fiscal year.",
+        "price_delivery": "pilot3 daily OHLCV, delivery and split/dividend adjustment factor.",
+        "transcript_statement": "pilot3 concall statements as exact quotes with speaker, role and topic tags.",
+        "guidance": "pilot3 forward numeric targets with period, low/high, unit and the row each revised.",
     }
     if table in known:
         return known[table]
@@ -231,11 +262,13 @@ def _rows_count(con, kind: str, db_key: str, table: str) -> tuple[int | None, bo
         return None, True
 
 
-def _introspect(refresh: bool = False) -> dict[str, Any]:
-    """Read schemas (and, on refresh, counts/ranges) from the live files."""
+def _introspect(refresh: bool = False, only: set[str] | None = None) -> dict[str, Any]:
+    """Read schemas (and, on refresh, counts/ranges) from the live files; ``only`` limits it to some databases."""
     out: dict[str, Any] = {"generated_at": dt.datetime.now().astimezone().isoformat(timespec="seconds"),
                            "databases": {}}
     for db_key, kind in DB_SPECS:
+        if only is not None and db_key not in only:
+            continue
         path = db_path(db_key)
         entry: dict[str, Any] = {"path": str(path), "kind": kind, "tables": {}}
         try:
@@ -293,6 +326,31 @@ def _save_cache(data: dict[str, Any], path: Path | None = None) -> None:
     tmp = p.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(data, indent=1, sort_keys=False), encoding="utf-8")
     os.replace(tmp, p)
+
+
+def _fill_missing(cache: dict[str, Any]) -> dict[str, Any]:
+    """Introspect a database the on-disk cache predates (a store added since the last refresh).
+
+    The cache is written by a refresh, which can be hours old; a new store (pilot3) must still answer
+    ``catalog(db=...)`` and ``schema(table, db=...)`` on the next call.
+    """
+    known = cache.get("databases") or {}
+    missing = {key for key, _kind in DB_SPECS if key not in known}
+    if not missing:
+        return cache
+    with core_lock:  # DuckDB connections are not thread-safe
+        fresh = _introspect(refresh=True, only=missing)
+    cache["databases"] = {**known, **fresh["databases"]}
+    return cache
+
+
+def _catalog_source(cache_path: Path | None = None) -> dict[str, Any]:
+    """The cache (or a full introspection when there is none), with any newly added store folded in."""
+    cache = _load_cache(cache_path)
+    if cache is None:
+        with core_lock:
+            return _introspect(refresh=False)
+    return _fill_missing(cache)
 
 
 def _load_descriptions(path: Path | None = None) -> dict[str, Any]:
@@ -373,6 +431,8 @@ def get_catalog(refresh: bool = False, cache_path: Path | None = None,
                 _save_cache(cache, cache_path)
             except OSError:
                 pass
+    else:
+        cache = _fill_missing(cache)
     descriptions = _load_descriptions(descriptions_path)
     desc_error = descriptions.get("_error") if isinstance(descriptions, dict) else None
     databases = []
@@ -535,7 +595,7 @@ def _nearest_tables(name: str, limit: int = 8) -> list[str]:
     """Closest table names across every database (substring, tokens, then fuzzy)."""
     import difflib
 
-    cache = _load_cache() or _introspect(refresh=False)
+    cache = _catalog_source()
     pairs: list[tuple[str, str]] = []
     for db_key, _kind in DB_SPECS:
         tables = ((cache.get("databases") or {}).get(db_key) or {}).get("tables", {})
@@ -625,7 +685,7 @@ def get_schema(table: str, db: str | None = None) -> dict[str, Any]:
     """
     name = str(table or "").strip()
     key = _resolve_db(db)
-    cache = _load_cache() or _introspect(refresh=False)
+    cache = _catalog_source()
     databases = (cache.get("databases") or {})
     lowered = name.lower()
     candidates: list[tuple[str, str, dict[str, Any]]] = []

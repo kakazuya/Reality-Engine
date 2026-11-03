@@ -1,0 +1,6 @@
+# PROGRESS_NOTES (T-049 tool gaps + KEC order gap, 4 Nov 2026)
+
+- DONE: pilot3 in the catalog (`core.DB_FILES/DB_ALIASES`, `catalog.DB_SPECS`, `_fill_missing` for a cache predating the store); `pilot3_sql max_chars` (400 default, 8000 cap); `pilot3_fin` consolidated default + basis label; `F_OPEX_NTI` annual opex/NTI rows (FY26 consolidated 33.34%); KEC order press releases typed `announcement` with the headline as title (18 FY26 order filings, 5 retyped at rebuild); guidance actuals/rate filter (8 wrong HINDALCO rows gone).
+- NEXT (controller, outside the sandbox): `docs_collect` on `D:\RealityEngine\pilot3\pages.db`, then `build --part registry` and `--part guidance` on the live pilot3.db, then restart the reality-data MCP.
+- VERIFIED: ratios rebuild on `.tmp/pilot3_copy.db` printed FY26 consolidated 33.3367 pct with six inputs; guidance rebuild on `.tmp/guidance_acceptance.db` has no wrong tariff rows and the 12 ticket targets; plugin unittest 22 + 10; guidance pytest 9; docs/ratios test functions pass under a driver (pytest `tmp_path` cannot run in this sandbox: `mkdir(mode=0o700)` is unlistable here).
+- DOCS: guide O8 + O5/O6/O7 corrections, plugin README (tools + data map), tasks/STATE.md (new T-049 H paragraph + next-action note).

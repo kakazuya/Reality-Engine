@@ -299,8 +299,18 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
                         f"ORDER BY period_end DESC, known_at DESC LIMIT ?", (*args, *eargs, cap * 2)):
                 out.append(_fin_row(r, "fin_quarter_xbrl", r["fiscal_period"], "xbrl_reported",
                                     _fin_source(r)))
-    out = _dedupe(out)[:cap]
-    return _reply(sym, out, "pilot3_fin", available=sorted(set(avail))[:50] if not out else None, measure_asked=measure)
+    out = _dedupe(out)
+    # No basis asked: a group question means the consolidated statement.  T-049 (4 Nov 2026): HINDALCO's
+    # diluted EPS FY26 came back standalone 45.31 where the consolidated 60.20 was wanted; standalone is one
+    # explicit argument away, so a mixed reply is filtered to consolidated when it holds the same measure.
+    assumed = None
+    if bas is None:
+        consolidated = [row for row in out if row["basis"] == "consolidated"]
+        if consolidated and len(consolidated) < len(out):
+            out, assumed = consolidated, "consolidated"
+    out = out[:cap]
+    return _reply(sym, out, "pilot3_fin", available=sorted(set(avail))[:50] if not out else None, measure_asked=measure,
+                  basis_assumed=assumed)
 
 
 def _fin_source(r: sqlite3.Row) -> str:
@@ -314,7 +324,7 @@ def _fin_source(r: sqlite3.Row) -> str:
 
 def _fin_row(r: sqlite3.Row, table: str, period: str, definition: str, source: str) -> dict[str, Any]:
     unit, scale, value = r["unit"], r["scale"] or 1.0, r["value"]
-    row = {"measure": r["line_item"], "period": period, "basis": r["basis"], "definition": definition,
+    row = {"measure": r["line_item"], "period": period, "basis": r["basis"] or "not_stated", "definition": definition,
            "value": value, "unit": unit, "scale": scale,
            "provenance": _prov(table, source, r["known_at"], row_id=r["rowid"], period_end=r["period_end"])}
     if unit in ("inr", "inr_cr", "inr_mn", "inr_lakh") or (unit or "").startswith("inr") and "share" not in (unit or ""):
@@ -736,8 +746,16 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
 
 
 # --- pilot3_sql -------------------------------------------------------------------------------------
-def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0) -> dict[str, Any]:
-    """Bounded, read-only SELECT/WITH over pilot3.db (any table; see ``schema`` rows below on a miss)."""
+SQL_TEXT_CHARS = 400          # the per-cell cut the answer tools have always used
+SQL_MAX_TEXT_CHARS = 8000     # hard cap: long page text must be asked for, never returned by default
+
+
+def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0,
+        max_chars: int = SQL_TEXT_CHARS) -> dict[str, Any]:
+    """Bounded, read-only SELECT/WITH over pilot3.db (any table; see ``schema`` rows below on a miss).
+
+    Text cells are cut at ``max_chars`` (default 400, hard cap 8000): a question about wording, a whole
+    paragraph or a long quote passes ``max_chars`` explicitly, otherwise the page text is truncated."""
     text = core._strip_sql(query or "")
     if not text:
         raise DataError("bad_query", "pilot3_sql needs a SELECT or WITH query")
@@ -748,6 +766,10 @@ def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0) -> dict[str,
     if core._WRITE_WORDS.search(text):
         raise DataError("not_select", "write/DDL keywords are not allowed")
     limit = max(1, min(int(limit), 500))
+    try:
+        chars = max(1, min(int(max_chars), SQL_MAX_TEXT_CHARS))
+    except (TypeError, ValueError):
+        raise DataError("bad_max_chars", f"max_chars must be an integer 1..{SQL_MAX_TEXT_CHARS}")
     started = time.perf_counter()
     con = connect()
     wrapped = f"SELECT * FROM ({text}) AS _q LIMIT {limit + 1}"
@@ -760,7 +782,7 @@ def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0) -> dict[str,
     except sqlite3.DatabaseError as exc:
         tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '%fts%'")]
         raise DataError("sql_error", f"{type(exc).__name__}: {exc}. Tables: {', '.join(tables)}")
-    rows = [[core._jsonable(v) if not isinstance(v, str) else _trim(v, 400) for v in r] for r in raw[:limit]]
+    rows = [[core._jsonable(v) if not isinstance(v, str) else _trim(v, chars) for v in r] for r in raw[:limit]]
     return {"columns": columns, "rows": rows, "row_count": len(rows), "truncated": len(raw) > limit,
-            "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+            "max_chars": chars, "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
             "provenance": _db_prov(note="read-only SELECT/WITH, row-limited")}

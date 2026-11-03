@@ -9,12 +9,14 @@ Every result carries provenance, and AGENTS.md rule 13 (quarantine) is applied.
 
 | Tool | Purpose |
 |---|---|
-| `catalog(refresh=False)` | Every database, table, one-line description, key columns, row count, date coverage. Merges `catalog_descriptions.yaml`; works without it. |
+| `catalog(refresh=False, db=None, query=None)` | One line per database; `db='<key>'` lists that database's tables (description, key columns, row count, coverage); `query='<word>'` searches table names/descriptions. Merges `catalog_descriptions.yaml`; works without it. A database added to `DB_SPECS` after the shipped cache was written (pilot3, 4 Nov 2026) is introspected on first use. |
+| `schema(table, db=None)` | One table's columns + types, row count, indexes, date coverage and three sample key rows. `db='pilot3'` works like any other store. |
 | `resolve(query)` | Symbol, company name or ISIN → canonical identity, NSE/BSE codes, ISIN/symbol validity windows. PPL → `INE050001010`. |
 | `price(symbol, start, end=None, adjusted=False)` | OHLCV, delivery qty/%, traded value; raw and adjusted closes. NSE first, BSE fallback. |
 | `facts(symbol, kind=None, period=None)` | Segments, financials, KPIs, guidance from `ar_facts`, `results_xbrl`, `deck_figures`, `concall_facts`, with doc/page/period/basis/quote. |
 | `search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10)` | Hybrid 4096-d vector + FTS over concalls, decks, annual reports, announcements, RBI/PIB/policy docs; degrades to FTS when a provider/key fails and labels each hit `vector`/`fts`/`both`. |
 | `sql(query, db)` | Bounded read-only SELECT/WITH escape hatch: one statement, row limit (default 200, max 1000), 5 s timeout, write/DDL keywords rejected. |
+| `pilot3_*` (10 tools) | `pilot3_kpi`, `pilot3_fin`, `pilot3_ratio`, `pilot3_holding`, `pilot3_statements`, `pilot3_guidance`, `pilot3_docs`, `pilot3_search`, `pilot3_sql` over the three pilot companies (KEC, BAJFINANCE, HINDALCO). `pilot3_fin` defaults to the consolidated statement and labels `basis` on every row; `pilot3_sql(max_chars=400)` cuts text cells at 400 characters by default and widens to a hard cap of 8000 when a long page text or a full quote is asked for. |
 
 `facts` kinds: `segments`, `financials`, `kpis`, `guidance`, `results`, `deck`,
 `concall`, `ar`, or free text. `period`: `FY25`, `Q4FY26`, `2025-03-31`, omitted.
@@ -30,6 +32,7 @@ Every result carries provenance, and AGENTS.md rule 13 (quarantine) is applied.
 | `deck_figures` | `.../data/deck_figures.db` | Investor-presentation metrics by page, with source URLs. |
 | `concall_facts` | `.../data/concall_facts.db` | Concall guidance/KPI items with quotes. |
 | `bse_announcements` | `.../data/bse_announcements.db` | BSE announcement feed. |
+| `pilot3` | `.../data/pilot3/pilot3.db` | The three pilot companies (KEC, BAJFINANCE, HINDALCO) in one script-built store: dated page text, KPI series, financial lines, ratios, shareholding, statements, guidance. Read it through the `pilot3_*` tools; `pilot3_sql` is the bounded escape hatch. Additive since 4 Nov 2026: `catalog(db='pilot3')`, `schema(table, db='pilot3')` and `sql(query, db='pilot3')` all resolve it. |
 
 `catalog_cache.json` ships measured row counts/coverage for 218 tables (the
 curated YAML covers 224; demo/placeholder/archive/FTS-shadow tables are
