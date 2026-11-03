@@ -1,0 +1,13 @@
+Goal: on the rebuilt `reality_engine\data\pilot3\pilot3.db` (3 Nov 19:10, RapidOCR text in) the answer check (`python -m reality_engine.pilot3.answer_check`, guide O5) gives 114 match, 40 partial, 91 mismatch, 7 empty of 251 checked answers. The weakest tools are the text ones: `pilot3_search` 12 match / 24 mismatch of 62, `pilot3_statements` 2 match / 21 mismatch of 34. Raise them without loosening any comparison:
+1. For every `pilot3_search` and `pilot3_statements` mismatch, look at the question, the oracle's cited quote (doc_key + page + quote in the oracle numbers) and what the call returned. Classify the cause per row: wrong query terms, right document but page not in the top results, statement not extracted by `pilot3/transcripts.py`, period/date filter wrong, number formatting (e.g. "Rs 1,23,456 cr", "₹" vs "INR", lakh/crore), or truly absent. Write the table into the report.
+2. Fix the causes in code: better term building in `answer_check.py` from the question (company terms, measure synonyms from `pilot3/lexicon/`), ranking in `plugins/reality-data/server/lookups_pilot3.py` `pilot3_search` (bm25 plus a boost for the question's period and the doc type the question names), and missing statement patterns in `pilot3/transcripts.py` (speaker turns, numbers with units).
+3. Price questions on a date that is not a trading day (e.g. 31 Mar 2025 and 31 Mar 2026 were market holidays) return nothing: use the last trading day on or before the date, and say so in the reply (`as_traded_on`). In `answer_check.py`'s price rule and in the lookup if it has a date mode.
+4. `pilot3_kpi` returns deck and call rows unordered: order by `conf_rank` descending, then deck/results before transcript (`source_type`), so the first row is the best source.
+Run on a copy (`.tmp\pilot3.db`) and report class counts before/after per tool and per company.
+Files: reality_engine/pilot3/answer_check.py, plugins/reality-data/server/lookups_pilot3.py, reality_engine/pilot3/transcripts.py, reality_engine/pilot3/lexicon/*.yaml, reality_engine/tests/test_pilot3_answer_check.py, plugins/reality-data/tests/test_lookups_pilot3.py, reality_engine/tests/test_pilot3_kpi.py (only if transcripts tests live there), docs/DEVELOPER_GUIDE.md (O2, O5)
+Accept: python -m pytest reality_engine/tests/test_pilot3_answer_check.py plugins/reality-data/tests/test_lookups_pilot3.py -q
+Stop if: more than half the text mismatches are "truly absent" from every page of pages.db; report that table and stop.
+Do not write to reality_engine/data or D:\RealityEngine. No model calls.
+Budget: 180 tool calls.
+Ticket: T-049
+Report: changed files, test output, the cause table, before/after counts, 5 rows that moved to match with question and quote, and `Docs updated: <files>`.
