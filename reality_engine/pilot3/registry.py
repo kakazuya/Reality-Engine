@@ -2,7 +2,9 @@
 
 Pages come from ``pilot3/pages.db`` (every held document, ``docs_collect.py``); the gap loop's
 sandbox pages (``doc_text`` / ``docs``) are kept only for documents pages.db lacks.  They are copied, no PDF is
-re-read.  ``known_at`` is the filing-record date, never the crawl date.  ``doc_alias`` maps a sandbox doc_key (what
+re-read.  ``known_at`` is the filing-record date, never the crawl date; for a transcript both dates are raised to
+the call date printed in the document (``call_dates``), since a transcript cannot be known before its call (KEC's
+Q4 FY26 call, held 18 May 2026, had a company-site record of 18 Feb).  ``doc_alias`` maps a sandbox doc_key (what
 the KPI and transcript extractors still cite) to the pilot3 ``doc.doc_key``.  ``build_pages`` replaces the text of a
 ``needs_ocr`` page with the OCR text of ``build.py --ocr-db`` (the row's method, ``ocr_textrec`` preferred, and
 ``ocr_conf`` kept), so FTS searches it like a text layer."""
@@ -12,7 +14,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from reality_engine.pilot3 import PAGES_DB, SANDBOX_DB, SYMBOLS, schema
+from reality_engine.pilot3 import PAGES_DB, SANDBOX_DB, SYMBOLS, call_dates, schema
 from reality_engine.gap_loop import prepare
 from reality_engine.gap_loop.company import COMPANIES
 
@@ -118,16 +120,26 @@ def plan_docs(symbol: str, pg: sqlite3.Connection | None = None,
     return {"pages_db": pages_docs, "sandbox": keep, "alias": alias}
 
 
+def _call_dates(pg: sqlite3.Connection, symbol: str) -> dict[str, tuple[str | None, str | None]]:
+    """``{doc_key: (filing_date, known_at)}`` for the symbol's transcripts, both raised to the call date printed
+    in the document (``call_dates``): a transcript cannot be known before the call it transcribes, and a company
+    site's publish date can be earlier than the call (KEC's Q4 FY26 call, held 18 May 2026, was recorded 18 Feb)."""
+    rows = pg.execute("SELECT doc_key, doc_type, filing_date, known_at FROM doc WHERE symbol=?", (symbol,)).fetchall()
+    return {key: (filing, known) for key, (filing, known, _call) in call_dates.raise_doc_dates(pg, rows).items()}
+
+
 def build_doc(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("doc", "doc_alias"))
     counts = {}
     pg = _pages_db()
     for symbol in SYMBOLS:
         plan = plan_docs(symbol, pg)
+        dates = _call_dates(pg, symbol) if pg else {}
         isin = COMPANIES[symbol].isins[-1]
         conn.executemany(
             "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-            [(r[0], symbol, r[1], r[2], FAMILY.get(r[2], r[2]), r[3], r[4], r[5], r[6], r[7], "pages.db", r[8])
+            [(r[0], symbol, r[1], r[2], FAMILY.get(r[2], r[2]), r[3], *dates.get(r[0], (r[4], r[5])), r[6], r[7],
+              "pages.db", r[8])
              for r in plan["pages_db"]]
             + [(f"{symbol}:{r[0]}", symbol, isin, r[1], FAMILY.get(r[1], r[1]), r[2], r[3], r[4], r[5], None, r[6], r[7])
                for r in plan["sandbox"]])
@@ -177,9 +189,11 @@ def _ocr_pages(ocr_dbs, symbol: str, alias: dict) -> dict:
 METHOD_RANK = {"ocr_textrec": 2, "ocr_rapid": 1}
 
 
-def _page_row(symbol: str, ocr: dict, r) -> tuple:
-    """doc_page row from ``(doc_key, page, text, method, known_at)``, with the OCR text where that page has it."""
+def _page_row(symbol: str, ocr: dict, r, dates: dict | None = None) -> tuple:
+    """doc_page row from ``(doc_key, page, text, method, known_at)``, with the OCR text where that page has it
+    and the call-date-corrected ``known_at`` where ``dates`` has one for the document."""
     doc_key, page, text, method, known_at = r
+    known_at = (dates or {}).get(doc_key, (None, known_at))[1]
     conf = None
     if method == "needs_ocr" and (doc_key, page) in ocr:
         text, conf, method = ocr[(doc_key, page)]
@@ -192,12 +206,13 @@ def build_pages(conn: sqlite3.Connection, ocr_dbs=()) -> dict:
     pg = _pages_db()
     for symbol in SYMBOLS:
         plan = plan_docs(symbol, pg)
+        dates = _call_dates(pg, symbol) if pg else {}
         ocr = _ocr_pages(ocr_dbs, symbol, plan["alias"])
         n = 0
         if plan["pages_db"]:
             cur = pg.execute("SELECT p.doc_key, p.page, p.text, p.method, p.known_at FROM doc_page p "
                              "JOIN doc d ON d.doc_key=p.doc_key WHERE d.symbol=?", (symbol,))
-            n += _insert_pages(conn, cur, lambda r: _page_row(symbol, ocr, r))
+            n += _insert_pages(conn, cur, lambda r: _page_row(symbol, ocr, r, dates))
         kept = {r[0] for r in plan["sandbox"]}
         if kept:
             sb = _sandbox(symbol)

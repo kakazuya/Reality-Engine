@@ -10,22 +10,27 @@ so a "what did they guide and did it change" question answers from one table.
 
 Input is this database's own ``doc_page`` (transcripts read through ``transcript_statement`` so only management
 sentences are stored, with their role and call period; decks/results/press releases are split into sentences and
-keep the exact page slice).  A sentence is kept only when it carries a guidance cue, a number, a metric word (in the
-sentence or the closest 700 characters before it, where the analyst's question sits) and a target period (explicit,
-or the call/result year, with a Q4 call's unlabelled "for the year" read as the next fiscal year).  Macro forecasts
-(GDP, inflation, IMF, repo), a metric level that cannot be right for that metric, and sentences whose only cue is a
-past measurement (achieved, stood at, grew by, last year) are dropped, so ``pilot3_guidance`` returns targets, not
-commentary.
+keep the exact page slice).  A sentence is kept only when it carries a guidance cue, a number, a metric word and a
+target period (explicit, or the call/result year, with a Q4 call's unlabelled "for the year" read as the next fiscal
+year), and only when the metric is the number's grammatical subject (``subject_ok``, T-049 review 4 Nov 2026): a
+share of a total ("60% of our supply", "25% of turnover") is never a margin or a level, a sentence that names a
+metric keeps that metric, and an answer that names none must have its metric in the question, be a forward
+statement itself and not make another subject (net debt, order book, a rate of change) the number's owner.  Macro
+forecasts (GDP, inflation, IMF, repo), a metric level that cannot be right for that metric, and sentences whose only
+cue is a past measurement (achieved, stood at, grew by, last year) are dropped, so ``pilot3_guidance`` returns
+targets, not commentary.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import random
 import re
 import sqlite3
 import sys
 import time
 from collections import Counter
+from pathlib import Path
 
 from .schema import TABLES, GUIDANCE_INDEXES
 from .transcripts import split_sentences
@@ -45,6 +50,7 @@ CUE = re.compile(
     r"is expected to|are expected to|going to see|going to be|talking about)\b", re.I)
 PAST_ONLY = re.compile(r"\b(achieved|stood at|reported|last year|lask year|previous year|prior year|year ago|"
                        r"grew by|improved by|rose by|was at|were at|was around|were around|increased by|"
+                       r"already at|had estimated|we did|they had|run rate|"
                        r"declined by|margin of \d|up \d+% (?:yoy|year-on-year|y-o-y)|"
                        # T-049, 4 Nov 2026: a reported quarter's cost ("was impacted by ... $54 million",
                        # "Adjusted EBITDA down 9% YoY", "came in at $506") was stored as a forward target
@@ -57,7 +63,7 @@ FACT_SHAPE = re.compile(r"\b(today|currently|as of|as at|current level|stands? a
 OWN_PERIOD = re.compile(r"\b(?:(?:next|this|current|following)\s+(?:fiscal|financial year|year)|for the (?:full )?year|"
                         r"full year|FY\s*'?\s*\d|fiscal\s*'?\s*\d|Q[1-4]\s*FY)\b", re.I)
 FORWARD = re.compile(r"\b(expect\w*|anticipat\w*|will be|should be|would be|target\w*|estimat\w*|guidance|"
-                     r"going forward|going to|foresee|outlook|corridor)\b", re.I)
+                     r"going forward|going to|foresee|outlook|corridor|talking about)\b", re.I)
 MACRO = re.compile(r"\b(gdp|inflation|economy|economic growth|imf|world bank|repo rate|rbi projects|"
                    r"global growth|global|ex-china|headline inflation|consumer price|cy\s?\d{2})\b", re.I)
 UP = re.compile(r"\b(increas\w*|rise|rising|grow\w*|improv\w*|expand\w*|higher|\bup\b|accelerat\w*|inflation)\b", re.I)
@@ -350,6 +356,60 @@ def plausible(metric: str, low: float, high: float, unit: str) -> bool:
     return lo <= low <= high <= hi and high > 0
 
 
+# --- the metric must be the target's subject (T-049 review, 4 Nov 2026) -------------------------------
+GROWTH_METRICS = {"revenue_growth", "aum_growth"}
+GROWTH_NEAR = re.compile(r"\b(growth|grew|grow\w*|increase[sd]?|decrease[sd]?|declin\w*|rise[s]?|expansion)\b", re.I)
+# a share of a total ("60% of our supply", "25% of turnover", "13% share") is not a margin, a level or a rate
+SHARE_NOUN = re.compile(r"^\s*(?:share|of\s+share)\b"
+                        r"|\b(?:share|proportion)\s+of\b"
+                        r"|\bof\s+(?:our|the|my|its)\s+(?:overall\s+|total\s+)?"
+                        r"(?:supply|sourcing|requirement|cost|turnover|revenue|sales|income|profit)\b", re.I)
+# another quantity that owns the number: the answer is about it, not about the question's metric
+SUBJECT_NOUN = re.compile(r"\b(net debt|debt|borrowings?|working capital|receivables?|order book|backlog|"
+                          r"turnover|top ?line|profit|margins?|shipments?|volumes?|supply|sourc\w*|utilisation|"
+                          r"utilization|capacity|tonnes?|inflation|costs?)\b", re.I)
+# a percent that is a change ("a 10% reduction in the interest cost", "3-4% revenue impact") is not a level
+PCT_CHANGE = re.compile(r"\s*%?\s*(?:reduction|increase|decrease|impact|improvement|savings?)\b", re.I)
+METRIC_RX = {name: rx for name, rx, _lo, _hi in METRICS}
+
+
+def subject_ok(metric: str, sentence: str, chosen: dict, before: str, symbol: str = "") -> bool:
+    """True when ``metric`` is the grammatical subject of the number ``chosen``.
+
+    A rule-based reader used to take the metric from the question and any plausible number from the answer, so
+    "18% to 20% of interest cost" was stored as an EBITDA-margin target (the question said margin), "10% growth next
+    year" for the same reason, and "our net debt ... within our targeted average borrowing levels of 2,500 crore" as
+    an interest-cost target.  The rules now:
+      * a share of a total ("60% of our supply", "25% of turnover", "13% share") is never a margin or a level,
+        only ``other`` (a market share);
+      * a rate of change is not a level: "a 10% reduction" is not an interest-cost level of 10%, and "we grow at
+        15%" is not a margin of 15% (a growth metric is the one class where the rate *is* the target);
+      * when the sentence names a metric, the chosen metric must be one of them (the number is already required to
+        sit near its word);
+      * when the sentence names none -- the answer to "what about interest cost?" -- the sentence must itself be a
+        forward statement, the question before it must name the metric, and the number must not have another
+        subject of its own (net debt, order book, supply, turnover, a cost) on either side."""
+    if metric != "other" and SHARE_NOUN.search(sentence[chosen["end"]:chosen["end"] + 32]):
+        return False
+    left = sentence[max(0, chosen["start"] - 70):chosen["start"]]
+    right = sentence[chosen["end"]:chosen["end"] + 30]
+    if metric not in GROWTH_METRICS and GROWTH_NEAR.search(left + " " + right):
+        return False
+    if chosen["unit"] == "pct" and PCT_CHANGE.match(sentence[chosen["end"]:chosen["end"] + 32]):
+        return False                    # a percent change is not a percent level
+    named = [name for name, rx, _lo, _hi in METRICS if rx.search(sentence)]
+    if named:
+        return metric in named
+    question = before.rsplit("?", 1)[0][-250:] if "?" in before else ""   # the question this answer answers
+    if not (FORWARD.search(sentence) and metric in metric_candidates(symbol, "", question, "")):
+        return False
+    for window in (left, right):
+        other = SUBJECT_NOUN.search(window)
+        if other and not METRIC_RX[metric].search(other.group(0)):
+            return False
+    return True
+
+
 def direction_of(sentence: str, metric: str) -> str:
     if DOWN.search(sentence):
         return "down"
@@ -433,6 +493,9 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         nums = numbers(sentence)
         if not nums:
             continue
+        if len(nums) > 5:      # a chart axis or a table line laid out as text, not a sentence
+            stats["chart_blob"] += 1
+            continue
         pos = collapsed.find(sentence)
         before = collapsed[max(0, pos - BEFORE):pos] if pos >= 0 else ""
         after = collapsed[pos + len(sentence):pos + len(sentence) + AFTER] if pos >= 0 else ""
@@ -480,6 +543,9 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if rate and rate.start() <= chosen["start"] <= rate.end():
             stats["rate_not_target"] += 1
             continue                        # the number is the rate of a tariff/duty, not a target
+        if not subject_ok(metric or "other", sentence, chosen, before, symbol):
+            stats["no_subject"] += 1
+            continue                        # the metric is not the target's subject (a share, net debt, growth)
         cues = [m.start() for m in CUE.finditer(sentence)]
         if PAST_ONLY.search(sentence) and cues and chosen["start"] < min(cues):
             stats["past_only"] += 1
@@ -567,12 +633,34 @@ def revisions(con: sqlite3.Connection, symbol: str) -> int:
     return linked
 
 
+def print_sample(db: str, n: int, seed: int = 7) -> list[sqlite3.Row]:
+    """A random sample of the stored rows with the sentence each was read from, for a hand check."""
+    con = sqlite3.connect(f"file:{Path(db).as_posix()}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute("SELECT * FROM guidance ORDER BY id").fetchall()
+    finally:
+        con.close()
+    picked = random.Random(seed).sample(rows, min(n, len(rows)))
+    for i, r in enumerate(picked, 1):
+        print(f"{i:2d}. {r['symbol']:11s} {r['metric']:18s} {r['target_period'] or '-':7s} "
+              f"{r['low']:g}-{r['high']:g} {r['unit']:10s} {r['said_on'] or '-':10s} {r['doc_key']} p{r['page']}")
+        print(f"    {r['quote']}")
+    print(f"\n{len(picked)} of {len(rows)} guidance rows, seed {seed}")
+    return picked
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--out", required=True)
     ap.add_argument("--symbols", default="KEC,BAJFINANCE,HINDALCO")
     ap.add_argument("--limit-docs", type=int, default=None)
+    ap.add_argument("--sample", type=int, default=0, help="print N random rows with their sentence and stop")
+    ap.add_argument("--seed", type=int, default=7)
     a = ap.parse_args(argv)
+    if a.sample:
+        print_sample(a.out, a.sample, a.seed)
+        return 0
     stats = run(a.out, [s.strip().upper() for s in a.symbols.split(",") if s.strip()], a.limit_docs)
     print(json.dumps(stats, indent=1))
     return 0

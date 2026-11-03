@@ -31,6 +31,53 @@ def test_fiscal_period_follows_the_indian_year():
     assert stores.fiscal_period("2025-05-31") is None
 
 
+def test_a_transcript_is_never_known_before_the_call_it_transcribes():
+    """Defect (4 Nov 2026 review): KEC's Q4 FY26 call was dated 18 Feb 2026 though held on 18 May 2026.
+
+    The stored date comes from a filing record, so the call date printed in the first pages raises it: both
+    ``known_at`` and the filing date move forward, a later filing timestamp is kept, and a document with no call
+    date in its text keeps the record's dates (it is reported, not guessed)."""
+    from reality_engine.pilot3 import call_dates
+
+    con = sqlite3.connect(":memory:")
+    con.executescript("CREATE TABLE doc(doc_key, doc_type, filing_date, known_at);"
+                      "CREATE TABLE doc_page(doc_key, page, text);")
+    con.executemany("INSERT INTO doc VALUES (?,?,?,?)", [
+        ("kec/call.pdf", "transcript", "2026-02-18", "2026-02-18T10:00:00"),
+        ("kec/later.pdf", "transcript", "2026-05-21", "2026-05-21T16:19:54"),
+        ("kec/none.pdf", "transcript", "2026-01-30", "2026-02-02T18:03:23"),
+        ("kec/deck.pdf", "deck", "2026-02-18", "2026-05-18T10:00:00"),     # not a transcript: untouched
+    ])
+    con.executemany("INSERT INTO doc_page VALUES (?,?,?)", [
+        ("kec/call.pdf", 1, "KEC International Limited Q4 FY '26 Results Conference Call\nMay 18, 2026\n"),
+        ("kec/later.pdf", 1, "Conference Call held on 18 May 2026"),
+        ("kec/none.pdf", 1, "Moderator: Ladies and gentlemen, welcome to the call."),
+        ("kec/deck.pdf", 1, "Q4 FY 26 Results Conference Call\nMay 18, 2026"),
+    ])
+    dates = call_dates.raise_doc_dates(
+        con, con.execute("SELECT doc_key, doc_type, filing_date, known_at FROM doc").fetchall())
+    assert dates["kec/call.pdf"] == ("2026-05-18", "2026-05-18", "2026-05-18")
+    # the filing timestamp after the call stays
+    assert dates["kec/later.pdf"] == ("2026-05-21", "2026-05-21T16:19:54", "2026-05-18")
+    # no call date in the text: the record's dates are kept and the call date is reported as unread
+    assert dates["kec/none.pdf"] == ("2026-01-30", "2026-02-02T18:03:23", None)
+    assert "kec/deck.pdf" not in dates
+    # a date far from the record is a stray header date, not this document's call
+    assert call_dates.clamp("2026-02-18", "2026-02-18T10:00:00", ["May 18, 2028"]) == \
+        ("2026-02-18", "2026-02-18T10:00:00", None)
+    assert call_dates.call_date(["Q2 FY26 Results Conference Call; May 4, 2025"]) == "2025-05-04"
+
+
+def test_the_call_date_rule_reads_the_first_pages_only():
+    """A dated comparison in the body must never date the document: the header is read, the body is not."""
+    from reality_engine.pilot3 import call_dates
+
+    assert call_dates.call_date(["19 November 2025\nAnalyst: in your January 2026 call you said ..."]) == "2025-11-19"
+    assert call_dates.call_date(["Cover letter\nDate: 21 May 2026"]) == "2026-05-21"
+    assert call_dates.call_date(["no date at all in this text"]) is None
+
+
+
 def test_lexicon_matches_statement_captions_only():
     assert stores.lexicon_item("Profit for the year") == ("pat", "P&L")
     assert stores.lexicon_item("Consolidated EBITDA") == ("ebitda", "P&L")
