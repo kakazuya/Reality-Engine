@@ -69,8 +69,9 @@ def main() -> None:
     lines += report_cells(str(DATA / "equity_intelligence.db")) + [""]
     undoc_t = undoc_r = 0
     lines += ["## Databases", "", "| Database | Table | Rows (about) | Named in docs |", "|---|---|---:|---|"]
-    for db in sorted(glob.glob(str(DATA / "*.db")) + glob.glob(str(DATA / "pilot" / "*.db")) + glob.glob(str(DATA / "pilot" / "*" / "*.db"))):
-        rel = os.path.relpath(db, DATA).replace("\\", "/")
+    for db in sorted(glob.glob(str(DATA / "*.db")) + glob.glob(str(DATA / "pilot" / "*.db")) + glob.glob(str(DATA / "pilot" / "*" / "*.db"))
+                     + glob.glob("D:/RealityEngine/pilot3/*.db")):  # T-049: the pilot3 databases live on D
+        rel = os.path.relpath(db, DATA).replace("\\", "/") if str(db).startswith(str(DATA)) else "pilot3/" + os.path.basename(db)
         try:
             for name, rows in sorted(tables(db)):
                 doc = name in known

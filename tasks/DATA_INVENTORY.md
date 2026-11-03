@@ -313,6 +313,8 @@ Undocumented: 45 tables and 51 of 66 raw folders.
 | results_xbrl.db | `facts` | 13,941,210 | yes |
 | results_xbrl.db | `filings` | 146,564 | yes |
 | results_xbrl.db | `filings_isin` | 183,029 | yes |
+| pilot3/pages.db | `doc` | 1,999 | yes |
+| pilot3/pages.db | `doc_page` | 23,257 | yes |
 
 ## Raw folders on D
 
