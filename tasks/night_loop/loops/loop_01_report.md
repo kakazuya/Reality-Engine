@@ -1,8 +1,7 @@
 # Loop 1 report (session 01, Eagle, 4 Nov 2026, written 04:45 IST at the 400k context wrap-up)
 
 ## Result
-**Not fully done.** Ten question files are written, but the official `qset check` has not passed them, because the check
-itself misreads the files. Raw documents are 873 of about 1,160 and still fetching. The pilot3 generalisation that loop 2
+**Not fully done.** Ten question files are written and pass `qset check` Q1-Q3 on the fix branch (below; not yet on `main`). Raw documents are 873 of about 1,160 and still fetching. The pilot3 generalisation that loop 2
 needs first was NOT built: its worker built something else (see Workers).
 
 ## A. Question sets: `questions/<SYMBOL>.jsonl`
@@ -104,10 +103,12 @@ nse_integrated` overwrote `raw_market/nse_integrated_*/page_*.json`. I also adde
 |---|---|---|
 | `20261103T224355Z-ef762679` | T-055 check scripts | Tests pass per its report, but `qset check` misreads the real files. **Merged by the wrapper (c17b5a4) before my review**; five defects listed in the fix brief |
 | `20261103T225130Z-b1c96638` | pilot3 generalisation | **REJECT, do not merge.** Branch has no `pilot3/profile.py` and no pilot3 change; it built a second copy of `night_eval`. Likely cause: the ticket row for T-055 reached it with the brief; I could not read the job folder to confirm |
-| `20261103T231018Z-fa830b2b` | five `qset` / `answerable` fixes, brief `loops/loop_01_worker_qsetfix.md` | **Running at wrap-up, not reviewed.** Same ticket, so check it did the right task. Accept output will include the real `qset check` result |
+| `20261103T231018Z-fa830b2b` | five `qset` / `answerable` fixes, brief `loops/loop_01_worker_qsetfix.md` | **ACCEPT, ready for the wrapper to merge** (`dsh/20261103T231018Z-fa830b2b`, head 151f48d). Did the right task, six files. I reran it: 27 tests pass; with main's vocabulary `qset check` on the current 1,305 questions gives the result in Q-check below. KEC A1 on the pilot3 db per its report: 58/125 (46%), mostly old db lacking the window. Its `tasks/STATE.md` line says 1271 questions; now 1,305, correct at merge. Its check needs `--vocab` only because its worktree holds an older vocabulary; main's copy is current |
 
 The wrong-task job means `T-055` should not be reused for new work: add a separate ticket row first. I may not edit
 `tasks/TASKS.md` in this loop.
+
+Q-check: run with `--vocab tasks/night_loop/questions/sector_vocab.json` from the fix branch, Q1 0 violations, Q3 0 short variations and 0 duplicates, all Q2 thresholds met. Q4 is the bank diff above; Q5 and Q6 are the wrapper's and Shivam's.
 
 ## D. Rule notes
 - Context hit the 400k wrap-up well before the work ended, so I stopped starting work there as the hook ordered.

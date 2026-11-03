@@ -2,7 +2,7 @@
 
 ## Current state (loop 1, 4 Nov 2026 04:45 IST by this machine's clock; full detail `loops/loop_01_report.md`)
 - Phase 1 sets written: `questions/<SYMBOL>.jsonl`, 1,305 questions over 10 companies, generator `questions/gen/build.py`.
-  My own checks pass; the official `qset check` has not passed them yet (defects below). Q5 and Shivam's approval are open.
+  `qset check` Q1-Q3 passes on the fix branch. Q5 and Shivam's approval are open.
 - Library inputs unchanged except `questions/sector_vocab.json` (stored table names added; needs the wrapper's OK).
   Bank diff: `questions/BANK_DIFF_2026-11-04.xlsx`.
 - Raw: `D:\RealityEngine\pilot10\raw\`, 873 of about 1,160 at wrap-up, 279 announcements pending. Resume, safe to repeat:
@@ -12,15 +12,15 @@
 - Stores: XBRL Q2 FY27 held for 9 of 10 (Hindalco has not filed). Sep 2026 shareholding missing for HINDUNILVR, INFY,
   MARUTI, HINDALCO. Prices and deals end 23 Oct, truth snapshot 19 Oct.
 - Workers: `20261103T225130Z-b1c96638` REJECT, do not merge (built a second `night_eval`, no pilot3 change).
-  `20261103T231018Z-fa830b2b` (`qset` fixes) running, not reviewed.
+  `20261103T231018Z-fa830b2b` (`qset` fixes) reviewed: ACCEPT, ready to merge.
 - Wrapper note 06:00 IST (Shivam): in DeepSeek peak hours use a Sonnet 5.5 medium worker instead of waiting:
   `python tasks/night_loop/sonnet_worker.py start <name> <brief.md>` / `wait <name>` (see LOOP_BRIEF.md).
 - Wrapper note 06:20 IST: T-055 merged to main (c17b5a4): `python -m reality_engine.night_eval.qset check
   tasks/night_loop/questions` runs from the main checkout; README `reality_engine/night_eval/README.md`.
 
 ## Next
-1. Wrapper: review `fa830b2b` (check it did the `qset` fixes, not T-055 again), merge, then run `qset check` on the ten files
-   and fix any question-side failures; finish the raw fetch; rerun the coverage table.
+1. Wrapper: merge `dsh/20261103T231018Z-fa830b2b`, rerun `qset check` from main (correct its 1271 in `tasks/STATE.md`);
+   finish the raw fetch; rerun the coverage table.
 2. Add a new ticket for pilot3 generalisation, then restart it from `loops/loop_01_worker_generalise.md` with that ticket.
    Loop 2 cannot build pilot10 without it.
 3. Close the store gaps: Sep 2026 shareholding for 4 companies (probably filed; the index stops about 16 Oct), prices and deals to date, a truth
