@@ -7,8 +7,16 @@ mapped and called, so a question the loop could not answer but pilot3 can is vis
 Each question is mapped by fixed rules -- over the question text and the table its oracle number cites -- to
 ONE call of ``plugins/reality-data/server/lookups_pilot3.py``, the same functions the reality-data MCP server
 runs, against ``--db`` (default the real ``reality_engine\\data\\pilot3\\pilot3.db``), with ``as_of`` = the
-question's as_of or 2026-10-19.  Every number in the oracle answer must occur in the reply within the loop's
-rounding (``gap_loop.checks``: Indian digit grouping, crore/lakh/million scale) in the same period.
+question's as_of or 2026-10-19.
+
+THE ANSWER IS GRADED, NOT ITS INPUTS (T-049 F, 3 Nov 2026).  The loop's ``numbers[]`` are often the inputs of
+a derived answer -- two revenues for a growth, revenue and finance cost for a cover, a price and a share count
+for a market cap -- while the lookup returns the computed value, so no cited number matches and 111 of 300
+questions read ``mismatch``.  For a question whose answer is derived (growth, share, margin, ratio,
+difference, sum, CAGR) the check recomputes the value from the oracle's cited inputs, recomputes it from what
+the reply holds (the ratio it returns, or the inputs it returns) and compares those two with the loop's own
+tolerance (``gap_loop.checks``).  ``compared_on`` says which comparison decided the class, and ``cited_class``
+keeps the old cited-number comparison beside it: nothing is hidden and no tolerance is loosened.
 
     python -m reality_engine.pilot3.answer_check --db .tmp\\pilot3.db \\
         --out .tmp\\ANSWERABILITY.xlsx --html .tmp\\ANSWERABILITY.html
@@ -28,7 +36,7 @@ from pathlib import Path
 
 from reality_engine.db.readonly import connect_ro
 from reality_engine.gap_loop import checks, company, loop
-from reality_engine.pilot3 import REAL_DB, SYMBOLS, oracle as oracle_mod
+from reality_engine.pilot3 import REAL_DB, SYMBOLS, oracle as oracle_mod, queries, transcripts
 
 AS_OF = "2026-10-19"
 PASSED = "answered"  # the loop's status for a row whose numbers all passed its checks
@@ -38,9 +46,11 @@ HTML = OUT.with_suffix(".html")
 LIMIT = 50  # rows per lookup call: the comparison should not fail because of the default page size
 CLASSES = ("match", "partial", "mismatch", "empty", "answered_no_oracle", "no_tool")
 CLASS_HELP = {
-    "match": "every oracle number found in the reply, same period",
-    "partial": "some oracle numbers found",
-    "mismatch": "the reply has rows but no oracle number matches",
+    "match": "the answer agrees: the derived value on both sides (compared_on=derived), or every oracle "
+             "number found in the reply in the same period (compared_on=cited)",
+    "partial": "some of the answer agrees: some derived values agree, or some oracle numbers are found",
+    "mismatch": "the reply has rows but the answer disagrees: the derived values differ within the loop's "
+                "tolerance, or no oracle number matches",
     "empty": "the mapped call returned no rows",
     "answered_no_oracle": "the loop did not answer this question; the call returned rows",
     "no_tool": "no rule mapped the question to a lookup",
@@ -135,20 +145,59 @@ MEASURES: tuple[tuple[str, str], ...] = (
 )
 TOPICS = ("margin", "guidance", "capex", "order", "demand", "debt", "growth", "volume", "price", "cost",
           "aum", "credit", "acquisition", "dividend", "rating")
+_TAGGER_TAGS: frozenset | None = None
+
+
+def tagger_tags() -> frozenset:
+    """The topic tags ``pilot3.transcripts`` actually writes (``lexicon/topics.yaml``): a tag asked for that the
+    tagger never emits -- ``price``, ``growth``, ``dividend``, ``rating`` -- returns nothing, so it is sent as a
+    ``terms`` word instead."""
+    global _TAGGER_TAGS  # noqa: PLW0603 -- one small read of a static file, cached for the run
+    if _TAGGER_TAGS is None:
+        topics, _roles = transcripts.load_topics()
+        _TAGGER_TAGS = frozenset(tag for tag, _patterns, _companies in topics)
+    return _TAGGER_TAGS
+
+
+def topic_args(topic: str | None) -> dict:
+    """``topic`` when the tagger can match that word, else ``terms``.
+
+    ``pilot3_statements`` matches a topic with ``topics LIKE '%word%'``, so ``order`` still finds ``order_book``;
+    a word no tag contains -- ``price``, ``growth``, ``dividend``, ``rating``, ``volume`` -- returns nothing and is
+    sent as a ``terms`` word instead (read from ``lexicon/topics.yaml``).
+    """
+    if not topic:
+        return {}
+    return {"topic": topic} if any(topic in tag for tag in tagger_tags()) else {"terms": topic}
 _UNIT_BY_COLUMN = {"close": "inr", "open": "inr", "high": "inr", "low": "inr", "prev_close": "inr",
                    "adj_close": "inr", "value_inr": "inr", "delivery_pct": "pct", "volume": "number",
                    "deliverable_qty": "number", "num_trades": "number", "sessions": "number",
                    "avg_delivery_pct": "pct", "avg_deliverable_qty": "number", "avg_volume": "number"}
+# A valuation_daily reply row carries no unit of its own; the field it was asked for decides it.
+_VALUATION_UNIT = {"pe": "x", "pb": "x", "ev_ebitda": "x", "market_cap": "inr", "trailing_eps": "inr_per_share",
+                   "trailing_pat": "inr", "net_worth": "inr", "net_debt": "inr", "trailing_ebitda": "inr",
+                   "close": "inr", "shares_outstanding": "number", "dividend_yield_pct": "pct"}
 
 
 # --- the lookups, with the db the brief names ------------------------------------------------------
 def lookups():
     """``lookups_pilot3`` from the MCP server directory (the module the reality-data server runs)."""
     server = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
-    if str(server) not in sys.path:
-        sys.path.insert(0, str(server))
-    import lookups_pilot3  # noqa: PLC0415 -- only needed when a call is made
-
+    # The dsh-worker server has a ``core.py`` too, and another test may have imported that one and left its
+    # directory ahead of this one: put this server first and swap a shadowing ``core`` out for these imports
+    # only.  The imported module keeps its own ``core``; the other server gets its module and path back.
+    order = list(sys.path)
+    sys.path[:] = [entry for entry in order if entry != str(server)]
+    sys.path.insert(0, str(server))
+    shadow = sys.modules.get("core")
+    if shadow is not None and Path(getattr(shadow, "__file__", "") or "").resolve().parent != server.resolve():
+        sys.modules.pop("core", None)
+    try:
+        import lookups_pilot3  # noqa: PLC0415 -- only needed when a call is made
+    finally:
+        sys.path[:] = order
+        if shadow is not None and sys.modules.get("core") is not shadow:
+            sys.modules["core"] = shadow
     return lookups_pilot3
 
 
@@ -357,7 +406,7 @@ def row_value(value: object, unit: str | None, scale: object = 1.0) -> tuple | N
 
 
 def reply_rows(tool: str, reply: dict) -> list[dict]:
-    """Every reply row as {values, texts, period, provenance} whatever the tool returns."""
+    """Every reply row as {values, texts, period, measure, provenance} whatever the tool returns."""
     if tool == "pilot3_sql":
         columns = reply.get("columns") or []
         out = []
@@ -367,7 +416,7 @@ def reply_rows(tool: str, reply: dict) -> list[dict]:
                       for col in columns if col in _UNIT_BY_COLUMN]
             out.append({"values": [v for v in values if v], "texts": [],
                         "period": next((record[c] for c in ("date", "month") if record.get(c)), None),
-                        "provenance": {}})
+                        "measure": "", "provenance": {}})
         return out
     rows = []
     for row in reply.get("rows") or []:
@@ -375,7 +424,8 @@ def reply_rows(tool: str, reply: dict) -> list[dict]:
         if tool in ("pilot3_kpi", "pilot3_fin"):
             values = [row_value(row.get("value"), row.get("unit"), row.get("scale"))]
         elif tool == "pilot3_ratio":
-            values = [row_value(row.get("value"), row.get("unit"))]
+            unit = row.get("unit") or _VALUATION_UNIT.get(str(row.get("ratio") or ""))
+            values = [row_value(row.get("value"), unit)]
         elif tool == "pilot3_holding":
             values = [row_value(row.get("pct"), "pct"), row_value(row.get("shares"), "number")]
         rows.append({
@@ -383,6 +433,7 @@ def reply_rows(tool: str, reply: dict) -> list[dict]:
             "texts": [str(row[key]) for key in ("quote", "snippet", "title", "statement")
                       if isinstance(row.get(key), str)],
             "period": row.get("period") or row.get("quarter_end") or row.get("date") or row.get("call_period"),
+            "measure": str(row.get("metric") or row.get("measure") or row.get("ratio") or ""),
             "provenance": row.get("provenance") or {},
         })
     return rows
@@ -496,11 +547,18 @@ def _measure(text: str) -> str | None:
     return best[1] if best else None
 
 
-def _price_sql(text: str, symbol: str, as_of: str) -> str | None:
-    """The one price_delivery query a share-price question needs (pilot3_sql is the price route)."""
+def _price_sql(text: str, symbol: str, as_of: str, day: str | None = None) -> str | None:
+    """The one price_delivery query a share-price question needs (pilot3_sql is the price route).
+
+    ``day`` is the results date resolved from ``pilot3_docs`` when the question prints no date ("4 trading
+    sessions after its Q1 FY27 results"); a printed date still wins.
+    """
     sym = symbol.upper()
     dates = dates_in(text)
-    day = dates[-1] if dates else None
+    day = dates[-1] if dates else day
+    # "sessions / day after [results]": with a date of its own the question dates the anchor day itself.
+    after = bool(re.search(r"(?:sessions?|days?|trading day) after|after (?:its |the )?(?:q[1-4] )?(?:fy\d\d )?results",
+                           text))
     where = f"symbol='{sym}' AND exchange='NSE'"
     if "deliver" in text:
         if "average" in text or re.search(r"\bavg\b", text):
@@ -510,6 +568,9 @@ def _price_sql(text: str, symbol: str, as_of: str) -> str | None:
                     f"WHERE {where} AND substr(date, 1, 7) = '{month}'")
         if not day:
             return None
+        if after and not dates:  # the trading day after the results date resolved from pilot3_docs
+            return (f"SELECT date, deliverable_qty, delivery_pct, close FROM price_delivery "
+                    f"WHERE {where} AND date > '{day}' ORDER BY date LIMIT 1")
         return (f"SELECT date, close, volume, deliverable_qty, delivery_pct FROM price_delivery "
                 f"WHERE {where} AND date = '{day}'")
     if "52" in text and "low" in text:
@@ -524,9 +585,9 @@ def _price_sql(text: str, symbol: str, as_of: str) -> str | None:
     if "return" in text and len(dates) >= 2:
         return (f"SELECT date, close, adj_close FROM price_delivery WHERE {where} "
                 f"AND date IN ('{dates[0]}', '{dates[-1]}') ORDER BY date")
-    if day and re.search(r"sessions? after|days? after|day after|trading (?:day|session)s? after", text):
-        return (f"SELECT date, close, prev_close FROM price_delivery WHERE {where} AND date > '{day}' "
-                f"ORDER BY date LIMIT 4")
+    if day and after:  # the anchor day and the sessions after it, so both of the answer's prices are in the reply
+        return (f"SELECT date, close, prev_close FROM price_delivery WHERE {where} AND date >= '{day}' "
+                f"ORDER BY date LIMIT 5")
     if day and re.search(r"closing price|price on|share price|close", text):
         return (f"SELECT date, close, prev_close, volume, delivery_pct FROM price_delivery "
                 f"WHERE {where} AND date = '{day}'")
@@ -541,8 +602,12 @@ def _basis(text: str) -> str | None:
     return None
 
 
-def plan(question: dict, numbers: list[dict], vocab: dict, as_of: str = AS_OF) -> dict | None:
-    """ONE lookup call for one question, from its text and the table its oracle number cites."""
+def plan(question: dict, numbers: list[dict], vocab: dict, as_of: str = AS_OF,
+         results_day: str | None = None) -> dict | None:
+    """ONE lookup call for one question, from its text and the table its oracle number cites.
+
+    ``results_day`` is the results filing date resolved from pilot3_docs for a question that asks about the
+    sessions after results without printing the date (T-049 F: HINDALCO085)."""
     text = str(question.get("question") or "")
     low = text.lower()
     symbol = str(question.get("symbol") or "")
@@ -587,7 +652,7 @@ def plan(question: dict, numbers: list[dict], vocab: dict, as_of: str = AS_OF) -
     # 2. share price / delivery (pilot3_sql over price_delivery is the only price route)
     if re.search(r"closing price|share price|price on|price (?:move|return|rose|fell|rise|fall)|highest price"
                  r"|52[- ]week|deliver\w*|trading sessions?|price (?:to|jumped|moved)", low) or hint == "pilot3_sql":
-        query = _price_sql(low, symbol, as_of_call)
+        query = _price_sql(low, symbol, as_of_call, results_day)
         if query:
             return {"tool": "pilot3_sql", "args": {"query": query, "limit": 20},
                     "why": "price_delivery query from the question's date(s)"}
@@ -603,8 +668,8 @@ def plan(question: dict, numbers: list[dict], vocab: dict, as_of: str = AS_OF) -
     if SPEECH.search(low):
         topic = next((word for word in TOPICS if re.search(rf"\b{word}", low)), None)
         if "call" in low or "concall" in low or kind == "guidance" or hint == "pilot3_statements":
-            return call("pilot3_statements", "management statement from a transcript", topic=topic,
-                        as_of=as_of_call, limit=20)
+            return call("pilot3_statements", "management statement from a transcript",
+                        as_of=as_of_call, limit=20, **topic_args(topic))
         return search_call("what the documents say (text search)")
 
     # 5. announcements and corporate events
@@ -623,9 +688,10 @@ def plan(question: dict, numbers: list[dict], vocab: dict, as_of: str = AS_OF) -
     if name:
         tool = _store_for(name, stores, hint, when)
         # A derived question's answer row cites the inputs it used (revenue, finance cost): when the loop
-        # named one such measure, ask for that measure -- the answer check says whether the cited numbers are
-        # reachable, and for a derived question that is what the loop's own answer needed.
-        if numbers and not any(name in stores.get(tool, {}) for tool in ("pilot3_fin", "pilot3_kpi")):
+        # named one such measure AND the chosen store does not hold the derived name, ask for that measure --
+        # the answer check says whether the cited numbers are reachable.  A store that does hold the ratio
+        # (revenue_growth_yoy_pct in ratio_panel) is asked for the ratio, and the answer is graded on it.
+        if numbers and name not in stores.get(tool, {}):
             cited = {found for number in numbers if (found := _measure(str(number.get("measure") or "")))}
             if len(cited) == 1:
                 name = cited.pop()
@@ -651,31 +717,441 @@ def plan(question: dict, numbers: list[dict], vocab: dict, as_of: str = AS_OF) -
     return None
 
 
+# --- derived answers: grade the computed value, not the inputs --------------------------------------
+# The loop's numbers[] are often the INPUTS of the answer it gave (two revenues for a growth, revenue and
+# finance cost for a cover, a price and a share count for a market cap) while the lookup returns the computed
+# value, so no cited number matches.  These rules recompute the answer on both sides with the same formula and
+# compare those two values with the loop's own tolerance.  The cited comparison stays beside it (``cited_class``).
+OPS: tuple[tuple[str, re.Pattern], ...] = (
+    ("cagr", re.compile(r"\bcagr\b|compounded annual", re.I)),
+    ("growth", re.compile(r"\bgrowth\b|\bgrew\b|\bgrow(?:ing|s)?\b|by what percentage|"
+                          r"\b(?:increase|rise|fall|decline|improvement) of\b", re.I)),
+    ("margin", re.compile(r"\bmargins?\b", re.I)),
+    ("market_cap", re.compile(r"market (?:capitali[sz]ation|cap)\b", re.I)),
+    ("share", re.compile(r"\bshare (?:of|in)\b|as a share|percent(?:age)? of\b|%\s*of\b|proportion of", re.I)),
+    ("ratio", re.compile(r"\bratios?\b|book-to-bill|divided by|\btimes\b|price[- ]to[- ]|p/?e\b|p/?b\b|"
+                         r"ev[- ]to[- ]|interest coverage|\bcover(?:ed|age)\b|\bto\b[^.]{0,40}\b(?:revenue|aum|"
+                         r"income|equity|ebitda)\b", re.I)),
+    ("difference", re.compile(r"\bchange[ds]?\b|\bdifference\b|how much (?:more|less|higher|lower)|basis points"
+                              r"|\bbps\b|\bby how much did\b", re.I)),
+    ("sum", re.compile(r"\bcombined\b|\bsum of\b|\btotal value of\b", re.I)),
+)
+_METHOD_OP = ((re.compile(r"yoy|qoq|cagr|growth", re.I), "growth"), (re.compile(r"mix|share", re.I), "share"),
+              (re.compile(r"margin", re.I), "margin"), (re.compile(r"b2b|book_to_bill|cover|ratio|per_tonne", re.I),
+                                                         "ratio"),
+              (re.compile(r"diff|change", re.I), "difference"), (re.compile(r"sum|total", re.I), "sum"))
+_DIRECT = {"growth": re.compile(r"growth|grew|cagr", re.I), "margin": re.compile(r"margin", re.I),
+           "share": re.compile(r"share|percent(?:age)? of|%\s*of|mix", re.I),
+           "market_cap": re.compile(r"market[_ ]?cap", re.I)}
+_DIRECT_FAMILY = {"growth": ("pct",), "cagr": ("pct",), "share": ("pct",), "margin": ("pct",),
+                  "ratio": ("x", "pct"), "market_cap": ("money",)}
+_DENOM = re.compile(r"revenue|income|turnover|sales|\baum\b|assets|equity|net worth|debt", re.I)
+_NOISE = re.compile(r"\([^)]*\)|\b(?:consolidated|standalone|group|company|reported|basis|as at|as of|inr|usd|"
+                    r"crore|cr|million|mn|billion|bn|q[1-4]|fy\d\d|h[12]fy\d\d)\b", re.I)
+
+
+def derived_op(question: str, numbers: list[dict]) -> tuple[str, str]:
+    """(op, why) when the oracle answer is a formula over its cited numbers, else ('', '').
+
+    The cited row's own ``method``/``formula`` field decides first (a loop that names its formula); today the
+    loop's ``numbers[]`` carry no such field, so the question text decides (T-049 F, 3 Nov 2026).
+    """
+    for number in numbers or ():
+        how = f"{number.get('method') or ''} {number.get('formula') or ''}".strip()
+        if not how:
+            continue
+        for pattern, op in _METHOD_OP:
+            if pattern.search(how):
+                return op, f"cited row carries method/formula {how[:60]!r}"
+    for op, pattern in OPS:
+        if pattern.search(str(question or "")):
+            return op, f"question asks for a {op}"
+    return "", ""
+
+
+def _stem(measure: object) -> str:
+    """A measure name without its basis, scale and period words, so two rows of one measure group."""
+    return " ".join(re.findall(r"[a-z][a-z]+", _NOISE.sub(" ", str(measure or "")).lower()))
+
+
+def _tokens(text: object) -> set[str]:
+    return {w for w in re.findall(r"[a-z][a-z0-9]+", str(text or "").lower()) if len(w) > 2 and w not in STOP}
+
+
+def _family(unit: str) -> str:
+    """pct / x / bps / money / the unit itself: what a derived value is measured in."""
+    key = checks._norm_unit(unit)
+    if key in ("x", "ratio", "times"):
+        return "x"
+    if key in ("bps", "basis_points"):
+        return "bps"
+    return checks.unit_family(key) or key
+
+
+def operand(number: dict) -> dict | None:
+    """A cited or returned number as one operand: value in base units, with its measure, unit and period."""
+    value = _as_float(number.get("value"))
+    unit = checks._norm_unit(number.get("unit") or "")
+    if value is None or not unit:
+        return None
+    base = to_base(value, unit, _as_float(number.get("scale")) or 1.0)
+    if base is None:
+        return None
+    return {"measure": str(number.get("measure") or ""), "stem": _stem(number.get("measure")), "value": base,
+            "unit": unit, "family": _family(unit), "period": number.get("period")}
+
+
+def reply_operands(rows: list[dict]) -> list[dict]:
+    """Every number a reply row holds, as an operand (the row's measure and period travel with it)."""
+    out = []
+    for row in rows:
+        for value, unit, scale in row.get("values", ()):
+            found = operand({"measure": row.get("measure"), "value": value, "unit": unit, "scale": scale,
+                             "period": row.get("period")})
+            if found:
+                out.append(found)
+    return out
+
+
+def _period_day(period: object) -> str:
+    parsed = oracle_mod.parse_period(period)
+    if not parsed:
+        return ""
+    try:
+        return oracle_mod.to_date(parsed)
+    except (IndexError, ValueError):
+        return ""
+
+
+def _years(first: object, last: object) -> float | None:
+    start, end = _period_day(first), _period_day(last)
+    if not start or not end:
+        return None
+    return (date.fromisoformat(end) - date.fromisoformat(start)).days / 365.25
+
+
+def _levels(group: list[dict]) -> list[dict]:
+    """One measure's operands in period order (a row without a period cannot be ordered, so it is dropped)."""
+    return sorted((o for o in group if o.get("period")), key=lambda o: _period_day(o["period"]))
+
+
+def _question_period(question: str) -> tuple[str, str] | None:
+    """The fiscal period a question compares or asks about: the latest one it prints ("FY25 over FY26" -> FY26)."""
+    periods = periods_in(question)
+    if not periods:
+        return None
+    target = max(periods, key=lambda p: _period_day(p[1]))
+    if target[0] == "D":
+        closes = oracle_mod.fiscal_of(target[1])
+        return ("Q", closes[0]) if closes else None
+    return target
+
+
+def _fy_sums(levels: list[dict]) -> dict[str, dict]:
+    """F_FY_SUM: a fiscal year's four stored quarters summed, per measure (one row per quarter, first wins)."""
+    by_period: dict[str, list[dict]] = {}
+    for o in levels:
+        parsed = oracle_mod.parse_period(o["period"])
+        if parsed and parsed[0] == "Q":
+            by_period.setdefault(parsed[1], []).append(o)     # the canonical label, whatever the spelling
+    years: dict[str, list[dict]] = defaultdict(list)
+    for period, rows in by_period.items():
+        years[f"FY{period[4:]}"].append(rows[0])
+    out = {}
+    for fy, rows in years.items():
+        if len(rows) == 4 and len({o["family"] for o in rows}) == 1:
+            out[fy] = {**rows[0], "value": sum(o["value"] for o in rows), "period": fy}
+    return out
+
+
+def _span_pairs(levels: list[dict], question: str) -> list[tuple[dict, dict]]:
+    """(earlier, later) operand pairs of one measure: the question's period against the year before it."""
+    if len(levels) < 2:
+        return []
+    target = _question_period(question)
+    if not target:
+        out = []
+        for index, later in enumerate(levels):
+            for earlier in levels[:index]:
+                years = _years(earlier["period"], later["period"])
+                if years is not None and 0.9 <= years <= 1.1:
+                    out.append((earlier, later))
+        return out
+    prior = queries.prior_period(target[1])
+    later = [o for o in levels if periods_match(target, o["period"])]
+    earlier = [o for o in levels if prior and periods_match(prior, o["period"])]
+    if not later or not earlier:                     # four quarters sum to the year the question names
+        sums = _fy_sums(levels)
+        if target[0] == "FY" and target[1] in sums and prior in sums:
+            return [(sums[prior], sums[target[1]])]
+    return [(e, l) for e in earlier for l in later]
+
+
+def _loose_groups(operands: list[dict]) -> list[list[dict]]:
+    """Operands of one fiscal span together: '31 Mar 2026 (FY26)', 'FY2026' and 'FY26' are one group."""
+    out: list[list[dict]] = []
+    for o in operands:
+        for group in out:
+            if periods_match(group[0].get("period"), o.get("period")):
+                group.append(o)
+                break
+        else:
+            out.append([o])
+    return out
+
+
+def _position(measure: str, question: str) -> int | None:
+    """Where the measure's first word appears in the question (the first measure named is the numerator)."""
+    low = (question or "").lower()
+    spots = [low.find(token) for token in _tokens(measure) if low.find(token) >= 0]
+    return min(spots) if spots else None
+
+
+def _pair_numerator(period_ops: list[dict], question: str, op: str) -> tuple[dict, dict] | None:
+    """(numerator, denominator) for a share / margin / ratio written as one measure over another."""
+    if len(period_ops) < 2:
+        return None
+    score = {id(o): len(_tokens(o["measure"]) & _tokens(question)) for o in period_ops}
+    if op == "margin":
+        numerator = max(period_ops, key=lambda o: (score[id(o)], len(_tokens(o["measure"]))))
+        denominator = next((o for o in period_ops if o is not numerator and _DENOM.search(o["measure"])), None) \
+            or next((o for o in period_ops if o is not numerator), None)
+        return (numerator, denominator) if denominator else None
+    if op == "share":
+        part = max(period_ops, key=lambda o: (score[id(o)], len(_tokens(o["measure"]))))
+        rest = [o for o in period_ops if o is not part]
+        whole = next((o for o in rest if _tokens(o["measure"]) and
+                      _tokens(o["measure"]) < _tokens(part["measure"])), None) \
+            or next((o for o in rest if _DENOM.search(o["measure"])), None) or (rest[0] if rest else None)
+        return (part, whole) if whole else None
+    positions = [_position(o["measure"], question) for o in period_ops]
+    if any(p is None for p in positions):
+        # Neither measure is named in the question: only two cited numbers of one period can be read in
+        # cited order ("debt to equity" over borrowings and net worth).  More than two is ambiguous.
+        if len(period_ops) != 2:
+            return None
+        return period_ops[0], period_ops[1]
+    ordered = sorted(period_ops, key=lambda o: _position(o["measure"], question) or 0)
+    return ordered[0], ordered[1]
+
+
+def _price_count(group: list[dict]) -> tuple[dict, dict] | None:
+    """(price per share, share count) for a market cap: a price row times a share-count row."""
+    price = next((o for o in group if "per_share" in o["unit"]
+                  or re.search(r"price|close", o["measure"], re.I)), None)
+    count = next((o for o in group if o is not price and (
+        re.search(r"\bshares?\b|equity|outstanding", o["measure"], re.I) or o["family"] in ("count", "number"))),
+                 None)
+    return (price, count) if price and count else None
+
+
+def _is_direct(op: str, o: dict, asked: str) -> bool:
+    """A row whose own measure already IS the derived value (a stored ratio, or the name the call asked for)."""
+    families = _DIRECT_FAMILY.get(op)
+    if not families or o["family"] not in families:
+        return False
+    name = (o["measure"] or "").lower()
+    if not name:
+        return False
+    if asked:  # the name the call asked for, as whole words ("pe" must not match "capex")
+        words = re.findall(r"[a-z0-9]+", name)
+        want = re.findall(r"[a-z0-9]+", asked.lower())
+        if want and (any(words[i:i + len(want)] == want for i in range(len(words) - len(want) + 1))
+                     or any(want[i:i + len(words)] == words for i in range(len(want) - len(words) + 1))):
+            return True
+    pattern = _DIRECT.get(op)
+    return bool(pattern and pattern.search(name))
+
+
+def derived_values(op: str, operands: list[dict], question: str, asked: str = "") -> list[dict]:
+    """The derived values this set of numbers supports: the stored ratio it names, else the formula over it."""
+    out: list[dict] = [{"value": o["value"], "family": o["family"], "unit": o["unit"], "period": o["period"],
+                        "how": o["measure"] or asked} for o in operands if _is_direct(op, o, asked)]
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for o in operands:
+        groups[o["stem"] or o["measure"].lower()].append(o)
+    if op in ("growth", "cagr", "difference", "sum"):
+        scored = [(len(_tokens(name) & _tokens(question)), len(groups[name]), name) for name in groups]
+        scored = sorted((s for s in scored if s[0]), reverse=True)
+        names = [name for _score, _size, name in scored]
+        if not names:
+            names = [name for name, rows in groups.items() if len({str(o["period"]) for o in rows}) > 1]
+            names = names[:1] if len(names) == 1 else []
+        if op == "difference":
+            for name in names[:1]:
+                out += [{"value": o["value"], "family": o["family"], "unit": o["unit"], "period": o["period"],
+                         "how": o["measure"]} for o in _levels(groups[name])]
+        elif op == "sum":
+            for name in names[:1]:
+                group = _levels(groups[name])
+                if group and len({o["family"] for o in group}) == 1:
+                    out.append({"value": sum(o["value"] for o in group), "family": group[0]["family"],
+                                "unit": group[0]["unit"], "period": group[-1]["period"],
+                                "how": "sum of " + group[0]["stem"]})
+        else:
+            for name in names:                      # the measure the question names that supports the formula
+                pairs = _span_pairs(_levels(groups[name]), question)
+                if not pairs:
+                    continue
+                for earlier, later in pairs:
+                    if not earlier["value"] or earlier["family"] != later["family"]:
+                        continue
+                    ratio = later["value"] / earlier["value"]
+                    if op == "growth":
+                        out.append({"value": 100.0 * (ratio - 1.0), "family": "pct", "unit": "pct",
+                                    "period": later["period"], "how": f"growth of {later['stem']}"})
+                    else:
+                        years = _years(earlier["period"], later["period"])
+                        if years and years > 0 and ratio > 0:
+                            out.append({"value": 100.0 * (ratio ** (1.0 / years) - 1.0), "family": "pct",
+                                        "unit": "pct", "period": later["period"],
+                                        "how": f"cagr of {later['stem']}"})
+                break
+        return out
+    if op == "market_cap":
+        pair = _price_count(operands)
+        if pair:
+            price, count = pair
+            out.append({"value": price["value"] * count["value"], "family": "money", "unit": "inr",
+                        "period": price["period"], "how": "price x shares"})
+        return out
+    for period_ops in _loose_groups(operands):
+        pair = _pair_numerator(period_ops, question, op)
+        if not pair:
+            continue
+        numerator, denominator = pair
+        if numerator["stem"] == denominator["stem"] or not denominator["value"] \
+                or numerator["family"] != denominator["family"] or numerator["family"] in ("pct", "x"):
+            continue
+        value = numerator["value"] / denominator["value"]
+        how = f"{numerator['measure']} / {denominator['measure']}"
+        if op in ("share", "margin"):
+            out.append({"value": 100.0 * value, "family": "pct", "unit": "pct",
+                        "period": numerator["period"] or denominator["period"], "how": how})
+        else:
+            out.append({"value": value, "family": "x", "unit": "x",
+                        "period": numerator["period"] or denominator["period"], "how": how})
+    if op == "ratio" and not out:  # price over a trailing sum of one measure (the trailing PE)
+        price = next((o for o in operands if "per_share" in o["unit"]
+                      or re.search(r"price|close", o["measure"], re.I)), None)
+        others = [name for name, rows in groups.items() if len(_levels(rows)) >= 2]
+        if price and len(others) == 1:
+            group = _levels(groups[others[0]])
+            total = sum(o["value"] for o in group)
+            if total:
+                out.append({"value": price["value"] / total, "family": "x", "unit": "x",
+                            "period": price["period"], "how": f"{price['measure']} / sum({others[0]})"})
+    return out
+
+
+def same_derived(left: dict, right: dict) -> bool:
+    """Two derived values agree: same unit family, in the loop's own tolerance (bps / percent only converted)."""
+    two = {"pct": "pct", "x": "x", "bps": "bps", "money": "money"}
+    mine, theirs = left["family"], right["family"]
+    if mine == theirs == "money":
+        return _currency(left["unit"]) == _currency(right["unit"]) and close_enough(left["value"], right["value"])
+    if mine in two and theirs in two:
+        if mine == "bps" and theirs == "pct":
+            return close_enough(left["value"] / 100.0, right["value"])
+        if mine == "pct" and theirs == "bps":
+            return close_enough(left["value"], right["value"] / 100.0)
+        if mine == "x" and theirs == "pct":
+            return close_enough(100.0 * left["value"], right["value"])
+        if mine == "pct" and theirs == "x":
+            return close_enough(left["value"], 100.0 * right["value"])
+        return mine == theirs and close_enough(left["value"], right["value"])
+    return mine == theirs and close_enough(left["value"], right["value"])
+
+
+def derived_verdict(question: str, numbers: list[dict], rows: list[dict], asked: str = "") -> dict | None:
+    """Grade the answer: the derived value from the oracle's inputs against the derived value of the reply.
+
+    None when the answer is not derived; when the reply supports no derived value at all, the caller keeps the
+    cited comparison, because there was nothing to grade (``compared_on`` then says ``cited``).
+    """
+    op, why = derived_op(question, numbers)
+    if not op:
+        return None
+    oracle = []
+    for number in numbers or ():
+        found = operand(number)
+        if found:
+            oracle.append(found)
+    targets = derived_values(op, oracle, question)
+    if not targets:
+        return None
+    reply = derived_values(op, reply_operands(rows), question, asked)
+    if not reply:
+        return None
+    hit, miss = [], []
+    for target in targets:
+        found = next((r for r in reply if (not target["period"] or not r["period"]
+                                           or periods_match(target["period"], r["period"]))
+                      and same_derived(target, r)), None)
+        (hit if found else miss).append((target, found))
+    return {"op": op, "why": why, "class": "match" if not miss else "mismatch" if not hit else "partial",
+            "hit": hit, "miss": miss, "returned": reply}
+
+
+def derived_text(verdict: dict | None) -> str:
+    """The derived values side by side, for the report: the oracle's and the reply's."""
+    if not verdict:
+        return ""
+    bits = []
+    for found, rows in ((True, verdict["hit"]), (False, verdict["miss"])):
+        for target, reply in rows:
+            mine = f"{target['value']:.6g} {target['family']} [{target['period'] or ''}]"
+            theirs = f"{reply['value']:.6g} {reply['family']}" if reply else "not in the reply"
+            bits.append(f"{verdict['op']} {target['how']}: oracle {mine} vs reply {theirs}"
+                        + ("" if found else " (!)"))
+    return "; ".join(bits)[:400]
+
+
 # --- comparison and report --------------------------------------------------------------------------
-def classify(tool: str, reply: dict | None, numbers: list[dict], passed: bool) -> dict:
-    """The result class, the numbers found, the ones missing, and the row that carries the answer."""
+def classify(tool: str, reply: dict | None, numbers: list[dict], passed: bool, question: str = "",
+             asked: str = "") -> dict:
+    """The result class, the numbers found, the ones missing, and the row that carries the answer.
+
+    ``class`` is the answer grade: for a derived answer (growth, share, margin, ratio, difference, sum, CAGR) it
+    compares the derived value on both sides; ``cited_class`` always keeps the old cited-number comparison.
+    """
     if reply is None:
-        return {"class": "no_tool", "hit": [], "miss": [], "row": None, "rows": []}
+        return {"class": "no_tool", "cited_class": "no_tool", "compared_on": "", "hit": [], "miss": [],
+                "row": None, "rows": [], "derived": ""}
     rows = reply_rows(tool, reply)
     answer = {"rows": rows, "row": rows[0] if rows else None}
     if not rows:
-        return {"class": "empty", "hit": [], "miss": [], **answer}
+        return {"class": "empty", "cited_class": "empty", "compared_on": "", "hit": [], "miss": [], **answer,
+                "derived": ""}
     if not passed:
-        return {"class": "answered_no_oracle", "hit": [], "miss": [], **answer}
+        return {"class": "answered_no_oracle", "cited_class": "answered_no_oracle", "compared_on": "",
+                "hit": [], "miss": [], **answer, "derived": ""}
     if not numbers:
-        return {"class": "match", "hit": [], "miss": [], **answer}  # a text answer: the call returned rows
+        return {"class": "match", "cited_class": "match", "compared_on": "", "hit": [], "miss": [], **answer,
+                "derived": ""}  # a text answer: the call returned rows
+    cited = _cited_verdict(rows, numbers)
+    derived = derived_verdict(question, numbers, rows, asked)
+    if derived:  # the lookup returns the ratio, or the inputs of it: grade the derived value
+        return {"class": derived["class"], "cited_class": cited["class"], "compared_on": "derived",
+                "hit": cited["hit"], "miss": cited["miss"], "derived": derived_text(derived),
+                "row": cited["row"] or answer["row"], "rows": rows}
+    return {"class": cited["class"], "cited_class": cited["class"], "compared_on": "cited", **cited, **answer,
+            "derived": ""}
+
+
+def _cited_verdict(rows: list[dict], numbers: list[dict]) -> dict:
+    """The old comparison: every oracle number must occur in a reply row of the same period."""
     hit, miss = [], []
     for number in numbers:
         value = _as_float(number.get("value"))
         row = find_number(value, number, rows) if value is not None else None
         (hit if row else miss).append((number, row))
     if not hit:
-        return {"class": "mismatch", "hit": [], "miss": [n for n, _ in miss], **answer}
+        return {"class": "mismatch", "hit": [], "miss": [n for n, _ in miss], "row": None}
     if miss:
         return {"class": "partial", "hit": [n for n, _ in hit], "miss": [n for n, _ in miss],
-                "row": hit[0][1] or answer["row"], "rows": rows}
-    return {"class": "match", "hit": [n for n, _ in hit], "miss": [], "row": hit[0][1] or answer["row"],
-            "rows": rows}
+                "row": hit[0][1]}
+    return {"class": "match", "hit": [n for n, _ in hit], "miss": [], "row": hit[0][1]}
 
 
 def numbers_text(numbers: list[dict]) -> str:
@@ -697,6 +1173,39 @@ def rows_text(rows: list[dict], n: int = 4) -> str:
     return " | ".join(b for b in bits if b)
 
 
+_RESULTS_AFTER = re.compile(r"(?:sessions?|days?|trading day) after|after (?:its |the )?(?:q[1-4] )?(?:fy\d\d )?results",
+                            re.I)
+
+
+def results_day(p3, question: dict, as_of: str) -> str | None:
+    """The results filing date for a question about the sessions after results that prints no date.
+
+    Read from ``pilot3_docs`` (the results filing's ``known_at``) -- T-049 F, HINDALCO085.  When the question
+    names a fiscal period, only a results filing after that period end and within 75 days counts (a listed
+    company files within 45 days), so a later quarter's board meeting cannot stand in for it.
+    """
+    text = str(question.get("question") or "")
+    if dates_in(text) or not _RESULTS_AFTER.search(text):
+        return None
+    symbol = str(question.get("symbol") or "")
+    if not symbol:
+        return None
+    try:
+        reply = p3.docs(symbol, doc_type="results", as_of=as_of, limit=8)
+    except Exception:  # noqa: BLE001 -- an unresolvable date is not a crash
+        return None
+    ends = [end for end in (_period_day(p) for p in periods_in(text)) if end]
+    for row in reply.get("rows") or ():
+        day = str((row.get("provenance") or {}).get("known_at") or row.get("filing_date") or "")[:10]
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+            continue
+        if ends and not any(end < day <= (date.fromisoformat(end) + timedelta(days=75)).isoformat()
+                            for end in ends):
+            continue
+        return day
+    return None
+
+
 def evaluate(db: Path, sandbox: Path = SANDBOXES, as_of: str = AS_OF,
              symbols: tuple = SYMBOLS) -> dict:
     """Every question: its one mapped call, the comparison with the oracle, and the summary counts."""
@@ -711,7 +1220,8 @@ def evaluate(db: Path, sandbox: Path = SANDBOXES, as_of: str = AS_OF,
                                               "kind": "", "as_of": as_of}
             answer = answers.get(qid) or {"status": "", "numbers": [], "symbol": question.get("symbol")}
             numbers = answer.get("numbers") or []
-            mapping = plan(question, numbers, vocab, str(question.get("as_of") or as_of))
+            when = str(question.get("as_of") or as_of)
+            mapping = plan(question, numbers, vocab, when, results_day(p3, question, when))
             reply, error = None, ""
             if mapping:
                 fn = getattr(p3, TOOL_CALL[mapping["tool"]])
@@ -720,17 +1230,23 @@ def evaluate(db: Path, sandbox: Path = SANDBOXES, as_of: str = AS_OF,
                 except Exception as exc:  # noqa: BLE001 -- a failed call is a result, never a crash
                     error = f"{type(exc).__name__}: {str(exc)[:200]}"
                     errors += 1
+            asked = ""
+            if mapping:
+                asked = str(mapping["args"].get("ratio") or mapping["args"].get("kpi")
+                            or mapping["args"].get("measure") or "")
             passed = answer.get("status") == PASSED
-            verdict = classify(mapping["tool"], reply, numbers, passed) if mapping else classify("", None,
-                                                                                               numbers, passed)
+            verdict = classify(mapping["tool"], reply, numbers, passed, str(question.get("question") or ""),
+                               asked) if mapping else classify("", None, numbers, passed)
             records.append({
                 "qid": qid, "company": str(question.get("symbol") or answer.get("symbol") or ""),
                 "kind": question.get("kind") or "", "question": question.get("question") or "",
                 "tool": mapping["tool"] if mapping else "", "arguments": json.dumps(mapping["args"], default=str)
                 if mapping else "", "why": mapping["why"] if mapping else "no rule matched the question",
-                "class": verdict["class"], "oracle_status": answer.get("status") or "",
+                "class": verdict["class"], "compared_on": verdict.get("compared_on") or "",
+                "cited_class": verdict.get("cited_class") or "", "oracle_status": answer.get("status") or "",
                 "oracle_numbers": numbers_text(numbers),
                 "returned_numbers": rows_text(verdict["rows"]) if verdict["rows"] else "",
+                "derived_numbers": verdict.get("derived") or "",
                 "provenance": provenance_of(verdict["row"]), "error": error,
             })
     summary = summarise(records)
@@ -763,6 +1279,7 @@ def summarise(records: list[dict]) -> dict:
         reason_qids.setdefault(reason, record["qid"])
     return {"by_company": {k: dict(v) for k, v in by_company.items()},
             "by_tool": {k: dict(v) for k, v in by_tool.items()},
+            "by_compared_on": dict(Counter(record.get("compared_on") or "none" for record in records)),
             "reasons": [(reason, count, reason_qids[reason]) for reason, count in reasons.most_common(10)]}
 
 
@@ -782,6 +1299,9 @@ def render(summary: dict) -> str:
         lines.append(f"{tool:<20}" + "".join(f"{counts.get(name, 0):>13}" for name in CLASSES) +
                      f"{sum(counts.values()):>7}")
     lines.append("")
+    counts = summary.get("by_compared_on") or {}
+    lines.append(f"  compared_on: derived {counts.get('derived', 0)}, cited {counts.get('cited', 0)}"
+                 f" (cited_class keeps the cited-number comparison for every row)")
     for reason, count, qid in summary.get("reasons") or ():
         lines.append(f"  {count:>3} x {reason}  (e.g. {qid})")
     if summary.get("errors"):
@@ -798,11 +1318,12 @@ def write_xlsx(path: Path, records: list[dict], summary: dict) -> Path:
     wb = Workbook()
     sheet = wb.active or wb.create_sheet("answers")
     sheet.title = "answers"
-    columns = ("qid", "company", "kind", "question", "tool", "arguments", "class", "oracle_status",
-               "oracle_numbers", "returned_numbers", "provenance", "why", "error")
+    columns = ("qid", "company", "kind", "question", "tool", "arguments", "class", "compared_on", "cited_class",
+               "oracle_status", "oracle_numbers", "returned_numbers", "derived_numbers", "provenance", "why",
+               "error")
     widths = {"qid": 15, "company": 11, "kind": 9, "question": 60, "tool": 18, "arguments": 46, "class": 16,
-              "oracle_status": 11, "oracle_numbers": 40, "returned_numbers": 40, "provenance": 46, "why": 34,
-              "error": 30}
+              "compared_on": 11, "cited_class": 12, "oracle_status": 11, "oracle_numbers": 40,
+              "returned_numbers": 40, "derived_numbers": 50, "provenance": 46, "why": 34, "error": 30}
     sheet.append([name.replace("_", " ") for name in columns])
     for record in records:
         sheet.append([record.get(name) or "" for name in columns])
@@ -838,9 +1359,19 @@ def write_xlsx(path: Path, records: list[dict], summary: dict) -> Path:
     for tool, counts in sorted(summary["by_tool"].items(), key=lambda kv: -sum(kv[1].values())):
         summary_sheet.append([tool, *[counts.get(name, 0) for name in CLASSES], sum(counts.values())])
     summary_sheet.append([])
+    summary_sheet.append(["how the answer was graded", "questions"])
+    for name, count in sorted((summary.get("by_compared_on") or {}).items()):
+        summary_sheet.append([name, count])
+    summary_sheet.append([])
     summary_sheet.append(["what each class means"])
     for name in CLASSES:
         summary_sheet.append([name, CLASS_HELP[name]])
+    summary_sheet.append([])
+    summary_sheet.append(["column", "meaning"])
+    summary_sheet.append(["compared_on", "derived = the class compares the computed answer on both sides; "
+                                        "cited = the class compares the oracle's cited numbers (the old check)"])
+    summary_sheet.append(["cited_class", "the cited-number comparison for every row, kept beside the answer "
+                                         "grade so nothing is hidden"])
     summary_sheet.append([])
     summary_sheet.append(["most common reasons for no_tool / empty", "count", "example qid"])
     for reason, count, qid in summary.get("reasons") or ():
@@ -909,18 +1440,21 @@ as of {esc(summary['as_of'])} &middot; {summary['questions']} questions &middot;
         parts.append(f"<tr><td>{esc(reason)}</td><td>{count}</td><td>{esc(qid)}</td></tr>")
     parts.append("</table>")
 
-    parts.append("<h2>Every question</h2><table><tr><th>qid</th><th>class</th><th>tool</th>"
-                 "<th>arguments</th><th>oracle numbers</th><th>returned numbers</th><th>provenance</th></tr>")
+    parts.append("<h2>Every question</h2><table><tr><th>qid</th><th>class</th><th>compared on</th>"
+                 "<th>cited class</th><th>tool</th><th>arguments</th><th>oracle numbers</th>"
+                 "<th>returned numbers</th><th>derived (oracle vs reply)</th><th>provenance</th></tr>")
     for record in records:
         colour = _COLOURS.get(record["class"], "#ffffff")
         parts.append(
             f'<tr class="q"><td>{esc(record["qid"])}</td>'
             f'<td><span class="sw" style="background:{colour}"></span>{esc(record["class"])}</td>'
+            f'<td>{esc(record["compared_on"] or "")}</td><td>{esc(record["cited_class"] or "")}</td>'
             f'<td>{esc(record["tool"])}</td><td class="n">{esc(record["arguments"])}</td>'
             f'<td class="n">{esc(record["oracle_numbers"] or "none")}</td>'
             f'<td class="n">{esc(record["returned_numbers"] or record["error"] or "")}</td>'
+            f'<td class="n">{esc(record.get("derived_numbers") or "")}</td>'
             f'<td>{esc(record["provenance"])}</td></tr>')
-        parts.append(f'<tr class="q"><td></td><td colspan="6" style="color:#444">'
+        parts.append(f'<tr class="q"><td></td><td colspan="9" style="color:#444">'
                      f'{esc(record["question"])}</td></tr>')
     parts.append("</table></body></html>")
     path.write_text("".join(parts), encoding="utf-8")
