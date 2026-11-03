@@ -4,7 +4,13 @@ Unit tests use tiny synthetic tables; the integration test builds the real datab
 stores and sandboxes and is skipped when they are not on this machine."""
 from __future__ import annotations
 
+import gzip
+import os
+import shutil
 import sqlite3
+import tempfile
+import uuid
+from pathlib import Path
 
 import pytest
 
@@ -285,3 +291,100 @@ def test_integration_part_d_sources_and_definitions(built):
     assert conn.execute("SELECT COUNT(*) FROM fin_quarter_xbrl WHERE symbol='BAJFINANCE' AND line_item='net_interest_income'").fetchone()[0] > 20
     assert conn.execute("SELECT COUNT(*) FROM dividend_event").fetchone()[0] > 15
     conn.close()
+
+
+# --- T-051: holding categories, book value / ROCE at two year ends, Bajaj Finance NIM -----------------
+
+def test_holding_category_mapping_covers_promoter_mf_and_fpi():
+    assert stores.MEMBERS["ShareholdingOfPromoterAndPromoterGroup"] == "promoter"
+    assert stores.MEMBERS["MutualFundsOrUti"] == stores.MEMBERS["MutualFundsOrUTI"] == "mutual_funds"
+    for member in ("ForeignPortfolioInvestor", "InstitutionsForeignPortfolioInvestorCatergoryOne",
+                   "InstitutionsForeignPortfolioInvestorCategoryTwo"):
+        assert stores.MEMBERS[member].startswith("fpi"), member
+
+
+def test_shp_rows_under_an_older_isin_are_copied_to_the_symbol(monkeypatch):
+    # The file is filed under the previous ISIN; symbol_isin_history says the symbol held it.
+    # The harness's .tmp folder denies nested mkdir in this sandbox; its private TEMP folder does not.
+    folder = Path(os.environ.get("TEMP") or tempfile.gettempdir()) / f"pilot3_shp_{uuid.uuid4().hex[:8]}"
+    folder.mkdir(parents=True)
+    try:
+        with gzip.open(folder / "HINDALCO_01062025_WEB.xml.gz", "wb") as fh:
+            fh.write(_shp_xml(False).replace(b"INE000A01010", b"IN9038A01010"))
+        index = [{"file": "HINDALCO_01062025_WEB.xml", "isin": "IN9038A01010", "quarter_end": "2025-06-30",
+                  "promoter_pct": 60.0, "public_pct": 40.0, "record_id": "1", "revised": None,
+                  "broadcast_at": "2025-07-01T10:00:00", "submission_date": "2025-06-30"}]
+        monkeypatch.setattr(stores, "SHP_XBRL", folder)
+        monkeypatch.setattr(stores, "fetch", lambda symbol, table: index if table == "shp_index" else [])
+        monkeypatch.setattr(stores, "all_isins", lambda symbol: ("INE038A01020", "IN9038A01010"))
+        conn = _conn()
+        stores.build_shp(conn)
+        rows = dict(conn.execute("SELECT category, pct FROM shp_category WHERE isin='IN9038A01010'"))
+        assert rows["promoter"] == pytest.approx(60.0)
+        assert rows["mutual_funds"] == pytest.approx(10.0)  # the SHP XBRL category, copied for the old ISIN
+        assert "fpi_total" not in rows                      # nothing to derive: no FPI member in this file
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
+def _annual(conn, symbol, fy, end, ptype, item, value, statement="BS", known="2026-05-16T10:00:00"):
+    conn.execute(
+        "INSERT INTO fin_annual_line(symbol,isin,fiscal_year,period_end,basis,statement,line_item,caption,value,"
+        "unit,scale,known_at,is_reported,is_derived,definition,period_type) "
+        "VALUES(?,?,?,?,'consolidated',?,?,'x',?,'inr',1,?,1,1,'xbrl_derived',?)",
+        (symbol, "I", fy, end, statement, item, value, known, ptype))
+
+
+def _quarter(conn, symbol, end, item, value):
+    conn.execute(
+        "INSERT INTO fin_quarter_xbrl(symbol,isin,period_start,period_end,fiscal_period,basis,audited,statement,"
+        "line_item,xbrl_tag,value,unit,scale,known_at,is_reported) "
+        "VALUES(?,?,?,?,?,'consolidated','A','P&L',?,?,?,'inr',1,?,1)",
+        (symbol, "I", end[:7] + "-01", end, stores.fiscal_period(end), item, item, value, end + "T10:00:00"))
+
+
+def test_book_value_per_share_and_roce_for_fy25_and_fy26():
+    conn = _conn()
+    for end, ebit in (("2024-06-30", 10.0), ("2024-09-30", 10.0), ("2024-12-31", 10.0), ("2025-03-31", 10.0),
+                      ("2025-06-30", 12.0), ("2025-09-30", 12.0), ("2025-12-31", 12.0), ("2026-03-31", 12.0)):
+        _quarter(conn, "T", end, "pbt_before_exceptional", ebit - 20.0)
+        _quarter(conn, "T", end, "finance_cost", 20.0)     # EBIT = pbt + finance cost
+    for fy, end, nw, ce in (("FY25", "2025-03-31", 1000.0, 2000.0), ("FY26", "2026-03-31", 1200.0, 2400.0)):
+        _annual(conn, "T", fy, end, "FY", "net_worth", nw)
+        _annual(conn, "T", fy, end, "FY", "capital_employed", ce)
+        conn.execute("INSERT INTO share_capital(symbol,isin,as_of_date,basis,event,ratio,shares_outstanding,"
+                     "known_at,unit) VALUES('T','I',?,'consolidated',NULL,NULL,100.0,?,'shares')",
+                     (end, end + "T10:00:00"))
+    out: list = []
+    ratios._balance_ratios(conn, "T", "I", out)
+    got = {(r[2], r[7]): r for r in out}
+    assert got[("FY25", "book_value_per_share")][8] == pytest.approx(10.0)   # 1000 / 100 shares
+    assert got[("FY26", "book_value_per_share")][8] == pytest.approx(12.0)   # 1200 / 100 shares
+    assert got[("FY25", "roce")][8] == pytest.approx(2.0)                    # 100 * 40 / 2000
+    assert got[("FY26", "roce")][8] == pytest.approx(2.0)                    # 100 * 48 / 2400
+    assert got[("FY26", "book_value_per_share")][11] == "F_BVPS" and got[("FY26", "roce")][11] == "F_ROCE"
+    assert got[("FY26", "roce")][15] == 1                                    # is_derived
+
+
+def test_bajaj_nim_is_annualised_net_interest_income_over_the_average_loan_book():
+    conn = _conn()
+    for end, value in (("2024-06-30", 20.0), ("2024-09-30", 20.0), ("2024-12-31", 22.0), ("2025-03-31", 22.0),
+                       ("2025-06-30", 25.0), ("2025-09-30", 25.0), ("2025-12-31", 30.0), ("2026-03-31", 30.0)):
+        _quarter(conn, "BAJFINANCE", end, "net_interest_income", value)
+    for fy, end, ptype, loans in (("FY24", "2024-03-31", "FY", 800.0), ("FY25", "2025-03-31", "FY", 1000.0),
+                                  ("H1FY26", "2025-09-30", "H1", 1100.0), ("FY26", "2026-03-31", "FY", 1200.0)):
+        _annual(conn, "BAJFINANCE", fy, end, ptype, "loans", loans)
+    out: list = []
+    ratios._balance_ratios(conn, "BAJFINANCE", "I", out)
+    got = {(r[2], r[7]): r for r in out if r[7] == "nim_pct"}
+    assert got[("FY25", "nim_pct")][8] == pytest.approx(100 * 84 / 900)          # 84 NII / avg(800, 1000)
+    assert got[("FY26", "nim_pct")][8] == pytest.approx(100 * 110 / 1100)        # 110 NII / avg(1000, 1200)
+    assert got[("H1FY26", "nim_pct")][8] == pytest.approx(100 * 2 * 50 / 1050)   # H1 annualised x2
+    row = got[("FY26", "nim_pct")]
+    assert row[11] == "F_NIM" and row[15] == 1
+    assert "net_interest_income" in row[12] and ":loans#" in row[12]             # every input named
+    assert row[13] >= "2026-03-31"
+    nim = next(f for f in ratios.FORMULAS if f[1] == "nim_pct")
+    assert nim[0] == "F_NIM" and nim[3] == "net_interest_income,loans" and nim[4] == "pct"
+    # a company-stated NIM is never merged into the derived row: kpi_series stays its own table
+    assert conn.execute("SELECT COUNT(*) FROM sqlite_master WHERE name='kpi_series'").fetchone()[0] == 0

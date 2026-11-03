@@ -39,6 +39,11 @@ FORMULAS = [
     ("F_ND_EBITDA", "net_debt_to_ebitda", "net_debt / ltm_ebitda", "net_debt,ebitda", "x",
      "XBRL-derived net debt = borrowings - cash - other bank balances - current investments; EBITDA of the 4 quarters to the date"),
     ("F_DE", "debt_to_equity", "total_borrowings / net_worth", "total_borrowings,net_worth", "x", "borrowings incl. deposits for a lender"),
+    ("F_NIM", "nim_pct", "100 * annualised_net_interest_income / average(opening_book, closing_book)",
+     "net_interest_income,loans", "pct",
+     "Lender NIM (T-051, Bajaj Finance): the period's quarterly net interest income summed and annualised "
+     "(x4/n quarters) over the average of the balance-sheet loan book at the period start and end. A NIM the "
+     "company states itself stays in kpi_series.nim_pct as its own row, never merged into this one"),
     ("F_ROCE", "roce", "100 * ltm_ebit / capital_employed", "ebit,capital_employed", "pct",
      "capital employed = total assets - current liabilities at the period end (closing, not average)"),
     ("F_ROE", "roe", "100 * ltm_pat / net_worth", "pat,net_worth", "pct", "closing net worth (equity attributable to owners)"),
@@ -248,6 +253,9 @@ def _balance_ratios(conn: sqlite3.Connection, symbol: str, isin: str, out: list)
             "WHERE symbol=? AND definition IN ('xbrl_reported','xbrl_derived') AND period_type IN ('FY','H1') "
             "AND statement IN ('BS','P&L') ORDER BY known_at", (symbol,)):
         sheets[(basis, fy, end, ptype)][item] = (value, known, rowid)
+    # the lender's book at each sheet date, so a NIM can average the period's opening and closing loan book
+    books = {(basis, end): (bs["loans"][0], bs["loans"][1], bs["loans"][2], fy)
+             for (basis, fy, end, ptype), bs in sheets.items() if "loans" in bs}
     for (basis, fy, end, ptype), bs in sorted(sheets.items()):
         qends = _qends(end)
         ltm: dict = {}
@@ -277,6 +285,18 @@ def _balance_ratios(conn: sqlite3.Connection, symbol: str, isin: str, out: list)
             put("roe", 100.0 * ltm["pat"][0] / nw[0], "pct", "F_ROE", ("net_worth",), ("pat",))
         if "total_assets" in bs and "pat" in ltm:
             put("roa", 100.0 * ltm["pat"][0] / bs["total_assets"][0], "pct", "F_ROA", ("total_assets",), ("pat",))
+        if symbol in LENDERS and "loans" in bs:
+            # NIM: the period's NII annualised over the average of the opening and closing loan book.
+            opening = books.get((basis, (date.fromisoformat(start) - timedelta(days=1)).isoformat()))
+            qtrs = [e for e in qends if start < e <= end]
+            nii = [quarters.get((basis, e), {}).get("net_interest_income") for e in qtrs]
+            if opening and nii and all(nii) and opening[0] and opening[0] + bs["loans"][0] > 0:
+                nim = (100.0 * (4.0 / len(nii)) * sum(n[0] for n in nii)
+                       / ((opening[0] + bs["loans"][0]) / 2.0))
+                refs = ([f"fq:{symbol}:{n[2]}:{basis}:net_interest_income" for n in nii]
+                        + [f"fa:{symbol}:{opening[3]}:{basis}:loans#{opening[2]}", ref("loans")])
+                _put(out, symbol, isin, fy, ptype, start, end, basis, "nim_pct", nim, "pct", "F_NIM", refs,
+                     max([n[1] for n in nii] + [opening[1], bs["loans"][1]]))
         if symbol in LENDERS:
             continue
         if "net_debt" in bs and "ebitda" in ltm and ltm["ebitda"][0] > 0:

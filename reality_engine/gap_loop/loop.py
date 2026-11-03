@@ -183,37 +183,53 @@ def reanswer_units(questions: list[dict], statuses: dict[str, dict], sandbox: Pa
     return answer_units([q for q in questions if q["id"] in chosen], sandbox, stage="reanswer")
 
 
+def bank_questions(sandbox: Path) -> dict:
+    """The company's question bank by qid; empty when the bank cannot be read (an unknown qid is then rejected)."""
+    try:
+        return {question["id"]: question for question in load_questions(sandbox)}
+    except (OSError, ValueError, KeyError, TypeError, store.SandboxViolation):
+        return {}
+
+
 def accept_answers(unit: Unit, payload, lookup, as_of: str, row_lookup=None, tier: int = 1):
     """Accept one answer report.  A malformed report fails the unit; a failed number only its row.
 
     The rows are rewritten here: a row whose number fails a check keeps the model's answer text but
     is stored as ``unverified`` with the check's reason and gap type ``unverified``, so it is not
     counted as answered and the next round re-answers or fixes it.
+
+    A qid the report invents is rejected as malformed (T-051: the T-048 run stored HINDALCO029b, a
+    qid in no bank).  A qid in the company's bank but not this unit is a real question and is checked.
     """
     if not isinstance(payload, list):
         reason = "payload is not a JSON list"
         return False, reason, {"invalid": {q["id"]: f"{q['id']}: {reason}" for q in unit.items}}
     rows = {row.get("qid"): row for row in payload if isinstance(row, dict)}
+    unit_ids = {question["id"] for question in unit.items}
+    known = {question["id"]: question for question in unit.items}
+    for qid, question in bank_questions(unit.sandbox).items():
+        known.setdefault(qid, question)
     invalid: dict[str, str] = {}
     unverified: dict[str, str] = {}
     answered = 0
-    for question in unit.items:
-        qid = question["id"]
-        row = rows.get(qid)
-        if row is None:
-            invalid[qid] = f"{qid}: no row in the report"
+    for qid in sorted(unit_ids - set(rows)):
+        invalid[qid] = f"{qid}: no row in the report"
+    for qid, row in rows.items():
+        question = known.get(qid)
+        if question is None:
+            invalid[str(qid)] = f"{qid}: not a question in the unit or the bank"
             continue
         malformed, reasons = checks.check_answer_row(row, lookup, question.get("as_of") or as_of,
                                                      row_lookup)
         if malformed:
-            invalid[qid] = f"{qid}: {malformed}"
+            invalid[str(qid)] = f"{qid}: {malformed}"
             continue
         if reasons:
             row["status"] = "unverified"
             row["gap_type"] = "unverified"
             row["reason"] = "; ".join(reasons)
-            unverified[qid] = f"{qid}: {'; '.join(reasons)}"
-        if row.get("status") == "answered":
+            unverified[str(qid)] = f"{qid}: {'; '.join(reasons)}"
+        if row.get("status") == "answered" and qid in unit_ids:
             answered += 1
     if invalid:
         return False, "; ".join(invalid.values()), {"invalid": invalid, "unverified": unverified}
