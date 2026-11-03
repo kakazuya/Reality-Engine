@@ -22,6 +22,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-043 | OPEN | P1 | Worker review log: tool calls, thinking and output tokens, job type, time, and Claude's review of prompt, permissions and scope, for every dsh worker and Claude session | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-044 | OPEN | P1 | Catch finished, stalled and failed jobs in code, at any effort level: list_workers shows the newest and running first, and a status command feeds a hook on every prompt | accept: python -m pytest reality_engine/tests/test_job_watch.py -q | from: Shivam 2 Nov | opened 2026-11-02
 - T-047 | OPEN | P3 | Session titles: keep the sv/neo prefix, let each session choose the rest | accept: A new session started by claude-neo or claude-sv with no task shows <prefix>-<title chosen by that session> | from: Shivam, 2 Nov | opened 2026-11-02
+- T-050 | OPEN | P1 | Claude must act on every worker or job end: job_watch wait blocks until a watched job finishes, fails or stalls (run in background so Claude is woken); Stop hook refuses to end a turn while a job runs with no wait armed; stale entries can be cleared | accept: python -m pytest reality_engine/tests/test_job_watch.py -q | from: Shivam, 3 Nov | opened 2026-11-03
 
 ## Data
 - T-021 | LOOKING | P3 | Check if still open: PIB phase 2, Hindi, Urdu and regional offices | accept: Shivam | from: tasks/PIPELINE_TODO.md A2 | opened 2026-11-02
@@ -38,6 +39,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-029 | OPEN | P3 | When OCR resumes after workspace step 4: decide a second Haiku baseline on about 100 fresh pages, batches of 8; first run: 100 pages, 995,856 tokens | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-034 | DOING Wolf | P1 | Pilot: page text for the thin BAJFINANCE, HINDALCO and KEC documents, by HP TextRecognizer | accept: Shivam | from: PROTOTYPE3 grade change 2 | opened 2026-11-02
 - T-040 | OPEN | P1 | Pilot: OCR every page of the 3 companies and mark each extracted number confirmed or disputed against the text layer | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
+- T-052 | OPEN | P1 | pilot3 OCR run to completion over every needs_ocr page (sandbox and pages.db), then rebuild pilot3.db with the OCR pages | accept: Shivam | from: Shivam, 3 Nov | opened 2026-11-03
 
 ## Schema and question map
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02
@@ -47,6 +49,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-038 | OPEN | P1 | Wire contract-passing extract rows into the fact view; answer narrative questions with retrieved quoted passages, no model | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
 - T-048 | OPEN | P1 | One-company gap loop: 100 sector-fit questions for KEC, Haiku sessions under 100k fill gaps by extraction or computation in a sandbox, Opus manages; replicate to 3, then 60 | accept: Shivam | from: Shivam, 2 Nov | opened 2026-11-02
 - T-049 | OPEN | P1 | Script extraction for the 3 pilot companies: rule-based scripts (no LLM; AI OCR only for image pages within budget) read all raw documents of KEC, BAJFINANCE, HINDALCO into the schema of tasks/arch_v4/T048_FINDINGS_AND_SCHEMA_2026-11-03.md in SQLite/DuckDB; answers only via MCP over that db; target the pilot's AI answer quality | accept: Shivam | from: Shivam, 3 Nov | opened 2026-11-03
+- T-051 | OPEN | P1 | AI-loop defects: accept rejects qids not in the bank and the stray HINDALCO029b row is removed; promoter, MF and FPI holding, Bajaj FY26 NIM, book value per share and ROCE answered from pilot3.db, not absent | accept: python -m pytest reality_engine/tests/test_gap_loop.py reality_engine/tests/test_pilot3_core.py -q | from: Shivam, 3 Nov | opened 2026-11-03
 
 ## Bank
 - T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02

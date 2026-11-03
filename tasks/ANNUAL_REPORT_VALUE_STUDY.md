@@ -80,7 +80,7 @@ ORDER BY m.sector, m.company_name;
 ```
 
 Text extraction: `import pymupdf; d = pymupdf.open(path); d[i].get_text()` (0-based pages). Write each part's text to
-`tasks/ar_study/text/<symbol>_<fy>_p<start>-<end>.txt` so agents read files, not the PDF. On Windows run Python via
+`tasks/ar_study/text/<symbol>_<fy>_p<start>-<end>.txt` so agents read files, not the PDF (the 32 extracts were deleted 3 Nov 2026, study finished; regenerate from the PDFs if needed). On Windows run Python via
 the Bash tool or the full path `C:\Users\warri\AppData\Local\Programs\Python\Python314\python.exe`; bare `python` in
 PowerShell hits a broken `C:\Windows\System32\python` stub.
 

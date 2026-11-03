@@ -6,7 +6,7 @@ case on Great Eastern Shipping and to find out why it was missed (answer in §5)
 ## 1. What was read
 
 - **The Great Eastern Shipping Co. (GESHIP)**, FY24 annual report, filed 2024-07-08. Downloaded from the BSE link
-  already in our index to `src/GESHIP_FY24_AR.pdf` (that PDF is not in this repo; the section texts are in `tasks/ar_study/text/`). The DB and the ingestion job were not touched.
+  already in our index to `src/GESHIP_FY24_AR.pdf` (that PDF is not in this repo; the section texts were in `tasks/ar_study/text/`, deleted 3 Nov 2026). The DB and the ingestion job were not touched.
   171 PDF pages (many are two-page spreads; printed page numbers run to about 300), 819k characters, 12 near-empty
   pages.
 - Compared against the Q3 FY24 call (2024-01-31), the Q4 FY24 call (2024-05-10) and both decks (from
