@@ -34,7 +34,7 @@ Open tickets are in `tasks/TASKS.md`; the session card is `python -m reality_eng
 
 Finish one step per session. Commit it and write the next action into `tasks/STATE.md`. Write the wrap-up at 400k tokens; the session limit is 450k. Scripts print summaries; details go in files.
 
-Reference, only when needed: `docs/PILOT3_BLUEPRINT.md` (pilot schema, methods, results; read before schema or extractor work), `docs/DEVELOPER_GUIDE.md`, `docs/RAW_DATA_FAMILIES.md`, `machines/README.md`, `tasks/DATA_INVENTORY.md`.
+Reference, only when needed: `docs/PILOT3_BLUEPRINT.md` (pilot schema, methods, results; read before schema or extractor work), `docs/DB_BUILD_GUIDELINES.md` (build rules), `docs/DEVELOPER_GUIDE.md`, `docs/RAW_DATA_FAMILIES.md`, `machines/README.md`, `tasks/DATA_INVENTORY.md`.
 
 A new rule here needs a repeat failure and a check that enforces it. Once a check enforces a rule, shorten its text here.
 

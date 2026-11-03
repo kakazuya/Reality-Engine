@@ -2,7 +2,7 @@
 
 The one persistent record of how the pilot database was designed, tested and improved, and what the tests found.
 Read this before changing the schema, an extractor or the scale-up plan. It keeps the method and the results;
-the code's own detail stays in `docs/DEVELOPER_GUIDE.md` sections O to O8, and the live step in `tasks/STATE.md`.
+the code's own detail stays in `docs/DEVELOPER_GUIDE.md` sections O to O8, and the live step in `tasks/STATE.md`; the rules derived from it are in `docs/DB_BUILD_GUIDELINES.md`.
 Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it describes.
 
 ## 1. Goal and rules
