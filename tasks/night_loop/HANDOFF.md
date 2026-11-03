@@ -39,3 +39,4 @@
 - 4 Nov: a worker started with an existing ticket built that ticket's old task instead of the brief. Give new work its own ticket, and read the branch's file list before believing a report.
 - 4 Nov: `.tmp` is under a permission deny rule for this session; helper scripts go to `D:\RealityEngine\pilot10\scratch`.
 - 4 Nov: page dumps of decks burn context fast; loop 1 reached 400k before its work ended. Search for terms and print short hits instead.
+- 4 Nov 04:50 IST, supersedes the raw figures above: fetch finished, 1,149 ok, 2 errors, 11 no attachment, 2 pending; table `D:\RealityEngine\pilot10\logs\coverage_final.txt`.

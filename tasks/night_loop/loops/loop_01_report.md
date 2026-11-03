@@ -120,3 +120,7 @@ Q-check: run with `--vocab tasks/night_loop/questions/sector_vocab.json` from th
   folder was denied and not retried.
 - No hidden split or old answer run was read. No paid calls, Haiku or subagents.
 - The wrapper's hand-off note says 06:20 IST, but this machine read 04:38 at that point. All my times are this machine's clock.
+
+## Final raw state (supersedes the 04:44 figures in B; 04:50 IST)
+Fetch finished: 1,149 ok, 2 errors, 11 no attachment, 2 pending, 216 routine skipped. Full table: `D:\RealityEngine\pilot10\logs\coverage_final.txt`.
+Not fully fetched: BAJFINANCE deck 5/6 and announcements 87/88, ETERNAL announcements 57/60, HDFCBANK 119/123, KEC 82/83, MARUTI deck 4/5 and announcements 122/123, SUNPHARMA 93/96.
