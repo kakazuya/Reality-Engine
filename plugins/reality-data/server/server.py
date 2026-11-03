@@ -482,16 +482,22 @@ def pilot3_holding(symbol: str, as_of: str, quarter_end: str | None = None,
     name="pilot3_statements",
     description=(
         "Management statements from concall transcripts as exact quotes with speaker, role and call date. "
-        "topic = tag (margin, guidance, capex, order, demand, debt ...), terms = words that must all appear, "
-        "date_from/date_to on the call date, role = ceo | cfo | md | mgmt, as_of. Newest call first."
+        "topic = tag (margin, guidance, capex, order, demand, debt ...) that ranks the tagged statements first, "
+        "terms = words that must all appear, date_from/date_to on the call date, role = ceo | cfo | md | mgmt, "
+        "as_of. period (Q4FY26 / FY26) and rank_terms (the question's own words) put the statements of that "
+        "period, carrying those words, first; the newest call breaks a tie. latest=true keeps only the newest "
+        "call. topic_matched=false says no statement carries that tag (the best-matching statements are still "
+        "returned)."
     ),
     annotations=_RO,
 )
 def pilot3_statements(symbol: str, topic: str | None = None, terms: str | None = None,
                       date_from: str | None = None, date_to: str | None = None, as_of: str | None = None,
-                      limit: int = 10, role: str | None = None) -> dict[str, Any]:
+                      limit: int = 10, role: str | None = None, period: str | None = None,
+                      rank_terms: str | None = None, latest: bool = False) -> dict[str, Any]:
     return _safe(lambda: _p3.statements(symbol, topic=topic, terms=terms, date_from=date_from, date_to=date_to,
-                                        as_of=as_of, limit=limit, role=role))
+                                        as_of=as_of, limit=limit, role=role, period=period,
+                                        rank_terms=rank_terms, latest=latest))
 
 
 @server.tool(
@@ -512,15 +518,19 @@ def pilot3_docs(symbol: str, doc_type: str | None = None, date_from: str | None 
 @server.tool(
     name="pilot3_search",
     description=(
-        "Full-text search (FTS5, ranked) over the dated text of every held document page of KEC / BAJFINANCE / "
-        "HINDALCO. Returns the exact snippet around the match with document, page, filing date and known_at. "
-        "Use after the structured pilot3 tools, or when the question is about wording. as_of drops later pages."
+        "Full-text search (FTS5 bm25, ranked) over the dated text of every held document page of KEC / "
+        "BAJFINANCE / HINDALCO. Returns the exact snippet around the match with document, page, filing date "
+        "and known_at. Use after the structured pilot3 tools, or when the question is about wording. period "
+        "(Q1FY27 / FY26), date_from+date_to (filing window) and doc_type boost the pages that print the period, "
+        "were filed in the window, or are of that type. as_of drops later pages."
     ),
     annotations=_RO,
 )
 def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
-                  doc_type: str | None = None) -> dict[str, Any]:
-    return _safe(lambda: _p3.search(symbol, query, as_of=as_of, limit=limit, doc_type=doc_type))
+                  doc_type: str | None = None, period: str | None = None,
+                  date_from: str | None = None, date_to: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: _p3.search(symbol, query, as_of=as_of, limit=limit, doc_type=doc_type, period=period,
+                                    date_from=date_from, date_to=date_to))
 
 
 @server.tool(

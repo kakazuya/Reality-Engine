@@ -175,7 +175,8 @@ class AnswerCheckFixtureTests(unittest.TestCase):
         """No date in the question: the results filing's known_at anchors the four sessions."""
         record = self.records["KEC008"]
         self.assertEqual(record["tool"], "pilot3_sql")
-        self.assertIn("date >= '2026-08-07'", record["arguments"])
+        self.assertIn("date >= (SELECT MAX(date)", record["arguments"])
+        self.assertIn("2026-08-07", record["arguments"])
         self.assertEqual(record["class"], "match")
 
     def test_reports_are_written(self):
@@ -209,6 +210,9 @@ class NumberAndPeriodTests(unittest.TestCase):
         self.assertFalse(ac.periods_match("FY26", "FY25"))
         self.assertTrue(ac.periods_match("as on 31 March 2026", "FY26"))  # a March date closes the year
         self.assertTrue(ac.periods_match("Q1 FY27", "Q1FY27"))
+        self.assertFalse(ac.periods_match("Q1FY27", "FY27"))   # stored values stay strict
+        self.assertTrue(ac.periods_within("Q1FY27", "FY27"))   # a quoted sentence may name the quarter
+        self.assertFalse(ac.periods_within("Q1FY26", "FY27"))
         self.assertEqual(ac.periods_in("from FY25 to FY26"), [("FY", "FY25"), ("FY", "FY26")])
 
 
@@ -271,7 +275,32 @@ class PlanRuleTests(unittest.TestCase):
                                       "Q1 FY27 results?", "symbol": "KEC", "kind": "lookup"},
                           [], self.vocab, results_day="2026-08-07")
         self.assertEqual(mapping["tool"], "pilot3_sql")
-        self.assertIn("date >= '2026-08-07'", mapping["args"]["query"])
+        self.assertIn("date >= (SELECT MAX(date)", mapping["args"]["query"])
+        self.assertIn("2026-08-07", mapping["args"]["query"])
+
+    def test_price_on_a_market_holiday_reads_the_last_session(self):
+        """31 March 2025 and 31 March 2026 were not trading days: the query resolves each to the last session."""
+        mapping = self._plan("What was KEC's closing price on 31 March 2025 and 31 March 2026?")
+        query = mapping["args"]["query"]
+        self.assertEqual(mapping["tool"], "pilot3_sql")
+        self.assertIn("date IN (", query)
+        self.assertIn("2025-03-31", query) and self.assertIn("2026-03-31", query)
+        self.assertIn("as_traded_on", query)
+
+    def test_search_args_carry_the_period_the_window_and_the_document_type(self):
+        mapping = self._plan("List the new orders KEC announced between July and October 2026.")
+        self.assertEqual(mapping["tool"], "pilot3_search")
+        self.assertEqual((mapping["args"]["date_from"], mapping["args"]["date_to"]), ("2026-07-01", "2026-10-31"))
+        statements = self._plan("What did KEC say about margins in its latest earnings call?", kind="guidance")
+        self.assertEqual(statements["args"]["topic"], "margin")
+        self.assertIn("rank_terms", statements["args"])
+
+    def test_keywords_drop_the_company_and_keep_the_period(self):
+        words = ac._keywords("What did Bajaj Finance say about its two-wheeler stress in Q1 FY27?", "BAJFINANCE")
+        self.assertNotIn("bajaj", words) and self.assertNotIn("finance", words)
+        self.assertIn("two-wheeler", words) and self.assertIn("q1fy27", words)
+        self.assertEqual(ac.date_window("between July and October 2026"), ("2026-07-01", "2026-10-31"))
+        self.assertEqual(ac.date_window("in July 2026"), ("2026-07-01", "2026-07-31"))
 
 
 class DerivedAnswerTests(unittest.TestCase):

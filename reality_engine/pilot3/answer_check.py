@@ -67,7 +67,12 @@ MONTHS = {m: i + 1 for i, m in enumerate(
 STOP = set("""what which was were did does do the its in on for of and to at by from as is are how why when
 who with that this it a an ltd limited per cent percent year years latest reported report company consolidated
 standalone india indian during give given made make said say says also into over after before between each
-compared compare value values quarter quarters end ended full total share shares price prices""".split())
+compared compare value values quarter quarters end ended full total share shares price prices about many much
+list would their there they them then than example respectively call calls concall conference earnings
+management said meet met deliver delivered change changed expect expected look looking""".split())
+# The symbol scopes the search already; its words in a query only match every page.
+COMPANY_WORDS = {"KEC": {"kec", "international"}, "BAJFINANCE": {"bajaj", "finance", "bajfinance"},
+                 "HINDALCO": {"hindalco"}}
 VALUATION = ((r"market cap", "market_cap"), (r"price[- ]to[- ]book|\bp/?b\b", "pb"),
              (r"price[- ]to[- ]earnings|\bp/?e\b", "pe"), (r"ev[- ]to[- ]ebitda|ev/ebitda", "ev_ebitda"),
              (r"dividend yield", "dividend_yield_pct"))
@@ -315,6 +320,22 @@ def periods_match(oracle_period: object, row_period: object) -> bool:
     return False
 
 
+def periods_within(oracle_period: object, row_period: object) -> bool:
+    """A quarter or half inside its fiscal year ("Q1FY27" discussed in a year the question calls FY27).
+
+    Used for a number quoted in a sentence only: a stored value keeps the strict ``periods_match``, so a derived
+    answer never mixes a quarter with a year.
+    """
+    first = oracle_mod.parse_period(oracle_period)
+    second = oracle_mod.parse_period(row_period)
+    if not first or not second:
+        return False
+    for half, whole in ((first, second), (second, first)):
+        if half[0] in ("Q", "H") and whole[0] == "FY" and half[1].endswith(whole[1]):
+            return True
+    return False
+
+
 # --- numbers, with the loop's own normalisation -----------------------------------------------------
 def _as_float(value: object) -> float | None:
     if isinstance(value, bool):
@@ -382,17 +403,22 @@ def row_text(row: dict) -> str:
 
 
 def find_number(value: float, number: dict, rows: list[dict]) -> dict | None:
-    """The first reply row that carries the oracle number in the oracle number's period."""
+    """The first reply row that carries the oracle number in the oracle number's period.
+
+    A stored value needs the same period; a number quoted in a sentence also counts when the sentence discusses a
+    quarter of the year asked ("Q1FY27" for "FY27") -- the quote's own period_discussed often names the quarter.
+    """
     unit = str(number.get("unit") or "")
     period = number.get("period")
     for row in rows:
-        if not periods_match(period, row.get("period")):
-            continue
+        same = periods_match(period, row.get("period"))
         for other, other_unit, other_scale in row.get("values", ()):
+            if not same:
+                continue
             if same_number(value, unit, other, other_unit, other_scale):
                 return row
         text = row_text(row)
-        if text and number_in_text(value, unit, text):
+        if text and (same or periods_within(period, row.get("period"))) and number_in_text(value, unit, text):
             return row
     return None
 
@@ -432,7 +458,8 @@ def reply_rows(tool: str, reply: dict) -> list[dict]:
             "values": [v for v in values if v],
             "texts": [str(row[key]) for key in ("quote", "snippet", "title", "statement")
                       if isinstance(row.get(key), str)],
-            "period": row.get("period") or row.get("quarter_end") or row.get("date") or row.get("call_period"),
+            "period": (row.get("period") or row.get("quarter_end") or row.get("date")
+                       or row.get("period_discussed") or row.get("call_period")),
             "measure": str(row.get("metric") or row.get("measure") or row.get("ratio") or ""),
             "provenance": row.get("provenance") or {},
         })
@@ -456,17 +483,62 @@ def _hint(numbers: list[dict]) -> str | None:
     return seen.most_common(1)[0][0] if seen else None
 
 
-def _keywords(text: str, symbol: str, n: int = 6) -> list[str]:
-    words = re.findall(r"[A-Za-z][A-Za-z&.-]{3,}", text)
+def _keywords(text: str, symbol: str, n: int = 8) -> list[str]:
+    """The question's own words, without the company (the symbol scopes the search) or the ask-words.
+
+    Fiscal labels ("FY26", "Q1FY27") are kept: they are the strongest period evidence a page can carry.
+    """
+    words = re.findall(r"[A-Za-z][A-Za-z0-9&.\-]{2,}", text)
+    company = COMPANY_WORDS.get(symbol.upper(), {symbol.lower()})
     out = []
     for word in words:
         key = word.lower().strip(".-")
-        if key in STOP or key == symbol.lower() or key in out:
+        if key in STOP or key in company or key in out:
             continue
         out.append(key)
         if len(out) >= n:
             break
     return out
+
+
+_MONTHS_RX = ("January|February|March|April|May|June|July|August|September|October|November|December|"
+              "Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec")
+_SPAN_RX = re.compile(r"\b(?:(?:between|from)\s+)?(?:the\s+)?(" + _MONTHS_RX + r")(?:\s+(\d{1,2}))?(?:,?\s+\d{4})?\s+"
+                      r"(?:and|to|through|until)\s+(" + _MONTHS_RX + r")(?:\s+(\d{1,2}))?,?\s+(\d{4})\b", re.I)
+_MONTH_RX = re.compile(r"\b(?:in|during|for|of)\s+(?:the\s+)?(" + _MONTHS_RX + r")\s+(\d{4})\b", re.I)
+
+
+def _last_day(year: int, month: int) -> str:
+    first_next = date(year + (month == 12), (month % 12) + 1, 1)
+    return (first_next - timedelta(days=1)).isoformat()
+
+
+def date_window(text: str) -> tuple[str, str] | None:
+    """(from, to) when the question names a window: "between July and October 2026", "in July 2026"."""
+    match = _SPAN_RX.search(text)
+    if match:
+        first, day1, last, day2, year = match.groups()
+        year_i = int(year)
+        start = date(year_i, MONTHS[first[:3].lower()], int(day1 or 1)).isoformat()
+        end = (date(year_i, MONTHS[last[:3].lower()], int(day2)).isoformat() if day2
+               else _last_day(year_i, MONTHS[last[:3].lower()]))
+        return start, end
+    match = _MONTH_RX.search(text)
+    if match:
+        month, year_i = MONTHS[match.group(1)[:3].lower()], int(match.group(2))
+        return date(year_i, month, 1).isoformat(), _last_day(year_i, month)
+    return None
+
+
+def _doc_type(low: str) -> str | None:
+    """The document type the question names, so search boosts it (only explicit document nouns)."""
+    if "annual report" in low:
+        return "annual_report"
+    if re.search(r"\bdeck\b|\bpresentation\b|investor deck", low):
+        return "deck"
+    if re.search(r"\btranscript\b|concall transcript|earnings call transcript|conference call transcript", low):
+        return "transcript"
+    return None
 
 
 def _store_for(name: str, stores: dict, hint: str | None, period: str | None = None) -> str:
@@ -551,7 +623,9 @@ def _price_sql(text: str, symbol: str, as_of: str, day: str | None = None) -> st
     """The one price_delivery query a share-price question needs (pilot3_sql is the price route).
 
     ``day`` is the results date resolved from ``pilot3_docs`` when the question prints no date ("4 trading
-    sessions after its Q1 FY27 results"); a printed date still wins.
+    sessions after its Q1 FY27 results"); a printed date still wins.  A date the market was shut for (31 March
+    2025 and 31 March 2026 were holidays) reads the last session on or before it, and the reply says which
+    (``as_traded_on``).
     """
     sym = symbol.upper()
     dates = dates_in(text)
@@ -560,6 +634,12 @@ def _price_sql(text: str, symbol: str, as_of: str, day: str | None = None) -> st
     after = bool(re.search(r"(?:sessions?|days?|trading day) after|after (?:its |the )?(?:q[1-4] )?(?:fy\d\d )?results",
                            text))
     where = f"symbol='{sym}' AND exchange='NSE'"
+
+    def traded(bound: str, value: str) -> str:
+        """The last session on or before ``value`` (``bound`` '<='), or the first on or after it ('>=')."""
+        pick = "MAX" if bound == "<=" else "MIN"
+        return f"(SELECT {pick}(date) FROM price_delivery WHERE {where} AND date {bound} '{value}')"
+
     if "deliver" in text:
         if "average" in text or re.search(r"\bavg\b", text):
             month = month_in(text) or (day or as_of)[:7]
@@ -569,28 +649,36 @@ def _price_sql(text: str, symbol: str, as_of: str, day: str | None = None) -> st
         if not day:
             return None
         if after and not dates:  # the trading day after the results date resolved from pilot3_docs
-            return (f"SELECT date, deliverable_qty, delivery_pct, close FROM price_delivery "
-                    f"WHERE {where} AND date > '{day}' ORDER BY date LIMIT 1")
-        return (f"SELECT date, close, volume, deliverable_qty, delivery_pct FROM price_delivery "
-                f"WHERE {where} AND date = '{day}'")
+            return (f"SELECT date, deliverable_qty, delivery_pct, close, {traded('>=', day)} AS as_traded_on "
+                    f"FROM price_delivery WHERE {where} AND date > '{day}' ORDER BY date LIMIT 1")
+        anchor = traded("<=", day)
+        return (f"SELECT date, close, volume, deliverable_qty, delivery_pct, date AS as_traded_on "
+                f"FROM price_delivery WHERE {where} AND date = {anchor}")
     if "52" in text and "low" in text:
         day = day or as_of
         start = (date.fromisoformat(day) - timedelta(days=365)).isoformat()
-        return (f"SELECT date, low, close FROM price_delivery WHERE {where} "
+        return (f"SELECT date, low, close, date AS as_traded_on FROM price_delivery WHERE {where} "
                 f"AND date BETWEEN '{start}' AND '{day}' ORDER BY low ASC LIMIT 1")
     if "highest" in text or ("high" in text and "price" in text):
         day = day or as_of
-        return (f"SELECT date, high, close FROM price_delivery WHERE {where} "
+        return (f"SELECT date, high, close, date AS as_traded_on FROM price_delivery WHERE {where} "
                 f"AND date BETWEEN '{day[:4]}-01-01' AND '{day}' ORDER BY high DESC LIMIT 1")
     if "return" in text and len(dates) >= 2:
-        return (f"SELECT date, close, adj_close FROM price_delivery WHERE {where} "
-                f"AND date IN ('{dates[0]}', '{dates[-1]}') ORDER BY date")
+        start, end = traded("<=", dates[0]), traded(">=", dates[-1])
+        return (f"SELECT date, close, adj_close, {end} AS as_traded_on FROM price_delivery WHERE {where} "
+                f"AND date BETWEEN {start} AND {end} ORDER BY date")
     if day and after:  # the anchor day and the sessions after it, so both of the answer's prices are in the reply
-        return (f"SELECT date, close, prev_close FROM price_delivery WHERE {where} AND date >= '{day}' "
-                f"ORDER BY date LIMIT 5")
+        anchor = traded("<=", day)
+        return (f"SELECT date, close, prev_close, {anchor} AS as_traded_on FROM price_delivery WHERE {where} "
+                f"AND date >= {anchor} ORDER BY date LIMIT 5")
     if day and re.search(r"closing price|price on|share price|close", text):
-        return (f"SELECT date, close, prev_close, volume, delivery_pct FROM price_delivery "
-                f"WHERE {where} AND date = '{day}'")
+        if len(dates) >= 2:     # a price on each of two dates: both resolved to the last session on or before
+            picks = ", ".join(traded("<=", value) for value in (dates[0], dates[-1]))
+            return (f"SELECT date, close, prev_close, volume, delivery_pct, date AS as_traded_on "
+                    f"FROM price_delivery WHERE {where} AND date IN ({picks}) ORDER BY date")
+        anchor = traded("<=", day)
+        return (f"SELECT date, close, prev_close, volume, delivery_pct, date AS as_traded_on "
+                f"FROM price_delivery WHERE {where} AND date = {anchor}")
     return None
 
 
@@ -619,6 +707,9 @@ def plan(question: dict, numbers: list[dict], vocab: dict, as_of: str = AS_OF,
     # "as of <day>" is a cut-off, not a fiscal period: ask for the latest row known by that day.
     as_of_call = dates[-1] if stated and dates else as_of
     when = periods[0][1] if len(periods) == 1 and not (stated and dates) else None
+    # The question's own fiscal period, even when the answer cites several quarters inside it ("FY26" -> Q1-Q4):
+    # search and statements use it to rank, never to grade.
+    qperiod = periods[0][1] if len(periods) == 1 and not (stated and dates) else None
     # A balance-sheet question fixes its own date ("at the end of June 2026"): holding must use it.
     point = dates[-1] if dates else _day_of(periods[-1] if periods else oracle_mod.parse_period(text))
     hint = _hint(numbers)
@@ -639,7 +730,16 @@ def plan(question: dict, numbers: list[dict], vocab: dict, as_of: str = AS_OF,
         return {"tool": tool, "args": args, "why": why}
 
     def search_call(why: str) -> dict:
-        return call("pilot3_search", why, query=" ".join(_keywords(text, symbol)), as_of=as_of_call)
+        args = {"symbol": symbol, "query": " ".join(_keywords(text, symbol)), "as_of": as_of_call, "limit": LIMIT}
+        dtype = _doc_type(low)
+        if dtype:
+            args["doc_type"] = dtype
+        if qperiod:
+            args["period"] = qperiod
+        window = date_window(text)      # a printed month range only: a fiscal year is too wide a filing window
+        if window:
+            args["date_from"], args["date_to"] = window
+        return {"tool": "pilot3_search", "args": args, "why": why}
 
     # 1. documents held
     if re.search(r"\b(what|which|how many) (documents|filings)\b|latest (deck|presentation|transcript|annual report)",
@@ -668,8 +768,13 @@ def plan(question: dict, numbers: list[dict], vocab: dict, as_of: str = AS_OF,
     if SPEECH.search(low):
         topic = next((word for word in TOPICS if re.search(rf"\b{word}", low)), None)
         if "call" in low or "concall" in low or kind == "guidance" or hint == "pilot3_statements":
-            return call("pilot3_statements", "management statement from a transcript",
-                        as_of=as_of_call, limit=20, **topic_args(topic))
+            args = {"as_of": as_of_call, "limit": LIMIT, "rank_terms": " ".join(_keywords(text, symbol)),
+                    **topic_args(topic)}
+            if periods:      # the first period a "what did they say in the Q1 FY27 call" question prints is the call
+                args["period"] = periods[0][1]
+            if re.search(r"\blatest (?:earnings |investor )?(?:call|concall|transcript)\b", low):
+                args["latest"] = True
+            return call("pilot3_statements", "management statement from a transcript", **args)
         return search_call("what the documents say (text search)")
 
     # 5. announcements and corporate events
