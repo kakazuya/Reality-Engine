@@ -15,8 +15,7 @@ import sqlite3
 from datetime import date
 
 from reality_engine.gap_loop import prepare
-from reality_engine.pilot3 import SYMBOLS, schema
-from reality_engine.pilot3.ratios import LENDERS
+from reality_engine.pilot3 import profile, schema
 from reality_engine.pilot3.registry import all_isins
 from reality_engine.pilot3.stores import EXTRA_QUARTER_TAGS, QUARTER_TAGS, _basis, _duck, fetch
 
@@ -129,7 +128,7 @@ def _filing_lines(symbol: str, f: dict, ptype: str, facts: list) -> list[tuple]:
                         True, "xbrl_derived", ptype))
         return value
 
-    if symbol in LENDERS:
+    if profile.is_lender(symbol):
         debt = total(("borrowings_other_than_debt_securities", "debt_securities", "subordinated_liabilities", "deposits"),
                      "total borrowings (incl. deposits)", "total_borrowings")
     else:
@@ -145,7 +144,7 @@ def _filing_lines(symbol: str, f: dict, ptype: str, facts: list) -> list[tuple]:
                             f"Assets {refs['total_assets'][0]:g} - CurrentLiabilities {refs['current_liabilities'][0]:g}",
                             refs["total_assets"][1] + ";" + refs["current_liabilities"][1], True, "xbrl_derived", ptype))
     tr = [refs[i] for i in ("trade_receivables_current", "trade_receivables_noncurrent", "trade_receivables") if i in refs]
-    if tr and symbol not in LENDERS:
+    if tr and not profile.is_lender(symbol):
         out.append(_row(symbol, f, fy, end, basis, "BS", "trade_receivables", "trade receivables (current + non-current)",
                         sum(t[0] for t in tr), "inr", "; ".join(f"{t[2]} {t[0]:g}" for t in tr),
                         ";".join(t[1] for t in tr), True, "xbrl_derived", ptype))
@@ -161,7 +160,7 @@ def _filing_lines(symbol: str, f: dict, ptype: str, facts: list) -> list[tuple]:
 def build_xbrl_statements(conn: sqlite3.Connection) -> dict:
     """Year-end and half-year balance sheets, cash flows and annual P&L lines of every XBRL filing held."""
     counts = {}
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         filings = [f for f in fetch(symbol, "results_filings") if f.get("status") == "ok"]
         rows: list[tuple] = []
         for f in filings:
@@ -199,7 +198,7 @@ def build_dividends(conn: sqlite3.Connection) -> dict:
     """dividend_event (one row per NSE corporate action) and the per-year sums in fin_annual_line."""
     schema.create(conn, ("dividend_event",))
     counts = {}
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         rows, _ = _duck(
             "SELECT id, isin, subject, ex_date, rec_date, face_value, broadcast_date FROM corporate_actions "
             "WHERE symbol=? AND action_type='DIVIDEND' ORDER BY ex_date", (symbol,))
@@ -236,7 +235,6 @@ def build_dividends(conn: sqlite3.Connection) -> dict:
 
 
 # --- company-stated measures, read by script from deck / transcript / press-release pages -------------
-PAGES_DB = r"D:\RealityEngine\pilot3\pages.db"  # the collector session's database: read-only, optional
 STATED_DOC_TYPES = ("deck", "press_release", "results", "transcript")
 _MON = {m: i + 1 for i, m in enumerate(("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"))}
 _QEND = {1: "06-30", 2: "09-30", 3: "12-31", 4: "03-31"}
@@ -354,11 +352,15 @@ def sentence_rows(text: str, doc_period: tuple[str, str] | None) -> list[tuple]:
     return out
 
 
+def _other_pages() -> sqlite3.Connection | None:
+    """The collector's pages.db of this build (the profile's, else the pilot3 one): read-only, optional."""
+    path = profile.pages_db()
+    return sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=30) if path.is_file() else None
+
+
 def _stated_pages(conn: sqlite3.Connection, symbol: str):
     """(doc_key, page, text, known_at, doc_type, title, source) for candidate pages: this database first, then
     pages.db for documents this database does not hold yet."""
-    import os
-
     sql = ("SELECT p.doc_key, p.page, p.text, COALESCE(p.known_at, d.known_at), d.doc_type, d.title FROM doc_page p "
            "JOIN doc d ON d.doc_key=p.doc_key WHERE d.symbol=? AND d.doc_type IN (?,?,?,?) AND COALESCE(p.known_at, d.known_at) IS NOT NULL AND "
            "(lower(p.text) LIKE '%ebitda%' OR lower(p.text) LIKE '%net debt%')")
@@ -366,14 +368,15 @@ def _stated_pages(conn: sqlite3.Connection, symbol: str):
     for dk, pg, text, known, dtype, title in conn.execute(sql, (symbol, *STATED_DOC_TYPES)):
         have.add(dk)
         yield dk, pg, text, known, dtype, title, "pilot3"
-    if not os.path.exists(PAGES_DB):
+    other = _other_pages()
+    if other is None:
         return
     try:
-        other = sqlite3.connect(f"file:{PAGES_DB}?mode=ro", uri=True, timeout=30)
         rows = other.execute(sql, (symbol, *STATED_DOC_TYPES)).fetchall()
-        other.close()
     except sqlite3.Error:
         return
+    finally:
+        other.close()
     for dk, pg, text, known, dtype, title in rows:
         if dk not in have:
             yield dk, pg, text, known, dtype, title, "pages.db"
@@ -412,7 +415,7 @@ def _plausible(conn: sqlite3.Connection, symbol: str, item: str, label: str, val
     if item == "net_debt_to_ebitda":
         return 0 <= value <= 15
     if item in ("ebitda", "ebitda_margin_pct"):
-        if symbol in ("BAJFINANCE",):
+        if profile.is_lender(symbol):
             return False
         d = _derived_flow(conn, symbol, label)
         if d is None or not d[1]:
@@ -450,7 +453,7 @@ def build_company_stated(conn: sqlite3.Connection) -> dict:
     """EBITDA, margin, net debt and leverage as the company prints them (deck tables, deck / call sentences):
     fin_annual_line rows with definition 'company_stated'; quarter rows have fiscal_year QnFYyy, period_type Q."""
     counts = {}
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
         isin = isin[0] if isin else None
         found: dict[tuple, tuple] = {}
@@ -505,7 +508,9 @@ def build_company_stated(conn: sqlite3.Connection) -> dict:
 def _import_pages(conn: sqlite3.Connection, symbol: str, pages: set) -> None:
     if not pages:
         return
-    other = sqlite3.connect(f"file:{PAGES_DB}?mode=ro", uri=True, timeout=30)
+    other = _other_pages()
+    if other is None:
+        return
     for dk in {dk for dk, _pg in pages}:
         row = other.execute("SELECT doc_key, symbol, isin, doc_type, title, filing_date, known_at, pages, sha256, "
                             "source_record FROM doc WHERE doc_key=?", (dk,)).fetchone()
@@ -584,14 +589,12 @@ def ar_statement_rows(text: str) -> list[tuple]:
 def build_ar_statements(conn: sqlite3.Connection) -> dict:
     """fin_annual_line rows (definition 'reported', period_type FY) from annual-report statement pages: only the
     reports pages.db holds that this database does not, so the newest year is not missing for want of ar_facts."""
-    import os
-
-    counts = {s: 0 for s in SYMBOLS}
-    if not os.path.exists(PAGES_DB):
+    counts = {s: 0 for s in profile.symbols()}
+    other = _other_pages()
+    if other is None:
         return counts
-    other = sqlite3.connect(f"file:{PAGES_DB}?mode=ro", uri=True, timeout=30)
     try:
-        for symbol in SYMBOLS:
+        for symbol in profile.symbols():
             held = {r[0] for r in conn.execute("SELECT doc_key FROM doc WHERE symbol=? AND doc_type='annual_report'", (symbol,))}
             isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
             isin = isin[0] if isin else None

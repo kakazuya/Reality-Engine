@@ -14,9 +14,8 @@ import re
 import sqlite3
 from pathlib import Path
 
-from reality_engine.pilot3 import PAGES_DB, SANDBOX_DB, SYMBOLS, call_dates, schema
+from reality_engine.pilot3 import SANDBOX_DB, call_dates, profile, schema
 from reality_engine.gap_loop import prepare
-from reality_engine.gap_loop.company import COMPANIES
 
 FAMILY = {"annual_report": "annual_report", "deck": "deck", "transcript": "transcript", "results": "results",
           "announcement": "announcement", "press_release": "press_release", "audio_link": "transcript"}
@@ -41,15 +40,19 @@ def isin_history(symbol: str) -> list[tuple]:
 
 
 def all_isins(symbol: str) -> tuple[str, ...]:
+    """The profile's ISINs for the symbol (they are what its stores are filtered by), else every ISIN the
+    stores record for it."""
+    if profile.under_profile():
+        return profile.isins(symbol)
     return tuple(row[0] for row in isin_history(symbol))
 
 
 def build_company(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("company",))
     counts = {}
-    for symbol in SYMBOLS:
-        cfg = COMPANIES[symbol]
-        rows = isin_history(symbol)
+    for symbol in profile.symbols():
+        cfg = profile.company(symbol)
+        rows = [(i, None, None, "profile") for i in cfg.isins] if profile.under_profile() else isin_history(symbol)
         conn.executemany("INSERT INTO company VALUES (?,?,?,?,?,?,?)",
                          [(symbol, i, a, b, src, cfg.bse_code, cfg.name) for i, a, b, src in rows])
         counts[symbol] = len(rows)
@@ -65,8 +68,10 @@ def _sandbox(symbol: str) -> sqlite3.Connection:
 
 
 def _pages_db() -> sqlite3.Connection | None:
-    """The collector's pages.db (read-only), or None when this machine does not have it."""
-    return sqlite3.connect(f"file:{PAGES_DB}?mode=ro", uri=True, timeout=30) if Path(PAGES_DB).is_file() else None
+    """The collector's pages.db (read-only) of this build: the profile's, else the pilot3 one; None when the
+    machine does not have it."""
+    path = profile.pages_db()
+    return sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=30) if Path(path).is_file() else None
 
 
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
@@ -95,10 +100,11 @@ def plan_docs(symbol: str, pg: sqlite3.Connection | None = None,
     sandbox connection, for a caller that holds one; it is left open."""
     own = pg is None
     pg = pg or _pages_db()
-    own_sb = sb is None
-    sb = sb or _sandbox(symbol)
-    sandbox_docs = sb.execute("SELECT doc_key, doc_type, title, filing_date, known_at, pages, source, source_key "
-                              "FROM docs").fetchall()
+    own_sb = sb is None and not profile.under_profile()
+    if sb is None and not profile.under_profile():
+        sb = _sandbox(symbol)
+    sandbox_docs = [] if sb is None else sb.execute(
+        "SELECT doc_key, doc_type, title, filing_date, known_at, pages, source, source_key FROM docs").fetchall()
     if own_sb:
         sb.close()
     if pg is None:
@@ -132,10 +138,10 @@ def build_doc(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("doc", "doc_alias"))
     counts = {}
     pg = _pages_db()
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         plan = plan_docs(symbol, pg)
         dates = _call_dates(pg, symbol) if pg else {}
-        isin = COMPANIES[symbol].isins[-1]
+        isin = profile.company(symbol).isins[-1]
         conn.executemany(
             "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             [(r[0], symbol, r[1], r[2], FAMILY.get(r[2], r[2]), r[3], *dates.get(r[0], (r[4], r[5])), r[6], r[7],
@@ -204,7 +210,7 @@ def build_pages(conn: sqlite3.Connection, ocr_dbs=()) -> dict:
     schema.create(conn, ("doc_page",))
     counts = {}
     pg = _pages_db()
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         plan = plan_docs(symbol, pg)
         dates = _call_dates(pg, symbol) if pg else {}
         ocr = _ocr_pages(ocr_dbs, symbol, plan["alias"])
