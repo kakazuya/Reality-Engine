@@ -18,12 +18,13 @@ def test_period_forms():
     assert periods("Q3 FY24 and Q2FY25") == [("Q3FY24", None), ("Q2FY25", None)]
     assert periods("EBITDA in FY '26 and 9M FY25") == [("FY26", None), ("9MFY25", None)]
     assert periods("FY2023-24 results")[0][0] == "FY24"
-    assert periods("as on 31 March 2026")[0] == ("Q4FY26", "2026-03-31")
+    assert periods("as on 31 March 2026")[0] == ("FY26", "2026-03-31")      # March closes the year: FY26, not Q4FY26
     assert periods("net debt in June '26")[0][0] == "Q1FY27"
     assert periods("quarter ended December 31, 2023")[0] == ("Q3FY24", "2023-12-31")
     assert periods("on 15 May 2025") == []          # not a quarter end
-    assert periods("Quarter ended 30.06.2025 and 31-03-2026") == [("Q1FY26", "2025-06-30"), ("Q4FY26", "2026-03-31")]
+    assert periods("Quarter ended 30.06.2025 and 31-03-2026") == [("Q1FY26", "2025-06-30"), ("FY26", "2026-03-31")]
     assert periods("ratio 12.50.2019 and 1.5.2020") == []     # not quarter-end dates
+    assert periods("Q4 FY26 and FY26")[0][0] == "Q4FY26"      # an explicit quarter label is kept
 
 
 def test_value_units():
@@ -31,6 +32,8 @@ def test_value_units():
     assert [(v.value, v.unit) for v in vals] == [(38000.0, "inr_cr")]
     pct = kpi.find_values("NIM 10.2% and 37 bps", "pct", "pct", 0, 60, [])
     assert [(v.value, v.unit) for v in pct] == [(10.2, "pct")]
+    assert [(v.value, v.unit) for v in kpi.find_values("Customer franchise stood at 119.33 MM", "count", "count_mn", 0, 60, [])] \
+        == [(119.33, "count_mn")]                       # the decks' "MM" is the same million as "mn"
     assert kpi.finalize_unit("usd_bn", 4.2, "usd_mn")[:2] == (4200.0, "usd_mn")
     assert kpi.finalize_unit("pct_as_bps", 1.79, "bps")[:2] == pytest.approx((179.0, "bps"))
 
@@ -206,11 +209,71 @@ def test_cli_end_to_end_no_network(tmp_path, monkeypatch):
     pages = {CALL_P1, PRESS_TEXT}
     for (q,) in c.execute("SELECT quote FROM kpi_series"):
         assert any(q in p for p in pages)
+    # every row says which kind of document it came from, and a call's number sits below any document row
+    assert {d for (d,) in c.execute("SELECT DISTINCT source_type FROM kpi_series")} == {"press_release", "transcript"}
+    assert c.execute("SELECT max(conf_rank) FROM kpi_series WHERE doc_key='p.pdf'").fetchone()[0] > \
+        c.execute("SELECT max(conf_rank) FROM kpi_series WHERE doc_key='t.pdf'").fetchone()[0]
     assert c.execute("SELECT count(*) FROM transcript_statement").fetchone()[0] >= 3
     # re-running replaces the company's rows, never duplicates
     n = c.execute("SELECT count(*) FROM kpi_series").fetchone()[0]
     kpi.main(["--out", str(out), "--symbols", "KEC", "--sandbox-root", str(tmp_path / "sb"), "--raw-root", ""])
     assert c.execute("SELECT count(*) FROM kpi_series").fetchone()[0] == n
+
+
+# ----------------------------------------------------------------------------- T-049: FY25-FY27 documents
+KEC_Q4_TITLE = "“KEC International Limited\nQ4 FY '26 Results Conference Call”\nMay 18, 2026\n"
+KEC_Q4_P3 = ("In addition, certain equipment and steel suppliers are facing operational disruptions.\n"
+             "There is a provision of INR59 crores made in FY '26 towards the new labor code and a one-time charge "
+             "of INR53 crores from an arbitration award recognized last year in FY '25. In Q4, we delivered revenues "
+             "of INR6,390 crores with EBITDA margin of 7%.\n")
+KEC_Q4_P4 = ("Our order book remains robust at INR36,267 crores. We are happy that the order intake trend "
+             "continues in FY '27 with new orders of over INR1,000 crores announced till date.\n")
+
+
+def test_q4_call_defaults_to_its_own_year_not_a_prior_year_comparison():
+    """The KEC 36,267 crore order book was stored FY25: the call's page 3 mentions "last year in FY '25" and that
+    became the document's default period. The Q4 (annual-results) document defaults to its fiscal year."""
+    assert [p.canon for p in kpi.doc_default_period([KEC_Q4_TITLE])] == ["FY26"]
+    assert [p.canon for p in kpi.doc_default_period([KEC_Q4_P3])] == ["FY26"]      # "last year in FY '25" dropped
+    default = kpi.doc_default_period([KEC_Q4_TITLE, KEC_Q4_P3])
+    rows = kpi.sentence_rows(KEC_Q4_P4, 4, "KEC", ENTRIES, DIMS, default)
+    ob = next(r for r in rows if r.metric == "order_book")
+    assert (ob.fiscal_period, ob.value, ob.rule) == ("FY26", 36267.0, "sentence_default_v1")
+
+
+def _fake_pages_db(path: Path) -> str:
+    c = sqlite3.connect(path)
+    c.executescript("""
+      CREATE TABLE doc(doc_key TEXT, symbol TEXT, doc_type TEXT, title TEXT, filing_date TEXT, known_at TEXT,
+                       source_path TEXT, sha256 TEXT, pages INT, source_record TEXT, known_at_source TEXT);
+      CREATE TABLE doc_page(doc_key TEXT, page INT, text TEXT, method TEXT, known_at TEXT);
+    """)
+    text = ("FINANCIAL PERFORMANCE FOR QUARTER ENDED 31 MARCH 2026\n"
+            "Order Book as on 31 March 2026 of Rs. 36,267 crore.\n")
+    c.execute("INSERT INTO doc VALUES('history/results/fy26.pdf','KEC','results','FY26 results',NULL,"
+              "'2026-05-16T22:00:00',NULL,NULL,1,'','')")
+    c.execute("INSERT INTO doc_page VALUES('history/results/fy26.pdf',1,?,'script_text','2026-05-16')", (text,))
+    c.commit()
+    c.close()
+    return text
+
+
+def test_pages_db_documents_are_read_with_their_source_type(tmp_path):
+    """--pages-db: the FY25-FY27 documents the sandbox does not hold are read, labelled by their document type."""
+    sb = tmp_path / "sb"
+    _fake_sandbox(sb)
+    pages = tmp_path / "pages.db"
+    text = _fake_pages_db(pages)
+    out = tmp_path / "o.db"
+    assert kpi.main(["--out", str(out), "--symbols", "KEC", "--sandbox-root", str(sb), "--raw-root", "",
+                     "--pages-db", str(pages)]) == 0
+    c = sqlite3.connect(out)
+    rows = c.execute("SELECT fiscal_period, value, source_type, known_at_source, quote FROM kpi_series "
+                     "WHERE doc_key='history/results/fy26.pdf'").fetchall()
+    assert ("FY26", 36267.0, "results", "pages.db.doc.known_at") in [r[:4] for r in rows]
+    assert all(r[4] in text for r in rows)                     # quote is a literal slice of the pages.db page
+    # the sandbox documents pages.db does not hold are still read, with their own source type
+    assert c.execute("SELECT count(*) FROM kpi_series WHERE doc_key='p.pdf' AND source_type='press_release'").fetchone()[0] > 0
 
 
 # ----------------------------------------------------------------------------- T-049 E: precision, formulas, OCR

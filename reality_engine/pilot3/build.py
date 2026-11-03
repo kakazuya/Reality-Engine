@@ -14,7 +14,7 @@ import sqlite3
 import time
 from pathlib import Path
 
-from reality_engine.pilot3 import REAL_DB, SANDBOX, SYMBOLS, registry, schema, stores
+from reality_engine.pilot3 import PAGES_DB, REAL_DB, SANDBOX, SYMBOLS, registry, schema, stores
 
 
 EXTRACT_TABLES = ("kpi_series", "transcript_statement")
@@ -44,7 +44,7 @@ def extract(out: Path, only: str | None = None, ocr_dbs=()) -> dict:
             continue
         started = time.time()
         if label == "kpi":
-            stats = module.run(str(out), list(SYMBOLS), SANDBOX, ocr_db=list(ocr_dbs) or None)
+            stats = module.run(str(out), list(SYMBOLS), SANDBOX, ocr_db=list(ocr_dbs) or None, pages_db=PAGES_DB)
         else:
             stats = module.run(str(out), list(SYMBOLS), SANDBOX)
         result[label] = {"seconds": round(time.time() - started, 1),
