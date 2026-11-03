@@ -50,3 +50,4 @@ A1 on the dev set, close the store gaps, and brief the first gap fixes.
 - 4 Nov: `.tmp` is under a permission deny rule for this session; helper scripts go to `D:\RealityEngine\pilot10\scratch`.
 - 4 Nov: page dumps of decks burn context fast; loop 1 reached 400k before its work ended. Search for terms and print short hits instead.
 - 4 Nov 04:50 IST, supersedes the raw figures above: fetch finished, 1,149 ok, 2 errors, 11 no attachment, 2 pending; table `D:\RealityEngine\pilot10\logs\coverage_final.txt`.
+- Wrapper 05:10 IST: loop 2 was killed at 05:03 by Claude Code's low-memory reaper about 8 minutes in (its transcript ends at 261 lines); nothing to resume from it. Restart only on Shivam's word: `python tasks/night_loop/run_loop.py 2`. The generalisation worker 375ffabf kept running.
