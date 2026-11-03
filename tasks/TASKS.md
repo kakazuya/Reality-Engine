@@ -50,6 +50,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-038 | OPEN | P1 | Wire contract-passing extract rows into the fact view; answer narrative questions with retrieved quoted passages, no model | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
 - T-048 | OPEN | P1 | One-company gap loop: 100 sector-fit questions for KEC, Haiku sessions under 100k fill gaps by extraction or computation in a sandbox, Opus manages; replicate to 3, then 60 | accept: Shivam | from: Shivam, 2 Nov | opened 2026-11-02
 - T-049 | OPEN | P1 | Script extraction for the 3 pilot companies: rule-based scripts (no LLM; AI OCR only for image pages within budget) read all raw documents of KEC, BAJFINANCE, HINDALCO into the schema of tasks/arch_v4/T048_FINDINGS_AND_SCHEMA_2026-11-03.md in SQLite/DuckDB; answers only via MCP over that db; target the pilot's AI answer quality | accept: Shivam | from: Shivam, 3 Nov | opened 2026-11-03
+- T-055 | OPEN | P1 | Night loop frozen evals (reality_engine/night_eval: gold freeze dev/hidden, score M1-M9, guards, replay, decide, run_loop); brief tasks/dsh_tasks/T055_NIGHT_EVAL_2026-11-04.md; goal tasks/night_loop/GOAL.md | accept: python -m pytest reality_engine/tests/test_night_eval.py -q | from: Shivam 4 Nov | opened 2026-11-04
 
 ## Bank
 - T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02
