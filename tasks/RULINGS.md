@@ -18,7 +18,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 - Sessions run to 450k context. At 400k Claude writes the wrap-up: commit, next action in `tasks/STATE.md`, doc sweep. Replaces the older 150k, 100k and 40-45% session limits (Shivam, 1 Nov).
 - HP work runs headless: nothing on its screen, no focus loss. [check: test_hp_headless]
 - Page-reading subagents: batches of 8 pages, never past 100k context, medium effort for Haiku.
-- Three tiers (Shivam, 2 Nov): Haiku 5.5 does the work in fresh sessions under 100k context; after repeated failure it goes to a DeepSeek worker; only if that fails does it reach Opus. Opus reviews and manages, and does not write the code. Approved Haiku runs: T-045 docs, T-048 one-company loop.
+- Three tiers (Shivam, 2 Nov): Haiku 5.5 does the work in fresh sessions under 100k context; after repeated failure it goes to a DeepSeek worker; only if that fails does it reach Opus. dsh workers are the fallback for headless Claude loops when the Claude limit is spent (Shivam, 3 Nov). Opus reviews and manages, and does not write the code. Approved Haiku runs: T-045 docs, T-048 one-company loop.
 - Session titles, standing (T-047, never closed): keep the `sv-`/`neo-` prefix and let each session choose the rest (Shivam, 2 Nov).
 - Bring ranked ideas from measurements unprompted. Do not idle machines: RAM under 90% or CPU under 70% used means start useful work. Report compute waste.
 - A new task from Shivam becomes a ticket in `tasks/TASKS.md` before work starts. Commits on `main` name a real ticket or give a reason. [check: commit-msg]

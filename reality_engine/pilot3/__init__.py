@@ -12,6 +12,8 @@ from pathlib import Path
 SYMBOLS = ("KEC", "BAJFINANCE", "HINDALCO")
 MAIN_DATA = Path(r"C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data")
 SANDBOX = Path(r"D:\RealityEngine\sandbox")
+PAGES_DB = Path(r"D:\RealityEngine\pilot3\pages.db")
+REAL_DB = MAIN_DATA / "pilot3" / "pilot3.db"
 SHP_XBRL = Path(r"D:\RealityEngine\raw\nse_shp_xbrl_pilot")
 SANDBOX_DB = {s: SANDBOX / f"{s.lower()}_loop" / f"{s.lower()}.db" for s in SYMBOLS}
 

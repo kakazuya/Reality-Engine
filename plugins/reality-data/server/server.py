@@ -31,7 +31,9 @@ import core
 
 INSTRUCTIONS = """Local reality-engine data search. The data is read-only and every answer carries provenance.
 
-ROUTE BY QUESTION SHAPE FIRST — one call each, before any sql():
+PILOT3 FIRST: for KEC, BAJFINANCE and HINDALCO (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements) and every row carries provenance (table, source document + page or store row, known_at). Route: company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF holding, share count on a date -> pilot3_holding(symbol, as_of); what management said (guidance, margins, capex, outlook) -> pilot3_statements; list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, valuation_daily, shp_category, share_capital, dividend_event, price_delivery, transcript_statement, doc, doc_page). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A {"found": false} pilot3 answer lists what is available; read that list and retry, and only if still empty use the raw tools below or say NOT IN DATA. Do not open raw PDFs or the large databases when a pilot3 tool answers.
+
+ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) — one call each, before any sql():
 - delivery / delivered quantity on a date (NSE+BSE) -> delivery(symbol, dates)
 - high / low / YTD extreme -> price_extreme(symbol, start, end, kind)
 - promoter holding, share count -> holding(symbol, as_of)
@@ -405,6 +407,137 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
 # --- end lookups: docs ---
 
 
+# --- lookups: pilot3 (KEC, BAJFINANCE, HINDALCO) ---
+import lookups_pilot3 as _p3  # noqa: E402
+
+_RO = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False)
+
+
+@server.tool(
+    name="pilot3_kpi",
+    description=(
+        "Company-stated KPI series for KEC / BAJFINANCE / HINDALCO from decks, results, press releases, "
+        "transcripts and annual reports: order book, order intake, AUM, GNPA, EBITDA per tonne, shipments, "
+        "net debt/EBITDA ... kpi = metric name (a word is enough; a miss lists the metrics held). period: Q2FY26, "
+        "FY26, H1FY26 or a date. dimension (segment/product; total first), basis, as_of. Each row: value, "
+        "unit, period, quote, provenance (document, page, known_at)."
+    ),
+    annotations=_RO,
+)
+def pilot3_kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = None,
+               dimension: str | None = None, basis: str | None = None, limit: int = 10) -> dict[str, Any]:
+    return _safe(lambda: _p3.kpi(symbol, kpi, period=period, as_of=as_of, dimension=dimension, basis=basis,
+                                 limit=limit))
+
+
+@server.tool(
+    name="pilot3_fin",
+    description=(
+        "Reported / derived / company-stated financial lines for KEC, BAJFINANCE, HINDALCO: annual (FY26, H1FY26) "
+        "from XBRL results and annual reports, quarterly (Q2FY26) from XBRL. measure e.g. revenue_from_operations, "
+        "pat, ebitda, net_debt, total_borrowings, eps_basic, capex_payments, cash_flow_from_operations (a miss "
+        "lists the lines held). basis = standalone | consolidated; definition = xbrl_reported | xbrl_derived | "
+        "company_stated | reported (annual only). Rows carry value, unit, scale (value_inr for rupee lines), "
+        "definition and provenance."
+    ),
+    annotations=_RO,
+)
+def pilot3_fin(symbol: str, measure: str, period: str | None = None, basis: str | None = None,
+               definition: str | None = None, as_of: str | None = None, limit: int = 12) -> dict[str, Any]:
+    return _safe(lambda: _p3.fin(symbol, measure, period=period, basis=basis, definition=definition,
+                                 as_of=as_of, limit=limit))
+
+
+@server.tool(
+    name="pilot3_ratio",
+    description=(
+        "Derived ratios with their formula: ebitda_margin_pct, pat_margin_pct, roe, roa, roce, debt_to_equity, "
+        "interest_coverage, revenue_growth_yoy_pct, book_value_per_share, dividend_payout_pct, receivable/"
+        "inventory/payable days ... per quarter or fiscal year (ratio_panel); and PE, PB, EV/EBITDA, market cap, "
+        "dividend yield on a date (valuation_daily: give period or as_of as YYYY-MM-DD). Provenance names the "
+        "formula and its input rows."
+    ),
+    annotations=_RO,
+)
+def pilot3_ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None = None,
+                 basis: str | None = None, limit: int = 8) -> dict[str, Any]:
+    return _safe(lambda: _p3.ratio(symbol, ratio, period=period, as_of=as_of, basis=basis, limit=limit))
+
+
+@server.tool(
+    name="pilot3_holding",
+    description=(
+        "Shareholding pattern in force on as_of (the latest quarter whose filing was out by then): promoter, "
+        "public, FPI, domestic institutions, mutual funds, insurance ... percent, shares, holders; plus shares "
+        "outstanding / paid-up capital / face value on that day. all_categories=true lists every filed category."
+    ),
+    annotations=_RO,
+)
+def pilot3_holding(symbol: str, as_of: str, quarter_end: str | None = None,
+                   all_categories: bool = False) -> dict[str, Any]:
+    return _safe(lambda: _p3.holding(symbol, as_of, quarter_end=quarter_end, all_categories=all_categories))
+
+
+@server.tool(
+    name="pilot3_statements",
+    description=(
+        "Management statements from concall transcripts as exact quotes with speaker, role and call date. "
+        "topic = tag (margin, guidance, capex, order, demand, debt ...), terms = words that must all appear, "
+        "date_from/date_to on the call date, role = ceo | cfo | md | mgmt, as_of. Newest call first."
+    ),
+    annotations=_RO,
+)
+def pilot3_statements(symbol: str, topic: str | None = None, terms: str | None = None,
+                      date_from: str | None = None, date_to: str | None = None, as_of: str | None = None,
+                      limit: int = 10, role: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: _p3.statements(symbol, topic=topic, terms=terms, date_from=date_from, date_to=date_to,
+                                        as_of=as_of, limit=limit, role=role))
+
+
+@server.tool(
+    name="pilot3_docs",
+    description=(
+        "Documents held for KEC / BAJFINANCE / HINDALCO (every deck, transcript, annual report, results file, "
+        "press release, announcement), newest first with filing date, page count and known_at; counts_by_type "
+        "tells what exists. doc_type: deck | transcript | annual_report | results | press_release | announcement."
+    ),
+    annotations=_RO,
+)
+def pilot3_docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
+                date_to: str | None = None, as_of: str | None = None, limit: int = 20) -> dict[str, Any]:
+    return _safe(lambda: _p3.docs(symbol, doc_type=doc_type, date_from=date_from, date_to=date_to,
+                                  as_of=as_of, limit=limit))
+
+
+@server.tool(
+    name="pilot3_search",
+    description=(
+        "Full-text search (FTS5, ranked) over the dated text of every held document page of KEC / BAJFINANCE / "
+        "HINDALCO. Returns the exact snippet around the match with document, page, filing date and known_at. "
+        "Use after the structured pilot3 tools, or when the question is about wording. as_of drops later pages."
+    ),
+    annotations=_RO,
+)
+def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
+                  doc_type: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: _p3.search(symbol, query, as_of=as_of, limit=limit, doc_type=doc_type))
+
+
+@server.tool(
+    name="pilot3_sql",
+    description=(
+        "Bounded read-only SELECT/WITH over pilot3.db (limit enforced, default 100, max 500). Tables: company, "
+        "doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, formula, "
+        "valuation_daily, shp_category, share_capital, dividend_event, price_delivery, transcript_statement. "
+        "Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions."
+    ),
+    annotations=_RO,
+)
+def pilot3_sql(query: str, limit: int = 100) -> dict[str, Any]:
+    return _safe(lambda: _p3.sql(query, limit=limit))
+# --- end lookups: pilot3 ---
+
+
 def _warm_data() -> None:
     # 2026-10-24: warming before server.run delayed the initialize reply past the client's version probe (6.5 s
     # cold start); warm in the background so the handshake is answered at once. Tools still lazy-open on first use.
@@ -448,6 +581,7 @@ def main() -> int:
     finally:
         _lifecycle(f"exit ({reason})")
         core.close_all()
+        _p3.close()
     return 0
 
 
