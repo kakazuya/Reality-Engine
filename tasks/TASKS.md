@@ -23,6 +23,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-044 | OPEN | P1 | Catch finished, stalled and failed jobs in code, at any effort level: list_workers shows the newest and running first, and a status command feeds a hook on every prompt | accept: python -m pytest reality_engine/tests/test_job_watch.py -q | from: Shivam 2 Nov | opened 2026-11-02
 - T-047 | OPEN | P3 | Session titles: keep the sv/neo prefix, let each session choose the rest | accept: A new session started by claude-neo or claude-sv with no task shows <prefix>-<title chosen by that session> | from: Shivam, 2 Nov | opened 2026-11-02
 - T-053 | OPEN | P1 | Stress-test and harden job_watch wait and the Stop hook: race before baseline, corrupt status, many jobs, killed or duplicate waiters, pid reuse, registered stalls | accept: python -m pytest reality_engine/tests/test_job_watch_stress.py reality_engine/tests/test_job_watch.py reality_engine/tests/test_session_hooks.py -q | from: Shivam, 3 Nov | opened 2026-11-03
+- T-054 | OPEN | P1 | Retire code-intel (800 MB LSP per worker, 1.5% of calls); code-tools outline + typecheck run-and-exit MCP; Evidence: required brief field | accept: python -m pytest plugins/code-tools/tests reality_engine/tests/test_dsh_worker_plugin.py reality_engine/tests/test_hp_worker.py -q | from: Shivam, 4 Nov | opened 2026-11-04
 
 ## Data
 - T-021 | LOOKING | P3 | Check if still open: PIB phase 2, Hindi, Urdu and regional offices | accept: Shivam | from: tasks/PIPELINE_TODO.md A2 | opened 2026-11-02
