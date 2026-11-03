@@ -206,7 +206,7 @@ def test_kpi_run_merges_ocr_dbs_and_remaps_doc_alias(tmp_path, monkeypatch):
            for i, key in enumerate((PDF_KEY, "other.pdf"))]
     seen: dict = {}
 
-    def fake_extract(sym, sandbox, stats, limit_docs=None, raw_root=None, ocr=None, only_docs=None):
+    def fake_extract(sym, sandbox, stats, limit_docs=None, raw_root=None, ocr=None, only_docs=None, pages_db=None):
         seen[sym] = ocr
         stats.setdefault(sym, {})
         return iter(())

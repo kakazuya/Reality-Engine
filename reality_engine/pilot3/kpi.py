@@ -1,10 +1,13 @@
 """Rule-based company KPI extractor -> table kpi_series (T-049 B). No model, no OCR, no network.
 
 CLI: python -m reality_engine.pilot3.kpi --out <db> [--symbols KEC,BAJFINANCE,HINDALCO] [--sandbox-root DIR]
+                                      [--pages-db D:\\RealityEngine\\pilot3\\pages.db]
 
-Reads page text from <sandbox>/<sym>_loop/<sym>.db (doc_text + docs) and, for table/chart pages, word
-positions from the PDF under <sandbox>/<sym>_loop/raw/<doc_key> (PyMuPDF). Pages whose doc_text method is
-needs_ocr are skipped and counted. Three rules write rows (extractor_rule column):
+Reads page text from pages.db when --pages-db is given (the collector's every held document, the same source
+the pilot3 registry writes; PDF from doc.source_path, else decks_full/<sha>), then from
+<sandbox>/<sym>_loop/<sym>.db (doc_text + docs) for the documents pages.db does not hold; for table/chart
+pages the word positions come from the PDF (PyMuPDF). Pages whose method is needs_ocr are skipped and counted,
+the OCR text of a page already read into doc_page (method ocr_rapid) is used. Three rules write rows:
   table_v1    label row + period header row, values paired to header columns by x position
   chart_v1    a bare number row sitting above a period axis row, titled by the nearest lexicon label above
   sentence_v1 label ... value [unit] [period] [vs value period] inside running text
@@ -40,6 +43,7 @@ CREATE TABLE IF NOT EXISTS kpi_series (
   raw_label TEXT, raw_value TEXT, extractor_rule TEXT NOT NULL,
   confidence TEXT NOT NULL DEFAULT 'sentence', conf_rank INTEGER NOT NULL DEFAULT 2,
   method TEXT NOT NULL DEFAULT 'text_layer', ocr_conf REAL,
+  source_type TEXT NOT NULL DEFAULT '',
   UNIQUE(symbol, metric, dimension, fiscal_period, value, unit, doc_key, page)
 );
 CREATE INDEX IF NOT EXISTS ix_kpi_sym_metric ON kpi_series(symbol, metric, fiscal_period);
@@ -50,7 +54,8 @@ RULE_CONF = {"table_v1": ("table_row", 4), "chart_v1": ("table_chart", 3), "sent
              "sentence_pair_v1": ("sentence", 2), "sentence_default_v1": ("sentence_default", 1)}
 CONF_RANK = {name: rank for name, rank in RULE_CONF.values()}
 NEW_COLS = (("confidence", "TEXT NOT NULL DEFAULT 'sentence'"), ("conf_rank", "INTEGER NOT NULL DEFAULT 2"),
-            ("method", "TEXT NOT NULL DEFAULT 'text_layer'"), ("ocr_conf", "REAL"))
+            ("method", "TEXT NOT NULL DEFAULT 'text_layer'"), ("ocr_conf", "REAL"),
+            ("source_type", "TEXT NOT NULL DEFAULT ''"))
 
 # ---------------------------------------------------------------- periods
 _MONTHS = {m: i + 1 for i, m in enumerate(
@@ -91,7 +96,12 @@ class Period:
 
 
 def _fiscal_of_date(y: int, m: int, d: int, force_end: bool = False):
+    """Fiscal period of a quarter-end date. 31 March closes the Indian fiscal year, so 2026-03-31 is FY26 (the
+    annual period), not Q4FY26: a stock figure dated at the year end is the year-end one, and an FY26 question
+    must find it. The date is kept in `as_of` either way."""
     fy = y + 1 if m > 3 else y
+    if m == 3 and (force_end or d >= _QEND[3][1] - 1):
+        return f"FY{fy % 100:02d}", "FY", f"{y:04d}-{m:02d}-{d:02d}" if d else None
     if m in _QEND and (force_end or d >= _QEND[m][1] - 1):
         q = _QEND[m][0]
         asof = f"{y:04d}-{m:02d}-{d:02d}" if d else None
@@ -155,11 +165,11 @@ def parse_periods(text: str) -> list[Period]:
 NUM_CORE = r"\(?-?\d{1,3}(?:,\d{2,3})+(?:\.\d+)?\)?|\(?-?\d+(?:\.\d+)?\)?"
 VAL_RX = re.compile(
     r"(?P<cur>₹|`|Rs\.?|INR|US\$|USD|\$|EUR|€)?\s?(?P<num>" + NUM_CORE + r")\s?"
-    r"(?P<suf>crores?|crs?\b\.?|lakhs?|mn\b|million|billion|bn\b|kt\b|kilo ?tonnes?|tonnes?|tons?|mt\b|%|per ?cent|bps|basis points|x\b|times|days)?",
+    r"(?P<suf>crores?|crs?\b\.?|lakhs?|mn\b|mm\b|million|billion|bn\b|kt\b|kilo ?tonnes?|tonnes?|tons?|mt\b|%|per ?cent|bps|basis points|x\b|times|days)?",
     re.I)
 _UNIT_BY_SUFFIX = {
     "crore": "inr_cr", "crores": "inr_cr", "cr": "inr_cr", "crs": "inr_cr",
-    "mn": "mn", "million": "mn", "billion": "bn", "bn": "bn",
+    "mn": "mn", "mm": "mn", "million": "mn", "billion": "bn", "bn": "bn",
     "kt": "kt", "kilotonne": "kt", "kilotonnes": "kt", "kilo tonne": "kt", "kilo tonnes": "kt",
     "tonne": "tonnes", "tonnes": "tonnes", "ton": "tonnes", "tons": "tonnes", "mt": "mt",
     "%": "pct", "per cent": "pct", "percent": "pct", "bps": "bps", "basis points": "bps",
@@ -409,13 +419,30 @@ def span_quote(text: str, parts: list[str], start: int = 0, maxspan: int = 360):
 VS_RX = re.compile(r"\b(?:v/?s\.?|versus|against|as against|compared (?:to|with)|from|up from|down from|vs)\b", re.I)
 
 
+_PRIOR_YR = re.compile(r"(?:last|previous|prior|preceding|corresponding)\s+(?:year|fiscal|quarter|period)"
+                       r"|year[- ]ago|compared|versus|\bvs\b|vis-à-vis", re.I)
+
+
 def doc_default_period(texts: list[str]) -> list[Period]:
-    """Reporting-period hint from the first pages of a document: quarter/year-ended headline."""
-    head = " \n".join(texts[:3])
-    ps = parse_periods(head)
-    # prefer periods near 'ended' / 'quarter' words
-    pref = [p for p in ps if re.search(r"(ended|quarter|results|performance|year)", head[max(0, p.start - 40):p.start], re.I)]
-    return pref or ps
+    """Reporting-period hint from the first pages of a document: the quarter/year-ended headline.
+
+    The title page wins over a comparison mentioned later: the KEC Q4 FY26 call says "recognized last year in
+    FY '25" on page 3, which used to become the default period of every unlabelled figure (the 36,267 crore
+    order book was stored FY25). A Q4 document is the annual-results one, so its unlabelled figures default to
+    the fiscal year (FY26), not to Q4FY26: decks and calls state "Q4 FY26" on the figures that are quarterly."""
+    for n in (1, 2, 3):
+        head = " \n".join(texts[:n])
+        ps = [p for p in parse_periods(head)
+              if not _PRIOR_YR.search(head[max(0, p.start - 40):p.start])]
+        if not ps:
+            continue
+        pref = [p for p in ps if re.search(r"(ended|quarter|results|performance|year|call)",
+                                           head[max(0, p.start - 40):p.start], re.I)]
+        p = (pref or ps)[0]
+        if p.ptype == "Q" and p.canon.startswith("Q4"):
+            return [Period(p.start, p.end, f"FY{p.canon[-2:]}", "FY", p.as_of)]
+        return [p]
+    return []
 
 
 _BREAK = re.compile(r"[.;]\s+[A-Z]|\n\s*\n")
@@ -827,7 +854,7 @@ def _unit_from_label(label: str, e: Entry) -> str | None:
     if e.kind == "days":
         return "days"
     if e.kind == "count":
-        return "count_mn" if re.search(r"\bmn\b|million", l) else ("count" if e.unit == "count" else None)
+        return "count_mn" if re.search(r"\bmn\b|\bmm\b|million", l) else ("count" if e.unit == "count" else None)
     if e.kind == "ratio":
         return "x"
     return None
@@ -878,9 +905,10 @@ def _chart_quote(text: str, num: str, title: str):
 
 
 # ---------------------------------------------------------------- driver
-def _open_pdf(sandbox: Path, sym: str, doc_key: str):
-    p = sandbox / f"{COMPANIES[sym]}_loop" / "raw" / doc_key
-    if not p.exists():
+def _open_pdf_path(path: Path | str | None):
+    """PyMuPDF document at `path`, or None when it is not set or not on this machine."""
+    p = Path(path) if path else None
+    if p is None or not p.is_file():
         return None
     try:
         import pymupdf as fitz
@@ -892,21 +920,85 @@ def _open_pdf(sandbox: Path, sym: str, doc_key: str):
         return None
 
 
+def _open_pdf(sandbox: Path, sym: str, doc_key: str):
+    return _open_pdf_path(sandbox / f"{COMPANIES[sym]}_loop" / "raw" / doc_key)
+
+
 RAW_ROOT = Path("D:/RealityEngine/raw")
 
 
-def _doc_sources(con, sym: str, sandbox: Path, raw_root: Path | None, limit_docs: int | None, st: dict, ocr: dict | None = None):
-    """Yield (doc_key, doc_type, known_at, usable_pages, pdf_or_None, tag). Sandbox docs first, then (optional) the
-    decks that deck_figures cites but docs does not hold (read straight from the text layer of the raw PDF).
+def _pages_docs(sym: str, pages_db: Path | str | None, raw_root: Path | None, ocr: dict, st: dict, shas: set):
+    """Yield (doc_key, doc_type, known_at, usable_pages, pdf, ocr_pages, 'pages.db.doc.known_at') for every document
+    `pages.db` holds for the symbol (doc types KPI_DOC_TYPES), oldest filing first.  Page text is the collector's
+    `doc_page` row (its OCR text included, method ocr_rapid); the PDF for table/chart pages is `doc.source_path`,
+    else the sha256 copy under <raw_root>/decks_full.  This is the same source the pilot3 registry writes, so the
+    FY25-FY27 decks and results presentations are read instead of only the sandbox's older documents.  Every
+    document's sha256 is added to `shas`, so the decks_full fallback below does not read the same file twice."""
+    path = Path(pages_db) if pages_db else None
+    if path is None or not path.is_file():
+        return
+    try:
+        pg = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=30)
+    except sqlite3.DatabaseError:
+        return
+    try:
+        docs = pg.execute(
+            f"SELECT doc_key, doc_type, known_at, source_path, sha256 FROM doc WHERE symbol=? AND doc_type IN "
+            f"({','.join('?' * len(KPI_DOC_TYPES))}) ORDER BY known_at, doc_key", (sym, *KPI_DOC_TYPES)).fetchall()
+        for doc_key, doc_type, known_at, source_path, sha in docs:
+            if sha:
+                shas.add(sha)
+            pages = pg.execute("SELECT page, text, method FROM doc_page WHERE doc_key=? ORDER BY page",
+                               (doc_key,)).fetchall()
+            opg = ocr.get(doc_key, {})
+            if not pages and not opg:
+                continue
+            st["docs"] += 1
+            st["needs_ocr"] += sum(1 for _, _, m in pages if m == "needs_ocr")
+            usable = [(p, t) for p, t, m in pages if m in ("script_text", "ocr_rapid") and t]
+            if opg:
+                have = {p for p, _ in usable}
+                usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
+                st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
+            pdf = None
+            if doc_type in PDF_DOC_TYPES:
+                pdf = _open_pdf_path(source_path)
+                if pdf is None and raw_root is not None and sha:
+                    pdf = _open_pdf_path(Path(raw_root) / "decks_full" / sha[:2] / f"{sha}.pdf")
+                if pdf is None:
+                    st["pdf_missing"] += 1
+            yield doc_key, doc_type, known_at, usable, pdf, opg, "pages.db.doc.known_at"
+            if pdf is not None:
+                pdf.close()
+    finally:
+        pg.close()
+
+
+def _doc_sources(con, sym: str, sandbox: Path, raw_root: Path | None, limit_docs: int | None, st: dict,
+                 ocr: dict | None = None, pages_db: Path | str | None = None):
+    """Yield (doc_key, doc_type, known_at, usable_pages, pdf_or_None, ocr_pages, known_at_source). pages.db first
+    (when `pages_db` is given), then the sandbox's own documents that pages.db does not hold, then (optional) the
+    decks that deck_figures cites but neither holds (read straight from the text layer of the raw PDF).
     ocr = {doc_key: {page: (text, words, conf)}} from pilot3.ocr: those pages are added to usable (text = OCR text)
-    and the 6th item yielded is the {page: ...} dict of the pages read by OCR."""
+    and the 6th item is the {page: ...} dict of the pages read by OCR."""
     ocr = ocr or {}
+    held: set[str] = set()
+    shas: set[str] = set()
+    if pages_db:
+        for i, item in enumerate(_pages_docs(sym, pages_db, raw_root, ocr, st, shas)):
+            if limit_docs and i >= limit_docs:
+                break
+            held.add(item[0])
+            yield item
+    names = {Path(k).name for k in held}
     docs = con.execute(
         f"SELECT doc_key, doc_type, known_at FROM docs WHERE doc_type IN ({','.join('?' * len(KPI_DOC_TYPES))}) ORDER BY known_at",
         KPI_DOC_TYPES).fetchall()
     if limit_docs:
         docs = docs[:limit_docs]
     for doc_key, doc_type, known_at in docs:
+        if doc_key in held or Path(doc_key).name in names:      # pages.db already holds this document
+            continue
         pages = con.execute("SELECT page, text, method FROM doc_text WHERE doc_key=? ORDER BY page", (doc_key,)).fetchall()
         if not pages:
             continue
@@ -921,7 +1013,7 @@ def _doc_sources(con, sym: str, sandbox: Path, raw_root: Path | None, limit_docs
             have = {p for p, _ in usable}
             usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
             st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
-        yield doc_key, doc_type, known_at, usable, pdf, opg
+        yield doc_key, doc_type, known_at, usable, pdf, opg, "docs.known_at"
         if pdf is not None:
             pdf.close()
     if raw_root is None:
@@ -930,10 +1022,10 @@ def _doc_sources(con, sym: str, sandbox: Path, raw_root: Path | None, limit_docs
         import pymupdf as fitz
     except ImportError:  # pragma: no cover
         import fitz
-    held = {r[0] for r in con.execute("SELECT source_key FROM docs WHERE source_key IS NOT NULL")}
     extra = con.execute("SELECT sha256, min(known_at) FROM deck_figures GROUP BY sha256 ORDER BY 2").fetchall()
+    sandbox_shas = {r[0] for r in con.execute("SELECT source_key FROM docs WHERE source_key IS NOT NULL")}
     for sha, known_at in extra:
-        if sha in held:
+        if sha in shas or sha in sandbox_shas:
             continue
         path = raw_root / "decks_full" / sha[:2] / f"{sha}.pdf"
         if not path.exists():
@@ -958,17 +1050,19 @@ def _doc_sources(con, sym: str, sandbox: Path, raw_root: Path | None, limit_docs
             have = {p for p, _ in usable}
             usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
             st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
-        yield key, "deck", known_at, usable, pdf, opg
+        yield key, "deck", known_at, usable, pdf, opg, "deck_figures.known_at"
         pdf.close()
 
 
+
 def extract_company(sym: str, sandbox: Path, stats: dict, limit_docs: int | None = None, raw_root: Path | None = None,
-                    ocr: dict | None = None, only_docs: list[str] | None = None):
+                    ocr: dict | None = None, only_docs: list[str] | None = None, pages_db: Path | str | None = None):
     dbp = sandbox / f"{COMPANIES[sym]}_loop" / f"{COMPANIES[sym]}.db"
     con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
     entries, dims = load_lexicon()
     st = stats.setdefault(sym, {"pages": 0, "needs_ocr": 0, "docs": 0, "pdf_missing": 0})
-    for doc_key, doc_type, known_at, usable, pdf, opg in _doc_sources(con, sym, sandbox, raw_root, limit_docs, st, ocr):
+    for doc_key, doc_type, known_at, usable, pdf, opg, src in _doc_sources(con, sym, sandbox, raw_root, limit_docs, st, ocr,
+                                                                          pages_db):
         if only_docs and not any(k in doc_key for k in only_docs):
             continue
         default_pers = doc_default_period([t for _, t in usable])
@@ -996,12 +1090,14 @@ def extract_company(sym: str, sandbox: Path, stats: dict, limit_docs: int | None
             if trows:   # on a table page, running-text hits that span line breaks are table fragments: drop them
                 srows = [r for r in srows if "\n" not in r.quote]
             for r in sorted(srows + trows, key=lambda r: -RULE_CONF[r.rule][1]):   # best confidence first: INSERT OR IGNORE keeps it
+                conf, rank = RULE_CONF[r.rule]
+                if doc_type == "transcript":     # a call's number is not the deck KPI: its own row, lowest tier (T-049)
+                    rank = max(1, rank - 2)
                 yield dict(symbol=sym, metric=r.metric, dimension=r.dimension, value=r.value, unit=r.unit, scale=r.scale,
                            period_type=r.period_type, fiscal_period=r.fiscal_period, as_of_date=r.as_of, basis=r.basis,
-                           doc_key=doc_key, page=page, quote=r.quote, known_at=known_at,
-                           known_at_source="docs.known_at" if not doc_key.startswith("decks_full/") else "deck_figures.known_at",
+                           doc_key=doc_key, page=page, quote=r.quote, known_at=known_at, known_at_source=src,
                            is_reported=1, raw_label=r.raw_label, raw_value=r.raw_value, extractor_rule=r.rule,
-                           confidence=RULE_CONF[r.rule][0], conf_rank=RULE_CONF[r.rule][1], method=method, ocr_conf=ocr_conf)
+                           confidence=conf, conf_rank=rank, method=method, ocr_conf=ocr_conf, source_type=doc_type)
     con.close()
 
 
@@ -1010,11 +1106,13 @@ def _page_may_have_table(text: str) -> bool:
 
 
 COLS = ("symbol metric dimension value unit scale period_type fiscal_period as_of_date basis doc_key page quote "
-        "known_at known_at_source is_reported raw_label raw_value extractor_rule confidence conf_rank method ocr_conf").split()
+        "known_at known_at_source is_reported raw_label raw_value extractor_rule confidence conf_rank method ocr_conf "
+        "source_type").split()
 
 
 def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = None, raw_root: Path | None = None,
-        ocr_db: str | Path | list | tuple | None = None, only_docs: list[str] | None = None) -> dict:
+        ocr_db: str | Path | list | tuple | None = None, only_docs: list[str] | None = None,
+        pages_db: Path | str | None = None) -> dict:
     t0 = time.time()
     con = sqlite3.connect(out)
     con.executescript(SCHEMA)
@@ -1041,7 +1139,7 @@ def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = No
                 for alias_key, doc_key in con.execute("SELECT alias_key, doc_key FROM doc_alias WHERE symbol=?", (sym,)):
                     if doc_key in ocr and alias_key not in ocr:   # an OCR page under the pilot3 key serves its sandbox key
                         ocr[alias_key] = ocr[doc_key]
-        for row in extract_company(sym, sandbox, stats, limit_docs, raw_root, ocr, only_docs):
+        for row in extract_company(sym, sandbox, stats, limit_docs, raw_root, ocr, only_docs, pages_db):
             batch.append([row[c] for c in COLS])
             if len(batch) >= 2000:
                 con.executemany(sql, batch)
@@ -1066,9 +1164,11 @@ def main(argv=None):
     ap.add_argument("--raw-root", default=str(RAW_ROOT), help="also read the decks deck_figures cites but docs does not hold (text layer only); '' to disable")
     ap.add_argument("--ocr-db", action="append", default=None, help="ocr_page table written by pilot3.ocr: its pages are read too (repeat for one per company)")
     ap.add_argument("--only-docs", default=None, help="comma list of doc_key substrings (debug: read only these documents)")
+    ap.add_argument("--pages-db", default="", help="docs_collect pages.db: read every held document from it (the pilot3 registry's source); '' disables")
     a = ap.parse_args(argv)
     stats = run(a.out, [s.strip().upper() for s in a.symbols.split(",") if s.strip()], Path(a.sandbox_root), a.limit_docs,
-                Path(a.raw_root) if a.raw_root else None, a.ocr_db, [x for x in (a.only_docs or "").split(",") if x] or None)
+                Path(a.raw_root) if a.raw_root else None, a.ocr_db, [x for x in (a.only_docs or "").split(",") if x] or None,
+                Path(a.pages_db) if a.pages_db else None)
     for k, v in stats.items():
         print(k, v)
     return 0
