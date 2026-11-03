@@ -31,7 +31,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 - Push without his OK (given 3 Nov for merged main). Use any model except free ones and DeepSeek without his OK, which covers DeepInfra and Haiku beyond an approved run.
 
 ## Telling Shivam
-- Reports are HTML or Mermaid diagrams, never markdown text walls (3 Nov); lists in Excel, PDF, DOCX or RTF. No spend reports needed: work until he says stop. Explain with real questions and examples, never internal codes.
+- Reports are HTML or Mermaid diagrams, never markdown text walls, and every report for Shivam goes in ONE folder, `D:\RealityEngine\reports\`, named `YYYY-MM-DD_<topic>.<ext>` (3 Nov); lists in Excel, PDF, DOCX or RTF. No spend reports needed: work until he says stop. Explain with real questions and examples, never internal codes.
 - State failures plainly, with full sample sizes; no scores from small samples without saying so.
 
 ## Agreed direction, not yet built
