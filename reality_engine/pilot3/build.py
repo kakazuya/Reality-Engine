@@ -1,11 +1,12 @@
-"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|pages|stores|ratios|extract|kpi|transcripts|all]``
+"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|pages|stores|ratios|extract|kpi|transcripts|guidance|all]``
        ``[--ocr-db <ocr.db> ...]``.
 
 Builds every pilot3 table in one file.  No network, no model.  Pages and documents come from pages.db (sandbox
 pages only where pages.db lacks a document); ``--ocr-db`` (once per company OCR database, as ``pilot3.ocr`` writes
 it) fills the text of a ``needs_ocr`` page into ``doc_page`` and feeds the same pages to the extractors.  ``extract``
-runs the KPI and transcript extractors into the same db.  Each part drops and recreates its own tables (extract: its
-own symbols' rows), so parts can be re-run; ``ratios`` needs ``stores`` built first."""
+runs the KPI and transcript extractors into the same db; ``guidance`` runs the guidance extractor over the pages
+already in it.  Each part drops and recreates its own tables (extract: its own symbols' rows), so parts can be
+re-run; ``ratios`` needs ``stores`` built first and ``guidance`` needs ``pages``."""
 from __future__ import annotations
 
 import argparse
@@ -59,7 +60,7 @@ def build(out: Path, part: str = "all", ocr_dbs=()) -> dict:
     conn = sqlite3.connect(out)
     conn.execute("PRAGMA journal_mode=WAL")
     log = {}
-    parts = ("registry", "pages", "stores", "ratios", "extract") if part == "all" else (part,)
+    parts = ("registry", "pages", "stores", "ratios", "extract", "guidance") if part == "all" else (part,)
     only = part if part in ("kpi", "transcripts") else None
     for name in parts:
         started = time.time()
@@ -79,6 +80,13 @@ def build(out: Path, part: str = "all", ocr_dbs=()) -> dict:
             conn.close()  # the extractors open the db file themselves
             log["extract"] = extract(out, only, ocr_dbs)
             conn = sqlite3.connect(out)
+        elif name == "guidance":
+            from reality_engine.pilot3.guidance import run as run_guidance
+
+            conn.commit()
+            conn.close()  # guidance reads doc_page and transcript_statement from the db file
+            log["guidance"] = run_guidance(str(out), list(SYMBOLS))
+            conn = sqlite3.connect(out)
         log[f"seconds_{name}"] = round(time.time() - started, 1)
     log["rows"] = row_counts(conn)
     conn.close()
@@ -88,7 +96,7 @@ def build(out: Path, part: str = "all", ocr_dbs=()) -> dict:
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", default=str(REAL_DB), help="default: the real pilot3.db on C")
-    ap.add_argument("--part", default="all", choices=("registry", "pages", "stores", "ratios", "extract", "kpi", "transcripts", "all"))
+    ap.add_argument("--part", default="all", choices=("registry", "pages", "stores", "ratios", "extract", "kpi", "transcripts", "guidance", "all"))
     ap.add_argument("--ocr-db", action="append", default=[], help="ocr_page database written by pilot3.ocr (repeat for one per company)")
     args = ap.parse_args(argv)
     print(json.dumps(build(Path(args.out), args.part, tuple(args.ocr_db)), indent=1, default=str))

@@ -274,3 +274,34 @@ def kpi_fy_sum(conn: sqlite3.Connection, symbol: str, metric: str, fy: str, dime
         vals.append(c[0][0])
         unit = c[0][1]
     return [(sum(vals), unit, f"F_FY_SUM {metric}/{dimension} {fy} = Q1..Q4")]
+
+
+# --- guidance ---------------------------------------------------------------------------------------
+def guidance_rows(conn: sqlite3.Connection, symbol: str, metric: str | None = None, period: str | None = None,
+                  as_of: str | None = None) -> list[dict]:
+    """S-GUIDE: the stored forward targets (``guidance``, filled by ``guidance.py``) newest first, each with the row
+    it revised (``revision_of``) and that row's low/high, so a change between calls is one query.
+
+    ``metric`` matches an exact name or any name containing the word (``margin`` -> ``ebitda_margin``); ``period``
+    is a canonical fiscal label (FY27, Q2FY27); ``as_of`` drops rows known after that day."""
+    where, args = "g.symbol=?", [symbol]
+    if metric:
+        names = [r[0] for r in conn.execute("SELECT DISTINCT metric FROM guidance WHERE symbol=?", (symbol,))]
+        key = metric.strip().lower()
+        match = [n for n in names if n == key] or [n for n in names if key in n]
+        if not match:
+            return []
+        where += f" AND g.metric IN ({','.join('?' * len(match))})"
+        args += match
+    if period:
+        where += " AND g.target_period=?"
+        args.append(period)
+    # the LEFT JOIN to the predecessor makes a bare known_at ambiguous
+    extra, eargs = ((" AND substr(g.known_at,1,10) <= ?", (as_of,)) if as_of else ("", ()))
+    cur = conn.execute(
+        f"SELECT g.id, g.metric, g.target_period, g.low, g.high, g.unit, g.direction, g.said_on, g.doc_key, "
+        f"g.page, g.quote, g.speaker, g.revision_of, pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on "
+        f"FROM guidance g LEFT JOIN guidance pv ON pv.id=g.revision_of WHERE {where}{extra} "
+        f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC", (*args, *eargs))
+    names = [d[0] for d in cur.description]
+    return [dict(zip(names, row)) for row in cur.fetchall()]

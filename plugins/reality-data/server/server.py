@@ -31,7 +31,7 @@ import core
 
 INSTRUCTIONS = """Local reality-engine data search. The data is read-only and every answer carries provenance.
 
-PILOT3 FIRST: for KEC, BAJFINANCE and HINDALCO (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements) and every row carries provenance (table, source document + page or store row, known_at). Route: company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF holding, share count on a date -> pilot3_holding(symbol, as_of); what management said (guidance, margins, capex, outlook) -> pilot3_statements; list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, valuation_daily, shp_category, share_capital, dividend_event, price_delivery, transcript_statement, doc, doc_page). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A {"found": false} pilot3 answer lists what is available; read that list and retry, and only if still empty use the raw tools below or say NOT IN DATA. Do not open raw PDFs or the large databases when a pilot3 tool answers.
+PILOT3 FIRST: for KEC, BAJFINANCE and HINDALCO (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF holding, share count on a date -> pilot3_holding(symbol, as_of); what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, valuation_daily, shp_category, share_capital, dividend_event, price_delivery, transcript_statement, guidance, doc, doc_page). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A {"found": false} pilot3 answer lists what is available; read that list and retry, and only if still empty use the raw tools below or say NOT IN DATA. Do not open raw PDFs or the large databases when a pilot3 tool answers.
 
 ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) — one call each, before any sql():
 - delivery / delivered quantity on a date (NSE+BSE) -> delivery(symbol, dates)
@@ -486,8 +486,8 @@ def pilot3_holding(symbol: str, as_of: str, quarter_end: str | None = None,
         "terms = words that must all appear, date_from/date_to on the call date, role = ceo | cfo | md | mgmt, "
         "as_of. period (Q4FY26 / FY26) and rank_terms (the question's own words) put the statements of that "
         "period, carrying those words, first; the newest call breaks a tie. latest=true keeps only the newest "
-        "call. topic_matched=false says no statement carries that tag (the best-matching statements are still "
-        "returned)."
+        "call. topic_matched=false says no statement carries that tag; the call page text is then searched "
+        "(bm25, newest call first) and fallback='doc_page_bm25' marks those rows."
     ),
     annotations=_RO,
 )
@@ -498,6 +498,26 @@ def pilot3_statements(symbol: str, topic: str | None = None, terms: str | None =
     return _safe(lambda: _p3.statements(symbol, topic=topic, terms=terms, date_from=date_from, date_to=date_to,
                                         as_of=as_of, limit=limit, role=role, period=period,
                                         rank_terms=rank_terms, latest=latest))
+
+
+@server.tool(
+    name="pilot3_guidance",
+    description=(
+        "Forward guidance for KEC / BAJFINANCE / HINDALCO: one row per numeric target management gave, from "
+        "transcripts, decks, results and press releases (rule-extracted, exact quote). metric: revenue_growth, "
+        "ebitda_margin, order_intake, nim, credit_cost, aum_growth, capex, cost_of_production, interest_cost, "
+        "ebitda_per_tonne, other (a word is enough; a miss lists the metrics held). period: FY27, Q2FY27, H1FY26. "
+        "Each row: target period, low/high, unit (pct, bps, inr_cr, usd_per_tonne ...), direction (up/down/flat), "
+        "said_on, speaker, quote, and revision_of + previous (the earlier row of the same metric+period and its "
+        "values), so 'did the guidance change between the two calls' answers from one call. Newest first; as_of "
+        "drops rows known after that day. Ask this before pilot3_statements or pilot3_search for any question "
+        "about guidance, outlook, targets or corridors."
+    ),
+    annotations=_RO,
+)
+def pilot3_guidance(symbol: str, metric: str | None = None, period: str | None = None,
+                    as_of: str | None = None, limit: int = 12) -> dict[str, Any]:
+    return _safe(lambda: _p3.guidance(symbol, metric=metric, period=period, as_of=as_of, limit=limit))
 
 
 @server.tool(
@@ -538,8 +558,8 @@ def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int 
     description=(
         "Bounded read-only SELECT/WITH over pilot3.db (limit enforced, default 100, max 500). Tables: company, "
         "doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, formula, "
-        "valuation_daily, shp_category, share_capital, dividend_event, price_delivery, transcript_statement. "
-        "Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions."
+        "valuation_daily, shp_category, share_capital, dividend_event, price_delivery, transcript_statement, "
+        "guidance. Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions."
     ),
     annotations=_RO,
 )
