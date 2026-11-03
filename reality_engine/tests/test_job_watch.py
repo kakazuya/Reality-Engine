@@ -51,7 +51,7 @@ def root() -> Iterator[Path]:
 def _isolated_watch_files(root: Path, monkeypatch) -> None:
     """Keep the real acks, waiter and watch-list files out of every test."""
     monkeypatch.setattr(job_watch, "ACKS_PATH", root / "acks.jsonl")
-    monkeypatch.setattr(job_watch, "WAIT_PATH", root / "wait.json")
+    monkeypatch.setattr(job_watch, "WAIT_DIR", root / "waiters")
     monkeypatch.setattr(job_watch, "STATE_PATH", root / "state_default.json")
 
 
@@ -419,19 +419,65 @@ def _live_job(jobs_dir: Path, job_id: str) -> datetime:
     return started
 
 
+def _waiter_files(wait_dir: Path) -> list[Path]:
+    return sorted(wait_dir.glob("*.json")) if wait_dir.exists() else []
+
+
+def test_wait_reports_a_finish_that_landed_before_its_baseline(root: Path, monkeypatch):
+    """T-053: the baseline must not swallow a finish that landed while Claude was busy."""
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), "", set()))
+    jobs_dir = root / "jobs"
+    finished_id = "20261103T100000Z-aaaaaaaa"
+    started = datetime.now(timezone.utc)
+    _write_job(jobs_dir, finished_id, phase="finished", started=started, finished=started, outcome="completed")
+    _live_job(jobs_dir, "20261103T100100Z-bbbbbbbb")
+    began = time.monotonic()
+    lines = job_watch.wait(
+        timeout_seconds=30,
+        poll_seconds=0.05,
+        jobs_dir=jobs_dir,
+        reviews_path=_empty_reviews(root),
+        state_path=root / "state.json",
+        repo_root=root,
+        wait_dir=root / "waiters",
+    )
+    assert lines == [f"FINISHED, NEEDS REVIEW {finished_id} branch unknown"]
+    assert time.monotonic() - began < 5
+    assert _waiter_files(root / "waiters") == []
+
+
+def test_wait_ignore_existing_keeps_the_old_baseline(root: Path, monkeypatch):
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), "", set()))
+    jobs_dir = root / "jobs"
+    started = datetime.now(timezone.utc)
+    _write_job(jobs_dir, "20261103T100200Z-cccccccc", phase="finished", started=started, finished=started)
+    _live_job(jobs_dir, "20261103T100300Z-dddddddd")
+    lines = job_watch.wait(
+        timeout_seconds=0.3,
+        poll_seconds=0.05,
+        jobs_dir=jobs_dir,
+        reviews_path=_empty_reviews(root),
+        state_path=root / "state.json",
+        repo_root=root,
+        wait_dir=root / "waiters",
+        ignore_existing=True,
+    )
+    assert lines[0].startswith("TIMEOUT still running: ")
+
+
 def test_wait_returns_when_a_job_turns_finished(root: Path, monkeypatch):
     monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), "", set()))
     jobs_dir = root / "jobs"
     job_id = "20261103T100000Z-aaaaaaaa"
     started = _live_job(jobs_dir, job_id)
-    wait_path = root / "wait.json"
+    wait_dir = root / "waiters"
     seen: dict = {}
 
     def finish() -> None:
         deadline = time.monotonic() + 10
-        while time.monotonic() < deadline and not wait_path.exists():
+        while time.monotonic() < deadline and not _waiter_files(wait_dir):
             time.sleep(0.01)
-        seen.update(json.loads(wait_path.read_text(encoding="utf-8")))
+        seen.update(json.loads(_waiter_files(wait_dir)[0].read_text(encoding="utf-8")))
         time.sleep(0.1)  # let the baseline settle on RUNNING
         _write_job(
             jobs_dir,
@@ -452,21 +498,22 @@ def test_wait_returns_when_a_job_turns_finished(root: Path, monkeypatch):
             reviews_path=_empty_reviews(root),
             state_path=root / "state.json",
             repo_root=root,
-            wait_path=wait_path,
+            wait_dir=wait_dir,
         )
     finally:
         thread.join()
     assert lines == [f"FINISHED, NEEDS REVIEW {job_id} branch unknown"]
     assert seen.get("pid") == os.getpid()
     assert seen.get("started_at")
-    assert not wait_path.exists()
+    assert seen.get("created_at") is not None or job_watch._process_started(os.getpid()) is None
+    assert _waiter_files(wait_dir) == []
 
 
 def test_wait_times_out_and_removes_its_waiter_file(root: Path):
     jobs_dir = root / "jobs"
     job_id = "20261103T090000Z-bbbbbbbb"
     _live_job(jobs_dir, job_id)
-    wait_path = root / "wait.json"
+    wait_dir = root / "waiters"
     lines = job_watch.wait(
         timeout_seconds=0.3,
         poll_seconds=0.05,
@@ -474,14 +521,15 @@ def test_wait_times_out_and_removes_its_waiter_file(root: Path):
         reviews_path=_empty_reviews(root),
         state_path=root / "state.json",
         repo_root=root,
-        wait_path=wait_path,
+        wait_dir=wait_dir,
     )
     assert len(lines) == 1
     assert lines[0].startswith(f"TIMEOUT still running: RUNNING {job_id} ")
-    assert not wait_path.exists()
+    assert _waiter_files(wait_dir) == []
 
 
 def test_wait_returns_at_once_when_nothing_is_live(root: Path):
+    wait_dir = root / "waiters"
     lines = job_watch.wait(
         timeout_seconds=5,
         poll_seconds=0.05,
@@ -489,10 +537,10 @@ def test_wait_returns_at_once_when_nothing_is_live(root: Path):
         reviews_path=_empty_reviews(root),
         state_path=root / "state.json",
         repo_root=root,
-        wait_path=root / "wait.json",
+        wait_dir=wait_dir,
     )
     assert lines == []
-    assert not (root / "wait.json").exists()
+    assert _waiter_files(wait_dir) == []
 
 
 def test_waiter_file_is_removed_when_polling_raises(root: Path, monkeypatch):
@@ -506,6 +554,7 @@ def test_waiter_file_is_removed_when_polling_raises(root: Path, monkeypatch):
         return real_status(*args, **kwargs)
 
     monkeypatch.setattr(job_watch, "status", flaky)
+    wait_dir = root / "waiters"
     with pytest.raises(RuntimeError):
         job_watch.wait(
             timeout_seconds=5,
@@ -514,17 +563,26 @@ def test_waiter_file_is_removed_when_polling_raises(root: Path, monkeypatch):
             reviews_path=_empty_reviews(root),
             state_path=root / "state.json",
             repo_root=root,
-            wait_path=root / "wait.json",
+            wait_dir=wait_dir,
         )
-    assert not (root / "wait.json").exists()
+    assert _waiter_files(wait_dir) == []
 
 
-def test_waiter_alive_follows_the_recorded_pid(root: Path):
-    wait_path = root / "wait.json"
-    wait_path.write_text(json.dumps({"pid": os.getpid(), "started_at": "now"}), encoding="utf-8")
-    assert job_watch.waiter_alive(wait_path) is True
-    wait_path.write_text(json.dumps({"pid": 2**31 - 1}), encoding="utf-8")
-    assert job_watch.waiter_alive(wait_path) is False
+def test_waiter_alive_needs_a_live_pid_and_matching_creation_time(root: Path):
+    wait_dir = root / "waiters"
+    wait_dir.mkdir()
+    live = wait_dir / f"{os.getpid()}.json"
+    dead = wait_dir / f"{2**31 - 1}.json"
+    dead.write_text(json.dumps({"pid": 2**31 - 1}), encoding="utf-8")
+    assert job_watch.waiter_alive(wait_dir) is False
+    live.write_text(json.dumps({"pid": os.getpid(), "started_at": "now"}), encoding="utf-8")
+    assert job_watch.waiter_alive(wait_dir) is True
+    created = job_watch._process_started(os.getpid())
+    if created is not None:
+        live.write_text(json.dumps({"pid": os.getpid(), "created_at": created - 600}), encoding="utf-8")
+        assert job_watch.waiter_alive(wait_dir) is False, "a reused pid with another creation time is dead"
+        live.write_text(json.dumps({"pid": os.getpid(), "created_at": created}), encoding="utf-8")
+        assert job_watch.waiter_alive(wait_dir) is True
 
 
 def test_ack_hides_a_failed_job_and_removes_a_registered_name(root: Path):
@@ -597,9 +655,12 @@ def test_live_jobs_sees_past_the_twelve_line_cap(root: Path):
 
 
 def test_main_wait_accepts_its_flags(monkeypatch):
-    monkeypatch.setattr(
-        job_watch,
-        "wait",
-        lambda timeout_seconds, poll_seconds: [f"TIMEOUT still running: {timeout_seconds}/{poll_seconds}"],
-    )
-    assert job_watch.main(["wait", "--timeout-seconds", "2", "--poll-seconds", "0.05"]) == 0
+    seen: dict = {}
+
+    def fake_wait(**kwargs):
+        seen.update(kwargs)
+        return [f"TIMEOUT still running: {kwargs['timeout_seconds']}/{kwargs['poll_seconds']}"]
+
+    monkeypatch.setattr(job_watch, "wait", fake_wait)
+    assert job_watch.main(["wait", "--timeout-seconds", "2", "--poll-seconds", "0.05", "--ignore-existing"]) == 0
+    assert seen == {"timeout_seconds": 2.0, "poll_seconds": 0.05, "ignore_existing": True}
