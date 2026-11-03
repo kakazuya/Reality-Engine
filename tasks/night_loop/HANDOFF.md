@@ -23,7 +23,7 @@
    and fix any question-side failures; finish the raw fetch; rerun the coverage table.
 2. Add a new ticket for pilot3 generalisation, then restart it from `loops/loop_01_worker_generalise.md` with that ticket.
    Loop 2 cannot build pilot10 without it.
-3. Close the store gaps: Sep 2026 shareholding for 3 companies (Hindalco when filed), prices and deals to date, a truth
+3. Close the store gaps: Sep 2026 shareholding for 4 companies (probably filed; the index stops about 16 Oct), prices and deals to date, a truth
    snapshot, and SHP XBRL for all 10 (`stores.SHP_XBRL` holds the pilot folder only).
 4. Rule on: the `orders` reading outside EPC, the no-rating template, the vocabulary extension, size above 120 per company.
 
@@ -33,7 +33,7 @@
 - 4 Nov: hand-read grade of 185 pilot3 answers: 154 right, 30 partly, 1 wrong; the misses were guidance rows,
   period labels a quarter off, and numbers only in deck tables or annual-report prose.
 - 4 Nov: `fetch_pilot60_history` fetches any universe and window unchanged: a 10-line runner repoints ROOT, the manifest
-  and the cache (`pilot10\runners\run_fetch.py`). Rate seen about 40 documents a minute, many hard-linked from held stores.
+  and the cache (`pilot10\runners\run_fetch.py`). Rate seen about 30 documents a minute, many hard-linked from held stores.
 - 4 Nov: NSE `integrated-filing-results?index=equities&symbol=<S>` returns one company's XBRL list; the unfiltered index
   returns only about the last 1,000 rows.
 - 4 Nov: a worker started with an existing ticket built that ticket's old task instead of the brief. Give new work its own ticket, and read the branch's file list before believing a report.

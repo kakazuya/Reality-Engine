@@ -31,9 +31,9 @@ What was checked, and how far:
 - Hand read: 30 random questions per company (300). 3 were unreasonable: Infosys inventory days, Eternal ex-dividend date,
   one badly worded Eternal question. I fixed those and the same defect in sibling questions. **The 300 were read before
   those fixes and before the bank questions (`co_bank.py`) were added; those additions were not re-sampled.**
-- Facts named in company questions were searched in the raw documents with the fetch at about 60%. Six wordings changed:
+- Facts named in company questions were searched in the raw documents with the fetch at about 60%. Seven items changed:
   Eternal's IOCC status and an RBI "overlapping businesses" proposal had 0 hits; Bajaj's Rajeev Jain question presumed a
-  leadership change the filings do not show; three others were reworded or had their search term changed. Later-fetched
+  leadership change the filings do not show; four others were reworded or had their search term changed. Later-fetched
   announcements were not searched.
 - **Facts not checked:** questions state some figures from my reading (e.g. KEC 155 days, HUL 15% USG). Each was seen in a
   document, but no script ties a question to its source.
@@ -57,7 +57,7 @@ Decisions to review:
 - **Q4 bank diff:** `questions/BANK_DIFF_2026-11-04.xlsx`: 40 used, 142 document probes dropped, 815 dropped as about
   companies outside the pilot, 76 dropped after my hand read with one shared reason. The 815 are decided by entity and
   keyword only, not read. Most questions trace to library ids (U04, EP01), not bank ids, because the keyword link found
-  only 29 questions; 26 of the bank-derived questions cite their row directly.
+  only 29 questions; the 34 bank-derived questions in `co_bank.py` cite their row directly.
 
 ## B. Raw data: `D:\RealityEngine\pilot10\raw\<SYMBOL>\<bucket>\`, `manifest.csv`
 Runner: `D:\RealityEngine\pilot10\runners\run_fetch.py` (the existing `fetch_pilot60_history`, paths redirected). Window
@@ -86,7 +86,7 @@ Structured stores, window check at about 04:20 IST:
 | Store | State | Gap |
 |---|---|---|
 | XBRL results (`results_xbrl.db`) | Q2 FY27 now held for 9 of 10 | Hindalco not on NSE's index yet |
-| Shareholding (`shp_index`) | Sep 2026 for BAJFINANCE, ETERNAL, HDFCBANK, KEC, SBILIFE, SUNPHARMA | **Not held: HINDUNILVR, INFY, MARUTI, HINDALCO (latest Jun 2026). Not fetched by me** |
+| Shareholding (`shp_index`) | Sep 2026 for BAJFINANCE, ETERNAL, HDFCBANK, KEC, SBILIFE, SUNPHARMA | **Not held: HINDUNILVR, INFY, MARUTI, HINDALCO (latest Jun 2026). The index was last updated about 16 Oct, so these are probably filed and just not fetched; not checked** |
 | Prices, delivery (`daily_price_delivery`) | to 23 Oct 2026 | **12 days short; `pilot3` reads the truth snapshot, which ends 19 Oct** |
 | Bulk and block deals | to 23 Oct 2026 | same; MARUTI and KEC have no rows in the window |
 | Corporate actions | to Aug 2026 | newer actions not checked |
@@ -95,9 +95,9 @@ Structured stores, window check at about 04:20 IST:
 `RealityEngine-EODMarket` could not be queried on this machine (`schtasks` returned nothing), which may be why prices stopped.
 
 **Writes outside the sandbox, for the wrapper to know:** I ran `parse_nse_results_xbrl`, which wrote to the live
-`results_xbrl.db` (370 files, including about 330 of other companies already on disk). `fetch_nse_api_raw --datasets
+`results_xbrl.db` (370 files: my 123 plus about 247 of other companies already on disk). `fetch_nse_api_raw --datasets
 nse_integrated` overwrote `raw_market/nse_integrated_*/page_*.json`. I also added `pilot10_<SYM>.json` index files there and
-116 XBRL files to `raw_market/nse_results_xbrl`. All are the normal pipeline's folders, append-only except the index pages.
+123 XBRL files to `raw_market/nse_results_xbrl`. All are the normal pipeline's folders, append-only except the index pages.
 
 ## C. Workers
 | Job | Purpose | Verdict |
