@@ -429,7 +429,7 @@ First build (2026-11-02): 283 jobs, 37 Claude session transcripts, 6 reviews; jo
 agree), budget 90 and 20, 99,063 output tokens and 101 model steps. Test file:
 `reality_engine/tests/test_worker_review.py` (8 tests).
 
-### L. Watching jobs at every prompt: running, stalled, failed, unreviewed (T-044)
+### L. Watching jobs at every prompt: running, stalled, failed, unreviewed (T-044, T-050)
 
 `list_workers` returns **running jobs first, then the rest newest started**,
 across hosts and with or without a workspace filter
@@ -446,24 +446,43 @@ with no model call and no network call. A `UserPromptSubmit` hook in
 ```bash
 python -m reality_engine.scripts.job_watch status   # at most 12 lines; silent when healthy
 python -m reality_engine.scripts.job_watch add backfill .tmp/backfill.log --pid 1234
+python -m reality_engine.scripts.job_watch wait     # background it: the harness wakes Claude when it exits
+python -m reality_engine.scripts.job_watch ack <job_id_or_name> --note "checked the diff"
+python -m reality_engine.scripts.job_watch ack --all-ended
 ```
 
-`status` reads `plugins/dsh-worker/runtime/jobs/*/status.json` and
-`tasks/efficiency/worker_reviews.jsonl`, and only job folders whose
+`status` reads `plugins/dsh-worker/runtime/jobs/*/status.json`,
+`tasks/efficiency/worker_reviews.jsonl` and `.tmp/job_watch_acks.jsonl`, and only job folders whose
 `status.json` changed in the last 48 hours. Lines are `RUNNING <job> <minutes>m,
 <tool calls> tool calls`; `STALLED` when a running job's `worker_activity_at` is
 older than 10 minutes; `ENDED BADLY ...` for failed, lost, cancelled or
 lease-expired jobs with no review row; and `FINISHED, NEEDS REVIEW <job> <branch>` when a job
-finished in the last 48 hours, has no review row (`id`), and neither its branch nor
-its job id shows as merged (one local `git` check, skipped when nothing needs it). STALLED and
-RUNNING come first whatever their age; the rest sort newest first, so the
-12-line cap drops the oldest history and never a live job. A registered
+finished in the last 48 hours, has no review row (`id`) and is not done yet: merged branches and
+merge subjects count as done (three local `git` calls, skipped when nothing needs it), and so does
+a branch that no longer exists (deleted after review; an empty branch list means `git` did not
+answer and proves nothing). STALLED and RUNNING come first whatever their age; the rest sort
+newest first, so the 12-line cap drops the oldest history and never a live job. A registered
 non-worker process is `STALLED` when its log has not changed for 5 minutes and
 `ENDED` when its `--pid` is gone; its record is `.tmp/job_watch.json`. Exit code
-is 0 in every case and a corrupt record is skipped. First measured run
-(2026-11-02, 284 job folders): 0.36 s wall (0.29 s in process), one running job
-and eleven failed/needs-review lines. Test:
-`python -m pytest reality_engine/tests/test_job_watch.py -q` (20 tests).
+is 0 in every case and a corrupt record is skipped.
+
+`wait [--timeout-seconds N] [--poll-seconds 20]` takes a baseline of those lines and polls. It
+exits 0 and returns as soon as a line moves to STALLED, ENDED or FINISHED that was not in that
+state in the baseline, or as soon as no job record is active and no live registered pid remains
+(the job records are read again, not the 12 capped lines). On the timeout (default 3300 s) it
+prints `TIMEOUT still running: <lines>`, joined by ` | `. While it runs it keeps its pid and start
+time in `.tmp/job_watch_wait.json` and removes that file on every exit, Ctrl-C and exception
+included (try/finally). Run it as a background Bash command: Claude is woken when the command
+exits, which is what makes a finished worker reach it without a prompt.
+
+`ack <job_id_or_name> [--note TEXT]` appends `{"id", "acked_at", "note"}` to
+`.tmp/job_watch_acks.jsonl`, whose ids `status` treats exactly like `worker_reviews.jsonl` ids, and
+removes a registered name from `.tmp/job_watch.json`. `ack --all-ended` acks every `ENDED` and
+`ENDED BADLY` line shown; `STALLED` and `FINISHED, NEEDS REVIEW` are left for a real look.
+
+First measured `status` run (2026-11-02, 284 job folders): 0.36 s wall (0.29 s in process), one
+running job and eleven failed/needs-review lines. Tests:
+`python -m pytest reality_engine/tests/test_job_watch.py -q` (30 tests).
 
 ### M. Doc review loop and session hooks (T-045)
 
@@ -476,7 +495,7 @@ and eleven failed/needs-review lines. Test:
 - **Blind spot:** the reader sees a worktree with no gitignored files and cannot read the archive, `.tmp` or the dsh runtime folder. The first run wrote false "not in the repo" notes from this, so the prompt now forbids that claim; check any such note against the main checkout before merging.
 - **Archive:** `--archive` reviews only `tasks/archive/`, with Read, Grep and Glob and no Edit: archived records are history, so each file is kept or proposed for deletion. Shivam lifted the archive read rule for T-045 on 2 Nov; the loop drops it from the worktree's `.claude/settings.json` only (hidden from git with skip-worktree) and puts it back when the run ends. The rule stays on `main`. First run, 2 Nov: 78 files in 9 sessions, 56 kept, 22 finished briefs deleted after Opus checked that nothing outside the archive names them.
 
-`reality_engine/scripts/session_hooks.py` holds two hooks. `stop` blocks one stop while `job_watch` reports a stalled job, never twice in a row and never inside the loop. `precompact` prints what a summary must keep. Tests: `python -m pytest reality_engine/tests/test_doc_review_loop.py -q`.
+`reality_engine/scripts/session_hooks.py` holds two hooks. `stop` blocks one stop while `job_watch` reports a stalled job, while an unreviewed `FINISHED, NEEDS REVIEW` or `ENDED BADLY` line is shown, or while a job runs with no live `job_watch wait` recorded in `.tmp/job_watch_wait.json` (section L); it never blocks twice in a row, never inside the loop, and never waits itself. `precompact` prints what a summary must keep. Tests: `python -m pytest reality_engine/tests/test_doc_review_loop.py reality_engine/tests/test_session_hooks.py -q`.
 
 The stream/context runner is shared with the T-048 gap loop: `reality_engine/scripts/session_runner.py` owns `child_env`, `context_of`, `build_cmd`, `run_session` (process, stream-json parse, usage, tool calls, the 95,000-token kill) and `estimate_cost` (a killed session's cost from its tokens at Haiku 5.5 list price when no `result` event arrived); `doc_review_loop.run_batch` keeps only the doc queue and its prompt. Its tests still pass unchanged.
 

@@ -7,6 +7,14 @@ prompt.  It prints nothing when every recent job is healthy; otherwise at most
 process that is not a dsh worker (a log path plus optional ``--pid``) in
 ``.tmp/job_watch.json``.
 
+``wait`` blocks until a job ends or stalls, or until no running job and no live
+registered pid remain, so a session runs it as a background command and the
+harness wakes that session when it exits.  It records its pid and start time in
+``.tmp/job_watch_wait.json`` while it runs and removes the file on every exit
+path.  ``ack`` marks a job reviewed in ``.tmp/job_watch_acks.jsonl`` and drops a
+registered name from the watch list.  The Stop hook refuses one stop while a
+finish or failure is unreviewed, or while a job runs with no live waiter.
+
 ``try``/``except`` in ``main`` keeps a broken record from raising into a hook:
 the command always exits 0.
 """
@@ -17,6 +25,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -30,6 +39,12 @@ RUNTIME_DIR = Path(
 JOBS_DIR = RUNTIME_DIR / "jobs"
 REVIEWS_PATH = REPO_ROOT / "tasks" / "efficiency" / "worker_reviews.jsonl"
 STATE_PATH = REPO_ROOT / ".tmp" / "job_watch.json"
+ACKS_PATH = REPO_ROOT / ".tmp" / "job_watch_acks.jsonl"
+WAIT_PATH = REPO_ROOT / ".tmp" / "job_watch_wait.json"
+
+FINISHED_PREFIX = "FINISHED, NEEDS REVIEW "
+ENDED_BADLY_PREFIX = "ENDED BADLY "
+WAIT_STATES = frozenset({"STALLED", "ENDED", "FINISHED"})
 
 ACTIVE_PHASES = frozenset({"starting", "running", "cancelling"})
 BAD_PHASES = frozenset({"failed", "lost", "cancelled"})
@@ -167,21 +182,30 @@ def _git(repo_root: Path, *args: str) -> str:
     return done.stdout if done.returncode == 0 else ""
 
 
-def _merge_snapshot(repo_root: Path) -> tuple[set[str], str]:
-    """Branches merged into HEAD plus merge-commit subjects, in two local git calls."""
+def _merge_snapshot(repo_root: Path) -> tuple[set[str], str, set[str]]:
+    """Merged branches, merge-commit subjects and every local branch, in three local git calls."""
     merged = set(
         _git(repo_root, "for-each-ref", "--merged=HEAD", "--format=%(refname:short)", "refs/heads").split()
     )
-    return merged, _git(repo_root, "log", "--merges", "--format=%s", "-n", "500")
+    existing = set(_git(repo_root, "for-each-ref", "--format=%(refname:short)", "refs/heads").split())
+    return merged, _git(repo_root, "log", "--merges", "--format=%s", "-n", "500"), existing
 
 
-def _merged(snapshot: tuple[set[str], str], branch: str | None, job_id: str) -> bool:
-    """HP jobs have no branch record, and a continued job reuses its first job's branch."""
-    merged, subjects = snapshot
-    return job_id in subjects or (branch is not None and (branch in merged or branch in subjects))
+def _reviewed_finish(snapshot: tuple[set[str], str, set[str]], branch: str | None, job_id: str) -> bool:
+    """A finish needs no review once merged, or once its branch is gone.
+
+    HP jobs have no branch record, and a continued job reuses its first job's branch.
+    An empty branch list means git did not answer, so a missing branch proves nothing.
+    """
+    merged, subjects, existing = snapshot
+    if job_id in subjects:
+        return True
+    if branch is None:
+        return False
+    return branch in merged or branch in subjects or (bool(existing) and branch not in existing)
 
 
-def _merged_snapshot(repo_root: Path, holder: list[Any]) -> tuple[set[str], str]:
+def _merged_snapshot(repo_root: Path, holder: list[Any]) -> tuple[set[str], str, set[str]]:
     """The merge evidence, computed at most once per status run."""
     if holder[0] is None:
         holder[0] = _merge_snapshot(repo_root)
@@ -233,7 +257,7 @@ def _job_line(
     if finished is not None and now - finished > timedelta(hours=RECENT_HOURS):
         return None
     branch = _branch(job_dir)
-    if _merged(_merged_snapshot(repo_root, snapshot), branch, job_id):
+    if _reviewed_finish(_merged_snapshot(repo_root, snapshot), branch, job_id):
         return None
     return 2, _epoch(finished) or recent, f"FINISHED, NEEDS REVIEW {job_id} {branch or 'branch unknown'}"
 
@@ -242,6 +266,13 @@ def _load_state(path: Path) -> dict[str, Any]:
     data = _read_json(path)
     jobs = data.get("jobs") if isinstance(data, dict) else None
     return jobs if isinstance(jobs, dict) else {}
+
+
+def _save_state(path: Path, state: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps({"jobs": state}, indent=2), encoding="utf-8")
+    os.replace(tmp, path)
 
 
 def _pid_alive(pid: Any) -> bool:
@@ -295,18 +326,146 @@ def _registered_lines(state: dict[str, Any], now: datetime) -> list[tuple[int, f
     return lines
 
 
+def live_jobs(jobs_dir: Path | None = None, now: datetime | None = None) -> bool:
+    """True while any job is active, read from the records rather than the capped lines."""
+    now = now or datetime.now(timezone.utc)
+    for job_dir in _recent_job_dirs(Path(jobs_dir or JOBS_DIR), now):
+        record = _read_json(job_dir / "status.json")
+        if isinstance(record, dict) and str(record.get("phase") or "") in ACTIVE_PHASES:
+            return True
+    return False
+
+
+def live_registered(state_path: Path | None = None) -> bool:
+    """True while a registered non-worker process still holds its pid."""
+    state = _load_state(Path(state_path or STATE_PATH))
+    return any(isinstance(row, dict) and _pid_alive(row.get("pid")) for row in state.values())
+
+
+def _line_key(line: str) -> tuple[str, str]:
+    """(state, job id or registered name) from one status line.
+
+    The minutes and tool counts never enter the key, so a running job that only
+    ages is not a change.
+    """
+    words = line.split()
+    if line.startswith(ENDED_BADLY_PREFIX):
+        return "ENDED", words[2] if len(words) > 2 else ""
+    if line.startswith(FINISHED_PREFIX):
+        return "FINISHED", words[3] if len(words) > 3 else ""
+    return (words[0] if words else ""), (words[1] if len(words) > 1 else "")
+
+
+def _write_waiter(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    record = {"pid": os.getpid(), "started_at": datetime.now(timezone.utc).isoformat()}
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(record), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _remove_waiter(path: Path) -> None:
+    try:
+        path.unlink()
+    except OSError:
+        pass
+
+
+def waiter_alive(wait_path: Path | None = None) -> bool:
+    """True while a ``wait`` process holds ``.tmp/job_watch_wait.json``."""
+    data = _read_json(Path(wait_path or WAIT_PATH))
+    # ponytail: pid alone; a crashed waiter's reused pid reads live until the next wait rewrites it.
+    return isinstance(data, dict) and _pid_alive(data.get("pid"))
+
+
+def wait(
+    timeout_seconds: float = 3300,
+    poll_seconds: float = 20,
+    jobs_dir: Path | None = None,
+    reviews_path: Path | None = None,
+    state_path: Path | None = None,
+    repo_root: Path | None = None,
+    acks_path: Path | None = None,
+    wait_path: Path | None = None,
+) -> list[str]:
+    """Poll until a job ends or stalls, or no running job and no live pid are left.
+
+    Returns the lines to print: the newly ended or stalled ones, or a single
+    ``TIMEOUT still running: ...`` line. Run from ``main`` as a background command:
+    the harness wakes the session when this returns.
+    """
+    jobs_dir = Path(jobs_dir or JOBS_DIR)
+    reviews_path = Path(reviews_path or REVIEWS_PATH)
+    state_path = Path(state_path or STATE_PATH)
+    repo_root = Path(repo_root or REPO_ROOT)
+    acks_path = Path(acks_path or ACKS_PATH)
+    wait_path = Path(wait_path or WAIT_PATH)
+
+    def snapshot() -> list[str]:
+        return status(jobs_dir, reviews_path, state_path, repo_root, acks_path=acks_path)
+
+    baseline = {_line_key(line) for line in snapshot()}
+    deadline = time.monotonic() + max(0.0, float(timeout_seconds))
+    _write_waiter(wait_path)
+    try:
+        while True:
+            lines = snapshot()
+            changed = [
+                line
+                for line in lines
+                if _line_key(line) not in baseline and _line_key(line)[0] in WAIT_STATES
+            ]
+            if changed:
+                return changed
+            if not live_jobs(jobs_dir) and not live_registered(state_path):
+                return []
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return [f"TIMEOUT still running: {' | '.join(lines)}"]
+            time.sleep(max(0.01, min(float(poll_seconds), remaining)))
+    finally:
+        _remove_waiter(wait_path)
+
+
+def ack(
+    target: str,
+    note: str | None = None,
+    state_path: Path | None = None,
+    acks_path: Path | None = None,
+) -> bool:
+    """Mark a job reviewed, and drop a registered name from the watch list.
+
+    Returns True when the target was a registered name that has been removed.
+    """
+    path = Path(acks_path or ACKS_PATH)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    record: dict[str, Any] = {"id": target, "acked_at": datetime.now(timezone.utc).isoformat()}
+    if note:
+        record["note"] = note
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record) + "\n")
+    state = _load_state(Path(state_path or STATE_PATH))
+    if target not in state:
+        return False
+    del state[target]
+    _save_state(Path(state_path or STATE_PATH), state)
+    return True
+
+
 def status(
     jobs_dir: Path | None = None,
     reviews_path: Path | None = None,
     state_path: Path | None = None,
     repo_root: Path | None = None,
     now: datetime | None = None,
+    acks_path: Path | None = None,
 ) -> list[str]:
     """The lines a hook should print; an empty list means nothing needs attention."""
     now = now or datetime.now(timezone.utc)
     jobs_dir = Path(jobs_dir or JOBS_DIR)
     repo_root = Path(repo_root or REPO_ROOT)
     reviewed = _review_ids(Path(reviews_path or REVIEWS_PATH))
+    reviewed |= _review_ids(Path(acks_path or ACKS_PATH))
     snapshot: list[Any] = [None]
     lines: list[tuple[int, float, str]] = []
     for job_dir in _recent_job_dirs(jobs_dir, now):
@@ -336,17 +495,36 @@ def add(name: str, logfile: str, pid: int | None = None, state_path: Path | None
         "pid": pid,
         "added_at": datetime.now(timezone.utc).isoformat(),
     }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps({"jobs": state}, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
+    _save_state(path, state)
+
+
+def _option(args: list[str], name: str, default: str) -> str:
+    if name in args:
+        index = args.index(name)
+        if index + 1 < len(args):
+            return args[index + 1]
+    return default
 
 
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    usage = (
+        "usage: job_watch status | wait [--timeout-seconds N] [--poll-seconds N]"
+        " | add <name> <logfile> [--pid N] | ack <job_id_or_name> [--note TEXT] | ack --all-ended"
+    )
     try:
         if not args or args[0] == "status":
             for line in status():
+                print(line)
+            return 0
+        if args[0] == "wait":
+            try:
+                timeout = float(_option(args, "--timeout-seconds", "3300"))
+                poll = float(_option(args, "--poll-seconds", "20"))
+            except ValueError:
+                print("wait: --timeout-seconds and --poll-seconds take a number", file=sys.stderr)
+                return 0
+            for line in wait(timeout_seconds=timeout, poll_seconds=poll):
                 print(line)
             return 0
         if args[0] == "add" and len(args) >= 3:
@@ -360,7 +538,19 @@ def main(argv: list[str] | None = None) -> int:
             add(args[1], args[2], pid)
             print(f"watching {args[1]}")
             return 0
-        print("usage: job_watch status | job_watch add <name> <logfile> [--pid N]", file=sys.stderr)
+        if args[0] == "ack" and len(args) >= 2:
+            note = _option(args, "--note", "") or None
+            if args[1] == "--all-ended":
+                targets = [_line_key(line)[1] for line in status() if line.startswith("ENDED")]
+                for target in targets:
+                    ack(target, note)
+                print(f"acked {len(targets)} ended line(s)")
+            elif ack(args[1], note):
+                print(f"acked {args[1]} and removed it from the watch list")
+            else:
+                print(f"acked {args[1]}")
+            return 0
+        print(usage, file=sys.stderr)
     except Exception as exc:  # a hook must never see this command raise
         print(f"job_watch: {type(exc).__name__}: {exc}", file=sys.stderr)
     return 0
