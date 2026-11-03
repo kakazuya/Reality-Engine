@@ -169,6 +169,29 @@ def test_sentence_split_keeps_abbreviations_and_decimals():
                                            "Next, Q3 FY24 grew 2.5% over Dr. Rao's plan.", "Done?"]
 
 
+def test_call_period_from_the_calls_own_words():
+    """Older zero-padded forms ("FY 2026 fourth quarter") used to raise KeyError: the groups were swapped."""
+    assert transcripts.call_period_of("", ["Fourth quarter of FY 2026"]) == "Q4FY26"
+    assert transcripts.call_period_of("", ["FY 2026 fourth quarter results"]) == "Q4FY26"
+    assert transcripts.call_period_of("Conference Call Q1 FY27", []) == "Q1FY27"
+
+
+def test_management_intro_accepts_a_composite_title():
+    text = ("Mr. Rajeev Jain, Vice Chairman and Managing Director; and Mr. Sandeep Jain, COO and CFO;"
+            " Mr. Subir Sen, Head of Investor Relations")
+    mgmt = {m.group(1): transcripts._title_role(m.group(2)) for m in transcripts.MGMT_INTRO_RX.finditer(text)}
+    assert mgmt == {"Rajeev Jain": "md", "Sandeep Jain": "mgmt", "Subir Sen": "ir"}
+
+
+def test_known_names_survive_an_ocr_slip():
+    topics, people = transcripts.load_topics()
+    assert transcripts._same_person("Stish Pai", "Satish Pai")           # OCR dropped the "a"
+    assert transcripts._same_person("Dev Ahuja", "Devinder Ahuja")      # short form of the same person
+    assert not transcripts._same_person("Manish Jain", "Sandeep Jain")  # different people, shared surname
+    assert transcripts.role_of("Stish Pai", "HINDALCO", people, [], {}) == "md"
+    assert transcripts.role_of("Devinder Ahuja", "HINDALCO", people, [], {"DEV AHUJA": "cfo"}) == "cfo"
+
+
 # ----------------------------------------------------------------------------- end to end on a fake sandbox
 PRESS_TEXT = ("FINANCIAL PERFORMANCE FOR QUARTER ENDED 31 DECEMBER 2023\nRecord Order Book + L1 of over Rs. 38,000 crore\n"
               "Order intake of Rs. 6,000 crore in Q3 FY24\n")
@@ -218,6 +241,26 @@ def test_cli_end_to_end_no_network(tmp_path, monkeypatch):
     n = c.execute("SELECT count(*) FROM kpi_series").fetchone()[0]
     kpi.main(["--out", str(out), "--symbols", "KEC", "--sandbox-root", str(tmp_path / "sb"), "--raw-root", ""])
     assert c.execute("SELECT count(*) FROM kpi_series").fetchone()[0] == n
+
+
+def test_transcripts_read_the_pilot3_page_text(tmp_path):
+    """The extractor reads the pilot3 db's own doc_page (pages.db documents + RapidOCR text), not only the loop's
+    old sandbox transcripts: a modern call stored there yields statements."""
+    out = tmp_path / "p3.db"
+    c = sqlite3.connect(out)
+    c.executescript("CREATE TABLE doc(doc_key TEXT, symbol TEXT, doc_type TEXT, title TEXT, known_at TEXT);"
+                    "CREATE TABLE doc_page(doc_key TEXT, page INT, text TEXT);")
+    c.execute("INSERT INTO doc VALUES('concall_pdfs/9b/x.pdf','KEC','transcript','Analyst / Investor Meet',"
+              "'2026-08-14T15:30:33')")
+    c.execute("INSERT INTO doc_page VALUES('concall_pdfs/9b/x.pdf',1,?)", (CALL_P1,))
+    c.commit()
+    c.close()
+    assert transcripts.main(["--out", str(out), "--symbols", "KEC",
+                             "--sandbox-root", str(tmp_path / "no_sandbox")]) == 0
+    c = sqlite3.connect(out)
+    rows = c.execute("SELECT doc_key, quote FROM transcript_statement").fetchall()
+    assert rows and rows[0][0] == "concall_pdfs/9b/x.pdf"            # the pilot3 key, joined by doc directly
+    assert any("order book of INR37,697" in quote for _key, quote in rows)
 
 
 # ----------------------------------------------------------------------------- T-049: FY25-FY27 documents

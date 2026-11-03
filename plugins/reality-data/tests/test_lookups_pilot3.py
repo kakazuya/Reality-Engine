@@ -51,7 +51,11 @@ def build_fixture() -> None:
     c.execute("INSERT INTO doc_alias VALUES ('KEC','old/deck.pdf','pdfs/KEC/deck1.pdf')")
     pages = [("pdfs/KEC/deck1.pdf", 1, "Order book stood at Rs 40,000 crore as on 31 Dec 2025", "2026-02-10T17:00:00"),
              ("pdfs/KEC/deck1.pdf", 2, "Transmission and distribution revenue grew strongly", "2026-02-10T17:00:00"),
-             ("pdfs/KEC/deck2.pdf", 1, "Order book reached Rs 45,000 crore in June 2026", "2026-08-10T17:00:00")]
+             ("pdfs/KEC/deck2.pdf", 1, "Order book reached Rs 45,000 crore in June 2026", "2026-08-10T17:00:00"),
+             # same words as page 1 of deck1 but printing the quarter: the period boost must lift it
+             ("pdfs/KEC/deck2.pdf", 2, "Q3 FY26 update. The order book is discussed together with revenue, margins, "
+                                       "capex, demand, capacity and working capital in the presentation.",
+              "2026-08-10T17:00:00")]
     for i, (dk, pg, text, k) in enumerate(pages):
         c.execute("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)", (dk, "KEC", pg, text, "script_text", len(text), k, None))
     c.execute("INSERT INTO doc_page_fts(rowid, text) SELECT rowid, text FROM doc_page")
@@ -63,6 +67,13 @@ def build_fixture() -> None:
     c.execute(ins, ("order_book", "total", 45000.0, "inr_cr", "Q1FY27", "2026-06-30", "pdfs/KEC/deck2.pdf",
                     "Order book Rs 45,000 crore", "2026-08-10T17:00:00"))
     c.execute(ins, ("order_book", "total", 1.0, "inr_cr", "Q2FY27", "2026-09-30", "pdfs/KEC/deck2.pdf", "undated", None))
+    # same KPI, two sources and confidence tiers: the deck row (better evidence) must come first
+    c.execute(ins, ("order_intake", "total", 100.0, "inr_cr", "Q1FY27", "2026-06-30",
+                    "old/call.pdf", "call remark", "2026-08-11T10:00:00"))
+    c.execute(ins, ("order_intake", "total", 200.0, "inr_cr", "Q1FY27", "2026-06-30", "pdfs/KEC/deck2.pdf",
+                    "deck table", "2026-08-10T17:00:00"))
+    c.execute("UPDATE kpi_series SET conf_rank=1 WHERE metric='order_intake' AND value=100.0")
+    c.execute("UPDATE kpi_series SET conf_rank=4 WHERE metric='order_intake' AND value=200.0")
     c.executemany("INSERT INTO fin_annual_line VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
         ("KEC", "INE389H01022", "FY25", "2025-03-31", "consolidated", "PL", "pat", "PAT", 4.0e9, "inr", 1.0, "f.xml",
          None, "ProfitLoss = 4e9", "results_xbrl.db", "facts", "f.xml#1", "2025-05-20T10:00:00", "x", 1, 0,
@@ -87,6 +98,12 @@ def build_fixture() -> None:
               "extractor_rule) VALUES ('KEC','old/call.pdf','2026-02-12','Q3FY26',2,1,'A B','ceo','prepared',"
               "'margin,guidance','Q3FY26','t','[]','We expect margin to improve','We expect margin to improve by 50 bps.',"
               "0,'2026-02-14T10:00:00','x','t')")
+    # a newer call with the same topic but not the asked words: relevance and period outrank recency
+    c.execute("INSERT INTO transcript_statement(symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,"
+              "topics,period_discussed,period_source,numbers_json,statement,quote,is_fragment,known_at,known_at_source,"
+              "extractor_rule) VALUES ('KEC','KEC:old/call.pdf','2026-08-01','Q1FY27',3,2,'C D','md','prepared',"
+              "'margin','Q1FY27','t','[]','Margins were steady this quarter','Margins were steady this quarter.',"
+              "0,'2026-08-02T10:00:00','x','t')")
     c.commit()
     c.close()
 
@@ -180,9 +197,13 @@ class Pilot3ToolTests(unittest.TestCase):
     def test_statements_exact_quote(self):
         out = p3.statements("KEC", topic="margin", terms="improve 50")
         self.assertEqual(out["rows"][0]["quote"], "We expect margin to improve by 50 bps.")
+        self.assertTrue(out["topic_matched"])
         self.assertProvenance(out["rows"])
         self.assertFalse(p3.statements("KEC", topic="margin", as_of="2026-02-01")["found"])
-        self.assertFalse(p3.statements("KEC", topic="capex")["found"])
+        # a tag nothing carries is a ranking preference, not a filter: the rows come with topic_matched=false
+        untagged = p3.statements("KEC", topic="capex")
+        self.assertTrue(untagged["found"])
+        self.assertFalse(untagged["topic_matched"])
 
     def test_docs_listing(self):
         out = p3.docs("KEC", "decks")
@@ -191,10 +212,41 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertEqual(len(p3.docs("KEC", as_of="2026-03-01")["rows"]), 2)
         self.assertProvenance(out["rows"])
 
+    def test_kpi_orders_by_confidence_then_source_type(self):
+        """The extractor's confidence decides first, then a deck table beats a call remark."""
+        out = p3.kpi("KEC", "order_intake", "Q1FY27")
+        self.assertEqual([r["value"] for r in out["rows"]], [200.0, 100.0])
+        self.assertEqual(out["rows"][0]["provenance"]["doc_type"], "deck")
+
+    def test_statements_latest_keeps_the_newest_call(self):
+        out = p3.statements("KEC", latest=True)
+        self.assertEqual({r["call_date"] for r in out["rows"]}, {"2026-08-01"})
+        early = p3.statements("KEC", latest=True, as_of="2026-07-01")   # the newer call is not held by then
+        self.assertEqual({r["call_date"] for r in early["rows"]}, {"2026-02-12"})
+
+    def test_statements_rank_by_period_and_question_words(self):
+        """A newer call does not bury the statement that answers: the period and the question's words rank."""
+        latest = p3.statements("KEC", topic="margin")
+        self.assertEqual(latest["rows"][0]["call_date"], "2026-08-01")          # no signal: newest call first
+        asked = p3.statements("KEC", topic="margin", period="Q3FY26", rank_terms="50 bps improve")
+        self.assertEqual(asked["rows"][0]["quote"], "We expect margin to improve by 50 bps.")
+        words = p3.statements("KEC", topic="margin", rank_terms="50 bps improve")
+        self.assertEqual(words["rows"][0]["quote"], "We expect margin to improve by 50 bps.")
+
+    def test_search_period_boost_lifts_the_page_that_prints_the_quarter(self):
+        plain = p3.search("KEC", "order book")
+        lifted = p3.search("KEC", "order book", period="Q3FY26")
+        self.assertEqual(lifted["rows"][0]["provenance"]["source"], "pdfs/KEC/deck2.pdf p2")
+        self.assertEqual(plain["rows"][0]["provenance"]["source"], "pdfs/KEC/deck2.pdf p1")   # bm25 alone
+        self.assertEqual(lifted["period"], "Q3FY26")
+
     def test_search_fts_and_as_of(self):
         out = p3.search("KEC", "order book crore")
-        self.assertEqual(len(out["rows"]), 2)
-        self.assertIn("[Order]", out["rows"][0]["snippet"] + out["rows"][1]["snippet"])
+        self.assertGreaterEqual(len(out["rows"]), 2)
+        crore = [r for r in out["rows"] if "crore" in (r["snippet"] or "")]
+        self.assertEqual({r["provenance"]["source"] for r in crore[:2]},
+                         {"pdfs/KEC/deck1.pdf p1", "pdfs/KEC/deck2.pdf p1"})   # all words first
+        self.assertIn("[Order]", out["rows"][0]["snippet"])
         self.assertProvenance(out["rows"])
         early = p3.search("KEC", "order book", as_of="2026-03-01")
         self.assertEqual([r["page"] for r in early["rows"]], [1])

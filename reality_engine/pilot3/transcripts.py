@@ -11,6 +11,7 @@ Page text comes from doc_text (method script_text); pages marked needs_ocr are s
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import re
 import sqlite3
@@ -50,7 +51,10 @@ NAME = r"([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})"
 ANALYST_INTRO_RX = re.compile(r"(?i:line of|question (?:is )?from|next question comes from|first question is from)\s+(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)?\s*" + NAME)
 HOST_INTRO_RX = re.compile(r"(?i:over to|hand (?:the )?conference over to|hand it over to)\s+(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)?\s*" + NAME + r"\s+(?i:from|of)\s+")
 MGMT_INTRO_RX = re.compile(r"(?:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)\s+([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})\s*[,–-]\s*(?:the\s+)?"
-                           r"(Managing Director|MD|CEO|Chief Executive|CFO|Chief Financial|Head of Investor|Whole[- ]time Director|President|Executive Director|Group Chief)", re.I)
+                           # "Vice Chairman and Managing Director", "COO and CFO": words may precede the role
+                           r"(?:[A-Za-z][\w.'’\-]*\s+){0,5}?(Managing Director|MD|CEO|Chief Executive|CFO|"
+                           r"Chief Financial|COO|Chief Operating|Head of Investor|Whole[- ]time Director|"
+                           r"President|Executive Director|Group Chief)", re.I)
 QUARTER_WORDS = {"first": 1, "second": 2, "third": 3, "fourth": 4}
 
 
@@ -80,7 +84,15 @@ def _same_person(a: str, b: str) -> bool:
         return False
     if set(ta) <= set(tb) or set(tb) <= set(ta):
         return True
-    return ta[0] == tb[0] and (ta[-1][:4] == tb[-1][:4])
+    if ta[0] == tb[0] and (ta[-1][:4] == tb[-1][:4]):
+        return True
+    # OCR / spelling slip in one name of a known person ("Stish Pai" <-> "Satish Pai", "Dev" <-> "Devinder"):
+    # same surname and a first name that is a prefix or nearly the same word.  A different first name with a
+    # shared surname ("Sandeep Jain" / "Manish Jain") is not a match.
+    if ta[-1] == tb[-1] and len(ta[-1]) >= 3:
+        return (ta[0].startswith(tb[0]) or tb[0].startswith(ta[0])
+                or difflib.SequenceMatcher(None, ta[0], tb[0]).ratio() >= 0.8)
+    return False
 
 
 def call_period_of(title: str, texts: list[str]) -> str | None:
@@ -92,7 +104,8 @@ def call_period_of(title: str, texts: list[str]) -> str | None:
         re.search(r"(first|second|third|fourth)\s+quarter\s+(?:of\s+)?(?:the\s+)?(?:financial year|FY)\s?['’]?\s?(\d{2,4})", head, re.I)
     if m:
         g = m.groups()
-        a, b = (g[1], g[0]) if g[0].isdigit() else (g[0], g[1])
+        # group order depends on which alternative matched: (number, word) or (word, number)
+        a, b = (g[0], g[1]) if g[0].isdigit() else (g[1], g[0])
         return f"Q{QUARTER_WORDS[b.lower()]}FY{int(a[-2:]):02d}"
     return None
 
@@ -208,7 +221,7 @@ def _title_role(title: str) -> str:
         return "ir"
     if "managing director" in t or t.startswith("md") or "chief executive" in t or t.startswith("ceo"):
         return "md"
-    return "mgmt"
+    return "mgmt"       # COO, President, Executive Director, Whole-time Director
 
 
 def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[tuple[int, str]], topics, people, st: dict):
@@ -272,6 +285,29 @@ COLS = ("symbol isin doc_key call_date call_period page seq speaker role section
         "numbers_json statement quote is_fragment known_at known_at_source extractor_rule").split()
 
 
+def _transcript_docs(con: sqlite3.Connection, sym: str, sandbox: Path):
+    """(doc_key, title, known_at, [(page, text)]) for every transcript: the pilot3 db's own ``doc_page`` when it
+    has been built (pages.db documents and their RapidOCR text, doc keys already the pilot3 ones), else the
+    sandbox loop's ``docs``/``doc_text``."""
+    if con.execute("SELECT 1 FROM sqlite_master WHERE name='doc_page'").fetchone():
+        docs = con.execute("SELECT d.doc_key, d.title, d.known_at FROM doc d JOIN doc_page p ON p.doc_key=d.doc_key "
+                           "WHERE d.symbol=? AND d.doc_type='transcript' GROUP BY d.doc_key",
+                           (sym,)).fetchall()
+        for doc_key, title, known_at in docs:
+            pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc_key,)).fetchall()
+            yield doc_key, title, known_at, pages
+        return
+    src = sqlite3.connect(f"file:{(sandbox / (COMPANIES[sym] + '_loop') / (COMPANIES[sym] + '.db')).as_posix()}?mode=ro",
+                          uri=True)
+    try:
+        for doc_key, title, known_at in src.execute("SELECT doc_key, title, known_at FROM docs "
+                                                    "WHERE doc_type='transcript' ORDER BY known_at"):
+            pages = src.execute("SELECT page, text FROM doc_text WHERE doc_key=? ORDER BY page", (doc_key,)).fetchall()
+            yield doc_key, title, known_at, pages
+    finally:
+        src.close()
+
+
 def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = None) -> dict:
     t0 = time.time()
     topics, people = load_topics()
@@ -280,16 +316,13 @@ def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = No
     stats: dict = {}
     sql = f"INSERT OR IGNORE INTO transcript_statement({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
     for sym in symbols:
-        src = sqlite3.connect(f"file:{(sandbox / (COMPANIES[sym] + '_loop') / (COMPANIES[sym] + '.db')).as_posix()}?mode=ro", uri=True)
         con.execute("DELETE FROM transcript_statement WHERE symbol=?", (sym,))
         st = stats[sym] = {"docs": 0, "pages": 0, "needs_ocr": 0, "unknown_speakers": Counter()}
-        docs = src.execute("SELECT doc_key, title, known_at FROM docs WHERE doc_type='transcript' ORDER BY known_at").fetchall()
-        if limit_docs:
-            docs = docs[:limit_docs]
-        for doc_key, title, known_at in docs:
-            allp = src.execute("SELECT page, text, method FROM doc_text WHERE doc_key=? ORDER BY page", (doc_key,)).fetchall()
-            st["needs_ocr"] += sum(1 for _, _, m in allp if m == "needs_ocr")
-            pages = [(p, t) for p, t, m in allp if m == "script_text" and t]
+        for index, (doc_key, title, known_at, allp) in enumerate(_transcript_docs(con, sym, sandbox)):
+            if limit_docs and index >= limit_docs:
+                break
+            st["needs_ocr"] += sum(1 for _p, t in allp if not (t or "").strip())
+            pages = [(p, t) for p, t in allp if (t or "").strip()]
             if not pages:
                 continue
             st["docs"] += 1
@@ -298,7 +331,6 @@ def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = No
         con.commit()
         st["rows"] = con.execute("SELECT count(*) FROM transcript_statement WHERE symbol=?", (sym,)).fetchone()[0]
         st["unknown_speakers"] = dict(st["unknown_speakers"].most_common(5))
-        src.close()
     stats["seconds"] = round(time.time() - t0, 1)
     con.close()
     return stats

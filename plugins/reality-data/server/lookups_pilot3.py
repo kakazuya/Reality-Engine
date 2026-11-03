@@ -228,9 +228,14 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
         args.append(basis.strip().lower())
     extra, eargs = _asof(as_of, "k.known_at")
     rows = _q(f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.scale, k.fiscal_period, k.period_type, "
-              f"k.as_of_date, k.basis, k.doc_key, k.page, k.quote, k.known_at, d.doc_key AS dk, d.title, d.doc_type "
-              f"FROM kpi_series k {_DOC_JOIN} WHERE {where}{extra} "
-              f"ORDER BY (k.dimension='total') DESC, k.known_at DESC, k.id LIMIT ?", (*args, *eargs, _cap(limit) * 3))
+              f"k.as_of_date, k.basis, k.doc_key, k.page, k.quote, k.known_at, k.conf_rank, d.doc_key AS dk, "
+              f"d.title, d.doc_type FROM kpi_series k {_DOC_JOIN} WHERE {where}{extra} "
+              # best evidence first: the extractor's confidence, then a deck/results/filing before a call remark
+              f"ORDER BY k.conf_rank DESC, "
+              f"CASE d.doc_type WHEN 'deck' THEN 0 WHEN 'results' THEN 1 WHEN 'press_release' THEN 2 "
+              f"WHEN 'annual_report' THEN 3 WHEN 'transcript' THEN 4 ELSE 5 END, "
+              f"(k.dimension='total') DESC, k.known_at DESC, k.id LIMIT ?",
+              (*args, *eargs, _cap(limit) * 3))
     out, seen = [], set()
     for r in rows:
         sig = (r["metric"], r["dimension"], r["fiscal_period"], r["value"], r["unit"])
@@ -426,16 +431,37 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
 
 
 # --- pilot3_statements ------------------------------------------------------------------------------
+def _term_hits(column: str, words: list[str]) -> tuple[str, list]:
+    """SQL that scores a row by how many of ``words`` it carries (0 when no word was asked)."""
+    if not words:
+        return "0", []
+    expr = " + ".join(f"({column} LIKE ?)" for _ in words)
+    return expr, [f"%{word}%" for word in words]
+
+
 def statements(symbol: str, topic: str | None = None, terms: str | None = None, date_from: str | None = None,
                date_to: str | None = None, as_of: str | None = None, limit: int = 10,
-               role: str | None = None) -> dict[str, Any]:
+               role: str | None = None, period: str | None = None,
+               rank_terms: str | None = None, latest: bool = False) -> dict[str, Any]:
     """Management statements from concall transcripts, exact quotes: topic tag (margin, guidance, capex, order ...),
-    free ``terms`` (all words must appear), call-date window, role (ceo / cfo / md / mgmt)."""
+    free ``terms`` (all words must appear), call-date window, role (ceo / cfo / md / mgmt).
+
+    ``period`` (Q4FY26 / FY26) and ``rank_terms`` (the question's own words) rank the rows: a statement of the
+    period asked, carrying more of the question's words, comes first; the newest call breaks a tie.  ``latest``
+    keeps only the newest call's statements."""
     sym = resolve_symbol(symbol)
     where, args = "t.symbol=?", [sym]
+    if latest:
+        extra_latest, latest_args = _asof(as_of, "t2.known_at")
+        where += (f" AND t.call_date=(SELECT MAX(t2.call_date) FROM transcript_statement t2 "
+                  f"WHERE t2.symbol=?{extra_latest})")
+        args += [sym, *latest_args]
+    topic_sql, topic_args = "1", []
     if topic:
-        where += " AND (t.topics LIKE ?)"
-        args.append(f"%{topic.strip().lower()}%")
+        # the tag ranks first rather than filtering: the sentence that answers a "what did they say about margins"
+        # question is often tagged ``nim`` (or untagged) instead of ``margin``
+        topic_sql = "t.topics LIKE ?"
+        topic_args = [f"%{topic.strip().lower()}%"]
     for word in re.findall(r"[\w₹%&\-\.]+", terms or ""):
         where += " AND (t.statement LIKE ? OR t.quote LIKE ?)"
         args += [f"%{word}%", f"%{word}%"]
@@ -447,16 +473,34 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
             where += f" AND {col} {op} ?"
             args.append(val)
     extra, eargs = _asof(as_of, "t.known_at")
+    _kind, label = norm_period(period)
+    period_sql, period_args = "1", []
+    if label:
+        # a year's question is answered by its quarters too ("FY26": Q1FY26 ... Q4FY26)
+        labels = ([f"Q{q}FY{label[2:]}" for q in (1, 2, 3, 4)] + [label]) if label.startswith("FY") else [label]
+        period_sql = "(" + " OR ".join("(t.call_period=? OR t.period_discussed LIKE ?)" for _x in labels) + ")"
+        for item in labels:
+            period_args += [item, f"{item}%"]
+    words = [w for w in re.findall(r"[\w₹%&\-\.]+", rank_terms or "") if len(w) > 2]
+    score_sql, score_args = _term_hits("t.statement", words[:8])
     rows = _q(f"SELECT t.id, t.call_date, t.call_period, t.page, t.speaker, t.role, t.section, t.topics, "
-              f"t.period_discussed, t.quote, t.is_fragment, t.known_at, t.doc_key, d.title FROM transcript_statement t "
+              f"t.period_discussed, t.quote, t.is_fragment, t.known_at, t.doc_key, d.title, "
+              f"(CASE WHEN {topic_sql} THEN 0 ELSE 1 END) AS topic_rank, "
+              f"(CASE WHEN {period_sql} THEN 0 ELSE 1 END) AS period_rank, ({score_sql}) AS term_score "
+              f"FROM transcript_statement t "
               f"LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a WHERE a.symbol=t.symbol "
               f"AND a.alias_key=t.doc_key), t.doc_key) WHERE {where}{extra} "
-              f"ORDER BY t.is_fragment, t.call_date DESC, t.seq LIMIT ?", (*args, *eargs, _cap(limit)))
-    return _reply(sym, [{"call_date": r["call_date"], "call_period": r["call_period"], "speaker": r["speaker"],
-                         "role": r["role"], "section": r["section"], "topics": r["topics"],
-                         "period_discussed": r["period_discussed"], "quote": _trim(r["quote"]),
-                         "provenance": _prov("transcript_statement", f"{r['doc_key']} p{r['page']}", r["known_at"],
-                                             title=r["title"], row_id=r["id"])} for r in rows], "pilot3_statements")
+              f"ORDER BY topic_rank, period_rank, term_score DESC, t.is_fragment, t.call_date DESC, t.seq LIMIT ?",
+              # the SELECT-list placeholders bind before the WHERE ones
+              (*topic_args, *period_args, *score_args, *args, *eargs, _cap(limit)))
+    out = [{"call_date": r["call_date"], "call_period": r["call_period"], "speaker": r["speaker"],
+            "role": r["role"], "section": r["section"], "topics": r["topics"],
+            "period_discussed": r["period_discussed"], "quote": _trim(r["quote"]),
+            "provenance": _prov("transcript_statement", f"{r['doc_key']} p{r['page']}", r["known_at"],
+                                title=r["title"], row_id=r["id"])} for r in rows]
+    matched = any(topic in (row["topics"] or "") for row in out) if topic else None
+    return _reply(sym, out, "pilot3_statements",
+                  topic_matched=matched, hint=None if out else "no statement in the held calls matches these arguments")
 
 
 # --- pilot3_docs ------------------------------------------------------------------------------------
@@ -490,30 +534,106 @@ def _fts_query(text: str, mode: str) -> str:
     return (" AND " if mode == "and" else " OR ").join(f'"{w}"' for w in words[:12])
 
 
+_FY_TEXT = re.compile(r"(Q[1-4]|H[12])?\s*FY\s*'?\s*(\d{2,4})", re.I)
+
+
+def _period_labels(text: str) -> list[str]:
+    """['Q1FY27', 'FY26'] for the fiscal periods printed in a query ("Q1 FY27 results")."""
+    out: list[str] = []
+    for match in _FY_TEXT.finditer(text or ""):
+        kind = (match.group(1) or "FY").upper()
+        label = f"{kind}FY{match.group(2)[-2:]}"
+        if label not in out:
+            out.append(label)
+    return out[:3]
+
+
+def _period_in(text: str, label: str) -> bool:
+    """Does a page print the period ("Q1FY27": Q1 FY27, Q1FY27, Q1 FY '27, Q1 FY2027; "FY26": FY26, FY '26, FY2026)?"""
+    match = re.fullmatch(r"(Q[1-4]|H[12]|FY)FY(\d{2})", label or "")
+    if not match:
+        return False
+    kind = match.group(1)
+    year = f"(?:{match.group(2)}|20{match.group(2)})"
+    pattern = rf"(?:\b{kind}\s*FY\s*'?\s*{year}\b)" if kind != "FY" else rf"\bFY\s*'?\s*{year}\b"
+    return bool(re.search(pattern, text or "", re.I))
+
+
+def _rank_hits(rows: list[sqlite3.Row], exact: set[int], or_ids: set[int], period: str | None,
+               date_from: str | None, date_to: str | None, dtype: str | None) -> list[sqlite3.Row]:
+    """bm25 order with a boost for an all-word match, the period asked, the filing window and the document type.
+
+    bm25's own scale is not comparable across queries, so it is normalised inside the OR candidate set (1 = best
+    match, the only set every row's rank comes from) and the boosts are added to that: the page that prints the
+    quarter and was filed in the window the question names outranks a page that only happens to repeat its words.
+    """
+    ranks = [row["rank"] for row in rows if row["rid"] in or_ids]
+    low = min(ranks) if ranks else 0.0
+    scored = []
+    for index, row in enumerate(rows):
+        if row["rid"] in or_ids:
+            # bm25's scale is not comparable across queries: the best hit is 1.0 and the rest keep their distance
+            # from it as a ratio, so a boost means the same thing whatever the query's size.
+            score = row["rank"] / low if low else 1.0
+        else:
+            score = 1.0                                   # an all-word hit outside the OR top
+        if row["rid"] in exact:
+            score += 0.20                                    # every query word is on the page
+        day = str(row["filing_date"] or row["known_at"] or "")[:10]
+        if date_from and date_to and date_from <= day <= date_to:
+            score += 0.35                                    # filed inside the window the question names
+        if period and _period_in(row["text"], period):
+            score += 0.35                                    # the page prints the period asked
+        if dtype and row["doc_type"] == dtype:
+            score += 0.20                                    # the document type the question names
+        scored.append((score, index, row))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return [row for _score, _index, row in scored]
+
+
 def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
-           doc_type: str | None = None) -> dict[str, Any]:
-    """Full-text search over every held page (FTS5, ranked); exact snippet around the match, page and filing date."""
+           doc_type: str | None = None, period: str | None = None,
+           date_from: str | None = None, date_to: str | None = None) -> dict[str, Any]:
+    """Full-text search over every held page (FTS5 bm25, ranked); exact snippet around the match, page and filing
+    date.  ``period`` (Q1FY27 / FY26), ``date_from``+``date_to`` and ``doc_type`` boost the pages that print the
+    period / were filed in the window / are of that document type."""
     sym = resolve_symbol(symbol)
     extra, eargs = _asof(as_of, "COALESCE(p.known_at, d.known_at)")
     dflt, dargs = "", ()
-    if doc_type:
-        dflt, dargs = " AND d.doc_type=?", (_DOC_TYPES.get(doc_type.strip().lower(), doc_type.strip().lower()),)
-    rows: list[sqlite3.Row] = []
-    for mode in ("and", "or"):
+    dtype = _DOC_TYPES.get(doc_type.strip().lower(), doc_type.strip().lower()) if doc_type else None
+    if dtype:
+        dflt, dargs = " AND d.doc_type=?", (dtype,)
+    start, end = _day(date_from, "date_from"), _day(date_to, "date_to")
+    cap = _cap(limit)
+    labels = [period] if period else _period_labels(query)
+    period = labels[0] if labels else None
+    select = (f"SELECT p.rowid rid, p.doc_key, p.page, p.text, p.known_at pk, d.known_at dk, d.doc_type, "
+              f"d.title, d.filing_date, rank, snippet(doc_page_fts, 0, '[', ']', ' … ', 40) snip "
+              f"FROM doc_page_fts f JOIN doc_page p ON p.rowid=f.rowid JOIN doc d ON d.doc_key=p.doc_key "
+              f"WHERE doc_page_fts MATCH ? AND p.symbol=?{dflt}{extra} ORDER BY rank LIMIT ?")
+    rows_or, rows_and = [], []
+    for mode in ("or", "and"):
         match = _fts_query(query, mode)
         if not match:
             raise DataError("bad_query", "query needs at least one word")
-        rows = _q(f"SELECT p.doc_key, p.page, p.known_at pk, d.known_at dk, d.doc_type, d.title, d.filing_date, "
-                  f"snippet(doc_page_fts, 0, '[', ']', ' … ', 40) snip FROM doc_page_fts f "
-                  f"JOIN doc_page p ON p.rowid=f.rowid JOIN doc d ON d.doc_key=p.doc_key "
-                  f"WHERE doc_page_fts MATCH ? AND p.symbol=?{dflt}{extra} ORDER BY rank LIMIT ?",
-                  (match, sym, *dargs, *eargs, _cap(limit)))
-        if rows:
-            break
+        found_rows = _q(select, (match, sym, *dargs, *eargs, cap * 20))
+        if mode == "or":
+            rows_or = found_rows
+        else:
+            rows_and = found_rows
+        if mode == "or" and not rows_and and _fts_query(query, "and") == match:
+            rows_and = rows_or       # one word: the two queries are the same
+    or_ids = {row["rid"] for row in rows_or}
+    exact = {row["rid"] for row in rows_and}
+    found: dict[int, sqlite3.Row] = {row["rid"]: row for row in rows_or}
+    for row in rows_and:
+        found.setdefault(row["rid"], row)
+    rows = _rank_hits(list(found.values()), exact, or_ids, period, start, end, dtype)[:cap]
+    match_mode = None if not rows else ("and" if rows[0]["rid"] in exact else "or")
     return _reply(sym, [{"doc_type": r["doc_type"], "title": _trim(r["title"], 120), "filing_date": r["filing_date"],
                          "page": r["page"], "snippet": _trim(r["snip"], 420),
                          "provenance": _prov("doc_page", f"{r['doc_key']} p{r['page']}", r["pk"] or r["dk"])}
-                        for r in rows], "pilot3_search", match_mode=mode if rows else None)
+                        for r in rows], "pilot3_search", match_mode=match_mode, period=period)
 
 
 # --- pilot3_sql -------------------------------------------------------------------------------------
