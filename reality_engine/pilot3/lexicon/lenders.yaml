@@ -1,0 +1,18 @@
+# Lender (Bajaj Finance) KPI family.
+family: lenders
+entries:
+  - {metric: aum, kind: money, unit: inr_cr, labels: ["\\baum\\b", "assets under management"], neg: "growth|per ?cent|%\\s*of|\\bmix\\b|\\bshare\\b|\\bper\\b|annuali[sz]ed|average|to aum|of aum|aum\\s*\\("}
+  - {metric: new_loans, kind: count, unit: count_mn, labels: ["new loans? booked", "loans? booked", "new loans?"], neg: "aum|disburs"}
+  - {metric: customer_franchise, kind: count, unit: count_mn, labels: ["customer franchise", "total customers?", "customer base"], neg: "added|new"}
+  - {metric: customers_added, kind: count, unit: count_mn, labels: ["new customers? (acquired|added)", "customers? (acquired|added)", "added \\d[\\d.,]* ?(mn|million) (new )?customers", "new customers"]}
+  - {metric: deposits, kind: money, unit: inr_cr, labels: ["deposit book", "deposits? (book|base|portfolio|stood|grew|was|were|of)", "^deposits?\\b"], neg: "%\\s*of|share|mix|rate|interest"}
+  - {metric: nim_pct, kind: pct, unit: pct, labels: ["net interest margin", "\\bnim\\b"], neg: "bps|compression|expansion"}
+  - {metric: cost_of_funds_pct, kind: pct, unit: pct, labels: ["cost of funds", "\\bcof\\b", "cost of borrowings"], neg: "bps|decline|increase"}
+  - {metric: gnpa_pct, kind: pct, unit: pct, labels: ["gross\\s*npa", "\\bgnpa\\b", "gross stage 3", "gs3"], neg: "\\bnet\\b(?!\\s*npa\\b)"}
+  - {metric: nnpa_pct, kind: pct, unit: pct, labels: ["net\\s*npa", "\\bnnpa\\b", "net stage 3", "ns3"]}
+  - {metric: pcr_stage3, kind: pct, unit: pct, labels: ["(provision )?coverage( ratio)?[^.]{0,30}stage ?3", "stage ?3[^.]{0,30}coverage", "\\bpcr\\b"]}
+  - {metric: credit_cost_bps, kind: bps, unit: bps, labels: ["credit cost", "loan loss(es)? (and|&) provisions? to average", "loan loss to average"]}
+  - {metric: crar_pct, kind: pct, unit: pct, labels: ["capital adequacy", "\\bcrar\\b", "\\bcar\\b"], neg: "tier ?(i|1)\\b"}
+  - {metric: tier1_pct, kind: pct, unit: pct, labels: ["tier ?(i|1)\\b[^.]{0,20}(capital|ratio)?", "tier ?(i|1) capital"]}
+  - {metric: roa_pct, kind: pct, unit: pct, labels: ["return on assets", "\\broa\\b"]}
+  - {metric: roe_pct, kind: pct, unit: pct, labels: ["return on equity", "\\broe\\b"]}
