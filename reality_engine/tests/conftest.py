@@ -92,3 +92,14 @@ def shared_onnx_session():
     :class:`OnnxEmbedder` whose ``_ensure`` builds that session on first use.
     """
     return get_shared_onnx_embedder()
+
+
+def pytest_configure(config):
+    """Register the `slow` marker: the tests that build the whole pilot3 database (or another full store).
+
+    Fix rounds run ``pytest reality_engine/tests -q -k pilot3 -m "not slow"``; the full suite runs at merge.
+    """
+    config.addinivalue_line(
+        "markers",
+        "slow: builds the whole pilot3 database or reads the full stores; excluded by -m 'not slow' in fix rounds",
+    )

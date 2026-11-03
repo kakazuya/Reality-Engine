@@ -212,6 +212,7 @@ def built(tmp_path_factory):
     return db
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not _real_stores_present(), reason="read-only stores / sandboxes not on this machine")
 def test_integration_build_counts_and_oracle(built):
     conn = sqlite3.connect(built)
@@ -312,6 +313,7 @@ def test_balance_ratios_from_seeded_sheet():
     assert "receivable_days" not in metrics or metrics["receivable_days"] >= 0  # needs four quarters of revenue
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not _real_stores_present(), reason="read-only stores / sandboxes not on this machine")
 def test_integration_part_d_sources_and_definitions(built):
     conn = sqlite3.connect(built)

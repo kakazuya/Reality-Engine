@@ -6,10 +6,11 @@ the `reality-data` pilot3_* tools). Method, schema and every result: `docs/PILOT
 `docs/DB_BUILD_GUIDELINES.md`. Hand-read grade of 185 answers (answer_run2): 154 right, 30 partly, 1 wrong.
 Live db rebuilt 4 Nov after the dates/guidance/tools merges (backups `D:\RealityEngine\pilot3\*_before_dates_merge_2026-11-04.db`).
 Long history of 2-4 Nov: `tasks/archive/STATE_2026-11-04_before_night_loop.md`.
+Fast checks merged 4 Nov (guide O9): `build --part kpi --symbols KEC` 125 s vs 503 s for all; `python -m
+reality_engine.pilot3.checkpages run` replays 314 graded pages in ~6 s (baseline 145 found: KEC 29/78, BAJFINANCE
+59/113, HINDALCO 57/123); fix rounds run `pytest reality_engine/tests -q -k pilot3 -m "not slow"`, full suite at merge.
 
 ## Running (4 Nov)
-- dsh `20261103T213546Z-24770afb` T-049 fast checks (`build --symbols`, `checkpages`, `slow` marker; brief
-  `tasks/dsh_tasks/T049_FAST_CHECKS_2026-11-04.md`).
 - dsh `20261103T214846Z-2fb0c85c` T-054 code-tools replaces code-intel (brief `tasks/dsh_tasks/T054_CODE_TOOLS_2026-11-04.md`).
 - Re-answer of 43 questions done (KEC 13, BAJ 15, HIN 15): `D:\RealityEngine\pilot3\answer_run3\`; worktrees removed.
 
@@ -36,5 +37,4 @@ Review by meaning; a report without `Docs updated:` is not merged. `git merge --
 affected doc, commit ending `By: Eagle` and the co-author line. Copy `.tmp` outputs first, then remove the worktree.
 Log to the decision log and `rclone copy D:\RealityEngine\plans gdrive:InfoDiffusion_archive/plans`.
 
-## Machines
-How to operate each computer: `machines/README.md`. All HP work runs headless.
+Machines: `machines/README.md`. All HP work runs headless.
