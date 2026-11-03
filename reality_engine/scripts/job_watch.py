@@ -4,8 +4,9 @@
 makes no network call and no model call and is safe to run from a hook on every
 prompt.  It prints nothing when every recent job is healthy; otherwise at most
 12 lines, one per job that needs attention.  ``add`` registers a long-running
-process that is not a dsh worker (a log path plus optional ``--pid``) in
-``.tmp/job_watch.json``.
+process that is not a dsh worker (a log path plus optional ``--pid`` and
+``--stall-seconds``) in ``.tmp/job_watch.json``; the record's own window is what
+decides STALLED for that name.
 
 ``wait`` blocks until a job ends or stalls, or until no running job and no live
 registered pid remain, so a session runs it as a background command and the
@@ -20,8 +21,8 @@ a registered name from the watch list.  The Stop hook refuses one stop while a
 finish or failure is unreviewed, or while a job runs with no live waiter.
 
 Paths can be pointed at a fixture with ``JOB_WATCH_REPO_ROOT``,
-``JOB_WATCH_ACKS``, ``JOB_WATCH_STATE`` and ``JOB_WATCH_WAIT_DIR``; the
-registered stall window with ``JOB_WATCH_REGISTERED_STALL_SECONDS``.
+``JOB_WATCH_ACKS``, ``JOB_WATCH_STATE`` and ``JOB_WATCH_WAIT_DIR``; the default registered stall
+window with ``JOB_WATCH_REGISTERED_STALL_SECONDS``.
 
 ``try``/``except`` in ``main`` keeps a broken record from raising into a hook:
 the command always exits 0.
@@ -66,8 +67,15 @@ REGISTERED_STALL_MINUTES = 5
 MAX_LINES = 12
 
 
-def _registered_stall_seconds() -> float:
-    """The registered-job quiet window; ``JOB_WATCH_REGISTERED_STALL_SECONDS`` overrides it."""
+def _registered_stall_seconds(record: dict[str, Any] | None = None) -> float:
+    """A registered-job quiet window: the record's own, else the env override, else 5 minutes."""
+    if isinstance(record, dict):
+        try:
+            own = float(record.get("stall_seconds") or 0)
+        except (TypeError, ValueError):
+            own = 0.0
+        if own > 0:
+            return own
     raw = os.environ.get("JOB_WATCH_REGISTERED_STALL_SECONDS")
     try:
         return max(0.0, float(raw)) if raw else float(REGISTERED_STALL_MINUTES * 60)
@@ -404,7 +412,6 @@ def _log_changed(record: dict[str, Any], now: datetime) -> datetime:
 
 def _registered_lines(state: dict[str, Any], now: datetime) -> list[tuple[int, float, str]]:
     lines: list[tuple[int, float, str]] = []
-    stall = timedelta(seconds=_registered_stall_seconds())
     for name in sorted(state):
         record = state[name]
         if not isinstance(record, dict):
@@ -415,7 +422,7 @@ def _registered_lines(state: dict[str, Any], now: datetime) -> list[tuple[int, f
             lines.append((0, _epoch(added), f"ENDED {name} pid {pid} is gone"))
             continue
         changed = _log_changed(record, now)
-        if now - changed > stall:
+        if now - changed > timedelta(seconds=_registered_stall_seconds(record)):
             lines.append((1, _epoch(changed), f"STALLED {name} log quiet for {_minutes(changed, now)}m"))
     return lines
 
@@ -445,7 +452,6 @@ def live_registered(state_path: Path | None = None) -> bool:
     """
     state = _load_state(Path(state_path or STATE_PATH))
     now = datetime.now(timezone.utc)
-    stall = timedelta(seconds=_registered_stall_seconds())
     for record in state.values():
         if not isinstance(record, dict):
             continue
@@ -453,7 +459,7 @@ def live_registered(state_path: Path | None = None) -> bool:
             if _pid_alive(record.get("pid")):
                 return True
             continue
-        if now - _log_changed(record, now) <= stall:
+        if now - _log_changed(record, now) <= timedelta(seconds=_registered_stall_seconds(record)):
             return True
     return False
 
@@ -655,15 +661,28 @@ def status(
     return [text for _priority, _when, text in capped]
 
 
-def add(name: str, logfile: str, pid: int | None = None, state_path: Path | None = None) -> None:
-    """Record a long-running non-worker process by name, log path and optional pid."""
+def add(
+    name: str,
+    logfile: str,
+    pid: int | None = None,
+    state_path: Path | None = None,
+    stall_seconds: float | None = None,
+) -> None:
+    """Record a long-running non-worker process by name, log path and optional pid.
+
+    ``stall_seconds`` is that name's quiet window; without it status falls back
+    to ``JOB_WATCH_REGISTERED_STALL_SECONDS``, then five minutes.
+    """
     path = Path(state_path or STATE_PATH)
     state = _load_state(path)
-    state[name] = {
+    record: dict[str, Any] = {
         "log": str(Path(logfile).expanduser().resolve()),
         "pid": pid,
         "added_at": datetime.now(timezone.utc).isoformat(),
     }
+    if stall_seconds is not None and stall_seconds > 0:
+        record["stall_seconds"] = float(stall_seconds)
+    state[name] = record
     _save_state(path, state)
 
 
@@ -679,7 +698,7 @@ def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     usage = (
         "usage: job_watch status | wait [--timeout-seconds N] [--poll-seconds N] [--ignore-existing]"
-        " | add <name> <logfile> [--pid N] | ack <job_id_or_name> [--note TEXT] | ack --all-ended"
+        " | add <name> <logfile> [--pid N] [--stall-seconds S] | ack <job_id_or_name> [--note TEXT] | ack --all-ended"
     )
     try:
         if not args or args[0] == "status":
@@ -708,7 +727,14 @@ def main(argv: list[str] | None = None) -> int:
                     pid = int(args[index + 1])
                 except (IndexError, ValueError):
                     pid = None
-            add(args[1], args[2], pid)
+            stall = None
+            if "--stall-seconds" in args[3:]:
+                index = args.index("--stall-seconds", 3)
+                try:
+                    stall = float(args[index + 1])
+                except (IndexError, ValueError):
+                    stall = None
+            add(args[1], args[2], pid, stall_seconds=stall)
             print(f"watching {args[1]}")
             return 0
         if args[0] == "ack" and len(args) >= 2:
