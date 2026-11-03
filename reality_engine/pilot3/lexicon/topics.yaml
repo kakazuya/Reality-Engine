@@ -1,0 +1,65 @@
+# Topic tags for transcript sentences. A sentence gets every tag whose pattern matches; no match -> "other".
+# General tags follow the schema (margin|order_book|cost|guidance|capacity|demand|competition|working_capital|risk|mna|other);
+# the rest are the themes the three question banks ask about. companies: optional filter.
+topics:
+  - {tag: margin, patterns: ["\\bmargins?\\b", "\\bebitda\\b", "profitab"]}
+  - {tag: order_book, patterns: ["order\\s*book", "order\\s*(intake|inflow)", "\\bl-?1\\b", "order pipeline", "\\bpipeline\\b"]}
+  - {tag: cost, patterns: ["\\bcosts?\\b", "cost of (production|funds|borrowing)", "input cost", "commodity", "\\bcop\\b"]}
+  - {tag: guidance, patterns: ["\\bguidance\\b", "\\bexpect(ed|s|ation)?\\b", "\\bour target\\b", "going forward", "next (year|quarter)", "\\boutlook\\b", "\\bwe (will|aim|plan|target)\\b", "\\bFY ?'?2[7-9]\\b"]}
+  - {tag: capacity, patterns: ["\\bcapacity\\b", "\\bexpansion\\b", "\\bcapex\\b", "greenfield", "brownfield", "\\bsmelter\\b", "\\brefinery\\b"]}
+  - {tag: demand, patterns: ["\\bdemand\\b", "consumption", "\\bgrowth in\\b"]}
+  - {tag: competition, patterns: ["competit", "market share", "\\bpeers?\\b"]}
+  - {tag: working_capital, patterns: ["working capital", "\\bcollections?\\b", "receivables?", "\\binventory\\b", "net debt", "\\bdebt\\b", "cash flow", "interest cost"]}
+  - {tag: risk, patterns: ["\\brisk\\b", "uncertain", "headwinds?", "\\bstress\\b", "volatil", "disruption", "delays?\\b", "geopolitic"]}
+  - {tag: mna, patterns: ["acqui(re|sition|red)", "\\bmerger\\b", "divest", "\\bstake\\b", "\\bipo\\b", "listing", "demerger", "joint venture"]}
+  - {tag: railways, patterns: ["railways?", "transportation business", "\\bmetro\\b", "\\bdfcc\\b"], companies: [KEC]}
+  - {tag: civil, patterns: ["\\bcivil\\b", "\\bwater\\b", "buildings? (and|&) factories", "data cent(er|re)"], companies: [KEC]}
+  - {tag: renewables, patterns: ["renewables?", "\\bsolar\\b", "\\bepc\\b.*solar", "\\bwind\\b", "\\bbess\\b"]}
+  - {tag: oil_gas, patterns: ["oil\\s*(&|and)\\s*gas", "pipelines?\\b"], companies: [KEC]}
+  - {tag: us_mexico, patterns: ["\\bus\\b.*(transmission|business)", "\\bmexico\\b", "\\bUSA\\b", "united states"], companies: [KEC]}
+  - {tag: middle_east, patterns: ["middle east", "saudi", "\\bgcc\\b", "\\bafrica\\b", "afghanistan"], companies: [KEC]}
+  - {tag: data_centre, patterns: ["data cent(er|re)s?"], companies: [KEC]}
+  - {tag: tendering, patterns: ["tender", "power ?grid", "inter-?state", "\\bpgcil\\b", "\\btbcb\\b"], companies: [KEC]}
+  - {tag: commodity_pricing, patterns: ["\\bsteel\\b", "\\bzinc\\b", "aluminium price", "price variation", "\\bpvc\\b", "price (movement|escalation)", "commodity price"]}
+  - {tag: labour, patterns: ["\\blabou?r\\b", "manpower", "bottleneck", "execution (issue|challenge|bottleneck)"], companies: [KEC]}
+  - {tag: legacy_projects, patterns: ["legacy", "loss-?making", "stuck projects?", "old projects?", "claims?\\b", "settlement"], companies: [KEC]}
+  - {tag: asset_quality, patterns: ["\\bnpa\\b", "\\bgnpa\\b", "\\bnnpa\\b", "credit cost", "asset quality", "write-?offs?", "stage ?[23]", "\\bdelinquen", "loan loss"], companies: [BAJFINANCE]}
+  - {tag: nim, patterns: ["net interest margin", "\\bnim\\b", "yield", "cost of funds", "\\bcof\\b", "repo rate", "\\brbi\\b.*(rate|repo)"], companies: [BAJFINANCE]}
+  - {tag: aum_growth, patterns: ["\\baum\\b", "assets under management", "new loans?", "customer franchise", "customers? (acquired|added)"], companies: [BAJFINANCE]}
+  - {tag: vehicle_stress, patterns: ["two[- ]wheeler", "three[- ]wheeler", "\\b2w\\b", "\\b3w\\b", "auto finance", "commercial vehicle"], companies: [BAJFINANCE]}
+  - {tag: rural_microfinance, patterns: ["rural", "micro-?finance", "\\bmfi\\b", "\\bb2c\\b", "\\bmsme\\b", "\\bsme\\b"], companies: [BAJFINANCE]}
+  - {tag: product_exit, patterns: ["run[- ]?down", "\\bexit(ed|ing)?\\b", "discontinu", "stopped (lending|disburs)", "wind[- ]down"], companies: [BAJFINANCE]}
+  - {tag: housing_finance, patterns: ["housing finance", "\\bbhfl\\b", "minimum public shareholding", "\\bmps\\b", "\\bipo\\b"], companies: [BAJFINANCE]}
+  - {tag: digital_ai, patterns: ["\\bai\\b", "artificial intelligence", "\\bfinai\\b", "genai", "\\bapp\\b", "digital", "\\bmau\\b", "super ?app", "platform"], companies: [BAJFINANCE]}
+  - {tag: new_business, patterns: ["new business(es)?", "launched", "\\blaunch\\b", "gold loan", "\\bev\\b", "new vertical"], companies: [BAJFINANCE]}
+  - {tag: geography, patterns: ["branch(es)?\\b", "geograph", "\\bcities\\b", "\\btowns?\\b", "\\bfootprint\\b"], companies: [BAJFINANCE]}
+  - {tag: management_change, patterns: ["appointed", "resign", "\\bsuccession\\b", "steps down", "joined as", "new (ceo|cfo|md)", "retire"]}
+  - {tag: aluminium_margin, patterns: ["upstream", "aluminium margin", "ebitda per ton", "ebitda/t", "\\blme\\b", "premium", "conversion"], companies: [HINDALCO]}
+  - {tag: coal, patterns: ["\\bcoal\\b", "captive (coal )?mines?", "linkage", "e-?auction", "fuel supply"], companies: [HINDALCO]}
+  - {tag: copper, patterns: ["\\bcopper\\b", "\\btc\\s*/?\\s*rc\\b", "treatment (and|&) refining", "e-?waste", "recycl", "\\bcathode\\b", "\\brods?\\b"], companies: [HINDALCO]}
+  - {tag: novelis, patterns: ["novelis", "\\bscrap\\b", "oswego", "bay minette", "beverage", "automotive", "aerospace"], companies: [HINDALCO]}
+  - {tag: scrap, patterns: ["\\bscrap\\b", "scrap spread"], companies: [HINDALCO]}
+  - {tag: downstream, patterns: ["downstream", "specialty alumina", "battery foil", "\\bfoil\\b", "extrusion", "\\bev\\b", "flat rolled"], companies: [HINDALCO]}
+  - {tag: hedging, patterns: ["hedg", "forex", "currency", "\\bfx\\b", "natural hedge"]}
+  - {tag: energy_transition, patterns: ["renewable (energy|power)", "green (energy|power)", "captive power", "\\brtc\\b", "decarboni", "carbon"], companies: [HINDALCO]}
+
+# Role lookup. known: surname-first matching is done on the full speaker name (case-insensitive).
+# Everything else is classified from the transcript itself (moderator "line of <name> from <firm>" = analyst;
+# "Mr./Ms. <name>, <title>" introductions = management).
+people:
+  KEC:
+    - {name: "Vimal Kejriwal", role: ceo}
+    - {name: "Rajeev Aggarwal", role: cfo}
+    - {name: "Rajeev Agarwal", role: cfo}
+    - {name: "Amit Kumar Gupta", role: mgmt}
+  BAJFINANCE:
+    - {name: "Rajeev Jain", role: md}
+    - {name: "Sandeep Jain", role: cfo}
+    - {name: "Anup Saha", role: ceo}
+    - {name: "Rakesh Bhatt", role: mgmt}
+  HINDALCO:
+    - {name: "Satish Pai", role: md}
+    - {name: "Praveen Maheshwari", role: cfo}
+    - {name: "Steve Fisher", role: ceo}
+    - {name: "Devinder Kumar", role: cfo}
+    - {name: "Subir Sen", role: ir}

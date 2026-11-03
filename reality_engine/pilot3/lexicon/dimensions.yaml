@@ -1,0 +1,23 @@
+# Segment / geography dimension words. First match wins when several are in range; most specific first.
+# companies: optional list; omitted = all three.
+dimensions:
+  - {dimension: total, patterns: ["^consolidated\\b"], companies: [HINDALCO]}
+  - {dimension: aluminium_upstream, patterns: ["aluminium upstream", "aluminum upstream", "upstream aluminium", "upstream\\b"], companies: [HINDALCO]}
+  - {dimension: aluminium_downstream, patterns: ["aluminium downstream", "aluminum downstream", "downstream aluminium", "downstream\\b"], companies: [HINDALCO]}
+  - {dimension: copper, patterns: ["copper"], companies: [HINDALCO]}
+  - {dimension: novelis, patterns: ["novelis"], companies: [HINDALCO]}
+  - {dimension: india, patterns: ["india business", "india aluminium", "india operations"], companies: [HINDALCO]}
+  - {dimension: T&D, patterns: ["t\\s?&\\s?d\\b", "transmission (and|&) distribution", "power transmission"], companies: [KEC]}
+  - {dimension: civil, patterns: ["civil\\b"], companies: [KEC]}
+  - {dimension: transportation, patterns: ["transportation", "railways?\\b"], companies: [KEC]}
+  - {dimension: renewables, patterns: ["renewables?", "solar"], companies: [KEC]}
+  - {dimension: cables, patterns: ["cables?( (and|&) conductors)?\\b"], companies: [KEC]}
+  - {dimension: oil_gas, patterns: ["oil\\s?(&|and)\\s?gas"], companies: [KEC]}
+  - {dimension: international, patterns: ["international"], companies: [KEC]}
+  - {dimension: mortgage, patterns: ["mortgages?\\b", "home loans?", "loan against property"], companies: [BAJFINANCE]}
+  - {dimension: consumer, patterns: ["consumer durable", "consumer b2c", "urban b2c", "lifestyle finance"], companies: [BAJFINANCE]}
+  - {dimension: rural, patterns: ["rural b2c", "rural"], companies: [BAJFINANCE]}
+  - {dimension: sme, patterns: ["\\bsme\\b", "msme"], companies: [BAJFINANCE]}
+  - {dimension: commercial, patterns: ["commercial lending", "commercial"], companies: [BAJFINANCE]}
+  - {dimension: auto, patterns: ["two[- ]wheeler", "three[- ]wheeler", "auto finance", "vehicle"], companies: [BAJFINANCE]}
+  - {dimension: gold, patterns: ["gold loan"], companies: [BAJFINANCE]}
