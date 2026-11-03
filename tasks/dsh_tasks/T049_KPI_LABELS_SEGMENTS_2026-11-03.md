@@ -1,0 +1,13 @@
+Goal: fix the KPI-series defects that produced wrong or partly-right answers in the hand-read grade of the MCP-only answer run (D:\RealityEngine\reports\2026-11-03_mcp_answer_grade.html). All fixes are rule-based in the pilot3 build; no model calls.
+Defects, each with a held example:
+1. Segment dimension labels wrong. HINDALCO Q4FY26 consolidated EBITDA 11,197 and Business Segment EBITDA 10,812 (deck 78d4da57... p35, known 2026-08-07) are stored with dimension `copper`. KEC FY26 order book: 23,000 tagged total and 36,267 tagged T&D; the reverse is right.
+2. Segment mix tables not extracted. BAJFINANCE AUM by line at 31 Mar 2026 (deck table: mortgages 1,62,077; urban B2C 1,04,485; rural B2C 25,234; rural sales finance 10,559; SME 51,570; commercial 33,839; car loans 15,011; gold 17,831; urban sales finance 37,430; LAS 33,247; 2W/3W 12,613; CV and tractor 3,881; MFI 2,198; total 5,09,975). KEC order book mix at 31 Mar 2026 (T&D 63%, civil 27%, transportation 7%, cables 2%, others 1%) and KEC FY26 business revenue lines. Store each line as a `kpi_series` row with the segment as dimension and the total as `total`.
+3. Period labels one quarter early (BAJFINANCE GNPA in kpi_series); also KPI rows from a later deck that restate an earlier quarter must keep the earlier period but their own known_at.
+4. BAJFINANCE AUM rows: standalone (3,72,986) and BHFL (1,40,706) figures are stored as dimension `total`, basis not_stated, beside consolidated 5,09,975. Tag entity: consolidated / standalone / subsidiary name, from the deck page heading.
+5. HINDALCO FY26 consolidated cash flow from operations: fin_annual_line row 2884 holds 10,250 crore (XBRL CashFlowsFromUsedInOperatingActivities), while the Q4 FY26 call states 21,858 crore. Find which is right (check the XBRL context: standalone vs consolidated, continuing vs total, period) and fix the mapping; report the cause.
+Files: reality_engine/pilot3/kpi.py, build.py, stores.py (only if #5 needs it), reality_engine/tests/test_pilot3_kpi.py, docs/DEVELOPER_GUIDE.md section O (write up the segment-table and entity rules), tasks/STATE.md one line.
+Accept: python -m pytest reality_engine/tests/test_pilot3_kpi.py -q passes with new tests for each defect above; a rebuild of the KPI part on a COPY of reality_engine/data/pilot3/pilot3.db in .tmp shows the examples stored correctly (print them); `python -m reality_engine.pilot3.answer_check` on the copy does not lose any match against the 3 Nov final run (131 match).
+Stop if: a fix would need a model call, or answer_check loses matches you cannot explain.
+Budget: 400 tool calls, 3 hours.
+Ticket: T-049
+Report: per defect, cause and fix with the printed rows; answer_check before/after; files changed; `Docs updated:` line.
