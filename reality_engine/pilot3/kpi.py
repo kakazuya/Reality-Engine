@@ -11,7 +11,11 @@ the OCR text of a page already read into doc_page (method ocr_rapid or ocr_textr
   table_v1    label row + period header row, values paired to header columns by x position
   chart_v1    a bare number row sitting above a period axis row, titled by the nearest lexicon label above
   sentence_v1 label ... value [unit] [period] [vs value period] inside running text
-A row is stored only if its quote is a literal substring of the page text.
+A row is stored only if its quote is a literal substring of the page text, and only if its period can have closed
+by the document's ``known_at``: a document cannot report a period that ended after it was filed, so a misread
+period label ("June 26, 2019" read as June 2026, which made the KEC FY19 annual report's figures Q1FY27) drops the
+row instead of storing it (``keep_period``, counted as ``period_after_doc``). A transcript's ``known_at`` is raised
+to the call date printed in it (``call_dates``): a call cannot be known before it was held.
 Shared helpers (periods, numbers, units, lexicon loader) are imported by transcripts.py.
 """
 from __future__ import annotations
@@ -25,6 +29,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+from . import call_dates
 
 LEX_DIR = Path(__file__).parent / "lexicon"
 SANDBOX_ROOT = Path("D:/RealityEngine/sandbox")
@@ -84,7 +90,7 @@ PERIOD_PATTERNS = [
     ("DATE_DMY", re.compile(r"(?<!\d)(\d{1,2})(?:st|nd|rd|th)?[\s,.-]+(" + _MON_PAT + r")[a-z]*[\s,.-]+['’]?(\d{4}|\d{2})(?!\d)", re.I)),
     ("DATE_MDY", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?!\d)", re.I)),
     ("DATE_NUM", re.compile(r"(?<![\d.,/-])(\d{1,2})([./-])(\d{1,2})\2(20\d{2})(?![\d])")),
-    ("MON_Y", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*[-\s,'’]+['’]?(\d{4}|\d{2})(?!\d)", re.I)),
+    ("MON_Y", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*[-\s,'’]+['’]?(\d{4}|\d{2})(?!\d)(?!\s*,\s*\d{4})", re.I)),
 ]
 
 
@@ -109,6 +115,59 @@ def _fiscal_of_date(y: int, m: int, d: int, force_end: bool = False):
         asof = f"{y:04d}-{m:02d}-{d:02d}" if d else None
         return f"Q{q}FY{fy % 100:02d}", "Q", asof
     return None
+
+
+_QUARTER_START = {"Q1": (4, 1), "Q2": (7, 1), "Q3": (10, 1), "Q4": (1, 1)}
+_MONTH_START = {"3M": (4, 1), "6M": (4, 1), "9M": (4, 1), "12M": (4, 1), "H1": (4, 1), "H2": (10, 1)}
+_YEAR_START = (4, 1)
+_QUARTER_END = {"Q1": (6, 30), "Q2": (9, 30), "Q3": (12, 31), "Q4": (3, 31)}
+_MONTH_END = {"3M": (6, 30), "6M": (9, 30), "9M": (12, 31), "12M": (3, 31), "H1": (9, 30), "H2": (3, 31)}
+
+
+def _period_bounds(period_type: str, fiscal_period: str | None, start: bool) -> str | None:
+    canon = (fiscal_period or "").upper()
+    m = re.search(r"FY(\d{2})$", canon)
+    if not m:
+        return None
+    ye, head = 2000 + int(m.group(1)), canon[: m.start()] or (period_type or "")
+    if head in _QUARTER_END:
+        month, day = (_QUARTER_START if start else _QUARTER_END)[head]
+        year = ye - 1 if head != "Q4" else ye
+    elif head in _MONTH_END:
+        if start:
+            month, day = _MONTH_START[head]
+            year = ye - 1
+        else:
+            month, day = _MONTH_END[head]
+            year = ye if head in ("12M", "H2") else ye - 1
+    elif head in ("", "FY"):
+        month, day, year = (*_YEAR_START, ye - 1) if start else (3, 31, ye)
+    else:
+        return None
+    return f"{year:04d}-{month:02d}-{day:02d}"
+
+
+def period_start(period_type: str, fiscal_period: str | None) -> str | None:
+    """First day of the period a row states (Q3FY24 -> 2023-10-01, 9MFY25 -> 2024-04-01, FY26 -> 2025-04-01), or
+    None for a label this reader does not know.  FY26 is the year ending 2026-03-31, so Q1FY26 starts 2025-04-01."""
+    return _period_bounds(period_type, fiscal_period, True)
+
+
+def period_end(period_type: str, fiscal_period: str | None) -> str | None:
+    """Last day of the period a row states (Q3FY24 -> 2023-12-31, FY26 -> 2026-03-31); None for an unknown label."""
+    return _period_bounds(period_type, fiscal_period, False)
+
+
+def keep_period(period_type: str, fiscal_period: str | None, known_at: str | None) -> bool:
+    """False when the period begins after the document was filed, so the document cannot report it.
+
+    The KEC FY2019 annual report (known_at 2019-06-26) carried Q1FY27 rows because the date line "June 26, 2019"
+    was read as "June 2026" (the day taken for a two-digit year) and the misread date became the document's default
+    period.  The test is the period's own start, as the rule states: a period can never begin after its document's
+    ``known_at``.  A row whose label is one this reader does not know is kept (None start)."""
+    start = period_start(period_type, fiscal_period)
+    day = (known_at or "")[:10]
+    return not (start and day and start > day)
 
 
 def parse_periods(text: str) -> list[Period]:
@@ -1455,6 +1514,8 @@ def extract_company(sym: str, sandbox: Path, stats: dict, limit_docs: int | None
                                                                           pages_db):
         if only_docs and not any(k in doc_key for k in only_docs):
             continue
+        if doc_type == "transcript" and known_at:   # a call cannot be known before it was held (call_dates)
+            known_at = call_dates.clamp(None, known_at, [t for _, t in usable[:3]])[1]
         default_pers = doc_default_period([t for _, t in usable])
         for page, text in usable:
             st["pages"] += 1
@@ -1490,6 +1551,9 @@ def extract_company(sym: str, sandbox: Path, stats: dict, limit_docs: int | None
             if trows:   # on a table page, running-text hits that span line breaks are table fragments: drop them
                 srows = [r for r in srows if "\n" not in r.quote]
             for r in sorted(srows + trows + erows + seg, key=lambda r: -RULE_CONF[r.rule][1]):   # best confidence first: INSERT OR IGNORE keeps it
+                if not keep_period(r.period_type, r.fiscal_period, known_at):
+                    st["period_after_doc"] = st.get("period_after_doc", 0) + 1
+                    continue              # the document cannot report a period that ended after it was filed
                 conf, rank = RULE_CONF[r.rule]
                 if doc_type == "transcript":     # a call's number is not the deck KPI: its own row, lowest tier (T-049)
                     rank = max(1, rank - 2)

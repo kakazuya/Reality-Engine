@@ -27,6 +27,31 @@ def test_period_forms():
     assert periods("Q4 FY26 and FY26")[0][0] == "Q4FY26"      # an explicit quarter label is kept
 
 
+def test_a_day_number_is_not_a_two_digit_year():
+    """Cause of the Q1FY27 rows from 2019 filings: "June 26, 2019" read its day (26) as the year 2026."""
+    assert periods("KEC Annual Report June 26, 2019") == []
+    assert periods("dated December 27, 2023 and reviewed") == []          # 27 December is not a quarter end
+    assert periods("December 2023")[0][0] == "Q3FY24"         # a real month-year is still a period
+    assert periods("Dec-23")[0][0] == "Q3FY24"
+
+
+def test_a_period_cannot_begin_after_the_document_was_filed():
+    """The other half of the 4 Nov defect: a row labelled Q1FY27 cannot come from a document known in 2019."""
+    assert kpi.period_start("Q", "Q1FY27") == "2026-04-01"
+    assert kpi.period_start("Q", "Q4FY26") == "2026-01-01"
+    assert kpi.period_start("FY", "FY26") == "2025-04-01"
+    assert kpi.period_start("M9", "9MFY25") == "2024-04-01"
+    assert kpi.period_start("H1", "H1FY26") == "2025-04-01"
+    assert kpi.period_end("Q", "Q1FY27") == "2026-06-30"
+    assert kpi.period_end("FY", "FY26") == "2026-03-31"
+    assert kpi.period_start("Q", "not a period") is None
+    assert kpi.keep_period("Q", "Q1FY27", "2019-06-26T17:02:17") is False   # the KEC FY19 annual report
+    assert kpi.keep_period("Q", "Q1FY28", "2025-05-28T18:28:39") is False   # a 2025 filing cannot be Q1 FY28
+    assert kpi.keep_period("Q", "Q1FY27", "2026-08-11T18:00:00") is True    # the Q1 FY27 call itself
+    assert kpi.keep_period("FY", "FY26", "2026-03-30") is True              # FY26 began Apr 2025: allowed
+    assert kpi.keep_period("Q", "Q1FY27", "2026-03-31") is False            # the day before the quarter began
+
+
 def test_value_units():
     vals = kpi.find_values("order book of Rs. 38,000 crore and 5% and $880", "money", "inr_cr", 0, 60, [])
     assert [(v.value, v.unit) for v in vals] == [(38000.0, "inr_cr")]

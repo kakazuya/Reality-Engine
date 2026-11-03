@@ -61,6 +61,13 @@ def build_fixture(path: Path) -> None:
         ("kec/call_q1fy27.pdf", 2, "What is your capex guidance? We expect about Rs 1,000 crores this year."),
         ("kec/call_q1fy27.pdf", 3, "What about interest cost? There should be a reduction of maybe "
                                    "INR20 crores, INR25 crores per quarter."),
+        # the metric's word is in the question only, and the answer's own subject is net debt (4 Nov 2026 review)
+        ("kec/call_q1fy27.pdf", 4, "What about the interest cost this year? Our net debt as on 31 March 2026 stands "
+                                   "at Rs 1,000 crores, which is within our targeted average borrowing levels of "
+                                   "Rs 1,200 crores for the year."),
+        # a share of supply, with "margin" only in the question (4 Nov 2026 review)
+        ("kec/call_q1fy27.pdf", 5, "What is the margin outlook? We expect 60% of our supply to come from "
+                                   "captive mines next year."),
         ("kec/old_results.pdf", 1, "The order book was at INR 40,000 crores last year."),
         ("kec/old_results.pdf", 2, "Inflation is expected to rise from 2% to 5% in FY27."),
     ]
@@ -148,6 +155,30 @@ def test_past_measurements_and_macro_forecasts_are_not_targets(fixture_db):
     assert "order book was at" not in quotes        # a past measurement
     assert "Inflation" not in quotes                # a macro forecast
     assert not rows(fixture_db, "metric='other'")   # nothing without a metric's own forward cue
+
+
+def test_the_metric_must_be_the_targets_subject(fixture_db):
+    """4 Nov 2026 review: a net-debt sentence was stored as an interest-cost target and a share of supply as a
+    margin target, both because the metric came from the question and any plausible number from the answer."""
+    quotes = [r["quote"] for r in rows(fixture_db)]
+    assert not any("net debt" in q.lower() for q in quotes)          # the interest-cost question did not make it one
+    assert not any("of our supply" in q.lower() for q in quotes)     # a share of supply is not a margin
+    assert not [r for r in rows(fixture_db) if r["low"] == 60.0 and r["metric"] == "ebitda_margin"]
+    # the real interest-cost answer to "what about interest cost?" is still read
+    assert [r for r in rows(fixture_db) if r["metric"] == "interest_cost" and (r["low"], r["high"]) == (20.0, 25.0)]
+
+
+def test_a_share_of_a_total_is_not_a_level():
+    """The share rule on its own: a percentage of supply, turnover or cost is never a margin or a rate."""
+    sentence = "We expect 60% of our supply to come from captive mines next year."
+    nums = guidance.numbers(sentence)
+    assert nums and nums[0]["low"] == 60.0
+    assert guidance.subject_ok("ebitda_margin", sentence, nums[0], "What is the margin outlook?") is False
+    share = "Our market share should be 25% of the market next year."
+    assert guidance.subject_ok("other", share, guidance.numbers(share)[0], "") is True
+    ok = "We expect EBITDA margin of 8% to 8.5% for FY26."
+    chosen = guidance.numbers(ok)[0]
+    assert guidance.subject_ok("ebitda_margin", ok, chosen, "") is True
 
 
 def test_revision_chain_links_the_cut(fixture_db):
