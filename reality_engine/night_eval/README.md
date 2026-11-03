@@ -18,8 +18,14 @@ call a model, never open a network socket, and never print a hidden-split questi
 JSON Lines, one question per line: `{qid, symbol, sector, text, variations: [str], order: 1|2|3, lens,
 sector_fit: [metric id], from_mids: [str] | "new", new_reason, as_of: YYYY-MM-DD, answer_kind, needs: [need]}`.
 A need is `{"kind": "row", "table": <typed table>, "metric": <metric/line_item/category>, "period":
-FY26|Q1FY27|H1FY26|9MFY26|YYYY-MM-DD, "basis": consolidated|standalone|null}` or `{"kind": "text", "doc_type":
-<doc.doc_type>, "terms": [str], "period": optional}`. Sector vocabularies: `tasks/night_loop/sector_vocab.json`.
+FY26|Q1FY27|H1FY26|9MFY26|YYYY-MM-DD, "basis": consolidated|standalone|null}`; a need naming a table Phase 2
+must add carries `"new_table": true` (`insider_trade`, `index_price`, `bulk_block_deal`), or `{"kind": "text",
+"doc_type": <doc.doc_type>, "terms": [str], "period": optional}`. The typed tables the checks read are
+`kpi_series`, `fin_annual_line`, `fin_quarter_xbrl`, `ratio_panel`, `guidance`, `shp_category`, `share_capital`,
+`dividend_event`, `price_delivery`, `valuation_daily`. Files named `LIBRARY_*` are the master banks, not the set,
+and `check` skips them. Sector vocabularies: `tasks/night_loop/questions/sector_vocab.json`: `{"_note": str,
+"universal": [ids], "technical": [ids], <sector>: [ids]}` (the older `{sector: {metric: [synonyms]}}` shape is
+still accepted); a question may name its sector's ids plus the universal and technical ones.
 
 ## The commands
 
@@ -42,7 +48,8 @@ the tell is each file's own `hidden` flag. A4 and A7 are only compared when `--g
 ## The thresholds (GOAL section 2 and 3)
 
 Q1 no violation; Q2 each lens >= 10 per company, orders 1st >= 40 %, 2nd >= 25 %, 3rd >= 10 %; Q3 every
-order-1 question has >= 3 forms and no pair of questions exceeds 0.8 token Jaccard. A1 dev must rise, hidden and
+order-1 question has >= 3 forms and no two questions of one symbol exceed 0.8 token Jaccard. A1 dev must rise,
+hidden and
 every company must hold. A3 >= 98 %; A4 counts must not rise; A5 must pass (no literal, no protected file, the
 build parts run with sockets blocked); A6 green; A7 build seconds / pages read may rise <= 20 % unless A1-dev
 gains at least a percentage point. A hidden question is never printed and never committed.
