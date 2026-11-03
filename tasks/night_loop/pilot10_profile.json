@@ -1,0 +1,21 @@
+{
+ "_note": "Pilot 10 build profile (loop 1, 4 Nov 2026). Read by reality_engine/pilot3 with --profile. Company literals live here, never in extractor code (guard A5).",
+ "name": "pilot10",
+ "pages_db": "D:\\RealityEngine\\pilot10\\pages.db",
+ "raw_root": "D:\\RealityEngine\\pilot10\\raw",
+ "manifest": "D:\\RealityEngine\\pilot10\\raw\\manifest.csv",
+ "out": "D:\\RealityEngine\\pilot10\\pilot10.db",
+ "window_start": "2025-10-01",
+ "companies": [
+  {"symbol": "KEC", "name": "KEC International Ltd", "bse_code": "532714", "isins": ["INE389H01022"], "sector": "epc_capital_goods", "lender": false},
+  {"symbol": "BAJFINANCE", "name": "Bajaj Finance Ltd", "bse_code": "500034", "isins": ["INE296A01024", "INE296A01032"], "sector": "nbfc", "lender": true},
+  {"symbol": "HINDALCO", "name": "Hindalco Industries Ltd", "bse_code": "500440", "isins": ["INE038A01020"], "sector": "metals_nonferrous", "lender": false},
+  {"symbol": "HDFCBANK", "name": "HDFC Bank Ltd", "bse_code": "500180", "isins": ["INE040A01026", "INE040A01034"], "sector": "bank", "lender": true},
+  {"symbol": "SBILIFE", "name": "SBI Life Insurance Company Ltd", "bse_code": "540719", "isins": ["INE123W01016"], "sector": "insurance_life", "lender": true},
+  {"symbol": "INFY", "name": "Infosys Ltd", "bse_code": "500209", "isins": ["INE009A01021"], "sector": "it_services", "lender": false},
+  {"symbol": "SUNPHARMA", "name": "Sun Pharmaceutical Industries Ltd", "bse_code": "524715", "isins": ["INE044A01036"], "sector": "pharma", "lender": false},
+  {"symbol": "MARUTI", "name": "Maruti Suzuki India Ltd", "bse_code": "532500", "isins": ["INE585B01010"], "sector": "auto_oem", "lender": false},
+  {"symbol": "HINDUNILVR", "name": "Hindustan Unilever Ltd", "bse_code": "500696", "isins": ["INE030A01027"], "sector": "fmcg", "lender": false},
+  {"symbol": "ETERNAL", "name": "Eternal Ltd", "bse_code": "543320", "isins": ["INE758T01015"], "sector": "consumer_internet", "lender": false}
+ ]
+}
