@@ -51,6 +51,6 @@ EXTRA = {
         q("balance_sheet", 3, "How would rising input cost tighten Hindustan Unilever's cash conversion, given its negative working capital?", [A("cash_flow_from_operations", "FY26"), D("transcript", "commodity")], ["ocf", "input_cost"], "U40", "text"),
     ],
     "ETERNAL": [
-        q("balance_sheet", 3, "What share of Blinkit's working capital would the bank lines or cash have to fund if the inventory-led share doubled?", [D("results", "Inventories"), K("cash_balance", "Q2FY27")], ["cash_balance", "inventory_days"], "CI04", "computed"),
+        q("balance_sheet", 3, "If Blinkit's inventory-led share doubled, how much more working capital would Eternal need, against its cash balance?", [D("results", "Inventories"), K("cash_balance", "Q2FY27")], ["cash_balance", "inventory_days"], "CI04", "computed"),
     ],
 }

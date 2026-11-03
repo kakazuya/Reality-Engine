@@ -155,10 +155,10 @@ def make(co: Co, n: int, spec: dict) -> dict:
     tid = spec.get("tid")
     row = {"qid": f"{co.sym}-{n:03d}", "symbol": co.sym, "sector": co.sector, "text": text, "variations": variations,
            "order": order, "lens": spec["lens"], "sector_fit": spec.get("fit", []),
-           "from_mids": [tid] if tid else "new", "as_of": spec.get("as_of", AS_OF),
+           "from_mids": ([tid] if tid else []) + spec.get("mids", []) or "new", "as_of": spec.get("as_of", AS_OF),
            "answer_kind": spec.get("kind", "text" if not spec.get("needs") else "number"),
            "needs": spec.get("needs", [])}
-    if not tid:
+    if row["from_mids"] == "new":
         row["new_reason"] = spec.get("why", NEW)
     return row
 
@@ -304,6 +304,10 @@ def balance_g(c: Co) -> list:
             q("balance_sheet", 2, "What was {co}'s operating cash flow in FY26, and how much came from renewal premium collections?",
               [A("cash_flow_from_operations", "FY26", b), D("annual_report", "cash flow")], ["ocf"], "U09", "number"),
         ]
+    if c.sym == "INFY":  # a services company holds no inventory
+        out[4] = q("balance_sheet", 2, "How have {co}'s receivable days and unbilled revenue moved between FY26 and the latest half-year balance sheet?",
+                   [R("receivable_days", "FY26", b), D("results", "unbilled")], ["receivable_days"], "U11", "computed")
+        out[5] = q("balance_sheet", 2, "Are {co}'s receivables growing faster than revenue?", [A("trade_receivables", "FY26", b), D("results", "trade receivables")], ["receivable_days"], "U12", "comparison")
     out += [
         q("balance_sheet", 1, "Did {co}'s auditor flag a qualified opinion, going-concern uncertainty or emphasis of matter in FY26?",
           [D("annual_report", "emphasis of matter")], ["contingent_liabilities"], "U16", "yes_no"),
@@ -315,15 +319,25 @@ def balance_g(c: Co) -> list:
 
 def capital_g(c: Co) -> list:
     b = c.basis
-    out = [
-        q("capital_allocation", 1, "What dividends did {co} pay for FY26, with record dates, and what payout ratio does that make?",
-          [Dv("FY26"), R("dividend_payout_pct", "FY26", b)], ["dividend_per_share", "payout_ratio"], "U19"),
+    if c.sym == "ETERNAL":
+        first = [
+            q("capital_allocation", 1, "Has {co} ever declared a dividend, and what do its filings say about when it might?",
+              [Dv("FY26"), D("annual_report", "dividend")], ["dividend_per_share"], "U19", "yes_no"),
+            q("capital_allocation", 2, "With no dividend, what does {co} do with its cash: stores, inventory, investments or acquisitions?",
+              [A("cash_flow_from_investing", "FY26", b), D("transcript", "cash")], ["capex", "cash_balance"], "U10", "computed"),
+        ]
+    else:
+        first = [
+            q("capital_allocation", 1, "What dividends did {co} pay for FY26, with record dates, and what payout ratio does that make?",
+              [Dv("FY26"), R("dividend_payout_pct", "FY26", b)], ["dividend_per_share", "payout_ratio"], "U19"),
+            q("capital_allocation", 2, "What share of {co}'s FY26 profit went to dividends and buybacks, and what share stayed in the business?",
+              [Dv("FY26"), A("pat", "FY26", b), A("dividends_paid", "FY26", b)], ["payout_ratio", "pat"], "U19", "computed"),
+        ]
+    out = first + [
         q("capital_allocation", 1, "Has {co} raised equity (QIP, rights, preferential, ESOP allotments) or issued shares in the last year, and at what price?",
           [D("announcement", "allotment"), C()], ["dividend_per_share"], "U20", "list"),
         q("capital_allocation", 1, "What acquisitions, stake purchases or disposals has {co} announced since November 2025, and at what value?",
           [D("announcement", "acquisition")], ["capex"], "U20", "list"),
-        q("capital_allocation", 2, "What share of {co}'s FY26 profit went to dividends and buybacks, and what share stayed in the business?",
-          [Dv("FY26"), A("pat", "FY26", b), A("dividends_paid", "FY26", b)], ["payout_ratio", "pat"], "U19", "computed"),
     ]
     if c.cls == "ind":
         out += [
@@ -470,6 +484,8 @@ def technical_g(c: Co) -> list:
         q("technical", 2, "What is {co}'s 14-day RSI today, and has momentum diverged from price in the last month?", [P("close")], ["rsi_14"], "T14", "computed"),
         q("technical", 1, "What was {co}'s closing price, volume and delivery percentage on the last trading day?", [P("close"), P("volume"), P("delivery_pct")], ["close", "volume", "delivery_pct"], "T05", "number"),
         q("technical", 1, "What was {co}'s closing price and delivery quantity on 30 September 2026?", [P("close", "2026-09-30"), P("deliverable_qty", "2026-09-30")], ["close", "delivery_qty"], "T05", "number", "2026-11-04"),
+        q("technical", 2, "How did {co}'s price behave around the January 2026 results that also announced the CEO change?", [P("close", "2026-01-21"), D("results", "Deepinder")], ["close"], "T07", "comparison")
+        if c.sym == "ETERNAL" else
         q("technical", 2, "How did {co}'s price behave around its last ex-dividend date?", [Dv("FY26"), P("close")], ["close", "dividend_per_share"], "T16", "comparison"),
     ]
 

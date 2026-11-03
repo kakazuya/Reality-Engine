@@ -74,7 +74,8 @@
   "retail_up_to_2_lakh",
   "pat_growth_yoy_pct",
   "revenue_growth_yoy_pct",
-  "insider_trade"
+  "insider_trade",
+  "cash_flow_from_investing"
  ],
  "technical": [
   "close",

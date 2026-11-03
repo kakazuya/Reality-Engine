@@ -8,7 +8,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import co_a, co_b, co_c, co_extra  # noqa: E402
+import bank_diff, co_a, co_b, co_bank, co_c, co_extra  # noqa: E402
 from common import make, universal  # noqa: E402
 
 COMPANIES = [(co_a.KEC, co_a.kec), (co_a.BAJ, co_a.baj), (co_a.HIN, co_a.hin), (co_b.HDFC, co_b.hdfc), (co_b.SBI, co_b.sbi),
@@ -26,7 +26,7 @@ def main():
     summary = {}
     for co, fn in COMPANIES:
         rows = []
-        for n, spec in enumerate(universal(co) + fn() + co_extra.ripple_all(co) + co_extra.EXTRA.get(co.sym, []), 1):
+        for n, spec in enumerate(universal(co) + fn() + co_extra.ripple_all(co) + co_extra.EXTRA.get(co.sym, []) + co_bank.BANK.get(co.sym, []), 1):
             row = make(co, n, spec)
             if co.sym == "HINDALCO":
                 for key in ("text",):
@@ -49,6 +49,7 @@ def main():
             print("  NOT IN VOCAB", bad)
         summary[co.sym] = len(rows)
     print(summary, sum(summary.values()))
+    bank_diff.main()
 
 
 if __name__ == "__main__":
