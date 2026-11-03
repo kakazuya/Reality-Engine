@@ -3,7 +3,7 @@
 family: orders
 entries:
   - {metric: order_book_l1, kind: money, unit: inr_cr, labels: ["order book\\s*(\\+|and|plus|&)\\s*l-?1", "order book\\s*\\+\\s*l1", "ob\\s*\\+\\s*l1"]}
-  - {metric: order_book, kind: money, unit: inr_cr, labels: ["order\\s*book", "order\\s*backlog", "unexecuted order", "orderbook", "order book \\(excluding l1\\)"], neg: "l-?1|intake|per cent|%\\s*of"}
+  - {metric: order_book, kind: money, unit: inr_cr, labels: ["order\\s*book", "order\\s*backlog", "unexecuted order", "orderbook", "order book \\(excluding l1\\)"], neg: "(\\+|and|plus|&)\\s*l-?1|intake|per cent|%\\s*of"}
   - {metric: order_intake_l1, kind: money, unit: inr_cr, labels: ["order\\s*(intake|inflow)s?\\s*(\\+|and|plus)\\s*l-?1"]}
   - {metric: order_intake, kind: money, unit: inr_cr, labels: ["order\\s*(intake|inflow|wins?|finalisation|finalization)", "new orders?\\b", "orders? (secured|won)", "ytd order intake", "orders? worth"], neg: "l-?1|book"}
   - {metric: order_book_international_share, kind: pct, unit: pct, labels: ["international[^.]{0,40}(share|% of|per ?cent of)[^.]{0,20}order book", "order book[^.]{0,40}international"], companies: [KEC]}

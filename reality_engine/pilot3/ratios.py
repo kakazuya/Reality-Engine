@@ -54,6 +54,20 @@ FORMULAS = [
      "EPS of each quarter restated to the valuation date's share basis by the cumulative split factor"),
     ("F_PB", "pb", "market_cap / net_worth", "market_cap,net_worth", "x", "Needs net_worth"),
     ("F_EV_EBITDA", "ev_ebitda", "(market_cap + net_debt) / trailing_ebitda", "market_cap,net_debt,ebitda", "x", "Needs net_debt"),
+    # growth, share, mix and order-book ratios over stored rows: evaluated on demand by queries.py (kpi_growth, kpi_share,
+    # kpi_mix, book_to_bill, coverage_years), never stored as extracted values (T-049 E)
+    ("F_KPI_YOY", "kpi_growth_yoy_pct", "100 * (kpi[t] / kpi[t - 1 year] - 1)", "kpi_series.metric", "pct",
+     "same metric, dimension and basis, period one year earlier (Q1FY27 vs Q1FY26, FY26 vs FY25); both rows at the best confidence"),
+    ("F_KPI_QOQ", "kpi_growth_qoq_pct", "100 * (kpi[t] / kpi[t - 1 quarter] - 1)", "kpi_series.metric", "pct",
+     "quarters only (Q1FY27 vs Q4FY26)"),
+    ("F_SHARE", "kpi_share_pct", "100 * kpi[segment] / kpi[total]", "kpi_series.metric", "pct",
+     "denominator = the 'total' row of the same period when stored, else the sum of the segment rows"),
+    ("F_MIX", "kpi_mix_pct", "100 * kpi[segment] / sum over segments of kpi[segment]", "kpi_series.metric", "pct",
+     "every segment of one metric and period; the shares add to 100"),
+    ("F_B2B", "book_to_bill", "order_intake / revenue_from_operations", "kpi_series.order_intake,ratio_panel.revenue_from_operations", "x",
+     "same period; revenue from the filed results (ratio_panel), intake from the company's own statement"),
+    ("F_COVER", "order_book_coverage_years", "order_book / trailing_twelve_month_revenue", "kpi_series.order_book,ratio_panel.revenue_from_operations", "x",
+     "years of revenue the order book covers; FY and quarter-end books use the revenue of the year or the last four quarters"),
 ]
 LENDERS = ("BAJFINANCE",)  # finance cost is the cost of goods for a lender: no EBITDA / EBIT metrics
 FLOW_ITEMS = ("revenue_from_operations", "pat", "ebitda", "ebit", "finance_cost", "depreciation", "other_income",
