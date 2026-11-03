@@ -1,7 +1,7 @@
 """Generate the worker context pack (``tasks/worker_context/CONTEXT.md``).
 
 The pack is deliberately an index, not an orientation manual: it says how to look
-things up (code-intel for code, reality-data for data), how to query, how to pick
+things up (code-tools outline/typecheck for code, reality-data for data), how to query, how to pick
 and run tests, the sandbox limits, the conventions and where live state lives.  A
 worker reads it once, then only the files its brief names.
 
@@ -274,11 +274,13 @@ def _repo_lookup() -> str:
     return """## 1. Repo: look it up
 
 Do not survey the repo. The brief names the files; read those and edit.
-- code-intel MCP (`mcp__code-intel__*`): `module_map(package)` — one line of purpose per module.
-- `symbols(file=...)` — a module outline; `symbols(query=...)` — name search across the workspace.
-- `definition(symbol)`, `references(symbol)`, `callers(fn)`, `hover(file, line)` — where a symbol is defined and every use.
-- `diagnostics(files=[...] | changed=True)` — type/import errors; run it on every changed file before reporting.
-- No MCP? `python plugins/code-intel/ci.py <cmd>` returns the same JSON."""
+- `mcp__code-tools__outline(file)` — every class/function/method in one file with its line
+  range; use it instead of reading the file whole.
+- `mcp__code-tools__typecheck(files)` — one basedpyright run over the .py files you changed;
+  run it once before reporting.
+- No MCP? `python plugins/code-tools/ct.py outline <file>` and
+  `python plugins/code-tools/ct.py typecheck <file>...` print the same JSON.
+- Everything else: the read/grep/glob tools, not pwsh."""
 
 
 def _data_lookup(data_root: Path, missing: list[str]) -> str:

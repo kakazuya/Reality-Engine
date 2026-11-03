@@ -13,7 +13,7 @@
 Each job is ``C:\\RE\\jobs\\<id>\\``: a fresh ``git archive`` of ``--commit``
 under ``repo\\`` with a throwaway local ``git init``/base commit, the brief with
 the same context-pack header and standing instructions MSI workers get, a
-per-run MCP patch (code-intel on the job checkout, reality-data on
+per-run MCP patch (code-tools on the job checkout, reality-data on
 ``C:\\RE\\data``), and ``run.cmd`` launched detached through WMI -- the launch
 measured to survive the ssh session closing.  The worker runs
 ``run_deepseek_harness`` from its own checkout under Node-backed ``dsh``.
@@ -325,19 +325,19 @@ def mcp_patch(home: str, paths: dict[str, str]) -> str:
         "          initialDelayMs: 500\n"
         "          maxDelayMs: 30000\n"
         "          maxAttempts: 40\n"
-        "    - id: mcp-code-intel\n"
+        "    - id: mcp-code-tools\n"
         '      name: "@deepseek-ai/dsh-mcp-client"\n'
         "      config:\n"
-        "        serverName: code-intel\n"
+        "        serverName: code-tools\n"
         "        transport: stdio\n"
         f"        command: {json.dumps(py)}\n"
         "        args:\n"
-        f"          - {json.dumps(repo + '/plugins/code-intel/server/server.py')}\n"
+        f"          - {json.dumps(repo + '/plugins/code-tools/server.py')}\n"
         f"        cwd: {json.dumps(repo)}\n"
         "        env:\n"
-        f"          CODE_INTEL_REPO_ROOT: {json.dumps(repo)}\n"
+        f"          CODE_TOOLS_ROOT: {json.dumps(repo)}\n"
         '          PYTHONUTF8: "1"\n'
-        "        toolCallTimeoutMs: 60000\n"
+        "        toolCallTimeoutMs: 180000\n"
         "        reconnect:\n"
         "          enabled: true\n"
         "          initialDelayMs: 500\n"
@@ -350,7 +350,7 @@ def _standing_instructions() -> str:
     """The same standing blocks the dsh-worker appends to every MSI brief."""
     sys.path.insert(0, str(REPO / "plugins" / "dsh-worker" / "server"))
     import core  # noqa: PLC0415 - local plugin module, path inserted above
-    return (f"{core.CODE_INTEL_INSTRUCTION}\n\n{core.PROGRESS_NOTES_INSTRUCTION}\n\n"
+    return (f"{core.TOOL_INSTRUCTION}\n\n{core.PROGRESS_NOTES_INSTRUCTION}\n\n"
             f"{core.DOCS_INSTRUCTION}\n")
 
 

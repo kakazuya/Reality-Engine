@@ -28,7 +28,7 @@
 ## Start here, and read nothing else first
 1. `tasks/RULINGS.md` and `tasks/STATE.md`: Shivam's rulings, current step, exact next action, running jobs, blockers. A session start hook (`reality_engine/scripts/load_context.py`) loads both, also after compaction.
 2. The brief or the one plan it names.
-3. Only the files that brief names. Find code with code-intel (`definition`, `symbols`, `module_map`) and data with reality-data (`catalog`, `schema`). Do not survey the repo, and do not read `tasks/archive/`, `.tmp/` or job folders unless the task names them.
+3. Only the files that brief names. Find code with grep/read, or `code-tools` `outline` for one file's symbols, and data with reality-data (`catalog`, `schema`). Do not survey the repo, and do not read `tasks/archive/`, `.tmp/` or job folders unless the task names them.
 
 Open tickets are in `tasks/TASKS.md`; the session card is `python -m reality_engine.scripts.task_board card` and the rows `python -m reality_engine.scripts.task_board list`. A commit on `main` names its ticket (`T-<digits>`) or says `No-ticket: <reason>`, a worker start needs `Ticket:` or `No-ticket:`, and `done` runs the row's accept command.
 

@@ -1,6 +1,6 @@
 # Developer guide
 
-Moved from `AGENTS.md` on 1 Nov 2026 so agents do not load it at every start; checked against the code on 2 Nov (T-045). Look up code with code-intel first.
+Moved from `AGENTS.md` on 1 Nov 2026 so agents do not load it at every start; checked against the code on 2 Nov (T-045). Look up code with grep/read, or `code-tools` `outline` for one file's symbols, first.
 
 ## 1. System Architecture & Directory Map
 
@@ -684,7 +684,7 @@ Sheets: `Rules` (one row per bullet in `tasks/RULINGS.md`: how enforced, passed,
 sidelined with up to 3 examples, and a state of `enforced`, `followed unenforced`,
 `sidelined` or `not measured`); `Workers` (budget parsed from the brief's `Budget:` line,
 actual calls from `result.md.events.jsonl`, the worker's own reported counts, over-budget
-flags, code-intel calls, outcome, finish-to-merge hours); `Chain of command` (per day,
+flags, code-intel calls (history: the column stays for runs before 4 Nov 2026 and is 0 after), outcome, finish-to-merge hours); `Chain of command` (per day,
 worker-branch merges against direct commits on `main`, `.py` and other lines, the direct
 commits that changed code, and possible `--no-verify` bypasses dated after the log began);
 `Efficiency` (the FIX_TRACKER rates from `tool_usage_report.metrics`, not recomputed); and
@@ -810,3 +810,12 @@ The 4 Nov re-answer grade (`D:\RealityEngine\reports\2026-11-04_mcp_reanswer_gra
   python -m pytest plugins/reality-data/tests reality_engine/tests -q -k "pilot3 or lookups"
   ```
   Tests: `plugins/reality-data/tests/test_reality_data.py` (8 databases in the catalog, `schema('kpi_series', db='pilot3')`), `plugins/reality-data/tests/test_lookups_pilot3.py` (22 tests: `max_chars` default/cap/`bad_max_chars`, the consolidated default with the basis label; the MCP stdio test skips only in a sandbox that blocks child-process pipes), `reality_engine/tests/test_pilot3_ratios.py` (new, 2 tests: the FY26 row with its inputs; no row when an input is missing), `reality_engine/tests/test_pilot3_docs.py` (an order press release becomes an announcement titled by its headline), `reality_engine/tests/test_pilot3_guidance.py` (9 tests incl. the wrong-row assertion). In this DSH sandbox the `tmp_path` tests cannot run at all (pytest's `mkdir(mode=0o700)` temp root is unlistable here): the selection gives 105 passed / 22 errors from fixture setup (`test_pilot3_docs` 3, `test_pilot3_kpi` 6, `test_pilot3_ocr` 13), the 3 docs tests were run through a driver with an ordinary directory and pass, and on the controller they run as written. The live `pilot3.db` still needs `docs_collect` + `build --part registry` (order typing) and `build --part guidance` (guidance rows) plus an MCP restart before sessions see them.
+
+## 5. Code tools: outline and typecheck (T-054, 4 Nov 2026)
+
+`plugins/code-tools/` replaces the retired code-intel LSP. A resident `basedpyright-langserver` cost ~800 MB per worker and code-intel answered 1.5% of tool calls (423 of 28,787 over 207 runs); the two tools here run and exit, so nothing stays resident between calls.
+
+- `outline(file)` — `plugins/code-tools/tools.py` walks one file with Python `ast` and returns every class, function and method with `name`, `kind`, `line`, `end_line`, the parent class and the first docstring line.
+- `typecheck(files)` — one `basedpyright --outputjson` run with the checkout's `pyrightconfig.json` (120 s cap, the tree killed on timeout), returning `{errors: [{file, line, message}], error_count, seconds}`.
+
+The MCP server is `plugins/code-tools/server.py` (`mcp__code-tools__outline`, `mcp__code-tools__typecheck`; `CODE_TOOLS_ROOT` sets the checkout); `plugins/code-tools/ct.py` is the CLI form the briefs name as the fallback. Wiring: `reality_engine/scripts/run_deepseek_harness.py` (`code_tools_patch` re-roots it at a worktree worker's checkout), `reality_engine/scripts/hp_worker.py` (`mcp_patch`), `.mcp.json`, `pyrightconfig.json`, `reality_engine/scripts/build_worker_context.py` (the pack's section 1) and `plugins/dsh-worker/server/core.py` (`TOOL_INSTRUCTION`); `plugins/dsh-worker/server/progress.py` counts `mcp__code-tools__*` as read-only. `plugins/dsh-worker/server/context_pack.py` now requires the `Evidence:` brief field (seven fields, `Evidence:` after `Accept:`), and `plugins/dsh-worker/server/plugin_server.py` states the seven in the `start_worker` description. The dsh profiles take the row in `tasks/dsh_profiles/code-tools.insert.yml`, replacing the old `mcp-code-intel` block. Tests: `plugins/code-tools/tests/test_code_tools.py`.

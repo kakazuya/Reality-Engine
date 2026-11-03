@@ -111,32 +111,33 @@ def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, cont
         if followup_wait:
             patch += f"        followupWaitSeconds: {float(followup_wait):g}\n"
     if workspace is not None and Path(workspace).resolve() != REPO.resolve():
-        patch += code_intel_patch(workspace)
+        patch += code_tools_patch(workspace)
     return patch
 
 
-def code_intel_patch(workspace):
-    """Point the profile's code-intel MCP server at the worker's own checkout.
+def code_tools_patch(workspace):
+    """Point the profile's code-tools MCP server at the worker's own checkout.
 
-    The headless profile pins CODE_INTEL_REPO_ROOT to the main checkout, so a
-    worktree worker's lookups described main, not the files it was editing.
+    The live profile pins CODE_TOOLS_ROOT to the main checkout, so a worktree
+    worker would outline and type-check main's files, not the ones it edits.
     The server script stays the main checkout's (worktrees cut from an older
-    commit may predate the freshness fix); only the indexed root moves.
+    commit may predate it); only the root moves, and basedpyright's
+    pyrightconfig.json is read from that root.
     """
     ws = Path(workspace).resolve().as_posix()
-    server = (REPO / "plugins" / "code-intel" / "server" / "server.py").resolve().as_posix()
+    server = (REPO / "plugins" / "code-tools" / "server.py").resolve().as_posix()
     return (
-        "- id: mcp-code-intel\n"
+        "- id: mcp-code-tools\n"
         "  config:\n"
-        "    serverName: code-intel\n"
+        "    serverName: code-tools\n"
         "    transport: stdio\n"
         f"    command: {json.dumps(Path(sys.executable).as_posix())}\n"
         f"    args:\n      - {json.dumps(server)}\n"
         f"    cwd: {json.dumps(ws)}\n"
         "    env:\n"
-        f"      CODE_INTEL_REPO_ROOT: {json.dumps(ws)}\n"
+        f"      CODE_TOOLS_ROOT: {json.dumps(ws)}\n"
         '      PYTHONUTF8: "1"\n'
-        "    toolCallTimeoutMs: 60000\n"
+        "    toolCallTimeoutMs: 180000\n"
     )
 
 

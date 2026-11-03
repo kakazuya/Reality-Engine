@@ -282,8 +282,8 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "brief_incomplete")
         self.assertEqual(
             set(ctx.exception.details["missing"]),
-            {"Files:", "Accept: (or Test command(s):)", "Stop if:", "Budget:",
-             "Ticket: (or No-ticket: <reason>)"},
+            {"Files:", "Accept: (or Test command(s):)", "Evidence:", "Stop if:",
+             "Budget:", "Ticket: (or No-ticket: <reason>)"},
         )
         self.assertIn("Files:", ctx.exception.message)
         self.assertIn("Budget:", ctx.exception.message)
@@ -319,6 +319,7 @@ class PluginTests(unittest.TestCase):
             "Goal: close a ticket that does not exist\n"
             "Files: none\n"
             "Accept: the fake launcher exits 0\n"
+            "Evidence: the fixture tracker has no T-999\n"
             "Stop if: the fake launcher fails\n"
             "Budget: 1 call\n"
             "Ticket: T-999\n"
@@ -1598,12 +1599,13 @@ class PluginTests(unittest.TestCase):
 
     @staticmethod
     def _brief(first: str = "fake task") -> str:
-        """A six-field brief; the first line stays the commit subject."""
+        """A seven-field brief; the first line stays the commit subject."""
         return (
             f"{first}\n"
             f"Goal: {first}\n"
             "Files: the fixture files named in this test\n"
             "Accept: the fake launcher exits 0 and writes its output\n"
+            "Evidence: the fixture repository is the evidence\n"
             "Stop if: the fake launcher fails\n"
             "Budget: 120 tool calls\n"
             "No-ticket: the fixture repository has no tracker\n"
@@ -2241,6 +2243,7 @@ class PluginTests(unittest.TestCase):
                 "Goal: attach the pack\n"
                 "Files: none\n"
                 "Accept: the fake launcher exits 0\n"
+                "Evidence: the context pack written by the fixture\n"
                 "Stop if: the fake launcher fails\n"
                 "Budget: 120 tool calls\n"
                 "No-ticket: the fixture repository has no tracker\n"
@@ -2791,8 +2794,8 @@ class WorkerContextBuilderTests(unittest.TestCase):
         # Sections 1-2 teach the lookup tools; they no longer embed a repo/data map.
         for needle in (
             "the brief names the files",
-            "module_map(package)",
-            "symbols(file=...)",
+            "code-tools__outline",
+            "code-tools__typecheck",
             "catalog()",
             "schema(table",
             "tasks/STATE.md",
@@ -2837,7 +2840,7 @@ class WorkerContextBuilderTests(unittest.TestCase):
         self._build()
         text = (self.out / "CONTEXT.md").read_text(encoding="utf-8")
         self.assertIn("Do not survey the repo", text)
-        self.assertIn("mcp__code-intel__", text)
+        self.assertIn("mcp__code-tools__", text)
         # The fixture's module docstrings and test files are not enumerated.
         self.assertNotIn("Fake plugin core.", text)
         self.assertNotIn("run_thing.py", text)
@@ -2877,22 +2880,31 @@ class WorkerContextBuilderTests(unittest.TestCase):
 
     def test_brief_fields(self):
         conformant = (
-            "Goal: x\nFiles: a.py\nAccept: y\nStop if: blocked\nBudget: 10 calls\n"
-            "No-ticket: fixture\n"
+            "Goal: x\nFiles: a.py\nAccept: y\nEvidence: 39 calls, 4 Nov\n"
+            "Stop if: blocked\nBudget: 10 calls\nNo-ticket: fixture\n"
         )
         self.assertEqual(context_pack.brief_missing_fields(conformant), [])
         missing = context_pack.brief_missing_fields("just do it")
-        self.assertEqual(len(missing), 6, missing)
+        self.assertEqual(len(missing), 7, missing)
         self.assertIn("Goal:", missing)
         self.assertIn("Files:", missing)
         self.assertIn("Budget:", missing)
+        self.assertIn("Evidence:", missing)
         # Test command(s): may replace Accept:, and a bare command line counts.
         self.assertEqual(
             context_pack.brief_missing_fields(
                 "Goal: x\nFiles: a.py\n## Test command(s)\npython -m pytest -q\n"
-                "Stop if: blocked\nBudget: 10 calls\nNo-ticket: fixture"
+                "Evidence: measured\nStop if: blocked\nBudget: 10 calls\nNo-ticket: fixture"
             ),
             [],
+        )
+        # A brief without the Evidence: line is refused, naming the field (T-054).
+        self.assertEqual(
+            context_pack.brief_missing_fields(
+                "Goal: x\nFiles: a.py\nAccept: y\nStop if: blocked\n"
+                "Budget: 10 calls\nNo-ticket: fixture"
+            ),
+            ["Evidence:"],
         )
         # The one-line small-fix form needs only an accept command.
         self.assertEqual(
@@ -2905,6 +2917,16 @@ class WorkerContextBuilderTests(unittest.TestCase):
             context_pack.brief_missing_fields("Fix the typo", small_fix=True),
             ["Accept: (or Test command(s):)"],
         )
+
+    def test_the_brief_template_teaches_every_required_field(self):
+        """The seven labels the template teaches are the seven the gate requires (T-054)."""
+        template = (REPO / "tasks" / "worker_context" / "BRIEF_TEMPLATE.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("seven labelled fields", template)
+        for label in ("Goal:", "Files:", "Accept:", "Evidence:", "Stop if:", "Budget:",
+                      "Ticket:"):
+            self.assertIn(label, template)
 
 
 if __name__ == "__main__":

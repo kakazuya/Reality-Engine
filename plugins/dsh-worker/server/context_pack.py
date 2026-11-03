@@ -206,9 +206,10 @@ def attach_brief(
 
 
 # ---------------------------------------------------------------- brief lint
-# A brief is refused unless it carries these six labelled lines or sections
+# A brief is refused unless it carries these seven labelled lines or sections
 # (Shivam, 2026-11-01: the start gate, gate 1 of WORKSPACE_FIX_2026-11-01; the
-# Ticket line is the tracker's start gate, approved 2026-11-01).
+# Ticket line is the tracker's start gate, approved 2026-11-01; Evidence: is the
+# 4 Nov project rule, made required by T-054).
 _LABELLED = r"(?im)^\s{{0,3}}(?:#{{1,6}}\s*|\*\*\s*)?{}"
 _REQUIRED_FIELDS = (
     ("Goal:", _LABELLED.format(r"goal\b")),
@@ -217,6 +218,7 @@ _REQUIRED_FIELDS = (
         "Accept: (or Test command(s):)",
         _LABELLED.format(r"(?:accept(?:ance)?|test commands?)\b"),
     ),
+    ("Evidence:", _LABELLED.format(r"evidence\b")),
     ("Stop if:", _LABELLED.format(r"stop\s+if\b")),
     ("Budget:", _LABELLED.format(r"budget\b")),
     ("Ticket: (or No-ticket: <reason>)", _LABELLED.format(r"(?:ticket:\s*T-\d+|no-ticket:\s*\S)")),

@@ -13,7 +13,7 @@ Main machine, hostname `Sumit`. Runs Claude, dsh workers, merges, GPU work and s
 - Merged worktrees get removed, since each holds a large search cache.
 
 ## Worker context pack
-The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,000 bytes). It is an index, not a repo map: code-intel and reality-data lookup commands, test selection, sandbox limits, conventions, and a pointer to `tasks/STATE.md`.
+The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,000 bytes). It is an index, not a repo map: `code-tools` outline/typecheck and reality-data lookup commands, test selection, sandbox limits, conventions, and a pointer to `tasks/STATE.md`.
 - `reality_engine/scripts/build_worker_context.py` — builder, trimmed to the lookup sections, writes the pack and `schemas/<db>.md`.
 - `reality_engine/tests/test_worker_context.py` — fails when the built pack exceeds 20,000 bytes.
 - `reality_engine/tests/test_dsh_worker_plugin.py` — `WorkerContextBuilderTests` checks the sections and the byte limit.
