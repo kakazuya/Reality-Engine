@@ -446,6 +446,7 @@ with no model call and no network call. A `UserPromptSubmit` hook in
 ```bash
 python -m reality_engine.scripts.job_watch status   # at most 12 lines; silent when healthy
 python -m reality_engine.scripts.job_watch add backfill .tmp/backfill.log --pid 1234
+python -m reality_engine.scripts.job_watch add ocr .tmp/ocr.log --stall-seconds 900   # slow-commit log: its own quiet window
 python -m reality_engine.scripts.job_watch wait     # background it: the harness wakes Claude when it exits
 python -m reality_engine.scripts.job_watch ack <job_id_or_name> --note "checked the diff"
 python -m reality_engine.scripts.job_watch ack --all-ended
@@ -462,8 +463,10 @@ merge subjects count as done (three local `git` calls, skipped when nothing need
 a branch that no longer exists (deleted after review; an empty branch list means `git` did not
 answer and proves nothing). STALLED and RUNNING come first whatever their age; the rest sort
 newest first, so the 12-line cap drops the oldest history and never a live job. A registered
-non-worker process is `STALLED` when its log has not changed for 5 minutes
-(`JOB_WATCH_REGISTERED_STALL_SECONDS` changes the window) and `ENDED` when its `--pid` is gone; a
+non-worker process is `STALLED` when its log has not changed for its own quiet window: the
+`--stall-seconds S` given to `add`, else `JOB_WATCH_REGISTERED_STALL_SECONDS`, else 5 minutes (an
+OCR run commits every ~20 pages, so a slow one registers a longer window and stops raising false
+stalls that block the Stop hook), and `ENDED` when its `--pid` is gone; a
 registration without a pid keeps `wait` watching while its log is still changing, then stalls. Its
 record is `.tmp/job_watch.json`. Exit code is 0 in every case and a corrupt record is skipped.
 
@@ -492,11 +495,12 @@ removes a registered name from `.tmp/job_watch.json`. `ack --all-ended` acks eve
 
 Fixture and worktree overrides: `JOB_WATCH_REPO_ROOT` (defaults to this checkout),
 `JOB_WATCH_ACKS`, `JOB_WATCH_STATE`, `JOB_WATCH_WAIT_DIR`, `JOB_WATCH_REGISTERED_STALL_SECONDS`
-(default 300, the registered log-quiet window) and the existing `DSH_WORKER_RUNTIME_DIR`.
+(default 300, the registered log-quiet window when the record has no `--stall-seconds`) and the
+existing `DSH_WORKER_RUNTIME_DIR`.
 
 First measured `status` run (2026-11-02, 284 job folders): 0.36 s wall (0.29 s in process), one
 running job and eleven failed/needs-review lines. Tests: `python -m pytest
-reality_engine/tests/test_job_watch.py -q` (32 tests) and the real-subprocess stress suite
+reality_engine/tests/test_job_watch.py -q` (37 tests) and the real-subprocess stress suite
 `reality_engine/tests/test_job_watch_stress.py` (12 scenarios: finish before the baseline,
 running to finished within two polls, corrupt status during a poll, 40 jobs, a finish past the
 12-line cap, a registered job stalled without a pid and a registered pid that exits, a

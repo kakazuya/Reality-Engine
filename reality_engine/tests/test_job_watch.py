@@ -411,6 +411,77 @@ def test_add_records_a_process_and_main_never_raises(root: Path):
     assert job_watch.main(["nonsense"]) == 0
 
 
+def _registered_state(root: Path, name: str, log: Path, **extra) -> Path:
+    state = root / "state.json"
+    record = {"log": str(log), "added_at": _ago(hours=1).isoformat(), **extra}
+    state.write_text(json.dumps({"jobs": {name: record}}), encoding="utf-8")
+    return state
+
+
+def test_record_stall_window_overrides_the_five_minute_default(root: Path):
+    """T-053: an OCR run commits every ~20 pages, so it registers its own window."""
+    log = root / "ocr.log"
+    log.write_text("page 20\n", encoding="utf-8")
+    old = _ago(minutes=20).timestamp()
+    os.utime(log, (old, old))
+    state = _registered_state(root, "ocr", log, stall_seconds=3600)
+    assert job_watch.status(root / "jobs", _empty_reviews(root), state, root, now=NOW) == []
+
+
+def test_record_stall_window_still_stalls_past_its_own_window(root: Path):
+    log = root / "backfill.log"
+    log.write_text("started\n", encoding="utf-8")
+    old = _ago(minutes=20).timestamp()
+    os.utime(log, (old, old))
+    state = _registered_state(root, "backfill", log, stall_seconds=600)
+    lines = job_watch.status(root / "jobs", _empty_reviews(root), state, root, now=NOW)
+    assert lines == ["STALLED backfill log quiet for 20m"]
+
+
+def test_registered_record_without_a_usable_window_uses_the_env(root: Path, monkeypatch):
+    monkeypatch.setenv("JOB_WATCH_REGISTERED_STALL_SECONDS", "3600")
+    log = root / "ocr.log"
+    log.write_text("page 20\n", encoding="utf-8")
+    old = _ago(minutes=20).timestamp()
+    os.utime(log, (old, old))
+    state = root / "state.json"
+    state.write_text(
+        json.dumps(
+            {
+                "jobs": {
+                    "no_window": {"log": str(log), "added_at": _ago(hours=1).isoformat()},
+                    "bad_window": {"log": str(log), "added_at": _ago(hours=1).isoformat(), "stall_seconds": "junk"},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert job_watch.status(root / "jobs", _empty_reviews(root), state, root, now=NOW) == []
+
+
+def test_live_registered_uses_the_record_window(root: Path, monkeypatch):
+    monkeypatch.delenv("JOB_WATCH_REGISTERED_STALL_SECONDS", raising=False)
+    log = root / "ocr.log"
+    log.write_text("page 20\n", encoding="utf-8")
+    aged = datetime.now(timezone.utc).timestamp() - 20 * 60
+    os.utime(log, (aged, aged))
+    state = _registered_state(root, "ocr", log, stall_seconds=3600)
+    assert job_watch.live_registered(state) is True
+    state = _registered_state(root, "ocr", log)
+    assert job_watch.live_registered(state) is False
+
+
+def test_add_stores_a_stall_window_and_main_parses_it(root: Path):
+    log = root / "job.log"
+    log.write_text("x\n", encoding="utf-8")
+    assert job_watch.main(["add", "ocr", str(log), "--stall-seconds", "420"]) == 0
+    recorded = json.loads(job_watch.STATE_PATH.read_text(encoding="utf-8"))["jobs"]["ocr"]
+    assert recorded["stall_seconds"] == 420.0
+    job_watch.add("plain", str(log), None, root / "plain.json")
+    plain = json.loads((root / "plain.json").read_text(encoding="utf-8"))["jobs"]["plain"]
+    assert "stall_seconds" not in plain
+
+
 # ------------------------------------------------------------- wait and ack (T-050)
 def _live_job(jobs_dir: Path, job_id: str) -> datetime:
     """A job started and active now, so the real clock in ``wait`` sees it live."""
