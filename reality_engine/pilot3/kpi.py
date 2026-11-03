@@ -51,8 +51,9 @@ CREATE INDEX IF NOT EXISTS ix_kpi_sym_metric ON kpi_series(symbol, metric, fisca
 """
 
 # confidence of a row by the rule that wrote it: table_row > table_chart > sentence > sentence_default (T-049 E)
-RULE_CONF = {"table_v1": ("table_row", 4), "chart_v1": ("table_chart", 3), "sentence_v1": ("sentence", 2),
-             "sentence_pair_v1": ("sentence", 2), "sentence_default_v1": ("sentence_default", 1)}
+RULE_CONF = {"table_v1": ("table_row", 4), "mix_v1": ("table_row", 4), "chart_v1": ("table_chart", 3),
+             "sentence_v1": ("sentence", 2), "sentence_pair_v1": ("sentence", 2),
+             "sentence_default_v1": ("sentence_default", 1)}
 CONF_RANK = {name: rank for name, rank in RULE_CONF.values()}
 NEW_COLS = (("confidence", "TEXT NOT NULL DEFAULT 'sentence'"), ("conf_rank", "INTEGER NOT NULL DEFAULT 2"),
             ("method", "TEXT NOT NULL DEFAULT 'text_layer'"), ("ocr_conf", "REAL"),
@@ -83,7 +84,7 @@ PERIOD_PATTERNS = [
     ("DATE_DMY", re.compile(r"(?<!\d)(\d{1,2})(?:st|nd|rd|th)?[\s,.-]+(" + _MON_PAT + r")[a-z]*[\s,.-]+['’]?(\d{4}|\d{2})(?!\d)", re.I)),
     ("DATE_MDY", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?!\d)", re.I)),
     ("DATE_NUM", re.compile(r"(?<![\d.,/-])(\d{1,2})([./-])(\d{1,2})\2(20\d{2})(?![\d])")),
-    ("MON_Y", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*[-\s,']+['’]?(\d{4}|\d{2})(?!\d)", re.I)),
+    ("MON_Y", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*[-\s,'’]+['’]?(\d{4}|\d{2})(?!\d)", re.I)),
 ]
 
 
@@ -248,6 +249,17 @@ def value_unit(v_cur: str | None, suf: str | None, kind: str, default_unit: str)
     return None
 
 
+def _value_matches(s: str):
+    """VAL_RX hits that are whole tokens: "2" inside "2W" or "B2C" is part of a word, not a table value."""
+    for m in VAL_RX.finditer(s):
+        a, b = m.start("num"), m.end("num")
+        if a > 0 and (s[a - 1].isalnum() or s[a - 1] in ".,-"):
+            continue
+        if b < len(s) and s[b].isalpha():
+            continue
+        yield m
+
+
 def find_values(text: str, kind: str, default_unit: str, start: int, end: int, skip: list[tuple[int, int]]):
     """Values of the wanted kind inside text[start:end] in order, skipping period spans."""
     out = []
@@ -331,19 +343,53 @@ def label_matches(entries: list[Entry], company: str, text: str):
     return res
 
 
+_SENT_END = re.compile(r"[.!?](?=\s+[A-Z0-9(])")
+
+
+def _sentence_bounds(text: str, pos: int) -> tuple[int, int]:
+    """Start and end of the sentence holding ``pos`` (a full stop before a capital or digit, or a blank line)."""
+    start = 0
+    for m in _SENT_END.finditer(text, 0, pos):
+        start = m.end()
+    blank = text.rfind("\n\n", 0, pos)
+    if blank >= 0:
+        start = max(start, blank)
+    m = _SENT_END.search(text, pos)
+    end = m.start() + 1 if m else len(text)
+    blank = text.find("\n\n", pos)
+    if blank >= 0:
+        end = min(end, blank)
+    return start, end
+
+
 def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: int = 90) -> str:
-    """Dimension word nearest before pos (within window), else nearest after within 40 chars, else total."""
-    best, best_d = None, 10 ** 9
-    lo, hi = max(0, pos - window), min(len(text), pos + 40)
-    seg = text[lo:hi]
-    for d in dims:
-        if d.companies and company not in d.companies:
-            continue
-        for rx in d.patterns:
-            for m in rx.finditer(seg):
-                dist = (pos - (lo + m.end())) if lo + m.end() <= pos else (lo + m.start() - pos) + 15
-                if dist < best_d:
-                    best, best_d = d.dimension, dist
+    """Dimension word nearest before pos (within window), else nearest after within 40 chars, else total.
+
+    The word must sit in the same sentence: a segment named in an earlier sentence describes something else
+    (a 36,267 total order book was tagged T&D off the previous sentence's "T&D business").  A figure stated as a
+    share of the whole ("63% of our unexecuted order book") keeps the segment the paragraph has been about, so
+    that one may look back up to 400 chars."""
+    lo_s, hi_s = _sentence_bounds(text, pos)
+
+    def nearest(a: int, b: int):
+        best, best_d = None, 10 ** 9
+        seg = text[a:b]
+        for d in dims:
+            if d.companies and company not in d.companies:
+                continue
+            for rx in d.patterns:
+                for m in rx.finditer(seg):
+                    p = a + m.start()
+                    if text[max(0, p - 4):p].lower() == "kec ":     # the company name "KEC International Limited"
+                        continue
+                    dist = (pos - (a + m.end())) if a + m.end() <= pos else (a + m.start() - pos) + 15
+                    if dist < best_d:
+                        best, best_d = d.dimension, dist
+        return best
+
+    best = nearest(max(lo_s, pos - 260), min(hi_s, pos + 40))
+    if best is None and re.search(r"\d+(?:\.\d+)?\s*%\s*of\b", text[lo_s:hi_s], re.I):
+        best = nearest(max(0, pos - 400), pos)
     return best or "total"
 
 
@@ -390,6 +436,25 @@ def finalize_unit(unit: str, value: float, metric_default: str):
 
 
 def page_basis(text: str) -> str:
+    """Entity the page reports, from its heading: 'consolidated', 'standalone', or the subsidiary it names ('bhfl').
+
+    A BAJFINANCE deck prints one entity per summary page ("Financial summary – Bajaj Housing Finance",
+    "Business segment wise AUM - Consolidated", "Executive summary – Bajaj Finance"), and a BHFL results page says
+    "Summary of standalone financial results of Bajaj Housing Finance Limited"; that heading decides, so a
+    subsidiary's AUM is not stored as the consolidated 'total' with basis not_stated.  Any other page keeps the old
+    count rule (consolidated / standalone mentioned, one of them)."""
+    for ln in [ln.strip() for ln in text.splitlines() if ln.strip()][:6]:
+        low = ln.lower()
+        if not re.search(r"summary|aum|snapshot|wise|financial results", low):
+            continue
+        if "bajaj housing" in low or re.search(r"\bbhfl\b", low):
+            return "bhfl"
+        if "bajaj finance" in low:
+            return "standalone"
+        if re.search(r"\bstandalone\b", low):
+            return "standalone"
+        if "consolidated" in low:
+            return "consolidated"
     c = len(re.findall(r"consolidated", text, re.I))
     s = len(re.findall(r"standalone", text, re.I))
     if c and not s:
@@ -474,6 +539,20 @@ def _second_of_pair(text: str, start: int, v2_end: int, entries, company: str, m
     return any(e.metric != metric for e, _ in label_matches(entries, company, head[-30:]))
 
 
+_STOCK_METRICS = {"aum", "order_book", "order_book_l1", "net_debt", "net_debt_incl_acceptances", "deposits",
+                  "customer_franchise", "loan_loss_provisions"}
+
+
+def _q4_twin(e: Entry, period: Period) -> Period | None:
+    """A stock figure dated 31 March is the year-end and also the Q4 point: GNPA at "31 March 2025" must answer
+    both FY25 and Q4FY25 (the hand-read grade's quarterly GNPA trend was missing Q4 FY25).  A flow (revenue, PAT)
+    is annual only."""
+    if period.ptype == "FY" and period.as_of and period.as_of.endswith("-03-31") \
+            and (e.kind in ("pct", "x", "days", "bps") or e.metric in _STOCK_METRICS):
+        return Period(period.start, period.end, "Q4" + period.canon, "Q", period.as_of)
+    return None
+
+
 def sentence_rows(text: str, page: int, company: str, entries, dims, default_pers: list[Period]) -> list[Row]:
     rows: list[Row] = []
     pers = parse_periods(text)
@@ -523,6 +602,8 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     if not cand:
                         cand = [p for p in pers if 0 <= m.start() - p.end <= 60 and '\n' not in text[p.end:m.start()]]
                         cand = cand[-1:]
+                    if not cand:   # "GNPA ... as of 30 September 2025 stood at 1.24%": the date is before the value
+                        cand = [p for p in pers if m.end() <= p.start and p.end <= v.start][-1:]
                     period = cand[0] if cand else None
                     if period is None:
                         pair = _pair_before(text, pers, m.start())
@@ -544,6 +625,10 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                         continue
                     rows.append(Row(e.metric, dim, val, unit, scale, period.ptype, period.canon, period.as_of, basis,
                                     page, q, text[m.start():m.end()], v.raw, rule))
+                    twin = _q4_twin(e, period)
+                    if twin:
+                        rows.append(Row(e.metric, dim, val, unit, scale, twin.ptype, twin.canon, twin.as_of, basis,
+                                        page, q, text[m.start():m.end()], v.raw, rule))
     return rows
 
 
@@ -617,6 +702,294 @@ def _anchored_quote(text: str, label: str, num: str, nth: int, maxgap: int = 170
     return None
 
 
+_PROSE_ROW = re.compile(r"\b(?:stood|stands?|was|were|grew|grow|increased|decreased|rose|fell|amounted|reported|"
+                        r"respectively|compared|against|improved|declined)\b", re.I)
+_PCT_LINE = re.compile(r"^\s*(?:\d{1,3}(?:\.\d+)?%\s*)+$")
+_PCT_NUM = re.compile(r"(\d{1,3}(?:\.\d+)?)%")
+_REV_LINE = re.compile(r"revenues?\b[^\n]{0,50}?(?:rs\.?|₹|inr)\s*(?P<num>[\d,]+(?:\.\d+)?)\s*(?:cr\b|crores?)", re.I)
+
+
+def _label_dim(label: str, dims: list[Dim], company: str) -> str | None:
+    """Dimension the whole row label names ("Mortgages", "Cables & Conductors", "Others"), else None."""
+    t = " ".join(label.split())
+    if re.fullmatch(r"other[s]?", t, re.I):
+        return "others"
+    for d in dims:
+        if d.companies and company not in d.companies:
+            continue
+        for rx in d.patterns:
+            if rx.search(t):
+                return d.dimension
+    return None
+
+
+def _heading_dim(line: str, nxt: str, dims: list[Dim], company: str) -> tuple[str | None, int]:
+    """(dimension, lines consumed) of a heading line; a legend entry may wrap ("Cables &" / "Conductors").
+    A two-line entry is tried first, so the wrap is one entry, not "cables" plus a stray "Conductors"."""
+    def full(t: str) -> str | None:
+        t = " ".join(t.split())
+        if re.fullmatch(r"other[s]?", t, re.I):
+            return "others"
+        for d in dims:
+            if d.companies and company not in d.companies:
+                continue
+            for rx in d.patterns:
+                if rx.fullmatch(t):
+                    return d.dimension
+        return None
+
+    if nxt and len((line + " " + nxt).split()) <= 5 and not re.search(r"\d", line + nxt):
+        d = full(line + " " + nxt)
+        if d:
+            return d, 2
+    if len(line.split()) <= 4 and not re.search(r"\d", line):
+        d = full(line)
+        if d:
+            return d, 1
+    return None, 1
+
+
+def _mix_title(rows, hi: int, entries, company):
+    """(entry, title, unit) of the table title just above header row `hi` ("Business segment wise AUM - Consolidated"):
+    a short row that names a lexicon metric and a unit, and carries no period of its own."""
+    cand = []
+    for j, r in enumerate(rows):
+        dy = rows[hi].y - r.y
+        if not (4 <= dy <= 175):
+            continue
+        s, _ = _row_string(r)
+        if len(s) > 70 or parse_periods(s) or _PROSE_ROW.search(s):
+            continue
+        hit = label_matches(entries, company, s)
+        if not hit:
+            continue
+        e = hit[0][0]
+        hint = _unit_from_label(s, e) if e.kind == "money" else e.unit
+        if hint is None:
+            continue
+        cand.append((dy, e, s, hint))
+    if not cand:
+        return None
+    _, e, s, hint = min(cand, key=lambda c: c[0])
+    return e, s, hint
+
+
+_ENTITY_WORDS = {"consolidated": "consolidated", "standalone": "standalone", "bfl": "standalone", "bhfl": "bhfl"}
+
+
+def _column_entities(rows, hi: int) -> list[tuple[float, str]]:
+    """(x centre, entity) from the heading band above a period header ("Consolidated | BFL | BHFL | Consolidated")."""
+    top = rows[hi].y
+    out = []
+    for r in rows:
+        if not (top - 75 <= r.y <= top - 2):
+            continue
+        for x0, x1, tok in r.toks:
+            ent = _ENTITY_WORDS.get(tok.strip().lower())
+            if ent:
+                out.append(((x0 + x1) / 2, ent))
+    return out
+
+
+def mix_rows(rows, info, headers, text: str, page: int, company: str, entries, dims, basis, default_pers) -> list[Row]:
+    """Segment-mix table: a title naming a metric (AUM, order book ...) over rows that are segment names, one value
+    column per period ("Business segment wise AUM - Consolidated": 13 segment lines and a Total).  Each line is a row
+    with the segment as dimension and the total as 'total' (T-049: "the deck table has it" was answered "not held")."""
+    if not headers:
+        return []
+    hy = headers[0]
+    title = _mix_title(rows, hy, entries, company)
+    if title is None:
+        return []
+    e, tlabel, unit_hint = title
+    cols = info[hy][2]
+    ents = _column_entities(rows, hy)
+
+    def col_entity(x: float) -> str | None:
+        near = [(abs(xc - x), ent) for xc, ent in ents if abs(xc - x) <= 55]
+        return min(near)[1] if near else None
+
+    def rank(i: int):
+        per = cols[i][1]
+        y = int(per.canon[-2:])
+        q = int(per.canon[1]) if per.canon[1:2].isdigit() else 5
+        ent = col_entity(cols[i][0])
+        pref = 0 if ent == basis or ent is None else 1
+        return (y, q, -pref)
+
+    tgt = max(range(len(cols)), key=rank)
+    tx, tper = cols[tgt]
+    tgt_ent = col_entity(tx) or basis
+    segs, total, total_q4 = [], None, None
+    for i, r in enumerate(rows):
+        if i in headers or rows[i].y <= rows[hy].y:
+            continue
+        s, spans = _row_string(r)
+        nums = [(_x_of(spans, m.start(), m.end()), m) for m in _value_matches(s)]
+        nums = [(x, m) for x, m in nums if x is not None]
+        if not nums:
+            continue
+        label = s[:nums[0][1].start()].strip()
+        dim = _label_dim(label, dims, company)
+        if dim is None and not re.fullmatch(r"total", label, re.I):
+            continue
+        near = [(abs(x - tx), m) for x, m in nums if abs(x - tx) <= 28]
+        if not near:
+            continue
+        m = min(near, key=lambda t: t[0])[1]
+        num = to_float(m.group("num"))
+        unit = value_unit(m.group("cur"), m.group("suf"), e.kind, e.unit)
+        if unit is None and not (m.group("suf") or "").strip():
+            unit = _unit_from_label(tlabel, e) or unit_hint
+        if unit is None or num is None:
+            continue
+        val, u, scale = finalize_unit(unit, num, e.unit)
+        nth = sum(1 for k in range(i) if _row_string(rows[k])[0].startswith(label))
+        q = _anchored_quote(text, label, m.group("num"), nth)
+        if not q:
+            continue
+        row = Row(e.metric, "total" if dim is None else dim, val, u, scale, tper.ptype, tper.canon, tper.as_of,
+                  tgt_ent, page, q, tlabel, m.group("num"), "mix_v1")
+        twin = _q4_twin(e, tper)
+        if dim is None:
+            total = row
+        else:
+            segs.append(row)
+        if twin:   # a year-end mix is also its Q4 point (AUM at 31 Mar 2026 answers Q4FY26 too)
+            t = Row(row.metric, row.dimension, row.value, row.unit, row.scale, twin.ptype, twin.canon, twin.as_of,
+                    tgt_ent, page, q, tlabel, m.group("num"), "mix_v1")
+            if dim is None:
+                total_q4 = t
+            else:
+                segs.append(t)
+        else:
+            total_q4 = None
+    if len(segs) < 3:     # a table of sub-lines (mortgage products) is not the segment mix
+        return []
+    return segs + ([total] if total else []) + ([total_q4] if total_q4 else [])
+
+
+def _text_offsets(lines: list[str]) -> list[int]:
+    offs, n = [], 0
+    for ln in lines:
+        offs.append(n)
+        n += len(ln) + 1
+    return offs
+
+
+def _legend(lines: list[str], dims, company):
+    """(dimensions, first line, last line) of the chart legend: the last run of >=3 lines that are segment names."""
+    best = None
+    i = 0
+    while i < len(lines):
+        got, j = [], i
+        while j < len(lines):
+            nxt = lines[j + 1].strip() if j + 1 < len(lines) else ""
+            d, used = _heading_dim(lines[j].strip(), nxt, dims, company)
+            if d is None:
+                break
+            got.append(d)
+            j += used
+        if len(got) >= 3:
+            best = (got, i, j - 1)
+        i = max(j, i + 1)
+    return best
+
+
+def pie_mix_rows(text: str, page: int, company: str, entries, dims, basis: str, default_pers) -> list[Row]:
+    """Donut-chart mix: the chart's percentages sit in one contiguous run of lines, its legend in another, its title
+    ("Order Book – 31 Mar'26") between or beside them.  Paired in printed order, so the 63/27/7/2/1 order book mix is
+    stored (T-049: "says split not quotable")."""
+    lines = text.split("\n")
+    offs = _text_offsets(lines)
+    legend = _legend(lines, dims, company)
+    if legend is None:
+        return []
+    ddims, lstart, lend = legend
+    runs, i = [], 0
+    while i < len(lines):
+        if _PCT_LINE.match(lines[i]):
+            j, nums = i, []
+            while j < len(lines) and _PCT_LINE.match(lines[j]):
+                nums += [float(x) for x in _PCT_NUM.findall(lines[j])]
+                j += 1
+            runs.append((i, j - 1, nums))
+            i = j
+        else:
+            i += 1
+    out = []
+    for t, ln in enumerate(lines):
+        if t >= lstart:
+            break
+        if re.search(r"[✓•●▪]", ln):
+            continue
+        ps = parse_periods(ln)
+        rest = ln
+        for p in sorted(ps, key=lambda p: -p.start):
+            rest = rest[:p.start] + " " + rest[p.end:]
+        if not ps or re.search(r"\d{3,}", rest) or re.search(r"[₹`]|\brs\b|\binr\b", rest, re.I) or len(rest.split()) > 8:
+            continue                 # a chart title is short and has no figure of its own
+        hit = (label_matches(entries, company, rest) or [None])[0]
+        if not hit:
+            continue
+        e = hit[0]
+
+        def other_title(a: int, b: int) -> bool:
+            """Another chart's title between this title and the run: the run belongs to that chart."""
+            return any(label_matches(entries, company, lines[k]) for k in range(a, b) if lines[k].strip())
+
+        near = [(abs(t - end) if end < t else abs(start - t), start, end, nums)
+                for start, end, nums in runs
+                if (end < t and not other_title(end + 1, t)) or (start > t and not other_title(t + 1, start))]
+        near = [(d, start, end, nums) for d, start, end, nums in near
+                if len(nums) == len(ddims) and abs(sum(nums) - 100.0) <= 1.0]
+        if not near:
+            continue
+        d, start, end, nums = min(near)
+        per = ps[0]
+        a, b = (offs[start], offs[t] + len(lines[t])) if end < t else (offs[t], offs[end] + len(lines[end]))
+        q = text[a:b]
+        if q not in text:
+            continue
+        for k, dim in enumerate(ddims):
+            out.append(Row(f"{e.metric}_mix_pct", dim, nums[k], "pct", 1.0, per.ptype, per.canon, per.as_of, basis,
+                           page, q, ln.strip(), f"{nums[k]:g}%", "chart_v1"))
+    return out
+
+
+def segment_revenue_rows(text: str, page: int, company: str, entries, dims, basis: str, default_pers) -> list[Row]:
+    """A business-wise revenue bullet block whose segment heading follows it ("Revenues of Rs. 15,883 Cr" ... "T&D"):
+    one revenue row per business, so the revenue mix is stored with its segments (KEC FY26: T&D 15,883, Civil 3,823)."""
+    if not default_pers:
+        return []
+    lines = text.split("\n")
+    offs = _text_offsets(lines)
+    out = []
+    for i, ln in enumerate(lines):
+        m = _REV_LINE.search(ln)
+        if not m:
+            continue
+        num = to_float(m.group("num"))
+        if num is None:
+            continue
+        dim, qend = None, -1
+        for j in range(i + 1, min(len(lines), i + 14)):
+            nxt = lines[j + 1].strip() if j + 1 < len(lines) else ""
+            d, used = _heading_dim(lines[j].strip(), nxt, dims, company)
+            if d:
+                dim, qend = d, j + used - 1
+                break
+        if dim is None:
+            continue
+        per = default_pers[0]
+        q = text[offs[i]:offs[qend] + len(lines[qend])]
+        if q not in text:
+            continue
+        out.append(Row("revenue", dim, num, "inr_cr", 1e7, per.ptype, per.canon, per.as_of, basis, page, q,
+                       ln.strip(), m.group("num"), "sentence_default_v1"))
+    return out
+
+
 def table_and_chart_rows(page_words, text: str, page: int, company: str, entries, dims, default_pers) -> list[Row]:
     rows = _merge_stacked_axes(page_rows(page_words))
     info = [row_periods(r) for r in rows]
@@ -625,9 +998,10 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
         return []
     basis = page_basis(text)
     out: list[Row] = []
-    dim_rows = []   # (y, x_center, dimension, row_first_x)
+    dim_rows = []   # (y, x_center, dimension, row_first_x, has_values): a row with values is data, not a block heading
     for i, r in enumerate(rows):
         s, spans = _row_string(r)
+        has_vals = bool(VAL_RX.search(s))
         for d in dims:
             if d.companies and company not in d.companies:
                 continue
@@ -635,7 +1009,7 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
             ms = [m for m in ms if m]
             if ms:
                 m = ms[0]
-                dim_rows.append((r.y, _x_of(spans, m.start(), m.end()), d.dimension, r.toks[0][0]))
+                dim_rows.append((r.y, _x_of(spans, m.start(), m.end()), d.dimension, r.toks[0][0], has_vals))
                 break
 
     # every segment word of every row with its x centre: column headings ("Aluminium upstream | Copper" above the period row)
@@ -649,11 +1023,17 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                 for m in rx.finditer(s_):
                     xc_ = _x_of(sp_, m.start(), m.end())
                     if xc_ is not None:
-                        all_dims.append((r.y, xc_, d.dimension))
+                        all_dims.append((r.y, xc_, d.dimension, r.toks[0][0]))
 
-    def col_dim(hy, x):
-        """Segment named in the heading band just above (or on) the period header row, nearest in x to the column."""
-        near = [(abs(xc - x), dn) for (dy, xc, dn) in all_dims if hy - 60 <= dy <= hy + 6 and abs(xc - x) <= 90]
+    def _first_col(hdr):
+        return min(x for x, _ in info[hdr][2]) if hdr is not None else None
+
+    def col_dim(hy, x, first_x=None):
+        """Segment named in the heading band just above (or on) the period header row, nearest in x to the column.
+        The word's row must start at or left of the table's columns: a page title ("Novelis, Aluminium and Copper
+        Businesses") sits over them and used to label the Q1FY27 column novelis."""
+        near = [(abs(xc - x), dn) for (dy, xc, dn, fx) in all_dims
+                if hy - 60 <= dy <= hy + 6 and abs(xc - x) <= 90 and (first_x is None or fx <= first_x + 25)]
         return min(near)[1] if near else None
 
     def nearest_dim(y, own_text, label_x, hdr=None, x=None):
@@ -662,18 +1042,20 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                 continue
             if d.dimension != "total" and any(rx.search(own_text) for rx in d.patterns):
                 return d.dimension
+        first_x = _first_col(hdr)
         if hdr is not None and x is not None:
-            cd = col_dim(rows[hdr].y, x)
+            cd = col_dim(rows[hdr].y, x, first_x)
             if cd:
                 return cd
-        left = [(dy, dn) for (dy, dx, dn, fx) in dim_rows if fx < label_x - 40 and dx is not None]
+        left = [(dy, dn) for (dy, dx, dn, fx, hv) in dim_rows if fx < label_x - 40 and dx is not None]
         if left:   # left-margin block headings sit on the block's last row: take the first heading at or below
             below = [(dy, dn) for dy, dn in left if dy >= y - 12]
             if below and min(below)[0] - y < 200:
                 return min(below)[1]
         best, bd = "total", 10 ** 9
-        for (dy, dx, dn, fx) in dim_rows:
-            if fx >= label_x - 40 and dy <= y + 1 and (y - dy) < bd and y - dy < 220:
+        for (dy, dx, dn, fx, has_vals) in dim_rows:
+            if not has_vals and (first_x is None or fx <= first_x + 25) and fx >= label_x - 40 and dy <= y + 1 \
+                    and (y - dy) < bd and y - dy < 220:
                 best, bd = dn, y - dy
         return best
 
@@ -705,7 +1087,7 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
             continue
         pspans = [(p.start, p.end) for _, p in info[i][2]]
         nums = []
-        for m in VAL_RX.finditer(s):
+        for m in _value_matches(s):
             if any(a <= m.start("num") < b for a, b in pspans):
                 continue
             xc = _x_of(spans, m.start(), m.end())
@@ -714,6 +1096,8 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
         if not nums:
             continue
         label = s[:nums[0][1].start()].strip()
+        if _PROSE_ROW.search(label):     # running text under a distant header is a sentence, not a table row
+            continue                     # ("GNPA ... as of 31 March 2021 stood at 0.35%" used to be its Q4FY20 column)
         if len(re.findall(r"[A-Za-z]{3,}", label)) >= 1 and len(label) < 90:
             nth = label_seen.get(label, 0)
             label_seen[label] = nth + 1
@@ -739,6 +1123,10 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                         continue
                     out.append(Row(e.metric, dim, val, u, scale, per.ptype, per.canon, per.as_of, basis, page, q, label,
                                    m.group("num"), "table_v1"))
+                    twin = _q4_twin(e, per)
+                    if twin:
+                        out.append(Row(e.metric, dim, val, u, scale, twin.ptype, twin.canon, twin.as_of, basis, page,
+                                       q, label, m.group("num"), "table_v1"))
             continue
         # ---- chart series: bare numbers aligned to an axis row, titled by a short label above/near
         if not label and len(nums) >= 2 and not re.search(r'[A-Za-z]{2,}', VAL_RX.sub('', s)):
@@ -765,6 +1153,7 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                     continue
                 out.append(Row(e.metric, dim, val, u, scale, per.ptype, per.canon, per.as_of, basis, page, q, tlabel,
                                m.group("num"), "chart_v1"))
+    out.extend(mix_rows(rows, info, headers, text, page, company, entries, dims, basis, default_pers))
     return out
 
 
@@ -1088,9 +1477,19 @@ def extract_company(sym: str, sandbox: Path, stats: dict, limit_docs: int | None
                     trows = table_and_chart_rows(words, text, page, sym, entries, dims, default_pers)
                 except Exception:
                     st["errors"] = st.get("errors", 0) + 1
+            basis = page_basis(text)
+            try:     # chart mix and business-wise revenue bullets: no word boxes needed
+                erows = pie_mix_rows(text, page, sym, entries, dims, basis, default_pers)
+                seg = segment_revenue_rows(text, page, sym, entries, dims, basis, default_pers)
+            except Exception:
+                erows, seg = [], []
+                st["errors"] = st.get("errors", 0) + 1
+            if seg:  # a business-wise block states the segment's revenue; its total-dimension sentence is the same number
+                srows = [r for r in srows if not (r.metric == "revenue" and r.dimension == "total"
+                                                  and any(abs(r.value - x.value) < 1e-6 for x in seg))]
             if trows:   # on a table page, running-text hits that span line breaks are table fragments: drop them
                 srows = [r for r in srows if "\n" not in r.quote]
-            for r in sorted(srows + trows, key=lambda r: -RULE_CONF[r.rule][1]):   # best confidence first: INSERT OR IGNORE keeps it
+            for r in sorted(srows + trows + erows + seg, key=lambda r: -RULE_CONF[r.rule][1]):   # best confidence first: INSERT OR IGNORE keeps it
                 conf, rank = RULE_CONF[r.rule]
                 if doc_type == "transcript":     # a call's number is not the deck KPI: its own row, lowest tier (T-049)
                     rank = max(1, rank - 2)

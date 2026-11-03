@@ -230,12 +230,15 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
     rows = _q(f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.scale, k.fiscal_period, k.period_type, "
               f"k.as_of_date, k.basis, k.doc_key, k.page, k.quote, k.known_at, k.conf_rank, d.doc_key AS dk, "
               f"d.title, d.doc_type FROM kpi_series k {_DOC_JOIN} WHERE {where}{extra} "
-              # best evidence first: the extractor's confidence, then a deck/results/filing before a call remark
+              # best evidence first: the extractor's confidence, then a deck/results/filing before a call remark.
+              # The window must reach past a measure's duplicates (one value restated in many filings): at 3x the
+              # reply size, a restated measure filled it and its lower-confidence period series never arrived (T-049,
+              # 4 Nov 2026: Bajaj's quarterly GNPA and KEC's order-intake trend came back as old annual rows only).
               f"ORDER BY k.conf_rank DESC, "
               f"CASE d.doc_type WHEN 'deck' THEN 0 WHEN 'results' THEN 1 WHEN 'press_release' THEN 2 "
               f"WHEN 'annual_report' THEN 3 WHEN 'transcript' THEN 4 ELSE 5 END, "
               f"(k.dimension='total') DESC, k.known_at DESC, k.id LIMIT ?",
-              (*args, *eargs, _cap(limit) * 3))
+              (*args, *eargs, _cap(limit) * 30))
     out, seen = [], set()
     for r in rows:
         sig = (r["metric"], r["dimension"], r["fiscal_period"], r["value"], r["unit"])
@@ -247,8 +250,7 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
                     "basis": r["basis"], "quote": _trim(r["quote"], 300),
                     "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}", r["known_at"],
                                         doc_type=r["doc_type"], title=r["title"], row_id=r["id"])})
-        if len(out) >= _cap(limit):
-            break
+    out = out[: _cap(limit)]
     held = None
     if not out:  # the metric exists: say which periods / dimensions hold it, so the next call can be exact
         held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
