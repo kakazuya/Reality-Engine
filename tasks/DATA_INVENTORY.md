@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-03 13:40 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 45 tables and 51 of 66 raw folders.
+Generated 2026-11-04 00:26 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 63 tables and 50 of 66 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -315,6 +315,51 @@ Undocumented: 45 tables and 51 of 66 raw folders.
 | results_xbrl.db | `filings_isin` | 183,029 | yes |
 | pilot3/pages.db | `doc` | 13,349 | yes |
 | pilot3/pages.db | `doc_page` | 23,259 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `company` | 7 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `dividend_event` | 25 | **undocumented** |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `doc` | 2,004 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `doc_alias` | 1,432 | **undocumented** |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `doc_page` | 23,558 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `fin_annual_line` | 3,180 | **undocumented** |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `formula` | 34 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `kpi_series` | 104,837 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `price_delivery` | 11,557 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `ratio_panel` | 3,283 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `share_capital` | 180 | **undocumented** |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `shp_category` | 1,638 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `transcript_statement` | 55,972 | yes |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `valuation_daily` | 5,615 | **undocumented** |
+| pilot3/pilot3_before_nim_2026-11-03.db | `company` | 7 | yes |
+| pilot3/pilot3_before_nim_2026-11-03.db | `dividend_event` | 25 | **undocumented** |
+| pilot3/pilot3_before_nim_2026-11-03.db | `doc` | 2,004 | yes |
+| pilot3/pilot3_before_nim_2026-11-03.db | `doc_alias` | 1,432 | **undocumented** |
+| pilot3/pilot3_before_nim_2026-11-03.db | `doc_page` | 23,558 | yes |
+| pilot3/pilot3_before_nim_2026-11-03.db | `fin_annual_line` | 3,180 | **undocumented** |
+| pilot3/pilot3_before_nim_2026-11-03.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
+| pilot3/pilot3_before_nim_2026-11-03.db | `formula` | 27 | yes |
+| pilot3/pilot3_before_nim_2026-11-03.db | `kpi_series` | 23,816 | yes |
+| pilot3/pilot3_before_nim_2026-11-03.db | `price_delivery` | 11,557 | yes |
+| pilot3/pilot3_before_nim_2026-11-03.db | `ratio_panel` | 3,265 | yes |
+| pilot3/pilot3_before_nim_2026-11-03.db | `share_capital` | 180 | **undocumented** |
+| pilot3/pilot3_before_nim_2026-11-03.db | `shp_category` | 1,638 | yes |
+| pilot3/pilot3_before_nim_2026-11-03.db | `transcript_statement` | 16,189 | yes |
+| pilot3/pilot3_before_nim_2026-11-03.db | `valuation_daily` | 5,615 | **undocumented** |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `company` | 7 | yes |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `dividend_event` | 25 | **undocumented** |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `doc` | 2,004 | yes |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `doc_alias` | 1,432 | **undocumented** |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `doc_page` | 23,558 | yes |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `fin_annual_line` | 3,180 | **undocumented** |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `formula` | 34 | yes |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `kpi_series` | 23,816 | yes |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `price_delivery` | 11,557 | yes |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `ratio_panel` | 3,283 | yes |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `share_capital` | 180 | **undocumented** |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `shp_category` | 1,638 | yes |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `transcript_statement` | 16,189 | yes |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `valuation_daily` | 5,615 | **undocumented** |
 
 ## Raw folders on D
 
@@ -324,7 +369,7 @@ Undocumented: 45 tables and 51 of 66 raw folders.
 | _migration | 1 | 0.00 | 2026-10-25 `2026-10-25.json` | **undocumented** |
 | annual_report | 4,655 | 38.91 | 2026-10-28 `1712bec0-eb1b-4c0e-93cf-ffe2228ee187.pdf` | yes |
 | ar_queue | 340 | 0.01 | 2026-10-24 `SCORE.md` | **undocumented** |
-| bhavcopy | 34 | 0.01 | 2026-11-01 `sec_bhavdata_full_26102026.csv` | yes |
+| bhavcopy | 41 | 0.01 | 2026-11-03 `ind_close_all_03112026.csv` | yes |
 | bse_scrip_master | 1 | 0.00 | 2026-10-28 `scrip_master_equity_20261028.json` | **undocumented** |
 | commodity_series | 325 | 0.03 | 2026-10-29 `_manifest.csv` | **undocumented** |
 | concall_pdfs | 11,101 | 11.62 | 2026-10-28 `_manifest.jsonl` | **undocumented** |
@@ -346,7 +391,7 @@ Undocumented: 45 tables and 51 of 66 raw folders.
 | nse_announcements | 19,593 | 33.12 | 2026-10-28 `_manifest.csv` | **undocumented** |
 | nse_shp_xbrl_pilot | 563 | 0.01 | 2026-10-31 `SHP_199080_1470050_24062025105707_WEB.xml.gz` | **undocumented** |
 | originals_lists | 20 | 0.01 | 2026-10-28 `todo_ann_part2.manifest.csv` | **undocumented** |
-| pilot60_history | 22,128 | 38.63 | 2026-11-03 `manifest.csv` | **undocumented** |
+| pilot60_history | 22,128 | 38.63 | 2026-11-03 `manifest.csv` | yes |
 | price_bands | 1,685 | 0.19 | 2026-10-28 `_manifest.jsonl` | yes |
 | raw_market/amfi_nav | 3 | 0.00 | 2026-10-25 `2026-10.txt.gz` | **undocumented** |
 | raw_market/bse_bhav | 17 | 0.01 | 2026-10-26 `_manifest.csv` | **undocumented** |
