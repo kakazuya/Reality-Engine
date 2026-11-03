@@ -470,6 +470,36 @@ def test_one_unverified_row_does_not_fail_nine_good_rows(root, conn):
     assert not state["escalated"] and not (root / "escalations.jsonl").exists()
 
 
+def test_a_qid_outside_the_unit_and_the_bank_is_rejected_and_never_stored(root, conn):
+    # T-051: the T-048 run stored an answer for HINDALCO029b, a qid in no bank.  Accept rejects it and
+    # the loop stores nothing from the report; a bank qid outside the unit is still a real question.
+    questions = loop.load_questions(root)[:2]
+    unit_ = loop.Unit(id="answer-01", stage="answer", sandbox=root, items=questions)
+
+    def report(*extra):
+        return [{"qid": q["id"], "status": "not_found", "gap_type": "absent"} for q in questions] + list(extra)
+
+    stray = {"qid": "HINDALCO029b", "status": "not_found", "gap_type": "absent"}
+    ok, reason, added = loop.accept_answers(unit_, report(stray), store.page_lookup(conn), "2026-10-19",
+                                            store.row_lookup(conn))
+    assert not ok and "HINDALCO029b: not a question in the unit or the bank" in reason
+    assert set(added["invalid"]) == {"HINDALCO029b"} and added.get("answers", 0) == 0
+
+    def tier1(unit_in, logfile):
+        return {"tier": 1, "model": MODEL, "ok": True, "payload": report(stray), "error": "",
+                "over_limit": False, "limited": False, "session": None, "started": None, "ended": None}
+
+    state = {"spent": 0.0, "budget": 15.0, "as_of": "2026-10-19", "escalated": set()}
+    loop.drain(deque([unit_]), 1, root, conn, None, state, tier1=tier1, tier2=tier2_fail,
+               sleep=lambda s: None)
+    assert store.latest_answers(conn) == {}
+
+    ok, reason, added = loop.accept_answers(unit_, report({"qid": "KEC050", "status": "not_found",
+                                                           "gap_type": "absent"}),
+                                            store.page_lookup(conn), "2026-10-19", store.row_lookup(conn))
+    assert ok and added["invalid"] == {} and added["answers"] == 0
+
+
 def test_tier2_start_carries_approved_by(root, monkeypatch):
     class Manager:
         def __init__(self):
