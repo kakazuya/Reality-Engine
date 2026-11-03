@@ -1,9 +1,6 @@
 # Loop 2 brief: build pilot10, baseline answerability, first gap fixes (Phase 2)
 
 1. **Generalisation (T-056) is merged** (2b152da). Skip the review; read HANDOFF for its findings.
-   `python -m reality_engine.scripts.job_watch wait` in the background). When it ends, review it against the accept
-   list in `loops/loop_01_worker_generalise.md` (read the branch's file list first: `git diff --stat main...<branch>`).
-   If it fails, write a fix brief and restart it (DeepSeek off-peak; Sonnet `sonnet_worker.py` in peak hours).
 2. **Build pilot10** from main (T-056 merged; resume loop 2 partial work in `loops/loop_02_report.md`):
    `docs_collect --profile tasks/night_loop/pilot10_profile.json --out D:\RealityEngine\pilot10\pages.db`, then
    `build --profile ... --part <part> --out D:\RealityEngine\pilot10\pilot10.db` part by part (registry, pages,
