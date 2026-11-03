@@ -1,8 +1,9 @@
 """Stop and PreCompact hooks for this project.
 
-``stop`` blocks one stop while a job is stalled, so a session cannot end its turn past it.  It never
-blocks twice (``stop_hook_active``), and never in the Haiku doc loop.  ``precompact`` prints what a
-summary must keep.  Every error exits 0: a hook must not break a session.
+``stop`` blocks one stop while a job is stalled, while a finished job or a failure still needs
+review or an ack, or while a job runs with no live ``job_watch wait`` recorded.  It never blocks
+twice (``stop_hook_active``), never in the Haiku doc loop, and it never waits itself.  ``precompact``
+prints what a summary must keep.  Every error exits 0: a hook must not break a session.
 """
 from __future__ import annotations
 
@@ -13,19 +14,31 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import job_watch  # noqa: E402  (the hook runs as a script: its folder is the path)
+
 KEEP = (
     "Keep in the summary: the exact next action, every running job and its id, uncommitted files, "
     "and each ruling Shivam gave in this session. Write the next action into tasks/STATE.md if it is not there."
 )
+ARM_WAIT = "arm a wait: run `python reality_engine/scripts/job_watch.py wait` with run_in_background"
 
 
-def stop_output(payload: dict, lines: list[str]) -> str:
+def stop_output(payload: dict, lines: list[str], live_work: bool = False, waiter: bool = False) -> str:
     if payload.get("stop_hook_active") or os.environ.get("DOC_REVIEW_LOOP"):
         return ""
     stalled = [line for line in lines if line.startswith("STALLED")]
-    if not stalled:
-        return ""
-    return json.dumps({"decision": "block", "reason": "A job has stalled; check it before stopping:\n" + "\n".join(stalled)})
+    if stalled:
+        return _block("A job has stalled; check it before stopping:\n" + "\n".join(stalled))
+    review = [line for line in lines if line.startswith(("FINISHED, NEEDS REVIEW", "ENDED BADLY"))]
+    if review:
+        return _block("review or ack these before stopping:\n" + "\n".join(review))
+    if live_work and not waiter:
+        return _block(ARM_WAIT)
+    return ""
+
+
+def _block(reason: str) -> str:
+    return json.dumps({"decision": "block", "reason": reason})
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,9 +49,9 @@ def main(argv: list[str] | None = None) -> int:
         elif args[:1] == ["stop"]:
             payload = json.loads(sys.stdin.read() or "{}")
             if not (payload.get("stop_hook_active") or os.environ.get("DOC_REVIEW_LOOP")):
-                import job_watch
-
-                output = stop_output(payload, job_watch.status())
+                lines = job_watch.status()
+                live_work = job_watch.live_jobs() or job_watch.live_registered()
+                output = stop_output(payload, lines, live_work, job_watch.waiter_alive())
                 if output:
                     print(output)
     except Exception as exc:

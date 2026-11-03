@@ -1,4 +1,4 @@
-"""T-044: list_workers ordering and the prompt-time job watch.
+"""T-044/T-050: list_workers ordering and the prompt-time job watch.
 
 Fixtures live under the repository ``.tmp`` (the sandbox temp folder has an ACL
 fault) and are removed by the ``root`` fixture.
@@ -10,6 +10,8 @@ import json
 import os
 import shutil
 import sys
+import threading
+import time
 import uuid
 from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
@@ -43,6 +45,14 @@ def root() -> Iterator[Path]:
         yield path
     finally:
         shutil.rmtree(path, ignore_errors=True)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_watch_files(root: Path, monkeypatch) -> None:
+    """Keep the real acks, waiter and watch-list files out of every test."""
+    monkeypatch.setattr(job_watch, "ACKS_PATH", root / "acks.jsonl")
+    monkeypatch.setattr(job_watch, "WAIT_PATH", root / "wait.json")
+    monkeypatch.setattr(job_watch, "STATE_PATH", root / "state_default.json")
 
 
 # ---------------------------------------------------------------- list_workers
@@ -234,7 +244,7 @@ def test_status_reports_an_expired_lease_as_ended_badly(root: Path):
 
 
 def test_finished_job_without_a_review_row_needs_review(root: Path, monkeypatch):
-    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), ""))
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), "", set()))
     jobs_dir = root / "jobs"
     job_id = "20261102T070000Z-aaaaaaaa"
     _write_job(
@@ -251,7 +261,7 @@ def test_finished_job_without_a_review_row_needs_review(root: Path, monkeypatch)
 
 
 def test_finished_job_with_a_review_row_is_silent(root: Path, monkeypatch):
-    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), ""))
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), "", set()))
     jobs_dir = root / "jobs"
     job_id = "20261102T060000Z-bbbbbbbb"
     _write_job(
@@ -280,7 +290,7 @@ def test_finished_job_whose_branch_is_merged_is_silent(root: Path, monkeypatch):
         outcome="completed",
         branch=f"dsh/{job_id}",
     )
-    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: ({f"dsh/{job_id}"}, ""))
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: ({f"dsh/{job_id}"}, "", {f"dsh/{job_id}"}))
     assert job_watch.status(jobs_dir, _empty_reviews(root), root / "state.json", root, now=NOW) == []
 
 
@@ -356,7 +366,7 @@ def test_merge_subject_naming_the_job_or_its_branch_silences_it(root: Path, monk
     first = "dsh/20261102T060000Z-bbbbbbbb"
     _write_job(jobs_dir, continued, phase="finished", started=_ago(hours=3), finished=_ago(hours=2), outcome="completed", branch=first)
     subjects = f"merge: dsh-hp/{hp_job} reviewed\nMerge {first} [dsh 20261102T060000Z-bbbbbbbb]\n"
-    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), subjects))
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), subjects, set()))
     assert job_watch.status(jobs_dir, _empty_reviews(root), root / "state.json", root, now=NOW) == []
 
 
@@ -399,3 +409,197 @@ def test_add_records_a_process_and_main_never_raises(root: Path):
     assert recorded["pid"] == 424242
     assert Path(recorded["log"]) == log.resolve()
     assert job_watch.main(["nonsense"]) == 0
+
+
+# ------------------------------------------------------------- wait and ack (T-050)
+def _live_job(jobs_dir: Path, job_id: str) -> datetime:
+    """A job started and active now, so the real clock in ``wait`` sees it live."""
+    started = datetime.now(timezone.utc)
+    _write_job(jobs_dir, job_id, phase="running", started=started, activity=started)
+    return started
+
+
+def test_wait_returns_when_a_job_turns_finished(root: Path, monkeypatch):
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), "", set()))
+    jobs_dir = root / "jobs"
+    job_id = "20261103T100000Z-aaaaaaaa"
+    started = _live_job(jobs_dir, job_id)
+    wait_path = root / "wait.json"
+    seen: dict = {}
+
+    def finish() -> None:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and not wait_path.exists():
+            time.sleep(0.01)
+        seen.update(json.loads(wait_path.read_text(encoding="utf-8")))
+        time.sleep(0.1)  # let the baseline settle on RUNNING
+        _write_job(
+            jobs_dir,
+            job_id,
+            phase="finished",
+            started=started,
+            finished=datetime.now(timezone.utc),
+            outcome="completed",
+        )
+
+    thread = threading.Thread(target=finish)
+    thread.start()
+    try:
+        lines = job_watch.wait(
+            timeout_seconds=10,
+            poll_seconds=0.05,
+            jobs_dir=jobs_dir,
+            reviews_path=_empty_reviews(root),
+            state_path=root / "state.json",
+            repo_root=root,
+            wait_path=wait_path,
+        )
+    finally:
+        thread.join()
+    assert lines == [f"FINISHED, NEEDS REVIEW {job_id} branch unknown"]
+    assert seen.get("pid") == os.getpid()
+    assert seen.get("started_at")
+    assert not wait_path.exists()
+
+
+def test_wait_times_out_and_removes_its_waiter_file(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261103T090000Z-bbbbbbbb"
+    _live_job(jobs_dir, job_id)
+    wait_path = root / "wait.json"
+    lines = job_watch.wait(
+        timeout_seconds=0.3,
+        poll_seconds=0.05,
+        jobs_dir=jobs_dir,
+        reviews_path=_empty_reviews(root),
+        state_path=root / "state.json",
+        repo_root=root,
+        wait_path=wait_path,
+    )
+    assert len(lines) == 1
+    assert lines[0].startswith(f"TIMEOUT still running: RUNNING {job_id} ")
+    assert not wait_path.exists()
+
+
+def test_wait_returns_at_once_when_nothing_is_live(root: Path):
+    lines = job_watch.wait(
+        timeout_seconds=5,
+        poll_seconds=0.05,
+        jobs_dir=root / "jobs",
+        reviews_path=_empty_reviews(root),
+        state_path=root / "state.json",
+        repo_root=root,
+        wait_path=root / "wait.json",
+    )
+    assert lines == []
+    assert not (root / "wait.json").exists()
+
+
+def test_waiter_file_is_removed_when_polling_raises(root: Path, monkeypatch):
+    real_status = job_watch.status
+    calls = {"n": 0}
+
+    def flaky(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] > 1:  # the first call is the baseline
+            raise RuntimeError("status broke")
+        return real_status(*args, **kwargs)
+
+    monkeypatch.setattr(job_watch, "status", flaky)
+    with pytest.raises(RuntimeError):
+        job_watch.wait(
+            timeout_seconds=5,
+            poll_seconds=0.01,
+            jobs_dir=root / "jobs",
+            reviews_path=_empty_reviews(root),
+            state_path=root / "state.json",
+            repo_root=root,
+            wait_path=root / "wait.json",
+        )
+    assert not (root / "wait.json").exists()
+
+
+def test_waiter_alive_follows_the_recorded_pid(root: Path):
+    wait_path = root / "wait.json"
+    wait_path.write_text(json.dumps({"pid": os.getpid(), "started_at": "now"}), encoding="utf-8")
+    assert job_watch.waiter_alive(wait_path) is True
+    wait_path.write_text(json.dumps({"pid": 2**31 - 1}), encoding="utf-8")
+    assert job_watch.waiter_alive(wait_path) is False
+
+
+def test_ack_hides_a_failed_job_and_removes_a_registered_name(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261103T080000Z-cccccccc"
+    started = datetime.now(timezone.utc)
+    _write_job(jobs_dir, job_id, phase="failed", started=started, outcome="error")
+    log = root / "backfill.log"
+    log.write_text("running\n", encoding="utf-8")
+    state = root / "state.json"
+    state.write_text(
+        json.dumps({"jobs": {"backfill": {"log": str(log), "added_at": started.isoformat()}}}),
+        encoding="utf-8",
+    )
+    reviews = _empty_reviews(root)
+    assert job_watch.status(jobs_dir, reviews, state, root) == [f"ENDED BADLY {job_id} failed: error"]
+    assert job_watch.ack(job_id, "read the diff", state) is False
+    assert job_watch.status(jobs_dir, reviews, state, root) == []
+    assert job_watch.ack("backfill", state_path=state) is True
+    assert "backfill" not in json.loads(state.read_text(encoding="utf-8"))["jobs"]
+    acked = json.loads((root / "acks.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    assert acked["id"] == job_id
+    assert acked["note"] == "read the diff"
+    assert acked["acked_at"]
+
+
+def test_finished_job_whose_branch_was_deleted_is_hidden(root: Path, monkeypatch):
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), "", {"main", "T-049"}))
+    jobs_dir = root / "jobs"
+    job_id = "20261102T050000Z-dddddddd"
+    _write_job(
+        jobs_dir,
+        job_id,
+        phase="finished",
+        started=_ago(hours=5),
+        finished=_ago(hours=4),
+        outcome="completed",
+        branch=f"dsh/{job_id}",
+    )
+    assert job_watch.status(jobs_dir, _empty_reviews(root), root / "state.json", root, now=NOW) == []
+
+
+def test_main_ack_all_ended_clears_the_ended_lines_only(root: Path, monkeypatch, capsys):
+    monkeypatch.setattr(
+        job_watch,
+        "status",
+        lambda: [
+            "ENDED BADLY a failed: x",
+            "ENDED b pid 42 is gone",
+            "FINISHED, NEEDS REVIEW c dsh/c",
+            "STALLED d log quiet for 6m",
+        ],
+    )
+    assert job_watch.main(["ack", "--all-ended"]) == 0
+    assert "acked 2 ended line(s)" in capsys.readouterr().out
+    ids = {
+        json.loads(line)["id"]
+        for line in (root / "acks.jsonl").read_text(encoding="utf-8").splitlines()
+    }
+    assert ids == {"a", "b"}
+
+
+def test_live_jobs_sees_past_the_twelve_line_cap(root: Path):
+    jobs_dir = root / "jobs"
+    for index in range(15):
+        _live_job(jobs_dir, f"20261103T09{index:02d}00Z-aaaaaaaa")
+    shown = job_watch.status(jobs_dir, _empty_reviews(root), root / "state.json", root)
+    assert len(shown) == job_watch.MAX_LINES
+    assert job_watch.live_jobs(jobs_dir) is True
+
+
+def test_main_wait_accepts_its_flags(monkeypatch):
+    monkeypatch.setattr(
+        job_watch,
+        "wait",
+        lambda timeout_seconds, poll_seconds: [f"TIMEOUT still running: {timeout_seconds}/{poll_seconds}"],
+    )
+    assert job_watch.main(["wait", "--timeout-seconds", "2", "--poll-seconds", "0.05"]) == 0

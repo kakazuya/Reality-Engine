@@ -129,11 +129,12 @@ def test_refuses_main(repo):
     assert loop.loop(repo, None, False, None) == 2
 
 
-def test_stop_hook_blocks_once_on_a_stalled_job_only(monkeypatch):
+def test_stop_hook_blocks_once_and_never_in_the_doc_loop(monkeypatch):
     monkeypatch.delenv("DOC_REVIEW_LOOP", raising=False)
     stalled = ["STALLED job no activity for 12m"]
     assert json.loads(session_hooks.stop_output({}, stalled))["decision"] == "block"
     assert session_hooks.stop_output({"stop_hook_active": True}, stalled) == ""
-    assert session_hooks.stop_output({}, ["RUNNING job 5m", "ENDED BADLY old"]) == ""
+    assert json.loads(session_hooks.stop_output({}, ["RUNNING job 5m", "ENDED BADLY old"]))["decision"] == "block"
+    assert session_hooks.stop_output({}, ["RUNNING job 5m"]) == ""
     monkeypatch.setenv("DOC_REVIEW_LOOP", "1")
     assert session_hooks.stop_output({}, stalled) == ""
