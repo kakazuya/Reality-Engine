@@ -1,84 +1,88 @@
-# Night loop: goal, boundaries, evals (draft for Shivam's approval, 4 Nov 2026)
+# Goal, evals and boundaries for the loop (v2, 4 Nov 2026, after Shivam's correction; awaiting approval)
 
-Authoritative copy. The headless loop session reads this file first and obeys it over anything else it finds,
-except `tasks/RULINGS.md`. Only Shivam changes it. A loop that edits it is rejected.
+Authoritative copy. Every loop session reads this first and obeys it over anything else except `tasks/RULINGS.md`.
+Only Shivam changes it; a loop that edits it is rejected.
 
-## 1. Goal (one sentence)
-Make the pilot3 database (KEC, BAJFINANCE, HINDALCO) hold, as typed rows that the `reality-data` pilot3 tools return,
-more of the numbers our hand-graded pilot answers needed, extracted by deterministic scripts (no model call while
-building), without losing precision or point-in-time correctness, and with the same or less reading, compute and time.
+## 1. The goal
+For every company we pick, an investor's reasonable questions about it can be answered by an LLM through the
+`reality-data` MCP from a database built by deterministic scripts out of the documents we hold: concall transcripts,
+order wins and other announcements, annual reports, investor presentations, press releases, results filings (XBRL),
+price-volume-delivery data, shareholding patterns, pledge reports, credit ratings. Target: at least 95% of the
+questions answered correctly, NOT IN DATA only where the documents truly do not hold it.
 
-What "better" means is ONLY what section 4 measures. A change that does not move a section 4 number is not progress,
-however good it looks.
+Two phases, in order. Phase 2 does not start until Shivam approves Phase 1's question set.
 
-## 2. Not the goal (a loop doing any of these is rejected)
-- New companies, new downloads, embeddings, OCR runs, paid or model calls of any kind in the build.
-- Changing any question, gold answer, grader, eval script, test assertion, ruling or guideline.
-- Commentary extraction by rules (guideline 4: commentary stays searchable text).
-- Company-specific code: hard-coded symbols, ISINs, BSE codes, doc keys, file hashes, page numbers or gold values.
-  Rules must work for any company of the same sector family.
-- Writing the live `reality_engine/data/pilot3/pilot3.db`, pushing, merging to `main`, or editing `main`'s files
-  outside `tasks/night_loop/`.
-- Work outside the queue in section 6.
+## 2. Phase 1: the question set (Claude's work; no worker does bank reasoning)
+Make, per company, the questions a fundamental or technical investor would ask before investing, and only those
+that make sense for that company's business. Use the 1,073-case master bank (`tasks/master_bank/MASTER_BANK.jsonl`,
+families, archetypes) and the frozen 1,901 bank as the idea source, not as a fixed list.
+- Layers: a sector question set per sector family (lender, EPC/infrastructure, metals, ...), then each company's
+  rewrite of it with its own segments, products and documents.
+- Orders: first order (a stated fact), second order (computed, trend, comparison, consistency across documents),
+  third order (ripple: what a policy, commodity, rate or peer event means for this company).
+- Lenses: results and margins, segments, orders and order book, guidance and delivery against it, balance sheet and
+  cash, capital allocation, ownership (promoter, FII/DII, pledge), credit ratings, governance and management,
+  price-volume-delivery and technical behaviour around events, valuation.
+- Variations: each core question in several forms (name / ticker / BSE code, terse / full, dated / relative
+  "last quarter", different period kinds).
+- Every question carries: id, company, text, variations, order, lens, sector-fit tag, the master-bank ids it came
+  from (or "new" with a reason), `as_of`, answer kind, and the **data items it needs** (document type and
+  table/metric/period, or "text search in <doc type>"). Phase 2 is measured against those data items.
 
-## 3. Roles
-- **Wrapper** (visible Claude session, Eagle): launches one headless loop at a time, re-runs every eval itself,
-  reads every diff, merges, backs up and promotes the database, keeps the scoreboard, stops the night.
-- **Loop session** (headless `claude -p`, Opus 5.5, effort medium, same config and MCPs as the wrapper, no subagents):
-  takes the next queue item, gathers the evidence, writes ONE brief to `tasks/night_loop/briefs/`, steers at most
-  2 dsh workers, runs the evals on the worker branch, writes `tasks/night_loop/loops/loop_NN.md`, exits.
-  It does not write product code (ruling: Opus manages, dsh builds, until 6 Nov 23:30).
-- **dsh workers**: DeepSeek V4.1 Flash at max effort, worktree branches, briefs per `tasks/worker_context/BRIEF_TEMPLATE.md`.
+| # | Phase 1 check | Rule |
+|---|---|---|
+| Q1 | Sector fit: every metric a question names is in that sector's vocabulary (no hospital beds for a cable maker, no NIM for a smelter) | 0 violations (script) |
+| Q2 | Coverage: every lens and every held document type is needed by questions for each company; orders spread | each lens >= 10 per company; 1st >= 40%, 2nd >= 25%, 3rd >= 10% |
+| Q3 | Variation and duplicates: core questions have >= 3 forms; near-duplicates (token overlap > 0.8) flagged | 0 unflagged duplicates |
+| Q4 | Traceability: diff against the frozen banks; every dropped bank idea for a company has a reason | full diff written |
+| Q5 | Reasonableness, hand-read: 50 random questions per company read by the wrapper | >= 48 reasonable |
+| Q6 | Shivam approves the set | before Phase 2 |
+After approval the set is frozen and split by a fixed hash: dev 70% (loops see it), hidden 30% (wrapper only).
 
-## 4. Evals (frozen before loop 1; built by T-055, never edited by a loop)
-Gold: the 550 numbers in the 154 answers hand-graded R (`answer_run2`), normalised once to
-(symbol, canonical period, value, canonical unit). Split by a fixed hash of qid: **dev 60%** (the loop may see it)
-and **hidden 40%** (only the wrapper sees it; the scorer prints only its counts). Text and date answers are left out.
+## 3. Phase 2: extraction until the database answers (dsh workers build; Opus manages)
+Scripts (CPU / GPU / NPU, no model call while building) extract from the raw documents into the pilot database so
+the MCP tools return what each question needs, reading as little as possible.
 
-| # | Measure | Kind | Rule |
+| # | Phase 2 measure | Kind | Rule |
 |---|---|---|---|
-| M1 | Typed recall: gold numbers present as a typed row (kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, guidance, shp_category, share_capital, dividend_event) for the same symbol and period, value within rounding of the printed figure, `known_at` <= the question's as_of | score | dev must rise by >= 1; hidden must not fall; no company may fall |
-| M2 | Provenance: every new or changed row with a quote has its value in the quote and the quote on its cited page (`doc_page` text) | guard | >= 98% of new rows |
-| M3 | XBRL agreement: deck, press-release and transcript rows for revenue, EBITDA, PAT, finance cost against `fin_quarter_xbrl` for the same period and basis | guard | mismatch count must not rise |
-| M4 | Point in time: rows with a period after their document date, rows known before their filing, duplicate documents (hash) | guard | must not rise; 0 new |
-| M5 | Junk: rows per page over the 99th percentile, impossible values (margin > 100%, negative counts), total rows up > 15% with no M1 gain | guard | must not rise |
-| M6 | No model or network in the build: build run with sockets blocked | guard | must pass |
-| M7 | Generality: added lines in `reality_engine/pilot3/` with a symbol, ISIN, BSE code, doc key, 64-hex hash or a gold value literal | guard | 0 |
-| M8 | Tests: `pytest -k pilot3 -m "not slow"` each loop; full suite and `checkpages run` (found >= baseline) at merge | guard | green |
-| M9 | Cost: build seconds per company for the parts changed; pages read | score | may not rise > 20% without an M1 gain |
-| M10 | MCP replay: 30 fixed pilot3 tool calls with expected values (from dev gold) | guard | all still pass |
-| M11 | Hand-read: the wrapper reads 20 random new rows against their pages | guard | >= 18 right |
+| A1 | Data answerability, every question: the MCP tools return each needed data item with `known_at` <= as_of | score | dev up; hidden not down; no company down |
+| A2 | Answer test: a fixed random sample (60 per company) answered by a model through the MCP only, hand-read graded by the wrapper | reported score | not down; the target is 95% right |
+| A3 | Provenance: a new row's value is in its quote and the quote is on the cited page | guard | >= 98% |
+| A4 | XBRL agreement of deck / press-release / transcript figures; point-in-time violations; duplicate documents; junk rows | guard | not up |
+| A5 | No model or network in the build (sockets blocked); no company literals in extractor code | guard | pass |
+| A6 | Tests: fast suite each loop, full suite and `checkpages run` (>= 145 found) at merge | guard | green |
+| A7 | Cost: pages read, OCR pages, build seconds per company | score | not up > 20% without an A1 gain |
+A1 is the guide; A2 is what gets reported to Shivam (hand-read only). A loop is accepted only if A1-dev rises,
+A1-hidden and every company hold, and every guard passes; every second accepted loop runs A2, which must not fall.
+Overfit alarm: dev up while hidden flat over two accepted loops stops the run.
 
-**Accept** a loop only if M1-dev rises, M1-hidden and every company hold, and M2-M8, M10, M11 pass. Otherwise the
-branch is kept, not merged, and the reason is logged. **Overfit alarm**: dev up >= 5 numbers while hidden gains 0
-over two accepted loops: stop the night. The hand-read score (M11 and the morning sample) is what gets reported to
-Shivam; M1 is a guide.
+## 4. Roles
+- Wrapper (visible Eagle session): launches one loop at a time, re-runs every check itself, reads every diff,
+  merges, backs up and promotes the database, keeps the scoreboard, grades A2 by hand, stops the run.
+- Loop session (headless `claude -p`, Opus 5.5, effort medium, same config and MCPs, no subagents): one work item,
+  then a report in `tasks/night_loop/loops/loop_NN.md`, then exit. Phase 1: it writes the questions itself.
+  Phase 2: it gathers evidence, briefs and steers at most 2 dsh workers, runs the checks on their branch.
 
-## 5. Boundaries
-- At most **2 dsh workers at once in total** (the night's limit includes any worker already running), one headless
-  loop at a time, no dsh starts in peak hours (Mon-Fri 06:30-09:30 and 11:30-15:30 IST).
-- Headless loop: <= 150 turns, <= 2 hours wall, exits after one queue item. At most 4 loops before Shivam reviews.
-- RAM: pause starts under 2.5 GB free; one test process at a time under the RAM watchdog.
-- Live database: written only by the wrapper, after a dated backup, from a merged branch.
-- Protected paths (any diff touching them = reject): `tasks/night_loop/GOAL.md`, `reality_engine/night_eval/**`,
-  gold files, existing test assertions (lines removed or changed in `reality_engine/tests/`), `tasks/RULINGS.md`,
-  `docs/DB_BUILD_GUIDELINES.md`, `AGENTS.md`, `.mcp.json`, `plugins/dsh-worker/**`, dsh profiles.
-- Audit: the wrapper greps each loop and worker transcript for reads of the hidden gold or the answer runs'
-  answer files; any hit rejects the loop.
-- Docs: no docs, no merge (blueprint results history and STATE line per accepted loop).
+## 5. Not the goal (rejected)
+Rows added that no question needs; commentary extraction by rules (commentary stays searchable text); company-
+specific code; new downloads, OCR runs, embeddings, paid calls; editing questions after the freeze, gold, graders,
+checks, tests' assertions, rulings, guidelines or this file; writing the live database, merging or pushing from a
+loop; work outside the queue.
 
-## 6. Queue (in order; a loop takes the first item not done)
-1. Segment results from the XBRL results filings, if the filings carry them (guideline 2).
-2. Period labels and junk rows found by the 4 Nov re-answer: BAJ deck cost of funds one quarter early; junk `nim_pct`.
-3. XBRL calibration: flag each deck / press-release / transcript figure that matches or mismatches XBRL; per-company
-   reader accuracy (guideline 3).
-4. Duplicate and mis-typed documents: KEC transcripts stored twice; HINDALCO press releases typed as decks.
-5. The P-graded answers' missing numbers (from `regrades.tsv` notes; dev questions only).
-6. Core-document triage: read only the core set plus the annual report front section; pages read must fall >= 30%
-   with M1 not falling.
+## 6. Boundaries
+At most 2 dsh workers at once in total; one headless loop at a time, <= 150 turns, <= 2 hours, at most 4 loops
+before Shivam reviews; no dsh starts in peak hours (weekdays 06:30-09:30, 11:30-15:30 IST); pause starts under
+2.5 GB free RAM; tests one file per process. The wrapper greps loop and worker transcripts for reads of the hidden
+split; a hit rejects the loop. Docs updated with every merge.
 
-## 7. Stop the night when
-3 loops in a row are rejected; the overfit alarm fires; a guard fails on `main`; the Claude usage limit is hit
-(stop, do not wait for the reset); 4 loops are done; or Shivam says stop. The wrapper then writes
-`D:\RealityEngine\reports\<date>_night_loop.html`: per loop, what changed, every measure before and after, the
-hand-read sample, rejected branches and why.
+## 7. Queue
+1. Phase 1 for KEC, BAJFINANCE, HINDALCO: sector sets for EPC/infrastructure, lender, metals, then company sets,
+   checks Q1-Q5; the wrapper presents it to Shivam.
+2. In parallel (dsh, T-055): the check scripts for Q1-Q3 and A1, A3-A7, built against the question format above.
+3. After approval: baseline A1 and A2, then Phase 2 loops, each taking the largest group of unanswerable dev
+   questions by needed data item (structured feeds first, then XBRL segments, period labels, XBRL calibration,
+   duplicate documents, core-document triage).
+
+## 8. Stop when
+3 loops in a row rejected; the overfit alarm; a guard fails on `main`; the Claude usage limit (stop, do not wait);
+4 loops done; or Shivam says stop. Then the wrapper writes `D:\RealityEngine\reports\<date>_loop_run.html`.
