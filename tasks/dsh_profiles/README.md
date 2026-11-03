@@ -2,7 +2,7 @@
 
 The live profiles are `~/.dsh/profiles/headless/cordis.patch.yml` and `~/.dsh/profiles/web/cordis.patch.yml`. Workers cannot write them; Claude changes them, backing up first and then checking `dsh --profile <name> --dump-config`.
 
-The copies here, `headless.cordis.patch.yml` and `web.cordis.patch.yml`, are the 24 Oct versions and have drifted: on 2 Nov the live files differed from them. The live files are the authority. `code-intel.insert.yml` is the row that adds code intelligence (`plugins/code-intel/README.md`).
+The copies here, `headless.cordis.patch.yml` and `web.cordis.patch.yml`, are the 24 Oct versions and have drifted: on 2 Nov the live files differed from them. The live files are the authority. `code-tools.insert.yml` is the row that adds the run-and-exit `outline`/`typecheck` tools (`plugins/code-tools/README.md`); it replaces the `mcp-code-intel` row, which was retired on 4 Nov 2026 (T-054).
 
 ## Shell tool-call cap
 

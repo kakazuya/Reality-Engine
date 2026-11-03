@@ -1,0 +1,32 @@
+# code-tools: insert block for @deepseek-ai/dsh-mcp-client (both dsh profiles).
+#
+# Merge this entry into the `- insert:` list of
+#   ~/.dsh/profiles/headless/cordis.patch.yml
+#   ~/.dsh/profiles/web/cordis.patch.yml
+# directly after the existing `mcp-reality-data` entry (same file, same list,
+# same shape), REPLACING the old `mcp-code-intel` entry (code-intel retired
+# 4 Nov 2026, T-054: ~800 MB language server per worker).  Keep the list order:
+# `insert:` is a single YAML array under one top-level `- insert:` key, so this
+# block is a list item, not a new `- insert:`.
+#
+# Two run-and-exit tools, nothing resident between calls:
+#   mcp__code-tools__outline(file)    symbols with line ranges (ast)
+#   mcp__code-tools__typecheck(files) one basedpyright run, then exits
+- id: mcp-code-tools
+  name: "@deepseek-ai/dsh-mcp-client"
+  config:
+    serverName: code-tools
+    transport: stdio
+    command: C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe
+    args:
+      - C:/Users/warri/Downloads/Info_Diffusion_Model/plugins/code-tools/server.py
+    cwd: C:/Users/warri/Downloads/Info_Diffusion_Model
+    env:
+      CODE_TOOLS_ROOT: C:/Users/warri/Downloads/Info_Diffusion_Model
+      PYTHONUTF8: "1"
+    toolCallTimeoutMs: 180000
+    reconnect:
+      enabled: true
+      initialDelayMs: 500
+      maxDelayMs: 30000
+      maxAttempts: 40

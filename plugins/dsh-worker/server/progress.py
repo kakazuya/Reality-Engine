@@ -47,7 +47,7 @@ WRITE_TOOLS = frozenset({"write", "edit", "multiedit", "multi_edit", "apply_patc
 # A model step counts toward ``batched_read_steps`` when every call in it is
 # read-only.  Conservative whitelist: shell and anything that can mutate are
 # excluded, so the count is a lower bound.
-READ_ONLY_PREFIXES = ("mcp__code-intel__", "mcp__reality-data__")
+READ_ONLY_PREFIXES = ("mcp__code-tools__", "mcp__reality-data__")
 READ_ONLY_TOOLS = frozenset({
     "read", "grep", "glob", "read_image", "list_files",
     "mcp__dsh-worker__worker_status", "mcp__dsh-worker__worker_result",

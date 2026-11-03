@@ -44,9 +44,9 @@ def test_mcp_patch_points_both_servers_at_the_job():
     home = r"C:\Users\zen7s"
     paths = hp_worker.job_parts("hp-1")
     patch = hp_worker.mcp_patch(home, paths)
-    assert "mcp-reality-data" in patch and "mcp-code-intel" in patch
+    assert "mcp-reality-data" in patch and "mcp-code-tools" in patch
     assert "C:/Users/zen7s/AppData/Local/Programs/Python/Python314-arm64/python.exe" in patch
-    assert "C:/RE/jobs/hp-1/repo/plugins/code-intel/server/server.py" in patch
+    assert "C:/RE/jobs/hp-1/repo/plugins/code-tools/server.py" in patch
     assert 'REALITY_DATA_ROOT: "C:/RE/data"' in patch
     # every server needs the reconnect stanza or dsh gives up after one crash
     assert patch.count("maxAttempts: 40") == 2

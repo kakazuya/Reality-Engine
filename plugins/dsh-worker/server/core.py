@@ -124,20 +124,19 @@ DOCS_INSTRUCTION = (
     "repo or the stores; if a doc is wrong, fix it and say so. End your final "
     "report with 'Docs updated:' listing each file, or the branch is not merged."
 )
-# Appended to every worker brief (Shivam, 2026-10-30: all dsh workers use
-# code-intel, the read tools and the reality-data tools).  The headless dsh
-# profile loads both MCP servers; run_deepseek_harness points code-intel at the
-# worker's own workspace.
-CODE_INTEL_INSTRUCTION = (
-    "Standing tool instruction: you have code-intel tools "
-    "(mcp__code-intel__definition, __references, __callers, __symbols, "
-    "__module_map, __hover, __diagnostics), indexed on YOUR workspace and "
-    "fresh against on-disk edits. Use them before grep or whole-file reads: "
-    "definition/references for where a symbol (or a table/column name) is "
-    "defined and used, symbols(file=...) for a module outline instead of "
-    "reading it whole, module_map for a directory, diagnostics on every file "
-    "you changed before reporting done. If the MCP tools are unavailable, the "
-    "same commands run as `python plugins/code-intel/ci.py <cmd>` (JSON). "
+# Appended to every worker brief (Shivam, 2026-11-04 / T-054: code-intel is
+# retired, replaced by the run-and-exit code-tools server).  The headless dsh
+# profile loads the reality-data MCP server; run_deepseek_harness adds
+# code-tools, pointed at the worker's own workspace.
+TOOL_INSTRUCTION = (
+    "Standing tool instruction: you have two run-and-exit code tools, "
+    "mcp__code-tools__outline(file) — every class, function and method in one "
+    "file with its line range, instead of reading the file whole — and "
+    "mcp__code-tools__typecheck(files) — one basedpyright run over the .py "
+    "files you list; run it on every .py file you changed once, before "
+    "reporting. If the MCP tools are unavailable the same calls run as "
+    "`python plugins/code-tools/ct.py outline <file>` and "
+    "`python plugins/code-tools/ct.py typecheck <file>...` (JSON). "
     "Use the read/grep/glob tools, not pwsh, to read, search and list files. "
     "For a read-only DB question use mcp__reality-data__sql, not inline "
     "Python; for a table's columns, types and indexes use "
@@ -149,8 +148,8 @@ CODE_INTEL_INSTRUCTION = (
     "with a blocking call (the harness job_output with wait=true, or a "
     "host-side wait until a process exits or a file appears), then read the "
     "result. "
-    "In your final report state how many code-intel calls you made and your "
-    "tool-call count before the first edit."
+    "In your final report state how many outline/typecheck calls you made and "
+    "your tool-call count before the first edit."
 )
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 1200
 MAX_PROGRESS_INTERVAL_SECONDS = 86_400
@@ -1151,9 +1150,9 @@ class Manager:
                 missing=missing_fields,
                 template=str(Path(self.config.repo_root) / "tasks" / "worker_context" / "BRIEF_TEMPLATE.md"),
                 hint=(
-                    "write the six labelled lines Goal:, Files:, Accept: (or Test "
-                    "command(s):), Stop if:, Budget:, Ticket: (or No-ticket: <reason>); "
-                    "small_fix=true allows a one-line brief with an accept command"
+                    "write the seven labelled lines Goal:, Files:, Accept: (or Test "
+                    "command(s):), Evidence:, Stop if:, Budget:, Ticket: (or No-ticket: "
+                    "<reason>); small_fix=true allows a one-line brief with an accept command"
                 ),
             )
         ticket = brief_ticket(text)
@@ -1416,7 +1415,7 @@ class Manager:
                 warnings.extend(pack_warnings)
             # Standing instruction, not a question: the worker must never stop
             # or answer it, only append a progress line.
-            text = (f"{text.rstrip()}\n\n{CODE_INTEL_INSTRUCTION}\n\n"
+            text = (f"{text.rstrip()}\n\n{TOOL_INSTRUCTION}\n\n"
                     f"{PROGRESS_NOTES_INSTRUCTION}\n\n{DOCS_INSTRUCTION}\n")
             atomic_write_text(job_dir / "brief.md", text)
             baseline = (

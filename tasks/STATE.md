@@ -10,14 +10,14 @@ Fast checks merged 4 Nov (guide O9): `build --part kpi --symbols KEC` 125 s vs 5
 reality_engine.pilot3.checkpages run` replays 314 graded pages in ~6 s (baseline 145 found: KEC 29/78, BAJFINANCE
 59/113, HINDALCO 57/123); fix rounds run `pytest reality_engine/tests -q -k pilot3 -m "not slow"`, full suite at merge.
 
-## Running (4 Nov)
-- dsh `20261103T214846Z-2fb0c85c` T-054 code-tools replaces code-intel (brief `tasks/dsh_tasks/T054_CODE_TOOLS_2026-11-04.md`).
-- Re-answer of 43 questions done (KEC 13, BAJ 15, HIN 15): `D:\RealityEngine\pilot3\answer_run3\`; worktrees removed.
+T-054 merged 4 Nov (guide section 5): `plugins/code-tools/` (run-and-exit `outline`, `typecheck`) replaces code-intel;
+briefs need seven fields incl. `Evidence:` (`context_pack._REQUIRED_FIELDS`).
+
+**Running (4 Nov):** nothing. Re-answer of 43 questions done (KEC 13, BAJ 15, HIN 15): `D:\RealityEngine\pilot3\answer_run3\`; worktrees removed.
 
 ## Next action
-1. Review and merge the two running workers as they finish (merge recipe below). After T-054: back up and swap the
-   code-intel block for code-tools in `~/.dsh/profiles/headless/cordis.patch.yml` and `web/cordis.patch.yml`, move
-   `plugins/code-intel` to the Recycle Bin, ask Shivam to reconnect MCPs.
+1. T-054 aftercare: profiles swapped to `tasks/dsh_profiles/code-tools.insert.yml` (backups `*.bak_2026-11-04`);
+   `plugins/code-intel` to the Recycle Bin; Shivam reconnects MCPs.
 2. Night loop (awaiting Shivam's approval): goal and evals `tasks/night_loop/GOAL.md`; first build the frozen evals
    (T-055, brief `tasks/dsh_tasks/T055_NIGHT_EVAL_2026-11-04.md`, after fast checks merge), take the baseline, then one
    headless Opus loop at a time. No headless session without Shivam's explicit go.

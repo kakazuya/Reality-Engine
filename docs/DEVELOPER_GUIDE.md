@@ -1,6 +1,6 @@
 # Developer guide
 
-Moved from `AGENTS.md` on 1 Nov 2026 so agents do not load it at every start; checked against the code on 2 Nov (T-045). Look up code with code-intel first.
+Moved from `AGENTS.md` on 1 Nov 2026 so agents do not load it at every start; checked against the code on 2 Nov (T-045). Look up code with grep/read, or `code-tools` `outline` for one file's symbols, first.
 
 ## 1. System Architecture & Directory Map
 
@@ -684,7 +684,7 @@ Sheets: `Rules` (one row per bullet in `tasks/RULINGS.md`: how enforced, passed,
 sidelined with up to 3 examples, and a state of `enforced`, `followed unenforced`,
 `sidelined` or `not measured`); `Workers` (budget parsed from the brief's `Budget:` line,
 actual calls from `result.md.events.jsonl`, the worker's own reported counts, over-budget
-flags, code-intel calls, outcome, finish-to-merge hours); `Chain of command` (per day,
+flags, code-intel calls (history: the column stays for runs before 4 Nov 2026 and is 0 after), outcome, finish-to-merge hours); `Chain of command` (per day,
 worker-branch merges against direct commits on `main`, `.py` and other lines, the direct
 commits that changed code, and possible `--no-verify` bypasses dated after the log began);
 `Efficiency` (the FIX_TRACKER rates from `tool_usage_report.metrics`, not recomputed); and
@@ -849,3 +849,12 @@ python -m reality_engine.pilot3.checkpages make                                 
   `test_pilot3_checkpages.py` is unmarked: three fast tests (quote mapping, value/unit match, `run` end to end on
   a synthetic page) and the baseline test. In this DSH sandbox the selection gives 115 passed and 20 errors from
   fixture setup only (the `tmp_path` root is denied, as in O8); the controller runs it as written.
+
+## 5. Code tools: outline and typecheck (T-054, 4 Nov 2026)
+
+`plugins/code-tools/` replaces the retired code-intel LSP. A resident `basedpyright-langserver` cost ~800 MB per worker and code-intel answered 1.5% of tool calls (423 of 28,787 over 207 runs); the two tools here run and exit, so nothing stays resident between calls.
+
+- `outline(file)` — `plugins/code-tools/tools.py` walks one file with Python `ast` and returns every class, function and method with `name`, `kind`, `line`, `end_line`, the parent class and the first docstring line.
+- `typecheck(files)` — one `basedpyright --outputjson` run with the checkout's `pyrightconfig.json` (120 s cap, the tree killed on timeout), returning `{errors: [{file, line, message}], error_count, seconds}`.
+
+The MCP server is `plugins/code-tools/server.py` (`mcp__code-tools__outline`, `mcp__code-tools__typecheck`; `CODE_TOOLS_ROOT` sets the checkout); `plugins/code-tools/ct.py` is the CLI form the briefs name as the fallback. Wiring: `reality_engine/scripts/run_deepseek_harness.py` (`code_tools_patch` re-roots it at a worktree worker's checkout), `reality_engine/scripts/hp_worker.py` (`mcp_patch`), `.mcp.json`, `pyrightconfig.json`, `reality_engine/scripts/build_worker_context.py` (the pack's section 1) and `plugins/dsh-worker/server/core.py` (`TOOL_INSTRUCTION`); `plugins/dsh-worker/server/progress.py` counts `mcp__code-tools__*` as read-only. `plugins/dsh-worker/server/context_pack.py` now requires the `Evidence:` brief field (seven fields, `Evidence:` after `Accept:`), and `plugins/dsh-worker/server/plugin_server.py` states the seven in the `start_worker` description. The dsh profiles take the row in `tasks/dsh_profiles/code-tools.insert.yml`, replacing the old `mcp-code-intel` block. Tests: `plugins/code-tools/tests/test_code_tools.py`.

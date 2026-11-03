@@ -1,12 +1,23 @@
 # Brief — resource watchdog safe for this laptop (monitor-only for unapproved work)
 
 > Worked example converted from `tasks/dsh_tasks/WATCHDOG_LAPTOP_2026-10-24.md` into
-> `tasks/worker_context/BRIEF_TEMPLATE.md`. The six labelled fields below are required; the task content
+> `tasks/worker_context/BRIEF_TEMPLATE.md`. The seven labelled fields below are required; the task content
 > is unchanged. Extra explanatory sections may follow them. Its machine and job facts are those of 24 Oct; use it for the
 > shape of a brief, not for facts.
 
 Goal: Make `resource_watchdog.py` safe on this laptop. It monitors jobs and cleans up orphans, but never
 restarts or starts a managed job on the laptop profile, and never auto-starts a paid, GPU or PC-only job.
+
+Evidence:
+- Current behaviour: `resource_watchdog.py` has no per-job `auto_restart` flag and no machine profile, so a crashed
+  job is restarted even on this laptop, where paid/GPU/PC-only jobs must never start.
+- Where: `reality_engine/scripts/resource_watchdog.py` — the `JOBS` registry, the CHECK_SEC loop and the restart
+  branch; `reality_engine/tests/test_resource_watchdog.py` is new.
+- Checks: `python -m pytest reality_engine/tests/test_resource_watchdog.py -q` (passes today, without the new
+  tests); `python reality_engine/scripts/resource_watchdog.py --once --dry-run` (today: no `--dry-run` flag).
+- Data: no database is read; the log paths below are written by the watchdog itself.
+- Gotchas: pytest `tmp_path` is denied in the dsh sandbox (use a directory under `.tmp`); do not edit
+  `plugins/dsh-worker/jobs.yaml`.
 
 The watchdog was installed on the PC (2026-10-11) and has never run on this laptop (no logs, no Startup entry,
 no process). Its restart behaviour would auto-start paid/GPU/PC-only work, which the standing rules forbid.
