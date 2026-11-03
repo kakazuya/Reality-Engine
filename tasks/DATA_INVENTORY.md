@@ -1,6 +1,6 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-03 05:00 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Generated 2026-11-03 13:40 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
 Undocumented: 45 tables and 51 of 66 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
@@ -313,8 +313,8 @@ Undocumented: 45 tables and 51 of 66 raw folders.
 | results_xbrl.db | `facts` | 13,941,210 | yes |
 | results_xbrl.db | `filings` | 146,564 | yes |
 | results_xbrl.db | `filings_isin` | 183,029 | yes |
-| pilot3/pages.db | `doc` | 1,999 | yes |
-| pilot3/pages.db | `doc_page` | 23,257 | yes |
+| pilot3/pages.db | `doc` | 13,349 | yes |
+| pilot3/pages.db | `doc_page` | 23,259 | yes |
 
 ## Raw folders on D
 
