@@ -222,7 +222,9 @@ class DeepInfraClient:
                              "(never pass the key on the command line)")
 
     def embed(self, items: Sequence[Any], task: str) -> tuple[list[list[float]], int]:
-        body = json.dumps({"model": self.model_id, "input": list(items), "task": task,
+        # DeepInfra's Nemotron 3.5 endpoint rejects `task` ("use input_type"); it takes query | passage | document.
+        input_type = "query" if task == "search_query" else "document"
+        body = json.dumps({"model": self.model_id, "input": list(items), "input_type": input_type,
                            "encoding_format": "float"}).encode("utf-8")
         payload: dict[str, Any] = {}
         for attempt in range(self.attempts):
