@@ -4,8 +4,8 @@ Pages come from ``pilot3/pages.db`` (every held document, ``docs_collect.py``); 
 sandbox pages (``doc_text`` / ``docs``) are kept only for documents pages.db lacks.  They are copied, no PDF is
 re-read.  ``known_at`` is the filing-record date, never the crawl date.  ``doc_alias`` maps a sandbox doc_key (what
 the KPI and transcript extractors still cite) to the pilot3 ``doc.doc_key``.  ``build_pages`` replaces the text of a
-``needs_ocr`` page with the OCR text of ``build.py --ocr-db`` (method ``ocr_rapid``, ``ocr_conf`` kept), so FTS
-searches it like a text layer."""
+``needs_ocr`` page with the OCR text of ``build.py --ocr-db`` (the row's method, ``ocr_textrec`` preferred, and
+``ocr_conf`` kept), so FTS searches it like a text layer."""
 from __future__ import annotations
 
 import re
@@ -150,8 +150,10 @@ def _insert_pages(conn: sqlite3.Connection, cur, mapper) -> int:
 
 
 def _ocr_pages(ocr_dbs, symbol: str, alias: dict) -> dict:
-    """``{(doc_page doc_key, page): (text, ocr_conf)}`` from the ``ocr_page`` tables of ``ocr_dbs``: a sandbox
-    key is mapped to the key ``doc_page`` actually stores, an alias key to its pages.db document."""
+    """``{(doc_page doc_key, page): (text, ocr_conf, method)}`` from the ``ocr_page`` tables of
+    ``ocr_dbs``: a sandbox key is mapped to the key ``doc_page`` actually stores, an alias key to its
+    pages.db document.  When two databases hold the same page, ``ocr_textrec`` (HP TextRecognizer)
+    wins over ``ocr_rapid`` (MSI RapidOCR)."""
     out: dict = {}
     for db in ocr_dbs or ():
         p = Path(db)
@@ -159,15 +161,20 @@ def _ocr_pages(ocr_dbs, symbol: str, alias: dict) -> dict:
             continue
         con = sqlite3.connect(f"file:{p.as_posix()}?mode=ro", uri=True)
         try:
-            rows = con.execute("SELECT doc_key, page, text, ocr_conf FROM ocr_page WHERE symbol=? AND n_boxes>0",
-                               (symbol,)).fetchall()
+            rows = con.execute("SELECT doc_key, page, text, ocr_conf, method FROM ocr_page "
+                               "WHERE symbol=? AND n_boxes>0", (symbol,)).fetchall()
         except sqlite3.OperationalError:      # not an OCR database
             con.close()
             continue
-        for key, page, text, conf in rows:
-            out.setdefault((alias.get(key, key), page), (text, conf))
+        for key, page, text, conf, method in rows:
+            k = (alias.get(key, key), page)
+            if k not in out or METHOD_RANK.get(method, 0) >= METHOD_RANK.get(out[k][2], 0):
+                out[k] = (text, conf, method)
         con.close()
     return out
+
+
+METHOD_RANK = {"ocr_textrec": 2, "ocr_rapid": 1}
 
 
 def _page_row(symbol: str, ocr: dict, r) -> tuple:
@@ -175,8 +182,7 @@ def _page_row(symbol: str, ocr: dict, r) -> tuple:
     doc_key, page, text, method, known_at = r
     conf = None
     if method == "needs_ocr" and (doc_key, page) in ocr:
-        text, conf = ocr[(doc_key, page)]
-        method = "ocr_rapid"
+        text, conf, method = ocr[(doc_key, page)]
     return doc_key, symbol, page, text, method, len(text or ""), known_at, conf
 
 

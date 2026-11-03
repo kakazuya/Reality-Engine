@@ -193,6 +193,26 @@ def test_extract_passes_every_ocr_db_to_kpi(tmp_path, monkeypatch):
     assert calls["kpi"] == [str(a), str(b)] and calls["tr"]
 
 
+def test_build_pages_prefers_textrec_and_keeps_its_method(tmp_path, monkeypatch):
+    """A page in both OCR databases takes the HP TextRecognizer reading, in either db order."""
+    pdf = _pdf(tmp_path / "raw" / "deck" / "KEC" / "aaa.pdf", [LONG, ""])
+    pages, sb = _pages_db(tmp_path / "pages.db", pdf), _sandbox(tmp_path / "sb")
+    rapid = _ocr_db(tmp_path / "rapid.db", [
+        ("KEC", "scan.pdf", 2, "deck", "2026-08-01T18:00:00", "rapid reading",
+         json.dumps([[0.0, 0.0, 9.0, 9.0, "rapid", 0.5]]), 0.5, 1, 300, 1.0, "ocr_rapid")])
+    textrec = _ocr_db(tmp_path / "textrec.db", [
+        ("KEC", "scan.pdf", 2, "deck", "2026-08-01T18:00:00", "textrec reading",
+         json.dumps([[0.0, 0.0, 9.0, 9.0, "textrec", 0.9]]), 0.9, 1, 300, 1.0, "ocr_textrec")])
+    monkeypatch.setattr(registry, "PAGES_DB", pages)
+    monkeypatch.setattr(registry, "SYMBOLS", ("KEC",))
+    monkeypatch.setattr(registry, "SANDBOX_DB", {"KEC": sb / "kec_loop" / "kec.db"})
+    for order in ([str(rapid), str(textrec)], [str(textrec), str(rapid)]):
+        con = sqlite3.connect(":memory:")
+        registry.build_pages(con, order)
+        assert con.execute("SELECT text, method, ocr_conf FROM doc_page WHERE doc_key=? AND page=2",
+                           (PDF_KEY,)).fetchone() == ("textrec reading", "ocr_textrec", 0.9)
+
+
 def test_kpi_run_merges_ocr_dbs_and_remaps_doc_alias(tmp_path, monkeypatch):
     out = tmp_path / "kpi.db"
     con = sqlite3.connect(out)
@@ -214,3 +234,61 @@ def test_kpi_run_merges_ocr_dbs_and_remaps_doc_alias(tmp_path, monkeypatch):
     monkeypatch.setattr(kpi, "extract_company", fake_extract)
     kpi.run(str(out), ["KEC"], tmp_path / "sb", None, None, [str(d) for d in dbs])
     assert set(seen["KEC"]) == {PDF_KEY, "scan.pdf", "other.pdf"}        # both dbs, plus the alias key
+
+
+def test_hp_ocr_fetch_writes_pdf_points_confidence_and_the_error_row(tmp_path):
+    """HP TextRecognizer boxes (image pixels at 300 DPI) become PDF points; a failed page keeps its row."""
+    from reality_engine.pilot3 import hp_ocr
+
+    plan = tmp_path / "plan.jsonl"
+    plan.write_text(
+        json.dumps({"symbol": "KEC", "doc_key": "scan.pdf", "page": 2, "doc_type": "deck",
+                    "known_at": "2026-08-01", "pdf": "pdfs/aa/x.pdf"}) + "\n" +
+        json.dumps({"symbol": "KEC", "doc_key": "bad.pdf", "page": 1, "doc_type": "announcement",
+                    "known_at": None, "pdf": "pdfs/bb/y.pdf"}) + "\n", encoding="utf-8")
+    rows = [
+        {"id": "KEC|scan.pdf|2", "doc_type": "deck", "known_at": "2026-08-01", "text": "Order 37,697",
+         "line_rows": [{"words": [
+             {"text": "Order", "confidence": 0.91, "box": [100, 200, 160, 220]},
+             {"text": "37,697", "confidence": 0.88, "box": [170, 200, 250, 220]}]}],
+         "mean_confidence": 0.895, "low_conf_numbers": ["37,697"], "seconds": 0.4, "error": None},
+        {"id": "KEC|bad.pdf|1", "doc_type": "announcement", "known_at": None, "text": "", "line_rows": [],
+         "mean_confidence": None, "low_conf_numbers": [], "seconds": 0.1, "error": "PdfiumError: failed"},
+    ]
+    report = hp_ocr.write_db(rows, plan, tmp_path / "ocr.db")
+    assert report["planned"] == 2 and report["rows"] == 2 and report["missing"] == 0
+    con = sqlite3.connect(tmp_path / "ocr.db")
+    text, method, conf, boxes = con.execute(
+        "SELECT text, method, ocr_conf, n_boxes FROM ocr_page WHERE doc_key='scan.pdf'").fetchone()
+    assert (text, method, conf, boxes) == ("Order 37,697", "ocr_textrec", 0.895, 2)
+    assert json.loads(con.execute("SELECT words_json FROM ocr_page WHERE doc_key='scan.pdf'").fetchone()[0])[0] == [
+        24.0, 48.0, 38.4, 52.8, "Order", 0.91]
+    assert con.execute("SELECT method, error FROM ocr_page WHERE doc_key='bad.pdf'").fetchone() == (
+        "ocr_textrec", "PdfiumError: failed")
+
+
+def test_kpi_prefers_textrec_on_a_page_both_engines_read(tmp_path, monkeypatch):
+    """The ocr_textrec row wins even when the ocr_rapid database is listed last."""
+    out = tmp_path / "kpi.db"
+    con = sqlite3.connect(out)
+    con.execute("CREATE TABLE doc_alias(symbol TEXT, alias_key TEXT, doc_key TEXT)")
+    con.commit()
+    con.close()
+
+    def db(path, text, conf, method):
+        return _ocr_db(path, [("KEC", PDF_KEY, 1, "deck", "2026-08-01", text,
+                               json.dumps([[0.0, 0.0, 9.0, 9.0, text, conf]]), conf, 1, 300, 0.5, method)])
+
+    rapid = db(tmp_path / "rapid.db", "rapid reading", 0.5, "ocr_rapid")
+    textrec = db(tmp_path / "textrec.db", "textrec reading", 0.9, "ocr_textrec")
+    seen: dict = {}
+
+    def fake_extract(sym, sandbox, stats, limit_docs=None, raw_root=None, ocr=None, only_docs=None, pages_db=None):
+        seen[sym] = ocr
+        stats.setdefault(sym, {})
+        return iter(())
+
+    monkeypatch.setattr(kpi, "extract_company", fake_extract)
+    kpi.run(str(out), ["KEC"], tmp_path / "sb", None, None, [str(textrec), str(rapid)])
+    assert seen["KEC"][PDF_KEY][1][0] == "textrec reading"
+    assert seen["KEC"][PDF_KEY][1][3] == "ocr_textrec"

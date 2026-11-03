@@ -7,7 +7,7 @@ Reads page text from pages.db when --pages-db is given (the collector's every he
 the pilot3 registry writes; PDF from doc.source_path, else decks_full/<sha>), then from
 <sandbox>/<sym>_loop/<sym>.db (doc_text + docs) for the documents pages.db does not hold; for table/chart
 pages the word positions come from the PDF (PyMuPDF). Pages whose method is needs_ocr are skipped and counted,
-the OCR text of a page already read into doc_page (method ocr_rapid) is used. Three rules write rows:
+the OCR text of a page already read into doc_page (method ocr_rapid or ocr_textrec) is used. Three rules write rows:
   table_v1    label row + period header row, values paired to header columns by x position
   chart_v1    a bare number row sitting above a period axis row, titled by the nearest lexicon label above
   sentence_v1 label ... value [unit] [period] [vs value period] inside running text
@@ -31,6 +31,7 @@ SANDBOX_ROOT = Path("D:/RealityEngine/sandbox")
 COMPANIES = {"KEC": "kec", "BAJFINANCE": "bajfinance", "HINDALCO": "hindalco"}
 KPI_DOC_TYPES = ("deck", "results", "press_release", "transcript", "annual_report", "announcement")
 PDF_DOC_TYPES = ("deck", "results", "press_release", "annual_report")  # table/chart mode needs the PDF
+OCR_METHOD_RANK = {"ocr_textrec": 2, "ocr_rapid": 1}  # several --ocr-db: the HP TextRecognizer reading wins
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS kpi_series (
@@ -930,7 +931,7 @@ RAW_ROOT = Path("D:/RealityEngine/raw")
 def _pages_docs(sym: str, pages_db: Path | str | None, raw_root: Path | None, ocr: dict, st: dict, shas: set):
     """Yield (doc_key, doc_type, known_at, usable_pages, pdf, ocr_pages, 'pages.db.doc.known_at') for every document
     `pages.db` holds for the symbol (doc types KPI_DOC_TYPES), oldest filing first.  Page text is the collector's
-    `doc_page` row (its OCR text included, method ocr_rapid); the PDF for table/chart pages is `doc.source_path`,
+    `doc_page` row (its OCR text included, method ocr_rapid or ocr_textrec); the PDF for table/chart pages is `doc.source_path`,
     else the sha256 copy under <raw_root>/decks_full.  This is the same source the pilot3 registry writes, so the
     FY25-FY27 decks and results presentations are read instead of only the sandbox's older documents.  Every
     document's sha256 is added to `shas`, so the decks_full fallback below does not read the same file twice."""
@@ -955,7 +956,7 @@ def _pages_docs(sym: str, pages_db: Path | str | None, raw_root: Path | None, oc
                 continue
             st["docs"] += 1
             st["needs_ocr"] += sum(1 for _, _, m in pages if m == "needs_ocr")
-            usable = [(p, t) for p, t, m in pages if m in ("script_text", "ocr_rapid") and t]
+            usable = [(p, t) for p, t, m in pages if m in ("script_text", "ocr_rapid", "ocr_textrec") and t]
             if opg:
                 have = {p for p, _ in usable}
                 usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
@@ -1077,7 +1078,7 @@ def extract_company(sym: str, sandbox: Path, stats: dict, limit_docs: int | None
             method, ocr_conf = "text_layer", None
             words = None
             if page in opg:                      # page read by OCR: word boxes come from the stored OCR, not the PDF
-                method, ocr_conf = "ocr_rapid", opg[page][2]
+                method, ocr_conf = opg[page][3], opg[page][2]
                 words = opg[page][1]
                 st["ocr_pages"] = st.get("ocr_pages", 0) + 1
             elif pdf is not None and 0 < page <= pdf.page_count and _page_may_have_table(text):
@@ -1134,7 +1135,11 @@ def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = No
             ocr = {}
             for c in ocr_cons:
                 for doc_key, pages in load_ocr(c, sym).items():
-                    ocr.setdefault(doc_key, {}).update(pages)
+                    cur = ocr.setdefault(doc_key, {})
+                    for page, value in pages.items():
+                        # HP TextRecognizer beats MSI RapidOCR when both read the same page
+                        if page not in cur or OCR_METHOD_RANK.get(value[3], 0) >= OCR_METHOD_RANK.get(cur[page][3], 0):
+                            cur[page] = value
             if con.execute("SELECT 1 FROM sqlite_master WHERE name='doc_alias'").fetchone():
                 for alias_key, doc_key in con.execute("SELECT alias_key, doc_key FROM doc_alias WHERE symbol=?", (sym,)):
                     if doc_key in ocr and alias_key not in ocr:   # an OCR page under the pilot3 key serves its sandbox key
