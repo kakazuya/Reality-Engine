@@ -653,3 +653,11 @@ is `reality_engine/tests/test_hp_headless.py`; it writes no events here, so the 
 `20261101T210210Z-521b20a9` (90 total, 20 before the first edit) and
 `20261101T205730Z-172d7dec` (45, 12). Test:
 `python -m pytest reality_engine/tests/test_rule_ledger.py reality_engine/tests/test_doc_gate.py -q`.
+
+### O4. pilot3 precision, growth formulas and local OCR (T-049 E, merged unfinished 3 Nov)
+
+- `reality_engine/pilot3/kpi.py`: generic labels (margin, revenue, ebitda) count only on table rows or sentences that also carry a period and a unit; segment comes from the table's row or column header; a chart value takes its period from the nearest axis label; every row has a confidence tier (table_row > table_chart > sentence > sentence_default) and readers prefer the highest. Lexicons in `reality_engine/pilot3/lexicon/` were tightened to match.
+- `reality_engine/pilot3/queries.py`: growth, share and mix are formulas over stored rows, not extracted values: `kpi_value`, `kpi_growth` (YoY/QoQ via `prior_period`), `kpi_share`, `kpi_mix`, `book_to_bill`, `coverage_years`, `kpi_fy_sum`; `ratios.py` and `oracle.py` use them.
+- `reality_engine/pilot3/ocr.py`: local RapidOCR (ONNX, CPU or DirectML; no model call, no network) for pages with no text layer, 300 DPI grayscale, into table `ocr_page` with word boxes in PDF points and mean confidence; resumable (`--max-seconds`). `kpi.py` reads `ocr_page` and marks rows `method='ocr_rapid'` with `ocr_conf`. `python -m reality_engine.pilot3.ocr --out <db> [--symbols ...] [--device cpu|dml]`.
+- `reality_engine/pilot3/kpi_oracle.py`: the KPI and transcript oracle report (was a `.tmp` script): `python -m reality_engine.pilot3.kpi_oracle --kpi <db> --tr <db> [--detail]`.
+- Unfinished: the session stopped on the Claude 5-hour limit before its final report, so the OCR run over all ~1,300 image pages and the before/after oracle table were not confirmed. Next session: run `ocr.py` to completion, rebuild, rerun both oracles.

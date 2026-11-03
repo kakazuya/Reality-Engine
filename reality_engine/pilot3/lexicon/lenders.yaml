@@ -14,5 +14,7 @@ entries:
   - {metric: credit_cost_bps, kind: bps, unit: bps, labels: ["credit cost", "loan loss(es)? (and|&) provisions? to average", "loan loss to average"]}
   - {metric: crar_pct, kind: pct, unit: pct, labels: ["capital adequacy", "\\bcrar\\b", "\\bcar\\b"], neg: "tier ?(i|1)\\b"}
   - {metric: tier1_pct, kind: pct, unit: pct, labels: ["tier ?(i|1)\\b[^.]{0,20}(capital|ratio)?", "tier ?(i|1) capital"]}
-  - {metric: roa_pct, kind: pct, unit: pct, labels: ["return on assets", "\\broa\\b"]}
-  - {metric: roe_pct, kind: pct, unit: pct, labels: ["return on equity", "\\broe\\b"]}
+  - {metric: roa_pct, kind: pct, unit: pct, labels: ["return on (average )?assets", "\\broa\\b"]}
+  - {metric: roe_pct, kind: pct, unit: pct, labels: ["return on (average )?equity", "\\broe\\b"]}
+  - {metric: provision_coverage_pct, kind: pct, unit: pct, labels: ["provision coverage ratio", "provision coverage"], neg: "stage ?3"}
+  - {metric: loan_loss_provisions, kind: money, unit: inr_cr, labels: ["loan loss(es)? (and|&) provisions", "loan loss provisions?"], neg: "to average|%"}

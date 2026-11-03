@@ -1,12 +1,12 @@
 # Cross-company balance sheet / working-capital KPI family.
 family: common
 entries:
-  - {metric: net_debt, kind: money, unit: inr_cr, labels: ["net debt(?! to)", "net debt including acceptances", "net debt excluding acceptances", "net (cash|debt)\\b"], neg: "to (ebitda|equity)|ratio|/"}
+  - {metric: net_debt, kind: money, unit: inr_cr, labels: ["net debt(?! to)", "net debt including acceptances", "net debt excluding acceptances", "net (cash|debt)\\b(?!\\s+flows?)"], neg: "to (ebitda|equity)|ratio|/|cash flow"}
   - {metric: gross_debt, kind: money, unit: inr_cr, labels: ["gross debt"], neg: "ratio"}
   - {metric: net_debt_to_equity, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*equity", "net d/e", "debt[- ]equity"]}
   - {metric: net_debt_to_ebitda, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*(l?t?m? ?)ebitda", "net debt/ebitda", "leverage"]}
   - {metric: working_capital_days, kind: days, unit: days, labels: ["(net )?working capital( days| cycle)?", "\\bnwc\\b"], neg: "%\\s*of"}
   - {metric: capex, kind: money, unit: inr_cr, labels: ["\\bcapex\\b", "capital expenditure"], neg: "plan|guidance|%|per cent"}
-  - {metric: revenue, kind: money, unit: inr_cr, labels: ["^revenue", "total revenue", "revenue from operations", "^sales\\b"], neg: "growth|%"}
+  - {metric: revenue, kind: money, unit: inr_cr, labels: ["^revenue", "total revenue", "revenue from operations", "^sales\\b", "segment revenue"], neg: "growth|%"}
   - {metric: pat, kind: money, unit: inr_cr, labels: ["profit after tax", "^pat\\b"], neg: "margin|%"}
   - {metric: employees, kind: count, unit: count, labels: ["employee headcount", "headcount"]}

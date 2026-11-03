@@ -118,7 +118,7 @@ FIN_RULES = [  # regex, (annual/quarter items), ratio metric (for derived ones);
     (r"net debt to ebitda", ["net_debt_to_ebitda"], "net_debt_to_ebitda"),
     (r"net working capital days", ["net_working_capital_days"], "nwc_days"),
     (r"receivables? in days|debtors? (?:turnover|days)|receivable days", ["receivable_days"], "receivable_days"),
-    (r"roce|return on capital employed", ["roce"], "roce"),
+    (r"\broce\b|return on capital employed", ["roce"], "roce"),
     (r"total debt", ["total_debt_incl_leases", "total_borrowings"], None),
     (r"total liabilities", ["total_liabilities"], None),
     (r"book value per share", [], "book_value_per_share"),
@@ -154,7 +154,7 @@ def classify(measure: str, unit: str) -> tuple[str, object]:
         return "sc", "paid_up_capital"
     if "face value" in m:
         return "sc", "face_value"
-    if re.search(r"to ebitda|days|receivable|working capital|roce|return on|coverage", m):
+    if re.search(r"to ebitda|days|receivable|working capital|\broce\b|return on|coverage", m):
         for rx, items, metric in FIN_RULES[:8]:  # measures part D stores (company-stated and balance-sheet based)
             if re.search(rx, m):
                 return "fin", (items, metric)

@@ -22,6 +22,8 @@ def test_period_forms():
     assert periods("net debt in June '26")[0][0] == "Q1FY27"
     assert periods("quarter ended December 31, 2023")[0] == ("Q3FY24", "2023-12-31")
     assert periods("on 15 May 2025") == []          # not a quarter end
+    assert periods("Quarter ended 30.06.2025 and 31-03-2026") == [("Q1FY26", "2025-06-30"), ("Q4FY26", "2026-03-31")]
+    assert periods("ratio 12.50.2019 and 1.5.2020") == []     # not quarter-end dates
 
 
 def test_value_units():
@@ -209,3 +211,160 @@ def test_cli_end_to_end_no_network(tmp_path, monkeypatch):
     n = c.execute("SELECT count(*) FROM kpi_series").fetchone()[0]
     kpi.main(["--out", str(out), "--symbols", "KEC", "--sandbox-root", str(tmp_path / "sb"), "--raw-root", ""])
     assert c.execute("SELECT count(*) FROM kpi_series").fetchone()[0] == n
+
+
+# ----------------------------------------------------------------------------- T-049 E: precision, formulas, OCR
+def test_generic_label_needs_period_and_unit_in_its_sentence():
+    default = kpi.parse_periods("quarter ended 30 June 2026")
+    assert kpi.sentence_rows("Margin stood at 6.5% for the company.", 1, "KEC", ENTRIES, DIMS, default) == []   # default period only
+    rows = kpi.sentence_rows("Margin of 6.5% in Q1 FY27.", 1, "KEC", ENTRIES, DIMS, [])
+    assert [(r.metric, r.value, r.fiscal_period, r.rule) for r in rows] == [("ebitda_margin_pct", 6.5, "Q1FY27", "sentence_v1")]
+    named = kpi.sentence_rows("EBITDA margin at 7.1%.", 1, "KEC", ENTRIES, DIMS, default)
+    assert named and named[0].rule == "sentence_default_v1"        # a specific label may use the document period
+    assert kpi.sentence_rows("PBT Margins of 6.4% in Q1 FY27", 1, "KEC", ENTRIES, DIMS, []) == []     # not an EBITDA margin
+    assert kpi.sentence_rows("net cash flows amounting to ` 23 Crore in Q1 FY27", 1, "KEC", ENTRIES, DIMS, []) == []
+
+
+def test_confidence_tiers_order():
+    rc = kpi.RULE_CONF
+    assert rc["table_v1"][1] > rc["chart_v1"][1] > rc["sentence_v1"][1] > rc["sentence_default_v1"][1]
+    assert rc["sentence_pair_v1"][0] == "sentence"
+
+
+def test_stacked_axis_becomes_periods_and_sentence_is_not_a_header():
+    words = _words([(10, [(90, "Shipments"), (150, "(KT)")]), (60, [(105, "328"), (205, "325"), (305, "341")]),
+                    (80, [(100, "Q2"), (200, "Q1"), (300, "Q2")]), (92, [(100, "FY25"), (200, "FY26"), (300, "FY26")])])
+    text = "Shipments (KT)\n328 \n325 \n341 \nQ2\nQ1\nQ2\nFY25\nFY26\nFY26\n"
+    rows = kpi.table_and_chart_rows(words, text, 1, "HINDALCO", ENTRIES, DIMS, [])
+    assert {(r.fiscal_period, r.value) for r in rows} == {("Q2FY25", 328.0), ("Q1FY26", 325.0), ("Q2FY26", 341.0)}
+    # a sentence naming two periods is not an axis: no rows
+    sent = _words([(10, [(90, "Shipments"), (150, "(KT)")]), (60, [(105, "328"), (205, "325")]),
+                   (80, [(90, "In"), (110, "Q2"), (125, "FY26"), (160, "sales"), (200, "mix"), (230, "was"), (250, "higher"),
+                         (290, "than"), (320, "Q1"), (335, "FY26"), (370, "in"), (390, "the"), (410, "prior"), (440, "period")])])
+    assert kpi.table_and_chart_rows(sent, "Shipments (KT)\n328 \n325 \n", 1, "HINDALCO", ENTRIES, DIMS, []) == []
+
+
+def test_one_value_per_column_and_percent_never_borrows_label_unit():
+    import re
+    cols = [(100.0, "pA"), (200.0, "pB")]
+    nums = [(98.0, re.search("1", "1")), (110.0, re.search("2", "2")), (201.0, re.search("3", "3"))]
+    got = kpi._assign_columns(nums, cols, 28)
+    assert [(x, p) for x, _, p in got] == [(98.0, "pA"), (201.0, "pB")]       # 110 lost column A to the nearer 98
+    hdr = [(300, "Q3"), (320, "FY23"), (500, "Q3"), (520, "FY24")]
+    words = _words([(20, hdr), (60, [(80, "Shipments"), (150, "(KT)")]), (62, [(310, "23%"), (510, "25%")])])
+    text = "Q3 FY23\nQ3 FY24\nShipments (KT)\n23% \n25% \n"
+    assert kpi.table_and_chart_rows(words, text, 1, "HINDALCO", ENTRIES, DIMS, []) == []
+
+
+def test_segment_taken_from_column_heading():
+    words = _words([
+        (10, [(300, "Aluminium"), (330, "Upstream"), (560, "Copper")]),
+        (30, [(300, "Q3"), (320, "FY23"), (400, "Q3"), (420, "FY24"), (500, "Q3"), (520, "FY23"), (600, "Q3"), (620, "FY24")]),
+        (60, [(80, "Shipments"), (150, "Kt")]), (62, [(310, "336"), (410, "333"), (510, "487"), (610, "480")]),
+    ])
+    text = "Aluminium Upstream\nCopper\nQ3 FY23\nQ3 FY24\nQ3 FY23\nQ3 FY24\nShipments\nKt\n336 \n333 \n487 \n480 \n"
+    rows = kpi.table_and_chart_rows(words, text, 1, "HINDALCO", ENTRIES, DIMS, [])
+    assert {(r.dimension, r.value) for r in rows} == {("aluminium_upstream", 336.0), ("aluminium_upstream", 333.0),
+                                                     ("copper", 487.0), ("copper", 480.0)}
+
+
+def test_new_lexicon_labels():
+    assert kpi.label_matches(ENTRIES, "KEC", "order book (excluding L1)")[0][0].metric == "order_book"
+    assert kpi.label_matches(ENTRIES, "BAJFINANCE", "return on average assets after one-time actions")[0][0].metric == "roa_pct"
+    assert kpi.label_matches(ENTRIES, "BAJFINANCE", "loan loss provisions")[0][0].metric == "loan_loss_provisions"
+    assert kpi.label_matches(ENTRIES, "HINDALCO", "aluminium upstream segment revenue")[0][0].metric == "revenue"
+    assert kpi.label_matches(ENTRIES, "HINDALCO", "Copper CC Rods (Kt)")[0][0].metric == "copper_rods_volume_kt"
+    assert kpi.label_matches(ENTRIES, "HINDALCO", "copper cathode volume")[0][0].metric == "copper_cathode_volume_kt"
+
+
+def _kpi_db():
+    c = sqlite3.connect(":memory:")
+    c.executescript(kpi.SCHEMA)
+    c.executescript("""CREATE TABLE ratio_panel(symbol TEXT, isin TEXT, fiscal_period TEXT, period_type TEXT, period_start TEXT,
+        period_end TEXT, basis TEXT, metric TEXT, value REAL, unit TEXT, scale REAL, formula_id TEXT, input_refs TEXT,
+        known_at TEXT, known_at_source TEXT, is_derived INTEGER);""")
+
+    def put(metric, dim, per, val, rank, known="2026-08-01", unit="inr_cr"):
+        c.execute("INSERT INTO kpi_series(symbol,metric,dimension,value,unit,scale,period_type,fiscal_period,doc_key,page,quote,known_at,"
+                  "extractor_rule,confidence,conf_rank) VALUES('KEC',?,?,?,?,1e7,'Q',?,'d.pdf',?,'q',?,'table_v1','x',?)",
+                  (metric, dim, val, unit, per, int(val) % 90 + 1, known, rank))
+    put("order_book", "T&D", "Q1FY27", 600.0, 4)
+    put("order_book", "civil", "Q1FY27", 300.0, 4)
+    put("order_book", "T&D", "Q1FY27", 111.0, 1)                 # a noisy default-tier row must lose
+    put("order_book", "total", "Q1FY27", 1000.0, 4)
+    put("order_book", "total", "Q1FY26", 800.0, 4)
+    put("order_book", "total", "Q4FY26", 950.0, 4)
+    put("order_intake", "total", "Q1FY27", 400.0, 4)
+    for per, rev in (("Q1FY27", 100.0), ("Q4FY26", 110.0), ("Q3FY26", 90.0), ("Q2FY26", 95.0)):
+        c.execute("INSERT INTO ratio_panel VALUES('KEC','I',?,'Q','a','b','consolidated','revenue_from_operations',?,'inr',1.0,NULL,'','2026-08-01',NULL,0)",
+                  (per, rev * 1e7))
+    c.commit()
+    return c
+
+
+def test_growth_share_mix_book_to_bill_coverage_formulas():
+    from reality_engine.pilot3 import queries as q
+    c = _kpi_db()
+    assert q.prior_period("Q1FY27") == "Q1FY26" and q.prior_period("Q1FY27", "qoq") == "Q4FY26"
+    assert q.prior_period("Q3FY26", "qoq") == "Q2FY26" and q.prior_period("FY26") == "FY25" and q.prior_period("FY26", "qoq") is None
+    assert q.kpi_value(c, "KEC", "order_book", "Q1FY27", "T&D")[0][0] == 600.0           # best tier, not the 111 default row
+    assert q.kpi_growth(c, "KEC", "order_book", "Q1FY27")[0][0] == pytest.approx(25.0)    # 1000 / 800
+    assert q.kpi_growth(c, "KEC", "order_book", "Q1FY27", kind="qoq")[0][0] == pytest.approx(100 * (1000 / 950 - 1))
+    assert q.kpi_growth(c, "KEC", "order_book", "Q1FY30") == []
+    assert q.kpi_share(c, "KEC", "order_book", "Q1FY27", "T&D")[0][0] == pytest.approx(60.0)
+    mix = dict(q.kpi_mix(c, "KEC", "order_book", "Q1FY27"))
+    assert mix == pytest.approx({"T&D": 100 * 600 / 900, "civil": 100 * 300 / 900}) and sum(mix.values()) == pytest.approx(100)
+    assert q.book_to_bill(c, "KEC", "Q1FY27")[0][0] == pytest.approx(4.0)                 # 400 / 100
+    assert q.coverage_years(c, "KEC", "Q1FY27")[0][0] == pytest.approx(1000 / (100 + 110 + 90 + 95))
+    for i, per in enumerate(("Q1FY26", "Q2FY26", "Q3FY26", "Q4FY26")):
+        c.execute("INSERT INTO kpi_series(symbol,metric,dimension,value,unit,scale,period_type,fiscal_period,doc_key,page,quote,known_at,"
+                  "extractor_rule,confidence,conf_rank) VALUES('KEC','order_intake','civil',?,'inr_cr',1e7,'Q',?,'d.pdf',1,'q','2026-08-01','table_v1','x',4)",
+                  (10.0 * (i + 1), per))
+    assert q.kpi_fy_sum(c, "KEC", "order_intake", "FY26", "civil")[0][0] == 100.0 and q.kpi_fy_sum(c, "KEC", "order_intake", "FY27", "civil") == []
+    assert q.book_to_bill(c, "KEC", "Q2FY27") == [] and q.kpi_value(c, "KEC", "order_book", "Q1FY27", "T&D", as_of="2026-07-01") == []
+
+
+def test_formulas_registered():
+    from reality_engine.pilot3 import ratios
+    ids = {f[0] for f in ratios.FORMULAS}
+    assert {"F_KPI_YOY", "F_KPI_QOQ", "F_SHARE", "F_MIX", "F_B2B", "F_COVER"} <= ids
+    assert all(len(f) == 6 for f in ratios.FORMULAS)
+
+
+def test_ocr_helpers_and_ocr_pages_feed_the_extractors(tmp_path):
+    from reality_engine.pilot3 import ocr
+    boxes = [[[10, 100], [310, 100], [310, 130], [10, 130]], [[400, 102], [700, 102], [700, 132], [400, 132]]]
+    words = ocr.boxes_to_words(boxes, ["Order book", "37,697 crore"], [0.99, 0.95], 300)
+    assert [w[4] for w in words] == ["Order", "book", "37,697", "crore"]
+    assert 0 < words[0][0] < words[0][2] <= words[1][0] + 1e-6 and words[0][3] == pytest.approx(130 * 72 / 300)
+    assert ocr.words_to_text(words) == "Order book 37,697 crore"
+    sb = tmp_path / "sb"
+    _fake_sandbox(sb)
+    con = sqlite3.connect(sb / "kec_loop" / "kec.db")
+    con.execute("INSERT INTO docs VALUES('scan.pdf','deck','Deck','2024-02-05','2024-02-05T18:00:00',1,'s','k3')")
+    con.execute("INSERT INTO doc_text VALUES('scan.pdf',1,'','needs_ocr','2024-02-05')")
+    con.commit()
+    con.close()
+    odb = tmp_path / "ocr.db"
+    oc = sqlite3.connect(odb)
+    oc.executescript(ocr.SCHEMA)
+    text = "Order book of Rs. 37,697 crore in Q1 FY27"
+    oc.execute("INSERT INTO ocr_page VALUES('KEC','scan.pdf',1,'deck','2024-02-05',?,?,0.97,9,300,1.0,'ocr_rapid')",
+               (text, json.dumps([[0, 0, 10, 10, "x", 0.9]])))
+    oc.commit()
+    oc.close()
+    out = tmp_path / "o.db"
+    assert kpi.main(["--out", str(out), "--symbols", "KEC", "--sandbox-root", str(sb), "--raw-root", "", "--ocr-db", str(odb)]) == 0
+    c = sqlite3.connect(out)
+    r = c.execute("SELECT value, method, ocr_conf, confidence, quote FROM kpi_series WHERE doc_key='scan.pdf'").fetchall()
+    assert r and r[0][:3] == (37697.0, "ocr_rapid", 0.97) and r[0][3] == "sentence" and r[0][4] in text
+    assert c.execute("SELECT count(*) FROM kpi_series WHERE doc_key='p.pdf' AND method='text_layer'").fetchone()[0] > 0
+
+
+def test_change_by_is_not_the_level_and_respectively_pairs_labels():
+    t1 = "Net debt, including acceptances, have been reduced by over INR150 crores to INR6,568 crores in June '26"
+    assert {r.value for r in kpi.sentence_rows(t1, 1, "KEC", ENTRIES, DIMS, [])} == {6568.0}
+    assert kpi.sentence_rows("Net debt was reduced by INR150 crores in June '26", 1, "KEC", ENTRIES, DIMS, []) == []
+    t2 = "GNPA and NNPA improving to 0.96% and 0.39%, respectively, as of 30 June 2026"
+    got = {r.metric: r.value for r in kpi.sentence_rows(t2, 1, "BAJFINANCE", ENTRIES, DIMS, [])}
+    assert got == {"gnpa_pct": 0.96, "nnpa_pct": 0.39}
