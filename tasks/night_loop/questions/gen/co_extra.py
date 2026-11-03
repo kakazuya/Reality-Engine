@@ -28,7 +28,7 @@ EXTRA = {
     ],
     "SBILIFE": [
         q("capital_allocation", 1, "What interim dividend did SBI Life declare in March 2026, per share?", [D("announcement", "dividend")], ["solvency_ratio"], "U19", "number"),
-        q("capital_allocation", 2, "How much profit does SBI Life keep against the capital new business uses (new business strain)?", [D("deck", "VoNB"), D("transcript", "strain")], ["solvency_ratio", "vnb"], "LI05", "computed"),
+        q("capital_allocation", 2, "How much profit does SBI Life keep against the capital new business uses (new business strain)?", [D("deck", "VoNB"), D("transcript", "capital")], ["solvency_ratio", "vnb"], "LI05", "computed"),
         q("capital_allocation", 1, "How much does SBI Life's shareholder fund hold in investments, and what income did it earn in FY26?", [D("annual_report", "shareholders")], ["aum"], "LI04", "number"),
     ],
     "INFY": [
