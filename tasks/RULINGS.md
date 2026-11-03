@@ -37,4 +37,4 @@ When Shivam rules or corrects something, write it here before the next action. `
 ## Agreed direction, not yet built
 - Split `fact.value` and test `metric_citations` on the prototype (T-036). Typed write contracts are built: `reality_engine/contracts.py`.
 - Merge gate with hidden evaluation and rulings diff; tool-call budgets enforced in code; read limit if the median stays above 10 calls before first edit.
-- OCR: Microsoft TextRecognizer first pass at 300 DPI grayscale, a stronger reader for low-confidence numbers. No PostgreSQL for now; revisit with measurements after the gate.
+- OCR runs on the HP laptop only, headless (Shivam, 3 Nov): Microsoft TextRecognizer first pass at 300 DPI grayscale, a stronger reader for low-confidence numbers; no OCR on the MSI. No PostgreSQL for now; revisit with measurements after the gate.
