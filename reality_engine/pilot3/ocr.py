@@ -14,7 +14,8 @@ twice.  ``--pages-db ''`` disables source (1).
 Each page is rendered at 300 DPI in grayscale (PyMuPDF), read by RapidOCR, and stored with the page text, the
 word boxes in PDF points (so kpi.py's row/column tolerances behave as on a text layer) and the mean OCR confidence.
 The run is resumable: pages already in ``ocr_page`` are skipped, ``--max-seconds`` stops cleanly between pages.
-``method`` is ``ocr_rapid``; kpi.py copies it and ``ocr_conf`` onto every kpi_series row read from such a page.
+``method`` is ``ocr_rapid`` (``hp_ocr.py`` writes the same table with ``ocr_textrec``); kpi.py copies
+it and ``ocr_conf`` onto every kpi_series row read from such a page.
 """
 from __future__ import annotations
 
@@ -243,14 +244,15 @@ def run(out: str, symbols: list[str], sandbox: Path, raw_root: Path | None, max_
 
 
 def load_ocr(con: sqlite3.Connection, sym: str) -> dict:
-    """{doc_key: {page: (text, words, conf)}} of one symbol from an ocr_page table."""
+    """{doc_key: {page: (text, words, conf, method)}} of one symbol from an ocr_page table."""
     res: dict = {}
     try:
-        cur = con.execute("SELECT doc_key, page, text, words_json, ocr_conf FROM ocr_page WHERE symbol=? AND n_boxes>0", (sym,))
+        cur = con.execute("SELECT doc_key, page, text, words_json, ocr_conf, method FROM ocr_page "
+                          "WHERE symbol=? AND n_boxes>0", (sym,))
     except sqlite3.OperationalError:
         return res
-    for doc_key, page, text, wj, conf in cur:
-        res.setdefault(doc_key, {})[page] = (text, [tuple(w) for w in json.loads(wj)], conf)
+    for doc_key, page, text, wj, conf, method in cur:
+        res.setdefault(doc_key, {})[page] = (text, [tuple(w) for w in json.loads(wj)], conf, method)
     return res
 
 
