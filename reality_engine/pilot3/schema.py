@@ -28,7 +28,12 @@ TABLES: dict[str, str] = {
         symbol TEXT, isin TEXT, fiscal_year TEXT, period_end TEXT, basis TEXT, statement TEXT,
         line_item TEXT, caption TEXT, value REAL, unit TEXT, scale REAL, doc_key TEXT, page INTEGER,
         quote TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT,
-        known_at TEXT, known_at_source TEXT, is_reported INTEGER, is_derived INTEGER)""",
+        known_at TEXT, known_at_source TEXT, is_reported INTEGER, is_derived INTEGER,
+        definition TEXT, period_type TEXT)""",
+    "dividend_event": """CREATE TABLE dividend_event (
+        symbol TEXT, isin TEXT, ex_date TEXT, record_date TEXT, fiscal_year TEXT, kind TEXT, amount_per_share REAL,
+        face_value REAL, subject TEXT, known_at TEXT, known_at_source TEXT, source_db TEXT, source_table TEXT,
+        source_rowid TEXT)""",
     "price_delivery": """CREATE TABLE price_delivery (
         symbol TEXT, isin TEXT, exchange TEXT, date TEXT, open REAL, high REAL, low REAL, close REAL,
         prev_close REAL, volume REAL, value_inr REAL, num_trades REAL, deliverable_qty REAL,
@@ -62,6 +67,7 @@ INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_rp ON ratio_panel(symbol, metric, fiscal_period)",
     "CREATE INDEX IF NOT EXISTS ix_vd ON valuation_daily(symbol, date)",
     "CREATE INDEX IF NOT EXISTS ix_sc ON share_capital(symbol, as_of_date)",
+    "CREATE INDEX IF NOT EXISTS ix_div ON dividend_event(symbol, ex_date)",
 )
 
 FTS = """CREATE VIRTUAL TABLE doc_page_fts USING fts5(text, content='doc_page', content_rowid='rowid',
@@ -70,7 +76,7 @@ FTS = """CREATE VIRTUAL TABLE doc_page_fts USING fts5(text, content='doc_page', 
 PARTS = {
     "registry": ("company", "doc"),
     "pages": ("doc_page",),
-    "stores": ("share_capital", "fin_quarter_xbrl", "fin_annual_line", "price_delivery", "shp_category"),
+    "stores": ("share_capital", "fin_quarter_xbrl", "fin_annual_line", "dividend_event", "price_delivery", "shp_category"),
     "ratios": ("formula", "ratio_panel", "valuation_daily"),
 }
 

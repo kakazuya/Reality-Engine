@@ -70,7 +70,8 @@ def fin_annual(conn: sqlite3.Connection, symbol: str, fy: str, item: str, basis:
         f"AND line_item=?{extra} ORDER BY known_at DESC, page", (symbol, fy, basis, item, *args)).fetchall()
     out = []
     for v, u, s, page, k in rows:
-        native = "pct" if u == "pct" else "per_share" if u == "inr_per_share" else "inr"
+        native = ("pct" if u == "pct" else "per_share" if u == "inr_per_share" else "x" if u in ("x", "ratio")
+                  else "days" if u == "days" else "inr")
         value = v * s if native == "inr" else v
         out.append((value, native, f"fin_annual_line {basis} {fy} {item} p{page} @{k[:10]}"))
     return out

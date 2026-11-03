@@ -113,14 +113,22 @@ OTHER = re.compile(r"\b(aum|aun|auf|customer|order|book|bhfl|bfsl|novelis|copper
                    r"capacity|franchise|share of|prudent|management overlay|to equity|rate)\b", re.I)
 PX_RULES = [(r"deliver\w* (percentage|%)|delivery pct", "delivery_pct"), (r"deliver\w* quantity|delivery qty", "deliverable_qty"),
             (r"low", "low"), (r"high", "high"), (r"\bopen", "open"), (r"clos", "close"), (r"price", "close")]
-FIN_RULES = [  # regex, (annual/quarter items), ratio metric (for derived ones)
-    (r"ebitda margin", [], "ebitda_margin_pct"), (r"ebitda", ["ebitda"], "ebitda"),
-    (r"net interest income", ["net_interest_income"], None),
+FIN_RULES = [  # regex, (annual/quarter items), ratio metric (for derived ones); first match wins
+    (r"net debt incl\w* acceptances", ["net_debt_incl_acceptances"], None),
+    (r"net debt to ebitda", ["net_debt_to_ebitda"], "net_debt_to_ebitda"),
+    (r"net working capital days", ["net_working_capital_days"], "nwc_days"),
+    (r"receivables? in days|debtors? (?:turnover|days)|receivable days", ["receivable_days"], "receivable_days"),
+    (r"roce|return on capital employed", ["roce"], "roce"),
+    (r"total debt", ["total_debt_incl_leases", "total_borrowings"], None),
+    (r"total liabilities", ["total_liabilities"], None),
+    (r"book value per share", [], "book_value_per_share"),
+    (r"ebitda margin", ["ebitda_margin_pct"], "ebitda_margin_pct"), (r"ebitda", ["ebitda"], "ebitda"),
+    (r"net interest income", ["net_interest_income"], "net_interest_income"),
     (r"profit before tax", ["pbt", "pbt_before_exceptional"], None),
     (r"profit after tax|\bpat\b|profit for (the )?(period|year)|profit \(loss\)", ["pat", "pat_owners"], "pat"),
     (r"finance cost", ["finance_cost"], "finance_cost"), (r"depreciation", ["depreciation"], "depreciation"),
     (r"diluted eps", ["eps_diluted"], None), (r"eps|earnings per share", ["eps_basic"], "eps_basic_fy"),
-    (r"impairment|loan loss", ["impairment_financial_instruments"], None),
+    (r"impairment|loan loss", ["impairment_financial_instruments"], "impairment_financial_instruments"),
     (r"dividend per share", ["dividend_per_share"], None), (r"capital expenditure|capex", ["capex"], None),
     (r"cash flow from operations|operating activities", ["cash_flow_from_operations"], None),
     (r"net worth", ["net_worth"], None), (r"net debt", ["net_debt"], None), (r"borrowings", ["total_borrowings"], None),
@@ -147,6 +155,9 @@ def classify(measure: str, unit: str) -> tuple[str, object]:
     if "face value" in m:
         return "sc", "face_value"
     if re.search(r"to ebitda|days|receivable|working capital|roce|return on|coverage", m):
+        for rx, items, metric in FIN_RULES[:8]:  # measures part D stores (company-stated and balance-sheet based)
+            if re.search(rx, m):
+                return "fin", (items, metric)
         return "ratio_missing", None  # a derived ratio that part A does not compute (needs balance-sheet inputs)
     if OTHER.search(m):
         return "other", None
@@ -201,8 +212,9 @@ def candidates(conn: sqlite3.Connection, symbol: str, num: dict, question: str, 
     items, metric = spec
     if not period:
         return "fin", []
-    bases = ["standalone"] if "standalone" in question.lower() else \
-        ["consolidated"] if "consolidated" in question.lower() else ["consolidated", "standalone"]
+    bases = ["standalone", "not_stated"] if "standalone" in question.lower() else \
+        ["consolidated", "not_stated"] if "consolidated" in question.lower() else \
+        ["consolidated", "standalone", "not_stated"]
     cands: list = []
     quarter = fy = None
     if period[0] == "Q":
@@ -218,6 +230,7 @@ def candidates(conn: sqlite3.Connection, symbol: str, num: dict, question: str, 
         if quarter:
             for item in items:
                 cands += queries.fin_quarter(conn, symbol, quarter, item, basis, as_of)
+                cands += queries.fin_annual(conn, symbol, quarter, item, basis, as_of)  # company-stated quarter lines
             if metric:
                 cands += queries.ratio(conn, symbol, quarter, metric, basis, as_of)
         if fy:
