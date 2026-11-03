@@ -1014,7 +1014,7 @@ COLS = ("symbol metric dimension value unit scale period_type fiscal_period as_o
 
 
 def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = None, raw_root: Path | None = None,
-        ocr_db: str | None = None, only_docs: list[str] | None = None) -> dict:
+        ocr_db: str | Path | list | tuple | None = None, only_docs: list[str] | None = None) -> dict:
     t0 = time.time()
     con = sqlite3.connect(out)
     con.executescript(SCHEMA)
@@ -1022,16 +1022,25 @@ def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = No
     for name, ddl in NEW_COLS:
         if name not in have_cols:
             con.execute(f"ALTER TABLE kpi_series ADD COLUMN {name} {ddl}")
-    ocr_con = sqlite3.connect(f"file:{Path(ocr_db).as_posix()}?mode=ro", uri=True) if ocr_db else None
+    ocr_paths = [ocr_db] if isinstance(ocr_db, (str, Path)) else list(ocr_db or ())
+    ocr_cons = [sqlite3.connect(f"file:{Path(d).as_posix()}?mode=ro", uri=True) for d in ocr_paths]
     stats: dict = {}
     sql = f"INSERT OR IGNORE INTO kpi_series({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
     for sym in symbols:
         con.execute("DELETE FROM kpi_series WHERE symbol=?", (sym,))
         batch = []
         ocr = None
-        if ocr_con is not None:
+        if ocr_cons:
             from reality_engine.pilot3.ocr import load_ocr
-            ocr = load_ocr(ocr_con, sym)
+
+            ocr = {}
+            for c in ocr_cons:
+                for doc_key, pages in load_ocr(c, sym).items():
+                    ocr.setdefault(doc_key, {}).update(pages)
+            if con.execute("SELECT 1 FROM sqlite_master WHERE name='doc_alias'").fetchone():
+                for alias_key, doc_key in con.execute("SELECT alias_key, doc_key FROM doc_alias WHERE symbol=?", (sym,)):
+                    if doc_key in ocr and alias_key not in ocr:   # an OCR page under the pilot3 key serves its sandbox key
+                        ocr[alias_key] = ocr[doc_key]
         for row in extract_company(sym, sandbox, stats, limit_docs, raw_root, ocr, only_docs):
             batch.append([row[c] for c in COLS])
             if len(batch) >= 2000:
@@ -1043,8 +1052,8 @@ def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = No
         stats[sym]["rows"] = con.execute("SELECT count(*) FROM kpi_series WHERE symbol=?", (sym,)).fetchone()[0]
     stats["seconds"] = round(time.time() - t0, 1)
     con.close()
-    if ocr_con is not None:
-        ocr_con.close()
+    for c in ocr_cons:
+        c.close()
     return stats
 
 
@@ -1055,7 +1064,7 @@ def main(argv=None):
     ap.add_argument("--sandbox-root", default=str(SANDBOX_ROOT))
     ap.add_argument("--limit-docs", type=int, default=None)
     ap.add_argument("--raw-root", default=str(RAW_ROOT), help="also read the decks deck_figures cites but docs does not hold (text layer only); '' to disable")
-    ap.add_argument("--ocr-db", default=None, help="ocr_page table written by pilot3.ocr: its pages are read too (method ocr_rapid)")
+    ap.add_argument("--ocr-db", action="append", default=None, help="ocr_page table written by pilot3.ocr: its pages are read too (repeat for one per company)")
     ap.add_argument("--only-docs", default=None, help="comma list of doc_key substrings (debug: read only these documents)")
     a = ap.parse_args(argv)
     stats = run(a.out, [s.strip().upper() for s in a.symbols.split(",") if s.strip()], Path(a.sandbox_root), a.limit_docs,
