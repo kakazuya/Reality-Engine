@@ -116,7 +116,7 @@ class CoreTests(unittest.TestCase):
     def test_catalog_merges_curated_descriptions(self):
         out = catalog.get_catalog()
         dbs = {db["key"]: db for db in out["databases"]}
-        self.assertEqual(set(dbs), set(catalog.KNOWN_COUNTS) | {"truth_duckdb"})
+        self.assertEqual(set(dbs), set(catalog.KNOWN_COUNTS) | {"truth_duckdb", "pilot3"})
         self.assertTrue(out["descriptions"]["loaded"])
         self.assertGreater(out["descriptions"]["curated_tables"], 100)
         tables = {t["name"]: t for t in dbs["truth_duckdb"]["tables"]}
@@ -141,11 +141,27 @@ class CoreTests(unittest.TestCase):
         missing = Path(__file__).with_name("no_such_catalog_descriptions.yaml")
         self.assertFalse(missing.exists())
         out = catalog.get_catalog(descriptions_path=missing)
-        self.assertEqual(len(out["databases"]), 7)
+        self.assertEqual(len(out["databases"]), 8)
         self.assertFalse(out["descriptions"]["loaded"])
         names = {t["name"] for db in out["databases"] for t in db["tables"]}
         self.assertIn("security_master", names)
         self.assertIn("ar_facts", names)
+        self.assertIn("kpi_series", names)          # pilot3 is catalogued too
+
+    def test_catalog_and_schema_cover_pilot3(self):
+        """pilot3 is a store like any other: one line in catalog(), a db view and a schema(table) answer (T-049)."""
+        cat = {db["key"]: db for db in catalog.get_catalog()["databases"]}
+        self.assertIn("pilot3", cat)
+        view = catalog.catalog_view(db="pilot3")
+        self.assertEqual(view["kind"], "sqlite")
+        tables = {t["table"] for t in view["tables"]}
+        self.assertIn("kpi_series", tables)
+        self.assertNotIn("doc_page_fts", tables)     # the FTS mirror is not a table to query
+        shape = catalog.get_schema("kpi_series", db="pilot3")
+        self.assertTrue(shape["found"])
+        self.assertEqual((shape["db"], shape["table"]), ("pilot3", "kpi_series"))
+        self.assertIn("metric", [c.split()[0] for c in shape["columns"]])
+        self.assertTrue(catalog.get_schema("ratio_panel", db="pilot3")["indexes"])
 
 
 class McpStdioTests(unittest.TestCase):
@@ -191,8 +207,8 @@ class McpStdioTests(unittest.TestCase):
             self.assertIn(36746.0, values)
 
             cat = payload(await session.call_tool("catalog", {}, read_timeout_seconds=120))
-            self.assertEqual(len(cat["databases"]), 7)
-            self.assertTrue(cat["descriptions"]["loaded"])
+            self.assertEqual(len(cat["databases"]), 8)
+            self.assertTrue(cat["descriptions_loaded"])  # catalog() tool returns the compact view
 
             sq = payload(await session.call_tool("sql", {"query": "select 1 as x", "db": "truth"},
                                                  read_timeout_seconds=60))

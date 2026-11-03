@@ -45,7 +45,14 @@ CUE = re.compile(
     r"is expected to|are expected to|going to see|going to be|talking about)\b", re.I)
 PAST_ONLY = re.compile(r"\b(achieved|stood at|reported|last year|lask year|previous year|prior year|year ago|"
                        r"grew by|improved by|rose by|was at|were at|was around|were around|increased by|"
-                       r"declined by|margin of \d|up \d+% (?:yoy|year-on-year|y-o-y))\b", re.I)
+                       r"declined by|margin of \d|up \d+% (?:yoy|year-on-year|y-o-y)|"
+                       # T-049, 4 Nov 2026: a reported quarter's cost ("was impacted by ... $54 million",
+                       # "Adjusted EBITDA down 9% YoY", "came in at $506") was stored as a forward target
+                       r"down \d+(?:\.\d+)?\s*%\s*(?:yoy|year-on-year|y-o-y|q[1-4])|impacted by|came in at)\b", re.I)
+# a percentage that is the rate OF something else ("232 aluminium tariffs at 50%", "a duty of 10%") is not a
+# company target (T-049, 4 Nov 2026: a tariff rate was stored as an FY26 EBITDA margin)
+RATE_OF = re.compile(r"\b(?:tariffs?|duty|customs duty|levy|surcharge|tax rate|repo rate)\b[^.%]{0,40}"
+                     r"\d+(?:\.\d+)?\s*%", re.I)
 FACT_SHAPE = re.compile(r"\b(today|currently|as of|as at|current level|stands? at|backlog)\b", re.I)
 OWN_PERIOD = re.compile(r"\b(?:(?:next|this|current|following)\s+(?:fiscal|financial year|year)|for the (?:full )?year|"
                         r"full year|FY\s*'?\s*\d|fiscal\s*'?\s*\d|Q[1-4]\s*FY)\b", re.I)
@@ -469,6 +476,10 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if not chosen:
             stats["no_metric" if not metric_candidates(symbol, sentence, before, after) else "implausible"] += 1
             continue
+        rate = RATE_OF.search(sentence)
+        if rate and rate.start() <= chosen["start"] <= rate.end():
+            stats["rate_not_target"] += 1
+            continue                        # the number is the rate of a tariff/duty, not a target
         cues = [m.start() for m in CUE.finditer(sentence)]
         if PAST_ONLY.search(sentence) and cues and chosen["start"] < min(cues):
             stats["past_only"] += 1

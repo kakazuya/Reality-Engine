@@ -48,6 +48,13 @@ FORMULAS = [
      "capital employed = total assets - current liabilities at the period end (closing, not average)"),
     ("F_ROE", "roe", "100 * ltm_pat / net_worth", "pat,net_worth", "pct", "closing net worth (equity attributable to owners)"),
     ("F_ROA", "roa", "100 * ltm_pat / total_assets", "pat,total_assets", "pct", "closing total assets"),
+    ("F_OPEX_NTI", "opex_to_net_total_income_pct",
+     "100 * (employee_cost + fee_commission_expense + other_expenses + depreciation) / (total_income - finance_cost)",
+     "employee_cost,fee_commission_expense,other_expenses,depreciation,total_income,finance_cost", "pct",
+     "Lender operating cost over net total income, both from the filed XBRL annual lines (T-049, 4 Nov 2026: "
+     "Bajaj Finance had quarterly rows only). NTI = total income - finance cost = the reported net total income "
+     "(FY26: 8,19,895 - 2,86,659.5 = 5,33,235.5 mn = 53,324 crore); the cost components reconcile with the "
+     "company's pre-impairment operating profit (53,324 - 17,776 = 35,548 crore)"),
     ("F_REC_DAYS", "receivable_days", "365 * trade_receivables / ltm_revenue", "trade_receivables,revenue_from_operations", "days",
      "closing trade receivables (current + non-current) over trailing-4-quarter revenue"),
     ("F_INV_DAYS", "inventory_days", "365 * inventories / ltm_revenue", "inventories,revenue_from_operations", "days", "revenue basis"),
@@ -75,6 +82,8 @@ FORMULAS = [
      "years of revenue the order book covers; FY and quarter-end books use the revenue of the year or the last four quarters"),
 ]
 LENDERS = ("BAJFINANCE",)  # finance cost is the cost of goods for a lender: no EBITDA / EBIT metrics
+OPEX_ITEMS = ("employee_cost", "fee_commission_expense", "other_expenses", "depreciation")
+OPEX_NTI_INPUTS = (*OPEX_ITEMS, "total_income", "finance_cost")
 FLOW_ITEMS = ("revenue_from_operations", "pat", "ebitda", "ebit", "finance_cost", "depreciation", "other_income",
               "interest_income", "net_interest_income", "impairment_financial_instruments")
 
@@ -207,6 +216,7 @@ def build_ratios(conn: sqlite3.Connection) -> dict:
         _panel(conn, symbol, isin, out)
         _payout_bvps(conn, symbol, isin, out)
         _balance_ratios(conn, symbol, isin, out)
+        _lender_opex(conn, symbol, isin, out)
         conn.executemany("INSERT INTO ratio_panel VALUES (" + ",".join("?" * 16) + ")", out)
         counts[symbol] = {"ratio_panel": len(out), "valuation_daily": _valuation(conn, symbol, isin)}
     conn.commit()
@@ -320,6 +330,34 @@ def _balance_ratios(conn: sqlite3.Connection, symbol: str, isin: str, out: list)
         if "current_assets" in bs and "current_liabilities" in bs and bs["current_liabilities"][0]:
             put("current_ratio", bs["current_assets"][0] / bs["current_liabilities"][0], "x", "F_CUR",
                 ("current_assets", "current_liabilities"))
+
+
+def _lender_opex(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -> None:
+    """Opex / net total income per fiscal year from the XBRL annual lines (no other input needed).
+
+    Both sides come from the same filing: NTI = total income - finance cost, opex = employee cost + fee and
+    commission expense + other expenses + depreciation.  A company without those lines gets no row.
+    """
+    rows: dict = defaultdict(dict)
+    marks = ",".join("?" * len(OPEX_NTI_INPUTS))
+    for basis, fy, end, item, value, known, rowid in conn.execute(
+            "SELECT basis, fiscal_year, period_end, line_item, value*scale, known_at, rowid FROM fin_annual_line "
+            f"WHERE symbol=? AND period_type='FY' AND definition='xbrl_reported' AND unit='inr' "
+            f"AND line_item IN ({marks}) ORDER BY known_at",
+            (symbol, *OPEX_NTI_INPUTS)).fetchall():
+        rows[(basis, fy, end)][item] = (value, known, rowid)
+    for (basis, fy, end), items in sorted(rows.items()):
+        opex = [items[i] for i in OPEX_ITEMS if i in items]
+        income, finance = items.get("total_income"), items.get("finance_cost")
+        if len(opex) != len(OPEX_ITEMS) or not income or not finance:
+            continue
+        nti = income[0] - finance[0]
+        if not nti:
+            continue
+        _put(out, symbol, isin, fy, "FY", f"{int(end[:4]) - 1}-04-01", end, basis, "opex_to_net_total_income_pct",
+             100.0 * sum(part[0] for part in opex) / nti, "pct", "F_OPEX_NTI",
+             [f"fa:{symbol}:{fy}:{basis}:{item}#{items[item][2]}" for item in OPEX_NTI_INPUTS],
+             max(part[1] for part in [*opex, income, finance]))
 
 
 def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:

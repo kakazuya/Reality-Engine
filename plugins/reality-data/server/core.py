@@ -55,6 +55,8 @@ DB_FILES: dict[str, Path] = {
     "concall_facts": DATA / "concall_facts.db",
     "results_xbrl": DATA / "results_xbrl.db",
     "bse_announcements": DATA / "bse_announcements.db",
+    # the three pilot companies in one script-built store (T-049): catalogued and schemad like any other db
+    "pilot3": DATA / "pilot3" / "pilot3.db",
 }
 DUCK_KEY = "truth_duckdb"
 DB_ALIASES = {
@@ -64,6 +66,7 @@ DB_ALIASES = {
     "deck": "deck_figures", "deck_figures": "deck_figures", "concall": "concall_facts",
     "concall_facts": "concall_facts", "results": "results_xbrl", "results_xbrl": "results_xbrl",
     "bse": "bse_announcements", "bse_announcements": "bse_announcements",
+    "pilot3": "pilot3", "pilot": "pilot3", "p3": "pilot3",
 }
 
 KIND_ALIASES = {
@@ -150,6 +153,9 @@ def _cached_snapshot_path() -> Path:
 def db_path(key: str) -> Path:
     if key == DUCK_KEY:
         return snapshot_path()
+    if key == "pilot3":
+        # the pilot3 tools honour REALITY_PILOT3_DB (fixture tests): resolve the same file they read
+        return Path(os.environ.get("REALITY_PILOT3_DB") or DB_FILES["pilot3"])
     try:
         return DB_FILES[key]
     except KeyError:

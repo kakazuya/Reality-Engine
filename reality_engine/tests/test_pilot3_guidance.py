@@ -128,6 +128,16 @@ def test_period_rules():
     assert guidance.target_period("we see about 5% in Q1 versus Q4", "", "", "Q4FY26", (26, "Q4"), 20) == "Q1FY27"
 
 
+def test_reported_actuals_and_rates_are_not_targets():
+    """T-049, 4 Nov 2026: a reported quarter's cost and a tariff rate fail the guidance filters."""
+    for sentence in ("Adjusted EBITDA down 9% YoY to $1,645 million",
+                     "adjusted EBITDA was impacted by an estimated negative $54 million",
+                     "adjusted EBITDA per ton came in at $506"):
+        assert guidance.PAST_ONLY.search(sentence), sentence
+    assert guidance.RATE_OF.search("especially with the 232 aluminium tariffs at 50%")
+    assert not guidance.RATE_OF.search("we expect an EBITDA margin of 12%")
+
+
 def test_fixture_rows_carry_metric_period_unit_and_quote(fixture_db):
     got = {(r["metric"], r["target_period"], r["low"], r["high"], r["unit"]): r for r in rows(fixture_db)}
     assert ("revenue_growth", "FY27", 12.0, 15.0, "pct") in got
@@ -235,6 +245,13 @@ def test_real_database_finds_the_ticket_targets():
     try:
         missing = [name for name, where in TICKET_TARGETS
                    if not con.execute(f"SELECT 1 FROM guidance WHERE {where}").fetchone()]
+        # T-049, 4 Nov 2026: a reported quarter's cost ("down 9% YoY", "impacted by ... $54 million") and a
+        # tariff RATE ("232 aluminium tariffs at 50%") were stored as forward targets
+        wrong = con.execute(
+            "SELECT COUNT(*) FROM guidance WHERE symbol='HINDALCO' AND ("
+            "(metric='ebitda_margin' AND low=50 AND high=50 AND quote LIKE '%tariff%') OR "
+            "(metric='revenue_growth' AND quote LIKE '%Adjusted EBITDA down%'))").fetchone()[0]
     finally:
         con.close()
     assert not missing, f"not extracted: {missing}"
+    assert wrong == 0, f"{wrong} reported actual(s) still stored as guidance"
