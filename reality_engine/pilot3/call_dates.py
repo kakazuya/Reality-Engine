@@ -123,17 +123,22 @@ def report(con: sqlite3.Connection, symbols=SYMBOLS) -> list[tuple]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from reality_engine.pilot3 import profile
+
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
-    ap.add_argument("--pages-db", default=str(PAGES_DB))
-    ap.add_argument("--symbols", default=",".join(SYMBOLS))
+    ap.add_argument("--pages-db", default=None, help="default: the profile's pages database, else the pilot3 one")
+    ap.add_argument("--symbols", default=None, help="default: the profile's companies, else the pilot3 three")
+    ap.add_argument("--profile", default=None, help="build profile JSON (T-056): companies and pages database")
     a = ap.parse_args(argv)
-    path = Path(a.pages_db)
+    if a.profile:
+        profile.activate(profile.load(a.profile))
+    path = Path(a.pages_db) if a.pages_db else profile.pages_db()
     if not path.is_file():
         print(f"STOPPED: no pages database at {path}", file=sys.stderr)
         return 2
     con = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
     try:
-        symbols = tuple(s.strip().upper() for s in a.symbols.split(",") if s.strip())
+        symbols = tuple(s.strip().upper() for s in (a.symbols or ",".join(profile.symbols())).split(",") if s.strip())
         table = report(con, symbols)
     finally:
         con.close()

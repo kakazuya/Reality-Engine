@@ -22,7 +22,7 @@ from pathlib import Path
 
 import yaml
 
-from .kpi import COMPANIES, LEX_DIR, SANDBOX_ROOT, VAL_RX, _UNIT_BY_SUFFIX, parse_periods, to_float, _norm_cur
+from .kpi import COMPANIES, LEX_DIR, SANDBOX_ROOT, VAL_RX, _UNIT_BY_SUFFIX, parse_periods, to_float, _norm_cur, profile
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS transcript_statement (
@@ -285,10 +285,10 @@ COLS = ("symbol isin doc_key call_date call_period page seq speaker role section
         "numbers_json statement quote is_fragment known_at known_at_source extractor_rule").split()
 
 
-def _transcript_docs(con: sqlite3.Connection, sym: str, sandbox: Path):
+def _transcript_docs(con: sqlite3.Connection, sym: str, sandbox: Path | None):
     """(doc_key, title, known_at, [(page, text)]) for every transcript: the pilot3 db's own ``doc_page`` when it
     has been built (pages.db documents and their RapidOCR text, doc keys already the pilot3 ones), else the
-    sandbox loop's ``docs``/``doc_text``."""
+    sandbox loop's ``docs``/``doc_text``.  A profile build has no sandbox: only the database's own pages."""
     if con.execute("SELECT 1 FROM sqlite_master WHERE name='doc_page'").fetchone():
         docs = con.execute("SELECT d.doc_key, d.title, d.known_at FROM doc d JOIN doc_page p ON p.doc_key=d.doc_key "
                            "WHERE d.symbol=? AND d.doc_type='transcript' GROUP BY d.doc_key",
@@ -296,6 +296,8 @@ def _transcript_docs(con: sqlite3.Connection, sym: str, sandbox: Path):
         for doc_key, title, known_at in docs:
             pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc_key,)).fetchall()
             yield doc_key, title, known_at, pages
+        return
+    if sandbox is None or profile.under_profile():
         return
     src = sqlite3.connect(f"file:{(sandbox / (COMPANIES[sym] + '_loop') / (COMPANIES[sym] + '.db')).as_posix()}?mode=ro",
                           uri=True)
@@ -308,7 +310,7 @@ def _transcript_docs(con: sqlite3.Connection, sym: str, sandbox: Path):
         src.close()
 
 
-def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = None) -> dict:
+def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | None = None) -> dict:
     t0 = time.time()
     topics, people = load_topics()
     con = sqlite3.connect(out)
@@ -339,11 +341,15 @@ def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = No
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", required=True)
-    ap.add_argument("--symbols", default="KEC,BAJFINANCE,HINDALCO")
+    ap.add_argument("--symbols", default=None, help="default: every company of the profile, else every pilot3 company")
+    ap.add_argument("--profile", default=None, help="build profile JSON (T-056): companies, pages db, raw root, output")
     ap.add_argument("--sandbox-root", default=str(SANDBOX_ROOT))
     ap.add_argument("--limit-docs", type=int, default=None)
     a = ap.parse_args(argv)
-    stats = run(a.out, [s.strip().upper() for s in a.symbols.split(",") if s.strip()], Path(a.sandbox_root), a.limit_docs)
+    if a.profile:
+        profile.activate(profile.load(a.profile))
+    symbols = [s.strip().upper() for s in (a.symbols or ",".join(profile.symbols())).split(",") if s.strip()]
+    stats = run(a.out, symbols, None if a.profile else Path(a.sandbox_root), a.limit_docs)
     for k, v in stats.items():
         print(k, v)
     return 0

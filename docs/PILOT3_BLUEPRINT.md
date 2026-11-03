@@ -1,4 +1,4 @@
-# Pilot database blueprint (KEC, BAJFINANCE, HINDALCO)
+# Pilot database blueprint (KEC, BAJFINANCE, HINDALCO; any company list from a profile, section 9)
 
 The one persistent record of how the pilot database was designed, tested and improved, and what the tests found.
 Read this before changing the schema, an extractor or the scale-up plan. It keeps the method and the results;
@@ -113,3 +113,43 @@ definitions not reconciled (BHFL share of profit, ROCE), KEC transcripts stored 
   image_test.json, question_sources.json, ar_sections.json). Vector caches there are disposable.
 - Decisions: `D:\RealityEngine\plans\DECISION_LOG.md`. Briefs: `tasks/dsh_tasks/T049_*`.
 - Disposable: `D:\RealityEngine\pilot3\pilot3_before_*.db` backups, `pages_before_*.db`, worker `.tmp` folders.
+
+## 9. Profiles: any company list (T-056, 4 Nov 2026)
+
+A profile is one JSON file naming the companies and the paths a build reads, so the company literals live in the
+JSON and never in an extractor: `name`, `pages_db`, `raw_root` (with its `manifest.csv`), `out` (the database),
+`window_start`, and `companies` (`symbol`, `name`, `bse_code`, `isins`, `sector`, `lender`). The committed
+pilot10 profile is `tasks/night_loop/pilot10_profile.json` (10 companies, window from 2025-10-01);
+`reality_engine/pilot3/profile.py` loads it (`Profile`, `ProfileCompany`, `load`) and every pilot3 module reads the
+active one. Without a profile every command behaves exactly as before (the three pilot3 companies into `pilot3.db`).
+
+    python -m reality_engine.pilot3.docs_collect --profile tasks/night_loop/pilot10_profile.json --symbols MARUTI --out .tmp/p10/pages.db
+    python -m reality_engine.pilot3.build --profile tasks/night_loop/pilot10_profile.json --symbols MARUTI --part kpi --out .tmp/p10/p10.db --pages-db .tmp/p10/pages.db
+
+- **Manifest only.** Under a profile `docs_collect` reads the raw `manifest.csv` (`status='ok'` rows), writes the
+  same `doc` / `doc_page` / FTS tables, and dates each document `known_at = dissem_ts`; it does not walk the raw
+  store and does not query a filing store. A bucket with no document behind it (`concall_audio_link`, `skip`), a
+  row whose file is not on disk and a row without `dissem_ts` are counted, not written.
+- **No sandbox.** The extractors read documents and pages from `pages_db` only; they never open
+  `<sandbox>/<co>_loop`.
+- **Window.** The store builders keep rows dated on or after `window_start` (`fin_quarter_xbrl.period_end`,
+  `fin_annual_line.period_end`, `shp_category.quarter_end`, `price_delivery.date`, `valuation_daily.date`);
+  documents come from the manifest, which is the requested window. No profile: no filter.
+- **`--symbols` limits every part** under a profile (a profile database built for one company holds one company);
+  without a profile it still limits only the extractors, as before. `--out` and `--pages-db` override the
+  profile's paths.
+- **MCP.** With `REALITY_PILOT3_DB` set, `plugins/reality-data/server/lookups_pilot3.py` takes the allowed
+  companies from that database's `company` table, so the `pilot3_*` tools serve a profile build unchanged.
+- **Verified 4 Nov 2026** (this MSI, `.tmp` outputs). Without a profile nothing moved: `checkpages run` 145 found
+  (KEC 29/78, BAJFINANCE 59/113, HINDALCO 57/123) and `build --part kpi --symbols KEC` on a copy plus the four
+  `--ocr-db` databases reproduces all 6,915 KEC `kpi_series` rows exactly (96 s; without `--ocr-db` the 39 rows
+  read from OCR text are missing, as on any build). With the pilot10 profile, MARUTI: `docs_collect` 147 documents
+  / 1,170 pages (17 s, 15 `needs_ocr`); `build` parts registry 0.2 s, pages 0.5 s, stores 15.5 s, kpi 11.8 s,
+  transcripts 0.3 s, guidance 0.4 s -> `company` 1 row, `doc` 147 with `known_at` on every row, `doc_page` 1,170,
+  `fin_quarter_xbrl` 164 rows (min `period_end` 2025-12-31), `fin_annual_line` 260 (min 2026-03-31),
+  `price_delivery` 516 (min 2025-10-01), `shp_category` 180, `kpi_series` 161. MARUTI's five `concall_transcript`
+  filings are one-page cover letters ("the transcript ... has been uploaded"), so `transcript_statement` and
+  `guidance` are 0 for it: the documents, not the code path (the KPI extractor reads the same pages: 161 rows).
+- **Tests.** `reality_engine/tests/test_pilot3_profile.py` (6 tests: the committed profile, the no-profile
+  defaults, a manifest -> pages -> registry/pages/kpi/transcripts/guidance build with a sandbox root that does not
+  exist, the window filter, `--symbols` scoping, and `lookups_pilot3` on a `REALITY_PILOT3_DB` database).

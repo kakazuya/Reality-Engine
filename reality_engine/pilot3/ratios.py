@@ -12,7 +12,7 @@ from bisect import bisect_right
 from collections import defaultdict
 from datetime import date, timedelta
 
-from reality_engine.pilot3 import SYMBOLS, schema
+from reality_engine.pilot3 import profile, schema
 
 # formula_id, metric, expression, inputs, unit, note
 FORMULAS = [
@@ -98,7 +98,7 @@ def _quarters(conn: sqlite3.Connection, symbol: str) -> dict:
         out[(basis, end)][item] = (value, known, period)
     for (basis, end), items in out.items():
         pbt, fin, dep, oth = (items.get(k) for k in ("pbt_before_exceptional", "finance_cost", "depreciation", "other_income"))
-        if pbt and fin and symbol not in LENDERS:
+        if pbt and fin and not profile.is_lender(symbol):
             ks = [x[1] for x in (pbt, fin, dep, oth) if x]
             period = pbt[2]
             items["ebit"] = (pbt[0] + fin[0], max(ks), period)
@@ -209,7 +209,7 @@ def build_ratios(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("formula", "ratio_panel", "valuation_daily"))
     conn.executemany("INSERT INTO formula VALUES (?,?,?,?,?,1,?)", FORMULAS)
     counts = {}
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
         isin = isin[0] if isin else None
         out: list = []
@@ -219,6 +219,9 @@ def build_ratios(conn: sqlite3.Connection) -> dict:
         _lender_opex(conn, symbol, isin, out)
         conn.executemany("INSERT INTO ratio_panel VALUES (" + ",".join("?" * 16) + ")", out)
         counts[symbol] = {"ratio_panel": len(out), "valuation_daily": _valuation(conn, symbol, isin)}
+    from reality_engine.pilot3.stores import apply_window  # late: stores builds statements -> ratios
+
+    counts["window"] = apply_window(conn)
     conn.commit()
     return counts
 
@@ -295,7 +298,7 @@ def _balance_ratios(conn: sqlite3.Connection, symbol: str, isin: str, out: list)
             put("roe", 100.0 * ltm["pat"][0] / nw[0], "pct", "F_ROE", ("net_worth",), ("pat",))
         if "total_assets" in bs and "pat" in ltm:
             put("roa", 100.0 * ltm["pat"][0] / bs["total_assets"][0], "pct", "F_ROA", ("total_assets",), ("pat",))
-        if symbol in LENDERS and "loans" in bs:
+        if profile.is_lender(symbol) and "loans" in bs:
             # NIM: the period's NII annualised over the average of the opening and closing loan book.
             opening = books.get((basis, (date.fromisoformat(start) - timedelta(days=1)).isoformat()))
             qtrs = [e for e in qends if start < e <= end]
@@ -307,7 +310,7 @@ def _balance_ratios(conn: sqlite3.Connection, symbol: str, isin: str, out: list)
                         + [f"fa:{symbol}:{opening[3]}:{basis}:loans#{opening[2]}", ref("loans")])
                 _put(out, symbol, isin, fy, ptype, start, end, basis, "nim_pct", nim, "pct", "F_NIM", refs,
                      max([n[1] for n in nii] + [opening[1], bs["loans"][1]]))
-        if symbol in LENDERS:
+        if profile.is_lender(symbol):
             continue
         if "net_debt" in bs and "ebitda" in ltm and ltm["ebitda"][0] > 0:
             put("net_debt_to_ebitda", bs["net_debt"][0] / ltm["ebitda"][0], "x", "F_ND_EBITDA", ("net_debt",), ("ebitda",))

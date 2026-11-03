@@ -32,6 +32,7 @@ import time
 from collections import Counter
 from pathlib import Path
 
+from . import profile
 from .schema import TABLES, GUIDANCE_INDEXES
 from .transcripts import split_sentences
 
@@ -326,7 +327,7 @@ def metric_candidates(symbol: str, sentence: str, before: str, after: str) -> li
         for name, rx, _lo, _hi in METRICS:
             if name == "other" or not rx.search(text) or name in seen:
                 continue
-            if name == "ebitda_margin" and symbol == "BAJFINANCE" and not re.search(r"ebitda", text, re.I):
+            if name == "ebitda_margin" and profile.is_lender(symbol) and not re.search(r"ebitda", text, re.I):
                 name = "nim"          # a lender's "margin" is its NIM
             if name not in seen:
                 seen.append(name)
@@ -653,7 +654,8 @@ def print_sample(db: str, n: int, seed: int = 7) -> list[sqlite3.Row]:
 def main(argv=None):
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--out", required=True)
-    ap.add_argument("--symbols", default="KEC,BAJFINANCE,HINDALCO")
+    ap.add_argument("--symbols", default=None, help="default: every company of the profile, else every pilot3 company")
+    ap.add_argument("--profile", default=None, help="build profile JSON (T-056): companies, pages db, raw root, output")
     ap.add_argument("--limit-docs", type=int, default=None)
     ap.add_argument("--sample", type=int, default=0, help="print N random rows with their sentence and stop")
     ap.add_argument("--seed", type=int, default=7)
@@ -661,7 +663,10 @@ def main(argv=None):
     if a.sample:
         print_sample(a.out, a.sample, a.seed)
         return 0
-    stats = run(a.out, [s.strip().upper() for s in a.symbols.split(",") if s.strip()], a.limit_docs)
+    if a.profile:
+        profile.activate(profile.load(a.profile))
+    symbols = [s.strip().upper() for s in (a.symbols or ",".join(profile.symbols())).split(",") if s.strip()]
+    stats = run(a.out, symbols, a.limit_docs)
     print(json.dumps(stats, indent=1))
     return 0
 

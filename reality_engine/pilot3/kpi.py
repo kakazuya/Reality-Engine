@@ -30,7 +30,7 @@ from pathlib import Path
 
 import yaml
 
-from . import call_dates
+from . import call_dates, profile
 
 LEX_DIR = Path(__file__).parent / "lexicon"
 SANDBOX_ROOT = Path("D:/RealityEngine/sandbox")
@@ -1372,7 +1372,6 @@ def _open_pdf_path(path: Path | str | None):
 def _open_pdf(sandbox: Path, sym: str, doc_key: str):
     return _open_pdf_path(sandbox / f"{COMPANIES[sym]}_loop" / "raw" / doc_key)
 
-
 RAW_ROOT = Path("D:/RealityEngine/raw")
 
 
@@ -1423,8 +1422,8 @@ def _pages_docs(sym: str, pages_db: Path | str | None, raw_root: Path | None, oc
         pg.close()
 
 
-def _doc_sources(con, sym: str, sandbox: Path, raw_root: Path | None, limit_docs: int | None, st: dict,
-                 ocr: dict | None = None, pages_db: Path | str | None = None):
+def _doc_sources(con: sqlite3.Connection | None, sym: str, sandbox: Path | None, raw_root: Path | None,
+                 limit_docs: int | None, st: dict, ocr: dict | None = None, pages_db: Path | str | None = None):
     """Yield (doc_key, doc_type, known_at, usable_pages, pdf_or_None, ocr_pages, known_at_source). pages.db first
     (when `pages_db` is given), then the sandbox's own documents that pages.db does not hold, then (optional) the
     decks that deck_figures cites but neither holds (read straight from the text layer of the raw PDF).
@@ -1440,32 +1439,33 @@ def _doc_sources(con, sym: str, sandbox: Path, raw_root: Path | None, limit_docs
             held.add(item[0])
             yield item
     names = {Path(k).name for k in held}
-    docs = con.execute(
-        f"SELECT doc_key, doc_type, known_at FROM docs WHERE doc_type IN ({','.join('?' * len(KPI_DOC_TYPES))}) ORDER BY known_at",
-        KPI_DOC_TYPES).fetchall()
-    if limit_docs:
-        docs = docs[:limit_docs]
-    for doc_key, doc_type, known_at in docs:
-        if doc_key in held or Path(doc_key).name in names:      # pages.db already holds this document
-            continue
-        pages = con.execute("SELECT page, text, method FROM doc_text WHERE doc_key=? ORDER BY page", (doc_key,)).fetchall()
-        if not pages:
-            continue
-        st["docs"] += 1
-        st["needs_ocr"] += sum(1 for _, _, m in pages if m == "needs_ocr")
-        usable = [(p, t) for p, t, m in pages if m == "script_text" and t]
-        pdf = _open_pdf(sandbox, sym, doc_key) if doc_type in PDF_DOC_TYPES else None
-        if pdf is None and doc_type in PDF_DOC_TYPES:
-            st["pdf_missing"] += 1
-        opg = ocr.get(doc_key, {})
-        if opg:
-            have = {p for p, _ in usable}
-            usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
-            st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
-        yield doc_key, doc_type, known_at, usable, pdf, opg, "docs.known_at"
-        if pdf is not None:
-            pdf.close()
-    if raw_root is None:
+    if con is not None:      # a profile build has no sandbox: pages.db is every document
+        docs = con.execute(
+            f"SELECT doc_key, doc_type, known_at FROM docs WHERE doc_type IN ({','.join('?' * len(KPI_DOC_TYPES))}) ORDER BY known_at",
+            KPI_DOC_TYPES).fetchall()
+        if limit_docs:
+            docs = docs[:limit_docs]
+        for doc_key, doc_type, known_at in docs:
+            if doc_key in held or Path(doc_key).name in names:      # pages.db already holds this document
+                continue
+            pages = con.execute("SELECT page, text, method FROM doc_text WHERE doc_key=? ORDER BY page", (doc_key,)).fetchall()
+            if not pages:
+                continue
+            st["docs"] += 1
+            st["needs_ocr"] += sum(1 for _, _, m in pages if m == "needs_ocr")
+            usable = [(p, t) for p, t, m in pages if m == "script_text" and t]
+            pdf = _open_pdf(sandbox, sym, doc_key) if doc_type in PDF_DOC_TYPES and sandbox is not None else None
+            if pdf is None and doc_type in PDF_DOC_TYPES:
+                st["pdf_missing"] += 1
+            opg = ocr.get(doc_key, {})
+            if opg:
+                have = {p for p, _ in usable}
+                usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
+                st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
+            yield doc_key, doc_type, known_at, usable, pdf, opg, "docs.known_at"
+            if pdf is not None:
+                pdf.close()
+    if raw_root is None or con is None:
         return
     try:
         import pymupdf as fitz
@@ -1504,10 +1504,13 @@ def _doc_sources(con, sym: str, sandbox: Path, raw_root: Path | None, limit_docs
 
 
 
-def extract_company(sym: str, sandbox: Path, stats: dict, limit_docs: int | None = None, raw_root: Path | None = None,
+def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int | None = None, raw_root: Path | None = None,
                     ocr: dict | None = None, only_docs: list[str] | None = None, pages_db: Path | str | None = None):
-    dbp = sandbox / f"{COMPANIES[sym]}_loop" / f"{COMPANIES[sym]}.db"
-    con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
+    if sandbox is None or profile.under_profile():
+        con = None      # a profile company has no sandbox: every document and page comes from pages_db
+    else:
+        dbp = sandbox / f"{COMPANIES[sym]}_loop" / f"{COMPANIES[sym]}.db"
+        con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
     entries, dims = load_lexicon()
     st = stats.setdefault(sym, {"pages": 0, "needs_ocr": 0, "docs": 0, "pdf_missing": 0})
     for doc_key, doc_type, known_at, usable, pdf, opg, src in _doc_sources(con, sym, sandbox, raw_root, limit_docs, st, ocr,
@@ -1562,7 +1565,8 @@ def extract_company(sym: str, sandbox: Path, stats: dict, limit_docs: int | None
                            doc_key=doc_key, page=page, quote=r.quote, known_at=known_at, known_at_source=src,
                            is_reported=1, raw_label=r.raw_label, raw_value=r.raw_value, extractor_rule=r.rule,
                            confidence=conf, conf_rank=rank, method=method, ocr_conf=ocr_conf, source_type=doc_type)
-    con.close()
+    if con is not None:
+        con.close()
 
 
 def _page_may_have_table(text: str) -> bool:
@@ -1574,7 +1578,7 @@ COLS = ("symbol metric dimension value unit scale period_type fiscal_period as_o
         "source_type").split()
 
 
-def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = None, raw_root: Path | None = None,
+def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | None = None, raw_root: Path | None = None,
         ocr_db: str | Path | list | tuple | None = None, only_docs: list[str] | None = None,
         pages_db: Path | str | None = None) -> dict:
     t0 = time.time()
@@ -1626,17 +1630,22 @@ def run(out: str, symbols: list[str], sandbox: Path, limit_docs: int | None = No
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", required=True)
-    ap.add_argument("--symbols", default="KEC,BAJFINANCE,HINDALCO")
+    ap.add_argument("--symbols", default=None, help="default: every company of the profile, else every pilot3 company")
+    ap.add_argument("--profile", default=None, help="build profile JSON (T-056): companies, pages db, raw root, output")
     ap.add_argument("--sandbox-root", default=str(SANDBOX_ROOT))
     ap.add_argument("--limit-docs", type=int, default=None)
     ap.add_argument("--raw-root", default=str(RAW_ROOT), help="also read the decks deck_figures cites but docs does not hold (text layer only); '' to disable")
     ap.add_argument("--ocr-db", action="append", default=None, help="ocr_page table written by pilot3.ocr: its pages are read too (repeat for one per company)")
     ap.add_argument("--only-docs", default=None, help="comma list of doc_key substrings (debug: read only these documents)")
-    ap.add_argument("--pages-db", default="", help="docs_collect pages.db: read every held document from it (the pilot3 registry's source); '' disables")
+    ap.add_argument("--pages-db", default="", help="docs_collect pages.db: read every held document from it (the pilot3 registry's source); '' disables, a profile uses its own")
     a = ap.parse_args(argv)
-    stats = run(a.out, [s.strip().upper() for s in a.symbols.split(",") if s.strip()], Path(a.sandbox_root), a.limit_docs,
+    if a.profile:
+        profile.activate(profile.load(a.profile))
+    symbols = [s.strip().upper() for s in (a.symbols or ",".join(profile.symbols())).split(",") if s.strip()]
+    pages_db = Path(a.pages_db) if a.pages_db else (profile.pages_db() if a.profile else None)
+    stats = run(a.out, symbols, None if a.profile else Path(a.sandbox_root), a.limit_docs,
                 Path(a.raw_root) if a.raw_root else None, a.ocr_db, [x for x in (a.only_docs or "").split(",") if x] or None,
-                Path(a.pages_db) if a.pages_db else None)
+                pages_db)
     for k, v in stats.items():
         print(k, v)
     return 0

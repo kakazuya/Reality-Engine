@@ -12,15 +12,28 @@ import xml.etree.ElementTree as ET
 from datetime import date, datetime
 
 from reality_engine.gap_loop import prepare
-from reality_engine.gap_loop.company import COMPANIES
-from reality_engine.pilot3 import SHP_XBRL, SYMBOLS, schema
+from reality_engine.pilot3 import SHP_XBRL, profile, schema
 from reality_engine.pilot3.registry import all_isins, isin_history
 
 CR = 1e7  # rupees per crore
 
+# The history window a profile keeps (T-056): every store table and its date column.  No profile -> no filter.
+WINDOW_COLUMNS = {"fin_quarter_xbrl": "period_end", "fin_annual_line": "period_end", "shp_category": "quarter_end",
+                  "price_delivery": "date", "valuation_daily": "date"}
+
+
+def apply_window(conn: sqlite3.Connection) -> dict:
+    """Delete a profile's rows dated before ``window_start``; returns ``{table: rows deleted}``."""
+    start = profile.window_start()
+    if not start:
+        return {}
+    return {table: conn.execute(f"DELETE FROM {table} WHERE {column} < ?", (start,)).rowcount
+            for table, column in WINDOW_COLUMNS.items()
+            if conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone()}
+
 
 def _spec(symbol: str, table: str) -> dict:
-    company = dataclasses.replace(COMPANIES[symbol], isins=all_isins(symbol))
+    company = dataclasses.replace(profile.company(symbol), isins=all_isins(symbol))
     for spec in prepare.store_copies(company):
         if spec["table"] == table:
             return spec
@@ -144,7 +157,7 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
     """fin_quarter_xbrl (long form, every reported quarter) and share_capital (paid-up / face value)."""
     schema.create(conn, ("fin_quarter_xbrl", "share_capital"))
     counts = {"fin_quarter_xbrl": {}, "share_capital": {}, "skipped_non_quarter": {}}
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         rows = fetch(symbol, "results_quarterly")
         fq, sc, skipped, meta = [], [], 0, {}
         for r in rows:
@@ -188,7 +201,7 @@ def build_corporate_events(conn: sqlite3.Connection) -> dict:
     """Split / bonus / buyback events into share_capital (rows with ``event`` set); ISIN windows into
     ``isin_effective_*`` for every share_capital row."""
     counts = {}
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         rows, _cols = _duck(
             "SELECT id, isin, subject, action_type, ex_date, broadcast_date, known_at_src FROM corporate_actions "
             "WHERE symbol=? AND action_type IN ('SPLIT','BONUS','BUYBACK') ORDER BY ex_date", (symbol,))
@@ -287,7 +300,7 @@ def build_annual(conn: sqlite3.Connection) -> dict:
     """fin_annual_line: statement-caption rows picked out of ar_facts by a closed lexicon (no PDF reading)."""
     schema.create(conn, ("fin_annual_line",))
     counts = {}
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         spec = _spec(symbol, "ar_facts")
         sql = spec["sql"].replace("SELECT *,", "SELECT rowid AS src_rowid, *,", 1)
         rows, types = prepare._read_sqlite(spec["db"], spec["source"], sql, spec["params"])
@@ -331,7 +344,7 @@ def build_prices(conn: sqlite3.Connection) -> dict:
     """Daily OHLC, volume, delivery and split-adjusted close on both exchanges (truth snapshot)."""
     schema.create(conn, ("price_delivery",))
     counts = {}
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         marks, isins = _isin_marks(symbol)
         n = 0
         for exch, table in (("NSE", "px_nse_adj"), ("BSE", "px_bse_adj")):
@@ -434,7 +447,7 @@ def build_shp(conn: sqlite3.Connection) -> dict:
         for path in sorted(SHP_XBRL.glob("*.xml.gz")):
             xbrl_files[path.name[:-3]] = path
     parsed_files = {name: parse_shp_xbrl(gzip.open(path).read()) for name, path in xbrl_files.items()}
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         index = fetch(symbol, "shp_index")
         by_file = {r["file"]: r for r in index}
         out = []
@@ -496,4 +509,6 @@ def build_stores(conn: sqlite3.Connection) -> dict:
     result["statements"] = statements.build_statements(conn)
     result["price_delivery"] = build_prices(conn)
     result["shp_category"] = build_shp(conn)
+    result["window"] = apply_window(conn)
+    conn.commit()
     return result

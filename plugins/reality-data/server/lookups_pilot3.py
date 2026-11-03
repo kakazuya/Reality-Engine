@@ -1,7 +1,9 @@
-"""pilot3 lookups: the one database for KEC, BAJFINANCE and HINDALCO (T-049 F).
+"""pilot3 lookups: the one database the reality-data server serves through the ``pilot3_*`` tools (T-049 F).
 
 ``pilot3.db`` is built by scripts (``python -m reality_engine.pilot3.build``): dated page text of every held
 document, KPI series, reported and derived financial lines, ratios, shareholding, management statements.
+``REALITY_PILOT3_DB`` names another build (a profile's, e.g. pilot10), and then the companies the tools accept
+are the ones that database's ``company`` table holds (T-056); without it the three pilot3 companies.
 These tools answer from it first; the raw files are touched only when a tool says NOT IN DATA.
 
 Read-only (``connect_ro``), small replies, and every row carries ``provenance`` = table, source (document +
@@ -83,25 +85,37 @@ def _q(sql: str, params: tuple = ()) -> list[sqlite3.Row]:
 
 
 # --- symbols, periods, dates ------------------------------------------------------------------------
+def pilot_symbols() -> tuple[str, ...]:
+    """The companies this database holds: ``REALITY_PILOT3_DB`` -> its ``company`` table (T-056), else pilot3's."""
+    if not os.environ.get("REALITY_PILOT3_DB"):
+        return PILOT3_SYMBOLS
+    try:
+        return tuple(row[0] for row in _q("SELECT DISTINCT symbol FROM company ORDER BY symbol")) or PILOT3_SYMBOLS
+    except DataError:
+        return PILOT3_SYMBOLS
+
+
 def resolve_symbol(symbol: str) -> str:
-    """KEC / BAJFINANCE / HINDALCO from a symbol, BSE code, ISIN or name; anything else is a DataError."""
+    """A symbol / BSE code / ISIN / name of a company the database holds; anything else is a DataError."""
     text = (symbol or "").strip()
     if not text:
         raise DataError("bad_symbol", "symbol is required")
     key = text.upper()
-    if key in PILOT3_SYMBOLS:
+    allowed = pilot_symbols()
+    if key in allowed:
         return key
     for row in _q("SELECT symbol FROM company WHERE isin=? OR bse_code=? OR upper(name) LIKE ? LIMIT 1",
                   (key, text, f"%{key}%")):
-        return row[0]
+        if row[0] in allowed:
+            return row[0]
     try:  # the shared resolver knows more spellings (BAJAJ FINANCE, KEC INTERNATIONAL)
         ident = core.resolve_one(text)
         for cand in (ident.get("nse_symbol"), ident.get("bse_symbol")):
-            if cand and cand.upper() in PILOT3_SYMBOLS:
+            if cand and cand.upper() in allowed:
                 return cand.upper()
     except Exception:
         pass
-    raise DataError("not_pilot3", f"{symbol!r} is not a pilot3 company ({', '.join(PILOT3_SYMBOLS)}); "
+    raise DataError("not_pilot3", f"{symbol!r} is not a company of this pilot database ({', '.join(allowed)}); "
                     "use the general tools (facts, docs, search_docs) for it")
 
 

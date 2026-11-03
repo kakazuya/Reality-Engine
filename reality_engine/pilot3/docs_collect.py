@@ -38,6 +38,7 @@ from pathlib import Path
 from reality_engine.db.readonly import connect_ro
 from reality_engine.gap_loop.company import COMPANIES, Company
 from reality_engine.gap_loop.prepare import DOC_TYPES, MIN_PAGE_CHARS, _clean_page, _date_of, _title
+from reality_engine.pilot3 import profile
 
 RAW_ROOT = Path(os.environ.get("REALITY_RAW_ROOT", r"D:\RealityEngine\raw"))
 LEGACY_PDFS = Path(os.environ.get("REALITY_PDFS_LEGACY_DIR", r"D:\RealityEngine\pdfs"))
@@ -56,6 +57,10 @@ CORP_TYPES = {"ANNUAL_REPORT": "annual_report", "CONCALL_TRANSCRIPT": "transcrip
 SUBCAT_TYPES = {"investor presentation": "deck", "earnings call transcript": "transcript",
                 "financial results": "results", "press release / media release": "press_release",
                 "annual report": "annual_report", "audio recording of earnings call": "audio_link"}
+# A profile manifest's bucket -> doc_type (T-056); a bucket with no document behind it is not a document.
+BUCKET_TYPES = {"annual_report": "annual_report", "investor_presentation": "deck", "concall_transcript": "transcript",
+                "quarterly_results": "results", "results_press_release": "press_release",
+                "material_filing": "announcement"}
 # KEC files an order win as a Company Update / Press Release and only now and then under "Award of Order", so
 # the sub-category alone loses most of a year's order filings (T-049, 4 Nov 2026: 5 of FY26's 18 were typed
 # press_release with the generic title and no order question could find them).  The headline names the win.
@@ -578,6 +583,80 @@ def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print) -> dict
     return counts
 
 
+# ---------------------------------------------------------------------------- profile manifest (T-056)
+def _manifest_rows(path: Path) -> list[dict]:
+    """The ``status='ok'`` rows of a raw ``manifest.csv`` (a status that is not ok has no file behind it)."""
+    import csv
+
+    with path.open(encoding="utf-8", errors="replace", newline="") as fh:
+        return [row for row in csv.DictReader(fh) if str(row.get("status") or "").strip().lower() == "ok"]
+
+
+def _rel_key(path: Path, root: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path, log=print) -> dict:
+    """pages.db from a profile's raw manifest only: the ``status='ok'`` rows of the requested companies.
+
+    No store lookup and no directory walk: the manifest names each filing, its local file, its dissemination
+    time and its bucket, so ``known_at`` is the row's ``dissem_ts`` and a row without one is counted, not
+    written (a document that cannot be dated cannot prove it was public).  A bucket with no document behind it
+    (``concall_audio_link``, ``skip``) and a row whose file is not on disk do not become rows either."""
+    conn = connect_out(out)
+    counts: dict[str, dict] = {}
+    started = time.time()
+    rows = _manifest_rows(prof.manifest)
+    for symbol in symbols:
+        stat = counts[symbol] = {"rows": 0, "docs": 0, "pages": 0, "needs_ocr": 0, "undated": 0, "missing": 0,
+                                 "errors": 0, "not_documents": 0, "dupes": 0}
+        seen: set[str] = set()
+        mine = [r for r in rows if str(r.get("symbol_at_time") or "").strip().upper() == symbol]
+        for row in sorted(mine, key=lambda r: str(r.get("dissem_ts") or "")):
+            stat["rows"] += 1
+            doc_type = BUCKET_TYPES.get(str(row.get("bucket") or "").strip().lower())
+            if doc_type is None:
+                stat["not_documents"] += 1
+                continue
+            ident = str(row.get("newsid") or row.get("local_path") or row.get("url") or "").strip()
+            if ident and ident in seen:
+                stat["dupes"] += 1
+                continue
+            known_at = str(row.get("dissem_ts") or "").strip()
+            if not known_at:
+                stat["undated"] += 1
+                continue
+            local = str(row.get("local_path") or "").strip()
+            path = Path(local) if local else prof.raw_root / symbol / str(row.get("bucket")) / f"{ident}.pdf"
+            if local and not path.is_absolute():
+                path = prof.raw_root / path
+            if not path.is_file():
+                stat["missing"] += 1
+                continue
+            if ident:
+                seen.add(ident)
+            key = _rel_key(path, prof.raw_root)
+            pages, page_stats = _extract(conn, key, path, known_at)
+            meta = {k: row.get(k) for k in ("newsid", "bucket", "category", "subcat", "headline", "url", "sha256")}
+            conn.execute("INSERT OR REPLACE INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
+                key, symbol, row.get("isin"), doc_type,
+                _title(row.get("headline"), row.get("subcat"), row.get("category")) or path.stem,
+                _date_of(known_at), known_at, str(path), str(row.get("sha256") or ""), pages, json.dumps(meta),
+                "manifest.csv"))
+            conn.commit()
+            stat["docs"] += 1
+            stat["pages"] += pages
+            stat["needs_ocr"] += page_stats["needs_ocr"]
+            if page_stats["error"]:
+                stat["errors"] += 1
+        log(f"{symbol}: {stat} ({round(time.time() - started)}s)")
+    conn.close()
+    return counts
+
+
 # ---------------------------------------------------------------------------- coverage workbook
 def quarter_windows() -> list[tuple[str, str, str]]:
     """``(label, filing window start, end)`` for Q1 FY25 .. Q1 FY27; the last is cut at AS_OF."""
@@ -691,19 +770,37 @@ def coverage(cfg: Config, symbols: tuple[str, ...], out: Path, workbook: Path) -
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="T-049 C: collect every held document of the pilot companies")
-    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--symbols", default=",".join(DEFAULT_SYMBOLS))
+    parser.add_argument("--out", type=Path, default=None, help="default: the profile's pages_db, else D:\\RealityEngine\\pilot3\\pages.db")
+    parser.add_argument("--profile", type=Path, default=None,
+                        help="build profile JSON (T-056): read its manifest only and write its pages_db tables")
+    parser.add_argument("--symbols", default=None, help="default: every company of the profile, else the pilot3 three")
     parser.add_argument("--coverage", type=Path, default=None, help="default: DOC_COVERAGE.xlsx beside --out")
     parser.add_argument("--data-root", type=Path, default=None)
     args = parser.parse_args(argv)
-    symbols = tuple(s.strip().upper() for s in args.symbols.split(",") if s.strip())
+    if args.profile:
+        prof = profile.load(args.profile)
+        profile.activate(prof)
+        symbols = tuple(s.strip().upper() for s in (args.symbols or ",".join(prof.symbols)).split(",") if s.strip())
+        unknown = [s for s in symbols if s not in prof.symbols]
+        if unknown:
+            print(f"STOPPED unknown symbols {unknown}: profile {prof.name} has {list(prof.symbols)}", file=sys.stderr)
+            return 2
+        out = args.out or prof.pages_db
+        counts = collect_manifest(prof, symbols, out)
+        for symbol in symbols:
+            s = counts[symbol]
+            print(f"{symbol}: {s['docs']} docs, {s['pages']} pages ({s['undated']} undated, {s['missing']} files not held, "
+                  f"{s['not_documents']} not documents, {s['needs_ocr']} needs_ocr pages) -> {out}")
+        return 0
+    symbols = tuple(s.strip().upper() for s in (args.symbols or ",".join(DEFAULT_SYMBOLS)).split(",") if s.strip())
     unknown = [s for s in symbols if s not in COMPANIES]
     if unknown:
         print(f"STOPPED unknown symbols {unknown}: choose from {list(COMPANIES)}", file=sys.stderr)
         return 2
     cfg = Config(data_root=args.data_root or default_data_root())
-    counts = collect(cfg, symbols, args.out)
-    summary = coverage(cfg, symbols, args.out, args.coverage or args.out.parent / "DOC_COVERAGE.xlsx")
+    counts = collect(cfg, symbols, args.out or DEFAULT_OUT)
+    summary = coverage(cfg, symbols, args.out or DEFAULT_OUT,
+                       args.coverage or (args.out or DEFAULT_OUT).parent / "DOC_COVERAGE.xlsx")
     for symbol in symbols:
         s = summary[symbol]["_all"]
         print(f"{symbol}: {s['docs']} docs, {s['pages']} pages, newest known_at {s['newest_known_at']}, "
