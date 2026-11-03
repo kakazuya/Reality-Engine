@@ -13,9 +13,17 @@ questions answered correctly, NOT IN DATA only where the documents truly do not 
 Two phases, in order. Phase 2 does not start until Shivam approves Phase 1's question set.
 
 ## 2. Phase 1: the question set (Claude's work; no worker does bank reasoning)
-Make, per company, the questions a fundamental or technical investor would ask before investing, and only those
-that make sense for that company's business. Use the 1,073-case master bank (`tasks/master_bank/MASTER_BANK.jsonl`,
-families, archetypes) and the frozen 1,901 bank as the idea source, not as a fixed list.
+Make, per company, the questions a fundamental or technical investor would ask before investing (holding a year or
+more), and only those that make sense for that company's business. Inputs, in order (Shivam, 4 Nov):
+1. Research: what investors check before investing in each sector, which metrics each sector uses to judge
+   profitability and going concern, and what technical investors look at (trend, relative strength, volume and
+   delivery, event reactions, levels, bulk/block deals).
+2. The 1,073-case master bank (`tasks/master_bank/MASTER_BANK.jsonl`) and the frozen 1,901 bank as idea sources.
+   Drop document-specific probes ("what does page N of the deck dated X say"): they tested the store, not an
+   investor's need. Sorted list: `tasks/night_loop/questions/BANK_IDEAS_2026-11-04.xlsx` (keyword sort, reviewable).
+3. The library built from 1 and 2: `questions/LIBRARY_universal_technical.jsonl` (every company),
+   `questions/LIBRARY_sectors.jsonl` (per sector family) and `questions/sector_vocab.json` (metrics per sector).
+4. Company sets instantiate the library for each company with its own segments, products and documents.
 - Layers: a sector question set per sector family (lender, EPC/infrastructure, metals, ...), then each company's
   rewrite of it with its own segments, products and documents.
 - Orders: first order (a stated fact), second order (computed, trend, comparison, consistency across documents),

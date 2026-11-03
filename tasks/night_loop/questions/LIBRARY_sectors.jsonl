@@ -1,0 +1,134 @@
+{"tid":"BK01","scope":"sector:bank","lens":"growth","order":1,"q":"What were {co}'s advances and deposits at the end of {period}, and their YoY growth?"}
+{"tid":"BK02","scope":"sector:bank","lens":"funding","order":2,"q":"How have {co}'s CASA ratio and cost of deposits moved over 8 quarters?"}
+{"tid":"BK03","scope":"sector:bank","lens":"profitability","order":2,"q":"What is {co}'s NIM trend, and how much did repo-rate changes and deposit repricing explain it?"}
+{"tid":"BK04","scope":"sector:bank","lens":"asset_quality","order":1,"q":"What were {co}'s GNPA, NNPA, fresh slippages and provision coverage in {period}?"}
+{"tid":"BK05","scope":"sector:bank","lens":"asset_quality","order":2,"q":"What is {co}'s credit cost trend, and which segments (unsecured, MSME, agri, corporate) drove slippages?"}
+{"tid":"BK06","scope":"sector:bank","lens":"capital","order":1,"q":"What are {co}'s CAR, CET1 and LCR, and how much headroom is there over the regulatory minimum?"}
+{"tid":"BK07","scope":"sector:bank","lens":"efficiency","order":2,"q":"What are {co}'s cost-to-income, RoA and RoE, compared with peers?"}
+{"tid":"BK08","scope":"sector:bank","lens":"funding","order":2,"q":"What is {co}'s credit-deposit ratio, and does it limit future loan growth?"}
+{"tid":"BK09","scope":"sector:bank","lens":"valuation","order":2,"q":"What is {co}'s price to adjusted book value versus its RoA and its own history?"}
+{"tid":"BK10","scope":"sector:bank","lens":"guidance","order":2,"q":"What loan growth, NIM and credit cost did {co} guide for, and did it deliver?"}
+{"tid":"BK11","scope":"sector:bank","lens":"ripple","order":3,"q":"How would an RBI repo cut or a change in risk weights on unsecured loans affect {co}'s NIM and growth?"}
+{"tid":"NB01","scope":"sector:nbfc","lens":"growth","order":1,"q":"What was {co}'s AUM at the end of {period}, its YoY growth, and the split by product?"}
+{"tid":"NB02","scope":"sector:nbfc","lens":"growth","order":1,"q":"How many new loans and new customers did {co} book in {period}, and what is its customer franchise?"}
+{"tid":"NB03","scope":"sector:nbfc","lens":"profitability","order":2,"q":"How have {co}'s NIM, yield and cost of funds moved over 8 quarters?"}
+{"tid":"NB04","scope":"sector:nbfc","lens":"asset_quality","order":1,"q":"What were {co}'s GNPA, NNPA, Stage 2 share and provision coverage in {period}?"}
+{"tid":"NB05","scope":"sector:nbfc","lens":"asset_quality","order":2,"q":"What is {co}'s credit cost (loan losses to average AUM) trend, and which products drove it?"}
+{"tid":"NB06","scope":"sector:nbfc","lens":"efficiency","order":2,"q":"What is {co}'s opex to net total income, and is operating leverage improving?"}
+{"tid":"NB07","scope":"sector:nbfc","lens":"funding","order":1,"q":"What is {co}'s borrowing mix (banks, NCDs, CP, deposits) and its liquidity buffer?"}
+{"tid":"NB08","scope":"sector:nbfc","lens":"funding","order":2,"q":"Does {co} have a structural ALM mismatch in the short buckets?"}
+{"tid":"NB09","scope":"sector:nbfc","lens":"capital","order":1,"q":"What are {co}'s capital adequacy and Tier 1 ratios, and when would it need fresh capital at its growth rate?"}
+{"tid":"NB10","scope":"sector:nbfc","lens":"profitability","order":2,"q":"What are {co}'s RoA and RoE over 3 years, and the book value per share?"}
+{"tid":"NB11","scope":"sector:nbfc","lens":"guidance","order":2,"q":"What AUM growth, NIM, credit cost and RoA did {co} guide for {period}, and how did the guidance change between calls?"}
+{"tid":"NB12","scope":"sector:nbfc","lens":"ripple","order":3,"q":"How would higher bank funding costs or RBI risk-weight changes on NBFC loans flow into {co}'s margins and growth?"}
+{"tid":"LI01","scope":"sector:insurance_life","lens":"growth","order":1,"q":"What were {co}'s APE and VNB in {period}, and the VNB margin?"}
+{"tid":"LI02","scope":"sector:insurance_life","lens":"mix","order":2,"q":"How has {co}'s product mix (ULIP, par, non-par, protection, annuity) and channel mix shifted, and what did that do to VNB margin?"}
+{"tid":"LI03","scope":"sector:insurance_life","lens":"quality","order":1,"q":"What are {co}'s 13th and 61st month persistency ratios, and the trend?"}
+{"tid":"LI04","scope":"sector:insurance_life","lens":"value","order":1,"q":"What is {co}'s embedded value and operating return on EV?"}
+{"tid":"LI05","scope":"sector:insurance_life","lens":"capital","order":1,"q":"What is {co}'s solvency ratio versus the 150% minimum?"}
+{"tid":"LI06","scope":"sector:insurance_life","lens":"ripple","order":3,"q":"How would a change in surrender-value rules or tax on high-value policies affect {co}'s APE and margin?"}
+{"tid":"GI01","scope":"sector:insurance_general","lens":"growth","order":1,"q":"What were {co}'s GDPI and market share in {period}, by segment (motor, health, fire, crop)?"}
+{"tid":"GI02","scope":"sector:insurance_general","lens":"profitability","order":2,"q":"What are {co}'s loss ratio, expense ratio and combined ratio over 8 quarters?"}
+{"tid":"GI03","scope":"sector:insurance_general","lens":"profitability","order":2,"q":"How much of {co}'s profit comes from investment income versus underwriting?"}
+{"tid":"GI04","scope":"sector:insurance_general","lens":"capital","order":1,"q":"What is {co}'s solvency ratio?"}
+{"tid":"CM01","scope":"sector:capital_markets","lens":"growth","order":1,"q":"What were {co}'s AUM (or active clients, or traded volume) and market share in {period}?"}
+{"tid":"CM02","scope":"sector:capital_markets","lens":"profitability","order":2,"q":"How has {co}'s yield on AUM or revenue per client moved, and why?"}
+{"tid":"CM03","scope":"sector:capital_markets","lens":"ripple","order":3,"q":"How would SEBI changes to F&O rules or expense-ratio caps affect {co}'s revenue?"}
+{"tid":"IT01","scope":"sector:it_services","lens":"growth","order":1,"q":"What was {co}'s revenue in USD and constant-currency growth QoQ and YoY in {period}?"}
+{"tid":"IT02","scope":"sector:it_services","lens":"demand","order":1,"q":"What deal TCV and large deals did {co} sign in {period}, and the book-to-bill?"}
+{"tid":"IT03","scope":"sector:it_services","lens":"profitability","order":2,"q":"What is {co}'s EBIT margin trend, and what moved it (wage hikes, utilisation, rupee, subcontracting)?"}
+{"tid":"IT04","scope":"sector:it_services","lens":"people","order":1,"q":"What are {co}'s headcount, net additions, utilisation and attrition in {period}?"}
+{"tid":"IT05","scope":"sector:it_services","lens":"mix","order":2,"q":"How is {co}'s revenue split by vertical and geography, and which verticals are slowing?"}
+{"tid":"IT06","scope":"sector:it_services","lens":"guidance","order":2,"q":"What revenue growth and margin band did {co} guide for the year, and how did it revise it?"}
+{"tid":"IT07","scope":"sector:it_services","lens":"ripple","order":3,"q":"How do US tech spending cuts, H-1B rule changes or a rupee move flow into {co}'s growth and margin?"}
+{"tid":"PH01","scope":"sector:pharma","lens":"mix","order":1,"q":"What were {co}'s revenues from India formulations, US generics, emerging markets and API in {period}?"}
+{"tid":"PH02","scope":"sector:pharma","lens":"regulatory","order":1,"q":"What is the USFDA status of {co}'s key plants (OAI, warning letter, Form 483, clean inspections)?"}
+{"tid":"PH03","scope":"sector:pharma","lens":"pipeline","order":1,"q":"How many ANDAs has {co} filed, had approved and still pending, and what launches are planned?"}
+{"tid":"PH04","scope":"sector:pharma","lens":"profitability","order":2,"q":"What are {co}'s gross margin and R&D spend as a share of sales over 3 years?"}
+{"tid":"PH05","scope":"sector:pharma","lens":"growth","order":2,"q":"Is {co}'s India business growing faster than the market, and what share is chronic therapy?"}
+{"tid":"PH06","scope":"sector:pharma","lens":"ripple","order":3,"q":"How would US price erosion, NLEM price controls or US tariffs on pharma imports affect {co}?"}
+{"tid":"HO01","scope":"sector:hospitals","lens":"operations","order":1,"q":"What were {co}'s operational beds, occupancy and ARPOB in {period}?"}
+{"tid":"HO02","scope":"sector:hospitals","lens":"growth","order":1,"q":"How many beds is {co} adding, where, when and at what capex per bed?"}
+{"tid":"HO03","scope":"sector:hospitals","lens":"mix","order":2,"q":"What is {co}'s payor mix (cash, insurance, government schemes, international) and its effect on ARPOB?"}
+{"tid":"FM01","scope":"sector:fmcg","lens":"growth","order":1,"q":"What were {co}'s volume growth and value growth in {period}, and how much was price?"}
+{"tid":"FM02","scope":"sector:fmcg","lens":"mix","order":2,"q":"How did rural and urban demand differ for {co}, and which categories led?"}
+{"tid":"FM03","scope":"sector:fmcg","lens":"profitability","order":2,"q":"How did input costs (palm oil, crude derivatives, milk, wheat) move {co}'s gross margin, and did it raise prices?"}
+{"tid":"FM04","scope":"sector:fmcg","lens":"spend","order":2,"q":"What is {co}'s advertising and promotion spend as a share of sales, and the trend?"}
+{"tid":"FM05","scope":"sector:fmcg","lens":"channels","order":1,"q":"What is {co}'s distribution reach and the share of modern trade, e-commerce and quick commerce?"}
+{"tid":"FM06","scope":"sector:fmcg","lens":"ripple","order":3,"q":"How would a weak monsoon or a GST rate change flow into {co}'s volumes?"}
+{"tid":"RT01","scope":"sector:consumer_retail","lens":"growth","order":1,"q":"How many stores did {co} add in {period}, and what is its retail area?"}
+{"tid":"RT02","scope":"sector:consumer_retail","lens":"productivity","order":2,"q":"What are {co}'s same-store sales growth and revenue per square foot?"}
+{"tid":"RT03","scope":"sector:consumer_retail","lens":"profitability","order":2,"q":"What are {co}'s gross margin and inventory turns, and is store expansion diluting margins?"}
+{"tid":"CI01","scope":"sector:consumer_internet","lens":"growth","order":1,"q":"What were {co}'s GOV and adjusted revenue in {period} by business (food delivery, quick commerce, other)?"}
+{"tid":"CI02","scope":"sector:consumer_internet","lens":"unit_economics","order":2,"q":"What are {co}'s take rate, contribution margin and adjusted EBITDA as a share of GOV, and their trend?"}
+{"tid":"CI03","scope":"sector:consumer_internet","lens":"users","order":1,"q":"What are {co}'s monthly transacting users, order frequency and average order value?"}
+{"tid":"CI04","scope":"sector:consumer_internet","lens":"cash","order":2,"q":"What is {co}'s cash balance and quarterly cash burn, and how many quarters of runway is that?"}
+{"tid":"CI05","scope":"sector:consumer_internet","lens":"expansion","order":1,"q":"How many dark stores or cities did {co} add, and what did that do to contribution margin?"}
+{"tid":"CI06","scope":"sector:consumer_internet","lens":"guidance","order":2,"q":"When did {co} guide to reach adjusted EBITDA break-even, and is it on track?"}
+{"tid":"AO01","scope":"sector:auto_oem","lens":"volumes","order":1,"q":"What were {co}'s monthly and quarterly volumes, domestic and export, in {period}?"}
+{"tid":"AO02","scope":"sector:auto_oem","lens":"share","order":2,"q":"How has {co}'s market share moved in its key segments over 4 quarters?"}
+{"tid":"AO03","scope":"sector:auto_oem","lens":"profitability","order":2,"q":"What is {co}'s realisation per vehicle and EBITDA margin, and how did commodity costs affect it?"}
+{"tid":"AO04","scope":"sector:auto_oem","lens":"transition","order":1,"q":"What share of {co}'s volumes are EVs, and what EV launches and capacity are planned?"}
+{"tid":"AO05","scope":"sector:auto_oem","lens":"channel","order":2,"q":"What is {co}'s dealer inventory and discounting level?"}
+{"tid":"AA01","scope":"sector:auto_ancillary","lens":"mix","order":1,"q":"How is {co}'s revenue split between OEM, aftermarket and exports, and by customer?"}
+{"tid":"AA02","scope":"sector:auto_ancillary","lens":"growth","order":2,"q":"Is {co} growing faster than the vehicle production of its customers (content per vehicle)?"}
+{"tid":"AA03","scope":"sector:auto_ancillary","lens":"pipeline","order":1,"q":"What new programs and EV-related orders has {co} won, and their lifetime value?"}
+{"tid":"EP01","scope":"sector:epc_capital_goods","lens":"orders","order":1,"q":"What was {co}'s order book at the end of {period}, and how much is L1 (lowest bidder, not yet signed)?"}
+{"tid":"EP02","scope":"sector:epc_capital_goods","lens":"orders","order":1,"q":"What order inflow did {co} win in {period}, by segment and geography?"}
+{"tid":"EP03","scope":"sector:epc_capital_goods","lens":"orders","order":2,"q":"What is {co}'s order book to trailing revenue (years of visibility), versus its history?"}
+{"tid":"EP04","scope":"sector:epc_capital_goods","lens":"orders","order":2,"q":"How is {co}'s order book split by segment, client type (government, private, international) and fixed-price versus variable-price?"}
+{"tid":"EP05","scope":"sector:epc_capital_goods","lens":"execution","order":2,"q":"Is {co} converting its order book into revenue faster or slower than before, and which projects are delayed?"}
+{"tid":"EP06","scope":"sector:epc_capital_goods","lens":"cash","order":1,"q":"What are {co}'s net working capital days, receivables and retention money, and their trend?"}
+{"tid":"EP07","scope":"sector:epc_capital_goods","lens":"profitability","order":2,"q":"How has {co}'s EBITDA margin moved as legacy low-margin orders are executed, and what margin does management expect?"}
+{"tid":"EP08","scope":"sector:epc_capital_goods","lens":"guidance","order":2,"q":"What revenue growth, margin and order inflow did {co} guide for the year, and did it deliver?"}
+{"tid":"EP09","scope":"sector:epc_capital_goods","lens":"pipeline","order":1,"q":"What tender pipeline does {co} see, and in which segments?"}
+{"tid":"EP10","scope":"sector:epc_capital_goods","lens":"orders","order":1,"q":"What are {co}'s largest single orders announced in the last year, from whom, and their size relative to revenue?"}
+{"tid":"EP11","scope":"sector:epc_capital_goods","lens":"ripple","order":3,"q":"How would a rise in steel, aluminium or copper prices affect {co}'s margins, given its fixed-price share?"}
+{"tid":"EP12","scope":"sector:epc_capital_goods","lens":"ripple","order":3,"q":"How would the government's transmission, railway or water capex plan for the coming year translate into {co}'s order inflow?"}
+{"tid":"CE01","scope":"sector:cement","lens":"volumes","order":1,"q":"What were {co}'s sales volumes and capacity utilisation in {period}?"}
+{"tid":"CE02","scope":"sector:cement","lens":"unit_economics","order":2,"q":"What are {co}'s realisation, cost and EBITDA per tonne, and their trend?"}
+{"tid":"CE03","scope":"sector:cement","lens":"costs","order":2,"q":"How did power and fuel (pet coke, coal) and freight costs per tonne move for {co}?"}
+{"tid":"CE04","scope":"sector:cement","lens":"growth","order":1,"q":"What capacity is {co} adding, where, when, and at what capex per tonne?"}
+{"tid":"MF01","scope":"sector:metals_ferrous","lens":"volumes","order":1,"q":"What were {co}'s crude steel production and sales volumes in {period}?"}
+{"tid":"MF02","scope":"sector:metals_ferrous","lens":"unit_economics","order":2,"q":"What are {co}'s realisation and EBITDA per tonne, and how did coking coal and iron ore costs affect them?"}
+{"tid":"MF03","scope":"sector:metals_ferrous","lens":"ripple","order":3,"q":"How would a safeguard duty on steel imports or Chinese export prices affect {co}'s realisations?"}
+{"tid":"MN01","scope":"sector:metals_nonferrous","lens":"volumes","order":1,"q":"What were {co}'s aluminium and copper production and shipments in {period}, by business?"}
+{"tid":"MN02","scope":"sector:metals_nonferrous","lens":"unit_economics","order":2,"q":"What is {co}'s upstream aluminium EBITDA per tonne, and how did LME price and cost of production move it?"}
+{"tid":"MN03","scope":"sector:metals_nonferrous","lens":"costs","order":2,"q":"How did {co}'s cost of production change quarter on quarter, and what did management expect next quarter (alumina, coal, power)?"}
+{"tid":"MN04","scope":"sector:metals_nonferrous","lens":"hedging","order":1,"q":"What share of {co}'s aluminium volume is hedged, and at what price versus spot LME?"}
+{"tid":"MN05","scope":"sector:metals_nonferrous","lens":"downstream","order":2,"q":"What are {co}'s downstream (rolling, extrusion) shipments and EBITDA per tonne, including its overseas rolling subsidiary?"}
+{"tid":"MN06","scope":"sector:metals_nonferrous","lens":"mix","order":2,"q":"How much of {co}'s EBITDA comes from upstream versus downstream, India versus overseas?"}
+{"tid":"MN07","scope":"sector:metals_nonferrous","lens":"growth","order":1,"q":"What capex and capacity expansion has {co} announced (smelter, refinery, copper, downstream), and the timeline?"}
+{"tid":"MN08","scope":"sector:metals_nonferrous","lens":"ripple","order":3,"q":"How would a 10% move in LME aluminium or US tariffs on aluminium imports affect {co}'s EBITDA?"}
+{"tid":"CO01","scope":"sector:coal_mining","lens":"volumes","order":1,"q":"What were {co}'s coal production and offtake in {period}, and the target for the year?"}
+{"tid":"CO02","scope":"sector:coal_mining","lens":"pricing","order":2,"q":"What are {co}'s FSA and e-auction realisations per tonne and the e-auction premium over notified price?"}
+{"tid":"CO03","scope":"sector:coal_mining","lens":"costs","order":2,"q":"What is {co}'s cost per tonne, how much is employee cost, and what is the effect of a wage revision?"}
+{"tid":"CO04","scope":"sector:coal_mining","lens":"reserves","order":1,"q":"What are {co}'s reserves, stripping ratio and overburden removal trend?"}
+{"tid":"CO05","scope":"sector:coal_mining","lens":"ripple","order":3,"q":"How would higher power demand, imported coal prices or pithead stock levels affect {co}'s e-auction premium?"}
+{"tid":"OU01","scope":"sector:oil_gas_upstream","lens":"volumes","order":1,"q":"What were {co}'s oil and gas production and realisation per barrel in {period}?"}
+{"tid":"OU02","scope":"sector:oil_gas_upstream","lens":"ripple","order":3,"q":"How would a windfall tax, APM gas price change or crude price move affect {co}?"}
+{"tid":"OR01","scope":"sector:oil_refining_marketing","lens":"margins","order":1,"q":"What were {co}'s throughput, GRM and marketing margin in {period}, and inventory gains or losses?"}
+{"tid":"OR02","scope":"sector:oil_refining_marketing","lens":"ripple","order":3,"q":"How would a fall in crude or a freeze in retail fuel prices affect {co}'s marketing margins and LPG losses?"}
+{"tid":"GD01","scope":"sector:gas_distribution","lens":"volumes","order":1,"q":"What were {co}'s gas volumes by CNG, domestic PNG and industrial PNG in {period}?"}
+{"tid":"GD02","scope":"sector:gas_distribution","lens":"margins","order":2,"q":"What is {co}'s EBITDA per scm, and how did APM gas allocation cuts affect it?"}
+{"tid":"PW01","scope":"sector:power","lens":"capacity","order":1,"q":"What is {co}'s installed capacity by fuel, and the plant load factor or CUF in {period}?"}
+{"tid":"PW02","scope":"sector:power","lens":"revenue","order":2,"q":"What share of {co}'s capacity is under long-term PPA versus merchant, and what were merchant prices?"}
+{"tid":"PW03","scope":"sector:power","lens":"growth","order":1,"q":"What capacity is {co} adding (renewables, thermal, transmission), and the capex guidance?"}
+{"tid":"PW04","scope":"sector:power","lens":"cash","order":2,"q":"How large are {co}'s receivables from discoms, and are they falling?"}
+{"tid":"CH01","scope":"sector:chemicals","lens":"volumes","order":2,"q":"How did {co}'s volumes and realisations move, and how much was price versus volume?"}
+{"tid":"CH02","scope":"sector:chemicals","lens":"ripple","order":3,"q":"How have Chinese prices and dumping affected {co}'s realisations and margins?"}
+{"tid":"CH03","scope":"sector:chemicals","lens":"growth","order":1,"q":"What capex has {co} committed, for which products, and the expected asset turnover?"}
+{"tid":"AG01","scope":"sector:agro_fertiliser","lens":"cash","order":2,"q":"How large are {co}'s subsidy receivables from the government, and how have they moved?"}
+{"tid":"AG02","scope":"sector:agro_fertiliser","lens":"ripple","order":3,"q":"How would the monsoon or a change in NBS subsidy rates affect {co}'s volumes and margins?"}
+{"tid":"RE01","scope":"sector:real_estate","lens":"sales","order":1,"q":"What were {co}'s pre-sales value and area, realisation per sq ft and collections in {period}?"}
+{"tid":"RE02","scope":"sector:real_estate","lens":"pipeline","order":1,"q":"What launches does {co} plan, and what is its land bank and unsold inventory?"}
+{"tid":"RE03","scope":"sector:real_estate","lens":"cash","order":2,"q":"What is {co}'s net debt trend versus its collections?"}
+{"tid":"TE01","scope":"sector:telecom","lens":"operations","order":1,"q":"What were {co}'s subscribers, ARPU and churn in {period}?"}
+{"tid":"TE02","scope":"sector:telecom","lens":"pricing","order":2,"q":"How did the last tariff hike change {co}'s ARPU and subscriber base?"}
+{"tid":"TE03","scope":"sector:telecom","lens":"liabilities","order":1,"q":"What are {co}'s spectrum and AGR liabilities and their payment schedule?"}
+{"tid":"TX01","scope":"sector:textiles","lens":"margins","order":2,"q":"How did cotton prices and yarn spreads affect {co}'s margins?"}
+{"tid":"LG01","scope":"sector:logistics","lens":"volumes","order":1,"q":"What were {co}'s volumes (TEU, tonnage, shipments) and realisation per unit in {period}?"}
+{"tid":"AV01","scope":"sector:aviation","lens":"operations","order":1,"q":"What were {co}'s capacity (ASK), load factor, yield, RASK and CASK in {period}?"}
+{"tid":"AV02","scope":"sector:aviation","lens":"ripple","order":3,"q":"How would a jet fuel price rise or rupee depreciation affect {co}'s CASK?"}
+{"tid":"HT01","scope":"sector:hotels","lens":"operations","order":1,"q":"What were {co}'s occupancy, ARR and RevPAR in {period}, and the room pipeline?"}
+{"tid":"MD01","scope":"sector:media","lens":"revenue","order":1,"q":"How did {co}'s advertising and subscription revenues move in {period}?"}
