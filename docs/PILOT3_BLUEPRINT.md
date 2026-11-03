@@ -99,6 +99,12 @@ definitions not reconciled (BHFL share of profit, ROCE), KEC transcripts stored 
 5. Run unchanged on 10 pilot-60 companies across sectors, measure fill rate, fixes needed and build time per company.
 6. Embeddings, chunking and the rest in the background once a working database exists for every company.
 
+## 7a. Build timings (MSI, 4 Nov 2026, live rebuild)
+- `docs_collect` (all 3 companies, 1,999 documents): 528 s, ~3 min per company.
+- `build --part all` with 4 OCR dbs: 484 s for 23,558 pages (~2.7 min per company, single process).
+- After the dates + guidance merges: guidance 660 -> 329 rows (KEC 218, BAJFINANCE 52, HINDALCO 59): check recall
+  on the next re-answer; kpi_series 38,851; zero Q1FY27 rows from documents known before 2026-04-01.
+
 ## 8. Where the evidence lives
 - Reports: `D:\RealityEngine\reports\2026-11-03_mcp_answer_grade.html`, `2026-11-04_mcp_reanswer_grade.html`,
   `2026-11-04_embedding_test.html`, `2026-11-03_answer_check_final.html`, `2026-11-03_ocr_hp_vs_msi.html`.

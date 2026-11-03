@@ -10,7 +10,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 - Proxy is the last resort, reported apart from real answers. Do not loosen a grader to raise a score.
 
 ## How we work
-- Claude reviews, workers build. DeepSeek on `dsh` at max effort; read the clock for off-peak yourself (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST). Do not give pilot bank reasoning to a worker.
+- Claude reviews, workers build. DeepSeek on `dsh` at max effort; read the clock for off-peak yourself (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST). Do not give pilot bank reasoning to a worker. Brief a worker only after Claude has gathered its evidence (Shivam, 4 Nov, this project only): the defect rows and ids, the exact file/function/line to edit, the table columns, and a fast check command (`--part`, one company, fixed check pages), so it does not rediscover them.
 - Lean: nothing gets added unless it stops a failure we have already had. At most 2 code workers at once; data and research jobs use idle machines. Finished branches merged or deleted within 24 hours.
 - No docs, no merge; doc sweep and data inventory at session close, for Wolf, Eagle and every worker. [check: doc_gate]
 - Start files stay short: `STATE.md` 40 lines, `AGENTS.md` 150, this file 40. [check: doc_gate]

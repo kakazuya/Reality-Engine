@@ -18,6 +18,11 @@ Ticket: *the row this work closes: `Ticket: T-014`, or `No-ticket: <reason>` whe
 An unknown T-number is refused with `ticket_unknown`; add the row first with
 `python -m reality_engine.scripts.task_board add`. The worker's brief then carries that one row.*
 
+Evidence (required in this project, Shivam 4 Nov 2026; the controller gathers it BEFORE the start): *for each
+defect, the rows that show it (table, row ids, values, doc_key + page), the file + function + line to edit, the
+columns of every table it will query, and the fast check command (`build --part <part>` on one company, the fixed
+check pages). Workers spent ~50 calls rediscovering these on 4 Nov; a brief without them is not ready.*
+
 ## Small fixes
 
 `small_fix=true` allows a one-line brief as long as it carries an accept command; it needs no ticket:
