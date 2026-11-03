@@ -59,17 +59,20 @@ def test_stop_blocks_a_running_job_with_no_waiter_armed():
 
 
 def test_stop_passes_a_running_job_behind_a_live_waiter(root: Path):
-    wait_path = root / "wait.json"
-    wait_path.write_text(json.dumps({"pid": os.getpid(), "started_at": "now"}), encoding="utf-8")
-    assert job_watch.waiter_alive(wait_path) is True
+    wait_dir = root / "waiters"
+    wait_dir.mkdir()
+    waiter = wait_dir / f"{os.getpid()}.json"
+    waiter.write_text(json.dumps({"pid": os.getpid(), "started_at": "now"}), encoding="utf-8")
+    assert job_watch.waiter_alive(wait_dir) is True
     assert (
         session_hooks.stop_output(
-            {}, ["RUNNING job 3m, 17 tool calls"], live_work=True, waiter=job_watch.waiter_alive(wait_path)
+            {}, ["RUNNING job 3m, 17 tool calls"], live_work=True, waiter=job_watch.waiter_alive(wait_dir)
         )
         == ""
     )
-    wait_path.write_text(json.dumps({"pid": 2**31 - 1}), encoding="utf-8")
-    assert job_watch.waiter_alive(wait_path) is False
+    waiter.unlink()
+    (wait_dir / f"{2**31 - 1}.json").write_text(json.dumps({"pid": 2**31 - 1}), encoding="utf-8")
+    assert job_watch.waiter_alive(wait_dir) is False
 
 
 def test_stop_never_blocks_twice_or_inside_the_doc_loop(monkeypatch):
@@ -80,10 +83,10 @@ def test_stop_never_blocks_twice_or_inside_the_doc_loop(monkeypatch):
 
 
 def test_stop_main_arms_a_wait_then_passes_behind_the_recorded_pid(root: Path, monkeypatch):
-    monkeypatch.setattr(job_watch, "status", lambda: ["RUNNING job 3m, 17 tool calls"])
+    monkeypatch.setattr(job_watch, "status", lambda *args, **kwargs: ["RUNNING job 3m, 17 tool calls"])
     monkeypatch.setattr(job_watch, "live_jobs", lambda: True)
     monkeypatch.setattr(job_watch, "live_registered", lambda: False)
-    monkeypatch.setattr(job_watch, "WAIT_PATH", root / "wait.json")
+    monkeypatch.setattr(job_watch, "WAIT_DIR", root / "waiters")
     monkeypatch.setattr(sys, "stdin", io.StringIO("{}"))
 
     output = io.StringIO()
@@ -91,7 +94,8 @@ def test_stop_main_arms_a_wait_then_passes_behind_the_recorded_pid(root: Path, m
         assert session_hooks.main(["stop"]) == 0
     assert "arm a wait" in _reason(output.getvalue())
 
-    (root / "wait.json").write_text(json.dumps({"pid": os.getpid()}), encoding="utf-8")
+    (root / "waiters").mkdir()
+    (root / "waiters" / f"{os.getpid()}.json").write_text(json.dumps({"pid": os.getpid()}), encoding="utf-8")
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         assert session_hooks.main(["stop"]) == 0
@@ -99,7 +103,7 @@ def test_stop_main_arms_a_wait_then_passes_behind_the_recorded_pid(root: Path, m
 
 
 def test_stop_main_blocks_before_arming_on_an_unreviewed_finish(monkeypatch):
-    monkeypatch.setattr(job_watch, "status", lambda: ["FINISHED, NEEDS REVIEW job dsh/job"])
+    monkeypatch.setattr(job_watch, "status", lambda *args, **kwargs: ["FINISHED, NEEDS REVIEW job dsh/job"])
     monkeypatch.setattr(job_watch, "live_jobs", lambda: False)
     monkeypatch.setattr(job_watch, "live_registered", lambda: False)
     monkeypatch.setattr(sys, "stdin", io.StringIO("{}"))

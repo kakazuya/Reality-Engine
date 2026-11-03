@@ -9,3 +9,9 @@ Stop if: you would need to change plugins/dsh-worker/ supervisor code or .claude
 Budget: 120 tool calls.
 Ticket: T-050
 Report: list changed files, test output, and a line `Docs updated: <files>`.
+
+Update 3 Nov (T-053): the current description is section L of `docs/DEVELOPER_GUIDE.md`. `wait` now
+reports the review lines that already exist before it takes its baseline (`--ignore-existing` keeps
+the old baseline), reads an uncapped snapshot, treats a half-written `status.json` as live, and
+records one file per waiter in `.tmp/job_watch_wait/<pid>.json` with the process creation time.
+The Stop hook reads the uncapped line list.
