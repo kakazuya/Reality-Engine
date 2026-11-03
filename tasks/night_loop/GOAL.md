@@ -78,8 +78,11 @@ checks, tests' assertions, rulings, guidelines or this file; writing the live da
 loop; work outside the queue.
 
 ## 6. Boundaries
-At most 2 dsh workers at once in total; one headless loop at a time, <= 150 turns, <= 2 hours, at most 4 loops
-before Shivam reviews; no dsh starts in peak hours (weekdays 06:30-09:30, 11:30-15:30 IST); pause starts under
+Companies and window: `PILOT10.md` (10 companies, one per sector; last 4 quarters only). Never rebuild the whole
+database to test a fix: rebuild only the parts and companies it touches (Shivam, 4 Nov). At most 2 dsh workers at
+once, tied to the running loop; one headless loop at a time, context budget about 400k (killed at 480k), 5 loops
+before Shivam reviews (loop 1 Phase 1 + raw data, loops 2-5 Phase 2); standing loop rules `LOOP_BRIEF.md`,
+learnings passed on in `HANDOFF.md`; no dsh starts in peak hours (weekdays 06:30-09:30, 11:30-15:30 IST); pause starts under
 2.5 GB free RAM; tests one file per process. The wrapper greps loop and worker transcripts for reads of the hidden
 split; a hit rejects the loop. Docs updated with every merge.
 
