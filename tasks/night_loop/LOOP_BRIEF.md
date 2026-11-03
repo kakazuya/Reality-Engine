@@ -13,8 +13,10 @@ reports and run existing scripts). Read in this order and nothing else first:
   Full rebuilds cost hours and taught nothing last time.
 - Timeline is the last 4 quarters only. Do not fetch, read or extract anything older.
 - At most 2 dsh workers at once (count any already running: `list_workers`). Start them only off-peak
-  (peak = Mon-Fri 06:30-09:30 and 11:30-15:30 IST; read the clock yourself). During peak, gather evidence and
-  write briefs; start at the next off-peak minute.
+  (peak = Mon-Fri 06:30-09:30 and 11:30-15:30 IST; read the clock yourself). During DeepSeek peak do not wait:
+  start a Sonnet 5.5 (effort medium) worker instead with the same brief: `python tasks/night_loop/sonnet_worker.py
+  start <name> <brief.md>`, then `... wait <name> --seconds 540` (repeat) and read its `result.md`; it counts as one
+  of the 2 slots (Shivam, 4 Nov).
 - Brief a worker only with the evidence gathered (project rule): defect rows and ids, file / function / line,
   table columns, a fast check command. Template `tasks/worker_context/BRIEF_TEMPLATE.md` (seven fields incl.
   Evidence). Use `use_worktree=true`, `permission=workspace-write` (or `write_scope='data'` with `writes` for a job

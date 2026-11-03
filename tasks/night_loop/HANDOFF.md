@@ -12,6 +12,9 @@
   fixed in it, so pilot10 needs it generalised (symbol list, data root, output path). Fast checks exist:
   `build --part <p> --symbols <S>` (extractors only), `python -m reality_engine.pilot3.checkpages run`.
 
+- Wrapper note 06:00 IST (Shivam): in DeepSeek peak hours use a Sonnet 5.5 medium worker instead of waiting:
+  `python tasks/night_loop/sonnet_worker.py start <name> <brief.md>` / `wait <name>` (see LOOP_BRIEF.md).
+
 ## Next
 Loop 1: Phase 1 company question sets for the 10 companies + raw data for the 7 new ones (see loop_01_brief.md).
 
