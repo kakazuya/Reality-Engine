@@ -36,13 +36,28 @@ FORMULAS = [
     ("F_BVPS", "book_value_per_share", "net_worth / shares_outstanding", "net_worth,shares_outstanding", "inr_per_share",
      "Needs net_worth in fin_annual_line"),
     ("F_MCAP", "market_cap", "close * shares_outstanding", "close,shares_outstanding", "inr", "raw close, shares as filed"),
+    ("F_ND_EBITDA", "net_debt_to_ebitda", "net_debt / ltm_ebitda", "net_debt,ebitda", "x",
+     "XBRL-derived net debt = borrowings - cash - other bank balances - current investments; EBITDA of the 4 quarters to the date"),
+    ("F_DE", "debt_to_equity", "total_borrowings / net_worth", "total_borrowings,net_worth", "x", "borrowings incl. deposits for a lender"),
+    ("F_ROCE", "roce", "100 * ltm_ebit / capital_employed", "ebit,capital_employed", "pct",
+     "capital employed = total assets - current liabilities at the period end (closing, not average)"),
+    ("F_ROE", "roe", "100 * ltm_pat / net_worth", "pat,net_worth", "pct", "closing net worth (equity attributable to owners)"),
+    ("F_ROA", "roa", "100 * ltm_pat / total_assets", "pat,total_assets", "pct", "closing total assets"),
+    ("F_REC_DAYS", "receivable_days", "365 * trade_receivables / ltm_revenue", "trade_receivables,revenue_from_operations", "days",
+     "closing trade receivables (current + non-current) over trailing-4-quarter revenue"),
+    ("F_INV_DAYS", "inventory_days", "365 * inventories / ltm_revenue", "inventories,revenue_from_operations", "days", "revenue basis"),
+    ("F_PAY_DAYS", "payable_days", "365 * trade_payables / ltm_revenue", "trade_payables,revenue_from_operations", "days", "revenue basis"),
+    ("F_NWC_DAYS", "nwc_days", "365 * (receivables + inventories - payables) / ltm_revenue", "receivables,inventories,payables",
+     "days", "trade working capital only; the company's own NWC-days figure is stored beside it as company_stated"),
+    ("F_CUR", "current_ratio", "current_assets / current_liabilities", "current_assets,current_liabilities", "x", ""),
     ("F_PE", "pe", "close / trailing_eps", "close,eps_basic", "x",
      "EPS of each quarter restated to the valuation date's share basis by the cumulative split factor"),
     ("F_PB", "pb", "market_cap / net_worth", "market_cap,net_worth", "x", "Needs net_worth"),
     ("F_EV_EBITDA", "ev_ebitda", "(market_cap + net_debt) / trailing_ebitda", "market_cap,net_debt,ebitda", "x", "Needs net_debt"),
 ]
 LENDERS = ("BAJFINANCE",)  # finance cost is the cost of goods for a lender: no EBITDA / EBIT metrics
-FLOW_ITEMS = ("revenue_from_operations", "pat", "ebitda", "ebit", "finance_cost", "depreciation", "other_income")
+FLOW_ITEMS = ("revenue_from_operations", "pat", "ebitda", "ebit", "finance_cost", "depreciation", "other_income",
+              "interest_income", "net_interest_income", "impairment_financial_instruments")
 
 
 def _quarters(conn: sqlite3.Connection, symbol: str) -> dict:
@@ -172,6 +187,7 @@ def build_ratios(conn: sqlite3.Connection) -> dict:
         out: list = []
         _panel(conn, symbol, isin, out)
         _payout_bvps(conn, symbol, isin, out)
+        _balance_ratios(conn, symbol, isin, out)
         conn.executemany("INSERT INTO ratio_panel VALUES (" + ",".join("?" * 16) + ")", out)
         counts[symbol] = {"ratio_panel": len(out), "valuation_daily": _valuation(conn, symbol, isin)}
     conn.commit()
@@ -186,25 +202,90 @@ def _payout_bvps(conn: sqlite3.Connection, symbol: str, isin: str, out: list) ->
             if row[7] == "eps_basic_fy" and row[6] == basis:
                 fy_eps[row[2]] = (row[8], row[13])
         for fy, value, known, quote_id in conn.execute(
-                "SELECT fiscal_year, value, known_at, rowid FROM fin_annual_line WHERE symbol=? AND basis=? "
-                "AND line_item='dividend_per_share' AND unit IN ('inr','inr_per_share') ORDER BY fiscal_year, known_at",
+                "SELECT fiscal_year, value, known_at, rowid FROM fin_annual_line WHERE symbol=? AND basis IN (?, 'not_stated') "
+                "AND line_item='dividend_per_share' AND unit IN ('inr','inr_per_share') AND definition='reported' "
+                "AND period_type='FY' ORDER BY fiscal_year, known_at",
                 (symbol, basis)).fetchall():
             if fy in fy_eps and fy_eps[fy][0]:
                 _put(out, symbol, isin, fy, "FY", f"20{int(fy[2:]) - 1}-04-01", f"20{fy[2:]}-03-31", basis,
                      "dividend_payout_pct", 100.0 * value / fy_eps[fy][0], "pct", "F_PAYOUT",
                      [f"fa:{symbol}:{fy}:{basis}:dividend_per_share#{quote_id}", f"ratio:{symbol}:{fy}:{basis}:eps_basic_fy"],
                      max(known or "", fy_eps[fy][1] or ""))
-        for fy, value, known, quote_id in conn.execute(
-                "SELECT fiscal_year, value*scale, known_at, rowid FROM fin_annual_line WHERE symbol=? AND basis=? "
-                "AND line_item='net_worth' AND unit='inr_crore' ORDER BY fiscal_year, known_at", (symbol, basis)).fetchall():
-            end = f"20{fy[2:]}-03-31"
-            sh = conn.execute(
-                "SELECT shares_outstanding, known_at FROM share_capital WHERE symbol=? AND event IS NULL AND basis=? "
-                "AND as_of_date<=? ORDER BY as_of_date DESC LIMIT 1", (symbol, basis, end)).fetchone()
-            if sh and sh[0]:
-                _put(out, symbol, isin, fy, "FY", f"20{int(fy[2:]) - 1}-04-01", end, basis, "book_value_per_share",
-                     value / sh[0], "inr_per_share", "F_BVPS",
-                     [f"fa:{symbol}:{fy}:{basis}:net_worth#{quote_id}", f"sc:{symbol}:{end}"], max(known or "", sh[1] or ""))
+
+def _qends(end: str) -> list[str]:
+    """The four quarter-end dates up to and including `end`."""
+    y, m = int(end[:4]), int(end[5:7])
+    out = []
+    for _ in range(4):
+        out.append(f"{y}-{m:02d}-{30 if m in (6, 9) else 31}")
+        m -= 3
+        if m <= 0:
+            m, y = m + 12, y - 1
+    return out
+
+
+def _balance_ratios(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
+    """Ratios on the XBRL balance sheets (year ends and half years): book value per share, leverage, ROCE, ROE and
+    working-capital days.  Flows are the four quarters to the balance-sheet date, same basis as the sheet."""
+    quarters = _quarters(conn, symbol)
+    sheets: dict = defaultdict(dict)  # (basis, fiscal_year, period_end, period_type) -> item -> (value, known, rowid)
+    for basis, fy, end, ptype, item, value, known, rowid in conn.execute(
+            "SELECT basis, fiscal_year, period_end, period_type, line_item, value*scale, known_at, rowid FROM fin_annual_line "
+            "WHERE symbol=? AND definition IN ('xbrl_reported','xbrl_derived') AND period_type IN ('FY','H1') "
+            "AND statement IN ('BS','P&L') ORDER BY known_at", (symbol,)):
+        sheets[(basis, fy, end, ptype)][item] = (value, known, rowid)
+    for (basis, fy, end, ptype), bs in sorted(sheets.items()):
+        qends = _qends(end)
+        ltm: dict = {}
+        for item in ("revenue_from_operations", "pat", "ebit", "ebitda"):
+            parts = [quarters.get((basis, e), {}).get(item) for e in qends]
+            if all(parts):
+                ltm[item] = (sum(p[0] for p in parts), max(p[1] for p in parts))
+        start = f"{int(end[:4]) - 1}-04-01" if end[5:7] == "03" else f"{end[:4]}-04-01"
+
+        def ref(item: str) -> str:
+            return f"fa:{symbol}:{fy}:{basis}:{item}#{bs[item][2]}"
+
+        def put(metric, value, unit, fid, items, flows=()):
+            known = [bs[i][1] for i in items if i in bs] + [ltm[f][1] for f in flows if f in ltm]
+            refs = [ref(i) for i in items if i in bs] + [f"fq:{symbol}:ltm:{basis}:{f}@{end}" for f in flows if f in ltm]
+            _put(out, symbol, isin, fy, ptype, start, end, basis, metric, value, unit, fid, refs, max(known))
+
+        nw, debt = bs.get("net_worth"), bs.get("total_borrowings")
+        sh = conn.execute("SELECT shares_outstanding, known_at FROM share_capital WHERE symbol=? AND event IS NULL AND basis=? "
+                          "AND as_of_date<=? ORDER BY as_of_date DESC, known_at DESC LIMIT 1", (symbol, basis, end)).fetchone()
+        if nw and sh and sh[0]:
+            _put(out, symbol, isin, fy, ptype, start, end, basis, "book_value_per_share", nw[0] / sh[0], "inr_per_share",
+                 "F_BVPS", [ref("net_worth"), f"sc:{symbol}:{end}"], max(nw[1], sh[1] or ""))
+        if nw and nw[0] and debt:
+            put("debt_to_equity", debt[0] / nw[0], "x", "F_DE", ("total_borrowings", "net_worth"))
+        if nw and nw[0] and "pat" in ltm:
+            put("roe", 100.0 * ltm["pat"][0] / nw[0], "pct", "F_ROE", ("net_worth",), ("pat",))
+        if "total_assets" in bs and "pat" in ltm:
+            put("roa", 100.0 * ltm["pat"][0] / bs["total_assets"][0], "pct", "F_ROA", ("total_assets",), ("pat",))
+        if symbol in LENDERS:
+            continue
+        if "net_debt" in bs and "ebitda" in ltm and ltm["ebitda"][0] > 0:
+            put("net_debt_to_ebitda", bs["net_debt"][0] / ltm["ebitda"][0], "x", "F_ND_EBITDA", ("net_debt",), ("ebitda",))
+        if "capital_employed" in bs and "ebit" in ltm and bs["capital_employed"][0] > 0:
+            put("roce", 100.0 * ltm["ebit"][0] / bs["capital_employed"][0], "pct", "F_ROCE", ("capital_employed",), ("ebit",))
+        rev = ltm.get("revenue_from_operations")
+        if rev and rev[0]:
+            rec, inv = bs.get("trade_receivables"), bs.get("inventories")
+            pay_items = [i for i in ("trade_payables_current", "trade_payables_noncurrent") if i in bs]
+            if rec:
+                put("receivable_days", 365.0 * rec[0] / rev[0], "days", "F_REC_DAYS", ("trade_receivables",), ("revenue_from_operations",))
+            if inv:
+                put("inventory_days", 365.0 * inv[0] / rev[0], "days", "F_INV_DAYS", ("inventories",), ("revenue_from_operations",))
+            if pay_items:
+                put("payable_days", 365.0 * sum(bs[i][0] for i in pay_items) / rev[0], "days", "F_PAY_DAYS",
+                    pay_items, ("revenue_from_operations",))
+            if rec and inv and pay_items:
+                put("nwc_days", 365.0 * (rec[0] + inv[0] - sum(bs[i][0] for i in pay_items)) / rev[0], "days", "F_NWC_DAYS",
+                    ["trade_receivables", "inventories", *pay_items], ("revenue_from_operations",))
+        if "current_assets" in bs and "current_liabilities" in bs and bs["current_liabilities"][0]:
+            put("current_ratio", bs["current_assets"][0] / bs["current_liabilities"][0], "x", "F_CUR",
+                ("current_assets", "current_liabilities"))
 
 
 def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
@@ -229,9 +310,12 @@ def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
     annual = defaultdict(list)
     for item, fy, value, scale, unit, known in conn.execute(
             "SELECT line_item, fiscal_year, value, scale, unit, known_at FROM fin_annual_line WHERE symbol=? AND basis=? "
-            "AND line_item IN ('net_worth','net_debt','dividend_per_share') ORDER BY known_at", (symbol, basis)):
+            "AND line_item IN ('net_worth','net_debt') AND definition='xbrl_derived' ORDER BY known_at", (symbol, basis)):
         if unit in ("inr_crore", "inr", "inr_per_share"):
             annual[item].append((known, fy, value * scale))
+    # trailing-12-month dividends per share (ex-date window), restated to the day's share basis by the split factor
+    dividends = [(ex, amount * 1.0, known or ex) for ex, amount, known in conn.execute(
+        "SELECT ex_date, amount_per_share, known_at FROM dividend_event WHERE symbol=? ORDER BY ex_date", (symbol,))]
 
     def last4(rows: list, day: str, key_factor: bool = False):
         known = [r for r in rows if r[0][:10] <= day]
@@ -262,13 +346,15 @@ def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
         known = [day, sh[-1][0][:10]] + ([max(k for k, _e, _v in eps4)[:10]] if eps4 else [])
         nw = [a for a in annual["net_worth"] if a[0][:10] <= day]
         nd = [a for a in annual["net_debt"] if a[0][:10] <= day]
-        dps = [a for a in annual["dividend_per_share"] if a[0][:10] <= day]
+        window = date.fromisoformat(day) - timedelta(days=365)
+        dps = [(ex, amt, k) for ex, amt, k in dividends if window.isoformat() < ex <= day and k[:10] <= day]
         net_worth = nw[-1][2] if nw else None
         net_debt = nd[-1][2] if nd else None
         pe = close / trailing_eps if trailing_eps and trailing_eps > 0 else None
         pb = mcap / net_worth if net_worth and net_worth > 0 else None
         ev = (mcap + net_debt) / trailing_ebitda if net_debt is not None and trailing_ebitda and trailing_ebitda > 0 else None
-        dy = 100.0 * dps[-1][2] / close if dps and close else None
+        ttm_dps = sum(amt * factor_at(ex) / f_day for ex, amt, _k in dps) if dps else None
+        dy = 100.0 * ttm_dps / close if ttm_dps and close else None
         refs = {"px": f"px:{symbol}:{day}", "shares": sh[-1][0], "quarters": [r[1] for r in (eps4 or [])]}
         out.append((symbol, isin, day, basis, close, shares_now, mcap, trailing_eps, trailing_pat, net_worth, net_debt,
                     trailing_ebitda, pe, pb, ev, dy, max(known), "max(price date, share count, EPS filing dates)",

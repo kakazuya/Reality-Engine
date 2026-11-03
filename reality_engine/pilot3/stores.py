@@ -91,6 +91,51 @@ QUARTER_TAGS = {  # XBRL element -> (canonical line item, statement, unit)
 }
 
 
+EXTRA_QUARTER_TAGS = {  # facts the `quarterly` view lacks (NBFC / lender P&L), read from results_xbrl.facts
+    "InterestEarned": ("interest_income", "P&L", "inr"),
+    "ImpairmentOnFinancialInstruments": ("impairment_financial_instruments", "P&L", "inr"),
+    "FeesAndCommissionIncome": ("fee_commission_income", "P&L", "inr"),
+    "FeesAndCommissionExpense": ("fee_commission_expense", "P&L", "inr"),
+    "NetGainOnFairValueChanges": ("net_gain_fair_value", "P&L", "inr"),
+}
+
+
+def _quarter_extras(symbol: str, meta: dict[str, tuple]) -> list[tuple]:
+    """NBFC fields per quarter (``meta``: file -> the filing's columns) plus net interest income =
+    interest earned - finance costs, a derived row (``is_reported`` 0) wherever both were filed."""
+    if not meta:
+        return []
+    tags = tuple(EXTRA_QUARTER_TAGS) + ("FinanceCosts",)
+    out, got = [], {}
+    files = list(meta)
+    for i in range(0, len(files), 200):
+        chunk = files[i:i + 200]
+        marks = ",".join("?" * len(chunk))
+        rows, _ = prepare._read_sqlite(
+            "results_xbrl.db", "facts",
+            f"SELECT file, concept, value, rowid FROM facts WHERE file IN ({marks}) AND context='OneD' "
+            f"AND concept IN ({','.join('?' * len(tags))})", tuple(chunk) + tags)
+        for file, tag, value, rowid in rows:
+            if value is None:
+                continue
+            got[(file, tag)] = (float(value), rowid)
+    for (file, tag), (value, rowid) in got.items():
+        if tag not in EXTRA_QUARTER_TAGS:
+            continue
+        isin, start, end, period, basis, audited, known = meta[file]
+        item, statement, unit = EXTRA_QUARTER_TAGS[tag]
+        out.append((symbol, isin, start, end, period, basis, audited, statement, item, tag, value, unit, 1.0, file,
+                    "results_xbrl.db", "facts", f"{file}#{rowid}", known,
+                    "results_xbrl.quarterly.dissem_ts|broadcast_ts", 1))
+    for file, (isin, start, end, period, basis, audited, known) in meta.items():
+        earned, fin = got.get((file, "InterestEarned")), got.get((file, "FinanceCosts"))
+        if earned and fin:
+            out.append((symbol, isin, start, end, period, basis, audited, "P&L", "net_interest_income",
+                        "InterestEarned-FinanceCosts", earned[0] - fin[0], "inr", 1.0, file, "results_xbrl.db", "facts",
+                        f"{file}#{earned[1]}-{fin[1]}", known, "results_xbrl.quarterly.dissem_ts|broadcast_ts", 0))
+    return out
+
+
 def _basis(value: object) -> str:
     return "consolidated" if str(value or "").strip().lower() == "consolidated" else "standalone"
 
@@ -101,13 +146,14 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
     counts = {"fin_quarter_xbrl": {}, "share_capital": {}, "skipped_non_quarter": {}}
     for symbol in SYMBOLS:
         rows = fetch(symbol, "results_quarterly")
-        fq, sc, skipped = [], [], 0
+        fq, sc, skipped, meta = [], [], 0, {}
         for r in rows:
             span = _days(r["period_start"], r["period_end"])
             if span is None or not 80 <= span <= 100:
                 skipped += 1
                 continue
             period, basis = fiscal_period(r["period_end"]), _basis(r["consolidated"])
+            meta[r["file"]] = (r["isin"], r["period_start"], r["period_end"], period, basis, r["audited"], r["known_at"])
             for tag, (item, statement, unit) in QUARTER_TAGS.items():
                 value = r.get(tag)
                 if value is None:
@@ -120,6 +166,7 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
                 sc.append((symbol, r["isin"], r["period_end"], basis, None, None, paid / face, paid, face, "shares",
                            1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts", "results_xbrl.db",
                            "quarterly", r["file"], None, None))
+        fq += _quarter_extras(symbol, meta)
         conn.executemany("INSERT INTO fin_quarter_xbrl VALUES (" + ",".join("?" * 20) + ")", fq)
         conn.executemany("INSERT INTO share_capital VALUES (" + ",".join("?" * 18) + ")", sc)
         counts["fin_quarter_xbrl"][symbol] = len(fq)
@@ -162,7 +209,18 @@ def build_corporate_events(conn: sqlite3.Connection) -> dict:
 
 # --- fin_annual_line --------------------------------------------------------------------------------
 _PFX = r"(?:consolidated |standalone |total |net )?"
-LEXICON = [  # (line_item, statement, anchored regex over the lower-cased caption)
+LEXICON = [  # (line_item, statement, anchored regex over the lower-cased caption); first match wins
+    ("net_debt_incl_acceptances", "BS", r"net debt including acceptances(?: at year[- ]end)?"),
+    ("net_working_capital_days", "BS", r"net working capital days"),
+    ("receivable_days", "BS", r"(?:trade )?(?:receivables|debtors)(?: turnover)?(?: in)? days|debtor days|receivable days|"
+                                       r"(?:debtors|trade receivables?) turnover ratio \((?:no\. of )?days\)(?: - [a-z ]+)?"),
+    ("inventory_days", "BS", r"inventory (?:turnover )?days"),
+    ("total_debt_incl_leases", "BS", r"total debt \(.*lease.*\)|total debt incl\w* lease liabilities"),
+    ("net_debt_to_ebitda", "BS", r"(?:consolidated )?net debt(?: to |/)ebitda(?: ratio)?"),
+    ("net_debt_to_equity", "BS", r"net debt(?: to |/)equity(?: ratio)?"),
+    ("roce", "P&L", r"return on capital employed(?: \(roce\))?|roce"),
+    ("roe", "P&L", r"return on equity(?: \(roe\))?|return on net worth"),
+    ("lease_liabilities", "BS", r"(?:total )?lease liabilities"),
     ("revenue_from_operations", "P&L", rf"{_PFX}(?:revenue from operations|revenue)(?: \(net\))?"),
     ("total_income", "P&L", r"total income"),
     ("other_income", "P&L", r"other income"),
@@ -178,7 +236,7 @@ LEXICON = [  # (line_item, statement, anchored regex over the lower-cased captio
     ("operating_profit_pre_impairment", "P&L", r"pre-impairment operating profit"),
     ("eps_basic", "P&L", r"basic eps|basic earnings per share"),
     ("eps_diluted", "P&L", r"diluted eps|diluted earnings per share"),
-    ("dividend_per_share", "P&L", r"(?:final |total )?dividend per share"),
+    ("dividend_per_share", "P&L", r"(?:final |total |proposed )?dividend per (?:equity )?share"),
     ("cash_flow_from_operations", "CF", r"net cash (?:flow )?(?:from|generated from) operating activities"),
     ("capex", "CF", r"capital expenditure|capex"),
     ("net_debt", "BS", r"net debt"),
@@ -186,16 +244,27 @@ LEXICON = [  # (line_item, statement, anchored regex over the lower-cased captio
     ("total_assets", "BS", r"total assets"),
     ("total_borrowings", "BS", r"total borrowings|borrowings"),
 ]
+# Measures the company defines itself (ratio notes, decks): stored with definition 'company_stated' next to the
+# XBRL-derived ones, never merged with them.
+COMPANY_STATED = {"net_debt_incl_acceptances", "net_working_capital_days", "receivable_days", "inventory_days",
+                  "total_debt_incl_leases", "net_debt_to_ebitda", "net_debt_to_equity", "roce", "roe", "net_debt",
+                  "ebitda", "ebitda_margin_pct"}
 _LEX = [(item, stmt, re.compile(rf"^(?:{rx})$")) for item, stmt, rx in LEXICON]
 
 
 def lexicon_item(caption: str) -> tuple[str, str] | None:
     text = re.sub(r"\s+", " ", str(caption or "").strip().lower())
-    if len(text) > 60:
+    if len(text) > 110:
         return None
     for item, stmt, rx in _LEX:
         if rx.match(text):
             return item, stmt
+    # a company-stated caption may carry its year ("Net Working Capital days FY26"): the row's period column decides
+    bare = re.sub(r"\s+(?:fy\s?'?\d{2,4}(?:-\d{2})?|q[1-4]\s?fy\s?\d{2})$", "", text)
+    if bare != text:
+        for item, stmt, rx in _LEX:
+            if item in COMPANY_STATED and rx.match(bare):
+                return item, stmt
     return None
 
 
@@ -228,10 +297,15 @@ def build_annual(conn: sqlite3.Connection) -> dict:
             r = dict(zip(cols, raw))
             hit = lexicon_item(r["item"])
             basis = str(r["basis"] or "").lower()
-            if not hit or basis not in ("consolidated", "standalone") or r["value"] is None:
+            if basis not in ("consolidated", "standalone"):
+                basis = "not_stated"
+            if not hit or r["value"] is None:
                 continue
             fy = str(r["period"] or "")
-            if not re.fullmatch(r"FY\d\d", fy):
+            m = re.fullmatch(r"FY(?:20)?(\d\d)", fy)
+            if m:
+                fy = "FY" + m.group(1)
+            else:
                 m = re.match(r"(\d{4})-03-31", str(r["fiscal_year"] or ""))
                 if not m:
                     continue
@@ -241,10 +315,12 @@ def build_annual(conn: sqlite3.Connection) -> dict:
             if key in seen:
                 continue
             seen.add(key)
+            definition = "company_stated" if hit[0] in COMPANY_STATED else "reported"
             out.append((symbol, r["isin"], fy, f"20{fy[2:]}-03-31", basis, hit[1], hit[0], r["item"],
                         float(r["value"]), unit, scale, str(r["doc_id"]), r["page"], r["quote"],
-                        spec["db"], "ar_facts", str(r["src_rowid"]), r["known_at"], "ar_facts.filed_at", 1, 0))
-        conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * 21) + ")", out)
+                        spec["db"], "ar_facts", str(r["src_rowid"]), r["known_at"], "ar_facts.filed_at", 1, 0,
+                        definition, "FY"))
+        conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * 23) + ")", out)
         counts[symbol] = len(out)
     conn.commit()
     return counts
@@ -287,6 +363,10 @@ MEMBERS = {
     "NonResidentIndians": "nri", "IndividualsOrHinduUndividedFamily": "promoter_individuals",
     "SharesHeldByNonPromoterNonPublicShareholders": "non_promoter_non_public",
     "ForeignInstitutions": "foreign_institutions", "ForeignCompanies": "foreign_companies",
+    # 2025-05 taxonomy spellings
+    "MutualFundsOrUTI": "mutual_funds", "NBFCsRegisteredWithRBI": "nbfc",
+    "InstitutionsForeignPortfolioInvestorCategoryOne": "fpi_category_1",
+    "InstitutionsForeignPortfolioInvestorCategoryTwo": "fpi_category_2",
 }
 
 
@@ -377,15 +457,23 @@ def build_shp(conn: sqlite3.Connection) -> dict:
                 stamp = re.search(r"_(\d{14})_WEB", name)
                 known = datetime.strptime(stamp.group(1), "%d%m%Y%H%M%S").isoformat() if stamp else None
                 src, revised = "file name timestamp", None
-            fpi = {}
+            fpi, ifor = {}, {}
             for (member, inst), f in parsed["facts"].items():
+                if member == "InstitutionsForeign":
+                    ifor[inst] = f
                 cat = MEMBERS.get(member, _snake(member))
                 out.append((symbol, parsed["head"]["ISIN"], inst, cat, member, f.get("NumberOfShares"),
                             f.get("ShareholdingAsAPercentageOfTotalNumberOfShares"), f.get("NumberOfShareholders"),
                             "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 1))
                 if cat.startswith("fpi"):
                     fpi[(cat, inst)] = f
-            for inst in {i for (_c, i) in fpi}:
+            for inst, f in ifor.items():  # new taxonomy: the pattern's own FII / FPI line (all foreign institutions)
+                if ("fpi", inst) in fpi:
+                    continue
+                out.append((symbol, parsed["head"]["ISIN"], inst, "fpi_total", "InstitutionsForeign (FII/FPI line)",
+                            f.get("NumberOfShares"), f.get("ShareholdingAsAPercentageOfTotalNumberOfShares"), None,
+                            "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 1))
+            for inst in {i for (_c, i) in fpi} - {i for i in ifor if ("fpi", i) not in fpi}:
                 pick = [fpi[k] for k in fpi if k[1] == inst and k[0] == "fpi"] or \
                        [fpi[k] for k in fpi if k[1] == inst and k[0] in ("fpi_category_1", "fpi_category_2")]
                 if pick:
@@ -403,6 +491,9 @@ def build_stores(conn: sqlite3.Connection) -> dict:
     result = {"quarterly": build_quarterly(conn)}
     result["corporate_events"] = build_corporate_events(conn)
     result["fin_annual_line"] = build_annual(conn)
+    from reality_engine.pilot3 import statements  # after build_annual: it appends rows to fin_annual_line
+
+    result["statements"] = statements.build_statements(conn)
     result["price_delivery"] = build_prices(conn)
     result["shp_category"] = build_shp(conn)
     return result
