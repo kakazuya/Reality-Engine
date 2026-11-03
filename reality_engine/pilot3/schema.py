@@ -11,6 +11,7 @@ TABLES: dict[str, str] = {
     "doc": """CREATE TABLE doc (
         doc_key TEXT PRIMARY KEY, symbol TEXT, isin TEXT, doc_type TEXT, doc_family TEXT, title TEXT,
         filing_date TEXT, known_at TEXT, pages INTEGER, sha256 TEXT, source TEXT, source_key TEXT)""",
+    "doc_alias": """CREATE TABLE doc_alias (symbol TEXT, alias_key TEXT, doc_key TEXT, PRIMARY KEY (symbol, alias_key))""",
     "doc_page": """CREATE TABLE doc_page (
         doc_key TEXT, symbol TEXT, page INTEGER, text TEXT, method TEXT, chars INTEGER, known_at TEXT,
         PRIMARY KEY (doc_key, page))""",
@@ -74,7 +75,7 @@ FTS = """CREATE VIRTUAL TABLE doc_page_fts USING fts5(text, content='doc_page', 
     tokenize='unicode61 remove_diacritics 2')"""
 
 PARTS = {
-    "registry": ("company", "doc"),
+    "registry": ("company", "doc", "doc_alias"),
     "pages": ("doc_page",),
     "stores": ("share_capital", "fin_quarter_xbrl", "fin_annual_line", "dividend_event", "price_delivery", "shp_category"),
     "ratios": ("formula", "ratio_panel", "valuation_daily"),

@@ -1,7 +1,9 @@
-"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|pages|stores|ratios|all]``.
+"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|pages|stores|ratios|extract|kpi|transcripts|all]``.
 
-Builds the pilot3 core tables.  No network, no model.  Each part drops and recreates its own tables, so
-parts can be re-run; ``ratios`` needs ``stores`` built first."""
+Builds every pilot3 table in one file.  No network, no model.  Pages and documents come from pages.db (sandbox
+pages only where pages.db lacks a document); ``extract`` runs the KPI and transcript extractors into the same
+db.  Each part drops and recreates its own tables (extract: its own symbols' rows), so parts can be re-run;
+``ratios`` needs ``stores`` built first."""
 from __future__ import annotations
 
 import argparse
@@ -10,20 +12,39 @@ import sqlite3
 import time
 from pathlib import Path
 
-from reality_engine.pilot3 import registry, schema, stores
+from reality_engine.pilot3 import REAL_DB, SANDBOX, SYMBOLS, registry, schema, stores
+
+
+EXTRACT_TABLES = ("kpi_series", "transcript_statement")
 
 
 def row_counts(conn: sqlite3.Connection) -> dict:
     """``{table: {symbol: rows}}`` for every pilot3 core table that exists."""
     out = {}
-    for name in schema.TABLES:
+    for name in (*schema.TABLES, *EXTRACT_TABLES):
         if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (name,)).fetchone():
             continue
-        if name == "formula":
-            out[name] = {"-": conn.execute("SELECT COUNT(*) FROM formula").fetchone()[0]}
+        if name in ("formula", "doc_alias"):
+            out[name] = {"-": conn.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]}
             continue
         out[name] = dict(conn.execute(f"SELECT symbol, COUNT(*) FROM {name} GROUP BY symbol ORDER BY symbol"))
     return out
+
+
+def extract(out: Path, only: str | None = None) -> dict:
+    """KPI and transcript extractors into ``out`` (their own tables; each deletes its symbols' rows first)."""
+    from reality_engine.pilot3 import kpi, transcripts
+
+    result = {}
+    for label, module in (("kpi", kpi), ("transcripts", transcripts)):
+        if only and only != label:
+            continue
+        started = time.time()
+        stats = module.run(str(out), list(SYMBOLS), SANDBOX)
+        result[label] = {"seconds": round(time.time() - started, 1),
+                         **{sym: {k: v for k, v in stats.get(sym, {}).items() if isinstance(v, (int, float))}
+                            for sym in SYMBOLS}}
+    return result
 
 
 def build(out: Path, part: str = "all") -> dict:
@@ -32,7 +53,8 @@ def build(out: Path, part: str = "all") -> dict:
     conn = sqlite3.connect(out)
     conn.execute("PRAGMA journal_mode=WAL")
     log = {}
-    parts = ("registry", "pages", "stores", "ratios") if part == "all" else (part,)
+    parts = ("registry", "pages", "stores", "ratios", "extract") if part == "all" else (part,)
+    only = part if part in ("kpi", "transcripts") else None
     for name in parts:
         started = time.time()
         if name == "registry":
@@ -46,6 +68,11 @@ def build(out: Path, part: str = "all") -> dict:
             from reality_engine.pilot3 import ratios
 
             log["ratios"] = ratios.build_ratios(conn)
+        elif name in ("extract", "kpi", "transcripts"):
+            conn.commit()
+            conn.close()  # the extractors open the db file themselves
+            log["extract"] = extract(out, only)
+            conn = sqlite3.connect(out)
         log[f"seconds_{name}"] = round(time.time() - started, 1)
     log["rows"] = row_counts(conn)
     conn.close()
@@ -54,8 +81,8 @@ def build(out: Path, part: str = "all") -> dict:
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--out", required=True)
-    ap.add_argument("--part", default="all", choices=("registry", "pages", "stores", "ratios", "all"))
+    ap.add_argument("--out", default=str(REAL_DB), help="default: the real pilot3.db on C")
+    ap.add_argument("--part", default="all", choices=("registry", "pages", "stores", "ratios", "extract", "kpi", "transcripts", "all"))
     args = ap.parse_args(argv)
     print(json.dumps(build(Path(args.out), args.part), indent=1, default=str))
 
