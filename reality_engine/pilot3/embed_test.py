@@ -628,9 +628,12 @@ def _print_report(report: dict, methods: Sequence[str]) -> None:
     for qid, row in report["by_question"].items():
         ranks = "  ".join(f"{method}={row['ranks'].get(method) if row['ranks'].get(method) else '-'}"
                           for method in methods if method in row["ranks"])
-        print(f"{qid:<12} pool={row['pool']:<5} {ranks}")
+        covers = "  ".join(f"{key.split('coverage_', 1)[1]}={value}"
+                           for key, value in row.items() if key.startswith("coverage_"))
+        print(f"{qid:<12} pool={row['pool']:<5} {ranks}" + (f"  cov({covers})" if covers else ""))
     print()
-    print("rank '-' = the method never returned a gold page; pool = pages known at the question's as_of")
+    print("rank '-' = the method never returned a gold page; pool = pages known at the question's as_of; "
+          "cov = pool pages with a vector")
 
 
 def _write_xlsx(target: Path, report: dict, methods: Sequence[str], gold: Sequence[dict]) -> None:
