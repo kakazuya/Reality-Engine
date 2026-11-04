@@ -250,6 +250,8 @@ def replay(db: Path, entries: list[dict], work: Path = WORK, symbols=SYMBOLS) ->
                 index.setdefault((row["doc_key"], row["page"]), []).append(
                     (float(row["value"]), float(row["value"]), row["unit"]))
             for doc_key, page, low, high, unit in grown:
+                if low is None and high is None:
+                    continue            # a worded target carries no figure, so it proves no page number (T-058)
                 low = float(low if low is not None else high)
                 high = float(high if high is not None else low)
                 index.setdefault((doc_key, page), []).append((low, high, unit))

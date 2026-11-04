@@ -609,9 +609,10 @@ GUIDANCE_METRICS = ("revenue_growth", "ebitda_margin", "order_intake", "nim", "c
 
 def guidance(symbol: str, metric: str | None = None, period: str | None = None, as_of: str | None = None,
              limit: int = 12) -> dict[str, Any]:
-    """Rule-extracted forward guidance: one row per numeric target (metric, target period, low/high, unit,
-    direction, exact quote, speaker), newest first, with the row it revised (``revision_of`` and the previous
-    low/high/date, so "did the guidance change between the two calls" is one call)."""
+    """Rule-extracted forward guidance: one row per target (metric, target period, low/high, unit, direction,
+    exact quote, speaker), newest first, with the row it revised (``revision_of`` and the previous low/high/date,
+    so "did the guidance change between the two calls" is one call).  ``low`` and ``high`` are NULL on a target
+    said in words ("high single-digit", "in the 70s, mid-70s or higher"): the direction and the quote carry it."""
     sym = resolve_symbol(symbol)
     names, allnames = ([], list(GUIDANCE_METRICS))
     if metric:
