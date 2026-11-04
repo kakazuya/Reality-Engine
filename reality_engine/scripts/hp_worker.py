@@ -2,7 +2,7 @@
 """Start and supervise real dsh workers on the HP OmniBook over ssh.
 
     python -m reality_engine.scripts.hp_worker start <brief.md> [--dbs a.db,b.db]
-        [--test-cmd CMD] [--commit HEAD] [--permission workspace-write]
+        [--pilot-db PATH] [--test-cmd CMD] [--commit HEAD] [--permission workspace-write]
         [--timeout S] [--max-output-tokens N] [--account 1|2] [--peak-ok]
     python -m reality_engine.scripts.hp_worker status [<id>]
     python -m reality_engine.scripts.hp_worker result <id>
@@ -35,6 +35,12 @@ already carrying ``mcp`` + ``cryptography``); ``REALITY_DATA_ROOT`` (source of
 ``--dbs``); ``HP_WORKER_ACCOUNT`` (default 1: the HP uses Go key 1,
 ``OPENCODE_GO_API_KEY``); ``DSH_WORKER_RUNTIME_DIR`` (where the dsh-worker MCP
 keeps its jobs; default the main checkout's ``plugins/dsh-worker/runtime``).
+
+``--pilot-db`` copies one profile database from anywhere on this laptop (for
+example ``D:\\RealityEngine\\pilot10\\pilot10.db``) beside the ``--dbs`` files
+and sets ``REALITY_PILOT3_DB`` for the job's ``reality-data`` server, so the HP
+serves that build's companies (T-070).  Without the flag the MCP patch is
+unchanged.
 
 Peak-hour rule: a start is refused Mon-Fri 06:30-09:30 and 11:30-15:30 IST,
 exactly as the local dsh-worker refuses, unless ``--peak-ok`` is passed.  Every
@@ -299,11 +305,20 @@ def archive(commit: str = "HEAD") -> tuple[bytes, str]:
     return tar, sha
 
 
-def mcp_patch(home: str, paths: dict[str, str]) -> str:
-    """Per-run dsh patch: both MCP servers, pointed at this job's checkout and data."""
+def mcp_patch(home: str, paths: dict[str, str], pilot_db: str | None = None) -> str:
+    """Per-run dsh patch: both MCP servers, pointed at this job's checkout and data.
+
+    ``pilot_db`` is a basename already copied to ``C:\\RE\\data``; when given, the
+    reality-data server serves that profile build (``REALITY_PILOT3_DB``, T-070).
+    Without it the patch is byte-for-byte what it was before the flag existed.
+    """
     py = posix(remote_python(home))
     repo = posix(paths["repo"])
     data = posix(ROOT + "\\data")
+    pilot = ""
+    if pilot_db:
+        pilot = (f"          REALITY_PILOT3_DB: "
+                 f"{json.dumps(posix(ROOT + '\\data\\' + Path(pilot_db).name))}\n")
     return (
         "- insert:\n"
         "    - id: mcp-reality-data\n"
@@ -318,6 +333,7 @@ def mcp_patch(home: str, paths: dict[str, str]) -> str:
         "        env:\n"
         f"          REALITY_DATA_ROOT: {json.dumps(data)}\n"
         f"          REALITY_DATA_REPO_ROOT: {json.dumps(repo)}\n"
+        f"{pilot}"
         '          PYTHONUTF8: "1"\n'
         "        toolCallTimeoutMs: 120000\n"
         "        reconnect:\n"
@@ -482,15 +498,21 @@ def stage_db(src: Path) -> Path:
     return staged
 
 
-def sync_dbs(names: list[str]) -> list[str]:
-    """Copy each named DB once to C:\\RE\\data; re-copy only when the local DB is newer."""
-    if not names:
+def sync_dbs(names: list[str], extra: list[Path] | None = None) -> list[str]:
+    """Copy each DB once to C:\\RE\\data; re-copy only when the local DB is newer.
+
+    ``extra`` holds absolute paths outside ``DATA_ROOT`` (``--pilot-db``); each is
+    staged, stamped and copied exactly like a named DB, keeping its own basename
+    because that is the name the job's MCP patch points at.
+    """
+    sources = ([(DATA_ROOT / name, name) for name in names]
+               + [(Path(p), Path(p).name) for p in (extra or [])])
+    if not sources:
         return []
     hp_run.ps("$ErrorActionPreference='Stop'\n"
               f"New-Item -ItemType Directory -Force -Path '{ROOT}\\data' | Out-Null")
     copied: list[str] = []
-    for name in names:
-        src = DATA_ROOT / name
+    for src, name in sources:
         if not src.is_file():
             raise SystemExit(f"db not found: {src}")
         staged = stage_db(src)
@@ -548,7 +570,8 @@ def launch_script(job_id: str) -> str:
 # --------------------------------------------------------------------------- #
 def start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
           permission: str, timeout: int | None, max_output_tokens: int | None,
-          peak_ok: bool, account: str | None = None) -> str:
+          peak_ok: bool, account: str | None = None,
+          pilot_db: Path | None = None) -> str:
     """Create one HP job, launch it detached, and return its job id."""
     if not off_peak() and not peak_ok:
         now = datetime.now(IST)
@@ -558,6 +581,10 @@ def start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
     text = Path(brief).read_text(encoding="utf-8")
     if not text.strip():
         raise SystemExit(f"brief is empty: {brief}")
+    if pilot_db is not None:
+        pilot_db = Path(pilot_db).expanduser()
+        if not pilot_db.is_file():
+            raise SystemExit(f"--pilot-db not found: {pilot_db}")
     account = str(account or ACCOUNT)
     if account not in ("1", "2"):
         raise SystemExit("--account must be 1 or 2")
@@ -570,13 +597,16 @@ def start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
 
     local = Path(paths["local"])
     local.mkdir(parents=True, exist_ok=True)
-    composition = compose_brief(text, job_id=job_id, paths=paths, dbs=dbs, test_cmd=test_cmd)
+    composition = compose_brief(text, job_id=job_id, paths=paths,
+                                dbs=dbs + ([pilot_db.name] if pilot_db else []),
+                                test_cmd=test_cmd)
     (local / "brief.md").write_text(composition, encoding="utf-8")
     meta = {
         "schema": 1, "job_id": job_id, "created_at": started_at,
         "brief": str(Path(brief).resolve()), "commit": sha, "model": MODEL,
         "effort": EFFORT, "account": account, "permission": permission,
         "test_cmd": test_cmd, "dbs": dbs, "host": hp_run.HOST,
+        "pilot_db": str(pilot_db) if pilot_db else None,
         "hard_timeout_seconds": timeout,
     }
     (local / "job.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
@@ -613,10 +643,12 @@ def start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
     print(f"account  {account} (model {MODEL}, hard stop {timeout}s)")
     try:
         home = remote_home()
-        (local / "hp_mcp.yml").write_text(mcp_patch(home, paths), encoding="utf-8")
+        (local / "hp_mcp.yml").write_text(
+            mcp_patch(home, paths, pilot_db=pilot_db.name if pilot_db else None),
+            encoding="utf-8")
         base = init_remote_repo(paths, tar)
         print(f"base     {base[:12]} ({len(tar) / 2**20:.1f} MiB archive)")
-        for line in sync_dbs(dbs):
+        for line in sync_dbs(dbs, [pilot_db] if pilot_db else []):
             print(f"db       {line}")
         wrapper = run_cmd(job_id, paths, home, permission=permission, timeout=timeout,
                           max_output_tokens=max_output_tokens, test_cmd=test_cmd,
@@ -649,9 +681,10 @@ def start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
 
 def cmd_start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
               permission: str, timeout: int | None, max_output_tokens: int | None,
-              peak_ok: bool, account: str | None = None) -> int:
+              peak_ok: bool, account: str | None = None,
+              pilot_db: Path | None = None) -> int:
     start(brief, dbs, test_cmd, commit, permission, timeout, max_output_tokens,
-          peak_ok, account=account)
+          peak_ok, account=account, pilot_db=pilot_db)
     return 0
 
 
@@ -1058,6 +1091,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("start", help="archive the commit, set up the job, launch detached")
     p.add_argument("brief", type=Path)
     p.add_argument("--dbs", default="", help="comma-separated DB names under REALITY_DATA_ROOT")
+    p.add_argument("--pilot-db", type=Path, default=None,
+                   help="profile database copied to C:\\RE\\data and served as "
+                        "REALITY_PILOT3_DB (any path, e.g. D:\\RealityEngine\\pilot10\\pilot10.db)")
     p.add_argument("--test-cmd", default=None)
     p.add_argument("--commit", default="HEAD")
     p.add_argument("--permission", default="workspace-write",
@@ -1088,7 +1124,7 @@ def main(argv: list[str] | None = None) -> int:
             dbs = [n.strip() for n in args.dbs.split(",") if n.strip()]
             return cmd_start(args.brief, dbs, args.test_cmd, args.commit, args.permission,
                              args.timeout, args.max_output_tokens, args.peak_ok,
-                             account=args.account)
+                             account=args.account, pilot_db=args.pilot_db)
         if args.cmd == "status":
             return cmd_status(args.job_id)
         if args.cmd == "result":

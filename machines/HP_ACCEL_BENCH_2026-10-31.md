@@ -224,7 +224,7 @@ The HP jobs run the same interpreter (3.14 ARM64), execute the job checkout's ow
 ```powershell
 # start (refuses Mon-Fri 06:30-09:30 / 11:30-15:30 IST exactly like the MSI manager)
 python -m reality_engine.scripts.hp_worker start tasks/brief.md `
-    [--dbs equity_intelligence.db,bse_announcements.db] [--test-cmd "python -m pytest ... -q"] `
+    [--dbs equity_intelligence.db,bse_announcements.db] [--pilot-db PATH] [--test-cmd "python -m pytest ... -q"] `
     [--commit HEAD] [--permission read-only|workspace-write|danger-full-access] [--max-output-tokens N] [--timeout S] [--peak-ok]
 
 python -m reality_engine.scripts.hp_worker status [hp-...]   # state, exit, result size, test tail
@@ -245,7 +245,9 @@ so the test tail in `status` is the real host result.
 
 DB sync stages a WAL-consistent copy with `sqlite3.backup`, copies only when the MSI
 file is newer (mtime stored beside the remote file), and marks the remote file
-read-only.
+read-only. `--pilot-db PATH` (T-070) runs a file outside `REALITY_DATA_ROOT` through
+the same staging and stamp, lands it at `C:\RE\data\<basename>`, and adds
+`REALITY_PILOT3_DB` to that job's `reality-data` MCP `env`.
 
 ### 10.3 Proof: two real workers, end to end
 
