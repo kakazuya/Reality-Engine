@@ -45,4 +45,12 @@ Both on DeepSeek, off-peak, started 18:17 IST.
 | Name | Job | Branch | Brief | Status |
 |---|---|---|---|---|
 | comparatives | 20261104T124718Z-f826eabb | `dsh/20261104T124718Z-f826eabb` | `loop_03_worker_comparatives.md` | running |
-| kpi | 20261104T124734Z-2e947e47 | `dsh/20261104T124734Z-2e947e47` | `loop_03_worker_kpi.md` (cherry-picks 2690518) | running |
+| kpi | 20261104T124734Z-2e947e47 | `dsh/20261104T124734Z-2e947e47` | `loop_03_worker_kpi.md` (cherry-picks 2690518) | **NOT ACCEPTED, do not merge alone**; fix round queued (`loop_03_worker_kpi_fix.md`) |
+| speech | 20261104T133227Z-c8ca921f | `dsh/20261104T133227Z-c8ca921f` | `loop_03_worker_speech.md` | running, started 19:02 IST |
+
+### Review of the KPI worker (19:05 IST)
+Its numbers: A1 651 to 676, A3 99.85%, tests and checkpages green. Its own hand read fails its accept: fmcg 20/20, insurance 16, pharma 14, it_services 12, consumer_internet 11, bank 10, auto 9, lenders 9, against a rule of 18/20; the brief said fix before reporting. My read of the rows confirms this and adds a defect the report did not name:
+- **The sector gate wiped true rows.** `ebitda` lives in `metals.yaml` and `aum` in `lenders.yaml`, so KEC `ebitda` went 64 to 0, SUNPHARMA 70 to 0, SBILIFE `aum` 49 to 0, `roe_pct` too. A1 did not notice, because dev happens not to need them. Hidden questions may.
+- **Wrong rows that raise A1:** a year-ago quarter labelled as a half year (BAJFINANCE `revenue` H1FY26 17,002.86), number fragments (`pat` 791.0), a rupee row with unit pct (`r_and_d_pct` 23,676), cash-flow lines as `net_debt`, old values of a change (`dso` 69, `market_share` 8.1), 278 rows dated before the window.
+- It committed `PROGRESS_NOTES.md` and edited `tasks/STATE.md`.
+Part of the 25-question A1 gain may rest on these wrong rows, which is what the fix round will show.
