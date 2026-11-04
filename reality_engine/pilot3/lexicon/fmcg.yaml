@@ -1,12 +1,12 @@
-# FMCG KPI family (loop 2).
+# FMCG KPI family (loop 2). HUL chart pages print several KPI names over one number, so in a sentence a percentage
+# is taken only when it follows the term directly; a table row still uses the plain label.
 family: fmcg
 sectors: [fmcg]
 entries:
-  - {metric: underlying_volume_growth, kind: pct, unit: pct, labels: ["underlying volume growth", "\\buvg\\b"]}
-  - {metric: value_growth, kind: pct, unit: pct, labels: ["underlying sales growth", "\\busg\\b\\d?", "value growth"]}
-  - {metric: price_growth, kind: pct, unit: pct, labels: ["price growth", "pricing (growth|contribution)", "price contribution"]}
-  - {metric: gross_margin, kind: pct, unit: pct, labels: ["gross margins?"]}
-  - {metric: a_and_p_spend, kind: pct, unit: pct, labels: ["a\\s?&\\s?p( spend| investment| expenses?)?", "advertising (and|&) promotion", "advertising (and|&) publicity"]}
+  - {metric: underlying_volume_growth, kind: pct, unit: pct, labels: ["underlying volume growth", "\\buvg\\b"], neg: "home care|foods|fabric|segment|ebitda|margin|highest", strict: ["underlying volume growth\\b[^.]{0,25}?(?=\\d+(?:\\.\\d+)?\\s*%)", "\\buvg\\b\\s*:?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: value_growth, kind: pct, unit: pct, labels: ["underlying sales growth", "\\busg\\b\\d?", "value growth"], neg: "uvg|segment|cagr|bps|ebitda|margin|fy'", strict: ["underlying sales growth\\s*(?:of|at|was|:)?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "\\busg\\b\\s*:?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: price_growth, kind: pct, unit: pct, labels: ["price growth", "pricing (growth|contribution)", "price contribution"], neg: "segment|guidance", strict: ["price growth\\s*(?:of|at|was|:)?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "pricing (?:growth|contribution)[^.]{0,10}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: gross_margin, kind: pct, unit: pct, labels: ["gross margins?"], neg: "segment|expansion|contraction|bps|guidance|growth", strict: ["gross margins?\\s*(?:at|of|was|:)?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: a_and_p_spend, kind: pct, unit: pct, labels: ["a\\s?&\\s?p( spend| investment| expenses?)?", "advertising (and|&) promotion", "advertising (and|&) publicity"], neg: "growth", strict: ["a\\s?&\\s?p\\s*(?:spend|investment|expenses?)?\\s*(?:at|of|:)?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "advertising (?:and|&) (?:promotion|publicity)[^.]{0,20}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
   - {metric: direct_reach, kind: count, unit: count_mn, labels: ["direct reach", "direct (outlet )?coverage"]}
-  - {metric: volume_growth, kind: pct, unit: pct, labels: ["volume growth"]}
-  - {metric: market_share, kind: pct, unit: pct, labels: ["market share"]}
+  - {metric: market_share, kind: pct, unit: pct, labels: ["market share"], neg: "target|guidance|previous|growth", strict: ["market share\\s*(?:of|at|was|:)?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)"]}

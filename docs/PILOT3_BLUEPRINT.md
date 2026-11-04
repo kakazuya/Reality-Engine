@@ -41,8 +41,18 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   (Hindalco FY26 operating cash flow: 10,250 cr XBRL vs 21,858 cr company bridge).
 - **KPIs**: rule-based readers for sentences, tables (columns mapped to period headers), charts, segment-mix tables
   (`mix_v1`), entity headings (consolidated / standalone / subsidiary). Lexicon families in `pilot3/lexicon/`
-  (common, lenders, metals, orders, dimensions, topics). Period rules: a period can never start after its document's
-  date ("June 26, 2019" was once read as June 2026); a later deck restating an earlier quarter keeps that quarter.
+  (common, lenders, metals, orders, dimensions, topics; one file per sector since loop 3: `bank`, `insurance_life`,
+  `it_services`, `pharma`, `fmcg`, `auto_oem`, `consumer_internet`). A sector file declares `sectors: [...]` and an
+  entry applies only to companies of those sectors in a `--profile` build (no profile, the pilot3 three: only the
+  families marked `no_profile: true` — lenders, metals, orders — apply, exactly as before). An entry may also carry
+  `strict` labels: the sentence reader uses those when given (the value must follow the term, so "deposits ... margin"
+  chart fragments yield no row) while table rows keep the plain `labels`. Period rules: a period can never start
+  after its document's date ("June 26, 2019" was once read as June 2026); a later deck restating an earlier quarter
+  keeps that quarter; a results table's bare dates are relabelled from the group headings above them ("Quarter
+  ended | Half Year ended | Year ended"), so a half-year column over 30.09.2026 is `H1FY27`, not `Q2FY27`. On the
+  pilot10 base (`l3_base.db`, A1 651/898) the loop-3 lexicons take A1 to 676/898 with no company below base and
+  stop the sector-wrong rows (`deposits`, `crar_pct`, `nim_pct` only on lenders, `cost_of_production` only on
+  metals; A3 99.85%, `xbrl_disagreements` 312 against the base 335).
 - **Guidance**: sentence rules: forward cue, metric must be the target's subject, past actuals / tariff rates / supply
   shares / net-debt sentences rejected. Precision: 18/30 clean (3 Nov) → 28/40 (4 Nov). Remaining errors: two
   quantities in one sentence, restated past figures, vague levels.

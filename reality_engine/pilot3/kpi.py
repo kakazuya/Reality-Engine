@@ -275,6 +275,8 @@ def value_unit(v_cur: str | None, suf: str | None, kind: str, default_unit: str)
     cur = _norm_cur(v_cur)
     s = (suf or "").lower().strip().rstrip(".")
     base = _UNIT_BY_SUFFIX.get(s)
+    if default_unit == "usd_mn" and base == "bn":
+        return None      # a USD-million metric keeps the printed value, so a "$4.8 billion" row would break its quote
     if kind == "money":
         if base == "inr_cr" or (cur == "inr" and base in (None, "inr_cr")):
             return "inr_cr" if (base == "inr_cr" or default_unit == "inr_cr") and cur != "usd" else None
@@ -350,6 +352,8 @@ class Entry:
     generic: list[bool] = field(default_factory=list)   # per label: a bare one-word label (margin, revenue, ebitda ...)
     sectors: list[str] | None = None    # file key `sectors`: the entry applies only to companies of these sectors (profile build)
     no_profile: bool = False            # file key `no_profile`: with no profile (the pilot3 three) the family still applies
+    labels_strict: list[re.Pattern] = field(default_factory=list)  # file key `strict` (per entry): sentence-path labels
+    #                                    that require the value right after the label; tables keep the plain `labels`
 
 
 @dataclass
@@ -382,7 +386,8 @@ def load_lexicon() -> tuple[list[Entry], list[Dim]]:
             for e in d["entries"]:
                 entries.append(Entry(e["metric"], e["kind"], e["unit"], [_rx(x) for x in e["labels"]],
                                      _rx(e["neg"]) if e.get("neg") else None, e.get("companies"), d.get("family", f.stem),
-                                     [is_generic_label(x) for x in e["labels"]], d.get("sectors"), bool(d.get("no_profile"))))
+                                     [is_generic_label(x) for x in e["labels"]], d.get("sectors"), bool(d.get("no_profile")),
+                                     [_rx(x) for x in e.get("strict") or []]))
         if "dimensions" in d:
             for e in d["dimensions"]:
                 dims.append(Dim(e["dimension"], [_rx(x) for x in e["patterns"]], e.get("companies")))
@@ -650,9 +655,10 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
     per_spans = [(p.start, p.end) for p in pers]
     basis = page_basis(text)
     for e, lm in label_matches(entries, company, text):
-        # every occurrence of any label of the entry
-        for li, rx in enumerate(e.labels):
-            generic = li < len(e.generic) and e.generic[li]
+        # every occurrence of any label of the entry; `strict` labels (sentence-only) demand the value right after
+        strict = e.labels_strict
+        for li, rx in enumerate(strict or e.labels):
+            generic = not strict and li < len(e.generic) and e.generic[li]
             for m in rx.finditer(text):
                 lo = max(0, m.start() - 10)
                 if e.neg and e.neg.search(text[lo:m.end() + 14]):

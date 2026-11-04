@@ -1,12 +1,14 @@
-# Auto OEM KPI family (loop 2). Volumes are units, not tonnes.
+# Auto OEM KPI family (loop 2). Volumes are units, not tonnes. The monthly sales releases print a table headed
+# "Total Sales (Total Domestic + Export)" whose number is one month, not a quarter: the sentence forms below match
+# the deck and press-release wording, and a volume label must be followed by a comma-grouped count.
 family: auto_oem
 sectors: [auto_oem]
 entries:
-  - {metric: export_volumes, kind: count, unit: count, labels: ["^exports?\\b", "export (sales|volumes?)", "sales in export markets?", "exports? of"]}
-  - {metric: domestic_volumes, kind: count, unit: count, labels: ["domestic (sales|volumes?)", "sales in (the )?domestic market", "total domestic", "^domestic\\b"], neg: "%\\s*of|share"}
-  - {metric: volumes, kind: count, unit: count, labels: ["total sales\\b", "total (sales )?volumes?", "total units sold", "sales volumes?"], neg: "%\\s*of|share"}
-  - {metric: ev_volumes, kind: count, unit: count, labels: ["electric vehicles?[^.]{0,30}(units|sales|volumes?)", "\\bevs?\\b (sales|volumes?)"]}
-  - {metric: market_share, kind: pct, unit: pct, labels: ["market share", "share of (the )?(domestic )?(pv|passenger)"]}
-  - {metric: dealer_inventory_days, kind: days, unit: days, labels: ["dealer (inventory|stock)", "inventory (days|at dealers?)"]}
-  - {metric: discounts, kind: pct, unit: pct, labels: ["discounts?", "discounting"], neg: "cash discount"}
-  - {metric: order_backlog, kind: count, unit: count, labels: ["pending (customer )?orders?", "order (backlog|book)", "booking backlog", "bookings? pending"]}
+  - {metric: export_volumes, kind: count, unit: count, labels: ["^exports?\\b", "export (sales|volumes?)", "sales in export markets?", "exports? of"], strict: ["^exports?\\b[^.]{0,20}?(?=\\d{1,3}(?:,\\d{3})+)", "export (?:sales|volumes?)\\s*(?=\\d{1,3}(?:,\\d{3})+)", "exports? of\\s*(?=\\d{1,3}(?:,\\d{3})+)", "export volume of\\s*(?=\\d{1,3}(?:,\\d{3})+)"]}
+  - {metric: domestic_volumes, kind: count, unit: count, labels: ["domestic (sales|volumes?)", "sales in (the )?domestic market", "total domestic", "^domestic\\b"], neg: "%\\s*of|share|marketing|officer", strict: ["domestic sales reached[^.]{0,20}?(?=\\d{1,3}(?:,\\d{3})+)", "domestic sales of\\s*(?=\\d{1,3}(?:,\\d{3})+)", "domestic sales were at\\s*(?=\\d{1,3}(?:,\\d{3})+)", "domestic sales volume[^.]{0,10}?(?=\\d{1,3}(?:,\\d{3})+)", "^domestic sales\\s*(?=\\d{1,3}(?:,\\d{3})+)", "total domestic sales\\s*(?=\\d{1,3}(?:,\\d{3})+)"]}
+  - {metric: volumes, kind: count, unit: count, labels: ["total sales\\b", "total (sales )?volumes?", "total units sold", "sales volumes?"], neg: "%\\s*of|share|water|co2", strict: ["total sales volume[^.]{0,10}?(?=\\d{1,3}(?:,\\d{3})+)", "sales volume\\s*(?=\\d{1,3}(?:,\\d{3})+)", "total (?:sales )?volumes? (?:of|were at|at)\\s*(?=\\d{1,3}(?:,\\d{3})+)", "total units sold\\s*(?=\\d{1,3}(?:,\\d{3})+)"]}
+  - {metric: ev_volumes, kind: count, unit: count, labels: ["electric vehicles?[^.]{0,30}?(units|sales|volumes?)", "\\bevs?\\b (sales|volumes?)"], strict: ["electric vehicles?[^.]{0,30}?(?=\\d{1,3}(?:,\\d{3})+) units", "\\bevs?\\b (?:sales|volumes?)\\s*(?=\\d{1,3}(?:,\\d{3})+)"]}
+  - {metric: market_share, kind: pct, unit: pct, labels: ["market share", "share of (the )?(domestic )?(pv|passenger)"], neg: "target|guidance|expect|previous", strict: ["market share[^.]{0,25}?(?=\\d+(?:\\.\\d+)?\\s*%)", "share of (?:the )?(?:domestic )?(?:pv|passenger)[^.]{0,25}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: dealer_inventory_days, kind: days, unit: days, labels: ["dealer (inventory|stock)", "inventory (days|at dealers?)"], strict: ["dealer (?:inventory|stock)[^.]{0,25}?(?=\\d+(?:\\.\\d+)?\\s*days)", "inventory (?:days|at dealers?)[^.]{0,25}?(?=\\d+(?:\\.\\d+)?\\s*days)"]}
+  - {metric: discounts, kind: pct, unit: pct, labels: ["discounts?", "discounting"], neg: "rate|actuar|valuation|cash discount", strict: ["discounts?\\s*(?:of|at|:)?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "discounting[^.]{0,20}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: order_backlog, kind: count, unit: count, labels: ["pending (customer )?orders?", "order (backlog|book)", "booking backlog", "bookings? pending"], strict: ["pending (?:customer )?orders?\\s*(?:of|at|:)?\\s*(?=\\d{1,3}(?:,\\d{3})+)", "order (?:backlog|book)\\s*(?:of|at|:)?\\s*(?=\\d{1,3}(?:,\\d{3})+)", "booking backlog\\s*(?=\\d{1,3}(?:,\\d{3})+)"]}

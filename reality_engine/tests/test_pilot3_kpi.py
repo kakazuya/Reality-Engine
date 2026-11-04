@@ -700,12 +700,25 @@ def test_half_year_header_dates_and_bare_ratio_and_page_unit():
 
 
 def test_group_headers_relabel_date_columns():
-    class R:
-        def __init__(self, y, toks):
-            self.y, self.toks = y, toks
-
-    rows = [R(0, [(0, 40, "Quarter"), (40, 80, "ended"), (200, 240, "Half"), (240, 280, "Year"), (280, 320, "ended")]),
-            R(10, [(0, 50, "30.09.2025"), (60, 110, "30.06.2025"), (200, 250, "30.09.2025"), (260, 310, "30.09.2024")])]
+    rows = [kpi.WRow(0, [(0, 40, "Quarter"), (40, 80, "ended"), (200, 240, "Half"), (240, 280, "Year"),
+                         (280, 320, "ended")]),
+            kpi.WRow(10, [(0, 50, "30.09.2025"), (60, 110, "30.06.2025"), (200, 250, "30.09.2025"),
+                          (260, 310, "30.09.2024")])]
     info = [kpi.row_periods(r) for r in rows]
     kpi.relabel_group_columns(rows, info)
     assert [p.canon for _, p in info[1][2]] == ["Q2FY26", "Q1FY26", "H1FY26", "H1FY25"]
+
+
+def test_strict_labels_read_sentences_but_tables_keep_the_plain_label():
+    """A sector family may give `strict` sentence labels: the value must follow the term, while the table reader
+    still matches the plain label in a row label ("Volume Growth 6%")."""
+    entry = kpi.Entry("volume_growth", "pct", "pct", [kpi._rx("volume growth")], None, None, "fmcg",
+                      [False], None, False, [kpi._rx("volume growth\\s+(?=\\d+(?:\\.\\d+)?\\s*%)")])
+    assert kpi.label_matches([entry], "HINDUNILVR", "Volume Growth")          # the table path
+    rows = kpi.sentence_rows("Q2FY27 volume growth 6%. Volume growth chart 23.7%", 1, "HINDUNILVR", [entry], [], [])
+    assert [(r.metric, r.value, r.fiscal_period) for r in rows] == [("volume_growth", 6.0, "Q2FY27")]
+    strict = kpi.Entry("volume_growth", "pct", "pct", [kpi._rx("volume growth")], None, None, "fmcg",
+                       [False], None, False, [kpi._rx("volume growth\\s+(?=\\d+(?:\\.\\d+)?\\s*%)")])
+    assert strict.labels_strict and len(strict.labels) == 1
+    assert len(kpi.Entry("x", "pct", "pct", [], None, None, "fmcg").labels_strict) == 0
+

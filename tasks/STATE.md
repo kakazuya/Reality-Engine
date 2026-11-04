@@ -14,6 +14,11 @@ T-054 merged 4 Nov (guide section 5): `plugins/code-tools/` (run-and-exit `outli
 briefs need seven fields incl. `Evidence:` (`context_pack._REQUIRED_FIELDS`). T-055 built 4 Nov, loop-1 qset fixes 4 Nov
 (guide section 6): `reality_engine/night_eval/` (Q1-Q3, A1, A3-A7, decide, audit; 27 tests); real set 1271 questions ok. T-056 4 Nov: `reality_engine/pilot3/profile.py` + `--profile` on docs_collect/build/kpi/transcripts/guidance (pilot10 profile, MARUTI build verified); MCP pilot3_* tools take any `REALITY_PILOT3_DB` database (guide O10, blueprint section 9). Loop 2 merged 4 Nov: segments, bank and insurer lines, deals, insider, index tables (blueprint 9, 9a). T-057 next: printed QoQ/YoY comparatives.
 
+Loop-3 KPI lexicons done 4 Nov (guide O2, blueprint section 3): seven sector families with a `sectors:` key and
+`strict` sentence labels; on `D:\RealityEngine\pilot10\scratch\w_kpi3.db` (base `l3_base.db`) A1 651 → 676 of 898 with
+no company below base, sector-wrong `deposits`/`crar_pct`/`nim_pct` gone from non-lenders and `cost_of_production` only
+on HINDALCO, guards A3 99.85 % and `xbrl_disagreements` 312 (base 335), `test_pilot3_kpi.py` 45 passed, checkpages 145.
+
 **Running (4 Nov evening):** loop 3 (`loops/loop_03_brief.md`), DeepSeek workers until 06:30 IST. Re-answer of 43 questions done (KEC 13, BAJ 15, HIN 15): `D:\RealityEngine\pilot3\answer_run3\`; worktrees removed.
 
 ## Next action

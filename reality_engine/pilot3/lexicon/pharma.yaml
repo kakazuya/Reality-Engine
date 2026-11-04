@@ -1,16 +1,17 @@
-# Pharma KPI family (loop 2).
+# Pharma KPI family (loop 2). US sales print in US$ and India sales in ₹ million: a row whose value carries the
+# other currency is not that metric, and a half-year or nine-month figure is not the quarter.
 family: pharma
 sectors: [pharma]
 entries:
-  - {metric: us_revenue_usd, kind: money, unit: usd_mn, labels: ["(formulation )?sales in the (us|u\\.s\\.|united states)", "(us|u\\.s\\.) (formulation )?(sales|revenue)", "north america (sales|revenue)"], neg: "%\\s*of|share|mix"}
-  - {metric: us_generics, kind: money, unit: usd_mn, labels: ["(formulation )?sales in the (us|u\\.s\\.|united states)", "us generics", "(us|u\\.s\\.) formulations?"], neg: "%\\s*of|share|mix"}
-  - {metric: domestic_formulations, kind: money, unit: inr_cr, labels: ["(formulation )?sales in india", "india (formulation|branded)s?", "domestic formulations?"], neg: "%\\s*of|share|mix"}
-  - {metric: emerging_markets, kind: money, unit: inr_cr, labels: ["(formulation )?sales in emerging markets?", "emerging markets?( formulations?| sales)?"], neg: "%\\s*of|share|mix"}
-  - {metric: api_revenue, kind: money, unit: inr_cr, labels: ["\\bapi\\b (sales|revenue)", "sales of (apis?|active pharmaceutical ingredients?)", "\\bapis?\\b"], neg: "%\\s*of|share|mix"}
-  - {metric: r_and_d_pct, kind: pct, unit: pct, labels: ["r&d (investment|expenditure|spend|expenses?)", "research (and|&) development (investment|expenditure|spend)"], neg: "growth"}
-  - {metric: gross_margin, kind: pct, unit: pct, labels: ["gross margin"]}
-  - {metric: anda_filed, kind: count, unit: count, labels: ["andas? filed", "filed[^.]{0,20}andas?", "andas? (submitted|filings?)"]}
-  - {metric: anda_approved, kind: count, unit: count, labels: ["andas? approved", "approved[^.]{0,20}andas?", "andas? approvals?"]}
-  - {metric: pending_andas, kind: count, unit: count, labels: ["pending andas?", "andas? pending", "andas? awaiting"]}
-  - {metric: chronic_share, kind: pct, unit: pct, labels: ["chronic( therapies| segment)?", "chronic[^.]{0,20}(share|%|contribution)"]}
-  - {metric: market_share, kind: pct, unit: pct, labels: ["market share"]}
+  - {metric: us_revenue_usd, kind: money, unit: usd_mn, labels: ["(formulation )?sales in the (us|u\\.s\\.|united states)", "(us|u\\.s\\.) (formulation )?(sales|revenue)", "north america (sales|revenue)"], neg: "%\\s*of|share|mix|first half|nine months|half year|for the year|₹|rs\\.?|inr|crore"}
+  - {metric: us_generics, kind: money, unit: usd_mn, labels: ["(formulation )?sales in the (us|u\\.s\\.|united states)", "us generics", "(us|u\\.s\\.) formulations?", "us formulation sales"], neg: "%\\s*of|share|mix|first half|nine months|half year|for the year|₹|rs\\.?|inr|crore"}
+  - {metric: domestic_formulations, kind: money, unit: inr_cr, labels: ["(formulation )?sales in india", "india (formulation|branded)s?", "domestic formulations?"], neg: "%\\s*of|share|mix|growth"}
+  - {metric: emerging_markets, kind: money, unit: inr_cr, labels: ["(formulation )?sales in emerging markets?", "emerging markets?( formulations?| sales)?"], neg: "%\\s*of|share|mix|growth|us\\$|usd|\\$|billion|\\bbn\\b"}
+  - {metric: api_revenue, kind: money, unit: inr_cr, labels: ["\\bapi\\b (sales|revenue)", "sales of (apis?|active pharmaceutical ingredients?)", "\\bapis?\\b"], neg: "%\\s*of|share|mix|\\bbn\\b|billion|growth|us\\$|usd|\\$|global|market"}
+  - {metric: r_and_d_pct, kind: pct, unit: pct, labels: ["r&d (investment|expenditure|spend|expenses?)", "research (and|&) development (investment|expenditure|spend)"], neg: "growth|total", strict: ["r&d (?:investment|investments|expenditure|spend|expenses?)[^.]{0,30}?(?=\\d+(?:\\.\\d+)?\\s*%)", "research (?:and|&) development (?:investment|expenditure|spend)[^.]{0,30}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: gross_margin, kind: pct, unit: pct, labels: ["gross margin"], neg: "segment|guidance|growth", strict: ["gross margins?\\s*(?:%|at|of|was|:)?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: anda_filed, kind: count, unit: count, labels: ["andas? filed", "filed[^.]{0,20}?andas?", "andas? (submitted|filings?)"], neg: "ndas?"}
+  - {metric: anda_approved, kind: count, unit: count, labels: ["andas? approved", "approved[^.]{0,20}?andas?", "andas? approvals?"], neg: "ndas?"}
+  - {metric: pending_andas, kind: count, unit: count, labels: ["pending andas?", "andas? pending", "andas? awaiting"], neg: "ndas?", strict: ["pending andas?\\s*(?:of|at|:)?\\s*(?=\\d)", "andas? pending\\s*(?:of|at|:)?\\s*(?=\\d)"]}
+  - {metric: chronic_share, kind: pct, unit: pct, labels: ["chronic( therapies| segment)?", "chronic[^.]{0,20}?(share|%|contribution)"], neg: "guidance|growth", strict: ["chronic (?:segment|therapy|therapies|portfolio)[^.]{0,40}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: market_share, kind: pct, unit: pct, labels: ["market share"], neg: "previous|target|guidance|growth", strict: ["market share[^.]{0,30}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
