@@ -79,7 +79,11 @@ PAST_ONLY = re.compile(r"\b(achieved|stood at|reported|last year|lask year|previ
                        r"(?:have|has|had) been (?:spending|investing|incurring|committing)|remained at|"
                        # T-058: "the guidance … we have been able to maintain that at the middle range" is the
                        # level achieved, not the target
-                       r"(?:have|has|had) been able to (?:maintain|deliver|achieve))\b", re.I)
+                       r"(?:have|has|had) been able to (?:maintain|deliver|achieve)|"
+                       # T-062: a present-perfect movement is a measurement ("yield on assets have come down …
+                       # 30 basis points"), not a target
+                       r"(?:have|has|had)\s+(?:come|gone|fallen|risen|declined|grown|increased|decreased|moved|"
+                       r"eased|hardened|dropped|improved))\b", re.I)
 # a percentage that is the rate OF something else ("232 aluminium tariffs at 50%", "a duty of 10%") is not a
 # company target (T-049, 4 Nov 2026: a tariff rate was stored as an FY26 EBITDA margin)
 RATE_OF = re.compile(r"\b(?:tariffs?|duty|customs duty|levy|surcharge|tax rate|repo rate)\b[^.%]{0,40}"
@@ -106,6 +110,10 @@ REMAINS_AT = re.compile(r"\bremains? at\b", re.I)
 # `other` is kept only with a guidance word in the same clause as the number (T-056 family F): a level of the
 # order book, L1 position or debtors is a fact about the business, not a target.
 OTHER_CUE = re.compile(r"\b(?:target\w*|expect\w*|guidanc\w*|guide\w*|aim\w*|would be|will be|should be)\b", re.I)
+# T-062: a number read as `other` needs a real target wording, not just a forward tense -- "salaried is about 40%,
+# business would be about 34%" is a customer mix.  A worded target ("in the 70s") keeps the looser cue.
+OTHER_TARGET = re.compile(r"\b(?:target\w*|expect\w*|guidanc\w*|guid(?:e|ed|es|ing)|aim\w*|plan\w*|project\w*|"
+                          r"forecast\w*|intend\w*|outlook|going forward|steady[- ]state|get to|going to)\b", re.I)
 # a list of example values is not a target ("there are some 25 basis points, some 100 basis points") -- T-058
 EXAMPLE_LIST = re.compile(r"\bsome\s+\d[^.;]{0,25}?\bsome\s+\d", re.I)
 # a sentence that declines to guide names no target ("we do not give forward guidance", "we're not going to give
@@ -162,7 +170,8 @@ METRICS = (
                                       r"input cost|energy cost|costs? (?:went|going|to) up", re.I), -20.0, 60.0),
     ("revenue_growth", re.compile(r"\brevenue\b|top ?line|net sales|\bsales\b|"
                                    # T-058: "the guidance of 60% CAGR" is a top-line growth target
-                                   r"\bcagr\b", re.I), -20.0, 60.0),
+                                   # T-062: an insurer's IRP/APE is its top line
+                                   r"\bcagr\b|\bIRP\b|\bAPE\b", re.I), -20.0, 60.0),
     ("ebitda_margin", re.compile(r"ebitda margin|\bmargin\b|\bmargins\b", re.I), 0.0, 50.0),
     ("other", re.compile(r"order book|fixed|variable|volume|shipment|capacity|utilization|utilisation|"
                          r"customer|market share|pass[- ]through|price variation|"
@@ -186,7 +195,7 @@ R_MONEY = re.compile(MONEY + r"\s*" + AMT + r"\s*" + UNITWORD, re.I)
 # "INR20 crores, INR25 crores" / "5%, 6%": a range said as a pair, only next to a hedging word
 R_PAIR = re.compile(r"(?<![\d.])" + AMT + r"\s*(%|crores?|\bcr\b)\s*,\s*(?:and\s+)?" + MONEY + r"?\s*" + AMT +
                     r"\s*(%|crores?|\bcr\b)", re.I)
-PAIR_CUE = re.compile(r"\b(maybe|around|about|between|anywhere|roughly|approximately|another)\b", re.I)
+PAIR_CUE = re.compile(r"\b(maybe|around|about|between|anywhere|roughly|approximately|another|reach\w*)\b", re.I)
 R_PCT_SINGLE = re.compile(r"(?<![\d.])" + AMT + r"\s*%")
 R_BPS_SINGLE = re.compile(AMT + r"\s*(?:bps|basis points)", re.I)
 R_PER_TON = re.compile(MONEY + r"?\s*" + AMT + r"\s*(?:/t\b|per ton|per tonne|a ton)", re.I)
@@ -307,6 +316,10 @@ NEXT = re.compile(r"\b(next|following|coming)\s+(?:fiscal|financial year|year|fi
 THIS = re.compile(r"\b(this|current)\s+(?:fiscal|financial year|year)\b|\bfor the (?:full )?year\b|\bfull year\b|"
                   r"\bannually\b|\bannual(?:ly)? basis\b", re.I)
 BARE_Q = re.compile(r"(?<![\w.])(?:in\s+|from\s+|to\s+)?Q\s*([1-4])(?!\s*[- ]?FY)(?![\d])", re.I)
+# T-062: "…about 90% in the next quarter" is the quarter after the call's own, and "the cost of production in the
+# Q2 level" is that quarter of the filing's fiscal year (the quarter the call reports)
+NEXT_Q = re.compile(r"\b(?:next|coming|following)\s+quarter\b", re.I)
+Q_LEVEL = re.compile(r"\b(?:in|at)\s+the\s+Q\s*([1-4])\s+level\b", re.I)
 
 
 def _yy(text: str) -> str:
@@ -380,10 +393,29 @@ def target_period(sentence: str, before: str, after: str, call_period: str | Non
     quarter nearest the target number wins ("5%, 6% Q2 to Q1" names Q2).  "next year" is the year after the call's
     own, but a bare quarter in a backward-looking phrase ("Q1 results", "Q2 performance") is not the target
     (T-056 families A and B)."""
+    # T-062: "…about 90% in the next quarter" is the quarter after the call's own; a period label before the number
+    # ("in Q2FY26 about 80% of the NOV … expected to go to … in the next quarter") describes the current state
+    nq = NEXT_Q.search(sentence)
+    next_q = bool(nq and pos is not None and nq.start() >= pos
+                  and not any(rx.search(sentence, pos) for rx in (Q_FY, H_FY, FY_RANGE, FULL_YEAR, FY)))
     label = _explicit_period(sentence, pos)
-    if label:
+    if label and not next_q:
         return label
     base = base_forward(call_period, doc)
+    if next_q and nq:
+        fy, call_q = split_period(call_period)
+        if fy is None and doc:
+            fy, call_q = doc[0], doc[1]
+        if fy is not None and call_q:
+            n = int(call_q[1]) + 1
+            return f"Q{n}FY{fy:02d}" if n <= 4 else f"Q1FY{fy + 1:02d}"
+    lvl = Q_LEVEL.search(sentence)
+    if lvl:
+        fy, _q = split_period(call_period)
+        if fy is None and doc:
+            fy = doc[0]
+        if fy is not None:
+            return f"Q{lvl.group(1)}FY{fy:02d}"
     if base is None:
         return None
     moves = [(m.start(), "next") for m in NEXT.finditer(sentence)] + \
@@ -518,8 +550,15 @@ SHARE_NOUN = re.compile(r"^\s*(?:share|of\s+share)\b"
 SUBJECT_NOUN = re.compile(r"\b(exposure|debtors?|net debt|debt|borrowings?|working capital|receivables?|order book|"
                           r"backlog|turnover|top ?line|profit|margins?|shipments?|volumes?|supply|sourc\w*|"
                           r"utilisation|utilization|capacity|tonnes?|inflation|costs?)\b", re.I)
-# a percent that is a change ("a 10% reduction in the interest cost", "3-4% revenue impact") is not a level
-PCT_CHANGE = re.compile(r"\s*%?\s*(?:reduction|increase|decrease|impact|improvement|savings?)\b", re.I)
+# a percent that is a change ("a 10% reduction in the interest cost", "3-4% revenue impact", "a 1% point margin
+# accretion") is not a level
+PCT_CHANGE = re.compile(r"\s*%?\s*(?:points?\b[^.;]{0,20}?)?(?:reduction|increase|decrease|impact|improvement|"
+                        r"savings?|accretion|expansion|drag)\b", re.I)
+# the change a number is part of, named before it ("Reduction of 0.75% to 1% due to …") -- T-062
+DELTA_NOUN = re.compile(r"\b(?:reduction|increase|decrease|savings?|impact|improvement)\b", re.I)
+# T-062: a number taken out of a stated total is a slice, not the total target ("out of INR30,000 crores … INR20,000
+# crores"); the whole is already its own row
+SLICE_OF = re.compile(r"\b(out of|of which|of that|of these|of the total)\b", re.I)
 # "the EBITDA CAGR is 13%" / "store CAGR" is not the top line's CAGR (T-058)
 NON_REVENUE_CAGR = re.compile(r"\b(?:ebitda|margin|margins|profit|pat|eps|volume|volumes|store|stores|aum|"
                               r"order|orders|dividend|headcount)\s*[-/ ]?\s*cagr\b", re.I)
@@ -554,8 +593,17 @@ def subject_ok(metric: str, sentence: str, chosen: dict, before: str, symbol: st
         return False                    # "the EBITDA CAGR is 13%" is not the top line's CAGR (T-058)
     left = sentence[max(0, chosen["start"] - 70):chosen["start"]]
     right = sentence[chosen["end"]:chosen["end"] + 30]
-    if metric not in GROWTH_METRICS and GROWTH_NEAR.search(left + " " + right):
+    # T-062: a growth verb governs the whole clause, so "we'll be growing for the year at 14% to 15%" cannot take a
+    # margin metric from the question -- the second "14% to 15%" sits 200 characters past "growing"
+    own = METRIC_RX.get(metric)
+    window = left + " " + right if own and own.search(sentence) else sentence
+    if metric not in GROWTH_METRICS and GROWTH_NEAR.search(window):
         return False
+    if chosen["unit"] == "pct" and DELTA_NOUN.search(left) \
+            and not re.search(r"\b(?:to|at)\s+$", left):
+        return False                    # the number is the size of a change ("Reduction of 0.75% to 1%")
+    if metric != "other" and SLICE_OF.search(left):
+        return False                    # a slice of a stated total is not the total target (T-062)
     if chosen["unit"] == "pct" and PCT_CHANGE.match(sentence[chosen["end"]:chosen["end"] + 32]):
         return False                    # a percent change is not a percent level
     named = [name for name, rx, _lo, _hi in METRICS if rx.search(sentence)]
@@ -642,12 +690,15 @@ def other_cued(sentence: str, chosen: dict) -> bool:
     return False
 
 
-def worded_direction(sentence: str, metric: str) -> str:
+def worded_direction(sentence: str, metric: str, pos: int | None = None) -> str:
     """The direction of a worded target: "ahead of" / "better than" / "or higher" is up, "flattish" / "in the
-    guided range" is flat, and a growth metric keeps up when it names no size word."""
-    if WORDED_DOWN.search(sentence):
+    guided range" is flat, and a growth metric keeps up when it names no size word.  With ``pos`` only the words
+    around the size word count, so a growth elsewhere in the sentence does not turn "margin … remaining flat" up
+    (T-062)."""
+    window = sentence[max(0, pos - 60):pos + 60] if pos is not None else sentence
+    if WORDED_DOWN.search(window):
         return "down"
-    if WORDED_UP.search(sentence) or metric in GROWTH_METRICS:
+    if WORDED_UP.search(window) or metric in GROWTH_METRICS:
         return "up"
     return "flat"
 
@@ -693,7 +744,7 @@ def worded_row(symbol: str, doc: sqlite3.Row, page: int, sentence: str, quote: s
     if not period:
         stats["no_period"] += 1
         return None
-    return (symbol, doc["isin"], metric, period, None, None, "pct", worded_direction(sentence, metric),
+    return (symbol, doc["isin"], metric, period, None, None, "pct", worded_direction(sentence, metric, move.start()),
             (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote, speaker,
             doc["known_at"], "doc.known_at", None, "guidance_cue_v1")
 
@@ -870,7 +921,12 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             stats["asset_quality"] += 1
             continue                    # "GNPA came in at 1.01%" is an actual, not the credit-cost target
         if metric == "other" and (FACT_SHAPE.search(sentence) or "market share" in sentence.lower()
-                                  or not other_cued(sentence, chosen)):
+                                  or not other_cued(sentence, chosen)
+                                  # T-062: a list of labelled percentages is a customer/business mix, not a target
+                                  # ("salaried is about 40%, business would be about 34%, self-employed about 20%"),
+                                  # while a target stated in words ("in the 70s") or a single number is kept
+                                  or (not OTHER_TARGET.search(sentence)
+                                      and sum(1 for n in nums if n["unit"] == "pct") >= 2)):
             stats["other_fact"] += 1
             continue
         if metric != "other" and segment_subject(sentence, chosen, symbol):
