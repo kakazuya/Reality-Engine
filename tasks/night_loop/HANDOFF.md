@@ -2,9 +2,9 @@
 
 ## Current state (loop 3 stopped at 400k context, 4 Nov 2026 20:20 IST)
 - Baseline on a copy, `pilot10\scratch\l3_base.db`: A1 dev 651/898 = 72% (`pilot10\scores\a1_loop03_base.json`). `pilot10.db` is untouched and stale.
-- **Ready to merge: speakers and guidance, `dsh/20261104T143838Z-20a19ffb` (A1 662, checkpages 145, re-run by the loop).** Comparatives fix 42e59ee9 (`dsh/20261104T140210Z-42e59ee9`) was still running: check `list_workers`, unreviewed.
+- **Ready to merge, re-run by the loop:** comparatives `dsh/20261104T140210Z-42e59ee9` (A1 682, checkpages 145) and speakers + guidance `dsh/20261104T143838Z-20a19ffb` (A1 662, checkpages 145). Open items: `loops/loop_03_report.md`. No worker running.
 - Not started: KPI precision round 2, `loops/loop_03_worker_kpi_fix2.md`, base `dsh/20261104T134520Z-2ba2330d`.
-- Do not merge the first-round branches on their own: f826eabb has wrong TTM on every Q2 and Q3 table and false EPS checks; 2e947e47 wiped EBITDA for non-metals. Full verdicts: `loops/loop_03_report.md`.
+- Do not merge the first-round branches on their own: f826eabb has wrong TTM on every Q2 and Q3 table and false EPS checks; 2e947e47 wiped EBITDA for non-metals; `dsh/20261104T134520Z-2ba2330d` is about 75% right on new rows. Full verdicts: `loops/loop_03_report.md`.
 - 865 pages need OCR: `pilot10\logs\needs_ocr_pages.csv`. Not run.
 
 ## Wrapper between loops 1 and 2 (05:00 IST)
@@ -23,9 +23,9 @@
   `loops/loop_01_worker_generalise.md`), started 04:52 IST on DeepSeek; it is loop 2's first worker slot.
 
 ## Next
-1. Review the comparatives fix at once against its brief's Accept: recompute one TTM by hand, `checkpages run` on the branch.
-2. Start KPI round 2 when a slot is free (DeepSeek off-peak until 06:30 IST on 5 Nov).
-3. Build all three accepted branches together on a copy, measure A1 per company and guards, then merge. Hand-read before believing any A1 gain.
+1. Wrapper: merge the two ready branches (`docs_collect --symbols KEC` on the real `pages.db`; `--part comparatives` before `--part ratios`; main's `tasks/STATE.md`), build them together on a copy, measure A1 per company and guards.
+2. Start KPI round 2 (`loops/loop_03_worker_kpi_fix2.md`, base `dsh/20261104T134520Z-2ba2330d`) on DeepSeek, off-peak until 06:30 IST on 5 Nov. Merge only at 18/20 per family.
+3. Then guidance recall (ETERNAL, SUNPHARMA, MARUTI hold 0 rows) and how to show HINDUNILVR's continuing-only and total EPS, both.
 
 ## Learnings (append one line each; newest last)
 - 3-4 Nov: full rebuilds (8 min) were the slow loop; per-company parts and fixed check pages are the fast loop.

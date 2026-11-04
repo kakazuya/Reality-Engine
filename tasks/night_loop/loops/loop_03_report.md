@@ -1,31 +1,31 @@
 # Loop 3 report (session 03, Eagle, 4 Nov 2026; times are this machine's clock)
 
-## Status: stopped at the 400k context line. **One branch is ready to merge: speakers and guidance.**
-Comparatives fix may still be running (see `list_workers`), and KPI round 2 is queued. Sections below hold the evidence.
+## Status: stopped at the 400k context line, 20:50 IST. **Two branches ready to merge: comparatives and speakers + guidance. No worker running.**
+KPI round 2 is queued, not started. The three have never been built together, so the combined A1 is unknown. Sections below hold the evidence.
 
 ## For the wrapper
 | Work | Merge this branch once reviewed | State at 20:20 IST | A1 dev, alone against 651 |
 |---|---|---|---|
-| Printed comparatives (T-057) | `dsh/20261104T140210Z-42e59ee9`, on `dsh/20261104T124718Z-f826eabb` | Fix running. First round has wrong TTM, so do not merge that one | First round 680; wrong until the fix lands |
+| Printed comparatives (T-057) | `dsh/20261104T140210Z-42e59ee9`, on `dsh/20261104T124718Z-f826eabb` | **ACCEPT with open items, ready for the wrapper** (20:47 IST) | 682 |
 | Speakers and guidance | `dsh/20261104T143838Z-20a19ffb`, on `dsh/20261104T133227Z-c8ca921f` | **ACCEPT, ready for the wrapper** (20:33 IST) | 662 |
 | Sector KPIs | `dsh/20261104T134520Z-2ba2330d`, then round 2 | Round 2 **not started**: `loops/loop_03_worker_kpi_fix2.md`, start it with `base=dsh/20261104T134520Z-2ba2330d` | 677, about 75% of new rows right on my read of 67 |
 
 A1 per company, each candidate alone (not additive; never combined or built together):
-| Company | Base | KPI fix | Comparatives, first round | Speech, first round |
+| Company | Base | KPI fix | Comparatives fix | Speech fix |
 |---|---|---|---|---|
 | BAJFINANCE /88 | 71 | 71 | 77 | 71 |
 | ETERNAL /88 | 65 | 68 | 66 | 65 |
 | HDFCBANK /101 | 71 | 75 | 74 | 71 |
 | HINDALCO /84 | 69 | 69 | 76 | 69 |
 | HINDUNILVR /96 | 71 | 74 | 74 | 71 |
-| INFY /91 | 65 | 65 | 65 | 65 |
+| INFY /91 | 65 | 65 | 66 | 65 |
 | KEC /79 | 51 | 51 | 54 | 62 |
-| MARUTI /91 | 59 | 61 | 61 | 59 |
+| MARUTI /91 | 59 | 61 | 62 | 59 |
 | SBILIFE /92 | 67 | 75 | 67 | 67 |
 | SUNPHARMA /88 | 62 | 68 | 66 | 62 |
-| Total /898 | 651 | 677 | 680 | 662 |
+| Total /898 | 651 | 677 | 682 | 662 |
 
-These figures are the workers' and A1 counts rows, not right answers. Guards were run by the workers; I did not re-run them. A2 not run. Hidden split not read.
+I re-ran A1 on the comparatives and speech copies and got these figures; the KPI column is the worker's. A1 counts rows, not right answers. Guards were run by the workers; I did not re-run them, and they do not score `fin_quarter_printed` in A3. A2 not run. Hidden split not read.
 
 Build seconds on a copy: registry 4, pages 27, stores 171, ratios 1, segments 2. Workers measured kpi 191 s for ten, comparatives 15-33 s a company, A1 about 8 s.
 
@@ -90,6 +90,17 @@ All on DeepSeek, off-peak; the first two started 18:17 IST.
 | comparatives (first) | 20261104T124718Z-f826eabb | `dsh/20261104T124718Z-f826eabb` | `loop_03_worker_comparatives.md` | **NOT ACCEPTED, do not merge alone** |
 | comparatives fix | 20261104T140210Z-42e59ee9 | `dsh/20261104T140210Z-42e59ee9` (on the comparatives branch) | `loop_03_worker_comparatives_fix.md` | running, started 19:32 IST |
 
+### Review of the comparatives fix round (20:47 IST): ACCEPT, with open items
+Re-run by me on its copy and worktree: TTM on HINDALCO 80.00, BAJFINANCE 29.51, SUNPHARMA 43.60 (the formula I specified); no EPS `xbrl_ok` off by more than 0.03; no EPS above 1,000; no negative cost line; `checkpages` 145; A1 682/898, no company below baseline. Its report, not re-run: 18 + 7 + 7 + 29 + 23 tests pass, guards pass, 0 point-in-time violations, 30/30 hand read after one fix. Rows 5,587 to 6,685; `unchecked` 2,136 to 1,402; `repeat_ok` 1,313.
+`pe` days per company, base / first round / now: HINDALCO 0/245/245, SUNPHARMA 3/246/246, BAJFINANCE 11/244/188, KEC 2/117/188, HINDUNILVR 5/178/178, MARUTI 6/6/130, ETERNAL 10/72/130, HDFCBANK 11/11/11, INFY 8/8/8, SBILIFE 6/6/6.
+Open, for the wrapper:
+- **HINDUNILVR 2026-02-12 trailing EPS is 61.76, where I expected 43.08.** The worker is right on its evidence: 45.32 + 51.28 - 34.84 is the total-operations row, whose current column equals XBRL (28.12); mine was the continuing-only row. It includes the discontinued-business gain, so the P/E of about 39 is flattered by a one-off. An investor would want both: the table has only one. Not settled here.
+- **Checked share of quarter rows is 90% on only 2 of 10 companies** (KEC, SUNPHARMA; INFY lowest at 65.4%): target missed. A year-ago value printed by one filing has nothing to agree with.
+- Unread: MARUTI consolidated 2026-10-27 p6, too damaged; MARUTI consolidated 2026-01-28 stores nothing either, not explained in the report. HDFCBANK's two scans and half of SBILIFE's pages need OCR, so their `pe` days cannot move.
+- `pe` on a date before the first complete filing stays empty: KEC before 2026-01-30, BAJFINANCE for about 56 trading days around its Q3 table. Answer for such a date: "no checked filing held", not missing data.
+- INFY prints the statement twice with rounding differences: 106 of its restatements are that, not true restatements. `repeat_ok` was my decision, beyond the loop brief's three statuses: overrule if unwanted.
+- The diff touches `tasks/STATE.md` against its old base: take main's file at merge.
+
 ### Review of the speech fix round (20:33 IST): ACCEPT
 Re-run by me on its worktree and copy: `checkpages` 145 (KEC 29, BAJFINANCE 59, HINDALCO 57), A1 662/898 with KEC 51 to 62 and no other company moved, `project_capital_spent` rows 2.2, 2.7, 3.2, 3.8. Its report: guidance tests 22 and speaker tests 8 pass, guards pass, A3 32/32, typecheck 0. Those I did not re-run.
 - Remaining wrong row, kept on purpose: HINDALCO `cost_of_production` FY26 3-4. Dropping it takes `checkpages` to 143, because graded entries point at that page. The grader may not be loosened, so it stays, and the wrapper should know.
@@ -128,6 +139,6 @@ Part of the 25-question A1 gain may rest on these wrong rows, which is what the 
 | 2e947e47 KPI | finish unreviewed branch | 45 min | 130, 62 | Own hand read failed, reported anyway | Evidence should show the rows' look; stop rule on the bar |
 | c8ca921f speech | fix + extraction rules | 30 min | 130, 14 | Good; one false claim about checkpages | Brief's family D cost a true fact: my error |
 | 2ba2330d KPI fix | fix | 53 min | 108 by its count, 221 by the supervisor, 11 | Honest; bar not met, budget ran out before the read | Polling used 37 calls; foreground builds |
-| 42e59ee9 comparatives fix | fix | running | | | |
+| 42e59ee9 comparatives fix | fix | 73 min | 105 by its count, 189+ by the supervisor, 24 | Accepted with open items | Budget of 130 and first edit of 8 were too tight; worker counts differ from the supervisor's: use the supervisor's |
 | 20a19ffb speech fix | fix | 24 min | 97, under 5 | Accepted | Brief with exact rows gave a clean 24 minutes |
 This session: Opus manager, reached 400k context at about 70 tool calls, mostly long briefs, row dumps and worker reports. Row dumps were the avoidable part.
