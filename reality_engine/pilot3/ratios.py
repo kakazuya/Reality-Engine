@@ -159,7 +159,7 @@ def _printed_year_ago(conn: sqlite3.Connection, symbol: str, basis: str, item: s
     row = conn.execute(
         "SELECT value, known_at, fiscal_period, period_start FROM fin_quarter_printed WHERE symbol=? AND basis=? "
         "AND line_item=? AND period_end=? AND column_role='year_ago' AND period_type='quarter' "
-        "AND check_status IN ('xbrl_ok','sum_ok') "
+        "AND check_status IN ('xbrl_ok','sum_ok','repeat_ok') "
         "AND abs(julianday(substr(known_at,1,10)) - julianday(substr(?,1,10))) <= 1 "
         "ORDER BY known_at LIMIT 1", (symbol, basis, item, prior_end, known)).fetchone()
     return tuple(row) if row else None
@@ -174,7 +174,7 @@ def _printed_fy(conn: sqlite3.Connection, symbol: str, basis: str) -> dict:
         return out
     for fy, end, item, value, known, start in conn.execute(
             "SELECT fiscal_period, period_end, line_item, value, known_at, period_start FROM fin_quarter_printed "
-            "WHERE symbol=? AND basis=? AND period_type='fy' AND check_status IN ('xbrl_ok','sum_ok') "
+            "WHERE symbol=? AND basis=? AND period_type='fy' AND check_status IN ('xbrl_ok','sum_ok','repeat_ok') "
             "ORDER BY known_at", (symbol, basis)):
         out[fy].setdefault(item, (value, known, end, start))
     return out
@@ -193,7 +193,7 @@ def _split_factor(conn: sqlite3.Connection, symbol: str):
     return factor_at
 
 
-def _panel(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
+def _panel(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -> None:
     q = _quarters(conn, symbol)
     factor_at = _split_factor(conn, symbol)
     by_basis: dict = defaultdict(dict)
@@ -370,7 +370,7 @@ def build_ratios(conn: sqlite3.Connection) -> dict:
     return counts
 
 
-def _payout_bvps(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
+def _payout_bvps(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -> None:
     """Dividend payout (DPS / FY EPS), when the annual lines carry the inputs.  One row per fiscal year and basis:
     the year's declared dividends summed from the NSE corporate actions (``source_table`` corporate_actions) win over
     a figure read from an annual report, and a figure not tied to a fiscal year is never used."""
@@ -429,14 +429,14 @@ def _quarter_labelled(out: list, first: int) -> None:
             out.append((row[0], row[1], label, "Q", quarter_start, row[5], *row[6:]))
 
 
-def _balance_ratios(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
+def _balance_ratios(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -> None:
     first = len(out)
     _balance_ratios_rows(conn, symbol, isin, out)
     if profile.under_profile():  # the three-company pilot3 build keeps its present rows
         _quarter_labelled(out, first)
 
 
-def _balance_ratios_rows(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
+def _balance_ratios_rows(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -> None:
     """Ratios on the XBRL balance sheets (year ends and half years): book value per share, leverage, ROCE, ROE and
     working-capital days.  Flows are the four quarters to the balance-sheet date, same basis as the sheet."""
     quarters = _quarters(conn, symbol)
@@ -543,7 +543,7 @@ def _lender_opex(conn: sqlite3.Connection, symbol: str, isin: str | None, out: l
              max(part[1] for part in [*opex, income, finance]))
 
 
-def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
+def _valuation(conn: sqlite3.Connection, symbol: str, isin: str | None) -> int:
     """valuation_daily: one row per NSE trading day, consolidated basis, every input filed by that day."""
     from reality_engine.pilot3 import comparatives
 
@@ -553,7 +553,7 @@ def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
     if not has_consolidated and comparatives.has_table(conn):
         has_consolidated = conn.execute(
             "SELECT 1 FROM fin_quarter_printed WHERE symbol=? AND basis='consolidated' AND period_type='quarter' "
-            "AND check_status IN ('xbrl_ok','sum_ok') LIMIT 1", (symbol,)).fetchone()
+            "AND check_status IN ('xbrl_ok','sum_ok','repeat_ok') LIMIT 1", (symbol,)).fetchone()
     if not has_consolidated:
         basis = "standalone"  # a company that files no consolidated results (a life insurer)
     window = profile.window_start() or ""

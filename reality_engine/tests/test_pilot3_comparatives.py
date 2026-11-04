@@ -272,3 +272,96 @@ def test_ttm_from_one_filings_columns():
             "'doc1',6,'2026-10-20','doc.known_at','sum_ok',NULL,1)", (end, ptype, role, value))
     sets = cmp.ttm_filings(conn, "AAAA", "consolidated")
     assert sets and sets[0]["items"]["pat"] == pytest.approx(788 + 428 - 383)
+
+
+def _ttm_cells(ll, cur, ago, ytd, prior, ytd_ptype="ytd"):
+    cells = {("last_fy", "eps_basic"): (ll, "2026-03-31", "fy")}
+    if cur is not None:
+        cells[("current", "eps_basic")] = (cur, "2026-09-30", "quarter")
+    if ago is not None:
+        cells[("year_ago", "eps_basic")] = (ago, "2025-09-30", "quarter")
+    if ytd is not None:
+        cells[("ytd", "eps_basic")] = (ytd, "2026-09-30", ytd_ptype)
+    if prior is not None:
+        cells[("prior_ytd", "eps_basic")] = (prior, "2025-09-30", ytd_ptype)
+    return cells
+
+
+def test_ttm_uses_the_tables_own_quarter_layout():
+    """A Q2/Q3 table prints a ytd column and must use last_fy + ytd - prior_ytd; the Q1 formula is only for a
+    table with no ytd at all.  The four measured rows of the audit (the old code used the Q1 formula)."""
+    assert cmp._ttm_one(_ttm_cells(72.05, 21.35, 17.59, 39.38, 31.43), "eps_basic") == pytest.approx(80.00)  # HINDALCO
+    assert cmp._ttm_one(_ttm_cells(45.36, 9.03, 12.86, 32.49, 34.77), "eps_basic") == pytest.approx(43.08)   # HINDUNILVR
+    assert cmp._ttm_one(_ttm_cells(26.89, 7.85, 6.47, 15.41, 12.79), "eps_basic") == pytest.approx(29.51)    # BAJFINANCE
+    assert cmp._ttm_one(_ttm_cells(45.6, 13.0, 12.7, 22.5, 24.5), "eps_basic") == pytest.approx(43.60)       # SUNPHARMA
+    # a Q1 table has no ytd column at all
+    q1 = {("last_fy", "eps_basic"): (36.8, "2026-03-31", "fy"), ("current", "eps_basic"): (10.5, "2026-06-30", "quarter"),
+          ("year_ago", "eps_basic"): (8.4, "2025-06-30", "quarter")}
+    assert cmp._ttm_one(q1, "eps_basic") == pytest.approx(38.9)
+    # never fall through when the ytd formula lacks a cell
+    missing = _ttm_cells(72.05, 21.35, 17.59, 39.38, None)
+    assert cmp._ttm_one(missing, "eps_basic") is None
+    # a Q4 table prints the year itself
+    q4 = {("ytd", "pat"): (788.0, "2026-03-31", "fy"), ("current", "pat"): (225.0, "2026-03-31", "quarter")}
+    assert cmp._ttm_one(q4, "pat") == pytest.approx(788.0)
+
+
+def test_eps_tolerance_is_never_scaled():
+    """2 units of the item's own printed decimals: a crore table's scale must not turn an EPS check into a
+    two-million-rupee tolerance (MARUTI stored 10,953 as 109.63)."""
+    assert cmp._tol("eps_basic", 0, 1e6, "10953", 0) == 2.0
+    assert cmp._tol("eps_basic", 0, 1e6, "10953", 1) == 0.2
+    assert cmp._tol("eps_basic", 2, 1e7, "19.32", 2) == 0.02
+    assert cmp._tol("revenue_from_operations", 0, 1e7) == 2e7
+
+    conn = _conn()
+    _xbrl(conn, "2026-09-30", "revenue_from_operations", 1000 * 1e6)
+    _xbrl(conn, "2026-09-30", "eps_basic", 109.63)
+    rows = [ROWS[0], ("2 Other income", ROWS[1][1]), ("3 Total income", ROWS[2][1]),
+            ("4 Total expenses", ROWS[3][1]), ("5 Profit before exceptional items and tax", ROWS[4][1]),
+            ("6 Total tax expense", ROWS[5][1]), ("7 Profit for the period", ROWS[6][1]),
+            ("8 Basic EPS", ("10953", "9.5", "8.4", "20.0", "17.9", "36.8"))]
+    stored = _store(conn, rows=rows, unit="Rs. in million")
+    eps = _cells(stored, "eps_basic", "current")
+    assert eps and eps[0][20] != "xbrl_ok"          # 10953 is not 109.63 within 2 units of the printed paise
+
+
+def test_margin_and_percent_rows_never_map_to_a_rupee_line():
+    assert cmp.match_line("Operating Margin excluding exceptional item (%)") is None
+    assert cmp.match_line("Net Debt / Equity Ratio (times)") is None
+
+
+def test_a_segment_page_is_not_read_and_bracketed_costs_refuse_the_table():
+    words = [(40.0, 5.0, 120.0, 13.0, "Segmentwise Results", 0, 0, 0),
+             (40.0, 15.0, 110.0, 23.0, "Rs. inCrore", 0, 0, 0)]
+    words += [_w(COLS[i], text, 30.0) for i, text in enumerate(DATES)]
+    for i, (label, values) in enumerate(ROWS):
+        words += _row(50.0 + 10.0 * i, label, values)
+    assert cmp.read_page(cmp.rows_from_words(words)) is None
+
+    bracketed = [("1 Revenue from operations", ROWS[0][1]), ("2 Other income", ROWS[1][1]),
+                 ("3 Total income", ROWS[2][1]), ("4 Total expenses", ("(800)", "(720)", "(640)", "(1,520)", "(1,360)", "(2,800)")),
+                 ("5 Profit before exceptional items and tax", ROWS[4][1]), ("6 Total tax expense", ROWS[5][1]),
+                 ("7 Profit for the period", ROWS[6][1]), ("8 Other expenses", ("800", "700", "600", "1,500", "1,300", "2,700"))]
+    assert _store(_conn(), rows=bracketed) == []      # mixed: a cost in brackets is not the P&L
+
+
+def _printed_row(item: str, value: float, known: str, raw: str = "1", status: str = "unchecked",
+                 role: str = "current", end: str = "2026-09-30", ptype: str = "quarter") -> tuple:
+    return ("AAAA", "INE000A01001", "2026-07-01", end, "Q2FY27", ptype, role, "consolidated", "P&L", item,
+            "", value, "inr" if not item.startswith("eps_") else "inr_per_share", 1.0, raw, "q",
+            f"doc-{known}", 1, known, "doc.known_at", status, None, 1)
+
+
+def test_repeat_ok_needs_a_second_filing_and_keeps_each_known_at():
+    rows = [
+        _printed_row("pat", 1000.0, "2026-02-12T10:00:00", raw="1,000", role="preceding", end="2025-09-30"),
+        _printed_row("pat", 1000.0, "2026-10-28T10:00:00", raw="1,000", role="year_ago", end="2025-09-30"),
+        _printed_row("pat", 2000.0, "2026-10-28T10:00:00", raw="2,000", role="current", end="2026-09-30"),
+        _printed_row("eps_basic", 11.84, "2026-02-12T10:00:00", raw="11.84", role="preceding", end="2025-09-30"),
+    ]
+    out = cmp._apply_repeats(rows)
+    assert out[0][20] == "repeat_ok" and out[1][20] == "repeat_ok"
+    assert out[0][18] == "2026-02-12T10:00:00" and out[1][18] == "2026-10-28T10:00:00"
+    assert out[2][20] == "unchecked"                   # printed once
+    assert out[3][20] == "unchecked"                   # the same filing date does not corroborate itself

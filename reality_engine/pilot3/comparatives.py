@@ -31,7 +31,11 @@ from pathlib import Path
 from reality_engine.pilot3 import profile, schema
 
 TABLE = "fin_quarter_printed"
-CHECK_OK = ("xbrl_ok", "sum_ok")
+# What ratios.py and pilot3_fin may use.  ``repeat_ok`` (T-057 round 2): the same symbol, basis,
+# period_end, period_type and line item, printed by a DIFFERENT filing (a different date) at the same
+# value within tolerance -- two independent readings of two PDFs agree.
+CHECK_OK = ("xbrl_ok", "sum_ok", "repeat_ok")
+CONFIRMED = ("xbrl_ok", "sum_ok")   # what one page's own checks can confirm while it is read
 ROLE_ORDER = ("current", "preceding", "year_ago", "ytd", "prior_ytd", "last_fy")
 RULE_Y = 3.5          # a new row when the y-centre moves more than this many points (kpi.py:1538)
 MERGE_X = 6.0         # two number fragments closer than this are one printed number ("20,21 1" -> 20,211)
@@ -41,18 +45,45 @@ LEXICON = Path(__file__).with_name("lexicon") / "results_lines.yaml"
 _DOLLAR = re.compile(r"us\s*\$|usd|\bu\.s\.\s*\$|in\s+us\s+dollar")
 _AUDITOR = re.compile(r"independent\s+auditor|auditor'?s\s+report|review\s+report|we\s+have\s+reviewed")
 _CASH_PAGE = re.compile(r"cash\s+flows?|statement\s+of\s+changes\s+in\s+equity")
+_SEGMENT = re.compile(r"\bsegment")
+_RECON = re.compile(r"reconciliation\s+of|non[-\s]?ifrs")   # a non-IFRS reconciliation is not the P&L table
 _TITLE = re.compile(r"\bresults\b")
+# A ratio or margin row is never a rupee line; a cost line printed in brackets is not a P&L expense.
+_PCT_LABEL = re.compile(r"%|\bmargin")
+_COST_ITEMS = ("finance_cost", "depreciation", "employee_cost", "total_expenses", "other_expenses",
+               "cost_of_materials")
+_INCOME_ITEMS = ("revenue_from_operations", "total_income", "interest_income", "net_premium", "gross_premium")
+_PROFIT_ITEMS = ("pat", "pbt", "pbt_before_exceptional", "operating_profit", "net_surplus", "profit_before_tax")
+_PL_BOTTOM = _PROFIT_ITEMS + ("total_expenses", "tax", "eps_basic", "eps_diluted", "total_comprehensive_income")
+_TOTAL_ITEMS = ("total_income", "total_expenses", "pbt", "pat", "tax", "revenue_from_operations")
 _MONTHS = {"jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3, "apr": 4, "april": 4,
            "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7, "aug": 8, "august": 8, "sep": 9,
            "sept": 9, "september": 9, "oct": 10, "october": 10, "nov": 11, "november": 11, "dec": 12,
            "december": 12}
+def _month(text: str) -> int | None:
+    """Month number of a printed (possibly OCR-noisy) month word: ``Detember`` -> 12, ``Scptcmbcr`` -> 9."""
+    low = (text or "").lower().strip(".,()")
+    for key in (low[:9], low[:4], low[:3]):
+        if key in _MONTHS:
+            return _MONTHS[key]
+    if len(low) >= 5:
+        best, score = None, 0.0
+        for name, number in _MONTHS.items():
+            ratio = SequenceMatcher(None, low, name).ratio()
+            if ratio > score:
+                best, score = number, ratio
+        if score >= 0.8:
+            return best
+    return None
+
+
 _SINGLE_OCR = set("OoIltrsSE")
 _OCR = {"O": "0", "o": "0", "I": "1", "l": "1", "t": "1", "r": "1", "s": "5", "S": "5", "E": "8"}
 _DATE_ONE = re.compile(r"^(\d{1,2})\s*[.,/\-]\s*(\d{1,2})\s*[.,/\-]\s*(\d{2,4})$")
 _YEAR = re.compile(r"^(19|20)\d{2}$")
 _DAY = re.compile(r"^(\d{1,2})(?:st|nd|rd|th)?[.,]?$")
 _DAY_MONTH_YEAR = re.compile(r"(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})[,.]?\s+((?:19|20)\d{2})")
-_MONTH_DAY_YEAR = re.compile(r"\b([a-z]{3,9})\s*[,.]?\s*(\d{1,2})(?:st|nd|rd|th)?[,.]?\s*((?:19|20)\d{2})")
+_MONTH_DAY_YEAR = re.compile(r"\b([a-z]{3,9})\s*[,.]?\s*(\d{1,2})(?:st|nd|rd|th)?\s*,?\s*((?:19|20)\d{2})")
 _MONTH_YEAR = re.compile(r"\b([a-z]{3,9})\s*[,.]?\s*((?:19|20)\d{2})")
 _NUM = re.compile(r"^[\(\)\d.,\-–—]+$")
 _MIXED = re.compile(r"^[0-9OoIltrsSE.,\-()]+$")
@@ -107,7 +138,10 @@ def _fuzzy_score(pattern: str, label: str) -> float:
 def match_line(label: str) -> str | None:
     """Canonical line item for a printed label, or None.  The most specific pattern wins: more matched tokens
     first (``total revenue from operalions`` -> ``revenue_from_operations``, not ``total_income``), then an
-    exact phrase, then OCR-tolerant token similarity."""
+    exact phrase, then OCR-tolerant token similarity.  A percentage or margin row never maps (KEC's
+    ``Operating Margin excluding exceptional item (%)`` is not the exceptional-items rupee line)."""
+    if _PCT_LABEL.search((label or "").lower()):
+        return None
     text = _norm(label)
     if not text:
         return None
@@ -116,7 +150,14 @@ def match_line(label: str) -> str | None:
     for pattern, item in lexicon():
         tokens = pattern.split()
         if len(tokens) == 1:
-            score = 1.0 if pattern in words else 0.0
+            if pattern in words:
+                score = 1.0
+            elif len(pattern) >= 4:      # an OCR-mangled single word still matches ("Baic" -> basic)
+                ratio = max((SequenceMatcher(None, pattern, word).ratio() for word in words if len(word) >= 4),
+                            default=0.0)
+                score = ratio if ratio >= 0.78 else 0.0
+            else:
+                score = 0.0
         elif pattern in text:
             score = 1.02
         else:
@@ -148,6 +189,28 @@ def rows_from_words(words, tol: float = RULE_Y) -> list[list[tuple]]:
     if current:
         rows.append(current)
     return [[w for w in sorted(row, key=lambda t: t[0])] for row in rows]
+
+
+def _page_words(page) -> list[tuple]:
+    """Word boxes of a page in its VISIBLE orientation.
+
+    MARUTI's 2026-01-28/04-28 filings and INFY's 2026-01-14 print the table sideways: in the raw PDF the
+    words of a 270-degree page sort into garbage (``6 5 4 3 2 I``), so the boxes go through the page's own
+    ``rotation_matrix`` before they are grouped into rows.  A page with no text layer is returned empty (its
+    pages are listed as needing OCR, never guessed)."""
+    words = page.get_text("words")
+    if not words or not page.rotation:
+        return words
+    try:
+        import pymupdf as fitz
+    except ImportError:  # pragma: no cover
+        import fitz
+    matrix = page.rotation_matrix
+    out: list[tuple] = []
+    for word in words:
+        rect = fitz.Rect(word[:4]) * matrix
+        out.append((rect.x0, rect.y0, rect.x1, rect.y1, *word[4:]))
+    return out
 
 
 def _frag(text: str) -> bool:
@@ -192,11 +255,15 @@ def _strip_row_number(row) -> list[tuple]:
 
 
 # ------------------------------------------------------------------ numbers ---------------------------------------------------------------
-def _parse_cell(item: str, text: str, decimals: int) -> tuple[float, bool] | None:
-    """A printed cell under the table's decimal count; EPS keeps its own (never scaled, printed to paise)."""
+def _parse_cell(item: str, text: str, decimals: int, eps_decimals: int | None = None) -> tuple[float, bool] | None:
+    """A printed cell under the table's decimal count; EPS keeps its own (never scaled, printed to paise).
+
+    An EPS token whose separator the scan lost (``466 90``) is read under the table's EPS decimals; only a
+    check then confirms the value."""
     if item.startswith("eps_"):
         m = re.search(r"[.,](\d{1,2})[.,]?$", text.strip())
-        return read_number(text, len(m[1]) if m else 0)
+        digits = len(m[1]) if m else (eps_decimals or 0)
+        return read_number(text, digits)
     return read_number(text, decimals)
 
 
@@ -312,11 +379,34 @@ def _date_match(got: tuple, want: tuple) -> bool:
     return gm is not None or gy is not None
 
 
+def _merge_date_words(row) -> list[tuple]:
+    """Join a header date split across word boxes: ``31 .1 2.2025`` -> ``31.12.2025``."""
+    out: list[tuple] = []
+    i = 0
+    while i < len(row):
+        taken = None
+        size = 1
+        for size in (3, 2):
+            if i + size <= len(row):
+                text = "".join(w[4].strip() for w in row[i:i + size])
+                if _DATE_ONE.match(text):
+                    taken = (row[i][0], row[i][1], row[i + size - 1][2], row[i + size - 1][3], text) \
+                        + tuple(row[i][5:])
+                    break
+        if taken is not None:
+            out.append(taken)
+            i += size
+        else:
+            out.append(row[i])
+            i += 1
+    return out
+
+
 def _header_cells(row) -> list[dict]:
     """Date cells of a header row in x order: ``{month, day, year}`` (any may be None)."""
     cells: list[dict] = []
     pending: dict | None = None
-    for word in row:
+    for word in _merge_date_words(row):
         text = word[4].strip()
         low = text.lower().strip(".,()")
         one = _DATE_ONE.match(text)
@@ -328,8 +418,15 @@ def _header_cells(row) -> list[dict]:
                           "year": year})
             pending = None
             continue
-        if low in _MONTHS:
-            pending = {"month": _MONTHS[low], "day": None, "year": None}
+        joined = re.match(r"^([A-Za-z]{3,9})(\d{1,2})[.,]?$", text)
+        month = _month(joined[1] if joined else re.sub(r"[^a-z]", "", low))
+        if joined and month:
+            day = int(joined[2])
+            cells.append({"month": month, "day": day if 1 <= day <= 31 else None, "year": None})
+            pending = None
+            continue
+        if month:
+            pending = {"month": month, "day": None, "year": None}
             cells.append(pending)
             continue
         if pending is not None and _DAY.match(text):
@@ -412,24 +509,83 @@ def _assign_tokens(row, anchors: list[float]) -> dict[int, dict]:
     return out
 
 
+def _title_ok(text: str) -> bool:
+    """A statement title, tolerant to OCR: ``Financial Rcsulls`` (and the badly scanned ``Finan.ial R6ulis``)
+    still says results.  A page whose head says financial + quarter/months is a results statement too; the page's
+    own P&L shape (an income and a profit line) filters a notes page."""
+    if _TITLE.search(text):
+        return True
+    words = re.findall(r"[a-z]+", text)
+    if any(len(word) >= 5 and word[0] == "r" and SequenceMatcher(None, word, "results").ratio() >= 0.6
+           for word in words):
+        return True
+    financial = any(SequenceMatcher(None, word, "financial").ratio() >= 0.75 for word in words if len(word) >= 5)
+    period = any(SequenceMatcher(None, word, name).ratio() >= 0.7
+                 for word in words if len(word) >= 5 for name in ("months", "quarter"))
+    return financial and period
+
+
+def _pl_shape(values, rows3: int = 0) -> bool:
+    """A P&L table carries an income line and a profit line; a notes, ratio or segment page does not.
+
+    OCR can destroy every label while the numbers stay (MARUTI's 2026-10-27 consolidated page): a long statement
+    table (12+ rows with three numeric columns) whose few readable lines are all P&L lines still counts."""
+    items = {item for col in values.values() for item in col}
+    if items & set(_INCOME_ITEMS) and items & set(_PL_BOTTOM):
+        return True
+    allowed = set(_PL_BOTTOM) | set(_COST_ITEMS) | {"other_income"}
+    return rows3 >= 12 and len(items) >= 2 and not (items - allowed)
+
+
+def _less_before_profit(data_rows) -> bool:
+    """A ``Less:`` line above the profit line means the page is a reconciliation, not the P&L."""
+    for row in data_rows:
+        item = match_line(_label(row))
+        if item in _PROFIT_ITEMS:
+            return False
+        if re.match(r"^les\b|^less?\b", _norm(_label(row))):
+            return True
+    return False
+
+
+def _page_head(rows) -> str:
+    return " ".join(w[4] for row in rows[:12] for w in row).lower()
+
+
+def _layout_hint(header_rows, anchors) -> list[str] | None:
+    """A 4-column Q2/Q3 table that prints a quarter pair AND a half-year pair (``Three months ended … Six months
+    ended …``) is ``current, year_ago, ytd, prior_ytd`` -- not the Q1 four-column layout (INFY's IFRS statement)."""
+    if len(anchors) != 4:
+        return None
+    text = " ".join(w[4] for row in header_rows for w in row).lower().replace("-", " ")
+    if "six months" in text or "nine months" in text or "half year" in text:
+        return ["current", "year_ago", "ytd", "prior_ytd"]
+    return None
+
+
 def read_page(rows) -> dict | None:
     """A P&L table page rebuilt from word-box ``rows``, or None when the page is not one.
 
-    The page needs a title with "results", no US-dollar unit, no auditor's report, a header of period words and
-    at least 8 rows with 3 or more numeric columns; balance sheet, cash flow and segment pages have no title
-    with "results" and are never read here."""
+    The page needs a title with "results" (OCR tolerant), no US-dollar unit, no auditor's report, no segment
+    heading, a header of period words and at least 8 rows with 3 or more numeric columns; balance sheet, cash
+    flow, ratio and segment pages are never read here.  It must carry a P&L shape -- an income line and a
+    profit line -- so a notes page whose few matched rows are costs is refused."""
     if not rows:
         return None
     text = " ".join(w[4] for row in rows for w in row)
     low = text.lower()
     if _DOLLAR.search(low):
         return None
-    head = " ".join(w[4] for row in rows[:12] for w in row).lower()
+    head = _page_head(rows)
     if _AUDITOR.search(head):
         return None
     if _CASH_PAGE.search(head):          # the cash-flow statement and the equity statement are not P&L tables
         return None
-    if not _TITLE.search(" ".join(w[4] for row in rows[:16] for w in row).lower()):
+    if _SEGMENT.search(head):            # a segment reconciliation is never a P&L table
+        return None
+    if _RECON.search(head):              # INFY's IFRS press release reconciles adjusted non-IFRS measures
+        return None
+    if not _title_ok(" ".join(w[4] for row in rows[:16] for w in row).lower()):
         return None
     first = None
     for i, row in enumerate(rows):
@@ -439,10 +595,13 @@ def read_page(rows) -> dict | None:
     if first is None:
         return None
     header_rows, data_rows = rows[:first], rows[first:]
-    if sum(1 for row in data_rows if len(_tokens(_strip_row_number(row))) >= 3) < 8:
+    rows3 = sum(1 for row in data_rows if len(_tokens(_strip_row_number(row))) >= 3)
+    if rows3 < 8:
         return None
     anchors = _columns(data_rows)
     if len(anchors) < 3:
+        return None
+    if _less_before_profit(data_rows):
         return None
     values: dict = defaultdict(lambda: defaultdict(list))
     labels: dict[str, str] = {}
@@ -451,20 +610,21 @@ def read_page(rows) -> dict | None:
         if item is None:
             continue
         cells = _assign_tokens(row, anchors)
-        if len(cells) < 3:
+        if len(cells) < 2:          # a badly scanned table keeps a row whose cells partly print (MARUTI)
             continue
         labels.setdefault(item, _label(row).strip())
         quote = " ".join(w[4] for w in row)
         for at, token in cells.items():
             token["quote"] = quote
             token["row"] = index
+            token["label"] = _label(row)
             values[at][item].append(token)
-    if not values:
+    if not values or not _pl_shape(values, rows3):
         return None
     decimals = _decimals([t["text"] for col in values.values() for tokens in col.values() for t in tokens])
     return {"anchors": anchors, "dates": _header_dates(header_rows, len(anchors)), "values": values,
             "labels": labels, "text": text, "head": head, "header_rows": header_rows[:12],
-            "decimals": decimals, "scale": _unit(text)}
+            "decimals": decimals, "scale": _unit(text), "hint": _layout_hint(header_rows, anchors)}
 
 
 # ------------------------------------------------------------------ XBRL side -------------------------------------------------------------
@@ -483,17 +643,28 @@ def _close(got: float, want: float, tol: float) -> bool:
 
 
 def _page_basis(text: str, head: str | None = None) -> str | None:
-    """Standalone / consolidated from the page title (the head rows), never from a note lower on the page."""
+    """Standalone / consolidated from the page title (the head rows), never from a note lower on the page.
+
+    Tolerant to OCR: ``ca"nsolidated`` and ``Consolidstcd`` still say consolidated."""
     for source in (head, text):
         low = (source or "").lower()
         if not low:
             continue
-        if "standalone" in low and "consolidated" not in low:
-            return "standalone"
-        if "consolidated" in low and "standalone" not in low:
-            return "consolidated"
-        if "standalone" in low and "consolidated" in low:
-            return "standalone" if low.index("standalone") < low.index("consolidated") else "consolidated"
+        found: dict[str, int] = {}
+        for name in ("standalone", "consolidated"):
+            at = low.find(name)
+            if at < 0:
+                for word in re.findall(r"[a-z]{7,}", low):
+                    if SequenceMatcher(None, word, name).ratio() >= 0.8:
+                        at = low.find(word)
+                        break
+            if at >= 0:
+                found[name] = at
+        if not found:
+            continue
+        if len(found) == 1:
+            return next(iter(found))
+        return "standalone" if found["standalone"] < found["consolidated"] else "consolidated"
     return None
 
 
@@ -515,8 +686,12 @@ _BANK_IDENTITIES = (
 )
 
 
-def _check_column(cells: dict, tol: float) -> list[tuple]:
-    """Mark ``sum_ok`` on the cells of every identity that holds; return ``(item, inputs, target, want)`` failures."""
+def _check_column(cells: dict, tol: float, ambiguous: set[str] | None = None) -> list[tuple]:
+    """Mark ``sum_ok`` on the cells of every identity that holds; return ``(item, inputs, target, want)`` failures.
+
+    A failure whose input row (or target row) was printed more than once (``ambiguous``) proves nothing: the
+    chosen row may simply be the wrong one (BAJFINANCE's total income), so the cell is kept and only logged."""
+    ambiguous = ambiguous or set()
     identities = _BANK_IDENTITIES if ("interest_income" in cells or "operating_profit" in cells) else _IDENTITIES
     fails: list[tuple] = []
     for item, inputs in identities:
@@ -529,8 +704,10 @@ def _check_column(cells: dict, tol: float) -> list[tuple]:
                 target["ident"] = "sum_ok"
                 for name, _sign in inputs:
                     cells[name]["ident"] = "sum_ok"
+            elif item in ambiguous or any(name in ambiguous for name, _sign in inputs):
+                fails.append((item, [name for name, _sign in inputs], target["value"], want, True))
             else:
-                fails.append((item, [name for name, _sign in inputs], target["value"], want))
+                fails.append((item, [name for name, _sign in inputs], target["value"], want, False))
         elif item == "pbt" and "pbt_before_exceptional" in cells and _close(
                 cells["pbt_before_exceptional"]["value"], target["value"], tol):
             target["ident"] = "sum_ok"     # no exceptional line printed: pbt equals pbt before exceptional
@@ -613,6 +790,7 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict]) -
     rows: list[tuple] = []
     seen: set[str] = set()
     duplicates: list[str] = []
+    files: list[dict] = []
     tables = pages = missing = 0
     for doc_key, known_at, source_key, sha in docs:
         if sha and sha in seen:
@@ -623,11 +801,20 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict]) -
         pdf = _open_pdf(source_key, symbol)
         if pdf is None:
             missing += 1
+            files.append({"doc_key": doc_key, "known_at": known_at[:10], "pages": 0, "tables": 0, "rows": 0,
+                          "basis": {}, "empty_pages": [], "reason": "pdf_not_open"})
             continue
+        entry = {"doc_key": doc_key, "known_at": known_at[:10], "pages": 0, "tables": 0, "rows": 0,
+                 "basis": {}, "empty_pages": [], "reason": ""}
         previous = None
         for page_no in range(1, pdf.page_count + 1):
-            word_rows = rows_from_words(pdf[page_no - 1].get_text("words"))
+            entry["pages"] += 1
             pages += 1
+            word_rows = rows_from_words(_page_words(pdf[page_no - 1]))
+            if not word_rows:
+                entry["empty_pages"].append(page_no)          # no text layer: needs OCR, never guessed
+                previous = None
+                continue
             table = read_page(word_rows)
             if table is None:
                 table = _continuation(word_rows, previous)
@@ -635,9 +822,18 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict]) -
                 previous = None
                 continue
             tables += 1
+            entry["tables"] += 1
             previous = table
-            rows.extend(_table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review))
+            new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review)
+            entry["rows"] += len(new)
+            for row in new:
+                entry["basis"][row[7]] = entry["basis"].get(row[7], 0) + 1
+            rows.extend(new)
+        if not entry["rows"] and not entry["reason"]:
+            entry["reason"] = "no_pl_table"
+        files.append(entry)
         pdf.close()
+    rows = _apply_repeats(rows)
     conn.executemany(f"INSERT INTO {TABLE} VALUES ({','.join('?' * 23)})", rows)
     status: dict = defaultdict(int)
     for row in rows:
@@ -645,13 +841,21 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict]) -
     return {"rows": len(rows), "tables": tables, "pages_read": pages, "pdf_not_read": missing,
             "quarters": len({r[3] for r in rows if r[5] == "quarter"}),
             "xbrl_ok": status.get("xbrl_ok", 0), "sum_ok": status.get("sum_ok", 0),
-            "unchecked": status.get("unchecked", 0), "duplicate_docs": duplicates,
-            "restatements": _restatements(rows), "seconds": round(time.time() - started, 1)}
+            "repeat_ok": status.get("repeat_ok", 0), "unchecked": status.get("unchecked", 0),
+            "duplicate_docs": duplicates, "empty_pages": sum(len(f["empty_pages"]) for f in files),
+            "restatements": _restatements(rows), "files": files, "seconds": round(time.time() - started, 1)}
 
 
 def _continuation(word_rows, previous: dict | None) -> dict | None:
-    """A table continued on the next page with no title inherits title, columns and unit, when the x-bins match."""
+    """A table continued on the next page with no title inherits title, columns and unit, when the x-bins match.
+
+    It must belong to the same statement: the same column count and x-bins as the page before it, at least one
+    line item that page also printed, no segment ratio row and no cash-flow/segment heading."""
     if previous is None:
+        return None
+    head = _page_head(word_rows)
+    if _DOLLAR.search(head) or _AUDITOR.search(head) or _CASH_PAGE.search(head) or _SEGMENT.search(head) \
+            or _RECON.search(head):
         return None
     first = None
     for i, row in enumerate(word_rows):
@@ -664,6 +868,8 @@ def _continuation(word_rows, previous: dict | None) -> dict | None:
     anchors = _columns(data_rows)
     if len(anchors) != len(previous["anchors"]) or any(
             abs(a - b) > 10.0 for a, b in zip(anchors, previous["anchors"])):
+        return None
+    if _less_before_profit(data_rows):
         return None
     table = dict(previous)
     table["values"] = defaultdict(lambda: defaultdict(list))
@@ -679,8 +885,13 @@ def _continuation(word_rows, previous: dict | None) -> dict | None:
         for at, token in cells.items():
             token["quote"] = quote
             token["row"] = index
+            token["label"] = _label(row)
             table["values"][at][item].append(token)
-    return table if table["values"] else None
+    if not table["values"]:
+        return None
+    if not set(table["labels"]) & set(previous["labels"]):
+        return None                      # no line item in common: not the same statement
+    return table
 
 
 def _restatements(rows: list[tuple]) -> list[dict]:
@@ -695,9 +906,48 @@ def _restatements(rows: list[tuple]) -> list[dict]:
     return out
 
 
+def _eps_decimals(values: dict) -> int:
+    """Decimal places the table prints EPS to (the majority length of its last separator); a dash-printed
+    zero keeps that count, so a 0 against an XBRL 0.11 is not inside 2 units of the last printed decimal."""
+    votes: dict[int, int] = defaultdict(int)
+    for col in values.values():
+        for item, tokens in col.items():
+            if not item.startswith("eps_"):
+                continue
+            for token in tokens:
+                m = re.search(r"[.,](\d{1,2})[.,]?$", token["text"].strip())
+                if m:
+                    votes[len(m[1])] += 1
+    return max(votes, key=lambda key: (votes[key], key)) if votes else 0
+
+
+def _tol(item: str, decimals: int, scale: float, text: str | None = None,
+         eps_decimals: int | None = None) -> float:
+    """2 units of the last printed decimal: rupees of the table's scale for a rupee line, its OWN printed
+    decimals for a per-share line (never scaled -- a crore-scaled EPS tolerance would accept any value)."""
+    if item.startswith("eps_") or item.endswith("_per_share"):
+        digits = eps_decimals
+        if digits is None:
+            digits = 0
+            if text:
+                m = re.search(r"[.,](\d{1,2})[.,]?$", text.strip())
+                digits = len(m[1]) if m else 0
+        return 2.0 / (10.0 ** digits)
+    return 2.0 / (10.0 ** decimals) * scale
+
+
+def _row_label(values: dict, item: str, row: int) -> str:
+    for col in values.values():
+        for token in col.get(item, []):
+            if token["row"] == row:
+                return _norm(token.get("label", ""))
+    return ""
+
+
 def _choose_rows(values: dict, roles: list, end: str, xbrl: dict, basis: str, scale: float, decimals: int,
-                 tol: float) -> dict:
-    """One printed row per line item: the row whose CURRENT column equals XBRL wins (EPS printed three times)."""
+                 tol: float, eps_decimals: int = 0) -> dict:
+    """One printed row per line item: the row whose CURRENT column equals XBRL wins (EPS printed three times),
+    then a row whose label starts with ``Total`` for a total, then the earliest row."""
     current = roles.index("current") if "current" in roles else None
     chosen: dict = {}
     for item in {name for col in values.values() for name in col}:
@@ -708,13 +958,110 @@ def _choose_rows(values: dict, roles: list, end: str, xbrl: dict, basis: str, sc
                 token = next((t for t in values[current].get(item, []) if t["row"] == row), None)
                 if token is None:
                     continue
-                parsed = _parse_cell(item, token["text"], decimals)
+                parsed = _parse_cell(item, token["text"], decimals, eps_decimals)
                 if parsed and _xbrl_ok(xbrl, basis, end, item,
-                                       parsed[0] * (1.0 if item.startswith("eps_") else scale), tol):
+                                       parsed[0] * (1.0 if item.startswith("eps_") else scale),
+                                       _tol(item, decimals, scale, token["text"], eps_decimals)):
                     best = row
                     break
+        if current is None or len(rows_present) > 1:
+            if best == rows_present[0] and item in _TOTAL_ITEMS:
+                totals = [row for row in rows_present if _row_label(values, item, row).startswith("total")]
+                if totals:
+                    best = totals[0]
         chosen[item] = best
     return chosen
+
+
+def _fallback_end(known_at: str) -> str | None:
+    """Last resort for a header the OCR destroyed: the latest quarter end at most 60 days before the filing.
+
+    It is only a candidate; ``_table_rows`` keeps the page only when the XBRL or the page's own arithmetic then
+    confirms it, and records ``period from filing date`` in ``check_detail``."""
+    day = (known_at or "")[:10]
+    try:
+        known = date.fromisoformat(day)
+    except ValueError:
+        return None
+    year, month = known.year, known.month
+    for _ in range(2):
+        for m in (12, 9, 6, 3):
+            candidate = date.fromisoformat(_month_end(year, m))
+            if candidate <= known and (known - candidate).days <= 60:
+                return candidate.isoformat()
+        year -= 1
+    return None
+
+
+def _printed_tolerance(raw: str | None, value: float) -> float | None:
+    """Rupees of the last printed decimal of a stored cell, read back from its raw token (``14,491.79`` -> 200,000
+    on a crore table).  None when the token cannot be read as a number."""
+    text = re.sub(r"\s+", "", raw or "")
+    if not text:
+        return None
+    m = re.search(r"[.,](\d{1,2})[.,]?$", text)
+    decimals = len(m[1]) if m else 0
+    parsed = read_number(text, decimals)
+    if parsed is None or not parsed[0]:
+        return None
+    return 2.0 / (10.0 ** decimals) * abs(value / parsed[0])
+
+
+def _apply_repeats(rows: list[tuple]) -> list[tuple]:
+    """``repeat_ok``: the same symbol, basis, period_end, period_type and line item, printed by a DIFFERENT filing
+    (another date) at the same value within tolerance.  Two independent readings of two PDFs agree.  Each row keeps
+    its own ``known_at``: the filing date is still what a past date may see, even though its agreement came later."""
+    groups: dict = defaultdict(list)
+    for i, row in enumerate(rows):
+        groups[(row[0], row[7], row[3], row[5], row[9])].append(i)
+    out = list(rows)
+    marked = 0
+    for idxs in groups.values():
+        if len(idxs) < 2:
+            continue
+        for i in idxs:
+            row = out[i]
+            if row[20] != "unchecked":
+                continue
+            tol_i = _printed_tolerance(row[14], row[11])
+            for j in idxs:
+                if j == i or out[j][18][:10] == row[18][:10]:
+                    continue
+                tol_j = _printed_tolerance(out[j][14], out[j][11])
+                tol = max((t for t in (tol_i, tol_j) if t is not None), default=0.0)
+                if abs(row[11] - out[j][11]) <= tol + 1e-9:
+                    detail = f"repeat of {out[j][18][:10]}"
+                    out[i] = row[:20] + ("repeat_ok", (detail + "; " + row[21]) if row[21] else detail) + row[22:]
+                    marked += 1
+                    break
+    return out
+
+
+def _debit_costs(columns: dict) -> bool | None:
+    """A cost line printed in brackets means the table is not the P&L (a segment reconciliation); only a table
+    where EVERY cost line prints in brackets by convention may stand, with the magnitudes read positive.  Returns
+    True when such a page was negated, False when no cost is negative, None when the page is refused."""
+    cells = [(item, cell) for col in columns.values() for item, cell in col.items() if item in _COST_ITEMS]
+    negative = [cell for _item, cell in cells if cell["value"] < 0]
+    if not negative:
+        return False
+    if len(negative) != len(cells):
+        return None
+    for cell in negative:
+        cell["value"] = -cell["value"]
+        cell["bracketed"] = True
+    return True
+
+
+def _derive_tax(columns: dict) -> None:
+    """Where only the current and deferred components print, the total is their sum, ``is_reported`` 0."""
+    for cells in columns.values():
+        if "tax" in cells or "current_tax" not in cells or "deferred_tax" not in cells:
+            continue
+        cur, dfr = cells["current_tax"], cells["deferred_tax"]
+        cells["tax"] = {"value": cur["value"] + dfr["value"], "raw": f"{cur['raw']} {dfr['raw']}",
+                        "repaired": False, "caption": f"{cur['caption']} + {dfr['caption']}",
+                        "quote": f"{cur['quote']} | {dfr['quote']}", "item": "tax", "row": None, "derived": True}
 
 
 def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review) -> list[tuple]:
@@ -722,6 +1069,10 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     anchors = table["anchors"]
     head_text = " ".join(w[4] for row in (table.get("header_rows") or []) for w in row)
     end = _period_end(table.get("dates"), known_at, head_text or table["text"])
+    fallback = False
+    if not end:
+        end = _fallback_end(known_at)
+        fallback = bool(end)
     if not end:
         return []
     values = table["values"]
@@ -731,17 +1082,20 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     for at, col in values.items():
         for item, tokens in col.items():
             values_by_item.setdefault(item, set()).update(t["row"] for t in tokens)
+    ambiguous = {item for item, rows in values_by_item.items() if len(rows) > 1}
     basis_hint = _page_basis(table["text"], table.get("head"))
-    choice = _roles(table.get("dates"), end, count, values, xbrl, basis_hint, table["scale"], decimals)
+    choice = _roles(table.get("dates"), end, count, values, xbrl, basis_hint, table["scale"], decimals,
+                    table.get("hint"))
     if choice is None:
         review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
                        "column_role": None, "raw_token": None, "check": "no_scale_or_roles",
                        "detail": f"unit={table['scale']}"})
         return []
     roles, basis, scale = choice["roles"], choice["basis"], choice["scale"]
-    tol = 2.0 / (10.0 ** decimals) * scale
+    rupee_tol = _tol("total_income", decimals, scale)
+    eps_dec = _eps_decimals(values)
     shares = _shares(conn, symbol, basis, known_at)
-    chosen = _choose_rows(values, roles, end, xbrl, basis, scale, decimals, tol)
+    chosen = _choose_rows(values, roles, end, xbrl, basis, scale, decimals, rupee_tol, eps_dec)
     columns: dict[str, dict] = {}
     for at, role in enumerate(roles):
         if role is None:
@@ -751,7 +1105,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             if item == "face_value":
                 continue
             best = next((t for t in tokens if t["row"] == chosen.get(item)), tokens[0])
-            parsed = _parse_cell(item, best["text"], decimals)
+            parsed = _parse_cell(item, best["text"], decimals, eps_dec)
             if parsed is None:
                 review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
                                "column_role": role, "raw_token": best["raw"], "check": "unreadable", "detail": ""})
@@ -759,35 +1113,51 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             cells[item] = {"value": parsed[0] * (1.0 if item.startswith("eps_") else scale),
                            "raw": best["raw"], "repaired": parsed[1], "caption": table["labels"].get(item, ""),
                            "quote": best["quote"], "item": item, "row": best["row"]}
-        cells["_fails"] = _check_column(cells, tol)
-        _eps_ok(cells, shares)
         columns[role] = cells
+    _derive_tax(columns)
+    bracketed = _debit_costs(columns)
+    if bracketed is None:
+        review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
+                       "column_role": None, "raw_token": None, "check": "not_pl_costs",
+                       "detail": "a cost line prints in brackets inside a mixed page"})
+        return []
+    for cells in columns.values():
+        cells["_fails"] = _check_column(cells, rupee_tol, ambiguous)
+        _eps_ok(cells, shares)
+    if bracketed and not any(isinstance(cell, dict) and cell.get("ident") == "sum_ok"
+                             for cells in columns.values() for cell in cells.values()):
+        review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
+                       "column_role": None, "raw_token": None, "check": "not_pl_costs",
+                       "detail": "every cost in brackets but no identity holds"})
+        return []
     # across columns: current + preceding = ytd on a Q2 table; EPS current + preceding ~ ytd within 0.02
     if end[5:7] == "09" and {"ytd", "current", "preceding"} <= set(columns):
         for item in (set(columns["current"]) & set(columns["preceding"]) & set(columns["ytd"])) - {"_fails"}:
             cur, pre, ytd = columns["current"][item], columns["preceding"][item], columns["ytd"][item]
-            ok = abs(cur["value"] + pre["value"] - ytd["value"]) <= (0.02 if item == "eps_basic" else tol)
+            ok = abs(cur["value"] + pre["value"] - ytd["value"]) <= (0.02 if item == "eps_basic" else rupee_tol)
             if ok:
                 for cell in (cur, pre, ytd):
                     cell.setdefault("ident", "sum_ok")
-    # derived revenue: no row prints it, total income - other income does (HINDUNILVR); never for a bank or
-    # an insurer, whose "revenue" is interest income / net premium and has its own row
-    out: list[tuple] = []
     # status per cell: xbrl_ok beats sum_ok beats unchecked; a failed or unconfirmed-repaired cell stores nothing
+    out: list[tuple] = []
     for role, cells in columns.items():
         period_end, ptype = _role_period(role, end)
         for item, cell in cells.items():
             if item == "_fails":
                 continue
-            cell["status"] = "xbrl_ok" if _xbrl_ok(xbrl, basis, period_end, item, cell["value"], tol) \
+            cell["status"] = "xbrl_ok" if _xbrl_ok(
+                xbrl, basis, period_end, item, cell["value"], _tol(item, decimals, scale, cell["raw"], eps_dec)) \
                 else cell.get("ident", "unchecked")
             cell["period_end"], cell["ptype"] = period_end, ptype
-        for item, names, target, want in cells.get("_fails", []):
+        for item, names, target, want, unsure in cells.get("_fails", []):
             cell = cells.get(item)
-            if cell is not None and cell["status"] not in CHECK_OK:
-                review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
-                               "column_role": role, "raw_token": cell["raw"], "check": "sum_failed",
-                               "detail": f"{item}={target} not {want}"})
+            if cell is None or cell["status"] in CHECK_OK:
+                continue
+            check = "sum_ambiguous" if unsure else "sum_failed"
+            review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
+                           "column_role": role, "raw_token": cell["raw"], "check": check,
+                           "detail": f"{item}={target} not {want}"})
+            if not unsure:
                 cell["drop"] = True
         for item, cell in list(cells.items()):
             if item == "_fails":
@@ -824,12 +1194,18 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                 detail.append("repaired")
             if cell.get("derived"):
                 detail.append("derived")
+            if cell.get("bracketed"):
+                detail.append("bracketed costs")
+            if fallback:
+                detail.append("period from filing date")
             if choice.get("header_used"):
                 detail.append("header_used")
             out.append((symbol, isin, start, cell["period_end"], fiscal, ptype, role, basis, "P&L", item,
                         cell["caption"], cell["value"], unit, 1.0, cell["raw"], cell["quote"], doc_key, page_no,
                         known_at, "doc.known_at", cell["status"], "; ".join(detail) or None,
                         0 if cell.get("derived") else 1))
+    if fallback and not any(row[20] in CONFIRMED for row in out):
+        return []                       # a guess with nothing confirming it stores nothing
     return out
 
 
@@ -851,7 +1227,7 @@ def _period_end(dates, known_at: str, text: str = "") -> str | None:
             found.append((year, month))
     for regex, month_at, year_at in ((_DAY_MONTH_YEAR, 2, 3), (_MONTH_DAY_YEAR, 1, 3), (_MONTH_YEAR, 1, 2)):
         for hit in regex.finditer(low):
-            month = _MONTHS.get(hit[month_at][:9]) or _MONTHS.get(hit[month_at][:4]) or _MONTHS.get(hit[month_at][:3])
+            month = _month(hit[month_at])
             if month in (3, 6, 9, 12):
                 found.append((int(hit[year_at]), month))
     best = None
@@ -863,8 +1239,9 @@ def _period_end(dates, known_at: str, text: str = "") -> str | None:
 
 
 def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: str | None,
-           scale: float | None, decimals: int) -> dict | None:
-    """Column roles (header order first, layout by quarter second), basis and scale, checked against XBRL."""
+           scale: float | None, decimals: int, hint: list[str] | None = None) -> dict | None:
+    """Column roles (header order first, a header layout hint second, layout by quarter last), basis and scale,
+    checked against XBRL; the earlier candidate wins a tie."""
     default = _role_set(end, count)
     chance = None
     if dates and len(dates) == count:
@@ -872,10 +1249,13 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
         if covered and header != default:
             chance = header
     bases = [basis_hint] if basis_hint else (["consolidated", "standalone"] if xbrl else ["unchecked"])
+    target = list(hint) if hint else None
+    candidates: list[list[str]] = []
+    for roles in (chance, target, default):
+        if roles is not None and roles not in candidates:
+            candidates.append(roles)
     best = None
-    for roles in (chance, default):
-        if roles is None:
-            continue
+    for roles in candidates:
         for basis in bases:
             for sc in ([scale] if scale else [1e5, 1e6, 1e7]):
                 if basis not in ("standalone", "consolidated"):
@@ -890,7 +1270,7 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
     if best[0] == 0 and basis_hint is None:
         basis = "unchecked"          # neither the title nor the XBRL match settles the basis
     periods = {role: _role_period(role, end) for role in roles if role}
-    return {"roles": roles, "basis": basis, "scale": sc, "periods": periods,
+    return {"roles": roles, "basis": basis, "scale": sc, "periods": periods, "score": best[0],
             "header_used": bool(chance and roles == chance)}
 
 
@@ -923,7 +1303,8 @@ def _roles_from_dates(dates, end: str, default: list[str], count: int) -> tuple[
 
 
 def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: int) -> int:
-    tol = 2.0 / (10.0 ** decimals) * scale
+    tol = _tol("total_income", decimals, scale)
+    eps_dec = _eps_decimals(values)
     score = 0
     for at, role in enumerate(roles):
         if not role:
@@ -931,11 +1312,12 @@ def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: i
         period_end, _ptype = _role_period(role, end)
         for item, tokens in values.get(at, {}).items():
             for token in tokens:
-                parsed = _parse_cell(item, token["text"], decimals)
+                parsed = _parse_cell(item, token["text"], decimals, eps_dec)
                 if parsed is None:
                     continue
                 value = parsed[0] * (1.0 if item.startswith("eps_") else scale)
-                if _xbrl_ok(xbrl, basis, period_end, item, value, tol):
+                if _xbrl_ok(xbrl, basis, period_end, item, value,
+                            _tol(item, decimals, scale, token["text"], eps_dec)):
                     score += 10 if role == "current" else 5
     if end[5:7] == "09" and all(r in roles for r in ("current", "preceding", "ytd")):
         i, j, k = roles.index("current"), roles.index("preceding"), roles.index("ytd")
@@ -986,10 +1368,11 @@ def printed_quarters(conn: sqlite3.Connection, symbol: str) -> dict:
 
     The EARLIEST filing that printed a quarter is kept: its ``known_at`` is the day a past question may see."""
     out: dict = defaultdict(dict)
+    marks = ",".join("?" * len(CHECK_OK))
     for basis, start, end, fiscal, item, value, known in conn.execute(
             "SELECT basis, period_start, period_end, fiscal_period, line_item, value, known_at FROM fin_quarter_printed "
-            "WHERE symbol=? AND period_type='quarter' AND check_status IN ('xbrl_ok','sum_ok') "
-            "AND basis IN ('standalone','consolidated') ORDER BY known_at", (symbol,)):
+            f"WHERE symbol=? AND period_type='quarter' AND check_status IN ({marks}) "
+            "AND basis IN ('standalone','consolidated') ORDER BY known_at", (symbol, *CHECK_OK)):
         if not _is_quarter_end(end):
             continue
         out[(basis, end)].setdefault(item, (value, known, fiscal, start))
@@ -1008,11 +1391,13 @@ def _is_quarter_end(end: str | None) -> bool:
 def ttm_filings(conn: sqlite3.Connection, symbol: str, basis: str) -> list[dict]:
     """One TTM set per filing that printed it: ``{known_at, doc_key, period_end, items}``.
 
-    ``TTM = last_fy + ytd - prior_ytd`` (a Q2/Q3 table), ``last_fy + current - year_ago`` (Q1) or the printed
-    year (Q4, the ``ytd`` column with ``period_type='fy'``).  Only checked cells are used."""
+    ``TTM = last_fy + ytd - prior_ytd`` (a Q2/Q3 table), ``last_fy + current - year_ago`` (Q1, only when the
+    table prints no ytd at all) or the printed year (Q4, the ``ytd`` column with ``period_type='fy'``).  Only
+    checked cells are used; a missing cell never falls through to the other quarter's formula."""
     rows = conn.execute(
         "SELECT doc_key, known_at, period_end, period_type, column_role, line_item, value FROM fin_quarter_printed "
-        "WHERE symbol=? AND basis=? AND check_status IN ('xbrl_ok','sum_ok') ORDER BY known_at", (symbol, basis)).fetchall()
+        f"WHERE symbol=? AND basis=? AND check_status IN ({','.join('?' * len(CHECK_OK))}) ORDER BY known_at",
+        (symbol, basis, *CHECK_OK)).fetchall()
     by_doc: dict = {}
     for doc_key, known, end, ptype, role, item, value in rows:
         by_doc.setdefault((doc_key, known), {})[(role, item)] = (value, end, ptype)
@@ -1034,19 +1419,23 @@ def ttm_filings(conn: sqlite3.Connection, symbol: str, basis: str) -> list[dict]
 
 
 def _ttm_one(cells: dict, item: str) -> float | None:
+    """The table's own shape decides the formula: a Q2/Q3 table prints a ytd column and uses
+    ``last_fy + ytd - prior_ytd``; only a table with no ytd at all is a Q1 table
+    (``last_fy + current - year_ago``).  A Q4 table prints the year itself.  A missing or unchecked cell returns
+    None -- never the other quarter's formula."""
     def at(role):
         cell = cells.get((role, item))
         return None if cell is None else cell[0]
 
-    def ptype(role):
-        cell = cells.get((role, item))
-        return None if cell is None else cell[2]
-
-    if ptype("ytd") == "fy" and at("ytd") is not None:
-        return at("ytd")                                    # the Q4 table prints the year itself
     has, cur, ago, ytd, prior = at("last_fy"), at("current"), at("year_ago"), at("ytd"), at("prior_ytd")
+    has_ytd_column = any(role == "ytd" for role, _item in cells)
+    if has_ytd_column:
+        ytd_cell = cells.get(("ytd", item))
+        if ytd_cell is not None and ytd_cell[2] == "fy":
+            return ytd_cell[0]                              # the Q4 table prints the year itself
+        if has is not None and ytd is not None and prior is not None:
+            return has + ytd - prior                        # Q2 / Q3 table
+        return None
     if has is not None and cur is not None and ago is not None:
-        return has + cur - ago                              # Q1 table
-    if has is not None and ytd is not None and prior is not None:
-        return has + ytd - prior                            # Q2 / Q3 table
+        return has + cur - ago                                # Q1 table
     return None

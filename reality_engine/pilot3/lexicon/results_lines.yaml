@@ -63,11 +63,21 @@ pbt:
 tax:
   - total tax expense
   - total tax expenses
+  - income tax expense
   - tax expenses
   - tax expense
   - provision for taxes
   - provisions for taxes
   - provision for tax
+current_tax:
+  - current tax expense
+  - current tax charge
+  - current tax
+deferred_tax:
+  - deferred tax expense
+  - deferred tax charge
+  - deferred tax credit
+  - deferred tax
 pat:
   - profit for the period
   - profit for the year

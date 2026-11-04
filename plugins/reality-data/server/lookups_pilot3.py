@@ -328,7 +328,7 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
                     args.append(val)
             extra, eargs = _asof(as_of)
             printed = _q(f"SELECT rowid, * FROM fin_quarter_printed WHERE {where} "
-                         f"AND check_status IN ('xbrl_ok','sum_ok') AND basis IN ('standalone','consolidated'){extra} "
+                         f"AND check_status IN ('xbrl_ok','sum_ok','repeat_ok') AND basis IN ('standalone','consolidated'){extra} "
                          f"ORDER BY period_end DESC, known_at DESC LIMIT ?", (*args, *eargs, cap * 2))
             for r in printed:
                 if (r["line_item"], r["fiscal_period"]) in got:
