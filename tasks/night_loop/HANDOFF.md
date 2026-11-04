@@ -3,8 +3,7 @@
 ## Current state (loop 2, 4 Nov 2026 13:45 IST; full detail `loops/loop_02_report.md`)
 - `D:\RealityEngine\pilot10\pilot10.db` built from main, every part rc 0, 456 s in total. Baseline A1 dev 571/898 = 64%, `pilot10\scores\a1_loop02_base.json`. Do not rebuild it whole.
 - Workers running: `l2segments`, `l2structured` (Sonnet; `python tasks/night_loop/sonnet_worker.py status <name>`). Not merged. Candidate KEC transcripts on `scratch\c_kec*.db`.
-- 865 pages need OCR: `pilot10\logs
-eeds_ocr_pages.csv`. Not run.
+- 865 pages need OCR: `pilot10\logs\needs_ocr_pages.csv`. Not run.
 - Earlier state of loop 1 (question files, raw fetch, workers) is in `loops/loop_01_report.md`.
 
 ## Wrapper between loops 1 and 2 (05:00 IST)
@@ -42,7 +41,6 @@ Review the two workers, then rerun A1 on a copy with both branches. Open after t
 - Wrapper 05:25 IST: T-056 generalisation merged (2b152da): `--profile tasks/night_loop/pilot10_profile.json` on docs_collect and build; build from main now, not a worktree. MARUTI test build: 147 docs, 1,170 pages, stores 15 s, kpi 12 s. Accept 3 of its brief was missing `--part pages` (guidance needs doc_page). Finding: MARUTI's five fetched "concall transcripts" are 1-page cover letters, so transcripts/guidance are empty: the real transcripts must be fetched (company website or the attachment behind the cover letter). Loop 2 partial work (old ISINs on shareholding filings, store gaps fetched) is committed (d19b756); `build_truth_snapshot` is heavy: run it alone, check RAM first.
 - Wrapper 13:00 IST: loop 2 restart was reaped again for low memory (Opera ~4 GB + `build_truth_snapshot` ~1 GB+). The snapshot run the loop started (`pilot10/scratch/run_timed.sh snapshot`) was left to finish; do not start it again. Loops now start detached (`tasks/night_loop/start_loop.ps1 NN`). Never run two heavy jobs at once; check free RAM first.
 - Wrapper 13:15 IST: done before loop 2 restart: `docs_collect --profile` 512 s rc 0 (pages.db), `build_truth_snapshot` 1,249 s rc 0 -> `reality_engine/data/snapshots/truth_2026-11-04.duckdb`. Do not rerun either; continue with the build parts.
-- 4 Nov loop 2: `results_xbrl.db.facts` drops XBRL dimensions (segments, expense details); anything per-member must be read from the raw XML in `raw_market
-se_results_xbrl`.
+- 4 Nov loop 2: `results_xbrl.db.facts` drops XBRL dimensions (segments, expense details); anything per-member must be read from the raw XML in `raw_market\nse_results_xbrl`.
 - 4 Nov loop 2: `--part stores|registry|pages --symbols X` runs `schema.create`, which drops the table for every company. Those parts must run on all 10 (under 4 minutes together); only kpi, transcripts and guidance are per company.
 - 4 Nov loop 2: a raw document can be added without code: append a manifest row with `local_path`, `bucket`, `dissem_ts`, then `docs_collect --symbols X`.
