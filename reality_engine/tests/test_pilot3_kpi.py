@@ -867,3 +867,40 @@ def test_ebitda_roe_and_aum_are_common_or_insurer_metrics():
         profile.activate(None)
     assert len(kpi.Entry("x", "pct", "pct", [], None, None, "fmcg").labels_strict) == 0
 
+
+# ---------------------------------------------------------------- T-056 precision round 2
+def test_outlier_gate_drops_and_files_a_row_far_from_its_group():
+    import sqlite3
+
+    con = sqlite3.connect(":memory:")
+    con.executescript(kpi.SCHEMA)
+    for v in (1.0, 2.0, 1.5, 500000.0):
+        con.execute("INSERT INTO kpi_series(symbol,metric,unit,value,period_type,fiscal_period,doc_key,page,quote,"
+                    "extractor_rule) VALUES('X','deposits','inr_cr',?,'FY','FY26','d',1,'q','table_v1')", (v,))
+    con.execute("INSERT INTO kpi_series(symbol,metric,unit,value,period_type,fiscal_period,doc_key,page,quote,"
+                "extractor_rule,source_type) "
+                "VALUES('X','deposits','inr_cr',9000000.0,'FY','FY26','d',2,'q','table_v1','xbrl_segment')")
+    con.execute("INSERT INTO kpi_series(symbol,metric,unit,value,period_type,fiscal_period,doc_key,page,quote,"
+                "extractor_rule) VALUES('X','gnpa_pct','pct',546944.0,'FY','FY26','d',3,'q','table_v1')")
+    review: list = []
+    kpi._review_outliers(con, "X", {"gnpa_pct": 100.0}, review)
+    left = [r[0] for r in con.execute("SELECT value FROM kpi_series ORDER BY value")]
+    assert 500000.0 not in left and 546944.0 not in left      # absurd level and an impossible percent
+    assert 9000000.0 in left                                  # the segment reader's rows are never reviewed
+    assert len(left) == 4 and {r[2] for r in review} == {"deposits", "gnpa_pct"}
+    con.close()
+
+
+def test_table_label_must_own_its_value():
+    e = next(x for x in ENTRIES if x.metric == "advances")
+    s = "Advances  3195566.06  2746359.78  2937166.26  Fixed assets  14645.26  13854.09"
+    m = next(m for m in kpi._value_matches(s) if m.group("num") == "13854.09")
+    assert not kpi._label_owns_value(s, len("Advances"), m, e)      # the next row's label is between them
+    assert kpi._label_owns_value(s, len("Advances"), next(kpi._value_matches(s)), e)
+
+
+def test_a_sector_row_quote_must_print_its_own_label():
+    assert not kpi._quote_names_label("27,971 / 22,561", "Emerging Markets")
+    assert kpi._quote_names_label("Emerging Markets 22,561", "Emerging Markets")
+
+

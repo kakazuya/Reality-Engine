@@ -60,19 +60,16 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   than its table has columns is dropped (`column_mismatch`). The sentence reader refuses a value whose label sits on
   another line with another label in between (a fact-sheet block), reads `from X to Y` as Y and `by N ... to/at M`
   as M, does not treat the token after "compared to" as a second period, and refuses "impacted by", "larger than
-  $50 mn" and "$50 mn plus clients". On the pilot10 base (`l3_base.db`, A1 651/898) the loop-3 lexicons take A1 to
-  676/898 and this fix round to 677/898 with no company below its baseline (BAJFINANCE 71, ETERNAL 68, HDFCBANK
-  75, HINDALCO 69, HINDUNILVR 74, INFY 65, KEC 51, MARUTI 61, SBILIFE 75, SUNPHARMA 68): precision first, so the
-  wrong-row families
-  (`Net cash generated from financing activities` as net debt, `Long term debt to working capital Ratio` as days,
-  the `R&D Spend 23,676` rupees as a percent, a deck column read one period off) are gone and the true rows the
-  sector gate deleted — `ebitda` (moved to `common`), `roe_pct` (moved to `common`), insurer `aum` (added to
-  `insurance_life`) — are back; A3 99.85%, `xbrl_disagreements` 312 against the base 335, `test_pilot3_kpi.py`
-  53 passed, checkpages 145 (KEC 29, BAJFINANCE 59, HINDALCO 57). Open: the seed-20261105 hand read of 20 new rows
-  per family is under 18/20 in most families — a deck's "Sales Volume" row was read as `revenue` (the `volume` neg
-  was added after the read), HDFCBANK `advances` takes a rupee-scale table figure as crore, ETERNAL reads
-  guided/call margins, and KEC's `debt equity ratio` sits under `net_debt_to_equity`; a second label fix round is
-  owed on those.
+  $50 mn" and "$50 mn plus clients". On the pilot10 base (`l3_base.db`, A1 651/898) the loop-3 lexicons took A1 to
+  676/898 and the 4 Nov fix round to 677/898; the 5 Nov precision round 2 (outlier gate, long-document defaults,
+  table label ownership, sentence guards, trillion/USD units, `debt_to_equity` split) measures 674/898 on
+  `D:\RealityEngine\pilot10\scratch\w_kpi5.db` — above the 651 baseline, with BAJFINANCE 70 (baseline 71) and
+  HINDALCO 67 (baseline 69) the only companies below it (ETERNAL 68, HDFCBANK 75, HINDUNILVR 74, INFY 65, KEC 51,
+  MARUTI 61, SBILIFE 75, SUNPHARMA 68); outlier groups fell 28 -> 10 and the review rows per company and the
+  seed-20261109 hand read (KEC 16, BAJFINANCE 14, HINDALCO 15, HDFCBANK 14, SBILIFE 17, INFY 19, SUNPHARMA 20,
+  MARUTI 15, HINDUNILVR 18, ETERNAL 15 of 20 right) are in `w_kpi5_kpi_review.csv` and the DEVELOPER_GUIDE O2
+  bullet. `test_pilot3_kpi.py` 53 passed, `test_pilot3_core.py -m "not slow"` 29 passed, checkpages 314 checked /
+  145 found (KEC 29, BAJFINANCE 59, HINDALCO 57), so pilot3 is unchanged.
 - **Guidance**: sentence rules: forward cue, metric must be the target's subject, past actuals / tariff rates / supply
   shares / net-debt sentences rejected. Precision: 18/30 clean (3 Nov) → 28/40 (4 Nov). Remaining errors: two
   quantities in one sentence, restated past figures, vague levels.

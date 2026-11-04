@@ -7,7 +7,7 @@ entries:
   - {metric: new_loans, kind: count, unit: count_mn, labels: ["new loans? booked", "loans? booked", "new loans?"], neg: "aum|disburs"}
   - {metric: customer_franchise, kind: count, unit: count_mn, labels: ["customer franchise", "total customers?", "customer base"], neg: "added|new"}
   - {metric: customers_added, kind: count, unit: count_mn, labels: ["new customers? (acquired|added)", "customers? (acquired|added)", "added \\d[\\d.,]* ?(mn|million) (new )?customers", "new customers"]}
-  - {metric: deposits, kind: money, unit: inr_cr, labels: ["deposit book", "deposits? (book|base|balance|portfolio|outstanding)", "deposits? (stood|grew|was|were) at", "^deposits?\\s*(?:of|at|:)\\s*(?=₹|`|rs\\.?|inr|\\d)"], neg: "%\\s*of|share|mix|rate|interest|received|repaid|cash flow"}
+  - {metric: deposits, kind: money, unit: inr_cr, labels: ["deposit book", "deposits? (book|base|balance|portfolio|outstanding)", "deposits? (stood|grew|was|were) at", "^deposits?\\s*(?:of|at|:)\\s*(?=₹|`|rs\\.?|inr|\\d)"], neg: "%\\s*of|share|mix|rate|interest|received|repaid|cash flow|time deposits?|savings (account )?deposits?|current account deposits?|outstanding from|welfare trust"}
   - {metric: gross_debt, kind: money, unit: inr_cr, labels: ["gross debt", "gross borrowings", "total borrowings"], neg: "to |ratio|cost|per ?cent|%"}
   - {metric: nim_pct, kind: pct, unit: pct, labels: ["net interest margin", "\\bnim\\b"], neg: "bps|compression|expansion"}
   - {metric: cost_of_funds_pct, kind: pct, unit: pct, labels: ["cost of funds", "\\bcof\\b", "cost of borrowings"], neg: "bps|decline|increase"}
@@ -15,8 +15,8 @@ entries:
   - {metric: nnpa_pct, kind: pct, unit: pct, labels: ["net\\s*npa", "\\bnnpa\\b", "net stage 3", "ns3"]}
   - {metric: pcr_stage3, kind: pct, unit: pct, labels: ["(provision )?coverage( ratio)?[^.]{0,30}?stage ?3", "stage ?3[^.]{0,30}?coverage", "\\bpcr\\b"]}
   - {metric: credit_cost_bps, kind: bps, unit: bps, labels: ["credit cost", "loan loss(es)? (and|&) provisions? to average", "loan loss to average"]}
-  - {metric: crar_pct, kind: pct, unit: pct, labels: ["capital adequacy", "\\bcrar\\b", "\\bcar\\b"], neg: "tier ?(i|1)\\b|loans?"}
-  - {metric: tier1_pct, kind: pct, unit: pct, labels: ["tier ?(i|1)\\b[^.]{0,20}?(capital|ratio)?", "tier ?(i|1) capital"]}
+  - {metric: crar_pct, kind: pct, unit: pct, labels: ["capital adequacy", "\\bcrar\\b", "\\bcar\\b"], neg: "tier ?(i|1)\\b|tier ?(ii|2)|tier|loans?|car finance"}
+  - {metric: tier1_pct, kind: pct, unit: pct, labels: ["tier ?(i|1)\\b[^.]{0,20}?(capital|ratio)?", "tier ?(i|1) capital"], neg: "tier ?(ii|2)|\\+|total|car finance"}
   - {metric: roa_pct, kind: pct, unit: pct, labels: ["return on (average )?assets", "\\broa\\b"]}
   - {metric: provision_coverage_pct, kind: pct, unit: pct, labels: ["provision coverage ratio", "provision coverage"], neg: "stage ?3"}
   - {metric: loan_loss_provisions, kind: money, unit: inr_cr, labels: ["loan loss(es)? (and|&) provisions", "loan loss provisions?"], neg: "to average|%"}

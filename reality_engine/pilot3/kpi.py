@@ -21,9 +21,11 @@ Shared helpers (periods, numbers, units, lexicon loader) are imported by transcr
 from __future__ import annotations
 
 import argparse
+import csv
 import itertools
 import re
 import sqlite3
+import statistics
 import sys
 import time
 from dataclasses import dataclass, field
@@ -247,11 +249,11 @@ def parse_periods(text: str) -> list[Period]:
 NUM_CORE = r"\(?-?\d{1,3}(?:,\d{2,3})+(?:\.\d+)?\)?|\(?-?\d+(?:\.\d+)?\)?"
 VAL_RX = re.compile(
     r"(?P<cur>₹|`|Rs\.?|INR|US\$|USD|\$|EUR|€)?\s?(?P<num>" + NUM_CORE + r")\s?"
-    r"(?P<suf>crores?|crs?\b\.?|lakhs?|mn\b|mm\b|million|billion|bn\b|kt\b|kilo ?tonnes?|tonnes?|tons?|mt\b|%|per ?cent|bps|basis points|x\b|times|days)?",
+    r"(?P<suf>crores?|crs?\b\.?|lakhs?|mn\b|mm\b|million|billion|trillion|bn\b|tn\b|kt\b|kilo ?tonnes?|tonnes?|tons?|mt\b|%|per ?cent|bps|basis points|x\b|times|days)?",
     re.I)
 _UNIT_BY_SUFFIX = {
     "crore": "inr_cr", "crores": "inr_cr", "cr": "inr_cr", "crs": "inr_cr",
-    "mn": "mn", "mm": "mn", "million": "mn", "billion": "bn", "bn": "bn",
+    "mn": "mn", "mm": "mn", "million": "mn", "billion": "bn", "bn": "bn", "trillion": "tn", "tn": "tn",
     "kt": "kt", "kilotonne": "kt", "kilotonnes": "kt", "kilo tonne": "kt", "kilo tonnes": "kt",
     "tonne": "tonnes", "tonnes": "tonnes", "ton": "tonnes", "tons": "tonnes", "mt": "mt",
     "%": "pct", "per cent": "pct", "percent": "pct", "bps": "bps", "basis points": "bps",
@@ -312,16 +314,20 @@ def value_unit(v_cur: str | None, suf: str | None, kind: str, default_unit: str)
     if default_unit == "usd_mn" and base == "bn":
         return None      # a USD-million metric keeps the printed value, so a "$4.8 billion" row would break its quote
     if kind == "money":
+        if profile.under_profile() and default_unit.startswith("usd") and (cur == "inr" or base == "inr_cr"):
+            return None                      # a rupee figure never fills a US-dollar metric (profile builds only)
         if base == "inr_cr" or (cur == "inr" and base in (None, "inr_cr")):
             return "inr_cr" if (base == "inr_cr" or default_unit == "inr_cr") and cur != "usd" else None
-        if cur == "usd" or (default_unit.startswith("usd") and base in ("mn", "bn")):
+        if cur == "inr":                     # a rupee figure never fills a US-dollar metric
+            if default_unit.startswith("usd"):
+                return None
+            return {"mn": "inr_mn", "bn": "inr_bn", "tn": "inr_tn"}.get(base)
+        if cur == "usd" or (cur is None and default_unit.startswith("usd") and base in ("mn", "bn")):
             if base == "bn":
                 return "usd_bn"
             if base == "mn":
                 return "usd_mn"
             return None
-        if base in ("mn", "bn") and cur == "inr":
-            return "inr_mn" if base == "mn" else "inr_bn"
         return None
     if kind == "pct":
         return "pct" if base == "pct" else None
@@ -556,6 +562,8 @@ def finalize_unit(unit: str, value: float, metric_default: str):
         return value, "inr_bn", 1e9
     if unit == "inr_mn":
         return value, "inr_mn", 1e6
+    if unit == "inr_tn":                    # 1 trillion = 1 lakh crore
+        return value * 1e5, "inr_cr", 1e7
     if unit == "pct_as_bps":
         return value * 100.0, "bps", 1.0
     if unit == "kt":
@@ -676,10 +684,17 @@ TO_RX = re.compile(r"\bto\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)
 _LEVEL_RX = re.compile(r"\b(?:to|at)\s*(?:end|close|stand|reach)?\s*(?:at|of)?\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)
 FROM_RX = re.compile(r"\bfrom\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)
 _OTHER_SUBJECT = re.compile(r"\b(?:impacted by|impact of|on account of|charge of|hit of)\b", re.I)
+_OTHER_SUBJECT_PROFILE = re.compile(r"\b(?:driven by|owing to|because of|on the back of|supported by|partly offset|"
+                                    r"partially offset|due to)\b", re.I)
 _NOT_A_LEVEL = re.compile(r"\bis an?\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)   # "is an $18 million [impact]"
 _THRESHOLD = re.compile(r"\b(?:larger|more|greater|fewer|less|higher|lower|over|above|below|under)\s+than\s*"
                         r"(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)     # "larger than $50 mn" is a client threshold
 _CLIENT_TIER = re.compile(r"\s*(?:mn|million|bn|billion)?\s*plus\s+(?:clients|customers)", re.I)  # "$50 mn plus clients"
+_FORWARD = re.compile(r"\b(?:target(?:ed|s)?|guidance|guided|expect(?:s|ed)?|will|would|projected|projection|outlook|"
+                      r"range of|falling below|fall below|decline below|drop below|by FY\s?'?\d{2}|"
+                      r"regulatory requirement|minimum|mandated)\b", re.I)
+_PRIOR_VALUE = re.compile(r"\b(?:last|previous|prior|preceding|corresponding)\s+(?:year|fiscal|quarter|period)\b"
+                          r"[^.]{0,40}?\b(?:was|were|at|stood|had)\b|\byear[- ]ago\b", re.I)
 
 
 def _second_of_pair(text: str, start: int, v2_end: int, entries, company: str, metric: str) -> bool:
@@ -736,10 +751,19 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                 if "\n" in gap and label_matches(entries, company, gap):
                     continue      # a fact-sheet block: another label sits between this one and its value
                 lead = text[m.start():v1.start] if e.labels_strict else gap   # a strict label swallows the words between
-                if _OTHER_SUBJECT.search(lead) or _NOT_A_LEVEL.search(lead):
+                if _OTHER_SUBJECT.search(lead) or _NOT_A_LEVEL.search(lead) \
+                        or (profile.under_profile() and _OTHER_SUBJECT_PROFILE.search(lead)):
                     continue      # "impacted by an estimated negative $104 million": not the level
                 if _THRESHOLD.search(lead) or _CLIENT_TIER.match(text[v1.end:v1.end + 24]):
                     continue      # a client-size threshold ("$50 mn plus clients") is not the metric
+                if profile.under_profile() and (
+                        _FORWARD.search(lead) or _PRIOR_VALUE.search(lead)
+                        or gap.count("\n") > 2 or re.search(r"\n\s*\n", gap)
+                        or v1.start > _sentence_bounds(text, m.start())[1]
+                        or re.match(r"\s*[-–—]\s*\d", text[v1.end:v1.end + 12])):
+                    # guidance wording, the prior year's value, a fact-sheet column, a footnote's figure,
+                    # or a range band ("0.9%-1.5%") - profile builds only, so the pilot3 pages do not move
+                    continue
                 if FROM_RX.search(lead):
                     to_v = find_values(text, e.kind, e.unit, v1.end, min(len(text), v1.end + 24), per_spans)
                     if not (to_v and re.fullmatch(r"\s*to\s*", text[v1.end:to_v[0].start], re.I)):
@@ -1323,6 +1347,39 @@ def _bump(stats: dict | None, key: str) -> None:
         stats[key] = stats.get(key, 0) + 1
 
 
+# Tuned on the first hand read: 25 dropped KEC's true "net debt including acceptances" 6,722 crore against a group
+# median polluted by subsidiary figures (36 crore); the named unit slips stay far above 500x their own group.
+OUTLIER_FACTOR = 500
+
+
+_UNIT_WORD_RX = re.compile(r"\b(?:rs|inr|usd|us\$|crs?|crores?|lakhs?|mn|mm|million|billion|bn|kt|mt|tonnes?|tons?|"
+                           r"days?|times|x|per|cent|units?|nos?|audited|unaudited|restated|"
+                           r"as|on|at|for|the|in|of|and|amount|amounts|particulars|figures?|total)\b", re.I)
+
+
+def _label_owns_value(s: str, label_end: int, m, e: Entry) -> bool:
+    """A table row's label owns the value only when nothing but unit words and period tokens sits between them:
+    "Advances / 3195566.06 / 2746359.78 / 2937166.26 / Fixed assets / 14645.26 / 13854.09" makes 13854.09 the
+    next row's cell, not advances.  A row reconstructed from two tables side by side fails here.  `label_end` is the
+    row's own label end (the first value), so the label's remaining words are never foreign text; the entry's own
+    aliases in brackets ("Value of New Business (VoNB)") are part of the label too."""
+    seg = s[label_end:m.start("num")]
+    for p in reversed(parse_periods(seg)):
+        seg = seg[:p.start] + " " + seg[p.end:]
+    for rx in list(e.labels) + list(e.labels_strict):
+        seg = rx.sub(" ", seg)
+    return not re.search(r"[A-Za-z]{2,}", _UNIT_WORD_RX.sub(" ", seg))
+
+
+def _quote_names_label(quote: str, label: str | None) -> bool:
+    """True when the quote prints at least one word of the row's own label (a sector row must carry its label)."""
+    words = [w for w in re.findall(r"[A-Za-z]{4,}", label or "")]
+    if not words:
+        return True
+    low = quote.lower()
+    return any(w.lower() in low for w in words)
+
+
 def _table_value_ok(text: str, s: str, m, e: Entry) -> bool:
     """A table value is whole and possible: a printed token (never a fragment of a neighbour), a number of its kind
     (a percentage at most ``max_pct``, a day count at least one, no negative level), and not a signed change token."""
@@ -1493,6 +1550,9 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                     _bump(stats, "column_mismatch")
                     continue      # more values than columns: extra figures are deltas or captions, not cells
                 for xc, m, per in _assign_columns(cand, cols, 28):
+                    if strict and not _label_owns_value(s, nums[0][1].start(), m, e):
+                        _bump(stats, "label_not_owner")
+                        continue      # another row's label sits between this label and the figure
                     dim = nearest_dim(r.y, label, r.toks[0][0], hi, xc)
                     if strict and not _table_value_ok(text, s, m, e):
                         _bump(stats, "value_refused")
@@ -1842,6 +1902,9 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
         dbp = sandbox / f"{COMPANIES[sym]}_loop" / f"{COMPANIES[sym]}.db"
         con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
     entries, dims = load_lexicon()
+    # a sector family's row must quote its own label; a common metric may take its label from the line above
+    sector_only = ({e.metric for e in entries if e.sectors} - {e.metric for e in entries if not e.sectors}) \
+        if profile.under_profile() else set()
     st = stats.setdefault(sym, {"pages": 0, "needs_ocr": 0, "docs": 0, "pdf_missing": 0})
     for doc_key, doc_type, known_at, usable, pdf, opg, src in _doc_sources(con, sym, sandbox, raw_root, limit_docs, st, ocr,
                                                                           pages_db):
@@ -1850,10 +1913,18 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
         if doc_type == "transcript" and known_at:   # a call cannot be known before it was held (call_dates)
             known_at = call_dates.clamp(None, known_at, [t for _, t in usable[:3]])[1]
         default_pers = doc_default_period([t for _, t in usable])
+        # an annual report (or any document over 80 pages) prints last year's figures everywhere, so the document
+        # headline is no default: only a period on the page itself may stand in for one the sentence does not name
+        long_doc = profile.under_profile() and (doc_type == "annual_report" or len(usable) > 80)
         for page, text in usable:
             st["pages"] += 1
+            page_pers = default_pers
+            if long_doc:
+                page_pers = doc_default_period([text])
+                if not page_pers:
+                    st["no_period_long_doc"] = st.get("no_period_long_doc", 0) + 1
             try:
-                srows = sentence_rows(text, page, sym, entries, dims, default_pers)
+                srows = sentence_rows(text, page, sym, entries, dims, page_pers)
             except Exception:  # keep the run going, count it
                 srows = []
                 st["errors"] = st.get("errors", 0) + 1
@@ -1868,13 +1939,13 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                 words = pdf[page - 1].get_text("words")
             if words is not None and _page_may_have_table(text):
                 try:
-                    trows = table_and_chart_rows(words, text, page, sym, entries, dims, default_pers, st)
+                    trows = table_and_chart_rows(words, text, page, sym, entries, dims, page_pers, st)
                 except Exception:
                     st["errors"] = st.get("errors", 0) + 1
             basis = page_basis(text)
             try:     # chart mix and business-wise revenue bullets: no word boxes needed
-                erows = pie_mix_rows(text, page, sym, entries, dims, basis, default_pers)
-                seg = segment_revenue_rows(text, page, sym, entries, dims, basis, default_pers)
+                erows = pie_mix_rows(text, page, sym, entries, dims, basis, page_pers)
+                seg = segment_revenue_rows(text, page, sym, entries, dims, basis, page_pers)
             except Exception:
                 erows, seg = [], []
                 st["errors"] = st.get("errors", 0) + 1
@@ -1884,6 +1955,9 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
             if trows:   # on a table page, running-text hits that span line breaks are table fragments: drop them
                 srows = [r for r in srows if "\n" not in r.quote]
             for r in sorted(srows + trows + erows + seg, key=lambda r: -RULE_CONF[r.rule][1]):   # best confidence first: INSERT OR IGNORE keeps it
+                if r.metric in sector_only and not _quote_names_label(r.quote, r.raw_label):
+                    _bump(st, "quote_without_label")
+                    continue      # a sector row's quote must print its own label, not a bare column of numbers
                 why = drop_reason(r.period_type, r.fiscal_period, known_at)
                 if why:
                     st[why] = st.get(why, 0) + 1
@@ -1910,6 +1984,49 @@ COLS = ("symbol metric dimension value unit scale period_type fiscal_period as_o
         "source_type").split()
 
 
+def _review_outliers(con: sqlite3.Connection, symbol: str, max_pct: dict[str, float], review: list,
+                     st: dict | None = None) -> None:
+    """Drop a row that is absurd beside its own group (same symbol, metric, unit) and file it for review.
+
+    A units slip ("Gross sales: Rs 582,201 mn" stored as USD), a fragment or a caption figure is usually 25 times
+    away from its group's median.  A percentage above its entry's ceiling is impossible whatever the group.  Only
+    extracted rows are reviewed; the segment reader's xbrl_segment rows are not touched."""
+    groups: dict[tuple[str, str], list] = {}
+    for row in con.execute("SELECT id, metric, unit, value, quote, doc_key, page FROM kpi_series "
+                           "WHERE symbol=? AND value>0 AND coalesce(source_type,'')<>'xbrl_segment'", (symbol,)):
+        groups.setdefault((row[1], row[2]), []).append(row)
+    drop: dict[int, tuple] = {}
+    for (metric, unit), rows in groups.items():
+        if len(rows) < 4:
+            continue
+        med = statistics.median(r[3] for r in rows)
+        if med <= 0:
+            continue
+        for rid, met, u, v, quote, doc_key, page in rows:
+            if v > OUTLIER_FACTOR * med:
+                drop[rid] = (rid, symbol, met, v, u, quote, doc_key, page,
+                             f"above {OUTLIER_FACTOR:g}x group median {med:g} (n={len(rows)})")
+            elif v * OUTLIER_FACTOR < med:
+                drop[rid] = (rid, symbol, met, v, u, quote, doc_key, page,
+                             f"below 1/{OUTLIER_FACTOR:g} of group median {med:g} (n={len(rows)})")
+    for rid, met, u, v, quote, doc_key, page in con.execute(
+            "SELECT id, metric, unit, value, quote, doc_key, page FROM kpi_series WHERE symbol=? AND unit='pct' "
+            "AND value>100 AND coalesce(source_type,'')<>'xbrl_segment'", (symbol,)):
+        if v > max_pct.get(met, 100.0):
+            drop[rid] = (rid, symbol, met, v, u, quote, doc_key, page, f"pct above max_pct {max_pct.get(met, 100.0):g}")
+    if not drop:
+        return
+    con.executemany("DELETE FROM kpi_series WHERE id=?", [(rid,) for rid in drop])
+    review.extend(drop.values())
+    if st is not None:
+        st["kpi_review"] = len(drop)
+
+
+def _review_path(out: str) -> Path:
+    stem = out[:-3] if out.lower().endswith(".db") else out
+    return Path(stem + "_kpi_review.csv")
+
+
 def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | None = None, raw_root: Path | None = None,
         ocr_db: str | Path | list | tuple | None = None, only_docs: list[str] | None = None,
         pages_db: Path | str | None = None) -> dict:
@@ -1923,6 +2040,8 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
     ocr_paths = [ocr_db] if isinstance(ocr_db, (str, Path)) else list(ocr_db or ())
     ocr_cons = [sqlite3.connect(f"file:{Path(d).as_posix()}?mode=ro", uri=True) for d in ocr_paths]
     stats: dict = {}
+    review: list = []
+    max_pct = {e.metric: e.max_pct for e in load_lexicon()[0]} if profile.under_profile() else {}
     sql = f"INSERT OR IGNORE INTO kpi_series({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
     for sym in symbols:
         con.execute("DELETE FROM kpi_series WHERE symbol=? AND source_type<>'xbrl_segment'", (sym,))
@@ -1951,7 +2070,18 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
         if batch:
             con.executemany(sql, batch)
         con.commit()
+        if profile.under_profile():
+            _review_outliers(con, sym, max_pct, review, stats[sym])
+            con.commit()
         stats[sym]["rows"] = con.execute("SELECT count(*) FROM kpi_series WHERE symbol=?", (sym,)).fetchone()[0]
+    if profile.under_profile():
+        rp = _review_path(out)
+        with rp.open("w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(("symbol", "metric", "value", "unit", "quote", "doc_key", "page", "reason"))
+            for d in review:
+                w.writerow((d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8]))
+        stats["kpi_review_rows"] = len(review)
     stats["seconds"] = round(time.time() - t0, 1)
     con.close()
     for c in ocr_cons:
