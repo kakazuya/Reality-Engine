@@ -15,6 +15,7 @@ Screensaver and lock: it locks after 180 idle seconds, and a playing video did n
 ## Starting work
 - `start_worker(host="hp", permission="danger-full-access", hard_timeout_seconds=N, ...)`. `permission` is required; a start without it is refused as `permission_required`, not defaulted to read-only. Without a timeout it stops at 1,800 s. Uses Go account 1 by default.
 - Up to 5 workers, with at least 3 GB free. `dbs` takes bare file names and copies them read-only for the job.
+- `hp_worker start ... --pilot-db <path>` (T-070) copies one profile database from anywhere on this laptop (`D:\RealityEngine\pilot10\pilot10.db`) to `C:\RE\data\<basename>` with the same staging and `.meta.json` rule as `dbs`, and sets `REALITY_PILOT3_DB` for the job's `reality-data` server, so the HP serves the 10-company build. A missing path is refused before the job record is written; without the flag the MCP patch is unchanged.
 - Results: `python -m reality_engine.scripts.hp_worker fetch-patch <job>` gives branch `dsh-hp/<job>`.
 - `worker_status` re-checks a stale local record once by reading the remote `job.log`/`exit.txt` and fetching `result.md`; `worker_result` re-fetches a final result that an ssh timeout left missing. If a job still shows `running`, check `C:\RE\jobs\<job>\job.log` on the HP for `rc=`. Logic: `reality_engine/scripts/hp_worker.py` and `plugins/dsh-worker/server/core.py`.
 - `message_worker` returns `not_supported_on_hp` for HP jobs: they have no control channel, so a running HP worker cannot be steered.

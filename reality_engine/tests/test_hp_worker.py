@@ -52,6 +52,25 @@ def test_mcp_patch_points_both_servers_at_the_job():
     assert patch.count("maxAttempts: 40") == 2
 
 
+def test_mcp_patch_without_a_pilot_db_leaves_the_env_unchanged():
+    """Byte-for-byte the block that existed before --pilot-db (T-070)."""
+    paths = hp_worker.job_parts("hp-1")
+    patch = hp_worker.mcp_patch(r"C:\Users\zen7s", paths)
+    assert "REALITY_PILOT3_DB" not in patch
+    assert ("        env:\n"
+            '          REALITY_DATA_ROOT: "C:/RE/data"\n'
+            '          REALITY_DATA_REPO_ROOT: "C:/RE/jobs/hp-1/repo"\n'
+            '          PYTHONUTF8: "1"\n') in patch
+
+
+def test_mcp_patch_serves_the_pilot_db_from_the_copied_file():
+    paths = hp_worker.job_parts("hp-1")
+    patch = hp_worker.mcp_patch(r"C:\Users\zen7s", paths, pilot_db="pilot10.db")
+    assert 'REALITY_PILOT3_DB: "C:/RE/data/pilot10.db"' in patch
+    assert patch.count("REALITY_PILOT3_DB") == 1  # reality-data only, never code-tools
+    assert 'REALITY_DATA_ROOT: "C:/RE/data"' in patch
+
+
 def test_worker_command_carries_the_msi_model_and_launch_flags():
     paths = hp_worker.job_parts("hp-1")
     command = hp_worker.worker_command(paths, r"C:\Users\zen7s", permission="workspace-write",
@@ -167,6 +186,20 @@ def test_sync_dbs_copies_a_newer_db_and_marks_it_read_only(monkeypatch, tmp_path
     assert scps[0][1].endswith("C:/RE/data/x.db")
     assert any(".meta.json" in s for s in scripts)
     assert any("IsReadOnly = $true" in s for s in scripts)
+
+
+def test_sync_dbs_stages_and_stamps_a_path_outside_the_data_root(monkeypatch, tmp_path):
+    """--pilot-db lives outside REALITY_DATA_ROOT and reuses stage_db + the meta stamp."""
+    src = make_db(tmp_path / "pilot10.db")
+    monkeypatch.setattr(hp_worker, "stage_db", lambda path: src)
+    scripts, scps = [], []
+    monkeypatch.setattr(hp_run, "ps", lambda script: scripts.append(script) or "")
+    monkeypatch.setattr(hp_run, "_scp", fake_scp(scps))
+    monkeypatch.setattr(hp_worker, "DATA_ROOT", tmp_path / "data")
+    assert hp_worker.sync_dbs([], [src]) == ["pilot10.db:copied"]
+    assert scps[0][0] == str(src)
+    assert scps[0][1].endswith("C:/RE/data/pilot10.db")
+    assert any(".meta.json" in s for s in scripts)
 
 
 def test_latest_patch_diffs_against_the_base_and_handles_empty(monkeypatch):
@@ -338,7 +371,7 @@ def test_start_writes_the_runtime_record(monkeypatch, tmp_path):
     monkeypatch.setattr(hp_worker, "archive", lambda commit: (b"tar", "a" * 40))
     monkeypatch.setattr(hp_worker, "remote_home", lambda: r"C:\Users\zen7s")
     monkeypatch.setattr(hp_worker, "init_remote_repo", lambda paths, tar: "a" * 40)
-    monkeypatch.setattr(hp_worker, "sync_dbs", lambda dbs: [])
+    monkeypatch.setattr(hp_worker, "sync_dbs", lambda dbs, extra=(): [])
     monkeypatch.setattr(hp_worker, "context_pack_paths", lambda: [])
     monkeypatch.setattr(hp_worker.hp_run, "ps",
                         lambda script, timeout=600: "method=wmi pid=4321")
@@ -361,6 +394,46 @@ def test_start_writes_the_runtime_record(monkeypatch, tmp_path):
     assert status["title"] == "# Task — bench"
     assert spawned == [job_id]
     assert (runtime / "jobs" / job_id / "brief.md").is_file()
+
+
+def test_start_refuses_a_pilot_db_that_does_not_exist(monkeypatch, tmp_path):
+    monkeypatch.setattr(hp_worker, "off_peak", lambda: True)
+    brief = tmp_path / "brief.md"
+    brief.write_text("# Task\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="pilot-db"):
+        hp_worker.start(brief, [], None, "HEAD", "workspace-write", None, None, False,
+                        pilot_db=tmp_path / "missing.db")
+
+
+def test_start_copies_the_pilot_db_and_points_the_patch_at_it(monkeypatch, tmp_path):
+    runtime = tmp_path / "runtime"
+    monkeypatch.setattr(hp_worker, "runtime_dir", lambda: runtime)
+    monkeypatch.setattr(hp_worker, "off_peak", lambda: True)
+    monkeypatch.setattr(hp_worker, "archive", lambda commit: (b"tar", "a" * 40))
+    monkeypatch.setattr(hp_worker, "remote_home", lambda: r"C:\Users\zen7s")
+    monkeypatch.setattr(hp_worker, "init_remote_repo", lambda paths, tar: "a" * 40)
+    synced = []
+    monkeypatch.setattr(hp_worker, "sync_dbs",
+                        lambda dbs, extra=(): synced.append(list(dbs) + list(extra)) or [])
+    monkeypatch.setattr(hp_worker, "context_pack_paths", lambda: [])
+    monkeypatch.setattr(hp_worker.hp_run, "ps",
+                        lambda script, timeout=600: "method=wmi pid=4321")
+    monkeypatch.setattr(hp_worker.hp_run, "_scp",
+                        lambda argv: subprocess.CompletedProcess(argv, 0, b"", b""))
+    monkeypatch.setattr(hp_worker, "spawn_poller", lambda job_id: None)
+    pilot = make_db(tmp_path / "pilot10.db")
+    brief = tmp_path / "brief.md"
+    brief.write_text("# Task\n", encoding="utf-8")
+
+    job_id = hp_worker.start(brief, [], None, "HEAD", "workspace-write", 900, None, False,
+                             pilot_db=pilot)
+
+    assert synced == [[pilot]]
+    local = Path(hp_worker.job_parts(job_id)["local"])
+    patch = (local / "hp_mcp.yml").read_text(encoding="utf-8")
+    assert 'REALITY_PILOT3_DB: "C:/RE/data/pilot10.db"' in patch
+    meta = json.loads((local / "job.json").read_text(encoding="utf-8"))
+    assert meta["pilot_db"] == str(pilot)
 
 
 def test_ssh_retries_the_tailscale_address_when_the_lan_is_refused(monkeypatch):
