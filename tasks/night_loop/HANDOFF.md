@@ -1,7 +1,7 @@
 # Hand-off between loop sessions (each loop overwrites "Current state" and "Next", appends "Learnings")
 
 ## Current state (loop 2, 4 Nov 2026 13:45 IST; full detail `loops/loop_02_report.md`)
-- `D:\RealityEngine\pilot10\pilot10.db` built from main, every part rc 0, 456 s in total. Baseline A1 dev 571/898 = 64%, `pilot10\scores1_loop02_base.json`. Do not rebuild it whole.
+- `D:\RealityEngine\pilot10\pilot10.db` built from main, every part rc 0, 456 s in total. Baseline A1 dev 571/898 = 64%, `pilot10\scores\a1_loop02_base.json`. Do not rebuild it whole.
 - Workers running: `l2segments`, `l2structured` (Sonnet; `python tasks/night_loop/sonnet_worker.py status <name>`). Not merged. Candidate KEC transcripts on `scratch\c_kec*.db`.
 - 865 pages need OCR: `pilot10\logs
 eeds_ocr_pages.csv`. Not run.

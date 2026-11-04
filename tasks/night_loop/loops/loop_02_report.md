@@ -31,7 +31,7 @@ Unmet needs (603 over 133 keys; "only blocker" = questions this alone holds back
 ## Decisions (logged for the wrapper to overrule)
 1. **Compute-only margin, a possible deviation from "nothing older".** A TTM value on a day inside the window needs quarters before it. Rows from already-held XBRL stores back to 2024-10-01 are used as inputs only and never appear in answer tables; no document is read and nothing is fetched. It is off unless the profile sets `compute_start`, and I have not set it in the real profile. To reject it, leave the key out.
 2. **Single-segment filers** get one `single_segment` row equal to company revenue and EBIT, `is_reported` 0: a true answer, marked as derived.
-3. **KEC transcripts added to the raw set from held files,** no download: 4 rows appended to `pilot10aw\manifest.csv` (backup `manifest_before_kec_transcripts_2026-11-04.csv`, script `scratchdd_kec_transcripts.py`), known_at from the filed cover letter. Pilot10 baseline not rebuilt; candidate on copies `scratch\c_kec*.db`.
+3. **KEC transcripts added to the raw set from held files,** no download: 4 rows appended to `pilot10\raw\manifest.csv` (backup `manifest_before_kec_transcripts_2026-11-04.csv`, script `scratch\add_kec_transcripts.py`), known_at from the filed cover letter. Pilot10 baseline not rebuilt; candidate on copies `scratch\c_kec*.db`.
 4. **MARUTI transcripts not fetched this loop.** Time-boxed: the site renders by JavaScript, the pages tried give no link, and Playwright is not installed. 19 needs stay unmet. Next attempt: a browser session or a headless fetch for `marutisuzuki.com/corporate/investors/company-updates`.
 
 ## Workers (Sonnet, DeepSeek peak; started 13:35 IST)
