@@ -61,3 +61,4 @@
 - Loop 3: printing row dumps and long worker reports took this session to 400k context at about 70 tool calls. Print counts and outliers first, and fewer rows.
 - Loop 3: in a bash heredoc this shell collapses double backslashes, which broke paths twice. Write helper scripts with the Write tool.
 - Loop 3: guidance recall after the precision work: ETERNAL, SUNPHARMA and MARUTI hold 0 rows, though ETERNAL now has 691 statements. Check recall next; A1 does not show it.
+- Wrapper 22:10 IST: exchange filings can be 1-page cover letters. MARUTI's real transcripts come from the site's public list `corporateDocumentsList;documentCategory=companyReports` (headless Edge rendered the page; its own script named the list). Added by `pilot10\scratch\add_maruti_transcripts.py`: A1 on the copy `combined2.db` 694 to 707, MARUTI 62 to 75. Check page counts before calling any document held.
