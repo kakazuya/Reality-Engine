@@ -24,7 +24,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `ratio_panel`, `formula` | derived ratios with formula id and input row ids | computed from fin lines |
 | `kpi_series` | company-stated KPIs (order book, AUM, EBITDA/t, NIM, mixes) with period, dimension, entity, quote, page | decks, results, press releases, transcripts |
 | `transcript_statement` | call quotes with speaker, role, topic tags | transcripts |
-| `guidance` | one row per forward target: metric, period, low/high, unit, revision link | transcripts, decks, results, press releases |
+| `guidance` | one row per forward target: metric, period, low/high (NULL for a worded target), unit, revision link | transcripts, decks, results, press releases |
 | `shp_category`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings, share count, dividends, prices, PE/PB/EV | exchange data stores |
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
 
@@ -81,10 +81,27 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   `MARKET_OWNS`); "27% of a combined business" is a share (`SHARE_NOUN`); and "remains at ~$500/t" with no guidance
   word before the number is the actual, while "the AUM growth estimates … remain at 24 to 25%" keeps its row
   (`REMAINS_AT`). One is left, reported not settled: HINDALCO's Q2 cost-of-production 3-4% row stays, because two
-  graded checkpages entries cite that page and the fixture baseline needs both. State on the pilot10 copy after the
-  review: 67 rows (BAJFINANCE 6, HDFCBANK 1, HINDALCO 31, HINDUNILVR 1, INFY 14, KEC 13, SBILIFE 1; ETERNAL, MARUTI
-  and SUNPHARMA none), and `checkpages run` holds 145 / 314 (KEC 29, BAJFINANCE 59, HINDALCO 57) — the fixture's
-  baseline. Before loop 3, precision was 28/40 (4 Nov).
+  graded checkpages entries cite that page and the fixture baseline needs both. Before loop 3, precision was 28/40
+  (4 Nov). **T-058 (4 Nov 2026): a target said in words is a row too, and the metric the sentence does not name.**
+  Ten real guidance sentences were held in `transcript_statement` with no `guidance` row; the recall rules now are:
+  (a) a worded target — "high single-digit … top line growth for FY27", "the provision coverage will be in the 70s,
+  mid-70s or higher", "the margins to remain flattish", "full year '27 will be ahead of full year '26" — gets a row
+  with `low` and `high` **NULL** (no number is invented: "high single-digit" is never 7%), `unit='pct'`, the
+  direction from the word (ahead of/better than/or higher → up, flattish/in the guided range → flat) and the exact
+  quote; the worded path needs the cue, the metric **named in the sentence itself**, a magnitude or comparison word
+  and a period, and it refuses a reporting verb, an actual's shape, a hedge, a macro forecast, a sentence that
+  declines to guide ("we do not give forward guidance") and any metric not stated in percent; (b) "the guidance of
+  60% CAGR" is `revenue_growth` (an `EBITDA CAGR` / `profit CAGR` is not, `NON_REVENUE_CAGR`); (c) "we are saying we
+  will get to" is a cue (`CUE`), `full year '27` names its period (`FULL_YEAR`), "guidance" alone cues `other`
+  (`OTHER_CUE`, "INR 11 lakh per day per store"), and a list of example values ("some 25 basis points, some 100
+  basis points") is not a target (`EXAMPLE_LIST`); (d) a company flagged `lender: true` whose sector is not a bank or
+  NBFC (a life insurer) keeps its "margin" as `ebitda_margin` instead of losing it to NIM, which it is not allowed
+  to hold. State on the pilot10 copy after T-058: **83 rows** (BAJFINANCE 6, ETERNAL 4, HDFCBANK 1, HINDALCO 31,
+  HINDUNILVR 3, INFY 14, KEC 14, SBILIFE 5, SUNPHARMA 5; MARUTI 0 — its five transcripts are one-page cover letters
+  and its four `deck` documents are the integrated annual report and ESG pages, which state no forward financial
+  target), and `checkpages run` still holds 145 / 314 (KEC 29, BAJFINANCE 59, HINDALCO 57) with A1 694/898. One row
+  is reported, not settled: SBILIFE's 14-15% guidance (its individual APE growth) is stored as `ebitda_margin`
+  because the sentence names no metric, the visible question is the margins one and the enum has no APE metric.
 - **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
   `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
   writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into
@@ -121,6 +138,7 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
 | 4 Nov | embeddings, 112 gold questions, top 10 | bm25 35%, bm25+1B 46%, bm25+8B 52%; images add nothing |
 | 4 Nov | loop 3: speakers + guidance precision, A1 on the pilot10 copy | A1 **662/898** (651 before; KEC 51 → 62, every other company level); statements ETERNAL 691 / INFY 2,512 / KEC 1,803; guidance 69 rows |
 | 4 Nov | loop 3 fix: `project_capital_spent`, seven review rules, footer/media-call speakers | `checkpages run` **145 / 314** (29 / 59 / 57) — the fixture baseline; statements INFY 2,478; guidance 67 rows (5 of them the project spend); A1 662/898 held |
+| 4 Nov | T-058 guidance recall: worded targets (low/high NULL), insurer margin, CAGR, store-day KPI | guidance **67 → 83 rows** (BAJFINANCE 6, ETERNAL 4, HDFCBANK 1, HINDALCO 31, HINDUNILVR 3, INFY 14, KEC 14, SBILIFE 5, SUNPHARMA 5, MARUTI 0); A1 **694/898 held** (every company level); `checkpages run` 145 / 314 held; tests 26 passed; hand read 69 / 72 |
 
 Open from the 4 Nov grade: data not held (RBI repo path, national capex), one part of two-part questions missed,
 definitions not reconciled (BHFL share of profit, ROCE), KEC transcripts stored twice (website + exchange copy).

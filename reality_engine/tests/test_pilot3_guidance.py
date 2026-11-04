@@ -491,3 +491,108 @@ def test_a_restated_estimate_that_still_remains_is_a_target():
     guidance.run(str(path), ["BAJFINANCE"])
     got = [(r["metric"], r["low"], r["high"], r["unit"]) for r in rows(path)]
     assert ("aum_growth", 24.0, 25.0, "pct") in got, got
+
+
+# --- T-058, 4 Nov 2026: targets said in words, and the metric the sentence does not name -------------------
+def test_a_worded_target_is_a_row_without_an_invented_number():
+    """SUNPHARMA: "we expect high single-digit … top line growth for FY27".  ``low``/``high`` stay NULL -- the
+    direction and the exact quote carry the magnitude, so "high single-digit" is never turned into 7%."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_worded.db"
+    write_db(path, [("sun/call.pdf", "SUNPHARMA", "deck", "2026-05-29", "2026-05-29T20:08:05")],
+             [("sun/call.pdf", "SUNPHARMA", 6,
+               "On the guidance, we expect high single-digit consolidated top line growth for FY27 based on our "
+               "current understanding of the regulatory and macro environment.")])
+    guidance.run(str(path), ["SUNPHARMA"])
+    got = [(r["metric"], r["target_period"], r["low"], r["high"], r["unit"], r["direction"]) for r in rows(path)]
+    assert got == [("revenue_growth", "FY27", None, None, "pct", "up")], got
+    assert rows(path)[0]["quote"].startswith("On the guidance, we expect high single-digit")
+
+
+def test_the_worded_families_and_the_three_sentences_that_must_stay_out():
+    """The "70s" bucket, the flattish direction and "will get to" as a cue are targets; a result quoted against the
+    guided range, a past exceptional item and a board appointment are not."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_worded2.db"
+    docs = [("hdfc/call.pdf", "HDFCBANK", "deck", "2026-07-24", "2026-07-24T15:52:36"),
+            ("eternal/call.pdf", "ETERNAL", "deck", "2026-10-27", "2026-10-27T13:57:28"),
+            ("eternal/call2.pdf", "ETERNAL", "deck", "2026-05-06", "2026-05-06T13:57:28"),
+            ("hul/call.pdf", "HINDUNILVR", "deck", "2026-05-07", "2026-05-07T17:00:00"),
+            ("sun/call.pdf", "SUNPHARMA", "deck", "2026-08-06", "2026-08-06T17:00:00")]
+    pages = [
+        ("hdfc/call.pdf", "HDFCBANK", 14,
+         "If you look at the unsecured mix, the provision coverage will be in the 70s, mid-70s or higher."),
+        ("eternal/call.pdf", "ETERNAL", 3,
+         "It's hard to project or comment on margin trajectory every quarter but broadly, over the next 1 or 2 "
+         "years, we expect the margins to remain flattish."),
+        ("eternal/call2.pdf", "ETERNAL", 6,
+         "As we move to 5-6% margin that we are saying we will get to at some point, contribution margin will go "
+         "up and on a year-on-year basis, we'll see that trend consistently."),
+        ("hul/call.pdf", "HINDUNILVR", 4,
+         "From a profitability perspective, EBITDA grew 6% year-on-year with EBITDA margin at 23.7%, coming in "
+         "at the higher end of our guidance."),
+        ("sun/call.pdf", "SUNPHARMA", 4,
+         "Exceptional items for Q1 FY27 include a charge of INR1,617 million towards Organon's acquisition-"
+         "related costs."),
+        ("hdfc/call.pdf", "HDFCBANK", 10,
+         "The Board will of course meet in due course, take the various regulators into confidence, and then take "
+         "a call on the new chairman."),
+    ]
+    write_db(path, docs, pages)
+    guidance.run(str(path), ["HDFCBANK", "ETERNAL", "HINDUNILVR", "SUNPHARMA"])
+    got = {(r["symbol"], r["metric"], r["target_period"], r["low"], r["high"], r["direction"]) for r in rows(path)}
+    assert ("HDFCBANK", "other", "FY27", None, None, "up") in got, got
+    assert ("ETERNAL", "ebitda_margin", "FY27", None, None, "flat") in got, got
+    assert ("ETERNAL", "ebitda_margin", "FY27", 5.0, 6.0, "up") in got, got
+    quotes = " ".join(r["quote"] for r in rows(path))
+    for needle in ("EBITDA margin at 23.7%", "Exceptional items", "new chairman"):
+        assert needle not in quotes, f"still a target: {needle}"
+
+
+def test_a_cagr_is_the_top_line_and_a_store_kpi_is_other():
+    """The 60% CAGR guidance is revenue growth (and an EBITDA CAGR is not); "INR 11 lakh per day per store" is a
+    store-level target stored as ``other``, the only metric the enum has for it."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_cagr.db"
+    write_db(path,
+             [("eternal/call.pdf", "ETERNAL", "deck", "2026-05-06", "2026-05-06T13:57:28"),
+              ("eternal/call2.pdf", "ETERNAL", "deck", "2026-10-27", "2026-10-27T13:57:28")],
+             [("eternal/call.pdf", "ETERNAL", 4,
+               "We've given overall guidance of 60% CAGR and that would obviously mean some reasonable store "
+               "expansion, but we're not planning to give out any specific number guidance on that."),
+              ("eternal/call2.pdf", "ETERNAL", 12,
+               "We gave guidance last time that in steady state it could get to about INR 11 lakh per day per "
+               "store.")])
+    guidance.run(str(path), ["ETERNAL"])
+    got = {(r["metric"], r["target_period"], r["low"], r["high"], r["unit"]) for r in rows(path)}
+    assert ("revenue_growth", "FY27", 60.0, 60.0, "pct") in got, got
+    assert ("other", "FY27", 11.0, 11.0, "inr_lakh") in got, got
+    ebitda = "Our revenue grew by 14.4% and the EBITDA/CAGR is 13%"
+    assert guidance.NON_REVENUE_CAGR.search(ebitda)
+    assert not guidance.subject_ok("revenue_growth", ebitda, guidance.numbers(ebitda)[-1], "")
+
+
+def test_an_insurers_margin_stays_a_margin_not_a_nim():
+    """T-058: SBILIFE carries ``lender: true`` (it is a life insurer), so its "margin" was mapped to NIM and then
+    refused (``nim``/``credit_cost`` are read only for a bank or NBFC) and every margin row was lost.  A bank's
+    "margin" is still its NIM."""
+    import json
+
+    from reality_engine.pilot3 import profile
+
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_insurer_profile.json"
+    path.write_text(json.dumps({
+        "name": "insurer", "pages_db": "a.db", "raw_root": "raw", "manifest": "m.csv", "out": "o.db",
+        "companies": [{"symbol": "SBILIFE", "sector": "insurance_life", "lender": True},
+                      {"symbol": "HDFCBANK", "sector": "bank", "lender": True}]}), encoding="utf-8")
+    profile.activate(profile.load(path))
+    try:
+        insurer = ("So we expect that our margin will continue to be a similar range that we maintain about "
+                   "26% to 28% range that we are seeing.")
+        assert guidance.metric_candidates("SBILIFE", insurer, "", "") == ["ebitda_margin"]
+        bank = "we expect the margin to be around 3% to 3.5% for the year"
+        assert guidance.metric_candidates("HDFCBANK", bank, "", "") == ["nim"]
+    finally:
+        profile.activate(None)
+
