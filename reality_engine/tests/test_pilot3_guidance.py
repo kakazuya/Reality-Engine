@@ -596,3 +596,115 @@ def test_an_insurers_margin_stays_a_margin_not_a_nim():
     finally:
         profile.activate(None)
 
+
+# --- T-062, 4 Nov 2026: a growth sentence, a customer mix, a slice of a total, the quarter and a delta ---------
+def test_the_growth_sentence_the_mix_the_slice_the_quarter_and_the_delta():
+    """The four rows the ticket names, each read from its own sentence: a growth sentence must not take a margin
+    metric from the visible question, a customer profiling list is not a target, a number taken out of a stated
+    total is a slice, "in the Q2 level" is that quarter of the filing's year, and a reduction or an accretion is
+    the size of a change, not a level."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t062.db"
+    docs = [("sbi/call.pdf", "SBILIFE", "transcript", "2026-04-28", "2026-04-28T17:00:00"),
+            ("maruti/call.pdf", "MARUTI", "transcript", "2026-08-06", "2026-08-06T17:00:00"),
+            ("kec/call.pdf", "KEC", "transcript", "2026-05-21", "2026-05-21T16:00:00"),
+            ("hind/call.pdf", "HINDALCO", "transcript", "2025-11-13", "2025-11-13T17:00:00"),
+            ("infy/call.pdf", "INFY", "transcript", "2026-04-27", "2026-04-27T17:00:00"),
+            ("eternal/call.pdf", "ETERNAL", "transcript", "2025-10-16", "2025-10-16T17:00:00")]
+    pages = [
+        # the visible question is about margins; the answer is the individual APE growth, and the second
+        # "14% to 15%" sits 200 characters past "growing"
+        ("sbi/call.pdf", "SBILIFE", 1,
+         "What about the margin outlook for the year? So we expect that our margin will continue to be a similar "
+         "range that we maintain about 26% to 28% range that we are seeing."),
+        ("sbi/call.pdf", "SBILIFE", 2,
+         "What about the margin outlook for the year? But at the start of the financial year, we had given a "
+         "guidance that we'll be growing for the year at around 14% to 15% and we are sticking to our guidance "
+         "for the entire financial year, notwithstanding the quarter-to- quarter or month-to-month variation, we "
+         "are very sure that for the financial year, we will be closing with 14% to 15% as we had guided for."),
+        # a customer profile, not a target
+        ("maruti/call.pdf", "MARUTI", 1,
+         "And the other customer profiling, so salaried is about 40%, business would be about 34%, self-employed "
+         "about 20%, very broad profiling for customers."),
+        # the whole and a slice of it
+        ("kec/call.pdf", "KEC", 1,
+         "So we expect that we should be touching around INR30,000 crores of order intake for the year."),
+        ("kec/call.pdf", "KEC", 2,
+         "So out of INR30,000 crores, if you take it, roughly it would be INR20,000 crores, maybe a little bit "
+         "here and there."),
+        # the quarter the call reports, not the filing's default year
+        ("hind/call.pdf", "HINDALCO", 1,
+         "So the cost of production in the Q2 level, I was expecting that question really is about 3% to 4% "
+         "higher than Q1."),
+        # a reduction inside the FY27 guidance list is not the growth guidance
+        ("infy/call.pdf", "INFY", 1,
+         "The FY27 guidance includes - Contribution from Stratus which we closed earlier this week, but excludes "
+         "Versent JV and Optimum Healthcare acquisitions that are yet to be closed. - Reduction of 0.75% to 1% "
+         "due to lower revenue from one of our large European manufacturing client."),
+        # an accretion is not the margin level, and "in the next quarter" is the quarter after the call's own
+        ("eternal/call.pdf", "ETERNAL", 1,
+         "So far, we have banked more than half of the 1% point margin accretion that we expect as a result of "
+         "this change."),
+        ("eternal/call.pdf", "ETERNAL", 2,
+         "As a result, in Q2FY26 about 80% of the NOV was on our own inventory which is expected to go to a "
+         "steady state number of about 90% in the next quarter."),
+    ]
+    write_db(path, docs, pages)
+    guidance.run(str(path), ["SBILIFE", "MARUTI", "KEC", "HINDALCO", "INFY", "ETERNAL"])
+    got = {(r["symbol"], r["metric"], r["target_period"], r["low"], r["high"], r["unit"]) for r in rows(path)}
+    # the margin guidance the sentence names stays a margin row (the sentence that must stay)
+    assert ("SBILIFE", "ebitda_margin", "FY27", 26.0, 28.0, "pct") in got, got
+    assert not rows(path, "symbol='SBILIFE' AND low=14 AND metric='ebitda_margin'")
+    assert not rows(path, "symbol='MARUTI'")
+    assert ("KEC", "order_intake", "FY27", 30000.0, 30000.0, "inr_cr") in got, got
+    assert not rows(path, "symbol='KEC' AND low=20000")
+    assert ("HINDALCO", "cost_of_production", "Q2FY26", 3.0, 4.0, "pct") in got, got
+    assert not rows(path, "symbol='INFY'")
+    assert not rows(path, "symbol='ETERNAL' AND metric='ebitda_margin'")
+    assert ("ETERNAL", "other", "Q3FY26", 90.0, 90.0, "pct") in got, got
+
+
+def test_the_growth_rule_and_the_insurers_top_line_on_their_own():
+    # the second "14% to 15%" is 200 characters past "growing", so only the whole sentence sees the growth
+    sb = ("But at the start of the financial year, we had given a guidance that we'll be growing for the year at "
+          "around 14% to 15% and we are sticking to our guidance for the entire financial year, notwithstanding "
+          "the quarter-to- quarter or month-to-month variation, we are very sure that for the financial year, we "
+          "will be closing with 14% to 15% as we had guided for.")
+    chosen = guidance.pick_number(sb, guidance.numbers(sb))
+    assert chosen is not None and chosen["start"] > 300
+    assert guidance.subject_ok("ebitda_margin", sb, chosen, "What about margins?") is False
+    # an insurer's IRP/APE is its top line: "the guidance of 14% to 15% overall company" is growth, not a margin
+    restatement = ("But what I will assure you is that the guidance of 14% to 15% overall company, that we are "
+                   "going to stay with.")
+    assert guidance.metric_candidates("SBILIFE", restatement,
+                                      "So first question was regarding IRP breakdown for the different channels.",
+                                      "")[0] == "revenue_growth"
+    # a worded target takes its direction from its own size words, not from a growth elsewhere in the sentence
+    flat = "So, that's why you see the growth in margin versus our earlier guidance of margin perhaps remaining flat."
+    move = guidance.WORDED_MOVE.search(flat)
+    assert move is not None
+    assert guidance.worded_direction(flat, "ebitda_margin", move.start()) == "flat"
+    up = "On the guidance, we expect high single-digit consolidated top line growth for FY27"
+    assert guidance.worded_direction(up, "revenue_growth", up.index("single")) == "up"
+    # the change rules on their own
+    assert guidance.PCT_CHANGE.match(" point margin accretion that we expect")
+    assert guidance.OTHER_TARGET.search("I am targeting that next year we should be delivering INR100,000 crores")
+    assert not guidance.OTHER_TARGET.search("salaried is about 40%, business would be about 34%")
+    slice_sentence = ("So out of INR30,000 crores, if you take it, roughly it would be INR20,000 crores, maybe a "
+                      "little bit here and there.")
+    sliced = guidance.pick_number(slice_sentence, guidance.numbers(slice_sentence))
+    assert sliced is not None and sliced["low"] == 20000
+    assert guidance.subject_ok("order_intake", slice_sentence, sliced, "") is False
+    assert guidance.PAST_ONLY.search("yield on assets have come down from the beginning of the rate cycle")
+    quarter = ("So the cost of production in the Q2 level, I was expecting that question really is about 3% to 4% "
+               "higher than Q1.")
+    assert guidance.target_period(quarter, "", "", "Q2FY26", (26, "Q2"),
+                                  guidance.numbers(quarter)[0]["start"]) == "Q2FY26"
+    reduction = ("The FY27 guidance includes - Reduction of 0.75% to 1% due to lower revenue from one of our large "
+                 "European manufacturing client.")
+    assert guidance.subject_ok("revenue_growth", reduction, guidance.numbers(reduction)[0], "") is False
+    # "reach 9%, 10% margin" is a pair, not a 9% target (T-049 ticket list)
+    pair = "The target again is that how soon we can reach 9%, 10% margin."
+    assert [(n["low"], n["high"], n["unit"]) for n in guidance.numbers(pair)] == [(9.0, 10.0, "pct")]
+
+

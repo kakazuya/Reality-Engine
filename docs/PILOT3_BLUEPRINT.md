@@ -80,8 +80,9 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   market's growth ("China is a large, growing market … 5-7% growth") are not the company's number (`PLACE_IN`,
   `MARKET_OWNS`); "27% of a combined business" is a share (`SHARE_NOUN`); and "remains at ~$500/t" with no guidance
   word before the number is the actual, while "the AUM growth estimates … remain at 24 to 25%" keeps its row
-  (`REMAINS_AT`). One is left, reported not settled: HINDALCO's Q2 cost-of-production 3-4% row stays, because two
-  graded checkpages entries cite that page and the fixture baseline needs both. Before loop 3, precision was 28/40
+  (`REMAINS_AT`). The one leftover loop 3 reported was settled by T-062: HINDALCO's "cost of production in the Q2
+  level" row now carries `Q2FY26` (the quarter the sentence names), and `checkpages` still holds 145 / 314 because
+  it matches the value and the page, not the period. Before loop 3, precision was 28/40
   (4 Nov). **T-058 (4 Nov 2026): a target said in words is a row too, and the metric the sentence does not name.**
   Ten real guidance sentences were held in `transcript_statement` with no `guidance` row; the recall rules now are:
   (a) a worded target — "high single-digit … top line growth for FY27", "the provision coverage will be in the 70s,
@@ -96,12 +97,26 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   (`OTHER_CUE`, "INR 11 lakh per day per store"), and a list of example values ("some 25 basis points, some 100
   basis points") is not a target (`EXAMPLE_LIST`); (d) a company flagged `lender: true` whose sector is not a bank or
   NBFC (a life insurer) keeps its "margin" as `ebitda_margin` instead of losing it to NIM, which it is not allowed
-  to hold. State on the pilot10 copy after T-058: **83 rows** (BAJFINANCE 6, ETERNAL 4, HDFCBANK 1, HINDALCO 31,
-  HINDUNILVR 3, INFY 14, KEC 14, SBILIFE 5, SUNPHARMA 5; MARUTI 0 — its five transcripts are one-page cover letters
-  and its four `deck` documents are the integrated annual report and ESG pages, which state no forward financial
-  target), and `checkpages run` still holds 145 / 314 (KEC 29, BAJFINANCE 59, HINDALCO 57) with A1 694/898. One row
-  is reported, not settled: SBILIFE's 14-15% guidance (its individual APE growth) is stored as `ebitda_margin`
-  because the sentence names no metric, the visible question is the margins one and the enum has no APE metric.
+  to hold. **T-062 (4 Nov 2026): a growth sentence, a customer mix, a slice of a total, the quarter and a delta.**
+  Five general rules close the wrong rows the review named: a growth sentence owns its number, so "we'll be growing
+  for the year at around 14% to 15%" cannot take a margin metric from the visible question even when the second
+  "14% to 15%" sits 200 characters past "growing" (`subject_ok` reads the whole sentence when the metric's own word
+  is not in it); a life insurer's IRP/APE is its top line (`revenue_growth`), a list of labelled percentages is a
+  customer/business mix and not `other` ("salaried is about 40%, business would be about 34%"), and `other` otherwise
+  needs a target wording or a single number; a number taken out of a stated total is a slice ("out of INR30,000
+  crores … INR20,000 crores"), so the total stays the row (`SLICE_OF`); "the cost of production in the Q2 level" is
+  that quarter of the filing's year (`Q_LEVEL`) and "in the next quarter" is the quarter after the call's own
+  (`NEXT_Q`); a change ("Reduction of 0.75% to 1%", "a 1% point margin accretion") is the size of the change, not a
+  level (`DELTA_NOUN`, `PCT_CHANGE`), a present-perfect movement ("yield on assets have come down … 30 basis
+  points") is a measurement (`PAST_ONLY`), and a worded target's direction comes from its own size words, not from a
+  growth elsewhere in the sentence. A product segment goes in `lexicon/dimensions.yaml` (`non_par`, `protection`) so
+  "the growth in pure non-par products" is not the company's top line, and "reach 9%, 10%" is read as the pair it is
+  (`PAIR_CUE`). State on the pilot10 copy after T-062 (4 Nov 2026): **90 rows** (BAJFINANCE 6, ETERNAL 11, HDFCBANK 1,
+  HINDALCO 31, HINDUNILVR 3, INFY 15, KEC 13, SBILIFE 5, SUNPHARMA 5; MARUTI 0 — its transcripts are one-page cover
+  letters and its decks state no forward financial target), `checkpages run` still holds **145 / 314** (KEC 29,
+  BAJFINANCE 59, HINDALCO 57), A1 **709/898** with every company level, tests **28 passed**, and the hand read with
+  seed 20261112 (HINDALCO 20 of 31 sampled, every other company all rows) is all right: the SBILIFE 14-15% row the
+  review reported is now `revenue_growth` (or gone), and its 26-28% margin guidance stays.
 - **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
   `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
   writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into

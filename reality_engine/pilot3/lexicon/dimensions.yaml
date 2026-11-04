@@ -27,3 +27,7 @@ dimensions:
   - {dimension: commercial, patterns: ["commercial lending", "commercial"], companies: [BAJFINANCE]}
   - {dimension: auto, patterns: ["car loans?", "auto finance", "vehicle"], companies: [BAJFINANCE]}
   - {dimension: gold, patterns: ["gold loans?"], companies: [BAJFINANCE]}
+  # T-062: a life insurer's product segments -- "the growth in pure non-par products" is that book's, not the
+  # company's top line
+  - {dimension: non_par, patterns: ["non[- ]par\\b"]}
+  - {dimension: protection, patterns: ["\\bprotection\\b"]}
