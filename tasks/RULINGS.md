@@ -19,11 +19,11 @@ When Shivam rules or corrects something, write it here before the next action. `
 - HP work runs headless: nothing on its screen, no focus loss. [check: test_hp_headless]
 - Page-reading subagents: batches of 8 pages, never past 100k context, medium effort for Haiku.
 - Chain of command until Fri 6 Nov 23:30 IST (Shivam, 3 Nov): Opus manages, dsh workers do all the work, every headless session included; no Haiku runs, except a Haiku subagent Opus sends to check a dsh report it suspects is bogus. Opus does not write the code. In DeepSeek peak hours the code workers are Sonnet 5.5 at medium effort (`tasks/night_loop/sonnet_worker.py`; Shivam, 4 Nov), same 2-worker limit. After loop 3, no more Opus loop sessions: the main session runs 2 dsh workers at once directly (Shivam, 4 Nov).
-- Session titles, standing (T-047, never closed): keep the `sv-`/`neo-` prefix and let each session choose the rest (Shivam, 2 Nov).
+- Session titles, standing: keep the `sv-`/`neo-` prefix and let each session choose the rest (Shivam, 2 Nov).
 - Bring ranked ideas from measurements unprompted. Do not idle machines: RAM under 90% or CPU under 70% used means start useful work. Report compute waste.
 - A new task from Shivam becomes a ticket in `tasks/TASKS.md` before work starts. Commits on `main` name a real ticket or give a reason. [check: commit-msg]
 - While any worker or job runs, keep a live watch that fires on finish, stall or errors, and check real status and progress before saying anything about it; a run with no check of its first minutes is a failure (Shivam, 2 Nov, after the fourth miss). A worker that finishes is reviewed at once, never left waiting (3 Nov). [check: T-050 stop hook]
-- Do not stop to ask what you can decide. Do not argue a ruling: figure out how to do it.
+- Tickets hold tests and prototypes, never standing rules; rules live here and in memory. One task stays in one worker session: Opus reviews its finished output and guides it in the next round, a new worker only when its context reaches 1M or the task changes; no live adviser calls to Claude, they eat the weekly limit (Shivam, 5 Nov). Do not stop to ask what you can decide. Do not argue a ruling: figure out how to do it.
 - Log every dsh worker and Claude session in `tasks/efficiency/WORKER_REVIEW_LOG.xlsx`: tool calls, tokens on thinking and output, job type, time, what Claude would have done itself, and how to improve the prompt, permissions and scope. Analyse it continuously and apply it to the next brief (Shivam, 2 Nov).
 
 ## Never

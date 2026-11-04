@@ -27,6 +27,10 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-069 | OPEN | P1 | One x-opencode-session per dsh worker: all jobs on an account share one id today, against OpenCode's docs and our rule | accept: python -m pytest reality_engine/tests/test_dsh_worker_plugin.py -q | from: Shivam 5 Nov | opened 2026-11-05
 - T-071 | OPEN | P2 | dsh worker sandbox and stress tests fail on the T-054 Evidence field and the launcher identity; refresh their shared brief fixture | accept: python -m pytest reality_engine/tests/test_dsh_worker_sandbox.py -q | from: T-069 review | opened 2026-11-05
 - T-074 | OPEN | P2 | Trial from the software-factory paper: send review findings back to the same worker session, A/B on two KPI fix rounds against fresh workers (tokens, tool calls, hand-read score) | accept: Shivam | from: Shivam 5 Nov, paper review | opened 2026-11-05
+- T-075 | OPEN | P1 | Prototype next-round in the same worker session: Opus reviews finished output, then guides it in that session. --followup-wait keeps a worker waiting only up to 3600 s and HP has no channel; find or build resume after that, and measure tokens and hand-read score | accept: Shivam | from: Paper pointer 2, Shivam 5 Nov | opened 2026-11-05
+- T-076 | OPEN | P2 | Trial: two KPI fix rounds run strictly one at a time, answer and data jobs in parallel; compare rows lost between rounds | accept: Shivam | from: Paper pointer 3, Shivam 5 Nov | opened 2026-11-05
+- T-077 | OPEN | P2 | Prototype a shared defect-type list that parallel workers read and append (Beam KPI batches, answer runs); measure repeat slips such as ten-times units | accept: Shivam | from: Paper pointer 4, Shivam 5 Nov | opened 2026-11-05
+- T-078 | OPEN | P2 | Audit each hook and gate against the last failure it stopped; propose removals for Shivam; test one versioned worker pipeline file | accept: Shivam | from: Paper pointer 5, Shivam 5 Nov | opened 2026-11-05
 
 ## Data
 - T-021 | LOOKING | P3 | Check if still open: PIB phase 2, Hindi, Urdu and regional offices | accept: Shivam | from: tasks/PIPELINE_TODO.md A2 | opened 2026-11-02
@@ -49,6 +53,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-064 | OPEN | P1 | KPI three faults: segment revenue as total, debt as a ratio, segment margin as company | accept: python -m pytest reality_engine/tests/test_pilot3_kpi.py -q | from: T-061 review | opened 2026-11-04
 - T-066 | OPEN | P1 | KPI branch line: restore the six numbers round 3 lost (KEC order intake and order book, HINDALCO EBITDA per tonne) so the branch can merge | accept: python -m reality_engine.pilot3.checkpages run | from: Shivam 5 Nov | opened 2026-11-05
 - T-068 | OPEN | P1 | Settle doubtful KPI rows with free beam-free on both Go keys, as a step after the build with saved verdicts; gate its accuracy on hand-read rows before use | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
+- T-079 | OPEN | P1 | Trial one KPI round on a goal brief: keep evidence and fast check, drop edit-this-line steps; goal hand-read 18 of 20 on INFY and HINDALCO, checkpages at least 145 | accept: Shivam | from: Shivam 5 Nov, go given | opened 2026-11-05
 
 ## Schema and question map
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02
