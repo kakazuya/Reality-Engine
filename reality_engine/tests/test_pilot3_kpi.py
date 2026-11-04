@@ -1106,6 +1106,26 @@ def test_a_flow_gets_no_q4_twin_but_a_stock_level_does():
     assert debt_twin is not None and debt_twin.canon == "Q4FY26"
 
 
+def test_a_period_qualifier_dates_a_flow_and_a_hedge_is_not_a_plan():
+    """KEC prints "YTD order intake" in its quarterly release and HINDALCO says a facility's EBITDA per ton "would
+    be north of $1,000": the first is the half-year's intake (a stock keeps its date), the second is the level
+    management states, while "will" still marks a commitment."""
+    default = kpi.doc_default_period(["KEC Results for the quarter ended 30 September 2026"])
+    assert [p.canon for p in default] == ["Q2FY27"]
+    got = [r for r in kpi.sentence_rows("YTD Order intake of Rs. 16,050 crore, healthy growth of ~20% YoY",
+                                        1, "KEC", ENTRIES, DIMS, default) if r.metric == "order_intake"]
+    assert {(r.value, r.unit, r.fiscal_period) for r in got} == {(16050.0, "inr_cr", "H1FY27")}
+    booked = [r for r in kpi.sentence_rows("Your order book as on 31 March 2026 stood at Rs. 36,267 crore", 1, "KEC",
+                                           ENTRIES, DIMS, default) if r.metric == "order_book"]
+    assert ("FY26", 36267.0) in [(r.fiscal_period, r.value) for r in booked]        # a stock keeps its date
+    per_tonne = [r for r in kpi.sentence_rows("the overall EBITDA per ton off that facility would be north of "
+                                              "$1,000 per ton", 1, "HINDALCO", ENTRIES, DIMS, default)
+                 if r.metric == "ebitda_per_tonne"]
+    assert {(r.value, r.unit) for r in per_tonne} == {(1000.0, "usd_per_tonne")}
+    assert not [r for r in kpi.sentence_rows("capex will be INR2,000 crore", 1, "HINDALCO",
+                                             ENTRIES, DIMS, default) if r.metric == "capex"]
+
+
 def test_ebitda_as_a_pct_of_turnover_is_not_the_company_margin():
     """HINDUNILVR's dashboard prints "EBITDA as a % of TO 4 %" over "PAT (bei) Growth 6 % 23.7 %": the 4% is the
     growth figure next to it, and the long label puts the real margin (23.7%) out of reach of this value."""

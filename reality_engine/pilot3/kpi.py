@@ -741,14 +741,18 @@ _NOT_A_LEVEL = re.compile(r"\bis an?\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re
 _THRESHOLD = re.compile(r"\b(?:larger|more|greater|fewer|less|higher|lower|over|above|below|under)\s+than\s*"
                         r"(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)     # "larger than $50 mn" is a client threshold
 _CLIENT_TIER = re.compile(r"\s*(?:mn|million|bn|billion)?\s*plus\s+(?:clients|customers)", re.I)  # "$50 mn plus clients"
-_FORWARD = re.compile(r"\b(?:target(?:ed|s)?|guidance|guided|expect(?:s|ed|ing)?|will|would|projected|projection|outlook|"
+# "will" commits to a future action ("we will invest INR2,000 crore"); "would" only hedges a level the management
+# states about its own business ("the EBITDA per ton ... would be north of $1,000"), so it is not a plan word.
+_FORWARD = re.compile(r"\b(?:target(?:ed|s)?|guidance|guided|expect(?:s|ed|ing)?|will|projected|projection|outlook|"
                       r"range of|falling below|fall below|decline below|drop below|by FY\s?'?\d{2}|close to|nearly|"
                       r"regulatory requirement|minimum|mandated)\b", re.I)
-# "doing another INR2,000", "planned 60 KT capacity", "envisages 17.15 lakh Cr", "up to 4X of margin": a plan, a
-# ceiling or a running total, never the period's level
+# "doing another INR2,000", "planned 60 KT capacity", "envisages 17.15 lakh Cr", "up to 4X of margin": a plan or a
+# ceiling, never the period's level.  "YTD" / "till date" / "to date" are not plan words: they name the period the
+# value belongs to (a first quarter's YTD intake is that quarter's intake, and an order book is a stock), so a value
+# printed with one still takes the period its document reports (`_ytd_period`).
 _PLAN_LEAD = re.compile(r"\b(?:another|planned?|plan(?:s|ned)? to|envisag\w*|outlay|on track|pipeline|upcoming|proposed|"
-                        r"cumulative|milestone|crossed|crossing|up to|in excess of|ytd|year[- ]to[- ]date|"
-                        r"till date|to date)\b", re.I)
+                        r"cumulative|milestone|crossed|crossing|up to|in excess of)\b", re.I)
+_PERIOD_QUALIFIER = re.compile(r"\b(?:ytd|year[- ]to[- ]date|till date|to date)\b", re.I)
 # a period after one of these links belongs to the comparative, not to this value
 _CMP = re.compile(r"\b(?:as against|compared (?:to|with)|versus|vs\.?|lower than|higher than|up from|down from|"
                   r"from)\b", re.I)
@@ -767,6 +771,25 @@ _PRIOR_VALUE = re.compile(r"\b(?:last|previous|prior|preceding|corresponding)\s+
 
 _PAT_OCI = re.compile(r"other comprehensive|\band OCI\b", re.I)
 _CONSIDERED = re.compile(r"as considered in\b|considered in the (?:standalone|consolidated)", re.I)
+
+
+def _ytd_period(period: Period, e: Entry, text: str, label: int, value: int) -> Period:
+    """The period a period qualifier names: "YTD order intake" in a Q2 document is the half-year's intake, not the
+    quarter's, and "till date" is the nine-month one in Q3.  A stock (an order book, net debt) is the level on the
+    date whatever the qualifier says, and a first quarter's YTD figure is that quarter's."""
+    if period.ptype != "Q" or e.kind != "money" or e.metric in _STOCK_METRICS:
+        return period
+    if not _PERIOD_QUALIFIER.search(text[max(0, label - 90):value]):
+        return period
+    mq = re.match(r"Q([1-4])(FY\d{2})$", period.canon)
+    if mq is None:
+        return period
+    code = {"2": "H1", "3": "9M", "4": "FY"}.get(mq.group(1))
+    if not code:
+        return period                      # Q1: the year to date is the quarter itself
+    canon = code + mq.group(2)
+    ptype = "FY" if code == "FY" else "M"
+    return Period(period.start, period.end, canon, ptype, period_end(ptype, canon))
 
 
 def _belongs_to_next_label(text: str, v: Val, e: Entry, entries, company: str, lead: str) -> bool:
@@ -859,7 +882,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     continue
                 if _FORWARD.search(lead) or _PLAN_LEAD.search(lead) \
                         or _PLAN_LEAD.search(text[max(0, m.start() - 90):v1.start]):
-                    continue      # guidance, a plan, a ceiling or a running total is not the period's level
+                    continue      # guidance, a plan or a ceiling is not the period's level
                 if e.kind in ("pct", "bps") and _TAIL_SHARE.match(text[v1.end:min(len(text), v1.end + 24)]):
                     continue      # "70% of the approved thresholds": a share of another base
                 if _PAT_OCI.search(lead) or _CONSIDERED.search(text[v1.end:_sentence_bounds(text, v1.start)[1]]):
@@ -926,6 +949,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                         period, rule = default_pers[0], "sentence_default_v1"
                     if period is None:
                         continue
+                    period = _ytd_period(period, e, text, m.start(), v.start)
                     if idx and period.canon == first_canon:
                         continue        # the comparative restates the current period: the same value, not a prior one
                     if generic and rule != "sentence_v1":   # a bare "margin" / "revenue" needs its own period in the sentence

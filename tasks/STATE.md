@@ -9,6 +9,11 @@ Long history of 2-4 Nov: `tasks/archive/STATE_2026-11-04_before_night_loop.md`.
 Fast checks merged 4 Nov (guide O9): `build --part kpi --symbols KEC` 125 s vs 503 s for all; `python -m
 reality_engine.pilot3.checkpages run` replays 314 graded pages in ~6 s (baseline 145 found: KEC 29/78, BAJFINANCE
 59/113, HINDALCO 57/123); fix rounds run `pytest reality_engine/tests -q -k pilot3 -m "not slow"`, full suite at merge.
+T-066 branch line (5 Nov, `kpi.py` only): checkpages is 145 again (KEC 29, BAJFINANCE 59, HINDALCO 57) after round 3's
+`_PLAN_LEAD`/`_FORWARD` guards cost six answers; "YTD"/"till date" are now period qualifiers (a YTD flow dates to
+H1/9M via `_ytd_period`) and "would" is a hedge, not a plan. `test_pilot3_kpi.py` 72 passed; `w_kpi8.db` A1 728/898
+(KEC 64, HINDALCO 75, unchanged); KEC `order_intake` now holds H1FY27 and 9MFY26 too, the H1FY27/Q2FY27 dev questions
+stay unmet. Next: merge the branch line and re-run the round's hand read on the 13 added rows.
 
 T-054 merged 4 Nov (guide section 5): `plugins/code-tools/` (run-and-exit `outline`, `typecheck`) replaces code-intel;
 briefs need seven fields incl. `Evidence:` (`context_pack._REQUIRED_FIELDS`). T-055 built 4 Nov, loop-1 qset fixes 4 Nov
