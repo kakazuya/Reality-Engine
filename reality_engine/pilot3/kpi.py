@@ -1593,7 +1593,7 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
     stats: dict = {}
     sql = f"INSERT OR IGNORE INTO kpi_series({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
     for sym in symbols:
-        con.execute("DELETE FROM kpi_series WHERE symbol=?", (sym,))
+        con.execute("DELETE FROM kpi_series WHERE symbol=? AND source_type<>'xbrl_segment'", (sym,))
         batch = []
         ocr = None
         if ocr_cons:

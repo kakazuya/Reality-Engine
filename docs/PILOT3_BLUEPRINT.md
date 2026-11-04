@@ -45,6 +45,17 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
 - **Guidance**: sentence rules: forward cue, metric must be the target's subject, past actuals / tariff rates / supply
   shares / net-debt sentences rejected. Precision: 18/30 clean (3 Nov) → 28/40 (4 Nov). Remaining errors: two
   quantities in one sentence, restated past figures, vague levels.
+- **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
+  `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
+  writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into
+  `kpi_series` (`source_type='xbrl_segment'`, `confidence='xbrl'`, page 0, empty quote, file name as `doc_key`).
+  Axis, member and period come from the context, never its id; an instant (assets, liabilities) takes its name from
+  the sister duration context. Life insurers: revenue = net premium + investment income + other income + transfer from
+  shareholders (`is_reported` 0), EBIT = `SurplusDeficit`. A filing that says `Single segment` gets one
+  `single_segment` row per metric (revenue from operations or total income; profit before tax + finance costs;
+  `is_reported` 0). Segment names are normalised and mapped per company: names that occur together in one filing never merge (Participating / Non Participating Pension are two segments); similar names (difflib >= 0.85) that never occur together merge to the spelling used in the most filings, a tie going to the latest. `raw_label` keeps the name as filed; a single-segment description of 'NA' falls back to "Single segment". The
+  `kpi` part keeps these rows when it rewrites a company. Check: segment revenue less inter-segment revenue equals the
+  filing's `SegmentRevenueFromOperations` within 1%.
 - **Company-specific parts today** (the scale-up cost): segment patterns in `dimensions.yaml` (26 for 3 companies),
   sector lexicons, and a few hard-coded cases (lender has no EBITDA, KEC website transcripts, one KEC name guard).
 
@@ -153,3 +164,8 @@ active one. Without a profile every command behaves exactly as before (the three
 - **Tests.** `reality_engine/tests/test_pilot3_profile.py` (6 tests: the committed profile, the no-profile
   defaults, a manifest -> pages -> registry/pages/kpi/transcripts/guidance build with a sandbox root that does not
   exist, the window filter, `--symbols` scoping, and `lookups_pilot3` on a `REALITY_PILOT3_DB` database).
+
+- **Segments part.** `build --part segments` (after `extract` in `all`) runs `pilot3/xbrl_segments.py` for the
+  profile's companies from the raw XBRL named in `results_xbrl.db.filings` (about 1 s for 10 companies); it needs no
+  pages. First run on the pilot10 copy: A1 571 -> 601 of 898, `kpi_series.segment_revenue` and `segment_ebit` no longer
+  unmet. Test: `reality_engine/tests/test_pilot3_xbrl_segments.py`.
