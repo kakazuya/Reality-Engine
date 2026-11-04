@@ -179,6 +179,7 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
 | 4 Nov | answer_check after KPI + dates merges | 134 match, no match lost |
 | 4 Nov | embeddings, 112 gold questions, top 10 | bm25 35%, bm25+1B 46%, bm25+8B 52%; images add nothing |
 | 4 Nov | loop 3: speakers + guidance precision, A1 on the pilot10 copy | A1 **662/898** (651 before; KEC 51 → 62, every other company level); statements ETERNAL 691 / INFY 2,512 / KEC 1,803; guidance 69 rows |
+| 5 Nov | T-067 real answer test: 60 fixed random dev questions for each of 10 companies, MCP only, all 600 hand-read with arithmetic redone | **480 right / 116 partly / 4 wrong (80.0%)**; misses: 44 worker misread, 31 worker sums or units, 24 not held, 21 store defects (T-072, T-073); direct 85%, two-step 77%, ripple 71%; supersedes the lenient first pass of 107/120. Report `D:\RealityEngine\reports\2026-11-05_answer_test_600.html` |
 | 4 Nov | loop 3 fix: `project_capital_spent`, seven review rules, footer/media-call speakers | `checkpages run` **145 / 314** (29 / 59 / 57) — the fixture baseline; statements INFY 2,478; guidance 67 rows (5 of them the project spend); A1 662/898 held |
 | 4 Nov | T-058 guidance recall: worded targets (low/high NULL), insurer margin, CAGR, store-day KPI | guidance **67 → 83 rows** (BAJFINANCE 6, ETERNAL 4, HDFCBANK 1, HINDALCO 31, HINDUNILVR 3, INFY 14, KEC 14, SBILIFE 5, SUNPHARMA 5, MARUTI 0); A1 **694/898 held** (every company level); `checkpages run` 145 / 314 held; tests 26 passed; hand read 69 / 72 |
 

@@ -26,6 +26,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-054 | OPEN | P1 | Retire code-intel (800 MB LSP per worker, 1.5% of calls); code-tools outline + typecheck run-and-exit MCP; Evidence: required brief field | accept: python -m pytest plugins/code-tools/tests reality_engine/tests/test_dsh_worker_plugin.py reality_engine/tests/test_hp_worker.py -q | from: Shivam, 4 Nov | opened 2026-11-04
 - T-069 | OPEN | P1 | One x-opencode-session per dsh worker: all jobs on an account share one id today, against OpenCode's docs and our rule | accept: python -m pytest reality_engine/tests/test_dsh_worker_plugin.py -q | from: Shivam 5 Nov | opened 2026-11-05
 - T-071 | OPEN | P2 | dsh worker sandbox and stress tests fail on the T-054 Evidence field and the launcher identity; refresh their shared brief fixture | accept: python -m pytest reality_engine/tests/test_dsh_worker_sandbox.py -q | from: T-069 review | opened 2026-11-05
+- T-074 | OPEN | P2 | Trial from the software-factory paper: send review findings back to the same worker session, A/B on two KPI fix rounds against fresh workers (tokens, tool calls, hand-read score) | accept: Shivam | from: Shivam 5 Nov, paper review | opened 2026-11-05
 
 ## Data
 - T-021 | LOOKING | P3 | Check if still open: PIB phase 2, Hindi, Urdu and regional offices | accept: Shivam | from: tasks/PIPELINE_TODO.md A2 | opened 2026-11-02
@@ -60,6 +61,8 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-055 | OPEN | P1 | Night loop frozen evals (reality_engine/night_eval: gold freeze dev/hidden, score M1-M9, guards, replay, decide, run_loop); brief tasks/dsh_tasks/T055_NIGHT_EVAL_2026-11-04.md; goal tasks/night_loop/GOAL.md | accept: python -m pytest reality_engine/tests/test_night_eval.py -q | from: Shivam 4 Nov | opened 2026-11-04
 - T-056 | OPEN | P1 | Generalise reality_engine/pilot3 to any company list via a profile (pilot10: 10 companies, last 4 quarters); brief tasks/night_loop/loops/loop_01_worker_generalise.md | accept: python -m pytest reality_engine/tests/test_pilot3_core.py -q -m 'not slow' | from: Shivam 4 Nov | opened 2026-11-04
 - T-067 | OPEN | P1 | The real test: 60 fixed random dev questions per company answered by DeepSeek through the MCP only, hand-read graded by Opus; first true baseline against 95% | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
+- T-072 | OPEN | P1 | Stop worker sum and unit slips: a calculator tool with crore and lakh formatting, and a script that recomputes each answer's numbers list (31 of 120 misses in the 600-answer test) | accept: Shivam | from: T-067 hand read | opened 2026-11-05
+- T-073 | OPEN | P1 | Store defects from the 600-answer test: share count from the shareholding pattern not paid-up capital (ETERNAL 4.5% low, HUL and Hindalco rounded); PE history before four quarters of filings; quarterly stock-in-trade and inventory change lines; KEC year-to-date labelled H1 | accept: Shivam | from: T-067 hand read | opened 2026-11-05
 
 ## Bank
 - T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02
