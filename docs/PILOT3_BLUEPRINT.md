@@ -69,7 +69,7 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   seed-20261109 hand read (KEC 16, BAJFINANCE 14, HINDALCO 15, HDFCBANK 14, SBILIFE 17, INFY 19, SUNPHARMA 20,
   MARUTI 15, HINDUNILVR 18, ETERNAL 15 of 20 right) are in `w_kpi5_kpi_review.csv` and the DEVELOPER_GUIDE O2
   bullet. `test_pilot3_kpi.py` 53 passed, `test_pilot3_core.py -m "not slow"` 29 passed, checkpages 314 checked /
-  145 found (KEC 29, BAJFINANCE 59, HINDALCO 57), so pilot3 is unchanged.
+  145 found (KEC 29, BAJFINANCE 59, HINDALCO 57), so pilot3 is unchanged. The 4 Nov precision round 3 (T-061) on `w_kpi6.db` (fresh copy of `combined2.db`) measures A1 727/898 — BAJFINANCE 77, ETERNAL 67, HDFCBANK 80, HINDALCO 75, HINDUNILVR 77, INFY 66, KEC 64, MARUTI 76, SBILIFE 74, SUNPHARMA 71 — with KEC (64 vs 66) and HINDALCO (75 vs 76) below their baseline; the same build's seed-20261111 hand read of 20 rows per company scored KEC 18, BAJFINANCE 17, HINDALCO 12, HDFCBANK 16, SBILIFE 16, INFY 5, SUNPHARMA 14, MARUTI 15, HINDUNILVR 12, ETERNAL 16, so only KEC reaches 18/20 (`test_pilot3_kpi.py` 66 passed, checkpages 145).
 - **Guidance**: sentence rules: forward cue, metric must be the target's subject, past actuals / tariff rates / supply
   shares / net-debt sentences rejected. Precision: 18/30 clean (3 Nov) → 28/40 (4 Nov). Remaining errors: two
   quantities in one sentence, restated past figures, vague levels.

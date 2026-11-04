@@ -380,7 +380,7 @@ def test_one_value_per_column_and_percent_never_borrows_label_unit():
     cols = [(100.0, "pA"), (200.0, "pB")]
     nums = [(98.0, re.search("1", "1")), (110.0, re.search("2", "2")), (201.0, re.search("3", "3"))]
     got = kpi._assign_columns(nums, cols, 28)
-    assert [(x, p) for x, _, p in got] == [(98.0, "pA"), (201.0, "pB")]       # 110 lost column A to the nearer 98
+    assert [(x, p) for _, x, _, p in got] == [(98.0, "pA"), (201.0, "pB")]    # 110 lost column A to the nearer 98
     hdr = [(300, "Q3"), (320, "FY23"), (500, "Q3"), (520, "FY24")]
     words = _words([(20, hdr), (60, [(80, "Shipments"), (150, "(KT)")]), (62, [(310, "23%"), (510, "25%")])])
     text = "Q3 FY23\nQ3 FY24\nShipments (KT)\n23% \n25% \n"
@@ -902,5 +902,138 @@ def test_table_label_must_own_its_value():
 def test_a_sector_row_quote_must_print_its_own_label():
     assert not kpi._quote_names_label("27,971 / 22,561", "Emerging Markets")
     assert kpi._quote_names_label("Emerging Markets 22,561", "Emerging Markets")
+
+
+# ---------------------------------------------------------------- T-061 precision round 3
+def test_a_number_split_across_two_words_is_one_number_and_a_split_decimal_is_one_value():
+    """The text layer prints "21 ,213.89" and "0. 77%": both are one number, and reading the pieces as values
+    stored BAJFINANCE's revenue as 21 crore and its NNPA as 77%."""
+    r = kpi.WRow(0.0, [(0, 30, "Total"), (32, 40, "21"), (40.5, 70, ",213.89")])
+    assert kpi._row_string(r)[0] == "Total 21,213.89"
+    far = kpi.WRow(0.0, [(0, 30, "Total"), (32, 40, "21"), (60, 90, ",213.89")])
+    assert kpi._row_string(far)[0] == "Total 21 ,213.89"          # a real gap keeps two tokens apart
+
+    text = "Net NPA stood at 1.59% and 0. 77% as of 30 September 2025"
+    vals = kpi.find_values(text, "pct", "pct", 0, len(text), [])
+    assert 0.77 in [v.value for v in vals] and 77.0 not in [v.value for v in vals]
+    assert next(v.raw for v in vals if v.value == 0.77).startswith("0. 77")
+
+
+def test_lakh_is_a_unit_not_a_crore():
+    """KEC's "17.15 lakh" capex is 0.1715 crore, and HINDUNILVR's "2 lakh" direct reach is 200,000: neither the
+    printed number in crore nor a bare 2."""
+    assert kpi.value_unit(None, "lakh", "money", "inr_cr") == "inr_lakh"
+    v, u = kpi.finalize_unit("inr_lakh", 17.15, "inr_cr")[:2]
+    assert abs(v - 0.1715) < 1e-9 and u == "inr_cr"
+    assert kpi.value_unit(None, "lakh", "count", "count") == "count_lakh"
+    assert kpi.finalize_unit("count_lakh", 2.0, "count")[:2] == (200000.0, "count")
+    e = next(x for x in ENTRIES if x.metric == "direct_reach")
+    assert kpi._unit_from_label("direct coverage by around 2 lakh", e) == "count_lakh"
+
+
+def test_right_aligned_table_values_keep_their_own_columns():
+    """KEC's results table prints "a) Debt Equity Ratio 1.00 0.83 0.90 1.00 0.90 0.84" under six dates: the values
+    are right-aligned, ~35px right of the date text, so nearest-x read the 0.90 of H1FY26 as H1FY27."""
+    cols = [(270 + i * 55, f"c{i}") for i in range(6)]
+    nums = [(x + 24, m) for (x, _), m in zip(cols, kpi._value_matches("1.00 0.83 0.90 1.00 0.90 0.84"))]
+    got = kpi._assign_columns(nums, cols, 28)
+    assert [m.group("num") for _, _, m, _ in got] == ["1.00", "0.83", "0.90", "1.00", "0.90", "0.84"]
+    assert [p for _, _, _, p in got] == [f"c{i}" for i in range(6)]
+
+
+def test_a_quote_that_crosses_another_rows_label_is_not_its_value():
+    """HDFCBANK's balance sheet has two tables on one band: the "Advances" quote runs through "Fixed assets" to the
+    next table's 14,645.26."""
+    e = next(x for x in ENTRIES if x.metric == "advances")
+    q = "Advances \n3195566.06 \n2746359.78 \n2937166.26 \nFixed assets \n14645.26"
+    assert not kpi._quote_owns_value(q, "14645.26", e, "Advances")
+    assert kpi._quote_owns_value("Advances \n3195566.06 \n2746359.78", "3195566.06", e, "Advances")
+
+
+def test_a_plan_a_share_of_another_base_and_the_next_labels_value_are_not_rows():
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"ETERNAL": "consumer_internet", "SBILIFE": "insurance_life",
+                                   "INFY": "it_services", "HINDALCO": "metals_nonferrous"}))
+    try:
+        def rows(text, sym):
+            return kpi.sentence_rows(text, 1, sym, ENTRIES, DIMS, [])
+
+        assert not [r for r in rows("Adjusted EBITDA margin of -1.4% (as a % of Revenue) in FY25", "ETERNAL")
+                    if r.metric == "adjusted_ebitda_margin_of_gov"]
+        assert not [r for r in rows("we are doing another capex of INR2,000 crore in FY27", "HINDALCO")
+                    if r.metric == "capex"]
+        assert not [r for r in rows("APE) \u20b9 24.7 billion Profit after tax", "SBILIFE") if r.metric == "ape"]
+        assert not [r for r in rows("CC Growth#\n\n21.0% in Q2 FY27", "INFY") if r.metric == "cc_growth"]
+        assert [r for r in rows("Value of new business stands at INR14.1 billion in Q1 FY27", "SBILIFE")
+                if r.metric == "vnb"]                                            # a level phrase still reads
+    finally:
+        profile.activate(None)
+
+
+def test_a_monthly_sales_release_and_an_auditors_report_are_not_kpi_pages():
+    assert kpi._monthly_release("Press Release\nMaruti Suzuki sales in October 2025\n")
+    assert not kpi._monthly_release("Press Release\nQuarterly results for the quarter ended June 2026")
+    assert kpi._subsidiary_notes("INDEPENDENT AUDITOR'S REPORT\nReport on the Consolidated Financial Results")
+    assert kpi._subsidiary_notes("Statement containing salient features of the financial statement of subsidiaries")
+    assert not kpi._subsidiary_notes("Revenue from operations 24,546 crore for the quarter ended September 2026")
+
+
+def test_ocr_q_as_zero_and_a_neg_word_on_another_line():
+    """The text layer prints "Q2 FY27" as "02 FY27", and a "%" on the line above a label is not its own."""
+    assert [p.canon for p in kpi.parse_periods("loan loss was 1.56% in 02 FY27")] == ["Q2FY27"]
+    assert [p.canon for p in kpi.parse_periods("new loans booked in 01 FY27")] == ["Q1FY27"]
+    assert "production_kt" in _metrics("HINDALCO", "Q1FY27 \u2193 2%\nAlumina\nProduction\nTrend\n")
+    assert "production_kt" not in _metrics("HINDALCO", "Alumina production per cent\n")
+
+
+def test_a_list_number_is_not_a_count_and_a_bare_count_keeps_its_printed_scale():
+    """BAJFINANCE's "Customer franchise and distribution reach 4. In Q4 ..." stored 4 as a 4-million franchise,
+    and "Customers acquired ... approximately 399,000" stored as 399,000 million."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"BAJFINANCE": "nbfc"}))
+    try:
+        got = [r for r in kpi.sentence_rows("Customer franchise and distribution reach 4. In Q4, the Company added "
+                                            "3.93 MM customers to its franchise.", 1, "BAJFINANCE", ENTRIES, DIMS, [])
+               if r.metric == "customer_franchise"]
+        assert not got
+        got = kpi.sentence_rows("Customers acquired during FY26 were approximately 399,000", 1, "BAJFINANCE",
+                                ENTRIES, DIMS, [])
+        row = next(r for r in got if r.metric == "customers_added")
+        assert row.value == 399000.0 and row.unit == "count"
+        assert all(v.value != 77 for v in kpi.find_values("against 77k customers", "count", "count_mn", 0, 24, []))
+    finally:
+        profile.activate(None)
+
+
+def test_a_comparatives_period_is_not_the_current_values_period():
+    """BAJFINANCE: "Loan losses and provisions was ₹1,681 crore, as against ₹1,932 crore in Q1 FY26" is Q1 FY27;
+    the Q1 FY26 date belongs to the second number."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"BAJFINANCE": "nbfc"}))
+    try:
+        rows = kpi.sentence_rows("Loan losses and provisions was \u20b91,681 crore, a decline of 13% as against "
+                                 "\u20b91,932 crore in Q1 FY26", 1, "BAJFINANCE", ENTRIES, DIMS,
+                                 kpi.parse_periods("Q1FY27"))
+        row = next(r for r in rows if r.metric == "loan_loss_provisions" and r.value == 1681.0)
+        assert row.fiscal_period == "Q1FY27"
+    finally:
+        profile.activate(None)
+
+
+def test_outlier_gate_catches_a_misread_rate_and_negative_slips():
+    con = sqlite3.connect(":memory:")
+    con.executescript(kpi.SCHEMA)
+    for v in (0.37, 0.41, 0.42, 77.0):
+        con.execute("INSERT INTO kpi_series(symbol,metric,unit,value,period_type,fiscal_period,doc_key,page,quote,"
+                    "extractor_rule) VALUES('X','nnpa_pct','pct',?,'FY','FY26','d',1,'q','table_v1')", (v,))
+    for v in (400.0, 420.0, 440.0, -150.0):
+        con.execute("INSERT INTO kpi_series(symbol,metric,unit,value,period_type,fiscal_period,doc_key,page,quote,"
+                    "extractor_rule) VALUES('X','ebitda_adjusted','usd_mn',?,'FY','FY26','d',2,'q','table_v1')", (v,))
+    review: list = []
+    kpi._review_outliers(con, "X", {}, review)
+    left = {(r[0], r[1]) for r in con.execute("SELECT metric, value FROM kpi_series")}
+    assert ("nnpa_pct", 77.0) not in left          # a rate 185x its group is a misread, not a level
+    assert ("nnpa_pct", 0.41) in left
+    con.close()
 
 

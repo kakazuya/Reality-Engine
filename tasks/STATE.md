@@ -38,3 +38,5 @@ affected doc, commit ending `By: Eagle` and the co-author line. Copy `.tmp` outp
 Log to the decision log and `rclone copy D:\RealityEngine\plans gdrive:InfoDiffusion_archive/plans`.
 
 Machines: `machines/README.md`. All HP work runs headless.
+
+- 2026-11-04 T-061 KPI precision round 3 (branch `dsh/20261104T164945Z-1c188316`): six general rules in `reality_engine/pilot3/kpi.py` + lexicon (split numbers/decimals, lakh units, right-aligned table columns, quote/neg/subject guards, plan/list/share-of guards, 100x abs outlier gate, monthly/investee page skip). Build `w_kpi6.db`: A1 727/898 (KEC 64 vs 66 and HINDALCO 75 vs 76 below baseline), hand read seed 20261111 KEC 18/20 only (BAJFINANCE 17, HINDALCO 12, HDFCBANK 16, SBILIFE 16, INFY 5, SUNPHARMA 14, MARUTI 15, HINDUNILVR 12, ETERNAL 16); round fails its 18/20 precision target and needs the segment-table/debt-table families fixed. `test_pilot3_kpi.py` 66 passed, checkpages 145.

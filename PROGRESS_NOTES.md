@@ -12,3 +12,7 @@
   pharma 14/20, it_services 12/20, consumer_internet 11/20, bank 10/20, auto_oem 9/20, lenders 9/20; metals and
   orders have no new rows. Remaining causes: label-after-values results tables (HDFC p2/p3, INFY fact sheet p3/p4),
   monthly sales releases dated by month, prose comparatives.
+
+## T-061 KPI precision round 3 (4 Nov 2026)
+- Six general rules (split numbers/decimals, lakh units, right-aligned table columns, quote/neg/subject guards, plan/list/share-of guards, 100x abs outlier gate, monthly/investee page skip); `w_kpi6.db` A1 727/898, `test_pilot3_kpi.py` 66 passed, checkpages 145.
+- Hand read seed 20261111: KEC 18/20 only; BAJFINANCE 17, HINDALCO 12, HDFCBANK 16, SBILIFE 16, INFY 5, SUNPHARMA 14, MARUTI 15, HINDUNILVR 12, ETERNAL 16. Round fails the 18/20 target; next: segment-table revenue dimensions, debt-table vs leverage rows, flow-change values.
