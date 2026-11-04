@@ -1,0 +1,15 @@
+# Bank additions (loop 2) beside the shared lenders family.
+family: bank
+sectors: [bank]
+entries:
+  - {metric: casa_ratio, kind: pct, unit: pct, labels: ["casa ratio", "casa (deposits? )?(as a )?(% of|share|ratio)", "casa\\b[^.]{0,40}%"]}
+  - {metric: casa, kind: money, unit: inr_cr, labels: ["casa deposits", "\\bcasa\\b(?! ratio)"], neg: "ratio|%\\s*of|growth"}
+  - {metric: advances, kind: money, unit: inr_cr, labels: ["gross advances", "net advances", "^advances\\b", "loans? (and|&) advances"], neg: "npa|%|ratio"}
+  - {metric: loan_growth, kind: pct, unit: pct, labels: ["(loan|advances|credit) growth", "(loans?|advances) (grew|growth|increased)"]}
+  - {metric: deposit_growth, kind: pct, unit: pct, labels: ["deposit growth", "deposits? (grew|increased)"]}
+  - {metric: cd_ratio, kind: pct, unit: pct, labels: ["credit[- ]deposit ratio", "\\bcd ratio\\b", "loan[- ]to[- ]deposit"]}
+  - {metric: cet1, kind: pct, unit: pct, labels: ["\\bcet ?1\\b", "common equity tier ?1"]}
+  - {metric: fee_income, kind: money, unit: inr_cr, labels: ["fees? (and|&) commission", "fee income", "other income[^.]{0,20}fees"], neg: "%\\s*of|growth"}
+  - {metric: book_value_per_share, kind: money, unit: inr_cr, labels: ["book value per share"]}
+  - {metric: abv, kind: money, unit: inr_cr, labels: ["adjusted book value", "\\babv\\b"]}
+  - {metric: unsecured_share, kind: pct, unit: pct, labels: ["unsecured( retail| loans?| advances)?[^.]{0,30}(%|share|mix)", "share of unsecured"]}

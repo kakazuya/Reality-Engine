@@ -1,0 +1,12 @@
+# Auto OEM KPI family (loop 2). Volumes are units, not tonnes.
+family: auto_oem
+sectors: [auto_oem]
+entries:
+  - {metric: export_volumes, kind: count, unit: count, labels: ["^exports?\\b", "export (sales|volumes?)", "sales in export markets?", "exports? of"]}
+  - {metric: domestic_volumes, kind: count, unit: count, labels: ["domestic (sales|volumes?)", "sales in (the )?domestic market", "total domestic", "^domestic\\b"], neg: "%\\s*of|share"}
+  - {metric: volumes, kind: count, unit: count, labels: ["total sales\\b", "total (sales )?volumes?", "total units sold", "sales volumes?"], neg: "%\\s*of|share"}
+  - {metric: ev_volumes, kind: count, unit: count, labels: ["electric vehicles?[^.]{0,30}(units|sales|volumes?)", "\\bevs?\\b (sales|volumes?)"]}
+  - {metric: market_share, kind: pct, unit: pct, labels: ["market share", "share of (the )?(domestic )?(pv|passenger)"]}
+  - {metric: dealer_inventory_days, kind: days, unit: days, labels: ["dealer (inventory|stock)", "inventory (days|at dealers?)"]}
+  - {metric: discounts, kind: pct, unit: pct, labels: ["discounts?", "discounting"], neg: "cash discount"}
+  - {metric: order_backlog, kind: count, unit: count, labels: ["pending (customer )?orders?", "order (backlog|book)", "booking backlog", "bookings? pending"]}

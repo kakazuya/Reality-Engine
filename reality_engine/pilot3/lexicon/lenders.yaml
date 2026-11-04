@@ -1,5 +1,7 @@
 # Lender (Bajaj Finance) KPI family.
 family: lenders
+sectors: [nbfc, bank]
+no_profile: true
 entries:
   - {metric: aum, kind: money, unit: inr_cr, labels: ["\\baum\\b", "assets under management"], neg: "growth|per ?cent|%\\s*of|\\bmix\\b|\\bshare\\b|\\bper\\b|annuali[sz]ed|average|to aum|of aum|aum\\s*\\("}
   - {metric: new_loans, kind: count, unit: count_mn, labels: ["new loans? booked", "loans? booked", "new loans?"], neg: "aum|disburs"}

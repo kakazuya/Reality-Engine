@@ -1,0 +1,12 @@
+# Consumer internet / quick-commerce KPI family (loop 2).
+family: consumer_internet
+sectors: [consumer_internet]
+entries:
+  - {metric: adjusted_ebitda_margin_of_gov, kind: pct, unit: pct, labels: ["adjusted ebitda[^.]{0,30}(% of|as a % of|margin)[^.]{0,12}(gov|gmv)", "adjusted ebitda margin"]}
+  - {metric: contribution_margin, kind: pct, unit: pct, labels: ["contribution margin", "contribution profit margin", "contribution\\b[^.]{0,20}% of (gov|gmv)"]}
+  - {metric: gov, kind: money, unit: inr_cr, labels: ["gross order value", "\\bgov\\b"], neg: "margin|% of|growth|governmental|regulatory|approvals"}
+  - {metric: dark_stores, kind: count, unit: count, labels: ["dark stores?", "stores? (count|network)", "number of (dark )?stores"]}
+  - {metric: monthly_transacting_users, kind: count, unit: count_mn, labels: ["monthly transacting (users|customers)", "\\bmtu\\b"]}
+  - {metric: esop_cost, kind: money, unit: inr_cr, labels: ["esop (cost|expenses?)", "employee stock option (cost|expenses?)", "share[- ]based payments?"]}
+  - {metric: cash_balance, kind: money, unit: inr_cr, labels: ["cash balance", "cash and (cash )?equivalents", "cash (and|&) treasury"]}
+  - {metric: ebitda, kind: money, unit: inr_cr, labels: ["adjusted ebitda(?! margin)", "^ebitda\\b"], neg: "margin|%"}

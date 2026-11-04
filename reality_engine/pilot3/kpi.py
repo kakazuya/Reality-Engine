@@ -85,7 +85,7 @@ def _mon(s: str) -> int:
 
 PERIOD_PATTERNS = [
     ("QFY", re.compile(r"(?<![A-Za-z0-9])(?:Q\s?([1-4])|([1-4])\s?Q)\s?[-]?\s?(?:FY\s?)?['’]?\s?(\d{4}-\d{2}|\d{4}|\d{2})(?![\d])", re.I)),
-    ("MFY", re.compile(r"(?<![A-Za-z0-9])(9M|6M|3M|12M|H[12])\s?(?:FY\s?)?['’]?\s?(\d{4}|\d{2})(?![\d])", re.I)),
+    ("MFY", re.compile(r"(?<![A-Za-z0-9])(9M|6M|3M|12M|H[12])[\s-]?(?:FY\s?)?['’]?\s?(\d{4}|\d{2})(?![\d])", re.I)),
     ("FY", re.compile(r"(?<![A-Za-z0-9])FY\s?['’]?\s?(\d{4}-\d{2}|\d{2}-\d{2}|\d{4}|\d{2})(?![\d])", re.I)),
     ("DATE_DMY", re.compile(r"(?<!\d)(\d{1,2})(?:st|nd|rd|th)?[\s,.-]+(" + _MON_PAT + r")[a-z]*[\s,.-]+['’]?(\d{4}|\d{2})(?!\d)", re.I)),
     ("DATE_MDY", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?!\d)", re.I)),
@@ -303,6 +303,8 @@ def value_unit(v_cur: str | None, suf: str | None, kind: str, default_unit: str)
         return None
     if kind == "ratio":
         return "x" if base == "x" else None
+    if kind == "num":        # a bare ratio printed without a suffix (solvency ratio 1.97)
+        return "x" if base in (None, "x") and cur is None else None
     if kind == "days":
         return "days" if base == "days" else None
     return None
@@ -346,6 +348,8 @@ class Entry:
     companies: list[str] | None
     family: str = ""
     generic: list[bool] = field(default_factory=list)   # per label: a bare one-word label (margin, revenue, ebitda ...)
+    sectors: list[str] | None = None    # file key `sectors`: the entry applies only to companies of these sectors (profile build)
+    no_profile: bool = False            # file key `no_profile`: with no profile (the pilot3 three) the family still applies
 
 
 @dataclass
@@ -378,18 +382,32 @@ def load_lexicon() -> tuple[list[Entry], list[Dim]]:
             for e in d["entries"]:
                 entries.append(Entry(e["metric"], e["kind"], e["unit"], [_rx(x) for x in e["labels"]],
                                      _rx(e["neg"]) if e.get("neg") else None, e.get("companies"), d.get("family", f.stem),
-                                     [is_generic_label(x) for x in e["labels"]]))
+                                     [is_generic_label(x) for x in e["labels"]], d.get("sectors"), bool(d.get("no_profile"))))
         if "dimensions" in d:
             for e in d["dimensions"]:
                 dims.append(Dim(e["dimension"], [_rx(x) for x in e["patterns"]], e.get("companies")))
     return entries, dims
 
 
+def _sector_of(company: str) -> str | None:
+    """Sector of a profile company; None without a profile (the pilot3 three: every family applies, as before)."""
+    prof = profile.active()
+    if prof is None:
+        return None
+    try:
+        return prof.company(company).sector or None
+    except KeyError:
+        return None
+
+
 def label_matches(entries: list[Entry], company: str, text: str):
     """[(entry, match)] for entries whose label hits text and neg does not. First hit per metric."""
     res = []
+    sector = _sector_of(company)
     for e in entries:
         if e.companies and company not in e.companies:
+            continue
+        if e.sectors and (sector not in e.sectors if sector is not None else not e.no_profile):
             continue
         for rx in e.labels:
             m = rx.search(text)
@@ -471,6 +489,16 @@ class Row:
     rule: str
 
 
+_PAGE_UNIT_RX = re.compile(r"(?:₹|`|rs\.?|inr)\s*(?:in\s+|\()?\s*(billion|bn|million|mn|mm)\b", re.I)
+
+
+def page_money_unit(text: str) -> str | None:
+    """inr_bn / inr_mn when the page declares one such unit for its rupee table ("(₹ in billion)"), else None.
+    Two different declarations on a page: None (ambiguous)."""
+    found = {("inr_bn" if m.group(1).lower() in ("billion", "bn") else "inr_mn") for m in _PAGE_UNIT_RX.finditer(text)}
+    return found.pop() if len(found) == 1 else None
+
+
 def finalize_unit(unit: str, value: float, metric_default: str):
     """-> (value, unit, scale)."""
     if unit == "inr_cr":
@@ -479,6 +507,10 @@ def finalize_unit(unit: str, value: float, metric_default: str):
         return value, "usd_mn", 1e6
     if unit == "usd_bn":
         return value * 1000.0, "usd_mn", 1e6   # normalised to million dollars
+    if unit == "inr_bn":
+        return value, "inr_bn", 1e9
+    if unit == "inr_mn":
+        return value, "inr_mn", 1e6
     if unit == "pct_as_bps":
         return value * 100.0, "bps", 1.0
     if unit == "kt":
@@ -1049,9 +1081,52 @@ def segment_revenue_rows(text: str, page: int, company: str, entries, dims, basi
     return out
 
 
+_GROUP_RX = [("half", re.compile(r"half[- ]year(?:ly)?\s+ended|six\s+months?\s+ended", re.I)),
+             ("nine", re.compile(r"nine\s+months?\s+ended", re.I)),
+             ("year", re.compile(r"(?<!half )(?<!half-)year\s+ended|twelve\s+months?\s+ended", re.I)),
+             ("quarter", re.compile(r"quarter\s+ended|three\s+months?\s+ended", re.I))]
+
+
+def relabel_group_columns(rows, info) -> None:
+    """A results table prints bare dates under group headings ("Quarter ended | Half Year ended | Year ended" over
+    30.09.2025 30.06.2025 ... 30.09.2025 ...): the date alone reads as the quarter.  Relabel each date column by the
+    nearest group heading above it in x (H1/H2, 9M or FY of the same fiscal year).  Rows without such a heading keep
+    the reader's labels."""
+    for h, (_, _, ps) in enumerate(info):
+        dated = [(x, pr) for x, pr in ps if pr.as_of]
+        if len({pr.canon for _, pr in ps}) < 2 or not dated:
+            continue
+        heads = []
+        for j, r in enumerate(rows):
+            if not (0 < rows[h].y - r.y <= 90):
+                continue
+            sj, spj = _row_string(r)
+            for kind, rx in _GROUP_RX:
+                for m in rx.finditer(sj):
+                    xc = _x_of(spj, m.start(), m.end())
+                    if xc is not None:
+                        heads.append((xc, kind))
+        if len({k for _, k in heads}) < 2:
+            continue
+        for x, pr in dated:
+            kind = min(heads, key=lambda t: abs(t[0] - x))[1]
+            mo = int(pr.as_of[5:7])
+            m = re.search(r"FY(\d\d)", pr.canon)
+            if not m or kind == "quarter":
+                continue
+            yy = m.group(1)
+            if kind == "half" and mo in (9, 3):
+                pr.canon, pr.ptype = f"H{1 if mo == 9 else 2}FY{yy}", "H"
+            elif kind == "nine" and mo == 12:
+                pr.canon, pr.ptype = f"9MFY{yy}", "9M"
+            elif kind == "year" and mo == 3:
+                pr.canon, pr.ptype = f"FY{yy}", "FY"
+
+
 def table_and_chart_rows(page_words, text: str, page: int, company: str, entries, dims, default_pers) -> list[Row]:
     rows = _merge_stacked_axes(page_rows(page_words))
     info = [row_periods(r) for r in rows]
+    relabel_group_columns(rows, info)
     headers = [i for i, (_, _, ps) in enumerate(info) if len({p.canon for _, p in ps}) >= 2 and _axis_like(rows[i], ps)]
     if not headers:
         return []
@@ -1173,6 +1248,8 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                     unit = value_unit(m.group("cur"), m.group("suf"), e.kind, e.unit)
                     if unit is None and not (m.group("suf") or "").strip():   # a "%" / "x" token never borrows the label's unit
                         unit = _unit_from_label(label, e)
+                        if unit == "inr_cr" and e.kind == "money" and not re.search(r"crore|\bcr\b", label, re.I):
+                            unit = page_money_unit(text) or unit     # "(₹ in billion)" over the table
                     num = to_float(m.group("num"))
                     if unit is None or num is None:
                         continue
@@ -1304,7 +1381,7 @@ def _unit_from_label(label: str, e: Entry) -> str | None:
         return "days"
     if e.kind == "count":
         return "count_mn" if re.search(r"\bmn\b|\bmm\b|million", l) else ("count" if e.unit == "count" else None)
-    if e.kind == "ratio":
+    if e.kind in ("ratio", "num"):
         return "x"
     return None
 

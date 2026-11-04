@@ -654,3 +654,58 @@ def test_company_stated_operating_cash_flow_is_its_own_row():
     got = statements.sentence_rows("our businesses continued to generate healthy cash flows amounting to "
                                    "INR21,858 crores", ("Q", "Q4FY26"))
     assert got and got[0][3] == 21858.0 and got[0][4] == "inr_crore"
+
+
+# ---------------------------------------------------------------- loop 2: sector lexicons
+def _profile_for(sector_by_symbol):
+    from reality_engine.pilot3 import profile
+    comps = tuple(profile.ProfileCompany(symbol=s, sector=sec) for s, sec in sector_by_symbol.items())
+    return profile.Profile(name="t", pages_db=Path("x"), raw_root=Path("x"), manifest=Path("x"), out=Path("x"),
+                           companies=comps)
+
+
+def _metrics(company, text):
+    return {e.metric for e, _ in kpi.label_matches(ENTRIES, company, text)}
+
+
+def test_sector_families_apply_only_to_their_sector():
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"INFY": "it_services", "HDFCBANK": "bank", "HINDALCO": "metals_nonferrous",
+                                   "SBILIFE": "insurance_life"}))
+    try:
+        assert "deposits" not in _metrics("INFY", "Deposits of Rs 100 crore")
+        assert "deposits" in _metrics("HDFCBANK", "Deposits of Rs 100 crore")
+        assert "cost_of_production" not in _metrics("SBILIFE", "cost of production")
+        assert "cost_of_production" in _metrics("HINDALCO", "cost of production")
+        assert "vnb" in _metrics("SBILIFE", "Value of New Business (VoNB) stands at 32.7")
+        assert "vnb" not in _metrics("INFY", "Value of New Business (VoNB) stands at 32.7")
+        assert "attrition" in _metrics("INFY", "Attrition 12.3%") and "attrition" not in _metrics("HDFCBANK", "Attrition 12.3%")
+    finally:
+        profile.activate(None)
+
+
+def test_no_profile_keeps_every_family():
+    assert "deposits" in _metrics("KEC", "Deposits of Rs 100 crore")      # the pilot3 three: as before the sectors key
+    assert "cost_of_production" in _metrics("KEC", "cost of production")
+    assert "vnb" not in _metrics("KEC", "Value of New Business (VoNB) stands at 32.7")     # new families: profile builds only
+    assert "order_backlog" not in _metrics("KEC", "pending orders 100")
+
+
+def test_half_year_header_dates_and_bare_ratio_and_page_unit():
+    assert kpi.value_unit(None, None, "num", "x") == "x" and kpi.value_unit(None, "%", "num", "x") is None
+    assert periods("H1-FY 2027 H1-FY 2026") == [("H1FY27", None), ("H1FY26", None)]
+    assert kpi.page_money_unit("Key measures (₹ in billion)\nAPE 117.5") == "inr_bn"
+    assert kpi.page_money_unit("(₹ in Mn) and (₹ in billion)") is None
+    assert kpi.finalize_unit("inr_bn", 32.7, "inr_cr") == (32.7, "inr_bn", 1e9)
+
+
+def test_group_headers_relabel_date_columns():
+    class R:
+        def __init__(self, y, toks):
+            self.y, self.toks = y, toks
+
+    rows = [R(0, [(0, 40, "Quarter"), (40, 80, "ended"), (200, 240, "Half"), (240, 280, "Year"), (280, 320, "ended")]),
+            R(10, [(0, 50, "30.09.2025"), (60, 110, "30.06.2025"), (200, 250, "30.09.2025"), (260, 310, "30.09.2024")])]
+    info = [kpi.row_periods(r) for r in rows]
+    kpi.relabel_group_columns(rows, info)
+    assert [p.canon for _, p in info[1][2]] == ["Q2FY26", "Q1FY26", "H1FY26", "H1FY25"]

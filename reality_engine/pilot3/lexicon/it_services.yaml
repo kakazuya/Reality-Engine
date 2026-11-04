@@ -1,0 +1,18 @@
+# IT services KPI family (loop 2).
+family: it_services
+sectors: [it_services]
+entries:
+  - {metric: revenue_usd, kind: money, unit: usd_mn, labels: ["revenues? (in|of) (us\\$|usd|\\$)", "revenues? \\(\\s*(us\\$|usd|\\$)", "^revenues?\\b"], neg: "growth|%|per cent|margin"}
+  - {metric: cc_growth, kind: pct, unit: pct, labels: ["constant currency( terms| revenue)?( growth)?", "\\bcc growth\\b", "growth in constant currency"]}
+  - {metric: deal_tcv, kind: money, unit: usd_mn, labels: ["large deal tcv", "large deals?[^.]{0,30}tcv", "deal tcv", "\\btcv\\b", "large deals? (wins?|value)", "large deals"], neg: "% of|share"}
+  - {metric: utilisation, kind: pct, unit: pct, labels: ["utili[sz]ation"], neg: "offshore|capacity|plant"}
+  - {metric: attrition, kind: pct, unit: pct, labels: ["attrition"]}
+  - {metric: headcount, kind: count, unit: count, labels: ["headcount", "total employees", "employees at (the )?end", "employee (count|strength)", "number of employees"]}
+  - {metric: net_adds, kind: count, unit: count, labels: ["net (employee )?(additions|adds)", "net headcount (addition|adds)"]}
+  - {metric: offshore_mix, kind: pct, unit: pct, labels: ["offshore( revenue| effort| mix)?", "onsite[^.]{0,20}offshore"], neg: "utili[sz]ation"}
+  - {metric: fixed_price_share, kind: pct, unit: pct, labels: ["fixed[- ]price", "fixed price( projects?)?"]}
+  - {metric: top_client_share, kind: pct, unit: pct, labels: ["top (5|10|20|25) clients?", "largest client", "top client"]}
+  - {metric: dso, kind: days, unit: days, labels: ["days sales outstanding", "\\bdso\\b"]}
+  - {metric: subcontracting_cost, kind: pct, unit: pct, labels: ["sub-?contracting( and other)?( costs?| expenses?)?"]}
+  - {metric: geography_mix, kind: pct, unit: pct, labels: ["north america", "europe", "india\\b(?! business)", "rest of the world"], neg: "attrition"}
+  - {metric: vertical_mix, kind: pct, unit: pct, labels: ["financial services", "manufacturing", "retail", "communication", "energy,? utilities", "life sciences", "hi-?tech"], neg: "attrition"}

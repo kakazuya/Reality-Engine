@@ -1,0 +1,12 @@
+# FMCG KPI family (loop 2).
+family: fmcg
+sectors: [fmcg]
+entries:
+  - {metric: underlying_volume_growth, kind: pct, unit: pct, labels: ["underlying volume growth", "\\buvg\\b"]}
+  - {metric: value_growth, kind: pct, unit: pct, labels: ["underlying sales growth", "\\busg\\b\\d?", "value growth"]}
+  - {metric: price_growth, kind: pct, unit: pct, labels: ["price growth", "pricing (growth|contribution)", "price contribution"]}
+  - {metric: gross_margin, kind: pct, unit: pct, labels: ["gross margins?"]}
+  - {metric: a_and_p_spend, kind: pct, unit: pct, labels: ["a\\s?&\\s?p( spend| investment| expenses?)?", "advertising (and|&) promotion", "advertising (and|&) publicity"]}
+  - {metric: direct_reach, kind: count, unit: count_mn, labels: ["direct reach", "direct (outlet )?coverage"]}
+  - {metric: volume_growth, kind: pct, unit: pct, labels: ["volume growth"]}
+  - {metric: market_share, kind: pct, unit: pct, labels: ["market share"]}

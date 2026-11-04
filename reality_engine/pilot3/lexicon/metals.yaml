@@ -1,5 +1,7 @@
 # Metals (Hindalco / Novelis) KPI family. dimension is resolved from segment headings: see DIMENSIONS in kpi.py.
 family: metals
+sectors: [metals_nonferrous]
+no_profile: true
 entries:
   - {metric: ebitda_per_tonne, kind: per_tonne, unit: usd_per_tonne, labels: ["ebitda\\s*(/|per)\\s*(t\\b|ton|tonne|mt)", "ebitda per ton(ne)?", "ebitda/ton"]}
   - {metric: shipments_kt, kind: volume, unit: kt, labels: ["shipments?\\*?", "flat rolled products? shipments?", "\\bfrp\\b shipments?", "sales volumes?", "volumes? sold"], neg: "ccr|of which|\\bper\\b"}

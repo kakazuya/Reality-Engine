@@ -1,6 +1,8 @@
 # Order book / order intake family (KEC mainly). Labels are case-insensitive regexes searched in a row label or sentence.
 # neg: regex that rejects the entry. dimension default 'total'. kind: money|pct|count|volume|per_tonne|days
 family: orders
+sectors: [epc_capital_goods]
+no_profile: true
 entries:
   - {metric: order_book_l1, kind: money, unit: inr_cr, labels: ["order book\\s*(\\+|and|plus|&)\\s*l-?1", "order book\\s*\\+\\s*l1", "ob\\s*\\+\\s*l1"]}
   - {metric: order_book, kind: money, unit: inr_cr, labels: ["order\\s*book", "order\\s*backlog", "unexecuted order", "orderbook", "order book \\(excluding l1\\)"], neg: "(\\+|and|plus|&)\\s*l-?1|intake|per cent|%\\s*of"}

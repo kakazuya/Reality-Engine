@@ -1,0 +1,16 @@
+# Pharma KPI family (loop 2).
+family: pharma
+sectors: [pharma]
+entries:
+  - {metric: us_revenue_usd, kind: money, unit: usd_mn, labels: ["(formulation )?sales in the (us|u\\.s\\.|united states)", "(us|u\\.s\\.) (formulation )?(sales|revenue)", "north america (sales|revenue)"], neg: "%\\s*of|share|mix"}
+  - {metric: us_generics, kind: money, unit: usd_mn, labels: ["(formulation )?sales in the (us|u\\.s\\.|united states)", "us generics", "(us|u\\.s\\.) formulations?"], neg: "%\\s*of|share|mix"}
+  - {metric: domestic_formulations, kind: money, unit: inr_cr, labels: ["(formulation )?sales in india", "india (formulation|branded)s?", "domestic formulations?"], neg: "%\\s*of|share|mix"}
+  - {metric: emerging_markets, kind: money, unit: inr_cr, labels: ["(formulation )?sales in emerging markets?", "emerging markets?( formulations?| sales)?"], neg: "%\\s*of|share|mix"}
+  - {metric: api_revenue, kind: money, unit: inr_cr, labels: ["\\bapi\\b (sales|revenue)", "sales of (apis?|active pharmaceutical ingredients?)", "\\bapis?\\b"], neg: "%\\s*of|share|mix"}
+  - {metric: r_and_d_pct, kind: pct, unit: pct, labels: ["r&d (investment|expenditure|spend|expenses?)", "research (and|&) development (investment|expenditure|spend)"], neg: "growth"}
+  - {metric: gross_margin, kind: pct, unit: pct, labels: ["gross margin"]}
+  - {metric: anda_filed, kind: count, unit: count, labels: ["andas? filed", "filed[^.]{0,20}andas?", "andas? (submitted|filings?)"]}
+  - {metric: anda_approved, kind: count, unit: count, labels: ["andas? approved", "approved[^.]{0,20}andas?", "andas? approvals?"]}
+  - {metric: pending_andas, kind: count, unit: count, labels: ["pending andas?", "andas? pending", "andas? awaiting"]}
+  - {metric: chronic_share, kind: pct, unit: pct, labels: ["chronic( therapies| segment)?", "chronic[^.]{0,20}(share|%|contribution)"]}
+  - {metric: market_share, kind: pct, unit: pct, labels: ["market share"]}

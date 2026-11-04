@@ -1,0 +1,22 @@
+# Life insurer KPI family (loop 2). Generic words of the sector, no company names. Decks print year-to-date figures
+# under a half-year heading: the period comes from the heading (extractor), never assumed to be the quarter.
+family: insurance_life
+sectors: [insurance_life]
+entries:
+  - {metric: vnb_margin, kind: pct, unit: pct, labels: ["vo?nb margin", "value of new business margin", "new business margin"]}
+  - {metric: vnb, kind: money, unit: inr_cr, labels: ["value of new business(?! margin)", "\\bvonb\\b(?! margin)", "\\bvnb\\b(?! margin)"], neg: "margin|growth|%|per share"}
+  - {metric: ape, kind: money, unit: inr_cr, labels: ["annuali[sz]ed premium equivalent", "\\bape\\b"], neg: "margin|growth|%\\s*of|mix"}
+  - {metric: embedded_value, kind: money, unit: inr_cr, labels: ["embedded value", "\\biev\\b", "\\bev\\b"], neg: "return|roev|growth|operating variance|per share"}
+  - {metric: roev, kind: pct, unit: pct, labels: ["return on embedded value", "\\broev\\b"]}
+  - {metric: persistency_13m, kind: pct, unit: pct, labels: ["13th month( persistency)?", "persistency[^.]{0,20}13th month", "13m persistency"], neg: "unfair|practice|complaint"}
+  - {metric: persistency_25m, kind: pct, unit: pct, labels: ["25th month( persistency)?", "persistency[^.]{0,20}25th month"], neg: "unfair|practice|complaint"}
+  - {metric: persistency_37m, kind: pct, unit: pct, labels: ["37th month( persistency)?", "persistency[^.]{0,20}37th month"], neg: "unfair|practice|complaint"}
+  - {metric: persistency_49m, kind: pct, unit: pct, labels: ["49th month( persistency)?", "persistency[^.]{0,20}49th month"], neg: "unfair|practice|complaint"}
+  - {metric: persistency_61m, kind: pct, unit: pct, labels: ["61st month( persistency)?", "persistency[^.]{0,20}61st month", "61m persistency"], neg: "unfair|practice|complaint"}
+  - {metric: solvency_ratio, kind: num, unit: x, labels: ["solvency ratio", "solvency margin"], neg: "regulatory|minimum|required"}
+  - {metric: opex_ratio, kind: pct, unit: pct, labels: ["operating expense ratio", "opex ratio", "expenses? management ratio", "total expense ratio"]}
+  - {metric: commission_ratio, kind: pct, unit: pct, labels: ["commission ratio", "commission (expenses )?to (gross )?(written )?premium"]}
+  - {metric: banca_share, kind: pct, unit: pct, labels: ["bancassurance( channel)?", "\\bbanca\\b"], neg: "growth"}
+  - {metric: market_share, kind: pct, unit: pct, labels: ["market share"]}
+  - {metric: gwp, kind: money, unit: inr_cr, labels: ["gross written premium", "\\bgwp\\b"], neg: "growth|%\\s*of"}
+  - {metric: new_business_premium, kind: money, unit: inr_cr, labels: ["new business premium"], neg: "growth|%\\s*of"}
