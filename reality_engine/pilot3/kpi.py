@@ -362,12 +362,13 @@ def value_unit(v_cur: str | None, suf: str | None, kind: str, default_unit: str)
 
 
 def _value_matches(s: str):
-    """VAL_RX hits that are whole tokens: "2" inside "2W" or "B2C" is part of a word, not a table value."""
+    """VAL_RX hits that are whole tokens: "2" inside "2W" or "B2C" is part of a word, not a table value.  A
+    number glued to a unit the lexicon knows ("4.5x", "25kt", "1,419mn") is one value: the suffix is the unit."""
     for m in VAL_RX.finditer(s):
         a, b = m.start("num"), m.end("num")
         if a > 0 and (s[a - 1].isalnum() or s[a - 1] in ".,-"):
             continue
-        if b < len(s) and s[b].isalpha():
+        if b < len(s) and s[b].isalpha() and not m.group("suf"):
             continue
         yield m
 
@@ -385,8 +386,8 @@ def find_values(text: str, kind: str, default_unit: str, start: int, end: int, s
         a, b = m.start("num"), m.end("num")
         if not m.group("cur") and a > 0 and (text[a - 1].isalnum() or text[a - 1] in ".,-"):
             continue                  # "2W", "B2C": part of a word, not a value ("INR6,568" keeps its rupee)
-        if b < len(text) and text[b].isalpha():
-            continue                  # "77k"
+        if b < len(text) and text[b].isalpha() and not m.group("suf"):
+            continue                  # "77k", "2W": part of a word.  "4.5x" / "25kt": the suffix is the unit.
         if any(a <= m.start("num") < b_ for a, b_ in skip):
             continue
         num = to_float(m.group("num"))
@@ -755,6 +756,11 @@ _CMP = re.compile(r"\b(?:as against|compared (?:to|with)|versus|vs\.?|lower than
 _TAIL_SHARE = re.compile(r"^\s*\(?\s*(?:%|per cent|percent|bps)?\s*(?:of|as a % of|as % of)\s", re.I)
 _LEVEL_LEAD = re.compile(r"\b(?:was|were|is|are|stood|stands?|at|of|reached|reported|posted|post|remaining|remained|"
                          r"came in|declined|grew|rose|fell)\b|:", re.I)
+# "DSO is down 2 days", "margin up 40 bps": a direction word with no "to/at" after it states a change, not the
+# period's level.  "reduced to 134 days" keeps the value because the lead ends with the level link.
+_DIRECT_CHANGE = re.compile(r"\b(?:up|down|higher|lower|rose|fell|grew|grown|improved|declined?|decreased?|increased?|"
+                            r"reduced?|expanded?|contracted?|added|gained|lost)\s*"
+                            r"(?:over|more than|about|around|nearly|approximately|~)?\s*$", re.I)
 _PRIOR_VALUE = re.compile(r"\b(?:last|previous|prior|preceding|corresponding)\s+(?:year|fiscal|quarter|period)\b"
                           r"[^.]{0,40}?\b(?:was|were|at|stood|had)\b|\byear[- ]ago\b", re.I)
 
@@ -771,7 +777,7 @@ def _belongs_to_next_label(text: str, v: Val, e: Entry, entries, company: str, l
     tail = text[v.end:min(len(text), v.end + 40)]
     tail = re.sub(r"^\s*(?:billion|million|bn|mn|crore|cr|lakhs?|%|per cent|percent|bps|kt|mt|tonnes?|x|days)\b",
                   "", tail, flags=re.I)
-    return any(x[0].metric != e.metric for x in label_matches(entries, company, tail[:32]))
+    return any(x[0].metric != e.metric for x in label_matches(entries, company, tail.lstrip()[:32]))
 
 
 def _second_of_pair(text: str, start: int, v2_end: int, entries, company: str, metric: str) -> bool:
@@ -785,16 +791,21 @@ def _second_of_pair(text: str, start: int, v2_end: int, entries, company: str, m
     return any(e.metric != metric for e, _ in label_matches(entries, company, head[-30:]))
 
 
-_STOCK_METRICS = {"aum", "order_book", "order_book_l1", "net_debt", "net_debt_incl_acceptances", "deposits",
-                  "customer_franchise", "loan_loss_provisions"}
+# Balance-sheet / point-in-time metrics: the value on 31 March is both the year-end and the Q4 point.  A flow
+# over the year (revenue, PAT, EBITDA, a margin, ROE, NIM, credit cost) is annual only: its FY value is not the
+# quarter's, so it gets no Q4 twin (T-064: HINDUNILVR's FY26 ROE 22.4% was also dated Q4FY26).
+_STOCK_METRICS = {
+    "aum", "book_value_per_share", "casa", "casa_ratio", "cd_ratio", "crar_pct", "customer_franchise",
+    "dealer_inventory_days", "deposits", "dso", "gnpa_pct", "net_debt", "net_debt_incl_acceptances", "nnpa_pct",
+    "order_book", "order_book_l1", "pcr_stage3", "provision_coverage_pct", "solvency_ratio", "tier1_pct",
+    "unsecured_share", "working_capital_days",
+}
 
 
 def _q4_twin(e: Entry, period: Period) -> Period | None:
     """A stock figure dated 31 March is the year-end and also the Q4 point: GNPA at "31 March 2025" must answer
-    both FY25 and Q4FY25 (the hand-read grade's quarterly GNPA trend was missing Q4 FY25).  A flow (revenue, PAT)
-    is annual only."""
-    if period.ptype == "FY" and period.as_of and period.as_of.endswith("-03-31") \
-            and (e.kind in ("pct", "x", "days", "bps") or e.metric in _STOCK_METRICS):
+    both FY25 and Q4FY25.  A flow (revenue, PAT, a margin, ROE) is annual only."""
+    if period.ptype == "FY" and period.as_of and period.as_of.endswith("-03-31") and e.metric in _STOCK_METRICS:
         return Period(period.start, period.end, "Q4" + period.canon, "Q", period.as_of)
     return None
 
@@ -807,9 +818,13 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
     for e, lm in label_matches(entries, company, text):
         # every occurrence of any label of the entry; `strict` labels (sentence-only) demand the value right after
         strict = e.labels_strict
-        for li, rx in enumerate(strict or e.labels):
+        labels = strict or e.labels
+        for li, rx in enumerate(labels):
             generic = not strict and li < len(e.generic) and e.generic[li]
             for m in rx.finditer(text):
+                if any(o is not rx and (om := o.match(text, m.start())) and om.end() > m.end()
+                       for o in labels):
+                    continue      # a shorter alias of one label: "EBITDA as a %" under "EBITDA as a % of TO"
                 if e.neg and e.neg.search(_neg_context(text, m)):
                     continue
                 # stop the window at a paragraph break or sentence end of >1 sentence
@@ -830,6 +845,8 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                 if _OTHER_SUBJECT.search(lead) or _NOT_A_LEVEL.search(lead) \
                         or (profile.under_profile() and _OTHER_SUBJECT_PROFILE.search(lead)):
                     continue      # "impacted by an estimated negative $104 million": not the level
+                if _DIRECT_CHANGE.search(lead):
+                    continue      # "DSO is down 2 days": a change, not the 2-day level
                 if _THRESHOLD.search(lead) or _CLIENT_TIER.match(text[v1.end:v1.end + 24]):
                     continue      # a client-size threshold ("$50 mn plus clients") is not the metric
                 if profile.under_profile() and (
@@ -1537,6 +1554,16 @@ def _kind_candidate(m, e: Entry) -> bool:
     return True
 
 
+def _own_row_hits(hit) -> list:
+    """The metric hits a table row label ends with.  A block heading on the same band joins the row string
+    ("Leverage" over the "Net Debt" row gives "Leverage Net Debt"), so a hit that another label starts after is a
+    heading, not the row's metric.  Overlapping aliases of one label ("Revenues" matches both "^revenue" and
+    "^revenues?") keep every hit: only a label that starts at or after this match's end is a later label."""
+    if len(hit) < 2:
+        return hit
+    return [(e, m) for e, m in hit if not any(o.start() >= m.end() for _, o in hit)] or hit
+
+
 def table_and_chart_rows(page_words, text: str, page: int, company: str, entries, dims, default_pers,
                          stats: dict | None = None) -> list[Row]:
     rows = _merge_stacked_axes(page_rows(page_words))
@@ -1657,6 +1684,7 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
             hit = label_matches(entries, company, label)
             if not hit:
                 continue
+            hit = _own_row_hits(hit)
             hi = pick_header(r.y, [x for x, _ in nums])
             if hi is None:
                 continue
@@ -1672,9 +1700,11 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                     keep_idx = set(_kept_columns(cols))
             for e, lm in hit:
                 cand = assign if not strict else [(x, m) for x, m in assign if _kind_candidate(m, e)]
-                if strict and len(cand) > ncols:
+                row_cand = [(x, m) for x, m in nums if _kind_candidate(m, e)]
+                if strict and len(row_cand) > ncols:
                     _bump(stats, "column_mismatch")
-                    continue      # more values than columns: extra figures are deltas or captions, not cells
+                    continue      # more values than columns: a segment table's row (one cell per segment) is not
+                                  # this period header's row, and extra figures are deltas or captions, not cells
                 for ci, xc, m, per in _assign_columns(cand, cols, 28):
                     if keep_idx is not None and ci not in keep_idx:
                         continue      # a prior quarter column: the current quarter is printed beside it

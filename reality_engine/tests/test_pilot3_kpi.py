@@ -1037,3 +1037,86 @@ def test_outlier_gate_catches_a_misread_rate_and_negative_slips():
     con.close()
 
 
+# ---------------------------------------------------------------- T-064: segment totals, debt ratios, flows
+def test_a_segment_tables_columns_do_not_give_a_company_total():
+    """INFY's segment table prints one row "Revenue" over nine business-segment columns under a two-date caption
+    ("Three months ended June 30, 2026 and June 30, 2025").  A row with more values than the header has columns is
+    not that header's row: the first segment's 13,463 is not the company's revenue."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_symbols(INFY="it_services"))
+    try:
+        head = _row_words(20, [(150, "Three"), (185, "months"), (225, "ended"), (285, "June"), (300, "30,"),
+                               (320, "2026"), (350, "and"), (385, "June"), (405, "30,"), (425, "2025")])
+        row = _row_words(60, [(60, "Revenue"), (200, "13,463"), (250, "7,668"), (300, "6,452"), (350, "6,172"),
+                              (400, "5,791"), (450, "3,842")])
+        words = _words([head, row])
+        text = ("Three months ended June 30, 2026 and June 30, 2025\nRevenue\n13,463 7,668 6,452 6,172 5,791 3,842\n")
+        got = kpi.table_and_chart_rows(words, text, 1, "INFY", ENTRIES, DIMS, [])
+        assert not any(r.metric == "revenue" for r in got)
+    finally:
+        profile.activate(None)
+
+
+def test_a_block_heading_does_not_own_the_next_label_value():
+    """HINDALCO's debt page puts "Debt & Leverage" on the same band as the "Net Debt" row, so the row label reads
+    "Leverage Net Debt": the amount belongs to net_debt, not to the leverage ratio.  Overlapping aliases of one word
+    ("Revenues" matches both "^revenue" and "^revenues?") keep every hit."""
+    ratio = next(e for e in ENTRIES if e.metric == "net_debt_to_ebitda")
+    debt = next(e for e in ENTRIES if e.metric == "net_debt")
+    revenue = next(e for e in ENTRIES if e.metric == "revenue")
+    revenue_usd = next(e for e in ENTRIES if e.metric == "revenue_usd")
+    assert [e.metric for e, _ in kpi._own_row_hits([(ratio, kpi._rx("leverage").search("Leverage Net Debt")),
+                                                    (debt, kpi._rx("net debt").search("Leverage Net Debt"))])] \
+        == ["net_debt"]
+    assert {e.metric for e, _ in kpi._own_row_hits([
+        (revenue, kpi._rx("^revenue").search("Revenues")),
+        (revenue_usd, kpi._rx("^revenues?\\b").search("Revenues"))])} == {"revenue", "revenue_usd"}
+    assert [e.metric for e, _ in kpi._own_row_hits(kpi.label_matches(ENTRIES, "HINDALCO", "Leverage Net Debt"))] \
+        == ["net_debt"]
+
+
+def test_a_direction_word_is_a_change_not_a_level_and_a_glued_unit_is_a_value():
+    """INFY's call says "DSO is down 2 days": 2 is the change, not the 67-day level.  A number glued to a unit the
+    lexicon knows ("4.5x", "25kt") is still a value ("2W" and "77k" are not)."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_symbols(INFY="it_services"))
+    try:
+        rows = kpi.sentence_rows("DSO is down 2 days. DSO was 67 days as of 31 March 2026", 1, "INFY",
+                                 ENTRIES, DIMS, [])
+        assert {r.value for r in rows if r.metric == "dso"} == {67.0}
+        assert kpi.sentence_rows("Net working capital has been reduced to 134 days", 1, "KEC",
+                                 ENTRIES, DIMS, kpi.parse_periods("Q1FY27"))[0].value == 134.0
+        assert [(v.value, v.unit) for v in kpi.find_values("leverage of 4.5x", "ratio", "x", 0, 20, [])] == [(4.5, "x")]
+        assert [(v.value, v.unit) for v in kpi.find_values("shipments of 25kt", "volume", "kt", 0, 20, [])] == [(25.0, "kt")]
+        assert kpi.find_values("2W volumes", "count", "count", 0, 12, []) == []
+    finally:
+        profile.activate(None)
+
+
+def test_a_flow_gets_no_q4_twin_but_a_stock_level_does():
+    """HINDUNILVR's FY26 ROE 22.4% (for the year ended 31 March 2026) was also dated Q4FY26: a return over the year
+    is not the quarter's.  A balance-sheet level at 31 March (GNPA, net debt) is both the year-end and the Q4 point."""
+    roe = next(e for e in ENTRIES if e.metric == "roe_pct")
+    gnpa = next(e for e in ENTRIES if e.metric == "gnpa_pct")
+    debt = next(e for e in ENTRIES if e.metric == "net_debt")
+    fy = kpi.parse_periods("31 March 2026")[0]
+    assert fy.canon == "FY26" and kpi._q4_twin(roe, fy) is None
+    gnpa_twin, debt_twin = kpi._q4_twin(gnpa, fy), kpi._q4_twin(debt, fy)
+    assert gnpa_twin is not None and gnpa_twin.canon == "Q4FY26"
+    assert debt_twin is not None and debt_twin.canon == "Q4FY26"
+
+
+def test_ebitda_as_a_pct_of_turnover_is_not_the_company_margin():
+    """HINDUNILVR's dashboard prints "EBITDA as a % of TO 4 %" over "PAT (bei) Growth 6 % 23.7 %": the 4% is the
+    growth figure next to it, and the long label puts the real margin (23.7%) out of reach of this value."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"HINDUNILVR": "fmcg"}))
+    try:
+        block = ("EBITDA as a % of TO\n4 %\nPAT (bei) Growth\n6 %\n23.7 %\n")
+        rows = kpi.sentence_rows(block, 1, "HINDUNILVR", ENTRIES, DIMS, kpi.parse_periods("Q4 FY26"))
+        assert all(r.value != 4.0 for r in rows if r.metric == "ebitda_margin_pct")
+    finally:
+        profile.activate(None)
+
+
+

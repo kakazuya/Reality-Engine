@@ -16,3 +16,8 @@
 ## T-061 KPI precision round 3 (4 Nov 2026)
 - Six general rules (split numbers/decimals, lakh units, right-aligned table columns, quote/neg/subject guards, plan/list/share-of guards, 100x abs outlier gate, monthly/investee page skip); `w_kpi6.db` A1 727/898, `test_pilot3_kpi.py` 66 passed, checkpages 145.
 - Hand read seed 20261111: KEC 18/20 only; BAJFINANCE 17, HINDALCO 12, HDFCBANK 16, SBILIFE 16, INFY 5, SUNPHARMA 14, MARUTI 15, HINDUNILVR 12, ETERNAL 16. Round fails the 18/20 target; next: segment-table revenue dimensions, debt-table vs leverage rows, flow-change values.
+
+## T-064 KPI three faults (4 Nov 2026)
+- Rules: table row with more values than its header columns is not that header's row (segment table gives no company total); _own_row_hits drops a block heading that joins the row label (Leverage Net Debt is net debt); _q4_twin only for _STOCK_METRICS (no Q4 twin for ROE/margin flows); _DIRECT_CHANGE refuses a change word (DSO is down 2 days); a shorter alias is skipped under its longer form (EBITDA as a % of TO); a glued unit (4.5x, 25kt) is a value.
+- Build w_kpi7.db: all ten rebuilt once (202 s), INFY 315, HINDALCO 838, HINDUNILVR 396 rows. A1 728/898; KEC 64 vs 66 and HINDALCO 75 vs 76 below combined3 (both also below on a fresh pre-T-064 build). Hand read seed 20261113: INFY 12/20, HINDALCO 7/20, HINDUNILVR 18/20. pytest 71 passed; checkpages 139 (the recorded 145 reproduces at neither HEAD nor T-064).
+- Next: remaining wrong classes are USD tables on INR-default metrics, six-month figures dated to the quarter, year token 2026 as revenue, capex commitments, and Novelis/segment income as total.

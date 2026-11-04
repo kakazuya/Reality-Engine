@@ -11,6 +11,6 @@ entries:
   - {metric: revenue, kind: money, unit: inr_cr, labels: ["^revenue", "total revenue", "revenue from operations", "^sales\\b", "segment revenue"], neg: "growth|%|intersegment|inter segment|lntersegment|less:|volume|volumes"}
   - {metric: pat, kind: money, unit: inr_cr, labels: ["profit after tax", "^pat\\b"], neg: "margin|%"}
   - {metric: employees, kind: count, unit: count, labels: ["employee headcount", "headcount"]}
-  - {metric: ebitda_margin_pct, kind: pct, unit: pct, labels: ["ebitda margins?", "ebitda as a %"], neg: "guidance|expansion|contraction|bps|range|cagr|growth"}
+  - {metric: ebitda_margin_pct, kind: pct, unit: pct, labels: ["ebitda margins?", "ebitda as a % of (to|turnover|sales|revenue)", "ebitda as a %"], neg: "guidance|expansion|contraction|bps|range|cagr|growth"}
   - {metric: ebitda, kind: money, unit: inr_cr, labels: ["(business )?segment ebitda", "^ebitda\\b", "\\bebitda\\b"], neg: "margin|per|/|%\\s*of|multiple|adjusted"}
   - {metric: roe_pct, kind: pct, unit: pct, labels: ["return on (average )?equity", "\\broe\\b"], neg: "growth|bps"}
