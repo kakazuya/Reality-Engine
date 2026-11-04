@@ -891,7 +891,7 @@ store keeps only undimensioned totals, so per-segment values were lost at parse 
    `IncomeFormInvestments`, `OtherIncome`, `TransferOfFundsFromShareholdersAccount` (`is_reported` 0) and use `SurplusDeficit`
    as EBIT. Only contexts ending on the filing's period end count. Quarter, H1/H2, 9M and FY contexts all become rows.
 3. `Single segment` filings (flag read from the file) write `dimension='single_segment'`, not a filler.
-4. Names: leading `(a)` dropped, punctuation collapsed, mapped per company to the latest filing's spelling (ratio >= 0.85).
+4. Names: leading `(a)` dropped, punctuation collapsed, mapped per company (`_canonical`): names that occur together in one filing never merge; similar names (ratio >= 0.85) that never occur together merge to the spelling in the most filings (tie: latest filing); `raw_label` keeps the name as filed. A single-segment description of 'NA' or empty gives the label "Single segment".
 5. `kpi.run` deletes only rows whose `source_type` is not `xbrl_segment`, so a later kpi rebuild keeps them.
 6. Check 3 (`reconcile`): segment revenue less `InterSegmentRevenue` against `SegmentRevenueFromOperations`, 1%.
 Result on the pilot10 copy: 10 companies, 0 check-3 failures, A1 571 -> 601. Tests: `reality_engine/tests/test_pilot3_xbrl_segments.py`.

@@ -127,3 +127,15 @@ def test_kpi_rebuild_keeps_segment_rows(tmp_path):
     con.commit()
     con.execute("DELETE FROM kpi_series WHERE symbol=? AND source_type<>'xbrl_segment'", ("X",))
     assert [r[0] for r in con.execute("SELECT metric FROM kpi_series")] == ["segment_revenue"]
+
+
+def test_names_in_one_filing_never_merge():
+    pn, npn = "participating_pension", "non_participating_pension"
+    mapping = xs._canonical([("2026-09", [pn, npn]), ("2026-06", [pn, npn])])
+    assert mapping[pn] == pn and mapping[npn] == npn
+
+
+def test_typo_in_latest_filing_loses_to_the_majority_spelling():
+    mapping = xs._canonical([("2026-09", ["fiancial_services"]), ("2026-06", ["financial_services"]),
+                             ("2026-03", ["financial_services"])])
+    assert mapping["fiancial_services"] == mapping["financial_services"] == "financial_services"

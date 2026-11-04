@@ -53,7 +53,7 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   the sister duration context. Life insurers: revenue = net premium + investment income + other income + transfer from
   shareholders (`is_reported` 0), EBIT = `SurplusDeficit`. A filing that says `Single segment` gets one
   `single_segment` row per metric (revenue from operations or total income; profit before tax + finance costs;
-  `is_reported` 0). Segment names are normalised and mapped to the latest filing's spelling (difflib >= 0.85). The
+  `is_reported` 0). Segment names are normalised and mapped per company: names that occur together in one filing never merge (Participating / Non Participating Pension are two segments); similar names (difflib >= 0.85) that never occur together merge to the spelling used in the most filings, a tie going to the latest. `raw_label` keeps the name as filed; a single-segment description of 'NA' falls back to "Single segment". The
   `kpi` part keeps these rows when it rewrites a company. Check: segment revenue less inter-segment revenue equals the
   filing's `SegmentRevenueFromOperations` within 1%.
 - **Company-specific parts today** (the scale-up cost): segment patterns in `dimensions.yaml` (26 for 3 companies),

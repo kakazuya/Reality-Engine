@@ -179,7 +179,8 @@ def single_rows(parsed: dict, period_end: str) -> list[dict]:
     flag = next(iter(texts.get(SINGLE_FLAG, {}).values()), "")
     if flag.strip().lower() != "single segment":
         return []
-    desc = next((v for v in texts.get("DescriptionOfSingleSegment", {}).values() if v), "")[:200] or "Single segment"
+    desc = next((v for v in texts.get("DescriptionOfSingleSegment", {}).values()
+                 if v and v.strip().upper() != "NA"), "")[:200] or "Single segment"
     out = []
     for (start, end), concept, value in _single_revenue(totals):
         if end == period_end and start:
@@ -225,25 +226,39 @@ def reconcile(parsed: dict, rows: list[dict]) -> list[dict]:
 
 
 def _canonical(names_by_file: list[tuple[str, list[str]]]) -> dict[str, str]:
-    """Map every normalised name of a company to the spelling of the latest filing that holds a similar one."""
-    latest: list[str] = []
+    """Map every normalised name of a company to a canonical spelling.  Names that occur together in one filing are
+    different segments and never merge; similar names (ratio >= ``NAME_RATIO``) that never occur together merge, and
+    the canonical spelling is the one in the most filings (a tie goes to the latest filing)."""
+    count: dict[str, int] = collections.Counter()
+    last: dict[str, str] = {}
+    together: dict[str, set[str]] = collections.defaultdict(set)
+    for key, names in names_by_file:
+        for n in set(names):
+            count[n] += 1
+            last[n] = max(last.get(n, ""), key)
+            together[n].update(m for m in names if m != n)
+    clusters: dict[str, set[str]] = {}  # canonical -> members
     mapping: dict[str, str] = {}
-    for _, names in sorted(names_by_file, key=lambda x: x[0], reverse=True):
-        for n in names:
-            if n in mapping:
+    for n in sorted(count, key=lambda x: (-count[x], _neg(last[x]), x)):
+        best, score = None, 0.0
+        for c, members in clusters.items():
+            if together[n] & members:
                 continue
-            best, score = None, 0.0
-            for c in latest:
-                r = difflib.SequenceMatcher(None, n, c).ratio()
-                if r > score:
-                    best, score = c, r
-            if best is not None and score >= NAME_RATIO and n not in latest:
-                mapping[n] = best
-            else:
-                mapping[n] = n
-                if n not in latest:
-                    latest.append(n)
+            r = difflib.SequenceMatcher(None, n, c).ratio()
+            if r > score:
+                best, score = c, r
+        if best is not None and score >= NAME_RATIO:
+            clusters[best].add(n)
+            mapping[n] = best
+        else:
+            clusters[n] = {n}
+            mapping[n] = n
     return mapping
+
+
+def _neg(s: str) -> tuple:
+    """Sort key putting the larger string first."""
+    return tuple(-ord(ch) for ch in s)
 
 
 def _filings(symbol: str) -> list[dict]:
