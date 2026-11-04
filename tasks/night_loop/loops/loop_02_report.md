@@ -34,11 +34,31 @@ Unmet needs (603 over 133 keys; "only blocker" = questions this alone holds back
 3. **KEC transcripts added to the raw set from held files,** no download: 4 rows appended to `pilot10\raw\manifest.csv` (backup `manifest_before_kec_transcripts_2026-11-04.csv`, script `scratch\add_kec_transcripts.py`), known_at from the filed cover letter. Pilot10 baseline not rebuilt; candidate on copies `scratch\c_kec*.db`.
 4. **MARUTI transcripts not fetched this loop.** Time-boxed: the site renders by JavaScript, the pages tried give no link, and Playwright is not installed. 19 needs stay unmet. Next attempt: a browser session or a headless fetch for `marutisuzuki.com/corporate/investors/company-updates`.
 
-## Workers (Sonnet, DeepSeek peak; started 13:35 IST)
+## Candidates measured so far (each alone against the 571 baseline, on copies)
+| Candidate | A1 dev | Companies changed | Guards |
+|---|---|---|---|
+| KEC real transcripts (`scratch\c_kec.db`) | 583/898 (65%) | KEC 49 to 61; 3 KEC transcript needs still unmet (terms `regulation`, `fixed price` + `commodity`, `currency`) | running |
+| l2segments round 1 (`scratch\w_segments.db`), worker's figure | 601/898 (67%) | every company up, none down | not run |
+
+KEC candidate guards: A3 93/93, A5 pass; A4 counts are `duplicate_sha256` 104, `xbrl_disagreements` 325, `period_after_doc` 0, `known_before_filing` 0, with no baseline yet to compare them against.
+
+Quality problem A1 cannot see: the guidance rows KEC gains from real transcripts include wrong ones. "net margin from non-T&D ... close to 1%" and "Cables ... maybe 6%" are stored as company `ebitda_margin` guidance for FY26, and a questioner's "8% to 8.5%" also becomes a row. A1 counts these as answered. Next loop should raise guidance precision, and A2 will show it.
+
+Not to be read as a sum: the candidates overlap on some questions, and A1 counts rows, not correct answers.
+
+## Workers (Sonnet, DeepSeek peak; started 13:30 IST by the machine's clock, earlier notes saying 13:35 are wrong)
 | Name | Branch | Brief | Target | Status |
 |---|---|---|---|---|
-| l2segments | `Eagle-sonnet-l2segments` | `loop_02_worker_segments.md` | `kpi_series.segment_*`, 104 needs | running |
+| l2segments | `Eagle-sonnet-l2segments` | `loop_02_worker_segments.md`, then `loop_02_worker_segments_fix.md` | `kpi_series.segment_*`, 104 needs | **ACCEPT, ready for the wrapper** at ea85729: round 1 27 tool calls in 6 min, fix round 15 calls. Guards still to run on the combined candidate. |
 | l2structured | `Eagle-sonnet-l2structured` | `loop_02_worker_structured.md` | bank and insurer lines, valuation, FY ratios, share capital, 3 new tables, 200 needs | running |
+| l2kpi | `Eagle-sonnet-l2kpi` | `loop_02_worker_kpi.md` | sector KPI lexicons, sector gating of lexicon families, 194 needs | running, started 13:44 IST |
+
+Review of l2segments round 1, by reading the code and querying its rows:
+- **Defect, sent back:** the fuzzy name match merges different segments of one filing. SBILIFE Q2FY27 has `non_participating_pension` twice (1,366,330,000 and 67,017,000), because "Participating Pension" was relabelled. The worker's own accept checks did not catch it, because SBILIFE has no total to reconcile against.
+- **Defect, sent back:** INFY's dimensions take the latest filing's typos (`fiancial_services`, `retails`).
+- **Checked and fine:** MARUTI Q2FY27 `segment_ebit` 32,178,000,000 = PBT 31,501,000,000 + finance cost 677,000,000. The worker's "Hindalco Q2 FY27 met" is not a false claim: dev has no Hindalco segment need for that quarter, and the table has no such row.
+- **Fix round checked:** 0 duplicate dimensions, SBILIFE 14 distinct, INFY `financial_services` and `retail`. Independent read of the raw XML: Non Participating Life 56,606,101,000 + 11,586,483,000 + 0 + 236,728,000 = 68,429,312,000, and Non Participating Group Life sums to 34,850,450,000, both equal to the stored rows.
+- **For the wrapper to judge:** standalone filings of KEC, INFY, ETERNAL and HINDALCO flag "Single segment", so they get `single_segment` rows while their consolidated filings are multi-segment. That follows the filing. ETERNAL's flag sits beside a description saying "The Company has multiple segment", so the filing contradicts itself there.
 
 ## Build of pilot10 (done, 13:15-13:23 IST, rc 0 on every part)
 - Done by the wrapper before this restart: `docs_collect` 512 s, `build_truth_snapshot` 1,249 s.
