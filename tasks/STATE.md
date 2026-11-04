@@ -7,15 +7,12 @@ the `reality-data` pilot3_* tools). Method, schema and every result: `docs/PILOT
 Live db rebuilt 4 Nov after the dates/guidance/tools merges (backups `D:\RealityEngine\pilot3\*_before_dates_merge_2026-11-04.db`).
 Long history of 2-4 Nov: `tasks/archive/STATE_2026-11-04_before_night_loop.md`.
 Fast checks merged 4 Nov (guide O9): `build --part kpi --symbols KEC` 125 s vs 503 s for all; `python -m
-reality_engine.pilot3.checkpages run` replays 314 graded pages in ~6 s (measured 4 Nov evening: 144 found — KEC 29/78,
-BAJFINANCE 59/113, HINDALCO 56/123; the recorded fixture asks 57 for HINDALCO, so
-`test_pilot3_checkpages.py::test_run_finds_at_least_the_recorded_baseline` fails at HEAD — checkpages reads only `kpi`
-and the live pilot3.db, so it is not from the loop-3 extractor work); fix rounds run
-`pytest reality_engine/tests -q -k pilot3 -m "not slow"`, full suite at merge.
+reality_engine.pilot3.checkpages run` replays 314 graded pages in ~6 s (baseline 145 found: KEC 29/78, BAJFINANCE
+59/113, HINDALCO 57/123); fix rounds run `pytest reality_engine/tests -q -k pilot3 -m "not slow"`, full suite at merge.
 
 T-054 merged 4 Nov (guide section 5): `plugins/code-tools/` (run-and-exit `outline`, `typecheck`) replaces code-intel;
 briefs need seven fields incl. `Evidence:` (`context_pack._REQUIRED_FIELDS`). T-055 built 4 Nov, loop-1 qset fixes 4 Nov
-(guide section 6): `reality_engine/night_eval/` (Q1-Q3, A1, A3-A7, decide, audit; 27 tests); real set 1271 questions ok. T-056 4 Nov: `reality_engine/pilot3/profile.py` + `--profile` on docs_collect/build/kpi/transcripts/guidance (pilot10 profile, MARUTI build verified); MCP pilot3_* tools take any `REALITY_PILOT3_DB` database (guide O10, blueprint section 9). Loop 2 merged 4 Nov: segments, bank and insurer lines, deals, insider, index tables (blueprint 9, 9a). T-057 next: printed QoQ/YoY comparatives. T-056 loop 3 (4 Nov, branch worktree): speaker rules (participants block, moderator "with us today" names, bare-name lines when a document has <5 colon marks, Q&A answer-after-analyst fallback) give ETERNAL 691 / INFY 2,512 statements with 3 and 4 management speakers and no analyst; guidance precision families A-I (next year = +1, backward quarter, guided-range actuals, spent-to-date, `project_capital_cost`, lender/segment/other gates, questions, `inr_cr` scale, one row per metric+period+value+date) leave 69 rows on the pilot10 copy; A1 662/898 (was 651, KEC 51→62, no company down).
+(guide section 6): `reality_engine/night_eval/` (Q1-Q3, A1, A3-A7, decide, audit; 27 tests); real set 1271 questions ok. T-056 4 Nov: `reality_engine/pilot3/profile.py` + `--profile` on docs_collect/build/kpi/transcripts/guidance (pilot10 profile, MARUTI build verified); MCP pilot3_* tools take any `REALITY_PILOT3_DB` database (guide O10, blueprint section 9). Loop 2 merged 4 Nov: segments, bank and insurer lines, deals, insider, index tables (blueprint 9, 9a). T-057 next: printed QoQ/YoY comparatives.
 
 **Running (4 Nov evening):** loop 3 (`loops/loop_03_brief.md`), DeepSeek workers until 06:30 IST. Re-answer of 43 questions done (KEC 13, BAJ 15, HIN 15): `D:\RealityEngine\pilot3\answer_run3\`; worktrees removed.
 
@@ -23,7 +20,7 @@ briefs need seven fields incl. `Evidence:` (`context_pack._REQUIRED_FIELDS`). T-
 1. T-054 aftercare: profiles swapped to `tasks/dsh_profiles/code-tools.insert.yml` (backups `*.bak_2026-11-04`);
    `plugins/code-intel` to the Recycle Bin; Shivam reconnects MCPs.
 2. Loop run (Shivam's go, 4 Nov 05:45 IST): `tasks/night_loop/` (GOAL, PILOT10, LOOP_BRIEF, HANDOFF, loops/); loop 1
-   and 2 done, loop 3 next (`start_loop.ps1 3`), 5 loops; DeepSeek workers off-peak, Sonnet only in peak. Wrapper merges.
+   and 2 done, loop 3 is the last (Shivam, 4 Nov); then the main session runs 2 dsh workers at once, no loop sessions.
 3. Hand-grade the 43 re-answers (31 earlier non-right + 12 guidance-recall checks); report as HTML in
    `D:\RealityEngine\reports\`; blueprint results history.
 4. Then, in order: XBRL segments, core document set and download triage, XBRL calibration, sector vocabularies,

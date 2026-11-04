@@ -88,3 +88,36 @@ def test_an_unplaceable_speaker_is_counted_and_not_stored():
     rows = transcripts.extract_doc("INFY", "doc", "Enclosed", "", [(1, page)], [], {}, st)
     assert not rows
     assert "Someone Unk" in st["unknown_speakers"]
+
+
+# --- T-056 review, 4 Nov 2026: a page-numbered footer, and a media call with no moderator -------------------
+def test_a_running_footer_with_a_changing_page_number_is_boilerplate():
+    """An INFY footer prints its page number ("… Infosys Limited 3"), so the block was never boilerplate and the
+    footer sat in a quote.  Digits are normalised before the repeat count."""
+    head = "External Document © 2026 Infosys Limited {}"
+    pages = [head.format(1) + "\n\nCORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n"]
+    pages += [head.format(n) + "\n\nAsha Rao\nGood evening, everyone, and thank you for joining the call today. "
+                                "Our revenue grew 10% this quarter.\n" for n in (2, 3, 4)]
+    boiler = transcripts.boilerplate_lines(pages)
+    assert "External Document © # Infosys Limited #" in boiler
+    assert "Infosys Limited" not in transcripts.mask_noise(pages[1], boiler)
+    rows = rows_of(pages)
+    assert rows, "the colon-less caller was not read"
+    assert all("Infosys Limited" not in r[15] for r in rows), "a running footer is still inside a quote"
+    assert {r[7] for r in rows} == {"Asha Rao"}
+
+
+def test_a_media_call_with_no_moderator_starts_the_qa_at_the_first_journalist():
+    """QA_START_RX keys on the moderator, so a media call (none) stayed 'prepared' end to end; the first
+    journalists/analysts participant line opens the Q&A instead."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\nJOURNALISTS\n\nNeha Shah\nCNBC TV18\n")
+    page2 = ("Asha Rao: Good evening, everyone, and thank you for joining this media call today.\n"
+             "Neha Shah: Thank you. Could you talk about the demand outlook for the year?\n"
+             "Asha Rao: Demand is strong and we expect 10% growth next year.\n")
+    rows = rows_of([page1, page2])
+    assert {r[7] for r in rows} == {"Asha Rao"}            # the journalist's words are never stored
+    assert {r[8] for r in rows} == {"cfo"}
+    greeting = [r for r in rows if r[14].startswith("Good evening")]
+    answer = [r for r in rows if r[14].startswith("Demand is strong")]
+    assert greeting and answer
+    assert greeting[0][9] == "prepared" and answer[0][9] == "qa"

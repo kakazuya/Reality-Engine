@@ -380,3 +380,114 @@ def test_one_row_per_metric_period_value_and_date():
     got = rows(path)
     assert [r["said_on"] for r in got] == ["2026-05-21", "2026-08-14"]
     assert got[0]["revision_of"] is None and got[1]["revision_of"] == got[0]["id"]
+
+
+# --- T-056 review, 4 Nov 2026: the spend beside the total, and the eight leftovers -------------------------
+def write_db(path: Path, docs: list[tuple], pages: list[tuple]) -> None:
+    """docs: (doc_key, symbol, doc_type, filing_date, known_at); pages: (doc_key, symbol, page, text)."""
+    for suffix in ("", "-wal", "-shm"):
+        Path(str(path) + suffix).unlink(missing_ok=True)
+    con = sqlite3.connect(path)
+    con.execute(schema.TABLES["doc"])
+    con.execute(schema.TABLES["doc_page"])
+    con.executescript(TRANSCRIPT_SCHEMA)
+    con.executemany("INSERT INTO doc(doc_key,symbol,isin,doc_type,doc_family,title,filing_date,known_at,pages) "
+                    "VALUES (?,?,NULL,?,?,'Deck',?,?,1)", [(d[0], d[1], d[2], d[2], d[3], d[4]) for d in docs])
+    con.executemany("INSERT INTO doc_page(doc_key,symbol,page,text,method,chars,known_at) "
+                    "VALUES (?,?,?,?,'script_text',?,NULL)",
+                    [(d, s, p, t, len(t)) for d, s, p, t in pages])
+    con.commit()
+    con.close()
+
+
+def test_a_project_spend_is_its_own_row_beside_the_total():
+    """T-056 family D, restored 4 Nov 2026: the spend to date is a fact an investor asks for, with the period the
+    sentence names, and it is never ``capex`` so no annual capex answer can pick it up."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_spend.db"
+    write_db(path,
+             [("hind/deck_may.pdf", "HINDALCO", "deck", "2026-05-19", "2026-05-19T17:00:00"),
+              ("hind/deck_aug.pdf", "HINDALCO", "deck", "2026-08-05", "2026-08-05T17:00:00")],
+             [("hind/deck_may.pdf", "HINDALCO", 26,
+               "Estimated total capital cost remains in the order of $5 billion – $3.2 billion capital "
+               "expenditures spent through end of FY26"),
+              ("hind/deck_aug.pdf", "HINDALCO", 24,
+               "Estimated total capital cost remains in the order of $5 billion – $3.8 billion capital "
+               "expenditures spent through end of Q1FY27")])
+    guidance.run(str(path), ["HINDALCO"])
+    got = {(r["metric"], r["target_period"], r["low"], r["high"], r["unit"]) for r in rows(path)}
+    assert ("project_capital_spent", "FY26", 3.2, 3.2, "usd_bn") in got
+    assert ("project_capital_spent", "Q1FY27", 3.8, 3.8, "usd_bn") in got
+    assert ("project_capital_cost", "FY26", 5.0, 5.0, "usd_bn") in got    # the total is still its own metric
+    assert not [r for r in rows(path) if r["metric"] == "capex"], "a project spend is not one year's capex"
+    for row in rows(path, "metric='project_capital_spent'"):
+        assert row["quote"] and row["said_on"] and row["page"]
+
+
+def test_the_review_leftovers_are_not_targets():
+    """The eight quotes the controller's second hand read found wrong: each one's rule keeps it out."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_leftovers.db"
+    docs = [("infy/call.pdf", "INFY", "deck", "2026-04-27", "2026-04-27T20:35:44"),
+            ("kec/call.pdf", "KEC", "deck", "2026-08-11", "2026-08-14T15:30:00"),
+            ("hind/call.pdf", "HINDALCO", "deck", "2026-02-12", "2026-02-12T17:00:00"),
+            ("sun/call.pdf", "SUNPHARMA", "deck", "2026-10-28", "2026-10-28T17:41:16")]
+    pages = [
+        ("infy/call.pdf", "INFY", 1, "The impact of Optimum Healthcare, Stratus and Versent on operating margin "
+                                    "will be approximately 0.7% on a full year annualized basis post closure."),
+        ("kec/call.pdf", "KEC", 1, "So typically, we have been spending around INR250 crores, INR300 crores of "
+                                  "capex."),
+        ("kec/call.pdf", "KEC", 2, "What is the capex for FY26? But largely in Orissa, I think, INR1,000 crores in "
+                                  "Orissa and INR600 crores would be in MP."),
+        ("kec/call.pdf", "KEC", 3, "Now, whether the quantum will be 25 basis points or 50 basis points, difficult "
+                                  "to quantify, which is why we are holding back."),
+        ("hind/call.pdf", "HINDALCO", 1, "Underlying Adjusted EBITDA per tonne remains at ~$500/t excluding impacts "
+                                        "of tariffs and Oswego fires incident Oswego Hotmill to restart in late Q1 "
+                                        "FY27 By 2030 Guidance and Updates"),
+        ("sun/call.pdf", "SUNPHARMA", 1, "China: Scaled platform, with multiple opportunities to accelerate presence "
+                                        "China is a large, growing market with strong innovation pipeline Organon "
+                                        "provides at scale platform for expansion $800 Mn+ revenue 8 large brands "
+                                        "Potential to drive further growth $150 Bn+ market in 2025 5-7%+ expected "
+                                        "growth over coming year 2000+ innovative products in development"),
+        ("sun/call.pdf", "SUNPHARMA", 2, "As all of you know we are focusing on innovation today, Sun Pharma's 20% "
+                                        "of the sales comes from innovation, but with the addition of both Organon "
+                                        "and Sun, the total revenue would be 27% of a combined business."),
+    ]
+    write_db(path, docs, pages)
+    guidance.run(str(path), ["INFY", "KEC", "HINDALCO", "SUNPHARMA"])
+    quotes = " ".join(r["quote"] for r in rows(path))
+    for needle in ("impact of Optimum", "have been spending", "in Orissa", "difficult to quantify",
+                   "remains at ~$500", "China is a large", "of a combined business"):
+        assert needle not in quotes, f"still a target: {needle}"
+    assert not rows(path), [r["quote"] for r in rows(path)]
+    # each rule on its own
+    assert guidance.IMPACT_OF_ON.search("the impact of X and Y on operating margin will be 0.7%")
+    assert guidance.HEDGE.search("whether it will be 25 or 50 basis points, difficult to quantify")
+    assert guidance.PAST_ONLY.search("we have been spending around INR250 crores")
+    assert not guidance.PAST_ONLY.search("we have been talking about 8% to 8.5% for the year")
+    place = ("But largely in Orissa, I think, INR1,000 crores in Orissa and INR600 crores would be in MP.")
+    picked = guidance.pick_number(place, guidance.numbers(place))
+    assert picked is not None and picked["low"] == 600
+    assert guidance.subject_ok("capex", place, picked, "What is the capex for FY26?") is False
+    market = "China is a large, growing market and 5-7% growth is expected over the coming year"
+    pct = [n for n in guidance.numbers(market) if n["unit"] == "pct"][0]
+    assert guidance.subject_ok("revenue_growth", market, pct, "") is False
+    share = "the total revenue would be 27% of a combined business"
+    chosen = guidance.pick_number(share, guidance.numbers(share))
+    assert chosen is not None and chosen["low"] == 27
+    assert guidance.subject_ok("revenue_growth", share, chosen, "") is False
+    ok = "We expect revenue growth of 12% to 15% for FY27."
+    assert guidance.subject_ok("revenue_growth", ok, guidance.numbers(ok)[0], "") is True
+
+
+def test_a_restated_estimate_that_still_remains_is_a_target():
+    """The counter-case to ``remains at``: a guidance word before the number keeps the row (a hand read found this
+    one true on BAJFINANCE's Q1 FY27 call)."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_remains.db"
+    write_db(path, [("baj/call.pdf", "BAJFINANCE", "deck", "2026-07-23", "2026-07-23T17:00:00")],
+             [("baj/call.pdf", "BAJFINANCE", 6,
+               "The AUM growth estimates of AUM remain at 24 to 25% aided by new lines")])
+    guidance.run(str(path), ["BAJFINANCE"])
+    got = [(r["metric"], r["low"], r["high"], r["unit"]) for r in rows(path)]
+    assert ("aum_growth", 24.0, 25.0, "pct") in got, got

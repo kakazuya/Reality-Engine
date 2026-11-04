@@ -3,10 +3,15 @@
 CLI: ``python -m reality_engine.pilot3.guidance --out <db> [--symbols KEC,BAJFINANCE,HINDALCO] [--limit-docs N]``
 
 One row per forward-looking numeric target stated in a held transcript, deck, results file or press release:
-metric (revenue_growth, ebitda_margin, order_intake, nim, credit_cost, aum_growth, capex, cost_of_production,
-interest_cost, ebitda_per_tonne, other), target period, low/high, unit, direction, the exact sentence, the speaker
-(a transcript), the filing date and ``known_at``, and ``revision_of`` = the previous row of the same metric+period,
-so a "what did they guide and did it change" question answers from one table.
+metric (revenue_growth, ebitda_margin, order_intake, nim, credit_cost, aum_growth, capex, project_capital_cost,
+project_capital_spent, cost_of_production, interest_cost, ebitda_per_tonne, other), target period, low/high, unit,
+direction, the exact sentence, the speaker (a transcript), the filing date and ``known_at``, and ``revision_of`` =
+the previous row of the same metric+period, so a "what did they guide and did it change" question answers from one
+table.
+
+A project's spend to date ("$3.2 billion capital expenditures spent through end of FY26") is a true fact beside the
+project's total cost: family E blanks it out of the range parser, so it is stored as its own row,
+``project_capital_spent`` = the amount with the period the sentence names (T-056 family D).
 
 Input is this database's own ``doc_page`` (transcripts read through ``transcript_statement`` so only management
 sentences are stored, with their role and call period; decks/results/press releases are split into sentences and
@@ -55,7 +60,12 @@ PAST_ONLY = re.compile(r"\b(achieved|stood at|reported|last year|lask year|previ
                        r"declined by|margin of \d|up \d+% (?:yoy|year-on-year|y-o-y)|"
                        # T-049, 4 Nov 2026: a reported quarter's cost ("was impacted by ... $54 million",
                        # "Adjusted EBITDA down 9% YoY", "came in at $506") was stored as a forward target
-                       r"down \d+(?:\.\d+)?\s*%\s*(?:yoy|year-on-year|y-o-y|q[1-4])|impacted by|came in at)\b", re.I)
+                       r"down \d+(?:\.\d+)?\s*%\s*(?:yoy|year-on-year|y-o-y|q[1-4])|impacted by|came in at|"
+                       # T-056 review: a habitual spend ("have been spending") is an actual, not a target;
+                       # "have been talking about 12-15%" is still guidance.  "in the Q2 level" is NOT added here:
+                       # two graded checkpages entries on one metals deck page are found only by that row, and the
+                       # fixture's recorded baseline needs both (reported, not settled)
+                       r"(?:have|has|had) been (?:spending|investing|incurring|committing)|remained at)\b", re.I)
 # a percentage that is the rate OF something else ("232 aluminium tariffs at 50%", "a duty of 10%") is not a
 # company target (T-049, 4 Nov 2026: a tariff rate was stored as an FY26 EBITDA margin)
 RATE_OF = re.compile(r"\b(?:tariffs?|duty|customs duty|levy|surcharge|tax rate|repo rate)\b[^.%]{0,40}"
@@ -71,6 +81,14 @@ MACRO = re.compile(r"\b(gdp|inflation|economy|economic growth|imf|world bank|rep
 GUIDED_ACTUAL = re.compile(r"\b(?:within|midpoint of)\b[^.]{0,60}?\bguid", re.I)
 # "this is really how we will report going forward": a reporting basis, not a target (T-056 family C)
 REPORT_BASIS = re.compile(r"\bthis is (?:really )?(?:how we|the way we) (?:will |would )?(?:report|book)\b", re.I)
+# an effect on a metric is not that metric's level (T-056 review: "the impact of X on operating margin will be 0.7%")
+IMPACT_OF_ON = re.compile(r"\bimpacts?\s+of\b[^.]{0,120}?\bon\b", re.I)
+# a hedge names no target ("whether it will be 25 or 50 basis points, difficult to quantify")
+HEDGE = re.compile(r"\b(?:difficult|hard|impossible|not possible|unable|too early) to "
+                   r"(?:quantify|predict|say|estimate|comment|commit|give)\b", re.I)
+# "EBITDA per tonne remains at ~$500/t" with no future word before the number is the actual, not a target; a
+# guidance word before it ("the AUM growth estimates … remain at 24 to 25%") keeps the row (T-056 review)
+REMAINS_AT = re.compile(r"\bremains? at\b", re.I)
 # `other` is kept only with a guidance word in the same clause as the number (T-056 family F): a level of the
 # order book, L1 position or debtors is a fact about the business, not a target.
 OTHER_CUE = re.compile(r"\b(?:target\w*|expect\w*|guide\w*|aim\w*|would be|will be|should be)\b", re.I)
@@ -95,6 +113,9 @@ METRICS = (
     # a project's whole capital cost is not one year's capex (T-056 family E)
     ("project_capital_cost", re.compile(r"total (?:project )?capital cost|project capital cost|total capital cost",
                                         re.I), 1.0, 5000000.0),
+    # the spend so far on that project is its own true fact, emitted beside the total (T-056 family D); it is never
+    # a candidate read from a sentence pattern, so it can never pass as a year's capex
+    ("project_capital_spent", re.compile(r"capital expenditures?\s+spent|spent\s+through", re.I), 1.0, 5000000.0),
     ("capex", re.compile(r"\bcapex\b|capital expenditure|capital cost", re.I), 1.0, 5000000.0),
     ("interest_cost", re.compile(r"interest cost|interest expense|interest as %|finance cost", re.I), 0.0, 5000.0),
     ("cost_of_production", re.compile(r"cost of production|cash cost|cost inflation|inflation in cost|"
@@ -125,7 +146,7 @@ R_PCT_SINGLE = re.compile(r"(?<![\d.])" + AMT + r"\s*%")
 R_BPS_SINGLE = re.compile(AMT + r"\s*(?:bps|basis points)", re.I)
 R_PER_TON = re.compile(MONEY + r"?\s*" + AMT + r"\s*(?:/t\b|per ton|per tonne|a ton)", re.I)
 BULLETS = re.compile(r"[▪•❑●]")
-# a running header/footer printed into the page text ("KEC International Limited August 11, 2026 Page 14 of 23")
+# a running header/footer printed into the page text ("… Limited August 11, 2026 Page 14 of 23")
 HEADER_TAIL = re.compile(r"^.{0,120}?\bPage \d+ of \d+[ \t]+", re.I)
 
 
@@ -215,6 +236,18 @@ def numbers(text: str) -> list[dict]:
         v = _num(m.group(1))
         if v is not None and v >= 1:
             add(m.start(), m.end(), v, v, _per_ton_unit(m.group(0)))
+    return out
+
+
+def spends(text: str) -> list[dict]:
+    """Amounts spent to date ("$3.2 billion capital expenditures spent through end of FY26"): the numbers
+    ``numbers`` blanks so they cannot pair with a project's total, kept as their own true fact (T-056 family D)."""
+    out: list[dict] = []
+    for m in ACTUAL_SPEND.finditer(text):
+        v = _num(m.group(1))
+        if v is not None:
+            out.append({"start": m.start(), "end": m.end(), "low": v, "high": v,
+                        "unit": _money_unit(m.group(2), m.group(0))})
     return out
 
 
@@ -356,6 +389,7 @@ METRIC_UNITS = {
     "interest_cost": {"pct", "inr_cr", "inr", "inr_lakh"},
     "order_intake": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn", "count"},
     "project_capital_cost": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
+    "project_capital_spent": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
     "capex": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
     # a per-tonne target is often said as a bare "$250", converted to usd_per_t / inr_per_t below
     "ebitda_per_tonne": {"usd_per_t", "inr_per_t", "usd", "inr"},
@@ -382,7 +416,7 @@ def metric_candidates(symbol: str, sentence: str, before: str, after: str) -> li
     seen: list[str] = []
     for text in (sentence, before[-300:], after[:150]):
         for name, rx, _lo, _hi in METRICS:
-            if name == "other" or not rx.search(text) or name in seen:
+            if name in ("other", "project_capital_spent") or not rx.search(text) or name in seen:
                 continue
             if name == "ebitda_margin" and profile.is_lender(symbol) and not re.search(r"ebitda", text, re.I):
                 name = "nim"          # a lender's "margin" is its NIM
@@ -419,9 +453,14 @@ def plausible(metric: str, low: float, high: float, unit: str) -> bool:
 # --- the metric must be the target's subject (T-049 review, 4 Nov 2026) -------------------------------
 GROWTH_METRICS = {"revenue_growth", "aum_growth"}
 GROWTH_NEAR = re.compile(r"\b(growth|grew|grow\w*|increase[sd]?|decrease[sd]?|declin\w*|rise[s]?|expansion)\b", re.I)
+# the market's growth is not the company's target (T-056 review: "China is a large, growing market … 5-7%+ growth")
+MARKET_OWNS = re.compile(r"\bmarkets?\b[^.;]{0,60}$", re.I)
+# a place's share of a split total ("INR1,000 crores in Orissa and INR600 crores would be in MP")
+PLACE_IN = re.compile(r"\bin\s+[A-Z][A-Za-z]{1,20}\b")
 # a share of a total ("60% of our supply", "25% of turnover", "13% share") is not a margin, a level or a rate
 SHARE_NOUN = re.compile(r"^\s*(?:share|of\s+share)\b"
                         r"|\b(?:share|proportion)\s+of\b"
+                        r"|\bof\s+(?:an?)\b"
                         r"|\bof\s+(?:our|the|my|its)\s+(?:overall\s+|total\s+)?"
                         r"(?:[\w-]+\s+){0,2}(?:supply|sourcing|requirement|costs?|turnover|revenue|sales|income|profit)\b",
                         re.I)
@@ -442,7 +481,8 @@ def subject_ok(metric: str, sentence: str, chosen: dict, before: str, symbol: st
     year" for the same reason, and "our net debt ... within our targeted average borrowing levels of 2,500 crore" as
     an interest-cost target.  The rules now:
       * a share of a total ("60% of our supply", "25% of turnover", "13% share") is never a margin or a level,
-        only ``other`` (a market share);
+        only ``other`` (a market share), and neither is a place's share of a split total ("INR1,000 crores in
+        Orissa and INR600 crores in MP") nor a market's growth ("China is a large, growing market … 5-7% growth");
       * a rate of change is not a level: "a 10% reduction" is not an interest-cost level of 10%, and "we grow at
         15%" is not a margin of 15% (a growth metric is the one class where the rate *is* the target);
       * when the sentence names a metric, the chosen metric must be one of them (the number is already required to
@@ -452,6 +492,11 @@ def subject_ok(metric: str, sentence: str, chosen: dict, before: str, symbol: st
         subject of its own (net debt, order book, supply, turnover, a cost) on either side."""
     if metric != "other" and SHARE_NOUN.search(sentence[chosen["end"]:chosen["end"] + 32]):
         return False
+    if metric != "other" and PLACE_IN.search(sentence[chosen["end"]:chosen["end"] + 45]) \
+            and re.search(MONEY + r"\s*\d", sentence[:chosen["start"]], re.I):
+        return False                    # a place's share of a total split across places (T-056 review)
+    if metric in GROWTH_METRICS and MARKET_OWNS.search(sentence[max(0, chosen["start"] - 70):chosen["start"]]):
+        return False                    # the market's growth, not the company's (T-056 review)
     left = sentence[max(0, chosen["start"] - 70):chosen["start"]]
     right = sentence[chosen["end"]:chosen["end"] + 30]
     if metric not in GROWTH_METRICS and GROWTH_NEAR.search(left + " " + right):
@@ -603,7 +648,24 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             items.append((s, s, speaker))
     call_period = statements[0]["call_period"] if statements else None
     docper = doc_period(doc["filing_date"], doc["known_at"])
+    # a project spend to date is a true fact beside the total (T-056 family D): the range parser blanks it so it
+    # cannot pair with the total, and it gets its own row with the period the sentence names ("end of FY26" -> FY26,
+    # "end of Q1FY27" -> Q1FY27, "end of Q3FY26" -> Q3FY26)
     rows = []
+    seen_spend: set[tuple] = set()
+    for sentence, quote, speaker in items:
+        if not 20 < len(sentence) < 500:
+            continue
+        for sp in spends(sentence):
+            period = _explicit_period(sentence, sp["start"])
+            key = (period, sp["low"], sp["high"], sp["unit"])
+            if not period or key in seen_spend:
+                continue
+            seen_spend.add(key)
+            rows.append((symbol, doc["isin"], "project_capital_spent", period, sp["low"], sp["high"], sp["unit"],
+                         direction_of(sentence, "project_capital_spent"),
+                         (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
+                         speaker, doc["known_at"], "doc.known_at", None, "guidance_cue_v1"))
     for sentence, quote, speaker in items:
         if len(sentence) < 30 or len(sentence) > 400:
             continue
@@ -611,9 +673,10 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                 r"\b(?:okay|ok|right|no|correct|fine)\?[\"'”’)]*$", sentence, re.I):
             stats["question"] += 1
             continue                    # a question is never a target (T-056 family G; "…INR400 crores, okay?" is)
-        if GUIDED_ACTUAL.search(sentence) or REPORT_BASIS.search(sentence):
+        if GUIDED_ACTUAL.search(sentence) or REPORT_BASIS.search(sentence) or IMPACT_OF_ON.search(sentence):
             stats["guided_actual"] += 1
-            continue                    # the result quoted against the guided range (T-056 family C)
+            continue                    # the result quoted against the guided range, a reporting basis or an
+                                        # effect on the metric, never its level (T-056 families C and the review)
         nums = numbers(sentence)
         if not nums:
             continue
@@ -667,11 +730,15 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if rate and rate.start() <= chosen["start"] <= rate.end():
             stats["rate_not_target"] += 1
             continue                        # the number is the rate of a tariff/duty, not a target
+        if HEDGE.search(sentence[chosen["start"]:chosen["start"] + 90]):
+            stats["hedge"] += 1
+            continue                        # "whether it will be 25 or 50 basis points, difficult to quantify"
         if not subject_ok(metric or "other", sentence, chosen, before, symbol):
             stats["no_subject"] += 1
             continue                        # the metric is not the target's subject (a share, net debt, growth)
         cues = [m.start() for m in CUE.finditer(sentence)]
-        if PAST_ONLY.search(sentence) and cues and chosen["start"] < min(cues):
+        if (PAST_ONLY.search(sentence) or REMAINS_AT.search(sentence)) and cues \
+                and chosen["start"] < min(cues):
             stats["past_only"] += 1
             continue                        # the number is the measurement, the forward part has no number
         if PAST_ONLY.search(sentence) and not OWN_PERIOD.search(sentence):

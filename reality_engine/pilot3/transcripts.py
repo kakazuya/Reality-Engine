@@ -65,6 +65,7 @@ PERSON_RX = re.compile(r"[A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){1,3}"
 NON_NAME_RX = re.compile(r"\b(?:transcript|call|conference|investor|investors|presentation|earnings|results|"
                          r"dialogue|session)\b", re.I)
 PAGE_NO_RX = re.compile(r"^[ \t]*Page \d+ of \d+[ \t]*$", re.M)
+DIGITS_RX = re.compile(r"\d+")
 DATE_LINE_RX = re.compile(r"^[ \t]*(?:" + MONTHS + r") \d{1,2}, \d{4}[ \t]*$", re.M)
 CALL_DATE_RX = re.compile(r"(" + MONTHS + r") (\d{1,2}), (\d{4})")
 ABBR = ("Mr", "Ms", "Mrs", "Dr", "Rs", "No", "vs", "Inc", "Ltd", "approx", "Sr", "Jr", "St", "Co", "Corp", "etc", "i.e", "e.g", "FY", "Q")
@@ -143,10 +144,12 @@ def call_date_of(first_page: str, known_at: str | None) -> str | None:
 
 
 def boilerplate_lines(pages: list[str]) -> set[str]:
-    """Lines that repeat on at least 60% of the pages (company name, running headers)."""
+    """Lines that repeat on at least 60% of the pages (company name, running headers).  Digits are normalised
+    before the comparison, so a footer whose page number changes ("… Limited 3", "… Limited 4") is one line
+    (T-056 review)."""
     c = Counter()
     for t in pages:
-        for l in {x.strip() for x in t.split("\n") if x.strip()}:
+        for l in {DIGITS_RX.sub("#", x.strip()) for x in t.split("\n") if x.strip()}:
             c[l] += 1
     n = max(len(pages), 1)
     return {l for l, k in c.items() if k >= max(3, 0.6 * n) and len(l) < 80}
@@ -164,7 +167,7 @@ def mask_noise(text: str, boiler: set[str]) -> str:
             blank(m.start(), m.end())
     pos = 0
     for line in text.split("\n"):
-        if line.strip() in boiler and not SPEAKER_RX.match(line):
+        if DIGITS_RX.sub("#", line.strip()) in boiler and not SPEAKER_RX.match(line):
             blank(pos, pos + len(line))
         pos += len(line) + 1
     return "".join(w)
@@ -394,6 +397,14 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
             if role == "moderator" and QA_START_RX.search(w[a:b]):
                 section = "qa"
             prev_role = role
+    # a media call has no moderator, so QA_START_RX (the moderator's words) never fires: the first participant
+    # line from the journalists/analysts list opens the Q&A instead (T-056 review)
+    if not any(seg[6] == "moderator" for seg in segments):
+        first = next((k for k, seg in enumerate(segments)
+                      if seg[6] == "analyst" and any(_same_person(n, seg[5]) for n in p_analysts)), None)
+        if first is not None:
+            for seg in segments[first:]:
+                seg[7] = "qa"
     # structural fallback (T-056): in the Q&A a name that answers right after an analyst 3+ times, and that the
     # moderator never introduced as an analyst, is management.  Everyone else stays unknown and is only counted.
     after_analyst: Counter = Counter()
@@ -417,6 +428,8 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
             st["unknown_speakers"][name] += 1
             continue
         for (s0, e0) in split_sentences(w[a:b], a):
+            while s0 < e0 and not w[s0].strip():
+                s0 += 1               # a masked running footer at the segment start ("… Limited 3") is not a quote
             q = raw[s0:e0].strip()
             if len(q) < 25 or not re.search(r"[A-Za-z]{3}", q):
                 continue

@@ -50,8 +50,13 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   mark only in a document with fewer than five real colon marks, and only for a participant name or a line repeated
   3+ times with speech after it; in the Q&A a name answering after an analyst 3+ times, never introduced as an
   analyst, is management. Analysts and journalists are never stored; an unplaceable speaker is counted in
-  `unknown_speakers`. Measured on the pilot10 copy: ETERNAL 691 rows (3 management speakers, the analysts 0), INFY
-  2,512 (Salil Parekh md, Jayesh Sanghrajka cfo, Rishi Basu and Nandan Nilekani mgmt, the journalists 0), KEC 1,803
+  `unknown_speakers`. Two more rules close the 4 Nov review: a running footer whose page number changes ("External
+  Document © 2026 Infosys Limited 3") is boilerplate, because the repeat count normalises digits before comparing
+  lines, so it is masked and never sits in a quote; and a media call has no moderator, so the moderator-keyed Q&A
+  marker never fires — when a document has no moderator, the first participant line from the journalists/analysts
+  list opens `qa`. Measured on the pilot10 copy: ETERNAL 691 rows (3 management speakers, the analysts 0), INFY
+  2,478 (Salil Parekh md, Jayesh Sanghrajka cfo, Rishi Basu and Nandan Nilekani mgmt, the journalists 0; all four
+  calls now carry a prepared/qa split), KEC 1,803
   unchanged; HDFCBANK/HINDALCO/SUNPHARMA gained their real participants (Keki Mistry, Kaizad Bharucha, Steve Fisher,
   Dilip Shanghvi, Kirti Ganorkar, Jayashree Satagopan), BAJFINANCE/HINDUNILVR/SBILIFE unchanged, MARUTI 0 (one-page
   cover letters).
@@ -63,8 +68,22 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   `credit_cost` are read only for a lender whose profile sector is nbfc or bank; a segment's number is not the
   company's metric; `other` needs its guidance word in the number's own clause; a question is never a target; and the
   run dedupes on `(symbol, metric, period, low, high, unit, said_on)`, so BSE/NSE copies and several pages of one
-  document are one row while a later restatement stays. State on the pilot10 copy: 69 rows (INFY's FY27 guidance is
-  one row per date, HINDUNILVR keeps only the 22.5-23.5 mid-term band). Before loop 3, precision was 28/40 (4 Nov).
+  document are one row while a later restatement stays. The spend that family D masks is not lost: it is stored
+  beside the total as `project_capital_spent` (low = high = the amount, unit usd_bn/inr_cr, `target_period` = the
+  period the sentence names — "end of FY26" → FY26, "end of Q1FY27" → Q1FY27, "end of Q3FY26" → Q3FY26), so the total
+  stays `project_capital_cost` and no annual capex answer can pick the spend up.
+  A second read of all 69 rows (4 Nov review) found eight more wrong rows; seven general rules close them: an
+  "impact of X on <metric>" sentence is an effect, not a level (`IMPACT_OF_ON`); a hedge ("difficult to quantify") is
+  no target (`HEDGE`); "have been spending" is past while "have been talking about 12-15%" is still guidance
+  (`PAST_ONLY`); a place's share of a split total ("INR1,000 crores in Orissa and INR600 crores would be in MP") and a
+  market's growth ("China is a large, growing market … 5-7% growth") are not the company's number (`PLACE_IN`,
+  `MARKET_OWNS`); "27% of a combined business" is a share (`SHARE_NOUN`); and "remains at ~$500/t" with no guidance
+  word before the number is the actual, while "the AUM growth estimates … remain at 24 to 25%" keeps its row
+  (`REMAINS_AT`). One is left, reported not settled: HINDALCO's Q2 cost-of-production 3-4% row stays, because two
+  graded checkpages entries cite that page and the fixture baseline needs both. State on the pilot10 copy after the
+  review: 67 rows (BAJFINANCE 6, HDFCBANK 1, HINDALCO 31, HINDUNILVR 1, INFY 14, KEC 13, SBILIFE 1; ETERNAL, MARUTI
+  and SUNPHARMA none), and `checkpages run` holds 145 / 314 (KEC 29, BAJFINANCE 59, HINDALCO 57) — the fixture's
+  baseline. Before loop 3, precision was 28/40 (4 Nov).
 - **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
   `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
   writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into
@@ -100,6 +119,7 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
 | 4 Nov | answer_check after KPI + dates merges | 134 match, no match lost |
 | 4 Nov | embeddings, 112 gold questions, top 10 | bm25 35%, bm25+1B 46%, bm25+8B 52%; images add nothing |
 | 4 Nov | loop 3: speakers + guidance precision, A1 on the pilot10 copy | A1 **662/898** (651 before; KEC 51 → 62, every other company level); statements ETERNAL 691 / INFY 2,512 / KEC 1,803; guidance 69 rows |
+| 4 Nov | loop 3 fix: `project_capital_spent`, seven review rules, footer/media-call speakers | `checkpages run` **145 / 314** (29 / 59 / 57) — the fixture baseline; statements INFY 2,478; guidance 67 rows (5 of them the project spend); A1 662/898 held |
 
 Open from the 4 Nov grade: data not held (RBI repo path, national capex), one part of two-part questions missed,
 definitions not reconciled (BHFL share of profit, ROCE), KEC transcripts stored twice (website + exchange copy).
