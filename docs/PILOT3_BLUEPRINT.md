@@ -42,8 +42,35 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   (Hindalco FY26 operating cash flow: 10,250 cr XBRL vs 21,858 cr company bridge).
 - **KPIs**: rule-based readers for sentences, tables (columns mapped to period headers), charts, segment-mix tables
   (`mix_v1`), entity headings (consolidated / standalone / subsidiary). Lexicon families in `pilot3/lexicon/`
-  (common, lenders, metals, orders, dimensions, topics). Period rules: a period can never start after its document's
-  date ("June 26, 2019" was once read as June 2026); a later deck restating an earlier quarter keeps that quarter.
+  (common, lenders, metals, orders, dimensions, topics; one file per sector since loop 3: `bank`, `insurance_life`,
+  `it_services`, `pharma`, `fmcg`, `auto_oem`, `consumer_internet`). A sector file declares `sectors: [...]` and an
+  entry applies only to companies of those sectors in a `--profile` build (no profile, the pilot3 three: only the
+  families marked `no_profile: true` — lenders, metals, orders — apply, exactly as before). An entry may also carry
+  `strict` labels: the sentence reader uses those when given (the value must follow the term, so "deposits ... margin"
+  chart fragments yield no row) while table rows keep the plain `labels`. Period rules: a period can never start
+  after its document's date ("June 26, 2019" was once read as June 2026); a later deck restating an earlier quarter
+  keeps that quarter; a results table's bare dates are relabelled from the group headings above them ("Quarter
+  ended | Half Year ended | Year ended"), so a half-year column over 30.09.2026 is `H1FY27`, not `Q2FY27` — the
+  group is the contiguous run of columns a heading is centred over and the year-to-date block starts where a column
+  repeats the first column's date (Q2FY27 and H1FY27 both end 30.09.2026), so a 31.03.2026 column under "Quarter
+  ended" is `Q4FY26`, not `FY26`, and only the first quarter column of a results table is read (the prior quarters
+  print in their own results). Under a `--profile` build a row whose period ends before `window_start` minus one
+  year is history and is dropped (`period_before_window`), and a table value must be a whole printed token (the
+  `791.0` inside `7,791.02`, the `0,37` decimal comma), a percentage at most `max_pct` (100 unless the entry says
+  otherwise), a day count at least one, and never a signed or negative count/money level; a row printing more values
+  than its table has columns is dropped (`column_mismatch`). The sentence reader refuses a value whose label sits on
+  another line with another label in between (a fact-sheet block), reads `from X to Y` as Y and `by N ... to/at M`
+  as M, does not treat the token after "compared to" as a second period, and refuses "impacted by", "larger than
+  $50 mn" and "$50 mn plus clients". On the pilot10 base (`l3_base.db`, A1 651/898) the loop-3 lexicons took A1 to
+  676/898 and the 4 Nov fix round to 677/898; the 5 Nov precision round 2 (outlier gate, long-document defaults,
+  table label ownership, sentence guards, trillion/USD units, `debt_to_equity` split) measures 674/898 on
+  `D:\RealityEngine\pilot10\scratch\w_kpi5.db` — above the 651 baseline, with BAJFINANCE 70 (baseline 71) and
+  HINDALCO 67 (baseline 69) the only companies below it (ETERNAL 68, HDFCBANK 75, HINDUNILVR 74, INFY 65, KEC 51,
+  MARUTI 61, SBILIFE 75, SUNPHARMA 68); outlier groups fell 28 -> 10 and the review rows per company and the
+  seed-20261109 hand read (KEC 16, BAJFINANCE 14, HINDALCO 15, HDFCBANK 14, SBILIFE 17, INFY 19, SUNPHARMA 20,
+  MARUTI 15, HINDUNILVR 18, ETERNAL 15 of 20 right) are in `w_kpi5_kpi_review.csv` and the DEVELOPER_GUIDE O2
+  bullet. `test_pilot3_kpi.py` 53 passed, `test_pilot3_core.py -m "not slow"` 29 passed, checkpages 314 checked /
+  145 found (KEC 29, BAJFINANCE 59, HINDALCO 57), so pilot3 is unchanged. The 4 Nov precision round 3 (T-061) on `w_kpi6.db` (fresh copy of `combined2.db`) measures A1 727/898 — BAJFINANCE 77, ETERNAL 67, HDFCBANK 80, HINDALCO 75, HINDUNILVR 77, INFY 66, KEC 64, MARUTI 76, SBILIFE 74, SUNPHARMA 71 — with KEC (64 vs 66) and HINDALCO (75 vs 76) below their baseline; the same build's seed-20261111 hand read of 20 rows per company scored KEC 18, BAJFINANCE 17, HINDALCO 12, HDFCBANK 16, SBILIFE 16, INFY 5, SUNPHARMA 14, MARUTI 15, HINDUNILVR 12, ETERNAL 16, so only KEC reaches 18/20 (`test_pilot3_kpi.py` 66 passed, checkpages 145). The T-064 three-fault round (4 Nov 2026) on `w_kpi7.db` (copy of `w_guid2.db`, all ten rebuilt once) fixes the segment-table total, the debt amount read as `net_debt_to_ebitda`, and the Q4 twin of flow ratios: A1 728/898 — BAJFINANCE 77, ETERNAL 68, HDFCBANK 81, HINDALCO 75, HINDUNILVR 77, INFY 66, KEC 64, MARUTI 76, SBILIFE 73, SUNPHARMA 71 — with KEC (64 vs 66) and HINDALCO (75 vs 76) below the combined3 baseline; both losses reproduce on a fresh build of the pre-T-064 `kpi.py` (the combined3 copy held KEC `order_intake` H1FY27/Q2FY27 and HINDALCO `copper_cathode_volume_kt` Q1FY27 rows that a fresh build does not). The seed-20261113 hand read of 20 quoted rows per company scored INFY 12, HINDALCO 7, HINDUNILVR 18 of 20: the 14 INFY segment rows, the HINDALCO debt-as-ratio rows and HINDUNILVR's "EBITDA as a % of TO" / Q4 ROE rows are gone, and the remaining misses are USD tables read as crore, six-month figures dated to the quarter, the year token "2026" read as revenue, capex commitments, and Novelis/business-segment income stored as the company total. `test_pilot3_kpi.py` 71 passed; `checkpages run` measured 139 (KEC 24, BAJFINANCE 59, HINDALCO 56) and also 139 with the pre-T-064 `kpi.py`. The T-066 KPI branch-line round (5 Nov 2026, `kpi.py` only, no lexicon change) restores the six numbers round 3 lost with two general rules: "YTD"/"till date"/"to date" are period qualifiers, not plan words (a first quarter's YTD intake is that quarter's intake), and a YTD flow takes the half-year/nine-month period its document reports (`_ytd_period`: Q2 -> H1FY, Q3 -> 9MFY; a stock such as an order book keeps its date), while "would" hedges a stated level but "will" still commits. `checkpages run` measures 145 again (KEC 29, BAJFINANCE 59, HINDALCO 57); 13 rows are added across the 314 checked pages and none removed (11 KEC, 2 HINDALCO, 0 BAJFINANCE); `test_pilot3_kpi.py` 72 passed. The rebuilt `w_kpi8.db` (copy of `w_kpi7.db`, KEC built once) measures A1 728/898 with KEC 64 and HINDALCO 75, the same totals as `w_kpi7.db`: KEC's `order_intake` now holds H1FY27 (3), H1FY26 (2), 9MFY26 (6) and Q1FY27 (13) rows beside FY26, so the H1FY27/Q2FY27 dev questions stay unmet for other reasons.
 - **Speakers** (`transcripts.py`, loop 3, 4 Nov 2026): management is placed by universal rules, no company name in
   code and the `people` lexicon not extended. A participants block on the first three pages names management with
   titles (`_title_role`: cfo / md / ir / mgmt) and the analysts/journalists under their headings; the moderator's

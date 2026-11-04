@@ -1,0 +1,17 @@
+# IT services KPI family (loop 2). Mix metrics are table rows: in a sentence a percentage has to sit right beside
+# the segment name, so prose that only mentions the geography or vertical yields no row.
+family: it_services
+sectors: [it_services]
+entries:
+  - {metric: revenue_usd, kind: money, unit: usd_mn, labels: ["revenues? (in|of) (us\\$|usd|\\$)", "revenues? \\(\\s*(us\\$|usd|\\$)", "^revenues?\\b"], neg: "growth|%|per cent|margin"}
+  - {metric: cc_growth, kind: pct, unit: pct, labels: ["constant currency( terms| revenue)?( growth)?", "\\bcc growth\\b", "growth in constant currency"], neg: "operating margin|eps|reported|adjusted|margin", strict: ["\\bcc growth\\b[^.]{0,6}?(?=\\d+(?:\\.\\d+)?\\s*%)", "constant currency(?: revenue)? growth\\s*(?:of|at|was|:)?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "growth in constant currency\\s*(?:of|at|was|:)?\\s*(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: deal_tcv, kind: money, unit: usd_mn, labels: ["large deal tcv", "large deals?[^.]{0,30}?tcv", "deal tcv", "\\btcv\\b", "large deals? (wins?|value)", "large deals"], neg: "% of|share|higher|growth"}
+  - {metric: utilisation, kind: pct, unit: pct, labels: ["utili[sz]ation"], neg: "offshore|capacity|plant"}
+  - {metric: attrition, kind: pct, unit: pct, labels: ["attrition"], neg: "voluntary|ltm|women"}
+  - {metric: headcount, kind: count, unit: count, labels: ["headcount", "total employees", "employees at (the )?end", "employee (count|strength)", "number of employees"], neg: "cash metrics|fcf|in us|added|net", strict: ["headcount\\s*(?:of|at|:)?\\s*(?=\\d)", "employees? at the end\\b[^.]{0,25}?(?=\\d)", "number of employees\\s*(?:of|at|:)?\\s*(?=\\d)"]}
+  - {metric: net_adds, kind: count, unit: count, labels: ["net (employee )?(additions|adds)", "net headcount (addition|adds)"], neg: "attrition"}
+  - {metric: offshore_mix, kind: pct, unit: pct, labels: ["offshore( revenue| effort| mix)?", "onsite[^.]{0,20}?offshore"], neg: "utili[sz]ation", strict: ["offshore (?:revenue|effort|mix)[^.]{0,20}?(?=\\d+(?:\\.\\d+)?\\s*%)", "onsite[^.]{0,20}?offshore[^.]{0,20}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: top_client_share, kind: pct, unit: pct, labels: ["top (5|10|20|25) clients?", "largest client", "top client"], neg: "together accounted for 12.9|growth", strict: ["top (?:5|10|20|25) clients?[^.]{0,30}?(?=\\d+(?:\\.\\d+)?\\s*%)", "largest clients?[^.]{0,25}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: dso, kind: days, unit: days, labels: ["days sales outstanding", "\\bdso\\b"]}
+  - {metric: subcontracting_cost, kind: pct, unit: pct, labels: ["sub-?contracting( and other)?( costs?| expenses?)?"], neg: "growth", strict: ["sub-?contracting (?:costs?|expenses?)[^.]{0,20}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+  - {metric: vertical_mix, kind: pct, unit: pct, labels: ["financial services", "manufacturing", "retail", "communication", "energy,? utilities", "life sciences", "hi-?tech"], neg: "gmbh|attrition|0\\.00|growth", strict: ["financial services\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "manufacturing\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "retail\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "communication\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "energy,? utilities[^.]{0,30}?(?=\\d+(?:\\.\\d+)?\\s*%)", "life sciences\\s*(?=\\d+(?:\\.\\d+)?\\s*%)", "hi-?tech\\s*(?=\\d+(?:\\.\\d+)?\\s*%)"]}
