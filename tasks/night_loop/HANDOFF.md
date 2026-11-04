@@ -1,10 +1,10 @@
 # Hand-off between loop sessions (each loop overwrites "Current state" and "Next", appends "Learnings")
 
-## Current state (loop 2, 4 Nov 2026 13:45 IST; full detail `loops/loop_02_report.md`)
-- `D:\RealityEngine\pilot10\pilot10.db` built from main, every part rc 0, 456 s in total. Baseline A1 dev 571/898 = 64%, `pilot10\scores\a1_loop02_base.json`. Do not rebuild it whole.
-- Workers running: `l2segments`, `l2structured` (Sonnet; `python tasks/night_loop/sonnet_worker.py status <name>`). Not merged. Candidate KEC transcripts on `scratch\c_kec*.db`.
-- 865 pages need OCR: `pilot10\logs\needs_ocr_pages.csv`. Not run.
-- Earlier state of loop 1 (question files, raw fetch, workers) is in `loops/loop_01_report.md`.
+## Current state (wrapper, 4 Nov 2026 18:40 IST, before loop 3)
+- Merged to main: `l2segments`, `l2structured`. Not merged: `Eagle-sonnet-l2kpi` (2690518, stopped at the limit, no report).
+- `D:\RealityEngine\pilot10\pilot10.db` predates both merges. Last measured baseline A1 dev 571/898 = 64%.
+- 865 pages need OCR: `pilot10\logs
+eeds_ocr_pages.csv`. Not run.
 
 ## Wrapper between loops 1 and 2 (05:00 IST)
 - Merged the qset fix worker (030725d): `qset check` on all 10 files: 1,305 questions, Q1 0 violations, Q2 every company
@@ -22,7 +22,7 @@
   `loops/loop_01_worker_generalise.md`), started 04:52 IST on DeepSeek; it is loop 2's first worker slot.
 
 ## Next
-Review the two workers, then rerun A1 on a copy with both branches. Open after that: MARUTI transcripts (needs a browser fetch), `transcript_statement` is empty for ETERNAL and INFY although their transcripts are held, sector KPIs in `kpi_series` (largest remainder), and the wrapper's call on the `guidance` metric name in A1.
+Loop 3: `loops/loop_03_brief.md` (printed comparatives T-057 first, then the KPI worker). DeepSeek workers until 06:30 IST on 5 Nov.
 
 ## Learnings (append one line each; newest last)
 - 3-4 Nov: full rebuilds (8 min) were the slow loop; per-company parts and fixed check pages are the fast loop.
@@ -45,3 +45,5 @@ Review the two workers, then rerun A1 on a copy with both branches. Open after t
 - 4 Nov loop 2: `--part stores|registry|pages --symbols X` runs `schema.create`, which drops the table for every company. Those parts must run on all 10 (under 4 minutes together); only kpi, transcripts and guidance are per company.
 - 4 Nov loop 2: a raw document can be added without code: append a manifest row with `local_path`, `bucket`, `dissem_ts`, then `docs_collect --symbols X`.
 - Wrapper 14:00 IST: loop 2 stopped at the Claude 5-hour limit (resets 17:40 IST), peak context 299k. Ready to merge: Eagle-sonnet-l2segments (ACCEPT). Sonnet workers l2structured and l2kpi share the same limit and stop with it; check `sonnet_worker.py status <name>` before restarting. Restart loop 2 after the reset: `powershell -NoProfile -ExecutionPolicy Bypass -File tasks/night_loop/start_loop.ps1 2`.
+- Wrapper 18:40 IST: the 13:54 stop came from 5 parallel Claude sessions on one account: Sonnet workers 58% of usage, the loop manager 23%, an open wrapper near 400k context 16%. `run_loop.py` and `sonnet_worker.py` now load only the MCP servers they need and no skills, which moved startup context only from about 48k to 44.8k. Shivam rejected a 150k context cap.
+- Wrapper 18:40 IST (Shivam): results tables print QoQ and YoY columns; XBRL does not. Check `doc_page` before calling a quarter missing. TTM = last full year + current year-to-date - prior year-to-date, from one filing.

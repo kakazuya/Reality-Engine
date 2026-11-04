@@ -1,7 +1,7 @@
 """Wrapper's launcher for one headless loop session (ops script, not product code).
 
 python tasks/night_loop/run_loop.py NN
-Runs `claude -p` (Opus 5.5, effort medium, Eagle config, same MCP servers) hidden, with the prompt pointing at
+Runs `claude -p` (Opus 5.5, effort medium, Eagle config, only the repo .mcp.json servers, no skills) hidden, with the prompt pointing at
 LOOP_BRIEF.md and loops/loop_NN_brief.md; kills it at 480k context or 6 hours; stream-json transcript to
 D:\\RealityEngine\\night_loop\\transcripts\\loop_NN.jsonl; prints a one-line summary.
 """
@@ -18,7 +18,8 @@ prompt = (f"You are night-loop session {n}. Read tasks/night_loop/LOOP_BRIEF.md 
           f"loops/loop_{n}_report.md and HANDOFF.md updated after every milestone, commit them, then stop.")
 cmd = [sr.CLAUDE, "-p", prompt, "--model", "claude-opus-5-5", "--effort", "medium",
        "--output-format", "stream-json", "--verbose", "--max-turns", "400",
-       "--dangerously-skip-permissions",
+       "--dangerously-skip-permissions", "--disable-slash-commands",
+       "--strict-mcp-config", "--mcp-config", str(REPO / ".mcp.json"),
        "--disallowedTools", "Agent,mcp__dsh-worker__merge_worker,mcp__dsh-worker__push,Bash(git push:*),Bash(git merge:*)"]
 out = Path(r"D:\RealityEngine\night_loop\transcripts")
 out.mkdir(parents=True, exist_ok=True)

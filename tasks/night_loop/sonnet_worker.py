@@ -57,8 +57,13 @@ def run(name, brief, hours):
               f"merges, no pushes, no paid calls, never read D:/Shivam_Private or print keys. Run the brief's fast "
               f"checks one test file per process (.tmp is denied to you: use pytest tmp_path or D:/RealityEngine/pilot10/scratch). Update the docs the brief names (no docs, no merge). End with the "
               f"report the brief asks for, including a 'Docs updated:' line.")
+    servers = json.loads((REPO / ".mcp.json").read_text())["mcpServers"]  # a code worker needs data and code tools only
+    servers = {k: servers[k] for k in ("reality-data", "code-tools")}
+    servers["code-tools"]["env"]["CODE_TOOLS_ROOT"] = str(tree).replace("\\", "/")
+    (d / "mcp.json").write_text(json.dumps({"mcpServers": servers}))
     cmd = [sr.CLAUDE, "-p", prompt, "--model", "claude-sonnet-5-5", "--effort", "medium",
            "--output-format", "stream-json", "--verbose", "--max-turns", "300", "--dangerously-skip-permissions",
+           "--disable-slash-commands", "--strict-mcp-config", "--mcp-config", str(d / "mcp.json"),
            "--disallowedTools", "Agent,mcp__dsh-worker__merge_worker,mcp__dsh-worker__push,Bash(git push:*),Bash(git merge:*)"]
     env = sr.child_env({"CLAUDE_CONFIG_DIR": r"C:\Users\warri\.claude", "GIT_AUTHOR_NAME": "kakazuya (Eagle)",
                         "GIT_COMMITTER_NAME": "kakazuya (Eagle)"})

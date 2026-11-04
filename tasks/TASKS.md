@@ -41,6 +41,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-034 | DOING Wolf | P1 | Pilot: page text for the thin BAJFINANCE, HINDALCO and KEC documents, by HP TextRecognizer | accept: Shivam | from: PROTOTYPE3 grade change 2 | opened 2026-11-02
 - T-040 | OPEN | P1 | Pilot: OCR every page of the 3 companies and mark each extracted number confirmed or disputed against the text layer | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-052 | OPEN | P1 | pilot3 OCR run to completion over every needs_ocr page (sandbox and pages.db), then rebuild pilot3.db with the OCR pages | accept: Shivam | from: Shivam, 3 Nov | opened 2026-11-03
+- T-057 | OPEN | P1 | Printed QoQ and YoY comparatives from quarterly results tables into pilot10, feeding TTM, YoY and QoQ (Shivam 4 Nov) | accept: python -m pytest reality_engine/tests/test_pilot3_comparatives.py -q | from: Shivam 4 Nov | opened 2026-11-04
 
 ## Schema and question map
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02

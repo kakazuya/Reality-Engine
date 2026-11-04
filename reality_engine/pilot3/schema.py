@@ -58,6 +58,23 @@ TABLES: dict[str, str] = {
         market_cap REAL, trailing_eps REAL, trailing_pat REAL, net_worth REAL, net_debt REAL,
         trailing_ebitda REAL, pe REAL, pb REAL, ev_ebitda REAL, dividend_yield_pct REAL,
         known_at TEXT, known_at_source TEXT, input_refs TEXT)""",
+    # T-056 loop 2: deals, insider trades and the relative price against an index (stores.py).  A company with
+    # none has no rows: "no deals" is the true answer.
+    "bulk_block_deal": """CREATE TABLE bulk_block_deal (
+        symbol TEXT, isin TEXT, deal_date TEXT, client_name TEXT, deal_type TEXT, buy_sell TEXT, quantity REAL,
+        trade_price REAL, exchange TEXT, is_marquee_institution INTEGER,
+        known_at TEXT, known_at_source TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT)""",
+    "insider_trade": """CREATE TABLE insider_trade (
+        symbol TEXT, isin TEXT, source TEXT, source_key TEXT, person_name TEXT, person_category TEXT,
+        transaction_type TEXT, mode TEXT, security_type TEXT, qty REAL, value_inr REAL, before_pct REAL,
+        after_pct REAL, trade_from TEXT, trade_to TEXT, intimation_date TEXT,
+        known_at TEXT, known_at_source TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT)""",
+    "index_price": """CREATE TABLE index_price (
+        symbol TEXT, isin TEXT, index_name TEXT, date TEXT, index_close REAL, stock_close REAL, stock_adj_close REAL,
+        stock_return_1m REAL, stock_return_3m REAL, stock_return_6m REAL, stock_return_12m REAL,
+        index_return_1m REAL, index_return_3m REAL, index_return_6m REAL, index_return_12m REAL,
+        relative_return_1m REAL, relative_return_3m REAL, relative_return_6m REAL, relative_return_12m REAL,
+        known_at TEXT, known_at_source TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT)""",
     # one row per forward-looking numeric target (guidance.py).  ``doc_key`` is the ticket's ``doc_id``; the
     # column is named ``doc_key`` like every other pilot3 table.
     "guidance": """CREATE TABLE guidance (
@@ -82,6 +99,9 @@ INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_vd ON valuation_daily(symbol, date)",
     "CREATE INDEX IF NOT EXISTS ix_sc ON share_capital(symbol, as_of_date)",
     "CREATE INDEX IF NOT EXISTS ix_div ON dividend_event(symbol, ex_date)",
+    "CREATE INDEX IF NOT EXISTS ix_bbd ON bulk_block_deal(symbol, deal_date)",
+    "CREATE INDEX IF NOT EXISTS ix_ins ON insider_trade(symbol, intimation_date)",
+    "CREATE INDEX IF NOT EXISTS ix_ip ON index_price(symbol, index_name, date)",
     *GUIDANCE_INDEXES,
 )
 
@@ -91,7 +111,8 @@ FTS = """CREATE VIRTUAL TABLE doc_page_fts USING fts5(text, content='doc_page', 
 PARTS = {
     "registry": ("company", "doc", "doc_alias"),
     "pages": ("doc_page",),
-    "stores": ("share_capital", "fin_quarter_xbrl", "fin_annual_line", "dividend_event", "price_delivery", "shp_category"),
+    "stores": ("share_capital", "fin_quarter_xbrl", "fin_annual_line", "dividend_event", "price_delivery", "shp_category",
+               "bulk_block_deal", "insider_trade", "index_price"),
     "ratios": ("formula", "ratio_panel", "valuation_daily"),
 }
 

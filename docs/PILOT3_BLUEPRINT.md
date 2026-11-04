@@ -25,6 +25,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `transcript_statement` | call quotes with speaker, role, topic tags | transcripts |
 | `guidance` | one row per forward target: metric, period, low/high, unit, revision link | transcripts, decks, results, press releases |
 | `shp_category`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings, share count, dividends, prices, PE/PB/EV | exchange data stores |
+| `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
 
 Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_statements`, `pilot3_search` (bm25),
 `pilot3_docs`, `pilot3_holding`, `pilot3_sql`; `schema` / `catalog` know the `pilot3` db.
@@ -169,3 +170,50 @@ active one. Without a profile every command behaves exactly as before (the three
   profile's companies from the raw XBRL named in `results_xbrl.db.filings` (about 1 s for 10 companies); it needs no
   pages. First run on the pilot10 copy: A1 571 -> 601 of 898, `kpi_series.segment_revenue` and `segment_ebit` no longer
   unmet. Test: `reality_engine/tests/test_pilot3_xbrl_segments.py`.
+
+### 9a. Compute-only history, bank and insurer lines, three new tables (T-056 loop 2, 4 Nov 2026)
+
+- **Superseded direction (Shivam, 4 Nov, T-057):** the older quarters above are printed in the held results tables as QoQ and YoY comparatives, so they need no download. `compute_start` stays unset in the pilot10 profile until T-057 reports.
+- **`compute_start`** (optional profile key, default = `window_start`, so nothing changes): rows of `fin_quarter_xbrl`,
+  `fin_annual_line` and `price_delivery` dated from `compute_start` up to `window_start` move to `<table>_input` at the end
+  of `--part stores` (`stores.apply_window`). `--part ratios` reads them through TEMP views named like the tables
+  (`main.t UNION ALL main.t_input`), computes, drops the views and deletes `ratio_panel` / `valuation_daily` rows dated before
+  `window_start` (`stores.trim_derived`). No answer table holds a pre-window row (min dates 2025-10-01 / 2025-12-31); the
+  inputs are only already-held XBRL and price rows, nothing is fetched. `--part ratios` re-run gives byte-identical
+  `ratio_panel` (1,612 rows) and `valuation_daily` (2,651). Point in time stays exact: a day's TTM uses the last four quarters
+  with `known_at` <= that day; HINDALCO's last four known quarters end Q1 FY27 and no Q2 is extrapolated. Use
+  `compute_start` 2024-07-01 or earlier: BAJFINANCE's Q2 FY26 XBRL was disseminated 10 Nov 2025, so its TTM on 3 Nov 2025 is
+  Q2 FY25 to Q1 FY26 and needs the quarter ended 2024-09-30 (2024-10-01 would drop it).
+- **Bank and life-insurer P&L lines** (`stores.BANK_TAGS`, `LIFE_TAGS`, recognised by one marker element per filing, no company
+  list): `pat`, `pbt`, `employee_cost`, `other_expenses`, `operating_expenses`, `operating_profit`, `interest_expended`,
+  `eps_basic/diluted`; bank `net_interest_income` = InterestEarned - InterestExpended (derived, `is_reported` 0); insurer
+  `gross_premium`, `net_premium`, `investment_income`, `expenses_of_management`, `net_commission`, `net_surplus`. A line the
+  `quarterly` view already gave is never written twice. Annual lines follow (`statements.PL_TAGS`), plus bank net worth =
+  Capital + ReservesAndSurplus, insurer net worth = ShareholdersFunds, `cash_and_equivalents` of a lender from the cash-flow
+  statement, `investments` = current + non-current, and an annual `ebitda` (F_EBITDA on the filed annual lines, `xbrl_derived`,
+  beside the company-stated one). Checks: HDFC Bank standalone `pat` Q3FY26..Q2FY27 = 186,537.5 / 192,210.5 / 190,597.2 /
+  195,099.6 million rupees; SBILIFE Q2FY27 `pat` 5,492,318,000 (as the filing); HDFC standalone cost-to-income Q2FY27 39.1%,
+  FY26 `eps_basic_fy` 48.615 (the filed annual EPS is 48.62; the Q1 EPS filed before the 1:1 bonus is restated by the
+  cumulative split factor, see F_EPS_FY).
+- **Share count**: a quarter end with no results-filing share count takes the `shareholding_pattern` total of `shp_category`
+  with the SHP's `known_at` (`share_capital.source_table='shp_category'`): SBILIFE 5 quarters (1,003,405,073 at 30 Sep 2026),
+  HINDALCO 30 Sep 2026 (2,247,226,523). `valuation_daily` uses standalone for a company with no consolidated filing (SBILIFE).
+- **Ratios**: half-year point-in-time ratios (`book_value_per_share`, `roe`, `roa`, `roce`, `net_debt_to_ebitda`, days, ...) are
+  also written under the quarter label (`Q2FY27`, same value and formula; the NIM is a period measure and is not copied);
+  `cost_to_income` (F_COST_INCOME, banks); `dividend_payout_pct` uses one DPS per fiscal year (the corporate-action sum wins over
+  an annual-report figure); a zero `dividend_yield_pct` is written only when no dividend was declared in 12 months and the last
+  filed annual cash flow shows none paid (ETERNAL).
+- **New tables**, read by ISIN (every ISIN the company has had), no placeholder rows: `bulk_block_deal` (2 to 14 rows for BAJFINANCE,
+  ETERNAL, HDFCBANK, HINDALCO, HINDUNILVR, INFY, SBILIFE, SUNPHARMA; none for KEC and MARUTI, which the store holds nothing for after
+  23 Sep and 14 Jul 2025), `insider_trade` (INFY 363, BAJFINANCE 34, HINDUNILVR 7; the store holds no PIT rows after the window start for
+  the others), `index_price` (268 days per company against `Nifty 50`). `relative_return_*` = stock return (split-adjusted close) -
+  index return, in points, null when the lookback day is before `compute_start` (else `window_start`). INFY 12 months to 3 Nov 2026:
+  1,148.1 / 1,485.5 = -22.71%, Nifty 50 23,810.85 / 25,763.35 = -7.58%, relative -15.13 points.
+- **Measured** (this MSI, copy of the pilot10 database, 10 companies): `--part stores` 140 s, `--part ratios` 1.4 s. A1 on `dev.jsonl`
+  571 -> 679 of 898 questions fully answerable; 137 of the 147 listed structured needs are now met. Still unmet: KEC and MARUTI deals and
+  ETERNAL, HDFCBANK, HINDALCO, SUNPHARMA insider trades (nothing held after 2025-10-01), HDFCBANK `nim_pct` Q2FY27 (needs interest-earning
+  assets, not in the results XBRL; the loan book is not the bank's NIM base), SBILIFE and SUNPHARMA `pe` and SUNPHARMA `ev_ebitda` on
+  2025-11-03 (the XBRL store holds those two from the quarter ended 2025-03-31, so four known quarters exist only from Jan/Feb 2026).
+- Without a profile nothing changes (bank/insurer annual rows, restated EPS, payout selection, quarter-labelled copies, zero yield and the
+  new tables are built under a profile only); `checkpages run` stays at 145 found.
+

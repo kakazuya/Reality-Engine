@@ -9,7 +9,8 @@ import gzip
 import re
 import sqlite3
 import xml.etree.ElementTree as ET
-from datetime import date, datetime
+from bisect import bisect_right
+from datetime import date, datetime, timedelta
 
 from reality_engine.gap_loop import prepare
 from reality_engine.pilot3 import SHP_XBRL, profile, schema
@@ -19,17 +20,42 @@ CR = 1e7  # rupees per crore
 
 # The history window a profile keeps (T-056): every store table and its date column.  No profile -> no filter.
 WINDOW_COLUMNS = {"fin_quarter_xbrl": "period_end", "fin_annual_line": "period_end", "shp_category": "quarter_end",
-                  "price_delivery": "date", "valuation_daily": "date"}
+                  "price_delivery": "date", "valuation_daily": "date", "bulk_block_deal": "deal_date",
+                  "insider_trade": "intimation_date", "index_price": "date"}
+# Tables whose rows dated from ``compute_start`` up to ``window_start`` are kept apart as ``<table>_input``: inputs
+# of a trailing four quarters or a prior-year comparison, never part of an answer table (ratios.py reads them).
+INPUT_TABLES = ("fin_quarter_xbrl", "fin_annual_line", "price_delivery")
 
 
 def apply_window(conn: sqlite3.Connection) -> dict:
-    """Delete a profile's rows dated before ``window_start``; returns ``{table: rows deleted}``."""
+    """Delete a profile's rows dated before ``window_start``; returns ``{table: rows deleted}``.  With a
+    ``compute_start`` the rows of ``INPUT_TABLES`` from that date on are first copied to ``<table>_input``."""
     start = profile.window_start()
     if not start:
         return {}
-    return {table: conn.execute(f"DELETE FROM {table} WHERE {column} < ?", (start,)).rowcount
-            for table, column in WINDOW_COLUMNS.items()
-            if conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone()}
+    compute = profile.compute_start()
+    out = {}
+    for table, column in WINDOW_COLUMNS.items():
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
+            continue
+        if table in INPUT_TABLES:
+            conn.execute(f'DROP TABLE IF EXISTS "{table}_input"')
+            if compute:
+                conn.execute(f'CREATE TABLE "{table}_input" AS SELECT * FROM "{table}" WHERE {column} >= ? AND {column} < ?',
+                             (compute, start))
+        out[table] = conn.execute(f"DELETE FROM {table} WHERE {column} < ?", (start,)).rowcount
+    return out
+
+
+def trim_derived(conn: sqlite3.Connection) -> dict:
+    """After the ratios are computed over the inputs: drop derived rows dated before ``window_start``."""
+    start = profile.window_start()
+    if not start:
+        return {}
+    out = {"valuation_daily": conn.execute("DELETE FROM valuation_daily WHERE date < ?", (start,)).rowcount}
+    if profile.compute_start():
+        out["ratio_panel"] = conn.execute("DELETE FROM ratio_panel WHERE period_end < ?", (start,)).rowcount
+    return out
 
 
 def _spec(symbol: str, table: str) -> dict:
@@ -111,14 +137,47 @@ EXTRA_QUARTER_TAGS = {  # facts the `quarterly` view lacks (NBFC / lender P&L), 
     "FeesAndCommissionExpense": ("fee_commission_expense", "P&L", "inr"),
     "NetGainOnFairValueChanges": ("net_gain_fair_value", "P&L", "inr"),
 }
+# Bank and life-insurer taxonomies (T-056 loop 2): their own element names for the same lines.  A taxonomy is
+# recognised by one marker element in the filing, so a company needs no entry; a line the `quarterly` view already
+# gave for that filing is never written twice.
+BANK_MARKER, LIFE_MARKER = "InterestExpended", "GrossPremiumIncome"
+BANK_TAGS = {
+    "InterestExpended": ("interest_expended", "P&L", "inr"),
+    "EmployeesCost": ("employee_cost", "P&L", "inr"),
+    "OtherOperatingExpenses": ("other_expenses", "P&L", "inr"),
+    "OperatingExpenses": ("operating_expenses", "P&L", "inr"),
+    "ExpenditureExcludingProvisionsAndContingencies": ("expenditure_excl_provisions", "P&L", "inr"),
+    "OperatingProfitBeforeProvisionAndContingencies": ("operating_profit", "P&L", "inr"),
+    "ProvisionsOtherThanTaxAndContingencies": ("provisions_and_contingencies", "P&L", "inr"),
+    "ProfitLossFromOrdinaryActivitiesBeforeTax": ("pbt", "P&L", "inr"),
+    "ProfitLossForThePeriod": ("pat", "P&L", "inr"),
+    "ProfitLossAfterTaxesMinorityInterestAndShareOfProfitLossOfAssociates": ("pat_owners", "P&L", "inr"),
+    "BasicEarningsPerShareAfterExtraordinaryItems": ("eps_basic", "P&L", "inr_per_share"),
+    "DilutedEarningsPerShareAfterExtraordinaryItems": ("eps_diluted", "P&L", "inr_per_share"),
+}
+LIFE_TAGS = {
+    "GrossPremiumIncome": ("gross_premium", "P&L", "inr"),
+    "NetPremiumIncome": ("net_premium", "P&L", "inr"),
+    "IncomeFromInvestmentsNet": ("investment_income", "P&L", "inr"),
+    "ExpensesOfManagement": ("expenses_of_management", "P&L", "inr"),
+    "NetCommission": ("net_commission", "P&L", "inr"),
+    "NetSurplusDeficit": ("net_surplus", "P&L", "inr"),
+    "ProfitLossBeforeTax": ("pbt", "P&L", "inr"),
+    "ProfitLossAfterTaxAndExtraordinaryItems": ("pat", "P&L", "inr"),
+}
+# one element carries both EPS lines of a life insurer
+LIFE_EPS = "BasicAndDilutedEPSAfterExtraordinaryItemsNetOfTaxExpenseForThePeriodNotToBeAnnualized"
+SECTOR_TAGS = {**BANK_TAGS, **LIFE_TAGS}
 
 
-def _quarter_extras(symbol: str, meta: dict[str, tuple]) -> list[tuple]:
-    """NBFC fields per quarter (``meta``: file -> the filing's columns) plus net interest income =
-    interest earned - finance costs, a derived row (``is_reported`` 0) wherever both were filed."""
+def _quarter_extras(symbol: str, meta: dict[str, tuple], have: set | None = None) -> list[tuple]:
+    """NBFC, bank and life-insurer fields per quarter (``meta``: file -> the filing's columns) plus net interest
+    income, a derived row (``is_reported`` 0) wherever both inputs were filed: interest earned - interest expended for
+    a bank, else interest earned - finance costs.  ``have`` holds the ``(file, line item)`` pairs already written."""
     if not meta:
         return []
-    tags = tuple(EXTRA_QUARTER_TAGS) + ("FinanceCosts",)
+    have = set(have or ())
+    tags = tuple(EXTRA_QUARTER_TAGS) + tuple(SECTOR_TAGS) + ("FinanceCosts", LIFE_EPS)
     out, got = [], {}
     files = list(meta)
     for i in range(0, len(files), 200):
@@ -132,20 +191,39 @@ def _quarter_extras(symbol: str, meta: dict[str, tuple]) -> list[tuple]:
             if value is None:
                 continue
             got[(file, tag)] = (float(value), rowid)
-    for (file, tag), (value, rowid) in got.items():
-        if tag not in EXTRA_QUARTER_TAGS:
-            continue
+
+    def add(file, tag, item, statement, unit, value, rowid, reported=1, src=None):
+        if (file, item) in have:
+            return
+        have.add((file, item))
         isin, start, end, period, basis, audited, known = meta[file]
-        item, statement, unit = EXTRA_QUARTER_TAGS[tag]
         out.append((symbol, isin, start, end, period, basis, audited, statement, item, tag, value, unit, 1.0, file,
-                    "results_xbrl.db", "facts", f"{file}#{rowid}", known,
-                    "results_xbrl.quarterly.dissem_ts|broadcast_ts", 1))
-    for file, (isin, start, end, period, basis, audited, known) in meta.items():
-        earned, fin = got.get((file, "InterestEarned")), got.get((file, "FinanceCosts"))
-        if earned and fin:
-            out.append((symbol, isin, start, end, period, basis, audited, "P&L", "net_interest_income",
-                        "InterestEarned-FinanceCosts", earned[0] - fin[0], "inr", 1.0, file, "results_xbrl.db", "facts",
-                        f"{file}#{earned[1]}-{fin[1]}", known, "results_xbrl.quarterly.dissem_ts|broadcast_ts", 0))
+                    "results_xbrl.db", "facts", src or f"{file}#{rowid}", known,
+                    "results_xbrl.quarterly.dissem_ts|broadcast_ts", reported))
+
+    bank = {file for (file, tag) in got if tag == BANK_MARKER}
+    life = {file for (file, tag) in got if tag == LIFE_MARKER}
+    for (file, tag), (value, rowid) in got.items():
+        if tag in EXTRA_QUARTER_TAGS:
+            item, statement, unit = EXTRA_QUARTER_TAGS[tag]
+            add(file, tag, item, statement, unit, value, rowid)
+        elif tag in BANK_TAGS and file in bank:
+            item, statement, unit = BANK_TAGS[tag]
+            add(file, tag, item, statement, unit, value, rowid)
+        elif tag in LIFE_TAGS and file in life:
+            item, statement, unit = LIFE_TAGS[tag]
+            add(file, tag, item, statement, unit, value, rowid)
+        elif tag == LIFE_EPS and file in life:
+            for item in ("eps_basic", "eps_diluted"):
+                add(file, tag, item, "P&L", "inr_per_share", value, rowid)
+    for file in meta:
+        earned = got.get((file, "InterestEarned"))
+        expended = got.get((file, "InterestExpended")) if file in bank else None
+        fin = got.get((file, "FinanceCosts"))
+        cost, name = (expended, "InterestEarned-InterestExpended") if expended else (fin, "InterestEarned-FinanceCosts")
+        if earned and cost:
+            add(file, name, "net_interest_income", "P&L", "inr", earned[0] - cost[0], None, 0,
+                f"{file}#{earned[1]}-{cost[1]}")
     return out
 
 
@@ -179,7 +257,7 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
                 sc.append((symbol, r["isin"], r["period_end"], basis, None, None, paid / face, paid, face, "shares",
                            1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts", "results_xbrl.db",
                            "quarterly", r["file"], None, None))
-        fq += _quarter_extras(symbol, meta)
+        fq += _quarter_extras(symbol, meta, {(r[13], r[8]) for r in fq})
         conn.executemany("INSERT INTO fin_quarter_xbrl VALUES (" + ",".join("?" * 20) + ")", fq)
         conn.executemany("INSERT INTO share_capital VALUES (" + ",".join("?" * 18) + ")", sc)
         counts["fin_quarter_xbrl"][symbol] = len(fq)
@@ -500,6 +578,146 @@ def build_shp(conn: sqlite3.Connection) -> dict:
     return counts
 
 
+# --- share count from the shareholding pattern ---------------------------------------------------------
+def build_share_fallback(conn: sqlite3.Connection) -> dict:
+    """A quarter end the results filing gives no share count for (a life insurer files no face value; a company
+    whose results for the quarter are not filed yet) takes the total of its shareholding pattern: the
+    ``shareholding_pattern`` row of ``shp_category`` with the SHP's own ``known_at``.  One row per basis the company
+    reports, so every ratio that looks a share count up by basis finds it."""
+    counts = {}
+    for symbol in profile.symbols():
+        bases = [r[0] for r in conn.execute("SELECT DISTINCT basis FROM fin_quarter_xbrl WHERE symbol=?", (symbol,))]
+        have = {(r[0], r[1]) for r in conn.execute(
+            "SELECT as_of_date, basis FROM share_capital WHERE symbol=? AND event IS NULL", (symbol,))}
+        n = 0
+        for isin, quarter_end, shares, known, name, rowid in conn.execute(
+                "SELECT isin, quarter_end, shares, known_at, source_file, rowid FROM shp_category WHERE symbol=? "
+                "AND category='shareholding_pattern' AND source_kind='xbrl' AND shares IS NOT NULL AND shares > 0 "
+                "AND known_at IS NOT NULL ORDER BY quarter_end, known_at", (symbol,)).fetchall():
+            for basis in bases:
+                if (quarter_end, basis) in have:
+                    continue
+                conn.execute("INSERT INTO share_capital VALUES (" + ",".join("?" * 18) + ")",
+                             (symbol, isin, quarter_end, basis, None, None, shares, None, None, "shares", 1.0, known,
+                              "shp_category.known_at (shareholding pattern total)", "pilot3.db", "shp_category",
+                              f"{name}#{rowid}", None, None))
+                have.add((quarter_end, basis))
+                n += 1
+        counts[symbol] = n
+    conn.commit()
+    return counts
+
+
+# --- deals, insider trades, index prices -----------------------------------------------------------------
+EQUITY_DB = "equity_intelligence.db"
+
+
+def build_deals(conn: sqlite3.Connection) -> dict:
+    """bulk_block_deal from ``equity_intelligence.db.bulk_block_deals``, read by ISIN (every ISIN the company has had).
+    A company with no deals has no rows; ``known_at`` is the deal date."""
+    schema.create(conn, ("bulk_block_deal",))
+    start, counts = profile.window_start() or "0000-00-00", {}
+    for symbol in profile.symbols():
+        marks, isins = _isin_marks(symbol)
+        rows, _ = prepare._read_sqlite(
+            EQUITY_DB, "bulk_block_deals",
+            f"SELECT id, isin, CAST(deal_date AS TEXT), client_name, deal_type, buy_sell, quantity, trade_price, exchange, "
+            f"is_marquee_institution FROM bulk_block_deals WHERE isin IN ({marks}) AND deal_date >= ? ORDER BY deal_date, id",
+            (*isins, start))
+        conn.executemany("INSERT INTO bulk_block_deal VALUES (" + ",".join("?" * 15) + ")",
+                         [(symbol, r[1], r[2][:10], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[2][:10],
+                           "deal_date (end of day)", EQUITY_DB, "bulk_block_deals", r[0]) for r in rows])
+        counts[symbol] = len(rows)
+    conn.commit()
+    return counts
+
+
+def build_insiders(conn: sqlite3.Connection) -> dict:
+    """insider_trade from ``equity_intelligence.db.insider_trades_v2`` by ISIN, superseded rows dropped."""
+    schema.create(conn, ("insider_trade",))
+    start, counts = profile.window_start() or "0000-00-00", {}
+    for symbol in profile.symbols():
+        marks, isins = _isin_marks(symbol)
+        rows, _ = prepare._read_sqlite(
+            EQUITY_DB, "insider_trades_v2",
+            f"SELECT source, source_key, isin, person_name, person_category, transaction_type, mode, security_type, qty, "
+            f"value_inr, before_pct, after_pct, trade_from, trade_to, intimation_date, known_at FROM insider_trades_v2 "
+            f"WHERE isin IN ({marks}) AND coalesce(is_superseded, 0) = 0 AND intimation_date >= ? "
+            f"ORDER BY intimation_date, source_key", (*isins, start))
+        conn.executemany("INSERT INTO insider_trade VALUES (" + ",".join("?" * 21) + ")",
+                         [(symbol, r[2], r[0], r[1], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12], r[13],
+                           r[14], r[15] or r[14], "insider_trades_v2.known_at|intimation_date", EQUITY_DB,
+                           "insider_trades_v2", f"{r[0]}:{r[1]}") for r in rows])
+        counts[symbol] = len(rows)
+    conn.commit()
+    return counts
+
+
+LOOKBACK_MONTHS = (("1m", 1), ("3m", 3), ("6m", 6), ("12m", 12))
+
+
+def _months_before(day: str, months: int) -> str:
+    y, m, d = int(day[:4]), int(day[5:7]), int(day[8:10])
+    m -= months
+    while m <= 0:
+        m, y = m + 12, y - 1
+    last = (date(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1)).day
+    return f"{y:04d}-{m:02d}-{min(d, last):02d}"
+
+
+def build_index_prices(conn: sqlite3.Connection) -> dict:
+    """index_price: the stock against each index per trading day, from ``mkt_nse_index_daily`` and the NSE
+    ``price_delivery`` rows.  Returns use the split-adjusted close of the stock (``adj_close``) and the index close;
+    the lookback day is the last trading day on or before the date N calendar months back, and a return is null
+    when that day falls before the earliest day the build keeps (``compute_start``, else ``window_start``).
+    ``relative_return_*`` = stock return - index return, in percentage points.  Indices: ``Nifty 50`` plus the
+    profile's ``extra_indices``."""
+    schema.create(conn, ("index_price",))
+    start = profile.window_start() or "0000-00-00"
+    earliest = profile.compute_start() or start
+    names = ("Nifty 50", *[n for n in profile.extra_indices() if n != "Nifty 50"])
+    series = {}
+    for name in names:
+        rows, _ = prepare._read_sqlite(EQUITY_DB, "mkt_nse_index_daily",
+                                       "SELECT date, close FROM mkt_nse_index_daily WHERE index_name=? AND close IS NOT NULL "
+                                       "ORDER BY date", (name,))
+        series[name] = ([r[0] for r in rows], [r[1] for r in rows])
+
+    def at(days: list, values: list, day: str):
+        i = bisect_right(days, day) - 1
+        return values[i] if i >= 0 else None
+
+    counts = {}
+    for symbol in profile.symbols():
+        px = conn.execute("SELECT date, close, adj_close, isin, rowid FROM price_delivery WHERE symbol=? AND exchange='NSE' "
+                          "AND adj_close IS NOT NULL ORDER BY date", (symbol,)).fetchall()
+        pdays, padj = [r[0] for r in px], [r[2] for r in px]
+        out = []
+        for name, (idays, icl) in series.items():
+            for day, close, adj, isin, rowid in px:
+                if day < start:
+                    continue
+                index_close = at(idays, icl, day)
+                if index_close is None or idays[bisect_right(idays, day) - 1] != day:
+                    continue  # no index print that day
+                stock_ret, index_ret, rel = [], [], []
+                for _tag, months in LOOKBACK_MONTHS:
+                    target = _months_before(day, months)
+                    base_s, base_i = at(pdays, padj, target), at(idays, icl, target)
+                    if target < earliest or not base_s or not base_i:
+                        stock_ret.append(None), index_ret.append(None), rel.append(None)
+                        continue
+                    s_r, i_r = 100.0 * (adj / base_s - 1.0), 100.0 * (index_close / base_i - 1.0)
+                    stock_ret.append(s_r), index_ret.append(i_r), rel.append(s_r - i_r)
+                out.append((symbol, isin, name, day, index_close, close, adj, *stock_ret, *index_ret, *rel, day,
+                            "price date (end of day)", f"{EQUITY_DB}+truth snapshot", "mkt_nse_index_daily+px_nse_adj",
+                            f"{name}|{day}|pd#{rowid}"))
+        conn.executemany("INSERT INTO index_price VALUES (" + ",".join("?" * 24) + ")", out)
+        counts[symbol] = len(out)
+    conn.commit()
+    return counts
+
+
 def build_stores(conn: sqlite3.Connection) -> dict:
     result = {"quarterly": build_quarterly(conn)}
     result["corporate_events"] = build_corporate_events(conn)
@@ -509,6 +727,11 @@ def build_stores(conn: sqlite3.Connection) -> dict:
     result["statements"] = statements.build_statements(conn)
     result["price_delivery"] = build_prices(conn)
     result["shp_category"] = build_shp(conn)
+    if profile.under_profile():  # without a profile the three-company build stays exactly as it was
+        result["share_capital_from_shp"] = build_share_fallback(conn)
+        result["bulk_block_deal"] = build_deals(conn)
+        result["insider_trade"] = build_insiders(conn)
+        result["index_price"] = build_index_prices(conn)
     result["window"] = apply_window(conn)
     conn.commit()
     return result
