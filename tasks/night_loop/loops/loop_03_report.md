@@ -1,12 +1,12 @@
 # Loop 3 report (session 03, Eagle, 4 Nov 2026; times are this machine's clock)
 
-## Status: stopped at the 400k context line, 20:50 IST. **Two branches ready to merge: comparatives and speakers + guidance. No worker running.**
+## Status: stopped at the 400k context line, 20:47 IST. **Two branches ready to merge: comparatives and speakers + guidance. No worker running.**
 KPI round 2 is queued, not started. The three have never been built together, so the combined A1 is unknown. Sections below hold the evidence.
 
 ## For the wrapper
 | Work | Merge this branch once reviewed | State at 20:20 IST | A1 dev, alone against 651 |
 |---|---|---|---|
-| Printed comparatives (T-057) | `dsh/20261104T140210Z-42e59ee9`, on `dsh/20261104T124718Z-f826eabb` | **ACCEPT with open items, ready for the wrapper** (20:47 IST) | 682 |
+| Printed comparatives (T-057) | `dsh/20261104T140210Z-42e59ee9`, on `dsh/20261104T124718Z-f826eabb` | **ACCEPT with open items, ready for the wrapper** (20:46 IST) | 682 |
 | Speakers and guidance | `dsh/20261104T143838Z-20a19ffb`, on `dsh/20261104T133227Z-c8ca921f` | **ACCEPT, ready for the wrapper** (20:33 IST) | 662 |
 | Sector KPIs | `dsh/20261104T134520Z-2ba2330d`, then round 2 | Round 2 **not started**: `loops/loop_03_worker_kpi_fix2.md`, start it with `base=dsh/20261104T134520Z-2ba2330d` | 677, about 75% of new rows right on my read of 67 |
 
@@ -90,7 +90,7 @@ All on DeepSeek, off-peak; the first two started 18:17 IST.
 | comparatives (first) | 20261104T124718Z-f826eabb | `dsh/20261104T124718Z-f826eabb` | `loop_03_worker_comparatives.md` | **NOT ACCEPTED, do not merge alone** |
 | comparatives fix | 20261104T140210Z-42e59ee9 | `dsh/20261104T140210Z-42e59ee9` (on the comparatives branch) | `loop_03_worker_comparatives_fix.md` | running, started 19:32 IST |
 
-### Review of the comparatives fix round (20:47 IST): ACCEPT, with open items
+### Review of the comparatives fix round (20:46 IST): ACCEPT, with open items
 Re-run by me on its copy and worktree: TTM on HINDALCO 80.00, BAJFINANCE 29.51, SUNPHARMA 43.60 (the formula I specified); no EPS `xbrl_ok` off by more than 0.03; no EPS above 1,000; no negative cost line; `checkpages` 145; A1 682/898, no company below baseline. Its report, not re-run: 18 + 7 + 7 + 29 + 23 tests pass, guards pass, 0 point-in-time violations, 30/30 hand read after one fix. Rows 5,587 to 6,685; `unchecked` 2,136 to 1,402; `repeat_ok` 1,313.
 `pe` days per company, base / first round / now: HINDALCO 0/245/245, SUNPHARMA 3/246/246, BAJFINANCE 11/244/188, KEC 2/117/188, HINDUNILVR 5/178/178, MARUTI 6/6/130, ETERNAL 10/72/130, HDFCBANK 11/11/11, INFY 8/8/8, SBILIFE 6/6/6.
 Open, for the wrapper:
