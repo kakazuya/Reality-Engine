@@ -286,3 +286,97 @@ def test_real_database_finds_the_ticket_targets():
         con.close()
     assert not missing, f"not extracted: {missing}"
     assert wrong == 0, f"{wrong} reported actual(s) still stored as guidance"
+
+
+# --- T-056: period and target-precision rules -------------------------------------------------------------
+def test_next_and_coming_year_move_one_year_forward():
+    assert guidance.target_period("we expect about INR11,000 crores next year", "", "", "Q2FY26", (26, "Q2")) == "FY27"
+    assert guidance.target_period("in the coming financial year we expect 8% growth", "", "", "Q2FY27",
+                                  (27, "Q2")) == "FY28"
+    assert guidance.target_period("this year we expect 12% growth", "", "", "Q2FY26", (26, "Q2")) == "FY26"
+    # a Q4 call's "this year" is already the year ahead, so "next year" is the one after it
+    assert guidance.target_period("next year will be INR15,000 crores", "", "", "Q4FY26", (26, "Q4")) == "FY28"
+
+
+def test_a_backward_looking_quarter_is_not_the_target_period():
+    sentence = ("With our Q1 results and a view for the rest of the financial year, we are changing our revenue "
+                "growth guidance to 1.5% to 3%")
+    assert guidance.target_period(sentence, "", "", "Q1FY27", (27, "Q1"),
+                                  guidance.numbers(sentence)[0]["start"]) == "FY27"
+    sentence = "Based on our Q2 performance and revised outlook, our guidance is 1% to 2%"
+    assert guidance.target_period(sentence, "", "", "Q2FY27", (27, "Q2"),
+                                  guidance.numbers(sentence)[0]["start"]) == "FY27"
+    # the sentence's own FY26 is nearer the number than the quarter heading printed far away
+    sentence = ("FY26 capital expenditures expected to be in a range of $1.9 billion to $2.2 billion Adjusted free "
+                "cash flow Novelis Q3FY26 Earnings")
+    assert guidance.target_period(sentence, "", "", None, (26, "Q3"),
+                                  guidance.numbers(sentence)[0]["start"]) == "FY26"
+
+
+def test_a_reported_actual_against_the_guided_range_is_not_a_target():
+    for sentence in ("EBITDA Margin at 22.6% was within the guided range.",
+                     "EBITDA margin of 23.3% remains within our guided range, excluding Ice Cream.",
+                     "We are now on a nine-month basis at 21% margin, which is midpoint of the guidance we have given."):
+        assert guidance.GUIDED_ACTUAL.search(sentence), sentence
+    assert guidance.REPORT_BASIS.search("reducing from 1.75% to 1.65%, this is really how we will report")
+    assert not guidance.GUIDED_ACTUAL.search(
+        "we expect the mid-term margin guidance to remain around our current guided range of 22.5% to 23.5%")
+
+
+def test_the_other_metric_needs_its_guidance_word_in_the_same_clause():
+    l1 = ("With a large order book and L1 position of over INR10,000 crores, gradual improvement in labour and "
+          "expected collections, we expect the business to deliver growth")
+    assert not guidance.other_cued(l1, guidance.numbers(l1)[0])
+    debt = "Gross debtors would be around INR800 crores, INR900 crores."
+    assert not guidance.other_cued(debt, guidance.numbers(debt)[0])
+    target = "I am targeting that next year we should be delivering INR100,000 crores volume"
+    assert guidance.other_cued(target, guidance.numbers(target)[0])
+    fixed = "Fixed versus variable would be roughly 50%, okay?"
+    assert guidance.other_cued(fixed, guidance.numbers(fixed)[0])
+
+
+def test_a_segment_number_is_not_the_company_metric():
+    cables = "Cables, I don't have the exact number, it could be higher single digit, maybe 6% or something."
+    assert guidance.segment_subject(cables, guidance.numbers(cables)[0], "KEC")
+    india = ("In FY27, the India capex will be about INR12,000 crores, and the Novelis capex will be between "
+             "2.3 billion to 2.4 billion")
+    assert not guidance.segment_subject(india, guidance.numbers(india)[0], "HINDALCO")
+
+
+def test_the_number_after_the_cue_is_not_a_comparison_base():
+    sentence = ("around INR8,000 crores or so is the order intake target for Civil, against INR5,000 crores, "
+                "which we got this year and INR2,500 crores last year.")
+    picked = guidance.pick_number(sentence, guidance.numbers(sentence))
+    assert picked is not None and picked["low"] == 8000
+
+
+def test_the_running_header_is_not_part_of_the_sentence():
+    assert guidance.HEADER_TAIL.sub("", "KEC International Limited August 11, 2026 Page 14 of 23 As far as order") \
+        == "As far as order"
+
+
+def test_one_row_per_metric_period_value_and_date():
+    """T-056 family I: the BSE/NSE copies and the several pages of a document collapse; a later restatement stays."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_duplicate.db"
+    for suffix in ("", "-wal", "-shm"):
+        Path(str(path) + suffix).unlink(missing_ok=True)
+    con = sqlite3.connect(path)
+    con.execute(schema.TABLES["doc"])
+    con.execute(schema.TABLES["doc_page"])
+    con.executescript(TRANSCRIPT_SCHEMA)
+    docs = [("kec/bse.pdf", "2026-05-21", "2026-05-21T16:00:00"), ("kec/nse.pdf", "2026-05-21", "2026-05-21T16:00:00"),
+            ("kec/call.pdf", "2026-08-14", "2026-08-14T15:30:00")]
+    con.executemany("INSERT INTO doc(doc_key,symbol,isin,doc_type,doc_family,title,filing_date,known_at,pages) "
+                    "VALUES (?,'KEC',NULL,'deck','deck','Q4 FY26 deck',?,?,1)", docs)
+    for doc_key, _d, _k in docs:
+        con.execute("INSERT INTO doc_page(doc_key,symbol,page,text,method,chars,known_at) "
+                    "VALUES (?,'KEC',1,'We expect revenue growth of 12% to 15% for FY27.','script_text',48,NULL)",
+                    (doc_key,))
+    con.commit()
+    con.close()
+    stats = guidance.run(str(path), ["KEC"])
+    assert stats["rows"]["KEC"] == 2, "the same target on the same date must be one row, a restatement another"
+    got = rows(path)
+    assert [r["said_on"] for r in got] == ["2026-05-21", "2026-08-14"]
+    assert got[0]["revision_of"] is None and got[1]["revision_of"] == got[0]["id"]

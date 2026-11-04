@@ -40,6 +40,30 @@ CREATE INDEX IF NOT EXISTS ix_ts_sym_call ON transcript_statement(symbol, call_d
 MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December"
 SPEAKER_RX = re.compile(r"^[ 	]*([A-Z][A-Za-z.'’\-]+(?: [A-Za-z.'’\-]+){0,4}):(?=[ 	]|$)", re.M)
 SPEAKER_MID_RX = re.compile(r"(?<=[.?!] )([A-Z][A-Za-z.'’\-]+(?: [A-Z][A-Za-z.'’\-]+){1,3}):(?=[ 	]|$)", re.M)
+# a bare name line, no colon: "Rishi Basu" / "Salil Parekh" (T-056; only used when colon marks are few)
+NAME_ONLY_RX = re.compile(r"^[ \t]*([A-Z][A-Za-z.'’\-]+(?:[ \t]+[A-Z][A-Za-z.'’\-]+){1,3})[ \t]*$", re.M)
+SENTENCE_START_RX = re.compile(r"^[\"“‘']?[A-Z][a-z]+(?:[^.!?]*[a-z])")
+# "1. Albinder Singh Dhindsa – Chief Executive Officer, Eternal Limited" (one-line participant entry)
+NUM_TITLE_RX = re.compile(r"^[ \t]*\d{1,2}[.)]\s*([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){1,3})"
+                          r"\s*[–—-]\s*(.+?)[ \t]*$", re.M)
+TITLE_WORD_RX = re.compile(r"\b(?:chief|managing director|\bmd\b|\bceo\b|\bcfo\b|\bcoo\b|president|\bhead\b|director|"
+                           r"vice president|investor relations|company secretary|executive)\b", re.I)
+# participant-block headings, matched on the whole line (T-056: the block names management's titles and the
+# analysts/journalists, so a speaker with no title in the transcript is still placed)
+PARTICIPANT_HEADINGS = (
+    ("moderator", re.compile(r"(?:call |conference )?(?:moderator|operator|host)", re.I)),
+    ("analyst", re.compile(r"(?:research )?analysts?|j\w*nalists?|media|"
+                           r"(?:q\s*&\s*a )?participants? from (?:the )?media", re.I)),
+    ("mgmt", re.compile(r"(?:corporate |company |other |key )?participants?|management(?: representatives?| team)?|"
+                        r"company representatives?|board of directors|key managerial personnel", re.I)),
+)
+# "From Eternal's management team, we have with us today Albinder Singh Dhindsa, Akshant Goyal and Kunal Swarup"
+MOD_TEAM_RX = re.compile(r"\bwith us today\b[ \t]*,?[ \t]*([^.\n]{3,240})", re.I)
+PERSON_RX = re.compile(r"[A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){1,3}")
+# a line in a participants block that is a document label, not a person ("Investor Call Transcript" was stored as
+# a speaker in a cover-letter page by the name look-ahead)
+NON_NAME_RX = re.compile(r"\b(?:transcript|call|conference|investor|investors|presentation|earnings|results|"
+                         r"dialogue|session)\b", re.I)
 PAGE_NO_RX = re.compile(r"^[ \t]*Page \d+ of \d+[ \t]*$", re.M)
 DATE_LINE_RX = re.compile(r"^[ \t]*(?:" + MONTHS + r") \d{1,2}, \d{4}[ \t]*$", re.M)
 CALL_DATE_RX = re.compile(r"(" + MONTHS + r") (\d{1,2}), (\d{4})")
@@ -214,14 +238,118 @@ def role_of(speaker: str, company: str, people: dict, analysts: list[str], mgmt:
 
 
 def _title_role(title: str) -> str:
-    t = title.lower()
+    t = (title or "").lower()
     if "chief financial" in t or t.startswith("cfo"):
         return "cfo"
-    if "head of investor" in t:
+    if "head of investor" in t or "investor relations" in t:
         return "ir"
     if "managing director" in t or t.startswith("md") or "chief executive" in t or t.startswith("ceo"):
         return "md"
     return "mgmt"       # COO, President, Executive Director, Whole-time Director
+
+
+def _heading_class(line: str) -> str | None:
+    """'mgmt' / 'analyst' / 'moderator' for a participant-block heading line, else None."""
+    s = line.strip(" \t:")
+    if not s or len(s) > 60 or len(s.split()) > 6:
+        return None
+    for kind, rx in PARTICIPANT_HEADINGS:
+        if rx.fullmatch(s):
+            return kind
+    return None
+
+
+def participants(pages: list[str]) -> tuple[dict[str, str], list[str], set[str]]:
+    """(management name -> role, analysts, every name named) from the participant blocks of the first pages.
+
+    A block is a heading line (``CORPORATE PARTICIPANTS``, ``Management representatives:``, ``ANALYSTS``,
+    ``JOURNALISTS``) and then name/title entries: a name line followed by its title line, or one line
+    "1. Name – Title".  Management titles go through ``_title_role``; a name under an analysts/journalists
+    heading is an analyst and is never stored (T-056)."""
+    mgmt: dict[str, str] = {}
+    analysts: list[str] = []
+    names: set[str] = set()
+    kind: str | None = None            # a block that starts on one page continues on the next
+    for text in pages[:3]:
+        lines = [l.strip() for l in text.split("\n")]
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            i += 1
+            if not line:
+                continue
+            head = _heading_class(line)
+            if head:
+                kind = head
+                continue
+            if kind is None:
+                continue
+            m = NUM_TITLE_RX.match(line)
+            if m:
+                name, title = " ".join(m.group(1).split()), m.group(2)
+            elif NAME_ONLY_RX.fullmatch(line) and not TITLE_WORD_RX.search(line):
+                name, title = " ".join(line.split()), ""
+                j = next((k for k in range(i, min(i + 3, len(lines))) if lines[k]), None)
+                if j is not None and TITLE_WORD_RX.search(lines[j]) and not _heading_class(lines[j]):
+                    title, i = lines[j], j + 1     # the title line, consumed with its name
+            else:
+                continue
+            if NON_NAME_RX.search(name):
+                continue
+            names.add(name)
+            if kind == "mgmt":
+                mgmt.setdefault(name, _title_role(title))
+            elif kind == "analyst":
+                analysts.append(name)
+    return mgmt, analysts, names
+
+
+def moderator_names(full: str) -> list[str]:
+    """Names a moderator introduces in the "management team ... with us today A, B and C" sentence."""
+    out: list[str] = []
+    for m in MOD_TEAM_RX.finditer(full):
+        for part in re.split(r",|\band\b|;|&", m.group(1)):
+            name = part.strip(" .:()'\"“”")
+            if PERSON_RX.fullmatch(name) and not TITLE_WORD_RX.search(name):
+                out.append(" ".join(name.split()))
+    return out
+
+
+def name_line_counts(pages: list[str]) -> Counter:
+    """How often each bare name line repeats in a document (a speaker mark needs 3 when it is not introduced)."""
+    c: Counter = Counter()
+    for text in pages:
+        for line in text.split("\n"):
+            m = NAME_ONLY_RX.fullmatch(line)
+            if m and not TITLE_WORD_RX.search(m.group(1)) and not NON_NAME_RX.search(m.group(1)):
+                c[" ".join(m.group(1).split())] += 1
+    return c
+
+
+def _starts_speech(line: str) -> bool:
+    """A speaker's bare name is followed by speech, not by a title or an affiliation (the participant block)."""
+    if len(line) < 25 or not SENTENCE_START_RX.match(line):
+        return False
+    return not (len(line) < 80 and TITLE_WORD_RX.search(line))
+
+
+def name_marks(text: str, counts: Counter, known: set[str]) -> list[tuple[int, int, str]]:
+    """Speaker marks on bare name lines: a name from the participant block, or a line repeated 3+ times in the
+    document, when speech follows it (T-056; the six colon-style transcripts never get here)."""
+    out: list[tuple[int, int, str]] = []
+    lines = text.split("\n")
+    pos = 0
+    for i, line in enumerate(lines):
+        m = NAME_ONLY_RX.fullmatch(line)
+        if m:
+            name = " ".join(m.group(1).split())
+            nxt = next((l.strip() for l in lines[i + 1:] if l.strip()), "")
+            if not TITLE_WORD_RX.search(name) and not NON_NAME_RX.search(name) and _starts_speech(nxt) and (
+                    any(_same_person(k, name) for k in known) or counts[name] >= 3):
+                a = pos + line.find(m.group(1))
+                out.append((a, a + len(m.group(1)), name))
+        pos += len(line) + 1
+    return out
 
 
 def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[tuple[int, str]], topics, people, st: dict):
@@ -230,15 +358,28 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
     cperiod = call_period_of(title, texts)
     cdate = call_date_of(texts[0], known_at)
     full = "\n".join(texts)
+    p_mgmt, p_analysts, p_names = participants(texts)
     analysts = [m.group(1) for m in ANALYST_INTRO_RX.finditer(full) if m.group(1)] + \
-               [m.group(1) for m in HOST_INTRO_RX.finditer(full)]
-    mgmt = {m.group(1): _title_role(m.group(2)) for m in MGMT_INTRO_RX.finditer(full)}
-    speaker, section, seq, prev_role, started = "unknown", "prepared", 0, "moderator", False
-    rows = []
+               [m.group(1) for m in HOST_INTRO_RX.finditer(full)] + p_analysts
+    mgmt = {n: "mgmt" for n in moderator_names(full)}
+    mgmt.update({m.group(1): _title_role(m.group(2)) for m in MGMT_INTRO_RX.finditer(full)})
+    mgmt.update(p_mgmt)
+    # name-only speaker lines only when the document has almost no real colon marks (the colon-style transcripts
+    # must not move); a bare name repeated 3+ times is a speaker mark otherwise (T-056)
+    junk = tuple(n.lower() for n in NOT_SPEAKERS)
+    colon = sum(len([n for n in rx.findall(t) if not n.lower().startswith(junk)])
+                for rx in (SPEAKER_RX, SPEAKER_MID_RX) for t in texts)
+    counts = name_line_counts(texts) if colon < 5 else Counter()
+    known = set(p_names) | set(mgmt) | set(analysts)
+    segments: list[list] = []
+    speaker, section, prev_role = "unknown", "prepared", "moderator"
     for page, raw in pages:
         w = mask_noise(raw, boiler)
         marks = sorted((m.start(1), m.end(), m.group(1)) for rx in (SPEAKER_RX, SPEAKER_MID_RX) for m in rx.finditer(w)
                        if not m.group(1).startswith(NOT_SPEAKERS))
+        if colon < 5:
+            marks = sorted(marks + [(a, b, n) for a, b, n in name_marks(raw, counts, known)
+                                    if all(a != x for x, _b, _n in marks)])
         bounds = [(0, marks[0][0], speaker)] if marks and marks[0][0] > 0 else ([] if marks else [(0, len(w), speaker)])
         for k, (a, b, name) in enumerate(marks):
             end = marks[k + 1][0] if k + 1 < len(marks) else len(w)
@@ -249,35 +390,48 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
             if role == "unknown" and section == "qa" and prev_role == "moderator":
                 analysts.append(name)
                 role = "analyst"
-            prev_role = role
-            if role not in ("unknown", "analyst") and not started:
-                started = True      # cover letter / headers before the first real speaker are not call content
-            if not started:
-                continue
-            seg = w[a:b]
-            if role == "moderator" and QA_START_RX.search(seg):
+            segments.append([page, raw, w, a, b, name, role, section])
+            if role == "moderator" and QA_START_RX.search(w[a:b]):
                 section = "qa"
-            if role in ("moderator", "analyst"):
+            prev_role = role
+    # structural fallback (T-056): in the Q&A a name that answers right after an analyst 3+ times, and that the
+    # moderator never introduced as an analyst, is management.  Everyone else stays unknown and is only counted.
+    after_analyst: Counter = Counter()
+    for k in range(1, len(segments)):
+        if segments[k][6] == "unknown" and segments[k - 1][6] == "analyst":
+            after_analyst[segments[k][5]] += 1
+    for seg in segments:
+        if seg[6] == "unknown" and after_analyst[seg[5]] >= 3 \
+                and not any(_same_person(a, seg[5]) for a in analysts):
+            seg[6] = "mgmt"
+    seq, started = 0, False
+    rows = []
+    for page, raw, w, a, b, name, role, section in segments:
+        if role not in ("unknown", "analyst"):
+            started = True      # cover letter / headers before the first real speaker are not call content
+        if not started:
+            continue
+        if role in ("moderator", "analyst"):
+            continue
+        if role == "unknown":      # cannot tell management from a stray analyst: counted, not stored
+            st["unknown_speakers"][name] += 1
+            continue
+        for (s0, e0) in split_sentences(w[a:b], a):
+            q = raw[s0:e0].strip()
+            if len(q) < 25 or not re.search(r"[A-Za-z]{3}", q):
                 continue
-            if role == "unknown":      # cannot tell management from a stray analyst: counted, not stored
-                st["unknown_speakers"][name] += 1
-                continue
-            for (s0, e0) in split_sentences(seg, a):
-                q = raw[s0:e0].strip()
-                if len(q) < 25 or not re.search(r"[A-Za-z]{3}", q):
-                    continue
-                seq += 1
-                sent = " ".join(q.split())
-                per = parse_periods(sent)
-                if per:
-                    pdisc, psrc = per[0].canon, "sentence"
-                else:
-                    pdisc, psrc = cperiod, "call"
-                frag = int(not re.search(r"[.?!][\"”’')]*$", q) or q[0].islower())
-                rows.append((sym, None, doc_key, cdate, cperiod, page, seq, name, role, section,
-                             ",".join(tag_topics(topics, sym, sent)), pdisc, psrc,
-                             json.dumps(numbers_in(sent, cperiod), ensure_ascii=False), sent, q, frag, known_at,
-                             "docs.known_at", "transcript_v1"))
+            seq += 1
+            sent = " ".join(q.split())
+            per = parse_periods(sent)
+            if per:
+                pdisc, psrc = per[0].canon, "sentence"
+            else:
+                pdisc, psrc = cperiod, "call"
+            frag = int(not re.search(r"[.?!][\"”’')]*$", q) or q[0].islower())
+            rows.append((sym, None, doc_key, cdate, cperiod, page, seq, name, role, section,
+                         ",".join(tag_topics(topics, sym, sent)), pdisc, psrc,
+                         json.dumps(numbers_in(sent, cperiod), ensure_ascii=False), sent, q, frag, known_at,
+                         "docs.known_at", "transcript_v1"))
     return rows
 
 
@@ -339,7 +493,7 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--out", required=True)
     ap.add_argument("--symbols", default=None, help="default: every company of the profile, else every pilot3 company")
     ap.add_argument("--profile", default=None, help="build profile JSON (T-056): companies, pages db, raw root, output")

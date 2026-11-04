@@ -34,7 +34,7 @@ from pathlib import Path
 
 from . import profile
 from .schema import TABLES, GUIDANCE_INDEXES
-from .transcripts import split_sentences
+from .transcripts import split_sentences, _same_person
 
 COLS = ("symbol isin metric target_period low high unit direction said_on doc_key page quote speaker "
         "known_at known_at_source revision_of extractor_rule").split()
@@ -67,6 +67,18 @@ FORWARD = re.compile(r"\b(expect\w*|anticipat\w*|will be|should be|would be|targ
                      r"going forward|going to|foresee|outlook|corridor|talking about)\b", re.I)
 MACRO = re.compile(r"\b(gdp|inflation|economy|economic growth|imf|world bank|repo rate|rbi projects|"
                    r"global growth|global|ex-china|headline inflation|consumer price|cy\s?\d{2})\b", re.I)
+# a guidance sentence that reports the quarter/full-year RESULT and quotes the guided range (T-056 family C)
+GUIDED_ACTUAL = re.compile(r"\b(?:within|midpoint of)\b[^.]{0,60}?\bguid", re.I)
+# "this is really how we will report going forward": a reporting basis, not a target (T-056 family C)
+REPORT_BASIS = re.compile(r"\bthis is (?:really )?(?:how we|the way we) (?:will |would )?(?:report|book)\b", re.I)
+# `other` is kept only with a guidance word in the same clause as the number (T-056 family F): a level of the
+# order book, L1 position or debtors is a fact about the business, not a target.
+OTHER_CUE = re.compile(r"\b(?:target\w*|expect\w*|guide\w*|aim\w*|would be|will be|should be)\b", re.I)
+# the quarter a sentence is looking back at: "Q1 results", "Q2 performance", "in the Q3 level" (T-056 family A)
+PAST_Q = re.compile(r"[ \t]*(?:results?|revenues?|performance|earnings|numbers?|level|update|review|profit|sales)\b",
+                    re.I)
+PAST_VERB = re.compile(r"\b(?:delivered|reported|posted|recorded|achieved|grew|declined|rose|fell|came in|stood at)\b",
+                       re.I)
 UP = re.compile(r"\b(increas\w*|rise|rising|grow\w*|improv\w*|expand\w*|higher|\bup\b|accelerat\w*|inflation)\b", re.I)
 DOWN = re.compile(r"\b(decreas\w*|declin\w*|lower\w*|\bcut\b|moderat\w*|reduc\w*|come down|coming down|"
                   r"fall\w*|drop\w*|soften\w*|down\b)\b", re.I)
@@ -80,6 +92,9 @@ METRICS = (
     ("ebitda_per_tonne", re.compile(r"ebitda\s*(?:per|/)\s*(?:ton|tonne|t)\b|(?:downstream|upstream)\s+ebitda\b|"
                                     r"\bdownstream\b", re.I), 1.0, 5000.0),
     ("order_intake", re.compile(r"order intake|order inflow|order booking|order win", re.I), 50.0, 500000.0),
+    # a project's whole capital cost is not one year's capex (T-056 family E)
+    ("project_capital_cost", re.compile(r"total (?:project )?capital cost|project capital cost|total capital cost",
+                                        re.I), 1.0, 5000000.0),
     ("capex", re.compile(r"\bcapex\b|capital expenditure|capital cost", re.I), 1.0, 5000000.0),
     ("interest_cost", re.compile(r"interest cost|interest expense|interest as %|finance cost", re.I), 0.0, 5000.0),
     ("cost_of_production", re.compile(r"cost of production|cash cost|cost inflation|inflation in cost|"
@@ -93,6 +108,9 @@ METRICS = (
 MONEY = r"(?:rs\.?|inr|₹|usd|\$)"
 AMT = r"(\d[\d,]*(?:\.\d+)?)"
 UNITWORD = r"(crores?|\bcr\b|lakhs?|million|mn|billion|bn|kilotonnes?|kt\b|tonnes?|/t\b|per ton|per tonne|a ton)?"
+# a number spent to date is an actual, not a year's capex; masked before the range parser pairs it with the total
+ACTUAL_SPEND = re.compile(MONEY + r"\s*" + AMT + r"\s*" + UNITWORD + r"\s*(?:(?:of\s+)?(?:capex|capital "
+                          r"(?:expenditures?|expenditure))\s+)?(?:spent|incurred|invested)\b", re.I)
 R_PCT_RANGE = re.compile(r"(?<![\d.])" + AMT + r"\s*%\s*(?:to|-|–|—)\s*" + AMT + r"\s*%")
 R_PCT_RANGE2 = re.compile(r"(?<![\d.])" + AMT + r"\s*(?:to|-|–|—)\s*" + AMT + r"\s*%")
 R_BPS_RANGE = re.compile(AMT + r"\s*(?:to|-|–|—)\s*" + AMT + r"\s*(?:bps|basis points)", re.I)
@@ -107,6 +125,8 @@ R_PCT_SINGLE = re.compile(r"(?<![\d.])" + AMT + r"\s*%")
 R_BPS_SINGLE = re.compile(AMT + r"\s*(?:bps|basis points)", re.I)
 R_PER_TON = re.compile(MONEY + r"?\s*" + AMT + r"\s*(?:/t\b|per ton|per tonne|a ton)", re.I)
 BULLETS = re.compile(r"[▪•❑●]")
+# a running header/footer printed into the page text ("KEC International Limited August 11, 2026 Page 14 of 23")
+HEADER_TAIL = re.compile(r"^.{0,120}?\bPage \d+ of \d+[ \t]+", re.I)
 
 
 def _num(text: str) -> float | None:
@@ -139,6 +159,13 @@ def numbers(text: str) -> list[dict]:
     """Every numeric target in a sentence: {start, end, low, high, unit}. Ranges first, then single values."""
     out: list[dict] = []
     taken: list[tuple[int, int]] = []
+    if ACTUAL_SPEND.search(text):
+        # "…$2.7 billion capital expenditures spent": an actual, blanked so no range pairs it with the total
+        chars = list(text)
+        for m in ACTUAL_SPEND.finditer(text):
+            for i in range(m.start(), m.end()):
+                chars[i] = " "
+        text = "".join(chars)
 
     def free(a: int, b: int) -> bool:
         return all(b <= x or a >= y for x, y in taken)
@@ -196,7 +223,7 @@ Q_FY = re.compile(r"\bQ\s*([1-4])\s*[- ]?\s*FY\s*'?\s*(\d{2,4})", re.I)
 H_FY = re.compile(r"\bH\s*([12])\s*[- ]?\s*FY\s*'?\s*(\d{2,4})", re.I)
 FY_RANGE = re.compile(r"\bFY\s*'?\s*(\d{2})\s*[-/]\s*(\d{2,4})", re.I)
 FY = re.compile(r"\b(?:FY|fiscal(?: year)?)\s*'?\s*(\d{2,4})", re.I)
-NEXT = re.compile(r"\b(next|following)\s+(?:fiscal|financial year|year|fiscal)\b", re.I)
+NEXT = re.compile(r"\b(next|following|coming)\s+(?:fiscal|financial year|year|fiscal)\b", re.I)
 THIS = re.compile(r"\b(this|current)\s+(?:fiscal|financial year|year)\b|\bfor the (?:full )?year\b|\bfull year\b|"
                   r"\bannually\b|\bannual(?:ly)? basis\b", re.I)
 BARE_Q = re.compile(r"(?<![\w.])(?:in\s+|from\s+|to\s+)?Q\s*([1-4])(?!\s*[- ]?FY)(?![\d])", re.I)
@@ -244,60 +271,76 @@ def base_forward(call_period: str | None, doc: tuple[int, str] | None) -> int | 
     return None
 
 
-def _explicit_period(text: str) -> str | None:
-    m = Q_FY.search(text)
-    if m:
-        return f"Q{m.group(1)}FY{_yy(m.group(2))}"
-    m = H_FY.search(text)
-    if m:
-        return f"H{m.group(1)}FY{_yy(m.group(2))}"
-    m = FY_RANGE.search(text)
-    if m:
-        return f"FY{_yy(m.group(2))}"
-    m = FY.search(text)
-    if m:
-        return f"FY{_yy(m.group(1))}"
-    return None
+def _explicit_period(text: str, pos: int | None = None) -> str | None:
+    """The period label in text: the first Q_FY, H_FY, FY range or FY hit; with ``pos``, the label nearest that
+    offset, so a sentence's own "FY26" beats a quarter heading printed farther away (T-056 family A)."""
+    labels: list[tuple[int, int, str]] = []
+    for rx, make in ((Q_FY, lambda m: f"Q{m.group(1)}FY{_yy(m.group(2))}"),
+                     (H_FY, lambda m: f"H{m.group(1)}FY{_yy(m.group(2))}"),
+                     (FY_RANGE, lambda m: f"FY{_yy(m.group(2))}"),
+                     (FY, lambda m: f"FY{_yy(m.group(1))}")):
+        for m in rx.finditer(text):
+            labels.append((m.start(), m.end(), make(m)))
+    if not labels:
+        return None
+    if pos is None:
+        return labels[0][2]
+
+    def dist(t: tuple[int, int, str]) -> int:
+        return 0 if t[0] <= pos <= t[1] else (t[0] - pos if t[0] > pos else pos - t[1])
+
+    return min(labels, key=lambda t: (dist(t), t[0]))[2]
 
 
 def target_period(sentence: str, before: str, after: str, call_period: str | None,
                   doc: tuple[int, str] | None, pos: int | None = None) -> str | None:
     """The period a target is about: explicit label in the sentence, else the nearest one before it (the question),
     else the call/result year rule; a bare "Q2" is the next quarter with that number after the call, and the bare
-    quarter nearest the target number wins ("5%, 6% Q2 to Q1" names Q2)."""
-    label = _explicit_period(sentence)
+    quarter nearest the target number wins ("5%, 6% Q2 to Q1" names Q2).  "next year" is the year after the call's
+    own, but a bare quarter in a backward-looking phrase ("Q1 results", "Q2 performance") is not the target
+    (T-056 families A and B)."""
+    label = _explicit_period(sentence, pos)
     if label:
         return label
     base = base_forward(call_period, doc)
     if base is None:
         return None
-    if NEXT.search(sentence) or THIS.search(sentence):
-        return f"FY{base:02d}"
+    moves = [(m.start(), "next") for m in NEXT.finditer(sentence)] + \
+            [(m.start(), "this") for m in THIS.finditer(sentence)]
+    if moves:
+        cue = (min(moves, key=lambda t: (abs(t[0] - pos), t[0])) if pos is not None else moves[0])[1]
+        return f"FY{base + (1 if cue == 'next' else 0):02d}"
     qs = list(BARE_Q.finditer(sentence))
     if qs:
         # the quarter the sentence is about: nearest one after the target number, but never a comparison base
-        # ("versus Q4", "from Q3"); with no number position, the first one wins
+        # ("versus Q4", "from Q3") and never the quarter a result is reported for ("Q1 results", "Q2 performance")
+        kept = [m for m in qs
+                if not PAST_Q.match(sentence, m.end())
+                and not PAST_VERB.search(sentence[max(0, m.start() - 45):m.start()])
+                and not re.search(r"\b(?:versus|vs\.?|from|than|against|compared with)\s*$",
+                                  sentence[max(0, m.start() - 14):m.start()], re.I)]
         if pos is None:
-            q = qs[0]
+            q = kept[0] if kept else None
         else:
-            kept = [m for m in qs
-                    if not re.search(r"\b(?:versus|vs\.?|from|than|against|compared with)\s*$",
-                                     sentence[max(0, m.start() - 14):m.start()], re.I)]
             after_q = [m for m in kept if m.start() >= pos]
             before_q = [m for m in kept if m.start() < pos]
             q = (min(after_q, key=lambda m: m.start()) if after_q else
-                 (max(before_q, key=lambda m: m.start()) if before_q else qs[0]))
-        fy, call_q = split_period(call_period)
-        n = int(q.group(1))
-        if fy is None and doc:
-            fy, call_q = doc[0], doc[1]
-        if fy is not None and call_q:
-            return f"Q{n}FY{fy + (1 if n <= int(call_q[1]) else 0):02d}"
-        if fy is not None:
-            return f"Q{n}FY{fy:02d}"
-    for text in (before[-500:], after):
+                 (max(before_q, key=lambda m: m.start()) if before_q else None))
+        if q is not None:
+            fy, call_q = split_period(call_period)
+            n = int(q.group(1))
+            if fy is None and doc:
+                fy, call_q = doc[0], doc[1]
+            if fy is not None and call_q:
+                return f"Q{n}FY{fy + (1 if n <= int(call_q[1]) else 0):02d}"
+            if fy is not None:
+                return f"Q{n}FY{fy:02d}"
+    for text, is_before in ((before[-500:], True), (after, False)):
         label = _explicit_period(text)
         if label:
+            fy, _q = split_period(label)
+            if is_before and fy is not None and fy < base:
+                continue                # the question's period is already over: not a target period (T-056)
             return label
     return f"FY{base:02d}"
 
@@ -312,11 +355,25 @@ METRIC_UNITS = {
     "cost_of_production": {"pct"},
     "interest_cost": {"pct", "inr_cr", "inr", "inr_lakh"},
     "order_intake": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn", "count"},
+    "project_capital_cost": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
     "capex": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
     # a per-tonne target is often said as a bare "$250", converted to usd_per_t / inr_per_t below
     "ebitda_per_tonne": {"usd_per_t", "inr_per_t", "usd", "inr"},
     "other": {"pct", "bps", "inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn", "count", "usd_per_t", "inr_per_t"},
 }
+
+
+def _bank_metric_ok(symbol: str) -> bool:
+    """nim/credit_cost belong to a lender whose profile sector is nbfc or bank (T-056 family F: an insurer's
+    growth was stored as NIM).  Without a profile the present behaviour is kept."""
+    prof = profile.active()
+    if prof is None:
+        return True
+    try:
+        c = prof.company(symbol)
+    except KeyError:
+        return True
+    return c.lender and c.sector.strip().lower() in ("nbfc", "bank", "banking")
 
 
 def metric_candidates(symbol: str, sentence: str, before: str, after: str) -> list[str]:
@@ -329,6 +386,8 @@ def metric_candidates(symbol: str, sentence: str, before: str, after: str) -> li
                 continue
             if name == "ebitda_margin" and profile.is_lender(symbol) and not re.search(r"ebitda", text, re.I):
                 name = "nim"          # a lender's "margin" is its NIM
+            if name in ("nim", "credit_cost") and not _bank_metric_ok(symbol):
+                continue
             if name not in seen:
                 seen.append(name)
     if any(rx.search(text) for text in (sentence, before[-300:], after[:150])
@@ -364,11 +423,12 @@ GROWTH_NEAR = re.compile(r"\b(growth|grew|grow\w*|increase[sd]?|decrease[sd]?|de
 SHARE_NOUN = re.compile(r"^\s*(?:share|of\s+share)\b"
                         r"|\b(?:share|proportion)\s+of\b"
                         r"|\bof\s+(?:our|the|my|its)\s+(?:overall\s+|total\s+)?"
-                        r"(?:supply|sourcing|requirement|cost|turnover|revenue|sales|income|profit)\b", re.I)
+                        r"(?:[\w-]+\s+){0,2}(?:supply|sourcing|requirement|costs?|turnover|revenue|sales|income|profit)\b",
+                        re.I)
 # another quantity that owns the number: the answer is about it, not about the question's metric
-SUBJECT_NOUN = re.compile(r"\b(net debt|debt|borrowings?|working capital|receivables?|order book|backlog|"
-                          r"turnover|top ?line|profit|margins?|shipments?|volumes?|supply|sourc\w*|utilisation|"
-                          r"utilization|capacity|tonnes?|inflation|costs?)\b", re.I)
+SUBJECT_NOUN = re.compile(r"\b(exposure|debtors?|net debt|debt|borrowings?|working capital|receivables?|order book|"
+                          r"backlog|turnover|top ?line|profit|margins?|shipments?|volumes?|supply|sourc\w*|"
+                          r"utilisation|utilization|capacity|tonnes?|inflation|costs?)\b", re.I)
 # a percent that is a change ("a 10% reduction in the interest cost", "3-4% revenue impact") is not a level
 PCT_CHANGE = re.compile(r"\s*%?\s*(?:reduction|increase|decrease|impact|improvement|savings?)\b", re.I)
 METRIC_RX = {name: rx for name, rx, _lo, _hi in METRICS}
@@ -422,7 +482,15 @@ def direction_of(sentence: str, metric: str) -> str:
 
 
 def pick_number(sentence: str, nums: list[dict]) -> dict | None:
-    """The number the guidance verb points at: the first one after the nearest cue, else the nearest to it."""
+    """The number the guidance verb points at: the first one after the nearest cue, else the nearest to it.  A
+    number that is a comparison base ("against INR5,000 crores, which we got this year") is not the target
+    (T-056 family H: the prior year's order intake was read as this year's)."""
+    nums = [n for n in nums
+            if not re.search(r"\b(?:against|versus|vs\.?|compared with|than|up from|down from)\s+$",
+                             sentence[max(0, n["start"] - 16):n["start"]], re.I)
+            and not re.match(r"\s*(?:last|previous|prior|year[- ]ago)", sentence[n["end"]:n["end"] + 22], re.I)]
+    if not nums:
+        return None
     cues = [m.start() for m in CUE.finditer(sentence)]
     if not cues:
         return nums[0] if nums else None
@@ -433,6 +501,47 @@ def pick_number(sentence: str, nums: list[dict]) -> dict | None:
 
 
 # --- reading the database ---------------------------------------------------------------------------
+_DIMS: list | None = None
+
+
+def dimensions() -> list:
+    """The segment/geography words of ``lexicon/dimensions.yaml``, through the kpi reader (T-056 family F)."""
+    global _DIMS
+    if _DIMS is None:
+        from .kpi import load_lexicon
+        _DIMS = load_lexicon()[1]
+    return _DIMS
+
+
+def segment_subject(sentence: str, chosen: dict, symbol: str) -> bool:
+    """True when a segment or business of the company owns the number: the dimension word sits within 140
+    characters before it (T-056 family F: a segment's margin was stored as the company's)."""
+    lo = max(0, chosen["start"] - 140)
+    window = sentence[lo:chosen["start"]]
+    for d in dimensions():
+        if d.companies and symbol not in d.companies:
+            continue
+        if any(rx.search(window) for rx in d.patterns):
+            return True
+    return False
+
+
+def other_cued(sentence: str, chosen: dict) -> bool:
+    """``other`` needs a guidance word in the number's own clause, and no other noun owning the number
+    (T-056 family F: an L1 position, an order-book exposure or gross debtors are not targets)."""
+    left = sentence[max(0, chosen["start"] - 70):chosen["start"]]
+    for m in SUBJECT_NOUN.finditer(left):
+        if not METRIC_RX["other"].search(m.group(0)):
+            return False
+    for m in OTHER_CUE.finditer(sentence):
+        if abs(m.start() - chosen["start"]) > 80:
+            continue
+        a, b = (m.end(), chosen["start"]) if m.end() <= chosen["start"] else (chosen["end"], m.start())
+        if a <= b and "," not in sentence[a:b]:
+            return True
+    return False
+
+
 def _docs(con: sqlite3.Connection, symbol: str):
     return con.execute(
         "SELECT doc_key, doc_type, isin, title, filing_date, known_at FROM doc WHERE symbol=? AND doc_type IN "
@@ -471,8 +580,10 @@ def page_sentences(raw: str) -> list[tuple[int, int]]:
 
 
 def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statements: list[sqlite3.Row],
-                      stats: dict) -> list[tuple]:
-    """Guidance rows (without revision_of) from one page: transcript statements when held, else split sentences."""
+                      stats: dict, mgmt_speakers: tuple[str, ...] = (), doc_has_statements: bool = False) -> list[tuple]:
+    """Guidance rows (without revision_of) from one page: transcript statements when held, else split sentences.
+    A page of a transcript whose statements are held elsewhere may only contribute a sentence when its "Name:"
+    label is one of that document's management speakers: an analyst's or journalist's words are never a target."""
     collapsed = " ".join(raw.split())
     items: list[tuple[str, str, str | None]] = []      # (sentence, quote, speaker)
     if statements:
@@ -482,15 +593,27 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                 items.append((stmt, " ".join((st["quote"] or stmt).split()), st["speaker"]))
     else:
         for a, b in page_sentences(raw):
-            s = " ".join(raw[a:b].split())
-            if s:
-                items.append((s, s, _speaker_in(raw, s)))
+            s = HEADER_TAIL.sub("", " ".join(raw[a:b].split()))
+            if not s:
+                continue
+            speaker = _speaker_in(raw, s)
+            if doc_has_statements and speaker and not any(_same_person(speaker, m) for m in mgmt_speakers):
+                stats["not_management"] += 1
+                continue
+            items.append((s, s, speaker))
     call_period = statements[0]["call_period"] if statements else None
     docper = doc_period(doc["filing_date"], doc["known_at"])
     rows = []
     for sentence, quote, speaker in items:
         if len(sentence) < 30 or len(sentence) > 400:
             continue
+        if re.search(r"\?[\"'”’)]*$", sentence) and not re.search(
+                r"\b(?:okay|ok|right|no|correct|fine)\?[\"'”’)]*$", sentence, re.I):
+            stats["question"] += 1
+            continue                    # a question is never a target (T-056 family G; "…INR400 crores, okay?" is)
+        if GUIDED_ACTUAL.search(sentence) or REPORT_BASIS.search(sentence):
+            stats["guided_actual"] += 1
+            continue                    # the result quoted against the guided range (T-056 family C)
         nums = numbers(sentence)
         if not nums:
             continue
@@ -554,10 +677,20 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if PAST_ONLY.search(sentence) and not OWN_PERIOD.search(sentence):
             stats["past_only"] += 1
             continue                        # "last year would be 7.5%": a measurement, not a target period
+        if metric == "credit_cost" and re.search(r"\b(?:g|n)npa\b", sentence[max(0, chosen["start"] - 40):chosen["start"]],
+                                                 re.I):
+            stats["asset_quality"] += 1
+            continue                    # "GNPA came in at 1.01%" is an actual, not the credit-cost target
         if metric == "other" and (FACT_SHAPE.search(sentence) or "market share" in sentence.lower()
-                                  or not any(abs(c - chosen["start"]) <= 80 for c in cues)):
+                                  or not other_cued(sentence, chosen)):
             stats["other_fact"] += 1
             continue
+        if metric != "other" and segment_subject(sentence, chosen, symbol):
+            stats["other_segment"] += 1
+            continue                    # a segment's or business's number is not the company's metric
+        if chosen["unit"] == "inr" and metric in ("order_intake", "capex", "project_capital_cost", "interest_cost") \
+                and chosen["high"] >= 100:
+            chosen = {**chosen, "unit": "inr_cr"}   # "INR9,000-INR10,000" in a crore-scale business is crore
         period = target_period(sentence, before, after, call_period, docper, chosen["start"])
         if not period:
             stats["no_period"] += 1
@@ -586,20 +719,27 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
         con.execute("DELETE FROM guidance WHERE symbol=?", (symbol,))
         st = stats_all[symbol] = Counter()
         statements = _transcript_statements(con, symbol)
+        # one row per (metric, period, value, unit, said_on) for the whole run: the BSE/NSE copies and the several
+        # pages of one document collapse onto the first one (documents are read in known_at order, pages ascending,
+        # so that is the earliest knowledge and the lowest page); a later call has its own said_on, so a
+        # restatement is kept for `revisions` (T-056 family I)
+        seen: set[tuple] = set()
         for index, doc in enumerate(_docs(con, symbol)):
             if limit_docs is not None and index >= limit_docs:
                 break
+            doc_rows = statements.get(doc["doc_key"], [])
             by_page: dict[int, list[sqlite3.Row]] = {}
-            for row in statements.get(doc["doc_key"], []):
+            for row in doc_rows:
                 by_page.setdefault(row["page"], []).append(row)
-            seen: set[tuple] = set()
+            mgmt_speakers = tuple({r["speaker"] for r in doc_rows})
             pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc["doc_key"],))
             for page, text in pages:
                 if not (text or "").strip():
                     continue
                 st["pages"] += 1
-                for row in extract_sentences(symbol, doc, page, text, by_page.get(page, []), st):
-                    sig = (row[9], row[10], row[2], row[3], row[4], row[5])
+                for row in extract_sentences(symbol, doc, page, text, by_page.get(page, []), st,
+                                             mgmt_speakers, bool(doc_rows)):
+                    sig = (row[0], row[2], row[3], row[4], row[5], row[6], row[8])
                     if sig in seen:
                         st["duplicate"] += 1
                         continue

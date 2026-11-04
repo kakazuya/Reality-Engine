@@ -43,9 +43,28 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   (`mix_v1`), entity headings (consolidated / standalone / subsidiary). Lexicon families in `pilot3/lexicon/`
   (common, lenders, metals, orders, dimensions, topics). Period rules: a period can never start after its document's
   date ("June 26, 2019" was once read as June 2026); a later deck restating an earlier quarter keeps that quarter.
+- **Speakers** (`transcripts.py`, loop 3, 4 Nov 2026): management is placed by universal rules, no company name in
+  code and the `people` lexicon not extended. A participants block on the first three pages names management with
+  titles (`_title_role`: cfo / md / ir / mgmt) and the analysts/journalists under their headings; the moderator's
+  "we have with us today A, B and C" sentence names the management team; a bare name line (no colon) is a speaker
+  mark only in a document with fewer than five real colon marks, and only for a participant name or a line repeated
+  3+ times with speech after it; in the Q&A a name answering after an analyst 3+ times, never introduced as an
+  analyst, is management. Analysts and journalists are never stored; an unplaceable speaker is counted in
+  `unknown_speakers`. Measured on the pilot10 copy: ETERNAL 691 rows (3 management speakers, the analysts 0), INFY
+  2,512 (Salil Parekh md, Jayesh Sanghrajka cfo, Rishi Basu and Nandan Nilekani mgmt, the journalists 0), KEC 1,803
+  unchanged; HDFCBANK/HINDALCO/SUNPHARMA gained their real participants (Keki Mistry, Kaizad Bharucha, Steve Fisher,
+  Dilip Shanghvi, Kirti Ganorkar, Jayashree Satagopan), BAJFINANCE/HINDUNILVR/SBILIFE unchanged, MARUTI 0 (one-page
+  cover letters).
 - **Guidance**: sentence rules: forward cue, metric must be the target's subject, past actuals / tariff rates / supply
-  shares / net-debt sentences rejected. Precision: 18/30 clean (3 Nov) → 28/40 (4 Nov). Remaining errors: two
-  quantities in one sentence, restated past figures, vague levels.
+  shares / net-debt sentences rejected. Loop 3 (4 Nov 2026) hand-read all 136 rows and closed nine wrong-row families:
+  a bare quarter used as a backward-looking label ("Q1 results", "Q2 performance") is not the target period; "next /
+  coming year" moves one year forward; a result quoted against the guided range is dropped; an amount spent to date no
+  longer pairs into a range; a project's whole capital cost is `project_capital_cost`, not a year's capex; `nim` and
+  `credit_cost` are read only for a lender whose profile sector is nbfc or bank; a segment's number is not the
+  company's metric; `other` needs its guidance word in the number's own clause; a question is never a target; and the
+  run dedupes on `(symbol, metric, period, low, high, unit, said_on)`, so BSE/NSE copies and several pages of one
+  document are one row while a later restatement stays. State on the pilot10 copy: 69 rows (INFY's FY27 guidance is
+  one row per date, HINDUNILVR keeps only the 22.5-23.5 mid-term band). Before loop 3, precision was 28/40 (4 Nov).
 - **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
   `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
   writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into
@@ -80,6 +99,7 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
 | 4 Nov | after guidance table + KPI fixes, same 185 | **154 / 30 / 1** (KEC 54/6/1, BAJ 48/13/0, HIN 52/11/0) |
 | 4 Nov | answer_check after KPI + dates merges | 134 match, no match lost |
 | 4 Nov | embeddings, 112 gold questions, top 10 | bm25 35%, bm25+1B 46%, bm25+8B 52%; images add nothing |
+| 4 Nov | loop 3: speakers + guidance precision, A1 on the pilot10 copy | A1 **662/898** (651 before; KEC 51 → 62, every other company level); statements ETERNAL 691 / INFY 2,512 / KEC 1,803; guidance 69 rows |
 
 Open from the 4 Nov grade: data not held (RBI repo path, national capex), one part of two-part questions missed,
 definitions not reconciled (BHFL share of profit, ROCE), KEC transcripts stored twice (website + exchange copy).
