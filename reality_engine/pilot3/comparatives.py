@@ -1251,7 +1251,7 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
     bases = [basis_hint] if basis_hint else (["consolidated", "standalone"] if xbrl else ["unchecked"])
     target = list(hint) if hint else None
     candidates: list[list[str]] = []
-    for roles in (chance, target, default):
+    for roles in (target, chance, default):
         if roles is not None and roles not in candidates:
             candidates.append(roles)
     best = None

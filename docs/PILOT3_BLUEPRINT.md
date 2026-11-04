@@ -281,7 +281,7 @@ active one. Without a profile every command behaves exactly as before (the three
   SBILIFE 273, INFY 657, SUNPHARMA 987, MARUTI 200, HINDUNILVR 798, ETERNAL 568), `xbrl_ok` 1,562, `sum_ok` 2,408, `repeat_ok` 1,313,
   `unchecked` 1,402 (was 2,136); 246 cells to `w_cmp2_comparatives_review.csv` (was 169; +101 `sum_ambiguous`, +60 repair, 49 failed, 35
   unreadable). Quarter rows checked: KEC 90.1%, SUNPHARMA 91.3%, HDFCBANK 85.6%, HINDALCO 83.1%, ETERNAL 78.9%, BAJFINANCE 78.0%,
-  SBILIFE 74.4%, HINDUNILVR 73.9%, MARUTI 67.7%, INFY 64.2% -- two of ten at the 90% target: `fin_quarter_xbrl` holds only four
+  SBILIFE 74.4%, HINDUNILVR 73.9%, MARUTI 67.7%, INFY 65.4% -- two of ten at the 90% target: `fin_quarter_xbrl` holds only four
   quarters, so an older filing's quarter columns have no XBRL row, the year-ago and prior-ytd columns are printed by one filing only
   (INFY's are unchecked by design), SBILIFE's insurer total rows carry no canonical line item, and MARUTI's scan is partly unreadable.
   `--part ratios` after it: `valuation_daily.pe` days (old round -> now) BAJFINANCE 244 -> 188, ETERNAL 72 -> 130, HDFCBANK 11, HINDALCO
