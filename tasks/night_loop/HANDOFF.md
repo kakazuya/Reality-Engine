@@ -1,11 +1,10 @@
 # Hand-off between loop sessions (each loop overwrites "Current state" and "Next", appends "Learnings")
 
 ## Current state (loop 3, 4 Nov 2026 18:20 IST)
-- Baseline on a copy, `pilot10\scratch\l3_base.db`: A1 dev 651/898 = 72% (`pilot10\scores1_loop03_base.json`). `pilot10.db` itself is untouched and stale: promote only through the wrapper.
+- Baseline on a copy, `pilot10\scratch\l3_base.db`: A1 dev 651/898 = 72% (`pilot10\scores\a1_loop03_base.json`). `pilot10.db` itself is untouched and stale: promote only through the wrapper.
 - Running: DeepSeek workers f826eabb (comparatives, T-057, `dsh/20261104T124718Z-f826eabb`) and 2e947e47 (KPI lexicons, `dsh/20261104T124734Z-2e947e47`).
 - Brief ready, not started: `loops/loop_03_worker_speech.md` (speakers for ETERNAL, INFY, KEC; guidance precision).
-- 865 pages need OCR: `pilot10\logs
-eeds_ocr_pages.csv`. Not run.
+- 865 pages need OCR: `pilot10\logs\needs_ocr_pages.csv`. Not run.
 
 ## Wrapper between loops 1 and 2 (05:00 IST)
 - Merged the qset fix worker (030725d): `qset check` on all 10 files: 1,305 questions, Q1 0 violations, Q2 every company
