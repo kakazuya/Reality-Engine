@@ -1,4 +1,4 @@
-# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-04 18:30 IST (Eagle)
+# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-04 21:30 IST (Eagle)
 
 ## Now
 Golden-rule step 4-5: pilot on KEC, BAJFINANCE, HINDALCO (`reality_engine/data/pilot3/pilot3.db`, script-built, served by
