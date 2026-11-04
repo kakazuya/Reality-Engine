@@ -38,8 +38,10 @@ def start(name, brief, hours):
                                                "worktree": str(tree), "brief": str(Path(brief).resolve())}))
     py = sys.executable
     cmdline = f'"{py}" "{Path(__file__).resolve()}" run {name} "{Path(brief).resolve()}" --hours {hours}'
-    ps = ("$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='"
-          + cmdline.replace("'", "''") + "'; CurrentDirectory='" + str(tree) + "'}; $r.ProcessId")
+    ps = ("$h = New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ShowWindow=[uint16]0}; "
+          "$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='"
+          + cmdline.replace("'", "''") + "'; CurrentDirectory='" + str(tree)
+          + "'; ProcessStartupInformation=$h}; $r.ProcessId")
     pid = subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, text=True).stdout.strip()
     print(json.dumps({"started": name, "pid": pid, "branch": branch, "worktree": str(tree), "status": str(d / "status.json")}))
 

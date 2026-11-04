@@ -17,7 +17,7 @@ reports and run existing scripts). Read in this order and nothing else first:
   start a Sonnet 5.5 (effort medium) worker instead with the same brief: `python tasks/night_loop/sonnet_worker.py
   start <name> <brief.md>`, then `... wait <name> --seconds 540` (repeat) and read its `result.md`; it counts as one
   of the 2 slots (Shivam, 4 Nov). Sonnet workers share your own 5-hour limit, so run at most one at a time, and
-  never in off-peak hours. DeepSeek uses none of it.
+  never in off-peak hours. DeepSeek uses none of it. `start_loop.ps1` and `sonnet_worker.py` start with no console window.
 - Brief a worker only with the evidence gathered (project rule): defect rows and ids, file / function / line,
   table columns, a fast check command. Template `tasks/worker_context/BRIEF_TEMPLATE.md` (seven fields incl.
   Evidence). Use `use_worktree=true`, `permission=workspace-write` (or `write_scope='data'` with `writes` for a job
