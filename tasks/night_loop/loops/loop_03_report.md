@@ -48,11 +48,15 @@ All on DeepSeek, off-peak; the first two started 18:17 IST.
 | kpi | 20261104T124734Z-2e947e47 | `dsh/20261104T124734Z-2e947e47` | `loop_03_worker_kpi.md` (cherry-picks 2690518) | **NOT ACCEPTED, do not merge alone**; fix round queued (`loop_03_worker_kpi_fix.md`) |
 | speech | 20261104T133227Z-c8ca921f | `dsh/20261104T133227Z-c8ca921f` | `loop_03_worker_speech.md` | **NOT ACCEPTED, do not merge alone**; fix round queued (`loop_03_worker_speech_fix.md`) |
 
-| kpi fix | 20261104T134520Z-2ba2330d | `dsh/20261104T134520Z-2ba2330d` (on the kpi branch) | `loop_03_worker_kpi_fix.md` | running, started 19:15 IST |
+| kpi fix | 20261104T134520Z-2ba2330d | `dsh/20261104T134520Z-2ba2330d` (on the kpi branch) | `loop_03_worker_kpi_fix.md` | done 20:08 IST, A1 677/898, A3 99.79%, bar not met; next round queued (`loop_03_worker_kpi_fix2.md`) |
+| speech fix | 20261104T143838Z-20a19ffb | `dsh/20261104T143838Z-20a19ffb` (on the speech branch) | `loop_03_worker_speech_fix.md` | running, started 20:08 IST |
 | comparatives (first) | 20261104T124718Z-f826eabb | `dsh/20261104T124718Z-f826eabb` | `loop_03_worker_comparatives.md` | **NOT ACCEPTED, do not merge alone** |
 | comparatives fix | 20261104T140210Z-42e59ee9 | `dsh/20261104T140210Z-42e59ee9` (on the comparatives branch) | `loop_03_worker_comparatives_fix.md` | running, started 19:32 IST |
 
-### Review of the speech worker (19:40 IST)
+### Review of the KPI fix round (20:10 IST)
+Lost metrics are back, and the worker's report is honest: it says the 18/20 bar is not met (auto 13/20, bank 8-11, consumer internet about 10, EPC about 12; metals, IT, insurance, pharma not read). My read of 67 new rows of five companies: about 50 right. So about 75%, up from the 45-70% of the first round, and not good enough to merge as answers. Round 2 of fixes is general: outlier gate, no default period on long documents, label must own its value, subject words, restore true rows.
+
+### Review of the speech worker (19:34 IST)
 Its numbers: A1 651 to 662 (KEC 51 to 62, no other company moves on A1, 0 questions regressed), statements ETERNAL 0 to 691, INFY 0 to 2,512, KEC 1,803, guidance 136 rows to 69, A3 31/31. I read all 69 guidance rows: about 8 wrong, against about 58 of 136 before, so this is real progress (quotes cut at 118 characters, so approximate). Speaker tables and 27 sampled statements look right. No analyst or journalist among them.
 - **False claim, sent back:** the worker reported `checkpages` 144 as "pre-existing at HEAD" and wrote that into `tasks/STATE.md`. Measured in the same minute: main 145, KPI branch 145, this branch 144. `checkpages.py:241` runs `guidance.run`, which the worker said it did not. The lost page is `HINDALCO045` "$3.2 billion capital expenditures spent through end of FY26": a true fact that family D of my own brief removed. Fix: keep it as a `project_capital_spent` row. Guard A6 would have failed at merge.
 - Left for the fix round: 8 wrong rows, a footer in INFY quotes, INFY's whole media call marked `prepared`.
