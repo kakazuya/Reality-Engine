@@ -49,10 +49,30 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   chart fragments yield no row) while table rows keep the plain `labels`. Period rules: a period can never start
   after its document's date ("June 26, 2019" was once read as June 2026); a later deck restating an earlier quarter
   keeps that quarter; a results table's bare dates are relabelled from the group headings above them ("Quarter
-  ended | Half Year ended | Year ended"), so a half-year column over 30.09.2026 is `H1FY27`, not `Q2FY27`. On the
-  pilot10 base (`l3_base.db`, A1 651/898) the loop-3 lexicons take A1 to 676/898 with no company below base and
-  stop the sector-wrong rows (`deposits`, `crar_pct`, `nim_pct` only on lenders, `cost_of_production` only on
-  metals; A3 99.85%, `xbrl_disagreements` 312 against the base 335).
+  ended | Half Year ended | Year ended"), so a half-year column over 30.09.2026 is `H1FY27`, not `Q2FY27` — the
+  group is the contiguous run of columns a heading is centred over and the year-to-date block starts where a column
+  repeats the first column's date (Q2FY27 and H1FY27 both end 30.09.2026), so a 31.03.2026 column under "Quarter
+  ended" is `Q4FY26`, not `FY26`, and only the first quarter column of a results table is read (the prior quarters
+  print in their own results). Under a `--profile` build a row whose period ends before `window_start` minus one
+  year is history and is dropped (`period_before_window`), and a table value must be a whole printed token (the
+  `791.0` inside `7,791.02`, the `0,37` decimal comma), a percentage at most `max_pct` (100 unless the entry says
+  otherwise), a day count at least one, and never a signed or negative count/money level; a row printing more values
+  than its table has columns is dropped (`column_mismatch`). The sentence reader refuses a value whose label sits on
+  another line with another label in between (a fact-sheet block), reads `from X to Y` as Y and `by N ... to/at M`
+  as M, does not treat the token after "compared to" as a second period, and refuses "impacted by", "larger than
+  $50 mn" and "$50 mn plus clients". On the pilot10 base (`l3_base.db`, A1 651/898) the loop-3 lexicons take A1 to
+  676/898 and this fix round to 677/898 with no company below its baseline (BAJFINANCE 71, ETERNAL 68, HDFCBANK
+  75, HINDALCO 69, HINDUNILVR 74, INFY 65, KEC 51, MARUTI 61, SBILIFE 75, SUNPHARMA 68): precision first, so the
+  wrong-row families
+  (`Net cash generated from financing activities` as net debt, `Long term debt to working capital Ratio` as days,
+  the `R&D Spend 23,676` rupees as a percent, a deck column read one period off) are gone and the true rows the
+  sector gate deleted — `ebitda` (moved to `common`), `roe_pct` (moved to `common`), insurer `aum` (added to
+  `insurance_life`) — are back; A3 99.85%, `xbrl_disagreements` 312 against the base 335, `test_pilot3_kpi.py`
+  53 passed, checkpages 145 (KEC 29, BAJFINANCE 59, HINDALCO 57). Open: the seed-20261105 hand read of 20 new rows
+  per family is under 18/20 in most families — a deck's "Sales Volume" row was read as `revenue` (the `volume` neg
+  was added after the read), HDFCBANK `advances` takes a rupee-scale table figure as crore, ETERNAL reads
+  guided/call margins, and KEC's `debt equity ratio` sits under `net_debt_to_equity`; a second label fix round is
+  owed on those.
 - **Guidance**: sentence rules: forward cue, metric must be the target's subject, past actuals / tariff rates / supply
   shares / net-debt sentences rejected. Precision: 18/30 clean (3 Nov) → 28/40 (4 Nov). Remaining errors: two
   quantities in one sentence, restated past figures, vague levels.

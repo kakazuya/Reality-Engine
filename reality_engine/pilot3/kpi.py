@@ -21,6 +21,7 @@ Shared helpers (periods, numbers, units, lexicon loader) are imported by transcr
 from __future__ import annotations
 
 import argparse
+import itertools
 import re
 import sqlite3
 import sys
@@ -158,16 +159,36 @@ def period_end(period_type: str, fiscal_period: str | None) -> str | None:
     return _period_bounds(period_type, fiscal_period, False)
 
 
+def window_floor() -> str | None:
+    """Oldest period end a profile keeps: one year before its ``window_start`` (the YoY base).  Decks print history;
+    a row whose period closed earlier than the floor is history, not a KPI of the window."""
+    ws = profile.window_start()
+    return f"{int(ws[:4]) - 1:04d}{ws[4:]}" if ws else None
+
+
+def drop_reason(period_type: str, fiscal_period: str | None, known_at: str | None) -> str | None:
+    """Why a row is dropped, or None when it can be stored: the period cannot begin after the document was filed,
+    and under a profile it cannot end before the window floor (``window_floor``)."""
+    start = period_start(period_type, fiscal_period)
+    day = (known_at or "")[:10]
+    if start and day and start > day:
+        return "period_after_doc"
+    if profile.under_profile():
+        end, floor = period_end(period_type, fiscal_period), window_floor()
+        if end and floor and end < floor:
+            return "period_before_window"
+    return None
+
+
 def keep_period(period_type: str, fiscal_period: str | None, known_at: str | None) -> bool:
     """False when the period begins after the document was filed, so the document cannot report it.
 
     The KEC FY2019 annual report (known_at 2019-06-26) carried Q1FY27 rows because the date line "June 26, 2019"
     was read as "June 2026" (the day taken for a two-digit year) and the misread date became the document's default
     period.  The test is the period's own start, as the rule states: a period can never begin after its document's
-    ``known_at``.  A row whose label is one this reader does not know is kept (None start)."""
-    start = period_start(period_type, fiscal_period)
-    day = (known_at or "")[:10]
-    return not (start and day and start > day)
+    ``known_at``.  A row whose label is one this reader does not know is kept (None start).  Under a profile a row
+    also has to end inside the window (``drop_reason``)."""
+    return drop_reason(period_type, fiscal_period, known_at) is None
 
 
 def parse_periods(text: str) -> list[Period]:
@@ -247,6 +268,19 @@ def to_float(s: str) -> float | None:
     except ValueError:
         return None
     return -v if neg else v
+
+
+def _comma_decimal(num: str) -> bool:
+    """A trailing one/two-digit comma group is a decimal comma ("0,37%" printed for 0.37%), never a thousand group:
+    no number is written with a comma before exactly two final digits."""
+    return bool(re.search(r",\d{1,2}[\"'’]?$", num.strip("()")))
+
+
+def _whole_printed(text: str, num: str) -> bool:
+    """The token as printed, bounded by characters that cannot continue a number: "791.0" inside "7,791.02" is a
+    fragment of another value, and a token the page never prints whole is not a table value."""
+    t = num.strip("()")
+    return bool(t) and bool(re.search(r"(?<![\d,.])" + re.escape(t) + r"(?![\d,.])", text))
 
 
 @dataclass
@@ -354,6 +388,7 @@ class Entry:
     no_profile: bool = False            # file key `no_profile`: with no profile (the pilot3 three) the family still applies
     labels_strict: list[re.Pattern] = field(default_factory=list)  # file key `strict` (per entry): sentence-path labels
     #                                    that require the value right after the label; tables keep the plain `labels`
+    max_pct: float = 100.0              # file key `max_pct`: highest value a pct entry may store (a rate can exceed 100)
 
 
 @dataclass
@@ -387,7 +422,7 @@ def load_lexicon() -> tuple[list[Entry], list[Dim]]:
                 entries.append(Entry(e["metric"], e["kind"], e["unit"], [_rx(x) for x in e["labels"]],
                                      _rx(e["neg"]) if e.get("neg") else None, e.get("companies"), d.get("family", f.stem),
                                      [is_generic_label(x) for x in e["labels"]], d.get("sectors"), bool(d.get("no_profile")),
-                                     [_rx(x) for x in e.get("strict") or []]))
+                                     [_rx(x) for x in e.get("strict") or []], float(e.get("max_pct", 100.0))))
         if "dimensions" in d:
             for e in d["dimensions"]:
                 dims.append(Dim(e["dimension"], [_rx(x) for x in e["patterns"]], e.get("companies")))
@@ -494,13 +529,18 @@ class Row:
     rule: str
 
 
-_PAGE_UNIT_RX = re.compile(r"(?:₹|`|rs\.?|inr)\s*(?:in\s+|\()?\s*(billion|bn|million|mn|mm)\b", re.I)
+_PAGE_UNIT_RX = re.compile(r"(?:₹|`|rs\.?|inr)\s*(?:in\s+|\()?\s*(billion|bn|million|mn|mm)\b"
+                           r"|\(\s*(?:in\s+)?(billion|bn|million|mn|mm)\s*\)", re.I)
 
 
 def page_money_unit(text: str) -> str | None:
     """inr_bn / inr_mn when the page declares one such unit for its rupee table ("(₹ in billion)"), else None.
+    The currency glyph is often lost from the text layer ("( in billion)"), so a parenthetical unit note counts too.
     Two different declarations on a page: None (ambiguous)."""
-    found = {("inr_bn" if m.group(1).lower() in ("billion", "bn") else "inr_mn") for m in _PAGE_UNIT_RX.finditer(text)}
+    found = set()
+    for m in _PAGE_UNIT_RX.finditer(text):
+        u = (m.group(1) or m.group(2) or "").lower()
+        found.add("inr_bn" if u in ("billion", "bn") else "inr_mn")
     return found.pop() if len(found) == 1 else None
 
 
@@ -529,6 +569,17 @@ def finalize_unit(unit: str, value: float, metric_default: str):
     if unit == "count_cr":
         return value, "count_cr", 1e7
     return value, unit, 1.0
+
+
+def _page_unit_canon(unit: str | None, raw: str, e: Entry, text: str) -> str | None:
+    """A bare rupee figure on a page that declares its table unit ("₹ In billion") keeps that unit: the label
+    fallback reads every rupee token as crore, which stored SBILIFE's 1,012.9 bn premium as crore."""
+    if not profile.under_profile() or e.kind != "money" or unit != "inr_cr":
+        return unit
+    if re.search(r"crore|\bcr\b|lakh", raw or "", re.I):
+        return unit
+    pu = page_money_unit(text)
+    return pu if pu in ("inr_bn", "inr_mn") else unit
 
 
 def page_basis(text: str) -> str:
@@ -620,8 +671,15 @@ def _pair_before(text, pers, pos):
 
 
 BY_RX = re.compile(r"\b(?:reduc|increas|decreas|declin|improv|grew|grow|rose|fell|expan|add|lower|higher|up|down)\w*\b[^.]{0,30}\bby\s*"
-                   r"(?:over|more than|about|around|nearly|approximately|~)?\s*$", re.I)
-TO_RX = re.compile(r"\bto\s*$", re.I)
+                   r"(?:over|more than|about|around|nearly|approximately|~)?\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)
+TO_RX = re.compile(r"\bto\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)
+_LEVEL_RX = re.compile(r"\b(?:to|at)\s*(?:end|close|stand|reach)?\s*(?:at|of)?\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)
+FROM_RX = re.compile(r"\bfrom\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)
+_OTHER_SUBJECT = re.compile(r"\b(?:impacted by|impact of|on account of|charge of|hit of)\b", re.I)
+_NOT_A_LEVEL = re.compile(r"\bis an?\s*(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)   # "is an $18 million [impact]"
+_THRESHOLD = re.compile(r"\b(?:larger|more|greater|fewer|less|higher|lower|over|above|below|under)\s+than\s*"
+                        r"(?:₹|`|rs\.?|inr|us\$|usd|\$)?\s*$", re.I)     # "larger than $50 mn" is a client threshold
+_CLIENT_TIER = re.compile(r"\s*(?:mn|million|bn|billion)?\s*plus\s+(?:clients|customers)", re.I)  # "$50 mn plus clients"
 
 
 def _second_of_pair(text: str, start: int, v2_end: int, entries, company: str, metric: str) -> bool:
@@ -674,14 +732,35 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                 v1 = vals[0]
                 if v1.start - m.end() > 120:
                     continue
-                if BY_RX.search(text[m.end():v1.start]):     # "reduced by INR150 crores to INR6,568 crores": 150 is a change
+                gap = text[m.end():v1.start]
+                if "\n" in gap and label_matches(entries, company, gap):
+                    continue      # a fact-sheet block: another label sits between this one and its value
+                lead = text[m.start():v1.start] if e.labels_strict else gap   # a strict label swallows the words between
+                if _OTHER_SUBJECT.search(lead) or _NOT_A_LEVEL.search(lead):
+                    continue      # "impacted by an estimated negative $104 million": not the level
+                if _THRESHOLD.search(lead) or _CLIENT_TIER.match(text[v1.end:v1.end + 24]):
+                    continue      # a client-size threshold ("$50 mn plus clients") is not the metric
+                if FROM_RX.search(lead):
+                    to_v = find_values(text, e.kind, e.unit, v1.end, min(len(text), v1.end + 24), per_spans)
+                    if not (to_v and re.fullmatch(r"\s*to\s*", text[v1.end:to_v[0].start], re.I)):
+                        continue  # "increased from 8.1% to 8.4%": the current value is the one after "to"
+                    v1 = to_v[0]
+                elif BY_RX.search(lead):     # "reduced by INR150 crores to INR6,568 crores": 150 is a change
+                    lvl = next((v for v in vals[1:] if _LEVEL_RX.search(text[max(m.end(), v.start - 6):v.start])), None)
+                    if lvl is None:
+                        continue
+                    v1 = lvl
+                elif VS_RX.search(text[max(0, v1.start - 14):v1.start]):
+                    continue      # "was 67 days ... compared to 69 days": the token after the link is the old value
                     lvl = next((v for v in vals[1:] if TO_RX.search(text[max(m.end(), v.start - 6):v.start])), None)
                     if lvl is None:
                         continue
                     v1 = lvl
+                if e.kind == "days" and v1.value < 1:
+                    continue              # "long term debt to working capital ratio 0.19" is a ratio, not a day count
                 elif len(vals) >= 2 and _second_of_pair(text, m.start(), vals[1].end, entries, company, e.metric):
                     v1 = vals[1]                              # "GNPA and NNPA at 0.96% and 0.39% respectively"
-                items = [(v1, None)]
+                items: list[tuple] = [(v1, None)]
                 # comparative second value
                 tail = text[v1.end:min(len(text), v1.end + 90)]
                 vm = VS_RX.search(tail)
@@ -690,6 +769,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     if v2s and v2s[0].start - (v1.end + vm.end()) < 14:
                         items.append((v2s[0], vm))
                 dim = find_dimension(dims, company, text, m.start())
+                first_canon = None
                 for idx, (v, _) in enumerate(items):
                     # period: same-sentence mention after the value (<=45 chars), else before the label (<=60),
                     # else the nearest earlier "A v/s B" header pair, else the document's reporting period
@@ -710,9 +790,11 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                         period, rule = default_pers[0], "sentence_default_v1"
                     if period is None:
                         continue
+                    if idx and period.canon == first_canon:
+                        continue        # the comparative restates the current period: the same value, not a prior one
                     if generic and rule != "sentence_v1":   # a bare "margin" / "revenue" needs its own period in the sentence
                         continue
-                    val, unit, scale = finalize_unit(v.unit, v.value, e.unit)
+                    val, unit, scale = finalize_unit(_page_unit_canon(v.unit, v.raw, e, text) or v.unit, v.value, e.unit)
                     end = v.end if period.start < v.end else period.end
                     end = max(end, period.end if 0 <= period.start - v.end <= 45 else v.end)
                     q = text[m.start():end]
@@ -722,6 +804,8 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                         continue
                     rows.append(Row(e.metric, dim, val, unit, scale, period.ptype, period.canon, period.as_of, basis,
                                     page, q, text[m.start():m.end()], v.raw, rule))
+                    if idx == 0:
+                        first_canon = period.canon
                     twin = _q4_twin(e, period)
                     if twin:
                         rows.append(Row(e.metric, dim, val, unit, scale, twin.ptype, twin.canon, twin.as_of, basis,
@@ -1129,10 +1213,157 @@ def relabel_group_columns(rows, info) -> None:
                 pr.canon, pr.ptype = f"FY{yy}", "FY"
 
 
-def table_and_chart_rows(page_words, text: str, page: int, company: str, entries, dims, default_pers) -> list[Row]:
+def _xspan(spans, a: int, b: int):
+    """(x0, x1) of the characters a..b of a row's reconstructed string."""
+    xs = [(x0, x1) for (s, e, x0, x1) in spans if s < b and e > a]
+    return (min(x[0] for x in xs), max(x[1] for x in xs)) if xs else None
+
+
+def _headings(rows, h: int):
+    """(x0, x1, kind) of every group heading above period header row `h` ("Quarter ended | Half year ended ...")."""
+    best: dict[str, tuple[float, float]] = {}
+    for r in rows:
+        if not (0 < rows[h].y - r.y <= 90):
+            continue
+        sj, spj = _row_string(r)
+        for kind, rx in _GROUP_RX:
+            for m in rx.finditer(sj):
+                sp = _xspan(spj, m.start(), m.end())
+                if sp and (kind not in best or sp[1] - sp[0] > best[kind][1] - best[kind][0]):
+                    best[kind] = sp
+    return sorted((x0, x1, k) for k, (x0, x1) in best.items())
+
+
+def _date_fits(kind: str, month: int) -> bool:
+    """A column's own date must agree with its group heading: only Sep/Mar closes a half year, only March a year."""
+    if kind == "quarter":
+        return True
+    if kind == "half":
+        return month in (9, 3)
+    return month == 12 if kind == "nine" else month == 3
+
+
+def _set_column_kind(pr: Period, kind: str) -> None:
+    if not pr.as_of:                      # only a dated column has a kind to set
+        return
+    mo, y = int(pr.as_of[5:7]), int(pr.as_of[:4])
+    yy = y if mo == 3 else y + 1          # fiscal year of a period ending in month mo
+    if kind == "quarter":
+        if pr.ptype != "Q":               # a 31 March date reads as the year end; in a quarter column it is Q4
+            pr.canon, pr.ptype = f"Q4FY{yy % 100:02d}", "Q"
+    elif kind == "half" and mo in (9, 3):
+        pr.canon, pr.ptype = (f"H1FY{yy % 100:02d}" if mo == 9 else f"H2FY{yy % 100:02d}"), "H"
+    elif kind == "nine" and mo == 12:
+        pr.canon, pr.ptype = f"9MFY{yy % 100:02d}", "9M"
+    elif kind == "year" and mo == 3:
+        pr.canon, pr.ptype = f"FY{yy % 100:02d}", "FY"
+
+
+def _relabel_columns(rows, info) -> None:
+    """A results table's bare dates take their meaning from the group heading over their own column.
+
+    The group boundary is the first column whose date repeats the first column's date: a results table prints the
+    current quarter, the prior quarter, the year-ago quarter, and then the year-to-date columns that END ON THE SAME
+    DATES (Q2FY27 ends 30.09.2026 and so does H1FY27), so the repeat marks where the year-to-date block starts.  With
+    no such repeat the heading that is centred over the run decides (a heading is never interleaved with another)."""
+    for h, (_, _, ps) in enumerate(info):
+        dated = [(x, pr) for x, pr in ps if pr.as_of]
+        if len({pr.canon for _, pr in ps}) < 2 or not dated:
+            continue
+        heads = _headings(rows, h)
+        if len(heads) < 2:
+            continue
+        dates = [ps[i][1].as_of for i in range(len(ps))]
+        groups: list[list[int]] | None = None
+        rep = next((i for i in range(1, len(dates)) if dates[i] and dates[i] == dates[0]), None) if dates[0] else None
+        if rep and 2 <= rep <= 4 and len(heads) in (2, 3):
+            if len(heads) == 2:
+                groups = [list(range(0, rep)), list(range(rep, len(ps)))]
+            else:
+                j = next((k for k in range(rep, len(ps)) if dates[k] and int(dates[k][5:7]) == 3), len(ps))
+                groups = [list(range(0, rep)), list(range(rep, j)), list(range(j, len(ps)))]
+            if any(not g for g in groups):
+                groups = None
+        if groups is None:
+            xs = [x for x, _ in ps]
+            best = None
+            for cuts in itertools.combinations(range(1, len(ps)), len(heads) - 1):
+                bounds = (0,) + cuts + (len(ps),)
+                cand = [list(range(bounds[i], bounds[i + 1])) for i in range(len(heads))]
+                score = 0.0
+                for gi, idxs in enumerate(cand):
+                    mean = sum(xs[i] for i in idxs) / len(idxs)
+                    score += abs(mean - (heads[gi][0] + heads[gi][1]) / 2)   # a heading is centred over its columns
+                    score += 1e6 * sum(0 if _date_fits(heads[gi][2], int(ps[i][1].as_of[5:7]) if ps[i][1].as_of else 0)
+                                       else 1 for i in idxs)
+                if best is None or score < best[0]:
+                    best = (score, cand)
+            if not best:
+                continue
+            groups = best[1]
+        for gi, idxs in enumerate(groups):
+            for i in idxs:
+                if ps[i][1].as_of:
+                    _set_column_kind(ps[i][1], heads[gi][2])
+
+
+def _result_columns(cols):
+    """A results table's quarter columns after the first are prior periods (Q2FY27, Q1FY27, Q2FY26): one printed
+    quarter already answers the quarter, so only the first is read.  Half-year and nine-month columns keep
+    themselves, because their own header says which they are.  A deck table of several quarters is not a results
+    table: it is the only place those quarters print, so every column stays."""
+    qs = [i for i, (_, p) in enumerate(cols) if p.ptype == "Q"]
+    if len(qs) <= 1:
+        return cols
+    return [c for i, c in enumerate(cols) if i == qs[0] or cols[i][1].ptype != "Q"]
+
+
+def _bump(stats: dict | None, key: str) -> None:
+    if stats is not None:
+        stats[key] = stats.get(key, 0) + 1
+
+
+def _table_value_ok(text: str, s: str, m, e: Entry) -> bool:
+    """A table value is whole and possible: a printed token (never a fragment of a neighbour), a number of its kind
+    (a percentage at most ``max_pct``, a day count at least one, no negative level), and not a signed change token."""
+    num = m.group("num")
+    if _comma_decimal(num) or not _whole_printed(text, num):
+        return False
+    v = to_float(num)
+    if v is None:
+        return False
+    a = m.start("num")
+    if a > 0 and s[a - 1] in "+-" and e.kind in ("count", "money"):
+        return False            # "+118.4" / "-9" in a delta column is a change, not a level
+    if v < 0 and e.kind in ("count", "money"):
+        return False
+    if e.kind == "pct" and (v > e.max_pct or v < 0):
+        return False
+    if e.kind == "days" and v < 1:
+        return False
+    return True
+
+
+def _kind_candidate(m, e: Entry) -> bool:
+    """A printed token that could be a value of this entry's kind: a change column's "4%" is not a money cell, a
+    crore figure is not a percent cell.  Used only to count a table row's values against its period columns."""
+    suf = (m.group("suf") or "").lower().strip().rstrip(".")
+    if e.kind in ("money", "count", "volume", "per_tonne", "days"):
+        return suf not in ("%", "per cent", "percent", "bps", "basis points", "x", "times")
+    if e.kind == "pct":
+        return suf not in ("crore", "crores", "cr", "crs", "lakh", "lakhs", "mn", "mm", "bn", "million", "billion")
+    return True
+
+
+def table_and_chart_rows(page_words, text: str, page: int, company: str, entries, dims, default_pers,
+                         stats: dict | None = None) -> list[Row]:
     rows = _merge_stacked_axes(page_rows(page_words))
     info = [row_periods(r) for r in rows]
-    relabel_group_columns(rows, info)
+    strict = profile.under_profile()
+    if strict:
+        _relabel_columns(rows, info)
+    else:
+        relabel_group_columns(rows, info)
     headers = [i for i, (_, _, ps) in enumerate(info) if len({p.canon for _, p in ps}) >= 2 and _axis_like(rows[i], ps)]
     if not headers:
         return []
@@ -1248,14 +1479,30 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
             if hi is None:
                 continue
             cols = info[hi][2]
+            assign = nums
+            if strict:
+                lo_x = min(x for x, _ in cols) - 28
+                hi_x = max(x for x, _ in cols) + 28
+                assign = [(x, m) for x, m in nums if lo_x <= x <= hi_x]
+                ncols = len(cols)
+                if len(_headings(rows, hi)) >= 2:     # a results table: only its first (current) quarter column
+                    cols = _result_columns(cols)
             for e, lm in hit:
-                for xc, m, per in _assign_columns(nums, cols, 28):
+                cand = assign if not strict else [(x, m) for x, m in assign if _kind_candidate(m, e)]
+                if strict and len(cand) > ncols:
+                    _bump(stats, "column_mismatch")
+                    continue      # more values than columns: extra figures are deltas or captions, not cells
+                for xc, m, per in _assign_columns(cand, cols, 28):
                     dim = nearest_dim(r.y, label, r.toks[0][0], hi, xc)
+                    if strict and not _table_value_ok(text, s, m, e):
+                        _bump(stats, "value_refused")
+                        continue
                     unit = value_unit(m.group("cur"), m.group("suf"), e.kind, e.unit)
                     if unit is None and not (m.group("suf") or "").strip():   # a "%" / "x" token never borrows the label's unit
                         unit = _unit_from_label(label, e)
                         if unit == "inr_cr" and e.kind == "money" and not re.search(r"crore|\bcr\b", label, re.I):
                             unit = page_money_unit(text) or unit     # "(₹ in billion)" over the table
+                    unit = _page_unit_canon(unit, m.group("num"), e, text)
                     num = to_float(m.group("num"))
                     if unit is None or num is None:
                         continue
@@ -1382,7 +1629,7 @@ def _unit_from_label(label: str, e: Entry) -> str | None:
     if e.kind == "per_tonne":
         return "usd_per_tonne" if re.search(r"\$|usd", l) or "ton" in l else None
     if e.kind == "pct":
-        return "pct" if "%" in l or e.metric.endswith("_pct") else None
+        return "pct" if "%" in l else None     # a pct row needs the sign: "R&D expenditure 23,676" is rupees, not %
     if e.kind == "days":
         return "days"
     if e.kind == "count":
@@ -1621,7 +1868,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                 words = pdf[page - 1].get_text("words")
             if words is not None and _page_may_have_table(text):
                 try:
-                    trows = table_and_chart_rows(words, text, page, sym, entries, dims, default_pers)
+                    trows = table_and_chart_rows(words, text, page, sym, entries, dims, default_pers, st)
                 except Exception:
                     st["errors"] = st.get("errors", 0) + 1
             basis = page_basis(text)
@@ -1637,9 +1884,11 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
             if trows:   # on a table page, running-text hits that span line breaks are table fragments: drop them
                 srows = [r for r in srows if "\n" not in r.quote]
             for r in sorted(srows + trows + erows + seg, key=lambda r: -RULE_CONF[r.rule][1]):   # best confidence first: INSERT OR IGNORE keeps it
-                if not keep_period(r.period_type, r.fiscal_period, known_at):
-                    st["period_after_doc"] = st.get("period_after_doc", 0) + 1
-                    continue              # the document cannot report a period that ended after it was filed
+                why = drop_reason(r.period_type, r.fiscal_period, known_at)
+                if why:
+                    st[why] = st.get(why, 0) + 1
+                    continue              # the document cannot report a period that ended after it was filed,
+                                          # nor (under a profile) one that closed before the window's YoY base
                 conf, rank = RULE_CONF[r.rule]
                 if doc_type == "transcript":     # a call's number is not the deck KPI: its own row, lowest tier (T-049)
                     rank = max(1, rank - 2)

@@ -7,9 +7,8 @@ entries:
   - {metric: shipments_kt, kind: volume, unit: kt, labels: ["shipments?\\*?", "flat rolled products? shipments?", "\\bfrp\\b shipments?", "sales volumes?", "volumes? sold"], neg: "ccr|of which|\\bper\\b"}
   - {metric: production_kt, kind: volume, unit: kt, labels: ["(primary )?(aluminium|aluminum) (metal )?production", "metal production", "alumina production", "production of (primary )?(aluminium|alumina)", "(copper )?cathode production", "production volumes?", "\\bproduction\\b"], neg: "cost of production|per ?cent|%"}
   - {metric: cost_of_production, kind: per_tonne, unit: usd_per_tonne, labels: ["cost of production", "\\bcop\\b"]}
-  - {metric: ebitda, kind: money, unit: inr_cr, labels: ["(business )?segment ebitda", "^ebitda\\b", "\\bebitda\\b"], neg: "margin|per|/|%\\s*of|multiple|adjusted"}
   - {metric: ebitda_adjusted_usd, kind: money, unit: usd_mn, labels: ["adjusted ebitda"], neg: "margin|per|/"}
-  - {metric: ebitda_margin_pct, kind: pct, unit: pct, labels: ["ebitda margin", "margin"], neg: "pat|net|gross|pbt|\\bebit\\s+margin|cash|contribution"}
+  - {metric: ebitda_margin_pct, kind: pct, unit: pct, labels: ["ebitda margin", "margin"], neg: "pat|net|gross|pbt|\\bebit\\s+margin|cash|contribution|ebitda"}
   - {metric: net_income, kind: money, unit: usd_mn, labels: ["net income"], neg: "margin"}
   - {metric: copper_cathode_volume_kt, kind: volume, unit: kt, labels: ["copper cathodes?( \\(kt\\))?", "cathode (sales )?volumes?", "cathodes? sales"], neg: "price|cost|tc/rc"}
   - {metric: copper_rods_volume_kt, kind: volume, unit: kt, labels: ["copper cc rods?", "cc rods?", "(copper )?rods? (sales )?volumes?"], neg: "price|cost"}
