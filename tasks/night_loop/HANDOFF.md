@@ -2,7 +2,7 @@
 
 ## Current state (loop 3 stopped at 400k context, 4 Nov 2026 20:20 IST)
 - Baseline on a copy, `pilot10\scratch\l3_base.db`: A1 dev 651/898 = 72% (`pilot10\scores\a1_loop03_base.json`). `pilot10.db` is untouched and stale.
-- **Nothing is accepted yet.** Running when the session stopped: DeepSeek 42e59ee9 (comparatives fix, `dsh/20261104T140210Z-42e59ee9`) and 20a19ffb (speech fix, `dsh/20261104T143838Z-20a19ffb`). Check `list_workers`.
+- **Ready to merge: speakers and guidance, `dsh/20261104T143838Z-20a19ffb` (A1 662, checkpages 145, re-run by the loop).** Comparatives fix 42e59ee9 (`dsh/20261104T140210Z-42e59ee9`) was still running: check `list_workers`, unreviewed.
 - Not started: KPI precision round 2, `loops/loop_03_worker_kpi_fix2.md`, base `dsh/20261104T134520Z-2ba2330d`.
 - Do not merge the first-round branches on their own: f826eabb has wrong TTM on every Q2 and Q3 table and false EPS checks; 2e947e47 wiped EBITDA for non-metals. Full verdicts: `loops/loop_03_report.md`.
 - 865 pages need OCR: `pilot10\logs\needs_ocr_pages.csv`. Not run.
@@ -23,7 +23,7 @@
   `loops/loop_01_worker_generalise.md`), started 04:52 IST on DeepSeek; it is loop 2's first worker slot.
 
 ## Next
-1. Review both running fix workers at once against their brief's Accept, re-running the checks: recompute one TTM by hand, `checkpages run` on the branch.
+1. Review the comparatives fix at once against its brief's Accept: recompute one TTM by hand, `checkpages run` on the branch.
 2. Start KPI round 2 when a slot is free (DeepSeek off-peak until 06:30 IST on 5 Nov).
 3. Build all three accepted branches together on a copy, measure A1 per company and guards, then merge. Hand-read before believing any A1 gain.
 
@@ -60,3 +60,4 @@
 - Loop 3: a hand read of 20 rows per family must come before the budget ends; the KPI fix worker spent 37 calls polling a background build and never read four families.
 - Loop 3: printing row dumps and long worker reports took this session to 400k context at about 70 tool calls. Print counts and outliers first, and fewer rows.
 - Loop 3: in a bash heredoc this shell collapses double backslashes, which broke paths twice. Write helper scripts with the Write tool.
+- Loop 3: guidance recall after the precision work: ETERNAL, SUNPHARMA and MARUTI hold 0 rows, though ETERNAL now has 691 statements. Check recall next; A1 does not show it.

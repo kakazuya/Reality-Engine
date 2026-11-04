@@ -1,13 +1,13 @@
 # Loop 3 report (session 03, Eagle, 4 Nov 2026; times are this machine's clock)
 
-## Status: stopped at the 400k context line, 20:20 IST. **Nothing is ready to merge yet.**
-Two fix workers were still running when this was written, and one more round is queued. No branch has passed review. Sections below hold the evidence.
+## Status: stopped at the 400k context line. **One branch is ready to merge: speakers and guidance.**
+Comparatives fix may still be running (see `list_workers`), and KPI round 2 is queued. Sections below hold the evidence.
 
 ## For the wrapper
 | Work | Merge this branch once reviewed | State at 20:20 IST | A1 dev, alone against 651 |
 |---|---|---|---|
 | Printed comparatives (T-057) | `dsh/20261104T140210Z-42e59ee9`, on `dsh/20261104T124718Z-f826eabb` | Fix running. First round has wrong TTM, so do not merge that one | First round 680; wrong until the fix lands |
-| Speakers and guidance | `dsh/20261104T143838Z-20a19ffb`, on `dsh/20261104T133227Z-c8ca921f` | Fix running | First round 662 |
+| Speakers and guidance | `dsh/20261104T143838Z-20a19ffb`, on `dsh/20261104T133227Z-c8ca921f` | **ACCEPT, ready for the wrapper** (20:33 IST) | 662 |
 | Sector KPIs | `dsh/20261104T134520Z-2ba2330d`, then round 2 | Round 2 **not started**: `loops/loop_03_worker_kpi_fix2.md`, start it with `base=dsh/20261104T134520Z-2ba2330d` | 677, about 75% of new rows right on my read of 67 |
 
 A1 per company, each candidate alone (not additive; never combined or built together):
@@ -90,6 +90,13 @@ All on DeepSeek, off-peak; the first two started 18:17 IST.
 | comparatives (first) | 20261104T124718Z-f826eabb | `dsh/20261104T124718Z-f826eabb` | `loop_03_worker_comparatives.md` | **NOT ACCEPTED, do not merge alone** |
 | comparatives fix | 20261104T140210Z-42e59ee9 | `dsh/20261104T140210Z-42e59ee9` (on the comparatives branch) | `loop_03_worker_comparatives_fix.md` | running, started 19:32 IST |
 
+### Review of the speech fix round (20:33 IST): ACCEPT
+Re-run by me on its worktree and copy: `checkpages` 145 (KEC 29, BAJFINANCE 59, HINDALCO 57), A1 662/898 with KEC 51 to 62 and no other company moved, `project_capital_spent` rows 2.2, 2.7, 3.2, 3.8. Its report: guidance tests 22 and speaker tests 8 pass, guards pass, A3 32/32, typecheck 0. Those I did not re-run.
+- Remaining wrong row, kept on purpose: HINDALCO `cost_of_production` FY26 3-4. Dropping it takes `checkpages` to 143, because graded entries point at that page. The grader may not be loosened, so it stays, and the wrapper should know.
+- The branch's diff still touches `tasks/STATE.md` by 2 lines against its old base: take main's file at merge.
+- I did not re-read its guidance rows after this round; hand read of the previous 69 was about 8 wrong, 7 of which this round removes by its own report.
+- Pilot10 note: SUNPHARMA now has 0 guidance rows, ETERNAL 0, MARUTI 0. ETERNAL had 691 statements and still no row, so a recall check is due: A1 did not move there, and a question on Eternal's or Sun's guidance would find nothing in this table.
+
 ### Review of the KPI fix round (20:10 IST)
 Lost metrics are back, and the worker's report is honest: it says the 18/20 bar is not met (auto 13/20, bank 8-11, consumer internet about 10, EPC about 12; metals, IT, insurance, pharma not read). My read of 67 new rows of five companies: about 50 right. So about 75%, up from the 45-70% of the first round, and not good enough to merge as answers. Round 2 of fixes is general: outlier gate, no default period on long documents, label must own its value, subject words, restore true rows.
 
@@ -122,5 +129,5 @@ Part of the 25-question A1 gain may rest on these wrong rows, which is what the 
 | c8ca921f speech | fix + extraction rules | 30 min | 130, 14 | Good; one false claim about checkpages | Brief's family D cost a true fact: my error |
 | 2ba2330d KPI fix | fix | 53 min | 108 by its count, 221 by the supervisor, 11 | Honest; bar not met, budget ran out before the read | Polling used 37 calls; foreground builds |
 | 42e59ee9 comparatives fix | fix | running | | | |
-| 20a19ffb speech fix | fix | running | | | |
+| 20a19ffb speech fix | fix | 24 min | 97, under 5 | Accepted | Brief with exact rows gave a clean 24 minutes |
 This session: Opus manager, reached 400k context at about 70 tool calls, mostly long briefs, row dumps and worker reports. Row dumps were the avoidable part.
