@@ -34,6 +34,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-037 | OPEN | P1 | Fetch KEC's call transcripts from kecrpg.com; its 10 filed concalls are cover letters | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
 - T-041 | OPEN | P2 | All 74 results_notes docs in chunks_v3_pilot point at a deleted worktree; raw PDFs are gone. 3 pilot ones refetched to D but their hash differs from the stored one, so check pages and fix raw_path | accept: Shivam | from: T-040 2 Nov | opened 2026-11-02
 - T-046 | OPEN | P2 | List the 10 documents the 31 Oct reader test found absent and check whether they exist at the source; moved from the old work queue | accept: Shivam | from: manual | opened 2026-11-02
+- T-063 | OPEN | P1 | Missing window results filings: HDFCBANK Q2FY26, INFY Q2FY26 and Q4FY26, in the pilot10 raw set | accept: python -m reality_engine.pilot3.checkpages run | from: T-060 report | opened 2026-11-04
 
 ## OCR and extraction
 - T-020 | OPEN | P2 | OCR after workspace step 4: TextRecognizer first pass, stronger reader for low-confidence numbers; last accuracy pilot failed its gate | accept: Shivam | from: RULINGS, GATE_STATE | opened 2026-11-02
