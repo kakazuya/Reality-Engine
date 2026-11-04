@@ -198,6 +198,7 @@ def _auto_description(db_key: str, table: str) -> str:
         "kpi_series": "pilot3 company-stated KPI rows with period, dimension, basis, quote and page.",
         "fin_annual_line": "pilot3 annual financial lines (XBRL, annual report) with definition and basis.",
         "fin_quarter_xbrl": "pilot3 quarterly XBRL lines by period end, basis and line item.",
+        "fin_quarter_printed": "pilot3 comparative columns printed in a quarterly results table (current, preceding, year-ago, ytd, prior ytd, last full year) with the check that confirmed each value.",
         "ratio_panel": "pilot3 derived ratios with formula_id and the input rows they came from.",
         "formula": "pilot3 formula registry: expression, inputs, unit and note per derived metric.",
         "valuation_daily": "pilot3 daily PE/PB/EV-EBITDA/market cap with the inputs known that day.",

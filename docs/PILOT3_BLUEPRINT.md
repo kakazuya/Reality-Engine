@@ -20,6 +20,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `doc`, `doc_alias` | every held document: type, title, filing date, `known_at`, source | `pages.db` (docs_collect) |
 | `doc_page` (+ FTS `doc_page_fts`) | page text, method (text layer / OCR), confidence | PDF text layer, OCR dbs |
 | `fin_annual_line`, `fin_quarter_xbrl` | reported financial lines, basis (consolidated / standalone), definition | exchange XBRL results |
+| `fin_quarter_printed` (T-057) | every P&L cell a results table prints: current, preceding, year-ago, ytd, prior ytd, last full year, with the check that confirmed it (`xbrl_ok`/`sum_ok`/`unchecked`) | the results PDF's word boxes |
 | `ratio_panel`, `formula` | derived ratios with formula id and input row ids | computed from fin lines |
 | `kpi_series` | company-stated KPIs (order book, AUM, EBITDA/t, NIM, mixes) with period, dimension, entity, quote, page | decks, results, press releases, transcripts |
 | `transcript_statement` | call quotes with speaker, role, topic tags | transcripts |
@@ -216,4 +217,62 @@ active one. Without a profile every command behaves exactly as before (the three
   2025-11-03 (the XBRL store holds those two from the quarter ended 2025-03-31, so four known quarters exist only from Jan/Feb 2026).
 - Without a profile nothing changes (bank/insurer annual rows, restated EPS, payout selection, quarter-labelled copies, zero yield and the
   new tables are built under a profile only); `checkpages run` stays at 145 found.
+
+### 9b. Printed comparative columns (T-057, 4 Nov 2026)
+
+- **`fin_quarter_printed`** (`schema.py`, 23 columns, index `ix_fqp` on `(symbol, basis, line_item, period_end)`): one row per cell
+  a quarterly results table prints -- `period_start`, `period_end`, `fiscal_period` (`Q2FY27`; `H1FY27`/`9MFY27` for ytd; `FY26` for a
+  year), `period_type` (`quarter`/`ytd`/`fy`), `column_role` (`current`, `preceding`, `year_ago`, `ytd`, `prior_ytd`, `last_fy`),
+  `basis`, `statement`, `line_item`, `caption`, `value` (rupees, `unit` `inr` / `inr_per_share`, `scale` 1.0), `raw_token` (the printed
+  words), `quote` (the printed row), `doc_key`, `page`, `known_at` (= `doc.known_at`, `known_at_source` `doc.known_at`),
+  `check_status` (`xbrl_ok` / `sum_ok` / `unchecked`), `check_detail` (`repaired`, `scale from XBRL`, `derived`, `header_used`), `is_reported`.
+- **The part** `reality_engine/pilot3/comparatives.py` (`--part comparatives`, after `stores`, before `ratios`; in `all` only under a
+  profile) reads every `results` document of the `--symbols` companies. The table is created with `CREATE TABLE IF NOT EXISTS` (new
+  `schema.ensure`) and only the named symbols' rows are deleted -- `schema.create` would drop every company's rows (the HANDOFF 4 Nov trap).
+- **Reading.** Page word boxes (`page.get_text("words")`), rows by y-centre within 3.5 pt (as `kpi.py:1538`), column anchors from the x1
+  every column's numbers end at, numbers merged only when adjacent fragments belong to one printed token (`20,21 1` -> 20,211; a lone
+  dash never merges), every numeric word binned by x. A page must carry a title with "results", no US-dollar unit, no auditor's report or
+  cash-flow/equity statement in its head, a header of period words and 8+ rows of 3+ numeric columns; a continuation page with no title
+  inherits the previous page when the x-bins match. Labels sit left or in the middle (HINDUNILVR) and are matched by
+  `lexicon/results_lines.yaml` (longest pattern wins; OCR-tolerant ordered tokens, no company names -- guard A5).
+- **Roles and units.** The current period end is the latest quarter end the header/title prints on or before the filing day, falling back
+  on the XBRL quarter the current column equals. Quarter roles are permuted over the first three columns and the ytd/year roles over the
+  rest; the permutation the printed month/year supports best wins and the layout order breaks a tie (HDFCBANK's year-ago column misreads
+  `39.09.2026`; HINDUNILVR prints the year-ago second). Unit from crore/lakh/million/thousand words; with none, the power of ten in
+  {1e5, 1e6, 1e7} that makes the current column equal XBRL (`scale from XBRL`). EPS keeps its own decimals and is never scaled.
+- **Checks.** `xbrl_ok` = the value equals `fin_quarter_xbrl` for that basis, quarter and item (tolerance 2 units of the last printed
+  decimal); `sum_ok` = an identity holds (`total_income = revenue + other_income`, `pbt_before_exceptional = total_income - total_expenses`,
+  `pbt = pbt_before_exceptional + exceptional`, `pat = pbt - tax`, `total_comprehensive_income = pat + other OCI`, the bank set
+  `total_income = interest + other`, `expenditure_excl_provisions = interest_expended + operating_expenses`, `operating_profit`,
+  `pbt = operating_profit - provisions`, `pat = pbt - tax`, `current + preceding = ytd` on a Q2 table, EPS ~ pat / shares within 1.5%).
+  A failed check stores nothing (review CSV beside `--out`); a repaired token enters only behind a confirming check; everything else is
+  `unchecked` (stored, never used by ratios). No row prints revenue (HINDUNILVR): `revenue_from_operations = total_income - other_income`,
+  `is_reported` 0. Same period printed twice with different values: both rows kept, listed as restatements.
+- **Ratios** (`ratios.py`): `_quarters` keeps XBRL where it holds the quarter and otherwise takes the printed quarter from the EARLIEST
+  filing that printed it (that row's `known_at`); `period_start` comes from the merged rows (the old XBRL-only lookup crashed on a
+  printed-only quarter). YoY uses the same filing's printed `year_ago` column when checked; new `revenue_growth_qoq_pct` /
+  `pat_growth_qoq_pct` (`F_REV_QOQ`, `F_PAT_QOQ`). `_valuation` still uses `last4` when four quarters are held and otherwise one filing's
+  `TTM = last_fy + ytd - prior_ytd` (Q1: `last_fy + current - year_ago`; Q4: the printed year, `F_TTM_PRINTED`, `refs.ttm_printed`).
+  A fiscal year without four quarters takes the printed `fy` rows (`F_FY_PRINTED`): flows, margins, `eps_basic_fy`.
+- **MCP**: `pilot3_fin` reads `fin_quarter_printed` after `fin_quarter_xbrl` returns no row for a line item and period, `definition`
+  `printed_comparative`, provenance table `fin_quarter_printed`, doc + page, `as_of` honoured; `pilot3_sql` and `catalog` list the table.
+- **Measured 4 Nov 2026** on the pilot10 copy (`scratch/w_cmp.db`, built from `scratch/l3_base.db`): 5,587 rows in 2 min 40 s for the
+  10 companies (KEC 967, BAJFINANCE 1,156, HINDALCO 705, HDFCBANK 98, SBILIFE 262, INFY 300, SUNPHARMA 870, MARUTI 130, HINDUNILVR
+  750, ETERNAL 349; 169 cells to `w_cmp_comparatives_review.csv`). The 12 expected cells read back exactly (KEC preceding/year-ago
+  revenue and FY26 pat, HDFCBANK year-ago/ytd interest earned, MARUTI year-ago revenue and preceding EPS 106.62, SBILIFE year-ago net
+  premium, HINDUNILVR year-ago/preceding total income, HINDALCO year-ago standalone revenue, INFY FY26 pat). Quarter rows checked:
+  ETERNAL 80.4%, HDFCBANK 81.1%, KEC 79.2%, INFY 78.9%, SUNPHARMA 77.4%, MARUTI 73.8%, HINDALCO 65.8%, BAJFINANCE 65.0%,
+  HINDUNILVR 63.3%, SBILIFE 42.5% -- short of the 90% target because `fin_quarter_xbrl` holds only four quarters: a filing older than
+  that window (every filing before Q3FY26) has no XBRL row for any of its quarter columns, and the insurer's printed total rows
+  (`Total (2 to 5)`) carry no canonical line item. `--part ratios` after it: `valuation_daily.pe` days (baseline -> now) BAJFINANCE
+  11 -> 244, HINDALCO 0 -> 245, SUNPHARMA 3 -> 246, HINDUNILVR 5 -> 178, KEC 2 -> 117, ETERNAL 10 -> 72, HDFCBANK 11 -> 11,
+  INFY 8 -> 8, MARUTI 6 -> 6, SBILIFE 6 -> 6; `ratio_panel` rows up for all 10 (KEC 146 -> 324, HINDALCO 78 -> 211, SUNPHARMA
+  146 -> 308) and 95 `pat_growth_qoq_pct` / 94 `revenue_growth_qoq_pct` / 46 `revenue_growth_yoy_pct` / 40 `pat_growth_yoy_pct` rows.
+  A1 on `dev.jsonl` 651 -> 680 of 898, no company lower than the baseline (BAJFINANCE 71 -> 77, HINDALCO 69 -> 76, KEC 51 -> 54,
+  SUNPHARMA 62 -> 66, HINDUNILVR 71 -> 74, HDFCBANK 71 -> 74, MARUTI 59 -> 61, ETERNAL 65 -> 66, INFY 65, SBILIFE 67).
+- **Tests**: `reality_engine/tests/test_pilot3_comparatives.py` (13: word-box rows, the middle-label layout, the HINDUNILVR column
+  order, a misread header year, separator and repair rules, unit from text and from XBRL, xbrl_ok/sum_ok, a failed check storing
+  nothing, `known_at` = the filing's date, raw token inside its quote, per-symbol rerun scope, TTM from one filing's columns) and one
+  new test in `plugins/reality-data/tests/test_lookups_pilot3.py` (printed quarter through `pilot3_fin`, `as_of` filter).
+
 

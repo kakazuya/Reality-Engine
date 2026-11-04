@@ -301,7 +301,12 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
                                     _fin_source(r)))
     if use_q:
         names, allnames = _pick("fin_quarter_xbrl", "line_item", sym, measure)
+        printed_names: list[str] = []
+        if _has_table("fin_quarter_printed"):     # a quarter the XBRL window does not hold lives only here (T-057)
+            printed_names, printed_avail = _pick("fin_quarter_printed", "line_item", sym, measure)
+            allnames = sorted(set(allnames) | set(printed_avail))
         avail += allnames
+        got: set = set()
         if names:
             where, args = f"symbol=? AND line_item IN ({','.join('?' * len(names))})", [sym, *names]
             for col, val in (("fiscal_period", label), ("basis", bas)):
@@ -312,6 +317,23 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
             for r in _q(f"SELECT rowid, * FROM fin_quarter_xbrl WHERE {where}{extra} "
                         f"ORDER BY period_end DESC, known_at DESC LIMIT ?", (*args, *eargs, cap * 2)):
                 out.append(_fin_row(r, "fin_quarter_xbrl", r["fiscal_period"], "xbrl_reported",
+                                    _fin_source(r)))
+                got.add((r["line_item"], r["fiscal_period"]))
+        # T-057: the printed comparative columns of the results table, when a check confirmed the cell
+        if printed_names:
+            where, args = f"symbol=? AND line_item IN ({','.join('?' * len(printed_names))})", [sym, *printed_names]
+            for col, val in (("fiscal_period", label), ("basis", bas)):
+                if val:
+                    where += f" AND {col}=?"
+                    args.append(val)
+            extra, eargs = _asof(as_of)
+            printed = _q(f"SELECT rowid, * FROM fin_quarter_printed WHERE {where} "
+                         f"AND check_status IN ('xbrl_ok','sum_ok') AND basis IN ('standalone','consolidated'){extra} "
+                         f"ORDER BY period_end DESC, known_at DESC LIMIT ?", (*args, *eargs, cap * 2))
+            for r in printed:
+                if (r["line_item"], r["fiscal_period"]) in got:
+                    continue             # the XBRL row for that quarter is the evidence; no duplicate
+                out.append(_fin_row(r, "fin_quarter_printed", r["fiscal_period"], "printed_comparative",
                                     _fin_source(r)))
     out = _dedupe(out)
     # No basis asked: a group question means the consolidated statement.  T-049 (4 Nov 2026): HINDALCO's
@@ -333,7 +355,14 @@ def _fin_source(r: sqlite3.Row) -> str:
     doc = (r["doc_key"] if "doc_key" in keys else None) or (r["source_file"] if "source_file" in keys else None)
     page = r["page"] if "page" in keys and r["page"] else None
     where = f"{doc} p{page}" if doc and page else (doc or "")
-    return f"{where} [{r['source_db']}.{r['source_table']} row {r['source_rowid']}]".strip()
+    store = (f"[{r['source_db']}.{r['source_table']} row {r['source_rowid']}]"
+             if {"source_db", "source_table", "source_rowid"} <= set(keys) else "")
+    return f"{where} {store}".strip()
+
+
+def _has_table(name: str) -> bool:
+    """A pilot3 table may be absent from an older build (fin_quarter_printed came with T-057)."""
+    return bool(_q("SELECT 1 FROM sqlite_master WHERE name=? LIMIT 1", (name,)))
 
 
 def _fin_row(r: sqlite3.Row, table: str, period: str, definition: str, source: str) -> dict[str, Any]:
@@ -343,7 +372,10 @@ def _fin_row(r: sqlite3.Row, table: str, period: str, definition: str, source: s
            "provenance": _prov(table, source, r["known_at"], row_id=r["rowid"], period_end=r["period_end"])}
     if unit in ("inr", "inr_cr", "inr_mn", "inr_lakh") or (unit or "").startswith("inr") and "share" not in (unit or ""):
         row["value_inr"] = value * scale
-    if table == "fin_annual_line" and r["quote"]:
+    keys = r.keys()
+    if "column_role" in keys and r["column_role"]:
+        row["column_role"] = r["column_role"]
+    if table in ("fin_annual_line", "fin_quarter_printed") and r["quote"]:
         row["quote"] = _trim(r["quote"], 240)
     return row
 

@@ -213,6 +213,30 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertIsNone(standalone["basis_assumed"])
         self.assertEqual(p3.fin("KEC", "pat", "FY25")["rows"][0]["basis"], "consolidated")  # single-basis measure
 
+    def test_fin_printed_comparative_when_xbrl_lacks_the_quarter(self):
+        """T-057: a quarter fin_quarter_xbrl does not hold comes back from the printed results columns."""
+        c = sqlite3.connect(DB)
+        c.execute("INSERT INTO fin_quarter_printed VALUES ('KEC','INE389H01022','2025-07-01','2025-09-30','Q2FY26',"
+                  "'quarter','year_ago','consolidated','P&L','revenue_from_operations','Revenue from operations',"
+                  "6.09156e10,'inr',1.0,'6,091.56','1 Revenue from operations 6,091.56 5,023.54','pdfs/KEC/results.pdf',"
+                  "6,'2026-11-02T20:55:39','doc.known_at','sum_ok',NULL,1)")
+        c.commit()
+        c.close()
+        try:
+            out = p3.fin("KEC", "revenue", "Q2FY26", "consolidated")
+            row = next(r for r in out["rows"] if r["period"] == "Q2FY26")
+            self.assertEqual(row["definition"], "printed_comparative")
+            self.assertEqual(row["provenance"]["table"], "fin_quarter_printed")
+            self.assertEqual(row["value_inr"], 6.09156e10)
+            self.assertEqual(row["column_role"], "year_ago")
+            early = p3.fin("KEC", "revenue", "Q2FY26", "consolidated", as_of="2025-10-01")
+            self.assertFalse([r for r in early["rows"] if r["definition"] == "printed_comparative"])
+        finally:
+            c = sqlite3.connect(DB)
+            c.execute("DELETE FROM fin_quarter_printed")
+            c.commit()
+            c.close()
+
     def test_ratio_panel_and_valuation(self):
         roe = p3.ratio("KEC", "ROE", "FY25")
         self.assertEqual(roe["rows"][0]["formula"], "100*pat/net_worth")
