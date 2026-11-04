@@ -48,6 +48,18 @@ Both on DeepSeek, off-peak, started 18:17 IST.
 | kpi | 20261104T124734Z-2e947e47 | `dsh/20261104T124734Z-2e947e47` | `loop_03_worker_kpi.md` (cherry-picks 2690518) | **NOT ACCEPTED, do not merge alone**; fix round queued (`loop_03_worker_kpi_fix.md`) |
 | speech | 20261104T133227Z-c8ca921f | `dsh/20261104T133227Z-c8ca921f` | `loop_03_worker_speech.md` | running, started 19:02 IST |
 
+| kpi fix | 20261104T134520Z-2ba2330d | `dsh/20261104T134520Z-2ba2330d` (on the kpi branch) | `loop_03_worker_kpi_fix.md` | running, started 19:15 IST |
+| comparatives (first) | 20261104T124718Z-f826eabb | `dsh/20261104T124718Z-f826eabb` | `loop_03_worker_comparatives.md` | **NOT ACCEPTED, do not merge alone**; fix round queued (`loop_03_worker_comparatives_fix.md`), waiting for a slot |
+
+### Review of the comparatives worker (19:25 IST)
+Its numbers: A1 651 to 680, 5,587 rows, `pe` days up to 245 on some companies, its 12 cells exact, 20/20 hand check, tests green. The reader is good: I read 22 random checked rows against their quotes, 22 right. The defects are around it, and its checks could not see them:
+- **Every printed TTM on a Q2 or Q3 table is wrong.** `_ttm_one` takes `last_fy + current - year_ago` first. HINDALCO 2025-11-07 trailing EPS stored 75.81; right is 72.05 + 39.38 - 31.43 = 80.00. The same on HINDUNILVR, BAJFINANCE, SUNPHARMA. So the large rise in `pe` days carries wrong P/Es until this is fixed.
+- **EPS `xbrl_ok` means nothing:** the tolerance is scaled by the table's rupee unit. MARUTI Q1 FY27 consolidated EPS stored **10,953.0**, `xbrl_ok`, repaired; XBRL says 109.63.
+- **Non-P&L tables read:** segment reconciliations give negative `finance_cost` and `depreciation`; `Operating Margin (%)` stored as `exceptional_items`; `Current tax` as `tax`.
+- **Filings unread and unreported:** MARUTI 2026-01-28 and 2026-04-28 pages are rotated 270 degrees, and its consolidated 2026-10-27 table is missed, which is why its `pe` did not move; ETERNAL 2026-01-21 (noisy date), SUNPHARMA 2026-01-31 consolidated (noisy title).
+- **Its "90% checked" miss** was blamed on the XBRL window. Decision: a new `repeat_ok` status, the same value printed by a different filing. This goes beyond the three statuses in the loop brief: wrapper to overrule if it disagrees.
+Point-in-time logic reads right: a printed quarter keeps the earliest filing's `known_at`.
+
 ### Review of the KPI worker (19:05 IST)
 Its numbers: A1 651 to 676, A3 99.85%, tests and checkpages green. Its own hand read fails its accept: fmcg 20/20, insurance 16, pharma 14, it_services 12, consumer_internet 11, bank 10, auto 9, lenders 9, against a rule of 18/20; the brief said fix before reporting. My read of the rows confirms this and adds a defect the report did not name:
 - **The sector gate wiped true rows.** `ebitda` lives in `metals.yaml` and `aum` in `lenders.yaml`, so KEC `ebitda` went 64 to 0, SUNPHARMA 70 to 0, SBILIFE `aum` 49 to 0, `roe_pct` too. A1 did not notice, because dev happens not to need them. Hidden questions may.
