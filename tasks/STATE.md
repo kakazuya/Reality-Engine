@@ -1,4 +1,4 @@
-# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-04 23:20 IST (Eagle)
+# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-04 23:25 IST (Eagle)
 
 ## Now
 Golden-rule step 4-5: pilot on KEC, BAJFINANCE, HINDALCO (`reality_engine/data/pilot3/pilot3.db`, script-built, served by
@@ -19,7 +19,7 @@ briefs need seven fields incl. `Evidence:` (`context_pack._REQUIRED_FIELDS`). T-
 1. T-054 aftercare: profiles swapped to `tasks/dsh_profiles/code-tools.insert.yml` (backups `*.bak_2026-11-04`);
    `plugins/code-intel` to the Recycle Bin; Shivam reconnects MCPs.
 2. Loop run (Shivam's go, 4 Nov 05:45 IST): `tasks/night_loop/` (GOAL, PILOT10, LOOP_BRIEF, HANDOFF, loops/); loop 1
-   to 3 done, no more loop sessions (Shivam, 4 Nov): the main session runs 2 dsh workers at once.
+   to 3 done, no more loop sessions (Shivam, 4 Nov): the main session runs 2 dsh workers at once. NEXT: review T-064 (`dsh/20261104T174800Z-71a918cc`) and T-065 (`dsh/20261104T174816Z-fb2d3ee3`); then rebuild all parts incl. KPI on a copy, A1, guards on a checkpointed copy; then a period for steady-state and multi-year guidance. If T-064 fails, ask Shivam about a small model budget for rows scripts cannot settle.
 3. Hand-grade the 43 re-answers (31 earlier non-right + 12 guidance-recall checks); report as HTML in
    `D:\RealityEngine\reports\`; blueprint results history.
 4. Then, in order: XBRL segments, core document set and download triage, XBRL calibration, sector vocabularies,

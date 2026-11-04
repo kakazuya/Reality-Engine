@@ -44,8 +44,6 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-052 | OPEN | P1 | pilot3 OCR run to completion over every needs_ocr page (sandbox and pages.db), then rebuild pilot3.db with the OCR pages | accept: Shivam | from: Shivam, 3 Nov | opened 2026-11-03
 - T-057 | OPEN | P1 | Printed QoQ and YoY comparatives from quarterly results tables into pilot10, feeding TTM, YoY and QoQ (Shivam 4 Nov) | accept: python -m pytest reality_engine/tests/test_pilot3_comparatives.py -q | from: Shivam 4 Nov | opened 2026-11-04
 - T-058 | OPEN | P1 | Guidance recall: real guidance sentences missed for SUNPHARMA, ETERNAL, HINDUNILVR, SBILIFE, HDFCBANK, including ranges and worded targets | accept: python -m pytest reality_engine/tests/test_pilot3_guidance.py -q | from: Loop 3 next step | opened 2026-11-04
-- T-061 | OPEN | P1 | KPI precision round 3: period, subject and unit rules to 18 of 20 per company on pilot10 | accept: python -m pytest reality_engine/tests/test_pilot3_kpi.py -q | from: KPI round 2 review | opened 2026-11-04
-- T-062 | OPEN | P1 | Guidance wrong rows: SBILIFE growth labelled margin, MARUTI customer mix, KEC slice, new documents hand read | accept: python -m pytest reality_engine/tests/test_pilot3_guidance.py -q | from: T-058 review | opened 2026-11-04
 - T-064 | OPEN | P1 | KPI three faults: segment revenue as total, debt as a ratio, segment margin as company | accept: python -m pytest reality_engine/tests/test_pilot3_kpi.py -q | from: T-061 review | opened 2026-11-04
 
 ## Schema and question map
