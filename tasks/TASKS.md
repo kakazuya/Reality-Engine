@@ -45,6 +45,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-058 | OPEN | P1 | Guidance recall: real guidance sentences missed for SUNPHARMA, ETERNAL, HINDUNILVR, SBILIFE, HDFCBANK, including ranges and worded targets | accept: python -m pytest reality_engine/tests/test_pilot3_guidance.py -q | from: Loop 3 next step | opened 2026-11-04
 - T-064 | OPEN | P1 | KPI three faults: segment revenue as total, debt as a ratio, segment margin as company | accept: python -m pytest reality_engine/tests/test_pilot3_kpi.py -q | from: T-061 review | opened 2026-11-04
 - T-066 | OPEN | P1 | KPI branch line: restore the six numbers round 3 lost (KEC order intake and order book, HINDALCO EBITDA per tonne) so the branch can merge | accept: python -m reality_engine.pilot3.checkpages run | from: Shivam 5 Nov | opened 2026-11-05
+- T-068 | OPEN | P1 | Settle doubtful KPI rows with free beam-free on both Go keys, as a step after the build with saved verdicts; gate its accuracy on hand-read rows before use | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
 
 ## Schema and question map
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02

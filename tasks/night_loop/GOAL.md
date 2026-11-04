@@ -44,7 +44,7 @@ more), and only those that make sense for that company's business. Inputs, in or
 | Q3 | Variation and duplicates: core questions have >= 3 forms; near-duplicates (token overlap > 0.8) flagged | 0 unflagged duplicates |
 | Q4 | Traceability: diff against the frozen banks; every dropped bank idea for a company has a reason | full diff written |
 | Q5 | Reasonableness, hand-read: 50 random questions per company read by the wrapper | >= 48 reasonable |
-| Q6 | Shivam approves the set | before Phase 2 |
+| Q6 | Shivam approves the set | before Phase 2. Approved 5 Nov 2026: "solid for practical life queries" |
 After approval the set is frozen and split by a fixed hash: dev 70% (loops see it), hidden 30% (wrapper only).
 
 ## 3. Phase 2: extraction until the database answers (dsh workers build; Opus manages)
@@ -57,7 +57,7 @@ the MCP tools return what each question needs, reading as little as possible.
 | A2 | Answer test: a fixed random sample (60 per company) answered by a model through the MCP only, hand-read graded by the wrapper | reported score | not down; the target is 95% right |
 | A3 | Provenance: a new row's value is in its quote and the quote is on the cited page | guard | >= 98% |
 | A4 | XBRL agreement of deck / press-release / transcript figures; point-in-time violations; duplicate documents; junk rows | guard | not up |
-| A5 | No model or network in the build (sockets blocked); no company literals in extractor code | guard | pass |
+| A5 | No model or network in the build (sockets blocked); no company literals in extractor code. Exception (Shivam, 5 Nov 2026): a separate step after the build may send KPI rows the scripts cannot settle to free `beam-free` on the two OpenCode Go keys; no other model, no spend | guard | pass |
 | A6 | Tests: fast suite each loop, full suite and `checkpages run` (>= 145 found) at merge | guard | green |
 | A7 | Cost: pages read, OCR pages, build seconds per company | score | not up > 20% without an A1 gain |
 A1 is the guide; A2 is what gets reported to Shivam (hand-read only). A loop is accepted only if A1-dev rises,
