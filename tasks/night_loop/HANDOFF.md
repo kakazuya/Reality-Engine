@@ -1,6 +1,6 @@
 # Hand-off between loop sessions (each loop overwrites "Current state" and "Next", appends "Learnings")
 
-## Current state (loop 3, 4 Nov 2026 18:30 IST)
+## Current state (loop 3, 4 Nov 2026 18:20 IST)
 - Baseline on a copy, `pilot10\scratch\l3_base.db`: A1 dev 651/898 = 72% (`pilot10\scores1_loop03_base.json`). `pilot10.db` itself is untouched and stale: promote only through the wrapper.
 - Running: DeepSeek workers f826eabb (comparatives, T-057, `dsh/20261104T124718Z-f826eabb`) and 2e947e47 (KPI lexicons, `dsh/20261104T124734Z-2e947e47`).
 - Brief ready, not started: `loops/loop_03_worker_speech.md` (speakers for ETERNAL, INFY, KEC; guidance precision).
