@@ -258,3 +258,26 @@ def test_lookups_serve_the_profile_database():
         assert reply["found"] and reply["rows"]
         assert reply["rows"][0]["metric"] == "order_book"
     assert os.environ.get("REALITY_PILOT3_DB") == previous
+
+
+def test_compute_start_and_extra_indices_are_optional(tmp_path):
+    """T-056 loop 2: the committed profile sets neither; a profile that does is read through profile.py only."""
+    assert profile.load(PROFILE_JSON).compute_start is None
+    try:
+        profile.activate(profile.load(PROFILE_JSON))
+        assert profile.compute_start() is None and profile.extra_indices() == ()
+        data = json.loads(PROFILE_JSON.read_text(encoding="utf-8"))
+        for key in ("pages_db", "raw_root", "manifest", "out"):
+            data[key] = str(tmp_path / key)
+        data.update(compute_start="2024-10-01", extra_indices=["Nifty Bank"])
+        path = tmp_path / "p.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        profile.activate(profile.load(path))
+        assert profile.compute_start() == "2024-10-01" and profile.extra_indices() == ("Nifty Bank",)
+        data["compute_start"] = "2025-10-01"          # not earlier than the window: nothing is held back
+        path.write_text(json.dumps(data), encoding="utf-8")
+        profile.activate(profile.load(path))
+        assert profile.compute_start() is None
+    finally:
+        profile.activate(None)
+    assert profile.compute_start() is None and profile.extra_indices() == ()

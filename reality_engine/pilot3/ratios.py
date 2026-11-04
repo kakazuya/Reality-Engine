@@ -29,7 +29,8 @@ FORMULAS = [
     ("F_FY_SUM", "fy_sum", "sum of the four quarters Q1..Q4 of the fiscal year", "quarterly line items", "inr",
      "FY revenue, pat, ebitda, finance cost, depreciation, other income; needs all four quarters filed"),
     ("F_EPS_FY", "eps_basic_fy", "sum of the four quarterly basic EPS", "eps_basic", "inr_per_share",
-     "Approximation: quarterly EPS summed (the annual EPS is a weighted average)"),
+     "Approximation: quarterly EPS summed (the annual EPS is a weighted average), each quarter restated to the share "
+     "basis of the day the last quarter was filed by the cumulative split / bonus factor"),
     ("F_EPS_TTM", "eps_ttm", "sum of the last four quarterly basic EPS", "eps_basic", "inr_per_share", ""),
     ("F_PAYOUT", "dividend_payout_pct", "100 * dividend_per_share / eps_basic_fy", "dividend_per_share,eps_basic_fy", "pct",
      "Needs dividend_per_share in fin_annual_line"),
@@ -62,6 +63,10 @@ FORMULAS = [
     ("F_NWC_DAYS", "nwc_days", "365 * (receivables + inventories - payables) / ltm_revenue", "receivables,inventories,payables",
      "days", "trade working capital only; the company's own NWC-days figure is stored beside it as company_stated"),
     ("F_CUR", "current_ratio", "current_assets / current_liabilities", "current_assets,current_liabilities", "x", ""),
+    ("F_COST_INCOME", "cost_to_income", "100 * operating_expenses / (net_interest_income + other_income)",
+     "operating_expenses,net_interest_income,other_income", "pct",
+     "Bank cost-to-income of a quarter from the filed lines: OperatingExpenses over (interest earned - interest expended + "
+     "other income)"),
     ("F_PE", "pe", "close / trailing_eps", "close,eps_basic", "x",
      "EPS of each quarter restated to the valuation date's share basis by the cumulative split factor"),
     ("F_PB", "pb", "market_cap / net_worth", "market_cap,net_worth", "x", "Needs net_worth"),
@@ -119,8 +124,22 @@ def _fy_of(end: str) -> str:
     return f"FY{str(y + 1 if m >= 4 else y)[2:]}"
 
 
+def _split_factor(conn: sqlite3.Connection, symbol: str):
+    """``factor_at(day)``: the cumulative split / bonus factor of the NSE price rows on or before ``day`` (1.0 with no
+    price rows).  A quarter's EPS filed on ``d`` is restated to the share basis of day ``b`` by ``f(d) / f(b)``."""
+    rows = conn.execute("SELECT date, adj_factor FROM price_delivery WHERE symbol=? AND exchange='NSE' AND close IS NOT NULL "
+                        "ORDER BY date", (symbol,)).fetchall()
+    days, factors = [r[0] for r in rows], [r[1] if r[1] else 1.0 for r in rows]
+
+    def factor_at(day: str) -> float:
+        return factors[max(bisect_right(days, day) - 1, 0)] if days else 1.0
+
+    return factor_at
+
+
 def _panel(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
     q = _quarters(conn, symbol)
+    factor_at = _split_factor(conn, symbol)
     by_basis: dict = defaultdict(dict)
     for (basis, end), items in q.items():
         by_basis[basis][end] = items
@@ -160,6 +179,11 @@ def _panel(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
             if eps:
                 _put(out, symbol, isin, period, "Q", start, end, basis, "eps_basic", eps[0], "inr_per_share", None,
                      [ref("eps_basic")], eps[1])
+            opex, nii, oth = items.get("operating_expenses"), items.get("net_interest_income"), items.get("other_income")
+            if opex and nii and oth and (nii[0] + oth[0]):
+                _put(out, symbol, isin, period, "Q", start, end, basis, "cost_to_income", 100.0 * opex[0] / (nii[0] + oth[0]),
+                     "pct", "F_COST_INCOME", [ref("operating_expenses"), ref("net_interest_income"), ref("other_income")],
+                     max(opex[1], nii[1], oth[1]))
             flows[end] = items
         # fiscal years: all four quarters (Jun, Sep, Dec, Mar) filed
         fys = defaultdict(list)
@@ -191,7 +215,12 @@ def _panel(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
                      agg["ebitda"][0] / agg["finance_cost"][0], "x", "F_INT_COV", refs("ebitda") + refs("finance_cost"),
                      max(agg["ebitda"][1], agg["finance_cost"][1]))
             if "eps_basic" in agg:
-                _put(out, symbol, isin, fy, "FY", start, fy_ends[-1], basis, "eps_basic_fy", agg["eps_basic"][0],
+                # each quarter's EPS is restated to the share basis of the day the year's last quarter was filed (a bonus
+                # or split between two of the quarters would otherwise be summed unadjusted)
+                parts = [periods[e]["eps_basic"] for e in fy_ends]
+                base = factor_at(agg["eps_basic"][1][:10])
+                fy_eps = sum(p[0] * factor_at(p[1][:10]) / base for p in parts) if profile.under_profile() else agg["eps_basic"][0]
+                _put(out, symbol, isin, fy, "FY", start, fy_ends[-1], basis, "eps_basic_fy", fy_eps,
                      "inr_per_share", "F_EPS_FY", refs("eps_basic"), agg["eps_basic"][1])
             prev_fy = f"FY{int(fy[2:]) - 1:02d}"
             prev_ends = fys.get(prev_fy, [])
@@ -205,44 +234,75 @@ def _panel(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
                              max(agg[item][1], max(p[1] for p in parts)))
 
 
+def _input_views(conn: sqlite3.Connection) -> list[str]:
+    """TEMP views named like the windowed store tables that read ``main.<t>`` plus ``main.<t>_input`` (the rows
+    between ``compute_start`` and ``window_start``), so every query below sees the trailing history; the temp name
+    shadows the main table for unqualified queries.  ``fin_annual_line`` exposes ``rowid`` (input rows offset by 1e9)."""
+    from reality_engine.pilot3.stores import INPUT_TABLES  # late: stores builds statements -> ratios
+
+    made = []
+    for table in INPUT_TABLES:
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (f"{table}_input",)).fetchone():
+            continue
+        keys = ("rowid AS rowid, ", "rowid + 1000000000 AS rowid, ") if table == "fin_annual_line" else ("", "")
+        conn.execute(f'CREATE TEMP VIEW "{table}" AS SELECT {keys[0]}* FROM main."{table}" '
+                     f'UNION ALL SELECT {keys[1]}* FROM main."{table}_input"')
+        made.append(table)
+    return made
+
+
 def build_ratios(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("formula", "ratio_panel", "valuation_daily"))
     conn.executemany("INSERT INTO formula VALUES (?,?,?,?,?,1,?)", FORMULAS)
     counts = {}
-    for symbol in profile.symbols():
-        isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
-        isin = isin[0] if isin else None
-        out: list = []
-        _panel(conn, symbol, isin, out)
-        _payout_bvps(conn, symbol, isin, out)
-        _balance_ratios(conn, symbol, isin, out)
-        _lender_opex(conn, symbol, isin, out)
-        conn.executemany("INSERT INTO ratio_panel VALUES (" + ",".join("?" * 16) + ")", out)
-        counts[symbol] = {"ratio_panel": len(out), "valuation_daily": _valuation(conn, symbol, isin)}
-    from reality_engine.pilot3.stores import apply_window  # late: stores builds statements -> ratios
+    views = _input_views(conn)
+    try:
+        for symbol in profile.symbols():
+            isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
+            isin = isin[0] if isin else None
+            out: list = []
+            _panel(conn, symbol, isin, out)
+            _payout_bvps(conn, symbol, isin, out)
+            _balance_ratios(conn, symbol, isin, out)
+            _lender_opex(conn, symbol, isin, out)
+            conn.executemany("INSERT INTO ratio_panel VALUES (" + ",".join("?" * 16) + ")", out)
+            counts[symbol] = {"ratio_panel": len(out), "valuation_daily": _valuation(conn, symbol, isin)}
+    finally:
+        for view in views:
+            conn.execute(f"DROP VIEW IF EXISTS temp.{view}")
+    from reality_engine.pilot3.stores import trim_derived  # late: stores builds statements -> ratios
 
-    counts["window"] = apply_window(conn)
+    counts["window"] = trim_derived(conn)
     conn.commit()
     return counts
 
 
 def _payout_bvps(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
-    """Dividend payout (DPS / FY EPS) and book value per share, when the annual lines carry the inputs."""
+    """Dividend payout (DPS / FY EPS), when the annual lines carry the inputs.  One row per fiscal year and basis:
+    the year's declared dividends summed from the NSE corporate actions (``source_table`` corporate_actions) win over
+    a figure read from an annual report, and a figure not tied to a fiscal year is never used."""
     for basis in ("consolidated", "standalone"):
         fy_eps = {}
         for row in out:
             if row[7] == "eps_basic_fy" and row[6] == basis:
                 fy_eps[row[2]] = (row[8], row[13])
-        for fy, value, known, quote_id in conn.execute(
-                "SELECT fiscal_year, value, known_at, rowid FROM fin_annual_line WHERE symbol=? AND basis IN (?, 'not_stated') "
-                "AND line_item='dividend_per_share' AND unit IN ('inr','inr_per_share') AND definition='reported' "
-                "AND period_type='FY' ORDER BY fiscal_year, known_at",
-                (symbol, basis)).fetchall():
+        found = conn.execute(
+            "SELECT fiscal_year, value, known_at, rowid, source_table FROM fin_annual_line WHERE symbol=? "
+            "AND basis IN (?, 'not_stated') AND line_item='dividend_per_share' AND unit IN ('inr','inr_per_share') "
+            "AND definition='reported' AND period_type='FY' ORDER BY fiscal_year, known_at", (symbol, basis)).fetchall()
+        if profile.under_profile():  # one figure per year; without a profile every row is used, as it always was
+            chosen: dict = {}
+            for fy, value, known, quote_id, source in found:
+                if fy not in chosen or (source == "corporate_actions") > (chosen[fy][3] == "corporate_actions"):
+                    chosen[fy] = (value, known, quote_id, source)
+            found = [(fy, *rest) for fy, rest in chosen.items()]
+        for fy, value, known, quote_id, _source in found:
             if fy in fy_eps and fy_eps[fy][0]:
                 _put(out, symbol, isin, fy, "FY", f"20{int(fy[2:]) - 1}-04-01", f"20{fy[2:]}-03-31", basis,
                      "dividend_payout_pct", 100.0 * value / fy_eps[fy][0], "pct", "F_PAYOUT",
                      [f"fa:{symbol}:{fy}:{basis}:dividend_per_share#{quote_id}", f"ratio:{symbol}:{fy}:{basis}:eps_basic_fy"],
                      max(known or "", fy_eps[fy][1] or ""))
+
 
 def _qends(end: str) -> list[str]:
     """The four quarter-end dates up to and including `end`."""
@@ -256,7 +316,34 @@ def _qends(end: str) -> list[str]:
     return out
 
 
+# Ratios of a balance-sheet date (closing balances, trailing four quarters): the half-year sheet of 30 September
+# is also the Q2 point in time, so those rows are written a second time under the quarter label.  A period measure
+# (the NIM of the half year) is not.
+POINT_IN_TIME = ("book_value_per_share", "debt_to_equity", "roe", "roa", "net_debt_to_ebitda", "roce", "receivable_days",
+                 "inventory_days", "payable_days", "nwc_days", "current_ratio")
+
+
+def _quarter_labelled(out: list, first: int) -> None:
+    """Copy the H1 point-in-time rows added since ``first`` under their quarter label (Q2FYyy)."""
+    from reality_engine.pilot3.stores import fiscal_period  # late: stores builds statements -> ratios
+
+    for row in list(out[first:]):
+        if row[3] != "H1" or row[7] not in POINT_IN_TIME:
+            continue
+        label = fiscal_period(row[5])
+        if label:
+            quarter_start = f"{row[5][:5]}{int(row[5][5:7]) - 2:02d}-01"
+            out.append((row[0], row[1], label, "Q", quarter_start, row[5], *row[6:]))
+
+
 def _balance_ratios(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
+    first = len(out)
+    _balance_ratios_rows(conn, symbol, isin, out)
+    if profile.under_profile():  # the three-company pilot3 build keeps its present rows
+        _quarter_labelled(out, first)
+
+
+def _balance_ratios_rows(conn: sqlite3.Connection, symbol: str, isin: str, out: list) -> None:
     """Ratios on the XBRL balance sheets (year ends and half years): book value per share, leverage, ROCE, ROE and
     working-capital days.  Flows are the four quarters to the balance-sheet date, same basis as the sheet."""
     quarters = _quarters(conn, symbol)
@@ -366,6 +453,9 @@ def _lender_opex(conn: sqlite3.Connection, symbol: str, isin: str | None, out: l
 def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
     """valuation_daily: one row per NSE trading day, consolidated basis, every input filed by that day."""
     basis = "consolidated"
+    if not conn.execute("SELECT 1 FROM fin_quarter_xbrl WHERE symbol=? AND basis='consolidated' LIMIT 1", (symbol,)).fetchone():
+        basis = "standalone"  # a company that files no consolidated results (a life insurer)
+    window = profile.window_start() or ""
     prices = conn.execute("SELECT date, close, adj_factor FROM price_delivery WHERE symbol=? AND exchange='NSE' "
                           "AND close IS NOT NULL ORDER BY date", (symbol,)).fetchall()
     factor = {d: (f if f else 1.0) for d, _c, f in prices}
@@ -392,6 +482,10 @@ def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
     dividends = [(ex, amount * 1.0, known or ex) for ex, amount, known in conn.execute(
         "SELECT ex_date, amount_per_share, known_at FROM dividend_event WHERE symbol=? ORDER BY ex_date", (symbol,))]
 
+    paid_zero = [(known, value) for known, value in conn.execute(
+        "SELECT known_at, value FROM fin_annual_line WHERE symbol=? AND basis=? AND line_item='dividends_paid' "
+        "AND definition='xbrl_reported' AND period_type='FY' ORDER BY known_at", (symbol, basis))]
+
     def last4(rows: list, day: str, key_factor: bool = False):
         known = [r for r in rows if r[0][:10] <= day]
         known.sort(key=lambda r: r[1])
@@ -406,6 +500,8 @@ def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
     n = 0
     out = []
     for day, close, _adj in prices:
+        if day < window:  # earlier days only feed the split factor
+            continue
         sh = [s for s in shares if s[0][:10] <= day]
         if not sh:
             continue
@@ -421,8 +517,8 @@ def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
         known = [day, sh[-1][0][:10]] + ([max(k for k, _e, _v in eps4)[:10]] if eps4 else [])
         nw = [a for a in annual["net_worth"] if a[0][:10] <= day]
         nd = [a for a in annual["net_debt"] if a[0][:10] <= day]
-        window = date.fromisoformat(day) - timedelta(days=365)
-        dps = [(ex, amt, k) for ex, amt, k in dividends if window.isoformat() < ex <= day and k[:10] <= day]
+        since = date.fromisoformat(day) - timedelta(days=365)
+        dps = [(ex, amt, k) for ex, amt, k in dividends if since.isoformat() < ex <= day and k[:10] <= day]
         net_worth = nw[-1][2] if nw else None
         net_debt = nd[-1][2] if nd else None
         pe = close / trailing_eps if trailing_eps and trailing_eps > 0 else None
@@ -430,6 +526,10 @@ def _valuation(conn: sqlite3.Connection, symbol: str, isin: str) -> int:
         ev = (mcap + net_debt) / trailing_ebitda if net_debt is not None and trailing_ebitda and trailing_ebitda > 0 else None
         ttm_dps = sum(amt * factor_at(ex) / f_day for ex, amt, _k in dps) if dps else None
         dy = 100.0 * ttm_dps / close if ttm_dps and close else None
+        if dy is None and not dps and close and profile.under_profile():
+            paid = [a for a in paid_zero if a[0][:10] <= day]  # no declared dividend and the filed cash flow shows none
+            if paid and paid[-1][1] == 0:
+                dy = 0.0
         refs = {"px": f"px:{symbol}:{day}", "shares": sh[-1][0], "quarters": [r[1] for r in (eps4 or [])]}
         out.append((symbol, isin, day, basis, close, shares_now, mcap, trailing_eps, trailing_pat, net_worth, net_debt,
                     trailing_ebitda, pe, pb, ev, dy, max(known), "max(price date, share count, EPS filing dates)",

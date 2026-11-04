@@ -17,7 +17,7 @@ from datetime import date
 from reality_engine.gap_loop import prepare
 from reality_engine.pilot3 import profile, schema
 from reality_engine.pilot3.registry import all_isins
-from reality_engine.pilot3.stores import EXTRA_QUARTER_TAGS, QUARTER_TAGS, _basis, _duck, fetch
+from reality_engine.pilot3.stores import EXTRA_QUARTER_TAGS, QUARTER_TAGS, SECTOR_TAGS, _basis, _duck, fetch
 
 COLS = 23
 # Balance-sheet instants: XBRL element -> (canonical line item)
@@ -37,6 +37,11 @@ BS_TAGS = {
     "Inventories": "inventories", "TradePayablesCurrent": "trade_payables_current",
     "TradePayablesNoncurrent": "trade_payables_noncurrent", "LoansCurrent": "loans_current",
     "LoansNoncurrent": "loans_noncurrent", "CapitalWorkInProgress": "capital_work_in_progress",
+    # bank and life-insurer balance sheets (T-056 loop 2): capital and reserves, shareholders' funds, and the closing
+    # cash of the cash-flow statement (their balance sheet has no cash-and-equivalents line of the industrial kind)
+    "Capital": "equity_share_capital", "ShareCapital": "equity_share_capital",
+    "ReservesAndSurplus": "reserves_and_surplus", "ShareholdersFunds": "shareholders_funds",
+    "CashAndCashEquivalentsCashFlowStatement": "cash_flow_statement_cash",
 }
 # Cash-flow durations (year to date)
 CF_TAGS = {
@@ -55,7 +60,7 @@ CF_TAGS = {
     "ProceedsFromBorrowingsClassifiedAsFinancingActivities": "proceeds_from_borrowings",
     "RepaymentsOfBorrowingsClassifiedAsFinancingActivities": "repayment_of_borrowings",
 }
-PL_TAGS = {tag: v for tag, v in {**QUARTER_TAGS, **EXTRA_QUARTER_TAGS}.items()
+PL_TAGS = {tag: v for tag, v in {**QUARTER_TAGS, **EXTRA_QUARTER_TAGS, **SECTOR_TAGS}.items()
            if v[1] == "P&L" and v[2] == "inr" or tag.startswith(("Basic", "Diluted"))}
 FY_QUARTERS = ("Yearly", "Fourth quarter")
 H1_QUARTERS = ("Half yearly", "Second quarter")
@@ -116,6 +121,35 @@ def _filing_lines(symbol: str, f: dict, ptype: str, facts: list) -> list[tuple]:
         out.append(_row(symbol, f, fy, end, basis, "BS", "net_worth",
                         "net worth = EquityAttributableToOwnersOfParent" if "equity_owners" in refs else "net worth = Equity",
                         nw[0], "inr", f"{nw[2]} = {nw[0]:g}", nw[1], True, "xbrl_derived", ptype))
+    elif "shareholders_funds" in refs and profile.under_profile():  # life insurer
+        sf = refs["shareholders_funds"]
+        out.append(_row(symbol, f, fy, end, basis, "BS", "net_worth", "net worth = ShareholdersFunds", sf[0], "inr",
+                        f"{sf[2]} = {sf[0]:g}", sf[1], True, "xbrl_derived", ptype))
+    elif "equity_share_capital" in refs and "reserves_and_surplus" in refs and profile.under_profile():  # bank
+        parts = [refs["equity_share_capital"], refs["reserves_and_surplus"]]
+        out.append(_row(symbol, f, fy, end, basis, "BS", "net_worth", "net worth = capital + reserves and surplus",
+                        sum(p[0] for p in parts), "inr", "; ".join(f"{p[2]} {p[0]:g}" for p in parts),
+                        ";".join(p[1] for p in parts), True, "xbrl_derived", ptype))
+    extra = profile.under_profile()  # the three-company pilot3 build keeps the lines it always had
+    if extra and "cash_and_equivalents" not in refs and "cash_flow_statement_cash" in refs and profile.is_lender(symbol):
+        c = refs["cash_flow_statement_cash"]
+        out.append(_row(symbol, f, fy, end, basis, "BS", "cash_and_equivalents",
+                        "cash and cash equivalents = closing cash of the cash-flow statement (no balance-sheet line)", c[0],
+                        "inr", f"{c[2]} = {c[0]:g}", c[1], True, "xbrl_derived", ptype))
+    if extra and "investments" not in refs and ("current_investments" in refs or "noncurrent_investments" in refs):
+        parts = [refs[i] for i in ("current_investments", "noncurrent_investments") if i in refs]
+        out.append(_row(symbol, f, fy, end, basis, "BS", "investments", "investments = current + non-current investments",
+                        sum(p[0] for p in parts), "inr", "; ".join(f"{p[2]} {p[0]:g}" for p in parts),
+                        ";".join(p[1] for p in parts), True, "xbrl_derived", ptype))
+    if extra and not profile.is_lender(symbol) and all(i in refs for i in ("pbt_before_exceptional", "finance_cost", "depreciation")):
+        parts = [refs[i] for i in ("pbt_before_exceptional", "finance_cost", "depreciation")]
+        oth = refs.get("other_income")
+        out.append(_row(symbol, f, fy, end, basis, "P&L", "ebitda",
+                        "EBITDA = profit before exceptional items and tax + finance cost + depreciation - other income "
+                        "(formula F_EBITDA, applied to the period's filed lines)",
+                        sum(p[0] for p in parts) - (oth[0] if oth else 0.0), "inr",
+                        "; ".join(f"{p[2]} {p[0]:g}" for p in parts) + (f"; less {oth[2]} {oth[0]:g}" if oth else ""),
+                        ";".join(p[1] for p in parts + ([oth] if oth else [])), True, "xbrl_derived", ptype))
 
     def total(items, label, name, minus=()):
         parts = [refs[i] for i in items if i in refs]

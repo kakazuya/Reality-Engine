@@ -132,7 +132,8 @@ DATE_COLUMNS: dict[tuple[str, str], str] = {
     ("pilot3", "valuation_daily"): "date", ("pilot3", "shp_category"): "known_at",
     ("pilot3", "share_capital"): "known_at", ("pilot3", "dividend_event"): "ex_date",
     ("pilot3", "price_delivery"): "date", ("pilot3", "transcript_statement"): "known_at",
-    ("pilot3", "guidance"): "known_at",
+    ("pilot3", "guidance"): "known_at", ("pilot3", "bulk_block_deal"): "deal_date",
+    ("pilot3", "insider_trade"): "known_at", ("pilot3", "index_price"): "date",
 }
 
 PREFERRED_KEYS = (
@@ -206,6 +207,9 @@ def _auto_description(db_key: str, table: str) -> str:
         "price_delivery": "pilot3 daily OHLCV, delivery and split/dividend adjustment factor.",
         "transcript_statement": "pilot3 concall statements as exact quotes with speaker, role and topic tags.",
         "guidance": "pilot3 forward numeric targets with period, low/high, unit and the row each revised.",
+        "bulk_block_deal": "pilot3 NSE/BSE bulk and block deals per company (client, side, quantity, price); no row = no deal.",
+        "insider_trade": "pilot3 insider (SEBI PIT) trades per company: person, category, buy/sell, quantity, value, holding before/after.",
+        "index_price": "pilot3 stock vs index per trading day: closes, 1/3/6/12-month returns and relative return in points.",
     }
     if table in known:
         return known[table]

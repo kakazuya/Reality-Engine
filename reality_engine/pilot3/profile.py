@@ -11,6 +11,10 @@ Without a profile every module keeps its present defaults (``SYMBOLS``, ``PAGES_
     python -m reality_engine.pilot3.build --profile tasks/night_loop/pilot10_profile.json --part kpi
     python -m reality_engine.pilot3.docs_collect --profile <json> --symbols <SYM> --out <pages.db>
 
+An optional ``compute_start`` (default: ``window_start``, so nothing changes) lets a build read older rows of
+already-held stores as inputs only (trailing four quarters, prior-year comparisons): they never reach an answer
+table.  An optional ``extra_indices`` lists more index names for ``index_price`` besides ``Nifty 50``.
+
 The window keeps the stores' rows dated on or after ``window_start`` (``fin_quarter_xbrl``,
 ``fin_annual_line``, ``shp_category``, ``price_delivery``, ``valuation_daily``); documents come from the
 manifest, which is already the requested window.
@@ -52,6 +56,8 @@ class Profile:
     out: Path
     window_start: str | None = None
     companies: tuple[ProfileCompany, ...] = ()
+    compute_start: str | None = None
+    extra_indices: tuple[str, ...] = ()
 
     @property
     def symbols(self) -> tuple[str, ...]:
@@ -95,7 +101,9 @@ def load(path: str | Path) -> Profile:
     return Profile(name=str(data.get("name") or source.stem), pages_db=_path(base, data["pages_db"]),
                    raw_root=_path(base, data["raw_root"]), manifest=_path(base, data["manifest"]),
                    out=_path(base, data["out"]), window_start=str(data["window_start"]) if data.get("window_start") else None,
-                   companies=tuple(companies))
+                   companies=tuple(companies),
+                   compute_start=str(data["compute_start"]) if data.get("compute_start") else None,
+                   extra_indices=tuple(str(i) for i in (data.get("extra_indices") or ())))
 
 
 _ACTIVE: Profile | None = None
@@ -162,3 +170,15 @@ def pages_db() -> Path:
 
 def window_start() -> str | None:
     return _ACTIVE.window_start if _ACTIVE is not None else None
+
+
+def compute_start() -> str | None:
+    """The date from which older rows are kept as inputs only; None unless the profile sets one earlier than
+    ``window_start`` (then nothing is held back)."""
+    if _ACTIVE is None or not _ACTIVE.compute_start or not _ACTIVE.window_start:
+        return None
+    return _ACTIVE.compute_start if _ACTIVE.compute_start < _ACTIVE.window_start else None
+
+
+def extra_indices() -> tuple[str, ...]:
+    return _ACTIVE.extra_indices if _ACTIVE is not None else ()

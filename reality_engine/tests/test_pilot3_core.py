@@ -437,3 +437,117 @@ def test_bajaj_nim_is_annualised_net_interest_income_over_the_average_loan_book(
     assert nim[0] == "F_NIM" and nim[3] == "net_interest_income,loans" and nim[4] == "pct"
     # a company-stated NIM is never merged into the derived row: kpi_series stays its own table
     assert conn.execute("SELECT COUNT(*) FROM sqlite_master WHERE name='kpi_series'").fetchone()[0] == 0
+
+
+# --- T-056 loop 2: bank / insurer lines, share count from the shareholding pattern, deals, index prices -------------
+def _fake_reader(monkeypatch, handler):
+    monkeypatch.setattr(stores.prepare, "_read_sqlite", lambda db, source, sql, params: (handler(sql, params), {}))
+
+
+def test_bank_and_life_lines_are_mapped_by_taxonomy_and_never_written_twice(monkeypatch):
+    meta = {"bank.xml": ("I", "2026-07-01", "2026-09-30", "Q2FY27", "standalone", "A", "2026-10-17T05:48:06"),
+            "life.xml": ("J", "2026-07-01", "2026-09-30", "Q2FY27", "standalone", "A", "2026-10-27T07:26:42")}
+    facts = [("bank.xml", "InterestEarned", 1000.0, 1), ("bank.xml", "InterestExpended", 600.0, 2),
+             ("bank.xml", "ProfitLossForThePeriod", 120.0, 3), ("bank.xml", "EmployeesCost", 30.0, 4),
+             ("bank.xml", "BasicEarningsPerShareAfterExtraordinaryItems", 7.5, 5),
+             ("life.xml", "GrossPremiumIncome", 900.0, 6), ("life.xml", "ProfitLossAfterTaxAndExtraordinaryItems", 55.0, 7),
+             ("life.xml", "BasicAndDilutedEPSAfterExtraordinaryItemsNetOfTaxExpenseForThePeriodNotToBeAnnualized", 5.47, 8),
+             ("life.xml", "EmployeesCost", 1.0, 9)]          # not a life-taxonomy element: ignored
+    _fake_reader(monkeypatch, lambda sql, params: facts)
+    rows = stores._quarter_extras("X", meta, {("bank.xml", "employee_cost")})   # the quarterly view gave the bank's cost
+    by = {(r[13], r[8]): r for r in rows}
+    assert by[("bank.xml", "net_interest_income")][10] == 400.0 and by[("bank.xml", "net_interest_income")][19] == 0
+    assert by[("bank.xml", "pat")][10] == 120.0 and by[("bank.xml", "eps_basic")][10] == 7.5
+    assert ("bank.xml", "employee_cost") not in by                                 # already written: not twice
+    assert by[("life.xml", "pat")][10] == 55.0 and by[("life.xml", "gross_premium")][10] == 900.0
+    assert by[("life.xml", "eps_basic")][10] == by[("life.xml", "eps_diluted")][10] == 5.47
+    assert ("life.xml", "employee_cost") not in by
+    assert len({(r[13], r[8]) for r in rows}) == len(rows)
+
+
+def test_a_quarter_without_a_results_share_count_takes_the_shareholding_pattern_total(monkeypatch):
+    conn = _conn()
+    conn.execute("INSERT INTO fin_quarter_xbrl VALUES ('KEC','I','2026-04-01','2026-06-30','Q1FY27','standalone','A','P&L',"
+                 "'pat','pat',1.0,'inr',1.0,'f','d','t','r','2026-07-30','s',1)")
+    shp = [("KEC", "I", q, "shareholding_pattern", "ShareholdingPattern", shares, 100.0, None, "pct", "xbrl", "shp.xml", "db",
+            "xml.gz", "shp.xml", None, known, "x", 1) for q, shares, known in
+           (("2026-06-30", 1003240534.0, "2026-07-17T23:38:01"), ("2026-09-30", 1003500000.0, "2026-10-15T18:54:56"))]
+    conn.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 18) + ")", shp)
+    conn.execute("INSERT INTO share_capital VALUES ('KEC','I','2026-06-30','standalone',NULL,NULL,1.0,1.0,1.0,'shares',1.0,"
+                 "'2026-07-30','s','d','t','r',NULL,NULL)")        # the results filing gave June: only September is added
+    assert stores.build_share_fallback(conn)["KEC"] == 1
+    row = conn.execute("SELECT as_of_date, basis, shares_outstanding, known_at, source_table FROM share_capital "
+                       "WHERE as_of_date='2026-09-30'").fetchone()
+    assert row == ("2026-09-30", "standalone", 1003500000.0, "2026-10-15T18:54:56", "shp_category")
+    assert stores.build_share_fallback(conn)["KEC"] == 0           # rerun adds nothing
+
+
+def test_deals_and_insider_trades_are_read_by_isin_and_empty_means_no_rows(monkeypatch):
+    seen = []
+
+    def handler(sql, params):
+        seen.append((sql, params))
+        if "bulk_block_deals" in sql:
+            return [("id1", "INE389H01022", "2026-09-18", "A CLIENT", "BULK", "BUY", 1000, 55.5, "NSE", 0)] \
+                if "INE389H01022" in params else []
+        return [("nse", "k1", "INE389H01022", "P", "Promoters", "BUY", "MARKET", "Equity Shares", 10.0, 500.0, 1.0, 1.1,
+                 "2026-10-01", "2026-10-02", "2026-10-03", None)] if "INE389H01022" in params else []
+
+    _fake_reader(monkeypatch, handler)
+    conn = _conn()
+    stores.build_deals(conn)
+    stores.build_insiders(conn)
+    assert conn.execute("SELECT symbol, deal_date, quantity, trade_price, known_at FROM bulk_block_deal").fetchall() \
+        == [("KEC", "2026-09-18", 1000.0, 55.5, "2026-09-18")]
+    assert conn.execute("SELECT symbol, person_name, qty, known_at FROM insider_trade").fetchall() \
+        == [("KEC", "P", 10.0, "2026-10-03")]                       # no known_at in the store: the intimation date
+    assert all("isin IN" in sql for sql, _ in seen)
+    assert conn.execute("SELECT COUNT(*) FROM bulk_block_deal WHERE symbol='BAJFINANCE'").fetchone()[0] == 0
+
+
+def test_index_price_relative_return_is_stock_less_index_in_points_and_null_before_history(monkeypatch):
+    index = [("2025-11-03", 100.0), ("2026-05-04", 110.0), ("2026-11-03", 120.0)]
+    _fake_reader(monkeypatch, lambda sql, params: index)
+    conn = _conn()
+    conn.executemany("INSERT INTO price_delivery VALUES (" + ",".join("?" * 21) + ")",
+                     [("KEC", "I", "NSE", d, 0, 0, 0, close, 0, 0, 0, 0, 0, 0, 1.0, adj, d, "x", "d", "t", "r")
+                      for d, close, adj in (("2025-11-03", 200.0, 50.0), ("2026-05-04", 260.0, 65.0), ("2026-11-03", 300.0, 75.0))])
+    stores.build_index_prices(conn)
+    got = conn.execute("SELECT stock_close, stock_adj_close, index_close, stock_return_12m, index_return_12m, "
+                       "relative_return_12m, relative_return_6m, relative_return_1m FROM index_price "
+                       "WHERE symbol='KEC' AND date='2026-11-03'").fetchone()
+    # 12 months: stock 75 / 50 = +50 %, index 120 / 100 = +20 %  ->  +30 points
+    assert got[:3] == (300.0, 75.0, 120.0)
+    assert got[3] == pytest.approx(50.0) and got[4] == pytest.approx(20.0) and got[5] == pytest.approx(30.0)
+    assert got[6] == pytest.approx(30.0)                              # 6 months back = 3 May: last print is still 3 Nov 2025
+    assert got[7] == pytest.approx(100 * (75 / 65 - 1) - 100 * (120 / 110 - 1))   # 1m = last print on or before 3 Oct
+    first = conn.execute("SELECT relative_return_12m FROM index_price WHERE symbol='KEC' AND date='2025-11-03'").fetchone()
+    assert first == (None,)                                          # nothing before the first held day
+
+
+def test_bank_net_worth_and_industrial_ebitda_annual_lines_only_under_a_profile(tmp_path):
+    import json
+
+    from reality_engine.pilot3 import profile, statements
+
+    f = {"isin": "I", "file": "f.xml", "known_at": "2026-04-18T07:28:36", "period_end": "2026-03-31", "consolidated": "Standalone"}
+    facts = [("Capital", "OneI", None, None, "2026-03-31", 15.0, "INR", 1), ("ReservesAndSurplus", "OneI", None, None, "2026-03-31", 5568.0, "INR", 2),
+             ("ProfitLossForThePeriod", "FourD", "2025-04-01", "2026-03-31", None, 746.0, "INR", 3),
+             ("ProfitBeforeExceptionalItemsAndTax", "FourD", "2025-04-01", "2026-03-31", None, 100.0, "INR", 4),
+             ("FinanceCosts", "FourD", "2025-04-01", "2026-03-31", None, 10.0, "INR", 5),
+             ("DepreciationDepletionAndAmortisationExpense", "FourD", "2025-04-01", "2026-03-31", None, 20.0, "INR", 6),
+             ("OtherIncome", "FourD", "2025-04-01", "2026-03-31", None, 5.0, "INR", 7),
+             ("CurrentInvestments", "OneI", None, None, "2026-03-31", 7.0, "INR", 8)]
+    plain = {r[6]: r[8] for r in statements._filing_lines("KEC", f, "FY", facts)}
+    assert "net_worth" not in plain and "ebitda" not in plain and "investments" not in plain and plain["pat"] == 746.0
+    data = {"name": "x", "pages_db": "p", "raw_root": "r", "manifest": "m", "out": "o", "window_start": "2025-10-01",
+            "companies": [{"symbol": "KEC", "isins": ["INE389H01022"], "lender": False}]}
+    (tmp_path / "p.json").write_text(json.dumps(data), encoding="utf-8")
+    try:
+        profile.activate(profile.load(tmp_path / "p.json"))
+        got = {r[6]: r[8] for r in statements._filing_lines("KEC", f, "FY", facts)}
+    finally:
+        profile.activate(None)
+    assert got["net_worth"] == 15.0 + 5568.0          # capital + reserves and surplus (a bank has no equity tag)
+    assert got["ebitda"] == 100.0 + 10.0 + 20.0 - 5.0
+    assert got["investments"] == 7.0
