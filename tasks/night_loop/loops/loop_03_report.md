@@ -1,6 +1,43 @@
 # Loop 3 report (session 03, Eagle, 4 Nov 2026; times are this machine's clock)
 
-## Status: in progress
+## Status: stopped at the 400k context line, 20:20 IST. **Nothing is ready to merge yet.**
+Two fix workers were still running when this was written, and one more round is queued. No branch has passed review. Sections below hold the evidence.
+
+## For the wrapper
+| Work | Merge this branch once reviewed | State at 20:20 IST | A1 dev, alone against 651 |
+|---|---|---|---|
+| Printed comparatives (T-057) | `dsh/20261104T140210Z-42e59ee9`, on `dsh/20261104T124718Z-f826eabb` | Fix running. First round has wrong TTM, so do not merge that one | First round 680; wrong until the fix lands |
+| Speakers and guidance | `dsh/20261104T143838Z-20a19ffb`, on `dsh/20261104T133227Z-c8ca921f` | Fix running | First round 662 |
+| Sector KPIs | `dsh/20261104T134520Z-2ba2330d`, then round 2 | Round 2 **not started**: `loops/loop_03_worker_kpi_fix2.md`, start it with `base=dsh/20261104T134520Z-2ba2330d` | 677, about 75% of new rows right on my read of 67 |
+
+A1 per company, each candidate alone (not additive; never combined or built together):
+| Company | Base | KPI fix | Comparatives, first round | Speech, first round |
+|---|---|---|---|---|
+| BAJFINANCE /88 | 71 | 71 | 77 | 71 |
+| ETERNAL /88 | 65 | 68 | 66 | 65 |
+| HDFCBANK /101 | 71 | 75 | 74 | 71 |
+| HINDALCO /84 | 69 | 69 | 76 | 69 |
+| HINDUNILVR /96 | 71 | 74 | 74 | 71 |
+| INFY /91 | 65 | 65 | 65 | 65 |
+| KEC /79 | 51 | 51 | 54 | 62 |
+| MARUTI /91 | 59 | 61 | 61 | 59 |
+| SBILIFE /92 | 67 | 75 | 67 | 67 |
+| SUNPHARMA /88 | 62 | 68 | 66 | 62 |
+| Total /898 | 651 | 677 | 680 | 662 |
+
+These figures are the workers' and A1 counts rows, not right answers. Guards were run by the workers; I did not re-run them. A2 not run. Hidden split not read.
+
+Build seconds on a copy: registry 4, pages 27, stores 171, ratios 1, segments 2. Workers measured kpi 191 s for ten, comparatives 15-33 s a company, A1 about 8 s.
+
+At merge:
+- `docs_collect --symbols KEC` on the real `pages.db` (KEC's real transcripts are only in `scratch\c_kec_pages.db`).
+- `--part comparatives` must run before `--part ratios`.
+- Remove `PROGRESS_NOTES.md` and `tasks/STATE.md` edits from any branch that still carries them. I did not write `tasks/STATE.md`: LOOP_BRIEF limits this loop's commits to `tasks/night_loop/`, so its next action is in `HANDOFF.md`. The wrapper updates STATE and `tasks/efficiency/WORKER_REVIEW_LOG.xlsx` from the table at the end.
+
+## Unmet needs
+Baseline list at the top of this report, under the A1 table. What each candidate is expected to reach, not measured together: `valuation_daily.pe` 22 and `pat_growth_yoy_pct` 7 by comparatives; transcript text 52 (21 KEC) by the speech work, with MARUTI's 19 left, needing a browser fetch; sector KPIs by the KPI work, whose unmet list with reasons is in that worker's result. `ratio_panel.roe`, `roce`, `dividend_payout_pct` need balance-sheet or dividend inputs. `guidance.guidance` 22 can never be met by a real row: wrapper's call on the scorer, see loop 2's report. SBILIFE and SUNPHARMA `pe` before the first held filing: on such a date the answer is "no filing held before <date>", not missing data.
+
+Not done from the brief: 20 comparatives rows hand-checked against the page image (I read 22 rows against their quotes, which come from the page's words); A1 before and after on a combined build; the questions held back for older quarters.
 
 ## Baseline A1 on dev, 651/898 = 72% (`pilot10\scores\a1_loop03_base.json`)
 Built from main (18:12-18:16 IST) on a copy, `pilot10\scratch\l3_base.db`, not on `pilot10.db`: GOAL section 5 bars a loop from writing the live database, and the wrapper promotes. Parts and seconds: registry 4, pages 27, stores 171, ratios 1, segments 2. Script `scratch\l3_base.sh`.
@@ -76,3 +113,14 @@ Its numbers: A1 651 to 676, A3 99.85%, tests and checkpages green. Its own hand 
 - **Wrong rows that raise A1:** a year-ago quarter labelled as a half year (BAJFINANCE `revenue` H1FY26 17,002.86), number fragments (`pat` 791.0), a rupee row with unit pct (`r_and_d_pct` 23,676), cash-flow lines as `net_debt`, old values of a change (`dso` 69, `market_share` 8.1), 278 rows dated before the window.
 - It committed `PROGRESS_NOTES.md` and edited `tasks/STATE.md`.
 Part of the 25-question A1 gain may rest on these wrong rows, which is what the fix round will show.
+
+## Worker log, for `WORKER_REVIEW_LOG.xlsx`
+| Job | Type | Time | Tool calls, first edit | Verdict | Improve next time |
+|---|---|---|---|---|---|
+| f826eabb comparatives | new extractor | 58 min | 127, 20 | Reader good; TTM, EPS check, table filter wrong | Accept should have recomputed one TTM by hand and read back a wrong-tolerance case |
+| 2e947e47 KPI | finish unreviewed branch | 45 min | 130, 62 | Own hand read failed, reported anyway | Evidence should show the rows' look; stop rule on the bar |
+| c8ca921f speech | fix + extraction rules | 30 min | 130, 14 | Good; one false claim about checkpages | Brief's family D cost a true fact: my error |
+| 2ba2330d KPI fix | fix | 53 min | 108 by its count, 221 by the supervisor, 11 | Honest; bar not met, budget ran out before the read | Polling used 37 calls; foreground builds |
+| 42e59ee9 comparatives fix | fix | running | | | |
+| 20a19ffb speech fix | fix | running | | | |
+This session: Opus manager, reached 400k context at about 70 tool calls, mostly long briefs, row dumps and worker reports. Row dumps were the avoidable part.

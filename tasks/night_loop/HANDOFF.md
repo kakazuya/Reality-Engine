@@ -1,9 +1,10 @@
 # Hand-off between loop sessions (each loop overwrites "Current state" and "Next", appends "Learnings")
 
-## Current state (loop 3, 4 Nov 2026 18:20 IST)
-- Baseline on a copy, `pilot10\scratch\l3_base.db`: A1 dev 651/898 = 72% (`pilot10\scores\a1_loop03_base.json`). `pilot10.db` itself is untouched and stale: promote only through the wrapper.
-- Running: DeepSeek workers f826eabb (comparatives, T-057, `dsh/20261104T124718Z-f826eabb`) and 2e947e47 (KPI lexicons, `dsh/20261104T124734Z-2e947e47`).
-- Brief ready, not started: `loops/loop_03_worker_speech.md` (speakers for ETERNAL, INFY, KEC; guidance precision).
+## Current state (loop 3 stopped at 400k context, 4 Nov 2026 20:20 IST)
+- Baseline on a copy, `pilot10\scratch\l3_base.db`: A1 dev 651/898 = 72% (`pilot10\scores\a1_loop03_base.json`). `pilot10.db` is untouched and stale.
+- **Nothing is accepted yet.** Running when the session stopped: DeepSeek 42e59ee9 (comparatives fix, `dsh/20261104T140210Z-42e59ee9`) and 20a19ffb (speech fix, `dsh/20261104T143838Z-20a19ffb`). Check `list_workers`.
+- Not started: KPI precision round 2, `loops/loop_03_worker_kpi_fix2.md`, base `dsh/20261104T134520Z-2ba2330d`.
+- Do not merge the first-round branches on their own: f826eabb has wrong TTM on every Q2 and Q3 table and false EPS checks; 2e947e47 wiped EBITDA for non-metals. Full verdicts: `loops/loop_03_report.md`.
 - 865 pages need OCR: `pilot10\logs\needs_ocr_pages.csv`. Not run.
 
 ## Wrapper between loops 1 and 2 (05:00 IST)
@@ -22,7 +23,9 @@
   `loops/loop_01_worker_generalise.md`), started 04:52 IST on DeepSeek; it is loop 2's first worker slot.
 
 ## Next
-Loop 3 continues: review both workers, then start the speech worker. See `loops/loop_03_report.md`.
+1. Review both running fix workers at once against their brief's Accept, re-running the checks: recompute one TTM by hand, `checkpages run` on the branch.
+2. Start KPI round 2 when a slot is free (DeepSeek off-peak until 06:30 IST on 5 Nov).
+3. Build all three accepted branches together on a copy, measure A1 per company and guards, then merge. Hand-read before believing any A1 gain.
 
 ## Learnings (append one line each; newest last)
 - 3-4 Nov: full rebuilds (8 min) were the slow loop; per-company parts and fixed check pages are the fast loop.
@@ -50,3 +53,10 @@ Loop 3 continues: review both workers, then start the speech worker. See `loops/
 - Loop 3: results tables must be read from PDF word boxes (`page.get_text('words')`, sort by y-centre, 3.5 pt rows), not `doc_page.text`, which scatters labels and columns on most layouts. Script `pilot10\scratch\l3\geo.py`.
 - Loop 3: `start_worker` `writes` wants bare db file names (`w_cmp.db`), not paths. `job_watch wait --help` does not print help: it starts waiting.
 - Loop 3: A1 counts wrong guidance rows as answered: about 58 of 136 rows were wrong on a hand read. Read rows, not only the score.
+- Loop 3: every worker's report looked green and none passed a read of its rows. Wrong TTM, a false EPS check, a metric wiped by a sector gate and a false "pre-existing" claim were all caught only by reading rows or re-running on main. Re-run on main and the branch in the same minute before believing "pre-existing".
+- Loop 3: a check's tolerance must be in the unit of the value: a tolerance scaled by the table's rupee unit let an EPS of 10,953 pass against 109.63.
+- Loop 3: `checkpages.py` runs `guidance.run` as well as `kpi`, so a guidance change can move it.
+- Loop 3: some results PDFs have rotated pages (MARUTI 2026-01-28, 2026-04-28): word boxes need `rotation_matrix`.
+- Loop 3: a hand read of 20 rows per family must come before the budget ends; the KPI fix worker spent 37 calls polling a background build and never read four families.
+- Loop 3: printing row dumps and long worker reports took this session to 400k context at about 70 tool calls. Print counts and outliers first, and fewer rows.
+- Loop 3: in a bash heredoc this shell collapses double backslashes, which broke paths twice. Write helper scripts with the Write tool.
