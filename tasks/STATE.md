@@ -20,7 +20,7 @@ briefs need seven fields incl. `Evidence:` (`context_pack._REQUIRED_FIELDS`). T-
 1. T-054 aftercare: profiles swapped to `tasks/dsh_profiles/code-tools.insert.yml` (backups `*.bak_2026-11-04`);
    `plugins/code-intel` to the Recycle Bin; Shivam reconnects MCPs.
 2. Loop run (Shivam's go, 4 Nov 05:45 IST): `tasks/night_loop/` (GOAL, PILOT10, LOOP_BRIEF, HANDOFF, loops/); loop 1
-   and 2 done, loop 3 next (`start_loop.ps1 3`), 5 loops; DeepSeek workers off-peak, Sonnet only in peak. Wrapper merges.
+   and 2 done, loop 3 is the last (Shivam, 4 Nov); then the main session runs 2 dsh workers at once, no loop sessions.
 3. Hand-grade the 43 re-answers (31 earlier non-right + 12 guidance-recall checks); report as HTML in
    `D:\RealityEngine\reports\`; blueprint results history.
 4. Then, in order: XBRL segments, core document set and download triage, XBRL calibration, sector vocabularies,
