@@ -1,4 +1,4 @@
-# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-04 22:05 IST (Eagle)
+# STATE: the one live state. Keep it under 40 lines, overwrite in place. Last updated 2026-11-04 22:35 IST (Eagle)
 
 ## Now
 Golden-rule step 4-5: pilot on KEC, BAJFINANCE, HINDALCO (`reality_engine/data/pilot3/pilot3.db`, script-built, served by
@@ -13,8 +13,7 @@ T-054 merged 4 Nov (guide section 5): `plugins/code-tools/` (run-and-exit `outli
 briefs need seven fields incl. `Evidence:` (`context_pack._REQUIRED_FIELDS`). T-055 built 4 Nov, loop-1 qset fixes 4 Nov
 (guide section 6): `reality_engine/night_eval/` (Q1-Q3, A1, A3-A7, decide, audit; 27 tests); real set 1271 questions ok. T-056 4 Nov: `reality_engine/pilot3/profile.py` + `--profile` on docs_collect/build/kpi/transcripts/guidance (pilot10 profile, MARUTI build verified); MCP pilot3_* tools take any `REALITY_PILOT3_DB` database (guide O10, blueprint section 9). Loop 2 merged 4 Nov: segments, bank and insurer lines, deals, insider, index tables (blueprint 9, 9a). Loop 3 merged 4 Nov: printed comparatives `comparatives.py` (T-057), speakers and guidance precision (blueprint, guide O). Report: `tasks/night_loop/loops/loop_03_report.md`. Guidance recall merged (T-058, 83 rows). MARUTI real transcripts added: `pilot10\scratch\add_maruti_transcripts.py`.
 
-**Running (4 Nov night):** KPI round 2 worker. Guidance recall T-058 done on a copy `pilot10\scratch\w_guid.db`: guidance **67 → 83 rows** (ETERNAL 0→4, HINDUNILVR 1→3, KEC 13→14, SBILIFE 1→5, SUNPHARMA 0→5; BAJFINANCE 6, HDFCBANK 1, HINDALCO 31, INFY 14, MARUTI 0), worded targets stored as low/high NULL; A1 694/898, `checkpages run` 145/314 and the 26 guidance tests held, hand read 69/72 (blueprint sec 3, guide O6).
-Combined main on a copy `pilot10\scratch\combined.db`: A1 694/898 = 77% (`scores\a1_combined.json`), guards not run, `pilot10.db` still stale. Re-answer of 43 questions done (KEC 13, BAJ 15, HIN 15): `D:\RealityEngine\pilot3\answer_run3\`; worktrees removed.
+**Running (4 Nov night):** KPI round 3 (T-061) and guidance fix (T-062) workers. Main on a copy `pilot10\scratch\combined3.db` with real MARUTI and HDFCBANK documents: A1 709/898 = 79%, guards not run, `pilot10.db` stale. Re-answer of 43 questions done (KEC 13, BAJ 15, HIN 15): `D:\RealityEngine\pilot3\answer_run3\`; worktrees removed.
 
 ## Next action
 1. T-054 aftercare: profiles swapped to `tasks/dsh_profiles/code-tools.insert.yml` (backups `*.bak_2026-11-04`);

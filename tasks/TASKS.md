@@ -34,8 +34,6 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-037 | OPEN | P1 | Fetch KEC's call transcripts from kecrpg.com; its 10 filed concalls are cover letters | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
 - T-041 | OPEN | P2 | All 74 results_notes docs in chunks_v3_pilot point at a deleted worktree; raw PDFs are gone. 3 pilot ones refetched to D but their hash differs from the stored one, so check pages and fix raw_path | accept: Shivam | from: T-040 2 Nov | opened 2026-11-02
 - T-046 | OPEN | P2 | List the 10 documents the 31 Oct reader test found absent and check whether they exist at the source; moved from the old work queue | accept: Shivam | from: manual | opened 2026-11-02
-- T-059 | OPEN | P1 | MARUTI real call transcripts from the company site replace 1-page cover letters in the pilot10 raw set (Shivam 4 Nov) | accept: python -m reality_engine.pilot3.checkpages run | from: Shivam 4 Nov | opened 2026-11-04
-- T-060 | OPEN | P1 | Real results decks for HDFCBANK, INFY, ETERNAL in the pilot10 raw set: find every other held cover letter and fetch what it points at | accept: python -m reality_engine.pilot3.checkpages run | from: Shivam 4 Nov | opened 2026-11-04
 
 ## OCR and extraction
 - T-020 | OPEN | P2 | OCR after workspace step 4: TextRecognizer first pass, stronger reader for low-confidence numbers; last accuracy pilot failed its gate | accept: Shivam | from: RULINGS, GATE_STATE | opened 2026-11-02
@@ -46,6 +44,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-057 | OPEN | P1 | Printed QoQ and YoY comparatives from quarterly results tables into pilot10, feeding TTM, YoY and QoQ (Shivam 4 Nov) | accept: python -m pytest reality_engine/tests/test_pilot3_comparatives.py -q | from: Shivam 4 Nov | opened 2026-11-04
 - T-058 | OPEN | P1 | Guidance recall: real guidance sentences missed for SUNPHARMA, ETERNAL, HINDUNILVR, SBILIFE, HDFCBANK, including ranges and worded targets | accept: python -m pytest reality_engine/tests/test_pilot3_guidance.py -q | from: Loop 3 next step | opened 2026-11-04
 - T-061 | OPEN | P1 | KPI precision round 3: period, subject and unit rules to 18 of 20 per company on pilot10 | accept: python -m pytest reality_engine/tests/test_pilot3_kpi.py -q | from: KPI round 2 review | opened 2026-11-04
+- T-062 | OPEN | P1 | Guidance wrong rows: SBILIFE growth labelled margin, MARUTI customer mix, KEC slice, new documents hand read | accept: python -m pytest reality_engine/tests/test_pilot3_guidance.py -q | from: T-058 review | opened 2026-11-04
 
 ## Schema and question map
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02
