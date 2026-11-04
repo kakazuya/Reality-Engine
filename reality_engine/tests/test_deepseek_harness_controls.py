@@ -2,7 +2,8 @@
 import unittest
 from pathlib import Path
 
-from reality_engine.scripts.run_deepseek_harness import BASE_URL, build_patch
+from reality_engine.scripts.go_session import worker_session_id
+from reality_engine.scripts.run_deepseek_harness import BASE_URL, build_patch, session_job
 
 
 class HarnessControlsTests(unittest.TestCase):
@@ -52,6 +53,31 @@ class HarnessControlsTests(unittest.TestCase):
         self.assertIn('endpointFile: "C:/tmp/run.control.json"', patch)
         self.assertNotIn('DSH_HEARTBEAT_TOKEN', patch)
         self.assertNotIn('X-DSH-Heartbeat-Token', patch)
+
+
+    def test_one_provider_session_per_job(self):
+        """T-069: two job ids give two ids; the same job id gives the same id twice."""
+        model, key = 'deepseek-v4.1-flash', 'OPENCODE_GO_API_KEY_2'
+        job_one = '20261104T184919Z-f7c4d41b'
+        job_two = '20261104T195121Z-636c4920'
+
+        def header(patch):
+            return next(line for line in patch.splitlines() if 'x-opencode-session:' in line)
+
+        first = header(build_patch(model, 'max', key, job_id=job_one))
+        second = header(build_patch(model, 'max', key, job_id=job_two))
+        self.assertNotEqual(first, second)
+        self.assertEqual(first, header(build_patch(model, 'max', key, job_id=job_one)))
+        self.assertEqual(worker_session_id(job_one, model, key),
+                         worker_session_id(job_one, model, key))
+        self.assertNotEqual(worker_session_id(job_one, model, key),
+                            worker_session_id(job_two, model, key))
+
+    def test_hand_run_uses_its_out_file_as_the_job_identity(self):
+        """T-069: no --job-id means the resolved out-file, stable when repeated."""
+        self.assertEqual(session_job(None, 'out/a.md'), session_job(None, 'out/a.md'))
+        self.assertNotEqual(session_job(None, 'out/a.md'), session_job(None, 'out/b.md'))
+        self.assertEqual(session_job('job-1', 'out/a.md'), 'job-1')
 
 
 if __name__ == '__main__':

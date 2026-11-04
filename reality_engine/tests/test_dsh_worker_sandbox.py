@@ -102,6 +102,8 @@ class WriteScopeValidationTests(unittest.TestCase):
         (self.root / "reality_engine" / "scripts").mkdir(parents=True)
         (self.root / "reality_engine" / "scripts" / "go_session.py").write_text(
             'def session_id(job, model, key="", lane_no=None):\n'
+            '    return "provider-session-test"\n'
+            'def worker_session_id(job_id, model, key="", lane_no=None):\n'
             '    return "provider-session-test"\n',
             encoding="utf-8",
         )

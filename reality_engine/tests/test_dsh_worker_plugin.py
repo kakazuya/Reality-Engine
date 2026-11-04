@@ -53,6 +53,8 @@ PEAK = "2026-10-21T07:00:00+05:30"
 FAKE_GO_SESSION = '''"""Fake stable provider session for offline plugin tests."""
 def session_id(job, model, key="", lane_no=None):
     return "provider-session-test"
+def worker_session_id(job_id, model, key="", lane_no=None):
+    return "provider-session-test"
 '''
 
 
@@ -1275,6 +1277,30 @@ class PluginTests(unittest.TestCase):
                 print(f"--- {name} ---")
                 print(path.read_text(encoding="utf-8", errors="replace") if path.exists() else "(missing)")
         self.assertEqual(final["phase"], "finished")
+
+    def test_each_worker_gets_its_own_provider_session_from_its_job_id(self):
+        """T-069: start_worker reports the per-job id the harness header sends."""
+        real = (REPO / "reality_engine" / "scripts" / "go_session.py").read_text(encoding="utf-8")
+        (self.root / "reality_engine" / "scripts" / "go_session.py").write_text(real, encoding="utf-8")
+        from reality_engine.scripts.go_session import worker_session_id
+        from reality_engine.scripts.run_deepseek_harness import build_patch
+
+        started = self._manager_instance().start_worker(
+            brief=self._brief("per-job provider session"), permission="read-only"
+        )
+        self.assertTrue(started["ok"], started)
+        job_id = started["job_id"]
+        job = json.loads((Path(started["status_path"]).parent / "job.json").read_text(encoding="utf-8"))
+        argv = job["launcher"]["argv"]
+        self.assertEqual(argv[argv.index("--job-id") + 1], job_id)
+        expected = worker_session_id(job_id, core.MODEL, core.KEY_ENV)
+        self.assertEqual(job["provider_session"], expected)
+        patch = build_patch(core.MODEL, core.EFFORT, core.KEY_ENV, job_id=job_id)
+        header = next(line.split(":", 1)[1].strip() for line in patch.splitlines()
+                      if "x-opencode-session:" in line)
+        self.assertEqual(header, expected)
+        self.assertEqual(expected, worker_session_id(job_id, core.MODEL, core.KEY_ENV))
+        self.assertNotEqual(expected, worker_session_id(job_id + "b", core.MODEL, core.KEY_ENV))
 
     def test_optional_hard_timeout_with_heartbeat(self):
         self.env["FAKE_HEARTBEAT_FLAGS"] = "1"

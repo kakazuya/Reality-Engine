@@ -753,7 +753,12 @@ class Manager:
             )
 
     # ------------------------------------------------------------- provider
-    def _provider_session(self) -> str | None:
+    def _provider_session(self, job_id: str) -> str | None:
+        """This job's stable OpenCode routing/cache identity (T-069).
+
+        The job id is part of the id, so every worker gets its own session; the
+        harness builds the header from the same ``worker_session_id`` call.
+        """
         path = self.config.repo_root / "reality_engine" / "scripts" / "go_session.py"
         try:
             spec = importlib.util.spec_from_file_location("_dsh_worker_go_session", path)
@@ -761,7 +766,7 @@ class Manager:
                 return None
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            return module.session_id("dsh", MODEL, KEY_ENV)
+            return module.worker_session_id(job_id, MODEL, KEY_ENV)
         except Exception:
             return None
 
@@ -1438,6 +1443,8 @@ class Manager:
             launcher = self._launcher_command()
             argv = [
                 *launcher,
+                "--job-id",
+                job_id,
                 "--model",
                 MODEL,
                 "--task-file",
@@ -1464,14 +1471,15 @@ class Manager:
             # it is the real limit, while the supervisor renews the lease.
             argv += ["--timeout", str(hard_timeout_seconds)]
 
-            provider_session = self._provider_session()
+            provider_session = self._provider_session(job_id)
             owner_id = secrets.token_hex(16)
             if provider_session is None:
                 warnings.append("provider_session_unavailable: could not import go_session.py")
             warnings.append(
-                "provider_session is the stable OpenCode routing/cache identity; the actual "
-                "dsh conversation ID is a different identity and is unknown until the "
-                "heartbeat adapter publishes it."
+                "provider_session is this job's stable OpenCode routing/cache identity "
+                "(job id + model + key), equal to the x-opencode-session header the run "
+                "sends; the dsh conversation ID is a different identity and is unknown "
+                "until the heartbeat adapter publishes it."
             )
             if not mutating:
                 warnings.append(

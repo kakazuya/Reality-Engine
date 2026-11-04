@@ -208,8 +208,10 @@ Keep these distinct:
   renew, claim and cancel in `job_dir/steering.jsonl`, so one Claude/Codex
   session can see what another told the worker.
 - **Provider routing/cache session** — the deterministic
-  `x-opencode-session` value derived by `go_session.py`. Do not reset it on each
-  call; it is not the dsh conversation.
+  `x-opencode-session` value derived by `go_session.worker_session_id(job_id,
+  model, key)`: one per job, stable across restarts and follow-ups, different
+  between workers (T-069). Do not reset it on each call; it is not the dsh
+  conversation.
 - **dsh conversation ID** — the actual worker conversation identity. It is only
   known when the heartbeat adapter publishes it; `conversation_id_known=false`
   means exactly that.
