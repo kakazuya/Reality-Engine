@@ -559,7 +559,7 @@ def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int 
     name="pilot3_sql",
     description=(
         "Bounded read-only SELECT/WITH over pilot3.db (limit enforced, default 100, max 500). Tables: company, "
-        "doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, formula, "
+        "doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, formula, "
         "valuation_daily, shp_category, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, "
         "guidance. Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions. "
         "Text cells are cut at max_chars (default 400, hard cap 8000): pass max_chars=8000 when the answer needs "

@@ -1,0 +1,168 @@
+# Printed-results line lexicon (T-057).  Canonical line item -> label patterns, matched against the words a
+# results table prints on the left of (or in the middle of) a row.  A pattern is a phrase, lower case, matched
+# as a substring of the normalised label first and by token similarity second, so an OCR-noisy label still
+# resolves.  The longest matching pattern wins, so "profit before exceptional items and tax" beats "before tax".
+# No company names: the words below are the ones every Indian results table prints (A5).
+#
+# The canonical names are the ones stores.QUARTER_TAGS / EXTRA_QUARTER_TAGS / BANK_TAGS / LIFE_TAGS write, so a
+# printed line and its XBRL line are the same key in ratios.py and pilot3_fin.
+revenue_from_operations:
+  - revenue from operations
+  - revenue from operation
+  - total revenue from operations
+  - revenues from operations
+  - income from operations
+  - net revenue from operations
+  - revenue from contracts with customers
+other_income:
+  - other income
+total_income:
+  - total income
+  - total revenue
+cost_of_materials:
+  - cost of materials consumed
+  - cost of raw material consumed
+  - cost of materials
+employee_cost:
+  - employee benefits expense
+  - employees benefits expense
+  - employee benefit expenses
+  - employee cost
+  - employees cost
+  - employees remuneration
+finance_cost:
+  - finance costs
+  - finance cost
+  - financial costs
+depreciation:
+  - depreciation and amortisation expense
+  - depreciation and amortization expense
+  - depreciation and amortisation
+  - depreciation and amortization
+  - depreciation
+other_expenses:
+  - other expenses
+  - other operating expenses
+total_expenses:
+  - total expenses
+  - total expenditure
+pbt_before_exceptional:
+  - profit before exceptional items and tax
+  - profit before exceptional and extraordinary items and tax
+  - profit before exceptional items
+exceptional_items:
+  - exceptional items
+  - exceptional item
+pbt:
+  - profit before exceptional items and tax after exceptional
+  - profit after exceptional items and before tax
+  - profit before tax
+  - profit from ordinary activities before tax
+  - profit loss before tax
+  - profit loss from ordinary activities before tax
+tax:
+  - total tax expense
+  - total tax expenses
+  - income tax expense
+  - tax expenses
+  - tax expense
+  - provision for taxes
+  - provisions for taxes
+  - provision for tax
+current_tax:
+  - current tax expense
+  - current tax charge
+  - current tax
+deferred_tax:
+  - deferred tax expense
+  - deferred tax charge
+  - deferred tax credit
+  - deferred tax
+pat:
+  - profit for the period
+  - profit for the year
+  - net profit for the period
+  - net profit from ordinary activities after tax
+  - profit after tax
+  - profit loss after tax
+  - profit loss for the period
+  - profit loss for the year
+  - net profit after tax
+total_comprehensive_income:
+  - total comprehensive income
+other_comprehensive_income:
+  - total other comprehensive income
+  - total other comprehensive loss
+eps_basic:
+  - basic and diluted earnings per share
+  - basic diluted earnings per share
+  - basic earnings per share
+  - basic earnings loss per share
+  - basic and diluted eps
+  - basic eps
+  - basic in rs
+  - basic in inr
+  - basic in rupee
+  - basic
+eps_diluted:
+  - diluted earnings per share
+  - diluted earnings loss per share
+  - diluted eps
+  - diluted in rs
+  - diluted in inr
+  - diluted
+paid_up_capital:
+  - paid up equity share capital
+  - paid-up equity share capital
+  - paid up capital
+face_value:
+  - face value of equity share capital
+  - face value of equity shares
+interest_income:
+  - interest earned
+  - interest income
+interest_expended:
+  - interest expended
+operating_expenses:
+  - operating expenses
+expenditure_excl_provisions:
+  - total expenditure excluding provisions and contingencies
+  - expenditure excluding provisions and contingencies
+  - total expenditure excluding provisions
+  - expenditure excluding provisions
+operating_profit:
+  - operating profit before provisions and contingencies
+  - operating profit before provision and contingencies
+  - operating profit
+provisions_and_contingencies:
+  - provisions other than tax and contingencies
+  - provisions other than tax
+  - provisions and contingencies
+impairment_financial_instruments:
+  - impairment on financial instruments
+  - impairment of financial instruments
+fee_commission_income:
+  - fees and commission income
+  - fee and commission income
+fee_commission_expense:
+  - fees and commission expense
+  - fee and commission expense
+net_gain_fair_value:
+  - net gain on fair value changes
+  - net gain loss on fair value changes
+gross_premium:
+  - gross premium income
+  - gross written premium
+net_premium:
+  - net premium income
+  - net premium
+investment_income:
+  - income from investments
+expenses_of_management:
+  - expenses of management
+net_commission:
+  - net commission
+net_surplus:
+  - surplus deficit
+  - net surplus
+  - surplus as per revenue account

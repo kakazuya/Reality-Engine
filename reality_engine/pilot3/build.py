@@ -1,12 +1,15 @@
-"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|pages|stores|ratios|extract|segments|kpi|transcripts|guidance|all]``
+"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|pages|stores|comparatives|ratios|extract|segments|kpi|transcripts|guidance|all]``
        ``[--symbols KEC[,BAJFINANCE,HINDALCO]] [--ocr-db <ocr.db> ...]``.
 
 Builds every pilot3 table in one file.  No network, no model.  Pages and documents come from pages.db (sandbox
 pages only where pages.db lacks a document); ``--ocr-db`` (once per company OCR database, as ``pilot3.ocr`` writes
 it) fills the text of a ``needs_ocr`` page into ``doc_page`` and feeds the same pages to the extractors.  ``extract``
 runs the KPI and transcript extractors into the same db; ``guidance`` runs the guidance extractor over the pages
-already in it.  Each part drops and recreates its own tables (extract: its own symbols' rows), so parts can be
-re-run; ``ratios`` needs ``stores`` built first and ``guidance`` needs ``pages``.
+already in it.  ``comparatives`` (T-057) reads the printed comparative columns of each results PDF into
+``fin_quarter_printed``; it runs after ``stores`` and before ``ratios``, and in ``all`` only under a profile.
+Each part drops and recreates its own tables (extract: its own symbols' rows; comparatives: its own symbols'
+rows, with ``CREATE TABLE IF NOT EXISTS``), so parts can be re-run; ``ratios`` needs ``stores`` built first and
+``guidance`` needs ``pages``.
 
 ``--symbols`` limits ONLY the extractors (extract, kpi, transcripts, guidance), which already delete and rewrite
 one company's rows; registry, pages, stores and ratios rebuild every company's rows and ignore it (``--help``
@@ -77,7 +80,10 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None)
     conn = sqlite3.connect(out)
     conn.execute("PRAGMA journal_mode=WAL")
     log = {}
-    parts = ("registry", "pages", "stores", "ratios", "extract", "segments", "guidance") if part == "all" else (part,)
+    parts = (["registry", "pages", "stores", "comparatives", "ratios", "extract", "segments", "guidance"]
+             if part == "all" else [part])
+    if "comparatives" in parts and not profile.under_profile():
+        parts.remove("comparatives")  # no profile: the pilot3 build keeps its present rows (T-057)
     only = part if part in ("kpi", "transcripts") else None
     # A profile build limits every part to --symbols (a pilot10 database for one company holds one company);
     # without a profile the registry/pages/stores/ratios parts keep rebuilding every company, as they always did.
@@ -92,6 +98,11 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None)
                 log["doc_page"] = registry.build_pages(conn, ocr_dbs)
             elif name == "stores":
                 log["stores"] = stores.build_stores(conn)
+            elif name == "comparatives":
+                from reality_engine.pilot3 import comparatives
+
+                log["comparatives"] = comparatives.run(
+                    conn, symbols, out.with_name(f"{out.stem}_comparatives_review.csv"))
             elif name == "ratios":
                 from reality_engine.pilot3 import ratios
 
@@ -129,7 +140,7 @@ def main(argv: list[str] | None = None) -> None:
                     help="build profile JSON (T-056): companies, pages db, raw root, manifest, output, window start")
     ap.add_argument("--out", default=None, help="default: the profile's output, else the real pilot3.db on C")
     ap.add_argument("--pages-db", default=None, help="override the profile's pages database")
-    ap.add_argument("--part", default="all", choices=("registry", "pages", "stores", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "all"))
+    ap.add_argument("--part", default="all", choices=("registry", "pages", "stores", "comparatives", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "all"))
     ap.add_argument("--symbols", default=None,
                     help="comma list: without a profile it limits extract/kpi/transcripts/guidance only (registry/pages/stores/ratios rebuild every company); a profile build limits every part (default: the profile's companies, else the pilot3 three)")
     ap.add_argument("--ocr-db", action="append", default=[], help="ocr_page database written by pilot3.ocr (repeat for one per company)")

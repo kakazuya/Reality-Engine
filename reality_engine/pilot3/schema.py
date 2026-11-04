@@ -75,6 +75,14 @@ TABLES: dict[str, str] = {
         index_return_1m REAL, index_return_3m REAL, index_return_6m REAL, index_return_12m REAL,
         relative_return_1m REAL, relative_return_3m REAL, relative_return_6m REAL, relative_return_12m REAL,
         known_at TEXT, known_at_source TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT)""",
+    # T-057 loop 3: the comparative columns a quarterly results PDF prints (current, preceding, year-ago, ytd,
+    # prior ytd, last full year) rebuilt from the page's word boxes.  One row per printed cell; ``value`` is in
+    # rupees (``scale`` 1.0) and ``check_status`` says whether XBRL or the table's own arithmetic confirmed it.
+    "fin_quarter_printed": """CREATE TABLE fin_quarter_printed (
+        symbol TEXT, isin TEXT, period_start TEXT, period_end TEXT, fiscal_period TEXT, period_type TEXT,
+        column_role TEXT, basis TEXT, statement TEXT, line_item TEXT, caption TEXT, value REAL, unit TEXT,
+        scale REAL, raw_token TEXT, quote TEXT, doc_key TEXT, page INTEGER, known_at TEXT, known_at_source TEXT,
+        check_status TEXT, check_detail TEXT, is_reported INTEGER)""",
     # one row per forward-looking numeric target (guidance.py).  ``doc_key`` is the ticket's ``doc_id``; the
     # column is named ``doc_key`` like every other pilot3 table.
     "guidance": """CREATE TABLE guidance (
@@ -92,6 +100,7 @@ GUIDANCE_INDEXES = (
 INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_page_sym ON doc_page(symbol, doc_key)",
     "CREATE INDEX IF NOT EXISTS ix_fq ON fin_quarter_xbrl(symbol, basis, line_item, period_end)",
+    "CREATE INDEX IF NOT EXISTS ix_fqp ON fin_quarter_printed(symbol, basis, line_item, period_end)",
     "CREATE INDEX IF NOT EXISTS ix_fa ON fin_annual_line(symbol, basis, line_item, fiscal_year)",
     "CREATE INDEX IF NOT EXISTS ix_px ON price_delivery(symbol, exchange, date)",
     "CREATE INDEX IF NOT EXISTS ix_shp ON shp_category(symbol, quarter_end, category)",
@@ -123,8 +132,21 @@ def create(conn: sqlite3.Connection, names) -> None:
             conn.execute("DROP TABLE IF EXISTS doc_page_fts")
         conn.execute(f'DROP TABLE IF EXISTS "{name}"')
         conn.execute(TABLES[name])
+    _indexes(conn)
+    conn.commit()
+
+
+def ensure(conn: sqlite3.Connection, names) -> None:
+    """``CREATE TABLE IF NOT EXISTS`` + indexes, never dropping: a part that rewrites one company's rows only
+    (``comparatives``) must not delete another company's rows (``create`` drops every company -- HANDOFF 4 Nov)."""
+    for name in names:
+        conn.execute(TABLES[name].replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ", 1))
+    _indexes(conn)
+    conn.commit()
+
+
+def _indexes(conn: sqlite3.Connection) -> None:
     for sql in INDEXES:
         table = sql.split(" ON ")[1].split("(")[0]
         if conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
             conn.execute(sql)
-    conn.commit()
