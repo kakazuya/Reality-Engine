@@ -61,7 +61,8 @@ class StressBase(unittest.TestCase):
         scripts = self.root / "reality_engine" / "scripts"
         scripts.mkdir(parents=True)
         (scripts / "go_session.py").write_text(
-            "def session_id(*a, **k):\n    return 'provider-session-test'\n", encoding="utf-8"
+            "def session_id(*a, **k):\n    return 'provider-session-test'\n"
+            "def worker_session_id(*a, **k):\n    return 'provider-session-test'\n", encoding="utf-8"
         )
         self.env = dict(os.environ)
         for key in list(self.env):

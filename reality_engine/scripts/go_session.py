@@ -8,6 +8,11 @@ session_id(job, model, key, lane): a uuid5 of those parts, so the same job + mod
 run and every restart. lane defaults to the calling thread's pool index ("ThreadPoolExecutor-0_7" -> 7), so 32 parallel
 workers use 32 stable sessions (sticky routing per worker, no single overloaded session). The key is only hashed into
 the id, never sent or logged.
+
+worker_session_id(job_id, model, key, lane) is the dsh worker rule (T-069, Shivam 5 Nov): every worker's `job` part is
+its own job id, so two jobs on one account no longer share one x-opencode-session. The plugin and the harness call this
+same function, so the value start_worker reports and the header the run sends are equal. `session_id` keeps its
+signature for every other caller.
 """
 import re
 import threading
@@ -24,3 +29,8 @@ def lane():
 def session_id(job, model, key="", lane_no=None):
     model = str(model).split("~")[0]
     return str(uuid.uuid5(NAMESPACE, f"{job}|{model}|{uuid.uuid5(NAMESPACE, str(key))}|{lane() if lane_no is None else lane_no}"))
+
+
+def worker_session_id(job_id, model, key="", lane_no=None):
+    """One dsh worker's own provider session: the job id is the uuid5 `job` part (T-069)."""
+    return session_id(f"dsh-{job_id}", model, key, lane_no)

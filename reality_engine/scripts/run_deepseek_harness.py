@@ -7,7 +7,7 @@ as a worker.
 dsh is installed with bun (`bun add -g @deepseek-ai/dsh`, Shivam 2026-10-20: bun only, never npm). Go needs an
 `x-opencode-session: <uuid>` header on every request (else 400 MissingSessionID). dsh's pi-ai provider route takes
 `headers`, so each run writes a temporary `--patch` overlay that declares an `opencode-go` route with a stable session id
-and selects the model. The key is read from the Windows user env (OPENCODE_GO_API_KEY or _2) and never printed.
+(one per worker: the job id, or the resolved `--out-file` for a hand run; T-069) and selects the model. The key is read from the Windows user env (OPENCODE_GO_API_KEY or _2) and never printed.
 
 The task goes in on stdin and the final answer goes to --out-file. dsh's stderr (reasoning, `dsh: <code>` errors) goes
 to <out-file>.log. The exit code is dsh's (0 = task completed, 1 = failed), 124 = explicit hard timeout, 125 = heartbeat
@@ -46,7 +46,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from reality_engine.scripts.resource_watchdog import user_env
-from reality_engine.scripts.go_session import session_id   # stable x-opencode-session (Shivam's rule 2026-10-20)
+from reality_engine.scripts.go_session import worker_session_id   # one session per worker (T-069)
 from reality_engine.scripts.dsh_heartbeat import (
     DEFAULT_IDLE_SECONDS,
     DEFAULT_MAX_UNANSWERED,
@@ -76,8 +76,14 @@ EFFORTS = ("low", "medium", "high", "xhigh", "max")
 KEY_ENV = {"1": "OPENCODE_GO_API_KEY", "2": "OPENCODE_GO_API_KEY_2"}
 
 
-def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, control=None, workspace=None):
-    """YAML overlay with a stable session header, optional output cap, and heartbeat plugin."""
+def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, control=None, workspace=None,
+                job_id=None):
+    """YAML overlay with this worker's stable session header, optional output cap, and heartbeat plugin.
+
+    ``job_id`` is the worker's identity (the plugin passes it as ``--job-id``); a hand run passes the resolved
+    ``--out-file`` path. Both the header and the status metadata come from ``go_session.worker_session_id``, the
+    same function the plugin calls (T-069).
+    """
     if model in REASONING:
         efforts = "\n".join(f"              {e}: {e}" for e in EFFORTS)
         entry = f"          - id: {model}\n            reasoningEfforts:\n              off: null\n{efforts}"
@@ -93,7 +99,7 @@ def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, cont
     title = "- id: session-title-llm\n  disabled: true\n" if max_tokens is not None else ""
     patch = (f"{title}- id: llm-pi-ai\n  config:\n    providers:\n      opencode-go:\n"
              f"        displayName: OpenCode Go\n        apiKeyEnv: {key_env}\n        api: openai-completions\n"
-             f"        baseURL: {base_url}\n{compat}        headers:\n          x-opencode-session: {session_id("dsh", model, key_env)}\n"
+             f"        baseURL: {base_url}\n{compat}        headers:\n          x-opencode-session: {worker_session_id(job_id or '', model, key_env)}\n"
              f"{retry}"
              f"        models:\n{entry}\n"
              f"- id: agent-default-model\n  config:\n    provider: opencode-go\n    model: {model}\n{sel}")
@@ -141,6 +147,16 @@ def code_tools_patch(workspace):
     )
 
 
+def session_job(job_id, out_file):
+    """Job identity for this run's provider session.
+
+    The plugin passes ``--job-id``; a run started by hand has none, so its
+    resolved ``--out-file`` path is the identity: the same command repeats the
+    same id and a different out-file gets a different one (T-069).
+    """
+    return job_id or str(Path(out_file).resolve())
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--model", required=True, help="Go model id, optionally <id>~<effort>")
@@ -148,6 +164,7 @@ def main():
     g.add_argument("--task-file")
     g.add_argument("--task", help="task text inline (one orchestrator call, no task file to write first)")
     ap.add_argument("--out-file", required=True)
+    ap.add_argument("--job-id", help="dsh worker job id; the plugin passes it, a hand run derives it from --out-file")
     ap.add_argument("--cwd", default=str(REPO), help="workspace root the agent works in (default: repo root)")
     ap.add_argument("--timeout", type=int, default=None,
                     help="explicit hard wall-clock timeout in seconds (exit 124); omitted means no hard cutoff")
@@ -264,7 +281,7 @@ def main():
         extra = "\n" + Path(a.extra_patch).read_text(encoding="utf-8")
     with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False, encoding="utf-8") as f:
         f.write(build_patch(model, effort, key_env, a.max_output_tokens, base_url, patch_info,
-                                workspace=a.cwd) + extra)
+                                workspace=a.cwd, job_id=session_job(a.job_id, out)) + extra)
         patch = f.name
     t0 = time.time()
     try:
@@ -285,7 +302,7 @@ def main():
                 "effort": effort,
                 "account": a.account,
                 "permission": a.permission,
-                "provider_session_id": session_id("dsh", model, key_env),
+                "provider_session_id": worker_session_id(session_job(a.job_id, out), model, key_env),
                 "max_output_tokens": a.max_output_tokens,
                 "smoke_test": a.smoke_test,
                 "followup_wait_seconds": a.followup_wait,

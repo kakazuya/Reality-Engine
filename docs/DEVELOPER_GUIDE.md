@@ -507,6 +507,21 @@ running to finished within two polls, corrupt status during a poll, 40 jobs, a f
 hard-killed waiter plus pid reuse, two waiters, Stop-hook latency over 40 jobs (measured 0.4–2.0 s
 across seven runs on the MSI; the suite fails above 3 s), timeout line).
 
+### L2. One provider session per dsh worker (T-069)
+
+Every dsh worker sends its own `x-opencode-session`, stable for that worker's whole run, follow-ups and restarts
+included, and different from every other worker's. `reality_engine/scripts/go_session.py`
+`worker_session_id(job_id, model, key)` puts the job id in the uuid5 `job` part; the plugin
+(`plugins/dsh-worker/server/core.py`, `_provider_session`) reports that value in `job.json`/`status.json`, and the
+harness (`reality_engine/scripts/run_deepseek_harness.py`, `build_patch` and the status metadata) sends the same
+value as the header, so both are computed by one shared function. The plugin passes the job id as `--job-id`; a run
+started by hand derives it from the resolved `--out-file` path, so repeating a command repeats its id and a different
+out-file gets a different one. HP jobs (`reality_engine/scripts/hp_worker.py`) do not call `go_session` directly;
+their out-file is `jobs\<job_id>\result.md`, so the harness fallback gives each HP job its own stable id.
+`session_id(job, model, key, lane)` keeps its signature for every other caller. Tests, one file per process and no
+model run: `python -m pytest reality_engine/tests/test_dsh_worker_plugin.py -q` and
+`python -m pytest reality_engine/tests/test_deepseek_harness_controls.py -q`.
+
 ### M. Doc review loop and session hooks (T-045)
 
 `reality_engine/scripts/doc_review_loop.py` reviews docs with fresh Haiku 5.5 sessions (`claude -p`, medium effort, tools Read, Grep, Glob and Edit only). The queue is `git ls-files` minus `tasks/handoff/DOC_REVIEW_PROGRESS.csv`, smallest first, so a killed run resumes. It refuses to run on `main`.
