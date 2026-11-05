@@ -974,3 +974,46 @@ was right (a market cap of Rs 32.20 lakh crore for 3.22; gross NPAs of Rs 3,574 
    sentence), HDFCBANK-063 (the percentage sits 57 characters before "from" and the same sentence holds a second range),
    KEC-109 (an H2 per-quarter division), KEC-110 (the bps claim's operand pair cannot be bound: 7-7.5% against 5.0% gives
    the 200-250 bps the text states). Tests: `reality_engine/tests/test_pilot3_number_check.py` (16).
+
+### O13. Second reading an answer: its prose against its own numbers (T-083, 5 Nov 2026)
+The re-run hand read put 89 of the 136 misses on a misread of the answer's own material. Three of those classes a
+careful reader sees without the store: prose that contradicts its own figures (a growth series called "halving" when it
+fell about a third; a margin series called "steady" while it falls), a cause with no figure, quote or named source, and an
+answer that does not fit its question (four quarters asked and two given, a change dated before the window asked, a
+standalone figure set against a consolidated one). `number_check.py` owns the arithmetic and is unchanged; this step
+reads prose only and fixes nothing.
+1. `reality_engine/pilot3/second_read.py`:
+   `python -m reality_engine.pilot3.second_read --answers-dir <dir> --qids <file> --out <flags.jsonl>
+   [--pass-no N] [--parallel N] [--limit N]`. It reads the `<SYM>_answers.jsonl` `event=answer` row for each qid (the
+   last one when a qid has two) and `<SYM>_questions.json`, and sends the question, the prose and the answer's own
+   `numbers` rows (value, unit, period, source, quote, `formula`/`inputs`; 40 rows, quotes cut at 200 characters) to
+   `beam-free` (`reasoning_effort` low, 4000 output tokens, `x-opencode-session` from `go_session.session_id` on one
+   stable job name per pass and the pool lane, `record_usage` to `tasks/ledgers/spend.jsonl`). Resumable: a `qid` +
+   `pass_no` already in `--out` is skipped, so pass 2 is the same command with `--pass-no 2`. One row per answer:
+   `qid, pass_no, status, flags, dropped_flags, in_tok, out_tok, finish, attempts, error`.
+2. Flags carry `kind` = `contradicts_own_numbers` | `unsourced_cause` | `question_misfit`, plus `claim` and `why`. A
+   script check, not the model: `claim` must be a contiguous span of the answer prose after whitespace normalising
+   (case-insensitive, wrapping quotation marks ignored); a flag that fails is dropped and counted in `dropped_flags`,
+   never kept. A `question_misfit` about something missing may leave `claim` empty only when its `why` names a content
+   word of the question. A truncated or unparseable reply is retried once and then recorded as `truncated` /
+   `unparseable` / `api_error` / `rate_limited` -- never as "no flags"; HTTP 402 or a billing body stops the run
+   (exit 3), and a missing key exits 2 before any call.
+3. Dev run on `D:\RealityEngine\pilot10\answer_a3\t083_dev.tsv` (46 `read_miss`, 233 `right`, 25 `arith_miss` /
+   `absent_miss` / `store_miss` that this step cannot see): pass 1 flagged 28 of the 46 `read_miss` answers, 19 of them
+   for the graded fault (41%, target 50%), and 43 of the 233 `right` answers. Read flag by flag, those 43 hold 22 false
+   alarms (9.4% of `right`, inside the 10% target) and 21 real slips the grade missed: a count ("six consecutive
+   quarters"/"four targets") larger than the answer's own list, a quote attributed to the wrong call date, an operating
+   margin labelled an EBITDA margin, a consolidated ratio set against a standalone one. Pass 2 agreed with pass 1 on the
+   flagged / not-flagged verdict for 261 of 304 answers (85.9%); pass 1 cost 606,448 input and 207,505 output tokens
+   (free model, ledger still records the tokens at $0). A single pass is a sample: the model is not deterministic.
+   Three prompt rounds were run; round 3 is the best and is the prompt in the module. Kinds it cannot see: an item the
+   store holds and the answer says it does not (a deck page, a macro series), a data fact the answer alone cannot show
+   (a terminology error, an index move, a 200-day average before the price history starts), a cost the store exposes
+   through period/basis labels the `numbers` rows did not keep, and a count of periods split across two answers.
+   Tests: `reality_engine/tests/test_pilot3_second_read.py` (17, fake client, no network).
+4. Hold-out, read by Opus (`answer_a3\t083_holdout_qids.txt`, 296 answers; flags in `answer_a3\second_read\`, the
+   worker's dev files in its `worker_dev` folder): pass 1 flagged 22 of 43 `read` misses, 16 for the graded fault
+   against a pass mark of 18, so the test failed; nothing calls this module in the answer path. The numbers in item 3
+   are the worker's own reads. Same-sentence flags given for another reason count in the 16 (three of them). Pass 2
+   adds one more answer. The 39 flagged right answers split into 18 false alarms, 11 clear slips and 10 unsupported
+   causes; 21 of the 39 were read from the flag alone.
