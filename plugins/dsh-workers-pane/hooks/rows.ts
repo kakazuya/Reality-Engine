@@ -72,6 +72,9 @@ export const METRIC_FLOORS = {
   tools: 20,
   steps: 10,
   tokens: 50_000,
+  cached: 50_000,
+  total: 50_000,
+  tps: 20,
   files: 5,
   idle: 30,
 }
@@ -85,6 +88,9 @@ export const EMPTY_VIEW: WorkerView = {
     tools: METRIC_FLOORS.tools,
     steps: METRIC_FLOORS.steps,
     tokens: METRIC_FLOORS.tokens,
+    cached: METRIC_FLOORS.cached,
+    total: METRIC_FLOORS.total,
+    tps: METRIC_FLOORS.tps,
     files: METRIC_FLOORS.files,
     idle: METRIC_FLOORS.idle,
   },
@@ -507,6 +513,19 @@ export function rowOf(
   const title =
     statusTitle === null ? titleOf(id, jobRecord, brief) : clip(statusTitle, 120)
 
+  // job.json's provider_session is the stable OpenCode routing/cache id (the
+  // x-opencode-session header); the dsh conversation id comes from the event
+  // stream's `session` event, else heartbeat/status.
+  const providerSession = firstString(
+    jobRecord?.['provider_session'],
+    heartbeatRecord?.['provider_routing_session_id'],
+  )
+  const dshSessionId = firstString(
+    metrics?.sessionId,
+    heartbeatRecord?.['dsh_conversation_id'],
+    statusRecord?.['conversation_id'],
+  )
+
   return {
     id,
     shortId: id.slice(-8),
@@ -522,6 +541,8 @@ export function rowOf(
     idleMs,
     elapsedMs,
     metrics,
+    providerSession,
+    dshSessionId,
     leaseDeadline,
     leaseMs,
     leaseTotalMs,
@@ -602,6 +623,9 @@ export function metricMaxima(rows: readonly WorkerRow[]): MetricsMaxima {
   let tools = METRIC_FLOORS.tools
   let steps = METRIC_FLOORS.steps
   let tokens = METRIC_FLOORS.tokens
+  let cached = METRIC_FLOORS.cached
+  let total = METRIC_FLOORS.total
+  let tps = METRIC_FLOORS.tps
   let files = METRIC_FLOORS.files
   let idle = METRIC_FLOORS.idle
   for (const row of rows) {
@@ -609,13 +633,16 @@ export function metricMaxima(rows: readonly WorkerRow[]): MetricsMaxima {
       tools = Math.max(tools, row.metrics.toolCalls)
       steps = Math.max(steps, row.metrics.modelSteps)
       tokens = Math.max(tokens, row.metrics.outputTokens)
+      cached = Math.max(cached, row.metrics.cachedTokens ?? 0)
+      total = Math.max(total, row.metrics.totalTokens ?? 0)
+      tps = Math.max(tps, row.metrics.tokensPerSecond ?? 0)
       files = Math.max(files, row.metrics.fileWrites)
     }
     if (row.idleMs !== null && isActivePhase(row.phase)) {
       idle = Math.max(idle, row.idleMs / 60_000)
     }
   }
-  return { tools, steps, tokens, files, idle }
+  return { tools, steps, tokens, cached, total, tps, files, idle }
 }
 
 export function viewOf(
@@ -715,7 +742,8 @@ export function todayCounts(
   return { finished, failed }
 }
 
-/** One running row's live facts: elapsed, tool calls, idle, lease left. */
+/** One running row's live facts: elapsed, tool calls, idle, lease left, then
+ * the token and session facts (the last four show `–` until the job states them). */
 export function rowMeta(row: WorkerRow, now: number): string {
   const bits: string[] = []
   if (row.startedAt !== null) {
@@ -725,6 +753,14 @@ export function rowMeta(row: WorkerRow, now: number): string {
   const idle = idleMinutes(row)
   if (idle !== null) bits.push(`idle ${idle}m`)
   if (row.leaseMs !== null) bits.push(`lease ${formatLease(row.leaseMs)}`)
+  if (row.metrics !== null) {
+    bits.push(
+      row.providerSession === null ? '–' : row.providerSession.slice(0, 8),
+    )
+    bits.push(`${formatTokens(row.metrics.totalTokens)} total`)
+    bits.push(`${formatTokens(row.metrics.cachedTokens)} cached`)
+    bits.push(`${formatRate(row.metrics.tokensPerSecond)} t/s`)
+  }
   return bits.join(' · ')
 }
 
@@ -790,6 +826,12 @@ export function formatTokens(tokens: number | null): string {
   }
   const millions = tokens / 1_000_000
   return `${millions >= 10 ? Math.round(millions) : millions.toFixed(1)}M`
+}
+
+/** Whole tokens per second; `–` when the stream stated no per-step time. */
+export function formatRate(rate: number | null): string {
+  if (rate === null || !Number.isFinite(rate) || rate < 0) return '–'
+  return String(Math.round(rate))
 }
 
 export function formatLease(ms: number | null): string {

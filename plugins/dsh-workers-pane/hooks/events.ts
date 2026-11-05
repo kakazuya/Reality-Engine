@@ -32,6 +32,10 @@ export const EMPTY_COUNTS: EventCounts = {
   toolCalls: 0,
   modelSteps: 0,
   outputTokens: 0,
+  cachedTokens: null,
+  totalTokens: null,
+  sessionId: null,
+  tpsSamples: [],
   recentFiles: [],
   lastTool: null,
   lastToolTarget: null,
@@ -53,11 +57,31 @@ function int(value: unknown): number {
   return Number.isFinite(number) && number > 0 ? Math.floor(number) : 0
 }
 
+/** A token count the record stated (a missing field is null, not zero). */
+function tokenOf(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') return null
+  const number = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(number) && number >= 0 ? Math.floor(number) : null
+}
+
+/** The middle sample, or the mean of the two in the middle; null when empty. */
+export function medianOf(values: readonly number[]): number | null {
+  if (values.length === 0) return null
+  const sorted = [...values].sort((a, b) => a - b)
+  const middle = Math.floor(sorted.length / 2)
+  if (sorted.length % 2 === 1) return sorted[middle] ?? null
+  return ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2
+}
+
 function copyCounts(counts: EventCounts): EventCounts {
   return {
     toolCalls: counts.toolCalls,
     modelSteps: counts.modelSteps,
     outputTokens: counts.outputTokens,
+    cachedTokens: counts.cachedTokens,
+    totalTokens: counts.totalTokens,
+    sessionId: counts.sessionId,
+    tpsSamples: [...counts.tpsSamples],
     recentFiles: [...counts.recentFiles],
     lastTool: counts.lastTool,
     lastToolTarget: counts.lastToolTarget,
@@ -151,14 +175,38 @@ function consume(counts: EventCounts, line: string): boolean {
     return true
   }
 
+  if (type === 'session') {
+    const sessionId = record['sessionId'] ?? record['session_id']
+    if (typeof sessionId === 'string' && sessionId.trim() !== '') {
+      counts.sessionId = sessionId.trim().slice(0, 200)
+    }
+    return true
+  }
+
   if (type === 'status') {
     if (record['phase'] === 'step_end') {
       counts.modelSteps += 1
       const usage = obj(record['usage'])
       if (usage !== null) {
-        counts.outputTokens += int(
-          usage['outputTokens'] ?? usage['output_tokens'],
+        const output = int(usage['outputTokens'] ?? usage['output_tokens'])
+        counts.outputTokens += output
+        const cached = tokenOf(
+          usage['cacheReadTokens'] ??
+            usage['cache_read_tokens'] ??
+            usage['cachedTokens'] ??
+            usage['cached_tokens'],
         )
+        if (cached !== null) counts.cachedTokens = (counts.cachedTokens ?? 0) + cached
+        const total = tokenOf(usage['totalTokens'] ?? usage['total_tokens'])
+        if (total !== null) counts.totalTokens = (counts.totalTokens ?? 0) + total
+        // The dsh stream today carries no times. A harness that adds the
+        // model's own generation time per step (`durationMs`, tools excluded)
+        // lets the card show the median rate; timing step_start -> step_end
+        // would include tool execution and understate it.
+        const duration = tokenOf(usage['durationMs'] ?? usage['duration_ms'])
+        if (duration !== null && duration > 0 && output > 0) {
+          counts.tpsSamples.push(output / (duration / 1000))
+        }
       }
     }
     return true
@@ -277,6 +325,10 @@ export function metricsOf(scan: EventScan): WorkerMetrics {
     toolCalls: scan.toolCalls,
     modelSteps: scan.modelSteps,
     outputTokens: scan.outputTokens,
+    cachedTokens: scan.cachedTokens,
+    totalTokens: scan.totalTokens,
+    tokensPerSecond: medianOf(scan.tpsSamples),
+    sessionId: scan.sessionId,
     fileWrites: scan.recentFiles.length,
     lastTool: scan.lastTool,
     lastToolTarget: scan.lastToolTarget,

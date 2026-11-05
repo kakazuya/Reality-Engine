@@ -17,6 +17,14 @@ export type EventCounts = {
   toolCalls: number
   modelSteps: number
   outputTokens: number
+  /** Sum of `cacheReadTokens` / `cache_read_tokens` / `cachedTokens`; null until one states it. */
+  cachedTokens: number | null
+  /** Sum of `totalTokens` / `total_tokens`; null until one states it. */
+  totalTokens: number | null
+  /** The dsh conversation id from the stream's `session` event, `session-...`. */
+  sessionId: string | null
+  /** Tokens/sec per output step that stated its generation time; empty without them. */
+  tpsSamples: number[]
   /** Distinct files written, newest last, capped like the dsh-worker MCP. */
   recentFiles: string[]
   lastTool: string | null
@@ -44,6 +52,12 @@ export type WorkerMetrics = {
   toolCalls: number
   modelSteps: number
   outputTokens: number
+  cachedTokens: number | null
+  totalTokens: number | null
+  /** Median tokens/sec across the output steps that stated a generation time. */
+  tokensPerSecond: number | null
+  /** The dsh conversation id from the stream's `session` event. */
+  sessionId: string | null
   fileWrites: number
   lastTool: string | null
   lastToolTarget: string | null
@@ -66,6 +80,10 @@ export type WorkerRow = {
   idleMs: number | null
   elapsedMs: number | null
   metrics: WorkerMetrics | null
+  /** job.json's `provider_session`: the stable OpenCode routing/cache id. */
+  providerSession: string | null
+  /** The dsh conversation id from heartbeat/status or the event stream. */
+  dshSessionId: string | null
   leaseDeadline: number | null
   leaseMs: number | null
   leaseTotalMs: number | null
@@ -103,7 +121,11 @@ export type WorkerCounts = {
 export type MetricsMaxima = {
   tools: number
   steps: number
+  /** Output tokens. */
   tokens: number
+  cached: number
+  total: number
+  tps: number
   files: number
   idle: number
 }

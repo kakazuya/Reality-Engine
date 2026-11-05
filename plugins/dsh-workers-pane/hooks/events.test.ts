@@ -6,6 +6,7 @@ import {
   advanceSpark,
   decodeBase64,
   emptyScan,
+  medianOf,
   metricsOf,
   pruneScans,
   resumeEvents,
@@ -191,4 +192,57 @@ test('the scan cache prunes jobs outside the current window', () => {
     new Set(['a']),
   )
   expect(Object.keys(pruned.jobs)).toEqual(['a'])
+})
+
+test('cached and total tokens sum across both spellings, and a step without one adds nothing', () => {
+  const text = [
+    '{"type":"session","sessionId":"session-run"}',
+    '{"type":"status","phase":"step_end","usage":{"outputTokens":73,"totalTokens":24992}}',
+    '{"type":"status","phase":"step_end","usage":{"inputTokens":2023,"outputTokens":210,"totalTokens":27065,"cacheReadTokens":24832}}',
+    '{"type":"status","phase":"step_end","usage":{"input_tokens":9261,"output_tokens":2600,"total_tokens":40000,"cache_read_tokens":25000}}',
+    '{"type":"status","phase":"step_end","usage":{"outputTokens":717,"totalTokens":9000,"cachedTokens":50}}',
+    '{"type":"status","phase":"step_end","usage":{"outputTokens":0}}',
+    '{"type":"status","phase":"step_end"}',
+    '',
+  ].join('\n')
+  const scan = resumeEvents(undefined, bytes(text), NOW)
+
+  expect(scan.modelSteps).toBe(6)
+  expect(scan.outputTokens).toBe(3600)
+  expect(scan.totalTokens).toBe(24992 + 27065 + 40000 + 9000)
+  expect(scan.cachedTokens).toBe(24832 + 25000 + 50)
+  expect(scan.sessionId).toBe('session-run')
+  expect(metricsOf(scan).cachedTokens).toBe(49_882)
+  expect(metricsOf(scan).totalTokens).toBe(101_057)
+})
+
+test('a stream with no session event and no usage keeps the new facts null', () => {
+  const scan = resumeEvents(
+    undefined,
+    bytes('{"type":"tool_call","tool":"read"}\n'),
+    NOW,
+  )
+  const metrics = metricsOf(scan)
+  expect(metrics.sessionId).toBeNull()
+  expect(metrics.cachedTokens).toBeNull()
+  expect(metrics.totalTokens).toBeNull()
+  expect(metrics.tokensPerSecond).toBeNull()
+})
+
+test('the median tokens/sec uses the stated generation time per output step', () => {
+  const text = [
+    '{"type":"status","phase":"step_end","usage":{"outputTokens":100,"durationMs":1000}}',
+    '{"type":"status","phase":"step_end","usage":{"outputTokens":60,"duration_ms":2000}}',
+    '{"type":"status","phase":"step_end","usage":{"outputTokens":90,"durationMs":1000}}',
+    '{"type":"status","phase":"step_end","usage":{"outputTokens":50}}',
+    '{"type":"status","phase":"step_end","usage":{"outputTokens":0,"durationMs":1000}}',
+    '',
+  ].join('\n')
+  const metrics = metricsOf(resumeEvents(undefined, bytes(text), NOW))
+
+  // 100/1s, 30/1s and 90/1s are the samples; the untimed and empty steps are not.
+  expect(metrics.tokensPerSecond).toBe(90)
+  expect(medianOf([3])).toBe(3)
+  expect(medianOf([4, 1, 3, 2])).toBe(2.5)
+  expect(medianOf([])).toBeNull()
 })

@@ -63,6 +63,10 @@ function metricsOfFixture(): WorkerMetrics {
     toolCalls: 4,
     modelSteps: 2,
     outputTokens: 3600,
+    cachedTokens: 28_800,
+    totalTokens: 60_000,
+    tokensPerSecond: 41.485,
+    sessionId: 'session-run',
     fileWrites: 1,
     lastTool: 'pwsh',
     lastToolTarget: 'npm test',
@@ -104,6 +108,11 @@ test('a running row carries its title, live metrics, lease, session and activity
   expect(row.workspace).toBe('C:\\IDM-worktrees\\aaaa')
   expect(row.ownerSession).toBe('alpha-1001-20261024T070352Z')
   expect(row.metrics?.toolCalls).toBe(4)
+  expect(row.providerSession).toBe('80f552ec-e2e6-59a8-a454-7a2e330aa334')
+  expect(row.dshSessionId).toBe('session-run')
+  expect(row.metrics?.cachedTokens).toBe(28_800)
+  expect(row.metrics?.totalTokens).toBe(60_000)
+  expect(row.metrics?.tokensPerSecond).toBe(41.485)
   expect(row.briefLines[0]).toBe('Fix the resource watchdog')
   expect(row.briefLines[1]).toBe('Details.')
   expect(row.activity.length).toBe(3)
@@ -499,7 +508,7 @@ test('the mobile summary lists live rows with elapsed, tools, idle and lease', (
 
   expect(text).toContain('**DeepSeek workers** — 2 running · 1 stalled')
   expect(text).toContain(
-    '- ● **Fix the resource watchdog** — 20m 00s · 4 tools · idle 5m · lease 1h40 left',
+    '- ● **Fix the resource watchdog** — 20m 00s · 4 tools · idle 5m · lease 1h40 left · 80f552ec · 60k total · 29k cached · 41 t/s',
   )
   expect(text).toContain('- ◐ **Chunk every FY26 annual report**')
   expect(text).toContain('idle 35m')
@@ -520,10 +529,36 @@ test('row meta and live rows agree with the pane', () => {
     STALLED_ID,
   ])
   expect(rowMeta(rowFor(RUNNING_ID, true), NOW)).toBe(
-    '20m 00s · 4 tools · idle 5m · lease 1h40 left',
+    '20m 00s · 4 tools · idle 5m · lease 1h40 left · 80f552ec · 60k total · 29k cached · 41 t/s',
   )
   expect(rowMeta(rowFor(DATA_RUNNING_ID), NOW)).toBe(
     '5m 00s · idle 5m · lease 1h30 left',
+  )
+})
+
+test('a job that states nothing new shows dashes, never zero', () => {
+  const row = rowOf(
+    '20261024T114000Z-aaaaaaaa',
+    statusOf(RUNNING_ID),
+    {},
+    null,
+    null,
+    NOW,
+    null,
+    {
+      metrics: {
+        ...metricsOfFixture(),
+        cachedTokens: null,
+        totalTokens: null,
+        tokensPerSecond: null,
+        sessionId: null,
+      },
+    },
+  )
+  expect(row.providerSession).toBeNull()
+  expect(row.dshSessionId).toBeNull()
+  expect(rowMeta(row, NOW)).toBe(
+    '20m 00s · 4 tools · idle 5m · lease 1h40 left · – · – total · – cached · – t/s',
   )
 })
 

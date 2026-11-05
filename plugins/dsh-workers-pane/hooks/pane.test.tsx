@@ -42,7 +42,7 @@ const BAND = {
     hasSurvey: false,
     isWorking: false,
     maxRows: 6,
-    bodyColumns: 100,
+    bodyColumns: 140,
     scroll: { offset: 0, bodyRows: 6 },
     view: {},
   },
@@ -348,6 +348,16 @@ test(
       expect(expanded).toContain('⚙ pwsh → npm test')
       expect(expanded).toContain('tools')
       expect(expanded).toContain('3.6k')
+      expect(expanded).toContain('cached')
+      expect(expanded).toContain('50k')
+      expect(expanded).toContain('total')
+      expect(expanded).toContain('101k')
+      expect(expanded).toContain('t/s')
+      expect(expanded).toContain('41')
+      expect(expanded).toContain(
+        'provider session 80f552ec-e2e6-59a8-a454-7a2e330aa334',
+      )
+      expect(expanded).toContain('dsh session session-run')
       expect(expanded).toContain('1h40 left')
       expect(expanded).toContain('TOOLS')
       expect(expanded).toContain('20261024T114000Z-aaaaaaaa')
@@ -611,6 +621,10 @@ test(
       expect(texts).toContain('20m 00s')
       expect(texts).toContain('idle 5m')
       expect(texts).toContain('1h40 left')
+      expect(texts).toContain('80f552ec')
+      expect(texts).toContain('101k total')
+      expect(texts).toContain('50k cached')
+      expect(texts).toContain('41 t/s')
 
       const glyphs = await band.findAll({ type: 'Text', text: '●' })
       expect(glyphs.length).toBeGreaterThan(0)
@@ -648,7 +662,7 @@ test(
     const text = run.text ?? ''
     expect(text).toContain('**DeepSeek workers** — 2 running · 1 stalled')
     expect(text).toContain(
-      '- ● **Fix the resource watchdog** — 20m 00s · 4 tools · idle 5m · lease 1h40 left',
+      '- ● **Fix the resource watchdog** — 20m 00s · 4 tools · idle 5m · lease 1h40 left · 80f552ec · 101k total · 50k cached · 41 t/s',
     )
     expect(text).toContain('- ◐ **Chunk every FY26 annual report**')
     expect(text).toContain('lease 10m left')
