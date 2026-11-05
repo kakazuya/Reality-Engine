@@ -67,7 +67,7 @@ from reality_engine.pilot3 import profile, stores  # noqa: E402
 SYM, SISIN = "T", "INE000A01010"
 
 
-def _profile(tmp_path, compute_start="2025-01-01", window_start="2026-01-01", lender=False):
+def _profile(tmp_path, compute_start: str | None = "2025-01-01", window_start="2026-01-01", lender=False):
     data = {"name": "fixture", "pages_db": str(tmp_path / "p.db"), "raw_root": str(tmp_path), "manifest": str(tmp_path / "m.csv"),
             "out": str(tmp_path / "o.db"), "window_start": window_start,
             "companies": [{"symbol": SYM, "name": "T Ltd", "bse_code": "1", "isins": [SISIN], "lender": lender}]}
@@ -212,5 +212,132 @@ def test_annual_eps_is_restated_across_a_bonus_only_under_a_profile(tmp_path):
     try:
         _profile(tmp_path)
         assert build() == [pytest.approx(48.0)]  # 24 * 0.5 / 1.0 + 12 + 12 + 12
+    finally:
+        profile.activate(None)
+
+
+# --- T-073: stock-in-trade cost lines, exact share count, TTM from the annual line, point in time --------------
+def test_gross_margin_uses_stock_in_trade_and_inventory_change(tmp_path):
+    """HINDUNILVR Q2 FY27: revenue 18,226 cr, materials 6,408 cr, stock-in-trade purchases 3,654 cr and an
+    inventory change of -507 cr -> 47.58% gross margin."""
+    try:
+        _profile(tmp_path, compute_start=None)
+        conn = sqlite3.connect(":memory:")
+        schema.create(conn, list(schema.TABLES))
+        conn.execute("INSERT INTO company VALUES (?,?,NULL,NULL,'t','1','T Ltd')", (SYM, SISIN))
+        _quarter_rows(conn, [("Q2FY27", "2026-09-30", "2026-10-28T10:00:00",
+                              {"revenue_from_operations": 182_260_000_000.0,
+                               "cost_of_materials": 64_080_000_000.0,
+                               "purchases_of_stock_in_trade": 36_540_000_000.0,
+                               "changes_in_inventories": -5_070_000_000.0})])
+        out: list = []
+        ratios._panel(conn, SYM, SISIN, out)
+        gm = [r for r in out if r[7] == "gross_margin_pct" and r[3] == "Q"]
+        assert gm and gm[0][8] == pytest.approx(47.58, abs=0.02)
+        assert gm[0][11] == "F_GROSS_M" and len(json.loads(gm[0][12])) == 4
+    finally:
+        profile.activate(None)
+
+
+def test_the_exact_pattern_share_total_wins_over_rounded_paid_up_capital():
+    conn = sqlite3.connect(":memory:")
+    schema.create(conn, list(schema.TABLES))
+    for as_of, shares, known, table in (
+            ("2026-09-30", 2_220_000_000.0, "2026-08-07T10:00:00", "quarterly"),
+            ("2026-09-30", 2_247_226_523.0, "2026-10-19T10:00:00", "shp_category"),
+            ("2025-12-31", 2_220_000_000.0, "2026-01-20T10:00:00", "quarterly")):
+        conn.execute("INSERT INTO share_capital VALUES (?,?,?,'consolidated',NULL,NULL,?,NULL,NULL,'shares',1.0,?,"
+                     "'s','d',?,'r',NULL,NULL)", (SYM, SISIN, as_of, shares, known, table))
+    sh = ratios._share_count(conn, SYM, "consolidated", "2026-10-20")
+    assert sh is not None and sh[0] == 2_247_226_523.0
+    # before the pattern was filed the rounded paid-up row is the only fallback
+    fallback = ratios._share_count(conn, SYM, "consolidated", "2026-10-01")
+    assert fallback is not None and fallback[0] == 2_220_000_000.0
+
+
+def _valuation_fixture(conn, share_known="2026-10-20T10:00:00", prices=("2026-10-01", "2026-10-21")):
+    conn.execute("INSERT INTO company VALUES (?,?,NULL,NULL,'t','1','T Ltd')", (SYM, SISIN))
+    _quarter_rows(conn, [("Q2FY27", "2026-09-30", "2026-10-23T10:00:00", {"eps_basic": 5.0, "pat": 500.0})])
+    conn.execute("INSERT INTO share_capital VALUES (?,?,'2026-09-30','consolidated',NULL,NULL,100.0,100.0,1.0,"
+                 "'shares',1.0,?,'s','d','shp_category','r',NULL,NULL)", (SYM, SISIN, share_known))
+    conn.executemany("INSERT INTO price_delivery VALUES (" + ",".join("?" * 21) + ")",
+                     [(SYM, SISIN, "NSE", d, 10, 11, 9, 10.0, 10, 1, 1, 1, 1, 50.0, 1.0, 10.0, d, "x", "d", "t", d)
+                      for d in prices])
+    conn.commit()
+
+
+def test_no_valuation_session_uses_a_filing_later_than_itself(tmp_path):
+    try:
+        _profile(tmp_path, compute_start=None)
+        conn = sqlite3.connect(":memory:")
+        schema.create(conn, list(schema.TABLES))
+        _valuation_fixture(conn)
+        ratios.build_ratios(conn)
+        rows = conn.execute("SELECT date, known_at, shares_outstanding FROM valuation_daily ORDER BY date").fetchall()
+        assert rows and all(k[:10] <= d for d, k, _s in rows)
+        assert [r[0] for r in rows] == ["2026-10-21"]      # 1 Oct: the count was not filed yet
+        assert rows[0][2] == 100.0
+    finally:
+        profile.activate(None)
+
+
+def test_ttm_uses_the_annual_line_when_the_filing_prints_no_last_fy(tmp_path):
+    """The Oct filing prints the ytd and prior-ytd EPS columns only; the last full year comes from its own annual
+    line (FY26 71.58, known April) -> TTM 75.62, not a value from a later filing (T-073)."""
+    try:
+        _profile(tmp_path, compute_start=None)
+        conn = sqlite3.connect(":memory:")
+        schema.create(conn, list(schema.TABLES))
+        _valuation_fixture(conn, prices=("2026-10-24",))
+        conn.execute("INSERT INTO fin_annual_line VALUES (?,?,'FY26','2026-03-31','consolidated','P&L','eps_basic','c',"
+                     "71.58,'inr_per_share',1,'d',NULL,'q','db','t','r','2026-04-23T10:00:00','k',1,0,"
+                     "'xbrl_reported','FY')", (SYM, SISIN))
+        for role, end, value in (("ytd", "2026-09-30", 38.51), ("prior_ytd", "2025-09-30", 34.47)):
+            conn.execute("INSERT INTO fin_quarter_printed (symbol, isin, period_start, period_end, fiscal_period, "
+                         "period_type, column_role, basis, statement, line_item, caption, value, unit, scale, raw_token, "
+                         "quote, doc_key, page, known_at, known_at_source, check_status, check_detail, is_reported) "
+                         "VALUES (?,?,'2026-04-01',?,'H1FY27','ytd',?,'consolidated','P&L','eps_basic','Basic',?,"
+                         "'inr_per_share',1.0,'x','q','doc1',1,'2026-10-23T10:00:00','doc.known_at','sum_ok',NULL,1)",
+                         (SYM, SISIN, end, role, value))
+        conn.commit()
+        ratios.build_ratios(conn)
+        row = conn.execute("SELECT trailing_eps, pe, input_refs FROM valuation_daily WHERE date='2026-10-24'").fetchone()
+        assert row is not None
+        assert row[0] == pytest.approx(71.58 + 38.51 - 34.47)
+        assert row[1] == pytest.approx(10.0 / row[0])
+        assert json.loads(row[2])["ttm"] == "last_fy(annual)+ytd-prior_ytd"
+    finally:
+        profile.activate(None)
+
+
+def test_ev_uses_the_latest_filed_balance_sheet_half_year(tmp_path):
+    """A half-year net debt filed in February makes EV/EBITDA form before the next annual report, and
+    `input_refs.net_debt` states which balance sheet was used (T-073)."""
+    try:
+        _profile(tmp_path, compute_start=None, window_start="2026-01-01")
+        conn = sqlite3.connect(":memory:")
+        schema.create(conn, list(schema.TABLES))
+        conn.execute("INSERT INTO company VALUES (?,?,NULL,NULL,'t','1','T Ltd')", (SYM, SISIN))
+        _quarter_rows(conn, [
+            ("Q1FY26", "2025-06-30", "2025-08-01T10:00:00", {"eps_basic": 1.0, "ebitda": 100.0}),
+            ("Q2FY26", "2025-09-30", "2025-11-01T10:00:00", {"eps_basic": 1.0, "ebitda": 100.0}),
+            ("Q3FY26", "2025-12-31", "2026-01-10T10:00:00", {"eps_basic": 1.0, "ebitda": 100.0}),
+            ("Q4FY26", "2026-03-31", "2026-01-20T10:00:00", {"eps_basic": 1.0, "ebitda": 100.0})])
+        conn.execute("INSERT INTO share_capital VALUES (?,?,'2026-01-01','consolidated',NULL,NULL,100.0,100.0,1.0,"
+                     "'shares',1.0,'2026-01-05T10:00:00','s','d','shp_category','r',NULL,NULL)", (SYM, SISIN))
+        conn.execute("INSERT INTO fin_annual_line VALUES (?,?,'H1FY26','2025-09-30','consolidated','BS','net_debt','c',"
+                     "400.0,'inr',1.0,'d',NULL,'q','db','t','r','2026-02-01T10:00:00','k',1,1,'xbrl_derived','H1')",
+                     (SYM, SISIN))
+        conn.executemany("INSERT INTO price_delivery VALUES (" + ",".join("?" * 21) + ")",
+                         [(SYM, SISIN, "NSE", d, 10, 11, 9, 10.0, 10, 1, 1, 1, 1, 50.0, 1.0, 10.0, d, "x", "d", "t", d)
+                          for d in ("2026-02-02",)])
+        conn.commit()
+        ratios.build_ratios(conn)
+        row = conn.execute("SELECT trailing_ebitda, net_debt, ev_ebitda, input_refs FROM valuation_daily "
+                           "WHERE date='2026-02-02'").fetchone()
+        assert row is not None
+        assert row[0] == pytest.approx(400.0) and row[1] == pytest.approx(400.0)
+        assert row[2] == pytest.approx((10.0 * 100 + 400.0) / 400.0)
+        assert json.loads(row[3])["net_debt"] == "bs 2025-09-30 H1 known 2026-02-01"
     finally:
         profile.activate(None)

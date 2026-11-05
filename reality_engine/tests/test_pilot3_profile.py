@@ -86,9 +86,11 @@ def test_load_committed_profile():
     assert prof.name == "pilot10"
     assert len(prof.symbols) == 10
     assert prof.window_start == "2025-10-01"
+    assert prof.compute_start == "2024-07-01"          # T-073: four quarters before the first window day
     assert prof.pages_db.name == "pages.db" and prof.out.name == "pilot10.db"
     assert prof.is_lender("HDFCBANK") and not prof.is_lender("MARUTI")
     assert prof.company("MARUTI").isins == ("INE585B01010",)
+    assert "INE389H01014" in prof.company("KEC").isins  # its earlier ISIN's quarters are inputs too (T-073)
     assert prof.company("MARUTI").gap_company().db_name == ""
     with pytest.raises(KeyError):
         prof.company("NOT-A-COMPANY")
@@ -261,11 +263,12 @@ def test_lookups_serve_the_profile_database():
 
 
 def test_compute_start_and_extra_indices_are_optional(tmp_path):
-    """T-056 loop 2: the committed profile sets neither; a profile that does is read through profile.py only."""
-    assert profile.load(PROFILE_JSON).compute_start is None
+    """T-073: the committed profile sets `compute_start` (the older quarters are inputs only); a profile that
+    sets neither keeps the old behaviour, and one that sets both is read through profile.py only."""
+    assert profile.load(PROFILE_JSON).compute_start == "2024-07-01"
     try:
         profile.activate(profile.load(PROFILE_JSON))
-        assert profile.compute_start() is None and profile.extra_indices() == ()
+        assert profile.compute_start() == "2024-07-01" and profile.extra_indices() == ()
         data = json.loads(PROFILE_JSON.read_text(encoding="utf-8"))
         for key in ("pages_db", "raw_root", "manifest", "out"):
             data[key] = str(tmp_path / key)

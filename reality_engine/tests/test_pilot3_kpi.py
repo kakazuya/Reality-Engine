@@ -1139,4 +1139,23 @@ def test_ebitda_as_a_pct_of_turnover_is_not_the_company_margin():
         profile.activate(None)
 
 
+def test_a_ytd_flow_filed_after_the_quarter_end_is_dated_as_of_the_filing():
+    """T-073: KEC's 2 Nov release prints "YTD order intake" with no tie to 30 September; the company's YTD runs
+    past the quarter, so it is year-to-date as of the filing, not the half year.  An explicit half-year phrase,
+    or a document filed at the quarter end, keeps the half-year label."""
+    default = kpi.doc_default_period(["Results for the quarter ended 30 September 2026"])
+    got = [r for r in kpi.sentence_rows("YTD Order intake of over Rs. 13,500 crore, including ~Rs. 9,500 crore "
+                                        "from T&D Business.", 3, "KEC", ENTRIES, DIMS, default,
+                                        "2026-11-02T21:19:29") if r.metric == "order_intake"]
+    assert {(r.value, r.fiscal_period, r.period_type, r.as_of) for r in got} == \
+        {(13500.0, "YTD", "YTD", "2026-11-02")}
+    # the same qualifier inside a document filed on the quarter's own day keeps the half-year reading
+    as_filed = [r for r in kpi.sentence_rows("YTD Order intake of Rs. 13,500 crore", 3, "KEC", ENTRIES, DIMS, default,
+                                             "2026-09-30T18:00:00") if r.metric == "order_intake"]
+    assert {r.fiscal_period for r in as_filed} == {"H1FY27"}
+    # a segment's share of the total is not the total's dimension
+    text = "YTD order intake ~70% from T&D Business"
+    assert kpi.find_dimension(DIMS, "KEC", text, text.index("order intake"), value_end=text.index("70%")) == "total"
+
+
 

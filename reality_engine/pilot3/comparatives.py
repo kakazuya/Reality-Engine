@@ -345,12 +345,25 @@ def _quarter(period_end: str, ptype: str) -> tuple[str, str, str]:
 
 
 def _role_set(end: str, count: int) -> list[str]:
-    """Positions a results table of this quarter and column count prints them in."""
+    """Positions a results table of this quarter and column count prints them in.
+
+    The pool has to contain the roles the layout can print: a Q2/Q3 table carries a quarter pair, a half/nine-month
+    pair and (with five or six columns) the last full year; a Q4 table carries the quarter pair and the two full
+    years.  Without ``last_fy`` in the pool no TTM can ever be formed from that filing (T-073)."""
+    m = int(end[5:7])
     if count == 6:
         return ["current", "preceding", "year_ago", "ytd", "prior_ytd", "last_fy"]
     if count == 5:
-        return ["current", "preceding", "year_ago", "ytd", "prior_ytd"]
+        if m == 3:
+            return ["current", "preceding", "year_ago", "ytd", "prior_ytd"]
+        if m in (9, 12):
+            return ["current", "year_ago", "ytd", "prior_ytd", "last_fy"]
+        return list(ROLE_ORDER[:5])
     if count == 4:
+        if m == 3:
+            return ["current", "preceding", "ytd", "prior_ytd"]
+        if m in (9, 12):
+            return ["current", "year_ago", "ytd", "prior_ytd"]
         return ["current", "preceding", "year_ago", "last_fy"]
     return list(ROLE_ORDER[:count])
 
@@ -497,15 +510,39 @@ def _columns(data_rows) -> list[float]:
 
 
 def _assign_tokens(row, anchors: list[float]) -> dict[int, dict]:
-    """Every number token of a row to its nearest column (by right edge), when it is close enough."""
+    """Every number token of a row to its own column, keeping the row's left-to-right order.
+
+    The matching is monotone: when a cell in the middle is missing or two words merge into one number, a later
+    token must not slide one column left (T-073: INFY's ``19.32 19.19 17.76 38.51 34.47 71.58`` row, with the
+    Q1 cell split by OCR, put the half-year EPS under the year-ago quarter).  A token and a column that are too
+    far apart never match."""
     gap = min((b - a for a, b in zip(anchors, anchors[1:])), default=40.0)
     tol = max(6.0, 0.45 * gap)
+    tokens = _tokens(_strip_row_number(row))
+    n, k = len(anchors), len(tokens)
+    if not n or not k:
+        return {}
+    best = [[0.0] * (k + 1) for _ in range(n + 1)]
+    back: list[list[tuple | None]] = [[None] * (k + 1) for _ in range(n + 1)]
+    for i in range(1, n + 1):
+        for j in range(1, k + 1):
+            best[i][j], back[i][j] = best[i - 1][j], ("col", i - 1, j)
+            d = abs(anchors[i - 1] - tokens[j - 1]["x1"])
+            gain = 10.0 - d / max(tol, 1e-9)         # a match always beats leaving the token out; closer is better
+            if d <= tol and best[i - 1][j - 1] + gain > best[i][j]:
+                best[i][j], back[i][j] = best[i - 1][j - 1] + gain, ("take", i - 1, j - 1)
+            if best[i][j - 1] > best[i][j]:                       # a token no column takes
+                best[i][j], back[i][j] = best[i][j - 1], ("token", i, j - 1)
     out: dict[int, dict] = {}
-    for token in _tokens(_strip_row_number(row)):
-        at = min(range(len(anchors)), key=lambda i: abs(anchors[i] - token["x1"]))
-        if abs(anchors[at] - token["x1"]) > tol:
-            continue
-        out.setdefault(at, token)
+    i, j = n, k
+    while i > 0 and j > 0:
+        step = back[i][j]
+        if step is None:
+            break
+        kind, ni, nj = step
+        if kind == "take":
+            out[ni] = tokens[nj]
+        i, j = ni, nj
     return out
 
 
@@ -553,13 +590,15 @@ def _page_head(rows) -> str:
 
 
 def _layout_hint(header_rows, anchors) -> list[str] | None:
-    """A 4-column Q2/Q3 table that prints a quarter pair AND a half-year pair (``Three months ended … Six months
-    ended …``) is ``current, year_ago, ytd, prior_ytd`` -- not the Q1 four-column layout (INFY's IFRS statement)."""
-    if len(anchors) != 4:
+    """A Q2/Q3 table that prints a quarter pair AND a half-year pair (``Three months ended … Six months
+    ended …``) is ``current, year_ago, ytd, prior_ytd`` plus ``last_fy`` when it also prints the year.  The month
+    of the current period end decides the other layouts (`_role_set`): a Q1 table's "year ended" column is the
+    last full year, a Q4 table's is the year itself, so the hint never overrides those."""
+    if len(anchors) not in (4, 5):
         return None
     text = " ".join(w[4] for row in header_rows for w in row).lower().replace("-", " ")
     if "six months" in text or "nine months" in text or "half year" in text:
-        return ["current", "year_ago", "ytd", "prior_ytd"]
+        return ["current", "year_ago", "ytd", "prior_ytd", "last_fy"][:len(anchors)]
     return None
 
 
@@ -629,12 +668,19 @@ def read_page(rows) -> dict | None:
 
 # ------------------------------------------------------------------ XBRL side -------------------------------------------------------------
 def xbrl_index(conn: sqlite3.Connection, symbol: str) -> dict:
-    """``{(basis, period_end): {item: value}}`` for the symbol's XBRL quarters."""
+    """``{(basis, period_end): {item: value}}`` for the symbol's XBRL quarters.
+
+    With a ``compute_start`` the quarters before the window live in ``fin_quarter_xbrl_input``; they are inputs
+    only, but a printed prior-year column is checked against them (T-073).  The main table wins when both hold a
+    quarter."""
     values: dict = defaultdict(dict)
-    for basis, end, item, value in conn.execute(
-            "SELECT basis, period_end, line_item, value FROM fin_quarter_xbrl "
-            "WHERE symbol=? AND basis IN ('standalone','consolidated')", (symbol,)):
-        values[(basis, end)][item] = value
+    tables = (["fin_quarter_xbrl_input"] if conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE name='fin_quarter_xbrl_input'").fetchone() else []) + ["fin_quarter_xbrl"]
+    for table in tables:
+        for basis, end, item, value in conn.execute(
+                f"SELECT basis, period_end, line_item, value FROM {table} "
+                "WHERE symbol=? AND basis IN ('standalone','consolidated')", (symbol,)):
+            values[(basis, end)][item] = value
     return values
 
 
@@ -1408,12 +1454,12 @@ def ttm_filings(conn: sqlite3.Connection, symbol: str, basis: str) -> list[dict]
             ttm = _ttm_one(cells, item)
             if ttm is not None:
                 items[item] = ttm
-        if "pat" in items or "eps_basic" in items:
+        if "pat" in items or "eps_basic" in items or any(role in ("ytd", "prior_ytd") for role, _item in cells):
             comps = [items.get(k) for k in ("pbt_before_exceptional", "finance_cost", "depreciation", "other_income")]
             if "ebitda" not in items and comps[0] is not None and comps[1] is not None and comps[2] is not None \
                     and not profile.is_lender(symbol):
                 items["ebitda"] = comps[0] + comps[1] + comps[2] - (comps[3] or 0.0)
-            out.append({"known_at": known, "doc_key": doc_key, "items": items,
+            out.append({"known_at": known, "doc_key": doc_key, "items": items, "cells": cells,
                         "period_end": max(end for _v, end, _p in cells.values())})
     return out
 

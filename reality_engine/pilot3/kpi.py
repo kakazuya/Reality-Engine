@@ -531,13 +531,18 @@ def _sentence_bounds(text: str, pos: int) -> tuple[int, int]:
     return start, end
 
 
-def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: int = 90) -> str:
+def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: int = 90,
+                   value_end: int | None = None) -> str:
     """Dimension word nearest before pos (within window), else nearest after within 40 chars, else total.
 
     The word must sit in the same sentence: a segment named in an earlier sentence describes something else
     (a 36,267 total order book was tagged T&D off the previous sentence's "T&D business").  A figure stated as a
     share of the whole ("63% of our unexecuted order book") keeps the segment the paragraph has been about, so
-    that one may look back up to 400 chars."""
+    that one may look back up to 400 chars.  When the value is followed by a segment's share of it ("13,500 crore,
+    ~70% from T&D"; T-073), the segment is not the value's dimension: the row stays the total."""
+    if value_end is not None and re.search(r"\d+(?:\.\d+)?\s*%\s*(?:from|of)\b",
+                                           text[pos:min(len(text), value_end + 60)], re.I):
+        return "total"
     lo_s, hi_s = _sentence_bounds(text, pos)
 
     def nearest(a: int, b: int):
@@ -551,6 +556,8 @@ def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: i
                     p = a + m.start()
                     if text[max(0, p - 4):p].lower() == "kec ":     # the company name "KEC International Limited"
                         continue
+                    if p > pos and re.search(r"\d+(?:\.\d+)?\s*%\s*(?:from|of)\s*$", text[pos:p], re.I):
+                        continue      # "~70% from T&D": the segment's share of the total, not the total's segment
                     dist = (pos - (a + m.end())) if a + m.end() <= pos else (a + m.start() - pos) + 15
                     if dist < best_d:
                         best, best_d = d.dimension, dist
@@ -773,10 +780,16 @@ _PAT_OCI = re.compile(r"other comprehensive|\band OCI\b", re.I)
 _CONSIDERED = re.compile(r"as considered in\b|considered in the (?:standalone|consolidated)", re.I)
 
 
-def _ytd_period(period: Period, e: Entry, text: str, label: int, value: int) -> Period:
+def _ytd_period(period: Period, e: Entry, text: str, label: int, value: int,
+                filed: str | None = None) -> Period:
     """The period a period qualifier names: "YTD order intake" in a Q2 document is the half-year's intake, not the
     quarter's, and "till date" is the nine-month one in Q3.  A stock (an order book, net debt) is the level on the
-    date whatever the qualifier says, and a first quarter's YTD figure is that quarter's."""
+    date whatever the qualifier says, and a first quarter's YTD figure is that quarter's.
+
+    T-073: when the document was filed after the quarter ended and its own words do not tie the qualifier to the
+    period end, the figure is year-to-date *as of the filing date* -- a release can carry on counting past the
+    quarter (KEC's November release prints a YTD intake that runs past 30 September), so calling it H1 overstates
+    the half."""
     if period.ptype != "Q" or e.kind != "money" or e.metric in _STOCK_METRICS:
         return period
     if not _PERIOD_QUALIFIER.search(text[max(0, label - 90):value]):
@@ -787,6 +800,14 @@ def _ytd_period(period: Period, e: Entry, text: str, label: int, value: int) -> 
     code = {"2": "H1", "3": "9M", "4": "FY"}.get(mq.group(1))
     if not code:
         return period                      # Q1: the year to date is the quarter itself
+    day = (filed or "")[:10]
+    q_end = period_end(period.ptype, period.canon)
+    if day and q_end and day > q_end:
+        span = text[max(0, label - 70):min(len(text), value + 30)]
+        tied = bool(parse_periods(span)) or bool(
+            re.search(r"\b(?:H1|H2|9M|half[- ]year|six months|nine months)\b", span, re.I))
+        if not tied:
+            return Period(period.start, period.end, "YTD", "YTD", day)
     canon = code + mq.group(2)
     ptype = "FY" if code == "FY" else "M"
     return Period(period.start, period.end, canon, ptype, period_end(ptype, canon))
@@ -833,7 +854,8 @@ def _q4_twin(e: Entry, period: Period) -> Period | None:
     return None
 
 
-def sentence_rows(text: str, page: int, company: str, entries, dims, default_pers: list[Period]) -> list[Row]:
+def sentence_rows(text: str, page: int, company: str, entries, dims, default_pers: list[Period],
+                  filed: str | None = None) -> list[Row]:
     rows: list[Row] = []
     pers = parse_periods(text)
     per_spans = [(p.start, p.end) for p in pers]
@@ -926,7 +948,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     v2s = find_values(text, e.kind, e.unit, v1.end + vm.end(), min(len(text), v1.end + 90), per_spans)
                     if v2s and v2s[0].start - (v1.end + vm.end()) < 14:
                         items.append((v2s[0], vm))
-                dim = find_dimension(dims, company, text, m.start())
+                dim = find_dimension(dims, company, text, m.start(), value_end=v1.end)
                 first_canon = None
                 for idx, (v, _) in enumerate(items):
                     # period: same-sentence mention after the value (<=45 chars), else before the label (<=60),
@@ -949,7 +971,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                         period, rule = default_pers[0], "sentence_default_v1"
                     if period is None:
                         continue
-                    period = _ytd_period(period, e, text, m.start(), v.start)
+                    period = _ytd_period(period, e, text, m.start(), v.start, filed)
                     if idx and period.canon == first_canon:
                         continue        # the comparative restates the current period: the same value, not a prior one
                     if generic and rule != "sentence_v1":   # a bare "margin" / "revenue" needs its own period in the sentence
@@ -2134,7 +2156,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                 if not page_pers:
                     st["no_period_long_doc"] = st.get("no_period_long_doc", 0) + 1
             try:
-                srows = sentence_rows(text, page, sym, entries, dims, page_pers)
+                srows = sentence_rows(text, page, sym, entries, dims, page_pers, known_at)
             except Exception:  # keep the run going, count it
                 srows = []
                 st["errors"] = st.get("errors", 0) + 1

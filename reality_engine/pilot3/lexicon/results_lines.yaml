@@ -23,6 +23,18 @@ cost_of_materials:
   - cost of materials consumed
   - cost of raw material consumed
   - cost of materials
+purchases_of_stock_in_trade:
+  - purchases of stock in trade
+  - purchase of stock in trade
+  - purchases of traded goods
+  - purchase of traded goods
+changes_in_inventories:
+  - changes in inventories of finished goods work in progress and stock in trade
+  - changes in inventories of finished goods work-in-progress and stock-in-trade
+  - changes in inventories of finished goods and work in progress
+  - changes in inventories of finished goods work in progress
+  - change in inventories
+  - changes in inventories
 employee_cost:
   - employee benefits expense
   - employees benefits expense
