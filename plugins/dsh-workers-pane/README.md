@@ -70,10 +70,32 @@ loads of one mod register every hook twice.
   grey. Chips carry dark text on the bright fill so they stay readable.
 - **Band**: one line per running job above the prompt, on the terminal, the
   desktop and the mobile app; hidden when nothing runs and while a survey holds
-  the band.
+  the band. Each line keeps the live facts — elapsed, tool calls, idle, lease
+  left — then adds the job's stable session id (the first 8 characters of
+  `job.json`'s `provider_session`, the `x-opencode-session` routing id), the
+  summed total tokens, the summed cached (cache-read) tokens and the median
+  tokens per second: `20m 00s · 4 tools · idle 5m · lease 1h40 left · 80f552ec
+  · 101k total · 50k cached · 41 t/s`. The title truncates first when the band is
+  narrow. A fact the job has not stated shows `–`, never `0`; jobs written
+  before these fields existed still render, with `–` in each new slot.
+- **Detail card**: the tiles are tools, steps, `output` (the output-token count
+  only, never the total), `cached`, `total`, `t/s`, files and idle minutes; the
+  metadata block adds `provider session <full>` (the stable id) and `dsh session
+  <session-…>` (the `session` event in `result.md.events.jsonl`, the dsh
+  conversation, labelled so it is not mistaken for the OpenCode id).
+- **Tokens per second**: the median of each output step's `outputTokens` over
+  its model generation time. The dsh event stream carries no per-step time
+  today (no `time` on `step_start` / `step_end`), and the dsh session store
+  (`~/.dsh/sessions/<cwd>/<session>/session.v4.jsonl.zstd`) is zstd-compressed,
+  which the plugin's `$.fs` cannot decode; so the band and the card show
+  `– t/s`. To light it up, the stream's `step_end` usage needs a `durationMs`
+  (or `duration_ms`) holding the model's generation time for that step, tools
+  excluded — `hooks/events.ts` already computes the median from it. Timing
+  `step_start` → `step_end` would include tool execution and understate the
+  rate, so it is not used.
 - **No pane can be placed** (the Android app, a narrow surface): `/dsh-workers`
   answers with a compact Markdown summary as command output — one line per
-  live job (elapsed, tool calls, idle, lease left), then
+  live job (the same facts as the band), then
   `N finished · M failed today` (UTC day).
 
 Every hook is contained: a bad job record or an IO error is logged through

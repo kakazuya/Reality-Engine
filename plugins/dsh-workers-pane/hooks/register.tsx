@@ -36,6 +36,7 @@ import {
   formatDuration,
   formatLease,
   formatLive,
+  formatRate,
   formatTokens,
   heatRatio,
   idleMinutes,
@@ -292,6 +293,7 @@ async function readView(
           row = {
             ...row,
             metrics: metricsOf(scanned),
+            dshSessionId: scanned.sessionId ?? row.dshSessionId,
             spark: scanned.spark,
           }
         }
@@ -911,10 +913,31 @@ function MetricStrip(props: PaneProps & { row: WorkerRow }) {
     },
     {
       key: 'tokens',
-      label: 'tokens',
+      label: 'output',
       value: metrics?.outputTokens ?? null,
       max: props.view.maxima.tokens,
-      display: metrics === null ? '–' : formatTokens(metrics.outputTokens),
+      display: formatTokens(metrics === null ? null : metrics.outputTokens),
+    },
+    {
+      key: 'cached',
+      label: 'cached',
+      value: metrics?.cachedTokens ?? null,
+      max: props.view.maxima.cached,
+      display: formatTokens(metrics?.cachedTokens ?? null),
+    },
+    {
+      key: 'total',
+      label: 'total',
+      value: metrics?.totalTokens ?? null,
+      max: props.view.maxima.total,
+      display: formatTokens(metrics?.totalTokens ?? null),
+    },
+    {
+      key: 'tps',
+      label: 't/s',
+      value: metrics?.tokensPerSecond ?? null,
+      max: props.view.maxima.tps,
+      display: formatRate(metrics?.tokensPerSecond ?? null),
     },
     {
       key: 'files',
@@ -1071,6 +1094,16 @@ function DetailCard(props: PaneProps & { row: WorkerRow }) {
         <Text dimColor wrap="truncate-end">
           {`session ${sessionLabel(row.ownerSession)}`}
         </Text>
+        {row.providerSession !== null && (
+          <Text dimColor wrap="truncate-end">
+            {`provider session ${row.providerSession}`}
+          </Text>
+        )}
+        {row.dshSessionId !== null && (
+          <Text dimColor wrap="truncate-end">
+            {`dsh session ${row.dshSessionId}`}
+          </Text>
+        )}
         {row.exitCode !== null && (
           <Text dimColor>{`exit ${row.exitCode}`}</Text>
         )}
