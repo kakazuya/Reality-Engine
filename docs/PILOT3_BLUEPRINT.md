@@ -432,6 +432,21 @@ failures with it). The answer format gains optional `formula` and `inputs` on ea
 misses, 240 graded-right answers) the checker caught 10 of the 16 and flagged 3 of the 240; the two real ones are slips in
 the `numbers` list itself and the false alarm is a digits coincidence. Commands, reason codes and the misses it cannot
 catch: `docs/DEVELOPER_GUIDE.md` section O12.
+### Second reading an answer (T-083, 5 Nov 2026)
+`reality_engine/pilot3/second_read.py` sends one answer's question, prose and own `numbers` rows to the free `beam-free`
+model and keeps only flags whose `claim` is a verbatim span of the prose: `contradicts_own_numbers` (a series called
+"halving" or "steady" against its own figures, a count larger than the answer's list), `unsourced_cause` (an observed
+change explained by a cause with no figure, quote or named source) and `question_misfit` (periods asked and not given, a
+change before the window, standalone against consolidated, a total where a per-unit figure was asked). Resumable per
+`qid` + `pass_no`; a truncated or unparseable reply is retried once and then recorded as a named failure, never as no
+flags. On the 304-answer dev split it flagged 28 of 46 `read_miss` answers (19 for the graded fault, 41%) and 43 of 233
+`right` answers, of which 22 are false alarms (9.4%) and 21 real slips the grade missed; two passes agreed on 261 of 304
+verdicts. Those are the worker's own reads. Opus's read of the 296-answer hold-out, pass 1: 16 of 43 misread answers
+flagged for the graded fault (13 if a flag on the right sentence for the wrong reason does not count), against a pass
+mark of 18 fixed before the run, so **the test failed and this is not a gate**. Of 231 right answers 39 were flagged: 18
+false alarms, 11 clear slips the hand read missed, 10 unsupported causes the hand read let through. 18 of the 39 were
+read against the answer text, the other 21 from the flag alone. Two passes agreed on 255 of 296; no failed replies.
+Commands, the misses it cannot see and the three prompt rounds: `docs/DEVELOPER_GUIDE.md` section O13.
 ### 9c. Store defects from the 600-answer test (T-073, 5 Nov 2026)
 
 Four general rules, no company name in code.
