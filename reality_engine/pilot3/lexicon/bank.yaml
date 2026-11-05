@@ -12,6 +12,6 @@ entries:
   - {metric: cd_ratio, kind: pct, unit: pct, labels: ["credit[- ]deposit ratio", "\\bcd ratio\\b", "loan[- ]to[- ]deposit"], neg: "range|pre-merger|track|expect|to be|target"}
   - {metric: cet1, kind: pct, unit: pct, labels: ["\\bcet ?1\\b", "common equity tier ?1"], neg: "requirement|minimum|guidance|npa|ratio of|ratio to"}
   - {metric: fee_income, kind: money, unit: inr_cr, labels: ["fees? (and|&) commission", "fee income", "other income[^.]{0,20}?fees"], neg: "%\\s*of|growth|ratio", strict: ["fees? (?:and|&) commissions?\\s*(?:at|of|were|was|:)?\\s*(?=₹|`|rs\\.?|\\d)", "fee income\\s*(?:at|of|were|was|:)?\\s*(?=₹|`|rs\\.?|\\d)"]}
-  - {metric: book_value_per_share, kind: money, unit: inr_cr, labels: ["book value per (equity )?share", "\\bbvps\\b"], neg: "growth|%"}
+  - {metric: book_value_per_share, kind: money, unit: inr, labels: ["book value per (equity )?share", "\\bbvps\\b"], neg: "growth|%"}
   - {metric: abv, kind: money, unit: inr_cr, labels: ["adjusted book value", "\\babv\\b"], neg: "growth|%|per share"}
   - {metric: unsecured_share, kind: pct, unit: pct, labels: ["unsecured( retail| loans?| advances)?[^.]{0,30}?(%|share|mix)", "share of unsecured"], neg: "stage|floor|recovery|category is|provision|npa", strict: ["unsecured(?: retail| loans?| advances)?[^.]{0,30}?(?=\\d+(?:\\.\\d+)?\\s*%)", "share of unsecured[^.]{0,20}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}

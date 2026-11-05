@@ -11,8 +11,8 @@ entries:
   - {metric: gross_debt, kind: money, unit: inr_cr, labels: ["gross debt", "gross borrowings", "total borrowings"], neg: "to |ratio|cost|per ?cent|%"}
   - {metric: nim_pct, kind: pct, unit: pct, labels: ["net interest margin", "\\bnim\\b"], neg: "bps|compression|expansion"}
   - {metric: cost_of_funds_pct, kind: pct, unit: pct, labels: ["cost of funds", "\\bcof\\b", "cost of borrowings"], neg: "bps|decline|increase"}
-  - {metric: gnpa_pct, kind: pct, unit: pct, labels: ["gross\\s*npa", "\\bgnpa\\b", "gross stage 3", "gs3"], neg: "\\bnet\\b(?!\\s*npa\\b)"}
-  - {metric: nnpa_pct, kind: pct, unit: pct, labels: ["net\\s*npa", "\\bnnpa\\b", "net stage 3", "ns3"]}
+  - {metric: gnpa_pct, kind: pct, unit: pct, labels: ["gross\\s*npa", "\\bgnpa\\b", "gross stage 3", "gs3"], neg: "\\bnet\\b(?!\\s*npa\\b)|exposure|concentration|percentage of total|as a percentage of"}
+  - {metric: nnpa_pct, kind: pct, unit: pct, labels: ["net\\s*npa", "\\bnnpa\\b", "net stage 3", "ns3"], neg: "exposure|concentration|percentage of total|as a percentage of"}
   - {metric: pcr_stage3, kind: pct, unit: pct, labels: ["(provision )?coverage( ratio)?[^.]{0,30}?stage ?3", "stage ?3[^.]{0,30}?coverage", "\\bpcr\\b"]}
   - {metric: credit_cost_bps, kind: bps, unit: bps, labels: ["credit cost", "loan loss(es)? (and|&) provisions? to average", "loan loss to average"]}
   - {metric: crar_pct, kind: pct, unit: pct, labels: ["capital adequacy", "\\bcrar\\b", "\\bcar\\b"], neg: "tier ?(i|1)\\b|tier ?(ii|2)|tier|loans?|car finance"}

@@ -6,7 +6,7 @@ dimensions:
   - {dimension: aluminium_downstream, patterns: ["aluminium downstream", "aluminum downstream", "downstream aluminium", "downstream\\b"], companies: [HINDALCO]}
   - {dimension: copper, patterns: ["copper"], companies: [HINDALCO]}
   - {dimension: novelis, patterns: ["novelis"], companies: [HINDALCO]}
-  - {dimension: india, patterns: ["india business", "india aluminium", "india operations", "india (?:gross|net) debt", "india cash"], companies: [HINDALCO]}
+  - {dimension: india, patterns: ["india business", "india\\)\\s*business", "india aluminium", "india operations", "india (?:gross|net) debt", "india cash"], companies: [HINDALCO]}
   - {dimension: T&D, patterns: ["t\\s?&\\s?d\\b", "transmission (and|&) distribution", "power transmission"], companies: [KEC]}
   - {dimension: civil, patterns: ["civil\\b"], companies: [KEC]}
   - {dimension: transportation, patterns: ["transportation", "railways?\\b"], companies: [KEC]}
