@@ -333,6 +333,8 @@ def value_unit(v_cur: str | None, suf: str | None, kind: str, default_unit: str)
     if default_unit == "usd_mn" and base == "bn":
         return None      # a USD-million metric keeps the printed value, so a "$4.8 billion" row would break its quote
     if kind == "money":
+        if default_unit == "inr" and cur == "inr" and base is None:
+            return "inr"                     # a per-share rupee figure ("book value per share at ₹ 2,012")
         if profile.under_profile() and default_unit.startswith("usd") and (cur == "inr" or base == "inr_cr"):
             return None                      # a rupee figure never fills a US-dollar metric (profile builds only)
         if base == "lakh" and cur in (None, "inr") and not default_unit.startswith("usd"):
@@ -539,8 +541,9 @@ _ABBREV = (r"(?<!\bRs)(?<!\brs)(?<!\bNo)(?<!\bno)(?<!\bNos)(?<!\bDr)(?<!\bMr)(?<
            r"(?<!\bLtd)(?<!\bCo)(?<!\bInc)(?<!\bapprox)(?<!\bvs)")
 _SENT_END = re.compile(_ABBREV + r"[.!?](?=\s+[A-Z0-9(])")
 # A bullet mark at a line start starts and ends a sentence: the next bullet is another figure's block, so a
-# segment word in it is not this figure's (KEC's order book bullets under T&D/Civil).
-_BULLET_MARK = re.compile(r"(?m)^[ \t]*[•✓▪►]\s*")
+# segment word in it is not this figure's (KEC's order book bullets under T&D/Civil).  A "+ " mark is a deck
+# bullet too ("+ India Business Capex ..." / "+ Consolidated business segment EBITDA ...").
+_BULLET_MARK = re.compile(r"(?m)^[ \t]*(?:[•✓▪►]|\+(?=\s+[A-Z]))\s*")
 
 
 def _sentence_bounds(text: str, pos: int) -> tuple[int, int]:
@@ -611,6 +614,64 @@ def _block_heading_dim(text: str, pos: int, dims: list[Dim], company: str, basis
     return None
 
 
+def _line_has_two_dims(text: str, p: int, dims: list[Dim], company: str) -> bool:
+    """True when the line holding ``p`` names two or more segments: that is a chart legend or a column heading
+    line, not the subject of the figure ("17% 25% 58% Aluminium Copper Novelis" over a consolidated EBITDA chart)."""
+    lo = text.rfind("\n", 0, p) + 1
+    hi = text.find("\n", p)
+    line = text[lo:len(text) if hi < 0 else hi]
+    found = {d.dimension for d in dims if not (d.companies and company not in d.companies)
+             for rx in d.patterns if rx.search(line)}
+    return len(found) >= 2
+
+
+def _block_lead_dim(text: str, pos: int, dims: list[Dim], company: str) -> str | None:
+    """The segment a block is about, read from the start of a sentence or line before ``pos``.
+
+    A business paragraph states its segment once, at its start ("Hyperpure - Revenue grew ... Adjusted EBITDA
+    margin improved to 0.5%"), and a later sentence about the same business leaves the word out.  Only a word that
+    opens a sentence/line, or a heading line that is nothing but a segment ("Novelis*"), counts; a segment that
+    merely appears inside earlier prose does not."""
+    lo = max(_paragraph_start(text, pos), pos - 500)   # the block, not a segment named a paragraph earlier
+    seg = text[lo:pos]
+    best = None
+    for m in re.finditer(r"(?m)(?:^|[.!?]\s+|\n)[ \t]*(?:[•✓▪►+]|[-–])?\s*", seg):
+        s = lo + m.end()
+        hi = text.find("\n", s)
+        head = text[s:min(len(text), s + 48)]
+        found = None
+        for d in dims:
+            if d.dimension == "total" or (d.companies and company not in d.companies):
+                continue
+            for rx in d.patterns:
+                hm = rx.match(head)
+                if hm and not re.match(r"\s*[\d(]", head[hm.end():]):
+                    found = d.dimension
+                    break
+            if found:
+                break
+        if found:
+            best = found
+    if best:
+        return best
+    # a deck bullet sits under a table whose heading ("Novelis*") is a separate paragraph: a bullet may look
+    # further back for a heading-only line; running prose may not (a group figure after a segment block).
+    line_lo = text.rfind("\n", 0, pos) + 1
+    bullet_line = bool(re.search(r"(?m)^[ \t]*(?:[•✓▪►]|\+(?=\s+[A-Z]))\s*$", text[max(0, pos - 80):pos]))
+    head_seg = text[max(0, pos - 900):pos] if (_BULLET_MARK.match(text[line_lo:]) or bullet_line) else seg
+    for line in reversed(head_seg.splitlines()):
+        t = line.strip().strip("•* ").strip()
+        if not t or len(t.split()) > 4 or re.search(r"\d", t):
+            continue
+        for d in dims:
+            if d.dimension == "total" or (d.companies and company not in d.companies):
+                continue
+            for rx in d.patterns:
+                if rx.fullmatch(t):
+                    return d.dimension
+    return None
+
+
 def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: int = 90,
                    value_end: int | None = None, basis: str = "") -> str:
     """Dimension word nearest before pos (within window), else nearest after within 40 chars, else total.
@@ -620,7 +681,7 @@ def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: i
     share of the whole ("63% of our unexecuted order book") keeps the segment the paragraph has been about, so
     that one may look back up to 400 chars.  When the value is followed by a segment's share of it ("13,500 crore,
     ~70% from T&D"; T-073), the segment is not the value's dimension: the row stays the total."""
-    if value_end is not None and re.search(r"\d+(?:\.\d+)?\s*%\s*(?:from|of)\b",
+    if value_end is not None and re.search(r"\d+(?:\.\d+)?\s*%\s*(?:from|of)\s+(?=[A-Za-z])",
                                            text[pos:min(len(text), value_end + 60)], re.I):
         return "total"
     lo_s, hi_s = _sentence_bounds(text, pos)
@@ -640,6 +701,8 @@ def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: i
                         continue
                     if p > pos and re.search(r"\d+(?:\.\d+)?\s*%\s*(?:from|of)\s*$", text[pos:p], re.I):
                         continue      # "~70% from T&D": the segment's share of the total, not the total's segment
+                    if _line_has_two_dims(text, p, dims, company):
+                        continue      # a legend/column line naming several segments, not this figure's subject
                     dist = (pos - (a + m.end())) if a + m.end() <= pos else (a + m.start() - pos) + 15
                     if dist < best_d:
                         best, best_d = d.dimension, dist
@@ -654,6 +717,8 @@ def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: i
         line_lo = text.rfind("\n", 0, pos) + 1
         if _BULLET_MARK.match(text[line_lo:]):
             best = _block_heading_dim(text, pos, dims, company, basis or page_basis(text, company))
+    if best is None:
+        best = _block_lead_dim(text, pos, dims, company)   # the segment the paragraph is about
     return best or "total"
 
 
@@ -708,6 +773,8 @@ def finalize_unit(unit: str, value: float, metric_default: str):
     """-> (value, unit, scale)."""
     if unit == "inr_cr":
         return value, "inr_cr", 1e7
+    if unit == "inr":
+        return value, "inr", 1.0              # rupees per share / per unit, not a crore total
     if unit == "usd_mn":
         return value, "usd_mn", 1e6
     if unit == "usd_bn":
@@ -842,7 +909,8 @@ _SUB_ENTITY = re.compile(r"\b([A-Z][A-Za-z&.\- ]{2,60}?)\s+(?:LIMITED|Limited|LT
 # "X Limited - Q1 FY27" as a block heading).  A name followed by other prose is a passing mention.
 _SUBJECT_TAIL = re.compile(
     r"^(?::|(?:is|are|was|were|has|have|had|reports?|reported|announces|posts?|posted|declares?|declared|delivered|"
-    r"grew|grows?|stood|stands?|operates?|registered|enjoys?|continues?|remains?|holds?|in\s+which)\b)", re.I)
+    r"grew|grows?|stood|stands?|operates?|registered|enjoys?|continues?|remains?|holds?|in\s+which)\b"
+    r"|(?:a|an|the)\s+[^.]{0,80}?\b(?:is|are|was|were|has|have|had|holds?|offers?|operates?|provides?|reported)\b)", re.I)
 _SUBJECT_HEAD = re.compile(r"^\s*[-–—:]\s*(?:q[1-4]|0?[1-4]\b|h[12]|9m\b|fy\s?\d{2})", re.I)
 _PARAGRAPH = re.compile(r"\n[ \t]*\n")
 
@@ -863,29 +931,76 @@ def _entity_subject(text: str, m) -> bool:
     return bool(_SUBJECT_TAIL.match(tail) or _SUBJECT_HEAD.match(text[m.end():m.end() + 20]))
 
 
+def _entity_heading(text: str, m) -> bool:
+    """True when the legal name sits alone on an all-caps line and the next line is prose about it: an
+    annual-report entity box prints the investee as a heading, and the text layer may place that heading after its
+    paragraph ("HDB FINANCIAL SERVICES LIMITED").  An address block's "BSE LIMITED" is followed by a street, not by
+    a sentence about the entity."""
+    line_lo = text.rfind("\n", 0, m.start()) + 1
+    line_hi = text.find("\n", m.end())
+    line = text[line_lo:len(text) if line_hi < 0 else line_hi].strip()
+    if not line or line.upper() != line or not re.search(r"[A-Z]{3}", line):
+        return False
+    rest = text[len(text) if line_hi < 0 else line_hi + 1:]
+    nxt = ""
+    for ln in rest.splitlines():
+        if ln.strip():
+            nxt = ln.strip()
+            break
+    return bool(re.search(r"\b(?:is|are|was|were|has|have|had|holds?|offers?|reports?|reported|operates?|provides?|"
+                          r"engaged|subsidiary|stood|grew|announced|announces|delivered)\b", nxt, re.I))
+
+
 def _entity_before(text: str, pos: int, company: str) -> str | None:
     """The investee the paragraph names as its subject ("Bajaj Housing Finance Limited - Q2 FY27 ..."), when the
     name is not the reporting company's own: a total-dimension figure in that block belongs to the investee, not
     the company.  Only the paragraph's subject counts: an address block ("National Stock Exchange of India
     Limited") or a passing mention ("stake sale in subsidiary HDB Financial Services Ltd, Other Income grew")
-    does not make a figure that entity's."""
+    does not make a figure that entity's.  An entity-box heading counts even when the text layer puts it after
+    the paragraph, and an abbreviated name ("HDBFSL") heads its block for several sentences after."""
     own = _own_names(company)
     best = None
-    lo = max(_paragraph_start(text, pos), pos - 600)
-    for m in _SUB_ENTITY.finditer(text, lo, pos):
+    best_after = None
+    lo = max(0, pos - 800)
+    hi = min(len(text), pos + 500)
+    for m in _SUB_ENTITY.finditer(text, lo, hi):
         name = m.group(1).strip()
         norm = re.sub(r"[^a-z]", "", name.lower()) + "ltd"
         if any(o and (o in norm or norm in o) for o in own):
             continue
-        if not _entity_subject(text, m):
+        if not (_entity_subject(text, m) or _entity_heading(text, m)):
             continue
-        best = re.sub(r"[^a-z]+", "_", name.lower()).strip("_")
+        token = re.sub(r"[^a-z]+", "_", name.lower()).strip("_")
+        if token in _SECTION_WORDS or not _is_entity_basis(token):
+            continue      # "COMPANY LIMITED" on a wrapped line is a section word, not an investee
+        if m.end() <= pos:
+            dist = pos - m.end()
+            if best is None or dist < best[0]:
+                best = (dist, token)
+        else:
+            dist = (m.start() - pos) + 1
+            if best_after is None or dist < best_after[0]:
+                best_after = (dist, token)
+    if best is None:
+        best = best_after      # an entity-box heading the text layer printed after its paragraph
     if best:
-        return best
-    window = text[max(0, pos - 260):pos]
+        return best[1]
+    window = text[max(0, pos - 600):pos]
     best = None
-    for name, basis in _entity_words().items():     # an abbreviated investee name ("BFSL", "BHFL") in the paragraph
+    for name, basis in _entity_names():     # an abbreviated or full investee name in the paragraph
         for m in re.finditer(rf"\b{re.escape(name)}\b", window, re.I):
+            if " " in name:
+                # a full name in running prose is often a passing mention ("stake sale in subsidiary HDB
+                # Financial Services Ltd, Other Income grew"): it counts as a block heading or a subject.
+                before = window[window.rfind("\n", 0, m.start()) + 1:m.start()]
+                after = window[m.end():m.end() + 24]
+                heading = bool(re.match(r"\s*subsidiar(?:y|ies)\b", before, re.I)) \
+                    or bool(re.search(r"\bupdate\s*[-–—:]\s*$", before, re.I)) \
+                    or bool(re.match(r"\s*[-–—:]\s*$", before))
+                subject = bool(re.match(r"\s*,?\s*(?:has|have|had|is|are|was|were|reports?|reported|grew|continues?|"
+                                        r"offers?|holds?|stood|stands?)\b", after, re.I))
+                if not (heading or subject):
+                    continue
             if best is None or m.start() > best[0]:
                 best = (m.start(), basis)
     return best[1] if best else None
@@ -929,9 +1044,15 @@ def doc_default_period(texts: list[str]) -> list[Period]:
               if not _PRIOR_YR.search(head[max(0, p.start - 40):p.start])]
         if not ps:
             continue
-        pref = [p for p in ps if re.search(r"(ended|quarter|results|performance|year|call)",
-                                           head[max(0, p.start - 40):p.start], re.I)]
+        pref = [p for p in ps if (len(texts) > 1 or p.start <= 300) and re.search(
+            r"(ended|quarter|results|performance|year|call)", head[max(0, p.start - 40):p.start], re.I)]
         p = (pref or ps)[0]
+        # a chart axis lists its years in ascending order ("FY 2024-25  FY 2025-26"): the axis is not the
+        # document's period, and the later year is the one the page reports (an "In a Snapshot" block).
+        nxt = [q for q in ps if p.ptype == "FY" and q.ptype == "FY" and 0 <= q.start - p.end <= 40
+               and _yy(q.canon) == _yy(p.canon) + 1]
+        if nxt:
+            p = nxt[0]
         # "Results for the quarter ended 31 March 2026" is the quarter, not the year; the 31 March date alone reads
         # as the year end (the Q4 convention above applies only to an explicit "Q4" label).
         q_ended = bool(p.as_of and p.as_of.endswith("-03-31") and re.search(
@@ -947,13 +1068,20 @@ def doc_default_period(texts: list[str]) -> list[Period]:
 _BREAK = re.compile(r"[.;]\s+[A-Z]|\n\s*\n")
 
 
-def _pair_before(text, pers, pos):
-    """Last 'A v/s B' period pair that ends before pos and lies within 1500 chars of it."""
-    best = None
+def _pair_before(text, pers, pos, column: int = 0):
+    """'A v/s B' period pair a value in the column at ``column`` belongs to, ending before pos within 1500 chars.
+
+    A two-column results page prints both headers and then both columns of one row, so the first label occurrence
+    is the first column's and the second the second column's ("EBITDA Margin: 7.2% against 7.0%" / "7.1% against
+    6.6%" under "Q3 FY26 v/s Q3 FY25 | 9M FY26 v/s 9M FY25")."""
+    pairs = []
     for a, b in zip(pers, pers[1:]):
-        if b.end <= pos and pos - b.end < 1500 and re.fullmatch(r"\s*(v/?s\.?|vs\.?|versus|against|as against)\s*", text[a.end:b.start], re.I):
-            best = (a, b)
-    return best
+        if b.end <= pos and pos - b.end < 1500 and re.fullmatch(
+                r"\s*(v/?s\.?|vs\.?|versus|against|as against)\s*", text[a.end:b.start], re.I):
+            pairs.append((a, b))
+    if not pairs:
+        return None
+    return pairs[column % len(pairs)]
 
 
 BY_RX = re.compile(r"\b(?:reduc|increas|decreas|declin|improv|grew|grow|rose|fell|expan|add|lower|higher|up|down)\w*\b[^.]{0,30}\bby\s*"
@@ -980,7 +1108,7 @@ _FORWARD = re.compile(r"\b(?:target(?:ed|s)?|guidance|guided|expect(?:s|ed|ing)?
 # value belongs to (a first quarter's YTD intake is that quarter's intake, and an order book is a stock), so a value
 # printed with one still takes the period its document reports (`_ytd_period`).
 _PLAN_LEAD = re.compile(r"\b(?:another|planned?|plan(?:s|ned)? to|envisag\w*|outlay|on track|pipeline|upcoming|proposed|"
-                        r"cumulative|milestone|crossed|crossing|up to|in excess of)\b", re.I)
+                        r"cumulative|milestone|cross(?:es|ed|ing)?|up to|in excess of|strategy|back to)\b", re.I)
 _PERIOD_QUALIFIER = re.compile(r"\b(?:ytd|year[- ]to[- ]date|till date|to date)\b", re.I)
 # a period after one of these links belongs to the comparative, not to this value
 _CMP = re.compile(r"\b(?:as against|compared (?:to|with)|versus|vs\.?|lower than|higher than|up from|down from|"
@@ -1003,7 +1131,7 @@ _CONSIDERED = re.compile(r"as considered in\b|considered in the (?:standalone|co
 # A figure an auditor's report or a results note attributes to branches, subsidiaries, associates or a trust is
 # another entity's, not the company's (the sentence may also call it "as considered in the Statement").
 _INVESTEE = re.compile(
-    r"financial (?:information|statements?) of\b[^.]{0,140}?\b(?:subsidiar|associat|jointly controlled|"
+    r"financial\b[^.]{0,70}?\bof\b[^.]{0,140}?\b(?:subsidiar|associat|jointly controlled|"
     r"joint ventures?|branches|trust)"
     r"|we did not (?:audit|review)"
     r"|share of (?:net )?(?:profit|loss) after tax[^.]{0,100}?\b(?:associates|joint ventures)"
@@ -1021,11 +1149,22 @@ _COMMITMENT = re.compile(r"\bcommitments?\b|\bcommitted\b", re.I)
 _CAPEX_NOT = re.compile(r"(?:free cash flow|fcf|cash flow)[^.]{0,30}?\b(?:before|after)\s*$", re.I)
 # "net cash of $3.2 billion" is negative net debt: the level is stored with its sign, not dropped.
 _NET_CASH = re.compile(r"\b(?:net cash|cash surplus)\b", re.I)
+# A level printed as a loss or with a minus sign is negative as printed: "was a loss of $160 million",
+# "net debt is minus INR6,000 crores".
+_NEG_LEVEL = re.compile(r"(?:\ba\s+)?(?:net\s+)?(?:loss|negative|minus)\s+(?:of\s+)?$", re.I)
+# A count printed in a statement of the money raised and spent ("IPO/QIP proceeds", "utilisation of the
+# proceeds", "amount proposed in the offer document") is a crore amount, not a store/employee count.
+_FUNDS_USE = re.compile(r"\b(?:proceeds|utilisation|utilization|prospectus|offer document|agreed purpose|"
+                        r"qualified institutions placement|\bqip\b)\b", re.I)
 # A timeframe phrase beside the label names the figure's own span (a nine-month figure in a Q3 document).
 _FRAME = ((re.compile(r"\b(?:first\s+)?nine\s+months?\b|\b9M\b", re.I), "9M"),
-          (re.compile(r"\b(?:first\s+)?six\s+months?\b|\bhalf[\s-]year\b|\bH1\b(?!\s*[,0-9])", re.I), "H1"))
+          (re.compile(r"\b(?:first\s+)?six\s+months?\b|\bhalf[\s-]year(?:ly)?\b|\bH1\b(?!\s*[,0-9])", re.I), "H1"))
 # "revenue of $747 million ... arising from opening unearned revenue": a component, not the total.
 _COMPONENT_TAIL = re.compile(r"\b(?:arising from|pertaining to|relating to)\b", re.I)
+# "During FY 2025-26, the Company achieved ... including the highest-ever export volume of 447,774 vehicles": the
+# paragraph's opening phrase dates the figures that follow it, even across a sentence end.
+_FY_FRAME = re.compile(r"\b(?:during|in|for)\s+(?:the\s+)?(?:(?:financial|fiscal)\s+year|year|fy)\s*['’]?\s*"
+                       r"(\d{4}-\d{2}|\d{4}|\d{2})\b", re.I)
 
 
 def _frame_period(text: str, label: int, value: int, period: Period) -> Period | None:
@@ -1033,7 +1172,14 @@ def _frame_period(text: str, label: int, value: int, period: Period) -> Period |
     is the nine-month figure even in a Q3 document, and "for the six months ended 30 Sep 2025" is H1FY26.  A
     phrase introduced as a comparison ("than in the first half", "last year's six months") does not override."""
     lo = max(_sentence_bounds(text, label)[0], label - 200)
-    span = text[lo:value]
+    if profile.under_profile() and not parse_periods(text[_sentence_bounds(text, label)[0]:value]):
+        fm = _FY_FRAME.search(text[max(0, label - 260):label])
+        if fm:
+            before = text[max(0, label - 260 + fm.start() - 32):label - 260 + fm.start()]
+            if not re.search(r"\b(?:compared|versus|vs\.?|against|previous|last|prior|than)\b", before, re.I):
+                canon = f"FY{_yy(fm.group(1)):02d}"
+                return Period(period.start, period.end, canon, "FY", period_end("FY", canon))
+    span = text[lo:min(len(text), value + 70)]   # "domestic sales of 871,276 units ... half-yearly exports of ..."
     for rx, code in _FRAME:
         m = rx.search(span)
         if m is None:
@@ -1130,19 +1276,52 @@ def _q4_twin(e: Entry, period: Period) -> Period | None:
     return None
 
 
+_LAST_QUARTER_OF = {"H1": "Q2", "6M": "Q2", "9M": "Q3", "12M": "Q4", "FY": "Q4"}
+
+
+def _quarter_of(canon: str | None) -> str | None:
+    """The quarter a year-to-date label closes on (H1FY27 -> Q2FY27, 9M -> Q3, FY -> Q4), or None."""
+    m = re.match(r"(H1|6M|9M|12M|FY)(?:FY)?(\d{2})$", canon or "")
+    if not m:
+        return None
+    return f"{_LAST_QUARTER_OF[m.group(1)]}FY{m.group(2)}"
+
+
+def _quarter_after_comparative(text: str, start: int, end: int, period: Period) -> Period | None:
+    """A quarterly level printed beside its comparative quarter ("improved to -3.0% from -4.7% in Q3FY26") is the
+    quarter after it: the comparison says which quarter the current figure belongs to, and the document's own
+    year-to-date default would otherwise date it to the year.  Only the next quarter of the same fiscal year."""
+    m = re.search(r"\b(?:from|vs\.?|versus|compared (?:to|with)|against)\b[^;\n]{0,42}?\b(?:in|of)\s+"
+                  r"Q([1-4])FY(\d{2})", text[start:end], re.I)
+    if not m:
+        return None
+    mm = re.search(r"FY(\d{2})$", period.canon or "")
+    if period.ptype != "FY" or mm is None or mm.group(1) != m.group(2):
+        return None
+    q = int(m.group(1))
+    if q >= 4:
+        return None
+    canon = f"Q{q + 1}FY{m.group(2)}"
+    return Period(period.start, period.end, canon, "Q", period_end("Q", canon))
+
+
 def sentence_rows(text: str, page: int, company: str, entries, dims, default_pers: list[Period],
-                  filed: str | None = None) -> list[Row]:
+                  filed: str | None = None, doc_basis: str = "not_stated", allow_entity: bool = True) -> list[Row]:
     rows: list[Row] = []
     pers = parse_periods(text)
     per_spans = [(p.start, p.end) for p in pers]
     basis = page_basis(text, company)
+    if basis == "not_stated" and allow_entity and _is_entity_basis(doc_basis):
+        basis = doc_basis      # a continuation page of a subsidiary's release is that entity's
     for e, lm in label_matches(entries, company, text):
         # every occurrence of any label of the entry; `strict` labels (sentence-only) demand the value right after
         strict = e.labels_strict
         labels = strict or e.labels
         for li, rx in enumerate(labels):
             generic = not strict and li < len(e.generic) and e.generic[li]
+            occ = 0
             for m in rx.finditer(text):
+                occ += 1
                 if any(o is not rx and (om := o.match(text, m.start())) and om.end() > m.end()
                        for o in labels):
                     continue      # a shorter alias of one label: "EBITDA as a %" under "EBITDA as a % of TO"
@@ -1169,6 +1348,8 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     continue      # a fact-sheet block: another label sits between this one and its value
                 sb_lo, _ = _sentence_bounds(text, m.start())
                 lo, hi = _sentence_bounds(text, v1.start)
+                if profile.under_profile() and text[lo:hi].rstrip().endswith("?"):
+                    continue      # an analyst's question ("what is the strategy to take back market share to 50%?")
                 if profile.under_profile() and (
                         _INVESTEE.search(text[lo:hi])
                         or _CMP_LEAD.search(text[max(0, m.start() - 40):m.start()])
@@ -1259,14 +1440,15 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                         items.append((v2s[0], vm))
                 dim = find_dimension(dims, company, text, m.start(), value_end=v1.end, basis=basis)
                 if e.kind == "pct" and profile.under_profile():
-                    win = text[max(0, m.start() - 300):m.start() + 40]
+                    win = text[max(_paragraph_start(text, m.start()), m.start() - 300):m.start() + 40]
                     found = {d.dimension for d in dims if not (d.companies and company not in d.companies)
                              for rx in d.patterns if rx.search(win)}
                     if len(found) >= 2:
-                        dim = "total"     # two or more segments in range: the margin is the group's, not one of them
+                        lead = _block_lead_dim(text, m.start(), dims, company)
+                        dim = lead or "total"   # the paragraph's own subject, else the group's
                     elif len(found) == 1:
                         dim = found.pop()     # a margin under a section about one business is that business's
-                ent = _entity_before(text, m.start(), company) if profile.under_profile() else None
+                ent = _entity_before(text, m.start(), company) if profile.under_profile() and allow_entity else None
                 if ent and dim == "total":
                     dim = ent         # the paragraph names an investee: a total-dimension figure is that entity's
                 if dim == "total" and basis not in ("consolidated", "standalone", "not_stated"):
@@ -1280,7 +1462,8 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                             and not _CMP.search(text[v.end:p.start])
                             and (idx == len(items) - 1 or p.start < items[idx + 1][0].start)]
                     if not cand:
-                        cand = [p for p in pers if 0 <= m.start() - p.end <= 60 and '\n' not in text[p.end:m.start()]]
+                        cand = [p for p in pers if 0 <= m.start() - p.end <= 60 and '\n' not in text[p.end:m.start()]
+                                and p.start >= sb_lo]   # a period in the previous sentence is that sentence's
                         if cand and idx == 0 and len(cand) > 1:
                             cand = cand[:1]     # "as of 31 Mar 2026 and 31 Mar 2025 was V and V": the first date
                         else:
@@ -1289,7 +1472,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                         cand = [p for p in pers if m.end() <= p.start and p.end <= v.start][-1:]
                     period = cand[0] if cand else None
                     if period is None:
-                        pair = _pair_before(text, pers, m.start())
+                        pair = _pair_before(text, pers, m.start(), occ - 1)
                         if pair:
                             period, rule = pair[min(idx, 1)], "sentence_pair_v1"
                     if period is None and idx == 0 and default_pers:
@@ -1303,12 +1486,30 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                         if mm:
                             canon = f"Q{mq.group(1) or mq.group(2)}FY{mm.group(1)}"
                             period = Period(period.start, period.end, canon, "Q", period_end("Q", canon))
-                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype == "FY":
-                        frame = text[max(0, m.start() - 140):v.start]
-                        if re.search(r"\b(?:this quarter|for the quarter|quarter ended|quarterly)\b", frame, re.I) \
-                                and not re.search(r"\b(?:year|annual|full[- ]year)\b", frame, re.I):
-                            canon = "Q4" + period.canon      # a quarterly figure in a Q4 document's default year
+                    lq = re.search(r"\bin Q([1-4])\b", lead or "", re.I) if rule != "sentence_v1" else None
+                    if lq and period.ptype == "FY":
+                        mm = re.search(r"FY(\d{2})", period.canon or "")
+                        if mm:
+                            canon = f"Q{lq.group(1)}FY{mm.group(1)}"   # "improved ... in Q2 ... came in at 7.52%"
                             period = Period(period.start, period.end, canon, "Q", period_end("Q", canon))
+                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype in ("FY", "M", "H") \
+                            and e.metric not in _STOCK_METRICS:
+                        frame = text[max(0, m.start() - 600):min(len(text), v.end + 140)]
+                        qhead = re.search(r"(?mi)^\s*(?:key highlights for )?(?:the )?(?:march|june|september|"
+                                          r"december)\s+quarter\b|^\s*(?:highlights:\s*)?(?:quarter\s*[1-4]|q[1-4])\b",
+                                          frame)
+                        if (qhead or (re.search(r"\b(?:this quarter|for the quarter|quarter ended|quarterly|QoQ|"
+                                                r"previous quarter|last quarter|(?:march|june|september|december)\s+"
+                                                r"quarter|quarter\s*[1-4])\b", frame, re.I)
+                                      and not re.search(r"\b(?:annual|full[- ]year|for the year|year ended|"
+                                                        r"financial year)\b", frame, re.I))):
+                            canon = _quarter_of(period.canon)   # a quarterly figure in a year-to-date document
+                            if canon:
+                                period = Period(period.start, period.end, canon, "Q", period_end("Q", canon))
+                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype == "FY":
+                        qp = _quarter_after_comparative(text, v.end, min(len(text), v.end + 90), period)
+                        if qp is not None:
+                            period = qp        # "improved to -3.0% from -4.7% in Q3FY26" is the quarter after Q3
                     fp = _frame_period(text, m.start(), v.start, period)
                     if fp is not None:
                         period = fp     # "first nine months" / "six months ended" names the figure's own span
@@ -1318,8 +1519,14 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     if generic and rule != "sentence_v1":   # a bare "margin" / "revenue" needs its own period in the sentence
                         continue
                     val, unit, scale = finalize_unit(_page_unit_canon(v.unit, v.raw, e, text) or v.unit, v.value, e.unit)
+                    if profile.under_profile() and e.kind in ("count", "volume") and (
+                            (unit == "count" and "." in v.raw)
+                            or _FUNDS_USE.search(text[max(0, m.start() - 300):min(len(text), v.end + 80)])):
+                        continue      # a count printed as a crore amount in a use-of-proceeds table, not stores/units
                     if e.metric == "net_debt" and _NET_CASH.search(text[max(0, m.start() - 60):v.start]):
                         val = -abs(val)   # "net cash of $3.2 billion": negative net debt keeps its sign
+                    if e.kind == "money" and _NEG_LEVEL.search(lead or ""):
+                        val = -abs(val)   # "was a loss of $160 million" / "net debt is minus INR6,000 crores"
                     end = v.end if period.start < v.end else period.end
                     end = max(end, period.end if 0 <= period.start - v.end <= 45 else v.end)
                     q = text[m.start():end]
@@ -1498,6 +1705,17 @@ def _page_bases() -> list[dict]:
 def _entity_words() -> dict[str, str]:
     """Single-token entity names a column heading prints ("Consolidated | BFL | BHFL")."""
     return {n: e["basis"] for e in _page_bases() for n in e.get("names") or () if " " not in n}
+
+
+def _entity_names() -> list[tuple[str, str]]:
+    """Every entity name the lexicon knows, multi-word ones included ("HDB Financial Services"): a page heading or
+    a paragraph prints the full name, not only the column abbreviation."""
+    return [(n, e["basis"]) for e in _page_bases() for n in e.get("names") or ()]
+
+
+def _is_entity_basis(b: str | None) -> bool:
+    """True for a basis token that names a subsidiary, not a reporting basis ("consolidated"/"standalone")."""
+    return bool(b) and b not in ("consolidated", "standalone", "not_stated") and b not in _SECTION_WORDS
 
 
 def _column_entities(rows, hi: int) -> list[tuple[float, str]]:
@@ -1932,6 +2150,20 @@ def _quote_names_label(quote: str, label: str | None) -> bool:
     return any(w.lower() in low for w in words)
 
 
+def _quote_has_metric(text: str, quote: str, matched: str) -> bool:
+    """True when the matched metric label sits at the quote.  On a two-column page the row string can pick up the
+    neighbouring table's title ("Segment-wise Revenue from operations Total" over the raw-materials Total), while
+    the contiguous page text around the row's own quote has no word of that title."""
+    words = [w for w in re.findall(r"[A-Za-z]{4,}", matched or "")]
+    if not words:
+        return True
+    i = text.find(quote)
+    if i < 0:
+        return True
+    near = text[max(0, i - 80):i + len(quote)].lower()
+    return any(w.lower() in near for w in words)
+
+
 def _table_value_ok(text: str, s: str, m, e: Entry) -> bool:
     """A table value is whole and possible: a printed token (never a fragment of a neighbour), a number of its kind
     (a percentage at most ``max_pct``, a day count at least one, no negative level), and not a signed change token."""
@@ -1974,8 +2206,21 @@ def _own_row_hits(hit) -> list:
     return [(e, m) for e, m in hit if not any(o.start() >= m.end() for _, o in hit)] or hit
 
 
+def _page_dim_hint(text: str, dims: list[Dim], company: str) -> str | None:
+    """The one segment a page caption names as the table's owner ("Hindalco (India) Business : Key Financials").
+    The caption may sit below the table in the text layer, so the row's own heading band cannot see it."""
+    found = set()
+    for line in text.splitlines():
+        if not re.search(r"\b(?:key financials|segment[- ]wise|business[- ]wise)\b", line, re.I):
+            continue
+        hits = {d.dimension for d in dims if not (d.companies and company not in d.companies)
+                for rx in d.patterns if d.dimension != "total" and rx.search(line)}
+        found |= hits
+    return found.pop() if len(found) == 1 else None
+
+
 def table_and_chart_rows(page_words, text: str, page: int, company: str, entries, dims, default_pers,
-                         stats: dict | None = None) -> list[Row]:
+                         stats: dict | None = None, doc_basis: str = "not_stated") -> list[Row]:
     rows = _merge_stacked_axes(page_rows(page_words))
     info = [row_periods(r) for r in rows]
     strict = profile.under_profile()
@@ -2004,6 +2249,9 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
         return None
 
     basis = page_basis(text, company)
+    if basis == "not_stated" and _is_entity_basis(doc_basis):
+        basis = doc_basis      # a continuation page of a subsidiary's release is that entity's
+    dim_hint = _page_dim_hint(text, dims, company)
     out: list[Row] = []
     dim_rows = []   # (y, x_center, dimension, row_first_x, has_values): a row with values is data, not a block heading
     for i, r in enumerate(rows):
@@ -2073,6 +2321,8 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
             if not has_vals and (first_x is None or fx <= first_x + 25) and fx >= label_x - 40 and dy <= y + 1 \
                     and (y - dy) < bd and y - dy < 220:
                 best, bd = dn, y - dy
+        if best == "total" and dim_hint:
+            return dim_hint      # the page's caption names the business the whole table reports
         return best
 
     def pick_header(y, xcs):
@@ -2182,6 +2432,15 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                     if not q or (strict and not _quote_owns_value(q, m.group("num"), e, label)):
                         _bump(stats, "quote_not_owner")
                         continue
+                    if strict and e.kind == "count" and unit == "count" and "." in m.group("num"):
+                        continue      # a store/employee count is never printed "2,137.00": that is a crore amount
+                    if strict and not _quote_has_metric(text, q, label[lm.start():lm.end()]):
+                        continue      # the matched label belongs to a neighbouring block on the same text row
+                    if strict and e.metric == "revenue" and label.strip().lower() == "revenue":
+                        qi = text.find(q)
+                        if qi >= 0 and re.search(r"\br\s?&\s?d\b|\bresearch (?:and|&) development\b",
+                                                 text[max(0, qi - 400):qi], re.I):
+                            continue      # a "Revenue" line under an R&D expenditure caption is that table's base
                     out.append(Row(e.metric, dim, val, u, scale, per.ptype, per.canon, per.as_of, basis, page, q, label,
                                    m.group("num"), "table_v1"))
                     twin = _q4_twin(e, per)
@@ -2547,6 +2806,14 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
         if doc_type == "transcript" and known_at:   # a call cannot be known before it was held (call_dates)
             known_at = call_dates.clamp(None, known_at, [t for _, t in usable[:3]])[1]
         default_pers = doc_default_period([t for _, t in usable])
+        # a release whose first pages name a subsidiary keeps that entity on the pages that do not repeat its name
+        doc_basis = "not_stated"
+        if profile.under_profile():
+            for _, t0 in usable[:3]:
+                b0 = page_basis(t0, sym)
+                if _is_entity_basis(b0):
+                    doc_basis = b0
+                    break
         # an annual report (or any document over 80 pages) prints last year's figures everywhere, so the document
         # headline is no default: only a period on the page itself may stand in for one the sentence does not name
         long_doc = profile.under_profile() and (doc_type == "annual_report" or len(usable) > 80)
@@ -2555,10 +2822,13 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
             page_pers = default_pers
             if long_doc:
                 page_pers = doc_default_period([text])
+                if doc_type == "transcript" and default_pers and default_pers[0].ptype in ("Q", "M", "H"):
+                    page_pers = default_pers     # a call's figures are its own quarter, not a page-header year
                 if not page_pers:
                     st["no_period_long_doc"] = st.get("no_period_long_doc", 0) + 1
             try:
-                srows = sentence_rows(text, page, sym, entries, dims, page_pers, known_at)
+                srows = sentence_rows(text, page, sym, entries, dims, page_pers, known_at, doc_basis,
+                                      doc_type != "transcript")
             except Exception:  # keep the run going, count it
                 srows = []
                 st["errors"] = st.get("errors", 0) + 1
@@ -2573,10 +2843,12 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                 words = pdf[page - 1].get_text("words")
             if words is not None and _page_may_have_table(text):
                 try:
-                    trows = table_and_chart_rows(words, text, page, sym, entries, dims, page_pers, st)
+                    trows = table_and_chart_rows(words, text, page, sym, entries, dims, page_pers, st, doc_basis)
                 except Exception:
                     st["errors"] = st.get("errors", 0) + 1
             basis = page_basis(text, sym)
+            if basis == "not_stated" and _is_entity_basis(doc_basis):
+                basis = doc_basis
             try:     # chart mix and business-wise revenue bullets: no word boxes needed
                 erows = pie_mix_rows(text, page, sym, entries, dims, basis, page_pers)
                 seg = segment_revenue_rows(text, page, sym, entries, dims, basis, page_pers)

@@ -1465,4 +1465,164 @@ def test_consolidated_adjusted_revenue_is_total_and_a_heading_cannot_cross_a_bla
         profile.activate(None)
 
 
+# ---------------------------------------------------------------- T-081: the classes Opus read on w_t079b
+def test_a_printed_loss_and_a_minus_net_debt_keep_their_sign():
+    """Real Novelis release: "Net income ... was a loss of $160 million" stored +160, and the India call's
+    "net debt is minus INR6,000 crores" stored +6,000."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_symbols(HINDALCO="metals_nonferrous"))
+    try:
+        t = ("Net income attributable to our common shareholder was a loss of $160 million in the third quarter "
+             "of fiscal year 2026, compared to a net income of $110 million in the prior year period.")
+        rows = kpi.sentence_rows(t, 2, "HINDALCO", ENTRIES, DIMS, kpi.parse_periods("Q3FY26"))
+        got = [(r.metric, r.value, r.fiscal_period) for r in rows if r.metric == "net_income"]
+        assert got == [("net_income", -160.0, "Q3FY26")]
+        t = ("So, India gross debt is INR12,200 crores, cash is INR18,000 crores, so net debt is minus "
+             "INR6,000 crores.\nNovelis gross debt is INR75,000 crores.")
+        rows = kpi.sentence_rows(t, 12, "HINDALCO", ENTRIES, DIMS, kpi.parse_periods("FY26"))
+        got = {(r.metric, r.value, r.dimension) for r in rows if r.metric == "net_debt"}
+        assert got == {("net_debt", -6000.0, "india")}
+    finally:
+        profile.activate(None)
+
+
+def test_a_subsidiary_block_is_the_entity_not_the_group():
+    """Real HDFC Bank pages: the HDB block's "Net interest margin of 8.2%", HDFC ERGO's PAT 813 and the HDFC
+    Securities block's "Book value per share at ₹ 2,012" were stored as the group's, the last also in crore."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"HDFCBANK": "bank"}))
+    try:
+        t = ("GROUP COMPANIES\nSubsidiaries – Q2FY27 update – HDB Financial Services\n"
+             "•\n74.08% stake held by the Bank as of September 30, 2026\n"
+             "•\nQ2FY27 performance highlights\n"
+             "– Net interest margin of 8.2% improved year-on-year by 28 bps\n")
+        rows = kpi.sentence_rows(t, 23, "HDFCBANK", ENTRIES, DIMS, kpi.parse_periods("Q2FY27"))
+        assert [(r.metric, r.value, r.dimension) for r in rows if r.metric == "nim_pct"] == \
+            [("nim_pct", 8.2, "hdbfsl")]
+        t = ("HDFC ERGO has a track record of consistent profitable growth. As a result, HDFC ERGO has improved "
+             "its market share from 0.8 per cent in FY 2007-08 to 4.5 per cent in FY 2025-26. Profit After Tax for "
+             "the year ended March 31, 2026, was at ` 813 crore compared to ` 500 crore for the year ended "
+             "March 31, 2025.")
+        rows = kpi.sentence_rows(t, 306, "HDFCBANK", ENTRIES, DIMS, kpi.parse_periods("FY26"))
+        got = {(r.value, r.dimension) for r in rows if r.metric == "pat"}
+        assert (813.0, "hdfc_ergo_general_insurance_company") in got
+        t = ("Subsidiaries – Q4FY26 update – HDFC Securities Ltd\n"
+             "•\n94.01% stake held by the Bank as of March 31, 2026\n"
+             "– Book value per share at ₹ 2,012 as of 31st March, 2026\n")
+        rows = kpi.sentence_rows(t, 26, "HDFCBANK", ENTRIES, DIMS, kpi.parse_periods("Q4FY26"))
+        got = {(r.value, r.unit, r.dimension) for r in rows if r.metric == "book_value_per_share"}
+        assert got == {(2012.0, "inr", "hdfc_securities")}
+    finally:
+        profile.activate(None)
+
+
+def test_the_blocks_business_owns_a_following_sentence():
+    """Real Eternal letter p5 and Hindalco Q1FY27 call p8: the figure's own sentence leaves the business out, and
+    the paragraph's opening sentence names it ("Hyperpure - Revenue grew ...", "Novelis recorded shipments ...")."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_symbols(ETERNAL="consumer_internet", HINDALCO="metals_nonferrous"))
+    try:
+        t = ("Hyperpure - Revenue grew 27% YoY (LFL) and 6% QoQ to INR 1,034 crore. Adjusted EBITDA margin "
+             "improved to 0.6% from -0.8% last year, resulting in INR 6 crore profit.")
+        rows = kpi.sentence_rows(t, 5, "ETERNAL", ENTRIES, DIMS, kpi.parse_periods("Q4FY26"))
+        got = {r.dimension for r in rows if r.metric == "ebitda_margin_pct"}
+        assert got == {"hyperpure"}
+        t = ("Novelis recorded shipments of 916 KT, reflecting a decline of 5% year-on-year over 963 KT shipments "
+             "in the same period last year. Adjusted EBITDA for the quarter stood at $516 million or $563 per ton.")
+        rows = kpi.sentence_rows(t, 8, "HINDALCO", ENTRIES, DIMS, kpi.parse_periods("Q1FY27"))
+        got = [(r.value, r.dimension) for r in rows if r.metric == "ebitda_adjusted_usd"]
+        assert (516.0, "novelis") in got
+        assert kpi._page_dim_hint("Hindalco Q4 FY26 – Earnings Presentation\n"
+                                  "Hindalco (India) Business : Key Financials\n(₹ Crore)", DIMS, "HINDALCO") == "india"
+    finally:
+        profile.activate(None)
+
+
+def test_a_quarterly_figure_in_a_year_to_date_document_is_its_quarter():
+    """Real HUL release p47, Maruti Q2/H1 release p2 and Eternal Q4FY26 letter p8: a quarterly level in a
+    year-to-date document takes the quarter, not FY26; the value after "improved to" is this quarter's, not the
+    Q3 the comparative prints after "from"."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_symbols(HINDUNILVR="fmcg", MARUTI="auto_oem", ETERNAL="consumer_internet"))
+    try:
+        t = ("Key highlights for March Quarter:\n• With a Turnover of Rs. 16,207 crores, consolidated Revenue grew 8%\n"
+             "• Profit After Tax (PAT) at Rs. 3,002 crores grew by 20% year-on-year")
+        rows = kpi.sentence_rows(t, 47, "HINDUNILVR", ENTRIES, DIMS, kpi.parse_periods("FY26"))
+        assert [(r.value, r.fiscal_period) for r in rows if r.metric == "pat"] == [(3002.0, "Q4FY26")]
+        t = ("Highlights: Q2 (July-September), FY 2026-27\n"
+             "The Company achieved its highest-ever quarterly total sales volume of 696,654 units, registering a "
+             "growth of 26.5% over the same period previous year.")
+        rows = kpi.sentence_rows(t, 2, "MARUTI", ENTRIES, DIMS, kpi.parse_periods("H1FY27"))
+        assert {(r.value, r.fiscal_period) for r in rows if r.metric == "volumes"} == {(696654.0, "Q2FY27")}
+        t = "Adjusted EBITDA margin (as a % of NOV) improved to -3.0% from -4.7% in Q3FY26."
+        rows = kpi.sentence_rows(t, 8, "ETERNAL", ENTRIES, DIMS, kpi.parse_periods("FY26"))
+        got = [(r.value, r.fiscal_period) for r in rows if r.metric == "ebitda_margin_pct"]
+        assert (-3.0, "Q4FY26") in got
+    finally:
+        profile.activate(None)
+
+
+def test_non_revenue_lines_are_not_revenue():
+    """Real pages: "Sales of investments 2,44,16,322" (cash flow), "Sales promotion 5,499" (other expenses) and
+    "Revenue from sale of goods 35,555" (a component of the total 54,364) were stored as revenue."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_symbols(SBILIFE="insurance_life", ETERNAL="consumer_internet"))
+    try:
+        for company, text in (("SBILIFE", "Sales of investments 2,44,16,322"),
+                              ("SBILIFE", "Sales promotion 5,499"),
+                              ("ETERNAL", "Revenue from sale of goods 35,555")):
+            rows = kpi.sentence_rows(text, 1, company, ENTRIES, DIMS, kpi.parse_periods("FY26"))
+            assert not [r for r in rows if r.metric == "revenue"], text
+        page = ("Segment-wise Revenue from operations\n64,468\n61,328\n" + "Cost of materials consumed 18,045\n" * 6
+                + "Raw materials consumed\n18,045\n15,741\nTotal\n20,981\n19,034\n")
+        assert kpi._quote_has_metric(page, "Total\n20,981", "Revenue from operations") is False
+    finally:
+        profile.activate(None)
+
+
+def test_question_text_and_a_use_of_proceeds_are_not_kpis():
+    """Real rows: an analyst's "strategy to take back market share to 50%?", "Capex per store INR 2.5 crore",
+    the QIP programme's "Dark Stores and warehouses 2,137" crore and Maruti's cumulative EV exports 50,000."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_symbols(MARUTI="auto_oem", ETERNAL="consumer_internet"))
+    try:
+        rows = kpi.sentence_rows("what is the strategy to take back market share to 50%?", 5, "MARUTI",
+                                 ENTRIES, DIMS, kpi.parse_periods("Q2FY26"))
+        assert not [r for r in rows if r.metric == "market_share"]
+        rows = kpi.sentence_rows("Capex per store (including warehousing): INR 2.5 crore (vs 1 crore earlier)",
+                                 7, "ETERNAL", ENTRIES, DIMS, kpi.parse_periods("Q1FY27"))
+        assert not [r for r in rows if r.metric == "capex"]
+        rows = kpi.sentence_rows("Amount to be utilised as per prospectus: Expenditure towards setting up and "
+                                 "running operations of Dark Stores and warehouses 2,137", 399, "ETERNAL", ENTRIES,
+                                 DIMS, kpi.parse_periods("FY26"))
+        assert not [r for r in rows if r.metric == "dark_stores"]
+        rows = kpi.sentence_rows("cumulative exports of its Made-in-India EV have crossed 50,000 units since the "
+                                 "commencement of global shipments in August 2025.", 2, "MARUTI", ENTRIES, DIMS,
+                                 kpi.parse_periods("Q2FY27"))
+        assert not [r for r in rows if r.metric == "export_volumes"]
+        label = "Exposures of the twenty largest NPA as a percentage of total gross NPAs"
+        profile.activate(_profile_for({"HDFCBANK": "bank"}))
+        hit = [e for e, _ in kpi.label_matches(ENTRIES, "HDFCBANK", label) if e.metric == "gnpa_pct"]
+        assert hit and hit[0].neg and hit[0].neg.search(label)     # the table rule refuses the whole-row label
+    finally:
+        profile.activate(None)
+
+
+def test_an_auditor_note_on_subsidiaries_is_not_the_company_pat():
+    """Real Hindalco results note p10: "financial statements/ financial results of eight subsidiaries ...
+    total net profit after tax of Rs. 2,456 crores" (the investee phrase spans a slash, not "statements of")."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_symbols(HINDALCO="metals_nonferrous"))
+    try:
+        t = ("The Condensed Interim financial statements/ financial statements/ financial results of eight "
+             "subsidiaries reflect total assets of Rs. 193,318 crores and net assets of Rs. 76,396 crores as at "
+             "September 30, 2025 and total revenues of Rs. 43,132 crores and Rs. 84,443 crores, total net profit "
+             "after tax of Rs. 2,456 crores and Rs. 4,351 crores and total comprehensive income of Rs. 3,897 crores")
+        rows = kpi.sentence_rows(t, 10, "HINDALCO", ENTRIES, DIMS, kpi.parse_periods("Q2FY26"))
+        assert not [r for r in rows if r.metric == "pat"]
+    finally:
+        profile.activate(None)
+
+
+
 

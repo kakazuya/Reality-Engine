@@ -4,5 +4,7 @@ page_bases:
   - {basis: bhfl, names: ["bajaj housing finance", "bajaj housing", "bhfl"]}
   - {basis: standalone, names: ["bajaj finance", "bfl"]}
   - {basis: bfsl, names: ["bfsl"]}
-  - {basis: hdbfsl, names: ["hdbfsl"]}
+  - {basis: hdbfsl, names: ["hdbfsl", "hdb financial services"]}
+  - {basis: hdfc_ergo_general_insurance_company, names: ["hdfc ergo"]}
+  - {basis: hdfc_securities, names: ["hdfc securities"]}
   - {basis: bajaj_broking, names: ["bajaj broking"]}
