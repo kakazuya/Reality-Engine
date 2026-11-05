@@ -51,6 +51,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-066 | OPEN | P1 | KPI branch line: restore the six numbers round 3 lost (KEC order intake and order book, HINDALCO EBITDA per tonne) so the branch can merge | accept: python -m reality_engine.pilot3.checkpages run | from: Shivam 5 Nov | opened 2026-11-05
 - T-068 | OPEN | P1 | Settle doubtful KPI rows with free beam-free on both Go keys, as a step after the build with saved verdicts; gate its accuracy on hand-read rows before use | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
 - T-079 | OPEN | P1 | Trial one KPI round on a goal brief: keep evidence and fast check, drop edit-this-line steps; goal hand-read 18 of 20 on INFY and HINDALCO, checkpages at least 145 | accept: Shivam | from: Shivam 5 Nov, go given | opened 2026-11-05
+- T-081 | OPEN | P1 | KPI round 4: the wrong classes Opus found after T-079 (a loss stored positive, subsidiary figures as total, quarter dated to the year, non-revenue lines as revenue, question text as a value) | accept: Opus hand read on an unused seed | from: T-079 review 5 Nov | opened 2026-11-05
 
 ## Schema and question map
 - T-017 | OPEN | P2 | Full-run guard: chunk, embed and load scripts refuse a full run with no pilot pass file | accept: python -m pytest reality_engine/tests/test_full_run_guard.py -q | from: enforcement plan | opened 2026-11-02
