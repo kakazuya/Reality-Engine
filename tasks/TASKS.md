@@ -67,6 +67,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-067 | OPEN | P1 | The real test: 60 fixed random dev questions per company answered by DeepSeek through the MCP only, hand-read graded by Opus; first true baseline against 95% | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
 - T-072 | OPEN | P1 | Stop worker sum and unit slips: a calculator tool with crore and lakh formatting, and a script that recomputes each answer's numbers list (31 of 120 misses in the 600-answer test) | accept: Shivam | from: T-067 hand read | opened 2026-11-05
 - T-073 | OPEN | P1 | Store defects from the 600-answer test: share count from the shareholding pattern not paid-up capital (ETERNAL 4.5% low, HUL and Hindalco rounded); PE history before four quarters of filings; quarterly stock-in-trade and inventory change lines; KEC year-to-date labelled H1 | accept: Shivam | from: T-067 hand read | opened 2026-11-05
+- T-083 | DOING Eagle | P1 | Second reading step: a free model reads each answer against the question and the answer's own numbers and flags contradictions, unsourced causes and question misfit; test on graded answers before any use | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
 - T-080 | OPEN | P1 | Re-run the same 60 questions per company on the build with T-072 and T-073 merged, through the MCP only with `pilot3_calc` and `answer_record`; Opus hand-reads and compares with 480/116/4 | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
 
 ## Bank
