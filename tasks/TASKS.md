@@ -76,5 +76,4 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-031 | OPEN | P3 | Research library bucket scheme; duplicates deleted 2 Nov, list in _dupes_deleted_2026-11-02.csv | accept: Shivam | from: T-026 | opened 2026-11-02
 
 ## Machines
-- T-030 | WAITING Shivam | P2 | Shivam uses the Claude cloud credit himself on the Eagle account, Tuesday 3 Nov | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-070 | OPEN | P1 | HP workers can serve a profile database: hp_worker start --pilot-db sets REALITY_PILOT3_DB for the job | accept: python -m pytest reality_engine/tests/test_hp_worker.py -q | from: Shivam 5 Nov | opened 2026-11-05
