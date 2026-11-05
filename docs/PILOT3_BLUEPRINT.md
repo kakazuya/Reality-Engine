@@ -447,6 +447,10 @@ mark of 18 fixed before the run, so **the test failed and this is not a gate**. 
 false alarms, 11 clear slips the hand read missed, 10 unsupported causes the hand read let through. 18 of the 39 were
 read against the answer text, the other 21 from the flag alone. Two passes agreed on 255 of 296; no failed replies.
 Commands, the misses it cannot see and the three prompt rounds: `docs/DEVELOPER_GUIDE.md` section O13.
+Flagged-answer test (6 Nov, 70 hold-out answers, partly blind read by Opus): an answer worker given the old answer and its
+flags 51 right, a plain re-answer in one batch 9, the old answers 39 on a more lenient read. Not a clean comparison: the
+plain worker made about 4 calls per question against about 7.5 before and the flags worker kept the earlier research.
+Whether the reader or the model limits the score is T-084. Two faults passed the number check: T-085.
 ### 9c. Store defects from the 600-answer test (T-073, 5 Nov 2026)
 
 Four general rules, no company name in code.
