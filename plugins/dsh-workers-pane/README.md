@@ -7,8 +7,9 @@ lists, expandable detail cards, the pane colours, an above-prompt band and the
 ## Install (once, on this laptop)
 
 The repo is the marketplace: `.claude-plugin/marketplace.json` at the repo root
-points at this folder, so a folder-marketplace install reads the mod from
-`plugins/dsh-workers-pane/` itself — no copy, no reinstall after an edit.
+points at this folder. An install copies the mod to
+`~/.claude/plugins/cache/reality-engine/dsh-workers/<version>/` and runs that copy, not this folder:
+T-082's fields stayed invisible on 5 Nov because the version was not bumped.
 
 From a terminal, at the repo root, at the prompt of a Claude Code session:
 
@@ -27,8 +28,9 @@ Answer `y` to add the `reality-engine` marketplace if asked, and pick the
 desktop app's sessions included, and survives app restarts. In a session that
 is already open, run `/reload-plugins` (or restart it) to pick the mod up.
 
-After editing anything under `plugins/dsh-workers-pane/`, run `/reload-plugins`
-in the open session; the folder is re-read in place, no install step.
+After editing anything under `plugins/dsh-workers-pane/`: bump `version` in
+`.claude-plugin/plugin.json`, run `claude plugin marketplace update reality-engine` and
+`claude plugin update dsh-workers@reality-engine`, then `/reload-plugins` in the open session.
 
 ### Alternative: load the folder directly (development)
 

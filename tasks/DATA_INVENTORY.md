@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-05 18:55 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 89 tables and 56 of 72 raw folders.
+Generated 2026-11-05 21:41 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 85 tables and 56 of 72 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -326,7 +326,7 @@ Undocumented: 89 tables and 56 of 72 raw folders.
 | pilot3/pilot3_before_dates_merge_2026-11-04.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
 | pilot3/pilot3_before_dates_merge_2026-11-04.db | `formula` | 34 | **undocumented** |
 | pilot3/pilot3_before_dates_merge_2026-11-04.db | `guidance` | 660 | yes |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `kpi_series` | 149,333 | **undocumented** |
+| pilot3/pilot3_before_dates_merge_2026-11-04.db | `kpi_series` | 149,333 | yes |
 | pilot3/pilot3_before_dates_merge_2026-11-04.db | `price_delivery` | 11,557 | yes |
 | pilot3/pilot3_before_dates_merge_2026-11-04.db | `ratio_panel` | 3,283 | **undocumented** |
 | pilot3/pilot3_before_dates_merge_2026-11-04.db | `share_capital` | 180 | **undocumented** |
@@ -341,7 +341,7 @@ Undocumented: 89 tables and 56 of 72 raw folders.
 | pilot3/pilot3_before_kpi_merge_2026-11-04.db | `fin_annual_line` | 3,180 | **undocumented** |
 | pilot3/pilot3_before_kpi_merge_2026-11-04.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
 | pilot3/pilot3_before_kpi_merge_2026-11-04.db | `formula` | 34 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `kpi_series` | 104,837 | **undocumented** |
+| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `kpi_series` | 104,837 | yes |
 | pilot3/pilot3_before_kpi_merge_2026-11-04.db | `price_delivery` | 11,557 | yes |
 | pilot3/pilot3_before_kpi_merge_2026-11-04.db | `ratio_panel` | 3,283 | **undocumented** |
 | pilot3/pilot3_before_kpi_merge_2026-11-04.db | `share_capital` | 180 | **undocumented** |
@@ -356,7 +356,7 @@ Undocumented: 89 tables and 56 of 72 raw folders.
 | pilot3/pilot3_before_nim_2026-11-03.db | `fin_annual_line` | 3,180 | **undocumented** |
 | pilot3/pilot3_before_nim_2026-11-03.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
 | pilot3/pilot3_before_nim_2026-11-03.db | `formula` | 27 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `kpi_series` | 23,816 | **undocumented** |
+| pilot3/pilot3_before_nim_2026-11-03.db | `kpi_series` | 23,816 | yes |
 | pilot3/pilot3_before_nim_2026-11-03.db | `price_delivery` | 11,557 | yes |
 | pilot3/pilot3_before_nim_2026-11-03.db | `ratio_panel` | 3,265 | **undocumented** |
 | pilot3/pilot3_before_nim_2026-11-03.db | `share_capital` | 180 | **undocumented** |
@@ -371,7 +371,7 @@ Undocumented: 89 tables and 56 of 72 raw folders.
 | pilot3/pilot3_before_rebuild_2026-11-03.db | `fin_annual_line` | 3,180 | **undocumented** |
 | pilot3/pilot3_before_rebuild_2026-11-03.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
 | pilot3/pilot3_before_rebuild_2026-11-03.db | `formula` | 34 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `kpi_series` | 23,816 | **undocumented** |
+| pilot3/pilot3_before_rebuild_2026-11-03.db | `kpi_series` | 23,816 | yes |
 | pilot3/pilot3_before_rebuild_2026-11-03.db | `price_delivery` | 11,557 | yes |
 | pilot3/pilot3_before_rebuild_2026-11-03.db | `ratio_panel` | 3,283 | **undocumented** |
 | pilot3/pilot3_before_rebuild_2026-11-03.db | `share_capital` | 180 | **undocumented** |
