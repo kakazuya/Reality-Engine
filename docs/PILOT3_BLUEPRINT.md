@@ -402,5 +402,16 @@ active one. Without a profile every command behaves exactly as before (the three
   `repeat_ok` from a second filing) and one new test in `plugins/reality-data/tests/test_lookups_pilot3.py` (printed quarter through
   `pilot3_fin`, `as_of` filter).
 
-
-
+## Answer calculator and the answer number check (T-072, 5 Nov 2026)
+The 600-answer hand read put 31 of 120 misses on a worker sum or a ten-times unit slip with the data right, because the
+only tools a worker had read rows and none of them computed. The reality-data MCP now serves `pilot3_calc`
+(`plugins/reality-data/server/calc.py`): one expression over `+ - * / **`, parentheses and `sum/avg/min/max/round` with
+named inputs carrying units (rupees, crore, lakh, lakh crore, million, billion, shares, percent). It walks the AST (never
+`eval`), normalises every input once to a base unit and computes with `Fraction`, so the answer is exact and a unit mistake
+is an error, not a number; money and count results also print crore, lakh crore and Indian digit grouping, a percent prints
+bps. `reality_engine/pilot3/number_check.py` replays an answer file and recomputes what it states, and
+`reality_engine/pilot3/answer_record.py` refuses to record an answer that fails (a retry with `check_override` records the
+failures with it). The answer format gains optional `formula` and `inputs` on each `numbers` row. On the dev set (16 known
+misses, 240 graded-right answers) the checker caught 10 of the 16 and flagged 3 of the 240; the two real ones are slips in
+the `numbers` list itself and the false alarm is a digits coincidence. Commands, reason codes and the misses it cannot
+catch: `docs/DEVELOPER_GUIDE.md` section O12.

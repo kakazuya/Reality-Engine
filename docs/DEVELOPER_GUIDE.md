@@ -926,3 +926,44 @@ store keeps only undimensioned totals, so per-segment values were lost at parse 
 6. Check 3 (`reconcile`): segment revenue less `InterSegmentRevenue` against `SegmentRevenueFromOperations`, 1%.
 Result on the pilot10 copy: 10 companies, 0 check-3 failures, A1 571 -> 601. Tests: `reality_engine/tests/test_pilot3_xbrl_segments.py`.
 Known limits: `kpi_series.value` for these rows is rupees as filed (`unit` inr, scale 1), unlike deck rows in crore.
+
+### O12. Calculator tool and the answer number check (T-072, 5 Nov 2026)
+31 of the 120 answer misses in the 600 hand-read answers were a worker's head sum or a ten-times unit slip while the data
+was right (a market cap of Rs 32.20 lakh crore for 3.22; gross NPAs of Rs 3,574 crore for 35,736). Two pieces:
+1. `pilot3_calc` (reality-data MCP, `plugins/reality-data/server/calc.py`): `+ - * / **`, parentheses and
+   `sum/avg/min/max/round` over named inputs with units, walked from the AST (never `eval`). Inputs normalise once to a
+   base unit (rupees, count, or a fraction for percent) and compute exactly with `Fraction`, so a unit mistake is an error
+   message and never a number: subtracting shares from rupees or multiplying two rupee amounts fails. A money or count
+   answer also prints rupees, crore, lakh crore and Indian digit grouping; a percent prints bps. `indian_grouping` is the
+   12,34,567 form the answers need. Tests: `plugins/reality-data/tests/test_calc.py` (10).
+2. `reality_engine/pilot3/number_check.py`:
+   `python -m reality_engine.pilot3.number_check <answers.jsonl | answer.json | dir> [--tsv out.tsv] [--dev dev.tsv]`.
+   Reason codes, each its own: `formula_mismatch` (a number's `formula`+`inputs`, or an older `computed: ...` source, does
+   not recompute beyond its printed rounding; a source is read WHOLE or not at all -- `^` is an exponent, a root is
+   evaluated, a fragment or an unparseable source is a warning, and a fraction is compared at both scales so
+   `6,975/6,016-1` = 15.9% still fails 18.4% while `33,986/29,474` passes 115), `unit_slip` (a text amount matching a
+   `numbers` entry only at 10x/100x/1000x, or a stated sum/ratio/percent that misses by such a factor; a two-significant-
+   digit amount fires only when the answer prints that entry exactly nearby -- two printed digits are chance),
+   `stated_working` ("A covers B 101.6 times", "X% of Y is Z", "from A to B, a fall of C", "N% below Y", "A + B = C";
+   dates and years are never operands, a sum is read at both scales, a chain with `less`/`minus` is read whole or
+   skipped, and a from-to percentage allows the endpoints' own printed rounding), `quote_mismatch` (only when the same
+   digits carry a different value behind a different scale word; a value printed literally passes, a computed or ratio
+   figure is not judged, and a value merely absent from a cut quote is a WARNING), `bad_grouping` (comma grouping
+   neither Indian nor Western). `unmatched_amount` is a WARNING, not a block: prose quotes rounded intermediates an
+   answer never lists, and blocking on those fails most honest answers. `--tsv` writes `file, qid, code, severity,
+   detail, where`, one row per finding.
+   `reality_engine/pilot3/answer_record.py` takes the same CLI as `record.py` (`<SYM> start <qid>`, `<SYM> answer <file>`,
+   writing `.tmp/<SYM>_answers.jsonl`) and refuses a failing answer: failures printed, exit 1, a `check_failed` row
+   appended; a retry carrying `"check_override": "<reason>"` records with `check_failures` and `check_override` attached.
+3. Replay on 5 Nov (round 2) over the ten files of `D:\RealityEngine\pilot10\answer_a2`: 600 answers, 26 flagged, 37
+   failing findings (unit_slip 24, formula_mismatch 10, stated_working 3); that run contains the 10 known misses. On the
+   256-row dev set
+   (`t072_dev.tsv`): 10 of 16 `arith_miss` caught (ETERNAL-057, ETERNAL-124 via sums, HDFCBANK-022/030/033/097,
+   SUNPHARMA-116, INFY-019, KEC-119, BAJFINANCE-123, SBILIFE-117) and 3 of 240 graded-right answers flagged: two are real
+   slips in the numbers list the grader missed (a gross-premium row ten times short of its own source; components ten times
+   the answer text) and one is a false alarm (43.6 lakh crore of earning assets beside a 4,360-crore per-10bps row whose
+   unit text quotes the same digits). Missed, and why: ETERNAL-082 (a market cap with no `numbers` entry and no stated
+   formula), ETERNAL-124 (the sum has an unstated base), ETERNAL-126 (a 20%-of-volume scaling over a base in another
+   sentence), HDFCBANK-063 (the percentage sits 57 characters before "from" and the same sentence holds a second range),
+   KEC-109 (an H2 per-quarter division), KEC-110 (the bps claim's operand pair cannot be bound: 7-7.5% against 5.0% gives
+   the 200-250 bps the text states). Tests: `reality_engine/tests/test_pilot3_number_check.py` (16).

@@ -572,6 +572,33 @@ def pilot3_sql(query: str, limit: int = 100, max_chars: int = 400) -> dict[str, 
 # --- end lookups: pilot3 ---
 
 
+# --- calculator (T-072: a worker's head sum and its ten-times unit slip were 31 of the 120 misses) ---
+import calc as _calc  # noqa: E402  (co-located module, same import style)
+
+
+@server.tool(
+    name="pilot3_calc",
+    description=(
+        "Arithmetic you can trust: USE THIS FOR EVERY NUMBER YOU DID NOT COPY STRAIGHT FROM A TOOL ROW. A head "
+        "sum, a ratio, a margin, a growth, a crore/million conversion and a market cap are all this tool's job -- "
+        "31 of the 120 answer misses in the 600-answer run were a wrong sum or a ten-times unit slip in a number "
+        "the data had right. expression: + - * / ** and parentheses over named inputs, plus sum(a, b, ...), "
+        "avg(...), min(...), max(...), round(x, 2). inputs: {name: value with an optional unit}, e.g. "
+        "{\"pat\": \"493 crore\", \"shares\": \"622.39 crore shares\", \"rate\": \"9 percent\"}; units are rupees "
+        "(bare number = plain; a currency prefix with no scale word is rupees, so \"Rs 349.45\" is 349.45 rupees and "
+        "\"Rs 5 crore\" is still 5 crore), crore, lakh, lakh crore, million, billion, shares/count, percent. "
+        "Answers come "
+        "back exact (value, exact fraction) with unit: money also in rupees, crore, lakh crore and Indian digit "
+        "grouping; percent also in bps. A unit mistake is an error with a message, never a number: subtracting "
+        "shares from rupees or multiplying two rupee amounts fails. Check the crore/lakh_crore field before you "
+        "write a number into an answer."
+    ),
+    annotations=_RO,
+)
+def pilot3_calc(expression: str, inputs: dict[str, Any] | None = None) -> dict[str, Any]:
+    return _safe(lambda: _calc.evaluate(expression, inputs))
+
+
 def _warm_data() -> None:
     # 2026-10-24: warming before server.run delayed the initialize reply past the client's version probe (6.5 s
     # cold start); warm in the background so the handshake is answered at once. Tools still lazy-open on first use.
