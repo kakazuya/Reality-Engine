@@ -1,0 +1,8 @@
+# Reporting entities a page heading or a column heading names, with the basis a row from that entity stores.
+# Company words live here (lexicon data), never in kpi.py.
+page_bases:
+  - {basis: bhfl, names: ["bajaj housing finance", "bajaj housing", "bhfl"]}
+  - {basis: standalone, names: ["bajaj finance", "bfl"]}
+  - {basis: bfsl, names: ["bfsl"]}
+  - {basis: hdbfsl, names: ["hdbfsl"]}
+  - {basis: bajaj_broking, names: ["bajaj broking"]}
