@@ -105,11 +105,19 @@ def _days(a: str, b: str) -> int | None:
 
 
 # --- fin_quarter_xbrl + share_capital -------------------------------------------------------------
+# A trading / FMCG statement books bought-in goods and its own finished-goods inventory movement on their own
+# lines (T-073).  The ``quarterly`` view does not expose them, so ``_quarter_extras`` reads them from
+# ``results_xbrl.facts``; keeping them in both maps writes them once, and picks them up for free if the view widens.
+STOCK_COST_TAGS = {
+    "PurchasesOfStockInTrade": ("purchases_of_stock_in_trade", "P&L", "inr"),
+    "ChangesInInventoriesOfFinishedGoodsWorkInProgressAndStockInTrade": ("changes_in_inventories", "P&L", "inr"),
+}
 QUARTER_TAGS = {  # XBRL element -> (canonical line item, statement, unit)
     "RevenueFromOperations": ("revenue_from_operations", "P&L", "inr"),
     "OtherIncome": ("other_income", "P&L", "inr"),
     "Income": ("total_income", "P&L", "inr"),
     "CostOfMaterialsConsumed": ("cost_of_materials", "P&L", "inr"),
+    **STOCK_COST_TAGS,
     "EmployeeBenefitExpense": ("employee_cost", "P&L", "inr"),
     "FinanceCosts": ("finance_cost", "P&L", "inr"),
     "DepreciationDepletionAndAmortisationExpense": ("depreciation", "P&L", "inr"),
@@ -130,7 +138,8 @@ QUARTER_TAGS = {  # XBRL element -> (canonical line item, statement, unit)
 }
 
 
-EXTRA_QUARTER_TAGS = {  # facts the `quarterly` view lacks (NBFC / lender P&L), read from results_xbrl.facts
+EXTRA_QUARTER_TAGS = {  # facts the `quarterly` view lacks (NBFC / lender P&L + the stock-cost lines), read from results_xbrl.facts
+    **STOCK_COST_TAGS,
     "InterestEarned": ("interest_income", "P&L", "inr"),
     "ImpairmentOnFinancialInstruments": ("impairment_financial_instruments", "P&L", "inr"),
     "FeesAndCommissionIncome": ("fee_commission_income", "P&L", "inr"),
@@ -580,15 +589,17 @@ def build_shp(conn: sqlite3.Connection) -> dict:
 
 # --- share count from the shareholding pattern ---------------------------------------------------------
 def build_share_fallback(conn: sqlite3.Connection) -> dict:
-    """A quarter end the results filing gives no share count for (a life insurer files no face value; a company
-    whose results for the quarter are not filed yet) takes the total of its shareholding pattern: the
+    """The exact share count of every quarter end, from the total of its shareholding pattern: the
     ``shareholding_pattern`` row of ``shp_category`` with the SHP's own ``known_at``.  One row per basis the company
-    reports, so every ratio that looks a share count up by basis finds it."""
+    reports, written even where the results filing also gave paid-up capital (T-073): the pattern count is exact,
+    the paid-up/face-value division is rounded, so the ratio that needs a share count prefers the pattern row and
+    keeps the paid-up one only as a fallback."""
     counts = {}
     for symbol in profile.symbols():
         bases = [r[0] for r in conn.execute("SELECT DISTINCT basis FROM fin_quarter_xbrl WHERE symbol=?", (symbol,))]
         have = {(r[0], r[1]) for r in conn.execute(
-            "SELECT as_of_date, basis FROM share_capital WHERE symbol=? AND event IS NULL", (symbol,))}
+            "SELECT as_of_date, basis FROM share_capital WHERE symbol=? AND event IS NULL "
+            "AND source_table='shp_category'", (symbol,))}
         n = 0
         for isin, quarter_end, shares, known, name, rowid in conn.execute(
                 "SELECT isin, quarter_end, shares, known_at, source_file, rowid FROM shp_category WHERE symbol=? "

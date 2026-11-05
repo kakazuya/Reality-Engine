@@ -84,6 +84,12 @@ def _q(sql: str, params: tuple = ()) -> list[sqlite3.Row]:
         raise DataError("sql_error", f"{type(exc).__name__}: {exc}")
 
 
+def _is_lender(sym: str) -> bool:
+    """A bank, NBFC or insurer reports interest / premium income, so EV/EBITDA has no meaning for it."""
+    return bool(_q("SELECT 1 FROM fin_quarter_xbrl WHERE symbol=? AND line_item IN "
+                   "('interest_income','interest_earned','gross_premium','net_premium') LIMIT 1", (sym,)))
+
+
 # --- symbols, periods, dates ------------------------------------------------------------------------
 def pilot_symbols() -> tuple[str, ...]:
     """The companies this database holds: ``REALITY_PILOT3_DB`` -> its ``company`` table (T-056), else pilot3's."""
@@ -415,11 +421,15 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
             args.append(bas)
         extra, eargs = _asof(as_of)
         rows = _q(sql + extra + " ORDER BY date DESC, (basis='consolidated') DESC LIMIT ?", (*args, *eargs, cap))
-        return _reply(sym, [{"ratio": key, "date": r["date"], "basis": r["basis"], "value": r["value"],
-                             "inputs": {"close": r["close"], "shares_outstanding": r["shares_outstanding"]},
-                             "provenance": _prov("valuation_daily", f"row {r['rowid']}", r["known_at"],
-                                                 input_refs=_trim(r["input_refs"], 200))} for r in rows],
-                      "pilot3_ratio")
+        reply = _reply(sym, [{"ratio": key, "date": r["date"], "basis": r["basis"], "value": r["value"],
+                              "inputs": {"close": r["close"], "shares_outstanding": r["shares_outstanding"]},
+                              "provenance": _prov("valuation_daily", f"row {r['rowid']}", r["known_at"],
+                                                  input_refs=_trim(r["input_refs"], 200))} for r in rows],
+                       "pilot3_ratio")
+        if key == "ev_ebitda" and not rows and _is_lender(sym):
+            reply["note"] = ("EV/EBITDA is not defined for a bank, NBFC or insurer: the store keeps no such row "
+                             "for a lender by design, it is not missing data")
+        return reply
     names, allnames = _pick("ratio_panel", "metric", sym, ratio)
     if not names:
         return _reply(sym, [], "pilot3_ratio", available=allnames[:40] + list(VALUATION_FIELDS), metric_asked=ratio)
@@ -433,7 +443,8 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
         args.append(bas)
     extra, eargs = _asof(as_of, "p.known_at")
     rows = _q(f"SELECT p.rowid, p.*, f.expression FROM ratio_panel p LEFT JOIN formula f ON f.formula_id=p.formula_id "
-              f"WHERE {where}{extra} ORDER BY p.period_end DESC, p.known_at DESC LIMIT ?", (*args, *eargs, cap))
+              f"WHERE {where}{extra} ORDER BY p.period_end DESC, (p.period_type='Q') DESC, "
+              f"(p.basis='consolidated') DESC, p.known_at DESC LIMIT ?", (*args, *eargs, cap))
     return _reply(sym, [{"ratio": r["metric"], "period": r["fiscal_period"], "period_type": r["period_type"],
                          "basis": r["basis"], "value": r["value"], "unit": r["unit"], "formula": r["expression"],
                          "provenance": _prov("ratio_panel", f"row {r['rowid']}", r["known_at"],
@@ -476,7 +487,8 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
                                              f"row {r['source_rowid']}]".strip(), r["known_at"],
                                              category_raw=r["category_raw"])})
     sc = _q(f"SELECT rowid, * FROM share_capital WHERE symbol=? AND event IS NULL AND as_of_date<=?{extra} "
-            "AND shares_outstanding IS NOT NULL ORDER BY as_of_date DESC, known_at DESC LIMIT 1", (sym, day, *eargs))
+            "AND shares_outstanding IS NOT NULL ORDER BY as_of_date DESC, (source_table='shp_category') DESC, "
+            "known_at DESC LIMIT 1", (sym, day, *eargs))
     shares = None
     if sc:
         r = sc[0]

@@ -365,3 +365,38 @@ def test_repeat_ok_needs_a_second_filing_and_keeps_each_known_at():
     assert out[0][18] == "2026-02-12T10:00:00" and out[1][18] == "2026-10-28T10:00:00"
     assert out[2][20] == "unchecked"                   # printed once
     assert out[3][20] == "unchecked"                   # the same filing date does not corroborate itself
+
+
+# ---------------------------------------------------------------- T-073: five columns, no column slide -----------------------------------
+def test_a_five_column_q2_table_keeps_the_last_full_year():
+    """A quarter pair + half-year pair + last full year table (INFY) must offer ``last_fy``: without it the TTM
+    cannot be formed from that filing at all."""
+    assert cmp._role_set("2026-09-30", 5) == ["current", "year_ago", "ytd", "prior_ytd", "last_fy"]
+    assert cmp._role_set("2026-09-30", 4) == ["current", "year_ago", "ytd", "prior_ytd"]
+    assert cmp._role_set("2026-03-31", 4) == ["current", "preceding", "ytd", "prior_ytd"]
+    assert cmp._role_set("2026-06-30", 4) == ["current", "preceding", "year_ago", "last_fy"]
+    header = [[(0.0, 0.0, 10.0, 10.0, w, 0, 0, 0)
+               for w in "Three months ended Six months ended".split()]]
+    assert cmp._layout_hint(header, [1.0, 2.0, 3.0, 4.0, 5.0]) == \
+        ["current", "year_ago", "ytd", "prior_ytd", "last_fy"]
+
+
+def test_a_missing_middle_cell_does_not_shift_the_row():
+    """INFY's ``19.32 19.19 17.76 38.51 34.47 71.58`` row lost the Q1 cell to OCR; the remaining tokens must keep
+    their own columns, never slide one left (T-073)."""
+    row = [_w(200.0, "19.32", 10.0), _w(320.0, "17.76", 10.0),
+           _w(380.0, "38.51", 10.0), _w(440.0, "34.47", 10.0)]
+    got = cmp._assign_tokens(row, list(COLS))
+    assert {at: token["text"] for at, token in got.items()} == \
+        {0: "19.32", 2: "17.76", 3: "38.51", 4: "34.47"}
+
+
+def test_xbrl_index_reads_the_compute_start_input_table():
+    """A prior-year printed column is checked against the older quarter held as an input (T-073); the main
+    table wins when both hold the quarter."""
+    conn = _conn()
+    conn.execute("CREATE TABLE fin_quarter_xbrl_input (symbol TEXT, basis TEXT, period_end TEXT, line_item TEXT, value REAL)")
+    conn.execute("INSERT INTO fin_quarter_xbrl_input VALUES ('AAAA','consolidated','2024-12-31','eps_basic',9.0)")
+    assert cmp.xbrl_index(conn, "AAAA")[("consolidated", "2024-12-31")]["eps_basic"] == 9.0
+    _xbrl(conn, "2024-12-31", "eps_basic", 10.0)
+    assert cmp.xbrl_index(conn, "AAAA")[("consolidated", "2024-12-31")]["eps_basic"] == 10.0

@@ -474,11 +474,14 @@ def test_a_quarter_without_a_results_share_count_takes_the_shareholding_pattern_
            (("2026-06-30", 1003240534.0, "2026-07-17T23:38:01"), ("2026-09-30", 1003500000.0, "2026-10-15T18:54:56"))]
     conn.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 18) + ")", shp)
     conn.execute("INSERT INTO share_capital VALUES ('KEC','I','2026-06-30','standalone',NULL,NULL,1.0,1.0,1.0,'shares',1.0,"
-                 "'2026-07-30','s','d','t','r',NULL,NULL)")        # the results filing gave June: only September is added
-    assert stores.build_share_fallback(conn)["KEC"] == 1
+                 "'2026-07-30','s','d','t','r',NULL,NULL)")        # the results filing gave June too; T-073 keeps both
+    assert stores.build_share_fallback(conn)["KEC"] == 2           # the exact total joins the rounded paid-up row
     row = conn.execute("SELECT as_of_date, basis, shares_outstanding, known_at, source_table FROM share_capital "
                        "WHERE as_of_date='2026-09-30'").fetchone()
     assert row == ("2026-09-30", "standalone", 1003500000.0, "2026-10-15T18:54:56", "shp_category")
+    june = conn.execute("SELECT shares_outstanding, source_table FROM share_capital WHERE as_of_date='2026-06-30' "
+                        "ORDER BY source_table").fetchall()
+    assert june == [(1003240534.0, "shp_category"), (1.0, "t")]
     assert stores.build_share_fallback(conn)["KEC"] == 0           # rerun adds nothing
 
 

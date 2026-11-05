@@ -275,14 +275,14 @@ active one. Without a profile every command behaves exactly as before (the three
 
 ### 9a. Compute-only history, bank and insurer lines, three new tables (T-056 loop 2, 4 Nov 2026)
 
-- **Superseded direction (Shivam, 4 Nov, T-057):** the older quarters above are printed in the held results tables as QoQ and YoY comparatives, so they need no download. `compute_start` stays unset in the pilot10 profile until T-057 reports.
+- **Superseded direction (Shivam, 4 Nov, T-057):** the older quarters above are printed in the held results tables as QoQ and YoY comparatives, so they need no download. **T-073 (5 Nov 2026):** the pilot10 profile now sets `compute_start='2024-07-01'`; the older quarters are already held in `results_xbrl.quarterly`/`filings` (INFY 64, HDFCBANK 63, MARUTI 60, ETERNAL 44, KEC 63, SBILIFE 7 filings), so no fetch is needed. KEC's earlier ISIN (`INE389H01014`, 49 filings to Dec 2024) and SUNPHARMA's (`INE044A01028`) were added to the profile's `isins`; the stores filter by the profile's ISIN list, so their pre-2025 quarters had been invisible.
 - **`compute_start`** (optional profile key, default = `window_start`, so nothing changes): rows of `fin_quarter_xbrl`,
   `fin_annual_line` and `price_delivery` dated from `compute_start` up to `window_start` move to `<table>_input` at the end
   of `--part stores` (`stores.apply_window`). `--part ratios` reads them through TEMP views named like the tables
   (`main.t UNION ALL main.t_input`), computes, drops the views and deletes `ratio_panel` / `valuation_daily` rows dated before
   `window_start` (`stores.trim_derived`). No answer table holds a pre-window row (min dates 2025-10-01 / 2025-12-31); the
   inputs are only already-held XBRL and price rows, nothing is fetched. `--part ratios` re-run gives byte-identical
-  `ratio_panel` (1,612 rows) and `valuation_daily` (2,651). Point in time stays exact: a day's TTM uses the last four quarters
+  `ratio_panel` (1,815 rows) and `valuation_daily` (2,651). Point in time stays exact: a day's TTM uses the last four quarters
   with `known_at` <= that day; HINDALCO's last four known quarters end Q1 FY27 and no Q2 is extrapolated. Use
   `compute_start` 2024-07-01 or earlier: BAJFINANCE's Q2 FY26 XBRL was disseminated 10 Nov 2025, so its TTM on 3 Nov 2025 is
   Q2 FY25 to Q1 FY26 and needs the quarter ended 2024-09-30 (2024-10-01 would drop it).
@@ -297,9 +297,13 @@ active one. Without a profile every command behaves exactly as before (the three
   195,099.6 million rupees; SBILIFE Q2FY27 `pat` 5,492,318,000 (as the filing); HDFC standalone cost-to-income Q2FY27 39.1%,
   FY26 `eps_basic_fy` 48.615 (the filed annual EPS is 48.62; the Q1 EPS filed before the 1:1 bonus is restated by the
   cumulative split factor, see F_EPS_FY).
-- **Share count**: a quarter end with no results-filing share count takes the `shareholding_pattern` total of `shp_category`
-  with the SHP's `known_at` (`share_capital.source_table='shp_category'`): SBILIFE 5 quarters (1,003,405,073 at 30 Sep 2026),
-  HINDALCO 30 Sep 2026 (2,247,226,523). `valuation_daily` uses standalone for a company with no consolidated filing (SBILIFE).
+- **Share count**: every quarter end takes the exact `shareholding_pattern` total of `shp_category`
+  (`source_kind='xbrl'`, `known_at` = the SHP's filing) into `share_capital` (`source_table='shp_category'`), written
+  beside the paid-up/face-value row (T-073): SBILIFE 5 quarters (1,003,405,073 at 30 Sep 2026), ETERNAL 9,650,350,647,
+  HINDUNILVR 2,349,591,262, HINDALCO 2,247,226,523. `ratios._share_count` (book value) and `valuation_daily` prefer the
+  pattern row visible by the day and fall back to the rounded paid-up division only before that filing; `pilot3_holding`
+  returns the same row. `valuation_daily` uses the basis that has both a share count and a quarterly statement
+  (standalone for a company that files no consolidated one, SBILIFE; T-073).
 - **Ratios**: half-year point-in-time ratios (`book_value_per_share`, `roe`, `roa`, `roce`, `net_debt_to_ebitda`, days, ...) are
   also written under the quarter label (`Q2FY27`, same value and formula; the NIM is a period measure and is not copied);
   `cost_to_income` (F_COST_INCOME, banks); `dividend_payout_pct` uses one DPS per fiscal year (the corporate-action sum wins over
@@ -344,10 +348,13 @@ active one. Without a profile every command behaves exactly as before (the three
   wins; OCR-tolerant ordered tokens and single words, `Baic` -> basic; no company names -- guard A5).
 - **Roles and units.** The current period end is the latest quarter end the header/title prints on or before the filing day; a header the
   OCR destroyed falls back to the latest quarter end at most 60 days before the filing, kept only when XBRL or the page's own arithmetic
-  confirms a cell (`period from filing date`). Quarter roles are permuted over the first three columns and the ytd/year roles over the
-  rest; the permutation the printed month/year supports best wins and the layout order breaks a tie (HDFCBANK's year-ago column misreads
-  `39.09.2026`; HINDUNILVR prints the year-ago second; a 4-column Q2/Q3 table that prints a quarter pair and a half-year pair -- INFY's
-  IFRS statement, `Three months ended ... Nine months ended` -- is `current, year_ago, ytd, prior_ytd`). Unit from
+  confirms a cell (`period from filing date`). The role pool depends on that period end and the column count (`_role_set`, T-073): a
+  Q2/Q3 table is a quarter pair + half/nine-month pair, plus `last_fy` at five or six columns; a Q4 table is the quarter pair + two full
+  years. Quarter roles are permuted over the quarter columns and the ytd/year roles over the rest; the permutation the printed month/year
+  supports best wins and the layout order breaks a tie (HDFCBANK's year-ago column misreads `39.09.2026`; HINDUNILVR prints the year-ago
+  second; a Q2/Q3 header that says `Three months ended ... Six months ended` is `current, year_ago, ytd, prior_ytd` [+ `last_fy`]).
+  Values are matched to columns monotonically (`_assign_tokens`, T-073): a cell missing from the middle (a merged or OCR-split number)
+  leaves its column empty instead of sliding the later tokens one column left. Unit from
   crore/lakh/million/thousand words; with none, the power of ten in {1e5, 1e6, 1e7} that makes the current column equal XBRL
   (`scale from XBRL`). EPS keeps its own decimals, is never scaled, and a token whose separator the scan lost (`466 90`) is read under
   the table's EPS decimals.
@@ -372,12 +379,14 @@ active one. Without a profile every command behaves exactly as before (the three
   `pat_growth_qoq_pct` (`F_REV_QOQ`, `F_PAT_QOQ`). `_valuation` still uses `last4` when four quarters are held and otherwise one filing's
   TTM, decided by the table's own shape: a table with a ytd column uses `last_fy + ytd - prior_ytd`, only a table with no ytd at all
   uses `last_fy + current - year_ago`, a Q4 table prints the year itself (`F_TTM_PRINTED`, `refs.ttm_printed`); a missing or unchecked
-  cell never falls through to the other formula. A fiscal year without four quarters takes the printed `fy` rows (`F_FY_PRINTED`):
+  cell never falls through to the other formula. Where the filing prints the ytd and prior-ytd columns but no last full year (a Q2/Q3
+  table), the last year comes from its own `fin_annual_line` FY row known by that day (`last_fy(annual) + ytd - prior_ytd`, T-073) and
+  `input_refs.ttm` states the route. A fiscal year without four quarters takes the printed `fy` rows (`F_FY_PRINTED`):
   flows, margins, `eps_basic_fy`. `repeat_ok` is accepted by `printed_quarters`, `ttm_filings`, `_printed_year_ago`, `_printed_fy` and
   `pilot3_fin`.
 - **MCP**: `pilot3_fin` reads `fin_quarter_printed` after `fin_quarter_xbrl` returns no row for a line item and period, `definition`
   `printed_comparative`, provenance table `fin_quarter_printed`, doc + page, `as_of` honoured; `pilot3_sql` and `catalog` list the table.
-- **Measured 5 Nov 2026** on the pilot10 copy (`scratch/w_cmp2.db`, built from `scratch/l3_base.db`, old round's `scratch/w_cmp.db`):
+- **Measured 5 Nov 2026 (pre-T-073 baseline)** on the pilot10 copy (`scratch/w_cmp2.db`, built from `scratch/l3_base.db`, old round's `scratch/w_cmp.db`):
   6,685 rows in 4 min 08 s for the 10 companies (fix round 5,587 -> 6,685; KEC 1,032, BAJFINANCE 1,253, HINDALCO 734, HDFCBANK 183,
   SBILIFE 273, INFY 657, SUNPHARMA 987, MARUTI 200, HINDUNILVR 798, ETERNAL 568), `xbrl_ok` 1,562, `sum_ok` 2,408, `repeat_ok` 1,313,
   `unchecked` 1,402 (was 2,136); 246 cells to `w_cmp2_comparatives_review.csv` (was 169; +101 `sum_ambiguous`, +60 repair, 49 failed, 35
@@ -415,3 +424,75 @@ failures with it). The answer format gains optional `formula` and `inputs` on ea
 misses, 240 graded-right answers) the checker caught 10 of the 16 and flagged 3 of the 240; the two real ones are slips in
 the `numbers` list itself and the false alarm is a digits coincidence. Commands, reason codes and the misses it cannot
 catch: `docs/DEVELOPER_GUIDE.md` section O12.
+### 9c. Store defects from the 600-answer test (T-073, 5 Nov 2026)
+
+Four general rules, no company name in code.
+
+- **Share count = the shareholding pattern's exact total.** `stores.build_share_fallback` writes the
+  `shareholding_pattern` row of `shp_category` to `share_capital` for every quarter end and basis, beside the
+  paid-up/face-value row, not only where the results filing gave none (`source_table='shp_category'`, the SHP's
+  own `known_at`). `ratios._share_count` and `_valuation` take the latest pattern row the day may see and fall back
+  to paid-up only before that filing; `lookups_pilot3.holding` orders the pattern row first on the same date. At
+  30 Sep 2026: ETERNAL 9,650,350,647, HINDUNILVR 2,349,591,262, HINDALCO 2,247,226,523.
+- **Stock-in-trade and inventory-change cost lines.** `stores.STOCK_COST_TAGS` maps `PurchasesOfStockInTrade` to
+  `purchases_of_stock_in_trade` and `ChangesInInventoriesOfFinishedGoodsWorkInProgressAndStockInTrade` to
+  `changes_in_inventories`; the `quarterly` view does not expose them, so `_quarter_extras` reads them from
+  `results_xbrl.facts` (`context='OneD'`), and `lexicon/results_lines.yaml` maps the same captions in a printed
+  table. `ratios._gross_margin` (`F_GROSS_M`) = 100 * (revenue - materials - stock-in-trade purchases - inventory
+  change) / revenue, quarterly and annual, non-lenders only. HINDUNILVR Q2 FY27 consolidated 47.57% (materials
+  6,408 cr + purchases 3,654 cr - inventory change 507 cr over revenue 18,226 cr).
+- **Valuation history.** The printed role pool depends on the current quarter end and the column count
+  (`_role_set`), so a Q1 table's "year ended" column is `last_fy`, a Q4 table's is `ytd`/`prior_ytd` and a five- or
+  six-column Q2/Q3 table carries `last_fy`; `_assign_tokens` matches values to columns monotonically, so a missing
+  middle cell cannot slide the half-year EPS under the year-ago quarter. `_valuation` picks the basis with both a
+  share count and a quarterly statement (a stray consolidated printed page no longer strands the standalone filer,
+  SBILIFE), and where the filing prints ytd + prior-ytd but no last full year the last year comes from its own
+  `fin_annual_line` FY row known by that day (`last_fy(annual) + ytd - prior_ytd`, recorded in `input_refs.ttm`).
+  With `compute_start='2024-07-01'` (T-073) the four quarters before the window are read through the TEMP views as
+  inputs only, so once four are known `last4` forms the TTM directly; `fin_annual_line_input` supplies the FY net
+  worth / net debt. EV/EBITDA uses the latest **filed** balance sheet, annual or half-year, and `input_refs.net_debt`
+  states `bs <period_end> <FY|H1> known <date>`; HINDALCO's H1 BS has no derived `net_debt`, so its EV rests on FY26
+  until the next annual, and the lenders keep none (by design).
+  Every session keeps `known_at <= date`; `test_pilot3_ratios.py` proves it on a fixture.
+- **Year-to-date flows.** A YTD flow in a document filed after the quarter ended, with no period mention in its own
+  sentence, is stored as `fiscal_period='YTD'`, `period_type='YTD'`, `as_of_date` = the filing date
+  (`kpi._ytd_period(..., filed)`); a period printed next to the qualifier keeps the half-year/nine-month label.
+  KEC's 2 Nov release prints "YTD Order intake of over Rs. 13,500 crore" and states no H1 figure: the row is
+  `YTD / 2026-11-02` and `dimension='total'`. `find_dimension` refuses a segment named after a share of the total
+  ("~70% from T&D") instead of tagging the total with it.
+- **Measured** on `D:\RealityEngine\pilot10\scratch\w_t073.db` (copy of `pilot10.db`, stores + comparatives + ratios
+  rebuilt for all ten with `compute_start='2024-07-01'`, KEC KPI rebuilt): A1 `dev.jsonl` 730 -> **759/898** (BAJFINANCE
+  79, ETERNAL 72, HDFCBANK 84, HINDALCO 77, HINDUNILVR 81, INFY 72, KEC 64, MARUTI 81, SBILIFE 76, SUNPHARMA 73; no
+  company below its round-1 score); `checkpages run` 145 found (29/59/57). Latest market cap uses ETERNAL 9,650,350,647 /
+  HINDUNILVR 2,349,591,262 / HINDALCO 2,247,226,523 shares (book value per share at 30 Sep 2026: ETERNAL 33.96 -> 32.41,
+  HINDUNILVR 207.79 -> 207.82, HINDALCO 615.24 -> 607.78). **PE and EV sessions: 269 of 269 for every company with a share
+  count from window start** (before -> after: BAJFINANCE 188/0 -> 269/0, ETERNAL 130/10 -> 269/269, HDFCBANK 11/0 ->
+  269/0, HINDALCO 245/113 -> 269/269, HINDUNILVR 255/128 -> 269/269, INFY 71/8 -> 269/269, KEC 188/117 -> 269/269,
+  MARUTI 130/6 -> 269/269, SUNPHARMA 246/113 -> 269/269; lenders keep no EV by design). INFY's 2025-11-14 row: close
+  1502.8, trailing EPS 67.87 = 16.43 + 16.98 + 16.70 + 17.76 (Q4FY25..Q2FY26, all known by then), PE 22.14,
+  `input_refs.ttm='4_quarters'`; its first PE session is 2025-10-01. HINDUNILVR Q2 FY27 `gross_margin_pct` 47.57%
+  consolidated (cost lines = total expenses for every non-lender's latest quarter, gap 0.00%; the two lenders' gaps are
+  their interest/premium P&L, not missing cost captions).
+- **Inputs stay inputs.** After the build `fin_quarter_xbrl` starts 2025-12-31 and `fin_quarter_xbrl_input` ends
+  2025-09-30 (2,086 rows); `price_delivery` starts 2025-10-01 and its input ends 2025-09-30; `fin_annual_line` starts
+  2025-12-31 and its input ends 2025-09-30. `valuation_daily` starts 2025-10-01, `ratio_panel` 2025-12-31; 0 rows precede
+  the window, 0 valuation rows have `known_at > date`, 0 ratio rows are known before their period end.
+- **SBILIFE, 230 sessions not 269.** Its first exact share count is the 30 Sep 2025 shareholding pattern known
+  2025-11-28; a life insurer files no paid-up/face-value XBRL, so there is no earlier results-derived count. From that day
+  it has 230 NSE sessions; PE starts 2026-01-28 (190 sessions) when the Q3 FY26 filing is the fourth known quarter, and
+  the 40 sessions from 2025-11-28 to 2026-01-27 stay without PE for lack of that fourth quarter. Its EPS tag **is** read
+  (`BasicAndDilutedEPSAfterExtraordinaryItemsNetOfTaxExpenseForThePeriodNotToBeAnnualized` -> `eps_basic`), 7 XBRL
+  filings since April 2025 (3 input + 4 window quarters).
+- **INFY's Q3 filing cells.** With the input XBRL the prior-year quarter cells become `xbrl_ok` (Q3FY25 EPS 16.43 /
+  15.31, PAT, revenue); the nine-month `prior_ytd` EPS cells stay `unchecked` because the XBRL store holds quarters, not
+  cumulative 9M EPS. They no longer matter: the four-quarter route forms the TTM.
+- **No stop condition remains.** KEC's 188 was not an absent filing: its earlier ISIN (`INE389H01014`, 49 filings to
+  Dec 2024) was missing from the profile's `isins`, so the stores filtered those rows out; adding it (and SUNPHARMA's
+  `INE044A01028`) brings the fourth pre-window quarter in. Every filing the named companies' TTM needs is held.
+- **Test status.** `test_pilot3_comparatives.py` 21 passed, `test_pilot3_ratios.py` 12 passed, `test_pilot3_profile.py`
+  6 of 7: `test_manifest_docs_build_and_window` fails on a pre-existing fixture (its PDF text is clipped at "Revenue for
+  Q2 FY26 was R", and the HEAD `kpi.py` also returns no row for the clipped order-book sentence under the auto_oem
+  profile), so it is not a T-073 regression; the fixture needs a wider text box or a transcript assertion.
+
+
+
