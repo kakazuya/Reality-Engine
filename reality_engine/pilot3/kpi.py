@@ -266,7 +266,7 @@ def parse_periods(text: str) -> list[Period]:
 # ---------------------------------------------------------------- numbers and units
 NUM_CORE = r"\(?-?\d{1,3}(?:,\d{2,3})+(?:\.\d+)?\)?|\(?-?\d+(?:\.\d+)?\)?"
 VAL_RX = re.compile(
-    r"(?<![A-Za-z])(?P<cur>₹|`|Rs\.?|INR|US\$|USD|\$|EUR|€)?\s?(?P<num>" + NUM_CORE + r")\s?"
+    r"(?<![A-Za-z0-9])(?P<cur>₹|`|Rs\.?|INR|US\$|USD|\$|EUR|€)?\s?(?P<num>" + NUM_CORE + r")\s?"
     r"(?P<suf>crores?|crs?\b\.?|lakhs?|mn\b|mm\b|million|billion|trillion|bn\b|tn\b|kt\b|kilo ?tonnes?|tonnes?|tons?|mt\b|%|per ?cent|bps|basis points|x\b|times|days)?",
     re.I)
 _UNIT_BY_SUFFIX = {
@@ -463,6 +463,13 @@ def _rx(p: str) -> re.Pattern:
 
 
 GENERIC_WORDS = {"margin", "margins", "revenue", "ebitda", "sales", "pat", "production", "shipments", "shipment"}
+# Words a page heading prints as a section or a metric, never as the issuer's name ("Results Q2 FY26",
+# "Company Q2 FY27 Earnings Conference Call").
+_SECTION_WORDS = GENERIC_WORDS | {
+    "results", "highlights", "performance", "financial", "business", "snapshot", "update", "updates",
+    "outlook", "guidance", "summary", "income", "profit", "pbt", "quarter", "annual", "press", "release",
+    "report", "reports", "presentation", "call", "investor", "analyst", "conference", "company",
+}
 
 
 def is_generic_label(src: str) -> bool:
@@ -528,28 +535,84 @@ def label_matches(entries: list[Entry], company: str, text: str):
 
 # "Rs. 1,436.81", "No. 5", "Ltd. ..." are abbreviations, not sentence ends.  A bound cut at one of them hid the
 # rest of its own sentence (an investee's "as considered in the Statement" sat after the "Rs. " of the figure).
-_ABBREV = r"(?<!Rs)(?<!rs)(?<!No)(?<!no)(?<!Nos)(?<!Dr)(?<!Mr)(?<!Mrs)(?<!Ms)(?<!Ltd)(?<!Co)(?<!Inc)(?<!approx)(?<!vs)"
+_ABBREV = (r"(?<!\bRs)(?<!\brs)(?<!\bNo)(?<!\bno)(?<!\bNos)(?<!\bDr)(?<!\bMr)(?<!\bMrs)(?<!\bMs)"
+           r"(?<!\bLtd)(?<!\bCo)(?<!\bInc)(?<!\bapprox)(?<!\bvs)")
 _SENT_END = re.compile(_ABBREV + r"[.!?](?=\s+[A-Z0-9(])")
+# A bullet mark at a line start starts and ends a sentence: the next bullet is another figure's block, so a
+# segment word in it is not this figure's (KEC's order book bullets under T&D/Civil).
+_BULLET_MARK = re.compile(r"(?m)^[ \t]*[•✓▪►]\s*")
 
 
 def _sentence_bounds(text: str, pos: int) -> tuple[int, int]:
-    """Start and end of the sentence holding ``pos`` (a full stop before a capital or digit, or a blank line)."""
+    """Start and end of the sentence holding ``pos`` (a full stop before a capital or digit, a bullet mark at a
+    line start, or a blank line)."""
     start = 0
-    for m in _SENT_END.finditer(text, 0, pos):
-        start = m.end()
+    for m in _SENT_END.finditer(text):
+        if m.start() >= pos:
+            break
+        start = m.end()      # the lookahead must still see the capital that starts the sentence at ``pos``
     blank = text.rfind("\n\n", 0, pos)
     if blank >= 0:
         start = max(start, blank)
+    bullet = None
+    for bullet in _BULLET_MARK.finditer(text, 0, pos):
+        pass
+    if bullet is not None:
+        start = max(start, bullet.end())
     m = _SENT_END.search(text, pos)
     end = m.start() + 1 if m else len(text)
     blank = text.find("\n\n", pos)
     if blank >= 0:
         end = min(end, blank)
+    bullet = _BULLET_MARK.search(text, pos)
+    if bullet is not None:
+        end = min(end, bullet.start())
     return start, end
 
 
+def _block_heading_dim(text: str, pos: int, dims: list[Dim], company: str, basis: str) -> str | None:
+    """Segment heading of the bullet block holding ``pos``, when the bullet bounds the sentence: a block whose
+    last bullet ends at a heading takes that heading ("... order book & L1 of over Rs. 10,000 Cr" / "Civil"), and
+    a block that ends with a further bullet takes the heading above it ("4. Gold Loan" / "• AUM: ...").  An
+    entity page's overview bullets are that entity's, not a segment's."""
+    entity_page = basis not in ("", "consolidated", "standalone", "not_stated")
+    line_end = text.find("\n", pos)
+    last = True
+    i = line_end
+    while i >= 0:
+        j = text.find("\n", i + 1)
+        line = text[i + 1:len(text) if j < 0 else j].strip()
+        if line:
+            last = line[0] not in "•✓▪►"
+            break
+        i = j
+    if last and not entity_page:
+        i = line_end
+        while i >= 0:
+            j = text.find("\n", i + 1)
+            line = text[i + 1:len(text) if j < 0 else j].strip()
+            if line and line[0] not in "•✓▪►":
+                return _heading_dim(line, "", dims, company)[0]
+            if j < 0:
+                break
+            i = j
+    i = text.rfind("\n", 0, pos) + 1
+    for _ in range(20):
+        if i <= 0:
+            break
+        prev_hi = i - 1
+        prev_lo = text.rfind("\n", 0, prev_hi) + 1
+        prev = text[prev_lo:prev_hi].strip()
+        i = prev_lo
+        if not prev or prev[0] in "•✓▪►":
+            continue
+        prev = re.sub(r"^\s*\d+[.)]\s*", "", prev)
+        return _heading_dim(prev, "", dims, company)[0]
+    return None
+
+
 def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: int = 90,
-                   value_end: int | None = None) -> str:
+                   value_end: int | None = None, basis: str = "") -> str:
     """Dimension word nearest before pos (within window), else nearest after within 40 chars, else total.
 
     The word must sit in the same sentence: a segment named in an earlier sentence describes something else
@@ -585,6 +648,12 @@ def find_dimension(dims: list[Dim], company: str, text: str, pos: int, window: i
     best = nearest(max(lo_s, pos - 260), min(hi_s, pos + 40))
     if best is None and re.search(r"\d+(?:\.\d+)?\s*%\s*of\b", text[lo_s:hi_s], re.I):
         best = nearest(max(0, pos - 400), pos)
+    if best is None:
+        # A bullet mark bounds the sentence, so the block's segment heading is outside it: read the block's own
+        # heading (the line above it, else the heading that follows a KEC-style block).
+        line_lo = text.rfind("\n", 0, pos) + 1
+        if _BULLET_MARK.match(text[line_lo:]):
+            best = _block_heading_dim(text, pos, dims, company, basis or page_basis(text, company))
     return best or "total"
 
 
@@ -713,17 +782,24 @@ def page_basis(text: str, company: str = "") -> str:
         return any(o and (o in norm or norm in o) for o in own)
 
     for ln in lines[:6] + lines[-3:]:     # a deck prints its title in the header or the footer
-        m = re.match(r"^([A-Z][A-Za-z&.\-]{1,24})\s+q[1-4]\s?fy\d{2}\b", ln, re.I)
-        is_report, tail = False, ""
-        if m is None:
+        m = re.match(r"^([A-Z][A-Za-z&.\-]{1,24})\s+q[1-4]\s?fy\d{2}\b(.*)$", ln, re.I)
+        if m is not None:
+            # "Novelis Q3FY26 Earnings" is that entity's page; "Revenue Q3 FY26" / "Highlights Q2FY26" are a
+            # section's numbers, not an issuer's title, so an earnings/results/presentation/call word must follow.
+            if not re.search(r"\b(?:earnings?|results?|presentation|call|conference|investor|analyst)\b",
+                             m.group(2), re.I):
+                continue
+        else:
             m = re.match(r"^([A-Z][A-Za-z&.\- ]{1,40}?)\s+(?:reports|announces|posts|declares)\b(.*)$", ln, re.I)
-            is_report, tail = m is not None, (m.group(2) if m else "")
+            if m is not None and not re.match(
+                    r"\s*(?:its\s+)?(?:q[1-4]\s?fy\d{2}|h[12]\s?fy\d{2}|[a-z]+\s+quarter|"
+                    r"quarter|half[- ]year|annual|full[- ]year|financial|results?|press|earnings)\b",
+                    m.group(2), re.I):
+                continue      # "Statutory Reports" is a section heading, not an issuer name
         if m:
             raw = m.group(1).strip()
-            if is_report and not re.match(
-                    r"\s*(?:its\s+)?(?:q[1-4]\s?fy\d{2}|h[12]\s?fy\d{2}|[a-z]+\s+quarter|"
-                    r"quarter|half[- ]year|annual|full[- ]year|financial|results?|press|earnings)\b", tail, re.I):
-                continue      # "Statutory Reports" is a section heading, not an issuer name
+            if re.sub(r"[^a-z]", "", raw.lower()) in _SECTION_WORDS:
+                continue      # a metric or a section word ("Results Q2 FY26", "Company Q2 FY27 ... Call") is not an issuer
             if re.search(r"\b(?:limited|ltd|inc|corp|corporation|company|plc)\b\.?$", raw, re.I):
                 continue      # the issuer's own legal name, not a subsidiary's short title
             ent = raw.lower().replace(" ", "_")
@@ -762,18 +838,50 @@ def page_basis(text: str, company: str = "") -> str:
 
 
 _SUB_ENTITY = re.compile(r"\b([A-Z][A-Za-z&.\- ]{2,60}?)\s+(?:LIMITED|Limited|LTD|Ltd)\b")
+# The words that follow an entity when it is the paragraph's subject ("X Ltd (HSL), in which the Bank holds",
+# "X Limited - Q1 FY27" as a block heading).  A name followed by other prose is a passing mention.
+_SUBJECT_TAIL = re.compile(
+    r"^(?::|(?:is|are|was|were|has|have|had|reports?|reported|announces|posts?|posted|declares?|declared|delivered|"
+    r"grew|grows?|stood|stands?|operates?|registered|enjoys?|continues?|remains?|holds?|in\s+which)\b)", re.I)
+_SUBJECT_HEAD = re.compile(r"^\s*[-–—:]\s*(?:q[1-4]|0?[1-4]\b|h[12]|9m\b|fy\s?\d{2})", re.I)
+_PARAGRAPH = re.compile(r"\n[ \t]*\n")
+
+
+def _paragraph_start(text: str, pos: int) -> int:
+    """Start of the blank-line-delimited paragraph holding ``pos`` (an address block is its own paragraph)."""
+    last = None
+    for last in _PARAGRAPH.finditer(text, 0, pos):
+        pass
+    return last.end() if last else 0
+
+
+def _entity_subject(text: str, m) -> bool:
+    """True when the entity ``m`` names is a subject, not an address line or a passing mention: followed by its
+    predicate ("(HSL), in which the Bank holds") or by a block heading's quarter ("Limited - Q1 FY27")."""
+    tail = text[m.end():m.end() + 60]
+    tail = re.sub(r"^\s*(?:\([^)]{1,40}\)\s*)?(?:,\s*)?", "", tail)
+    return bool(_SUBJECT_TAIL.match(tail) or _SUBJECT_HEAD.match(text[m.end():m.end() + 20]))
 
 
 def _entity_before(text: str, pos: int, company: str) -> str | None:
-    """The investee a nearby sentence names ("Bajaj Housing Finance Limited - Q2 FY27 ..."), when the name is not
-    the reporting company's own: a total-dimension figure in that block belongs to the investee, not the company."""
+    """The investee the paragraph names as its subject ("Bajaj Housing Finance Limited - Q2 FY27 ..."), when the
+    name is not the reporting company's own: a total-dimension figure in that block belongs to the investee, not
+    the company.  Only the paragraph's subject counts: an address block ("National Stock Exchange of India
+    Limited") or a passing mention ("stake sale in subsidiary HDB Financial Services Ltd, Other Income grew")
+    does not make a figure that entity's."""
     own = _own_names(company)
-    for m in _SUB_ENTITY.finditer(text[max(0, pos - 260):pos]):
+    best = None
+    lo = max(_paragraph_start(text, pos), pos - 600)
+    for m in _SUB_ENTITY.finditer(text, lo, pos):
         name = m.group(1).strip()
         norm = re.sub(r"[^a-z]", "", name.lower()) + "ltd"
         if any(o and (o in norm or norm in o) for o in own):
             continue
-        return re.sub(r"[^a-z]+", "_", name.lower()).strip("_")
+        if not _entity_subject(text, m):
+            continue
+        best = re.sub(r"[^a-z]+", "_", name.lower()).strip("_")
+    if best:
+        return best
     window = text[max(0, pos - 260):pos]
     best = None
     for name, basis in _entity_words().items():     # an abbreviated investee name ("BFSL", "BHFL") in the paragraph
@@ -915,7 +1023,7 @@ _CAPEX_NOT = re.compile(r"(?:free cash flow|fcf|cash flow)[^.]{0,30}?\b(?:before
 _NET_CASH = re.compile(r"\b(?:net cash|cash surplus)\b", re.I)
 # A timeframe phrase beside the label names the figure's own span (a nine-month figure in a Q3 document).
 _FRAME = ((re.compile(r"\b(?:first\s+)?nine\s+months?\b|\b9M\b", re.I), "9M"),
-          (re.compile(r"\b(?:first\s+)?six\s+months?\b|\bhalf[\s-]year\b|\bH1\b", re.I), "H1"))
+          (re.compile(r"\b(?:first\s+)?six\s+months?\b|\bhalf[\s-]year\b|\bH1\b(?!\s*[,0-9])", re.I), "H1"))
 # "revenue of $747 million ... arising from opening unearned revenue": a component, not the total.
 _COMPONENT_TAIL = re.compile(r"\b(?:arising from|pertaining to|relating to)\b", re.I)
 
@@ -1149,7 +1257,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     v2s = find_values(text, e.kind, e.unit, v1.end + vm.end(), min(len(text), v1.end + 90), per_spans)
                     if v2s and v2s[0].start - (v1.end + vm.end()) < 14:
                         items.append((v2s[0], vm))
-                dim = find_dimension(dims, company, text, m.start(), value_end=v1.end)
+                dim = find_dimension(dims, company, text, m.start(), value_end=v1.end, basis=basis)
                 if e.kind == "pct" and profile.under_profile():
                     win = text[max(0, m.start() - 300):m.start() + 40]
                     found = {d.dimension for d in dims if not (d.companies and company not in d.companies)
@@ -1305,8 +1413,8 @@ def _anchored_quote(text: str, label: str, num: str, nth: int, maxgap: int = 170
     return None
 
 
-_PROSE_ROW = re.compile(r"\b(?:stood|stands?|was|were|grew|grow|increased|decreased|rose|fell|amounted|reported|"
-                        r"respectively|compared|against|improved|declined)\b", re.I)
+_PROSE_ROW = re.compile(r"\b(?:stood|stands?|was|were|is|are|has|have|had|grew|grow|increased|decreased|rose|fell|"
+                        r"amounted|reported|respectively|compared|against|improved|declined)\b", re.I)
 _PCT_LINE = re.compile(r"^\s*(?:\d{1,3}(?:\.\d+)?%\s*)+$")
 _PCT_NUM = re.compile(r"(\d{1,3}(?:\.\d+)?)%")
 _REV_LINE = re.compile(r"revenues?\b[^\n]{0,50}?(?:rs\.?|₹|inr)\s*(?P<num>[\d,]+(?:\.\d+)?)\s*(?:cr\b|crores?)", re.I)
@@ -1590,6 +1698,8 @@ def segment_revenue_rows(text: str, page: int, company: str, entries, dims, basi
             continue
         dim, qend = None, -1
         for j in range(i + 1, min(len(lines), i + 14)):
+            if not lines[j].strip():
+                break          # a section title in the next paragraph is not this block's segment heading
             nxt = lines[j + 1].strip() if j + 1 < len(lines) else ""
             d, used = _heading_dim(lines[j].strip(), nxt, dims, company)
             if d:
