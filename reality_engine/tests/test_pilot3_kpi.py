@@ -1158,4 +1158,153 @@ def test_a_ytd_flow_filed_after_the_quarter_end_is_dated_as_of_the_filing():
     assert kpi.find_dimension(DIMS, "KEC", text, text.index("order intake"), value_end=text.index("70%")) == "total"
 
 
+def test_worded_quarter_titles_are_periods():
+    """Real titles: Novelis's release says "Third Quarter Fiscal Year 2026", a Maruti release "Quarter 4
+    (January-March), FY2025-26", and a results page "Q2 (July-September), FY 2026-27"."""
+    assert periods("Novelis Reports Third Quarter Fiscal Year 2026 Results")[0][0] == "Q3FY26"
+    assert periods("Quarter 4 (January-March), FY2025-26")[0][0] == "Q4FY26"
+    assert periods("Q2 (July-September), FY 2026-27")[0][0] == "Q2FY27"
+    assert periods("Q2 and H1 FY 2026-27")[0][0] == "H1FY27"     # a two-digit year range keeps its second year
+    assert periods("PAT 5,553 crore for 04 FV26 and 19,332 crore for FY26")[0][0] == "Q4FY26"   # OCR FY -> FV
+
+
+def test_a_timeframe_phrase_names_the_figures_own_span():
+    """Real rows: SUNPHARMA's API figure is the first nine months' while the document reports a Q3, and INFY's
+    14,300 crore PAT is "for the six months ended September 30, 2025", not the document's year."""
+    q3 = kpi.doc_default_period(["Sun Pharma results for the quarter ended December 31, 2025"])
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"SUNPHARMA": "pharma"}))
+    try:
+        api = [r for r in kpi.sentence_rows(
+            "For the first nine months, API sales were Rs. 15,114 million, a decline of 5.3%",
+            5, "SUNPHARMA", ENTRIES, DIMS, q3) if r.metric == "api_revenue"]
+    finally:
+        profile.activate(None)
+    assert {(r.value, r.unit, r.fiscal_period) for r in api} == {(15114.0, "inr_mn", "9MFY26")}
+    pat = [r for r in kpi.sentence_rows(
+        "For the six months ended September 30, 2025, the company recorded consolidated revenue from operations of "
+        "₹ 86,769 crore and consolidated profit after tax of ₹ 14,300 crore.", 6, "INFY", ENTRIES, DIMS,
+        kpi.parse_periods("FY25")) if r.metric == "pat"]
+    assert {(r.value, r.fiscal_period) for r in pat} == {(14300.0, "H1FY26")}
+
+
+def test_a_year_token_or_a_footnote_number_is_not_a_money_level():
+    """Real rows: INFY's results page prints "Particulars 2026 2025" over the revenue table, and a definition note
+    ends "... under IFRS. (3)"; neither the year nor the footnote number is a rupee figure."""
+    rows = kpi.sentence_rows("Revenue from operations for the year ended March 31, 2026 is as follows: "
+                             "Particulars 2026 2025 Revenue from software services 38,393 33,876",
+                             1, "INFY", ENTRIES, DIMS, [])
+    assert all(r.value != 2026 for r in rows if r.metric == "revenue")
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"INFY": "it_services"}))
+    try:
+        capex = kpi.sentence_rows(
+            "Free cash flow is defined as net cash provided by operating activities less capital expenditure as per "
+            "the Consolidated Statement of Cash Flows prepared under IFRS. (3) Excludes the Labour Codes effect.",
+            4, "INFY", ENTRIES, DIMS, kpi.parse_periods("FY26"))
+        assert all(r.value >= 0 for r in capex if r.metric == "capex")
+    finally:
+        profile.activate(None)
+
+
+def test_the_table_caption_states_the_tables_own_dollar_unit():
+    """Real pages: INFY's results pages declare "(In $ million)" / "(Dollars in millions)" over a table, so the bare
+    tokens in that table are US$ million even when the same page prints a rupee table."""
+    assert kpi._usd_unit("Extracted ... for: (In $ million except per equity share data)") == "usd_mn"
+    assert kpi._usd_unit("(Dollars in millions) Particulars 2026 2025") == "usd_mn"
+    assert kpi._usd_unit("(₹ in crore) Particulars 2026 2025") is None
+
+
+def test_page_basis_names_a_subsidiary_release():
+    """Real pages: a Novelis release is titled "Novelis Reports Third Quarter ..." or footed "Novelis Q4FY26
+    Earnings"; the company's own title is not a subsidiary."""
+    assert kpi.page_basis("Novelis Reports Third Quarter Fiscal Year 2026 Results\nHighlights", "HINDALCO") == "novelis"
+    assert kpi.page_basis("Body text\nNovelis Q4FY26 Earnings", "HINDALCO") == "novelis"
+    assert kpi.page_basis("Hindalco Q1 FY27 – Earnings Presentation\nConsolidated : Key Financials", "HINDALCO") \
+        == "consolidated"      # the company's own deck keeps its stated basis, never a subsidiary name
+    assert kpi.page_basis("Statutory Reports\nCorporate Overview\nStandalone", "SUNPHARMA") != "statutory"
+    assert kpi.page_basis("Q3 FY26 Executive summary - BFSL\nAUM grew 63%", "BAJFINANCE") == "bfsl"
+    assert kpi.page_basis("Bajaj Broking's performance highlights for FY2026", "BAJFINANCE") == "bajaj_broking"
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"BAJFINANCE": "nbfc"}))
+    try:      # a subsidiary's release title is still that subsidiary's
+        assert kpi.page_basis("Bajaj Housing Finance Reports Second Quarter Results\nHighlights", "BAJFINANCE") \
+            == "bajaj_housing_finance"
+    finally:
+        profile.activate(None)
+
+
+def test_a_quarter_ended_march_title_is_the_quarter():
+    """Real pages: a results release titled "quarter ended 31st March 2026" states the quarter's figures, while
+    "quarter and year ended March 31" keeps the year default."""
+    assert [p.canon for p in kpi.doc_default_period(["CONSOLIDATED RESULTS FOR THE QUARTER ENDED 31st MARCH 2026"])] \
+        == ["Q4FY26"]
+    assert [p.canon for p in kpi.doc_default_period(["Results for the quarter and year ended March 31, 2026"])] \
+        == ["FY26"]
+
+
+def test_net_cash_is_negative_net_debt():
+    """Real rows: SUNPHARMA's "net cash of $3.2 billion" is negative net debt, while ETERNAL's "net cash acquired
+    on acquisition is INR 5 crore" is a transaction, not a level."""
+    rows = kpi.sentence_rows("Consolidated net cash of $3.2 billion as of March 31, 2026", 1, "SUNPHARMA", ENTRIES, DIMS, [])
+    debt = [r for r in rows if r.metric == "net_debt"]
+    assert debt and all(r.value < 0 for r in debt)
+    rows = kpi.sentence_rows("Net cash acquired on acquisition is INR 5 crore as of March 31, 2026", 1, "ETERNAL",
+                             ENTRIES, DIMS, [])
+    assert not [r for r in rows if r.metric == "net_debt"]
+
+
+def test_capex_and_quarter_rules_under_a_profile():
+    """Real rows: HINDALCO's "adjusted free cash flow before capex $414" is not capex, a short line of table
+    numbers is not a sentence, and "quarterly ... $1,756" is the document's Q4, not its year."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"HINDALCO": "metals_nonferrous"}))
+    try:
+        rows = kpi.sentence_rows("Adjusted free cash flow before capex $414", 1, "HINDALCO", ENTRIES, DIMS,
+                                 kpi.parse_periods("FY26"))
+        assert not [r for r in rows if r.metric == "capex"]
+        rows = kpi.sentence_rows("Adjusted EBITDA /tonne ($/tonne) $525 $489 $406 $494 $480", 1, "HINDALCO",
+                                 ENTRIES, DIMS, kpi.parse_periods("FY26"))
+        assert not [r for r in rows if r.metric == "ebitda_per_tonne"]
+        rows = kpi.sentence_rows("All-time high quarterly Aluminium Upstream EBITDA per tonne at $1,756, up 4%", 1,
+                                 "HINDALCO", ENTRIES, DIMS, kpi.parse_periods("FY26"))
+        assert {(r.fiscal_period, r.dimension) for r in rows if r.metric == "ebitda_per_tonne"} == \
+            {("Q4FY26", "aluminium_upstream")}
+    finally:
+        profile.activate(None)
+    text = ("At a consolidated level, Adjusted Revenue grew 190% YoY to INR 16,692 crore, though like-for-like "
+            "growth was 64% (the difference reflects the accounting shift to inventory ownership in quick commerce).")
+    assert kpi.find_dimension(DIMS, "ETERNAL", text, text.index("Adjusted Revenue")) == "total"
+
+
+def test_a_comparative_label_and_an_investee_note_are_not_the_companys():
+    """Real rows: HINDALCO's press release compares the prior year's "net income of $110 million", and KEC's auditor
+    report gives its branches' and JVs' revenue and PAT, not the company's."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"HINDALCO": "metals_nonferrous"}))
+    try:
+        rows = kpi.sentence_rows("Net loss attributable to our common shareholder of $160 million, compared to a net "
+                                 "income of $110 million in the prior year.", 1, "HINDALCO", ENTRIES, DIMS,
+                                 kpi.parse_periods("Q3FY26"))
+        rows = kpi.sentence_rows("AUM grew by z 20,811 crore in Q2 FY26", 8, "BAJFINANCE", ENTRIES, DIMS,
+                                 kpi.parse_periods("Q2FY26"))
+        assert all(r.value != 20811 for r in rows if r.metric == "aum")     # a change is not the AUM level
+        rows = kpi.sentence_rows("Bajaj Housing Finance Limited - Q2 FY27 ► Assets under management grew by 25% to "
+                                 "z 158,205 crore as of 30 September 2026.", 9, "BAJFINANCE", ENTRIES, DIMS,
+                                 kpi.parse_periods("Q2FY27"))
+        assert {(r.dimension, r.value) for r in rows if r.metric == "aum"} == \
+            {("bajaj_housing_finance", 158205.0)}       # a subsidiary's AUM is not the company's total
+    finally:
+        profile.activate(None)
+    profile.activate(_profile_for({"KEC": "epc_capital_goods"}))
+    try:
+        rows = kpi.sentence_rows("The interim financial information of 39 branches and 34 jointly controlled operation "
+                                 "reflect total revenue from operations of Rs. 1,241.48 crores, profit after tax (net) of "
+                                 "Rs. 110.59 crores for the quarter ended June 30, 2026.", 2, "KEC", ENTRIES, DIMS,
+                                 kpi.parse_periods("Q1FY27"))
+        assert all(r.value != 110.59 for r in rows if r.metric == "pat")
+    finally:
+        profile.activate(None)
+
+
 

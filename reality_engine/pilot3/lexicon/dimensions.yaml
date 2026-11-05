@@ -6,7 +6,7 @@ dimensions:
   - {dimension: aluminium_downstream, patterns: ["aluminium downstream", "aluminum downstream", "downstream aluminium", "downstream\\b"], companies: [HINDALCO]}
   - {dimension: copper, patterns: ["copper"], companies: [HINDALCO]}
   - {dimension: novelis, patterns: ["novelis"], companies: [HINDALCO]}
-  - {dimension: india, patterns: ["india business", "india aluminium", "india operations"], companies: [HINDALCO]}
+  - {dimension: india, patterns: ["india business", "india aluminium", "india operations", "india (?:gross|net) debt", "india cash"], companies: [HINDALCO]}
   - {dimension: T&D, patterns: ["t\\s?&\\s?d\\b", "transmission (and|&) distribution", "power transmission"], companies: [KEC]}
   - {dimension: civil, patterns: ["civil\\b"], companies: [KEC]}
   - {dimension: transportation, patterns: ["transportation", "railways?\\b"], companies: [KEC]}
@@ -31,3 +31,9 @@ dimensions:
   # company's top line
   - {dimension: non_par, patterns: ["non[- ]par\\b"]}
   - {dimension: protection, patterns: ["\\bprotection\\b"]}
+  # T-079: a consumer-internet letter reports each business on its own: a margin printed after a business name is
+  # that business's, not the group's
+  - {dimension: food_delivery, patterns: ["food delivery", "food ordering"], companies: [ETERNAL]}
+  - {dimension: quick_commerce, patterns: ["quick commerce", "instamart"], companies: [ETERNAL]}
+  - {dimension: going_out, patterns: ["going[- ]out", "\\bdistrict\\b"], companies: [ETERNAL]}
+  - {dimension: hyperpure, patterns: ["hyperpure"], companies: [ETERNAL]}

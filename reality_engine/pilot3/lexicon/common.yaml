@@ -1,7 +1,7 @@
 # Cross-company balance sheet / working-capital KPI family.
 family: common
 entries:
-  - {metric: net_debt, kind: money, unit: inr_cr, labels: ["net debt(?! to)", "net debt including acceptances", "net debt excluding acceptances", "net (cash|debt)\\b(?!\\s+flows?)"], neg: "to (ebitda|equity)|ratio|/|cash flow|activities|used in|generated from|cash (generated|used|flow)|financing|investing|operating activities|net cash (inflow|outflow)s?|cash (inflow|outflow)s?"}
+  - {metric: net_debt, kind: money, unit: inr_cr, labels: ["net debt(?! to)", "net debt including acceptances", "net debt excluding acceptances", "net (cash|debt)\\b(?!\\s+flows?)"], neg: "to (ebitda|equity)|ratio|/|cash flow|activities|used in|generated from|cash (generated|used|flow)|financing|investing|operating activities|net cash (inflow|outflow)s?|cash (inflow|outflow)s?|acquired on acquisition|acquisition is"}
   - {metric: gross_debt, kind: money, unit: inr_cr, labels: ["gross debt"], neg: "ratio"}
   - {metric: net_debt_to_equity, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*equity", "net d/e"]}
   - {metric: debt_to_equity, kind: ratio, unit: x, labels: ["debt[- ]equity( ratio)?"], neg: "net\\s+debt"}
