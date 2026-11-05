@@ -1624,5 +1624,96 @@ def test_an_auditor_note_on_subsidiaries_is_not_the_company_pat():
         profile.activate(None)
 
 
+def test_a_call_figure_is_its_own_quarter_not_a_prior_sentence_year():
+    """T-081 real BAJFINANCE Q2FY26 call p4: "its AUM growth for FY '26 ... cost of funds continue to improve,
+    improved by 27 basis points in Q2 and came in at 7.52%".  The FY phrase belongs to the earlier sentence's AUM
+    guidance; the frame rule read it as this sentence's span and stored FY26."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"BAJFINANCE": "nbfc"}))
+    try:
+        t = ("its AUM growth for FY '26. \n \nSo we now would circle up our guidance to 22- 23% growth for full "
+             "year versus 24-25% that we \nhad pencilled in January'25, when we talked about. In terms of cost of "
+             "funds and liquidity, cost \nof funds continue to improve, improved by 27 basis points in Q2 and came "
+             "in at 7.52%. \n \nFor FY '26, we expect cost of funds to be in the region of over")
+        rows = kpi.sentence_rows(t, 4, "BAJFINANCE", ENTRIES, DIMS, kpi.parse_periods("Q2FY26"))
+        assert {(r.value, r.fiscal_period) for r in rows if r.metric == "cost_of_funds_pct"} == {(7.52, "Q2FY26")}
+    finally:
+        profile.activate(None)
+
+
+def test_sequentially_is_the_calls_quarter_and_a_plan_word_in_the_prior_sentence_is_not_this_figure():
+    """T-081 real calls: the Q2FY27 call's "came down sequentially by 9 basis points and came in at 7.31%" is
+    Q2FY27, and the Q4FY26 call's "improved by 4 basis points in Q4 and came in at 7.41%" used to be dropped
+    because "should come back to double-digit growth" sits in the sentence before it."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"BAJFINANCE": "nbfc"}))
+    try:
+        t = ("We are clear about adding \nbetween 18 MM to 20 MM customers to the franchise in FY27. \nOverall "
+             "franchise I talked about, stood at 129 million. \nCost of funds came down sequentially by 9 basis "
+             "points and came in at 7.31%.")
+        got = [r for r in kpi.sentence_rows(t, 4, "BAJFINANCE", ENTRIES, DIMS, kpi.parse_periods("Q2FY27"))
+               if r.metric == "cost_of_funds_pct"]
+        assert {(r.value, r.fiscal_period) for r in got} == {(7.31, "Q2FY27")}
+        t = ("We expect that it should come back to double-digit growth or the \ncompany growth momentum between Q2 "
+             "and Q3 of FY'27. Cost of funds improved \nby 4 basis points in Q4 and came in at 7.41%.")
+        got = [r for r in kpi.sentence_rows(t, 4, "BAJFINANCE", ENTRIES, DIMS, kpi.parse_periods("Q4FY26"))
+               if r.metric == "cost_of_funds_pct"]
+        assert {(r.value, r.fiscal_period) for r in got} == {(7.41, "Q4FY26")}
+    finally:
+        profile.activate(None)
+
+
+def test_a_year_phrase_keeps_its_figure_when_the_sentence_names_no_quarter():
+    """T-081: MARUTI's Q3FY26 call says "the figure for our next year's capex, but we are going at the run rate of
+    about INR 10,000 crores a year"; the earlier "for FY26" frame is that figure's year, though the call itself
+    reports Q3FY26.  A quarter word in the figure's own sentence would keep the quarter instead."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"MARUTI": "auto_oem"}))
+    try:
+        t = ("And now we are at a \nrun rate of about INR 12,000 crores for FY26 including the Gujarat facility. "
+             "For the next year, \nwe have not done our budgeting exercise yet. We'll be just getting into it. So, "
+             "I think in March, \nwe'll have the figure for our next year's capex, but we are going at the run rate "
+             "of about INR \n10,000 crores a year.")
+        rows = kpi.sentence_rows(t, 12, "MARUTI", ENTRIES, DIMS, kpi.parse_periods("Q3FY26"))
+        assert {(r.value, r.fiscal_period) for r in rows if r.metric == "capex"} == {(10000.0, "FY26")}
+    finally:
+        profile.activate(None)
+
+
+def test_a_bps_change_over_a_quarter_names_the_comparative_not_the_value():
+    """T-081 real deck rows: "cost of funds was 7.52%, an improvement of 27 bps over Q1 FY26" in the Q2FY26 deck is
+    Q2FY26 (Q1 is the base), the subsidiary page's "reduced by 34 bps against Q1 FY26" is Q2FY26 too, and a
+    year-on-year "up 27 bps over Q2 FY25" in a Q2FY26 document stays Q2FY26."""
+    def periods_of(text, default):
+        rows = kpi.sentence_rows(text, 6, "BAJFINANCE", ENTRIES, DIMS, kpi.parse_periods(default))
+        return {(r.value, r.fiscal_period) for r in rows if r.metric == "cost_of_funds_pct"}
+    assert periods_of("In Q2, cost of funds was 7.52%, an improvement of 27 bps over Q1 FY26",
+                      "Q2FY26") == {(7.52, "Q2FY26")}
+    assert periods_of("In Q2, cost of funds was 7.38%, reduced by 34 bps against Q1 FY26 on sequential basis",
+                      "Q2FY26") == {(7.38, "Q2FY26")}
+    assert periods_of("In Q3, Cost of funds was 7.3%, moderated by 5 bps against Q2 FY26 on sequential basis",
+                      "Q3FY26") == {(7.3, "Q3FY26")}
+    # a long deck's page default can be a stale comparative ("Q3 FY25" earlier on the page): the quarter after
+    # the stated comparative is still the value's
+    assert periods_of("In Q3, Cost of funds was 7.3%, moderated by 5 bps against Q2 FY26 on sequential basis",
+                      "Q3FY25") == {(7.3, "Q3FY26")}
+    assert periods_of("In Q4, cost of funds was 7.40%, improving 1 bps over Q4 FY26",
+                      "Q1FY27") == {(7.40, "Q1FY27")}
+    assert periods_of("cost of funds was 7.52%, up 27 bps over Q2 FY25",
+                      "Q2FY26") == {(7.52, "Q2FY26")}
+
+
+def test_a_q4_ytd_amount_is_fy_and_never_fyfy():
+    """T-081 real KEC KPI row: the Q4FY26 call's "record YTD order intake of over INR16,000 crores" was stored
+    FYFY26 (a Q4 period made year-to-date by prefixing "FY" to an existing "FY26")."""
+    rows = kpi.sentence_rows("we have achieved a record YTD order intake of \nover INR16,000 crores reflecting a "
+                             "healthy growth of 20% Y-on-Y.", 2, "KEC", ENTRIES, DIMS,
+                             kpi.parse_periods("Q4FY26"), "2025-11-17T12:41:54")
+    got = {(r.value, r.fiscal_period) for r in rows if r.metric == "order_intake"}
+    assert got == {(16000.0, "FY26")}
+    assert all("FYFY" not in r.fiscal_period for r in rows)
+
+
+
 
 

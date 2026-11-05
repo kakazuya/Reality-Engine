@@ -1113,6 +1113,11 @@ _PERIOD_QUALIFIER = re.compile(r"\b(?:ytd|year[- ]to[- ]date|till date|to date)\
 # a period after one of these links belongs to the comparative, not to this value
 _CMP = re.compile(r"\b(?:as against|compared (?:to|with)|versus|vs\.?|lower than|higher than|up from|down from|"
                   r"from)\b", re.I)
+# "an improvement of 27 bps over Q1 FY26": a change amount plus a comparator link before the period means the
+# period is the *comparative*; the value belongs to the document's own quarter.  "up 27 bps over Q2 FY25" in a
+# Q2FY26 deck is the year-on-year comparison, and the same rule dates the value Q2FY26.
+_CMP_BPS = re.compile(r"\b\d+(?:\.\d+)?\s*(?:bps|basis points?)\b[^.;\n]{0,24}?"
+                      r"\b(?:over|against|vs\.?|versus|compared (?:to|with)|from)\b", re.I)
 # "70% of the approved thresholds", "-1.4% as a % of Revenue": the percentage is a share of another base
 _TAIL_SHARE = re.compile(r"^\s*\(?\s*(?:%|per cent|percent|bps)?\s*(?:of|as a % of|as % of)\s", re.I)
 _LEVEL_LEAD = re.compile(r"\b(?:was|were|is|are|stood|stands?|at|of|reached|reported|posted|post|remaining|remained|"
@@ -1167,15 +1172,24 @@ _FY_FRAME = re.compile(r"\b(?:during|in|for)\s+(?:the\s+)?(?:(?:financial|fiscal
                        r"(\d{4}-\d{2}|\d{4}|\d{2})\b", re.I)
 
 
+# "In Q2, cost of funds was 7.52%" / "came down sequentially by 9 bps": the figure's own sentence names the
+# quarter, so a year phrase in an earlier sentence ("its AUM growth for FY '26") is not this figure's span.
+_QUARTER_CUE = re.compile(r"\b(?:this quarter|for the quarter|quarter ended|quarterly|qoq|sequentially|"
+                          r"quarter[- ]on[- ]quarter|previous quarter|last quarter|(?:march|june|september|december)"
+                          r"\s+quarter|quarter\s*[1-4]|(?:in|for|during)\s+Q[1-4])\b", re.I)
+
+
 def _frame_period(text: str, label: int, value: int, period: Period) -> Period | None:
     """A timeframe phrase beside the label names the figure's own span: "For the first nine months, API sales ..."
     is the nine-month figure even in a Q3 document, and "for the six months ended 30 Sep 2025" is H1FY26.  A
     phrase introduced as a comparison ("than in the first half", "last year's six months") does not override."""
     lo = max(_sentence_bounds(text, label)[0], label - 200)
-    if profile.under_profile() and not parse_periods(text[_sentence_bounds(text, label)[0]:value]):
+    if profile.under_profile() and not _QUARTER_CUE.search(text[lo:value]) \
+            and not parse_periods(text[_sentence_bounds(text, label)[0]:value]):
         fm = _FY_FRAME.search(text[max(0, label - 260):label])
         if fm:
-            before = text[max(0, label - 260 + fm.start() - 32):label - 260 + fm.start()]
+            at = max(0, label - 260) + fm.start()
+            before = text[max(0, at - 32):at]
             if not re.search(r"\b(?:compared|versus|vs\.?|against|previous|last|prior|than)\b", before, re.I):
                 canon = f"FY{_yy(fm.group(1)):02d}"
                 return Period(period.start, period.end, canon, "FY", period_end("FY", canon))
@@ -1230,7 +1244,7 @@ def _ytd_period(period: Period, e: Entry, text: str, label: int, value: int,
             re.search(r"\b(?:H1|H2|9M|half[- ]year|six months|nine months)\b", span, re.I))
         if not tied:
             return Period(period.start, period.end, "YTD", "YTD", day)
-    canon = code + mq.group(2)
+    canon = code + (mq.group(2)[2:] if code == "FY" else mq.group(2))   # Q4 + YTD is FY26, never FYFY26
     ptype = "FY" if code == "FY" else "M"
     return Period(period.start, period.end, canon, ptype, period_end(ptype, canon))
 
@@ -1285,6 +1299,43 @@ def _quarter_of(canon: str | None) -> str | None:
     if not m:
         return None
     return f"{_LAST_QUARTER_OF[m.group(1)]}FY{m.group(2)}"
+
+
+def _quarter_canon(period: Period | None) -> str | None:
+    """The quarter a period names: a quarter itself, or the quarter a year/half-year label closes on."""
+    if period is None:
+        return None
+    return period.canon if period.ptype == "Q" else _quarter_of(period.canon)
+
+
+def _next_quarter(period: Period) -> Period | None:
+    """The quarter after a quarter ("over Q1 FY26" in the Q2FY26 deck is Q2FY26), rolling into the next year."""
+    m = re.match(r"Q([1-4])FY(\d{2})$", period.canon)
+    if not m:
+        return None
+    q, fy = int(m.group(1)), int(m.group(2))
+    q, fy = (1, fy + 1) if q == 4 else (q + 1, fy)
+    canon = f"Q{q}FY{fy:02d}"
+    return Period(period.start, period.end, canon, "Q", period_end("Q", canon))
+
+
+def _bps_value_period(comparator: Period, default_pers: list[Period]) -> Period | None:
+    """The period a figure belongs to when its sentence compares it with a quarter by a bps amount ("an
+    improvement of 27 bps over Q1 FY26"): the quarter after that comparative, except when the comparative is the
+    same quarter a year earlier ("up 27 bps over Q2 FY25" in a Q2FY26 document), where the document's own quarter
+    is the value's."""
+    dq = _quarter_canon(default_pers[0] if default_pers else None)
+    cq = _quarter_canon(comparator)
+    dm = re.fullmatch(r"Q([1-4])FY(\d{2})", dq or "")
+    cm = re.fullmatch(r"Q([1-4])FY(\d{2})", cq or "")
+    if dm and cm and dm.group(1) == cm.group(1) and int(dm.group(2)) - 1 == int(cm.group(2)):
+        d = default_pers[0]
+        if d.ptype == "Q":
+            return d
+        canon = _quarter_of(d.canon)
+        if canon:
+            return Period(d.start, d.end, canon, "Q", period_end("Q", canon))
+    return _next_quarter(comparator)
 
 
 def _quarter_after_comparative(text: str, start: int, end: int, period: Period) -> Period | None:
@@ -1390,7 +1441,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     # or a range band ("0.9%-1.5%") - profile builds only, so the pilot3 pages do not move
                     continue
                 if _FORWARD.search(lead) or _PLAN_LEAD.search(lead) \
-                        or _PLAN_LEAD.search(text[max(0, m.start() - 90):v1.start]):
+                        or _PLAN_LEAD.search(text[max(0, m.start() - 90, sb_lo):v1.start]):
                     continue      # guidance, a plan or a ceiling is not the period's level
                 if e.kind in ("pct", "bps") and _TAIL_SHARE.match(text[v1.end:min(len(text), v1.end + 24)]):
                     continue      # "70% of the approved thresholds": a share of another base
@@ -1460,7 +1511,15 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     rule = "sentence_v1"
                     cand = [p for p in pers if 0 <= p.start - v.end <= 45 and not _BREAK.search(text[v.end:p.start])
                             and not _CMP.search(text[v.end:p.start])
+                            and not _CMP_BPS.search(text[v.end:p.start])
                             and (idx == len(items) - 1 or p.start < items[idx + 1][0].start)]
+                    if not cand:   # "improvement of 27 bps over Q1 FY26": the figure is the quarter after Q1
+                        for p in pers:
+                            if 0 <= p.start - v.end <= 45 and not _BREAK.search(text[v.end:p.start]) \
+                                    and _CMP_BPS.search(text[v.end:p.start]):
+                                nq = _bps_value_period(p, default_pers)
+                                cand = [nq] if nq is not None else []
+                                break
                     if not cand:
                         cand = [p for p in pers if 0 <= m.start() - p.end <= 60 and '\n' not in text[p.end:m.start()]
                                 and p.start >= sb_lo]   # a period in the previous sentence is that sentence's
@@ -1498,9 +1557,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                         qhead = re.search(r"(?mi)^\s*(?:key highlights for )?(?:the )?(?:march|june|september|"
                                           r"december)\s+quarter\b|^\s*(?:highlights:\s*)?(?:quarter\s*[1-4]|q[1-4])\b",
                                           frame)
-                        if (qhead or (re.search(r"\b(?:this quarter|for the quarter|quarter ended|quarterly|QoQ|"
-                                                r"previous quarter|last quarter|(?:march|june|september|december)\s+"
-                                                r"quarter|quarter\s*[1-4])\b", frame, re.I)
+                        if (qhead or (_QUARTER_CUE.search(frame)
                                       and not re.search(r"\b(?:annual|full[- ]year|for the year|year ended|"
                                                         r"financial year)\b", frame, re.I))):
                             canon = _quarter_of(period.canon)   # a quarterly figure in a year-to-date document
