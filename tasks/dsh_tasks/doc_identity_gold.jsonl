@@ -1,0 +1,20 @@
+{"gid":"g01","doc_id":49222,"verdict":"ok","company":"ok","fiscal_year":"ok","type":"ok","date":"filing","note":"KEC annual report FY26, BSE Reg. 34, 229 pages; doc_date is the crawl date but the BSE time gives the filing date"}
+{"gid":"g02","doc_id":43571,"verdict":"ok","company":"ok","type":"ok","date":"filing","note":"IndusInd Bank annual report, BSE Reg. 34, 426 pages"}
+{"gid":"g03","doc_id":86270,"verdict":"ok","company":"ok","type":"ok","date":"filing","note":"Tata Power annual report under a covering letter with the scrip code, 361 pages"}
+{"gid":"g04","doc_id":17905,"verdict":"ok","company":"ok","type":"ok","date":"filing","note":"BSE category says AGM, but 191 pages open with the notice and annual report for 2025-26: the text wins"}
+{"gid":"g05","doc_id":90385,"verdict":"set_aside","company":"ok","type":"mismatch","note":"labelled annual report, BSE Newspaper Publication, 3 pages"}
+{"gid":"g06","doc_id":74282,"verdict":"set_aside","company":"ok","type":"mismatch","note":"newspaper advertisement of an AGM notice, 3 pages"}
+{"gid":"g07","doc_id":29693,"verdict":"set_aside","company":"ok","type":"mismatch","note":"ETERNAL newspaper publication labelled annual report, 3 pages"}
+{"gid":"g08","doc_id":20650,"verdict":"set_aside","company":"ok","type":"mismatch","note":"BSE category AGM, 15 pages: a notice of meeting, not an annual report"}
+{"gid":"g09","doc_id":43767,"verdict":"set_aside","company":"ok","fiscal_year":"mismatch","date":"crawl_date","note":"INFY Integrated Annual Report 2021-22, letter dated May 26, 2022, stored with doc_date 2026-08-28 (crawl), no BSE or PIT field"}
+{"gid":"g10","doc_id":58507,"verdict":"ok","company":"ok","type":"ok","date":"filing","note":"Mold-Tek Technologies transcript"}
+{"gid":"g11","doc_id":36601,"verdict":"ok","company":"ok","type":"ok","date":"filing","note":"GTPL transcript"}
+{"gid":"g12","doc_id":47950,"verdict":"ok","company":"ok","type":"ok","date":"filing","note":"BSE category General, covering letter says transcript of the financial results call"}
+{"gid":"g13","doc_id":41808,"verdict":"ok","company":"ok","type":"ok","date":"filing","note":"BSE category Investor Presentation, text is an earnings call transcript as the label says: the text wins"}
+{"gid":"g14","doc_id":33593,"verdict":"set_aside","company":"ok","type":"mismatch","date":"filing","note":"labelled investor presentation, the text is an earnings call transcript"}
+{"gid":"g15","doc_id":49222,"as_symbol":"TATAPOWER","verdict":"set_aside","company":"mismatch","note":"swapped pair: the KEC report checked as Tata Power"}
+{"gid":"g16","doc_id":58507,"as_symbol":"GPTINFRA","verdict":"set_aside","company":"mismatch","note":"swapped pair: Mold-Tek transcript checked as GPT Infraprojects"}
+{"gid":"g17","doc_id":43433,"as_symbol":"INDUSINDBK","verdict":"set_aside","company":"mismatch","note":"swapped pair: Industrial & Prudential report checked as IndusInd Bank"}
+{"gid":"g18","doc_id":36212,"verdict":"ok","company":"ok","type":"ok","date":"filing","note":"symbol GROWW, company Billionbrains Garage Ventures: the name differs from the symbol, not from the company"}
+{"gid":"g19","doc_id":119385,"verdict":"unknown","company":"thin","note":"scanned: 139 pages, 74 characters in the first five"}
+{"gid":"g20","doc_id":4191,"verdict":"not_held","note":"row has no path and no hash"}

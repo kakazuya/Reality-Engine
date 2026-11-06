@@ -113,6 +113,11 @@ TABLES: dict[str, str] = {
         symbol TEXT, isin TEXT, metric TEXT, target_period TEXT, low REAL, high REAL, unit TEXT,
         direction TEXT, said_on TEXT, doc_key TEXT, page INTEGER, quote TEXT, speaker TEXT,
         known_at TEXT, known_at_source TEXT, revision_of INTEGER, extractor_rule TEXT)""",
+    # T-093: one identity verdict per document (doc_identity.py).  A failure sets the document aside; nothing is deleted.
+    "doc_identity": """CREATE TABLE doc_identity (
+        doc_key TEXT, corporate_doc_id INTEGER, symbol TEXT, isin TEXT, doc_type TEXT, file_where TEXT, verdict TEXT,
+        company TEXT, company_reason TEXT, fiscal_year TEXT, fiscal_year_reason TEXT, type TEXT, type_reason TEXT,
+        date TEXT, date_reason TEXT, filing_date TEXT, text_chars INTEGER, checked_at TEXT)""",
     # T-091: the annual-report note tables read by notes.py.  One row per agency/instrument/rating
     # (rating_event), per bucket or geography/product and year column (concentration), and per counterparty and
     # year column (related_party_txn); ``basis`` says which reporting statement the page belongs to.
