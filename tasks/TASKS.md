@@ -70,4 +70,3 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-031 | OPEN | P3 | Research library bucket scheme; duplicates deleted 2 Nov, list in _dupes_deleted_2026-11-02.csv | accept: Shivam | from: T-026 | opened 2026-11-02
 
 ## Machines
-- T-099 | OPEN | P1 | Holiday copies in daily_price_delivery: fix nse_client.fetch_bhavcopy date check, delete 111,535 rows by the T-089 plan, replace 2021-11-04 Muhurat session, rebuild indicators | accept: Shivam | from: T-089 report 7 Nov | opened 2026-11-07
