@@ -21,11 +21,15 @@ TABLES: dict[str, str] = {
         shares_outstanding REAL, paid_up_capital REAL, face_value REAL, unit TEXT, scale REAL,
         known_at TEXT, known_at_source TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT,
         isin_effective_from TEXT, isin_effective_to TEXT)""",
+    # ``preferred_from`` / ``preferred_to`` (T-090): the window in which this row is THE figure for its
+    # (symbol, line_item, fiscal_period, basis).  ``preferred_to`` NULL means current.  The windows of one key tile
+    # its timeline, so plain SQL elects the same row pilot3_fin returns at any day (preferred.py writes them).
     "fin_quarter_xbrl": """CREATE TABLE fin_quarter_xbrl (
         symbol TEXT, isin TEXT, period_start TEXT, period_end TEXT, fiscal_period TEXT, basis TEXT,
         audited TEXT, statement TEXT, line_item TEXT, xbrl_tag TEXT, value REAL, unit TEXT, scale REAL,
         source_file TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT,
-        known_at TEXT, known_at_source TEXT, is_reported INTEGER)""",
+        known_at TEXT, known_at_source TEXT, is_reported INTEGER,
+        preferred_from TEXT, preferred_to TEXT)""",
     "fin_annual_line": """CREATE TABLE fin_annual_line (
         symbol TEXT, isin TEXT, fiscal_year TEXT, period_end TEXT, basis TEXT, statement TEXT,
         line_item TEXT, caption TEXT, value REAL, unit TEXT, scale REAL, doc_key TEXT, page INTEGER,
@@ -100,7 +104,8 @@ TABLES: dict[str, str] = {
         symbol TEXT, isin TEXT, period_start TEXT, period_end TEXT, fiscal_period TEXT, period_type TEXT,
         column_role TEXT, basis TEXT, statement TEXT, line_item TEXT, caption TEXT, value REAL, unit TEXT,
         scale REAL, raw_token TEXT, quote TEXT, doc_key TEXT, page INTEGER, known_at TEXT, known_at_source TEXT,
-        check_status TEXT, check_detail TEXT, is_reported INTEGER)""",
+        check_status TEXT, check_detail TEXT, is_reported INTEGER,
+        preferred_from TEXT, preferred_to TEXT)""",
     # one row per forward-looking numeric target (guidance.py).  ``doc_key`` is the ticket's ``doc_id``; the
     # column is named ``doc_key`` like every other pilot3 table.
     "guidance": """CREATE TABLE guidance (
@@ -137,6 +142,22 @@ INDEXES = (
 FTS = """CREATE VIRTUAL TABLE doc_page_fts USING fts5(text, content='doc_page', content_rowid='rowid',
     tokenize='unicode61 remove_diacritics 2')"""
 
+# T-090: the one figure that is preferred now (``preferred_to`` NULL) for every (symbol, fiscal_period, basis,
+# line_item), across BOTH quarter tables, so plain SQL gets the same number ``pilot3_fin`` returns point in time.
+FIN_QUARTER_CURRENT = """CREATE VIEW fin_quarter_current AS
+    SELECT symbol, isin, period_start, period_end, fiscal_period, basis, statement, line_item, value, unit, scale,
+           known_at, known_at_source, is_reported, preferred_from, preferred_to,
+           'fin_quarter_xbrl' AS source_table, source_file AS source, NULL AS page, NULL AS column_role,
+           NULL AS check_status, xbrl_tag
+    FROM fin_quarter_xbrl
+    WHERE preferred_from IS NOT NULL AND preferred_to IS NULL
+    UNION ALL
+    SELECT symbol, isin, period_start, period_end, fiscal_period, basis, statement, line_item, value, unit, scale,
+           known_at, known_at_source, is_reported, preferred_from, preferred_to,
+           'fin_quarter_printed', doc_key, page, column_role, check_status, NULL
+    FROM fin_quarter_printed
+    WHERE preferred_from IS NOT NULL AND preferred_to IS NULL"""
+
 PARTS = {
     "registry": ("company", "doc", "doc_alias"),
     "pages": ("doc_page",),
@@ -153,6 +174,7 @@ def create(conn: sqlite3.Connection, names) -> None:
         conn.execute(f'DROP TABLE IF EXISTS "{name}"')
         conn.execute(TABLES[name])
     _indexes(conn)
+    ensure_views(conn)
     conn.commit()
 
 
@@ -162,7 +184,21 @@ def ensure(conn: sqlite3.Connection, names) -> None:
     for name in names:
         conn.execute(TABLES[name].replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ", 1))
     _indexes(conn)
+    ensure_views(conn)
     conn.commit()
+
+
+def ensure_views(conn: sqlite3.Connection) -> None:
+    """Recreate ``fin_quarter_current`` when both quarter tables carry the preferred columns (T-090); an older build
+    gains them when the ``preferred`` part runs, and until then the view is left alone rather than failing."""
+    tables = ("fin_quarter_xbrl", "fin_quarter_printed")
+    for table in tables:
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
+            return
+        if not {"preferred_from", "preferred_to"} <= {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}:
+            return
+    conn.execute("DROP VIEW IF EXISTS fin_quarter_current")
+    conn.execute(FIN_QUARTER_CURRENT)
 
 
 def _indexes(conn: sqlite3.Connection) -> None:

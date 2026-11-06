@@ -2,8 +2,9 @@
 
 ``pilot3.db`` is built by scripts (``python -m reality_engine.pilot3.build``): dated page text of every held
 document, KPI series, reported and derived financial lines, ratios, shareholding, management statements.
-``REALITY_PILOT3_DB`` names another build (a profile's, e.g. pilot10), and then the companies the tools accept
-are the ones that database's ``company`` table holds (T-056); without it the three pilot3 companies.
+``REALITY_PILOT3_DB`` names another build (a profile's, e.g. pilot10).  The companies the tools accept are the ones
+the database's ``company`` table holds (T-090: the covered universe, never a fixed list of three); a database built
+before the table existed falls back to the bundled pilot3 companies.
 These tools answer from it first; the raw files are touched only when a tool says NOT IN DATA.
 
 Read-only (``connect_ro``), small replies, and every row carries ``provenance`` = table, source (document +
@@ -24,8 +25,9 @@ from typing import Any
 
 import core
 from core import DataError
+from reality_engine.pilot3 import preferred as p3_preferred
 
-PILOT3_SYMBOLS = ("KEC", "BAJFINANCE", "HINDALCO")
+PILOT3_SYMBOLS = ("KEC", "BAJFINANCE", "HINDALCO")   # fallback only: a database with no company table
 _MAIN = Path(r"C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\pilot3\pilot3.db")
 MAX_LIMIT = 50
 QUOTE_CHARS = 600
@@ -93,13 +95,14 @@ def _is_lender(sym: str) -> bool:
 
 # --- symbols, periods, dates ------------------------------------------------------------------------
 def pilot_symbols() -> tuple[str, ...]:
-    """The companies this database holds: ``REALITY_PILOT3_DB`` -> its ``company`` table (T-056), else pilot3's."""
-    if not os.environ.get("REALITY_PILOT3_DB"):
-        return PILOT3_SYMBOLS
+    """Every company the database holds: its ``company`` table (T-090).  ``PILOT3_SYMBOLS`` is the fallback for a
+    build that predates the table, never the way coverage is decided when the table is there."""
     try:
-        return tuple(row[0] for row in _q("SELECT DISTINCT symbol FROM company ORDER BY symbol")) or PILOT3_SYMBOLS
+        held = tuple(row[0] for row in _q("SELECT DISTINCT symbol FROM company WHERE symbol IS NOT NULL AND symbol<>'' "
+                                          "ORDER BY symbol"))
     except DataError:
-        return PILOT3_SYMBOLS
+        held = ()
+    return held or PILOT3_SYMBOLS
 
 
 def resolve_symbol(symbol: str) -> str:
@@ -122,8 +125,9 @@ def resolve_symbol(symbol: str) -> str:
                 return cand.upper()
     except Exception:
         pass
-    raise DataError("not_pilot3", f"{symbol!r} is not a company of this pilot database ({', '.join(allowed)}); "
-                    "use the general tools (facts, docs, search_docs) for it")
+    raise DataError("not_pilot3", f"{symbol!r} is not a company this pilot database holds: its company table lists "
+                    f"{len(allowed)} companies (pilot3_sql 'SELECT symbol FROM company' to search them); use the "
+                    "general tools (facts, docs, search_docs) for a company it does not hold")
 
 
 def _day(value: str | None, field: str) -> str | None:
@@ -287,7 +291,9 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
 # --- pilot3_fin -------------------------------------------------------------------------------------
 def fin(symbol: str, measure: str, period: str | None = None, basis: str | None = None,
         definition: str | None = None, as_of: str | None = None, limit: int = 12) -> dict[str, Any]:
-    """Reported / derived / company-stated financial lines: annual (FY26, H1FY26) and quarterly (Q2FY26)."""
+    """Reported / derived / company-stated financial lines: annual (FY26, H1FY26) and quarterly (Q2FY26), one
+    preferred figure per measure, period and basis (the newest filing's restatement wins, alternatives listed);
+    the same election the ``preferred_from`` / ``preferred_to`` columns and ``fin_quarter_current`` hold."""
     sym = resolve_symbol(symbol)
     kind, label = norm_period(period)
     use_q = kind in (None, "Q")
@@ -344,11 +350,11 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
             for r in printed:
                 if (r["line_item"], r["fiscal_period"]) in got:
                     continue             # the XBRL row for that quarter is the evidence; no duplicate
-                if not _printed_cell_ok(r):
+                if not p3_preferred.displayable_printed(r["check_status"], r["raw_token"]):
                     continue
                 out.append(_fin_row(r, "fin_quarter_printed", r["fiscal_period"], "printed_comparative",
                                     _fin_source(r)))
-    out = _dedupe(_preferred(out))
+    out = _dedupe(p3_preferred.elect(out))
     # No basis asked: a group question means the consolidated statement.  T-049 (4 Nov 2026): HINDALCO's
     # diluted EPS FY26 came back standalone 45.31 where the consolidated 60.20 was wanted; standalone is one
     # explicit argument away, so a mixed reply is filtered to consolidated when it holds the same measure.
@@ -379,29 +385,6 @@ def _has_table(name: str) -> bool:
 
 
 _REPORTING_BASES = ("consolidated", "standalone", "not_stated")
-_CHECK_RANK = {"xbrl_ok": 4, "repeat_ok": 2, "sum_ok": 1}
-_CLEAN_CELL = re.compile(r"\(?-?\d[\d,]*(?:\.\d+)?\)?")
-
-
-def _printed_cell_ok(r: sqlite3.Row) -> bool:
-    """May this printed cell be shown as a figure?  A checked row yes; an unchecked one only when its raw token is
-    ONE printed number (a restated comparative may fail the page's arithmetic, e.g. Bajaj's Q2 FY26 restatement,
-    but a token glued from two cells, "9,176 8,227", is not a figure)."""
-    if r["check_status"] in ("xbrl_ok", "sum_ok", "repeat_ok"):
-        return True
-    return bool(_CLEAN_CELL.fullmatch(re.sub(r"\s+", "", str(r["raw_token"] or ""))))
-
-
-def _same_value(a: dict, b: dict) -> bool:
-    av, bv = (a["value"] or 0.0) * (a.get("scale") or 1.0), (b["value"] or 0.0) * (b.get("scale") or 1.0)
-    return abs(av - bv) <= max(1e-9, 1e-6 * max(abs(av), abs(bv)))
-
-
-def _evidence_rank(row: dict) -> int:
-    """How firm one statement of a figure is: XBRL 5, a printed cell XBRL confirmed 4, a repeated print 2."""
-    if row.get("_table") == "fin_quarter_xbrl":
-        return 5
-    return _CHECK_RANK.get(str(row.get("_check") or ""), 0)
 
 
 def _entity_of(row: Any, symbol: str) -> str:
@@ -410,46 +393,6 @@ def _entity_of(row: Any, symbol: str) -> str:
     basis = row["basis"] if row["basis"] in _REPORTING_BASES else None
     entity = row["entity"] or basis or symbol
     return symbol if entity in _REPORTING_BASES or entity == "total" else entity
-
-
-def _preferred(rows: list[dict]) -> list[dict]:
-    """One preferred figure per measure and period, alternatives labelled (T-088).
-
-    When several filings state the same line for the same period, the newest filing known at ``as_of`` wins (its
-    comparative column is the restated figure), and it is marked ``restated`` when it differs from the first
-    printing.  A tie on the filing date goes to the better evidence (XBRL, then a checked printed cell); a
-    ``sum_ok`` cell only means an identity on the page held, so it never outranks an XBRL-confirmed one."""
-    groups: dict[tuple, list[dict]] = {}
-    passthrough: list[dict] = []
-    for row in rows:
-        known = row.get("_known_at")
-        if not known:
-            passthrough.append(row)
-            continue
-        groups.setdefault((row["measure"], row["period"], row["basis"]), []).append(row)
-    out = list(passthrough)
-    for candidates in groups.values():
-        candidates.sort(key=lambda r: (str(r["_known_at"]), _evidence_rank(r)))
-        first, preferred = candidates[0], candidates[-1]
-        row = dict(preferred)
-        alternatives = []
-        for other in candidates[:-1]:
-            if any(_same_value(other, alt) for alt in alternatives):
-                continue
-            alt = {"value": other["value"], "unit": other["unit"], "scale": other["scale"],
-                   "filing_date": str(other["_known_at"])[:10], "role": other.get("column_role") or "xbrl",
-                   "definition": other["definition"], "provenance": other["provenance"]}
-            if "value_inr" in other:
-                alt["value_inr"] = other["value_inr"]
-            if other.get("_check"):
-                alt["check_status"] = other["_check"]
-            alternatives.append(alt)
-        row["preferred"] = True
-        row["restated"] = not _same_value(preferred, first)
-        if alternatives:
-            row["alternatives"] = alternatives
-        out.append(row)
-    return [{k: v for k, v in row.items() if not k.startswith("_")} for row in out]
 
 
 def _fin_row(r: sqlite3.Row, table: str, period: str, definition: str, source: str) -> dict[str, Any]:
@@ -465,7 +408,7 @@ def _fin_row(r: sqlite3.Row, table: str, period: str, definition: str, source: s
     if table in ("fin_annual_line", "fin_quarter_printed") and r["quote"]:
         row["quote"] = _trim(r["quote"], 240)
     if table != "fin_annual_line":      # a quarter: the preferred comparative election needs its filing date
-        row["_table"], row["_known_at"] = table, r["known_at"]
+        row["_table"], row["_known_at"], row["_rowid"] = table, r["known_at"], r["rowid"]
         if "check_status" in keys:
             row["_check"] = r["check_status"]
     return row
@@ -1009,8 +952,14 @@ SQL_MAX_TEXT_CHARS = 8000     # hard cap: long page text must be asked for, neve
 
 def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0,
         max_chars: int = SQL_TEXT_CHARS) -> dict[str, Any]:
-    """Bounded, read-only SELECT/WITH over pilot3.db (any table; see ``schema`` rows below on a miss).
+    """Bounded, read-only SELECT/WITH over the pilot3 database (``REALITY_PILOT3_DB`` names another build; any
+    table or view; see ``schema`` rows below on a miss).
 
+    Financial figures: ``fin_quarter_current`` gives the one preferred line per (symbol, fiscal_period, basis,
+    line_item) now, and ``preferred_from`` / ``preferred_to`` on ``fin_quarter_xbrl`` and ``fin_quarter_printed``
+    elect it at any past day (preferred when ``preferred_from <= day`` and (``preferred_to IS NULL`` or
+    ``preferred_to > day``)); ``pilot3_fin`` returns the same figure.  The raw tables hold every filing's printing
+    of the same line, so a sum over them counts a restatement and its original twice.
     Text cells are cut at ``max_chars`` (default 400, hard cap 8000): a question about wording, a whole
     paragraph or a long quote passes ``max_chars`` explicitly, otherwise the page text is truncated."""
     text = core._strip_sql(query or "")

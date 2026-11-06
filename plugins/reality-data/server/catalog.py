@@ -55,9 +55,10 @@ DB_DESCRIPTIONS = {
     "deck_figures": "Investor-presentation facts: page metrics, sources and URLs.",
     "concall_facts": "Concall extraction: documents and guidance/KPI items with quotes.",
     "bse_announcements": "BSE announcement feed with dissemination timestamps.",
-    "pilot3": "The three pilot companies (KEC, BAJFINANCE, HINDALCO) in one script-built store: dated page "
-              "text, KPI series, reported/derived financial lines, ratios, shareholding, statements and "
-              "guidance. Read it through the pilot3_* tools; pilot3_sql is the bounded escape hatch.",
+    "pilot3": "The pilot store: every company the build holds in one script-built database (its coverage is the "
+              "company table, an arbitrary NSE+BSE universe, never a fixed list): dated page text, KPI series, "
+              "reported/derived financial lines with one point-in-time preferred figure each, ratios, shareholding, "
+              "statements and guidance. Read it through the pilot3_* tools; pilot3_sql is the bounded escape hatch.",
 }
 
 DEMO_TABLES = {
@@ -191,15 +192,16 @@ def _auto_description(db_key: str, table: str) -> str:
         "annual_financials": "Annual revenue/EBITDA/PAT/leverage table by fiscal year.",
         "daily_price_delivery": "Daily price + delivery + technical indicators by symbol.",
         "shareholding": "Quarterly shareholding pattern (promoter/FII/DII/retail).",
-        # pilot3 (one store for KEC, BAJFINANCE and HINDALCO)
-        "company": "pilot3 company register: symbol, ISIN, BSE code and name.",
+        # pilot3 (one store; its coverage is the company table, not a fixed company list)
+        "company": "pilot3 company register: every company the build covers (symbol, ISIN, BSE code, name).",
         "doc": "pilot3 document register: doc_key, type, filing date, known_at and source store.",
         "doc_page": "pilot3 dated page text of every held document (one row per page).",
         "doc_alias": "pilot3 alias key (the old doc key) -> doc_key.",
         "kpi_series": "pilot3 company-stated KPI rows with period, dimension, basis, quote and page.",
         "fin_annual_line": "pilot3 annual financial lines (XBRL, annual report) with definition and basis.",
-        "fin_quarter_xbrl": "pilot3 quarterly XBRL lines by period end, basis and line item.",
-        "fin_quarter_printed": "pilot3 comparative columns printed in a quarterly results table (current, preceding, year-ago, ytd, prior ytd, last full year) with the check that confirmed each value.",
+        "fin_quarter_xbrl": "pilot3 quarterly XBRL lines by period end, basis and line item; preferred_from / preferred_to say when the row is THE figure for its key (preferred_to NULL = current).",
+        "fin_quarter_printed": "pilot3 comparative columns printed in a quarterly results table (current, preceding, year-ago, ytd, prior ytd, last full year) with the check that confirmed each value and the preferred_from / preferred_to window of the figure.",
+        "fin_quarter_current": "pilot3 view: the one preferred quarterly financial line per (symbol, fiscal_period, basis, line_item) now -- read this or pilot3_fin, not a hand sum over both quarter tables.",
         "ratio_panel": "pilot3 derived ratios with formula_id and the input rows they came from.",
         "formula": "pilot3 formula registry: expression, inputs, unit and note per derived metric.",
         "valuation_daily": "pilot3 daily PE/PB/EV-EBITDA/market cap with the inputs known that day.",

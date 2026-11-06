@@ -31,7 +31,7 @@ import core
 
 INSTRUCTIONS = """Local reality-engine data search. The data is read-only and every answer carries provenance.
 
-PILOT3 FIRST: for KEC, BAJFINANCE and HINDALCO (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF holding, share count on a date -> pilot3_holding(symbol, as_of); what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: kpi_series, fin_annual_line, fin_quarter_xbrl, ratio_panel, valuation_daily, shp_category, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, doc, doc_page). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A {"found": false} pilot3 answer lists what is available; read that list and retry, and only if still empty use the raw tools below or say NOT IN DATA. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
+PILOT3 FIRST: the pilot3_* tools hold every company in their database's company table -- the whole NSE+BSE universe the build covers (thousands of companies), never a sample of three: check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') instead of assuming a company is absent. For any company in that table (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF holding, share count on a date -> pilot3_holding(symbol, as_of); what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: company, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, doc, doc_page; view fin_quarter_current: the one preferred financial line per symbol, fiscal_period, basis and line_item now, and the quarter tables' preferred_from / preferred_to columns elect the same figure at any past day -- read them or pilot3_fin, never a hand sum over both tables). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A company the database does not hold returns {"found": false} (or error code not_pilot3): only then use the raw tools below or say NOT IN DATA. A {"found": false} answer for a company it does hold lists what is available; read that list and retry. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
 
 ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) — one call each, before any sql():
 - delivery / delivered quantity on a date (NSE+BSE) -> delivery(symbol, dates)
@@ -407,7 +407,7 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
 # --- end lookups: docs ---
 
 
-# --- lookups: pilot3 (KEC, BAJFINANCE, HINDALCO) ---
+# --- lookups: pilot3 (every company the pilot database's company table holds) ---
 import lookups_pilot3 as _p3  # noqa: E402
 
 _RO = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False)
@@ -416,8 +416,8 @@ _RO = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hi
 @server.tool(
     name="pilot3_kpi",
     description=(
-        "Company-stated KPI series for KEC / BAJFINANCE / HINDALCO from decks, results, press releases, "
-        "transcripts and annual reports: order book, order intake, AUM, GNPA, EBITDA per tonne, shipments, "
+        "Company-stated KPI series for every company the pilot database holds, from decks, results, press "
+        "releases, transcripts and annual reports: order book, order intake, AUM, GNPA, EBITDA per tonne, shipments, "
         "net debt/EBITDA ... kpi = metric name (a word is enough; a miss lists the metrics held). period: Q2FY26, "
         "FY26, H1FY26 or a date. dimension (segment/product; total first), basis, as_of. Each row: value, "
         "unit, period, quote, provenance (document, page, known_at)."
@@ -433,13 +433,15 @@ def pilot3_kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | No
 @server.tool(
     name="pilot3_fin",
     description=(
-        "Reported / derived / company-stated financial lines for KEC, BAJFINANCE, HINDALCO: annual (FY26, H1FY26) "
-        "from XBRL results and annual reports, quarterly (Q2FY26) from XBRL. measure e.g. revenue_from_operations, "
-        "pat, ebitda, net_debt, total_borrowings, eps_basic, capex_payments, cash_flow_from_operations (a miss "
-        "lists the lines held). basis = standalone | consolidated; when omitted it defaults to consolidated "
-        "(the group statement) and every row states its basis; definition = xbrl_reported | xbrl_derived | "
-        "company_stated | reported (annual only). Rows carry value, unit, scale (value_inr for rupee lines), "
-        "definition and provenance."
+        "Reported / derived / company-stated financial lines for every company the pilot database holds: annual "
+        "(FY26, H1FY26) from XBRL results and annual reports, quarterly (Q2FY26) from XBRL. One preferred figure per "
+        "measure, period and basis (the newest filing's restatement wins; the alternatives are listed), the same "
+        "election held by the fin_quarter_current view and the preferred_from / preferred_to columns. measure e.g. "
+        "revenue_from_operations, pat, ebitda, net_debt, total_borrowings, eps_basic, capex_payments, "
+        "cash_flow_from_operations (a miss lists the lines held). basis = standalone | consolidated; when omitted it "
+        "defaults to consolidated (the group statement) and every row states its basis; definition = xbrl_reported | "
+        "xbrl_derived | company_stated | reported (annual only). Rows carry value, unit, scale (value_inr for rupee "
+        "lines), definition and provenance."
     ),
     annotations=_RO,
 )
@@ -512,8 +514,8 @@ def pilot3_statements(symbol: str, topic: str | None = None, terms: str | None =
 @server.tool(
     name="pilot3_guidance",
     description=(
-        "Forward guidance for KEC / BAJFINANCE / HINDALCO: one row per numeric target management gave, from "
-        "transcripts, decks, results and press releases (rule-extracted, exact quote). metric: revenue_growth, "
+        "Forward guidance for every company the pilot database holds: one row per numeric target management gave, "
+        "from transcripts, decks, results and press releases (rule-extracted, exact quote). metric: revenue_growth, "
         "ebitda_margin, order_intake, nim, credit_cost, aum_growth, capex, cost_of_production, interest_cost, "
         "ebitda_per_tonne, other (a word is enough; a miss lists the metrics held). period: FY27, Q2FY27, H1FY26. "
         "Each row: target period, low/high, unit (pct, bps, inr_cr, usd_per_tonne ...), direction (up/down/flat), "
@@ -532,9 +534,10 @@ def pilot3_guidance(symbol: str, metric: str | None = None, period: str | None =
 @server.tool(
     name="pilot3_docs",
     description=(
-        "Documents held for KEC / BAJFINANCE / HINDALCO (every deck, transcript, annual report, results file, "
-        "press release, announcement), newest first with filing date, page count and known_at; counts_by_type "
-        "tells what exists. doc_type: deck | transcript | annual_report | results | press_release | announcement."
+        "Documents held for a company the pilot database covers (every deck, transcript, annual report, results "
+        "file, press release, announcement the build holds for it), newest first with filing date, page count and "
+        "known_at; counts_by_type tells what exists. doc_type: deck | transcript | annual_report | results | "
+        "press_release | announcement."
     ),
     annotations=_RO,
 )
@@ -547,8 +550,8 @@ def pilot3_docs(symbol: str, doc_type: str | None = None, date_from: str | None 
 @server.tool(
     name="pilot3_search",
     description=(
-        "Full-text search (FTS5 bm25, ranked) over the dated text of every held document page of KEC / "
-        "BAJFINANCE / HINDALCO. Returns the exact snippet around the match with document, page, filing date "
+        "Full-text search (FTS5 bm25, ranked) over the dated text of every held document page of a company the "
+        "pilot database covers. Returns the exact snippet around the match with document, page, filing date "
         "and known_at. Use after the structured pilot3 tools, or when the question is about wording. period "
         "(Q1FY27 / FY26), date_from+date_to (filing window) and doc_type boost the pages that print the period, "
         "were filed in the window, or are of that type. as_of drops later pages."
@@ -565,10 +568,17 @@ def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int 
 @server.tool(
     name="pilot3_sql",
     description=(
-        "Bounded read-only SELECT/WITH over pilot3.db (limit enforced, default 100, max 500). Tables: company, "
-        "doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, formula, "
-        "valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, "
-        "guidance. Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions. "
+        "Bounded read-only SELECT/WITH over the pilot3 database (REALITY_PILOT3_DB names another build; limit "
+        "enforced, default 100, max 500). Tables: company (every company the build covers -- count it, never assume "
+        "a sample), doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, "
+        "ratio_panel, formula, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, "
+        "price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance. Views: "
+        "fin_quarter_current (the one preferred financial line per symbol, fiscal_period, basis and line_item now). "
+        "Financial figures: read fin_quarter_current, or add preferred_from / preferred_to on fin_quarter_xbrl and "
+        "fin_quarter_printed (preferred when preferred_from <= '<day>' and (preferred_to IS NULL or preferred_to > "
+        "'<day>')), or call pilot3_fin -- the same election, so plain SQL gets the same number. The raw quarter "
+        "tables hold every filing's printing of a line, so summing them counts a restatement and its original twice. "
+        "Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions. "
         "Text cells are cut at max_chars (default 400, hard cap 8000): pass max_chars=8000 when the answer needs "
         "long page text, a whole paragraph or a full quote."
     ),

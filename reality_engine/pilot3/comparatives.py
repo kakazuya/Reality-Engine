@@ -880,7 +880,11 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict]) -
         files.append(entry)
         pdf.close()
     rows = _apply_repeats(rows)
-    conn.executemany(f"INSERT INTO {TABLE} VALUES ({','.join('?' * 23)})", rows)
+    conn.executemany(
+        f"INSERT INTO {TABLE} (symbol, isin, period_start, period_end, fiscal_period, period_type, column_role, "
+        "basis, statement, line_item, caption, value, unit, scale, raw_token, quote, doc_key, page, known_at, "
+        "known_at_source, check_status, check_detail, is_reported) VALUES ("
+        + ",".join("?" * 23) + ")", rows)
     status: dict = defaultdict(int)
     for row in rows:
         status[row[20]] += 1

@@ -81,7 +81,10 @@ def _profile(tmp_path, compute_start: str | None = "2025-01-01", window_start="2
 def _quarter_rows(conn, rows):
     for period, end, known, items in rows:
         for item, value in items.items():
-            conn.execute("INSERT INTO fin_quarter_xbrl VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            conn.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
+                         "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
+                         "source_table, source_rowid, known_at, known_at_source, is_reported) "
+                         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                          (SYM, SISIN, end[:7] + "-01", end, period, "consolidated", "A", "P&L", item, item, value, "inr", 1.0,
                           "f", "d", "t", "r", known, "src", 1))
 
