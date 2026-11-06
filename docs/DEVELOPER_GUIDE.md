@@ -753,6 +753,8 @@ is `reality_engine/tests/test_hp_headless.py`; it writes no events here, so the 
 `20261101T205730Z-172d7dec` (45, 12). Test:
 `python -m pytest reality_engine/tests/test_rule_ledger.py reality_engine/tests/test_doc_gate.py -q`.
 
+A unit comes from the table's own note, else `page_unit` (this page, then up to 6 pages back). A rating's `action` is NULL unless the page states one: never assume `reaffirmed`.
+
 ### O4. pilot3 precision, growth formulas and local OCR (T-049 E, merged unfinished 3 Nov)
 
 - `reality_engine/pilot3/kpi.py`: generic labels (margin, revenue, ebitda) count only on table rows or sentences that also carry a period and a unit; segment comes from the table's row or column header; a chart value takes its period from the nearest axis label; every row has a confidence tier (table_row > table_chart > sentence > sentence_default) and readers prefer the highest. Lexicons in `reality_engine/pilot3/lexicon/` were tightened to match.

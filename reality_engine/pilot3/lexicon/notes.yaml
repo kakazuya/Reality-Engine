@@ -152,6 +152,8 @@ balance_cues:
   - 'payable'
   - 'receivable'
   - 'due (?:to|from)'
+  - '^other (?:current|non-current|financial)\b.*(?:assets|liabilities)'
+  - '^(?:trade|other) (?:receivables|payables)'
 
 # the party-category columns a related-party note prints instead of year columns ("Parent | Subsidiaries |
 # Associate | Director", each with its own year pair).  The key becomes `relationship`.

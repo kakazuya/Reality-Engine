@@ -745,6 +745,12 @@ header ("Notes to the Standalone/Consolidated Financial Statements") and is `not
   director remuneration, Blink Commerce, Krishna Maruti, Utkal Alumina). Two earlier reads of the same tables were
   the reason for those guards: the cousin rows (`Amount required to be spent ... Company`, a CSR table read as
   related parties; "Member"/"Chairman" category rows; an employee-remuneration band table) are gone.
+  Opus's own read of 12 rows per table on another seed (20261106) found what that read could not: 426 of 722
+  related-party rows had no unit, 53 rating rows carried an assumed `reaffirmed`, `OTC` gave rating `C`, and balances
+  such as `Other financial assets` sat in `amount`. Fixed: `page_unit` carries the unit a note prints once (this page,
+  then up to 6 before), `action` is NULL unless the page states one, a rating letter inside a word is no rating, and
+  balance lines go to `balance`. Result: all 722 related-party rows carry a unit, 136 balances against 74 before.
+  Still open: 73 related-party rows have no `txn_type` because the heading is on an earlier page.
 - **What the rules cannot read** (a zero is a "not read", never a "does not exist"): a note that prints one column
   per party category with no year pair in the header (HDFCBANK's schedule at p474, KEC's standalone note, HUL's
   note) is not read as `related_party_txn` -- that class is in the ticket's evidence for BAJFINANCE/HDFCBANK and is

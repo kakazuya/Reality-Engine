@@ -9,7 +9,7 @@ wording and table shape, never by company name, page number or a per-company rul
 * ``rating_event`` -- one row per agency / instrument / rating printed by a credit-rating table
   (``Rating agency`` + ``Programme`` + ``Ratings assigned`` columns, or ``Rating agency`` + ``Rating`` +
   ``Outlook``), with the migration cell of the table read as the action (``Nil`` is ``reaffirmed``, "Upgraded
-  from" is ``upgraded``); a prose sentence naming an agency and a rating ("... credit rating of AAA/Stable
+  from" is ``upgraded``, and a table or sentence that states no action leaves it NULL); a prose sentence naming an agency and a rating ("... credit rating of AAA/Stable
   (long term) and A1+ (short term) on its bank facilities by CRISIL") is the same row shape; a company that
   states it holds no rating gets ``not_rated``; a rating-linked clause in any filing (coupon step-up on a
   downgrade, a recall right at a rating) gets ``trigger`` with the clause in ``trigger_text``.
@@ -282,6 +282,12 @@ def table_blocks(lines: list[str]) -> list[tuple[list[tuple[str, str]], list[dic
     return blocks
 
 
+# "(All amounts in Rs million, unless otherwise stated)", or a unit alone on its line ("Rs in Million")
+_AMOUNTS_IN = re.compile(r"(?:\b(?:amounts?|figures?)\s+(?:are\s+)?in\s+\S{0,4}\s*|^\s*\S{0,3}\s*in\s+)"
+                         r"(crores?|lakhs?|million|billion)\b", re.I | re.M)
+_UNIT_WORDS = {"crore": ("inr_cr", 1e7), "lakh": ("inr_lakh", 1e5), "million": ("inr_mn", 1e6), "billion": ("inr_bn", 1e9)}
+
+
 def unit_of(lines_before: str) -> tuple[str | None, float | None]:
     """(unit, scale) of a table's own unit note: a crore/lakh/million line is money, "(In %)" is a percentage."""
     if re.search(r"\(\s*(?:in\s+)?%\s*\)|\(\s*in\s+per\s?cent\s*\)", lines_before, re.I):
@@ -294,6 +300,19 @@ def unit_of(lines_before: str) -> tuple[str | None, float | None]:
         return "inr_mn", 1e6
     if re.search(r"\(\s*[^)]{0,24}(?:billion|bn)\s*\)", lines_before, re.I):
         return "inr_bn", 1e9
+    stated = _AMOUNTS_IN.search(lines_before)     # "(All amounts in ₹ million, unless otherwise stated)"
+    if stated:
+        return _UNIT_WORDS[stated.group(1).lower().rstrip("s")]
+    return None, None
+
+
+def page_unit(pages: list, index: int, back: int = 6) -> tuple[str | None, float | None]:
+    """The money unit a note states on this page or on the pages before it: a note prints its unit once, at the top
+    of the note or in the statement's running header, and the later pages inherit it.  None when nothing says."""
+    for at in range(index, max(-1, index - back - 1), -1):
+        unit, scale = unit_of(pages[at][1] or "")
+        if unit and unit != "pct":
+            return unit, scale
     return None, None
 
 
@@ -388,7 +407,7 @@ def _action_of(line: str, lex: dict) -> str | None:
 def _rating_cell(line: str, lex: dict) -> tuple[str, str | None, str] | None:
     """(rating, outlook, text before the rating) when the line prints a rating symbol as its own cell."""
     m = lex["rating"].search(line)
-    if not m:
+    if not m or (m.start() > 0 and line[m.start() - 1].isalnum()):   # "C" inside "OTC" is no rating
         return None
     before = line[:m.start()].strip()
     after = line[m.end():].strip()
@@ -485,9 +504,7 @@ def rating_rows(symbol: str, isin: str, entity: str, doc, page: int, text: str, 
             if agency and _instrument(line, lex):
                 instrument = line.strip()
                 last = None          # a new programme begins; a later cell is not this row's note
-        for r in rows:
-            r["action"] = r.get("action") or "reaffirmed"
-        if rows:
+        if rows:              # no action cell and no "no change" sentence: the action stays NULL, never assumed
             return rows
 
     # (2) a rating said in prose: one agency, no withdrawal, no comparison base ("from BBB-")
@@ -516,8 +533,8 @@ def rating_rows(symbol: str, isin: str, entity: str, doc, page: int, text: str, 
         m = re.search(r"\bon\s+(?:its|the|our)\s+(.{3,50}?)\s+by\s", sentence, re.I)
         if m:
             instrument = m.group(1).strip(" ,.")
-        action = "reaffirmed"
-        for name in ("upgraded", "downgraded", "assigned"):
+        action = None         # only what the sentence says; a bare statement of a rating is not a reaffirmation
+        for name in ("upgraded", "downgraded", "assigned", "reaffirmed"):
             if any(p.search(sentence) for p in lex["actions"].get(name, [])):
                 action = name
                 break
@@ -946,9 +963,6 @@ def _prefilter_sql(words) -> str:
     return f"SELECT page, text FROM doc_page WHERE doc_key=? AND ({clauses}) ORDER BY page"
 
 
-RPT_NEAR = 3          # a related-party note continues up to this many pages past its last cue page
-
-
 RPT_NEAR = 4          # a related-party note continues up to this many pages past the last page with a cue
 
 
@@ -987,7 +1001,7 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
                 docs_pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page",
                                          (doc["doc_key"],)).fetchall()
                 follow = 0            # pages still inside the related-party note that started at a cue page
-                for page, text in docs_pages:
+                for page_index, (page, text) in enumerate(docs_pages):
                     if not (text or "").strip():
                         continue
                     candidate = any(word in text.lower() for word in words)
@@ -999,6 +1013,11 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
                     rpt_cue = any(cue.search(text) for cue in lex["rpt_cues"])
                     if doc_type == "annual_report" and (rpt_cue or follow > 0):
                         rpt = related_party_rows(symbol, doc["isin"], entity, doc, page, text, lex)
+                        if any(r["unit"] is None for r in rpt):
+                            unit, scale = page_unit(docs_pages, page_index)
+                            for r in rpt:
+                                if r["unit"] is None:
+                                    r["unit"], r["scale"] = unit, scale
                         parties = {r["counterparty"] for r in rpt}
                         if len(parties) >= (1 if rpt_cue else 3):
                             follow = RPT_NEAR

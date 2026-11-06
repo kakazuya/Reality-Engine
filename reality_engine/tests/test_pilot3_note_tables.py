@@ -374,5 +374,28 @@ def test_run_writes_rows_and_reruns():
     assert again["rows"]["related_party_txn"]["SYM"] == first["rows"]["related_party_txn"]["SYM"]
 
 
+def test_unit_comes_from_the_statement_or_an_earlier_page_of_the_note():
+    pages = [(220, "(All amounts in I million, unless otherwise stated)\nNotes"), (221, "no unit here"), (222, "Party 1 2")]
+    assert notes.page_unit(pages, 2) == ("inr_mn", 1e6)
+    assert notes.unit_of("Particulars\n₹ in Million\nFY26") == ("inr_mn", 1e6)
+    assert notes.page_unit([(1, "no unit"), (2, "still none")], 1) == (None, None)
+
+
+def test_rating_action_is_only_what_the_page_says():
+    text = ("Credit rating\nThese CP are having a Credit Rating of CRISIL A1+ and are listed on BSE Limited.\n")
+    found = notes.rating_rows("S", "I", "E", DOC, 1, text, notes.lexicon())
+    assert found and all(r["action"] is None for r in found)
+
+
+def test_rating_letter_inside_a_word_is_no_rating():
+    assert notes._rating_cell("OTC", notes.lexicon()) is None
+
+
+def test_balance_lines_are_balances_not_amounts():
+    lex = notes.lexicon()
+    assert any(cue.search("Other financial assets") for cue in lex["balance_cues"])
+    assert not any(cue.search("Sale of fixed/other assets") for cue in lex["balance_cues"])
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-q"]))
