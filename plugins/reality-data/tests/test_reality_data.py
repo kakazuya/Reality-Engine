@@ -69,7 +69,7 @@ class CoreTests(unittest.TestCase):
         self.assertAlmostEqual(adjusted["summary"]["last_close"], row["adj_close"], places=4)
 
     def test_facts_segments_fy25(self):
-        out = core.facts("PPL", kind="segments", period="FY25")
+        out = core.facts("PPL", kind="segments", period="FY25", include_model_read=True)
         values = {round(f["value"], 2): f for f in out["facts"] if f["source"] == "ar_facts" and f["value"]}
         self.assertIn(41302.0, values)
         self.assertIn(36746.0, values)
@@ -80,11 +80,42 @@ class CoreTests(unittest.TestCase):
         self.assertAlmostEqual(values[41302.0]["value_cr"], 413.02, places=2)
 
     def test_facts_fy26_total_revenue(self):
-        out = core.facts("PPL", kind="financials", period="FY26")
+        out = core.facts("PPL", kind="financials", period="FY26", include_model_read=True)
         values = [f for f in out["facts"] if abs(float(f.get("value_cr") or 0) - 788.71) < 0.02]
         self.assertTrue(values, "788.71 cr FY26 revenue not returned")
         self.assertTrue(any(f["source"] == "ar_facts" for f in values))
         self.assertTrue(any(f["source"] == "results_xbrl" for f in values))
+
+    def test_facts_withholds_model_read_rows_by_default(self):
+        out = core.facts("PPL", kind="financials", period="FY26")
+        self.assertTrue(out["facts"])
+        self.assertFalse([f for f in out["facts"] if f["source"] in core.MODEL_READ_SOURCES])
+        self.assertTrue(all(f["extraction"] == "filed_xbrl" for f in out["facts"]))
+        self.assertIsInstance(out["model_read_withheld"], dict)
+        self.assertGreater(out["model_read_withheld"].get("ar_facts", 0), 0)
+
+    def test_facts_include_model_read_labels_and_ranks_xbrl_first(self):
+        out = core.facts("PPL", kind="financials", period="FY26", include_model_read=True)
+        # The answer opens with the filed XBRL revenue line, not a model-read row.
+        self.assertEqual(out["facts"][0]["source"], "results_xbrl")
+        self.assertEqual(out["facts"][0]["extraction"], "filed_xbrl")
+        values = [f for f in out["facts"] if abs(float(f.get("value_cr") or 0) - 788.71) < 0.02]
+        self.assertTrue(values, "788.71 cr FY26 revenue not returned")
+        ar_row = next(f for f in values if f["source"] == "ar_facts")
+        xbrl_row = next(f for f in values if f["source"] == "results_xbrl")
+        self.assertEqual(ar_row["extraction"], "model_read")
+        self.assertFalse(ar_row["verified"])
+        self.assertEqual(xbrl_row["extraction"], "filed_xbrl")
+        # T-103 ranking: the filed XBRL row sorts ahead of the model-read one
+        # for the same figure and year (results_xbrl rank 0, ar_facts rank 1).
+        self.assertLess(core._fact_rank(xbrl_row), core._fact_rank(ar_row))
+
+    def test_facts_explicit_ar_kind_keeps_model_read_rows(self):
+        out = core.facts("PPL", kind="ar", period="FY25")
+        self.assertTrue(out["facts"])
+        self.assertTrue(all(f["source"] == "ar_facts" for f in out["facts"]))
+        self.assertTrue(all(f["extraction"] == "model_read" for f in out["facts"]))
+        self.assertEqual(out["model_read_withheld"], {})
 
     def test_facts_quarantine_excludes_wrong_company_pdf(self):
         self.assertIn(92565, core.quarantined_doc_ids())
@@ -131,10 +162,20 @@ class CoreTests(unittest.TestCase):
         self.assertNotIn("business_model_profiles_demo",
                          {t["name"] for t in dbs["equity_intelligence"]["tables"]})
         indexes = {i["key"]: i for i in out["indexes"]}
-        self.assertEqual(indexes["nemotron8b"]["done_rows"], 340_887)
-        self.assertEqual(indexes["qwen8b_ar"]["done_rows"], 61_440)
-        self.assertLess(indexes["qwen8b_ar"]["coverage_pct"], 5.0)
-        self.assertIn("4.49", indexes["qwen8b_ar"]["description"])
+        # The vector indexes moved to Drive on 7 Nov 2026 (Shivam): an absent
+        # index is a valid state, so check coverage only when the files are here.
+        nemotron = indexes["nemotron8b"]
+        if nemotron["available"]:
+            self.assertEqual(nemotron["done_rows"], 340_887)
+        else:
+            self.assertEqual(nemotron["done_rows"], 0)
+        qwen = indexes["qwen8b_ar"]
+        if qwen["available"]:
+            self.assertEqual(qwen["done_rows"], 61_440)
+            self.assertLess(qwen["coverage_pct"], 5.0)
+            self.assertIn("4.49", qwen["description"])
+        else:
+            self.assertEqual(qwen["done_rows"], 0)
 
     def test_catalog_works_without_descriptions(self):
         # No TemporaryDirectory: the sandbox's temp DACL makes its cleanup fail.
@@ -200,7 +241,8 @@ class McpStdioTests(unittest.TestCase):
             self.assertAlmostEqual(priced["rows"][0]["close"], 164.15, places=2)
 
             facts = payload(await session.call_tool(
-                "facts", {"symbol": "PPL", "kind": "segments", "period": "FY25"},
+                "facts", {"symbol": "PPL", "kind": "segments", "period": "FY25",
+                          "include_model_read": True},
                 read_timeout_seconds=60))
             values = {round(f["value"], 2) for f in facts["facts"] if f.get("value")}
             self.assertIn(41302.0, values)

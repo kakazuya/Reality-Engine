@@ -13,8 +13,8 @@ Every result carries provenance, and AGENTS.md rule 13 (quarantine) is applied.
 | `schema(table, db=None)` | One table's columns + types, row count, indexes, date coverage and three sample key rows. `db='pilot3'` works like any other store. |
 | `resolve(query)` | Symbol, company name or ISIN → canonical identity, NSE/BSE codes, ISIN/symbol validity windows. PPL → `INE050001010`. |
 | `price(symbol, start, end=None, adjusted=False)` | OHLCV, delivery qty/%, traded value; raw and adjusted closes. NSE first, BSE fallback. |
-| `facts(symbol, kind=None, period=None)` | Segments, financials, KPIs, guidance from `ar_facts`, `results_xbrl`, `deck_figures`, `concall_facts`, with doc/page/period/basis/quote. |
-| `search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10)` | Hybrid 4096-d vector + FTS over concalls, decks, annual reports, announcements, RBI/PIB/policy docs; degrades to FTS when a provider/key fails and labels each hit `vector`/`fts`/`both`. |
+| `facts(symbol, kind=None, period=None, include_model_read=False)` | Segments, financials, KPIs, guidance: filed XBRL `results_xbrl` first; the model-read stores (`ar_facts`, `deck_figures`, `concall_facts` — AI-extracted October 2026, unverified) are withheld unless `include_model_read=True` or `kind` is `ar`/`deck`/`concall`, and every row carries `extraction` (`filed_xbrl` or `model_read`); `model_read_withheld` counts the rows left out. |
+| `search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10, include_model_read=False)` | Hybrid 4096-d vector + FTS over concalls, decks, annual reports, announcements, RBI/PIB/policy docs; degrades to FTS when a provider/key fails and labels each hit `vector`/`fts`/`both`. Annual-report `ar_facts` model-read quotes are withheld unless `include_model_read=True`, then labelled `extraction=model_read`. |
 | `sql(query, db)` | Bounded read-only SELECT/WITH escape hatch: one statement, row limit (default 200, max 1000), 5 s timeout, write/DDL keywords rejected. |
 | `pilot3_*` (10 tools) | `pilot3_kpi`, `pilot3_fin`, `pilot3_ratio`, `pilot3_holding`, `pilot3_statements`, `pilot3_guidance`, `pilot3_docs`, `pilot3_search`, `pilot3_sql` over the three pilot companies (KEC, BAJFINANCE, HINDALCO). `pilot3_fin` defaults to the consolidated statement and labels `basis` on every row; `pilot3_sql(max_chars=400)` cuts text cells at 400 characters by default and widens to a hard cap of 8000 when a long page text or a full quote is asked for. |
 
@@ -27,10 +27,10 @@ Every result carries provenance, and AGENTS.md rule 13 (quarantine) is applied.
 |---|---|---|
 | `truth_duckdb` | `reality_engine/data/snapshots/truth_2026-10-19.duckdb` | PIT snapshot: identity, NSE/BSE prices + delivery, events, AR/deck/concall/results facts, policy/PIB. |
 | `equity_intelligence` | `.../data/equity_intelligence.db` | 44 GB search layer: raw documents, chunks + embeddings, `intelligence_fts`, corporate docs, price/flow/peer tables. |
-| `ar_facts` | `.../data/ar_facts.db` | Annual-report facts (32.4 M rows, indexed `(isin, fiscal_year)`). |
+| `ar_facts` | `.../data/ar_facts.db` | Annual-report facts (32.4 M rows, indexed `(isin, fiscal_year)`); model-read by AI, unverified, withheld from default `facts()`/`search_docs`. |
 | `results_xbrl` | `.../data/results_xbrl.db` | NSE XBRL filings/facts + trading-ISIN map. |
-| `deck_figures` | `.../data/deck_figures.db` | Investor-presentation metrics by page, with source URLs. |
-| `concall_facts` | `.../data/concall_facts.db` | Concall guidance/KPI items with quotes. |
+| `deck_figures` | `.../data/deck_figures.db` | Investor-presentation metrics by page, with source URLs; model-read by AI, unverified, withheld from default `facts()`. |
+| `concall_facts` | `.../data/concall_facts.db` | Concall guidance/KPI items with quotes; model-read by AI, unverified, withheld from default `facts()`. |
 | `bse_announcements` | `.../data/bse_announcements.db` | BSE announcement feed. |
 | `pilot3` | `.../data/pilot3/pilot3.db` | The three pilot companies (KEC, BAJFINANCE, HINDALCO) in one script-built store: dated page text, KPI series, financial lines, ratios, shareholding, statements, guidance. Read it through the `pilot3_*` tools; `pilot3_sql` is the bounded escape hatch. Additive since 4 Nov 2026: `catalog(db='pilot3')`, `schema(table, db='pilot3')` and `sql(query, db='pilot3')` all resolve it. |
 
@@ -120,8 +120,9 @@ C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe plugins/realit
 
 - PPL has **no chunk** in either 4096-d index: `document_chunks` holds 0
   PPL rows (PPL annual reports live only in `ar_facts`, quote + page).
-  `search_docs("PPL segment revenue")` therefore returns the PPL AR passages
-  via the `ar_facts`/FTS leg with `source="fts"`, not a vector hit. The
+  `search_docs("PPL segment revenue", include_model_read=True)` therefore
+  returns the PPL AR passages via the `ar_facts`/FTS leg with `source="fts"`
+  and `extraction="model_read"`; the default call withholds them (T-103). The
   ranking check uses a known pipe-sector concall chunk (rank 1) and reports
   the PPL absence. Making PPL vector-searchable requires chunking/embedding
   its ARs — an explicit re-embedding decision, not done here.
