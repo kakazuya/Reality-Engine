@@ -124,6 +124,6 @@ generated 2026-10-31T12:56:00 · source `equity_intelligence.shp_index` (read-on
 ## Artifacts
 
 - raw XBRL: `D:\RealityEngine\raw\nse_shp_xbrl_pilot`, 563 gzipped filings
-- parsed pilot store: `reality_engine/data/pilot/v4/shp_xbrl_pilot.db`
+- parsed pilot store: `shp_xbrl_pilot (old pilot store, deleted 7 Nov 2026)`
 - independent re-read of the seed rows: `python -m reality_engine.scripts.verify_shp_xbrl_seed`
 - tests: `python -m pytest reality_engine/tests/test_v4_shp_xbrl.py -q`

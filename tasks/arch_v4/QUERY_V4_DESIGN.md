@@ -639,7 +639,7 @@ valid_from <= d < valid_to)` joined to the fact view. `company_membership_pit` i
 already has 10,895 rows over 124 index codes and 1,888 ISINs *(measured)*.
 
 **Correction (v4.1, decision 4).** An earlier draft of this document said the sector store is
-empty. That is wrong. Re-read on 30 Oct 2026: `reality_engine/data/pilot/pilot60/sector_pit.db`
+empty. That is wrong. Re-read on 30 Oct 2026: `sector_pit (old pilot store, deleted 7 Nov 2026)`
 → `company_sector_pit` has **482 rows / 482 ISINs / 28 sectors**, all
 `source='nse_classification'` (the earlier "0 rows" came from reading the wrong pilot file —
 the T1 build writes `company_sector_pit` into *both* `market_state_pilot.db` and

@@ -2,7 +2,7 @@
 
 Generated 2026-10-30T23:16:46+00:00 by `python -m reality_engine.query.v4.map_vocab_beam`; model `beam-free` (free) on OpenCode Go. The store is `.tmp/v4_vocab_pass2.db`, a copy of the WP2b vocabulary with `map.source` (deterministic | beam) on every row.
 
-**Install (controller):** back up the pilot store, then copy this file over `reality_engine/data/pilot/v4/v4_vocab.db`. Everything downstream reads `map`, which keeps its old values for deterministic rows and carries the Beam answer plus `source='beam'` for the rest. No other table changed shape except the one added column.
+**Install (controller):** back up the pilot store, then copy this file over `v4_vocab (old pilot store, deleted 7 Nov 2026)`. Everything downstream reads `map`, which keeps its old values for deterministic rows and carries the Beam answer plus `source='beam'` for the rest. No other table changed shape except the one added column.
 
 ## 1. The gate (§A.9 option b)
 
