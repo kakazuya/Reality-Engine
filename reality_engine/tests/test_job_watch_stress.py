@@ -453,3 +453,56 @@ def test_timeout_still_running_exits_zero(world: World):
     assert job_id in done.stdout
     assert 2.5 <= elapsed < 15
     assert _waiters(world) == []
+
+
+# ------------------------------------------------- 11. T-096: a worker waits for a reply
+def _open_reply_wait(world: World, job_id: str) -> None:
+    now = _now()
+    hb = {
+        "awaiting_input": True,
+        "awaiting_since": now.isoformat(),
+        "awaiting_deadline": (now + timedelta(minutes=59)).isoformat().replace("+00:00", "Z"),
+        "last_activity_at": now.isoformat(),
+    }
+    path = world.jobs / job_id / "heartbeat.json"
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps({"awaiting_input": True, "heartbeat": hb}), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def test_wait_wakes_within_two_polls_when_a_worker_starts_waiting(world: World):
+    job_id = "20261106T100000Z-aaaaaaaa"
+    _write_job(world, job_id)
+    proc = _start(world, JOB_WATCH, "wait", "--poll-seconds", str(POLL), "--timeout-seconds", "60")
+    _await_waiters(world, 1)
+    _open_reply_wait(world, job_id)
+    began = time.monotonic()
+    code, out, err = _communicate(proc)
+    elapsed = time.monotonic() - began
+    assert code == 0, err
+    assert out.startswith(f"WAITING {job_id} for a reply")
+    assert elapsed < 2 * POLL + SLOP, "a worker waiting for a reply must not sit until the 10-minute stall"
+    assert _waiters(world) == []
+
+
+def test_ack_stops_the_wait_and_the_stop_hook_firing_until_the_worker_acts(world: World):
+    job_id = "20261106T100100Z-bbbbbbbb"
+    _write_job(world, job_id)
+    _open_reply_wait(world, job_id)
+    assert "answer or ack" in _reason(_stop_hook(world).stdout)
+    done = _run(world, JOB_WATCH, "wait", "--poll-seconds", str(POLL), "--timeout-seconds", "30", timeout=40)
+    assert done.stdout.startswith(f"WAITING {job_id}"), "an unacked wait is reported at once"
+
+    _run(world, JOB_WATCH, "ack", job_id, "--note", "answer next session")
+    assert _run(world, JOB_WATCH, "status").stdout.startswith(f"ACKED {job_id} waiting for a reply")
+    hook = _stop_hook(world)
+    assert hook.returncode == 0 and hook.stdout == "", "an acked wait must not block a stop or ask for a waiter"
+
+    # Replied to, worked, and waiting again: a new event, seen by a wait armed before it.
+    proc = _start(world, JOB_WATCH, "wait", "--poll-seconds", str(POLL), "--timeout-seconds", "60")
+    _await_waiters(world, 1)
+    time.sleep(1.1)  # whole-second separation from the ack
+    _open_reply_wait(world, job_id)
+    code, out, err = _communicate(proc)
+    assert code == 0, err
+    assert out.startswith(f"WAITING {job_id}")

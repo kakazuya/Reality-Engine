@@ -1,7 +1,8 @@
 """Stop and PreCompact hooks for this project.
 
-``stop`` blocks one stop while a job is stalled, while a finished job or a failure still needs
-review or an ack, or while a job runs with no live ``job_watch wait`` recorded.  It reads the
+``stop`` blocks one stop while a job is stalled or waiting for a reply, while a finished job or a
+failure still needs review or an ack, or while a job runs with no live ``job_watch wait`` recorded
+(a job whose stall or wait has been acked needs no waiter).  It reads the
 uncapped line list, so a review that ranks below the 12-line prompt cap still blocks.  It never
 blocks twice (``stop_hook_active``), never in the Haiku doc loop, and it never waits itself.
 ``precompact`` prints what a summary must keep.  Every error exits 0: a hook must not break a
@@ -31,6 +32,9 @@ def stop_output(payload: dict, lines: list[str], live_work: bool = False, waiter
     stalled = [line for line in lines if line.startswith("STALLED")]
     if stalled:
         return _block("A job has stalled; check it before stopping:\n" + "\n".join(stalled))
+    waiting = [line for line in lines if line.startswith("WAITING")]
+    if waiting:
+        return _block("A worker is waiting for a reply; answer or ack it before stopping:\n" + "\n".join(waiting))
     review = [line for line in lines if line.startswith(("FINISHED, NEEDS REVIEW", "ENDED BADLY"))]
     if review:
         return _block("review or ack these before stopping:\n" + "\n".join(review))
@@ -52,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
             payload = json.loads(sys.stdin.read() or "{}")
             if not (payload.get("stop_hook_active") or os.environ.get("DOC_REVIEW_LOOP")):
                 lines = job_watch.status(limit=None)
-                live_work = job_watch.live_jobs() or job_watch.live_registered()
+                live_work = job_watch.live_jobs(skip_acked=True) or job_watch.live_registered()
                 output = stop_output(payload, lines, live_work, job_watch.waiter_alive())
                 if output:
                     print(output)

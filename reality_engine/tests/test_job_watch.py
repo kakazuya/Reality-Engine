@@ -680,6 +680,207 @@ def test_ack_hides_a_failed_job_and_removes_a_registered_name(root: Path):
     assert acked["acked_at"]
 
 
+# --------------------------------------------- T-096: reply waits, acks, live counts
+def _reply_wait(job_dir: Path, since: datetime, deadline: datetime | None) -> None:
+    """heartbeat.json as the launcher writes it, flags nested under ``heartbeat``."""
+    (job_dir / "heartbeat.json").write_text(
+        json.dumps(
+            {
+                "awaiting_input": True,
+                "heartbeat": {
+                    "awaiting_input": True,
+                    "awaiting_since": since.isoformat(),
+                    "awaiting_deadline": deadline.isoformat().replace("+00:00", "Z") if deadline else None,
+                    "last_activity_at": since.isoformat(),
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _ack_at(root: Path, job_id: str, moment: datetime) -> None:
+    with (root / "acks.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"id": job_id, "acked_at": moment.isoformat()}) + "\n")
+
+
+def _lines(root: Path, jobs_dir: Path) -> list[str]:
+    return job_watch.status(jobs_dir, _empty_reviews(root), root / "state.json", root, now=NOW)
+
+
+def test_a_reply_wait_reads_waiting_at_once_with_the_deadline(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261102T090000Z-aaaaaaaa"
+    job_dir = _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=1))
+    _reply_wait(job_dir, _ago(minutes=1), NOW + timedelta(minutes=59))
+    assert _lines(root, jobs_dir) == [f"WAITING {job_id} for a reply 1m, 17 tool calls, wait ends in 59m"]
+
+
+def test_a_long_reply_wait_is_waiting_not_stalled(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261102T080000Z-aaaaaaaa"
+    job_dir = _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=34))
+    _reply_wait(job_dir, _ago(minutes=34), NOW + timedelta(minutes=26))
+    assert _lines(root, jobs_dir)[0].startswith(f"WAITING {job_id} for a reply 34m")
+
+
+@pytest.mark.parametrize("deadline", [None, NOW - timedelta(minutes=5), NOW + timedelta(hours=3)])
+def test_a_reply_wait_without_a_valid_deadline_falls_back_to_the_stall_rule(root: Path, deadline):
+    """A wedged launcher can leave the flag set; core._awaiting_input_valid refuses it the same way."""
+    jobs_dir = root / "jobs"
+    job_id = "20261102T080000Z-bbbbbbbb"
+    job_dir = _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=34))
+    _reply_wait(job_dir, _ago(minutes=34), deadline)
+    assert _lines(root, jobs_dir)[0].startswith(f"STALLED {job_id} no activity for 34m")
+
+
+def test_reply_wait_reads_the_supervisor_copy_when_the_heartbeat_file_is_half_written(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261102T080000Z-cccccccc"
+    job_dir = _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=2))
+    (job_dir / "heartbeat.json").write_text('{"awaiting_in', encoding="utf-8")
+    record = json.loads((job_dir / "status.json").read_text(encoding="utf-8"))
+    record["heartbeat_live"] = {
+        "awaiting_input": True,
+        "awaiting_since": _ago(minutes=2).isoformat(),
+        "awaiting_deadline": (NOW + timedelta(minutes=58)).isoformat(),
+    }
+    (job_dir / "status.json").write_text(json.dumps(record), encoding="utf-8")
+    assert _lines(root, jobs_dir)[0].startswith(f"WAITING {job_id}")
+
+
+def test_ack_clears_a_stall_until_the_worker_acts_again(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261102T080000Z-dddddddd"
+    _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=30))
+    assert _lines(root, jobs_dir)[0].startswith("STALLED")
+    _ack_at(root, job_id, _ago(minutes=25))
+    assert _lines(root, jobs_dir) == [f"ACKED {job_id} stalled 30m, 17 tool calls"]
+    assert job_watch.live_jobs(jobs_dir, NOW, skip_acked=True, acks_path=root / "acks.jsonl") is False
+    # The worker acts after the ack and is healthy.
+    _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=3))
+    assert _lines(root, jobs_dir)[0].startswith("RUNNING")
+    # It acted after the ack and then went quiet: a new stall, raised afresh.
+    _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=15))
+    assert _lines(root, jobs_dir)[0].startswith("STALLED")
+
+
+def test_ack_before_a_stall_began_does_not_hide_it(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261102T080000Z-eeeeeeee"
+    _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=30))
+    _ack_at(root, job_id, _ago(minutes=40))
+    assert _lines(root, jobs_dir)[0].startswith("STALLED")
+
+
+def test_ack_clears_a_reply_wait_and_the_next_wait_is_raised_afresh(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261102T080000Z-ffffffff"
+    job_dir = _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=30))
+    _reply_wait(job_dir, _ago(minutes=30), NOW + timedelta(minutes=30))
+    _ack_at(root, job_id, _ago(minutes=20))
+    assert _lines(root, jobs_dir) == [f"ACKED {job_id} waiting for a reply 30m, 17 tool calls"]
+    assert job_watch.live_jobs(jobs_dir, NOW) is True
+    assert job_watch.live_jobs(jobs_dir, NOW, skip_acked=True, acks_path=root / "acks.jsonl") is False
+    _reply_wait(job_dir, _ago(minutes=2), NOW + timedelta(minutes=58))
+    assert _lines(root, jobs_dir)[0].startswith(f"WAITING {job_id}")
+    assert job_watch.live_jobs(jobs_dir, NOW, skip_acked=True, acks_path=root / "acks.jsonl") is True
+
+
+def test_ack_of_a_live_job_does_not_hide_its_later_finish_or_failure(root: Path, monkeypatch):
+    monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), "", set()))
+    jobs_dir = root / "jobs"
+    done_id, bad_id = "20261102T060000Z-aaaaaaaa", "20261102T060000Z-bbbbbbbb"
+    _ack_at(root, done_id, _ago(minutes=30))
+    _ack_at(root, bad_id, _ago(minutes=30))
+    _write_job(jobs_dir, done_id, phase="finished", started=_ago(hours=2), finished=_ago(minutes=5), outcome="completed")
+    _write_job(jobs_dir, bad_id, phase="failed", started=_ago(hours=2), finished=_ago(minutes=5), outcome="error")
+    lines = _lines(root, jobs_dir)
+    assert any(line.startswith(f"FINISHED, NEEDS REVIEW {done_id}") for line in lines)
+    assert any(line.startswith(f"ENDED BADLY {bad_id}") for line in lines)
+    _ack_at(root, done_id, _ago(minutes=1))
+    _ack_at(root, bad_id, _ago(minutes=1))
+    assert _lines(root, jobs_dir) == []
+
+
+def test_a_reply_restarts_the_stall_window(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261102T080000Z-abababab"
+    job_dir = _write_job(jobs_dir, job_id, phase="running", started=_ago(hours=1), activity=_ago(minutes=30))
+    steering = job_dir / "steering.jsonl"
+    steering.write_text("{}\n", encoding="utf-8")
+    os.utime(steering, (_ago(minutes=1).timestamp(), _ago(minutes=1).timestamp()))
+    assert _lines(root, jobs_dir)[0].startswith("RUNNING")
+
+
+def test_tool_count_is_the_events_count_not_the_lagging_digest(root: Path):
+    server = str(REPO_ROOT / "plugins" / "dsh-worker" / "server")
+    sys.path.insert(0, server)
+    import progress
+
+    jobs_dir = root / "jobs"
+    job_id = "20261102T090000Z-cdcdcdcd"
+    job_dir = _write_job(jobs_dir, job_id, phase="running", started=_ago(minutes=30), activity=_ago(minutes=1), tool_calls=270)
+    events = [
+        {"type": "tool_call", "tool": "read", "input": {"file_path": "a.py"}},
+        {"type": "tool_result", "tool": "read", "output": "the word tool_call in a result"},
+        {"type": "text", "text": '{"type": "tool_call"}'},
+        {"type": "tool_call", "tool": "pwsh", "input": {"nested": {"type": "tool_call"}}},
+        {"type": "status", "phase": "step_end"},
+    ]
+    path = job_dir / job_watch.EVENTS_FILE
+    path.write_text("".join(json.dumps(event) + "\n" for event in events), encoding="utf-8")
+    assert _lines(root, jobs_dir) == [f"RUNNING {job_id} 30m, 2 tool calls"]
+    assert progress.EventScanner().scan(path)["tool_calls"] == 2
+    assert progress.MAX_LINE_BYTES == job_watch.MAX_EVENT_LINE_BYTES
+    # A half-written last line is not counted until the launcher finishes it, as in the scanner.
+    with path.open("ab") as handle:
+        handle.write(b'{"type": "tool_call", "tool": "rea')
+    assert _lines(root, jobs_dir) == [f"RUNNING {job_id} 30m, 2 tool calls"]
+    assert progress.EventScanner().scan(path)["tool_calls"] == 2
+
+
+def test_wait_wakes_when_a_running_worker_starts_waiting(root: Path):
+    jobs_dir = root / "jobs"
+    job_id = "20261102T090000Z-efefefef"
+    now = datetime.now(timezone.utc)
+    job_dir = _write_job(jobs_dir, job_id, phase="running", started=now, activity=now)
+    timer = threading.Timer(0.2, _reply_wait, (job_dir, now, now + timedelta(minutes=59)))
+    timer.start()
+    try:
+        lines = job_watch.wait(
+            timeout_seconds=20,
+            poll_seconds=0.05,
+            jobs_dir=jobs_dir,
+            reviews_path=_empty_reviews(root),
+            state_path=root / "state.json",
+            repo_root=root,
+            acks_path=root / "acks.jsonl",
+            wait_dir=root / "waiters",
+        )
+    finally:
+        timer.join()
+    assert len(lines) == 1 and lines[0].startswith(f"WAITING {job_id}")
+
+
+def test_wait_raises_a_second_stall_after_the_baseline_one_cleared(root: Path, monkeypatch):
+    """--ignore-existing: a stall in the baseline that clears and returns is a new event."""
+    frames = iter(
+        [
+            ["STALLED job no activity for 12m, 1 tool calls"],  # baseline
+            ["RUNNING job 20m, 2 tool calls"],
+            ["STALLED job no activity for 11m, 3 tool calls"],
+        ]
+    )
+    monkeypatch.setattr(job_watch, "status", lambda *args, **kwargs: next(frames))
+    monkeypatch.setattr(job_watch, "live_jobs", lambda *args, **kwargs: True)
+    lines = job_watch.wait(
+        timeout_seconds=20, poll_seconds=0.01, jobs_dir=root / "jobs", state_path=root / "state.json",
+        wait_dir=root / "waiters", ignore_existing=True,
+    )
+    assert lines == ["STALLED job no activity for 11m, 3 tool calls"]
+
+
 def test_finished_job_whose_branch_was_deleted_is_hidden(root: Path, monkeypatch):
     monkeypatch.setattr(job_watch, "_merge_snapshot", lambda repo: (set(), "", {"main", "T-049"}))
     jobs_dir = root / "jobs"

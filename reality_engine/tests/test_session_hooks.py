@@ -84,7 +84,7 @@ def test_stop_never_blocks_twice_or_inside_the_doc_loop(monkeypatch):
 
 def test_stop_main_arms_a_wait_then_passes_behind_the_recorded_pid(root: Path, monkeypatch):
     monkeypatch.setattr(job_watch, "status", lambda *args, **kwargs: ["RUNNING job 3m, 17 tool calls"])
-    monkeypatch.setattr(job_watch, "live_jobs", lambda: True)
+    monkeypatch.setattr(job_watch, "live_jobs", lambda **kwargs: True)
     monkeypatch.setattr(job_watch, "live_registered", lambda: False)
     monkeypatch.setattr(job_watch, "WAIT_DIR", root / "waiters")
     monkeypatch.setattr(sys, "stdin", io.StringIO("{}"))
@@ -104,13 +104,18 @@ def test_stop_main_arms_a_wait_then_passes_behind_the_recorded_pid(root: Path, m
 
 def test_stop_main_blocks_before_arming_on_an_unreviewed_finish(monkeypatch):
     monkeypatch.setattr(job_watch, "status", lambda *args, **kwargs: ["FINISHED, NEEDS REVIEW job dsh/job"])
-    monkeypatch.setattr(job_watch, "live_jobs", lambda: False)
+    monkeypatch.setattr(job_watch, "live_jobs", lambda **kwargs: False)
     monkeypatch.setattr(job_watch, "live_registered", lambda: False)
     monkeypatch.setattr(sys, "stdin", io.StringIO("{}"))
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         assert session_hooks.main(["stop"]) == 0
     assert "review or ack" in _reason(output.getvalue())
+
+
+def test_stop_blocks_on_a_worker_waiting_for_a_reply_but_not_on_an_acked_one():
+    assert "waiting for a reply" in _reason(session_hooks.stop_output({}, ["WAITING job for a reply 3m, 17 tool calls"]))
+    assert session_hooks.stop_output({}, ["ACKED job waiting for a reply 3m, 17 tool calls"]) == ""
 
 
 def test_stop_main_never_raises_on_broken_input(monkeypatch):

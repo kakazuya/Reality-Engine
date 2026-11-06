@@ -452,16 +452,27 @@ python -m reality_engine.scripts.job_watch ack <job_id_or_name> --note "checked 
 python -m reality_engine.scripts.job_watch ack --all-ended
 ```
 
-`status` reads `plugins/dsh-worker/runtime/jobs/*/status.json`,
-`tasks/efficiency/worker_reviews.jsonl` and `.tmp/job_watch_acks.jsonl`, and only job folders whose
+`status` reads `plugins/dsh-worker/runtime/jobs/*/status.json`, each active job's `heartbeat.json`
+and `result.md.events.jsonl`, `tasks/efficiency/worker_reviews.jsonl` and
+`.tmp/job_watch_acks.jsonl`, and only job folders whose
 `status.json` changed in the last 48 hours. Lines are `RUNNING <job> <minutes>m,
-<tool calls> tool calls`; `STALLED` when a running job's `worker_activity_at` is
-older than 10 minutes; `ENDED BADLY ...` for failed, lost, cancelled or
+<tool calls> tool calls`, the count taken from the events file as `worker_status` counts it (T-096;
+`progress.jsonl` is a 20-minute digest and only the fallback, for HP jobs and fixtures);
+`WAITING <job> for a reply <minutes>m, <tool calls> tool calls, wait ends in <minutes>m` at once when
+the worker's turn ended and a follow-up wait is open (`awaiting_input` with a valid
+`awaiting_deadline`, the rule of `core._awaiting_input_valid`: a flag with a missing, lapsed or
+implausible deadline falls through to the stall rule; a `heartbeat.json` caught mid-write falls back
+to the `heartbeat_live` copy in `status.json`); `STALLED` when a running job has been idle more than
+10 minutes, idle counted from the latest of `worker_activity_at`, the heartbeat's
+`last_activity_at` and a write to `steering.jsonl`, so a reply restarts the window instead of
+reading as a stall before the worker's first event (a status ping or a claim restarts it too);
+`ACKED <job> waiting for a reply|stalled <minutes>m, <tool calls> tool calls` when that state has
+been acked (below); `ENDED BADLY ...` for failed, lost, cancelled or
 lease-expired jobs with no review row; and `FINISHED, NEEDS REVIEW <job> <branch>` when a job
 finished in the last 48 hours, has no review row (`id`) and is not done yet: merged branches and
 merge subjects count as done (three local `git` calls, skipped when nothing needs it), and so does
 a branch that no longer exists (deleted after review; an empty branch list means `git` did not
-answer and proves nothing). STALLED and RUNNING come first whatever their age; the rest sort
+answer and proves nothing). STALLED and WAITING, then RUNNING and ACKED, come first whatever their age; the rest sort
 newest first, so the 12-line cap drops the oldest history and never a live job. A registered
 non-worker process is `STALLED` when its log has not changed for its own quiet window: the
 `--stall-seconds S` given to `add`, else `JOB_WATCH_REGISTERED_STALL_SECONDS`, else 5 minutes (an
@@ -471,11 +482,12 @@ registration without a pid keeps `wait` watching while its log is still changing
 record is `.tmp/job_watch.json`. Exit code is 0 in every case and a corrupt record is skipped.
 
 `wait [--timeout-seconds N] [--poll-seconds 20] [--ignore-existing]` first reports anything already
-waiting for review: before it takes its baseline it returns the existing `STALLED`, `ENDED`,
+waiting for review: before it takes its baseline it returns the existing `STALLED`, `WAITING`, `ENDED`,
 `ENDED BADLY` and `FINISHED, NEEDS REVIEW` lines, so a finish that landed while the session was
 busy is never swallowed (`--ignore-existing` restores the old behaviour of hiding those lines in
-the baseline). It then polls and exits 0 as soon as a line moves to STALLED, ENDED or FINISHED
-that was not in that state in the baseline, or as soon as no job record is active and no live
+the baseline). It then polls and exits 0 as soon as a line moves to STALLED, WAITING, ENDED or FINISHED
+that was not in that state in the baseline (a state that passes leaves the baseline, so a second
+stall or wait of the same job fires), or as soon as no job record is active and no live
 registered process remains (the records are read again, not the 12 capped lines, and the poll
 snapshot is uncapped, so a finish ranked past the cap cannot hide). An invalid or half-written
 `status.json` counts as active, so a poll landing between two writes neither crashes `wait` nor
@@ -489,9 +501,14 @@ its creation time no longer matches (Windows: psutil when installed, else ctypes
 is woken when the command exits, which is what makes a finished worker reach it without a prompt.
 
 `ack <job_id_or_name> [--note TEXT]` appends `{"id", "acked_at", "note"}` to
-`.tmp/job_watch_acks.jsonl`, whose ids `status` treats exactly like `worker_reviews.jsonl` ids, and
-removes a registered name from `.tmp/job_watch.json`. `ack --all-ended` acks every `ENDED` and
-`ENDED BADLY` line shown; `STALLED` and `FINISHED, NEEDS REVIEW` are left for a real look.
+`.tmp/job_watch_acks.jsonl` and removes a registered name from `.tmp/job_watch.json`. An ack covers
+only a state that began before `acked_at` (T-096). An acked stall or reply wait reads `ACKED`, which
+is outside the `wait` states, passes the Stop hook and asks for no armed waiter; once the worker acts
+again, its next stall, wait, failure or finish is raised afresh, so acking a live worker cannot hide
+how it ends. `worker_reviews.jsonl` rows have no date and hide a job's end state as before; they do
+not touch a live job's line. `ack --all-ended` acks every `ENDED` and
+`ENDED BADLY` line shown; `STALLED`, `WAITING` and `FINISHED, NEEDS REVIEW` are left for a real look.
+The Stop hook (`reality_engine/scripts/session_hooks.py`) blocks one stop on `WAITING` as it does on `STALLED`.
 
 Fixture and worktree overrides: `JOB_WATCH_REPO_ROOT` (defaults to this checkout),
 `JOB_WATCH_ACKS`, `JOB_WATCH_STATE`, `JOB_WATCH_WAIT_DIR`, `JOB_WATCH_REGISTERED_STALL_SECONDS`
@@ -500,8 +517,9 @@ existing `DSH_WORKER_RUNTIME_DIR`.
 
 First measured `status` run (2026-11-02, 284 job folders): 0.36 s wall (0.29 s in process), one
 running job and eleven failed/needs-review lines. Tests: `python -m pytest
-reality_engine/tests/test_job_watch.py -q` (37 tests) and the real-subprocess stress suite
-`reality_engine/tests/test_job_watch_stress.py` (12 scenarios: finish before the baseline,
+reality_engine/tests/test_job_watch.py -q` (51 tests) and the real-subprocess stress suite
+`reality_engine/tests/test_job_watch_stress.py` (14 scenarios: a worker that starts waiting wakes `wait`
+within two polls, an ack stops `wait` and the Stop hook until the worker waits again, finish before the baseline,
 running to finished within two polls, corrupt status during a poll, 40 jobs, a finish past the
 12-line cap, a registered job stalled without a pid and a registered pid that exits, a
 hard-killed waiter plus pid reuse, two waiters, Stop-hook latency over 40 jobs (measured 0.4–2.0 s

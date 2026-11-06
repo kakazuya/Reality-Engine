@@ -8,17 +8,26 @@ process that is not a dsh worker (a log path plus optional ``--pid`` and
 ``--stall-seconds``) in ``.tmp/job_watch.json``; the record's own window is what
 decides STALLED for that name.
 
-``wait`` blocks until a job ends or stalls, or until no running job and no live
-registered pid remain, so a session runs it as a background command and the
-harness wakes that session when it exits.  Before it takes its baseline it
+A worker whose turn ended and whose follow-up wait is open reads ``WAITING``,
+at once, from the same ``heartbeat.json`` flag and deadline rule ``worker_status``
+uses.  Tool counts come from the job's events file, the source ``worker_status``
+reads; ``progress.jsonl`` is a digest every 20 minutes and only the fallback.
+
+``wait`` blocks until a job ends, stalls or starts waiting for a reply, or until
+no running job and no live registered pid remain, so a session runs it as a
+background command and the harness wakes that session when it exits.  Before it takes its baseline it
 reports anything already waiting for review, so a finish that landed while the
 session was busy is never swallowed (``--ignore-existing`` restores the old
 baseline behaviour).  It records its pid, process creation time and start time
 in ``.tmp/job_watch_wait/<pid>.json`` while it runs and removes that file on
 every exit path; one file per waiter, so two waiters cannot kill each other's
-record.  ``ack`` marks a job reviewed in ``.tmp/job_watch_acks.jsonl`` and drops
-a registered name from the watch list.  The Stop hook refuses one stop while a
-finish or failure is unreviewed, or while a job runs with no live waiter.
+record.  ``ack`` writes a dated row to ``.tmp/job_watch_acks.jsonl`` and drops a
+registered name from the watch list.  An ack covers only the state that already
+existed when it was made: an acked stall or reply wait reads ``ACKED`` until the
+worker acts again, and a later stall, wait or end is raised afresh.  The Stop
+hook refuses one stop while a job is stalled or waiting for a reply, while a
+finish or failure is unreviewed, or while a job runs with no live waiter; an
+``ACKED`` job asks for no waiter.
 
 Paths can be pointed at a fixture with ``JOB_WATCH_REPO_ROOT``,
 ``JOB_WATCH_ACKS``, ``JOB_WATCH_STATE`` and ``JOB_WATCH_WAIT_DIR``; the default registered stall
@@ -55,7 +64,9 @@ WAIT_DIR = Path(os.environ.get("JOB_WATCH_WAIT_DIR") or REPO_ROOT / ".tmp" / "jo
 
 FINISHED_PREFIX = "FINISHED, NEEDS REVIEW "
 ENDED_BADLY_PREFIX = "ENDED BADLY "
-WAIT_STATES = frozenset({"STALLED", "ENDED", "FINISHED"})
+WAIT_STATES = frozenset({"STALLED", "WAITING", "ENDED", "FINISHED"})
+EVENTS_FILE = "result.md.events.jsonl"
+MAX_EVENT_LINE_BYTES = 4 * 1024 * 1024  # progress.MAX_LINE_BYTES: longer lines are not counted there either
 
 ACTIVE_PHASES = frozenset({"starting", "running", "cancelling"})
 BAD_PHASES = frozenset({"failed", "lost", "cancelled"})
@@ -125,8 +136,57 @@ def _review_ids(path: Path) -> set[str]:
     return ids
 
 
+def _ack_times(path: Path) -> dict[str, float]:
+    """Each acked id and its latest ack as epoch seconds; 0 when the row has no usable date."""
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return {}
+    acks: dict[str, float] = {}
+    for line in lines:
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict) and isinstance(row.get("id"), str):
+            acks[row["id"]] = max(acks.get(row["id"], 0.0), _epoch(_iso(row.get("acked_at"))))
+    return acks
+
+
+def _ack_covers(acks: dict[str, float], job_id: str, since: datetime | None) -> bool:
+    """True when an ack was made after this state began, so a later state is never hidden."""
+    if job_id not in acks:
+        return False
+    return since is None or acks[job_id] >= since.timestamp()
+
+
+def _events_tool_calls(job_dir: Path) -> int | None:
+    """Tool calls in the events file, counted as ``worker_status`` counts them; None without the file.
+
+    Only lines holding the marker are parsed, which keeps a hook on every prompt cheap.
+    """
+    count = 0
+    try:
+        with (job_dir / EVENTS_FILE).open("rb") as handle:
+            for line in handle:
+                if b"tool_call" not in line or len(line) > MAX_EVENT_LINE_BYTES or not line.endswith(b"\n"):
+                    continue
+                try:
+                    event = json.loads(line.decode("utf-8", "replace"))
+                except ValueError:
+                    continue
+                if isinstance(event, dict) and event.get("type") == "tool_call":
+                    count += 1
+    except OSError:
+        return None
+    return count
+
+
 def _tool_calls(job_dir: Path, status: dict[str, Any]) -> int | None:
-    """The last progress row's total, else the status record's own event count."""
+    """The live events count, else the last progress row, else the status record's own count."""
+    live = _events_tool_calls(job_dir)
+    if live is not None:
+        return live
     path = job_dir / "progress.jsonl"
     try:
         with path.open("rb") as fh:
@@ -187,6 +247,56 @@ def _lease_expired(status: dict[str, Any], now: datetime) -> bool:
     return deadline is not None and deadline < now - timedelta(seconds=60)
 
 
+def _heartbeat(job_dir: Path, status: dict[str, Any]) -> dict[str, Any]:
+    """The launcher's live heartbeat; the supervisor's copy when the file is unreadable mid-write."""
+    value = _read_json(job_dir / "heartbeat.json")
+    if isinstance(value, dict):
+        nested = value.get("heartbeat")
+        return nested if isinstance(nested, dict) else value
+    copy = status.get("heartbeat_live")
+    return copy if isinstance(copy, dict) else {}
+
+
+def _reply_wait_open(heartbeat: dict[str, Any], now: datetime) -> bool:
+    """``core._awaiting_input_valid``: a wedged launcher's flag lapses with its absolute deadline."""
+    if not heartbeat.get("awaiting_input"):
+        return False
+    deadline = _iso(heartbeat.get("awaiting_deadline"))
+    if deadline is None:
+        return False
+    return -5.0 <= (deadline - now).total_seconds() <= 3605.0
+
+
+def _idle_since(job_dir: Path, status: dict[str, Any], heartbeat: dict[str, Any]) -> datetime | None:
+    """The latest sign the worker was acting or was just spoken to.
+
+    A reply restarts the window: the record's last activity stays old until the
+    worker's first event of the new turn, and that is not a stall.
+    """
+    moments = [
+        _iso(status.get("worker_activity_at")) or _iso(status.get("updated_at")),
+        _iso(heartbeat.get("last_activity_at")),
+        _iso(status.get("started_at")),
+    ]
+    try:
+        moments.append(datetime.fromtimestamp((job_dir / "steering.jsonl").stat().st_mtime, timezone.utc))
+    except (OSError, ValueError):
+        pass
+    known = [moment for moment in moments if moment is not None]
+    return max(known) if known else None
+
+
+def _live_state(job_dir: Path, status: dict[str, Any], now: datetime) -> tuple[str, datetime | None]:
+    """waiting, stalled or running for an active job, with the moment that state began."""
+    heartbeat = _heartbeat(job_dir, status)
+    idle_since = _idle_since(job_dir, status, heartbeat)
+    if _reply_wait_open(heartbeat, now):
+        return "waiting", _iso(heartbeat.get("awaiting_since")) or idle_since
+    if idle_since is not None and now - idle_since > timedelta(minutes=STALL_MINUTES):
+        return "stalled", idle_since
+    return "running", idle_since
+
+
 def _branch(job_dir: Path) -> str | None:
     job = _read_json(job_dir / "job.json")
     if not isinstance(job, dict):
@@ -243,7 +353,8 @@ def _job_line(
     job_dir: Path,
     status: dict[str, Any],
     now: datetime,
-    reviewed: set[str],
+    reviews: set[str],
+    acks: dict[str, float],
     repo_root: Path,
     snapshot: list[Any],
 ) -> tuple[int, float, str] | None:
@@ -251,27 +362,34 @@ def _job_line(
     phase = str(status.get("phase") or "")
     outcome = str(status.get("outcome") or "")
     started = _iso(status.get("started_at"))
-    activity = _iso(status.get("worker_activity_at")) or _iso(status.get("updated_at"))
     finished = _iso(status.get("finished_at")) or _iso(status.get("updated_at"))
     recent = _epoch(started)
 
     if phase in ACTIVE_PHASES:
         if _lease_expired(status, now):
-            if job_id in reviewed:
+            lease = status.get("controller_lease")
+            deadline = _iso(lease.get("deadline")) if isinstance(lease, dict) else None
+            if job_id in reviews or _ack_covers(acks, job_id, deadline):
                 return None
             return 0, recent, f"ENDED BADLY {job_id} lease expired with no renewal"
-        idle_since = activity or started
-        if idle_since is not None and now - idle_since > timedelta(minutes=STALL_MINUTES):
-            tools = _tool_calls(job_dir, status)
-            tool_text = f"{tools} tool calls" if tools is not None else "tool calls unknown"
-            return 1, _epoch(idle_since), f"STALLED {job_id} no activity for {_minutes(idle_since, now)}m, {tool_text}"
+        state, since = _live_state(job_dir, status, now)
         tools = _tool_calls(job_dir, status)
         tool_text = f"{tools} tool calls" if tools is not None else "tool calls unknown"
-        minutes = _minutes(started, now) if started is not None else 0
-        return 3, recent, f"RUNNING {job_id} {minutes}m, {tool_text}"
+        if state == "running":
+            minutes = _minutes(started, now) if started is not None else 0
+            return 3, recent, f"RUNNING {job_id} {minutes}m, {tool_text}"
+        minutes = _minutes(since, now) if since is not None else 0
+        if since is not None and _ack_covers(acks, job_id, since):
+            what = "waiting for a reply" if state == "waiting" else "stalled"
+            return 3, recent, f"ACKED {job_id} {what} {minutes}m, {tool_text}"
+        if state == "waiting":
+            deadline = _iso(_heartbeat(job_dir, status).get("awaiting_deadline"))
+            left = _minutes(now, deadline) if deadline is not None else 0
+            return 1, _epoch(since), f"WAITING {job_id} for a reply {minutes}m, {tool_text}, wait ends in {left}m"
+        return 1, _epoch(since), f"STALLED {job_id} no activity for {minutes}m, {tool_text}"
 
     if phase in BAD_PHASES or outcome in BAD_OUTCOMES:
-        if job_id in reviewed:
+        if job_id in reviews or _ack_covers(acks, job_id, finished):
             return None
         detail = status.get("error") or outcome or phase
         when = _epoch(finished) or recent
@@ -279,7 +397,7 @@ def _job_line(
 
     if phase != "finished":
         return None
-    if job_id in reviewed:
+    if job_id in reviews or _ack_covers(acks, job_id, finished):
         return None
     if finished is not None and now - finished > timedelta(hours=RECENT_HOURS):
         return None
@@ -427,20 +545,33 @@ def _registered_lines(state: dict[str, Any], now: datetime) -> list[tuple[int, f
     return lines
 
 
-def live_jobs(jobs_dir: Path | None = None, now: datetime | None = None) -> bool:
+def live_jobs(
+    jobs_dir: Path | None = None,
+    now: datetime | None = None,
+    skip_acked: bool = False,
+    acks_path: Path | None = None,
+) -> bool:
     """True while any job is active, read from the records rather than the capped lines.
 
     A record that is invalid or only half-written counts as live: the writer may
     be between two ``status.json`` writes, and exiting past it would leave the
-    finish that follows unwatched.
+    finish that follows unwatched.  ``skip_acked`` leaves out a job whose stall or
+    reply wait has been acked: nothing is happening there for a waiter to catch.
     """
     now = now or datetime.now(timezone.utc)
+    acks = _ack_times(Path(acks_path or ACKS_PATH)) if skip_acked else {}
     for job_dir in _recent_job_dirs(Path(jobs_dir or JOBS_DIR), now):
         record = _read_json(job_dir / "status.json")
         if not isinstance(record, dict):
             return True
-        if str(record.get("phase") or "") in ACTIVE_PHASES:
-            return True
+        if str(record.get("phase") or "") not in ACTIVE_PHASES:
+            continue
+        if skip_acked:
+            state, since = _live_state(job_dir, record, now)
+            job_id = str(record.get("job_id") or job_dir.name)
+            if state != "running" and since is not None and _ack_covers(acks, job_id, since):
+                continue
+        return True
     return False
 
 
@@ -586,6 +717,9 @@ def wait(
             ]
             if changed:
                 return changed
+            # A state that has passed leaves the baseline, so a worker that stalls or
+            # waits again after acting is a new event and not a repeat of the old one.
+            baseline &= {_line_key(line) for line in lines}
             if not live_jobs(jobs_dir) and not live_registered(state_path):
                 return []
             remaining = deadline - time.monotonic()
@@ -638,8 +772,8 @@ def status(
     now = now or datetime.now(timezone.utc)
     jobs_dir = Path(jobs_dir or JOBS_DIR)
     repo_root = Path(repo_root or REPO_ROOT)
-    reviewed = _review_ids(Path(reviews_path or REVIEWS_PATH))
-    reviewed |= _review_ids(Path(acks_path or ACKS_PATH))
+    reviews = _review_ids(Path(reviews_path or REVIEWS_PATH))
+    acks = _ack_times(Path(acks_path or ACKS_PATH))
     snapshot: list[Any] = [None]
     lines: list[tuple[int, float, str]] = []
     for job_dir in _recent_job_dirs(jobs_dir, now):
@@ -647,14 +781,14 @@ def status(
         if not isinstance(record, dict) or not record.get("phase"):
             continue
         try:
-            line = _job_line(job_dir, record, now, reviewed, repo_root, snapshot)
+            line = _job_line(job_dir, record, now, reviews, acks, repo_root, snapshot)
         except Exception:  # one corrupt record must never hide the other jobs
             continue
         if line is not None:
             lines.append(line)
     lines.extend(_registered_lines(_load_state(Path(state_path or STATE_PATH)), now))
-    # Stalled, then running, whatever their age: a live job must never fall off
-    # the cap behind old failures. The rest sort newest first.
+    # Stalled or waiting, then running or acked, whatever their age: a live job
+    # must never fall off the cap behind old failures. The rest sort newest first.
     live_rank = {1: 0, 3: 1}
     lines.sort(key=lambda item: (live_rank.get(item[0], 2), -item[1], item[0], item[2]))
     capped = lines if limit is None else lines[:limit]
