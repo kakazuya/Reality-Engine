@@ -4,7 +4,7 @@ CLI: ``python -m reality_engine.pilot3.notes --out <db> [--symbols KEC,BAJFINANC
 
 No model, no OCR, no network.  The reader works on ``doc_page`` text and finds three kinds of note by general
 wording and table shape, never by company name, page number or a per-company rule (all wording lives in
-``lexicon/notes.yaml``):
+``notes_lexicon.yaml``):
 
 * ``rating_event`` -- one row per agency / instrument / rating printed by a credit-rating table
   (``Rating agency`` + ``Programme`` + ``Ratings assigned`` columns, or ``Rating agency`` + ``Rating`` +
@@ -51,7 +51,8 @@ import yaml
 from reality_engine.pilot3 import profile
 from reality_engine.pilot3.schema import TABLES, NOTES_INDEXES
 
-LEXICON = Path(__file__).with_name("lexicon") / "notes.yaml"
+# Not under lexicon/: kpi.load_lexicon and transcripts read every yaml in that folder as a KPI lexicon.
+LEXICON = Path(__file__).with_name("notes_lexicon.yaml")
 
 NOTES = ("rating_event", "concentration", "related_party_txn")
 

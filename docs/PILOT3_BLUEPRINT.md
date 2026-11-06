@@ -740,7 +740,7 @@ filing's restated year-ago column) while `pilot3_fin` returned the second. The e
 
 Three new tables read from annual-report pages by script, for any listed company, with no company name, page number
 or per-company rule in the code: `rating_event`, `concentration`, `related_party_txn` (`pilot3/notes.py`, wording in
-`pilot3/lexicon/notes.yaml`, DDL in `pilot3/schema.py`, build part `notes`, `pilot3_sql` table list). Every row
+`pilot3/notes_lexicon.yaml`, DDL in `pilot3/schema.py`, build part `notes`, `pilot3_sql` table list). Every row
 carries `symbol, isin, fiscal_year, entity, basis, doc_key, page, quote, known_at, known_at_source, extractor_rule`.
 `entity` is the company's legal name from the `company` table (never a literal); `basis` is read from the page's own
 header ("Notes to the Standalone/Consolidated Financial Statements") and is `not_stated` where the page prints none;

@@ -649,7 +649,7 @@ python -m reality_engine.pilot3.docs_collect --out D:\RealityEngine\pilot3\pages
 ### O15. Annual-report note tables: ratings, concentration, related parties (T-091, 6 Nov 2026)
 
 `reality_engine/pilot3/notes.py` fills three tables from `doc_page` text only, for any listed company: no company
-name, page number or per-company rule in code (wording in `pilot3/lexicon/notes.yaml`), no model, no network. Build
+name, page number or per-company rule in code (wording in `pilot3/notes_lexicon.yaml`), no model, no network. Build
 part `notes` (after `pages`; honours `--symbols`, deleting and rewriting that company's rows), DDL in
 `pilot3/schema.py` (`rating_event`, `concentration`, `related_party_txn`, indexes `ix_re/ix_conc/ix_rpt`), and the
 three names are in the `pilot3_sql` table list in `plugins/reality-data/server/server.py`.
@@ -754,6 +754,8 @@ is `reality_engine/tests/test_hp_headless.py`; it writes no events here, so the 
 `python -m pytest reality_engine/tests/test_rule_ledger.py reality_engine/tests/test_doc_gate.py -q`.
 
 A unit comes from the table's own note, else `page_unit` (this page, then up to 6 pages back). A rating's `action` is NULL unless the page states one: never assume `reaffirmed`.
+
+Any yaml under `pilot3/lexicon/` is read as a KPI lexicon by `kpi.load_lexicon`, so the note words sit in `pilot3/notes_lexicon.yaml`; a lexicon in that folder with another shape stops the `kpi` and `guidance` parts.
 
 ### O4. pilot3 precision, growth formulas and local OCR (T-049 E, merged unfinished 3 Nov)
 
