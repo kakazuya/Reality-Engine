@@ -1,4 +1,4 @@
-"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|pages|stores|comparatives|preferred|ratios|extract|segments|kpi|transcripts|guidance|all]``
+"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|pages|stores|comparatives|preferred|ratios|extract|segments|kpi|transcripts|guidance|notes|all]``
        ``[--symbols KEC[,BAJFINANCE,HINDALCO]] [--ocr-db <ocr.db> ...]``.
 
 Builds every pilot3 table in one file.  No network, no model.  Pages and documents come from pages.db (sandbox
@@ -7,6 +7,8 @@ it) fills the text of a ``needs_ocr`` page into ``doc_page`` and feeds the same 
 runs the KPI and transcript extractors into the same db; ``guidance`` runs the guidance extractor over the pages
 already in it.  ``comparatives`` (T-057) reads the printed comparative columns of each results PDF into
 ``fin_quarter_printed``; it runs after ``stores`` and before ``ratios``, and in ``all`` only under a profile.
+``notes`` (T-091) reads the annual-report notes (credit ratings, concentration, related-party transactions) and
+the rating-trigger clauses of the announcements into its own three tables; it needs ``pages``.
 ``preferred`` (T-090) writes ``preferred_from`` / ``preferred_to`` on ``fin_quarter_xbrl`` and
 ``fin_quarter_printed`` and recreates the ``fin_quarter_current`` view, so plain SQL elects the same figure
 ``pilot3_fin`` returns at any day; it runs after ``comparatives`` (re-run it after any part that rewrites those
@@ -14,7 +16,7 @@ rows).  Each part drops and recreates its own tables (extract: its own symbols' 
 symbols' rows, with ``CREATE TABLE IF NOT EXISTS``), so parts can be re-run; ``ratios`` needs ``stores`` built
 first and ``guidance`` needs ``pages``.
 
-``--symbols`` limits ONLY the extractors (extract, kpi, transcripts, guidance), which already delete and rewrite
+``--symbols`` limits ONLY the extractors (extract, kpi, transcripts, guidance, notes), which already delete and rewrite
 one company's rows; registry, pages, stores and ratios rebuild every company's rows and ignore it (``--help``
 says so).  ``build --part kpi --symbols <SYM>`` therefore gives exactly that company's rows of a full part build.
 ``--profile <json>`` (T-056) reads the company list, pages db, raw root, manifest, output and history window from
@@ -83,7 +85,7 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None)
     conn = sqlite3.connect(out)
     conn.execute("PRAGMA journal_mode=WAL")
     log = {}
-    parts = (["registry", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "guidance"]
+    parts = (["registry", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "guidance", "notes"]
              if part == "all" else [part])
     if "comparatives" in parts and not profile.under_profile():
         parts.remove("comparatives")  # no profile: the pilot3 build keeps its present rows (T-057)
@@ -134,6 +136,13 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None)
                 conn.close()  # guidance reads doc_page and transcript_statement from the db file
                 log["guidance"] = run_guidance(str(out), symbols)
                 conn = sqlite3.connect(out)
+            elif name == "notes":
+                from reality_engine.pilot3.notes import run as run_notes
+
+                conn.commit()
+                conn.close()  # the note reader reads doc_page from the db file
+                log["notes"] = run_notes(str(out), symbols)
+                conn = sqlite3.connect(out)
             log[f"seconds_{name}"] = round(time.time() - started, 1)
         log["rows"] = row_counts(conn)
     finally:
@@ -148,9 +157,9 @@ def main(argv: list[str] | None = None) -> None:
                     help="build profile JSON (T-056): companies, pages db, raw root, manifest, output, window start")
     ap.add_argument("--out", default=None, help="default: the profile's output, else the real pilot3.db on C")
     ap.add_argument("--pages-db", default=None, help="override the profile's pages database")
-    ap.add_argument("--part", default="all", choices=("registry", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "all"))
+    ap.add_argument("--part", default="all", choices=("registry", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "notes", "all"))
     ap.add_argument("--symbols", default=None,
-                    help="comma list: without a profile it limits extract/kpi/transcripts/guidance only (registry/pages/stores/ratios rebuild every company); a profile build limits every part (default: the profile's companies, else the pilot3 three)")
+                    help="comma list: without a profile it limits extract/kpi/transcripts/guidance/notes only (registry/pages/stores/ratios rebuild every company); a profile build limits every part (default: the profile's companies, else the pilot3 three)")
     ap.add_argument("--ocr-db", action="append", default=[], help="ocr_page database written by pilot3.ocr (repeat for one per company)")
     args = ap.parse_args(argv)
     if args.profile:

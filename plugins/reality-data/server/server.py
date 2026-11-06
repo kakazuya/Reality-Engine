@@ -572,7 +572,7 @@ def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int 
         "enforced, default 100, max 500). Tables: company (every company the build covers -- count it, never assume "
         "a sample), doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, "
         "ratio_panel, formula, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, "
-        "price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance. Views: "
+        "price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, rating_event, concentration, related_party_txn. Views: "
         "fin_quarter_current (the one preferred financial line per symbol, fiscal_period, basis and line_item now). "
         "Financial figures: read fin_quarter_current, or add preferred_from / preferred_to on fin_quarter_xbrl and "
         "fin_quarter_printed (preferred when preferred_from <= '<day>' and (preferred_to IS NULL or preferred_to > "

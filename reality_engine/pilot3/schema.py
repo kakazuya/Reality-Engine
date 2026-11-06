@@ -113,11 +113,32 @@ TABLES: dict[str, str] = {
         symbol TEXT, isin TEXT, metric TEXT, target_period TEXT, low REAL, high REAL, unit TEXT,
         direction TEXT, said_on TEXT, doc_key TEXT, page INTEGER, quote TEXT, speaker TEXT,
         known_at TEXT, known_at_source TEXT, revision_of INTEGER, extractor_rule TEXT)""",
+    # T-091: the annual-report note tables read by notes.py.  One row per agency/instrument/rating
+    # (rating_event), per bucket or geography/product and year column (concentration), and per counterparty and
+    # year column (related_party_txn); ``basis`` says which reporting statement the page belongs to.
+    "rating_event": """CREATE TABLE rating_event (
+        symbol TEXT, isin TEXT, fiscal_year TEXT, entity TEXT, basis TEXT, agency TEXT, instrument TEXT,
+        rating TEXT, outlook TEXT, action TEXT, effective_date TEXT, trigger_text TEXT,
+        doc_key TEXT, page INTEGER, quote TEXT, known_at TEXT, known_at_source TEXT, extractor_rule TEXT)""",
+    "concentration": """CREATE TABLE concentration (
+        symbol TEXT, isin TEXT, fiscal_year TEXT, entity TEXT, basis TEXT, dimension TEXT, bucket TEXT,
+        measure TEXT, pct REAL, value REAL, unit TEXT, scale REAL, period_end TEXT,
+        doc_key TEXT, page INTEGER, quote TEXT, known_at TEXT, known_at_source TEXT, extractor_rule TEXT)""",
+    "related_party_txn": """CREATE TABLE related_party_txn (
+        symbol TEXT, isin TEXT, fiscal_year TEXT, entity TEXT, basis TEXT, counterparty TEXT, relationship TEXT,
+        txn_type TEXT, amount REAL, balance REAL, unit TEXT, scale REAL, period_end TEXT,
+        doc_key TEXT, page INTEGER, quote TEXT, known_at TEXT, known_at_source TEXT, extractor_rule TEXT)""",
 }
 
 GUIDANCE_INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_gd ON guidance(symbol, metric, target_period)",
     "CREATE INDEX IF NOT EXISTS ix_gd2 ON guidance(symbol, said_on)",
+)
+
+NOTES_INDEXES = (
+    "CREATE INDEX IF NOT EXISTS ix_re ON rating_event(symbol, agency, fiscal_year)",
+    "CREATE INDEX IF NOT EXISTS ix_conc ON concentration(symbol, dimension, fiscal_year)",
+    "CREATE INDEX IF NOT EXISTS ix_rpt ON related_party_txn(symbol, counterparty, fiscal_year)",
 )
 
 INDEXES = (
@@ -137,6 +158,7 @@ INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_ins ON insider_trade(symbol, intimation_date)",
     "CREATE INDEX IF NOT EXISTS ix_ip ON index_price(symbol, index_name, date)",
     *GUIDANCE_INDEXES,
+    *NOTES_INDEXES,
 )
 
 FTS = """CREATE VIRTUAL TABLE doc_page_fts USING fts5(text, content='doc_page', content_rowid='rowid',
