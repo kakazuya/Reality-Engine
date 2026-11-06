@@ -248,19 +248,25 @@ class HistoricalBackfillManager:
 
         return total_inserted
 
-    def recalculate_all_technical_indicators(self) -> int:
+    def recalculate_all_technical_indicators(self, symbols: Optional[List[str]] = None) -> int:
         """
         Groups time-series data by symbol and calculates rolling 20-day delivery SMAs,
         delivery spike ratios, conviction scores, SMAs (20/50/200), RSI-14, and 52W metrics.
-        Optimized with vectorized pandas operations.
+        Optimized with vectorized pandas operations. ``symbols`` limits the run to those
+        symbols' full histories, so a caller can work in chunks under a RAM cap (T-099).
         """
-        logger.info("Recalculating rolling indicators for all active symbols...")
+        logger.info("Recalculating rolling indicators for %s symbols...",
+                    "all active" if symbols is None else len(symbols))
 
         with self.repo.db.session() as conn:
-            df_all = pd.read_sql_query(
-                "SELECT * FROM daily_price_delivery ORDER BY symbol, date ASC",
-                conn
-            )
+            if symbols is None:
+                df_all = pd.read_sql_query(
+                    "SELECT * FROM daily_price_delivery ORDER BY symbol, date ASC", conn)
+            else:
+                marks = ",".join("?" * len(symbols))
+                df_all = pd.read_sql_query(
+                    f"SELECT * FROM daily_price_delivery WHERE symbol IN ({marks}) ORDER BY symbol, date ASC",
+                    conn, params=list(symbols))
 
         if df_all.empty:
             logger.warning("No price delivery records to compute.")

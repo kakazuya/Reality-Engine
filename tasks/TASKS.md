@@ -25,7 +25,6 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-077 | OPEN | P2 | Prototype a shared defect-type list that parallel workers read and append (Beam KPI batches, answer runs); measure repeat slips such as ten-times units | accept: Shivam | from: Paper pointer 4, Shivam 5 Nov | opened 2026-11-05
 - T-078 | OPEN | P2 | Audit each hook and gate against the last failure it stopped; propose removals for Shivam; test one versioned worker pipeline file | accept: Shivam | from: Paper pointer 5, Shivam 5 Nov | opened 2026-11-05
 - T-082 | OPEN | P2 | dsh workers pane: show stable session id, cached tokens, total tokens and median tokens per second on the band above the prompt and on the detail card | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
-- T-096 | OPEN | P1 | job_watch wakes Claude at once when a worker with a follow-up wait ends its turn, and shows live tool counts: awaiting_input now reads as RUNNING until the 10-minute stall | accept: Shivam | from: Shivam 6 Nov | opened 2026-11-06
 
 ## Data
 - T-021 | LOOKING | P3 | Check if still open: PIB phase 2, Hindi, Urdu and regional offices | accept: Shivam | from: tasks/PIPELINE_TODO.md A2 | opened 2026-11-02
@@ -36,7 +35,6 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-037 | OPEN | P1 | Fetch KEC's call transcripts from kecrpg.com; its 10 filed concalls are cover letters | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
 - T-041 | OPEN | P2 | All 74 results_notes docs in chunks_v3_pilot point at a deleted worktree; raw PDFs are gone. 3 pilot ones refetched to D but their hash differs from the stored one, so check pages and fix raw_path | accept: Shivam | from: T-040 2 Nov | opened 2026-11-02
 - T-046 | OPEN | P2 | List the 10 documents the 31 Oct reader test found absent and check whether they exist at the source; moved from the old work queue | accept: Shivam | from: manual | opened 2026-11-02
-- T-099 | WAITING Shivam | P1 | Holiday copies in daily_price_delivery: fix nse_client.fetch_bhavcopy date check, delete 111,535 rows by the T-089 plan, replace 2021-11-04 Muhurat session, rebuild indicators | accept: Shivam | from: T-089 report 7 Nov | opened 2026-11-07
 
 ## OCR and extraction
 - T-020 | OPEN | P2 | OCR after workspace step 4: TextRecognizer first pass, stronger reader for low-confidence numbers; last accuracy pilot failed its gate | accept: Shivam | from: RULINGS, GATE_STATE | opened 2026-11-02
@@ -62,7 +60,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-085 | OPEN | P1 | Number check passes invented or wrong figures: MARUTI-102 in `answer_a3\second_read\fix_test\arm_plain` writes Rs 5,33,555 crore for 5.33555e+11 rupees (53,355.5 crore); INFY-005 in `arm_flags` has inputs 43,278, 46,347, 49,012, 50,699 that sum to the right total but are not the filed quarters (Q2 49,244). Catch both with no new false alarm on the 600 answers | accept: python -m pytest reality_engine/tests/test_pilot3_number_check.py -q | from: Eagle 6 Nov, T-083 read | opened 2026-11-06
 - T-083 | DOING Eagle | P1 | Second reading step: a free model reads each answer against the question and the answer's own numbers and flags contradictions, unsourced causes and question misfit; test on graded answers before any use | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
 - T-098 | OPEN | P1 | Build applies window_start to documents, not only stores: scratch builds from the pilot60_history manifest held 2019+ documents (hold6 531 of 611 guidance targets before 2024-04-01); re-measure T-094's 501 GB and 52 h projection on windowed documents | accept: Shivam | from: Wolf 6 Nov, T-092 hold-out read | opened 2026-11-06
-- T-100 | OPEN | P1 | Prototype an announcement category allow-list (Shivam approves the list first) and re-measure per-company size on 2024-04+ documents with it; project to 6,940 | accept: Shivam | from: Shivam 7 Nov | opened 2026-11-07
+- T-100 | OPEN | P1 | Prototype the announcement type reader: classify each 2024-04+ announcement from its own text (first page, more pages until clear), not the exchange category; measure agreement with a hand read and how often the exchange label is wrong; re-measure per-company size on the kept types; project to 6,940 | accept: Shivam | from: Shivam 7 Nov | opened 2026-11-07
 
 ## Bank
 - T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02
@@ -72,3 +70,4 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-031 | OPEN | P3 | Research library bucket scheme; duplicates deleted 2 Nov, list in _dupes_deleted_2026-11-02.csv | accept: Shivam | from: T-026 | opened 2026-11-02
 
 ## Machines
+- T-099 | OPEN | P1 | Holiday copies in daily_price_delivery: fix nse_client.fetch_bhavcopy date check, delete 111,535 rows by the T-089 plan, replace 2021-11-04 Muhurat session, rebuild indicators | accept: Shivam | from: T-089 report 7 Nov | opened 2026-11-07

@@ -36,6 +36,29 @@ urllib3.disable_warnings()
 logger = logging.getLogger("reality_engine.nse_client")
 
 
+
+def bhavcopy_file_dates(frame: "pd.DataFrame") -> set:
+    """Trade dates printed in a full bhavcopy's own DATE1 column, as YYYY-MM-DD strings.
+
+    NSE serves the previous session's file under a holiday's URL, so the URL date proves nothing (T-089:
+    57 stored dates were copies). An empty set means the file prints no readable date.
+    """
+    cols = {str(c).strip(): c for c in frame.columns}
+    if "DATE1" not in cols:
+        return set()
+    raw = frame[cols["DATE1"]].dropna().astype(str).str.strip().unique()
+    parsed = pd.to_datetime(pd.Series(raw), format="%d-%b-%Y", errors="coerce").dropna()
+    return {d.strftime("%Y-%m-%d") for d in parsed}
+
+
+def bhavcopy_text_date_ok(text: str, target_date: datetime) -> bool:
+    """True when a downloaded full-bhavcopy body prints exactly ``target_date`` in DATE1."""
+    try:
+        frame = pd.read_csv(io.StringIO(text), nrows=50, skipinitialspace=True)
+    except Exception:
+        return False
+    return bhavcopy_file_dates(frame) == {target_date.strftime("%Y-%m-%d")}
+
 class NSEClient:
     """Robust client for fetching NSE exchange data using TLS fingerprint impersonation."""
 
@@ -261,6 +284,23 @@ class NSEClient:
             logger.warning("Re-downloaded Bhavcopy for %s still failed schema validation; skipping.", date_str)
             return None
 
+        # The file must print the asked session in its own DATE1 column; a holiday URL serves the
+        # previous session's file (T-089). A stale cache is quarantined and fetched once more.
+        want = target_date.strftime("%Y-%m-%d")
+        file_dates = bhavcopy_file_dates(df)
+        if file_dates != {want} and used_cache:
+            logger.warning("Cached Bhavcopy %s prints %s, not %s; quarantining and re-downloading.",
+                           local_file, sorted(file_dates), want)
+            _quarantine_cache(local_file)
+            df = _download_and_parse()
+            file_dates = bhavcopy_file_dates(df) if _validate_bhavcopy(df) else set()
+        if file_dates != {want}:
+            logger.warning("Bhavcopy for %s prints %s: not a session file for that date; skipping.",
+                           want, sorted(file_dates))
+            if local_file.exists():
+                _quarantine_cache(local_file)
+            return None
+
         # Standardize columns and whitespace
         df.columns = df.columns.str.strip()
         for col in df.select_dtypes(include="object").columns:
@@ -391,15 +431,17 @@ class NSEClient:
                 # Check if Bhavcopy exists for this date
                 date_str = current.strftime("%d%m%Y")
                 local_file = BHAVCOPY_DIR / f"sec_bhavdata_full_{date_str}.csv"
-                if local_file.exists() and local_file.stat().st_size > 1000:
+                if (local_file.exists() and local_file.stat().st_size > 1000
+                        and bhavcopy_text_date_ok(local_file.read_text(encoding="utf-8", errors="replace")[:20000], current)):
                     found_days.append(current)
                 else:
                     # Quick HEAD/GET probe
                     url = NSE_BHAVCOPY_URL_TEMPLATE.format(date_str=date_str)
                     try:
                         res = self.session.get(url, headers=NSE_HEADERS, timeout=8)
-                        if res.status_code == 200 and len(res.text) > 1000:
-                            # Save locally
+                        if (res.status_code == 200 and len(res.text) > 1000
+                                and bhavcopy_text_date_ok(res.text, current)):
+                            # Save locally (only a file that prints this date: T-089)
                             local_file.parent.mkdir(parents=True, exist_ok=True)
                             with open(local_file, "w", encoding="utf-8") as f:
                                 f.write(res.text)
