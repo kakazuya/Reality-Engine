@@ -32,8 +32,8 @@ for normal review.
 Env: ``HP_RUN_HOST`` / ``HP_RUN_ROOT`` / ``HP_RUN_SSH`` / ``HP_RUN_SCP`` as in
 ``hp_run``; ``HP_WORKER_PY`` (remote interpreter; default the ARM64 Python 3.14
 already carrying ``mcp`` + ``cryptography``); ``REALITY_DATA_ROOT`` (source of
-``--dbs``); ``HP_WORKER_ACCOUNT`` (default 1: the HP uses Go key 1,
-``OPENCODE_GO_API_KEY``); ``DSH_WORKER_RUNTIME_DIR`` (where the dsh-worker MCP
+``--dbs``); ``HP_WORKER_ACCOUNT`` (default 2: every paid call uses Go key 2,
+``OPENCODE_GO_API_KEY_2``, since key 1 hit 99% of its limit on 6 Nov); ``DSH_WORKER_RUNTIME_DIR`` (where the dsh-worker MCP
 keeps its jobs; default the main checkout's ``plugins/dsh-worker/runtime``).
 
 ``--pilot-db`` copies one profile database from anywhere on this laptop (for
@@ -71,7 +71,7 @@ NODE_DIR = r"C:\RE\node24\node-v24.22.2-win-arm64"
 PY_DEFAULT = r"%USERPROFILE%\AppData\Local\Programs\Python\Python314-arm64\python.exe"
 MODEL = "deepseek-v4.1-flash"
 EFFORT = "max"
-ACCOUNT = os.environ.get("HP_WORKER_ACCOUNT", "1")
+ACCOUNT = os.environ.get("HP_WORKER_ACCOUNT", "2")
 LEASE_SECONDS = int(os.environ.get("HP_WORKER_LEASE_SECONDS", "1800"))
 POLL_INTERVAL = int(os.environ.get("HP_WORKER_POLL_SECONDS", "10"))
 POLL_TIMEOUT = int(os.environ.get("HP_WORKER_POLL_TIMEOUT", "15"))
@@ -1101,7 +1101,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--timeout", type=int, default=None, help="hard wall-clock cutoff, seconds")
     p.add_argument("--max-output-tokens", type=int, default=None)
     p.add_argument("--account", default=None, choices=("1", "2"),
-                   help="OpenCode Go key: 1 = OPENCODE_GO_API_KEY (HP default), 2 = _2 (MSI default)")
+                   help="OpenCode Go key: 1 = OPENCODE_GO_API_KEY, 2 = _2 (default on both machines)")
     p.add_argument("--peak-ok", action="store_true",
                    help="allow a DeepSeek start in the MSI's peak window (needs Shivam's go-ahead)")
     p = sub.add_parser("status", help="job states, exit codes, result size, last progress")

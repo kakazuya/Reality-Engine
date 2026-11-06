@@ -302,7 +302,7 @@ that had ended still reports `finished` when the poller has died;
 `worker_result` re-fetches a final result that an earlier ssh timeout left
 missing. HP jobs have no dsh control channel, so `message_worker` returns
 `not_supported_on_hp` instead of failing on a missing control record. HP keeps
-its own launcher defaults: Go account 1 and a 1800 s hard stop unless
+its own launcher defaults (`reality_engine/scripts/hp_worker.py`, described in the `start_worker` text in `server/plugin_server.py`): Go account 2 (key 1 hit its limit, 6 Nov) and a 1800 s hard stop unless
 `hard_timeout_seconds` is passed.
 
 ## Worktree writers

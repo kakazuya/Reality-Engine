@@ -76,7 +76,7 @@ def test_worker_command_carries_the_msi_model_and_launch_flags():
     command = hp_worker.worker_command(paths, r"C:\Users\zen7s", permission="workspace-write",
                                        timeout=None, max_output_tokens=None)
     assert "--model deepseek-v4.1-flash" in command
-    assert "--account 1" in command  # HP default: Go key 1 (OPENCODE_GO_API_KEY)
+    assert "--account 2" in command  # default: Go key 2 (OPENCODE_GO_API_KEY_2), key 1 at its limit
     assert "--allow-paid" in command
     assert "--no-refresh" in command
     assert "--extra-patch" in command and "hp_mcp.yml" in command
@@ -386,7 +386,7 @@ def test_start_writes_the_runtime_record(monkeypatch, tmp_path):
 
     record = json.loads(Path(hp_worker.record_paths(job_id)["job"]).read_text(encoding="utf-8"))
     assert record["host"] == "hp"
-    assert record["account"] == "1"
+    assert record["account"] == "2"
     assert record["limits"]["hard_timeout_seconds"] == 900
     status = hp_worker.read_status(job_id)
     assert status["phase"] == "running"

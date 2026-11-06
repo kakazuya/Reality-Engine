@@ -13,7 +13,7 @@ Screensaver and lock: it locks after 180 idle seconds, and a playing video did n
 - If SSH times out after a Wi-Fi change, check that the network is set to Private. On 31 Oct both routes came back after that.
 
 ## Starting work
-- `start_worker(host="hp", permission="danger-full-access", hard_timeout_seconds=N, ...)`. `permission` is required; a start without it is refused as `permission_required`, not defaulted to read-only. Without a timeout it stops at 1,800 s. Uses Go account 1 by default.
+- `start_worker(host="hp", permission="danger-full-access", hard_timeout_seconds=N, ...)`. `permission` is required; a start without it is refused as `permission_required`, not defaulted to read-only. Without a timeout it stops at 1,800 s. Uses Go account 2 by default (key 1 hit 99% of its limit, Shivam 6 Nov; T-097).
 - Up to 5 workers, with at least 3 GB free. `dbs` takes bare file names and copies them read-only for the job.
 - `hp_worker start ... --pilot-db <path>` (T-070) copies one profile database from anywhere on this laptop (`D:\RealityEngine\pilot10\pilot10.db`) to `C:\RE\data\<basename>` with the same staging and `.meta.json` rule as `dbs`, and sets `REALITY_PILOT3_DB` for the job's `reality-data` server, so the HP serves the 10-company build. A missing path is refused before the job record is written; without the flag the MCP patch is unchanged.
 - Results: `python -m reality_engine.scripts.hp_worker fetch-patch <job>` gives branch `dsh-hp/<job>`.

@@ -224,7 +224,7 @@ def _compact_jobs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "rewrite code that later runs unsandboxed (the context-pack builder, "
         "supervisor.py, .git/config, other jobs' records). Read-only and worktree "
         "workers are unaffected. host='hp' routes the start to hp_worker.py on "
-        "the HP OmniBook (Go account 1 by default; account overrides it) and "
+        "the HP OmniBook (Go account 2 by default; account overrides it) and "
         "ignores workspace/use_worktree/write_scope: the HP checkout is C:\\RE. "
         "HP jobs get the same peak-hour refusal and a lease-like hard stop "
         "(hard_timeout_seconds defaults to 1800). dbs names the DB files to "
