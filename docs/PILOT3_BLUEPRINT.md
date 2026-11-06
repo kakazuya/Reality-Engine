@@ -18,6 +18,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 |---|---|---|
 | `company` | symbol, ISIN (with history), BSE code | security master |
 | `doc`, `doc_alias` | every held document: type, title, filing date, `known_at`, source | `pages.db` (docs_collect) |
+| `doc_identity` (T-093) | one identity verdict per `corporate_documents` row before extraction: company, fiscal year, type, date, each with a reason; `verdict` is `ok` / `set_aside` / `unknown` / `on_drive` / `not_held`; `type_reason` starts `cover_letter:` for a web-link/notification row, `linked_url` is the link it prints and `duplicate_of` the lowest id of the same company+sha; `doc_key` = sha256 (else `corp:<id>`) links it to `doc` | first PDF pages + the filing record + the Drive index |
 | `doc_page` (+ FTS `doc_page_fts`) | page text, method (text layer / OCR), confidence | PDF text layer, OCR dbs |
 | `fin_annual_line`, `fin_quarter_xbrl` | reported financial lines, basis (consolidated / standalone), definition | exchange XBRL results |
 | `fin_quarter_printed` (T-057) | every P&L cell a results table prints: current, preceding, year-ago, ytd, prior ytd, last full year, with the check that confirmed it (`xbrl_ok`/`sum_ok`/`repeat_ok`/`unchecked`) | the results PDF's word boxes |
@@ -35,6 +36,19 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
 - **Documents**: collected per company into `D:\RealityEngine\pilot3\pages.db`. Dates: `known_at` = exchange
   dissemination time; a transcript is never known before the call date printed in its first pages (`call_dates.py`).
   Order wins filed as generic press releases are retyped by headline.
+- **Identity before extraction (T-093, 6 Nov 2026)**: every document is checked first for company, fiscal year, type
+  and date (`reality_engine/pilot3/doc_identity.py`), because the stored BSE label and the file disagree often: 68
+  annual-report rows carry the Newspaper Publication category, and 20 of the KEC/MARUTI "transcripts" are one-page
+  notices that the transcript is on the website. `resolve_file` finds a file by stored path, then by sha256 across the
+  raw store's sha-named folders and the Drive archive index; a row only in `gdrive:InfoDiffusion_archive` is
+  `on_drive` and only a capped sample (50 files) is fetched, never bulk. `docs_collect.collect(set_aside=...)` and
+  `registry.build_doc` skip a set-aside sha and leave the document in the store, flagged. On all documents of the ten
+  companies (831 rows, 6 processes): 107 ok, 25 set_aside, 3 unknown, 78 on_drive, 618 not_held (481 have no hash at
+  all), 4.5 s (5.4 s per 1,000); the Drive sample fetched 10 files in 29.5 s (2.95 s/file). A 2,000-row sample
+  stratified by type (seed 20261106) projects the table: ok 15,151, set_aside 1,083, unknown 64, on_drive 255,
+  not_held 110,699; 13 of its rows are transcript cover letters (828 projected, each a call with no transcript held),
+  11 of the 13 print a link; 10 of its 934 hashed rows are truly missing (their folder was listed and has no file) and
+  664 (42,318 projected) sit in folders never listed, so `not_indexed` is not `missing`.
 - **Page text**: 96% of pages have a text layer (22,589 of 23,558). OCR only the rest (969 pages; HP TextRecognizer
   ~116 pages/min, MSI RapidOCR ~4 pages/min: OCR runs on the HP).
 - **Financials**: from XBRL, labelled with basis and definition; tools default to consolidated (a standalone EPS was
