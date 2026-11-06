@@ -38,8 +38,17 @@ from reality_engine.toolbelt.drive_fetch import local_to_remote, suffix_of
 _SHA = re.compile(r"[0-9a-f]{64}")
 
 
+def _tail_key(rel: str, sfx: str) -> tuple[str, str]:
+    """``(SYM/TYPE, suffix)``: the last two folder names, so a file under another prefix still matches."""
+    return ("/".join(posixpath.dirname(rel).split("/")[-2:]).lower(), sfx.lower())
+
+
 def load_listing(listing_dir: Path) -> tuple[dict[str, dict], dict[tuple[str, str], str], dict[str, str]]:
-    """``(path -> entry, (folder, suffix) -> path, sha256 -> path)`` over every ``listing_<folder>.json``."""
+    """``(path -> entry, (folder, suffix) -> path, sha256 -> path)`` over every ``listing_<folder>.json``.
+
+    ``listing_arch17.json`` is the second archive folder (Drive id 1aSQEfkMMGmpEpDDq7tI9MH7kmNJNemTH, the 17 Oct
+    browser upload, readable through the ``gdrive_ro`` remote with ``--drive-root-folder-id``); its paths are kept
+    under ``arch17/``. ``by_suffix`` also holds ``("tail:" + SYM/TYPE, suffix)`` keys over every listing."""
     files: dict[str, dict] = {}
     by_suffix: dict[tuple[str, str], str] = {}
     by_sha: dict[str, str] = {}
@@ -53,6 +62,8 @@ def load_listing(listing_dir: Path) -> tuple[dict[str, dict], dict[tuple[str, st
                 key = (posixpath.dirname(rel).lower(), sfx.lower())
                 if key not in by_suffix or rel > by_suffix[key]:
                     by_suffix[key] = rel
+                tk, ts = _tail_key(rel, sfx)
+                by_suffix.setdefault(("tail:" + tk, ts), rel)
             stem = posixpath.basename(rel)[:-4].lower() if rel.lower().endswith(".pdf") else ""
             if _SHA.fullmatch(stem):
                 by_sha.setdefault(stem, rel)
@@ -114,6 +125,10 @@ def find_drive(stored: str | None, sha: str, files: dict, by_suffix: dict, by_sh
                 alt = by_suffix.get((posixpath.dirname(rel).lower(), sfx.lower()))
                 if alt:
                     return alt, "hash_suffix"
+                tk, ts = _tail_key(rel, sfx)
+                alt = by_suffix.get(("tail:" + tk, ts))
+                if alt:
+                    return alt, "hash_suffix_other_folder"
     if sha and sha in by_sha:
         return by_sha[sha], "sha_name"
     return None, ""
