@@ -579,8 +579,8 @@ Two T-087 answers had failed because no holder was named and the September 2025 
   Info Edge (India) Limited 1,194,687,095 shares / 12.38% under `bodies_corporate` and Foodie Bay Employees ESOP Trust
   437,576,304 / 4.53%; BAJFINANCE 2025-09-30 has `fpi_total` 21.97 (1,367,282,372 shares) and `mutual_funds` 8.89
   (552,952,827); INFY 2026-09-30 has its pledge flag (false) with base 3,716,041,606 `total_excluding_dr_custody`;
-  every company has `shp_holder` rows for 2026-09-30 (BAJFINANCE 790, ETERNAL 342, HDFCBANK 75, HINDALCO 238,
-  HINDUNILVR 114, INFY 227, KEC 339, MARUTI 618, SBILIFE 272, SUNPHARMA 219).
+  every company has `shp_holder` rows for 2026-09-30 (BAJFINANCE 115, ETERNAL 64, HDFCBANK 17, HINDALCO 24,
+  HINDUNILVR 13, INFY 36, KEC 29, MARUTI 121, SBILIFE 55, SUNPHARMA 23; 3,234 rows in all) and 73 `shp_pledge` rows.
 - **Tests.** `reality_engine/tests/test_pilot3_shp_holder.py` 3 passed (0.1 s): the parse of a synthetic file with a
   DR-custody base, holder contexts, a PAC twin and the pledge block; `build_shp` writing the three tables; the
   `compute_start` window with `ratios._share_count` unchanged. `plugins/reality-data/tests/test_lookups_pilot3.py`
