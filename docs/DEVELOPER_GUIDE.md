@@ -757,6 +757,68 @@ A unit comes from the table's own note, else `page_unit` (this page, then up to 
 
 Any yaml under `pilot3/lexicon/` is read as a KPI lexicon by `kpi.load_lexicon`, so the note words sit in `pilot3/notes_lexicon.yaml`; a lexicon in that folder with another shape stops the `kpi` and `guidance` parts.
 
+### O16. Document identity before extraction (T-093, 6 Nov 2026)
+
+`reality_engine/pilot3/doc_identity.py` gives every `corporate_documents` row an identity verdict before a page is
+extracted: company, fiscal year, type and date, one column and reason each, no model call. Verdicts are `ok`,
+`set_aside` (a check failed), `unknown` (fewer than 200 characters in the first five pages: scanned/garbled, never
+guessed), `on_drive` (the file is in the Drive archive index and was not downloaded) and `not_held` (neither on disk nor
+in the archive index). `doc_identity` rows link to `doc` by `doc_key` = the sha256 (else `corp:<corporate_documents.id>`);
+`registry.build_doc` drops a set-aside `doc_key` and `docs_collect.collect(..., set_aside=...)` skips that sha, so a
+failure is flagged and left in the store, never deleted.
+
+`resolve_file` tries the stored path through `config.resolve_stored_path`, then a sha-to-path index built once over the
+raw store's sha-named folders (`docs_collect.SHA_DIRS`), then the Drive archive index kept by
+`reality_engine/toolbelt/drive_fetch.py`. Only a `--fetch-drive` sample (at most 50 files) downloads from Drive; no bulk
+download. The company check reuses `ar_wrong_company_scan.page_hits`/`alias_tokens`: a first-page miss re-reads the file
+for its auditor's-report pages (a late name) and its own ISIN prefix or scrip code (a renamed company). The fiscal year
+is the year in the text against the record date (annual reports and results); a 2022 report under a 2026 crawl date
+fails. The type is the first-page text: a newspaper clipping, a meeting notice, AGM proceedings or a 1-2 page covering
+letter is not an annual report or a transcript, and the text beats the BSE category in both directions (a transcript
+under "Investor Presentation" stays a transcript; an annual report filed under "AGM" stays an annual report when its
+pages carry the report). Date is `bse_dissem_ts`, then `publication_date`; when `doc_date` equals the crawl date and no
+BSE/PIT field backs it the row is `crawl_date` and the real date, if any, is the page-1 letter's.
+
+```bash
+python -m reality_engine.pilot3.doc_identity_eval tasks/dsh_tasks/doc_identity_gold.jsonl   # 20 of 20 (was 5 of 20)
+python -m pytest reality_engine/tests/test_pilot3_doc_identity.py -q                       # 21 passed
+python -m reality_engine.scripts.doc_identity_scan --symbols KEC,INFY --processes 6        # report + CSV; default D:\RealityEngine\reports, use --report-dir .tmp/idreports in a workspace-write sandbox
+python -m reality_engine.scripts.doc_identity_scan --sample 2000 --processes 6 --drive none # stratified projection sample
+```
+
+`--processes N` runs N shard processes that write CSVs the parent merges: this sandbox denies the named pipes
+`multiprocessing.Pool` needs. Shards inherit stdout and read their ids from a JSON file; `--sample N --seed S` picks a
+random sample stratified by `doc_type` (proportional allocation, weight `stratum_size/n`). The CSV adds `linked_url`
+(the first http(s) link on page 1), `duplicate_of` (the lowest id of the same company+sha; the build then reads that
+file once, while a hash under two symbols, equity and listed debt, is only counted) and `sample_weight`. Measured 6 Nov
+2026:
+
+- all documents of the ten pilot companies (831 rows), warm cache, 6 processes: 107 ok, 25 set_aside, 3 unknown, 78
+  on_drive, 618 not_held (481 have no sha256 and 67 no path, so `no_hash`, not a failure), 4.5 s (5.4 s per 1,000).
+- 2,000-row stratified sample, seed 20261106, **one process, cold: 32.3 s = 16.2 s per 1,000**; the whole table
+  (127,253 rows) at that rate is **0.57 h**. The same 2,000 on **6 processes, cold (disjoint seed 20261107): 43.5 s =
+  21.8 s per 1,000 = 0.77 h** — on this 8-core host the cold run is I/O-bound on the D: PDF store and 6 readers are
+  slower than one; the warm-cache 6-process rate is 5.4–5.7 s per 1,000 (0.2 h projected), so parallelism only pays
+  on a warm cache or a faster disk.
+- the sample projects: ok 15,151, set_aside 1,083, unknown 64, on_drive 255 (indexed folders only), not_held
+  110,699; 1,065 of 1,999 rows have no hash; of 934 hashed rows 256 are on disk, 4 in an indexed Drive folder, **10
+  truly missing** (their folder was listed and has no file) and **664 in folders never listed** (`not_indexed`, not
+  missing); the ten-company 39.1% was all "folder listed, file absent".
+- cover letters: 13 rows (828 projected), all transcripts, 11 print a link — each is a call with no transcript held.
+  The ten companies add 24 (20 transcripts, 4 annual reports), 16 with a link.
+- duplicates in the table: 735 same-company sha groups, 790 repeated rows (ANNUAL_REPORT 551, CONCALL_TRANSCRIPT 182,
+  INVESTOR_PRESENTATION 52, ANNUAL_REPORT_DEBT_ISSUER 5); 87 hashes sit under two symbols (equity + listed debt).
+- Drive: the 9 ten-company folders that do not exist were checked against the other prefix; only
+  `D_pdfs/MARUTI/ANNUAL_REPORT` has a file (1) under the alternate prefix, the other 8 exist under neither `pdfs/` nor
+  `D_pdfs/`. The 2,000 sample's indexed on-drive files project to 255 files / 1.74 GB (6.8 MB each) / 0.21–0.47 h at
+  2.91–6.66 s/file (both 8-transfer batch rates measured); the 42,318 projected `not_indexed` files are the unknown:
+  if they are all in the archive, that is ~288 GB and 34–78 h of download, so a whole-table run must first list those
+  folders (no download) and then fetch.
+
+Known limits: the whole-file re-read on a first-page mismatch costs the large-file cases; a 1-3 page web-link letter
+is set aside (nothing to extract) even though its label may be technically right; the Drive index covers only the
+folders listed so far, so `on_drive` is a lower bound and `not_indexed` is not evidence of absence.
+
 ### O4. pilot3 precision, growth formulas and local OCR (T-049 E, merged unfinished 3 Nov)
 
 - `reality_engine/pilot3/kpi.py`: generic labels (margin, revenue, ebitda) count only on table rows or sentences that also carry a period and a unit; segment comes from the table's row or column header; a chart value takes its period from the nearest axis label; every row has a confidence tier (table_row > table_chart > sentence > sentence_default) and readers prefer the highest. Lexicons in `reality_engine/pilot3/lexicon/` were tightened to match.

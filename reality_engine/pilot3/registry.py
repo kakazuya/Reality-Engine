@@ -134,23 +134,37 @@ def _call_dates(pg: sqlite3.Connection, symbol: str) -> dict[str, tuple[str | No
     return {key: (filing, known) for key, (filing, known, _call) in call_dates.raise_doc_dates(pg, rows).items()}
 
 
+def _identity_set_aside(conn: sqlite3.Connection) -> set[str]:
+    """``doc_identity.doc_key`` values the identity scan set aside (a sha256, or ``corp:<id>`` without one).
+
+    The table belongs to this build's database; a build that has not run the scan keeps every document."""
+    try:
+        return {r[0] for r in conn.execute("SELECT doc_key FROM doc_identity WHERE verdict='set_aside'")}
+    except sqlite3.OperationalError:
+        return set()
+
+
 def build_doc(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("doc", "doc_alias"))
     counts = {}
+    skip = _identity_set_aside(conn)
     pg = _pages_db()
     for symbol in profile.symbols():
         plan = plan_docs(symbol, pg)
         dates = _call_dates(pg, symbol) if pg else {}
         isin = profile.company(symbol).isins[-1]
+        pages_db = [r for r in plan["pages_db"] if r[0] not in skip and r[7] not in skip]
+        sandbox = [r for r in plan["sandbox"] if f"{symbol}:{r[0]}" not in skip]
         conn.executemany(
             "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             [(r[0], symbol, r[1], r[2], FAMILY.get(r[2], r[2]), r[3], *dates.get(r[0], (r[4], r[5])), r[6], r[7],
               "pages.db", r[8])
-             for r in plan["pages_db"]]
+             for r in pages_db]
             + [(f"{symbol}:{r[0]}", symbol, isin, r[1], FAMILY.get(r[1], r[1]), r[2], r[3], r[4], r[5], None, r[6], r[7])
-               for r in plan["sandbox"]])
+               for r in sandbox])
         conn.executemany("INSERT INTO doc_alias VALUES (?,?,?)", [(symbol, a, k) for a, k in plan["alias"].items()])
-        counts[symbol] = {"pages_db": len(plan["pages_db"]), "sandbox_only": len(plan["sandbox"])}
+        counts[symbol] = {"pages_db": len(pages_db), "sandbox_only": len(sandbox),
+                          "set_aside": len(plan["pages_db"]) - len(pages_db) + len(plan["sandbox"]) - len(sandbox)}
     if pg:
         pg.close()
     conn.commit()

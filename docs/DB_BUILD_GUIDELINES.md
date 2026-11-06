@@ -65,3 +65,30 @@ Change a rule only with a measurement that supports the change, and note it in `
 - Brief a DeepSeek worker only with its evidence gathered: defect rows and ids, file / function / line, table columns,
   fast check command (project rule, `tasks/RULINGS.md`). One long-lived worker per track; parallel workers only on
   disjoint files.
+
+## 12. Identity before extraction (T-093, 6 Nov 2026)
+- Every document gets one `doc_identity` verdict before a page is extracted: `ok`, `set_aside`, `unknown` (text too
+  thin), `on_drive` (archive only, not downloaded) or `not_held`; one column and reason each for company, fiscal year,
+  type and date (`reality_engine/pilot3/doc_identity.py`). No model call.
+- `resolve_file` reads a sha-to-path index built once over the raw store's sha-named folders
+  (`docs_collect.SHA_DIRS`) plus the Drive index kept by `reality_engine/toolbelt/drive_fetch.py`; a row only in the
+  archive is `on_drive`, and only a bounded sample (at most 50 files) is ever downloaded.
+- A failure is set aside by the flag, never deleted: `docs_collect.collect(..., set_aside={sha,...})` skips that file,
+  and `registry.build_doc` leaves out every `doc_identity.doc_key` whose verdict is `set_aside` (`doc_key` is the
+  sha256, else `corp:<corporate_documents.id>`).
+- Checks, each tested on hand-read pages: a first-page name miss re-reads the whole file (auditor's-report pages for a
+  late name, ISIN prefix / scrip code for a former name); annual reports and results are checked against the record's
+  fiscal year; the type is the first-page text (a newspaper clipping or a meeting notice is not an annual report, a
+  transcript under the BSE "Investor Presentation" category still is); the date is `bse_dissem_ts`, then
+  `publication_date`, and `doc_date` equal to the crawl date with no BSE/PIT field is flagged `crawl_date`.
+- A 1-3 page web-link letter or a 1-page notification that the transcript is on the website is a refetch candidate:
+  its `type_reason` starts `cover_letter:`, `linked_url` holds the http(s) link printed on the page, and
+  `duplicate_of` holds the lowest `corporate_documents.id` when another row of the same company shares the sha256
+  (the build reads that file once; cross-symbol hashes, an equity and its listed debt, are counted but not linked).
+- Score and check:
+  ```bash
+  python -m reality_engine.pilot3.doc_identity_eval tasks/dsh_tasks/doc_identity_gold.jsonl   # 20 of 20, 6 Nov 2026
+  python -m pytest reality_engine/tests/test_pilot3_doc_identity.py -q                       # 21 passed
+  python -m reality_engine.scripts.doc_identity_scan --symbols KEC,INFY --processes 6        # report + CSV; default D:\RealityEngine\reports, --report-dir .tmp/idreports in a workspace-write sandbox
+  ```
+
