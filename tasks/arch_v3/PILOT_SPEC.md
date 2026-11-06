@@ -165,7 +165,7 @@ extractor reads the original). That is why streams 1–3 can run while the raw o
 
 ## 5. Re-run harness — how 1,030 cases execute and are graded automatically
 
-One runner, no per-case hand work (planned: `reality_engine/toolbelt/run_master_bank.py` is not in the repo yet):
+One runner, no per-case hand work (planned: the `run_master_bank` toolbelt runner is not in the repo yet):
 
 ```
 python -m reality_engine.toolbelt.run_master_bank \

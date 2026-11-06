@@ -9,7 +9,7 @@ numpy/pandas only in 01–04 (no scipy); 05 imports statsmodels. Run order is th
 | Piece | Source | Size |
 |---|---|---|
 | Events | `analysis/bse_announcements.db` (BSE feed, exact `DissemDT` in IST, 2020–2026) | 1,940,081 announcements |
-| Prices | `reality_engine/data/parquet/daily_price_delivery.parquet`, series EQ | 3,120 stocks, 1,269 sessions, 2021-10-27 → 2026-09-24 |
+| Prices | `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/parquet/daily_price_delivery.parquet`, series EQ | 3,120 stocks, 1,269 sessions, 2021-10-27 → 2026-09-24 |
 | Join | feed `symbol` → price-table ISIN; 59.5% of announcements map to an EQ stock with prices (the rest are SME/BE/delisted/renamed symbols) | 552,796 event-days |
 | PIT documents | `corporate_documents` rows carry `bse_newsid`, so PDFs (transcripts, presentations) are the same events as the feed; the feed is used as the event source because it is complete and timestamped | 71,937 documents joined |
 

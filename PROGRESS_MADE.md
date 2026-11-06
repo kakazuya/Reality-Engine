@@ -155,8 +155,8 @@ python -m unittest reality_engine/tests/test_phase1.py
 
 - **Master Database (SQLite WAL)**: `reality_engine/data/equity_intelligence.db`
 - **Cached Bhavcopy Files**: `reality_engine/data/bhavcopy/sec_bhavdata_full_*.csv`
-- **Top 200 Checkpoint CSV Report**: `reality_engine/data/reports/top_200_reality_checkpoint_2026-08-14.csv`
-- **Top 200 Checkpoint JSON Report**: `reality_engine/data/reports/top_200_reality_checkpoint_2026-08-14.json`
+- **Top 200 Checkpoint CSV Report**: `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/reports/top_200_reality_checkpoint_2026-08-14.csv` (the reports folder now survives only in the 21 Oct Drive backup)
+- **Top 200 Checkpoint JSON Report**: `reality_engine/data/backups/drive_processed_2026-10-21/processed_data/reports/top_200_reality_checkpoint_2026-08-14.json` (same backup)
 
 ---
 

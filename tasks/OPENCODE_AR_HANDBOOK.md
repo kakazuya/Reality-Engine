@@ -25,7 +25,7 @@ ARs are read page by page by free models. Every fact is stored with its page and
   - The piece file is attached; the model uses no tools.
   - The answer is read from stdout and saved as `NNNN.out.txt`.
   - A failed piece is retried twice; after the third failure, the error is kept in `NNNN.err.txt`.
-- **Logs.** `reality_engine/data/ar_queue/drive.log` has one line per piece.
+- **Logs.** `D:\RealityEngine\raw\ar_queue\drive.log` has one line per piece.
 
 ## Rules
 
@@ -87,5 +87,5 @@ python -m reality_engine.scripts.ar_queue status
 
 - `reality_engine/scripts/ar_queue.py`: export / drive / import / test-export / test-score / status.
 - `reality_engine/data/ar_queue/<run>/`: `manifest.json`, `NNNN.prompt.txt`, `NNNN.out.txt` and `NNNN.err.txt`.
-- `reality_engine/data/ar_queue/drive.log`: one line per piece read or failed.
+- `D:\RealityEngine\raw\ar_queue\drive.log`: one line per piece read or failed.
 - `reality_engine/data/ar_facts.db`: `ar_docs`, `ar_pieces`, `ar_facts` and `ar_claims`.

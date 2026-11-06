@@ -35,7 +35,7 @@ by meaning (look-ahead, joins, cost/tax maths), not only by whether tests pass.
      the five named in FRAMEWORK §3, using only data before that month starts. Log the chosen index and method per period.
    - `stats.py`: Benjamini-Hochberg FDR across the **full** variant grid, placebo (shuffled filing dates within the
      same calendar month, many draws, report the placebo distribution), per-year and up/down-market regime split.
-   - `ledger.py`: one append-only ledger, `reality_engine/data/backtests/ledger.duckdb` (new file), with one row per
+   - `ledger.py`: one append-only ledger under `reality_engine/data/backtests/` (`ledger.duckdb`, new file), with one row per
      variant tested (pass or fail): card id, variant params, n events, mean/median net excess, t-stat, p, BH q,
      placebo p, per-year signs, coverage, code git hash, snapshot name, run timestamp.
 2. **`reality_engine/harness/cards/h01_pead.py`**: H01 exactly as the card says. PIT trigger = earliest

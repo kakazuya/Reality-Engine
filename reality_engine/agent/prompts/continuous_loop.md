@@ -12,8 +12,8 @@ Write scope: this repository. Read-only outside it. Do not push anywhere.
 ## 1. Read (in order)
 
 1. The attached **brief** (`data/logs/loop/<date>/brief_<HHMM>.md`) — the facts for this slot.
-2. `reality_engine/data/logs/loop/STATE.md` — the previous pass' handoff. If it does not exist, this
-   is the first run: your first job is to establish a baseline and write it.
+2. The previous pass' handoff, the loop's STATE.md under `reality_engine/data/logs/loop/`. If it does
+   not exist, this is the first run: your first job is to establish a baseline and write it.
 3. `tasks/STATE.md` "Next action" and `tasks/TASKS.md` — the standing task list.
 4. `git status --porcelain` and `git log --oneline -5` — what is in flight right now.
 
@@ -54,7 +54,7 @@ Then spend the remaining budget refining thinking, not adding surface area:
 
 ## 5. Hand off
 
-Rewrite `reality_engine/data/logs/loop/STATE.md` (keep it under ~120 lines, newest first):
+Rewrite the loop's STATE.md under `reality_engine/data/logs/loop/` (keep it under ~120 lines, newest first):
 
 ```markdown
 # Loop state — <date> <HHMM> IST (run #<n>)

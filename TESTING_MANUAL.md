@@ -23,7 +23,7 @@ python -m unittest reality_engine.tests.test_quant_hardening
 
 ## 2. Earnings Equation 5 Ways (§10 Investor52)
 
-**Source:** `reality_engine/data/inbox/text/investor52_transcript.txt` 14 chunks `YT-INV52-EG`
+**Source:** a sample transcript ingested from the inbox (`investor52_transcript.txt`, not kept in the repo) — 14 chunks `YT-INV52-EG`
 
 **Test:** Ask `What are 5 ways earnings grow? Reduce Costs (gross/operating/net margin peer <30), Increase Price (pricing_power_score), Sell More Units (secular≥4), Acquire (debt_to_ebitda gate>1.5), New Markets (geographic_exposure)` → `moat_scorer` + `quarterly_financials yoy_pat_growth_pct` decomposition.
 
@@ -39,7 +39,7 @@ python -m unittest reality_engine.tests.test_quant_hardening
 
 ## 4. Adjacent Possible + Graph Theory (§9 4 Levels, DEKO-619)
 
-**Source:** `reality_engine/data/inbox/text/deko_adjacent_possible_transcript.txt` 5 chunks
+**Source:** a sample transcript ingested from the inbox (`deko_adjacent_possible_transcript.txt`, not kept in the repo) — 5 chunks
 
 **Test:** Query graph `causal_engine.trace_ripple_chain(event_id=1)` → PN=∏Pi S=|MN|×20/(1+ln(1+Lag)) steel duty 3.8/0m S76 → -2.43/3m 20.37 → -1.41/9m 8.54
 

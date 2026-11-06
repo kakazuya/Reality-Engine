@@ -85,8 +85,8 @@ path was one more source of long stalls when the box is under memory pressure).
    UPDATE. This alone moved the tail from ~6 reports/min to ~45.
 2. **Per-page RapidOCR on scanned annual reports.** Text-less PDFs route to RapidOCR page-by-page,
    minutes each, and several SME reports in the restored set are scans. For this pass OCR is disabled
-   (text-layer only); those reports are flagged `is_processed=2` and listed in
-   `reality_engine/data/logs/fy26_no_text.log` as an OCR backlog.
+   (text-layer only); those reports are flagged `is_processed=2` and listed in the run's
+   `fy26_no_text.log` (not kept) as an OCR backlog.
 3. **Pathological PDFs.** `SDC/ANNUAL_REPORT/20261024_98222041_....pdf` spins forever inside
    `page.get_text()` and holds the GIL (kills any in-process worker pool). `is_processed=2` +
    `fy26_stalls.log`. Guarded from now on by a per-child timeout.

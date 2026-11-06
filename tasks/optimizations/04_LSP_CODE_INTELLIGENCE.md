@@ -1,5 +1,7 @@
 # Task 04 — LSP code intelligence for Claude Code and for DeepSeek workers
 
+> **Retired 4 Nov 2026 (T-054).** The code-intel plugin and its test module were removed and replaced by the run-and-exit `plugins/code-tools` (`outline`, `typecheck`); this page is the original task brief, kept as history.
+
 Read `tasks/optimizations/00_SHARED_CONTEXT.md` first. Worktree task. Independent of Tasks 01–03: touch only
 `plugins/code-intel/` (new), its tests, `pyrightconfig.json` (new, repo root), and staged config under
 `tasks/dsh_profiles/` / `tasks/optimizations/install/`.
@@ -23,7 +25,7 @@ it, what symbols does this module expose, what are the type errors in my diff.
    install. `pyrightconfig.json` at repo root: include `reality_engine`, `plugins/*/server`; exclude data, runtime,
    worktrees, `.tmp`, venvs; `pythonVersion 3.14`; `typeCheckingMode "basic"`; extraPaths for the repo root.
    Measure: cold index time and memory on this repo (8-core laptop).
-2. **MCP server `plugins/code-intel/server/server.py`** (stdio, same MCP SDK + style as
+2. **MCP server (the plugin's stdio server module)** (same MCP SDK + style as
    `plugins/reality-data/server/server.py`; answer the handshake fast and warm the language server in a background
    thread, exactly like reality-data's 2026-10-24 fix). It runs one long-lived `basedpyright-langserver --stdio`
    process and exposes tools:
@@ -44,10 +46,10 @@ it, what symbols does this module expose, what are the type errors in my diff.
      LSP plugin exists in the plugin marketplace (`claude plugin` CLI / docs) and give the install command if so.
    - DeepSeek workers: a `dsh-mcp-client` insert block for both dsh profiles (same shape as `mcp-reality-data`, with
      `reconnect: {enabled: true, maxAttempts: 40}`, `toolCallTimeoutMs: 60000`), staged as
-     `tasks/dsh_profiles/code-intel.insert.yml` + exact merge instructions.
+     `tasks/dsh_profiles/code-tools.insert.yml` (the row that replaced it) + exact merge instructions.
    - A short section for `tasks/worker_context/` (Task 01 will include it): "Use code-intel before grep: …" with
      3 examples.
-4. Tests `reality_engine/tests/test_code_intel.py`: tool shapes on a tiny fixture package in `./.tmp/` (definition,
+4. Tests (the plugin's own test module, removed with it): tool shapes on a tiny fixture package in `./.tmp/` (definition,
    references, symbols, diagnostics on a file with one deliberate error); server handshake answers before warm-up
    completes; bounded output; missing language server → clear error not a crash. Skip (not fail) LSP-dependent
    tests when the binary is absent, but they must pass on this machine after install.
