@@ -21,7 +21,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from reality_engine.config import DATA_DIR, resolve_stored_path
+from reality_engine.scripts import ar_queue
 from reality_engine.scripts.ar_wrong_company_scan import alias_tokens, page_hits
+
+# Common English words, so a one-word company name that is an ordinary word needs "Ltd" beside it.  Words in at least half
+# of ten annual reports, kept in the repo: the scan's own file under the raw store no longer exists.
+ar_queue.VOCAB_F = Path(__file__).with_name("en_vocab.txt")
 
 RAW_ROOT = Path(os.environ.get("REALITY_RAW_ROOT", r"D:\RealityEngine\raw"))
 SHA_DIRS = ("concall_pdfs", "decks_full")      # TODO(T-093): every sha-named folder; see docs_collect.SHA_DIRS
