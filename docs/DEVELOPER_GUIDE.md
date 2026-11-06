@@ -692,6 +692,10 @@ three names are in the `pilot3_sql` table list in `plugins/reality-data/server/s
   Known limits (party-category notes with no year pair, a note continuation past four pages, a wrapped entity name)
   are in `docs/PILOT3_BLUEPRINT.md` section 9f. Test: `reality_engine/tests/test_pilot3_note_tables.py`.
 
+### O17. Holiday copy detector for `daily_price_delivery` (T-089, 6 Nov 2026)
+
+`reality_engine/scripts/price_holiday_copies.py` reads the store read-only and lists every stored date whose rows repeat the previous stored date exactly on `open/high/low/close/prev_close/total_volume/num_trades/deliverable_volume`, with date, weekday, row counts, share identical and the NSE-holiday label. 6 Nov 2026 run: 57 dates / 113,195 copy rows (56 non-session dates, 111,535 deletable; 2021-11-04 is the Muhurat session overwritten by the prior file and must be replaced, not deleted); `--apply-plan FILE` writes the (date, symbol) rows a delete would remove and deletes nothing. Copies are written by `nse_client.fetch_bhavcopy` stamping `DATE = target_date` on the fetched file without checking the file's own date, via `pipeline/backfill.py`. Test: `reality_engine/tests/test_price_holiday_copies.py`; evidence and reader impact: `.tmp/T-089_report.md`.
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):

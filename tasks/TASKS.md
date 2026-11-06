@@ -36,6 +36,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-037 | OPEN | P1 | Fetch KEC's call transcripts from kecrpg.com; its 10 filed concalls are cover letters | accept: Shivam | from: Pilot 2 Nov | opened 2026-11-02
 - T-041 | OPEN | P2 | All 74 results_notes docs in chunks_v3_pilot point at a deleted worktree; raw PDFs are gone. 3 pilot ones refetched to D but their hash differs from the stored one, so check pages and fix raw_path | accept: Shivam | from: T-040 2 Nov | opened 2026-11-02
 - T-046 | OPEN | P2 | List the 10 documents the 31 Oct reader test found absent and check whether they exist at the source; moved from the old work queue | accept: Shivam | from: manual | opened 2026-11-02
+- T-099 | WAITING Shivam | P1 | Holiday copies in daily_price_delivery: fix nse_client.fetch_bhavcopy date check, delete 111,535 rows by the T-089 plan, replace 2021-11-04 Muhurat session, rebuild indicators | accept: Shivam | from: T-089 report 7 Nov | opened 2026-11-07
 
 ## OCR and extraction
 - T-020 | OPEN | P2 | OCR after workspace step 4: TextRecognizer first pass, stronger reader for low-confidence numbers; last accuracy pilot failed its gate | accept: Shivam | from: RULINGS, GATE_STATE | opened 2026-11-02
@@ -58,13 +59,12 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-092 | OPEN | P1 | Complete, named guidance from letters and calls, with the store count and growth targets the ETERNAL answers had to dig for; universal rules | accept: Shivam | from: Shivam 6 Nov, T-088 re-test | opened 2026-11-06
 - T-094 | OPEN | P1 | Universe readiness: no hand lists of companies in build or tools (LENDERS in ratios.py, kpi.COMPANIES, gap_loop COMPANIES, docs_collect KEC manifest), sector from data, per-company time and size measured and projected to 6,940 companies, and an unchanged build on companies never seen | accept: Shivam | from: Shivam 6 Nov | opened 2026-11-06
 - T-095 | OPEN | P1 | Re-ask the same 20 questions with the T-088 brief after T-090, T-091 and T-092, Opus read blind | accept: Shivam | from: Shivam 6 Nov | opened 2026-11-06
-- T-089 | OPEN | P2 | Main store `daily_price_delivery` holds copies of the prior day on holidays (INFY 2026-03-03 repeats 2026-03-02, 2,229 rows that date, also 2025-12-25, 2026-01-26); remove them or mark them, and check what reads them | accept: Shivam | from: Eagle 6 Nov, T-087 read | opened 2026-11-06
 - T-085 | OPEN | P1 | Number check passes invented or wrong figures: MARUTI-102 in `answer_a3\second_read\fix_test\arm_plain` writes Rs 5,33,555 crore for 5.33555e+11 rupees (53,355.5 crore); INFY-005 in `arm_flags` has inputs 43,278, 46,347, 49,012, 50,699 that sum to the right total but are not the filed quarters (Q2 49,244). Catch both with no new false alarm on the 600 answers | accept: python -m pytest reality_engine/tests/test_pilot3_number_check.py -q | from: Eagle 6 Nov, T-083 read | opened 2026-11-06
 - T-083 | DOING Eagle | P1 | Second reading step: a free model reads each answer against the question and the answer's own numbers and flags contradictions, unsourced causes and question misfit; test on graded answers before any use | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
+- T-098 | OPEN | P1 | Build applies window_start to documents, not only stores: scratch builds from the pilot60_history manifest held 2019+ documents (hold6 531 of 611 guidance targets before 2024-04-01); re-measure T-094's 501 GB and 52 h projection on windowed documents | accept: Shivam | from: Wolf 6 Nov, T-092 hold-out read | opened 2026-11-06
 
 ## Bank
 - T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02
-- T-039 | WAITING Shivam | P2 | Rule on 21 NOT IN DATA labels with inputs held: 12 grouped with peers, 9 single-company, 13 carry evidence | accept: Shivam | from: Question map 2 Nov | opened 2026-11-02
 
 ## Research
 - T-027 | OPEN | P3 | Trading limits module the test harness cannot run without, when backtests resume | accept: python -m pytest reality_engine/tests/test_trading_limits.py -q | from: tasks/FRAMEWORK.md | opened 2026-11-02
