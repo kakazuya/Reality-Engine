@@ -40,20 +40,20 @@ OFFENDERS: set[tuple[str, str]] = {
     ("kpi_oracle.py", "BAJFINANCE"),
     ("kpi_oracle.py", "HINDALCO"),
     ("kpi_oracle.py", "KEC"),
-    ("kpi_oracle.py", "TOTAL"),
     ("lookups_pilot3.py", "BAJFINANCE"),
     ("lookups_pilot3.py", "HINDALCO"),
     ("lookups_pilot3.py", "KEC"),
-    ("queries.py", "NSE"),
     ("ratios.py", "BAJFINANCE"),
-    ("stores.py", "BSE"),
-    ("stores.py", "NSE"),
 }
+
+
+NOT_COMPANIES = {"BSE", "NSE", "TOTAL"}     # also listed symbols, but in code they mean the exchange or a table row
 
 
 def _symbols() -> set[str]:
     conn = connect_ro(str(main_store()))
-    return {row[0] for row in conn.execute("SELECT nse_symbol FROM master_companies WHERE nse_symbol IS NOT NULL")}
+    held = {row[0] for row in conn.execute("SELECT nse_symbol FROM master_companies WHERE nse_symbol IS NOT NULL")}
+    return held - NOT_COMPANIES
 
 
 def _docstrings(tree: ast.AST) -> set[int]:
