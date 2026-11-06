@@ -679,3 +679,83 @@ no company name in code.
 
 
 
+
+### 9f. Credit ratings, concentration and related-party notes (T-091, 6 Nov 2026)
+
+Three new tables read from annual-report pages by script, for any listed company, with no company name, page number
+or per-company rule in the code: `rating_event`, `concentration`, `related_party_txn` (`pilot3/notes.py`, wording in
+`pilot3/lexicon/notes.yaml`, DDL in `pilot3/schema.py`, build part `notes`, `pilot3_sql` table list). Every row
+carries `symbol, isin, fiscal_year, entity, basis, doc_key, page, quote, known_at, known_at_source, extractor_rule`.
+`entity` is the company's legal name from the `company` table (never a literal); `basis` is read from the page's own
+header ("Notes to the Standalone/Consolidated Financial Statements") and is `not_stated` where the page prints none;
+`known_at` is the document's filing time, so every row is point-in-time.
+
+- **`rating_event`** (`agency, instrument, rating, outlook, action, effective_date, trigger_text`). Three shapes, all
+  by wording: (1) the rating table -- an agency cell (`CRISIL Rating Ltd.`, `India Ratings and Research Private
+  Ltd.`, an agency name plus at most a name suffix) followed by programme/instrument cells and rating cells, with the
+  migration cell read as the action (`Nil` -> `reaffirmed`, "Upgraded from" -> `upgraded`, "New ... Assigned" ->
+  `assigned`), so BAJFINANCE p373 gives 4 India Ratings rows, 7 CRISIL, 4 ICRA, 2 CARE, 1 Moody's and 2 S&P; (2)
+  prose when the page has no table -- "credit rating of AAA/Stable (long term) and A1+ (short term) on its bank
+  facilities by CRISIL" gives two rows with the term appended to `instrument`; (3) a company that states it holds no
+  rating gets one row with `action='not_rated'` (ETERNAL p181). A rating-linked clause in any filing is a `trigger`
+  row with the clause in `trigger_text`: BAJFINANCE's 27 Aug 2026 NCD allotment (a `material_filing` announcement, so
+  the reader reads `announcement` documents too) states a 25 bps coupon step-up if the rating falls to AA- or below
+  and a recall right at A or below -- two rows, `rating` AA- and A. The rating each row carries is the symbol as
+  printed (`IND AAA`, `CRISIL AAA`), `outlook` the printed stable/positive/condition word.
+- **`concentration`** (`dimension, bucket, measure, pct, value, unit, scale, period_end`). A two-year table whose
+  label names a bucket (top 5/10/20, single largest) or a whole population (all trading houses, all dealers) and a
+  measure is read column by column against its own year header, so FY26 and FY25 are separate rows whatever order
+  the columns print in and each value is anchored to its printed year: BAJFINANCE p374 (twenty largest depositors
+  13,346.95 crore 19.49% / FY25 11,194.76, 15.69%; twenty largest borrowers 14,951.00 crore 3.35% / 14,032.99, 3.80%),
+  INFY p241 standalone and p320 consolidated (top five customers 12.7% / 12.9%, top ten 20.5% / 20.5%), KEC p76
+  (purchases from trading houses 2.63% / 3.62%, top ten 49.31% / 62.70%, dealers 11.51% / 8.64%). A prose sentence
+  ("the top 20 depositors comprised of 4.81% of total deposits", HDFCBANK p415) is the same row. `pct` holds a
+  percentage, `value`+`unit`+`scale` a money amount (`inr_cr`/1e7); a row whose dimension or measure cannot be named
+  is dropped rather than guessed (a "commercial paper as a percentage of total liabilities" row is not one of the
+  eight dimensions).
+- **`related_party_txn`** (`counterparty, relationship, txn_type, amount, balance, unit, scale, period_end`). A
+  related-party note is found by its wording, and a note's continuation pages (which carry only the table) are
+  followed for up to four pages after the last page with a cue; each row is a counterparty (an entity name ending in
+  a corporate suffix, or a party heading such as "Remuneration to KMP") with its two year columns, and the printed
+  heading above the row is `txn_type`. ETERNAL p387 standalone: Blink Commerce 3,850 crore FY26 / 1,740 FY25 under
+  "Reimbursement for delivery partner fees", Income from cross charge Blink 344 / 145 and Zomato Hyperpure 118 / 81;
+  p273 consolidated: KMP salaries 146 / 165 and directors' remuneration 5 / 5, `basis='consolidated'` beside the
+  standalone rows' `basis='standalone'`. A block whose heading says balances (outstanding, payable, receivable) fills
+  `balance` instead of `amount`. A row whose label names no transaction (a bare "Member", "Chairman") and a page
+  whose labels end in no corporate suffix ("Amount required to be spent by the Company during the year") are
+  refused -- measured, that guard removed the largest class of false rows.
+- **Measured** on `.tmp/pilot10_w.db` (a copy; `--part notes`, all ten companies, 11.0 s in all):
+
+  | company | rating_event | concentration | related_party_txn | seconds |
+  |---|---|---|---|---|
+  | BAJFINANCE | 43 | 18 | 23 | 1.38 |
+  | ETERNAL | 1 | 0 | 249 | 0.51 |
+  | HDFCBANK | 17 | 12 | 24 | 0.70 |
+  | HINDALCO | 2 | 4 | 14 | 1.83 |
+  | HINDUNILVR | 1 | 8 | 0 | 0.84 |
+  | INFY | 4 | 8 | 238 | 1.54 |
+  | KEC | 8 | 8 | 0 | 1.16 |
+  | MARUTI | 2 | 8 | 161 | 1.18 |
+  | SBILIFE | 1 | 0 | 0 | 1.04 |
+  | SUNPHARMA | 5 | 8 | 13 | 0.73 |
+
+  Hand read (seed 11, 15 random rows per table, each against its page): `rating_event` 15/15 and `concentration`
+  15/15 rows anchored to a page line and, read by eye, the right label and year; `related_party_txn` 15/15 anchored
+  and, after the transaction-word and corporate-suffix guards, every sampled row a real transaction (KMP and
+  director remuneration, Blink Commerce, Krishna Maruti, Utkal Alumina). Two earlier reads of the same tables were
+  the reason for those guards: the cousin rows (`Amount required to be spent ... Company`, a CSR table read as
+  related parties; "Member"/"Chairman" category rows; an employee-remuneration band table) are gone.
+- **What the rules cannot read** (a zero is a "not read", never a "does not exist"): a note that prints one column
+  per party category with no year pair in the header (HDFCBANK's schedule at p474, KEC's standalone note, HUL's
+  note) is not read as `related_party_txn` -- that class is in the ticket's evidence for BAJFINANCE/HDFCBANK and is
+  left for a targeted round rather than stored with a guessed column order; a continuation page more than four pages
+  past the last page with a related-party cue; an entity name wrapped so that only its last word ("Ltd") sits on the
+  row's own line; a concentration table whose labels wrap across three or more lines (the label fragments are joined,
+  but the reader keeps only the closest one before the values); a single merged year column; a rating table whose
+  extraction interleaves the agency column with the ratings so no agency cell survives; a trigger clause printed only
+  as an image. `concentration` and `related_party_txn` are zero for ETERNAL and SBILIFE because their annual reports
+  print no top-N or percent-of-total disclosure and no year-columned related-party table (the pages that carry the
+  cue words were searched: ETERNAL 68, SBILIFE 68 pre-filtered pages).
+- **Checks.** `reality_engine/tests/test_pilot3_note_tables.py` (**15 passed**): the fixture page text of BAJFINANCE
+  p373/p374, INFY p125/p241/p320, ETERNAL p181/p273/p387, MARUTI p115, HDFCBANK p415, KEC p76 and the 27 Aug 2026
+  NCD filing, one test per rule, plus a database round trip that writes and re-runs the part.

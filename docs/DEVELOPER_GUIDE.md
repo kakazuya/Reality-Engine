@@ -646,6 +646,34 @@ python -m reality_engine.pilot3.docs_collect --out D:\RealityEngine\pilot3\pages
 - **State, 3 Nov 2026** (`pages.db`, `DOC_COVERAGE.xlsx` under `D:\RealityEngine\pilot3`): KEC 621 documents / 5,454 pages, BAJFINANCE 629 / 9,391, HINDALCO 749 / 8,412; 958 of 23,257 pages are `needs_ocr`. Newest `known_at`: BAJFINANCE 2026-10-19, KEC and HINDALCO 2026-10-16. What remains in `fetch_worklist` (46 / 117 / 152 headlines) is the routine notice types the fetcher skips on purpose, plus one KEC large-corporate disclosure, one BAJFINANCE record date and 8 text-only announcements with no attachment. Not held because not yet filed or not in any feed: Q2 FY27 results, deck and call for all three, and the BAJFINANCE/KEC/HINDALCO announcements after 28 Sep / 16 Oct 2026 (the BSE feed in `bse_announcements.db` ends there; NSE announcement records exist for none of the three).
 - **Test:** `reality_engine/tests/test_pilot3_docs.py` (fixture stores and PDFs: dating, dedupe, `needs_ocr`, FTS, idempotence, coverage workbook).
 
+### O15. Annual-report note tables: ratings, concentration, related parties (T-091, 6 Nov 2026)
+
+`reality_engine/pilot3/notes.py` fills three tables from `doc_page` text only, for any listed company: no company
+name, page number or per-company rule in code (wording in `pilot3/lexicon/notes.yaml`), no model, no network. Build
+part `notes` (after `pages`; honours `--symbols`, deleting and rewriting that company's rows), DDL in
+`pilot3/schema.py` (`rating_event`, `concentration`, `related_party_txn`, indexes `ix_re/ix_conc/ix_rpt`), and the
+three names are in the `pilot3_sql` table list in `plugins/reality-data/server/server.py`.
+
+- `rating_event`: agency/instrument/rating/outlook/action from a rating table (`Rating agency` + `Programme` +
+  `Ratings assigned`, or `Rating agency` + `Rating` + `Outlook`), the migration cell giving the action (`Nil` =
+  reaffirmed); a prose sentence naming one agency and its ratings is the same row; "has not obtained any credit
+  rating" is `not_rated`; a rating-linked clause in any filing (coupon step-up on a downgrade, recall right) is
+  `trigger` with the clause in `trigger_text`, which is why the reader also reads `announcement` documents.
+- `concentration`: bucket (top 5/10/20, single largest) or population (all trading houses, all dealers) x measure
+  (share of deposits/advances/exposure/revenue/purchases/liabilities), one row per printed year column read from its
+  own header, plus the prose form ("the top 20 depositors comprised of 4.81% of total deposits").
+- `related_party_txn`: a related-party note found by wording, its continuation pages followed for up to four pages;
+  each row a counterparty (corporate-suffix name or a party heading such as "Remuneration to KMP") with the printed
+  heading as `txn_type`, one row per year column, `basis` keeping standalone and consolidated apart.
+- `basis` comes from the page's own header (`not_stated` where it prints none); `entity` from `company.name`;
+  `known_at` from the document.
+- Measured on the `pilot10` copy (`--part notes`, all ten companies, **11.0 s**): 84 `rating_event`, 74
+  `concentration`, 722 `related_party_txn` rows; BAJFINANCE p373/p374, INFY p125/p241/p320, ETERNAL p181/p273/p387,
+  MARUTI p115, HDFCBANK p415 and KEC p76 all read as the ticket lists them; hand read 15 random rows per table
+  against their pages, every sampled row anchored and right after the transaction-word and corporate-suffix guards.
+  Known limits (party-category notes with no year pair, a note continuation past four pages, a wrapped entity name)
+  are in `docs/PILOT3_BLUEPRINT.md` section 9f. Test: `reality_engine/tests/test_pilot3_note_tables.py`.
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):

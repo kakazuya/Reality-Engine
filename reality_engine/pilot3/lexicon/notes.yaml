@@ -1,0 +1,175 @@
+# Annual-report note terms for the T-091 tables (rating_event, concentration, related_party_txn).
+# Sector-neutral wording only: no company names, no page numbers.  Read by reality_engine/pilot3/notes.py.
+# Every pattern is a regex; the file uses single-quoted YAML scalars so a backslash stays a regex backslash.
+
+# --- credit ratings ---------------------------------------------------------------------------------------------
+agencies:
+  - India Ratings
+  - CRISIL
+  - ICRA
+  - CARE
+  - Acuite
+  - Acuité
+  - Brickwork
+  - BWR
+  - Infomerics
+  - Fitch
+  - Moody's
+  - Standard & Poor's
+  - S&P Global
+  - Dun & Bradstreet
+  - Japan Credit Rating Agency
+  - JCRA
+
+# the rating-symbol grammar of the Indian and global agencies, including Moody's (Baa1) and D&B (5A1);
+# compiled case-sensitively, so the article "a" is never a rating
+rating_tokens: '(?:[A-Z]{2,6}\s+)?(?:(?:A[1-4]|A-[1-3]|P-[1-4]|F[1-3])\+?|5A[1-4]|4A[1-4]|3A[1-4]|AAA|AA[+-]?|A\+|A-|A|BBB[+-]?|BB[+-]?|CCC[+-]?|CC|C|D|Baa[1-3]|Ba[1-3]|B[+-]?|Aaa|Aa[1-3])(?![A-Za-z0-9])'
+
+# the words a rating table prints in its outlook / condition column
+outlooks:
+  - Stable
+  - Positive
+  - Negative
+  - Rating Watch Negative
+  - Rating Watch Positive
+  - Rating Watch Developing
+  - 'Condition: Strong'
+  - with a negative outlook
+  - with a stable outlook
+
+# rating operations; the first match decides the action of the row the cell belongs to
+actions:
+  assigned: ['assigned', 'awarded', 'new rating', 'ratings? assigned']
+  upgraded: ['upgraded', 'upgrade']
+  downgraded: ['downgraded', 'downgrade']
+  withdrawn: ['withdrawn', 'withdrawal', 'withdrew']
+  reaffirmed: ['reaffirmed', 'affirmed', 're-?affirmed', 'no change', 'unchanged', 'migration in ratings during the year\s*[:\-]?\s*nil', '^nil$', '^-$']
+
+# a company that says it holds no rating is a row with action not_rated
+not_rated:
+  - 'has not obtained any (?:credit )?rating'
+  - 'has not taken any (?:credit )?rating'
+  - 'does not have any (?:credit )?rating'
+  - 'has no (?:credit )?rating'
+  - 'no (?:credit )?rating (?:has been|was|is) (?:obtained|assigned|taken)'
+  - '(?:credit )?ratings?\s*[:\-]\s*(?:nil|not applicable|na)\b'
+
+# page-level cues that a rating section is on the page
+rating_cues:
+  - 'credit rating'
+  - 'ratings? assigned'
+  - 'rating agency'
+  - 'rating agencies'
+  - 'migration in ratings'
+  - 'ratings? (?:re)?affirmed'
+
+# a rating-linked clause (coupon step-up, put/call, recall) in any filing is a trigger row
+trigger_cues:
+  - 'step[- ]?(?:up|down)'
+  - 'coupon'
+  - 'rating trigger'
+  - 'increase the interest rate'
+  - 'right to recall'
+  - 'downgrad'
+  - 'rating falls'
+  - 'rating of (?:the )?instrument is'
+
+# --- concentration ----------------------------------------------------------------------------------------------
+# dimension -> the nouns the note uses for it (scan order is this file's order)
+dimensions:
+  depositor: ['depositors?', 'top (?:\d+|twenty) deposits?']
+  borrower: ['borrowers?', 'obligors?']
+  customer: ['customers?', 'clients?', 'dealers?', 'distributors?', 'buyers?']
+  funding_counterparty: ['lenders?', 'funding counterpart(?:y|ies)', 'banks and financial institutions', 'borrowings? from', 'funding concentration', 'top (?:\d+|ten) borrowings?']
+  supplier: ['suppliers?', 'vendors?']
+  trading_house: ['trading houses?', 'trading firms?']
+  geography: ['geograph(?:y|ies)', 'regions?', 'states?', 'countries', 'country', 'locations?']
+  product: ['products?', 'segments?', 'categories', 'brands?', 'divisions?']
+
+# the bucket a label names
+buckets:
+  top_5: ['(?:top|first)\s*(?:5|five)\b', '(?:5|five)\s+(?:largest|biggest)']
+  top_10: ['(?:top|first)\s*(?:10|ten)\b', '(?:10|ten)\s+(?:largest|biggest)']
+  top_20: ['(?:top|first)\s*(?:20|twenty)\b', '(?:20|twenty)\s+(?:largest|biggest)']
+  single_largest: ['single largest', 'largest single', 'largest (?:customer|borrower|depositor|supplier|dealer)']
+
+# the measure the percentage or amount is a share of
+measures:
+  revenue: ['revenue', 'revenues', 'sales', 'turnover', 'total income']
+  advances: ['advances?', 'loans?']
+  deposits: ['deposits?']
+  exposure: ['exposures?', 'credit exposure']
+  liabilities: ['liabilit(?:y|ies)', 'borrowings?']
+  purchases: ['purchases?']
+
+# page-level cues for a concentration disclosure (a section heading or a sentence)
+concentration_cues:
+  - 'concentration'
+  - 'top (?:\d+|five|ten|twenty) (?:customers|borrowers|depositors|suppliers|dealers|distributors|trading houses)'
+  - '(?:five|ten|twenty|\d+) largest (?:customers|borrowers|depositors|suppliers|dealers|distributors|trading houses)'
+  - 'as % of total (?:purchases|sales|advances|deposits|exposure|liabilities)'
+  - 'of total (?:deposits|advances|exposure|liabilities|purchases|revenue|sales)'
+  - 'open[- ]ness of business'
+
+# --- related party transactions ---------------------------------------------------------------------------------
+rpt_cues:
+  - 'related part(?:y|ies)'
+  - 'transactions with related part'
+  - 'related party transactions'
+
+# the party a heading or a row label names (used for `relationship`)
+relationships:
+  key managerial personnel: ['key managerial personnel', '\bkmp\b', 'managerial personnel']
+  director: ['directors?', 'board of directors']
+  subsidiary: ['subsidiar(?:y|ies)']
+  associate: ['associates?']
+  joint venture: ['joint ventures?']
+  promoter: ['promoters?', 'promoter group']
+  related party: ['related part(?:y|ies)']
+
+# a counterparty name printed as a company: the label must END with one of these (a description such as
+# "Amount required to be spent by the Company during the year" never does)
+entity_suffixes:
+  - 'Limited'
+  - 'Ltd'
+  - 'LLP'
+  - 'Inc'
+  - 'LLC'
+  - 'Corporation'
+  - 'Corp'
+  - 'Foundation'
+  - 'Trust'
+  - 'FZ-?LLC'
+  - 'FZ'
+  - 'B\.V\.?'
+  - 'Pte\.? Ltd'
+  - 'GmbH'
+
+# a heading that says the rows below it are balances, not transactions
+balance_cues:
+  - 'balance'
+  - 'outstanding'
+  - 'payable'
+  - 'receivable'
+  - 'due (?:to|from)'
+
+# the party-category columns a related-party note prints instead of year columns ("Parent | Subsidiaries |
+# Associate | Director", each with its own year pair).  The key becomes `relationship`.
+party_categories:
+  parent: ['parent(?: company)?']
+  subsidiary: ['subsidiaries', 'subsidiary']
+  fellow subsidiary: ['fellow subsidiar(?:y|ies)']
+  associate: ['associates?']
+  joint venture: ['joint ventures?', '\bJVs?\b']
+  director: ['directors?']
+  key managerial personnel: ['key management personnel', 'key managerial personnel', '\bKMPs?\b']
+  relative of key managerial personnel: ['relatives? of']
+  enterprise over which key managerial personnel influence: ['enterprises? (?:over which|in which|where|controlled)']
+  promoter: ['promoters?', 'promoter group']
+  post-employment benefit plan: ['post[- ]employment benefit plan', 'gratuity trust']
+  total: ['total', 'aggregate']
+
+# the page pre-filter (SQL LIKE, case-insensitive): the words that put a page in front of the readers at all
+page_prefilter:
+  annual_report: ['rating', 'concentration', 'related part', 'top five', 'top ten', 'largest', 'trading house', 'as % of total']
+  announcement: ['step-up', 'step up', 'coupon', 'rating trigger', 'downgrad']
