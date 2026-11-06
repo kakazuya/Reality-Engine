@@ -43,7 +43,7 @@ ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) 
 - financial numbers, segments, guidance -> facts(symbol, kind, period); OHLCV range -> price(...)
 Symbols, BSE codes, ISINs and names all resolve inside each tool. A {"found": false} answer lists what was checked and the nearest documents: follow its hint, then say NOT IN DATA; do not hand-write SQL over the same tables. Filing dates can be the evening of, or a day after, the date a user names. Exact share counts come from filings; XBRL paid-up capital / face value is rounded.
 
-Use catalog() when you need the map: one line per database by default, with db= for that database's tables and query= for a word search across them (db='pilot3' lists the pilot3 store). schema(table, db) gives one table's columns, types, row count, indexes and sample keys — use it instead of PRAGMA/sqlite_master probes. For a specific company go straight to the data tools; resolve is optional because price/facts resolve the symbol themselves. resolve(query) turns a symbol, company name or ISIN into the canonical identity (ISIN history included). price(symbol, start, end=None, adjusted=False) returns OHLCV, delivery quantity/percent and traded value; close is raw unless adjusted=True. facts(symbol, kind=None, period=None) returns annual-report segments/financials/KPIs, XBRL results, deck figures and concall guidance in one call; kind accepts segments, financials, kpis, guidance, results, deck, concall, ar, or free text; period accepts FY25, Q4FY26 or a date. search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10, as_of=None) returns text passages (as_of drops documents published after that date, and undated ones); sql(query, db) is a bounded read-only escape hatch.
+Use catalog() when you need the map: one line per database by default, with db= for that database's tables and query= for a word search across them (db='pilot3' lists the pilot3 store). schema(table, db) gives one table's columns, types, row count, indexes and sample keys — use it instead of PRAGMA/sqlite_master probes. For a specific company go straight to the data tools; resolve is optional because price/facts resolve the symbol themselves. resolve(query) turns a symbol, company name or ISIN into the canonical identity (ISIN history included). price(symbol, start, end=None, adjusted=False) returns OHLCV, delivery quantity/percent and traded value; close is raw unless adjusted=True. facts(symbol, kind=None, period=None, include_model_read=False) returns filed XBRL results first; the annual-report, deck and call extractions are model-read by AI and unverified, withheld unless include_model_read=true or kind is ar/deck/concall, and every row says extraction=filed_xbrl|model_read; kind accepts segments, financials, kpis, guidance, results, deck, concall, ar, or free text; period accepts FY25, Q4FY26 or a date. search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10, as_of=None, include_model_read=False) returns text passages (as_of drops documents published after that date, and undated ones); its annual-report model-read quotes are withheld unless include_model_read=true; sql(query, db) is a bounded read-only escape hatch.
 
 Examples: price("PPL", "2026-03-30"); facts("PPL", kind="segments", period="FY25"); facts("PPL") for a broad fundamentals answer. Provenance names the database, table and snapshot; quarantine keys are applied to annual-report facts and demo tables are never presented as data."""
 
@@ -161,8 +161,12 @@ def price(symbol: str, start: str, end: str | None = None, adjusted: bool = Fals
 @server.tool(
     name="facts",
     description=(
-        "Structured fundamentals, segments and KPIs for a company from ar_facts, "
-        "results_xbrl, deck_figures and concall_facts. kind: segments | financials | "
+        "Structured fundamentals, segments and KPIs for a company: filed XBRL "
+        "results first; annual-report, deck and call extractions are model-read by "
+        "AI and unverified, so they are withheld unless include_model_read=true or "
+        "kind is ar/deck/concall, and every row is labelled extraction=filed_xbrl "
+        "or model_read. model_read_withheld counts the rows a default call left out. "
+        "kind: segments | financials | "
         "kpis | guidance | results | deck | concall | ar | free text. period: FY25, "
         "Q4FY26, 2025-03-31, or omitted. as_of (YYYY-MM-DD) keeps only facts whose own "
         "filing timestamp is on or before that day. Each fact carries source, doc id, page, "
@@ -171,8 +175,10 @@ def price(symbol: str, start: str, end: str | None = None, adjusted: bool = Fals
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
 def facts(symbol: str, kind: str | None = None, period: str | None = None,
-          limit: int = 80, as_of: str | None = None) -> dict[str, Any]:
-    return _safe(lambda: core.facts(symbol, kind=kind, period=period, limit=limit, as_of=as_of))
+          limit: int = 80, as_of: str | None = None,
+          include_model_read: bool = False) -> dict[str, Any]:
+    return _safe(lambda: core.facts(symbol, kind=kind, period=period, limit=limit, as_of=as_of,
+                                    include_model_read=include_model_read))
 
 
 # --- lookups: market ---
@@ -237,13 +243,16 @@ def holding(symbol: str, as_of: str | None = None) -> dict[str, Any]:
         "counted in hidden_after_as_of). Each hit carries text, doc_id, doc_type, symbol, "
         "isin, date, page, url, score and source (fts, local_dense, seed_dense or "
         "paid_dense; '+' when fused). Degrades to FTS when no dense path is available "
-        "(reported by the search module's warm/status). Results are quarantine-filtered."
+        "(reported by the search module's warm/status). Annual-report model-read quotes "
+        "are withheld unless include_model_read=true, then labelled extraction=model_read. "
+        "Results are quarantine-filtered."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
 def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | None = None,
                 date_from: str | None = None, date_to: str | None = None,
-                top_k: int = 10, as_of: str | None = None) -> dict[str, Any]:
+                top_k: int = 10, as_of: str | None = None,
+                include_model_read: bool = False) -> dict[str, Any]:
     def call() -> dict[str, Any]:
         mod = _load_search()
         if mod is None:
@@ -274,7 +283,8 @@ def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | No
         results_as_of = as_of
         try:
             results = fn(query, symbol=symbol or inferred, doc_types=doc_types, date_from=date_from,
-                         date_to=date_to, top_k=top, as_of=as_of)
+                         date_to=date_to, top_k=top, as_of=as_of,
+                         include_model_read=include_model_read)
         except ValueError as exc:
             raise core.DataError("bad_request", str(exc))
         if isinstance(results, dict):

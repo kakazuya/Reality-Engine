@@ -15,10 +15,14 @@ Dense retrieval runs on the vectors that are already stored, at no cost
   the seed path found nothing; :mod:`query_embed` then buys the query vector.
 
 Search is FTS5 lexical (``intelligence_fts``) + annual-report fact quotes
-(``ar_facts.db``) + dense retrieval, fused with reciprocal rank fusion.  Each
+(``ar_facts.db``, model-read by AI and never hand-verified) + dense retrieval,
+fused with reciprocal rank fusion.  Each
 hit reports the path(s) that produced it (``fts``, ``local_dense``,
 ``seed_dense``, ``paid_dense``; ``+`` when fused).  ``as_of`` drops candidates
-whose document date is later and returns ``hidden_after_as_of``.  ``ar_facts``
+whose document date is later and returns ``hidden_after_as_of``.  The
+``ar_facts`` leg is withheld unless the caller passes
+``include_model_read=True``; then each AR hit carries
+``"extraction": "model_read"``.  ``ar_facts``
 is queried only for a
 ``symbol``/ISIN-scoped request: annual reports are stored there (quote + page)
 while ``document_chunks`` keeps the other document types, and a symbol-less
@@ -989,6 +993,7 @@ def search_docs(
     date_to: Optional[str] = None,
     top_k: int = 10,
     as_of: Optional[str] = None,
+    include_model_read: bool = False,
 ) -> Any:
     """Hybrid document search.
 
@@ -997,6 +1002,10 @@ def search_docs(
     ``score`` and ``source``.  ``source`` names the path that produced the hit
     — ``fts``, ``local_dense``, ``seed_dense`` or ``paid_dense``, joined with
     ``+`` when several legs agree.
+
+    ``include_model_read`` (default false) keeps the annual-report model-read
+    quotes out of the fused results; when true, each AR hit also carries
+    ``"extraction": "model_read"``.
 
     ``as_of`` (``YYYY``, ``YYYY-MM`` or ``YYYY-MM-DD``) is a point-in-time
     cut: candidate rows dated after it are dropped.  With ``as_of`` the return
@@ -1032,11 +1041,14 @@ def search_docs(
             for row in _equity_fts_rows(state, query, aliases, isins, pool)
             if _equity_row_ok(state, row, types, date_lo, date_hi)
         ]
-        ar_rows = [
-            row
-            for row in _ar_rows(state, query, aliases, isins, pool)
-            if _passes(row["doc_type"], row["date"], row["isin"], types, date_lo, date_hi)
-        ]
+        ar_rows: List[Dict[str, Any]] = []
+        if include_model_read:
+            ar_rows = [
+                row
+                for row in _ar_rows(state, query, aliases, isins, pool)
+                if _passes(row["doc_type"], row["date"], row["isin"], types, date_lo, date_hi)
+            ]
+        ar_keys = {row["key"] for row in ar_rows}
 
         # Dense legs, kept as (rows, source) so each leg's ranks survive the
         # fusion.  Free legs first; paid only as a flagged fallback.
@@ -1146,20 +1158,21 @@ def search_docs(
             if len(out) >= top_k:
                 continue
             sources = entry["sources"]
-            out.append(
-                {
-                    "text": row["text"],
-                    "doc_id": row["doc_id"],
-                    "doc_type": row["doc_type"],
-                    "symbol": row["symbol"],
-                    "isin": row["isin"],
-                    "date": row["date"],
-                    "page": row["page"],
-                    "url": row["url"],
-                    "score": round(float(score), 6),
-                    "source": "+".join(s for s in SOURCE_ORDER if s in sources),
-                }
-            )
+            hit = {
+                "text": row["text"],
+                "doc_id": row["doc_id"],
+                "doc_type": row["doc_type"],
+                "symbol": row["symbol"],
+                "isin": row["isin"],
+                "date": row["date"],
+                "page": row["page"],
+                "url": row["url"],
+                "score": round(float(score), 6),
+                "source": "+".join(s for s in SOURCE_ORDER if s in sources),
+            }
+            if row["key"] in ar_keys:
+                hit["extraction"] = "model_read"
+            out.append(hit)
         if as_of is not None:
             return {"as_of": as_of_day, "hidden_after_as_of": hidden, "results": out}
         return out

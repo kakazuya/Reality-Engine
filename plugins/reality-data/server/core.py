@@ -90,6 +90,9 @@ SOURCE_FOR_KIND = {
     "ar": ("ar",), "deck": ("deck",), "concall": ("concall",),
     None: ("ar", "results", "deck", "concall"),
 }
+# Stores whose rows were extracted by AI models in October 2026 and never
+# hand-verified: labelled on every row and withheld from default answers (T-103).
+MODEL_READ_SOURCES = frozenset({"ar_facts", "deck_figures", "concall_facts"})
 NOTABLE_AR = (
     "(lower(category) LIKE '%segment%' OR lower(item) LIKE '%segment%' "
     "OR lower(item) LIKE '%revenue%' OR lower(item) LIKE '%profit%' "
@@ -1110,15 +1113,22 @@ def _fact_rank(fact: dict[str, Any]) -> tuple:
             year = int(str(fact["period_end"])[:4])
         except ValueError:
             year = 0
-    source_rank = {"ar_facts": 0, "results_xbrl": 1, "deck_figures": 2, "concall_facts": 3}
+    source_rank = {"results_xbrl": 0, "ar_facts": 1, "deck_figures": 2, "concall_facts": 3}
     kind_rank = {"segments": 0, "financials": 1, "results": 2, "kpis": 3, "guidance": 4, "concall": 5}
     return (-year, source_rank.get(fact.get("source"), 9), kind_rank.get(fact.get("kind"), 9),
             str(fact.get("date") or ""))
 
 
 def facts(symbol: str, kind: str | None = None, period: str | None = None, limit: int = 80,
-          as_of: str | None = None) -> dict[str, Any]:
-    """Structured fundamentals, segments and KPIs from all four fact stores.
+          as_of: str | None = None, include_model_read: bool = False) -> dict[str, Any]:
+    """Structured fundamentals, segments and KPIs, filed XBRL first.
+
+    ``ar_facts``, ``deck_figures`` and ``concall_facts`` were extracted by AI
+    models and never hand-verified: every row carries ``extraction``
+    (``filed_xbrl`` or ``model_read``), and the model-read rows are withheld
+    unless ``include_model_read`` is true or ``kind`` names one of those stores
+    (``ar``, ``deck``, ``concall``).  ``model_read_withheld`` counts what was
+    dropped.
 
     ``as_of`` (``YYYY-MM-DD``) is a point-in-time cut: every source row must
     carry its own filing timestamp on or before that day.  Rows with no such
@@ -1153,6 +1163,14 @@ def facts(symbol: str, kind: str | None = None, period: str | None = None, limit
     if canonical and canonical in ("segments", "financials", "kpis", "guidance"):
         collected = [f for f in collected if f.get("kind") == canonical or canonical == "financials"]
 
+    # Label every row by extraction: filed XBRL vs a model-read store (T-103).
+    for fact in collected:
+        if fact.get("source") in MODEL_READ_SOURCES:
+            fact["extraction"] = "model_read"
+            fact["verified"] = False
+        else:
+            fact["extraction"] = "filed_xbrl"
+
     # De-duplicate the same figure repeated in consecutive annual reports.
     if as_of:
         ranked_guard = []
@@ -1161,6 +1179,19 @@ def facts(symbol: str, kind: str | None = None, period: str | None = None, limit
             if stamp and stamp <= as_of:
                 ranked_guard.append(fact)
         collected = ranked_guard
+
+    # Model-read rows stay out of a default answer unless the caller named the
+    # store explicitly; an explicit kind keeps them, still labelled.
+    model_read_withheld: dict[str, int] = {}
+    if not include_model_read and canonical not in ("ar", "deck", "concall"):
+        kept = []
+        for fact in collected:
+            source = fact.get("source")
+            if source in MODEL_READ_SOURCES:
+                model_read_withheld[source] = model_read_withheld.get(source, 0) + 1
+            else:
+                kept.append(fact)
+        collected = kept
     dedup: dict[tuple, dict[str, Any]] = {}
     for fact in sorted(collected, key=_fact_rank):
         key = (fact.get("source"), str(fact.get("item") or "").strip().lower(),
@@ -1178,6 +1209,8 @@ def facts(symbol: str, kind: str | None = None, period: str | None = None, limit
     # (e.g. 80 AR rows) cannot hide the XBRL confirmation on the same figure.
     if canonical in ("financials", "segments") and len(sources) > 1:
         order = list(sources)
+        if "results" in order:  # filed XBRL before every model-read store
+            order = ["results"] + [src for src in order if src != "results"]
         buckets = {src: [f for f in ranked if f.get("source") ==
                          {"ar": "ar_facts", "results": "results_xbrl", "deck": "deck_figures",
                           "concall": "concall_facts"}.get(src)] for src in order}
@@ -1200,7 +1233,7 @@ def facts(symbol: str, kind: str | None = None, period: str | None = None, limit
         counts[fact["source"]] = counts.get(fact["source"], 0) + 1
     used_dbs = [db for db, src in (("ar_facts", "ar"), ("results_xbrl", "results"),
                                    ("deck_figures", "deck"), ("concall_facts", "concall")) if src in sources]
-    return {
+    result = {
         "symbol": identity["nse_symbol"] or symbol.upper(),
         "company": identity["name"],
         "isin": identity["isin"],
@@ -1209,12 +1242,17 @@ def facts(symbol: str, kind: str | None = None, period: str | None = None, limit
         "as_of": as_of,
         "facts": ranked[:limit],
         "counts": {"by_source": counts, "total_matched": len(ranked), "truncated": len(ranked) > limit},
+        "model_read_withheld": model_read_withheld,
         "quarantine": {"ar_doc_ids_excluded": len(quarantined_doc_ids())},
         "provenance": {
             "identity": provenance(DUCK_KEY, ["security_master", "symbol_isin_history"]),
             "facts": [provenance(db, [db]) for db in used_dbs],
         },
     }
+    if not ranked and model_read_withheld:
+        result["hint"] = ("only model-read rows (unverified) exist for this request; "
+                          "pass include_model_read=true to see them, labelled")
+    return result
 
 
 # ---------------------------------------------------------------------------

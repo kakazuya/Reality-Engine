@@ -50,10 +50,15 @@ DB_DESCRIPTIONS = {
     "equity_intelligence": "Search layer (44 GB): raw documents, chunks + embeddings, "
                             "intelligence_fts, corporate documents, price/flow/peer tables.",
     "ar_facts": "Annual-report extraction (20 GB): item/value rows with page, quote, "
-                "period and basis.",
+                "period and basis. Model-read by AI (October 2026), unverified; withheld "
+                "from default facts()/search_docs.",
     "results_xbrl": "NSE XBRL results: filings, facts and the trading-ISIN map.",
-    "deck_figures": "Investor-presentation facts: page metrics, sources and URLs.",
-    "concall_facts": "Concall extraction: documents and guidance/KPI items with quotes.",
+    "deck_figures": "Investor-presentation facts: page metrics, sources and URLs. "
+                    "Model-read by AI (October 2026), unverified; withheld from default "
+                    "facts()/search_docs.",
+    "concall_facts": "Concall extraction: documents and guidance/KPI items with quotes. "
+                     "Model-read by AI (October 2026), unverified; withheld from default "
+                     "facts()/search_docs.",
     "bse_announcements": "BSE announcement feed with dissemination timestamps.",
     "pilot3": "The pilot store: every company the build holds in one script-built database (its coverage is the "
               "company table, an arbitrary NSE+BSE universe, never a fixed list): dated page text, KPI series, "

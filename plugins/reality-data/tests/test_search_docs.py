@@ -244,7 +244,7 @@ class SearchDocsTest(unittest.TestCase):
         self.assertNotIn("INE_AUTO", " ".join(r["isin"] for r in rows))
 
     def test_ppl_annual_report_facts(self):
-        rows = search_docs.search_docs("segment revenue", symbol="PPL")
+        rows = search_docs.search_docs("segment revenue", symbol="PPL", include_model_read=True)
         self.assertTrue(rows)
         top = rows[0]
         self.assertEqual(top["doc_type"], "annual_report")
@@ -253,7 +253,20 @@ class SearchDocsTest(unittest.TestCase):
         self.assertEqual(top["page"], 68)
         self.assertEqual(top["url"], "https://example.com/ppl-ar-2020.pdf")
         self.assertEqual(top["source"], "fts")
+        self.assertEqual(top["extraction"], "model_read")
         self.assertTrue(any("33296" in row["text"] for row in rows))
+
+    def test_model_read_quotes_withheld_unless_requested(self):
+        # T-103: the ar_facts leg is model-read, so a default search drops it.
+        rows = search_docs.search_docs("segment revenue", symbol="PPL")
+        self.assertFalse([r for r in rows if r.get("extraction") == "model_read"])
+        self.assertFalse([r for r in rows if r.get("page") == 68])
+        flagged = search_docs.search_docs("segment revenue", symbol="PPL", include_model_read=True)
+        ar_hits = [r for r in flagged if r.get("extraction") == "model_read"]
+        self.assertTrue(ar_hits)
+        self.assertEqual(ar_hits[0]["page"], 68)
+        self.assertTrue(any("33296" in row["text"] for row in ar_hits))
+        self.assertTrue(all(r["extraction"] == "model_read" for r in ar_hits))
 
     def test_rbi_policy_query(self):
         rows = search_docs.search_docs("repo rate decision", doc_types=["rbi"])
