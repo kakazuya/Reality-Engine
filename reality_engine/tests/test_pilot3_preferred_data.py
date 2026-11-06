@@ -120,12 +120,12 @@ def test_columns_elect_the_restatement_point_in_time():
                         "WHERE symbol=? AND line_item='total_income' AND fiscal_period='Q2FY26' ORDER BY known_at",
                         (SYM,)).fetchall()
     assert [r[2] is not None for r in rows] == [True, True, True]          # the windows tile the timeline
-    assert rows[0][0] == "current" and rows[0][3] == "2026-02-03T17:07:39"
-    assert rows[1][0] == "preceding" and rows[1][3] == "2026-10-19T17:19:48"
+    assert rows[0][0] == "current" and rows[0][3] == "2026-02-03"
+    assert rows[1][0] == "preceding" and rows[1][3] == "2026-10-19"
     assert rows[2][0] == "year_ago" and rows[2][3] is None                  # current now
     assert [r[1] for r in _at(conn, ASOF)] == [19_992.38e7]
     assert [r[1] for r in _at(conn, "2026-01-01")] == [20_180.76e7]
-    assert len(_at(conn, "2026-02-03")) == 1 and len(_at(conn, "2026-10-19")) == 1
+    assert len(_at(conn, "2026-02-03")) == 1 and [r[1] for r in _at(conn, "2026-10-19")] == [19_992.38e7]
     assert [(r[0], r[1]) for r in _current(conn, SYM, "total_income", "Q2FY26", "consolidated")] == \
            [(19_992.38e7, 1.0)]
 
@@ -227,3 +227,23 @@ def test_a_key_with_only_an_unreadable_cell_has_no_preferred_figure():
     preferred.apply(conn, [SYM])
     assert _current(conn, SYM, "total_income", "Q3FY26", "consolidated") == []
     assert conn.execute("SELECT COUNT(*) FROM fin_quarter_printed WHERE preferred_from IS NOT NULL").fetchone()[0] == 0
+
+
+def test_windows_are_whole_days_so_the_filing_day_finds_the_figure():
+    """known_at carries a time; the day a filing came out must already elect it, and a same-day refiling wins."""
+    conn, _ = _conn()
+    _xbrl(conn, "Q1FY27", "2026-06-30", "pat", 100.0, "2026-07-20T17:14:10")
+    _xbrl(conn, "Q1FY27", "2026-06-30", "pat", 101.0, "2026-07-20T19:00:00")
+    _xbrl(conn, "Q1FY27", "2026-06-30", "pat", 105.0, "2026-10-20T18:00:00")
+    conn.commit()
+    preferred.apply(conn, [SYM])
+
+    def at(day):
+        return [row[0] for row in conn.execute(
+            "SELECT value FROM fin_quarter_xbrl WHERE symbol=? AND preferred_from<=? "
+            "AND (preferred_to IS NULL OR preferred_to>?)", (SYM, day, day))]
+
+    assert at("2026-07-19") == []
+    assert at("2026-07-20") == [101.0]
+    assert at("2026-10-19") == [101.0]
+    assert at("2026-10-20") == [105.0]

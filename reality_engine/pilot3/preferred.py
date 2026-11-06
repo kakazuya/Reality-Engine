@@ -13,8 +13,8 @@ figure at all (``displayable_printed``), so it never competes.
 
 ``elect(rows)`` applies the rule to the rows a lookup has already filtered, and ``apply(conn)`` writes the same rule
 into ``preferred_from`` / ``preferred_to`` on both tables: a row is preferred at day D when
-``preferred_from <= D`` and (``preferred_to IS NULL`` or ``preferred_to > D``).  The windows of one key tile its
-timeline, so plain SQL elects the same row ``pilot3_fin`` returns, point in time.
+``preferred_from <= D`` and (``preferred_to IS NULL`` or ``preferred_to > D``), all three plain YYYY-MM-DD days.  The
+windows of one key tile its timeline, so plain SQL elects the same row ``pilot3_fin`` returns, point in time.
 """
 from __future__ import annotations
 
@@ -133,7 +133,7 @@ def apply(conn: sqlite3.Connection, symbols: Iterable[str] | None = None) -> dic
     One pass over the union of the two tables, grouped by (symbol, line_item, period, basis): where an XBRL row
     exists for the key it is the candidate set (the printed twins are its duplicates), else the displayable printed
     rows are.  The max of ``order_key`` at each distinct ``known_at`` is preferred from that instant until the next
-    one.  ``symbols`` limits the run exactly like the other build parts."""
+    one, as whole days.  ``symbols`` limits the run exactly like the other build parts."""
     ensure_columns(conn)
     missing = [name for name in QUARTER_TABLES
                if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (name,)).fetchone()]
@@ -160,10 +160,13 @@ def apply(conn: sqlite3.Connection, symbols: Iterable[str] | None = None) -> dic
         pool = xbrl or [r for r in candidates if displayable_printed(r["check_status"], r["raw_token"])]
         pool.sort(key=lambda r: (r["known_at"], r["rank"], -r["rid"]))
         for index, row in enumerate(pool):
-            following = pool[index + 1]["known_at"] if index + 1 < len(pool) else None
-            if following is not None and following <= row["known_at"]:
-                continue                 # another row at the same instant wins the tie
-            windows.append((row["src"], row["rid"], row["known_at"], following))
+            # Windows are whole days, like ``as_of`` in the tools: known_at carries a time, and a bare date compares
+            # below it as text, so a timestamped window would hide the figure on its own filing day.
+            day = row["known_at"][:10]
+            following = pool[index + 1]["known_at"][:10] if index + 1 < len(pool) else None
+            if following is not None and following <= day:
+                continue                 # a later or better row of the same day wins the tie
+            windows.append((row["src"], row["rid"], day, following))
     conn.executemany("INSERT INTO _pref_window VALUES (?,?,?,?)", windows)
     for src, table in (("x", "fin_quarter_xbrl"), ("p", "fin_quarter_printed")):
         conn.execute(f"UPDATE {table} SET preferred_from=w.frm, preferred_to=w.tto FROM _pref_window w "

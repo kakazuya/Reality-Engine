@@ -1067,7 +1067,7 @@ Store fixes 1 and 2 of the T-087 report. Six general rules, no company name in c
    item 1 has one home now: `order_key` / `elect` / `evidence_rank` / `displayable_printed` are the moves of
    `_preferred` / `_evidence_rank` / `_printed_cell_ok`, and `lookups_pilot3.fin` calls `elect`, so the tool and the
    stored columns cannot drift. `preferred_from` / `preferred_to` on `fin_quarter_xbrl` and `fin_quarter_printed`
-   give the window in which a row is THE figure: preferred at day D when `preferred_from <= D` and
+   give the window, in whole YYYY-MM-DD days, in which a row is THE figure: preferred at day D when `preferred_from <= D` and
    (`preferred_to IS NULL` or `preferred_to > D`), one row per (symbol, line_item, fiscal_period, basis) at any D, and
    `fin_quarter_current` is the row preferred now. The new build part `preferred` writes it: it ALTERs the columns onto
    an older database, runs for `profile.symbols()` (`--symbols` limits it), and costs **0.1 s** for the ten pilot

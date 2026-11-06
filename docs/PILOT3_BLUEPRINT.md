@@ -688,8 +688,10 @@ filing's restated year-ago column) while `pilot3_fin` returned the second. The e
   treated them as duplicates); a printed cell whose `raw_token` is not one printed number never competes.
   `lookups_pilot3.fin` calls `elect`; its own `_preferred`, `_printed_cell_ok`, `_evidence_rank` and `_same_value`
   are gone.
-- **Columns and view.** `fin_quarter_xbrl` and `fin_quarter_printed` carry `preferred_from` / `preferred_to` (TEXT
-  `known_at`s; `preferred_to` NULL = current). A row is preferred at day D when `preferred_from <= D` and
+- **Columns and view.** `fin_quarter_xbrl` and `fin_quarter_printed` carry `preferred_from` / `preferred_to` (YYYY-MM-DD
+  days taken from `known_at`, not timestamps, because a bare date compares below a timestamp as text and would hide a
+  figure on its own filing day; `preferred_to` NULL = current). Opus's sweep at each key's filing days found this: 736
+  of 1,536 lookups differed before, 0 of 1,531 quarter lookups after. A row is preferred at day D when `preferred_from <= D` and
   (`preferred_to IS NULL` or `preferred_to > D`); the windows of one (symbol, line_item, fiscal_period, basis) tile
   its timeline, so exactly one row answers at any D. `fin_quarter_current` (schema view) is the row preferred now,
   one per (symbol, fiscal_period, basis, line_item), with `source_table`, `source`, `page`, `column_role`,
