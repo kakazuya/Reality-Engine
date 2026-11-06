@@ -48,6 +48,12 @@ FORMULAS = [
      "Approximation: quarterly EPS summed (the annual EPS is a weighted average), each quarter restated to the share "
      "basis of the day the last quarter was filed by the cumulative split / bonus factor"),
     ("F_EPS_TTM", "eps_ttm", "sum of the last four quarterly basic EPS", "eps_basic", "inr_per_share", ""),
+    ("F_PAT_TTM", "pat_ttm", "sum of pat over the last four quarters", "pat", "inr",
+     "Trailing twelve months of PAT from four consecutive quarters; input_refs names each quarter (T-088)"),
+    ("F_PAT_BE_TTM", "pat_before_exceptional_ttm",
+     "sum over the last four quarters of (pat - exceptional_items)", "pat,exceptional_items", "inr",
+     "Trailing twelve months of PAT before exceptional items; input_refs names the four quarters and every quarter "
+     "whose exceptional_items is not zero (T-088)"),
     ("F_PAYOUT", "dividend_payout_pct", "100 * dividend_per_share / eps_basic_fy", "dividend_per_share,eps_basic_fy", "pct",
      "Needs dividend_per_share in fin_annual_line"),
     ("F_BVPS", "book_value_per_share", "net_worth / shares_outstanding", "net_worth,shares_outstanding", "inr_per_share",
@@ -150,6 +156,15 @@ def _fy_of(end: str) -> str:
     return f"FY{str(y + 1 if m >= 4 else y)[2:]}"
 
 
+_FQ = {3: 4, 6: 1, 9: 2, 12: 3}
+
+
+def _fiscal_q(end: str) -> str:
+    """Q2FY26 for a quarter ending 2025-09-30 (Indian fiscal year: April to March)."""
+    y, m = int(end[:4]), int(end[5:7])
+    return f"Q{_FQ[m]}FY{str(y + 1 if m >= 4 else y)[2:]}"
+
+
 def _last_fy_end(end: str) -> str:
     y, m = int(end[:4]), int(end[5:7])
     return f"{y - 1}-03-31" if m == 3 else f"{y}-03-31"
@@ -197,18 +212,27 @@ def _share_count(conn: sqlite3.Connection, symbol: str, basis: str, day: str, as
     return row[1], row[2], row[3]
 
 
-def _printed_year_ago(conn: sqlite3.Connection, symbol: str, basis: str, item: str, prior_end: str, known: str):
-    """The ``year_ago`` column of the filing that reported the current quarter (same day), when checked."""
+def _printed_year_ago(conn: sqlite3.Connection, symbol: str, basis: str, item: str, prior_end: str, known: str,
+                      prior_label: str):
+    """The ``year_ago`` column of the filing that reported the current quarter (same day).
+
+    ``xbrl_ok``, ``repeat_ok`` and ``sum_ok`` all count: ``sum_ok`` means the year-ago column added up on the page,
+    which is exactly the comparative a growth uses (HINDUNILVR's Q2 FY27 filing prints Q2 FY26 revenue 15,919 with
+    ``sum_ok``; its first printing 16,241 was pre-restatement, T-088 round 2).  Where one filing printed two cells
+    for the line, the better check wins (``xbrl_ok`` then ``repeat_ok`` then ``sum_ok``), so INFY's cash-flow
+    "Total income" ``sum_ok`` cell cannot beat the XBRL-confirmed revenue cell.  The fiscal label must be the
+    year-ago quarter too."""
     from reality_engine.pilot3 import comparatives
 
     if not comparatives.has_table(conn):
         return None
     row = conn.execute(
         "SELECT value, known_at, fiscal_period, period_start FROM fin_quarter_printed WHERE symbol=? AND basis=? "
-        "AND line_item=? AND period_end=? AND column_role='year_ago' AND period_type='quarter' "
-        "AND check_status IN ('xbrl_ok','sum_ok','repeat_ok') "
+        "AND line_item=? AND period_end=? AND fiscal_period=? AND column_role='year_ago' AND period_type='quarter' "
+        "AND check_status IN ('xbrl_ok','repeat_ok','sum_ok') "
         "AND abs(julianday(substr(known_at,1,10)) - julianday(substr(?,1,10))) <= 1 "
-        "ORDER BY known_at LIMIT 1", (symbol, basis, item, prior_end, known)).fetchone()
+        "ORDER BY CASE check_status WHEN 'xbrl_ok' THEN 0 WHEN 'repeat_ok' THEN 1 ELSE 2 END, known_at LIMIT 1",
+        (symbol, basis, item, prior_end, prior_label, known)).fetchone()
     return tuple(row) if row else None
 
 
@@ -276,15 +300,24 @@ def _panel(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -
             for item, metric, fid in (("revenue_from_operations", "revenue_growth_yoy_pct", "F_REV_YOY"),
                                       ("pat", "pat_growth_yoy_pct", "F_PAT_YOY")):
                 prior_end = f"{int(end[:4]) - 1}{end[4:]}"
+                prior_label = _fiscal_q(prior_end)
                 cur = items.get(item)
-                prev = _printed_year_ago(conn, symbol, basis, item, prior_end, cur[1]) if cur else None
-                prev = prev or periods.get(prior_end, {}).get(item)
-                if cur and prev and prev[0]:
-                    _put(out, symbol, isin, period, "Q", start, end, basis, metric, 100.0 * (cur[0] / prev[0] - 1.0),
-                         "pct", fid, [ref(item), f"fq:{symbol}:{prev[2]}:{basis}:{item}"], max(cur[1], prev[1]))
+                year_ago = _printed_year_ago(conn, symbol, basis, item, prior_end, cur[1], prior_label) if cur else None
+                fallback = periods.get(prior_end, {}).get(item)
+                if fallback and fallback[2] != prior_label:
+                    fallback = None      # never a different quarter: an unlabelled/wrong cell refuses the growth
+                base = year_ago or fallback
+                if cur and base and base[0]:
+                    # @fallback marks a base that is NOT the current filing's own year_ago column (T-088)
+                    base_ref = f"fq:{symbol}:{base[2]}:{basis}:{item}" + ("" if year_ago else "@fallback")
+                    _put(out, symbol, isin, period, "Q", start, end, basis, metric, 100.0 * (cur[0] / base[0] - 1.0),
+                         "pct", fid, [ref(item), base_ref], max(cur[1], base[1]))
             for item, metric, fid in (("revenue_from_operations", "revenue_growth_qoq_pct", "F_REV_QOQ"),
                                       ("pat", "pat_growth_qoq_pct", "F_PAT_QOQ")):
-                cur, prev = items.get(item), periods.get(_prev_quarter(end), {}).get(item)
+                prev_end = _prev_quarter(end)
+                cur, prev = items.get(item), periods.get(prev_end, {}).get(item)
+                if prev and prev[2] != _fiscal_q(prev_end):
+                    prev = None          # same guard as YoY: the previous quarter, or no row at all
                 if cur and prev and prev[0]:
                     _put(out, symbol, isin, period, "Q", start, end, basis, metric, 100.0 * (cur[0] / prev[0] - 1.0),
                          "pct", fid, [ref(item), f"fq:{symbol}:{prev[2]}:{basis}:{item}"], max(cur[1], prev[1]))
@@ -298,6 +331,39 @@ def _panel(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -
                      "pct", "F_COST_INCOME", [ref("operating_expenses"), ref("net_interest_income"), ref("other_income")],
                      max(opex[1], nii[1], oth[1]))
             flows[end] = items
+        # trailing twelve months (T-088): four consecutive quarters, every input named so no hand sum is needed
+        for end in ends:
+            qs = [end]
+            for _ in range(3):
+                qs.insert(0, _prev_quarter(qs[0]))
+            cells = [periods.get(q) for q in qs]
+            qparts: list[tuple[str, tuple, dict]] = []
+            for q, cell in zip(qs, cells):
+                if cell is None:
+                    qparts = []
+                    break
+                pat = cell.get("pat")
+                if pat is None:
+                    qparts = []
+                    break
+                qparts.append((q, pat, cell))
+            if len(qparts) != 4:
+                continue
+            period = qparts[-1][1][2]
+            start = qparts[0][1][3] or qs[0]
+            refs = [f"fq:{symbol}:{p[2]}:{basis}:pat" for _q, p, _c in qparts]
+            known = max(p[1] for _q, p, _c in qparts)
+            _put(out, symbol, isin, period, "TTM", start, end, basis, "pat_ttm",
+                 sum(p[0] for _q, p, _c in qparts), "inr", "F_PAT_TTM", refs, known)
+            total, exc_refs, exc_known = 0.0, [], []
+            for _q, pat, cell in qparts:
+                exc = cell.get("exceptional_items")
+                total += pat[0] - (exc[0] if exc else 0.0)
+                if exc and exc[0]:       # name the quarter that holds the item, with its amount
+                    exc_refs.append(f"fq:{symbol}:{exc[2]}:{basis}:exceptional_items={exc[0]:.0f}")
+                    exc_known.append(exc[1])
+            _put(out, symbol, isin, period, "TTM", start, end, basis, "pat_before_exceptional_ttm", total, "inr",
+                 "F_PAT_BE_TTM", refs + exc_refs, max([known, *exc_known]))
         # fiscal years: all four quarters (Jun, Sep, Dec, Mar) filed
         fys = defaultdict(list)
         for end in ends:

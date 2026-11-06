@@ -323,7 +323,7 @@ def run(db_path: str, symbols: list[str], raw_root: Path | None = None) -> dict:
                     dim = "single_segment" if r["name"] == "single_segment" else mapping.get(normalise(r["name"]), normalise(r["name"]))
                     batch.append((sym, r["metric"], dim, r["value"], "inr", 1, ptype, fiscal, r["end"], basis,
                                   f["file"], 0, "", f["known_at"], KNOWN_SOURCE, r["is_reported"], r["label"],
-                                  r["raw_value"], RULE, "xbrl", 5, "xbrl", None, SOURCE_TYPE))
+                                  r["raw_value"], RULE, "xbrl", 5, "xbrl", None, SOURCE_TYPE, sym))
                     n_single += dim == "single_segment"
                 if batch:
                     con.executemany(sql, batch)

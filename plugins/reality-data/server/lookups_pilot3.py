@@ -13,6 +13,7 @@ rows without a ``known_at`` (a row that cannot prove it was public is never show
 from __future__ import annotations
 
 import datetime as dt
+import json
 import os
 import re
 import sqlite3
@@ -248,7 +249,7 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
         args.append(basis.strip().lower())
     extra, eargs = _asof(as_of, "k.known_at")
     rows = _q(f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.scale, k.fiscal_period, k.period_type, "
-              f"k.as_of_date, k.basis, k.doc_key, k.page, k.quote, k.known_at, k.conf_rank, d.doc_key AS dk, "
+              f"k.as_of_date, k.basis, k.entity, k.doc_key, k.page, k.quote, k.known_at, k.conf_rank, d.doc_key AS dk, "
               f"d.title, d.doc_type FROM kpi_series k {_DOC_JOIN} WHERE {where}{extra} "
               # best evidence first: the extractor's confidence, then a deck/results/filing before a call remark.
               # The window must reach past a measure's duplicates (one value restated in many filings): at 3x the
@@ -261,15 +262,19 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
               (*args, *eargs, _cap(limit) * 30))
     out, seen = [], set()
     for r in rows:
-        sig = (r["metric"], r["dimension"], r["fiscal_period"], r["value"], r["unit"])
-        if sig in seen:
+        basis = r["basis"] if r["basis"] in _REPORTING_BASES else "not_stated"
+        entity = _entity_of(r, sym)
+        dimension = "total" if r["dimension"] in ("consolidated", "standalone") else r["dimension"]
+        sig = (r["metric"], entity, dimension, r["fiscal_period"], r["value"], r["unit"])
+        if sig in seen:      # the same figure printed again by another filing: one row, best evidence first
             continue
         seen.add(sig)
-        out.append({"metric": r["metric"], "dimension": r["dimension"], "value": r["value"], "unit": r["unit"],
+        out.append({"metric": r["metric"], "dimension": dimension, "value": r["value"], "unit": r["unit"],
                     "period": r["fiscal_period"], "period_type": r["period_type"], "as_of_date": r["as_of_date"],
-                    "basis": r["basis"], "quote": _trim(r["quote"], 300),
+                    "basis": basis, "entity": entity, "quote": _trim(r["quote"], 300),
                     "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}", r["known_at"],
                                         doc_type=r["doc_type"], title=r["title"], row_id=r["id"])})
+    out.sort(key=lambda row: 0 if row["entity"] == sym else 1)   # the company's own rows first (T-088)
     out = out[: _cap(limit)]
     held = None
     if not out:  # the metric exists: say which periods / dimensions hold it, so the next call can be exact
@@ -334,14 +339,16 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
                     args.append(val)
             extra, eargs = _asof(as_of)
             printed = _q(f"SELECT rowid, * FROM fin_quarter_printed WHERE {where} "
-                         f"AND check_status IN ('xbrl_ok','sum_ok','repeat_ok') AND basis IN ('standalone','consolidated'){extra} "
+                         f"AND basis IN ('standalone','consolidated'){extra} "
                          f"ORDER BY period_end DESC, known_at DESC LIMIT ?", (*args, *eargs, cap * 2))
             for r in printed:
                 if (r["line_item"], r["fiscal_period"]) in got:
                     continue             # the XBRL row for that quarter is the evidence; no duplicate
+                if not _printed_cell_ok(r):
+                    continue
                 out.append(_fin_row(r, "fin_quarter_printed", r["fiscal_period"], "printed_comparative",
                                     _fin_source(r)))
-    out = _dedupe(out)
+    out = _dedupe(_preferred(out))
     # No basis asked: a group question means the consolidated statement.  T-049 (4 Nov 2026): HINDALCO's
     # diluted EPS FY26 came back standalone 45.31 where the consolidated 60.20 was wanted; standalone is one
     # explicit argument away, so a mixed reply is filtered to consolidated when it holds the same measure.
@@ -371,6 +378,80 @@ def _has_table(name: str) -> bool:
     return bool(_q("SELECT 1 FROM sqlite_master WHERE name=? LIMIT 1", (name,)))
 
 
+_REPORTING_BASES = ("consolidated", "standalone", "not_stated")
+_CHECK_RANK = {"xbrl_ok": 4, "repeat_ok": 2, "sum_ok": 1}
+_CLEAN_CELL = re.compile(r"\(?-?\d[\d,]*(?:\.\d+)?\)?")
+
+
+def _printed_cell_ok(r: sqlite3.Row) -> bool:
+    """May this printed cell be shown as a figure?  A checked row yes; an unchecked one only when its raw token is
+    ONE printed number (a restated comparative may fail the page's arithmetic, e.g. Bajaj's Q2 FY26 restatement,
+    but a token glued from two cells, "9,176 8,227", is not a figure)."""
+    if r["check_status"] in ("xbrl_ok", "sum_ok", "repeat_ok"):
+        return True
+    return bool(_CLEAN_CELL.fullmatch(re.sub(r"\s+", "", str(r["raw_token"] or ""))))
+
+
+def _same_value(a: dict, b: dict) -> bool:
+    av, bv = (a["value"] or 0.0) * (a.get("scale") or 1.0), (b["value"] or 0.0) * (b.get("scale") or 1.0)
+    return abs(av - bv) <= max(1e-9, 1e-6 * max(abs(av), abs(bv)))
+
+
+def _evidence_rank(row: dict) -> int:
+    """How firm one statement of a figure is: XBRL 5, a printed cell XBRL confirmed 4, a repeated print 2."""
+    if row.get("_table") == "fin_quarter_xbrl":
+        return 5
+    return _CHECK_RANK.get(str(row.get("_check") or ""), 0)
+
+
+def _entity_of(row: Any, symbol: str) -> str:
+    """The entity a KPI row reports (T-088): its stored entity, else the subsidiary token an older build left in
+    ``basis``, else the company.  A reporting-basis word in the entity column is not an entity."""
+    basis = row["basis"] if row["basis"] in _REPORTING_BASES else None
+    entity = row["entity"] or basis or symbol
+    return symbol if entity in _REPORTING_BASES or entity == "total" else entity
+
+
+def _preferred(rows: list[dict]) -> list[dict]:
+    """One preferred figure per measure and period, alternatives labelled (T-088).
+
+    When several filings state the same line for the same period, the newest filing known at ``as_of`` wins (its
+    comparative column is the restated figure), and it is marked ``restated`` when it differs from the first
+    printing.  A tie on the filing date goes to the better evidence (XBRL, then a checked printed cell); a
+    ``sum_ok`` cell only means an identity on the page held, so it never outranks an XBRL-confirmed one."""
+    groups: dict[tuple, list[dict]] = {}
+    passthrough: list[dict] = []
+    for row in rows:
+        known = row.get("_known_at")
+        if not known:
+            passthrough.append(row)
+            continue
+        groups.setdefault((row["measure"], row["period"], row["basis"]), []).append(row)
+    out = list(passthrough)
+    for candidates in groups.values():
+        candidates.sort(key=lambda r: (str(r["_known_at"]), _evidence_rank(r)))
+        first, preferred = candidates[0], candidates[-1]
+        row = dict(preferred)
+        alternatives = []
+        for other in candidates[:-1]:
+            if any(_same_value(other, alt) for alt in alternatives):
+                continue
+            alt = {"value": other["value"], "unit": other["unit"], "scale": other["scale"],
+                   "filing_date": str(other["_known_at"])[:10], "role": other.get("column_role") or "xbrl",
+                   "definition": other["definition"], "provenance": other["provenance"]}
+            if "value_inr" in other:
+                alt["value_inr"] = other["value_inr"]
+            if other.get("_check"):
+                alt["check_status"] = other["_check"]
+            alternatives.append(alt)
+        row["preferred"] = True
+        row["restated"] = not _same_value(preferred, first)
+        if alternatives:
+            row["alternatives"] = alternatives
+        out.append(row)
+    return [{k: v for k, v in row.items() if not k.startswith("_")} for row in out]
+
+
 def _fin_row(r: sqlite3.Row, table: str, period: str, definition: str, source: str) -> dict[str, Any]:
     unit, scale, value = r["unit"], r["scale"] or 1.0, r["value"]
     row = {"measure": r["line_item"], "period": period, "basis": r["basis"] or "not_stated", "definition": definition,
@@ -383,6 +464,10 @@ def _fin_row(r: sqlite3.Row, table: str, period: str, definition: str, source: s
         row["column_role"] = r["column_role"]
     if table in ("fin_annual_line", "fin_quarter_printed") and r["quote"]:
         row["quote"] = _trim(r["quote"], 240)
+    if table != "fin_annual_line":      # a quarter: the preferred comparative election needs its filing date
+        row["_table"], row["_known_at"] = table, r["known_at"]
+        if "check_status" in keys:
+            row["_check"] = r["check_status"]
     return row
 
 
@@ -445,12 +530,64 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
     rows = _q(f"SELECT p.rowid, p.*, f.expression FROM ratio_panel p LEFT JOIN formula f ON f.formula_id=p.formula_id "
               f"WHERE {where}{extra} ORDER BY p.period_end DESC, (p.period_type='Q') DESC, "
               f"(p.basis='consolidated') DESC, p.known_at DESC LIMIT ?", (*args, *eargs, cap))
-    return _reply(sym, [{"ratio": r["metric"], "period": r["fiscal_period"], "period_type": r["period_type"],
-                         "basis": r["basis"], "value": r["value"], "unit": r["unit"], "formula": r["expression"],
-                         "provenance": _prov("ratio_panel", f"row {r['rowid']}", r["known_at"],
-                                             formula_id=r["formula_id"], input_refs=_trim(r["input_refs"], 240),
-                                             derived=bool(r["is_derived"]))} for r in rows],
-                  "pilot3_ratio", metrics_matched=names)
+    derived = []
+    for r in rows:
+        row = {"ratio": r["metric"], "period": r["fiscal_period"], "period_type": r["period_type"],
+               "basis": r["basis"], "value": r["value"], "unit": r["unit"], "definition": "derived",
+               "formula": r["expression"],
+               "provenance": _prov("ratio_panel", f"row {r['rowid']}", r["known_at"],
+                                   formula_id=r["formula_id"], input_refs=_trim(r["input_refs"], 240),
+                                   derived=bool(r["is_derived"]))}
+        if r["formula_id"] in ("F_PAT_TTM", "F_PAT_BE_TTM"):   # the trailing inputs, so TTM needs no hand sum
+            try:
+                row["inputs"] = json.loads(r["input_refs"] or "[]")
+            except ValueError:
+                row["inputs"] = []
+        derived.append(row)
+    stated = _stated_ratios(sym, key, label, as_of, bas, cap)
+    return _reply(sym, derived + stated, "pilot3_ratio", metrics_matched=names)
+
+
+def _stated_ratios(sym: str, key: str, label: str | None, as_of: str | None, basis: str | None,
+                   cap: int) -> list[dict]:
+    """The company's own figure for a derived ratio, when kpi_series holds it (T-088): ROE, NIM, margins ... .
+
+    ``ratio_panel`` computes a ratio; a company that prints its own number states it in kpi_series.  Both are
+    returned, never merged: the stated one carries its quote and page.  The company's own rows win over a
+    subsidiary's, then the consolidated basis, then the best evidence (a table row over a call remark)."""
+    names = [key, f"{key}_pct"] if not key.endswith("_pct") else [key]
+    names = [n for n in dict.fromkeys(names)
+             if _q("SELECT 1 FROM kpi_series WHERE symbol=? AND metric=? LIMIT 1", (sym, n))]
+    if not names:
+        return []
+    where = f"k.symbol=? AND k.metric IN ({','.join('?' * len(names))})"
+    args: list[Any] = [sym, *names]
+    if label:
+        where += " AND k.fiscal_period=?"
+        args.append(label)
+    extra, eargs = _asof(as_of, "k.known_at")
+    rows = _q(f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.fiscal_period, k.basis, k.entity, k.doc_key, "
+              f"k.page, k.quote, k.known_at, k.conf_rank, d.doc_key AS dk, d.title, d.doc_type FROM kpi_series k "
+              f"{_DOC_JOIN} WHERE {where}{extra} ORDER BY k.fiscal_period DESC, (k.basis='consolidated') DESC, "
+              f"(k.dimension='total') DESC, k.conf_rank DESC, k.known_at DESC LIMIT ?",
+              (*args, *eargs, cap * 20))
+    best: dict[str, dict] = {}
+    for r in rows:
+        row_basis = r["basis"] if r["basis"] in _REPORTING_BASES else "not_stated"
+        entity = _entity_of(r, sym)
+        if entity != sym:
+            continue                    # a subsidiary's figure is not the company's
+        if basis and row_basis != basis:
+            continue
+        if r["fiscal_period"] in best:
+            continue                    # rows arrive best first: the first company row of the period wins
+        best[r["fiscal_period"]] = {
+            "ratio": key, "period": r["fiscal_period"], "period_type": "Q" if r["fiscal_period"].startswith("Q") else "FY",
+            "basis": row_basis, "value": r["value"], "unit": r["unit"], "definition": "company_stated",
+            "entity": entity, "quote": _trim(r["quote"], 240),
+            "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}", r["known_at"],
+                                doc_type=r["doc_type"], title=r["title"], row_id=r["id"])}
+    return list(best.values())[:cap]
 
 
 # --- pilot3_holding ---------------------------------------------------------------------------------
