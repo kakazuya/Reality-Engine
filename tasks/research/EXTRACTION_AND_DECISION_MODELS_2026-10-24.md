@@ -20,7 +20,7 @@
 
 ## 2. What we are actually extracting (volumes and gaps)
 
-From `tasks/coverage/coverage_2026-10-24.json` (main checkout), `tasks/FY26_AR_CHUNKING_2026-10-24.md`, `tasks/STATE.md` and `tasks/ar_study/READER_FINDINGS.md`:
+From the 24 Oct coverage report generated in the main checkout (not committed, so not in the repo), `tasks/FY26_AR_CHUNKING_2026-10-24.md`, `tasks/STATE.md` and `tasks/ar_study/READER_FINDINGS.md`:
 
 | Family | Known | Chunked / read | Gap used in this note | Tokens / pages |
 |---|---:|---:|---|---|
@@ -387,7 +387,7 @@ The reply mirrors the question keys:
 
 - `tasks/FRAMEWORK.md` — authority: cash-only long book, 10% allocation, 8% kill, 5%/8% portfolio DD, 0.30% round trip, after-tax, 2021–2025 evidence, 2026 live, four periods, fluke control.
 - `AGENTS.md` §3 — all-peers ensemble (FF5 is one peer, not the trunk). Treating decision models as a peer/gate is this doc's recommendation, not stated in AGENTS.
-- `tasks/coverage/coverage_2026-10-24.json` — concall/deck/AR counts and gaps (main checkout).
+- the 24 Oct coverage report (generated in the main checkout; not committed, so not in the repo) — concall/deck/AR counts and gaps.
 - `tasks/FY26_AR_CHUNKING_2026-10-24.md` — 5,361 FY26 ARs, 908,969 chunks, 563.6M tokens, 70 garbled-font reports, 1 SDC hang.
 - `tasks/ar_study/CPU_LEVERS.md` — 59% repeated text; ~9% LLM slice; 12–32 page-equivalents/report; ~5 s/report CPU.
 - `tasks/ar_study/READER_FINDINGS.md` — 25/25 gate, depth ≥4,500, <1% not in text, free-reader quotas and pass list.

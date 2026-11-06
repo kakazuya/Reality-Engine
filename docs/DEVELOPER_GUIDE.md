@@ -1015,7 +1015,7 @@ python -m reality_engine.pilot3.checkpages make                                 
 
 ## 5. Code tools: outline and typecheck (T-054, 4 Nov 2026)
 
-Retired 4 Nov 2026 (moved to the Recycle Bin, history in `tasks/archive/code-intel_install/`): `plugins/code-intel/astindex.py`, `plugins/code-intel/ci.py`, `plugins/code-intel/server/core.py`, `plugins/code-intel/server/lsp.py`, `plugins/code-intel/server/server.py` and `reality_engine/tests/test_code_intel.py`.
+Retired 4 Nov 2026 (moved to the Recycle Bin, history in `tasks/archive/code-intel_install/`): the `plugins/code-intel` plugin — its AST index and CLI, and the stdio server's core, LSP client and server modules — and its test module.
 
 `plugins/code-tools/` replaces the retired code-intel LSP. A resident `basedpyright-langserver` cost ~800 MB per worker and code-intel answered 1.5% of tool calls (423 of 28,787 over 207 runs); the two tools here run and exit, so nothing stays resident between calls.
 

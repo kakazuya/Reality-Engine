@@ -4,7 +4,7 @@ Created:
 - [Harness package](C:/Users/warri/Downloads/Info_Diffusion_Model/reality_engine/harness/) with adapter, B5, runner and ledger.
 - [Tests](C:/Users/warri/Downloads/Info_Diffusion_Model/reality_engine/tests/test_harness_h01.py).
 - [Report](C:/Users/warri/Downloads/Info_Diffusion_Model/tasks/backtests/H01_report.md), [results JSON](C:/Users/warri/Downloads/Info_Diffusion_Model/tasks/backtests/archive/bcddb18d-843f-417c-a941-cfbc6f19289b/H01_results.json) (archived; no top-level `H01_results.json` on 2026-11-02), event/monthly CSVs and verification artifacts.
-- `reality_engine/data/backtests/ledger.duckdb` (not in the checkout on 2026-11-02): **16 rows** when written, preserving both runs.
+- The harness ledger (not in the checkout on 2026-11-02; the file now sits in the 1 Nov workspace attic at `D:\RealityEngine\workspace_attic_20261101\reality_engine\data\backtests\ledger.duckdb`): **16 rows** when written, preserving both runs.
 
 **Tests: 80 passed** — 43 harness + 37 existing horizon tests. Independent artifact checks also passed.
 

@@ -5,7 +5,7 @@ write code (ruling until Fri 6 Nov 23:30 IST: Opus does not write product code; 
 reports and run existing scripts). Read in this order and nothing else first:
 1. `tasks/RULINGS.md` (binding), `tasks/night_loop/GOAL.md` (the goal and the checks), `tasks/night_loop/PILOT10.md`.
 2. `tasks/night_loop/HANDOFF.md`: what earlier loops learned, what is open, what failed. Do not repeat a failure.
-3. Your loop brief `tasks/night_loop/loops/loop_NN_brief.md`.
+3. Your loop brief in `tasks/night_loop/loops/`, named loop_NN_brief.md.
 
 ## Rules for this run (Shivam, 4 Nov)
 - **Never rebuild the whole database to test a fix.** Rebuild only the part and companies a fix touches
@@ -34,7 +34,7 @@ reports and run existing scripts). Read in this order and nothing else first:
 ## Context budget and hand-off
 Your context window budget is about 400k tokens; the wrapper kills the session at 480k. Work in milestones and
 after each one update two files, so a kill loses nothing:
-- `tasks/night_loop/loops/loop_NN_report.md`: what you did, measured numbers (before / after), worker job ids and
+- the loop report in `tasks/night_loop/loops/`, named loop_NN_report.md: what you did, measured numbers (before / after), worker job ids and
   branches, what is ready for the wrapper to merge, what failed and why.
 - `tasks/night_loop/HANDOFF.md`: overwrite the "Current state" and "Next" sections; append to "Learnings" one line
   per durable lesson (a method that worked, a trap, a measurement). Keep it under 150 lines.

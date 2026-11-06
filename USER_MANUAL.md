@@ -164,12 +164,12 @@ Every time you run the system, it automatically saves reports in standard files 
 
 | File Location | How to View It | What It Contains |
 | :--- | :--- | :--- |
-| `reality_engine/data/reports/YYYY-MM-DD/daily_alpha.html` | **Double-click to open in any web browser** | Visual terminal report with dark-mode tables, target cards, catalysts, and risks. |
-| `reality_engine/data/reports/YYYY-MM-DD/daily_alpha.md` | Open with Notepad, VS Code, or Markdown viewer | Clean text document with formatted tables and investment theses. |
-| `reality_engine/data/reports/YYYY-MM-DD/daily_alpha.json` | Open with any text editor | Raw machine-readable data for the daily report. |
+| `reality_engine/data/reports/<YYYY-MM-DD>/daily_alpha.html` | **Double-click to open in any web browser** | Visual terminal report with dark-mode tables, target cards, catalysts, and risks. |
+| `reality_engine/data/reports/<YYYY-MM-DD>/daily_alpha.md` | Open with Notepad, VS Code, or Markdown viewer | Clean text document with formatted tables and investment theses. |
+| `reality_engine/data/reports/<YYYY-MM-DD>/daily_alpha.json` | Open with any text editor | Raw machine-readable data for the daily report. |
 | `reality_engine/data/reports/top_200_reality_checkpoint_*.csv` | **Double-click to open in Microsoft Excel** | Complete spreadsheet of all 200 stocks with scores, volumes, and metrics. |
 
-*(Replace `YYYY-MM-DD` with the date, for example `2026-08-14`)*
+*(Replace `<YYYY-MM-DD>` with the run date, for example `2026-08-14`)*
 
 ---
 

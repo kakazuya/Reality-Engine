@@ -14,13 +14,13 @@ Final report format: 1) what changed (files, one line each) 2) how verified (com
 single process (it failed at import until `test_code_intel.py` began loading its server modules under unique names, lines 33-48).
 
 ## Why
-`plugins/dsh-worker/server/core.py` and `plugins/code-intel/server/core.py` are both imported as the top-level module
+`plugins/dsh-worker/server/core.py` and the retired code-intel server's `core.py` are both imported as the top-level module
 `core` (each test module puts its plugin's `server/` dir on `sys.path`). Whichever loads first wins, so the second suite
 fails with `AttributeError: module 'core' has no attribute 'langserver_command'`. Any combined test run (merge queue,
 full discovery) breaks.
 
 ## Files to touch
-- `reality_engine/tests/test_code_intel.py` — load the code-intel server modules under a unique name.
+- the code-intel test module (removed with the plugin on 4 Nov 2026) — it loaded the code-intel server modules under a unique name.
 - `plugins/code-intel/server/*.py` — only if their own imports must change; the server must still start as
   `python plugins/code-intel/server/server.py` (that is how `.mcp.json` launches it).
 - Do not touch: anything under `plugins/dsh-worker/`, `.mcp.json`.

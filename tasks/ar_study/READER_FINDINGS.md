@@ -53,7 +53,7 @@ shallow models. Pending (overnight tuner): exhaustive tests for Gemma 31B, LongC
 - **OpenCode Zen free tier** is per **machine/IP**, not per account and not per model.
   - All four models were cut off together after ~1,800 calls / ~35M tokens in ~2.5 h.
   - **Daily quota, reset at 00:00 UTC (05:30 IST):** refused from 17:00/18:31 IST on 10-12; all four models answered
-    again at 05:30:29 IST on 10-13 (probe log `reality_engine/data/logs/zen_quota_probe.log`). Budget ~1,800 calls / ~35M tokens a day.
+    again at 05:30:29 IST on 10-13 (probe log `reality_engine/data/backups/drive_processed_2026-10-21/processed_logs/logs/zen_quota_probe.log`). Budget ~1,800 calls / ~35M tokens a day.
   - Logging the Zen account in ("OpenCode Console") routes calls to the account but does not lift the IP limit.
   - The Zen free tier refuses direct API calls and custom agent prompts; `opencode run` with the stock agent works.
 - **Free promotions end:** LongCat, Space Bunny and Step on OpenCode are time-limited. Gemma on Google keys is the

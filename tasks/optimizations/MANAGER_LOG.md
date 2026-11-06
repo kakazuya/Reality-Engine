@@ -101,7 +101,7 @@ independent reviewer earned its cost on the first job (a silent data-correctness
   EOF / parent death.
 - S7 (disk): 12 older dsh worktrees from 2026-10-24 remain under `IDM-worktrees/` (some hold paused work per
   `tasks/handoff/`). Not touched; listed for Shivam.
-- S8: `plugins/dsh-worker/server/core.py` and `plugins/code-intel/server/core.py` are both imported as top-level
+- S8: `plugins/dsh-worker/server/core.py` and the retired code-intel server's `core.py` are both imported as top-level
   `core`; running their test modules in one `unittest` process fails at import. Run suites per process for now;
   follow-up: package-qualify the imports (or give code-intel a distinct module name).
 - S5: Crawl-date filename prefixes drift between DB, disk and Drive (same `<hash8>_<rest>`). Any path-keyed lookup

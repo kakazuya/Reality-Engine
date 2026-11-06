@@ -68,7 +68,7 @@ Overfit alarm: dev up while hidden flat over two accepted loops stops the run.
 - Wrapper (visible Eagle session): launches one loop at a time, re-runs every check itself, reads every diff,
   merges, backs up and promotes the database, keeps the scoreboard, grades A2 by hand, stops the run.
 - Loop session (headless `claude -p`, Opus 5.5, effort medium, same config and MCPs, no subagents): one work item,
-  then a report in `tasks/night_loop/loops/loop_NN.md`, then exit. Phase 1: it writes the questions itself.
+  then a report in `tasks/night_loop/loops/`, named loop_NN.md, then exit. Phase 1: it writes the questions itself.
   Phase 2: it gathers evidence, briefs and steers at most 2 dsh workers, runs the checks on their branch.
 
 ## 5. Not the goal (rejected)
