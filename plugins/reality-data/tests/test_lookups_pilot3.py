@@ -113,11 +113,19 @@ def build_fixture() -> None:
               "12.5,'pct',1,'F_ROE','[\"a\"]','2025-05-20T10:00:00','x',1)")
     c.execute("INSERT INTO valuation_daily VALUES ('KEC','I','2026-03-30','consolidated',500,1e8,5e10,25,2.5e9,1e10,"
               "1e9,3e9,20,5,12,0.5,'2026-03-30','x','{}')")
-    c.executemany("INSERT INTO shp_category VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+    c.executemany("INSERT INTO shp_category VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
         ("KEC", "I", "2025-12-31", "promoter", "Promoter", 1.0e8, 51.5, 10, "pct", "xbrl", "shp.xml", "db", "t", "1",
-         None, "2026-01-20T10:00:00", "x", 1),
+         None, "2026-01-20T10:00:00", "x", 1, None, None),
         ("KEC", "I", "2026-03-31", "promoter", "Promoter", 1.0e8, 52.0, 10, "pct", "xbrl", "shp2.xml", "db", "t", "2",
-         None, "2026-04-20T10:00:00", "x", 1)])
+         None, "2026-04-20T10:00:00", "x", 1, None, None)])
+    # T-088: the named holders and the promoter encumbrance block of the latest quarter
+    c.executemany("INSERT INTO shp_holder VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+        ("KEC", "I", "2026-03-31", "promoter_individuals", "A Promoter", 2.0e7, 20.0, 1, None, None, None,
+         "shp2.xml", "db", "xml.gz", "2026-04-20T10:00:00", "x"),
+        ("KEC", "I", "2026-03-31", "pac_public", "A Promoter", 2.0e7, 20.0, 1, "A Concert Party", 20.0, None,
+         "shp2.xml", "db", "xml.gz", "2026-04-20T10:00:00", "x")])
+    c.execute("INSERT INTO shp_pledge VALUES ('KEC','I','2026-03-31',1,0,0,1.0e8,1.25e7,12.5,0.0,1.25e7,"
+              "'shp2.xml','2026-04-20T10:00:00','x')")
     c.execute("INSERT INTO share_capital VALUES ('KEC','I','2025-12-31','consolidated',NULL,NULL,2.6e8,5e8,2,'inr',1,"
               "'2026-01-30T10:00:00','x','db','t','1',NULL,NULL)")
     c.execute("INSERT INTO transcript_statement(symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,"
@@ -256,6 +264,27 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertFalse(p3.holding("KEC", "2025-06-01")["found"])
         with self.assertRaises(core.DataError):
             p3.holding("KEC", "")
+
+    def test_holding_names_holders_the_pledge_block_and_what_it_covers(self):
+        """T-088: the named holders of the quarter, the filing's own pledge answer and the coverage."""
+        out = p3.holding("KEC", "2026-06-01")
+        self.assertEqual(out["quarters_held"], {"first": "2025-12-31", "last": "2026-03-31", "count": 2})
+        self.assertIn("promoter", out["categories_held"])
+        # default: the named holders, the persons-in-concert twin left out so it never doubles a sum
+        self.assertEqual([(h["holder"], h["category"], h["shares"], h["pct"]) for h in out["holders"]],
+                         [("A Promoter", "promoter_individuals", 2.0e7, 20.0)])
+        full = p3.holding("KEC", "2026-06-01", all_holders=True)
+        self.assertEqual({h["category"] for h in full["holders"]}, {"promoter_individuals", "pac_public"})
+        self.assertEqual(next(h for h in full["holders"] if h["category"] == "pac_public")["pac_name"], "A Concert Party")
+        pledge = out["promoter_pledge"]
+        self.assertTrue(pledge["pledge_flag"])
+        self.assertEqual(pledge["pledged_pct_of_promoter_holding"], 12.5)      # the filing's own percentage
+        self.assertIn("12.5% of the promoter holding is pledged", pledge["answer"])
+        self.assertEqual(pledge["provenance"]["table"], "shp_pledge")
+        # a quarter filed before the holder table reached it says so, it does not claim there is no holder
+        early = p3.holding("KEC", "2026-02-01")
+        self.assertEqual(early["holders"], [])
+        self.assertIn("no named holder row", early["holders_note"])
 
     def test_statements_exact_quote(self):
         out = p3.statements("KEC", topic="margin", terms="improve 50")

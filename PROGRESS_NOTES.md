@@ -1,0 +1,1 @@
+T-088 (2026-11-06): shp_holder + shp_pledge + pct base + compute_start window done in stores/schema/lookups; test_pilot3_shp_holder.py 3 passed, lookups 24 OK; copy build .tmp/pilot10_w.db verified against all four accept rows; docs updated (blueprint 9d, guide section 5, STATE). Next: rerun pytest -k pilot3 and the DeepSeek 20-question dig test on the rebuilt store (controller).

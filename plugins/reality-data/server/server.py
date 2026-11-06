@@ -471,13 +471,20 @@ def pilot3_ratio(symbol: str, ratio: str, period: str | None = None, as_of: str 
     description=(
         "Shareholding pattern in force on as_of (the latest quarter whose filing was out by then): promoter, "
         "public, FPI, domestic institutions, mutual funds, insurance ... percent, shares, holders; plus shares "
-        "outstanding / paid-up capital / face value on that day. all_categories=true lists every filed category."
+        "outstanding / paid-up capital / face value on that day. all_categories=true lists every filed category. "
+        "holders = the quarter's named shareholders (top 12 by shares; the persons-in-concert disclosures are "
+        "skipped, all_holders=true lists every named holder including them with pac_name). promoter_pledge = the "
+        "filing's own pledge / non-disposal / other-encumbrance flags with the pledged shares and its printed "
+        "percentage of the promoter holding ('what share of promoter holding is pledged'). pct_basis = the share "
+        "count the printed percentages are on (a depository-receipt issuer's excludes the shares under DR "
+        "custody). quarters_held and categories_held say what the table covers for the company."
     ),
     annotations=_RO,
 )
 def pilot3_holding(symbol: str, as_of: str, quarter_end: str | None = None,
-                   all_categories: bool = False) -> dict[str, Any]:
-    return _safe(lambda: _p3.holding(symbol, as_of, quarter_end=quarter_end, all_categories=all_categories))
+                   all_categories: bool = False, all_holders: bool = False) -> dict[str, Any]:
+    return _safe(lambda: _p3.holding(symbol, as_of, quarter_end=quarter_end, all_categories=all_categories,
+                                     all_holders=all_holders))
 
 
 @server.tool(
@@ -560,7 +567,7 @@ def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int 
     description=(
         "Bounded read-only SELECT/WITH over pilot3.db (limit enforced, default 100, max 500). Tables: company, "
         "doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, formula, "
-        "valuation_daily, shp_category, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, "
+        "valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, "
         "guidance. Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions. "
         "Text cells are cut at max_chars (default 400, hard cap 8000): pass max_chars=8000 when the answer needs "
         "long page text, a whole paragraph or a full quote."

@@ -20,20 +20,26 @@ CR = 1e7  # rupees per crore
 
 # The history window a profile keeps (T-056): every store table and its date column.  No profile -> no filter.
 WINDOW_COLUMNS = {"fin_quarter_xbrl": "period_end", "fin_annual_line": "period_end", "shp_category": "quarter_end",
+                  "shp_holder": "quarter_end", "shp_pledge": "quarter_end",
                   "price_delivery": "date", "valuation_daily": "date", "bulk_block_deal": "deal_date",
                   "insider_trade": "intimation_date", "index_price": "date"}
 # Tables whose rows dated from ``compute_start`` up to ``window_start`` are kept apart as ``<table>_input``: inputs
 # of a trailing four quarters or a prior-year comparison, never part of an answer table (ratios.py reads them).
 INPUT_TABLES = ("fin_quarter_xbrl", "fin_annual_line", "price_delivery")
+# The shareholding tables keep their whole history from ``compute_start`` instead (T-088): a quarter of the pattern
+# is a few hundred rows, and the pledge history and the September-2025 base are answers, not inputs.
+HISTORY_TABLES = ("shp_category", "shp_holder", "shp_pledge")
 
 
 def apply_window(conn: sqlite3.Connection) -> dict:
     """Delete a profile's rows dated before ``window_start``; returns ``{table: rows deleted}``.  With a
-    ``compute_start`` the rows of ``INPUT_TABLES`` from that date on are first copied to ``<table>_input``."""
+    ``compute_start`` the rows of ``INPUT_TABLES`` from that date on are first copied to ``<table>_input``, and the
+    ``HISTORY_TABLES`` keep their rows from ``compute_start`` on."""
     start = profile.window_start()
     if not start:
         return {}
     compute = profile.compute_start()
+    history = compute or start
     out = {}
     for table, column in WINDOW_COLUMNS.items():
         if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
@@ -43,7 +49,8 @@ def apply_window(conn: sqlite3.Connection) -> dict:
             if compute:
                 conn.execute(f'CREATE TABLE "{table}_input" AS SELECT * FROM "{table}" WHERE {column} >= ? AND {column} < ?',
                              (compute, start))
-        out[table] = conn.execute(f"DELETE FROM {table} WHERE {column} < ?", (start,)).rowcount
+        out[table] = conn.execute(f"DELETE FROM {table} WHERE {column} < ?",
+                                  (history if table in HISTORY_TABLES else start,)).rowcount
     return out
 
 
@@ -478,8 +485,62 @@ def _local(tag: str) -> str:
     return tag.rsplit("}", 1)[-1]
 
 
+PCT = "ShareholdingAsAPercentageOfTotalNumberOfShares"
+# Every tag of one category context the build keeps: the holding itself and the encumbrance block beside it.
+CATEGORY_TAGS = ("NumberOfShares", PCT, "NumberOfShareholders",
+                 "PledgedOrEncumberedNumberOfShares", "PledgedOrEncumberedSharesHeldAsPercentageOfTotalNumberOfShares",
+                 "NumberOfSharesEncumberedUnderPledged", "EncumberedShareUnderPledgedAsPercentageOfTotalNumberOfShares",
+                 "NumberOfSharesEncumbered", "EncumberedSharesHeldAsPercentageOfTotalNumberOfShares",
+                 "NumberOfSharesEncumberedUnderOtherEncumbrances",
+                 "EncumberedShareUnderOtherEncumbrancesAsPercentageOfTotalNumberOfShares")
+PCT_TAGS = frozenset((PCT, "PledgedOrEncumberedSharesHeldAsPercentageOfTotalNumberOfShares",
+                      "EncumberedShareUnderPledgedAsPercentageOfTotalNumberOfShares",
+                      "EncumberedSharesHeldAsPercentageOfTotalNumberOfShares",
+                      "EncumberedShareUnderOtherEncumbrancesAsPercentageOfTotalNumberOfShares",
+                      "PercentageOfShareholdingByPAC"))
+HOLDER_TAGS = ("NameOfTheShareholder", "NameOfThePAC", "NumberOfShares", PCT, "NumberOfShareholders",
+               "PercentageOfShareholdingByPAC", "NumberOfSharesEncumberedUnderPledged",
+               "PledgedOrEncumberedNumberOfShares")
+# The detail axes carry the member name of the category ("DetailsOfSharesHeldByBodiesCorporateAxis"); a few
+# spellings differ from the CategoryOfShareholdersAxis member of the same category, so map those to its name.
+DETAIL_MEMBERS = {"IndividualsOrHUF": "promoter_individuals",
+                  "IndividualsOrHinduUndividedFamily": "promoter_individuals",
+                  "InstitutionsForeignPortfolioInvestorOne": "fpi_category_1",
+                  "InstitutionsForeignPortfolioInvestorTwo": "fpi_category_2"}
+DETAIL_AXIS = re.compile(r"^Details(?:Of)?SharesHeldBy(.+)Axis$")
+PAC_AXIS = re.compile(r"^Details(?:Of)?TheShareholdersActingAsPersonsInConcertFor(.+)Axis$")
+PAC_MEMBERS = {"Public": "public", "PromoterAndPromoterGroup": "promoter",
+               "NonPromoterNonPublic": "non_promoter_non_public"}
+
+
+def _holder_category(axis: str) -> str | None:
+    """The shp_category name a named-holder axis belongs to (``pac_*`` for a persons-in-concert disclosure), or
+    None for an axis that names no holder (significant beneficial owners, unclaimed shares ...)."""
+    m = DETAIL_AXIS.match(axis)
+    if m:
+        member = m.group(1)
+        return DETAIL_MEMBERS.get(member) or MEMBERS.get(member) or _snake(member)
+    m = PAC_AXIS.match(axis)
+    if m:
+        bucket = m.group(1)
+        return "pac_" + PAC_MEMBERS.get(bucket, _snake(bucket))
+    return None
+
+
+def _num(text: str | None) -> float | None:
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 def parse_shp_xbrl(blob: bytes) -> dict:
-    """Header (isin, symbol) and per-category facts of one SHP XBRL file, stdlib only."""
+    """Header, per-category facts, named holders and the promoter-encumbrance block of one SHP XBRL file, stdlib
+    only.  ``facts`` is keyed ``(member, instant)``; ``holders`` is keyed by the holder axis and the filing's own
+    holder id, because ``NameOfTheShareholder`` sits in a ``D_`` context while its counts sit in the bare one, both
+    carrying the same typed member."""
     root = ET.fromstring(blob)
     ctx: dict[str, tuple] = {}
     head: dict[str, str] = {}
@@ -492,48 +553,102 @@ def parse_shp_xbrl(blob: bytes) -> dict:
                 if t == "explicitMember":
                     dims.append((sub.get("dimension", "").split(":")[-1], (sub.text or "").split(":")[-1]))
                 elif t == "typedMember":
-                    dims.append(("typed", ""))
+                    dims.append((sub.get("dimension", "").split(":")[-1], "".join(sub.itertext()).strip()))
                 elif t == "instant":
                     inst = sub.text
-            ctx[el.get("id")] = (tuple(dims), inst)
+                elif t == "endDate" and inst is None:
+                    inst = sub.text
+            if el.get("id"):
+                ctx[el.get("id") or ""] = (tuple(dims), inst)
         elif tag in ("ISIN", "Symbol", "DateOfReport") and el.text:
             head[tag] = el.text.strip()
     facts: dict[tuple, dict] = {}
+    holders: dict[tuple, dict] = {}
+    pledge: dict[str, str] = {}
     for el in root:
         tag, ref = _local(el.tag), el.get("contextRef")
-        if ref not in ctx or tag not in ("NumberOfShares", "ShareholdingAsAPercentageOfTotalNumberOfShares",
-                                         "NumberOfShareholders"):
+        if not ref or ref not in ctx:
             continue
         dims, inst = ctx[ref]
-        if len(dims) != 1 or dims[0][0] != "CategoryOfShareholdersAxis":
-            continue
-        member = dims[0][1].removesuffix("Member")
-        try:
-            value = float(el.text)
-        except (TypeError, ValueError):
-            continue
-        facts.setdefault((member, inst), {})[tag] = value
+        value = (el.text or "").strip()
+        if tag.startswith("WhetherAnySharesHeldByPromotersAre"):
+            if not dims:
+                pledge[tag] = value
+        elif tag in CATEGORY_TAGS and len(dims) == 1 and dims[0][0] == "CategoryOfShareholdersAxis":
+            number = _num(value)
+            if number is not None:
+                facts.setdefault((dims[0][1].removesuffix("Member"), inst), {})[tag] = number
+        elif tag in HOLDER_TAGS and len(dims) == 1 and _holder_category(dims[0][0]):
+            holder = holders.setdefault(dims[0], {})
+            number = _num(value)
+            if number is not None:
+                holder[tag] = number
+            elif tag in ("NameOfTheShareholder", "NameOfThePAC"):
+                holder[tag] = value
     # The 2025-05 taxonomy files give percentages as fractions (0.5467), older ones as percent (54.67):
     # promoter + public always total 100%, so a total near 1 marks a fractional file.
-    pct = "ShareholdingAsAPercentageOfTotalNumberOfShares"
-    for inst in {i for (_m, i) in facts}:
-        total = sum(facts.get((m, inst), {}).get(pct, 0.0)
-                    for m in ("ShareholdingOfPromoterAndPromoterGroup", "PublicShareholding"))
-        if 0 < total <= 1.5:
-            for (member, i), f in facts.items():
-                if i == inst and pct in f:
-                    f[pct] = round(f[pct] * 100.0, 6)
-    return {"head": head, "facts": facts}
+    fractional = any(0 < sum(facts.get((m, inst), {}).get(PCT, 0.0)
+                             for m in ("ShareholdingOfPromoterAndPromoterGroup", "PublicShareholding")) <= 1.5
+                     for inst in {i for (_m, i) in facts})
+    if fractional:
+        for f in (*facts.values(), *holders.values()):
+            for k in PCT_TAGS.intersection(f):
+                f[k] = round(f[k] * 100.0, 6)
+    return {"head": head, "facts": facts, "holders": holders, "pledge": pledge}
+
+
+def _quarter(parsed: dict) -> str | None:
+    """The quarter end a parsed file reports: its instant (every fact of one file shares it), else the head date."""
+    instants = {i for (_m, i) in parsed["facts"] if i}
+    return max(instants) if instants else parsed["head"].get("DateOfReport")
+
+
+def _flag(value: str | None) -> int | None:
+    return None if value is None else int(value.strip().lower() in ("true", "1", "yes"))
+
+
+def _pct_base(parsed: dict) -> tuple[float | None, str | None]:
+    """``(shares, label)`` the file's printed percentages are on.
+
+    The base is the total shareholding pattern less the shares a depository holds against depository receipts
+    (``CustodianOrDRHolder``): INFY at 2026-09-30 prints promoter 13.90% for 516,677,914 shares, which is 13.90% of
+    3,716,041,606 (4,058,276,578 less 342,234,972 under ADRs) and 12.73% of the total.  The choice is checked
+    against every category the file prints a percentage for; no file of the 591-file corpus fails both checks."""
+    quarter = _quarter(parsed)
+    total = (parsed["facts"].get(("ShareholdingPattern", quarter)) or {}).get("NumberOfShares")
+    if not total:
+        return None, None
+    custodian = (parsed["facts"].get(("CustodianOrDRHolder", quarter)) or {}).get("NumberOfShares") or 0.0
+    candidates = [("total_shares", total)]
+    if 0 < custodian < total:
+        candidates.insert(0, ("total_excluding_dr_custody", total - custodian))
+    for label, base in candidates:
+        bad = 0
+        for (member, inst), f in parsed["facts"].items():
+            pct, shares = f.get(PCT), f.get("NumberOfShares")
+            if inst != quarter or member == "ShareholdingPattern" or not pct or not shares or shares <= 0:
+                continue
+            if abs(pct - shares / base * 100.0) > 0.011:
+                bad += 1
+        if not bad:
+            return base, label
+    return candidates[0][1], candidates[0][0]
 
 
 def build_shp(conn: sqlite3.Connection) -> dict:
-    """shp_category: shp_index (promoter / public per quarter) + holder categories from the SHP XBRL files."""
-    schema.create(conn, ("shp_category",))
+    """shp_category (shp_index promoter / public per quarter + the holder categories of every SHP XBRL file),
+    shp_holder (the named holders, one row per category and name per quarter) and shp_pledge (the promoter
+    encumbrance block), each carrying the file's own ``known_at`` and the percentage base it prints on."""
+    schema.create(conn, ("shp_category", "shp_holder", "shp_pledge"))
     counts, xbrl_files = {}, {}
     if SHP_XBRL.is_dir():
         for path in sorted(SHP_XBRL.glob("*.xml.gz")):
             xbrl_files[path.name[:-3]] = path
     parsed_files = {name: parse_shp_xbrl(gzip.open(path).read()) for name, path in xbrl_files.items()}
+    bases = {}
+    for parsed in parsed_files.values():
+        if _quarter(parsed):
+            bases[(parsed["head"].get("ISIN"), _quarter(parsed))] = _pct_base(parsed)
     for symbol in profile.symbols():
         index = fetch(symbol, "shp_index")
         by_file = {r["file"]: r for r in index}
@@ -545,7 +660,10 @@ def build_shp(conn: sqlite3.Connection) -> dict:
                     continue
                 out.append((symbol, r["isin"], r["quarter_end"], cat, cat, None, pct, None, "pct", "index",
                             r["file"], "equity_intelligence.db", "shp_index", r["record_id"],
-                            r["revised"], known, "shp_index.broadcast_at", 1))
+                            r["revised"], known, "shp_index.broadcast_at", 1,
+                            *bases.get((r["isin"], r["quarter_end"]), (None, None))))
+        holders: dict[tuple, tuple] = {}
+        pledges: dict[tuple, tuple] = {}
         isins = set(all_isins(symbol))
         for name, parsed in parsed_files.items():
             if parsed["head"].get("ISIN") not in isins:
@@ -557,31 +675,72 @@ def build_shp(conn: sqlite3.Connection) -> dict:
                 stamp = re.search(r"_(\d{14})_WEB", name)
                 known = datetime.strptime(stamp.group(1), "%d%m%Y%H%M%S").isoformat() if stamp else None
                 src, revised = "file name timestamp", None
+            isin, quarter = parsed["head"]["ISIN"], _quarter(parsed)
+            base, base_label = bases.get((isin, quarter), (None, None))
             fpi, ifor = {}, {}
             for (member, inst), f in parsed["facts"].items():
                 if member == "InstitutionsForeign":
                     ifor[inst] = f
                 cat = MEMBERS.get(member, _snake(member))
-                out.append((symbol, parsed["head"]["ISIN"], inst, cat, member, f.get("NumberOfShares"),
-                            f.get("ShareholdingAsAPercentageOfTotalNumberOfShares"), f.get("NumberOfShareholders"),
-                            "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 1))
+                out.append((symbol, isin, inst, cat, member, f.get("NumberOfShares"),
+                            f.get(PCT), f.get("NumberOfShareholders"),
+                            "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 1,
+                            base, base_label))
                 if cat.startswith("fpi"):
                     fpi[(cat, inst)] = f
             for inst, f in ifor.items():  # new taxonomy: the pattern's own FII / FPI line (all foreign institutions)
                 if ("fpi", inst) in fpi:
                     continue
-                out.append((symbol, parsed["head"]["ISIN"], inst, "fpi_total", "InstitutionsForeign (FII/FPI line)",
-                            f.get("NumberOfShares"), f.get("ShareholdingAsAPercentageOfTotalNumberOfShares"), None,
-                            "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 1))
+                out.append((symbol, isin, inst, "fpi_total", "InstitutionsForeign (FII/FPI line)",
+                            f.get("NumberOfShares"), f.get(PCT), None,
+                            "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 1,
+                            base, base_label))
             for inst in {i for (_c, i) in fpi} - {i for i in ifor if ("fpi", i) not in fpi}:
                 pick = [fpi[k] for k in fpi if k[1] == inst and k[0] == "fpi"] or \
                        [fpi[k] for k in fpi if k[1] == inst and k[0] in ("fpi_category_1", "fpi_category_2")]
                 if pick:
-                    out.append((symbol, parsed["head"]["ISIN"], inst, "fpi_total", "FPI (derived: sum of FPI members)",
+                    out.append((symbol, isin, inst, "fpi_total", "FPI (derived: sum of FPI members)",
                                 sum(p.get("NumberOfShares") or 0 for p in pick),
-                                sum(p.get("ShareholdingAsAPercentageOfTotalNumberOfShares") or 0 for p in pick),
-                                None, "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 0))
-        conn.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 18) + ")", out)
+                                sum(p.get(PCT) or 0 for p in pick),
+                                None, "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 0,
+                                base, base_label))
+            for (axis, _domain), f in parsed["holders"].items():
+                cat, holder = _holder_category(axis), f.get("NameOfTheShareholder")
+                if not cat or not holder:
+                    continue
+                pac_pct = f.get("PercentageOfShareholdingByPAC")
+                row = (symbol, isin, quarter, cat, holder, f.get("NumberOfShares"),
+                       f.get(PCT, pac_pct), f.get("NumberOfShareholders"), f.get("NameOfThePAC"), pac_pct,
+                       f.get("NumberOfSharesEncumberedUnderPledged", f.get("PledgedOrEncumberedNumberOfShares")),
+                       name, "nse_shp_xbrl_pilot", "xml.gz", known, src)
+                key = (isin, quarter, cat, holder)
+                if key not in holders or (holders[key][14] or "") <= (known or ""):
+                    holders[key] = row
+            flags = parsed["pledge"]
+            promoter = parsed["facts"].get(("ShareholdingOfPromoterAndPromoterGroup", quarter)) or {}
+            pledge_flag = _flag(flags.get("WhetherAnySharesHeldByPromotersAreEncumberedUnderPledged")
+                                if "WhetherAnySharesHeldByPromotersAreEncumberedUnderPledged" in flags else
+                                flags.get("WhetherAnySharesHeldByPromotersArePledgeOrOtherwiseEncumbered"))
+            pledged = promoter.get("NumberOfSharesEncumberedUnderPledged")
+            if pledged is None:
+                pledged = promoter.get("PledgedOrEncumberedNumberOfShares")
+            if pledged is None and pledge_flag == 0:
+                pledged = promoter.get("NumberOfSharesEncumbered")
+            pledged_pct = promoter.get("EncumberedShareUnderPledgedAsPercentageOfTotalNumberOfShares")
+            if pledged_pct is None:
+                pledged_pct = promoter.get("PledgedOrEncumberedSharesHeldAsPercentageOfTotalNumberOfShares")
+            row = (symbol, isin, quarter, pledge_flag,
+                   _flag(flags.get("WhetherAnySharesHeldByPromotersAreEncumberedUnderNonDisposalUndertaking")),
+                   _flag(flags.get("WhetherAnySharesHeldByPromotersAreEncumberedOtherThanByWayOfPledgeOrNDU")),
+                   promoter.get("NumberOfShares"), pledged, pledged_pct,
+                   promoter.get("NumberOfSharesEncumberedUnderOtherEncumbrances"),
+                   promoter.get("NumberOfSharesEncumbered"), name, known, src)
+            key = (isin, quarter)
+            if key not in pledges or (pledges[key][12] or "") <= (known or ""):
+                pledges[key] = row
+        conn.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 20) + ")", out)
+        conn.executemany("INSERT INTO shp_holder VALUES (" + ",".join("?" * 16) + ")", list(holders.values()))
+        conn.executemany("INSERT INTO shp_pledge VALUES (" + ",".join("?" * 14) + ")", list(pledges.values()))
         counts[symbol] = len(out)
     conn.commit()
     return counts
