@@ -456,11 +456,31 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
 # --- pilot3_holding ---------------------------------------------------------------------------------
 HOLDING_MAIN = ("promoter", "public", "fpi", "fpi_total", "institutions_domestic", "institutions_foreign",
                 "mutual_funds", "insurance", "banks", "foreign", "indian", "bodies_corporate")
+HOLDING_TOP = 12
 
 
-def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categories: bool = False) -> dict[str, Any]:
+def _pledge_text(r: sqlite3.Row, pct: float | None) -> str:
+    """The filing's own answer to "what share of promoter holding is pledged", never a computed guess."""
+    if r["pledge_flag"] is None:
+        return f"the {r['quarter_end']} filing prints no promoter pledge flag"
+    if not r["pledge_flag"]:
+        return ("the filing states that no shares held by promoters are encumbered under pledge"
+                + (" (nor under a non-disposal undertaking)" if r["ndu_flag"] == 0 else ""))
+    if r["pledged_shares"] is None:
+        return "the filing states promoter shares are pledged but prints no count"
+    if pct is None:
+        return f"{r['pledged_shares']:.0f} promoter shares are pledged (the filing prints no percentage)"
+    return (f"{pct:g}% of the promoter holding is pledged ({r['pledged_shares']:.0f} of "
+            f"{r['promoter_shares']:.0f} shares)" if r["promoter_shares"] else f"{r['pledged_shares']:.0f} shares pledged")
+
+
+def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categories: bool = False,
+            all_holders: bool = False) -> dict[str, Any]:
     """Shareholding pattern in force on ``as_of`` (the latest quarter whose filing was out by then) + shares
-    outstanding.  Main categories by default; all_categories=true lists every filed category."""
+    outstanding.  Main categories by default; all_categories=true lists every filed category.  ``holders`` are the
+    quarter's named holders (top 12 by shares, excluding the persons-in-concert disclosures); ``all_holders`` lists
+    every named holder including them, with ``pac_name``.  ``promoter_pledge`` is the filing's encumbrance block,
+    ``pct_basis`` the share count its percentages are on, ``quarters_held``/``categories_held`` what the table covers."""
     sym = resolve_symbol(symbol)
     day = _day(as_of, "as_of")
     if not day:
@@ -470,7 +490,10 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
     row = _q(f"SELECT MAX(quarter_end) q FROM shp_category WHERE symbol=? AND quarter_end<=?{extra}"
              + (" AND quarter_end=?" if qe else ""), (sym, day, *eargs, *((qe,) if qe else ())))
     quarter = row[0]["q"] if row else None
+    held = _q(f"SELECT MIN(quarter_end) f, MAX(quarter_end) l, COUNT(DISTINCT quarter_end) n FROM shp_category "
+              f"WHERE symbol=?{extra}", (sym, *eargs))[0]
     rows: list[dict] = []
+    basis = None
     if quarter:
         flt = "" if all_categories else f" AND category IN ({','.join('?' * len(HOLDING_MAIN))})"
         cand = _q(f"SELECT rowid, * FROM shp_category WHERE symbol=? AND quarter_end=?{extra}{flt} "
@@ -478,6 +501,10 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
                   (sym, quarter, *eargs, *(() if all_categories else HOLDING_MAIN)))
         seen = set()
         for r in cand:
+            keys = r.keys()
+            if "pct_base_shares" in keys and r["pct_base_shares"] is not None:
+                basis = basis or {"shares": r["pct_base_shares"], "label": r["pct_basis"],
+                                  "provenance": _prov("shp_category", r["source_file"], r["known_at"])}
             if r["category"] in seen:
                 continue
             seen.add(r["category"])
@@ -486,6 +513,33 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
                          "provenance": _prov("shp_category", f"{r['source_file'] or ''} [{r['source_db']}.{r['source_table']} "
                                              f"row {r['source_rowid']}]".strip(), r["known_at"],
                                              category_raw=r["category_raw"])})
+    named: list[dict] = []
+    if quarter and _has_table("shp_holder"):
+        flt = "" if all_holders else " AND category NOT LIKE 'pac_%'"
+        cap = MAX_LIMIT * 10 if all_holders else HOLDING_TOP
+        for r in _q(f"SELECT rowid, * FROM shp_holder WHERE symbol=? AND quarter_end=?{extra}{flt} "
+                    "ORDER BY shares IS NULL, shares DESC, holder_name LIMIT ?", (sym, quarter, *eargs, cap)):
+            named.append({"holder": r["holder_name"], "category": r["category"], "shares": r["shares"], "pct": r["pct"],
+                          "holders": r["holders"], "pac_name": r["pac_name"], "pac_pct": r["pac_pct"],
+                          "pledged_shares": r["pledged_shares"],
+                          "provenance": _prov("shp_holder", f"{r['source_file'] or ''} [{r['source_db']}.{r['source_table']}]",
+                                              r["known_at"])})
+    pledge = None
+    if quarter and _has_table("shp_pledge"):
+        pr = _q(f"SELECT rowid, * FROM shp_pledge WHERE symbol=? AND quarter_end=?{extra} "
+                "ORDER BY known_at DESC LIMIT 1", (sym, quarter, *eargs))
+        if pr:
+            r = pr[0]
+            pct = r["pledged_pct"]
+            if pct is None and r["pledged_shares"] is not None and r["promoter_shares"]:
+                pct = round(r["pledged_shares"] / r["promoter_shares"] * 100.0, 4)
+            pledge = {"pledge_flag": None if r["pledge_flag"] is None else bool(r["pledge_flag"]),
+                      "non_disposal_undertaking_flag": None if r["ndu_flag"] is None else bool(r["ndu_flag"]),
+                      "other_encumbrance_flag": None if r["other_flag"] is None else bool(r["other_flag"]),
+                      "promoter_shares": r["promoter_shares"], "pledged_shares": r["pledged_shares"],
+                      "pledged_pct_of_promoter_holding": pct, "other_encumbered_shares": r["other_shares"],
+                      "encumbered_shares": r["encumbered_shares"], "answer": _pledge_text(r, pct),
+                      "provenance": _prov("shp_pledge", r["source_file"], r["known_at"])}
     sc = _q(f"SELECT rowid, * FROM share_capital WHERE symbol=? AND event IS NULL AND as_of_date<=?{extra} "
             "AND shares_outstanding IS NOT NULL ORDER BY as_of_date DESC, (source_table='shp_category') DESC, "
             "known_at DESC LIMIT 1", (sym, day, *eargs))
@@ -496,7 +550,14 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
                   "face_value": r["face_value"], "as_of_date": r["as_of_date"], "basis": r["basis"],
                   "provenance": _prov("share_capital", f"{r['source_db']}.{r['source_table']} row {r['source_rowid']}",
                                       r["known_at"])}
+    categories = [r[0] for r in _q(f"SELECT DISTINCT category FROM shp_category WHERE symbol=?{extra} "
+                                   "ORDER BY category LIMIT 60", (sym, *eargs))]
     return _reply(sym, rows, "pilot3_holding", quarter_end=quarter, as_of=day, share_capital=shares,
+                  holders=named, holders_note=None if named else "no named holder row for this quarter "
+                  "(the build predates shp_holder, or the filing names none)",
+                  promoter_pledge=pledge, pct_basis=basis,
+                  quarters_held={"first": held[0], "last": held[1], "count": held[2]},
+                  categories_held=categories,
                   hint=None if rows else "no shareholding row filed by that day for this company")
 
 

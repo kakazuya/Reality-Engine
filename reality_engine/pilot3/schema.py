@@ -41,11 +41,29 @@ TABLES: dict[str, str] = {
         prev_close REAL, volume REAL, value_inr REAL, num_trades REAL, deliverable_qty REAL,
         delivery_pct REAL, adj_factor REAL, adj_close REAL, known_at TEXT, known_at_source TEXT,
         source_db TEXT, source_table TEXT, source_rowid TEXT)""",
+    # ``pct_base_shares`` / ``pct_basis`` (T-088): the share count the filing's own percentage is on.  A
+    # depository-receipt issuer prints it on the shares outside DR custody, everyone else on the total (the build
+    # picks whichever base reproduces the printed percentages and labels it).
     "shp_category": """CREATE TABLE shp_category (
         symbol TEXT, isin TEXT, quarter_end TEXT, category TEXT, category_raw TEXT, shares REAL,
         pct REAL, holders REAL, unit TEXT, source_kind TEXT, source_file TEXT, source_db TEXT,
         source_table TEXT, source_rowid TEXT, revised TEXT, known_at TEXT, known_at_source TEXT,
-        is_reported INTEGER)""",
+        is_reported INTEGER, pct_base_shares REAL, pct_basis TEXT)""",
+    # one row per named holder per quarter (T-088), from the SHP XBRL detail axes.  ``category`` is the shp_category
+    # name of the holder's category; a PAC disclosure is its own ``pac_*`` category (never a MEMBERS name) so a sum
+    # over a category can never count the same holder twice: ``pac_name`` is the concert party and ``pac_pct`` the
+    # filing's PAC percentage.  ``pledged_shares`` is the holder's own encumbered-under-pledge count when printed.
+    "shp_holder": """CREATE TABLE shp_holder (
+        symbol TEXT, isin TEXT, quarter_end TEXT, category TEXT, holder_name TEXT, shares REAL, pct REAL,
+        holders REAL, pac_name TEXT, pac_pct REAL, pledged_shares REAL, source_file TEXT, source_db TEXT,
+        source_table TEXT, known_at TEXT, known_at_source TEXT)""",
+    # the promoter encumbrance block of one SHP file per quarter (T-088).  The three flags are the file's own
+    # booleans (NULL where the taxonomy of that year does not print the flag).  ``pledged_pct`` is the filing's
+    # printed percentage, which the corpus confirms is of the promoter group's own shares (not of all shares).
+    "shp_pledge": """CREATE TABLE shp_pledge (
+        symbol TEXT, isin TEXT, quarter_end TEXT, pledge_flag INTEGER, ndu_flag INTEGER, other_flag INTEGER,
+        promoter_shares REAL, pledged_shares REAL, pledged_pct REAL, other_shares REAL, encumbered_shares REAL,
+        source_file TEXT, known_at TEXT, known_at_source TEXT)""",
     "formula": """CREATE TABLE formula (
         formula_id TEXT PRIMARY KEY, metric TEXT, expression TEXT, inputs TEXT, unit TEXT, version INTEGER,
         note TEXT)""",
@@ -104,6 +122,8 @@ INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_fa ON fin_annual_line(symbol, basis, line_item, fiscal_year)",
     "CREATE INDEX IF NOT EXISTS ix_px ON price_delivery(symbol, exchange, date)",
     "CREATE INDEX IF NOT EXISTS ix_shp ON shp_category(symbol, quarter_end, category)",
+    "CREATE INDEX IF NOT EXISTS ix_shph ON shp_holder(symbol, quarter_end)",
+    "CREATE INDEX IF NOT EXISTS ix_shpp ON shp_pledge(symbol, quarter_end)",
     "CREATE INDEX IF NOT EXISTS ix_rp ON ratio_panel(symbol, metric, fiscal_period)",
     "CREATE INDEX IF NOT EXISTS ix_vd ON valuation_daily(symbol, date)",
     "CREATE INDEX IF NOT EXISTS ix_sc ON share_capital(symbol, as_of_date)",
@@ -121,7 +141,7 @@ PARTS = {
     "registry": ("company", "doc", "doc_alias"),
     "pages": ("doc_page",),
     "stores": ("share_capital", "fin_quarter_xbrl", "fin_annual_line", "dividend_event", "price_delivery", "shp_category",
-               "bulk_block_deal", "insider_trade", "index_price"),
+               "shp_holder", "shp_pledge", "bulk_block_deal", "insider_trade", "index_price"),
     "ratios": ("formula", "ratio_panel", "valuation_daily"),
 }
 

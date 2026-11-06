@@ -25,7 +25,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `kpi_series` | company-stated KPIs (order book, AUM, EBITDA/t, NIM, mixes) with period, dimension, entity, quote, page | decks, results, press releases, transcripts |
 | `transcript_statement` | call quotes with speaker, role, topic tags | transcripts |
 | `guidance` | one row per forward target: metric, period, low/high (NULL for a worded target), unit, revision link | transcripts, decks, results, press releases |
-| `shp_category`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings, share count, dividends, prices, PE/PB/EV | exchange data stores |
+| `shp_category`, `shp_holder`, `shp_pledge`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings by category with the share count the printed percentage is on, the named holders, the promoter pledge block, share count, dividends, prices, PE/PB/EV | exchange data stores |
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
 
 Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_statements`, `pilot3_search` (bm25),
@@ -258,8 +258,10 @@ active one. Without a profile every command behaves exactly as before (the three
 - **No sandbox.** The extractors read documents and pages from `pages_db` only; they never open
   `<sandbox>/<co>_loop`.
 - **Window.** The store builders keep rows dated on or after `window_start` (`fin_quarter_xbrl.period_end`,
-  `fin_annual_line.period_end`, `shp_category.quarter_end`, `price_delivery.date`, `valuation_daily.date`);
-  documents come from the manifest, which is the requested window. No profile: no filter.
+  `fin_annual_line.period_end`, `price_delivery.date`, `valuation_daily.date`, ...); the shareholding tables are the
+  exception (T-088): `shp_category`, `shp_holder` and `shp_pledge` keep every quarter from `compute_start`, because
+  the percentage base and the pledge history are answers, not inputs. Documents come from the manifest, which is the
+  requested window. No profile: no filter.
 - **`--symbols` limits every part** under a profile (a profile database built for one company holds one company);
   without a profile it still limits only the extractors, as before. `--out` and `--pages-db` override the
   profile's paths.
@@ -523,6 +525,74 @@ Four general rules, no company name in code.
   6 of 7: `test_manifest_docs_build_and_window` fails on a pre-existing fixture (its PDF text is clipped at "Revenue for
   Q2 FY26 was R", and the HEAD `kpi.py` also returns no row for the clipped order-book sentence under the auto_oem
   profile), so it is not a T-073 regression; the fixture needs a wider text box or a transcript assertion.
+
+### 9d. Named holders, the promoter pledge block and the percentage base (T-088, 6 Nov 2026)
+
+Two T-087 answers had failed because no holder was named and the September 2025 quarter was missing.
+
+- **The parse skipped every named holder.** A holder's facts sit in contexts whose only dimension is a
+  `typedMember` (`DetailsOfSharesHeldByBodiesCorporateAxis`, `...MutualFundsOrUTIAxis`,
+  `DetailsOfTheShareholdersActingAsPersonsInConcertForPublicAxis`, ...): the name is in the `D_` context, the counts
+  in the bare one with the same member, and `parse_shp_xbrl` dropped any context carrying a typed member. It now
+  reads them into `holders`, keyed by the axis and the filing's own member id: `NameOfTheShareholder`,
+  `NumberOfShares`, `ShareholdingAsAPercentageOfTotalNumberOfShares`, `NumberOfShareholders`, `NameOfThePAC`,
+  `PercentageOfShareholdingByPAC` and the holder's own pledged count when printed. The category is the
+  `shp_category` name of the axis member (`MEMBERS`, else snake case): `...MutualFundsOrUTIAxis` -> `mutual_funds`,
+  `DetailsSharesHeldByIndividualsOrHUFAxis` -> `promoter_individuals`, `...ForPublicAxis` -> `pac_public`,
+  `...OthersIndianShareholdersAxis` -> `others_indian_shareholders` (the taxonomy reuses that axis for a promoter-group
+  corporate and for a public other-Indian holder, so the category is the filing's member name, not a block claim).
+- **`shp_holder`** (new): one row per `(symbol, isin, quarter_end, category, holder_name)` with shares, pct, holders,
+  `pac_name`, `pac_pct`, the holder's `pledged_shares`, source file and `known_at`; index `(symbol, quarter_end)`. A
+  persons-in-concert disclosure keeps its own `pac_*` category, so summing a `MEMBERS` category never counts the same
+  holder twice (`SUM(shares) WHERE category NOT LIKE 'pac_%'` is the category total; ETERNAL 2026-09-30 keeps Info
+  Edge's 1,194,687,095 shares once under `bodies_corporate` and once under `pac_public` with
+  `pac_name='NAUKRI INTERNET SERVICES LIMITED'`).
+- **`shp_pledge`** (new): one row per quarter with the file's three flags
+  (`WhetherAnySharesHeldByPromotersAreEncumberedUnderPledged`, `...UnderNonDisposalUndertaking`,
+  `...OtherThanByWayOfPledgeOrNDU`; the older taxonomy's single `...PledgeOrOtherwiseEncumbered` folds into the pledge
+  flag), the promoter rollup's shares, pledged shares and the filing's printed pledged percentage. 73 rows over the
+  ten companies, 6 with the flag true (SUNPHARMA 2025-06-30..2026-09-30: 0.88, 0.97, 0.97, 1.42, 1.65, 0.01%). INFY
+  prints the flag false and no count, so the row says exactly that.
+- **The printed pledged percentage is of the promoter group's own shares, not of all shares** - arithmetic on the
+  corpus, not the tag name: for every category that prints both an encumbrance count and a percentage, the printed
+  number matches shares / the category's own shares (211 + 196 + 151 + 15 rows across the four count tags) and never
+  only shares / all shares (0 rows). IDEA 2025-12-31 prints 11.84% for 3,280,000,000 encumbered shares of
+  27,702,778,543 promoter shares (3.03% of the total). So "what share of promoter holding is pledged" is the filing's
+  own number.
+- **Percentage base.** INFY 2026-09-30 prints promoter 13.90% for 516,677,914 shares: that is 13.90% of
+  3,716,041,606, the total 4,058,276,578 less the 342,234,972 shares held by `CustodianOrDRHolder` (the ADR
+  depository), not 12.73% of the total. `stores._pct_base` picks the base that reproduces every printed percentage of
+  the file (the total, or the total less DR custody when that differs) and every `shp_category` row of the quarter
+  carries `pct_base_shares` + `pct_basis` (`total_shares` / `total_excluding_dr_custody`). 591-file corpus check: the
+  total matches 571 files (551 with no DR custody + 20 whose DR flag is true but hold no custodian row), only the
+  total-less-custody base matches 11, both match 9, neither 0. On the pilot10 copy only INFY and HDFCBANK print on
+  `total_excluding_dr_custody`; the other eight print on the total.
+- **Window.** `shp_category`, `shp_holder` and `shp_pledge` are `stores.HISTORY_TABLES`: `apply_window` keeps their
+  rows from `compute_start` (2024-07-01) instead of `window_start` (2025-10-01), so 2025-09-30 is back; every other
+  table keeps the old cut, and the three `INPUT_TABLES` still split their pre-window rows into `<table>_input`.
+  Quarters held on the copy: 9 to 11 per company from 2024-09-30 (KEC from 2024-09-26); before a held XBRL file the
+  quarter still has the `shp_index` promoter/public rows (ETERNAL 2024-09-30..2025-06-30, category level only).
+  `ratios._share_count` and `_valuation` read `share_capital`, not `shp_category`, so a later quarter's count is
+  unchanged, and `test_pilot3_shp_holder.py` pins it.
+- **`pilot3_holding`** now returns `holders` (the quarter's top 12 named holders, `pac_*` rows left out;
+  `all_holders=true` lists every named holder with `pac_name`), `promoter_pledge` (the three flags, promoter and
+  pledged shares, the printed percentage and an `answer` sentence), `pct_basis`, and every reply states
+  `quarters_held` (first/last/count) and `categories_held`. The lookups guard an older build without the two tables.
+- **Accept on the copy** (`.tmp/pilot10_w.db`, `--part stores` 129 s, all ten companies): ETERNAL 2026-09-30 has
+  Info Edge (India) Limited 1,194,687,095 shares / 12.38% under `bodies_corporate` and Foodie Bay Employees ESOP Trust
+  437,576,304 / 4.53%; BAJFINANCE 2025-09-30 has `fpi_total` 21.97 (1,367,282,372 shares) and `mutual_funds` 8.89
+  (552,952,827); INFY 2026-09-30 has its pledge flag (false) with base 3,716,041,606 `total_excluding_dr_custody`;
+  every company has `shp_holder` rows for 2026-09-30 (BAJFINANCE 115, ETERNAL 64, HDFCBANK 17, HINDALCO 24,
+  HINDUNILVR 13, INFY 36, KEC 29, MARUTI 121, SBILIFE 55, SUNPHARMA 23; 3,234 rows in all) and 73 `shp_pledge` rows.
+- **Tests.** `reality_engine/tests/test_pilot3_shp_holder.py` 3 passed (0.1 s): the parse of a synthetic file with a
+  DR-custody base, holder contexts, a PAC twin and the pledge block; `build_shp` writing the three tables; the
+  `compute_start` window with `ratios._share_count` unchanged. `plugins/reality-data/tests/test_lookups_pilot3.py`
+  24 tests OK (1 skipped), including the `pilot3_holding` holders/pledge/coverage reply.
+- **Files.** `reality_engine/pilot3/stores.py` (`parse_shp_xbrl`, `_holder_category`, `_pct_base`, `_flag`,
+  `build_shp`, `apply_window`, `HISTORY_TABLES`), `reality_engine/pilot3/schema.py` (`shp_category` columns,
+  `shp_holder`, `shp_pledge`, indexes, `PARTS`), `plugins/reality-data/server/lookups_pilot3.py` (`holding`),
+  `plugins/reality-data/server/server.py` and `catalog.py` (tool signature, table lists),
+  `reality_engine/tests/test_pilot3_shp_holder.py` (new), `plugins/reality-data/tests/test_lookups_pilot3.py`.
 
 
 

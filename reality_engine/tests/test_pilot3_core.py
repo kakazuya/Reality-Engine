@@ -470,9 +470,9 @@ def test_a_quarter_without_a_results_share_count_takes_the_shareholding_pattern_
     conn.execute("INSERT INTO fin_quarter_xbrl VALUES ('KEC','I','2026-04-01','2026-06-30','Q1FY27','standalone','A','P&L',"
                  "'pat','pat',1.0,'inr',1.0,'f','d','t','r','2026-07-30','s',1)")
     shp = [("KEC", "I", q, "shareholding_pattern", "ShareholdingPattern", shares, 100.0, None, "pct", "xbrl", "shp.xml", "db",
-            "xml.gz", "shp.xml", None, known, "x", 1) for q, shares, known in
+            "xml.gz", "shp.xml", None, known, "x", 1, None, None) for q, shares, known in
            (("2026-06-30", 1003240534.0, "2026-07-17T23:38:01"), ("2026-09-30", 1003500000.0, "2026-10-15T18:54:56"))]
-    conn.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 18) + ")", shp)
+    conn.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 20) + ")", shp)
     conn.execute("INSERT INTO share_capital VALUES ('KEC','I','2026-06-30','standalone',NULL,NULL,1.0,1.0,1.0,'shares',1.0,"
                  "'2026-07-30','s','d','t','r',NULL,NULL)")        # the results filing gave June too; T-073 keeps both
     assert stores.build_share_fallback(conn)["KEC"] == 2           # the exact total joins the rounded paid-up row

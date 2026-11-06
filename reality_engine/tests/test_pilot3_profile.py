@@ -219,9 +219,9 @@ def test_window_keeps_only_rows_from_window_start():
     for end in ("2025-06-30", "2025-12-31"):
         con.execute("INSERT INTO fin_quarter_xbrl VALUES (" + ",".join("?" * 20) + ")",
                     tuple(end if v == "{}" else v for v in quarter))
-    con.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 18) + ")",
+    con.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 20) + ")",
                     [("MARUTI", "I", end, "promoter", "Promoter", 1e8, 51.5, 10, "pct", "xbrl", "shp.xml", "db", "t", "1",
-                      None, "2026-01-20T10:00:00", "x", 1) for end in ("2025-06-30", "2025-12-31")])
+                      None, "2026-01-20T10:00:00", "x", 1, None, None) for end in ("2025-06-30", "2025-12-31")])
     deleted = stores.apply_window(con)
     assert deleted == {"fin_quarter_xbrl": 1, "shp_category": 1}
     assert con.execute("SELECT DISTINCT period_end FROM fin_quarter_xbrl").fetchall() == [("2025-12-31",)]
