@@ -98,7 +98,7 @@ def test_load_committed_profile():
 
 def test_no_profile_keeps_the_present_defaults():
     profile.activate(None)
-    assert profile.symbols() == pilot3.SYMBOLS
+    assert set(profile.symbols()) == {"KEC", "BAJFINANCE", "HINDALCO"}   # the default database's company table
     assert profile.pages_db() == pilot3.PAGES_DB
     assert profile.window_start() is None
     assert profile.is_lender("BAJFINANCE")

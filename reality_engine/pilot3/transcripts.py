@@ -22,7 +22,7 @@ from pathlib import Path
 
 import yaml
 
-from .kpi import COMPANIES, LEX_DIR, SANDBOX_ROOT, VAL_RX, _UNIT_BY_SUFFIX, parse_periods, to_float, _norm_cur, profile
+from .kpi import LEX_DIR, SANDBOX_ROOT, VAL_RX, _UNIT_BY_SUFFIX, parse_periods, to_float, _norm_cur, profile
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS transcript_statement (
@@ -466,7 +466,7 @@ def _transcript_docs(con: sqlite3.Connection, sym: str, sandbox: Path | None):
         return
     if sandbox is None or profile.under_profile():
         return
-    src = sqlite3.connect(f"file:{(sandbox / (COMPANIES[sym] + '_loop') / (COMPANIES[sym] + '.db')).as_posix()}?mode=ro",
+    src = sqlite3.connect(f"file:{(sandbox / f'{sym.lower()}_loop' / f'{sym.lower()}.db').as_posix()}?mode=ro",
                           uri=True)
     try:
         for doc_key, title, known_at in src.execute("SELECT doc_key, title, known_at FROM docs "

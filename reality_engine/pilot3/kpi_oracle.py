@@ -15,11 +15,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from reality_engine.pilot3 import kpi, transcripts  # noqa: E402
+from reality_engine.pilot3 import kpi, profile, transcripts  # noqa: E402
 
 SANDBOX = Path("D:/RealityEngine/sandbox")
 COV = ROOT / "tasks/arch_v4/T048_QUESTION_COVERAGE_2026-11-03.xlsx"
-SYMS = {"KEC": "kec", "BAJFINANCE": "bajfinance", "HINDALCO": "hindalco"}
 TOL = 0.005
 
 
@@ -36,7 +35,7 @@ def coverage():
 
 
 def oracle_answers(sym):
-    c = sqlite3.connect(f"file:{(SANDBOX / (SYMS[sym] + '_loop') / (SYMS[sym] + '.db')).as_posix()}?mode=ro", uri=True)
+    c = sqlite3.connect(f"file:{(SANDBOX / f'{sym.lower()}_loop' / f'{sym.lower()}.db').as_posix()}?mode=ro", uri=True)
     res = {}
     for qid, status, aj in c.execute("SELECT qid, status, answer_json FROM answers ORDER BY round, rowid"):
         res[qid] = (status, aj)
@@ -123,7 +122,7 @@ def run_kpi(args):
         rows_by[(r[0], r[1])].append(r)
     table = defaultdict(Counter)
     detail = []
-    for sym in SYMS:
+    for sym in profile.symbols():
         ans, last_pdf = oracle_answers(sym)
         for qid, (tag, comp, qtext) in cov.items():
             if tag != "K" or comp != sym or qid not in ans:
@@ -208,8 +207,8 @@ def sample_check(args):
     rnd = random.Random(7)
     con = sqlite3.connect(args.kpi)
     bad_tot = 0
-    for sym in SYMS:
-        src = sqlite3.connect(f"file:{(SANDBOX / (SYMS[sym] + '_loop') / (SYMS[sym] + '.db')).as_posix()}?mode=ro", uri=True)
+    for sym in profile.symbols():
+        src = sqlite3.connect(f"file:{(SANDBOX / f'{sym.lower()}_loop' / f'{sym.lower()}.db').as_posix()}?mode=ro", uri=True)
         rows = con.execute("SELECT id, metric, value, unit, fiscal_period, doc_key, page, quote, extractor_rule FROM kpi_series WHERE symbol=?", (sym,)).fetchall()
         pick = rnd.sample(rows, min(args.sample, len(rows)))
         bad = []
@@ -246,7 +245,7 @@ def run_tr(args):
     print("\nTRANSCRIPT QUESTIONS (T): oracle-cited transcript pages, statements stored on them, topic tag hit, oracle numbers found")
     print(f"{'qid':16} {'cited_pages':>11} {'with_stmts':>10} {'tag_hit':>7} {'nums':>9}  expected tags")
     agg = Counter()
-    for sym in SYMS:
+    for sym in profile.symbols():
         ans, _ = oracle_answers(sym)
         for qid, (tag, comp, qtext) in sorted(cov.items()):
             if tag != "T" or comp != sym or qid not in ans:

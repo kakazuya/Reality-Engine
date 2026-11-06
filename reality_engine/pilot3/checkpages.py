@@ -30,7 +30,7 @@ from bisect import bisect_right
 from pathlib import Path
 
 from reality_engine.db.readonly import connect_ro
-from reality_engine.pilot3 import REAL_DB, SYMBOLS, kpi
+from reality_engine.pilot3 import REAL_DB, kpi, profile
 
 ANSWERS_DIR = Path(r"D:\RealityEngine\pilot3\answer_run2")
 GRADES = ANSWERS_DIR / "regrades.tsv"
@@ -62,7 +62,7 @@ def graded_numbers(answers_dir: Path = ANSWERS_DIR, grades_path: Path = GRADES) 
         if len(parts) >= 3 and parts[2].strip() in GRADES_OK:
             grades[parts[0].strip()] = parts[2].strip()
     numbers = []
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         path = Path(answers_dir) / f"{symbol}_answers.jsonl"
         if not path.is_file():
             continue
@@ -114,7 +114,7 @@ def build_pages(db: Path = REAL_DB, answers_dir: Path = ANSWERS_DIR, grades_path
     con = connect_ro(db, timeout_s=60)
     try:
         doc_types = dict(con.execute("SELECT doc_key, doc_type FROM doc"))
-        blobs = {symbol: pages_blob(con, symbol) for symbol in SYMBOLS}
+        blobs = {symbol: pages_blob(con, symbol) for symbol in profile.symbols()}
     finally:
         con.close()
     entries, seen = [], set()
@@ -210,7 +210,7 @@ def _small_db(ro: sqlite3.Connection, symbol: str, entries: list[dict], dst: Pat
 
 def _sandbox(root: Path, symbol: str) -> Path:
     """An empty sandbox loop db, so the KPI extractor never reads the real one."""
-    name = kpi.COMPANIES[symbol]
+    name = symbol.lower()
     folder = root / f"{name}_loop"
     folder.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(folder / f"{name}.db")
@@ -221,11 +221,12 @@ def _sandbox(root: Path, symbol: str) -> Path:
     return root
 
 
-def replay(db: Path, entries: list[dict], work: Path = WORK, symbols=SYMBOLS) -> dict:
+def replay(db: Path, entries: list[dict], work: Path = WORK, symbols=None) -> dict:
     """Re-extract the fixture pages per company; {symbol: {checked, found, missing}}."""
     from reality_engine.pilot3 import guidance
 
-    todo = [symbol for symbol in SYMBOLS if symbol in symbols and any(e["symbol"] == symbol for e in entries)]
+    wanted = tuple(symbols or profile.symbols())
+    todo = [symbol for symbol in wanted if any(e["symbol"] == symbol for e in entries)]
     Path(work).mkdir(parents=True, exist_ok=True)
     root = Path(work) / f"check_{uuid.uuid4().hex[:8]}"   # not mkdtemp: its 0o700 mode is unusable in this sandbox
     root.mkdir()
@@ -278,13 +279,13 @@ def make(out: Path = FIXTURE, db: Path = REAL_DB, answers_dir: Path = ANSWERS_DI
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     Path(out).write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
     print(f"checkpages: wrote {len(entries)} page entries to {out} in {time.time() - started:.1f} s")
-    for symbol in (*SYMBOLS, "total"):
+    for symbol in (*baseline,):
         if symbol in baseline:
             print(f"  {symbol:12} found {baseline[symbol]['found']:3} / {baseline[symbol]['checked']:3}")
     return baseline
 
 
-def run(fixture: Path = FIXTURE, db: Path = REAL_DB, work: Path = WORK, symbols=SYMBOLS) -> dict:
+def run(fixture: Path = FIXTURE, db: Path = REAL_DB, work: Path = WORK, symbols=None) -> dict:
     """Print the per-company expected numbers found / missing of the fixed pages."""
     payload = json.loads(Path(fixture).read_text(encoding="utf-8"))
     started = time.time()
@@ -311,12 +312,12 @@ def main(argv: list[str] | None = None) -> None:
     r.add_argument("--fixture", default=str(FIXTURE))
     r.add_argument("--db", default=str(REAL_DB))
     r.add_argument("--work", default=str(WORK))
-    r.add_argument("--symbols", default=",".join(SYMBOLS))
+    r.add_argument("--symbols", default=None, help="default: the profile's companies, else the default database's")
     args = ap.parse_args(argv)
     if args.cmd == "make":
         make(Path(args.out), Path(args.db), Path(args.answers_dir), Path(args.grades), Path(args.work))
     else:
-        run(Path(args.fixture), Path(args.db), Path(args.work), args.symbols.split(","))
+        run(Path(args.fixture), Path(args.db), Path(args.work), args.symbols.split(",") if args.symbols else None)
 
 
 if __name__ == "__main__":

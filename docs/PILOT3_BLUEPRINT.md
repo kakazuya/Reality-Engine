@@ -241,12 +241,32 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
    check pages per extractor; full rebuild only at merge.
 5. Run unchanged on 10 pilot-60 companies across sectors, measure fill rate, fixes needed and build time per company.
 6. Embeddings, chunking and the rest in the background once a working database exists for every company.
+7. Universe readiness (T-094, 6 Nov 2026): the profile is generated from the stores, not written by hand
+   (`reality_engine/pilot3/make_profile.py`), so any list of symbols or ISINs builds with no code change. Of the
+   universe's 5,358 active companies the exchange taxonomy places 711 (13.3%) in one of the 10 lexicon families,
+   4,647 (86.7%) carry no family (4,647 include the 3,344 with no `company_industry` row at all, mostly BSE-only;
+   the BSE scrip master is a 420-byte Access Denied page, so they stay `unknown` and are reported, never guessed).
+   Trying the symbol and the historical ISINs rescued 14 labels (2 families); `master_companies.industry` is usable
+   for only 495 (9.2%) and clean-maps 135, adding 29 families. The five companies never used to write a rule
+   (DALBHARAT, POWERGRID, TATAELXSI, APOLLOHOSP, DLF) all fall in the unknown group: their sectors have no lexicon
+   family yet, which is the next lexicon work, not a code gap. Decision 8's own segment-revenue label stays deferred.
 
 ## 7a. Build timings (MSI, 4 Nov 2026, live rebuild)
 - `docs_collect` (all 3 companies, 1,999 documents): 528 s, ~3 min per company.
 - `build --part all` with 4 OCR dbs: 484 s for 23,558 pages (~2.7 min per company, single process).
 - After the dates + guidance merges: guidance 660 -> 329 rows (KEC 218, BAJFINANCE 52, HINDALCO 59): check recall
   on the next re-answer; kpi_series 38,851; zero Q1FY27 rows from documents known before 2026-04-01.
+- **T-094 five unseen companies (6 Nov 2026, this MSI, scratch under `.tmp/unseen5`).** DALBHARAT, POWERGRID,
+  TATAELXSI, APOLLOHOSP, DLF (window 2023-10-01, compute 2022-07-01; manifest 3,328 rows, 2,111 `ok`):
+  `docs_collect` 270 s -> 2,091 docs / 28,566 pages / 218.7 MB; `build --part all` 814.8 s -> 151.2 MB. Parts:
+  comparatives 405.6 s, extract 258.3 s, stores 113.8 s (repeat 59.9 s), notes 22.8 s, pages 6.9 s, guidance 5.1 s,
+  segments 0.8 s, ratios 0.7 s, registry 0.5 s, preferred 0.3 s. `kpi_series` 1,003 (46-623 per company: all five
+  sectors are `unknown`), `transcript_statement` 5,773, `fin_quarter_printed` 11,200, `fin_quarter_xbrl` 2,085,
+  `fin_annual_line` 2,775, `shp_*` 0 for APOLLOHOSP (no SHP files held), `concentration` 0 for all five.
+  `scale_report --fixed stores=6`: **311.8 h on one process, 52.0 h on 6, 501 GB for 6,940** (74.0 MB/company);
+  these are large companies (market cap 46,445-3,39,891 crore; 2,183-11,125 pages), so it is an upper bound.
+  Stores fixed cost measured on 1/2/5 companies: 16.4/27.9/59.9 s -> ~5.9 s fixed + ~10.8 s per company; the
+  earlier 65.5 s for 2 vs 154 s for 10 was cold-cache I/O, not a whole-store CPU read.
 
 ## 8. Where the evidence lives
 - Reports: `D:\RealityEngine\reports\2026-11-03_mcp_answer_grade.html`, `2026-11-04_mcp_reanswer_grade.html`,
@@ -298,6 +318,44 @@ active one. Without a profile every command behaves exactly as before (the three
 - **Tests.** `reality_engine/tests/test_pilot3_profile.py` (6 tests: the committed profile, the no-profile
   defaults, a manifest -> pages -> registry/pages/kpi/transcripts/guidance build with a sandbox root that does not
   exist, the window filter, `--symbols` scoping, and `lookups_pilot3` on a `REALITY_PILOT3_DB` database).
+
+- **Generated profile (T-094, 6 Nov 2026).** `reality_engine/pilot3/make_profile.py` writes a profile from symbols or
+  ISINs, so the company facts are looked up, never hand-written:
+
+      python -m reality_engine.pilot3.make_profile DALBHARAT POWERGRID --name unseen5 --root <dir> [--raw-root <dir>] \
+          --window-start 2023-10-01 --compute-start 2022-07-01 --out <profile.json> [--check-db <built.db>]
+
+  `name`, `bse_code` and the ISINs come from the stores; `sector` comes from `company_industry`, joined by ISIN,
+  through `reality_engine/pilot3/sector_map.yaml` (kept beside the code, not in `lexicon/`, because every yaml there
+  is read as a KPI lexicon). Every ISIN a company has held is gathered from `symbol_isin_history`, `isin_rekey_log`,
+  `corporate_documents`, `shp_index`, `results_xbrl.filings` and `master_companies` (same symbol or BSE code), and
+  kept only when it is the same issuer (first 7 characters match, or the IN9 partly-paid form of the INE ISIN) or a
+  recorded rekey: for the ten the generated set equals the hand profile's set, so no older filing is filtered out.
+  The map lists all 191 basic industries of `company_industry`: 47 map to one of the 10 families the lexicons carry
+  (bank, nbfc, insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrous, epc_capital_goods,
+  pharma) and 144 are an honest `unknown` (common lexicons only). By ISIN that is 702 of the 2,055 labelled ISINs
+  (34.2%) in a family and 1,353 (65.8%) honest unknown; across the 5,358 active companies 711 (13.3%) are in a
+  family (680 by current ISIN, 2 by a historical ISIN, 29 by the master-industry tier), 4,647 (86.7%) are unknown
+  and 3,344 (62.4%) have no `company_industry` row at all. The label is looked up by every ISIN and then by the
+  symbol (that rescue added 14 labels, 2 of them families); `master_companies.industry` is a second tier only where
+  `company_industry` has nothing, and only for names that map cleanly (Information Technology, Fast Moving Consumer
+  Goods, Construction, Capital Goods; it is usable for just 495 of 5,358 active companies, 9.2%).
+  `master_companies.sector` is not used: 6,443 of its 6,940 rows are null, "General Diversified" or "Other". A
+  company with no label is `unknown` and is printed with its taxonomy label (or `none`), never guessed from its name.
+- **Lender.** `lender` is the taxonomy's own list (banks, NBFC, housing finance, microfinance, life and general
+  insurance), independent of whether a lexicon family exists; `reality_engine/pilot3/lender.py` holds the filed-line
+  test (`interest_income` / `interest_earned` / `gross_premium` / `net_premium` in `fin_quarter_xbrl`), used by
+  `lookups_pilot3._is_lender`, by `make_profile --check-db` and by `profile.is_lender` when no profile is active
+  (the default database's filed lines replace the old `ratios.LENDERS` list). The profile itself cannot run that
+  test: it is written before the database it will build, so the flag comes from the taxonomy and the second check
+  runs after the build (0 disagreements on `pilot10.db` for the ten).
+- **Ten against the hand profile.** All ten sectors and lender flags match except SUNPHARMA (`unknown`, because
+  `company_industry` holds no row for its symbol or any of its ISINs); names are the legal `Limited` form from
+  `master_companies` instead of the hand's `Ltd`; BSE codes, ISINs, lender flags and the window match. The earlier
+  scaffold lost six companies' legacy ISINs (KEC `INE389H01014`, HINDALCO `IN9038A01010`, HDFCBANK `INE040A01018`,
+  BAJFINANCE `INE296A01016`, INFY `IN9009A01011`, SUNPHARMA `INE044A01010` / `INE044A01028`) because it read only
+  master + `symbol_isin_history`; the store gatherer above restores them, and the guard test asserts every hand ISIN
+  is present and no other issuer's ISIN enters.
 
 - **Segments part.** `build --part segments` (after `extract` in `all`) runs `pilot3/xbrl_segments.py` for the
   profile's companies from the raw XBRL named in `results_xbrl.db.filings` (about 1 s for 10 companies); it needs no

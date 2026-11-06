@@ -26,8 +26,8 @@ from typing import Any
 import core
 from core import DataError
 from reality_engine.pilot3 import preferred as p3_preferred
+from reality_engine.pilot3.lender import filed_lender
 
-PILOT3_SYMBOLS = ("KEC", "BAJFINANCE", "HINDALCO")   # fallback only: a database with no company table
 _MAIN = Path(r"C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\pilot3\pilot3.db")
 MAX_LIMIT = 50
 QUOTE_CHARS = 600
@@ -89,20 +89,18 @@ def _q(sql: str, params: tuple = ()) -> list[sqlite3.Row]:
 
 def _is_lender(sym: str) -> bool:
     """A bank, NBFC or insurer reports interest / premium income, so EV/EBITDA has no meaning for it."""
-    return bool(_q("SELECT 1 FROM fin_quarter_xbrl WHERE symbol=? AND line_item IN "
-                   "('interest_income','interest_earned','gross_premium','net_premium') LIMIT 1", (sym,)))
+    return filed_lender(connect(), sym)
 
 
 # --- symbols, periods, dates ------------------------------------------------------------------------
 def pilot_symbols() -> tuple[str, ...]:
-    """Every company the database holds: its ``company`` table (T-090).  ``PILOT3_SYMBOLS`` is the fallback for a
-    build that predates the table, never the way coverage is decided when the table is there."""
+    """Every company the database holds: its ``company`` table (T-090).  A build that predates the table serves
+    no company (the table is the only source of coverage; T-094 removed the old three-symbol fallback)."""
     try:
-        held = tuple(row[0] for row in _q("SELECT DISTINCT symbol FROM company WHERE symbol IS NOT NULL AND symbol<>'' "
+        return tuple(row[0] for row in _q("SELECT DISTINCT symbol FROM company WHERE symbol IS NOT NULL AND symbol<>'' "
                                           "ORDER BY symbol"))
     except DataError:
-        held = ()
-    return held or PILOT3_SYMBOLS
+        return ()
 
 
 def resolve_symbol(symbol: str) -> str:

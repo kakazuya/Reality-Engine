@@ -35,8 +35,16 @@ Change a rule only with a measurement that supports the change, and note it in `
 
 ## 5. One vocabulary across companies
 - Every metric gets a canonical id, unit (crore for money), period label (FY / Qn FY), basis (consolidated /
-  standalone) and entity. Company labels map to canonical ids through one lexicon per sector family (~12 families),
-  each checked on 3-4 companies. Cross-company comparability comes before any single company's completeness.
+  standalone) and entity. Company labels map to canonical ids through one lexicon per sector family (10 families
+  today: bank, nbfc, insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrous,
+  epc_capital_goods, pharma), each checked on 3-4 companies. Cross-company comparability comes before any single
+  company's completeness.
+- The taxonomy -> family map is `reality_engine/pilot3/sector_map.yaml`, read by `make_profile.py` only (not under
+  `lexicon/`, where every yaml is a KPI lexicon). It lists all 191 basic industries of `company_industry`: 47 map to a
+  family and 144 are an honest `unknown` (common lexicons only). A company with no taxonomy row is also `unknown`,
+  reported, never guessed from its name; 3,344 of the 5,358 active companies have no row, mostly BSE-only. The
+  label is looked up by every ISIN and then by the symbol (14 labels rescued); `master_companies.industry` is a
+  second tier only where the taxonomy has nothing, and only for names that map cleanly (usable for 495 of 5,358).
 
 ## 6. Models only where the rules are unsure
 - Rule-based readers mark their confidence. Only low-confidence rows go to a model: a sentence with two figures, a

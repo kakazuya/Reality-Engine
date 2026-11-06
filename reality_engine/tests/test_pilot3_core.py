@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from reality_engine import pilot3
-from reality_engine.pilot3 import oracle, queries, ratios, schema, stores
+from reality_engine.pilot3 import oracle, profile, queries, ratios, schema, stores
 
 
 def _conn() -> sqlite3.Connection:
@@ -202,7 +202,8 @@ def test_queries_respect_as_of():
 
 
 def _real_stores_present() -> bool:
-    return all(path.is_file() for path in pilot3.SANDBOX_DB.values()) and (pilot3.data_root() / "ar_facts.db").is_file()
+    return all(pilot3.sandbox_db(s).is_file() for s in profile.symbols()) \
+        and (pilot3.data_root() / "ar_facts.db").is_file()
 
 
 @pytest.fixture(scope="module")
@@ -222,7 +223,7 @@ def test_integration_build_counts_and_oracle(built):
     assert quarters["BAJFINANCE"] >= 23 and quarters["HINDALCO"] >= 20 and quarters["KEC"] >= 22
     for table in ("doc_page", "fin_quarter_xbrl", "price_delivery", "ratio_panel", "valuation_daily", "share_capital"):
         got = dict(conn.execute(f"SELECT symbol, COUNT(*) FROM {table} GROUP BY symbol"))
-        assert set(got) == set(pilot3.SYMBOLS), table
+        assert set(got) == set(profile.symbols()), table
     # no row may be known before its own period ended
     assert conn.execute("SELECT COUNT(*) FROM fin_quarter_xbrl WHERE substr(known_at,1,10) < period_end").fetchone()[0] == 0
     assert conn.execute("SELECT COUNT(*) FROM doc_page_fts WHERE doc_page_fts MATCH 'revenue'").fetchone()[0] > 0

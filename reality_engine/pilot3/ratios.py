@@ -108,7 +108,6 @@ FORMULAS = [
     ("F_COVER", "order_book_coverage_years", "order_book / trailing_twelve_month_revenue", "kpi_series.order_book,ratio_panel.revenue_from_operations", "x",
      "years of revenue the order book covers; FY and quarter-end books use the revenue of the year or the last four quarters"),
 ]
-LENDERS = ("BAJFINANCE",)  # finance cost is the cost of goods for a lender: no EBITDA / EBIT metrics
 OPEX_ITEMS = ("employee_cost", "fee_commission_expense", "other_expenses", "depreciation")
 OPEX_NTI_INPUTS = (*OPEX_ITEMS, "total_income", "finance_cost")
 FLOW_ITEMS = ("revenue_from_operations", "pat", "ebitda", "ebit", "finance_cost", "depreciation", "other_income",

@@ -43,14 +43,16 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from reality_engine.pilot3 import PAGES_DB, SYMBOLS, kpi, ocr
+from reality_engine.pilot3 import PAGES_DB, kpi, ocr, profile
 
 HOST = "zen7s@100.78.87.112"
 REMOTE_ROOT = r"C:\RE\raw\pilot3_ocr"
 REMOTE_PY = r"%LOCALAPPDATA%\Programs\Python\Python314-arm64\python.exe"
 TASK = "Pilot3OCR"
 OCR_DIR = Path(r"D:\RealityEngine\pilot3\ocr")
-INPUT_DBS = {s: OCR_DIR / f"ocr_{s}.db" for s in SYMBOLS}
+def input_dbs() -> dict[str, Path]:
+    """The MSI OCR database of each company the active build reads (one per company, when held)."""
+    return {s: OCR_DIR / f"ocr_{s}.db" for s in profile.symbols()}
 OUT_DB = OCR_DIR / "ocr_textrec.db"
 PLAN_OUT = OCR_DIR / "hp_plan.jsonl"
 HTML_OUT = OCR_DIR / "OCR_COMPARE.html"
@@ -185,7 +187,7 @@ def _resolve_pdf(symbol: str, doc_key: str, page: int, pending_map: dict, source
         raw = raw_root / key
         if raw.is_file():
             return raw, None
-    sandbox_pdf = sandbox / f"{kpi.COMPANIES[symbol]}_loop" / "raw" / doc_key
+    sandbox_pdf = sandbox / f"{symbol.lower()}_loop" / "raw" / doc_key
     if sandbox_pdf.is_file():
         return sandbox_pdf, None
     return None, None
@@ -251,7 +253,7 @@ def write_plan(plan: list[dict], plan_out: Path, stage: Path) -> dict:
 
 
 def cmd_plan(args) -> int:
-    dbs = {s: INPUT_DBS[s] for s in args.symbols}
+    dbs = {s: path for s, path in input_dbs().items() if s in args.symbols}
     for path in map(Path, args.input_db):
         if path.name in {f"ocr_{s}.db" for s in args.symbols}:
             dbs[path.name[len("ocr_"):-len(".db")]] = path
@@ -507,7 +509,7 @@ def cmd_compare(args) -> int:
     con.close()
     report = {}
     disagreements = []
-    for symbol in SYMBOLS:
+    for symbol in profile.symbols():
         pages = {k for k in textrec if k[0] == symbol}
         both = pages & set(msi)
         st = {"pages_textrec": len(pages), "pages_both": len(both), "numbers_textrec": 0, "numbers_rapid": 0,
@@ -609,7 +611,7 @@ def main(argv=None) -> int:
     pl = sub.add_parser("plan")
     pl.add_argument("--host", default=HOST)
     pl.add_argument("--remote-root", default=REMOTE_ROOT)
-    pl.add_argument("--symbols", default=",".join(SYMBOLS))
+    pl.add_argument("--symbols", default=None, help="default: the profile's companies, else the default database's")
     pl.add_argument("--input-db", action="append", default=[])
     pl.add_argument("--pages-db", default=str(PAGES_DB))
     pl.add_argument("--plan-out", default=str(PLAN_OUT))
@@ -642,7 +644,8 @@ def main(argv=None) -> int:
     cl.add_argument("--remote-root", default=REMOTE_ROOT)
     cl.set_defaults(func=cmd_cleanup)
     a = ap.parse_args(argv)
-    a.symbols = [s.strip().upper() for s in (getattr(a, "symbols", "") or "").split(",") if s.strip()]
+    a.symbols = [s.strip().upper() for s in (getattr(a, "symbols", "") or ",".join(profile.symbols())).split(",")
+                 if s.strip()]
     return a.func(a)
 
 

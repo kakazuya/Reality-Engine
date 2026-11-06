@@ -26,7 +26,6 @@ from datetime import date
 from pathlib import Path
 
 PAGES_DB = Path(r"D:\RealityEngine\pilot3\pages.db")
-SYMBOLS = ("KEC", "BAJFINANCE", "HINDALCO")
 TRANSCRIPT_TYPES = ("transcript", "audio_link")
 PAGES = 3           # the call date is printed on a title page; 3 pages covers a letterhead cover and the agenda
 MAX_DAYS_LATE = 400  # a call date this far after the stored date is not this document's call
@@ -112,8 +111,10 @@ def raise_doc_dates(con: sqlite3.Connection, rows) -> dict[str, tuple[str | None
     return out
 
 
-def report(con: sqlite3.Connection, symbols=SYMBOLS) -> list[tuple]:
-    """``(doc_key, symbol, filing_date, known_at, call_date, new_filing, new_known_at)`` for every transcript."""
+def report(con: sqlite3.Connection, symbols=None) -> list[tuple]:
+    """``(doc_key, symbol, filing_date, known_at, call_date, new_filing, new_known_at)`` for every transcript.
+    ``symbols`` None or empty means every company the database holds."""
+    symbols = tuple(symbols or ())
     rows = [r for r in con.execute(
         "SELECT doc_key, symbol, doc_type, filing_date, known_at FROM doc WHERE doc_type IN "
         f"({','.join('?' * len(TRANSCRIPT_TYPES))}) ORDER BY symbol, COALESCE(known_at, filing_date)",

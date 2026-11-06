@@ -37,7 +37,6 @@ from . import call_dates, profile
 
 LEX_DIR = Path(__file__).parent / "lexicon"
 SANDBOX_ROOT = Path("D:/RealityEngine/sandbox")
-COMPANIES = {"KEC": "kec", "BAJFINANCE": "bajfinance", "HINDALCO": "hindalco"}
 KPI_DOC_TYPES = ("deck", "results", "press_release", "transcript", "annual_report", "announcement")
 PDF_DOC_TYPES = ("deck", "results", "press_release", "annual_report")  # table/chart mode needs the PDF
 OCR_METHOD_RANK = {"ocr_textrec": 2, "ocr_rapid": 1}  # several --ocr-db: the HP TextRecognizer reading wins
@@ -2761,7 +2760,7 @@ def _open_pdf_path(path: Path | str | None):
 
 
 def _open_pdf(sandbox: Path, sym: str, doc_key: str):
-    return _open_pdf_path(sandbox / f"{COMPANIES[sym]}_loop" / "raw" / doc_key)
+    return _open_pdf_path(sandbox / f"{sym.lower()}_loop" / "raw" / doc_key)
 
 RAW_ROOT = Path("D:/RealityEngine/raw")
 
@@ -2900,7 +2899,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
     if sandbox is None or profile.under_profile():
         con = None      # a profile company has no sandbox: every document and page comes from pages_db
     else:
-        dbp = sandbox / f"{COMPANIES[sym]}_loop" / f"{COMPANIES[sym]}.db"
+        dbp = sandbox / f"{sym.lower()}_loop" / f"{sym.lower()}.db"
         con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
     entries, dims = load_lexicon()
     kind_of = {e.metric: e.kind for e in entries}
