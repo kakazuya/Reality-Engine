@@ -210,6 +210,9 @@ definitions not reconciled (BHFL share of profit, ROCE), KEC transcripts stored 
   transcripts 38% → 52% hybrid; press releases 55% bm25, embeddings worse. Blend per type; text only.
   Cost measured: 1B $0.1224, 8B $0.2683 for 4,606 pages + 1,451 images (`by_doc_type.json`, `image_test.json`).
 
+### Model against store: T-084 and T-087 (6 Nov 2026)
+Same store, 82 of 180 questions on INFY, ETERNAL, BAJFINANCE. Opus read of 20 random pairs: Opus 17 right, DeepSeek 11. DeepSeek grade of all 82: Opus 76, DeepSeek 51. DeepSeek with no call limit on 20 of its misses: 6 right, 12 partly, 2 wrong, against Opus 16, 4, 0; no raw file was needed, and it made more lookups than Opus (about 10.6 against 8.2). So the gap is not call count. Reasons for its 14 misses, sorted by hand and untested: 4 stopped at a table that looked complete, 4 competing or mislabelled rows, 1 bad data outside the pilot, 5 misread an open page. Direction set by Shivam: store the facts so a cheap model matches Opus. Report `D:\RealityEngine\reports\2026-11-06_deepseek_dig_test.html`; data `D:\RealityEngine\pilot10\answer_t084`. Found in the build: `parse_shp_xbrl` drops named holders and pledge flags held in the SHP files; the window deletes quarter end 2025-09-30; the main store copies the prior day onto holidays (T-089).
+
 ## 7. Scale-up plan (bare bones first, Shivam 4 Nov)
 1. Download-time triage: category / headline decides OCR; text-layer check first; OCR page 1 of scans only, then
    decide; exact hash + first-page text fingerprint to drop duplicates.
