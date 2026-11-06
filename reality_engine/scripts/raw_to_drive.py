@@ -135,8 +135,12 @@ def step_upload(con: sqlite3.Connection, listing_dir: Path, roots: list[str], bw
     step_compare(con, listing_dir)
 
 
-def step_delete(con: sqlite3.Connection, really: bool) -> None:
-    rows = con.execute("SELECT path, size FROM local_file WHERE status='on_drive' AND deleted_at IS NULL").fetchall()
+def step_delete(con: sqlite3.Connection, really: bool, keep: list[str] | None = None) -> None:
+    """``keep``: path prefixes never deleted (Shivam 7 Nov: the research library ``raw/user_research`` stays local)."""
+    prefixes = [os.path.normcase(os.path.normpath(k)) for k in (keep or [])]
+    rows = [(p, s) for p, s in con.execute(
+        "SELECT path, size FROM local_file WHERE status='on_drive' AND deleted_at IS NULL")
+        if not any(os.path.normcase(os.path.normpath(p)).startswith(k) for k in prefixes)]
     total = sum(s for _, s in rows)
     if not really:
         print(f"delete (dry run): {len(rows)} files, {total / 1e9:.1f} GB would be removed; pass --delete")
@@ -167,6 +171,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--manifest", required=True)
     ap.add_argument("--bwlimit", default="0")
     ap.add_argument("--delete", action="store_true", help="really delete in the delete step")
+    ap.add_argument("--keep", action="append", default=[], help="path prefix never deleted (repeatable)")
     ap.add_argument("steps", nargs="+", choices=["hash", "compare", "upload", "delete"])
     a = ap.parse_args(argv)
     con = open_manifest(a.manifest)
@@ -178,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
         elif step == "upload":
             step_upload(con, Path(a.listing_dir), a.root, a.bwlimit)
         else:
-            step_delete(con, a.delete)
+            step_delete(con, a.delete, a.keep)
     return 0
 
 

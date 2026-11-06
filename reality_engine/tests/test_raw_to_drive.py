@@ -21,6 +21,8 @@ def test_compare_then_delete_only_files_on_drive(tmp_path):
     r.step_compare(con, listing)
     r.step_delete(con, really=False)
     assert on.exists()
+    r.step_delete(con, really=True, keep=[str(root / "a" / "on.pdf")])
+    assert on.exists()
     r.step_delete(con, really=True)
     assert not on.exists() and off.exists() and db.exists()
     assert con.execute("SELECT drive_path FROM local_file WHERE rel='a/on.pdf'").fetchone()[0] == "pdfs/K/on.pdf"
