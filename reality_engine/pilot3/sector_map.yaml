@@ -1,0 +1,13 @@
+# Exchange taxonomy (company_industry, joined by ISIN) -> lexicon family (T-094).
+# Read by make_profile.py only.  Keep it out of lexicon/: every yaml there is read as a KPI lexicon.
+# A name not listed here is `unknown`: common lexicons, reported, never guessed.
+# TODO(T-094): the other basic industries (191 in company_industry).  The ten pilot companies' hand values are in
+# tasks/night_loop/pilot10_profile.json: compare and explain every difference.
+lender_families: [bank, nbfc, insurance_life]
+basic_industry:
+  Private Sector Bank: bank
+  Public Sector Bank: bank
+  Non Banking Financial Company (NBFC): nbfc
+  Life Insurance: insurance_life
+industry:
+  Banks: bank
