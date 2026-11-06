@@ -194,7 +194,10 @@ def test_the_window_keeps_shareholding_quarters_from_compute_start():
             conn.execute("INSERT INTO shp_pledge VALUES (" + ",".join("?" * 14) + ")",
                          ("TESTCO", "INE000A01010", end, 0, 0, 0, 1e8, 0.0, 0.0, 0.0, 0.0, "shp.xml",
                           "2025-11-01T10:00:00", "x"))
-            conn.execute("INSERT INTO fin_quarter_xbrl VALUES (" + ",".join("?" * 20) + ")",
+            conn.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
+                         "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
+                         "source_table, source_rowid, known_at, known_at_source, is_reported) "
+                         "VALUES (" + ",".join("?" * 20) + ")",
                          ("TESTCO", "INE000A01010", "2025-07-01", end, "Q2FY26", "consolidated", "a", "PL", "pat",
                           "Tag", 1.5e9, "inr", 1.0, "q.xml", "results_xbrl.db", "quarterly", "q.xml",
                           "2025-11-01T10:00:00", "x", 1))

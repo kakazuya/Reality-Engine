@@ -217,7 +217,9 @@ def test_window_keeps_only_rows_from_window_start():
     quarter = ("MARUTI", "INE585B01010", "2025-10-01", "{}", "Q3FY26", "consolidated", "a", "PL", "pat", "Tag",
                1.5e9, "inr", 1.0, "q.xml", "results_xbrl.db", "quarterly", "q.xml", "2026-02-05T10:00:00", "x", 1)
     for end in ("2025-06-30", "2025-12-31"):
-        con.execute("INSERT INTO fin_quarter_xbrl VALUES (" + ",".join("?" * 20) + ")",
+        con.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, audited, "
+                    "statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, source_table, "
+                    "source_rowid, known_at, known_at_source, is_reported) VALUES (" + ",".join("?" * 20) + ")",
                     tuple(end if v == "{}" else v for v in quarter))
     con.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 20) + ")",
                     [("MARUTI", "I", end, "promoter", "Promoter", 1e8, 51.5, 10, "pct", "xbrl", "shp.xml", "db", "t", "1",

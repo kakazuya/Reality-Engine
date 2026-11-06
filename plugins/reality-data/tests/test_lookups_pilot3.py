@@ -105,7 +105,9 @@ def build_fixture() -> None:
         ("KEC", "INE389H01022", "FY25", "2025-03-31", "consolidated", "PL", "eps_diluted", "Diluted EPS", 60.20,
          "inr_per_share", 1.0, "c.xml", None, "Diluted EPS 60.20", "results_xbrl.db", "facts", "c.xml#1",
          "2025-05-20T10:00:00", "x", 1, 0, "xbrl_reported", "FY")])
-    c.execute("INSERT INTO fin_quarter_xbrl VALUES ('KEC','INE389H01022','2025-10-01','2025-12-31','Q3FY26',"
+    c.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, audited, "
+              "statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, source_table, source_rowid, "
+              "known_at, known_at_source, is_reported) VALUES ('KEC','INE389H01022','2025-10-01','2025-12-31','Q3FY26',"
               "'consolidated','a','PL','pat','Tag',1.5e9,'inr',1.0,'q.xml','results_xbrl.db','quarterly','q.xml',"
               "'2026-02-05T10:00:00','x',1)")
     c.execute("INSERT INTO formula VALUES ('F_ROE','roe','100*pat/net_worth','[]','pct',1,'n')")
@@ -224,7 +226,10 @@ class Pilot3ToolTests(unittest.TestCase):
     def test_fin_printed_comparative_when_xbrl_lacks_the_quarter(self):
         """T-057: a quarter fin_quarter_xbrl does not hold comes back from the printed results columns."""
         c = sqlite3.connect(DB)
-        c.execute("INSERT INTO fin_quarter_printed VALUES ('KEC','INE389H01022','2025-07-01','2025-09-30','Q2FY26',"
+        c.execute("INSERT INTO fin_quarter_printed (symbol, isin, period_start, period_end, fiscal_period, period_type, "
+                  "column_role, basis, statement, line_item, caption, value, unit, scale, raw_token, quote, doc_key, "
+                  "page, known_at, known_at_source, check_status, check_detail, is_reported) "
+                  "VALUES ('KEC','INE389H01022','2025-07-01','2025-09-30','Q2FY26',"
                   "'quarter','year_ago','consolidated','P&L','revenue_from_operations','Revenue from operations',"
                   "6.09156e10,'inr',1.0,'6,091.56','1 Revenue from operations 6,091.56 5,023.54','pdfs/KEC/results.pdf',"
                   "6,'2026-11-02T20:55:39','doc.known_at','sum_ok',NULL,1)")
@@ -450,8 +455,9 @@ class Pilot3McpTests(unittest.TestCase):
                 async with ClientSession(read, write) as session:
                     init = await session.initialize()
                     self.assertIn("PILOT3 FIRST", init.instructions)
+                    self.assertIn("company table", init.instructions)
                     for sym in ("KEC", "BAJFINANCE", "HINDALCO"):
-                        self.assertIn(sym, init.instructions)
+                        self.assertNotIn(sym, init.instructions)   # T-090: coverage is never a fixed company list
                     names = {t.name for t in (await session.list_tools()).tools}
                     self.assertTrue(TOOLS <= names)
                     calls = {

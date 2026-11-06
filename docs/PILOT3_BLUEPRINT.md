@@ -622,7 +622,7 @@ no company name in code.
   with the other values in `alternatives` carrying filing date, `role` (current / preceding / year_ago / xbrl) and
   check status. A tie on the filing date goes XBRL > `xbrl_ok` > `repeat_ok` > `sum_ok` > clean unchecked. A printed
   cell whose check failed may still be a restatement, so it is admitted when its `raw_token` is ONE printed number
-  (`_printed_cell_ok`); a cell glued from two numbers ("9,176 8,227") is not a figure. On the copy:
+  (`_printed_cell_ok`); a token carrying letters or a currency word ("9,176 cr") is not a figure. On the copy:
   `fin('BAJFINANCE','total_income','Q2FY26', as_of='2026-11-04')` -> one row, preferred **19,992.38 crore**
   (`restated`, the year-ago column of the 19 Oct 2026 filing) with **20,180.76 crore** as its alternative (current,
   10 Nov 2025); with `as_of='2026-01-01'` -> preferred **20,180.76 crore**, not restated.
@@ -675,6 +675,60 @@ no company name in code.
   HINDUNILVR 228 -> 244, INFY 228 -> 244, KEC 228 -> 244, MARUTI 228 -> 244, SBILIFE 35 -> 43, SUNPHARMA 228 -> 244
   (the difference is the new TTM rows each company's four held quarters form); `kpi_series` BAJFINANCE 2,059;
   `checkpages run` **146** found (KEC 29 / BAJFINANCE 59 / HINDALCO 58); `test_pilot3_preferred.py` **11 passed**.
+
+**T-090 (6 Nov 2026): the preferred figure now lives in the data, and `pilot3_sql` gets the same number.** In the
+600-answer re-test 77 of 126 pilot calls went through `pilot3_sql`; BAJFINANCE Q2 FY27 total-income growth came out
+21.8% because plain SQL summed/compared both 20,180.76 crore (the Q2 FY26 filing) and 19,992.38 crore (the Q2 FY27
+filing's restated year-ago column) while `pilot3_fin` returned the second. The election has one home now.
+
+- **One rule, one module.** `reality_engine/pilot3/preferred.py` holds `order_key` / `elect` / `evidence_rank` /
+  `displayable_printed` / `apply` / `ensure_columns`. The rule: newest `known_at`, then evidence rank (XBRL 5,
+  `xbrl_ok` 4, `repeat_ok` 2, `sum_ok` 1, unchecked 0), then the first stored row (`-rowid`, which keeps the answers
+  `pilot3_fin` gave before the move). An XBRL row suppresses the printed twins of the same key (the lookup always
+  treated them as duplicates); a printed cell whose `raw_token` is not one printed number never competes.
+  `lookups_pilot3.fin` calls `elect`; its own `_preferred`, `_printed_cell_ok`, `_evidence_rank` and `_same_value`
+  are gone.
+- **Columns and view.** `fin_quarter_xbrl` and `fin_quarter_printed` carry `preferred_from` / `preferred_to` (TEXT
+  `known_at`s; `preferred_to` NULL = current). A row is preferred at day D when `preferred_from <= D` and
+  (`preferred_to IS NULL` or `preferred_to > D`); the windows of one (symbol, line_item, fiscal_period, basis) tile
+  its timeline, so exactly one row answers at any D. `fin_quarter_current` (schema view) is the row preferred now,
+  one per (symbol, fiscal_period, basis, line_item), with `source_table`, `source`, `page`, `column_role`,
+  `check_status` and `xbrl_tag`; `schema.ensure_views` leaves an older build without the columns alone.
+- **Build.** New part `preferred`, after `comparatives` in `all`:
+  `python -m reality_engine.pilot3.build --profile tasks/night_loop/pilot10_profile.json --out .tmp/pilot10_w.db --part preferred`.
+  It ALTERs the columns onto a database built before T-090, reads the union of both tables once for
+  `profile.symbols()` (`--symbols` limits it like every other profile part), groups by key, sorts the candidates,
+  writes the windows to a temp table and `UPDATE … FROM` both tables in two statements. `stores.build_quarterly`
+  and `comparatives.run` now name their insert columns, so the preferred columns start NULL and the step fills them
+  (re-run `preferred` after any part that rewrites those rows).
+- **Tool text reads coverage from the database.** `pilot_symbols()` returns the database's `company` table (the
+  whole universe a build covers); `PILOT3_SYMBOLS` is only the fallback when the table is absent, and it no longer
+  decides coverage. The server instructions, the `pilot3_*` descriptions and the catalog say "every company the
+  database holds", name no company, and `pilot3_sql` names `fin_quarter_current` and the `preferred_from` /
+  `preferred_to` columns with the day predicate. A company the database does not hold returns `found: false`
+  (error code `not_pilot3`) and the message states the company count, not a list.
+- **Measured** on `.tmp/pilot10_w.db` (copy of `pilot10.db`), `--part preferred`: **0.1 s** for the ten companies,
+  7,330 windows, 5,408 keys with a current row, no broken window link and no key left without a current row.
+  (a) BAJFINANCE `total_income` Q2FY26 consolidated: **19,992.38 crore** at 2026-11-04 and **20,180.76 crore** at
+  2026-01-01, from the columns and from `pilot3_fin` alike. (b) Sweep of **3,295** quarterly keys over all ten
+  companies at as_of 2026-11-04: **0 differences** between `pilot3_fin` and the columns; the old and the shared
+  election return the same figure for all 3,295 (**0 changed**). (c) `checkpages run` (default `pilot3.db`) still
+  **146** found (29/59/58); the same command with `--db .tmp/pilot10_w.db` finds 0/314 because the fixture's 81
+  `doc_key`s are the `pilot3.db` keys (the untouched live `pilot10.db` gives 0 too), which T-090 does not touch.
+  (d) The server instructions contain no company name. (e) the step takes 0.1 s for ten companies.
+- **`fin_annual_line` inspected, not elected.** It has 67 keys with more than one row and 59 with more than one
+  distinct value, but the top case is not the quarter problem: INFY FY26 standalone `pat` has 12 rows at one/two
+  annual-report `known_at`s, 11 of them sharing ONE filing instant, and no evidence rank separates values printed
+  by the same filing. Applying the quarter rule there would pick a row by rowid, so annual rows pass through
+  unchanged (reported, not forced).
+- **Files.** `reality_engine/pilot3/preferred.py` (new), `schema.py` (columns, `FIN_QUARTER_CURRENT`,
+  `ensure_views`), `build.py` (`preferred` part), `stores.py` / `comparatives.py` (named insert columns),
+  `plugins/reality-data/server/lookups_pilot3.py` (shared election, coverage from `company`, `sql` text),
+  `server.py` and `catalog.py` (text), `reality_engine/tests/test_pilot3_preferred_data.py` (new, **6 passed**),
+  the seven existing test files that inserted the quarter rows positionally (named columns now).
+  `test_pilot3_preferred.py` **11 passed**; plugin `test_lookups_pilot3.py` **24 tests OK (1 skipped)**; the other
+  pilot3 suites 39 passed with 1 failure and 13 `tmp_path`/synthetic-PDF errors in this sandbox (ACL and extraction,
+  not this change).
 
 
 

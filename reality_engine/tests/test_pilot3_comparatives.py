@@ -244,7 +244,11 @@ def test_per_symbol_rerun_leaves_other_symbols_rows():
     conn.execute("INSERT INTO doc (doc_key, symbol, doc_type, known_at) VALUES ('doc1', 'AAAA', 'results', "
                  "'2026-10-20T12:00:00')")
     rows = _store(conn)                                      # AAAA's own rows
-    conn.executemany(f"INSERT INTO {cmp.TABLE} VALUES ({','.join('?' * 23)})", rows)
+    conn.executemany(
+        f"INSERT INTO {cmp.TABLE} (symbol, isin, period_start, period_end, fiscal_period, period_type, column_role, "
+        "basis, statement, line_item, caption, value, unit, scale, raw_token, quote, doc_key, page, known_at, "
+        "known_at_source, check_status, check_detail, is_reported) VALUES ("
+        + ",".join("?" * 23) + ")", rows)
     conn.execute(f"INSERT INTO {cmp.TABLE} (symbol, line_item, value) VALUES ('BBBB', 'pat', 1.0)")
     conn.commit()
     before = {r[0] for r in conn.execute(f"SELECT symbol FROM {cmp.TABLE}")}

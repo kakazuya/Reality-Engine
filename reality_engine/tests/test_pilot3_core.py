@@ -156,7 +156,9 @@ def _seed(conn: sqlite3.Connection) -> None:
                             ("depreciation", dep), ("other_income", oth), ("pat", pbt * 0.7), ("eps_basic", eps)):
             rows.append(("T", "INE000A01010", end[:7] + "-01", end, period, "consolidated", "A", "P&L", item, item, value,
                          "inr", 1.0, "f", "d", "t", "r", known, "src", 1))
-    conn.executemany("INSERT INTO fin_quarter_xbrl VALUES (" + ",".join("?" * 20) + ")", rows)
+    conn.executemany("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, audited, "
+                     "statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, source_table, "
+                     "source_rowid, known_at, known_at_source, is_reported) VALUES (" + ",".join("?" * 20) + ")", rows)
     conn.execute("INSERT INTO company VALUES ('T','INE000A01010',NULL,NULL,'t','1','Test')")
     conn.execute("INSERT INTO share_capital VALUES ('T','INE000A01010','2025-06-30','consolidated',NULL,NULL,"
                  "100.0,100.0,1.0,'shares',1.0,'2025-08-01T10:00:00','s','d','t','r',NULL,NULL)")
@@ -283,11 +285,16 @@ def test_dividend_year_assignment():
 
 def test_plausibility_gate_drops_segment_rows(tmp_path):
     conn = _conn()
-    conn.execute("INSERT INTO fin_quarter_xbrl VALUES ('KEC','I','2025-04-01','2025-06-30','Q1FY26','consolidated','a','P&L',"
-                 "'pbt_before_exceptional','x',100.0,'inr',1,'f','d','t','r','2025-07-01','k',1)")
+    conn.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, audited, "
+                 "statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, source_table, source_rowid, "
+                 "known_at, known_at_source, is_reported) VALUES ('KEC','I','2025-04-01','2025-06-30','Q1FY26',"
+                 "'consolidated','a','P&L','pbt_before_exceptional','x',100.0,'inr',1,'f','d','t','r','2025-07-01','k',1)")
     for item, value in (("finance_cost", 20.0), ("depreciation", 10.0), ("other_income", 0.0), ("revenue_from_operations", 1000.0)):
-        conn.execute("INSERT INTO fin_quarter_xbrl VALUES ('KEC','I','2025-04-01','2025-06-30','Q1FY26','consolidated','a','P&L',?,"
-                     "'x',?,'inr',1,'f','d','t','r','2025-07-01','k',1)", (item, value))
+        conn.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, audited, "
+                     "statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, source_table, "
+                     "source_rowid, known_at, known_at_source, is_reported) VALUES ('KEC','I','2025-04-01','2025-06-30',"
+                     "'Q1FY26','consolidated','a','P&L',?,'x',?,'inr',1,'f','d','t','r','2025-07-01','k',1)",
+                     (item, value))
     # EBITDA 130 rupees (pbt 100 + fin 20 + dep 10): 1.3e-5 crore is "within 25%" of 1.3e-5 crore, 48% margin is not
     assert statements._plausible(conn, "KEC", "ebitda", "Q1FY26", 130.0 / 1e7, "inr_crore")
     assert not statements._plausible(conn, "KEC", "ebitda", "Q1FY26", 300.0 / 1e7, "inr_crore")
@@ -467,8 +474,10 @@ def test_bank_and_life_lines_are_mapped_by_taxonomy_and_never_written_twice(monk
 
 def test_a_quarter_without_a_results_share_count_takes_the_shareholding_pattern_total(monkeypatch):
     conn = _conn()
-    conn.execute("INSERT INTO fin_quarter_xbrl VALUES ('KEC','I','2026-04-01','2026-06-30','Q1FY27','standalone','A','P&L',"
-                 "'pat','pat',1.0,'inr',1.0,'f','d','t','r','2026-07-30','s',1)")
+    conn.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, audited, "
+                 "statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, source_table, source_rowid, "
+                 "known_at, known_at_source, is_reported) VALUES ('KEC','I','2026-04-01','2026-06-30','Q1FY27',"
+                 "'standalone','A','P&L','pat','pat',1.0,'inr',1.0,'f','d','t','r','2026-07-30','s',1)")
     shp = [("KEC", "I", q, "shareholding_pattern", "ShareholdingPattern", shares, 100.0, None, "pct", "xbrl", "shp.xml", "db",
             "xml.gz", "shp.xml", None, known, "x", 1, None, None) for q, shares, known in
            (("2026-06-30", 1003240534.0, "2026-07-17T23:38:01"), ("2026-09-30", 1003500000.0, "2026-10-15T18:54:56"))]

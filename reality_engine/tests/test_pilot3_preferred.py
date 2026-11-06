@@ -70,7 +70,10 @@ def _printed(conn, period, end, role, value, known, status, line="total_income",
 
 
 def _xbrl(conn, period, end, item, value, known, basis="consolidated"):
-    conn.execute("INSERT INTO fin_quarter_xbrl VALUES (?,?,?,?,?,?,'A','P&L',?,?,?, 'inr',1,'f','d','t','r',?,'s',1)",
+    conn.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, audited, "
+                 "statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, source_table, "
+                 "source_rowid, known_at, known_at_source, is_reported) "
+                 "VALUES (?,?,?,?,?,?,'A','P&L',?,?,?, 'inr',1,'f','d','t','r',?,'s',1)",
                  (SYM, "INE296A01024", end[:7] + "-01", end, period, basis, item, item, value, known))
 
 

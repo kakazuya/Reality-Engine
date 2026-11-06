@@ -275,7 +275,10 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
                            1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts", "results_xbrl.db",
                            "quarterly", r["file"], None, None))
         fq += _quarter_extras(symbol, meta, {(r[13], r[8]) for r in fq})
-        conn.executemany("INSERT INTO fin_quarter_xbrl VALUES (" + ",".join("?" * 20) + ")", fq)
+        conn.executemany("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
+                         "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
+                         "source_table, source_rowid, known_at, known_at_source, is_reported) VALUES ("
+                         + ",".join("?" * 20) + ")", fq)
         conn.executemany("INSERT INTO share_capital VALUES (" + ",".join("?" * 18) + ")", sc)
         counts["fin_quarter_xbrl"][symbol] = len(fq)
         counts["share_capital"][symbol] = len(sc)
