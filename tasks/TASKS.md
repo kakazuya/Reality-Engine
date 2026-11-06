@@ -29,6 +29,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-077 | OPEN | P2 | Prototype a shared defect-type list that parallel workers read and append (Beam KPI batches, answer runs); measure repeat slips such as ten-times units | accept: Shivam | from: Paper pointer 4, Shivam 5 Nov | opened 2026-11-05
 - T-078 | OPEN | P2 | Audit each hook and gate against the last failure it stopped; propose removals for Shivam; test one versioned worker pipeline file | accept: Shivam | from: Paper pointer 5, Shivam 5 Nov | opened 2026-11-05
 - T-082 | OPEN | P2 | dsh workers pane: show stable session id, cached tokens, total tokens and median tokens per second on the band above the prompt and on the detail card | accept: Shivam | from: Shivam 5 Nov | opened 2026-11-05
+- T-096 | OPEN | P1 | job_watch wakes Claude at once when a worker with a follow-up wait ends its turn, and shows live tool counts: awaiting_input now reads as RUNNING until the 10-minute stall | accept: Shivam | from: Shivam 6 Nov | opened 2026-11-06
 
 ## Data
 - T-021 | LOOKING | P3 | Check if still open: PIB phase 2, Hindi, Urdu and regional offices | accept: Shivam | from: tasks/PIPELINE_TODO.md A2 | opened 2026-11-02
