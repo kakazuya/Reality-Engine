@@ -117,7 +117,8 @@ TABLES: dict[str, str] = {
     "doc_identity": """CREATE TABLE doc_identity (
         doc_key TEXT, corporate_doc_id INTEGER, symbol TEXT, isin TEXT, doc_type TEXT, file_where TEXT, verdict TEXT,
         company TEXT, company_reason TEXT, fiscal_year TEXT, fiscal_year_reason TEXT, type TEXT, type_reason TEXT,
-        date TEXT, date_reason TEXT, filing_date TEXT, text_chars INTEGER, checked_at TEXT)""",
+        date TEXT, date_reason TEXT, filing_date TEXT, linked_url TEXT, duplicate_of INTEGER, text_chars INTEGER,
+        checked_at TEXT)""",
     # T-091: the annual-report note tables read by notes.py.  One row per agency/instrument/rating
     # (rating_event), per bucket or geography/product and year column (concentration), and per counterparty and
     # year column (related_party_txn); ``basis`` says which reporting statement the page belongs to.

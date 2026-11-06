@@ -505,8 +505,12 @@ def retype_agm(conn: sqlite3.Connection) -> int:
     return cur.rowcount
 
 
-def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print) -> dict:
-    """Run steps 1-3 for the symbols; returns counts per symbol."""
+def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print,
+            set_aside: set[str] | None = None) -> dict:
+    """Run steps 1-3 for the symbols; returns counts per symbol.
+
+    ``set_aside`` is the identity scan's set-aside sha256 values (``doc_identity.doc_key``): such a file is counted
+    and left out of pages.db, never deleted from the store."""
     conn = connect_out(out)
     counts: dict[str, dict] = {}
     held_newsids: dict[str, set] = {}
@@ -518,13 +522,16 @@ def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print) -> dict
         records = Records(cfg, company, isins)
         candidates = discover(cfg, company, records)
         stat = counts[symbol] = {"files": len(candidates), "docs": 0, "dupes": 0, "pages": 0,
-                                 "needs_ocr": 0, "undated": 0, "errors": 0, "skipped": 0}
+                                 "needs_ocr": 0, "undated": 0, "errors": 0, "skipped": 0, "set_aside": 0}
         held = held_newsids.setdefault(symbol, set())
         groups: dict[str, list] = {}
         for pdf, root, dir_type in candidates:
             sha = _sha256(pdf)
             groups.setdefault(sha, []).append((pdf, root, dir_type, records.lookup(pdf, sha)))
         for sha, members in groups.items():
+            if set_aside and sha in set_aside:
+                stat["set_aside"] += 1
+                continue
             # One document, possibly filed under several announcements (a results PDF is attached to the
             # board-meeting outcome and again to the results filing): the earliest dissemination is when
             # it became public, so that record dates the doc; every filing is kept in source_record.
