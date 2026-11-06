@@ -22,7 +22,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `fin_annual_line`, `fin_quarter_xbrl` | reported financial lines, basis (consolidated / standalone), definition | exchange XBRL results |
 | `fin_quarter_printed` (T-057) | every P&L cell a results table prints: current, preceding, year-ago, ytd, prior ytd, last full year, with the check that confirmed it (`xbrl_ok`/`sum_ok`/`repeat_ok`/`unchecked`) | the results PDF's word boxes |
 | `ratio_panel`, `formula` | derived ratios with formula id and input row ids | computed from fin lines |
-| `kpi_series` | company-stated KPIs (order book, AUM, EBITDA/t, NIM, mixes) with period, dimension, entity, quote, page | decks, results, press releases, transcripts |
+| `kpi_series` | company-stated KPIs (order book, AUM, EBITDA/t, NIM, mixes) with period, dimension, `entity` (the company or the named subsidiary, kept apart from `basis`; T-088), quote, page | decks, results, press releases, transcripts |
 | `transcript_statement` | call quotes with speaker, role, topic tags | transcripts |
 | `guidance` | one row per forward target: metric, period, low/high (NULL for a worded target), unit, revision link | transcripts, decks, results, press releases |
 | `shp_category`, `shp_holder`, `shp_pledge`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings by category with the share count the printed percentage is on, the named holders, the promoter pledge block, share count, dividends, prices, PE/PB/EV | exchange data stores |
@@ -39,7 +39,9 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   ~116 pages/min, MSI RapidOCR ~4 pages/min: OCR runs on the HP).
 - **Financials**: from XBRL, labelled with basis and definition; tools default to consolidated (a standalone EPS was
   once returned for a consolidated question). Both company-stated and audited figures are kept, each labelled
-  (Hindalco FY26 operating cash flow: 10,250 cr XBRL vs 21,858 cr company bridge).
+  (Hindalco FY26 operating cash flow: 10,250 cr XBRL vs 21,858 cr company bridge). Since T-088 one line and period
+  has ONE `preferred` figure: the newest filing known at `as_of`, labelled `restated` when it differs from the first
+  printing, with the other values in `alternatives` carrying their filing date, role and check status.
 - **KPIs**: rule-based readers for sentences, tables (columns mapped to period headers), charts, segment-mix tables
   (`mix_v1`), entity headings (consolidated / standalone / subsidiary). Lexicon families in `pilot3/lexicon/`
   (common, lenders, metals, orders, dimensions, topics; one file per sector since loop 3: `bank`, `insurance_life`,
@@ -388,7 +390,12 @@ active one. Without a profile every command behaves exactly as before (the three
   values: both rows kept, listed as restatements.
 - **Ratios** (`ratios.py`): `_quarters` keeps XBRL where it holds the quarter and otherwise takes the printed quarter from the EARLIEST
   filing that printed it (that row's `known_at`); `period_start` comes from the merged rows (the old XBRL-only lookup crashed on a
-  printed-only quarter). YoY uses the same filing's printed `year_ago` column when checked; new `revenue_growth_qoq_pct` /
+  printed-only quarter). YoY uses the same filing's printed `year_ago` column when it is `xbrl_ok`, `repeat_ok` or
+  `sum_ok` (the better check wins when one filing printed two cells) and the cell's fiscal label is the year-ago
+  quarter; with no such cell the quarter store is used and its ref suffixed `@fallback`; a mismatch refuses the
+  growth instead of using another quarter (T-088: INFY Q2 FY27 8.28% -> 10.69%, HINDUNILVR 14.49%). `pat_ttm` /
+  `pat_before_exceptional_ttm` (`F_PAT_TTM`, `F_PAT_BE_TTM`) carry the last four quarters as
+  `input_refs`, the exceptional item's quarter named when it is not zero; new `revenue_growth_qoq_pct` /
   `pat_growth_qoq_pct` (`F_REV_QOQ`, `F_PAT_QOQ`). `_valuation` still uses `last4` when four quarters are held and otherwise one filing's
   TTM, decided by the table's own shape: a table with a ytd column uses `last_fy + ytd - prior_ytd`, only a table with no ytd at all
   uses `last_fy + current - year_ago`, a Q4 table prints the year itself (`F_TTM_PRINTED`, `refs.ttm_printed`); a missing or unchecked
@@ -397,8 +404,11 @@ active one. Without a profile every command behaves exactly as before (the three
   `input_refs.ttm` states the route. A fiscal year without four quarters takes the printed `fy` rows (`F_FY_PRINTED`):
   flows, margins, `eps_basic_fy`. `repeat_ok` is accepted by `printed_quarters`, `ttm_filings`, `_printed_year_ago`, `_printed_fy` and
   `pilot3_fin`.
-- **MCP**: `pilot3_fin` reads `fin_quarter_printed` after `fin_quarter_xbrl` returns no row for a line item and period, `definition`
-  `printed_comparative`, provenance table `fin_quarter_printed`, doc + page, `as_of` honoured; `pilot3_sql` and `catalog` list the table.
+- **MCP**: `pilot3_fin` reads `fin_quarter_printed` after `fin_quarter_xbrl` returns no row for a line item and period,
+  `definition` `printed_comparative`, provenance table `fin_quarter_printed`, doc + page, `as_of` honoured, and returns
+  one preferred figure per quarter (T-088); `pilot3_ratio` returns a derived ratio and the company's own stated figure
+  side by side (`definition` `derived` / `company_stated`); `pilot3_kpi` lists the company's rows before a subsidiary's
+  and collapses exact duplicates. `pilot3_sql` and `catalog` list the tables.
 - **Measured 5 Nov 2026 (pre-T-073 baseline)** on the pilot10 copy (`scratch/w_cmp2.db`, built from `scratch/l3_base.db`, old round's `scratch/w_cmp.db`):
   6,685 rows in 4 min 08 s for the 10 companies (fix round 5,587 -> 6,685; KEC 1,032, BAJFINANCE 1,253, HINDALCO 734, HDFCBANK 183,
   SBILIFE 273, INFY 657, SUNPHARMA 987, MARUTI 200, HINDUNILVR 798, ETERNAL 568), `xbrl_ok` 1,562, `sum_ok` 2,408, `repeat_ok` 1,313,
@@ -593,6 +603,77 @@ Two T-087 answers had failed because no holder was named and the September 2025 
   `shp_holder`, `shp_pledge`, indexes, `PARTS`), `plugins/reality-data/server/lookups_pilot3.py` (`holding`),
   `plugins/reality-data/server/server.py` and `catalog.py` (tool signature, table lists),
   `reality_engine/tests/test_pilot3_shp_holder.py` (new), `plugins/reality-data/tests/test_lookups_pilot3.py`.
+
+### 9e. One preferred figure per period (T-088, 6 Nov 2026)
+
+Store fixes 1 and 2 of the T-087 report. The 600-answer read and the DeepSeek dig test put misses on the financial
+lines: `pilot3_fin` could return several rows for one line and quarter (a stale current beside a later restated
+comparative), growth could use a printed cell that was not that line (INFY Q2 FY27 consolidated
+`revenue_growth_yoy_pct` 8.276 = 49,244 / 45,479, the Q3 FY26 revenue, where the filing's year-ago is 44,490 and the
+right answer 10.69%), `pilot3_ratio` returned only the derived ROE (Bajaj FY26 16.96 against its stated 18.1),
+`kpi_series.basis` carried subsidiary names ('bhfl', 'bajaj_financial_securities') and `dimension` carried
+'standalone', a quarter's TTM PAT had no row, and two INFY `fin_annual_line` rows were corrupt. Six general rules,
+no company name in code.
+
+- **Preferred comparative (`lookups_pilot3.fin`).** Quarterly rows are grouped by (measure, period, basis) and one
+  figure is returned: the newest filing known at `as_of`, `restated: true` when it differs from the first printing,
+  with the other values in `alternatives` carrying filing date, `role` (current / preceding / year_ago / xbrl) and
+  check status. A tie on the filing date goes XBRL > `xbrl_ok` > `repeat_ok` > `sum_ok` > clean unchecked. A printed
+  cell whose check failed may still be a restatement, so it is admitted when its `raw_token` is ONE printed number
+  (`_printed_cell_ok`); a cell glued from two numbers ("9,176 8,227") is not a figure. On the copy:
+  `fin('BAJFINANCE','total_income','Q2FY26', as_of='2026-11-04')` -> one row, preferred **19,992.38 crore**
+  (`restated`, the year-ago column of the 19 Oct 2026 filing) with **20,180.76 crore** as its alternative (current,
+  10 Nov 2025); with `as_of='2026-01-01'` -> preferred **20,180.76 crore**, not restated.
+- **Growth on the same quarter a year earlier (`ratios._printed_year_ago`).** The base is the current filing's own
+  `year_ago` cell for that line when its check is `xbrl_ok`, `repeat_ok` or `sum_ok` and its fiscal label is the
+  year-ago quarter (`sum_ok` means the column added up -- HINDUNILVR's Q2 FY27 filing prints Q2 FY26 revenue 15,919;
+  its first printing 16,241 is pre-restatement). Where one filing printed two cells for the line the better check
+  wins (`xbrl_ok` > `repeat_ok` > `sum_ok`), so INFY's cash-flow "Total income" `sum_ok` cannot beat the
+  XBRL-confirmed revenue cell: INFY Q2 FY27 consolidated 8.276 -> **10.6855%** (49,244 / 44,490, `year_ago`
+  `xbrl_ok`, same filing). With no such cell the quarter store is used and the base ref is suffixed `@fallback`
+  (38 rows on the copy); a base whose fiscal label is another quarter refuses the row. Values on the copy:
+  HINDUNILVR Q2 FY27 consolidated **14.4921** (18,226 / 15,919, `year_ago` `sum_ok`, same filing) and Q1 FY27
+  **10.0527** (17,341 / 15,757); Q3 FY26 5.6891 (16,441 / 15,556) and Q4 FY26 -0.5474 (16,351 / 16,441) on their
+  own filings' `year_ago` cells. Compared with live, **1 growth value changed** (INFY Q2 FY27 consolidated
+  8.2762 -> 10.6855); every other row is on its live base, including the 18 the first round moved -- that rule
+  refused `sum_ok` and fell back to a first printing, which HINDUNILVR's restated comparative showed to be wrong.
+- **Stated and derived together (`lookups_pilot3.ratio`).** `ratio_panel` rows are `definition: derived` (formula and
+  input refs); the company's own figure for the same ratio in `kpi_series` (metric name or its `_pct` form) is
+  `definition: company_stated` with quote and page, for each period. Company rows only (entity = symbol), the
+  consolidated basis first, then the best evidence. BAJFINANCE `roe` Q2 FY27: derived **17.914** and stated
+  **20.6**; Q1 FY27 stated 20.4; FY26 derived **16.958** and stated **18.1**.
+- **Entity apart from basis (`kpi_series.entity`).** A new `entity` column names the reporting company (its symbol)
+  or the subsidiary the row's dimension/page heading/paragraph names ('bhfl', 'bajaj_financial_securities', ...);
+  `basis` now only ever says consolidated / standalone / not_stated, and a basis word stored in `dimension` moves to
+  `basis`. A segment word ('commercial', 'auto') is never an entity: only the lexicon entity tokens and the
+  subsidiary names it prints count. `kpi()` lists the company's rows first, labels `entity`, and collapses exact
+  duplicates (same metric, entity, dimension, period, value, unit). BAJFINANCE FY26 `roe_pct` went from 35 stored
+  rows to **12 returned values**, company rows first (18.1 consolidated, 18.6 standalone, 19.2, 19.22, 18.76,
+  18.05, 4.3, 20.0, 19.7) then bhfl 12.1, bajaj_financial_securities 12.01, bajaj_housing_finance 12.1. Q1 FY27
+  cost of funds: the "cost of funds was 7.21%" row now carries entity **bhfl** (page 17's "Lead financial
+  indicators for Q1 FY27 - BHFL"; `page_basis` now also reads the footer heading), beside the company's 7.46 and 7.40.
+- **Trailing twelve months (`ratios._panel`).** `pat_ttm` (`F_PAT_TTM`) and `pat_before_exceptional_ttm`
+  (`F_PAT_BE_TTM`) rows for every company whose last four quarters are held; `input_refs` names the four quarters,
+  and the before-exceptional row names each quarter holding a non-zero `exceptional_items` **with its amount**.
+  BAJFINANCE Q2 FY27 consolidated PAT TTM **22,066.48 crore** (Q3FY26 4,066.01 + Q4FY26 5,553.30 + Q1FY27 6,080.60
+  + Q2FY27 6,366.57 crore, four inputs) and before exceptional **22,331.70 crore**, the Q3 FY26 item
+  `-2,652,200,000` named in `inputs`.
+- **The two INFY claims are both true and fixed (`stores.build_annual`).** (1) `lease_liabilities` held a row of
+  917,626,822,725 labelled `inr_crore`: ar_facts doc 121629 page 339 reads "9,176 (FY26); 8,227 (FY25)" and the
+  stored value is the two printed numbers glued, with `value_check='not_found'`. `_concatenated_value` drops a fact
+  whose unverified value matches none of the two or more numbers its own `value_raw` prints. (2) 3,749 was stored
+  `consolidated`: page 225 is the standalone note ("The Company ..."), page 339 the consolidated note ("The Group
+  ..."), and ar_facts says consolidated for both. `_ar_page_bases` reads the page from pages.db (doc sha256 ->
+  docs key) and `_statement_basis` counts "the Company" / "the Group", overriding the stored basis. After the
+  rebuild FY26 `lease_liabilities` is consolidated **9,176** and standalone **3,749**, no glued row.
+- **Measured** on `.tmp/pilot10_w.db` (copy of `pilot10.db`; `--part stores` for **all ten** companies, because
+  `schema.create` drops the table and scoping it to two would delete the other eight companies' rows;
+  `--part comparatives --symbols INFY,BAJFINANCE`; `--part ratios`; `--part kpi --symbols BAJFINANCE`): `ratio_panel`
+  rows before -> after: BAJFINANCE 164 -> 180, ETERNAL 226 -> 242, HDFCBANK 100 -> 116, HINDALCO 150 -> 162,
+  HINDUNILVR 228 -> 244, INFY 228 -> 244, KEC 228 -> 244, MARUTI 228 -> 244, SBILIFE 35 -> 43, SUNPHARMA 228 -> 244
+  (the difference is the new TTM rows each company's four held quarters form); `kpi_series` BAJFINANCE 2,059;
+  `checkpages run` **146** found (KEC 29 / BAJFINANCE 59 / HINDALCO 58); `test_pilot3_preferred.py` **11 passed**.
+
 
 
 

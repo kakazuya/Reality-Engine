@@ -11,6 +11,7 @@ import sqlite3
 import xml.etree.ElementTree as ET
 from bisect import bisect_right
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 from reality_engine.gap_loop import prepare
 from reality_engine.pilot3 import SHP_XBRL, profile, schema
@@ -390,6 +391,63 @@ def _unit(unit: object) -> tuple[str, float]:
     return text or "unknown", 1.0
 
 
+_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def _concatenated_value(value: float, value_raw: str | None, value_check: str | None) -> bool:
+    """True for an unverified fact whose number is two printed numbers glued together (T-088).
+
+    ``value_raw`` "9,176 (FY26); 8,227 (FY25)" produced 917,626,822,725 in ar_facts; the value matches neither
+    printed number, so it is a concatenation, not a figure.  Only ``value_check='not_found'`` rows are judged:
+    a row whose value was found on its page is kept as filed."""
+    if (value_check or "") != "not_found":
+        return False
+    printed = [float(re.sub(r"[,]", "", m)) for m in _NUMBER.findall(str(value_raw or ""))]
+    return len(printed) >= 2 and not any(abs(float(value) - v) <= max(1e-6, 1e-6 * abs(v)) for v in printed)
+
+
+def _statement_basis(text: str) -> str | None:
+    """Consolidated or standalone from a financial-statement page's own wording ("the Company" / "the Group")."""
+    company = len(re.findall(r"\bthe Company\b", text, re.I))
+    group = len(re.findall(r"\bthe Group\b", text, re.I))
+    if group and group > company:
+        return "consolidated"
+    if company and company > group:
+        return "standalone"
+    return None
+
+
+def _ar_page_bases(spec: dict, symbol: str):
+    """``(basis_of(doc_id, page), close)`` reading pages.db: the page's statement wording decides the basis.
+
+    ``ar_facts.basis`` says consolidated for both the standalone and the consolidated lease-liability note of the
+    same annual report (T-088: INFY 3,749 stored as consolidated beside the consolidated 9,176).  The page text
+    holds the evidence ("The Company ..." / "The Group ..."), so it overrides the stored basis when it speaks."""
+    try:
+        rows, _ = prepare._read_sqlite(spec["db"], "ar_docs", "SELECT doc_id, sha256 FROM ar_docs WHERE symbol=?",
+                                       (symbol,))
+    except Exception:
+        return (lambda _doc, _page: None), (lambda: None)
+    path = profile.pages_db()
+    if not path or not Path(path).is_file():
+        return (lambda _doc, _page: None), (lambda: None)
+    pg = sqlite3.connect(f"file:{Path(path).as_posix()}?mode=ro", uri=True, timeout=30)
+    sha_key = {sha: key for key, sha in pg.execute("SELECT doc_key, sha256 FROM doc WHERE symbol=?", (symbol,))}
+    doc_key = {str(doc_id): sha_key.get(sha) for doc_id, sha in rows}
+    cache: dict[tuple[str, int], str | None] = {}
+
+    def basis_of(doc_id, page) -> str | None:
+        key = doc_key.get(str(doc_id))
+        if not key or not page:
+            return None
+        if (key, int(page)) not in cache:
+            row = pg.execute("SELECT text FROM doc_page WHERE doc_key=? AND page=?", (key, int(page))).fetchone()
+            cache[(key, int(page))] = _statement_basis(row[0]) if row and row[0] else None
+        return cache[(key, int(page))]
+
+    return basis_of, pg.close
+
+
 def build_annual(conn: sqlite3.Connection) -> dict:
     """fin_annual_line: statement-caption rows picked out of ar_facts by a closed lexicon (no PDF reading)."""
     schema.create(conn, ("fin_annual_line",))
@@ -399,34 +457,43 @@ def build_annual(conn: sqlite3.Connection) -> dict:
         sql = spec["sql"].replace("SELECT *,", "SELECT rowid AS src_rowid, *,", 1)
         rows, types = prepare._read_sqlite(spec["db"], spec["source"], sql, spec["params"])
         cols = list(types)
+        basis_of, close_pages = _ar_page_bases(spec, symbol)
         seen, out = set(), []
-        for raw in rows:
-            r = dict(zip(cols, raw))
-            hit = lexicon_item(r["item"])
-            basis = str(r["basis"] or "").lower()
-            if basis not in ("consolidated", "standalone"):
-                basis = "not_stated"
-            if not hit or r["value"] is None:
-                continue
-            fy = str(r["period"] or "")
-            m = re.fullmatch(r"FY(?:20)?(\d\d)", fy)
-            if m:
-                fy = "FY" + m.group(1)
-            else:
-                m = re.match(r"(\d{4})-03-31", str(r["fiscal_year"] or ""))
-                if not m:
+        try:
+            for raw in rows:
+                r = dict(zip(cols, raw))
+                hit = lexicon_item(r["item"])
+                basis = str(r["basis"] or "").lower()
+                if basis not in ("consolidated", "standalone"):
+                    basis = "not_stated"
+                if not hit or r["value"] is None:
                     continue
-                fy = "FY" + m.group(1)[2:]
-            unit, scale = _unit(r["unit"])
-            key = (r["isin"], fy, basis, hit[0], round(float(r["value"]), 4), r["page"], r["doc_id"])
-            if key in seen:
-                continue
-            seen.add(key)
-            definition = "company_stated" if hit[0] in COMPANY_STATED else "reported"
-            out.append((symbol, r["isin"], fy, f"20{fy[2:]}-03-31", basis, hit[1], hit[0], r["item"],
-                        float(r["value"]), unit, scale, str(r["doc_id"]), r["page"], r["quote"],
-                        spec["db"], "ar_facts", str(r["src_rowid"]), r["known_at"], "ar_facts.filed_at", 1, 0,
-                        definition, "FY"))
+                if _concatenated_value(float(r["value"]), r.get("value_raw"), r.get("value_check")):
+                    continue             # a value glued from two printed numbers is not a figure (T-088)
+                page_basis = basis_of(r["doc_id"], r["page"])
+                if page_basis:
+                    basis = page_basis
+                fy = str(r["period"] or "")
+                m = re.fullmatch(r"FY(?:20)?(\d\d)", fy)
+                if m:
+                    fy = "FY" + m.group(1)
+                else:
+                    m = re.match(r"(\d{4})-03-31", str(r["fiscal_year"] or ""))
+                    if not m:
+                        continue
+                    fy = "FY" + m.group(1)[2:]
+                unit, scale = _unit(r["unit"])
+                key = (r["isin"], fy, basis, hit[0], round(float(r["value"]), 4), r["page"], r["doc_id"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                definition = "company_stated" if hit[0] in COMPANY_STATED else "reported"
+                out.append((symbol, r["isin"], fy, f"20{fy[2:]}-03-31", basis, hit[1], hit[0], r["item"],
+                            float(r["value"]), unit, scale, str(r["doc_id"]), r["page"], r["quote"],
+                            spec["db"], "ar_facts", str(r["src_rowid"]), r["known_at"], "ar_facts.filed_at", 1, 0,
+                            definition, "FY"))
+        finally:
+            close_pages()
         conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * 23) + ")", out)
         counts[symbol] = len(out)
     conn.commit()

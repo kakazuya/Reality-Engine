@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS kpi_series (
   confidence TEXT NOT NULL DEFAULT 'sentence', conf_rank INTEGER NOT NULL DEFAULT 2,
   method TEXT NOT NULL DEFAULT 'text_layer', ocr_conf REAL,
   source_type TEXT NOT NULL DEFAULT '',
+  entity TEXT NOT NULL DEFAULT '',
   UNIQUE(symbol, metric, dimension, fiscal_period, value, unit, doc_key, page)
 );
 CREATE INDEX IF NOT EXISTS ix_kpi_sym_metric ON kpi_series(symbol, metric, fiscal_period);
@@ -66,7 +67,7 @@ RULE_CONF = {"table_v1": ("table_row", 4), "mix_v1": ("table_row", 4), "chart_v1
 CONF_RANK = {name: rank for name, rank in RULE_CONF.values()}
 NEW_COLS = (("confidence", "TEXT NOT NULL DEFAULT 'sentence'"), ("conf_rank", "INTEGER NOT NULL DEFAULT 2"),
             ("method", "TEXT NOT NULL DEFAULT 'text_layer'"), ("ocr_conf", "REAL"),
-            ("source_type", "TEXT NOT NULL DEFAULT ''"))
+            ("source_type", "TEXT NOT NULL DEFAULT ''"), ("entity", "TEXT NOT NULL DEFAULT ''"))
 
 # ---------------------------------------------------------------- periods
 _MONTHS = {m: i + 1 for i, m in enumerate(
@@ -872,7 +873,7 @@ def page_basis(text: str, company: str = "") -> str:
             ent = raw.lower().replace(" ", "_")
             if ent and not own_entity(ent):
                 return ent
-    for ln in lines[:6]:     # "Q3 FY26 Executive summary - BFSL" / "Bajaj Broking's performance highlights"
+    for ln in lines[:6] + lines[-3:]:   # a deck prints its entity heading in the header OR the footer
         m = re.match(r"^(?:q[1-4]\s?fy\d{2}\s+)?(?:executive|financial)\s+summary\s*[-–]\s*"
                      r"([A-Za-z][A-Za-z&.\- ]{1,30})$", ln, re.I) or re.match(
                      r"^([A-Z][A-Za-z&.\- ]{1,30})'s performance highlights\b", ln, re.I)
@@ -1773,6 +1774,57 @@ def _entity_names() -> list[tuple[str, str]]:
 def _is_entity_basis(b: str | None) -> bool:
     """True for a basis token that names a subsidiary, not a reporting basis ("consolidated"/"standalone")."""
     return bool(b) and b not in ("consolidated", "standalone", "not_stated") and b not in _SECTION_WORDS
+
+
+_REPORTING_BASES = ("consolidated", "standalone", "not_stated")
+_ENTITY_TOKENS: set[str] | None = None
+
+
+def _entity_tokens() -> set[str]:
+    """Tokens that name a reporting entity: the lexicon basis tokens plus the normalised names they print."""
+    global _ENTITY_TOKENS
+    if _ENTITY_TOKENS is None:
+        tokens: set[str] = set()
+        for entry in _page_bases():
+            basis_token = entry.get("basis")
+            if isinstance(basis_token, str) and _is_entity_basis(basis_token):
+                tokens.add(basis_token)
+            for name in entry.get("names") or ():
+                token = re.sub(r"[^a-z]+", "_", str(name).lower()).strip("_")
+                if _is_entity_basis(token):
+                    tokens.add(token)
+        _ENTITY_TOKENS = tokens
+    return _ENTITY_TOKENS
+
+
+def _row_basis(dimension: str, basis: str) -> tuple[str, str]:
+    """``(basis, dimension)`` with the two kept apart (T-088): a reporting-basis word in the dimension moves to
+    basis, and a subsidiary token in basis leaves it 'not_stated' (the entity column names the subsidiary, not
+    the reporting basis)."""
+    if dimension in ("consolidated", "standalone"):
+        basis, dimension = dimension, "total"
+    if basis not in _REPORTING_BASES:
+        basis = "not_stated"
+    return basis, dimension
+
+
+def _row_entity(company: str, dimension: str, basis: str, page_token: str, doc_token: str,
+                text: str, quote: str, name_on_page: bool = True) -> str:
+    """The entity a row reports (T-088): the row's own dimension, else the page heading, else the paragraph's
+    subject, else the company.  A subsidiary keeps its token ('bhfl'); the reporting company is the symbol."""
+    if dimension in _entity_tokens():       # a segment word ("commercial", "auto") is not an entity
+        return dimension
+    for cand in (basis, page_token, doc_token):
+        if _is_entity_basis(cand):
+            return cand
+    if not name_on_page:          # no subsidiary is named on this page: the paragraph cannot be about one
+        return company
+    pos = text.find(quote) if quote else -1
+    if pos >= 0:
+        ent = _entity_before(text, pos, company)
+        if ent and _is_entity_basis(ent):     # the company's own name maps to a reporting basis: not an entity
+            return ent
+    return company
 
 
 def _column_entities(rows, hi: int) -> list[tuple[float, str]]:
@@ -2852,6 +2904,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
         con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
     entries, dims = load_lexicon()
     kind_of = {e.metric: e.kind for e in entries}
+    entity_names = [(n.lower(), b) for n, b in _entity_names() if _is_entity_basis(b)]
     # a sector family's row must quote its own label; a common metric may take its label from the line above
     sector_only = ({e.metric for e in entries if e.sectors} - {e.metric for e in entries if not e.sectors}) \
         if profile.under_profile() else set()
@@ -2906,6 +2959,8 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
             basis = page_basis(text, sym)
             if basis == "not_stated" and _is_entity_basis(doc_basis):
                 basis = doc_basis
+            text_low = text.lower()
+            name_on_page = any(n in text_low for n, _b in entity_names)
             try:     # chart mix and business-wise revenue bullets: no word boxes needed
                 erows = pie_mix_rows(text, page, sym, entries, dims, basis, page_pers)
                 seg = segment_revenue_rows(text, page, sym, entries, dims, basis, page_pers)
@@ -2937,11 +2992,14 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                 conf, rank = RULE_CONF[r.rule]
                 if doc_type == "transcript":     # a call's number is not the deck KPI: its own row, lowest tier (T-049)
                     rank = max(1, rank - 2)
-                yield dict(symbol=sym, metric=r.metric, dimension=r.dimension, value=r.value, unit=r.unit, scale=r.scale,
-                           period_type=r.period_type, fiscal_period=r.fiscal_period, as_of_date=r.as_of, basis=r.basis,
+                row_basis, row_dim = _row_basis(r.dimension, r.basis)
+                row_entity = _row_entity(sym, r.dimension, r.basis, basis, doc_basis, text, r.quote, name_on_page)
+                yield dict(symbol=sym, metric=r.metric, dimension=row_dim, value=r.value, unit=r.unit, scale=r.scale,
+                           period_type=r.period_type, fiscal_period=r.fiscal_period, as_of_date=r.as_of, basis=row_basis,
                            doc_key=doc_key, page=page, quote=r.quote, known_at=known_at, known_at_source=src,
                            is_reported=1, raw_label=r.raw_label, raw_value=r.raw_value, extractor_rule=r.rule,
-                           confidence=conf, conf_rank=rank, method=method, ocr_conf=ocr_conf, source_type=doc_type)
+                           confidence=conf, conf_rank=rank, method=method, ocr_conf=ocr_conf, source_type=doc_type,
+                           entity=row_entity)
     if con is not None:
         con.close()
 
@@ -2971,7 +3029,7 @@ def _subsidiary_notes(text: str) -> bool:
 
 COLS = ("symbol metric dimension value unit scale period_type fiscal_period as_of_date basis doc_key page quote "
         "known_at known_at_source is_reported raw_label raw_value extractor_rule confidence conf_rank method ocr_conf "
-        "source_type").split()
+        "source_type entity").split()
 
 
 def _review_outliers(con: sqlite3.Connection, symbol: str, max_pct: dict[str, float], review: list,
