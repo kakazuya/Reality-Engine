@@ -1,0 +1,253 @@
+# Exchange taxonomy (company_industry, joined by ISIN) -> pilot3 lexicon sector (T-094).
+# Read by make_profile.py only.  Keep it out of lexicon/: every yaml there is read as a KPI lexicon.
+#
+# basic_industry is tried first, then industry; a name listed as `unknown` has no lexicon family and
+# builds on the common lexicons only, and a name not listed at all is `unknown` too.  This file lists all
+# 191 basic industries of company_industry so the gap is visible, not guessed: 47 map to one of
+# the 10 families the lexicons carry, 144 are honest unknown.
+# Families: bank, nbfc, insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrous, epc_capital_goods, pharma.
+#
+# lender is the taxonomy's own list (Banks, NBFC, Housing Finance, Microfinance, Insurance), independent of
+# whether a lexicon family exists (a general insurer is a lender with no sector lexicon).  The second check
+# is the filed lines, run on a built database by `make_profile --check-db` (lender.py).
+lender_basic_industry:
+  - "Private Sector Bank"
+  - "Public Sector Bank"
+  - "Other Bank"
+  - "Non Banking Financial Company (NBFC)"
+  - "Housing Finance Company"
+  - "Microfinance Institutions"
+  - "Financial Institution"
+  - "Life Insurance"
+  - "General Insurance"
+lender_industry:
+  - "Banks"
+
+basic_industry:
+  # bank
+  "Other Bank": bank
+  "Private Sector Bank": bank
+  "Public Sector Bank": bank
+  # nbfc
+  "Financial Institution": nbfc
+  "Housing Finance Company": nbfc
+  "Microfinance Institutions": nbfc
+  "Non Banking Financial Company (NBFC)": nbfc
+  # insurance_life
+  "Life Insurance": insurance_life
+  # auto_oem
+  "2/3 Wheelers": auto_oem
+  "Commercial Vehicles": auto_oem
+  "Passenger Cars & Utility Vehicles": auto_oem
+  "Tractors": auto_oem
+  # consumer_internet
+  "E-Retail/ E-Commerce": consumer_internet
+  "Internet & Catalogue Retail": consumer_internet
+  # fmcg
+  "Breweries & Distilleries": fmcg
+  "CONSUMER FOOD": fmcg
+  "Cigarettes & Tobacco Products": fmcg
+  "Dairy Products": fmcg
+  "Diversified FMCG": fmcg
+  "Edible Oil": fmcg
+  "Household Products": fmcg
+  "Other Beverages": fmcg
+  "Other Food Products": fmcg
+  "Packaged Foods": fmcg
+  "Personal Care": fmcg
+  "Tea & Coffee": fmcg
+  # it_services
+  "Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)": it_services
+  "Computers - Software & Consulting": it_services
+  "IT Enabled Services": it_services
+  # metals_nonferrous
+  "Aluminium": metals_nonferrous
+  "Aluminium Copper & Zinc Products": metals_nonferrous
+  "Copper": metals_nonferrous
+  "Zinc": metals_nonferrous
+  # epc_capital_goods
+  "Aerospace & Defense": epc_capital_goods
+  "Cables - Electricals": epc_capital_goods
+  "Civil Construction": epc_capital_goods
+  "Compressors Pumps & Diesel Engines": epc_capital_goods
+  "Construction Vehicles": epc_capital_goods
+  "Heavy Electrical Equipment": epc_capital_goods
+  "Industrial Equipments": epc_capital_goods
+  "Industrial Products": epc_capital_goods
+  "Other Electrical Equipment": epc_capital_goods
+  "Other Industrial Products": epc_capital_goods
+  "Railway Wagons": epc_capital_goods
+  "Ship Building & Allied Services": epc_capital_goods
+  # pharma
+  "Biotechnology": pharma
+  "Pharmaceuticals": pharma
+  # no lexicon family yet: common lexicons only
+  "AUTO ANCILLARIES": unknown
+  "Abrasives & Bearings": unknown
+  "Advertising & Media Agencies": unknown
+  "Airline": unknown
+  "Airport & Airport services": unknown
+  "Amusement Parks/ Other Recreation": unknown
+  "Animal Feed": unknown
+  "Asset Management Company": unknown
+  "Auto Components & Equipments": unknown
+  "Auto Dealer": unknown
+  "Carbon Black": unknown
+  "Castings & Forgings": unknown
+  "Cement & Cement Products": unknown
+  "Ceramics": unknown
+  "Coal": unknown
+  "Commodity Chemicals": unknown
+  "Computers Hardware & Equipments": unknown
+  "Consulting Services": unknown
+  "Consumer Electronics": unknown
+  "Cycles": unknown
+  "Dealers���Commercial Vehicles Tractors Construction Vehicles": unknown
+  "Depositories Clearing Houses and Other Intermediaries": unknown
+  "Digital Entertainment": unknown
+  "Distributors": unknown
+  "Diversified": unknown
+  "Diversified Commercial Services": unknown
+  "Diversified Metals": unknown
+  "Diversified Retail": unknown
+  "Dredging": unknown
+  "Dyes And Pigments": unknown
+  "E-Learning": unknown
+  "Education": unknown
+  "Electrodes & Refractories": unknown
+  "Electronic Media": unknown
+  "Exchange and Data Platform": unknown
+  "Explosives": unknown
+  "Ferro & Silica Manganese": unknown
+  "Fertilizers": unknown
+  "Film Production Distribution & Exhibition": unknown
+  "Financial Products Distributor": unknown
+  "Financial Technology (Fintech)": unknown
+  "Footwear": unknown
+  "Forest Products": unknown
+  "Furniture Home Furnishing": unknown
+  "Garments & Apparels": unknown
+  "Gas Transmission/Marketing": unknown
+  "Gems Jewellery And Watches": unknown
+  "General Insurance": unknown
+  "Glass - Consumer": unknown
+  "Glass - Industrial": unknown
+  "Granites & Marbles": unknown
+  "HOSPITAL": unknown
+  "HOTELS/RESORTS": unknown
+  "Healthcare Research Analytics & Technology": unknown
+  "Healthcare Service Provider": unknown
+  "Holding Company": unknown
+  "Hospital": unknown
+  "Hotels & Resorts": unknown
+  "Household Appliances": unknown
+  "Houseware": unknown
+  "Industrial Gases": unknown
+  "Industrial Minerals": unknown
+  "Insurance Distributors": unknown
+  "Integrated Power Utilities": unknown
+  "Investment Company": unknown
+  "Iron & Steel": unknown
+  "Iron & Steel Products": unknown
+  "Jute & Jute Products": unknown
+  "LPG/CNG/PNG/LNG Supplier": unknown
+  "Leather And Leather Products": unknown
+  "Leisure Products": unknown
+  "Logistics Solution Provider": unknown
+  "Lubricants": unknown
+  "Meat Products including Poultry": unknown
+  "Media & Entertainment": unknown
+  "Medical Equipment & Supplies": unknown
+  "Offshore Support Solution Drilling": unknown
+  "Oil Equipment & Services": unknown
+  "Oil Exploration & Production": unknown
+  "Oil Storage & Transportation": unknown
+  "Other Agricultural Products": unknown
+  "Other Capital Market related Services": unknown
+  "Other Construction Materials": unknown
+  "Other Financial Services": unknown
+  "Other Telecom Services": unknown
+  "Other Textile Products": unknown
+  "Packaging": unknown
+  "Paints": unknown
+  "Paper & Paper Products": unknown
+  "Pesticides & Agrochemicals": unknown
+  "Petrochemicals": unknown
+  "Pharmacy Retail": unknown
+  "Pig Iron": unknown
+  "Plastic Products - Consumer": unknown
+  "Plastic Products - Industrial": unknown
+  "Plywood Boards/ Laminates": unknown
+  "Port & Port services": unknown
+  "Power - Transmission": unknown
+  "Power Distribution": unknown
+  "Power Generation": unknown
+  "Power Trading": unknown
+  "Precious Metals": unknown
+  "Print Media": unknown
+  "Printing & Publication": unknown
+  "Printing Inks": unknown
+  "RESIDENTIAL/COMMERCIAL/SEZ Project": unknown
+  "Ratings": unknown
+  "Real Estate related services": unknown
+  "Refineries & Marketing": unknown
+  "Residential Commercial Projects": unknown
+  "Restaurants": unknown
+  "Road Assets - Toll Annuity Hybrid-Annuity": unknown
+  "Road Transport": unknown
+  "Rubber": unknown
+  "SPINNING-COTTON/BLENDED": unknown
+  "Sanitary Ware": unknown
+  "Seafood": unknown
+  "Shipping": unknown
+  "Software Products": unknown
+  "Speciality Retail": unknown
+  "Specialty Chemicals": unknown
+  "Sponge Iron": unknown
+  "Stationary": unknown
+  "Stockbroking & Allied": unknown
+  "Sugar": unknown
+  "TV Broadcasting & Software Production": unknown
+  "Telecom - Cellular & Fixed line services": unknown
+  "Telecom - Equipment & Accessories": unknown
+  "Telecom - Infrastructure": unknown
+  "Tour Travel Related Services": unknown
+  "Trading & Distributors": unknown
+  "Trading - Auto Components": unknown
+  "Trading - Chemicals": unknown
+  "Trading - Coal": unknown
+  "Trading - Gas": unknown
+  "Trading - Metals": unknown
+  "Trading - Minerals": unknown
+  "Trading - Textile Products": unknown
+  "Transport Related Services": unknown
+  "Tyres & Rubber Products": unknown
+  "Waste Management": unknown
+  "Water Supply & Management": unknown
+  "Web based media and service": unknown
+  "Wellness": unknown
+
+industry:
+  "Automobiles": auto_oem
+  "Banks": bank
+  "Beverages": fmcg
+  "CONSTRUCTION": epc_capital_goods
+  "Cigarettes & Tobacco Products": fmcg
+  "Construction": epc_capital_goods
+  "Diversified FMCG": fmcg
+  "Electrical Equipment": epc_capital_goods
+  "Household Products": fmcg
+  "IT - Services": it_services
+  "IT - Software": it_services
+  "Non - Ferrous Metals": metals_nonferrous
+  "Personal Products": fmcg
+  "Pharmaceuticals & Biotechnology": pharma
+
+# Second tier, used only when company_industry has no row for the company's ISINs or symbol: master_companies.industry
+# is coarse and mostly unusable (of 5,358 active companies 2,688 are null, 1,906 "General Diversified", 269 "Other"),
+# so only the names that map cleanly to one family are listed.  An unlisted name stays `unknown`.
+master_industry:
+  "Capital Goods": epc_capital_goods
+  "Construction": epc_capital_goods
+  "Fast Moving Consumer Goods": fmcg
+  "Information Technology": it_services

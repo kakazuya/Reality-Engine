@@ -27,7 +27,7 @@ import sys
 import time
 from pathlib import Path
 
-from reality_engine.pilot3 import PAGES_DB, kpi
+from reality_engine.pilot3 import PAGES_DB, kpi, profile
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS ocr_page (
@@ -66,7 +66,7 @@ def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
     build.py writes to doc_page), then decks_full, then sandbox pages by doc type, newest first.  A page stored
     already under a key that names the same document (sandbox alias, decks_full sha) is skipped."""
     fitz = _fitz()
-    dbp = sandbox / f"{kpi.COMPANIES[sym]}_loop" / f"{kpi.COMPANIES[sym]}.db"
+    dbp = sandbox / f"{sym.lower()}_loop" / f"{sym.lower()}.db"
     con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
     out: list[tuple] = []
     claimed: set[tuple] = set()          # (pages.db doc_key, page) this list will OCR from pages.db
@@ -122,7 +122,7 @@ def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
     for doc_key, page, doc_type, known_at in rows:
         if doc_key in alias or (doc_key, page) in done:
             continue
-        p = sandbox / f"{kpi.COMPANIES[sym]}_loop" / "raw" / doc_key
+        p = sandbox / f"{sym.lower()}_loop" / "raw" / doc_key
         if p.exists():
             out.append((doc_type, known_at, doc_key, page, p))
     con.close()
@@ -259,7 +259,7 @@ def load_ocr(con: sqlite3.Connection, sym: str) -> dict:
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--out", required=True)
-    ap.add_argument("--symbols", default="KEC,BAJFINANCE,HINDALCO")
+    ap.add_argument("--symbols", default=None, help="default: the profile's companies, else the default database's")
     ap.add_argument("--sandbox-root", default=str(kpi.SANDBOX_ROOT))
     ap.add_argument("--raw-root", default=str(kpi.RAW_ROOT), help="'' to skip the decks_full PDFs")
     ap.add_argument("--pages-db", default=str(PAGES_DB), help="docs_collect pages.db: its needs_ocr pages are read too ('' disables)")
@@ -270,7 +270,8 @@ def main(argv=None):
     ap.add_argument("--reverse", action="store_true", help="work from the end of the pending list (second worker)")
     ap.add_argument("--device", choices=["cpu", "dml"], default="cpu")
     a = ap.parse_args(argv)
-    stats = run(a.out, [s.strip().upper() for s in a.symbols.split(",") if s.strip()], Path(a.sandbox_root),
+    stats = run(a.out, [s.strip().upper() for s in (a.symbols or ",".join(profile.symbols())).split(",") if s.strip()],
+                Path(a.sandbox_root),
                 Path(a.raw_root) if a.raw_root else None, a.max_seconds, a.limit, a.dpi, a.device, a.max_side, a.reverse,
                 Path(a.pages_db) if a.pages_db else None)
     for k, v in stats.items():

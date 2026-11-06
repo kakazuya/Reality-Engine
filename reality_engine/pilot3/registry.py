@@ -14,11 +14,17 @@ import re
 import sqlite3
 from pathlib import Path
 
-from reality_engine.pilot3 import SANDBOX_DB, call_dates, profile, schema
+from reality_engine.pilot3 import SANDBOX, call_dates, profile, schema
 from reality_engine.gap_loop import prepare
 
 FAMILY = {"annual_report": "annual_report", "deck": "deck", "transcript": "transcript", "results": "results",
           "announcement": "announcement", "press_release": "press_release", "audio_link": "transcript"}
+SANDBOX_DB: dict[str, Path] = {}   # test / HP override; normally the path is derived from the symbol
+
+
+def sandbox_db(symbol: str) -> Path:
+    """The company's legacy sandbox database: an explicit override, else ``<SANDBOX>/<sym>_loop/<sym>.db``."""
+    return SANDBOX_DB.get(symbol) or SANDBOX / f"{symbol.lower()}_loop" / f"{symbol.lower()}.db"
 
 
 def _duck(sql: str, params: tuple = ()) -> list:
@@ -61,7 +67,7 @@ def build_company(conn: sqlite3.Connection) -> dict:
 
 
 def _sandbox(symbol: str) -> sqlite3.Connection:
-    path = SANDBOX_DB[symbol]
+    path = sandbox_db(symbol)
     if not Path(path).is_file():
         raise SystemExit(f"STOPPED: sandbox database missing: {path}")
     return sqlite3.connect(f"file:{path}?mode=ro", uri=True)

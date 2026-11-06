@@ -5,11 +5,14 @@ A profile names the companies (symbol, name, BSE code, ISINs, sector, lender fla
 build keeps (§ history window).  Every pilot3 module reads it through this module only, so the company
 literals live in the JSON and not in an extractor.
 
-Without a profile every module keeps its present defaults (``SYMBOLS``, ``PAGES_DB``, ``pilot3.db``), so
-``python -m reality_engine.pilot3.build`` does exactly what it always did::
+Without a profile every module keeps its present defaults (the companies the default database's ``company`` table
+holds, ``PAGES_DB``, ``pilot3.db``), so ``python -m reality_engine.pilot3.build`` does exactly what it always did::
 
     python -m reality_engine.pilot3.build --profile tasks/night_loop/pilot10_profile.json --part kpi
     python -m reality_engine.pilot3.docs_collect --profile <json> --symbols <SYM> --out <pages.db>
+
+The default company list is data, not a literal: it is read from ``REAL_DB``'s ``company`` table (T-094).  The
+default lender flag is the filed-line test (``lender.filed_lender``) on that same database.
 
 An optional ``compute_start`` (default: ``window_start``, so nothing changes) lets a build read older rows of
 already-held stores as inputs only (trailing four quarters, prior-year comparisons): they never reach an answer
@@ -22,11 +25,14 @@ manifest, which is already the requested window.
 from __future__ import annotations
 
 import json
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from reality_engine.gap_loop.company import COMPANIES, Company
-from reality_engine.pilot3 import PAGES_DB, SYMBOLS
+from reality_engine.db.readonly import connect_ro
+from reality_engine.gap_loop.company import Company
+from reality_engine.pilot3 import PAGES_DB, REAL_DB
+from reality_engine.pilot3.lender import filed_lender
 
 
 @dataclass(frozen=True)
@@ -108,6 +114,35 @@ def load(path: str | Path) -> Profile:
 
 _ACTIVE: Profile | None = None
 _SCOPE: tuple[str, ...] | None = None
+_DEFAULT: dict[str, Company] | None = None
+_LENDERS: dict[str, bool] = {}
+
+
+def _default_companies() -> dict[str, Company]:
+    """The companies the default database holds (its ``company`` table): the legacy three are data, not code.
+    Empty when the database or its table is not there, so a build without a profile says so instead of guessing."""
+    global _DEFAULT
+    if _DEFAULT is not None:
+        return _DEFAULT
+    out: dict[str, dict] = {}
+    try:
+        conn = connect_ro(str(REAL_DB))
+    except Exception:
+        return {}
+    try:
+        for symbol, isin, bse_code, name in conn.execute(
+                "SELECT symbol, isin, bse_code, name FROM company ORDER BY symbol"):
+            entry = out.setdefault(symbol, {"name": name or "", "bse_code": bse_code or "", "isins": []})
+            if isin and isin not in entry["isins"]:
+                entry["isins"].append(isin)
+    except sqlite3.DatabaseError:
+        return {}
+    finally:
+        conn.close()
+    _DEFAULT = {symbol: Company(symbol=symbol, name=value["name"], isins=tuple(value["isins"]),
+                                bse_code=value["bse_code"], db_name="", questions="", raw_sources=())
+                for symbol, value in out.items()}
+    return _DEFAULT
 
 
 def activate(profile: Profile | None) -> Profile | None:
@@ -135,20 +170,23 @@ def set_scope(symbols: tuple[str, ...] | None) -> None:
 
 def symbols() -> tuple[str, ...]:
     if _ACTIVE is None:
-        return SYMBOLS
+        return tuple(_default_companies())
     return _SCOPE or _ACTIVE.symbols
 
 
 def companies() -> dict[str, Company]:
     if _ACTIVE is not None:
         return {c.symbol: c.gap_company() for c in _ACTIVE.companies}
-    return COMPANIES
+    return _default_companies()
 
 
 def company(symbol: str) -> Company:
     if _ACTIVE is not None:
         return _ACTIVE.gap_company(symbol)
-    return COMPANIES[symbol]
+    try:
+        return _default_companies()[symbol]
+    except KeyError:
+        raise KeyError(f"{symbol!r} is not in the default database's company table") from None
 
 
 def isins(symbol: str) -> tuple[str, ...]:
@@ -156,12 +194,17 @@ def isins(symbol: str) -> tuple[str, ...]:
 
 
 def is_lender(symbol: str) -> bool:
-    """The profile's lender flag; without a profile, the present list in ``ratios.py``."""
+    """The profile's lender flag; without a profile, the filed interest / premium lines of the default database."""
     if _ACTIVE is not None:
         return _ACTIVE.is_lender(symbol)
-    from reality_engine.pilot3.ratios import LENDERS  # late: ratios reads this module
-
-    return symbol in LENDERS
+    if symbol not in _LENDERS:
+        try:
+            conn = connect_ro(str(REAL_DB))
+            _LENDERS[symbol] = filed_lender(conn, symbol)
+            conn.close()
+        except Exception:
+            _LENDERS[symbol] = False
+    return _LENDERS[symbol]
 
 
 def pages_db() -> Path:

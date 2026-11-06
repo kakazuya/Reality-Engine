@@ -36,7 +36,7 @@ from pathlib import Path
 
 from reality_engine.db.readonly import connect_ro
 from reality_engine.gap_loop import checks, company, loop
-from reality_engine.pilot3 import REAL_DB, SYMBOLS, oracle as oracle_mod, queries, transcripts
+from reality_engine.pilot3 import REAL_DB, oracle as oracle_mod, profile, queries, transcripts
 
 AS_OF = "2026-10-19"
 PASSED = "answered"  # the loop's status for a row whose numbers all passed its checks
@@ -71,8 +71,16 @@ compared compare value values quarter quarters end ended full total share shares
 list would their there they them then than example respectively call calls concall conference earnings
 management said meet met deliver delivered change changed expect expected look looking""".split())
 # The symbol scopes the search already; its words in a query only match every page.
-COMPANY_WORDS = {"KEC": {"kec", "international"}, "BAJFINANCE": {"bajaj", "finance", "bajfinance"},
-                 "HINDALCO": {"hindalco"}}
+def _company_words(symbol: str) -> set[str]:
+    """The company's own words (its symbol and the words of its stored name): a search scoped to the symbol does
+    not need them.  Read from the profile / default database, never a hand list (T-094)."""
+    words = {symbol.lower()}
+    try:
+        name = profile.company(symbol).name.lower()
+    except KeyError:
+        name = ""
+    words.update(w for w in re.findall(r"[a-z]{3,}", name) if w not in STOP)
+    return words
 VALUATION = ((r"market cap", "market_cap"), (r"price[- ]to[- ]book|\bp/?b\b", "pb"),
              (r"price[- ]to[- ]earnings|\bp/?e\b", "pe"), (r"ev[- ]to[- ]ebitda|ev/ebitda", "ev_ebitda"),
              (r"dividend yield", "dividend_yield_pct"))
@@ -224,8 +232,9 @@ def on_db(path: Path):
 
 
 # --- inputs -----------------------------------------------------------------------------------------
-def load_questions(sandbox: Path, symbols: tuple = SYMBOLS) -> dict[str, dict]:
+def load_questions(sandbox: Path, symbols: tuple | None = None) -> dict[str, dict]:
     """The question files the loop read (``gap_loop.loop.load_questions``), keyed by qid, with the symbol."""
+    symbols = tuple(symbols or profile.symbols())
     out: dict[str, dict] = {}
     for symbol in symbols:
         company.activate(symbol)
@@ -236,8 +245,9 @@ def load_questions(sandbox: Path, symbols: tuple = SYMBOLS) -> dict[str, dict]:
     return out
 
 
-def load_answers(sandbox: Path, symbols: tuple = SYMBOLS) -> dict[str, dict]:
+def load_answers(sandbox: Path, symbols: tuple | None = None) -> dict[str, dict]:
     """The newest ``answers`` row per qid (any status): qid -> status, numbers, answer text."""
+    symbols = tuple(symbols or profile.symbols())
     out: dict[str, dict] = {}
     for symbol in symbols:
         path = Path(sandbox) / f"{symbol.lower()}_loop" / f"{symbol.lower()}.db"
@@ -491,7 +501,7 @@ def _keywords(text: str, symbol: str, n: int = 8) -> list[str]:
     Fiscal labels ("FY26", "Q1FY27") are kept: they are the strongest period evidence a page can carry.
     """
     words = re.findall(r"[A-Za-z][A-Za-z0-9&.\-]{2,}", text)
-    company = COMPANY_WORDS.get(symbol.upper(), {symbol.lower()})
+    company = _company_words(symbol)
     out = []
     for word in words:
         key = word.lower().strip(".-")
@@ -1314,8 +1324,9 @@ def results_day(p3, question: dict, as_of: str) -> str | None:
 
 
 def evaluate(db: Path, sandbox: Path = SANDBOXES, as_of: str = AS_OF,
-             symbols: tuple = SYMBOLS) -> dict:
+             symbols: tuple | None = None) -> dict:
     """Every question: its one mapped call, the comparison with the oracle, and the summary counts."""
+    symbols = tuple(symbols or profile.symbols())
     questions = load_questions(sandbox, symbols)
     answers = load_answers(sandbox, symbols)
     vocab = vocabulary(db)
@@ -1574,14 +1585,14 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--sandboxes", default=str(SANDBOXES),
                         help="folder holding <sym>_loop/<sym>.db and its questions/")
     parser.add_argument("--as-of", default=AS_OF)
-    parser.add_argument("--symbols", default=",".join(SYMBOLS), help="comma list to check (default: all three)")
+    parser.add_argument("--symbols", default=None, help="comma list to check (default: the profile's companies)")
     parser.add_argument("--out", default=str(OUT), help=f"xlsx report (default: {OUT})")
     parser.add_argument("--html", default=str(HTML), help=f"html summary (default: {HTML})")
     args = parser.parse_args(argv)
     db = Path(args.db).expanduser()
     if not db.is_file():
         raise SystemExit(f"STOPPED pilot3 database missing: {db}")
-    symbols = tuple(part.strip().upper() for part in args.symbols.split(",") if part.strip())
+    symbols = tuple(part.strip().upper() for part in args.symbols.split(",") if part.strip()) if args.symbols else None
     result = evaluate(db, Path(args.sandboxes), args.as_of, symbols)
     records, summary = result["records"], result["summary"]
     print(render(summary))

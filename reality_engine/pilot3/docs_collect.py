@@ -36,14 +36,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from reality_engine.db.readonly import connect_ro
-from reality_engine.gap_loop.company import COMPANIES, Company
+from reality_engine.gap_loop.company import Company
 from reality_engine.gap_loop.prepare import DOC_TYPES, MIN_PAGE_CHARS, _clean_page, _date_of, _title
 from reality_engine.pilot3 import profile
 
 RAW_ROOT = Path(os.environ.get("REALITY_RAW_ROOT", r"D:\RealityEngine\raw"))
 LEGACY_PDFS = Path(os.environ.get("REALITY_PDFS_LEGACY_DIR", r"D:\RealityEngine\pdfs"))
 DEFAULT_OUT = Path(r"D:\RealityEngine\pilot3\pages.db")
-DEFAULT_SYMBOLS = ("KEC", "BAJFINANCE", "HINDALCO")
 WINDOW_START = "2024-04-01"          # universe time window (company data FY2024-25+)
 AS_OF = "2026-10-19"
 GUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
@@ -98,7 +97,7 @@ class Config:
     data_root: Path
     raw_roots: tuple[Path, ...] = (RAW_ROOT,)
     extra_roots: tuple[Path, ...] = (LEGACY_PDFS,)   # the old D: PDF pile, <SYMBOL>/<TYPE>/file.pdf
-    companies: dict = field(default_factory=lambda: dict(COMPANIES))
+    companies: dict = field(default_factory=lambda: profile.companies())
     snapshot: Path | None = None
 
 
@@ -403,6 +402,25 @@ def _dir_type(path: Path, root: Path) -> str:
     return "other"
 
 
+def _company_manifest(root: Path, symbol: str) -> Path | None:
+    """The company site's own manifest folder (``<symbol>_transcripts/_manifest.json``) when one is held."""
+    if not root.is_dir():
+        return None
+    try:
+        entries = [e for e in os.scandir(root) if e.is_dir(follow_symlinks=False)]
+    except OSError:
+        return None
+    wanted = symbol.lower()
+    for entry in entries:
+        folder = Path(entry.path)
+        name = entry.name.lower()
+        # ``abb_transcripts`` is ABB's, ``abbott_transcripts`` is not: a bare prefix would read another company's list.
+        if (name == wanted or name.startswith(wanted + "_")) and any(
+                (folder / item).is_file() for item in ("_manifest.json", "_known_at.json")):
+            return folder
+    return None
+
+
 def discover(cfg: Config, company: Company, records: Records) -> list[tuple[Path, Path, str]]:
     """``(file, root it lives under, directory-derived doc type)`` for every candidate PDF."""
     found: dict[str, tuple[Path, Path, str]] = {}
@@ -414,13 +432,13 @@ def discover(cfg: Config, company: Company, records: Records) -> list[tuple[Path
                 for pdf in _walk_pdfs(folder):
                     found.setdefault(str(pdf), (pdf, root, _dir_type(pdf, root)))
     for root in cfg.raw_roots:
+        site = _company_manifest(root, company.symbol)
+        if site is not None:
+            records.add_manifest(site)      # a company site's own transcript list, when one is held
         for dirname, kind in SHA_DIRS.items():
             folder = root / dirname
             if not folder.is_dir():
                 continue
-            manifest_dir = folder if dirname == "kec_transcripts" else None
-            if manifest_dir is not None and company.symbol == "KEC":
-                records.add_manifest(manifest_dir)
             for pdf in _walk_pdfs(folder):
                 stem = pdf.stem.lower()
                 if SHA.fullmatch(stem) and (stem in records.sha_names or stem in records.by_sha):
@@ -799,10 +817,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{symbol}: {s['docs']} docs, {s['pages']} pages ({s['undated']} undated, {s['missing']} files not held, "
                   f"{s['not_documents']} not documents, {s['needs_ocr']} needs_ocr pages) -> {out}")
         return 0
-    symbols = tuple(s.strip().upper() for s in (args.symbols or ",".join(DEFAULT_SYMBOLS)).split(",") if s.strip())
-    unknown = [s for s in symbols if s not in COMPANIES]
+    symbols = tuple(s.strip().upper() for s in (args.symbols or ",".join(profile.symbols())).split(",") if s.strip())
+    known = profile.companies()
+    unknown = [s for s in symbols if s not in known]
     if unknown:
-        print(f"STOPPED unknown symbols {unknown}: choose from {list(COMPANIES)}", file=sys.stderr)
+        print(f"STOPPED unknown symbols {unknown}: choose from {list(known)}", file=sys.stderr)
         return 2
     cfg = Config(data_root=args.data_root or default_data_root())
     counts = collect(cfg, symbols, args.out or DEFAULT_OUT)

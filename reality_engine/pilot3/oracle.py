@@ -19,7 +19,8 @@ from collections import Counter, defaultdict
 from datetime import date, timedelta
 from pathlib import Path
 
-from reality_engine.pilot3 import SANDBOX_DB, SYMBOLS, queries
+from reality_engine.pilot3 import profile, queries
+from reality_engine.pilot3.registry import sandbox_db
 
 COVERAGE = Path(__file__).resolve().parents[2] / "tasks" / "arch_v4" / "T048_QUESTION_COVERAGE_2026-11-03.xlsx"
 CORE = ("ratio_panel", "price_delivery", "fin_quarter_xbrl", "fin_annual_line", "shp_category", "valuation_daily")
@@ -32,8 +33,8 @@ QEND = {1: "06-30", 2: "09-30", 3: "12-31", 4: "03-31"}
 def load_oracle() -> dict[str, dict]:
     """``{qid: {status, numbers, as_of}}`` from the newest answered row of each sandbox."""
     out = {}
-    for symbol in SYMBOLS:
-        path = SANDBOX_DB[symbol]
+    for symbol in profile.symbols():
+        path = sandbox_db(symbol)
         if not Path(path).is_file():
             raise SystemExit(f"STOPPED: sandbox database missing: {path}")
         con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
