@@ -33,6 +33,17 @@
         "CODE_TOOLS_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model",
         "PYTHONUTF8": "1"
       }
+    },
+    "agy-worker": {
+      "type": "stdio",
+      "command": "C:/Users/warri/AppData/Local/Programs/Python/Python314/python.exe",
+      "args": [
+        "C:/Users/warri/Downloads/Info_Diffusion_Model/plugins/agy-worker/server/agy_worker_mcp.py"
+      ],
+      "env": {
+        "AGY_WORKER_REPO_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model",
+        "PYTHONUTF8": "1"
+      }
     }
   }
 }

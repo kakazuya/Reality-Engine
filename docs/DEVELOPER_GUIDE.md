@@ -69,7 +69,7 @@ repo root/
 │   ├── contracts.py        # Typed write contracts for the pilot measures
 │   ├── raw_store.py        # Content-addressed raw files; RawStore fetches Drive-only files (T-102)
 │   └── config.py           # Paths, PRAGMAs, API headers, and thresholds
-├── plugins/                # MCP servers: reality-data, dsh-worker and others
+├── plugins/                # MCP servers: reality-data, dsh-worker, agy-worker (Antigravity/Gemini coding jobs, T-112; README there) and others
 ├── machines/               # How to operate each computer
 ├── tasks/                  # State, rulings, tickets, plans, reports
 ├── .kilo/
