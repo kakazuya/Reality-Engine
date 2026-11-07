@@ -1,0 +1,379 @@
+# Independent label vocabulary for the row check layer (row_checks.py, T-113).
+# Written apart from the extractors' lexicons on purpose (standing rule, Shivam 8 Nov): the checker must not
+# share the extractor's word lists, or both make the same mistake.  Keep it out of lexicon/ (every yaml there
+# is read as a KPI lexicon).
+#
+# Per canonical metric:
+#   aliases  - stored metric names that mean this metric (kpi_series and guidance names differ)
+#   labels   - regexes (case-insensitive) that name this metric in a quote; a row needs one of them
+#   weak     - regexes that count as presence only, never as a competing label for another metric
+#   sectors  - families the metric may belong to (sector_map.yaml families); omitted = any company
+#   kind     - level_pct | growth_pct | bps | amount | count | days | multiple | per_unit | any
+# Company or segment names never appear here: the file must work unchanged for the whole universe.
+
+lender: &lender [bank, nbfc]
+lender_ins: &lender_ins [bank, nbfc, insurance_life]
+insurer: &insurer [insurance_life]
+
+metrics:
+  # --- lenders -------------------------------------------------------------------------------------------
+  gnpa:
+    aliases: [gnpa_pct]
+    labels: ['gross\s*npa', '\bgnpa', 'gross non[- ]performing', 'gross stage\s*(3|iii)', '\bgs3\b']
+    sectors: *lender
+    kind: level_pct
+  nnpa:
+    aliases: [nnpa_pct]
+    labels: ['net\s*npa', '\bnnpa', 'net non[- ]performing', 'net stage\s*(3|iii)', '\bns3\b']
+    sectors: *lender
+    kind: level_pct
+  credit_cost:
+    aliases: [credit_cost_bps, credit_cost]
+    labels: ['credit\s*cost', 'loan\s*loss', 'cost of risk', 'impairment', 'provisions?\s+(to|as a)']
+    sectors: *lender
+    kind: bps_or_pct
+  loan_loss_provisions:
+    aliases: [loan_loss_provisions]
+    labels: ['loan\s*loss', 'impairment', 'credit\s*cost']
+    weak: ['provisions?']
+    sectors: *lender
+    kind: amount
+  aum:
+    related: [advances, aum_growth]
+    aliases: [aum]
+    labels: ['\baum\b', 'assets under management', 'loan book', 'book size']
+    sectors: *lender_ins
+    kind: amount
+  aum_growth:
+    related: [aum, advances, new_loans]
+    aliases: [aum_growth]
+    labels: ['\baum\b', 'assets under management', 'loan book', 'book (growth|to grow|will grow)', 'balance sheet', 'loan growth', 'advances growth', 'credit growth', 'grow(th)? (the|our) (book|loans|advances)']
+    weak: ['\bgrowth\b', '\bgrow\b']
+    sectors: *lender
+    kind: growth_pct
+  advances:
+    aliases: [advances]
+    labels: ['advances', 'loan book']
+    weak: ['loans?\b']
+    sectors: *lender
+    kind: amount
+  deposits:
+    aliases: [deposits]
+    labels: ['deposits?']
+    sectors: *lender
+    kind: amount
+  casa:
+    aliases: [casa_ratio, casa]
+    labels: ['\bcasa\b', 'current (and|&) savings']
+    sectors: [bank]
+    kind: any
+  nim:
+    aliases: [nim_pct, nim]
+    labels: ['\bnim\b', 'net interest margin']
+    sectors: *lender
+    kind: bps_or_pct
+  cost_of_funds:
+    aliases: [cost_of_funds_pct]
+    labels: ['cost of (funds|borrowing)', '\bcof\b']
+    sectors: *lender
+    kind: level_pct
+  pcr:
+    aliases: [pcr_stage3, provision_coverage_pct]
+    labels: ['\bpcr\b', 'provision(ing)? coverage', 'coverage ratio on stage', 'stage\s*(3|iii) coverage']
+    sectors: *lender
+    kind: level_pct
+  capital_adequacy:
+    aliases: [crar_pct, tier1_pct, cet1]
+    labels: ['\bcrar\b', 'capital adequacy', '\bcar\b', 'tier\s*(1|i|one)', '\bcet\s*1', 'capital ratio']
+    sectors: *lender
+    kind: level_pct
+  roa:
+    aliases: [roa_pct]
+    labels: ['\broaa?\b', 'return on (average )?(total )?assets']
+    kind: level_pct
+  roe:
+    aliases: [roe_pct]
+    labels: ['\broa?e\b', 'return on (average )?(net ?worth|equity)']
+    kind: level_pct
+  new_loans:
+    aliases: [new_loans]
+    labels: ['new loans', 'loans (booked|disbursed)', 'disburse', 'loans? acquired']
+    sectors: *lender
+    kind: count
+  new_customers:
+    related: [customer_franchise]
+    aliases: [new_customers, customers_added]
+    labels: ['new customers', 'customers? (added|acquired)', 'add(ing)?\s+[\d\s\-–tomMM.]*(million|mn|mm|crore|lakh)?\s*(new )?customers', 'customer acquisition']
+    kind: count
+  customer_franchise:
+    aliases: [customer_franchise]
+    labels: ['customer franchise', 'franchise']
+    weak: ['customers?\b']
+    kind: count
+  opex_to_nti:
+    aliases: [opex_to_nti, opex]
+    labels: ['opex to (net total income|nti)', 'opex[- ]to[- ]nti', 'cost[- ]to[- ]income']
+    sectors: *lender
+    kind: bps_or_pct
+  fee_income:
+    aliases: [fee_income]
+    labels: ['fee', 'commission income']
+    kind: amount
+  leverage:
+    aliases: [leverage]
+    labels: ['leverage', 'assets?[- ]to[- ]equity']
+    weak: ['\btimes\b', 'gearing']
+    kind: any
+  # --- insurers ------------------------------------------------------------------------------------------
+  persistency:
+    aliases: [persistency_13m, persistency_25m, persistency_37m, persistency_49m, persistency_61m]
+    labels: ['persistency', '\b(13|25|37|49|61)(th)?\s*m']
+    sectors: *insurer
+    kind: level_pct
+  vnb:
+    aliases: [vnb]
+    labels: ['\bvo?nb\b', 'value of new business']
+    sectors: *insurer
+    kind: amount
+  vnb_margin:
+    aliases: [vnb_margin]
+    labels: ['\bvo?nb\b', 'value of new business', 'new business margin']
+    sectors: *insurer
+    kind: level_pct
+  embedded_value:
+    aliases: [embedded_value]
+    labels: ['embedded value', '\biev\b', '\bev\b']
+    sectors: *insurer
+    kind: amount
+  roev:
+    aliases: [roev]
+    labels: ['\broev\b', 'return on embedded value', 'operating return']
+    sectors: *insurer
+    kind: level_pct
+  premium:
+    aliases: [ape, gwp, new_business_premium]
+    labels: ['\bape\b', 'annuali[sz]ed premium', 'gross written premium', '\bgwp\b', 'new business premium', '\bnbp\b', 'premium']
+    sectors: *insurer
+    kind: amount
+  solvency:
+    aliases: [solvency_ratio]
+    labels: ['solvency']
+    sectors: *insurer
+    kind: multiple
+  insurer_mix:
+    aliases: [banca_share, commission_ratio, opex_ratio]
+    labels: ['banca', 'commission ratio', 'opex ratio', 'expense ratio']
+    weak: ['commission', 'opex', 'expense', 'cost']
+    sectors: *insurer
+    kind: level_pct
+  # --- metals, capital goods, autos, pharma, fmcg, internet, IT ----------------------------------------
+  ebitda_per_tonne:
+    aliases: [ebitda_per_tonne]
+    labels: ['ebitda\s*(/|per)\s*(t\b|ton|tonne|mt)', 'per\s*(ton|tonne)', '/\s*t\b', '/\s*mt\b', '/\s*ton']
+    sectors: [metals_nonferrous]
+    kind: per_unit
+  tonnage:
+    aliases: [shipments_kt, production_kt, copper_cathode_volume_kt, capacity]
+    labels: ['shipments?', 'production', 'cathode', 'capacity', '\bktpa\b', '\bmtpa\b']
+    weak: ['volumes?', '\bkt\b', 'tonnes?', 'sales']
+    sectors: [metals_nonferrous]
+    kind: any
+  cost_of_production:
+    aliases: [cost_of_production]
+    labels: ['cost of production', 'cost per (ton|tonne)', 'cost reduction', 'conversion cost', 'cost inflation', 'costs? (went|go|going) up']
+    weak: ['costs?']
+    sectors: [metals_nonferrous]
+    kind: any
+  order_book:
+    related: [order_intake]
+    aliases: [order_book, order_book_l1]
+    labels: ['order\s*(book|backlog)', '\bl1\b', 'orders? (in hand|on hand)']
+    kind: amount
+  order_intake:
+    aliases: [order_intake]
+    labels: ['order\s*(intake|inflow|wins?)', 'orders? (won|secured|received)', 'new orders']
+    kind: amount
+  mix_pct:
+    aliases: [revenue_mix_pct, order_intake_mix_pct, order_book_mix_pct]
+    labels: ['mix']
+    weak: ['revenue', 'order', 'share']
+    kind: level_pct
+  volumes:
+    aliases: [volumes, domestic_volumes, export_volumes]
+    labels: ['volumes?', 'units', 'vehicles', 'dispatch', 'wholesale']
+    weak: ['sales', 'exports?']
+    kind: count
+  dealer_inventory_days:
+    aliases: [dealer_inventory_days]
+    labels: ['inventory']
+    weak: ['stock']
+    kind: days
+  pharma_business:
+    aliases: [domestic_formulations, api_revenue, us_generics, emerging_markets, us_revenue_usd]
+    labels: ['formulations?', '\bapi\b', 'generics?', 'emerging markets?', 'rest of (the )?world', '\brow\b']
+    related: [revenue, revenue_growth]
+    weak: ['\bus\b', 'india', 'sales', 'revenue']
+    sectors: [pharma]
+    kind: amount
+  r_and_d:
+    aliases: [r_and_d_pct]
+    labels: ['r\s*&\s*d', 'research']
+    kind: level_pct
+  fmcg_growth:
+    aliases: [underlying_volume_growth, value_growth]
+    labels: ['\buvg\b', 'underlying volume', 'volume growth', 'value growth', '\busg\b']
+    weak: ['growth']
+    kind: growth_pct
+  gov_margin:
+    related: [ebitda, ebitda_margin, revenue_growth]
+    aliases: [adjusted_ebitda_margin_of_gov]
+    labels: ['\bgov\b', 'gross order value', 'adjusted ebitda']
+    sectors: [consumer_internet]
+    kind: level_pct
+  users:
+    aliases: [monthly_transacting_users, direct_reach]
+    labels: ['users', '\bmtu\b', 'transacting', 'direct reach']
+    weak: ['customers']
+    kind: count
+  it_people:
+    aliases: [attrition, utilisation, employees]
+    labels: ['attrition', 'utili[sz]ation', 'employees', 'headcount', 'workforce']
+    kind: any
+  # --- generic financial lines (any company) -------------------------------------------------------------
+  revenue:
+    aliases: [revenue, revenue_usd]
+    labels: ['revenue', 'total income', 'income from operations', 'net sales', '\bsales\b', 'turnover', 'top ?line']
+    kind: amount
+  revenue_growth:
+    aliases: [revenue_growth]
+    labels: ['revenue', 'top ?line', '\bsales\b', 'turnover', 'business (growth|to grow)', 'income growth', 'constant currency', '\bcc\b', '\bnov\b', '\bgov\b', '\bcagr\b']
+    kind: growth_pct
+  pat:
+    aliases: [pat, net_income]
+    labels: ['\bpat\b', 'profit after tax', 'net profit', 'net income', 'bottom ?line', 'profit for the (period|year|quarter)']
+    kind: amount
+  ebitda:
+    aliases: [ebitda, ebitda_adjusted_usd]
+    labels: ['ebitda', 'operating profit', '\bebit\b']
+    kind: amount
+  ebitda_margin:
+    related: [ebitda, gov_margin]
+    aliases: [ebitda_margin_pct, ebitda_margin, gross_margin]
+    labels: ['ebitda margin', 'operating margin', 'ebit margin', 'gross margin', 'ebitda\b']
+    weak: ['margin']
+    kind: level_pct
+  capex:
+    aliases: [capex]
+    labels: ['capex', 'capital expenditure', 'capital spend', 'investments? of']
+    weak: ['invest', 'spend']
+    kind: amount
+  project_capital:
+    aliases: [project_capital_cost, project_capital_spent]
+    labels: ['capital cost', 'capital expenditures? spent', 'project cost']
+    weak: ['spent']
+    kind: amount
+  net_debt:
+    aliases: [net_debt, gross_debt]
+    labels: ['net debt', 'gross debt', 'borrowings', 'net cash']
+    weak: ['debt']
+    kind: amount
+  net_debt_to_ebitda:
+    related: [ebitda, net_debt, leverage, gov_margin]
+    aliases: [net_debt_to_ebitda]
+    labels: ['net debt\s*(/|to)[^.;]{0,60}?ebitda', 'leverage( ratio)?']
+    kind: multiple
+  debt_to_equity:
+    aliases: [debt_to_equity, net_debt_to_equity]
+    labels: ['debt[\s\-/]*(to\s*)?equity', '\bd/e\b', 'gearing']
+    kind: multiple
+  working_capital_days:
+    aliases: [working_capital_days, dso]
+    labels: ['working capital', '\bnwc\b', '\bdso\b', 'days sales', 'receivable days', 'debtor days']
+    weak: ['days']
+    kind: days
+  market_share:
+    aliases: [market_share]
+    labels: ['market share', 'share of the market']
+    weak: ['share']
+    kind: level_pct
+  interest_cost:
+    aliases: [interest_cost]
+    labels: ['interest cost', 'finance cost']
+    weak: ['interest']
+    kind: any
+  cash_balance:
+    aliases: [cash_balance]
+    labels: ['cash (balance|and|&|on)', 'liquidity']
+    weak: ['cash']
+    kind: amount
+  book_value_per_share:
+    aliases: [book_value_per_share]
+    labels: ['book value', '\bbvps\b']
+    kind: amount
+  esop_cost:
+    aliases: [esop_cost]
+    labels: ['esop', 'stock compensation', 'share[- ]based']
+    kind: amount
+
+  non_interest_income:
+    aliases: [non_interest_income, other_income]
+    labels: ['non[- ]interest income', 'other income', 'fee and commission']
+    kind: any
+  onsite_mix:
+    aliases: [onsite_mix]
+    labels: ['onsite (mix|effort)', 'offshore (mix|effort)']
+    kind: level_pct
+  deposits_growth:
+    aliases: [deposit_growth]
+    labels: ['deposits? growth', 'deposits? (book )?(to )?grow']
+    kind: growth_pct
+
+# Phrases that make a figure someone else's (the system, the economy, the industry, a regulator), not the
+# company's own.  A guidance row whose number sits near one of these is quarantined (Shivam 8 Nov: lender
+# growth context only for the company's own guidance; no system / industry / GDP growth).
+third_party:
+  - 'system(\s+level)?\s*(credit\s*)?growth'
+  - 'system\b'
+  - 'industry'
+  - 'nominal\s*gdp'
+  - '\bgdp\b'
+  - 'economy'
+  - 'inflation'
+  - '\brbi\b'
+  - 'repo'
+  - 'regulator'
+  - 'peers?'
+  - 'market (is|was|will|grew|growth)'
+  - 'sector (is|was|will|grew|growth)'
+  - 'consensus'
+
+# Forward words: a guidance row's quote must carry one (it is a target, not a reported figure).
+forward:
+  - 'expect'
+  - 'guid'
+  - 'target'
+  - 'outlook'
+  - 'aim'
+  - 'plan'
+  - 'estimat'
+  - 'foresee'
+  - 'project'
+  - 'should'
+  - 'deliver'
+  - 'comfortable'
+  - 'going to'
+  - 'clear about'
+  - 'look(ing)? at'
+  - 'will (be|grow|deliver|remain|reach|get)'
+  - 'would (be|grow)'
+  - 'going forward'
+  - 'next (year|quarter|fiscal)'
+  - 'corridor'
+  - 'aspir'
+  - 'confident'
+  - 'on track'
+  - 'anticipat'
+  - 'intend'
+  - 'commit'
+  - 'steady[- ]state'
+  - 'by fy'

@@ -103,3 +103,33 @@ Change a rule only with a measurement that supports the change, and note it in `
   python -m reality_engine.scripts.doc_identity_scan --symbols KEC,INFY --processes 6        # report + CSV; default D:\RealityEngine\reports, --report-dir .tmp/idreports in a workspace-write sandbox
   ```
 
+
+## 13. Independent row checks (T-113, 8 Nov 2026; standing rule in `tasks/RULINGS.md`)
+- The worker that wrote an extractor never checks it. Every `guidance` and `kpi_series` row is judged by
+  `reality_engine/pilot3/row_checks.py`, which shares no code or word list with the extractors: its own number
+  reader, its own label vocabulary (`reality_engine/pilot3/row_checks_vocab.yaml`, kept out of `lexicon/`), its own
+  period arithmetic. It opens the build read-only and writes `row_check` (one verdict per row) and `row_check_fail`
+  (one line per failed check, `hard` 1/0) to a separate database.
+- Verdicts: `verified` (every applicable check passed, and a table row with several numbers is pinned by an
+  independent source), `unverified` (nothing failed but something is not pinned: served with that label),
+  `quarantined` (a hard check failed: never served). When unsure, an extractor writes no row.
+- Hard checks: quote on the cited page; value present in the quote; a label of the metric in the quote (or, soft, in
+  the 3,000 characters before it); no other metric's label between the row's label and its number, and no other
+  metric named in the number's clause when the row's own is absent (`label_foreign`); a listed order ("Gross NPA and
+  Net NPA stood at a% and b% ... as against c% and d%") puts the number in the row's place (`list_order`); a change
+  ("reduction of 145 KT") is not stored as a level (`delta_value`); the metric fits the company's sector family;
+  plausible bounds; a reported figure's period had ended when it was known; a guidance row has a number, a forward
+  word, no system / industry / GDP wording near the number, and a target period that had not ended when said; the
+  filed statements agree on revenue / PAT (`fin_conflict`). Soft: scaled value, several numbers in a table quote,
+  disagreeing independent sources (`cross_doc`, another document AND another wording; a deck table copied into the
+  next deck is one source).
+- Run:
+  ```bash
+  python -m reality_engine.pilot3.row_checks --db D:/RealityEngine/pilot10/pilot10.db --out <verdicts.db> --profile tasks/night_loop/pilot10_profile.json
+  ```
+  About 4 s for 6,149 rows. First run on pilot10 (8 Nov): guidance 46 verified, 26 unverified, 34 quarantined (all 6
+  rows deleted by hand after T-105 quarantined); kpi_series 4,249 / 1,422 / 372. It found about 55 NNPA rows holding
+  the gross NPA figure, 9-month figures stored as full years, subsidiary PAT stored as the company's, and growth
+  deltas stored as levels. Gemini's rejected T-105 rows: none verified.
+- Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per
+  stratum) on companies the extractor's worker never saw; the hold-out stays outside the repo.
