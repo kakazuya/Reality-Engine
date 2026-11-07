@@ -18,7 +18,7 @@ Job files: `plugins/agy-worker/runtime/jobs/<job_id>/` (`job.json`, `brief.md`, 
 **Gemini's own tools.** agy's headless mode denies every shell command and an allow-rule for commands did not work
 (8 Nov), and a denied action ends the whole turn. So the worker gets `agy-tools` (`server/agy_tools_mcp.py`, added
 to agy's global MCP config): `run_check(command)` runs one allowlisted command (pytest, ruff, basedpyright,
-py_compile, doc_gate, git status/diff/log/show; no pipes or chaining) in the job workspace, which the runner passes
+py_compile, any `python -m reality_engine.<module>`, git status/diff/log/show; no pipes or chaining) in the job workspace, which the runner passes
 as `AGY_JOB_WORKSPACE`. agy's permissions (`~/.gemini/antigravity-cli/settings.json`, `permissions.allow`) allow
 `mcp(agy-tools/*)` and the pilot3 `reality-data` tools only; file reads and edits inside the workspace need no rule.
 Briefs must say: no shell commands, use `run_check`.

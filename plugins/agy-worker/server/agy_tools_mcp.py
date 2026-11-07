@@ -13,7 +13,7 @@ from mcp.server import MCPServer
 
 ALLOWED = [
     ["python", "-m", "pytest"], ["python", "-m", "ruff"], ["python", "-m", "basedpyright"], ["basedpyright"],
-    ["python", "-m", "py_compile"], ["python", "-m", "reality_engine.scripts.doc_gate"],
+    ["python", "-m", "py_compile"],
     ["git", "status"], ["git", "diff"], ["git", "log"], ["git", "show"],
 ]
 server = MCPServer(name="agy-tools", version="0.1.0")
@@ -24,13 +24,16 @@ def workspace() -> Path:
 
 
 def allowed(argv: list[str]) -> bool:
+    """A listed prefix, or `python -m reality_engine.<module>` (repo code, same trust as running its tests)."""
+    if len(argv) >= 3 and argv[:2] == ["python", "-m"] and argv[2].startswith("reality_engine."):
+        return True
     return any(argv[: len(a)] == a for a in ALLOWED)
 
 
 @server.tool(name="run_check", description=(
     "Run ONE allowed command in your workspace and get exit code, stdout and stderr tails. Allowed prefixes: "
     "python -m pytest, python -m ruff, python -m basedpyright, basedpyright, python -m py_compile, "
-    "python -m reality_engine.scripts.doc_gate, git status/diff/log/show. No pipes, redirects or chaining. "
+    "python -m reality_engine.<any module>, git status/diff/log/show. No pipes, redirects or chaining. "
     "Timeout 900 s."))
 def run_check(command: str) -> dict:
     try:
