@@ -18,7 +18,8 @@ provider route, credentials, or Codex's main model.
   containment/cancellation and the persisted per-job control token
 - Existing dsh installation and the launcher's inherited OpenCode Go account 2
   environment (`OPENCODE_GO_API_KEY_2`). The plugin never reads or writes that
-  key; it only passes `--account 2`. Keys stay in the environment, never in this
+  key; it only passes `--account 2`, or `--account 1` (`OPENCODE_GO_API_KEY`) when
+  `start_worker` is called with `account='1'` (MSI and HP alike since 7 Nov 2026). Keys stay in the environment, never in this
   manifest or a job record.
 
 Check with the pinned interpreter:

@@ -66,6 +66,8 @@ MODEL = "deepseek-v4.1-flash"
 EFFORT = "max"
 ACCOUNT = "2"
 KEY_ENV = "OPENCODE_GO_API_KEY_2"
+# account -> key env (the harness uses the same map); account 2 stays the default.
+KEY_ENV_BY_ACCOUNT = {"1": "OPENCODE_GO_API_KEY", "2": "OPENCODE_GO_API_KEY_2"}
 MODEL_LAUNCHER_MODULE = "reality_engine.scripts.run_deepseek_harness"
 PERMISSIONS = ("read-only", "workspace-write", "danger-full-access")
 # Additional write authority on top of the dsh sandbox mode.  dsh 0.2.1 has one
@@ -753,7 +755,7 @@ class Manager:
             )
 
     # ------------------------------------------------------------- provider
-    def _provider_session(self, job_id: str) -> str | None:
+    def _provider_session(self, job_id: str, key_env: str = KEY_ENV) -> str | None:
         """This job's stable OpenCode routing/cache identity (T-069).
 
         The job id is part of the id, so every worker gets its own session; the
@@ -766,7 +768,7 @@ class Manager:
                 return None
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            return module.worker_session_id(job_id, MODEL, KEY_ENV)
+            return module.worker_session_id(job_id, MODEL, key_env)
         except Exception:
             return None
 
@@ -1179,6 +1181,11 @@ class Manager:
                 account=account,
                 brief_first_line=brief_first_line,
             )
+        # MSI jobs honour ``account`` too (Shivam 7 Nov: key 2 hit its Go limit, key 1 works); default stays 2.
+        if account is not None and str(account) not in KEY_ENV_BY_ACCOUNT:
+            raise PluginError("account_invalid", "account must be '1' or '2'")
+        msi_account = str(account) if account is not None else ACCOUNT
+        msi_key_env = KEY_ENV_BY_ACCOUNT[msi_account]
         if use_worktree:
             # The worktree derives its own workspace; the repository root is
             # the only meaningful value for the (ignored) workspace argument.
@@ -1454,7 +1461,7 @@ class Manager:
                 "--cwd",
                 str(ws),
                 "--account",
-                ACCOUNT,
+                msi_account,
                 "--permission",
                 effective_permission,
                 "--allow-paid",
@@ -1471,7 +1478,7 @@ class Manager:
             # it is the real limit, while the supervisor renews the lease.
             argv += ["--timeout", str(hard_timeout_seconds)]
 
-            provider_session = self._provider_session(job_id)
+            provider_session = self._provider_session(job_id, msi_key_env)
             owner_id = secrets.token_hex(16)
             if provider_session is None:
                 warnings.append("provider_session_unavailable: could not import go_session.py")
@@ -1534,8 +1541,8 @@ class Manager:
                 "resource_locks": data_locks,
                 "model": MODEL,
                 "effort": EFFORT,
-                "account": ACCOUNT,
-                "key_env": KEY_ENV,
+                "account": msi_account,
+                "key_env": msi_key_env,
                 "provider_session": provider_session,
                 "provider_session_kind": "opencode_routing_cache",
                 "conversation_id": None,
@@ -1661,7 +1668,7 @@ class Manager:
                 "resource_locks": data_locks,
                 "model": MODEL,
                 "effort": EFFORT,
-                "account": ACCOUNT,
+                "account": msi_account,
                 "provider_session": provider_session,
                 "conversation_id": status.get("conversation_id"),
                 "status_path": paths["status"],
