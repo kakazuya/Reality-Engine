@@ -29,12 +29,15 @@ Checks (``check`` names in ``row_check_fail``):
     past_target       (guidance) a target for a period that had ended before it was said
     part_not_total    (kpi) dimension "total" but the amount is a small fraction of the filed figure
     period_word       (kpi) the number's sentence names a different period than the row
+    currency          the label-to-number span prints another currency than the row's unit
     multi_number      (kpi) the quote holds several numbers, so which column was taken is not pinned -> unverified
     cross_doc         (kpi) another document gives a different value for the same metric, period and scope
     fin_conflict      (kpi) the filed statements give a different figure for the same line and period
     variant           (kpi/guidance) pat/ebitda/revenue whose label says adjusted / before exceptional /
                       excluding / per ... -> unverified
     entity_mismatch   (kpi) the dimension and the entity name two different non-symbol subsidiaries -> unverified
+    dimension_word    (kpi) a total row whose quote names a segment / business word just before its label ->
+                      unverified
 
 Run:  python -m reality_engine.pilot3.row_checks --db D:/RealityEngine/pilot10/pilot10.db --out OUT.db
       [--profile tasks/night_loop/pilot10_profile.json] [--tables guidance,kpi_series]
@@ -62,9 +65,10 @@ VOCAB_PATH = Path(__file__).with_name("row_checks_vocab.yaml")
 
 HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_present", "label_conflict", "label_foreign", "sector_fit", "third_party",
         "forward_word", "past_figure", "null_value", "range_order", "plausible", "future_period", "past_target",
-        "fin_conflict", "part_not_total", "period_word"}
+        "fin_conflict", "part_not_total", "period_word", "currency"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
-        "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch"}
+        "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch",
+        "dimension_word"}
 
 # Revenue / PAT / EBITDA / order rows must be a plausible share of the company's filed figure: a subsidiary or
 # segment amount stored with dimension "total" is the classic "part stored as the total" mistake.
@@ -307,6 +311,25 @@ def period_matches(tokens: set[str], key: str) -> bool:
     return False
 
 
+# The currency a figure is printed in: the nearest marker before the number wins ("$ 6,724 $ 5,176" is USD,
+# "Rs 2,050 crore ($ 246 million)" is INR at the rupee number).  The row's unit must agree with it.
+_CURRENCY = re.compile(
+    r"(?P<usd>[$£€]|\bUSD\b|\bUS\s+dollars?\b|\bdollars?\b|\bEUR\b|\beuros?\b|\bGBP\b)"
+    r"|(?P<inr>₹|`|\bRs\.?\b|\bINR\b|\bcrores?\b|\blakhs?\b)", re.I)
+
+# A segment word from the company's own non-total dimensions, and a capitalised noun phrase ("Aluminium
+# Upstream"), in the 60 characters before a total row's label.
+_DIM_STOP = {"total", "other", "others", "segment", "business", "consolidated", "standalone",
+             "finance", "financial", "services"}
+_QUALIFIER = {"the", "our", "this", "that", "these", "those", "its", "their", "his", "her", "adjusted",
+              "reported", "consolidated", "standalone", "underlying", "normalised", "normalized", "proforma",
+              "estimated", "annualised", "annualized", "overall", "combined", "net", "gross", "total",
+              "company", "business", "segment", "quarter", "year", "years", "months", "nine", "half",
+              "first", "second", "third", "fourth", "in", "on", "at", "for", "from", "and", "of", "to",
+              "with", "by", "as", "rs", "inr", "usd", "us", "fy", "h1", "h2", "q1", "q2", "q3", "q4"}
+_CAP_PHRASE = re.compile(r"\b([A-Z][A-Za-z&.]{2,}(?:\s+[A-Z][A-Za-z&.]{2,}){1,3})\b")
+
+
 # ----------------------------------------------------------------------------------------------- bounds
 
 def plausible(kind: str, metric: str, lo: float | None, hi: float | None, unit: str) -> bool:
@@ -355,6 +378,8 @@ class Checker:
         self.sectors = sectors
         self._page: dict[tuple[str, int], str | None] = {}
         self.doc_type = {r["doc_key"]: (r["doc_type"] or "") for r in self.con.execute("SELECT doc_key, doc_type FROM doc")}
+        self.company_words = {(r["symbol"] or "").upper(): {w.lower() for w in re.findall(r"[A-Za-z]{3,}", r["name"] or "")}
+                              for r in self.con.execute("SELECT symbol, name FROM company")}
 
     # -- shared --
     def page_text(self, doc_key: str, page: int) -> str | None:
@@ -587,6 +612,58 @@ class Checker:
             return
         v.fail("entity_mismatch", f"dimension '{dim}' and entity '{ent}' name different subsidiaries")
 
+    def check_currency(self, v: Verdict, m: Metric | None, text: str, pos: int | None, unit: str) -> None:
+        """The label-to-number span prints a currency that is not the row's unit: the nearest currency marker
+        before the number decides ("Adjusted Net Debt $ 6,724 $ 5,176" is a USD figure in an inr_cr row)."""
+        u = (unit or "").lower()
+        if pos is None or not (u.startswith("inr") or u.startswith("usd")):
+            return
+        lo = max(0, pos - 12)
+        if m is not None:
+            ends = [mm.end() for p in (*m.labels, *m.weak) for mm in p.finditer(text, 0, pos)]
+            if ends:
+                lo = max(max(ends), pos - 80)
+        marks = list(_CURRENCY.finditer(text[lo:pos]))
+        if not marks:
+            return
+        last = max(marks, key=lambda mm: mm.start())
+        if u.startswith("inr") and last.group("usd"):
+            v.fail("currency", f"unit {unit} but the number is printed in {last.group(0)!r}")
+        elif u.startswith("usd") and last.group("inr"):
+            v.fail("currency", f"unit {unit} but the number is printed in {last.group(0)!r}")
+
+    def check_dimension_word(self, v: Verdict, m: Metric | None, quote: str, value: float | None,
+                             symbol: str, dim_words: dict[str, set[str]]) -> None:
+        """A total row whose quote names a segment just before its label ("Aluminium Upstream ... EBITDA per
+        tonne", "Renewables ... Revenues of Rs 122 Cr"): the amount is probably that segment's, not the total."""
+        if m is None or value is None or not quote:
+            return
+        _, rpos = find_value(value, numbers_in(quote))
+        if rpos is None:
+            return
+        starts = [mm.start() for p in (*m.labels, *m.weak) for mm in p.finditer(quote) if mm.end() <= rpos]
+        if not starts:
+            return
+        window = quote[max(0, max(starts) - 60): max(starts)]
+        if any(p.search(_WS.sub(" ", window)) for p in m.labels):
+            # the window holds the metric's own full name before its abbreviation ("Return on Average Assets
+            # (RoA)", "Profit  After Tax (PAT)"): not a segment word
+            return
+        low = window.lower()
+        for word in sorted(dim_words.get(symbol, ())):
+            if re.search(rf"(?<![a-z]){re.escape(word)}(?![a-z])", low):
+                v.fail("dimension_word", f"the {m.name} label follows segment word '{word}' but the row is total")
+                return
+        company = self.company_words.get((symbol or "").upper(), set())
+        for mm in _CAP_PHRASE.finditer(window):
+            words = [w.strip(".").lower() for w in mm.group(1).split()]
+            if sum(1 for w in words if w not in _QUALIFIER) < 2:
+                continue
+            if company and all(w in company for w in words):
+                continue
+            v.fail("dimension_word", f"the {m.name} label follows '{mm.group(1).strip()}' but the row is total")
+            return
+
     def finish(self, v: Verdict) -> Verdict:
         names = {c for c, _ in v.fails}
         if names & HARD:
@@ -633,6 +710,7 @@ class Checker:
                     v.fail("plausible", f"{lo}-{hi} {r['unit']} outside {kind} bounds")
             context = self.context_before(r["doc_key"], r["page"], quote, 3000)
             self.check_label(v, m, text, pos, context)
+            self.check_currency(v, m, text, pos, r["unit"] or "")
             if pos is not None:
                 window = text[max(0, pos - 90): pos + 60]
                 hit = next((p.pattern for p in self.vocab.third_party if p.search(window)), None)
@@ -695,6 +773,14 @@ class Checker:
             m = self.vocab.canon(r["metric"])
             key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"], r["basis"])
             groups[key].append((r["id"], r["doc_key"], (r["value"] or 0) * (r["scale"] or 1), squash(r["quote"] or "")[:80]))
+        # the company's own non-total dimension words: a total row whose quote names one is probably that part
+        dim_words: dict[str, set[str]] = defaultdict(set)
+        for r in rows:
+            dim = (r["dimension"] or "").strip().lower()
+            if dim and dim != "total":
+                for w in re.split(r"[^a-z0-9]+", dim):
+                    if len(w) >= 3 and w not in _DIM_STOP:
+                        dim_words[r["symbol"]].add(w)
         out = []
         for r in rows:
             m = self.vocab.canon(r["metric"])
@@ -751,6 +837,9 @@ class Checker:
                 v.fail("multi_number", f"{len(nums)} numbers in the quote: column not pinned")
             ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
             self.check_label(v, m, text, pos, ctx)
+            self.check_currency(v, m, text, pos, r["unit"] or "")
+            if r["dimension"] == "total":
+                self.check_dimension_word(v, m, quote, value, r["symbol"], dim_words)
             if how == "exact":
                 # the list-order test needs the number the row actually took: a rescaled match (an OCR
                 # "0. 77%") is a soft value_scaled, not evidence about the list

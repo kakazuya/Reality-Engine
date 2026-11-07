@@ -126,14 +126,20 @@ Change a rule only with a measurement that supports the change, and note it in `
   ("we grew at 12%" -> `past_figure`), and a target period that had not ended when said; the filed statements agree
   on revenue / PAT (`fin_conflict`). T-113 A added `part_not_total` (dimension `total` but the amount is under 15% of
   the filed figure of the same family: revenue against filed revenue, PAT against filed PAT, order against filed
-  revenue, USD revenue against the median of the company's other USD revenue rows of the period) and `period_word`
+  revenue, USD revenue against the median of the company's other USD revenue rows of the period), `period_word`
   (the number's sentence names 9M / nine months / YTD / H1 / half year / Q1-Q4 and the row's `fiscal_period` holds
-  another; a comparative phrase such as "over Q1 FY26" and table/chart quotes do not count).
+  another; a comparative phrase such as "over Q1 FY26" and table/chart quotes do not count), and `currency` (the
+  label-to-number span prints another currency than the row's unit: the nearest marker before the number decides,
+  so "$ 6,724 $ 5,176" is USD and "Rs 2,050 crore ($ 246 million)" is INR at the rupee number; the corpus's
+  backtick rupee glyph counts as INR).
 - Soft: scaled value, several numbers in a table quote, disagreeing independent sources (`cross_doc`, another
   document AND another wording; a deck table copied into the next deck is one source), `variant` (a PAT / EBITDA /
   revenue figure labelled adjusted / before exceptional / excluding / per ... unless the metric name says so),
-  `entity_mismatch` (dimension and entity name two different non-symbol subsidiaries), missing vocabulary or page
-  text, unknown sector, a weak or pre-quote label.
+  `entity_mismatch` (dimension and entity name two different non-symbol subsidiaries), `dimension_word` (a total row
+  whose quote names a segment word from the company's own non-total dimensions or a capitalised noun phrase in the
+  60 characters before its label: "Aluminium Business EBITDA", "Renewables ... Revenues"; a window that holds the
+  metric's own full name before its abbreviation, "Return on Average Equity (ROE)", is not a segment), missing
+  vocabulary or page text, unknown sector, a weak or pre-quote label.
 - Run:
   ```bash
   python -m reality_engine.pilot3.row_checks --db D:/RealityEngine/pilot10/pilot10.db --out <verdicts.db> \
@@ -143,19 +149,25 @@ Change a rule only with a measurement that supports the change, and note it in `
   `row_checks_summary.csv` (status counts by metric x sector x document type x extractor rule) and the sample TSV
   (id, symbol, metric, dimension, period, value, unit, quote, fails) for the human read; `--tables guidance` runs a
   database without `kpi_series`.
-- Measured 9 Nov 2026 (T-113 A, dev databases read-only): v2 database guidance 47 verified / 24 unverified / 35
-  quarantined (46/26/34 before this change), kpi_series 4,203 / 1,493 / 347 (4,249/1,422/372); `t105_agy.db`
-  guidance 30 / 22 / 14 (29/26/11). All six known-wrong v2 rows (HDFCBANK system / nominal-GDP / "grew at 12%",
-  SBILIFE agency+banca, guided 14-15, opex None) and all seven Gemini known-wrong rows are quarantined; the INFY
-  products-and-platforms row (246 of 5,082 USD mn) is `part_not_total`; the three false quarantines (MARUTI 13 days,
-  KEC 1,550 crore, BAJFINANCE 0.18% as 18 bps) are verified. Per check: `list_order` 53 (64 before; the
-  fewer-values-than-labels rule cleared the false names), `part_not_total` 83, `period_word` 3, `variant` 81 (soft),
-  `entity_mismatch` 36 (soft), guidance `past_figure` 1, guidance `label_foreign` 1, kpi `label_foreign` 1 (38
-  before: 27 rows had a foreign word that was also one of their own weak labels, and 5 "underlying sales growth" rows
-  are now in the vocabulary).
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (16 passed, 9 Nov) builds a tiny fixture
+- Measured 9 Nov 2026, round 2 (T-113 A follow-up; dev databases read-only): v2 database guidance 47 verified / 24
+  unverified / 35 quarantined (unchanged), kpi_series 4,193 / 1,493 / 357 (round 1: 4,203/1,493/347); `t105_agy.db`
+  guidance 30 / 22 / 14 (unchanged; no currency or dimension hits in a guidance-only database). New hard `currency`
+  quarantines 12 rows: the six HINDALCO Novelis figures stored `inr_cr` from "$ 6,724 / $ 5,176" and "capex $414 /
+  $372", including HINDALCO 44300 "Adjusted Net Debt $ 6,724 $ 5,176" (the one wrong row in Opus's round-1 verified
+  sample; now quarantined). The nearest-marker rule and the backtick rupee glyph keep correct rows: KEC "USD 225
+  million (approximately ` 2,000 Crore" is the rupee number. New soft `dimension_word` flags 7 rows: HINDALCO
+  "Aluminium Business EBITDA" stored total (3), HINDALCO "Aluminium metal production" stored total (2), SBILIFE
+  "Individual New Business Premium" stored total (2); the first pass flagged 148, 136 of them the metric's own name
+  before its abbreviation, so the full-name window guard is what makes the check usable. Round 1 unchanged: all six
+  known-wrong v2 rows and all seven Gemini known-wrong rows quarantined; the INFY products-and-platforms row (246 of
+  5,082 USD mn) is `part_not_total`; MARUTI 13 days, KEC 1,550 crore, BAJFINANCE 0.18% as 18 bps verified. Per check:
+  `list_order` 53, `part_not_total` 83, `period_word` 3, `variant` 81 (soft), `entity_mismatch` 36 (soft),
+  `currency` 12, `dimension_word` 7 (soft), guidance `past_figure` 1, guidance `label_foreign` 1, kpi
+  `label_foreign` 1.
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (18 passed, 9 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
-  and known-right verdict; `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
+  and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard);
+  `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per
   stratum) on companies the extractor's worker never saw; the hold-out stays outside the repo.
