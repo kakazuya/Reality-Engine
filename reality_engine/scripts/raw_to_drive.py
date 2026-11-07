@@ -110,11 +110,19 @@ def step_compare(con: sqlite3.Connection, listing_dir: Path) -> None:
           f"({(con.execute('SELECT SUM(size) FROM local_file WHERE status=?', ('missing',)).fetchone()[0] or 0) / 1e9:.1f} GB)")
 
 
-def step_upload(con: sqlite3.Connection, listing_dir: Path, roots: list[str], bwlimit: str) -> None:
+def _kept(path: str, prefixes: list[str]) -> bool:
+    p = os.path.normcase(os.path.normpath(path))
+    return any(p.startswith(k) for k in prefixes)
+
+
+def step_upload(con: sqlite3.Connection, listing_dir: Path, roots: list[str], bwlimit: str,
+                keep: list[str] | None = None) -> None:
+    """``keep``: path prefixes not uploaded either (the research library is already on the shared Drive)."""
+    prefixes = [os.path.normcase(os.path.normpath(k)) for k in (keep or [])]
     by_root = {Path(r).name: r for r in roots}
     for name, root in by_root.items():
-        rels = [r for (r,) in con.execute("SELECT rel FROM local_file WHERE status='missing' AND root=? "
-                                          "AND deleted_at IS NULL", (name,))]
+        rels = [r for (p, r) in con.execute("SELECT path, rel FROM local_file WHERE status='missing' AND root=? "
+                                            "AND deleted_at IS NULL", (name,)) if not _kept(p, prefixes)]
         if not rels:
             continue
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as fh:
@@ -139,8 +147,7 @@ def step_delete(con: sqlite3.Connection, really: bool, keep: list[str] | None = 
     """``keep``: path prefixes never deleted (Shivam 7 Nov: the research library ``raw/user_research`` stays local)."""
     prefixes = [os.path.normcase(os.path.normpath(k)) for k in (keep or [])]
     rows = [(p, s) for p, s in con.execute(
-        "SELECT path, size FROM local_file WHERE status='on_drive' AND deleted_at IS NULL")
-        if not any(os.path.normcase(os.path.normpath(p)).startswith(k) for k in prefixes)]
+        "SELECT path, size FROM local_file WHERE status='on_drive' AND deleted_at IS NULL") if not _kept(p, prefixes)]
     total = sum(s for _, s in rows)
     if not really:
         print(f"delete (dry run): {len(rows)} files, {total / 1e9:.1f} GB would be removed; pass --delete")
@@ -171,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--manifest", required=True)
     ap.add_argument("--bwlimit", default="0")
     ap.add_argument("--delete", action="store_true", help="really delete in the delete step")
-    ap.add_argument("--keep", action="append", default=[], help="path prefix never deleted (repeatable)")
+    ap.add_argument("--keep", action="append", default=[], help="path prefix never uploaded or deleted (repeatable)")
     ap.add_argument("steps", nargs="+", choices=["hash", "compare", "upload", "delete"])
     a = ap.parse_args(argv)
     con = open_manifest(a.manifest)
@@ -181,7 +188,7 @@ def main(argv: list[str] | None = None) -> int:
         elif step == "compare":
             step_compare(con, Path(a.listing_dir))
         elif step == "upload":
-            step_upload(con, Path(a.listing_dir), a.root, a.bwlimit)
+            step_upload(con, Path(a.listing_dir), a.root, a.bwlimit, a.keep)
         else:
             step_delete(con, a.delete, a.keep)
     return 0

@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-06 05:00 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 81 tables and 56 of 72 raw folders.
+Generated 2026-11-07 05:00 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 13 tables and 51 of 72 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -23,8 +23,6 @@ Undocumented: 81 tables and 56 of 72 raw folders.
 | ar_facts.db | `ar_skipped_pages` | 521,224 | yes |
 | bse_announcements.db | `ann` | 1,947,087 | yes |
 | bse_announcements.db | `done` | 33,194 | yes |
-| chunks_v2.db | `deck_chunks` | 203,378 | **undocumented** |
-| chunks_v2.db | `deck_docs` | 23,405 | **undocumented** |
 | concall_facts.db | `cc_docs` | 140,700 | yes |
 | concall_facts.db | `cc_item_checks` | 646,563 | yes |
 | concall_facts.db | `cc_items` | 720,692 | yes |
@@ -68,7 +66,7 @@ Undocumented: 81 tables and 56 of 72 raw folders.
 | equity_intelligence.db | `corporate_documents` | 140,775 | yes |
 | equity_intelligence.db | `corporate_status_flags` | 0 | yes |
 | equity_intelligence.db | `countries` | 4 | yes |
-| equity_intelligence.db | `daily_price_delivery` | 3,867,817 | yes |
+| equity_intelligence.db | `daily_price_delivery` | 8,800,128 | yes |
 | equity_intelligence.db | `distillation_runs` | 6 | yes |
 | equity_intelligence.db | `document_chunks` | 2,947,086 | yes |
 | equity_intelligence.db | `dynamic_parameter_definitions` | 5 | yes |
@@ -192,121 +190,8 @@ Undocumented: 81 tables and 56 of 72 raw folders.
 | pilot/macro_all.db | `macro_claim` | 21,793 | yes |
 | pilot/macro_all.db | `macro_claim_target` | 44,742 | yes |
 | pilot/macro_all.db | `macro_doc` | 456 | yes |
-| pilot/pilot60/chunks_v3_history.db | `build_run` | 5 | yes |
-| pilot/pilot60/chunks_v3_history.db | `chunk` | 212,276 | yes |
-| pilot/pilot60/chunks_v3_history.db | `chunk_entity` | 0 | yes |
-| pilot/pilot60/chunks_v3_history.db | `chunk_tag` | 527,851 | yes |
-| pilot/pilot60/chunks_v3_history.db | `chunk_vec_ref` | 0 | yes |
-| pilot/pilot60/chunks_v3_history.db | `coverage_scorecard` | 0 | yes |
-| pilot/pilot60/chunks_v3_history.db | `doc` | 18,031 | yes |
-| pilot/pilot60/chunks_v3_history.db | `history_outcome` | 31,509 | **undocumented** |
-| pilot/pilot60/chunks_v3_history.db | `result_note` | 0 | yes |
-| pilot/pilot60/chunks_v3_history.db | `tag_vocab` | 64 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `build_run` | 5 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `chunk` | 108,404 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `chunk_entity` | 304,625 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `chunk_tag` | 321,794 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `chunk_vec_ref` | 0 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `coverage_scorecard` | 0 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `doc` | 2,498 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `result_note` | 0 | yes |
-| pilot/pilot60/chunks_v3_pilot.db | `tag_vocab` | 32 | yes |
-| pilot/pilot60/chunks_v3_pilot_capped.db | `build_run` | 2 | yes |
-| pilot/pilot60/chunks_v3_pilot_capped.db | `chunk` | 36,494 | yes |
-| pilot/pilot60/chunks_v3_pilot_capped.db | `chunk_entity` | 107,121 | yes |
-| pilot/pilot60/chunks_v3_pilot_capped.db | `chunk_tag` | 104,765 | yes |
-| pilot/pilot60/chunks_v3_pilot_capped.db | `chunk_vec_ref` | 0 | yes |
-| pilot/pilot60/chunks_v3_pilot_capped.db | `coverage_scorecard` | 0 | yes |
-| pilot/pilot60/chunks_v3_pilot_capped.db | `doc` | 433 | yes |
-| pilot/pilot60/chunks_v3_pilot_capped.db | `result_note` | 0 | yes |
-| pilot/pilot60/chunks_v3_pilot_capped.db | `tag_vocab` | 32 | yes |
-| pilot/pilot60/extract_pilot60.db | `capex_project` | 19 | yes |
-| pilot/pilot60/extract_pilot60.db | `company_capacity_utilisation` | 70 | yes |
-| pilot/pilot60/extract_pilot60.db | `company_cost_structure` | 21 | yes |
-| pilot/pilot60/extract_pilot60.db | `company_debt_mix` | 18 | yes |
-| pilot/pilot60/extract_pilot60.db | `company_operating_metrics` | 55 | yes |
-| pilot/pilot60/extract_pilot60.db | `company_price_revision` | 61 | yes |
-| pilot/pilot60/extract_pilot60.db | `company_segment_pnl` | 51 | yes |
-| pilot/pilot60/extract_pilot60.db | `extract_done` | 11 | **undocumented** |
-| pilot/pilot60/extract_pilot60.db | `extract_handcheck` | 150 | **undocumented** |
-| pilot/pilot60/extract_pilot60.db | `extract_recall` | 20 | **undocumented** |
-| pilot/pilot60/extract_pilot60.db | `extract_reject` | 318 | **undocumented** |
-| pilot/pilot60/extract_pilot60.db | `extract_run` | 6 | **undocumented** |
-| pilot/pilot60/extract_pilot60.db | `extract_selection` | 5,208 | **undocumented** |
-| pilot/pilot60/extract_pilot60.db | `order_book_contract` | 31 | yes |
-| pilot/pilot60/extract_pilot60.db | `order_intake` | 21 | yes |
-| pilot/pilot60/extract_pilot60.db | `rating_action` | 230 | yes |
-| pilot/pilot60/extract_pilot60.db | `supply_link` | 0 | yes |
-| pilot/pilot60/facts_pilot.db | `build_run` | 1 | yes |
-| pilot/pilot60/facts_pilot.db | `company_interest_cover` | 12,762 | yes |
-| pilot/pilot60/facts_pilot.db | `company_metric_series` | 1,056,589 | yes |
-| pilot/pilot60/facts_pilot.db | `company_result_pit` | 60,023 | yes |
-| pilot/pilot60/facts_pilot.db | `company_segment_pnl` | 34,451 | yes |
-| pilot/pilot60/facts_pilot.db | `company_working_capital` | 9,144 | yes |
-| pilot/pilot60/facts_pilot.db | `xbrl_concept_map` | 110 | yes |
-| pilot/pilot60/market_state_b.db | `build_run` | 1 | yes |
-| pilot/pilot60/market_state_b.db | `company_membership_pit` | 10,895 | yes |
-| pilot/pilot60/market_state_b.db | `fno_oi_daily` | 16,242,454 | yes |
-| pilot/pilot60/market_state_b.db | `index_list` | 133 | yes |
-| pilot/pilot60/market_state_b.db | `mkt_nse_full_daily` | 4,290,443 | yes |
-| pilot/pilot60/market_state_b.db | `series_meta` | 22 | yes |
-| pilot/pilot60/market_state_b.db | `series_observation` | 7,062 | yes |
-| pilot/pilot60/market_state_pilot.db | `build_run` | 0 | yes |
-| pilot/pilot60/market_state_pilot.db | `company_membership_pit` | 10,895 | yes |
-| pilot/pilot60/market_state_pilot.db | `company_ownership_pit` | 49,126 | yes |
-| pilot/pilot60/market_state_pilot.db | `company_sector_pit` | 0 | yes |
-| pilot/pilot60/market_state_pilot.db | `company_state_daily` | 7,258,000 | yes |
-| pilot/pilot60/market_state_pilot.db | `event_day0` | 3,010,610 | yes |
-| pilot/pilot60/market_state_pilot.db | `event_leakage_window` | 0 | yes |
-| pilot/pilot60/market_state_pilot.db | `index_list` | 133 | yes |
-| pilot/pilot60/market_state_pilot.db | `isin_rekey_map` | 0 | yes |
-| pilot/pilot60/market_state_pilot.db | `theme_map` | 0 | yes |
-| pilot/pilot60/results_notes_chunks.db | `build_run` | 1 | yes |
-| pilot/pilot60/results_notes_chunks.db | `chunk` | 1,131 | yes |
-| pilot/pilot60/results_notes_chunks.db | `chunk_entity` | 3,368 | yes |
-| pilot/pilot60/results_notes_chunks.db | `chunk_tag` | 2,466 | yes |
-| pilot/pilot60/results_notes_chunks.db | `chunk_vec_ref` | 0 | yes |
-| pilot/pilot60/results_notes_chunks.db | `coverage_scorecard` | 0 | yes |
-| pilot/pilot60/results_notes_chunks.db | `doc` | 76 | yes |
-| pilot/pilot60/results_notes_chunks.db | `result_note` | 0 | yes |
-| pilot/pilot60/results_notes_chunks.db | `tag_vocab` | 32 | yes |
-| pilot/pilot60/sector_pit.db | `company_sector_pit` | 482 | yes |
 | pilot/pilot60_history_manifest.db | `docs` | 251,829 | yes |
 | pilot/results_notes.db | `results_notes` | 17,989 | yes |
-| pilot/v4/fact_v4_pilot.db | `atom_status` | 43 | **undocumented** |
-| pilot/v4/fact_v4_pilot.db | `fact` | 1,563,625 | yes |
-| pilot/v4/fact_v4_pilot.db | `membership` | 10,895 | yes |
-| pilot/v4/fact_v4_pilot.db | `pilot_universe` | 60 | **undocumented** |
-| pilot/v4/fact_v4_pilot_oi.db | `fact` | 6,927,092 | yes |
-| pilot/v4/fact_v4_pilot_oi.db | `pilot_universe` | 60 | **undocumented** |
-| pilot/v4/quarters_pilot60.db | `company_quarter_series` | 20,610 | **undocumented** |
-| pilot/v4/quarters_pilot60.db | `pilot_quarter_mix` | 3 | **undocumented** |
-| pilot/v4/quarters_pilot60.db | `quarter_derivation_counts` | 6 | **undocumented** |
-| pilot/v4/quarters_pilot60.db | `quarter_handcheck` | 14,226 | **undocumented** |
-| pilot/v4/quarters_pilot60.db | `quarter_sample` | 30 | **undocumented** |
-| pilot/v4/shp_xbrl_pilot.db | `fact` | 5,154 | yes |
-| pilot/v4/shp_xbrl_pilot.db | `filings` | 566 | yes |
-| pilot/v4/shp_xbrl_pilot.db | `xcheck` | 1,126 | **undocumented** |
-| pilot/v4/v4.db | `attention` | 0 | **undocumented** |
-| pilot/v4/v4.db | `claim` | 647,516 | yes |
-| pilot/v4/v4.db | `edge` | 0 | yes |
-| pilot/v4/v4.db | `hypothesis` | 0 | **undocumented** |
-| pilot/v4/v4.db | `own_estimate` | 2,325 | **undocumented** |
-| pilot/v4/v4.db | `own_estimate_band` | 12 | **undocumented** |
-| pilot/v4/v4.db | `own_estimate_band_prev` | 12 | **undocumented** |
-| pilot/v4/v4.db | `reaction_lag` | 0 | **undocumented** |
-| pilot/v4/v4_vocab.db | `beam_answer` | 40,094 | **undocumented** |
-| pilot/v4/v4_vocab.db | `beam_batch` | 10,009 | **undocumented** |
-| pilot/v4/v4_vocab.db | `beam_context` | 148,634 | **undocumented** |
-| pilot/v4/v4_vocab.db | `beam_run` | 3 | **undocumented** |
-| pilot/v4/v4_vocab.db | `label` | 139 | yes |
-| pilot/v4/v4_vocab.db | `map` | 148,652 | yes |
-| pilot/v4/v4_vocab.db | `other_cluster` | 26,261 | **undocumented** |
-| pilot/v4/v4_vocab.db | `surface` | 148,652 | **undocumented** |
-| pilot/v4/v4_vocab_pass1_backup.db | `label` | 139 | yes |
-| pilot/v4/v4_vocab_pass1_backup.db | `map` | 148,652 | yes |
-| pilot/v4/v4_vocab_pass1_backup.db | `other_cluster` | 26,261 | **undocumented** |
-| pilot/v4/v4_vocab_pass1_backup.db | `surface` | 148,652 | **undocumented** |
 | results_notes.db | `docs` | 41,606 | yes |
 | results_notes.db | `gate` | 21 | yes |
 | results_notes.db | `notes` | 306,389 | yes |
@@ -315,69 +200,6 @@ Undocumented: 81 tables and 56 of 72 raw folders.
 | results_xbrl.db | `filings_isin` | 183,029 | yes |
 | pilot3/pages.db | `doc` | 15,348 | yes |
 | pilot3/pages.db | `doc_page` | 23,259 | yes |
-| pilot3/pages_before_dates_merge_2026-11-04.db | `doc` | 13,349 | yes |
-| pilot3/pages_before_dates_merge_2026-11-04.db | `doc_page` | 23,259 | yes |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `company` | 7 | yes |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `dividend_event` | 25 | **undocumented** |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `doc` | 2,004 | yes |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `doc_alias` | 1,432 | **undocumented** |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `doc_page` | 23,558 | yes |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `fin_annual_line` | 3,213 | **undocumented** |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `formula` | 34 | **undocumented** |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `guidance` | 660 | yes |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `kpi_series` | 149,333 | yes |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `price_delivery` | 11,557 | yes |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `ratio_panel` | 3,283 | yes |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `share_capital` | 180 | **undocumented** |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `shp_category` | 1,638 | **undocumented** |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `transcript_statement` | 55,972 | **undocumented** |
-| pilot3/pilot3_before_dates_merge_2026-11-04.db | `valuation_daily` | 5,615 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `company` | 7 | yes |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `dividend_event` | 25 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `doc` | 2,004 | yes |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `doc_alias` | 1,432 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `doc_page` | 23,558 | yes |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `fin_annual_line` | 3,180 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `formula` | 34 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `kpi_series` | 104,837 | yes |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `price_delivery` | 11,557 | yes |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `ratio_panel` | 3,283 | yes |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `share_capital` | 180 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `shp_category` | 1,638 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `transcript_statement` | 55,972 | **undocumented** |
-| pilot3/pilot3_before_kpi_merge_2026-11-04.db | `valuation_daily` | 5,615 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `company` | 7 | yes |
-| pilot3/pilot3_before_nim_2026-11-03.db | `dividend_event` | 25 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `doc` | 2,004 | yes |
-| pilot3/pilot3_before_nim_2026-11-03.db | `doc_alias` | 1,432 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `doc_page` | 23,558 | yes |
-| pilot3/pilot3_before_nim_2026-11-03.db | `fin_annual_line` | 3,180 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `formula` | 27 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `kpi_series` | 23,816 | yes |
-| pilot3/pilot3_before_nim_2026-11-03.db | `price_delivery` | 11,557 | yes |
-| pilot3/pilot3_before_nim_2026-11-03.db | `ratio_panel` | 3,265 | yes |
-| pilot3/pilot3_before_nim_2026-11-03.db | `share_capital` | 180 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `shp_category` | 1,638 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `transcript_statement` | 16,189 | **undocumented** |
-| pilot3/pilot3_before_nim_2026-11-03.db | `valuation_daily` | 5,615 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `company` | 7 | yes |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `dividend_event` | 25 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `doc` | 2,004 | yes |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `doc_alias` | 1,432 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `doc_page` | 23,558 | yes |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `fin_annual_line` | 3,180 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `fin_quarter_xbrl` | 3,952 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `formula` | 34 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `kpi_series` | 23,816 | yes |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `price_delivery` | 11,557 | yes |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `ratio_panel` | 3,283 | yes |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `share_capital` | 180 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `shp_category` | 1,638 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `transcript_statement` | 16,189 | **undocumented** |
-| pilot3/pilot3_before_rebuild_2026-11-03.db | `valuation_daily` | 5,615 | **undocumented** |
 
 ## Raw folders on D
 
@@ -400,7 +222,7 @@ Undocumented: 81 tables and 56 of 72 raw folders.
 | decks | 184 | 0.95 | 2026-10-28 `20260425_40069350-77ce-40d5-8148-9556a268f1dc.pdf` | yes |
 | decks_full | 23,324 | 116.02 | 2026-10-26 `_tree3.log` | **undocumented** |
 | ETERNAL_site_documents | 2 | 0.01 | 2026-11-04 `bse_transcript-2025-10-23.pdf` | **undocumented** |
-| fo_bhavcopy | 3,861 | 9.63 | 2026-10-29 `2026-10-28.csv` | **undocumented** |
+| fo_bhavcopy | 3,861 | 9.63 | 2026-10-29 `2026-10-28.csv` | yes |
 | HDFCBANK_site_documents | 7 | 0.01 | 2026-11-04 `bse_transcript-letter-2025-10-27.pdf` | **undocumented** |
 | index_constituents | 3 | 0.00 | 2026-10-20 `niftymidcap150_current.csv` | **undocumented** |
 | index_history | 454 | 0.12 | 2026-10-28 `current_niftysmallcap250.csv` | **undocumented** |
@@ -409,11 +231,11 @@ Undocumented: 81 tables and 56 of 72 raw folders.
 | kec_transcripts | 45 | 0.01 | 2026-11-02 `_known_at.json` | **undocumented** |
 | macro_pdfs | 0 | 0.00 | - | **undocumented** |
 | maruti_transcripts | 5 | 0.00 | 2026-11-04 `Transcript_earnings_call_Maruti_Suzuki_Q2_FY_27.pd` | yes |
-| material_announcement | 6,621 | 16.73 | 2026-10-28 `105432.pdf` | **undocumented** |
-| nse_announcements | 19,593 | 33.12 | 2026-10-28 `_manifest.csv` | **undocumented** |
+| material_announcement | 6,621 | 16.73 | 2026-10-28 `105432.pdf` | yes |
+| nse_announcements | 19,593 | 33.12 | 2026-10-28 `_manifest.csv` | yes |
 | nse_shp_xbrl_pilot | 591 | 0.01 | 2026-11-04 `SHP_1736668_13102026124040_WEB.xml.gz` | **undocumented** |
 | originals_lists | 20 | 0.01 | 2026-10-28 `todo_ann_part2.manifest.csv` | **undocumented** |
-| pilot60_history | 22,128 | 38.63 | 2026-11-03 `manifest.csv` | **undocumented** |
+| pilot60_history | 22,128 | 38.63 | 2026-11-03 `manifest.csv` | yes |
 | price_bands | 1,685 | 0.19 | 2026-10-28 `_manifest.jsonl` | yes |
 | raw_market/amfi_nav | 3 | 0.00 | 2026-10-25 `2026-10.txt.gz` | **undocumented** |
 | raw_market/bse_bhav | 24 | 0.01 | 2026-11-04 `_manifest.csv` | **undocumented** |
@@ -452,6 +274,6 @@ Undocumented: 81 tables and 56 of 72 raw folders.
 | results_pdfs | 158 | 0.97 | 2026-10-27 `2e96bdf76e8573130525883d589bea959fabc389710ad7fd99` | **undocumented** |
 | runners | 20 | 0.00 | 2026-10-29 `RESUME_2026-10-29.md` | **undocumented** |
 | tax_sources | 5 | 0.01 | 2026-10-20 `nse_circular_FATAX56235_stt_2023.pdf` | **undocumented** |
-| user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | **undocumented** |
+| user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | yes |
 | user_research_drive | 236 | 0.60 | 2026-10-26 `_native_blocked.txt` | **undocumented** |
 | vahan | 8 | 0.00 | 2026-11-01 `monthly_2w_ev_by_maker.csv` | **undocumented** |
