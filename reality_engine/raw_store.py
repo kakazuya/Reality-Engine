@@ -176,6 +176,12 @@ def _matches(rel: str, name: str, pattern: str) -> bool:
     return fnmatch.fnmatch((rel if "/" in pattern else name).lower(), pattern.lower())
 
 
+def _default_roots() -> dict[str, Path]:
+    """Manifest root names -> folders. ``sandbox`` holds the pilot loop copies kpi/hp_ocr read (T-102, 7 Nov)."""
+    return {"raw": RAW_ROOT, "pdfs": PDFS_LEGACY_DIR,
+            "sandbox": Path(os.environ.get("REALITY_SANDBOX_ROOT", r"D:\RealityEngine\sandbox"))}
+
+
 class RawStore:
     """Local raw files, with the Drive copy behind the T-102 manifest.
 
@@ -188,7 +194,7 @@ class RawStore:
                  runner=None, transfers: int = 8):
         self.manifest = Path(manifest if manifest is not None else MANIFEST)
         self.roots = {str(name).lower(): Path(path) for name, path in
-                      (roots or {"raw": RAW_ROOT, "pdfs": PDFS_LEGACY_DIR}).items()}
+                      (roots or _default_roots()).items()}
         self._root_norm = {name: _norm(path) for name, path in self.roots.items()}
         self.runner = runner
         self.transfers = transfers
