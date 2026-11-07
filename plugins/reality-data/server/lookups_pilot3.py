@@ -26,6 +26,7 @@ from typing import Any
 import core
 from core import DataError
 from reality_engine.pilot3 import preferred as p3_preferred
+from reality_engine.pilot3.guidance import current_rows as _guidance_current_rows
 from reality_engine.pilot3.lender import filed_lender
 
 _MAIN = Path(r"C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data\pilot3\pilot3.db")
@@ -755,15 +756,18 @@ def _call_page_hits(sym: str, topic: str, terms: str | None, rank_terms: str | N
 
 # --- pilot3_guidance --------------------------------------------------------------------------------
 GUIDANCE_METRICS = ("revenue_growth", "ebitda_margin", "order_intake", "nim", "credit_cost", "aum_growth",
-                    "capex", "cost_of_production", "interest_cost", "ebitda_per_tonne", "other")
+                    "capex", "cost_of_production", "interest_cost", "ebitda_per_tonne", "new_loans",
+                    "new_customers", "opex_to_nti", "other")
 
 
 def guidance(symbol: str, metric: str | None = None, period: str | None = None, as_of: str | None = None,
-             limit: int = 12) -> dict[str, Any]:
-    """Rule-extracted forward guidance: one row per target (metric, target period, low/high, unit, direction,
-    exact quote, speaker), newest first, with the row it revised (``revision_of`` and the previous low/high/date,
-    so "did the guidance change between the two calls" is one call).  ``low`` and ``high`` are NULL on a target
-    said in words ("high single-digit", "in the 70s, mid-70s or higher"): the direction and the quote carry it."""
+             limit: int = 12, history: bool = False) -> dict[str, Any]:
+    """Rule-extracted forward guidance: the CURRENT target of each metric and target period, newest first, with
+    the row it revised (``revision_of`` and the previous low/high/date, so "did the guidance change between the
+    two calls" is one call).  An older row of the same metric+period that a later document replaced is dropped and
+    the kept row says how many (``superseded_rows``); ``history=true`` returns every row as stored.  ``low`` and
+    ``high`` are NULL on a target said in words ("high single-digit", "in the 70s, mid-70s or higher"): the
+    direction and the quote carry it."""
     sym = resolve_symbol(symbol)
     names, allnames = ([], list(GUIDANCE_METRICS))
     if metric:
@@ -784,9 +788,12 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
               f"pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on, pv.direction prev_direction "
               f"FROM guidance g LEFT JOIN doc d ON d.doc_key=g.doc_key "
               f"LEFT JOIN guidance pv ON pv.id=g.revision_of WHERE {where}{extra} "
-              f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC LIMIT ?", (*args, *eargs, _cap(limit)))
+              f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC LIMIT 400", (*args, *eargs))
     out = []
-    for r in rows:
+    kept = [dict(r) for r in rows]
+    if not history:
+        kept = _guidance_current_rows(kept)   # the current target per metric+period, with its dropped-row count
+    for r in kept[:_cap(limit)]:
         previous = None
         if r["revision_of"] is not None:
             previous = {"row_id": r["revision_of"], "low": r["prev_low"], "high": r["prev_high"],
@@ -796,6 +803,7 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
                     "quote": _trim(r["quote"]), "speaker": r["speaker"], "revision_of": r["revision_of"],
                     "previous": previous,
                     "changed": bool(previous and (previous["low"], previous["high"]) != (r["low"], r["high"])),
+                    "superseded_rows": 0 if history else r["superseded_rows"],
                     "provenance": _prov("guidance", f"{r['doc_key']} p{r['page']}", r["known_at"],
                                         doc_type=r["doc_type"], title=_trim(r["title"], 120), row_id=r["id"])})
     held = None
@@ -804,7 +812,8 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
             f"SELECT metric, target_period, COUNT(*) FROM guidance WHERE symbol=?"
             + (f" AND metric IN ({','.join('?' * len(names))})" if names else "")
             + " GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
-    return _reply(sym, out, "pilot3_guidance", metrics_matched=names or None, held_options=held)
+    return _reply(sym, out, "pilot3_guidance", metrics_matched=names or None, history=True if history else None,
+                  held_options=held)
 
 
 # --- pilot3_docs ------------------------------------------------------------------------------------

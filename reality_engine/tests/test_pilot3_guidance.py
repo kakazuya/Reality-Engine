@@ -708,3 +708,159 @@ def test_the_growth_rule_and_the_insurers_top_line_on_their_own():
     assert [(n["low"], n["high"], n["unit"]) for n in guidance.numbers(pair)] == [(9.0, 10.0, "pct")]
 
 
+# --- T-105, 8 Nov 2026: the Q2 FY27 call's missed targets, the horizon labels and the current-target view --------
+def write_call_db(path: Path, docs: list[tuple], pages: list[tuple], statements: list[tuple]) -> None:
+    """docs: (doc_key, symbol, doc_type, filing_date, known_at); pages: (doc_key, symbol, page, text);
+    statements: full transcript_statement rows (symbol, doc_key, call_date, call_period, page, seq, speaker,
+    role, statement, quote)."""
+    for suffix in ("", "-wal", "-shm"):
+        Path(str(path) + suffix).unlink(missing_ok=True)
+    con = sqlite3.connect(path)
+    con.execute(schema.TABLES["doc"])
+    con.execute(schema.TABLES["doc_page"])
+    con.executescript(TRANSCRIPT_SCHEMA)
+    con.executemany("INSERT INTO doc(doc_key,symbol,isin,doc_type,doc_family,title,filing_date,known_at,pages) "
+                    "VALUES (?,?,NULL,?,?,'Conference Call',?,?,1)",
+                    [(d[0], d[1], d[2], d[2], d[3], d[4]) for d in docs])
+    con.executemany("INSERT INTO doc_page(doc_key,symbol,page,text,method,chars,known_at) "
+                    "VALUES (?,?,?,?,'script_text',?,NULL)", [(d, s, p, t, len(t)) for d, s, p, t in pages])
+    con.executemany(
+        "INSERT INTO transcript_statement(symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,topics,"
+        "period_discussed,period_source,numbers_json,statement,quote,is_fragment,known_at,known_at_source,"
+        "extractor_rule) VALUES (?,?,?,?,?,?,?,?,'prepared','guidance','','call','[]',?,?,0,'x','x','t')",
+        statements)
+    con.commit()
+    con.close()
+
+
+def nbfc_profile():
+    """A profile that calls BAJFINANCE a lender, so the unqualified "growth" is read as AUM growth (T-105)."""
+    import json
+
+    from reality_engine.pilot3 import profile
+
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t105_nbfc_profile.json"
+    path.write_text(json.dumps({
+        "name": "nbfc", "pages_db": "a.db", "raw_root": "raw", "manifest": "m.csv", "out": "o.db",
+        "companies": [{"symbol": "BAJFINANCE", "sector": "nbfc", "lender": True}]}), encoding="utf-8")
+    return profile.load(path)
+
+
+def test_the_q2_fy27_call_count_and_opex_targets():
+    """T-105: "60 million to 62 million new loans", "18 MM to 20 MM customers" and "a 25 to 40 basis point
+    improvement … on opex-to-NTI" are targets the v1 cue list and number parser did not see."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t105_counts.db"
+    doc = ("baj/call_q2fy27.pdf", "BAJFINANCE", "transcript", "2026-10-23", "2026-10-23T14:45:33")
+    sentences = [
+        "New loans grew 11% to 13.5 million.",
+        "We are well on track to deliver between 60 million to 62 million new loans in FY27.",
+        "We added 4.42 million new customers during the quarter.",
+        "We are clear about adding between 18 MM to 20 MM customers to the franchise in FY27.",
+        "We remain pretty comfortable place to deliver a 25 to 40 basis point improvement in FY27 on opex-to-NTI.",
+    ]
+    statements = [("BAJFINANCE", "baj/call_q2fy27.pdf", None, "Q2FY27", 1, i + 1, "Rajeev Jain", "md", s, s)
+                  for i, s in enumerate(sentences)]
+    write_call_db(path, [doc], [("baj/call_q2fy27.pdf", "BAJFINANCE", 1, " ".join(sentences))], statements)
+    guidance.run(str(path), ["BAJFINANCE"])
+    got = {(r["metric"], r["target_period"], r["low"], r["high"], r["unit"], r["extractor_rule"])
+           for r in rows(path)}
+    assert ("new_loans", "FY27", 60.0, 62.0, "mn", "guidance_cue_v2") in got, got
+    assert ("new_customers", "FY27", 18.0, 20.0, "mn", "guidance_cue_v2") in got, got
+    assert ("opex_to_nti", "FY27", 25.0, 40.0, "bps", "guidance_cue_v2") in got, got
+    assert not rows(path, "quote LIKE '%New loans grew 11%%'"), "a past measurement is not a count target"
+
+
+def test_the_q2_fy27_growth_target_and_the_horizons():
+    """T-105: "between 26%, 27% growth we should deliver now on a full year basis" is the FY27 AUM growth target;
+    the metric comes from the growth word (a lender's unqualified growth is its AUM), and the sentence after it,
+    "we maintain a guidance of 20% to 25%", carries only the medium-term corridor -- a horizon, not FY27."""
+    from reality_engine.pilot3 import profile
+
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t105_growth.db"
+    doc = ("baj/call_q2fy27.pdf", "BAJFINANCE", "transcript", "2026-10-23", "2026-10-23T14:45:33")
+    page = ("Kunal Shah: Yes. Hi, so the first question is on growth guidance. Last time you said almost 26% growth "
+            "plus the capital raise is also for the growth story. So, what would be the growth guidance here onwards "
+            "for near and medium term? So that's the first question? And second, in terms of the overall margins, "
+            "what is the outlook on margins, yes? Rajeev Jain: So, I would say FY27, two quarters gone. We're seeing "
+            "the early onset of festival first 9, 10 days. I would say probably between 26%, 27% growth we should "
+            "deliver now on a full year basis. I think that's just medium term, we maintain a guidance of 20% to 25% "
+            "on a year lower here and a year higher there.")
+    statements = [
+        ("BAJFINANCE", "baj/call_q2fy27.pdf", None, "Q2FY27", 1, 1, "Rajeev Jain", "md",
+         "So, I would say FY27, two quarters gone.", "So, I would say FY27, two quarters gone."),
+        ("BAJFINANCE", "baj/call_q2fy27.pdf", None, "Q2FY27", 1, 2, "Rajeev Jain", "md",
+         "I would say probably between 26%, 27% growth we should deliver now on a full year basis.",
+         "I would say probably between 26%, 27% growth we should deliver now on a full year basis."),
+        ("BAJFINANCE", "baj/call_q2fy27.pdf", None, "Q2FY27", 1, 3, "Rajeev Jain", "md",
+         "I think that's just medium term, we maintain a guidance of 20% to 25% on a year lower here and a year "
+         "higher there.",
+         "I think that's just medium term, we maintain a guidance of 20% to 25% on a year lower here and a year "
+         "higher there."),
+    ]
+    write_call_db(path, [doc], [("baj/call_q2fy27.pdf", "BAJFINANCE", 1, page)], statements)
+    profile.activate(nbfc_profile())
+    try:
+        guidance.run(str(path), ["BAJFINANCE"])
+    finally:
+        profile.activate(None)
+    got = {(r["metric"], r["target_period"], r["low"], r["high"], r["unit"], r["extractor_rule"])
+           for r in rows(path)}
+    assert ("aum_growth", "FY27", 26.0, 27.0, "pct", "guidance_cue_v2_context") in got, got
+    assert ("aum_growth", "medium_term", 20.0, 25.0, "pct", "guidance_cue_v2_context") in got, got
+    assert not rows(path, "target_period='FY27' AND low=20"), "the medium-term corridor must not become FY27"
+
+
+def test_the_past_measurements_of_the_q2_fy27_call_stay_out():
+    """T-105: the five sentences a hand read marked as must-stay-out are past facts or hypotheticals, not targets."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t105_past.db"
+    doc = ("baj/call_q2fy27.pdf", "BAJFINANCE", "transcript", "2026-10-23", "2026-10-23T14:45:33")
+    sentences = [
+        "AUM, as you can see, grew by 26.5% to INR 5,84,624 crores, delivering net AUM addition of close to INR "
+        "38,000 crores in the quarter.",
+        "New loans grew 11% to 13.5 million.",
+        "Cost of funds came down sequentially by 9 basis points and came in at 7.31%.",
+        "In a year, we may grow 27%, in a year, we may grow 23%.",
+        "Q2 was 10- 12 basis points lower than Q1.",
+    ]
+    statements = [("BAJFINANCE", "baj/call_q2fy27.pdf", None, "Q2FY27", i + 1, 1, "Rajeev Jain", "md", s, s)
+                  for i, s in enumerate(sentences)]
+    pages = [("baj/call_q2fy27.pdf", "BAJFINANCE", i + 1, s) for i, s in enumerate(sentences)]
+    write_call_db(path, [doc], pages, statements)
+    guidance.run(str(path), ["BAJFINANCE"])
+    assert not rows(path), [r["quote"] for r in rows(path)]
+
+
+def test_the_current_target_is_the_latest_document_and_history_keeps_the_chain():
+    """T-105 step 2: April 22-24%, August 24-25%, October 26-27% -- the default view serves only October, an as_of
+    before October serves only August, and history keeps all three."""
+    from reality_engine.pilot3 import queries
+
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t105_current.db"
+    docs = [("baj/deck_apr.pdf", "BAJFINANCE", "deck", "2026-04-29", "2026-04-29T17:00:00"),
+            ("baj/call_aug.pdf", "BAJFINANCE", "deck", "2026-08-04", "2026-08-04T17:00:00"),
+            ("baj/call_oct.pdf", "BAJFINANCE", "deck", "2026-10-23", "2026-10-23T14:45:33")]
+    pages = [("baj/deck_apr.pdf", "BAJFINANCE", 1, "The Company estimates AUM growth of 22-24% for FY27."),
+             ("baj/call_aug.pdf", "BAJFINANCE", 1, "We expect AUM growth of 24% to 25% for FY27."),
+             ("baj/call_oct.pdf", "BAJFINANCE", 1, "We now expect AUM growth of 26% to 27% for FY27.")]
+    write_db(path, docs, pages)
+    guidance.run(str(path), ["BAJFINANCE"])
+    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        current = queries.guidance_rows(con, "BAJFINANCE", metric="aum", period="FY27")
+        before_oct = queries.guidance_rows(con, "BAJFINANCE", metric="aum", period="FY27", as_of="2026-10-01")
+        history = queries.guidance_rows(con, "BAJFINANCE", metric="aum", period="FY27", history=True)
+    finally:
+        con.close()
+    assert [(r["low"], r["high"]) for r in current] == [(26.0, 27.0)], current
+    assert current[0]["superseded_rows"] == 2, "the April and August rows are both behind the October one"
+    assert [(r["low"], r["high"]) for r in before_oct] == [(24.0, 25.0)], before_oct
+    assert before_oct[0]["superseded_rows"] == 1
+    assert [(r["low"], r["high"]) for r in history] == [(26.0, 27.0), (24.0, 25.0), (22.0, 24.0)], history
+
+
+
