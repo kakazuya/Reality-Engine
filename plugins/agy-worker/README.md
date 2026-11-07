@@ -23,4 +23,6 @@ as `AGY_JOB_WORKSPACE`. agy's permissions (`~/.gemini/antigravity-cli/settings.j
 `mcp(agy-tools/*)` and the pilot3 `reality-data` tools only; file reads and edits inside the workspace need no rule.
 Briefs must say: no shell commands, use `run_check`.
 
+From a terminal: `python plugins/agy-worker/server/agy_core.py list` (or `status <job_id>`, `quota`).
+
 Tests: `python -m pytest plugins/agy-worker/tests -q`.

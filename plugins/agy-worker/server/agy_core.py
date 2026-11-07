@@ -209,3 +209,9 @@ def remove_worktree(job_id: str, delete_branch: bool = False) -> dict:
         out["branch_deleted"] = _git("branch", "-D", job["branch"]).returncode == 0
     return out
 
+
+
+if __name__ == "__main__":  # python plugins/agy-worker/server/agy_core.py list | status <job_id> | quota
+    _cmd = sys.argv[1] if len(sys.argv) > 1 else "list"
+    _out = {"list": lambda: list_jobs(), "quota": quota}.get(_cmd, lambda: status(sys.argv[2]))()
+    print(json.dumps(_out, indent=1))
