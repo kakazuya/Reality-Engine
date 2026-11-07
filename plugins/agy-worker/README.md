@@ -16,6 +16,11 @@ Claude's control panel for Antigravity CLI (`agy`) coding jobs, modelled on dsh-
 Job files: `plugins/agy-worker/runtime/jobs/<job_id>/` (`job.json`, `brief.md`, `events.jsonl`, `stderr.log`,
 `exit.json`); gitignored. When the run ends the runner commits a non-empty worktree diff on the job branch.
 
+**Permissions (Shivam, 8 Nov 2026).** Every job runs with `--dangerously-skip-permissions` (job field
+`bypass_permissions`, default true), so Gemini has a real shell (PowerShell, python) like a dsh worker with full
+access; the brief and the worktree are the fence. Before that ruling the setup below was the only way to run checks;
+`agy-tools` stays registered as a fallback.
+
 **Gemini's own tools.** agy's headless mode denies every shell command and an allow-rule for commands did not work
 (8 Nov), and a denied action ends the whole turn. So the worker gets `agy-tools` (`server/agy_tools_mcp.py`, added
 to agy's global MCP config): `run_check(command)` runs one allowlisted command (pytest, ruff, basedpyright,
