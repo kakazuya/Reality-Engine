@@ -43,6 +43,7 @@ import time
 from collections import Counter
 from pathlib import Path
 
+from reality_engine import raw_store
 from reality_engine.pilot3 import PAGES_DB, kpi, ocr, profile
 
 HOST = "zen7s@100.78.87.112"
@@ -177,18 +178,19 @@ def _resolve_pdf(symbol: str, doc_key: str, page: int, pending_map: dict, source
     candidates = [f"pilot60_history/{symbol}/{tail}"]
     if candidates[0] != doc_key:
         candidates.append(doc_key)
+    store = raw_store.default_store()
     for key in candidates:
         row = pending_map.get((key, page))
         if row:
             return Path(row[4]), (row[2], row[3])
         source = sources.get(key)
-        if source and Path(source).is_file():
+        if source and store.exists(source):
             return Path(source), None
         raw = raw_root / key
-        if raw.is_file():
+        if store.exists(raw):
             return raw, None
     sandbox_pdf = sandbox / f"{symbol.lower()}_loop" / "raw" / doc_key
-    if sandbox_pdf.is_file():
+    if store.exists(sandbox_pdf):
         return sandbox_pdf, None
     return None, None
 
@@ -211,7 +213,7 @@ def build_plan(symbols: list[str], input_dbs: dict[str, Path], pages_db: Path | 
             doc_type, known_at = meta.get((symbol, doc_key, page), (None, None))
             if pdf_meta:
                 doc_type, known_at = doc_type or pdf_meta[0], known_at or pdf_meta[1]
-            if pdf is None or not pdf.is_file():
+            if pdf is None or not raw_store.default_store().exists(pdf):
                 st["missing"] += 1
                 continue
             plan.append({"symbol": symbol, "doc_key": doc_key, "page": page, "doc_type": doc_type,
@@ -233,23 +235,28 @@ def write_plan(plan: list[dict], plan_out: Path, stage: Path) -> dict:
     by_path: dict[str, str] = {}
     stage.mkdir(parents=True, exist_ok=True)
     (stage / "pdfs").mkdir(exist_ok=True)
-    for row in plan:
-        path = row.pop("pdf_path")
-        sha = by_path.get(path)
-        if sha is None:
-            sha = by_path[path] = _sha256(Path(path))
-            target = stage / "pdfs" / sha[:2] / f"{sha}.pdf"
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if not target.exists():
-                try:
-                    target.hardlink_to(path)
-                except OSError:
-                    shutil.copy2(path, target)
-        row["pdf"] = f"pdfs/{sha[:2]}/{sha}.pdf"
+    store = raw_store.default_store()
+    sizes = 0
+    # One download and one delete for every PDF the plan names (T-102): each is hashed and copied inside it.
+    with store.prefetch([row["pdf_path"] for row in plan]):
+        for row in plan:
+            path = row.pop("pdf_path")
+            sha = by_path.get(path)
+            if sha is None:
+                with store.local(path) as source:
+                    sha = by_path[path] = _sha256(Path(source))
+                    target = stage / "pdfs" / sha[:2] / f"{sha}.pdf"
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    if not target.exists():
+                        try:
+                            target.hardlink_to(source)
+                        except OSError:
+                            shutil.copy2(source, target)
+                    sizes += Path(source).stat().st_size
+            row["pdf"] = f"pdfs/{sha[:2]}/{sha}.pdf"
     plan_out.parent.mkdir(parents=True, exist_ok=True)
     plan_out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in plan), encoding="utf-8")
-    return {"pages": len(plan), "pdfs": len(by_path),
-            "mb": round(sum(Path(p).stat().st_size for p in by_path) / 1e6, 1)}
+    return {"pages": len(plan), "pdfs": len(by_path), "mb": round(sizes / 1e6, 1)}
 
 
 def cmd_plan(args) -> int:

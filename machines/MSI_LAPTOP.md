@@ -22,5 +22,5 @@ The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,
 NVIDIA GTX 1050 Ti with 4 GB, 8 CPU threads. Use CUDA, and check `nvidia-smi` before GPU plans. GPU OCR is slower than CPU here.
 
 ## Storage
-Raw data goes on `D:\RealityEngine`. C holds operations and processed databases. Avoid sustained heavy disk work.
+Raw data lived on `D:\RealityEngine`; since T-102 (7 Nov 2026) the raw files are uploaded to `gdrive:InfoDiffusion_archive` (`msi_raw/<root>/<rel>`, manifest `D:\RealityEngine\drive_index\raw_to_drive.db`) and the local copies are deleted by `raw_to_drive.py delete` (`D:\RealityEngine\raw\user_research` stays local). Jobs read them on demand through `reality_engine/raw_store.py`: one `rclone copy --files-from` per company into a temp folder, md5-checked and deleted after, so a build works with no raw files on disk. C holds operations and processed databases. Avoid sustained heavy disk work.
 

@@ -30,6 +30,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
 
+from reality_engine import raw_store
 from reality_engine.config import DATA_DIR, resolve_stored_path
 from reality_engine.scripts import ar_queue
 from reality_engine.scripts.ar_wrong_company_scan import AUDIT_RE, alias_tokens, page_hits
@@ -547,8 +548,11 @@ def resolve_file(row, index: FileIndex | None = None) -> tuple[Path | None, str,
     stored = row["local_file_path"]
     if stored:
         path = resolve_stored_path(stored)
-        if path.exists():
+        if path.is_file():
             return path, "disk", None
+        drive = raw_store.default_store().drive_path(path)   # the T-102 upload moved the file off the disk
+        if drive:
+            return None, "drive", drive
     sha = (row["sha256_hash"] or "").strip().lower()
     if sha and sha in index.disk:
         return index.disk[sha], "disk", None

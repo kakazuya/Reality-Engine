@@ -28,6 +28,7 @@ from datetime import date
 from difflib import SequenceMatcher
 from pathlib import Path
 
+from reality_engine import raw_store
 from reality_engine.pilot3 import profile, schema
 
 TABLE = "fin_quarter_printed"
@@ -775,21 +776,34 @@ def has_table(conn: sqlite3.Connection) -> bool:
     return bool(conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (TABLE,)).fetchone())
 
 
-def _open_pdf(path: Path | str | None, symbol: str):
-    candidates = [Path(path)] if path else []
+def _pdf_candidates(path: Path | str | None, symbol: str) -> list[Path]:
+    """Where a ``source_key`` may sit: the stored path, then the profile's raw copy of the same name."""
+    if not path:
+        return []
+    candidates = [Path(path)]
     current = profile.active() if profile.under_profile() else None
     raw_root = getattr(current, "raw_root", None)
-    if path and raw_root:
+    if raw_root:
         candidates.append(Path(raw_root) / symbol / "quarterly_results" / Path(path).name)
-    for candidate in candidates:
-        if not candidate.is_file():
+    return candidates
+
+
+def _open_pdf(path: Path | str | None, symbol: str):
+    """The PDF at ``path``, opened from a store temp copy when it lives only on Drive (T-102).
+
+    The run's ``prefetch`` keeps that copy on disk until the run ends, so the caller can read every
+    page of the document and close it there."""
+    try:
+        import pymupdf as fitz
+    except ImportError:  # pragma: no cover
+        import fitz
+    store = raw_store.default_store()
+    for candidate in _pdf_candidates(path, symbol):
+        if not store.exists(candidate):
             continue
         try:
-            import pymupdf as fitz
-        except ImportError:  # pragma: no cover
-            import fitz
-        try:
-            return fitz.open(str(candidate))
+            with store.local(candidate) as source:
+                return fitz.open(str(source))
         except Exception:
             return None
     return None
@@ -838,47 +852,51 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict]) -
     duplicates: list[str] = []
     files: list[dict] = []
     tables = pages = missing = 0
-    for doc_key, known_at, source_key, sha in docs:
-        if sha and sha in seen:
-            duplicates.append(doc_key)
-            continue
-        if sha:
-            seen.add(sha)
-        pdf = _open_pdf(source_key, symbol)
-        if pdf is None:
-            missing += 1
-            files.append({"doc_key": doc_key, "known_at": known_at[:10], "pages": 0, "tables": 0, "rows": 0,
-                          "basis": {}, "empty_pages": [], "reason": "pdf_not_open"})
-            continue
-        entry = {"doc_key": doc_key, "known_at": known_at[:10], "pages": 0, "tables": 0, "rows": 0,
-                 "basis": {}, "empty_pages": [], "reason": ""}
-        previous = None
-        for page_no in range(1, pdf.page_count + 1):
-            entry["pages"] += 1
-            pages += 1
-            word_rows = rows_from_words(_page_words(pdf[page_no - 1]))
-            if not word_rows:
-                entry["empty_pages"].append(page_no)          # no text layer: needs OCR, never guessed
-                previous = None
+    store = raw_store.default_store()
+    # One download and one delete for the company's results decks (T-102): they are read inside this scope.
+    with store.prefetch([p for _dk, _ka, source_key, _sha in docs
+                         for p in _pdf_candidates(source_key, symbol)]):
+        for doc_key, known_at, source_key, sha in docs:
+            if sha and sha in seen:
+                duplicates.append(doc_key)
                 continue
-            table = read_page(word_rows)
-            if table is None:
-                table = _continuation(word_rows, previous)
-            if table is None:
-                previous = None
+            if sha:
+                seen.add(sha)
+            pdf = _open_pdf(source_key, symbol)
+            if pdf is None:
+                missing += 1
+                files.append({"doc_key": doc_key, "known_at": known_at[:10], "pages": 0, "tables": 0, "rows": 0,
+                              "basis": {}, "empty_pages": [], "reason": "pdf_not_open"})
                 continue
-            tables += 1
-            entry["tables"] += 1
-            previous = table
-            new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review)
-            entry["rows"] += len(new)
-            for row in new:
-                entry["basis"][row[7]] = entry["basis"].get(row[7], 0) + 1
-            rows.extend(new)
-        if not entry["rows"] and not entry["reason"]:
-            entry["reason"] = "no_pl_table"
-        files.append(entry)
-        pdf.close()
+            entry = {"doc_key": doc_key, "known_at": known_at[:10], "pages": 0, "tables": 0, "rows": 0,
+                     "basis": {}, "empty_pages": [], "reason": ""}
+            previous = None
+            for page_no in range(1, pdf.page_count + 1):
+                entry["pages"] += 1
+                pages += 1
+                word_rows = rows_from_words(_page_words(pdf[page_no - 1]))
+                if not word_rows:
+                    entry["empty_pages"].append(page_no)          # no text layer: needs OCR, never guessed
+                    previous = None
+                    continue
+                table = read_page(word_rows)
+                if table is None:
+                    table = _continuation(word_rows, previous)
+                if table is None:
+                    previous = None
+                    continue
+                tables += 1
+                entry["tables"] += 1
+                previous = table
+                new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review)
+                entry["rows"] += len(new)
+                for row in new:
+                    entry["basis"][row[7]] = entry["basis"].get(row[7], 0) + 1
+                rows.extend(new)
+            if not entry["rows"] and not entry["reason"]:
+                entry["reason"] = "no_pl_table"
+            files.append(entry)
+            pdf.close()
     rows = _apply_repeats(rows)
     conn.executemany(
         f"INSERT INTO {TABLE} (symbol, isin, period_start, period_end, fiscal_period, period_type, column_role, "

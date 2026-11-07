@@ -21,6 +21,7 @@ Shared helpers (periods, numbers, units, lexicon loader) are imported by transcr
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import itertools
 import re
@@ -33,6 +34,7 @@ from pathlib import Path
 
 import yaml
 
+from .. import config, raw_store
 from . import call_dates, profile
 
 LEX_DIR = Path(__file__).parent / "lexicon"
@@ -2762,7 +2764,29 @@ def _open_pdf_path(path: Path | str | None):
 def _open_pdf(sandbox: Path, sym: str, doc_key: str):
     return _open_pdf_path(sandbox / f"{sym.lower()}_loop" / "raw" / doc_key)
 
-RAW_ROOT = Path("D:/RealityEngine/raw")
+
+@contextlib.contextmanager
+def _pdf_context(paths):
+    """Yield the first of ``paths`` that opens, as a document whose file lives until the with ends.
+
+    A raw file may be held only on Drive (T-102): the store downloads it for the with's lifetime, and a
+    generator that yields the document keeps the with open while its consumer reads the pages."""
+    store = raw_store.default_store()
+    for path in paths:
+        if not path or not store.exists(path):
+            continue
+        with store.local(path) as source:
+            pdf = _open_pdf_path(source)
+            if pdf is not None:
+                try:
+                    yield pdf
+                finally:
+                    pdf.close()
+                return
+    yield None
+
+
+RAW_ROOT = config.RAW_ROOT
 
 
 def _pages_docs(sym: str, pages_db: Path | str | None, raw_root: Path | None, ocr: dict, st: dict, shas: set):
@@ -2798,16 +2822,13 @@ def _pages_docs(sym: str, pages_db: Path | str | None, raw_root: Path | None, oc
                 have = {p for p, _ in usable}
                 usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
                 st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
-            pdf = None
-            if doc_type in PDF_DOC_TYPES:
-                pdf = _open_pdf_path(source_path)
-                if pdf is None and raw_root is not None and sha:
-                    pdf = _open_pdf_path(Path(raw_root) / "decks_full" / sha[:2] / f"{sha}.pdf")
-                if pdf is None:
+            paths = [source_path] if doc_type in PDF_DOC_TYPES else []
+            if paths and raw_root is not None and sha:
+                paths.append(Path(raw_root) / "decks_full" / sha[:2] / f"{sha}.pdf")
+            with _pdf_context(paths) as pdf:      # the store's temp copy stays until this doc is read
+                if doc_type in PDF_DOC_TYPES and pdf is None:
                     st["pdf_missing"] += 1
-            yield doc_key, doc_type, known_at, usable, pdf, opg, "pages.db.doc.known_at"
-            if pdf is not None:
-                pdf.close()
+                yield doc_key, doc_type, known_at, usable, pdf, opg, "pages.db.doc.known_at"
     finally:
         pg.close()
 
@@ -2857,40 +2878,30 @@ def _doc_sources(con: sqlite3.Connection | None, sym: str, sandbox: Path | None,
                 pdf.close()
     if raw_root is None or con is None:
         return
-    try:
-        import pymupdf as fitz
-    except ImportError:  # pragma: no cover
-        import fitz
     extra = con.execute("SELECT sha256, min(known_at) FROM deck_figures GROUP BY sha256 ORDER BY 2").fetchall()
     sandbox_shas = {r[0] for r in con.execute("SELECT source_key FROM docs WHERE source_key IS NOT NULL")}
     for sha, known_at in extra:
         if sha in shas or sha in sandbox_shas:
             continue
-        path = raw_root / "decks_full" / sha[:2] / f"{sha}.pdf"
-        if not path.exists():
-            st["extra_missing"] = st.get("extra_missing", 0) + 1
-            continue
-        try:
-            pdf = fitz.open(str(path))
-        except Exception:
-            st["extra_missing"] = st.get("extra_missing", 0) + 1
-            continue
-        usable = []
-        for i in range(pdf.page_count):
-            t = pdf[i].get_text("text")
-            if len(t.strip()) >= 20:
-                usable.append((i + 1, t))
-            else:
-                st["extra_needs_ocr"] = st.get("extra_needs_ocr", 0) + 1
-        st["extra_docs"] = st.get("extra_docs", 0) + 1
-        key = f"decks_full/{sha[:2]}/{sha}.pdf"
-        opg = ocr.get(key, {})
-        if opg:
-            have = {p for p, _ in usable}
-            usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
-            st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
-        yield key, "deck", known_at, usable, pdf, opg, "deck_figures.known_at"
-        pdf.close()
+        with _pdf_context([raw_root / "decks_full" / sha[:2] / f"{sha}.pdf"]) as pdf:
+            if pdf is None:
+                st["extra_missing"] = st.get("extra_missing", 0) + 1
+                continue
+            usable = []
+            for i in range(pdf.page_count):
+                t = pdf[i].get_text("text")
+                if len(t.strip()) >= 20:
+                    usable.append((i + 1, t))
+                else:
+                    st["extra_needs_ocr"] = st.get("extra_needs_ocr", 0) + 1
+            st["extra_docs"] = st.get("extra_docs", 0) + 1
+            key = f"decks_full/{sha[:2]}/{sha}.pdf"
+            opg = ocr.get(key, {})
+            if opg:
+                have = {p for p, _ in usable}
+                usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
+                st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
+            yield key, "deck", known_at, usable, pdf, opg, "deck_figures.known_at"
 
 
 
