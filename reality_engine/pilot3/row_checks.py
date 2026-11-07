@@ -16,29 +16,40 @@ Checks (``check`` names in ``row_check_fail``):
     value_scaled      the value appears only after a power-of-ten rescale (unit not pinned) -> unverified
     label_present     a label of the row's metric is in the quote
     label_conflict    another metric's label sits closer to the number than any label of the row's metric
+    label_foreign     no label of the row's metric, a foreign label in the number's clause
     sector_fit        the metric belongs to the company's sector family
     third_party       (guidance) the number sits near system / industry / GDP / regulator wording
     forward_word      (guidance) the quote carries no forward word (expect, guide, target, ...)
+    past_figure       (guidance) the number follows a realised-figure verb ("we grew at 12%")
     null_value        (guidance) no number stored
     range_order       low > high
     range_spread      (guidance) high / low > 3 (two figures merged into one range) -> unverified
     plausible         value outside the metric kind's bounds
     future_period     (kpi) a reported figure for a period that had not ended when it was known
     past_target       (guidance) a target for a period that had ended before it was said
+    part_not_total    (kpi) dimension "total" but the amount is a small fraction of the filed figure
+    period_word       (kpi) the number's sentence names a different period than the row
     multi_number      (kpi) the quote holds several numbers, so which column was taken is not pinned -> unverified
     cross_doc         (kpi) another document gives a different value for the same metric, period and scope
     fin_conflict      (kpi) the filed statements give a different figure for the same line and period
+    variant           (kpi/guidance) pat/ebitda/revenue whose label says adjusted / before exceptional /
+                      excluding / per ... -> unverified
+    entity_mismatch   (kpi) the dimension and the entity name two different non-symbol subsidiaries -> unverified
 
 Run:  python -m reality_engine.pilot3.row_checks --db D:/RealityEngine/pilot10/pilot10.db --out OUT.db
-      [--profile tasks/night_loop/pilot10_profile.json] [--tables guidance,kpi_series] [--report]
+      [--profile tasks/night_loop/pilot10_profile.json] [--tables guidance,kpi_series]
+      [--report DIR [--sample N --seed S --status verified]]
 """
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import math
+import random
 import re
 import sqlite3
+import statistics
 import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -46,14 +57,31 @@ from pathlib import Path
 
 import yaml
 
-VERSION = "row_checks_v1"
+VERSION = "row_checks_v2"
 VOCAB_PATH = Path(__file__).with_name("row_checks_vocab.yaml")
 
 HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_present", "label_conflict", "label_foreign", "sector_fit", "third_party",
-        "forward_word", "null_value", "range_order", "plausible", "future_period", "past_target",
-        "fin_conflict"}
+        "forward_word", "past_figure", "null_value", "range_order", "plausible", "future_period", "past_target",
+        "fin_conflict", "part_not_total", "period_word"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
-        "unknown_sector", "label_weak", "label_context", "forward_context"}
+        "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch"}
+
+# Revenue / PAT / EBITDA / order rows must be a plausible share of the company's filed figure: a subsidiary or
+# segment amount stored with dimension "total" is the classic "part stored as the total" mistake.
+_FAMILY_FILED = {"revenue": "revenue", "pat": "pat", "ebitda": "ebitda",
+                 "order_intake": "revenue", "order_book": "revenue"}
+PART_SHARE = 0.15
+
+
+def connect_readonly(db: str) -> sqlite3.Connection:
+    """Read-only connection.  A WAL database in a directory the caller cannot write to needs its -shm; the
+    fallback opens the checkpointed file immutable (refused when a -wal with uncommitted pages is present)."""
+    try:
+        return sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    except sqlite3.OperationalError:
+        if Path(db + "-wal").exists():
+            raise
+        return sqlite3.connect(f"file:{db}?mode=ro&immutable=1", uri=True)
 
 # ---------------------------------------------------------------------------------------------- text helpers
 
@@ -76,7 +104,7 @@ def squash(text: str) -> str:
 
 
 # Own number reader: Indian and western grouping, decimals, a leading sign.  Returns (value, start, end).
-_NUM = re.compile(r"(?<![\d,])(?<!\d\.)(?:\d{1,3}(?:,\d{2,3})+|\d+)(?:\.\d+)?|(?<![\d.])\.\d+")
+_NUM = re.compile(r"(?<![\d,])(?<!\d\.)(?:\d{1,3}(?:,\d{2,3})+|\d+)(?:\.\d+)?|(?<![\d.A-Za-z])\.\d+")
 
 
 def numbers_in(text: str) -> list[tuple[float, int, int]]:
@@ -204,9 +232,84 @@ def nearest(hits: list[int], pos: int) -> int | None:
     return min((abs(h - pos) for h in hits), default=None)
 
 
+# Sentences, periods and the wording that changes what a figure means.  These are the checker's own patterns:
+# nothing here is imported from an extractor or from lexicon/.
+_SENT_BREAK = re.compile(r"[.!?](?:\s+|$)|[►•|]")
+_PERIOD_TOKEN = re.compile(
+    r"(?:\b(?P<q>q[1-4])\b|\b(?P<h>h[12])\b|\b(?P<nine>9m|nine\s+months?)\b|"
+    r"\b(?P<half>half[- ]?year)\b|\b(?P<ytd>ytd|year[- ]to[- ]date)\b)"
+    r"(?:\s*(?:fy\s*)?['’]?(?P<yy>\d{2}))?", re.I)
+_PAST_VERB = re.compile(
+    r"\b(?:grew|grow|grown|delivered|achieved|reported|posted|stood|came\s+in|declined|rose|fell|"
+    r"reduced|improved)\s+(?:at|of|to)?\s*$")
+_VARIANT = re.compile(r"before (?:exceptional|one[- ]off|one[- ]time)|adjusted|excluding|\bper\s+(?!cent\b)")
+# wording between a period token and the number that makes the token a comparative, not the number's own period
+_COMPARATIVE = re.compile(r"\b(?:over|against|versus|vs|from|than|compared|ahead\s+of|prior|last|previous|"
+                          r"higher|lower|up|down)\b", re.I)
+PERIOD_REACH = 60   # a token further from the number than this names another figure in the same sentence
+
+
+def sentence_bounds(text: str, pos: int) -> tuple[int, int]:
+    """The sentence around ``pos`` in folded text: split on . ! ? and on bullets / bars."""
+    left = 0
+    for m in _SENT_BREAK.finditer(text, 0, pos):
+        left = m.end()
+    m = _SENT_BREAK.search(text, pos)
+    return left, (m.start() if m else len(text))
+
+
+def period_key(label: str | None) -> str | None:
+    """Canonical comparable key for a row's fiscal period: q2fy26, h1fy26, 9mfy26, fy26, ytd."""
+    if not label:
+        return None
+    s = re.sub(r"\s+", "", label.upper())
+    if s in ("YTD", "YEAR-TO-DATE"):
+        return "ytd"
+    m = re.fullmatch(r"(?:(Q[1-4])|(H[12])|(9M))?FY(\d{2})", s)
+    if not m:
+        return None
+    head = (m.group(1) or m.group(2) or m.group(3) or "").lower()
+    return head + "fy" + m.group(4)
+
+
+def period_tokens(text: str, pos: int) -> tuple[set[str], set[str]]:
+    """(tokens that name the number's own period, tokens named only in a comparative phrase such as
+    "7.52%, an improvement over Q1 FY26").  A comparative token can still be the row's period (a comparative
+    column extracted as its own row), so it is kept separately rather than dropped."""
+    plain: set[str] = set()
+    comparative: set[str] = set()
+    for m in _PERIOD_TOKEN.finditer(text):
+        if abs(m.start() - pos) > PERIOD_REACH:
+            continue
+        gap = text[m.end():pos] if m.end() <= pos else text[pos:m.start()]
+        yy = m.group("yy")
+        suffix = "fy" + yy if yy else ""
+        if m.group("q"):
+            token = m.group("q").lower() + suffix
+        elif m.group("h"):
+            token = m.group("h").lower() + suffix
+        elif m.group("nine"):
+            token = "9m" + suffix
+        elif m.group("half"):
+            token = "h1" + suffix
+        elif m.group("ytd"):
+            token = "ytd"
+        else:
+            continue
+        (comparative if _COMPARATIVE.search(gap) else plain).add(token)
+    return plain, comparative
+
+
+def period_matches(tokens: set[str], key: str) -> bool:
+    for t in tokens:
+        if t == key or (len(t) <= 3 and key.startswith(t)):
+            return True
+    return False
+
+
 # ----------------------------------------------------------------------------------------------- bounds
 
-def plausible(kind: str, metric: str, lo: float, hi: float, unit: str) -> bool:
+def plausible(kind: str, metric: str, lo: float | None, hi: float | None, unit: str) -> bool:
     u = (unit or "").lower()
     vals = [v for v in (lo, hi) if v is not None]
     if not vals:
@@ -246,7 +349,7 @@ class Verdict:
 
 class Checker:
     def __init__(self, db: str, sectors: dict[str, str], vocab: Vocab | None = None):
-        self.con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        self.con = connect_readonly(db)
         self.con.row_factory = sqlite3.Row
         self.vocab = vocab or load_vocab()
         self.sectors = sectors
@@ -301,13 +404,16 @@ class Checker:
         own = label_hits(m, text)
         if not own and pos is not None:
             # the clause around the number names ANOTHER metric and never this one: the number is that metric's
-            # ("Return on assets is estimated at 4.4%-4.6%" stored as credit cost)
-            lo_w, hi_w = max(0, pos - 70), pos + 40
+            # ("Return on assets is estimated at 4.4%-4.6%" stored as credit cost).  A word that is also one of
+            # this metric's weak labels is not foreign: "Domestic sales were at 538,994" is a volume, though
+            # "sales" is a strong revenue label too.
+            lo_w, hi_w = max(0, pos - 160), pos + 60
             masked_w = _DENOM.sub(lambda mm: " " * len(mm.group(0)), text)
             for other in self.vocab.metrics.values():
                 if other.name == m.name or other.name in m.related or m.name in other.related:
                     continue
-                hit = next((mm for p in other.labels for mm in p.finditer(masked_w) if lo_w <= mm.start() < hi_w), None)
+                hit = next((mm for p in other.labels for mm in p.finditer(masked_w)
+                            if lo_w <= mm.start() < hi_w and not any(w.search(mm.group(0)) for w in m.weak)), None)
                 if hit:
                     v.fail("label_foreign", f"the number's clause names {other.name} ('{hit.group(0)}'), never {m.name}")
                     return
@@ -414,8 +520,72 @@ class Checker:
         if len(names) < 2 or m.name not in names:
             return False
         after = [n for n in numbers_in(text) if n[1] >= last_end and not _is_year(n[0]) and not _MONTH.match(text, n[2])]
+        if len(after) < 2:
+            # fewer values than names printed: the labels are not a list of parallel values ("revenue and order
+            # intake ... 1,550 crore and 540 crore respectively" quoted only up to its first value), so the
+            # order test does not apply rather than failing the row
+            return True
         idx = next((i for i, n in enumerate(after) if n[1] == pos), None)
         return idx is not None and idx % len(names) == names.index(m.name)
+
+    def check_part(self, v: Verdict, canon: str, amount: float | None, unit: str, symbol: str, period: str,
+                   rid: int, fin: dict, usd_rev: dict) -> None:
+        """dimension 'total' but the amount is only a small part of the company's figure (a subsidiary or a
+        product line stored as the whole).  USD revenue has no filed rupee line: compare with the company's other
+        revenue rows for the same period, where a part sits far below the median."""
+        if canon not in _FAMILY_FILED or amount is None:
+            return
+        unit = (unit or "").lower()
+        if canon == "revenue" and unit.startswith("usd"):
+            peers = [a for i, a in usd_rev.get((symbol, period), ()) if i != rid]
+            if len(peers) >= 2:
+                med = statistics.median(peers)
+                if med > 0 and abs(amount) < PART_SHARE * med:
+                    v.fail("part_not_total", f"{amount / 1e6:.0f} mn is {abs(amount) / med:.0%} of the "
+                                             f"{med / 1e6:.0f} mn peer median for {period}")
+            return
+        if not unit.startswith("inr"):
+            return
+        filed = fin.get((symbol, period, _FAMILY_FILED[canon]))
+        if not filed:
+            return
+        anchor = max(filed, key=abs)
+        if anchor and abs(amount) < PART_SHARE * abs(anchor):
+            v.fail("part_not_total", f"{amount / 1e7:.0f} cr is under {PART_SHARE:.0%} of the filed "
+                                     f"{_FAMILY_FILED[canon]} {anchor / 1e7:.0f} cr for {period}")
+
+    def check_period_word(self, v: Verdict, text: str, pos: int | None, fiscal_period: str, rule: str = "") -> None:
+        """The number's own sentence names a period (Q2 FY26, H1, nine months, YTD): the row must hold it.  A
+        table/chart quote has no sentence and its dates are column headers outside the quote: skip those."""
+        key = period_key(fiscal_period)
+        if key is None or pos is None or rule in ("table_v1", "chart_v1"):
+            return
+        lo, hi = sentence_bounds(text, pos)
+        plain, comparative = period_tokens(text[lo:hi], pos - lo)
+        if plain and not period_matches(plain, key) and not period_matches(comparative, key):
+            v.fail("period_word", f"the number's sentence names {'/'.join(sorted(plain))}, row is {fiscal_period}")
+
+    def check_variant(self, v: Verdict, m: Metric | None, text: str, pos: int | None) -> None:
+        """A pat / ebitda / revenue figure labelled adjusted, before exceptional / one-time, excluding, or per
+        (share / tonne / franchise) is not the plain line unless the metric itself says so."""
+        if m is None or pos is None or m.name not in ("revenue", "pat", "ebitda"):
+            return
+        if re.search(r"adjusted|_per_", (v.metric or "").lower()):
+            return
+        hit = _VARIANT.search(text[max(0, pos - 90):pos + 30])
+        if hit:
+            v.fail("variant", f"the label says '{hit.group(0)}', not the plain {m.name}")
+
+    def check_entity(self, v: Verdict, row: sqlite3.Row) -> None:
+        """Dimension and entity name two different subsidiaries (neither is the listed company)."""
+        dim = (row["dimension"] or "").strip()
+        ent = (row["entity"] or "").strip()
+        sym = (row["symbol"] or "").strip()
+        if not dim or not ent or dim.lower() == "total" or ent.lower() == sym.lower():
+            return
+        if dim.lower() == ent.lower():
+            return
+        v.fail("entity_mismatch", f"dimension '{dim}' and entity '{ent}' name different subsidiaries")
 
     def finish(self, v: Verdict) -> Verdict:
         names = {c for c, _ in v.fails}
@@ -468,6 +638,10 @@ class Checker:
                 hit = next((p.pattern for p in self.vocab.third_party if p.search(window)), None)
                 if hit:
                     v.fail("third_party", f"third-party wording '{hit}' near the number")
+                past = _PAST_VERB.search(text[max(0, pos - 60):pos])
+                if past:
+                    v.fail("past_figure", f"the number follows a realised-figure verb '{past.group(0).strip()}'")
+            self.check_variant(v, m, text, pos)
             if not any(p.search(text) for p in self.vocab.forward):
                 if any(p.search(context[-250:]) for p in self.vocab.forward):
                     v.fail("forward_context", "forward word only just before the quote")
@@ -481,7 +655,7 @@ class Checker:
         return out
 
     # -- kpi --
-    def _fin_values(self) -> dict[tuple[str, str], list[float]]:
+    def _fin_values(self) -> dict[tuple[str, str, str], list[float]]:
         """(symbol, fiscal_period) -> rupee values of the filed revenue / PAT / EBITDA-like lines, any basis."""
         want = {"revenue": ("revenue_from_operations", "total_income"),
                 "pat": ("pat", "pat_owners", "pat_continuing"),
@@ -506,8 +680,17 @@ class Checker:
     def check_kpi(self) -> list[Verdict]:
         rows = self.con.execute("SELECT * FROM kpi_series").fetchall()
         fin = self._fin_values()
+        # USD revenue has no filed rupee line to compare with: the company's own revenue rows for the period are
+        # the yardstick (a product line / subsidiary sits far below their median)
+        usd_rev: dict[tuple[str, str], list[tuple[int, float]]] = defaultdict(list)
+        for r in rows:
+            c = self.vocab.canon(r["metric"])
+            if c and c.name == "revenue" and (r["unit"] or "").lower().startswith("usd") \
+                    and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"] \
+                    and r["value"] is not None:
+                usd_rev[(r["symbol"], r["fiscal_period"])].append((r["id"], r["value"] * (r["scale"] or 1)))
         # cross-document groups: same company, metric, scope and period, rupee-or-unit value
-        groups: dict[tuple, list[tuple[int, str, float]]] = defaultdict(list)
+        groups: dict[tuple, list[tuple[int, str, float, str]]] = defaultdict(list)
         for r in rows:
             m = self.vocab.canon(r["metric"])
             key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"], r["basis"])
@@ -540,6 +723,8 @@ class Checker:
                         v.corroborated = True
                     elif canon != "ebitda":
                         v.fail("fin_conflict", f"filed {canon} for {r['fiscal_period']}: {sorted(set(round(f / 1e7, 1) for f in filed))} cr, row {round(amount / 1e7, 1)} cr")
+            if canon and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"]:
+                self.check_part(v, canon, amount, r["unit"] or "", r["symbol"], r["fiscal_period"], r["id"], fin, usd_rev)
             if r["extractor_rule"] == "xbrl_segment":
                 # a structured filing: no quote; the segment value is the tagged figure
                 v.corroborated = True
@@ -549,9 +734,12 @@ class Checker:
             text = fold(quote)
             self.check_quote(v, quote, r["doc_key"], r["page"])
             self.check_sector(v, m)
+            self.check_entity(v, r)
             nums = numbers_in(text)
             how, pos = find_value(value, nums)
-            if how != "exact" and (r["unit"] or "") == "bps" and value is not None:
+            if (r["unit"] or "") == "bps" and value is not None:
+                # a bps row is printed as a percentage ("credit cost of 0.18%"): the percent reading pins the
+                # number; the plain reading can land on an unrelated 18 (a growth rate) later in the quote
                 how2, pos2 = find_value(value / 100, nums)
                 if how2 == "exact":
                     how, pos = how2, pos2
@@ -563,11 +751,16 @@ class Checker:
                 v.fail("multi_number", f"{len(nums)} numbers in the quote: column not pinned")
             ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
             self.check_label(v, m, text, pos, ctx)
-            self.check_list(v, m, text, pos, ctx)
+            if how == "exact":
+                # the list-order test needs the number the row actually took: a rescaled match (an OCR
+                # "0. 77%") is a soft value_scaled, not evidence about the list
+                self.check_list(v, m, text, pos, ctx)
+            self.check_period_word(v, text, pos, r["fiscal_period"], r["extractor_rule"] or "")
             if pos is not None and (m is None or m.kind != "growth_pct") and _DELTA.search(text[max(0, pos - 40):pos]):
                 v.fail("delta_value", "the number is a change (reduction of / grew by), not the level")
             if not plausible(m.kind if m else "any", r["metric"], value, value, r["unit"]):
                 v.fail("plausible", f"{value} {r['unit']} outside bounds")
+            self.check_variant(v, m, text, pos)
             end = period_end(r["fiscal_period"])
             known = (r["known_at"] or "")[:10]
             if end and known and end > known:
@@ -633,8 +826,52 @@ def summary(verdicts: list[Verdict]) -> dict:
     return json.loads(json.dumps(s))
 
 
-def run(db: str, out: str, profile: str | None = None, tables: tuple[str, ...] = ("guidance", "kpi_series")) -> dict:
-    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+def write_summary(path: Path, verdicts: list[Verdict]) -> None:
+    """status counts by metric x sector x document type x extractor rule (one row per cell)."""
+    cells: dict[tuple, int] = defaultdict(int)
+    for v in verdicts:
+        cells[(v.table, v.metric, v.sector, v.doc_type, v.rule, v.status)] += 1
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["table", "metric", "sector", "doc_type", "rule", "status", "count"])
+        for key in sorted(cells):
+            w.writerow([*key, cells[key]])
+
+
+def write_sample(path: Path, db: str, verdicts: list[Verdict], n: int, seed: int, status: str) -> None:
+    """N random rows of one status, with the stored row and its failed checks, for a human read."""
+    pool = [v for v in verdicts if v.status == status]
+    random.Random(seed).shuffle(pool)
+    chosen = pool[:n]
+    con = connect_readonly(db)
+    con.row_factory = sqlite3.Row
+    rows: dict[tuple, sqlite3.Row] = {}
+    for table in sorted({v.table for v in chosen}):
+        ids = [v.row_id for v in chosen if v.table == table]
+        marks = ",".join("?" * len(ids))
+        for r in con.execute(f"SELECT * FROM {table} WHERE id IN ({marks})", ids):
+            rows[(table, r["id"])] = r
+    con.close()
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh, delimiter="\t", lineterminator="\n")
+        w.writerow(["id", "table", "symbol", "metric", "dimension", "period", "value", "unit", "quote", "fails"])
+        for v in chosen:
+            r = rows.get((v.table, v.row_id))
+            if r is None:
+                continue
+            if v.table == "guidance":
+                dim, period = "", r["target_period"]
+                value = f"{r['low']}-{r['high']}" if r["high"] is not None else str(r["low"])
+            else:
+                dim, period, value = r["dimension"], r["fiscal_period"], r["value"]
+            quote = (r["quote"] or "").replace("\n", " ").replace("\t", " ")
+            w.writerow([v.row_id, v.table, v.symbol, v.metric, dim, period, value, r["unit"], quote,
+                        ";".join(c for c, _ in v.fails)])
+
+
+def run(db: str, out: str, profile: str | None = None, tables: tuple[str, ...] = ("guidance", "kpi_series"),
+        report: str | None = None, sample: int = 0, seed: int = 0, status: str = "verified") -> dict:
+    con = connect_readonly(db)
     sectors = sectors_from(profile, con)
     con.close()
     ch = Checker(db, sectors)
@@ -643,18 +880,31 @@ def run(db: str, out: str, profile: str | None = None, tables: tuple[str, ...] =
         verdicts += ch.check_guidance()
     if "kpi_series" in tables:
         verdicts += ch.check_kpi()
+    ch.con.close()          # no read handle left on the build (Windows keeps the file open otherwise)
     write(out, verdicts)
+    if report:
+        report_dir = Path(report)
+        report_dir.mkdir(parents=True, exist_ok=True)
+        write_summary(report_dir / "row_checks_summary.csv", verdicts)
+        if sample:
+            write_sample(report_dir / "row_checks_sample.tsv", db, verdicts, sample, seed, status)
     return summary(verdicts)
 
 
 def main(argv: list[str] | None = None) -> None:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "Independent row checks").splitlines()[0])
     ap.add_argument("--db", required=True, help="built database, opened read-only")
     ap.add_argument("--out", required=True, help="verdict database (row_check, row_check_fail)")
     ap.add_argument("--profile", default=None)
     ap.add_argument("--tables", default="guidance,kpi_series")
+    ap.add_argument("--report", default=None, help="directory for row_checks_summary.csv and the sample TSV")
+    ap.add_argument("--sample", type=int, default=0, help="N random rows for the human read (needs --report)")
+    ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--status", default="verified", choices=["verified", "unverified", "quarantined"])
     a = ap.parse_args(argv)
-    print(json.dumps(run(a.db, a.out, a.profile, tuple(a.tables.split(","))), indent=1))
+    if a.sample and not a.report:
+        ap.error("--sample needs --report DIR")
+    print(json.dumps(run(a.db, a.out, a.profile, tuple(a.tables.split(",")), a.report, a.sample, a.seed, a.status), indent=1))
 
 
 if __name__ == "__main__":
