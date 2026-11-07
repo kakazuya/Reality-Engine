@@ -72,3 +72,4 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-031 | OPEN | P3 | Research library bucket scheme; duplicates deleted 2 Nov, list in _dupes_deleted_2026-11-02.csv | accept: Shivam | from: T-026 | opened 2026-11-02
 
 ## Machines
+- T-104 | OPEN | P2 | Antigravity CLI as a worker backend: confirm a headless run (prompt in, edits in a worktree, answer out, exit), its login persistence, models and daily quota on Google AI Pro; one small test task; if it passes, add an adapter to dsh-worker beside OpenCode; model only gemini-3.8-flash-medium (Shivam) | accept: Shivam | from: Shivam 7 Nov | opened 2026-11-07
