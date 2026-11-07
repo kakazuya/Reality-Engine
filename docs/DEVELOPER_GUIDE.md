@@ -597,7 +597,7 @@ The dry run prints round 1's units, sizes and tiers and calls no model. A real r
 `reality_engine/pilot3/` builds ONE SQLite database by scripts only (no model, no network), so the pilot questions are answered by plain SQL; it began with KEC, BAJFINANCE and HINDALCO, and since T-056/T-090 the `pilot3_*` tools serve every company the database's `company` table holds. Part A (the core, this section) is `schema.py` (DDL), `registry.py`, `stores.py`, `ratios.py`, `queries.py`, `oracle.py`, `call_dates.py` (transcript call dates, used by `registry.py` and `kpi.py`) and `build.py`; part B (`kpi.py`, `transcripts.py`, `lexicon/`) is a separate worker's; part D is `statements.py` (below). `__init__.py` finds the read-only stores (`REALITY_DATA_ROOT`, else this checkout's `reality_engine/data`, else the main checkout's) and sets `REALITY_DATA_ROOT` before `gap_loop.prepare` is imported.
 
 ```bash
-python -m reality_engine.pilot3.build --out .tmp/pilot3.db --part all    # registry | pages | stores | ratios | extract | kpi | transcripts | guidance | all; 484 s on 4 Nov 2026 (23,558 pages)
+python -m reality_engine.pilot3.build --out .tmp/pilot3.db --part all    # registry | pages | stores | comparatives | preferred | ratios | extract | kpi | transcripts | segments | guidance | notes | checks | all; 484 s on 4 Nov 2026 (23,558 pages)
 python -m reality_engine.pilot3.oracle --db .tmp/pilot3.db --tables core [--detail]
 python -m pytest reality_engine/tests/test_pilot3_core.py -q              # 26 tests; the 2 integration ones build the real db (marked slow, about 8 min)
 ```

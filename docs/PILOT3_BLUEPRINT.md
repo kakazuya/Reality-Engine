@@ -893,3 +893,25 @@ header ("Notes to the Standalone/Consolidated Financial Statements") and is `not
 - **Checks.** `reality_engine/tests/test_pilot3_note_tables.py` (**15 passed**): the fixture page text of BAJFINANCE
   p373/p374, INFY p125/p241/p320, ETERNAL p181/p273/p387, MARUTI p115, HDFCBANK p415, KEC p76 and the 27 Aug 2026
   NCD filing, one test per rule, plus a database round trip that writes and re-runs the part.
+
+### 9g. Quarantined rows are never served (T-113 B, 8 Nov 2026)
+
+The independent row checker (build guide section 13) now ships its verdicts inside the build and the tools read them.
+`build --part checks` (last in `all`, after `guidance` and `notes`) runs `reality_engine/pilot3/row_checks.py` into a
+temp file beside the build and copies `row_check` and `row_check_fail` into the build in one transaction
+(`reality_engine/pilot3/build.py`); a build without `guidance`, or without financial tables, skips only that table,
+and `row_checks.py` itself is not edited. `pilot3_kpi`, `pilot3_guidance` and the stated-ratio rows of `pilot3_ratio`
+(`plugins/reality-data/server/lookups_pilot3.py`, tool text in `server.py`) LEFT JOIN the verdicts by `tbl` +
+`row_id`: `status='quarantined'` is dropped unless the call passes `include_quarantined=true`, and every served row
+carries `check_status` (`verified` / `unverified`, NULL when it has no verdict) plus `check_note` (the soft checks'
+names) on an unverified row. The tool text tells the model to prefer verified rows and say "unverified" when quoting
+one; the `available` / `held_options` / `held_period_dimension` hints never name a metric whose every row is
+quarantined. A database without `row_check` (any build made before this part) serves exactly as it did. A part that
+rewrites `guidance` or `kpi_series` (`guidance`, `kpi`, `extract`; all of them in `all`) first deletes that table's
+verdicts, because a rebuilt row has a new id and the old verdict would hide or label the wrong row -- re-run
+`--part checks` after any kpi or guidance rebuild. Measured on
+the pilot10 dev copy (`D:/RealityEngine/pilot10/scratch/t113_p10_serve.db`, 8 Nov): the part took 7.3 s and wrote
+6,149 verdicts — guidance 46 / 26 / 34 and kpi_series 4,249 / 1,422 / 372 (verified / unverified / quarantined);
+`kpi('BAJFINANCE','nnpa_pct','FY25')` lost the 1.18 gross-NPA row (8 rows -> 4), `guidance('HDFCBANK')` 3 -> 1 and
+`guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py` (6 passed) and the existing
+serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_pilot3.py`, 24 passed).

@@ -133,3 +133,21 @@ Change a rule only with a measurement that supports the change, and note it in `
   deltas stored as levels. Gemini's rejected T-105 rows: none verified.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per
   stratum) on companies the extractor's worker never saw; the hold-out stays outside the repo.
+- **Serving (T-113 B).** `python -m reality_engine.pilot3.build --part checks` (last in `all`, after `guidance` and
+  `notes`) runs the same checker into a temp file beside the build and copies `row_check` and `row_check_fail` into the
+  build in one transaction (`reality_engine/pilot3/build.py`; `row_checks.py` itself is unchanged and still writes its
+  own output). A build that holds no `guidance`, or no financial tables, skips only the missing table.
+  `pilot3_kpi`, `pilot3_guidance` and the stated-ratio part of `pilot3_ratio` (`plugins/reality-data/server/lookups_pilot3.py`,
+  tool text in `server.py`) LEFT JOIN the verdicts by `tbl` + `row_id`: a `quarantined` row is dropped unless the call
+  passes `include_quarantined=true`, and every served row carries `check_status` (`verified` / `unverified`, NULL when
+  the check part has not judged it) plus `check_note` (the soft checks' names) on an unverified row. An `available` /
+  `held_options` / `held_period_dimension` hint never names a metric whose every row is quarantined. Any part that
+  rewrites `guidance` or `kpi_series` (`guidance`, `kpi`, `extract`; all of them in `all`) first deletes that table's
+  verdicts, because a rebuilt row has a new id and an old verdict would hide or label the wrong row: **re-run
+  `--part checks` after any kpi or guidance rebuild**. A build without
+  `row_check` serves exactly as it did. Measured on the dev copy `D:/RealityEngine/pilot10/scratch/t113_p10_serve.db`
+  (8 Nov): 7.3 s for the part and 6,149 verdicts — guidance 46 verified / 26 unverified / 34 quarantined,
+  kpi 4,249 / 1,422 / 372;
+  `kpi('BAJFINANCE','nnpa_pct','FY25')` fell from 8 rows (the 1.18 gross-NPA row among them) to 4,
+  `guidance('HDFCBANK')` 3 -> 1 and `guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py`
+  (6 passed); `python -m unittest plugins/reality-data/tests/test_lookups_pilot3.py` (24 passed, no verdict table).
