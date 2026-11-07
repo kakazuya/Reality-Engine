@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from reality_engine import raw_store
 from reality_engine.db.readonly import connect_ro
 from reality_engine.gap_loop.company import Company
 from reality_engine.gap_loop.prepare import DOC_TYPES, MIN_PAGE_CHARS, _clean_page, _date_of, _title
@@ -183,9 +184,11 @@ def isin_at(history: list[tuple[str, str, str]], date: str | None) -> str | None
 class Records:
     """Everything that can date a held file, for one company, from the read-only stores."""
 
-    def __init__(self, cfg: Config, company: Company, isins: list[str]):
+    def __init__(self, cfg: Config, company: Company, isins: list[str],
+                 store: raw_store.RawStore | None = None):
         self.company = company
         self.isins = list(isins)
+        self.store = store or raw_store.default_store()   # a raw file may be held only on Drive (T-102)
         self.ann_by_newsid: dict[str, dict] = {}
         self.ann_by_attachment: dict[str, dict] = {}
         self.ann_rows: list[dict] = []
@@ -288,11 +291,12 @@ class Records:
         """The company site's own transcript list (``_manifest.json`` / ``_known_at.json``)."""
         for name in ("_manifest.json", "_known_at.json"):
             file = folder / name
-            if not file.is_file():
+            if not self.store.exists(file):
                 continue
             try:
-                rows = json.loads(file.read_text(encoding="utf-8"))
-            except ValueError:
+                with self.store.local(file) as source:
+                    rows = json.loads(Path(source).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
                 continue
             for row in rows if isinstance(rows, list) else []:
                 sha = str((row or {}).get("sha256") or "").lower()
@@ -308,23 +312,32 @@ class Records:
         """``pilot60_history/manifest.csv``: the BSE announcement record each history file was fetched
         for (newsid, dissemination time, attachment url).  Fills only what ``ann`` does not know."""
         import csv
-        with csv_path.open(encoding="utf-8", newline="") as fh:
-            for row in csv.DictReader(fh):
-                if row.get("isin") not in isins or not row.get("newsid"):
-                    continue
-                rec = {"NEWSID": row["newsid"], "attachment": row["url"].rsplit("/", 1)[-1] if row.get("url") else "",
-                       "headline": _title(row.get("headline")), "category": row.get("category") or "",
-                       "subcat": row.get("subcat") or "", "title": _ann_title(row.get("subcat"), row.get("category"), row.get("headline")),
-                       "known_at": row.get("dissem_ts"), "filing_date": _date_of(row.get("dissem_ts")),
-                       "source": "pilot60_history/manifest.csv"}
-                self.ann_by_newsid.setdefault(rec["NEWSID"].lower(), rec)
-                if rec["attachment"]:
-                    self.ann_by_attachment.setdefault(rec["attachment"].lower(), rec)
-                if row.get("sha256"):
-                    self.by_sha.setdefault(row["sha256"].lower(), rec)
+        try:
+            with self.store.local(csv_path) as source:
+                with Path(source).open(encoding="utf-8", newline="") as fh:
+                    for row in csv.DictReader(fh):
+                        if row.get("isin") not in isins or not row.get("newsid"):
+                            continue
+                        rec = {"NEWSID": row["newsid"], "attachment": row["url"].rsplit("/", 1)[-1] if row.get("url") else "",
+                               "headline": _title(row.get("headline")), "category": row.get("category") or "",
+                               "subcat": row.get("subcat") or "", "title": _ann_title(row.get("subcat"), row.get("category"), row.get("headline")),
+                               "known_at": row.get("dissem_ts"), "filing_date": _date_of(row.get("dissem_ts")),
+                               "source": "pilot60_history/manifest.csv"}
+                        self.ann_by_newsid.setdefault(rec["NEWSID"].lower(), rec)
+                        if rec["attachment"]:
+                            self.ann_by_attachment.setdefault(rec["attachment"].lower(), rec)
+                        if row.get("sha256"):
+                            self.by_sha.setdefault(row["sha256"].lower(), rec)
+        except FileNotFoundError:
+            return
 
     def add_nse(self, jsonl: Path) -> None:
-        for line in jsonl.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            with self.store.local(jsonl) as source:
+                text = Path(source).read_text(encoding="utf-8", errors="replace")
+        except FileNotFoundError:
+            return
+        for line in text.splitlines():
             try:
                 row = json.loads(line)
             except ValueError:
@@ -368,28 +381,28 @@ class Records:
 
 
 # ---------------------------------------------------------------------------- discovery
-def _walk_pdfs(folder: Path):
-    if not folder.is_dir():
-        return
-    for root, _dirs, files in os.walk(folder):
-        for name in files:
-            if name.lower().endswith(".pdf"):
-                yield Path(root) / name
+def make_store(cfg: Config) -> raw_store.RawStore:
+    """The raw store for this config's roots (the T-102 manifest names them ``raw`` and ``pdfs``)."""
+    roots = {Path(p).name: Path(p) for p in (*cfg.raw_roots, *cfg.extra_roots)}
+    return raw_store.RawStore(roots=roots)
 
 
-def _named_dirs(base: Path, names: set[str], depth: int = 3):
+def _walk_pdfs(folder: Path, store: raw_store.RawStore):
+    """Every PDF under ``folder``: the local files plus the files only the manifest holds."""
+    for pdf in store.walk(folder):
+        if pdf.name.lower().endswith(".pdf"):
+            yield pdf
+
+
+def _named_dirs(base: Path, names: set[str], store: raw_store.RawStore, depth: int = 3):
     """Directories called one of ``names`` (case-insensitive) at most ``depth`` levels below ``base``."""
-    if depth < 0 or not base.is_dir():
+    if depth < 0:
         return
-    try:
-        entries = [e for e in os.scandir(base) if e.is_dir(follow_symlinks=False)]
-    except OSError:
-        return
-    for entry in entries:
-        if entry.name.lower() in names:
-            yield Path(entry.path)
+    for folder in store.subdirs(base):
+        if folder.name.lower() in names:
+            yield folder
         else:
-            yield from _named_dirs(Path(entry.path), names, depth - 1)
+            yield from _named_dirs(folder, names, store, depth - 1)
 
 
 def _dir_type(path: Path, root: Path) -> str:
@@ -402,51 +415,43 @@ def _dir_type(path: Path, root: Path) -> str:
     return "other"
 
 
-def _company_manifest(root: Path, symbol: str) -> Path | None:
+def _company_manifest(root: Path, symbol: str, store: raw_store.RawStore) -> Path | None:
     """The company site's own manifest folder (``<symbol>_transcripts/_manifest.json``) when one is held."""
-    if not root.is_dir():
-        return None
-    try:
-        entries = [e for e in os.scandir(root) if e.is_dir(follow_symlinks=False)]
-    except OSError:
-        return None
     wanted = symbol.lower()
-    for entry in entries:
-        folder = Path(entry.path)
-        name = entry.name.lower()
+    for folder in store.subdirs(root):
+        name = folder.name.lower()
         # ``abb_transcripts`` is ABB's, ``abbott_transcripts`` is not: a bare prefix would read another company's list.
         if (name == wanted or name.startswith(wanted + "_")) and any(
-                (folder / item).is_file() for item in ("_manifest.json", "_known_at.json")):
+                store.exists(folder / item) for item in ("_manifest.json", "_known_at.json")):
             return folder
     return None
 
 
-def discover(cfg: Config, company: Company, records: Records) -> list[tuple[Path, Path, str]]:
+def discover(cfg: Config, company: Company, records: Records,
+             store: raw_store.RawStore) -> list[tuple[Path, Path, str]]:
     """``(file, root it lives under, directory-derived doc type)`` for every candidate PDF."""
     found: dict[str, tuple[Path, Path, str]] = {}
     names = {company.symbol.lower(), str(company.bse_code)}
     for root in [*cfg.raw_roots, *cfg.extra_roots, cfg.data_root]:
         bases = [root / "pdfs", root / "decks"] if root == cfg.data_root else [root]
         for base in bases:
-            for folder in _named_dirs(base, names):
-                for pdf in _walk_pdfs(folder):
+            for folder in _named_dirs(base, names, store):
+                for pdf in _walk_pdfs(folder, store):
                     found.setdefault(str(pdf), (pdf, root, _dir_type(pdf, root)))
     for root in cfg.raw_roots:
-        site = _company_manifest(root, company.symbol)
+        site = _company_manifest(root, company.symbol, store)
         if site is not None:
             records.add_manifest(site)      # a company site's own transcript list, when one is held
         for dirname, kind in SHA_DIRS.items():
             folder = root / dirname
-            if not folder.is_dir():
-                continue
-            for pdf in _walk_pdfs(folder):
+            for pdf in _walk_pdfs(folder, store):
                 stem = pdf.stem.lower()
                 if SHA.fullmatch(stem) and (stem in records.sha_names or stem in records.by_sha):
                     found.setdefault(str(pdf), (pdf, root, kind))
         manifest = root / "pilot60_history" / "manifest.csv"
-        if manifest.is_file():
+        if store.exists(manifest):
             records.add_pilot_manifest(manifest, [i for i in company.isins] + records.isins)
-        for jsonl in (root / "nse_announcements").glob(f"*/{company.symbol}.jsonl"):
+        for jsonl in store.glob(root / "nse_announcements", f"*/{company.symbol}.jsonl"):
             records.add_nse(jsonl)
     return sorted(found.values(), key=lambda item: str(item[0]))
 
