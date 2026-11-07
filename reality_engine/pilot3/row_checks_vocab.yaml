@@ -257,9 +257,13 @@ metrics:
     kind: amount
   ebitda_margin:
     related: [ebitda, gov_margin]
-    aliases: [ebitda_margin_pct, ebitda_margin, gross_margin]
-    labels: ['ebitda margin', 'operating margin', 'ebit margin', 'gross margin', 'ebitda\b']
+    aliases: [ebitda_margin_pct, ebitda_margin]
+    labels: ['ebitda margin', 'operating margin', 'ebit margin', 'ebitda\b']
     weak: ['margin']
+    kind: level_pct
+  gross_margin:
+    aliases: [gross_margin]
+    labels: ['gross margin', '\bgm\b']
     kind: level_pct
   capex:
     aliases: [capex]
@@ -339,7 +343,7 @@ third_party:
   - 'economy'
   - 'inflation'
   - '\brbi\b'
-  - 'repo'
+  - 'repo\b'
   - 'regulator'
   - 'peers?'
   - 'market (is|was|will|grew|growth)'

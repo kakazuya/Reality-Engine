@@ -30,6 +30,9 @@ Checks (``check`` names in ``row_check_fail``):
     part_not_total    (kpi) dimension "total" but the amount is a small fraction of the filed figure
     period_word       (kpi) the number's sentence names a different period than the row
     currency          the label-to-number span prints another currency than the row's unit
+    target_frame      (guidance) the number's sentence frames it as medium/long term or a CAGR while the
+                      target_period is one fiscal year
+    target_year       (guidance) the number's sentence prints a fiscal year that is not the target's year
     multi_number      (kpi) the quote holds several numbers, so which column was taken is not pinned -> unverified
     cross_doc         (kpi) another document gives a different value for the same metric, period and scope
     fin_conflict      (kpi) the filed statements give a different figure for the same line and period
@@ -65,7 +68,7 @@ VOCAB_PATH = Path(__file__).with_name("row_checks_vocab.yaml")
 
 HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_present", "label_conflict", "label_foreign", "sector_fit", "third_party",
         "forward_word", "past_figure", "null_value", "range_order", "plausible", "future_period", "past_target",
-        "fin_conflict", "part_not_total", "period_word", "currency"}
+        "fin_conflict", "part_not_total", "period_word", "currency", "target_frame", "target_year"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
         "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch",
         "dimension_word"}
@@ -128,7 +131,7 @@ def numbers_in(text: str) -> list[tuple[float, int, int]]:
     return out
 
 
-_DELTA = re.compile(r"(?:reduction|decrease|increase|decline|rise|improvement|growth|drop)\s+(?:of|by)\s+(?:approximately|about|around|nearly|over|~)?\s*\W{0,3}$|(?:grew|rose|fell|declined|increased|decreased|improved|reduced|up|down|higher|lower)\s+by\s+(?:approximately|about|around|nearly|over|~)?\s*\W{0,3}$")
+_DELTA = re.compile(r"(?:reduction|decrease|increase|decline|rise|improv(?:e|ed|es|ing|ement)|growth|drop)\s+(?:of|by)\s+(?:approximately|about|around|nearly|over|~)?\s*\W{0,3}$|(?:grew|rose|fell|declined|increased|decreased|improved|improve|reduced|up|down|higher|lower)\s+by\s+(?:approximately|about|around|nearly|over|~)?\s*\W{0,3}$")
 _BREAK = re.compile(r"(?:\.|;|►|•|\|)\s+")
 _MONTH = re.compile(r"\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b")
 
@@ -157,6 +160,19 @@ def find_value(value: float, nums: list[tuple[float, int, int]]) -> tuple[str, i
             if close(abs(n) * 10 ** k, abs(value)):
                 return "scaled", s
     return "absent", None
+
+
+def delta_hit(text: str, value: float | None, nums: list[tuple[float, int, int]]) -> str | None:
+    """A match of ``value`` that sits directly after a change verb ("improve by 1%", "grew by 12%"): the stored
+    number is a delta, not the level.  Checking every occurrence avoids pinning the "1" inside "Q1"."""
+    if value is None:
+        return None
+    for n, s, _ in nums:
+        if close(abs(n), abs(value)):
+            hit = _DELTA.search(text[max(0, s - 40):s])
+            if hit:
+                return hit.group(0).strip()
+    return None
 
 
 # ------------------------------------------------------------------------------------------------- periods
@@ -229,7 +245,7 @@ def label_hits(metric: Metric, text: str) -> list[int]:
     return out
 
 
-_DENOM = re.compile(r"(?<=%|t)\s+of\s+(?:our|the|total|average|its)?\s*[a-z]+(?:\s+[a-z]+)?|(?:per ?cent|bps|basis points)\s+of\s+(?:our|the|total|average|its)?\s*[a-z]+(?:\s+[a-z]+)?|\bto\s+(?:net|gross|total|average)\s+[a-z]+")
+_DENOM = re.compile(r"(?<=%)\s+of\s+(?:our|the|total|average|its)?\s*[a-z]+(?:\s+[a-z]+)?|(?:per ?cent|bps|basis points)\s+of\s+(?:our|the|total|average|its)?\s*[a-z]+(?:\s+[a-z]+)?|\bto\s+(?:net|gross|total|average)\s+[a-z]+")
 
 
 def nearest(hits: list[int], pos: int) -> int | None:
@@ -329,6 +345,49 @@ _QUALIFIER = {"the", "our", "this", "that", "these", "those", "its", "their", "h
               "with", "by", "as", "rs", "inr", "usd", "us", "fy", "h1", "h2", "q1", "q2", "q3", "q4"}
 _CAP_PHRASE = re.compile(r"\b([A-Z][A-Za-z&.]{2,}(?:\s+[A-Z][A-Za-z&.]{2,}){1,3})\b")
 
+# Guidance target frames: a multi-year frame or a quarter word in the number's own sentence, and an explicit
+# fiscal year printed there, are compared with the row's target_period.
+_MULTI_YEAR = re.compile(r"\b(?:medium|long)[- ]term\b|\bmedium\s+to\s+long[- ]term\b|\bcagr\b", re.I)
+# a frame word about the past ("which has been our CAGR for the last 3 to 5 years") is not the target's frame
+_FRAME_PAST = re.compile(r"\b(?:has been|have been|was|were|for the last|over the last|in the last)\b", re.I)
+_FY_RANGE = re.compile(r"\b(?:fy\s*)?['’]?((?:19|20)?\d{2})\s*[-–/]\s*['’]?((?:19|20)?\d{2})\b", re.I)
+_FY_TOKEN = re.compile(r"\bfy\s*['’]?((?:19|20)?\d{2})\b", re.I)
+
+
+def _as_year(raw: str) -> int | None:
+    if not raw or not raw.isdigit():
+        return None
+    year = int(raw)
+    if len(raw) == 2:
+        year += 2000
+    return year if 1990 <= year <= 2035 else None
+
+
+def fiscal_years(text: str) -> set[str]:
+    """Explicit fiscal years printed in one sentence: a range takes its end year ("20-21" -> fy21,
+    "FY2024-2025" -> fy25), an FY token its own year; a comparative ("vs FY24") is not the number's target."""
+    out: set[str] = set()
+    spans: list[tuple[int, int]] = []
+    for mm in _FY_RANGE.finditer(text):
+        if _COMPARATIVE.search(text[max(0, mm.start() - 25):mm.start()]):
+            continue
+        if text[mm.end():mm.end() + 2].lstrip().startswith("%"):
+            continue                       # "22-24%" is a percentage range, not fiscal years
+        y1, y2 = _as_year(mm.group(1)), _as_year(mm.group(2))
+        four_digit = any(len(g) == 4 for g in (mm.group(1), mm.group(2)))
+        if y1 and y2 and (four_digit or mm.group(0).lstrip().lower().startswith("fy") or y2 == y1 + 1):
+            out.add(f"fy{y2 % 100:02d}")
+            spans.append(mm.span())
+    for mm in _FY_TOKEN.finditer(text):
+        if any(a <= mm.start() < b for a, b in spans):
+            continue
+        if _COMPARATIVE.search(text[max(0, mm.start() - 25):mm.start()]):
+            continue
+        year = _as_year(mm.group(1))
+        if year:
+            out.add(f"fy{year % 100:02d}")
+    return out
+
 
 # ----------------------------------------------------------------------------------------------- bounds
 
@@ -426,7 +485,15 @@ class Checker:
         if m is None:
             v.fail("no_vocab", f"metric {v.metric} has no checker vocabulary")
             return
-        own = label_hits(m, text)
+        # a denominator ("2% of revenue") names the base, not the metric: it is not a label of this row.  When the
+        # denominator is the metric's own name ("17% of EBITDA margin"), it is the label and stays.
+        words = [w for w in re.split(r"[^a-z]+", m.name) if len(w) > 2]
+
+        def keep(mm: re.Match) -> str:
+            span = mm.group(0).lower()
+            return mm.group(0) if words and all(w in span for w in words) else " " * len(mm.group(0))
+
+        own = label_hits(m, _DENOM.sub(keep, text))
         if not own and pos is not None:
             # the clause around the number names ANOTHER metric and never this one: the number is that metric's
             # ("Return on assets is estimated at 4.4%-4.6%" stored as credit cost).  A word that is also one of
@@ -501,7 +568,9 @@ class Checker:
 
     def _list_names(self, text: str, pos: int) -> list[str]:
         """Metric labels named one after another (joined by and / & / ,) before the first value number."""
-        first_num = next((n[1] for n in numbers_in(text) if not _is_year(n[0]) and not _MONTH.match(text, n[2])), pos)
+        first_num = next((n[1] for n in numbers_in(text) if not _is_year(n[0]) and not _MONTH.match(text, n[2])
+                          and not (n[1] > 0 and text[n[1] - 1].isalpha())
+                          and not _DELTA.search(text[max(0, n[1] - 40):n[1]])), pos)
         hits = []
         for other in self.vocab.metrics.values():
             for p in other.labels:
@@ -544,7 +613,10 @@ class Checker:
             last_end = b
         if len(names) < 2 or m.name not in names:
             return False
-        after = [n for n in numbers_in(text) if n[1] >= last_end and not _is_year(n[0]) and not _MONTH.match(text, n[2])]
+        # a change ("improved by 27 basis points") and a quarter label ("Q2") are not listed levels
+        after = [n for n in numbers_in(text) if n[1] >= last_end and not _is_year(n[0]) and not _MONTH.match(text, n[2])
+                 and not (n[1] > 0 and text[n[1] - 1].isalpha())
+                 and not _DELTA.search(text[max(0, n[1] - 40):n[1]])]
         if len(after) < 2:
             # fewer values than names printed: the labels are not a list of parallel values ("revenue and order
             # intake ... 1,550 crore and 540 crore respectively" quoted only up to its first value), so the
@@ -600,6 +672,34 @@ class Checker:
         hit = _VARIANT.search(text[max(0, pos - 90):pos + 30])
         if hit:
             v.fail("variant", f"the label says '{hit.group(0)}', not the plain {m.name}")
+
+    def check_target_frame(self, v: Verdict, text: str, pos: int | None, period: str) -> None:
+        """The number's own sentence frames it as medium/long term or a CAGR while the row's target_period is
+        one fiscal year: the frame and the target disagree."""
+        key = period_key(period)
+        if key is None or pos is None:
+            return
+        lo, hi = sentence_bounds(text, pos)
+        sent = text[lo:hi]
+        for hit in _MULTI_YEAR.finditer(sent):
+            if _FRAME_PAST.search(sent[max(0, hit.start() - 45):hit.start()]):
+                continue
+            v.fail("target_frame", f"the number's sentence frames it as '{hit.group(0).strip()}', target is {period}")
+            return
+
+    def check_target_year(self, v: Verdict, text: str, pos: int | None, period: str) -> None:
+        """The number's sentence prints a fiscal year or a fiscal-year range that is not the target's year."""
+        key = period_key(period)
+        if key is None or pos is None:
+            return
+        m = re.search(r"fy(\d{2})$", key)
+        if not m:
+            return
+        target = "fy" + m.group(1)
+        lo, hi = sentence_bounds(text, pos)
+        years = fiscal_years(text[lo:hi])
+        if years and target not in years:
+            v.fail("target_year", f"the number's sentence names {sorted(years)}, target is {period}")
 
     def check_entity(self, v: Verdict, row: sqlite3.Row) -> None:
         """Dimension and entity name two different subsidiaries (neither is the listed company)."""
@@ -719,7 +819,16 @@ class Checker:
                 past = _PAST_VERB.search(text[max(0, pos - 60):pos])
                 if past:
                     v.fail("past_figure", f"the number follows a realised-figure verb '{past.group(0).strip()}'")
+                if m is None or m.kind != "growth_pct":
+                    # a growth target is worded "growth of 12%", so the delta test is for level/amount metrics
+                    for val in (lo, hi):
+                        delta = delta_hit(text, val, nums)
+                        if delta:
+                            v.fail("delta_value", f"the number is a change ('{delta}'), not the level")
+                            break
             self.check_variant(v, m, text, pos)
+            self.check_target_frame(v, text, pos, r["target_period"])
+            self.check_target_year(v, text, pos, r["target_period"])
             if not any(p.search(text) for p in self.vocab.forward):
                 if any(p.search(context[-250:]) for p in self.vocab.forward):
                     v.fail("forward_context", "forward word only just before the quote")
@@ -845,8 +954,10 @@ class Checker:
                 # "0. 77%") is a soft value_scaled, not evidence about the list
                 self.check_list(v, m, text, pos, ctx)
             self.check_period_word(v, text, pos, r["fiscal_period"], r["extractor_rule"] or "")
-            if pos is not None and (m is None or m.kind != "growth_pct") and _DELTA.search(text[max(0, pos - 40):pos]):
-                v.fail("delta_value", "the number is a change (reduction of / grew by), not the level")
+            if m is None or m.kind != "growth_pct":
+                delta = delta_hit(text, value, nums)
+                if delta:
+                    v.fail("delta_value", f"the number is a change ('{delta}'), not the level")
             if not plausible(m.kind if m else "any", r["metric"], value, value, r["unit"]):
                 v.fail("plausible", f"{value} {r['unit']} outside bounds")
             self.check_variant(v, m, text, pos)

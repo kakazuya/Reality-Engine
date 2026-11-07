@@ -252,6 +252,7 @@ def test_known_right_guidance_rows(tmp_path):
         1: "Our operating margin guidance for financial year '27 is 20% to 22%.",
         2: "The Company expects to disburse 60-62 MM new loans in FY27.",
         3: "I would say probably between 26%, 27% growth we should deliver now on a full year basis.",
+        4: "So we expect to close the year at around 17% of EBITDA margin.",
     }
     guidance = [
         dict(id=1, symbol="IT", metric="ebitda_margin", low=20.0, high=22.0, target_period="FY27",
@@ -260,6 +261,8 @@ def test_known_right_guidance_rows(tmp_path):
              quote=pages[2], page=2, said_on="2026-07-24", known_at="2026-07-24T00:00:00"),
         dict(id=3, symbol="LENDER", metric="aum_growth", low=26.0, high=27.0, target_period="FY27",
              quote=pages[3], page=3, said_on="2026-07-24", known_at="2026-07-24T00:00:00"),
+        dict(id=4, symbol="IT", metric="ebitda_margin", low=17.0, high=17.0, target_period="FY24",
+             quote=pages[4], page=4, said_on="2024-05-01", known_at="2024-05-01T00:00:00"),
     ]
     db, profile = build(tmp_path, pages, guidance=guidance, sectors={"IT": "it_services", "LENDER": "nbfc"})
     out = run_checks(tmp_path, db, profile, ("guidance",))
@@ -267,6 +270,8 @@ def test_known_right_guidance_rows(tmp_path):
     assert verdict(out, "guidance", 2)[0] == "verified"
     status, _ = verdict(out, "guidance", 3)
     assert status == "unverified", "a lender's unqualified growth is soft, never quarantined"
+    # "17% of EBITDA margin": the denominator is the metric's own name, so the label stands
+    assert verdict(out, "guidance", 4)[0] == "verified"
 
 
 # --------------------------------------------------------------------------------------------- kpi cases
@@ -523,3 +528,120 @@ def test_dimension_word_flags_a_segment_named_before_a_total_label(tmp_path):
     assert verdict(out, "kpi_series", 5)[0] == "verified"
     # the metric's full name before its own abbreviation is not a segment word
     assert "dimension_word" not in verdict(out, "kpi_series", 7)[1]
+
+
+# ------------------------------------------------------------------- out-of-pilot reading (unseen6, round 3)
+
+def test_gross_margin_is_not_an_ebitda_margin_label(tmp_path):
+    pages = {
+        1: "I think we have already guided our gross margin 59% and we remain with that for a year.",
+        2: "Gross Margin guidance of 79.3% for the year.",
+    }
+    guidance = [
+        dict(id=1, symbol="PHARMA", metric="ebitda_margin", low=59.0, high=59.0, target_period="FY23",
+             quote=pages[1], page=1, said_on="2022-05-01", known_at="2022-05-01T00:00:00"),
+        dict(id=2, symbol="PHARMA", metric="gross_margin", low=79.3, high=79.3, target_period="FY26",
+             quote=pages[2], page=2, said_on="2025-05-01", known_at="2025-05-01T00:00:00"),
+    ]
+    db, profile = build(tmp_path, pages, guidance=guidance, sectors={"PHARMA": "pharma"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    # "margin" is this metric's weak word, so a gross-margin figure is not pinned as EBITDA: served unverified
+    assert status == "unverified" and "label_weak" in fails, fails
+    assert verdict(out, "guidance", 2)[0] == "verified"
+
+
+def test_a_denominator_is_not_a_metric_label(tmp_path):
+    quote = ("Yes, so the capex is typically in the range of 2% to 3% of revenue and while we are getting into "
+             "some additional capacity, you may have it at the higher end of this range and that other times "
+             "towards the lower end of this range, but typically this would be the range for capex from a near "
+             "term point of view.")
+    guidance = [dict(id=1, symbol="CO", metric="revenue_growth", low=2.0, high=3.0, target_period="FY20",
+                     quote=quote, said_on="2019-08-01", known_at="2019-08-01T00:00:00")]
+    db, profile = build(tmp_path, {1: quote}, guidance=guidance, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert status == "quarantined" and "label_foreign" in fails, fails
+
+
+def test_improve_by_is_a_delta_not_a_level(tmp_path):
+    quote = ("So as we have been discussing in the past calls also, the EBITDA margins have been low for the "
+             "past few quarters, but we expect by Q1/Q2, EBITDA should improve by 1% at least and then "
+             "stabilize around 11%.")
+    guidance = [dict(id=1, symbol="EPC", metric="ebitda_margin", low=1.0, high=1.0, target_period="Q2FY25",
+                     quote=quote, said_on="2024-11-01", known_at="2024-11-01T00:00:00")]
+    db, profile = build(tmp_path, {1: quote}, guidance=guidance, sectors={"EPC": "epc_capital_goods"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert status == "quarantined" and "delta_value" in fails, fails
+
+
+def test_target_frame_medium_term_and_cagr(tmp_path):
+    pages = {
+        1: "Our medium-term revenue growth target is 20% and we are on track.",
+        2: "Our 4-year revenue CAGR will be close to 12% to 12.5%.",
+        3: ("Going forward also, we intend to maintain the revenue growth rate at around 14%, which has been "
+            "our CAGR for the last 3 to 5 years."),
+    }
+    guidance = [
+        dict(id=1, symbol="CO", metric="revenue_growth", low=20.0, high=20.0, target_period="FY20",
+             quote=pages[1], page=1, said_on="2019-08-01", known_at="2019-08-01T00:00:00"),
+        dict(id=2, symbol="CO", metric="revenue_growth", low=12.0, high=12.5, target_period="FY24",
+             quote=pages[2], page=2, said_on="2023-08-01", known_at="2023-08-01T00:00:00"),
+        dict(id=3, symbol="CO", metric="revenue_growth", low=14.0, high=14.0, target_period="FY27",
+             quote=pages[3], page=3, said_on="2026-08-01", known_at="2026-08-01T00:00:00"),
+    ]
+    db, profile = build(tmp_path, pages, guidance=guidance, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    for rid in (1, 2):
+        status, fails = verdict(out, "guidance", rid)
+        assert status == "quarantined" and "target_frame" in fails, (rid, fails)
+    # a frame word about the past ("has been our CAGR") is not the target's frame
+    assert "target_frame" not in verdict(out, "guidance", 3)[1]
+
+
+def test_target_year_mismatch_and_comparative(tmp_path):
+    pages = {
+        1: "To comeback on the CapEx done, the guidance it's approximately 80 to 90 crores for 20-21.",
+        2: "Capex guidance of 80 to 90 crores for FY20, as against FY19 capex of 50 crores.",
+        3: "• AUM – The Company estimates AUM growth of 22-24%, aided by new businesses launched in last few years.",
+    }
+    guidance = [
+        dict(id=1, symbol="EPC", metric="capex", low=80.0, high=90.0, unit="inr_cr", target_period="FY20",
+             quote=pages[1], page=1, said_on="2019-08-01", known_at="2019-08-01T00:00:00"),
+        dict(id=2, symbol="EPC", metric="capex", low=80.0, high=90.0, unit="inr_cr", target_period="FY20",
+             quote=pages[2], page=2, said_on="2019-08-01", known_at="2019-08-01T00:00:00"),
+        dict(id=3, symbol="LENDER", metric="aum_growth", low=22.0, high=24.0, target_period="FY27",
+             quote=pages[3], page=3, said_on="2026-08-01", known_at="2026-08-01T00:00:00"),
+    ]
+    db, profile = build(tmp_path, pages, guidance=guidance,
+                        sectors={"EPC": "epc_capital_goods", "LENDER": "nbfc"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert status == "quarantined" and "target_year" in fails, fails
+    assert "target_year" not in verdict(out, "guidance", 2)[1]
+    # "22-24%" is a percentage range, not fiscal years
+    assert "target_year" not in verdict(out, "guidance", 3)[1]
+    assert verdict(out, "guidance", 3)[0] == "verified"
+
+
+def test_list_order_ignores_a_delta_number(tmp_path):
+    quote = "Cost of funds and opex to NTI improved by 27 basis points, and cost of funds came in at 7.52%."
+    kpi = [dict(id=1, symbol="LENDER", metric="cost_of_funds_pct", fiscal_period="Q2FY26", value=7.52,
+                quote=quote, page=1)]
+    db, profile = build(tmp_path, {1: quote}, kpi=kpi, sectors={"LENDER": "nbfc"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    assert "list_order" not in verdict(out, "kpi_series", 1)[1]
+
+
+def test_third_party_repo_is_a_word_not_a_prefix_of_report(tmp_path):
+    quote = ("So, I think on a blended basis certainly while we see margins improving and maybe in the fourth "
+             "quarter we should be able to report EBITDA margins North of 20%, but to give a very specific "
+             "number at this stage would be difficult.")
+    guidance = [dict(id=1, symbol="CO", metric="ebitda_margin", low=20.0, high=20.0, target_period="FY23",
+                     quote=quote, said_on="2023-02-01", known_at="2023-02-01T00:00:00")]
+    db, profile = build(tmp_path, {1: quote}, guidance=guidance, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert "third_party" not in fails, fails
+    assert status == "verified", fails
