@@ -305,7 +305,11 @@ class Pilot3ToolTests(unittest.TestCase):
     def test_guidance_rows_and_revision_chain(self):
         out = p3.guidance("KEC", metric="revenue")
         self.assertTrue(out["found"])
-        self.assertEqual([r["said_on"] for r in out["rows"]], ["2026-08-10", "2026-02-10"])
+        # T-105: the default view is the current target per metric+period; the February row is superseded
+        self.assertEqual([r["said_on"] for r in out["rows"]], ["2026-08-10"])
+        self.assertEqual(out["rows"][0]["superseded_rows"], 1)
+        history = p3.guidance("KEC", metric="revenue", history=True)
+        self.assertEqual([r["said_on"] for r in history["rows"]], ["2026-08-10", "2026-02-10"])
         latest = out["rows"][0]
         self.assertEqual((latest["low"], latest["high"], latest["period"], latest["unit"]),
                          (12.0, 15.0, "FY27", "pct"))

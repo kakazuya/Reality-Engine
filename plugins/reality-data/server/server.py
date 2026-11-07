@@ -524,21 +524,25 @@ def pilot3_statements(symbol: str, topic: str | None = None, terms: str | None =
 @server.tool(
     name="pilot3_guidance",
     description=(
-        "Forward guidance for every company the pilot database holds: one row per numeric target management gave, "
-        "from transcripts, decks, results and press releases (rule-extracted, exact quote). metric: revenue_growth, "
-        "ebitda_margin, order_intake, nim, credit_cost, aum_growth, capex, cost_of_production, interest_cost, "
-        "ebitda_per_tonne, other (a word is enough; a miss lists the metrics held). period: FY27, Q2FY27, H1FY26. "
-        "Each row: target period, low/high, unit (pct, bps, inr_cr, usd_per_tonne ...), direction (up/down/flat), "
+        "Forward guidance for every company the pilot database holds: the current target of each metric and target "
+        "period management gave, from transcripts, decks, results and press releases (rule-extracted, exact "
+        "quote). metric: revenue_growth, ebitda_margin, order_intake, nim, credit_cost, aum_growth, capex, "
+        "cost_of_production, interest_cost, ebitda_per_tonne, new_loans, new_customers, opex_to_nti, other (a word "
+        "is enough; a miss lists the metrics held). period: FY27, Q2FY27, H1FY26, or a horizon (medium_term, "
+        "long_term). By default an older row of the same metric+period that a later document replaced is dropped "
+        "(the kept row carries superseded_rows = how many) and history=true returns every row as stored. Each row: "
+        "target period, low/high, unit (pct, bps, mn, inr_cr, usd_per_tonne ...), direction (up/down/flat), "
         "said_on, speaker, quote, and revision_of + previous (the earlier row of the same metric+period and its "
         "values), so 'did the guidance change between the two calls' answers from one call. Newest first; as_of "
-        "drops rows known after that day. Ask this before pilot3_statements or pilot3_search for any question "
-        "about guidance, outlook, targets or corridors."
+        "drops rows known after that day (a row the day could not see never supersedes one it could). Ask this "
+        "before pilot3_statements or pilot3_search for any question about guidance, outlook, targets or corridors."
     ),
     annotations=_RO,
 )
 def pilot3_guidance(symbol: str, metric: str | None = None, period: str | None = None,
-                    as_of: str | None = None, limit: int = 12) -> dict[str, Any]:
-    return _safe(lambda: _p3.guidance(symbol, metric=metric, period=period, as_of=as_of, limit=limit))
+                    as_of: str | None = None, limit: int = 12, history: bool = False) -> dict[str, Any]:
+    return _safe(lambda: _p3.guidance(symbol, metric=metric, period=period, as_of=as_of, limit=limit,
+                                      history=history))
 
 
 @server.tool(

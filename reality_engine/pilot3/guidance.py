@@ -59,12 +59,21 @@ BEFORE = 700
 AFTER = 250
 
 # --- sentences --------------------------------------------------------------------------------------
-CUE = re.compile(
+_CUE_V1 = (
     r"\b(guidan\w*|guided|guide|corridor|target(?:s|ing|ed)?|estimates?|estimated|expect(?:s|ed|ing)?|"
     r"anticipate[sd]?|foresee|should be|would be|will be|going forward|outlook|we believe|"
     r"is expected to|are expected to|going to see|going to be|talking about|"
     # T-058: "the 5-6% margin that we are saying we will get to" is a forward target
-    r"(?:will|would|could|should) get to)\b", re.I)
+    r"(?:will|would|could|should) get to)\b")
+# T-105: the commitments the Q2 FY27 calls made that the v1 cue list did not see -- "we are well on track to
+# deliver between 60 million to 62 million new loans", "we are clear about adding 18 MM to 20 MM customers",
+# "we remain comfortable … to deliver a 25 to 40 basis point improvement", "we'll lower the corridor … to"
+_CUE_V2 = (
+    r"\b(?:(?:on track|confident|comfortable|clear)[^.;]{0,40}?\bto\s+(?:deliver|achieve|reach|add)|"
+    r"should\s+deliver|(?:are|is)\s+clear\s+about|"
+    r"(?:we|i)(?:['’]ll|\s+will)\s+(?:lower|raise|cut|increase|reduce|narrow|widen))\b")
+CUE = re.compile(_CUE_V1 + "|" + _CUE_V2, re.I)
+CUE_V1 = re.compile(_CUE_V1, re.I)
 PAST_ONLY = re.compile(r"\b(achieved|stood at|reported|last year|lask year|previous year|prior year|year ago|"
                        r"grew by|improved by|rose by|was at|were at|was around|were around|increased by|"
                        r"already at|had estimated|we did|they had|run rate|"
@@ -173,6 +182,13 @@ METRICS = (
                                    # T-062: an insurer's IRP/APE is its top line
                                    r"\bcagr\b|\bIRP\b|\bAPE\b", re.I), -20.0, 60.0),
     ("ebitda_margin", re.compile(r"ebitda margin|\bmargin\b|\bmargins\b", re.I), 0.0, 50.0),
+    # T-105: the count and opex targets of a lender's call ("60 million to 62 million new loans", "18 MM to
+    # 20 MM customers", "a 25 to 40 basis point improvement … on opex-to-NTI"); ranked after the long-standing
+    # metrics so a sentence that already had a metric keeps it
+    ("new_loans", re.compile(r"\bnew loans?\b", re.I), 0.0, 100000.0),
+    ("new_customers", re.compile(r"\bnew customers?\b|\bcustomers?\s+to\s+the\s+franchise\b|"
+                                 r"\badding\b[^.;]{0,60}\bcustomers?\b", re.I), 0.0, 100000.0),
+    ("opex_to_nti", re.compile(r"\bopex\b", re.I), 0.0, 50.0),
     ("other", re.compile(r"order book|fixed|variable|volume|shipment|capacity|utilization|utilisation|"
                          r"customer|market share|pass[- ]through|price variation|"
                          # T-058: the store-level and balance-sheet KPIs stated as targets
@@ -188,7 +204,11 @@ ACTUAL_SPEND = re.compile(MONEY + r"\s*" + AMT + r"\s*" + UNITWORD + r"\s*(?:(?:
                           r"(?:expenditures?|expenditure))\s+)?(?:spent|incurred|invested)\b", re.I)
 R_PCT_RANGE = re.compile(r"(?<![\d.])" + AMT + r"\s*%\s*(?:to|-|–|—)\s*" + AMT + r"\s*%")
 R_PCT_RANGE2 = re.compile(r"(?<![\d.])" + AMT + r"\s*(?:to|-|–|—)\s*" + AMT + r"\s*%")
-R_BPS_RANGE = re.compile(AMT + r"\s*(?:to|-|–|—)\s*" + AMT + r"\s*(?:bps|basis points)", re.I)
+R_BPS_RANGE = re.compile(AMT + r"\s*(?:to|-|–|—)\s*" + AMT + r"\s*(?:bps|basis points?)", re.I)
+# T-105: a count said as a range in millions with no currency ("60 million to 62 million new loans",
+# "18 MM to 20 MM customers"); both numbers must carry the word, so "grew 11% to 13.5 million" is not a range
+R_MN_RANGE = re.compile(r"(?<![\d.])" + AMT + r"\s*(?:million|mn|mm)\s*(?:to|-|–|—)\s*" + AMT +
+                        r"\s*(?:million|mn|mm)\b", re.I)
 R_MONEY_RANGE = re.compile(MONEY + r"\s*" + AMT + r"\s*" + UNITWORD + r"\s*(?:to|-|–|—)\s*" + MONEY + r"?\s*" + AMT +
                            r"\s*" + UNITWORD, re.I)
 R_MONEY = re.compile(MONEY + r"\s*" + AMT + r"\s*" + UNITWORD, re.I)
@@ -250,6 +270,10 @@ def numbers(text: str) -> list[dict]:
             taken.append((a, b))
             out.append({"start": a, "end": b, "low": low, "high": high, "unit": unit})
 
+    for m in R_MN_RANGE.finditer(text):
+        low, high = _num(m.group(1)), _num(m.group(2))
+        if low is not None and high is not None:
+            add(m.start(), m.end(), min(low, high), max(low, high), "mn")
     for m in R_PCT_RANGE.finditer(text):
         low, high = _num(m.group(1)), _num(m.group(2))
         if low is not None and high is not None:
@@ -320,6 +344,9 @@ BARE_Q = re.compile(r"(?<![\w.])(?:in\s+|from\s+|to\s+)?Q\s*([1-4])(?!\s*[- ]?FY
 # Q2 level" is that quarter of the filing's fiscal year (the quarter the call reports)
 NEXT_Q = re.compile(r"\b(?:next|coming|following)\s+quarter\b", re.I)
 Q_LEVEL = re.compile(r"\b(?:in|at)\s+the\s+Q\s*([1-4])\s+level\b", re.I)
+# T-105: "medium term" / "longer-term" is a horizon, not a fiscal year: the Q2 FY27 call gives FY27 26-27%, a
+# medium-term 20-25% corridor and a longer-term 23-25% one, and the horizons must not overwrite the FY27 target
+HORIZON = re.compile(r"\b(medium|longer|long)[- ]term\b", re.I)
 
 
 def _yy(text: str) -> str:
@@ -401,6 +428,9 @@ def target_period(sentence: str, before: str, after: str, call_period: str | Non
     label = _explicit_period(sentence, pos)
     if label and not next_q:
         return label
+    hz = HORIZON.search(sentence)
+    if hz:
+        return "long_term" if hz.group(1).lower().startswith("long") else "medium_term"
     base = base_forward(call_period, doc)
     if next_q and nq:
         fy, call_q = split_period(call_period)
@@ -473,8 +503,16 @@ METRIC_UNITS = {
     "capex": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
     # a per-tonne target is often said as a bare "$250", converted to usd_per_t / inr_per_t below
     "ebitda_per_tonne": {"usd_per_t", "inr_per_t", "usd", "inr"},
+    # T-105: a count stated in millions ("60 million to 62 million new loans") and a lender's opex ratio
+    "new_loans": {"mn", "count"},
+    "new_customers": {"mn", "count"},
+    "opex_to_nti": {"pct", "bps"},
     "other": {"pct", "bps", "inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn", "count", "usd_per_t", "inr_per_t"},
 }
+
+
+# T-105: the metrics the v1 rules never produced (a count in millions, a lender's opex ratio)
+NEW_METRICS = frozenset({"new_loans", "new_customers", "opex_to_nti"})
 
 
 def _bank_metric_ok(symbol: str) -> bool:
@@ -490,11 +528,41 @@ def _bank_metric_ok(symbol: str) -> bool:
     return c.lender and c.sector.strip().lower() in ("nbfc", "bank", "banking")
 
 
-def metric_candidates(symbol: str, sentence: str, before: str, after: str) -> list[str]:
+LENDER_GROWTH = re.compile(r"\bgrowth\b", re.I)
+# a growth of a line we do not hold as a metric ("fee income growth", "ROA growth", "profit growth") is not the
+# company's overall growth, and a lender's unqualified "growth" must not take that reading (T-105)
+OTHER_GROWTH = re.compile(
+    r"\b(?:fee|fees|commission|income|profit|earnings|pat|eps|roa|roe|return on (?:assets|equity)|"
+    r"margin|margins|deposits?|book value)\b[^.;]{0,30}\bgrowth\b", re.I)
+# "this number should be in the range of 17%-20% growth": the measure was named earlier (the fee-income line of
+# the question), so the sentence itself does not own the growth word (T-105)
+PRONOUN_NUMBER = re.compile(r"\b(?:this|that|the)\s+number\b", re.I)
+
+
+def _lender_growth(symbol: str, sentence: str, prev: str = "", before: str = "") -> bool:
+    """True when a lender is speaking of "growth" without naming the measure (T-105): for an NBFC that is its AUM
+    growth ("26%, 27% growth we should deliver", "the longer-term growth guidance of 23% to 25%").  A growth of a
+    named line we do not hold as a metric (fee income, ROA) is left out, and so is a "this number" that borrows its
+    subject from an earlier paragraph."""
+    if not profile.is_lender(symbol) or PRONOUN_NUMBER.search(sentence) \
+            or OTHER_GROWTH.search(" ".join((sentence, prev, before[-700:]))):
+        return False
+    if LENDER_GROWTH.search(sentence):
+        return True
+    # the previous statement supplies the word only when it is itself a forward guidance statement
+    return bool(prev and CUE.search(prev) and not PAST_ONLY.search(prev) and LENDER_GROWTH.search(prev))
+
+
+def metric_candidates(symbol: str, sentence: str, before: str, after: str, prev: str = "") -> list[str]:
     """Metric names in priority order: the sentence first, then the question before it, then the text after.
-    ``other`` (a share or structural statement) ranks last whatever text it came from."""
+    ``other`` (a share or structural statement) ranks last whatever text it came from.
+
+    ``prev`` is the previous management statement on the page (T-105): a sentence that names no metric may take
+    it from the statement before it -- the Q2 FY27 call says "26%, 27% growth we should deliver" and then "we
+    maintain a guidance of 20% to 25%", where only the first sentence carries the word ``growth``."""
     seen: list[str] = []
-    for text in (sentence, before[-300:], after[:150]):
+    sentence_names = 0
+    for index, text in enumerate((sentence, before[-300:], after[:150])):
         for name, rx, _lo, _hi in METRICS:
             if name in ("other", "project_capital_spent") or not rx.search(text) or name in seen:
                 continue
@@ -506,6 +574,14 @@ def metric_candidates(symbol: str, sentence: str, before: str, after: str) -> li
                 continue
             if name not in seen:
                 seen.append(name)
+        if index == 0:
+            sentence_names = len(seen)
+    # T-105: a lender's unqualified "growth" said as guidance is its AUM growth ("between 26%, 27% growth we
+    # should deliver now on a full year basis", "the longer-term growth guidance of 23% to 25%").  A named revenue
+    # growth keeps its own metric; the growth word may sit in the sentence or in the previous statement, never in
+    # a wider page window (which would pull in an unrelated growth sentence).
+    if "aum_growth" not in seen and "revenue_growth" not in seen and _lender_growth(symbol, sentence, prev, before):
+        seen.insert(sentence_names, "aum_growth")
     if any(rx.search(text) for text in (sentence, before[-300:], after[:150])
            for nm, rx, _lo, _hi in METRICS if nm == "other"):
         seen.append("other")
@@ -565,7 +641,8 @@ NON_REVENUE_CAGR = re.compile(r"\b(?:ebitda|margin|margins|profit|pat|eps|volume
 METRIC_RX = {name: rx for name, rx, _lo, _hi in METRICS}
 
 
-def subject_ok(metric: str, sentence: str, chosen: dict, before: str, symbol: str = "") -> bool:
+def subject_ok(metric: str, sentence: str, chosen: dict, before: str, symbol: str = "",
+               prev: str = "") -> bool:
     """True when ``metric`` is the grammatical subject of the number ``chosen``.
 
     A rule-based reader used to take the metric from the question and any plausible number from the answer, so
@@ -607,6 +684,8 @@ def subject_ok(metric: str, sentence: str, chosen: dict, before: str, symbol: st
     if chosen["unit"] == "pct" and PCT_CHANGE.match(sentence[chosen["end"]:chosen["end"] + 32]):
         return False                    # a percent change is not a percent level
     named = [name for name, rx, _lo, _hi in METRICS if rx.search(sentence)]
+    if not named and _lender_growth(symbol, sentence, prev, before):
+        named = ["aum_growth"]          # T-105: a lender's unqualified "growth" is its AUM growth
     if named:
         return metric in named
     question = before.rsplit("?", 1)[0][-250:] if "?" in before else ""   # the question this answer answers
@@ -703,6 +782,18 @@ def worded_direction(sentence: str, metric: str, pos: int | None = None) -> str:
     return "flat"
 
 
+def _row_rule(sentence: str, metric: str, unit: str, symbol: str, v1_found: bool) -> str:
+    """The rule that produced the row (T-105): ``guidance_cue_v2`` when a v2-only cue, one of the new count/opex
+    metrics or the million-range parser was needed; ``guidance_cue_v2_context`` when the metric is not named in
+    the sentence and came from the page context (a lender's generic "growth", the question before it, the previous
+    statement); ``guidance_cue_v1`` for a row the old rules would have found as they were (``v1_found``)."""
+    if metric in NEW_METRICS or unit == "mn":
+        return "guidance_cue_v2" if METRIC_RX[metric].search(sentence) else "guidance_cue_v2_context"
+    if metric == "aum_growth" and not METRIC_RX["aum_growth"].search(sentence) and profile.is_lender(symbol):
+        return "guidance_cue_v2_context"
+    return "guidance_cue_v1" if v1_found else "guidance_cue_v2"
+
+
 def worded_row(symbol: str, doc: sqlite3.Row, page: int, sentence: str, quote: str, speaker: str | None,
                before: str, call_period: str | None, docper: tuple[int, str] | None, stats: dict) -> tuple | None:
     """A forward target said in words with no figure (T-058): the metric and the period are read as usual and the
@@ -726,9 +817,10 @@ def worded_row(symbol: str, doc: sqlite3.Row, page: int, sentence: str, quote: s
         stats["macro"] += 1
         return None
     named = metric_candidates(symbol, sentence, "", "")
-    if not named or "pct" not in METRIC_UNITS.get(named[0], set()):
+    if not named or "pct" not in METRIC_UNITS.get(named[0], set()) \
+            or not METRIC_RX[named[0]].search(sentence):
         stats["worded_no_metric"] += 1
-        return None
+        return None                 # a metric read from context alone is too thin for a row with no number (T-105)
     metric = named[0]
     chosen = {"start": move.start(), "end": move.end(), "low": None, "high": None, "unit": "pct"}
     if not subject_ok(metric, sentence, chosen, "", symbol):
@@ -746,7 +838,8 @@ def worded_row(symbol: str, doc: sqlite3.Row, page: int, sentence: str, quote: s
         return None
     return (symbol, doc["isin"], metric, period, None, None, "pct", worded_direction(sentence, metric, move.start()),
             (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote, speaker,
-            doc["known_at"], "doc.known_at", None, "guidance_cue_v1")
+            doc["known_at"], "doc.known_at", None, _row_rule(sentence, metric, "pct", symbol,
+                                                             bool(CUE_V1.search(sentence))))
 
 
 def _docs(con: sqlite3.Connection, symbol: str):
@@ -828,7 +921,10 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                          direction_of(sentence, "project_capital_spent"),
                          (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
                          speaker, doc["known_at"], "doc.known_at", None, "guidance_cue_v1"))
-    for sentence, quote, speaker in items:
+    for index, (sentence, quote, speaker) in enumerate(items):
+        # T-105: the previous management statement supplies a bare metric (transcript statements only: on a deck
+        # page the previous block is an unrelated bullet)
+        prev = items[index - 1][0] if index and statements else ""
         if len(sentence) < 30 or len(sentence) > 400:
             continue
         if re.search(r"\?[\"'”’)]*$", sentence) and not re.search(
@@ -866,6 +962,11 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                     and metric_candidates(symbol, "", question, "")):
                 stats["no_cue"] += 1
                 continue
+        # would the v1 rules have produced this row? (its cue in the sentence, or the range answer to a guidance
+        # question before it) -- T-105 keeps those rows labelled guidance_cue_v1
+        v1_found = bool(CUE_V1.search(sentence)) or (any(n["high"] > n["low"] for n in nums)
+                                                     and bool(CUE_V1.search(before[-300:]))
+                                                     and bool(metric_candidates(symbol, "", before[-300:], "")))
         if PAST_ONLY.search(sentence) and not FORWARD.search(sentence):
             stats["past_only"] += 1
             continue
@@ -876,7 +977,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             continue
         chosen = metric = None
         rx_by_name = {name: rx for name, rx, _lo, _hi in METRICS}
-        for name in metric_candidates(symbol, sentence, before, after):
+        for name in metric_candidates(symbol, sentence, before, after, prev):
             if name == "other" and (not strong or FACT_SHAPE.search(sentence)):
                 continue
             if name == "credit_cost" and re.search(r"gnpa|nnpa|\bnpa\b", sentence, re.I) \
@@ -886,8 +987,10 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             marks = [m.start() for m in rx_by_name[name].finditer(sentence)]
             if marks:
                 # the metric word is in this sentence: the target is the number it introduces, not a chart blob's
+                # (distance from the number's own end, so "a 25 to 40 basis point improvement … on opex-to-NTI"
+                # keeps its metric word, T-105)
                 near = [n for n in options
-                        if any((p <= n["start"] and n["start"] - p <= 150) or (n["start"] < p and p - n["start"] <= 40)
+                        if any((p <= n["start"] and n["start"] - p <= 150) or (n["start"] < p and p - n["end"] <= 40)
                                for p in marks)]
                 if not near:
                     continue
@@ -896,7 +999,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                 metric, chosen = name, pick_number(sentence, options)
                 break
         if not chosen:
-            stats["no_metric" if not metric_candidates(symbol, sentence, before, after) else "implausible"] += 1
+            stats["no_metric" if not metric_candidates(symbol, sentence, before, after, prev) else "implausible"] += 1
             continue
         rate = RATE_OF.search(sentence)
         if rate and rate.start() <= chosen["start"] <= rate.end():
@@ -905,7 +1008,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if HEDGE.search(sentence[chosen["start"]:chosen["start"] + 90]):
             stats["hedge"] += 1
             continue                        # "whether it will be 25 or 50 basis points, difficult to quantify"
-        if not subject_ok(metric or "other", sentence, chosen, before, symbol):
+        if not subject_ok(metric or "other", sentence, chosen, before, symbol, prev):
             stats["no_subject"] += 1
             continue                        # the metric is not the target's subject (a share, net debt, growth)
         cues = [m.start() for m in CUE.finditer(sentence)]
@@ -944,7 +1047,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         rows.append((symbol, doc["isin"], metric, period, chosen["low"], chosen["high"], chosen["unit"],
                      direction_of(sentence, metric or "other"), (doc["filing_date"] or (doc["known_at"] or "")[:10]),
                      doc["doc_key"], page, quote, speaker, doc["known_at"], "doc.known_at",
-                     None, "guidance_cue_v1"))
+                     None, _row_rule(sentence, metric or "other", chosen["unit"], symbol, v1_found)))
         if len(rows) >= MAX_ROWS_PER_PAGE:
             break
     return rows
@@ -1016,6 +1119,31 @@ def revisions(con: sqlite3.Connection, symbol: str) -> int:
         prev[key] = (row[0], row[3])
     con.commit()
     return linked
+
+
+def current_rows(rows: list[dict]) -> list[dict]:
+    """The rows still current per (metric, target_period) (T-105).
+
+    A row is superseded when another row of the same metric and target period comes from a different document
+    whose ``known_at`` (or filing day) is later; the caller passes rows already cut at ``as_of`` and ordered
+    newest first, so a row the decision day could not know never supersedes anything.  Every row of the newest
+    document is kept (a call can give two targets for the same metric and period), and each kept row carries
+    ``superseded_rows`` = how many older rows this view drops."""
+    def when(r: dict) -> str:
+        return r.get("known_at") or r.get("said_on") or ""
+
+    groups: dict[tuple, list[dict]] = {}
+    for r in rows:
+        groups.setdefault((r["metric"], r["target_period"]), []).append(r)
+    newest = {key: max(when(r) for r in group) for key, group in groups.items()}
+    dropped = {key: sum(1 for r in group if when(r) != newest[key]) for key, group in groups.items()}
+    out: list[dict] = []
+    for r in rows:
+        key = (r["metric"], r["target_period"])
+        if when(r) == newest[key]:
+            r["superseded_rows"] = dropped[key]
+            out.append(r)
+    return out
 
 
 def print_sample(db: str, n: int, seed: int = 7) -> list[sqlite3.Row]:

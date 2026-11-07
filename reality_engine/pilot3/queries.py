@@ -278,12 +278,17 @@ def kpi_fy_sum(conn: sqlite3.Connection, symbol: str, metric: str, fy: str, dime
 
 # --- guidance ---------------------------------------------------------------------------------------
 def guidance_rows(conn: sqlite3.Connection, symbol: str, metric: str | None = None, period: str | None = None,
-                  as_of: str | None = None) -> list[dict]:
+                  as_of: str | None = None, history: bool = False) -> list[dict]:
     """S-GUIDE: the stored forward targets (``guidance``, filled by ``guidance.py``) newest first, each with the row
     it revised (``revision_of``) and that row's low/high, so a change between calls is one query.
 
     ``metric`` matches an exact name or any name containing the word (``margin`` -> ``ebitda_margin``); ``period``
-    is a canonical fiscal label (FY27, Q2FY27); ``as_of`` drops rows known after that day."""
+    is a canonical fiscal label (FY27, Q2FY27) or a horizon (``medium_term``, ``long_term``); ``as_of`` drops rows
+    known after that day.  By default only the current target of each metric+period is returned (T-105): an older
+    row of the same metric and period that a later document replaced is dropped and the kept row says how many
+    (``superseded_rows``).  ``history=True`` returns every row, as the tool did before."""
+    from .guidance import current_rows
+
     where, args = "g.symbol=?", [symbol]
     if metric:
         names = [r[0] for r in conn.execute("SELECT DISTINCT metric FROM guidance WHERE symbol=?", (symbol,))]
@@ -300,8 +305,10 @@ def guidance_rows(conn: sqlite3.Connection, symbol: str, metric: str | None = No
     extra, eargs = ((" AND substr(g.known_at,1,10) <= ?", (as_of,)) if as_of else ("", ()))
     cur = conn.execute(
         f"SELECT g.id, g.metric, g.target_period, g.low, g.high, g.unit, g.direction, g.said_on, g.doc_key, "
-        f"g.page, g.quote, g.speaker, g.revision_of, pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on "
+        f"g.page, g.quote, g.speaker, g.known_at, g.revision_of, pv.low prev_low, pv.high prev_high, "
+        f"pv.said_on prev_said_on "
         f"FROM guidance g LEFT JOIN guidance pv ON pv.id=g.revision_of WHERE {where}{extra} "
         f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC", (*args, *eargs))
     names = [d[0] for d in cur.description]
-    return [dict(zip(names, row)) for row in cur.fetchall()]
+    rows = [dict(zip(names, row)) for row in cur.fetchall()]
+    return rows if history else current_rows(rows)
