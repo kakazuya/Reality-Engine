@@ -457,3 +457,69 @@ def test_report_writes_summary_and_a_seeded_sample(tmp_path):
                                     "quote", "fails"]
     assert len(lines) == 3, lines
     assert verdict(out, "kpi_series", 1)[0] == "verified"
+
+
+def test_currency_in_the_label_to_number_span_is_quarantined(tmp_path):
+    pages = {
+        1: "Adjusted Net Debt\n$ \n6,724 $ \n5,176",
+        2: "Net debt was ₹5,176 crore",
+        3: "Net debt was Rs 5,176 crore",
+        4: "order inflows of around USD 225 million (approximately ` 2,000 Crore)",
+    }
+    kpi = [
+        dict(id=1, symbol="METAL", metric="net_debt", dimension="novelis", fiscal_period="Q4FY25",
+             value=5176.0, unit="inr_cr", scale=1e7, quote=pages[1], page=1),
+        dict(id=2, symbol="METAL", metric="net_debt", fiscal_period="FY26", period_type="FY", value=5176.0,
+             unit="inr_cr", scale=1e7, quote=pages[2], page=2),
+        dict(id=3, symbol="METAL", metric="net_debt", fiscal_period="FY27", period_type="FY", value=5176.0,
+             unit="usd_mn", scale=1e6, quote=pages[3], page=3),
+        dict(id=4, symbol="EPC", metric="order_intake", fiscal_period="FY26", period_type="FY", value=2000.0,
+             unit="inr_cr", scale=1e7, quote=pages[4], page=4),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        sectors={"METAL": "metals_nonferrous", "EPC": "epc_capital_goods"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "currency" in fails, fails
+    assert verdict(out, "kpi_series", 2)[0] == "verified"
+    status, fails = verdict(out, "kpi_series", 3)
+    assert status == "quarantined" and "currency" in fails, fails
+    # a backtick is this corpus's rupee glyph, so the rupee approximation is the number's currency
+    assert "currency" not in verdict(out, "kpi_series", 4)[1]
+
+
+def test_dimension_word_flags_a_segment_named_before_a_total_label(tmp_path):
+    pages = {
+        1: "Aluminium Upstream EBITDA per tonne $1,500",
+        2: "Aluminium Upstream ... EBITDA per tonne $1,583",
+        3: "Renewables ... Revenues of Rs 122 Cr",
+        4: "Consolidated revenues of Rs 500 crore",
+        5: "Aluminium Upstream PAT was Rs 100 crore",
+        6: "Return on Average Assets (RoA) of 4.26% in FY26",
+    }
+    kpi = [
+        dict(id=1, symbol="METAL", metric="ebitda_per_tonne", dimension="aluminium_upstream",
+             fiscal_period="Q4FY26", value=1500.0, unit="usd_per_tonne", quote=pages[1], page=1),
+        dict(id=2, symbol="METAL", metric="ebitda_per_tonne", dimension="total", fiscal_period="Q4FY26",
+             value=1583.0, unit="usd_per_tonne", quote=pages[2], page=2),
+        dict(id=3, symbol="EPC", metric="revenue", dimension="renewables", fiscal_period="Q2FY26",
+             value=122.0, unit="inr_cr", scale=1e7, quote=pages[3], page=3),
+        dict(id=4, symbol="EPC", metric="revenue", dimension="total", fiscal_period="Q2FY26", value=122.0,
+             unit="inr_cr", scale=1e7, quote=pages[3], page=3),
+        dict(id=5, symbol="IT", metric="revenue", dimension="total", fiscal_period="Q2FY26", value=500.0,
+             unit="inr_cr", scale=1e7, quote=pages[4], page=4),
+        dict(id=6, symbol="IT", metric="pat", dimension="total", fiscal_period="Q2FY26", value=100.0,
+             unit="inr_cr", scale=1e7, quote=pages[5], page=5),
+        dict(id=7, symbol="LENDER", metric="roa_pct", dimension="total", fiscal_period="FY26",
+             period_type="FY", value=4.26, unit="pct", quote=pages[6], page=6),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        sectors={"METAL": "metals_nonferrous", "EPC": "epc_capital_goods", "IT": "it_services",
+                                 "LENDER": "nbfc"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (2, 4, 6):
+        status, fails = verdict(out, "kpi_series", rid)
+        assert status == "unverified" and "dimension_word" in fails, (rid, fails)
+    assert verdict(out, "kpi_series", 5)[0] == "verified"
+    # the metric's full name before its own abbreviation is not a segment word
+    assert "dimension_word" not in verdict(out, "kpi_series", 7)[1]
