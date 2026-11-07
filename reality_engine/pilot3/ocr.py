@@ -27,6 +27,7 @@ import sys
 import time
 from pathlib import Path
 
+from reality_engine import raw_store
 from reality_engine.pilot3 import PAGES_DB, kpi, profile
 
 SCHEMA = """
@@ -66,6 +67,7 @@ def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
     build.py writes to doc_page), then decks_full, then sandbox pages by doc type, newest first.  A page stored
     already under a key that names the same document (sandbox alias, decks_full sha) is skipped."""
     fitz = _fitz()
+    store = raw_store.default_store()
     dbp = sandbox / f"{sym.lower()}_loop" / f"{sym.lower()}.db"
     con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
     out: list[tuple] = []
@@ -87,8 +89,8 @@ def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
             if any((k, page) in done for k in doc_keys.get(dk, (dk,))):
                 continue
             path = Path(source_path) if source_path else None
-            if path is None or not path.is_file():
-                continue                                # no PDF on this machine: nothing to render
+            if path is None or not store.exists(path):
+                continue                                # no PDF on this machine and none on Drive: nothing to render
             claimed.add((dk, page))
             out.append((doc_type, known_at, dk, page, path))
         pg.close()
@@ -99,7 +101,7 @@ def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
             if sha in held:
                 continue
             path = raw_root / "decks_full" / sha[:2] / f"{sha}.pdf"
-            if not path.exists():
+            if not store.exists(path):
                 continue
             key = f"decks_full/{sha[:2]}/{sha}.pdf"
             keys = {key} | {dk for dk, ks in doc_keys.items() if key in ks}
@@ -194,6 +196,7 @@ def run(out: str, symbols: list[str], sandbox: Path, raw_root: Path | None, max_
         dpi: int, device: str, max_side: int = 2400, reverse: bool = False,
         pages_db: Path | str | None = PAGES_DB) -> dict:
     fitz = _fitz()
+    store = raw_store.default_store()
     t0 = time.time()
     con = sqlite3.connect(out)
     con.executescript(SCHEMA)
@@ -207,33 +210,36 @@ def run(out: str, symbols: list[str], sandbox: Path, raw_root: Path | None, max_
         if limit:
             todo = todo[:limit]
         pdf, pdf_path = None, None
-        for doc_key, page, doc_type, known_at, path in todo:
-            if time.time() - t0 > max_seconds:
-                stats["stopped_at_time_limit"] = True
-                break
-            try:
-                if pdf_path != path:
-                    if pdf is not None:
-                        pdf.close()
-                    pdf, pdf_path = fitz.open(str(path)), path
-                t1 = time.time()
-                text, words, conf, nb = ocr_page(pdf[page - 1], dpi, device, max_side)
-                dt = time.time() - t1
-            except Exception as ex:  # keep going, count it
-                st["errors"] = st.get("errors", 0) + 1
-                st["last_error"] = f"{type(ex).__name__}: {ex}"[:120]
-                continue
-            con.execute("INSERT OR REPLACE INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (sym, doc_key, page, doc_type, known_at, text, json.dumps(words, separators=(",", ":")),
-                         round(conf, 4), nb, dpi, round(dt, 2), "ocr_rapid"))
-            st["done"] += 1
-            st["seconds_ocr"] = round(st["seconds_ocr"] + dt, 1)
-            st["boxes"] += nb
-            st["empty"] += int(nb == 0)
-            if st["done"] % 20 == 0:
-                con.commit()
-        if pdf is not None:
-            pdf.close()
+        # A company's PDFs are fetched once and deleted when this loop ends (T-102): a raw file may be only on Drive.
+        with store.prefetch([item[4] for item in todo]):
+            for doc_key, page, doc_type, known_at, path in todo:
+                if time.time() - t0 > max_seconds:
+                    stats["stopped_at_time_limit"] = True
+                    break
+                try:
+                    if pdf_path != path:
+                        if pdf is not None:
+                            pdf.close()
+                        with store.local(path) as source:
+                            pdf, pdf_path = fitz.open(str(source)), path
+                    t1 = time.time()
+                    text, words, conf, nb = ocr_page(pdf[page - 1], dpi, device, max_side)
+                    dt = time.time() - t1
+                except Exception as ex:  # keep going, count it
+                    st["errors"] = st.get("errors", 0) + 1
+                    st["last_error"] = f"{type(ex).__name__}: {ex}"[:120]
+                    continue
+                con.execute("INSERT OR REPLACE INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                            (sym, doc_key, page, doc_type, known_at, text, json.dumps(words, separators=(",", ":")),
+                             round(conf, 4), nb, dpi, round(dt, 2), "ocr_rapid"))
+                st["done"] += 1
+                st["seconds_ocr"] = round(st["seconds_ocr"] + dt, 1)
+                st["boxes"] += nb
+                st["empty"] += int(nb == 0)
+                if st["done"] % 20 == 0:
+                    con.commit()
+            if pdf is not None:
+                pdf.close()
         con.commit()
         st["pages_per_min"] = round(60 * st["done"] / st["seconds_ocr"], 1) if st["seconds_ocr"] else 0
         if stats.get("stopped_at_time_limit"):

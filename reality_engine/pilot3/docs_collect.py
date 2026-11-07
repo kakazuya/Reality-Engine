@@ -538,75 +538,81 @@ def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print,
     counts: dict[str, dict] = {}
     held_newsids: dict[str, set] = {}
     started = time.time()
+    store = make_store(cfg)
     for symbol in symbols:
         company = cfg.companies[symbol]
         history = isin_history(cfg, symbol)
         isins = [h[0] for h in history] or list(company.isins)
-        records = Records(cfg, company, isins)
-        candidates = discover(cfg, company, records)
+        records = Records(cfg, company, isins, store)
+        candidates = discover(cfg, company, records, store)
         stat = counts[symbol] = {"files": len(candidates), "docs": 0, "dupes": 0, "pages": 0,
                                  "needs_ocr": 0, "undated": 0, "errors": 0, "skipped": 0, "set_aside": 0}
         held = held_newsids.setdefault(symbol, set())
         groups: dict[str, list] = {}
-        for pdf, root, dir_type in candidates:
-            sha = _sha256(pdf)
-            groups.setdefault(sha, []).append((pdf, root, dir_type, records.lookup(pdf, sha)))
-        for sha, members in groups.items():
-            if set_aside and sha in set_aside:
-                stat["set_aside"] += 1
-                continue
-            # One document, possibly filed under several announcements (a results PDF is attached to the
-            # board-meeting outcome and again to the results filing): the earliest dissemination is when
-            # it became public, so that record dates the doc; every filing is kept in source_record.
-            members.sort(key=lambda m: (not (m[3] or {}).get("known_at"), str((m[3] or {}).get("known_at") or ""), str(m[0])))
-            pdf, root, dir_type, record = members[0]
-            stat["dupes"] += len(members) - 1
-            filings, seen_ids = [], set()
-            for path, _root, _kind, rec in members:
-                if rec:
-                    for ident in (rec.get("NEWSID"), rec.get("attachment")):
-                        if ident:
-                            held.add(str(ident).lower())
-                    ident = str(rec.get("NEWSID") or rec.get("attachment") or rec.get("id") or path)
-                    if ident not in seen_ids:
-                        seen_ids.add(ident)
-                        filings.append({"NEWSID": rec.get("NEWSID") or "", "attachment": rec.get("attachment") or "",
-                                        "known_at": rec.get("known_at"), "subcat": rec.get("subcat") or "",
-                                        "title": rec.get("title") or ""})
-            old_key = conn.execute("SELECT doc_key FROM doc WHERE sha256=? AND symbol=? ORDER BY doc_key LIMIT 1",
-                                   (sha, symbol)).fetchone()
-            key = old_key[0] if old_key else _doc_key(pdf, root, cfg)
-            known_at = (record or {}).get("known_at")
-            filing_date = (record or {}).get("filing_date")
-            doc_type = _refine_type(dir_type, record, records.sha_type(sha))
-            isin = (record or {}).get("isin") or isin_at(history, filing_date)
-            old = conn.execute("SELECT pages FROM doc WHERE doc_key=? AND sha256=?", (key, sha)).fetchone()
-            if old is not None and conn.execute("SELECT COUNT(*) FROM doc_page WHERE doc_key=?", (key,)
-                                                ).fetchone()[0] >= (old[0] or 0):
-                pages = old[0]
-                page_stats = {"script_text": 0, "error": "", "needs_ocr": conn.execute(
-                    "SELECT COUNT(*) FROM doc_page WHERE doc_key=? AND method='needs_ocr'", (key,)).fetchone()[0]}
-                conn.execute("UPDATE doc_page SET known_at=? WHERE doc_key=?", (known_at, key))
-                stat["skipped"] += 1
-            else:
-                conn.execute("DELETE FROM doc_page WHERE doc_key=?", (key,))
-                pages, page_stats = _extract(conn, key, pdf, known_at)
-            meta = {k: v for k, v in (record or {}).items() if k in
-                    ("NEWSID", "attachment", "id", "category", "subcat", "headline", "size")}
-            meta["dir_type"] = dir_type
-            meta["filings"] = filings
-            meta["paths"] = [str(m[0]) for m in members]
-            if page_stats["error"]:
-                meta["error"] = page_stats["error"]
-                stat["errors"] += 1
-            conn.execute("INSERT OR REPLACE INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
-                key, symbol, isin, doc_type, (record or {}).get("title") or pdf.stem, filing_date, known_at,
-                str(pdf), sha, pages, json.dumps(meta), (record or {}).get("source") or ""))
-            conn.commit()
-            stat["docs"] += 1
-            stat["pages"] += pages
-            stat["needs_ocr"] += page_stats["needs_ocr"]
-            stat["undated"] += 0 if known_at else 1
+        # One download and one delete per company (T-102): the whole candidate list is fetched once,
+        # then hashed and read from the temp copy.
+        with store.prefetch([pdf for pdf, _root, _kind in candidates]):
+            for pdf, root, dir_type in candidates:
+                with store.local(pdf) as source:
+                    sha = _sha256(Path(source))
+                groups.setdefault(sha, []).append((pdf, root, dir_type, records.lookup(pdf, sha)))
+            for sha, members in groups.items():
+                if set_aside and sha in set_aside:
+                    stat["set_aside"] += 1
+                    continue
+                # One document, possibly filed under several announcements (a results PDF is attached to the
+                # board-meeting outcome and again to the results filing): the earliest dissemination is when
+                # it became public, so that record dates the doc; every filing is kept in source_record.
+                members.sort(key=lambda m: (not (m[3] or {}).get("known_at"), str((m[3] or {}).get("known_at") or ""), str(m[0])))
+                pdf, root, dir_type, record = members[0]
+                stat["dupes"] += len(members) - 1
+                filings, seen_ids = [], set()
+                for path, _root, _kind, rec in members:
+                    if rec:
+                        for ident in (rec.get("NEWSID"), rec.get("attachment")):
+                            if ident:
+                                held.add(str(ident).lower())
+                        ident = str(rec.get("NEWSID") or rec.get("attachment") or rec.get("id") or path)
+                        if ident not in seen_ids:
+                            seen_ids.add(ident)
+                            filings.append({"NEWSID": rec.get("NEWSID") or "", "attachment": rec.get("attachment") or "",
+                                            "known_at": rec.get("known_at"), "subcat": rec.get("subcat") or "",
+                                            "title": rec.get("title") or ""})
+                old_key = conn.execute("SELECT doc_key FROM doc WHERE sha256=? AND symbol=? ORDER BY doc_key LIMIT 1",
+                                       (sha, symbol)).fetchone()
+                key = old_key[0] if old_key else _doc_key(pdf, root, cfg)
+                known_at = (record or {}).get("known_at")
+                filing_date = (record or {}).get("filing_date")
+                doc_type = _refine_type(dir_type, record, records.sha_type(sha))
+                isin = (record or {}).get("isin") or isin_at(history, filing_date)
+                old = conn.execute("SELECT pages FROM doc WHERE doc_key=? AND sha256=?", (key, sha)).fetchone()
+                if old is not None and conn.execute("SELECT COUNT(*) FROM doc_page WHERE doc_key=?", (key,)
+                                                    ).fetchone()[0] >= (old[0] or 0):
+                    pages = old[0]
+                    page_stats = {"script_text": 0, "error": "", "needs_ocr": conn.execute(
+                        "SELECT COUNT(*) FROM doc_page WHERE doc_key=? AND method='needs_ocr'", (key,)).fetchone()[0]}
+                    conn.execute("UPDATE doc_page SET known_at=? WHERE doc_key=?", (known_at, key))
+                    stat["skipped"] += 1
+                else:
+                    conn.execute("DELETE FROM doc_page WHERE doc_key=?", (key,))
+                    with store.local(pdf) as source:
+                        pages, page_stats = _extract(conn, key, Path(source), known_at)
+                meta = {k: v for k, v in (record or {}).items() if k in
+                        ("NEWSID", "attachment", "id", "category", "subcat", "headline", "size")}
+                meta["dir_type"] = dir_type
+                meta["filings"] = filings
+                meta["paths"] = [str(m[0]) for m in members]
+                if page_stats["error"]:
+                    meta["error"] = page_stats["error"]
+                    stat["errors"] += 1
+                conn.execute("INSERT OR REPLACE INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
+                    key, symbol, isin, doc_type, (record or {}).get("title") or pdf.stem, filing_date, known_at,
+                    str(pdf), sha, pages, json.dumps(meta), (record or {}).get("source") or ""))
+                conn.commit()
+                stat["docs"] += 1
+                stat["pages"] += pages
+                stat["needs_ocr"] += page_stats["needs_ocr"]
+                stat["undated"] += 0 if known_at else 1
         log(f"{symbol}: {stat} ({round(time.time() - started)}s)")
     log(f"retyped {retype_agm(conn)} AGM filings of 100+ pages as annual_report")
     conn.close()
@@ -629,59 +635,71 @@ def _rel_key(path: Path, root: Path) -> str:
         return path.as_posix()
 
 
-def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path, log=print) -> dict:
+def _manifest_path(row: dict, symbol: str, prof: profile.Profile) -> Path:
+    """The local path a manifest row's file is stored at (the store may hold the copy on Drive)."""
+    ident = str(row.get("newsid") or row.get("local_path") or row.get("url") or "").strip()
+    local = str(row.get("local_path") or "").strip()
+    path = Path(local) if local else prof.raw_root / symbol / str(row.get("bucket")) / f"{ident}.pdf"
+    if local and not path.is_absolute():
+        path = prof.raw_root / path
+    return path
+
+
+def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path, log=print,
+                     store: raw_store.RawStore | None = None) -> dict:
     """pages.db from a profile's raw manifest only: the ``status='ok'`` rows of the requested companies.
 
     No store lookup and no directory walk: the manifest names each filing, its local file, its dissemination
     time and its bucket, so ``known_at`` is the row's ``dissem_ts`` and a row without one is counted, not
     written (a document that cannot be dated cannot prove it was public).  A bucket with no document behind it
-    (``concall_audio_link``, ``skip``) and a row whose file is not on disk do not become rows either."""
+    (``concall_audio_link``, ``skip``) and a row whose file is neither local nor on Drive do not become rows
+    either.  A company is one ``prefetch``: every file it needs is downloaded once and deleted after."""
     conn = connect_out(out)
     counts: dict[str, dict] = {}
     started = time.time()
     rows = _manifest_rows(prof.manifest)
+    store = store or raw_store.RawStore(roots={prof.raw_root.name.lower(): prof.raw_root})
     for symbol in symbols:
         stat = counts[symbol] = {"rows": 0, "docs": 0, "pages": 0, "needs_ocr": 0, "undated": 0, "missing": 0,
                                  "errors": 0, "not_documents": 0, "dupes": 0}
         seen: set[str] = set()
         mine = [r for r in rows if str(r.get("symbol_at_time") or "").strip().upper() == symbol]
-        for row in sorted(mine, key=lambda r: str(r.get("dissem_ts") or "")):
-            stat["rows"] += 1
-            doc_type = BUCKET_TYPES.get(str(row.get("bucket") or "").strip().lower())
-            if doc_type is None:
-                stat["not_documents"] += 1
-                continue
-            ident = str(row.get("newsid") or row.get("local_path") or row.get("url") or "").strip()
-            if ident and ident in seen:
-                stat["dupes"] += 1
-                continue
-            known_at = str(row.get("dissem_ts") or "").strip()
-            if not known_at:
-                stat["undated"] += 1
-                continue
-            local = str(row.get("local_path") or "").strip()
-            path = Path(local) if local else prof.raw_root / symbol / str(row.get("bucket")) / f"{ident}.pdf"
-            if local and not path.is_absolute():
-                path = prof.raw_root / path
-            if not path.is_file():
-                stat["missing"] += 1
-                continue
-            if ident:
-                seen.add(ident)
-            key = _rel_key(path, prof.raw_root)
-            pages, page_stats = _extract(conn, key, path, known_at)
-            meta = {k: row.get(k) for k in ("newsid", "bucket", "category", "subcat", "headline", "url", "sha256")}
-            conn.execute("INSERT OR REPLACE INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
-                key, symbol, row.get("isin"), doc_type,
-                _title(row.get("headline"), row.get("subcat"), row.get("category")) or path.stem,
-                _date_of(known_at), known_at, str(path), str(row.get("sha256") or ""), pages, json.dumps(meta),
-                "manifest.csv"))
-            conn.commit()
-            stat["docs"] += 1
-            stat["pages"] += pages
-            stat["needs_ocr"] += page_stats["needs_ocr"]
-            if page_stats["error"]:
-                stat["errors"] += 1
+        with store.prefetch(_manifest_path(r, symbol, prof) for r in mine):
+            for row in sorted(mine, key=lambda r: str(r.get("dissem_ts") or "")):
+                stat["rows"] += 1
+                doc_type = BUCKET_TYPES.get(str(row.get("bucket") or "").strip().lower())
+                if doc_type is None:
+                    stat["not_documents"] += 1
+                    continue
+                ident = str(row.get("newsid") or row.get("local_path") or row.get("url") or "").strip()
+                if ident and ident in seen:
+                    stat["dupes"] += 1
+                    continue
+                known_at = str(row.get("dissem_ts") or "").strip()
+                if not known_at:
+                    stat["undated"] += 1
+                    continue
+                path = _manifest_path(row, symbol, prof)
+                if not store.exists(path):
+                    stat["missing"] += 1
+                    continue
+                if ident:
+                    seen.add(ident)
+                key = _rel_key(path, prof.raw_root)
+                with store.local(path) as source:
+                    pages, page_stats = _extract(conn, key, Path(source), known_at)
+                meta = {k: row.get(k) for k in ("newsid", "bucket", "category", "subcat", "headline", "url", "sha256")}
+                conn.execute("INSERT OR REPLACE INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
+                    key, symbol, row.get("isin"), doc_type,
+                    _title(row.get("headline"), row.get("subcat"), row.get("category")) or path.stem,
+                    _date_of(known_at), known_at, str(path), str(row.get("sha256") or ""), pages, json.dumps(meta),
+                    "manifest.csv"))
+                conn.commit()
+                stat["docs"] += 1
+                stat["pages"] += pages
+                stat["needs_ocr"] += page_stats["needs_ocr"]
+                if page_stats["error"]:
+                    stat["errors"] += 1
         log(f"{symbol}: {stat} ({round(time.time() - started)}s)")
     conn.close()
     return counts

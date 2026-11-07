@@ -2,7 +2,7 @@
 
 Moved from `AGENTS.md` on 1 Nov 2026. What is actually on disk today: `tasks/DATA_INVENTORY.md`, which is generated.
 
-`reality_engine/config.py` sets `RAW_ROOT` from `REALITY_RAW_ROOT` (default `D:\RealityEngine\raw`) and `raw_dir(source)` creates one folder per family. Raw files are the audit/replay copy (`AGENTS.md` rule 4), and `reality_engine/raw_store.py` content-addresses identical bytes. `plugins/dsh-worker/jobs.yaml` schedules the daily fetchers. File counts are from `D:\RealityEngine\raw` on the MSI, 2 Nov 2026, unless dated otherwise. Folders not listed here: `tasks/DATA_INVENTORY.md`.
+`reality_engine/config.py` sets `RAW_ROOT` from `REALITY_RAW_ROOT` (default `D:\RealityEngine\raw`) and `raw_dir(source)` creates one folder per family. Raw files are the audit/replay copy (`AGENTS.md` rule 4), and `reality_engine/raw_store.py` content-addresses identical bytes. Since T-102 (Shivam, 7 Nov 2026) the raw files live only on Google Drive and the local copies are deleted; every reader goes through `RawStore`, which downloads a file on demand (one `rclone copy --files-from` per company), md5-checks it and deletes it after use, so the folder table below describes what a family holds, not what sits on the MSI disk. `plugins/dsh-worker/jobs.yaml` schedules the daily fetchers. File counts are from `D:\RealityEngine\raw` on the MSI, 2 Nov 2026, unless dated otherwise. Folders not listed here: `tasks/DATA_INVENTORY.md`.
 
 | Family | What it holds | Written / read by |
 |---|---|---|

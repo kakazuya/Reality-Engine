@@ -529,11 +529,13 @@ def _pdf_page_text(path: Path, page: int) -> tuple[str | None, int | None]:
     except Exception:
         return None, None
     try:
-        with fitz.open(str(path)) as doc:
-            count = int(doc.page_count)
-            if page < 1 or page > count:
-                return None, count
-            return doc[page - 1].get_text("text"), count
+        from reality_engine import raw_store
+        with raw_store.default_store().local(path) as source:   # the copy on Drive is fetched here (T-102)
+            with fitz.open(str(source)) as doc:
+                count = int(doc.page_count)
+                if page < 1 or page > count:
+                    return None, count
+                return doc[page - 1].get_text("text"), count
     except Exception:
         return None, None
 
@@ -585,7 +587,11 @@ def _local_pdf(local_path: str | None) -> Path | None:
     except Exception:
         return None
     p = resolve_stored_path(local_path)
-    return p if p.exists() else None
+    try:
+        from reality_engine import raw_store
+        return p if raw_store.default_store().exists(p) else None   # a file only on Drive is still readable (T-102)
+    except Exception:
+        return p if p.exists() else None
 
 
 def _deck_page(sha: str, page: int, local_path: str | None) -> dict[str, Any]:
@@ -1094,16 +1100,18 @@ def _deck_passages(identity: dict[str, Any], tokens: Sequence[str], lo: str | No
         if local_pdf is not None:
             try:
                 import fitz
-                with fitz.open(str(local_pdf)) as pdf:
-                    for page in range(1, int(pdf.page_count) + 1):
-                        text = pdf[page - 1].get_text("text")
-                        low = (text or "").lower()
-                        if all(t in low for t in tokens):
-                            local_hit = True
-                            out.append({"store": "deck_figures", "doc_type": "deck",
-                                        "date": _iso(deck["known_at"]), "doc_id": sha,
-                                        "page": page, "page_count": int(pdf.page_count),
-                                        "quote": _quote(text, tokens), "score": 3})
+                from reality_engine import raw_store
+                with raw_store.default_store().local(local_pdf) as source:   # fetched from Drive when needed (T-102)
+                    with fitz.open(str(source)) as pdf:
+                        for page in range(1, int(pdf.page_count) + 1):
+                            text = pdf[page - 1].get_text("text")
+                            low = (text or "").lower()
+                            if all(t in low for t in tokens):
+                                local_hit = True
+                                out.append({"store": "deck_figures", "doc_type": "deck",
+                                            "date": _iso(deck["known_at"]), "doc_id": sha,
+                                            "page": page, "page_count": int(pdf.page_count),
+                                            "quote": _quote(text, tokens), "score": 3})
             except Exception:
                 pass
         if local_hit:

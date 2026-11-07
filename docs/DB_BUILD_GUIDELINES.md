@@ -81,6 +81,9 @@ Change a rule only with a measurement that supports the change, and note it in `
 - `resolve_file` reads a sha-to-path index built once over the raw store's sha-named folders
   (`docs_collect.SHA_DIRS`) plus the Drive index kept by `reality_engine/toolbelt/drive_fetch.py`; a row only in the
   archive is `on_drive`, and only a bounded sample (at most 50 files) is ever downloaded.
+- A raw file may live only on Drive (T-102): a build step asks `reality_engine/raw_store.py` (`exists`/`walk`/`glob`/
+  `subdirs` to see it, `local`/`prefetch` to read it), never `Path.is_file()` alone, and treats a file neither local
+  nor in the T-102 manifest as missing.
 - A failure is set aside by the flag, never deleted: `docs_collect.collect(..., set_aside={sha,...})` skips that file,
   and `registry.build_doc` leaves out every `doc_identity.doc_key` whose verdict is `set_aside` (`doc_key` is the
   sha256, else `corp:<corporate_documents.id>`).
