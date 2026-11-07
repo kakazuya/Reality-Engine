@@ -143,7 +143,18 @@ Change a rule only with a measurement that supports the change, and note it in `
   whose quote names a segment word from the company's own non-total dimensions or a capitalised noun phrase in the
   60 characters before its label: "Aluminium Business EBITDA", "Renewables ... Revenues"; a window that holds the
   metric's own full name before its abbreviation, "Return on Average Equity (ROE)", is not a segment), missing
-  vocabulary or page text, unknown sector, a weak or pre-quote label.
+  vocabulary or page text, unknown sector, a weak or pre-quote label, `not_pinned` (guidance: one or more of the
+  five verified conditions below is missing, with the letters in the why), `scope_word` (kpi: a total row whose
+  label-to-number span names a part scope: per store/unit/tonne, facility, plant, project, maintenance, segment,
+  division, international, domestic, mix, share, contribution, of revenue/sales, excluding, ex-).
+- Guidance is `verified` only when ALL of these hold, else soft `not_pinned` with the missing letter(s): (a) a strong
+  label of the row's own metric within 45 chars of the number, in the same sentence; (b) no part-scope word between
+  that label and the number or right after the number (per showroom/store/unit/tonne unless the metric is per-unit;
+  facility, plant, project, maintenance, segment, division, international, domestic, mix, share, contribution, of
+  revenue/sales unless the metric is a ratio of that; excluding, ex-); (c) a forward word in the same sentence;
+  (d) the target period is stated in the sentence, or the sentence says this/next/full year (or "for the year") and
+  the document date gives it; (e) not a reported actual ("was", "stood at", "delivered", "reported", "for the
+  quarter/9M ended" governing the number).  KPI keeps its logic with (b) as soft `scope_word` on total rows.
 - Run:
   ```bash
   python -m reality_engine.pilot3.row_checks --db D:/RealityEngine/pilot10/pilot10.db --out <verdicts.db> \
@@ -176,11 +187,26 @@ Change a rule only with a measurement that supports the change, and note it in `
   SBILIFE long-term), kpi unchanged 4,193/1,493/357; all six v2 and seven Gemini known-wrong rows stay quarantined.
   Round 2 unchanged: `currency` 12, `dimension_word` 7 (soft), `list_order` 53, `part_not_total` 83, `period_word` 3,
   `variant` 81 (soft), `entity_mismatch` 36 (soft).
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (25 passed, 8 Nov) builds a tiny fixture
+- Measured 8 Nov 2026, round 4 (verified as a high bar; same unseen6 database): **80 verified / 882 unverified /
+  403 quarantined -> 12 / 946 / 407**. Reading the fresh seed-4 samples: unseen6 has only 12 verified left, **7 right
+  and 5 wrong** (173 and 193 store a past "increased sales investment by 21%/23%" as revenue growth; 237 and 186 a
+  revenue-mix / order-book share; 990 an EBITDA margin); pilot10 kpi **20 of 20 right** (several `multi_number` rows
+  corroborated by a second source). 68 previously verified unseen6 rows became unverified; of 15 re-read, 7 were
+  wrong rows the gate correctly unpinned and 8 were right-ish but not provable from the quote alone (label 50-75
+  chars away, period not stated, "Q4" without a year); 265 (label at 60 chars) and 80 (bare Q4 + doc date) are
+  over-strict on one criterion and stay unverified by design. Pilot dev databases: v2 guidance 43/24/39 ->
+  **19/48/39**, kpi 4,193/1,493/357 -> **4,168/1,518/357** (25 rows now carry `scope_word`); agy 27/21/18 ->
+  **15/33/18**. Two general bugs the reading exposed and fixed: a sentence break at "Rs." truncated the number's
+  sentence, so its forward word and period fell outside it; and "Q3 FY2026" was read as FY20 by the period token,
+  which quarantined a correct SUNPHARMA PAT row (45728, verified again). All six v2 and seven Gemini known-wrong rows
+  stay quarantined.
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (33 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
   gross margin as its own metric, the denominator keep rule, "improve by" as a delta, medium-term / CAGR /
-  fiscal-year mismatches with their comparative and percentage-range controls, "repo" not matching "report");
+  fiscal-year mismatches with their comparative and percentage-range controls, "repo" not matching "report", each
+  of the five verified conditions a-e, kpi `scope_word` with the per-unit exemption, the "Rs." abbreviation and a
+  four-digit FY year);
   `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per

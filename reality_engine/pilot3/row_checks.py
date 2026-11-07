@@ -33,6 +33,9 @@ Checks (``check`` names in ``row_check_fail``):
     target_frame      (guidance) the number's sentence frames it as medium/long term or a CAGR while the
                       target_period is one fiscal year
     target_year       (guidance) the number's sentence prints a fiscal year that is not the target's year
+    not_pinned        (guidance) verified needs all of: a strong label within 45 chars in the sentence; no scope
+                      word between the label and the number; a forward word in the sentence; the target period in
+                      the sentence or a this/next/full-year phrase with the doc date; no realised figure -> soft
     multi_number      (kpi) the quote holds several numbers, so which column was taken is not pinned -> unverified
     cross_doc         (kpi) another document gives a different value for the same metric, period and scope
     fin_conflict      (kpi) the filed statements give a different figure for the same line and period
@@ -41,6 +44,8 @@ Checks (``check`` names in ``row_check_fail``):
     entity_mismatch   (kpi) the dimension and the entity name two different non-symbol subsidiaries -> unverified
     dimension_word    (kpi) a total row whose quote names a segment / business word just before its label ->
                       unverified
+    scope_word        (kpi) the label-to-number span names a part scope (per store, facility, project, mix,
+                      share, "of revenue", excluding ...) on a total row -> unverified
 
 Run:  python -m reality_engine.pilot3.row_checks --db D:/RealityEngine/pilot10/pilot10.db --out OUT.db
       [--profile tasks/night_loop/pilot10_profile.json] [--tables guidance,kpi_series]
@@ -71,7 +76,7 @@ HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_pr
         "fin_conflict", "part_not_total", "period_word", "currency", "target_frame", "target_year"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
         "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch",
-        "dimension_word"}
+        "dimension_word", "not_pinned", "scope_word"}
 
 # Revenue / PAT / EBITDA / order rows must be a plausible share of the company's filed figure: a subsidiary or
 # segment amount stored with dimension "total" is the classic "part stored as the total" mistake.
@@ -258,7 +263,7 @@ _SENT_BREAK = re.compile(r"[.!?](?:\s+|$)|[►•|]")
 _PERIOD_TOKEN = re.compile(
     r"(?:\b(?P<q>q[1-4])\b|\b(?P<h>h[12])\b|\b(?P<nine>9m|nine\s+months?)\b|"
     r"\b(?P<half>half[- ]?year)\b|\b(?P<ytd>ytd|year[- ]to[- ]date)\b)"
-    r"(?:\s*(?:fy\s*)?['’]?(?P<yy>\d{2}))?", re.I)
+    r"(?:\s*(?:fy\s*)?['’]?(?P<yy>\d{2,4}))?", re.I)
 _PAST_VERB = re.compile(
     r"\b(?:grew|grow|grown|delivered|achieved|reported|posted|stood|came\s+in|declined|rose|fell|"
     r"reduced|improved)\s+(?:at|of|to)?\s*$")
@@ -270,12 +275,33 @@ PERIOD_REACH = 60   # a token further from the number than this names another fi
 
 
 def sentence_bounds(text: str, pos: int) -> tuple[int, int]:
-    """The sentence around ``pos`` in folded text: split on . ! ? and on bullets / bars."""
+    """The sentence around ``pos`` in folded text: split on . ! ? and on bullets / bars, but not at an
+    abbreviation ("Rs. 80 crore") or an initial."""
     left = 0
     for m in _SENT_BREAK.finditer(text, 0, pos):
+        if _abbreviation(text, m.start()):
+            continue
         left = m.end()
-    m = _SENT_BREAK.search(text, pos)
-    return left, (m.start() if m else len(text))
+    for m in _SENT_BREAK.finditer(text, pos):
+        if _abbreviation(text, m.start()):
+            continue
+        return left, m.start()
+    return left, len(text)
+
+
+_ABBREV = re.compile(r"(?:\b(?:rs|mr|mrs|dr|ltd|co|inc|no|vs|fig|approx|pvt)|\b[a-z])\.$", re.I)
+
+
+def _abbreviation(text: str, dot: int) -> bool:
+    """True when the '.' at ``dot`` belongs to an abbreviation, not a sentence end."""
+    return text[dot] == "." and bool(_ABBREV.search(text[max(0, dot - 7):dot + 1]))
+
+
+def _two_digit_year(raw: str | None) -> str:
+    """'FY2026' and 'FY26' both give '26'."""
+    if not raw:
+        return ""
+    return raw[-2:] if len(raw) == 4 else raw
 
 
 def period_key(label: str | None) -> str | None:
@@ -302,7 +328,7 @@ def period_tokens(text: str, pos: int) -> tuple[set[str], set[str]]:
         if abs(m.start() - pos) > PERIOD_REACH:
             continue
         gap = text[m.end():pos] if m.end() <= pos else text[pos:m.start()]
-        yy = m.group("yy")
+        yy = _two_digit_year(m.group("yy"))
         suffix = "fy" + yy if yy else ""
         if m.group("q"):
             token = m.group("q").lower() + suffix
@@ -351,7 +377,19 @@ _MULTI_YEAR = re.compile(r"\b(?:medium|long)[- ]term\b|\bmedium\s+to\s+long[- ]t
 # a frame word about the past ("which has been our CAGR for the last 3 to 5 years") is not the target's frame
 _FRAME_PAST = re.compile(r"\b(?:has been|have been|was|were|for the last|over the last|in the last)\b", re.I)
 _FY_RANGE = re.compile(r"\b(?:fy\s*)?['’]?((?:19|20)?\d{2})\s*[-–/]\s*['’]?((?:19|20)?\d{2})\b", re.I)
-_FY_TOKEN = re.compile(r"\bfy\s*['’]?((?:19|20)?\d{2})\b", re.I)
+_FY_TOKEN = re.compile(r"\b(?:fy|year)\s*['’]?((?:19|20)?\d{2})\b", re.I)
+
+# Verified is a high bar: a reported figure ("was", "stood at", "for the quarter ended") does not govern a target,
+# and a period phrase gives the target year only with the document date.
+_ACTUAL = re.compile(r"\b(?:was|were|stood at|delivered|reported|posted|came in at|"
+                     r"for the (?:quarter|nine months|9m|half[- ]year) ended)\b", re.I)
+_YEAR_PHRASE = re.compile(r"\b(?:this|next|current|full)\s+(?:fiscal\s+)?year\b|\bthis fiscal\b|"
+                          r"\bnext fiscal\b|\bfor the year\b|\bclose the year\b", re.I)
+# A part scope between the label and the number makes a figure unpinnable for the company (or for the total row).
+_SCOPE_WORD = re.compile(
+    r"\b(?:facility|facilities|plant|plants|project|projects|maintenance|segment|segments|division|divisions|"
+    r"international|domestic|mix|share|contribution)\b|\bexcluding\b|\bex[- ]|\bper\s+(?!cent\b)[a-z]+|"
+    r"\bof\s+(?:revenue|sales|turnover)\b", re.I)
 
 
 def _as_year(raw: str) -> int | None:
@@ -387,6 +425,32 @@ def fiscal_years(text: str) -> set[str]:
         if year:
             out.add(f"fy{year % 100:02d}")
     return out
+
+
+def fiscal_ending_year(date: str | None) -> int | None:
+    """Fiscal year end for a document date (Indian April-March): 2026-05-01 -> 2027."""
+    if not date or len(date) < 7:
+        return None
+    try:
+        year, month = int(date[0:4]), int(date[5:7])
+    except ValueError:
+        return None
+    return year + 1 if month >= 4 else year
+
+
+def nearest_strong_label(m: Metric, text: str, pos: int, lo: int = 0,
+                         hi: int | None = None) -> tuple[int, int, int] | None:
+    """(signed distance, start, end) of the strong label of ``m`` nearest the number, inside [lo, hi]."""
+    hi = len(text) if hi is None else hi
+    best: tuple[int, int, int] | None = None
+    for pattern in m.labels:
+        for mm in pattern.finditer(text):
+            if mm.start() < lo or mm.end() > hi:
+                continue
+            dist = pos - mm.end() if mm.end() <= pos else mm.start() - pos
+            if best is None or abs(dist) < abs(best[0]):
+                best = (dist, mm.start(), mm.end())
+    return best
 
 
 # ----------------------------------------------------------------------------------------------- bounds
@@ -701,6 +765,100 @@ class Checker:
         if years and target not in years:
             v.fail("target_year", f"the number's sentence names {sorted(years)}, target is {period}")
 
+    def scope_hit(self, m: Metric | None, span: str, metric: str) -> str | None:
+        """A part-scope word in the label-to-number span, unless this row is that part (per-unit metric, a ratio
+        of revenue, or the metric's own name says the scope)."""
+        name = (metric or "").lower()
+        per_ok = (m is not None and m.kind == "per_unit") or "_per_" in name
+        ratio_ok = (m is not None and m.kind in ("level_pct", "bps_or_pct", "multiple"))
+        for mm in _SCOPE_WORD.finditer(span):
+            word = mm.group(0).strip().lower()
+            if word.startswith("per ") and per_ok:
+                continue
+            if word.startswith("of ") and ratio_ok:
+                continue
+            key = word.split()[0].strip("-")
+            if key and key in name:
+                continue
+            return word
+        return None
+
+    def check_scope_word(self, v: Verdict, m: Metric | None, text: str, pos: int | None, metric: str) -> None:
+        """A total kpi row whose label-to-number span names a part scope ("per store", "facility", "of revenue")."""
+        if m is None or pos is None:
+            return
+        label = nearest_strong_label(m, text, pos)
+        if label is None or abs(label[0]) > 80:
+            return
+        _, start, end = label
+        span = (text[end:pos] if end <= pos else text[pos:start]) + " " + text[pos:pos + 30]
+        word = self.scope_hit(m, span, metric)
+        if word:
+            v.fail("scope_word", f"the label-to-number span names scope '{word}'")
+
+    def period_stated(self, sent: str, period: str, doc_date: str | None) -> bool:
+        """The target period is printed in the sentence, or the sentence anchors "this/next/full year" and the
+        document date gives that fiscal year."""
+        key = period_key(period)
+        if key is None:
+            return bool(_MULTI_YEAR.search(sent) and (period or "").lower() in ("medium_term", "long_term"))
+        for mm in _PERIOD_TOKEN.finditer(sent):
+            yy = _two_digit_year(mm.group("yy"))
+            suffix = "fy" + yy if yy else ""
+            if mm.group("q"):
+                token = mm.group("q").lower() + suffix
+            elif mm.group("h"):
+                token = mm.group("h").lower() + suffix
+            elif mm.group("nine"):
+                token = "9m" + suffix
+            elif mm.group("half"):
+                token = "h1" + suffix
+            elif mm.group("ytd"):
+                token = "ytd"
+            else:
+                continue
+            if token == key:
+                return True
+            if len(token) <= 3 and key.startswith(token) and f"fy{key[-2:]}" in fiscal_years(sent):
+                return True
+        if key.startswith("fy") and key in fiscal_years(sent):
+            return True
+        m = _YEAR_PHRASE.search(sent)
+        if m:
+            base = fiscal_ending_year(doc_date)
+            if base is not None:
+                target = base + 1 if m.group(0).lower().startswith("next") else base
+                if key == f"fy{target % 100:02d}":
+                    return True
+        return False
+
+    def check_pinned(self, v: Verdict, m: Metric | None, text: str, pos: int | None, period: str,
+                     doc_date: str | None) -> None:
+        """Verified needs all of a-e; anything missing is soft not_pinned, never a quarantine."""
+        if m is None or pos is None:
+            return
+        lo, hi = sentence_bounds(text, pos)
+        sent = text[lo:hi]
+        why: list[str] = []
+        label = nearest_strong_label(m, text, pos, lo, hi)
+        if label is None or abs(label[0]) > 45:
+            why.append("a: no strong label within 45 chars in the sentence")
+        if label is not None:
+            _, start, end = label
+            span = (text[end:pos] if end <= pos else text[pos:start]) + " " + text[pos:pos + 30]
+            word = self.scope_hit(m, span, v.metric)
+            if word:
+                why.append(f"b: scope word '{word}'")
+        if not any(p.search(sent) for p in self.vocab.forward):
+            why.append("c: no forward word in the sentence")
+        if not self.period_stated(sent, period, doc_date):
+            why.append("d: target period not stated")
+        actual = _ACTUAL.search(text[max(0, pos - 50):pos])
+        if actual:
+            why.append(f"e: reported actual '{actual.group(0)}'")
+        if why:
+            v.fail("not_pinned", "; ".join(why))
+
     def check_entity(self, v: Verdict, row: sqlite3.Row) -> None:
         """Dimension and entity name two different subsidiaries (neither is the listed company)."""
         dim = (row["dimension"] or "").strip()
@@ -829,6 +987,8 @@ class Checker:
             self.check_variant(v, m, text, pos)
             self.check_target_frame(v, text, pos, r["target_period"])
             self.check_target_year(v, text, pos, r["target_period"])
+            self.check_pinned(v, m, text, pos, r["target_period"],
+                              (r["said_on"] or r["known_at"] or "")[:10])
             if not any(p.search(text) for p in self.vocab.forward):
                 if any(p.search(context[-250:]) for p in self.vocab.forward):
                     v.fail("forward_context", "forward word only just before the quote")
@@ -949,6 +1109,7 @@ class Checker:
             self.check_currency(v, m, text, pos, r["unit"] or "")
             if r["dimension"] == "total":
                 self.check_dimension_word(v, m, quote, value, r["symbol"], dim_words)
+                self.check_scope_word(v, m, text, pos, r["metric"])
             if how == "exact":
                 # the list-order test needs the number the row actually took: a rescaled match (an OCR
                 # "0. 77%") is a soft value_scaled, not evidence about the list

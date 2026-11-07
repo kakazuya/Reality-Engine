@@ -262,7 +262,7 @@ def test_known_right_guidance_rows(tmp_path):
         dict(id=3, symbol="LENDER", metric="aum_growth", low=26.0, high=27.0, target_period="FY27",
              quote=pages[3], page=3, said_on="2026-07-24", known_at="2026-07-24T00:00:00"),
         dict(id=4, symbol="IT", metric="ebitda_margin", low=17.0, high=17.0, target_period="FY24",
-             quote=pages[4], page=4, said_on="2024-05-01", known_at="2024-05-01T00:00:00"),
+             quote=pages[4], page=4, said_on="2024-03-15", known_at="2024-03-15T00:00:00"),
     ]
     db, profile = build(tmp_path, pages, guidance=guidance, sectors={"IT": "it_services", "LENDER": "nbfc"})
     out = run_checks(tmp_path, db, profile, ("guidance",))
@@ -620,9 +620,10 @@ def test_target_year_mismatch_and_comparative(tmp_path):
     status, fails = verdict(out, "guidance", 1)
     assert status == "quarantined" and "target_year" in fails, fails
     assert "target_year" not in verdict(out, "guidance", 2)[1]
-    # "22-24%" is a percentage range, not fiscal years
+    # "22-24%" is a percentage range, not fiscal years; the period itself is not in the quote, so the row is
+    # unpinned (unverified), never quarantined for it
     assert "target_year" not in verdict(out, "guidance", 3)[1]
-    assert verdict(out, "guidance", 3)[0] == "verified"
+    assert verdict(out, "guidance", 3)[0] == "unverified"
 
 
 def test_list_order_ignores_a_delta_number(tmp_path):
@@ -636,8 +637,8 @@ def test_list_order_ignores_a_delta_number(tmp_path):
 
 def test_third_party_repo_is_a_word_not_a_prefix_of_report(tmp_path):
     quote = ("So, I think on a blended basis certainly while we see margins improving and maybe in the fourth "
-             "quarter we should be able to report EBITDA margins North of 20%, but to give a very specific "
-             "number at this stage would be difficult.")
+             "quarter we should be able to report EBITDA margins North of 20% for FY23, but to give a very "
+             "specific number at this stage would be difficult.")
     guidance = [dict(id=1, symbol="CO", metric="ebitda_margin", low=20.0, high=20.0, target_period="FY23",
                      quote=quote, said_on="2023-02-01", known_at="2023-02-01T00:00:00")]
     db, profile = build(tmp_path, {1: quote}, guidance=guidance, sectors={"CO": "it_services"})
@@ -645,3 +646,98 @@ def test_third_party_repo_is_a_word_not_a_prefix_of_report(tmp_path):
     status, fails = verdict(out, "guidance", 1)
     assert "third_party" not in fails, fails
     assert status == "verified", fails
+
+
+# ------------------------------------------------------------------ the verified bar (not_pinned / scope_word)
+
+def test_sentence_bounds_keeps_an_abbreviation():
+    text = rc.fold("Capex will be Rs. 80 crore. Next paragraph.")
+    pos = text.index("80")
+    lo, hi = rc.sentence_bounds(text, pos)
+    assert text[lo:hi].startswith("capex will be rs."), text[lo:hi]
+    assert text[lo:hi].endswith("crore"), text[lo:hi]
+
+
+def test_period_token_reads_a_four_digit_year():
+    plain, _ = rc.period_tokens("q3 fy2026", 0)
+    assert "q3fy26" in plain, plain
+    plain, _ = rc.period_tokens("h1 fy 2026", 0)
+    assert "h1fy26" in plain, plain
+
+
+def test_not_pinned_a_label_beyond_45_chars(tmp_path):
+    quote = ("Revenue, as we discussed at length in the previous call and in many meetings, guidance 20% for FY27.")
+    guidance = [dict(id=1, symbol="CO", metric="revenue_growth", low=20.0, high=20.0, target_period="FY27",
+                     quote=quote, said_on="2026-08-01", known_at="2026-08-01T00:00:00")]
+    db, profile = build(tmp_path, {1: quote}, guidance=guidance, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert status == "unverified" and "not_pinned" in fails, fails
+
+
+def test_not_pinned_b_scope_word_between_label_and_number(tmp_path):
+    quote = "Revenue per store guidance of 12% for FY27."
+    guidance = [dict(id=1, symbol="CO", metric="revenue_growth", low=12.0, high=12.0, target_period="FY27",
+                     quote=quote, said_on="2026-08-01", known_at="2026-08-01T00:00:00")]
+    db, profile = build(tmp_path, {1: quote}, guidance=guidance, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert status == "unverified" and "not_pinned" in fails, fails
+
+
+def test_not_pinned_c_forward_word_only_in_another_sentence(tmp_path):
+    quote = "Our guidance remains strong. The operating margin is 20% for FY27."
+    guidance = [dict(id=1, symbol="CO", metric="ebitda_margin", low=20.0, high=20.0, target_period="FY27",
+                     quote=quote, said_on="2026-08-01", known_at="2026-08-01T00:00:00")]
+    db, profile = build(tmp_path, {1: quote}, guidance=guidance, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert status == "unverified" and "not_pinned" in fails, fails
+    assert "forward_word" not in fails, fails
+
+
+def test_not_pinned_d_period_stated_or_year_phrase(tmp_path):
+    pages = {
+        1: "Our operating margin guidance is 20% to 22%.",
+        2: "Our operating margin guidance for FY27 is 20% to 22%.",
+    }
+    guidance = [
+        dict(id=1, symbol="CO", metric="ebitda_margin", low=20.0, high=22.0, target_period="FY27",
+             quote=pages[1], page=1, said_on="2026-08-01", known_at="2026-08-01T00:00:00"),
+        dict(id=2, symbol="CO", metric="ebitda_margin", low=20.0, high=22.0, target_period="FY27",
+             quote=pages[2], page=2, said_on="2026-08-01", known_at="2026-08-01T00:00:00"),
+    ]
+    db, profile = build(tmp_path, pages, guidance=guidance, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert status == "unverified" and "not_pinned" in fails, fails
+    assert verdict(out, "guidance", 2)[0] == "verified"
+
+
+def test_not_pinned_e_reported_actual_governing_the_number(tmp_path):
+    quote = "EBITDA margin guidance was 20% for FY27."
+    guidance = [dict(id=1, symbol="CO", metric="ebitda_margin", low=20.0, high=20.0, target_period="FY27",
+                     quote=quote, said_on="2026-08-01", known_at="2026-08-01T00:00:00")]
+    db, profile = build(tmp_path, {1: quote}, guidance=guidance, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert status == "unverified" and "not_pinned" in fails, fails
+
+
+def test_kpi_scope_word_is_soft_and_per_unit_is_exempt(tmp_path):
+    pages = {
+        1: "Revenue per store was 500 crore",
+        2: "EBITDA per tonne guidance was 1,500",
+    }
+    kpi = [
+        dict(id=1, symbol="LENDER", metric="revenue", fiscal_period="Q1FY26", value=500.0, unit="inr_cr",
+             scale=1e7, quote=pages[1], page=1, known_at="2025-08-01T00:00:00"),
+        dict(id=2, symbol="METAL", metric="ebitda_per_tonne", fiscal_period="FY26", period_type="FY",
+             value=1500.0, unit="usd_per_tonne", quote=pages[2], page=2),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        sectors={"LENDER": "nbfc", "METAL": "metals_nonferrous"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "scope_word" in fails, fails
+    assert "scope_word" not in verdict(out, "kpi_series", 2)[1]
