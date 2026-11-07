@@ -9,6 +9,7 @@ Claude's control panel for Antigravity CLI (`agy`) coding jobs, modelled on dsh-
 | `start_worker(brief, use_worktree=True, base, timeout_seconds=3600, test_cmd)` | worktree `IDM-worktrees/Wolf-agy-<job_id>` on branch `Wolf-agy-<job_id>`, then a detached `runner.py` runs `agy -p <brief> --mode accept-edits --output-format stream-json`; returns at once |
 | `worker_status(job_id)` | done, outcome, elapsed, tool calls by tool, tokens (input, output, thinking, cache), last tool, denied actions, tool errors; parsed from `events.jsonl`, no model call |
 | `worker_result(job_id)` | final answer, branch, head, diff stat |
+| `resume_worker(job_id, message)` | continues that job's own Gemini conversation (`agy --conversation <id>`) in the same worktree and branch, as a new job with `resumed_from`; for review notes and unfinished steps (one task stays in one worker session) |
 | `list_workers`, `cancel_worker(confirm=true)`, `remove_worktree` | as in dsh-worker |
 | `quota()` | the logged-in Google account's Gemini and Claude/GPT weekly and five-hour limits left (`agy -p /usage`) |
 
@@ -21,7 +22,7 @@ to agy's global MCP config): `run_check(command)` runs one allowlisted command (
 py_compile, any `python -m reality_engine.<module>`, git status/diff/log/show; no pipes or chaining) in the job workspace, which the runner passes
 as `AGY_JOB_WORKSPACE`. agy's permissions (`~/.gemini/antigravity-cli/settings.json`, `permissions.allow`) allow
 `mcp(agy-tools/*)` and the pilot3 `reality-data` tools only; file reads and edits inside the workspace need no rule.
-Briefs must say: no shell commands, use `run_check`.
+Briefs must say: no shell commands, use `run_check`. A refused `run_command` ends Gemini's whole turn with an empty answer (seen 8 Nov, T-105, step 343); `worker_status` then shows it under `denied_actions` and `tool_errors`, and `resume_worker` continues the work.
 
 From a terminal: `python plugins/agy-worker/server/agy_core.py list` (or `status <job_id>`, `quota`).
 

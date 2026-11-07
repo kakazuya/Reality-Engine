@@ -30,6 +30,13 @@ def start_worker(brief: str, use_worktree: bool = True, base: str | None = None,
     return core.start(brief, use_worktree, base, timeout_seconds, test_cmd)
 
 
+@server.tool(name="resume_worker", description=(
+    "Continue a finished job's own Gemini conversation in the same worktree and branch with a follow-up message "
+    "(review notes, 'finish steps 2-4'). Returns a new job_id that points back with resumed_from."))
+def resume_worker(job_id: str, message: str, timeout_seconds: int = 3600) -> dict[str, Any]:
+    return core.resume(job_id, message, timeout_seconds)
+
+
 @server.tool(name="worker_status", description="Done flag, outcome, elapsed, tool calls by tool, tokens, last tool, "
              "denied actions and tool errors of one job. No model call.")
 def worker_status(job_id: str) -> dict[str, Any]:

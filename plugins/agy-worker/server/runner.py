@@ -16,6 +16,8 @@ def main(d: Path) -> None:
     brief = (d / "brief.md").read_text(encoding="utf-8")
     cmd = [str(core.AGY), "-p", brief, "--model", core.MODEL, "--mode", "accept-edits", "--output-format",
            "stream-json", "--print-timeout", f"{job['timeout_seconds']}s", "--disable-slash-commands"]
+    if job.get("conversation_id"):
+        cmd += ["--conversation", job["conversation_id"]]
     env = dict(__import__("os").environ, AGY_JOB_WORKSPACE=str(ws), PYTHONUTF8="1")
     outcome, rc = "completed", None
     with open(d / "events.jsonl", "w", encoding="utf-8") as out, open(d / "stderr.log", "w", encoding="utf-8") as err:

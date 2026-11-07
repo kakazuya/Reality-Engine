@@ -71,21 +71,13 @@ def start(brief: str, use_worktree: bool = True, base: str | None = None, timeou
     job = {"job_id": job_id, "model": MODEL, "created_at": _now(), "workspace": str(workspace), "branch": branch,
            "base": base_sha, "timeout_seconds": timeout_seconds, "test_cmd": test_cmd, "phase": "starting"}
     _save(job)
-    flags = CREATE_NO_WINDOW | NEW_GROUP | DETACHED
-    cmd = [sys.executable, str(SERVER_DIR / "runner.py"), str(d)]
-    try:
-        p = subprocess.Popen(cmd, creationflags=flags | BREAKAWAY, close_fds=True, cwd=str(workspace))
-    except OSError:
-        p = subprocess.Popen(cmd, creationflags=flags, close_fds=True, cwd=str(workspace))
-    job.update(phase="running", runner_pid=p.pid)
-    _save(job)
-    return {"ok": True, "job_id": job_id, "branch": branch, "workspace": str(workspace), "model": MODEL}
+    return _launch(job, d)
 
 
 def parse_events(path: Path) -> dict:
     """Tool calls by tool, tokens, last tool, denials and the final response from an agy stream-json log."""
     tools, denied, tok = Counter(), [], Counter()
-    last_tool, final, steps, errors, last_at = None, None, 0, [], None
+    last_tool, final, steps, errors, conv = None, None, 0, [], None
     if not path.exists():
         return {"tool_calls": 0}
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -108,17 +100,60 @@ def parse_events(path: Path) -> dict:
                 err = (su.get("tool_info") or {}).get("error") or su.get("error")
                 if err:
                     errors.append(str(err.get("message") if isinstance(err, dict) else err)[:300])
-        if "response" in e or e.get("event") in ("result", "final"):
+        if e.get("event") == "result" and isinstance(e.get("result"), dict):
+            final = e["result"]
+        elif "response" in e:
             final = e
+        if (e.get("init") or {}).get("conversation_id") or su.get("conversation_id"):
+            conv = (e.get("init") or {}).get("conversation_id") or su.get("conversation_id")
+        if su.get("state") == "ERROR":
+            msg = ((su.get("tool_info") or {}).get("error") or {}).get("message") or ""
+            errors.append(f"{su.get('tool_name')}: {msg[:200]}")
         denied += e.get("denied_actions") or []
+        if isinstance(e.get("result"), dict):
+            denied += e["result"].get("denied_actions") or []
     out = {"tool_calls": sum(tools.values()), "tool_calls_by_tool": dict(tools.most_common()), "steps": steps,
-           "tokens": dict(tok), "last_tool": last_tool, "denied_actions": denied[-10:], "tool_errors": errors[-5:]}
+           "tokens": dict(tok), "last_tool": last_tool, "denied_actions": denied[-10:], "tool_errors": errors[-5:],
+           "conversation_id": conv}
     if final:
         out["final_status"] = final.get("status")
         out["response"] = final.get("response")
         if final.get("usage"):
             out["tokens_final"] = final["usage"]
     return out
+
+
+def resume(job_id: str, message: str, timeout_seconds: int = 3600) -> dict:
+    """Continue the same agy conversation in the same worktree (one task stays in one worker session): a new job
+    record that points at the old job's workspace, branch and conversation id."""
+    old = _load(job_id)
+    conv = parse_events(job_dir(job_id) / "events.jsonl").get("conversation_id")
+    if not conv:
+        return {"ok": False, "error": "no conversation id in the old job's events"}
+    if not (job_dir(job_id) / "exit.json").exists():
+        return {"ok": False, "error": "old job still running"}
+    new_id = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + "-" + secrets.token_hex(4)
+    d = job_dir(new_id)
+    d.mkdir(parents=True)
+    (d / "brief.md").write_text(message, encoding="utf-8")
+    job = {k: old.get(k) for k in ("model", "workspace", "branch", "base", "test_cmd")}
+    job.update(job_id=new_id, created_at=_now(), timeout_seconds=timeout_seconds, phase="starting",
+               conversation_id=conv, resumed_from=job_id)
+    _save(job)
+    return _launch(job, d)
+
+
+def _launch(job: dict, d: Path) -> dict:
+    flags = CREATE_NO_WINDOW | NEW_GROUP | DETACHED
+    cmd = [sys.executable, str(SERVER_DIR / "runner.py"), str(d)]
+    try:
+        p = subprocess.Popen(cmd, creationflags=flags | BREAKAWAY, close_fds=True, cwd=job["workspace"])
+    except OSError:
+        p = subprocess.Popen(cmd, creationflags=flags, close_fds=True, cwd=job["workspace"])
+    job.update(phase="running", runner_pid=p.pid)
+    _save(job)
+    return {"ok": True, "job_id": job["job_id"], "branch": job.get("branch"), "workspace": job["workspace"],
+            "model": job["model"], "resumed_from": job.get("resumed_from")}
 
 
 def _alive(pid: int | None) -> bool:
