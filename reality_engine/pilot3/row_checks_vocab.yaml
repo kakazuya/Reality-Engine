@@ -101,9 +101,8 @@ metrics:
     sectors: *lender
     kind: count
   new_customers:
-    related: [customer_franchise]
     aliases: [new_customers, customers_added]
-    labels: ['new customers', 'customers? (added|acquired)', 'add(ing)?\s+[\d\s\-–tomMM.]*(million|mn|mm|crore|lakh)?\s*(new )?customers', 'customer acquisition']
+    labels: ['new customers', 'customers? (added|acquired)', 'add(ing)?\b[^.;]{0,80}?customers?', 'customer acquisition']
     kind: count
   customer_franchise:
     aliases: [customer_franchise]
@@ -221,7 +220,7 @@ metrics:
     kind: level_pct
   fmcg_growth:
     aliases: [underlying_volume_growth, value_growth]
-    labels: ['\buvg\b', 'underlying volume', 'volume growth', 'value growth', '\busg\b']
+    labels: ['\buvg\b', 'underlying volume', 'underlying sales growth', 'volume growth', 'value growth', '\busg\b']
     weak: ['growth']
     kind: growth_pct
   gov_margin:
