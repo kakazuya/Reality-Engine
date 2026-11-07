@@ -21,7 +21,7 @@ Screensaver and lock: it locks after 180 idle seconds, and a playing video did n
 - `message_worker` returns `not_supported_on_hp` for HP jobs: they have no control channel, so a running HP worker cannot be steered.
 
 ## Layout
-`C:\RE\repo` code snapshot; `C:\RE\jobs\<job>` job runs; `C:\RE\raw\pilot60_history` raw PDFs; `C:\RE\ocr_large` OCR test. The MSI is the source of truth; the HP is disposable. Never copy `D:\Shivam_Private\Manual Dumps` here. Do not share SQLite over the network.
+`C:\RE\repo` code snapshot; `C:\RE\jobs\<job>` job runs; `C:\RE\raw\pilot60_history` raw PDFs; `C:\RE\ocr_large` OCR test. Since 7 Nov (T-102) those folders hold only databases: every other file is on Drive (`hp_raw/hp_<root>.tar` for the ones not already archived; see guide O18), and a job fetches what it needs. The MSI is the source of truth; the HP is disposable. Never copy `D:\Shivam_Private\Manual Dumps` here. Do not share SQLite over the network.
 
 ## Python and tools
 ARM64 Python at `%LOCALAPPDATA%\Programs\Python\Python314-arm64\python.exe`. .NET 8 at `C:\RE\dotnet`. `makeappx` and `signtool` under `C:\RE\bench\sdkbuildtools`. `pymupdf` is not installed, so tests needing `fitz` fail here.
