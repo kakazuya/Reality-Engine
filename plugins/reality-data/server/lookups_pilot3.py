@@ -233,10 +233,12 @@ _DOC_JOIN = ("LEFT JOIN doc d ON d.doc_key = COALESCE((SELECT a.doc_key FROM doc
 
 
 def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = None,
-        dimension: str | None = None, basis: str | None = None, limit: int = 10) -> dict[str, Any]:
+        dimension: str | None = None, basis: str | None = None, limit: int = 10,
+        include_quarantined: bool = False) -> dict[str, Any]:
     """A company-stated KPI (order book, AUM, EBITDA/tonne, NIM ...) from decks, results, releases, transcripts."""
     sym = resolve_symbol(symbol)
-    names, allnames = _pick("kpi_series", "metric", sym, kpi)
+    names, allnames = _pick("kpi_series", "metric", sym, kpi,
+                            extra="" if include_quarantined else _visible("kpi_series"))
     if not names:
         return _reply(sym, [], "pilot3_kpi", available=allnames[:40], metric_asked=kpi)
     kind, label = norm_period(period)
@@ -250,10 +252,13 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
     if basis:
         where += " AND k.basis=?"
         args.append(basis.strip().lower())
+    join, check_sel, hide = _check_cols("kpi_series", "k.id")
+    if not include_quarantined:
+        where += hide
     extra, eargs = _asof(as_of, "k.known_at")
     rows = _q(f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.scale, k.fiscal_period, k.period_type, "
               f"k.as_of_date, k.basis, k.entity, k.doc_key, k.page, k.quote, k.known_at, k.conf_rank, d.doc_key AS dk, "
-              f"d.title, d.doc_type FROM kpi_series k {_DOC_JOIN} WHERE {where}{extra} "
+              f"d.title, d.doc_type{check_sel} FROM kpi_series k {_DOC_JOIN}{join} WHERE {where}{extra} "
               # best evidence first: the extractor's confidence, then a deck/results/filing before a call remark.
               # The window must reach past a measure's duplicates (one value restated in many filings): at 3x the
               # reply size, a restated measure filled it and its lower-confidence period series never arrived (T-049,
@@ -272,18 +277,21 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
         if sig in seen:      # the same figure printed again by another filing: one row, best evidence first
             continue
         seen.add(sig)
-        out.append({"metric": r["metric"], "dimension": dimension, "value": r["value"], "unit": r["unit"],
-                    "period": r["fiscal_period"], "period_type": r["period_type"], "as_of_date": r["as_of_date"],
-                    "basis": basis, "entity": entity, "quote": _trim(r["quote"], 300),
-                    "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}", r["known_at"],
-                                        doc_type=r["doc_type"], title=r["title"], row_id=r["id"])})
+        out.append(_add_check({"metric": r["metric"], "dimension": dimension, "value": r["value"],
+                               "unit": r["unit"], "period": r["fiscal_period"], "period_type": r["period_type"],
+                               "as_of_date": r["as_of_date"], "basis": basis, "entity": entity,
+                               "quote": _trim(r["quote"], 300),
+                               "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}",
+                                                   r["known_at"], doc_type=r["doc_type"], title=r["title"],
+                                                   row_id=r["id"])}, r))
     out.sort(key=lambda row: 0 if row["entity"] == sym else 1)   # the company's own rows first (T-088)
     out = out[: _cap(limit)]
     held = None
     if not out:  # the metric exists: say which periods / dimensions hold it, so the next call can be exact
         held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
             f"SELECT fiscal_period, dimension, COUNT(*) FROM kpi_series WHERE symbol=? AND metric IN "
-            f"({','.join('?' * len(names))}) GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
+            f"({','.join('?' * len(names))}){_visible('kpi_series')} "
+            f"GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
     return _reply(sym, out, "pilot3_kpi", metrics_matched=names, held_period_dimension=held)
 
 
@@ -381,6 +389,37 @@ def _fin_source(r: sqlite3.Row) -> str:
 def _has_table(name: str) -> bool:
     """A pilot3 table may be absent from an older build (fin_quarter_printed came with T-057)."""
     return bool(_q("SELECT 1 FROM sqlite_master WHERE name=? LIMIT 1", (name,)))
+
+
+# --- T-113: the independent row verdicts (row_check / row_check_fail, written by pilot3.build --part checks) -----
+def _visible(tbl: str, row_id: str = "id") -> str:
+    """SQL that keeps only rows the checker did not quarantine; empty when the build has no verdict table."""
+    if not _has_table("row_check"):
+        return ""
+    return (f" AND NOT EXISTS (SELECT 1 FROM row_check rc WHERE rc.tbl='{tbl}' AND rc.row_id={row_id} "
+            f"AND rc.status='quarantined')")
+
+
+def _check_cols(tbl: str, row_id: str) -> tuple[str, str, str]:
+    """(LEFT JOIN, selected columns, hide clause) for the row verdicts; all empty in a build without them."""
+    if not _has_table("row_check"):
+        return "", "", ""
+    join = f" LEFT JOIN row_check rc ON rc.tbl='{tbl}' AND rc.row_id={row_id}"
+    select = (f", rc.status AS check_status, (SELECT GROUP_CONCAT(f.check_name, ',') FROM row_check_fail f "
+              f"WHERE f.tbl='{tbl}' AND f.row_id={row_id} AND f.hard=0) AS check_names")
+    return join, select, " AND COALESCE(rc.status,'')<>'quarantined'"
+
+
+def _add_check(row: dict[str, Any], r: Any) -> dict[str, Any]:
+    """Every served row says verified / unverified (or null when the check part has not judged it), T-113.
+
+    ``r`` is the fetched row: a ``sqlite3.Row`` from the queries, or a plain dict when ``guidance`` re-elects the
+    current target in memory."""
+    if "check_status" in r.keys():
+        row["check_status"] = r["check_status"]
+        if r["check_status"] == "unverified" and r["check_names"]:
+            row["check_note"] = r["check_names"].replace(",", ", ")
+    return row
 
 
 _REPORTING_BASES = ("consolidated", "standalone", "not_stated")
@@ -491,15 +530,17 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
 
 
 def _stated_ratios(sym: str, key: str, label: str | None, as_of: str | None, basis: str | None,
-                   cap: int) -> list[dict]:
+                   cap: int, include_quarantined: bool = False) -> list[dict]:
     """The company's own figure for a derived ratio, when kpi_series holds it (T-088): ROE, NIM, margins ... .
 
     ``ratio_panel`` computes a ratio; a company that prints its own number states it in kpi_series.  Both are
     returned, never merged: the stated one carries its quote and page.  The company's own rows win over a
-    subsidiary's, then the consolidated basis, then the best evidence (a table row over a call remark)."""
+    subsidiary's, then the consolidated basis, then the best evidence (a table row over a call remark).  A row the
+    independent checker quarantined is never served (T-113)."""
     names = [key, f"{key}_pct"] if not key.endswith("_pct") else [key]
     names = [n for n in dict.fromkeys(names)
-             if _q("SELECT 1 FROM kpi_series WHERE symbol=? AND metric=? LIMIT 1", (sym, n))]
+             if _q(f"SELECT 1 FROM kpi_series WHERE symbol=? AND metric=?"
+                   f"{'' if include_quarantined else _visible('kpi_series')} LIMIT 1", (sym, n))]
     if not names:
         return []
     where = f"k.symbol=? AND k.metric IN ({','.join('?' * len(names))})"
@@ -507,10 +548,14 @@ def _stated_ratios(sym: str, key: str, label: str | None, as_of: str | None, bas
     if label:
         where += " AND k.fiscal_period=?"
         args.append(label)
+    join, check_sel, hide = _check_cols("kpi_series", "k.id")
+    if not include_quarantined:
+        where += hide
     extra, eargs = _asof(as_of, "k.known_at")
     rows = _q(f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.fiscal_period, k.basis, k.entity, k.doc_key, "
-              f"k.page, k.quote, k.known_at, k.conf_rank, d.doc_key AS dk, d.title, d.doc_type FROM kpi_series k "
-              f"{_DOC_JOIN} WHERE {where}{extra} ORDER BY k.fiscal_period DESC, (k.basis='consolidated') DESC, "
+              f"k.page, k.quote, k.known_at, k.conf_rank, d.doc_key AS dk, d.title, d.doc_type{check_sel} "
+              f"FROM kpi_series k {_DOC_JOIN}{join} WHERE {where}{extra} ORDER BY k.fiscal_period DESC, "
+              f"(k.basis='consolidated') DESC, "
               f"(k.dimension='total') DESC, k.conf_rank DESC, k.known_at DESC LIMIT ?",
               (*args, *eargs, cap * 20))
     best: dict[str, dict] = {}
@@ -523,12 +568,12 @@ def _stated_ratios(sym: str, key: str, label: str | None, as_of: str | None, bas
             continue
         if r["fiscal_period"] in best:
             continue                    # rows arrive best first: the first company row of the period wins
-        best[r["fiscal_period"]] = {
+        best[r["fiscal_period"]] = _add_check({
             "ratio": key, "period": r["fiscal_period"], "period_type": "Q" if r["fiscal_period"].startswith("Q") else "FY",
             "basis": row_basis, "value": r["value"], "unit": r["unit"], "definition": "company_stated",
             "entity": entity, "quote": _trim(r["quote"], 240),
             "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}", r["known_at"],
-                                doc_type=r["doc_type"], title=r["title"], row_id=r["id"])}
+                                doc_type=r["doc_type"], title=r["title"], row_id=r["id"])}, r)
     return list(best.values())[:cap]
 
 
@@ -761,17 +806,19 @@ GUIDANCE_METRICS = ("revenue_growth", "ebitda_margin", "order_intake", "nim", "c
 
 
 def guidance(symbol: str, metric: str | None = None, period: str | None = None, as_of: str | None = None,
-             limit: int = 12, history: bool = False) -> dict[str, Any]:
+             limit: int = 12, history: bool = False, include_quarantined: bool = False) -> dict[str, Any]:
     """Rule-extracted forward guidance: the CURRENT target of each metric and target period, newest first, with
     the row it revised (``revision_of`` and the previous low/high/date, so "did the guidance change between the
     two calls" is one call).  An older row of the same metric+period that a later document replaced is dropped and
     the kept row says how many (``superseded_rows``); ``history=true`` returns every row as stored.  ``low`` and
     ``high`` are NULL on a target said in words ("high single-digit", "in the 70s, mid-70s or higher"): the
-    direction and the quote carry it."""
+    direction and the quote carry it.  A row the independent checker quarantined is hidden unless
+    ``include_quarantined=True``, and every row says ``check_status`` verified or unverified (T-113)."""
     sym = resolve_symbol(symbol)
     names, allnames = ([], list(GUIDANCE_METRICS))
     if metric:
-        names, allnames = _pick("guidance", "metric", sym, metric)
+        names, allnames = _pick("guidance", "metric", sym, metric,
+                                extra="" if include_quarantined else _visible("guidance"))
         if not names:
             return _reply(sym, [], "pilot3_guidance", available=allnames[:40], metric_asked=metric)
     kind, label = norm_period(period)
@@ -782,12 +829,15 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     if kind and label:
         where += " AND g.target_period=?"
         args.append(label)
+    join, check_sel, hide = _check_cols("guidance", "g.id")
+    if not include_quarantined:
+        where += hide
     extra, eargs = _asof(as_of, "g.known_at")
     rows = _q(f"SELECT g.id, g.metric, g.target_period, g.low, g.high, g.unit, g.direction, g.said_on, g.doc_key, "
               f"g.page, g.quote, g.speaker, g.known_at, g.revision_of, g.extractor_rule, d.title, d.doc_type, "
-              f"pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on, pv.direction prev_direction "
+              f"pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on, pv.direction prev_direction{check_sel} "
               f"FROM guidance g LEFT JOIN doc d ON d.doc_key=g.doc_key "
-              f"LEFT JOIN guidance pv ON pv.id=g.revision_of WHERE {where}{extra} "
+              f"LEFT JOIN guidance pv ON pv.id=g.revision_of{join} WHERE {where}{extra} "
               f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC LIMIT 400", (*args, *eargs))
     out = []
     kept = [dict(r) for r in rows]
@@ -798,20 +848,21 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
         if r["revision_of"] is not None:
             previous = {"row_id": r["revision_of"], "low": r["prev_low"], "high": r["prev_high"],
                         "said_on": r["prev_said_on"], "direction": r["prev_direction"]}
-        out.append({"metric": r["metric"], "period": r["target_period"], "low": r["low"], "high": r["high"],
-                    "unit": r["unit"], "direction": r["direction"], "said_on": r["said_on"],
-                    "quote": _trim(r["quote"]), "speaker": r["speaker"], "revision_of": r["revision_of"],
-                    "previous": previous,
-                    "changed": bool(previous and (previous["low"], previous["high"]) != (r["low"], r["high"])),
-                    "superseded_rows": 0 if history else r["superseded_rows"],
-                    "provenance": _prov("guidance", f"{r['doc_key']} p{r['page']}", r["known_at"],
-                                        doc_type=r["doc_type"], title=_trim(r["title"], 120), row_id=r["id"])})
+        out.append(_add_check({"metric": r["metric"], "period": r["target_period"], "low": r["low"],
+                               "high": r["high"], "unit": r["unit"], "direction": r["direction"],
+                               "said_on": r["said_on"], "quote": _trim(r["quote"]), "speaker": r["speaker"],
+                               "revision_of": r["revision_of"], "previous": previous,
+                               "changed": bool(previous and (previous["low"], previous["high"]) != (r["low"], r["high"])),
+                               "superseded_rows": 0 if history else r["superseded_rows"],
+                               "provenance": _prov("guidance", f"{r['doc_key']} p{r['page']}", r["known_at"],
+                                                   doc_type=r["doc_type"], title=_trim(r["title"], 120),
+                                                   row_id=r["id"])}, r))
     held = None
     if not out:   # say what the table does hold, so the next call can be exact
         held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
             f"SELECT metric, target_period, COUNT(*) FROM guidance WHERE symbol=?"
             + (f" AND metric IN ({','.join('?' * len(names))})" if names else "")
-            + " GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
+            + _visible("guidance") + " GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
     return _reply(sym, out, "pilot3_guidance", metrics_matched=names or None, history=True if history else None,
                   held_options=held)
 

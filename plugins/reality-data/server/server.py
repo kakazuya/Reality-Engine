@@ -430,14 +430,18 @@ _RO = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hi
         "releases, transcripts and annual reports: order book, order intake, AUM, GNPA, EBITDA per tonne, shipments, "
         "net debt/EBITDA ... kpi = metric name (a word is enough; a miss lists the metrics held). period: Q2FY26, "
         "FY26, H1FY26 or a date. dimension (segment/product; total first), basis, as_of. Each row: value, "
-        "unit, period, quote, provenance (document, page, known_at)."
+        "unit, period, quote, provenance (document, page, known_at). A row whose independent check failed is "
+        "quarantined and hidden (include_quarantined=true returns it); every row carries check_status = verified or "
+        "unverified (unverified rows add check_note, the soft checks that did not pin them): prefer verified rows "
+        "and say 'unverified' when quoting an unverified one."
     ),
     annotations=_RO,
 )
 def pilot3_kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = None,
-               dimension: str | None = None, basis: str | None = None, limit: int = 10) -> dict[str, Any]:
+               dimension: str | None = None, basis: str | None = None, limit: int = 10,
+               include_quarantined: bool = False) -> dict[str, Any]:
     return _safe(lambda: _p3.kpi(symbol, kpi, period=period, as_of=as_of, dimension=dimension, basis=basis,
-                                 limit=limit))
+                                 limit=limit, include_quarantined=include_quarantined))
 
 
 @server.tool(
@@ -534,15 +538,19 @@ def pilot3_statements(symbol: str, topic: str | None = None, terms: str | None =
         "target period, low/high, unit (pct, bps, mn, inr_cr, usd_per_tonne ...), direction (up/down/flat), "
         "said_on, speaker, quote, and revision_of + previous (the earlier row of the same metric+period and its "
         "values), so 'did the guidance change between the two calls' answers from one call. Newest first; as_of "
-        "drops rows known after that day (a row the day could not see never supersedes one it could). Ask this "
+        "drops rows known after that day (a row the day could not see never supersedes one it could). A row whose "
+        "independent check failed is quarantined and hidden (include_quarantined=true returns it); every row "
+        "carries check_status = verified or unverified (unverified rows add check_note): prefer verified rows and "
+        "say 'unverified' when quoting an unverified one. Ask this "
         "before pilot3_statements or pilot3_search for any question about guidance, outlook, targets or corridors."
     ),
     annotations=_RO,
 )
 def pilot3_guidance(symbol: str, metric: str | None = None, period: str | None = None,
-                    as_of: str | None = None, limit: int = 12, history: bool = False) -> dict[str, Any]:
+                    as_of: str | None = None, limit: int = 12, history: bool = False,
+                    include_quarantined: bool = False) -> dict[str, Any]:
     return _safe(lambda: _p3.guidance(symbol, metric=metric, period=period, as_of=as_of, limit=limit,
-                                      history=history))
+                                      history=history, include_quarantined=include_quarantined))
 
 
 @server.tool(
