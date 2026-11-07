@@ -36,9 +36,16 @@ Checks (``check`` names in ``row_check_fail``):
     not_pinned        (guidance) verified needs all of: a strong label within 45 chars in the sentence; no scope
                       word between the label and the number; a forward word in the sentence; the target period in
                       the sentence or a this/next/full-year phrase with the doc date; no realised figure -> soft
-    multi_number      (kpi) the quote holds several numbers, so which column was taken is not pinned -> unverified
+    multi_number      (kpi) the quote holds several numbers, or its label is followed by more than 2 values of
+                      the row's unit, so which column was taken is not pinned -> unverified unless corroborated
     cross_doc         (kpi) another document gives a different value for the same metric, period and scope
     fin_conflict      (kpi) the filed statements give a different figure for the same line and period
+    not_company_speaker (kpi) the number sits in an analyst's question or wording ("you said", "can you", "?")
+    range_value       (kpi) the number is one end of a printed range ("5 to 6000"), not a level
+    unit_kind         (kpi) a days row without a days word, or a percent row without % / per cent / bps at the
+                      number
+    uncorroborated    (kpi) a total revenue / PAT / EBITDA / order amount with no filed statement and no second
+                      source -> unverified
     variant           (kpi/guidance) pat/ebitda/revenue whose label says adjusted / before exceptional /
                       excluding / per ... -> unverified
     entity_mismatch   (kpi) the dimension and the entity name two different non-symbol subsidiaries -> unverified
@@ -73,10 +80,11 @@ VOCAB_PATH = Path(__file__).with_name("row_checks_vocab.yaml")
 
 HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_present", "label_conflict", "label_foreign", "sector_fit", "third_party",
         "forward_word", "past_figure", "null_value", "range_order", "plausible", "future_period", "past_target",
-        "fin_conflict", "part_not_total", "period_word", "currency", "target_frame", "target_year"}
+        "fin_conflict", "part_not_total", "period_word", "currency", "target_frame", "target_year",
+        "not_company_speaker", "range_value", "unit_kind"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
         "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch",
-        "dimension_word", "not_pinned", "scope_word"}
+        "dimension_word", "not_pinned", "scope_word", "uncorroborated"}
 
 # Revenue / PAT / EBITDA / order rows must be a plausible share of the company's filed figure: a subsidiary or
 # segment amount stored with dimension "total" is the classic "part stored as the total" mistake.
@@ -388,8 +396,27 @@ _YEAR_PHRASE = re.compile(r"\b(?:this|next|current|full)\s+(?:fiscal\s+)?year\b|
 # A part scope between the label and the number makes a figure unpinnable for the company (or for the total row).
 _SCOPE_WORD = re.compile(
     r"\b(?:facility|facilities|plant|plants|project|projects|maintenance|segment|segments|division|divisions|"
-    r"international|domestic|mix|share|contribution)\b|\bexcluding\b|\bex[- ]|\bper\s+(?!cent\b)[a-z]+|"
-    r"\bof\s+(?:revenue|sales|turnover)\b", re.I)
+    r"international|domestic|mix|share|contribution|threshold)\b|\bexcluding\b|\bex[- ]|\bper\s+(?!cent\b)[a-z]+|"
+    r"\b(?:of|for)\s+(?:the |this |our |total |last |next )*(?:year'?s? )?(?:revenue|sales|turnover)\b", re.I)
+
+# KPI additions: an analyst's question is not the company's number, a printed range end is not a level, and a
+# unit word has to stand next to the number.
+_ANALYST_PHRASE = re.compile(r"\byou said\b|\bi wanted to understand\b|\bcan you\b|\bcould you\b|\bwhat is\b|"
+                             r"\bwhat are\b|\bhow much\b|\bhow do\b|\bplease explain\b|\bwould you\b", re.I)
+_RANGE_BEFORE = re.compile(r"\d[\d,.]*\s*(?:to|[-–])\s*$")
+_RANGE_AFTER = re.compile(r"\s*(?:to|[-–])\s*\d[\d,.]*")
+_DAYS_WORD = re.compile(r"\b(?:days?|dso|dio|dpo)\b", re.I)
+_PCT_WORD = re.compile(r"%|per ?cent|percent|bps|basis points", re.I)
+_PAST_GOVERN = re.compile(r"\b(?:increased|grew|rose|fell|declined|delivered|achieved|reported|posted|stood|"
+                          r"reached|recorded|witnessed|improved|reduced|decreased|was|were)\b", re.I)
+_UNIT_WORD = {
+    "pct": r"%|per ?cent|percent|bps|basis points",
+    "bps": r"%|per ?cent|percent|bps|basis points",
+    "days": r"\b(?:days?|dso|dio|dpo)\b",
+    "inr": r"₹|`|\b(?:rs\.?|inr|crores?|cr|lakhs?|lakh|mn|bn|million|billion)\b",
+    "usd": r"[$]|\b(?:usd|dollars?|million|billion|mn|bn)\b",
+    "count": r"\b(?:million|mn|mm|crore|cr|lakh|units?|nos?|count)\b",
+}
 
 
 def _as_year(raw: str) -> int | None:
@@ -870,6 +897,123 @@ class Checker:
             return
         v.fail("entity_mismatch", f"dimension '{dim}' and entity '{ent}' name different subsidiaries")
 
+    def unit_value_count(self, text: str, unit: str, label_end: int) -> int:
+        """How many values of the row's unit the quote prints after ``label_end`` ("10.3% 10.2% ..." is 3+)."""
+        u = (unit or "").lower()
+        family = "pct" if u in ("pct", "bps") else "days" if u == "days" else \
+            "usd" if u.startswith("usd") else "inr" if u.startswith("inr") else "count"
+        marker = re.compile(_UNIT_WORD[family], re.I)
+        header = text[max(0, label_end - 40):min(len(text), label_end + 15)]
+        count = 0
+        for n, start, end in numbers_in(text):
+            if start < label_end or _is_year(n) or _MONTH.match(text, end):
+                continue
+            if start > 0 and text[start - 1].isalpha():
+                continue
+            window = text[end:end + 12] + " " + text[max(0, start - 12):start]
+            if marker.search(window) or marker.search(header):
+                count += 1
+        return count
+
+    def check_multi_number(self, v: Verdict, m: Metric | None, text: str, pos: int | None, unit: str,
+                           rule: str) -> None:
+        """A label followed by more than two values of the row's unit (a table header row) does not pin a column;
+        any rule, and the row is verified only when another source agrees."""
+        if pos is None:
+            return
+        label_end = pos
+        if m is not None:
+            label = nearest_strong_label(m, text, pos)
+            if label is not None and label[2] <= pos:
+                label_end = label[2]
+        count = self.unit_value_count(text, unit, label_end)
+        if count > 2:
+            v.fail("multi_number", f"{count} {unit or 'unit'} values after the label: column not pinned")
+        if rule in ("table_v1", "chart_v1") and len({round(n, 4) for n, _, _ in numbers_in(text)}) > 2:
+            v.fail("multi_number", f"{len(numbers_in(text))} numbers in the quote: column not pinned")
+
+    def check_company_speaker(self, v: Verdict, text: str, pos: int | None, doc_key: str, page: int,
+                              quote: str) -> None:
+        """An analyst's question or request is not the company's figure."""
+        if pos is None:
+            return
+        lo, hi = sentence_bounds(text, pos)
+        sent = text[lo:hi]
+        if "?" in sent:
+            v.fail("not_company_speaker", "the number sits in a question")
+            return
+        hit = _ANALYST_PHRASE.search(sent)
+        if hit:
+            v.fail("not_company_speaker", f"the number's sentence is analyst wording ('{hit.group(0)}')")
+            return
+        ctx = self.context_before(doc_key, page, quote, 300)
+        labels = re.findall(r"(?:^|[\s.])([a-z][a-z .&'-]{0,30}):\s", ctx)
+        if labels and ("analyst" in labels[-1] or "moderator" in labels[-1]):
+            v.fail("not_company_speaker", f"the speaker just before the quote is '{labels[-1].strip()}'")
+
+    def check_range(self, v: Verdict, text: str, pos: int | None) -> None:
+        """One end of a printed "5 to 6000" range is not a level."""
+        if pos is None:
+            return
+        nums = numbers_in(text)
+        idx = next((i for i, (_, start, _) in enumerate(nums) if start == pos), None)
+        if idx is None:
+            return
+
+        def value_token(i: int) -> bool:
+            n, start, end = nums[i]
+            return not _is_year(n) and not (start > 0 and text[start - 1].isalpha()) \
+                and not _MONTH.match(text, end)
+
+        if idx > 0 and value_token(idx - 1) and re.fullmatch(r"\s*(?:to|[-–])\s*", text[nums[idx - 1][2]:pos]):
+            v.fail("range_value", "the number is one end of a printed range")
+        elif idx + 1 < len(nums) and value_token(idx + 1) and re.fullmatch(r"\s*(?:to|[-–])\s*", text[nums[idx][2]:nums[idx + 1][1]]):
+            v.fail("range_value", "the number is one end of a printed range")
+
+    def check_unit_kind(self, v: Verdict, m: Metric | None, text: str, pos: int | None, unit: str) -> None:
+        """A days row needs a days word, a percent row a % / per cent / bps, next to the number."""
+        if pos is None:
+            return
+        u = (unit or "").lower()
+        kind = m.kind if m else ""
+        if u == "days" or kind == "days":
+            if not _DAYS_WORD.search(text[max(0, pos - 25):pos + 25]):
+                v.fail("unit_kind", "days row without a days word at the number")
+        if u in ("pct", "bps") or kind in ("level_pct", "bps_or_pct", "growth_pct"):
+            if not _PCT_WORD.search(text[max(0, pos - 40):pos + 15]):
+                label = nearest_strong_label(m, text, pos) if m is not None else None
+                # a label naming the ratio ("EBITDA Margins 7.1") is the unit context, a bare table cell
+                if label is None or abs(label[0]) > 45 or not re.search(
+                        r"margin|ratio|yield|rate|share|growth|percent|pct|bps|return|roa|roe|roce|solvency|"
+                        r"adequacy|penetration|utili[sz]ation", text[label[1]:label[2]].lower()):
+                    v.fail("unit_kind", f"{u or kind} row without % / per cent / bps at the number")
+
+    def check_nearer_label(self, v: Verdict, m: Metric | None, text: str, pos: int | None) -> None:
+        """Another metric's strong label nearer the number than the row's own label is the row's real metric
+        ("50 crores of revenue ... 20% of EBITDA margins" stored as revenue growth)."""
+        if m is None or pos is None:
+            return
+        own = nearest_strong_label(m, text, pos)
+        if own is None or abs(own[0]) > 45:
+            return
+        best: tuple[int, str, str] | None = None
+        for other in self.vocab.metrics.values():
+            if other.name == m.name or other.name in m.related or m.name in other.related:
+                continue
+            for pattern in other.labels:
+                for mm in pattern.finditer(text):
+                    if any(w.search(mm.group(0)) for w in m.weak):
+                        continue
+                    if mm.group(0).lower().startswith(("revenue", "sale", "turnover")) and re.search(
+                            r"\b(?:of|for)\s+(?:our|the|total|its)?\s*$", text[max(0, mm.start() - 14):mm.start()]):
+                        continue      # "2.5% of our revenues": the base, not the row's metric
+                    dist = pos - mm.end() if mm.end() <= pos else mm.start() - pos
+                    if best is None or abs(dist) < abs(best[0]):
+                        best = (dist, other.name, mm.group(0))
+        if best is None or abs(best[0]) >= abs(own[0]):
+            return
+        v.fail("label_conflict", f"{best[1]} label '{best[2]}' is nearer the number than {m.name}")
+
     def check_currency(self, v: Verdict, m: Metric | None, text: str, pos: int | None, unit: str) -> None:
         """The label-to-number span prints a currency that is not the row's unit: the nearest currency marker
         before the number decides ("Adjusted Net Debt $ 6,724 $ 5,176" is a USD figure in an inr_cr row)."""
@@ -968,6 +1112,7 @@ class Checker:
                     v.fail("plausible", f"{lo}-{hi} {r['unit']} outside {kind} bounds")
             context = self.context_before(r["doc_key"], r["page"], quote, 3000)
             self.check_label(v, m, text, pos, context)
+            self.check_nearer_label(v, m, text, pos)
             self.check_currency(v, m, text, pos, r["unit"] or "")
             if pos is not None:
                 window = text[max(0, pos - 90): pos + 60]
@@ -977,6 +1122,9 @@ class Checker:
                 past = _PAST_VERB.search(text[max(0, pos - 60):pos])
                 if past:
                     v.fail("past_figure", f"the number follows a realised-figure verb '{past.group(0).strip()}'")
+                governed = _PAST_GOVERN.search(text[max(0, pos - 45):pos])
+                if governed:
+                    v.fail("past_figure", f"a past-tense verb '{governed.group(0)}' governs the number")
                 if m is None or m.kind != "growth_pct":
                     # a growth target is worded "growth of 12%", so the delta test is for level/amount metrics
                     for val in (lo, hi):
@@ -1080,6 +1228,12 @@ class Checker:
                         v.fail("fin_conflict", f"filed {canon} for {r['fiscal_period']}: {sorted(set(round(f / 1e7, 1) for f in filed))} cr, row {round(amount / 1e7, 1)} cr")
             if canon and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"]:
                 self.check_part(v, canon, amount, r["unit"] or "", r["symbol"], r["fiscal_period"], r["id"], fin, usd_rev)
+                if r["extractor_rule"] != "xbrl_segment" and not v.corroborated:
+                    # a total amount with nothing filed and no second source is served only as unverified
+                    if canon in ("order_intake", "order_book"):
+                        v.fail("uncorroborated", f"total {canon} with no filed statement and no second source")
+                    elif canon in ("revenue", "pat", "ebitda") and not fin.get((r["symbol"], r["fiscal_period"], canon)):
+                        v.fail("uncorroborated", f"total {canon} with no filed statement and no second source")
             if r["extractor_rule"] == "xbrl_segment":
                 # a structured filing: no quote; the segment value is the tagged figure
                 v.corroborated = True
@@ -1102,11 +1256,13 @@ class Checker:
                 v.fail("value_present", f"{value} not in the quote")
             elif how == "scaled":
                 v.fail("value_scaled", f"{value} only after rescale")
-            if len({round(n, 4) for n, _, _ in nums}) > 2 and r["extractor_rule"] in ("table_v1", "chart_v1"):
-                v.fail("multi_number", f"{len(nums)} numbers in the quote: column not pinned")
+            self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "")
             ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
             self.check_label(v, m, text, pos, ctx)
             self.check_currency(v, m, text, pos, r["unit"] or "")
+            self.check_company_speaker(v, text, pos, r["doc_key"], r["page"], quote)
+            self.check_range(v, text, pos)
+            self.check_unit_kind(v, m, text, pos, r["unit"] or "")
             if r["dimension"] == "total":
                 self.check_dimension_word(v, m, quote, value, r["symbol"], dim_words)
                 self.check_scope_word(v, m, text, pos, r["metric"])

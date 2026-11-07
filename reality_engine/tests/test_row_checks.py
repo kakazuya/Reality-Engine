@@ -299,9 +299,7 @@ def test_list_order_ignores_a_single_value_after_two_labels(tmp_path):
 
 
 def test_bps_row_pins_the_percent_reading(tmp_path):
-    quote = ("credit cost of 0.18%, lowest in the industry.\nOpex to Net \ntotal income\n19.6%\nQ2 FY25\n20.5%\n"
-             "Net NPA\n0.12%\nQ2 FY25\n0.12%\n12.2%\nQ2 FY25\n13.0%\nPAT\n₹ 643 \nCr\nGrowth\n18%\nAUM\n₹ 126,749\n"
-             "Cr\nGrowth\n24%\nPBT\n₹ 833\nCr\nGrowth\n18%\nROE\nAnnualised")
+    quote = "credit cost of 0.18%, lowest in the industry."
     kpi = [dict(id=1, symbol="LENDER", metric="credit_cost_bps", dimension="bhfl", entity="bhfl",
                 fiscal_period="Q2FY26", value=18.0, unit="bps", quote=quote, page=1)]
     db, profile = build(tmp_path, {1: quote}, kpi=kpi, sectors={"LENDER": "nbfc"})
@@ -328,7 +326,10 @@ def test_npa_list_order_places_each_number(tmp_path):
     db, profile = build(tmp_path, {1: NPA_QUOTE}, kpi=kpi, sectors={"LENDER": "nbfc"})
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
     for rid in (1, 2, 3, 4):
-        assert verdict(out, "kpi_series", rid)[0] == "verified", rid
+        # the list order places each number, but four values in one sentence are not a single source: served
+        # unverified under the high bar
+        status, fails = verdict(out, "kpi_series", rid)
+        assert status == "unverified" and "list_order" not in fails, (rid, fails)
     status, fails = verdict(out, "kpi_series", 5)
     assert status == "quarantined" and "list_order" in fails, fails
 
@@ -383,7 +384,10 @@ def test_period_word_catches_a_nine_month_figure_stored_as_a_year(tmp_path):
         dict(id=2, symbol="CO", metric="revenue", fiscal_period="9MFY26", period_type="9M", value=500.0,
              unit="inr_cr", scale=1e7, quote=quote),
     ]
-    db, profile = build(tmp_path, {1: quote}, kpi=kpi, sectors={"CO": "it_services"})
+    db, profile = build(tmp_path, {1: quote}, kpi=kpi,
+                        fin_q=[dict(symbol="CO", fiscal_period="9MFY26", line_item="revenue_from_operations",
+                                    value=500.0, scale=1e7)],
+                        sectors={"CO": "it_services"})
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
     status, fails = verdict(out, "kpi_series", 1)
     assert status == "quarantined" and "period_word" in fails, fails
@@ -420,7 +424,10 @@ def test_variant_word_is_soft_and_exempt_when_the_metric_says_so(tmp_path):
         dict(id=2, symbol="CO", metric="ebitda_adjusted_usd", fiscal_period="FY26", period_type="FY",
              value=500.0, unit="inr_cr", scale=1e7, quote=pages[2], page=2),
     ]
-    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services"})
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        fin_a=[dict(symbol="CO", fiscal_year="FY26", line_item="operating_profit", value=500.0,
+                                    scale=1e7)],
+                        sectors={"CO": "it_services"})
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
     status, fails = verdict(out, "kpi_series", 1)
     assert status == "unverified" and "variant" in fails, fails
@@ -448,7 +455,10 @@ def test_report_writes_summary_and_a_seeded_sample(tmp_path):
     pages = {i: f"Revenues {i}00" for i in (1, 2, 3)}
     kpi = [dict(id=i, symbol="CO", metric="revenue", fiscal_period=f"Q{i}FY26", value=i * 100.0, unit="inr_cr",
                 scale=1e7, quote=pages[i], page=i) for i in (1, 2, 3)]
-    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services"})
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        fin_q=[dict(symbol="CO", fiscal_period=f"Q{i}FY26", line_item="revenue_from_operations",
+                                    value=i * 100.0, scale=1e7) for i in (1, 2, 3)],
+                        sectors={"CO": "it_services"})
     report = tmp_path / "report"
     out = run_checks(tmp_path, db, profile, ("kpi_series",), report=str(report), sample=2, seed=81108,
                      status="verified")
@@ -519,6 +529,8 @@ def test_dimension_word_flags_a_segment_named_before_a_total_label(tmp_path):
              period_type="FY", value=4.26, unit="pct", quote=pages[6], page=6),
     ]
     db, profile = build(tmp_path, pages, kpi=kpi,
+                        fin_q=[dict(symbol="IT", fiscal_period="Q2FY26", line_item="revenue_from_operations",
+                                    value=500.0, scale=1e7)],
                         sectors={"METAL": "metals_nonferrous", "EPC": "epc_capital_goods", "IT": "it_services",
                                  "LENDER": "nbfc"})
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
@@ -721,7 +733,8 @@ def test_not_pinned_e_reported_actual_governing_the_number(tmp_path):
     db, profile = build(tmp_path, {1: quote}, guidance=guidance, sectors={"CO": "it_services"})
     out = run_checks(tmp_path, db, profile, ("guidance",))
     status, fails = verdict(out, "guidance", 1)
-    assert status == "unverified" and "not_pinned" in fails, fails
+    # a past-tense verb governing the number is a hard past_figure
+    assert status == "quarantined" and "past_figure" in fails, fails
 
 
 def test_kpi_scope_word_is_soft_and_per_unit_is_exempt(tmp_path):
@@ -741,3 +754,129 @@ def test_kpi_scope_word_is_soft_and_per_unit_is_exempt(tmp_path):
     status, fails = verdict(out, "kpi_series", 1)
     assert status == "unverified" and "scope_word" in fails, fails
     assert "scope_word" not in verdict(out, "kpi_series", 2)[1]
+
+
+# --------------------------------------------------------------------- round 5: KPI wrong classes
+
+def test_multi_number_counts_unit_values_for_any_rule(tmp_path):
+    pages = {
+        1: "EBITDA Margin (%) 10.3% 10.2% 10.0% +15bps +35bps 10.9% 10.3%",
+        2: "EBITDA margin was 10.3% as against 10.2% last year",
+    }
+    kpi = [
+        dict(id=1, symbol="CO", metric="ebitda_margin_pct", dimension="total", fiscal_period="9MFY24",
+             period_type="9M", value=10.3, quote=pages[1], page=1, extractor_rule="sentence_v1"),
+        dict(id=2, symbol="CO", metric="ebitda_margin_pct", dimension="total", fiscal_period="FY24",
+             period_type="FY", value=10.3, quote=pages[2], page=2, extractor_rule="sentence_v1"),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "multi_number" in fails, fails
+    assert "multi_number" not in verdict(out, "kpi_series", 2)[1]
+
+
+def test_not_company_speaker_and_a_range_end_are_not_levels(tmp_path):
+    pages = {
+        1: "I wanted to understand the order inflow of 5 to 6,000 Crores.",
+        2: "Can you quantify the order inflow of 5,000 crore?",
+        3: "The company secured an order inflow of 5,000 crore in Q1.",
+        4: "Analyst: how is the order inflow looking? The order inflow was 5,000 crore in Q1.",
+    }
+    kpi = [
+        dict(id=1, symbol="EPC", metric="order_intake", fiscal_period="Q1FY26", value=6000.0, unit="inr_cr",
+             scale=1e7, quote=pages[1], page=1),
+        dict(id=2, symbol="EPC", metric="order_intake", fiscal_period="Q1FY26", value=5000.0, unit="inr_cr",
+             scale=1e7, quote=pages[2], page=2),
+        dict(id=3, symbol="EPC", metric="order_intake", fiscal_period="Q1FY26", value=5000.0, unit="inr_cr",
+             scale=1e7, quote=pages[3], page=3),
+        dict(id=4, symbol="EPC", metric="order_intake", fiscal_period="Q1FY26", value=5000.0, unit="inr_cr",
+             scale=1e7, quote="The order inflow was 5,000 crore in Q1.", page=4),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"EPC": "epc_capital_goods"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "not_company_speaker" in fails and "range_value" in fails, fails
+    status, fails = verdict(out, "kpi_series", 2)
+    assert status == "quarantined" and "not_company_speaker" in fails, fails
+    fails = verdict(out, "kpi_series", 3)[1]
+    assert "not_company_speaker" not in fails and "range_value" not in fails, fails
+    # the page marks the speaker as an analyst just before the quote
+    assert "not_company_speaker" in verdict(out, "kpi_series", 4)[1]
+
+
+def test_uncorroborated_total_amounts(tmp_path):
+    pages = {1: "Revenues 500", 2: "Revenues 500", 3: "Order intake of 1,000 crore"}
+    kpi = [
+        dict(id=1, symbol="CO", metric="revenue", fiscal_period="FY26", period_type="FY", value=500.0,
+             unit="inr_cr", scale=1e7, quote=pages[1], page=1),
+        dict(id=2, symbol="BANK", metric="revenue", fiscal_period="FY26", period_type="FY", value=500.0,
+             unit="inr_cr", scale=1e7, quote=pages[2], page=2),
+        dict(id=3, symbol="BANK", metric="order_intake", fiscal_period="FY26", period_type="FY", value=1000.0,
+             unit="inr_cr", scale=1e7, quote=pages[3], page=3),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        fin_a=[dict(symbol="BANK", fiscal_year="FY26", line_item="revenue_from_operations",
+                                    value=500.0, scale=1e7)],
+                        sectors={"CO": "it_services", "BANK": "bank"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "uncorroborated" in fails, fails
+    assert verdict(out, "kpi_series", 2)[0] == "verified"
+    # orders have no filed statement, so a total order row always needs a second source
+    assert "uncorroborated" in verdict(out, "kpi_series", 3)[1]
+
+
+def test_unit_kind_days_and_percent(tmp_path):
+    pages = {
+        1: "Net working capital 1,198 671",
+        2: "EBITDA margin at 23.1",
+        3: "EBITDA margin at 23.1%",
+        4: "Annualised loan loss 2.05",
+    }
+    kpi = [
+        dict(id=1, symbol="CO", metric="working_capital_days", fiscal_period="FY26", period_type="FY",
+             value=1198.0, unit="days", quote=pages[1], page=1),
+        dict(id=2, symbol="CO", metric="ebitda_margin_pct", fiscal_period="FY26", period_type="FY",
+             value=23.1, unit="pct", quote=pages[2], page=2),
+        dict(id=3, symbol="CO", metric="ebitda_margin_pct", fiscal_period="FY26", period_type="FY",
+             value=23.1, unit="pct", quote=pages[3], page=3),
+        dict(id=4, symbol="LENDER", metric="credit_cost_bps", fiscal_period="FY26", period_type="FY",
+             value=205.0, unit="bps", quote=pages[4], page=4),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services", "LENDER": "nbfc"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "unit_kind" in fails, fails
+    # a label naming the ratio ("EBITDA margin at 23.1") is the unit context
+    assert "unit_kind" not in verdict(out, "kpi_series", 2)[1]
+    assert "unit_kind" not in verdict(out, "kpi_series", 3)[1]
+    # a bare loan-loss number has no percent context at all
+    status, fails = verdict(out, "kpi_series", 4)
+    assert status == "quarantined" and "unit_kind" in fails, fails
+
+
+def test_guidance_past_verb_and_nearer_foreign_label(tmp_path):
+    pages = {
+        1: "Increased sales investment by 21% YoY in FY20.",
+        2: ("This coming 2020-2021 we expect around 50 Crores of revenue with say around 20% of EBITDA "
+            "margins in this year."),
+        3: "We are on track to reach the 50% revenue threshold that we have set.",
+    }
+    guidance = [
+        dict(id=1, symbol="IT", metric="revenue_growth", low=21.0, high=21.0, target_period="FY20",
+             quote=pages[1], page=1, said_on="2020-02-01", known_at="2020-02-01T00:00:00"),
+        dict(id=2, symbol="IT", metric="revenue_growth", low=20.0, high=20.0, target_period="FY21",
+             quote=pages[2], page=2, said_on="2020-08-01", known_at="2020-08-01T00:00:00"),
+        dict(id=3, symbol="IT", metric="revenue_growth", low=50.0, high=50.0, target_period="FY21",
+             quote=pages[3], page=3, said_on="2020-08-01", known_at="2020-08-01T00:00:00"),
+    ]
+    db, profile = build(tmp_path, pages, guidance=guidance, sectors={"IT": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("guidance",))
+    status, fails = verdict(out, "guidance", 1)
+    assert status == "quarantined" and "past_figure" in fails, fails
+    status, fails = verdict(out, "guidance", 2)
+    assert status == "quarantined" and "label_conflict" in fails, fails
+    # a "revenue threshold" is a share, so the row is unpinned (soft), not verified
+    status, fails = verdict(out, "guidance", 3)
+    assert status == "unverified" and "not_pinned" in fails, fails

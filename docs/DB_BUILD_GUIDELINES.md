@@ -200,13 +200,34 @@ Change a rule only with a measurement that supports the change, and note it in `
   sentence, so its forward word and period fell outside it; and "Q3 FY2026" was read as FY20 by the period token,
   which quarantined a correct SUNPHARMA PAT row (45728, verified again). All six v2 and seven Gemini known-wrong rows
   stay quarantined.
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (33 passed, 8 Nov) builds a tiny fixture
+- Measured 8 Nov 2026, round 5 (KPI wrong classes; pilot10 v2 and the unseen6 guidance set): v2 kpi
+  **4,168/1,518/357 -> 3,851/1,773/419**, v2 guidance 19/48/39 -> **19/46/41**, unseen6 guidance 12/946/407 ->
+  **7/934/424**, agy 15/33/18 unchanged. New rules: `multi_number` now applies to ANY quote whose label is followed
+  by more than 2 values of the row's unit (1,481 rows; verified only when corroborated, which is what makes the
+  pilot10 tables serve as unverified); soft `uncorroborated` for a total revenue / PAT / EBITDA / order row with no
+  filed statement and no second source (253); hard `not_company_speaker` for a question, "you said", "I wanted to
+  understand", "can you", "could you", "what is", or an Analyst / Moderator speaker line as the last speaker before
+  the quote; hard `range_value` when the number is one end of a printed range ("5 to 6000"; adjacent-number rule, so
+  "FY26 to 7.54%" and negative comparisons are not ranges); hard `unit_kind` for a days row with no days word next
+  to the number, and a percent row with no % / per cent / bps unless its label names the ratio ("EBITDA Margins 7.1"
+  and "Annualised ROA 4.5" are table cells with the unit in the label; "Annualised loan loss 2.05" is not). The
+  guidance read from round 4 is now hard too: another metric's strong label nearer the number than the row's own
+  (within 45 chars, denominators excluded) and a past-tense verb governing the number (`increased ... by 21%`)
+  quarantine. Reading the fresh seed-5 samples: **pilot10 kpi 20 of 20 right** (XBRL segment rows, margins, CRAR,
+  PAT, NWC days, per-share values) and **all 7 verified unseen6 guidance rows right**. False-positive passes the
+  reading exposed and fixed: `range_value` first fired 21 times, on "FY26 to 7.54%" and on negative comparisons;
+  `unit_kind` first quarantined ~95 correct table cells until the label-naming-the-ratio rule; `not_company_speaker`
+  first quarantined a KEC answer because "moderator" appeared 250 chars earlier, so only the last speaker label
+  counts. All six v2 and seven Gemini known-wrong rows stay quarantined; the NPA list rows are now unverified (four
+  values in one sentence, no second source), never quarantined.
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (38 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
   gross margin as its own metric, the denominator keep rule, "improve by" as a delta, medium-term / CAGR /
   fiscal-year mismatches with their comparative and percentage-range controls, "repo" not matching "report", each
   of the five verified conditions a-e, kpi `scope_word` with the per-unit exemption, the "Rs." abbreviation and a
-  four-digit FY year);
+  four-digit FY year, multi-column `multi_number` for any rule, `not_company_speaker`, `range_value`,
+  `uncorroborated` and `unit_kind`, and the nearer-foreign-label / past-tense guidance rules);
   `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per
