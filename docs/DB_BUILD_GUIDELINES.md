@@ -131,7 +131,11 @@ Change a rule only with a measurement that supports the change, and note it in `
   another; a comparative phrase such as "over Q1 FY26" and table/chart quotes do not count), and `currency` (the
   label-to-number span prints another currency than the row's unit: the nearest marker before the number decides,
   so "$ 6,724 $ 5,176" is USD and "Rs 2,050 crore ($ 246 million)" is INR at the rupee number; the corpus's
-  backtick rupee glyph counts as INR).
+  backtick rupee glyph counts as INR), `target_frame` (guidance: the number's sentence frames it as medium/long term
+  or a CAGR while the target is one fiscal year; a frame about the past, "has been our CAGR", is not the target's)
+  and `target_year` (guidance: the sentence prints a fiscal year or year range that is not the target's year;
+  "22-24%" is a percentage, not a year, and a range counts only with an FY prefix, a four-digit end or consecutive
+  years).
 - Soft: scaled value, several numbers in a table quote, disagreeing independent sources (`cross_doc`, another
   document AND another wording; a deck table copied into the next deck is one source), `variant` (a PAT / EBITDA /
   revenue figure labelled adjusted / before exceptional / excluding / per ... unless the metric name says so),
@@ -149,24 +153,34 @@ Change a rule only with a measurement that supports the change, and note it in `
   `row_checks_summary.csv` (status counts by metric x sector x document type x extractor rule) and the sample TSV
   (id, symbol, metric, dimension, period, value, unit, quote, fails) for the human read; `--tables guidance` runs a
   database without `kpi_series`.
-- Measured 8 Nov 2026, round 2 (T-113 A follow-up; dev databases read-only): v2 database guidance 47 verified / 24
-  unverified / 35 quarantined (unchanged), kpi_series 4,193 / 1,493 / 357 (round 1: 4,203/1,493/347); `t105_agy.db`
-  guidance 30 / 22 / 14 (unchanged; no currency or dimension hits in a guidance-only database). New hard `currency`
-  quarantines 12 rows: the six HINDALCO Novelis figures stored `inr_cr` from "$ 6,724 / $ 5,176" and "capex $414 /
-  $372", including HINDALCO 44300 "Adjusted Net Debt $ 6,724 $ 5,176" (the one wrong row in Opus's round-1 verified
-  sample; now quarantined). The nearest-marker rule and the backtick rupee glyph keep correct rows: KEC "USD 225
-  million (approximately ` 2,000 Crore" is the rupee number. New soft `dimension_word` flags 7 rows: HINDALCO
-  "Aluminium Business EBITDA" stored total (3), HINDALCO "Aluminium metal production" stored total (2), SBILIFE
-  "Individual New Business Premium" stored total (2); the first pass flagged 148, 136 of them the metric's own name
-  before its abbreviation, so the full-name window guard is what makes the check usable. Round 1 unchanged: all six
-  known-wrong v2 rows and all seven Gemini known-wrong rows quarantined; the INFY products-and-platforms row (246 of
-  5,082 USD mn) is `part_not_total`; MARUTI 13 days, KEC 1,550 crore, BAJFINANCE 0.18% as 18 bps verified. Per check:
-  `list_order` 53, `part_not_total` 83, `period_word` 3, `variant` 81 (soft), `entity_mismatch` 36 (soft),
-  `currency` 12, `dimension_word` 7 (soft), guidance `past_figure` 1, guidance `label_foreign` 1, kpi
-  `label_foreign` 1.
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (18 passed, 8 Nov) builds a tiny fixture
+- Measured 8 Nov 2026, round 3 (out-of-pilot generalisation; companies ALKEM, TEJASNET, PIDILITIND, UFLEX,
+  KALYANKJIL, ASHOKA; 1,365 guidance rows from an older extractor, four of six sectors unknown, no `kpi_series` and
+  no filed tables): **99 verified / 907 unverified / 359 quarantined -> 80 / 882 / 403**. Reading the seeded
+  40-row samples before the fixes: of 40 verified, **21 were not a correct forward target** (gross margin stored as
+  EBITDA 3, a reported quarter figure 1, capex-% of revenue / order-book share / revenue-mix share / spending-%
+  worded as `revenue_growth` 6, per-showroom / project / maintenance amounts stored as company capex 4, a delta
+  stored as a level 1, a wrong fiscal year or a CAGR / medium-term frame stored as one FY 5, a preference-share
+  coupon as `interest_cost` 1). Of 40 quarantined, 4 were right: two `label_foreign` on the word "mix" (121, 1214),
+  one `third_party` because "repo" matched inside "report" (522), one `label_conflict` on a growth row with an
+  earlier revenue mention (1069). The fixes changed 61 rows (9 verified->quarantined, 11 verified->unverified, 38
+  unverified->quarantined, 2 quarantined->unverified, 1 quarantined->verified 522); of the original verified sample
+  10 changed and all 10 were wrong. Rules: `target_frame` and `target_year` above; "gross margin" is its own metric,
+  not an `ebitda_margin` label (3 wrong rows unverified); a denominator no longer hides the metric's own name ("17%
+  of EBITDA margin" keeps its label, "2-3% of revenue" does not); `delta_value` reads "improve by" and checks every
+  occurrence (the BAJFINANCE opex 25-40 bps rows are improvements, not levels); `list_order` ignores delta and glued
+  ("Q2") numbers; `third_party` "repo" is word-bounded. Residual wrong rows still verified: a reported quarter (16),
+  capex %-of-revenue worded as growth (723, 193), per-facility and maintenance capex (147, 769, 783), a project
+  margin (1045), a preference-share coupon (664), "for 2021" (964); 121/1214 (`label_foreign` "mix") and 1069 stay
+  wrongly quarantined. On the pilot dev databases the change is small: v2 guidance 47/24/35 -> 43/24/39 and agy
+  30/22/14 -> 27/21/18 (six genuine catches: BAJFINANCE opex improvements, HINDALCO cost delta, ETERNAL 60% CAGR,
+  SBILIFE long-term), kpi unchanged 4,193/1,493/357; all six v2 and seven Gemini known-wrong rows stay quarantined.
+  Round 2 unchanged: `currency` 12, `dimension_word` 7 (soft), `list_order` 53, `part_not_total` 83, `period_word` 3,
+  `variant` 81 (soft), `entity_mismatch` 36 (soft).
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (25 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
-  and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard);
+  and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
+  gross margin as its own metric, the denominator keep rule, "improve by" as a delta, medium-term / CAGR /
+  fiscal-year mismatches with their comparative and percentage-range controls, "repo" not matching "report");
   `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per
