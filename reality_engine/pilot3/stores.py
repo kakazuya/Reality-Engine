@@ -217,7 +217,7 @@ def _quarter_extras(symbol: str, meta: dict[str, tuple], have: set | None = None
         isin, start, end, period, basis, audited, known = meta[file]
         out.append((symbol, isin, start, end, period, basis, audited, statement, item, tag, value, unit, 1.0, file,
                     "results_xbrl.db", "facts", src or f"{file}#{rowid}", known,
-                    "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts", reported))
+                    "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", reported))
 
     bank = {file for (file, tag) in got if tag == BANK_MARKER}
     life = {file for (file, tag) in got if tag == LIFE_MARKER}
@@ -269,11 +269,11 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
                     continue
                 fq.append((symbol, r["isin"], r["period_start"], r["period_end"], period, basis, r["audited"],
                            statement, item, tag, float(value), unit, 1.0, r["file"], "results_xbrl.db",
-                           "quarterly", r["file"], r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts", 1))
+                           "quarterly", r["file"], r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", 1))
             paid, face = r.get("PaidUpValueOfEquityShareCapital"), r.get("FaceValueOfEquityShareCapital")
             if paid and face:
                 sc.append((symbol, r["isin"], r["period_end"], basis, None, None, paid / face, paid, face, "shares",
-                           1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts", "results_xbrl.db",
+                           1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", "results_xbrl.db",
                            "quarterly", r["file"], None, None))
         fq += _quarter_extras(symbol, meta, {(r[13], r[8]) for r in fq})
         conn.executemany("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "

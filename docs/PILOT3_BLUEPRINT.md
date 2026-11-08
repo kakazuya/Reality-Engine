@@ -955,6 +955,12 @@ serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_
   `gap_loop.prepare` now falls back to `filings.filing_ts` for the same file (3,759 of the 4,082 have one; it is the
   exchange's filing stamp, never later than dissemination in 98% of filings that carry both), and
   `xbrl_segments` does the same. A row still undated stays NULL and is never served under `as_of`.
+- **Last resort: the file name stamp (9 Nov).** The other 323 undated rows (ULTRACEMCO Q2FY27 in u8: 45 rows) broke
+  `ratios._quarters` (max over NULL known_at). `prepare.xbrl_file_ts` reads the IST stamp in the XBRL file name:
+  `_DDMMYYYYhhmmss_WEB.xml` is a 12-hour clock, read as pm, so it is never earlier than dissemination (30,238 dated
+  filings: equal for pm filings, 12 h late for am ones); `_YYYYMMDD_hhmmss<ms>.xml` is 24-hour. Used by
+  `results_quarterly`, `results_filings` and `xbrl_segments`; `known_at_source` ends `|file name stamp`. `ratios`
+  also skips an EBIT/EBITDA whose inputs carry an undated row. Test: `test_gap_loop_xbrl_file_ts.py`.
 - **ratios skips an undated share count.** `ratios._valuation` crashed on a NULL `known_at` share row (q12 build,
   8 Nov); it now never uses one. Test: `test_an_undated_share_count_is_never_used`.
 - **build_shp warns on an empty SHP folder.** Since raw files moved to Drive (7 Nov), `D:\RealityEngine\raw\nse_shp_xbrl_pilot` was empty, so the live pilot10.db had no `shp_pledge` or `shp_holder` rows and every pledge question failed. Fetch `gdrive:InfoDiffusion_archive/msi_raw/raw/nse_shp_xbrl_pilot` (591 files, 7 MB) before `--part stores`; `build_shp` now prints a WARNING when the folder is empty. Rebuilt on a pilot10 copy: shp_pledge 78 rows, shp_holder 3,372, all 10 companies.

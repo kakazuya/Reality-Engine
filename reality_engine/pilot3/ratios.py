@@ -135,6 +135,8 @@ def _quarters(conn: sqlite3.Connection, symbol: str) -> dict:
         pbt, fin, dep, oth = (items.get(k) for k in ("pbt_before_exceptional", "finance_cost", "depreciation", "other_income"))
         if pbt and fin and not profile.is_lender(symbol):
             ks = [x[1] for x in (pbt, fin, dep, oth) if x]
+            if any(k is None for k in ks):  # an undated input: the derived line could not be placed in time
+                continue
             period = pbt[2]
             start = pbt[3]
             items["ebit"] = (pbt[0] + fin[0], max(ks), period, start)

@@ -63,12 +63,12 @@ def store_copies(company: Company) -> tuple[dict, ...]:
                 f"FROM pages WHERE {isin} GROUP BY sha256) p ON p.sha256=f.sha256", "params": params},
         {"table": "results_filings", "db": "results_xbrl.db", "source": "filings",
          "key": company.isin_key,
-         "sql": "SELECT *, coalesce(filing_ts, broadcast_ts, dissem_ts) AS known_at FROM filings "
+         "sql": "SELECT *, coalesce(filing_ts, broadcast_ts, dissem_ts, xbrl_file_ts(file)) AS known_at FROM filings "
                 f"WHERE {isin}", "params": params},
         {"table": "results_quarterly", "db": "results_xbrl.db", "source": "quarterly",
          "key": company.isin_key,
          "sql": "SELECT *, coalesce(dissem_ts, broadcast_ts, (SELECT f.filing_ts FROM filings f "
-                "WHERE f.file=quarterly.file)) AS known_at FROM quarterly "
+                "WHERE f.file=quarterly.file), xbrl_file_ts(file)) AS known_at FROM quarterly "
                 f"WHERE {isin}", "params": params},
         {"table": "concall_items", "db": "concall_facts.db", "source": "cc_items",
          "key": company.isin_key,
@@ -285,11 +285,39 @@ def _write_table(conn: sqlite3.Connection, table: str, types: dict[str, str], ro
         conn.executemany(f'INSERT INTO "{table}" VALUES ({",".join("?" * len(types))})', clean)
 
 
+_XBRL_STAMP_12H = re.compile(r"_(\d{2})(\d{2})(\d{4})(\d{2})(\d{2})(\d{2})_WEB\.xml$", re.I)
+_XBRL_STAMP_24H = re.compile(r"_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})\d*\.xml$", re.I)
+
+
+def xbrl_file_ts(name: object) -> str | None:
+    """Last-resort ``known_at`` of an NSE XBRL results file from the IST stamp in its name, used only when the
+    filing record has no dissemination, broadcast or filing time (fresh filings, T-130 u8).
+
+    ``..._DDMMYYYYhhmmss_WEB.xml`` writes a 12-hour clock without am/pm: the hour is read as pm, so the stamp is
+    never earlier than the real dissemination (checked on 30,238 dated filings: equal for pm filings, 12 h late for
+    am ones, never early).  ``..._YYYYMMDD_hhmmss<ms>.xml`` is a 24-hour stamp."""
+    text = str(name or "")
+    m = _XBRL_STAMP_12H.search(text)
+    if m:
+        d, mo, y, h, mi, s = (int(x) for x in m.groups())
+        h = h + 12 if h < 12 else h
+    else:
+        m = _XBRL_STAMP_24H.search(text)
+        if not m:
+            return None
+        y, mo, d, h, mi, s = (int(x) for x in m.groups())
+    try:
+        return datetime(y, mo, d, h, mi, s).strftime("%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        return None
+
+
 def _read_sqlite(db: str, source: str, sql: str, params: tuple) -> tuple[list, dict[str, str]]:
     path = DATA_ROOT / db
     if not path.is_file():
         raise RuntimeError(f"cannot read {db} for {current().symbol}: {path} is missing")
     con = connect_ro(path, timeout_s=120)
+    con.create_function("xbrl_file_ts", 1, xbrl_file_ts, deterministic=True)
     try:
         cursor = con.execute(sql, params)
         columns = [item[0] for item in cursor.description]
