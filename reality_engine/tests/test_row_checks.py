@@ -113,14 +113,14 @@ def build(tmp_path: Path, pages: dict[int, str], guidance: list[dict] | None = N
     for row in kpi:
         data = {**KPI_DEFAULTS, **row}
         con.execute(f"INSERT INTO kpi_series({','.join(data)}) VALUES ({','.join('?' * len(data))})", tuple(data.values()))
-    con.executemany("INSERT INTO fin_quarter_current(symbol,fiscal_period,line_item,value,scale,basis) "
-                    "VALUES (:symbol,:fiscal_period,:line_item,:value,:scale,:basis)",
-                    [{**dict(symbol="", fiscal_period="", line_item="", value=None, scale=1.0, basis="consolidated"),
-                      **r} for r in fin_q])
-    con.executemany("INSERT INTO fin_annual_line(symbol,fiscal_year,line_item,value,scale,basis) "
-                    "VALUES (:symbol,:fiscal_year,:line_item,:value,:scale,:basis)",
-                    [{**dict(symbol="", fiscal_year="", line_item="", value=None, scale=1.0, basis="consolidated"),
-                      **r} for r in fin_a])
+    con.executemany("INSERT INTO fin_quarter_current(symbol,fiscal_period,line_item,value,unit,scale,basis) "
+                    "VALUES (:symbol,:fiscal_period,:line_item,:value,:unit,:scale,:basis)",
+                    [{**dict(symbol="", fiscal_period="", line_item="", value=None, unit="inr", scale=1.0,
+                             basis="consolidated"), **r} for r in fin_q])
+    con.executemany("INSERT INTO fin_annual_line(symbol,fiscal_year,line_item,value,unit,scale,basis) "
+                    "VALUES (:symbol,:fiscal_year,:line_item,:value,:unit,:scale,:basis)",
+                    [{**dict(symbol="", fiscal_year="", line_item="", value=None, unit="inr", scale=1.0,
+                             basis="consolidated"), **r} for r in fin_a])
     con.commit()
     con.close()
     profile = tmp_path / "profile.json"
@@ -1296,3 +1296,83 @@ def test_bare_leverage_is_not_a_debt_ratio_label(tmp_path):
     status, fails = verdict(out, "kpi_series", 1)
     assert status != "verified" and "label_weak" in fails, (status, fails)
     assert "label_weak" not in verdict(out, "kpi_series", 2)[1]
+
+
+# ------------------------------------------- round 9: corroboration is not a label, glued qualifiers, filed scale
+
+def test_corroboration_does_not_verify_a_weak_label_or_a_variant(tmp_path):
+    pages = {1: "Leverage ratio 4.7"}
+    kpi = [
+        dict(id=1, symbol="A", metric="net_debt_to_ebitda", fiscal_period="FY26", period_type="FY", value=4.7,
+             unit="multiple", quote=pages[1], page=1),
+        dict(id=2, symbol="A", metric="net_debt_to_ebitda", fiscal_period="FY26", period_type="FY", value=4.7,
+             unit="multiple", quote="Leverage ratio of 4.7x", page=1, doc_key="d2"),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"A": "it_services"})
+    add_doc(db, "d2", {1: "Leverage ratio of 4.7x"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (1, 2):
+        status, fails = verdict(out, "kpi_series", rid)
+        assert status == "unverified" and "label_weak" in fails, (rid, status, fails)
+
+    pages2 = {1: "Adjusted profit after tax 100 crore"}
+    kpi2 = [
+        dict(id=1, symbol="B", metric="pat", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=100.0, unit="inr_cr", scale=1e7, quote=pages2[1], page=1),
+        dict(id=2, symbol="B", metric="pat", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=100.0, unit="inr_cr", scale=1e7, quote="Profit after tax (adjusted) 100 crore", page=1,
+             doc_key="d2"),
+    ]
+    db, profile = build(tmp_path, pages2, kpi=kpi2,
+                        fin_a=[dict(symbol="B", fiscal_year="FY26", line_item="pat", value=100.0, scale=1e7)],
+                        sectors={"B": "it_services"}, db_name="variant_corr.db")
+    add_doc(db, "d2", {1: "Profit after tax (adjusted) 100 crore"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (1, 2):
+        status, fails = verdict(out, "kpi_series", rid)
+        assert status == "unverified" and "variant" in fails, (rid, status, fails)
+
+
+def test_variant_qualifier_glued_to_digits_or_hyphens(tmp_path):
+    pages = {
+        1: "EBITDA margin (pre IndAS116) at 19.7%",
+        2: "EBITDA margin post IndAS116 at 21.2%",
+        3: "EBITDA margin (ex-IndAS) at 18.4%",
+        4: "EBITDA margin pre IND-AS at 17.1%",
+    }
+    kpi = [dict(id=i + 1, symbol="CO", metric="ebitda_margin_pct", fiscal_period="FY26", period_type="FY",
+                value=value, unit="pct", quote=pages[i + 1], page=i + 1)
+           for i, value in enumerate((19.7, 21.2, 18.4, 17.1))]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (1, 2, 3, 4):
+        status, fails = verdict(out, "kpi_series", rid)
+        assert "variant" in fails and status != "quarantined", (rid, status, fails)
+
+
+def test_a_filed_unit_that_names_a_scale_is_applied(tmp_path):
+    pages = {1: "Revenue from operations 100 crore"}
+    kpi = [dict(id=1, symbol="CO", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+                value=100.0, unit="inr_cr", scale=1e7, quote=pages[1], page=1)]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        fin_a=[dict(symbol="CO", fiscal_year="FY26", line_item="revenue_from_operations",
+                                    value=1000.0, unit="rs mn", scale=1.0)],
+                        sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "verified" and "fin_conflict" not in fails, fails
+
+
+def test_a_sub_crore_filed_value_does_not_witness(tmp_path):
+    pages = {1: "Revenue from operations 500 crore"}
+    kpi = [dict(id=1, symbol="CO", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+                value=500.0, unit="inr_cr", scale=1e7, quote=pages[1], page=1)]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        fin_a=[dict(symbol="CO", fiscal_year="FY25", line_item="revenue_from_operations",
+                                    value=5000.0, unit="inr", scale=1e7),
+                               dict(symbol="CO", fiscal_year="FY26", line_item="revenue_from_operations",
+                                    value=5.0, unit="inr", scale=1.0)],
+                        sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "fin_conflict" not in fails and "uncorroborated" in fails, fails

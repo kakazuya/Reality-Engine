@@ -125,7 +125,11 @@ Change a rule only with a measurement that supports the change, and note it in `
   guidance row has a number, a forward word, no system / industry / GDP wording near the number, no realised figure
   ("we grew at 12%" -> `past_figure`), and a target period that had not ended when said; the filed statements agree
   on revenue / PAT (`fin_conflict`; a filed value of 0 or below is never a witness, so a period whose only filed
-  figures are 0 is "no filed figure", not a conflict); `net_cash_sign` (a `net_debt` row whose words say "net cash"
+  figures are 0 is "no filed figure", not a conflict; round 9: a filed line whose `unit` text names a scale
+  ("₹ in mn", "rs lakh", "rs billion") is read at that scale even when the store left `scale` at 1 — the printed
+  unit is the document's own word — an ambiguous unit text naming two scales is no witness, and a filed value below
+  Rs 1 crore never witnesses revenue / PAT for a company whose other filed revenue is above Rs 100 crore; the
+  dev-store rows this repairs are reported upstream, not fixed here); `net_cash_sign` (a `net_debt` row whose words say "net cash"
   / "cash surplus" / "net cash positive" while the value is stored positive, or "net debt" while the value is stored
   negative and the quote prints neither a minus, a bracket nor the word "minus": the sign is the opposite of the
   words); `page_unit` (the nearest scale declaration above the number on the same page — "All amounts are in million
@@ -151,7 +155,9 @@ Change a rule only with a measurement that supports the change, and note it in `
   revenue / net-debt figure, or a margin / ratio, labelled adjusted / before exceptional / excluding / excl. / ex- /
   pre Ind AS / post Ind AS / of which / per ... unless the metric name says so; round 8 extends it beyond
   revenue / PAT / EBITDA, and when a foreign metric's label sits inside such a qualifier phrase — "EBITDA pre Ind AS
-  & excl. other income" — that is a variant, not a hard `label_conflict`), `same_doc_conflict` (two rows of the same
+  & excl. other income" — that is a variant, not a hard `label_conflict`; round 9 normalises the Ind AS spelling
+  before matching, so a qualifier glued to digits or in brackets is still a variant: "pre IndAS116",
+  "pre-Ind AS 116", "pre IND-AS", "post IndAS116", "ex-IndAS"), `same_doc_conflict` (two rows of the same
   company / metric / scope / period from the SAME document disagree by more than 1.5% after scale — a filed figure
   that matches one of them arbitrates, and a variant row is exempt), `question_next` (the quote's speaker could not
   be found and the sentence right after the number asks a question: at most unverified, never a quarantine),
@@ -162,7 +168,9 @@ Change a rule only with a measurement that supports the change, and note it in `
   vocabulary or page text, unknown sector, a weak or pre-quote label, `not_pinned` (guidance: one or more of the
   five verified conditions below is missing, with the letters in the why), `scope_word` (kpi: a total row whose
   label-to-number span names a part scope: per store/unit/tonne, facility, plant, project, maintenance, segment,
-  division, international, domestic, mix, share, contribution, of revenue/sales, excluding, ex-).
+  division, international, domestic, mix, share, contribution, of revenue/sales, excluding, ex-).  A row carrying
+  `label_weak` or `variant` is never `verified`, even when corroborated: corroboration proves the number is printed
+  twice, not that the wording names this metric or that a variant is the plain line (round 9).
 - Guidance is `verified` only when ALL of these hold, else soft `not_pinned` with the missing letter(s): (a) a strong
   label of the row's own metric within 45 chars of the number, in the same sentence; (b) no part-scope word between
   that label and the number or right after the number (per showroom/store/unit/tonne unless the metric is per-unit;
@@ -300,7 +308,24 @@ Change a rule only with a measurement that supports the change, and note it in `
   `net_debt_to_ebitda`, not a strong one: v2 `label_weak` 49 -> 96 (the 48 new BAJFINANCE / HINDALCO "Leverage
   ratio ..." rows serve unverified, and 5 "leverage ratio at 3.5x and liquidity ..." rows moved hard
   `label_foreign` -> soft label_weak). `question_next` 0 hits on both dbs.
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (55 passed, 8 Nov) builds a tiny fixture
+- Measured 8 Nov 2026, round 9 (same two dev dbs; round-8 verdicts -> round 9): unseen6 unchanged **93/711/172** kpi
+  and 8/111/57 guidance; pilot10 v2 kpi **3,534/2,072/437 -> 3,527/2,079/437**, guidance 19/46/41 unchanged, in
+  11.1 s. Four rules. (1) `label_weak` and `variant` never verify even when corroborated: **7 v2 rows moved
+  verified -> unverified** (HINDALCO `net_debt_to_ebitda` "leverage ratio at 3.7x" 44121/44139/44149, "Net Leverage
+  Ratio 4.1" 44305/44340, MARUTI `export_volumes` 46034/46061), 0 on unseen6; no variant row was verified before, so
+  that half moves 0. (2) The Ind AS qualifier is normalised before matching, so "pre IndAS116", "pre-Ind AS 116",
+  "pre IND-AS", "post IndAS116" and "ex-IndAS" count (`EBITDA margin (pre IndAS116) at 19.7%` is pinned by a test);
+  the dev dbs hold none, so variant stays 1 guidance + 7 kpi on unseen6 and 1 + 111 on v2. (3) A filed line whose
+  `unit` names a scale is read at that scale even when `scale` is 1, and a filed value below Rs 1 crore never
+  witnesses revenue / PAT for a company whose other filed revenue is above Rs 100 crore: 93 unseen6 + 11 v2
+  `fin_annual_line` rows have the disagreement (the full list is reported upstream as a store bug, not fixed here);
+  30 unseen6 and 4 v2 witness rows get the printed scale (ALKEM FY26 revenue 106,342 "₹ in mn" -> ₹10,634 cr,
+  ASHOKA FY24 revenue 979,846 "rs lakh" -> ₹9,798 cr, SBILIFE FY26 PAT 24.7 "rs bn" -> ₹2,470 cr, SUNPHARMA FY26 PAT
+  115 "₹ billion" -> ₹11,500 cr), changing 12 unseen6 and 3 v2 witness keys; the sub-crore rule drops 2 KEC Q1FY27
+  PAT values (₹52 lakh) on v2 and none on unseen6. **0 fin_conflict quarantines go away** (p10 stays 151, unseen6 0)
+  and no other verdict moves: the correct quarter-view rows already witnessed these keys, so the repair protects
+  future builds rather than changing these two dbs.
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (59 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
   gross margin as its own metric, the denominator keep rule, "improve by" as a delta, medium-term / CAGR /
@@ -315,7 +340,8 @@ Change a rule only with a measurement that supports the change, and note it in `
   the previous page, the soft `question_next` fallback, a prose line that is not a speaker, same-document evidence
   both agreeing and disagreeing (a variant peer exempt), a zero filed figure as no witness, the page-unit
   declarations and their currency and quote-unit exemptions, the extended variant words, "as per" not matching,
-  and bare leverage as a weak label);
+  bare leverage as a weak label, corroboration failing to verify a weak or variant label, the glued / bracketed
+  Ind AS qualifiers, a filed unit that names its own scale, and a sub-crore filed value that cannot witness);
   `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per
