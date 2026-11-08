@@ -8,6 +8,7 @@ import dataclasses
 import gzip
 import re
 import sqlite3
+import sys
 import xml.etree.ElementTree as ET
 from bisect import bisect_right
 from datetime import date, datetime, timedelta
@@ -785,7 +786,10 @@ def build_shp(conn: sqlite3.Connection) -> dict:
     if SHP_XBRL.is_dir():
         for path in sorted(SHP_XBRL.glob("*.xml.gz")):
             xbrl_files[path.name[:-3]] = path
-    parsed_files = {name: parse_shp_xbrl(gzip.open(path).read()) for name, path in xbrl_files.items()}
+    if not xbrl_files:   # 8 Nov: raw moved to Drive, the folder was empty and pledge/holder tables came out empty
+        print(f"WARNING build_shp: no SHP XBRL files in {SHP_XBRL}; shp_holder and shp_pledge will be empty "
+              "(fetch gdrive:InfoDiffusion_archive/msi_raw/raw/nse_shp_xbrl_pilot first)", file=sys.stderr)
+    parsed_files ={name: parse_shp_xbrl(gzip.open(path).read()) for name, path in xbrl_files.items()}
     bases = {}
     for parsed in parsed_files.values():
         if _quarter(parsed):

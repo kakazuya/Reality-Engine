@@ -957,5 +957,7 @@ serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_
   `xbrl_segments` does the same. A row still undated stays NULL and is never served under `as_of`.
 - **ratios skips an undated share count.** `ratios._valuation` crashed on a NULL `known_at` share row (q12 build,
   8 Nov); it now never uses one. Test: `test_an_undated_share_count_is_never_used`.
+- **build_shp warns on an empty SHP folder.** Since raw files moved to Drive (7 Nov), `D:\RealityEngineaw
+se_shp_xbrl_pilot` was empty, so the live pilot10.db had no `shp_pledge` or `shp_holder` rows and every pledge question failed. Fetch `gdrive:InfoDiffusion_archive/msi_raw/raw/nse_shp_xbrl_pilot` (591 files, 7 MB) before `--part stores`; `build_shp` now prints a WARNING when the folder is empty. Rebuilt on a pilot10 copy: shp_pledge 78 rows, shp_holder 3,372, all 10 companies.
 
 **Retired reports (8 Nov 2026).** Shivam retired the 3-7 Nov reports on 8 Nov (answer checks, model-vs-store, dig, second read, re-ask, embedding, OCR, night-loop, doc-identity scans, database inventory): they are no longer in `D:\RealityEngine\reports`; copies are on `gdrive:InfoDiffusion_archive/reports/retired_2026-11-08/` under the same names.
