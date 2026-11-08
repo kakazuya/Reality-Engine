@@ -1,9 +1,8 @@
-# T-129 progress
+# T-129 progress (final)
 
-- Read context pack and the four code/test files; pointed at the actual pilot10 DB through reality-data (6043 kpi rows).
-- Rule A implemented in `doc_default_period` via `_ytd_default` (YTD span → H1/9M/X quarter; Q4 keeps FY); fixed a 6M fallback defect.
-- Rule B: `derive_quarters` (Q2=H1-Q1, Q3=9M-H1, Q4=FY-9M; flow metric whitelist; 1% pin; quarantine-aware; `derived_cumulative_v1`, is_reported 0, quote "FY26 242.7 - 9MFY26 185.2").
-- Rule C: `check_source_scale` + `source_scale_mismatch` fail code; MARUTI-127 pair tested.
-- Tests: 134 passed over the three listed test files with the sandbox 0o700 workaround; the literal command hits 6 pre-existing tmp_path sandbox errors.
-- Next: after-vs-control kpi builds on `.tmp/p10.db` / `.tmp/p10_noa.db`, then `--part checks`, row_check verdict counts, number-check replay (MARUTI-127 only), docs 9j + STATE.
-- Blockers: sandbox denies listing dirs created with mode 0o700 (pytest tmp_path), workaround patched in-process for verification only.
+- Rule A: `kpi.doc_default_period` -> `_ytd_default` (YTD span + first named quarter on the cover; Q2->H1, Q3->9M, Q1->Q1; Q4 keeps FY; annual reports / >80 pages pass `ytd=False`; own-period sentences unchanged; the quarterly-cue, quarter-after-comparative and T-107 ratio rules now also read H1/9M defaults). SBILIFE evidence: APE 117.5 H1FY27, APE 185.2 / 168.8 and VNB 50.4 9MFY26.
+- Rule B: `kpi.derive_quarters` (Q2=H1-Q1, Q3=9M-H1, Q4=FY-9M; flow whitelist `_DERIVABLE_FLOW`; 1% pin; best non-quarantined input; `derived_cumulative_v1`, is_reported 0, quote names both inputs, known_at = later input).
+- Rule C: `number_check.check_source_scale` -> `source_scale_mismatch`; MARUTI-127 pair tested.
+- Measured on the pilot10 copy (control with A disabled vs real, same code): 215 periods changed; 47 derived rows (revenue 18, PAT 15, EBITDA 9, one each of APE/GWP/new loans/order intake/volumes); all 47 derived rows quarantined by `--part checks` (synthetic quote); kpi verdicts after 2,292 verified / 3,330 unverified / 427 quarantined reported + 47 derived quarantined. Number-check replay: 2 findings, both MARUTI-127 (4,136 and 18,740 crore sourced in million).
+- Tests: literal acceptance 123 passed + 6 sandbox `tmp_path` errors; 134 passed over the three files with the sandbox 0o755 workaround.
+- Done; docs 9j + guide + STATE updated; two commits on the branch.

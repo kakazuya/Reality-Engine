@@ -1450,7 +1450,7 @@ def _quarter_after_comparative(text: str, start: int, end: int, period: Period) 
     if not m:
         return None
     mm = re.search(r"FY(\d{2})$", period.canon or "")
-    if period.ptype != "FY" or mm is None or mm.group(1) != m.group(2):
+    if period.ptype not in ("FY", "H", "9M", "6M") or mm is None or mm.group(1) != m.group(2):
         return None
     q = int(m.group(1))
     if q >= 4:
@@ -1652,12 +1652,12 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                             canon = f"Q{mq.group(1) or mq.group(2)}FY{mm.group(1)}"
                             period = Period(period.start, period.end, canon, "Q", period_end("Q", canon))
                     lq = re.search(r"\bin Q([1-4])\b", lead or "", re.I) if rule != "sentence_v1" else None
-                    if lq and period.ptype == "FY":
+                    if lq and period.ptype in ("FY", "H", "9M", "6M"):
                         mm = re.search(r"FY(\d{2})", period.canon or "")
                         if mm:
                             canon = f"Q{lq.group(1)}FY{mm.group(1)}"   # "improved ... in Q2 ... came in at 7.52%"
                             period = Period(period.start, period.end, canon, "Q", period_end("Q", canon))
-                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype in ("FY", "M", "H") \
+                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype in ("FY", "M", "H", "9M", "6M") \
                             and e.metric not in _STOCK_METRICS:
                         frame = text[max(0, m.start() - 600):min(len(text), v.end + 140)]
                         qhead = re.search(r"(?mi)^\s*(?:key highlights for )?(?:the )?(?:march|june|september|"
@@ -1669,7 +1669,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                             canon = _quarter_of(period.canon)   # a quarterly figure in a year-to-date document
                             if canon:
                                 period = Period(period.start, period.end, canon, "Q", period_end("Q", canon))
-                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype == "FY":
+                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype in ("FY", "H", "9M", "6M"):
                         qp = _quarter_after_comparative(text, v.end, min(len(text), v.end + 90), period)
                         if qp is not None:
                             period = qp        # "improved to -3.0% from -4.7% in Q3FY26" is the quarter after Q3
@@ -1677,7 +1677,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     if fp is not None:
                         period = fp     # "first nine months" / "six months ended" names the figure's own span
                     period = _ytd_period(period, e, text, m.start(), v.start, filed)
-                    if ratio_quarter and rule == "sentence_default_v1" and period.ptype == "FY" \
+                    if ratio_quarter and rule == "sentence_default_v1" and period.ptype in ("FY", "H", "9M", "6M") \
                             and e.metric in _RATIO_METRICS and not _year_named(text, m.start(), v.end):
                         q = _quarter_of(period.canon)
                         if q and keep_period("Q", q, filed):   # a quarter the document cannot report keeps its year
@@ -3224,6 +3224,11 @@ def _pinned(values: list[float]) -> bool:
     return bool(values) and max(values) - min(values) <= 0.01 * max(abs(v) for v in values)
 
 
+def _fmt_num(value: float) -> str:
+    """A stored value as printed in a derived row's quote ("242.7", "1746500"), never scientific notation."""
+    return f"{value:.6f}".rstrip("0").rstrip(".")
+
+
 def derive_quarters(con: sqlite3.Connection, symbol: str) -> int:
     """Write the missing Q2/Q3/Q4 of a flow metric from its cumulative rows, as labelled derived rows (T-129).
 
@@ -3260,7 +3265,7 @@ def derive_quarters(con: sqlite3.Connection, symbol: str) -> int:
                 a = max(a_rows, key=lambda r: (r["conf_rank"] or 0, r["known_at"] or "", r["id"]))
                 b = max(b_rows, key=lambda r: (r["conf_rank"] or 0, r["known_at"] or "", r["id"]))
                 later = a if (a["known_at"] or "") >= (b["known_at"] or "") else b
-                quote = f'{a["fiscal_period"]} {a["value"]:g} - {b["fiscal_period"]} {b["value"]:g}'
+                quote = f'{a["fiscal_period"]} {_fmt_num(a["value"])} - {b["fiscal_period"]} {_fmt_num(b["value"])}'
                 con.execute(
                     "INSERT OR IGNORE INTO kpi_series(symbol,isin,metric,dimension,value,unit,scale,period_type,"
                     "fiscal_period,as_of_date,basis,doc_key,page,quote,known_at,known_at_source,is_reported,"
@@ -3270,8 +3275,8 @@ def derive_quarters(con: sqlite3.Connection, symbol: str) -> int:
                      later["scale"] or 1, "Q", canon, period_end("Q", canon), basis, later["doc_key"],
                      later["page"] or 1, quote, later["known_at"], later["known_at_source"], 0,
                      f'{a["fiscal_period"]} - {b["fiscal_period"]}',
-                     f'{a["value"]:g} - {b["value"]:g}', "derived_cumulative_v1", "derived", 0, "derived", None,
-                     later["source_type"] or "", later["entity"] or ""))
+                     f'{_fmt_num(a["value"])} - {_fmt_num(b["value"])}', "derived_cumulative_v1", "derived", 0,
+                     "derived", None, later["source_type"] or "", later["entity"] or ""))
                 wrote += 1
     return wrote
 
