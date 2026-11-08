@@ -508,6 +508,11 @@ def main(argv: list[str] | None = None) -> int:
     except BoardError as exc:
         print(f"task_board: {exc}", file=sys.stderr)
         return 1
+    if args.command in ("add", "set", "done", "drop"):
+        # Shivam, 8 Nov: his Excel ticket board must always match the tracker.
+        from reality_engine.scripts import ticket_board_report
+
+        ticket_board_report.sync_quietly()
     return 0
 
 

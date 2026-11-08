@@ -35,6 +35,12 @@ HOOK = """#!/bin/sh
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
 exec python "$(git rev-parse --show-toplevel)/reality_engine/scripts/doc_gate.py"
 """
+#: Shivam, 8 Nov: his Excel ticket board follows every commit that changes the tracker (main only)
+HOOK_POST = """#!/bin/sh
+[ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
+git diff-tree --no-commit-id --name-only -r HEAD | grep -q '^tasks/TASKS' || exit 0
+python "$(git rev-parse --show-toplevel)/reality_engine/scripts/ticket_board_report.py" >/dev/null || true
+"""
 HOOK_MESSAGE = """#!/bin/sh
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
 exec python "$(git rev-parse --show-toplevel)/reality_engine/scripts/doc_gate.py" --commit-msg "$1"
@@ -201,7 +207,7 @@ def main(argv: list[str]) -> int:
     if "--install" in argv:
         hooks = Path(_git("rev-parse", "--git-common-dir")) / "hooks"
         hooks.mkdir(exist_ok=True)
-        for name, body in (("pre-commit", HOOK), ("commit-msg", HOOK_MESSAGE)):
+        for name, body in (("pre-commit", HOOK), ("commit-msg", HOOK_MESSAGE), ("post-commit", HOOK_POST)):
             (hooks / name).write_text(body, encoding="utf-8", newline="\n")
             print(f"installed {hooks / name}")
         return 0

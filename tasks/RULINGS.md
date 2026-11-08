@@ -1,6 +1,5 @@
 # Shivam's rulings: loaded into every session, also after compaction. Max 8,000 characters.
 Write a new ruling here before the next action. `[check]` = code enforces it. Full wording: `docs/rulings/RULINGS_full_2026-11-08.md`; by topic: `project_rules(topic)` tool.
-
 ## Goal and scope
 - Ultimate goal (8 Nov): predict any stock 6m/1y/2y ahead from reliably held data, least information that does it; few heavyweight factors; more data is not the goal.
 - Store facts so a cheap model gets Opus-quality answers through the `reality-data` MCP (direct db/raw reads only when necessary); tables, extractors, tools must scale unchanged to all NSE+BSE; pilot companies only teach the build. Scripts first; AI/OCR only where scripts fail, within 1-2 months of subscription, with his OK.
@@ -37,4 +36,4 @@ Write a new ruling here before the next action. `[check]` = code enforces it. Fu
 - Push without his OK (given for merged main, 3 Nov). Use paid models (DeepInfra, Haiku beyond an approved run) without his OK.
 
 ## Telling Shivam
-- Reports as HTML (or Mermaid) in `D:\RealityEngine\reports\YYYY-MM-DD_<topic>.<ext>`; lists in Excel/PDF/DOCX/RTF; explain with real questions, never internal codes. State failures plainly with sample sizes. No spend reports: work until he says stop.
+- Reports as HTML (or Mermaid) in `D:\RealityEngine\reports\YYYY-MM-DD_<topic>.<ext>`; lists in Excel/PDF/DOCX/RTF; explain with real questions, never internal codes. State failures plainly with sample sizes. His source of truth for tickets is `D:\RealityEngineeports	icket_board.xlsx` (+ `.html`), kept in sync with the tracker on every change (8 Nov). [check: task_board + post-commit hook] No spend reports: work until he says stop.

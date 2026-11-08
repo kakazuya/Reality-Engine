@@ -939,3 +939,5 @@ rows — re-run `--part checks` into a build and re-measure the part before quot
 `kpi('BAJFINANCE','nnpa_pct','FY25')` lost the 1.18 gross-NPA row (8 rows -> 4), `guidance('HDFCBANK')` 3 -> 1 and
 `guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py` (7 passed) and the existing
 serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_pilot3.py`, 24 passed).
+
+**Retired reports (8 Nov 2026).** Shivam retired the 3-7 Nov reports on 8 Nov (answer checks, model-vs-store, dig, second read, re-ask, embedding, OCR, night-loop, doc-identity scans, database inventory): they are no longer in `D:\RealityEngine\reports`; copies are on `gdrive:InfoDiffusion_archive/reports/retired_2026-11-08/` under the same names.

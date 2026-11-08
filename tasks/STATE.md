@@ -5,9 +5,9 @@ History: `docs/state_history/`. Method and results: `docs/PILOT3_BLUEPRINT.md`. 
 - Live store `D:\RealityEngine\pilot10\pilot10.db` (10 companies, row checks built). Off-pilot verified rows not yet trustworthy (~68% right on hold6/fresh6 before round 10; fresh6 after round 10: 20 of 22 right).
 - T-124 (Wolf): 311 harvested investor questions reframed to 156 (scratch `q12/t124_reframed.csv`); store `q12.db` (12 hold-out companies + 170 FY25-27 docs) building in Wolf scratchpad `q12/` (log `build3.log`); then a model answers via `python -m reality_engine.scripts.p3ask --db <q12.db>` and Opus grades.
 - T-126 (Wolf): Drive files other machines uploaded are now in the T-102 manifest (`drive_index_unlisted`, 122,832 rows added); re-run after any upload.
-- T-125 (Wolf): worker `20261108T114201Z-41e0aa80` built `project_rules`/`project_state` tools, never-cut rulings hook, char caps; RULINGS and STATE shortened by Opus; merge pending.
-- T-120 (Wolf): pilot10 2019-2024 history build at `D:/RealityEngine/pilot10/history/` (`build.log`), then the T-121 ocr part.
-- Waiting Shivam: T-116, T-118, T-121, T-122. Ticket board report: `D:\RealityEngine\reports\2026-11-08_ticket_board.{html,xlsx}`.
+- T-125 (Wolf): worker `20261108T114201Z-41e0aa80` built `project_rules`/`project_state` tools, never-cut rulings hook, char caps; merged `cec49db`, RULINGS 6.6k and STATE 2.5k chars; Shivam /mcp to load the tools.
+- T-120 (Wolf): pilot10 2019-2024 history build done 17:28 (6,359 docs, kpi 4,771 verified / 22,060 unverified / 3,157 quarantined); T-121 ocr part running (`build.log`), then re-run kpi.
+- Waiting Shivam: T-116, T-118, T-121, T-122. Shivam's ticket board (always synced): `D:\RealityEngine\reports\ticket_board.{xlsx,html}`.
 
 ## Next action
 1. Finish q12 build, run T-124 ask + grade, report HTML + xlsx in `D:\RealityEngine\reports\`.
