@@ -220,14 +220,35 @@ Change a rule only with a measurement that supports the change, and note it in `
   first quarantined a KEC answer because "moderator" appeared 250 chars earlier, so only the last speaker label
   counts. All six v2 and seven Gemini known-wrong rows stay quarantined; the NPA list rows are now unverified (four
   values in one sentence, no second source), never quarantined.
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (38 passed, 8 Nov) builds a tiny fixture
+- Measured 8 Nov 2026, round 6 (independent corroboration and structural analyst detection): v2 kpi
+  **3,851/1,773/419 -> 3,851/1,746/446**; v2 guidance 19/46/41, unseen6 7/934/424 and agy 15/33/18 unchanged.
+  `multi_number` corroboration is now independent of column reading: only a filed figure or a source quote that is
+  single-valued for the label (at most one value of the unit after the label) corroborates a multi-column row; two
+  multi-column quotes agreeing do not, and `cross_doc` witnesses must be single-valued too (the UFLEX
+  "10.3% 10.2% ... +62bps" pair no longer verifies; a table then serves as unverified unless another document prints
+  one number). Analyst detection is structural on transcripts: the speaker turn containing the quote (name line
+  "Name:" / "Name -") must be in the document's management list (role lines and participant headings on the first
+  four pages) or answer the question just before, else hard `not_company_speaker`; "trying to understand",
+  "my question" and "just wanted to" join the phrase list. Reading: the TEJASNET "net cash balance ... just trying
+  to understand how" row is quarantined, and the 33 remaining speaker quarantines on pilot10 v2 are analyst turns
+  (Vaibhav Shah, Amit, Arafat Saiyed, Sumit Kishore, Sudeep Bora, Nipun Khemka, Shreya Shivani, Shubhranshu Mishra,
+  Kunal Shah, Bharat Shah), including the "leverage was 4.9x" row that round 5 had verified; a first pass
+  quarantined 2,353 rows because a "Name:" line on a deck page was read as a speaker turn, so the structural check
+  is transcript-only with a readable participant list, and the list scan reads role lines ("MANAGEMENT: MR. VIMAL
+  KEJRIWAL – MANAGING DIRECTOR") instead of losing names at a line break. All six v2 and seven Gemini known-wrong
+  rows stay quarantined; guidance results are unchanged. Fresh seed-6 pilot10 kpi sample: **19 of 20 right**; the one
+  wrong row is 45254 SBILIFE PAT FY25 24.1 from "Profit After Tax 18.9 24.1" — a two-column quote (FY25 is 18.9),
+  below the >2 `multi_number` threshold, so it stays verified and is recorded as an open case.
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (40 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
   gross margin as its own metric, the denominator keep rule, "improve by" as a delta, medium-term / CAGR /
   fiscal-year mismatches with their comparative and percentage-range controls, "repo" not matching "report", each
   of the five verified conditions a-e, kpi `scope_word` with the per-unit exemption, the "Rs." abbreviation and a
   four-digit FY year, multi-column `multi_number` for any rule, `not_company_speaker`, `range_value`,
-  `uncorroborated` and `unit_kind`, and the nearer-foreign-label / past-tense guidance rules);
+  `uncorroborated` and `unit_kind`, the nearer-foreign-label / past-tense guidance rules, two multi-column quotes
+  failing to corroborate each other while a single-valued witness does, and speaker turns by management list vs
+  analyst name vs answering-a-question);
   `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per

@@ -402,7 +402,12 @@ _SCOPE_WORD = re.compile(
 # KPI additions: an analyst's question is not the company's number, a printed range end is not a level, and a
 # unit word has to stand next to the number.
 _ANALYST_PHRASE = re.compile(r"\byou said\b|\bi wanted to understand\b|\bcan you\b|\bcould you\b|\bwhat is\b|"
-                             r"\bwhat are\b|\bhow much\b|\bhow do\b|\bplease explain\b|\bwould you\b", re.I)
+                             r"\bwhat are\b|\bhow much\b|\bhow do\b|\bplease explain\b|\bwould you\b|"
+                             r"\btrying to understand\b|\bmy question\b|\bjust wanted to\b", re.I)
+_SPEAKER_LINE = re.compile(r"(?m)^[ \t]*([A-Z][A-Za-z .&'()\-]{1,60}?)\s*(?::|\s[-–]\s)")
+_MGMT_HEADING = re.compile(r"\b(management|company participants|executives|corporate participants|participants)\b", re.I)
+_MGMT_ROLE = re.compile(r"\b(?:managing director|chief executive|chief financial|chief operating|chief technology|"
+                        r"ceo|cfo|coo|cto|director|president|vice president|chairman|company secretary)\b", re.I)
 _RANGE_BEFORE = re.compile(r"\d[\d,.]*\s*(?:to|[-–])\s*$")
 _RANGE_AFTER = re.compile(r"\s*(?:to|[-–])\s*\d[\d,.]*")
 _DAYS_WORD = re.compile(r"\b(?:days?|dso|dio|dpo)\b", re.I)
@@ -530,6 +535,7 @@ class Checker:
         self.doc_type = {r["doc_key"]: (r["doc_type"] or "") for r in self.con.execute("SELECT doc_key, doc_type FROM doc")}
         self.company_words = {(r["symbol"] or "").upper(): {w.lower() for w in re.findall(r"[A-Za-z]{3,}", r["name"] or "")}
                               for r in self.con.execute("SELECT symbol, name FROM company")}
+        self._mgmt: dict[str, str] = {}
 
     # -- shared --
     def page_text(self, doc_key: str, page: int) -> str | None:
@@ -910,10 +916,33 @@ class Checker:
                 continue
             if start > 0 and text[start - 1].isalpha():
                 continue
-            window = text[end:end + 12] + " " + text[max(0, start - 12):start]
-            if marker.search(window) or marker.search(header):
+            window = text[end:end + 12]
+            if family in ("pct", "days"):
+                hit = marker.search(window)          # a percent/day sign belongs after its number
+            else:
+                hit = marker.search(window + " " + text[max(0, start - 12):start])
+            if hit:
                 count += 1
+            elif marker.search(header) and not (end < len(text) and text[end].isalpha()):
+                count += 1      # a bare table cell, but not a period label ("9M", "Q2")
         return count
+
+    def quote_value_count(self, m: Metric | None, text: str, value: float | None,
+                          unit: str) -> tuple[int | None, int]:
+        """(position of the row's number, how many values of its unit follow the label)."""
+        nums = numbers_in(text)
+        pos = None
+        if value is not None:
+            _, pos = find_value(value, nums)
+            if (unit or "") == "bps":
+                how2, pos2 = find_value(value / 100, nums)
+                if how2 == "exact":
+                    pos = pos2
+        label = nearest_strong_label(m, text, pos) if m is not None and pos is not None else None
+        label_end = pos or 0
+        if label is not None and pos is not None and label[2] <= pos:
+            label_end = label[2]
+        return pos, self.unit_value_count(text, unit, label_end)
 
     def check_multi_number(self, v: Verdict, m: Metric | None, text: str, pos: int | None, unit: str,
                            rule: str) -> None:
@@ -950,6 +979,80 @@ class Checker:
         labels = re.findall(r"(?:^|[\s.])([a-z][a-z .&'-]{0,30}):\s", ctx)
         if labels and ("analyst" in labels[-1] or "moderator" in labels[-1]):
             v.fail("not_company_speaker", f"the speaker just before the quote is '{labels[-1].strip()}'")
+
+    def management_text(self, doc_key: str) -> str:
+        """The document's participant pages: lines carrying a management role, and the headings' following lines."""
+        if doc_key in self._mgmt:
+            return self._mgmt[doc_key]
+        collected: list[str] = []
+        try:
+            pages = self.con.execute("SELECT text FROM doc_page WHERE doc_key=? ORDER BY page LIMIT 4",
+                                     (doc_key,)).fetchall()
+        except sqlite3.OperationalError:
+            pages = []
+        for page in pages:
+            lines = [line.strip() for line in (page["text"] or "").splitlines()]
+            for i, line in enumerate(lines):
+                if not line:
+                    continue
+                if _MGMT_ROLE.search(line):
+                    if i and re.match(r"^(?:mr|mrs|ms|dr)\.?\s+[a-z]", lines[i - 1], re.I) and len(lines[i - 1]) < 80:
+                        collected.append(lines[i - 1])
+                    collected.append(line)
+                if _MGMT_HEADING.search(line.lower()) and len(line) < 90:
+                    collected.append(line)
+                    collected.extend(nxt for nxt in lines[i + 1:i + 4] if nxt and len(nxt) < 80)
+            if len(collected) >= 80:
+                break
+        self._mgmt[doc_key] = "\n".join(collected[:80]).lower()
+        return self._mgmt[doc_key]
+
+    def speaker_turn(self, doc_key: str, page: int, quote: str) -> tuple[str, str] | None:
+        """(speaker name, text of the turn before it) for the speaker turn that contains the quote."""
+        raw = self.page_text(doc_key, page) or ""
+        words = quote.split()[:8]
+        if not words:
+            return None
+        found = re.search(r"\s+".join(map(re.escape, words)), raw)
+        if found is None:
+            return None
+        last = None
+        for mm in _SPEAKER_LINE.finditer(raw, 0, found.start()):
+            last = mm
+        if last is None:
+            return None
+        prev = None
+        for mm in _SPEAKER_LINE.finditer(raw, 0, last.start()):
+            prev = mm
+        before = raw[prev.end():last.start()] if prev else raw[:last.start()]
+        return last.group(1).strip(), before.rstrip()
+
+    def check_speaker_turn(self, v: Verdict, doc_key: str, page: int, quote: str) -> None:
+        """The quote's speaker turn is the company's only when the speaker is in the document's management list
+        or answers the question just before; any other named turn is an analyst.  Transcripts only, and only when
+        the participant list is readable."""
+        if self.doc_type.get(doc_key) != "transcript":
+            return
+        mgmt = self.management_text(doc_key)
+        if not mgmt:
+            return
+        turn = self.speaker_turn(doc_key, page, quote)
+        if turn is None:
+            return
+        name, before = turn
+        low = name.lower()
+        if "analyst" in low or "moderator" in low:
+            v.fail("not_company_speaker", f"the quote is in the '{name}' turn")
+            return
+        tokens = [t for t in re.sub(r"[^a-z ]", " ", low).split() if t not in ("mr", "mrs", "ms", "dr", "and")]
+        if tokens:
+            if " ".join(tokens) in mgmt:
+                return
+            if len(tokens[0]) >= 4 and tokens[0] in mgmt:
+                return
+        if before.endswith("?"):
+            return
+        v.fail("not_company_speaker", f"speaker '{name}' is not in the document's management list")
 
     def check_range(self, v: Verdict, text: str, pos: int | None) -> None:
         """One end of a printed "5 to 6000" range is not a level."""
@@ -1184,12 +1287,16 @@ class Checker:
                     and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"] \
                     and r["value"] is not None:
                 usd_rev[(r["symbol"], r["fiscal_period"])].append((r["id"], r["value"] * (r["scale"] or 1)))
-        # cross-document groups: same company, metric, scope and period, rupee-or-unit value
-        groups: dict[tuple, list[tuple[int, str, float, str]]] = defaultdict(list)
+        # cross-document groups: same company, metric, scope and period, rupee-or-unit value; `single` says the
+        # quote prints at most one value of the unit after the label (only such a quote can corroborate a column)
+        groups: dict[tuple, list[tuple[int, str, float, str, bool]]] = defaultdict(list)
         for r in rows:
             m = self.vocab.canon(r["metric"])
             key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"], r["basis"])
-            groups[key].append((r["id"], r["doc_key"], (r["value"] or 0) * (r["scale"] or 1), squash(r["quote"] or "")[:80]))
+            text = fold(r["quote"] or "")
+            _, count = self.quote_value_count(m, text, r["value"], r["unit"] or "")
+            groups[key].append((r["id"], r["doc_key"], (r["value"] or 0) * (r["scale"] or 1),
+                                squash(r["quote"] or "")[:80], count <= 1))
         # the company's own non-total dimension words: a total row whose quote names one is probably that part
         dim_words: dict[str, set[str]] = defaultdict(set)
         for r in rows:
@@ -1211,8 +1318,11 @@ class Checker:
             # quarter's deck is the same source twice, not a second witness)
             peers = groups[key]
             mine = squash(r["quote"] or "")[:80]
-            same = {q for i, d, a, q in peers if close(a, amount, 0.01) and d != r["doc_key"] and q != mine}
-            diff = {q for i, d, a, q in peers if not close(a, amount, 0.01) and d != r["doc_key"] and q != mine}
+            # two multi-column quotes agreeing do not corroborate each other: only a single-valued source does
+            same = {q for i, d, a, q, single in peers
+                    if single and close(a, amount, 0.01) and d != r["doc_key"] and q != mine}
+            diff = {q for i, d, a, q, single in peers
+                    if single and not close(a, amount, 0.01) and d != r["doc_key"] and q != mine}
             if same and len(same) > len(diff):
                 v.corroborated = True
             if diff and len(diff) >= len(same):
@@ -1261,6 +1371,7 @@ class Checker:
             self.check_label(v, m, text, pos, ctx)
             self.check_currency(v, m, text, pos, r["unit"] or "")
             self.check_company_speaker(v, text, pos, r["doc_key"], r["page"], quote)
+            self.check_speaker_turn(v, r["doc_key"], r["page"], quote)
             self.check_range(v, text, pos)
             self.check_unit_kind(v, m, text, pos, r["unit"] or "")
             if r["dimension"] == "total":

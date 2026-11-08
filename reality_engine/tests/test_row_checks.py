@@ -880,3 +880,82 @@ def test_guidance_past_verb_and_nearer_foreign_label(tmp_path):
     # a "revenue threshold" is a share, so the row is unpinned (soft), not verified
     status, fails = verdict(out, "guidance", 3)
     assert status == "unverified" and "not_pinned" in fails, fails
+
+
+# --------------------------------------------------- round 6: independent corroboration, speaker structure
+
+def add_doc(db: str, doc_key: str, pages: dict[int, str]) -> None:
+    """Attach one more transcript document to a fixture database."""
+    con = sqlite3.connect(db)
+    con.execute("INSERT INTO doc(doc_key,symbol,isin,doc_type,doc_family,title,filing_date,known_at,pages) "
+                "VALUES (?, '', NULL, 'transcript', 'transcript', 'test doc', '2026-05-01', "
+                "'2026-05-01T00:00:00', ?)", (doc_key, len(pages)))
+    con.executemany("INSERT INTO doc_page(doc_key,symbol,page,text) VALUES (?, '', ?, ?)",
+                    [(doc_key, page, text) for page, text in pages.items()])
+    con.commit()
+    con.close()
+
+
+MULTI_A = "EBITDA Margin (%) 10.3% 10.2% 10.0% +15bps +35bps 10.9% 10.3% +62bps"
+MULTI_B = "EBITDA Margin (%) 10.3% 11.0% 9.6% +15bps +35bps 10.8% 13.1% +62bps"
+SINGLE_C = "EBITDA margin of 10.3% for 9M FY24"
+
+
+def test_multi_number_rows_do_not_corroborate_each_other(tmp_path):
+    kpi = [
+        dict(id=1, symbol="CO", metric="ebitda_margin_pct", dimension="total", fiscal_period="9MFY24",
+             period_type="9M", value=10.3, quote=MULTI_A, page=1, extractor_rule="sentence_v1"),
+        dict(id=2, symbol="CO", metric="ebitda_margin_pct", dimension="total", fiscal_period="9MFY24",
+             period_type="9M", value=10.3, quote=MULTI_B, page=1, doc_key="d2",
+             extractor_rule="sentence_v1"),
+    ]
+    db, profile = build(tmp_path, {1: MULTI_A}, kpi=kpi, sectors={"CO": "it_services"},
+                        db_name="corr1.db")
+    add_doc(db, "d2", {1: MULTI_B})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (1, 2):
+        status, fails = verdict(out, "kpi_series", rid)
+        assert status == "unverified" and "multi_number" in fails, (rid, fails)
+
+    # a single-valued source quote is an independent witness, so the multi-column row can verify
+    kpi.append(dict(id=3, symbol="CO", metric="ebitda_margin_pct", dimension="total", fiscal_period="9MFY24",
+                    period_type="9M", value=10.3, quote=SINGLE_C, page=1, doc_key="d3",
+                    extractor_rule="sentence_v1"))
+    db2, profile2 = build(tmp_path, {1: MULTI_A}, kpi=kpi, sectors={"CO": "it_services"},
+                          db_name="corr2.db")
+    add_doc(db2, "d2", {1: MULTI_B})
+    add_doc(db2, "d3", {1: SINGLE_C})
+    out2 = run_checks(tmp_path, db2, profile2, ("kpi_series",))
+    status, fails = verdict(out2, "kpi_series", 1)
+    assert status == "verified" and "multi_number" in fails, fails
+
+
+def test_analyst_turn_by_speaker_structure(tmp_path):
+    mgmt = "Management:\nMr. Sanjay Mehta - Managing Director\nMr. Rakesh Sharma - Chief Financial Officer\n"
+    transcript = (
+        "Sanjay Mehta: Good morning. Our net cash balance is INR 200 crore.\n"
+        "Vaibhav Shah: The net cash balance has also come down to INR 200-odd crores.\n"
+        "Sanjay Mehta: We will explain that.\n"
+        "Analyst: What is the order inflow?\n"
+        "Vimal Kejriwal: The order inflow was INR 3,000 crore.\n"
+        "I just wanted to check the order inflow of INR 4,000 crore.\n"
+    )
+    pages = {1: mgmt, 2: transcript}
+    kpi = [
+        dict(id=1, symbol="CO", metric="cash_balance", fiscal_period="Q1FY26", value=200.0, unit="inr_cr",
+             scale=1e7, quote="The net cash balance has also come down to INR 200-odd crores.", page=2),
+        dict(id=2, symbol="CO", metric="cash_balance", fiscal_period="Q2FY26", value=200.0, unit="inr_cr",
+             scale=1e7, quote="Our net cash balance is INR 200 crore", page=2),
+        dict(id=3, symbol="CO", metric="order_intake", fiscal_period="Q1FY26", value=3000.0, unit="inr_cr",
+             scale=1e7, quote="The order inflow was INR 3,000 crore", page=2),
+        dict(id=4, symbol="CO", metric="order_intake", fiscal_period="Q2FY26", value=4000.0, unit="inr_cr",
+             scale=1e7, quote="I just wanted to check the order inflow of INR 4,000 crore.", page=2),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "not_company_speaker" in fails, fails
+    assert "not_company_speaker" not in verdict(out, "kpi_series", 2)[1]
+    assert "not_company_speaker" not in verdict(out, "kpi_series", 3)[1]
+    # the new analyst wording is caught even without a speaker line
+    assert "not_company_speaker" in verdict(out, "kpi_series", 4)[1]
