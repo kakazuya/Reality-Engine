@@ -236,10 +236,24 @@ Change a rule only with a measurement that supports the change, and note it in `
   quarantined 2,353 rows because a "Name:" line on a deck page was read as a speaker turn, so the structural check
   is transcript-only with a readable participant list, and the list scan reads role lines ("MANAGEMENT: MR. VIMAL
   KEJRIWAL – MANAGING DIRECTOR") instead of losing names at a line break. All six v2 and seven Gemini known-wrong
-  rows stay quarantined; guidance results are unchanged. Fresh seed-6 pilot10 kpi sample: **19 of 20 right**; the one
-  wrong row is 45254 SBILIFE PAT FY25 24.1 from "Profit After Tax 18.9 24.1" — a two-column quote (FY25 is 18.9),
-  below the >2 `multi_number` threshold, so it stays verified and is recorded as an open case.
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (40 passed, 8 Nov) builds a tiny fixture
+  rows stay quarantined; guidance results are unchanged. (The round-6 open case 45254 is closed: SBILIFE FY25 PAT
+  is 24.1 bn, FY24 18.9, so that row was right.)
+- Measured 8 Nov 2026, round 7 (disagreement, witness validity, history and scale): v2 kpi
+  **3,851/1,746/446 -> 3,709/1,888/446** in about 12 s; v2 guidance 19/46/41, unseen6 7/934/424 and agy 15/33/18
+  unchanged. Four rules: (1) any independent witness more than 1.5% away for the same key makes both sides
+  unverified (`cross_doc`, 1,157 rows; the KALYANKJIL 33,818 mn / 5,486 mn pair no longer verifies); (2) a witness
+  counts only when its own row passes every hard check and is not multi_number (the ASHOKA "Profit After Tax 72.0
+  134.7 -47% 34.2" row is not corroborated by the single-valued "Profit After Tax of 34.2 crore in Q3 FY23" row,
+  because that witness fails its own `period_word`; the hidden-build witness could not be inspected, so the exact
+  sentences are pinned in the test); (3) a quote with more than 5 values of the unit after the label
+  (`history_row`, 247) and (4) an amount below 10 in `inr_mn` / `inr_cr` on a total capex / revenue / PAT / EBITDA /
+  net-debt / order row (`scale_doubt`, 12) verify only on a filed figure. Reading the fresh seed-7 pilot10 kpi
+  sample: **20 of 20 right** after checking each figure against sibling rows — 42113 AUM 353,765 is the standalone
+  AUM (the consolidated 484,477 rows carry basis `consolidated`), 45457 SBILIFE APE 99.2 is the H1FY26 column and
+  45456 NBP 121.7 the same column on the same slide, 41354 KEC 5.2% is standalone against 7.0% consolidated, and
+  44079 HINDALCO gross debt 63,330 is the Q1FY26 column of a four-value history. All six v2 and seven Gemini
+  known-wrong rows stay quarantined.
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (44 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
   gross margin as its own metric, the denominator keep rule, "improve by" as a delta, medium-term / CAGR /
@@ -247,8 +261,9 @@ Change a rule only with a measurement that supports the change, and note it in `
   of the five verified conditions a-e, kpi `scope_word` with the per-unit exemption, the "Rs." abbreviation and a
   four-digit FY year, multi-column `multi_number` for any rule, `not_company_speaker`, `range_value`,
   `uncorroborated` and `unit_kind`, the nearer-foreign-label / past-tense guidance rules, two multi-column quotes
-  failing to corroborate each other while a single-valued witness does, and speaker turns by management list vs
-  analyst name vs answering-a-question);
+  failing to corroborate each other while a single-valued witness does, speaker turns by management list vs
+  analyst name vs answering-a-question, the 1.5% disagreement rule, a witness failing its own hard check, a
+  history row that only a filed figure pins, and `scale_doubt` with its filed exemption);
   `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per

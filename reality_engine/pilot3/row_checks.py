@@ -38,7 +38,12 @@ Checks (``check`` names in ``row_check_fail``):
                       the sentence or a this/next/full-year phrase with the doc date; no realised figure -> soft
     multi_number      (kpi) the quote holds several numbers, or its label is followed by more than 2 values of
                       the row's unit, so which column was taken is not pinned -> unverified unless corroborated
-    cross_doc         (kpi) another document gives a different value for the same metric, period and scope
+    history_row       (kpi) more than 5 values of the unit after the label (a long history row) -> verified only
+                      via a filed figure
+    scale_doubt       (kpi) an amount below 10 in inr_mn / inr_cr on a total revenue / PAT / EBITDA / capex / debt /
+                      order row -> verified only via a filed figure
+    cross_doc         (kpi) an independent witness (one that passes every hard check and is not multi_number)
+                      gives a value more than 1.5% away for the same key
     fin_conflict      (kpi) the filed statements give a different figure for the same line and period
     not_company_speaker (kpi) the number sits in an analyst's question or wording ("you said", "can you", "?")
     range_value       (kpi) the number is one end of a printed range ("5 to 6000"), not a level
@@ -84,12 +89,13 @@ HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_pr
         "not_company_speaker", "range_value", "unit_kind"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
         "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch",
-        "dimension_word", "not_pinned", "scope_word", "uncorroborated"}
+        "dimension_word", "not_pinned", "scope_word", "uncorroborated", "history_row", "scale_doubt"}
 
 # Revenue / PAT / EBITDA / order rows must be a plausible share of the company's filed figure: a subsidiary or
 # segment amount stored with dimension "total" is the classic "part stored as the total" mistake.
 _FAMILY_FILED = {"revenue": "revenue", "pat": "pat", "ebitda": "ebitda",
                  "order_intake": "revenue", "order_book": "revenue"}
+_SCALE_FAMILIES = {"capex", "revenue", "pat", "ebitda", "net_debt", "order_intake", "order_book"}
 PART_SHARE = 0.15
 
 
@@ -520,6 +526,7 @@ class Verdict:
     status: str = "verified"
     fails: list[tuple[str, str]] = field(default_factory=list)
     corroborated: bool = False
+    filed_only: bool = False
 
     def fail(self, check: str, why: str) -> None:
         self.fails.append((check, why))
@@ -536,6 +543,7 @@ class Checker:
         self.company_words = {(r["symbol"] or "").upper(): {w.lower() for w in re.findall(r"[A-Za-z]{3,}", r["name"] or "")}
                               for r in self.con.execute("SELECT symbol, name FROM company")}
         self._mgmt: dict[str, str] = {}
+        self._witness_cache: dict[int, bool] = {}
 
     # -- shared --
     def page_text(self, doc_key: str, page: int) -> str | None:
@@ -958,8 +966,90 @@ class Checker:
         count = self.unit_value_count(text, unit, label_end)
         if count > 2:
             v.fail("multi_number", f"{count} {unit or 'unit'} values after the label: column not pinned")
+        if count > 5:
+            v.fail("history_row", f"{count} values after the label: a history row, only a filed figure pins it")
+            v.filed_only = True
         if rule in ("table_v1", "chart_v1") and len({round(n, 4) for n, _, _ in numbers_in(text)}) > 2:
             v.fail("multi_number", f"{len(numbers_in(text))} numbers in the quote: column not pinned")
+
+    def check_scale_doubt(self, v: Verdict, canon: str, value: float | None, unit: str, dimension: str,
+                          entity: str, symbol: str) -> None:
+        """An amount below 10 in inr_mn / inr_cr on a total line is usually a unit-scale slip (2.2 for 2,200):
+        only a filed figure pins it."""
+        u = (unit or "").lower()
+        if canon not in _SCALE_FAMILIES or dimension != "total" or (entity or symbol) != symbol:
+            return
+        if u not in ("inr_mn", "inr_cr") or value is None or abs(value) >= 10:
+            return
+        v.fail("scale_doubt", f"{value} {unit} is below 10 for {canon}: unit scale not pinned")
+        v.filed_only = True
+
+    def witness_ok(self, r: sqlite3.Row, fin: dict, usd_rev: dict, dim_words: dict) -> bool:
+        """A witness counts only when its own row passes every hard check and is not multi_number."""
+        rid = r["id"]
+        if rid in self._witness_cache:
+            return self._witness_cache[rid]
+        m = self.vocab.canon(r["metric"])
+        canon = m.name if m else ""
+        if r["extractor_rule"] == "xbrl_segment":
+            self._witness_cache[rid] = True
+            return True
+        v = Verdict("kpi_series", rid, r["symbol"], r["metric"], canon, self.sectors.get(r["symbol"], ""),
+                    r["source_type"] or self.doc_type.get(r["doc_key"], ""), r["extractor_rule"] or "")
+        value = r["value"]
+        amount = (value or 0) * (r["scale"] or 1)
+        if canon in ("revenue", "pat", "ebitda") and r["dimension"] == "total" \
+                and (r["entity"] or r["symbol"]) == r["symbol"] and (r["unit"] or "").startswith("inr"):
+            filed = fin.get((r["symbol"], r["fiscal_period"], canon))
+            if filed and canon != "ebitda" and not any(close(f, amount, 0.01) for f in filed):
+                self._witness_cache[rid] = False
+                return False
+        if canon and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"]:
+            self.check_part(v, canon, amount, r["unit"] or "", r["symbol"], r["fiscal_period"], rid, fin, usd_rev)
+        quote = r["quote"] or ""
+        text = fold(quote)
+        self.check_quote(v, quote, r["doc_key"], r["page"])
+        self.check_sector(v, m)
+        self.check_entity(v, r)
+        nums = numbers_in(text)
+        how, pos = find_value(value, nums)
+        if (r["unit"] or "") == "bps":
+            how2, pos2 = find_value(value / 100, nums)
+            if how2 == "exact":
+                how, pos = how2, pos2
+        if how == "absent":
+            v.fail("value_present", f"{value} not in the quote")
+        _, count = self.quote_value_count(m, text, value, r["unit"] or "")
+        if count > 2:
+            self._witness_cache[rid] = False
+            return False
+        self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "")
+        ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
+        self.check_label(v, m, text, pos, ctx)
+        self.check_currency(v, m, text, pos, r["unit"] or "")
+        self.check_company_speaker(v, text, pos, r["doc_key"], r["page"], quote)
+        self.check_speaker_turn(v, r["doc_key"], r["page"], quote)
+        self.check_range(v, text, pos)
+        self.check_unit_kind(v, m, text, pos, r["unit"] or "")
+        if r["dimension"] == "total":
+            self.check_dimension_word(v, m, quote, value, r["symbol"], dim_words)
+            self.check_scope_word(v, m, text, pos, r["metric"])
+        if how == "exact":
+            self.check_list(v, m, text, pos, ctx)
+        self.check_period_word(v, text, pos, r["fiscal_period"], r["extractor_rule"] or "")
+        if m is None or m.kind != "growth_pct":
+            if delta_hit(text, value, nums):
+                v.fail("delta_value", "a change, not the level")
+        if not plausible(m.kind if m else "any", r["metric"], value, value, r["unit"]):
+            v.fail("plausible", "outside bounds")
+        self.check_variant(v, m, text, pos)
+        end = period_end(r["fiscal_period"])
+        known = (r["known_at"] or "")[:10]
+        if end and known and end > known:
+            v.fail("future_period", "period had not ended")
+        ok = not (set(c for c, _ in v.fails) & HARD)
+        self._witness_cache[rid] = ok
+        return ok
 
     def check_company_speaker(self, v: Verdict, text: str, pos: int | None, doc_key: str, page: int,
                               quote: str) -> None:
@@ -1174,7 +1264,8 @@ class Checker:
         if names & HARD:
             v.status = "quarantined"
         elif names:
-            v.status = "verified" if v.corroborated and names <= {"multi_number", "value_scaled", "label_weak"} else "unverified"
+            v.status = "verified" if v.corroborated and names <= {"multi_number", "value_scaled", "label_weak",
+                                                                  "history_row", "scale_doubt"} else "unverified"
         else:
             v.status = "verified"
         return v
@@ -1305,6 +1396,7 @@ class Checker:
                 for w in re.split(r"[^a-z0-9]+", dim):
                     if len(w) >= 3 and w not in _DIM_STOP:
                         dim_words[r["symbol"]].add(w)
+        by_id = {r["id"]: r for r in rows}
         out = []
         for r in rows:
             m = self.vocab.canon(r["metric"])
@@ -1315,18 +1407,17 @@ class Checker:
             # corroboration first: another document with the same value, or the filed statements
             key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"], r["basis"])
             # independent sources only: another document AND another wording (a deck table copied into the next
-            # quarter's deck is the same source twice, not a second witness)
+            # quarter's deck is the same source twice, not a second witness), and the witness itself must pass
+            # every hard check and not be multi_number
             peers = groups[key]
             mine = squash(r["quote"] or "")[:80]
+            valid = [(a, q, single) for i, d, a, q, single in peers
+                     if d != r["doc_key"] and q != mine and self.witness_ok(by_id[i], fin, usd_rev, dim_words)]
             # two multi-column quotes agreeing do not corroborate each other: only a single-valued source does
-            same = {q for i, d, a, q, single in peers
-                    if single and close(a, amount, 0.01) and d != r["doc_key"] and q != mine}
-            diff = {q for i, d, a, q, single in peers
-                    if single and not close(a, amount, 0.01) and d != r["doc_key"] and q != mine}
-            if same and len(same) > len(diff):
-                v.corroborated = True
-            if diff and len(diff) >= len(same):
-                v.fail("cross_doc", f"{len(diff)} other source(s) give a different value, {len(same)} the same")
+            same = {q for a, q, single in valid if single and close(a, amount, 0.01)}
+            diff = [a for a, _, _ in valid if not close(a, amount, 0.015)]
+            if diff:
+                v.fail("cross_doc", f"{len(diff)} independent source(s) disagree by more than 1.5%")
             canon = m.name if m else ""
             if canon in ("revenue", "pat", "ebitda") and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"] \
                     and (r["unit"] or "").startswith("inr"):
@@ -1338,6 +1429,9 @@ class Checker:
                         v.fail("fin_conflict", f"filed {canon} for {r['fiscal_period']}: {sorted(set(round(f / 1e7, 1) for f in filed))} cr, row {round(amount / 1e7, 1)} cr")
             if canon and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"]:
                 self.check_part(v, canon, amount, r["unit"] or "", r["symbol"], r["fiscal_period"], r["id"], fin, usd_rev)
+                if r["extractor_rule"] != "xbrl_segment":
+                    self.check_scale_doubt(v, canon, value, r["unit"] or "", r["dimension"],
+                                           r["entity"] or "", r["symbol"])
                 if r["extractor_rule"] != "xbrl_segment" and not v.corroborated:
                     # a total amount with nothing filed and no second source is served only as unverified
                     if canon in ("order_intake", "order_book"):
@@ -1393,6 +1487,9 @@ class Checker:
             known = (r["known_at"] or "")[:10]
             if end and known and end > known:
                 v.fail("future_period", f"{r['fiscal_period']} ends {end}, row known {known}")
+            # decided last: a history / scale-doubt row is only pinnable by a filed figure
+            if same and not v.filed_only:
+                v.corroborated = True
             out.append(self.finish(v))
         return out
 

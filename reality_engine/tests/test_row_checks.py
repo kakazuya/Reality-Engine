@@ -896,8 +896,8 @@ def add_doc(db: str, doc_key: str, pages: dict[int, str]) -> None:
     con.close()
 
 
-MULTI_A = "EBITDA Margin (%) 10.3% 10.2% 10.0% +15bps +35bps 10.9% 10.3% +62bps"
-MULTI_B = "EBITDA Margin (%) 10.3% 11.0% 9.6% +15bps +35bps 10.8% 13.1% +62bps"
+MULTI_A = "EBITDA Margin (%) 10.3% 10.2% 10.0%"
+MULTI_B = "EBITDA Margin (%) 10.3% 11.0% 9.6%"
 SINGLE_C = "EBITDA margin of 10.3% for 9M FY24"
 
 
@@ -959,3 +959,85 @@ def test_analyst_turn_by_speaker_structure(tmp_path):
     assert "not_company_speaker" not in verdict(out, "kpi_series", 3)[1]
     # the new analyst wording is caught even without a speaker line
     assert "not_company_speaker" in verdict(out, "kpi_series", 4)[1]
+
+
+# ------------------------------------------ round 7: disagreement, witness validity, history, scale
+
+def test_cross_doc_disagreement_unverifies_both(tmp_path):
+    kpi = [
+        dict(id=1, symbol="KALY", metric="revenue", dimension="total", fiscal_period="Q4FY23", value=33818.0,
+             unit="inr_mn", quote="Revenue from operations 33,818", page=1),
+        dict(id=2, symbol="KALY", metric="revenue", dimension="total", fiscal_period="Q4FY23", value=5486.0,
+             unit="inr_mn", quote="Revenue from operations 5,486", page=1, doc_key="d2"),
+    ]
+    db, profile = build(tmp_path, {1: "Revenue from operations 33,818"}, kpi=kpi,
+                        sectors={"KALY": "fmcg"})
+    add_doc(db, "d2", {1: "Revenue from operations 5,486"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (1, 2):
+        status, fails = verdict(out, "kpi_series", rid)
+        assert status == "unverified" and "cross_doc" in fails, (rid, fails)
+
+
+def test_a_witness_must_pass_its_own_hard_checks(tmp_path):
+    pages = {
+        1: "Profit After Tax 72.0 134.7 -47% 34.2",
+        2: "Profit After Tax of 34.2 crore in Q3 FY23",
+    }
+    kpi = [
+        dict(id=1, symbol="ASHOKA", metric="pat", dimension="total", fiscal_period="Q4FY23", value=34.2,
+             unit="inr_cr", scale=1e7, quote=pages[1], page=1),
+        # same key and value, single-valued, but its own quote names the previous quarter: not a witness
+        dict(id=2, symbol="ASHOKA", metric="pat", dimension="total", fiscal_period="Q4FY23", value=34.2,
+             unit="inr_cr", scale=1e7, quote=pages[2], page=2, doc_key="d2"),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"ASHOKA": "epc_capital_goods"})
+    add_doc(db, "d2", {2: pages[2]})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    assert verdict(out, "kpi_series", 1)[0] == "unverified"
+    status, fails = verdict(out, "kpi_series", 2)
+    assert status == "quarantined" and "period_word" in fails, fails
+
+
+def test_a_history_row_only_verifies_on_a_filed_figure(tmp_path):
+    pages = {
+        1: "ROE 7% 8% 9% 10% 8% 7% 8% 15% 16% 6%",
+        2: "ROE of 6% in Q3 FY24",
+    }
+    kpi = [
+        dict(id=1, symbol="UFLEX", metric="roe_pct", dimension="total", fiscal_period="Q3FY24", value=6.0,
+             quote=pages[1], page=1),
+        dict(id=2, symbol="UFLEX", metric="roe_pct", dimension="total", fiscal_period="Q3FY24", value=6.0,
+             quote=pages[2], page=2, doc_key="d2"),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"UFLEX": "packaging"})
+    add_doc(db, "d2", {2: pages[2]})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "history_row" in fails, fails
+    # the single-valued witness is valid, but a history row is not verifiable from witnesses at all
+    assert "cross_doc" not in fails, fails
+
+
+def test_scale_doubt_below_ten_and_the_filed_exemption(tmp_path):
+    pages = {1: "Capital Expenditure (CAPEX) ` 2.2", 2: "Capital Expenditure (CAPEX) Rs 25 crore",
+             3: "Revenue from operations Rs 2.2 crore"}
+    kpi = [
+        dict(id=1, symbol="ALK", metric="capex", dimension="total", fiscal_period="FY23", period_type="FY",
+             value=2.2, unit="inr_mn", quote=pages[1], page=1),
+        dict(id=2, symbol="ALK", metric="capex", dimension="total", fiscal_period="FY23", period_type="FY",
+             value=25.0, unit="inr_cr", scale=1e7, quote=pages[2], page=2),
+        dict(id=3, symbol="CO", metric="revenue", dimension="total", fiscal_period="FY23", period_type="FY",
+             value=2.2, unit="inr_cr", scale=1e7, quote=pages[3], page=3),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        fin_a=[dict(symbol="CO", fiscal_year="FY23", line_item="revenue_from_operations",
+                                    value=2.2, scale=1e7)],
+                        sectors={"ALK": "pharma", "CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "scale_doubt" in fails, fails
+    assert "scale_doubt" not in verdict(out, "kpi_series", 2)[1]
+    # the same doubt is cleared by a matching filed figure
+    status, fails = verdict(out, "kpi_series", 3)
+    assert status == "verified" and "scale_doubt" in fails, fails
