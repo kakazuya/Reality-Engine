@@ -564,3 +564,17 @@ def test_bank_net_worth_and_industrial_ebitda_annual_lines_only_under_a_profile(
     assert got["net_worth"] == 15.0 + 5568.0          # capital + reserves and surplus (a bank has no equity tag)
     assert got["ebitda"] == 100.0 + 10.0 + 20.0 - 5.0
     assert got["investments"] == 7.0
+
+
+def test_net_debt_after_all_investments_line_next_to_plain_net_debt():
+    from reality_engine.pilot3 import statements
+
+    f = {"isin": "I", "file": "f.xml", "known_at": "2026-04-28T16:00:00", "period_end": "2026-03-31", "consolidated": "Consolidated"}
+    bs = (("BorrowingsCurrent", 100.0), ("BorrowingsNoncurrent", 50.0), ("CashAndCashEquivalents", 20.0),
+          ("CurrentInvestments", 30.0), ("NoncurrentInvestments", 400.0))
+    facts = [(tag, "OneI", None, None, "2026-03-31", v, "INR", i) for i, (tag, v) in enumerate(bs, 1)]
+    got = {r[6]: r[8] for r in statements._filing_lines("MARUTI", f, "FY", facts)}
+    assert got["net_debt"] == 150.0 - 20.0 - 30.0                       # plain definition unchanged
+    assert got["net_debt_all_investments"] == 150.0 - 20.0 - 30.0 - 400.0  # treasury in non-current investments
+    no_nci = {r[6] for r in statements._filing_lines("MARUTI", f, "FY", facts[:4])}
+    assert "net_debt" in no_nci and "net_debt_all_investments" not in no_nci

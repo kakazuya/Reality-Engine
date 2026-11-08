@@ -28,6 +28,7 @@ from pathlib import Path
 
 from reality_engine.config import raw_dir
 from reality_engine.gap_loop import prepare
+from reality_engine import raw_store
 from reality_engine.pilot3 import kpi, profile
 from reality_engine.pilot3.registry import all_isins
 from reality_engine.pilot3.stores import _basis, fiscal_period
@@ -298,13 +299,16 @@ def run(db_path: str, symbols: list[str], raw_root: Path | None = None) -> dict:
             con.execute("DELETE FROM kpi_series WHERE symbol=? AND source_type=?", (sym, SOURCE_TYPE))
             filings = _filings(sym)
             parsed_files = []
-            for f in filings:
-                path = raw / f["file"]
-                if not path.is_file():
-                    continue
-                parsed = parse_file(path)
-                rows = segment_rows(parsed, f["period_end"]) or single_rows(parsed, f["period_end"])
-                parsed_files.append((f, parsed, rows))
+            store = raw_store.default_store()   # T-102: the XBRL files live on Drive; one prefetch per company
+            with store.prefetch([raw / f["file"] for f in filings]):
+                for f in filings:
+                    path = raw / f["file"]
+                    if not store.exists(path):
+                        continue
+                    with store.local(path) as local:
+                        parsed = parse_file(local)
+                    rows = segment_rows(parsed, f["period_end"]) or single_rows(parsed, f["period_end"])
+                    parsed_files.append((f, parsed, rows))
             mapping = _canonical([(f["period_end"] + "|" + (f["known_at"] or ""),
                                    sorted({normalise(r["name"]) for r in rows if r["name"] != "single_segment"}))
                                   for f, _, rows in parsed_files])

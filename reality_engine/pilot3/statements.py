@@ -171,6 +171,13 @@ def _filing_lines(symbol: str, f: dict, ptype: str, facts: list) -> list[tuple]:
             total(("borrowings_current", "borrowings_noncurrent"),
                         "net debt = borrowings - cash - other bank balances - current investments", "net_debt",
                         minus=("cash_and_equivalents", "bank_balances", "current_investments"))
+            # MARUTI-083: a treasury held as non-current investments (debt funds) makes plain net debt overstate
+            # leverage; the alternative line lets the answer show both and name which it used.
+            if "noncurrent_investments" in refs:
+                total(("borrowings_current", "borrowings_noncurrent"),
+                      "net debt after all investments = borrowings - cash - other bank balances - current investments"
+                      " - non-current investments", "net_debt_all_investments",
+                      minus=("cash_and_equivalents", "bank_balances", "current_investments", "noncurrent_investments"))
         if "total_assets" in refs and "current_liabilities" in refs:
             ce = refs["total_assets"][0] - refs["current_liabilities"][0]
             out.append(_row(symbol, f, fy, end, basis, "BS", "capital_employed",
