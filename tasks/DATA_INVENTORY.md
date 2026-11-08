@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-09 01:32 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 13 tables and 56 of 72 raw folders.
+Generated 2026-11-09 02:54 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 13 tables and 57 of 72 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -190,7 +190,7 @@ Undocumented: 13 tables and 56 of 72 raw folders.
 | pilot/macro_all.db | `macro_claim` | 21,793 | yes |
 | pilot/macro_all.db | `macro_claim_target` | 44,742 | yes |
 | pilot/macro_all.db | `macro_doc` | 456 | yes |
-| pilot/pilot60_history_manifest.db | `docs` | 287,056 | yes |
+| pilot/pilot60_history_manifest.db | `docs` | 289,985 | yes |
 | pilot/results_notes.db | `results_notes` | 17,989 | yes |
 | results_notes.db | `docs` | 41,606 | yes |
 | results_notes.db | `gate` | 21 | yes |
@@ -235,7 +235,7 @@ Undocumented: 13 tables and 56 of 72 raw folders.
 | nse_announcements | 0 | 0.00 | - | **undocumented** |
 | nse_shp_xbrl_pilot | 591 | 0.01 | 2026-11-04 `SHP_1736668_13102026124040_WEB.xml.gz` | **undocumented** |
 | originals_lists | 0 | 0.00 | - | **undocumented** |
-| pilot60_history | 10,748 | 15.75 | 2026-11-09 `20261109_010508.log` | yes |
+| pilot60_history | 11,035 | 16.55 | 2026-11-09 `manifest.csv` | **undocumented** |
 | price_bands | 0 | 0.00 | - | yes |
 | raw_market/amfi_nav | 0 | 0.00 | - | **undocumented** |
 | raw_market/bse_bhav | 0 | 0.00 | - | **undocumented** |
