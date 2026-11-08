@@ -22,6 +22,9 @@ STATE = "tasks/STATE.md"
 TRACKERS = ("tasks/TASKS.md", "tasks/TASKS_DONE.md")
 # Start files stay short so every session begins small (Shivam, 2026-11-01).
 LINE_LIMITS = {STATE: 40, "AGENTS.md": 150, "tasks/RULINGS.md": 40, "tasks/TASKS.md": 150}
+# The two files the session-start hook prints also have a character budget (T-125): a 40-line
+# STATE.md is still 33k characters when each line is a paragraph.
+CHAR_LIMITS = {STATE: 4000, "tasks/RULINGS.md": 8000}
 CODE_SUFFIXES = (".py", ".sql")
 #: briefs say what to do, not what is true, so they do not count as documentation
 NOT_DOCS = ("tasks/dsh_tasks/", "tasks/archive/")
@@ -76,6 +79,11 @@ def check(staged: list[str], *, branch: str, merging: bool, read=lambda name: ""
             lines = len(read(name).splitlines())
             if lines > limit:
                 return f"{name} has {lines} lines, limit {limit}: move detail to docs/ or a dated record"
+    for name, limit in CHAR_LIMITS.items():
+        if name in staged:
+            chars = len(read(name))
+            if chars > limit:
+                return f"{name} has {chars} characters, limit {limit}: move detail to docs/ or a dated record"
     problem = tracker_problem(staged, root)
     if problem:
         return problem
@@ -118,7 +126,7 @@ def check_message(message: str, *, branch: str, known: set[str] | None = None) -
 def gate_rule(problem: str | None) -> str:
     """The RULINGS rule a pre-commit result belongs to: the block message names it."""
     if problem:
-        for name in LINE_LIMITS:
+        for name in tuple(LINE_LIMITS) + tuple(CHAR_LIMITS):
             if problem.startswith(f"{name} has "):
                 return "start_files"
         if problem.startswith("tracker lint"):
@@ -204,8 +212,8 @@ def main(argv: list[str]) -> int:
                     read=lambda name: _git("show", f":{name}"))
     if branch == "main":
         log_gate(gate_rule(message), message, detail="pre-commit: " + ", ".join(staged[:30]))
-        if message is None and any(name in LINE_LIMITS for name in staged):
-            log_gate("start_files", None, detail="line limits passed")
+        if message is None and any(name in LINE_LIMITS or name in CHAR_LIMITS for name in staged):
+            log_gate("start_files", None, detail="line and character limits passed")
     if message:
         print(f"doc_gate: {message}", file=sys.stderr)
         return 1
