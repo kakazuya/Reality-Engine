@@ -1,0 +1,1 @@
+T-128: pilot3_tech implemented (lookups_tech.py + server registration/routing + p3ask tech + tests + blueprint 9i). Live pilot10 checks all match the 8 Nov evidence; 15 tech tests pass, lookups pilot3 24 passed/1 skipped. Next: final report, nothing blocked.
