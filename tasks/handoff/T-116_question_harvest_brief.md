@@ -24,9 +24,14 @@ Steps:
    Skip: spam, tips/targets with no question, duplicates (keep the clearest one, add the other link in `also_seen`).
 4. Aim for 25-40 questions per company from at least 6 different sources. Fewer is fine if the web has fewer; never
    invent one.
+4b. VERIFY EVERY SOURCE: your search tool returns summaries, and links taken from summaries were found invented (a
+   'Bajaj Finance' ValuePickr link opened a thread on another company). For each row, fetch the page with run_command
+   (`curl -sL -A "Mozilla/5.0" --max-time 20 <url>`) and keep the row only if the page loads and its text contains the
+   company name and the question's key words; put the fetched page title in `source_title` and `verified=yes`. A row
+   whose page you could not fetch is dropped (count them). Reddit: use the `.json` form of the thread URL.
 5. Write one CSV file `.tmp/t116_questions_{PART}.csv` (UTF-8, header row), columns:
    `symbol, question, kind (asked|implied), source_type (youtube|google_article|valuepickr|reddit|forum|x|other),
-   source_title, url, source_date (YYYY-MM-DD or blank), also_seen (other urls, ; separated)`.
+   source_title, url, source_date (YYYY-MM-DD or blank), also_seen (other urls, ; separated), verified`.
    Quote the question text as it appears (translate Hindi/Hinglish to English and add `[translated]` at the end).
 6. Final answer: per company, count of questions and sources; the 5 most common themes per company; any site you could
    not open. Then the CSV path.
