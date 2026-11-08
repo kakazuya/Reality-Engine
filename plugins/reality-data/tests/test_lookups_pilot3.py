@@ -128,6 +128,9 @@ def build_fixture() -> None:
          "shp2.xml", "db", "xml.gz", "2026-04-20T10:00:00", "x")])
     c.execute("INSERT INTO shp_pledge VALUES ('KEC','I','2026-03-31',1,0,0,1.0e8,1.25e7,12.5,0.0,1.25e7,"
               "'shp2.xml','2026-04-20T10:00:00','x')")
+    # T-108: the quarter before states a nil pledge (flag 0, no counts printed)
+    c.execute("INSERT INTO shp_pledge VALUES ('KEC','I','2025-12-31',0,0,0,1.0e8,NULL,NULL,NULL,NULL,"
+              "'shp1.xml','2026-01-20T10:00:00','x')")
     c.execute("INSERT INTO share_capital VALUES ('KEC','I','2025-12-31','consolidated',NULL,NULL,2.6e8,5e8,2,'inr',1,"
               "'2026-01-30T10:00:00','x','db','t','1',NULL,NULL)")
     c.execute("INSERT INTO transcript_statement(symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,"
@@ -286,8 +289,16 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertEqual(pledge["pledged_pct_of_promoter_holding"], 12.5)      # the filing's own percentage
         self.assertIn("12.5% of the promoter holding is pledged", pledge["answer"])
         self.assertEqual(pledge["provenance"]["table"], "shp_pledge")
+        # T-108: the quarter before is carried for "has it changed?"
+        self.assertTrue(pledge["previous_quarter"]["nil"])
+        self.assertEqual(pledge["previous_quarter"]["pledged_pct_of_promoter_holding"], 0.0)
+        self.assertTrue(pledge["changed"])
         # a quarter filed before the holder table reached it says so, it does not claim there is no holder
         early = p3.holding("KEC", "2026-02-01")
+        nil = early["promoter_pledge"]                                          # nil is a fact, not 'not found'
+        self.assertTrue(nil["nil"])
+        self.assertEqual((nil["pledged_shares"], nil["pledged_pct_of_promoter_holding"]), (0.0, 0.0))
+        self.assertTrue(nil["answer"].startswith("nil:"))
         self.assertEqual(early["holders"], [])
         self.assertIn("no named holder row", early["holders_note"])
 

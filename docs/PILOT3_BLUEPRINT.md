@@ -660,7 +660,7 @@ Two T-087 answers had failed because no holder was named and the September 2025 
   unchanged, and `test_pilot3_shp_holder.py` pins it.
 - **`pilot3_holding`** now returns `holders` (the quarter's top 12 named holders, `pac_*` rows left out;
   `all_holders=true` lists every named holder with `pac_name`), `promoter_pledge` (the three flags, promoter and
-  pledged shares, the printed percentage and an `answer` sentence), `pct_basis`, and every reply states
+  pledged shares, the printed percentage and an `answer` sentence; T-108, 8 Nov: a flag that says no pledge gives `nil` true with 0 shares and 0%, and `previous_quarter` + `changed` carry the quarter before), `pct_basis`, and every reply states
   `quarters_held` (first/last/count) and `categories_held`. The lookups guard an older build without the two tables.
 - **Accept on the copy** (`.tmp/pilot10_w.db`, `--part stores` 129 s, all ten companies): ETERNAL 2026-09-30 has
   Info Edge (India) Limited 1,194,687,095 shares / 12.38% under `bodies_corporate` and Foodie Bay Employees ESOP Trust

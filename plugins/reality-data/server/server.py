@@ -491,7 +491,7 @@ def pilot3_ratio(symbol: str, ratio: str, period: str | None = None, as_of: str 
         "holders = the quarter's named shareholders (top 12 by shares; the persons-in-concert disclosures are "
         "skipped, all_holders=true lists every named holder including them with pac_name). promoter_pledge = the "
         "filing's own pledge / non-disposal / other-encumbrance flags with the pledged shares and its printed "
-        "percentage of the promoter holding ('what share of promoter holding is pledged'). pct_basis = the share "
+        "percentage of the promoter holding ('what share of promoter holding is pledged'); nil=true means the filing states NO pledge (0 shares, 0%): answer 'nil, per the filing', never 'not found'; previous_quarter and changed answer 'has it changed'. pct_basis = the share "
         "count the printed percentages are on (a depository-receipt issuer's excludes the shares under DR "
         "custody). quarters_held and categories_held say what the table covers for the company."
     ),
@@ -628,7 +628,7 @@ import calc as _calc  # noqa: E402  (co-located module, same import style)
         "\"Rs 5 crore\" is still 5 crore), crore, lakh, lakh crore, million, billion, shares/count, percent. "
         "Answers come "
         "back exact (value, exact fraction) with unit: money also in rupees, crore, lakh crore and Indian digit "
-        "grouping; percent also in bps. A unit mistake is an error with a message, never a number: subtracting "
+        "grouping; percent also in bps; one percentage minus another comes back in percentage points (pp) with the relative change beside it -- write 'pp', never '%', for such a move. A unit mistake is an error with a message, never a number: subtracting "
         "shares from rupees or multiplying two rupee amounts fails. Check the crore/lakh_crore field before you "
         "write a number into an answer."
     ),

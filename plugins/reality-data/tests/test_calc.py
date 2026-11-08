@@ -36,7 +36,7 @@ def test_percent_costs_and_bps() -> None:
     out = calc.evaluate("pat * 0.09", {"pat": "22066.48 crore"})
     assert out["crore"] == 1985.9832
     bps = calc.evaluate("target - current", {"target": "9.5 percent", "current": "5 percent"})
-    assert bps["percent"] == 4.5
+    assert bps["percentage_points"] == 4.5    # T-109: a gap between two percentages is in pp
     assert bps["bps"] == 450
 
 
@@ -106,3 +106,19 @@ def test_a_currency_prefix_alone_is_rupees() -> None:
     assert calc.evaluate("a", {"a": "Rs 5 crore"})["unit"] == "rupees"
     # and a bare number stays a plain quantity
     assert calc.evaluate("a", {"a": "5"})["unit"] == "ratio"
+
+
+def test_a_change_between_two_percentages_is_percentage_points() -> None:
+    # T-109 (INFY-035): FPI holding 27.09% -> 27.44% is +0.35 percentage points and +1.29% relative, never "0.35%"
+    out = calc.evaluate("new - old", {"new": "27.44 percent", "old": "27.09 percent"})
+    assert out["ok"] is True
+    assert out["unit"] == "percentage_points"
+    assert out["percentage_points"] == 0.35
+    assert out["bps"] == 35
+    assert "percentage points" in out["display"]
+    assert round(out["relative_change_pct"], 2) == 1.29
+
+
+def test_a_scaled_percentage_stays_percent() -> None:
+    out = calc.evaluate("a * 2", {"a": "5 percent"})
+    assert out["unit"] == "percent" and out["percent"] == 10

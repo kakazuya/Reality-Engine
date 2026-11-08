@@ -598,6 +598,28 @@ def _pledge_text(r: sqlite3.Row, pct: float | None) -> str:
             f"{r['promoter_shares']:.0f} shares)" if r["promoter_shares"] else f"{r['pledged_shares']:.0f} shares pledged")
 
 
+def _pledge_block(r: sqlite3.Row) -> dict[str, Any]:
+    """One quarter's encumbrance block.  Nil is a fact (T-108): a filing whose pledge flag says no promoter share is
+    pledged gives pledged shares 0 and 0% with ``nil`` true, so a reader never reports the quarter as 'not found'."""
+    pct = r["pledged_pct"]
+    shares = r["pledged_shares"]
+    if pct is None and shares is not None and r["promoter_shares"]:
+        pct = round(shares / r["promoter_shares"] * 100.0, 4)
+    nil = r["pledge_flag"] is not None and not r["pledge_flag"]
+    if nil:
+        shares = 0.0 if shares is None else shares
+        pct = 0.0 if pct is None else pct
+    return {"quarter_end": r["quarter_end"], "nil": nil,
+            "pledge_flag": None if r["pledge_flag"] is None else bool(r["pledge_flag"]),
+            "non_disposal_undertaking_flag": None if r["ndu_flag"] is None else bool(r["ndu_flag"]),
+            "other_encumbrance_flag": None if r["other_flag"] is None else bool(r["other_flag"]),
+            "promoter_shares": r["promoter_shares"], "pledged_shares": shares,
+            "pledged_pct_of_promoter_holding": pct, "other_encumbered_shares": r["other_shares"],
+            "encumbered_shares": r["encumbered_shares"],
+            "answer": (f"nil: {_pledge_text(r, pct)} (filing for {r['quarter_end']})" if nil else _pledge_text(r, pct)),
+            "provenance": _prov("shp_pledge", r["source_file"], r["known_at"])}
+
+
 def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categories: bool = False,
             all_holders: bool = False) -> dict[str, Any]:
     """Shareholding pattern in force on ``as_of`` (the latest quarter whose filing was out by then) + shares
@@ -653,17 +675,17 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
         pr = _q(f"SELECT rowid, * FROM shp_pledge WHERE symbol=? AND quarter_end=?{extra} "
                 "ORDER BY known_at DESC LIMIT 1", (sym, quarter, *eargs))
         if pr:
-            r = pr[0]
-            pct = r["pledged_pct"]
-            if pct is None and r["pledged_shares"] is not None and r["promoter_shares"]:
-                pct = round(r["pledged_shares"] / r["promoter_shares"] * 100.0, 4)
-            pledge = {"pledge_flag": None if r["pledge_flag"] is None else bool(r["pledge_flag"]),
-                      "non_disposal_undertaking_flag": None if r["ndu_flag"] is None else bool(r["ndu_flag"]),
-                      "other_encumbrance_flag": None if r["other_flag"] is None else bool(r["other_flag"]),
-                      "promoter_shares": r["promoter_shares"], "pledged_shares": r["pledged_shares"],
-                      "pledged_pct_of_promoter_holding": pct, "other_encumbered_shares": r["other_shares"],
-                      "encumbered_shares": r["encumbered_shares"], "answer": _pledge_text(r, pct),
-                      "provenance": _prov("shp_pledge", r["source_file"], r["known_at"])}
+            pledge = _pledge_block(pr[0])
+            # "has it changed?": the quarter before, from its own filing (T-108)
+            prev = _q(f"SELECT rowid, * FROM shp_pledge WHERE symbol=? AND quarter_end<?{extra} "
+                      "ORDER BY quarter_end DESC, known_at DESC LIMIT 1", (sym, quarter, *eargs))
+            if prev:
+                before = _pledge_block(prev[0])
+                pledge["previous_quarter"] = {k: before[k] for k in ("quarter_end", "nil", "pledged_shares",
+                                                                     "pledged_pct_of_promoter_holding", "answer",
+                                                                     "provenance")}
+                now_pct, then_pct = pledge["pledged_pct_of_promoter_holding"], before["pledged_pct_of_promoter_holding"]
+                pledge["changed"] = None if now_pct is None or then_pct is None else now_pct != then_pct
     sc = _q(f"SELECT rowid, * FROM share_capital WHERE symbol=? AND event IS NULL AND as_of_date<=?{extra} "
             "AND shares_outstanding IS NOT NULL ORDER BY as_of_date DESC, (source_table='shp_category') DESC, "
             "known_at DESC LIMIT 1", (sym, day, *eargs))

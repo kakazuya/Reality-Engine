@@ -1073,8 +1073,10 @@ was right (a market cap of Rs 32.20 lakh crore for 3.22; gross NPAs of Rs 3,574 
    `sum/avg/min/max/round` over named inputs with units, walked from the AST (never `eval`). Inputs normalise once to a
    base unit (rupees, count, or a fraction for percent) and compute exactly with `Fraction`, so a unit mistake is an error
    message and never a number: subtracting shares from rupees or multiplying two rupee amounts fails. A money or count
-   answer also prints rupees, crore, lakh crore and Indian digit grouping; a percent prints bps. `indian_grouping` is the
-   12,34,567 form the answers need. Tests: `plugins/reality-data/tests/test_calc.py` (10).
+   answer also prints rupees, crore, lakh crore and Indian digit grouping; a percent prints bps. One percentage minus another (T-109, 8 Nov) returns unit `percentage_points` with
+   `percentage_points`, `bps` and `relative_change_pct` (27.09% -> 27.44% is +0.35 pp, +1.29% relative), so an answer never
+   writes a pp move as a percent. `indian_grouping` is the
+   12,34,567 form the answers need. Tests: `plugins/reality-data/tests/test_calc.py` (13).
 2. `reality_engine/pilot3/number_check.py`:
    `python -m reality_engine.pilot3.number_check <answers.jsonl | answer.json | dir> [--tsv out.tsv] [--dev dev.tsv]`.
    Reason codes, each its own: `formula_mismatch` (a number's `formula`+`inputs`, or an older `computed: ...` source, does

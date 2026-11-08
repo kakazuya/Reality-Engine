@@ -266,6 +266,14 @@ def evaluate(expression: str, inputs: Any = None) -> dict[str, Any]:
         except SyntaxError as exc:
             raise CalcError(f"expression does not parse: {exc.msg} (at character {exc.offset})") from exc
         value, unit = _eval(tree, env)
+        # T-109: a difference of two percentages is a move in percentage points, and a reader also needs the
+        # relative change (27.09% -> 27.44% is +0.35 pp, +1.29%); saying "0.35%" for it is a unit error
+        points = None
+        body = tree.body
+        if unit == "percent" and isinstance(body, ast.BinOp) and isinstance(body.op, ast.Sub):
+            new, old = _eval(body.left, env), _eval(body.right, env)
+            if new[1] == "percent" and old[1] == "percent":
+                points = (new[0], old[0])
     except CalcError as exc:
         return {"ok": False, "error": str(exc), "expression": expression}
     except ZeroDivisionError:
@@ -279,6 +287,14 @@ def evaluate(expression: str, inputs: Any = None) -> dict[str, Any]:
     elif unit == "count":
         out.update(count=_number(value), indian=indian_grouping(Fraction(value), 0),
                    display=indian_grouping(Fraction(value), 0))
+    elif unit == "percent" and points:
+        new, old = points
+        out.update(unit="percentage_points", percentage_points=_number(value * 100), bps=_number(value * 10 ** 4),
+                   display=f"{float(value * 100):+g} percentage points (pp)",
+                   note="a change between two percentages: say percentage points, not percent")
+        if old:
+            rel = (new - old) / old
+            out.update(relative_change_pct=_number(rel * 100), relative_display=f"{float(rel * 100):+.4g}% relative")
     elif unit == "percent":
         out.update(percent=_number(value * 100), bps=_number(value * 10 ** 4),
                    display=f"{float(value * 100):g}%")
