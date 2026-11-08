@@ -412,8 +412,8 @@ def api_rows(session, pacer, code, a, b):
     while page <= 200:
         url = ANN_URL.format(p=page, f=a.strftime("%Y%m%d"), c=code, t=b.strftime("%Y%m%d"))
         payload, status, _n, error = http_get(session, url, pacer, want_json=True)
-        if payload is None and page > 1 and status == 400 and (b - a).days > 14:
-            # T-130: the API refuses deep pages (PERSISTENT 2024 failed at page 6, ~300 ESOP filings a year):
+        if payload is None and status == 400 and (b - a).days > 14:
+            # T-130: the API refuses deep pages (PERSISTENT 2024 at page 6) and some whole years (INDHOTEL 2024 at page 1):
             # fetch the window again as two halves, each shallow enough
             mid = a + (b - a) / 2
             logger.info("%s %s/%s: page %d refused, splitting at %s", code, a, b, page, mid)
