@@ -67,7 +67,8 @@ def store_copies(company: Company) -> tuple[dict, ...]:
                 f"WHERE {isin}", "params": params},
         {"table": "results_quarterly", "db": "results_xbrl.db", "source": "quarterly",
          "key": company.isin_key,
-         "sql": "SELECT *, coalesce(dissem_ts, broadcast_ts) AS known_at FROM quarterly "
+         "sql": "SELECT *, coalesce(dissem_ts, broadcast_ts, (SELECT f.filing_ts FROM filings f "
+                "WHERE f.file=quarterly.file)) AS known_at FROM quarterly "
                 f"WHERE {isin}", "params": params},
         {"table": "concall_items", "db": "concall_facts.db", "source": "cc_items",
          "key": company.isin_key,

@@ -266,7 +266,9 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
               f"ORDER BY k.conf_rank DESC, "
               f"CASE d.doc_type WHEN 'deck' THEN 0 WHEN 'results' THEN 1 WHEN 'press_release' THEN 2 "
               f"WHEN 'annual_report' THEN 3 WHEN 'transcript' THEN 4 ELSE 5 END, "
-              f"(k.dimension='total') DESC, k.known_at DESC, k.id LIMIT ?",
+              # the group statement before standalone when both are filed (as pilot3_fin does): HINDUNILVR Q2FY27
+              # Beauty & Wellbeing EBIT came back standalone 1,242 first (filed later) for consolidated 1,235 (8 Nov)
+              f"(k.dimension='total') DESC, (k.basis='consolidated') DESC, k.known_at DESC, k.id LIMIT ?",
               (*args, *eargs, _cap(limit) * 30))
     out, seen = [], set()
     for r in rows:

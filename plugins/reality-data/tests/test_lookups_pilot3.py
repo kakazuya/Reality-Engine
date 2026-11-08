@@ -92,6 +92,12 @@ def build_fixture() -> None:
                     "old/call.pdf", "call remark", "2026-08-11T10:00:00"))
     c.execute(ins, ("order_intake", "total", 200.0, "inr_cr", "Q1FY27", "2026-06-30", "pdfs/KEC/deck2.pdf",
                     "deck table", "2026-08-10T17:00:00"))
+    # one segment figure filed on both bases, standalone later: no basis asked must give the group figure first
+    seg = ins.replace("'consolidated'", "?")
+    c.execute(seg, ("segment_ebit", "beauty", 1235.0, "inr_cr", "Q2FY27", "2026-09-30", "consolidated", "c.xml",
+                    "", "2026-10-28T19:24:48"))
+    c.execute(seg, ("segment_ebit", "beauty", 1242.0, "inr_cr", "Q2FY27", "2026-09-30", "standalone", "s.xml",
+                    "", "2026-10-28T23:11:55"))
     c.execute("UPDATE kpi_series SET conf_rank=1 WHERE metric='order_intake' AND value=100.0")
     c.execute("UPDATE kpi_series SET conf_rank=4 WHERE metric='order_intake' AND value=200.0")
     c.executemany("INSERT INTO fin_annual_line VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
@@ -213,6 +219,10 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertFalse(p3.fin("KEC", "pat", "FY25", as_of="2025-05-01")["found"])
         both = p3.fin("KEC", "pat")
         self.assertEqual({r["provenance"]["table"] for r in both["rows"]}, {"fin_annual_line", "fin_quarter_xbrl"})
+
+    def test_kpi_gives_the_consolidated_figure_first(self):
+        rows = p3.kpi("KEC", "segment_ebit", "Q2FY27")["rows"]
+        self.assertEqual([(r["value"], r["basis"]) for r in rows], [(1235.0, "consolidated"), (1242.0, "standalone")])
 
     def test_fin_defaults_to_consolidated_and_labels_basis(self):
         """No basis asked means the group statement (HINDALCO FY26 diluted EPS: consolidated 60.20, not 45.31),

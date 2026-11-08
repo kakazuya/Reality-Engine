@@ -34,7 +34,7 @@ from reality_engine.pilot3.stores import _basis, fiscal_period
 
 SOURCE_TYPE = "xbrl_segment"
 RULE = "xbrl_segment"
-KNOWN_SOURCE = "results_xbrl.quarterly.dissem_ts|broadcast_ts"
+KNOWN_SOURCE = "results_xbrl.filings.dissem_ts|broadcast_ts|filing_ts"
 RAW = raw_dir("raw_market") / "nse_results_xbrl"
 NAME_RATIO = 0.85
 
@@ -267,7 +267,7 @@ def _filings(symbol: str) -> list[dict]:
     start = profile.window_start() or "0000-00-00"
     rows, types = prepare._read_sqlite(
         "results_xbrl.db", "filings",
-        f"SELECT file, isin, consolidated, period_start, period_end, coalesce(dissem_ts, broadcast_ts) AS known_at "
+        f"SELECT file, isin, consolidated, period_start, period_end, coalesce(dissem_ts, broadcast_ts, filing_ts) AS known_at "
         f"FROM filings WHERE isin IN ({marks}) AND period_end >= ? ORDER BY period_end, known_at", tuple(isins) + (start,))
     cols = list(types)
     found = [dict(zip(cols, r)) for r in rows]

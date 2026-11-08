@@ -940,4 +940,21 @@ rows — re-run `--part checks` into a build and re-measure the part before quot
 `guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py` (7 passed) and the existing
 serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_pilot3.py`, 24 passed).
 
+### 9h. Consolidated first in pilot3_kpi; undated XBRL quarters (T-124, 8 Nov 2026)
+
+- **pilot3_kpi orders the group figure first.** With no `basis` asked, a figure filed on both bases now comes back
+  consolidated first (ORDER BY in `lookups_pilot3.kpi`, as `pilot3_fin` already defaulted). HINDUNILVR Q2FY27 Beauty &
+  Wellbeing segment EBIT is stored right on both bases (consolidated 1,235 crore, results p8; standalone 1,242 crore,
+  p15), but the standalone XBRL was filed four hours later and came back first, so it read as a wrong 1,242. The
+  standalone row is in `tasks/regression/labels.csv` as right; the checker needed no change. Test:
+  `test_kpi_gives_the_consolidated_figure_first`.
+- **An XBRL quarter with no dissemination time takes the filing time.** 4,082 of `results_xbrl.quarterly` rows have
+  neither `dissem_ts` nor `broadcast_ts` (newest filings, Oct 2026 onward); `fin_quarter_xbrl` and `share_capital`
+  rows built from them had `known_at` NULL (q12 build: 416 and 18 rows), so every `as_of` lookup hid them.
+  `gap_loop.prepare` now falls back to `filings.filing_ts` for the same file (3,759 of the 4,082 have one; it is the
+  exchange's filing stamp, never later than dissemination in 98% of filings that carry both), and
+  `xbrl_segments` does the same. A row still undated stays NULL and is never served under `as_of`.
+- **ratios skips an undated share count.** `ratios._valuation` crashed on a NULL `known_at` share row (q12 build,
+  8 Nov); it now never uses one. Test: `test_an_undated_share_count_is_never_used`.
+
 **Retired reports (8 Nov 2026).** Shivam retired the 3-7 Nov reports on 8 Nov (answer checks, model-vs-store, dig, second read, re-ask, embedding, OCR, night-loop, doc-identity scans, database inventory): they are no longer in `D:\RealityEngine\reports`; copies are on `gdrive:InfoDiffusion_archive/reports/retired_2026-11-08/` under the same names.

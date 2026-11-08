@@ -699,7 +699,7 @@ def _valuation(conn: sqlite3.Connection, symbol: str, isin: str | None) -> int:
 
     def shares_asof(day: str):
         """The latest count known on ``day``; the pattern's exact total wins over the rounded paid-up row."""
-        live = [r for r in shares if (r[1] or "")[:10] <= day and (r[0] or "")[:10] <= day]
+        live = [r for r in shares if r[1] and r[1][:10] <= day and (r[0] or "")[:10] <= day]   # undated row: never
         exact = [r for r in live if r[3] == "shp_category"]
         return (exact or live)[-1] if live else None
 

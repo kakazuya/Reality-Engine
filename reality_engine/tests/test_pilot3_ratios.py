@@ -284,6 +284,19 @@ def test_no_valuation_session_uses_a_filing_later_than_itself(tmp_path):
         profile.activate(None)
 
 
+def test_an_undated_share_count_is_never_used(tmp_path):
+    """q12 build 8 Nov: a share_capital row with known_at NULL crashed the valuation pass; it must be skipped."""
+    try:
+        _profile(tmp_path, compute_start=None)
+        conn = sqlite3.connect(":memory:")
+        schema.create(conn, list(schema.TABLES))
+        _valuation_fixture(conn, share_known=None)
+        ratios.build_ratios(conn)
+        assert conn.execute("SELECT COUNT(*) FROM valuation_daily").fetchone()[0] == 0
+    finally:
+        profile.activate(None)
+
+
 def test_ttm_uses_the_annual_line_when_the_filing_prints_no_last_fy(tmp_path):
     """The Oct filing prints the ytd and prior-ytd EPS columns only; the last full year comes from its own annual
     line (FY26 71.58, known April) -> TTM 75.62, not a value from a later filing (T-073)."""
