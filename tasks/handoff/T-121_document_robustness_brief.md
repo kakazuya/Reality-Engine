@@ -7,7 +7,7 @@ feed the extractors; (2) a fixed, stratified canary set of documents from compan
 document types and years, measures text coverage, OCR confidence, number reading and extractor yield on every run, so a
 change in a company's document format shows up as a drop, not as silently missing rows (Shivam, 8 Nov).
 
-Files (only these): `reality_engine/pilot3/build.py` (a new part `ocr` between `pages` and `transcripts`, and in `all`),
+Files (only these): `reality_engine/pilot3/ocr.py` (sandbox source optional), `reality_engine/pilot3/build.py` (a new part `ocr` between `pages` and `transcripts`, and in `all`),
 `reality_engine/pilot3/registry.py` only if `build_pages` needs the OCR db path from the profile, new
 `reality_engine/pilot3/doc_canary.py`, new `reality_engine/tests/test_doc_canary.py` and a test for the `ocr` part,
 `docs/DB_BUILD_GUIDELINES.md` (new short section), `docs/DEVELOPER_GUIDE.md` (`--part` list).
@@ -20,8 +20,13 @@ Evidence (Opus, 8 Nov):
 - OCR exists but is not in the build: `reality_engine/pilot3/ocr.py` (RapidOCR ONNX, CPU; `python -m
   reality_engine.pilot3.ocr --out <ocr.db> --pages-db <pages.db> --symbols ...`) writes `ocr_page`; `build.py
   --ocr-db <ocr.db>` then fills `doc_page` and the extractors read those pages (`build.extract(..., ocr_dbs)`). A
-  profile build passes no `--ocr-db`, so the 6% is dropped. Opus is running ocr.py on the fresh6 pages now
-  (`scratchpad/fresh6/ocr.db`, log `ocr.log`): use its throughput and confidence numbers when it finishes.
+  profile build passes no `--ocr-db`, so the 6% is dropped. Opus's run of ocr.py on the fresh6 pages failed at once:
+  `pending()` (ocr.py line ~71) opens `<sandbox>/<sym>_loop/<sym>.db` unconditionally ->
+  `sqlite3.OperationalError: unable to open database file` for any company outside the 3-company pilot. Make the
+  sandbox source optional (skip when the file is absent), so ocr.py works from pages.db alone for any company; that is
+  step 0. Then measure OCR throughput (pages/min on CPU) and mean confidence on the fresh6 pages
+  (`C:/Users/warri/AppData/Local/Temp/claude/12b5f02fd3b7ce95/fa93aa0b-0c04-408d-a8f4-f7630af29fed/scratchpad/fresh6/pages.db`,
+  read-only; write the OCR db under `.tmp/`; `--limit 200`).
 - Older OCR accuracy work: T-020 / T-040 (TextRecognizer on the HP was more accurate on numbers; RapidOCR on CPU is the
   default here). Do not change the OCR engine in this ticket.
 - Raw files live on Drive; `reality_engine/raw_store.py` fetches them on demand (`RawStore.local`, `prefetch`). A
