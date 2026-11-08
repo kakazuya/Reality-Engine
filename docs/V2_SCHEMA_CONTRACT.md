@@ -101,3 +101,36 @@ stored rows.
 - Semantic search ticket (T-154 bake-off) after the table store, or alongside?
 - `outside_doc` sources: rating rationales are free on agency sites; industry monthly data (SIAM, cement, DGCA) is
   free; nothing paid without your OK.
+
+## 8. T-132 prototype findings (9 Nov 02:20, Wolf)
+
+Prototype `tasks/v2/T-132_proto_cells.py` (word boxes only, no model, ~0.05 s a page): rows from word y-centres,
+numeric tokens merged when the text layer splits them, a table block = a run of rows with two or more numbers,
+column anchors = clusters of the numbers' right edges, header = words in the six rows above assigned to the nearest
+anchor, a printed row-number column dropped, label = words left of the first column, section rows carried as
+`section > label`. On the October pilot20 decks and results:
+
+| Document | Pages | Cells | No column | No header |
+|---|---|---|---|---|
+| Havells Q2 FY27 information update | 10 | 447 | 0 | 0 |
+| Adani Ports Q2 FY27 deck | 58 | 1,234 | 73 | 87 |
+| Coal India Q2 FY27 deck | 53 | 676 | 69 | 69 |
+| HDFC AMC Q2 FY27 deck | 41 | 351 | 25 | 82 |
+| Indian Hotels Q2 FY27 deck | 48 | 447 | 9 | 44 |
+| Pidilite Q2 FY27 deck | 42 | 188 | 10 | 10 |
+| Asian Paints Q2 FY27 deck | 31 | 25 | 5 | 7 |
+| Asian Paints Q2 FY27 results (standalone + consolidated) | 19 | 842 | 40 | 43 |
+
+What it shows for the T-132 brief:
+1. Ruled and aligned tables (results statements, segment tables, information updates) come out right: Havells p5
+   segment revenue 36 of 36 cells with the right label and period header; Asian Paints results p5 every P&L line with
+   its label.
+2. `pymupdf.find_tables` is not enough: the default finds no table in the Havells deck (no ruling lines) and the
+   `text` strategy splits numbers ('2, | 028').
+3. Headers need the full stack: the period row ('30.09.2026') is found, the span row above it ('Quarter ended',
+   'Half year ended') sits more than six rows up or spans several columns; a header must be built from every row
+   between the previous block and this one, with spanning text assigned to all columns under it.
+4. Infographic slides (Asian Paints deck, Indian Hotels p7 call-outs) are not tables: numbers with arrows and labels
+   scattered. They need a separate call-out reader (number + nearest label + slide title), or stay page text only.
+5. A section label must end where a new numbered row group starts ('Expenses >' stuck to the tax lines).
+6. The same deck is often filed twice (Coal India 29 and 30 Oct, identical cells): build by `doc.sha256`, not by filing.
