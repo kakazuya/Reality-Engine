@@ -516,5 +516,29 @@ class Pilot3McpTests(unittest.TestCase):
             self.skipTest(f"the sandbox denies child-process pipes: {exc}")
 
 
+class EvAllInvestmentsTests(unittest.TestCase):
+    """MARUTI-083: EV/EBITDA also served on net debt after non-current investments, with a note when they differ."""
+
+    def test_ev_ebitda_gives_the_all_investments_variant(self):
+        build_fixture()
+        c = sqlite3.connect(DB)
+        c.execute("INSERT INTO fin_annual_line VALUES ('KEC','I','FY26','2026-03-31','consolidated','BS',"
+                  "'net_debt_all_investments','c',-2.0e10,'inr',1.0,'f.xml',NULL,'q','d','t','r',"
+                  "'2026-03-01T10:00:00','x',1,1,'xbrl_derived','FY')")
+        c.commit()
+        c.close()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+        try:
+            got = p3.ratio("KEC", "ev_ebitda", as_of="2026-03-31")
+        finally:
+            p3.close()
+            os.environ.pop("REALITY_PILOT3_DB", None)
+        inputs = got["rows"][0]["inputs"]
+        self.assertEqual(inputs["net_debt_all_investments"], -2.0e10)
+        self.assertAlmostEqual(inputs["ev_ebitda_all_investments"], (5e10 - 2.0e10) / 3e9, places=2)
+        self.assertIn("non-current investments", got["note"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -469,6 +469,27 @@ VALUATION_FIELDS = ("pe", "pb", "ev_ebitda", "market_cap", "dividend_yield_pct",
                     "net_worth", "net_debt", "trailing_ebitda", "close", "shares_outstanding")
 
 
+
+def _ev_all_investments(sym: str, rows: list, reply: dict) -> None:
+    """MARUTI-083: next to EV/EBITDA on plain net debt, give it on net debt after ALL investments (non-current too),
+    from the latest ``net_debt_all_investments`` line known on the row's date, and say so when they differ by >10%."""
+    for row, r in zip(reply.get("rows", []), rows):
+        v = _q("SELECT market_cap, net_debt, trailing_ebitda FROM valuation_daily WHERE rowid=?", (r["rowid"],))
+        if not v or not v[0]["trailing_ebitda"] or v[0]["market_cap"] is None:
+            continue
+        alt = _q("SELECT value*scale AS v, period_end, known_at FROM fin_annual_line WHERE symbol=? AND basis=? "
+                 "AND line_item='net_debt_all_investments' AND definition='xbrl_derived' AND substr(known_at,1,10)<=? "
+                 "ORDER BY known_at DESC LIMIT 1", (sym, r["basis"], r["date"]))
+        if not alt:
+            continue
+        ev_alt = (v[0]["market_cap"] + alt[0]["v"]) / v[0]["trailing_ebitda"]
+        row["inputs"].update({"net_debt": v[0]["net_debt"], "net_debt_all_investments": alt[0]["v"],
+                              "ev_ebitda_all_investments": round(ev_alt, 2)})
+        if row["value"] and abs(ev_alt / row["value"] - 1) > 0.10:
+            reply["note"] = ("EV/EBITDA uses net debt = borrowings - cash - bank balances - current investments; "
+                             "non-current investments are large here, so give both: 'ev_ebitda_all_investments' in "
+                             "inputs also subtracts them (balance sheet of " + alt[0]["period_end"] + ")")
+
 def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None = None,
           basis: str | None = None, limit: int = 8) -> dict[str, Any]:
     """Derived ratios (margins, ROE, growth, days ...) from ratio_panel; PE/PB/EV-EBITDA/market cap on a date
@@ -494,6 +515,8 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
                               "provenance": _prov("valuation_daily", f"row {r['rowid']}", r["known_at"],
                                                   input_refs=_trim(r["input_refs"], 200))} for r in rows],
                        "pilot3_ratio")
+        if key == "ev_ebitda" and rows:
+            _ev_all_investments(sym, rows, reply)
         if key == "ev_ebitda" and not rows and _is_lender(sym):
             reply["note"] = ("EV/EBITDA is not defined for a bank, NBFC or insurer: the store keeps no such row "
                              "for a lender by design, it is not missing data")
