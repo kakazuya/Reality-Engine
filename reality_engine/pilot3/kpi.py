@@ -1677,6 +1677,10 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     if fp is not None:
                         period = fp     # "first nine months" / "six months ended" names the figure's own span
                     period = _ytd_period(period, e, text, m.start(), v.start, filed)
+                    if rule == "sentence_default_v1" and period.ptype in ("H", "9M")                             and (e.metric in _STOCK_METRICS or e.kind not in ("money", "count", "volume")):
+                        q = _quarter_of(period.canon)   # T-129 review: a level, rate or per-unit figure is the
+                        if q:                           # quarter end's (GNPA 1.24%, $448/t), never a year-to-date
+                            period = Period(period.start, period.end, q, "Q", period_end("Q", q))
                     if ratio_quarter and rule == "sentence_default_v1" and period.ptype in ("FY", "H", "9M", "6M") \
                             and e.metric in _RATIO_METRICS and not _year_named(text, m.start(), v.end):
                         q = _quarter_of(period.canon)

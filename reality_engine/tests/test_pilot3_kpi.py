@@ -1742,6 +1742,9 @@ def test_a_year_to_date_span_makes_the_default_the_half_or_the_nine_months():
                       "APE \nstands at INR 168.8 billion"):
             rows = kpi.sentence_rows(quote, 4, "SBILIFE", ENTRIES, DIMS, default3)
             assert {r.fiscal_period for r in rows if r.metric == "ape"} == {"9MFY26"}, quote
+        # T-129 review: a rate in the same year-to-date call is the quarter end's, never H1 (GNPA, margins, $/t)
+        rate = kpi.sentence_rows("VONB Margin stands at 27.9%.", 4, "SBILIFE", ENTRIES, DIMS, default)
+        assert {r.fiscal_period for r in rate if r.metric == "vnb_margin"} == {"Q2FY27"}
         # a figure whose own sentence names a period keeps it, and a quarter-to-date phrase does not re-date the doc
         own = kpi.sentence_rows("APE stands at INR117.5 billion in Q2 FY27.", 4, "SBILIFE", ENTRIES, DIMS, default)
         assert {r.fiscal_period for r in own if r.metric == "ape"} == {"Q2FY27"}
