@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-08 22:00 IST (Wolf, wrap-up at 400k)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 02:05 IST (Wolf: T-135)
 History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`.
 
 ## Now
@@ -6,6 +6,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`.
 - T-124 (Wolf): re-ask2 of the 72 still-partly (9 Nov, rebuilt store): 30 right / 41 partly / 1 wrong; pilot set now 558/600 = 93.0%; of the 41, ~17 are undisclosed or documents not held; report `D:\RealityEngine
 eports6-11-09_t124_reask2_72.xlsx`. Repeat faults: TTM vs FY, pre-window policy chain, Infosys parent guarantee, Maruti EV without investments.
 - T-128 `pilot3_tech` (reaction, gaps, Wilder RSI, SMA crosses, volume spikes, range) merged. Store defects: shp tables empty in live pilot10 (fixed on copy), MARUTI net debt omits investments.
+- T-135 calc catalog: `p3ask catalog`, 14 formulas, tests 30 pass; MCP + merge pending.
 - T-125/126/127 merged (tools, Drive index, gates): merge refused without a worker review row or without tests for new code; third code worker refused; `ruling add` intake. Next round: rule_ledger mapping, full-run checklist gate.
 - Waiting Shivam: T-116, T-118, T-121, T-122. Shivam's ticket board (always synced): `D:\RealityEngine\reports\ticket_board.{xlsx,html}`.
 
