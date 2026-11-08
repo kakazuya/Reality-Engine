@@ -958,4 +958,43 @@ serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_
 - **ratios skips an undated share count.** `ratios._valuation` crashed on a NULL `known_at` share row (q12 build,
   8 Nov); it now never uses one. Test: `test_an_undated_share_count_is_never_used`.
 
+### 9j. Year-to-date defaults, derived quarters, source-scale refusal (T-129, 8 Nov 2026)
+
+- **A bare figure in a call or release takes the year-to-date period its own document states.** `kpi.doc_default_period`
+  now ends with `_ytd_default`: a document whose text carries a year-to-date span ("for the period ended 30th
+  September 2026", "nine months ended", "half-year ended", "H1/9M FYxx", "corresponding period") defaults a figure
+  with no period of its own to the year-to-date period closing on the quarter its first pages name (Q1 -> Q1, Q2 ->
+  H1, Q3 -> 9M). A Q4 document keeps FY, a figure whose own sentence names a period is untouched, and annual reports
+  (any document over 80 pages) call it with `ytd=False` from `kpi.extract_company`, so their pages keep the page's
+  headline. SBI Life: APE 117.5 billion from the Q2FY27 call is H1FY27 (was FY27); APE 185.2 and 168.8 billion and
+  VNB 50.4 billion from the Q3FY26 call are 9MFY26 (were FY26). Measured on the pilot10 copy (control build with
+  `_ytd_default` disabled vs the real build, same code otherwise): **294 periods changed** -- HDFCBANK 41, SBILIFE 75,
+  KEC 46, HINDALCO 39, BAJFINANCE 37, HINDUNILVR 23, SUNPHARMA 23, ETERNAL 9, MARUTI 1, INFY 0. Transitions:
+  Q3FY26->9MFY26 133, Q2FY27->H1FY27 59, Q2FY26->H1FY26 55, FY26->9MFY26 19, FY27->H1FY27 11, YTD->9MFY26 5,
+  FY27->Q1FY27 4, YTD->H1FY27 3, FY26/Q4FY26->9MFY26 3, YTD->H1FY26 2. The live store holds the same reported rows as
+  the control build (0 removed, 0 added), so the before -> after measurement is the control -> after one.
+- **Missing flow quarters are derived from the cumulative rows.** `kpi.derive_quarters` writes Q4 = FY - 9M, Q3 = 9M
+  - H1, Q2 = H1 - Q1 per symbol / metric / dimension / basis / unit, from the best non-quarantined reported row of
+  each period (highest `conf_rank`), skipped when that period's own rows disagree by more than 1%. The row is
+  `extractor_rule='derived_cumulative_v1'`, `is_reported=0`, quote "FY26 242.7 - 9MFY26 185.2", `known_at` = the later
+  input's. Only the named flow set `_DERIVABLE_FLOW` (APE, VNB, GWP, new business premium, revenue, PAT, EBITDA, order
+  intake, new loans, export/domestic/total volumes, shipments) is derived; a stock (AUM, a book, a balance, a ratio,
+  a margin) never is. 51 rows on pilot10: revenue 19, PAT 15, EBITDA 9, order intake 2, export volumes 2, APE / GWP /
+  new loans / volumes 1 each; KEC 21, BAJFINANCE 9, MARUTI 7, HINDALCO 6, SUNPHARMA 4, SBILIFE 3, ETERNAL 1. **All 51
+  come back quarantined** from `--part checks`: the checker's `quote_on_page` and `label_present` hard checks fail on
+  the synthetic quote (`value_present` on 49), so `pilot3_kpi` hides them until `row_checks.py` gains a derived-row
+  rule -- it is not edited here, by the brief.
+- **A crore figure whose own source states the same digits in million fails.** `number_check.check_source_scale`
+  reads a money entry's `source`; the digits of the entry found with a different explicit scale word (million / mn /
+  lakh / crore / billion / bn) and the wrong amount is the fail code `source_scale_mismatch`. MARUTI-127:
+  `{4136, "INR crore", "... Rs 4,136 million"}` fails; `{413.6, "INR crore", same source}` passes. Replayed over
+  `D:/RealityEngine/pilot10/answer_reask/answers/*.jsonl` (136 answers): 2 failing findings, both MARUTI-127 (its
+  4,136 and 18,740 crore entries, each sourced in million); no other answer gains the code.
+- Tests: `reality_engine/tests/test_pilot3_kpi.py` + `test_pilot3_number_check.py` -> 123 passed and 6 `tmp_path`
+  fixture errors that are a sandbox-only ACL defect (a directory created mode 0o700 is not listable; the same 6 error
+  without this change); with the sandbox workaround (create temp dirs 0o755) 133 passed, and
+  `test_pilot3_kpi_ratio_period.py` passes. Row-check verdicts on pilot10 `kpi_series`: live before 2,281 verified /
+  3,310 unverified / 452 quarantined; control (A off) the same; after (A on) 2,287 / 3,327 / 440, plus the 51 derived
+  rows, all quarantined.
+
 **Retired reports (8 Nov 2026).** Shivam retired the 3-7 Nov reports on 8 Nov (answer checks, model-vs-store, dig, second read, re-ask, embedding, OCR, night-loop, doc-identity scans, database inventory): they are no longer in `D:\RealityEngine\reports`; copies are on `gdrive:InfoDiffusion_archive/reports/retired_2026-11-08/` under the same names.

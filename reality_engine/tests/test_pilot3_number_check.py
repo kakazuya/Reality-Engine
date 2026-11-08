@@ -238,6 +238,28 @@ def test_the_endpoints_rounding_is_allowed() -> None:
     assert codes(number_check.check_answer(row)) == set()
 
 
+def test_a_crore_figure_sourced_in_million_fails() -> None:
+    """T-129, the 8 Nov re-ask: MARUTI-127 stored 4,136 crore with the source "Rs 4,136 million" (413.6 crore).
+    The digits match and the scale word does not, so the entry is ten times its own evidence; written at the real
+    scale it passes."""
+    source = "fin_quarter_current other_income, consolidated, Rs 4,136 million"
+    wrong = {"qid": "MARUTI-127", "answer": "", "numbers": [
+        {"value": 4136, "unit": "INR crore", "period": "Q2FY27", "source": source, "quote": ""}]}
+    report = number_check.check_answer(wrong)
+    assert report["ok"] is False
+    assert "source_scale_mismatch" in codes(report)
+    right = {"qid": "MARUTI-127", "answer": "", "numbers": [
+        {"value": 413.6, "unit": "INR crore", "period": "Q2FY27", "source": source, "quote": ""}]}
+    assert number_check.check_answer(right)["ok"] is True
+    # the same scale word passes, and a non-money entry is not judged
+    same = {"qid": "S", "answer": "", "numbers": [
+        {"value": 4136, "unit": "INR crore", "period": "Q2FY27", "source": "Rs 4,136 crore of other income"}]}
+    assert codes(number_check.check_answer(same)) == set()
+    count = {"qid": "S", "answer": "", "numbers": [
+        {"value": 4136, "unit": "shares", "period": "Q2FY27", "source": "4,136 million shares"}]}
+    assert "source_scale_mismatch" not in codes(number_check.check_answer(count))
+
+
 def test_two_significant_figures_are_not_evidence() -> None:
     chance = {"qid": "S", "answer": "It paid Rs 41 crore of tax.",
               "numbers": [{"value": 408, "unit": "INR crore tax", "period": "FY26", "source": "x"}]}
