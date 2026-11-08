@@ -658,7 +658,9 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
     counts: dict[str, dict] = {}
     started = time.time()
     rows = _manifest_rows(prof.manifest)
-    store = store or raw_store.RawStore(roots={prof.raw_root.name.lower(): prof.raw_root})
+    # The profile's raw root plus the store's default roots, so a manifest row may name a file under the old
+    # D: PDF pile (``pdfs``) that only Drive holds (T-126: FY25-FY27 rows added from corporate_documents).
+    store = store or raw_store.RawStore(roots={**raw_store._default_roots(), prof.raw_root.name.lower(): prof.raw_root})
     for symbol in symbols:
         stat = counts[symbol] = {"rows": 0, "docs": 0, "pages": 0, "needs_ocr": 0, "undated": 0, "missing": 0,
                                  "errors": 0, "not_documents": 0, "dupes": 0}
