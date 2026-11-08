@@ -1,9 +1,12 @@
-"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|pages|stores|comparatives|preferred|ratios|extract|segments|kpi|transcripts|guidance|notes|checks|all]``
-       ``[--symbols KEC[,BAJFINANCE,HINDALCO]] [--ocr-db <ocr.db> ...]``.
+"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|ocr|pages|stores|comparatives|preferred|ratios|extract|segments|kpi|transcripts|guidance|notes|checks|all]``
+       ``[--symbols KEC[,BAJFINANCE,HINDALCO]] [--ocr-db <ocr.db> ...] [--ocr-max-seconds 540]``.
 
 Builds every pilot3 table in one file.  No network, no model.  Pages and documents come from pages.db (sandbox
 pages only where pages.db lacks a document); ``--ocr-db`` (once per company OCR database, as ``pilot3.ocr`` writes
-it) fills the text of a ``needs_ocr`` page into ``doc_page`` and feeds the same pages to the extractors.  ``extract``
+it) fills the text of a ``needs_ocr`` page into ``doc_page`` and feeds the same pages to the extractors.  ``ocr``
+(T-121) runs before ``pages`` in ``all``: it reads every ``needs_ocr`` page of ``pages_db`` with RapidOCR into the
+build's own ``<out dir>/<stem>_ocr.db`` (resumable, stops cleanly at ``--ocr-max-seconds``), and ``pages`` and
+``extract`` then read that database automatically, so no page is left without text.  ``extract``
 runs the KPI and transcript extractors into the same db; ``guidance`` runs the guidance extractor over the pages
 already in it.  ``comparatives`` (T-057) reads the printed comparative columns of each results PDF into
 ``fin_quarter_printed``; it runs after ``stores`` and before ``ratios``, and in ``all`` only under a profile.
@@ -21,9 +24,10 @@ rows).  Each part drops and recreates its own tables (extract: its own symbols' 
 symbols' rows, with ``CREATE TABLE IF NOT EXISTS``), so parts can be re-run; ``ratios`` needs ``stores`` built
 first and ``guidance`` needs ``pages``.
 
-``--symbols`` limits ONLY the extractors (extract, kpi, transcripts, guidance, notes), which already delete and rewrite
-one company's rows; registry, pages, stores and ratios rebuild every company's rows and ignore it (``--help``
-says so).  ``build --part kpi --symbols <SYM>`` therefore gives exactly that company's rows of a full part build.
+``--symbols`` limits ONLY ``ocr`` and the extractors (extract, kpi, transcripts, guidance, notes), which already
+delete and rewrite one company's rows; registry, pages, stores and ratios rebuild every company's rows and ignore
+it (``--help`` says so).  ``build --part kpi --symbols <SYM>`` therefore gives exactly that company's rows of a
+full part build.
 ``--profile <json>`` (T-056) reads the company list, pages db, raw root, manifest, output and history window from
 a profile file, and then ``--symbols`` limits every part: a profile database built for one company holds one
 company.  ``--out`` and ``--pages-db`` override the profile's paths."""
@@ -94,6 +98,33 @@ def extract(out: Path, only: str | None = None, ocr_dbs=(), symbols=None, pages_
     return result
 
 
+def ocr_target(out: Path) -> Path:
+    """The OCR database a build keeps beside itself (``<out dir>/<stem>_ocr.db``): the ``ocr`` part writes it and
+    the ``pages`` fill and the extractors read it without ``--ocr-db`` (T-121)."""
+    out = Path(out)
+    return out.with_name(f"{out.stem}_ocr.db")
+
+
+def ocr_inputs(out: Path, ocr_dbs=()) -> tuple:
+    """The explicit ``--ocr-db`` paths plus the build's own ``<stem>_ocr.db`` once the ``ocr`` part has written it."""
+    own = ocr_target(out)
+    return tuple(ocr_dbs) + ((str(own),) if own.is_file() else ())
+
+
+def ocr_part(out: Path, symbols, pages_db=None, max_seconds: float = 540) -> dict:
+    """``--part ocr`` (T-121): RapidOCR every ``needs_ocr`` page of ``pages_db`` into ``<stem>_ocr.db``.
+
+    A profile build has no sandbox, so ``pages_db`` alone is the source; the resumable OCR database then fills
+    ``doc_page`` in the ``pages`` part and feeds the extractors.  A run stopped at ``max_seconds`` continues where
+    it left off on the next build."""
+    from reality_engine.pilot3 import ocr as ocr_module
+
+    active = profile.active() if profile.under_profile() else None
+    return ocr_module.run(str(ocr_target(out)), list(symbols), None if active else SANDBOX,
+                          active.raw_root if active else None, max_seconds, None, 300, "cpu",
+                          pages_db=pages_db or profile.pages_db())
+
+
 def checks(conn: sqlite3.Connection, out: Path, profile_path: str | None = None) -> dict:
     """T-113: run the independent row checker over ``out`` and copy its verdict tables into the build.
 
@@ -142,7 +173,7 @@ def checks(conn: sqlite3.Connection, out: Path, profile_path: str | None = None)
 
 
 def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
-          profile_path: str | None = None) -> dict:
+          profile_path: str | None = None, ocr_max_seconds: float = 540) -> dict:
     out = Path(out)
     known = profile.symbols()
     symbols = [s.strip().upper() for s in (symbols or known) if s and s.strip()]
@@ -153,7 +184,8 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
     conn = sqlite3.connect(out)
     conn.execute("PRAGMA journal_mode=WAL")
     log = {}
-    parts = (["registry", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "guidance", "notes", "checks"]
+    parts = (["registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments",
+              "guidance", "notes", "checks"]
              if part == "all" else [part])
     if "comparatives" in parts and not profile.under_profile():
         parts.remove("comparatives")  # no profile: the pilot3 build keeps its present rows (T-057)
@@ -167,8 +199,10 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
             if name == "registry":
                 log["company"] = registry.build_company(conn)
                 log["doc"] = registry.build_doc(conn)
+            elif name == "ocr":
+                log["ocr"] = ocr_part(out, symbols, pages_db, ocr_max_seconds)
             elif name == "pages":
-                log["doc_page"] = registry.build_pages(conn, ocr_dbs)
+                log["doc_page"] = registry.build_pages(conn, ocr_inputs(out, ocr_dbs))
             elif name == "stores":
                 log["stores"] = stores.build_stores(conn)
             elif name == "comparatives":
@@ -190,7 +224,7 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
                     drop_verdicts(conn, "kpi_series")
                 conn.commit()
                 conn.close()  # the extractors open the db file themselves
-                log["extract"] = extract(out, only, ocr_dbs, symbols, pages_db)
+                log["extract"] = extract(out, only, ocr_inputs(out, ocr_dbs), symbols, pages_db)
                 conn = sqlite3.connect(out)
             elif name == "segments":
                 from reality_engine.pilot3.xbrl_segments import run as run_segments
@@ -230,10 +264,12 @@ def main(argv: list[str] | None = None) -> None:
                     help="build profile JSON (T-056): companies, pages db, raw root, manifest, output, window start")
     ap.add_argument("--out", default=None, help="default: the profile's output, else the real pilot3.db on C")
     ap.add_argument("--pages-db", default=None, help="override the profile's pages database")
-    ap.add_argument("--part", default="all", choices=("registry", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "notes", "checks", "all"))
+    ap.add_argument("--part", default="all", choices=("registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "notes", "checks", "all"))
     ap.add_argument("--symbols", default=None,
-                    help="comma list: without a profile it limits extract/kpi/transcripts/guidance/notes only (registry/pages/stores/ratios rebuild every company); a profile build limits every part (default: the profile's companies, else the pilot3 three)")
+                    help="comma list: without a profile it limits ocr/extract/kpi/transcripts/guidance/notes only (registry/pages/stores/ratios rebuild every company); a profile build limits every part (default: the profile's companies, else the pilot3 three)")
     ap.add_argument("--ocr-db", action="append", default=[], help="ocr_page database written by pilot3.ocr (repeat for one per company)")
+    ap.add_argument("--ocr-max-seconds", type=float, default=540,
+                    help="the ocr part stops cleanly after this many seconds and resumes on the next build")
     args = ap.parse_args(argv)
     if args.profile:
         loaded = profile.load(args.profile)
@@ -243,7 +279,8 @@ def main(argv: list[str] | None = None) -> None:
     symbols = args.symbols.split(",") if args.symbols else None
     current = profile.active()
     out = Path(args.out) if args.out else (current.out if current is not None else REAL_DB)
-    print(json.dumps(build(out, args.part, tuple(args.ocr_db), symbols, args.pages_db, args.profile),
+    print(json.dumps(build(out, args.part, tuple(args.ocr_db), symbols, args.pages_db, args.profile,
+                           args.ocr_max_seconds),
                      indent=1, default=str))
 
 

@@ -431,3 +431,33 @@ Change a rule only with a measurement that supports the change, and note it in `
   `kpi('BAJFINANCE','nnpa_pct','FY25')` fell from 8 rows (the 1.18 gross-NPA row among them) to 4,
   `guidance('HDFCBANK')` 3 -> 1 and `guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py`
   (7 passed); `python -m unittest plugins/reality-data/tests/test_lookups_pilot3.py` (24 passed, no verdict table).
+
+## 14. Every page gets text; a canary proves it on unseen companies (T-121, 8 Nov 2026)
+- A fresh 6-company build (`scratchpad/fresh6/fresh6.db`) has 28,528 pages, 1,720 of them (6%) with no text layer
+  (`doc_page.method='needs_ocr'`, under 50 characters) and 130 documents with no text page at all: results 12.6% of
+  pages textless, decks 12.6%, announcements 7.5%, annual reports 1.6%, transcripts 0%; older filings are scanned
+  more often (2019 11.1%, 2020-21 8.7%, 2022-23 3.8%, 2025-26 1.4%).  OCR existed (`reality_engine/pilot3/ocr.py`)
+  but a profile build passed no `--ocr-db`, so those pages were dropped.
+- `build --part ocr` now runs inside `all`, before `pages`: it reads every `needs_ocr` page of the profile's
+  `pages_db` with CPU RapidOCR into `<out dir>/<stem>_ocr.db` (resumable; `--ocr-max-seconds`, default 540, stops it
+  cleanly), and `pages` and `extract` then read that database automatically (an explicit `--ocr-db` is still read
+  too).  `ocr.pending` no longer needs the sandbox: a profile build has no loop database and OCRs from pages.db
+  alone, and a raw file that is only on Drive is read through `raw_store.local`.
+- The canary (`reality_engine/pilot3/doc_canary.py`) keeps a fixed stratified sample: pilot60_history manifest
+  documents of companies in NO pilot profile, one cell per document type x filing year 2019-2026, `--per-cell`
+  documents (default 3) chosen by a hash of `--seed`.  It runs the same text read (`docs_collect._extract`), OCR of
+  every textless page, and the KPI page reader (`kpi.run` over a pages.db of the sample), and writes `canary.csv`
+  and `summary.csv` (text pages %, OCR pages, mean OCR confidence, numbers read per page, KPI rows per doc).  A
+  later run prints every cell whose text coverage or KPI rows per doc fell by at least 20% against the previous
+  summary, so a company's changed document format is a visible drop, not silently missing rows.
+  First run (8 Nov 2026, `--per-cell 3 --seed 0`, 47 cells / 140 documents read / 6,539 pages): text coverage
+  **98.5%**, OCR 186 pages, mean OCR confidence 0.94-1.00; by type text coverage decks **93.4%** (worst: deck 2019
+  85.9%, deck 2020 90.8%, deck 2021 91.3%; per document APOLLOHOSP deck 2021 70.4%), announcements 98.5% (2019
+  96.0%), annual reports 99.1%, press releases 99.3% (2025 94.4%), results and transcripts 100%.  KPI rows per
+  document: announcements 0.1 (a notice is not a KPI page), transcripts 3.6, results 6.7 (worst cell results 2025
+  0.3), press releases 8.8, decks 40.6, annual reports 41.6.  One document could not be fetched (OLAELEC annual
+  report 2025, `FileNotFoundError` from Drive) and is counted as an error, not as a drop.
+  ```bash
+  python -m reality_engine.pilot3.doc_canary --out .tmp/canary --per-cell 3 --seed 0
+  python -m pytest reality_engine/tests/test_doc_canary.py -q
+  ```

@@ -10,7 +10,8 @@ writes it into ``doc_page`` so a rebuild can join the OCR text to that page; (2)
 method needs_ocr (PDF under ``<sym>_loop/raw``) for documents pages.db does not hold; (3) the decks_full PDFs that
 deck_figures cites but docs does not hold, for pages whose text layer is empty.  A page already stored under a key
 that names the same document (a sandbox ``doc_alias`` key or the decks_full sha key) is skipped, so no page is read
-twice.  ``--pages-db ''`` disables source (1).
+twice.  ``--pages-db ''`` disables source (1).  The sandbox sources (2) and (3) are skipped when the sandbox loop database is not on this machine, so
+a run from ``pages.db`` alone works for any company (T-121: a profile build has no sandbox at all).
 Each page is rendered at 300 DPI in grayscale (PyMuPDF), read by RapidOCR, and stored with the page text, the
 word boxes in PDF points (so kpi.py's row/column tolerances behave as on a text layer) and the mean OCR confidence.
 The run is resumable: pages already in ``ocr_page`` are skipped, ``--max-seconds`` stops cleanly between pages.
@@ -61,15 +62,16 @@ def _sort_key(r) -> tuple:
     return (DOC_PRIORITY.get(r[0], 9), -int(str(r[1] or "0")[:10].replace("-", "") or 0), r[2], r[3])
 
 
-def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
+def pending(sym: str, sandbox: Path | None, raw_root: Path | None, done: set,
             pages_db: Path | str | None = None) -> list[tuple]:
     """[(doc_key, page, doc_type, known_at, pdf_path)] still to OCR: pages.db needs_ocr pages (key = the doc_key
     build.py writes to doc_page), then decks_full, then sandbox pages by doc type, newest first.  A page stored
-    already under a key that names the same document (sandbox alias, decks_full sha) is skipped."""
+    already under a key that names the same document (sandbox alias, decks_full sha) is skipped.  The sandbox is
+    optional: a profile build has no loop database, and pages.db alone is then the source (T-121)."""
     fitz = _fitz()
     store = raw_store.default_store()
-    dbp = sandbox / f"{sym.lower()}_loop" / f"{sym.lower()}.db"
-    con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
+    dbp = sandbox / f"{sym.lower()}_loop" / f"{sym.lower()}.db" if sandbox is not None else None
+    con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True) if dbp is not None and dbp.is_file() else None
     out: list[tuple] = []
     claimed: set[tuple] = set()          # (pages.db doc_key, page) this list will OCR from pages.db
     doc_keys: dict[str, set] = {}        # pages.db doc_key -> every key that page may already be stored under
@@ -78,7 +80,8 @@ def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
     if pg is not None:
         from reality_engine.pilot3 import registry
 
-        alias = {a: k for a, k in registry.plan_docs(sym, pg, con)["alias"].items() if not k.startswith(f"{sym}:")}
+        if con is not None:
+            alias = {a: k for a, k in registry.plan_docs(sym, pg, con)["alias"].items() if not k.startswith(f"{sym}:")}
         for dk, sha in pg.execute("SELECT doc_key, sha256 FROM doc WHERE symbol=?", (sym,)):
             doc_keys[dk] = {dk} | {s for s, k in alias.items() if k == dk}
             if sha:
@@ -95,7 +98,7 @@ def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
             out.append((doc_type, known_at, dk, page, path))
         pg.close()
     # 1) decks the sandbox does not hold (FY25-FY27 presentations): empty text-layer pages
-    if raw_root is not None:
+    if raw_root is not None and con is not None:
         held = {r[0] for r in con.execute("SELECT source_key FROM docs WHERE source_key IS NOT NULL")}
         for sha, known_at in con.execute("SELECT sha256, min(known_at) FROM deck_figures GROUP BY sha256 ORDER BY 2 DESC"):
             if sha in held:
@@ -117,17 +120,18 @@ def pending(sym: str, sandbox: Path, raw_root: Path | None, done: set,
                     out.append(("deck", known_at, key, page, path))
             pdf.close()
     # 2) sandbox pages that doc_text marked needs_ocr, for documents pages.db does not hold
-    rows = con.execute(
-        f"SELECT t.doc_key, t.page, d.doc_type, d.known_at FROM doc_text t JOIN docs d USING(doc_key) "
-        f"WHERE t.method='needs_ocr' AND d.doc_type IN ({','.join('?' * len(kpi.KPI_DOC_TYPES))})",
-        kpi.KPI_DOC_TYPES).fetchall()
-    for doc_key, page, doc_type, known_at in rows:
-        if doc_key in alias or (doc_key, page) in done:
-            continue
-        p = sandbox / f"{sym.lower()}_loop" / "raw" / doc_key
-        if p.exists():
-            out.append((doc_type, known_at, doc_key, page, p))
-    con.close()
+    if sandbox is not None and con is not None:
+        rows = con.execute(
+            f"SELECT t.doc_key, t.page, d.doc_type, d.known_at FROM doc_text t JOIN docs d USING(doc_key) "
+            f"WHERE t.method='needs_ocr' AND d.doc_type IN ({','.join('?' * len(kpi.KPI_DOC_TYPES))})",
+            kpi.KPI_DOC_TYPES).fetchall()
+        for doc_key, page, doc_type, known_at in rows:
+            if doc_key in alias or (doc_key, page) in done:
+                continue
+            p = sandbox / f"{sym.lower()}_loop" / "raw" / doc_key
+            if p.exists():
+                out.append((doc_type, known_at, doc_key, page, p))
+        con.close()
     out.sort(key=_sort_key)
     return [(r[2], r[3], r[0], r[1], r[4]) for r in out]
 
@@ -192,9 +196,11 @@ def ocr_page(page, dpi: int = 300, device: str = "cpu", max_side: int = 2400) ->
     return words_to_text(words), words, conf, len(res.txts)
 
 
-def run(out: str, symbols: list[str], sandbox: Path, raw_root: Path | None, max_seconds: float, limit: int | None,
+def run(out: str, symbols: list[str], sandbox: Path | None, raw_root: Path | None, max_seconds: float, limit: int | None,
         dpi: int, device: str, max_side: int = 2400, reverse: bool = False,
         pages_db: Path | str | None = PAGES_DB) -> dict:
+    """OCR every pending page of ``symbols`` into the ``ocr_page`` table of ``out``.  ``sandbox`` may be None: the
+    pages.db source (``pages_db``) then stands alone, which is what a profile build gives it (T-121)."""
     fitz = _fitz()
     store = raw_store.default_store()
     t0 = time.time()
