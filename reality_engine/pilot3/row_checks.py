@@ -51,8 +51,16 @@ Checks (``check`` names in ``row_check_fail``):
                       number
     uncorroborated    (kpi) a total revenue / PAT / EBITDA / order amount with no filed statement and no second
                       source -> unverified
-    variant           (kpi/guidance) pat/ebitda/revenue whose label says adjusted / before exceptional /
-                      excluding / per ... -> unverified
+    net_cash_sign     (kpi/guidance) a net_debt row whose words say net cash with a positive value, or net debt
+                      with a negative value the quote does not print as a minus / bracket
+    page_unit         (kpi) the page's declared scale ("in million", "Rs. in Mn", "(in Crores)") is not the
+                      row's unit
+    same_doc_conflict (kpi) two rows of the same company / metric / scope / period from the SAME document
+                      disagree by more than 1.5% after scale -> unverified (unless one is a variant)
+    question_next     (kpi) the speaker cannot be found and the sentence after the number asks a question ->
+                      unverified, never a quarantine
+    variant           (kpi/guidance) pat/ebitda/revenue/net debt or a margin / ratio whose label says adjusted,
+                      before exceptional, excluding, excl., ex-, pre/post Ind AS, of which, per ... -> unverified
     entity_mismatch   (kpi) the dimension and the entity name two different non-symbol subsidiaries -> unverified
     dimension_word    (kpi) a total row whose quote names a segment / business word just before its label ->
                       unverified
@@ -86,10 +94,11 @@ VOCAB_PATH = Path(__file__).with_name("row_checks_vocab.yaml")
 HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_present", "label_conflict", "label_foreign", "sector_fit", "third_party",
         "forward_word", "past_figure", "null_value", "range_order", "plausible", "future_period", "past_target",
         "fin_conflict", "part_not_total", "period_word", "currency", "target_frame", "target_year",
-        "not_company_speaker", "range_value", "unit_kind"}
+        "not_company_speaker", "range_value", "unit_kind", "net_cash_sign", "page_unit"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
         "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch",
-        "dimension_word", "not_pinned", "scope_word", "uncorroborated", "history_row", "scale_doubt"}
+        "dimension_word", "not_pinned", "scope_word", "uncorroborated", "history_row", "scale_doubt",
+        "same_doc_conflict", "question_next"}
 
 # Revenue / PAT / EBITDA / order rows must be a plausible share of the company's filed figure: a subsidiary or
 # segment amount stored with dimension "total" is the classic "part stored as the total" mistake.
@@ -101,10 +110,16 @@ PART_SHARE = 0.15
 
 def connect_readonly(db: str) -> sqlite3.Connection:
     """Read-only connection.  A WAL database in a directory the caller cannot write to needs its -shm; the
-    fallback opens the checkpointed file immutable (refused when a -wal with uncommitted pages is present)."""
+    fallback opens the checkpointed file immutable (refused when a -wal with uncommitted pages is present).
+    SQLite opens lazily, so the mode=ro handle is probed with one query before it is trusted."""
+    con = None
     try:
-        return sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+        con.execute("SELECT count(*) FROM sqlite_master")
+        return con
     except sqlite3.OperationalError:
+        if con is not None:
+            con.close()
         if Path(db + "-wal").exists():
             raise
         return sqlite3.connect(f"file:{db}?mode=ro&immutable=1", uri=True)
@@ -281,7 +296,11 @@ _PERIOD_TOKEN = re.compile(
 _PAST_VERB = re.compile(
     r"\b(?:grew|grow|grown|delivered|achieved|reported|posted|stood|came\s+in|declined|rose|fell|"
     r"reduced|improved)\s+(?:at|of|to)?\s*$")
-_VARIANT = re.compile(r"before (?:exceptional|one[- ]off|one[- ]time)|adjusted|excluding|\bper\s+(?!cent\b)")
+_VARIANT = re.compile(r"before (?:exceptional|one[- ]off|one[- ]time)|adjusted|excluding|\bexcl\.?\b|"
+                      r"\bex[- ]|\bpre[- ]?ind\s*as\b|\bpost[- ]?ind\s*as\b|\bof which\b")
+# "per share / tonne / franchise" makes a financial line a unit variant; on a margin / ratio it is scope, not
+# a variant, and a table's "AUM per franchise" is another row's unit.
+_VARIANT_PER = re.compile(r"(?<!as )\bper\s+(?!cent\b)")
 # wording between a period token and the number that makes the token a comparative, not the number's own period
 _COMPARATIVE = re.compile(r"\b(?:over|against|versus|vs|from|than|compared|ahead\s+of|prior|last|previous|"
                           r"higher|lower|up|down)\b", re.I)
@@ -411,6 +430,25 @@ _ANALYST_PHRASE = re.compile(r"\byou said\b|\bi wanted to understand\b|\bcan you
                              r"\bwhat are\b|\bhow much\b|\bhow do\b|\bplease explain\b|\bwould you\b|"
                              r"\btrying to understand\b|\bmy question\b|\bjust wanted to\b", re.I)
 _SPEAKER_LINE = re.compile(r"(?m)^[ \t]*([A-Z][A-Za-z .&'()\-]{1,60}?)\s*(?::|\s[-–]\s)")
+# A speaker label is a person or a role, not prose that happens to start a line ("Coming to the order book
+# status", "Some of the key highlights include", "FIVE"): the previous-page fallback exposed those.
+_SPEAKER_ROLES = {"moderator", "analyst", "operator", "management", "host", "speaker", "participant",
+                  "coordinator", "moderator/operator"}
+_SPEAKER_STOP = {"the", "a", "an", "in", "on", "at", "for", "from", "with", "to", "of", "and", "or", "this",
+                 "that", "these", "those", "our", "we", "it", "some", "all", "key", "highlights", "update",
+                 "updates", "business", "segment", "performance", "demand", "status", "numbers", "company"}
+
+
+def plausible_speaker(name: str) -> bool:
+    tokens = [t for t in re.split(r"\s+", (name or "").strip()) if t]
+    if not tokens or len(tokens) > 6:
+        return False
+    if len(tokens) == 1:
+        return tokens[0].strip(".:").lower() in _SPEAKER_ROLES
+    for token in tokens:
+        if token.lower().strip(".,") in _SPEAKER_STOP or not token[0].isupper():
+            return False
+    return True
 _MGMT_HEADING = re.compile(r"\b(management|company participants|executives|corporate participants|participants)\b", re.I)
 _MGMT_ROLE = re.compile(r"\b(?:managing director|chief executive|chief financial|chief operating|chief technology|"
                         r"ceo|cfo|coo|cto|director|president|vice president|chairman|company secretary)\b", re.I)
@@ -428,6 +466,47 @@ _UNIT_WORD = {
     "usd": r"[$]|\b(?:usd|dollars?|million|billion|mn|bn)\b",
     "count": r"\b(?:million|mn|mm|crore|cr|lakh|units?|nos?|count)\b",
 }
+
+# A cumulative / year-to-date phrase in the number's own sentence contradicts a quarter row (round 8).
+_CUMULATIVE = re.compile(
+    r"\b(?:up[- ]to[- ]date|up[- ]to[- ]now|till\s+date|to\s+date|so\s+far|cumulative(?:ly)?|"
+    r"since\s+(?:april|january|the\s+start|the\s+beginning|the\s+year\s+began)|"
+    r"year[\s-]to[\s-]date|fytd|financial\s+year\s+to[\s-]date)\b", re.I)
+
+# The sign a net-debt figure is printed with: "net cash" is the opposite of a positive net debt, and a negative
+# net debt is right only when the quote prints the minus or a bracket (round 8).
+_SIGN_WORD = re.compile(r"\b(?:net\s*cash(?:\s*positive)?|cash\s*surplus|net\s*(?:negative\s*)?debt|gross\s*debt|"
+                        r"borrowings?)\b", re.I)
+_CASH_POS = re.compile(r"\b(?:net\s*cash|net\s*cash\s*positive|cash\s*surplus)\b", re.I)
+
+# A page-level scale declaration ("All amounts are in million of Indian Rupees", "(Rs. in Mn)", "(₹ Million)",
+# "(in Crores)", "Rs. lakh"): the nearest one above the number sets the page's scale (round 8).
+_PAGE_UNIT = re.compile(
+    r"(?:all\s+)?(?:amounts?|figures?|numbers?|values?)\s+(?:are\s+)?(?:stated\s+)?in\s+"
+    r"(?:rs\.?|inr|₹|`)?\s*(million|mn|billion|bn|crores?|cr|lakhs?|lacs?|thousand)\b"
+    r"|(?:rs\.?|inr|₹|`)\s*\.?\s*in\s+(million|mn|billion|bn|crores?|cr|lakhs?|lacs?|thousand)\b"
+    r"|\(\s*(?:in\s+)?(?:rs\.?|inr|₹|`)?\s*(?:in\s+)?(million|mn|billion|bn|crores?|cr|lakhs?|lacs?|thousand)\s*\)"
+    r"|(?:rs\.?|inr|₹|`)\s*\.?\s*(million|mn|billion|bn|crores?|cr|lakhs?|lacs?|thousand)\b"
+    r"|\bin\s+(million|mn|billion|bn|crores?|cr|lakhs?|lacs?|thousand)\s+(?:of\s+)?"
+    r"(?:indian\s+rupees?|inr|rupees?)\b", re.I)
+_MAGNITUDE_WORD = re.compile(r"\b(?:million|mn|billion|bn|crores?|cr|lakhs?|lacs?|thousand)\b", re.I)
+_MAGNITUDE = {"million": "mn", "mn": "mn", "billion": "bn", "bn": "bn", "crore": "cr", "crores": "cr",
+              "cr": "cr", "lakh": "lakh", "lakhs": "lakh", "lac": "lakh", "lacs": "lakh", "thousand": "thousand"}
+
+
+def unit_family(text: str) -> str:
+    """inr / usd / '' for a unit declaration or unit string.  A page that declares rupees says nothing about a
+    row printed in dollars on the same page (a US-GAAP table under an Indian header), so only a declaration of
+    the row's own currency can prove a scale error."""
+    if re.search(r"[₹`]|\brs\.?\b|\binr\b|\brupees?\b|\bcrores?\b|\blakhs?\b|\blacs?\b", text or "", re.I):
+        return "inr"
+    if re.search(r"[$]|\busd\b|\bdollars?\b", text or "", re.I):
+        return "usd"
+    return ""
+
+# The sentence right after the number asks a question: an analyst's follow-up, not the company's figure.
+_QUESTION_NEXT = re.compile(r"\?|\b(?:trying to understand|could you|can you|would you|please explain|"
+                            r"my question|just wanted to|how do you|how would you)\b", re.I)
 
 
 def _as_year(raw: str) -> int | None:
@@ -539,6 +618,7 @@ class Checker:
         self.vocab = vocab or load_vocab()
         self.sectors = sectors
         self._page: dict[tuple[str, int], str | None] = {}
+        self._page_fold: dict[tuple[str, int], str] = {}
         self.doc_type = {r["doc_key"]: (r["doc_type"] or "") for r in self.con.execute("SELECT doc_key, doc_type FROM doc")}
         self.company_words = {(r["symbol"] or "").upper(): {w.lower() for w in re.findall(r"[A-Za-z]{3,}", r["name"] or "")}
                               for r in self.con.execute("SELECT symbol, name FROM company")}
@@ -553,9 +633,15 @@ class Checker:
             self._page[key] = r[0] if r and r[0] else None
         return self._page[key]
 
+    def page_fold(self, doc_key: str, page: int) -> str:
+        key = (doc_key, page)
+        if key not in self._page_fold:
+            self._page_fold[key] = fold(self.page_text(doc_key, page) or "")
+        return self._page_fold[key]
+
     def context_before(self, doc_key: str, page: int, quote: str, n: int = 500) -> str:
         """Folded page text just before the quote (the question asked, the previous sentence), '' if not found."""
-        text = fold(self.page_text(doc_key, page) or "")
+        text = self.page_fold(doc_key, page)
         q = fold(quote)
         for cut in (q[:40], q[:25], q[-25:]):
             if cut and (i := text.find(cut)) >= 0:
@@ -603,14 +689,17 @@ class Checker:
             # the clause around the number names ANOTHER metric and never this one: the number is that metric's
             # ("Return on assets is estimated at 4.4%-4.6%" stored as credit cost).  A word that is also one of
             # this metric's weak labels is not foreign: "Domestic sales were at 538,994" is a volume, though
-            # "sales" is a strong revenue label too.
+            # "sales" is a strong revenue label too.  A label AFTER a weakly-present number belongs to the next
+            # figure, not this one ("leverage ratio at 3.5x and liquidity of $2.9 billion").
+            weak_present = any(p.search(text) for p in m.weak)
             lo_w, hi_w = max(0, pos - 160), pos + 60
             masked_w = _DENOM.sub(lambda mm: " " * len(mm.group(0)), text)
             for other in self.vocab.metrics.values():
                 if other.name == m.name or other.name in m.related or m.name in other.related:
                     continue
                 hit = next((mm for p in other.labels for mm in p.finditer(masked_w)
-                            if lo_w <= mm.start() < hi_w and not any(w.search(mm.group(0)) for w in m.weak)), None)
+                            if lo_w <= mm.start() < hi_w and not (weak_present and mm.start() > pos)
+                            and not any(w.search(mm.group(0)) for w in m.weak)), None)
                 if hit:
                     v.fail("label_foreign", f"the number's clause names {other.name} ('{hit.group(0)}'), never {m.name}")
                     return
@@ -647,6 +736,14 @@ class Checker:
                         continue
                     if any(a - 2 <= c <= b + 2 for a, b in own_spans):
                         continue
+                    qual = _VARIANT.search(text[min(lo, hi):max(lo, hi)])
+                    if qual:
+                        # "EBITDA pre Ind AS & excl. other income": the foreign label sits inside a qualifier
+                        # phrase, which makes the row a variant (soft), not a different metric (hard)
+                        if not any(c == "variant" for c, _ in v.fails):
+                            v.fail("variant", f"a qualifier phrase '{qual.group(0).strip()}' sits between the "
+                                              f"{m.name} label and the number")
+                        return
                     if self.list_order_ok(m, masked, pos):
                         return
                     v.fail("label_conflict", f"label '{mm.group(0)}' of {other.name} sits between the {m.name} label and the number")
@@ -766,15 +863,86 @@ class Checker:
         plain, comparative = period_tokens(text[lo:hi], pos - lo)
         if plain and not period_matches(plain, key) and not period_matches(comparative, key):
             v.fail("period_word", f"the number's sentence names {'/'.join(sorted(plain))}, row is {fiscal_period}")
+        elif key.startswith("q") and "ytd" not in plain and "ytd" not in comparative:
+            hit = _CUMULATIVE.search(text[lo:min(hi, pos + 40)])
+            if hit:
+                v.fail("period_word", f"the number's sentence is cumulative ('{hit.group(0).strip()}'), "
+                                      f"row is {fiscal_period}")
+
+    def check_net_cash_sign(self, v: Verdict, m: Metric | None, text: str, pos: int | None,
+                            value: float | None) -> None:
+        """A net_debt row's sign: "net cash" printed with a positive value, or "net debt" printed with a negative
+        value the quote does not show as a minus / bracket, is the opposite of the words printed."""
+        if m is None or m.name != "net_debt" or pos is None or not value:
+            return
+        lo, _ = sentence_bounds(text, pos)
+        hits = list(_SIGN_WORD.finditer(text[lo:pos]))
+        if not hits:
+            return
+        last = hits[-1]
+        if value > 0 and _CASH_POS.search(last.group(0)):
+            v.fail("net_cash_sign", f"the quote says '{last.group(0).strip()}' but the value is stored +{value:g}")
+        elif value < 0 and not _CASH_POS.search(last.group(0)):
+            printed = (pos < len(text) and text[pos] == "-") or (pos > 0 and text[pos - 1] in "(-") \
+                or bool(re.search(r"\b(?:minus|negative)\b[^.;]{0,15}$", text[max(0, pos - 30):pos]))
+            if not printed:
+                v.fail("net_cash_sign", f"the quote says '{last.group(0).strip()}' but the value is stored "
+                                        f"{value:g} without a printed minus or bracket")
+
+    def check_page_unit(self, v: Verdict, text: str, pos: int | None, doc_key: str, page: int, quote: str,
+                        unit: str) -> None:
+        """The page declares one scale above the table ("All amounts are in million of Indian Rupees",
+        "(Rs. in Mn)", "(in Crores)"); a row whose unit names another scale is a rescale error, unless the quote
+        prints its own scale word at the number."""
+        m_u = re.fullmatch(r"(?:inr|usd)_(mn|cr|bn|lakh|thousand)", (unit or "").lower())
+        if pos is None or not m_u:
+            return
+        if _MAGNITUDE_WORD.search(text[max(0, pos - 60):pos + 40]):
+            return
+        decl = None
+        for mm in _PAGE_UNIT.finditer(self.context_before(doc_key, page, quote, 3000)):
+            decl = mm
+        if decl is None:
+            return
+        raw = next((g for g in decl.groups() if g), "")
+        declared = _MAGNITUDE.get(raw.lower().rstrip("s"), "")
+        declared_family = unit_family(decl.group(0))
+        row_family = "usd" if (unit or "").lower().startswith("usd") else "inr"
+        if declared_family and declared_family != row_family:
+            return
+        if declared and declared != m_u.group(1):
+            v.fail("page_unit", f"the page declares '{decl.group(0).strip()}' but the row unit is {unit}")
+
+    def check_question_next(self, v: Verdict, text: str, pos: int | None) -> None:
+        """The speaker could not be found; a question in the sentence right after the number means the figure is
+        at most unverified, never a quarantine."""
+        if pos is None:
+            return
+        _, hi = sentence_bounds(text, pos)
+        if hi >= len(text) - 1:
+            return
+        _, hi2 = sentence_bounds(text, hi + 1)
+        hit = _QUESTION_NEXT.search(text[hi + 1:hi2])
+        if hit:
+            v.fail("question_next", f"the sentence after the number asks ('{hit.group(0).strip()}')")
 
     def check_variant(self, v: Verdict, m: Metric | None, text: str, pos: int | None) -> None:
-        """A pat / ebitda / revenue figure labelled adjusted, before exceptional / one-time, excluding, or per
-        (share / tonne / franchise) is not the plain line unless the metric itself says so."""
-        if m is None or pos is None or m.name not in ("revenue", "pat", "ebitda"):
+        """A pat / ebitda / revenue / net-debt figure, or a margin / ratio, labelled adjusted, before exceptional /
+        one-time, excluding, excl., ex-, pre/post Ind AS, of which, or per (share / tonne / franchise) is not the
+        plain line unless the metric itself says so."""
+        if m is None or pos is None:
             return
-        if re.search(r"adjusted|_per_", (v.metric or "").lower()):
+        if re.search(r"adjusted|_per_|excl|pre[_ -]?ind|post[_ -]?ind", (v.metric or "").lower()):
             return
-        hit = _VARIANT.search(text[max(0, pos - 90):pos + 30])
+        if not (m.name in ("revenue", "pat", "ebitda", "net_debt")
+                or m.kind in ("level_pct", "bps_or_pct", "multiple", "per_unit")):
+            return
+        if any(c == "variant" for c, _ in v.fails):
+            return
+        window = text[max(0, pos - 90):pos + 30]
+        hit = _VARIANT.search(window)
+        if hit is None and m.name in ("revenue", "pat", "ebitda", "net_debt"):
+            hit = _VARIANT_PER.search(window)
         if hit:
             v.fail("variant", f"the label says '{hit.group(0)}', not the plain {m.name}")
 
@@ -1027,8 +1195,10 @@ class Checker:
         ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
         self.check_label(v, m, text, pos, ctx)
         self.check_currency(v, m, text, pos, r["unit"] or "")
+        self.check_net_cash_sign(v, m, text, pos, value)
+        self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "")
         self.check_company_speaker(v, text, pos, r["doc_key"], r["page"], quote)
-        self.check_speaker_turn(v, r["doc_key"], r["page"], quote)
+        self.check_speaker_turn(v, r["doc_key"], r["page"], quote, text, pos)
         self.check_range(v, text, pos)
         self.check_unit_kind(v, m, text, pos, r["unit"] or "")
         if r["dimension"] == "total":
@@ -1098,36 +1268,43 @@ class Checker:
         return self._mgmt[doc_key]
 
     def speaker_turn(self, doc_key: str, page: int, quote: str) -> tuple[str, str] | None:
-        """(speaker name, text of the turn before it) for the speaker turn that contains the quote."""
+        """(speaker name, text of the turn before it) for the speaker turn that contains the quote.  A turn that
+        starts on the previous page is read from that page's tail (the Tejas analyst question of round 8)."""
         raw = self.page_text(doc_key, page) or ""
         words = quote.split()[:8]
         if not words:
             return None
-        found = re.search(r"\s+".join(map(re.escape, words)), raw)
-        if found is None:
+        pre = (self.page_text(doc_key, page - 1) or "")[-2000:] if page > 1 else ""
+        whole = pre + "\n" + raw if pre else raw
+        found = re.search(r"\s+".join(map(re.escape, words)), whole)
+        if found is None or found.start() < len(pre):
             return None
         last = None
-        for mm in _SPEAKER_LINE.finditer(raw, 0, found.start()):
-            last = mm
+        for mm in _SPEAKER_LINE.finditer(whole, 0, found.start()):
+            if plausible_speaker(mm.group(1)):
+                last = mm
         if last is None:
             return None
         prev = None
-        for mm in _SPEAKER_LINE.finditer(raw, 0, last.start()):
-            prev = mm
-        before = raw[prev.end():last.start()] if prev else raw[:last.start()]
+        for mm in _SPEAKER_LINE.finditer(whole, 0, last.start()):
+            if plausible_speaker(mm.group(1)):
+                prev = mm
+        before = whole[prev.end():last.start()] if prev else whole[:last.start()]
         return last.group(1).strip(), before.rstrip()
 
-    def check_speaker_turn(self, v: Verdict, doc_key: str, page: int, quote: str) -> None:
+    def check_speaker_turn(self, v: Verdict, doc_key: str, page: int, quote: str, text: str,
+                           pos: int | None) -> None:
         """The quote's speaker turn is the company's only when the speaker is in the document's management list
-        or answers the question just before; any other named turn is an analyst.  Transcripts only, and only when
-        the participant list is readable."""
+        or answers the question just before; any other named turn is an analyst.  Transcripts only.  When the
+        speaker cannot be found, a question right after the number is soft question_next."""
         if self.doc_type.get(doc_key) != "transcript":
-            return
-        mgmt = self.management_text(doc_key)
-        if not mgmt:
             return
         turn = self.speaker_turn(doc_key, page, quote)
         if turn is None:
+            self.check_question_next(v, text, pos)
+            return
+        mgmt = self.management_text(doc_key)
+        if not mgmt:
             return
         name, before = turn
         low = name.lower()
@@ -1308,6 +1485,7 @@ class Checker:
             self.check_label(v, m, text, pos, context)
             self.check_nearer_label(v, m, text, pos)
             self.check_currency(v, m, text, pos, r["unit"] or "")
+            self.check_net_cash_sign(v, m, text, pos, lo if lo is not None else hi)
             if pos is not None:
                 window = text[max(0, pos - 90): pos + 60]
                 hit = next((p.pattern for p in self.vocab.third_party if p.search(window)), None)
@@ -1354,13 +1532,13 @@ class Checker:
             marks = ",".join("?" * len(lines))
             try:
                 for r in self.con.execute(f"SELECT symbol, fiscal_period, value, scale FROM fin_quarter_current WHERE line_item IN ({marks})", lines):
-                    if r["value"] is not None:
+                    if r["value"] is not None and r["value"] > 0:
                         got[(r["symbol"], r["fiscal_period"], canon)].append(r["value"] * (r["scale"] or 1))
             except sqlite3.OperationalError:
                 pass
             try:
                 for r in self.con.execute(f"SELECT symbol, fiscal_year, value, scale FROM fin_annual_line WHERE line_item IN ({marks})", lines):
-                    if r["value"] is not None:
+                    if r["value"] is not None and r["value"] > 0:
                         got[(r["symbol"], r["fiscal_year"], canon)].append(r["value"] * (r["scale"] or 1))
             except sqlite3.OperationalError:
                 pass
@@ -1369,6 +1547,11 @@ class Checker:
     def check_kpi(self) -> list[Verdict]:
         rows = self.con.execute("SELECT * FROM kpi_series").fetchall()
         fin = self._fin_values()
+        # two rows for the same key from the SAME document must agree (a doc that prints one figure twice)
+        same_doc: dict[tuple, list[int]] = defaultdict(list)
+        for r in rows:
+            same_doc[(r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["basis"],
+                      r["doc_key"])].append(r["id"])
         # USD revenue has no filed rupee line to compare with: the company's own revenue rows for the period are
         # the yardstick (a product line / subsidiary sits far below their median)
         usd_rev: dict[tuple[str, str], list[tuple[int, float]]] = defaultdict(list)
@@ -1376,7 +1559,7 @@ class Checker:
             c = self.vocab.canon(r["metric"])
             if c and c.name == "revenue" and (r["unit"] or "").lower().startswith("usd") \
                     and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"] \
-                    and r["value"] is not None:
+                    and r["value"] is not None and r["value"] > 0:
                 usd_rev[(r["symbol"], r["fiscal_period"])].append((r["id"], r["value"] * (r["scale"] or 1)))
         # cross-document groups: same company, metric, scope and period, rupee-or-unit value; `single` says the
         # quote prints at most one value of the unit after the label (only such a quote can corroborate a column)
@@ -1441,7 +1624,7 @@ class Checker:
             if r["extractor_rule"] == "xbrl_segment":
                 # a structured filing: no quote; the segment value is the tagged figure
                 v.corroborated = True
-                out.append(self.finish(v))
+                out.append(v)
                 continue
             quote = r["quote"] or ""
             text = fold(quote)
@@ -1464,8 +1647,10 @@ class Checker:
             ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
             self.check_label(v, m, text, pos, ctx)
             self.check_currency(v, m, text, pos, r["unit"] or "")
+            self.check_net_cash_sign(v, m, text, pos, value)
+            self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "")
             self.check_company_speaker(v, text, pos, r["doc_key"], r["page"], quote)
-            self.check_speaker_turn(v, r["doc_key"], r["page"], quote)
+            self.check_speaker_turn(v, r["doc_key"], r["page"], quote, text, pos)
             self.check_range(v, text, pos)
             self.check_unit_kind(v, m, text, pos, r["unit"] or "")
             if r["dimension"] == "total":
@@ -1490,8 +1675,38 @@ class Checker:
             # decided last: a history / scale-doubt row is only pinnable by a filed figure
             if same and not v.filed_only:
                 v.corroborated = True
-            out.append(self.finish(v))
-        return out
+            out.append(v)
+        self.mark_same_doc_conflicts(out, by_id, same_doc, fin)
+        return [self.finish(v) for v in out]
+
+    def mark_same_doc_conflicts(self, out: list[Verdict], by_id: dict[int, sqlite3.Row],
+                                groups: dict[tuple, list[int]], fin: dict) -> None:
+        """Two rows of the same company / metric / scope / period from the SAME document that disagree by more
+        than 1.5% after scale are both soft same_doc_conflict, unless one is a variant of the line or the filed
+        statement pins one of the two figures (the filed statement arbitrates the document's own disagreement)."""
+        got = {v.row_id: v for v in out}
+        for ids in groups.values():
+            ids = [i for i in ids if i in got]
+            for a in range(len(ids)):
+                for b in range(a + 1, len(ids)):
+                    ra, rb = by_id.get(ids[a]), by_id.get(ids[b])
+                    if ra is None or rb is None:
+                        continue
+                    amount_a = (ra["value"] or 0) * (ra["scale"] or 1)
+                    amount_b = (rb["value"] or 0) * (rb["scale"] or 1)
+                    if close(amount_a, amount_b, 0.015):
+                        continue
+                    va, vb = got[ids[a]], got[ids[b]]
+                    if any(c == "variant" for c, _ in (*va.fails, *vb.fails)):
+                        continue
+                    canon = self.vocab.canon(ra["metric"])
+                    filed = fin.get((ra["symbol"], ra["fiscal_period"], canon.name if canon else ""), ())
+                    if any(close(amount_a, f, 0.01) or close(amount_b, f, 0.01) for f in filed):
+                        continue
+                    why = f"one document prints {amount_a:.6g} and {amount_b:.6g} for the same key"
+                    for v in (va, vb):
+                        if not any(c == "same_doc_conflict" for c, _ in v.fails):
+                            v.fail("same_doc_conflict", why)
 
 
 # ------------------------------------------------------------------------------------------------ output
