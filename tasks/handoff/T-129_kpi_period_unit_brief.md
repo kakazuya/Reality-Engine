@@ -2,7 +2,7 @@ Goal: Three store and checker fixes from the 8 Nov re-ask of the 136 pilot parti
 
 Files (only these): `reality_engine/pilot3/kpi.py`, `reality_engine/pilot3/number_check.py`, `reality_engine/tests/test_pilot3_kpi.py`, `reality_engine/tests/test_pilot3_number_check.py`, `docs/PILOT3_BLUEPRINT.md` (one short section 9j: the three rules and measured row changes). Do NOT edit `reality_engine/pilot3/row_checks.py` (the checker is independent; you only report its verdicts).
 
-(A) Evidence, kpi_series in `D:/RealityEngine/pilot10/pilot10.db` (read-only; work on a copy in .tmp):
+Evidence: (A) kpi_series in `D:/RealityEngine/pilot10/pilot10.db` (read-only; work on a copy in .tmp):
 - id 50707 SBILIFE ape 117.5 stored FY27, rule `sentence_default_v1`, Q2 FY27 call filed 2026-11-03: the call speaks of H1 FY27 ("corresponding period last year"); right period H1FY27.
 - id 50378 / 50379 ape 185.2 / 168.8 stored FY26 from the Q3 FY26 call (filed 2026-02-03); the page says "During the period ended December 31st, 2025"; right period 9MFY26.
 - id 50377 vnb 50.4 stored FY26, same call, sentence "VONB Margin stands at 27.2% for the period ended 31st December 2025"; right 9MFY26.
