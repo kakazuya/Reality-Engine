@@ -96,9 +96,11 @@ def index(listing_dir: Path, manifest: Path, dry_run: bool = False) -> dict:
             files.append((drive, item.get("Size"), hashes.get("md5"), hashes.get("sha256"), item.get("ID"),
                           item.get("ModTime"), *(mapped or (None, None)), now))
             stats["listed"] += 1
-            if drive in known:
-                continue
-            stats["unlisted"] += 1
+            # A listed Drive file may be listed under ANOTHER local path (T-102 matched any Drive copy by md5, so
+            # pdfs/X/T/f.pdf can be the Drive copy of raw/concall_pdfs/<sha>.pdf): its own (root, rel) still needs
+            # a row, or a reader asking for D:/RealityEngine/pdfs/X/T/f.pdf never finds it.
+            if drive not in known:
+                stats["unlisted"] += 1
             if mapped is None:
                 stats["unmapped"] += 1
                 continue
