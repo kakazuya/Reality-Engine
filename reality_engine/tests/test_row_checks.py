@@ -1041,3 +1041,258 @@ def test_scale_doubt_below_ten_and_the_filed_exemption(tmp_path):
     # the same doubt is cleared by a matching filed figure
     status, fails = verdict(out, "kpi_series", 3)
     assert status == "verified" and "scale_doubt" in fails, fails
+
+
+# -------------------------------------- round 8: sign, cumulative words, same-doc conflicts, page unit
+
+def test_net_cash_sign_both_ways(tmp_path):
+    pages = {
+        1: "We strengthened our balance sheet with strong net cash position of ₹ 19 bn.",
+        2: "Net debt of ₹ 1,200 crore in Q3 FY24.",
+        3: "Our net cash of INR 200 crore.",
+        4: "Net debt of ₹ 500 crore.",
+        5: "Net debt of (500) crore.",
+        6: "Net debt of minus INR 500 crore.",
+    }
+    kpi = [
+        dict(id=1, symbol="ALKEM", metric="net_debt", fiscal_period="9MFY23", period_type="9M", value=19.0,
+             unit="inr_bn", scale=1e9, quote=pages[1], page=1, known_at="2023-02-10T00:00:00"),
+        dict(id=2, symbol="ALKEM", metric="net_debt", fiscal_period="Q3FY24", value=1200.0, unit="inr_cr",
+             scale=1e7, quote=pages[2], page=2, known_at="2024-02-01T00:00:00"),
+        dict(id=3, symbol="ALKEM", metric="net_debt", fiscal_period="Q3FY24", value=-200.0, unit="inr_cr",
+             scale=1e7, quote=pages[3], page=3, known_at="2024-02-01T00:00:00"),
+        dict(id=4, symbol="ALKEM", metric="net_debt", fiscal_period="Q3FY24", value=-500.0, unit="inr_cr",
+             scale=1e7, quote=pages[4], page=4, known_at="2024-02-01T00:00:00"),
+        dict(id=5, symbol="ALKEM", metric="net_debt", fiscal_period="Q3FY24", value=-500.0, unit="inr_cr",
+             scale=1e7, quote=pages[5], page=5, known_at="2024-02-01T00:00:00"),
+        dict(id=6, symbol="ALKEM", metric="net_debt", fiscal_period="Q3FY24", value=-500.0, unit="inr_cr",
+             scale=1e7, quote=pages[6], page=6, known_at="2024-02-01T00:00:00"),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"ALKEM": "pharma"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "net_cash_sign" in fails, fails
+    # net debt stored positive, and net cash stored negative, are the right signs
+    assert "net_cash_sign" not in verdict(out, "kpi_series", 2)[1]
+    assert "net_cash_sign" not in verdict(out, "kpi_series", 3)[1]
+    # a negative net debt is wrong unless the quote prints the minus / bracket / the word minus
+    status, fails = verdict(out, "kpi_series", 4)
+    assert status == "quarantined" and "net_cash_sign" in fails, fails
+    assert "net_cash_sign" not in verdict(out, "kpi_series", 5)[1]
+    assert "net_cash_sign" not in verdict(out, "kpi_series", 6)[1]
+
+
+def test_period_word_cumulative_phrases_conflict_with_a_quarter(tmp_path):
+    pages = {
+        1: ("capex for up-to-date was around INR79 crores and maybe the pending capex would be approximately "
+            "INR15-odd crores for March '24"),
+        2: "capex for the quarter was INR 79 crores.",
+        3: "Cumulative revenue was 500 crore.",
+    }
+    kpi = [
+        dict(id=1, symbol="ASHOKA", metric="capex", fiscal_period="Q2FY24", value=79.0, unit="inr_cr",
+             scale=1e7, quote=pages[1], page=1, known_at="2023-11-13T00:00:00"),
+        dict(id=2, symbol="ASHOKA", metric="capex", fiscal_period="Q2FY24", value=79.0, unit="inr_cr",
+             scale=1e7, quote=pages[2], page=2, known_at="2023-11-13T00:00:00"),
+        dict(id=3, symbol="ASHOKA", metric="revenue", fiscal_period="Q2FY24", value=500.0, unit="inr_cr",
+             scale=1e7, quote=pages[3], page=3, known_at="2023-11-13T00:00:00"),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"ASHOKA": "epc_capital_goods"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "period_word" in fails, fails
+    assert "period_word" not in verdict(out, "kpi_series", 2)[1]
+    status, fails = verdict(out, "kpi_series", 3)
+    assert status == "quarantined" and "period_word" in fails, fails
+
+
+def test_analyst_question_starting_on_the_previous_page(tmp_path):
+    page1 = ("Management:\nMr. Anand Athreya - Chief Executive Officer\n"
+             "Mr. Sumit Dhingra - Chief Financial Officer\n"
+             "Sangam Iyer: Sorry to harp on the working capital again. Just want to understand that first.\n")
+    page2 = ("our cash -- net cash balance has also come down to INR200-odd crores. So that's why I was "
+             "just trying to understand how to look at the incremental cash flow\n"
+             "Sumit Dhingra: It is related to the revenue that got shipped during the quarter.\n")
+    kpi = [dict(id=1, symbol="TEJAS", metric="net_debt", fiscal_period="Q3FY24", value=-200.0, unit="inr_cr",
+                scale=1e7, page=2, known_at="2024-01-25T00:00:00",
+                quote="net cash balance has also come down to INR200-odd crores. So that's why I was just "
+                      "trying to understand how")]
+    db, profile = build(tmp_path, {1: page1, 2: page2}, kpi=kpi, sectors={"TEJAS": "telecom"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "not_company_speaker" in fails, fails
+    assert "net_cash_sign" not in fails, fails
+
+
+def test_a_prose_line_is_not_a_speaker_label(tmp_path):
+    assert rc.plausible_speaker("Sangam Iyer")
+    assert rc.plausible_speaker("Moderator")
+    assert not rc.plausible_speaker("Coming to the order book status")
+    assert not rc.plausible_speaker("Some of the key highlights include")
+    assert not rc.plausible_speaker("FIVE")
+    # the previous page carries a prose line after the real speaker: the turn is still the company's
+    page1 = ("Management:\nMr. Anand Athreya - Chief Executive Officer\n"
+             "Anand Athreya: Good morning. Our commentary follows.\n"
+             "Coming to the order book status - the order book is set out below.\n")
+    page2 = "order book as on 31st March 2023 is INR 15,805 crores."
+    kpi = [dict(id=1, symbol="ASHOKA", metric="order_book", fiscal_period="FY23", period_type="FY",
+                value=15805.0, unit="inr_cr", scale=1e7, quote=page2, page=2)]
+    db, profile = build(tmp_path, {1: page1, 2: page2}, kpi=kpi, sectors={"ASHOKA": "epc_capital_goods"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    assert "not_company_speaker" not in verdict(out, "kpi_series", 1)[1]
+
+
+def test_cumulative_words_after_the_number_do_not_count(tmp_path):
+    page = ("EBITDA per tonne $525 - Demand for aluminum products remains resilient - Over $225 million in "
+            "run-rate cost savings achieved to date under global efficiency program")
+    kpi = [dict(id=1, symbol="HINDALCO", metric="ebitda_per_tonne", fiscal_period="Q1FY27", value=525.0,
+                unit="usd_per_tonne", quote=page, page=1)]
+    db, profile = build(tmp_path, {1: page}, kpi=kpi, sectors={"HINDALCO": "metals_nonferrous"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    assert "period_word" not in verdict(out, "kpi_series", 1)[1]
+
+
+def test_question_next_is_soft_when_the_speaker_is_not_found(tmp_path):
+    pages = {
+        1: "Management:\nMr. Anand Athreya - Chief Executive Officer\n",
+        2: "Some unrelated preamble text without any speaker line.",
+        3: "Our order inflow was INR 5,000 crore. Could you tell us how that splits?",
+    }
+    kpi = [dict(id=1, symbol="EPC", metric="order_intake", fiscal_period="Q1FY26", value=5000.0,
+                unit="inr_cr", scale=1e7, page=3,
+                quote="Our order inflow was INR 5,000 crore. Could you tell us how that splits?")]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"EPC": "epc_capital_goods"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "question_next" in fails, fails
+
+
+def test_same_document_conflict_is_soft(tmp_path):
+    pages = {
+        1: "Revenue from operations 100", 2: "Revenue from operations 100.5",
+        3: "Revenue from operations 100", 4: "Revenue from operations 140",
+        5: "EBITDA 100", 6: "Adjusted EBITDA 140",
+    }
+    kpi = [
+        dict(id=1, symbol="A", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=100.0, unit="inr_cr", scale=1e7, quote=pages[1], page=1),
+        dict(id=2, symbol="A", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=100.5, unit="inr_cr", scale=1e7, quote=pages[2], page=2),
+        dict(id=3, symbol="B", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=100.0, unit="inr_cr", scale=1e7, quote=pages[3], page=3),
+        dict(id=4, symbol="B", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=140.0, unit="inr_cr", scale=1e7, quote=pages[4], page=4),
+        dict(id=5, symbol="C", metric="ebitda", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=100.0, unit="inr_cr", scale=1e7, quote=pages[5], page=5),
+        dict(id=6, symbol="C", metric="ebitda", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=140.0, unit="inr_cr", scale=1e7, quote=pages[6], page=6),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        sectors={"A": "it_services", "B": "it_services", "C": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (1, 2):
+        assert "same_doc_conflict" not in verdict(out, "kpi_series", rid)[1]
+    for rid in (3, 4):
+        status, fails = verdict(out, "kpi_series", rid)
+        assert status == "unverified" and "same_doc_conflict" in fails, (rid, fails)
+    # one row is a variant of the line: the pair is not a conflict
+    assert "variant" in verdict(out, "kpi_series", 6)[1]
+    assert "same_doc_conflict" not in verdict(out, "kpi_series", 5)[1]
+    assert "same_doc_conflict" not in verdict(out, "kpi_series", 6)[1]
+
+
+def test_a_zero_filed_figure_is_not_a_witness(tmp_path):
+    pages = {1: "Revenue from operations 500 crore in Q1 FY26"}
+    kpi = [dict(id=1, symbol="CO", metric="revenue", dimension="total", fiscal_period="Q1FY26", value=500.0,
+                unit="inr_cr", scale=1e7, quote=pages[1], page=1, known_at="2025-08-01T00:00:00")]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        fin_q=[dict(symbol="CO", fiscal_period="Q1FY26", line_item="revenue_from_operations",
+                                    value=0.0, scale=1e7)],
+                        sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "fin_conflict" not in fails and "uncorroborated" in fails, fails
+
+
+def test_page_unit_declaration_conflicts_with_the_row_unit(tmp_path):
+    pages = {
+        1: "All amounts are in million of Indian Rupees\nRevenue 500",
+        2: "(Rs. in Mn)\nRevenue 600",
+        3: "(in Crores)\nRevenue 700",
+        4: "All amounts are in crore\nRevenue 800",
+        5: "(Rs. in Mn)\nRevenue 900 crore",
+        6: "All amounts are in ₹ crore\nRevenues 19,277",
+    }
+    kpi = [
+        dict(id=1, symbol="A", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=500.0, unit="inr_cr", scale=1e7, quote="Revenue 500", page=1),
+        dict(id=2, symbol="B", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=600.0, unit="inr_mn", scale=1e6, quote="Revenue 600", page=2),
+        dict(id=3, symbol="C", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=700.0, unit="inr_mn", scale=1e6, quote="Revenue 700", page=3),
+        dict(id=4, symbol="D", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=800.0, unit="inr_cr", scale=1e7, quote="Revenue 800", page=4),
+        dict(id=5, symbol="E", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=900.0, unit="inr_cr", scale=1e7, quote="Revenue 900 crore", page=5),
+        # a rupee page declaration does not judge a dollar row printed on the same page
+        dict(id=6, symbol="F", metric="revenue_usd", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=19277.0, unit="usd_mn", scale=1e6, quote="Revenues 19,277", page=6),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        sectors={s: "it_services" for s in "ABCDEF"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "page_unit" in fails, fails
+    assert "page_unit" not in verdict(out, "kpi_series", 2)[1]
+    status, fails = verdict(out, "kpi_series", 3)
+    assert status == "quarantined" and "page_unit" in fails, fails
+    assert "page_unit" not in verdict(out, "kpi_series", 4)[1]
+    # the quote's own unit word wins over the page header
+    assert "page_unit" not in verdict(out, "kpi_series", 5)[1]
+    assert "page_unit" not in verdict(out, "kpi_series", 6)[1]
+
+
+def test_variant_words_extend_to_debt_and_margins(tmp_path):
+    pages = {
+        1: "Adjusted Net Debt 500",
+        2: "EBITDA margin excluding other income 20%",
+        3: "EBITDA pre Ind AS & excl. other income 100",
+        4: "Revenue as per contracted price 100",
+    }
+    kpi = [
+        dict(id=1, symbol="A", metric="net_debt", fiscal_period="FY26", period_type="FY", value=500.0,
+             unit="inr_cr", scale=1e7, quote=pages[1], page=1),
+        dict(id=2, symbol="B", metric="ebitda_margin_pct", fiscal_period="FY26", period_type="FY", value=20.0,
+             unit="pct", quote=pages[2], page=2),
+        dict(id=3, symbol="C", metric="ebitda", fiscal_period="FY26", period_type="FY", value=100.0,
+             unit="inr_cr", scale=1e7, quote=pages[3], page=3),
+        dict(id=4, symbol="D", metric="revenue", fiscal_period="FY26", period_type="FY", value=100.0,
+             unit="inr_cr", scale=1e7, quote=pages[4], page=4),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        sectors={"A": "it_services", "B": "it_services", "C": "it_services",
+                                 "D": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (1, 2, 3):
+        status, fails = verdict(out, "kpi_series", rid)
+        assert "variant" in fails and status != "quarantined", (rid, status, fails)
+    # the foreign label sits inside the qualifier phrase: variant, not a hard label_conflict
+    assert "label_conflict" not in verdict(out, "kpi_series", 3)[1]
+    # "as per" is not a per-unit variant
+    assert "variant" not in verdict(out, "kpi_series", 4)[1]
+
+
+def test_bare_leverage_is_not_a_debt_ratio_label(tmp_path):
+    pages = {1: "Operating leverage of 2.1x", 2: "Net debt to EBITDA of 2.1x"}
+    kpi = [
+        dict(id=1, symbol="A", metric="net_debt_to_ebitda", fiscal_period="FY26", period_type="FY", value=2.1,
+             unit="multiple", quote=pages[1], page=1),
+        dict(id=2, symbol="B", metric="net_debt_to_ebitda", fiscal_period="FY26", period_type="FY", value=2.1,
+             unit="multiple", quote=pages[2], page=2),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi,
+                        sectors={"A": "it_services", "B": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status != "verified" and "label_weak" in fails, (status, fails)
+    assert "label_weak" not in verdict(out, "kpi_series", 2)[1]

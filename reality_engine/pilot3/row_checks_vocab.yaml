@@ -283,7 +283,10 @@ metrics:
   net_debt_to_ebitda:
     related: [ebitda, net_debt, leverage, gov_margin]
     aliases: [net_debt_to_ebitda]
-    labels: ['net debt\s*(/|to)[^.;]{0,60}?ebitda', 'leverage( ratio)?']
+    # bare "leverage" / "operating leverage" / "financial leverage" is not this metric's label: a row needs a
+    # debt word (debt, borrowing) in its label, so the bare word is presence only (soft label_weak)
+    labels: ['net debt\s*(/|to)[^.;]{0,60}?ebitda']
+    weak: ['leverage']
     kind: multiple
   debt_to_equity:
     aliases: [debt_to_equity, net_debt_to_equity]

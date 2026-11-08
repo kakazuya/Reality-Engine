@@ -124,11 +124,21 @@ Change a rule only with a measurement that supports the change, and note it in `
   fits the company's sector family; plausible bounds; a reported figure's period had ended when it was known; a
   guidance row has a number, a forward word, no system / industry / GDP wording near the number, no realised figure
   ("we grew at 12%" -> `past_figure`), and a target period that had not ended when said; the filed statements agree
-  on revenue / PAT (`fin_conflict`). T-113 A added `part_not_total` (dimension `total` but the amount is under 15% of
+  on revenue / PAT (`fin_conflict`; a filed value of 0 or below is never a witness, so a period whose only filed
+  figures are 0 is "no filed figure", not a conflict); `net_cash_sign` (a `net_debt` row whose words say "net cash"
+  / "cash surplus" / "net cash positive" while the value is stored positive, or "net debt" while the value is stored
+  negative and the quote prints neither a minus, a bracket nor the word "minus": the sign is the opposite of the
+  words); `page_unit` (the nearest scale declaration above the number on the same page — "All amounts are in million
+  of Indian Rupees", "(Rs. in Mn)", "(₹ Million)", "(in Crores)", "Rs. lakh" — names a scale other than the row's
+  unit; the quote's own scale word at the number wins, and a declaration in another currency does not judge a row
+  printed in dollars on the same page). T-113 A added `part_not_total` (dimension `total` but the amount is under 15% of
   the filed figure of the same family: revenue against filed revenue, PAT against filed PAT, order against filed
   revenue, USD revenue against the median of the company's other USD revenue rows of the period), `period_word`
   (the number's sentence names 9M / nine months / YTD / H1 / half year / Q1-Q4 and the row's `fiscal_period` holds
-  another; a comparative phrase such as "over Q1 FY26" and table/chart quotes do not count), and `currency` (the
+  another; a comparative phrase such as "over Q1 FY26" and table/chart quotes do not count; round 8 adds a
+  cumulative phrase in the number's own clause before or just after it — "up-to-date", "till date", "to date",
+  "so far", "cumulative", "since April", "during the year so far" — as a conflict with a `Q` row, so a YTD capex
+  stored as one quarter is caught), and `currency` (the
   label-to-number span prints another currency than the row's unit: the nearest marker before the number decides,
   so "$ 6,724 $ 5,176" is USD and "Rs 2,050 crore ($ 246 million)" is INR at the rupee number; the corpus's
   backtick rupee glyph counts as INR), `target_frame` (guidance: the number's sentence frames it as medium/long term
@@ -138,7 +148,13 @@ Change a rule only with a measurement that supports the change, and note it in `
   years).
 - Soft: scaled value, several numbers in a table quote, disagreeing independent sources (`cross_doc`, another
   document AND another wording; a deck table copied into the next deck is one source), `variant` (a PAT / EBITDA /
-  revenue figure labelled adjusted / before exceptional / excluding / per ... unless the metric name says so),
+  revenue / net-debt figure, or a margin / ratio, labelled adjusted / before exceptional / excluding / excl. / ex- /
+  pre Ind AS / post Ind AS / of which / per ... unless the metric name says so; round 8 extends it beyond
+  revenue / PAT / EBITDA, and when a foreign metric's label sits inside such a qualifier phrase — "EBITDA pre Ind AS
+  & excl. other income" — that is a variant, not a hard `label_conflict`), `same_doc_conflict` (two rows of the same
+  company / metric / scope / period from the SAME document disagree by more than 1.5% after scale — a filed figure
+  that matches one of them arbitrates, and a variant row is exempt), `question_next` (the quote's speaker could not
+  be found and the sentence right after the number asks a question: at most unverified, never a quarantine),
   `entity_mismatch` (dimension and entity name two different non-symbol subsidiaries), `dimension_word` (a total row
   whose quote names a segment word from the company's own non-total dimensions or a capitalised noun phrase in the
   60 characters before its label: "Aluminium Business EBITDA", "Renewables ... Revenues"; a window that holds the
@@ -160,7 +176,8 @@ Change a rule only with a measurement that supports the change, and note it in `
   python -m reality_engine.pilot3.row_checks --db D:/RealityEngine/pilot10/pilot10.db --out <verdicts.db> \
       --profile tasks/night_loop/pilot10_profile.json --report .tmp/rc_report --sample 20 --seed 81108 --status verified
   ```
-  7.6 s for 6,149 rows on the v2 dev copy (`pilot10/scratch/t113_p10_v2.db`, read-only). `--report DIR` writes
+  7.6 s for 6,149 rows on the v2 dev copy (`pilot10/scratch/t113_p10_v2.db`, read-only; round 8: **11.1-11.3 s**,
+  still under the 15 s accept). `--report DIR` writes
   `row_checks_summary.csv` (status counts by metric x sector x document type x extractor rule) and the sample TSV
   (id, symbol, metric, dimension, period, value, unit, quote, fails) for the human read; `--tables guidance` runs a
   database without `kpi_series`.
@@ -253,7 +270,37 @@ Change a rule only with a measurement that supports the change, and note it in `
   45456 NBP 121.7 the same column on the same slide, 41354 KEC 5.2% is standalone against 7.0% consolidated, and
   44079 HINDALCO gross debt 63,330 is the Q1FY26 column of a four-value history. All six v2 and seven Gemini
   known-wrong rows stay quarantined.
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (44 passed, 8 Nov) builds a tiny fixture
+- Measured 8 Nov 2026, round 8 (four defects from the Opus read plus four hidden-hold-out additions), same two dev
+  dbs: unseen6 1,152 rows **kpi 124/734/118 -> 93/711/172**, guidance 8/110/58 -> **8/111/57**; pilot10 v2 6,149
+  rows **kpi 3,709/1,888/446 -> 3,534/2,072/437**, guidance 19/46/41 unchanged, in **11.1-11.3 s** (accept < 15 s).
+  Ticket rows: 24 ALKEM +19 bn net cash -> `net_cash_sign`, 985 ASHOKA "capex for up-to-date" Q2 -> `period_word`,
+  245 TEJASNET analyst -> `not_company_speaker`; all three quarantined (24 was verified, 985 and 245 too). The
+  speaker line for 245 is on page 9 and the quote starts on page 10, so `speaker_turn` now reads one page back;
+  when no speaker is found a question in the sentence after the number is soft `question_next` (0 hits on both dbs,
+  always caught as unverified rather than quarantined). The previous-page fallback exposed prose lines that look
+  like a speaker ("Coming to the order book status", "Some of the key highlights include"), so a speaker label must
+  be a person / role: this removed 4 false quarantines on unseen6 and 9 on v2 (e.g. Paresh Mehta's EBITDA margin
+  8.4%, INFY headcount 332,000), none of them an analyst. `net_cash_sign` fires twice on unseen6 (ALKEM net cash
+  +19 bn, rows 13 and 24) and zero times on v2: HINDALCO "net debt is minus INR6,000 crores" stored -6,000 is
+  right once the word "minus" counts as a printed sign. `page_unit`: 54 unseen6 quarantines (UFLEX / ASHOKA pages
+  declaring "(` in lakhs)" / "(rs. in lacs)" while the row says `inr_cr`; 10 read, all a wrong scale, e.g.
+  1,466,251 `inr_cr` where the page's lakh figure is 14,662 cr) and 6 v2 rows (BAJFINANCE PAT 19,332 crore stored
+  `inr_mn` on a "₹ in crore" page, all already quarantined); a declaration in another currency does not judge a
+  dollar row on the same page (INFY USD revenue rows stopped being false positives). `same_doc_conflict` is soft:
+  473 rows on unseen6 and 795 on v2; the pairs read are genuine same-document disagreements (ALKEM revenue
+  30,409.1 `inr_cr` vs 86,967 `inr_mn`, ALKEM EBITDA margin 14.4% vs 61.9%, KEC press release EBITDA 430 vs 308,
+  margins 7.1 / 6.2 / 7.0 / 5.6, HINDALCO EBITDA/t 1,467 vs 2,331); 28 unseen6 and 156 v2 verified rows became
+  unverified because of it, and a filed figure that matches one side arbitrates the pair. Variant words extended to
+  net debt and every margin / ratio: 7 kpi + 1 guidance rows on unseen6, 111 kpi + 1 guidance on v2; the 35 newly
+  failing v2 rows read are all genuine ("before one-time actions", "Adjusted return on average equity", "leverage
+  ratio (Adjusted Net Debt / TTM Adjusted EBITDA)"), "as per" is not a per-unit variant, and a foreign label inside
+  the qualifier phrase changes a hard `label_conflict` into the soft variant. A filed value of 0 or below is never
+  a witness: 627 non-positive `fin_annual_line` values on unseen6 and 463 on v2, but **0** quarantines removed on
+  either db (no kpi key's only filed figures were non-positive). Bare "leverage" is now a weak label of
+  `net_debt_to_ebitda`, not a strong one: v2 `label_weak` 49 -> 96 (the 48 new BAJFINANCE / HINDALCO "Leverage
+  ratio ..." rows serve unverified, and 5 "leverage ratio at 3.5x and liquidity ..." rows moved hard
+  `label_foreign` -> soft label_weak). `question_next` 0 hits on both dbs.
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (55 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
   gross margin as its own metric, the denominator keep rule, "improve by" as a delta, medium-term / CAGR /
@@ -263,7 +310,12 @@ Change a rule only with a measurement that supports the change, and note it in `
   `uncorroborated` and `unit_kind`, the nearer-foreign-label / past-tense guidance rules, two multi-column quotes
   failing to corroborate each other while a single-valued witness does, speaker turns by management list vs
   analyst name vs answering-a-question, the 1.5% disagreement rule, a witness failing its own hard check, a
-  history row that only a filed figure pins, and `scale_doubt` with its filed exemption);
+  history row that only a filed figure pins, `scale_doubt` with its filed exemption, `net_cash_sign` both signs and
+  the printed minus / bracket / "minus" controls, a cumulative capex stored as a quarter, a question starting on
+  the previous page, the soft `question_next` fallback, a prose line that is not a speaker, same-document evidence
+  both agreeing and disagreeing (a variant peer exempt), a zero filed figure as no witness, the page-unit
+  declarations and their currency and quote-unit exemptions, the extended variant words, "as per" not matching,
+  and bare leverage as a weak label);
   `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per
@@ -281,8 +333,9 @@ Change a rule only with a measurement that supports the change, and note it in `
   verdicts, because a rebuilt row has a new id and an old verdict would hide or label the wrong row: **re-run
   `--part checks` after any kpi or guidance rebuild**. A build without
   `row_check` serves exactly as it did. Measured on the dev copy `D:/RealityEngine/pilot10/scratch/t113_p10_serve.db`
-  (8 Nov): 7.3 s for the part and 6,149 verdicts — guidance 46 verified / 26 unverified / 34 quarantined,
-  kpi 4,249 / 1,422 / 372;
+  at round 2, 8 Nov: 7.3 s for the part and 6,149 verdicts — guidance 46 verified / 26 unverified / 34 quarantined,
+  kpi 4,249 / 1,422 / 372 (the round-8 checker itself takes 11.1-11.3 s on v2; re-measure the part before quoting
+  its time again);
   `kpi('BAJFINANCE','nnpa_pct','FY25')` fell from 8 rows (the 1.18 gross-NPA row among them) to 4,
   `guidance('HDFCBANK')` 3 -> 1 and `guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py`
   (7 passed); `python -m unittest plugins/reality-data/tests/test_lookups_pilot3.py` (24 passed, no verdict table).
