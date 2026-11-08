@@ -670,6 +670,29 @@ def pilot3_calc(expression: str, inputs: dict[str, Any] | None = None) -> dict[s
     return _safe(lambda: _calc.evaluate(expression, inputs))
 
 
+# --- named calc catalog (T-135): the standard investor formulas, run by code, refusing mismatched periods ---
+import calc_catalog as _catalog  # noqa: E402
+
+
+@server.tool(
+    name="pilot3_calc_catalog",
+    description=(
+        "Named investor formulas, run by code: call this instead of building the formula yourself. name=list "
+        "prints every id with its inputs. Ids: GROWTH, TTM_SUM, TTM_GROWTH (refuses a TTM against a fiscal year it "
+        "overlaps), Q_FROM_CUMULATIVE (FY-9M=Q4, 9M-H1=Q3, H1-Q1=Q2), SHARE, CONTRIBUTION_TO_INCREASE, "
+        "CASH_CONVERSION (OCF/PAT and OCF/EBITDA), INCREMENTAL_ROCE, RANGE_POSITION, FAIR_PB, IMPLIED_ROE, "
+        "IMPLIED_GROWTH_PE, ANNUALISE (always labelled annualised), SAME_SPAN_GROWTH (refuses a six-month balance "
+        "change against year-on-year revenue), PROFIT_BRIDGE_MARGIN (EBITDA margin needed for a PAT target, after "
+        "tax, depreciation and finance cost). inputs: {name: value with unit}, e.g. {\"now\": \"22,067 crore\", "
+        "\"before\": \"19,332 crore\"}. Price maths (RSI, gaps, volume spikes, range, moving averages) is "
+        "pilot3_tech."
+    ),
+    annotations=_RO,
+)
+def pilot3_calc_catalog(name: str, inputs: dict[str, Any] | None = None) -> dict[str, Any]:
+    return _safe(lambda: _catalog.run({"name": name, "inputs": inputs or {}}))
+
+
 # --- project context (T-125: rulings and live state are served on demand, not pasted into prompts) ---
 def _project() -> Any:
     from reality_engine.scripts import project_context

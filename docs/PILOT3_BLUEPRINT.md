@@ -1066,3 +1066,53 @@ plugins/reality-data/tests/test_lookups_pilot3.py -q` 24 passed, 1 skipped; `pyt
 reality_engine.scripts.p3ask --db D:/RealityEngine/pilot10/pilot10.db tech symbol=ETERNAL kind=reaction
 as_of=2026-11-04` prints the JSON. No data rebuild: the tool reads existing tables, so a running reality-data
 MCP serves it after a restart.
+
+### 9k. Calc catalog: named formulas computed by code (T-135, 9 Nov 2026)
+
+The 8-9 Nov 72-question re-ask still lost compute marks although the figures were right: BAJFINANCE-005 wrote a TTM
+PAT growth of 14.12% (right 14.15%), KEC-081 set a TTM against the fiscal year it overlaps, MARUTI-023 put a
+six-month balance change beside a year-on-year flow, ETERNAL-020's operating cash flow came out ten times too large,
+HINDUNILVR-031 gave ROCE levels instead of the incremental ROCE, BAJFINANCE-123 called 41% up a range "upper half",
+HDFCBANK-120 did the Gordon fair P/B backwards, SBILIFE-081 did not derive Q3/Q4 from 9M and FY, SBILIFE-105 called
+an annualised 18.8% RoEV a half-year return and ETERNAL-113 added margin points to a PAT target ignoring tax and
+depreciation. `plugins/reality-data/server/calc_catalog.py` makes each one a named formula: the caller gives the
+inputs (strings like `"22,067 crore"` or `"14.5%"`, parsed and unit-checked by `calc.parse_input` / `Fraction`), and
+the reply is `formula_id`, `value`, `unit`, the `formula` text with the numbers substituted, the `inputs` echoed back
+as parsed, and `notes` — or `{"error", "formula_id"}`. It reads no database and re-implements no price maths (the
+Wilder RSI, gaps, SMA crosses, volume spikes and 52-week range stay in `lookups_tech`; `name=list` prints them as
+`see tech kind=...`).
+
+The ids (14 numbered entries; FAIR_PB and IMPLIED_ROE are two ids, so 15 callable names):
+
+- `GROWTH`: `now`, `before` -> `100*(now/before-1)`; refuses a zero or negative base.
+- `TTM_SUM`: `q1`..`q4` + `periods` -> sum; refuses labels that are not four consecutive quarters.
+- `TTM_GROWTH`: `ttm_now`, `ttm_year_ago`, optional labels -> percent; refuses two periods that overlap and names
+  the overlapping quarters (KEC-081).
+- `Q_FROM_CUMULATIVE`: `longer` + label, `shorter` + label -> FY-9M = Q4, 9M-H1 = Q3, H1-Q1 = Q2 (SBILIFE-081).
+- `SHARE`: `part`, `total` -> percent.
+- `CONTRIBUTION_TO_INCREASE`: part and total, now and before -> percent of the total change the part explains.
+- `CASH_CONVERSION`: `ocf`, `pat`, `ebitda` -> ocf/pat and ocf/ebitda; one unit family for all three (ETERNAL-020).
+- `INCREMENTAL_ROCE`: EBIT and capital employed, now and before -> percent on the capital added (HINDUNILVR-031).
+- `RANGE_POSITION`: `x`, `low`, `high` -> percent and lower/middle/upper third (BAJFINANCE-123).
+- `FAIR_PB`: `roe`, `cost_of_equity`, `growth` -> `(roe-g)/(coe-g)` (HDFCBANK-120); `IMPLIED_ROE`: `pb` + the same
+  two -> `pb*(coe-g)+g`.
+- `IMPLIED_GROWTH_PE`: `pe`, `payout`, `cost_of_equity` -> `g = (PE*r - payout)/(PE + payout)`.
+- `ANNUALISE`: `rate`, `months`, `method` simple|compound -> percent, always labelled "annualised" (SBILIFE-105).
+- `SAME_SPAN_GROWTH`: balance and flow, now and before, with four period labels -> both growths; refuses when the
+  spans differ (MARUTI-023).
+- `PROFIT_BRIDGE_MARGIN`: `target_pat`, `revenue`, `tax_rate`, `depreciation`, `finance_cost`, `other_income` -> the
+  EBITDA margin the PAT target needs: `pat/(1-tax) + depreciation + finance cost - other income`, over revenue
+  (ETERNAL-113).
+
+Percent inputs parse to fractions and percent outputs stay percent points (14.15, not 0.1415); `value` is unrounded
+(the text shows 2 decimals). Served by `p3ask` as `catalog` (`reality_engine/scripts/p3ask.py`); the reality-data MCP
+tool is wired by the controller after review. Commands:
+
+    python -m reality_engine.scripts.p3ask --db D:/RealityEngine/pilot10/pilot10.db catalog name=list
+    python -m reality_engine.scripts.p3ask --db D:/RealityEngine/pilot10/pilot10.db catalog name=GROWTH \
+        'inputs={"now": "22,067 crore", "before": "19,332 crore"}'
+
+Tests: `python -m pytest -q reality_engine/tests/test_calc_catalog.py` 30 passed, at least one per id, including the
+exact evidence cases (GROWTH 14.147527% -> 14.15, the TTM Q2FY27 vs FY26 refusal with Q3FY26/Q4FY26 named, Q4FY26 =
+28 from FY26 100 and 9MFY26 72, cash conversion 1.727x and 0.523x, range position 40.68% middle third, fair P/B 1.5,
+implied ROE 16.25%, annualised 18.8%, and the MARUTI-023 span refusal); `test_p3ask.py` 2 passed.
