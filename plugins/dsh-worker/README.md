@@ -126,6 +126,15 @@ is allowed: the main checkout keeps one lock and every worktree has its own, so
 worktree writers can run in parallel while two writers in one checkout still
 exclude each other (read-only workers do not take the lock).
 
+Separately, `start_worker` refuses a third **code worker** with
+`code_worker_limit` (Shivam's rule: max 2 code workers at once; T-127). Before
+the brief gate it counts running MSI jobs that hold a worktree or a mutating
+permission and refuses when two are already running, returning their job ids in
+`running`. `permission="read-only"` starts and `host="hp"` starts are neither
+counted nor refused. The workspace lock above still refuses a second mutating
+worker in the *same* checkout as `workspace_busy`; the limit is what stops a
+third across separate worktrees.
+
 `followup_wait_seconds` defaults to `0` (ordinary one-shot exit). A positive
 value enables the bounded `agent/turn-stopping` input wait described below.
 `controller_lease_seconds` defaults to `1800` (maximum `7200`); the supervisor
@@ -668,7 +677,9 @@ python -m unittest reality_engine.tests.test_dsh_worker_plugin reality_engine.te
 ```
 
 The integration tests speak real MCP over stdio to separate plugin server
-processes. They cover prompt startup, path rejection, concurrency, status/result
+processes. They cover prompt startup, path rejection, concurrency, the
+code-worker limit (`code_worker_limit`, with read-only jobs not counted),
+status/result
 persistence, result bounds, cancellation cleanup, DPAPI shared control across
 two server processes, claim/renew/steering audit, the two-hour lease cap, the
 per-job write race, worktree creation, per-worktree locks, two parallel

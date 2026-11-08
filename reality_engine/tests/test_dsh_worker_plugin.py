@@ -1407,6 +1407,69 @@ class PluginTests(unittest.TestCase):
         self.assertTrue(third["ok"], third)
         self._manager_instance().cancel_worker(third["job_id"], confirm=True)
 
+    # ------------------------------------------------ code worker limit (T-127)
+    def _running_job(self, job_id: str, permission: str) -> None:
+        """One live job record, laid out as the supervisor writes it."""
+        job_dir = Path(self.env["DSH_WORKER_RUNTIME_DIR"]) / "jobs" / job_id
+        job_dir.mkdir(parents=True)
+        now = datetime.now(timezone.utc).isoformat()
+        (job_dir / "job.json").write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "job_id": job_id,
+                    "created_at": now,
+                    "workspace": str(self.root),
+                    "permission": permission,
+                    "heartbeat": {"interval_seconds": 900, "missed_replies_allowed": 2},
+                }
+            ),
+            encoding="utf-8",
+        )
+        ticks = procutil.process_creation_time(os.getpid())
+        (job_dir / "status.json").write_text(
+            json.dumps(
+                {
+                    "phase": "running",
+                    "started_at": now,
+                    "updated_at": now,
+                    "supervisor_pid": os.getpid(),
+                    "supervisor_creation_time": ticks,
+                    "worker_pid": os.getpid(),
+                    "worker_creation_time": ticks,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def test_start_refuses_a_third_code_worker(self):
+        self._running_job("20261108T120000Z-aaaaaaaa", "workspace-write")
+        self._running_job("20261108T120001Z-bbbbbbbb", "workspace-write")
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(
+                brief=self._brief("code worker three"),
+                permission="workspace-write",
+                confirm_repo_root_write=True,
+            )
+        self.assertEqual(ctx.exception.code, "code_worker_limit")
+        self.assertEqual(len(ctx.exception.details["running"]), 2)
+        reader = self._manager_instance().start_worker(
+            brief=self._brief("read-only research job"), permission="read-only"
+        )
+        self.assertTrue(reader["ok"], reader)
+        self._manager_instance().cancel_worker(reader["job_id"], confirm=True)
+
+    def test_read_only_jobs_are_not_counted_as_code_workers(self):
+        self._running_job("20261108T120002Z-cccccccc", "read-only")
+        self._running_job("20261108T120003Z-dddddddd", "read-only")
+        started = self._manager_instance().start_worker(
+            brief=self._brief("code worker one"),
+            permission="workspace-write",
+            confirm_repo_root_write=True,
+        )
+        self.assertTrue(started["ok"], started)
+        self._manager_instance().cancel_worker(started["job_id"], confirm=True)
+
     def test_stale_and_lost_classification(self):
         runtime = Path(self.env["DSH_WORKER_RUNTIME_DIR"])
         jobs = runtime / "jobs"
@@ -1844,8 +1907,24 @@ class PluginTests(unittest.TestCase):
             self.assertTrue((locks / name).is_file(), started)
         status = manager.get_status(first["job_id"])
         self.assertTrue(status["running"], status)
-        # Same worktree, second writer: busy.  The main checkout is still free
-        # of a *writer* only because both are in worktrees.
+        # The fake launcher writes its change before it sleeps; wait for it so the
+        # cancelled job has a real diff to commit below.
+        second_tree = Path(second["workspace"])
+        deadline = time.monotonic() + 15
+        while not (second_tree / "change.txt").exists() and time.monotonic() < deadline:
+            time.sleep(0.05)
+        self.assertTrue((second_tree / "change.txt").exists(), "the fake launcher wrote its change")
+        # A third code worker is refused before the workspace lock is consulted (T-127).
+        with self.assertRaises(core.PluginError) as ctx:
+            manager.start_worker(
+                brief=self._brief('same worktree'),
+                workspace=first["workspace"],
+                permission="workspace-write",
+            )
+        self.assertEqual(ctx.exception.code, "code_worker_limit")
+        cancelled = manager.cancel_worker(second["job_id"], confirm=True)
+        self.assertTrue(cancelled["ok"], cancelled)
+        # With one writer left, its own worktree is still busy on its lock.
         with self.assertRaises(core.PluginError) as ctx:
             manager.start_worker(
                 brief=self._brief('same worktree'),
@@ -1853,8 +1932,6 @@ class PluginTests(unittest.TestCase):
                 permission="workspace-write",
             )
         self.assertEqual(ctx.exception.code, "workspace_busy")
-        cancelled = manager.cancel_worker(second["job_id"], confirm=True)
-        self.assertTrue(cancelled["ok"], cancelled)
         self.assertTrue(manager.cancel_worker(first["job_id"], confirm=True)["ok"])
         # A cancelled worktree job still commits its non-empty diff, with the
         # WIP subject prefix, so the work is not left only as a dirty checkout.

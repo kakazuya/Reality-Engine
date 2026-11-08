@@ -1,5 +1,5 @@
 # Shivam's rulings: loaded into every session, also after compaction. Max 8,000 characters.
-Write a new ruling here before the next action. `[check]` = code enforces it. Full wording: `docs/rulings/RULINGS_full_2026-11-08.md`; by topic: `project_rules(topic)` tool.
+New rulings via `ruling add`. `[check]` = code enforces it. Full wording: `docs/rulings/RULINGS_full_2026-11-08.md`; by topic: `project_rules(topic)` tool.
 ## Goal and scope
 - Ultimate goal (8 Nov): predict any stock 6m/1y/2y ahead from reliably held data, least information that does it; few heavyweight factors; more data is not the goal.
 - Store facts so a cheap model gets Opus-quality answers through the `reality-data` MCP (direct db/raw reads only when necessary); tables, extractors, tools must scale unchanged to all NSE+BSE; pilot companies only teach the build. Scripts first; AI/OCR only where scripts fail, within 1-2 months of subscription, with his OK.
@@ -8,24 +8,23 @@ Write a new ruling here before the next action. `[check]` = code enforces it. Fu
 - Verbatim first (8 Nov): store what management, officials and regulators said verbatim with source, date, speaker; the model judges at query time; XBRL stays as filed. At scale, judgment and 2nd/3rd-order links come from our own compute, not Opus. Pilot companies may hold pre-FY24 documents.
 - Documents (7 Nov): bulk is decks and call transcripts; annual reports by script, selected sections only (in full only for a company with no calls or decks); keep credit-rating and borrowing documents. Never trust the exchange's category or headline: read pages until the type is clear, keep/skip on our own type dictionary.
 - Investor questions (8 Nov): peers later, a model compares stored rows; brokerage reports only for stated facts, never targets or ratings; regulator circulars (RBI, SEBI, IRDAI) need their own fetcher (T-117).
-- Banks and tests: bank rulings bind (diff rebuilds against the frozen 1,901 bank); questions use pilot stocks; undated question = `as_of` 2026-10-19; report hand-read scores only; the 1,305-question pilot10 set is approved. Proxy is the last resort, reported apart. Never loosen a grader.
+- Banks and tests: bank rulings bind (diff rebuilds vs the frozen 1,901 bank); undated question = `as_of` 2026-10-19; report hand-read scores only; the 1,305-question pilot10 set is approved. Proxy is the last resort, reported apart. Never loosen a grader.
 
 ## Models and keys
 - DeepSeek on `dsh` at max effort, off-peak only (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST; read the clock yourself); in peak hours code workers are Sonnet 5.5 medium (`tasks/night_loop/sonnet_worker.py`). dsh workers use Go `account='1'` until key 2 resets (7 Nov). Free `beam-free` (both Go keys) may settle KPI rows and guidance sentences scripts cannot, as a separate step; Opus writes that code.
 - `agy` runs only `gemini-3.8-flash-medium`, headless with `--dangerously-skip-permissions`. Settled: DeepSeek answers need Opus's help; testing is at universal scale.
 
 ## How we work
-- Claude reviews, workers build; Opus writes ~20-25% (design, tests, review, one working example). Brief only after gathering evidence: defect rows, exact file/function/line, columns, a fast check command; numbered steps with limits, pitfalls, tools, budget, stop rule; unknown method -> Opus prototypes first. Check a finished worker against Opus's own tests and sample, log it, then merge. No pilot bank reasoning to workers.
-- Lean: add nothing that does not stop a failure we have had. Max 2 code workers at once; data/research jobs on idle machines. Branches merged or deleted within 24 h.
+- Claude reviews, workers build; Opus writes ~20-25% (design, tests, review, one working example). Brief only after gathering evidence: defect rows, exact file/function/line, columns, a fast check command; numbered steps with limits, pitfalls, tools, budget, stop rule; unknown method -> Opus prototypes first. Check a finished worker against Opus's own tests and sample, log it, then merge [check: worker_review] [check: merge_tests]. No pilot bank reasoning to workers. Page-reading subagents: batches of 8 pages, under 100k context, Haiku medium.
+- Lean: add nothing that does not stop a failure we have had. Max 2 code workers at once [check: code_worker_limit]; data/research jobs on idle machines. Branches merged or deleted within 24 h.
 - One task stays in one worker session; Opus reviews and guides the next round; new worker only at 1M context or a new task. No live adviser calls to Claude. Tickets hold tests, never rules.
 - Architecture (8 Nov): the author never checks own code. Every extracted row passes the independent `row_checks.py` layer (quote anchor, sector fit, own figure, reconciliation, scale): `verified` / `unverified` (served labelled) / `quarantined` (never served); unsure = no row. Each release is gated on a fresh hidden hold-out, the rulings diff and tool budgets in code; Opus reads a fixed random sample (~60 rows per stratum). No backsliding: re-score every hand-read row (T-122 set); merge only with zero right rows lost and zero wrong rows verified; prefer structural rules over per-company ones.
 - No docs, no merge; doc sweep + data inventory at session close, for Wolf, Eagle and every worker. [check: doc_gate]
 - Start files: `STATE.md` 4,000 characters, this file 8,000, `AGENTS.md` 150 lines. [check: doc_gate]
 - Every worker start names `permission`. [check: start gate] HP work is headless. [check: test_hp_headless] Sessions run to 450k context; at 400k write the wrap-up (commit, next action in `tasks/STATE.md`, doc sweep).
-- Page-reading subagents: batches of 8 pages, under 100k context, Haiku at medium effort.
 - Keep a live watch on every running job (finish, stall, errors); check real progress before reporting; review a finished worker at once. [check: T-050 stop hook]
 - A new task from Shivam becomes a ticket first (`task_board add`); commits on `main` name a ticket. [check: commit-msg]
-- Log every worker and session in `tasks/efficiency/WORKER_REVIEW_LOG.xlsx` and apply lessons to the next brief. Bring ranked ideas from measurements unprompted. RAM <90% or CPU <70% used = start useful work. Report compute waste. Decide what you can; do not argue a ruling, find how to do it. Session titles keep the `sv-`/`neo-` prefix.
+- Log every worker (`tasks/efficiency/worker_reviews.jsonl` -> `WORKER_REVIEW_LOG.xlsx`) and apply lessons to the next brief. [check: worker_review] Bring ranked ideas from measurements unprompted. RAM <90% or CPU <70% used = start useful work. Report compute waste. Decide what you can; never argue a ruling. Session titles keep the `sv-`/`neo-` prefix.
 
 ## Data and machines
 - Raw files live only on Drive (7 Nov): jobs download, write the database, delete the copy; check size and hash on Drive before deleting a local copy; new fetches may pile up locally during testing, sweep with `raw_to_drive`. Kept local: `D:\RealityEngine\raw\user_research`.

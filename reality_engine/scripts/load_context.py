@@ -61,7 +61,10 @@ def build() -> str:
         if body:
             parts.append(f"## {name}\n{body}")
     dropped = list(live["dropped"])
-    used = len("\n\n".join(parts))
+    card = live.get("card") or ""
+    footer = "More state: project_state() tool or tasks/STATE.md"
+    # The card and footer are reserved first, so optional STATE sections never push them past the cap.
+    used = len("\n\n".join(parts)) + (len(card) + 2 if card else 0) + len(footer) + 2
     for name, body in live["sections"].items():
         if name in WHOLE:
             continue
@@ -71,14 +74,16 @@ def build() -> str:
             used += len(block) + 2
         else:
             dropped.append(name)
-    card = live.get("card") or ""
     if card:
         parts.append(card)
     heads = recent_decisions(_read(LOG))
     if heads:
-        parts.append("# Latest decisions, full entries in the decision log\n" + "\n".join(heads))
+        block = "# Latest decisions, full entries in the decision log\n" + "\n".join(heads)
+        if used + len(block) + 2 <= LIMIT:  # decision headings are the first thing to go
+            parts.append(block)
+            used += len(block) + 2
     if dropped:
-        parts.append("More state: project_state() tool or tasks/STATE.md")
+        parts.append(footer)
     return "\n\n".join(parts)
 
 

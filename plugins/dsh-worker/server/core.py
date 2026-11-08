@@ -1068,6 +1068,28 @@ class Manager:
         }
 
     # ---------------------------------------------------------------- start
+    def _running_code_workers(self) -> list[str]:
+        """Jobs that hold a code slot: running, on this host, worktree or mutating permission.
+
+        Shivam's rule: max 2 code workers at once.  Read-only jobs and HP jobs are data or
+        research work, not code, so they are neither counted nor refused.
+        """
+        # ponytail: check-then-act over the job records, so two starts in the same instant can
+        # both pass; a shared start lock only if that race is ever seen.
+        try:
+            rows = self.list_workers(limit=100)["jobs"]
+        except Exception:
+            # A listing failure must not stop every start; the lock and the brief gate below
+            # still refuse what they can see.
+            return []
+        return [
+            row["job_id"]
+            for row in rows
+            if row.get("running")
+            and (row.get("host") or "msi") == "msi"
+            and (row.get("permission") != "read-only" or row.get("worktree_branch"))
+        ]
+
     def start_worker(
         self,
         *,
@@ -1147,6 +1169,17 @@ class Manager:
             )
         if host not in ("msi", "hp"):
             raise PluginError("host_invalid", "host must be 'msi' (default) or 'hp'")
+        if host == "msi" and permission != "read-only":
+            running = self._running_code_workers()
+            if len(running) >= 2:
+                self._log_refusal("start_gate_limit", "code_worker_limit", ", ".join(running))
+                raise PluginError(
+                    "code_worker_limit",
+                    "two code workers are running (" + ", ".join(running) + "); max 2 code "
+                    "workers at once: wait for one to finish, or start it with "
+                    "permission='read-only' or on host='hp'",
+                    running=running,
+                )
         text, task_relative = self._read_brief(brief, task_file)
         missing_fields = brief_missing_fields(text, small_fix=small_fix)
         if missing_fields:
