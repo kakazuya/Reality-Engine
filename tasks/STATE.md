@@ -1,20 +1,21 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-08 17:40 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-08 20:45 IST (Wolf)
 History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`.
 
 ## Now
 - Live store `D:\RealityEngine\pilot10\pilot10.db` (10 companies). Off-pilot verified rows: fresh6 after checker round 10, 20 of 22 right.
-- T-124 (Wolf): 311 harvested investor questions reframed to 156 (scratch `q12/t124_reframed.csv`); store `q12.db` (12 hold-out companies + 170 FY25-27 docs) building in Wolf scratchpad `q12/` (log `build3.log`); then a model answers via `python -m reality_engine.scripts.p3ask --db <q12.db>` and Opus grades.
+- T-124 (Wolf): re-ask of the 136 pilot partials done 20:40: 64 right / 70 partly / 2 wrong by hand read (pilot set now 528/600 = 88.0%); report `D:\RealityEngineeports6-11-08_t124_reask_136_partials.xlsx`, grades `D:\RealityEngine\pilot10nswer_reask\graded.jsonl`. q12 store (12 hold-out cos) building in `<Wolf scratchpad bea35aad>/q12/` (`build3.log`, then `build4.sh` reruns stores..checks with the known_at fix, log `build4.log`); 156 questions ready in `D:\RealityEngine\q12nswers\questions_{C,D}.json`, briefs `tasks/handoff/T-124_q12_{C,D}_brief.md`.
+- Store defects found: `shp_pledge` and `shp_holder` empty in live pilot10.db; MARUTI net debt leaves out non-current investments.
 - T-125/126/127 merged (tools, Drive index, gates): merge refused without a worker review row or without tests for new code; third code worker refused; `ruling add` intake. Next round: rule_ledger mapping, full-run checklist gate.
 - T-120 (Wolf): pilot10 2019-2024 history build done 17:28 (6,359 docs, kpi 4,771 verified / 22,060 unverified / 3,157 quarantined); T-121 ocr part running (`build.log`), then re-run kpi.
 - Waiting Shivam: T-116, T-118, T-121, T-122. Shivam's ticket board (always synced): `D:\RealityEngine\reports\ticket_board.{xlsx,html}`.
 
 ## Next action
-WRAP-UP 8 Nov 19:25 (Wolf, 400k). Running: q12 build (`<Wolf scratchpad>/q12/build3.sh`, log `build3.log`; kpi 9/12 at 19:24, then stores..checks). History OCR PAUSED at 18:24 to speed q12: restart `build --profile tasks/night_loop/pilot10hist_profile.json --out D:/RealityEngine/pilot10/history/pilot10hist.db --part ocr --ocr-max-seconds 30000`, then re-run its kpi.
-1. When q12 shows Q12_DONE: answer the 156 rows of `<Wolf scratchpad>/q12/t124_reframed.csv` via `p3ask --db <q12.db>`, grade, write the JSONL, run `answer_run_report --name t124_q12_answers`.
-2. Re-ask the 136 pilot partials (`D:/RealityEngine/pilot10/answer_a3/grades.tsv`) on live pilot10.db, grade, report. Shivam said GO 8 Nov 19:30: start this first.
-3. HINDUNILVR Beauty & Wellbeing EBIT Q2FY27 stored 1,242 and VERIFIED; results p8 prints 1,235: add to T-122 regression labels, checker fix.
-4. T-127 round 2: rule_ledger mapping, full-run checklist gate. Shivam /mcp (dsh-worker for code_worker_limit, reality-data for project_rules).
+1. When `build4.log` shows Q12_FIX_DONE: copy q12.db to `D:/RealityEngine/q12/q12.db`, start two dsh answer workers with the C/D briefs (worktree, workspace-write, account 1, off-peak), grade by hand, `answer_run_report --name t124_q12_answers`.
+2. Ranked fixes for the re-ask misses (final message 8 Nov 20:45): await Shivam's pick, then ticket.
+3. History OCR paused 18:24: restart `build --profile tasks/night_loop/pilot10hist_profile.json --out D:/RealityEngine/pilot10/history/pilot10hist.db --part ocr --ocr-max-seconds 30000`, then its kpi.
+4. T-127 round 2: rule_ledger mapping, full-run checklist gate.
 5. Re-run T-118 with guidance/KPI factors on the history db; ticket the `ar_facts` scale/column bug.
+6. Restart the reality-data MCP to serve consolidated-first kpi (commit ffb58fe).
 
 ## Merge recipe
 Review row in `worker_reviews.jsonl` first (gate). `git merge --no-ff --no-commit <branch>`, drop `PROGRESS_NOTES.md`, run changed test files one per process, update this file and docs, commit `By: <identity>`; remove the worktree; log to the decision log.
