@@ -36,4 +36,5 @@ Write a new ruling here before the next action. `[check]` = code enforces it. Fu
 - Push without his OK (given for merged main, 3 Nov). Use paid models (DeepInfra, Haiku beyond an approved run) without his OK.
 
 ## Telling Shivam
-- Reports as HTML (or Mermaid) in `D:\RealityEngine\reports\YYYY-MM-DD_<topic>.<ext>`; lists in Excel/PDF/DOCX/RTF; explain with real questions, never internal codes. State failures plainly with sample sizes. His source of truth for tickets is `D:\RealityEngineeports	icket_board.xlsx` (+ `.html`), kept in sync with the tracker on every change (8 Nov). [check: task_board + post-commit hook] No spend reports: work until he says stop.
+- Reports as HTML (or Mermaid) in `D:\RealityEngine\reports\YYYY-MM-DD_<topic>.<ext>`; lists in Excel/PDF/DOCX/RTF; explain with real questions, never internal codes. State failures plainly with sample sizes. His source of truth for tickets is `D:\RealityEngine
+eports	icket_board.xlsx` (+ `.html`), kept in sync with the tracker on every change (8 Nov). [check: task_board + post-commit hook] After every question/answer run: an Excel + CSV in the reports folder with questions, answers, grades, errors, documents and root causes (`answer_run_report.py`; 8 Nov). No spend reports: work until he says stop.
