@@ -576,6 +576,25 @@ Four general rules, no company name in code.
   KEC's 2 Nov release prints "YTD Order intake of over Rs. 13,500 crore" and states no H1 figure: the row is
   `YTD / 2026-11-02` and `dimension='total'`. `find_dimension` refuses a segment named after a share of the total
   ("~70% from T&D") instead of tagging the total with it.
+- **A ratio carries the period its page prints (T-107, 8 Nov 2026).** A ratio row (`kpi._RATIO_METRICS`: ROE, ROA,
+  NIM, cost of funds, credit cost, EBITDA / gross / contribution margin, opex and commission ratio) takes the period
+  its page prints, never the document's year by default: on a quarterly document a ratio that names no period is the
+  quarter's annualised rate (`sentence_rows(..., ratio_quarter=True)`, which the extractor sets for every document
+  that is not an annual report and is at most 80 pages), while a year named beside the label ("for FY2026", "for the
+  year ended 31 March 2026", "full year": `kpi._year_named`, which stops at the label's line so a table header's bare
+  "FY26" does not count) keeps the year, and a table's column header decides each column as before. The quarter is
+  taken only when the document could report it (`keep_period`), so a stale `FY27` default keeps its label instead of
+  becoming a future Q4FY27 and being dropped. An insurer's ROEV and VNB margin are not in the set: both are a
+  roll-forward over the year (SBILIFE's 19.7% ROEV is FY26), not a quarter's annualised rate. BAJFINANCE's Q4 FY26
+  highlights table prints "ROE 20.0%" in its Q4 FY26 column and the year's 18.1% two columns later; eight rows were
+  stored FY26 because a Q4 document's default period is the year, so "Bajaj Finance ROE for FY26" answered the
+  quarter's 20.0%. Measured on `pilot10\scratch\t113_p10_v2.db` copies: BAJFINANCE `roe_pct` FY26 36 -> 28, Q4FY26
+  11 -> 19; the ten-company KPI build moves **22** `sentence_default_v1` rows from FY to Q and loses none (ROE 8,
+  credit cost 8, EBITDA margin 4, ROA 1, cost of funds 1; BAJFINANCE 16, HDFCBANK 2, SUNPHARMA 2, KEC 1,
+  HINDUNILVR 1), and what stays FY is what names its year ("ROE for FY2026", "for the year ended 31 March 2026").
+  Both `pilot3_ratio` and `pilot3_kpi` answer FY26 ROE 18.1 (consolidated) first: `pilot3_ratio` lists the company's
+  stated row before the derived one (`stated + derived` in `lookups_pilot3.ratio`), so the stated 18.1 comes before
+  the 16.96 that LTM PAT over closing net worth derives. Cases in `tests/test_pilot3_kpi_ratio_period.py` (5).
 - **Measured** on `D:\RealityEngine\pilot10\scratch\w_t073.db` (copy of `pilot10.db`, stores + comparatives + ratios
   rebuilt for all ten with `compute_start='2024-07-01'`, KEC KPI rebuilt): A1 `dev.jsonl` 730 -> **759/898** (BAJFINANCE
   79, ETERNAL 72, HDFCBANK 84, HINDALCO 77, HINDUNILVR 81, INFY 72, KEC 64, MARUTI 81, SBILIFE 76, SUNPHARMA 73; no

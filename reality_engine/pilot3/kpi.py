@@ -1218,6 +1218,23 @@ def _frame_period(text: str, label: int, value: int, period: Period) -> Period |
     return None
 
 
+# A year named beside a ratio is the figure's own span: "for FY2026", "for the year ended 31 March 2026",
+# "full year".  A bare "FY26" standing in a table's column header is not: the column header decides that column.
+_YEAR_NAMED = re.compile(
+    r"\b(?:for|in|during|of)\s+(?:the\s+)?(?:fy\s*['’]?\d{2,4}|(?:financial|fiscal)\s+year\b|year\b)"
+    r"|\b(?:full[- ]year|year[- ]ended|financial year|fiscal year)\b", re.I)
+
+
+def _year_named(text: str, label: int, value_end: int) -> bool:
+    """True when the label's own line(s) name the year for this figure ("for FY2026", "for the year"), so a ratio
+    keeps its year period.  The scan stops at the label's line and the value's line end: the table header above
+    ("Q4 FY26 | FY26 | FY25") names the columns, not this figure's span (T-107)."""
+    lo = text.rfind("\n", 0, label) + 1
+    hi = text.find("\n", value_end)
+    hi = len(text) if hi < 0 else hi
+    return bool(_YEAR_NAMED.search(text[lo:hi]))
+
+
 def _ytd_period(period: Period, e: Entry, text: str, label: int, value: int,
                 filed: str | None = None) -> Period:
     """The period a period qualifier names: "YTD order intake" in a Q2 document is the half-year's intake, not the
@@ -1281,6 +1298,18 @@ _STOCK_METRICS = {
     "dealer_inventory_days", "deposits", "dso", "gnpa_pct", "net_debt", "net_debt_incl_acceptances", "nnpa_pct",
     "order_book", "order_book_l1", "pcr_stage3", "provision_coverage_pct", "solvency_ratio", "tier1_pct",
     "unsecured_share", "working_capital_days",
+}
+
+# Ratios whose figure is a period's return, cost or margin rate (T-107).  On a quarterly document one printed
+# without a period is the quarter's annualised rate ("ROE 20.0%" in a Q4 highlights table), never the year's; a
+# year printed beside it ("for FY2026", "for the year") keeps the year.  A fixed set, not a kind test: growth
+# rates, shares and mixes are kind pct too and keep the document's default.  An insurer's ROEV and VNB margin are
+# out: both are a roll-forward over the year (SBILIFE's 19.7% ROEV is FY26), not a quarter's annualised rate.
+# ponytail: a metric list, not a rule over units; add a metric here when a new ratio needs the quarter default.
+_RATIO_METRICS = {
+    "adjusted_ebitda_margin_of_gov", "commission_ratio", "contribution_margin", "cost_of_funds_pct",
+    "credit_cost_bps", "ebitda_margin_pct", "gross_margin", "nim_pct", "opex_ratio", "pat_margin_pct",
+    "roa_pct", "roe_pct",
 }
 
 
@@ -1359,7 +1388,10 @@ def _quarter_after_comparative(text: str, start: int, end: int, period: Period) 
 
 
 def sentence_rows(text: str, page: int, company: str, entries, dims, default_pers: list[Period],
-                  filed: str | None = None, doc_basis: str = "not_stated", allow_entity: bool = True) -> list[Row]:
+                  filed: str | None = None, doc_basis: str = "not_stated", allow_entity: bool = True,
+                  ratio_quarter: bool = False) -> list[Row]:
+    """Rows from a page's running text.  ``ratio_quarter``: the document reports a quarter, so a ratio that names
+    no period of its own is that quarter's (annualised) rate, not the year's (T-107)."""
     rows: list[Row] = []
     pers = parse_periods(text)
     per_spans = [(p.start, p.end) for p in pers]
@@ -1573,6 +1605,12 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     if fp is not None:
                         period = fp     # "first nine months" / "six months ended" names the figure's own span
                     period = _ytd_period(period, e, text, m.start(), v.start, filed)
+                    if ratio_quarter and rule == "sentence_default_v1" and period.ptype == "FY" \
+                            and e.metric in _RATIO_METRICS and not _year_named(text, m.start(), v.end):
+                        q = _quarter_of(period.canon)
+                        if q and keep_period("Q", q, filed):   # a quarter the document cannot report keeps its year
+                            # "ROE 20.0%" in a Q4 document's highlights table is the quarter's rate, not the year's
+                            period = Period(period.start, period.end, q, "Q", period_end("Q", q))
                     if idx and period.canon == first_canon:
                         continue        # the comparative restates the current period: the same value, not a prior one
                     if generic and rule != "sentence_v1":   # a bare "margin" / "revenue" needs its own period in the sentence
@@ -2937,6 +2975,9 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
         # an annual report (or any document over 80 pages) prints last year's figures everywhere, so the document
         # headline is no default: only a period on the page itself may stand in for one the sentence does not name
         long_doc = profile.under_profile() and (doc_type == "annual_report" or len(usable) > 80)
+        # T-107: a ratio printed without a period is the quarter's (annualised) rate on a quarterly document; an
+        # annual report, or a filing long enough to print a year of accounts, reports the year.
+        ratio_quarter = doc_type != "annual_report" and len(usable) <= 80
         for page, text in usable:
             st["pages"] += 1
             page_pers = default_pers
@@ -2948,7 +2989,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                     st["no_period_long_doc"] = st.get("no_period_long_doc", 0) + 1
             try:
                 srows = sentence_rows(text, page, sym, entries, dims, page_pers, known_at, doc_basis,
-                                      doc_type != "transcript")
+                                      doc_type != "transcript", ratio_quarter)
             except Exception:  # keep the run going, count it
                 srows = []
                 st["errors"] = st.get("errors", 0) + 1

@@ -526,7 +526,9 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
                 row["inputs"] = []
         derived.append(row)
     stated = _stated_ratios(sym, key, label, as_of, bas, cap)
-    return _reply(sym, derived + stated, "pilot3_ratio", metrics_matched=names)
+    # The company's own figure answers "what is X's ROE for FY26"; the derived row is our arithmetic beside it
+    # (T-107: Bajaj's FY26 ROE is its stated 18.1, not the 16.96 that LTM PAT over closing net worth derives).
+    return _reply(sym, stated + derived, "pilot3_ratio", metrics_matched=names)
 
 
 def _stated_ratios(sym: str, key: str, label: str | None, as_of: str | None, basis: str | None,

@@ -39,6 +39,11 @@ Change a rule only with a measurement that supports the change, and note it in `
   today: bank, nbfc, insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrous,
   epc_capital_goods, pharma), each checked on 3-4 companies. Cross-company comparability comes before any single
   company's completeness.
+- A ratio's period is the one its page prints, not the document's by default (T-107, 8 Nov 2026): on a quarterly
+  document an unlabelled ratio (ROE, NIM, a margin, credit cost, cost-to-income: `kpi._RATIO_METRICS`) is that
+  quarter's annualised rate, and only a year named beside it ("for FY2026", "for the year", `kpi._year_named`) makes
+  it the year's; a table's column header decides each column. An annual report, or a filing over 80 pages, still
+  reports the year, and an insurer's ROEV and VNB margin stay the year's (a roll-forward over the year).
 - The taxonomy -> family map is `reality_engine/pilot3/sector_map.yaml`, read by `make_profile.py` only (not under
   `lexicon/`, where every yaml is a KPI lexicon). It lists all 191 basic industries of `company_industry`: 47 map to a
   family and 144 are an honest `unknown` (common lexicons only). A company with no taxonomy row is also `unknown`,
