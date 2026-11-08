@@ -5,8 +5,9 @@ checks every ``guidance`` and ``kpi_series`` row with scripts that share nothing
 parser, own label vocabulary ``row_checks_vocab.yaml``, own period arithmetic), and writes one verdict per row to a
 separate output database:
 
-    verified     every check that applies passed and the figure is pinned (a single reading, or corroborated
-                 by another document or by the filed financial statements)
+    verified     every check that applies passed and the figure is pinned: for a kpi row that means an
+                 independent second source (another document or the filed statements; an ``xbrl_segment``
+                 row IS the filing), otherwise soft ``single_source``
     unverified   nothing failed, but something could not be pinned (served only with that label)
     quarantined  a hard check failed (never served)
 
@@ -67,6 +68,19 @@ Checks (``check`` names in ``row_check_fail``):
     scope_word        (kpi) the label-to-number span names a part scope (per store, facility, project, mix,
                       share, "of revenue", excluding ...) on a total row -> unverified
 
+Round 10 (a hidden read of six unseen companies split the wrong verified kpi rows into six general classes):
+
+    footnote_note     the number sits inside a footnote that starts between the metric's label and it
+                      ("Net Debt *Includes investments in liquid funds and FDs of INR 3,165 crores")
+    projection        (kpi) the number's sentence is a rating agency's estimate on a rating page, or a fiscal
+                      year later than the row's own follows the number -> unverified
+    regulated_rate    (kpi) the number's sentence is about "return on equity" and a regulator / tariff / allowed
+                      / normative word: a regulated utility's permitted rate, not the company's earned ratio
+    segment_scope     (kpi) a total row whose number's sentence names a segment / vertical -> unverified
+    past_level        (kpi) the number's sentence names an earlier fiscal year, or frames a past level ("had
+                      almost neared") -> unverified
+    single_source     (kpi) nothing failed but no independent document or filed statement agrees -> unverified
+
 Run:  python -m reality_engine.pilot3.row_checks --db D:/RealityEngine/pilot10/pilot10.db --out OUT.db
       [--profile tasks/night_loop/pilot10_profile.json] [--tables guidance,kpi_series]
       [--report DIR [--sample N --seed S --status verified]]
@@ -94,11 +108,12 @@ VOCAB_PATH = Path(__file__).with_name("row_checks_vocab.yaml")
 HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_present", "label_conflict", "label_foreign", "sector_fit", "third_party",
         "forward_word", "past_figure", "null_value", "range_order", "plausible", "future_period", "past_target",
         "fin_conflict", "part_not_total", "period_word", "currency", "target_frame", "target_year",
-        "not_company_speaker", "range_value", "unit_kind", "net_cash_sign", "page_unit"}
+        "not_company_speaker", "range_value", "unit_kind", "net_cash_sign", "page_unit",
+        "footnote_note", "regulated_rate"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
         "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch",
         "dimension_word", "not_pinned", "scope_word", "uncorroborated", "history_row", "scale_doubt",
-        "same_doc_conflict", "question_next"}
+        "same_doc_conflict", "question_next", "projection", "segment_scope", "past_level", "single_source"}
 
 # Revenue / PAT / EBITDA / order rows must be a plausible share of the company's filed figure: a subsidiary or
 # segment amount stored with dimension "total" is the classic "part stored as the total" mistake.
@@ -465,6 +480,33 @@ _DAYS_WORD = re.compile(r"\b(?:days?|dso|dio|dpo)\b", re.I)
 _PCT_WORD = re.compile(r"%|per ?cent|percent|bps|basis points", re.I)
 _PAST_GOVERN = re.compile(r"\b(?:increased|grew|rose|fell|declined|delivered|achieved|reported|posted|stood|"
                           r"reached|recorded|witnessed|improved|reduced|decreased|was|were)\b", re.I)
+
+# Round 10: six general classes from a hidden read of unseen companies.  A footnote's own amount, a rating
+# agency's projection, a regulator's allowed rate, a segment named in a total row's quote, a nearer foreign
+# label, and a past level in narrative.
+_FOOTNOTE_MARK = re.compile(r"[*†‡]|\((?:[1-9]|1[0-9])\)")
+_NOTE_PHRASE = re.compile(r"\b(?:includes?|excluding|excludes?|compris(?:es|ing)|net\s+of|represents|"
+                          r"refer(?:\s+to)?\s+note|see\s+note|is\s+inclusive)\b", re.I)
+_RATING_PAGE = re.compile(r"rating\s+(?:rationale|action|outlook|committee)|credit\s+rating|rating\s+agency|"
+                          r"\b(?:icra|crisil|care(?:edge)?\s+ratings?|india\s+ratings|brickwork|acuite)\b", re.I)
+_PROJECTION = re.compile(r"\bis\s+estimated\s+at\b|\bis\s+expected\s+to\b|\bexpected\s+to\s+"
+                         r"(?:remain|be|improve|stay)\b|\bestimated\s+at\b|\bprojected\s+at\b|"
+                         r"\bforecast\s+at\b|\bwe\s+expect\b|\boutlook\b|\brating\b", re.I)
+_REGULATOR = re.compile(r"\b(?:regulators?|regulatory|tariffs?|allow(?:s|ed)?|normative|regulated|regulation|"
+                        r"appellate|true[- ]?up|serc|cerc|nerc)\b", re.I)
+_ROE_PHRASE = re.compile(r"\breturn\s+on\s+(?:average\s+)?(?:net\s*worth|equity)\b|\broe\b", re.I)
+_SEGMENT_NOUN = re.compile(r"\b([a-z][a-z&'\-]{2,})\s+(?:business|vertical|segment|division|arm|subsidiary|"
+                           r"franchise|portfolio)\b", re.I)
+# words that qualify a whole-company noun ("our business", "the core business") rather than name a segment
+_SEGMENT_STOP = {"the", "our", "this", "that", "these", "those", "its", "their", "your", "his", "her", "a", "an",
+                 "and", "or", "of", "in", "on", "at", "for", "to", "with", "by", "from", "as", "is", "was",
+                 "were", "are", "be", "been", "whole", "entire", "overall", "total", "combined", "consolidated",
+                 "standalone", "core", "main", "key", "primary", "principal", "existing", "current", "new",
+                 "same", "other", "others", "company", "group", "flagship", "growing", "larger", "largest",
+                 "smaller", "one", "two", "each", "every", "all"}
+_PAST_LEVEL = re.compile(r"\bback\s+in\b|\bpreviously\b|\bat\s+that\s+time\b|\byears?\s+earlier\b|"
+                         r"\bhad\s+(?:almost\s+|nearly\s+)?(?:neared|nearing|touched|crossed|peaked|reached)\b|"
+                         r"\b(?:was|were)\s+(?:nearing|approaching)\b", re.I)
 _UNIT_WORD = {
     "pct": r"%|per ?cent|percent|bps|basis points",
     "bps": r"%|per ?cent|percent|bps|basis points",
@@ -562,6 +604,42 @@ def fiscal_ending_year(date: str | None) -> int | None:
     return year + 1 if month >= 4 else year
 
 
+# "in FY23", "in fiscal 2026", "financial year 2025": a fiscal-year reference in words and digits, kept apart
+# from fiscal_years() because a kpi row needs the year's distance from its own period, not a canonical label.
+_FY_AFTER = re.compile(r"\b(?:fy|fiscal(?:\s+year)?|financial\s+year|year)\s*['’]?((?:19|20)\d{2}|\d{2})\b", re.I)
+
+
+def period_fiscal_year(period: str | None) -> int | None:
+    """The fiscal year a row's period belongs to: Q2FY26 -> 2026, FY25 -> 2025, ytd -> None."""
+    key = period_key(period)
+    mm = re.search(r"fy(\d{2})$", key or "")
+    return 2000 + int(mm.group(1)) if mm else None
+
+
+def plain_fiscal_years(text: str) -> set[int]:
+    """Fiscal years printed as a plain (non-comparative) reference: 'in FY23', 'in fiscal 2026'.  A range takes
+    its end year ('FY 2025-26' is 2026), and a year named in a comparative ('vs FY24', 'up from the year 2024')
+    is another figure's year, not this sentence's."""
+    out: set[int] = set()
+    spans: list[tuple[int, int]] = []
+    for mm in _FY_RANGE.finditer(text):
+        if _COMPARATIVE.search(text[max(0, mm.start() - 25):mm.start()]):
+            continue
+        y1, y2 = _as_year(mm.group(1)), _as_year(mm.group(2))
+        four_digit = any(len(g) == 4 for g in (mm.group(1), mm.group(2)))
+        if y1 and y2 and (four_digit or mm.group(0).lstrip().lower().startswith("fy") or y2 == y1 + 1):
+            out.add(y2)
+            spans.append(mm.span())
+    for mm in _FY_AFTER.finditer(text):
+        if any(a <= mm.start() < b for a, b in spans):
+            continue
+        if _COMPARATIVE.search(text[max(0, mm.start() - 25):mm.start()]):
+            continue
+        raw = mm.group(1)
+        out.add(int(raw) if len(raw) == 4 else 2000 + int(raw))
+    return out
+
+
 def nearest_strong_label(m: Metric, text: str, pos: int, lo: int = 0,
                          hi: int | None = None) -> tuple[int, int, int] | None:
     """(signed distance, start, end) of the strong label of ``m`` nearest the number, inside [lo, hi]."""
@@ -656,6 +734,7 @@ class Checker:
         self.sectors = sectors
         self._page: dict[tuple[str, int], str | None] = {}
         self._page_fold: dict[tuple[str, int], str] = {}
+        self._page_squash: dict[tuple[str, int], str] = {}
         self.doc_type = {r["doc_key"]: (r["doc_type"] or "") for r in self.con.execute("SELECT doc_key, doc_type FROM doc")}
         self.company_words = {(r["symbol"] or "").upper(): {w.lower() for w in re.findall(r"[A-Za-z]{3,}", r["name"] or "")}
                               for r in self.con.execute("SELECT symbol, name FROM company")}
@@ -676,6 +755,13 @@ class Checker:
             self._page_fold[key] = fold(self.page_text(doc_key, page) or "")
         return self._page_fold[key]
 
+    def page_squash(self, doc_key: str, page: int) -> str:
+        """The squashed page text, computed once per page (check_quote squashes it for every row)."""
+        key = (doc_key, page)
+        if key not in self._page_squash:
+            self._page_squash[key] = squash(self.page_text(doc_key, page) or "")
+        return self._page_squash[key]
+
     def context_before(self, doc_key: str, page: int, quote: str, n: int = 500) -> str:
         """Folded page text just before the quote (the question asked, the previous sentence), '' if not found."""
         text = self.page_fold(doc_key, page)
@@ -690,7 +776,7 @@ class Checker:
         if text is None:
             v.fail("no_page_text", f"{doc_key} p{page} has no page text")
             return
-        q, t = squash(quote), squash(text)
+        q, t = squash(quote), self.page_squash(doc_key, page)
         if not q:
             v.fail("quote_on_page", "empty quote")
         elif q not in t:
@@ -831,10 +917,11 @@ class Checker:
             last = (a, b)
         return names
 
-    def list_order_ok(self, m: Metric, text: str, pos: int) -> bool:
+    def list_place(self, m: Metric, text: str, pos: int) -> bool | None:
         """'Gross NPA and Net NPA stood at 1.33% and 0.53% respectively, as against 1.59% and 0.77%': labels listed
         first, numbers after in the same order (repeated for comparatives).  True when the row's number holds the
-        row's label's place in that order."""
+        row's label's place, False when it holds another's, None when the quote is no list (fewer values than
+        labels printed, so the labels are not parallel values of one list)."""
         hits = []
         for other in self.vocab.metrics.values():
             for p in other.labels:
@@ -857,12 +944,14 @@ class Checker:
                  and not (n[1] > 0 and text[n[1] - 1].isalpha())
                  and not _DELTA.search(text[max(0, n[1] - 40):n[1]])]
         if len(after) < 2:
-            # fewer values than names printed: the labels are not a list of parallel values ("revenue and order
-            # intake ... 1,550 crore and 540 crore respectively" quoted only up to its first value), so the
-            # order test does not apply rather than failing the row
-            return True
+            return None
         idx = next((i for i, n in enumerate(after) if n[1] == pos), None)
         return idx is not None and idx % len(names) == names.index(m.name)
+
+    def list_order_ok(self, m: Metric, text: str, pos: int) -> bool:
+        """True when the row's number holds the row's label's place in a printed list, or the quote prints fewer
+        values than labels (the list test does not apply rather than failing the row)."""
+        return self.list_place(m, text, pos) is not False
 
     def check_part(self, v: Verdict, canon: str, amount: float | None, unit: str, symbol: str, period: str,
                    rid: int, fin: dict, usd_rev: dict) -> None:
@@ -1231,6 +1320,9 @@ class Checker:
         self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "")
         ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
         self.check_label(v, m, text, pos, ctx)
+        self.check_nearer_label(v, m, text, pos, reach=10 ** 9, same_side=True, mask_denominators=True)
+        self.check_footnote(v, m, text, pos)
+        self.check_regulated_rate(v, m, text, pos, r["unit"] or "")
         self.check_currency(v, m, text, pos, r["unit"] or "")
         self.check_net_cash_sign(v, m, text, pos, value)
         self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "")
@@ -1395,29 +1487,57 @@ class Checker:
                         r"adequacy|penetration|utili[sz]ation", text[label[1]:label[2]].lower()):
                     v.fail("unit_kind", f"{u or kind} row without % / per cent / bps at the number")
 
-    def check_nearer_label(self, v: Verdict, m: Metric | None, text: str, pos: int | None) -> None:
+    def check_nearer_label(self, v: Verdict, m: Metric | None, text: str, pos: int | None,
+                           reach: int = 45, same_side: bool = False,
+                           mask_denominators: bool = False) -> None:
         """Another metric's strong label nearer the number than the row's own label is the row's real metric
-        ("50 crores of revenue ... 20% of EBITDA margins" stored as revenue growth)."""
+        ("50 crores of revenue ... 20% of EBITDA margins" stored as revenue growth; round 10 for kpi: "gross
+        debt ... a cash of INR 3,165 crores" stored as gross debt).  ``same_side`` compares only labels on the
+        row's own side of the number, so a metric named after it ("AUM ... 7,984 crore and PAT by 50%") is not
+        taken as claiming the number; ``mask_denominators`` ignores the base phrase ("as a % of NOV")."""
         if m is None or pos is None:
             return
         own = nearest_strong_label(m, text, pos)
-        if own is None or abs(own[0]) > 45:
+        if own is None or abs(own[0]) > reach or abs(own[0]) <= 15:
+            # a label within 15 chars of the number already pins it; a nearer foreign label would lie between
+            # the two and check_label has quarantined that (the scan below is the far-label case)
             return
-        best: tuple[int, str, str] | None = None
+        if own[2] <= pos and _VARIANT.search(text[own[2]:pos]):
+            return      # a qualifier phrase ("EBITDA margin excluding other income") is the soft variant
+        own_before = own[2] <= pos
+        # a denominator ("as a % of NOV", "net NPAs to net advances") names the base, not the number's metric
+        scanned = _DENOM.sub(lambda mm: " " * len(mm.group(0)), text) if mask_denominators else text
+        own_spans = [(mm.start(), mm.end()) for p in (*m.labels, *m.weak) for mm in p.finditer(text)]
+        best: tuple[int, str, str, int, int] | None = None
         for other in self.vocab.metrics.values():
             if other.name == m.name or other.name in m.related or m.name in other.related:
                 continue
             for pattern in other.labels:
-                for mm in pattern.finditer(text):
+                for mm in pattern.finditer(scanned):
+                    if same_side and (mm.end() <= pos) != own_before:
+                        continue
+                    if any(a - 2 <= mm.start() and mm.end() <= b + 2 for a, b in own_spans):
+                        continue      # inside the row's own label ("net cash" holds "cash balance")
+                    if mm.group(0)[0].isdigit() and mm.start() > 0 and scanned[mm.start() - 1] in "0123456789.,":
+                        continue      # the "49 m" fragment of "13.49 million", not a persistency label
                     if any(w.search(mm.group(0)) for w in m.weak):
                         continue
                     if mm.group(0).lower().startswith(("revenue", "sale", "turnover")) and re.search(
-                            r"\b(?:of|for)\s+(?:our|the|total|its)?\s*$", text[max(0, mm.start() - 14):mm.start()]):
+                            r"\b(?:of|for)\s+(?:our|the|total|its)?\s*$", scanned[max(0, mm.start() - 14):mm.start()]):
                         continue      # "2.5% of our revenues": the base, not the row's metric
                     dist = pos - mm.end() if mm.end() <= pos else mm.start() - pos
                     if best is None or abs(dist) < abs(best[0]):
-                        best = (dist, other.name, mm.group(0))
+                        best = (dist, other.name, mm.group(0), mm.start(), mm.end())
         if best is None or abs(best[0]) >= abs(own[0]):
+            return
+        # a printed list ("Gross NPA and Net NPA stood at a% and b%") puts each label in front of its own value
+        if self.list_place(m, scanned, pos) is True:
+            return
+        # the quote may cut the list after its first value ("Gross NPA and Net NPA ... stood at 1.24%"): the two
+        # labels are joined as a list, so the first value can still be the first label's
+        a, b = sorted(((own[1], own[2]), (best[3], best[4])))
+        join = text[a[1]:b[0]]
+        if len(join) <= 30 and re.search(r"(?:^|\s)(?:and|&)(?:\s|$)|,", join) and self.list_order_ok(m, scanned, pos):
             return
         v.fail("label_conflict", f"{best[1]} label '{best[2]}' is nearer the number than {m.name}")
 
@@ -1473,6 +1593,99 @@ class Checker:
             v.fail("dimension_word", f"the {m.name} label follows '{mm.group(1).strip()}' but the row is total")
             return
 
+    # -- round 10: six general wrong classes ------------------------------------------------
+    def check_footnote(self, v: Verdict, m: Metric | None, text: str, pos: int | None) -> None:
+        """A footnote marker between the metric's label and the number: the number belongs to the note
+        ("Net Debt *Includes investments in liquid funds and FDs of INR 3,165 crores"), not to the label."""
+        if m is None or pos is None:
+            return
+        label = nearest_strong_label(m, text, pos)
+        if label is None or label[2] > pos:
+            return
+        span = text[label[2]:pos]
+        mark = _FOOTNOTE_MARK.search(span)
+        if not mark:
+            return
+        tail = span[mark.end():]
+        if label_hits(m, tail) or not _NOTE_PHRASE.search(tail):
+            return
+        v.fail("footnote_note", f"the number follows a footnote note ('{tail.strip()[:60]}')")
+
+    def check_projection(self, v: Verdict, m: Metric | None, text: str, pos: int | None, doc_key: str,
+                         page: int, fiscal_period: str) -> None:
+        """A projection is not the company's actual: the number's sentence on a rating rationale page is the
+        agency's estimate ("is estimated at 1.1 times in fiscal 2026 and is expected to remain stable"), and a
+        fiscal year later than the row's own, right after the number, names a future level."""
+        if pos is None:
+            return
+        lo, hi = sentence_bounds(text, pos)
+        if _PROJECTION.search(text[lo:hi]) and _RATING_PAGE.search(self.page_fold(doc_key, page)):
+            v.fail("projection", "the number's sentence is a rating agency's projection")
+            return
+        year = period_fiscal_year(fiscal_period)
+        if year is None:
+            return
+        later = {y for y in plain_fiscal_years(text[pos:pos + 45]) if y > year}
+        if later:
+            v.fail("projection", f"fiscal {min(later)} follows the number on a {fiscal_period} row")
+
+    def check_regulated_rate(self, v: Verdict, m: Metric | None, text: str, pos: int | None, unit: str) -> None:
+        """A regulated utility's allowed / normative return is the tariff's rate, not the company's earned ratio
+        ("The tariff allows a return on equity of 15.5%")."""
+        if pos is None:
+            return
+        kind = m.kind if m else ""
+        if not ((unit or "").lower() in ("pct", "bps") or kind in ("level_pct", "bps_or_pct", "multiple")):
+            return
+        lo, hi = sentence_bounds(text, pos)
+        sentence = text[lo:hi]
+        if _ROE_PHRASE.search(sentence) and _REGULATOR.search(sentence):
+            v.fail("regulated_rate", "the number sits in a regulator / tariff sentence about return on equity")
+
+    def check_segment_scope(self, v: Verdict, m: Metric | None, text: str, pos: int | None, symbol: str,
+                            dim_words: dict[str, set[str]]) -> None:
+        """A total row whose number's own clause names a segment / vertical ("Revenue of our flagship hospital
+        business stood at 500 crore"): the amount is probably that part's, not the total's.  The window is the
+        label-to-number span and 40 characters after the number, so a segment list elsewhere in a deck quote
+        does not count."""
+        if pos is None:
+            return
+        label = nearest_strong_label(m, text, pos) if m is not None else None
+        start = label[1] if label is not None and label[1] <= pos else max(0, pos - 80)
+        window = text[max(0, start - 40):pos + 40]
+        low = window.lower()
+        name_words = set(re.split(r"[^a-z]+", m.name)) if m is not None else set()
+        for word in sorted(dim_words.get(symbol, ())):
+            if word in name_words:
+                continue        # the company's own dimension word is part of this metric's name
+            if re.search(rf"(?<![a-z]){re.escape(word)}(?![a-z])", low):
+                v.fail("segment_scope", f"the number's clause names the company's own segment '{word}'")
+                return
+        for mm in _SEGMENT_NOUN.finditer(window):
+            lead = re.sub(r"['’]s$", "", mm.group(1).lower())
+            if lead not in _SEGMENT_STOP and lead not in name_words:
+                v.fail("segment_scope", f"the number's clause names a segment ('{mm.group(0).strip()}')")
+                return
+
+    def check_past_level(self, v: Verdict, m: Metric | None, text: str, pos: int | None,
+                         fiscal_period: str, rule: str = "") -> None:
+        """A level said about an earlier time is not this period's level ("net debt had almost neared INR
+        20,000 crores in FY23" stored for the call's quarter).  A table / chart quote's years are column
+        headers, not the number's own time (period_word makes the same exception)."""
+        if pos is None or rule in ("table_v1", "chart_v1"):
+            return
+        lo, hi = sentence_bounds(text, pos)
+        sentence = text[lo:hi]
+        year = period_fiscal_year(fiscal_period)
+        earlier = {y for y in plain_fiscal_years(text[max(lo, pos - 120):min(hi, pos + 60)])
+                   if year is not None and y < year}
+        if earlier:
+            v.fail("past_level", f"the number's sentence names fiscal {max(earlier)} on a {fiscal_period} row")
+            return
+        hit = _PAST_LEVEL.search(sentence)
+        if hit:
+            v.fail("past_level", f"the number's sentence frames a past level ('{hit.group(0).strip()}')")
+
     def finish(self, v: Verdict) -> Verdict:
         names = {c for c, _ in v.fails}
         if names & HARD:
@@ -1482,6 +1695,11 @@ class Checker:
             # a variant is the plain line: label_weak / variant never verify (round 9)
             v.status = "verified" if v.corroborated and names <= {"multi_number", "value_scaled",
                                                                   "history_row", "scale_doubt"} else "unverified"
+        elif v.table == "kpi_series" and not v.corroborated and v.rule != "xbrl_segment":
+            # an uncorroborated kpi figure is right about half the time on companies nobody tuned on (hidden
+            # read, 8 Nov): verified needs a second independent source; an xbrl_segment row IS the filing
+            v.fail("single_source", "no independent second source for this figure")
+            v.status = "unverified"
         else:
             v.status = "verified"
         return v
@@ -1701,6 +1919,10 @@ class Checker:
             self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "")
             ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
             self.check_label(v, m, text, pos, ctx)
+            self.check_nearer_label(v, m, text, pos, reach=10 ** 9, same_side=True, mask_denominators=True)
+            self.check_footnote(v, m, text, pos)
+            self.check_projection(v, m, text, pos, r["doc_key"], r["page"], r["fiscal_period"])
+            self.check_regulated_rate(v, m, text, pos, r["unit"] or "")
             self.check_currency(v, m, text, pos, r["unit"] or "")
             self.check_net_cash_sign(v, m, text, pos, value)
             self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "")
@@ -1711,11 +1933,13 @@ class Checker:
             if r["dimension"] == "total":
                 self.check_dimension_word(v, m, quote, value, r["symbol"], dim_words)
                 self.check_scope_word(v, m, text, pos, r["metric"])
+                self.check_segment_scope(v, m, text, pos, r["symbol"], dim_words)
             if how == "exact":
                 # the list-order test needs the number the row actually took: a rescaled match (an OCR
                 # "0. 77%") is a soft value_scaled, not evidence about the list
                 self.check_list(v, m, text, pos, ctx)
             self.check_period_word(v, text, pos, r["fiscal_period"], r["extractor_rule"] or "")
+            self.check_past_level(v, m, text, pos, r["fiscal_period"], r["extractor_rule"] or "")
             if m is None or m.kind != "growth_pct":
                 delta = delta_hit(text, value, nums)
                 if delta:

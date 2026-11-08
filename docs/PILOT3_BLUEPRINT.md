@@ -931,9 +931,11 @@ verdicts, because a rebuilt row has a new id and the old verdict would hide or l
 `--part checks` after any kpi or guidance rebuild. Measured on
 the pilot10 dev copy (`D:/RealityEngine/pilot10/scratch/t113_p10_serve.db`, 8 Nov, round-2 checker): the part took
 7.3 s and wrote 6,149 verdicts — guidance 46 / 26 / 34 and kpi_series 4,249 / 1,422 / 372 (verified / unverified /
-quarantined). The checker has moved twice since (build guide section 13, round 8): it alone now takes 11.1-11.3 s
-on the same 6,149 rows and gives guidance 19 / 46 / 41 and kpi_series 3,534 / 2,072 / 437, so re-run `--part checks`
-into a build and re-measure the part before quoting its time or counts again.
+quarantined). The checker has moved since (build guide section 13, round 10): it alone now takes 11.8-13.7 s warm
+(median 12.0 s; up to 17.2 s with a cold page cache) on the same 6,149 rows and gives guidance
+19 / 46 / 41 and kpi_series 2,298 / 3,293 / 452 — every verified kpi row is now corroborated by a second source or
+is an `xbrl_segment` row (build guide section 13, `single_source`), so the build serves fewer but better verified
+rows — re-run `--part checks` into a build and re-measure the part before quoting its time or counts again.
 `kpi('BAJFINANCE','nnpa_pct','FY25')` lost the 1.18 gross-NPA row (8 rows -> 4), `guidance('HDFCBANK')` 3 -> 1 and
 `guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py` (7 passed) and the existing
 serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_pilot3.py`, 24 passed).

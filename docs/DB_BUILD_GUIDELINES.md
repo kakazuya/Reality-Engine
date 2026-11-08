@@ -116,8 +116,9 @@ Change a rule only with a measurement that supports the change, and note it in `
   period arithmetic. It opens the build read-only (a WAL database in a directory the process cannot write is opened
   `immutable=1` when no `-wal` exists) and writes `row_check` (one verdict per row) and `row_check_fail` (one line
   per failed check, `hard` 1/0) to a separate database.
-- Verdicts: `verified` (every applicable check passed, and a table row with several numbers is pinned by an
-  independent source), `unverified` (nothing failed but something is not pinned: served with that label),
+- Verdicts: `verified` (every applicable check passed; round 10: a kpi row must also be pinned by an independent
+  second source — another document or the filed statements — except an `xbrl_segment` row, which IS the filing),
+  `unverified` (nothing failed but something is not pinned: served with that label),
   `quarantined` (a hard check failed: never served). When unsure, an extractor writes no row.
 - Hard checks: quote on the cited page; value present in the quote; a label of the metric in the quote (or, soft, in
   the 3,000 characters before it); no other metric's label between the row's label and its number, and no other
@@ -330,6 +331,43 @@ Change a rule only with a measurement that supports the change, and note it in `
   PAT values (₹52 lakh) on v2 and none on unseen6. **0 fin_conflict quarantines go away** (p10 stays 151, unseen6 0)
   and no other verdict moves: the correct quarter-view rows already witnessed these keys, so the repair protects
   future builds rather than changing these two dbs.
+- Measured 8 Nov 2026, round 10 (T-113 checker; same two dev dbs): a hidden read of six unseen companies split the
+  wrong verified kpi rows into six general classes and showed the flag that carries the signal - `corroborated`
+  rows 15 of 16 right, uncorroborated 12 of 24. So a kpi row is `verified` only when `corroborated` is true
+  (another independent document agrees, or a filed statement pins it); the only exemption is `xbrl_segment`, which
+  IS the filing. An uncorroborated row that passes every check becomes `unverified` with soft `single_source`. Six
+  new checks, hard where the row is wrong for sure and soft where a reader must look: hard `footnote_note` (a
+  footnote marker between the metric's label and the number, with a note phrase before it: "Net Debt *Includes
+  investments in liquid funds and FDs of INR 3,165 crores" stores the note's number), soft `projection` (a rating
+  rationale page plus a projection phrase in the number's sentence, or a fiscal year later than the row's own within
+  45 characters after the number), hard `regulated_rate` ("return on equity" with a regulator / tariff / allowed /
+  normative word in the number's sentence: a regulated utility's permitted rate, not the company's earned ratio),
+  soft `segment_scope` (a total row whose label-to-number clause names a segment: the company's own non-total
+  dimension word or a "<qualifier> business / vertical / segment / division / arm / subsidiary / franchise /
+  portfolio" phrase, the metric's own name exempt), hard `label_conflict` from the round-3 nearer-label rule, now
+  applied to kpi rows (a foreign metric's label nearer the number than the row's own: "gross debt ... a cash of INR
+  3,165 crores"), and soft `past_level` (the number's sentence names an earlier fiscal year or frames a past level,
+  "had almost neared"; table / chart quotes are exempt because their years are column headers). The nearer-label
+  rule compares labels on the row's own side of the number and masks denominator phrases, so "AUM 7,984 crore and
+  PAT by 50%" and "EBITDA margin (as a % of NOV)" do not conflict; a printed list keeps its place test, and a list
+  cut after its first value ("Gross NPA and Net NPA ... stood at 1.24%") is not a conflict. `cash_balance` gains
+  "cash (of|at|stood)" as a strong label (`row_checks_vocab.yaml`) so the nearer cash label is caught. Measured on
+  `pilot10/scratch/t113_p10_v2.db` (6,149 rows): kpi **3,527 / 2,079 / 437 -> 2,298 / 3,293 / 452**, guidance
+  **19 / 46 / 41 unchanged**; verified kpi = 1,334 `xbrl_segment` + 964 corroborated, **0 uncorroborated**. On
+  unseen6 (`scratchpad/ho/u6_eval.db`, 1,152 rows): kpi **93 / 711 / 172 -> 38 / 765 / 173**, guidance 8 / 111 / 57
+  unchanged. New-check hits, p10 / unseen6: `single_source` 1,207 / 54, `segment_scope` 114 / 0, `label_conflict`
+  kpi 19 / 3 (2 / 1 before), `projection` 8 / 0, `past_level` 2 / 2, `footnote_note` 0 / 0, `regulated_rate` 0 / 0
+  (neither dev db holds a footnote-note or a regulated-utility row; the tests pin both). Read hits: `segment_scope`
+  catches HINDALCO "Aluminium Business EBITDA" stored as total EBITDA, KEC "order book from this particular
+  segment", BAJFINANCE "PAT per cross sell franchise" stored as PAT; it also unverifies a total whose quote merely
+  lists its segments ("across T&D, Civil, Renewables ...") - soft, by design. `label_conflict` catches HDFCBANK
+  CASA deposits stored in `casa` (a percentage metric) with the amount, the BAJFINANCE deposits comparative stored
+  as AUM, and KEC revenue stored as order book; the list-head rows ("Gross NPA and Net NPA ... 1.24%"), "net cash
+  balance" and the "13.49 million" persistency fragment no longer fire. `projection` flags 8 BAJFINANCE FY25 rows
+  whose quote prints "in FY26". The checker takes **11.8-13.7 s** on p10 warm (median 12.0 s over six runs; HEAD
+  before this round: 12.8-13.2 s on the same machine; up to 17.2 s when the page cache is cold) and 3.2 s on
+  unseen6; the page-squash cache pays for the new checks. Every verified kpi row on both dev dbs is corroborated or
+  `xbrl_segment` (0 violations).
 - Measured 8 Nov 2026, round 10 / store fix (T-115: `reality_engine/pilot3/stores.py`, `_unit` and the
   `_fy_label` / `_quote_fy` / `_amount_key` / `_annual_rows` split of `build_annual`; test
   `reality_engine/tests/test_pilot3_stores_annual_units.py`): a unit text now keeps its printed scale - mn / million /
@@ -346,9 +384,10 @@ Change a rule only with a measurement that supports the change, and note it in `
   is the same figure printed by two documents); pilot10 122 -> 110 rows, 13 -> 2 defect units, 0 years changed (its
   history rows all sit before the window). Row checks after a stores rebuild **plus `--part preferred`** (the stores
   part resets the preferred windows, so `fin_quarter_current` and the checker need it re-run): unseen6 **93 / 711 /
-  172**, fin_conflict 0; pilot10 **3,527 / 2,079 / 437**, fin_conflict 151 and part_not_total 83 - all unchanged.
-  Tests **68 passed**, the `stores.py` / test typecheck clean.
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (59 passed, 8 Nov) builds a tiny fixture
+  172**, fin_conflict 0; pilot10 **3,527 / 2,079 / 437**, fin_conflict 151 and part_not_total 83 - all unchanged
+  from round 9 (these are round-9 checker totals: the round-10 checker above gives unseen6 38/765/173 and pilot10
+  2,298/3,293/452 on the same rows). Tests **68 passed**, the `stores.py` / test typecheck clean.
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (66 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
   gross margin as its own metric, the denominator keep rule, "improve by" as a delta, medium-term / CAGR /
@@ -364,7 +403,11 @@ Change a rule only with a measurement that supports the change, and note it in `
   both agreeing and disagreeing (a variant peer exempt), a zero filed figure as no witness, the page-unit
   declarations and their currency and quote-unit exemptions, the extended variant words, "as per" not matching,
   bare leverage as a weak label, corroboration failing to verify a weak or variant label, the glued / bracketed
-  Ind AS qualifiers, a filed unit that names its own scale, and a sub-crore filed value that cannot witness);
+  Ind AS qualifiers, a filed unit that names its own scale, a sub-crore filed value that cannot witness, and round
+  10's six classes each with an invented wrong sentence and a right control: the footnote note, the rating-agency
+  projection plus a future fiscal year after the number, the tariff's allowed return on equity, a segment named in
+  a total row's quote, the nearer cash label, a past level in narrative - plus the single-source rule and its
+  `xbrl_segment` exemption);
   `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per

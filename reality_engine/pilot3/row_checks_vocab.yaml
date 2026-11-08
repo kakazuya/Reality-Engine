@@ -309,7 +309,9 @@ metrics:
     kind: any
   cash_balance:
     aliases: [cash_balance]
-    labels: ['cash (balance|and|&|on)', 'liquidity']
+    # "a cash of INR 3,165 crores" names the cash, so a gross-debt row whose number sits there is the cash
+    # figure (round 10: the nearer foreign label, class 5).  A bare "cash" stays weak on purpose.
+    labels: ['cash (balance|and|&|on|of|at|stood)', 'liquidity']
     weak: ['cash']
     kind: amount
   book_value_per_share:

@@ -305,7 +305,8 @@ def test_bps_row_pins_the_percent_reading(tmp_path):
     db, profile = build(tmp_path, {1: quote}, kpi=kpi, sectors={"LENDER": "nbfc"})
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
     status, fails = verdict(out, "kpi_series", 1)
-    assert status == "verified", fails
+    # the percent reading pins the number; the row is unverified only because nothing corroborates it (round 10)
+    assert status == "unverified" and "value_present" not in fails and "single_source" in fails, fails
 
 
 NPA_QUOTE = ("Gross NPA and Net NPA as of 31 March 2026 stood at 1.27% and 0.52% respectively, as against "
@@ -448,7 +449,7 @@ def test_entity_mismatch_is_soft(tmp_path):
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
     status, fails = verdict(out, "kpi_series", 1)
     assert status == "unverified" and "entity_mismatch" in fails, fails
-    assert verdict(out, "kpi_series", 2)[0] == "verified"
+    assert "entity_mismatch" not in verdict(out, "kpi_series", 2)[1]
 
 
 def test_report_writes_summary_and_a_seeded_sample(tmp_path):
@@ -496,7 +497,7 @@ def test_currency_in_the_label_to_number_span_is_quarantined(tmp_path):
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
     status, fails = verdict(out, "kpi_series", 1)
     assert status == "quarantined" and "currency" in fails, fails
-    assert verdict(out, "kpi_series", 2)[0] == "verified"
+    assert "currency" not in verdict(out, "kpi_series", 2)[1]
     status, fails = verdict(out, "kpi_series", 3)
     assert status == "quarantined" and "currency" in fails, fails
     # a backtick is this corpus's rupee glyph, so the rupee approximation is the number's currency
@@ -537,7 +538,7 @@ def test_dimension_word_flags_a_segment_named_before_a_total_label(tmp_path):
     for rid in (2, 4, 6):
         status, fails = verdict(out, "kpi_series", rid)
         assert status == "unverified" and "dimension_word" in fails, (rid, fails)
-    assert verdict(out, "kpi_series", 5)[0] == "verified"
+    assert "dimension_word" not in verdict(out, "kpi_series", 5)[1]
     # the metric's full name before its own abbreviation is not a segment word
     assert "dimension_word" not in verdict(out, "kpi_series", 7)[1]
 
@@ -1376,3 +1377,145 @@ def test_a_sub_crore_filed_value_does_not_witness(tmp_path):
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
     status, fails = verdict(out, "kpi_series", 1)
     assert status == "unverified" and "fin_conflict" not in fails and "uncorroborated" in fails, fails
+
+
+# ------------------------------------------------------------- round 10: verified needs a second source
+# Six general wrong classes from a hidden read of unseen companies, plus the structural rule that a kpi row
+# with no independent second source is not `verified`.  Every sentence is invented to the class's shape.
+
+def test_an_uncorroborated_kpi_row_is_single_source(tmp_path):
+    pages = {1: "EBITDA margin was 12.5% in Q2 FY26 on lower employee costs.",
+            2: "EBITDA margin was 12.5% in Q2 FY26 on lower employee costs."}
+    kpi = [
+        dict(id=1, symbol="CO", metric="ebitda_margin_pct", dimension="total", fiscal_period="Q2FY26",
+             value=12.5, unit="pct", quote=pages[1], page=1),
+        # a tagged segment line IS the filing: no quote, no second source needed
+        dict(id=2, symbol="CO", metric="revenue", dimension="total", fiscal_period="Q2FY26", value=500.0,
+             unit="inr_cr", scale=1e7, quote="", page=2, extractor_rule="xbrl_segment"),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "single_source" in fails, fails
+    assert verdict(out, "kpi_series", 2)[0] == "verified"
+
+
+def test_a_footnote_notes_amount_is_not_the_metric(tmp_path):
+    pages = {
+        1: "Net Debt *Includes investments in liquid funds and FDs of INR 3,165 crores",
+        2: "Gross debt was INR 3,165 crores.* (*Includes investments in liquid funds and FDs)",
+    }
+    kpi = [
+        dict(id=1, symbol="CO", metric="gross_debt", dimension="total", fiscal_period="Q2FY26", value=3165.0,
+             unit="inr_cr", scale=1e7, quote=pages[1], page=1),
+        dict(id=2, symbol="CO", metric="gross_debt", dimension="total", fiscal_period="Q2FY26", value=3165.0,
+             unit="inr_cr", scale=1e7, quote=pages[2], page=2),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "power_utility"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "footnote_note" in fails, fails
+    status, fails = verdict(out, "kpi_series", 2)
+    assert status != "quarantined" and "footnote_note" not in fails, fails
+
+
+def test_a_rating_agencys_projection_is_not_the_company_actual(tmp_path):
+    pages = {
+        1: "Rating rationale: the company's net debt to EBITDA is estimated at 1.1 times in fiscal 2026 "
+           "and is expected to remain stable.",
+        2: "Net debt to EBITDA was 1.1 times in Q2 FY26 and we expect it to remain stable.",
+        3: "Net debt to EBITDA stood at 1.1 times in fiscal 2025, on a constant-currency basis.",
+    }
+    kpi = [
+        dict(id=1, symbol="CO", metric="net_debt_to_ebitda", dimension="total", fiscal_period="Q2FY26",
+             value=1.1, unit="x", quote=pages[1], page=1),
+        dict(id=2, symbol="CO", metric="net_debt_to_ebitda", dimension="total", fiscal_period="Q2FY26",
+             value=1.1, unit="x", quote=pages[2], page=2),
+        # a past-year row whose number is followed by a later fiscal year: a projection, not the level
+        dict(id=3, symbol="CO", metric="net_debt_to_ebitda", dimension="total", fiscal_period="FY24",
+             value=1.1, unit="x", quote=pages[3], page=3),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "projection" in fails, fails
+    fails = verdict(out, "kpi_series", 2)[1]
+    assert "projection" not in fails, fails
+    fails = verdict(out, "kpi_series", 3)[1]
+    assert "projection" in fails, fails
+
+
+def test_a_regulators_allowed_rate_is_not_the_company_ratio(tmp_path):
+    pages = {
+        1: "The tariff allows a return on equity of 15.5% for the control period.",
+        2: "Our return on equity improved to 15.5% in Q2 FY26 on higher margins.",
+    }
+    kpi = [
+        dict(id=1, symbol="UTIL", metric="roe_pct", dimension="total", fiscal_period="Q2FY26", value=15.5,
+             unit="pct", quote=pages[1], page=1),
+        dict(id=2, symbol="UTIL", metric="roe_pct", dimension="total", fiscal_period="Q2FY26", value=15.5,
+             unit="pct", quote=pages[2], page=2),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"UTIL": "power_utility"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "regulated_rate" in fails, fails
+    status, fails = verdict(out, "kpi_series", 2)
+    assert status != "quarantined" and "regulated_rate" not in fails, fails
+
+
+def test_a_vertical_named_in_a_total_rows_quote_is_soft(tmp_path):
+    pages = {
+        1: "Revenue of our flagship hospital business stood at 500 crore in Q2 FY26.",
+        2: "Total revenue grew to 500 crore in Q2 FY26 on strong volume growth.",
+    }
+    kpi = [
+        dict(id=1, symbol="CO", metric="revenue", dimension="total", fiscal_period="Q2FY26", value=500.0,
+             unit="inr_cr", scale=1e7, quote=pages[1], page=1),
+        dict(id=2, symbol="CO", metric="revenue", dimension="total", fiscal_period="Q2FY26", value=500.0,
+             unit="inr_cr", scale=1e7, quote=pages[2], page=2),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "healthcare"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "segment_scope" in fails, fails
+    fails = verdict(out, "kpi_series", 2)[1]
+    assert "segment_scope" not in fails, fails
+
+
+def test_a_nearer_cash_label_is_not_gross_debt(tmp_path):
+    pages = {
+        1: "Our gross debt is at a comfortable level when we have a cash of INR 3,165 crores.",
+        2: "Net debt of INR 3,165 crores at 30 June 2026, with cash of INR 500 crores.",
+    }
+    kpi = [
+        dict(id=1, symbol="CO", metric="gross_debt", dimension="total", fiscal_period="Q2FY26", value=3165.0,
+             unit="inr_cr", scale=1e7, quote=pages[1], page=1),
+        dict(id=2, symbol="CO", metric="net_debt", dimension="total", fiscal_period="Q2FY26", value=3165.0,
+             unit="inr_cr", scale=1e7, quote=pages[2], page=2),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "label_conflict" in fails, fails
+    status, fails = verdict(out, "kpi_series", 2)
+    assert status != "quarantined" and "label_conflict" not in fails, fails
+
+
+def test_a_past_level_in_narrative_is_soft(tmp_path):
+    pages = {
+        1: "Net debt had almost neared INR 20,000 crores in FY23, before the demerger.",
+        2: "Net debt was INR 20,000 crores at the end of Q2 FY26.",
+    }
+    kpi = [
+        dict(id=1, symbol="CO", metric="net_debt", dimension="total", fiscal_period="Q2FY26", value=20000.0,
+             unit="inr_cr", scale=1e7, quote=pages[1], page=1),
+        dict(id=2, symbol="CO", metric="net_debt", dimension="total", fiscal_period="Q2FY26", value=20000.0,
+             unit="inr_cr", scale=1e7, quote=pages[2], page=2),
+    ]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"CO": "it_services"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "unverified" and "past_level" in fails, fails
+    fails = verdict(out, "kpi_series", 2)[1]
+    assert "past_level" not in fails, fails
