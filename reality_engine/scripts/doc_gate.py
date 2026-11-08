@@ -3,7 +3,9 @@
 A merge on ``main`` must stage ``tasks/STATE.md``.  A code commit on ``main`` must stage a doc
 naming it.  A commit that stages a tracker file is linted like ``task_board lint``.  A commit
 message on ``main`` must name a ticket (``T-<digits>``) or say why it has none
-(``No-ticket: <reason>``).  Worker branches are checked when they merge.
+(``No-ticket: <reason>``).  Worker branches are checked when they merge: a merge of a
+``dsh/<job_id>`` branch needs a review row for that job, and a merge that adds code with a new
+top-level ``def`` needs a staged test (T-127).
 
 Every pre-commit and commit-msg pass or block is appended to the rule ledger
 (``tasks/efficiency/rule_events.jsonl``, see ``rule_ledger.py``); logging never changes a
@@ -26,6 +28,9 @@ LINE_LIMITS = {STATE: 40, "AGENTS.md": 150, "tasks/RULINGS.md": 40, "tasks/TASKS
 # STATE.md is still 33k characters when each line is a paragraph.
 CHAR_LIMITS = {STATE: 4000, "tasks/RULINGS.md": 8000}
 CODE_SUFFIXES = (".py", ".sql")
+#: one JSON object per line; ``id`` is the job id of a reviewed worker (T-127)
+REVIEWS = "tasks/efficiency/worker_reviews.jsonl"
+DSH_BRANCH = "dsh/"
 #: briefs say what to do, not what is true, so they do not count as documentation
 NOT_DOCS = ("tasks/dsh_tasks/", "tasks/archive/")
 TICKET = re.compile(r"\bT-\d+\b")
@@ -74,12 +79,69 @@ def tracker_problem(staged: list[str], root: Path | None = None) -> str | None:
     return "tracker lint failed: " + "; ".join(problems[:10]) if problems else None
 
 
+def _review_ids(text: str) -> set[str]:
+    """Every job id in a reviews file; a bad line is skipped, never raised."""
+    ids: set[str] = set()
+    for line in text.splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(row, dict) and isinstance(row.get("id"), str):
+            ids.add(row["id"].strip())
+    return ids
+
+
+def worker_review_problem(merge_branch: str | None, staged: list[str], read,
+                          root: Path | None = None) -> str | None:
+    """A merge of ``dsh/<job_id>`` needs that job's review row (T-127); other merges pass."""
+    if not merge_branch or not merge_branch.startswith(DSH_BRANCH):
+        return None
+    job_id = merge_branch[len(DSH_BRANCH):].strip()
+    if not job_id:
+        return None
+    text = read(REVIEWS) if REVIEWS in staged else ""
+    if not text.strip():
+        root = root or Path(__file__).resolve().parents[2]
+        try:
+            text = (root / REVIEWS).read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            return (f"merge of {merge_branch} without a worker review row in {REVIEWS} "
+                    f"(the file cannot be read: {exc})")
+    if job_id in _review_ids(text):
+        return None
+    return f"merge of {merge_branch} without a worker review row in {REVIEWS}"
+
+
+def _is_test_file(name: str) -> bool:
+    return name.endswith(".py") and ("/tests/" in name.replace("\\", "/")
+                                    or Path(name).name.startswith("test_"))
+
+
+def merge_tests_problem(staged: list[str], added: str | None) -> str | None:
+    """A merge that adds code and a top-level ``def`` needs a staged test (T-127).
+
+    ``added`` is the staged diff's added lines; ``None`` means the diff was not supplied, so a
+    pure fix cannot be proven and the merge is refused.
+    """
+    code = [n for n in staged if n.endswith(".py") and not _is_test_file(n)]
+    if not code or any(_is_test_file(n) for n in staged):
+        return None
+    if added is not None and not re.search(r"(?m)^\+(async\s+)?def\s", added):
+        return None
+    return ("merge adds code without a test: " + ", ".join(code[:15])
+            + " (a pure fix that adds no top-level `def` needs none)")
+
+
 def check(staged: list[str], *, branch: str, merging: bool, read=lambda name: "",
-          root: Path | None = None) -> str | None:
+          root: Path | None = None, merge_branch: str | None = None,
+          added: str | None = None) -> str | None:
     """The refusal message for this commit, or None when it may go ahead.
 
     Shivam, 2026-11-01: no merge without docs. Every changed code file must be named in a doc
     changed by the same commit, and tasks/STATE.md alone does not count on a merge.
+    T-127: a merge of a ``dsh/<job_id>`` branch needs that job's worker review row, and a merge
+    that adds code with a new top-level ``def`` needs a staged test.
     """
     if branch != "main":
         return None
@@ -96,6 +158,10 @@ def check(staged: list[str], *, branch: str, merging: bool, read=lambda name: ""
     problem = tracker_problem(staged, root)
     if problem:
         return problem
+    if merging:
+        problem = worker_review_problem(merge_branch, staged, read, root) or merge_tests_problem(staged, added)
+        if problem:
+            return problem
     if merging and STATE not in staged:
         return f"merge on main without {STATE}: put the current state in it"
     docs = [n for n in staged if n.endswith(".md") and not n.startswith(NOT_DOCS) and not (merging and n == STATE)]
@@ -140,6 +206,10 @@ def gate_rule(problem: str | None) -> str:
                 return "start_files"
         if problem.startswith("tracker lint"):
             return "tracker_lint"
+        if problem.startswith(f"merge of {DSH_BRANCH}"):
+            return "worker_review"
+        if problem.startswith("merge adds code without a test"):
+            return "merge_tests"
     return "doc_gate"
 
 
@@ -161,6 +231,20 @@ def log_gate(rule: str, problem: str | None, *, subject: str = "", detail: str =
 
 def _git(*args: str) -> str:
     return subprocess.run(["git", *args], capture_output=True, text=True, check=False, encoding="utf-8", errors="replace").stdout.strip()
+
+
+def dsh_merge_branch() -> str | None:
+    """The ``refs/heads/dsh/<job_id>`` branch at MERGE_HEAD, or None (T-127).
+
+    Opus merges by hand with ``--no-ff --no-commit`` and a custom message, so the branch name is
+    not in MERGE_MSG; the commit MERGE_HEAD points at is what names the reviewed worker.
+    """
+    heads = _git("rev-parse", "MERGE_HEAD").split()
+    if not heads:
+        return None
+    branches = _git("for-each-ref", "--format=%(refname:short)", "--points-at", heads[0],
+                    f"refs/heads/{DSH_BRANCH}").splitlines()
+    return branches[0].strip() if branches else None
 
 
 def sweep(root: Path) -> int:
@@ -216,8 +300,10 @@ def main(argv: list[str]) -> int:
         return 0
     staged = _git("diff", "--cached", "--name-only").splitlines()
     branch = _git("rev-parse", "--abbrev-ref", "HEAD")
-    message = check(staged, branch=branch,
-                    merging=Path(_git("rev-parse", "--git-path", "MERGE_HEAD")).exists(),
+    merging = Path(_git("rev-parse", "--git-path", "MERGE_HEAD")).exists()
+    message = check(staged, branch=branch, merging=merging,
+                    merge_branch=dsh_merge_branch() if merging else None,
+                    added=_git("diff", "--cached", "-U0", "--", "*.py"),
                     read=lambda name: _git("show", f":{name}"))
     if branch == "main":
         log_gate(gate_rule(message), message, detail="pre-commit: " + ", ".join(staged[:30]))

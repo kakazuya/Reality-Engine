@@ -712,7 +712,7 @@ three names are in the `pilot3_sql` table list in `plugins/reality-data/server/s
 
 **Shivam's ticket board (8 Nov 2026).** `reality_engine/scripts/ticket_board_report.py` writes `D:\RealityEngine\reports\ticket_board.xlsx` (summary + one sheet per group: Open, In progress, Pending a bottleneck = WAITING/LOOKING, Closed (resolved) = DONE or DROPPED as merged/done/fixed/built, Sidelined = other DROPPED) and the same `ticket_board.html`, from `tasks/TASKS.md` + `tasks/TASKS_DONE.md`. It is Shivam's source of truth, so it is rewritten after every `task_board` add/set/done/drop and by the `post-commit` hook (installed by `doc_gate.py --install`) when a commit on main touches `tasks/TASKS*`. One-way sync; a file open in Excel is reported and retried at the next sync. `REALITY_TICKET_BOARD_SYNC=0` turns it off; `REALITY_REPORTS_DIR` moves it. Test `reality_engine/tests/test_ticket_board_report.py`. Shivam retired the 3-7 Nov reports on 8 Nov (answer checks, model-vs-store, dig, second read, re-ask, embedding, OCR, night-loop, doc-identity scans, database inventory): they are no longer in `D:\RealityEngine\reports`; copies are on `gdrive:InfoDiffusion_archive/reports/retired_2026-11-08/` under the same names.
 
-**Standing-rules sheet (Shivam, 8 Nov 2026).** `reality_engine/scripts/standing_rules_report.py` writes `D:\RealityEngine\reports\standing_rules.xlsx` (+ `.html`): every ruling in `tasks/RULINGS.md` with how it reaches each session: session-start prompt (`load_context.py`), MCP `project_rules`, the dsh context pack, the code gate that refuses the action (`[check: ...]` tags via `CODE_GATES`, untagged ones via `CODE_EXTRA` regexes) and the Claude memory files sharing its words (keyword score >= 0.25); sheet Mechanisms says where each lives, whom it reaches and whether it is enforced. The post-commit hook rewrites it when a main commit touches `tasks/RULINGS.md`. Test `reality_engine/tests/test_standing_rules_report.py`.
+**Standing-rules sheet (Shivam, 8 Nov 2026).** `reality_engine/scripts/standing_rules_report.py` writes `D:\RealityEngine\reports\standing_rules.xlsx` (+ `.html`): every ruling in `tasks/RULINGS.md` with how it reaches each session: session-start prompt (`load_context.py`), MCP `project_rules`, the dsh context pack, the code gate that refuses the action (`[check: ...]` tags via `CODE_GATES`, untagged ones via `CODE_EXTRA` regexes) and the Claude memory files sharing its words (keyword score >= 0.25); sheet Mechanisms says where each lives, whom it reaches and whether it is enforced. The post-commit hook rewrites it when a main commit touches `tasks/RULINGS.md`; `python -m reality_engine.scripts.ruling add ...` rewrites it in the same command that appends a new ruling (T-127). Test `reality_engine/tests/test_standing_rules_report.py`.
 
 **Per-run answer report (Shivam, 8 Nov 2026).** Every question/answer run ends with `python -m reality_engine.scripts.answer_run_report --run <graded.jsonl> --name <topic>`: `D:\RealityEngine\reports\YYYY-MM-DD_<topic>.xlsx` (sheets Summary, Answers, Errors, Documents, Root causes, Wishlist) and `..._answers.csv`. One JSONL object per question: run_id, qid, symbol, question, reframed_question, as_of, use, kind, tools, answer, sources [{doc_key, doc_type, page, known_at}], grade (right/partly/wrong/not_held/scope_out), error, root_cause (raw_missing, not_extracted, wrong_row, quarantined, routing, reading, compute, question), fix, source_if_missing; an unknown grade or root cause is refused. Test `reality_engine/tests/test_answer_run_report.py`.
 
@@ -780,6 +780,30 @@ sections above, with `## Now` and `## Next action` whole, plus the ticket card).
 refuses a staged `tasks/STATE.md` over 4,000 characters or `tasks/RULINGS.md` over 8,000
 (`CHAR_LIMITS`, rule `start_files`): 40 STATE lines were still 33.6k characters.
 
+**Worker-branch and test gates (T-127, 8 Nov 2026).** `doc_gate.check()` gained the keywords
+`merge_branch` and `added` (the staged diff); `main()` fills them and nothing else needs them.
+On a merge into `main`, `dsh_merge_branch()` asks `git rev-parse MERGE_HEAD` then
+`git for-each-ref --points-at <sha> refs/heads/dsh`, so a hand merge with `--no-ff --no-commit`
+and a custom message is still caught: the merge is refused (gate rule `worker_review`) unless
+`tasks/efficiency/worker_reviews.jsonl` has a row whose `id` is that `<job_id>` (the staged copy
+when the file is staged, else the working file; a bad JSON line is skipped, an unreadable file
+refuses with the reason instead of raising). The same merge is refused (gate rule `merge_tests`)
+when staged `.py` files outside `tests/`, `reality_engine/tests/` and `plugins/*/tests/` change
+and the staged diff adds a top-level `def` while no test file is staged; a pure fix adds none.
+Both are logged to the rule ledger under their gate names. Tests:
+`reality_engine/tests/test_doc_gate.py`.
+
+**Ruling intake (T-127).** `python -m reality_engine.scripts.ruling add --section "<section>"
+--text "<rule>" [--check "<gate tag>"] [--ticket-title "<gate to build>"]` appends
+`- <rule> [check: <tag>]` as the last bullet of that `## ` section of `tasks/RULINGS.md`, refuses
+without writing when the file would pass 8,000 characters or 40 lines (printing by how much),
+opens a `Workspace` ticket through `task_board.add` when no `--check` is given (`accept:
+standing_rules.xlsx shows a code gate for it`, `from: ruling intake`), and rewrites the
+standing-rules sheet (a locked xlsx prints a warning, never a failed ruling). `ruling list`
+prints the bullet count per section and the characters and lines left. The T-127 gate tags
+registered in `standing_rules_report.CODE_GATES` are `worker_review`, `merge_tests` and
+`code_worker_limit`. Test `reality_engine/tests/test_ruling.py`.
+
 A worker brief carries `Ticket: T-014` or `No-ticket: <reason>`; a T-number absent from the main
 checkout's `tasks/TASKS.md` is refused as `ticket_unknown`, and the brief then carries that one row.
 The start gate is `plugins/dsh-worker/server/core.py` (the refusal and the row attached to the
@@ -798,7 +822,8 @@ Every gate pass or block is one JSON line in `tasks/efficiency/rule_events.jsonl
   (rule `ticket`, carrying the commit's short subject).
 - `plugins/dsh-worker/server/core.py` logs every start refusal: `permission_required` and
   `permission_invalid` (`start_gate_permission`), `brief_incomplete` (`start_gate_brief`),
-  `ticket_unknown` (`ticket`), and `peak_hours` / `peak_hours_imminent` (`start_gate_peak`).
+  `ticket_unknown` (`ticket`), `peak_hours` / `peak_hours_imminent` (`start_gate_peak`), and
+  `code_worker_limit` (`start_gate_limit`, a third code worker; T-127).
 
 `log_event` never raises into the caller, so a full or unwritable log cannot change a gate's
 answer.

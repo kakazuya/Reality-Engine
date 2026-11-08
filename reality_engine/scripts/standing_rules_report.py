@@ -40,6 +40,9 @@ CODE_GATES = {
     "T-050 stop hook": "Stop hook `session_hooks.py stop`: blocks ending a turn while a job runs without a watch",
     "commit-msg": "commit-msg hook: a main commit must name a real ticket",
     "task_board + post-commit hook": "`task_board` add/set/done/drop and the post-commit hook rewrite the Excel ticket board",
+    "worker_review": "pre-commit `doc_gate.py` (T-127): a merge of a `dsh/<job_id>` branch is refused without that job's row in `tasks/efficiency/worker_reviews.jsonl`",
+    "merge_tests": "pre-commit `doc_gate.py` (T-127): a merge that adds code with a new top-level `def` is refused without a staged test",
+    "code_worker_limit": "dsh-worker `start_worker` (T-127): a third code worker is refused (max 2; read-only and HP jobs are not counted)",
 }
 #: Code that enforces a ruling without a ``[check: ...]`` tag in its text (regex on the ruling -> gate).
 CODE_EXTRA = [
