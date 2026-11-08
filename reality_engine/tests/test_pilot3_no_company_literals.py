@@ -126,15 +126,17 @@ def test_a_company_manifest_folder_is_never_another_companys():
     import uuid
 
     from reality_engine.pilot3.docs_collect import _company_manifest
+    from reality_engine.raw_store import RawStore
 
     root = Path(__file__).resolve().parents[2] / ".tmp" / f"manifest_match_{uuid.uuid4().hex[:8]}"
+    store = RawStore(root / "_no_manifest.db", {"raw": root})     # local folders only, no Drive manifest
     try:
         for name in ("abbott_transcripts", "kec_transcripts", "maruti_notes"):
             (root / name).mkdir(parents=True)
         (root / "abbott_transcripts" / "_manifest.json").write_text("{}", encoding="utf-8")
         (root / "kec_transcripts" / "_known_at.json").write_text("{}", encoding="utf-8")
-        assert _company_manifest(root, "ABB") is None
-        assert _company_manifest(root, "KEC") == root / "kec_transcripts"
-        assert _company_manifest(root, "MARUTI") is None, "a folder with no manifest is not a manifest folder"
+        assert _company_manifest(root, "ABB", store) is None
+        assert _company_manifest(root, "KEC", store) == root / "kec_transcripts"
+        assert _company_manifest(root, "MARUTI", store) is None, "a folder with no manifest is not a manifest folder"
     finally:
         shutil.rmtree(root, ignore_errors=True)

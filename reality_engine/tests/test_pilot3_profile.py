@@ -46,7 +46,7 @@ def _pdf(path: Path, pages: list[str]) -> None:
     doc = fitz.open()
     for text in pages:
         page = doc.new_page()
-        page.insert_text((72, 72), text)
+        page.insert_textbox(fitz.Rect(72, 72, 540, 760), text, fontsize=10)   # wraps: no clipped line loses a figure
     doc.save(str(path))
     doc.close()
 
@@ -264,18 +264,19 @@ def test_lookups_serve_the_profile_database():
     assert os.environ.get("REALITY_PILOT3_DB") == previous
 
 
-def test_compute_start_and_extra_indices_are_optional(tmp_path):
+def test_compute_start_and_extra_indices_are_optional():
     """T-073: the committed profile sets `compute_start` (the older quarters are inputs only); a profile that
     sets neither keeps the old behaviour, and one that sets both is read through profile.py only."""
+    base = _fresh("compute")
     assert profile.load(PROFILE_JSON).compute_start == "2024-07-01"
     try:
         profile.activate(profile.load(PROFILE_JSON))
         assert profile.compute_start() == "2024-07-01" and profile.extra_indices() == ()
         data = json.loads(PROFILE_JSON.read_text(encoding="utf-8"))
         for key in ("pages_db", "raw_root", "manifest", "out"):
-            data[key] = str(tmp_path / key)
+            data[key] = str(base / key)
         data.update(compute_start="2024-10-01", extra_indices=["Nifty Bank"])
-        path = tmp_path / "p.json"
+        path = base / "p.json"
         path.write_text(json.dumps(data), encoding="utf-8")
         profile.activate(profile.load(path))
         assert profile.compute_start() == "2024-10-01" and profile.extra_indices() == ("Nifty Bank",)

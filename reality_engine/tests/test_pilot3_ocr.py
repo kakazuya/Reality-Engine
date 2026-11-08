@@ -5,7 +5,9 @@ Fixture stores and a tiny PDF; ``ocr_page`` is monkeypatched, so no model, no re
 from __future__ import annotations
 
 import json
+import shutil
 import sqlite3
+import uuid
 from pathlib import Path
 
 import pytest
@@ -17,6 +19,21 @@ from reality_engine.pilot3 import build, kpi, ocr, registry, transcripts  # noqa
 SHA = "a" * 64
 PDF_KEY = "deck/KEC/aaa.pdf"
 LONG = "text layer page with more than twenty characters on it"
+
+
+@pytest.fixture
+def tmp_path():
+    """A writable empty dir under the repo's ``.tmp``.
+
+    pytest's own ``tmp_path`` is made by ``tempfile.mkdtemp``, which creates the directory mode 0700; the dsh
+    filesystem sandbox denies a file opened inside such a directory, so the tests would not run in a worker.
+    """
+    directory = Path(__file__).resolve().parents[2] / ".tmp" / f"pilot3_ocr_{uuid.uuid4().hex[:10]}"
+    directory.mkdir(parents=True)
+    try:
+        yield directory
+    finally:
+        shutil.rmtree(directory, ignore_errors=True)
 
 
 def _pdf(path: Path, texts: list[str]) -> Path:
@@ -161,8 +178,8 @@ def test_build_pages_fills_doc_page_from_the_ocr_db_and_fts(tmp_path, monkeypatc
         ("KEC", "other.pdf", 1, "announcement", "2026-08-02", "Notice of board meeting",
          json.dumps([[0.0, 0.0, 9.0, 9.0, "Notice", 0.9]]), 0.75, 4, 300, 1.0, "ocr_rapid"),
     ])
-    monkeypatch.setattr(registry, "PAGES_DB", pages)
-    monkeypatch.setattr(registry, "SYMBOLS", ("KEC",))
+    monkeypatch.setattr(registry.profile, "pages_db", lambda: pages)
+    monkeypatch.setattr(registry.profile, "symbols", lambda: ("KEC",))
     monkeypatch.setattr(registry, "SANDBOX_DB", {"KEC": sb / "kec_loop" / "kec.db"})
     con = sqlite3.connect(":memory:")
     assert registry.build_pages(con, [str(odb)]) == {"KEC": 3}          # 2 pages.db pages + 1 sandbox-only page
@@ -203,8 +220,8 @@ def test_build_pages_prefers_textrec_and_keeps_its_method(tmp_path, monkeypatch)
     textrec = _ocr_db(tmp_path / "textrec.db", [
         ("KEC", "scan.pdf", 2, "deck", "2026-08-01T18:00:00", "textrec reading",
          json.dumps([[0.0, 0.0, 9.0, 9.0, "textrec", 0.9]]), 0.9, 1, 300, 1.0, "ocr_textrec")])
-    monkeypatch.setattr(registry, "PAGES_DB", pages)
-    monkeypatch.setattr(registry, "SYMBOLS", ("KEC",))
+    monkeypatch.setattr(registry.profile, "pages_db", lambda: pages)
+    monkeypatch.setattr(registry.profile, "symbols", lambda: ("KEC",))
     monkeypatch.setattr(registry, "SANDBOX_DB", {"KEC": sb / "kec_loop" / "kec.db"})
     for order in ([str(rapid), str(textrec)], [str(textrec), str(rapid)]):
         con = sqlite3.connect(":memory:")
