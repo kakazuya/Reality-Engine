@@ -379,18 +379,34 @@ def lexicon_item(caption: str) -> tuple[str, str] | None:
     return None
 
 
+# The rupee scale a unit text names (T-115): annual-report fonts print the rupee sign as '`' or '₹', so the word is
+# what counts.  A text naming two scales ("rs lakh crore") or none keeps its raw text and scale 1 - never a guess.
+_UNIT_SCALE = {"cr": ("inr_crore", CR), "crore": ("inr_crore", CR), "crores": ("inr_crore", CR),
+               "mn": ("inr_million", 1e6), "million": ("inr_million", 1e6), "millions": ("inr_million", 1e6),
+               "bn": ("inr_billion", 1e9), "billion": ("inr_billion", 1e9), "billions": ("inr_billion", 1e9),
+               "lakh": ("inr_lakh", 1e5), "lakhs": ("inr_lakh", 1e5), "lac": ("inr_lakh", 1e5),
+               "lacs": ("inr_lakh", 1e5), "thousand": ("inr_thousand", 1e3), "thousands": ("inr_thousand", 1e3),
+               "paise": ("inr", 0.01), "paisa": ("inr", 0.01)}
+
+
 def _unit(unit: object) -> tuple[str, float]:
+    """(canonical unit, rupees per printed unit) of a stored annual-report unit text (T-115)."""
     text = str(unit or "").strip().lower()
-    if "crore" in text:
-        return "inr_crore", CR
-    if "million" in text or text in ("mn", "rs million"):
-        return "inr_million", 1e6
-    if text in ("%", "pct", "percent"):
+    scales: set[tuple[str, float]] = {_UNIT_SCALE[t] for t in re.findall(r"[a-z]+", text) if t in _UNIT_SCALE}
+    if re.search(r"'000", text):
+        scales.add(_UNIT_SCALE["thousand"])
+    if len(scales) > 1:
+        return "unknown", 1.0
+    if scales:
+        return scales.pop()
+    if text in ("%", "pct", "percent", "percentage"):
         return "pct", 1.0
+    if text in ("ratio", "times", "x"):
+        return "ratio", 1.0
+    if "per share" in text or "per_share" in text:
+        return "inr_per_share", 1.0
     if text in ("rs", "inr", "rupees", "rs."):
         return "inr", 1.0
-    if "per share" in text:
-        return "inr_per_share", 1.0
     return text or "unknown", 1.0
 
 
@@ -451,6 +467,93 @@ def _ar_page_bases(spec: dict, symbol: str):
     return basis_of, pg.close
 
 
+def _fy_label(period: object, fiscal_year: object) -> str | None:
+    """The FY label an ar_facts row is stored under: its period column, else the March year-end it files."""
+    fy = str(period or "")
+    m = re.fullmatch(r"FY(?:20)?(\d\d)", fy)
+    if m:
+        return "FY" + m.group(1)
+    m = re.match(r"(\d{4})-03-31", str(fiscal_year or ""))
+    return "FY" + m.group(1)[2:] if m else None
+
+
+# The forms an annual report prints a column's own year in (T-115).  The range is read before the label so
+# "FY 2021-22" ends in 2022; the dash may be U+2010..U+2015 or U+2212 in the text layer, and "FY'20" has an
+# apostrophe instead of a space.
+_FY_RANGE = re.compile(r"(?<!\d)(\d{4})\s?[-\u2010-\u2015\u2212]\s?(\d{2}|\d{4})(?!\d)")
+_FY_LABEL = re.compile(r"\bfy\s?'?(\d{4}|\d{2})(?!\d)", re.I)
+
+
+def _quote_fy(quote: object, value: float | None) -> str | None:
+    """The fiscal year a quote prints for this row's own value, or None (T-115).
+
+    A history table prints the year of its column ("FY 2021-22 106,342", "1,26,676 FY2024") while
+    ``ar_facts.period`` holds the report's own year: exactly one year in the quote beside this row's printed number
+    is that column's year.  Two or more years (a comparative sentence), no year, or a quote that does not print this
+    value cannot tell the column, so the stored period is kept."""
+    text = str(quote or "")
+    years: set[int] = set()
+    for m in _FY_RANGE.finditer(text):
+        start, end = int(m.group(1)), m.group(2)
+        if len(end) == 4:
+            if int(end) == start + 1:
+                years.add(int(end) % 100)
+        elif end == f"{(start + 1) % 100:02d}":
+            years.add((start + 1) % 100)
+    spans = _FY_RANGE.sub(" ", text)
+    for m in _FY_LABEL.finditer(spans):
+        years.add(int(m.group(1)) % 100)
+    if len(years) != 1 or value is None:
+        return None
+    printed = _FY_LABEL.sub(" ", spans)
+    for m in _NUMBER.finditer(printed):
+        raw = m.group(0).replace(",", "")
+        decimals = len(raw.split(".")[1]) if "." in raw else 0
+        if abs(float(raw) - abs(value)) <= 0.5 * 10 ** -decimals + 1e-9 * abs(value):
+            return f"FY{years.pop():02d}"
+    return None
+
+
+def _amount_key(value: float, scale: float) -> float:
+    """The rupee amount at 0.1 % precision: two printings of one figure ("rs mn" and "inr_million") collapse."""
+    amount = value * scale
+    return float(f"{amount:.3g}") if amount else 0.0
+
+
+def _annual_rows(symbol: str, rows: list[dict], basis_of, source_db: str) -> list[tuple]:
+    """The fin_annual_line rows of one company's ar_facts rows (T-115).
+
+    Only a closed caption lexicon's lines are kept; the quote's own year and the unit's own scale are applied, and
+    one row per (isin, year, basis, line, rupee amount, document) survives."""
+    out, seen = [], set()
+    for r in rows:
+        hit = lexicon_item(r["item"])
+        if not hit or r["value"] is None:
+            continue
+        basis = str(r["basis"] or "").lower()
+        if basis not in ("consolidated", "standalone"):
+            basis = "not_stated"
+        if _concatenated_value(float(r["value"]), r.get("value_raw"), r.get("value_check")):
+            continue             # a value glued from two printed numbers is not a figure (T-088)
+        page_basis = basis_of(r["doc_id"], r["page"])
+        if page_basis:
+            basis = page_basis
+        fy = _fy_label(r["period"], r["fiscal_year"])
+        if fy is None:
+            continue
+        fy = _quote_fy(r["quote"], float(r["value"])) or fy
+        unit, scale = _unit(r["unit"])
+        key = (r["isin"], fy, basis, hit[0], _amount_key(float(r["value"]), scale), str(r["doc_id"]))
+        if key in seen:
+            continue             # the same figure printed twice in one document (a table and its summary)
+        seen.add(key)
+        definition = "company_stated" if hit[0] in COMPANY_STATED else "reported"
+        out.append((symbol, r["isin"], fy, f"20{fy[2:]}-03-31", basis, hit[1], hit[0], r["item"],
+                    float(r["value"]), unit, scale, str(r["doc_id"]), r["page"], r["quote"], source_db,
+                    "ar_facts", str(r["src_rowid"]), r["known_at"], "ar_facts.filed_at", 1, 0, definition, "FY"))
+    return out
+
+
 def build_annual(conn: sqlite3.Connection) -> dict:
     """fin_annual_line: statement-caption rows picked out of ar_facts by a closed lexicon (no PDF reading)."""
     schema.create(conn, ("fin_annual_line",))
@@ -461,40 +564,8 @@ def build_annual(conn: sqlite3.Connection) -> dict:
         rows, types = prepare._read_sqlite(spec["db"], spec["source"], sql, spec["params"])
         cols = list(types)
         basis_of, close_pages = _ar_page_bases(spec, symbol)
-        seen, out = set(), []
         try:
-            for raw in rows:
-                r = dict(zip(cols, raw))
-                hit = lexicon_item(r["item"])
-                basis = str(r["basis"] or "").lower()
-                if basis not in ("consolidated", "standalone"):
-                    basis = "not_stated"
-                if not hit or r["value"] is None:
-                    continue
-                if _concatenated_value(float(r["value"]), r.get("value_raw"), r.get("value_check")):
-                    continue             # a value glued from two printed numbers is not a figure (T-088)
-                page_basis = basis_of(r["doc_id"], r["page"])
-                if page_basis:
-                    basis = page_basis
-                fy = str(r["period"] or "")
-                m = re.fullmatch(r"FY(?:20)?(\d\d)", fy)
-                if m:
-                    fy = "FY" + m.group(1)
-                else:
-                    m = re.match(r"(\d{4})-03-31", str(r["fiscal_year"] or ""))
-                    if not m:
-                        continue
-                    fy = "FY" + m.group(1)[2:]
-                unit, scale = _unit(r["unit"])
-                key = (r["isin"], fy, basis, hit[0], round(float(r["value"]), 4), r["page"], r["doc_id"])
-                if key in seen:
-                    continue
-                seen.add(key)
-                definition = "company_stated" if hit[0] in COMPANY_STATED else "reported"
-                out.append((symbol, r["isin"], fy, f"20{fy[2:]}-03-31", basis, hit[1], hit[0], r["item"],
-                            float(r["value"]), unit, scale, str(r["doc_id"]), r["page"], r["quote"],
-                            spec["db"], "ar_facts", str(r["src_rowid"]), r["known_at"], "ar_facts.filed_at", 1, 0,
-                            definition, "FY"))
+            out = _annual_rows(symbol, [dict(zip(cols, raw)) for raw in rows], basis_of, spec["db"])
         finally:
             close_pages()
         conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * 23) + ")", out)

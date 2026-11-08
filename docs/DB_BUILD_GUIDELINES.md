@@ -318,13 +318,31 @@ Change a rule only with a measurement that supports the change, and note it in `
   the dev dbs hold none, so variant stays 1 guidance + 7 kpi on unseen6 and 1 + 111 on v2. (3) A filed line whose
   `unit` names a scale is read at that scale even when `scale` is 1, and a filed value below Rs 1 crore never
   witnesses revenue / PAT for a company whose other filed revenue is above Rs 100 crore: 93 unseen6 + 11 v2
-  `fin_annual_line` rows have the disagreement (the full list is reported upstream as a store bug, not fixed here);
+  `fin_annual_line` rows had the disagreement (fixed at the store by T-115, round 10 below);
   30 unseen6 and 4 v2 witness rows get the printed scale (ALKEM FY26 revenue 106,342 "₹ in mn" -> ₹10,634 cr,
   ASHOKA FY24 revenue 979,846 "rs lakh" -> ₹9,798 cr, SBILIFE FY26 PAT 24.7 "rs bn" -> ₹2,470 cr, SUNPHARMA FY26 PAT
   115 "₹ billion" -> ₹11,500 cr), changing 12 unseen6 and 3 v2 witness keys; the sub-crore rule drops 2 KEC Q1FY27
   PAT values (₹52 lakh) on v2 and none on unseen6. **0 fin_conflict quarantines go away** (p10 stays 151, unseen6 0)
   and no other verdict moves: the correct quarter-view rows already witnessed these keys, so the repair protects
   future builds rather than changing these two dbs.
+- Measured 8 Nov 2026, round 10 / store fix (T-115: `reality_engine/pilot3/stores.py`, `_unit` and the
+  `_fy_label` / `_quote_fy` / `_amount_key` / `_annual_rows` split of `build_annual`; test
+  `reality_engine/tests/test_pilot3_stores_annual_units.py`): a unit text now keeps its printed scale - mn / million /
+  "₹ in mn" / "` mn" / rs mn -> `inr_million` 1e6, lakh / lacs / "rs. in lacs" -> `inr_lakh` 1e5, crore / cr ->
+  `inr_crore`, billion / bn -> `inr_billion` 1e9, thousand / "'000" -> `inr_thousand` 1e3, paise -> `inr` 0.01;
+  percentage -> pct, times / x / ratio -> ratio - while a text naming two scales is `unknown` with scale 1 and an
+  unrecognised text keeps its raw unit. A quote that prints exactly one fiscal year ("FY 2021-22 ...", "... FY2024",
+  "FY 2025-26", "FY'20") beside this row's own printed number is that column's year and replaces `ar_facts.period`
+  (the report's year); two or more years, no year, or a quote that does not print this value keeps the stored period.
+  Rows identical in (isin, year, basis, line, rupee amount at 0.1 %, document) collapse to one. Measured: unseen6
+  ar_facts rows 407 -> 354, defect-unit rows 98 -> 4 (the four `h` EPS rows; "days" on pilot10 is a duration, not a
+  scale), 24 rows changed year (ALKEM 14, UFLEX 8, ASHOKA 2), e.g. ALKEM revenue 1,26,676 "₹ in Mn" FY26 -> FY24 and
+  its revenue is now 12,667.6 (FY24) / 12,964.5 (FY25) / 14,712.27 (FY26) crore, one value per year and basis (FY25
+  is the same figure printed by two documents); pilot10 122 -> 110 rows, 13 -> 2 defect units, 0 years changed (its
+  history rows all sit before the window). Row checks after a stores rebuild **plus `--part preferred`** (the stores
+  part resets the preferred windows, so `fin_quarter_current` and the checker need it re-run): unseen6 **93 / 711 /
+  172**, fin_conflict 0; pilot10 **3,527 / 2,079 / 437**, fin_conflict 151 and part_not_total 83 - all unchanged.
+  Tests **68 passed**, the `stores.py` / test typecheck clean.
 - Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (59 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
