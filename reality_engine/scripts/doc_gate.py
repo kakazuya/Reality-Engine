@@ -35,11 +35,14 @@ HOOK = """#!/bin/sh
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
 exec python "$(git rev-parse --show-toplevel)/reality_engine/scripts/doc_gate.py"
 """
-#: Shivam, 8 Nov: his Excel ticket board follows every commit that changes the tracker (main only)
+#: Shivam, 8 Nov: his Excel ticket board and standing-rules sheet follow every main commit that changes their source
 HOOK_POST = """#!/bin/sh
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
-git diff-tree --no-commit-id --name-only -r HEAD | grep -q '^tasks/TASKS' || exit 0
-python "$(git rev-parse --show-toplevel)/reality_engine/scripts/ticket_board_report.py" >/dev/null || true
+changed=$(git diff-tree --no-commit-id --name-only -r HEAD)
+top=$(git rev-parse --show-toplevel)
+echo "$changed" | grep -q '^tasks/TASKS' && python "$top/reality_engine/scripts/ticket_board_report.py" >/dev/null
+echo "$changed" | grep -q '^tasks/RULINGS.md' && python "$top/reality_engine/scripts/standing_rules_report.py" >/dev/null
+exit 0
 """
 HOOK_MESSAGE = """#!/bin/sh
 [ "$(git rev-parse --abbrev-ref HEAD)" = main ] || exit 0
