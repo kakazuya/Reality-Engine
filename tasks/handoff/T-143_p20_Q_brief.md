@@ -1,4 +1,4 @@
-Goal: Answer every question in D:/RealityEngine/p20/answers/questions_Q.json (91 questions, 4 companies: PIDILITIND, COALINDIA, HDFCAMC, HAVELLS; investor and sector-analyst questions harvested from the web) from the pilot20 store (baseline on today's design), one recorded answer per qid. These companies were never used to build the extractors; the run measures how well the store answers real investor questions, so answer each question fully and exactly as an investor asked it.
+Goal: Answer every question in D:/RealityEngine/p20/answers/questions_Q.json (119 questions, 5 companies: PIDILITIND, COALINDIA, HDFCAMC, HAVELLS, APOLLOTYRE; investor and sector-analyst questions harvested from the web) from the pilot20 store (baseline on today's design), one recorded answer per qid. These companies were never used to build the extractors; the run measures how well the store answers real investor questions, so answer each question fully and exactly as an investor asked it.
 
 Files: write ONLY through the recorder; it appends to .tmp/<SYMBOL>_answers.jsonl in your workspace. Scratch answer files go in .tmp/. Do not edit any code. Do not open any file under D:/RealityEngine/p20 except answers/questions_Q.json and p20new.db (through p3ask).
 
@@ -40,6 +40,6 @@ Evidence: on the pilot10 companies the same tools gave 558 right of 600 after tw
 
 Stop if: p3ask errors on 5 questions in a row (report the error text), or the database file is missing. Do not try to fix code.
 
-Budget: about 6 minutes and 25 lookups per question; 91 questions; hard stop 6 hours. Final answer: counts answered/partial/not_found, refused-then-fixed count, overrides, and any p3ask error seen.
+Budget: about 6 minutes and 25 lookups per question; 119 questions; hard stop 6 hours. Final answer: counts answered/partial/not_found, refused-then-fixed count, overrides, and any p3ask error seen.
 
 Ticket: T-143
