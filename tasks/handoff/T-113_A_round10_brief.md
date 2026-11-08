@@ -9,6 +9,9 @@ reality_engine/pilot3/row_checks.py` first. Same rules: never edit extractors (`
 
 Goal: a `verified` kpi row is right at least 95% of the time on companies nobody has tuned on.
 
+Files: `reality_engine/pilot3/row_checks.py`, `reality_engine/pilot3/row_checks_vocab.yaml`,
+`reality_engine/tests/test_row_checks.py`, `docs/DB_BUILD_GUIDELINES.md` section 13.
+
 Evidence (Opus's hidden read of six unseen companies, 8 Nov; the companies stay hidden, find your own examples):
 - 40 verified rows: 27 right, 2 partly, 11 wrong. Split by the checker's own `corroborated` flag: corroborated rows
   15 right of 16; NOT corroborated rows 12 right of 24 (50%). The earlier hidden read (hold6) had the same rate before
