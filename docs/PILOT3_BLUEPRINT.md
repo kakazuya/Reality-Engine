@@ -30,7 +30,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
 
 Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_statements`, `pilot3_search` (bm25),
-`pilot3_docs`, `pilot3_holding`, `pilot3_sql`; `schema` / `catalog` know the `pilot3` db.
+`pilot3_docs`, `pilot3_holding`, `pilot3_tech` (section 9i), `pilot3_sql`; `schema` / `catalog` know the `pilot3` db.
 
 ## 3. Extraction methods (what works, what failed)
 - **Documents**: collected per company into `D:\RealityEngine\pilot3\pages.db`. Dates: `known_at` = exchange
@@ -959,3 +959,62 @@ serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_
   8 Nov); it now never uses one. Test: `test_an_undated_share_count_is_never_used`.
 
 **Retired reports (8 Nov 2026).** Shivam retired the 3-7 Nov reports on 8 Nov (answer checks, model-vs-store, dig, second read, re-ask, embedding, OCR, night-loop, doc-identity scans, database inventory): they are no longer in `D:\RealityEngine\reports`; copies are on `gdrive:InfoDiffusion_archive/reports/retired_2026-11-08/` under the same names.
+
+### 9i. Price reaction and technicals computed in code (T-128, 8 Nov 2026)
+
+The 8 Nov re-ask missed 9 of 136 answers on price arithmetic: a results filing that reached the exchange at 16:02
+was read as a same-session reaction, a gap was scored close vs open, the RSI method was guessed, the last
+moving-average cross was missed and a volume spike was measured against its own day. `pilot3_tech`
+(`plugins/reality-data/server/lookups_tech.py`; registered and routed in `plugins/reality-data/server/server.py`;
+`p3ask` runs it as `tech`) computes them once from `price_delivery` (NSE) and `index_price`:
+
+- `reaction`: the last `limit` filings of `doc_type` (default `results`) before `as_of`, or in `start`/`end`.
+  Day 0 is the filing date only when `known_at` is at or before 15:30 IST **and** that date is a session;
+  otherwise the next session. Rows cover day 0 through day `sessions` (default 5): close-to-close % vs the
+  previous session close, cumulative % vs the close before day 0, volume and its multiple over the mean of the 20
+  sessions BEFORE day 0, delivery %, the index's same-day %, and per filing `cum_1d_pct`, `cum_5s_pct` (the
+  fifth session counted from day 0) and `cum_window_pct`.
+- `gaps`: sessions in `[start,end]` (default the last 365 days) with |open/prev_close-1| >= `threshold`
+  (default 0.03; a number >= 1 is read as percent): gap %, close vs the previous close %, the share of the gap
+  held = (close-prev_close)/(open-prev_close) (negative when the gap reverses), delivery % vs its trailing
+  250-session mean, and the fill date (the first later session whose low touches prev_close for a gap up, whose
+  high does for a gap down) with the price at which it filled.
+- `rsi`: Wilder 14 on `adj_close` (first average = simple mean of the first 14 changes, then
+  `avg=(prev*13+x)/14`), today's value, the last `window` (default 30) sessions, and the two lowest/two highest
+  closes in that window with the RSI at each, plus `bullish_divergence` (lower price low, higher RSI low) and
+  `bearish_divergence` (higher price high, lower RSI high).
+- `ma`: SMA 50 and 200 on `adj_close` at `as_of`, the value, % above/below and the last close-vs-SMA cross date
+  and direction (a cross is only reported once the SMA has its full window); `insufficient_history` when it has
+  not.
+- `volume_spikes`: sessions in the last 365 days with volume >= `threshold` (default 3) x the mean of the PRIOR
+  20 sessions (the day itself excluded), with the multiple, close-to-close % and delivery %.
+- `range`: 52-week high/low of raw `close` with dates, position = (close-low)/(high-low), % above the low and
+  % below the high.
+
+Rules shared by every kind: sessions come from `price_delivery` rows, never the calendar; `as_of` drops every
+session after it; raw `close`/`prev_close` give the daily % and the gaps while `adj_close` gives the RSI, the
+SMAs and the divergence points (a split must not read as a 50% fall); a prior-N mean excludes the day itself;
+an unknown symbol raises the same `not_pilot3` DataError as the other pilot3 tools, and every row carries
+`provenance` {table: `price_delivery`, source: `NSE <date>`, known_at}.
+
+Measured live on pilot10 (as_of 2026-11-04) against the 8 Nov hand checks:
+
+- ETERNAL Q3FY26 results, `known_at` 2026-01-21T16:02:01, day 0 is 2026-01-22 (the market was already closed).
+- ETERNAL 2026-02-03: gap 7.83%, close +2.62% vs the previous close (an answer's -4.83% was close vs open),
+  33.5% of the gap held, filled 2026-02-19.
+- KEC 2026-10-26: gap up 3.43%, close +2.76%, 80.4% held, filled 2026-10-30 at the low 327.30.
+- BAJFINANCE 2026-11-03 close 970.00; SMA50 999.43 (999.4 at 1 dp), SMA200 972.37 (972.4); last SMA50 cross
+  2026-08-31 down, last SMA200 cross 2026-10-19 down (the 2026-09-29 down, 10-13 up, 10-14 down, 10-16 up,
+  10-19 down sequence ends there).
+- KEC volume spikes: 18 sessions from 2025-11-04, including 2025-11-11 at 13.01x and 2026-10-09 at 13.91x of
+  the prior-20 mean.
+- HDFCBANK RSI on 2026-11-03: 58.44 (the 5 Nov hand check's 58.4 is the same figure at 1 dp), no
+  bullish/bearish divergence over the last 30 sessions.
+
+Tests: `python -m pytest reality_engine/tests/test_pilot3_tech.py -q` 15 passed (a synthetic fixture exercises
+every kind, the 15:30 rule and the exact Wilder recursion; the live checks above skip only when
+`D:/RealityEngine/pilot10/pilot10.db` is absent); `python -m pytest
+plugins/reality-data/tests/test_lookups_pilot3.py -q` 24 passed, 1 skipped; `python -m
+reality_engine.scripts.p3ask --db D:/RealityEngine/pilot10/pilot10.db tech symbol=ETERNAL kind=reaction
+as_of=2026-11-04` prints the JSON. No data rebuild: the tool reads existing tables, so a running reality-data
+MCP serves it after a restart.

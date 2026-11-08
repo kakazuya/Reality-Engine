@@ -31,7 +31,7 @@ import core
 
 INSTRUCTIONS = """Local reality-engine data search. The data is read-only and every answer carries provenance.
 
-PILOT3 FIRST: the pilot3_* tools hold every company in their database's company table -- the whole NSE+BSE universe the build covers (thousands of companies), never a sample of three: check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') instead of assuming a company is absent. For any company in that table (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF holding, share count on a date -> pilot3_holding(symbol, as_of); what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: company, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, doc, doc_page; view fin_quarter_current: the one preferred financial line per symbol, fiscal_period, basis and line_item now, and the quarter tables' preferred_from / preferred_to columns elect the same figure at any past day -- read them or pilot3_fin, never a hand sum over both tables). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A company the database does not hold returns {"found": false} (or error code not_pilot3): only then use the raw tools below or say NOT IN DATA. A {"found": false} answer for a company it does hold lists what is available; read that list and retry. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
+PILOT3 FIRST: the pilot3_* tools hold every company in their database's company table -- the whole NSE+BSE universe the build covers (thousands of companies), never a sample of three: check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') instead of assuming a company is absent. For any company in that table (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF holding, share count on a date -> pilot3_holding(symbol, as_of); what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); price reaction to a filing, gaps, RSI, moving averages, volume spikes, range position -> pilot3_tech; list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: company, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, doc, doc_page; view fin_quarter_current: the one preferred financial line per symbol, fiscal_period, basis and line_item now, and the quarter tables' preferred_from / preferred_to columns elect the same figure at any past day -- read them or pilot3_fin, never a hand sum over both tables). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A company the database does not hold returns {"found": false} (or error code not_pilot3): only then use the raw tools below or say NOT IN DATA. A {"found": false} answer for a company it does hold lists what is available; read that list and retry. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
 
 ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) — one call each, before any sql():
 - delivery / delivered quantity on a date (NSE+BSE) -> delivery(symbol, dates)
@@ -419,6 +419,7 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
 
 # --- lookups: pilot3 (every company the pilot database's company table holds) ---
 import lookups_pilot3 as _p3  # noqa: E402
+import lookups_tech as _tech  # noqa: E402
 
 _RO = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False)
 
@@ -585,6 +586,37 @@ def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int 
                   date_from: str | None = None, date_to: str | None = None) -> dict[str, Any]:
     return _safe(lambda: _p3.search(symbol, query, as_of=as_of, limit=limit, doc_type=doc_type, period=period,
                                     date_from=date_from, date_to=date_to))
+
+
+@server.tool(
+    name="pilot3_tech",
+    description=(
+        "Price reaction and technicals computed in code, never hand-computed. kind='reaction': the market reaction "
+        "to the last `limit` filings of `doc_type` (default results) before as_of (or in an explicit start/end "
+        "range); day 0 is the filing date only when known_at is at or before the 15:30 IST close and that date is "
+        "a trading session, else the NEXT session. Per filing: known_at, day0, day0_rule, and rows for day 0 "
+        "through day `sessions` with close-to-close % vs the previous session close, cumulative % vs the close "
+        "before day 0, volume, volume multiple vs the mean of the 20 sessions BEFORE day 0, delivery %, the index's "
+        "same-day %, plus cum_1d_pct, cum_5s_pct (the 5th session counted from day 0) and cum_window_pct. "
+        "kind='gaps': sessions in [start,end] (default the last 365 days) with |open/prev_close-1| >= threshold "
+        "(default 0.03): gap %, close vs previous close %, held = (close-prev_close)/(open-prev_close) with its "
+        "fill date (first later session whose low/high touches prev_close), delivery % vs its trailing 250-session "
+        "mean. kind='rsi': Wilder 14 on adjusted close, today's value, the last `window` (default 30) sessions and "
+        "the two lowest/two highest closes in it with the RSI at each and bullish/bearish divergence. kind='ma': "
+        "SMA 50 and 200 on adjusted close at as_of, value, % above/below and the last close-vs-SMA cross date and "
+        "direction (insufficient_history when the SMA lacks its window). kind='volume_spikes': sessions in the "
+        "last 365 days with volume >= threshold (default 3) x the mean volume of the PRIOR 20 sessions, with the "
+        "multiple, close-to-close % and delivery %. kind='range': 52-week high/low of close with dates, position "
+        "= (close-low)/(high-low), % above low, % below high. Sessions are price_delivery NSE rows; as_of drops "
+        "later sessions; rows carry provenance (table, 'NSE <date>', known_at)."
+    ),
+    annotations=_RO,
+)
+def pilot3_tech(symbol: str, kind: str, as_of: str | None = None, start: str | None = None,
+                end: str | None = None, sessions: int = 5, threshold: float | None = None,
+                window: int | None = None, doc_type: str = "results", limit: int = 10) -> dict[str, Any]:
+    return _safe(lambda: _tech.tech(symbol, kind, as_of=as_of, start=start, end=end, sessions=sessions,
+                                    threshold=threshold, window=window, doc_type=doc_type, limit=limit))
 
 
 @server.tool(

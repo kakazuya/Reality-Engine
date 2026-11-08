@@ -8,7 +8,7 @@ subagent with only a shell asks the test store exactly as a model would ask the 
     python -m reality_engine.scripts.p3ask --db <file.db> sql "query=SELECT COUNT(*) FROM doc"
     python -m reality_engine.scripts.p3ask --db <file.db> calc "expression=a/b" 'inputs={"a": 1, "b": 2}'
 
-Tools: kpi fin ratio holding statements guidance docs search sql calc (the ``pilot3_`` prefix is optional).
+Tools: kpi fin ratio holding statements guidance docs search tech sql calc (the ``pilot3_`` prefix is optional).
 A value that parses as JSON (numbers, true/false, objects) is passed as that type, otherwise as text.
 Prints the reply as JSON (UTF-8).  Read-only: the lookups open the database read-only.
 """
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
-TOOLS = ("kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "sql", "calc")
+TOOLS = ("kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "tech", "sql", "calc")
 
 
 def _value(text: str):
@@ -41,6 +41,9 @@ def run(db: str, tool: str, args: dict) -> dict:
         if name == "calc":
             import calc
             return calc.evaluate(args.get("expression", ""), args.get("inputs"))
+        if name == "tech":
+            import lookups_tech
+            return lookups_tech.tech(**args)
         import lookups_pilot3 as p3
         return getattr(p3, name)(**args)
     except TypeError as exc:
