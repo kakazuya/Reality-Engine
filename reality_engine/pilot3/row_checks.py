@@ -109,11 +109,12 @@ HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_pr
         "forward_word", "past_figure", "null_value", "range_order", "plausible", "future_period", "past_target",
         "fin_conflict", "part_not_total", "period_word", "currency", "target_frame", "target_year",
         "not_company_speaker", "range_value", "unit_kind", "net_cash_sign", "page_unit",
-        "footnote_note", "regulated_rate"}
+        "footnote_note", "regulated_rate", "derived_input"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
         "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch",
         "dimension_word", "not_pinned", "scope_word", "uncorroborated", "history_row", "scale_doubt",
-        "same_doc_conflict", "question_next", "projection", "segment_scope", "past_level", "single_source"}
+        "same_doc_conflict", "question_next", "projection", "segment_scope", "past_level", "single_source",
+        "derived_unverified_input"}
 
 # Revenue / PAT / EBITDA / order rows must be a plausible share of the company's filed figure: a subsidiary or
 # segment amount stored with dimension "total" is the classic "part stored as the total" mistake.
@@ -1854,6 +1855,7 @@ class Checker:
                         dim_words[r["symbol"]].add(w)
         by_id = {r["id"]: r for r in rows}
         out = []
+        derived: list = []
         for r in rows:
             m = self.vocab.canon(r["metric"])
             v = Verdict("kpi_series", r["id"], r["symbol"], r["metric"], m.name if m else "", self.sectors.get(r["symbol"], ""),
@@ -1898,6 +1900,9 @@ class Checker:
                 # a structured filing: no quote; the segment value is the tagged figure
                 v.corroborated = True
                 out.append(v)
+                continue
+            if r["extractor_rule"] == "derived_cumulative_v1":
+                derived.append((v, r))   # no page quote: judged by its two inputs once their verdicts exist
                 continue
             quote = r["quote"] or ""
             text = fold(quote)
@@ -1956,7 +1961,53 @@ class Checker:
                 v.corroborated = True
             out.append(v)
         self.mark_same_doc_conflicts(out, by_id, same_doc, fin)
-        return [self.finish(v) for v in out]
+        done = [self.finish(v) for v in out]
+        return done + [self.finish(v) for v in self.judge_derived(derived, rows, {v.row_id: v for v in done})]
+
+    _DERIVED_QUOTE = re.compile(r"^\s*(\S+)\s+(-?[\d.]+)\s+-\s+(\S+)\s+(-?[\d.]+)\s*$")
+    _NON_NEGATIVE = {"revenue", "ape", "gwp", "vnb", "new_business_premium", "new_loans", "order_intake",
+                     "volumes", "domestic_volumes", "export_volumes", "shipments_kt", "revenue_usd"}
+
+    def judge_derived(self, derived: list, rows: list, verdicts: dict) -> list[Verdict]:
+        """A quarter derived as cumulative minus cumulative (kpi ``derived_cumulative_v1``, T-129) has no page
+        quote: it is as good as its two inputs.  Both inputs must exist with the printed values, be on the same
+        metric / dimension / basis / unit, and their difference must be the stored value; a quarantined input, a
+        negative flow or a quarter larger than its year is quarantined; verified only when both inputs are."""
+        out = []
+        for v, r in derived:
+            m = self._DERIVED_QUOTE.match(r["quote"] or "")
+            if not m:
+                v.fail("derived_input", f"derived quote not 'P a - P b': {r['quote']!r}")
+                out.append(v)
+                continue
+            found = []
+            for per, val in ((m.group(1), float(m.group(2))), (m.group(3), float(m.group(4)))):
+                hit = [x for x in rows if x["symbol"] == r["symbol"] and x["metric"] == r["metric"]
+                       and x["dimension"] == r["dimension"] and x["basis"] == r["basis"] and x["unit"] == r["unit"]
+                       and x["fiscal_period"] == per and x["value"] is not None and close(x["value"], val, 1e-6)
+                       and x["extractor_rule"] != "derived_cumulative_v1"]
+                found.append(hit)
+            if not all(found):
+                v.fail("derived_input", "an input row named in the quote is not in kpi_series")
+                out.append(v)
+                continue
+            a, b = float(m.group(2)), float(m.group(4))
+            if r["value"] is None or not close(r["value"], a - b, 1e-6):
+                v.fail("derived_input", f"{r['value']} is not {a} - {b}")
+            states = [max((verdicts[x["id"]].status for x in hit if x["id"] in verdicts),
+                          key=("quarantined", "unverified", "verified").index, default="quarantined") for hit in found]
+            if "quarantined" in states:
+                v.fail("derived_input", f"an input is quarantined ({states})")
+            elif states != ["verified", "verified"]:
+                v.fail("derived_unverified_input", f"inputs {states}")
+            else:
+                v.corroborated = True
+            if r["value"] is not None and r["value"] < 0 and r["metric"] in self._NON_NEGATIVE:
+                v.fail("derived_input", f"negative {r['metric']} quarter {r['value']}")
+            if r["value"] is not None and a > 0 and abs(r["value"]) > a:
+                v.fail("derived_input", f"quarter {r['value']} larger than its {m.group(1)} {a}")
+            out.append(v)
+        return out
 
     def mark_same_doc_conflicts(self, out: list[Verdict], by_id: dict[int, sqlite3.Row],
                                 groups: dict[tuple, list[int]], fin: dict) -> None:

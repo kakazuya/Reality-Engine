@@ -1519,3 +1519,37 @@ def test_a_past_level_in_narrative_is_soft(tmp_path):
     assert status == "unverified" and "past_level" in fails, fails
     fails = verdict(out, "kpi_series", 2)[1]
     assert "past_level" not in fails, fails
+
+
+def test_a_derived_quarter_is_as_good_as_its_two_inputs():
+    """T-129 review (8 Nov): a cumulative-minus-cumulative quarter has no page quote; it is verified only when both
+    inputs are, quarantined when one is quarantined, missing, negative for a flow, or larger than its year."""
+    chk = object.__new__(rc.Checker)
+
+    def row(i, per, val, rule="table_v1", quote="q", metric="ape"):
+        return {"id": i, "symbol": "X", "metric": metric, "dimension": "total", "basis": "consolidated",
+                "unit": "inr_bn", "fiscal_period": per, "value": val, "extractor_rule": rule, "quote": quote}
+
+    def v(i, status="verified"):
+        out = rc.Verdict("kpi_series", i, "X", "ape", "ape", "", "", "table_v1")
+        out.status = status
+        return out
+
+    rows = [row(1, "FY26", 242.7), row(2, "9MFY26", 185.2),
+            row(3, "Q4FY26", 57.5, "derived_cumulative_v1", "FY26 242.7 - 9MFY26 185.2")]
+
+    def judge(statuses, derived_row):
+        verdicts = {i: v(i, s) for i, s in statuses.items()}
+        d = rc.Verdict("kpi_series", derived_row["id"], "X", "ape", "ape", "", "", "derived_cumulative_v1")
+        return chk.finish(chk.judge_derived([(d, derived_row)], rows + [derived_row], verdicts)[0])
+
+    assert judge({1: "verified", 2: "verified"}, rows[2]).status == "verified"
+    assert judge({1: "verified", 2: "unverified"}, rows[2]).status == "unverified"
+    assert judge({1: "verified", 2: "quarantined"}, rows[2]).status == "quarantined"
+    wrong = row(4, "Q4FY26", 50.0, "derived_cumulative_v1", "FY26 242.7 - 9MFY26 185.2")
+    assert judge({1: "verified", 2: "verified"}, wrong).status == "quarantined"          # not the difference
+    missing = row(5, "Q4FY26", 57.5, "derived_cumulative_v1", "FY26 242.7 - 9MFY26 180.0")
+    assert judge({1: "verified", 2: "verified"}, missing).status == "quarantined"        # input not stored
+    rows.extend([row(6, "FY25", 430.0, metric="ebitda"), row(7, "9MFY25", 2411.0, metric="ebitda")])
+    big = row(8, "Q4FY25", -1981.0, "derived_cumulative_v1", "FY25 430 - 9MFY25 2411", metric="ebitda")
+    assert judge({6: "verified", 7: "verified"}, big).status == "quarantined"            # larger than its year

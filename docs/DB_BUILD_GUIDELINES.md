@@ -387,6 +387,7 @@ Change a rule only with a measurement that supports the change, and note it in `
   172**, fin_conflict 0; pilot10 **3,527 / 2,079 / 437**, fin_conflict 151 and part_not_total 83 - all unchanged
   from round 9 (these are round-9 checker totals: the round-10 checker above gives unseen6 38/765/173 and pilot10
   2,298/3,293/452 on the same rows). Tests **68 passed**, the `stores.py` / test typecheck clean.
+- Derived quarters (T-129, 8 Nov): a `kpi_series` row with rule `derived_cumulative_v1` (quote `FY26 242.7 - 9MFY26 185.2`) has no page quote, so `Checker.judge_derived` judges it by its two inputs: verified only when both are verified; `derived_unverified_input` (soft) when one is unverified; `derived_input` (hard) when an input is quarantined, missing or does not difference to the value, when a flow quarter is negative, or when the quarter is larger than its year. Test: `test_a_derived_quarter_is_as_good_as_its_two_inputs`.
 - Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (66 passed, 8 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
