@@ -4,7 +4,7 @@ Files: write ONLY through the recorder; it appends to .tmp/<SYMBOL>_answers.json
 
 How to look things up (the same code the reality-data MCP runs), always with the question's as_of:
   python -m reality_engine.scripts.p3ask --db D:/RealityEngine/q12/q12.db <tool> symbol=<SYM> ... as_of=<as_of>
-  tools: kpi fin ratio holding statements guidance docs search sql calc. Examples:
+  tools: kpi fin ratio holding statements guidance docs search tech sql calc (tech: kind=reaction|gaps|rsi|ma|volume_spikes|range, for every price-move question). Examples:
   ... kpi symbol=SAIL kpi=sales_volume period=Q2FY27 as_of=2026-10-19
   ... fin symbol=UBL measure=revenue period=Q2FY27 as_of=2026-10-19   (consolidated default; basis=standalone for standalone)
   ... guidance symbol=POWERGRID as_of=2026-10-19 ; ... statements symbol=DLF topic=pre_sales as_of=2026-10-19
@@ -29,6 +29,9 @@ Pitfalls seen in the last run (fix these):
  - fin rows give value_inr in rupees: divide by 1e7 for crore and check the scale against revenue before writing.
  - A "since <date>" chain must start with a change dated on or after that date; do not pick an earlier one.
  - Keep every ratio on one basis (standalone with standalone, consolidated with consolidated).
+ - SELF-CHECK before recording: re-read every figure against the row it came from (value AND scale: a store row of 632 crore is never written 6,320); test the conclusion against your own figures (if receivable days rose faster than revenue, receivables outran revenue); a printed close or price comes from the price row, not memory.
+ - A policy/event chain "since <date>" must name an event dated inside the window; if none is found, say so instead of using an earlier one.
+ - Leverage and EV: when non-current investments are large, give fin net_debt and net_debt_all_investments and say which one the ratio uses.
  - Do not edit any file outside .tmp/ (no tasks/STATE.md, no docs).
 
 Accept: every qid in the questions file has exactly one "answer" event across .tmp/*_answers.jsonl: python -c "import json,glob;q={x['qid'] for x in json.load(open(r'D:/RealityEngine/q12/answers/questions_C.json',encoding='utf-8'))};a={json.loads(l)['qid'] for f in glob.glob('.tmp/*_answers.jsonl') for l in open(f,encoding='utf-8') if '\"answer\"' in l and json.loads(l).get('event')=='answer'};print(len(q-a),'missing',sorted(q-a)[:10])"  prints 0 missing.
