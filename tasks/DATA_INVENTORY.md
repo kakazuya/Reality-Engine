@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-08 15:32 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 13 tables and 55 of 72 raw folders.
+Generated 2026-11-08 19:24 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 13 tables and 57 of 72 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -230,7 +230,7 @@ Undocumented: 13 tables and 55 of 72 raw folders.
 | input_cost_series | 0 | 0.00 | - | **undocumented** |
 | kec_transcripts | 0 | 0.00 | - | **undocumented** |
 | macro_pdfs | 0 | 0.00 | - | **undocumented** |
-| maruti_transcripts | 0 | 0.00 | - | yes |
+| maruti_transcripts | 0 | 0.00 | - | **undocumented** |
 | material_announcement | 0 | 0.00 | - | **undocumented** |
 | nse_announcements | 0 | 0.00 | - | **undocumented** |
 | nse_shp_xbrl_pilot | 0 | 0.00 | - | **undocumented** |
@@ -274,6 +274,6 @@ Undocumented: 13 tables and 55 of 72 raw folders.
 | results_pdfs | 0 | 0.00 | - | **undocumented** |
 | runners | 0 | 0.00 | - | **undocumented** |
 | tax_sources | 0 | 0.00 | - | **undocumented** |
-| user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | yes |
+| user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | **undocumented** |
 | user_research_drive | 236 | 0.60 | 2026-10-26 `_native_blocked.txt` | **undocumented** |
 | vahan | 0 | 0.00 | - | **undocumented** |
