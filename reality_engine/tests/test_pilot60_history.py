@@ -237,3 +237,29 @@ class VerifyTests(Case):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_api_rows_splits_a_window_when_a_deep_page_is_refused(monkeypatch):
+    """T-130: BSE answered HTTP 400 at page 6 of PERSISTENT 2024; the window is fetched again as two halves."""
+    from datetime import date
+
+    from reality_engine.scripts import fetch_pilot60_history as f
+
+    calls = []
+
+    def fake_get(session, url, pacer, want_json=True):
+        page = int(url.split("pageno=")[1].split("&")[0])
+        start = url.split("strPrevDate=")[1].split("&")[0]
+        whole = "strToDate=20241231" in url and start == "20240101"
+        calls.append((start, page))
+        if whole and page == 2:
+            return None, 400, 1, "HTTP 400"
+        n = f.PAGE if (whole and page == 1) else 3
+        return {"Table": [{"NEWSID": f"{start}-{page}-{i}"} for i in range(n)]}, 200, 1, None
+
+    monkeypatch.setattr(f, "http_get", fake_get)
+    rows = f.api_rows(None, None, "533179", date(2024, 1, 1), date(2024, 12, 31))
+    starts = [s for s, _p in calls]
+    assert "20240702" in starts                     # second half fetched
+    assert len(rows) == 6                           # the refused window's page 1 is dropped, both halves kept
+    assert any(r["NEWSID"].startswith("20240702") for r in rows)
