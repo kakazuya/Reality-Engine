@@ -45,6 +45,7 @@ CODES = {
     "unit_slip": "an amount in the answer matches a numbers entry only at 10x / 100x / 1000x",
     "unmatched_amount": "an amount in the answer matches no numbers entry",
     "quote_mismatch": "a numbers value does not occur in the quote it cites",
+    "source_scale_mismatch": "a numbers value's own source states the same digits at a different scale",
     "stated_working": "an arithmetic relation stated in the answer text does not hold",
     "bad_grouping": "comma grouping is neither Indian nor Western",
 }
@@ -446,6 +447,31 @@ def _same_digits(left: Any, right: Any) -> bool:
     first, second = digits(left).lstrip("0"), digits(right).lstrip("0")
     return bool(first) and bool(second) and first == second
 
+
+def check_source_scale(entry: dict) -> dict[str, Any] | None:
+    """T-129: a money entry whose own ``source`` prints the same digits at a different scale fails.
+
+    MARUTI-127 stores 4,136 crore with the source "fin_quarter_current other_income, consolidated, Rs 4,136
+    million": the digits match the stored value while the scale word does not (4,136 million is 413.6 crore), so
+    the figure is ten times the sourced amount.  The same amount written at its real scale passes, and the cited
+    quote is ``check_quote``'s job."""
+    if entry["family"] != "money" or entry["scale"] <= 1:
+        return None
+    text = checks.normalise(entry.get("source") or "")
+    if not text:
+        return None
+    for amount in amounts(text):
+        if amount["family"] != "money" or amount["factor"] <= 1:
+            continue
+        if not _same_digits(entry["raw"], amount["raw"]):
+            continue
+        if close(entry["value"], amount["value"], entry["raw"]):
+            return None             # the same amount, written at its real scale ("4,136 million" for 413.6 crore)
+        return _finding("source_scale_mismatch",
+                        f"{float(entry['raw']):g} {entry['unit']!r} is sourced at a different scale "
+                        f"({amount['text']!r}): {text[:80]!r}", field="source")
+    return None
+
 # --- the answer text -----------------------------------------------------------------------------------
 _SENTENCE = re.compile(r"(?<=[.!?])\s+(?=[A-Z(])")
 _RESULT_X = re.compile(r"(?<![\w.])(?P<res>-?\d+(?:\.\d+)?)\s*(?:x\b|times\b)", re.I)
@@ -771,7 +797,7 @@ def check_answer(row: dict) -> dict[str, Any]:
     numbered = entries(row.get("numbers") or [])
     findings: list[dict[str, Any]] = []
     for entry in numbered:
-        for check in (check_quote(entry), check_formula(entry, calc)):
+        for check in (check_quote(entry), check_source_scale(entry), check_formula(entry, calc)):
             if check:
                 findings.append(check)
     findings.extend(check_text(str(row.get("answer") or ""), numbered))

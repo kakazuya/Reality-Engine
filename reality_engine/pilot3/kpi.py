@@ -1033,13 +1033,15 @@ _PRIOR_YR = re.compile(r"(?:last|previous|prior|preceding|corresponding)\s+(?:ye
                        r"|year[- ]ago|compared|versus|\bvs\b|vis-à-vis", re.I)
 
 
-def doc_default_period(texts: list[str]) -> list[Period]:
+def doc_default_period(texts: list[str], ytd: bool = True) -> list[Period]:
     """Reporting-period hint from the first pages of a document: the quarter/year-ended headline.
 
     The title page wins over a comparison mentioned later: the KEC Q4 FY26 call says "recognized last year in
     FY '25" on page 3, which used to become the default period of every unlabelled figure (the 36,267 crore
     order book was stored FY25). A Q4 document is the annual-results one, so its unlabelled figures default to
-    the fiscal year (FY26), not to Q4FY26: decks and calls state "Q4 FY26" on the figures that are quarterly."""
+    the fiscal year (FY26), not to Q4FY26: decks and calls state "Q4 FY26" on the figures that are quarterly.
+    ``ytd`` (T-129) re-dates a bare figure to the year-to-date period the document's own text states; an annual
+    report passes False, because its pages print every period of the year."""
     for n in (1, 2, 3):
         head = " \n".join(texts[:n])
         ps = [p for p in parse_periods(head)
@@ -1063,8 +1065,78 @@ def doc_default_period(texts: list[str]) -> list[Period]:
             return [Period(p.start, p.end, f"FY{p.canon[-2:]}", "FY", p.as_of)]
         if p.ptype == "FY" and q_ended:
             return [Period(p.start, p.end, f"Q4{p.canon}", "Q", p.as_of)]
-        return [p]
+        if not ytd:
+            return [p]
+        return [_ytd_default(" \n".join(texts), p, " \n".join(texts[:3])) or p]
     return []
+
+
+# T-129: a document whose own running text states a year-to-date span ("for the period ended 30th September
+# 2026", "nine months ended", "half year ended", "H1 FY27") reports year-to-date figures, so a bare one is that
+# year-to-date period, never the full fiscal year: Q2 closes the half, Q3 the nine months (the fiscal year starts
+# 1 April).  A Q4 document keeps its year (annual results), and a figure whose own sentence names a period never
+# reaches this default.
+_YTD_SPAN = re.compile(
+    r"\b(?:for\s+)?(?:the\s+)?period\s+ended\b"
+    r"|\b(?:nine|six|three)\s+months?\s+ended\b"
+    r"|\bhalf[\s-]?year\s+ended\b"
+    r"|\b(?:H1|9M)\s*[-]?\s*FY\s*['’]?\s*(?:\d{4}-\d{2}|\d{2,4})"
+    r"|\bcorresponding\s+period\b", re.I)
+_YTD_PRIOR = re.compile(r"\b(?:compared|versus|vs\.?|against|previous|last|prior|than|from|corresponding)\b", re.I)
+_YTD_LABEL = {"Q1": ("Q1", "Q"), "Q2": ("H1", "H"), "Q3": ("9M", "9M")}
+
+
+def _ytd_default(text: str, p: Period, head: str = "") -> Period | None:
+    """The year-to-date period a document's own words name (T-129), or None when its default stands.
+
+    SBI Life's Q2 FY27 call speaks of "the period ended 30th September 2026" and its bare APE of 117.5 billion was
+    stored FY27; the Q3 FY26 call's APE of 185.2 billion is the nine months' figure, not FY26.  The reporting
+    quarter is the latest one the first pages name ("Q2 FY27 Earnings Conference Call"); a quarterly figure in a
+    document filed after its quarter ends must not be re-dated by a half-year span it quotes in passing.  A
+    comparative ("compared to the corresponding period ended September 2025") never dates this document, and a span
+    that closes on 31 March is the year itself, so it changes nothing."""
+    if not text or p is None or not _YTD_SPAN.search(text):
+        return None
+    pages = head or text
+    quarters = []
+    for q in parse_periods(pages):
+        if q.ptype not in ("Q", "H", "9M"):
+            continue
+        if _YTD_PRIOR.search(pages[max(0, q.start - 30):q.start]):
+            continue
+        qc = _quarter_canon(q)
+        if qc:
+            quarters.append(qc)
+    if quarters:
+        qc = quarters[0]                    # the first quarter the title/cover names is the document's
+        code = _YTD_LABEL.get(qc[:2])
+        if code is None:
+            return None                     # Q4: the annual document keeps its year
+        canon = f"{code[0]}{qc[2:]}"
+        return Period(p.start, p.end, canon, code[1], period_end(code[1], canon))
+    for m in _YTD_SPAN.finditer(text):
+        if _YTD_PRIOR.search(text[max(0, m.start() - 30):m.start()]):
+            continue
+        named = next((q for q in parse_periods(m.group(0)) if q.ptype in ("H", "9M")), None)
+        if named is not None:
+            return Period(p.start, p.end, named.canon, named.ptype, period_end(named.ptype, named.canon))
+        dated = [q for q in parse_periods(text[m.end():min(len(text), m.end() + 80)]) if q.as_of]
+        if not dated:
+            continue
+        q = dated[0]
+        if q.ptype == "FY":
+            return None                     # "period ended 31 March 2026": the year itself, no year-to-date label
+        code = _YTD_LABEL.get(q.canon[:2]) if q.ptype == "Q" else None
+        if code is None:
+            continue
+        canon = f"{code[0]}{q.canon[2:]}"
+        return Period(p.start, p.end, canon, code[1], period_end(code[1], canon))
+    qc = _quarter_canon(p)
+    code = _YTD_LABEL.get(qc[:2]) if qc else None
+    if code is None or qc is None:
+        return None
+    canon = f"{code[0]}{qc[2:]}"
+    return Period(p.start, p.end, canon, code[1], period_end(code[1], canon))
 
 
 _BREAK = re.compile(r"[.;]\s+[A-Z]|\n\s*\n")
@@ -1378,7 +1450,7 @@ def _quarter_after_comparative(text: str, start: int, end: int, period: Period) 
     if not m:
         return None
     mm = re.search(r"FY(\d{2})$", period.canon or "")
-    if period.ptype != "FY" or mm is None or mm.group(1) != m.group(2):
+    if period.ptype not in ("FY", "H", "9M", "6M") or mm is None or mm.group(1) != m.group(2):
         return None
     q = int(m.group(1))
     if q >= 4:
@@ -1580,12 +1652,12 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                             canon = f"Q{mq.group(1) or mq.group(2)}FY{mm.group(1)}"
                             period = Period(period.start, period.end, canon, "Q", period_end("Q", canon))
                     lq = re.search(r"\bin Q([1-4])\b", lead or "", re.I) if rule != "sentence_v1" else None
-                    if lq and period.ptype == "FY":
+                    if lq and period.ptype in ("FY", "H", "9M", "6M"):
                         mm = re.search(r"FY(\d{2})", period.canon or "")
                         if mm:
                             canon = f"Q{lq.group(1)}FY{mm.group(1)}"   # "improved ... in Q2 ... came in at 7.52%"
                             period = Period(period.start, period.end, canon, "Q", period_end("Q", canon))
-                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype in ("FY", "M", "H") \
+                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype in ("FY", "M", "H", "9M", "6M") \
                             and e.metric not in _STOCK_METRICS:
                         frame = text[max(0, m.start() - 600):min(len(text), v.end + 140)]
                         qhead = re.search(r"(?mi)^\s*(?:key highlights for )?(?:the )?(?:march|june|september|"
@@ -1597,7 +1669,7 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                             canon = _quarter_of(period.canon)   # a quarterly figure in a year-to-date document
                             if canon:
                                 period = Period(period.start, period.end, canon, "Q", period_end("Q", canon))
-                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype == "FY":
+                    if rule in ("sentence_default_v1", "sentence_pair_v1") and period.ptype in ("FY", "H", "9M", "6M"):
                         qp = _quarter_after_comparative(text, v.end, min(len(text), v.end + 90), period)
                         if qp is not None:
                             period = qp        # "improved to -3.0% from -4.7% in Q3FY26" is the quarter after Q3
@@ -1605,7 +1677,11 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                     if fp is not None:
                         period = fp     # "first nine months" / "six months ended" names the figure's own span
                     period = _ytd_period(period, e, text, m.start(), v.start, filed)
-                    if ratio_quarter and rule == "sentence_default_v1" and period.ptype == "FY" \
+                    if rule == "sentence_default_v1" and period.ptype in ("H", "9M")                             and (e.metric in _STOCK_METRICS or e.kind not in ("money", "count", "volume")):
+                        q = _quarter_of(period.canon)   # T-129 review: a level, rate or per-unit figure is the
+                        if q:                           # quarter end's (GNPA 1.24%, $448/t), never a year-to-date
+                            period = Period(period.start, period.end, q, "Q", period_end("Q", q))
+                    if ratio_quarter and rule == "sentence_default_v1" and period.ptype in ("FY", "H", "9M", "6M") \
                             and e.metric in _RATIO_METRICS and not _year_named(text, m.start(), v.end):
                         q = _quarter_of(period.canon)
                         if q and keep_period("Q", q, filed):   # a quarter the document cannot report keeps its year
@@ -2963,7 +3039,8 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
             continue
         if doc_type == "transcript" and known_at:   # a call cannot be known before it was held (call_dates)
             known_at = call_dates.clamp(None, known_at, [t for _, t in usable[:3]])[1]
-        default_pers = doc_default_period([t for _, t in usable])
+        default_pers = doc_default_period([t for _, t in usable],
+                                          ytd=doc_type != "annual_report" and len(usable) <= 80)
         # a release whose first pages name a subsidiary keeps that entity on the pages that do not repeat its name
         doc_basis = "not_stated"
         if profile.under_profile():
@@ -2982,7 +3059,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
             st["pages"] += 1
             page_pers = default_pers
             if long_doc:
-                page_pers = doc_default_period([text])
+                page_pers = doc_default_period([text], ytd=False)
                 if doc_type == "transcript" and default_pers and default_pers[0].ptype in ("Q", "M", "H"):
                     page_pers = default_pers     # a call's figures are its own quarter, not a page-header year
                 if not page_pers:
@@ -3127,6 +3204,87 @@ def _review_path(out: str) -> Path:
     return Path(stem + "_kpi_review.csv")
 
 
+# T-129: flow metrics only.  A stock -- a book, AUM, a balance, a ratio, a margin -- is a level on a date and is
+# never a difference; a flow over the year minus the year to date is the missing quarter.
+_DERIVABLE_FLOW = {
+    "ape", "domestic_volumes", "ebitda", "export_volumes", "gwp", "new_business_premium", "new_loans",
+    "order_intake", "pat", "revenue", "revenue_usd", "shipments_kt", "vnb", "volumes",
+}
+# (quarter, minuend, subtrahend): Q4 = FY - 9M, Q3 = 9M - H1, Q2 = H1 - Q1.  Q1 has nothing below it.
+_DERIVE = (("Q2", "H1", "Q1"), ("Q3", "9M", "H1"), ("Q4", "FY", "9M"))
+_KPI_COLS = ("id", "metric", "dimension", "basis", "unit", "value", "scale", "period_type", "fiscal_period",
+             "doc_key", "page", "known_at", "known_at_source", "isin", "method", "ocr_conf", "source_type",
+             "entity", "conf_rank", "is_reported", "extractor_rule")
+
+
+def _cumulative_code(fiscal_period: str | None) -> str | None:
+    """FY26 -> FY, H1FY26 -> H1, 9MFY26 -> 9M, Q2FY26 -> Q2; None for another label."""
+    m = re.match(r"(FY|H1|9M|Q[1-4])(?:FY)?(\d{2})$", fiscal_period or "")
+    return m.group(1) if m else None
+
+
+def _pinned(values: list[float]) -> bool:
+    """True when one period's own rows agree within 1%, so its best row is pinned."""
+    return bool(values) and max(values) - min(values) <= 0.01 * max(abs(v) for v in values)
+
+
+def _fmt_num(value: float) -> str:
+    """A stored value as printed in a derived row's quote ("242.7", "1746500"), never scientific notation."""
+    return f"{value:.6f}".rstrip("0").rstrip(".")
+
+
+def derive_quarters(con: sqlite3.Connection, symbol: str) -> int:
+    """Write the missing Q2/Q3/Q4 of a flow metric from its cumulative rows, as labelled derived rows (T-129).
+
+    For one symbol/metric/dimension/basis/unit: Q4 = FY - 9M, Q3 = 9M - H1, Q2 = H1 - Q1.  Each input is the
+    highest-confidence non-quarantined reported row of its period; a period whose own rows disagree by more than
+    1% is not used (its best row is not pinned).  The row is ``derived_cumulative_v1``, ``is_reported`` 0, and its
+    quote names both inputs ("FY26 242.7 - 9MFY26 185.2"); ``known_at`` is the later input's."""
+    banned: set[int] = set()
+    if con.execute("SELECT 1 FROM sqlite_master WHERE name='row_check'").fetchone():
+        banned = {r[0] for r in con.execute(
+            "SELECT row_id FROM row_check WHERE tbl='kpi_series' AND status='quarantined'")}
+    groups: dict[tuple, dict[str, list[dict]]] = {}
+    for rec in con.execute(f"SELECT {','.join(_KPI_COLS)} FROM kpi_series WHERE symbol=?", (symbol,)):
+        r = dict(zip(_KPI_COLS, rec))
+        if r["id"] in banned or r["is_reported"] == 0 or r["value"] is None \
+                or r["metric"] not in _DERIVABLE_FLOW or r["extractor_rule"] == "derived_cumulative_v1":
+            continue
+        code = _cumulative_code(r["fiscal_period"])
+        if code is None or code in ("Q1", "Q2", "Q3", "Q4"):
+            continue            # only the cumulative FY / H1 / 9M rows are inputs to a difference
+        groups.setdefault((r["metric"], r["dimension"], r["basis"], r["unit"]), {}).setdefault(code, []).append(r)
+    wrote = 0
+    for (metric, dimension, basis, unit), by_code in groups.items():
+        years = {r["fiscal_period"][-2:] for rows in by_code.values() for r in rows}
+        for yy in sorted(years):
+            for target, a_code, b_code in _DERIVE:
+                canon = f"{target}FY{yy}"
+                if any(r["fiscal_period"] == canon for rows in by_code.values() for r in rows):
+                    continue
+                a_rows = [r for r in by_code.get(a_code, []) if r["fiscal_period"].endswith(yy)]
+                b_rows = [r for r in by_code.get(b_code, []) if r["fiscal_period"].endswith(yy)]
+                if not (_pinned([r["value"] for r in a_rows]) and _pinned([r["value"] for r in b_rows])):
+                    continue
+                a = max(a_rows, key=lambda r: (r["conf_rank"] or 0, r["known_at"] or "", r["id"]))
+                b = max(b_rows, key=lambda r: (r["conf_rank"] or 0, r["known_at"] or "", r["id"]))
+                later = a if (a["known_at"] or "") >= (b["known_at"] or "") else b
+                quote = f'{a["fiscal_period"]} {_fmt_num(a["value"])} - {b["fiscal_period"]} {_fmt_num(b["value"])}'
+                con.execute(
+                    "INSERT OR IGNORE INTO kpi_series(symbol,isin,metric,dimension,value,unit,scale,period_type,"
+                    "fiscal_period,as_of_date,basis,doc_key,page,quote,known_at,known_at_source,is_reported,"
+                    "raw_label,raw_value,extractor_rule,confidence,conf_rank,method,ocr_conf,source_type,entity) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (symbol, later["isin"], metric, dimension, round(a["value"] - b["value"], 6), unit,
+                     later["scale"] or 1, "Q", canon, period_end("Q", canon), basis, later["doc_key"],
+                     later["page"] or 1, quote, later["known_at"], later["known_at_source"], 0,
+                     f'{a["fiscal_period"]} - {b["fiscal_period"]}',
+                     f'{_fmt_num(a["value"])} - {_fmt_num(b["value"])}', "derived_cumulative_v1", "derived", 0,
+                     "derived", None, later["source_type"] or "", later["entity"] or ""))
+                wrote += 1
+    return wrote
+
+
 def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | None = None, raw_root: Path | None = None,
         ocr_db: str | Path | list | tuple | None = None, only_docs: list[str] | None = None,
         pages_db: Path | str | None = None) -> dict:
@@ -3173,6 +3331,8 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
         if profile.under_profile():
             _review_outliers(con, sym, max_pct, review, stats[sym])
             con.commit()
+        stats[sym]["derived"] = derive_quarters(con, sym)
+        con.commit()
         stats[sym]["rows"] = con.execute("SELECT count(*) FROM kpi_series WHERE symbol=?", (sym,)).fetchone()[0]
     if profile.under_profile():
         rp = _review_path(out)

@@ -1714,6 +1714,81 @@ def test_a_q4_ytd_amount_is_fy_and_never_fyfy():
     assert all("FYFY" not in r.fiscal_period for r in rows)
 
 
+# ------------------------------------------------------------------ T-129: year-to-date default and derived quarters
+def test_a_year_to_date_span_makes_the_default_the_half_or_the_nine_months():
+    """8 Nov re-ask: SBI Life's Q2 FY27 call says "key highlights of the period ended 30th September 2026" and its
+    bare APE of INR117.5 billion was stored FY27 (it is H1FY27); the Q3 FY26 call's APE 185.2 billion and the
+    individual APE 168.8 billion are the nine months' figures, not FY26."""
+    from reality_engine.pilot3 import profile
+    profile.activate(_profile_for({"SBILIFE": "insurance_life"}))
+    try:
+        q2 = ("Subject: Transcript of Earnings Conference call for Q2 of FY 2026-27\n"
+              "November 03, 2026\n"
+              "Now let me give you some key highlights of the period ended 30th September 2026:\n"
+              "APE stands at INR117.5 billion, registering a growth of 18%.\n")
+        default = kpi.doc_default_period([q2])
+        assert [p.canon for p in default] == ["H1FY27"]
+        got = kpi.sentence_rows("APE stands at INR117.5 billion, registering a growth of 18%.", 4, "SBILIFE",
+                                ENTRIES, DIMS, default)
+        assert {r.fiscal_period for r in got if r.metric == "ape"} == {"H1FY27"}
+        q3 = ("Subject: Transcript of Earnings Conference call for Q3 of FY 2025-26\n"
+              "January 28, 2026\n"
+              "Now let me give you some key highlights for the period ended 31st December 2025:\n"
+              "APE stands at INR 185.2 billion registering a growth of 16%. Individual APE stands at INR 168.8 billion "
+              "with a growth of 15%.\n")
+        default3 = kpi.doc_default_period([q3])
+        assert [p.canon for p in default3] == ["9MFY26"]
+        for quote in ("APE stands at INR 185.2 billion registering a growth of 16%.",
+                      "APE \nstands at INR 168.8 billion"):
+            rows = kpi.sentence_rows(quote, 4, "SBILIFE", ENTRIES, DIMS, default3)
+            assert {r.fiscal_period for r in rows if r.metric == "ape"} == {"9MFY26"}, quote
+        # T-129 review: a rate in the same year-to-date call is the quarter end's, never H1 (GNPA, margins, $/t)
+        rate = kpi.sentence_rows("VONB Margin stands at 27.9%.", 4, "SBILIFE", ENTRIES, DIMS, default)
+        assert {r.fiscal_period for r in rate if r.metric == "vnb_margin"} == {"Q2FY27"}
+        # a figure whose own sentence names a period keeps it, and a quarter-to-date phrase does not re-date the doc
+        own = kpi.sentence_rows("APE stands at INR117.5 billion in Q2 FY27.", 4, "SBILIFE", ENTRIES, DIMS, default)
+        assert {r.fiscal_period for r in own if r.metric == "ape"} == {"Q2FY27"}
+        quarter = kpi.doc_default_period(["Results for the quarter ended 30 September 2026"])
+        assert [p.canon for p in quarter] == ["Q2FY27"]          # "quarter ended" is not a year-to-date span
+        # a span closing on 31 March is the year itself: a Q4 document keeps FY
+        annual = kpi.doc_default_period(["key highlights for the period ended 31 March 2026: APE was INR 200 billion"])
+        assert [p.canon for p in annual] == ["FY26"]
+    finally:
+        profile.activate(None)
+
+
+def test_missing_flow_quarters_are_derived_and_a_stock_is_never_derived():
+    """T-129: FY26 - 9MFY26 is the missing Q4 of a flow (APE 242.7 - 185.2 = 57.5), written as a labelled derived
+    row; AUM is a stock and is never a difference, and a period whose own rows disagree by more than 1% is not
+    pinned, so nothing is derived from it."""
+    con = sqlite3.connect(":memory:")
+    con.executescript(kpi.SCHEMA)
+
+    def put(metric, per, ptype, value, doc="d.pdf", rank=4):
+        con.execute(
+            "INSERT INTO kpi_series(symbol,metric,dimension,value,unit,scale,period_type,fiscal_period,as_of_date,"
+            "basis,doc_key,page,quote,known_at,known_at_source,is_reported,extractor_rule,confidence,conf_rank) "
+            "VALUES('X',?,'total',?,'inr_cr',1e7,?,?,?,'consolidated',?,1,'q','2026-05-01','pages.db',1,"
+            "'table_v1','table_row',?)",
+            (metric, value, ptype, per, kpi.period_end(ptype, per), doc, rank))
+    put("ape", "FY26", "FY", 242.7, "fy.pdf")
+    put("ape", "9MFY26", "9M", 185.2, "9m.pdf")
+    put("aum", "FY26", "FY", 5000.0)
+    put("aum", "9MFY26", "9M", 4500.0)                     # a stock: no derived Q4
+    put("revenue", "FY26", "FY", 100.0, "a.pdf")
+    put("revenue", "FY26", "FY", 105.0, "b.pdf")           # two rows of the same year disagree by 5%
+    put("revenue", "9MFY26", "9M", 60.0)
+    assert kpi.derive_quarters(con, "X") == 1
+    got = {(m, p, v) for m, p, v in con.execute("SELECT metric, fiscal_period, value FROM kpi_series")}
+    assert ("ape", "Q4FY26", 57.5) in got
+    assert not any(m == "aum" and p == "Q4FY26" for m, p, _ in got)
+    assert not any(m == "revenue" and p == "Q4FY26" for m, p, _ in got)
+    assert con.execute("SELECT extractor_rule, is_reported, quote, known_at FROM kpi_series "
+                       "WHERE metric='ape' AND fiscal_period='Q4FY26'").fetchone() == \
+        ("derived_cumulative_v1", 0, "FY26 242.7 - 9MFY26 185.2", "2026-05-01")
+    con.close()
+
+
 
 
 
