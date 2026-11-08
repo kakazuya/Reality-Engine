@@ -999,6 +999,7 @@ python -m pytest reality_engine/tests -q                                        
 python -m reality_engine.pilot3.build --out .tmp/pilot3_kec.db --part kpi --symbols KEC   # one company: 125 s
 python -m reality_engine.pilot3.checkpages run                                            # fixed pages: found / missing, 5.5 s
 python -m reality_engine.pilot3.checkpages make                                           # regenerate the fixture and its baseline
+python -m reality_engine.pilot3.regression_set score --all                                # hand-read gate: 0 FAIL required (T-122)
 ```
 
 - **One company (`build.py --symbols`).** Only the extractors are limited (`extract`, `kpi`, `transcripts`,

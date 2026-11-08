@@ -461,3 +461,45 @@ Change a rule only with a measurement that supports the change, and note it in `
   python -m reality_engine.pilot3.doc_canary --out .tmp/canary --per-cell 3 --seed 0
   python -m pytest reality_engine/tests/test_doc_canary.py -q
   ```
+
+## 15. Frozen hand-labelled regression set (T-122, 8 Nov 2026; the merge gate for every extractor and checker change)
+- The rule (Shivam, 8 Nov): **every change to an extractor (`kpi.py`, `guidance.py`, `stores.py`) or to the checker
+  (`row_checks.py`) runs `regression_set.py score --all` and shows zero FAIL before merge.** A row Opus read as right
+  must never become quarantined; a row he read as wrong must never become verified. A fix for one company that
+  breaks another shows up here, on every company read so far, not on the one that was fixed.
+- `tasks/regression/labels.csv` is the frozen set: **130 rows** (Opus's review, 8 Nov: the worker's 219 included 88
+  rows reconstructed from re-seeded samples, not rows Opus actually read, e.g. a right KIMS FY24 PAT labelled wrong;
+  those were dropped, and the unsure KIMS FY24 revenue 16,572 too). pilot10 30 right; unseen6 6 wrong; hold6 32
+  right / 7 partly / 7 wrong; fresh6 34 right / 4 partly / 11 wrong. Never regenerated; a new hand read appends rows
+  (each with the id list it came from).
+- A label keys on content, never on the row id (ids change on every rebuild): table, symbol, metric, dimension,
+  period, basis, value (and high), unit, `doc_key`, page, and the first 80 characters of the squashed quote.
+- Run one set against a built database and its verdict database:
+  ```bash
+  python -m reality_engine.pilot3.regression_set score --label tasks/regression/labels.csv \
+      --set hold6 --db <hold6.db> --rc <rc_hold6.db>
+  ```
+  Run all four sets (each verdict database is rebuilt with the current checker first, into `.tmp/regression/`):
+  ```bash
+  python -m reality_engine.pilot3.regression_set score --all
+  ```
+  Exit code 1 on any FAIL. FAIL: a right row now `quarantined`, or a wrong row now `verified`. WARN (does not fail
+  the run): a partly row now `verified`, a labelled row no longer found (an extractor change that drops it is still
+  a regression to read), a row with no verdict. The output is a table per set plus per-company counts and one line
+  per FAIL/WARN with the current ids and statuses.
+- The `--all` defaults are the 8 Nov hold-out builds (`SETS` in `reality_engine/pilot3/regression_set.py`). When a
+  store moves, point `T122_DB_<SET>` / `T122_PROFILE_<SET>` at the current copy; a missing store is a FAIL
+  (`set-unavailable`) so a merge is never waved through on an unrun set.
+- Baseline, 8 Nov 2026 (round-10 checker, 130 labels): **1 FAIL, 3 WARN.** FAIL: hold6 KIMS `ebitda` Q3FY23 1,443.8
+  mn (quote "EBITDA Pre INDAS & Other Income"): read right, quarantined by `label_conflict` (the wording is a variant).
+  WARN: KIMS capex FY23 ("routine capex", partly) and fresh6 412 (standalone PAT, basis not_stated) / 1015 ("just shy
+  of 30%") verified. The next checker round must clear the FAIL.
+- What the set is not (yet): 24 rows of the unseen6 round-6 sample (ids 754/746/90/428/391/372 are the six wrong
+  ones; the 24 right ids were never written to a sample TSV, so they are skipped rather than guessed) and the one
+  unsure quarantined-sample row (492) are not labelled; 15 duplicate reads (the same content key read in two
+  samples, e.g. a row in both the fresh6 40-row sample and the round-10 addendum) are merged to one row.
+- Tests: `python -m pytest reality_engine/tests/test_regression_set.py -q` (5 passed) on tiny fixtures: the key
+  survives an id change, a right row quarantined fails (exit 1), a wrong row verified fails, a dropped row is
+  reported not found (WARN, exit 0), a partly row verified is a WARN. The file shadows pytest's `tmp_path` with a
+  `.tmp` directory, as the other pilot3 test files do.
+
