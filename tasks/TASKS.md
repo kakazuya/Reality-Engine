@@ -116,6 +116,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 ## Research
 - T-027 | OPEN | P3 | Trading limits module the test harness cannot run without, when backtests resume | accept: python -m pytest reality_engine/tests/test_trading_limits.py -q | from: tasks/FRAMEWORK.md | opened 2026-11-02
 - T-031 | OPEN | P3 | Research library bucket scheme; duplicates deleted 2 Nov, list in _dupes_deleted_2026-11-02.csv | accept: Shivam | from: T-026 | opened 2026-11-02
+- T-154 | OPEN | P2 | Embedding model bake-off for v2 semantic search: current Nemotron 8B vs finance-trained (Fin-E5 from FinMTEB, voyage-finance-2 only with Shivam's OK for paid) vs Qwen3-Embedding vs a model fine-tuned on our own graded question-to-page pairs; scored on our own Indian filings | accept: eval set of >=300 graded question->correct page/passage pairs from pilot10 runs; recall@5/@20 and latency per model; pick by measurement | from: Shivam 9 Nov 01:35 | opened 2026-11-09
 
 ## Machines
 - T-104 | OPEN | P2 | Antigravity CLI as a worker backend: confirm a headless run (prompt in, edits in a worktree, answer out, exit), its login persistence, models and daily quota on Google AI Pro; one small test task; if it passes, add an adapter to dsh-worker beside OpenCode; model only gemini-3.8-flash-medium (Shivam) | accept: Shivam | from: Shivam 7 Nov | opened 2026-11-07
