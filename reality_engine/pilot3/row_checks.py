@@ -297,10 +297,17 @@ _PAST_VERB = re.compile(
     r"\b(?:grew|grow|grown|delivered|achieved|reported|posted|stood|came\s+in|declined|rose|fell|"
     r"reduced|improved)\s+(?:at|of|to)?\s*$")
 _VARIANT = re.compile(r"before (?:exceptional|one[- ]off|one[- ]time)|adjusted|excluding|\bexcl\.?\b|"
-                      r"\bex[- ]|\bpre[- ]?ind\s*as\b|\bpost[- ]?ind\s*as\b|\bof which\b")
+                      r"\bex[- ]|\b(?:pre|post)[- ]?ind as\s*\d*\b|\bof which\b")
 # "per share / tonne / franchise" makes a financial line a unit variant; on a margin / ratio it is scope, not
 # a variant, and a table's "AUM per franchise" is another row's unit.
 _VARIANT_PER = re.compile(r"(?<!as )\bper\s+(?!cent\b)")
+# "IndAS116", "Ind-AS 116", "IND-AS" and "Ind AS 116" are the same qualifier; normalise before matching.
+_IND_AS = re.compile(r"ind[\s\-]*as", re.I)
+
+
+def normalise_ind_as(text: str) -> str:
+    """'pre IndAS116', 'pre-Ind AS 116' and 'pre IND-AS' all compare as 'pre ind as 116'."""
+    return _IND_AS.sub("ind as", text)
 # wording between a period token and the number that makes the token a comparative, not the number's own period
 _COMPARATIVE = re.compile(r"\b(?:over|against|versus|vs|from|than|compared|ahead\s+of|prior|last|previous|"
                           r"higher|lower|up|down)\b", re.I)
@@ -588,6 +595,36 @@ def plausible(kind: str, metric: str, lo: float | None, hi: float | None, unit: 
     if kind == "multiple":
         return all(-50 <= v <= 200 for v in vals)
     return True
+
+
+# ------------------------------------------------------------------------------- filed-statement scale
+# A store that prints "₹ in mn" / "rs lakh" but leaves scale=1 is reporting a number that is not rupees: the
+# printed unit's scale is the trustworthy one (round 9).  An ambiguous unit text names two scales and is no
+# witness at all.
+_UNIT_SCALE = {"bn": 1e9, "billion": 1e9, "mn": 1e6, "million": 1e6,
+               "cr": 1e7, "crore": 1e7, "crores": 1e7,
+               "lakh": 1e5, "lakhs": 1e5, "lac": 1e5, "lacs": 1e5}
+MICRO_FILED = 1e7        # Rs 1 crore
+BIG_REVENUE = 1e9        # Rs 100 crore
+
+
+def unit_scales(unit: str | None) -> set[float]:
+    """The rupee scales a unit text names ("₹ in mn" -> {1e6}, "rs lakh" -> {1e5}); empty when it names none."""
+    return {_UNIT_SCALE[t] for t in re.findall(r"[a-z]+", (unit or "").lower()) if t in _UNIT_SCALE}
+
+
+def filed_rupees(value: float | None, unit: str | None, scale: float | None) -> float | None:
+    """Rupee amount of a filed line, or None when the row cannot witness anything: a unit that names exactly one
+    scale is the scale (a store's scale=1 beside "in mn" is a bug), an ambiguous unit text or a non-positive
+    value is dropped."""
+    if value is None or value <= 0:
+        return None
+    scales = unit_scales(unit)
+    if len(scales) > 1:
+        return None
+    if scales:
+        return value * next(iter(scales))
+    return value * (scale if scale not in (None, 0) else 1)
 
 
 # ------------------------------------------------------------------------------------------- the checker
@@ -939,7 +976,7 @@ class Checker:
             return
         if any(c == "variant" for c, _ in v.fails):
             return
-        window = text[max(0, pos - 90):pos + 30]
+        window = normalise_ind_as(text[max(0, pos - 90):pos + 30])
         hit = _VARIANT.search(window)
         if hit is None and m.name in ("revenue", "pat", "ebitda", "net_debt"):
             hit = _VARIANT_PER.search(window)
@@ -1441,7 +1478,9 @@ class Checker:
         if names & HARD:
             v.status = "quarantined"
         elif names:
-            v.status = "verified" if v.corroborated and names <= {"multi_number", "value_scaled", "label_weak",
+            # corroboration proves the number is printed twice, not that a weak label names this metric or that
+            # a variant is the plain line: label_weak / variant never verify (round 9)
+            v.status = "verified" if v.corroborated and names <= {"multi_number", "value_scaled",
                                                                   "history_row", "scale_doubt"} else "unverified"
         else:
             v.status = "verified"
@@ -1523,7 +1562,9 @@ class Checker:
 
     # -- kpi --
     def _fin_values(self) -> dict[tuple[str, str, str], list[float]]:
-        """(symbol, fiscal_period) -> rupee values of the filed revenue / PAT / EBITDA-like lines, any basis."""
+        """(symbol, fiscal_period) -> rupee values of the filed revenue / PAT / EBITDA-like lines, any basis.
+        The printed unit decides the scale when it names one; a filed figure below Rs 1 crore never witnesses
+        revenue / PAT for a company whose other filed revenue is above Rs 100 crore."""
         want = {"revenue": ("revenue_from_operations", "total_income"),
                 "pat": ("pat", "pat_owners", "pat_continuing"),
                 "ebitda": ("operating_profit",)}
@@ -1531,17 +1572,31 @@ class Checker:
         for canon, lines in want.items():
             marks = ",".join("?" * len(lines))
             try:
-                for r in self.con.execute(f"SELECT symbol, fiscal_period, value, scale FROM fin_quarter_current WHERE line_item IN ({marks})", lines):
-                    if r["value"] is not None and r["value"] > 0:
-                        got[(r["symbol"], r["fiscal_period"], canon)].append(r["value"] * (r["scale"] or 1))
+                for r in self.con.execute(f"SELECT symbol, fiscal_period, value, unit, scale FROM fin_quarter_current WHERE line_item IN ({marks})", lines):
+                    amount = filed_rupees(r["value"], r["unit"], r["scale"])
+                    if amount is not None:
+                        got[(r["symbol"], r["fiscal_period"], canon)].append(amount)
             except sqlite3.OperationalError:
                 pass
             try:
-                for r in self.con.execute(f"SELECT symbol, fiscal_year, value, scale FROM fin_annual_line WHERE line_item IN ({marks})", lines):
-                    if r["value"] is not None and r["value"] > 0:
-                        got[(r["symbol"], r["fiscal_year"], canon)].append(r["value"] * (r["scale"] or 1))
+                for r in self.con.execute(f"SELECT symbol, fiscal_year, value, unit, scale FROM fin_annual_line WHERE line_item IN ({marks})", lines):
+                    amount = filed_rupees(r["value"], r["unit"], r["scale"])
+                    if amount is not None:
+                        got[(r["symbol"], r["fiscal_year"], canon)].append(amount)
             except sqlite3.OperationalError:
                 pass
+        revenue_max: dict[str, float] = {}
+        for (symbol, _period, canon), values in got.items():
+            if canon == "revenue" and values:
+                revenue_max[symbol] = max(revenue_max.get(symbol, 0.0), max(values))
+        for key in list(got):
+            symbol, _period, canon = key
+            if canon in ("revenue", "pat") and revenue_max.get(symbol, 0.0) > BIG_REVENUE:
+                kept = [v for v in got[key] if v >= MICRO_FILED]
+                if kept:
+                    got[key] = kept
+                else:
+                    del got[key]
         return got
 
     def check_kpi(self) -> list[Verdict]:
