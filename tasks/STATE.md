@@ -11,7 +11,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`.
 ## Next action
 WRAP-UP 8 Nov 19:25 (Wolf, 400k). Running: q12 build (`<Wolf scratchpad>/q12/build3.sh`, log `build3.log`; kpi 9/12 at 19:24, then stores..checks). History OCR PAUSED at 18:24 to speed q12: restart `build --profile tasks/night_loop/pilot10hist_profile.json --out D:/RealityEngine/pilot10/history/pilot10hist.db --part ocr --ocr-max-seconds 30000`, then re-run its kpi.
 1. When q12 shows Q12_DONE: answer the 156 rows of `<Wolf scratchpad>/q12/t124_reframed.csv` via `p3ask --db <q12.db>`, grade, write the JSONL, run `answer_run_report --name t124_q12_answers`.
-2. Re-ask the 136 pilot partials (`D:/RealityEngine/pilot10/answer_a3/grades.tsv`) on live pilot10.db, grade, report (offered to Shivam, awaiting yes).
+2. Re-ask the 136 pilot partials (`D:/RealityEngine/pilot10/answer_a3/grades.tsv`) on live pilot10.db, grade, report. Shivam said GO 8 Nov 19:30: start this first.
 3. HINDUNILVR Beauty & Wellbeing EBIT Q2FY27 stored 1,242 and VERIFIED; results p8 prints 1,235: add to T-122 regression labels, checker fix.
 4. T-127 round 2: rule_ledger mapping, full-run checklist gate. Shivam /mcp (dsh-worker for code_worker_limit, reality-data for project_rules).
 5. Re-run T-118 with guidance/KPI factors on the history db; ticket the `ar_facts` scale/column bug.
