@@ -711,6 +711,19 @@ three names are in the `pilot3_sql` table list in `plugins/reality-data/server/s
 
 **Model-read rows withheld (T-103).** `plugins/reality-data/server/core.py` labels every `facts()` row `extraction=filed_xbrl` or `extraction=model_read` (the latter also `verified=false`); the three model-read stores `ar_facts`, `deck_figures` and `concall_facts` were extracted by AI models in October 2026 and never hand-verified, so a default answer withholds them and counts them in `model_read_withheld`, returning them only with `include_model_read=true` or an explicit `kind` of `ar`/`deck`/`concall`. Filed `results_xbrl` ranks first: source rank 0 in `_fact_rank` (was 1) and `results` leads the financials/segments interleave. `search_docs()` drops its `ar_facts` annual-report leg unless `include_model_read=true`, then labels those hits `extraction=model_read`. Tests: `plugins/reality-data/tests/test_reality_data.py` (`test_facts_withholds_model_read_rows_by_default`, `test_facts_include_model_read_labels_and_ranks_xbrl_first`, `test_facts_explicit_ar_kind_keeps_model_read_rows`) and `plugins/reality-data/tests/test_search_docs.py` (`test_model_read_quotes_withheld_unless_requested`).
 
+### O19. Research prototypes: which held facts move forward returns (T-118, 8 Nov 2026)
+
+`reality_engine/research/factor_weights.py` (tests `reality_engine/tests/test_factor_weights.py`, 22
+passed) builds a monthly point-in-time panel from the dated DuckDB snapshot, 2021-01 to 2026-10,
+93,057 company-months over 2,266 companies, and ranks 35 held facts by forward 6/12/24-month total
+return over the Nifty 500 TRI: rank IC with Newey-West t-stats, quintile spread, size terciles,
+period split, a Fama-MacBeth joint model, sector re-rating and the 12-month price-move split by
+sector. `python -m reality_engine.research.factor_weights --out .tmp/t118` (~110 s, read-only
+snapshot, DuckDB memory_limit 5 GB) writes `factor_ic.csv`, `fama_macbeth.csv`, `sector_split.csv`,
+`coverage_by_year.csv` and `T-118_factor_weights.html` there. Method, the PIT rule, coverage per
+year, the ranked factors per horizon and the store limits it found (2019 quarterly filings, the 2022
+shareholding backfill): `docs/research/T-118_factor_weights.md`.
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):
