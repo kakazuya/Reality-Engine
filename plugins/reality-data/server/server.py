@@ -638,6 +638,40 @@ def pilot3_calc(expression: str, inputs: dict[str, Any] | None = None) -> dict[s
     return _safe(lambda: _calc.evaluate(expression, inputs))
 
 
+# --- project context (T-125: rulings and live state are served on demand, not pasted into prompts) ---
+def _project() -> Any:
+    from reality_engine.scripts import project_context
+
+    return project_context
+
+
+@server.tool(
+    name="project_rules",
+    description=(
+        "Shivam's binding rulings for this project; call before deciding scope, briefing a worker "
+        "or reporting. No topic returns the section index (name and the first 120 characters of "
+        "every bullet); a topic returns, whole, every bullet that contains all of its words (3+ "
+        "characters, case-insensitive) with its section; a miss returns that index and found=false."
+    ),
+    annotations=_RO,
+)
+def project_rules(topic: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: _project().rules(topic, root=_REPO_ROOT))
+
+
+@server.tool(
+    name="project_state",
+    description=(
+        "The live project state and next action: tasks/STATE.md sections, '## Now' and "
+        "'## Next action' always whole, the other sections up to 6000 characters, plus the ticket "
+        "card. Use it for the current step, blockers and running jobs before acting on them."
+    ),
+    annotations=_RO,
+)
+def project_state() -> dict[str, Any]:
+    return _safe(lambda: _project().state(_REPO_ROOT))
+
+
 def _warm_data() -> None:
     # 2026-10-24: warming before server.run delayed the initialize reply past the client's version probe (6.5 s
     # cold start); warm in the background so the handshake is answered at once. Tools still lazy-open on first use.

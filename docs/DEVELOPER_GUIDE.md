@@ -761,6 +761,19 @@ both hooks:
   `No-ticket: <reason>` line. `merge_worker` puts the brief's ticket into the merge commit; it does
   not close it.
 
+Session start is a hook, not prompt text (T-125). `reality_engine/scripts/load_context.py` prints
+`tasks/RULINGS.md` whole and never cuts a ruling. STATE's `## Now` and `## Next action` follow whole;
+its other sections, the ticket card and the recent decision headings are added only while the output
+stays under the hook's 9,800-character limit, and a dropped section is named by the closing
+`More state: project_state() tool or tasks/STATE.md` line. When RULINGS.md is over its
+8,000-character budget the hook's first line is `RULINGS.md is N chars over its 8,000 budget: Opus
+must shorten it`, and every ruling still prints. `reality_engine/scripts/project_context.py` serves
+the same text on demand: the reality-data tools `project_rules(topic=None)` (the section index, or
+every bullet containing all of a topic's 3+ letter words, returned whole) and `project_state()` (the
+sections above, with `## Now` and `## Next action` whole, plus the ticket card). `doc_gate.py` also
+refuses a staged `tasks/STATE.md` over 4,000 characters or `tasks/RULINGS.md` over 8,000
+(`CHAR_LIMITS`, rule `start_files`): 40 STATE lines were still 33.6k characters.
+
 A worker brief carries `Ticket: T-014` or `No-ticket: <reason>`; a T-number absent from the main
 checkout's `tasks/TASKS.md` is refused as `ticket_unknown`, and the brief then carries that one row.
 The start gate is `plugins/dsh-worker/server/core.py` (the refusal and the row attached to the
@@ -775,7 +788,7 @@ Every gate pass or block is one JSON line in `tasks/efficiency/rule_events.jsonl
 (gitignored, created on demand); `$DSH_RULE_EVENTS` overrides the path.
 
 - `reality_engine/scripts/doc_gate.py` logs one event per pre-commit run on `main` (rule
-  `doc_gate`, or `start_files` when the line limit is the block) and one per commit-msg run
+  `doc_gate`, or `start_files` when a line or character limit is the block) and one per commit-msg run
   (rule `ticket`, carrying the commit's short subject).
 - `plugins/dsh-worker/server/core.py` logs every start refusal: `permission_required` and
   `permission_invalid` (`start_gate_permission`), `brief_incomplete` (`start_gate_brief`),

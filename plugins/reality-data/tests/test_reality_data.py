@@ -231,7 +231,14 @@ class McpStdioTests(unittest.TestCase):
             tools = await session.list_tools()
             names = {t.name for t in tools.tools}
             self.assertTrue({"catalog", "resolve", "price", "facts", "search_docs", "sql",
-                             "delivery", "price_extreme", "holding"} <= names)
+                             "delivery", "price_extreme", "holding",
+                             "project_rules", "project_state"} <= names)
+
+            rules = payload(await session.call_tool("project_rules", {"topic": "docs"},
+                                                    read_timeout_seconds=60))
+            self.assertIn("found", rules)
+            live = payload(await session.call_tool("project_state", {}, read_timeout_seconds=60))
+            self.assertIn("sections", live)
 
             resolved = payload(await session.call_tool("resolve", {"query": "PPL"}, read_timeout_seconds=60))
             self.assertEqual(resolved["matches"][0]["isin"], "INE050001010")

@@ -40,9 +40,23 @@ def test_start_files_have_line_limits():
     def lines(n):
         return lambda name: chr(10).join(["x"] * n)
 
-    assert "limit 40" in check(["tasks/STATE.md"], branch="main", merging=False, read=lines(41))
+    refused = check(["tasks/STATE.md"], branch="main", merging=False, read=lines(41))
+    assert refused and "limit 40" in refused
     assert check(["AGENTS.md"], branch="main", merging=False, read=lines(41)) is None
-    assert "limit 150" in check(["AGENTS.md"], branch="main", merging=False, read=lines(151))
+    refused = check(["AGENTS.md"], branch="main", merging=False, read=lines(151))
+    assert refused and "limit 150" in refused
+
+
+def test_start_files_have_character_limits():
+    def chars(n):
+        return lambda name: "x" * n
+
+    refused = check(["tasks/STATE.md"], branch="main", merging=False, read=chars(4001))
+    assert refused and "4001 characters, limit 4000" in refused
+    assert check(["tasks/STATE.md"], branch="main", merging=False, read=chars(4000)) is None
+    refused = check(["tasks/RULINGS.md"], branch="main", merging=False, read=chars(8001))
+    assert refused and "8001 characters, limit 8000" in refused
+    assert check(["tasks/RULINGS.md"], branch="main", merging=False, read=chars(8000)) is None
 
 
 def test_commit_message_with_an_invented_ticket_is_refused_on_main():
