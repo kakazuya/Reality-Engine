@@ -791,6 +791,8 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
                 # T-161/T-159: the document's own first pages correct the record's type and date.
                 doc_type, filing_date, known_at, notes = reconcile_doc(
                     doc_type, _date_of(known_at), known_at, pages, _printed_texts(conn, key))
+                if notes.get("date_source"):            # the printed date is the page dates' date too
+                    conn.execute("UPDATE doc_page SET known_at=? WHERE doc_key=?", (known_at, key))
                 stat["redated"] += 1 if notes.get("date_source") else 0
                 stat["retyped"] += 1 if notes.get("type_source") else 0
                 meta = {k: row.get(k) for k in ("newsid", "bucket", "category", "subcat", "headline", "url", "sha256")}
