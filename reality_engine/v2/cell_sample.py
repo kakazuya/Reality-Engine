@@ -4,8 +4,9 @@
         --type deck|results --seed 9 --out .tmp/sample_deck.csv
 
 Writes one row per sampled cell with the document, page, row label, column header, period, the
-printed and scaled value, the unit and a 300-character snippet of the page text around the
-printed value so a reviewer can grade the cell without opening the PDF.
+printed and scaled value, the unit, the extraction method ('text_layer' or 'text_layer;delta' for
+a difference/growth column) and a 300-character snippet of the page text around the printed
+value so a reviewer can grade the cell without opening the PDF.
 """
 from __future__ import annotations
 
@@ -23,10 +24,10 @@ from reality_engine.db.readonly import connect_ro
 __all__ = ["load_cells", "write_sample", "main"]
 
 _COLUMNS = ("doc", "page", "label", "header", "period_id", "value_text",
-            "unit_text", "scale", "value", "snippet")
+            "unit_text", "scale", "value", "method", "snippet")
 _SQL = (
     "SELECT c.doc_key, c.page, c.row_label, c.col_header, c.period_id, c.value_text, "
-    "c.unit_text, c.scale, c.value, d.source_key "
+    "c.unit_text, c.scale, c.value, c.method, d.source_key "
     "FROM table_cell c JOIN doc d ON d.doc_key = c.doc_key "
     "WHERE d.doc_type = ? AND c.value IS NOT NULL")
 
@@ -43,7 +44,7 @@ def load_cells(store_dir: Path, doc_type: str) -> list[dict[str, Any]]:
                 values = tuple(row) if row is not None else ()
                 cells.append(dict(zip(
                     ("doc_key", "page", "label", "header", "period_id", "value_text",
-                     "unit_text", "scale", "value", "source_key"), values)))
+                     "unit_text", "scale", "value", "method", "source_key"), values)))
         finally:
             conn.close()
     return cells
@@ -86,7 +87,8 @@ def write_sample(cells: list[dict[str, Any]], out: Path, n: int = 100,
         for row in rows:
             writer.writerow([row["doc_key"], row["page"], row["label"], row["header"],
                              row["period_id"], row["value_text"], row["unit_text"],
-                             row["scale"], row["value"], row["snippet"]])
+                             row["scale"], row["value"], row.get("method", "text_layer"),
+                             row["snippet"]])
     return rows
 
 

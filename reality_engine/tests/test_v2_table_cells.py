@@ -401,6 +401,184 @@ def test_smoke_adani_deck_prose_page_has_no_cells():
         assert extract_page(document[5], 6) == []
 
 
+TITAN_RESULTS = Path("D:/RealityEngine/raw/pilot60_history/TITAN/quarterly_results/"
+                     "6d34f7e0-d10e-4dd0-8b27-6ebb6a4a8ad9.pdf")
+COALINDIA_DECK = Path("D:/RealityEngine/raw/pilot60_history/COALINDIA/investor_presentation/"
+                      "c8559664-a5ad-4fbe-8427-8c1155d16277.pdf")
+
+
+def test_bare_date_header_is_a_quarter_in_results_and_a_point_on_a_balance_sheet(pdf_path):
+    """Round 3, class 1: '31-12-2024 > (Unaudited)' names a period, never nothing."""
+    anchors = [480, 640]
+    header = [(60, 50, "Statement of Unaudited Financial Results (Rs. in crore)", 9)]
+    for anchors_col, date_text in ((anchors[0], "31-12-2024"), (anchors[1], "30-09-2024")):
+        header += [_right(anchors_col, 70, date_text, 8), _right(anchors_col, 80, "(Unaudited)", 8)]
+    rows = (("Revenue from operations", "1,500", "1,400"), ("Profit before tax", "200", "190"))
+    lines = header + [(60, y, label, 9) for y, (label, _, _) in zip((140, 160), rows)]
+    for y, (_, left, right) in zip((140, 160), rows):
+        lines += [_right(anchors[0], y, left), _right(anchors[1], y, right)]
+    cells = extract(_save(pdf_path, lines), doc_type="results")
+    assert {cell["period_id"] for cell in cells} == {
+        _pid("2024-10-01", "2024-12-31"), _pid("2024-07-01", "2024-09-30")}
+
+    lines[0] = (60, 50, "Balance Sheet (Rs. in crore)", 9)          # an as-at page
+    cells = extract(_save(pdf_path, lines), doc_type="results")
+    assert {cell["period_id"] for cell in cells} == {
+        _pid(None, "2024-12-31"), _pid(None, "2024-09-30")}
+
+    lines = [(60, 50, "Shareholding pattern", 9),
+             _right(anchors[0], 70, "Mar-26", 8), _right(anchors[1], 70, "Mar-25", 8),
+             (60, 140, "Promoter", 9), (60, 160, "Public", 9)]
+    lines += [_right(anchors[0], y, text) for y, text in zip((140, 160), ("50.2", "49.8"))]
+    lines += [_right(anchors[1], y, text) for y, text in zip((140, 160), ("49.8", "50.2"))]
+    cells = extract(_save(pdf_path, lines), doc_type="deck")
+    assert {cell["period_id"] for cell in cells} == {
+        _pid(None, "2026-03-31"), _pid(None, "2025-03-31")}
+
+
+def test_bare_nine_month_and_fiscal_year_headers_resolve(pdf_path):
+    """Round 3, class 1: a bare '9M' or 'FY' uses the printed year range or the filing date."""
+    from reality_engine.v2.table_cells import period_from_header
+
+    assert period_from_header("9M 25-26") == _pid("2025-04-01", "2025-12-31")
+    assert period_from_header("9M 24-25") == _pid("2024-04-01", "2024-12-31")
+    assert period_from_header("Nine Months Ended > 9M", date(2026, 1, 20)) == \
+        _pid("2025-04-01", "2025-12-31")
+    assert period_from_header("Year Ended > FY", date(2026, 5, 1)) == \
+        _pid("2025-04-01", "2026-03-31")
+    assert period_from_header("Quarter Ended > Q3 25-26") == _pid("2025-10-01", "2025-12-31")
+    assert period_from_header("Quarter Ended > Y-o-Y Growth") is None
+
+
+def test_cells_without_a_row_label_or_a_column_header_are_not_stored(pdf_path):
+    """Round 3, class 2: an unlabelled row or a headerless column is not a stored cell."""
+    anchors = [480, 640]
+    lines = [(60, 50, "Results (Rs. in crore)", 9), _right(anchors[0], 70, "31.03.2025", 8)]
+    for y, (label, left, right) in zip((140, 160), (("Revenue from operations", "1,500", "1,400"),
+                                                    ("", "45,016.75", "2,000"))):
+        if label:
+            lines.append((60, y, label, 9))
+        lines += [_right(anchors[0], y, left), _right(anchors[1], y, right)]
+    cells = extract(_save(pdf_path, lines))
+    assert cells
+    assert {cell["row_label"] for cell in cells} == {"Revenue from operations"}
+    assert {cell["col_header"] for cell in cells} == {"31.03.2025"}
+    assert all(cell["row_label"] and cell["col_header"] for cell in cells)
+
+
+def test_per_share_count_and_ratio_rows_keep_their_label_unit(pdf_path):
+    """Round 3, class 3: 'per share' / a count / a ratio never takes the page's crore scale."""
+    anchors = [480, 640]
+    lines = [(60, 50, "Results (Rs. in crore)", 9),
+             _right(anchors[0], 70, "31.03.2026", 8), _right(anchors[1], 70, "31.03.2025", 8)]
+    rows = (("Basic Earnings Per Share (EPS) (*not annualised)", "10.5", "9.6"),
+            ("Paid-up equity share capital (Face value of ₹ 1 per share)", "89", "89"),
+            ("No. of employees", "4,012", "4,100"),
+            ("Debt Equity Ratio (in times)", "0.14", "0.22"),
+            ("Revenue from operations", "1,500", "1,400"),
+            ("Total Comprehensive Income", "1,000", "900"))
+    for y, (label, left, right) in zip((140, 160, 180, 200, 220, 240), rows):
+        lines.append((60, y, label, 9))
+        lines += [_right(anchor, y, text) for anchor, text in zip(anchors, (left, right))]
+    cells = extract(_save(pdf_path, lines), doc_type="results")
+    eps = [cell for cell in cells if "Earnings Per Share" in (cell["row_label"] or "")]
+    assert eps and all(cell["unit_text"] == "inr_per_share" and cell["scale"] == 1.0
+                       for cell in eps)
+    assert eps[0]["value"] == 10.5
+    capital = [cell for cell in cells if "equity share capital" in (cell["row_label"] or "")]
+    assert capital and all(cell["scale"] == CRORE for cell in capital)   # money, not per share
+    employees = [cell for cell in cells if "employees" in (cell["row_label"] or "")]
+    assert employees and all(cell["unit_text"] == "count" and cell["scale"] == 1.0
+                             for cell in employees)
+    ratio = [cell for cell in cells if "Debt Equity Ratio" in (cell["row_label"] or "")]
+    assert ratio and all(cell["unit_text"] == "ratio" and cell["scale"] == 1.0 for cell in ratio)
+    revenue = [cell for cell in cells if "Revenue from operations" in (cell["row_label"] or "")]
+    assert revenue and all(cell["scale"] == CRORE for cell in revenue)
+
+
+def test_a_garbled_header_date_is_dropped_never_guessed(pdf_path):
+    """Round 3, class 4: '30.011.2028' is a broken text layer, not a period."""
+    anchors = [480, 640]
+    lines = [(60, 50, "Results (Rs. in crore)", 9),
+             _right(anchors[0], 70, "30.011.2028", 8), _right(anchors[0], 80, "(Reviewed)", 8),
+             _right(anchors[1], 70, "31.03.2026", 8), _right(anchors[1], 80, "(Audited)", 8)]
+    for y, (label, left, right) in zip((140, 160), (("Revenue", "1,500", "1,400"),
+                                                    ("Profit", "200", "190"))):
+        lines.append((60, y, label, 9))
+        lines += [_right(anchors[0], y, left), _right(anchors[1], y, right)]
+    cells = extract(_save(pdf_path, lines), date(2026, 5, 1), doc_type="results")
+    assert cells
+    assert not any("2028" in (cell["col_header"] or "") for cell in cells)
+    assert not any(cell["period_id"] and "2028" in cell["period_id"] for cell in cells)
+    assert {cell["period_id"] for cell in cells} == {_pid("2026-01-01", "2026-03-31")}
+
+
+def test_difference_columns_are_flagged_and_have_no_period(pdf_path):
+    """Round 3, class 5: 'Inc/Dec%' / 'YoY (%)' are differences, not a period's value."""
+    anchors = [480, 640]
+    lines = [(60, 50, "Results (Rs. in crore)", 9),
+             _right(anchors[0], 70, "31.03.2026", 8), _right(anchors[1], 70, "Inc/Dec%", 8)]
+    for y, (label, value, change) in zip((140, 160), (("Revenue", "1,500", "12.3%"),
+                                                      ("Profit", "200", "-4.5%"))):
+        lines.append((60, y, label, 9))
+        lines += [_right(anchors[0], y, value), _right(anchors[1], y, change)]
+    cells = extract(_save(pdf_path, lines), doc_type="results")
+    delta = [cell for cell in cells if cell["col_header"] == "Inc/Dec%"]
+    period = [cell for cell in cells if cell["col_header"] == "31.03.2026"]
+    assert delta and all(cell["period_id"] is None for cell in delta)
+    assert all(cell["method"] == "text_layer;delta" for cell in delta)
+    assert period and all(cell["period_id"] == _pid("2026-01-01", "2026-03-31")
+                          for cell in period)
+    assert all(cell["method"] == "text_layer" for cell in period)
+
+
+def test_a_wrapped_label_line_belongs_to_the_row_it_finishes(pdf_path):
+    """Round 3, class 6: the label's last line is part of its row, not the next row's section."""
+    anchors = [420, 560]
+    lines = [(60, 50, "Ratios (Rs. in crore)", 9),
+             _right(anchors[0], 70, "30.09.26", 8), _right(anchors[1], 70, "31.03.26", 8),
+             (60, 140, "Current Ratio", 9),
+             _right(anchors[0], 140, "1.81"), _right(anchors[1], 140, "1.86"),
+             (60, 176, "Quick Ratio", 9),
+             _right(anchors[0], 176, "1.65"), _right(anchors[1], 176, "1.62"),
+             (60, 228, "Debtor Turnover Ratio", 9),
+             _right(anchors[0], 246, "0.76"), _right(anchors[1], 246, "0.81"),
+             (60, 264, "(no. of months of Gross Sales)", 9),
+             (60, 298, "EBITDA Margin on Revenue", 9),
+             _right(anchors[0], 298, "29%"), _right(anchors[1], 298, "32%")]
+    cells = extract(_save(pdf_path, lines), doc_type="deck")
+    labels = {cell["row_label"] for cell in cells}
+    assert "Debtor Turnover Ratio (no. of months of Gross Sales)" in labels
+    assert "EBITDA Margin on Revenue" in labels
+    assert not any("no. of months" in label and label.startswith("EBITDA") for label in labels)
+
+
+@pytest.mark.skipif(not TITAN_RESULTS.exists(), reason="Titan results are not on disk")
+def test_smoke_titan_bare_date_balance_sheet_and_joined_labels():
+    """Round 3, class 1 and 6: 'Asat > 31-03-2025' is a point; '(v) ...' is its own row."""
+    with pymupdf.open(str(TITAN_RESULTS)) as document:
+        cells = extract_page(document[6], 7, "2026-11-01", "results")
+    investments = [cell for cell in cells if cell["row_label"] == "(g) Financial assets > (i) Investments"]
+    assert investments and {cell["period_id"] for cell in investments} == {
+        _pid(None, "2025-09-30"), _pid(None, "2025-03-31")}
+    other = [cell for cell in cells if cell["row_label"] == "(v) Other financial liabilities"]
+    assert other and {cell["value"] for cell in other} == {1528 * CRORE, 1134 * CRORE}
+    assert not any("Trade payables" in (cell["row_label"] or "") for cell in other)
+
+
+@pytest.mark.skipif(not COALINDIA_DECK.exists(), reason="Coal India deck is not on disk")
+def test_smoke_coal_india_nine_month_headers_and_difference_columns():
+    """Round 3, class 1 and 5: '9M 25-26' resolves and 'Inc/Dec' is flagged."""
+    with pymupdf.open(str(COALINDIA_DECK)) as document:
+        cells = extract_page(document[18], 19, "2026-11-01", "deck")
+    nine_month = [cell for cell in cells if cell["col_header"] == "9M 25-26"]
+    assert nine_month and all(cell["period_id"] == _pid("2025-04-01", "2025-12-31")
+                              for cell in nine_month)
+    delta = [cell for cell in cells if cell["col_header"] == "Inc/Dec%"]
+    assert delta and all(cell["period_id"] is None and cell["method"] == "text_layer;delta"
+                         for cell in delta)
+
+
 def test_cell_sample_writes_a_seeded_csv():
     directory = Path(f".tmp/t132-store-{os.getpid()}-{os.urandom(4).hex()}")
     directory.mkdir()
@@ -428,7 +606,7 @@ def test_cell_sample_writes_a_seeded_csv():
         assert len(rows) == 1 and rows[0]["label"] == "Revenue"
         lines = out.read_text(encoding="utf-8").splitlines()
         assert lines[0] == ("doc,page,label,header,period_id,value_text,unit_text,scale,"
-                            "value,snippet")
+                            "value,method,snippet")
         assert lines[1].startswith("d1,3,Revenue,Q2 FY27,")
     finally:
         shutil.rmtree(directory, ignore_errors=True)

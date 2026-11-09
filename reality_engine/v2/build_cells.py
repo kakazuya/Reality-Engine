@@ -26,7 +26,7 @@ from reality_engine.v2 import schema
 from reality_engine.v2.periods import period_row
 from reality_engine.v2.table_cells import extract
 
-PARSE_VERSION = "t132-cells-2"
+PARSE_VERSION = "t132-cells-3"
 _CRASH_LIMIT = 10
 
 
@@ -90,10 +90,11 @@ def _write_document(conn: sqlite3.Connection, doc: Any, sha256: str, pages: int,
     conn.executemany(
         "INSERT INTO table_cell (doc_key, page, table_no, row_no, col_no, row_label, "
         "col_header, period_id, basis, value_text, value, unit_text, scale, bbox, method) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'text_layer')",
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(doc_key, cell["page"], cell["table_no"], cell["row_no"], cell["col_no"],
           cell["row_label"], cell["col_header"], cell["period_id"], cell["basis"],
-          cell["value_text"], cell["value"], cell["unit_text"], cell["scale"], cell["bbox"])
+          cell["value_text"], cell["value"], cell["unit_text"], cell["scale"], cell["bbox"],
+          cell.get("method") or "text_layer")
          for cell in cells])
 
 
@@ -165,7 +166,7 @@ def build(store: Path, out: Path, since: str = "2025-04-01",
                     continue
                 page_stats: dict[str, int] = {}
                 try:
-                    cells = extract(str(pdf), doc["filing_date"], page_stats)
+                    cells = extract(str(pdf), doc["filing_date"], page_stats, kind)
                 except Exception as exc:                     # a broken PDF, not a broken run
                     crashed += 1
                     print(f"CRASH {doc['doc_key']}: {exc}")
