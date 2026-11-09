@@ -801,16 +801,24 @@ python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir> [--since
     [--types deck,results] [--symbols A,B]
 ```
 
-The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory) wrote 74,259 cells in
-92.8 s; 94.9% of cells carry a `period_id`, 85.4% a scale and 0.0% no header (round 4: 74,486 / 94.9% / 81.9% / 0.0%;
-round 3: 75,394 / 95.0% / 78.4% / 0.0%; round 2: 88,941 / 64.6% / 71.9% / 6.1%; the store is smaller because a cell
-with no label, no readable label or no resolvable-period header is no longer stored, and the round-5 top-edge row
-pairing merges a label with its figures). `reality_engine/v2/cell_sample.py` draws the hand-grade sample
-(`--store-dir <dir> --n 100 --type deck|results --seed 17 --out <csv>`; columns doc, page, label, header, period_id,
-value_text, unit_text, scale, value, method and a 300-character page snippet). Wolf's own round-5 grade of the first
-30 cells of each seed-17 sample (`.tmp/f5_results.csv`, `.tmp/f5_deck.csv`): results 24/30, deck 23/30, against
-27/30 and 27/30 in round 4. Rules a-j, the measured table, the remaining misses and the tests
-(`reality_engine/tests/test_v2_table_cells.py`, 52) are in `docs/V2_SCHEMA_CONTRACT.md` section 10.
+The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory, round 6 `.tmp/v2r6`)
+wrote 73,833 cells in 131.9 s; 95.1% of cells carry a `period_id`, 85.1% a scale and 0.0% no header (round 5:
+74,259 / 94.9% / 85.4% / 0.0%; round 4: 74,486 / 94.9% / 81.9% / 0.0%; round 3: 75,394 / 95.0% / 78.4% / 0.0%;
+round 2: 88,941 / 64.6% / 71.9% / 6.1%; the store is smaller because a cell with no label, no readable label or no
+resolvable-period header is no longer stored, and the round-6 label/unit split and two-flow pairing drop a few more).
+Methods: `text_layer` 69,131, `text_layer;garbled` 1,112, `text_layer;delta` 3,584,
+`text_layer;delta;garbled` 6. `reality_engine/v2/cell_sample.py` draws the hand-grade sample
+(`--store-dir <dir> --n 100 --type deck|results --seed 23 --out <csv>`; columns doc, page, label, header, period_id,
+value_text, unit_text, scale, value, method and a 300-character page snippet). Wolf's own round-6 grade of the first
+30 cells of each seed-23 sample (`.tmp/f6_results.csv`, `.tmp/f6_deck.csv`): results 26/30, deck 24/30, against
+24/30 and 23/30 in round 5. Round 6 fixes the round-5 scale regression (a bare currency in a label no longer means
+scale 1; the row's own unit cell, then the label's scale word, then the nearest table note, then the page unit decide
+the scale, and with none printed the scale is NULL: cells at Rs/INR/USD scale 1 and value >= 1000 fall from 4,548 to
+18 against round 4's 1,838), plus the table-level unit note, a two-line label's tail, measure rows that cover only
+their own columns, `H1 > FY27`, spaced digits in header dates, two-flow label/figure pairing and slide bullets. Rules
+a-j, the measured table, the remaining misses and the tests
+(`reality_engine/tests/test_v2_table_cells.py`, 60 in the three v2 test files) are in
+`docs/V2_SCHEMA_CONTRACT.md` section 10.
 
 ### O24. v2 label dictionary: one metric per printed label, per sector family (T-133, 9 Nov 2026)
 

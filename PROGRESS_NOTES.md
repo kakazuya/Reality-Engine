@@ -1,0 +1,1 @@
+T-132 r6 2026-11-09 23:39:05Z: class 1-8 fixed + 8 tests (60 pass); build .tmp/v2r6 73,833 cells (period 95.1%, scale 85.1%), step-1 18 vs r4 1,838 / r5 4,548; seed-23 own grade results 26/30 deck 24/30; docs updated. Next: ARPU bare-US$ unit currency, a header merging two printed dates, the JV measure row, two labels merged.

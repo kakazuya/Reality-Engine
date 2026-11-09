@@ -282,7 +282,7 @@ Rules, each fixing a prototype finding in section 8:
   `Add:` / `Less:` prefix stripped. A canonical Roman-numeral row marker is a row number; `CIL` (a Coal India
   subsidiary) is not (round 5).
 
-Measured 9 Nov 2026 with `python -m reality_engine.v2.build_cells --store D:/RealityEngine/p20/p20new.db
+Measured 9 Nov 2026 for round 5 with `python -m reality_engine.v2.build_cells --store D:/RealityEngine/p20/p20new.db
 --out .tmp/v2r5` (all 76 decks and 113 results filed since 2025-04-01, into a **fresh** output directory; 30 further
 documents were skipped as duplicate sha256):
 
@@ -300,7 +300,7 @@ Round 3 measured 75,394 cells (95.0% a period, 78.4% a scale); round 2 measured 
 cells (9 rows x 4 columns, all headed `Q2 FY27` / `Q2 FY26` / `Q2 FY27` / `Q1 FY27`) and the Asian Paints results p5
 still gives the `Revenue from operations` row with a Q2FY27 cell. Tests:
 `python -m pytest -q reality_engine/tests/test_v2_table_cells.py reality_engine/tests/test_v2_periods.py
-reality_engine/tests/test_v2_schema.py` (52 tests: one fixture per round-1/2/3/4/5 defect class, the header
+reality_engine/tests/test_v2_schema.py` (60 tests: one fixture per round-1/2/3/4/5/6 defect class, the header
 carry-over, the date-anchor repair, the sampler, and real-PDF smoke checks that skip when the files are absent).
 
 The round-5 sampler, for the hand grade:
@@ -385,6 +385,55 @@ Volume ... 22.4`), and a `12MFY25` column stored as `Q4FY25`. The build is `.tmp
 scale 85.4%); the round-4 store stays read-only at `D:/RealityEngine/v2/p20_r4`, the round-3 store at
 `D:/RealityEngine/v2/p20_r3` and the round-1/2 stores at `D:/RealityEngine/v2/p20_r1` and `.tmp/v2r2`. Opus grades
 rows 50-79 of each seed-17 sample independently.
+
+**Round 6 (9 Nov 2026).** The round-5 **regression** is fixed first: a bare currency in a label (`EBIT Rs`, `Total
+Revenue 1 US$`, `Total Assets ₹`) set scale 1 even though the row prints its unit in its own cell or the table title.
+Scale now comes, in printed order, from (a) the row's own unit cell (`Rs Mn`, `₹ Cr`, `US$ Mn`, `US$ Bn`, `Mn Min`,
+`Nos`), (b) the label's own scale word, (c) the nearest table note / section title (`Amount in US$ Mn, except ratios`,
+`Consolidated Financials (Rs Mn)`), (d) the page unit; a per-unit row (ARPU, per share, per tonne, `/unit`) keeps
+scale 1, and with no scale printed anywhere the scale is NULL, never 1. Cells with unit Rs/INR/USD at scale 1 and
+value >= 1000 fall from **4,548** (round 5; round 4 1,838) to **18**. The eight structural classes each have a test:
+(1) **row unit cell** - the cell is split from the label by x-position, and a currency-only cell still supplies the
+currency; (2) **table note** - the nearest digit-free row above the table names the unit, so the `Amount in US$ Mn`
+table's `Access charges` 61 is USD million, not Rs million; (3) **two-line labels** - a tail line joins its row when
+the line above ends in `&`/`and`/`of`/`before`, leaves a bracket open, starts lowercase or is a single word under a
+label that filled its column (`Cash profit ... Derivative &` + `Exchange Fluctuations`, `Logistics (other than
+Trucking &` + `International Freight Network)`, `[Share capital + other equity]`, `Enterprises`); (4) **measure
+rows** - a measure group names only the columns its x-span covers (a `Q-on-Q Growth` pair never names the level column
+beside it) and a measure row above the five-row window is still added when it sits directly over the period row; (5)
+**periods** - `H1 > FY27` / `Q2 > FY27` printed on two header lines are the half / quarter of FY27, not the full year,
+a header segment that is only `Year` is FY, a balance row under `For the Quarter ended` is a POINT and keeps its
+`Segment Liabilities` parent, and a cash-flow page titled `for the half year ended` fills a span the header stack
+lost; (6) **spaced digits** - `3 1.03 .2025` squashes to `31.03.2025` (only when the whole run is one date) and a
+date row the text layer split onto two y-rows still names its columns; (7) **row offset** - in a two-flow table
+(labels and figures printed on separate lines) each label line takes the first figures below its baseline, so Coal
+India's `Finance Costs` keeps its -290 and `Depreciation ...` its -670; (8) **bullets** - a label starting with a
+bullet glyph, or a bracket-less sentence longer than twelve words, is not a row. Measured 9 Nov 2026 with
+`python -m reality_engine.v2.build_cells --store D:/RealityEngine/p20/p20new.db --out .tmp/v2r6` (the same 76 decks
+and 113 results since 2025-04-01):
+
+| doc type | documents | pages | skipped (no text / no table) | cells | period_id | scale | no header | seconds |
+|---|---|---|---|---|---|---|---|---|
+| deck | 76 | 3,124 | 2,761 (79 / 2,682) | 13,543 | 83.5% | 79.6% | 0.0% | 80.5 |
+| results | 113 | 1,805 | 1,099 (33 / 1,066) | 60,290 | 97.8% | 86.3% | 0.0% | 51.4 |
+| total | 189 | 4,929 | 3,860 (112 / 3,748) | 73,833 | 95.1% | 85.1% | 0.0% | 131.9 |
+
+Methods: `text_layer` 69,131, `text_layer;garbled` 1,112, `text_layer;delta` 3,584,
+`text_layer;delta;garbled` 6. Wolf's own grade of the first 30 rows of each seed-23 sample (`.tmp/f6_results.csv`,
+`.tmp/f6_deck.csv`): **results 26/30**, **deck 24/30** fully right (label leaf, header, period, unit and value),
+against 24/30 and 23/30 in round 5. The remaining misses: a header that merges two printed dates into one phrase
+(`30.09.2025 30.06.2025`), the class-1 ARPU regression (a bare `US$` unit cell loses its currency and falls back to
+the page's Rs), two printed labels merged (`Bad debts ... Current Liability Ratio`), a cut label and a prose fragment
+on decks, and the round-5 pairs still open (a span row above the header window, a printed value merged into its
+label). The round-5 store stays read-only at `.tmp/v2r5` of the round-5 worktree and the round-4 store at
+`D:/RealityEngine/v2/p20_r4`; the round-1/2/3 stores stay at `D:/RealityEngine/v2/p20_r1`, `.tmp/v2r2` and
+`D:/RealityEngine/v2/p20_r3`. The sampler for this round:
+`python -m reality_engine.v2.cell_sample --store-dir .tmp/v2r6 --n 100 --type results|deck --seed 23 --out .tmp/f6_results.csv`
+(deck writes `f6_deck.csv`). Opus grades rows 50-79 of each seed-23 sample independently.
+
+The full rule set (a-j) was last rewritten for round 5; round 6 adds, under d: the row's own unit cell is split from
+the label and read before the label's scale word; under e: a two-line period label, a bare `Year` segment and the page
+title's span; under a: the two-flow label/figure pairing and the tail-line join; under g: bullets are not rows.
 
 **Opus sample, round 3 (9 Nov 2026, rows 50-79 of each seed-11 sample, unseen by the worker):** results 20/30 strictly
 right (24/30 if a segment-asset/liability balance tagged with its quarter instead of a POINT period is accepted), deck
