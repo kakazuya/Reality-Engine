@@ -1366,3 +1366,14 @@ Store fixes 1 and 2 of the T-087 report. Six general rules, no company name in c
    passed, `test_pilot3_comparatives.py` 21, `test_pilot3_core.py` 27 + 2 tmp_path errors (driver: 2 passed),
    `test_pilot3_xbrl_segments.py` driver 5 passed, `test_pilot3_checkpages.py` 4.
 
+### O23. Linked and missing call transcripts (T-157, 9 Nov 2026)
+
+19 of the 70 not-right pilot20 answers failed only because the call text was not held: one-page transcript cover
+letters (Adani Ports 13, IHCL 2, Havells 1) whose page text or link annotation names the real PDF, and calls with
+no transcript document at all (Pidilite Q2 FY27). `reality_engine/pilot3/linked_transcripts.py` resolves both
+(`--store <db> --raw-out <dir> [--symbols ...] [--apply]`, report-only without `--apply`), stores each PDF through
+`raw_store` and inserts `doc` + `doc_page` rows with the FTS kept in step; `--apply` on a copy of
+`D:\RealityEngine\p20\p20new.db` added 14 of the 16 linked stubs and the PIDILITIND and APOLLOTYRE missing calls
+(16 documents, 300 pages, 0 skipped). The method, the per-company table and the 5 tests are in
+`docs/PILOT3_BLUEPRINT.md` section 9l.
+
