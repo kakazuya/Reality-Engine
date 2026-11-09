@@ -14,7 +14,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 ## Next action
 1. Review + merge T-132 and T-139 when they finish (Opus samples 100 cells per doc type for T-132).
-2. Rebuild u8/q12/p20 prices + valuation from 2019 (`--part stores` + `ratios`); find their build profiles first (built on HP `C:/RE`?).
+2. DONE 17:45: u8/q12/p20 D: stores now hold prices, index and valuation from 2019 (prices+index rebuilt, `price_delivery_input` emptied, ratios rerun; every pre-existing valuation/ratio row identical). Profiles live in old Wolf scratch dirs (p20/u8: 82841833.../scratchpad, q12: bea35aad.../scratchpad).
 3. T-133 label map (metric kind stock/flow column; fixes the 436 mixed keys), then T-135 calc catalog check, T-150 units at write (number_check missed INDHOTEL-016 10x revenue).
 4. Store oddity: PERSISTENT Mar-26 mutual_funds = fpi_total = 22.12 (check shp parse).
 5. Standard answer brief: carry the D2 brief lines (each quarter's deck; source known by as_of; no cross-company figures; TTM by ex-date; scale-check AUM).
