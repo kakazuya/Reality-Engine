@@ -515,3 +515,19 @@ Total engineering estimate for all (b) work: **144 h** (54 h fetch jobs, 89 h ta
   26 `company_result_pit`, 773 `company_state_daily`, 388 `event_day0` rows; the pilot `doc` store
   covers 90 ISINs. `macro_claim_target` 44,742 rows with 0.994 precision / 0.94 recall from the
   independent 80-claim check.
+
+## 8. Side stores and raw folders (added 2026-11-09, T-132 session, from the data inventory)
+
+Data held but not covered above. "0 local" = no file on this PC's `D:\RealityEngine\raw` today; check the Drive archive (`raw_to_drive.db` manifest, T-102) before saying it is not held.
+
+### `reality_engine/data/extract_proto3.db` (prototype-3, 1 Nov; BAJFINANCE, HINDALCO, KEC only; written by `reality_engine/pilot/extract60.py` + `proto3.py`)
+- `balance_sheet_lines`, `cash_flow_lines`, `tax_reconciliation`, `lender_metrics`, `unit_volume`: extracted rows per company/period (Arm A code + Arm B Flash reader); a measurement store, not served by MCP.
+- `extract_arm` (which arm made a row), `extract_call` (model calls), `extract_run` (run log), `extract_done` (finished doc markers), `extract_selection` (passages chosen for reading), `extract_reject` (rows refused by the checks, with reason), `extract_handcheck` / `extract_recall` (empty: hand-check and recall tables never filled).
+
+### Raw folders under `D:\RealityEngine\raw`
+- Company documents: `pilot60_history` (11,035 files, 16.6 GB: every held filing of the pilot companies, `manifest.csv`; read by `pilot3/docs_collect.py`), `results_pdfs`, `results_notes_refetch`, `concall_pdfs`, `concall_pdfs_probe`, `concall_refetch` (`scripts/concall_refetch.py`), `decks_full`, `deck_page_text` (`scripts/build_deck_page_text.py`), `deck_real_pilot`, `deck_real_test300` (deck reader test sets), `kec_transcripts`, `maruti_transcripts`, `ETERNAL_/HDFCBANK_/INFY_site_documents` (company-website copies), `nse_announcements`, `material_announcement`, `ar_queue` (annual-report queue): all 0 local except pilot60_history.
+- Shareholding: `nse_shp_xbrl_pilot` (777 SHP XBRL files, `pilot3/stores.py`), `raw_market/nse_shp_index` (`scripts/fetch_shareholding.py`).
+- Market (`raw_market/*`, fetchers `scripts/fetch_nse_api_raw.py`, `fetch_bse_api_raw.py`, `fetch_market_raw.py`, loaded by `load_market_raw.py`): `bse_bhav` (5 files, today's BSE bhavcopy), `bse_block`, `bse_bulk`, `bse_corpact`, `nse_block`, `nse_bulk`, `nse_corpact`, `nse_corpact_sme`, `nse_pit_gg`, `nse_pit_gg_sme`, `nse_pit_gg_xml` (insider trades), `nse_fii_stats`, `nse_part_oi`, `nse_part_vol`, `nse_cm_isin` (`build_security_master.py`), `nse_results_xbrl` + `nse_integrated_equities` / `nse_integrated_sme` (`parse_nse_results_xbrl.py`), `mc_fiidii` (`fetch_fiidii_moneycontrol.py`), `nsdl_fpi_fortnight` (`fetch_nsdl_raw.py`), `amfi_nav` (`fetch_etf_nav.py`), `fo_bhavcopy` (`fetch_fo_bhavcopy.py`), `index_history`, `index_constituents`, `bse_scrip_master`: 0 local except bse_bhav.
+- Macro and inputs: `macro_pdfs` (`fetch_macro_docs.py`), `commodity_series` (`fetch_commodity_series.py`), `input_cost_series` (`extract_news_prices.py`, `fetch_imd_rainfall.py`), `tax_sources` (`build_tax_rules.py`), `vahan` (`fetch_vahan_raw.py`): 0 local.
+- Shivam's research: `user_research` (803 files, 32.8 GB, kept local by ruling), `user_research_drive` (236 files: Drive export listing, `_native_todo.txt` / `_native_blocked.txt`).
+- Housekeeping: `_dedupe` (`sha_index.db`, hash dedupe), `_migration` (`scripts/migrate_raw_to_d.py`), `originals_lists` (empty), `runners` (fetch launch scripts; restart killed fetches from here).

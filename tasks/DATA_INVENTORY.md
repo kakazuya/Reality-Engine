@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-09 22:05 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 13 tables and 56 of 73 raw folders.
+Generated 2026-11-09 23:40 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 0 tables and 2 of 73 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -163,30 +163,30 @@ Undocumented: 13 tables and 56 of 73 raw folders.
 | equity_intelligence.db | `tg_orders` | 219 | yes |
 | equity_intelligence.db | `tg_pead_signals` | 731 | yes |
 | equity_intelligence.db | `visual_evidence_artifacts` | 100 | yes |
-| extract_proto3.db | `balance_sheet_lines` | 173 | **undocumented** |
+| extract_proto3.db | `balance_sheet_lines` | 173 | yes |
 | extract_proto3.db | `capex_project` | 4 | yes |
-| extract_proto3.db | `cash_flow_lines` | 91 | **undocumented** |
+| extract_proto3.db | `cash_flow_lines` | 91 | yes |
 | extract_proto3.db | `company_capacity_utilisation` | 156 | yes |
 | extract_proto3.db | `company_cost_structure` | 3 | yes |
 | extract_proto3.db | `company_debt_mix` | 6 | yes |
 | extract_proto3.db | `company_operating_metrics` | 378 | yes |
 | extract_proto3.db | `company_price_revision` | 6 | yes |
 | extract_proto3.db | `company_segment_pnl` | 72 | yes |
-| extract_proto3.db | `extract_arm` | 29 | **undocumented** |
-| extract_proto3.db | `extract_call` | 443 | **undocumented** |
-| extract_proto3.db | `extract_done` | 11 | **undocumented** |
-| extract_proto3.db | `extract_handcheck` | 0 | **undocumented** |
-| extract_proto3.db | `extract_recall` | 0 | **undocumented** |
-| extract_proto3.db | `extract_reject` | 634 | **undocumented** |
-| extract_proto3.db | `extract_run` | 2 | **undocumented** |
-| extract_proto3.db | `extract_selection` | 872 | **undocumented** |
-| extract_proto3.db | `lender_metrics` | 60 | **undocumented** |
+| extract_proto3.db | `extract_arm` | 29 | yes |
+| extract_proto3.db | `extract_call` | 443 | yes |
+| extract_proto3.db | `extract_done` | 11 | yes |
+| extract_proto3.db | `extract_handcheck` | 0 | yes |
+| extract_proto3.db | `extract_recall` | 0 | yes |
+| extract_proto3.db | `extract_reject` | 634 | yes |
+| extract_proto3.db | `extract_run` | 2 | yes |
+| extract_proto3.db | `extract_selection` | 872 | yes |
+| extract_proto3.db | `lender_metrics` | 60 | yes |
 | extract_proto3.db | `order_book_contract` | 4 | yes |
 | extract_proto3.db | `order_intake` | 12 | yes |
 | extract_proto3.db | `rating_action` | 16 | yes |
 | extract_proto3.db | `supply_link` | 0 | yes |
-| extract_proto3.db | `tax_reconciliation` | 200 | **undocumented** |
-| extract_proto3.db | `unit_volume` | 19 | **undocumented** |
+| extract_proto3.db | `tax_reconciliation` | 200 | yes |
+| extract_proto3.db | `unit_volume` | 19 | yes |
 | pilot/macro_all.db | `macro_claim` | 21,793 | yes |
 | pilot/macro_all.db | `macro_claim_target` | 44,742 | yes |
 | pilot/macro_all.db | `macro_doc` | 456 | yes |
@@ -205,76 +205,76 @@ Undocumented: 13 tables and 56 of 73 raw folders.
 
 | Folder | Files | GB | Newest file | Named in docs |
 |---|---:|---:|---|---|
-| _dedupe | 1 | 0.00 | 2026-10-28 `sha_index.db` | **undocumented** |
-| _migration | 0 | 0.00 | - | **undocumented** |
+| _dedupe | 1 | 0.00 | 2026-10-28 `sha_index.db` | yes |
+| _migration | 0 | 0.00 | - | yes |
 | annual_report | 0 | 0.00 | - | yes |
-| ar_queue | 0 | 0.00 | - | **undocumented** |
+| ar_queue | 0 | 0.00 | - | yes |
 | bhavcopy | 0 | 0.00 | - | yes |
-| bse_scrip_master | 0 | 0.00 | - | **undocumented** |
-| commodity_series | 0 | 0.00 | - | **undocumented** |
-| concall_pdfs | 0 | 0.00 | - | **undocumented** |
-| concall_pdfs_probe | 0 | 0.00 | - | **undocumented** |
-| concall_refetch | 0 | 0.00 | - | **undocumented** |
+| bse_scrip_master | 0 | 0.00 | - | yes |
+| commodity_series | 0 | 0.00 | - | yes |
+| concall_pdfs | 0 | 0.00 | - | yes |
+| concall_pdfs_probe | 0 | 0.00 | - | yes |
+| concall_refetch | 0 | 0.00 | - | yes |
 | deck | 0 | 0.00 | - | yes |
-| deck_page_text | 0 | 0.00 | - | **undocumented** |
-| deck_real_pilot | 0 | 0.00 | - | **undocumented** |
-| deck_real_test300 | 0 | 0.00 | - | **undocumented** |
+| deck_page_text | 0 | 0.00 | - | yes |
+| deck_real_pilot | 0 | 0.00 | - | yes |
+| deck_real_test300 | 0 | 0.00 | - | yes |
 | decks | 0 | 0.00 | - | yes |
-| decks_full | 0 | 0.00 | - | **undocumented** |
+| decks_full | 0 | 0.00 | - | yes |
 | ETERNAL_site_documents | 0 | 0.00 | - | **undocumented** |
-| fo_bhavcopy | 0 | 0.00 | - | **undocumented** |
+| fo_bhavcopy | 0 | 0.00 | - | yes |
 | HDFCBANK_site_documents | 0 | 0.00 | - | **undocumented** |
-| index_constituents | 0 | 0.00 | - | **undocumented** |
-| index_history | 0 | 0.00 | - | **undocumented** |
-| INFY_site_documents | 0 | 0.00 | - | **undocumented** |
-| input_cost_series | 0 | 0.00 | - | **undocumented** |
-| kec_transcripts | 0 | 0.00 | - | **undocumented** |
-| macro_pdfs | 0 | 0.00 | - | **undocumented** |
-| maruti_transcripts | 0 | 0.00 | - | **undocumented** |
-| material_announcement | 0 | 0.00 | - | **undocumented** |
-| nse_announcements | 0 | 0.00 | - | **undocumented** |
-| nse_shp_xbrl_pilot | 777 | 0.01 | 2026-11-09 `SHP_1733654_07102026112959_WEB.xml.gz` | **undocumented** |
-| originals_lists | 0 | 0.00 | - | **undocumented** |
-| pilot60_history | 11,035 | 16.55 | 2026-11-09 `manifest.csv` | **undocumented** |
+| index_constituents | 0 | 0.00 | - | yes |
+| index_history | 0 | 0.00 | - | yes |
+| INFY_site_documents | 0 | 0.00 | - | yes |
+| input_cost_series | 0 | 0.00 | - | yes |
+| kec_transcripts | 0 | 0.00 | - | yes |
+| macro_pdfs | 0 | 0.00 | - | yes |
+| maruti_transcripts | 0 | 0.00 | - | yes |
+| material_announcement | 0 | 0.00 | - | yes |
+| nse_announcements | 0 | 0.00 | - | yes |
+| nse_shp_xbrl_pilot | 777 | 0.01 | 2026-11-09 `SHP_1733654_07102026112959_WEB.xml.gz` | yes |
+| originals_lists | 0 | 0.00 | - | yes |
+| pilot60_history | 11,035 | 16.55 | 2026-11-09 `manifest.csv` | yes |
 | price_bands | 0 | 0.00 | - | yes |
-| raw_market/amfi_nav | 0 | 0.00 | - | **undocumented** |
-| raw_market/bse_bhav | 5 | 0.00 | 2026-11-09 `BhavCopy_BSE_CM_0_0_0_20261109_F_0000.CSV` | **undocumented** |
-| raw_market/bse_block | 0 | 0.00 | - | **undocumented** |
-| raw_market/bse_bulk | 0 | 0.00 | - | **undocumented** |
-| raw_market/bse_corpact | 0 | 0.00 | - | **undocumented** |
+| raw_market/amfi_nav | 0 | 0.00 | - | yes |
+| raw_market/bse_bhav | 5 | 0.00 | 2026-11-09 `BhavCopy_BSE_CM_0_0_0_20261109_F_0000.CSV` | yes |
+| raw_market/bse_block | 0 | 0.00 | - | yes |
+| raw_market/bse_bulk | 0 | 0.00 | - | yes |
+| raw_market/bse_corpact | 0 | 0.00 | - | yes |
 | raw_market/bse_deliv | 4 | 0.00 | 2026-11-09 `_manifest.csv` | yes |
 | raw_market/bse_index | 0 | 0.00 | - | yes |
 | raw_market/bse_insider | 0 | 0.00 | - | yes |
 | raw_market/masters | 11 | 0.06 | 2026-10-08 `nse_SME_EQUITY_L.csv` | yes |
-| raw_market/mc_fiidii | 0 | 0.00 | - | **undocumented** |
+| raw_market/mc_fiidii | 0 | 0.00 | - | yes |
 | raw_market/nsdl_fpi_daily | 0 | 0.00 | - | yes |
-| raw_market/nsdl_fpi_fortnight | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_block | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_bulk | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_cm_isin | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_corpact | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_corpact_sme | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_fii_stats | 0 | 0.00 | - | **undocumented** |
+| raw_market/nsdl_fpi_fortnight | 0 | 0.00 | - | yes |
+| raw_market/nse_block | 0 | 0.00 | - | yes |
+| raw_market/nse_bulk | 0 | 0.00 | - | yes |
+| raw_market/nse_cm_isin | 0 | 0.00 | - | yes |
+| raw_market/nse_corpact | 0 | 0.00 | - | yes |
+| raw_market/nse_corpact_sme | 0 | 0.00 | - | yes |
+| raw_market/nse_fii_stats | 0 | 0.00 | - | yes |
 | raw_market/nse_full | 5 | 0.00 | 2026-11-09 `sec_bhavdata_full_09112026.csv` | yes |
 | raw_market/nse_index | 5 | 0.00 | 2026-11-09 `ind_close_all_09112026.csv` | yes |
-| raw_market/nse_integrated_equities | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_integrated_sme | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_part_oi | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_part_vol | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_pit_gg | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_pit_gg_sme | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_pit_gg_xml | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_results_xbrl | 0 | 0.00 | - | **undocumented** |
+| raw_market/nse_integrated_equities | 0 | 0.00 | - | yes |
+| raw_market/nse_integrated_sme | 0 | 0.00 | - | yes |
+| raw_market/nse_part_oi | 0 | 0.00 | - | yes |
+| raw_market/nse_part_vol | 0 | 0.00 | - | yes |
+| raw_market/nse_pit_gg | 0 | 0.00 | - | yes |
+| raw_market/nse_pit_gg_sme | 0 | 0.00 | - | yes |
+| raw_market/nse_pit_gg_xml | 0 | 0.00 | - | yes |
+| raw_market/nse_results_xbrl | 0 | 0.00 | - | yes |
 | raw_market/nse_sast | 0 | 0.00 | - | yes |
 | raw_market/nse_short | 0 | 0.00 | - | yes |
-| raw_market/nse_shp_index | 0 | 0.00 | - | **undocumented** |
+| raw_market/nse_shp_index | 0 | 0.00 | - | yes |
 | rbi | 0 | 0.00 | - | yes |
 | reddit | 0 | 0.00 | - | yes |
-| results_notes_refetch | 0 | 0.00 | - | **undocumented** |
-| results_pdfs | 0 | 0.00 | - | **undocumented** |
-| runners | 0 | 0.00 | - | **undocumented** |
-| tax_sources | 0 | 0.00 | - | **undocumented** |
+| results_notes_refetch | 0 | 0.00 | - | yes |
+| results_pdfs | 0 | 0.00 | - | yes |
+| runners | 0 | 0.00 | - | yes |
+| tax_sources | 0 | 0.00 | - | yes |
 | transcripts_raw | 17 | 0.01 | 2026-11-09 `sha_index.db` | yes |
-| user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | **undocumented** |
-| user_research_drive | 236 | 0.60 | 2026-10-26 `_native_blocked.txt` | **undocumented** |
-| vahan | 0 | 0.00 | - | **undocumented** |
+| user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | yes |
+| user_research_drive | 236 | 0.60 | 2026-10-26 `_native_blocked.txt` | yes |
+| vahan | 0 | 0.00 | - | yes |
