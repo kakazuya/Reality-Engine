@@ -419,6 +419,7 @@ def doc_find(symbol: str, terms: str, doc_type: str | None = None, date: str | N
 
 # --- lookups: pilot3 (every company the pilot database's company table holds) ---
 import lookups_pilot3 as _p3  # noqa: E402
+import lookups_ratings as _ratings  # noqa: E402
 import lookups_tech as _tech  # noqa: E402
 
 _RO = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False)
@@ -637,6 +638,28 @@ def pilot3_tech(symbol: str, kind: str, as_of: str | None = None, start: str | N
                 window: int | None = None, doc_type: str = "results", limit: int = 10) -> dict[str, Any]:
     return _safe(lambda: _tech.tech(symbol, kind, as_of=as_of, start=start, end=end, sessions=sessions,
                                     threshold=threshold, window=window, doc_type=doc_type, limit=limit))
+
+
+@server.tool(
+    name="pilot3_ratings",
+    description=(
+        "Credit-rating actions and the agency's own rationale text for one company, from the fetched CARE / ICRA / "
+        "CRISIL rationale notes (outside-doc store, REALITY_RATINGS_DB). Returns every instrument action printed, "
+        "known by `as_of`: agency, rating date, instrument, rating, outlook, action (reaffirmed / assigned / "
+        "upgraded / downgraded / withdrawn / revised) and amount_crore when printed, plus each rationale's key "
+        "sections verbatim (rationale, strengths, weaknesses, sensitivities/triggers, liquidity, outlook) with "
+        "provenance (agency, url, rating date, known_at). Point in time on known_at (the press-release date the "
+        "rationale was public, never earlier than its index date): a later action never appears in an earlier "
+        "answer. Use it for 'what is the rating and what would change it', rating triggers and what the agency "
+        "said about strengths/weaknesses. `agency` filters CARE/ICRA/CRISIL, `section` one of rationale, drivers, "
+        "strengths, weaknesses, sensitivities, liquidity, outlook. A company without a fetched rationale returns "
+        "found=false with the coverage it does hold; the rating announcement in pilot3_docs is separate."
+    ),
+    annotations=_RO,
+)
+def pilot3_ratings(symbol: str, as_of: str | None = None, agency: str | None = None,
+                   section: str | None = None, limit: int = 20) -> dict[str, Any]:
+    return _safe(lambda: _ratings.ratings(symbol, as_of=as_of, agency=agency, section=section, limit=limit))
 
 
 @server.tool(

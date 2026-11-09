@@ -11,8 +11,10 @@ subagent with only a shell asks the test store exactly as a model would ask the 
     python -m reality_engine.scripts.p3ask --db <file.db> catalog name=GROWTH \
         'inputs={"now": "22,067 crore", "before": "19,332 crore"}'
 
-Tools: kpi fin ratio holding statements guidance docs search semantic tech sql calc catalog (the ``pilot3_`` prefix is
-optional).  ``catalog name=list`` prints the named formulas; each one returns value, unit, the substituted
+Tools: kpi fin ratio holding statements guidance docs search semantic tech ratings sql calc catalog (the ``pilot3_``
+prefix is optional).  ``ratings`` reads the outside-doc rating-rationale store (``REALITY_RATINGS_DB``, default
+``D:/RealityEngine/outside_doc/ratings.db``) instead of ``--db``.  ``catalog name=list`` prints the named formulas;
+each one returns value, unit, the substituted
 formula text and the parsed inputs (``calc_catalog``).
 A value that parses as JSON (numbers, true/false, objects) is passed as that type, otherwise as text.
 Prints the reply as JSON (UTF-8).  Read-only: the lookups open the database read-only.
@@ -25,8 +27,8 @@ import sys
 from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
-TOOLS = ("kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "semantic", "tech", "sql",
-         "calc", "catalog")
+TOOLS = ("kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "semantic", "tech", "ratings",
+         "sql", "calc", "catalog")
 
 
 def _value(text: str):
@@ -56,6 +58,9 @@ def run(db: str, tool: str, args: dict) -> dict:
         if name == "tech":
             import lookups_tech
             return lookups_tech.tech(**args)
+        if name == "ratings":
+            import lookups_ratings
+            return lookups_ratings.ratings(**args)
         import lookups_pilot3 as p3
         return getattr(p3, name)(**args)
     except TypeError as exc:
