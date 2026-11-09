@@ -1,26 +1,23 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 17:40 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 17:30 IST (Wolf)
 History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `docs/V2_SCHEMA_CONTRACT.md`.
 
 ## Now
-- Report for Shivam: `D:/RealityEngine/reports/2026-11-09_overnight_report.html` (section 0 = morning update).
-- Stores (DELETE journal mode): `D:/RealityEngine/{u8/u8.db, q12/q12.db, p20/p20new.db}`; live pilot set `pilot10/pilot10.db`.
-- T-143 p20 baseline graded: 126 right / 102 partly / 2 wrong of 230 (P 53/57/1, Q 73/45/1); partly: undisclosed 57, held-not-read 20, raw missing 14, reading 10. Reports `reports/2026-11-09_t143_p20_baseline.*`. This is the v2 baseline.
-- T-124 q12: C + D(SAIL 15) graded 42/41/1 + 9 scope_out (`reports/2026-11-09_t124_q12_C_D15.*`). D stopped at 15/78 (HP MCP hung under 5 subagents). D2 = the other 63 qids, brief `<Wolf scratch>/T-124_q12_D2_hp_brief.md`, questions `q12/answers/questions_D2.json`; start on HP after 09:30.
-- SHP XBRL fetch (19 cos without xbrl SHP: u8 all incl CIPLA, KIMS, 8 p20) into `D:/RealityEngine/raw/nse_shp_xbrl_pilot` via `fetch_shp_xbrl_pilot --universe <scratch>/shp_universe.csv`; then rerun `--part stores` (shp) for u8, q12, p20.
-- Go key 1 only; HP pwsh broken (spawn EPERM): HP workers answer via MCP, run number_check after.
-- Waiting Shivam: T-131 OK, semantic search order, T-116, T-118, T-121, T-122.
+- Stores (DELETE journal mode): `D:/RealityEngine/{u8/u8.db, q12/q12.db, p20/p20new.db}`; live pilot set `pilot10/pilot10.db`. Go key 1 only.
+- v2 baseline pilot20: 126 right of 230 (`reports/2026-11-09_t143_p20_baseline.*`). q12: 72 right/70 partly/1 wrong/13 scope_out of 156 (`reports/2026-11-09_t124_q12.xlsx`).
+- T-154 semantic: `pilot3_semantic` (MCP + `p3ask semantic`), index `p20/embed/` 14,376 pages (~$0.48). Re-ask 120 q (`reports/2026-11-09_t154_p20_semantic_reask.xlsx`): 58 of 90 partly/wrong now right, 28 of 30 right held; est. pilot20 ~182/230 (79%). Shivam: semantic stays, alongside the table store.
+- T-131 OK (9 Nov 16:50). T-134 period engine merged (`reality_engine/v2/periods.py`; pilot10 report: 1,604 derived, 436 keys with mixed definitions -> T-133). T-155 merged (prices from 2019 in new builds). SHP re-ask 7/7 right.
+- Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126.
 
-## T-154 semantic-search gain test (Shivam 9 Nov 14:15: no more embedding comparisons; measure gain on RIGHT answers; DeepInfra balance $0.80)
-- Local bake-off DONE and stopped (`tasks/v2/T-154_bakeoff.py`, results `D:/RealityEngine/p20/t154/run_*.json`): 139 q, 16,457 pages, 1050 Ti: FinModernBERT r@5 20.9/r@20 48.9 (4.2 p/s), bge-m3 21.6/43.2 (4.0), bge-small 15.1/30.9 (38.3), FinBERT 2.9/10.8. HP NPU works only with fixed shapes + FP16 (`tasks/v2/T-154_npu_prep.py`): bge-small 17.6 p/s, same recall; QDQ int8 breaks recall (0.7%).
-- RUNNING at 14:20: `embed_test embed --model 8b --max-usd 0.45 --out D:/RealityEngine/p20/embed` (REALITY_PILOT3_DB=p20new.db; text only, 14,376 pages FY25+ transcripts/decks/results/press/AR, est $0.37; resumable; log `D:/RealityEngine/p20/embed_8b.log`).
-- T-154 re-ask DONE (120 q, report `reports/2026-11-09_t154_p20_semantic_reask.xlsx`): target 58 right / 31 partly / 1 wrong of 90 (all were partly/wrong), regression 28 of 30 still right. Est. pilot20 126 -> ~182 of 230 right (79%) if unasked right answers hold. Gap: number_check missed a 10x revenue scale (INDHOTEL-016) -> T-150.
+## Running (17:25)
+- T-132 table store: dsh 20261109T115250Z-31023d3d, pilot20 decks+results -> `table_cell` in worktree `.tmp/v2p20`.
+- T-139 rating rationales: dsh 20261109T115408Z-99df0bb0, text only, `.tmp/ratings_p20`.
 
 ## Next action
-1. q12 D2 DONE (graded 09:49, `reports/2026-11-09_t124_q12.xlsx`: 72 right/70 partly/1 wrong/13 scope_out of 156).
-2. SHP re-ask DONE 9 Nov: 7/7 right (`u8/answers/SHP/`). Store oddity: PERSISTENT Mar-26 mutual_funds = fpi_total = 22.12 (check shp parse).
-3. T-155 merged 9 Nov: pilot builds keep prices/index/valuation from `price_start` (2019-01-01). Stores u8/q12/p20 still hold 2023-10 prices until rebuilt (`--part stores` prices + ratios).
-4. Answer-brief lines now in D2 brief (each quarter's deck; source known by as_of; no cross-company figures; TTM = 12 months by ex-date; scale-check AUM): carry into the standard brief.
-5. T-131 OK (Shivam 9 Nov 16:50; semantic alongside, free outside sources lean). T-134 period engine MERGED (`reality_engine/v2/periods.py`, report `python -m reality_engine.v2.period_report --db <store>`: pilot10 1,604 derived, 436 conflicting keys = mixed definitions under one kpi key, feeds T-133). T-132 table store next (Wolf prototype, contract s8).
+1. Review + merge T-132 and T-139 when they finish (Opus samples 100 cells per doc type for T-132).
+2. Rebuild u8/q12/p20 prices + valuation from 2019 (`--part stores` + `ratios`); find their build profiles first (built on HP `C:/RE`?).
+3. T-133 label map (metric kind stock/flow column; fixes the 436 mixed keys), then T-135 calc catalog check, T-150 units at write (number_check missed INDHOTEL-016 10x revenue).
+4. Store oddity: PERSISTENT Mar-26 mutual_funds = fpi_total = 22.12 (check shp parse).
+5. Standard answer brief: carry the D2 brief lines (each quarter's deck; source known by as_of; no cross-company figures; TTM by ex-date; scale-check AUM).
 6. raw_to_drive sweep for u8 + p20 raw + new SHP files.
 
 ## Store copy recipe
