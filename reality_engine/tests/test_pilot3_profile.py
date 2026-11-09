@@ -101,6 +101,7 @@ def test_no_profile_keeps_the_present_defaults():
     assert set(profile.symbols()) == {"KEC", "BAJFINANCE", "HINDALCO"}   # the default database's company table
     assert profile.pages_db() == pilot3.PAGES_DB
     assert profile.window_start() is None
+    assert profile.price_start() == "2019-01-01"      # T-155: the default holds without a profile too
     assert profile.is_lender("BAJFINANCE")
     con = sqlite3.connect(":memory:")
     schema.create(con, ("fin_quarter_xbrl",))
@@ -205,7 +206,8 @@ def test_symbols_limit_every_part_under_a_profile():
 
 
 def test_window_keeps_only_rows_from_window_start():
-    """Under a profile the five dated stores keep only rows dated on or after window_start."""
+    """Under a profile the document and shareholding stores keep only rows dated on or after window_start; the
+    price tables keep theirs from price_start (2019-01-01 by default), tested in test_pilot3_price_window.py."""
     base = _fresh("window")
     raw = base / "raw"
     raw.mkdir()
@@ -287,3 +289,28 @@ def test_compute_start_and_extra_indices_are_optional():
     finally:
         profile.activate(None)
     assert profile.compute_start() is None and profile.extra_indices() == ()
+
+
+def test_price_start_defaults_to_2019_and_is_refused_before_it():
+    """T-155: prices start on 2019-01-01 unless the profile keeps them later; earlier than 2019 is a profile error."""
+    base = _fresh("price_start")
+    raw = base / "raw"
+    raw.mkdir()
+    pj = _profile_json(base, raw, _manifest(raw / "manifest.csv", raw, []))
+    data = json.loads(pj.read_text(encoding="utf-8"))
+    try:
+        assert profile.load(pj).price_start is None
+        profile.activate(profile.load(pj))
+        assert profile.price_start() == "2019-01-01"
+        data["price_start"] = "2021-01-01"
+        pj.write_text(json.dumps(data), encoding="utf-8")
+        assert profile.load(pj).price_start == "2021-01-01"
+        profile.activate(profile.load(pj))
+        assert profile.price_start() == "2021-01-01"
+        data["price_start"] = "2018-12-31"
+        pj.write_text(json.dumps(data), encoding="utf-8")
+        with pytest.raises(ValueError):
+            profile.load(pj)
+    finally:
+        profile.activate(None)
+    assert profile.price_start() == "2019-01-01"      # no profile: the same default

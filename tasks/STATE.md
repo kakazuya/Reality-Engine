@@ -18,7 +18,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 ## Next action
 1. q12 D2 DONE (graded 09:49, `reports/2026-11-09_t124_q12.xlsx`: 72 right/70 partly/1 wrong/13 scope_out of 156).
 2. SHP re-ask DONE 9 Nov: 7/7 right (`u8/answers/SHP/`). Store oddity: PERSISTENT Mar-26 mutual_funds = fpi_total = 22.12 (check shp parse).
-3. T-155 (prices from 2019 in pilot builds): brief ready in Wolf scratch `T-155_price_window_brief.md`, start when a worker slot frees.
+3. T-155 (prices from 2019) CODE DONE on HP worker, not merged: `price_start` in profile.py; price tables floor 2019-01-01 in stores.py; `_valuation` day floor in ratios.py; 81 passed in the accept files (2 env-only failures: no data root, no fitz). Controller: review, merge, rebuild u8/q12/p20.
 4. Answer-brief lines now in D2 brief (each quarter's deck; source known by as_of; no cross-company figures; TTM = 12 months by ex-date; scale-check AUM): carry into the standard brief.
 5. After T-131 OK: T-132 brief (contract section 8), T-134 period engine brief.
 6. raw_to_drive sweep for u8 + p20 raw + new SHP files.

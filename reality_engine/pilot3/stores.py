@@ -31,17 +31,22 @@ INPUT_TABLES = ("fin_quarter_xbrl", "fin_annual_line", "price_delivery")
 # The shareholding tables keep their whole history from ``compute_start`` instead (T-088): a quarter of the pattern
 # is a few hundred rows, and the pledge history and the September-2025 base are answers, not inputs.
 HISTORY_TABLES = ("shp_category", "shp_holder", "shp_pledge")
+# The price tables keep their rows from ``price_start`` (2019-01-01 unless the profile keeps them later), never from
+# ``window_start`` (T-155): a five-year price or P/E range is asked on a build whose documents start at the window.
+PRICE_TABLES = ("price_delivery", "valuation_daily", "index_price")
 
 
 def apply_window(conn: sqlite3.Connection) -> dict:
     """Delete a profile's rows dated before ``window_start``; returns ``{table: rows deleted}``.  With a
-    ``compute_start`` the rows of ``INPUT_TABLES`` from that date on are first copied to ``<table>_input``, and the
-    ``HISTORY_TABLES`` keep their rows from ``compute_start`` on."""
+    ``compute_start`` the rows of ``INPUT_TABLES`` from that date on are first copied to ``<table>_input``, the
+    ``HISTORY_TABLES`` keep their rows from ``compute_start`` on, and the ``PRICE_TABLES`` keep theirs from
+    ``price_start`` (2019-01-01 by default; T-155)."""
     start = profile.window_start()
     if not start:
         return {}
     compute = profile.compute_start()
     history = compute or start
+    price_start = profile.price_start()
     out = {}
     for table, column in WINDOW_COLUMNS.items():
         if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
@@ -49,19 +54,25 @@ def apply_window(conn: sqlite3.Connection) -> dict:
         if table in INPUT_TABLES:
             conn.execute(f'DROP TABLE IF EXISTS "{table}_input"')
             if compute:
+                # The price copy holds the rows before ``price_start`` that the main table no longer keeps; the ratios
+                # input view unions both, so an overlap (or a gap at the join) would be wrong (T-155).
+                copy_to = price_start if table == "price_delivery" else start
                 conn.execute(f'CREATE TABLE "{table}_input" AS SELECT * FROM "{table}" WHERE {column} >= ? AND {column} < ?',
-                             (compute, start))
-        out[table] = conn.execute(f"DELETE FROM {table} WHERE {column} < ?",
-                                  (history if table in HISTORY_TABLES else start,)).rowcount
+                             (compute, copy_to))
+        cutoff = price_start if table in PRICE_TABLES else history if table in HISTORY_TABLES else start
+        out[table] = conn.execute(f"DELETE FROM {table} WHERE {column} < ?", (cutoff,)).rowcount
     return out
 
 
 def trim_derived(conn: sqlite3.Connection) -> dict:
-    """After the ratios are computed over the inputs: drop derived rows dated before ``window_start``."""
+    """After the ratios are computed over the inputs: drop derived rows dated before ``window_start``, except
+    ``valuation_daily``, which keeps every price day from ``price_start`` (T-155): a day whose PE/PB/EV inputs are
+    not known on it keeps its close and market cap with NULL ratios."""
     start = profile.window_start()
     if not start:
         return {}
-    out = {"valuation_daily": conn.execute("DELETE FROM valuation_daily WHERE date < ?", (start,)).rowcount}
+    out = {"valuation_daily": conn.execute("DELETE FROM valuation_daily WHERE date < ?",
+                                           (profile.price_start(),)).rowcount}
     if profile.compute_start():
         out["ratio_panel"] = conn.execute("DELETE FROM ratio_panel WHERE period_end < ?", (start,)).rowcount
     return out
@@ -577,8 +588,10 @@ def build_annual(conn: sqlite3.Connection) -> dict:
 
 # --- price_delivery ---------------------------------------------------------------------------------
 def build_prices(conn: sqlite3.Connection) -> dict:
-    """Daily OHLC, volume, delivery and split-adjusted close on both exchanges (truth snapshot)."""
+    """Daily OHLC, volume, delivery and split-adjusted close on both exchanges (truth snapshot), from
+    ``price_start`` (2019-01-01 by default; T-155)."""
     schema.create(conn, ("price_delivery",))
+    start = profile.price_start()
     counts = {}
     for symbol in profile.symbols():
         marks, isins = _isin_marks(symbol)
@@ -587,7 +600,7 @@ def build_prices(conn: sqlite3.Connection) -> dict:
             rows, _ = _duck(
                 f"SELECT isin, CAST(date AS VARCHAR), open, high, low, close, prev_close, volume, value_inr, "
                 f"num_trades, deliverable_qty, delivery_pct, cum_price_factor, adj_close FROM {table} "
-                f"WHERE isin IN ({marks}) ORDER BY date", isins)
+                f"WHERE isin IN ({marks}) AND date >= ? ORDER BY date", (*isins, start))
             conn.executemany("INSERT INTO price_delivery VALUES (" + ",".join("?" * 21) + ")",
                              [(symbol, r[0], exch, r[1], *r[2:14], r[1], "bhavcopy date (end of day)",
                                "truth snapshot", table, f"{r[0]}|{r[1]}") for r in rows])
@@ -984,12 +997,12 @@ def build_index_prices(conn: sqlite3.Connection) -> dict:
     """index_price: the stock against each index per trading day, from ``mkt_nse_index_daily`` and the NSE
     ``price_delivery`` rows.  Returns use the split-adjusted close of the stock (``adj_close``) and the index close;
     the lookback day is the last trading day on or before the date N calendar months back, and a return is null
-    when that day falls before the earliest day the build keeps (``compute_start``, else ``window_start``).
+    when that day falls before ``price_start`` (T-155: the price history's own first day, not ``window_start``).
     ``relative_return_*`` = stock return - index return, in percentage points.  Indices: ``Nifty 50`` plus the
     profile's ``extra_indices``."""
     schema.create(conn, ("index_price",))
-    start = profile.window_start() or "0000-00-00"
-    earliest = profile.compute_start() or start
+    start = profile.price_start()
+    earliest = start
     names = ("Nifty 50", *[n for n in profile.extra_indices() if n != "Nifty 50"])
     series = {}
     for name in names:

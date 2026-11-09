@@ -282,7 +282,8 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
 
 A profile is one JSON file naming the companies and the paths a build reads, so the company literals live in the
 JSON and never in an extractor: `name`, `pages_db`, `raw_root` (with its `manifest.csv`), `out` (the database),
-`window_start`, and `companies` (`symbol`, `name`, `bse_code`, `isins`, `sector`, `lender`). The committed
+`window_start`, `price_start` (optional, default `2019-01-01`), and `companies` (`symbol`, `name`, `bse_code`,
+`isins`, `sector`, `lender`). The committed
 pilot10 profile is `tasks/night_loop/pilot10_profile.json` (10 companies, window from 2025-10-01);
 `reality_engine/pilot3/profile.py` loads it (`Profile`, `ProfileCompany`, `load`) and every pilot3 module reads the
 active one. Without a profile every command behaves exactly as before (the three pilot3 companies into `pilot3.db`).
@@ -297,10 +298,13 @@ active one. Without a profile every command behaves exactly as before (the three
 - **No sandbox.** The extractors read documents and pages from `pages_db` only; they never open
   `<sandbox>/<co>_loop`.
 - **Window.** The store builders keep rows dated on or after `window_start` (`fin_quarter_xbrl.period_end`,
-  `fin_annual_line.period_end`, `price_delivery.date`, `valuation_daily.date`, ...); the shareholding tables are the
+  `fin_annual_line.period_end`, ...); the shareholding tables are the
   exception (T-088): `shp_category`, `shp_holder` and `shp_pledge` keep every quarter from `compute_start`, because
-  the percentage base and the pledge history are answers, not inputs. Documents come from the manifest, which is the
-  requested window. No profile: no filter.
+  the percentage base and the pledge history are answers, not inputs. The price tables are the other exception
+  (T-155): `price_delivery`, `index_price` and `valuation_daily` keep their rows from `price_start`, which defaults
+  to 2019-01-01 and may only be set later, so five-year price and P/E ranges survive a window whose documents start
+  at `window_start`; a valuation day whose PE/PB/EV inputs are not known keeps its close and market cap with NULL
+  ratios. Documents come from the manifest, which is the requested window. No profile: no filter.
 - **`--symbols` limits every part** under a profile (a profile database built for one company holds one company);
   without a profile it still limits only the extractors, as before. `--out` and `--pages-db` override the
   profile's paths.
@@ -313,12 +317,15 @@ active one. Without a profile every command behaves exactly as before (the three
   / 1,170 pages (17 s, 15 `needs_ocr`); `build` parts registry 0.2 s, pages 0.5 s, stores 15.5 s, kpi 11.8 s,
   transcripts 0.3 s, guidance 0.4 s -> `company` 1 row, `doc` 147 with `known_at` on every row, `doc_page` 1,170,
   `fin_quarter_xbrl` 164 rows (min `period_end` 2025-12-31), `fin_annual_line` 260 (min 2026-03-31),
-  `price_delivery` 516 (min 2025-10-01), `shp_category` 180, `kpi_series` 161. MARUTI's five `concall_transcript`
+  `price_delivery` 516 (min 2025-10-01; T-155 now keeps prices from `price_start`, 2019-01-01 by default), `shp_category` 180, `kpi_series` 161. MARUTI's five `concall_transcript`
   filings are one-page cover letters ("the transcript ... has been uploaded"), so `transcript_statement` and
   `guidance` are 0 for it: the documents, not the code path (the KPI extractor reads the same pages: 161 rows).
-- **Tests.** `reality_engine/tests/test_pilot3_profile.py` (6 tests: the committed profile, the no-profile
+- **Tests.** `reality_engine/tests/test_pilot3_profile.py` (8 tests: the committed profile, the no-profile
   defaults, a manifest -> pages -> registry/pages/kpi/transcripts/guidance build with a sandbox root that does not
-  exist, the window filter, `--symbols` scoping, and `lookups_pilot3` on a `REALITY_PILOT3_DB` database).
+  exist, the window filter, `--symbols` scoping, `lookups_pilot3` on a `REALITY_PILOT3_DB` database, and
+  `compute_start` / `extra_indices` / `price_start`). T-155's price-window behaviour is pinned in
+  `reality_engine/tests/test_pilot3_price_window.py` (a 2020 price/index/valuation row under a 2023-10-01
+  `window_start`, NULL ratios without inputs, the `price_start` refusal, and the disjoint `price_delivery_input`).
 
 - **Generated profile (T-094, 6 Nov 2026).** `reality_engine/pilot3/make_profile.py` writes a profile from symbols or
   ISINs, so the company facts are looked up, never hand-written:
@@ -369,10 +376,15 @@ active one. Without a profile every command behaves exactly as before (the three
 - **`compute_start`** (optional profile key, default = `window_start`, so nothing changes): rows of `fin_quarter_xbrl`,
   `fin_annual_line` and `price_delivery` dated from `compute_start` up to `window_start` move to `<table>_input` at the end
   of `--part stores` (`stores.apply_window`). `--part ratios` reads them through TEMP views named like the tables
-  (`main.t UNION ALL main.t_input`), computes, drops the views and deletes `ratio_panel` / `valuation_daily` rows dated before
-  `window_start` (`stores.trim_derived`). No answer table holds a pre-window row (min dates 2025-10-01 / 2025-12-31); the
-  inputs are only already-held XBRL and price rows, nothing is fetched. `--part ratios` re-run gives byte-identical
-  `ratio_panel` (1,815 rows) and `valuation_daily` (2,651). Point in time stays exact: a day's TTM uses the last four quarters
+  (`main.t UNION ALL main.t_input`), computes, drops the views and deletes `ratio_panel` rows dated before
+  `window_start` (`stores.trim_derived`). T-155 (9 Nov 2026): the price tables keep their rows from `price_start`
+  (2019-01-01 by default), `valuation_daily` is cut at `price_start` instead of `window_start`, and the
+  `price_delivery_input` copy stops at `price_start` so the union never lists one day twice. The
+  inputs are only already-held XBRL and price rows, nothing is fetched. Measured before T-155: `--part ratios` re-run gave
+  byte-identical `ratio_panel` (1,815 rows) and `valuation_daily` (2,651, min 2025-10-01). Those two figures and that
+  min date are stale after T-155: a rebuilt `valuation_daily` starts at `price_start`, so it holds more rows, and the
+  days before the first known quarter have close and market cap with NULL PE/PB/EV. Point in time stays exact: a day's
+  TTM uses the last four quarters
   with `known_at` <= that day; HINDALCO's last four known quarters end Q1 FY27 and no Q2 is extrapolated. Use
   `compute_start` 2024-07-01 or earlier: BAJFINANCE's Q2 FY26 XBRL was disseminated 10 Nov 2025, so its TTM on 3 Nov 2025 is
   Q2 FY25 to Q1 FY26 and needs the quarter ended 2024-09-30 (2024-10-01 would drop it).
@@ -402,8 +414,10 @@ active one. Without a profile every command behaves exactly as before (the three
 - **New tables**, read by ISIN (every ISIN the company has had), no placeholder rows: `bulk_block_deal` (2 to 14 rows for BAJFINANCE,
   ETERNAL, HDFCBANK, HINDALCO, HINDUNILVR, INFY, SBILIFE, SUNPHARMA; none for KEC and MARUTI, which the store holds nothing for after
   23 Sep and 14 Jul 2025), `insider_trade` (INFY 363, BAJFINANCE 34, HINDUNILVR 7; the store holds no PIT rows after the window start for
-  the others), `index_price` (268 days per company against `Nifty 50`). `relative_return_*` = stock return (split-adjusted close) -
-  index return, in points, null when the lookback day is before `compute_start` (else `window_start`). INFY 12 months to 3 Nov 2026:
+  the others), `index_price` (measured before T-155: 268 days per company against `Nifty 50`; it now starts at
+  `price_start`). `relative_return_*` = stock return (split-adjusted close) -
+  index return, in points, null when the lookback day is before `price_start` (T-155; before it, `compute_start`
+  else `window_start`). INFY 12 months to 3 Nov 2026:
   1,148.1 / 1,485.5 = -22.71%, Nifty 50 23,810.85 / 25,763.35 = -7.58%, relative -15.13 points.
 - **Measured** (this MSI, copy of the pilot10 database, 10 companies): `--part stores` 140 s, `--part ratios` 1.4 s. A1 on `dev.jsonl`
   571 -> 679 of 898 questions fully answerable; 137 of the 147 listed structured needs are now met. Still unmet: KEC and MARUTI deals and
@@ -609,10 +623,13 @@ Four general rules, no company name in code.
   `input_refs.ttm='4_quarters'`; its first PE session is 2025-10-01. HINDUNILVR Q2 FY27 `gross_margin_pct` 47.57%
   consolidated (cost lines = total expenses for every non-lender's latest quarter, gap 0.00%; the two lenders' gaps are
   their interest/premium P&L, not missing cost captions).
-- **Inputs stay inputs.** After the build `fin_quarter_xbrl` starts 2025-12-31 and `fin_quarter_xbrl_input` ends
-  2025-09-30 (2,086 rows); `price_delivery` starts 2025-10-01 and its input ends 2025-09-30; `fin_annual_line` starts
-  2025-12-31 and its input ends 2025-09-30. `valuation_daily` starts 2025-10-01, `ratio_panel` 2025-12-31; 0 rows precede
-  the window, 0 valuation rows have `known_at > date`, 0 ratio rows are known before their period end.
+- **Inputs stay inputs (measured before T-155).** After the build `fin_quarter_xbrl` starts 2025-12-31 and
+  `fin_quarter_xbrl_input` ends 2025-09-30 (2,086 rows); `fin_annual_line` starts
+  2025-12-31 and its input ends 2025-09-30. T-155 (9 Nov 2026) changes the price side: `price_delivery` now starts at
+  `price_start` (2019-01-01 by default), and `valuation_daily` and `index_price` with it; the `price_delivery_input`
+  copy holds only rows before `price_start`, so it ends where the main table starts. `ratio_panel` still starts at the
+  window; 0 document rows precede the window, 0 valuation rows have `known_at > date`, 0 ratio rows are known before
+  their period end.
 - **SBILIFE, 230 sessions not 269.** Its first exact share count is the 30 Sep 2025 shareholding pattern known
   2025-11-28; a life insurer files no paid-up/face-value XBRL, so there is no earlier results-derived count. From that day
   it has 230 NSE sessions; PE starts 2026-01-28 (190 sessions) when the Q3 FY26 filing is the fourth known quarter, and
@@ -672,8 +689,10 @@ Two T-087 answers had failed because no holder was named and the September 2025 
   total-less-custody base matches 11, both match 9, neither 0. On the pilot10 copy only INFY and HDFCBANK print on
   `total_excluding_dr_custody`; the other eight print on the total.
 - **Window.** `shp_category`, `shp_holder` and `shp_pledge` are `stores.HISTORY_TABLES`: `apply_window` keeps their
-  rows from `compute_start` (2024-07-01) instead of `window_start` (2025-10-01), so 2025-09-30 is back; every other
-  table keeps the old cut, and the three `INPUT_TABLES` still split their pre-window rows into `<table>_input`.
+  rows from `compute_start` (2024-07-01) instead of `window_start` (2025-10-01), so 2025-09-30 is back; the price
+  tables keep theirs from `price_start` (T-155, 2019-01-01 by default), and the three `INPUT_TABLES` still split their
+  pre-window rows into `<table>_input` (the `price_delivery` copy stops at `price_start`, so it stays disjoint from
+  the main table).
   Quarters held on the copy: 9 to 11 per company from 2024-09-30 (KEC from 2024-09-26); before a held XBRL file the
   quarter still has the `shp_index` promoter/public rows (ETERNAL 2024-09-30..2025-06-30, category level only).
   `ratios._share_count` and `_valuation` read `share_capital`, not `shp_category`, so a later quarter's count is

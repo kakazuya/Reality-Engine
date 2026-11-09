@@ -19,8 +19,12 @@ already-held stores as inputs only (trailing four quarters, prior-year compariso
 table.  An optional ``extra_indices`` lists more index names for ``index_price`` besides ``Nifty 50``.
 
 The window keeps the stores' rows dated on or after ``window_start`` (``fin_quarter_xbrl``,
-``fin_annual_line``, ``shp_category``, ``price_delivery``, ``valuation_daily``); documents come from the
-manifest, which is already the requested window.
+``fin_annual_line``, ``shp_category``); documents come from the manifest, which is already the requested window.
+
+``price_start`` (default ``2019-01-01``, and never earlier: ``load`` refuses it) is where every price series
+begins (``price_delivery``, ``index_price``, ``valuation_daily``), independent of the document window, so a
+five-year price or P/E range can be answered on a build whose documents start at ``window_start`` (T-155).  A
+profile may keep prices later than 2019, never earlier.
 """
 from __future__ import annotations
 
@@ -33,6 +37,10 @@ from reality_engine.db.readonly import connect_ro
 from reality_engine.gap_loop.company import Company
 from reality_engine.pilot3 import PAGES_DB, REAL_DB
 from reality_engine.pilot3.lender import filed_lender
+
+# The first day any price series may start (T-155): the raw market stores begin here, and a profile may keep prices
+# later than this, never earlier.
+PRICE_START = "2019-01-01"
 
 
 @dataclass(frozen=True)
@@ -64,6 +72,7 @@ class Profile:
     companies: tuple[ProfileCompany, ...] = ()
     compute_start: str | None = None
     extra_indices: tuple[str, ...] = ()
+    price_start: str | None = None
 
     @property
     def symbols(self) -> tuple[str, ...]:
@@ -104,12 +113,17 @@ def load(path: str | Path) -> Profile:
     for key in ("pages_db", "raw_root", "manifest", "out"):
         if not data.get(key):
             raise ValueError(f"profile {source} has no {key!r}")
+    price_start = str(data["price_start"]) if data.get("price_start") else None
+    if price_start and price_start < PRICE_START:
+        raise ValueError(f"profile {source}: price_start {price_start!r} is before {PRICE_START}; price history starts "
+                         f"on {PRICE_START} and a profile may only keep it later")
     return Profile(name=str(data.get("name") or source.stem), pages_db=_path(base, data["pages_db"]),
                    raw_root=_path(base, data["raw_root"]), manifest=_path(base, data["manifest"]),
                    out=_path(base, data["out"]), window_start=str(data["window_start"]) if data.get("window_start") else None,
                    companies=tuple(companies),
                    compute_start=str(data["compute_start"]) if data.get("compute_start") else None,
-                   extra_indices=tuple(str(i) for i in (data.get("extra_indices") or ())))
+                   extra_indices=tuple(str(i) for i in (data.get("extra_indices") or ())),
+                   price_start=price_start)
 
 
 _ACTIVE: Profile | None = None
@@ -213,6 +227,16 @@ def pages_db() -> Path:
 
 def window_start() -> str | None:
     return _ACTIVE.window_start if _ACTIVE is not None else None
+
+
+def price_start() -> str:
+    """The first day every price series is kept (T-155): the profile's own ``price_start`` when it sets one, else
+    ``2019-01-01``.  A profile may keep prices later than 2019, never earlier (``load`` refuses that; this repeats
+    the check for a ``Profile`` built directly)."""
+    start = _ACTIVE.price_start if _ACTIVE is not None and _ACTIVE.price_start else PRICE_START
+    if start < PRICE_START:
+        raise ValueError(f"price_start {start!r} is before {PRICE_START}: price history starts on {PRICE_START}")
+    return start
 
 
 def compute_start() -> str | None:
