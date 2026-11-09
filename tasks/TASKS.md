@@ -29,6 +29,7 @@ Card and full list: `python -m reality_engine.scripts.task_board card` / `list`.
 - T-148 | OPEN | P1 | Incremental build by document, keyed by content hash: a new filing touches only its company file; reruns skip documents already done | accept: adding one filing rebuilds one company in minutes; full rerun with no new docs does no extraction | from: Shivam 9 Nov 01:25 | opened 2026-11-09
 - T-152 | OPEN | P1 | Golden tables per type: ~50 hand-checked tables per type (deck KPI, segment note, FX sensitivity, results P&L); every extractor change scored on them before merge | accept: golden sets on Drive; merge gate fails on any lost right cell | from: Shivam 9 Nov 01:25 | opened 2026-11-09
 - T-153 | OPEN | P1 | Warm MCP server for v2: cached file handles and connections so tool start-up does not dominate the 1 s budget | accept: end-to-end tool call p95 <=1 s on pilot20 | from: Shivam 9 Nov 01:25 | opened 2026-11-09
+- T-158 | OPEN | P2 | Gate for ruling: Unpublished data (9 Nov): the answer says 'data not found' with what was searched, plus the nearest supporting point lab | accept: standing_rules.xlsx shows a code gate for it | from: ruling intake | opened 2026-11-09
 
 ## Data
 - T-021 | LOOKING | P3 | Check if still open: PIB phase 2, Hindi, Urdu and regional offices | accept: Shivam | from: tasks/PIPELINE_TODO.md A2 | opened 2026-11-02

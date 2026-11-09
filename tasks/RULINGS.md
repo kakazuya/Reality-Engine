@@ -9,6 +9,7 @@ New rulings via `ruling add`. `[check]` = code enforces it. Full wording: `docs/
 - Documents (7 Nov): bulk is decks and call transcripts; annual reports by script, selected sections only (in full only for a company with no calls or decks); keep credit-rating and borrowing documents. Never trust the exchange's category or headline: read pages until the type is clear, keep/skip on our own type dictionary.
 - Investor questions (8 Nov): peers later, a model compares stored rows; brokerage reports only for stated facts, never targets or ratings; regulator circulars (RBI, SEBI, IRDAI) need their own fetcher (T-117).
 - Banks and tests: bank rulings bind (diff rebuilds vs the frozen 1,901 bank); undated question = `as_of` 2026-10-19; report hand-read scores only; the 1,305-question pilot10 set is approved. Proxy is the last resort, reported apart. Never loosen a grader.
+- Unpublished data (9 Nov): the answer says 'data not found' with what was searched, plus the nearest supporting point labelled as such; graded right when the search holds up.
 
 ## Models and keys
 - DeepSeek on `dsh` at max effort, off-peak only (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST; read the clock yourself); in peak hours code workers are Sonnet 5.5 medium (`tasks/night_loop/sonnet_worker.py`). dsh workers use Go `account='1'` until key 2 resets (7 Nov). Free `beam-free` (both Go keys) may settle KPI rows and guidance sentences scripts cannot, as a separate step; Opus writes that code.
