@@ -9,7 +9,8 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 - Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126.
 
 ## Running
-- T-132 round 5 FINISHED 22:35, NOT reviewed: branch dsh/20261109T160601Z-c6c3bb38 (worktree kept). Next session: worker_result, grade rows 50-79 of its seed-17 samples, merge or send back.
+- T-132 round 5 SENT BACK 22:45 (not merged): Opus unseen rows 50-79 strict 40/59 (results 17/29, deck 23/30); regression: label currency without scale word -> scale 1 (Rs/INR/USD x1, value>=1000: 1,838 -> 4,548). Grades `D:/RealityEngine/v2/review/T-132_r5_opus_grades.csv`.
+- T-132 round 6 RUNNING: job 20261109T171211Z-ca480d9d (base = round-5 branch; store `.tmp/v2r6`, samples seed 23). On finish: check step-1 count <= 1,838, the no-backsliding list, grade rows 50-79, then merge both branches (round 6 contains round 5) and remove both worktrees.
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
