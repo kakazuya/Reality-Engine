@@ -1,7 +1,8 @@
 """T-124: call one reality-data pilot3 lookup from the shell, against any build (``--db``).
 
 The reality-data MCP serves one database per server start (``REALITY_PILOT3_DB``); a test store (q12, a hold-out)
-needs its own server.  This CLI runs the SAME lookup code the MCP tools run (``lookups_pilot3`` and ``calc``), so a
+needs its own server.  ``semantic`` (T-154) ranks one company's pages by embedding; it reads the vectors in
+``embed/`` next to the store and needs ``REALITY_DATA_ALLOW_PAID_EMBED=1`` for a new query text.  This CLI runs the SAME lookup code the MCP tools run (``lookups_pilot3`` and ``calc``), so a
 subagent with only a shell asks the test store exactly as a model would ask the MCP.
 
     python -m reality_engine.scripts.p3ask --db <file.db> kpi symbol=KIMS kpi=occupancy period=Q1FY27
@@ -10,7 +11,7 @@ subagent with only a shell asks the test store exactly as a model would ask the 
     python -m reality_engine.scripts.p3ask --db <file.db> catalog name=GROWTH \
         'inputs={"now": "22,067 crore", "before": "19,332 crore"}'
 
-Tools: kpi fin ratio holding statements guidance docs search tech sql calc catalog (the ``pilot3_`` prefix is
+Tools: kpi fin ratio holding statements guidance docs search semantic tech sql calc catalog (the ``pilot3_`` prefix is
 optional).  ``catalog name=list`` prints the named formulas; each one returns value, unit, the substituted
 formula text and the parsed inputs (``calc_catalog``).
 A value that parses as JSON (numbers, true/false, objects) is passed as that type, otherwise as text.
@@ -24,8 +25,8 @@ import sys
 from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
-TOOLS = ("kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "tech", "sql", "calc",
-         "catalog")
+TOOLS = ("kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "semantic", "tech", "sql",
+         "calc", "catalog")
 
 
 def _value(text: str):
@@ -49,6 +50,9 @@ def run(db: str, tool: str, args: dict) -> dict:
         if name == "catalog":
             import calc_catalog
             return calc_catalog.run(args)
+        if name == "semantic":
+            import lookups_semantic
+            return lookups_semantic.semantic(**args)
         if name == "tech":
             import lookups_tech
             return lookups_tech.tech(**args)

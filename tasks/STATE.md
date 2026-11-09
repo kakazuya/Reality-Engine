@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 09:05 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 15:05 IST (Wolf)
 History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `docs/V2_SCHEMA_CONTRACT.md`.
 
 ## Now
@@ -13,7 +13,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 ## T-154 semantic-search gain test (Shivam 9 Nov 14:15: no more embedding comparisons; measure gain on RIGHT answers; DeepInfra balance $0.80)
 - Local bake-off DONE and stopped (`tasks/v2/T-154_bakeoff.py`, results `D:/RealityEngine/p20/t154/run_*.json`): 139 q, 16,457 pages, 1050 Ti: FinModernBERT r@5 20.9/r@20 48.9 (4.2 p/s), bge-m3 21.6/43.2 (4.0), bge-small 15.1/30.9 (38.3), FinBERT 2.9/10.8. HP NPU works only with fixed shapes + FP16 (`tasks/v2/T-154_npu_prep.py`): bge-small 17.6 p/s, same recall; QDQ int8 breaks recall (0.7%).
 - RUNNING at 14:20: `embed_test embed --model 8b --max-usd 0.45 --out D:/RealityEngine/p20/embed` (REALITY_PILOT3_DB=p20new.db; text only, 14,376 pages FY25+ transcripts/decks/results/press/AR, est $0.37; resumable; log `D:/RealityEngine/p20/embed_8b.log`).
-- NEXT: (1) add a `semantic` tool to `reality_engine/scripts/p3ask.py` + MCP (`plugins/reality-data/server`), reading the 8b cache npy/index, query via DeepInfra (gate REALITY_DATA_ALLOW_PAID_EMBED=1), filter symbol + known_at <= as_of; (2) re-ask on the MSI (key in env there, not HP) after 15:30: p20 partly+wrong minus raw_missing (~90) + 30 right as regression check, same brief + semantic tool; (3) hand-grade, report right before/after of 230.
+- DONE 15:05: `pilot3_semantic` (MCP + `p3ask semantic`, `lookups_semantic.py`, query cache + spend log in `p20/embed/`). Embed ~160 pages/min, ETA ~16:25. Re-ask set `p20/answers/t154_reask_selection.json` = 90 target (partly/wrong minus raw_missing) + 30 right (seed 154); briefs `<Wolf scratch>/T-154_reask_{A,B,C}.md` (A: ADANIPORTS-BHARTIARTL 41, B: COALINDIA-HDFCAMC 37, C: INDHOTEL-TITAN 42), each dsh worker started only when its companies are fully embedded. Then number_check, hand-grade, report right before/after.
 
 ## Next action
 1. After 09:30: `hp_worker start <D2 brief> --pilot-db D:/RealityEngine/q12/q12.db --permission danger-full-access --account 1`; watch; copy `.tmp/*_answers.jsonl` to `q12/answers/D/`; number_check; grade; merge grades with `D/grades_D_part1.json`; rerun `answer_run_report --name t124_q12`.

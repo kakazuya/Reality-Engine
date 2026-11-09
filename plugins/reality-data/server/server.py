@@ -589,6 +589,26 @@ def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int 
 
 
 @server.tool(
+    name="pilot3_semantic",
+    description=(
+        "Meaning-based (embedding) page search over one company's held documents: transcripts, decks, results, "
+        "press releases and annual reports known from 2025-04-01 (text only). Use when pilot3_search's keywords "
+        "miss because the page words it differently (\"why did margins fall\", \"what changed in the "
+        "strategy\"). Returns the closest pages with up to `chars` of page text, score, filing date and "
+        "known_at; as_of drops later pages, doc_type and date_from+date_to narrow the pool. coverage says how "
+        "many of the company's pages carry a vector. Each new query text costs a paid embedding (gated)."
+    ),
+    annotations=_RO,
+)
+def pilot3_semantic(symbol: str, query: str, as_of: str | None = None, limit: int = 8,
+                    doc_type: str | None = None, date_from: str | None = None, date_to: str | None = None,
+                    chars: int = 1500) -> dict[str, Any]:
+    import lookups_semantic as _sem
+    return _safe(lambda: _sem.semantic(symbol, query, as_of=as_of, limit=limit, doc_type=doc_type,
+                                       date_from=date_from, date_to=date_to, chars=chars))
+
+
+@server.tool(
     name="pilot3_tech",
     description=(
         "Price reaction and technicals computed in code, never hand-computed. kind='reaction': the market reaction "

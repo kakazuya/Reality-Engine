@@ -30,7 +30,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
 
 Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_statements`, `pilot3_search` (bm25),
-`pilot3_docs`, `pilot3_holding`, `pilot3_tech` (section 9i), `pilot3_sql`; `schema` / `catalog` know the `pilot3` db.
+`pilot3_semantic` (dense page search, T-154; paid query gate, vectors in the store's `embed/`), `pilot3_docs`, `pilot3_holding`, `pilot3_tech` (section 9i), `pilot3_sql`; `schema` / `catalog` know the `pilot3` db.
 
 ## 3. Extraction methods (what works, what failed)
 - **Documents**: collected per company into `D:\RealityEngine\pilot3\pages.db`. Dates: `known_at` = exchange
