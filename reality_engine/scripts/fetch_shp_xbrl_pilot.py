@@ -15,7 +15,8 @@ view uses, without touching the live stores:
     python -m reality_engine.scripts.fetch_shp_xbrl_pilot --parse
     python -m reality_engine.scripts.fetch_shp_xbrl_pilot --report
 
-Scope: the 60 ISINs of `tasks/pilot60/UNIVERSE.csv`, filings as-on 2024-04-01 or later.
+Scope: the 60 ISINs of `tasks/pilot60/UNIVERSE.csv` (or any isin,symbol CSV given with
+`--universe`, e.g. a new pilot set), filings as-on 2024-04-01 or later.
 A filing is matched on its ISIN *or* on its symbol through `symbol_isin_history`, because
 many filings still carry the pre-split ISIN (STLTECH files INE089C01011, the pilot holds
 INE089C01029).
@@ -628,7 +629,7 @@ def report(con: sqlite3.Connection, unusable: list[dict] | None = None) -> str:
 
 # ----------------------------------------------------------------------------- cli
 def main() -> None:
-    global RAW_DIR, DB_PATH
+    global RAW_DIR, DB_PATH, UNIVERSE_CSV
     ap = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0])
     ap.add_argument("--fetch", action="store_true")
     ap.add_argument("--parse", action="store_true")
@@ -637,8 +638,10 @@ def main() -> None:
     ap.add_argument("--pace", type=float, default=PACE_SEC, help="seconds between downloads")
     ap.add_argument("--raw", default=str(RAW_DIR))
     ap.add_argument("--db", default=str(DB_PATH))
+    ap.add_argument("--universe", default=str(UNIVERSE_CSV),
+                    help="CSV with isin,symbol columns (default: the pilot60 universe)")
     args = ap.parse_args()
-    RAW_DIR, DB_PATH = Path(args.raw), Path(args.db)
+    RAW_DIR, DB_PATH, UNIVERSE_CSV = Path(args.raw), Path(args.db), Path(args.universe)
     all_steps = not (args.fetch or args.parse or args.report)
     con = open_db()
     fetchable: list[dict] = []
