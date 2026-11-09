@@ -29,7 +29,7 @@ New rulings via `ruling add`. `[check]` = code enforces it. Full wording: `docs/
 
 ## Data and machines
 - Raw files live only on Drive (7 Nov): jobs download, write the database, delete the copy; check size and hash on Drive before deleting a local copy; new fetches may pile up locally during testing, sweep with `raw_to_drive`. Kept local: `D:\RealityEngine\raw\user_research`.
-- OCR on the HP only, headless (TextRecognizer 300 DPI first, stronger reader for low-confidence numbers). No PostgreSQL for now. Never touch `Downloads\Telegram Desktop` (his brother's) or his personal Downloads folders.
+- OCR on the HP only, headless (TextRecognizer 300 DPI first, stronger reader for low-confidence numbers). Until 15 Nov: work never stops for MSI RAM; copy the job's data to an HP worktree folder, run there (x64 Python `C:\RE\py313x64`), bring results back, delete the HP copy (10 Nov). No PostgreSQL for now. Never touch `Downloads\Telegram Desktop` (his brother's) or his personal Downloads folders.
 
 ## Never
 - Print or copy keys; read `D:\Shivam_Private\Manual Dumps` or send it anywhere; put amounts in the repo or decision log. Push without his OK (given for merged main, 3 Nov). Use paid models (DeepInfra, Haiku beyond an approved run) without his OK.
