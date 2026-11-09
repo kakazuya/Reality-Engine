@@ -8,6 +8,8 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 - T-131 OK (9 Nov 16:50). T-134 period engine merged (`reality_engine/v2/periods.py`; pilot10 report: 1,604 derived, 436 keys with mixed definitions -> T-133). T-155 merged (prices from 2019 in new builds). SHP re-ask 7/7 right.
 - Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126.
 
+- Strict grade of 50 re-ask answers (`reports/2026-11-09_t154_strict50.xlsx`): 12 right, 37 partly, 1 wrong; 406 figures checked against pages, none invented; 14 of 120 answers quote transcripts filed after as_of (new ticket); 6 partly were held-but-missed.
+
 ## Running (17:25)
 - T-132 table store: dsh 20261109T115250Z-31023d3d, pilot20 decks+results -> `table_cell` in worktree `.tmp/v2p20`.
 - T-139 rating rationales: dsh 20261109T115408Z-99df0bb0, text only, `.tmp/ratings_p20`.
