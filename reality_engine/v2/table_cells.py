@@ -11,26 +11,33 @@ a. The header stack is built upward from the table: a row is kept only when its 
    owns each column centre inside its own x-span, else the nearest column within tolerance, else nothing, so a date
    line the text layer split onto a second y-row keeps its own column; a block too short to sample every column takes
    the printed date row as its columns.  A measure group row over its period sub-columns (``REVENUE | EBITDA``)
-   enters ``col_header`` as ``measure=<text>``.  ``col_header`` joins the rows top to bottom with ``' > '``.
+   enters ``col_header`` as ``measure=<text>``.  A tall label box shares its TOP EDGE with the figures printed on
+   its baseline even when its centre sits nearer another row.  ``col_header`` joins the rows top to bottom with
+   ``' > '``.
 b. A section label ("Expenses") ends where a new numbered row group starts (first token is a row
    number: ``2``, ``II``, ``IV``, ``(2)``).  Parenthesised sub-labels (``(a)``) stay inside the section.
    The printed row-number column is dropped from ``row_label`` and from the cells.  A label line
    printed under a row, or above the row whose numbers sit on its own line, belongs to that row: it is
    joined into its ``row_label`` rather than becoming the next row's section.
-c. Figures split by the text layer ("2, 028", "1 ,234.5") merge; ``(1,234.5)`` and ``-1,234.5``
-   are negative; ``-`` / an en dash is value NULL with ``value_text`` kept; ``12.3%`` is percent.
+c. Figures split by the text layer ("2, 028", "1 ,234.5") merge, including the tail of a decimal
+   whose point glyph is missing (``7,601.5`` + ``1``; ``2,016`` + ``32``); ``(1,234.5)`` and
+   ``-1,234.5`` are negative; ``-`` / an en dash is value NULL with ``value_text`` kept;
+   ``12.3%`` is percent.
    A comma-grouped figure must use Western (1,234,567) or Indian (12,34,567) grouping exactly
    (last group three digits, earlier groups two or three consistently); anything else keeps
    ``value_text`` with ``value`` NULL.  A date fragment (``31,2026``, ``30.09.2026``) is not a
    cell at all.
 d. The unit is read from the scale word anywhere in the header rows and the lines above the
    table ("f Lakhs" from a split "₹ in Lakhs", "Rs. in Crores", "INR Mn"), else the page's top
-   15%, else the row label ("EBIT ( ₹ crores)").  crore 1e7, lakh 1e5, million/mn 1e6,
+   15%, else the row label's own currency with the scale word printed beside it ("(US$ Mn)" is
+   USD million, "Revenue in ₹ Cr" is Rs crore), else the row label ("EBIT ( ₹ crores)").
+   crore 1e7, lakh 1e5, million/mn 1e6,
    billion/bn 1e9, thousand 1e3.  Percent stays in percent points (``unit_text='%'``,
-   ``scale=1``).  A row that names its own unit keeps scale 1 and that unit: a per-share row is
+   ``scale=1``).  A row that names its own unit keeps that unit and scale: a per-share row is
    ``inr_per_share`` (share capital and face value rows are money), a count/number-of row is
    ``count``, a ratio/times/days row is ``ratio``, an ``in Rs`` / ``₹ per tonne`` row is ``Rs``,
-   and a per-tonne / per-unit / per-key / ARPU / ARR / RevPAR / realisation row is ``Rs`` with
+   a ``US$`` row is USD at scale 1, and a per-tonne / per-unit / per-key / ARPU / ARR / RevPAR /
+   realisation row is ``Rs`` with
    scale 1 (money per unit, never the page's crore scale).
    No unit found means ``scale`` and ``value`` are NULL: never guess a scale.
 e. ``period_id`` comes from the column header and the document date through
@@ -41,7 +48,9 @@ e. ``period_id`` comes from the column header and the document date through
    or a deck; a bare ``9M`` / ``FY`` / ``Quarter ended`` takes the printed FY range or the latest
    period ending before the filing date.  ``Year ended`` / ``Year Ended`` / ``twelve months`` is FY
    (and its text-layer garble ``Vear Ended`` too), ``Nine months`` 9M, ``Half year`` / ``Six
-   months`` H1; only a bare date with no span text keeps the quarter rule.  A balance or segment
+   months`` / ``6 months`` H1; only a bare date with no span text keeps the quarter rule.  A span
+   the header stack split apart (``As > on > 30.06.2025``) is still read as ``As on``.  A balance
+   or segment
    asset/liability row (``Segment Assets``, ``Segment Liabilities``, ``Statement of Assets and
    Liabilities``, ``balance sheet``, ``Total assets|liabilities|equity``, ``Net worth``) is a POINT
    on the column's printed date (or the end of a ``Q1 FY27`` header), never the quarter's flow.
@@ -55,10 +64,18 @@ g. An infographic page yields no cells: a table block needs at least two rows, e
    usable column header is not stored.
 h. ``bbox`` is the merged token's box and ``method`` is ``'text_layer'``, or
    ``'text_layer;delta'`` for a difference / growth / bps column, which is stored with
-   ``period_id`` NULL and never read as a period's value.
+   ``period_id`` NULL and never read as a period's value.  A garbled label adds ``;garbled`` (j).
 i. A row whose label is punctuation only (``-------``), a two-letter fragment (``St``), a long
    punctuation run or a printed figure (``CT2, Yes 529.40``) is not stored; a punctuation-only
    line does not become the next rows' section.
+j. A broken text layer prints a label that is not words (``l:Jnallocable / el``, ``Financial
+   riabilities``): the cell keeps its value and its printed label, and ``method`` carries
+   ``;garbled`` when over 30% of the label's letters sit in tokens that are neither dictionary
+   words nor known names (a row number, an acronym or a capitalised name).  The vocabulary is the
+   repo's business lexicon plus common statement words, so the flag is advisory and never drops
+   a value.  A bare ratio printed under a line item (``as a % of NR``, ``% of revenue``,
+   ``margin %``) takes that line item's name as its parent (``Advertising & Sales Promotion >
+   as a % of NR``), with a printed ``Add:`` / ``Less:`` prefix stripped.
 """
 from __future__ import annotations
 
@@ -66,6 +83,8 @@ import calendar
 import re
 import statistics
 from datetime import date, timedelta
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import pymupdf
@@ -86,7 +105,17 @@ NUM = re.compile(
     r"|^[-–—−]$"
     r"|^\(?\d*\.\d+\)?%?$")
 NUMISH = re.compile(r"^\(?[-–—−]?(?:₹|Rs\.?|INR)?\s*\d[\d,]*(?:\.\d*)?\)?%?$")
-ROWNUM = re.compile(r"^(?:\d{1,2}\.?|[IVXLC]{1,4}\.?)$")
+ROWNUM = re.compile(r"^\d{1,2}\.?$")
+_ROMAN = re.compile(r"^C{0,3}(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})$", re.I)
+
+
+def _is_row_number(text: str) -> bool:
+    """A printed row number: digits or a canonical Roman numeral (not 'CIL', a company name)."""
+    raw = (text or "").strip().rstrip(".")
+    if raw.isdigit():
+        return 1 <= len(raw) <= 2
+    return bool(len(raw) <= 4 and re.fullmatch(r"[IVXLC]+", raw, re.I) and _ROMAN.match(raw))
+
 # A body-row marker: '1.', 'II.', '(iv)', '(2)'.  A lettered sub-label ('(a)', 'a)') is
 # not a marker: it stays inside its section (contract 10.b).
 MARKER = re.compile(r"^\((?:\d{1,2}|[IVXLC]{1,4})\)$|^(?:\d{1,2}|[IVXLC]{1,4})\.$")
@@ -134,7 +163,7 @@ _DATE_VALUE = re.compile(
 _KINDS = (
     (re.compile(r"\bas\s*(?:at|on|of)\b", re.I), "POINT"),
     (re.compile(r"\bnine\s+months?\b|\b9\s*m(?:onths?)?\b", re.I), "9M"),
-    (re.compile(r"\bsix\s+months?\b|\bhalf[\s-]?year\b|\bh1\b", re.I), "H1"),
+    (re.compile(r"\bsix\s+months?\b|\b6\s*months?\b|\bhalf[\s-]?year\b|\bh1\b", re.I), "H1"),
     (re.compile(r"\bquarter\b|\bq[1-4]\b", re.I), "Q"),
     # 'Vear Ended' is the text layer losing the Y of 'Year' (HDFC AMC prints it) and
     # 'twelve months' is a full year in words (contract 10.i, round-4 class 2).
@@ -156,9 +185,10 @@ _CAPITAL = re.compile(r"\bcapital\b|\bface\s+value\b", re.I)
 _RATIO_ROW = re.compile(r"\(\s*in\s*(?:times|times\)|no\.|nos\.|days?)\s*\)|\bratio\b|"
                         r"\btimes\b|\bturnover\b|\bcoverage\b|\bper\s+day\b", re.I)
 _PERCENT_ROW = re.compile(r"\(\s*in\s*%\s*\)|\(\s*%\s*\)|\(\s*in\s*bps\s*\)|\bmargins?\b", re.I)
-_OWN_UNIT = re.compile(r"(?<![A-Za-z])(?:rs\.?|inr)\s*(?:/|per)\b|₹\s*(?:/|per)\b|"
-                       r"\bin\s+(?:rs\.?|₹|inr)(?![a-z])", re.I)
-_USD_UNIT = re.compile(r"\b(?:us\s*\$|usd|a\s*\$|aud)(?![a-z])", re.I)
+# The currency a row prints in its own label beats the page's money unit (contract 10.d,
+# round-5 class 2): 'Average Revenue Per User (ARPU) US$' is USD at scale 1, '(US$ Mn)' is
+# USD millions, and a section prefix 'Revenue in ₹ Cr' names a crore scale.
+_CURRENCY = re.compile(r"(?<![A-Za-z])(us\s*\$|usd|a\s*\$|aud|rs\.?|inr|₹)(?![A-Za-z])", re.I)
 # A row stated per physical unit or per user is that unit's money, never the page's crore
 # scale: 'Overall Average Realization' is Rs per tonne, 'RevPAR in ₹' Rs per room night and
 # ARPU / ARR are Rs per user (contract 10.d, round-4 class 4).
@@ -179,6 +209,13 @@ _POINT_ROW = re.compile(
 # (round-4 class 6): '-------', 'St', 'CT2, Yes 529.40'.
 _LONG_PUNCT = re.compile(r"[-–—_.]{4,}")
 _VALUE_RUN = re.compile(r"(?<![\d.])\d{1,3}(?:,\d{2,3})*\.\d{2,}|(?<!\d)\d{1,2},\d{3}(?!\d)")
+# A bare ratio printed under a line item ('as a % of NR', '% of revenue', 'margin %') takes the
+# line item as its parent; the printed 'Less:' / 'Add:' prefix is not part of the name
+# (contract 10.a, round-5 class 3).
+_BARE_RATIO = re.compile(
+    r"^(?:as\s+(?:a|an)?\s*%|%\s*(?:of|to|on)\b|as\s+(?:a\s+)?percentage|"
+    r"percent(?:age)?\s+of\b|margin\s*%?$)", re.I)
+_ROW_PREFIX = re.compile(r"^(?:add|less|including|excluding)\s*[:\-]\s*", re.I)
 
 
 # ------------------------------------------------------------------------------- word boxes
@@ -197,6 +234,34 @@ def _rows_of(words: list[Any], tol: float = _ROW_TOL) -> list[list[Any]]:
             current, y = [w], centre
     if current:
         rows.append(sorted(current, key=lambda t: t[0]))
+    # A tall label box shares its TOP EDGE with the figures printed on its baseline, but its
+    # centre can sit nearer the row above or below. Re-home every non-figure token onto the
+    # numeric row whose top edge it shares, then label and figures are one row again
+    # (contract 10.j, round-5 class 4).
+    tops: list[float | None] = []
+    for row in rows:
+        numbers = [float(token[1]) for token in row if NUM.match(str(token[4]))]
+        tops.append(min(numbers) if numbers else None)
+    moved = True
+    while moved:
+        moved = False
+        for index, row in enumerate(rows):
+            for token in list(row):
+                if NUM.match(str(token[4])):
+                    continue
+                top = float(token[1])
+                own = tops[index]
+                if own is not None and abs(top - own) <= 2.0:
+                    continue
+                for other in range(len(rows)):
+                    match = tops[other]
+                    if other != index and match is not None and abs(top - match) <= 2.0:
+                        row.remove(token)
+                        rows[other].append(token)
+                        moved = True
+                        break
+    rows = [sorted(row, key=lambda t: t[0]) for row in rows if row]
+    rows.sort(key=lambda row: min(float(token[1]) for token in row))
     return rows
 
 
@@ -208,7 +273,13 @@ def _joinable(previous: dict[str, Any], word: Any, text: str) -> bool:
     if gap <= 3.0 and _DATE_FULL.match(left + text):
         return True                         # the layer split a date: '3' + '1.03.2026'
     if gap <= 2.5 and left[-1].isdigit() and text[0].isdigit():
-        return bool(re.fullmatch(r"\d{1,7}", left + text))   # a lost thousands separator
+        # A lost thousands separator ('5 088') or the tail of a decimal the text layer cut
+        # off ('7,601.5' + '1'; '2,016' + '32' with the point glyph missing).
+        joined = left + text
+        dotted = f"{left}.{text}"
+        return bool(re.fullmatch(r"\d{1,7}", joined)
+                    or (NUMISH.match(joined) and _grouping_ok(joined))
+                    or (len(text) <= 2 and NUMISH.match(dotted) and _grouping_ok(dotted)))
     if left[-1] in ",.-–—−(₹" or text[0] in ",.)%":
         return bool(NUMISH.match(left + text))
     return False
@@ -221,7 +292,15 @@ def _tokens(row: list[Any]) -> list[dict[str, Any]]:
         if not text:
             continue
         if out and _joinable(out[-1], word, text):
-            out[-1]["text"] += text
+            left = out[-1]["text"]
+            joined = left + text
+            dotted = f"{left}.{text}"
+            if (left[-1:].isdigit() and text[:1].isdigit()
+                    and not (NUMISH.match(joined) and _grouping_ok(joined))
+                    and NUMISH.match(dotted) and _grouping_ok(dotted)):
+                out[-1]["text"] = dotted      # the point glyph itself was lost
+            else:
+                out[-1]["text"] = joined
             out[-1]["x1"] = max(out[-1]["x1"], float(word[2]))
             out[-1]["y1"] = max(out[-1]["y1"], float(word[3]))
             continue
@@ -251,7 +330,7 @@ def _numeric_count(row: list[dict[str, Any]]) -> int:
     numbers = [token for token in row if token["num"]]
     if numbers and all(_DATE_TOKEN.match(token["text"]) for token in numbers):
         return 0                              # 'No. 2025 2024': a wrapped date row
-    if len(numbers) == 1 and ROWNUM.match(numbers[0]["text"]):
+    if len(numbers) == 1 and _is_row_number(numbers[0]["text"]):
         first = next((token for token in row if token["text"].strip()), None)
         if first is numbers[0]:
             return 0
@@ -720,11 +799,13 @@ def _kind_in(segment: str) -> str | None:
 def _date_kind(text: str, filing_date: Any = None, doc_type: str | None = None,
                balance_sheet: bool | None = None) -> str | None:
     kind = None
+    joined = " ".join(segment.strip() for segment in text.split(" > ") if segment.strip())
     for segment in reversed([s.strip() for s in text.split(" > ") if s.strip()]):
         kind = _kind_in(segment)
         if kind:
             break
-    joined = " ".join(segment.strip() for segment in text.split(" > ") if segment.strip())
+    if kind is None:
+        kind = _kind_in(joined)      # 'As > on' split by the header stack is still 'As on'
     day = _last_date(joined, filing_date)          # assemble a wrapped date row first
     if day is None:
         day = _last_date(text, filing_date)
@@ -808,6 +889,22 @@ def is_delta(header: str | None) -> bool:
     return bool(DELTA_WORD.search(last)) or _last_date(last) is None
 
 
+def _label_currency(label: str) -> tuple[str, float] | None:
+    """The currency a label names, with the scale word printed beside it (contract 10.d)."""
+    match = _CURRENCY.search(label)
+    if not match:
+        return None
+    token = match.group(1).replace(" ", "").lower()
+    currency = ("USD" if token in ("us$", "usd")
+                else "AUD" if token in ("a$", "aud")
+                else "INR" if token == "inr" else "Rs")
+    scale = _SCALE_WORD.search(label, match.end())
+    if scale:
+        factor, word = _SCALES[scale.group(1).lower()]
+        return (f"{currency} {word}", factor)
+    return (currency, 1.0)
+
+
 def label_unit(label: str | None) -> tuple[str, float] | None:
     """A row that names its own unit: no crore/lakh scale, unit from the label (10.d)."""
     if not label:
@@ -816,15 +913,9 @@ def label_unit(label: str | None) -> tuple[str, float] | None:
         return ("%", 1.0)
     if _PER_SHARE.search(label) and not _CAPITAL.search(label):
         return ("inr_per_share", 1.0)
-    if _USD_UNIT.search(label):
-        currency = "AUD" if re.search(r"\ba\s*\$|\baud\b", label, re.I) else "USD"
-        if re.search(r"\bmn\b|\bmillion\b", label, re.I):
-            return (f"{currency} million", 1e6)
-        if re.search(r"\bbn\b|\bbillion\b", label, re.I):
-            return (f"{currency} billion", 1e9)
-        return (currency, 1.0)
-    if _OWN_UNIT.search(label):
-        return ("Rs", 1.0)
+    currency = _label_currency(label)
+    if currency is not None:
+        return currency
     if _RATIO_ROW.search(label):
         return ("ratio", 1.0)
     if _PER_UNIT.search(label):
@@ -961,6 +1052,126 @@ def _letters(text: str) -> str:
     return re.sub(r"[^A-Za-z]", "", text)
 
 
+# A broken text layer prints a label that is not words ('l:Jnallocable / el', 'Financial
+# riabilities'): the cell keeps its value but is flagged 'text_layer;garbled' when over 30% of
+# the label's letters sit in tokens that are neither dictionary words nor known names
+# (contract 10.j, round-5 class 5). The vocabulary is the repo's own business lexicon plus the
+# common English words printed on statement rows; it only decides a flag, never a value.
+_LEXICON_DIR = Path(__file__).resolve().parents[1] / "pilot3" / "lexicon"
+_COMMON_WORDS = """
+a about above after again against all also am an and any are as at be because been before being
+below between both but by can could did do does doing down during each few for from further had
+has have having he her here hers him his how i if in into is it its itself just me more most my
+no nor not now of off on once only or other our ours out over own same she should so some such
+than that the their theirs them then there these they this those through to too under until up
+very was we were what when where which while who whom why will with would you your
+account accounts accrued accrued addition adjusted adjustment administrative advertising after
+against aggregate amortisation amortization amount amounts annual annum applicable average
+balance balances bank basic benefits borrowings capital carried cash change changes charge
+charges closing commission compensation comprehensive consolidated consumption contribution
+cost costs crore crores current customer customers day days debt deferred deficit deposit
+deposits depreciation derived diluted direct dividend dividends during earning earnings ebit
+ebitda employee employees equity equivalent except excluding expense expenses export finance
+financial fixed foreign from fund funds gross group growth held higher holding holdings income
+including increase incurred indirect insurance interest inventory inventories investment
+investments inventory key lakh lakhs land lease leases less liabilities liability loan loans
+long loss losses machinery made margin margins market material materials maximum minimum
+million minority money month months net non number of operating operation operations other
+others outflow outstanding paid par particular payments payable payables period per percent
+percentage plant pledged post power ppe preferred profit profits property provision provisions
+purchase purchases quarter rate rates ratio raw realised realized receivable receivables
+reconciliation relating rent repair reserve reserves retained return revenue revenues
+reversal sale sales salary segment segments services share shares short statement stock
+stocks subsidiary surplus tax taxation terms total treasury turnover unallocated unit units
+value variable wages weighted working written year years half quarter quarter ended
+capitalisation capitalisation capital work progress
+january february march april may june july august september october november december
+jan feb mar apr jun jul aug sep sept oct nov dec
+audited unaudited reviewed restated standalone consolidated annual quarterly monthly yearly
+above accordance across acquire acquiring added addition adjusted administration applicable
+arising arrangement arrangement associate associates attributable authoritative authorised
+authorized bad basis beginning benefit benefits brands cancellation capitalised capitalised
+catering certificate claim claims closure coast components comprise comprising considered
+connections contract contracts controlling convertible core countries creditors currency
+debentures decrease defined designated derivative derivatives differences disposal doubtful
+dues donation effective eliminations enterprises equipment etc exchange exchange fluctuations
+foreign given government grant grants holders institution intangible interests issued licence
+license majority maturities maturity matter measurement minority modification mutual
+noncurrent obligations original owners parent parties passu pertains placed plans portion
+preference prepared principal prior proceeds redemption refer refund refunded repayment
+related relevant reclassified reporting respect revaluation scrap scrapping section small
+spectrum stations strong subsequently subscription subsidiaries tangible terminated termination
+thereof towards tower towers transactions transferred translating translation translations
+twelve unallocated unrealised usage valuation various waiver worth
+sq ft nos no location locations effect rest world annualised general selling without port ports
+container premise premises scheme hotel mature include includes onwards lean cable
+un allocable overdraft disputed
+""".split()
+
+
+@lru_cache(maxsize=1)
+def _vocabulary() -> frozenset[str]:
+    """Dictionary words for the garbled-label test: common English plus the repo's lexicons."""
+    words = set(_COMMON_WORDS)
+    try:
+        for path in _LEXICON_DIR.glob("*.yaml"):
+            words.update(word.lower() for word in re.findall(
+                r"[A-Za-z]{2,}", path.read_text(encoding="utf-8")))
+    except OSError:
+        pass
+    return frozenset(words)
+
+
+def _known_word(word: str) -> bool:
+    vocabulary = _vocabulary()
+    if word in vocabulary:
+        return True
+    for suffix, replacement in (("ied", "y"), ("ies", "y"), ("ments", "ment"), ("ment", ""),
+                                ("es", ""), ("s", ""), ("ed", ""), ("d", ""), ("ing", "")):
+        if not word.endswith(suffix) or len(word) <= len(suffix) + 2:
+            continue
+        stems = [word[:-len(suffix)] + replacement]
+        stems.append(stems[0][:-1] if len(stems[0]) > 3 and stems[0][-1] == stems[0][-2]
+                     else stems[0])
+        for stem in stems:
+            if stem in vocabulary or (suffix in ("ed", "d", "ing") and stem + "e" in vocabulary):
+                return True
+    return False
+
+
+_LETTER_EDGES = ".,;:()[]{}!?\"'“”‘’–—-%*#"
+
+
+def _unknown_letters(token: str) -> int:
+    """Letters of one printed token that spell no dictionary word and no known name."""
+    letters = sum(1 for char in token if char.isalpha())
+    if not letters:
+        return 0
+    unknown = 0
+    for piece in re.split(r"[-&/'’()]", token):
+        core = re.sub(r"[^A-Za-z]", "", piece)
+        if not core:
+            continue
+        if re.search(r"[^A-Za-z$*#0-9]", piece.strip(_LETTER_EDGES)):
+            unknown += len(core)               # ':' / '@' printed inside a word
+        elif core.isupper() or core[0].isupper() or _is_row_number(core) \
+                or _known_word(core.lower()):
+            continue                           # an acronym, a name, a row number or a word
+        else:
+            unknown += len(core)
+    return unknown
+
+
+def label_quality(label: str | None) -> str | None:
+    """'garbled' when over 30% of a label's letters sit in non-words, else None (10.j)."""
+    text = label or ""
+    letters = sum(1 for char in text if char.isalpha())
+    if letters < 4:
+        return None
+    unknown = sum(_unknown_letters(token) for token in text.split())
+    return "garbled" if unknown > 0.30 * letters else None
+
+
 def _garbled_label(label: str | None) -> bool:
     """A row label that is a fragment, punctuation or a printed figure: no stored row (10.j)."""
     text = (label or "").strip()
@@ -1047,7 +1258,7 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
         data = [token for token in row if token["num"] and token["x1"] > left + 2]
         first = next((token for token in row if token["text"].strip()), None)
         at_label = first is not None and first["x1"] <= left + 2
-        numbered = bool(at_label and first is not None and ROWNUM.match(first["text"]))
+        numbered = bool(at_label and first is not None and _is_row_number(first["text"]))
         marked = bool(at_label and first is not None and MARKER.match(first["text"]))
         if numbered and first is not None:
             label_tokens = [token for token in label_tokens if token is not first]
@@ -1065,6 +1276,7 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
     section_x: float | None = None
     pending: list[str] = []
     last_cells: list[dict[str, Any]] = []
+    line_label: str | None = None
     for position, item in enumerate(prepared):
         if not item["is_data"]:
             label = item["label"]
@@ -1089,6 +1301,7 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
             if next_closer:
                 section = label                    # a heading over the group of rows below
                 section_x = item["x0"]
+                line_label = None
             elif last_cells and _wrap_fragment(label):
                 _append_label(last_cells, label)   # the label's last line, printed below it
             elif item["marked"] or item["numbered"]:
@@ -1098,6 +1311,7 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
             else:
                 section = label
                 section_x = item["x0"]
+                line_label = None
             continue
         if item["numbered"] or item["marked"]:
             if section_x is None or item["x0"] <= section_x + 2:
@@ -1106,10 +1320,19 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
         parts = pending + ([item["label"]] if item["label"] else [])
         pending = []
         own_label = " ".join(parts)
-        row_label = " > ".join(part for part in (section, own_label) if part) or None
+        bare_ratio = bool(own_label) and bool(_BARE_RATIO.match(own_label))
+        if bare_ratio and line_label:
+            # 'as a % of NR' printed under a line item belongs to that item (round-5 class 3).
+            parent = _ROW_PREFIX.sub("", line_label).strip()
+            row_label = " > ".join(part for part in (section, parent, own_label) if part) or None
+        else:
+            row_label = " > ".join(part for part in (section, own_label) if part) or None
+        if own_label and not bare_ratio:
+            line_label = own_label
         if not row_label or _garbled_label(row_label):
             last_cells = []                       # no readable label: not a stored cell
             continue
+        quality = label_quality(row_label)
         cell_unit = label_unit(own_label) or _unit_of(own_label) or label_unit(row_label) or unit
         point_row = bool(_POINT_ROW.search(row_label))
         emitted: list[dict[str, Any]] = []
@@ -1129,6 +1352,8 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
             else:
                 unit_text, scale, value = None, None, None
             delta = is_delta(header)
+            method = ";".join(["text_layer"] + (["delta"] if delta else [])
+                              + ([quality] if quality else []))
             emitted.append({
                 "page": page_no, "table_no": table_no, "row_no": item["row_no"],
                 "col_no": column, "row_label": row_label,
@@ -1140,7 +1365,7 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
                 "basis": basis, "value_text": token["text"], "value": value,
                 "unit_text": unit_text, "scale": scale,
                 "bbox": f"{token['x0']:.1f},{token['y0']:.1f},{token['x1']:.1f},{token['y1']:.1f}",
-                "method": "text_layer;delta" if delta else "text_layer"})
+                "method": method})
         cells.extend(emitted)
         last_cells = emitted
     return cells, headers

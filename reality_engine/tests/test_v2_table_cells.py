@@ -11,7 +11,8 @@ import pytest
 
 from reality_engine.v2 import cell_sample, schema
 from reality_engine.v2.periods import period_row
-from reality_engine.v2.table_cells import extract, extract_page, label_unit
+from reality_engine.v2.table_cells import (_rows_of, extract, extract_page, label_unit,
+                                          period_from_header)
 
 HAVELLS = Path("D:/RealityEngine/raw/pilot60_history/HAVELLS/investor_presentation/"
                "d8b03849-76b8-4a7b-9672-984693e5cfb6.pdf")
@@ -795,6 +796,176 @@ def test_garbled_row_labels_are_not_stored(pdf_path):
     assert "Depreciation" in labels and len(_by_label(cells, "Depreciation")) == 2
     assert not any(label in ("St", "-------") or "529.40" in label for label in labels)
     assert not any("St" == label.split(" > ")[-1] for label in labels)
+
+
+def test_six_months_ended_is_h1_not_the_quarter(pdf_path):
+    """Round 5, class 1: a '6 months ended' span over a date column is H1, like 'Half year'.
+
+    Titan prints '6 months ended > 30-09-2025' (the text layer's numeral, not 'Six'); the span
+    word must win over the bare-date quarter rule, exactly as 'Half year ended' does.
+    """
+    anchors = (330, 480)
+    lines = [(60, 60, "Statement of Profit and Loss", 9), (60, 70, "Rs. in crore", 9),
+             _center(285, 105, "6 months ended"), _center(410, 105, "Half year ended")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(
+        anchors, ("30.09.2025", "30.09.2024"))]
+    y = 180
+    for label, values in (("Revenue from operations", ("7,157", "7,384")),
+                          ("Total income", ("7,330", "7,644"))):
+        lines.append((60, y, label, 9))
+        lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-11-01", None, "results")
+    found = _by_label(cells, "Revenue from operations")
+    assert {cell["period_id"] for cell in found} == {
+        _pid("2025-04-01", "2025-09-30"), _pid("2024-04-01", "2024-09-30")}
+
+
+def test_currency_in_the_label_beats_the_page_unit(pdf_path):
+    """Round 5, class 2: a label's own currency wins over the page's crore scale.
+
+    'Average Revenue Per User (ARPU) US$' is USD at scale 1, '(US$ Mn)' is USD millions, and a
+    section prefix 'Revenue in ₹ Cr' names a crore scale ('Marine' was stored as bare 'Rs').
+    """
+    assert label_unit("Average Revenue Per User (ARPU) US$") == ("USD", 1.0)
+    assert label_unit("(US$ Mn)") == ("USD million", 1e6)
+    assert label_unit("Revenue in ₹ Cr") == ("Rs crore", CRORE)
+    anchors = (330, 430)
+    lines = [(60, 60, "Investor Presentation", 9), (60, 70, "Rs. in crore", 9),
+             _center(380, 105, "Q2 FY27")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(anchors, ("Sep-25", "Jun-25"))]
+    y = 180
+    rows = (("Revenue from operations", ("6,417", "6,100")),
+            ("Revenue in ₹ Cr", None),
+            ("Marine", ("190", "180")),
+            ("Average Revenue Per User (ARPU) US$", ("2.9", "2.8")))
+    for label, values in rows:
+        lines.append((60, y, label, 9))
+        if values:
+            lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-11-01", None, "deck")
+    marine = _by_label(cells, "Marine")
+    assert marine and all(cell["unit_text"] == "Rs crore" and cell["scale"] == CRORE
+                          for cell in marine)
+    arpu = _by_label(cells, "ARPU")
+    assert arpu and all(cell["unit_text"] == "USD" and cell["scale"] == 1.0 for cell in arpu)
+    revenue = _by_label(cells, "Revenue from operations")
+    assert revenue and all(cell["unit_text"] == "Rs crore" for cell in revenue)
+
+
+def test_a_bare_ratio_label_takes_its_line_item_as_parent(pdf_path):
+    """Round 5, class 3: 'as a % of NR' carries the line item printed above it.
+
+    Havells prints each line item and, under it, a bare 'as a % of NR'; without the parent the
+    percentage cannot be told from any other line's percentage (the printed 'Less:' is dropped).
+    """
+    anchors = (330, 430)
+    lines = [(60, 60, "Investor Presentation", 9), (60, 70, "(In Rs crores)", 9),
+             _center(380, 105, "Q4 FY25")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(anchors, ("Mar", "Dec"))]
+    y = 180
+    rows = (("Net Revenue (NR)", ("6,532", "5,434")),
+            ("Contribution", ("1,311", "1,117")),
+            ("as a % of NR", ("20.1%", "20.6%")),
+            ("Less: Advertising & Sales Promotion", ("142", "132")),
+            ("as a % of NR", ("2.2%", "2.4%")),
+            ("EBITDA", ("761", "637")),
+            ("as a % of NR", ("11.6%", "11.7%")))
+    for label, values in rows:
+        lines.append((77 if label.startswith("as a %") else 60, y, label, 9))
+        lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-05-08", None, "deck")
+    ratios = [cell for cell in cells if (cell["row_label"] or "").endswith("as a % of NR")]
+    assert {cell["row_label"] for cell in ratios} == {
+        "Contribution > as a % of NR",
+        "Advertising & Sales Promotion > as a % of NR",
+        "EBITDA > as a % of NR"}
+
+
+def test_a_label_shares_the_top_edge_of_its_numbers(pdf_path):
+    """Round 5, class 4: a tall label joins the numbers printed on the same baseline.
+
+    On the Coal India deck the label box is taller than its figures, so its y-centre sits nearer
+    the row below; the row is the one whose numbers share its top edge, not the nearest centre.
+    """
+    words = [(300, 80, 340, 92, "1,000"), (400, 80, 440, 92, "2,000"),
+             (50, 100, 120, 124, "CMPDIL"),
+             (373, 100, 413, 110, "195"), (500, 100, 539, 110, "177"),
+             (373, 120, 413, 132, "52"), (500, 120, 539, 132, "79")]
+    rows = _rows_of([tuple(word) for word in words])
+    labels = [" ".join(token[4] for token in row) for row in rows]
+    assert labels == ["1,000 2,000", "CMPDIL 195 177", "52 79"]
+
+    anchors = (330, 430)
+    lines = [(60, 60, "Coal India Limited", 9), (60, 70, "(Rs. in crore)", 9),
+             _center(380, 105, "H1 26-27")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(anchors, ("30.09.2025",
+                                                                             "30.09.2024"))]
+    y = 180
+    for label, values in (("CIL St (Excl. Dividend)", ("205", "195")), ("MCL", ("4,881", "4,574"))):
+        lines.append((60, y, label, 9))
+        lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-11-01", None, "deck")
+    assert "CIL St (Excl. Dividend)" in {cell["row_label"] for cell in cells}
+
+
+def test_garbled_labels_are_flagged_and_keep_their_value(pdf_path):
+    """Round 5, class 5: >30% of a label's letters in non-words marks it 'text_layer;garbled'.
+
+    A broken text layer prints 'l:Jnallocable / el' and 'Financial riabilities'; the cell is
+    kept (the value is printed right) with the method flagged so a reader can skip the label.
+    """
+    anchors = (330, 430)
+    lines = [(60, 60, "Statement of Profit and Loss", 9), (60, 70, "Rs. in crore", 9),
+             _center(380, 105, "Q4 FY25")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(anchors, ("Mar", "Dec"))]
+    y = 180
+    rows = (("Revenue from operations", ("6,532", "5,434")),
+            ("l:Jnallocable / el", ("12", "11")),
+            ("Financial riabilities", ("300", "290")),
+            ("Total", ("6,844", "5,735")))
+    for label, values in rows:
+        lines.append((60, y, label, 9))
+        lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-05-08", None, "results")
+    broken = [cell for cell in cells
+              if cell["row_label"] in ("l:Jnallocable / el", "Financial riabilities")]
+    assert broken and all(";garbled" in cell["method"] for cell in broken)
+    assert all(cell["value"] is not None for cell in broken)
+    clean = _by_label(cells, "Revenue from operations")
+    assert clean and all(cell["method"] == "text_layer" for cell in clean)
+
+
+def test_a_decimal_tail_split_by_the_text_layer_merges(pdf_path):
+    """The text layer cuts the decimal tail off a figure ('7,601.5' + '1', '2,016' + '32')."""
+    anchors = (330, 430)
+    lines = [(60, 60, "Statement of Profit and Loss", 9), (60, 70, "Rs. in crore", 9),
+             _center(380, 105, "Q2 FY27")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(anchors, ("Jun-26", "Jun-25"))]
+    rows = (("Revenue from operations", "7,601.5", "1", "6,532.00"),
+            ("Finance costs", "2,016", "32", "1,900.00"))
+    y = 180
+    for label, left_text, tail, right in rows:
+        lines.append((60, y, label, 9))
+        left = _right(anchors[0], y, left_text)
+        lines.append(left)
+        lines.append((left[0] + pymupdf.get_text_length(left_text, fontname="helv", fontsize=9)
+                      + 2.0, y, tail, 9))
+        lines.append(_right(anchors[1], y, right))
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2026-08-01", None, "results")
+    assert {cell["value_text"] for cell in _by_label(cells, "Revenue")} == {"7,601.51", "6,532.00"}
+    assert {cell["value_text"] for cell in _by_label(cells, "Finance costs")} == {"2,016.32",
+                                                                                "1,900.00"}
+
+
+def test_as_on_split_across_a_header_segment_is_a_point():
+    """'As > on > 30.06.2025' is the balance-sheet as-at header, not a quarter."""
+    assert period_from_header("As > on > 30.06.2025", "2025-08-01", "results") == "/2025-06-30"
 
 
 def test_cell_sample_writes_a_seeded_csv():
