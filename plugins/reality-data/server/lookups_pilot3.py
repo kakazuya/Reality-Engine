@@ -1057,8 +1057,30 @@ SQL_TEXT_CHARS = 400          # the per-cell cut the answer tools have always us
 SQL_MAX_TEXT_CHARS = 8000     # hard cap: long page text must be asked for, never returned by default
 
 
+def _as_of_connection(day: str) -> sqlite3.Connection:
+    """A private read-only connection on which every table with a ``known_at`` column (and ``doc_page`` through
+    its ``doc``) is shadowed by a TEMP view holding only rows known on or before ``day`` (T-156: answers read
+    transcripts filed after the question date through sql)."""
+    con = core.connect_ro(db_path(), timeout_s=core.READ_TIMEOUT_S, check_same_thread=False)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA query_only=0")   # TEMP views only; the main file stays mode=ro, so nothing can be written
+    tables = [r[0] for r in con.execute("SELECT name FROM main.sqlite_master WHERE type='table' "
+                                         "AND name NOT LIKE '%fts%' AND name NOT LIKE 'sqlite_%'")]
+    for table in tables:
+        if table == "doc_page":
+            con.execute(f"CREATE TEMP VIEW doc_page AS SELECT p.* FROM main.doc_page p JOIN main.doc d "
+                        f"ON d.doc_key = p.doc_key WHERE substr(COALESCE(p.known_at, d.known_at), 1, 10) <= '{day}'")
+            continue
+        cols = {r[1] for r in con.execute(f'PRAGMA main.table_info("{table}")')}
+        if "known_at" in cols:
+            con.execute(f'CREATE TEMP VIEW "{table}" AS SELECT * FROM main."{table}" '
+                        f"WHERE known_at IS NOT NULL AND substr(known_at, 1, 10) <= '{day}'")
+    con.execute("PRAGMA query_only=1")
+    return con
+
+
 def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0,
-        max_chars: int = SQL_TEXT_CHARS) -> dict[str, Any]:
+        max_chars: int = SQL_TEXT_CHARS, as_of: str | None = None) -> dict[str, Any]:
     """Bounded, read-only SELECT/WITH over the pilot3 database (``REALITY_PILOT3_DB`` names another build; any
     table or view; see ``schema`` rows below on a miss).
 
@@ -1068,7 +1090,10 @@ def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0,
     ``preferred_to > day``)); ``pilot3_fin`` returns the same figure.  The raw tables hold every filing's printing
     of the same line, so a sum over them counts a restatement and its original twice.
     Text cells are cut at ``max_chars`` (default 400, hard cap 8000): a question about wording, a whole
-    paragraph or a long quote passes ``max_chars`` explicitly, otherwise the page text is truncated."""
+    paragraph or a long quote passes ``max_chars`` explicitly, otherwise the page text is truncated.
+    ``as_of`` (YYYY-MM-DD): every table with a ``known_at`` column, and ``doc_page`` through its document, shows
+    only rows known on or before that day (T-156); pass it for any dated question.  ``doc_page_fts`` is not
+    filtered itself, so join its hits to ``doc_page``."""
     text = core._strip_sql(query or "")
     if not text:
         raise DataError("bad_query", "pilot3_sql needs a SELECT or WITH query")
@@ -1084,7 +1109,8 @@ def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0,
     except (TypeError, ValueError):
         raise DataError("bad_max_chars", f"max_chars must be an integer 1..{SQL_MAX_TEXT_CHARS}")
     started = time.perf_counter()
-    con = connect()
+    day = _day(as_of, "as_of") if as_of else None
+    con = _as_of_connection(day) if day else connect()
     wrapped = f"SELECT * FROM ({text}) AS _q LIMIT {limit + 1}"
     try:
         cur = con.execute(wrapped)
@@ -1095,7 +1121,10 @@ def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0,
     except sqlite3.DatabaseError as exc:
         tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE '%fts%'")]
         raise DataError("sql_error", f"{type(exc).__name__}: {exc}. Tables: {', '.join(tables)}")
+    finally:
+        if day:
+            con.close()
     rows = [[core._jsonable(v) if not isinstance(v, str) else _trim(v, chars) for v in r] for r in raw[:limit]]
-    return {"columns": columns, "rows": rows, "row_count": len(rows), "truncated": len(raw) > limit,
+    return {"columns": columns, "rows": rows, "row_count": len(rows), "truncated": len(raw) > limit, "as_of": day,
             "max_chars": chars, "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
             "provenance": _db_prov(note="read-only SELECT/WITH, row-limited")}

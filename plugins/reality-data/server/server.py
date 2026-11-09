@@ -652,14 +652,16 @@ def pilot3_tech(symbol: str, kind: str, as_of: str | None = None, start: str | N
         "fin_quarter_printed (preferred when preferred_from <= '<day>' and (preferred_to IS NULL or preferred_to > "
         "'<day>')), or call pilot3_fin -- the same election, so plain SQL gets the same number. The raw quarter "
         "tables hold every filing's printing of a line, so summing them counts a restatement and its original twice. "
-        "Every fact table has symbol and known_at: add known_at <= '<day>' for point-in-time questions. "
+        "Every fact table has symbol and known_at: pass as_of='<day>' for any dated question -- every table with "
+        "known_at, and doc_page through its document, then shows only rows known by that day (doc_page_fts hits must "
+        "be joined to doc_page). "
         "Text cells are cut at max_chars (default 400, hard cap 8000): pass max_chars=8000 when the answer needs "
         "long page text, a whole paragraph or a full quote."
     ),
     annotations=_RO,
 )
-def pilot3_sql(query: str, limit: int = 100, max_chars: int = 400) -> dict[str, Any]:
-    return _safe(lambda: _p3.sql(query, limit=limit, max_chars=max_chars))
+def pilot3_sql(query: str, limit: int = 100, max_chars: int = 400, as_of: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: _p3.sql(query, limit=limit, max_chars=max_chars, as_of=as_of))
 # --- end lookups: pilot3 ---
 
 

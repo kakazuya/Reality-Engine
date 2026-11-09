@@ -425,6 +425,21 @@ class Pilot3ToolTests(unittest.TestCase):
         fallback = p3.search("KEC", "order nonexistentword")  # AND finds nothing, OR does
         self.assertEqual(fallback["match_mode"], "or")
 
+    def test_sql_as_of_hides_later_pages_and_rows(self):
+        # T-156: a dated question read a transcript filed after its date through sql; as_of shadows the tables
+        q = "SELECT d.doc_key, p.page FROM doc_page p JOIN doc d ON d.doc_key = p.doc_key WHERE p.symbol='KEC'"
+        everything = {tuple(r) for r in p3.sql(q)["rows"]}
+        early = p3.sql(q, as_of="2026-03-01")
+        self.assertEqual(early["as_of"], "2026-03-01")
+        keys = {r[0] for r in early["rows"]}
+        self.assertIn("pdfs/KEC/deck1.pdf", keys)
+        self.assertNotIn("pdfs/KEC/deck2.pdf", keys)             # filed 2026-08-10
+        self.assertNotIn("KEC:undated/call.pdf", keys)           # no known_at: never served for a dated question
+        self.assertGreater(len(everything), len(early["rows"]))
+        docs = p3.sql("SELECT COUNT(*) FROM doc", as_of="2026-03-01")["rows"][0][0]
+        self.assertLess(docs, p3.sql("SELECT COUNT(*) FROM doc")["rows"][0][0])
+        self.assertEqual(p3.sql("SELECT COUNT(*) FROM doc")["rows"], [[4]])   # shared connection untouched after
+
     def test_sql_is_read_only_and_bounded(self):
         out = p3.sql("select doc_type, count(*) n from doc group by 1", limit=1)
         self.assertEqual(out["row_count"], 1)
