@@ -91,6 +91,7 @@ stored rows.
 ## 6. Order of work after the OK
 
 1. T-132 prototype (Wolf) on three pilot20 decks and one results PDF: `table_cell` rows, bbox, base units.
+   (Shipped as `reality_engine/v2/table_cells.py` and `build_cells.py`, section 10.)
 2. T-134 period engine and T-135 calc catalog in parallel (two code workers is the cap).
 3. T-133 label families for the pilot20 sectors, Opus approval per family.
 4. Pilot20 v2 build, same questions as the baseline (`D:/RealityEngine/p20/answers/questions_{P,Q}.json`), grade,
@@ -135,6 +136,8 @@ What it shows for the T-132 brief:
 5. A section label must end where a new numbered row group starts ('Expenses >' stuck to the tax lines).
 6. The same deck is often filed twice (Coal India 29 and 30 Oct, identical cells): build by `doc.sha256`, not by filing.
 
+The production version that fixes findings 1-6 and adds units, scale, periods, basis and the build CLI is section 10.
+
 ## 9. Period engine (T-134, 9 Nov 2026)
 
 `reality_engine/v2/periods.py` fills `period`, `fact` (kind `derived`) and `derivation`; tests
@@ -169,4 +172,65 @@ The read-only report `reality_engine/v2/period_report.py`
 `kpi_series` into an in-memory v2 file (value x scale, period from `fiscal_period`), runs `derive` per key and prints
 per-symbol written / conflicts / skipped counts plus the SBILIFE `ape` rows; it opens the store with
 `reality_engine.db.readonly.connect_ro` and writes nothing back.
+
+## 10. Table store (T-132, 9 Nov 2026)
+
+`reality_engine/v2/table_cells.py` turns the text layer of a PDF page into `table_cell` rows: no model, no OCR,
+no `pymupdf.find_tables` (it finds no table in an unruled deck and splits numbers, section 8). `extract(pdf_path,
+filing_date=None, stats=None) -> list[dict]` returns one dict per cell with the `table_cell` columns except
+`cell_id`/`doc_key`; `extract_page(page, pno, filing_date=None)` is the page pass and
+`period_from_header(header, filing_date=None)` the period resolver. `reality_engine/v2/build_cells.py` reads the
+`doc` rows of a pilot3 store read-only (`reality_engine.db.readonly.connect_ro`), hashes each PDF, skips a sha256
+already in that company's file (the same deck is often filed twice) and writes `doc`, `period` and `table_cell`
+into `<out>/company/<ISIN>.db` (ISIN from the store's `company` table) created with `reality_engine.v2.schema`:
+
+```bash
+python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir> \
+    [--since 2025-04-01] [--types deck,results] [--symbols A,B]
+```
+
+A page with no text layer is counted, not OCR'd. A PDF that crashes pymupdf is logged and skipped; ten of them stop
+the run.
+
+Rules, each fixing a prototype finding in section 8:
+
+- **a. Header stack.** A table's header is every row between the previous table block on the page (or the page top)
+  and this block. A period heading centered over a group of columns ("Quarter ended", "Full Year Ended") is assigned
+  to every column of its group: the columns are partitioned into consecutive blocks whose mean centre matches each
+  heading (so a heading over five date columns reaches all five), and a date row assigns each date to its column.
+  `col_header` joins the rows top to bottom with `' > '`, e.g. `'Quarter ended > 30.09.2026'`.
+- **b. Section labels.** A section label ("Expenses") ends where a new numbered row group starts: the first token is
+  a row number (`2`, `II`, `IV`). Parenthesised sub-labels (`(a)`, `(b)`) stay inside the section. The printed
+  row-number column is dropped from `row_label` and from the cells.
+- **c. Tokens.** Figures split by the text layer merge (`2, 028` -> `2,028`, `1 ,234.5`, a lost thousands separator
+  `5 088`); `(1,234.5)` and `-1,234.5` are negative; `-` / an en dash is value NULL with `value_text` kept; `12.3%`
+  is percent.
+- **d. Unit and scale.** The unit is read from the table's header rows, else the page's top 15%: `Rs. in crore`,
+  `₹ in Crores`, `(Rs in Lakhs)`, `INR Mn`, `Rs. Million`, `(Amount in ₹ crore)`. Scale crore 1e7, lakh 1e5,
+  million/mn 1e6, billion/bn 1e9, thousand 1e3; percent stays in percent points (`unit_text='%'`, `scale=1`); no
+  unit found means `value` and `scale` are NULL, never guessed.
+- **e. Period.** `period_id` comes from the column header and the document date through `periods.period_row`:
+  `30.09.2026` / `30-Sep-26` / `Sep 30, 2026` under `Quarter ended` -> that quarter, `Half year ended` -> H1/H2,
+  `Nine months ended` -> 9M, `Year ended` -> FY, `As at 30.09.2026` -> POINT; `Q2 FY27` / `H1 FY27` / `FY26`
+  labels directly. A wrapped date row ("June" over "30,2025") and a bare year under `Year ended` resolve; an
+  unresolved header leaves `period_id` NULL.
+- **f. Basis.** `standalone` / `consolidated` from the page title text (top 20%) when printed, else NULL.
+- **g. Infographic.** A page with numbers scattered and no two-row aligned block, or a block where fewer than half
+  the data rows carry a label, gives no cells and is counted as skipped.
+- **h. Box.** `bbox` is the merged token's `x0,y0,x1,y1`; `method` is `'text_layer'`.
+
+Measured 9 Nov 2026 with `python -m reality_engine.v2.build_cells --store D:/RealityEngine/p20/p20new.db
+--out .tmp/v2p20` (all 76 decks and 113 results filed since 2025-04-01; 30 further documents were skipped as
+duplicate sha256):
+
+| doc type | documents | pages | skipped (no text / no table) | cells | period_id | scale | no header | seconds |
+|---|---|---|---|---|---|---|---|---|
+| deck | 76 | 3,124 | 2,573 (79 / 2,494) | 19,378 | 42.6% | 64.4% | 12.5% | 45.7 |
+| results | 113 | 1,805 | 835 (33 / 802) | 74,897 | 46.8% | 55.5% | 17.7% | 24.5 |
+| total | 189 | 4,929 | 3,408 (112 / 3,296) | 94,275 | 45.9% | 57.3% | 16.6% | 70.2 |
+
+The Havells information update p5 still gives 36 segment-revenue cells (9 rows x 4 columns) and the Asian Paints
+results p5 gives the `Revenue from operations` row with a Q2FY27 cell. Tests:
+`python -m pytest -q reality_engine/tests/test_v2_table_cells.py` (8 tests; the two real-PDF smoke tests skip when
+the files are absent).
 

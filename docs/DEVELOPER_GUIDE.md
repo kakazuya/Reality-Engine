@@ -749,6 +749,25 @@ definition convention are in `docs/V2_SCHEMA_CONTRACT.md` section 9; tests are
 `reality_engine/tests/test_v2_periods.py`; the read-only store report is
 `python -m reality_engine.v2.period_report --db <pilot3 store> [--symbol SYMBOL]`.
 
+### O21. v2 table store (T-132, 9 Nov 2026)
+
+`reality_engine/v2/table_cells.py` reads the text layer of a deck or results page into `table_cell` rows (no model,
+no OCR, no `pymupdf.find_tables`): rows from word y-centres, a table block from rows with two or more numbers,
+column anchors from the numbers' right edges, a header stack from every row above the block, period headings
+assigned to their column groups, section labels ended by a new numbered row group, split numbers and bracketed
+negatives merged, and `value` in base units only when the page prints a unit. `reality_engine/v2/build_cells.py`
+reads a pilot3 store read-only and writes `doc`, `period` and `table_cell` into `<out>/company/<ISIN>.db`, skipping
+a document whose sha256 is already there:
+
+```bash
+python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir> [--since 2025-04-01] \
+    [--types deck,results] [--symbols A,B]
+```
+
+The full 189-document pilot20 run (76 decks + 113 results) wrote 94,275 cells from 4,929 pages in 70.2 s; 45.9% of
+cells carry a `period_id` and 57.3% a scale. Rules a-h, the measured table and the tests
+(`reality_engine/tests/test_v2_table_cells.py`, 8) are in `docs/V2_SCHEMA_CONTRACT.md` section 10.
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):
