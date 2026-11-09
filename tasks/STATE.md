@@ -10,6 +10,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 ## Running
 - T-132 round 3 dsh 20261109T145749Z-f804ac97 (six remaining cell classes; target 90/100 per doc type).
+- T-133 label map dsh 20261109T151655Z-449639ec (sector families for all pilot cos, metric_def stock/flow, review CSVs per family for Opus).
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
