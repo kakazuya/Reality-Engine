@@ -1210,3 +1210,16 @@ INDHOTEL 1), u8 5 (CHOLAFIN 3, CIPLA 1, ULTRACEMCO 1), q12 4 (KIMS, SAIL, UBL 2)
 COALINDIA files no transcript on BSE (only meet intimations); its calls need the company website. TITAN 2026-10-06 is
 the quarterly business update, not a results filing, so it is not a missing call.
 Applied 10 Nov 00:20 on copies of u8 and q12, then swapped in (old files kept as `<set>_before_t157_2026-11-09.db`): u8 80 -> 82 transcripts (PERSISTENT stub, BEL Q2 FY27 call; +59 pages), q12 164 -> 180 (WELSPUNLIV 12 stubs, UBL 2, APOLLOHOSP 1 stub + 1 call; +245 pages); integrity_check ok on both.
+
+### 9m. Misdated transcripts (T-161, 10 Nov 2026)
+
+A scan of every transcript/deck/results document (pages >= 3) on p20, u8, q12 and pilot10 for documents whose latest
+printed date on pages 1-3 is two or more years before `filing_date` found 6 in q12, all transcripts with a date-only
+`known_at` from the August/September 2026 company-website crawl (`.../NSCRIPT/2026...AnnPdfOpen.aspx.pdf`): TATAELXSI
+calls of 2018-07-27 and 2018-01-22, APLAPOLLO 2017-12-13, EDELWEISS 2018-10-29, 2016-11-11 and 2016-08-10, all stored
+as filed 2026-08-28/29 (the Tata Elxsi one was the only source of "JLR is 24% of revenue", answered as current). The
+live q12 store now carries the printed call date as `filing_date` and `<date>T23:59:59` as `known_at` on `doc` and on
+every derived row of those documents (doc_page, transcript_statement, kpi_series, guidance, ...); the old file is kept
+as `q12_before_t161_2026-11-10.db`. Still open in T-161: the crawler/loader must take the printed call date (and
+refuse a document whose printed date is > 120 days from the listing date) so a rebuild cannot bring them back. p20,
+u8 and pilot10: 0 found. Two SAIL 2020 results PDFs print 2015 comparatives only and are not misdated.
