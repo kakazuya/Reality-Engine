@@ -134,3 +134,39 @@ What it shows for the T-132 brief:
    scattered. They need a separate call-out reader (number + nearest label + slide title), or stay page text only.
 5. A section label must end where a new numbered row group starts ('Expenses >' stuck to the tax lines).
 6. The same deck is often filed twice (Coal India 29 and 30 Oct, identical cells): build by `doc.sha256`, not by filing.
+
+## 9. Period engine (T-134, 9 Nov 2026)
+
+`reality_engine/v2/periods.py` fills `period`, `fact` (kind `derived`) and `derivation`; tests
+`reality_engine/tests/test_v2_periods.py`. `period_row(start, end, fy_end_month=3)` returns the `period` row and
+`fiscal_label` its label. The Indian FY ends 31 March; `fy_end_month=12` labels a December-year company (there
+2026-01-01..2026-03-31 is Q1FY26). A point (`start=None`) is kind POINT and label `30 Sep 2026`; a rolling twelve months that is not the fiscal year is TTM; a span that is no fiscal shape
+raises `ValueError` unless `allow_other=True` (kind OTHER).
+
+`derive(conn, entity_id, metric, dimension='', basis='na', definition='reported', additive=True, as_of=None)`
+writes derived facts for one key and returns `{"written", "conflicts", "skipped"}` (the caller commits). Formula ids,
+inputs in formula order: `Q_FROM_H1_LESS_Q1` (Q2 = H1 - Q1), `Q_FROM_9M_LESS_H1` (Q3 = 9M - H1),
+`Q_FROM_FY_LESS_9M` (Q4 = FY - 9M), `H2_FROM_FY_LESS_H1`, `TTM_SUM4Q` (four consecutive quarters),
+`TTM_FY_PLUS_YTD_LESS_PRIOR_YTD` (FY + current YTD - prior-year YTD), `YOY_PCT` (same kind of period one year
+earlier), `QOQ_PCT` (quarters only). `derivation.input_ids` is the JSON list of input fact ids.
+
+Rules: only additive (flow) metrics get sums and differences; `additive=False` writes only YoY and QoQ. A
+reported/stated value for the target period is never replaced: the engine compares, and when the two differ by more
+than 0.5% writes `derived X vs reported Y` on that row's `check_detail` only (value and status unchanged). A
+conflict -- two current facts for one key and period with different values -- blocks every formula that needs the
+period and is returned in `conflicts`; ambiguous derivations are listed in `skipped` with a reason. When two
+formulas reach the same period with the same value the second writes nothing (`agrees_with_derivation`); when they
+disagree it writes nothing and reports `derives_disagree`. Inputs must
+share a unit, and a derived row takes its latest input's `known_at`. YoY and QoQ store percent points in
+`unit='pct'`; being a different measure from the level, their fact row carries `definition='<definition>:yoy_pct'`
+(or `:qoq_pct`) so it never collides with the reported level. A derived fact feeds no other derivation except
+`TTM_SUM4Q`, which may sum derived quarters and records their fact ids. `as_of` reads only the facts visible that
+day (`known_at <= as_of` and not superseded then), so a year-ago figure is the one known at that date. Re-running
+writes nothing new.
+
+The read-only report `reality_engine/v2/period_report.py`
+(`python -m reality_engine.v2.period_report --db <pilot3 store> [--symbol SYMBOL]`) maps
+`kpi_series` into an in-memory v2 file (value x scale, period from `fiscal_period`), runs `derive` per key and prints
+per-symbol written / conflicts / skipped counts plus the SBILIFE `ape` rows; it opens the store with
+`reality_engine.db.readonly.connect_ro` and writes nothing back.
+
