@@ -661,7 +661,9 @@ def _lender_opex(conn: sqlite3.Connection, symbol: str, isin: str | None, out: l
 
 
 def _valuation(conn: sqlite3.Connection, symbol: str, isin: str | None) -> int:
-    """valuation_daily: one row per NSE trading day, consolidated basis, every input filed by that day."""
+    """valuation_daily: one row per NSE trading day from ``price_start`` (only the day loop's floor; every input is
+    still read point in time), consolidated basis, every input filed by that day.  A day whose PE/PB/EV inputs are
+    not yet known keeps its close and market cap with NULL ratios (T-155)."""
     from reality_engine.pilot3 import comparatives
 
     def _complete(b: str) -> bool:
@@ -678,7 +680,7 @@ def _valuation(conn: sqlite3.Connection, symbol: str, isin: str | None) -> int:
     # A stray consolidated printed page must not push a standalone filer onto a basis with no share count and no
     # quarters (T-073, SBILIFE): the basis is the one that has both sides.
     basis = "consolidated" if _complete("consolidated") else "standalone"
-    window = profile.window_start() or ""
+    window = profile.price_start()   # T-155: valuation history starts with the prices, not with the documents
     prices = conn.execute("SELECT date, close, adj_factor FROM price_delivery WHERE symbol=? AND exchange='NSE' "
                           "AND close IS NOT NULL ORDER BY date", (symbol,)).fetchall()
     factor = {d: (f if f else 1.0) for d, _c, f in prices}

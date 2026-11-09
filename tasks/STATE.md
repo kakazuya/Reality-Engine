@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 16:45 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 17:00 IST (Wolf)
 History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `docs/V2_SCHEMA_CONTRACT.md`.
 
 ## Now
@@ -18,9 +18,9 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 ## Next action
 1. q12 D2 DONE (graded 09:49, `reports/2026-11-09_t124_q12.xlsx`: 72 right/70 partly/1 wrong/13 scope_out of 156).
 2. SHP re-ask DONE 9 Nov: 7/7 right (`u8/answers/SHP/`). Store oddity: PERSISTENT Mar-26 mutual_funds = fpi_total = 22.12 (check shp parse).
-3. T-155 (prices from 2019 in pilot builds): brief ready in Wolf scratch `T-155_price_window_brief.md`, start when a worker slot frees.
+3. T-155 merged 9 Nov: pilot builds keep prices/index/valuation from `price_start` (2019-01-01). Stores u8/q12/p20 still hold 2023-10 prices until rebuilt (`--part stores` prices + ratios).
 4. Answer-brief lines now in D2 brief (each quarter's deck; source known by as_of; no cross-company figures; TTM = 12 months by ex-date; scale-check AUM): carry into the standard brief.
-5. After T-131 OK: T-132 brief (contract section 8), T-134 period engine brief.
+5. T-131 OK (Shivam 9 Nov 16:50; semantic alongside, free outside sources lean). T-134 period engine RUNNING dsh 20261109T110219Z-817927c3; T-132 table store next (Wolf prototype, contract s8).
 6. raw_to_drive sweep for u8 + p20 raw + new SHP files.
 
 ## Store copy recipe

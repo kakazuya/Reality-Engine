@@ -110,7 +110,8 @@ def _dump(conn):
 
 
 def test_compute_start_gives_a_trailing_year_but_no_row_before_the_window(tmp_path):
-    """Q1 to Q3 FY26 end before the window: they are inputs only, yet a day in the window has its four-quarter EPS."""
+    """Q1 to Q3 FY26 end before the window: they are inputs only, yet a day in the window has its four-quarter EPS.
+    T-155: the price and valuation rows themselves start at price_start (2019-01-01), not at the window."""
     try:
         _profile(tmp_path)
         conn = sqlite3.connect(":memory:")
@@ -121,11 +122,11 @@ def test_compute_start_gives_a_trailing_year_but_no_row_before_the_window(tmp_pa
             == [("2026-03-31",)]
         assert conn.execute("SELECT DISTINCT period_end FROM fin_quarter_xbrl_input ORDER BY 1").fetchall() \
             == [("2025-06-30",), ("2025-09-30",), ("2025-12-31",)]
-        assert conn.execute("SELECT MIN(date) FROM price_delivery").fetchone()[0] == "2026-02-02"
+        assert conn.execute("SELECT MIN(date) FROM price_delivery").fetchone()[0] == "2025-09-01"
         ratios.build_ratios(conn)
         row = conn.execute("SELECT trailing_eps, pe FROM valuation_daily WHERE date='2026-05-02'").fetchone()
         assert row[0] == pytest.approx(4.6) and row[1] == pytest.approx(10 / 4.6)
-        assert conn.execute("SELECT MIN(date) FROM valuation_daily").fetchone()[0] >= "2026-01-01"
+        assert conn.execute("SELECT MIN(date) FROM valuation_daily").fetchone()[0] == "2025-09-01"
         assert conn.execute("SELECT MIN(period_end) FROM ratio_panel").fetchone()[0] >= "2026-01-01"
         fy = {r[0]: r[1] for r in conn.execute("SELECT metric, value FROM ratio_panel WHERE fiscal_period='FY26'")}
         assert fy["revenue_from_operations"] == pytest.approx(4600.0)       # the two input quarters are in the year
