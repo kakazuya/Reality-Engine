@@ -737,6 +737,18 @@ snapshot, DuckDB memory_limit 5 GB) writes `factor_ic.csv`, `fama_macbeth.csv`, 
 year, the ranked factors per horizon and the store limits it found (2019 quarterly filings, the 2022
 shareholding backfill): `docs/research/T-118_factor_weights.md`.
 
+### O20. v2 period engine (T-134, 9 Nov 2026)
+
+`reality_engine/v2/periods.py` gives every v2 value an exact start/end (`period_row`, `fiscal_label`: Q2FY27,
+H1FY27, 9MFY27, FY26, H2FY26, TTM to Q2FY27, a POINT day; March year end, `fy_end_month=12` for a December
+company) and stores derived quarters, H2, TTM, YoY and QoQ as `fact` rows of kind `derived` with a `derivation`
+row naming the formula and the input fact ids, so the answering model never subtracts or sums. `derive()` refuses a
+period with conflicting current facts, never overwrites a reported figure (it writes `derived X vs reported Y` on
+its `check_detail` instead), and `as_of` replays the facts known at a date. Rules, formula ids and the growth
+definition convention are in `docs/V2_SCHEMA_CONTRACT.md` section 9; tests are
+`reality_engine/tests/test_v2_periods.py`; the read-only store report is
+`python -m reality_engine.v2.period_report --db <pilot3 store> [--symbol SYMBOL]`.
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):
