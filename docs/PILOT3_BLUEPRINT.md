@@ -1209,3 +1209,4 @@ transcripts are typed `announcement`/`results` (pages >= 3, `Moderator:` in the 
 INDHOTEL 1), u8 5 (CHOLAFIN 3, CIPLA 1, ULTRACEMCO 1), q12 4 (KIMS, SAIL, UBL 2). Retyping is ticket T-159.
 COALINDIA files no transcript on BSE (only meet intimations); its calls need the company website. TITAN 2026-10-06 is
 the quarterly business update, not a results filing, so it is not a missing call.
+Applied 10 Nov 00:20 on copies of u8 and q12, then swapped in (old files kept as `<set>_before_t157_2026-11-09.db`): u8 80 -> 82 transcripts (PERSISTENT stub, BEL Q2 FY27 call; +59 pages), q12 164 -> 180 (WELSPUNLIV 12 stubs, UBL 2, APOLLOHOSP 1 stub + 1 call; +245 pages); integrity_check ok on both.

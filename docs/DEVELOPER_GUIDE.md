@@ -525,6 +525,17 @@ running to finished within two polls, corrupt status during a poll, 40 jobs, a f
 hard-killed waiter plus pid reuse, two waiters, Stop-hook latency over 40 jobs (measured 0.4–2.0 s
 across seven runs on the MSI; the suite fails above 3 s), timeout line).
 
+### L3. Opus headless analysis sessions (T-160, 10 Nov 2026)
+
+`python tasks/night_loop/opus_headless.py start <name> <brief.md> [--hours 3]` runs `claude -p` with Opus 5.5 (effort
+high) on the Wolf account (`CLAUDE_CONFIG_DIR=C:\Users\warri\.claude-neo`), hidden and detached through
+`Win32_Process.Create`, with only the reality-data MCP, no Edit/Agent/commit/merge/push tools and a 600k context stop.
+It is for reading and judgement work DeepSeek cannot do alone (audits of held-but-not-queryable data, independent
+grading of a worker's sample); it changes no code and writes only the files its brief names. Status, transcript, log
+and the final answer go to `D:/RealityEngine/night_loop/opus/<name>/`; briefs live in
+`D:/RealityEngine/night_loop/opus/briefs/`. `status <name>` prints the status file. Shivam allowed spare Wolf usage
+for this on 10 Nov.
+
 ### L2. One provider session per dsh worker (T-069)
 
 Every dsh worker sends its own `x-opencode-session`, stable for that worker's whole run, follow-ups and restarts
