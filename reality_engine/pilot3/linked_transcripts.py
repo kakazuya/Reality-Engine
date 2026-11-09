@@ -276,20 +276,43 @@ def bse_transcript(symbol: str, bse_code: str | None, start: str, end: str, clie
     if client is None:
         from reality_engine.ingestion.bse_client import BSEClient
         client = BSEClient()
+    found = bse_candidates(bse_code, start, end, client)
+    return found[0] if found and "transcript" in found[0]["title"].lower() else None
+
+
+# Some companies (HAVELLS 2024-25) file the transcript as "Analyst / Investor Meet - Outcome", 15-17 pages,
+# about six days after results; the one-page outcome on results day is the audio link (checked 9 Nov 2026).
+MEET_OUTCOME = re.compile(r"(analyst|investor)\s*/?\s*(investor\s*)?meet\s*-\s*outcome", re.I)
+TRANSCRIPT_TEXT = re.compile(r"\bmoderator\b|\btranscript\b|conference call", re.I)
+
+
+def bse_candidates(bse_code: str | None, start: str, end: str, client=None) -> list[dict[str, Any]]:
+    """BSE announcements in the window that may hold the call: subject *transcript* first (earliest
+    first), then *Analyst / Investor Meet - Outcome* filings (earliest first), each with its PDF URL."""
+    if not bse_code:
+        return []
+    end = min(end, date.today().isoformat())      # BSE answers HTTP 400 for a future window end
+    if end < start:
+        return []
+    if client is None:
+        from reality_engine.ingestion.bse_client import BSEClient
+        client = BSEClient()
     rows = client.fetch_corporate_announcements(
         str(bse_code), category="-1", from_date=start.replace("-", ""), to_date=end.replace("-", ""))
-    best = None
+    named, meets = [], []
     for row in rows:
         subject = " ".join(str(row.get("NEWSSUB") or row.get("HEADLINE") or "").split())
         attachment = str(row.get("ATTACHMENTNAME") or "")
         known_at = str(row.get("DissemDT") or row.get("News_submission_dt") or "")
-        if "transcript" not in subject.lower() or not attachment.lower().endswith(".pdf") or not known_at:
+        if not attachment.lower().endswith(".pdf") or not known_at:
             continue
         item = {"url": BSE_PDF_URL.format(name=attachment), "title": subject, "known_at": known_at,
                 "newsid": str(row.get("NEWSID") or "")}
-        if best is None or item["known_at"] < best["known_at"]:
-            best = item
-    return best
+        if "transcript" in subject.lower():
+            named.append(item)
+        elif MEET_OUTCOME.search(subject):
+            meets.append(item)
+    return sorted(named, key=lambda i: i["known_at"]) + sorted(meets, key=lambda i: i["known_at"])
 
 
 def quarter_tag(day: str) -> str | None:
@@ -389,16 +412,24 @@ def _missing_item(rec: dict[str, Any], conn, held: set[str], stubs, fetch, clien
     isin, bse_code = _identity(conn, symbol)
     base = {"kind": "call", "symbol": symbol, "isin": isin, "anchor": rec["filing_date"],
             "anchor_doc": rec["doc_key"], "anchor_title": rec["title"]}
-    found = bse_transcript(symbol, bse_code, rec["filing_date"], rec["until"], client)
-    source = "bse_announcement"
+    found, got, source = None, None, "bse_announcement"
+    for cand in bse_candidates(bse_code, rec["filing_date"], rec["until"], client):
+        pdf = resolve_pdf(cand["url"], fetch)
+        if pdf is None:
+            continue
+        # a meet-outcome PDF counts only when its text reads as a call transcript
+        if "transcript" in cand["title"].lower() or TRANSCRIPT_TEXT.search("\n".join(pdf["texts"][:3])):
+            found, got = cand, pdf
+            break
     if found is None:
         found = investor_transcript(symbol, stubs, rec["filing_date"])
         source = "investor_page"
-    if found is None:
-        return {**base, "status": "not_found", "url": None, "searched": "bse" if not bse_code else "bse+investor"}
-    got = resolve_pdf(found["url"], fetch)
-    if got is None:
-        return {**base, "status": "not_found", "url": found["url"], "reason": "no PDF transcript"}
+        if found is None:
+            return {**base, "status": "not_found", "url": None,
+                    "searched": "bse" if not bse_code else "bse+investor"}
+        got = resolve_pdf(found["url"], fetch)
+        if got is None:
+            return {**base, "status": "not_found", "url": found["url"], "reason": "no PDF transcript"}
     sha = _sha256(got["data"])
     if sha in held:
         return {**base, "status": "held", "url": got["url"], "sha256": sha, "pages": got["pages"]}

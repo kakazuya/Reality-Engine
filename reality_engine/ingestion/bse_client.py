@@ -86,6 +86,8 @@ BSE_LEGACY_BHAVCOPY_URL_TEMPLATE = "https://www.bseindia.com/download/BhavCopy/E
 # AnnSubCategoryGetData rejects a window wider than 12 months with
 # {"Status":false,"Message":"Date range cannot exceed 12 months."}.
 _MAX_ANNOUNCEMENT_WINDOW_DAYS = 365
+# 50 rows a page; 40 pages = 2,000 announcements in one 12-month window, far above any company seen.
+_MAX_ANNOUNCEMENT_PAGES = 40
 
 # Request pacing: BSE tolerated 1-2s spacing with no 403/429 in live probing.
 # The floor is enforced PER THREAD: a process-wide lock would serialise every
@@ -417,16 +419,34 @@ class BSEClient:
             "strScrip": str(scrip_code).strip(),
             "strType": "C",
         }
-        try:
-            data = bse_json(BSE_ANNOUNCEMENTS_URL_TEMPLATE, params=params)
-        except Exception as e:  # bse_json never raises, but stay fail-closed
-            logger.error("Error fetching BSE announcements for %s: %s", scrip_code, e)
-            return []
-        if data is None:
-            logger.info("No BSE announcements for scrip %s", scrip_code)
-            return []
-        table = data.get("Table") if isinstance(data, dict) else data
-        return table if isinstance(table, list) else []
+        # The endpoint answers 50 rows a page, newest first, with the full count in
+        # ``Table1[0].ROWCNT``; page 1 alone silently dropped 95 of TITAN's 145
+        # announcements for Dec 2025 - Nov 2026 (measured 9 Nov 2026), so every page is read.
+        rows: List[Dict[str, Any]] = []
+        for page in range(1, _MAX_ANNOUNCEMENT_PAGES + 1):
+            params["pageno"] = page
+            try:
+                data = bse_json(BSE_ANNOUNCEMENTS_URL_TEMPLATE, params=params)
+            except Exception as e:  # bse_json never raises, but stay fail-closed
+                logger.error("Error fetching BSE announcements for %s: %s", scrip_code, e)
+                break
+            if data is None:
+                if page == 1:
+                    logger.info("No BSE announcements for scrip %s", scrip_code)
+                break
+            table = data.get("Table") if isinstance(data, dict) else data
+            if not isinstance(table, list) or not table:
+                break
+            rows.extend(table)
+            total = None
+            if isinstance(data, dict) and isinstance(data.get("Table1"), list) and data["Table1"]:
+                try:
+                    total = int(data["Table1"][0].get("ROWCNT"))
+                except (TypeError, ValueError, AttributeError):
+                    total = None
+            if total is None or len(rows) >= total:
+                break
+        return rows
 
 
 # Singleton client — also the session every module-level fetch shares.

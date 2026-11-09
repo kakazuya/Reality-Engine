@@ -1196,3 +1196,16 @@ missing-call rule on a fixture (including a 28-day intimation/results group), an
 adding `doc` + `doc_page` with the FTS finding a new-page word, the stub `known_at` unchanged, and a second run
 adding nothing. No network in tests (the downloader and the BSE lookup are monkeypatched); typecheck clean.
 The live `p20new.db` still needs the `--apply` run by the controller after review.
+
+**Follow-up 9 Nov 2026 (Wolf).** Two causes behind the 13 not-found calls. (1) `BSEClient.fetch_corporate_announcements`
+read page 1 only; the endpoint answers 50 rows a page with the full count in `Table1[0].ROWCNT` (TITAN Dec 2025 - Nov 2026:
+145 rows, 95 dropped). It now reads every page up to `ROWCNT` (cap 40 pages); test `test_bse_announcements_paging.py`.
+(2) HAVELLS files its call transcript as *Analyst / Investor Meet - Outcome* (15-17 pages, about six days after results;
+the one-page outcome on results day is the audio link). `bse_candidates` now returns subject-*transcript* filings first,
+then meet-outcome filings, and `_missing_item` accepts a meet-outcome PDF only when its first pages read as a call
+(`Moderator`, `transcript`, `conference call`). Dry run on `p20new.db`: HAVELLS 3 of 3 calls found, but all three are
+**already held** as `doc_type='announcement'` (the store typed them from the BSE category). Across stores 16 call
+transcripts are typed `announcement`/`results` (pages >= 3, `Moderator:` in the first three pages): p20 7 (HAVELLS 6,
+INDHOTEL 1), u8 5 (CHOLAFIN 3, CIPLA 1, ULTRACEMCO 1), q12 4 (KIMS, SAIL, UBL 2). Retyping is ticket T-159.
+COALINDIA files no transcript on BSE (only meet intimations); its calls need the company website. TITAN 2026-10-06 is
+the quarterly business update, not a results filing, so it is not a missing call.

@@ -135,9 +135,9 @@ def test_build_plan_resolves_stub_and_missing_call(world, monkeypatch):
     def fetch(url):
         return found if "bse" in url else transcript
 
-    monkeypatch.setattr(lt, "bse_transcript", lambda *a, **k: {
+    monkeypatch.setattr(lt, "bse_candidates", lambda *a, **k: [{
         "url": "https://www.bseindia.com/bse-transcript.pdf", "title": "Transcript Of Earnings Call",
-        "known_at": "2025-01-20T10:00:00", "newsid": "n1"})
+        "known_at": "2025-01-20T10:00:00", "newsid": "n1"}])
     plan = lt.build_plan(conn, fetch=fetch)
     stubs = [item for item in plan["stubs"] if item["stub"] == "stub/cover.pdf"]
     assert stubs and stubs[0]["status"] == "planned" and stubs[0]["pages"] == 4
@@ -162,3 +162,35 @@ def test_build_plan_resolves_stub_and_missing_call(world, monkeypatch):
     assert lt.apply_plan(conn, again, base / "raw") == {"added": 0, "pages": 0, "skipped": 0}
     assert conn.execute("SELECT COUNT(*) FROM doc WHERE symbol='TST' AND doc_type='transcript' "
                         "AND pages>=3").fetchone()[0] == 5       # 3 held + 2 added, no duplicate
+
+
+def test_meet_outcome_counts_only_when_it_reads_as_a_transcript(world, monkeypatch):
+    """HAVELLS files its call transcript as 'Analyst / Investor Meet - Outcome' (15-17 pages)."""
+    conn, _ = world
+    slides = _pdf_bytes(["Investor presentation. Revenue grew."] * 6)
+    call = _pdf_bytes(["Moderator: Ladies and gentlemen, good day. quayside."] * 15)
+
+    def fetch(url):
+        return slides if "slides" in url else call
+
+    monkeypatch.setattr(lt, "bse_candidates", lambda *a, **k: [
+        {"url": "https://www.bseindia.com/slides.pdf", "known_at": "2025-01-16T18:00:00", "newsid": "a",
+         "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"},
+        {"url": "https://www.bseindia.com/call.pdf", "known_at": "2025-01-22T11:00:00", "newsid": "b",
+         "title": "Announcement under Regulation 30 (LODR)-Analyst / Investor Meet - Outcome"}])
+    plan = lt.build_plan(conn, fetch=fetch)
+    calls = [item for item in plan["calls"] if item["status"] == "planned"]
+    assert len(calls) == 1 and calls[0]["url"].endswith("call.pdf") and calls[0]["pages"] == 15
+    assert calls[0]["known_at"] == "2025-01-22T11:00:00"
+
+
+def test_bse_candidates_orders_transcripts_before_meet_outcomes():
+    class Client:
+        def fetch_corporate_announcements(self, *a, **k):
+            return [
+                {"NEWSSUB": "Analyst / Investor Meet - Outcome", "ATTACHMENTNAME": "m.pdf", "DissemDT": "2025-01-17"},
+                {"NEWSSUB": "Analyst / Investor Meet - Intimation", "ATTACHMENTNAME": "i.pdf", "DissemDT": "2025-01-10"},
+                {"NEWSSUB": "Earnings Call Transcript", "ATTACHMENTNAME": "t.pdf", "DissemDT": "2025-01-20"},
+            ]
+    got = lt.bse_candidates("517354", "2025-01-10", "2025-01-31", Client())
+    assert [g["url"].rsplit("=", 1)[-1] for g in got] == ["t.pdf", "m.pdf"]

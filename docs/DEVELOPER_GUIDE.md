@@ -1431,6 +1431,9 @@ no transcript document at all (Pidilite Q2 FY27). `reality_engine/pilot3/linked_
 (`--store <db> --raw-out <dir> [--symbols ...] [--apply]`, report-only without `--apply`), stores each PDF through
 `raw_store` and inserts `doc` + `doc_page` rows with the FTS kept in step; `--apply` on a copy of
 `D:\RealityEngine\p20\p20new.db` added 14 of the 16 linked stubs and the PIDILITIND and APOLLOTYRE missing calls
-(16 documents, 300 pages, 0 skipped). The method, the per-company table and the 5 tests are in
-`docs/PILOT3_BLUEPRINT.md` section 9l.
+(16 documents, 300 pages, 0 skipped). The method, the per-company table and the tests are in
+`docs/PILOT3_BLUEPRINT.md` section 9l. Follow-up 9 Nov: `BSEClient.fetch_corporate_announcements` now reads every
+50-row page up to `ROWCNT` (it read page 1 only), and `bse_candidates` also tries *Analyst / Investor Meet - Outcome*
+PDFs that read as a call (HAVELLS files transcripts that way); 7 tests in `test_linked_transcripts.py` + 3 in
+`test_bse_announcements_paging.py`. 16 held call transcripts are typed `announcement` across p20/u8/q12 (T-159).
 
