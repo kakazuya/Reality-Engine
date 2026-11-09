@@ -1138,3 +1138,59 @@ Tests: `python -m pytest -q reality_engine/tests/test_calc_catalog.py` 30 passed
 exact evidence cases (GROWTH 14.147527% -> 14.15, the TTM Q2FY27 vs FY26 refusal with Q3FY26/Q4FY26 named, Q4FY26 =
 28 from FY26 100 and 9MFY26 72, cash conversion 1.727x and 0.523x, range position 40.68% middle third, fair P/B 1.5,
 implied ROE 16.25%, annualised 18.8%, and the MARUTI-023 span refusal); `test_p3ask.py` 2 passed.
+
+### 9l. Linked and missing transcripts (T-157, 9 Nov 2026)
+
+`reality_engine/pilot3/linked_transcripts.py` fills the two holes behind the 19 pilot20 answers that failed
+only because the call text was not held. It takes `--store <pilot3 db> --raw-out <dir> [--symbols A,B]` and
+`--apply`; without `--apply` it prints the plan and writes nothing.
+
+- **Linked stubs.** A `doc` row of `doc_type='transcript'` with `pages <= 2` is a cover letter: its page text
+  and its PDF link annotations name the real transcript. The text layer splits the URL mid-token
+  (`.../Q2-FY25-` then `Earnings-Call.pdf`), so the fragments are joined until `.pdf`; link annotations win
+  when both exist (IHCL's text names the wrong file, its annotation the Q2 FY26 one). A one-page PDF reached
+  from BSE is followed through its own link once. The downloader sends the browser User-Agent from
+  `config.DEFAULT_HEADERS`, makes at most one request a second per host and retries 429/5xx; a non-PDF body is
+  refused.
+- **Missing calls.** Each `results` filing since 2024-04-01 is grouped with the other filings of the same call
+  (intimation, outcome, audio link; gaps up to 45 days, a quarter is about 90) and the call is missing when no
+  transcript of three pages or more falls inside the group or the 21 days after its last filing. The
+  transcript announcement is looked for on BSE (`fetch_corporate_announcements` for the company's `bse_code`,
+  subject containing *transcript*; the window end is clamped to today because BSE answers HTTP 400 for a future
+  `strToDate`), then on the investor page named by an earlier stub link.
+- **Apply.** `--apply` stores each PDF through `raw_store.store_bytes` (content-addressed; the sha index lives
+  under `--raw-out`) and inserts one `doc` row plus one `doc_page` row per page, with
+  `INSERT INTO doc_page_fts(rowid, text)` after each page exactly as `statements._import_pages` does. A linked
+  stub keeps the stub's `known_at` for both `filing_date` and `known_at` (the link was public then, never
+  earlier); a BSE filing takes its own `DissemDT`. A sha already in `doc` is skipped, so a second run adds
+  nothing.
+
+Measured 9 Nov 2026 on a copy of `D:\RealityEngine\p20\p20new.db` (348,594,176 bytes; the live file was only
+read): `python -m reality_engine.pilot3.linked_transcripts --store .tmp/p20_copy.db --raw-out
+.tmp/transcripts_raw --apply` added **16 documents and 300 pages, 0 skipped** (135 to 151 transcripts).
+
+| company | stubs | resolved | missing calls looked | calls found | pages |
+|---|---|---|---|---|---|
+| ADANIPORTS | 13 | 13 | 0 | 0 | 240 |
+| INDHOTEL | 2 | 1 | 0 | 0 | 17 |
+| HAVELLS | 1 | 0 | 3 | 0 | 0 |
+| APOLLOTYRE | 0 | 0 | 1 | 1 | 23 |
+| PIDILITIND | 0 | 0 | 1 | 1 | 20 |
+| COALINDIA | 0 | 0 | 9 | 0 | 0 |
+| TITAN | 0 | 0 | 1 | 0 | 0 |
+
+The 14 linked stubs came from adaniports.com (13) and ir.ihcltata.com (1). The two unresolved: HAVELLS
+2026-01-13 is a conference-call intimation with only a Chorus Call registration link (not a transcript cover),
+and INDHOTEL 2022-08-17 points at `www.primeinfobase.in`, which no longer resolves. The two calls found are
+PIDILITIND Q2 FY27 (BSE transcript of 2026-11-05, 20 pages) and APOLLOTYRE Q2 FY27 (BSE announcement, 23
+pages; its results filing of 2026-11-04 was still inside the window). The 13 calls reported not found
+(COALINDIA 9, HAVELLS 3, TITAN 1) have no BSE announcement whose subject says *transcript* inside their 21-day
+window; they are listed with their anchors so the next round can widen the subject filter instead of repeating
+the search.
+
+Tests: `python -m pytest -q reality_engine/tests/test_linked_transcripts.py` **5 passed** — the split-URL
+rebuild from the Adani stub shape and from a link annotation, the annotation-over-text order, the 21-day
+missing-call rule on a fixture (including a 28-day intimation/results group), and `--apply` on a tiny store
+adding `doc` + `doc_page` with the FTS finding a new-page word, the stub `known_at` unchanged, and a second run
+adding nothing. No network in tests (the downloader and the BSE lookup are monkeypatched); typecheck clean.
+The live `p20new.db` still needs the `--apply` run by the controller after review.
