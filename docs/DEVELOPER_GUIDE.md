@@ -767,21 +767,26 @@ Pilot20 run (9 Nov 2026, `--since 2024-04-01`): 41 text files, 1.2 MB, all 10 co
 ### O22. v2 table store (T-132, 9 Nov 2026)
 
 `reality_engine/v2/table_cells.py` reads the text layer of a deck or results page into `table_cell` rows (no model,
-no OCR, no `pymupdf.find_tables`): rows from word y-centres, a table block from rows with two or more numbers,
-column anchors from the numbers' right edges, a header stack from every row above the block, period headings
-assigned to their column groups, section labels ended by a new numbered row group, split numbers and bracketed
-negatives merged, and `value` in base units only when the page prints a unit. `reality_engine/v2/build_cells.py`
-reads a pilot3 store read-only and writes `doc`, `period` and `table_cell` into `<out>/company/<ISIN>.db`, skipping
-a document whose sha256 is already there:
+no OCR, no `pymupdf.find_tables`): rows from word y-centres, a table block from rows with two or more aligned
+numbers, column anchors from the numbers' right edges, a header stack from the rows above the block (inside the
+table's x-range, stopping at slide call-outs and prose, at most five rows, and carried onto a continuation page),
+period headings assigned to their column groups, section labels ended by a new numbered row group, split numbers
+and bracketed negatives merged, digit grouping checked, the scale read from the header, the line above the table or
+the row label, and the period resolved from the column header and the filing date (wrapped dates, `Q1 25-26`,
+`FY25-26`, `9M FY27`, `H1 26-27`, `Dec-24`, `Jun-26`, `YTD FY26`). `reality_engine/v2/build_cells.py` reads a pilot3
+store read-only and writes `doc`, `period` and `table_cell` into `<out>/company/<ISIN>.db`, skipping a document whose
+sha256 is already there:
 
 ```bash
 python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir> [--since 2025-04-01] \
     [--types deck,results] [--symbols A,B]
 ```
 
-The full 189-document pilot20 run (76 decks + 113 results) wrote 94,275 cells from 4,929 pages in 70.2 s; 45.9% of
-cells carry a `period_id` and 57.3% a scale. Rules a-h, the measured table and the tests
-(`reality_engine/tests/test_v2_table_cells.py`, 8) are in `docs/V2_SCHEMA_CONTRACT.md` section 10.
+The full 189-document pilot20 run (76 decks + 113 results) wrote 88,941 cells from 4,929 pages in 75.7 s; 64.6% of
+cells carry a `period_id`, 71.9% a scale and 6.1% no header. `reality_engine/v2/cell_sample.py` draws the hand-grade
+sample (`--store-dir <dir> --n 100 --type deck|results --seed 9 --out <csv>`; columns doc, page, label, header,
+period_id, value_text, unit_text, scale, value and a 300-character page snippet). Rules a-h, the measured table and
+the tests (`reality_engine/tests/test_v2_table_cells.py`, 18) are in `docs/V2_SCHEMA_CONTRACT.md` section 10.
 
 ## 3. Ticket tracker
 

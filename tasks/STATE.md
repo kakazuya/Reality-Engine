@@ -10,12 +10,12 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 ## Running
 - HP round 4 hp-20261109T190607-264dbf: 26 questions ('not disclosed' claims + 6 Nov price questions) with a strict search-before-'not disclosed' rule.
-- T-132 round 2 dsh 20261109T123957Z-ed9bed2d (five defects, 100-cell sampler).
+- T-157 source re-ask (17 q, semantic) dsh 20261109T134231Z-f0422ce2.
 
 ## Next action
 1. Grade round 4; embed the ~300 new transcript pages (`embed_test embed --model 8b`, resumes); re-ask the 19 source-missing answers (ADANIPORTS-007/008, INDHOTEL-008/009, PIDILITIND-001/002/003/004/007/008/015/017/020, APOLLOTYRE-014 ...).
 2. T-157 follow-up: Coal India 9, Havells 3, Titan 1 calls not found (widen BSE subject filter); run the fetcher on u8 and q12.
-3. Review T-132 round 2 (Opus grades 100 cells per doc type); then T-133 label map (stock/flow; 436 mixed keys), T-150 units at write.
+3. T-132 round 2 merged 19:25: Opus unseen sample ~60% fully right (contract s10 lists remaining classes) -> round 3; then T-133 label map (stock/flow; 436 mixed keys), T-150 units at write.
 4. T-139: load rationales into `outside_doc` + a read tool; India Ratings detail JSON.
 5. Standard answer brief: carry the strict-PIT and 'not disclosed' rules from `<Wolf scratch>/T-156_round4_hp.md`.
 6. raw_to_drive sweep (u8 + p20 raw, SHP, transcripts_raw, raw_market masters copied back today).
