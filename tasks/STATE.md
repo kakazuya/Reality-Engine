@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 17:00 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 17:40 IST (Wolf)
 History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `docs/V2_SCHEMA_CONTRACT.md`.
 
 ## Now
@@ -13,7 +13,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 ## T-154 semantic-search gain test (Shivam 9 Nov 14:15: no more embedding comparisons; measure gain on RIGHT answers; DeepInfra balance $0.80)
 - Local bake-off DONE and stopped (`tasks/v2/T-154_bakeoff.py`, results `D:/RealityEngine/p20/t154/run_*.json`): 139 q, 16,457 pages, 1050 Ti: FinModernBERT r@5 20.9/r@20 48.9 (4.2 p/s), bge-m3 21.6/43.2 (4.0), bge-small 15.1/30.9 (38.3), FinBERT 2.9/10.8. HP NPU works only with fixed shapes + FP16 (`tasks/v2/T-154_npu_prep.py`): bge-small 17.6 p/s, same recall; QDQ int8 breaks recall (0.7%).
 - RUNNING at 14:20: `embed_test embed --model 8b --max-usd 0.45 --out D:/RealityEngine/p20/embed` (REALITY_PILOT3_DB=p20new.db; text only, 14,376 pages FY25+ transcripts/decks/results/press/AR, est $0.37; resumable; log `D:/RealityEngine/p20/embed_8b.log`).
-- T-154 re-ask: index DONE 14,376 pages, ~$0.48 total. A+B graded (`p20/answers/t154/{A,B}/grades_*.json`): target 33 right / 21 partly of 54 (were all partly/wrong), regression 22 of 24 still right. With semantic 28/44 targets right, without 5/10 (no clean control). C running 20261109T103358Z-1e0db431 (42q). PENDING: grade C, full report of 230 (`answer_run_report`), Shivam: T-131 OK + control run?
+- T-154 re-ask DONE (120 q, report `reports/2026-11-09_t154_p20_semantic_reask.xlsx`): target 58 right / 31 partly / 1 wrong of 90 (all were partly/wrong), regression 28 of 30 still right. Est. pilot20 126 -> ~182 of 230 right (79%) if unasked right answers hold. Gap: number_check missed a 10x revenue scale (INDHOTEL-016) -> T-150.
 
 ## Next action
 1. q12 D2 DONE (graded 09:49, `reports/2026-11-09_t124_q12.xlsx`: 72 right/70 partly/1 wrong/13 scope_out of 156).
