@@ -194,29 +194,43 @@ the run.
 
 Rules, each fixing a prototype finding in section 8:
 
-- **a. Header stack.** A table's header is every row between the previous table block on the page (or the page top)
-  and this block. A period heading centered over a group of columns ("Quarter ended", "Full Year Ended") is assigned
-  to every column of its group: the columns are partitioned into consecutive blocks whose mean centre matches each
-  heading (so a heading over five date columns reaches all five), and a date row assigns each date to its column.
-  `col_header` joins the rows top to bottom with `' > '`, e.g. `'Quarter ended > 30.09.2026'`.
+- **a. Header stack.** The stack is built upward from the table and a row is kept only when its words lie inside
+  the table's x-range (left edge = first column's left edge, right edge = last column anchor + 1.5 column gaps):
+  words wholly outside are trimmed, a word running across either edge drops the row. A row is dropped when it is
+  prose (one run of eight or more words with no digit, or a line ending in `.`), when it carries a non-date figure
+  (a slide call-out such as `Rs 353 crores`), or when it names no date, period, unit or audit status; three
+  consecutive dropped rows stop the stack and the stack holds at most five rows. A period heading centered over a
+  group of columns ("Quarter ended", "Full Year Ended") is assigned to every column of its group: the columns are
+  partitioned into consecutive blocks whose mean centre matches each heading, and a date row assigns each date to
+  its column. `col_header` joins the rows top to bottom with `' > '`, e.g. `'Quarter ended > 30.09.2026'`. A
+  statement continued on the next page (or a second table on the page with no header of its own) reuses the last
+  header set seen.
 - **b. Section labels.** A section label ("Expenses") ends where a new numbered row group starts: the first token is
   a row number (`2`, `II`, `IV`). Parenthesised sub-labels (`(a)`, `(b)`) stay inside the section. The printed
   row-number column is dropped from `row_label` and from the cells.
 - **c. Tokens.** Figures split by the text layer merge (`2, 028` -> `2,028`, `1 ,234.5`, a lost thousands separator
   `5 088`); `(1,234.5)` and `-1,234.5` are negative; `-` / an en dash is value NULL with `value_text` kept; `12.3%`
-  is percent.
-- **d. Unit and scale.** The unit is read from the table's header rows, else the page's top 15%: `Rs. in crore`,
-  `₹ in Crores`, `(Rs in Lakhs)`, `INR Mn`, `Rs. Million`, `(Amount in ₹ crore)`. Scale crore 1e7, lakh 1e5,
-  million/mn 1e6, billion/bn 1e9, thousand 1e3; percent stays in percent points (`unit_text='%'`, `scale=1`); no
-  unit found means `value` and `scale` are NULL, never guessed.
+  is percent. A comma-grouped figure must follow Western (`1,234,567`) or Indian (`12,34,567`) grouping exactly
+  (last group three digits, earlier groups two or three consistently); anything else keeps `value_text` with
+  `value` NULL (`860,19`, `44,86`). A date fragment (`31,2026`, `30.09.2026`, `31,`) is not a cell at all.
+- **d. Unit and scale.** The scale word is read anywhere in the header rows and the lines above the table, tolerant
+  of the text layer splitting the currency (`f Lakhs` from `(₹ in Lakhs)`) and of one stray trailing letter
+  (`Croresl`): `Rs. in crore`, `₹ in Crores`, `(Rs in Lakhs)`, `INR Mn`, `Rs. Million`, `(Amount in ₹ crore)`;
+  else the page's top 15%, else the row label (`EBIT ( ₹ crores)`). Scale crore 1e7, lakh 1e5, million/mn 1e6,
+  billion/bn 1e9, thousand 1e3; percent stays in percent points (`unit_text='%'`, `scale=1`); no unit found means
+  `value` and `scale` are NULL, never guessed.
 - **e. Period.** `period_id` comes from the column header and the document date through `periods.period_row`:
   `30.09.2026` / `30-Sep-26` / `Sep 30, 2026` under `Quarter ended` -> that quarter, `Half year ended` -> H1/H2,
   `Nine months ended` -> 9M, `Year ended` -> FY, `As at 30.09.2026` -> POINT; `Q2 FY27` / `H1 FY27` / `FY26`
-  labels directly. A wrapped date row ("June" over "30,2025") and a bare year under `Year ended` resolve; an
-  unresolved header leaves `period_id` NULL.
+  labels directly. Wrapped header lines are assembled before the date is parsed (`March 31,` over `2026` gives
+  `/2026-03-31`, and a month row over a day/year row resolves), and `Q1 25-26` / `Q2 26-27` (quarter of FY 2025-26
+  / 2026-27), `FY25-26`, `9M FY27`, `H1 26-27`, `Dec-24`, `Jun-26`, `Mar'24` resolve. `YTD FY26` is the fiscal year
+  to the latest quarter end before the filing date (9M FY26 for a January filing). An unresolved header leaves
+  `period_id` NULL.
 - **f. Basis.** `standalone` / `consolidated` from the page title text (top 20%) when printed, else NULL.
-- **g. Infographic.** A page with numbers scattered and no two-row aligned block, or a block where fewer than half
-  the data rows carry a label, gives no cells and is counted as skipped.
+- **g. Infographic.** A table block needs at least two rows, each with at least two numbers aligned to the column
+  anchors; a row whose label is longer than 80 characters or carries a sentence break (`'. '` before a capital)
+  drops the row. A page that yields no such block gives no cells and is counted as skipped.
 - **h. Box.** `bbox` is the merged token's `x0,y0,x1,y1`; `method` is `'text_layer'`.
 
 Measured 9 Nov 2026 with `python -m reality_engine.v2.build_cells --store D:/RealityEngine/p20/p20new.db
@@ -225,19 +239,35 @@ duplicate sha256):
 
 | doc type | documents | pages | skipped (no text / no table) | cells | period_id | scale | no header | seconds |
 |---|---|---|---|---|---|---|---|---|
-| deck | 76 | 3,124 | 2,573 (79 / 2,494) | 19,378 | 42.6% | 64.4% | 12.5% | 45.7 |
-| results | 113 | 1,805 | 835 (33 / 802) | 74,897 | 46.8% | 55.5% | 17.7% | 24.5 |
-| total | 189 | 4,929 | 3,408 (112 / 3,296) | 94,275 | 45.9% | 57.3% | 16.6% | 70.2 |
+| deck | 76 | 3,124 | 2,686 (79 / 2,607) | 18,178 | 56.5% | 75.0% | 13.2% | 48.2 |
+| results | 113 | 1,805 | 1,016 (33 / 983) | 70,763 | 66.7% | 71.1% | 4.2% | 27.6 |
+| total | 189 | 4,929 | 3,702 (112 / 3,590) | 88,941 | 64.6% | 71.9% | 6.1% | 75.7 |
 
 The Havells information update p5 still gives 36 segment-revenue cells (9 rows x 4 columns) and the Asian Paints
 results p5 gives the `Revenue from operations` row with a Q2FY27 cell. Tests:
-`python -m pytest -q reality_engine/tests/test_v2_table_cells.py` (8 tests; the two real-PDF smoke tests skip when
-the files are absent).
+`python -m pytest -q reality_engine/tests/test_v2_table_cells.py` (18 tests: the five defect fixtures, the
+header carry-over, the sampler, and real-PDF smoke/regression checks that skip when the files are absent).
 
+The round-2 sampler, for the hand grade:
 
-**Opus sample, round 1 (9 Nov 2026, 30 random cells, 15 deck + 15 results):** about 8 of 30 fully right (label, header,
-period and value), about 18 of 30 carry a usable label and value. Defects for round 2: (1) bad digit grouping read as a
-number ('860,19', '44,86', a date '31,2026' as a value); (2) 'As at March 31, 2026' resolved to 2031-03-31; Coal India
-'Q1 25-26' / 'Q2 26-27' and 'Dec-24', 'Jun-26' headers left unresolved; (3) '(₹ in Lakhs)' found in the header but scale left
-NULL; (4) header stack picks up prose and slide text ('Rs 353 crores > PAT'); (5) prose sentences become row labels. Not
-ready for the 95% accept; store kept at `D:/RealityEngine/v2/p20_r1` for comparison.
+```bash
+python -m reality_engine.v2.cell_sample --store-dir <dir> --n 100 --type deck|results \
+    --seed 9 --out .tmp/sample_deck.csv
+```
+
+It writes `doc, page, label, header, period_id, value_text, unit_text, scale, value, snippet` with a 300-character
+page-text window around the printed value, so a reviewer can grade a cell without opening the PDF.
+
+**Opus sample, round 2 (9 Nov 2026):** the five round-1 defects are fixed and tested: (1) a grouped figure must
+follow Western or Indian grouping (`860,19`, `44,86` keep `value_text` and value NULL; `31,2026` is not a cell);
+(2) wrapped header dates assemble (`As at > March 31, > 2026` is `/2026-03-31`, not 2031), and `Q1 25-26`,
+`Q2 26-27`, `FY25-26`, `9M FY27`, `H1 26-27`, `Dec-24`, `Jun-26`, `Mar'24` and `YTD FY26` resolve; (3) the scale
+word is found in a split unit line (`f Lakhs`) and in a row label (`EBIT ( ₹ crores)`); (4) the header stack drops
+slide call-outs, logos and prose rows and carries a continued statement's header to the next page; (5) prose
+sentences and scattered footnote numbers are not table cells. Wolf's own grade of the first 30 rows of each seed-9
+sample: deck 15/30 (11 strictly: the other four have a header that names the period but not the printed metric
+group) and results 13/30 fully right (label, header, period and value), up from about 8 of 30 in round 1; the
+remaining misses are mostly column header/date rows whose phrases cover fewer columns than the table (a shifted
+column), rows the y-centre grouping joins to the wrong label, chart pages without a printed header, and a currency
+scale applied to a ratio row. The 90/100 target is not reached yet. Not ready for the 95% accept; the round-1
+store is kept at `D:/RealityEngine/v2/p20_r1` for comparison and this build at `.tmp/v2p20`.
