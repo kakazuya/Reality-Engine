@@ -760,6 +760,11 @@ and moves the row to `TASKS_DONE.md` with HEAD's short hash; an `accept: Shivam`
 `done <id> --shivam`. `lint` reports malformed rows, an id in both files, a DONE/DROPPED row in the
 live file, a done row with no commit hash and a dropped row with no reason.
 
+Permissions (`.claude/settings.json`, Shivam 9 Nov 2026): Claude asks only before deleting (`rm`, `rmdir`, `git branch -d/-D`,
+`git worktree remove`, `git reset --hard`, `git clean`, `rclone delete/purge/deletefile`, PowerShell `Remove-Item`/`rm`).
+`done <id> --shivam` no longer prompts, and `tasks/TASKS.md` / `TASKS_DONE.md` may be edited directly (task_board stays
+the normal way). Read denies (`.tmp/`, `plugins/dsh-worker/runtime/`, `tasks/archive/`, `D:/Shivam_Private`) stay.
+
 Two gates enforce it, on `main` only; `python reality_engine/scripts/doc_gate.py --install` writes
 both hooks:
 

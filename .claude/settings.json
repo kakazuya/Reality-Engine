@@ -1,17 +1,24 @@
 {
   "permissions": {
     "ask": [
-      "Bash(python -m reality_engine.scripts.task_board done * --shivam*)"
+      "Bash(rm *)",
+      "Bash(rmdir *)",
+      "Bash(git branch -D *)",
+      "Bash(git branch -d *)",
+      "Bash(git worktree remove *)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean *)",
+      "Bash(rclone delete *)",
+      "Bash(rclone purge *)",
+      "Bash(rclone deletefile *)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(rm *)"
     ],
     "deny": [
       "Read(tasks/archive/**)",
       "Read(.tmp/**)",
       "Read(plugins/dsh-worker/runtime/**)",
-      "Read(//d/Shivam_Private/**)",
-      "Edit(tasks/TASKS.md)",
-      "Edit(tasks/TASKS_DONE.md)",
-      "Write(tasks/TASKS.md)",
-      "Write(tasks/TASKS_DONE.md)"
+      "Read(//d/Shivam_Private/**)"
     ]
   },
   "hooks": {
