@@ -374,6 +374,9 @@ def check_formula(entry: dict, calc: Any) -> dict[str, Any] | None:
     parse ("455 - 496 (-(8.2/100))") is only a warning -- the reading may be the checker's, not the answer's.
     """
     if entry["formula"]:
+        if entry["inputs"] is not None and not isinstance(entry["inputs"], dict):   # 9 Nov: a list crashed the run
+            return _finding("formula_mismatch", f"inputs must be a name->value object, got "
+                                                f"{type(entry['inputs']).__name__}", field="inputs")
         computed = calc.evaluate(str(entry["formula"]), entry["inputs"])
         ok, why = _compare(computed, entry)
         if not ok:

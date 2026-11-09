@@ -993,6 +993,9 @@ serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_
   `--part checks`: the checker's `quote_on_page` and `label_present` hard checks fail on the synthetic quote, so
   `pilot3_kpi` hides them until `row_checks.py` gains a derived-row rule -- it is not edited here, by the brief.
   A quote is formatted without scientific notation ("1746500", not "1.7465e+06").
+- **A formula's `inputs` must be a name->value object (9 Nov).** HP workers that write answer events by hand
+  (shell dead, no recorder) wrote `inputs` as a list, which crashed `number_check`; it now fails that number as
+  `formula_mismatch` ("inputs must be a name->value object") and checks the rest (q12 D2: 14 such numbers).
 - **A crore figure whose own source states the same digits in million fails.** `number_check.check_source_scale`
   reads a money entry's `source`; the digits of the entry found with a different explicit scale word (million / mn /
   lakh / crore / billion / bn) and the wrong amount is the fail code `source_scale_mismatch`. MARUTI-127:
