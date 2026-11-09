@@ -9,6 +9,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 - Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126.
 
 ## Running
+- T-132 round 5 dsh 20261109T160601Z-c6c3bb38; T-139 ratings loader + pilot3_ratings tool dsh 20261109T160635Z-eb95b8da.
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
