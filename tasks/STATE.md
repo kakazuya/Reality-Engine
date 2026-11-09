@@ -13,7 +13,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 - T-160 n10 (AUBANK BALRAMCHIN SRF LT DMART TATAPOWER ICICIGI DIXON JUBLFOOD MCX): agy harvest 20261109T182713Z-4d398312; build `D:/RealityEngine/n10/build.sh` (fetch running). Held audit DONE: 82/106 u8+q12 misses answerable from held docs (`reports/2026-11-10_held_not_queryable_audit.xlsx`) -> T-161..T-166. Bake-off LongCat vs Beam `night_loop/bakeoff_lc_beam` running.
 
-- Wolf 5-hour limit hit 00:50 (resets 04:40 IST): headless Opus grades NOT done -> rerun at 04:40: `python tasks/night_loop/opus_headless.py start t132_r7_grade|t133_v4_grade D:/RealityEngine/night_loop/opus/briefs/<name>.md`. T-132 r7 branch dsh/20261109T181205Z-da08ab2d (2 right rows lost: Coal India p20 ratios, IHCL p33 NCI) and T-133 v4 branch dsh/20261109T183644Z-b52bfab6 (0 lost) wait for those grades. Grades restarted 04:47. T-161/T-159 merged (b9e58ae5; method in PILOT3_BLUEPRINT 9m): `docs_collect --measure` = 15 retypes, 0 re-dates -> rebuild p20/u8/q12 docs + transcripts/guidance, restart MCP.
+- Grades done 10 Nov 05:00. T-132 r7 Opus unseen: results 9/30, deck 17/30 (self-grade 28/26: too lenient) -> r8 job 20261109T232642Z-2f46dd6f (`tasks/handoff/T-132_r8_brief.md`). T-133 v4 177/200 (v3 170), 0 lost -> v5 job 20261109T232703Z-a1e5a3db (`tasks/handoff/T-133_v5_brief.md`). T-161/T-159 merged (b9e58ae5; PILOT3_BLUEPRINT 9m): `docs_collect --measure` = 15 retypes, 0 re-dates -> rebuild p20/u8/q12 docs + transcripts/guidance, restart MCP.
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
