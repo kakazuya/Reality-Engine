@@ -25,7 +25,7 @@ from the heartbeat; omitting it no longer means "kill at 900 s". `--followup-wai
 A parent orchestrator can own the per-run control token by setting an environment variable and passing
 `--control-token-env NAME`; it is never written to config/status/logs.
 
-Model ids: beam-free, longcat-2.5-preview-free, minimax-m3.1-flash-free (free); deepseek-v4.1-flash is PAID on Go
+Model ids: beam-free, longcat-2.5-free (free 10-24 Nov 2026, default effort high), longcat-2.5-preview-free, minimax-m3.1-flash-free (free); deepseek-v4.1-flash is PAID on Go
 and needs --allow-paid. `<id>~<effort>` sets reasoning effort (low/medium/high/xhigh/max); MiniMax defaults to
 low because at default effort it can reason through its whole output budget and answer empty.
 DeepSeek models always run at max (Shivam 2026-10-22; was xhigh until then), and only off-peak: peak is Mon-Fri
@@ -59,9 +59,9 @@ from reality_engine.scripts.dsh_heartbeat import (
 DSH = Path.home() / ".bun" / "bin" / "dsh.exe"
 REPO = Path(__file__).resolve().parents[2]
 BASE_URL = "https://opencode.ai/zen/go/v1"
-FREE = {"beam-free", "longcat-2.5-preview-free", "minimax-m3.1-flash-free"}
+FREE = {"beam-free", "longcat-2.5-free", "longcat-2.5-preview-free", "minimax-m3.1-flash-free"}
 PAID = {"deepseek-v4.1-flash"}
-REASONING = {"minimax-m3.1-flash-free": "low", "deepseek-v4.1-flash": "max"}   # models that take reasoning_effort
+REASONING = {"minimax-m3.1-flash-free": "low", "longcat-2.5-free": "high", "deepseek-v4.1-flash": "max"}   # models that take reasoning_effort
 FIXED_EFFORT = {m: "max" for m in REASONING if m.startswith("deepseek")}   # DeepSeek: max only (Shivam 2026-10-22)
 IST = timezone(timedelta(hours=5, minutes=30))
 
