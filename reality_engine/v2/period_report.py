@@ -29,6 +29,12 @@ from reality_engine.v2.periods import derive, period_row
 _DAY = timedelta(days=1)
 _FISCAL = re.compile(r"^(Q[1-4]FY|H[12]FY|9MFY|FY)(\d{2})$")
 _NOT_ADDITIVE = {"pct", "bps", "x", "days"}
+# Flow metrics only: a stock (AUM, embedded value, order book, deposits, market share) has a value AT a date, so
+# "Q4 = FY - 9M" is meaningless for it. kpi_series carries no stock/flow flag yet (label_map, T-133, will); until
+# then a metric is additive only when its name says it is a flow over the period. Unknown metrics get YoY/QoQ only.
+_FLOW_WORDS = ("revenue", "income", "premium", "ape", "gwp", "vnb", "pat", "profit", "ebit", "sales", "volume",
+               "production", "offtake", "expense", "cost", "capex", "orders_received", "order_inflow", "disbursement",
+               "dividend", "cash_flow", "tax", "interest", "commission")
 
 
 def _add_months(day: date, months: int) -> date:
@@ -83,8 +89,14 @@ def _basis(value: str | None) -> str:
     return value if value in ("standalone", "consolidated", "segment") else "na"
 
 
-def _additive(unit: str) -> bool:
-    return unit not in _NOT_ADDITIVE and "_per_" not in unit and not unit.endswith("_pct")
+def _additive(unit: str, metric: str = "") -> bool:
+    if unit in _NOT_ADDITIVE or "_per_" in unit or unit.endswith("_pct"):
+        return False
+    name = metric.lower()
+    if any(word in name for word in ("margin", "ratio", "share", "aum", "embedded_value", "book", "balance",
+                                     "persistency", "solvency", "assets", "liabilities", "deposits", "advances")):
+        return False
+    return any(word in name for word in _FLOW_WORDS)
 
 
 def _load_rows(source, symbol: str | None) -> list[Any]:
@@ -175,7 +187,7 @@ def main(argv: list[str] | None = None) -> int:
     conflicts: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for (symbol, metric, dimension, basis), info in keys.items():
         result = derive(mem, info["entity_id"], metric, dimension=dimension, basis=basis,
-                        definition="company_stated", additive=_additive(info["unit"]))
+                        definition="company_stated", additive=_additive(info["unit"], metric))
         bucket = totals[symbol]
         bucket["keys"] += 1
         bucket["written"] += result["written"]
