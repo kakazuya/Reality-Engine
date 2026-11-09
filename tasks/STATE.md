@@ -10,7 +10,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 - Strict grade of 50 re-ask answers (`reports/2026-11-09_t154_strict50.xlsx`): 12 right, 37 partly, 1 wrong; 406 figures checked against pages, none invented; 14 of 120 answers quote transcripts filed after as_of (new ticket); 6 partly were held-but-missed.
 
-- STRICT point in time (T-156): 48 of 230 baseline answers quoted pages filed after as_of. Pilot20 strict: baseline 97 right -> now 160 right / 69 partly / 1 wrong of 230 (all 62 leaked answers re-answered, 0 late quotes) (`p20/answers/t154/current_strict_230.json`).
+- STRICT point in time (T-156): 48 of 230 baseline answers quoted pages filed after as_of. Pilot20 strict: baseline 97 right -> now 187 right / 43 partly of 230 after round 3 (22 call questions dated at transcript filing, 6 held-but-missed). Round 4 on HP: 26 'not disclosed' + 6 Nov price questions.
 
 - 18:40 Shivam: 'fix the partly answers'. 70 not right: 22 call questions dated before their transcript (dates moved to transcript filing, `questions_P/Q.json` keep `as_of_original`), 19 source not held (T-157 fetch), 6 held-but-missed, 21 'not disclosed' (Opus keyword check: several ARE held, e.g. Titan 428 own / 2,583 franchise stores in AR p219, Coal India quarterly e-auction premium in the May 2025 call) -> round 4 `p20/answers/t154/questions_ND.json` with semantic when a slot frees. Prices refreshed to 9 Nov (snapshot rebuild running; masters copied back from Drive).
 
