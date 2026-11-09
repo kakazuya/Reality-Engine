@@ -26,7 +26,7 @@ from reality_engine.v2 import schema
 from reality_engine.v2.periods import period_row
 from reality_engine.v2.table_cells import extract
 
-PARSE_VERSION = "t132-cells-3"
+PARSE_VERSION = "t132-cells-4"
 _CRASH_LIMIT = 10
 
 
