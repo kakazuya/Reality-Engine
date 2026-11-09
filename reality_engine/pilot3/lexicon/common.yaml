@@ -21,3 +21,7 @@ entries:
   - {metric: total_equity_and_liabilities, kind: money, unit: inr_cr, labels: ["total equity (and|&) liabilities", "total equity liabilities"]}
   - {metric: interest_coverage, kind: ratio, unit: x, labels: ["interest coverage ratio"]}
   - {metric: revenue_per_tower_per_month, kind: price, unit: inr, labels: ["revenue per tow(?:er|ers) per month", "revenue per tow ers per month"], neg: "growth|%|sharing"}
+  # T-133 v3: common statement lines whose unit comes from the metric definition, so the label map reads tonnes
+  # for a volume and never defaults the line to money.
+  - {metric: dividend_received, kind: money, unit: inr_cr, labels: ["dividend (income|received)"], neg: "growth|%|per share"}
+  - {metric: volume, kind: volume, unit: kt, labels: ["qty in mill te", "quantity in mill te"]}

@@ -1,9 +1,9 @@
-"""T-133 label dictionary v2: normalisation, whole-label matching, qualifiers, statement context, junk, members.
+"""T-133 label dictionary v3: OCR repair, whole-label matching, qualifiers, context, members, units, garbage.
 
     python -m pytest -q reality_engine/tests/test_v2_label_map.py
 
-Every line of the T-133 v2 evidence list has its own case below (``test_every_evidence_line`` and the focused
-tests around it), so a regression in any rule is a failing test, not a new review round.
+Every line of the T-133 v3 evidence list (the v2 wrong and keep lists) has its own case below, so a regression in
+any rule is a failing test, not a new review round.
 """
 from __future__ import annotations
 
@@ -142,9 +142,10 @@ def test_rule_4_unit_kind_is_money_and_currency_comes_from_the_cell():
     assert defs["capex"]["unit_kind"] == "money"
     # A seed unit never makes the map inr/usd: a money figure's currency belongs to the cell (rule 4).
     assert label_map.resolve_unit_kind("capex", label_map.MetricMeta(units=Counter({"inr_cr": 9}))) == "money"
-    assert label_map.resolve_unit_kind("interest_coverage", None) == "x"
-    assert label_map.resolve_unit_kind("roe_pct", None) == "pct"
-    assert label_map.resolve_unit_kind("working_capital_days", None) == "days"
+    assert label_map.resolve_unit_kind("interest_coverage", label_map.MetricMeta(entry_unit="x")) == "x"
+    assert label_map.resolve_unit_kind("roe_pct", label_map.MetricMeta(entry_unit="pct")) == "pct"
+    assert label_map.resolve_unit_kind("working_capital_days", label_map.MetricMeta(entry_unit="days")) == "days"
+    assert label_map.resolve_unit_kind("capex", None) == ""      # v3: unknown is NULL, never money
     for raw, wanted in (("EBITDA 1 US$", "ebitda"), ("Net debt 2 US$", "net_debt"),
                         ("Total revenue 1 US$", "revenue")):
         assert need(raw).metric == wanted
@@ -243,7 +244,7 @@ def test_section_overrides_and_percentage_parents():
     assert proposal.dimension == "unallocable assets"
 
 
-def test_review_queues_carry_rule_confidence_status_and_the_seed31_sample():
+def test_review_queues_carry_rule_confidence_status_and_the_seed37_sample():
     out = Path(".tmp") / "test_label_map_out"
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True, exist_ok=True)
@@ -266,7 +267,7 @@ def test_review_queues_carry_rule_confidence_status_and_the_seed31_sample():
     assert rows[0]["unit_kind"] == "money"
     rejected_row = next(row for row in rows if row["label_norm"] == "financial assets")
     assert rejected_row["status"] == "rejected" and rejected_row["rule"] == "6-reject"
-    sample = out / "sample_seed31.csv"
+    sample = out / "sample_seed37.csv"
     assert sample.is_file()
     with sample.open(encoding="utf-8") as handle:
         sampled = list(csv.DictReader(handle))
@@ -301,3 +302,110 @@ def test_sector_map_gives_every_pilot_company_a_family():
     assert rows, "no company rows read from the four pilot stores"
     unknown = [row for row in rows if row["family"] == "unknown"]
     assert not unknown, f"{len(unknown)} company rows have no sector family: {unknown[:5]}"
+
+
+def test_v3_ocr_spellings_are_repaired_before_matching():
+    assert label_map.normalise_label("financial liabi6ties") == "financial liabilities"
+    assert label_map.normalise_label("segment liabiities") == "segment liabilities"
+    assert label_map.normalise_label("Other comprehensive lncome") == "other comprehensive income"
+    assert label_map.normalise_label("less inter seoment eliminations") == "less inter segment eliminations"
+    assert label_map.normalise_label("mobife selfvices south asia") == "mobile services south asia"
+    assert label_map.normalise_label("Others", "segment liabiities") == "segment liabilities > others"
+
+
+def test_v3_segment_misspelling_gets_the_section_metric():
+    proposal = metric("segment liabiities > unallocated")
+    assert proposal is not None and proposal.metric == "segment_liabilities"
+    assert proposal.dimension == "unallocated"
+    assert need("segment liabiities > others").metric == "segment_liabilities"
+
+
+@pytest.mark.parametrize("raw, why", [
+    ("financial liabifities > sorrowtngs", "a single lower-case OCR token"),
+    ("mobife selfvices south asia > passive rnfrastrnctme servi ces", "OCR word soup"),
+    ("kl int nsibleass ts", "OCR word soup"),
+    ("finance cl sts", "OCR word soup"),
+    ("iil 0ther lncome", "a digit/letter swap"),
+    ("gpwis mmt", "OCR word soup"),
+])
+def test_v3_garbled_labels_are_rejected(raw, why):
+    _key, proposal, rejection = decide(raw, "telecom", has_metric_row=True, peers=6)
+    assert proposal is None, (raw, why)
+    assert rejection == "garbled", (raw, why, rejection)
+
+
+@pytest.mark.parametrize("raw", [
+    "adjustments for > bad debts written off",
+    "current assets > inventories",
+    "securities premium",
+    "cogs",
+    "exceptional item refer note",
+    "nominal value of i 1 each not annualised > basic eps f",
+    "attributable to > non controlling i iterest",
+    "total outstanding dues of > micro small and medium",
+    "government grant > rent waiver",
+    "financial liabilities",
+    "small enterprises",
+])
+def test_v3_a_statement_line_is_never_from_header(raw):
+    proposal = metric(raw, has_metric_row=True, peers=6)
+    assert proposal is None or proposal.metric != label_map.FROM_HEADER, raw
+
+
+def test_v3_the_graded_keep_list_stays_from_header():
+    for label, context in (("Dahej", {"has_measure": True}), ("Domestic Ports", {"has_measure": True}),
+                           ("Ginger", {"has_measure": True}), ("Oriental Hotels Ltd", {"has_measure": True}),
+                           ("India", {"has_measure": True}), ("Marine", {"has_measure": True}),
+                           ("Airtel Business", {"has_metric_row": True}),
+                           ("Digital TV Services", {"has_metric_row": True}),
+                           ("Damas Core", {"has_metric_row": True}),
+                           ("CaratLane", {"has_measure": True}),
+                           ("Business to Business", {"has_metric_row": True}),
+                           ("Cable", {"has_metric_row": True})):
+        proposal = decide(label, "telecom", None,
+                          has_measure=bool(context.get("has_measure")),
+                          has_metric_row=bool(context.get("has_metric_row")))[1]
+        assert proposal is not None and proposal.metric == label_map.FROM_HEADER, (label, proposal)
+    jv = decide("JVs > AICTPL (CT-3), JV with MSC", "ports_logistics")
+    assert jv[1] is not None and jv[1].metric == label_map.FROM_HEADER
+
+
+def test_v3_profit_attribution_and_dividend_lines():
+    nci = metric("profit attributable to > non controlling interest")
+    assert nci is not None and nci.metric == "profit_attributable"
+    assert nci.dimension == "attribution=non_controlling"
+    assert need("dividend received").metric == "dividend_received"
+
+
+def test_v3_a_pct_metric_comes_from_the_base_metric_not_a_slug():
+    for leaf in ("operating expenses excl access charges cost of sold and license fee and charity and donation",
+                 "operating expenses excl access charges cost of sold license fee and charity and donation"):
+        proposal = metric(f"As a % of Total revenues > {leaf}")
+        assert proposal is not None and proposal.metric == "operating_expenses_pct", leaf
+    assert need("As a % of Total revenues > cash profit from operations before derivative and").metric == \
+        "cash_profit_from_operations_pct"
+    assert need("As a % of Total revenues > access charges").metric == "access_charges_pct"
+
+
+def test_v3_section_rule_does_not_replace_a_known_child_metric():
+    proposal = metric("total comprehensive income for the period attributable to > "
+                      "paid up equity share capital face value 1 per share")
+    assert proposal is None or proposal.metric != "total_comprehensive_income_attributable"
+
+
+def test_v3_unit_kind_from_metric_def_or_the_cells():
+    def kind(name, entry_unit="", units=None):
+        return label_map.resolve_unit_kind(name, label_map.MetricMeta(units=Counter(units or {}),
+                                                                      entry_unit=entry_unit))
+    assert kind("pcr_stage3", "pct") == "pct"
+    assert kind("production_kt", "kt") == "tonnes"
+    assert kind("volume", "kt") == "tonnes"
+    assert kind("domestic_volumes", "count") == "count"
+    assert kind("employees", "count") == "count"
+    assert kind("population_covered", units={"%": 48}) == "pct"
+    assert kind("whatever", units={"Rs crore": 9, "%": 2}) == "money"
+    assert kind("whatever", units={"Rs crore": 2, "%": 2}) == ""      # a tie is unknown
+    assert kind("whatever") == ""                                     # never money by default
+    proposal = need("Interest Coverage ratio (times)")
+    defs = {row["metric"]: row for row in label_map._metric_defs([proposal], {})}
+    assert defs["interest_coverage"]["unit_kind"] == "x"
