@@ -9,11 +9,11 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 - Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126.
 
 ## Running
-- T-132 r5 sent back 22:45 (scale regression 1,838 -> 4,548); grades `v2/review/T-132_r5_opus_grades.csv`.
-- T-132 round 6 SENT BACK 23:40: scale fixed (4,548 -> 18), results 20/27, deck 13/30 (measure lost in Revenue|EBITDA|PAT span tables), ARPU US$ right row lost. Round 7 RUNNING job 20261109T181205Z-da08ab2d (base r6 branch, samples seed 29). Grades `D:/RealityEngine/v2/review/T-132_r6_opus_grades.csv`. Merge r7 (holds r5+r6) only with zero right rows lost; then remove the 3 worktrees.
 - T-133 v3 FINISHED (job 20261109T175602Z-486c41d9, coverage 62.9%, 42 tests): headless Opus grading its seed-37 sample, then merge or send back. LIVE DEFECT p20 kpi_series: 1,466 OFCF rows stored as capex (fix in kpi.py via T-133; rebuild after merge).
 
 - T-160 n10 (AUBANK BALRAMCHIN SRF LT DMART TATAPOWER ICICIGI DIXON JUBLFOOD MCX): agy harvest 20261109T182713Z-4d398312; build `D:/RealityEngine/n10/build.sh` (fetch running). Held audit DONE: 82/106 u8+q12 misses answerable from held docs (`reports/2026-11-10_held_not_queryable_audit.xlsx`) -> T-161..T-166. Bake-off LongCat vs Beam `night_loop/bakeoff_lc_beam` running.
+
+- Wolf 5-hour limit hit 00:50 (resets 04:40 IST): headless Opus grades NOT done -> rerun at 04:40: `python tasks/night_loop/opus_headless.py start t132_r7_grade|t133_v4_grade D:/RealityEngine/night_loop/opus/briefs/<name>.md`. T-132 r7 branch dsh/20261109T181205Z-da08ab2d (2 right rows lost: Coal India p20 ratios, IHCL p33 NCI) and T-133 v4 branch dsh/20261109T183644Z-b52bfab6 (0 lost) wait for those grades. T-161/T-159 worker 20261109T190540Z-a640323b running.
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
