@@ -96,11 +96,11 @@ stored rows.
 4. Pilot20 v2 build, same questions as the baseline (`D:/RealityEngine/p20/answers/questions_{P,Q}.json`), grade,
    delta report. Then a fresh unseen set (T-144).
 
-## 7. Open points for Shivam
+## 7. Shivam's decisions (9 Nov 2026, 16:50)
 
-- Semantic search ticket (T-154 bake-off) after the table store, or alongside?
-- `outside_doc` sources: rating rationales are free on agency sites; industry monthly data (SIAM, cement, DGCA) is
-  free; nothing paid without your OK.
+- **Contract approved (T-131 OK).** Work order as in section 6; T-134 period engine started first (DeepSeek worker), T-132 table store next.
+- **Semantic search runs alongside the table store, not after it.** Page vectors (Nemotron 8B text, `<store>/embed/`) are part of v2: built per `doc.sha256` page at ingest, served by `pilot3_semantic` today and the v2 read tools later. Measured on pilot20 re-asks (A+B, 78 questions): 33 of 54 partly/wrong answers became right, 22 of 24 right answers stayed right; with semantic 28/44, without 5/10 (no clean control).
+- **`outside_doc`: free sources only, lean on disk.** Rating rationales from agency sites, industry monthly data (SIAM, cement, DGCA), regulator circulars; keep the text and key figures, not bulk PDFs or full archives; nothing paid without his OK.
 
 ## 8. T-132 prototype findings (9 Nov 02:20, Wolf)
 
