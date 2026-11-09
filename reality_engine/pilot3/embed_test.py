@@ -241,9 +241,10 @@ class DeepInfraClient:
                 wait = 2 ** attempt
                 print(f"  HTTP {exc.code}: retry {attempt + 1}/{self.attempts} in {wait}s")
                 time.sleep(wait)
-            except urllib.error.URLError as exc:
+            except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+                # a read timeout mid-response is a TimeoutError, not a URLError: retry it too (9 Nov run died on one)
                 if attempt == self.attempts - 1:
-                    raise SystemExit(f"STOPPED: DeepInfra unreachable: {exc.reason}") from exc
+                    raise SystemExit(f"STOPPED: DeepInfra unreachable: {getattr(exc, 'reason', exc)}") from exc
                 wait = 2 ** attempt
                 print(f"  network error: retry {attempt + 1}/{self.attempts} in {wait}s")
                 time.sleep(wait)

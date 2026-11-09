@@ -33,6 +33,7 @@ MODELS = {"8b": "nvidia/Nemotron-3.5-Embed-8B-BF16"}
 DEFAULT_MODEL = "8b"
 PAGE_CHARS = 1500          # page text returned per hit by default
 MAX_PAGE_CHARS = 6000
+LOCAL_QUERY_DIR = Path(".tmp") / "semantic_query"   # fallback when the embed dir is not writable (sandboxed worker)
 
 _lock = threading.Lock()
 _cache: dict[str, Any] = {}     # model -> {"stamp", "matrix", "rows"}
@@ -73,6 +74,12 @@ def _query_vector(text: str, model: str) -> tuple[np.ndarray, bool]:
             held = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
         except (OSError, ValueError):
             held = {}
+    if digest not in held:
+        local = LOCAL_QUERY_DIR / path.name
+        try:
+            held = json.loads(local.read_text(encoding="utf-8")) if local.is_file() else held
+        except (OSError, ValueError):
+            pass
     if digest in held:
         return np.asarray(held[digest], dtype=np.float32), False
     if os.environ.get(PAID_EMBED_FLAG, "").strip() != "1":
@@ -105,19 +112,27 @@ def _query_vector(text: str, model: str) -> tuple[np.ndarray, bool]:
     norm = float(np.linalg.norm(vector))
     vector = vector / norm if norm else vector
     tokens = int((payload.get("usage") or {}).get("prompt_tokens") or 0)
-    with _lock:
+    record = json.dumps({"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "model": model, "tokens": tokens,
+                         "chars": len(text)}) + "\n"
+    # A sandboxed worker cannot write next to the store: the cache and spend log then go to ./.tmp (its workspace).
+    for where in (base, LOCAL_QUERY_DIR):
         try:
-            held = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
-        except (OSError, ValueError):
-            held = {}
-        held[digest] = [round(float(v), 6) for v in vector]
-        base.mkdir(parents=True, exist_ok=True)
-        temp = path.with_suffix(".json.tmp")
-        temp.write_text(json.dumps(held), encoding="utf-8")
-        temp.replace(path)
-        with (base / "query_spend.jsonl").open("a", encoding="utf-8") as log:
-            log.write(json.dumps({"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "model": model, "tokens": tokens,
-                                  "chars": len(text)}) + "\n")
+            with _lock:
+                target = where / path.name
+                try:
+                    held = json.loads(target.read_text(encoding="utf-8")) if target.is_file() else {}
+                except (OSError, ValueError):
+                    held = {}
+                held[digest] = [round(float(v), 6) for v in vector]
+                where.mkdir(parents=True, exist_ok=True)
+                temp = target.with_suffix(".json.tmp")
+                temp.write_text(json.dumps(held), encoding="utf-8")
+                temp.replace(target)
+                with (where / "query_spend.jsonl").open("a", encoding="utf-8") as log:
+                    log.write(record)
+            break
+        except OSError:
+            continue
     return vector, True
 
 
