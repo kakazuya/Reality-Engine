@@ -9,13 +9,12 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 - Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126.
 
 ## Running
-- T-132 round 3 dsh 20261109T145749Z-f804ac97 (six remaining cell classes; target 90/100 per doc type).
 - T-133 label map dsh 20261109T151655Z-449639ec (sector families for all pilot cos, metric_def stock/flow, review CSVs per family for Opus).
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
 2. T-157 follow-up: Coal India 9, Havells 3, Titan 1 calls not found (widen BSE subject filter); run the fetcher on u8 and q12.
-3. T-132 round 2 merged 19:25: Opus unseen sample ~60% fully right (contract s10 lists remaining classes) -> round 3; then T-133 label map (stock/flow; 436 mixed keys), T-150 units at write.
+3. T-132 round 3 merged 21:15 (store `D:/RealityEngine/v2/p20_r3`, 75,394 cells): Opus unseen ~67-80% results, ~73% deck; remaining classes in contract s10 -> round 4; then T-133 label map (stock/flow; 436 mixed keys), T-150 units at write.
 4. T-139: load rationales into `outside_doc` + a read tool; India Ratings detail JSON.
 5. Standard answer brief: carry the strict-PIT and 'not disclosed' rules from `<Wolf scratch>/T-156_round4_hp.md`.
 6. raw_to_drive sweep (u8 + p20 raw, SHP, transcripts_raw, raw_market masters copied back today).
