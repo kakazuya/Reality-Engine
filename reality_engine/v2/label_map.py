@@ -1,4 +1,4 @@
-"""T-133 label dictionary (v4): one metric per printed row label, per sector family.
+"""T-133 label dictionary (v5): one metric per printed row label, per sector family.
 
 A printed row label is normalised (:func:`normalise_label`) and then must match a lexicon phrase **whole**: a label
 that carries a metric phrase plus other words is not that metric.  v1 matched any substring, so
@@ -27,9 +27,21 @@ that carries a metric phrase plus other words is not that metric.  v1 matched an
    always NULL because the header decides;
 5. statement context (the cell's ``section > label`` parent) separates the rows that exist in two statements;
    a parent's metric is only applied to a child that names no metric of its own, and a generated ``_pct`` name
-   comes from the leaf's mapped base metric, never from a slug of the raw text;
+   comes from the leaf's mapped base metric, never from a slug of the raw text.  A mis-parented child is routed
+   by its own wording when that wording is a statement total: "total comprehensive income" (OCR spaces joined)
+   is ``total_comprehensive_income``, "total revenue"/"total income" are ``total_income``, "total liabilities"
+   is ``total_liabilities``, never the parent's segment metric;
 6. junk labels and heading fragments ("Particulars", "Less", "total") are ``status='rejected'`` with
-   ``rule='heading'``; junk labels carry their own reason.
+   ``rule='heading'``; junk labels carry their own reason.  A sentence fragment ("The Parent Company has") is
+   rejected, a heading OCR variant ("Particulats") is rejected by edit distance, and a heading row whose cells
+   are all dash/blank is rejected in that table;
+7. v5: a label ending in ``%``/``(%)`` is a margin (``pbt_margin``, ``ebit_margin``, ``..._pct``) with
+   ``unit_kind='pct'``, never the money metric; "Others"/"Other" stay in the dimension and only the segment
+   total has an empty dimension; a split-header leaf ("before finance costs and taxes") is the total, not a
+   dimension; a member that is a unit-bearing quantity or a component of the parent line queues instead of
+   ``from_header``; the unit kind comes from the metric's own quantity word (population -> count, GBs -> data,
+   turnover -> x) before the cell majority; and a pre-tax/post-tax qualifier that restates the metric itself
+   (PBT, PAT) is dropped from the dimension.
 
 ``revenue_from_operations`` is a synonym of :data:`METRIC_SYNONYMS`'s canonical ``revenue``; "cash generated from
 operations" (pre-tax) and "net cash from operating activities" (post-tax) are different metrics.
@@ -53,8 +65,8 @@ CLI::
 writes ``<out>/label_map.db`` (``label_map`` + ``metric_def``, the v2 DDL), ``<out>/review_<family>.csv``
 (one per family, sorted by frequency, with ``rule`` / ``confidence`` / ``status``), ``<out>/coverage.txt``
 (mapped share of the numeric ``table_cell`` rows per family and overall, then the 50 most frequent unmapped
-labels), ``<out>/rejected_seeds.csv``, ``<out>/seed_changes.csv`` and ``<out>/sample_seed41.csv``
-(200 proposed rows, seed 41, for Opus).
+labels), ``<out>/rejected_seeds.csv``, ``<out>/seed_changes.csv`` and ``<out>/sample_seed43.csv``
+(200 proposed rows, seed 43, ungraded, for Opus).
 """
 from __future__ import annotations
 
@@ -83,8 +95,8 @@ QUEUE = "queue"
 REJECTED = "rejected"
 FROM_HEADER = "from_header"
 SAMPLE_SIZE = 200
-SAMPLE_SEED = 41
-SAMPLE_FILE = "sample_seed41.csv"
+SAMPLE_SEED = 43
+SAMPLE_FILE = f"sample_seed{SAMPLE_SEED}.csv"
 
 # A child label this generic carries no metric by itself: keep its parent ('Segment Revenue > Others').
 GENERIC = {"others", "other", "total", "revenue", "sales", "income", "expenses", "expenditure",
@@ -188,6 +200,7 @@ METRIC_HINTS = {"total", "net", "gross", "average", "per", "number", "no", "of",
 OCR_FIXES = {
     "liabi6ties": "liabilities", "liabiities": "liabilities", "fiabilities": "liabilities",
     "liabifities": "liabilities", "riabi6ties": "liabilities", "riabiities": "liabilities",
+    "liabirlties": "liabilities", "balanr": "balances",
     "seoment": "segment", "lncome": "income", "mobife": "mobile", "selfvices": "services",
     "rnfrastrnctme": "infrastructure", "rmancial": "financial", "borrov": "borrowings", "ings": "",
     "adiustment": "adjustment", "adjusune": "adjustment", "redassified": "reclassified",
@@ -256,6 +269,11 @@ LABEL_WORDS = frozenset("""
     up upon us used value various versus via volume was were whereas which while will with within without year
     years
 """.split()) | {"benefit", "plans", "remeasurement", "remeasurements"}
+
+# Rule 1 (v5): OCR splits a word across spaces ("Total Com pre hensive Income", "Own ers", "pe riod").  A run of
+# adjacent tokens whose concatenation is this dictionary's word is one word again.  The set is static so building
+# the vocabulary (which calls normalise_label) cannot recurse.
+JOIN_WORDS = frozenset(LABEL_WORDS | LINE_WORDS | MEASURE_WORDS | {"owners", "comprehensive", "subtotal"})
 
 NUMBERING = (
     re.compile(r"^\s*(?:\(\s*\d{1,3}\s*\)|\d{1,3}[.)])\s+", re.I),
@@ -341,14 +359,17 @@ EXTRA_COMMON: dict[str, tuple[str, ...]] = {
     "ebit": ("ebit",),
     "ebitdaal": ("ebitdaal", "ebitda al"),
     "operating_ebitda": ("operating ebitda",),
-    "revenue": ("net revenues", "net revenue", "total revenues", "total revenue", "net sales",
-                "sale of products services", "sales of products services", "business income", "net revenue nr",
+    "revenue": ("net revenues", "net revenue", "net sales", "sale of products services",
+                "sales of products services", "business income", "net revenue nr",
                 "revenue from operations", "revenue from operation", "total revenue from operations",
                 "net revenue from operations", "revenue from contracts with customers",
                 "revenue from contract with customers"),
     "other_income": ("other operating revenue", "other operating income", "non operating revenue",
                      "non operating income"),
-    "total_income": ("total income",),
+    # T-133 v5: "total revenue" is the statement total (revenue + other income), never the revenue line; the
+    # revenue id stays for "revenue from operations" and its synonyms.
+    "total_income": ("total income", "total revenue", "total revenues"),
+    "total_comprehensive_income": ("total comprehensive income",),
     "pat": ("net profit", "net income after exceptional items", "profit after tax after exceptional items",
             "profit after tax", "profit after taxation"),
     "pat_before_exceptional": ("net income before exceptional items", "profit after tax before exceptional items",
@@ -531,6 +552,48 @@ EXCLUSION_TERMS: tuple[tuple[re.Pattern[str], str], ...] = (
 # Rule 3 (v4): a member name that also names a company-level row keeps its parent in the dimension.
 AMBIGUOUS_MEMBERS = {"unallocated", "unallocated corporate", "others", "other"}
 
+# Rule 1 (v5): a label ending in a percent mark is a margin, never the money line ("PBT %", "EBIT (%)").
+PERCENT_TAIL = re.compile(r"(?:\bper\s*cent|%)\s*\)?\s*$", re.I)
+
+# Rule 7 (v5): a qualifier that restates the metric's own definition is not a dimension (PBT is pre-tax, PAT
+# post-tax by definition); the qualifier still distinguishes pre/post-tax ROE, so only these ids drop it.
+INHERENT_TAX = {"pbt": "pre_tax", "pbt_before_exceptional": "pre_tax",
+                "pat": "post_tax", "pat_before_exceptional": "post_tax"}
+
+# Rule 3 (v5): only the segment total has an empty dimension; "Others" is a member of the segment.
+TOTAL_MEMBERS = {"total", "sub total", "subtotal"}
+
+# Rule 3 (v5): split-header text printed as a leaf is the row's own total ("before finance costs and taxes"),
+# never a dimension of the section's measure.
+HEADER_FRAGMENT_WORDS = {"before", "after", "finance", "cost", "costs", "and", "tax", "taxes", "exceptional",
+                         "item", "items", "depreciation", "amortisation", "amortization", "interest"}
+
+# Rule 5 (v5): a parent that says its child is a component of the parent line (cash "comprising of") queues the
+# child; the child is a sub-line, never a member whose measure sits in the header.
+SUBLINE_PARENT = re.compile(r"\b(?:comprising|comprises|comprised|consisting|consists|consist|includes|"
+                            r"including|represents?|details?|breakup|break up|break-up|analysis of|schedule of)\b")
+
+# Rule 4 (v5): a unit-bearing quantity row is a KPI, not a member name ("Cumulative" MW, "Tugs 10" fleet count).
+QUANTITY_KINDS = {"count", "tonnes", "data", "power"}
+QUANTITY_UNITS = (("population", "count"), ("people", "count"), ("gbs", "data"), ("gb", "data"),
+                  ("terabytes", "data"), ("gigabytes", "data"), ("turnover", "x"))
+
+# Rule 4 (v5): a heading that carries only dashes/blanks in a table is rejected for that family.
+ROW_HEADINGS = {"current assets", "current liabilities", "non current assets", "non current liabilities"}
+
+# Rule 6 (v5): a printed sentence fragment ends in an auxiliary verb ("The Parent Company has").
+SENTENCE_ENDS = {"has", "have", "had", "is", "are", "was", "were", "includes", "include", "represents",
+                 "represent", "comprises", "comprise", "consists", "consist", "relates", "relate", "refers",
+                 "refer", "pertains", "pertain", "denotes", "indicates", "indicate"}
+
+# Rule 4 (v5): a lone aggregating adjective ("Cumulative") states how a figure is built, not who a member is.
+# It is not the whole filler vocabulary: "Cable"/"Unallocated" are real member names.
+GENERIC_QUANTIFIERS = {"cumulative", "aggregate", "incremental", "overall", "combined", "consolidated"}
+
+# Rule 5 (v5): a mis-parented child that starts with a statement total is that total, never the parent's segment
+# line ("total comprehensive income" under an OCI or attribution section).
+CHILD_TOTALS = (("total comprehensive income", "total_comprehensive_income"),)
+
 
 # ------------------------------------------------------------------------------------------------ normalisation
 def _is_unit(inner: str) -> bool:
@@ -571,13 +634,41 @@ def strip_units(text: str) -> str:
 
 
 def _normalise_piece(raw: str | None) -> str:
-    """One normalised label piece: OCR spellings repaired, unit tails and numbering dropped."""
+    """One normalised label piece: OCR spellings repaired, split words rejoined, unit tails and numbering dropped."""
     text = strip_units(_clean(raw))
     text = " ".join(fixed for fixed in
                     (OCR_FIXES.get(token, token) for token in text.split()) if fixed)
     for phrase, repaired in OCR_PHRASES:
         text = text.replace(phrase, repaired)
-    return text
+    return _join_split_words(text)
+
+
+def _join_split_words(text: str) -> str:
+    """Rule 1 (v5): rejoin a word OCR split across spaces ("Com pre hensive" -> "comprehensive").
+
+    A run of two to four adjacent tokens is joined only when the concatenation is a known word, so ordinary
+    word pairs ("net debt", "total income") are never merged.
+    """
+    tokens = text.split()
+    if len(tokens) < 2:
+        return text
+    joined: list[str] = []
+    index = 0
+    while index < len(tokens):
+        choice, size = "", 0
+        for run in (4, 3, 2):
+            if index + run <= len(tokens):
+                candidate = "".join(tokens[index:index + run])
+                if len(candidate) >= 5 and candidate in JOIN_WORDS:
+                    choice, size = candidate, run
+                    break
+        if choice:
+            joined.append(choice)
+            index += size
+        else:
+            joined.append(tokens[index])
+            index += 1
+    return " ".join(joined)
 
 
 def normalise_label(raw: str | None, parent: str | None = None) -> str:
@@ -708,6 +799,55 @@ def _slug(text: str) -> str:
     return "_".join(re.findall(r"[a-z0-9]+", text.lower()))
 
 
+def heading_like(label_norm: str) -> bool:
+    """Rule 6 (v5): a heading, including a one-edit OCR variant of a one-word heading ("Particulats").
+
+    >>> heading_like("particulars") and heading_like("particulats") and heading_like("financial assets")
+    True
+    >>> heading_like("net debt")
+    False
+    """
+    if label_norm in HEADINGS:
+        return True
+    if len(label_norm.split()) != 1 or len(label_norm) < 6:
+        return False
+    return any(_edit_distance(label_norm, head, 1) <= 1
+               for head in HEADINGS if " " not in head and len(head) >= 6)
+
+
+def empty_heading(label_norm: str, values: Iterable[object]) -> bool:
+    """Rule 6 (v5): a heading row whose cells are all dash/blank in this table carries no metric.
+
+    A "Current assets" line with numbers is the table's own total (kept); the same label with only "-" cells is a
+    section heading (rejected).  The rule is per table, so one company's heading never hides another's total.
+    """
+    if label_norm not in ROW_HEADINGS and label_norm not in HEADINGS:
+        return False
+    seen = list(values)
+    return bool(seen) and all(value is None for value in seen)
+
+
+def _header_fragment(text: str) -> bool:
+    """Rule 3 (v5): the leaf is the section's split-header text, so the row is the segment total."""
+    tokens = text.split()
+    return (bool(tokens) and tokens[0] in {"before", "after"}
+            and bool(set(tokens) & {"finance", "cost", "costs", "tax", "taxes", "exceptional"})
+            and set(tokens) <= HEADER_FRAGMENT_WORDS)
+
+
+def _trailing_count(raw: str) -> bool:
+    """Rule 4 (v5): the printed label states a count itself ("Tugs 10"), so it is a quantity row."""
+    return bool(re.search(r"\s\d{1,4}$", str(raw or "").strip()))
+
+
+def _child_total(plain: str, family: str) -> Proposal | None:
+    """Rule 5 (v5): the child's own wording names a statement total ("total comprehensive income ...")."""
+    for phrase, metric in CHILD_TOTALS:
+        if plain == phrase or plain.startswith(phrase + " "):
+            return Proposal(metric, "child:total", family, None, "", "5-context", "section")
+    return None
+
+
 def junk_reason(label_norm: str) -> str:
     """Rule 6: why a normalised label cannot be a metric, or ``''``."""
     tokens = label_norm.split()
@@ -720,6 +860,8 @@ def junk_reason(label_norm: str) -> str:
         return "digit glued to a word"
     if any(token.isdigit() and len(token) >= 3 for token in tokens):
         return "a value token in the label"
+    if len(words) >= 3 and words[-1] in SENTENCE_ENDS:
+        return "sentence fragment"
     return ""
 
 
@@ -917,6 +1059,15 @@ def _best(entries: Sequence[Entry], text: str) -> Entry | None:
     return best
 
 
+def _dimension_without_inherent_tax(metric: str, dimension: str) -> str:
+    """Rule 7 (v5): drop a pre/post-tax qualifier that only restates the metric (PBT, PAT)."""
+    tag = INHERENT_TAX.get(metric)
+    if not tag or not dimension:
+        return dimension
+    parts = [part.strip() for part in dimension.split(";") if part.strip() and part.strip() != tag]
+    return "; ".join(parts)
+
+
 def propose_metric(label_norm: str, family: str, seeds: Mapping[tuple[str, str], str],
                    family_entries: Mapping[str, Sequence[Entry]],
                    common: Sequence[Entry], dimension: str = "") -> Proposal | None:
@@ -929,16 +1080,18 @@ def propose_metric(label_norm: str, family: str, seeds: Mapping[tuple[str, str],
     seeded = seeds.get((label_norm, family))
     if seeded and (entry is None or entry.metric == seeded):
         metric = METRIC_SYNONYMS.get(seeded, seeded)
-        return Proposal(metric, "seed", family, dimension=dimension, rule="2-seed",
-                        confidence="exact" if not dimension else "synonym")
+        return Proposal(metric, "seed", family, dimension=_dimension_without_inherent_tax(metric, dimension),
+                        rule="2-seed", confidence="exact" if not dimension else "synonym")
     if family_entry is not None:
         metric = METRIC_SYNONYMS.get(family_entry.metric, family_entry.metric)
-        return Proposal(metric, f"lexicon:{family_entry.source}", family, family_entry, dimension,
+        return Proposal(metric, f"lexicon:{family_entry.source}", family, family_entry,
+                        _dimension_without_inherent_tax(metric, dimension),
                         "1-match" if not dimension else "3-qualifier",
                         "exact" if not dimension else "synonym")
     if common_entry is not None:
         metric = METRIC_SYNONYMS.get(common_entry.metric, common_entry.metric)
-        return Proposal(metric, f"common:{common_entry.source}", ALL_FAMILIES, common_entry, dimension,
+        return Proposal(metric, f"common:{common_entry.source}", ALL_FAMILIES, common_entry,
+                        _dimension_without_inherent_tax(metric, dimension),
                         "1-match" if not dimension else "3-qualifier",
                         "exact" if not dimension else "synonym")
     return None
@@ -1006,6 +1159,10 @@ def unit_kind_of(unit: str | None) -> str:
         return "x"
     if text in {"nos", "no", "number", "num"}:
         return "count"
+    if text in {"gb", "gbs", "tb", "tbs", "mb", "data"}:
+        return "data"
+    if text in {"mw", "gw", "kw"}:
+        return "power"
     if text in {"kt", "mt", "te", "ton", "tonne", "tonnes"}:
         return "tonnes"
     if any(word in text for word in ("rs", "inr", "usd", "us$", "₹", "crore", "lakh", "million", "billion",
@@ -1029,8 +1186,21 @@ def majority_unit_kind(units: Counter[str]) -> str:
     return ranked[0][0]
 
 
+def label_quantity_unit(metric: str) -> str:
+    """Rule 4 (v5): the unit kind the metric's own quantity word names ("population covered" is a count).
+
+    The cell majority can say money for a scale parser's misread (population in "Rs billion", GBs in "Mn"), so the
+    label's word wins before the cells do.
+    """
+    tokens = set(re.findall(r"[a-z0-9]+", metric.lower()))
+    for word, kind in QUANTITY_UNITS:
+        if word in tokens:
+            return kind
+    return ""
+
+
 def resolve_unit_kind(metric: str, meta: MetricMeta | None) -> str:
-    """Rule 4 (v3): ``metric_def`` unit when set, else the majority unit of the label's cells, else ``''``.
+    """Rule 4 (v3/v5): ``metric_def`` unit, else the metric's quantity word, else the majority cell unit.
 
     Only a currency unit gives ``money``; an unknown or tied unit is NULL (``''``).  A money figure's currency
     still comes from the cell, never from this map.
@@ -1039,6 +1209,9 @@ def resolve_unit_kind(metric: str, meta: MetricMeta | None) -> str:
         kind = unit_kind_of(meta.entry_unit)
         if kind:
             return kind
+    quantity = label_quantity_unit(metric)
+    if quantity:
+        return quantity
     if meta is not None:
         return majority_unit_kind(meta.units)
     return ""
@@ -1127,7 +1300,8 @@ def _candidate_proposal(label_norm: str, family: str, seeds: Mapping[tuple[str, 
         if proposal is None:
             continue
         if index > 0 and proposal.reason.startswith(("lexicon", "common")):
-            proposal = Proposal(proposal.metric, proposal.reason, proposal.family, proposal.entry, dimension,
+            proposal = Proposal(proposal.metric, proposal.reason, proposal.family, proposal.entry,
+                                _dimension_without_inherent_tax(proposal.metric, dimension),
                                 "3-qualifier", "synonym", proposal.status)
         if chosen is None:
             chosen = proposal
@@ -1335,19 +1509,31 @@ def _eps_metric(plain: str, parent: str) -> str:
 
 
 def _ambiguous_context(plain: str, parent: str) -> bool:
-    """Rule 3 (v4): one OCI-items section key can hold both profit and OCI attributable lines -> queue, no metric.
+    """Rule 3 (v4/v5): one key can hold both the profit and the OCI attribution line -> queue, no metric.
 
     The "items not to be reclassified" section is the OCR/mis-parented form (the reviewer's seed-37 row 1): the same
-    label carried both the profit attributable and the OCI attributable line, so no single metric is right.
+    label carried both the profit attributable and the OCI attributable line, so no single metric is right.  v5: a
+    bare "Attributable to:" parent is the same ambiguity for "Non Controlling Interest" (profit 5.18/19.93 and OCI
+    0.58 under one label at Pidilite).
     """
-    return (plain in {"owners of the parent", "owners of the parent company"}
-            and bool(re.search(r"\bitems not to be reclassif", parent)))
+    if (plain in {"owners of the parent", "owners of the parent company"}
+            and bool(re.search(r"\bitems not to be reclassif", parent))):
+        return True
+    return plain == "non controlling interest" and bool(re.match(r"^attributable(?:\s+to)?$", parent.strip()))
+
+
+def _generic_single(plain: str, has_measure: bool, entity_name: bool, container_child: bool) -> bool:
+    """Rule 4 (v5): a lone aggregating adjective ("Cumulative") is a quantity word, never a member name."""
+    tokens = plain.split()
+    return (len(tokens) == 1 and tokens[0] in GENERIC_QUANTIFIERS and not has_measure
+            and not entity_name and not container_child)
 
 
 def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
                  family_entries: Mapping[str, Sequence[Entry]], common: Sequence[Entry],
                  has_measure: bool = False, has_metric_row: bool = False, peers: int = 0,
-                 is_section_parent: bool = False, entity_name: bool = False, previous: str = ""
+                 is_section_parent: bool = False, entity_name: bool = False, previous: str = "",
+                 quantity_row: bool = False
                  ) -> tuple[str, Proposal | None, str]:
     """``(key_label, proposal, rejection)`` for one cell label — rules 1-7 for a row, no database.
 
@@ -1355,9 +1541,11 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
     table maps to a metric; ``peers``: the table's other unmapped labels (rule 3's member evidence);
     ``is_section_parent``: the label is also a section parent in the same table (a line, not a member);
     ``entity_name``: the label is a name in the file's ``entity``/``entity_alias`` table; ``previous``: the raw
-    label of the row above in the same table (v4: the base of a bare "as a % of NR" ratio row).
+    label of the row above in the same table (v4: the base of a bare "as a % of NR" ratio row);
+    ``quantity_row``: this row's own cells carry a count/tonnes/data/power unit (v5: a KPI, not a member).
     """
     parent, child = _split_label(raw)
+    percent_tail = bool(PERCENT_TAIL.search(str(child or "")))
     parsed = parse_label(child, parent)
     plain = parsed.label_norm
     if not plain:
@@ -1371,10 +1559,13 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
             parsed = parse_label(member, parent_norm)
             full = f"{parent_norm} > {plain}"
     container_child = _container_parent(parent_norm) and plain not in GENERIC
+    subline_child = bool(parent_norm) and bool(SUBLINE_PARENT.search(parent_norm))
     if parsed.junk:
         return plain, None, parsed.junk
     if _ambiguous_context(plain, parent_norm):
         return full, None, ""
+    if heading_like(plain):
+        return full or plain, None, "heading"
     if not parent_norm and plain in SECTION_VOCAB and _section_metric(plain):
         metric = _section_metric(plain)          # the label itself is a section measure ("segment revenue")
         return plain, Proposal(metric, "section:label", family, _section_entry(metric, "section"), "",
@@ -1403,6 +1594,11 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
             key_label = full
     if proposal is None:
         proposal = direct
+    if proposal is None:
+        total = _child_total(plain, family)      # v5: the child's own statement-total wording wins
+        if total is not None:
+            proposal = total
+            key_label = full or plain
     if proposal is not None and previous and ROW_RATIO.match(plain):
         previous_plain = normalise_label(_split_label(previous)[1] or previous)
         if previous_plain and previous_plain != plain:
@@ -1417,21 +1613,32 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
             key_label = full
     if proposal is None:
         section_metric = _section_metric(parent_norm)
-        if section_metric and not _section_conflict(plain, section_metric, family, family_entries, common):
+        if (section_metric and not subline_child
+                and not _section_conflict(plain, section_metric, family, family_entries, common)):
             member = plain.rsplit(" > ", 1)[-1]
+            # v5: only the segment total is at the empty dimension; "Others" is a member, and a split-header
+            # leaf ("before finance costs and taxes") is the total itself.
+            dimension = "" if (member in TOTAL_MEMBERS or _header_fragment(member)) else member
             proposal = Proposal(section_metric, "section", family, _section_entry(section_metric, "section"),
-                                "" if member in GENERIC else member, "5-context", "section")
+                                dimension, "5-context", "section")
             key_label = full
     if proposal is None and not is_section_parent:
-        if entity_name or container_child or _member_like(plain, has_measure, has_metric_row, peers):
+        member_evidence = entity_name or container_child or _member_like(plain, has_measure, has_metric_row, peers)
+        if (member_evidence and not subline_child and not quantity_row and not _trailing_count(raw)
+                and not _generic_single(plain, has_measure, entity_name, container_child)):
             dimension = plain
             if parent_norm and not _container_parent(parent_norm) and plain in AMBIGUOUS_MEMBERS:
                 dimension = f"{parent_norm} > {plain}"
             proposal = Proposal(FROM_HEADER, "member", family, None, dimension, "3-member", "section")
             key_label = full
-    if proposal is None and plain in HEADINGS:
-        rejection = "heading"
-        key_label = full
+    if percent_tail and proposal is not None and proposal.metric != FROM_HEADER \
+            and metric_kind(proposal.metric) in {"flow", "stock"}:
+        # v5: a printed "%" is a margin, never the money line; the key keeps the suffix so the two forms do not
+        # share one row in label_map.
+        metric = _pct_metric(proposal.metric)
+        proposal = Proposal(metric, "percent:label", family, _section_entry(metric, "section:pct"),
+                            proposal.dimension, "1-match", "exact")
+        key_label = f"{key_label or plain} %"
     return key_label, proposal, rejection
 
 
@@ -1473,9 +1680,22 @@ def read_cells(cells_dir: Path, taxonomy: sqlite3.Connection, table: dict, isin_
                                 if "measure=" in str(header or "").lower()}
                 parent_labels = {normalise_label(parent) for parent in
                                  (_split_label(raw)[0] for raw in labels) if parent}
+                row_values: dict[str, list[object]] = defaultdict(list)
+                row_units: dict[str, set[str]] = defaultdict(set)
+                for raw, _header, unit_text, value, _row in rows:
+                    text = str(raw or "")
+                    row_values[text].append(value)
+                    if value is not None and unit_text:
+                        row_units[text].add(str(unit_text))
+                parsed_labels = {raw: parse_label(*reversed(_split_label(raw))) for raw in labels}
+                quantities = {raw for raw in labels
+                              if (lambda kinds: bool(kinds) and kinds <= QUANTITY_KINDS)(
+                                  {unit_kind_of(unit) for unit in row_units[raw]} - {""})}
+                headings = {raw for raw in labels
+                            if empty_heading(parsed_labels[raw].label_norm, row_values[raw])}
                 exact: dict[str, Proposal] = {}
                 for raw in labels:
-                    item = parse_label(*reversed(_split_label(raw)))
+                    item = parsed_labels[raw]
                     if not item.label_norm or item.junk:
                         continue
                     proposal = _candidate_proposal(item.label_norm, family, seeds, family_entries, common, item)
@@ -1485,12 +1705,15 @@ def read_cells(cells_dir: Path, taxonomy: sqlite3.Connection, table: dict, isin_
                 decisions: dict[str, tuple[str, Proposal | None, str]] = {}
                 previous = ""
                 for raw in ordered:
-                    item = parse_label(*reversed(_split_label(raw)))
+                    item = parsed_labels[raw]
                     decisions[raw] = decide_label(
                         raw, family, seeds, family_entries, common, raw in measure_rows, bool(exact), peers,
                         item.label_norm in parent_labels,
-                        item.label_norm in entity_names, previous=previous)
+                        item.label_norm in entity_names, previous=previous, quantity_row=raw in quantities)
                     previous = raw
+                for raw in ordered:                        # v5: a dash-only heading row carries no metric
+                    if raw in headings:
+                        decisions[raw] = (decisions[raw][0] or parsed_labels[raw].label_norm, None, "heading")
                 meanings: dict[str, set[str]] = defaultdict(set)
                 for key_label, proposal, _rejection in decisions.values():
                     if proposal is not None:
@@ -1509,7 +1732,7 @@ def read_cells(cells_dir: Path, taxonomy: sqlite3.Connection, table: dict, isin_
                         row_decisions[row_no] = decide_label(
                             text, family, seeds, family_entries, common, text in measure_rows, bool(exact), peers,
                             item.label_norm in parent_labels, item.label_norm in entity_names,
-                            previous=previous_row)
+                            previous=previous_row, quantity_row=text in quantities)
                     else:
                         row_decisions[row_no] = decisions[text]
                     previous_row = text
@@ -1657,7 +1880,9 @@ def write_outputs(out_dir: Path, proposals: Mapping[tuple[str, str], Proposal],
         rows = []
         for label_norm, obs in sorted(by_family[family], key=lambda item: (-item[1].count, item[0])):
             proposal = proposals.get((label_norm, family))
-            if proposal is None:
+            if proposal is None and (label_norm, family) not in rejected:
+                # v5: a heading row rejected for this family must not borrow another table's common proposal
+                # ("Current assets" with only dashes at Apollo is not IHCL's total).
                 proposal = next((p for (norm, fam), p in proposals.items()
                                  if fam == ALL_FAMILIES and norm == label_norm), None)
             row = _queue_row(label_norm, obs, proposal, unit_by_metric, rejected.get((label_norm, family), ""))
@@ -1712,7 +1937,7 @@ def write_outputs(out_dir: Path, proposals: Mapping[tuple[str, str], Proposal],
     rejected_rows = sum(count for (label_norm, family), count in numeric.items()
                         if (label_norm, family) in rejected)
     lines = [
-        "label map coverage (T-133 v4)",
+        "label map coverage (T-133 v5)",
         f"numeric table_cell rows: {total_numeric}",
         f"mapped to a proposed metric: {total_mapped} ({100 * total_mapped / total_numeric:.1f}%)"
         if total_numeric else "mapped to a proposed metric: 0",

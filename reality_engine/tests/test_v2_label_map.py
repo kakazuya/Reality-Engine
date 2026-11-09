@@ -1,9 +1,9 @@
-"""T-133 label dictionary v4: OCR sections, measure parents, dimensions, units, canonical ids, headings.
+"""T-133 label dictionary v5: OCR sections, measure parents, dimensions, units, canonical ids, headings.
 
     python -m pytest -q reality_engine/tests/test_v2_label_map.py
 
-Every line of the T-133 v2/v3 evidence lists and the v4 review list has its own case below, so a regression in any
-rule is a failing test, not a new review round.
+Every line of the T-133 v2/v3 evidence lists, the v4 review list and the v5 ticket steps 1-7 has its own case
+below, so a regression in any rule is a failing test, not a new review round.
 """
 from __future__ import annotations
 
@@ -149,7 +149,7 @@ def test_rule_4_unit_kind_is_money_and_currency_comes_from_the_cell():
     assert label_map.resolve_unit_kind("working_capital_days", label_map.MetricMeta(entry_unit="days")) == "days"
     assert label_map.resolve_unit_kind("capex", None) == ""      # v3: unknown is NULL, never money
     for raw, wanted in (("EBITDA 1 US$", "ebitda"), ("Net debt 2 US$", "net_debt"),
-                        ("Total revenue 1 US$", "revenue")):
+                        ("Total revenue 1 US$", "total_income")):
         assert need(raw).metric == wanted
 
 
@@ -201,7 +201,7 @@ def test_every_evidence_line():
         ("Capex 1 US$", "telecom", "capex", ""),
         ("EBITDA 1 US$", "telecom", "ebitda", ""),
         ("Net Debt 2 US$", "telecom", "net_debt", ""),
-        ("Total revenue 1 US$", "telecom", "revenue", ""),
+        ("Total revenue 1 US$", "telecom", "total_income", ""),
         ("Net Debt US$ mn", "telecom", "net_debt", ""),
         ("Total equity and liabilities", "hotels", "total_equity_and_liabilities", ""),
         ("Interest Coverage ratio (times)", "telecom", "interest_coverage", ""),
@@ -246,7 +246,7 @@ def test_section_overrides_and_percentage_parents():
     assert proposal.dimension == "unallocable assets"
 
 
-def test_review_queues_carry_rule_confidence_status_and_the_seed37_sample():
+def test_review_queues_carry_rule_confidence_status_and_the_seed43_sample():
     out = Path(".tmp") / "test_label_map_out"
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True, exist_ok=True)
@@ -270,7 +270,7 @@ def test_review_queues_carry_rule_confidence_status_and_the_seed37_sample():
     rejected_row = next(row for row in rows if row["label_norm"] == "financial assets")
     assert rejected_row["status"] == "rejected" and rejected_row["rule"] == "heading"
     sample = out / label_map.SAMPLE_FILE
-    assert sample.is_file() and sample.name == "sample_seed41.csv"
+    assert sample.is_file() and sample.name == "sample_seed43.csv"
     with sample.open(encoding="utf-8") as handle:
         sampled = list(csv.DictReader(handle))
     assert 0 < len(sampled) <= label_map.SAMPLE_SIZE and "family" in sampled[0]
@@ -324,7 +324,7 @@ def test_v3_segment_misspelling_gets_the_section_metric():
 
 @pytest.mark.parametrize("raw, why", [
     ("financial liabifities > sorrowtngs", "a single lower-case OCR token"),
-    ("mobife selfvices south asia > passive rnfrastrnctme servi ces", "OCR word soup"),
+    ("mobife selfvices south asia > passlve infrastructur servlces", "OCR word soup"),
     ("kl int nsibleass ts", "OCR word soup"),
     ("finance cl sts", "OCR word soup"),
     ("iil 0ther lncome", "a digit/letter swap"),
@@ -404,7 +404,9 @@ def test_v3_unit_kind_from_metric_def_or_the_cells():
     assert kind("volume", "kt") == "tonnes"
     assert kind("domestic_volumes", "count") == "count"
     assert kind("employees", "count") == "count"
-    assert kind("population_covered", units={"%": 48}) == "pct"
+    assert kind("population_covered") == "count"          # v5: the label's quantity word, not the cell unit
+    assert kind("total_gbs_on_network") == "data"
+    assert kind("debtors_turnover") == "x"
     assert kind("whatever", units={"Rs crore": 9, "%": 2}) == "money"
     assert kind("whatever", units={"Rs crore": 2, "%": 2}) == ""      # a tie is unknown
     assert kind("whatever") == ""                                     # never money by default
@@ -512,3 +514,99 @@ def test_v4_wrong_metrics_are_one_canonical_id():
     asia = metric("Asia > Unallocated", "telecom", has_metric_row=True)
     assert asia is not None and asia.metric == label_map.FROM_HEADER
     assert asia.dimension == "asia > unallocated"
+
+
+def test_v5_a_percent_label_is_a_margin_never_the_money_line():
+    """Step 1: raw "PBT %"/"EBIT %" are margins with unit_kind pct, never the money ids."""
+    for raw, wanted in (("PBT %", "pbt_margin"), ("PBT (%)", "pbt_margin"),
+                        ("EBIT %", "ebit_margin"), ("EBIT (%)", "ebit_margin")):
+        key, proposal, rejection = decide(raw, "jewellery_lifestyle")
+        assert proposal is not None and proposal.metric == wanted, (raw, proposal)
+        assert key.endswith(" %") and not rejection, (raw, key)
+        defs = {row["metric"]: row for row in label_map._metric_defs([proposal], {})}
+        assert defs[wanted]["unit_kind"] == "pct" and defs[wanted]["kind"] == "ratio", raw
+    assert need("PBT", "jewellery_lifestyle").metric == "pbt"
+    assert need("EBIT", "jewellery_lifestyle").metric == "ebit"
+    margin = need("EBITDA margin (%)", "telecom")          # a margin label keeps its own metric
+    assert margin.metric == "ebitda_margin_pct" and margin.dimension == ""
+
+
+def test_v5_others_keeps_its_dimension_and_only_the_total_is_empty():
+    """Step 2: a generic member stays in the dimension; the split-header leaf is the total."""
+    for raw, family, wanted, dimension in (
+            ("Segment Assets > c) Others", "paints_chemicals", "segment_assets", "others"),
+            ("Segment Liabilities > Others", "jewellery_lifestyle", "segment_liabilities", "others"),
+            ("Profit from segments before finance costs and taxes > Others", "jewellery_lifestyle",
+             "segment_results", "others"),
+            ("Segment Results > Total", "consumer_durables", "segment_results", ""),
+            ("b) Profit from segments before finance costs and taxes", "jewellery_lifestyle",
+             "segment_results", "")):
+        proposal = metric(raw, family)
+        assert proposal is not None and proposal.metric == wanted, raw
+        assert proposal.dimension == dimension, (raw, proposal.dimension)
+
+
+def test_v5_mis_parented_children_route_by_their_own_wording():
+    """Step 3: child wording (OCR joined) beats the mis-parented section, and total revenue is total income."""
+    for raw, family, wanted in (
+            ("Segment Assets \"' > Total liabirlties", "telecom", "total_liabilities"),
+            ("Profit for the pe riod attributable to: > Total Com pre hensive Income for the period attributable "
+             "to: -Own ers of the Company", "paints_chemicals", "total_comprehensive_income"),
+            ("Items not to be reclassified to profit or loss : > Total comprehensive income for the quarter / year",
+             "telecom", "total_comprehensive_income"),
+            ("Total Revenue", "hotels", "total_income"),
+            ("total revenues", "telecom", "total_income"),
+            ("Total revenue from operations", "telecom", "revenue")):
+        proposal = need(raw, family)
+        assert proposal.metric == wanted, (raw, proposal.metric)
+    key, proposal, rejection = decide("Attributable to: > Non Controlling Interest", "paints_chemicals")
+    assert proposal is None and not rejection
+    assert key == "attributable to > non controlling interest"
+
+
+def test_v5_sentence_fragments_and_heading_rows_are_rejected():
+    """Step 4: a sentence fragment and an OCR heading are rejected; a dash-only heading is per table."""
+    assert decide("The Parent Company has", "paints_chemicals")[2] == "sentence fragment"
+    assert decide("Particulats", "jewellery_lifestyle")[2] == "heading"
+    assert metric("The Parent Company has", "paints_chemicals") is None
+    assert metric("Particulats", "jewellery_lifestyle") is None
+    assert label_map.heading_like("particulats") and label_map.heading_like("particulars")
+    assert not label_map.heading_like("net debt")
+    assert label_map.empty_heading("current assets", [None, None])
+    assert not label_map.empty_heading("current assets", [None, 12.0])
+    assert not label_map.empty_heading("net debt", [None])
+
+
+def test_v5_a_quantity_or_a_sub_line_member_queues_instead_of_from_header():
+    """Step 5: a component of the parent line and a unit-bearing quantity are not members."""
+    _key, proposal, rejection = decide("Cash and cash equivalents comprising of: > Balances with banks",
+                                       "asset_management")
+    assert proposal is None and not rejection
+    assert label_map.decide_label("Cumulative", "mining", {}, FAMILY_ENTRIES, COMMON, peers=5,
+                                  quantity_row=True)[1] is None
+    assert label_map.decide_label("Tugs 10", "ports_logistics", {}, FAMILY_ENTRIES, COMMON, peers=5)[1] is None
+    allow = label_map.decide_label("Corporate unallocated", "consumer_durables", {}, FAMILY_ENTRIES, COMMON,
+                                   peers=5)[1]
+    assert allow is not None and allow.metric == label_map.FROM_HEADER
+
+
+def test_v5_unit_kind_comes_from_the_label_quantity_word():
+    """Step 6: the metric's quantity word wins over a money-looking cell majority."""
+    assert label_map.resolve_unit_kind("population_covered", None) == "count"
+    assert label_map.resolve_unit_kind("total_gbs_on_network", None) == "data"
+    assert label_map.resolve_unit_kind("debtors_turnover", None) == "x"
+    assert label_map.resolve_unit_kind("roe_pct", label_map.MetricMeta(entry_unit="pct")) == "pct"
+    assert label_map.resolve_unit_kind("capex", label_map.MetricMeta(units=Counter({"Rs crore": 4}))) == "money"
+    assert label_map.unit_kind_of("MW") == "power" and label_map.unit_kind_of("GB") == "data"
+    proposal = need("Population Covered Bn", "telecom")
+    defs = {row["metric"]: row for row in label_map._metric_defs([proposal], {})}
+    assert defs["population_covered"]["unit_kind"] == "count"
+
+
+def test_v5_a_redundant_tax_qualifier_is_dropped():
+    """Step 7: pre-tax on PBT and post-tax on PAT are not dimensions; ROE keeps them."""
+    assert need("Profit before tax before exceptional items").dimension == ""
+    assert need("Profit before tax").dimension == ""
+    assert need("Profit after tax").dimension == ""
+    assert need("Return on Shareholder's Equity (Pre Tax) %").dimension == "pre_tax"
+    assert need("Return on Shareholder's Equity (Post Tax) %").dimension == "post_tax"

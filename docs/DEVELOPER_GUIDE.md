@@ -817,51 +817,63 @@ value_text, unit_text, scale, value, method and a 300-character page snippet). W
   (pilot20: 14,376 + 200 pages, ~$0.48), served by `pilot3_semantic` (`plugins/reality-data/server/lookups_semantic.py`,
   README). Re-ask results: `reports/2026-11-09_t154_p20_semantic_reask.xlsx`; Shivam: semantic stays, alongside the table store.
 
-### O24. v4 label dictionary: one metric per printed label, per sector family (T-133, v4 10 Nov 2026)
+### O24. v5 label dictionary: one metric per printed label, per sector family (T-133, v5 10 Nov 2026)
 
 `reality_engine/v2/label_map.py` reads every `table_cell.row_label` of a v2 cells store and the `kpi_series` of the
 pilot3 stores, normalises the label, and proposes one metric per `(label, sector_family)` by **whole-label**
-matching (T-133 v4). The phrases it matches are the yaml entries in `reality_engine/pilot3/lexicon/` (the
+matching (T-133 v5). The phrases it matches are the yaml entries in `reality_engine/pilot3/lexicon/` (the
 cross-company statement lines are `reality_engine/pilot3/lexicon/common.yaml`; the common financial lines are
 `label_map.EXTRA_COMMON`): the normalised label must equal a lexicon phrase whole, so "Operating Free Cash Flow
 (EBITDA - Capex)" is `operating_free_cash_flow[basis=ebitda]`, not `capex`. Before matching, OCR spellings already
 seen in the cells are repaired through an explicit table (`liabi6ties`/`liabiities` -> `liabilities`, `seoment` ->
-`segment`, `lncome` -> `income`), and a **known section name is repaired by edit distance after its spaces are
-removed** (`segment liabilties`, `segment l iabifties` -> `segment liabilities`), never by adding spellings; a
-section printed without its `>` separator (`Segment Results a) Switchgears` -> `segment results > switchgears`)
-still owns the member after it. A label still garbled (a digit/letter swap, or 40% or more of its tokens absent
-from the dictionary) is `status='rejected'` with `rule='garbled'`, never a proposal. A `kpi_series` seed is used
-only when its own label passes that rule and the lexicon does not disagree; qualifiers (pre/post tax, incl/excl
-lease or acceptances, a definition bracket's basis) go into `dimension`, and an "excluding access charges and
-licence fee" list becomes `excl=access_charges,cogs,licence_fee,...` on the base metric (the exclusion changes
-the meaning). A **member** row is `from_header` with the member as its dimension only with cell evidence: its own
-column headers carry `measure=`, it sits under a segment/container parent, or it is a known entity name; a
-statement line (a line-item/measure/heading word, or a label used as a section parent in its own table) is never
-a member and goes to the queue. A **measure parent** (`Revenue in`, `Segment Sales`, `Segment Results`, `Profit
-from segments`) owns its child as a member (`revenue in > logistics` is `segment_revenue[logistics]`), while a
-leaf that is itself a common metric (CWIP, basic/diluted EPS) keeps its own line over the section and over
-`from_header`. The cell's `section > label` parent separates the lines printed in two statements ("interest
-received" in the cash flow vs the P&L, profit/non-controlling-interest attribution, "owners of the parent" vs
-equity); a bare ratio row ("as a % of NR") carries the line above it in the dimension (`base=contribution` /
-`base=a_and_p_spend` / `base=other_sga`); a generated `_pct` name comes from the base metric already mapped for
-the leaf, never a slug of the raw text, and a parent's metric is not applied to a leaf that names a metric of a
-different kind. A key that carries two meanings (the OCR "items not to be reclassified" section holding both
-profit and OCI attributable) queues with no metric. Junk and heading labels (`Particulars`, `Less`, `otal`) are
-`status='rejected'` with `rule='heading'`. `unit_kind` comes from `metric_def` when the lexicon states it
-(`pcr_stage3` pct, `production_kt`/`volume` tonnes, `employees` count), otherwise from the majority unit of
-**that label's numeric** cells (`%` -> pct, `count` -> count, `kt`/`tonne` -> tonnes, `x`/`days`, currency ->
-money); only a currency unit gives money, an unknown or tied unit is NULL, a `from_header` row is NULL because its
-header carries the measure and unit (a member with 20-26% margin cells is not a money row), a currency line
-(`Unallocable Expenses`) keeps money, and a money figure's currency still comes from the cell, never the map.
-`revenue` is the one canonical revenue id (`revenue_from_operations` is a synonym), `net profit before tax` is
-`pbt`, and the pre-tax `cash generated from operations` is separate from the post-tax `net cash ... operating
-activities` (`cash_flow_from_operations`). The same rule drives the
-`table_v1` path of `reality_engine/pilot3/kpi.py` (`row_label_hits`/`label_text`), so the next extraction stores
-the corrected metric. The company family comes from the same `company_industry` -> `sector_map.yaml` path as
-`make_profile`. It writes `label_map.db` (`label_map` + `metric_def`, every row `status='queue'` or `'rejected'`),
-`review_<family>.csv` (with `rule`, `confidence` and `status`), `coverage.txt`, `rejected_seeds.csv`,
-`seed_changes.csv` (the read-only dry run of the new rule over the `table_v1` `kpi_series` rows) and
-`sample_seed41.csv` (200 proposed rows, seed 41, for Opus):
+`segment`, `lncome` -> `income`), a word OCR split across spaces is rejoined when the concatenation is a known
+word (`Total Com pre hensive Income` -> `total comprehensive income`, `Own ers` -> `owners`), and a **known section
+name is repaired by edit distance after its spaces are removed** (`segment liabilties`, `segment l iabifties` ->
+`segment liabilities`), never by adding spellings; a section printed without its `>` separator
+(`Segment Results a) Switchgears` -> `segment results > switchgears`) still owns the member after it. A label
+still garbled (a digit/letter swap, or 40% or more of its tokens absent from the dictionary) is
+`status='rejected'` with `rule='garbled'`, never a proposal. A `kpi_series` seed is used only when its own label
+passes that rule and the lexicon does not disagree; qualifiers (pre/post tax, incl/excl lease or acceptances, a
+definition bracket's basis) go into `dimension`, and an "excluding access charges and licence fee" list becomes
+`excl=access_charges,cogs,licence_fee,...` on the base metric (the exclusion changes the meaning); `pre_tax` on
+`pbt` and `post_tax` on `pat` are dropped because they restate the metric, while `return on equity` keeps them. A
+**member** row is `from_header` with the member as its dimension only with cell evidence: its own column headers
+carry `measure=`, it sits under a segment/container parent, or it is a known entity name; a statement line (a
+line-item/measure/heading word, or a label used as a section parent in its own table) is never a member and goes
+to the queue. A **measure parent** (`Revenue in`, `Segment Sales`, `Segment Results`, `Profit from segments`) owns
+its child as a member (`revenue in > logistics` is `segment_revenue[logistics]`), while a leaf that is itself a
+common metric (CWIP, basic/diluted EPS) keeps its own line over the section and over `from_header`. The cell's
+`section > label` parent separates the lines printed in two statements ("interest received" in the cash flow vs
+the P&L, profit/non-controlling-interest attribution, "owners of the parent" vs equity); a bare ratio row ("as a
+% of NR") carries the line above it in the dimension (`base=contribution` / `base=a_and_p_spend` /
+`base=other_sga`); a generated `_pct` name comes from the base metric already mapped for the leaf, never a slug of
+the raw text, and a parent's metric is not applied to a leaf that names a metric of a different kind. A key that
+carries two meanings (the OCR "items not to be reclassified" section holding both profit and OCI attributable, or
+a bare "Attributable to:" over "Non controlling interest") queues with no metric. Junk and heading labels
+(`Particulars`, `Less`, `otal`), a sentence fragment ending in an auxiliary verb ("The Parent Company has"), a
+one-edit OCR heading (`Particulats`) and a heading row whose cells are all dash/blank (`Current assets` with only
+"-" at Apollo) are `status='rejected'` with `rule='heading'`; the same `Current assets` label with numbers stays
+the table's total, so the rejection is per family. `unit_kind` comes from `metric_def` when the lexicon states it
+(`pcr_stage3` pct, `production_kt`/`volume` tonnes, `employees` count), else from the metric's own quantity word
+(`population_covered` count, `total_gbs_on_network` data, `debtors_turnover` x), else from the majority unit of
+**that label's numeric** cells (`%` -> pct, `count` -> count, `kt`/`tonne` -> tonnes, `x`/`days`, `MW`/`GW` ->
+power, currency -> money); only a currency unit gives money, an unknown or tied unit is NULL, a `from_header` row
+is NULL because its header carries the measure and unit (a member with 20-26% margin cells is not a money row), a
+currency line (`Unallocable Expenses`) keeps money, and a money figure's currency still comes from the cell, never
+the map. `revenue` is the one canonical revenue id (`revenue_from_operations` is a synonym), `net profit before
+tax` is `pbt`, the pre-tax `cash generated from operations` is separate from the post-tax `net cash ... operating
+activities` (`cash_flow_from_operations`), and `total revenue`/`total revenues`/`total income` are `total_income`,
+never `revenue`. A raw `%` label is a margin, never the money line: `PBT %` is `pbt_margin`, `EBIT %` is
+`ebit_margin`, with `unit_kind='pct'` and the suffix kept in the key. `Others` stays a dimension member and only
+the segment total is at the empty dimension; a split-header leaf ("before finance costs and taxes") is the total; a
+child that names a statement total (`total comprehensive income ...`, `total liabilities`) is routed by its own
+wording; and a quantity row or a sub-line under "comprising of" queues instead of `from_header`. The same rule
+drives the `table_v1` path of `reality_engine/pilot3/kpi.py` (`row_label_hits`/`label_text`), so the next
+extraction stores the corrected metric. The company family comes from the same `company_industry` ->
+`sector_map.yaml` path as `make_profile`. It writes `label_map.db` (`label_map` + `metric_def`, every row
+`status='queue'` or `'rejected'`), `review_<family>.csv` (with `rule`, `confidence` and `status`), `coverage.txt`,
+`rejected_seeds.csv`, `seed_changes.csv` (the read-only dry run of the new rule over the `table_v1` `kpi_series`
+rows) and `sample_seed43.csv` (200 proposed rows, seed 43, ungraded, for Opus):
 
 ```bash
 python -m reality_engine.v2.label_map --cells-dir <v2 store dir> \
@@ -871,20 +883,23 @@ python -m reality_engine.v2.label_map --cells-dir <v2 store dir> \
 `metric_def` says whether a metric is a `flow` (the only additive kind), `stock`, `ratio`, `per_share`, `count` or
 `price`, so the period engine sums only flows. The sector map carries 27 families and all 63 company rows of
 `pilot10`, `p20`, `u8` and `q12` have one; 56 of the 191 basic industries stay `unknown` and no pilot company uses
-any of them. The v4 build on `D:/RealityEngine/v2/p20_r4` and the two `kpi_series` stores proposed 1,177 mappings (rule 1
-match 225, seed 297, member 173, qualifier 24, context 458) and 213 metric definitions; 65.1% of the 59,326
-numeric table rows map to a metric, 4,939 rows are rejected as junk/heading/garbled, and 99.7% of the rows are
-mapped or queued. Three families stay under 60% mapped (`consumer_durables` 58.6%, `jewellery_lifestyle` 56.1%,
-`ports_logistics` 52.6%); the other six are 61.2%-73.3% and no family is below the stop rule's 60% overall
-coverage. The seed dry run changes 2,416 of 13,090 `table_v1` rows in 53 pairs, chiefly `capex` ->
-`operating_free_cash_flow` (1,466). Opus's v2 seed-31 grade (139/200 right) replays at 139 of 139 right rows kept
-(0 lost; four gain a lost dimension, including the exclusion blocker), and the v3 seed-37 grade (170/200 right)
-keeps 168 with 0 lost — rows 99 and 171 move to `cash_flow_from_operations` because the ticket splits the
-post-tax cash-flow line from the pre-tax "cash generated from operations" — and all 30 seed-37 wrong rows
-change. The per-row replay is in `.tmp/label_map_v4/grade_replay_seed31.csv`, `grade_replay_seed37.csv` and
-`replay_report.md`. Tests: `python -m pytest -q reality_engine/tests/test_v2_label_map.py` (50) and the
-`row_label_hits` cases in `reality_engine/tests/test_pilot3_kpi.py`. The measured table, every rule and the
-output columns are in `docs/V2_SCHEMA_CONTRACT.md` section 11.
+any of them. The v5 build on `D:/RealityEngine/v2/p20_r4` and the two `kpi_series` stores proposed 1,177 mappings (rule 1
+match 232, seed 286, member 169, qualifier 24, context 466) and 216 metric definitions; 65.6% of the 59,326
+numeric table rows map to a metric, 4,881 rows are rejected as junk/heading/garbled, and 99.7% of the rows are
+mapped or queued. Three families stay under 60% mapped (`consumer_durables` 59.2%, `jewellery_lifestyle` 56.8%,
+`ports_logistics` 53.2%); the other six are 61.3%-73.6% and no family is below the stop rule's 60% overall
+coverage. The seed dry run changes 4,460 of 13,090 `table_v1` rows in 54 pairs: `revenue` -> `total_income`
+(2,044), `capex` -> `operating_free_cash_flow` (1,466), then 143 rows that carried the `revenue` id now match no
+line (the total-income phrase's neg guards). Opus's seed-31 grade (139/200 right) replays at 138 kept + 1 mandated
+(row 50 `total revenue` -> `total_income`, the ticket's rule) and 0 lost; the seed-37 grade (170/200 right) keeps
+168 with 0 lost and 2 mandated `total revenue` rows (38, 105); the seed-41 grade (177/200 right) keeps all 177.
+Of the 23 seed-41 wrong rows, 22 change (the percent-key split, the `Others` dimension, the split-header total,
+the child-total routing, the heading rejects, the quantity/sub-line queue, the NCI ambiguity and the three unit
+kinds). The per-row replay is in `.tmp/label_map_v5/grade_replay_seed31.csv`, `grade_replay_seed37.csv`,
+`grade_replay_seed41.csv` and `replay_report.md`. Tests:
+`python -m pytest -q reality_engine/tests/test_v2_label_map.py` (57) and the `row_label_hits` cases in
+`reality_engine/tests/test_pilot3_kpi.py`. The measured table, every rule and the output columns are in
+`docs/V2_SCHEMA_CONTRACT.md` section 11.
 
 ## 3. Ticket tracker
 
