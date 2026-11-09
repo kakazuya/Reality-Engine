@@ -13,7 +13,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 - T-132 round 6 SENT BACK 23:40: scale fixed (4,548 -> 18), results 20/27, deck 13/30 (measure lost in Revenue|EBITDA|PAT span tables), ARPU US$ right row lost. Round 7 RUNNING job 20261109T181205Z-da08ab2d (base r6 branch, samples seed 29). Grades `D:/RealityEngine/v2/review/T-132_r6_opus_grades.csv`. Merge r7 (holds r5+r6) only with zero right rows lost; then remove the 3 worktrees.
 - T-133 v3 FINISHED (job 20261109T175602Z-486c41d9, coverage 62.9%, 42 tests): headless Opus grading its seed-37 sample, then merge or send back. LIVE DEFECT p20 kpi_series: 1,466 OFCF rows stored as capex (fix in kpi.py via T-133; rebuild after merge).
 
-- T-160 n10 unseen set (AUBANK BALRAMCHIN SRF LT DMART TATAPOWER ICICIGI DIXON JUBLFOOD MCX): agy harvest 20261109T182713Z-4d398312 (questions held-but-hard only, no price/valuation); store build `D:/RealityEngine/n10/build.sh` running. Opus headless (`tasks/night_loop/opus_headless.py`): `held_audit` (u8/q12 'not disclosed' rows re-searched; 26/28 spot topics are in held pages) and `t133_v3_grade` (seed-37 sample); outputs `D:/RealityEngine/night_loop/opus/<name>/`.
+- T-160 n10 (AUBANK BALRAMCHIN SRF LT DMART TATAPOWER ICICIGI DIXON JUBLFOOD MCX): agy harvest 20261109T182713Z-4d398312; build `D:/RealityEngine/n10/build.sh` (fetch running). Held audit DONE: 82/106 u8+q12 misses answerable from held docs (`reports/2026-11-10_held_not_queryable_audit.xlsx`) -> T-161..T-166. Bake-off LongCat vs Beam `night_loop/bakeoff_lc_beam` running.
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
