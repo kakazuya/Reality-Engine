@@ -1,18 +1,15 @@
 {
   "permissions": {
     "ask": [
-      "Bash(rm *)",
-      "Bash(rmdir *)",
-      "Bash(git branch -D *)",
-      "Bash(git branch -d *)",
-      "Bash(git worktree remove *)",
-      "Bash(git reset --hard*)",
-      "Bash(git clean *)",
-      "Bash(rclone delete *)",
-      "Bash(rclone purge *)",
-      "Bash(rclone deletefile *)",
-      "PowerShell(Remove-Item *)",
-      "PowerShell(rm *)"
+      "Bash(rm *tasks/STATE.md*)",
+      "Bash(rm *tasks/TASKS.md*)",
+      "Bash(rm *tasks/TASKS_DONE.md*)",
+      "Bash(git rm *tasks/STATE.md*)",
+      "Bash(git rm *tasks/TASKS.md*)",
+      "Bash(git rm *tasks/TASKS_DONE.md*)",
+      "PowerShell(Remove-Item *tasks*STATE.md*)",
+      "PowerShell(Remove-Item *tasks*TASKS.md*)",
+      "PowerShell(Remove-Item *tasks*TASKS_DONE.md*)"
     ],
     "deny": [
       "Read(tasks/archive/**)",
