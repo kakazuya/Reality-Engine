@@ -817,15 +817,24 @@ value_text, unit_text, scale, value, method and a 300-character page snippet). W
   (pilot20: 14,376 + 200 pages, ~$0.48), served by `pilot3_semantic` (`plugins/reality-data/server/lookups_semantic.py`,
   README). Re-ask results: `reports/2026-11-09_t154_p20_semantic_reask.xlsx`; Shivam: semantic stays, alongside the table store.
 
-### O24. v2 label dictionary: one metric per printed label, per sector family (T-133, 9 Nov 2026)
+### O24. v2 label dictionary: one metric per printed label, per sector family (T-133, v2 9 Nov 2026)
 
 `reality_engine/v2/label_map.py` reads every `table_cell.row_label` of a v2 cells store and the `kpi_series` of the
-pilot3 stores, normalises the label, and proposes one metric per `(label, sector_family)`: an exact `kpi_series` seed
-first, then the family lexicon phrases, then the common financial lines shared by every family as `'*'` (including
-`results_lines.yaml` and the standard statement/note lines in the module). Segment sections (`Segment Assets`,
-`Segment Results`, `JVs`), OCI sections and percentage-of-revenue parents override the child, and the company family
-comes from the same `company_industry` -> `sector_map.yaml` path as `make_profile`. It writes `label_map.db`
-(`label_map` + `metric_def`, every row `status='queue'` for Opus), `review_<family>.csv` and `coverage.txt`:
+pilot3 stores, normalises the label, and proposes one metric per `(label, sector_family)` by **whole-label**
+matching (T-133 v2): the normalised label must equal a lexicon phrase whole, so "Operating Free Cash Flow
+(EBITDA - Capex)" is `operating_free_cash_flow[basis=ebitda]`, not `capex`; a `kpi_series` seed is used only when
+its own label passes that rule and the lexicon does not disagree; qualifiers (pre/post tax, incl/excl lease or
+acceptances, a definition bracket's basis) go into `dimension`; a segment/port/subsidiary member row is
+`from_header` with the member as its dimension; the cell's `section > label` parent separates the lines printed in
+two statements ("interest received" in the cash flow vs the P&L, "owners of the parent" attribution vs equity);
+junk and heading labels are `status='rejected'`. `unit_kind` is the kind of unit (`money`, `pct`, `x`, `count`,
+`days`) — a money figure's currency comes from the cell, never the map. The same rule drives the `table_v1` path of
+`reality_engine/pilot3/kpi.py` (`row_label_hits`/`label_text`), so the next extraction stores the corrected metric.
+The company family comes from the same `company_industry` -> `sector_map.yaml` path as `make_profile`. It writes
+`label_map.db` (`label_map` + `metric_def`, every row `status='queue'` or `'rejected'`), `review_<family>.csv`
+(now with `rule`, `confidence` and `status`), `coverage.txt`, `rejected_seeds.csv`, `seed_changes.csv` (the
+read-only dry run of the new rule over the `table_v1` `kpi_series` rows) and `sample_seed31.csv` (200 proposed
+rows, seed 31, for Opus):
 
 ```bash
 python -m reality_engine.v2.label_map --cells-dir <v2 store dir> \
@@ -835,10 +844,13 @@ python -m reality_engine.v2.label_map --cells-dir <v2 store dir> \
 `metric_def` says whether a metric is a `flow` (the only additive kind), `stock`, `ratio`, `per_share`, `count` or
 `price`, so the period engine sums only flows. The sector map now carries 27 families and all 63 company rows of
 `pilot10`, `p20`, `u8` and `q12` have one; 56 of the 191 basic industries stay `unknown` and no pilot company uses
-any of them. The first pilot20 build proposed 3,081 mappings and 220 metric definitions; 78.3% of the 61,488
-numeric table rows map and 98.3% are mapped or queued (the only gap is 1,066 rows with no label). Tests:
-`python -m pytest -q reality_engine/tests/test_v2_label_map.py` (8). The measured table, the normalisation and
-proposal rules and the queued-label classes are in `docs/V2_SCHEMA_CONTRACT.md` section 11.
+any of them. The v2 build on `D:/RealityEngine/v2/p20_r4` and the two `kpi_series` stores proposed 1,494 mappings
+and 219 metric definitions; 69.1% of the 59,326 numeric table rows map to a metric (v1's 79.3% counted the
+substring matches this version rejects) and 856 rows are rejected as junk/heading; the seed dry run changes 2,416
+of 13,090 `table_v1` rows in 53 pairs, chiefly `capex` -> `operating_free_cash_flow` (1,466). Tests:
+`python -m pytest -q reality_engine/tests/test_v2_label_map.py` (18) and the `row_label_hits` cases in
+`reality_engine/tests/test_pilot3_kpi.py`. The measured table, every rule and the output columns are in
+`docs/V2_SCHEMA_CONTRACT.md` section 11.
 
 ## 3. Ticket tracker
 

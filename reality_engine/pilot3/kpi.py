@@ -537,6 +537,93 @@ def label_matches(entries: list[Entry], company: str, text: str):
     return res
 
 
+# T-133 v2 rule 1 (a row label's metric is its own whole label, never a phrase inside it).  The bracket a label
+# carries is a unit, a definition ("(EBITDA - Capex)") or a qualifier ("(excluding L1)"):
+_LABEL_UNIT_WORDS = {"rs", "inr", "us", "usd", "eur", "gbp", "mn", "million", "millions", "bn", "billion",
+                     "billions", "cr", "crore", "crores", "lakh", "lakhs", "thousand", "000", "000s", "nos",
+                     "no", "num", "kt", "mt", "kg", "mw", "gw", "tonne", "tonnes", "ton", "units", "per", "cent",
+                     "x", "times", "bps", "days", "and", "of", "as", "a", "in", "on", "at", "to"}
+_LABEL_DEFINITION_WORDS = {"capex", "ebitda", "ebitdaal", "ebit", "pat", "pbt", "net", "cash", "debt", "revenue",
+                           "sales", "profit", "loss", "income", "expenses", "expense", "cost"}
+_LABEL_QUALIFIER_WORDS = {"including", "excluding", "before", "after", "pre", "post", "tax", "adjusted",
+                          "normalised", "normalized", "annualised", "annualized", "net", "of", "lease",
+                          "obligations", "liabilities", "acceptances", "l1", "the", "above", "below", "and",
+                          "exceptional", "items", "one", "time", "reported", "stated", "continuing",
+                          "discontinued", "operations"}
+# A qualifier suffix starts with one of these: "and liabilities" after "total equity" is another metric's line,
+# not a qualifier of total equity.
+_QUALIFIER_HEADS = {"including", "excluding", "before", "after", "pre", "post", "net", "adjusted", "normalised",
+                    "normalized", "annualised", "annualized"}
+_LABEL_BRACKET = re.compile(r"\(([^()]*)\)|\[([^\[\]]*)\]")
+
+
+def label_text(raw_label: str) -> str:
+    """The label's own words for the row-metric rule: unit and definition brackets dropped, qualifiers kept.
+
+    "Operating Free Cash Flow (EBITDA - Capex)" is the operating free cash flow line (the bracket says how it is
+    built), while "Order book (excluding L1)" keeps its qualifier.
+    """
+    def repl(m) -> str:
+        inner = (m.group(1) or m.group(2) or "").strip()
+        if not inner:
+            return " "
+        words = {w.lower() for w in re.findall(r"[A-Za-z0-9']+", inner)}
+        if words and (words - {w for w in words if w.isdigit()}) <= _LABEL_UNIT_WORDS:
+            return " "
+        if words & {"including", "excluding", "before", "after", "adjusted", "normalised", "normalized"} \
+                or re.match(r"^(?:pre|post)[- ]tax\b", inner, re.I):
+            return " " + inner + " "
+        if words & _LABEL_DEFINITION_WORDS or re.search(r"[-+/=]", inner):
+            return " "
+        return m.group(0)
+
+    text = " ".join(re.sub(r"[₹$]", " ", _LABEL_BRACKET.sub(repl, str(raw_label or ""))).split())
+    tokens = text.split()
+    while tokens:
+        key = re.sub(r"[^a-z0-9=+\-]", "", tokens[-1].lower())
+        if not key or len(key) == 1 or key in _LABEL_UNIT_WORDS or key.isdigit() \
+                or re.fullmatch(r"[a-z](?:[=+\-][a-z0-9]+)*", key):
+            tokens.pop()      # a unit tail or a column formula: "EBITDA Rs Mn", "Net debt C=A+B", "(A) + (B)"
+            continue
+        break
+    return " ".join(tokens)
+
+
+def _qualifier_only(suffix: str) -> bool:
+    """True when only qualifier words follow the matched phrase ("net debt excluding lease obligations")."""
+    words = re.findall(r"[a-z0-9]+", suffix.lower())
+    if not words or words == ["s"]:          # nothing, or a plural mark on the matched word ("Revenues")
+        return True
+    return words[0] in _QUALIFIER_HEADS and set(words) <= _LABEL_QUALIFIER_WORDS
+
+
+def row_label_hits(entries: list[Entry], company: str, raw_label: str):
+    """[(entry, match)] whose label is the row's whole label (rule 1), longest match first, one per metric.
+
+    A block heading on the same band ("Leverage Net Debt") is not the row's metric: only a phrase that ends the
+    label, or is followed by qualifiers alone, owns the value.  "Sales and marketing expenses" is therefore no
+    revenue line, and "Operating Free Cash Flow (EBITDA - Capex)" is not the capex line.
+    """
+    text = label_text(raw_label)
+    if not text or re.search(r"\d{1,3}(?:,\d{3})+|\b\d{3,}\b|\d\s*%", text):
+        return []       # a row label that states a value ("45,000 160% EBITDA") is not a metric name
+    sector = _sector_of(company)
+    found = []
+    for e in entries:
+        if e.companies and company not in e.companies:
+            continue
+        if e.sectors and (sector not in e.sectors if sector is not None else not e.no_profile):
+            continue
+        best = None
+        for rx in e.labels:
+            for m in rx.finditer(text):
+                if _qualifier_only(text[m.end():]) and (best is None or len(m.group(0)) > len(best.group(0))):
+                    best = m
+        if best is not None and not (e.neg and e.neg.search(_neg_context(text, best))):
+            found.append((e, best))
+    return sorted(found, key=lambda item: -len(item[1].group(0)))
+
+
 # "Rs. 1,436.81", "No. 5", "Ltd. ..." are abbreviations, not sentence ends.  A bound cut at one of them hid the
 # rest of its own sentence (an investee's "as considered in the Statement" sat after the "Rs. " of the figure).
 _ABBREV = (r"(?<!\bRs)(?<!\brs)(?<!\bNo)(?<!\bno)(?<!\bNos)(?<!\bDr)(?<!\bMr)(?<!\bMrs)(?<!\bMs)"
@@ -2420,16 +2507,6 @@ def _kind_candidate(m, e: Entry) -> bool:
     return True
 
 
-def _own_row_hits(hit) -> list:
-    """The metric hits a table row label ends with.  A block heading on the same band joins the row string
-    ("Leverage" over the "Net Debt" row gives "Leverage Net Debt"), so a hit that another label starts after is a
-    heading, not the row's metric.  Overlapping aliases of one label ("Revenues" matches both "^revenue" and
-    "^revenues?") keep every hit: only a label that starts at or after this match's end is a later label."""
-    if len(hit) < 2:
-        return hit
-    return [(e, m) for e, m in hit if not any(o.start() >= m.end() for _, o in hit)] or hit
-
-
 def _page_dim_hint(text: str, dims: list[Dim], company: str) -> str | None:
     """The one segment a page caption names as the table's owner ("Hindalco (India) Business : Key Financials").
     The caption may sit below the table in the text layer, so the row's own heading band cannot see it."""
@@ -2591,10 +2668,10 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
         if len(re.findall(r"[A-Za-z]{3,}", label)) >= 1 and len(label) < 90:
             nth = label_seen.get(label, 0)
             label_seen[label] = nth + 1
-            hit = label_matches(entries, company, label)
+            hit = row_label_hits(entries, company, label)
             if not hit:
+                _bump(stats, "label_not_owned")
                 continue
-            hit = _own_row_hits(hit)
             usd_here = usd_above(i)
             hi = pick_header(r.y, [x for x, _ in nums])
             if hi is None:
@@ -2658,7 +2735,7 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                         continue
                     if strict and e.kind == "count" and unit == "count" and "." in m.group("num"):
                         continue      # a store/employee count is never printed "2,137.00": that is a crore amount
-                    if strict and not _quote_has_metric(text, q, label[lm.start():lm.end()]):
+                    if strict and not _quote_has_metric(text, q, lm.group(0)):
                         continue      # the matched label belongs to a neighbouring block on the same text row
                     if strict and e.metric == "revenue" and label.strip().lower() == "revenue":
                         qi = text.find(q)

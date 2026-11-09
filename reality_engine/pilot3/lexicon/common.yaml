@@ -1,16 +1,23 @@
 # Cross-company balance sheet / working-capital KPI family.
 family: common
 entries:
-  - {metric: net_debt, kind: money, unit: inr_cr, labels: ["net debt(?! to)", "net debt including acceptances", "net debt excluding acceptances", "net (cash|debt)\\b(?!\\s+flows?)"], neg: "to (ebitda|equity)|ratio|/|cash flow|activities|used in|generated from|cash (generated|used|flow)|financing|investing|operating activities|net cash (inflow|outflow)s?|cash (inflow|outflow)s?|acquired on acquisition|acquisition is"}
+  - {metric: net_debt, kind: money, unit: inr_cr, labels: ["net debt(?! to)", "net (cash|debt)\\b(?!\\s+flows?)"], neg: "to (ebitda|equity)|ratio|/|cash flow|activities|used in|generated from|cash (generated|used|flow)|financing|investing|operating activities|net cash (inflow|outflow)s?|cash (inflow|outflow)s?|acquired on acquisition|acquisition is"}
   - {metric: gross_debt, kind: money, unit: inr_cr, labels: ["gross debt"], neg: "ratio"}
   - {metric: net_debt_to_equity, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*equity", "net d/e"]}
   - {metric: debt_to_equity, kind: ratio, unit: x, labels: ["debt[- ]equity( ratio)?"], neg: "net\\s+debt"}
   - {metric: net_debt_to_ebitda, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*(l?t?m? ?)ebitda", "net debt/ebitda", "leverage"]}
   - {metric: working_capital_days, kind: days, unit: days, labels: ["(net )?working capital( days| cycle)?", "\\bnwc\\b"], neg: "%\\s*of|changes|before|generated|ratio|to working capital"}
   - {metric: capex, kind: money, unit: inr_cr, labels: ["\\bcapex\\b", "capital expenditure"], neg: "plan|guidance|%|per cent|per (store|shop|branch|unit|square|sq|tonne|ton|vehicle|mw|kw)"}
-  - {metric: revenue, kind: money, unit: inr_cr, labels: ["^revenue", "total revenue", "revenue from operations", "^sales\\b", "segment revenue"], neg: "growth|%|intersegment|inter segment|lntersegment|less:|volume|volumes|sales? of (the )?(investments?|fixed assets|assets|securities|shares|properties)|sales promotion|revenue from sale of|from sale of goods|revenue from services?"}
-  - {metric: pat, kind: money, unit: inr_cr, labels: ["profit after tax", "^pat\\b"], neg: "margin|%"}
+  - {metric: revenue, kind: money, unit: inr_cr, labels: ["^revenue", "total revenue", "revenue from operations?", "revenue from contracts? with customers", "^sales\\b", "segment revenue"], neg: "growth|%|intersegment|inter segment|lntersegment|less:|volume|volumes|sales? of (the )?(investments?|fixed assets|assets|securities|shares|properties)|sales promotion|revenue from sale of|from sale of goods|revenue from services?"}
+  - {metric: pat, kind: money, unit: inr_cr, labels: ["profit after tax(?:ation)?", "^pat\\b"], neg: "margin|%"}
   - {metric: employees, kind: count, unit: count, labels: ["employee headcount", "headcount"]}
   - {metric: ebitda_margin_pct, kind: pct, unit: pct, labels: ["ebitda margins?", "ebitda as a % of (to|turnover|sales|revenue)", "ebitda as a %"], neg: "guidance|expansion|contraction|bps|range|cagr|growth"}
   - {metric: ebitda, kind: money, unit: inr_cr, labels: ["(business )?segment ebitda", "^ebitda\\b", "\\bebitda\\b"], neg: "margin|per|/|%\\s*of|multiple|adjusted"}
   - {metric: roe_pct, kind: pct, unit: pct, labels: ["return on (average )?equity", "\\broe\\b"], neg: "growth|bps"}
+  # T-133 v2: a label that names its own line whole (rule 1).  Before, "Operating Free Cash Flow (EBITDA - Capex)"
+  # was stored as capex and "Sales and marketing expenses" as revenue because the metric word was a substring.
+  - {metric: operating_free_cash_flow, kind: money, unit: inr_cr, labels: ["operating free cash flow"], neg: "margin|growth|%"}
+  - {metric: sales_and_marketing_expense, kind: money, unit: inr_cr, labels: ["sales and marketing expenses?", "selling and marketing expenses?"], neg: "growth|%"}
+  - {metric: total_equity_and_liabilities, kind: money, unit: inr_cr, labels: ["total equity (and|&) liabilities", "total equity liabilities"]}
+  - {metric: interest_coverage, kind: ratio, unit: x, labels: ["interest coverage ratio"]}
+  - {metric: revenue_per_tower_per_month, kind: price, unit: inr, labels: ["revenue per tow(?:er|ers) per month", "revenue per tow ers per month"], neg: "growth|%|sharing"}

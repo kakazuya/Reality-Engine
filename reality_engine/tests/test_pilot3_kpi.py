@@ -746,13 +746,14 @@ def test_results_table_reads_the_first_quarter_and_drops_rows_with_extra_values(
                                (540, "Year"), (556, "ended")])
         cols = _row_words(30, [(290, "30.09.2026"), (351, "30.06.2026"), (398, "30.09.2025"), (445, "30.09.2026"),
                                (492, "30.09.2025"), (568, "31.03.2026")])
-        full = _row_words(40, [(60, "Total"), (83, "revenue"), (185, "operations"), (290, "24,546.37"),
-                               (351, "23,165.45"), (398, "19,990.42"), (445, "47,711.82"), (492, "39,363.09"),
-                               (568, "81,982.38")])
-        short = _row_words(50, [(60, "Total"), (83, "revenue"), (185, "operations"), (290, "20,890.66"),
-                                (351, "19,802.43"), (398, "17,002.86")])
-        extra = _row_words(60, [(60, "Total"), (83, "revenue"), (185, "operations"), (290, "24,546.37"),
-                                (320, "1,234.56"), (351, "23,165.45"), (398, "19,990.42"), (445, "47,711.82"),
+        full = _row_words(40, [(60, "Total"), (83, "revenue"), (120, "from"), (185, "operations"),
+                               (290, "24,546.37"), (351, "23,165.45"), (398, "19,990.42"), (445, "47,711.82"),
+                               (492, "39,363.09"), (568, "81,982.38")])
+        short = _row_words(50, [(60, "Total"), (83, "revenue"), (120, "from"), (185, "operations"),
+                                (290, "20,890.66"), (351, "19,802.43"), (398, "17,002.86")])
+        extra = _row_words(60, [(60, "Total"), (83, "revenue"), (120, "from"), (185, "operations"),
+                                (290, "24,546.37"), (320, "1,234.56"), (351, "23,165.45"), (398, "19,990.42"),
+                                (445, "47,711.82"),
                                 (492, "39,363.09"), (568, "81,982.38")])
         words = _words([head, cols, full, short, extra])
         text = ("Quarter ended Half year ended Year ended\nParticulars 30.09.2026 30.06.2026 30.09.2025 30.09.2026 "
@@ -1060,19 +1061,33 @@ def test_a_segment_tables_columns_do_not_give_a_company_total():
 def test_a_block_heading_does_not_own_the_next_label_value():
     """HINDALCO's debt page puts "Debt & Leverage" on the same band as the "Net Debt" row, so the row label reads
     "Leverage Net Debt": the amount belongs to net_debt, not to the leverage ratio.  Overlapping aliases of one word
-    ("Revenues" matches both "^revenue" and "^revenues?") keep every hit."""
-    ratio = next(e for e in ENTRIES if e.metric == "net_debt_to_ebitda")
-    debt = next(e for e in ENTRIES if e.metric == "net_debt")
-    revenue = next(e for e in ENTRIES if e.metric == "revenue")
-    revenue_usd = next(e for e in ENTRIES if e.metric == "revenue_usd")
-    assert [e.metric for e, _ in kpi._own_row_hits([(ratio, kpi._rx("leverage").search("Leverage Net Debt")),
-                                                    (debt, kpi._rx("net debt").search("Leverage Net Debt"))])] \
-        == ["net_debt"]
-    assert {e.metric for e, _ in kpi._own_row_hits([
-        (revenue, kpi._rx("^revenue").search("Revenues")),
-        (revenue_usd, kpi._rx("^revenues?\\b").search("Revenues"))])} == {"revenue", "revenue_usd"}
-    assert [e.metric for e, _ in kpi._own_row_hits(kpi.label_matches(ENTRIES, "HINDALCO", "Leverage Net Debt"))] \
-        == ["net_debt"]
+    ("Revenues" matches both "^revenue" and "^revenues?") keep every hit (T-133 rule 1)."""
+    assert [e.metric for e, _ in kpi.row_label_hits(ENTRIES, "HINDALCO", "Leverage Net Debt")] == ["net_debt"]
+    assert [e.metric for e, _ in kpi.row_label_hits(ENTRIES, "HINDALCO", "Revenues")] == ["revenue"]
+
+
+def test_a_row_label_maps_only_when_it_is_the_whole_label():
+    """T-133 v2: "Operating Free Cash Flow (EBITDA - Capex)" is the operating free cash flow line, not capex, and
+    "Sales and marketing expenses" is not a revenue line."""
+    assert [e.metric for e, _ in kpi.row_label_hits(ENTRIES, "BHARTIARTL", "EBITDA")] == ["ebitda"]
+    assert [e.metric for e, _ in kpi.row_label_hits(ENTRIES, "BHARTIARTL", "EBITDA Rs Mn")] == ["ebitda"]
+    assert [e.metric for e, _ in kpi.row_label_hits(
+        ENTRIES, "BHARTIARTL", "Operating Free Cash Flow (EBITDA - Capex)")] == ["operating_free_cash_flow"]
+    assert [e.metric for e, _ in kpi.row_label_hits(
+        ENTRIES, "BHARTIARTL", "Operating Free Cash Flow (EBITDAaL - Capex)")] == ["operating_free_cash_flow"]
+    assert [e.metric for e, _ in kpi.row_label_hits(
+        ENTRIES, "BHARTIARTL", "Sales and marketing expenses")] == ["sales_and_marketing_expense"]
+    assert [e.metric for e, _ in kpi.row_label_hits(
+        ENTRIES, "BHARTIARTL", "Revenue per tow ers per month")] == ["revenue_per_tower_per_month"]
+    assert [e.metric for e, _ in kpi.row_label_hits(
+        ENTRIES, "BHARTIARTL", "Net debt excluding lease obligations")] == ["net_debt"]
+    assert [e.metric for e, _ in kpi.row_label_hits(
+        ENTRIES, "BHARTIARTL", "Total equity and liabilities")] == ["total_equity_and_liabilities"]
+    assert [e.metric for e, _ in kpi.row_label_hits(
+        ENTRIES, "BHARTIARTL", "Interest coverage ratio")] == ["interest_coverage"]
+    assert kpi.row_label_hits(ENTRIES, "BHARTIARTL", "Sales and marketing expenses growth") == []
+    assert kpi.row_label_hits(ENTRIES, "COALINDIA", "45,000 160% EBITDA") == []
+    assert kpi.row_label_hits(ENTRIES, "HAVELLS", "FY23 - 9MFY23") == []
 
 
 def test_a_direction_word_is_a_change_not_a_level_and_a_glued_unit_is_a_value():
