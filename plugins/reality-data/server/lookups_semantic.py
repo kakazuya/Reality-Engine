@@ -66,6 +66,17 @@ def _vectors(model: str) -> tuple[np.ndarray, dict[tuple[str, int], int]]:
         return matrix[:n], rows
 
 
+def _registry_key(name: str) -> str:
+    """The Windows user variable when the process env lacks it: the dsh sandbox strips keys from a worker's
+    environment (9 Nov re-ask A lost semantic on its first 11 answers).  Read only, never printed."""
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as handle:
+            return str(winreg.QueryValueEx(handle, name)[0] or "")
+    except (ImportError, OSError):
+        return ""
+
+
 def _query_vector(text: str, model: str) -> tuple[np.ndarray, bool]:
     """(unit vector, paid?) — from the hash cache, else one DeepInfra call when the paid gate is open."""
     base = embed_dir()
@@ -87,7 +98,7 @@ def _query_vector(text: str, model: str) -> tuple[np.ndarray, bool]:
     if os.environ.get(PAID_EMBED_FLAG, "").strip() != "1":
         raise DataError("paid_embed_off", f"semantic search needs a paid query embedding ({PAID_EMBED_FLAG}=1 is "
                         "not set); use pilot3_search instead")
-    key = os.environ.get("DEEPINFRA_API_KEY", "")
+    key = os.environ.get("DEEPINFRA_API_KEY", "") or _registry_key("DEEPINFRA_API_KEY")
     if not key:
         raise DataError("no_key", "DEEPINFRA_API_KEY is not in this machine's environment; use pilot3_search")
     body = json.dumps({"model": MODELS[model], "input": [text], "input_type": "query",
