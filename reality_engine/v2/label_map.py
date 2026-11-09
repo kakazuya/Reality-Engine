@@ -1,4 +1,4 @@
-"""T-133 label dictionary (v3): one metric per printed row label, per sector family.
+"""T-133 label dictionary (v4): one metric per printed row label, per sector family.
 
 A printed row label is normalised (:func:`normalise_label`) and then must match a lexicon phrase **whole**: a label
 that carries a metric phrase plus other words is not that metric.  v1 matched any substring, so
@@ -6,25 +6,33 @@ that carries a metric phrase plus other words is not that metric.  v1 matched an
 ``revenue`` and every "non financial assets" line became ``total_financial_assets``.  The rules, in order:
 
 1. whole-label match against a lexicon phrase (``phrases``) or a ``labels`` regex that must consume the entire
-   label; unit tails (``rs``, ``us``, ``mn``, ``nos``, ``000 s``) and footnote digits are stripped first.  OCR
-   spellings already seen are repaired before matching (``OCR_FIXES``: liabi6ties/liabiities -> liabilities,
-   seoment -> segment, lncome -> income, ...), and a garbled label (digit/letter swap, or no dictionary hit for
-   >=40% of its tokens) is ``status='rejected'`` with ``rule='garbled'``, never proposed;
+   label; unit tails and footnote digits are stripped first.  OCR spellings already seen are repaired before
+   matching (``OCR_FIXES``), a known section name is repaired by edit distance after its spaces are removed
+   ("segment liabilties", "segment l iabifties") instead of a spelling table, and a section printed without its
+   ``>`` separator ("Segment Results a) Switchgears") still owns the member after it.  A garbled label is
+   ``status='rejected'`` with ``rule='garbled'``, never proposed;
 2. a ``kpi_series`` seed is used only when its own label passes rule 1 and the lexicon does not disagree;
 3. qualifiers (pre/post tax, including/excluding lease obligations or acceptances, ``(EBITDA - Capex)`` basis,
-   ``adjusted``) leave the matched phrase and become ``dimension`` entries.  A member row is ``from_header``
-   only with cell evidence (its own ``measure=`` headers, a segment/container parent, or a known entity name);
-   a statement line is never a member;
-4. ``unit_kind`` comes from ``metric_def`` when set, otherwise from the majority unit of the label's cells
+   ``adjusted``) leave the matched phrase and become ``dimension`` entries, and an "excluding access charges and
+   licence fee" list becomes ``excl=...`` (the exclusion changes the meaning).  A member row is ``from_header``
+   only with cell evidence; a parent that names a measure ("Revenue in", "Segment Sales", "Segment Results",
+   "Profit from segments") owns its child as a member, while a leaf that is itself a common metric (CWIP,
+   basic/diluted EPS) keeps its own line.  One key that carries two meanings (an "items not to be reclassified"
+   OCR section holding both profit and OCI attributable) queues with no metric.  A bare ratio row ("as a % of NR")
+   is a ratio of the row above, so the base line is its dimension (``base=contribution``, ``base=a_and_p_spend``,
+   ``base=other_sga``);
+4. ``unit_kind`` comes from ``metric_def`` when set, otherwise from the majority unit of the label's numeric cells
    (``%`` -> ``pct``, ``count`` -> ``count``, ``kt``/``tonne`` -> ``tonnes``, ``x``/``days``, currency -> ``money``);
-   a money figure's currency comes from the cell, never this map, and an unknown unit is NULL;
-5. statement context (the cell's ``section > label`` parent) separates the rows that exist in two statements:
-   "interest received" in the cash flow is ``interest_received``, on the P&L it is ``interest_income``; "owners of
-   the parent" under an attributable heading is the attribution line, not ``owners_equity``.  A parent's metric is
-   only applied to a child that names no metric of its own: a leaf that carries a metric phrase of a different
-   kind keeps its own line, and a generated ``_pct`` name comes from the leaf's mapped base metric, never from a
-   slug of the raw text;
-6. junk labels (digits/period tokens only, a digit glued to a word, a value token) are ``status='rejected'``.
+   a money figure's currency comes from the cell, never this map, an unknown unit is NULL, and ``from_header`` is
+   always NULL because the header decides;
+5. statement context (the cell's ``section > label`` parent) separates the rows that exist in two statements;
+   a parent's metric is only applied to a child that names no metric of its own, and a generated ``_pct`` name
+   comes from the leaf's mapped base metric, never from a slug of the raw text;
+6. junk labels and heading fragments ("Particulars", "Less", "total") are ``status='rejected'`` with
+   ``rule='heading'``; junk labels carry their own reason.
+
+``revenue_from_operations`` is a synonym of :data:`METRIC_SYNONYMS`'s canonical ``revenue``; "cash generated from
+operations" (pre-tax) and "net cash from operating activities" (post-tax) are different metrics.
 
 ``from_header`` (a member row whose measure sits in the column header) is proposed only with cell evidence: its
 own column headers carry ``measure=``, it sits under a ``segment``/container parent, or it is a known entity name
@@ -45,14 +53,14 @@ CLI::
 writes ``<out>/label_map.db`` (``label_map`` + ``metric_def``, the v2 DDL), ``<out>/review_<family>.csv``
 (one per family, sorted by frequency, with ``rule`` / ``confidence`` / ``status``), ``<out>/coverage.txt``
 (mapped share of the numeric ``table_cell`` rows per family and overall, then the 50 most frequent unmapped
-labels), ``<out>/rejected_seeds.csv`` (kpi seeds a failing rule 1 throws out), ``<out>/seed_changes.csv``
-(the kpi_series dry run: rows whose metric the new rule changes, by pair) and ``<out>/sample_seed37.csv``
-(200 proposed rows, seed 37, for Opus).
+labels), ``<out>/rejected_seeds.csv``, ``<out>/seed_changes.csv`` and ``<out>/sample_seed41.csv``
+(200 proposed rows, seed 41, for Opus).
 """
 from __future__ import annotations
 
 import argparse
 import csv
+import difflib
 import random
 import re
 import sqlite3
@@ -75,8 +83,8 @@ QUEUE = "queue"
 REJECTED = "rejected"
 FROM_HEADER = "from_header"
 SAMPLE_SIZE = 200
-SAMPLE_SEED = 37
-SAMPLE_FILE = "sample_seed37.csv"
+SAMPLE_SEED = 41
+SAMPLE_FILE = "sample_seed41.csv"
 
 # A child label this generic carries no metric by itself: keep its parent ('Segment Revenue > Others').
 GENERIC = {"others", "other", "total", "revenue", "sales", "income", "expenses", "expenditure",
@@ -112,13 +120,25 @@ SECTION_OVERRIDES: tuple[tuple[str, str], ...] = (
     ("segment liabilities", "segment_liabilities"),
     ("segment results", "segment_results"),
     ("segment revenue", "segment_revenue"),
+    ("segment sales", "segment_revenue"),
+    ("revenue in", "segment_revenue"),
     ("segment ebitda", "segment_ebitda"),
+    ("profit loss from segments", "segment_results"),
+    ("profit from segments", "segment_results"),
     ("items that will not be reclassified", "other_comprehensive_income"),
+    ("items not to be reclassified", "other_comprehensive_income"),
     ("items that will be reclassified", "other_comprehensive_income"),
     ("other comprehensive income oci", "other_comprehensive_income"),
     ("profit for the period attributable to", "profit_attributable"),
     ("total comprehensive income for the period attributable to", "total_comprehensive_income_attributable"),
 )
+
+# Rule 1 (v4): known section names.  An OCR or spacing variant is repaired by edit distance after removing spaces
+# ("segment liabilties", "segment l iabifties"), never by adding the spelling to OCR_FIXES.
+SECTION_VOCAB: tuple[str, ...] = tuple(dict.fromkeys(
+    [needle for needle, _metric in SECTION_OVERRIDES]
+    + ["segment ebitda", "segment revenue", "segment sales", "segment results", "segment assets",
+       "segment liabilities", "profit from segments", "profit loss from segments", "revenue in"]))
 
 # A parent that is a container of entities, not a measure: its children are members, so the metric is in the
 # column header ("JVs > AICTPL (CT-3), JV with MSC" prints that JV's revenue/EBITDA/PAT under a measure header).
@@ -128,6 +148,11 @@ CONTAINER_PARENTS = ("jvs", "joint venture", "joint ventures", "subsidiaries", "
 # A parent that states the value is a percentage of another line: the metric is the child's metric with `_pct`.
 PERCENT_PARENTS = ("as a of total revenues", "as a of revenue", "as a of total income", "as a of sales")
 
+# Rule 3 (v4): a row that is only a ratio ("as a % of NR") is a ratio of the row above it, so the base line has to
+# be named in its dimension; without it the same key carries three meanings.
+ROW_RATIO = re.compile(r"^as a (?:of )?(?:nr|net revenue|net revenues|revenue|revenues|sales|total revenues?|"
+                       r"total income)$")
+
 PCT_SPECIAL = {"ebitda": "ebitda_margin_pct", "ebit": "ebit_margin", "pat": "pat_margin_pct", "pbt": "pbt_margin"}
 
 # Rule 6: a row label that states a value or only a period is not a metric.
@@ -135,7 +160,12 @@ PERIOD_TOKEN = re.compile(r"^(?:ytd)?(?:9m|6m)?f?y?\d{2,4}$|^[qh][1-4]?(?:fy\d{2
 
 # Rule 6: a heading row carries a subtotal, not a metric; the leaf lines under it carry the metrics.
 HEADINGS = {"financial assets", "financial liabilities", "non financial assets", "non financial liabilities",
-            "assets", "liabilities", "equity and liabilities", "consolidated", "standalone"}
+            "assets", "liabilities", "equity and liabilities", "consolidated", "standalone",
+            "particulars", "particulars of", "less", "otal"}
+
+# Rule 5 (v4): a leaf that names an EPS line (basic/diluted, "not annualised") is eps_basic/eps_diluted, never a
+# member of the section it happens to sit under.
+EPS_CONTEXT = re.compile(r"earnings per (?:equity )?share|\beps\b")
 
 # Words that make a label look like a measure of its own, so a table of rows without an exact match is not read
 # as a table of member names (rule 3's member rule).
@@ -161,11 +191,13 @@ OCR_FIXES = {
     "seoment": "segment", "lncome": "income", "mobife": "mobile", "selfvices": "services",
     "rnfrastrnctme": "infrastructure", "rmancial": "financial", "borrov": "borrowings", "ings": "",
     "adiustment": "adjustment", "adjusune": "adjustment", "redassified": "reclassified",
-    "relatmg": "relating", "wdl": "will", "tlirouuh": "through", "orofit": "profit", "ocl": "oci",
+    "reclasslfled": "reclassified", "relatmg": "relating", "wdl": "will", "tlirouuh": "through",
+    "orofit": "profit", "ocl": "oci",
 }
 
 # Rule 1 (v3): phrase-level OCR repairs, applied after the token fixes ("pro fit" is the printed "profit").
-OCR_PHRASES = (("pro fit", "profit"), ("un allocable", "unallocable"), ("un allocated", "unallocated"))
+OCR_PHRASES = (("pro fit", "profit"), ("un allocable", "unallocable"), ("un allocated", "unallocated"),
+               ("compreh ensive", "comprehensive"), ("incom e", "income"))
 
 # Rule 1 (v3): a token whose letters are swapped with a digit is OCR damage ("0ther", "expe1"), never a label.
 DIGIT_SWAP = re.compile(r"^(?:\d+[a-z]{2,}|[a-z]{2,}\d+[a-z]{2,})$")
@@ -311,7 +343,8 @@ EXTRA_COMMON: dict[str, tuple[str, ...]] = {
     "operating_ebitda": ("operating ebitda",),
     "revenue": ("net revenues", "net revenue", "total revenues", "total revenue", "net sales",
                 "sale of products services", "sales of products services", "business income", "net revenue nr",
-                "revenue from operations", "revenue from operation", "revenue from contracts with customers",
+                "revenue from operations", "revenue from operation", "total revenue from operations",
+                "net revenue from operations", "revenue from contracts with customers",
                 "revenue from contract with customers"),
     "other_income": ("other operating revenue", "other operating income", "non operating revenue",
                      "non operating income"),
@@ -320,7 +353,7 @@ EXTRA_COMMON: dict[str, tuple[str, ...]] = {
             "profit after tax", "profit after taxation"),
     "pat_before_exceptional": ("net income before exceptional items", "profit after tax before exceptional items",
                                "net profit before exceptional items"),
-    "pbt": ("profit before tax", "pbt"),
+    "pbt": ("profit before tax", "pbt", "net profit before tax", "profit loss before tax"),
     "pbt_before_exceptional": ("profit before exceptional item and tax", "profit before exceptional items and tax",
                                "profit before exceptional item and tax after exceptional"),
     "tax": ("tax", "total tax"),
@@ -384,7 +417,7 @@ EXTRA_COMMON: dict[str, tuple[str, ...]] = {
     "property_plant_equipment": ("property plant and equipment", "property plant equipment"),
     "goodwill": ("goodwill",),
     "right_of_use_assets": ("right of use assets", "right of use asset"),
-    "capital_work_in_progress": ("capital work in progress",),
+    "capital_work_in_progress": ("capital work in progress", "cwip"),
     "intangible_assets": ("intangible assets", "other intangible assets"),
     "intangible_assets_under_development": ("intangible assets under development",),
     "loans": ("loans", "loan"),
@@ -403,7 +436,12 @@ EXTRA_COMMON: dict[str, tuple[str, ...]] = {
     "operating_free_cash_flow": ("operating free cash flow",),
     "free_cash_flow_before_capex": ("free cash flow before capex", "adjusted free cash flow before capex"),
     "cash_profit_from_operations": ("cash profit from operations",),
-    "cash_generated_from_operations": ("cash generated from operations", "net cash generated from operating activities"),
+    # T-133 v4: "cash generated from operations" is the pre-tax line; "net cash ... operating activities" is the
+    # post-tax cash-flow statement line and must not share its id.
+    "cash_generated_from_operations": ("cash generated from operations",),
+    "cash_flow_from_operations": ("net cash from operating activities", "net cash generated from operating activities",
+                                  "net cash flows from operating activities",
+                                  "net cash flow from operating activities"),
     "cash_flow_from_financing": ("net cash used in financing activities",
                                  "cash flows from financing activities"),
     "cash_flow_from_investing": ("net cash used in investing activities", "cash flow from investing activities"),
@@ -413,6 +451,7 @@ EXTRA_COMMON: dict[str, tuple[str, ...]] = {
     "eliminations": ("eliminations others", "eliminations per others"),
     "inter_segment_revenue": ("less inter segment revenue",),
     "segment_results": ("segment results", "total segment results"),
+    "segment_revenue": ("segment revenue", "total segment revenue"),
     "segment_assets": ("segment assets", "total segment assets"),
     "segment_liabilities": ("segment liabilities", "total segment liabilities"),
     "unallocable_income": ("unallocable income",),
@@ -468,6 +507,29 @@ QUALIFIERS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\bexcluding acceptances\b"), "excl_acceptances"),
     (re.compile(r"\bincluding acceptances\b"), "incl_acceptances"),
 )
+
+# Rule 4 (v4): one canonical metric id per concept; the v2 split kept two ids for the same P&L line.
+METRIC_SYNONYMS = {"revenue_from_operations": "revenue"}
+
+# Rule 3 (v4): a ratio row ("as a % of NR") is a ratio of the line above it, so its base goes in dimension.
+BASE_ALIASES = {"contribution": "contribution", "a and sp": "a_and_p_spend",
+                "less advertising and sales promotion": "a_and_p_spend",
+                "other sg and a": "other_sga", "less other sg and a": "other_sga",
+                "selling general and adminstration expense": "sg_and_a_expense",
+                "selling general and administrative expenses": "sg_and_a_expense"}
+
+# Rule 3 (v4): "excluding access charges and licence fee" changes the meaning, so the exclusions are a dimension of
+# the matched base metric, never dropped into an unqualified id.
+EXCLUSION = re.compile(r"\b(?:excluding|excludes|excl)\b")
+EXCLUSION_TERMS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"\baccess(?: charges?)?\b"), "access_charges"),
+    (re.compile(r"\bcost of goods sold\b|\bcost of sold\b|\bof goods sold\b|\bgoods sold\b|\bcogs\b"), "cogs"),
+    (re.compile(r"\blicen[cs]e fees?\b"), "licence_fee"),
+    (re.compile(r"\bcharity and donations?\b"), "charity_and_donation"),
+)
+
+# Rule 3 (v4): a member name that also names a company-level row keeps its parent in the dimension.
+AMBIGUOUS_MEMBERS = {"unallocated", "unallocated corporate", "others", "other"}
 
 
 # ------------------------------------------------------------------------------------------------ normalisation
@@ -581,6 +643,71 @@ def split_qualifiers(text: str) -> tuple[str, list[str]]:
     return " ".join(text.split()), found
 
 
+def split_exclusions(text: str) -> tuple[str, list[str]]:
+    """``(base phrase, dimensions)`` with an "excluding access charges and licence fee" qualifier moved to ``excl=``.
+
+    The exclusion list changes the meaning of the base line ("operating expenses excluding access charges" is not
+    total operating expenses), so it stays in ``dimension`` and never becomes an unqualified metric id.
+    """
+    match = EXCLUSION.search(text)
+    if not match:
+        return text, []
+    remaining = text[match.end():].strip()
+    names: list[str] = []
+    for pattern, name in EXCLUSION_TERMS:
+        if pattern.search(remaining):
+            names.append(name)
+            remaining = pattern.sub(" ", remaining)
+    remaining = re.sub(r"\b(?:and|or|of|the|on|for|to)\b", " ", remaining)
+    leftover = [word for word in remaining.split() if word]
+    if leftover:
+        names.append("_".join(leftover))
+    base = " ".join(text[:match.start()].split())
+    return base, ([f"excl={','.join(dict.fromkeys(names))}"] if names else [])
+
+
+def _edit_distance(left: str, right: str, limit: int = 3) -> int:
+    """Levenshtein distance, abandoned above ``limit`` (the sections are short strings)."""
+    if abs(len(left) - len(right)) > limit:
+        return limit + 1
+    previous = list(range(len(right) + 1))
+    for row, first in enumerate(left, 1):
+        current = [row]
+        for column, second in enumerate(right, 1):
+            current.append(min(previous[column] + 1, current[column - 1] + 1,
+                               previous[column - 1] + (first != second)))
+        if min(current) > limit:
+            return limit + 1
+        previous = current
+    return previous[-1]
+
+
+def repair_section(text: str) -> str:
+    """Rule 1 (v4): the known section name this OCR/spacing variant means, else ``text``.
+
+    Spaces are removed first, so "segment l iabifties" compares as "segmentliabifties"; a variant within two edits
+    of a known section ("segment liabilties") is that section.  A longer OCR run is repaired only when it keeps 82%
+    of the section's characters; that keeps unrelated parents ("asia", "mobile services south asia") untouched.
+    """
+    if not text:
+        return text
+    key = text.replace(" ", "")
+    best, best_distance = "", 99
+    for name in SECTION_VOCAB:
+        distance = _edit_distance(key, name.replace(" ", ""), 2)
+        if distance < best_distance:
+            best, best_distance = name, distance
+    if best and best_distance <= 2:
+        return best
+    if best and difflib.SequenceMatcher(None, key, best.replace(" ", "")).ratio() >= 0.82:
+        return best
+    return text
+
+
+def _slug(text: str) -> str:
+    return "_".join(re.findall(r"[a-z0-9]+", text.lower()))
+
+
 def junk_reason(label_norm: str) -> str:
     """Rule 6: why a normalised label cannot be a metric, or ``''``."""
     tokens = label_norm.split()
@@ -679,6 +806,11 @@ def parse_label(raw: str | None, parent: str | None = None) -> ParsedLabel:
     if stripped and stripped != base_norm:
         dimension = "; ".join(part for part in [base_dimension, "; ".join(qualifier_dims)] if part)
         candidates.append((stripped, dimension))
+    excluded, exclusion_dims = split_exclusions(stripped or base_norm)
+    if exclusion_dims and excluded and excluded != (stripped or base_norm):
+        dimension = "; ".join(part for part in
+                              [base_dimension, "; ".join(qualifier_dims), "; ".join(exclusion_dims)] if part)
+        candidates.append((excluded, dimension))
     return ParsedLabel(label_norm, tuple(candidates), junk_reason(label_norm))
 
 
@@ -796,14 +928,17 @@ def propose_metric(label_norm: str, family: str, seeds: Mapping[tuple[str, str],
     entry = family_entry if family_entry is not None else common_entry
     seeded = seeds.get((label_norm, family))
     if seeded and (entry is None or entry.metric == seeded):
-        return Proposal(seeded, "seed", family, dimension=dimension, rule="2-seed",
+        metric = METRIC_SYNONYMS.get(seeded, seeded)
+        return Proposal(metric, "seed", family, dimension=dimension, rule="2-seed",
                         confidence="exact" if not dimension else "synonym")
     if family_entry is not None:
-        return Proposal(family_entry.metric, f"lexicon:{family_entry.source}", family, family_entry, dimension,
+        metric = METRIC_SYNONYMS.get(family_entry.metric, family_entry.metric)
+        return Proposal(metric, f"lexicon:{family_entry.source}", family, family_entry, dimension,
                         "1-match" if not dimension else "3-qualifier",
                         "exact" if not dimension else "synonym")
     if common_entry is not None:
-        return Proposal(common_entry.metric, f"common:{common_entry.source}", ALL_FAMILIES, common_entry, dimension,
+        metric = METRIC_SYNONYMS.get(common_entry.metric, common_entry.metric)
+        return Proposal(metric, f"common:{common_entry.source}", ALL_FAMILIES, common_entry, dimension,
                         "1-match" if not dimension else "3-qualifier",
                         "exact" if not dimension else "synonym")
     return None
@@ -1057,7 +1192,9 @@ def _parent_label(raw: str | None, plain: str) -> tuple[str, str]:
     parts = [part for part in str(raw or "").split(" > ") if part.strip()]
     if len(parts) < 2:
         return "", plain
-    parent = " > ".join(part for part in (normalise_label(piece) for piece in parts[:-1]) if part)
+    parent = " > ".join(repaired for repaired in
+                        (repair_section(part) for part in (normalise_label(piece) for piece in parts[:-1]) if part)
+                        if repaired)
     if not parent:
         return "", plain
     full = plain if plain.startswith(parent + " > ") else f"{parent} > {plain}"
@@ -1065,6 +1202,7 @@ def _parent_label(raw: str | None, plain: str) -> tuple[str, str]:
 
 
 def _section_metric(parent: str) -> str:
+    parent = repair_section(parent) if parent and " > " not in parent else parent
     for needle, metric in SECTION_OVERRIDES:
         if needle in parent:
             return metric
@@ -1167,17 +1305,57 @@ def _container_parent(parent: str) -> bool:
     return bool(parent) and parent in CONTAINER_PARENTS
 
 
+def _leading_section(text: str) -> tuple[str, str]:
+    """Rule 1 (v4): a section name printed without its ``>`` separator, and the member leaf after it.
+
+    "Segment Results a) Switchgears" normalises to "segment results a switchgears"; the known section is the
+    measure and the remainder is its member, so the measure is not lost to a ``from_header`` member row.
+    """
+    tokens = text.split()
+    for name in sorted(SECTION_VOCAB, key=lambda item: (-len(item.split()), item)):
+        header = name.split()
+        if len(tokens) > len(header) and tokens[:len(header)] == header:
+            rest = " ".join(tokens[len(header):])
+            rest = re.sub(r"^(?:[a-z]|[ivx]{1,3})\)?\s+", "", rest).strip()
+            if rest:
+                return name, rest
+    return "", text
+
+
+def _eps_metric(plain: str, parent: str) -> str:
+    """Rule 5 (v4): "basic"/"diluted" with "not annualised" or an EPS parent is the per-share line, not a member."""
+    tokens = plain.split()
+    if not tokens or tokens[0] not in {"basic", "diluted"}:
+        return ""
+    context = (len(tokens) > 1 and ("eps" in tokens or "annualised" in tokens)) \
+        or bool(EPS_CONTEXT.search(parent)) or parent == "share"
+    if not context:
+        return ""
+    return "eps_basic" if tokens[0] == "basic" else "eps_diluted"
+
+
+def _ambiguous_context(plain: str, parent: str) -> bool:
+    """Rule 3 (v4): one OCI-items section key can hold both profit and OCI attributable lines -> queue, no metric.
+
+    The "items not to be reclassified" section is the OCR/mis-parented form (the reviewer's seed-37 row 1): the same
+    label carried both the profit attributable and the OCI attributable line, so no single metric is right.
+    """
+    return (plain in {"owners of the parent", "owners of the parent company"}
+            and bool(re.search(r"\bitems not to be reclassif", parent)))
+
+
 def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
                  family_entries: Mapping[str, Sequence[Entry]], common: Sequence[Entry],
                  has_measure: bool = False, has_metric_row: bool = False, peers: int = 0,
-                 is_section_parent: bool = False, entity_name: bool = False
+                 is_section_parent: bool = False, entity_name: bool = False, previous: str = ""
                  ) -> tuple[str, Proposal | None, str]:
     """``(key_label, proposal, rejection)`` for one cell label — rules 1-7 for a row, no database.
 
     ``has_measure``: one of this row's column headers carries ``measure=``; ``has_metric_row``: another row of the
     table maps to a metric; ``peers``: the table's other unmapped labels (rule 3's member evidence);
     ``is_section_parent``: the label is also a section parent in the same table (a line, not a member);
-    ``entity_name``: the label is a name in the file's ``entity``/``entity_alias`` table.
+    ``entity_name``: the label is a name in the file's ``entity``/``entity_alias`` table; ``previous``: the raw
+    label of the row above in the same table (v4: the base of a bare "as a % of NR" ratio row).
     """
     parent, child = _split_label(raw)
     parsed = parse_label(child, parent)
@@ -1185,11 +1363,24 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
     if not plain:
         return "", None, ""
     parent_norm, full = _parent_label(raw, plain)
+    if not parent_norm:
+        section, member = _leading_section(plain)
+        if section:
+            parent_norm = repair_section(section)
+            plain = member
+            parsed = parse_label(member, parent_norm)
+            full = f"{parent_norm} > {plain}"
     container_child = _container_parent(parent_norm) and plain not in GENERIC
     if parsed.junk:
         return plain, None, parsed.junk
+    if _ambiguous_context(plain, parent_norm):
+        return full, None, ""
+    if not parent_norm and plain in SECTION_VOCAB and _section_metric(plain):
+        metric = _section_metric(plain)          # the label itself is a section measure ("segment revenue")
+        return plain, Proposal(metric, "section:label", family, _section_entry(metric, "section"), "",
+                               "5-context", "section"), ""
     direct = _candidate_proposal(plain, family, seeds, family_entries, common, parsed)
-    if not container_child and direct is None:
+    if not container_child and direct is None and not _section_metric(parent_norm):
         garbled = garbled_reason(plain, raw)
         if garbled:
             return plain, None, garbled
@@ -1199,27 +1390,48 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
         if proposal is not None:
             key_label = full
     if proposal is None and any(needle in parent_norm for needle in PERCENT_PARENTS):
+        base_plain, exclusion_dims = split_exclusions(plain)
         base = (_candidate_proposal(plain, family, seeds, family_entries, common, parsed)
-                or _prefix_proposal(plain, family, family_entries, common))
+                or _candidate_proposal(base_plain, family, seeds, family_entries, common,
+                                       parse_label(base_plain))
+                or _prefix_proposal(base_plain, family, family_entries, common))
         if base is not None:
             metric = _pct_metric(base.metric)
-            proposal = Proposal(metric, "section:pct", family, _section_entry(metric, "section:pct"), "",
+            dimension = base.dimension or "; ".join(exclusion_dims)
+            proposal = Proposal(metric, "section:pct", family, _section_entry(metric, "section:pct"), dimension,
                                 "5-context", "section")
             key_label = full
     if proposal is None:
         proposal = direct
+    if proposal is not None and previous and ROW_RATIO.match(plain):
+        previous_plain = normalise_label(_split_label(previous)[1] or previous)
+        if previous_plain and previous_plain != plain:
+            base_id = BASE_ALIASES.get(previous_plain) or _slug(previous_plain)
+            proposal = Proposal(proposal.metric, "section:ratio", family, proposal.entry, f"base={base_id}",
+                                "5-context", "section")
+            key_label = f"{previous_plain} > {plain}"
+    if proposal is None:
+        eps = _eps_metric(plain, parent_norm)
+        if eps:
+            proposal = Proposal(eps, "context:eps", family, None, "", "5-context", "section")
+            key_label = full
     if proposal is None:
         section_metric = _section_metric(parent_norm)
         if section_metric and not _section_conflict(plain, section_metric, family, family_entries, common):
+            member = plain.rsplit(" > ", 1)[-1]
             proposal = Proposal(section_metric, "section", family, _section_entry(section_metric, "section"),
-                                "" if plain in GENERIC else plain, "5-context", "section")
+                                "" if member in GENERIC else member, "5-context", "section")
             key_label = full
     if proposal is None and not is_section_parent:
         if entity_name or container_child or _member_like(plain, has_measure, has_metric_row, peers):
-            proposal = Proposal(FROM_HEADER, "member", family, None, plain, "3-member", "section")
+            dimension = plain
+            if parent_norm and not _container_parent(parent_norm) and plain in AMBIGUOUS_MEMBERS:
+                dimension = f"{parent_norm} > {plain}"
+            proposal = Proposal(FROM_HEADER, "member", family, None, dimension, "3-member", "section")
             key_label = full
     if proposal is None and plain in HEADINGS:
         rejection = "heading"
+        key_label = full
     return key_label, proposal, rejection
 
 
@@ -1248,14 +1460,16 @@ def read_cells(cells_dir: Path, taxonomy: sqlite3.Connection, table: dict, isin_
                     entity_names |= {normalise_label(str(name)) for (name,) in _rows(con, sql) if name}
                 except sqlite3.DatabaseError:      # a file built before T-149 has no entity table
                     continue
-            tables: dict[tuple[str, object, int], list[tuple[str, str, str | None, object]]] = defaultdict(list)
-            for doc_key, page, table_no, raw_label, col_header, unit_text, value in _rows(
-                    con, "SELECT doc_key, page, table_no, row_label, col_header, unit_text, value "
-                         "FROM table_cell"):
-                tables[(str(doc_key), page, int(table_no or 0))].append((raw_label, col_header, unit_text, value))
+            tables: dict[tuple[str, object, int], list[tuple[str, str, str | None, object, object]]] = defaultdict(list)
+            for doc_key, page, table_no, row_no, raw_label, col_header, unit_text, value in _rows(
+                    con, "SELECT doc_key, page, table_no, row_no, row_label, col_header, unit_text, value "
+                         "FROM table_cell ORDER BY doc_key, page, table_no, row_no, col_no"):
+                tables[(str(doc_key), page, int(table_no or 0))].append(
+                    (raw_label, col_header, unit_text, value, row_no))
             for (_doc, _page, _no), rows in tables.items():
-                labels = {str(raw or "") for raw, _header, _unit, _value in rows}
-                measure_rows = {str(raw or "") for raw, header, _unit, _value in rows
+                labels = {str(raw or "") for raw, _header, _unit, _value, _row in rows}
+                ordered = list(dict.fromkeys(str(raw or "") for raw, _header, _unit, _value, _row in rows))
+                measure_rows = {str(raw or "") for raw, header, _unit, _value, _row in rows
                                 if "measure=" in str(header or "").lower()}
                 parent_labels = {normalise_label(parent) for parent in
                                  (_split_label(raw)[0] for raw in labels) if parent}
@@ -1269,15 +1483,39 @@ def read_cells(cells_dir: Path, taxonomy: sqlite3.Connection, table: dict, isin_
                         exact[raw] = proposal
                 peers = len([raw for raw in labels if raw not in exact])
                 decisions: dict[str, tuple[str, Proposal | None, str]] = {}
-                for raw in labels:
+                previous = ""
+                for raw in ordered:
                     item = parse_label(*reversed(_split_label(raw)))
                     decisions[raw] = decide_label(
                         raw, family, seeds, family_entries, common, raw in measure_rows, bool(exact), peers,
                         item.label_norm in parent_labels,
-                        item.label_norm in entity_names)
-                for raw, _header, unit_text, value in rows:
+                        item.label_norm in entity_names, previous=previous)
+                    previous = raw
+                meanings: dict[str, set[str]] = defaultdict(set)
+                for key_label, proposal, _rejection in decisions.values():
+                    if proposal is not None:
+                        meanings[key_label].add(proposal.metric)
+                for raw, (key_label, proposal, _rejection) in list(decisions.items()):
+                    if proposal is not None and len(meanings.get(key_label, ())) > 1:
+                        decisions[raw] = (key_label, None, "")     # one key, two meanings: queue it
+                row_decisions: dict[object, tuple[str, Proposal | None, str]] = {}
+                previous_row = ""
+                for raw, _header, _unit, _value, row_no in rows:
+                    if row_no in row_decisions:
+                        continue
+                    text = str(raw or "")
+                    item = parse_label(*reversed(_split_label(text)))
+                    if item.label_norm and previous_row and ROW_RATIO.match(item.label_norm):
+                        row_decisions[row_no] = decide_label(
+                            text, family, seeds, family_entries, common, text in measure_rows, bool(exact), peers,
+                            item.label_norm in parent_labels, item.label_norm in entity_names,
+                            previous=previous_row)
+                    else:
+                        row_decisions[row_no] = decisions[text]
+                    previous_row = text
+                for raw, _header, unit_text, value, row_no in rows:
                     cells += 1
-                    key_label, proposal, rejection = decisions[raw]
+                    key_label, proposal, rejection = row_decisions[row_no]
                     if not key_label:
                         if value is not None:
                             blank_numeric[family] += 1
@@ -1286,12 +1524,12 @@ def read_cells(cells_dir: Path, taxonomy: sqlite3.Connection, table: dict, isin_
                         rejected[(key_label, family)] = rejection
                     if proposal is not None:
                         forced[(key_label, proposal.family)] = proposal
-                        if unit_text:
+                        if unit_text and value is not None:
                             meta = metric_meta.setdefault(proposal.metric, MetricMeta())
                             meta.units[str(unit_text)] += 1
                             meta.sources.add(proposal.reason)
                     _observe(observations, (key_label, family), raw, symbol)
-                    if unit_text:
+                    if unit_text and value is not None:
                         observations[(key_label, family)].units[str(unit_text)] += 1
                     if value is not None:
                         numeric[(key_label, family)] += 1
@@ -1348,10 +1586,13 @@ def _queue_row(label_norm: str, obs: Observation, proposal: Proposal | None, uni
     metric = proposal.metric if proposal is not None else ""
     status = proposal.status if proposal is not None else (REJECTED if rejection else "")
     rule = (proposal.rule if proposal is not None else
-            ("garbled" if rejection == "garbled" else ("6-reject" if rejection else "")))
-    unit_kind = unit_by_metric.get(metric, "") if metric else ""
-    if metric and not unit_kind and obs.units:
-        unit_kind = majority_unit_kind(obs.units)
+            ("garbled" if rejection == "garbled" else
+             ("heading" if rejection == "heading" else ("6-reject" if rejection else ""))))
+    unit_kind = ""
+    if metric and metric != FROM_HEADER:
+        unit_kind = unit_by_metric.get(metric, "")
+        if not unit_kind and obs.units:
+            unit_kind = majority_unit_kind(obs.units)
     return {"label_norm": label_norm,
             "raw_labels": "; ".join(raw for raw, _ in obs.raws.most_common(3)),
             "frequency": obs.count,
@@ -1391,7 +1632,8 @@ def write_outputs(out_dir: Path, proposals: Mapping[tuple[str, str], Proposal],
         conn.execute("DELETE FROM label_map")
         conn.execute("DELETE FROM metric_def")
         rows = [(label_norm, family, proposal.metric, proposal.dimension,
-                 label_unit(label_norm, family, proposal.metric), proposal.status)
+                 "" if proposal.metric == FROM_HEADER else label_unit(label_norm, family, proposal.metric),
+                 proposal.status)
                 for (label_norm, family), proposal in sorted(proposals.items())]
         rows += [(label_norm, family, "", "", "", REJECTED)
                  for (label_norm, family) in sorted(rejected)
@@ -1470,7 +1712,7 @@ def write_outputs(out_dir: Path, proposals: Mapping[tuple[str, str], Proposal],
     rejected_rows = sum(count for (label_norm, family), count in numeric.items()
                         if (label_norm, family) in rejected)
     lines = [
-        "label map coverage (T-133 v3)",
+        "label map coverage (T-133 v4)",
         f"numeric table_cell rows: {total_numeric}",
         f"mapped to a proposed metric: {total_mapped} ({100 * total_mapped / total_numeric:.1f}%)"
         if total_numeric else "mapped to a proposed metric: 0",
@@ -1559,6 +1801,10 @@ def run(cells_dir: Path, kpi_dbs: Sequence[Path], out_dir: Path,
             rejected_labels.setdefault((label_norm, family), item.junk)
             continue
         proposal = _candidate_proposal(label_norm, family, seeds, family_entries, common, item)
+        if label_norm in SECTION_VOCAB and _section_metric(label_norm):
+            metric = _section_metric(label_norm)      # the label itself is a section measure
+            proposal = Proposal(metric, "section:label", family, _section_entry(metric, "section"), "",
+                                "5-context", "section")
         if proposal is None:
             garbled = garbled_reason(label_norm)
             if garbled:

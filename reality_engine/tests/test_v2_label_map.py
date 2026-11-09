@@ -1,9 +1,9 @@
-"""T-133 label dictionary v3: OCR repair, whole-label matching, qualifiers, context, members, units, garbage.
+"""T-133 label dictionary v4: OCR sections, measure parents, dimensions, units, canonical ids, headings.
 
     python -m pytest -q reality_engine/tests/test_v2_label_map.py
 
-Every line of the T-133 v3 evidence list (the v2 wrong and keep lists) has its own case below, so a regression in
-any rule is a failing test, not a new review round.
+Every line of the T-133 v2/v3 evidence lists and the v4 review list has its own case below, so a regression in any
+rule is a failing test, not a new review round.
 """
 from __future__ import annotations
 
@@ -23,9 +23,11 @@ STORES = (Path("D:/RealityEngine/pilot10/pilot10.db"), Path("D:/RealityEngine/p2
           Path("D:/RealityEngine/u8/u8.db"), Path("D:/RealityEngine/q12/q12.db"))
 
 
-def decide(raw, family="telecom", seeds=None, *, has_measure=False, has_metric_row=False, peers=0):
+def decide(raw, family="telecom", seeds=None, *, has_measure=False, has_metric_row=False, peers=0,
+           previous=""):
     return label_map.decide_label(raw, family, seeds or {}, FAMILY_ENTRIES, COMMON,
-                                  has_measure=has_measure, has_metric_row=has_metric_row, peers=peers)
+                                  has_measure=has_measure, has_metric_row=has_metric_row, peers=peers,
+                                  previous=previous)
 
 
 def metric(raw, family="telecom", *, has_measure=False, has_metric_row=False, peers=0):
@@ -266,9 +268,9 @@ def test_review_queues_carry_rule_confidence_status_and_the_seed37_sample():
     assert rows[0]["confidence"] == "exact" and rows[0]["status"] == "queue"
     assert rows[0]["unit_kind"] == "money"
     rejected_row = next(row for row in rows if row["label_norm"] == "financial assets")
-    assert rejected_row["status"] == "rejected" and rejected_row["rule"] == "6-reject"
-    sample = out / "sample_seed37.csv"
-    assert sample.is_file()
+    assert rejected_row["status"] == "rejected" and rejected_row["rule"] == "heading"
+    sample = out / label_map.SAMPLE_FILE
+    assert sample.is_file() and sample.name == "sample_seed41.csv"
     with sample.open(encoding="utf-8") as handle:
         sampled = list(csv.DictReader(handle))
     assert 0 < len(sampled) <= label_map.SAMPLE_SIZE and "family" in sampled[0]
@@ -409,3 +411,104 @@ def test_v3_unit_kind_from_metric_def_or_the_cells():
     proposal = need("Interest Coverage ratio (times)")
     defs = {row["metric"]: row for row in label_map._metric_defs([proposal], {})}
     assert defs["interest_coverage"]["unit_kind"] == "x"
+
+
+def test_v4_exclusion_qualifier_stays_in_the_dimension():
+    """Blocker (seed-31 row 31): the exclusion list is part of the meaning and is never dropped."""
+    blocker = metric("As a % of Total revenues > operating expenses excluding access of goods sold and license fee")
+    assert blocker is not None and blocker.metric == "operating_expenses_pct"
+    assert blocker.dimension == "excl=access_charges,cogs,licence_fee"
+    for raw in ("As a % of Total revenues > operating expenses excl access charges cost of sold and license fee "
+                "and charity and donation",
+                "As a % of Total revenues > operating expenses excl access charges cost of sold license fee and "
+                "charity and donation"):
+        proposal = metric(raw)
+        assert proposal is not None and proposal.metric == "operating_expenses_pct", raw
+        assert proposal.dimension.startswith("excl=access_charges,cogs,licence_fee"), (raw, proposal.dimension)
+    plain = metric("Operating expenses")
+    assert plain is not None and plain.metric == "operating_expenses" and plain.dimension == ""
+
+
+def test_v4_a_measure_parent_owns_the_member_and_ocr_sections_are_repaired():
+    cases = (
+        ("revenue in > logistics", "ports_logistics", "segment_revenue", "logistics"),
+        ("revenue in > marine", "ports_logistics", "segment_revenue", "marine"),
+        ("segment sales > c and b", "paints_chemicals", "segment_revenue", "c and b"),
+        ("profit loss from segments before finance costs exceptional item and > corporate unallocated",
+         "telecom", "segment_results", "corporate unallocated"),
+        ("segment results a switchgears", "consumer_durables", "segment_results", "switchgears"),
+        ("segment liabilties > mobile services africa", "telecom", "segment_liabilities", "mobile services africa"),
+        ("segment l iabifties > airtel business", "telecom", "segment_liabilities", "airtel business"),
+    )
+    for raw, family, wanted, dimension in cases:
+        proposal = metric(raw, family, has_metric_row=True, peers=4)
+        assert proposal is not None and proposal.metric == wanted, raw
+        assert proposal.dimension == dimension, (raw, proposal.dimension)
+    assert label_map.repair_section("segment l iabifties") == "segment liabilities"
+    assert label_map.repair_section("asia") == "asia"
+
+
+def test_v4_a_common_metric_leaf_wins_over_its_section_and_from_header():
+    for raw, family, wanted in (
+        ("cwip", "ports_logistics", "capital_work_in_progress"),
+        ("cwip rs cr", "ports_logistics", "capital_work_in_progress"),
+        ("share > diluted not annualised", "telecom", "eps_diluted"),
+        ("earnings per equity share face value off 1 each not annualised > basic f", "telecom", "eps_basic"),
+        ("total comprehensive income for the period attributable to > diluted not annualised",
+         "telecom", "eps_diluted"),
+    ):
+        proposal = metric(raw, family, has_metric_row=True, peers=4)
+        assert proposal is not None and proposal.metric == wanted, (raw, proposal)
+
+
+def test_v4_from_header_has_no_unit_kind_and_a_currency_line_keeps_money():
+    member = label_map.decide_label("Hazira", "ports_logistics", {}, FAMILY_ENTRIES, COMMON, has_measure=True)[1]
+    assert member is not None and member.metric == label_map.FROM_HEADER
+    row = label_map._queue_row("hazira", label_map.Observation(
+        4, Counter({"Hazira": 4}), {"ADANIPORTS"}, Counter({"Rs crore": 3, "%": 1})), member,
+        {"from_header": "money"})
+    assert row["unit_kind"] == ""
+    currency = need("Unallocable Expenses")
+    assert currency.metric == "unallocable_expenses"
+    assert label_map._queue_row("unallocable expenses", label_map.Observation(
+        3, Counter({"Unallocable Expenses": 3}), {"HAVELLS"}, Counter({"Rs crore": 3})), currency,
+        {"unallocable_expenses": "money"})["unit_kind"] == "money"
+
+
+def test_v4_heading_fragments_are_rejected_not_members():
+    for raw in ("particulars", "Less", "otal"):
+        _key, proposal, rejection = decide(raw, "telecom", has_metric_row=True, peers=6)
+        assert proposal is None and rejection == "heading", (raw, proposal, rejection)
+    rejection_row = label_map._queue_row("particulars", label_map.Observation(
+        2, Counter({"Particulars": 2}), {"X"}), None, {}, "heading")
+    assert rejection_row["status"] == "rejected" and rejection_row["rule"] == "heading"
+
+
+def test_v4_one_key_with_two_meanings_is_queued_with_no_metric():
+    key, proposal, rejection = decide("items not to be reclasslfled to profit or loss > owners of the parent")
+    assert proposal is None and not rejection
+    assert key == "items not to be reclassified to profit or loss > owners of the parent"
+
+
+def test_v4_a_ratio_of_the_previous_line_carries_its_base():
+    for previous, base in (("Contribution", "contribution"), ("A&SP", "a_and_p_spend"),
+                           ("Less: Other SG&A", "other_sga")):
+        key, proposal, _rejection = decide("as a % of NR", "consumer_durables", previous=previous)
+        assert proposal is not None and proposal.metric == "pct_of_net_revenue", previous
+        assert proposal.dimension == f"base={base}", (previous, proposal.dimension)
+        assert key.endswith(" > as a of nr") and key != "as a of nr"
+
+
+def test_v4_wrong_metrics_are_one_canonical_id():
+    assert need("net profit before tax").metric == "pbt"
+    assert need("cash generated from operations").metric == "cash_generated_from_operations"
+    for raw in ("net cash from operating activities", "net cash generated from operating activities"):
+        assert need(raw).metric == "cash_flow_from_operations", raw
+    assert need("total revenue from operations").metric == "revenue"
+    assert need("revenue from operations").metric == "revenue"
+    assert need("segment revenue").metric == "segment_revenue"
+    total = need("segment results > total", "consumer_durables")
+    assert total.metric == "segment_results" and total.dimension == ""
+    asia = metric("Asia > Unallocated", "telecom", has_metric_row=True)
+    assert asia is not None and asia.metric == label_map.FROM_HEADER
+    assert asia.dimension == "asia > unallocated"
