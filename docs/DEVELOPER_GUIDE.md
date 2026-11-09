@@ -811,8 +811,9 @@ checkout's `tasks/TASKS.md` is refused as `ticket_unknown`, and the brief then c
 The start gate is `plugins/dsh-worker/server/core.py` (the refusal and the row attached to the
 brief) with its field check in `plugins/dsh-worker/server/context_pack.py`, and the tool description
 in `plugins/dsh-worker/server/plugin_server.py` states the same field.
-`reality_engine/scripts/context_guard.py` is the PostToolUse hook that asks Claude to write the
-wrap-up at 400,000 tokens and again at 440,000 (session limit 450,000), once each per session.
+`reality_engine/scripts/context_guard.py` (the PostToolUse hook that asked Claude to wrap up at 400,000 tokens)
+is unregistered since 9 Nov 2026: Shivam removed the session-length limit; sessions keep done/pending notes in
+`tasks/STATE.md` instead.
 
 ## 4. Rule and chain-of-command ledger (T-042)
 

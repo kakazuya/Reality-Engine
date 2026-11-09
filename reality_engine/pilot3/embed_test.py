@@ -319,7 +319,17 @@ class VectorCache:
     def save(self) -> None:
         self.dir.mkdir(parents=True, exist_ok=True)
         if self.matrix is not None:
-            np.save(self.path, self.matrix)
+            # temp file + replace, retried: a reader holding the old file open for a moment must not crash the run
+            temp_npy = self.path.with_name(self.path.stem + ".tmp.npy")
+            np.save(temp_npy, self.matrix)
+            for attempt in range(10):
+                try:
+                    temp_npy.replace(self.path)
+                    break
+                except OSError:
+                    if attempt == 9:
+                        raise
+                    time.sleep(1 + attempt)
         index = [{"doc_key": key, "page": page, "kind": self.kind} for key, page in self.keys]
         temp = self.index_path.with_suffix(".json.tmp")
         temp.write_text(json.dumps(index), encoding="utf-8")

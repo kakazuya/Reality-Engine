@@ -56,7 +56,9 @@ def _vectors(model: str) -> tuple[np.ndarray, dict[tuple[str, int], int]]:
         held = _cache.get(model)
         if held and held["stamp"] == stamp:
             return held["matrix"], held["rows"]
-        matrix = np.load(npy, allow_pickle=False, mmap_mode="r")
+        # read into memory, never memory-mapped: Windows cannot replace a mapped file, and an embed run that is
+        # still adding pages rewrites it (9 Nov: a mapped read crashed the p20 run's save at 9,920 pages)
+        matrix = np.load(npy, allow_pickle=False)
         keys = json.loads(index.read_text(encoding="utf-8"))
         n = min(len(matrix), len(keys))
         rows = {(str(k["doc_key"]), int(k["page"])): i for i, k in enumerate(keys[:n])}

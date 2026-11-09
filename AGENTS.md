@@ -32,7 +32,7 @@
 
 Open tickets are in `tasks/TASKS.md`; the session card is `python -m reality_engine.scripts.task_board card` and the rows `python -m reality_engine.scripts.task_board list`. A commit on `main` names its ticket (`T-<digits>`) or says `No-ticket: <reason>`, a worker start needs `Ticket:` or `No-ticket:`, and `done` runs the row's accept command.
 
-Finish one step per session. Commit it and write the next action into `tasks/STATE.md`. Write the wrap-up at 400k tokens; the session limit is 450k. Scripts print summaries; details go in files.
+Finish one step per session. Commit it and write the next action into `tasks/STATE.md`. Sessions have no context limit (9 Nov); keep `tasks/STATE.md` notes current with what is done and what is pending. Scripts print summaries; details go in files.
 
 Reference, only when needed: `docs/PILOT3_BLUEPRINT.md` (pilot schema, methods, results; read before schema or extractor work), `docs/DB_BUILD_GUIDELINES.md` (build rules), `docs/DEVELOPER_GUIDE.md`, `docs/RAW_DATA_FAMILIES.md`, `machines/README.md`, `tasks/DATA_INVENTORY.md`.
 

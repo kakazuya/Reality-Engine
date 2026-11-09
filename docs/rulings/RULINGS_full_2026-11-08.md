@@ -15,7 +15,7 @@ When Shivam rules or corrects something, write it here before the next action. `
 - No docs, no merge; doc sweep and data inventory at session close, for Wolf, Eagle and every worker. [check: doc_gate]
 - Start files stay short: `STATE.md` 40 lines, `AGENTS.md` 150, this file 40. [check: doc_gate]
 - Every worker start names `permission`; the supervisor renews MSI leases. [check: start gate]
-- Sessions run to 450k context. At 400k Claude writes the wrap-up: commit, next action in `tasks/STATE.md`, doc sweep. Replaces the older 150k, 100k and 40-45% session limits (Shivam, 1 Nov).
+- No session-length or context limit and no forced session reset (Shivam, 9 Nov; replaces the 1 Nov 450k/400k rule and the older 150k, 100k and 40-45% limits). The reporting rule stays: Claude keeps notes as it works, what is done and what is pending, in `tasks/STATE.md`, so a compaction or a new session loses nothing.
 - HP work runs headless: nothing on its screen, no focus loss. [check: test_hp_headless]
 - Page-reading subagents: batches of 8 pages, never past 100k context, medium effort for Haiku.
 - Chain of command until Fri 6 Nov 23:30 IST (Shivam, 3 Nov): Opus manages, dsh workers do all the work, every headless session included; no Haiku runs, except a Haiku subagent Opus sends to check a dsh report it suspects is bogus. Opus scouts and writes code for design, tests, review and scaffolds (one working example), about 20-25%; workers write the rest (Shivam 6 Nov, standing, replaces "does not write the code"). In DeepSeek peak hours the code workers are Sonnet 5.5 at medium effort (`tasks/night_loop/sonnet_worker.py`; Shivam, 4 Nov), same 2-worker limit. After loop 3, no more Opus loop sessions: the main session runs 2 dsh workers at once directly (Shivam, 4 Nov).
