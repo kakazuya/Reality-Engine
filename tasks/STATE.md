@@ -13,7 +13,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 ## Next action
 1. After 09:30: `hp_worker start <D2 brief> --pilot-db D:/RealityEngine/q12/q12.db --permission danger-full-access --account 1`; watch; copy `.tmp/*_answers.jsonl` to `q12/answers/D/`; number_check; grade; merge grades with `D/grades_D_part1.json`; rerun `answer_run_report --name t124_q12`.
-2. SHP fetch done -> rebuild shp stores for u8/q12/p20 (store copy recipe), re-ask the SHP partlies.
+2. SHP XBRL fetched (186 files, 0 failed) and `stores.build_shp` rerun on the three D: stores: all 29 companies now have 9-14 XBRL quarters + pledge rows. Re-ask the SHP partlies (u8 6, q12 ANANDRATHI-r069, IDEA-r113).
 3. Fix build window: valuation_daily/price from 2019 in pilot3 profile for new sets.
 4. Answer-brief lines now in D2 brief (each quarter's deck; source known by as_of; no cross-company figures; TTM = 12 months by ex-date; scale-check AUM): carry into the standard brief.
 5. After T-131 OK: T-132 brief (contract section 8), T-134 period engine brief.
