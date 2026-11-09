@@ -779,8 +779,14 @@ FY range (`9M 25-26`) or the latest period ending before the filing date; a cell
 header that names no resolvable period is not stored; a per-share, count, ratio or own-unit row label keeps scale 1
 (`unit_text` `inr_per_share` / `count` / `ratio` / `Rs`); a garbled header date (`30.011.2028`) is dropped, never
 guessed; an `Inc/Dec` / `YoY` / `Growth` / `bps` column is stored with `period_id` NULL and
-`method='text_layer;delta'`; a label line printed under (or above) a row belongs to that row; and a header row with
-one printed cell per column is assigned in column order. `reality_engine/v2/build_cells.py` reads a pilot3
+`method='text_layer;delta'`; and a label line printed under (or above) a row belongs to that row. Round 4 adds:
+every header phrase is placed by x-position, never by order (and a block too short to sample every column takes the
+printed date row as its columns), so a date line split onto a second y-row keeps its own column; `Year ended`, its
+`Vear Ended` text-layer garble and `twelve months` are FY while only a bare date keeps the quarter rule; a
+`Segment Assets` / `Segment Liabilities` / balance-sheet row is a POINT on the column date (or the end of a
+`Q1 FY27` header); a per-tonne / per-unit / `ARPU` / `ARR` / `RevPAR` / `realisation` row keeps scale 1 and `Rs`; a
+measure group row (`REVENUE | EBITDA | EBITDA MARGIN`) enters `col_header` as `measure=<text>`; and a garbled label
+(`St`, `-------`, `CT2, Yes 529.40`) is not stored. `reality_engine/v2/build_cells.py` reads a pilot3
 store read-only and writes `doc`, `period` and `table_cell` into `<out>/company/<ISIN>.db`, skipping a document whose
 sha256 is already there:
 
@@ -789,14 +795,15 @@ python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir> [--since
     [--types deck,results] [--symbols A,B]
 ```
 
-The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory) wrote 75,394 cells in
-107.2 s; 95.0% of cells carry a `period_id`, 78.4% a scale and 0.0% no header (round 2: 88,941 / 64.6% / 71.9% /
-6.1%; the store is smaller because a cell with no label or no resolvable-period header is no longer stored).
-`reality_engine/v2/cell_sample.py` draws the hand-grade sample (`--store-dir <dir> --n 100 --type deck|results
---seed 11 --out <csv>`; columns doc, page, label, header, period_id, value_text, unit_text, scale, value, method and
-a 300-character page snippet). Wolf's own round-3 grade of the first 30 cells of each seed-11 sample: results 27/30,
-deck 21/30. Rules a-h, the measured table, the remaining deck defect families and the tests
-(`reality_engine/tests/test_v2_table_cells.py`, 27) are in `docs/V2_SCHEMA_CONTRACT.md` section 10.
+The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory) wrote 74,486 cells in
+88.4 s; 94.9% of cells carry a `period_id`, 81.9% a scale and 0.0% no header (round 3: 75,394 / 95.0% / 78.4% / 0.0%;
+round 2: 88,941 / 64.6% / 71.9% / 6.1%; the store is smaller because a cell with no label, no readable label or no
+resolvable-period header is no longer stored). `reality_engine/v2/cell_sample.py` draws the hand-grade sample
+(`--store-dir <dir> --n 100 --type deck|results --seed 13 --out <csv>`; columns doc, page, label, header, period_id,
+value_text, unit_text, scale, value, method and a 300-character page snippet). Wolf's own round-4 grade of the first
+30 cells of each seed-13 sample (`.tmp/f4_results.csv`, `.tmp/f4_deck.csv`): results 27/30, deck 27/30, against
+27/30 and 21/30 in round 3. Rules a-i, the measured table, the remaining misses and the tests
+(`reality_engine/tests/test_v2_table_cells.py`, 45) are in `docs/V2_SCHEMA_CONTRACT.md` section 10.
 
 ## 3. Ticket tracker
 

@@ -11,7 +11,7 @@ import pytest
 
 from reality_engine.v2 import cell_sample, schema
 from reality_engine.v2.periods import period_row
-from reality_engine.v2.table_cells import extract, extract_page
+from reality_engine.v2.table_cells import extract, extract_page, label_unit
 
 HAVELLS = Path("D:/RealityEngine/raw/pilot60_history/HAVELLS/investor_presentation/"
                "d8b03849-76b8-4a7b-9672-984693e5cfb6.pdf")
@@ -577,6 +577,224 @@ def test_smoke_coal_india_nine_month_headers_and_difference_columns():
     delta = [cell for cell in cells if cell["col_header"] == "Inc/Dec%"]
     assert delta and all(cell["period_id"] is None and cell["method"] == "text_layer;delta"
                          for cell in delta)
+
+
+def test_a_header_date_split_onto_its_own_line_keeps_its_column(pdf_path):
+    """Round 4, class 1: the first date printed six points lower must not take a neighbour's column.
+
+    A results page prints 'Quarter ended | Year ended' over five date columns.  The text layer
+    puts the first date on the line of the left 'Sr. No.' cell, so the date line arrives as four
+    phrases plus one; each phrase owns the column it is printed over, never a block assigned in
+    order (which put '31.12.2024' over the 31.03.2025 column on the Asian Paints results).
+    """
+    anchors = (330, 390, 450, 510, 570)
+    dates = ("31.03.2025", "31.12.2024", "31.03.2024", "31.03.2025", "31.03.2024")
+    lines = [(60, 60, "Consolidated Statement of Profit and Loss", 9),
+             (60, 70, "Rs. in crore", 9),
+             _center(370, 105, "Quarter ended"), _center(520, 105, "Year ended"),
+             (40, 133, "Sr.", 8), (40, 141, "No.", 8),
+             _right(anchors[0], 133, dates[0], 8)]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(anchors[1:], dates[1:])]
+    lines += [_right(anchor, 147, "Audited", 8) for anchor in anchors]
+    y = 180
+    for label, values in (("Revenue from operations",
+                           ("7,157", "7,384", "7,538", "29,421", "31,094")),
+                          ("Total expenses", ("6,000", "6,200", "6,300", "24,000", "25,000"))):
+        lines.append((60, y, label, 9))
+        lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-05-08", None, "results")
+    revenue = _by_label(cells, "Revenue from operations")
+    assert {cell["col_no"]: cell["col_header"] for cell in revenue} == {
+        0: "Quarter ended > 31.03.2025 > Audited",
+        1: "Quarter ended > 31.12.2024 > Audited",
+        2: "Quarter ended > 31.03.2024 > Audited",
+        3: "Year ended > 31.03.2025 > Audited",
+        4: "Year ended > 31.03.2024 > Audited"}
+    assert {cell["col_no"]: cell["period_id"] for cell in revenue} == {
+        0: _pid("2025-01-01", "2025-03-31"), 1: _pid("2024-10-01", "2024-12-31"),
+        2: _pid("2024-01-01", "2024-03-31"), 3: _pid("2024-04-01", "2025-03-31"),
+        4: _pid("2023-04-01", "2024-03-31")}
+
+
+def test_a_year_ended_span_wins_over_the_bare_date(pdf_path):
+    """Round 4, class 2: 'Year ended' (and its 'Vear' garble, 'twelve months') is FY, never a quarter.
+
+    Only a bare date with no span text keeps the quarter rule.  HDFC AMC prints 'Vear Ended >
+    March 31, 2025' (the text layer lost the Y) and was read as the March quarter.
+    """
+    anchors = (330, 480, 630)
+    lines = [(60, 60, "Statement of Profit and Loss", 9), (60, 70, "Rs. in crore", 9),
+             _center(310, 105, "Year Ended"), _center(460, 105, "Vear Ended"),
+             _center(610, 105, "For the twelve months ended")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(
+        anchors, ("31.03.2025", "31.03.2024", "31.03.2025"))]
+    y = 180
+    for label in ("Revenue from operations", "Total expenses"):
+        lines.append((60, y, label, 9))
+        lines += [_right(anchor, y, text) for anchor, text in zip(anchors, ("7,157", "7,384", "7,538"))]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-05-08", None, "results")
+    revenue = _by_label(cells, "Revenue from operations")
+    assert {cell["col_no"]: cell["period_id"] for cell in revenue} == {
+        0: _pid("2024-04-01", "2025-03-31"), 1: _pid("2023-04-01", "2024-03-31"),
+        2: _pid("2024-04-01", "2025-03-31")}
+
+
+def test_segment_assets_and_liabilities_are_points_on_the_column_date(pdf_path):
+    """Round 4, class 3: a balance item under 'Quarter ended' is a POINT at the column date.
+
+    The Indian Hotels and Havells segment tables print 'Segment Assets' / 'Segment Liabilities'
+    under a quarter heading; those rows are balances on the date, not the quarter's flow.
+    """
+    anchors = (320, 420, 520)
+    lines = [(60, 60, "Statement of Profit and Loss", 9), (60, 70, "Rs. in crore", 9),
+             _center(400, 105, "Quarter ended")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(
+        anchors, ("30.09.2025", "30.06.2025", "31.03.2025"))]
+    y = 180
+    rows = (("Revenue from operations", ("1,500", "1,400", "1,300")),
+            ("Total expenses", ("1,000", "950", "900")),
+            ("Segment Assets", None),
+            ("a) Hotels", ("4,100", "4,000", "3,900")),
+            ("b) Food & Beverage", ("210", "205", "200")),
+            ("Total Segment Assets", ("4,310", "4,205", "4,100")),
+            ("Segment Liabilities", None),
+            ("a) Hotels", ("700", "690", "680")))
+    for label, values in rows:
+        lines.append((60, y, label, 9))
+        if values:
+            lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-11-01", None, "results")
+    revenue = _by_label(cells, "Revenue from operations")
+    assert {cell["period_id"] for cell in revenue} == {_pid("2025-07-01", "2025-09-30"),
+                                                       _pid("2025-04-01", "2025-06-30"),
+                                                       _pid("2025-01-01", "2025-03-31")}
+    assets = [cell for cell in cells if (cell["row_label"] or "").startswith("Segment Assets")]
+    liabilities = [cell for cell in cells if (cell["row_label"] or "").startswith(
+        "Segment Liabilities")]
+    assert assets and liabilities
+    points = {_pid(None, day) for day in ("2025-09-30", "2025-06-30", "2025-03-31")}
+    assert {cell["period_id"] for cell in assets} == points
+    assert {cell["period_id"] for cell in liabilities} == points
+
+
+def test_a_balance_printed_under_a_quarter_label_is_a_point(pdf_path):
+    """Round 4, class 3: 'Total Equity' under 'Quarter Q1FY27' is the balance on 30.06.2026.
+
+    Havells prints its balance sheet over quarter labels; the balance row must carry the
+    quarter's end date as a POINT, while the revenue row keeps the quarter span.
+    """
+    anchors = (320, 400)
+    lines = [(60, 60, "Balance Sheet", 9), (60, 70, "(Rs. in crore)", 9),
+             _center(270, 105, "Q1FY27"), _center(380, 105, "Q1FY26")]
+    y = 180
+    for label, values in (("Revenue from operations", ("1,500", "1,400")),
+                          ("EQUITY AND LIABILITIES > Total equity", ("9,476", "9,200"))):
+        lines.append((60, y, label, 9))
+        lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2026-07-30", None, "deck")
+    equity = [cell for cell in cells if "Total equity" in (cell["row_label"] or "")]
+    assert equity and {cell["period_id"] for cell in equity} == {_pid(None, "2026-06-30"),
+                                                                 _pid(None, "2025-06-30")}
+    revenue = _by_label(cells, "Revenue from operations")
+    assert revenue and {cell["period_id"] for cell in revenue} == {_pid("2026-04-01", "2026-06-30"),
+                                                                   _pid("2025-04-01", "2025-06-30")}
+
+
+def test_rows_that_name_their_own_unit_keep_scale_one(pdf_path):
+    """Round 4, class 4: a per-tonne / per-user row is not read at the page's crore scale.
+
+    'Overall Average Realization' is Rs per tonne, 'RevPAR in Rs' is Rs per room night; both were
+    tagged 'Rs crore' with a 1e7 scale.  The page's money rows keep the crore scale.
+    """
+    anchors = (320, 420)
+    lines = [(60, 60, "Investor Presentation", 9), (60, 70, "Rs. in crore", 9),
+             _center(370, 105, "Q2 FY27")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(anchors, ("Jun-25", "Sep-25"))]
+    y = 180
+    rows = (("Overall Average Realization", ("1,647.24", "1,600.00")),
+            ("Price (In Rs./Te.)", ("1,549.63", "1,524.15")),
+            ("EBITDA per tonne", ("450.00", "440.00")),
+            ("Average Revenue Per User (ARPU)", ("259", "262")),
+            ("Revenue from operations", ("7,157", "7,384")))
+    for label, values in rows:
+        lines.append((60, y, label, 9))
+        lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-11-01", None, "deck")
+    for label in ("Overall Average Realization", "Price (In Rs./Te.)", "EBITDA per tonne",
+                  "Average Revenue Per User (ARPU)"):
+        found = _by_label(cells, label)
+        assert found and all(cell["scale"] == 1.0 and cell["unit_text"] == "Rs" for cell in found), label
+        assert found[0]["value"] == float(found[0]["value_text"].replace(",", ""))
+    money = _by_label(cells, "Revenue from operations")
+    assert money and all(cell["scale"] == CRORE and cell["unit_text"] == "Rs crore"
+                         for cell in money)
+    assert label_unit("RevPAR in ₹ ( LFL )") == ("Rs", 1.0)
+    assert label_unit("ARR (Rs)") == ("Rs", 1.0)
+    assert label_unit("Revenue per key") == ("Rs", 1.0)
+
+
+def test_a_measure_group_header_is_carried_into_the_column_header(pdf_path):
+    """Round 4, class 5: a 'REVENUE | EBITDA | EBITDA MARGIN' group row names the cell's measure.
+
+    Indian Hotels' legal-entity deck prints the measure over its period sub-columns; without the
+    group row 'UOH Inc. - USA 19' cannot be told from the same entity's 236 revenue.
+    """
+    anchors = (340, 400, 460, 520, 580, 640)
+    periods = ("Q1FY27", "Q1FY26", "Q1FY27", "Q1FY26", "Q1FY27", "Q1FY26")
+    lines = [(60, 60, "Key legal entities", 9), (60, 72, "(Rs. in crore)", 9),
+             (60, 100, "Legal Entities", 10),
+             _center(340, 100, "REVENUE"), _center(460, 100, "EBITDA"),
+             _center(580, 100, "EBITDA MARGIN")]
+    lines += [_center(anchor - 30, 115, text, 8) for anchor, text in zip(anchors, periods)]
+    lines.append((60, 150, "UOH Inc. - USA", 9))
+    lines += [_right(anchor, 150, text) for anchor, text in zip(
+        anchors, ("204", "236", "10", "19", "4.8%", "7.8%"))]
+    lines.append((60, 168, "IHG - UK", 9))
+    lines += [_right(anchor, 168, text) for anchor, text in zip(
+        anchors, ("1,500", "1,400", "420", "380", "28.0%", "27.1%"))]
+    cells = extract(_save(pdf_path, lines), "2025-08-01", None, "deck")
+    usa = _by_label(cells, "UOH Inc. - USA")
+    assert {cell["col_no"]: cell["col_header"] for cell in usa} == {
+        0: "measure=REVENUE > Q1FY27", 1: "measure=REVENUE > Q1FY26",
+        2: "measure=EBITDA > Q1FY27", 3: "measure=EBITDA > Q1FY26",
+        4: "measure=EBITDA MARGIN > Q1FY27", 5: "measure=EBITDA MARGIN > Q1FY26"}
+    assert {cell["period_id"] for cell in usa} == {
+        _pid("2026-04-01", "2026-06-30"), _pid("2025-04-01", "2025-06-30")}
+    assert [cell["value"] for cell in usa if cell["col_no"] == 2] == [10.0 * CRORE]
+
+
+def test_garbled_row_labels_are_not_stored(pdf_path):
+    """Round 4, class 6: 'St', a punctuation-only label and a label holding a value are dropped.
+
+    Coal India prints 'St' as a row label, Apollo Tyres prints '-------' above its rows and the
+    Adani Ports text layer puts a printed figure ('CT2, Yes 529.40') in the label column.
+    """
+    anchors = (320, 420)
+    lines = [(60, 60, "Statement of Profit and Loss", 9), (60, 70, "Rs. in crore", 9),
+             _center(370, 105, "Quarter ended")]
+    lines += [_right(anchor, 127, text, 8) for anchor, text in zip(anchors, ("30.09.2025", "30.06.2025"))]
+    y = 180
+    rows = (("Revenue from operations", ("7,157", "7,384")),
+            ("St", ("195", "531")),
+            ("-------", None),
+            ("Depreciation", ("269", "224")),
+            ("CT2, Yes 529.40", ("317.47", "846.87")),
+            ("Total income", ("7,330", "7,644")))
+    for label, values in rows:
+        lines.append((60, y, label, 9))
+        if values:
+            lines += [_right(anchor, y, text) for anchor, text in zip(anchors, values)]
+        y += 18
+    cells = extract(_save(pdf_path, lines), "2025-11-01", None, "results")
+    labels = {cell["row_label"] for cell in cells}
+    assert "Depreciation" in labels and len(_by_label(cells, "Depreciation")) == 2
+    assert not any(label in ("St", "-------") or "529.40" in label for label in labels)
+    assert not any("St" == label.split(" > ")[-1] for label in labels)
 
 
 def test_cell_sample_writes_a_seeded_csv():
