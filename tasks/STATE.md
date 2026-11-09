@@ -12,6 +12,8 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 - STRICT point in time (T-156): 48 of 230 baseline answers quoted pages filed after as_of. Pilot20 strict: baseline 97 right -> now 160 right / 69 partly / 1 wrong of 230 (all 62 leaked answers re-answered, 0 late quotes) (`p20/answers/t154/current_strict_230.json`).
 
+- 18:40 Shivam: 'fix the partly answers'. 70 not right: 22 call questions dated before their transcript (dates moved to transcript filing, `questions_P/Q.json` keep `as_of_original`), 19 source not held (T-157 fetch), 6 held-but-missed, 21 'not disclosed' (Opus keyword check: several ARE held, e.g. Titan 428 own / 2,583 franchise stores in AR p219, Coal India quarterly e-auction premium in the May 2025 call) -> round 4 `p20/answers/t154/questions_ND.json` with semantic when a slot frees. Prices refreshed to 9 Nov (snapshot rebuild running; masters copied back from Drive).
+
 ## Running (17:25)
 - T-132 round 1 merged 18:15 (94,275 cells, store `D:/RealityEngine/v2/p20_r1`); Opus sample ~8/30 fully right -> round 2 (contract s10 lists the five defects).
 
