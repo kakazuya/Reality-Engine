@@ -9,6 +9,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 - Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126.
 
 ## Running
+- T-132 round 4 dsh 20261109T153423Z-0439a0bb (six classes from the round-3 Opus sample).
 - T-133 label map dsh 20261109T151655Z-449639ec (sector families for all pilot cos, metric_def stock/flow, review CSVs per family for Opus).
 
 ## Next action
