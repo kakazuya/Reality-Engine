@@ -10,11 +10,10 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 - Strict grade of 50 re-ask answers (`reports/2026-11-09_t154_strict50.xlsx`): 12 right, 37 partly, 1 wrong; 406 figures checked against pages, none invented; 14 of 120 answers quote transcripts filed after as_of (new ticket); 6 partly were held-but-missed.
 
-- STRICT point in time (T-156): 48 of 230 baseline answers quoted pages filed after as_of. Pilot20 strict: baseline 97 right -> now 152 right / 77 partly / 1 wrong of 230 (`p20/answers/t154/current_strict_230.json`).
+- STRICT point in time (T-156): 48 of 230 baseline answers quoted pages filed after as_of. Pilot20 strict: baseline 97 right -> now 160 right / 69 partly / 1 wrong of 230 (all 62 leaked answers re-answered, 0 late quotes) (`p20/answers/t154/current_strict_230.json`).
 
 ## Running (17:25)
 - T-132 round 1 merged 18:15 (94,275 cells, store `D:/RealityEngine/v2/p20_r1`); Opus sample ~8/30 fully right -> round 2 (contract s10 lists the five defects).
-- HP: T-156 PIT round 2, 23 baseline answers that quoted later pages, hp-20261109T181321-362e81 (round 1: 14 re-answered, 5 right / 9 partly, 0 late quotes).
 
 ## Next action
 0. T-139 merged 18:05: `reality_engine/ingestion/rating_rationale_client.py`; 41 rationale texts for 10/10 pilot20 cos in `D:/RealityEngine/outside_doc/ratings_p20` (1.3 MB). Next: load into `outside_doc` + a read tool; India Ratings needs its detail JSON.
