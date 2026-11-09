@@ -11,6 +11,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 ## Running
 - T-132 round 5 SENT BACK 22:45 (not merged): Opus unseen rows 50-79 strict 40/59 (results 17/29, deck 23/30); regression: label currency without scale word -> scale 1 (Rs/INR/USD x1, value>=1000: 1,838 -> 4,548). Grades `D:/RealityEngine/v2/review/T-132_r5_opus_grades.csv`.
 - T-132 round 6 RUNNING: job 20261109T171211Z-ca480d9d (base = round-5 branch; store `.tmp/v2r6`, samples seed 23). On finish: check step-1 count <= 1,838, the no-backsliding list, grade rows 50-79, then merge both branches (round 6 contains round 5) and remove both worktrees.
+- T-133 v2 RUNNING: job 20261109T171511Z-456047c4. Label map v1 NOT approved (no family): substring matching + kpi_series seeds give wrong metrics (OFCF -> capex 2,066 labels; ROE pre/post merged; US$ labels unit inr). LIVE DEFECT in p20new.db kpi_series: 1,466 'Operating Free Cash Flow (EBITDA - Capex)' rows stored metric capex, 'Sales and marketing expenses' -> revenue 65, 'Revenue per tower per month' -> revenue 188; worker does a dry run only, Opus rebuilds after review. On finish: grade its seed-31 sample of 200.
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
