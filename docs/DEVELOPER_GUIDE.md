@@ -801,23 +801,28 @@ python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir> [--since
     [--types deck,results] [--symbols A,B]
 ```
 
-The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory, round 6 `.tmp/v2r6`)
-wrote 73,833 cells in 131.9 s; 95.1% of cells carry a `period_id`, 85.1% a scale and 0.0% no header (round 5:
-74,259 / 94.9% / 85.4% / 0.0%; round 4: 74,486 / 94.9% / 81.9% / 0.0%; round 3: 75,394 / 95.0% / 78.4% / 0.0%;
-round 2: 88,941 / 64.6% / 71.9% / 6.1%; the store is smaller because a cell with no label, no readable label or no
-resolvable-period header is no longer stored, and the round-6 label/unit split and two-flow pairing drop a few more).
-Methods: `text_layer` 69,131, `text_layer;garbled` 1,112, `text_layer;delta` 3,584,
-`text_layer;delta;garbled` 6. `reality_engine/v2/cell_sample.py` draws the hand-grade sample
-(`--store-dir <dir> --n 100 --type deck|results --seed 23 --out <csv>`; columns doc, page, label, header, period_id,
-value_text, unit_text, scale, value, method and a 300-character page snippet). Wolf's own round-6 grade of the first
-30 cells of each seed-23 sample (`.tmp/f6_results.csv`, `.tmp/f6_deck.csv`): results 26/30, deck 24/30, against
-24/30 and 23/30 in round 5. Round 6 fixes the round-5 scale regression (a bare currency in a label no longer means
-scale 1; the row's own unit cell, then the label's scale word, then the nearest table note, then the page unit decide
-the scale, and with none printed the scale is NULL: cells at Rs/INR/USD scale 1 and value >= 1000 fall from 4,548 to
-18 against round 4's 1,838), plus the table-level unit note, a two-line label's tail, measure rows that cover only
-their own columns, `H1 > FY27`, spaced digits in header dates, two-flow label/figure pairing and slide bullets. Rules
-a-j, the measured table, the remaining misses and the tests
-(`reality_engine/tests/test_v2_table_cells.py`, 60 in the three v2 test files) are in
+The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory, round 7 `.tmp/v2r7`)
+wrote 75,846 cells in 128.3 s; 95.1% of cells carry a `period_id`, 85.7% a scale and 0.0% no header (round 6:
+73,833 / 95.1% / 85.1% / 0.0%; round 5: 74,259 / 94.9% / 85.4% / 0.0%; round 4: 74,486 / 94.9% / 81.9% / 0.0%;
+round 3: 75,394 / 95.0% / 78.4% / 0.0%; round 2: 88,941 / 64.6% / 71.9% / 6.1%; a cell with no label, no readable
+label or no resolvable-period header is not stored). Methods: `text_layer` 70,837, `text_layer;garbled` 1,276,
+`text_layer;delta` 3,726, `text_layer;delta;garbled` 7. `reality_engine/v2/cell_sample.py` draws the hand-grade
+sample (`--store-dir <dir> --n 100 --type deck|results --seed 29 --out <csv>`; columns doc, page, label, header,
+period_id, value_text, unit_text, scale, value, method and a 300-character page snippet). Wolf's own round-7 grade of
+the first 30 cells of each seed-29 sample (`.tmp/f7_results.csv`, `.tmp/f7_deck.csv`): results 28/30, deck 26/30,
+against 26/30 and 24/30 in round 6. Round 7 fixes, in the round-6 grade's class order: a bare `US$` unit cell keeps
+its currency (USD, scale 1 on a per-unit row, never the page's Rs); a period header printed once over its measure
+columns spreads over the group and the measure row is kept on either side of it (`measure=Revenue > Q1 FY27`); a
+label whose box sits inside a tall figure box keeps its own figures (the Coal India ratio table's 2,752 / 3,052); a
+header phrase holding two printed dates is split into two headers; a table title is not a column header, a mixed
+`3 months ended | 6 months ended | Year ended` row is read as group spans, a block that yields no cell leaves its
+rows to the block below and a cash-flow table's columns are ordered by the opening/closing cash cross-check; a `bps`
+column is `bps` and `(MMT)` is `MMT`; an `ii)` / `ii,` marker starting mid-label begins its own printed row; and a
+repeated sub-header over date columns becomes `dimension=<text>`. Two rows an earlier round graded right are still
+lost (Coal India results p20's two-column Key Financial Ratios table, whose header dates print left of the figure
+anchors and whose label lines split the block; Indhotel deck p33's `Less : Share of Non Controlling Interest` -96%),
+the open merge gate. Rules a-j, the measured table, the remaining misses and the tests
+(`reality_engine/tests/test_v2_table_cells.py`, 69 in the three v2 test files) are in
 `docs/V2_SCHEMA_CONTRACT.md` section 10.
 
 ### O24. v2 label dictionary: one metric per printed label, per sector family (T-133, 9 Nov 2026)

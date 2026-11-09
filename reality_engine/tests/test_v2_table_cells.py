@@ -11,8 +11,8 @@ import pytest
 
 from reality_engine.v2 import cell_sample, schema
 from reality_engine.v2.periods import period_row
-from reality_engine.v2.table_cells import (_merge_date_phrases, _rows_of, _squash_digits,
-                                          extract, extract_page, label_unit,
+from reality_engine.v2.table_cells import (_label_continues, _merge_date_phrases, _rows_of,
+                                          _squash_digits, extract, extract_page, label_unit,
                                           period_from_header)
 
 HAVELLS = Path("D:/RealityEngine/raw/pilot60_history/HAVELLS/investor_presentation/"
@@ -1240,3 +1240,229 @@ def test_a_bullet_sentence_is_not_a_row_label(pdf_path):
     assert not [cell for cell in cells if (cell["row_label"] or "").startswith("•")]
     assert [cell for cell in cells if cell["row_label"] == "Domestic"]
 
+
+def test_a_bare_currency_unit_cell_keeps_its_own_currency(pdf_path):
+    """Round 7, class 1: a bare 'US$' unit cell beside ARPU is USD at scale 1, never the page Rs.
+
+    Bharati Airtel prints 'Average Revenue Per User (ARPU) | US$ | 2.5 | 2.5 | 2.4% | 2.2 |
+    11.8%'; the page's unit is Rs, the row's own unit cell is US$.
+    """
+    lines = [(60, 40, "Human Resource Analysis", 9), (60, 50, "Rs. in crore", 9),
+             _center(330, 80, "Dec-25", 8), _center(380, 80, "Sep-25", 8),
+             _center(475, 80, "Dec-24", 8)]
+    lines.append((54, 120, "Average Revenue Per User (ARPU)", 9))
+    lines.append((280, 120, "US$", 9))
+    for anchor, text in zip((330, 380, 475), ("2.50", "2.60", "2.20")):
+        lines.append(_right(anchor, 120, text))
+    lines.append((54, 150, "Total Revenue", 9))
+    lines.append((280, 150, "US$", 9))
+    lines.append(_right(330, 150, "500"))
+    lines.append(_right(475, 150, "480"))
+    cells = extract(_save(pdf_path, lines), "2026-02-05", None, "results")
+    arpu = [cell for cell in cells if "ARPU" in (cell["row_label"] or "")]
+    assert arpu and arpu[0]["unit_text"] == "USD" and arpu[0]["scale"] == 1.0
+    assert arpu[0]["value"] == 2.5 and arpu[0]["period_id"] == _pid("2025-10-01", "2025-12-31")
+    revenue = [cell for cell in cells if (cell["row_label"] or "").endswith("Total Revenue")]
+    assert revenue and revenue[0]["unit_text"] == "USD" and revenue[0]["scale"] is None
+    assert revenue[0]["value"] is None                # a bare currency is no scale
+
+
+def test_a_period_header_spans_its_measure_columns(pdf_path):
+    """Round 7, class 2: 'Q1 FY27' over Revenue | EBITDA | PAT carries both measure and period.
+
+    Adani Ports' JV table prints the period once over three measure columns; every cell must
+    say Revenue/EBITDA/PAT and its own quarter.
+    """
+    lines = [(60, 40, "JV financial performance (in Rs Cr)", 9)]
+    lines += [_center(430, 90, "Q1 FY27", 8), _center(705, 90, "Q1 FY26", 8)]
+    lines += [_center(380, 115, "Revenue", 8), _center(470, 115, "EBITDA", 8),
+              _center(560, 115, "PAT", 8), _center(650, 115, "Revenue", 8),
+              _center(740, 115, "EBITDA", 8), _center(800, 115, "PAT", 8)]
+    lines += [(35, 140, "AECTPL, JV with MSC", 9)]
+    for anchor, text in zip((330, 420, 510, 600, 690, 780),
+                            ("72", "17", "(20)", "65", "18", "(11)")):
+        lines.append(_right(anchor, 140, text))
+    lines += [(35, 165, "APSEZ Consolidated", 9)]
+    for anchor, text in zip((330, 420, 510, 600, 690, 780),
+                            ("10,821", "6,541", "3,650", "9,126", "5,495", "3,311")):
+        lines.append(_right(anchor, 165, text))
+    cells = extract(_save(pdf_path, lines), "2026-07-29", None, "deck")
+    aect = [cell for cell in cells if "AECTPL" in (cell["row_label"] or "")]
+    assert {cell["col_no"]: cell["col_header"] for cell in aect} == {
+        0: "measure=Revenue > Q1 FY27", 1: "measure=EBITDA > Q1 FY27",
+        2: "measure=PAT > Q1 FY27", 3: "measure=Revenue > Q1 FY26",
+        4: "measure=EBITDA > Q1 FY26", 5: "measure=PAT > Q1 FY26"}
+    assert {cell["period_id"] for cell in aect} == {
+        _pid("2026-04-01", "2026-06-30"), _pid("2025-04-01", "2025-06-30")}
+
+
+def test_a_label_printed_inside_tall_figures_keeps_its_own_row(pdf_path):
+    """Round 7, class 3: the Coal India deck prints the figures before the label in reading order.
+
+    '2,752 2,289 463 20%' sits inside the tall 'Cost of Materials Consumed' box; the label must
+    take its own figures, and Inc/Dec = later - earlier holds for each row.
+    """
+    lines = [(60, 40, "Rs. in crore", 9)]
+    for centre, text in ((381, "Q2 26-27"), (489, "Q2 25-26"),
+                         (596, "Inc/Dec"), (704, "Inc/Dec%")):
+        lines.append(_center(centre, 90, text))
+    lines.append((70, 181, "Cost of Materials Consumed", 9))
+    for anchor, text in zip((431, 547, 646, 762), ("2,752", "2,289", "463", "20%")):
+        lines.append(_right(anchor, 185, text, 14))
+    lines.append((70, 210, "Changes in inventories", 9))
+    for anchor, text in zip((431, 547, 646, 762), ("3,052", "1,331", "1,721", "129%")):
+        lines.append(_right(anchor, 214, text, 14))
+    cells = extract(_save(pdf_path, lines), "2026-10-30", None, "deck")
+    materials = [cell for cell in cells if "Materials" in (cell["row_label"] or "")]
+    changes = [cell for cell in cells if "inventories" in (cell["row_label"] or "")]
+    assert materials and [cell["value_text"] for cell in materials] == ["2,752", "2,289", "463", "20%"]
+    assert changes and [cell["value_text"] for cell in changes] == ["3,052", "1,331", "1,721", "129%"]
+    assert materials[0]["value"] == 2752 * CRORE
+    assert changes[0]["value"] == 3052 * CRORE
+
+
+def test_a_header_merging_two_printed_dates_splits_by_position(pdf_path):
+    """Round 7, class 4: 'YEAR ENDED > 31.03.2025 I 31.03.2024' is two column headers.
+
+    Apollo Tyres prints the separator 'I' between its two year columns; 1,637.14 is FY25 and
+    3,079.20 is FY24, never both FY24.
+    """
+    lines = [(60, 40, "Rs. Million", 9),
+             _center(470, 80, "YEAR ENDED", 8),
+             (439, 105, "31.03.2025 I 31.03.2024", 8)]
+    lines.append((77, 160, "Tax expense a. Current tax", 9))
+    lines.append(_right(451, 160, "1,637.14"))
+    lines.append(_right(520, 160, "3,079.20"))
+    lines.append((77, 180, "Deferred tax", 9))
+    lines.append(_right(451, 180, "1,672.40"))
+    lines.append(_right(520, 180, "3,746.72"))
+    cells = extract(_save(pdf_path, lines), "2025-05-14", None, "results")
+    years = [cell for cell in cells if "Current tax" in (cell["row_label"] or "")]
+    assert {cell["period_id"] for cell in years} == {
+        _pid("2024-04-01", "2025-03-31"), _pid("2023-04-01", "2024-03-31")}
+    assert {cell["value_text"] for cell in years} == {"1,637.14", "3,079.20"}
+    fy25 = [cell for cell in years if cell["period_id"] == _pid("2024-04-01", "2025-03-31")]
+    assert fy25 and fy25[0]["value_text"] == "1,637.14"
+
+
+def test_a_title_row_is_not_a_period_and_a_table_span_names_the_column(pdf_path):
+    """Round 7, class 5: the slide title 'Q3 FY26 & 9M FY26 key financials' is not a header.
+
+    Adani Ports p2 prints the title over 'Q3 FY26 | Q3 FY25 | YoY | 9M FY26 | 9M FY25 | YoY';
+    27.2% is 9M FY25, not the title's Q3 FY26.
+    """
+    lines = [(60, 40, "Adani Ports results", 9),
+             (90, 80, "Q3 FY26 & 9M FY26 key financials (consolidated)", 9),
+             _center(160, 105, "Q3 FY26", 8), _center(240, 105, "Q3 FY25", 8),
+             _center(320, 105, "YoY", 8), _center(400, 105, "9M FY26", 8),
+             _center(480, 105, "9M FY25", 8), _center(560, 105, "YoY", 8)]
+    lines.append((60, 140, "All-India market share", 9))
+    for anchor, text in zip((200, 280, 360, 440, 520, 600),
+                            ("26.4%", "27.0%", "-60", "27.4%", "27.2%", "-20")):
+        lines.append(_right(anchor, 140, text))
+    lines.append((60, 165, "Revenue", 9))
+    for anchor, text in zip((200, 280, 360, 440, 520, 600),
+                            ("9,705", "7,964", "22%", "27,998", "22,590", "24%")):
+        lines.append(_right(anchor, 165, text))
+    cells = extract(_save(pdf_path, lines), "2026-02-03", None, "deck")
+    share = [cell for cell in cells if "market share" in (cell["row_label"] or "")]
+    by_col = {cell["col_no"]: cell for cell in share}
+    assert by_col[4]["value_text"] == "27.2%"
+    assert by_col[4]["period_id"] == _pid("2024-04-01", "2024-12-31")
+    assert {cell["col_header"] for cell in by_col.values()} == {
+        "Q3 FY26", "Q3 FY25", "YoY", "9M FY26", "9M FY25", "YoY"}
+    assert by_col[2]["period_id"] is None and by_col[2]["method"] == "text_layer;delta"
+
+
+def test_cash_flow_columns_are_ordered_by_their_own_opening_cash(pdf_path):
+    """Round 7, class 5: opening cash equal to the other column's closing cash is the later column.
+
+    Havells prints Q1FY27 over FY26; when the header loses its span words both columns read the
+    filing date's quarter, and the cash-flow cross-check must make the second column Q4FY26.
+    """
+    lines = [(60, 40, "Cash Flow (In Rs crores)", 9),
+             _center(330, 80, "Quarter ended", 8), _center(470, 80, "Quarter ended", 8),
+             (120, 105, "PBT", 9), _right(380, 105, "401"), _right(520, 105, "2,226"),
+             (120, 125, "Depreciation", 9), _right(380, 125, "120"), _right(520, 125, "429"),
+             (120, 165, "Cash & Cash Equivalent at beginning", 9),
+             _right(380, 165, "2,351"), _right(520, 165, "3,353"),
+             (120, 185, "Cash & Cash Equivalent at end", 9),
+             _right(380, 185, "1,497"), _right(520, 185, "2,351")]
+    cells = extract(_save(pdf_path, lines), "2026-07-17", None, "results")
+    pbt = [cell for cell in cells if (cell["row_label"] or "").endswith("PBT")]
+    assert {cell["col_no"]: cell["period_id"] for cell in pbt} == {
+        0: _pid("2026-04-01", "2026-06-30"), 1: _pid("2026-01-01", "2026-03-31")}
+    closing = [cell for cell in cells if "at end" in (cell["row_label"] or "")]
+    assert closing and closing[0]["value_text"] == "1,497"
+
+
+def test_bps_and_mmt_columns_keep_their_own_unit(pdf_path):
+    """Round 7, class 6: a bps column is basis points and '(MMT)' is million tonnes, not money/count."""
+    lines = [(60, 40, "Rs. in crore", 9),
+             _center(300, 80, "Q1FY26", 8), _center(380, 80, "Q1FY27", 8),
+             _center(470, 80, "YoY (bps)", 8)]
+    lines += [(60, 120, "Domestic Businesses", 9), _right(320, 120, "12.2%"),
+              _right(400, 120, "14.0%"), _right(490, 120, "189")]
+    lines += [(60, 150, "GPWIS volume (MMT)", 9), _right(320, 150, "5.6"),
+              _right(400, 150, "5.8"), _right(490, 150, "-5%")]
+    cells = extract(_save(pdf_path, lines), "2026-08-07", None, "deck")
+    bps = [cell for cell in cells if cell["value_text"] == "189"]
+    assert bps and bps[0]["unit_text"] == "bps" and bps[0]["scale"] == 1.0
+    assert bps[0]["method"] == "text_layer;delta" and bps[0]["period_id"] is None
+    mmt = [cell for cell in cells if "GPWIS" in (cell["row_label"] or "")]
+    assert mmt and mmt[0]["unit_text"] == "MMT" and mmt[0]["scale"] == 1.0
+
+
+def test_a_roman_marker_starting_mid_label_splits_the_two_printed_rows(pdf_path):
+    """Round 7, class 7: 'ii)' / 'ii,' starts its own printed row, never a wrap of the label above.
+
+    Pidilite prints 'Less i) Finance Costs' then 'ii) Other Unallocable Expenditure net of' +
+    'Unallocable Income'; Apollo prints 'hedging instruments in cash flow hedge' then
+    'ii, Income tax effect'.
+    """
+    lines = [(60, 40, "Rs. in Crores", 9),
+             _center(300, 70, "Q2FY27", 8), _center(470, 70, "Q2FY26", 8),
+             (60, 95, "Segment Results", 9), (60, 120, "Less i) Finance Costs", 9),
+             _right(380, 120, "7.24"), _right(520, 120, "8.10"),
+             (60, 150, "ii) Otner Unallocable Expenditure net of", 9),
+             (60, 170, "Unallocable Income", 9), _right(380, 170, "176.25"),
+             _right(520, 170, "178.69")]
+    cells = extract(_save(pdf_path, lines), "2026-10-28", None, "results")
+    labels = {cell["row_label"] for cell in cells}
+    assert any(label.endswith("Less i) Finance Costs") for label in labels)
+    assert any("Unallocable Expenditure" in label and "Unallocable Income" in label
+               for label in labels)
+    assert not any("Finance Costs ii)" in label for label in labels)
+    assert not _label_continues("instruments in cash flow hedge", "ii, Income tax effect")
+    assert _label_continues("Cash profit from operations before Derivative &",
+                            "Exchange Fluctuations")
+
+
+def test_an_interleaved_sub_header_is_a_dimension(pdf_path):
+    """Round 7, class 8: 'HDFC MF | Industry' under Mar-24 | Dec-24 | Mar-25 names the dimension.
+
+    HDFC AMC p15 prints 15.9% under the Industry sub-column of Dec-24; the sub-header belongs
+    to the cell or the HDFC MF value beside it cannot be told from the industry's.
+    """
+    lines = [(60, 40, "AUM by Segment - HDFC MF & Industry", 9),
+             _center(319, 80, "Mar-24", 8), _center(488, 80, "Dec-24", 8),
+             _center(658, 80, "Mar-25", 8)]
+    for centre, text in ((300, "HDFC MF"), (380, "Industry"), (470, "HDFC MF"),
+                         (550, "Industry"), (635, "HDFC MF"), (720, "Industry")):
+        lines.append(_center(centre, 110, text))
+    lines += [(176, 140, "Equity-oriented", 9)]
+    for anchor, text in zip((319, 401, 490, 571, 660, 742),
+                            ("63.0%", "54.3%", "64.9%", "57.0%", "63.8%", "55.9%")):
+        lines.append(_right(anchor, 140, text))
+    lines += [(176, 165, "Others", 9)]
+    for anchor, text in zip((319, 401, 490, 571, 660, 742),
+                            ("3.7%", "16.0%", "4.2%", "15.9%", "4.7%", "16.0%")):
+        lines.append(_right(anchor, 165, text))
+    cells = extract(_save(pdf_path, lines), "2025-04-17", None, "deck")
+    others = [cell for cell in cells if (cell["row_label"] or "").endswith("Others")]
+    by_col = {cell["col_no"]: cell for cell in others}
+    assert len(by_col) == 6
+    assert by_col[3]["value_text"] == "15.9%"
+    assert by_col[3]["col_header"] == "dimension=Industry > Dec-24"
+    assert by_col[2]["col_header"] == "dimension=HDFC MF > Dec-24"
+    assert by_col[3]["period_id"] == _pid(None, "2024-12-31")
