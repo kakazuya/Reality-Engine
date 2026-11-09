@@ -325,6 +325,18 @@ def _subcat_family(subcat: str) -> str:
     return SUBCAT_TYPES.get(str(subcat or "").strip().lower(), "")
 
 
+_MODERATOR_RE = re.compile(r"\bmoderator\b", re.I)
+
+
+def moderator_line(text: str) -> bool:
+    """The call's own moderator line on a page ("Moderator: Ladies and gentlemen, good day...") (T-159).
+
+    This is the marker that separates a transcript from a document that only names a call: a Titan or Bharti
+    Airtel intimation says "followed by a Q&A session" and an IndiGo deck lists "Q&A" in its agenda, while every
+    call transcript prints the moderator's opening.  The T-157 audit used the same marker."""
+    return bool(_MODERATOR_RE.search(text or ""))
+
+
 # ---------------------------------------------------------------------------- date
 _MONTH_NUM = {name: i + 1 for i, name in enumerate(_MONTHS)}
 _LETTER_DATE_RES = (
@@ -355,7 +367,6 @@ def letter_date(text: str) -> str | None:
             day = int(day_match.group(0)) if day_match else 1
             return f"{year}-{month:02d}-{day:02d}"
     return None
-
 
 def check_date(expected: Expected, first_pages: dict[int, str] | None = None) -> tuple[str, str | None, str]:
     """The row's date: from a filing record, else the crawl date when nothing backs ``doc_date``.

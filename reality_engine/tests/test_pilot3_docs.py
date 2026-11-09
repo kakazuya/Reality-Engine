@@ -134,3 +134,63 @@ def test_isin_at_uses_history():
     history = [("A", "2019-01-01", "2026-07-01"), ("B", "2026-07-02", "2026-10-19")]
     assert dc.isin_at(history, "2025-01-01") == "A" and dc.isin_at(history, "2026-08-01") == "B"
     assert dc.isin_at(history, None) == "B" and dc.isin_at([], "2025-01-01") is None
+
+
+# ---------------------------------------------------------------- T-161/T-159: the printed first pages
+OLD_GUID = "eeeeeeee-1111-2222-3333-444444444444"
+NEW_GUID = "ffffffff-1111-2222-3333-444444444444"
+LINK_GUID = "aaaaaaaa-1111-2222-3333-444444444444"
+
+
+def _add_ann(cfg, newsid: str, subcat: str, dissem: str) -> None:
+    """One BSE announcement row, so the file is dated and typed from a record (as the real stores do)."""
+    con = sqlite3.connect(cfg.data_root / "bse_announcements.db")
+    con.execute("INSERT INTO ann(NEWSID, SCRIP_CD, ATTACHMENTNAME, HEADLINE, CATEGORYNAME, SUBCATNAME, DissemDT,"
+                " News_submission_dt, NEWS_DT, Fld_Attachsize, symbol)"
+                " VALUES (?,999001,?,?,'Company Update',?,?,?,?,100,'TST')",
+                (newsid, f"{newsid}.pdf", "Analyst / Investor Meet - Outcome", subcat, dissem, dissem, dissem))
+    con.commit()
+    con.close()
+
+
+def test_printed_pages_correct_the_record(world):
+    """T-161/T-159: a re-filed 2018 call takes its page-1 call date and becomes a transcript; a page-5 mention
+    does not date a 2026 call, and the one-page meet outcome stays an announcement."""
+    cfg, out = world
+    folder = cfg.raw_roots[0] / "pilot60_history" / "TST" / "material_filing"
+    _add_ann(cfg, OLD_GUID, "General", "2026-08-28T10:00:00")
+    _add_ann(cfg, NEW_GUID, "General", "2026-08-28T10:00:00")
+    _add_ann(cfg, LINK_GUID, "Analyst / Investor Meet - Outcome", "2026-08-28T10:00:00")
+    _pdf(folder / f"{OLD_GUID}.pdf", [
+        "TST Limited Earnings Call\nJuly 27, 2018\nModerator: Welcome to the call.",
+        "Management Participants: the CFO. " + LONG,
+        "Question and Answer session. " + LONG,
+        "filler page",
+        "The 2018 call said JLR was 24% of revenue. " + LONG,
+    ])
+    _pdf(folder / f"{NEW_GUID}.pdf", [
+        "TST Limited Earnings Call\nAugust 28, 2026\nModerator: Welcome to the call.",
+        "Management Participants: the CFO. " + LONG,
+        "Question and Answer session. " + LONG,
+        "filler page",
+        "The 2018 call said JLR was 24% of revenue. " + LONG,
+    ])
+    _pdf(folder / f"{LINK_GUID}.pdf",
+         ["Analyst / Investor Meet - Outcome. The audio recording is at https://example.invalid/a. " + LONG])
+    counts = dc.collect(cfg, ("TST",), out, log=lambda *_: None)["TST"]
+    assert (counts["redated"], counts["retyped"]) == (1, 2)
+    con = sqlite3.connect(out)
+    rows = {r[0].rsplit("/", 1)[-1]: r for r in con.execute(
+        "SELECT doc_key, doc_type, filing_date, known_at, source_record FROM doc")}
+    old = rows[f"{OLD_GUID}.pdf"]
+    assert (old[1], old[2], old[3]) == ("transcript", "2018-07-27", "2018-07-27T23:59:59")
+    meta = json.loads(old[4])
+    assert (meta["date_source"], meta["record_filing_date"], meta["record_type"]) == (
+        "printed", "2026-08-28", "announcement")
+    assert {r[0] for r in con.execute("SELECT DISTINCT known_at FROM doc_page WHERE doc_key=?", (old[0],))} == {
+        "2018-07-27T23:59:59"}                                   # the page dates move with the document
+    new = rows[f"{NEW_GUID}.pdf"]
+    assert (new[1], new[2], new[3]) == ("transcript", "2026-08-28", "2026-08-28T10:00:00")
+    link = rows[f"{LINK_GUID}.pdf"]
+    assert (link[1], link[2]) == ("announcement", "2026-08-28")
+    con.close()
