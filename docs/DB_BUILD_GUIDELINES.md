@@ -44,10 +44,13 @@ Change a rule only with a measurement that supports the change, and note it in `
   quarter's annualised rate, and only a year named beside it ("for FY2026", "for the year", `kpi._year_named`) makes
   it the year's; a table's column header decides each column. An annual report, or a filing over 80 pages, still
   reports the year, and an insurer's ROEV and VNB margin stay the year's (a roll-forward over the year).
-- The taxonomy -> family map is `reality_engine/pilot3/sector_map.yaml`, read by `make_profile.py` only (not under
-  `lexicon/`, where every yaml is a KPI lexicon). It lists all 191 basic industries of `company_industry`: 47 map to a
-  family and 144 are an honest `unknown` (common lexicons only). A company with no taxonomy row is also `unknown`,
-  reported, never guessed from its name; 3,344 of the 5,358 active companies have no row, mostly BSE-only. The
+- The taxonomy -> family map is `reality_engine/pilot3/sector_map.yaml`, read by `make_profile.py` and
+  `reality_engine/v2/label_map.py` (not under `lexicon/`, where every yaml is a KPI lexicon). It lists all 191 basic
+  industries of `company_industry`: 135 map to one of 27 families and 56 are an honest `unknown` (common lexicons
+  only). By ISIN 1,620 of the 2,041 labelled ISINs (79.4%) are in a family and 421 (20.6%) unknown; across the 5,358
+  active companies 1,638 (30.6%) are in a family (1,565 by current ISIN, 9 by a historical ISIN, 64 by the
+  master-industry tier), 3,720 (69.4%) unknown and 3,309 (61.8%) have no taxonomy row at all, mostly BSE-only (T-133
+  remap, 9 Nov 2026). The
   label is looked up by every ISIN and then by the symbol (14 labels rescued); `master_companies.industry` is a
   second tier only where the taxonomy has nothing, and only for names that map cleanly (usable for 495 of 5,358).
 

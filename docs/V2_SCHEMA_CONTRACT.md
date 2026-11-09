@@ -42,6 +42,7 @@ Each table names at least five real failed or partly-answered questions (qid fro
 | `doc`, `doc_page` | documents keyed by content hash, page text with section names | HDFCBANK-094 (branches on results p21), HDFCBANK-097 (NPA on p2), KEC-121 (FX table on the AR page), INFY-051 (guarantee on AR p267), HINDUNILVR-045 (ESG agencies) |
 | `table_cell` (T-132) | every printed table cell, label and header verbatim, value in base units | BAJFINANCE-098 (Stage 2 share), HDFCBANK-108 (retail CASA), ETERNAL-100 (contribution margin), KEC-011 (business-line mix from the deck), INFY-100 (geography growth table), MARUTI-100 (strong-hybrid share), SBILIFE-119 (group protection) |
 | `label_map` (T-133) | printed label to metric per sector family, Opus-approved, with a review queue | INFY-100 and INFY-106 and INFY-108 (reported vs constant-currency, including vs excluding trainees swapped), HDFCBANK-108 (retail CASA), MARUTI-100, SBILIFE-119, ETERNAL-091 |
+| `metric_def` (T-133) | what each metric is: `flow`, `stock`, `ratio`, `per_share`, `count` or `price`, with its unit kind, so the period engine sums only flows | SBILIFE-081 (Q3/Q4 APE), BAJFINANCE-005 (TTM PAT), KEC-081 (TTM against FY), ETERNAL-020 (cash conversion), INFY-118 (cumulative payout against target) |
 | `fact`, `fact_evidence` (T-146, T-150) | one figure per entity, metric, period, basis, definition; several sources agree or are flagged; base units | MARUTI-127 (other income ten times too large), ETERNAL-020 (operating cash flow scale), HINDUNILVR-053 (standalone RPT against consolidated net worth), MARUTI-083 (net debt without investments), BAJFINANCE-006 (other opex path misread) |
 | `derivation` (T-134, T-135) | derived quarters, TTM, YoY, shares, stored with formula and input fact ids | SBILIFE-081, BAJFINANCE-005 (TTM PAT growth), KEC-081, HINDUNILVR-031 (incremental ROCE), ETERNAL-020 (cash conversion), INFY-118 (cumulative payout vs target) |
 | `statement` | verbatim quotes with speaker, role, the analyst question, topics, entity | ETERNAL-015 (guidance across four calls), SBILIFE-091 (VNB walk drivers), HDFCBANK-016, KEC-109, INFY-109, SUNPHARMA-103 |
@@ -82,6 +83,9 @@ stored rows.
 
 - `metric`: snake_case ids from `label_map`; financial lines reuse today's `line_item` names (`revenue_from_operations`,
   `pat`, `ebitda`, `finance_cost`...) so pilot3 tools keep working during the move.
+- `metric_def.kind`: `flow` (P&L lines, volumes, capex, cash flow) is the only additive kind; `stock` (balance sheet,
+  AUM, order book, counts at a date), `ratio`, `per_share`, `count` and `price` are never summed across periods.
+  `unit_kind` names the unit without a scale (`inr`, `usd`, `pct`, `count`, `tonnes`, `days`, `x`, `inr_per_share`).
 - `dimension`: `key=value` pairs joined by `;` in a fixed order (`geography`, `segment`, `product`, `measure`,
   `currency`), empty for the whole company.
 - `basis`: standalone, consolidated, segment, na. `definition`: reported, adjusted, company_stated, plus metric
@@ -93,7 +97,7 @@ stored rows.
 1. T-132 prototype (Wolf) on three pilot20 decks and one results PDF: `table_cell` rows, bbox, base units.
    (Shipped as `reality_engine/v2/table_cells.py` and `build_cells.py`, section 10.)
 2. T-134 period engine and T-135 calc catalog in parallel (two code workers is the cap).
-3. T-133 label families for the pilot20 sectors, Opus approval per family.
+3. T-133 label families for the pilot20 sectors, Opus approval per family (shipped 9 Nov: section 11).
 4. Pilot20 v2 build, same questions as the baseline (`D:/RealityEngine/p20/answers/questions_{P,Q}.json`), grade,
    delta report. Then a fresh unseen set (T-144).
 
@@ -309,3 +313,78 @@ as the quarter (simplification), wrong-column pick when a results page prints tw
 3,775.44 is Q2, tagged Q3), balance items under 'Quarter ended' headers given the quarter not POINT, per-tonne
 realisations given a crore scale, a 'Revenue / EBITDA / margin' group header not carried into the cell's dimension, and
 garbled labels ('St', '-----', 'CT2, Yes 529.40'). Short of the 90% accept; the row-check layer must gate cells before use.
+
+**Opus sample, round 2 (9 Nov 2026, 30 cells the worker did not grade: rows 60-74 of each seed-9 sample):** results 9 of 15
+and deck 9 of 15 fully right (~60%, up from ~27% in round 1; the worker graded its own first 30 at 13/30 and 15/30). Remaining
+classes: point headers ('31-12-2024', 'Mar-26') and bare '9M' left without a period; cells with no label or no header kept;
+per-share rows ('EPS') given a crore scale; garbled text-layer headers ('30.011.2028') parsed as data; 'Inc/Dec' difference
+columns read as values. Not yet at the 90% accept.
+
+## 11. Label map (T-133, 9 Nov 2026)
+
+`reality_engine/v2/label_map.py` turns the printed row labels of the table store and `kpi_series` into one proposed
+metric per sector family, and writes the review queue Opus approves from:
+
+```bash
+python -m reality_engine.v2.label_map --cells-dir <v2 store dir> \
+    --kpi-db <pilot3 db> [--kpi-db <pilot3 db> ...] --out <dir> [--taxonomy-db <equity_intelligence.db>]
+```
+
+The cells store is built first with `python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir>`
+(section 10). A company file is named by its ISIN; `company_family` places it through the same
+`company_industry` -> `sector_map.yaml` path as `make_profile`, with `master_companies.industry` as the second
+tier.
+
+**Normalisation.** Lower case; leading numbering (`1.`, `(a)`, `i)`, `iv.`) dropped; bracketed units and currency
+(`(Rs crore)`, `(₹ in Lakhs)`, `(%)`, `(as a % of revenue)`) dropped while `excl`/`incl`/`constant currency` stay;
+`%`, currency marks and punctuation dropped; `&` becomes `and`; `/` becomes a space. A parent is joined with `' > '`
+only when the child alone is generic (`Others`, `Total`, `Revenue`, ...); a section that names the measure (`Segment
+Assets`, `Segment Results`, `JVs`, OCI sections, profit attributable) is joined and overrides the child, and a parent
+that says the value is a percentage of revenue turns the child's metric into `<metric>_pct`.
+
+**Proposal order**, per `(label_norm, sector_family)`. (1) An exact seed from the existing `kpi_series` raw labels
+wins. (2) The family lexicons under `reality_engine/pilot3/lexicon/` (`sectors:` of each yaml) are matched by the
+longest phrase, with the yaml's `neg` patterns and word boundaries; the family tier is implemented and tested but
+added no row in this first run because the seeds and common lines already covered those labels. (3) Common financial
+lines are shared by every family as `sector_family='*'`: `results_lines.yaml`, the common lexicon and the standard
+statement/note lines in `EXTRA_COMMON` (EBIT, total assets, borrowings, lease liabilities, trade receivables, cash
+flow lines, segment assets/liabilities/results, TTM-style ratios, telecom KPIs such as ARPU/churn/minutes). Every
+proposal is `status='queue'`; only Opus sets `approved`.
+
+**Outputs** in `--out`: `label_map.db` (the `label_map` and `metric_def` tables, the v2 DDL),
+`review_<family>.csv` (label_norm, example raw labels, frequency, companies, proposed metric, dimension, unit_kind,
+reason; every observed label, mapped or not, sorted by frequency) and `coverage.txt` (mapped share of the numeric
+`table_cell` rows per family and overall, the mapped-or-queued share, and the 50 most frequent unmapped labels). The
+`metric_def` row for every proposed metric says `flow` (P&L lines, volumes, capex, cash flow; the only additive
+kind), `stock` (balance sheet, AUM, order book, counts at a date, debt), `ratio`, `per_share`, `count` or `price`,
+with its unit kind; the v2 DDL for the table is in `schema_v2.sql`.
+
+**Sector families.** `reality_engine/pilot3/sector_map.yaml` now carries 27 families: the ten lexicons (bank, nbfc,
+insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrous, epc_capital_goods, pharma) plus
+cement, retail, airlines, paints_chemicals, consumer_durables, jewellery_lifestyle, hotels, ports_logistics, mining,
+tyres_auto_ancillary, telecom, asset_management, metals_ferrous, utilities_power, healthcare_hospitals, realty and
+textiles_home. Of the 191 basic industries, 135 map and 56 stay `unknown`; none of those 56 is used by a company in
+`pilot10.db`, `p20/p20new.db`, `u8/u8.db` or `q12/q12.db` (63 company rows, every one now has a family; the
+`master_industry` tier covers TITAN, TRENT, ULTRACEMCO, SUNPHARMA and WELSPUNLIV, which have no `company_industry`
+row).
+
+**Measured 9 Nov 2026** on `.tmp/v2cells` (10 pilot20 company files, 88,941 `table_cell` rows) and the
+`kpi_series` of `pilot10.db` and `p20/p20new.db` (19,628 rows): 5,409 `(label, family)` observations, 3,081
+proposed mappings (seed 796, common 1,979, section override 306) and 220 `metric_def` rows (flow 89, stock 61,
+ratio 64, per_share 3, price 3). Of the 61,488 numeric table rows, 48,130 (78.3%) map to a proposed metric and
+60,422 (98.3%) are mapped or queued in the review CSVs; the 1,066 without a `row_label` are the only gap. Most
+unmapped labels are generic totals (`total`, `others`, `sub total`) and bare segment, brand or site names
+(`Airtel Business`, `Eyecare`, `Watches`, `MCL`, `Dahej`), which sit in the review queue for the dimension they
+need and are not guessed here. `dimension` is left empty in this first version.
+
+Tests: `reality_engine/tests/test_v2_label_map.py` (8) cover normalisation, word-boundary matching, seed over
+lexicon, no cross-family mapping except `*`, the four metric kinds, the section and percentage rules, the
+`metric_def` check constraint, and the sector map over the four pilot stores (skipped when the stores are absent).
+
+**Opus review of the label map v1 (9 Nov 2026):** families are right for all 40 pilot companies. Proposals are a queue,
+not truth: in an 18-label spot check about half carried no proposal (site names like 'goregaon', entities like 'st james
+court uk', garbled text) and some proposals were wrong ('purchase of non current investments' -> `investments`, a stock,
+for a cash-flow line; 'joint ventures exceptional items and tax' -> `tax`). `metric_def` kinds are right where set
+(revenue flow, AUM stock, EPS per_share, ARPU price) but `ebitda_margin`, `store_count` and `occupancy` have no row
+yet. Output kept at `D:/RealityEngine/v2/label_map` (`label_map.db`, `review_<family>.csv`, `coverage.txt`); nothing
+is `approved` until Opus works through the review files.

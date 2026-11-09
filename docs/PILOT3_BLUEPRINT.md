@@ -244,11 +244,11 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
 6. Embeddings, chunking and the rest in the background once a working database exists for every company.
 7. Universe readiness (T-094, 6 Nov 2026): the profile is generated from the stores, not written by hand
    (`reality_engine/pilot3/make_profile.py`), so any list of symbols or ISINs builds with no code change. Of the
-   universe's 5,358 active companies the exchange taxonomy places 711 (13.3%) in one of the 10 lexicon families,
-   4,647 (86.7%) carry no family (4,647 include the 3,344 with no `company_industry` row at all, mostly BSE-only;
+   universe's 5,358 active companies the exchange taxonomy places 1,638 (30.6%) in a sector family (T-133 remap,
+   9 Nov 2026), 3,720 (69.4%) carry no family (3,309 of them with no `company_industry` row at all, mostly BSE-only;
    the BSE scrip master is a 420-byte Access Denied page, so they stay `unknown` and are reported, never guessed).
    Trying the symbol and the historical ISINs rescued 14 labels (2 families); `master_companies.industry` is usable
-   for only 495 (9.2%) and clean-maps 135, adding 29 families. The five companies never used to write a rule
+   for only 495 (9.2%) and clean-maps 135, adding 64 companies. The five companies never used to write a rule
    (DALBHARAT, POWERGRID, TATAELXSI, APOLLOHOSP, DLF) all fall in the unknown group: their sectors have no lexicon
    family yet, which is the next lexicon work, not a code gap. Decision 8's own segment-revenue label stays deferred.
 
@@ -339,12 +339,14 @@ active one. Without a profile every command behaves exactly as before (the three
   `corporate_documents`, `shp_index`, `results_xbrl.filings` and `master_companies` (same symbol or BSE code), and
   kept only when it is the same issuer (first 7 characters match, or the IN9 partly-paid form of the INE ISIN) or a
   recorded rekey: for the ten the generated set equals the hand profile's set, so no older filing is filtered out.
-  The map lists all 191 basic industries of `company_industry`: 47 map to one of the 10 families the lexicons carry
-  (bank, nbfc, insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrous, epc_capital_goods,
-  pharma) and 144 are an honest `unknown` (common lexicons only). By ISIN that is 702 of the 2,055 labelled ISINs
-  (34.2%) in a family and 1,353 (65.8%) honest unknown; across the 5,358 active companies 711 (13.3%) are in a
-  family (680 by current ISIN, 2 by a historical ISIN, 29 by the master-industry tier), 4,647 (86.7%) are unknown
-  and 3,344 (62.4%) have no `company_industry` row at all. The label is looked up by every ISIN and then by the
+  The map lists all 191 basic industries of `company_industry`: 135 map to one of the 27 families the label
+  dictionary carries (T-133, 9 Nov 2026: the ten lexicon families plus cement, retail, airlines, paints_chemicals,
+  consumer_durables, jewellery_lifestyle, hotels, ports_logistics, mining, tyres_auto_ancillary, telecom,
+  asset_management, metals_ferrous, utilities_power, healthcare_hospitals, realty and textiles_home) and 56 are an
+  honest `unknown` (common lexicons only). By ISIN that is 1,620 of the 2,041 labelled ISINs (79.4%) in a family and
+  421 (20.6%) honest unknown; across the 5,358 active companies 1,638 (30.6%) are in a family (1,565 by current ISIN,
+  9 by a historical ISIN, 64 by the master-industry tier), 3,720 (69.4%) are unknown and 3,309 (61.8%) have no
+  `company_industry` row at all. The label is looked up by every ISIN and then by the
   symbol (that rescue added 14 labels, 2 of them families); `master_companies.industry` is a second tier only where
   `company_industry` has nothing, and only for names that map cleanly (Information Technology, Fast Moving Consumer
   Goods, Construction, Capital Goods; it is usable for just 495 of 5,358 active companies, 9.2%).

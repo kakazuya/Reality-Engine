@@ -100,6 +100,13 @@ CREATE TABLE IF NOT EXISTS label_map (
     approved_by   TEXT, approved_at TEXT,
     PRIMARY KEY (label_norm, sector_family, dimension)
 );
+-- T-133: what a metric IS, so the period engine sums only flows. One row per metric id used by label_map/fact.
+CREATE TABLE IF NOT EXISTS metric_def (
+    metric        TEXT PRIMARY KEY,
+    kind          TEXT NOT NULL CHECK (kind IN ('flow','stock','ratio','per_share','count','price')),
+    unit_kind     TEXT,                       -- 'inr','usd','pct','count','tonnes','days','x','inr_per_share'
+    description   TEXT
+);
 -- One row per entity x metric x dimension x period x basis x definition. Several documents printing the same
 -- figure are ONE fact with several evidence rows (T-146). Restatements are new rows with a later known_at.
 CREATE TABLE IF NOT EXISTS fact (
