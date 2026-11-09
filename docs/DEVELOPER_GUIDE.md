@@ -893,10 +893,12 @@ coverage. The seed dry run changes 4,460 of 13,090 `table_v1` rows in 54 pairs: 
 line (the total-income phrase's neg guards). Opus's seed-31 grade (139/200 right) replays at 138 kept + 1 mandated
 (row 50 `total revenue` -> `total_income`, the ticket's rule) and 0 lost; the seed-37 grade (170/200 right) keeps
 168 with 0 lost and 2 mandated `total revenue` rows (38, 105); the seed-41 grade (177/200 right) keeps all 177.
-Of the 23 seed-41 wrong rows, 22 change (the percent-key split, the `Others` dimension, the split-header total,
-the child-total routing, the heading rejects, the quantity/sub-line queue, the NCI ambiguity and the three unit
-kinds). The per-row replay is in `.tmp/label_map_v5/grade_replay_seed31.csv`, `grade_replay_seed37.csv`,
-`grade_replay_seed41.csv` and `replay_report.md`. Tests:
+Dimensions change on 6/4/5 kept rows (the `Others` member, the member text the empty dimension had merged, the
+dropped `pre_tax`/`post_tax` qualifiers, and an OCR respelling) and no right row is lost. Of the 23 seed-41 wrong
+rows, 22 change (the percent-key split, the `Others` dimension, the split-header total, the child-total routing,
+the heading rejects, the quantity/sub-line queue, the NCI ambiguity and the three unit kinds). The per-row replay
+is in `.tmp/label_map_v5/grade_replay_seed31.csv`, `grade_replay_seed37.csv`, `grade_replay_seed41.csv` and
+`replay_report.md`. Tests:
 `python -m pytest -q reality_engine/tests/test_v2_label_map.py` (57) and the `row_label_hits` cases in
 `reality_engine/tests/test_pilot3_kpi.py`. The measured table, every rule and the output columns are in
 `docs/V2_SCHEMA_CONTRACT.md` section 11.

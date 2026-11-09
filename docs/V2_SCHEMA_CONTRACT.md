@@ -551,8 +551,11 @@ at `.tmp/label_map_v5` (`label_map.db`, the review CSVs, `coverage.txt`, `reject
 **Opus grade replay (v5, zero unexplained lost right rows).** Seed-31 (139/200 right) keeps 138 and mandates 1:
 row 50 (`total revenue`) moves from `revenue` to `total_income` because the ticket rules that the statement total
 is never the revenue line; no right row is lost. Seed-37 (170/200 right) keeps 168 and mandates 2, the same
-`total revenue`/`total revenues` change (rows 38 and 105). Seed-41 (177/200 right) keeps all 177. Dimensions fix
-on 6/4/5 kept rows (the `Others` member, the segment total, the dropped `pre_tax`/`post_tax` qualifiers). Of the
+`total revenue`/`total revenues` change (rows 38 and 105). Seed-41 (177/200 right) keeps all 177. Dimensions
+change on 6/4/5 kept rows: three seed-31 and one seed-37 `... > others` row gain the member dimension (step 2),
+two seed-31 OCI rows gain the member text the empty dimension had merged, `post_tax`/`pre_tax` is dropped from
+`pat`/`pbt` (seed-31 row 34, seed-37 row 149; step 7), and seven OCI dimensions are respelled only
+(`re measurement` -> `remeasurement`, `t otal` -> `total`, the OCR join) - no right row is lost. Of the
 23 seed-41 wrong rows, 22 change: the `%` keys split off (`pbt %`/`ebit %` are margins, rows 128/168), `Others`
 keeps its dimension (18, 48, 127, 136, 192), the split-header row is the total (34), the mis-parented totals are
 routed by their own wording (44, 76, 188), total revenue is `total_income` (174), the sentence/heading rows are
