@@ -10,8 +10,11 @@ printed in the transcript itself, so it is read from the page text and the docum
 
 Only the first pages are read, and a call date more than 400 days after the stored date is refused (a stray dated
 comparison or a forward-looking year in a header), so the rule can only move a date to the call, never to an
-arbitrary later one.  ``raise_doc_dates`` is the one place the rule is applied: ``registry.build_doc`` and
-``build_pages`` (``doc`` and ``doc_page``), and the KPI extractor for a row it takes from a transcript.
+arbitrary later one.  The reverse case -- a 2016-2018 transcript re-filed in 2026 and stored with the crawl date, so
+the call is years BEFORE the record -- is ``docs_collect.reconcile_doc`` (T-161), which reads the same ``call_date``
+and moves a transcript's date back to it.  ``raise_doc_dates`` is the one place the raise rule is applied:
+``registry.build_doc`` and ``build_pages`` (``doc`` and ``doc_page``), and the KPI extractor for a row it takes from
+a transcript.
 
     python -m reality_engine.pilot3.call_dates                       # the table for every held transcript
     python -m reality_engine.pilot3.call_dates --pages-db <pages.db>

@@ -34,7 +34,9 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
 
 ## 3. Extraction methods (what works, what failed)
 - **Documents**: collected per company into `D:\RealityEngine\pilot3\pages.db`. Dates: `known_at` = exchange
-  dissemination time; a transcript is never known before the call date printed in its first pages (`call_dates.py`).
+  dissemination time; a transcript is never known before the call date printed in its first pages (`call_dates.py`),
+  and a transcript re-filed years after its call is dated by that printed date in the collector
+  (`docs_collect.reconcile_doc`, section 9m).
   Order wins filed as generic press releases are retyped by headline.
 - **Identity before extraction (T-093, 6 Nov 2026)**: every document is checked first for company, fiscal year, type
   and date (`reality_engine/pilot3/doc_identity.py`), because the stored BSE label and the file disagree often: 68
@@ -1206,12 +1208,13 @@ then meet-outcome filings, and `_missing_item` accepts a meet-outcome PDF only w
 (`Moderator`, `transcript`, `conference call`). Dry run on `p20new.db`: HAVELLS 3 of 3 calls found, but all three are
 **already held** as `doc_type='announcement'` (the store typed them from the BSE category). Across stores 16 call
 transcripts are typed `announcement`/`results` (pages >= 3, `Moderator:` in the first three pages): p20 7 (HAVELLS 6,
-INDHOTEL 1), u8 5 (CHOLAFIN 3, CIPLA 1, ULTRACEMCO 1), q12 4 (KIMS, SAIL, UBL 2). Retyping is ticket T-159.
+INDHOTEL 1), u8 5 (CHOLAFIN 3, CIPLA 1, ULTRACEMCO 1), q12 4 (KIMS, SAIL, UBL 2). T-159 now types them from their
+pages in `docs_collect` (section 9m): a measured 15 of those 16 on the live stores.
 COALINDIA files no transcript on BSE (only meet intimations); its calls need the company website. TITAN 2026-10-06 is
 the quarterly business update, not a results filing, so it is not a missing call.
 Applied 10 Nov 00:20 on copies of u8 and q12, then swapped in (old files kept as `<set>_before_t157_2026-11-09.db`): u8 80 -> 82 transcripts (PERSISTENT stub, BEL Q2 FY27 call; +59 pages), q12 164 -> 180 (WELSPUNLIV 12 stubs, UBL 2, APOLLOHOSP 1 stub + 1 call; +245 pages); integrity_check ok on both.
 
-### 9m. Misdated transcripts (T-161, 10 Nov 2026)
+### 9m. Misdated and mistyped documents (T-161/T-159, 10 Nov 2026)
 
 A scan of every transcript/deck/results document (pages >= 3) on p20, u8, q12 and pilot10 for documents whose latest
 printed date on pages 1-3 is two or more years before `filing_date` found 6 in q12, all transcripts with a date-only
@@ -1220,6 +1223,41 @@ calls of 2018-07-27 and 2018-01-22, APLAPOLLO 2017-12-13, EDELWEISS 2018-10-29, 
 as filed 2026-08-28/29 (the Tata Elxsi one was the only source of "JLR is 24% of revenue", answered as current). The
 live q12 store now carries the printed call date as `filing_date` and `<date>T23:59:59` as `known_at` on `doc` and on
 every derived row of those documents (doc_page, transcript_statement, kpi_series, guidance, ...); the old file is kept
-as `q12_before_t161_2026-11-10.db`. Still open in T-161: the crawler/loader must take the printed call date (and
-refuse a document whose printed date is > 120 days from the listing date) so a rebuild cannot bring them back. p20,
-u8 and pilot10: 0 found. Two SAIL 2020 results PDFs print 2015 comparatives only and are not misdated.
+as `q12_before_t161_2026-11-10.db`.
+
+**The builder applies both rules now (T-161 + T-159).** `docs_collect.reconcile_doc` (called at the end of `collect`
+and `collect_manifest`, so a rebuild and a profile build behave the same) reads pages 1-3 after extraction:
+
+- **Type.** A document of 3+ pages whose first pages `classify_type()` reads as a transcript *and* which print the
+  call's own moderator line (`doc_identity.moderator_line`, the marker the T-157 audit used) becomes
+  `doc_type='transcript'` whatever the BSE category; the record's type is kept as `source_record.record_type`. The
+  moderator line is required because the first draft — `classify_type()` alone — retyped 144 documents on p20, 137 of
+  them wrongly: a call *intimation* says "followed by a Q&A session" (TITAN, BHARTIARTL, APLAPOLLO) and a results
+  release says "a conference call will be held" (HINDALCO, ASIANPAINT). `Q&A`/`Management participants` are not
+  sufficient markers either (INDHOTEL's deck agenda, ADANIPORTS' participant list).
+- **Date.** A transcript whose printed call date (`call_dates.call_date`, the same reader the build already uses to
+  raise a transcript's date to its call, T-049 review) is more than 120 days *before* `filing_date` takes that date as
+  `filing_date` and `<date>T23:59:59` as `known_at`; `source_record.date_source='printed'` plus
+  `record_filing_date`/`record_known_at`/`record_type` record the change. A date is never moved later and only pages
+  1-3 are read, so a 2026 call that mentions 2018 on page 5 keeps its date. The date rule is a transcript's only: a
+  results PDF prints its period end (SAIL 2020-09-14 -> 2015 comparatives only, and SAIL 2021-10-29 -> 2021-06-30 is a
+  121-day gap) and a deck prints its period start (a HINDALCO Q4 FY25 deck filed 2025-11-21 prints "April 1, 2025"),
+  so both were false positives of the first draft.
+
+**Measured read-only** (`python -m reality_engine.pilot3.docs_collect --measure`, 10 Nov 2026, nothing written):
+p20/p20new.db 0 re-dated / 7 re-typed (HAVELLS 6, INDHOTEL 1); u8/u8.db 0 / 4 (CHOLAFIN 3, ULTRACEMCO 1); q12/q12.db
+0 / 4 (SAIL, KIMS, UBL 2); pilot10/pilot10.db 0 / 0. 0 re-dated because the live q12 store already holds the six
+hand-fixed dates (checked: `call_date` reads 2017-12-13 on the APLAPOLLO page and every one of the six now reconciles
+to itself). The audit's 16th document (u8 CIPLA) is not retyped: no CIPLA document typed `announcement`/`results` in
+u8 prints a moderator line on its first pages (its transcripts already read `transcript`). p20, u8 and pilot10: 0
+misdated found. Two SAIL 2020 results PDFs print 2015 comparatives only and are not misdated.
+
+Tests: `reality_engine/tests/test_docs_collect.py` (15: the six date cases, the covering letter dated at filing, a
+later printed date never moving a date, the page-5 mention, the HAVELLS meet outcome, the one-page audio link, the
+call intimation, the results release, the results PDF, the deck period start) and
+`reality_engine/tests/test_pilot3_docs.py::test_printed_pages_correct_the_record` (real PDFs through `collect`: a
+re-filed 2018 call re-dated and typed, the page-5 mention ignored, the one-page meet outcome unchanged).
+
+**Still to run on the controller (the live stores are not written here):** a `docs_collect` rebuild of p20, u8 and
+q12, then `build --part transcripts` and `--part guidance` for the 15 retyped documents, so `pilot3_statements` and
+the guidance rows see them; `--measure` itself writes nothing.

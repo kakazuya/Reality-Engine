@@ -18,6 +18,12 @@
 4. Writes ``DOC_COVERAGE.xlsx``: counts and newest dates, the FY25-FY27 expected-but-missing
    documents, and the BSE announcement attachments whose headline is held but body is not (the fetch
    worklist).
+5. Corrects the record from the document's own first pages (T-161/T-159): a meet-outcome filing whose
+   pages 1-3 read as a call and print the moderator line is typed ``transcript``, and a transcript whose
+   printed call date is 120+ days before its filing date takes that date as ``filing_date``/``known_at``
+   (a company-site crawl dates a 2016 call by the 2026 crawl day).  The change is visible in
+   ``source_record`` (``date_source``/``type_source`` = ``printed``) and never moves a date later.
+   ``--measure`` prints, read-only, what those rules would change in a store.
 
 Idempotent: a document whose sha256 is already in ``pages.db`` is not re-read.  Read-only on every store.
 """
@@ -32,7 +38,7 @@ import sqlite3
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from reality_engine import raw_store
@@ -40,6 +46,8 @@ from reality_engine.db.readonly import connect_ro
 from reality_engine.gap_loop.company import Company
 from reality_engine.gap_loop.prepare import DOC_TYPES, MIN_PAGE_CHARS, _clean_page, _date_of, _title
 from reality_engine.pilot3 import profile
+from reality_engine.pilot3.call_dates import PAGES as CALL_DATE_PAGES, call_date
+from reality_engine.pilot3.doc_identity import classify_type, moderator_line
 
 RAW_ROOT = Path(os.environ.get("REALITY_RAW_ROOT", r"D:\RealityEngine\raw"))
 LEGACY_PDFS = Path(os.environ.get("REALITY_PDFS_LEGACY_DIR", r"D:\RealityEngine\pdfs"))
@@ -66,6 +74,16 @@ BUCKET_TYPES = {"annual_report": "annual_report", "investor_presentation": "deck
 # press_release with the generic title and no order question could find them).  The headline names the win.
 ORDER_HEADLINE = re.compile(r"\bnew orders?\b.{0,40}\bsecured\b", re.I)
 GENERIC_SUBCATS = {"press release / media release", "general", "clarification"}
+# T-161/T-159: the document's own first pages beat the record when they contradict it.  Pages 1-3 carry the call
+# date and the call's own moderator line; a printed call date this many days before the filing date is a re-filed
+# old transcript (a company-website crawl dates the file by the crawl day), never a fresh one.  The date rule is a
+# transcript's only: a results PDF prints its period end (SAIL 2021-10-29 prints 2021-06-30, 121 days) and a deck
+# prints its period start (a HINDALCO Q4 FY25 deck filed 2025-11-21 prints "April 1, 2025"), so both were false
+# positives of the first draft and a deck keeps the record's date.
+PRINTED_PAGES = CALL_DATE_PAGES
+PRINTED_GAP_DAYS = 120
+MEASURE_STORES = ("D:/RealityEngine/p20/p20new.db", "D:/RealityEngine/u8/u8.db",
+                  "D:/RealityEngine/q12/q12.db", "D:/RealityEngine/pilot10/pilot10.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS doc(
@@ -484,6 +502,77 @@ def _refine_type(dir_type: str, record: dict | None, sha_type: str = "") -> str:
     return dir_type if dir_type != "other" else (kind or dir_type)
 
 
+def reconcile_doc(doc_type: str, filing_date: str | None, known_at: str | None, pages: int,
+                  first_pages: list[str]) -> tuple[str, str | None, str | None, dict]:
+    """T-161/T-159: a document's own first pages correct the record's type and date.
+
+    ``first_pages`` is the text of pages 1-3.  A document of 3+ pages whose first pages are a call transcript is
+    a ``transcript`` whatever the BSE category says (a meet-outcome filing); the pages must print the call's own
+    moderator line, so an intimation ("followed by a Q&A session") or a results release that says "a conference
+    call will be held" stays what the record says.  A transcript whose printed call date
+    (``call_dates.call_date``, the same reader the build uses) is more than 120 days *before* its filing date was
+    filed late: that date becomes ``filing_date`` and ``known_at`` ``<date>T23:59:59``.  A date is never moved
+    later, and a page-5 mention is never read.  ``notes`` names each change (``date_source``/``type_source`` =
+    ``printed``) and keeps the record's own value for audit."""
+    notes: dict = {}
+    text = "\n".join(first_pages)
+    if pages >= PRINTED_PAGES and doc_type != "transcript" and classify_type(text, pages) == "transcript" \
+            and moderator_line(text):
+        notes = {"type_source": "printed", "record_type": doc_type}
+        doc_type = "transcript"
+    if doc_type != "transcript" or pages < PRINTED_PAGES or not filing_date or not text.strip():
+        return doc_type, filing_date, known_at, notes
+    printed = call_date(first_pages, PRINTED_PAGES)
+    try:
+        gap = (date.fromisoformat(str(filing_date)[:10]) - date.fromisoformat(str(printed))).days
+    except (TypeError, ValueError):
+        return doc_type, filing_date, known_at, notes
+    if gap <= PRINTED_GAP_DAYS:            # near the record, or later than it: never move a date later
+        return doc_type, filing_date, known_at, notes
+    notes.update(date_source="printed", record_filing_date=filing_date, record_known_at=known_at)
+    return doc_type, printed, f"{printed}T23:59:59", notes
+
+
+def _printed_texts(conn: sqlite3.Connection, doc_key: str) -> list[str]:
+    """The text of the document's first ``PRINTED_PAGES`` pages, as the build then judges it."""
+    return [row[0] for row in conn.execute(
+        "SELECT text FROM doc_page WHERE doc_key=? AND page<=? ORDER BY page", (doc_key, PRINTED_PAGES))]
+
+
+def measure(stores: tuple[str, ...] = MEASURE_STORES, log=print) -> dict:
+    """Read-only (T-161/T-159): per store, the documents the printed-page rules would re-date and re-type.
+
+    Every store is opened ``mode=ro`` and nothing is written; the list names each document and both values."""
+    totals: dict[str, dict] = {}
+    for name in stores:
+        path = Path(name)
+        report: dict = {"redated": [], "retyped": []}
+        totals[str(path)] = report
+        if not path.exists():
+            log(f"{path}: not found")
+            continue
+        con = connect_ro(path, timeout_s=60)
+        try:
+            for doc_key, symbol, doc_type, filing_date, known_at, pages in con.execute(
+                    "SELECT doc_key, symbol, doc_type, filing_date, known_at, pages FROM doc"):
+                if (pages or 0) < PRINTED_PAGES or not doc_type:
+                    continue
+                new_type, new_date, _new_known, notes = reconcile_doc(
+                    doc_type, filing_date, known_at, pages, _printed_texts(con, doc_key))
+                if notes.get("date_source"):
+                    report["redated"].append((symbol, doc_key, filing_date, new_date))
+                if notes.get("type_source"):
+                    report["retyped"].append((symbol, doc_key, doc_type, new_type))
+        finally:
+            con.close()
+        log(f"{path}: {len(report['redated'])} re-dated, {len(report['retyped'])} re-typed")
+        for symbol, key, before, after in report["redated"]:
+            log(f"  re-date {symbol:12s} {before} -> {after}  {key}")
+        for symbol, key, before, after in report["retyped"]:
+            log(f"  re-type {symbol:12s} {before} -> {after}  {key}")
+    return totals
+
+
 # ---------------------------------------------------------------------------- build pages.db
 def connect_out(path: Path) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -546,7 +635,8 @@ def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print,
         records = Records(cfg, company, isins, store)
         candidates = discover(cfg, company, records, store)
         stat = counts[symbol] = {"files": len(candidates), "docs": 0, "dupes": 0, "pages": 0,
-                                 "needs_ocr": 0, "undated": 0, "errors": 0, "skipped": 0, "set_aside": 0}
+                                 "needs_ocr": 0, "undated": 0, "errors": 0, "skipped": 0, "set_aside": 0,
+                                 "redated": 0, "retyped": 0}
         held = held_newsids.setdefault(symbol, set())
         groups: dict[str, list] = {}
         # One download and one delete per company (T-102): the whole candidate list is fetched once,
@@ -584,7 +674,6 @@ def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print,
                 known_at = (record or {}).get("known_at")
                 filing_date = (record or {}).get("filing_date")
                 doc_type = _refine_type(dir_type, record, records.sha_type(sha))
-                isin = (record or {}).get("isin") or isin_at(history, filing_date)
                 old = conn.execute("SELECT pages FROM doc WHERE doc_key=? AND sha256=?", (key, sha)).fetchone()
                 if old is not None and conn.execute("SELECT COUNT(*) FROM doc_page WHERE doc_key=?", (key,)
                                                     ).fetchone()[0] >= (old[0] or 0):
@@ -597,11 +686,20 @@ def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print,
                     conn.execute("DELETE FROM doc_page WHERE doc_key=?", (key,))
                     with store.local(pdf) as source:
                         pages, page_stats = _extract(conn, key, Path(source), known_at)
+                # T-161/T-159: the document's own first pages correct the record's type and date.
+                doc_type, filing_date, known_at, notes = reconcile_doc(
+                    doc_type, filing_date, known_at, pages, _printed_texts(conn, key))
+                if notes.get("date_source"):            # the printed date is the page dates' date too
+                    conn.execute("UPDATE doc_page SET known_at=? WHERE doc_key=?", (known_at, key))
+                stat["redated"] += 1 if notes.get("date_source") else 0
+                stat["retyped"] += 1 if notes.get("type_source") else 0
+                isin = (record or {}).get("isin") or isin_at(history, filing_date)
                 meta = {k: v for k, v in (record or {}).items() if k in
                         ("NEWSID", "attachment", "id", "category", "subcat", "headline", "size")}
                 meta["dir_type"] = dir_type
                 meta["filings"] = filings
                 meta["paths"] = [str(m[0]) for m in members]
+                meta.update(notes)
                 if page_stats["error"]:
                     meta["error"] = page_stats["error"]
                     stat["errors"] += 1
@@ -663,7 +761,7 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
     store = store or raw_store.RawStore(roots={**raw_store._default_roots(), prof.raw_root.name.lower(): prof.raw_root})
     for symbol in symbols:
         stat = counts[symbol] = {"rows": 0, "docs": 0, "pages": 0, "needs_ocr": 0, "undated": 0, "missing": 0,
-                                 "errors": 0, "not_documents": 0, "dupes": 0}
+                                 "errors": 0, "not_documents": 0, "dupes": 0, "redated": 0, "retyped": 0}
         seen: set[str] = set()
         mine = [r for r in rows if str(r.get("symbol_at_time") or "").strip().upper() == symbol]
         with store.prefetch(_manifest_path(r, symbol, prof) for r in mine):
@@ -690,11 +788,19 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
                 key = _rel_key(path, prof.raw_root)
                 with store.local(path) as source:
                     pages, page_stats = _extract(conn, key, Path(source), known_at)
+                # T-161/T-159: the document's own first pages correct the record's type and date.
+                doc_type, filing_date, known_at, notes = reconcile_doc(
+                    doc_type, _date_of(known_at), known_at, pages, _printed_texts(conn, key))
+                if notes.get("date_source"):            # the printed date is the page dates' date too
+                    conn.execute("UPDATE doc_page SET known_at=? WHERE doc_key=?", (known_at, key))
+                stat["redated"] += 1 if notes.get("date_source") else 0
+                stat["retyped"] += 1 if notes.get("type_source") else 0
                 meta = {k: row.get(k) for k in ("newsid", "bucket", "category", "subcat", "headline", "url", "sha256")}
+                meta.update(notes)
                 conn.execute("INSERT OR REPLACE INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
                     key, symbol, row.get("isin"), doc_type,
                     _title(row.get("headline"), row.get("subcat"), row.get("category")) or path.stem,
-                    _date_of(known_at), known_at, str(path), str(row.get("sha256") or ""), pages, json.dumps(meta),
+                    filing_date, known_at, str(path), str(row.get("sha256") or ""), pages, json.dumps(meta),
                     "manifest.csv"))
                 conn.commit()
                 stat["docs"] += 1
@@ -826,7 +932,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--symbols", default=None, help="default: every company of the profile, else the pilot3 three")
     parser.add_argument("--coverage", type=Path, default=None, help="default: DOC_COVERAGE.xlsx beside --out")
     parser.add_argument("--data-root", type=Path, default=None)
+    parser.add_argument("--measure", action="store_true",
+                        help="read-only (T-161/T-159): per stored pages.db, the docs the printed-page rules would "
+                             "re-date and re-type, with the list; writes nothing")
+    parser.add_argument("--stores", default=None,
+                        help="with --measure: comma-separated pages.db paths (default p20/u8/q12/pilot10)")
     args = parser.parse_args(argv)
+    if args.measure:
+        measure(tuple(p.strip() for p in (args.stores or ",".join(MEASURE_STORES)).split(",") if p.strip()))
+        return 0
     if args.profile:
         prof = profile.load(args.profile)
         profile.activate(prof)
