@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 15:05 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 16:00 IST (Wolf)
 History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `docs/V2_SCHEMA_CONTRACT.md`.
 
 ## Now
@@ -13,12 +13,12 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 ## T-154 semantic-search gain test (Shivam 9 Nov 14:15: no more embedding comparisons; measure gain on RIGHT answers; DeepInfra balance $0.80)
 - Local bake-off DONE and stopped (`tasks/v2/T-154_bakeoff.py`, results `D:/RealityEngine/p20/t154/run_*.json`): 139 q, 16,457 pages, 1050 Ti: FinModernBERT r@5 20.9/r@20 48.9 (4.2 p/s), bge-m3 21.6/43.2 (4.0), bge-small 15.1/30.9 (38.3), FinBERT 2.9/10.8. HP NPU works only with fixed shapes + FP16 (`tasks/v2/T-154_npu_prep.py`): bge-small 17.6 p/s, same recall; QDQ int8 breaks recall (0.7%).
 - RUNNING at 14:20: `embed_test embed --model 8b --max-usd 0.45 --out D:/RealityEngine/p20/embed` (REALITY_PILOT3_DB=p20new.db; text only, 14,376 pages FY25+ transcripts/decks/results/press/AR, est $0.37; resumable; log `D:/RealityEngine/p20/embed_8b.log`).
-- DONE 15:05: `pilot3_semantic` (MCP + `p3ask semantic`, `lookups_semantic.py`, query cache + spend log in `p20/embed/`). Embed ~160 pages/min, ETA ~16:25. Re-ask set `p20/answers/t154_reask_selection.json` = 90 target (partly/wrong minus raw_missing) + 30 right (seed 154); briefs `<Wolf scratch>/T-154_reask_{A,B,C}.md` (A: ADANIPORTS-BHARTIARTL 41, B: COALINDIA-HDFCAMC 37, C: INDHOTEL-TITAN 42), each dsh worker started only when its companies are fully embedded. Then number_check, hand-grade, report right before/after.
+- DONE: `pilot3_semantic` (MCP + `p3ask semantic`). Embed resumed twice (read timeout; npy save vs mmap, both fixed), restart 3 PID 36784 cap $0.25, total ~$0.62 incl Titan (Shivam OK). Re-ask set `p20/answers/t154_reask_selection.json` (90 target + 30 right), questions `p20/answers/t154/questions_S{A,B,C}.json`. RUNNING: A 20261109T100235Z-4471f32e (41q), B 20261109T101801Z-012e9dec (37q). PENDING: C (INDHOTEL/PIDILITIND/TITAN, 42q) when A ends (2-worker cap); then number_check, hand-grade, report right before/after of 230.
 
 ## Next action
-1. After 09:30: `hp_worker start <D2 brief> --pilot-db D:/RealityEngine/q12/q12.db --permission danger-full-access --account 1`; watch; copy `.tmp/*_answers.jsonl` to `q12/answers/D/`; number_check; grade; merge grades with `D/grades_D_part1.json`; rerun `answer_run_report --name t124_q12`.
-2. SHP XBRL fetched (186 files, 0 failed) and `stores.build_shp` rerun on the three D: stores: all 29 companies now have 9-14 XBRL quarters + pledge rows. Re-ask the SHP partlies (u8 6, q12 ANANDRATHI-r069, IDEA-r113).
-3. Fix build window: valuation_daily/price from 2019 in pilot3 profile for new sets.
+1. q12 D2 DONE (graded 09:49, `reports/2026-11-09_t124_q12.xlsx`: 72 right/70 partly/1 wrong/13 scope_out of 156).
+2. SHP re-ask DONE 9 Nov: 7/7 right (`u8/answers/SHP/`). Store oddity: PERSISTENT Mar-26 mutual_funds = fpi_total = 22.12 (check shp parse).
+3. T-155 (prices from 2019 in pilot builds): brief ready in Wolf scratch `T-155_price_window_brief.md`, start when a worker slot frees.
 4. Answer-brief lines now in D2 brief (each quarter's deck; source known by as_of; no cross-company figures; TTM = 12 months by ex-date; scale-check AUM): carry into the standard brief.
 5. After T-131 OK: T-132 brief (contract section 8), T-134 period engine brief.
 6. raw_to_drive sweep for u8 + p20 raw + new SHP files.
