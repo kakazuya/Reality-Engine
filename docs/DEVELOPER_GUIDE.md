@@ -749,6 +749,21 @@ definition convention are in `docs/V2_SCHEMA_CONTRACT.md` section 9; tests are
 `reality_engine/tests/test_v2_periods.py`; the read-only store report is
 `python -m reality_engine.v2.period_report --db <pilot3 store> [--symbol SYMBOL]`.
 
+### O21. Rating rationales (T-139, 9 Nov 2026)
+
+`python -m reality_engine.ingestion.rating_rationale_client --store D:/RealityEngine/p20/p20new.db --out .tmp/ratings_p20 [--since 2024-04-01] [--symbols HAVELLS,TITAN] [--max-per-agency 4]` fetches the public rating-rationale text for every company in the store. It stores text only (never the PDF/HTML): `<out>/<SYMBOL>/<AGENCY>_<YYYY-MM-DD>_<id>.txt` plus `<out>/index.csv` (symbol, agency, rating_date, url, instrument, rating, outlook, action, chars, sha256, fetched_at). A URL already in the index is skipped, so a rerun resumes; at most the latest 4 per company+agency since `--since`; one request/second/host with a browser User-Agent and backoff on 429/5xx. Tests: `reality_engine/tests/test_rating_rationale.py` (8 passed, no network).
+
+Listing endpoints found (probed 2026-11-09), also written in the module docstring:
+- CARE: `https://www.careratings.com/header/searchlistinsights?cinput=<name>` returns JSON (`CompanyName`, `CommonContent[].PDf`); PDF at `https://www.careratings.com/upload/CompanyFiles/PR/<PDf>`.
+- CRISIL: `https://www.crisilratings.com/bin/crisil/listing/rating_sme_listing_service.json?cmd=RR&start=<n>&limit=<end>` returns JSON with one current release per rated entity (39,819 rows); `limit` is an end offset, not a page size. Doc: `https://www.crisil.com/mnt/winshare/Ratings/RatingList/RatingDocs/<ratingFileName>`.
+- ICRA: `https://www.icra.in/Rating/AllRatingRationales?Keyword=<name>` returns HTML rows (date, title, Id); PDF at `https://www.icra.in/Rating/ShowRationalReportFilePdfViewer/<id>`.
+- India Ratings: `https://www.indiaratings.co.in/home/GetSearchIssuerData_PressRelease_Research?searchKey=<name>&noOfShowEntry=20` returns JSON, but `/pressrelease/<id>` is an Angular shell that did not serve text on 9 Nov 2026, so nothing is saved yet.
+- Acuite: `https://connect.acuite.in/liveratings?page=1` lists live ratings, but its company-search POST answers 405 and no pilot20 company is Acuite-rated.
+- Brickwork: `PressRelease.aspx` is ASP.NET WebForms (`__VIEWSTATE` + `CompanytxtSearch` + `btnSearch` POST); no pilot20 company is Brickwork-rated, so it is not wired yet.
+- Moody's and S&P need a login: their action is read from the exchange announcement and never fetched.
+
+Pilot20 run (9 Nov 2026, `--since 2024-04-01`): 41 text files, 1.2 MB, all 10 companies covered — CARE 21, ICRA 13, CRISIL 7 (HDFCAMC by ICRA; Apollo Tyres, Asian Paints and Pidilite by CRISIL). The exchange rating announcements remain the source for Moody's/S&P and for the agency actions themselves.
+
 ## 3. Ticket tracker
 
 One board for the sessions and the workers (a worker's brief carries only its own row):
