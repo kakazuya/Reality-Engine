@@ -807,6 +807,16 @@ value_text, unit_text, scale, value, method and a 300-character page snippet). W
 27/30 and 21/30 in round 3. Rules a-i, the measured table, the remaining misses and the tests
 (`reality_engine/tests/test_v2_table_cells.py`, 45) are in `docs/V2_SCHEMA_CONTRACT.md` section 10.
 
+### O25. Embedding bake-off and semantic search (T-154, 9 Nov 2026)
+
+- `tasks/v2/T-154_bakeoff.py` compared local embedders on 139 pilot20 questions over 16,457 pages (results in
+  `D:/RealityEngine/p20/t154/run_*.json`): on the 1050 Ti FinModernBERT recall@20 48.9% and bge-m3 43.2% at ~4 pages/s,
+  bge-small 30.9% at 38 pages/s. `tasks/v2/T-154_npu_prep.py` fixes input shapes and FP16 so the HP NPU runs bge-small
+  (17.6 pages/s, same recall; int8 breaks recall). Shivam stopped further comparisons (9 Nov).
+- Production index: Nemotron 8B on DeepInfra via `reality_engine/pilot3/embed_test.py embed` into `<store>/embed/`
+  (pilot20: 14,376 + 200 pages, ~$0.48), served by `pilot3_semantic` (`plugins/reality-data/server/lookups_semantic.py`,
+  README). Re-ask results: `reports/2026-11-09_t154_p20_semantic_reask.xlsx`; Shivam: semantic stays, alongside the table store.
+
 ### O24. v2 label dictionary: one metric per printed label, per sector family (T-133, 9 Nov 2026)
 
 `reality_engine/v2/label_map.py` reads every `table_cell.row_label` of a v2 cells store and the `kpi_series` of the

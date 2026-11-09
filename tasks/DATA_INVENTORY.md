@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-09 02:54 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 13 tables and 57 of 72 raw folders.
+Generated 2026-11-09 22:05 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 13 tables and 56 of 73 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -96,19 +96,19 @@ Undocumented: 13 tables and 57 of 72 raw folders.
 | equity_intelligence.db | `macro_events` | 30 | yes |
 | equity_intelligence.db | `master_companies` | 6,940 | yes |
 | equity_intelligence.db | `mkt_bse_deals` | 272,211 | yes |
-| equity_intelligence.db | `mkt_bse_delivery_daily` | 7,577,850 | yes |
-| equity_intelligence.db | `mkt_bse_eq_daily` | 7,577,939 | yes |
+| equity_intelligence.db | `mkt_bse_delivery_daily` | 7,593,049 | yes |
+| equity_intelligence.db | `mkt_bse_eq_daily` | 7,598,245 | yes |
 | equity_intelligence.db | `mkt_bse_index_daily` | 146,095 | yes |
 | equity_intelligence.db | `mkt_bse_insider` | 153,904 | yes |
 | equity_intelligence.db | `mkt_commodity_daily` | 25,255 | yes |
 | equity_intelligence.db | `mkt_commodity_monthly` | 9,208 | yes |
 | equity_intelligence.db | `mkt_fii_dii_cash` | 1,942 | yes |
-| equity_intelligence.db | `mkt_load_log` | 25,776 | yes |
+| equity_intelligence.db | `mkt_load_log` | 25,791 | yes |
 | equity_intelligence.db | `mkt_nsdl_fpi_daily` | 33,549 | yes |
 | equity_intelligence.db | `mkt_nse_deals` | 279,513 | yes |
 | equity_intelligence.db | `mkt_nse_eq_daily` | 1,388,730 | yes |
-| equity_intelligence.db | `mkt_nse_full_daily` | 4,549,853 | yes |
-| equity_intelligence.db | `mkt_nse_index_daily` | 208,213 | yes |
+| equity_intelligence.db | `mkt_nse_full_daily` | 4,564,083 | yes |
+| equity_intelligence.db | `mkt_nse_index_daily` | 208,865 | yes |
 | equity_intelligence.db | `mkt_nse_insider` | 176,865 | yes |
 | equity_intelligence.db | `mkt_nse_participant` | 19,285 | yes |
 | equity_intelligence.db | `mkt_nse_pit_filings` | 4,032 | yes |
@@ -233,19 +233,19 @@ Undocumented: 13 tables and 57 of 72 raw folders.
 | maruti_transcripts | 0 | 0.00 | - | **undocumented** |
 | material_announcement | 0 | 0.00 | - | **undocumented** |
 | nse_announcements | 0 | 0.00 | - | **undocumented** |
-| nse_shp_xbrl_pilot | 591 | 0.01 | 2026-11-04 `SHP_1736668_13102026124040_WEB.xml.gz` | **undocumented** |
+| nse_shp_xbrl_pilot | 777 | 0.01 | 2026-11-09 `SHP_1733654_07102026112959_WEB.xml.gz` | **undocumented** |
 | originals_lists | 0 | 0.00 | - | **undocumented** |
 | pilot60_history | 11,035 | 16.55 | 2026-11-09 `manifest.csv` | **undocumented** |
 | price_bands | 0 | 0.00 | - | yes |
 | raw_market/amfi_nav | 0 | 0.00 | - | **undocumented** |
-| raw_market/bse_bhav | 0 | 0.00 | - | **undocumented** |
+| raw_market/bse_bhav | 5 | 0.00 | 2026-11-09 `BhavCopy_BSE_CM_0_0_0_20261109_F_0000.CSV` | **undocumented** |
 | raw_market/bse_block | 0 | 0.00 | - | **undocumented** |
 | raw_market/bse_bulk | 0 | 0.00 | - | **undocumented** |
 | raw_market/bse_corpact | 0 | 0.00 | - | **undocumented** |
-| raw_market/bse_deliv | 0 | 0.00 | - | yes |
+| raw_market/bse_deliv | 4 | 0.00 | 2026-11-09 `_manifest.csv` | yes |
 | raw_market/bse_index | 0 | 0.00 | - | yes |
 | raw_market/bse_insider | 0 | 0.00 | - | yes |
-| raw_market/masters | 0 | 0.00 | - | **undocumented** |
+| raw_market/masters | 11 | 0.06 | 2026-10-08 `nse_SME_EQUITY_L.csv` | yes |
 | raw_market/mc_fiidii | 0 | 0.00 | - | **undocumented** |
 | raw_market/nsdl_fpi_daily | 0 | 0.00 | - | yes |
 | raw_market/nsdl_fpi_fortnight | 0 | 0.00 | - | **undocumented** |
@@ -255,8 +255,8 @@ Undocumented: 13 tables and 57 of 72 raw folders.
 | raw_market/nse_corpact | 0 | 0.00 | - | **undocumented** |
 | raw_market/nse_corpact_sme | 0 | 0.00 | - | **undocumented** |
 | raw_market/nse_fii_stats | 0 | 0.00 | - | **undocumented** |
-| raw_market/nse_full | 0 | 0.00 | - | yes |
-| raw_market/nse_index | 0 | 0.00 | - | yes |
+| raw_market/nse_full | 5 | 0.00 | 2026-11-09 `sec_bhavdata_full_09112026.csv` | yes |
+| raw_market/nse_index | 5 | 0.00 | 2026-11-09 `ind_close_all_09112026.csv` | yes |
 | raw_market/nse_integrated_equities | 0 | 0.00 | - | **undocumented** |
 | raw_market/nse_integrated_sme | 0 | 0.00 | - | **undocumented** |
 | raw_market/nse_part_oi | 0 | 0.00 | - | **undocumented** |
@@ -274,6 +274,7 @@ Undocumented: 13 tables and 57 of 72 raw folders.
 | results_pdfs | 0 | 0.00 | - | **undocumented** |
 | runners | 0 | 0.00 | - | **undocumented** |
 | tax_sources | 0 | 0.00 | - | **undocumented** |
+| transcripts_raw | 17 | 0.01 | 2026-11-09 `sha_index.db` | yes |
 | user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | **undocumented** |
 | user_research_drive | 236 | 0.60 | 2026-10-26 `_native_blocked.txt` | **undocumented** |
 | vahan | 0 | 0.00 | - | **undocumented** |
