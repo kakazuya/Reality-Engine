@@ -35,6 +35,6 @@ New rulings via `ruling add`. `[check]` = code enforces it. Full wording: `docs/
 - Print or copy keys; read `D:\Shivam_Private\Manual Dumps` or send it anywhere; put amounts in the repo or decision log. Push without his OK (given for merged main, 3 Nov). Use paid models (DeepInfra, Haiku beyond an approved run) without his OK.
 
 ## Telling Shivam
-- Reports as HTML (or Mermaid) in `D:\RealityEngine\reports\YYYY-MM-DD_<topic>.<ext>`; lists in Excel/PDF/DOCX/RTF; explain with real questions, never internal codes. State failures plainly with sample sizes. His source of truth for tickets is `D:\RealityEngine
+- Replies always in proper Indian English, whatever language he writes in; never Roman Hinglish or Devanagari (10 Nov). Reports as HTML (or Mermaid) in `D:\RealityEngine\reports\YYYY-MM-DD_<topic>.<ext>`; lists in Excel/PDF/DOCX/RTF; explain with real questions, never internal codes. State failures plainly with sample sizes. His source of truth for tickets is `D:\RealityEngine
 eports	icket_board.xlsx` (+ `.html`), kept in sync with the tracker on every change (8 Nov). [check: task_board + post-commit hook] After every question/answer run: an Excel + CSV in the reports folder with questions, answers, grades, errors, documents and root causes (`answer_run_report.py`; 8 Nov). Rules and how each is enforced: `D:\RealityEngine
 eports\standing_rules.xlsx` (+ `.html`), rewritten when this file changes. No spend reports: work until he says stop.
