@@ -11,7 +11,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 - Strict grade of 50 re-ask answers (`reports/2026-11-09_t154_strict50.xlsx`): 12 right, 37 partly, 1 wrong; 406 figures checked against pages, none invented; 14 of 120 answers quote transcripts filed after as_of (new ticket); 6 partly were held-but-missed.
 
 ## Running (17:25)
-- T-132 table store: dsh 20261109T115250Z-31023d3d, pilot20 decks+results -> `table_cell` in worktree `.tmp/v2p20`.
+- T-132 round 1 merged 18:15 (94,275 cells, store `D:/RealityEngine/v2/p20_r1`); Opus sample ~8/30 fully right -> round 2 (contract s10 lists the five defects).
 - HP: T-156 strict point-in-time re-answer of 14 answers, hp-20261109T174957-e415cf.
 
 ## Next action
