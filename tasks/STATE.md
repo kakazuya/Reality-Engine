@@ -12,9 +12,10 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 ## Running (17:25)
 - T-132 table store: dsh 20261109T115250Z-31023d3d, pilot20 decks+results -> `table_cell` in worktree `.tmp/v2p20`.
-- T-139 rating rationales: dsh 20261109T115408Z-99df0bb0, text only, `.tmp/ratings_p20`.
+- HP: T-156 strict point-in-time re-answer of 14 answers, hp-20261109T174957-e415cf.
 
 ## Next action
+0. T-139 merged 18:05: `reality_engine/ingestion/rating_rationale_client.py`; 41 rationale texts for 10/10 pilot20 cos in `D:/RealityEngine/outside_doc/ratings_p20` (1.3 MB). Next: load into `outside_doc` + a read tool; India Ratings needs its detail JSON.
 1. Review + merge T-132 and T-139 when they finish (Opus samples 100 cells per doc type for T-132).
 2. DONE 17:45: u8/q12/p20 D: stores now hold prices, index and valuation from 2019 (prices+index rebuilt, `price_delivery_input` emptied, ratios rerun; every pre-existing valuation/ratio row identical). Profiles live in old Wolf scratch dirs (p20/u8: 82841833.../scratchpad, q12: bea35aad.../scratchpad).
 3. T-133 label map (metric kind stock/flow column; fixes the 436 mixed keys), then T-135 calc catalog check, T-150 units at write (number_check missed INDHOTEL-016 10x revenue).
