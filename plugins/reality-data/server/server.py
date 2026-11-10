@@ -29,6 +29,8 @@ from mcp.types import ToolAnnotations
 import catalog as catalog_mod
 import core
 
+_NO_PILOT3_SQL = os.environ.get("REALITY_DATA_NO_PILOT3_SQL") == "1"
+
 INSTRUCTIONS = """Local reality-engine data search. The data is read-only and every answer carries provenance.
 
 PILOT3 FIRST: the pilot3_* tools hold every company in their database's company table -- the whole NSE+BSE universe the build covers (thousands of companies), never a sample of three: check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') instead of assuming a company is absent. For any company in that table (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF/insurance/government (GoI) holding or a four-quarter shareholding path -> pilot3_holding(symbol, as_of, category=..., quarters=5: the baseline plus four quarters; an intra-quarter filing takes a slot) -- FPI sums use fpi_total, never its components added -- every filed shp_category row comes back with pct and pct_basis; share count on a date -> pilot3_holding(symbol, as_of).share_capital; what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); price reaction to a filing, gaps, RSI, moving averages, volume spikes, range position -> pilot3_tech; list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: company, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, doc, doc_page; view fin_quarter_current: the one preferred financial line per symbol, fiscal_period, basis and line_item now, and the quarter tables' preferred_from / preferred_to columns elect the same figure at any past day -- read them or pilot3_fin, never a hand sum over both tables). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A company the database does not hold returns {"found": false} (or error code not_pilot3): only then use the raw tools below or say NOT IN DATA. A {"found": false} answer for a company it does hold lists what is available; read that list and retry. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
@@ -46,6 +48,10 @@ Symbols, BSE codes, ISINs and names all resolve inside each tool. A {"found": fa
 Use catalog() when you need the map: one line per database by default, with db= for that database's tables and query= for a word search across them (db='pilot3' lists the pilot3 store). schema(table, db) gives one table's columns, types, row count, indexes and sample keys — use it instead of PRAGMA/sqlite_master probes. For a specific company go straight to the data tools; resolve is optional because price/facts resolve the symbol themselves. resolve(query) turns a symbol, company name or ISIN into the canonical identity (ISIN history included). price(symbol, start, end=None, adjusted=False) returns OHLCV, delivery quantity/percent and traded value; close is raw unless adjusted=True. facts(symbol, kind=None, period=None, include_model_read=False) returns filed XBRL results first; the annual-report, deck and call extractions are model-read by AI and unverified, withheld unless include_model_read=true or kind is ar/deck/concall, and every row says extraction=filed_xbrl|model_read; kind accepts segments, financials, kpis, guidance, results, deck, concall, ar, or free text; period accepts FY25, Q4FY26 or a date. search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10, as_of=None, include_model_read=False) returns text passages (as_of drops documents published after that date, and undated ones); its annual-report model-read quotes are withheld unless include_model_read=true; sql(query, db) is a bounded read-only escape hatch.
 
 Examples: price("PPL", "2026-03-30"); facts("PPL", kind="segments", period="FY25"); facts("PPL") for a broad fundamentals answer. Provenance names the database, table and snapshot; quarantine keys are applied to annual-report facts and demo tables are never presented as data."""
+
+if _NO_PILOT3_SQL:
+    INSTRUCTIONS = INSTRUCTIONS.replace("check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') ", "")
+    INSTRUCTIONS = INSTRUCTIONS.replace("pilot3_sql", "")
 
 server = MCPServer(name="reality-data", version="0.1.0", instructions=INSTRUCTIONS)
 
@@ -291,13 +297,13 @@ def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | No
             hidden = int(results.get("hidden_after_as_of") or 0)
             results_as_of = results.get("as_of", as_of)
             results = results.get("results", [])
-        results = list(results or [])
+        results = list(results or [])  # type: ignore[arg-type]
         qids = core.quarantined_doc_ids()
         if qids:
             filtered = []
             for hit in results:
                 try:
-                    doc_id = int((hit or {}).get("doc_id"))
+                    doc_id = int((hit or {}).get("doc_id"))  # type: ignore[arg-type]
                 except (TypeError, ValueError):
                     filtered.append(hit)
                     continue
@@ -671,10 +677,11 @@ def pilot3_ratings(symbol: str, as_of: str | None = None, agency: str | None = N
     return _safe(lambda: _ratings.ratings(symbol, as_of=as_of, agency=agency, section=section, limit=limit))
 
 
-@server.tool(
-    name="pilot3_sql",
-    description=(
-        "Bounded read-only SELECT/WITH over the pilot3 database (REALITY_PILOT3_DB names another build; limit "
+if not _NO_PILOT3_SQL:
+    @server.tool(
+        name="pilot3_sql",
+        description=(
+            "Bounded read-only SELECT/WITH over the pilot3 database (REALITY_PILOT3_DB names another build; limit "
         "enforced, default 100, max 500). Tables: company (every company the build covers -- count it, never assume "
         "a sample), doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, "
         "ratio_panel, formula, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, "
@@ -691,9 +698,9 @@ def pilot3_ratings(symbol: str, as_of: str | None = None, agency: str | None = N
         "long page text, a whole paragraph or a full quote."
     ),
     annotations=_RO,
-)
-def pilot3_sql(query: str, limit: int = 100, max_chars: int = 400, as_of: str | None = None) -> dict[str, Any]:
-    return _safe(lambda: _p3.sql(query, limit=limit, max_chars=max_chars, as_of=as_of))
+    )
+    def pilot3_sql(query: str, limit: int = 100, max_chars: int = 400, as_of: str | None = None) -> dict[str, Any]:
+        return _safe(lambda: _p3.sql(query, limit=limit, max_chars=max_chars, as_of=as_of))
 # --- end lookups: pilot3 ---
 
 

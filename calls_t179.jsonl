@@ -1,0 +1,2 @@
+{"ts_start": 1794333702.7346742, "ts_end": 1794333702.833501, "seconds": 0.09882688522338867, "qid": "q1", "tool": "kpi", "args": "{}", "ok": false, "reply bytes": 101, "reply_bytes": 101}
+{"ts_start": 1794333702.8345706, "ts_end": 1794333702.8346815, "seconds": 0.00011086463928222656, "qid": "q2", "tool": "calc", "args": "{\"expression\": \"a/b\", \"inputs\": {\"a\": 10, \"b\": 4}}", "ok": true, "reply bytes": 112, "reply_bytes": 112}

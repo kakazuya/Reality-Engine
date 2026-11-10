@@ -44,6 +44,46 @@ COLS = ["run_id", "qid", "symbol", "use", "kind", "question", "reframed_question
         "error", "root_cause", "fix", "source_if_missing", "tools", "sources"]
 
 
+def _aggregate_call_log(path: Path) -> dict:
+    from collections import Counter, defaultdict
+    agg = defaultdict(lambda: {"calls": 0, "calls_by_tool": Counter(), "sql_calls": 0,
+                               "tool_seconds": 0.0, "first_call_ts": None, "last_call_ts": None})
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            qid = rec.get("qid")
+            a = agg[qid]
+            a["calls"] += 1
+            tool = rec.get("tool")
+            a["calls_by_tool"][tool] += 1
+            if tool in ("sql", "pilot3_sql"):
+                a["sql_calls"] += 1
+            a["tool_seconds"] += rec.get("seconds", 0) or 0
+            ts = rec.get("ts_start")
+            te = rec.get("ts_end")
+            if ts is not None and (a["first_call_ts"] is None or ts < a["first_call_ts"]):
+                a["first_call_ts"] = ts
+            if te is not None and (a["last_call_ts"] is None or te > a["last_call_ts"]):
+                a["last_call_ts"] = te
+    out = {}
+    for qid, a in agg.items():
+        wall = 0.0
+        if a["first_call_ts"] is not None and a["last_call_ts"] is not None:
+            wall = a["last_call_ts"] - a["first_call_ts"]
+        out[qid] = {
+            "calls": a["calls"],
+            "calls_by_tool": dict(a["calls_by_tool"]),
+            "sql_calls": a["sql_calls"],
+            "tool_seconds": a["tool_seconds"],
+            "first_call_ts": a["first_call_ts"],
+            "last_call_ts": a["last_call_ts"],
+            "wall_seconds": wall,
+        }
+    return out
+
+
 def _flat(v) -> str:
     if isinstance(v, (list, dict)):
         return json.dumps(v, ensure_ascii=False)
@@ -64,7 +104,7 @@ def load(path: Path) -> list[dict]:
     return rows
 
 
-def write(rows: list[dict], name: str, out_dir: Path | None = None) -> tuple[Path, Path]:
+def write(rows: list[dict], name: str, out_dir: Path | None = None, call_log: Path | None = None) -> tuple[Path, Path]:
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -72,11 +112,28 @@ def write(rows: list[dict], name: str, out_dir: Path | None = None) -> tuple[Pat
     out_dir.mkdir(parents=True, exist_ok=True)
     day = time.strftime("%Y-%m-%d")
     xlsx, csv_path = out_dir / f"{day}_{name}.xlsx", out_dir / f"{day}_{name}_answers.csv"
+
+    if call_log is not None:
+        agg = _aggregate_call_log(Path(call_log))
+        for r in rows:
+            a = agg.get(r.get("qid"))
+            if a is None:
+                a = {"calls": 0, "calls_by_tool": {}, "sql_calls": 0, "tool_seconds": 0.0,
+                     "first_call_ts": None, "last_call_ts": None, "wall_seconds": 0.0}
+            r["calls"] = a["calls"]
+            r["calls_by_tool"] = a["calls_by_tool"]
+            r["sql_calls"] = a["sql_calls"]
+            r["tool_seconds"] = a["tool_seconds"]
+            r["first_call_ts"] = a["first_call_ts"]
+            r["last_call_ts"] = a["last_call_ts"]
+            r["wall_seconds"] = a["wall_seconds"]
+
     extra = sorted({k for r in rows for k in r} - set(COLS))
     cols = COLS + extra
 
     wb = Workbook()
     ws = wb.active
+    assert ws is not None
     ws.title = "Summary"
     total = Counter(r["grade"] for r in rows)
     should = [r for r in rows if r["grade"] != "scope_out"]
@@ -161,8 +218,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--run", type=Path, required=True, help="graded JSONL")
     ap.add_argument("--name", required=True, help="topic in the file name, e.g. t124_q12_answers")
     ap.add_argument("--out-dir", type=Path, default=None)
+    ap.add_argument("--call-log", type=Path, default=None, help="p3ask JSONL call log")
     args = ap.parse_args(argv)
-    x, c = write(load(args.run), args.name, args.out_dir)
+    x, c = write(load(args.run), args.name, args.out_dir, call_log=args.call_log)
     print(f"wrote {x}\nwrote {c}")
     return 0
 

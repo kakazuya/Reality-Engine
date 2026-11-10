@@ -94,6 +94,10 @@ only; they cannot see a dropped column.
   needed SQL: list the missing typed lookups; those become the next tool work.
 - **Accept:** `D:/RealityEngine/reports/2026-11-11_t179_sql_ab.xlsx` + csv (per-run report rule).
 
+**Harness built (T-179).** `reality_engine/scripts/p3ask.py` now logs calls (`--qid`/`--log` or `P3ASK_QID`/`P3ASK_LOG`) and honours `P3ASK_NO_SQL=1`; `plugins/reality-data/server/server.py` honours `REALITY_DATA_NO_PILOT3_SQL=1`; `reality_engine/scripts/sql_ab_sample.py` draws the 120 questions; `answer_run_report.py` gained `--call-log`. Exact commands for the two arms:
+- Arm A (SQL available): `python -m reality_engine.scripts.sql_ab_sample --out .tmp/t179` then answer workers call `python -m reality_engine.scripts.p3ask --db <store.db> <tool> k=v --qid <qid> --log <run>.jsonl`.
+- Arm B (no SQL): same with `P3ASK_NO_SQL=1` for p3ask and `REALITY_DATA_NO_PILOT3_SQL=1` for the server; report with `python -m reality_engine.scripts.answer_run_report --run <graded.jsonl> --name t179_sql_ab --call-log <run>.jsonl`.
+
 ## 4. T-180: free models transcribing tables, checked by script
 
 - **Hypothesis:** a model that only copies a page's tables into rows, with every row checked by script, beats the
