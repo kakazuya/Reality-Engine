@@ -200,23 +200,31 @@ Rules, each fixing a prototype finding in section 8:
 
 - **a. Header stack.** The stack is built upward from the table and a row is kept only when its words lie inside
   the table's x-range (left edge = first column's left edge, right edge = last column anchor + 1.5 column gaps):
-  words wholly outside are trimmed, a word running across either edge drops the row. A row is dropped when it is
+  words wholly outside are skipped as call-outs and a word running across the LEFT edge is trimmed (`Unit`), but a
+  title that runs in from the left leaves only a fragment and is not a header row. A row is dropped when it is
   prose (one run of eight or more words with no digit, or a line ending in `.`), when it carries a non-date figure
   (a slide call-out such as `Rs 353 crores`), or when it names no date, period, unit or audit status; a wrapped
-  date half (`31 2024`, inside a month row) is not a call-out. Three consecutive dropped rows stop the stack and the
-  stack holds at most five rows. A group heading printed over its columns ("Quarter ended", "Nine months ended",
-  "As at") belongs to the one column whose centre is nearest it, so two headings over one table never both name a
-  column; a single heading applies to every column. **Every header phrase is placed by x-position, never by order**:
-  a phrase owns each column centre inside its own x-span (a long heading owns two columns), else the nearest column
-  within the column tolerance, else nothing - so a date line the text layer split onto a second y-row still lands on
-  its own column. When a block is too short to sample every column (two of five anchors) and the header prints a full
+  date half (`31 2024`, inside a month row) is not a call-out; a `vs.` comparison line is a slide title unless it
+  is a `Var.` / `Change` / `Growth` column. Three consecutive dropped rows stop the stack and the stack holds at
+  most six rows. A group heading printed over its columns ("Quarter ended", "Nine months ended", "As at") names the
+  run of columns on its side of the midpoint between it and the next heading, so two headings over one table never
+  both name a column and a 3+2+1 band split (three quarter columns, two nine-month columns, one year) maps by
+  position; a single heading applies to every column. A sub-header directly over the period row (`Coal | Other
+  Dry | '000 TEUs | MMT`) refines only the columns of the group run it is printed over. **Every header phrase is
+  placed by x-position, never by order**: a phrase owns each column centre inside its own x-span (a long heading
+  owns two columns), else the nearest column within the column tolerance, else nothing - so a date line the text
+  layer split onto a second y-row still lands on its own column. Two header cells the layer merged are split at
+  their own separator (`Quarter ended I As of year ended I`), never when one cell intentionally names both
+  readings. When a block is too short to sample every column (two of five anchors) and the header prints a full
   date row, those date phrases become the columns. A tall label box shares its TOP EDGE with the figures printed on its
   baseline, so a label whose y-centre sits between two numeric rows joins the row whose numbers share its top edge
   (round 5). `col_header` joins the rows top to bottom with `' > '`, e.g.
   `'Quarter ended > 30.09.2026'`. A statement continued on the next page (or a second table on the page with no header
   of its own) reuses the last header set seen. A measure group row printed over its period sub-columns
   (`REVENUE | EBITDA | EBITDA MARGIN`) is kept when it sits directly above a period header row and enters `col_header`
-  as `measure=<text>`, so a legal-entity deck's `UOH Inc. - USA 19` says it is EBITDA.
+  as `measure=<text>`, so a legal-entity deck's `UOH Inc. - USA 19` says it is EBITDA. `measure=` is read only from
+  header rows over the columns: a one-cell row label (`INCOME`, `Revenue from operations`, `1. Segment Revenue`) is
+  the rows' section parent, never their measure (round 9).
 - **b. Section labels.** A section label ("Expenses") ends where a new numbered row group starts: the first token is
   a row number (`2`, `II`, `IV`, `(2)`) or a parenthesised roman numeral (`(iv)`) at the same indent; a deeper
   `(i)`/`(ii)` stays inside the section, and lettered sub-labels (`(a)`, `(b)`) always do. The printed row-number
@@ -239,7 +247,8 @@ Rules, each fixing a prototype finding in section 8:
   capital / face value row stays money), a count / `No. of` / tonnes / MW / stores / key row is `count`, a
   ratio / times / turnover / days row is `ratio`, an `in Rs` / `₹ per tonne` row is `Rs`, a per-tonne / per-unit /
   per-key / per-room-night / `ARPU` / `ARR` / `RevPAR` / `realisation` row is `Rs` (money per unit, scale 1), and a
-  `US$ Mn` row is `USD million`. The currency a label prints wins over the page's money unit together with the scale
+  `US$ Mn` row is `USD million`. A column header that prints its own physical unit sets it: `MMT` / `MT` is
+  `unit_text='MMT'`, `'000 TEUs` is `count` at scale 1000 (round 9). The currency a label prints wins over the page's money unit together with the scale
   word beside it: `Average Revenue Per User (ARPU) US$` is USD at scale 1, `(US$ Mn)` USD million, and a section
   prefix `Revenue in ₹ Cr > Marine` is `Rs crore`, not bare `Rs` (round 5).
 - **e. Period.** `period_id` comes from the column header and the document date through `periods.period_row`:
@@ -257,6 +266,16 @@ Rules, each fixing a prototype finding in section 8:
   segment asset/liability row (`Segment Assets`, `Segment Liabilities`, `Statement of Assets and Liabilities`,
   `balance sheet`, `Total assets/liabilities/equity`, `Net worth`), or a page titled Balance Sheet, is a POINT on the
   column's own printed date (or the end date of a `Q1 FY27` / `9M 25-26` header), never the quarter's flow.
+  The stock/flow word lists are consulted with FLOW FIRST: a balance word inside a flow label (`Return on
+  Shareholder's Equity`, `Inventory turnover`, `Gain on investments at FVOCI`, `FX restatement of cash and cash
+  equivalents`, `Net loss on FVTOCI equity securities`) never turns the printed quarter/half/year into a point;
+  a point is a pure balance under an `As at` header or a stock label with no flow word (round 9). Operating counts
+  (`Customer Base`, `Network Towers`, `Co-locations`) and balance ratios (`Long-term debt to working capital`,
+  `Current Ratio`, `Debt Equity Ratio`, `Book Value per share`) are points at the column date. On a page titled
+  `Key Financial Ratios` the bare period ends decide the kind: a 30-September column is the half year ending that day
+  and a 31-March column the fiscal year, so in an H1 filing 30.09.25 / 31.03.25 / 30.09.24 are H1 / FY / H1, never
+  quarters (round 9). In a results document a bare month-year header (`Mar-25`) is the quarter, not the fiscal year
+  the month ends.
   A header date that does not parse to a real date within three years of the filing date (the file's own date when
   given) is dropped, never guessed. An unresolved header leaves `period_id` NULL, and a cell whose header names no
   resolvable period is not stored.
@@ -300,7 +319,7 @@ Round 3 measured 75,394 cells (95.0% a period, 78.4% a scale); round 2 measured 
 cells (9 rows x 4 columns, all headed `Q2 FY27` / `Q2 FY26` / `Q2 FY27` / `Q1 FY27`) and the Asian Paints results p5
 still gives the `Revenue from operations` row with a Q2FY27 cell. Tests:
 `python -m pytest -q reality_engine/tests/test_v2_table_cells.py reality_engine/tests/test_v2_periods.py
-reality_engine/tests/test_v2_schema.py` (79 tests as of round 8: one fixture per round-1/2/3/4/5/6/7/8 defect class, the header
+reality_engine/tests/test_v2_schema.py` (85 tests as of round 9: one fixture per round-1/2/3/4/5/6/7/8/9 defect class, the header
 carry-over, the date-anchor repair, the sampler, and real-PDF smoke checks that skip when the files are absent).
 
 The round-5 sampler, for the hand grade:
@@ -517,6 +536,52 @@ Interest` row stores -96% / -83% with `period_id` NULL and `method='text_layer;d
 round is
 `python -m reality_engine.v2.cell_sample --store-dir .tmp/v2r8 --n 100 --type results|deck --seed 31 --out .tmp/f8_results.csv`
 (deck writes `f8_deck.csv`); rows 50-79 are graded by Opus. The round-7 store stays read-only in its worktree.
+
+**Round 9 (10 Nov 2026).** The classes of the round-8 Opus grade and replay check are fixed, each with a test in
+`reality_engine/tests/test_v2_table_cells.py` (`test_round9_step1..5`; step 2 also has the HDFC AMC p6 regression):
+(1) **flow beats stock** - the column header's printed Quarter / Half year / Nine months / Year ended decides the
+kind first; a flow word (return, turnover, gain, loss, margin, income, expense, restatement, effect) inside a
+label beats a balance word (equity, investments, inventory, cash), so Bharti's ROE pre/post tax, Titan's inventory
+turnover and Havells/Adani's OCI gains, FX restatement and FVTOCI loss keep their quarter/half/year. Operating
+counts (customer base, network towers, co-locations) and balance ratios (long-term debt to working capital,
+current ratio, debt equity, book value per share) are points at the column date. (2) **measure only from header
+rows** - a one-cell row label (`INCOME`, `Revenue from operations`, `1. Segment Revenue`) is the rows' section
+parent, never `measure=`; the HDFC AMC standalone results page keeps all five columns (91 cells, round 8: 46) and
+901.22 is Q4 FY25, because the wrapped date row ('March 31,' over the year and status rows) is no longer dropped by
+a stray call-out figure. (3) **a ratios page's period ends** - on a page titled `Key Financial Ratios` a bare
+30-September column is the half year and a 31-March column the fiscal year, so Coal India p20's Net Profit Margin
+22% is H1 FY26 (not the July-September quarter) and its remarks column ('Increase in Average Inventory') is no
+longer a parent; Debt Equity 0.13/0.09/0.07 stays a point. (4) **multi-level and year-sequence deck tables** - a
+group-heading row names the run of columns on its side of the midpoint between headings, a sub-header refines only
+the group run it is printed over, a row of period headings longer than 80 characters is still a header row, a
+'Unit' cell crossing the derived left edge no longer drops its whole header row, and a dash placeholder is centred
+in its cell so it no longer doubles a column's anchors. Adani's balance-sheet snapshot p49 (90 cells) and P&L
+snapshot p61 (105) map FY22..FY25/9MFY26 by position; the port-volume tables p33/p42/p43 give 247 cells each with
+`dimension=Total | Dry (MMT) | Containers | Liquid (MMT)`, their sub-headings (`Coal`, `Other Dry`, `'000 TEUs`,
+`MMT`) and physical units (MMT, count x1000 for TEUs). Deck cells rise 13,995 -> **14,333** (round 8: 13,540),
+1,039 round-7 deck cells that vanished are repaired rather than dropped. (5) **junk parents and page numbers** - a
+bullet tail, a one-word letterhead, a lowercase title fragment (`th`), a remarks column and a boxed side figure no
+longer become a row's parent; `Page 13 of 59` (even split across rows) is not a cell; and a restatement label split
+by the text layer keeps both halves (`Regrouped Employee Benefits Expense`). Measured 10 Nov 2026 with
+`python -m reality_engine.v2.build_cells --store D:/RealityEngine/p20/p20new.db --out .tmp/v2r9` (the same 76
+decks and 113 results since 2025-04-01):
+
+| doc type | documents | pages | skipped (no text / no table) | cells | period_id | scale | no header | seconds |
+|---|---|---|---|---|---|---|---|---|
+| deck | 76 | 3,124 | 2,755 (79 / 2,676) | 14,333 | 83.4% | 87.2% | 0.0% | 76.9 |
+| results | 113 | 1,805 | 1,097 (33 / 1,064) | 62,772 | 97.7% | 86.1% | 0.0% | 45.3 |
+| total | 189 | 4,929 | 3,852 (112 / 3,740) | 77,105 | 95.1% | 86.3% | 0.0% | 122.2 |
+
+Methods: `text_layer` 71,355, `text_layer;garbled` 1,543, `text_layer;delta` 3,738,
+`text_layer;junk_suspect` 388, `text_layer;delta;garbled` 73, `text_layer;garbled;junk_suspect` 8 (deck:
+11,658 / 273 / 2,339 / 16 / 47 / 0; results: 59,697 / 1,270 / 1,399 / 372 / 26 / 8). The earliest-round scale
+regression check (cells whose label is not per-unit, unit Rs/INR/USD, scale 1 and value >= 1000) stays **0**.
+Replay gate: `.tmp/replay_r9.py` re-checks every row graded right in the r5, r6, r7 and r8 Opus grade files
+(136 rows) against `.tmp/v2r9` by doc + page + printed value, comparing label leaf, value, period, unit and scale:
+**136 kept, 0 lost** (r5 40/40, r6 33/33, r7 26/26, r8 37/37; one line per row in `.tmp/v2r9/replay.csv`). The
+eight rows lost in round 8 and the seven junk-parent rows are all restored; the three rows that needed a
+label-prefix or point-period tolerance are listed in the CSV with their old and new values. New seed-37 samples for
+hand grading: `.tmp/f9_results.csv` and `.tmp/f9_deck.csv` (100 each, ungraded).
 
 The full rule set (a-j) was last rewritten for round 5; round 6 adds, under d: the row's own unit cell is split from
 the label and read before the label's scale word; under e: a two-line period label, a bare `Year` segment and the page
