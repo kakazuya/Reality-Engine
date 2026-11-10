@@ -283,9 +283,9 @@ def test_review_queues_carry_rule_confidence_status_and_the_seed43_sample():
     rejected_row = next(row for row in rows if row["label_norm"] == "financial assets")
     assert rejected_row["status"] == "rejected" and rejected_row["rule"] == "heading"
     sample = out / label_map.SAMPLE_FILE
-    assert sample.is_file() and sample.name == "sample_seed59.csv"
+    assert sample.is_file() and sample.name == "sample_seed61.csv"
     rejected_sample = out / label_map.REJECTED_SAMPLE_FILE
-    assert rejected_sample.is_file() and rejected_sample.name == "rejected_seed59.csv"
+    assert rejected_sample.is_file() and rejected_sample.name == "rejected_seed61.csv"
     with rejected_sample.open(encoding="utf-8") as handle:
         assert len(list(csv.DictReader(handle))) == 1
     with sample.open(encoding="utf-8") as handle:
@@ -837,7 +837,9 @@ def test_v7_rejects_only_character_level_junk():
     # v7 evidence: the same label in two periods of one document (or two documents) is real, not garbled.
     for raw in ("real estate", "non participating health", "order book 31 mar"):
         assert decide(raw, "realty", trusted=True)[2] == "", raw
-    assert decide("real estate", "realty")[2] == "garbled"
+    # v8.1: "real estate" is two ordinary English words, so it is a heading to queue, not OCR damage to reject.
+    _key, proposal, rejection = decide("real estate", "realty")
+    assert proposal is None and rejection == ""
     assert metric("Real Estate", "realty", trusted=True) in (None, "real_estate")
     assert need("Order Book - 31 Mar26", "epc_capital_goods", trusted=True).metric == "order_book"
 
@@ -934,7 +936,9 @@ def test_v8_a_measure_parent_owns_the_child_and_an_ocr_leaf_queues():
                                        "asset_management")
     assert proposal is not None and proposal.metric == "total_comprehensive_income_attributable"
     assert proposal.dimension == "attribution=owners_of_parent"
-    assert decide("Receivables > Jnvesunents", "asset_management", has_metric_row=True)[1] is None
+    # v8.1: the OCR leaf is the Investments line, so it maps (fix 3: an OCR-near measure leaf maps to the measure).
+    proposal = decide("Receivables > Jnvesunents", "asset_management", has_metric_row=True)[1]
+    assert proposal is not None and proposal.metric == "investments"
     proposal = need("b) Profit from gm,nt, b,f, fin,n, ,nd t,, > Jewellery", "jewellery_lifestyle")
     assert proposal.metric == "segment_results" and proposal.dimension == "jewellery"
     proposal = need("[b) Deferred Tax > Period/ Year (7'B)", "mining")
@@ -963,3 +967,58 @@ def test_v8_units_and_members_from_the_label():
     assert proposal.metric == "vertical_mix" and proposal.dimension == "communication"
     member = decide("passive infrastructure services", "telecom", has_metric_row=True)[1]
     assert member is None or member.metric == label_map.FROM_HEADER
+
+
+# ---------------------------------------------------------------- T-133 v8.1
+# The seed-59 review's 12 over-rejected labels: each is a real line or member, so at most 4 may stay rejected.
+_V81_OVER_REJECTED = (
+    "revenue from golf course operations", "west coast volume mmt share", "lnve.1otmc11ts",
+    "totalexpenses atoh", "olher eqwty excludmg revaluauon reserve as at march", "participating vip",
+    "return roe", "cost of materials con sumed", "rail container volume teus",
+    "d vidend received fronl in subsidianes", "others", "personal care",
+)
+
+
+def test_v81_the_garbled_rule_spares_ordinary_english_words():
+    """Step 2: ordinary English words are words, not OCR damage; character-level junk still is."""
+    rejected = [label for label in _V81_OVER_REJECTED
+                if any(decide(label, family)[2] for family in ("telecom", "mining"))]
+    assert len(rejected) <= 4, rejected
+    assert label_map.garbled_reason("iopening balance") == "garbled"
+    assert label_map.garbled_reason("gpwis mmt") == "garbled"
+    assert label_map.garbled_reason("xqzt vbnm") == "garbled"
+    assert decide("Pmiit before lax", "paints_chemicals")[2] == "garbled"
+
+
+def test_v81_split_words_and_ocr_leaves_map_to_the_measure():
+    """Step 2: "con sumed" rejoins; step 3: the OCR form of a measure leaf maps to that measure."""
+    assert label_map.normalise_label("Cost of materials con sumed") == "cost of materials consumed"
+    assert need("Cost of materials con sumed").metric == "cost_of_materials"
+    assert need("lnve.1otmc11ts").metric == "investments"
+    assert need("Divider el received").metric == "dividend_received"
+
+
+def test_v81_from_header_guard_never_turns_a_line_or_a_basis_into_a_member():
+    """Step 3: a basis token, a measure leaf and a cost/TCI/EPS line are not from_header members."""
+    assert decide("Conso", "telecom")[1] is None                       # a reporting basis, never a member
+    assert need("Receivables > Jnvesunents", "asset_management", has_metric_row=True).metric == "investments"
+    proposal = decide("Trade lialrilities", "telecom")[1]
+    assert proposal is None or proposal.metric != label_map.FROM_HEADER
+    for raw, family in (("Cargo (MMT)", "ports_logistics"), ("All-India container", "ports_logistics")):
+        proposal = decide(raw, family, has_metric_row=True, peers=6)[1]
+        assert proposal is None or proposal.metric != label_map.FROM_HEADER, raw
+    proposal = decide("Expenses > Food and Beverages Consumed", "hotels")[1]
+    assert proposal is None or proposal.metric != "total_expenses"     # a cost line, not the statement total
+    proposal = need("Items not to be reclassified to profit or loss > Tota comprehensive income attributable to "
+                    "owners of the parent", "telecom")
+    assert proposal.metric == "total_comprehensive_income_attributable"
+    assert proposal.dimension == "attribution=owners_of_parent"
+    # one OCR-merged row carrying Other Equity and an EPS line has no single right metric, so it queues
+    assert decide("Other Equity excluding revaluation reserve as at 31st March Earnings per Share face value",
+                  "asset_management")[1] is None
+
+
+def test_v81_net_revenues_has_its_own_id():
+    """Step 1: Bharti's "Net revenues" is net of access/interconnect, never the Total revenues row."""
+    assert need("Net revenues").metric == "net_revenue"
+    assert need("Total revenues").metric == "total_revenue"

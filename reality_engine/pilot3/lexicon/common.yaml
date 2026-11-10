@@ -10,7 +10,7 @@ entries:
   - {metric: gross_debt, kind: money, unit: inr_cr, labels: ["gross debt"], neg: "ratio"}
   - {metric: net_debt_to_equity, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*equity", "net d/e"]}
   - {metric: debt_to_equity, kind: ratio, unit: x, labels: ["debt[- ]equity( ratio)?"], neg: "net\\s+debt"}
-  - {metric: net_debt_to_ebitda, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*(l?t?m? ?)ebitda", "net debt/ebitda", "leverage"]}
+  - {metric: net_debt_to_ebitda, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*(l?t?m? ?)(?:ebitda|ebidta)", "net debt/ebitda", "leverage"]}
   # T-133 v7: "working capital" alone is the balance (money), never the days KPI; a loan/demand-loan/facility row is
   # a borrowing line, so the exclusion is explicit instead of a silent whole-label miss.  The broad days pattern
   # serves the live sentence path ("net working capital stands at 155 days"); the label map narrows it to a

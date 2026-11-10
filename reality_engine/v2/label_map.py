@@ -136,7 +136,7 @@ REJECTED = "rejected"
 FROM_HEADER = "from_header"
 TOTAL_REVENUE = "total_revenue"        # v6: resolved per table to revenue or total_income
 SAMPLE_SIZE = 200
-SAMPLE_SEED = 59                      # v8: the seed-53 sample is graded; a fresh ungraded draw is seed 59.
+SAMPLE_SEED = 61                      # v8.1: the seed-59 sample is graded; a fresh ungraded draw is seed 61.
 SAMPLE_FILE = f"sample_seed{SAMPLE_SEED}.csv"
 REJECTED_SAMPLE_SIZE = 40
 REJECTED_SAMPLE_FILE = f"rejected_seed{SAMPLE_SEED}.csv"
@@ -156,7 +156,7 @@ UNIT_TOKENS = {"in", "amount", "figure", "figures", "rs", "inr", "usd", "us", "e
 # Rule 1: the unit/footnote tail a printed label carries after its own words is not part of the metric.
 LABEL_UNITS = {"rs", "inr", "us", "usd", "eur", "euro", "gbp", "mn", "million", "millions", "bn", "billion",
                "billions", "cr", "crore", "crores", "lakh", "lakhs", "thousand", "000", "000s", "nos", "no",
-               "num", "x", "times", "pct", "percent", "bps", "s", "days", "kt", "mt", "ton", "tonne", "tonnes",
+               "num", "x", "times", "pct", "percent", "bps", "s", "days", "kt", "mmt", "mt", "ton", "tonne", "tonnes",
                "kg", "mw", "gw", "units", "sq", "ft", "acre"}
 
 # A bracketed definition only restates how a metric is built ("(EBITDA - Capex)", "(EBITDAaL - Capex)"): it is not
@@ -248,11 +248,11 @@ PERIOD_TOKEN = re.compile(r"^(?:ytd)?(?:9m|6m)?f?y?\d{2,4}$|^[qh][1-4]?(?:fy\d{2
 # Rule 6: a heading row carries a subtotal, not a metric; the leaf lines under it carry the metrics.
 HEADINGS = {"financial assets", "financial liabilities", "non financial assets", "non financial liabilities",
             "assets", "liabilities", "equity and liabilities", "consolidated", "standalone",
-            "particulars", "particulars of", "less", "otal"}
+            "particulars", "particulars of", "less", "otal", "conso", "consol"}
 
 # Rule 5 (v4): a leaf that names an EPS line (basic/diluted, "not annualised") is eps_basic/eps_diluted, never a
 # member of the section it happens to sit under.
-EPS_CONTEXT = re.compile(r"earnings per (?:equity )?share|\beps\b")
+EPS_CONTEXT = re.compile(r"earnings per (?:equity )?share|\beps\b", re.I)
 
 # Words that make a label look like a measure of its own, so a table of rows without an exact match is not read
 # as a table of member names (rule 3's member rule).
@@ -290,6 +290,10 @@ OCR_FIXES = {
     # v7: the seed-47 OCR rows that were rejected or became a member; the fixed label is a real line.
     "provtsfons": "provisions", "perlod": "period", "rrabi6ties": "liabilities", "otl1er": "other",
     "lec1se": "lease", "habiht1es": "liabilities",
+    # v8.1: the seed-59 over-rejected rows that are measured lines, not damage ("TotalExpenses(atoh)",
+    # "Trade lialrilities", "Receivables > Jnvesunents", and the OCR "tota comprehensive income" leaf).
+    "totalexpenses": "total expenses", "lialrilities": "liabilities", "jnvesunents": "investments",
+    "tota": "total",
 }
 
 # Rule 1 (v3): phrase-level OCR repairs, applied after the token fixes ("pro fit" is the printed "profit").
@@ -305,7 +309,11 @@ OCR_PHRASES = (("pro fit", "profit"), ("un allocable", "unallocable"), ("un allo
                ("expe1 ses", "expenses"),
                # v7: Coal India "ProRlforthe perlod/year" is "profit for the period year" (a pat line).
                ("prorlforthe perlod", "profit for the period"), ("prorlforthe period", "profit for the period"),
-               ("prorl for the", "profit for the"))
+               ("prorl for the", "profit for the"),
+               # v8.1: two seed-59 over-rejected rows whose damage precedes the measure words ("lnve.1otmc11ts" is
+               # the Investments line; "Divider) el received" is Dividend received); the fixed label is the line.
+               ("lnve 1otmc11ts", "investments"), ("divider el received", "dividend received"),
+               ("d vidend received fronl in subsidianes", "dividend received from subsidiaries"))
 
 # Rule 1 (v3): a token whose letters are swapped with a digit is OCR damage ("0ther", "expe1"), never a label.
 DIGIT_SWAP = re.compile(r"^(?:\d+[a-z]{2,}|[a-z]{2,}\d+[a-z]{2,})$")
@@ -315,7 +323,7 @@ DIGIT_SWAP = re.compile(r"^(?:\d+[a-z]{2,}|[a-z]{2,}\d+[a-z]{2,})$")
 LINE_WORDS = frozenset("""
     account accounting accumulated adjustment adjustments allowance allowances amortisation amortization amount
     assets attributable audit audited average bad balance balances bank borrowings capital cash charge charges
-    cheque cheques cogs consolidated cost costs creditors current debenture debts debt deferred depreciation discount
+    cheque cheques cogs consumed consolidated cost costs creditors current debenture debts debt deferred depreciation discount
     dividend dividends draft dues earning earnings ebitda ebitdaal ebit eps equity exceptional expense expenses
     expenditure fee fees finance goodwill grant gross hand impairment income insurance interest inventories
     inventory investment
@@ -328,7 +336,7 @@ LINE_WORDS = frozenset("""
 
 # ... and these words state a measure, so the label is a KPI row, not a member name.
 MEASURE_WORDS = frozenset("""
-    arpu average base branches capacity churn cities count countries coverage covered customers dealers gbs
+    arpu average base branches capacity cargo churn cities container count countries coverage covered customers dealers gbs
     growth headcount margin minutes number operations occupancy population rank share size subscribers stores towers
     utilisation utilization users volume volumes
 """.split())
@@ -365,12 +373,13 @@ LABEL_WORDS = frozenset("""
     these third this those through to total totaling totalised towards turnover tv un under underlying unallocated
     up upon us used value various versus via volume was were whereas which while will with within without year
     years
-""".split()) | {"benefit", "plans", "remeasurement", "remeasurements"}
+""".split()) | {"benefit", "plans", "remeasurement", "remeasurements", "crar", "vip"}
 
 # Rule 1 (v5): OCR splits a word across spaces ("Total Com pre hensive Income", "Own ers", "pe riod").  A run of
 # adjacent tokens whose concatenation is this dictionary's word is one word again.  The set is static so building
 # the vocabulary (which calls normalise_label) cannot recurse.
-JOIN_WORDS = frozenset(LABEL_WORDS | LINE_WORDS | MEASURE_WORDS | {"owners", "comprehensive", "subtotal"})
+JOIN_WORDS = frozenset(LABEL_WORDS | LINE_WORDS | MEASURE_WORDS | {"owners", "comprehensive", "subtotal",
+                                                                   "consumed"})
 
 NUMBERING = (
     re.compile(r"^\s*(?:\(\s*\d{1,3}\s*\)|\d{1,3}[.)])\s+", re.I),
@@ -421,7 +430,7 @@ FLOW_METRICS = {
     "inter_segment_revenue", "segment_results", "total_minutes_on_network", "total_gbs_on_network", "voice_revenue",
     "data_revenue", "passive_infrastructure_services", "network_operations_cost", "volume",
     "fees_and_commission_expense", "airtel_money_revenue",
-    "other_income", "total_income", "total_expenses", "cost_of_materials", "purchases_of_stock_in_trade",
+    "other_income", "total_income", "net_revenue", "total_expenses", "cost_of_materials", "purchases_of_stock_in_trade",
     "changes_in_inventories", "change_in_trade_receivables", "change_in_trade_payables", "change_in_provisions",
     "employee_cost", "finance_cost", "depreciation", "other_expenses", "total_revenue",
     "exceptional_items", "tax", "current_tax", "deferred_tax", "total_comprehensive_income",
@@ -460,11 +469,14 @@ EXTRA_COMMON: dict[str, tuple[str, ...]] = {
     "ebit": ("ebit",),
     "ebitdaal": ("ebitdaal", "ebitda al"),
     "operating_ebitda": ("operating ebitda",),
-    "revenue": ("net revenues", "net revenue", "net sales", "sale of products services",
+    # T-133 v8.1: Bharti's "Net revenues" is net of access/interconnect charges, so it gets its own id; stored as
+    # revenue it collided with the same company's "Total revenues" row.  The longer net-revenue phrases keep revenue.
+    "revenue": ("net sales", "sale of products services",
                 "sales of products services", "business income", "net revenue nr",
                 "revenue from operations", "revenue from operation", "total revenue from operations",
                 "net revenue from operations", "revenue from contracts with customers",
                 "revenue from contract with customers", "revenue from sales"),
+    "net_revenue": ("net revenue", "net revenues"),
     "other_income": ("other income", "other operating revenue", "other operating income", "non operating revenue",
                      "non operating income"),
     # T-133 v5: "total revenue" is the statement total (revenue + other income), never the revenue line; the
@@ -1167,7 +1179,24 @@ GARBLED_SHARE = 0.4
 _VOCAB: frozenset[str] | None = None
 _VOCAB_ALL: frozenset[str] | None = None
 _CORPUS_WORDS: frozenset[str] = frozenset()
-_DAMAGE_CACHE: dict[str, bool] = {}
+_ENGLISH: frozenset[str] | None = None
+_DAMAGE_CACHE: dict[tuple[str, str], bool] = {}
+
+
+def _english_words() -> frozenset[str]:
+    """v8.1: pilot3's ordinary-English vocabulary; a token here is a word, never OCR damage.
+
+    A general word list, not only the corpus: "golf", "care", "personal", "march" are real words whatever the
+    corpus happens to print, and the seed-59 rejected sample flagged them as damage.
+    """
+    global _ENGLISH
+    if _ENGLISH is None:
+        path = Path(__file__).resolve().parents[1] / "pilot3" / "en_vocab.txt"
+        try:
+            _ENGLISH = frozenset(word.lower() for word in path.read_text(encoding="utf-8").split() if word)
+        except OSError:
+            _ENGLISH = frozenset()
+    return _ENGLISH
 
 
 def set_corpus_vocabulary(labels: Iterable[str]) -> None:
@@ -1214,19 +1243,34 @@ def _near_vocabulary(word: str, vocabulary: frozenset[str], limit: int = 2) -> b
     return False
 
 
-def _ocr_damage(word: str, vocabulary: frozenset[str]) -> bool:
+def _ocr_damage(word: str, vocabulary: frozenset[str], tag: str = "") -> bool:
     """v8: a token is OCR damage only when it is not a word and sits within edit distance 2 of one that is.
 
     "iopening" is "opening" with a stray mark; "krishnapatnam" and "crar" are real words the dictionary lacks, so
-    they are evidence, not damage.
+    they are evidence, not damage.  ``tag`` keeps the cache honest when the garble rule reads its wider vocabulary.
     """
     low = word.lower()
-    cached = _DAMAGE_CACHE.get(low)
+    cached = _DAMAGE_CACHE.get((tag, low))
     if cached is not None:
         return cached
     damaged = _near_vocabulary(low, vocabulary, 2)
-    _DAMAGE_CACHE[low] = damaged
+    _DAMAGE_CACHE[(tag, low)] = damaged
     return damaged
+
+
+def _garble_damage(word: str, vocabulary: frozenset[str]) -> bool:
+    """v8.1: OCR-damage evidence for the garble ratio.
+
+    A token of five or more letters is damage when it is within two edits of a vocabulary word.  A three-letter
+    token counts only when it is one edit from a statement-line word ("lax" for "tax"), never from a unit or a
+    filler word ("mmt" is not "mt", "vip" is not "via"); a two-letter or four-letter token is not damage on edit
+    distance alone ("west", "golf", "teus", "atoh" are words or unit marks, not damage).
+    """
+    if len(word) >= 5:
+        return _ocr_damage(word, vocabulary, "garble")
+    if len(word) == 3 and word not in LINE_WORDS:
+        return any(_edit_distance(word, line, 1) <= 1 for line in LINE_WORDS)
+    return False
 
 
 def garbled_reason(label_norm: str, raw: str | None = None, trusted: bool = False) -> str:
@@ -1246,14 +1290,15 @@ def garbled_reason(label_norm: str, raw: str | None = None, trusted: bool = Fals
     words = label_norm.split()
     if not words:
         return ""
-    vocabulary = _vocabulary()
+    vocabulary = _vocabulary() | _english_words()
     readable_digits = _digit_damage_readable(label_norm)
     if not readable_digits and any(DIGIT_SWAP.match(word) for word in words):
         return "garbled"
     letters = [word for word in words if not (len(word) == 1 and word.isalpha())]
     unknown = [word for word in letters if word not in vocabulary]
     damaged = [word for word in unknown
-               if _ocr_damage(word, vocabulary) and not (readable_digits and DIGIT_SWAP.match(word))]
+               if _garble_damage(word, vocabulary)
+               and not (readable_digits and DIGIT_SWAP.match(word))]
     if len(words) >= 2:
         if damaged and len(damaged) / len(words) >= GARBLED_SHARE:
             return "garbled"
@@ -1262,7 +1307,9 @@ def garbled_reason(label_norm: str, raw: str | None = None, trusted: bool = Fals
             return "garbled"
         return ""
     word = words[0]
-    if len(word) >= 6 and _ocr_damage(word, vocabulary) \
+    if word in vocabulary:
+        return ""
+    if len(word) >= 5 and _garble_damage(word, vocabulary) \
             and (len(word) >= 12 or str(raw or "").strip()[:1].islower()):
         return "garbled"
     if len(word) >= 12:
