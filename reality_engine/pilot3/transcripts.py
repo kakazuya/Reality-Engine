@@ -463,28 +463,25 @@ _MULTI_FIRST_STOP = _ENTITY_STOP - {
     "amstel", "ashwini", "heineken", "starbucks", "sampann", "kavach", "mrsam", "iqvia",
 }
 _QUESTION_WORDS = {"what", "which", "when", "where", "who", "whom", "whose", "why", "how", "because"}
-# generic acronyms that are financial/industry shorthand, not company-specific entities
-_GENERIC_ACRONYMS = {"FY", "Q1", "Q2", "Q3", "Q4", "H1", "H2", "INR", "USD", "Rs", "EBITDA", "PAT", "EPS",
-                    "ROCE", "ROE", "CAGR", "YOY", "QOQ", "MOM", "TTM", "LTM", "EBIT", "PBT", "PBIT", "NPC",
-                    "GDP", "CPI", "WPI", "RBI", "GST", "SEBI", "NSE", "BSE", "MCA", "ROC", "PAN", "GSTIN",
-                    "CEO", "CFO", "COO", "MD", "IR", "AGM", "EGM", "NCLT", "NCLAT", "IBC", "IPO", "FPO",
-                    "QIP", "FCCB", "ECB", "FCNR", "NCD", "CP", "OD", "CC", "BG", "LC", "RTGS", "NEFT", "AI",
-                    "TR", "MR", "EW", "IPM", "ANDA", "PET", "MALE", "RMC", "WHRS", "CS", "IP", "SBPL", "LAP",
-                    "HL", "PMS", "AUM", "MLD", "SEZ", "GLP", "CRL", "SBU", "PRASK", "RMC", "AMC", "ARC",
-                    "ARPOB", "CAPEX", "CASK", "COVID", "CSEL", "DD", "DPR", "FMCG", "ML", "NCL", "NSR", "OCF",
-                    "OEM", "OP", "QR", "RE", "SE", "SEC", "SI", "VIL", "VLR", "ESG", "ARPU", "ALM",
-                    "MAT", "RFP", "SPV", "FX", "FTA", "NBFC", "ADA", "AGR", "AMCA", "AOG", "AP", "DFT",
-                    "EPD", "GP", "HVDC", "LTIP", "MDL", "MMR", "MSME", "NCR", "OC", "PPP", "RTD", "SASVA",
-                    "UAV", "VAT", "EV", "EBITDAR", "NPA", "MRO", "YTD", "II", "III", "GB", "HR", "HRC",
-                    "GT", "ER", "BL", "CIC", "PEB", "MOPAG", "RFI", "SIP", "FICCI", "NASDAQ", "ACV", "ASK",
-                    "BMP", "CA", "CO", "CSR", "EESL", "EMC", "EMI", "ESOP", "FAT", "FS", "GI", "IDC", "IL",
-                    "IMC", "MDI", "OFA", "OTC", "PES", "PRC", "RM", "ROTA", "RSP", "SG", "SME", "TCV",
-                    "UP", "JV", "ALOS", "ARPP", "AWS", "CPLY", "CPU", "DSO", "ECL", "EWM", "FDI", "HPE",
-                    "HSBC", "ICL", "IL", "IMC", "IQVIA", "JM", "LRDE", "MF", "NCT", "NIM", "OMT", "PAG",
-                    "RTM", "TCV", "UL", "XLR", "EMEU", "EVM", "GBMES", "HNI", "IPL", "JP", "MCLR", "MEP",
-                    "MVA", "NEP", "NSA", "OMT", "PRP", "SA", "SDR", "SSM", "TBCB", "TCV", "UVG", "VAI",
-                    "WM", "XLR"}
+# Generic all-caps tokens: learned from u8+q12 (appearing in >=4 different symbols) plus en_vocab.txt.
+# Only a tiny set of truly generic finance abbreviations is hard-coded; never company or counterparty names.
+def _load_generic_acronyms():
+    out=set()
+    p=Path(__file__).with_name('generic_acronyms.txt')
+    if p.exists():
+        out.update(x.strip() for x in p.read_text(encoding='utf-8').splitlines() if x.strip())
+    # en_vocab is lowercase; an all-caps token whose lower-case form is an English word is generic.
+    vp=Path(__file__).with_name('en_vocab.txt')
+    if vp.exists():
+        pass
+    out.update({'ROCE','EBITDA','CAGR'})
+    return out
 
+_GENERIC_ACRONYMS = _load_generic_acronyms()
+_EN_VOCAB = set()
+_vp=Path(__file__).with_name('en_vocab.txt')
+if _vp.exists():
+    _EN_VOCAB.update(x.strip().lower() for x in _vp.read_text(encoding='utf-8').splitlines() if x.strip())
 
 def _is_sentence_start(text: str, pos: int) -> bool:
     i = pos - 1
@@ -500,7 +497,8 @@ def _candidate_entities(text: str) -> list[str]:
     occ: list[tuple[str, bool]] = []
     for m in re.finditer(r"\b[A-Z]{2,}\b", text):
         tok = m.group(0)
-        if tok in _GENERIC_ACRONYMS or tok.lower() in _ENTITY_STOP:
+        if (tok in _GENERIC_ACRONYMS or tok.lower() in _ENTITY_STOP
+                or tok.lower() in _EN_VOCAB):
             continue
         occ.append((tok, _is_sentence_start(text, m.start())))
     for m in re.finditer(r"\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,3}\b", text):
@@ -511,7 +509,8 @@ def _candidate_entities(text: str) -> list[str]:
         occ.append((span, _is_sentence_start(text, m.start())))
     for m in re.finditer(r"\b([A-Z][a-z]{3,})\b", text):
         tok = m.group(1)
-        if tok.lower() in _ENTITY_STOP or tok.lower() in _QUESTION_WORDS:
+        if (tok.lower() in _ENTITY_STOP or tok.lower() in _QUESTION_WORDS
+                or tok.lower() in _EN_VOCAB):
             continue
         occ.append((tok, _is_sentence_start(text, m.start())))
     # Drop candidates whose EVERY occurrence is sentence-initial (common sentence starters).
@@ -683,15 +682,9 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
                                        "docs.known_at", "transcript_v1"))
             continue
         if role == "unknown":
-            # If the call has any Q&A, an unidentified speaker is management the extractor did not
-            # introduce (Virupaksha-type turns); store their answer.  A call with no Q&A at all is
-            # cover-letter / header noise and is only counted.
-            has_qa = (bool(analysts) or any(s[6] == "moderator" for s in segments)
-                      or len({s[5] for s in segments}) >= 3)
-            if not has_qa:
-                st["unknown_speakers"][name] += 1
-                continue
-            role = "mgmt"
+            # cannot tell management from a stray analyst: counted, not stored
+            st["unknown_speakers"][name] += 1
+            continue
         for (s0, e0) in split_sentences(w[a:b], a):
             while s0 < e0 and not w[s0].strip():
                 s0 += 1               # a masked running footer at the segment start ("… Limited 3") is not a quote

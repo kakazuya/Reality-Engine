@@ -12,13 +12,13 @@ topics:
   - {tag: working_capital, patterns: ["working capital", "\\bcollections?\\b", "receivables?", "\\binventory\\b", "net debt", "\\bdebt\\b", "cash flow", "interest cost"]}
   - {tag: risk, patterns: ["\\brisk\\b", "uncertain", "headwinds?", "\\bstress\\b", "volatil", "disruption", "delays?\\b", "geopolitic"]}
   - {tag: mna, patterns: ["acqui(re|sition|red)", "\\bmerger\\b", "divest", "\\bstake\\b", "\\bipo\\b", "listing", "demerger", "joint venture"]}
-  - {tag: regulation, patterns: ["regulat", "approval", "RERA", "permission", "clearance", "license", "licence", "policy", "compliance"]}
-  - {tag: trade_policy, patterns: ["safeguard", "anti.?dump", "tariff", "duty", "trade (policy|measure|remedy|action)"]}
+  - {tag: regulation, patterns: ["regulat", "approval", "RERA", "permission", "clearance", "license", "licence", "policy", "compliance", "CERC", "TRAI", "regulator", "tariff order"]}
+  - {tag: trade_policy, patterns: ["safeguard", "anti.?dump", "import duty", "export duty", "duty on (imports|exports)", "tariff on (imports|exports)", "trade (policy|measure|remedy|action)"]}
   - {tag: rates, patterns: ["rate cut", "repric", "MCLR", "repo rate", "interest rate", "cost of (funds|borrowing)", "monetary", "yield curve"]}
   - {tag: demand_geography, patterns: ["\\brural\\b", "\\burban\\b", "semi.?urban", "geograph", "\\bregion\\b", "tier ?[123]"]}
   - {tag: supply_disruption, patterns: ["flood", "outage", "disruption", "container", "freight", "supply (chain|issue|constraint|bottleneck)"]}
   - {tag: order_mix, patterns: ["nomination", "competitive (bidding|tender)", "order mix", "bidding", "tender"]}
-  - {tag: growth, patterns: ["\\bgrowth\\b", "\\bgrew\\b", "growing", "increase", "increased", "decline", "declined"]}
+  - {tag: growth, patterns: ["\\bgrowth\\b", "\\bgrew\\b", "growing", "increase(?!.*by (INR|Rs|₹))", "increased(?!.*by (INR|Rs|₹))", "decline", "declined"]}
   - {tag: revenue, patterns: ["\\brevenue\\b", "\\bsales\\b", "topline", "top line", "turnover", "income"]}
   - {tag: orders, patterns: ["\\border(s|ed|ing)?\\b", "booking", "backlog", "pipeline"]}
   - {tag: pricing, patterns: ["\\bprice(s|d|ing)?\\b", "pricing", "realization", "realisation", "realisations"]}
