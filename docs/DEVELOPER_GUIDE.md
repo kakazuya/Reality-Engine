@@ -986,17 +986,17 @@ leaf's row (`_own_row_hits(hit, label)`): a leaf hit must start the leaf (a numb
 `Total` may precede it), a leaf that is another line owns the value (`Dividend income > Finance costs` is
 `finance_cost`), and the section phrase survives only before a member leaf (`Segment Liabilities > APMEA`) or a
 bracketed note leaf, so the 23 `Dividend income > <line>` cells and the `As a % of Total revenues > EBITDA` margin
-rows no longer store the section's money metric. The gate is `.tmp/label_map_v81/live_kpi_ab.py`: the live matcher
+rows no longer store the section's money metric. The gate is `D:/RealityEngine/v2/review/label_map_v81/live_kpi_ab.py`: the live matcher
 over the distinct `table_v1` labels of the five stores (22,005 rows) and the p20_r4 cells (59,326 numeric cells),
 `main`'s lexicon vs the branch's and v8 vs v8.1, every metric moving more than 10 rows or cells right-added or
-junk-removed; output `.tmp/label_map_v81/live_kpi_ab.md` passes (rule 10 of the schema contract). The v8.1
+junk-removed; output `D:/RealityEngine/v2/review/label_map_v81/live_kpi_ab.md` passes (rule 10 of the schema contract). The v8.1
 ledger: the lexicon adds 36 right `net_debt_to_ebitda` stored rows (SRF's `Net Debt to EBIDTA`) and nothing else;
 against v8 the leaf rule adds 298 right `operating_free_cash_flow` cells (the OFCF lines v8 stored as `capex`) and
 removes 23 `dividend_income` junk cells, 4 `total_income` junk cells, 177 EBITDA-margin cells (`As a % of Total
 revenues > EBITDA`), 124 PAT-margin cells and 15 `revenue` cells (4 of them right, `Revenue in Rs Cr > Total` -
 under 10); no stored row is lost. The whole-label
 rule (`row_label_hits`/`label_text`) remains the **dry-run diagnostic** the label map measures (`seed_changes.csv`,
-`.tmp/label_map_v81/seed_changes.csv`), not what the live build stores. The company family comes from the same
+`D:/RealityEngine/v2/review/label_map_v81/seed_changes.csv`), not what the live build stores. The company family comes from the same
 `company_industry` ->
 `sector_map.yaml` path as `make_profile`. It writes `label_map.db` (`label_map` + `metric_def`, every row
 `status='queue'` or `'rejected'`), `review_<family>.csv` (with `rule`, `confidence` and `status`), `coverage.txt`,
@@ -1022,12 +1022,12 @@ mapped / 71.4%, 882 rejected cells and 431 labels, 197 garbled over 397 cells - 
 of the rows are mapped or queued. `ports_logistics` is the only family below the 60% per-family line (59.2%, v8
 60.1%); the stop rule (below 60% **overall** coverage) was not hit. The v8.1 seed dry run (sector-aware: each row's
 company row is resolved to its family exactly as the build does) changes 3,230 of 22,005 `table_v1` rows in 34
-pairs; the live A/B is `.tmp/label_map_v81/live_kpi_ab.md` (below).
+pairs; the live A/B is `D:/RealityEngine/v2/review/label_map_v81/live_kpi_ab.md` (below).
 Opus's grades replay with the v8.1 rule and **zero lost right rows over six files**: seed-31 139/139, seed-37
 170/170, seed-41 177/177, seed-43 180/180, seed-47 181/181 and seed-53 184/184, with 32/13/4/5/8/9 wrong rows
 changed, 9/12/14/12/6/6 unchanged and 20/5/5/3/5/1 still unmapped (a wrong row that stays NULL is not counted as
 fixed). The right rows whose answer changed but stayed right and every changed wrong row with its reason are in
-the per-row CSVs `grade_replay_seed31.csv` ... `grade_replay_seed53.csv` in `.tmp/label_map_v81`.
+the per-row CSVs `grade_replay_seed31.csv` ... `grade_replay_seed53.csv` in `D:/RealityEngine/v2/review/label_map_v81`.
 Tests: `python -m pytest -q reality_engine/tests/test_v2_label_map.py` (73 passed, one per v8.1 step included) and
 the `row_label_hits` cases in `reality_engine/tests/test_pilot3_kpi.py` (108 passed, 6 errors only because
 pytest's `tmp_path` is denied in this dsh sandbox). The measured table, every rule and the

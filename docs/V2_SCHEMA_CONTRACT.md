@@ -876,8 +876,8 @@ filler word such as `Total` may precede it, so `> (f) Net profit after tax` and 
 match, while `Note: > ... Total Income include` does not), a leaf that is another line owns the value
 (`Dividend income > Finance costs` is `finance_cost`, not `dividend_income`), and a section phrase survives only
 before a member leaf (`Segment Liabilities > APMEA`) or a bracketed note leaf (`Debt equity ratio > (i) [Debt
-comprises ...]`). The gate is the live A/B (`.tmp/label_map_v81/live_kpi_ab.py`, output
-`.tmp/label_map_v81/live_kpi_ab.md`): the live matcher over the distinct `table_v1`
+comprises ...]`). The gate is the live A/B (`D:/RealityEngine/v2/review/label_map_v81/live_kpi_ab.py`, output
+`D:/RealityEngine/v2/review/label_map_v81/live_kpi_ab.md`): the live matcher over the distinct `table_v1`
 labels of the five stores (22,005 rows, 1,083 distinct labels) and the p20_r4 cells (59,326 numeric cells), with
 `main`'s lexicon vs the branch's (the review's method) and v8 code + lexicon vs v8.1; every metric
 moving more than 10 rows or cells must be right-added or junk-removed. The A/B passes: the lexicon adds
@@ -936,7 +936,7 @@ measure leaves), and the English-vocabulary garbled rule removed 332 rejections.
 family below the 60% per-family line (59.2%, v8 60.1%); the stop rule (below 60% **overall** coverage) was not hit.
 The seed dry run (sector-aware; see rule 10) changes 3,230 of the 22,005
 `table_v1` `kpi_series` rows of the five stores in 34 pairs; every metric moving more than 10 stored rows or cells is
-right-added or junk-removed in the live A/B of rule 10, which is the merge gate. Output kept at `.tmp/label_map_v81`
+right-added or junk-removed in the live A/B of rule 10, which is the merge gate. Output kept at `D:/RealityEngine/v2/review/label_map_v81`
 (`label_map.db`, the review CSVs,
 `coverage.txt`, `rejected_seeds.csv`, `seed_changes.csv`, `sample_seed61.csv`, `rejected_seed61.csv`,
 `grade_replay_seed31.csv` ... `grade_replay_seed53.csv`, `live_kpi_ab.md`, `build.log`); nothing is `approved` until
@@ -967,7 +967,7 @@ the cash-flow changes, owners' profit), the mixed unit rows (`eliminations` mone
 the channel/mix members (`volume[fsa]`, `vertical_mix[retail]`, `aum_mix[asset_class=liquid]`), the
 truncated/OCR/merged-label rejects and `Provisiuns` -> `provisions`. The per-row detail is in
 `grade_replay_seed31.csv`, `grade_replay_seed37.csv`, `grade_replay_seed41.csv`, `grade_replay_seed43.csv`,
-`grade_replay_seed47.csv`, `grade_replay_seed53.csv` in `.tmp/label_map_v81`.
+`grade_replay_seed47.csv`, `grade_replay_seed53.csv` in `D:/RealityEngine/v2/review/label_map_v81`.
 
 Tests: `reality_engine/tests/test_v2_label_map.py` (73 passed) cover the normalisation and unit-tail stripping, the
 OCR repair table, the OCR space-join and the fuzzy section repair, rule 1 whole-label matching, garbled
@@ -1036,4 +1036,4 @@ build maps 42,237/59,326 cells (71.2%) and rejects 617 cells (v8 882, garbled 39
 replay with zero lost right rows. v1's build `D:/RealityEngine/v2/label_map`, v2's
 `.tmp/label_map_v2` build
 and seed-31 sample, v3's `.tmp/label_map_v3` build and seed-37 sample, v4's/v5's builds, v6's build and v7's build
-are superseded by `.tmp/label_map_v81`.
+are superseded by `D:/RealityEngine/v2/review/label_map_v81`.
