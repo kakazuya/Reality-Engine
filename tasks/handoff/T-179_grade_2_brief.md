@@ -1,0 +1,12 @@
+Ticket: T-179
+Goal: grade every answer in D:/RealityEngine/t179/grade/batch_2.json (68 items: gid, symbol, db, as_of, question, answer) as right, partly or wrong by checking it against the store yourself. You are a read-only grader: change no file. The items come from several runs mixed and shuffled; you are not told which.
+Evidence: worker self-grades have overstated every time they were checked, and earlier lenient hand grades gave 89% where a strict regrade gave 80%. A grade is only useful if you re-look up the figures and redo the sums.
+Steps, per item:
+1. Look up what the question asks with `python -m reality_engine.scripts.p3ask --db <item db> <tool> symbol=<SYM> ... as_of=<item as_of>` (tools: kpi fin ratio holding statements guidance docs search tech page sql calc; `page "doc_key=<key>" page=<n>` reads a page; fin/kpi/ratio rows carry value, unit, period, basis). Use as_of on every call: an answer may only use what was known by then.
+2. Compare every figure in the answer with the rows or page text: value, unit and scale (crore, lakh, million), period, standalone or consolidated. Redo every derived number (growth, margin, sum, ratio) with `calc`.
+3. Grade: right = every part the question asks is answered and every figure checks; partly = at least one asked part is missing, vague, unsupported or slightly off, but nothing materially false; wrong = a main figure or the conclusion is false. An answer that says a part is "not disclosed" or "not held" is right on that part ONLY if your own search of the store's pages (search, then page) also finds nothing; if you find it printed, grade partly and say where it is.
+4. Give one short reason naming the figure or part that decided the grade, and set nd=1 when the answer claims any part is not disclosed / not held, else 0.
+Files: read only D:/RealityEngine/t179/grade/batch_2.json and the stores named in its items through p3ask. Do not open any other file under D:/RealityEngine/t179 (the key and the other batches are off limits) and do not use the reality-data MCP tools.
+Accept: your final answer is exactly one JSON line per item and nothing else, in file order: {"gid": "g000", "grade": "right|partly|wrong", "nd": 0, "reason": "<= 25 words"}; 68 lines.
+Stop if: p3ask errors on 5 items in a row (report the error text).
+Budget: about 3 minutes and 10 lookups per item; hard stop 4 hours. Do not write files; keep your working notes in your own context.
