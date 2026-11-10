@@ -790,6 +790,33 @@ def _pct_base(parsed: dict) -> tuple[float | None, str | None]:
     return candidates[0][1], candidates[0][0]
 
 
+def _shp_known(file: str | None, broadcast: str | None) -> tuple[str | None, str]:
+    """T-162: the earlier of the index's broadcast time and the NSE file name's own submission stamp.
+
+    ``shp_index.broadcast_at`` is sometimes a later re-broadcast (ADANIPORTS 2021-09-30 filed 20 Oct 2021, broadcast
+    7 Jan 2022), so a strict ``as_of`` dropped quarters already public.  The stamp (``..._DDMMYYYYhhmmss_WEB``) is on a
+    12-hour clock with no AM/PM (06:45 in the name, 18:45 broadcast), so an hour below 12 is read as PM: the stamp can
+    only move ``known_at`` earlier when even its latest reading is over an hour before the broadcast."""
+    stamp = re.search(r"_(\d{14})_WEB", file or "")
+    when = None
+    if stamp:
+        try:
+            when = datetime.strptime(stamp.group(1), "%d%m%Y%H%M%S")
+        except ValueError:
+            when = None
+    if when is not None and when.hour < 12:
+        when += timedelta(hours=12)
+    if when is None:
+        return broadcast, "shp_index.broadcast_at"
+    try:
+        later = datetime.fromisoformat(str(broadcast)[:19]) - when if broadcast else None
+    except ValueError:
+        later = None
+    if not broadcast or (later is not None and later > timedelta(hours=1)):   # a re-broadcast, not clock noise
+        return when.isoformat(), "file name timestamp (pm-safe)"
+    return broadcast, "shp_index.broadcast_at"
+
+
 def build_shp(conn: sqlite3.Connection) -> dict:
     """shp_category (shp_index promoter / public per quarter + the holder categories of every SHP XBRL file),
     shp_holder (the named holders, one row per category and name per quarter) and shp_pledge (the promoter
@@ -812,13 +839,13 @@ def build_shp(conn: sqlite3.Connection) -> dict:
         by_file = {r["file"]: r for r in index}
         out = []
         for r in index:
-            known = r["broadcast_at"] or r["submission_date"]
+            known, known_src = _shp_known(r["file"], r["broadcast_at"] or r["submission_date"])
             for cat, pct in (("promoter", r["promoter_pct"]), ("public", r["public_pct"])):
                 if pct is None:
                     continue
                 out.append((symbol, r["isin"], r["quarter_end"], cat, cat, None, pct, None, "pct", "index",
                             r["file"], "equity_intelligence.db", "shp_index", r["record_id"],
-                            r["revised"], known, "shp_index.broadcast_at", 1,
+                            r["revised"], known, known_src, 1,
                             *bases.get((r["isin"], r["quarter_end"]), (None, None))))
         holders: dict[tuple, tuple] = {}
         pledges: dict[tuple, tuple] = {}
@@ -828,11 +855,9 @@ def build_shp(conn: sqlite3.Connection) -> dict:
                 continue
             idx = by_file.get(name)
             if idx is not None:
-                known, src, revised = idx["broadcast_at"] or idx["submission_date"], "shp_index.broadcast_at", idx["revised"]
+                (known, src), revised = _shp_known(name, idx["broadcast_at"] or idx["submission_date"]), idx["revised"]
             else:
-                stamp = re.search(r"_(\d{14})_WEB", name)
-                known = datetime.strptime(stamp.group(1), "%d%m%Y%H%M%S").isoformat() if stamp else None
-                src, revised = "file name timestamp", None
+                (known, src), revised = _shp_known(name, None), None
             isin, quarter = parsed["head"]["ISIN"], _quarter(parsed)
             base, base_label = bases.get((isin, quarter), (None, None))
             fpi, ifor = {}, {}

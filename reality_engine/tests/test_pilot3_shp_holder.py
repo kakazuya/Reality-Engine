@@ -130,9 +130,9 @@ def test_build_shp_writes_one_holder_row_per_name_and_the_pledge_block(monkeypat
     folder = Path(os.environ.get("TEMP") or tempfile.gettempdir()) / f"pilot3_shp_holder_{uuid.uuid4().hex[:8]}"
     folder.mkdir(parents=True)
     try:
-        with gzip.open(folder / "SHP_0001_01012026000000_WEB.xml.gz", "wb") as fh:
+        with gzip.open(folder / "SHP_0001_01102026100000_WEB.xml.gz", "wb") as fh:
             fh.write(_shp_xml())
-        index = [{"file": "SHP_0001_01012026000000_WEB.xml", "isin": "INE000A01010", "quarter_end": "2026-09-30",
+        index = [{"file": "SHP_0001_01102026100000_WEB.xml", "isin": "INE000A01010", "quarter_end": "2026-09-30",
                   "promoter_pct": 36.0, "public_pct": 54.0, "record_id": "1", "revised": None,
                   "broadcast_at": "2026-10-01T10:00:00", "submission_date": "2026-09-30"}]
         monkeypatch.setattr(stores, "SHP_XBRL", folder)
@@ -226,3 +226,21 @@ def test_build_shp_warns_when_the_xbrl_folder_is_empty(tmp_path, monkeypatch, ca
     monkeypatch.setattr(_st.profile, "symbols", lambda: ())
     _st.build_shp(_sq.connect(":memory:"))
     assert "no SHP XBRL files" in capsys.readouterr().err
+
+
+def test_shp_known_at_takes_the_earlier_pm_safe_file_stamp():
+    """T-162: a re-broadcast index time never hides a filing already public; the 12-hour stamp is read as PM."""
+    from reality_engine.pilot3.stores import _shp_known
+    # ADANIPORTS 2021-09-30: filed 20 Oct 2021 09:40 (stamp), index broadcast 7 Jan 2022 -> the stamp, read 21:40
+    assert _shp_known("SHP_162947_542024_20102021094050_WEB.xml", "2022-01-07T01:55:01") == (
+        "2021-10-20T21:40:50", "file name timestamp (pm-safe)")
+    # 06:45 in the name, 18:45 broadcast: PM reading equals the broadcast, keep the broadcast
+    assert _shp_known("SHP_1481231_11072025064527_WEB.xml", "2025-07-11T18:45:32")[1] == "shp_index.broadcast_at"
+    # 10:36 AM stamp and broadcast: the PM reading is later, keep the broadcast (never earlier than certain)
+    assert _shp_known("SHP_182563_961791_20102023103636_WEB.xml", "2023-10-20T10:36:37") == (
+        "2023-10-20T10:36:37", "shp_index.broadcast_at")
+    # stamp later than the broadcast: keep the broadcast; no stamp: keep the broadcast
+    assert _shp_known("SHP_1490050_22072025114302_WEB.xml", "2025-07-09T15:49:24")[0] == "2025-07-09T15:49:24"
+    assert _shp_known("other.xml", "2025-07-09T15:49:24") == ("2025-07-09T15:49:24", "shp_index.broadcast_at")
+    # no index row: the PM-safe stamp alone
+    assert _shp_known("SHP_1_2_08102020101735_WEB.xml", None) == ("2020-10-08T22:17:35", "file name timestamp (pm-safe)")

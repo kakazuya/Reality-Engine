@@ -35,7 +35,8 @@ in `filings.classes_missing`; nothing is imputed.  `hold.pledge_pct` is written 
 pledge percentage concept, or from an explicit "no promoter shares are pledged" boolean
 when the filing states that instead of a number.
 
-PIT: `known_at` is `shp_index.broadcast_at`, falling back to `submission_date`; never a
+PIT: `known_at` is `shp_index.broadcast_at`, falling back to `submission_date` (pilot3 `stores._shp_known` then takes
+the earlier file-name stamp when the broadcast is a late re-broadcast, T-162); never a
 crawl date and never `quarter_end`.  A revised filing is its own set of rows (the key
 carries `known_at`), so the original stays usable before the revision.
 
