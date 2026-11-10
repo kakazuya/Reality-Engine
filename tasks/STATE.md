@@ -8,8 +8,8 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `do
 - Rulings 10 Nov: frozen hold-out scoring (T-172, T-173); factor rewards dynamic (T-176); OCR only for textless/jumbled pages (T-175); PIB other languages only without English; policy-to-company impact (T-174).
 
 ## Running (owner: Eagle session; claim_worker in the new session)
-- T-179: 240 answers done (A1/A2 SQL, B1/B2 no SQL; `D:/RealityEngine/t179/<run>/`; median 34-56 s and 6-9 lookups per answer; B runs 0 served SQL). Grading on Beam, read-only, 5 batches of 68 (240 test + 100 Opus-graded calibration, shuffled; key in `grade_key_do_not_open/`): 20261110T204204Z-970cfd98, 204210Z-cdefcd5d, 204210Z-5c79b7f7, 204210Z-d6637018, 204211Z-1262f1c0.
-- T-177 r2 (Beam) 20261110T204227Z-04db25f3, base dsh/20261110T175308Z-0dd3b9f0; brief `tasks/handoff/T-177_r2_brief.md`.
+- T-179: 240 answers done (`D:/RealityEngine/t179/<run>/`; median 34-56 s, 6-9 lookups per answer; B runs 0 served SQL). Grading: 5 read-only DeepSeek graders (key 1), 68 items each (240 test + 100 Opus-graded, shuffled): 20261110T205725Z-b9641902, 205726Z-bbcd45a6, 205727Z-e3a3608a, 205727Z-085ef518, 205728Z-f8bb81ba. Beam dies near 192k input tokens.
+- T-177 r3 (DeepSeek, after two Beam rounds died at the same wall) 20261110T205743Z-f0e6dae5, base dsh/20261110T204856Z-6ab8a1e5 (r2 WIP); brief `tasks/handoff/T-177_r2_brief.md`.
 - T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) HELD with T-132 until T-180 decides: q12 one seed 85%, zero-loss gate failed, self-graded.
 
 ## Next action

@@ -1,4 +1,5 @@
 Ticket: T-177
+Round 3 note (11 Nov): two Beam rounds died at about 192k input tokens (context wall) before finishing. Your base is the round-2 WIP commit on dsh/20261110T204856Z-6ab8a1e5: read its diff against a49f3087 first (prompt and parser patches, test rewrite, a stray pytest.ini to remove if it is not needed), keep what is right, then continue the steps below. Delete the .tmp patch scripts; do not commit them.
 Goal: finish the reference-page tool started in round 1 (branch dsh/20261110T175308Z-0dd3b9f0, commit a49f3087, your base): make two free readers return full table grids on the live-check pages, then finish the docs. Design: tasks/FABLE_TESTS_2026-11-10.md section 1; round-1 brief: tasks/handoff/T-177_reference_pages_brief.md (its rules still bind).
 Evidence (round 1 ended with a launcher error after 19 minutes; the code and tests were committed as WIP, measured by Eagle):
 - `reality_engine/v2/reference_pages.py` (818 lines) and `reality_engine/tests/test_v2_reference_pages.py` exist; the 3 tests pass but take 71 s.
