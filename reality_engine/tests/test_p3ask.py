@@ -1,4 +1,6 @@
 """T-124: the shell CLI runs the same pilot3 lookups as the MCP, against the database it is given."""
+import json
+
 from reality_engine.scripts import p3ask
 
 
@@ -12,27 +14,29 @@ def test_calc_runs_without_a_database():
     assert out["value"] == 2.5
 
 
-def test_logging_line_shape():
-    log = __import__("pathlib").Path("calls_t179.jsonl")
-    if log.exists():
-        log.unlink()
-    rc = p3ask.main(["--db", "x.db", "kpi", "--qid", "q1", "--log", str(log)])
-    # unknown tool still logs? run returns error but main rc 0 (prints json). Actually main returns 0.
-    assert rc == 0
-    # trigger a successful calc log
-    p3ask.main(["--db", "x.db", "calc", "expression=a/b", "inputs={\"a\":10,\"b\":4}", "--qid", "q2", "--log", str(log)])
-    lines = [l for l in log.read_text().splitlines() if l.strip()]
-    assert len(lines) >= 2
-    rec = __import__("json").loads(lines[-1])
-    for k in ("ts_start", "ts_end", "seconds", "qid", "tool", "args", "ok"):
-        assert k in rec
-    assert "reply bytes" in rec or "reply_bytes" in rec
+def test_call_log_line_shape(tmp_path):
+    log = tmp_path / "calls.jsonl"
+    args = ["--db", "x.db", "--qid", "q2", "--log", str(log), "calc", "expression=a/b", 'inputs={"a":10,"b":4}']
+    assert p3ask.main(args) == 0
+    assert p3ask.main(["--db", "x.db", "--qid", "q2", "--log", str(log), "nope"]) == 0
+    lines = [json.loads(x) for x in log.read_text(encoding="utf-8").splitlines()]
+    assert len(lines) == 2
+    assert set(lines[0]) == {"ts_start", "ts_end", "seconds", "qid", "tool", "args", "ok", "rows_returned",
+                             "reply_bytes"}
+    assert lines[0]["qid"] == "q2" and lines[0]["tool"] == "calc" and lines[0]["ok"] is True
+    assert lines[1]["ok"] is False
 
 
-def test_no_sql_refusal(monkeypatch):
+def test_log_failure_never_changes_the_reply(tmp_path):
+    out = p3ask.run("x.db", "calc", {"expression": "a/b", "inputs": {"a": 10, "b": 4}}, log=str(tmp_path))
+    assert out["value"] == 2.5
+
+
+def test_no_sql_arm_refuses_sql(monkeypatch):
     monkeypatch.setenv("P3ASK_NO_SQL", "1")
-    # recompute tools
-    assert "sql" not in p3ask._tools()
-    out = p3ask.run("x.db", "sql", {"query": "select 1"})
-    assert "error" in out
-    assert "not available" in out["error"]
+    out = p3ask.run("x.db", "sql", {"query": "SELECT 1"})
+    assert out == {"error": "sql tool is not available in this run; use the typed tools"}
+    assert "sql" not in p3ask.tools()
+    assert "sql" not in p3ask.run("x.db", "nope", {})["error"].split("choose from")[1]
+    monkeypatch.delenv("P3ASK_NO_SQL")
+    assert "sql" in p3ask.tools()

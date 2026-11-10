@@ -128,7 +128,7 @@ def stratified_sample(candidates, n, max_per_company, rng, counts=None):
 
 def build_sample(pilot10_dir, grades_path=None, pilot10_db=PILOT10_DB_DEFAULT,
                 u8_csv=None, q12_csv=None, u8_db=U8_DB_DEFAULT, q12_db=Q12_DB_DEFAULT,
-                seed=20261110, max_per_company=12):
+                seed=20261110, max_per_company=12, quotas=(20, 40, 30, 30)):
     r_cands, p_cands = load_pilot10(pilot10_dir, grades_path, store_path=pilot10_db)
     right_cands, notright_cands = load_u8_q12(
         u8_csv or "D:/RealityEngine/reports/2026-11-09_t130_u8_answers.csv",
@@ -137,17 +137,17 @@ def build_sample(pilot10_dir, grades_path=None, pilot10_db=PILOT10_DB_DEFAULT,
     )
 
     rng = random.Random(seed)
-    sel_r = stratified_sample(r_cands, 20, max_per_company, rng)
+    sel_r = stratified_sample(r_cands, quotas[0], max_per_company, rng)
     counts = Counter(s["company"] for s in sel_r)
-    sel_p = stratified_sample(p_cands, 40, max_per_company, rng, counts=counts)
+    sel_p = stratified_sample(p_cands, quotas[1], max_per_company, rng, counts=counts)
 
     counts2 = Counter(s["company"] for s in (sel_r + sel_p))
     # u8+q12 right/notright share the same company pool; reset counts for new pool? 
     # Keep global max across all: combine capacity
     # We'll sample right first, then notright with updated counts
-    sel_right = stratified_sample(right_cands, 30, max_per_company, rng, counts=counts2)
+    sel_right = stratified_sample(right_cands, quotas[2], max_per_company, rng, counts=counts2)
     counts3 = counts2 + Counter(s["company"] for s in sel_right)
-    sel_notright = stratified_sample(notright_cands, 30, max_per_company, rng, counts=counts3)
+    sel_notright = stratified_sample(notright_cands, quotas[3], max_per_company, rng, counts=counts3)
 
     out_rows = []
     for r in (sel_r + sel_p + sel_right + sel_notright):
@@ -174,6 +174,9 @@ def main(argv=None):
     ap.add_argument("--q12-csv", type=Path, default=Path("D:/RealityEngine/reports/2026-11-09_t124_q12_answers.csv"))
     ap.add_argument("--u8-db", type=str, default=U8_DB_DEFAULT)
     ap.add_argument("--q12-db", type=str, default=Q12_DB_DEFAULT)
+    ap.add_argument("--quotas", type=str, default="20,40,30,30",
+                    help="pilot10 right, pilot10 partly, u8+q12 right, u8+q12 not right")
+    ap.add_argument("--max-per-company", type=int, default=12)
     args = ap.parse_args(argv)
 
     rows = build_sample(
@@ -185,6 +188,8 @@ def main(argv=None):
         u8_db=args.u8_db,
         q12_db=args.q12_db,
         seed=args.seed,
+        max_per_company=args.max_per_company,
+        quotas=tuple(int(x) for x in args.quotas.split(",")),
     )
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)

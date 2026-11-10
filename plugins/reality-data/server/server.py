@@ -51,7 +51,8 @@ Examples: price("PPL", "2026-03-30"); facts("PPL", kind="segments", period="FY25
 
 if _NO_PILOT3_SQL:
     INSTRUCTIONS = INSTRUCTIONS.replace("check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') ", "")
-    INSTRUCTIONS = INSTRUCTIONS.replace("pilot3_sql", "")
+    INSTRUCTIONS = re.sub(r"arbitrary table query -> pilot3_sql \(tables: [^)]*\)", "there is no raw SQL tool in this run: use the typed tools above", INSTRUCTIONS)
+    INSTRUCTIONS = INSTRUCTIONS.replace("pilot3_sql cuts text cells", "text cells are cut").replace("pilot3_sql", "the typed tools")
 
 server = MCPServer(name="reality-data", version="0.1.0", instructions=INSTRUCTIONS)
 
@@ -297,13 +298,13 @@ def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | No
             hidden = int(results.get("hidden_after_as_of") or 0)
             results_as_of = results.get("as_of", as_of)
             results = results.get("results", [])
-        results = list(results or [])  # type: ignore[arg-type]
+        results = list(results or [])
         qids = core.quarantined_doc_ids()
         if qids:
             filtered = []
             for hit in results:
                 try:
-                    doc_id = int((hit or {}).get("doc_id"))  # type: ignore[arg-type]
+                    doc_id = int((hit or {}).get("doc_id"))
                 except (TypeError, ValueError):
                     filtered.append(hit)
                     continue
