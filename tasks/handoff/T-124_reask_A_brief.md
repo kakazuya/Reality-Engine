@@ -1,3 +1,5 @@
+> SUPERSEDED 10 Nov 2026 (T-165): historical job record. The current answer brief is `tasks/handoff/T-143_p20_P_brief.md`; `holding` now returns every category and takes `category` and `quarters`.
+
 Goal: Answer every question in D:/RealityEngine/pilot10/answer_reask/questions_A.json (68 questions, 5 companies) from the pilot10 store, one recorded answer per qid. This is a re-ask to measure how many earlier partial answers the store now fixes, so answer each question fully and exactly as an investor asked it.
 
 Files: write ONLY through the recorder; it appends to .tmp/<SYMBOL>_answers.jsonl in your workspace. Scratch answer files go in .tmp/. Do not edit any code. Do NOT open anything under D:/RealityEngine/pilot10/answer_a3 or answer_a2 (old answers and grades: this run is blind).

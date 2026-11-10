@@ -705,6 +705,23 @@ Two T-087 answers had failed because no holder was named and the September 2025 
   `all_holders=true` lists every named holder with `pac_name`), `promoter_pledge` (the three flags, promoter and
   pledged shares, the printed percentage and an `answer` sentence; T-108, 8 Nov: a flag that says no pledge gives `nil` true with 0 shares and 0%, and `previous_quarter` + `changed` carry the quarter before), `pct_basis`, and every reply states
   `quarters_held` (first/last/count) and `categories_held`. The lookups guard an older build without the two tables.
+- **Every SHP category, the GoI line and a four-quarter path (T-165, 10 Nov 2026).** `pilot3_holding` used to answer
+  from a fixed main-category list against the latest quarter with any row, so the Government of India line
+  (`central_government_or_president_of_india`) was never returned and a newest quarter holding only its `shp_index`
+  promoter/public rows hid the complete previous quarter (Vodafone Idea's GoI 49.0% at 30-Jun-26 sat behind a
+  30-Sep-26 index row). It now returns every filed category with `pct` and `pct_basis`, picks the latest quarter with
+  an XBRL filing, dedupes to one row per category and quarter (XBRL before the index copy, as `queries.shp` orders),
+  maps the words investors use (`government` / `GoI` / `DIPAM`, `FPI` / `FII`, `MF`, `DII`, `retail`; a no-match filter
+  returns no row and lists `categories_held`) and takes `quarters=N` (an SHP filed at a record date inside a quarter is
+  skipped; one newer than the last quarter end is kept -- PERSISTENT's 26-Oct-26 filing). `pilot3_kpi` resolves
+  `net interest margin`, `losses and provisions to assets` and `cost of borrowings` and reports `held_quarantined`
+  when the row check hid the only row (CHOLAFIN Q2FY27 NIM 7.9). Re-ask of the audit's 11 routing rows on the u8/q12
+  stores, re-run by an independent read-only dsh review (10 Nov): 11/11 reachable, 9 clean, 2 caveated (CHOLAFIN Q4FY26 NIM
+  also returns the 0.68 wrong-scale row; Q1FY27 credit cost has 3 rows, 150 is the one the call states), 0 wrong; the
+  cost-of-funds commentary half answers with `terms="cost of funds"` or `topic=rates`, not "repricing";
+  `plugins/reality-data/tests/test_lookups_pilot3.py` 31 passed, 1 skipped. Store defects reported, not fixed:
+  CHOLAFIN `nim_pct` Q4FY26 also holds 0.68 (wrong scale, the audit's own defect), Q2FY27's 7.9 is quarantined by a
+  hard `unit_kind` check, and the three CHOLAFIN `credit_cost_bps` Q1FY27 rows (150 / 180 / 470) are extraction noise.
 - **Accept on the copy** (`.tmp/pilot10_w.db`, `--part stores` 129 s, all ten companies): ETERNAL 2026-09-30 has
   Info Edge (India) Limited 1,194,687,095 shares / 12.38% under `bodies_corporate` and Foodie Bay Employees ESOP Trust
   437,576,304 / 4.53%; BAJFINANCE 2025-09-30 has `fpi_total` 21.97 (1,367,282,372 shares) and `mutual_funds` 8.89

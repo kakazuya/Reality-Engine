@@ -230,6 +230,15 @@ def _pick(table: str, col: str, symbol: str, name: str, extra: str = "") -> tupl
 # --- pilot3_kpi -------------------------------------------------------------------------------------
 _DOC_JOIN = ("LEFT JOIN doc d ON d.doc_key = COALESCE((SELECT a.doc_key FROM doc_alias a WHERE a.symbol=k.symbol "
              "AND a.alias_key=k.doc_key), k.doc_key)")
+# The words an investor uses for a KPI the store files under a longer metric name (T-165).  "NIM" alone already
+# matches nim_pct by substring; "net interest margin", "losses and provisions to assets" and "cost of borrowings"
+# did not.  One-word mappings only: a metric name the store holds still wins because it is tried first elsewhere.
+_KPI_WORDS = {
+    "net_interest_margin": "nim", "net_interest_margins": "nim", "nims": "nim",
+    "losses_and_provisions_to_assets": "credit_cost", "provisions_to_assets": "credit_cost",
+    "credit_costs": "credit_cost", "cost_of_borrowings": "cost_of_funds", "cost_of_borrowing": "cost_of_funds",
+    "cost_of_fund": "cost_of_funds",
+}
 
 
 def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = None,
@@ -237,10 +246,13 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
         include_quarantined: bool = False) -> dict[str, Any]:
     """A company-stated KPI (order book, AUM, EBITDA/tonne, NIM ...) from decks, results, releases, transcripts."""
     sym = resolve_symbol(symbol)
-    names, allnames = _pick("kpi_series", "metric", sym, kpi,
-                            extra="" if include_quarantined else _visible("kpi_series"))
+    metric_asked = kpi
+    kpi = _KPI_WORDS.get(re.sub(r"[\s\-]+", "_", str(kpi).strip().lower()), kpi)
+    # the metric NAME is not hidden by a quarantine: the row-level filter below hides the rows and the empty
+    # reply says they are held but quarantined (T-165: CHOLAFIN Q2FY27 NIM 7.9 is the only row of its period)
+    names, allnames = _pick("kpi_series", "metric", sym, kpi)
     if not names:
-        return _reply(sym, [], "pilot3_kpi", available=allnames[:40], metric_asked=kpi)
+        return _reply(sym, [], "pilot3_kpi", available=allnames[:40], metric_asked=metric_asked)
     kind, label = norm_period(period)
     where, args = f"k.symbol=? AND k.metric IN ({','.join('?' * len(names))})", [sym, *names]
     if label:
@@ -253,6 +265,7 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
         where += " AND k.basis=?"
         args.append(basis.strip().lower())
     join, check_sel, hide = _check_cols("kpi_series", "k.id")
+    visible_where = where          # without the quarantine clause: the "held but hidden" note needs it
     if not include_quarantined:
         where += hide
     extra, eargs = _asof(as_of, "k.known_at")
@@ -289,12 +302,23 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
     out.sort(key=lambda row: 0 if row["entity"] == sym else 1)   # the company's own rows first (T-088)
     out = out[: _cap(limit)]
     held = None
+    held_hidden = None
     if not out:  # the metric exists: say which periods / dimensions hold it, so the next call can be exact
         held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
             f"SELECT fiscal_period, dimension, COUNT(*) FROM kpi_series WHERE symbol=? AND metric IN "
             f"({','.join('?' * len(names))}){_visible('kpi_series')} "
             f"GROUP BY 1, 2 ORDER BY MAX(known_at) DESC LIMIT 40", (sym, *names))]
-    return _reply(sym, out, "pilot3_kpi", metrics_matched=names, held_period_dimension=held)
+        # A figure the row check quarantined is still held (T-113): say so, or the caller reads a deliberate hide
+        # as "not in data" (CHOLAFIN Q2FY27 NIM 7.9 is exactly this, T-165).
+        if not include_quarantined and _has_table("row_check"):
+            q_where = (visible_where + " AND EXISTS (SELECT 1 FROM row_check rc WHERE rc.tbl='kpi_series' "
+                       "AND rc.row_id=k.id AND rc.status='quarantined')")
+            held_hidden = [f"{r[0]} / {r[1]} ({r[2]} rows; the row check quarantined them: "
+                           f"include_quarantined=true shows them)" for r in _q(
+                f"SELECT k.fiscal_period, k.dimension, COUNT(*) FROM kpi_series k WHERE {q_where} "
+                f"GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 20", tuple(args))]
+    return _reply(sym, out, "pilot3_kpi", metrics_matched=names, held_period_dimension=held,
+                  held_quarantined=held_hidden)
 
 
 # --- pilot3_fin -------------------------------------------------------------------------------------
@@ -605,9 +629,50 @@ def _stated_ratios(sym: str, key: str, label: str | None, as_of: str | None, bas
 
 
 # --- pilot3_holding ---------------------------------------------------------------------------------
-HOLDING_MAIN = ("promoter", "public", "fpi", "fpi_total", "institutions_domestic", "institutions_foreign",
-                "mutual_funds", "insurance", "banks", "foreign", "indian", "bodies_corporate")
 HOLDING_TOP = 12
+_QUARTER_ENDS = ("03-31", "06-30", "09-30", "12-31")   # a calendar quarter end, the comparable trend point
+# The words an investor uses for a filed category (T-165).  A stored category name that already matches wins;
+# these are the fallbacks for a word that is never a column value (GoI, MF, DII ...).
+_HOLDING_CATEGORY_WORDS: dict[str, tuple[str, ...]] = {
+    "government": ("central_government_or_president_of_india", "governments",
+                   "central_government_or_state_government_s", "state_governments_or_governors"),
+    "govt": ("central_government_or_president_of_india", "governments",
+             "central_government_or_state_government_s", "state_governments_or_governors"),
+    "goi": ("central_government_or_president_of_india",),
+    "dipam": ("central_government_or_president_of_india",),
+    "president": ("central_government_or_president_of_india",),
+    "fpi": ("fpi", "fpi_total", "fpi_category_1", "fpi_category_2", "institutions_foreign"),
+    "fii": ("fpi", "fpi_total", "fpi_category_1", "fpi_category_2", "institutions_foreign"),
+    "mf": ("mutual_funds",),
+    "mutual_fund": ("mutual_funds",),
+    "mutual_funds": ("mutual_funds",),
+    "dii": ("institutions_domestic", "mutual_funds", "insurance", "banks", "pension_funds"),
+    "retail": ("retail_up_to_2_lakh", "retail_above_2_lakh"),
+}
+
+
+def _holding_categories(sym: str, asked: str | None, extra: str,
+                        eargs: tuple) -> tuple[list[str], list[str]]:
+    """The stored shp_category names a user's category words mean, and every category the company holds.
+
+    ``government`` / ``GoI`` / ``DIPAM`` map to ``central_government_or_president_of_india`` (Vodafone Idea's
+    49%), ``FPI`` / ``FII`` to ``fpi_total`` and its component lines, ``MF`` / ``mutual fund`` to
+    ``mutual_funds``.  A word that matches no stored category returns no names; the reply then lists
+    ``categories_held`` (T-165)."""
+    held = [r[0] for r in _q(f"SELECT DISTINCT category FROM shp_category WHERE symbol=?{extra} ORDER BY 1",
+                             (sym, *eargs))]
+    if not asked:
+        return [], held
+    picked: list[str] = []
+    for word in re.split(r"[,;/&]| and ", asked):
+        key = re.sub(r"[\s\-]+", "_", word.strip().lower())
+        if not key:
+            continue
+        names = _HOLDING_CATEGORY_WORDS.get(key)
+        if names is None:
+            names = (key,) if key in held else tuple(c for c in held if key in c)
+        picked.extend(c for c in names if c in held)
+    return list(dict.fromkeys(picked)), held
 
 
 def _pledge_text(r: sqlite3.Row, pct: float | None) -> str:
@@ -648,41 +713,80 @@ def _pledge_block(r: sqlite3.Row) -> dict[str, Any]:
 
 
 def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categories: bool = False,
-            all_holders: bool = False) -> dict[str, Any]:
+            all_holders: bool = False, category: str | None = None, quarters: int = 1) -> dict[str, Any]:
     """Shareholding pattern in force on ``as_of`` (the latest quarter whose filing was out by then) + shares
-    outstanding.  Main categories by default; all_categories=true lists every filed category.  ``holders`` are the
-    quarter's named holders (top 12 by shares, excluding the persons-in-concert disclosures); ``all_holders`` lists
-    every named holder including them, with ``pac_name``.  ``promoter_pledge`` is the filing's encumbrance block,
-    ``pct_basis`` the share count its percentages are on, ``quarters_held``/``categories_held`` what the table covers."""
+    outstanding.  EVERY filed category is returned, one row per category and quarter, the XBRL filing before the
+    shp_index copy of promoter/public, each row with ``pct`` and the ``pct_basis`` its percentage is printed on.
+
+    ``category`` filters by the words an investor uses: government / GoI / DIPAM ->
+    ``central_government_or_president_of_india``, FPI / FII -> ``fpi_total`` and its lines, MF / mutual fund,
+    promoter, public, retail, DII; a word matching no stored category returns nothing and lists
+    ``categories_held``.  ``quarters`` (default 1, max 12) returns the last N quarters in force, so a "last four
+    quarters" path is one call; ``quarter_end`` pins one quarter.  ``holders`` are the latest quarter's named
+    holders (top 12 by shares, excluding the persons-in-concert disclosures); ``all_holders`` lists every named
+    holder including them, with ``pac_name``.  ``promoter_pledge`` is the filing's own encumbrance block,
+    ``pct_basis`` the share count its percentages are on, ``quarters_held``/``categories_held`` what the table
+    covers.  ``all_categories`` is kept for older briefs: every filed category is returned anyway (T-165)."""
     sym = resolve_symbol(symbol)
     day = _day(as_of, "as_of")
     if not day:
         raise DataError("bad_date", "as_of (YYYY-MM-DD) is required")
     qe = _day(quarter_end, "quarter_end")
     extra, eargs = _asof(day)
+    # The latest quarter with an XBRL filing, not merely any row: a build can carry the newest quarter's
+    # shp_index promoter/public row (known at the reload) before its XBRL categories, and answering from that
+    # lone row hid the complete previous quarter (T-165: Vodafone Idea's GoI 49% at 30-Jun-26).
     row = _q(f"SELECT MAX(quarter_end) q FROM shp_category WHERE symbol=? AND quarter_end<=?{extra}"
-             + (" AND quarter_end=?" if qe else ""), (sym, day, *eargs, *((qe,) if qe else ())))
+             + (" AND quarter_end=?" if qe else "") + " AND source_kind='xbrl'",
+             (sym, day, *eargs, *((qe,) if qe else ())))
+    if not (row and row[0]["q"]):
+        row = _q(f"SELECT MAX(quarter_end) q FROM shp_category WHERE symbol=? AND quarter_end<=?{extra}"
+                 + (" AND quarter_end=?" if qe else ""), (sym, day, *eargs, *((qe,) if qe else ())))
     quarter = row[0]["q"] if row else None
     held = _q(f"SELECT MIN(quarter_end) f, MAX(quarter_end) l, COUNT(DISTINCT quarter_end) n FROM shp_category "
               f"WHERE symbol=?{extra}", (sym, *eargs))[0]
     rows: list[dict] = []
     basis = None
+    picked: list[str] = []
+    qlist: list[str] = []
     if quarter:
-        flt = "" if all_categories else f" AND category IN ({','.join('?' * len(HOLDING_MAIN))})"
-        cand = _q(f"SELECT rowid, * FROM shp_category WHERE symbol=? AND quarter_end=?{extra}{flt} "
-                  "ORDER BY category, (source_kind='xbrl') DESC, known_at DESC",
-                  (sym, quarter, *eargs, *(() if all_categories else HOLDING_MAIN)))
+        try:
+            want = max(1, min(int(quarters or 1), 12))
+        except (TypeError, ValueError):
+            want = 1
+        qlist = [r[0] for r in _q(f"SELECT DISTINCT quarter_end FROM shp_category WHERE symbol=? "
+                                  f"AND quarter_end<=?{extra} ORDER BY quarter_end DESC",
+                                  (sym, quarter, *eargs))]
+        # A trend runs on quarter ends: an SHP filed at a record date inside a quarter (ANANDRATHI's 2026-06-04)
+        # is not a comparable point, while one NEWER than the last quarter end (PERSISTENT's 2026-10-26) is the
+        # newest filing and stays (T-165).
+        ends = [q for q in qlist if q[5:10] in _QUARTER_ENDS]
+        if ends:
+            qlist = [q for q in qlist if q not in ends and q > ends[0]] + ends
+        qlist = qlist[:want]
+        picked, _held = _holding_categories(sym, category, extra, eargs)
+        flt = f" AND category IN ({','.join('?' * len(picked))})" if picked else ""
+        # a category was asked and no filed name matches it: no row is the answer, never every row
+        cand = [] if (category and not picked) else _q(
+            f"SELECT rowid, * FROM shp_category WHERE symbol=?{extra}{flt} "
+            f"AND quarter_end IN ({','.join('?' * len(qlist))}) "
+            "ORDER BY quarter_end DESC, category, (source_kind='xbrl') DESC, known_at DESC",
+            (sym, *eargs, *picked, *qlist))
         seen = set()
         for r in cand:
             keys = r.keys()
-            if "pct_base_shares" in keys and r["pct_base_shares"] is not None:
-                basis = basis or {"shares": r["pct_base_shares"], "label": r["pct_basis"],
+            pct_base = r["pct_base_shares"] if "pct_base_shares" in keys else None
+            pct_label = r["pct_basis"] if "pct_basis" in keys else None
+            if pct_base is not None:
+                basis = basis or {"shares": pct_base, "label": pct_label,
                                   "provenance": _prov("shp_category", r["source_file"], r["known_at"])}
-            if r["category"] in seen:
+            sig = (r["quarter_end"], r["category"])   # one value per category and quarter, XBRL first
+            if sig in seen:
                 continue
-            seen.add(r["category"])
+            seen.add(sig)
             rows.append({"category": r["category"], "pct": r["pct"], "shares": r["shares"], "holders": r["holders"],
                          "quarter_end": r["quarter_end"], "source_kind": r["source_kind"],
+                         "pct_basis": pct_label, "pct_base_shares": pct_base,
                          "provenance": _prov("shp_category", f"{r['source_file'] or ''} [{r['source_db']}.{r['source_table']} "
                                              f"row {r['source_rowid']}]".strip(), r["known_at"],
                                              category_raw=r["category_raw"])})
@@ -725,13 +829,23 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
                                       r["known_at"])}
     categories = [r[0] for r in _q(f"SELECT DISTINCT category FROM shp_category WHERE symbol=?{extra} "
                                    "ORDER BY category LIMIT 60", (sym, *eargs))]
+    hint = None
+    if not rows:
+        if category and not picked:
+            hint = f"no filed category matches {category!r}: categories_held lists the names this company holds"
+        elif category:
+            hint = (f"{picked} has no row in the last {len(qlist) if quarter else 0} quarter(s) in force; "
+                    "quarters_held lists what the table covers")
+        else:
+            hint = "no shareholding row filed by that day for this company"
     return _reply(sym, rows, "pilot3_holding", quarter_end=quarter, as_of=day, share_capital=shares,
                   holders=named, holders_note=None if named else "no named holder row for this quarter "
                   "(the build predates shp_holder, or the filing names none)",
                   promoter_pledge=pledge, pct_basis=basis,
+                  category_filter=category, matched_categories=picked,
+                  quarters_returned=sorted({r["quarter_end"] for r in rows}, reverse=True),
                   quarters_held={"first": held[0], "last": held[1], "count": held[2]},
-                  categories_held=categories,
-                  hint=None if rows else "no shareholding row filed by that day for this company")
+                  categories_held=categories, hint=hint)
 
 
 # --- pilot3_statements ------------------------------------------------------------------------------

@@ -40,6 +40,10 @@ def build_fixture() -> None:
     schema.create(c, list(schema.TABLES))
     c.executescript(kpi_mod.SCHEMA + transcripts.SCHEMA)
     c.execute(schema.FTS)
+    # T-113 row verdicts: a figure the checker quarantined is still held (T-165)
+    c.execute("CREATE TABLE row_check (tbl TEXT, row_id INTEGER, symbol TEXT, metric TEXT, canon TEXT, sector TEXT, "
+              "doc_type TEXT, rule TEXT, status TEXT, corroborated INTEGER, checker TEXT)")
+    c.execute("CREATE TABLE row_check_fail (tbl TEXT, row_id INTEGER, check_name TEXT, hard INTEGER, why TEXT)")
     c.execute("INSERT INTO company VALUES ('KEC','INE389H01022',NULL,NULL,'t','532714','KEC International Limited')")
     c.executemany("INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", [
         ("pdfs/KEC/deck1.pdf", "KEC", "INE389H01022", "deck", "deck", "Investor Presentation", "2026-02-10",
@@ -92,6 +96,20 @@ def build_fixture() -> None:
                     "old/call.pdf", "call remark", "2026-08-11T10:00:00"))
     c.execute(ins, ("order_intake", "total", 200.0, "inr_cr", "Q1FY27", "2026-06-30", "pdfs/KEC/deck2.pdf",
                     "deck table", "2026-08-10T17:00:00"))
+    # T-165: the KPI words investors use (NIM / net interest margin, credit cost, cost of funds) resolve to these
+    c.execute(ins, ("nim_pct", "total", 8.2, "pct", "Q1FY27", "2026-06-30", "pdfs/KEC/deck2.pdf", "NIM 8.2%",
+                    "2026-08-10T17:00:00"))
+    c.execute(ins, ("credit_cost_bps", "total", 140.0, "bps", "Q1FY27", "2026-06-30", "pdfs/KEC/deck2.pdf",
+                    "Credit cost 140 bps", "2026-08-10T17:00:00"))
+    c.execute(ins, ("cost_of_funds_pct", "total", 6.7, "pct", "Q1FY27", "2026-06-30", "pdfs/KEC/deck2.pdf",
+                    "Cost of funds 6.7%", "2026-08-10T17:00:00"))
+    c.execute(ins, ("gnpa_pct", "total", 4.2, "pct", "Q1FY27", "2026-06-30", "pdfs/KEC/deck2.pdf", "GNPA 4.2",
+                    "2026-08-10T17:00:00"))
+    gid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
+    c.execute("INSERT INTO row_check VALUES ('kpi_series',?,'KEC','gnpa_pct','gnpa','nbfc','deck','table_v1',"
+              "'quarantined',0,'t')", (gid,))
+    c.execute("INSERT INTO row_check_fail VALUES ('kpi_series',?,'unit_kind',1,'pct row without % at the number')",
+              (gid,))
     # one segment figure filed on both bases, standalone later: no basis asked must give the group figure first
     seg = ins.replace("'consolidated'", "?")
     c.execute(seg, ("segment_ebit", "beauty", 1235.0, "inr_cr", "Q2FY27", "2026-09-30", "consolidated", "c.xml",
@@ -122,10 +140,32 @@ def build_fixture() -> None:
     c.execute("INSERT INTO valuation_daily VALUES ('KEC','I','2026-03-30','consolidated',500,1e8,5e10,25,2.5e9,1e10,"
               "1e9,3e9,20,5,12,0.5,'2026-03-30','x','{}')")
     c.executemany("INSERT INTO shp_category VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+        ("KEC", "I", "2025-09-30", "promoter", "Promoter", 1.0e8, 52.0, 10, "pct", "xbrl", "shp0.xml", "db", "t", "0",
+         None, "2025-10-20T10:00:00", "x", 1, 1.0e9, "total_shares"),
         ("KEC", "I", "2025-12-31", "promoter", "Promoter", 1.0e8, 51.5, 10, "pct", "xbrl", "shp.xml", "db", "t", "1",
-         None, "2026-01-20T10:00:00", "x", 1, None, None),
-        ("KEC", "I", "2026-03-31", "promoter", "Promoter", 1.0e8, 52.0, 10, "pct", "xbrl", "shp2.xml", "db", "t", "2",
-         None, "2026-04-20T10:00:00", "x", 1, None, None)])
+         None, "2026-01-20T10:00:00", "x", 1, 1.0e9, "total_shares"),
+        ("KEC", "I", "2025-12-31", "fpi_total", "InstitutionsForeign (FII/FPI line)", 8.5e7, 8.5, None, "pct", "xbrl",
+         "shp.xml", "db", "t", "2", None, "2026-01-20T10:00:00", "x", 1, 1.0e9, "total_shares"),
+        ("KEC", "I", "2025-12-31", "mutual_funds", "MutualFundsOrUTI", 9.5e7, 9.5, 20, "pct", "xbrl", "shp.xml", "db",
+         "t", "3", None, "2026-01-20T10:00:00", "x", 1, 1.0e9, "total_shares"),
+        ("KEC", "I", "2026-03-31", "promoter", "Promoter", 1.0e8, 52.0, 10, "pct", "xbrl", "shp2.xml", "db", "t", "4",
+         None, "2026-04-20T10:00:00", "x", 1, 1.0e9, "total_shares"),
+        # the shp_index copy of promoter/public: one value per category and quarter, the XBRL row wins
+        ("KEC", "I", "2026-03-31", "promoter", "promoter", None, 52.0, None, "pct", "index", "shp_index",
+         "equity_intelligence.db", "shp_index", "9", None, "2026-04-20T10:00:00", "x", 1, None, None),
+        ("KEC", "I", "2026-03-31", "fpi_total", "InstitutionsForeign (FII/FPI line)", 8.0e7, 8.0, None, "pct", "xbrl",
+         "shp2.xml", "db", "t", "5", None, "2026-04-20T10:00:00", "x", 1, 1.0e9, "total_shares"),
+        ("KEC", "I", "2026-03-31", "mutual_funds", "MutualFundsOrUTI", 9.0e7, 9.0, 20, "pct", "xbrl", "shp2.xml", "db",
+         "t", "6", None, "2026-04-20T10:00:00", "x", 1, 1.0e9, "total_shares"),
+        ("KEC", "I", "2026-02-10", "promoter", "Promoter", 1.0e8, 51.8, 10, "pct", "xbrl", "shp1b.xml", "db", "t",
+         "11", None, "2026-02-20T10:00:00", "x", 1, 1.0e9, "total_shares"),
+        # T-165: the Government of India line (Vodafone Idea's 49%) and a newest quarter that holds only the
+        # shp_index promoter row, before its XBRL categories arrive
+        ("KEC", "I", "2026-03-31", "central_government_or_president_of_india", "CentralGovernmentOrPresidentOfIndia",
+         2.6e8, 26.0, 1, "pct", "xbrl", "shp2.xml", "db", "t", "7", None, "2026-04-20T10:00:00", "x", 1, 1.0e9,
+         "total_shares"),
+        ("KEC", "I", "2026-06-30", "promoter", "promoter", None, 52.0, None, "pct", "index", "shp_index",
+         "equity_intelligence.db", "shp_index", "10", None, "2026-07-05T10:00:00", "x", 1, None, None)])
     # T-088: the named holders and the promoter encumbrance block of the latest quarter
     c.executemany("INSERT INTO shp_holder VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
         ("KEC", "I", "2026-03-31", "promoter_individuals", "A Promoter", 2.0e7, 20.0, 1, None, None, None,
@@ -274,11 +314,13 @@ class Pilot3ToolTests(unittest.TestCase):
 
     def test_holding_is_point_in_time(self):
         a = p3.holding("KEC", "2026-02-01")
-        self.assertEqual((a["quarter_end"], a["rows"][0]["pct"]), ("2025-12-31", 51.5))
+        promoter = next(r for r in a["rows"] if r["category"] == "promoter")
+        self.assertEqual((a["quarter_end"], promoter["pct"]), ("2025-12-31", 51.5))
         self.assertEqual(a["share_capital"]["shares_outstanding"], 2.6e8)
         self.assertProvenance(a["rows"])
         b = p3.holding("KEC", "2026-06-01")
-        self.assertEqual((b["quarter_end"], b["rows"][0]["pct"]), ("2026-03-31", 52.0))
+        promoter = next(r for r in b["rows"] if r["category"] == "promoter")
+        self.assertEqual((b["quarter_end"], promoter["pct"]), ("2026-03-31", 52.0))
         self.assertFalse(p3.holding("KEC", "2025-06-01")["found"])
         with self.assertRaises(core.DataError):
             p3.holding("KEC", "")
@@ -286,7 +328,7 @@ class Pilot3ToolTests(unittest.TestCase):
     def test_holding_names_holders_the_pledge_block_and_what_it_covers(self):
         """T-088: the named holders of the quarter, the filing's own pledge answer and the coverage."""
         out = p3.holding("KEC", "2026-06-01")
-        self.assertEqual(out["quarters_held"], {"first": "2025-12-31", "last": "2026-03-31", "count": 2})
+        self.assertEqual(out["quarters_held"], {"first": "2025-09-30", "last": "2026-03-31", "count": 4})
         self.assertIn("promoter", out["categories_held"])
         # default: the named holders, the persons-in-concert twin left out so it never doubles a sum
         self.assertEqual([(h["holder"], h["category"], h["shares"], h["pct"]) for h in out["holders"]],
@@ -311,6 +353,72 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertTrue(nil["answer"].startswith("nil:"))
         self.assertEqual(early["holders"], [])
         self.assertIn("no named holder row", early["holders_note"])
+
+    def test_holding_returns_every_category_with_its_basis(self):
+        """T-165: every filed shp_category row of the quarter, not promoter/public only, each with its basis."""
+        out = p3.holding("KEC", "2026-06-01")
+        got = {r["category"]: r for r in out["rows"]}
+        self.assertEqual(got["promoter"]["pct"], 52.0)
+        self.assertEqual(got["fpi_total"]["pct"], 8.0)
+        self.assertEqual(got["mutual_funds"]["pct"], 9.0)
+        self.assertEqual(got["central_government_or_president_of_india"]["pct"], 26.0)
+        self.assertEqual(got["promoter"]["pct_basis"], "total_shares")
+        self.assertEqual(got["promoter"]["pct_base_shares"], 1.0e9)
+        # one value per category and quarter: the XBRL parse, never the shp_index copy beside it
+        self.assertEqual([r["source_kind"] for r in out["rows"] if r["category"] == "promoter"], ["xbrl"])
+        self.assertProvenance(out["rows"])
+
+    def test_holding_category_words_and_government(self):
+        """T-165: GoI maps to central_government_or_president_of_india; FPI/MF filter; a miss lists what exists."""
+        goi = p3.holding("KEC", "2026-06-01", category="GoI")
+        self.assertEqual([(r["category"], r["pct"]) for r in goi["rows"]],
+                         [("central_government_or_president_of_india", 26.0)])
+        self.assertEqual(goi["matched_categories"], ["central_government_or_president_of_india"])
+        self.assertEqual(p3.holding("KEC", "2026-06-01", category="government")["rows"][0]["pct"], 26.0)
+        both = p3.holding("KEC", "2026-06-01", category="FPI, MF")
+        self.assertEqual([(r["category"], r["pct"]) for r in both["rows"]],
+                         [("fpi_total", 8.0), ("mutual_funds", 9.0)])
+        miss = p3.holding("KEC", "2026-06-01", category="sovereign")
+        self.assertFalse(miss["found"])
+        self.assertIn("central_government_or_president_of_india", miss["categories_held"])
+        self.assertIn("no filed category matches", miss["hint"])
+
+    def test_holding_quarters_series_and_the_latest_complete_filing(self):
+        """T-165: quarters=N gives the path in one call; a newest quarter holding only the index promoter row does
+        not hide the last complete XBRL quarter (Vodafone Idea's GoI 49% sat behind exactly that)."""
+        out = p3.holding("KEC", "2026-07-10", category="promoter, fpi", quarters=2)
+        self.assertEqual([(r["quarter_end"], r["category"], r["pct"]) for r in out["rows"]],
+                         [("2026-03-31", "fpi_total", 8.0), ("2026-03-31", "promoter", 52.0),
+                          ("2025-12-31", "fpi_total", 8.5), ("2025-12-31", "promoter", 51.5)])
+        self.assertEqual(out["quarters_returned"], ["2026-03-31", "2025-12-31"])
+        # a filing dated inside a quarter is not a trend point; the quarter ends stay comparable
+        trend = p3.holding("KEC", "2026-06-01", category="promoter", quarters=3)
+        self.assertEqual(trend["quarters_returned"], ["2026-03-31", "2025-12-31", "2025-09-30"])
+        latest = p3.holding("KEC", "2026-07-10")           # 2026-06-30 has only its shp_index promoter row
+        self.assertEqual(latest["quarter_end"], "2026-03-31")
+        self.assertIn("mutual_funds", {r["category"] for r in latest["rows"]})
+
+    def test_kpi_matches_the_words_investors_use(self):
+        """T-165: NIM / net interest margin, credit cost and cost of funds resolve to the stored metric names."""
+        for word, metric, value in (("NIM", "nim_pct", 8.2), ("net interest margin", "nim_pct", 8.2),
+                                    ("credit cost", "credit_cost_bps", 140.0),
+                                    ("losses and provisions to assets", "credit_cost_bps", 140.0),
+                                    ("cost of funds", "cost_of_funds_pct", 6.7),
+                                    ("cost of borrowings", "cost_of_funds_pct", 6.7)):
+            out = p3.kpi("KEC", word, "Q1FY27")
+            self.assertTrue(out["found"], word)
+            self.assertEqual(out["metrics_matched"], [metric], word)
+            self.assertEqual(out["rows"][0]["value"], value, word)
+
+    def test_kpi_says_when_a_quarantined_row_holds_the_figure(self):
+        """T-165/T-113: an empty reply separates 'not held' from 'held but quarantined' (Chola Q2FY27 NIM)."""
+        out = p3.kpi("KEC", "GNPA", "Q1FY27")
+        self.assertFalse(out["found"])
+        self.assertTrue(any("Q1FY27 / total" in h and "include_quarantined" in h
+                            for h in out["held_quarantined"]))
+        shown = p3.kpi("KEC", "GNPA", "Q1FY27", include_quarantined=True)
+        self.assertEqual(shown["rows"][0]["check_status"], "quarantined")
+        self.assertEqual(shown["rows"][0]["value"], 4.2)
 
     def test_statements_exact_quote(self):
         out = p3.statements("KEC", topic="margin", terms="improve 50")
