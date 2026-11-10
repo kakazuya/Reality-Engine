@@ -173,25 +173,42 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   guidance: Chola's deck prints ICRA's 19-21% housing-finance AUM growth on an "Industry outlook" slide, so
   `pilot3_guidance('CHOLAFIN')` served it as Cholamandalam's AUM guidance while management guided 22-23%, and BEL's
   "variability of 25% to 31% EBITDA margins" band and an "INR120-plus million" export target read as 120 crore were
-  stored beside its real 28% and five-figure-crore order intake. `external_forecast()` now rejects a sentence (or
-  the bare sentence before it, when the candidate sentence names no company actor) that attributes the number to a
-  rating agency, research house or industry body (`EXTERNAL_SOURCE`: ICRA, CRISIL, CARE, India Ratings/Ind-Ra,
-  Moody's, S&P, Fitch, IBEF, Brickwork, Acuité, Infomerics, "rating agency", "research house", "brokerage") or
-  states an industry/sector forecast (`INDUSTRY_FORECAST`: "the sector is expected to", "HFCs is expected to",
-  "NBFCs likely to grow"; `AS_PER_EXTERNAL`: "as per ICRA/the industry"); a rating-affirmation line before "we
-  expect 15% growth" does not reject the company's own target because the sentence names "we". On a transcript page
-  without statements the page's own labels are tracked across sentences (`SPEAKER_LABEL`, `INLINE_SPEAKER`, so a
-  wrapped sentence or a label printed on the text line keeps its speaker), and a speaker the moderator introduced as
-  a questioner (`ANALYST_INTRO`, "from the line of Umesh Raut") is never a target; statement rows with role
+  stored beside its real 28% and five-figure-crore order intake. The round-1 version rejected a whole sentence that
+  named a rating agency; round 4 scopes that to the number's own clause (`_clause`: sentence/bullet separators plus a
+  table's own start, "FY26 guidance"/"Parameter"), so the ADANIPORTS release that prints India Ratings and then the
+  FY26 table keeps revenue 36,000-38,000 and EBITDA 21,000-22,000, while ICRA's own "19-21%" clause still drops. A
+  named agency/research house/industry body in the clause (`EXTERNAL_SOURCE`, `CARE_RATINGS`, `AS_PER_EXTERNAL`) or
+  an industry/sector forecast shape anywhere in the sentence (`INDUSTRY_FORECAST`) rejects the number; the bare
+  sentence before it counts only when the clause names no company actor and does not itself read as a guidance table.
+  A guidance table is read as a table only when it is one (`table_targets`): a Revenue/EBITDA/Capex label sits beside
+  its own amount (nothing but punctuation, a currency/unit parenthesis or a footnote digit in between, `TABLE_GAP` /
+  `TABLE_AMOUNT`), at least two labels carry such an amount, the block says guidance/guided/target/parameter, and it
+  names its fiscal year ("FY26 guidance"); each row then takes its own metric (`revenue`/`ebitda`/`capex`, added to
+  `METRIC_UNITS`) and the table's FY. Prose that merely mentions two of the words ("Revenue and EBITDA guidance at
+  ₹36,000-38,000 Cr and ₹21,000-22,000 Cr") is not a table, and the OCR "Rs 18.800-18,900" is not a corridor (a
+  1000x span is rejected). Past figures stay out number by number (`past_figure`): "improved to Rs. 5,400 from Rs.
+  4,200" (the movement and its base), "we have spent Rs. 4,200 crores in H1" (the spend), "had guided"/"had
+  targeted"/"used to be around" (the earlier measurement), "achieved 75% of our revised guidance" (the achieved
+  share) and the value before "against target of" (the target after it is the row), while a target in another clause
+  ("our guidance is 7,500-8,000", "target of 16,500", "corridor of 20-24%") is untouched. A speaker is read only from
+  a transcript: a deck's slide title ("International Ports", "Solid future outlook", "Capex") sits on its own line
+  with a colon like a speaker label and is now None, and a duplicate statement row fills a speaker the first copy
+  could not identify ("Management" kept, not lost). On a transcript page without statements the page's own labels are
+  tracked across sentences (`SPEAKER_LABEL`, `INLINE_SPEAKER`), and a speaker the moderator introduced as a
+  questioner (`ANALYST_INTRO`, "from the line of Umesh Raut") is never a target; statement rows with role
   analyst/moderator/unknown are skipped too. Two noise shapes go to review, not the table: an EBITDA-margin range
   wider than five points (`wide_margin`) and an order-intake value below 1% of the company's own largest
   `kpi_series` order intake (falling back to annual revenue; `order_intake_scale`). No column was added: an outside
   forecast is dropped, not labelled, because a `source_kind` column would be a schema change for rows the table
-  should not hold. Measured dry-run on copies of p20/u8/q12 with the HEAD extractor vs this code: p20 175→169, u8
-  140→134, q12 276→268 rows; 28 removed (10 outside forecasts, 10 analyst questions/restatements, 2 wide margin
-  bands, 1 order-intake unit slip), 0 rows whose quote names an agency or an industry forecast left, and no
-  management target lost (the same targets re-read from a label-stripped sentence are counted as rekeys). Tests
-  **36 passed**.
+  should not hold. Measured dry run on the same copies of p20/u8/q12 (pre-T-166 extractor cf03b356 -> round 4): p20
+  175→180, u8 140→133, q12 276→269 rows; 36 removed (15/8/13: the 7 ADANIPORTS table rows re-keyed to their own
+  metric, outside/industry forecasts, analyst questions, past figures, wide bands and unit slips) and 27 added
+  (20/1/6: the ADANIPORTS FY25/FY26/FY27 guidance tables with revenue/EBITDA/capex on their own labels, BEL's
+  4,500-crore component-order expectation, APLAPOLLO's volume statements and SAIL's planned capex). Against the
+  ticket's `*_before` baseline: 11 rows removed, 7 of them the same target back under its own metric, 0 management
+  targets lost, 0 junk rows (the 2 APLAPOLLO volume rows are management statements), 0 speaker regressions. Tests
+  **40 passed** (four new: the per-clause agency check, the real table, the past figures, the slide-title speaker),
+  and every difference is listed with its quote and grade in `.tmp/t166/r4_diff.md`.
 - **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
   `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
   writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into

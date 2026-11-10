@@ -44,6 +44,19 @@ is skipped rather than trusted.  Two noise shapes go to review instead of the ta
 five points ("variability of 25% to 31% EBITDA margins" is a product-mix band, not a target) and an order-intake
 value below 1% of the company's own order-intake scale or annual revenue ("INR120-plus million" read as 120
 crore, far below BEL's five-figure-crore order book).
+
+An outside source only removes the number in its own clause (T-166 r4): a sentence that prints a rating
+affirmation and then the company's guidance table is still the company's table, so "India Ratings ... reaffirmed
+... FY26 guidance ... Revenue 36,000-38,000 Cr" keeps the revenue target, while "ICRA expects AUM ... to rise by
+19-21%" still drops.  A guidance table is read as a table only when it is one: a Revenue/EBITDA/Capex label sits
+beside its own amount (nothing but punctuation, a currency mark or a footnote digit in between), at least two
+labels carry such an amount, the block says guidance/target/parameter, and the sentence names its period.  Prose
+that merely mentions two of those words stays on the single-number path, so "Revenue and EBITDA guidance at
+₹36,000-38,000 Cr and ₹21,000-22,000 Cr" is not a table.  A past movement is never a target ("improved to Rs.
+5,400 from Rs. 4,200", "we have spent Rs 4,200 crores in H1", "achieved 75% of our revised guidance", "used to be
+around Rs 20,000 crores"), and a value stated against a target keeps only the target ("capex of Rs 18,619 crore
+against target of Rs 16,500 crore" stores 16,500).  A speaker is read only from a transcript; a slide title
+("International Ports", "Solid future outlook", "Capex") is never a speaker.
 """
 from __future__ import annotations
 
@@ -149,6 +162,49 @@ AS_PER_EXTERNAL = re.compile(
     r"\b(?:as per|according to)\b\s+(?!(?:our|we|the company)\b)(?:the\s+)?(?:" + INDUSTRY_WORDS +
     r"|ICRA|CRISIL|CARE|India Ratings|Ind-Ra|Moody'?s|S&P|Fitch|IBEF)\b", re.I)
 COMPANY_ACTOR = re.compile(r"\b(?:we|our|us|we['’]re|we['’]ll|we['’]ve|company|management|board)\b", re.I)
+# T-166 r4: the clause, not the whole sentence, owns a number.  A guidance table printed after a rating
+# affirmation in the same page blob is still the company's own table (ADANIPORTS prints India Ratings, then the
+# FY26 table, in one blob); the agency's own clause ("ICRA expects AUM of AHFCs to rise by 19-21%") still drops.
+CLAUSE_BREAK = re.compile(r"[.;|•▪❑●]")
+# a table starts a new clause even without punctuation: "… as IND A1+   FY26 guidance   Parameter   Revenue …"
+CLAUSE_START = re.compile(r"(?=\bFY\s*'?\d{2,4}\s+guidance\b|\bParameter\b)")
+# T-166 r4: a real guidance table has a label beside its own amount, not two labels mentioned in prose
+TABLE_LABELS = (("revenue", re.compile(r"\bRevenue\b", re.I)),
+                ("ebitda", re.compile(r"\bEBITDA\b", re.I)),
+                ("capex", re.compile(r"\bCapex\b", re.I)))
+TABLE_CUE = re.compile(r"\b(?:guidance|guided|target|parameter)\b", re.I)
+# "Net debt / EBITDA" names the ratio's denominator, never a table row of its own
+NET_DEBT_RATIO = re.compile(r"\bnet\s+debt\s*(?:/|to)\s*$", re.I)
+# what may sit between a row label and its amount: punctuation, a currency/unit parenthesis, a footnote digit
+TABLE_GAP = re.compile(r"^\s*(?:\(\s*(?:₹|Rs\.?|INR|US\$)?\s*"
+                       r"(?:Cr|crores?|Mn|Bn|million|billion)\s*\))?\s*(?:\d{1,2}\s*)?$", re.I)
+TABLE_AMOUNT = re.compile(
+    r"(?P<pre>₹|Rs\.?|INR|US\$|\$)?\s*(?<![\d.,])(?P<lo>\d[\d,]*(?:\.\d+)?)"
+    r"(?:\s*(?:to|-|–|—)\s*(?P<pre2>₹|Rs\.?|INR|US\$|\$)?\s*(?P<hi>\d[\d,]*(?:\.\d+)?))?"
+    r"\s*(?P<unit>crores?|cr|lakhs?|million|mn|billion|bn)?(?![A-Za-z])", re.I)
+TABLE_MONEY = re.compile(r"₹|\bRs\.?|\bINR|US\$|(?<![A-Za-z])\$|\(₹\s*Cr\)|\bCr\b|crores?\b", re.I)
+# T-166 r4: past figures are not targets.  A number right after a movement verb ("improved to Rs. 5,400",
+# "from Rs. 4,200"), after "had targeted"/"used to be", or inside "achieved 75% of our guidance" is a
+# measurement; a value stated against a target keeps only the target.
+PAST_MOVE_VERB = re.compile(r"\b(?:improved|increased|rose|grew|grown|declined|decreased|dropped|fell|fallen|"
+                            r"reduced|expanded|stepped|climbed)\s+(?:to|from)\b", re.I)
+PAST_MOVE_PRE = re.compile(r"\b(?:improved|increased|rose|grew|grown|declined|decreased|dropped|fell|fallen|"
+                           r"reduced|expanded|stepped|climbed)\s+(?:to|from)\s+"
+                           r"(?:₹|Rs\.?|INR|US\$|\$)?\s*$", re.I)
+FROM_BASE_PRE = re.compile(r"\bfrom\s+(?:₹|Rs\.?|INR|US\$|\$)?\s*$", re.I)
+HAD_TARGET_PRE = re.compile(r"\b(?:had\s+(?:targeted|guided|estimated|expected|planned)|used\s+to\s+be|"
+                            r"(?:have|has|had)\s+(?:spent|invested|incurred)|spent)\b[^.;]{0,30}"
+                            r"(?:₹|Rs\.?|INR|US\$|\$)?\s*$", re.I)
+ACHIEVED_OF_GUIDANCE = re.compile(r"\b(?:achieved|attained|clocked|delivered)\s+\d+(?:\.\d+)?\s*%?\s+of\b"
+                                  r"[^.;]{0,40}\b(?:guidance|guided)\b", re.I)
+AGAINST_TARGET = re.compile(r"^\s*(?:crores?|cr|lakhs?|million|mn|billion|bn)?\s*(?:,\s*)?"
+                            r"(?:against|versus|vs\.?|compared\s+with)\s+(?:our|the|its)?\s*"
+                            r"(?:target|guidance|plan)", re.I)
+# "10% points lower than what it used to be" is the size of a change, not a level of the metric
+DELTA_POINTS = re.compile(r"^\s*%\s*points?\s+(?:lower|higher|below|above)\b", re.I)
+# "yet your gross margin is at 44%, which is nearly 10% points lower than what it used to be" is the size of a
+# move, not a target level.
+DELTA_POINTS = re.compile(r"\b\d*\s*%?\s*points?\s+(?:lower|higher|below|above)\b", re.I)
 # a rating-affirmation/industry-outlook block that carries no company actor: the sentence after it is that
 # outside view's number unless the company itself speaks ("Growth is expected to ease to 13%-15%…" after
 # "ICRA Rating highlighted that NBFC are …")
@@ -537,6 +593,9 @@ METRIC_UNITS = {
     "order_intake": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn", "count"},
     "project_capital_cost": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
     "project_capital_spent": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
+    # T-166 r4: the absolute revenue and EBITDA levels of a guidance table (the metric word is the row label)
+    "revenue": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
+    "ebitda": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
     "capex": {"inr_cr", "inr", "inr_lakh", "usd", "usd_mn", "usd_bn"},
     # a per-tonne target is often said as a bare "$250", converted to usd_per_t / inr_per_t below
     "ebitda_per_tonne": {"usd_per_t", "inr_per_t", "usd", "inr"},
@@ -964,18 +1023,123 @@ def previous_sentence(before: str) -> str:
     return parts[-1] if parts else ""
 
 
-def external_forecast(sentence: str, previous: str = "") -> bool:
-    """True when the sentence, or the bare sentence before it, attributes the number to an outside forecaster.
+def _clause(text: str, pos: int) -> str:
+    """The clause that owns offset ``pos`` (T-166 r4): sentence/bullet separators and a table's own start
+    ("FY26 guidance", "Parameter") bound it, so a rating affirmation printed earlier in the same blob does not
+    swallow the company's guidance table that follows."""
+    starts = [0] + [m.end() for m in CLAUSE_BREAK.finditer(text, 0, pos)] + \
+             [m.start() for m in CLAUSE_START.finditer(text, 0, pos)]
+    ends = [m.start() for m in CLAUSE_BREAK.finditer(text, pos)] + \
+           [m.start() for m in CLAUSE_START.finditer(text, pos)]
+    return text[max(starts):min(ends) if ends else len(text)]
 
-    A named agency/research house in the sentence always rejects the candidate.  The sentence before it counts
-    only when the candidate's own sentence names no company actor, so an industry outlook ("ICRA Rating
-    highlighted that NBFC … Growth is expected to ease to 13%-15%") is rejected while a rating-affirmation
-    boilerplate followed by "we expect 15% growth" keeps the company's own target."""
-    if EXTERNAL_SOURCE.search(sentence) or CARE_RATINGS.search(sentence) or AS_PER_EXTERNAL.search(sentence):
+
+def external_forecast(sentence: str, previous: str = "", pos: int | None = None) -> bool:
+    """True when the sentence, or ``pos``'s own clause, attributes the number to an outside forecaster.
+
+    A named agency/research house in the same clause always rejects the candidate.  With ``pos`` only that
+    number's clause counts (T-166 r4: a rating affirmation earlier on the same page blob is not the number's
+    source).  The sentence before it counts only when the candidate's own clause names no company actor and does
+    not itself read as a guidance table, so an industry outlook ("ICRA Rating highlighted that NBFC … Growth is
+    expected to ease to 13%-15%") is rejected while a rating-affirmation boilerplate followed by the company's
+    own "FY26 guidance … Revenue 36,000-38,000 Cr" keeps the target."""
+    scope = _clause(sentence, pos) if pos is not None else sentence
+    if EXTERNAL_SOURCE.search(scope) or CARE_RATINGS.search(scope) or AS_PER_EXTERNAL.search(scope):
         return True
     if INDUSTRY_FORECAST.search(sentence):
+        return True                    # an industry/market forecast owns the sentence's numbers (T-166 r4)
+    return not COMPANY_ACTOR.search(scope) and not TABLE_CUE.search(scope) \
+        and bool(previous and EXTERNAL_SOURCE.search(previous))
+
+
+def first_table_amount(cell: str, sentence: str) -> dict | None:
+    """The amount a table row label introduces (T-166 r4), or None when the label opens prose instead.
+
+    The amount must sit right beside the label ("Revenue ₹36,000-38,000 Cr", "Capex 12,000 - 14,000", "EBITDA
+    (₹ Cr) 25,000 – 26,000"), so "Revenue and EBITDA guidance at ₹36,000-38,000 Cr" yields no row: the words
+    between label and amount are not a table cell."""
+    for m in TABLE_AMOUNT.finditer(cell):
+        gap = cell[:m.start()]
+        if not TABLE_GAP.match(gap):
+            continue
+        lo = _num(m.group("lo"))
+        hi = _num(m.group("hi")) if m.group("hi") else lo
+        if lo is None or hi is None:
+            continue
+        unit_word = (m.group("unit") or "").lower()
+        pre = m.group("pre") or m.group("pre2") or ""
+        has_money = bool(pre or unit_word)
+        if not has_money and not TABLE_MONEY.search(sentence):
+            continue
+        if not has_money and not ("," in m.group("lo") or len(m.group("lo")) >= 5):
+            continue                    # a footnote digit or a page number, not an amount
+        if not unit_word and pre and TABLE_MONEY.search(sentence):
+            unit_word = "crore" if re.search(r"\bCr\b|crores?|\(₹\s*Cr\)", sentence, re.I) else ""
+        unit = _money_unit(unit_word, pre)
+        if unit in ("inr", "usd") and not pre and not unit_word:
+            continue
+        low, high = min(lo, hi), max(lo, hi)
+        if low <= 0 or high / low > 20:
+            continue                    # OCR "18.800-18,900": not a corridor
+        return {"start": m.start(), "end": m.end(), "low": low, "high": high, "unit": unit}
+    return None
+
+
+def table_targets(sentence: str) -> list[dict]:
+    """Rows of a real guidance table, each number keyed by its own row label (T-166 r4).
+
+    Only a block where at least two of Revenue/EBITDA/Capex each sit beside their own amount, the block names
+    guidance/target/parameter, and the sentence names a period is a table.  Prose that merely mentions two of
+    those words is not one, and once a sentence is read as a table it is not re-read as a single prose target."""
+    marks: list[tuple[int, int, str]] = []
+    for name, rx in TABLE_LABELS:
+        for m in rx.finditer(sentence):
+            if NET_DEBT_RATIO.search(sentence[max(0, m.start() - 24):m.start()]):
+                continue
+            marks.append((m.start(), m.end(), name))
+    marks.sort()
+    if len({name for _a, _b, name in marks}) < 2 or not TABLE_CUE.search(sentence):
+        return []
+    header = re.search(r"\bFY\s*'?\s*(\d{2,4})\s+guidance\b", sentence, re.I)
+    if not header:
+        return []                      # the block does not name the fiscal year it guides: not a table
+    period = f"FY{_yy(header.group(1))}"
+    out: list[dict] = []
+    for index, (_a, b, name) in enumerate(marks):
+        stop = marks[index + 1][0] if index + 1 < len(marks) else len(sentence)
+        num = first_table_amount(sentence[b:stop], sentence)
+        if num is None:
+            continue
+        out.append({"metric": name, "period": period,
+                    "num": {**num, "start": b + num["start"], "end": b + num["end"]}})
+    if len(out) < 2 or len({r["metric"] for r in out}) < 2:
+        return []
+    return out
+
+
+def past_figure(sentence: str, chosen: dict) -> bool:
+    """True when the number is a past measurement, not a target (T-166 r4).
+
+    "improved to Rs. 5,400 from Rs. 4,200", "we have spent Rs. 4,200 crores in H1", "had targeted 7,500", "used
+    to be around Rs. 20,000", an "achieved 75% of our revised guidance", and the measured value in "capex of Rs
+    18,619 crore against target of Rs 16,500 crore" (the target after "against target" is the row) are all
+    measurements; none of them removes a target stated in another clause."""
+    left = sentence[max(0, chosen["start"] - 70):chosen["start"]]
+    window = sentence[chosen["end"]:chosen["end"] + 60]
+    if PAST_MOVE_PRE.search(left):
         return True
-    return not COMPANY_ACTOR.search(sentence) and bool(previous and EXTERNAL_SOURCE.search(previous))
+    if FROM_BASE_PRE.search(left) and PAST_MOVE_VERB.search(sentence[:chosen["start"]]):
+        return True
+    if HAD_TARGET_PRE.search(left):
+        return True
+    if AGAINST_TARGET.search(window):
+        return True
+    move = ACHIEVED_OF_GUIDANCE.search(sentence)
+    if move and move.start() <= chosen["start"] <= move.end():
+        return True
+    if DELTA_POINTS.search(window):
+        return True                    # "nearly 10% points lower than …": the size of a move
+    return False
 
 
 def page_sentences(raw: str) -> list[tuple[int, int]]:
@@ -1007,19 +1171,23 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             if stmt:
                 items.append((stmt, " ".join((st["quote"] or stmt).split()), st["speaker"]))
     else:
+        # T-166 r4: a speaker belongs to a transcript; a deck's slide title ("International Ports", "Solid future
+        # outlook", "Capex") sits on its own line with a colon exactly like a speaker label, so it is never read
+        # as one.
+        is_transcript = (doc["doc_type"] or "") == "transcript"
         last_end, speaker = 0, None
         for a, b in page_sentences(raw):
             s = HEADER_TAIL.sub("", " ".join(raw[a:b].split()))
             if not s:
                 last_end = b
                 continue
-            inline = INLINE_SPEAKER.match(s)
+            inline = INLINE_SPEAKER.match(s) if is_transcript else None
             if inline and (len(inline.group(1).split()) >= 2
                            or any(_same_person(inline.group(1), m) for m in mgmt_speakers)):
                 speaker, s = inline.group(1), s[inline.end():]
             else:
                 # a "Name:" label printed between the previous sentence and this one belongs to this one
-                labels = [m.group(1) for m in SPEAKER_LABEL.finditer(raw[last_end:a])]
+                labels = [m.group(1) for m in SPEAKER_LABEL.finditer(raw[last_end:a])] if is_transcript else []
                 if labels:
                     speaker = labels[-1]
             last_end = b
@@ -1068,17 +1236,46 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         pos = collapsed.find(sentence)
         before = collapsed[max(0, pos - BEFORE):pos] if pos >= 0 else ""
         after = collapsed[pos + len(sentence):pos + len(sentence) + AFTER] if pos >= 0 else ""
-        if external_forecast(sentence, previous_sentence(before)):
-            stats["external_forecast"] += 1
-            continue                    # an agency's or the industry's forecast, not the company's target (T-166)
+        previous = previous_sentence(before)
         if not nums:
             # a target said in words has no number to read: it gets a row with low/high NULL (T-058)
-            if CUE.search(sentence):
+            if CUE.search(sentence) and not external_forecast(sentence, previous):
                 row = worded_row(symbol, doc, page, sentence, quote, speaker, before, call_period, docper, stats)
                 if row:
                     rows.append(row)
                     if len(rows) >= MAX_ROWS_PER_PAGE:
                         break
+            continue
+        # T-166 r4: a real guidance table gives one row per labelled line (revenue 36,000-38,000, EBITDA
+        # 21,000-22,000, capex 11,000-12,000); once read as a table the sentence is not re-read as one prose target
+        table = table_targets(sentence)
+        if table:
+            for cell in table:
+                if external_forecast(sentence, previous, cell["num"]["start"]):
+                    stats["external_forecast"] += 1
+                    continue
+                period = cell["period"] or target_period(sentence, before, after, call_period, docper,
+                                                         cell["num"]["start"])
+                if not period:
+                    continue
+                rows.append((symbol, doc["isin"], cell["metric"], period, cell["num"]["low"], cell["num"]["high"],
+                             cell["num"]["unit"], direction_of(sentence, cell["metric"]),
+                             (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
+                             speaker, doc["known_at"], "doc.known_at", None, "guidance_table"))
+                if len(rows) >= MAX_ROWS_PER_PAGE:
+                    break
+            continue
+        kept = []
+        for n in nums:
+            if external_forecast(sentence, previous, n["start"]):
+                stats["external_forecast"] += 1
+                continue            # the number's own clause is an outside forecaster's, not the company's target
+            if past_figure(sentence, n):
+                stats["past_only"] += 1
+                continue            # a movement/spend/actual, not a target (T-166 r4)
+            kept.append(n)
+        nums = kept
+        if not nums:
             continue
         if len(nums) > 5:      # a chart axis or a table line laid out as text, not a sentence
             stats["chart_blob"] += 1
@@ -1211,8 +1408,9 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
         # one row per (metric, period, value, unit, said_on) for the whole run: the BSE/NSE copies and the several
         # pages of one document collapse onto the first one (documents are read in known_at order, pages ascending,
         # so that is the earliest knowledge and the lowest page); a later call has its own said_on, so a
-        # restatement is kept for `revisions` (T-056 family I)
-        seen: set[tuple] = set()
+        # restatement is kept for `revisions` (T-056 family I).  A duplicate from a statement row names its
+        # speaker ("Management", the MD), so it fills a speaker the first copy could not identify (T-166 r4).
+        seen: dict[tuple, int] = {}
         for index, doc in enumerate(_docs(con, symbol)):
             if limit_docs is not None and index >= limit_docs:
                 break
@@ -1234,9 +1432,14 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
                     sig = (row[0], row[2], row[3], row[4], row[5], row[6], row[8])
                     if sig in seen:
                         st["duplicate"] += 1
+                        if row[12]:
+                            kept = con.execute("SELECT speaker FROM guidance WHERE id=?", (seen[sig],)).fetchone()
+                            if kept and not kept[0]:
+                                con.execute("UPDATE guidance SET speaker=? WHERE id=?", (row[12], seen[sig]))
+                                st["speaker_recovered"] += 1
                         continue
-                    seen.add(sig)
-                    con.execute(ins, row)
+                    cur = con.execute(ins, row)
+                    seen[sig] = int(cur.lastrowid or 0)
                     st["rows"] += 1
                     st[row[2]] += 1
         con.commit()

@@ -977,4 +977,108 @@ def test_a_margin_band_wider_than_five_points_and_a_tiny_order_intake_are_not_ta
     assert [r for r in got if r["metric"] == "ebitda_margin" and r["low"] == 23 and r["high"] == 25], got
 
 
+# --- T-166 round 4, 10 Nov 2026: the clause, the table, the past figure and the speaker ---------------------
+ADANI_FY26_BLOB = (
+    "• India Ratings & Research reaffirmed the credit rating of non-convertible debentures and bank loans "
+    "(long-term) of APSEZ as IND AAA / Stable and commercial paper and bank loans (short term) as IND A1+  "
+    "FY26 guidance  Parameter  FY26 guidance  Revenue ₹36,000-38,000 Cr  EBITDA ₹21,000-22,000 Cr  "
+    "Capex ₹11,000-12,000 Cr  Net debt / EBITDA  Policy up to 2.5x")
+
+
+def test_step1_an_agency_name_removes_only_its_own_clause():
+    """The real ADANIPORTS page blob prints India Ratings and then the FY26 guidance table: the revenue
+    36,000-38,000 target survives (the agency does not govern that clause), while ICRA's 19-21% does not."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t166_r4_clause.db"
+    docs = [("ports/deck_2026.pdf", "ADANIPORTS", "deck", "2026-05-01", "2026-05-01T17:00:00"),
+            ("chola/deck_2026.pdf", "CHOLAFIN", "deck", "2026-07-28", "2026-07-28T17:00:00")]
+    pages = [("ports/deck_2026.pdf", "ADANIPORTS", 1, ADANI_FY26_BLOB),
+             ("chola/deck_2026.pdf", "CHOLAFIN", 1,
+              "• ICRA expects AUM of AHFCs to rise by 19% -21% in FY26 and FY27. "
+              "• CRISIL estimates the LAP segment to experience growth at a rate of 10-12% for FY24.")]
+    write_db(path, docs, pages)
+    guidance.run(str(path), ["ADANIPORTS", "CHOLAFIN"])
+    got = rows(path)
+    assert [r for r in got if r["symbol"] == "ADANIPORTS" and r["metric"] == "revenue"
+            and (r["low"], r["high"]) == (36000, 38000)], got
+    assert [r for r in got if r["symbol"] == "ADANIPORTS" and r["metric"] == "ebitda"
+            and (r["low"], r["high"]) == (21000, 22000)], got
+    assert not [r for r in got if r["symbol"] == "CHOLAFIN"], got
+
+
+def test_step2_a_guidance_table_keys_each_number_by_its_label():
+    """A real table (label beside its own amount, named guidance, named FY) yields one row per line; prose that
+    merely mentions Revenue and EBITDA is not a table, and the OCR "18.800-18,900" is not a corridor."""
+    table = guidance.table_targets(
+        "FY26 guidance  Parameter  FY26 guidance  Revenue ₹36,000-38,000 Cr  EBITDA ₹21,000-22,000 Cr  "
+        "Capex ₹11,000-12,000 Cr  Net debt / EBITDA  Policy up to 2.5x")
+    assert [(r["metric"], r["num"]["low"], r["num"]["high"], r["period"]) for r in table] == [
+        ("revenue", 36000, 38000, "FY26"), ("ebitda", 21000, 22000, "FY26"), ("capex", 11000, 12000, "FY26")]
+    prose = "Revenue and EBITDA guidance at ₹36,000-38,000 Cr and ₹21,000-22,000 Cr respectively"
+    assert guidance.table_targets(prose) == []
+    parsed = guidance.table_targets(
+        "FY25 Guidance 47 EBITDA Rs 18.800-18,900 Cr (previous guidance: Rs 17,000 – 18,000 Cr) FY25 Guidance "
+        "Revenue Rs 29,000-31,000 Cr Capex Rs 10,500-11,500 Cr Net Debt to EBITDA 2.2–2.5x")
+    assert [(r["metric"], r["num"]["low"], r["num"]["high"]) for r in parsed] == [
+        ("revenue", 29000, 31000), ("capex", 10500, 11500)]
+
+
+def test_step3_past_figures_are_not_guidance():
+    """The APLAPOLLO movement, the H1 spend, "had targeted", "used to be", "achieved … of guidance" and the
+    measured value before "against target" are measurements; a target in another clause survives."""
+    def kept(text: str) -> list[tuple]:
+        return [(n["low"], n["high"]) for n in guidance.numbers(text) if not guidance.past_figure(text, n)]
+
+    apollo = ("Our EBITDA per ton improved to Rs. 5,400 from Rs. 4,200 per ton this was drive by value addition, "
+              "brand premium and market fold which we saw in the first half of FY22 and now we are confident that "
+              "our margins going forward should be in range of Rs. 4,500 to Rs. 5,500 per ton.")
+    assert not [v for v in kept(apollo) if v[1] <= 4200], kept(apollo)
+    idea = ("On the capex for the H2, we have spent Rs. 4,200 crores towards capex in the H1, and our guidance "
+            "is that we would be in the range of Rs. 7,500 to 8,000 crores.")
+    assert (7500.0, 8000.0) in kept(idea) and not [v for v in kept(idea) if v[1] == 4200], kept(idea)
+    coal = "FY 22-23 capex is ~INR 18,619 crore against target of INR 16,500 crore"
+    assert (16500.0, 16500.0) in kept(coal) and not [v for v in kept(coal) if v[0] == 18619], kept(coal)
+    used = ("2022, we used to be around Rs.20,000, Rs.22,000 crores of capex, which we stepped up for the rollout "
+            "of 5G and then that number went up all the way to Rs.28,000 to Rs.34,000 crores")
+    assert (28000.0, 34000.0) in kept(used) and not [v for v in kept(used) if v[0] == 20000], kept(used)
+    achieved = "We have achieved 75% of our revised revenue guidance as well of INR 980 crores"
+    assert not [v for v in kept(achieved) if v[0] == 75], kept(achieved)
+    # a target stated in another clause is not removed by the past figure beside it
+    forward = "We expect EBITDA margin of 24.5% to 25.5% for FY25."
+    assert (24.5, 25.5) in kept(forward), kept(forward)
+
+
+def test_step4_a_slide_title_is_not_a_speaker_and_management_stays():
+    """Decks: "International Ports:" / "Solid future outlook:" are slide titles, never speakers. A transcript
+    keeps its management speakers ("Manoj Jain", "Management")."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t166_r4_speaker.db"
+    docs = [("ports/deck.pdf", "ADANIPORTS", "deck", "2026-10-28", "2026-10-28T17:00:00"),
+            ("bel/call.pdf", "BEL", "transcript", "2025-11-04", "2025-11-04T17:57:09")]
+    pages = [("ports/deck.pdf", "ADANIPORTS", 1,
+              "International Ports:\nDriven by strong H1 performance, APSEZ has upgraded its capex guidance to "
+              "₹15,000 Cr - ₹17,000 Cr (₹12,000 Cr - ₹14,000 previously)"),
+             ("ports/deck.pdf", "ADANIPORTS", 2,
+              "Solid future outlook:\nSufficient capacity for 20% annual sales volume growth Three focus areas: "
+              "Cash flows and profitability"),
+             ("bel/call.pdf", "BEL", 2,
+              "Manoj Jain: We expect revenue growth of 15% for FY27.")]
+    statements = [
+        ("BEL", "bel/call.pdf", None, "Q2FY26", 2, 1, "Manoj Jain", "md",
+         "We expect order intake of INR30,000 crores for FY27.",
+         "We expect order intake of INR30,000 crores for FY27."),
+        ("BEL", "bel/call.pdf", None, "Q2FY26", 2, 2, "Management", "md",
+         "We expect revenue growth of 15% for FY27.", "We expect revenue growth of 15% for FY27."),
+    ]
+    write_call_db(path, docs, pages, statements)
+    guidance.run(str(path), ["ADANIPORTS", "BEL"])
+    got = rows(path)
+    assert [r for r in got if r["symbol"] == "ADANIPORTS"], got
+    assert not [r for r in got if r["symbol"] == "ADANIPORTS" and r["speaker"]], got
+    assert not [r for r in got if (r["speaker"] or "") == "Solid future outlook"], got
+    assert [r for r in got if r["symbol"] == "BEL" and r["speaker"] == "Manoj Jain"
+            and r["metric"] == "order_intake"], got
+    assert [r for r in got if r["symbol"] == "BEL" and r["speaker"] == "Management"], got
+
+
 
