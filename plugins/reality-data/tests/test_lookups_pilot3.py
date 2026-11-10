@@ -485,6 +485,13 @@ class Pilot3ToolTests(unittest.TestCase):
         c.close()
         self.assertGreaterEqual(v, 1)
 
+    def test_statements_whole_turn_with_entities_filter(self):
+        # whole_turn=True must not crash when an entities filter is supplied (T-164 E)
+        out = p3.statements("KEC", entities="transmission", whole_turn=True)
+        self.assertIn("found", out)
+        out2 = p3.statements("KEC", whole_turn=True)
+        self.assertIn("found", out2)
+
     def test_statements_entity_search(self):
         out = p3.statements("KEC", entities="transmission")
         # no entity named transmission in fixture; ensure no crash and found flag sensible

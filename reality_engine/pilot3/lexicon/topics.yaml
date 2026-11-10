@@ -7,7 +7,7 @@ topics:
   - {tag: cost, patterns: ["\\bcosts?\\b", "cost of (production|funds|borrowing)", "input cost", "commodity", "\\bcop\\b"]}
   - {tag: guidance, patterns: ["\\bguidance\\b", "\\bexpect(ed|s|ation)?\\b", "\\bour target\\b", "going forward", "next (year|quarter)", "\\boutlook\\b", "\\bwe (will|aim|plan|target)\\b", "\\bFY ?'?2[7-9]\\b"]}
   - {tag: capacity, patterns: ["\\bcapacity\\b", "\\bexpansion\\b", "\\bcapex\\b", "greenfield", "brownfield", "\\bsmelter\\b", "\\brefinery\\b"]}
-  - {tag: demand, patterns: ["\\bdemand\\b", "consumption", "\\bgrowth in\\b"]}
+  - {tag: demand, patterns: ["\bdemand\b", "\bconsumption\b"]}
   - {tag: competition, patterns: ["competit", "market share", "\\bpeers?\\b"]}
   - {tag: working_capital, patterns: ["working capital", "\\bcollections?\\b", "receivables?", "\\binventory\\b", "net debt", "\\bdebt\\b", "cash flow", "interest cost"]}
   - {tag: risk, patterns: ["\\brisk\\b", "uncertain", "headwinds?", "\\bstress\\b", "volatil", "disruption", "delays?\\b", "geopolitic"]}
@@ -25,10 +25,10 @@ topics:
   - {tag: market, patterns: ["\\bmarket(s)?\\b", "industry", "sector", "demand", "consumption"]}
   - {tag: product, patterns: ["\\bproduct(s)?\\b", "portfolio", "segment", "offering", "range", "wealth", "advisory"]}
   - {tag: customer, patterns: ["\\bcustomer(s)?\\b", "client", "franchise", "consumer"]}
-  - {tag: digital, patterns: ["\\bdigital\\b", "technology", "platform", "software", "\\bai\\b", "app"]}
-  - {tag: capital, patterns: ["\\bcapital\\b", "cash", "equity", "funding", "investment", "finance"]}
-  - {tag: operations, patterns: ["\\boperation(s)?\\b", "execution", "project(s)?\\b", "delivery", "implementation", "program", "system", "platform"]}
-  - {tag: financials, patterns: ["\\bfinancial(s)?\\b", "profit", "loss", "earnings", "ebitda", "pat", "pbt", "margin", "loan", "credit", "stage", "disbursement", "collection", "npa", "asset quality"]}
+  - {tag: digital, patterns: ["\bdigital\b", "\bai\b", "artificial intelligence", "genai"]}
+  - {tag: capital, patterns: ["\bcapital\b(?!\\s+[A-Z])", "cash", "equity", "funding", "investment", "finance"]}
+  - {tag: operations, patterns: ["\boperation(s)?\b", "execution", "project(s)?\b", "delivery", "implementation"]}
+  - {tag: financials, patterns: ["\bfinancials\b", "profit", "loss", "earnings", "ebitda", "pat", "pbt", "margin", "loan", "credit", "stage", "disbursement", "collection", "npa", "asset quality"]}
   - {tag: strategy, patterns: ["strategy", "strategic", "focus", "priority", "roadmap", "plan"]}
   - {tag: people, patterns: ["team", "management", "leadership", "talent", "employee", "workforce"]}
   - {tag: geographic, patterns: ["mumbai", "delhi", "bangalore", "bengaluru", "chennai", "kolkata", "hyderabad", "pune", "ahmedabad", "india", "global", "international", "export", "domestic", "region", "geograph"]}

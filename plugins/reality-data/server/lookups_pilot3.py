@@ -923,6 +923,7 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
             "provenance": _prov("transcript_statement", f"{r['doc_key']} p{r['page']}", r["known_at"],
                                 title=r["title"], row_id=r["id"])} for r in rows]
     # whole answer turn: expand each matched row to all sentences of its answer turn
+    extra, eargs = _asof(as_of, "t.known_at")
     if whole_turn and rows:
         matched_turns = {r["answer_turn"] for r in rows if r["answer_turn"]}
         if matched_turns:

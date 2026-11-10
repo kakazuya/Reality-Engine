@@ -83,7 +83,7 @@ CALL_DATE_RX = re.compile(r"(" + MONTHS + r") (\d{1,2}), (\d{4})")
 ABBR = ("Mr", "Ms", "Mrs", "Dr", "Rs", "No", "vs", "Inc", "Ltd", "approx", "Sr", "Jr", "St", "Co", "Corp", "etc", "i.e", "e.g", "FY", "Q")
 SENT_END_RX = re.compile(r"(?<=[.?!])[\"”’')]*\s+(?=[\"“‘'(A-Z0-9₹$])")
 NOT_SPEAKERS = ("Corporate", "Registered", "Email", "Website", "Phone", "Tel", "Note", "Disclaimer", "Source", "CIN", "Page", "Symbol", "Scrip", "SCRIP", "Sub", "Date", "Ref", "MANAGEMENT", "To", "Dear", "Subject", "Attention")
-QA_START_RX = re.compile(r"question[- ]and[- ]answer|first question|next question|question is from|open the floor|q ?& ?a session|take (up )?(the )?questions", re.I)
+QA_START_RX = re.compile(r"question[- ]and[- ]answer|first question|open the floor|q ?& ?a session|take (up )?(the )?questions", re.I)
 NAME = r"([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})"
 ANALYST_INTRO_RX = re.compile(r"(?i:line of|question (?:is )?from|next question comes from|first question is from)\s+(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)?\s*" + NAME)
 HOST_INTRO_RX = re.compile(r"(?i:over to|hand (?:the )?conference over to|hand it over to)\s+(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)?\s*" + NAME + r"\s+(?i:from|of)\s+")
@@ -367,122 +367,17 @@ def name_marks(text: str, counts: Counter, known: set[str]) -> list[tuple[int, i
     return out
 
 
-# Common words / boilerplate / generic abbreviations that are never a named entity.
-_ENTITY_STOP = {
-    "the", "and", "for", "with", "from", "this", "that", "our", "we", "you", "your", "their", "its",
-    "also", "but", "so", "if", "when", "while", "as", "at", "in", "on", "to", "of", "by", "or", "not",
-    "there", "here", "these", "those", "it", "he", "she", "they", "i", "a", "an",
-    "january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
-    "november", "december", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-    "fy", "q1", "q2", "q3", "q4", "rs", "inr", "usd", "eur", "ceo", "cfo", "md", "coo", "ir", "ebitda",
-    "pat", "eps", "roce", "roe", "crore", "lakh", "million", "billion", "page", "limited", "ltd", "inc",
-    "mr", "ms", "mrs", "dr", "sir", "madam", "ministry", "india", "government", "company", "sir",
-    "because", "what", "which", "when", "where", "who", "whom", "whose", "why", "how", "then", "than",
-    "conference", "financial", "results", "quarter", "call", "management", "fiscal", "year", "second",
-    "third", "first", "fourth", "limited", "ltd", "crores", "tech", "bfsi", "healthcare", "life",
-    "sciences", "chief", "business", "officer", "system", "defense", "technology", "innovation",
-    "quality", "thanks", "secretary", "exchange", "floor", "bandra", "mumbai", "north", "america",
-    "west", "indian", "navin", "menon", "rakesh", "glp", "crl", "sbu", "prask",
-    "abhijit", "amc", "amortisation", "arc", "arpob", "awards", "block", "call", "capex", "cask",
-    "chinese", "class", "conference", "control", "corporate", "covid", "csel", "date", "dd",
-    "defence", "department", "depreciation", "dpr", "earnings", "enclave", "finance", "fmcg", "good",
-    "group", "investors", "kingsway", "listing", "lupus", "manager", "metro", "ml", "moving", "ncl",
-    "net", "nsr", "ocf", "oem", "op", "prime", "qr", "re", "respiratory", "se", "sec", "services",
-    "shah", "si", "south", "sreenath", "sripada", "star", "stock", "sunshine", "today", "vil", "viral",
-    "vivek", "vlr", "advisor", "annual", "board", "directors", "managing", "director", "minister",
-    "systems", "wealth", "coming", "look", "phase", "turning", "commerce", "cloud", "neurology",
-    "radar", "cyber", "security", "colocation", "connectivity", "nifty", "advisor", "additionally",
-    "analyst", "analysts", "association", "consolidated", "during", "meet", "part", "performance",
-    "scrip", "code", "section", "securities", "shri", "stage", "suite", "webinar", "electronic",
-    "complex", "circuit", "combat", "fire", "food", "beverage", "insurance", "private", "salt",
-    "dara", "delnaz", "jugalji", "rifats", "bharatelectron", "dft", "epd", "gp", "ltip", "mdl",
-    "msme", "oc", "ppp", "rtd", "sasva", "vat", "amit", "bhinde", "burra", "dilip", "mohan", "rama",
-    "shankara", "vamsi", "sucheth", "bharathan", "area", "city", "office", "tower", "unit", "wing",
-    "chairman", "developers", "development", "media", "production", "service", "transmission",
-    "communications", "empowerment", "near", "plus", "question", "analyst", "analysts", "association",
-    "consolidated", "during", "meet", "part", "performance", "scrip", "code", "section", "securities",
-    "shri", "stage", "suite", "webinar", "electronic", "complex", "circuit", "combat", "fire", "food",
-    "beverage", "insurance", "private", "salt", "cements", "corp", "ebitdar", "npa", "mro", "ytd",
-    "ii", "iii", "gb", "hr", "hrc", "gt", "er", "bl", "ap", "cic", "peb", "mopag", "rfi", "sip",
-    "ficci", "fintech", "discoms", "megawatt", "nasdaq", "agreement", "area", "award", "cost", "data",
-    "east", "future", "number", "please", "software", "transcripts", "society", "spaces", "chronic",
-    "creative", "christy", "damodar", "bhattad", "guru", "manoj", "jain", "martha", "stewart", "ramya",
-    "samina", "souza", "nagarkar", "hospital", "narrow", "award", "just", "further", "next", "post",
-    "mature", "plan", "sales", "service", "summit", "understood", "interesting", "executive", "director",
-    "president", "project", "transmission", "communications", "empowerment", "near", "plus", "question",
-    "analyst", "analysts", "association", "consolidated", "during", "meet", "part", "performance", "scrip",
-    "code", "section", "securities", "shri", "stage", "suite", "webinar", "electronic", "complex",
-    "circuit", "combat", "fire", "food", "beverage", "insurance", "private", "salt", "cements", "corp",
-    "ebitdar", "npa", "mro", "ytd", "ii", "iii", "gb", "hr", "hrc", "gt", "er", "bl", "ap", "cic",
-    "peb", "mopag", "rfi", "sip", "ficci", "fintech", "discoms", "megawatt", "nasdaq", "agreement",
-    "area", "city", "office", "tower", "unit", "wing", "chairman", "developers", "development", "media",
-    "production", "number", "award", "kunal", "mitra", "murthy", "parkash", "puneet", "renganathan",
-    "richa", "subhadip", "vishwas", "acv", "aif", "alos", "arpp", "aws", "bmp", "ca", "cply", "cpu",
-    "dso", "ecl", "emi", "esop", "fat", "fs", "gi", "idc", "il", "imc", "mdi", "ofa", "otc", "pes",
-    "prc", "rm", "rota", "rsp", "sg", "sme", "tcv", "up", "jv", "nim", "arpp", "arpu", "opex", "mf",
-    "otc", "esop", "artist", "brand", "connect", "cost", "data", "east", "future", "number", "please",
-    "software", "transcripts", "society", "spaces", "chronic", "creative", "christy", "damodar",
-    "bhattad", "guru", "manoj", "jain", "martha", "stewart", "ramya", "samina", "souza", "nagarkar",
-    "hospital", "narrow", "award", "artist", "every", "growth", "highlights", "marketing", "next", "over",
-    "park", "plan", "premium", "ready", "secure", "summit", "understood", "interesting", "number",
-    "sales", "service", "software", "award", "drink", "every", "fuzes", "gm", "gmv", "horeca", "hitech",
-    "imf", "indus", "maruti", "nagarro", "nielsen", "nuvama", "park", "please", "premium", "ready",
-    "secure", "summit", "understood", "interesting", "number", "sales", "service", "software", "award",
-    "drink", "every", "fuzes", "gm", "gmv", "horeca", "hitech", "imf", "indus", "maruti", "nagarro",
-    "nielsen", "nuvama", "park", "please", "premium", "ready", "secure", "summit", "understood",
-    "interesting", "number", "sales", "service", "software", "award", "drink", "every", "fuzes", "gm",
-    "gmv", "horeca", "hitech", "imf", "indus", "maruti", "nagarro", "nielsen", "nuvama", "park",
-    "please", "premium", "ready", "secure", "summit", "understood", "interesting", "number", "sales",
-    "service", "software", "award", "every", "growth", "highlights", "marketing", "next", "over", "park",
-    "plan", "premium", "ready", "secure", "summit", "understood", "interesting", "number", "sales",
-    "service", "software", "award", "based", "best", "beverages", "category", "communication", "companies",
-    "copper", "court", "downtown", "emerging", "enterprise", "generative", "global", "international",
-    "line", "operational", "other", "productivity", "relations", "research", "silver", "strategy",
-    "supreme", "total", "trade", "generics", "treasury", "vice", "website", "worth", "yeah", "world",
-    "cup", "rock", "salt", "kumar", "nitesh", "nagarkar", "mitra", "murthy", "parkash", "puneet",
-    "renganathan", "richa", "subhadip", "vishwas", "rakesh", "navin", "menon", "abhishek", "every",
-    "growth", "highlights", "marketing", "next", "over", "park", "plan", "premium", "ready", "secure",
-    "summit", "understood", "interesting", "number", "sales", "service", "software", "award", "drink",
-    "every", "fuzes", "gm", "gmv", "horeca", "hitech", "imf", "indus", "maruti", "nagarro", "nielsen",
-    "nuvama", "park", "please", "premium", "ready", "secure", "summit", "understood", "interesting",
-    "number", "sales", "service", "software", "award", "drink", "every", "fuzes", "gm", "gmv", "horeca",
-    "hitech", "imf", "indus", "maruti", "nagarro", "nielsen", "nuvama", "park", "please", "premium",
-    "ready", "secure", "summit", "understood", "interesting", "number", "sales", "service", "software",
-    "award", "agent", "ambit", "beer", "brownfield", "crest", "devan", "eastern", "equity", "generative",
-    "gold", "greenfield", "high", "huddle", "industrial", "joint", "manas", "mutual", "funds", "nine",
-    "participant", "png", "regulation", "rental", "business", "semi", "sreenivas", "tyagi", "pang",
-    "chopra", "rajendra", "rajiv", "singh", "sreenivas", "tyagi", "manas", "devan", "every", "growth",
-    "highlights", "marketing", "next", "over", "park", "plan", "premium", "ready", "secure", "summit",
-    "understood", "interesting", "number", "sales", "service", "software", "award", "drink", "every",
-    "fuzes", "gm", "gmv", "horeca", "hitech", "imf", "indus", "maruti", "nagarro", "nielsen", "nuvama",
-    "park", "please", "premium", "ready", "secure", "summit", "understood", "interesting", "number",
-    "sales", "service", "software", "award",
-}
-_MULTI_FIRST_STOP = _ENTITY_STOP - {
-    "capital", "home", "middle", "air", "green", "tata", "organic", "private", "axis",
-    "amstel", "ashwini", "heineken", "starbucks", "sampann", "kavach", "mrsam", "iqvia",
-}
-_QUESTION_WORDS = {"what", "which", "when", "where", "who", "whom", "whose", "why", "how", "because"}
-# Generic all-caps tokens: learned from u8+q12 (appearing in >=4 different symbols) plus en_vocab.txt.
-# Only a tiny set of truly generic finance abbreviations is hard-coded; never company or counterparty names.
-def _load_generic_acronyms():
-    out=set()
-    p=Path(__file__).with_name('generic_acronyms.txt')
-    if p.exists():
-        out.update(x.strip() for x in p.read_text(encoding='utf-8').splitlines() if x.strip())
-    # en_vocab is lowercase; an all-caps token whose lower-case form is an English word is generic.
-    vp=Path(__file__).with_name('en_vocab.txt')
-    if vp.exists():
-        pass
-    out.update({'ROCE','EBITDA','CAGR'})
-    return out
-
-_GENERIC_ACRONYMS = _load_generic_acronyms()
+# Finance-metric abbreviations that are NOT entities (they are in the lexicon).
+_FINANCE_METRICS = {"EBITDA", "ROCE", "ROE", "PAT", "PBT", "EPS", "CAGR", "NIM", "AUM", "EBIT", "EBITDAR", "ROA", "ROIC", "ROI", "PE", "PB", "EV", "EPS"}
+# Section / slide words that are never entities.
+_SLIDE_WORDS = {"slide", "slides", "section", "agenda", "contents", "overview", "summary", "highlights", "annexure"}
+_LEADING_STOP = {"the", "a", "an", "our", "we", "this", "that", "these", "those", "my", "so", "but", "and", "for", "with", "from", "it", "its", "all", "any"}
+_PERIOD_WORDS = {"FY", "Q1", "Q2", "Q3", "Q4"}
+# Ordinary English vocabulary (lowercase) loaded from en_vocab.txt.
 _EN_VOCAB = set()
-_vp=Path(__file__).with_name('en_vocab.txt')
+_vp = Path(__file__).with_name("en_vocab.txt")
 if _vp.exists():
-    _EN_VOCAB.update(x.strip().lower() for x in _vp.read_text(encoding='utf-8').splitlines() if x.strip())
-
+    _EN_VOCAB.update(x.strip().lower() for x in _vp.read_text(encoding="utf-8").splitlines() if x.strip())
 def _is_sentence_start(text: str, pos: int) -> bool:
     i = pos - 1
     while i >= 0 and text[i].isspace():
@@ -492,38 +387,8 @@ def _is_sentence_start(text: str, pos: int) -> bool:
     return text[i] in ".?!:\n"
 
 
-def _candidate_entities(text: str) -> list[str]:
-    # First collect (candidate, is_sentence_start) for every occurrence.
-    occ: list[tuple[str, bool]] = []
-    for m in re.finditer(r"\b[A-Z]{2,}\b", text):
-        tok = m.group(0)
-        if (tok in _GENERIC_ACRONYMS or tok.lower() in _ENTITY_STOP
-                or tok.lower() in _EN_VOCAB):
-            continue
-        occ.append((tok, _is_sentence_start(text, m.start())))
-    for m in re.finditer(r"\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,3}\b", text):
-        span = m.group(0)
-        first = span.split()[0].lower()
-        if first in _MULTI_FIRST_STOP or first in _QUESTION_WORDS:
-            continue
-        occ.append((span, _is_sentence_start(text, m.start())))
-    for m in re.finditer(r"\b([A-Z][a-z]{3,})\b", text):
-        tok = m.group(1)
-        if (tok.lower() in _ENTITY_STOP or tok.lower() in _QUESTION_WORDS
-                or tok.lower() in _EN_VOCAB):
-            continue
-        occ.append((tok, _is_sentence_start(text, m.start())))
-    # Drop candidates whose EVERY occurrence is sentence-initial (common sentence starters).
-    from collections import defaultdict
-    starts = defaultdict(list)
-    for cand, is_start in occ:
-        starts[cand].append(is_start)
-    out: list[str] = []
-    for cand, flags in starts.items():
-        if all(flags):
-            continue
-        out.extend([cand] * len(flags))
-    return out
+def _sentences(text: str) -> list[str]:
+    return [s for s in re.split(r"(?<=[.?!])\s+", text) if s.strip()]
 
 
 def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set[str] | None = None) -> set[str]:
@@ -532,30 +397,88 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
     for n in speaker_names:
         for t in n.split():
             name_tokens.add(t.lower().strip(".,"))
-    counts: Counter = Counter()
-    for cand in _candidate_entities(full_text):
-        cl = cand.lower()
-        toks = cl.split()
-        if cl in {n.lower() for n in speaker_names}:
+    speaker_lower = {n.lower() for n in speaker_names}
+    sentences = _sentences(full_text)
+
+    result: set[str] = set()
+
+    # (a) capitalised multi-word spans: always entities (excluding speaker names / company name).
+    for m in re.finditer(r"\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,3}\b", full_text):
+        span = m.group(0)
+        toks = span.lower().split()
+        if toks and toks[0] in _LEADING_STOP:
             continue
-        if any(t in name_tokens for t in toks) and all(t in name_tokens for t in toks):
+        if span.lower() in speaker_lower:
+            continue
+        if all(t in name_tokens for t in toks) and toks:
             continue
         if all(t in own_tokens for t in toks) and toks:
             continue
-        if any(t in own_tokens for t in toks) and len(toks) == 1:
+        result.add(span)
+
+    # single capitalised words: entity only if they recur in >= 2 statements and have at least
+    # one non-sentence-initial occurrence (sentence-initial alone is never an entity).
+    single_candidates = set()
+    for m in re.finditer(r"\b[A-Z][a-z]{2,}\b", full_text):
+        tok = m.group(0)
+        low = tok.lower()
+        if low in _EN_VOCAB or tok in _FINANCE_METRICS or tok in _PERIOD_WORDS or low in _SLIDE_WORDS or low in _LEADING_STOP:
             continue
-        if cl in _ENTITY_STOP or cl in _QUESTION_WORDS:
+        if low in name_tokens or low in own_tokens or low in speaker_lower:
             continue
-        counts[cand] += 1
-    # keep recurring (>=2)
-    result = {c for c, n in counts.items() if n >= 2}
-    # keep longest span: drop any entity that is a whole-word subspan of another
-    out = set()
-    for c in result:
-        if any(c != d and re.search(r"\b" + re.escape(c) + r"\b", d, re.I) for d in result):
+        if _is_sentence_start(full_text, m.start()):
+            # only count if some other occurrence is not sentence-initial
+            pass
+        single_candidates.add(tok)
+    for tok in single_candidates:
+        non_initial = any(not _is_sentence_start(full_text, m.start())
+                          for m in re.finditer(r"\b" + re.escape(tok) + r"\b", full_text))
+        if not non_initial:
             continue
-        out.add(c)
-    return out
+        n_stmt = sum(1 for st in sentences if re.search(r"\b" + re.escape(tok) + r"\b", st))
+        if n_stmt >= 2:
+            result.add(tok)
+
+    # (b) all-caps tokens: entity only if it recurs in >= 2 statements of the call,
+    # is not an ordinary English word, not a finance metric, not a slide/section word.
+    cap_candidates = set()
+    for m in re.finditer(r"\b[A-Z]{2,}\b", full_text):
+        tok = m.group(0)
+        low = tok.lower()
+        if low in _EN_VOCAB:
+            continue
+        if tok in _FINANCE_METRICS:
+            continue
+        if tok in _PERIOD_WORDS:
+            continue
+        if low in _SLIDE_WORDS:
+            continue
+        if tok.lower() in name_tokens:
+            continue
+        if tok.lower() in own_tokens:
+            continue
+        cap_candidates.add(tok)
+
+    for tok in cap_candidates:
+        non_initial = any(not _is_sentence_start(full_text, m.start())
+                          for m in re.finditer(r"\b" + re.escape(tok) + r"\b", full_text))
+        if not non_initial:
+            continue
+        n_stmt = sum(1 for s in sentences if re.search(r"\b" + re.escape(tok) + r"\b", s))
+        if n_stmt >= 2:
+            result.add(tok)
+
+    # a single capitalised word that is part of a kept multi-word entity is also an entity
+    # (e.g. "Virupaksha" from "Virupaksha programme"), unless it is an ordinary English word
+    for span in list(result):
+        for tok in span.split():
+            if (tok and tok[0].isupper() and tok.isalpha()
+                    and tok.lower() not in _EN_VOCAB and tok not in _FINANCE_METRICS
+                    and tok not in _PERIOD_WORDS and tok.lower() not in _SLIDE_WORDS
+                    and tok.lower() not in _LEADING_STOP):
+                result.add(tok)
+
+    return result
 
 
 def _entities_in(sentence: str, ent_set: set[str]) -> list[str]:
@@ -594,7 +517,6 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
     known = set(p_names) | set(mgmt) | set(analysts)
     segments: list[list] = []
     speaker, section, prev_role = "unknown", "prepared", "moderator"
-    prev_text = ""
     st.setdefault("questions", [])
     full_text = "\n".join(t for _, t in pages)
     own_tokens = set()
@@ -619,20 +541,13 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
             speaker = name
         for a, b, name in bounds:
             role = role_of(name, sym, people, analysts, mgmt)
-            # only introduce an analyst when the moderator's own text names a firm ("from X")
-            if (role == "unknown" and section == "qa" and prev_role == "moderator"
-                    and re.search(r"\bfrom the line of\b", prev_text or "", re.I)
-                    and name.split()[0].lower() in (prev_text or "").lower()):
+            if role == "unknown" and section == "qa" and prev_role == "moderator":
                 analysts.append(name)
                 role = "analyst"
-            seg_section = "qa" if role == "analyst" else section
-            segments.append([page, raw, w, a, b, name, role, seg_section])
+            segments.append([page, raw, w, a, b, name, role, section])
             if role == "moderator" and QA_START_RX.search(w[a:b]):
                 section = "qa"
-            if role == "analyst":
-                section = "qa"
             prev_role = role
-            prev_text = w[a:b]
     # a media call has no moderator, so QA_START_RX (the moderator's words) never fires: the first participant
     # line from the journalists/analysts list opens the Q&A instead (T-056 review)
     if not any(seg[6] == "moderator" for seg in segments):
@@ -654,10 +569,8 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
     seq, started = 0, False
     rows = []
     turn = 0
-    has_qa = (any(s[6] in ("moderator", "analyst") for s in segments)
-              or len({s[5] for s in segments}) >= 3)
     for page, raw, w, a, b, name, role, section in segments:
-        if role not in ("unknown", "analyst") or (role == "unknown" and has_qa):
+        if role not in ("unknown",):
             started = True      # cover letter / headers before the first real speaker are not call content
         if not started:
             continue
