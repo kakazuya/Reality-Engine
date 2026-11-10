@@ -1,0 +1,9 @@
+# Asset-management AUM mix (T-133 v6).  An AMC deck prints a bare asset-class row ("Liquid", 10.8%) as a
+# share of its AUM mix, not the balance-sheet liquid investment line; the class becomes the dimension
+# (aum_mix[asset_class=liquid]).  Only the asset-class words are here, so "Investment in liquid mutual funds"
+# still matches the common liquid_investments line whole-label.
+family: asset_management
+sectors: [asset_management]
+entries:
+  - {metric: aum_mix, kind: pct, unit: pct, labels: ["liquid", "liquid fund", "liquid funds", "liquid scheme", "liquid schemes"],
+     neg: "growth|flow|inflow|outflow|aum\\s*of|invest"}

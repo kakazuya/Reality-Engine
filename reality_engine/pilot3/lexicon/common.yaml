@@ -1,16 +1,48 @@
 # Cross-company balance sheet / working-capital KPI family.
 family: common
 entries:
-  - {metric: net_debt, kind: money, unit: inr_cr, labels: ["net debt(?! to)", "net debt including acceptances", "net debt excluding acceptances", "net (cash|debt)\\b(?!\\s+flows?)"], neg: "to (ebitda|equity)|ratio|/|cash flow|activities|used in|generated from|cash (generated|used|flow)|financing|investing|operating activities|net cash (inflow|outflow)s?|cash (inflow|outflow)s?|acquired on acquisition|acquisition is"}
+  - {metric: net_debt, kind: money, unit: inr_cr, labels: ["net debt(?! to)"], neg: "to (ebitda|equity)|ratio|/|cash flow|activities|used in|generated from|cash (generated|used|flow)|financing|investing|operating activities|net cash (inflow|outflow)s?|cash (inflow|outflow)s?|acquired on acquisition|acquisition is"}
+  # T-133 v7: a printed "net cash" is a positive figure and the opposite sign to net debt; the sign is stated in the
+  # cell, so the two never share one id.  The Titan "net cash payout" seed is a distribution, not a balance.
+  # T-133 v8: the exclusion sits in the label pattern, because the live matcher reads only 14 characters after a
+  # match ("net cash generated fro..." never reached the neg list).  A cash-flow total is not a balance.
+  - {metric: net_cash, kind: money, unit: inr_cr, labels: ["net cash(?!\\s+(?:generated|from|used|flows?|and|acquired|outflow|inflow|position of the|operating|investing|financing))"], neg: "to (ebitda|equity)|ratio|/|cash flow|activities|used in|generated from|financing|investing|operating activities|inflows?|outflows?|payout|dividend|acquir"}
   - {metric: gross_debt, kind: money, unit: inr_cr, labels: ["gross debt"], neg: "ratio"}
   - {metric: net_debt_to_equity, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*equity", "net d/e"]}
   - {metric: debt_to_equity, kind: ratio, unit: x, labels: ["debt[- ]equity( ratio)?"], neg: "net\\s+debt"}
   - {metric: net_debt_to_ebitda, kind: ratio, unit: x, labels: ["net debt\\s*(/|to)\\s*(l?t?m? ?)ebitda", "net debt/ebitda", "leverage"]}
-  - {metric: working_capital_days, kind: days, unit: days, labels: ["(net )?working capital( days| cycle)?", "\\bnwc\\b"], neg: "%\\s*of|changes|before|generated|ratio|to working capital"}
+  # T-133 v7: "working capital" alone is the balance (money), never the days KPI; a loan/demand-loan/facility row is
+  # a borrowing line, so the exclusion is explicit instead of a silent whole-label miss.  The broad days pattern
+  # serves the live sentence path ("net working capital stands at 155 days"); the label map narrows it to a
+  # whole-label match in its own loader.
+  # T-133 v8: the days KPI must print "days"/"cycle" itself (a bare "Working capital" row is the balance), and the
+  # money line must start the row: a borrowing/facility/credit line is not the balance however it is spelled.
+  - {metric: working_capital_days, kind: days, unit: days, labels: ["(net )?working capital(?=[^.]{0,40}?(?:\\bdays?\\b|\\bcycle\\b))", "\\bnwc\\b"], neg: "%\\s*of|changes|before|generated|ratio|to working capital|loan|loans|facilit|demand"}
+  - {metric: working_capital, kind: money, unit: inr_cr, labels: ["^(?:net\\s+)?working\\s+capital\\s*$"], neg: "days?|cycle|%\\s*of|loan|loans|facilit|demand|changes|before|generated|ratio|to working capital"}
   - {metric: capex, kind: money, unit: inr_cr, labels: ["\\bcapex\\b", "capital expenditure"], neg: "plan|guidance|%|per cent|per (store|shop|branch|unit|square|sq|tonne|ton|vehicle|mw|kw)"}
-  - {metric: revenue, kind: money, unit: inr_cr, labels: ["^revenue", "total revenue", "revenue from operations", "^sales\\b", "segment revenue"], neg: "growth|%|intersegment|inter segment|lntersegment|less:|volume|volumes|sales? of (the )?(investments?|fixed assets|assets|securities|shares|properties)|sales promotion|revenue from sale of|from sale of goods|revenue from services?"}
-  - {metric: pat, kind: money, unit: inr_cr, labels: ["profit after tax", "^pat\\b"], neg: "margin|%"}
+  # T-133 v8: "EBITDA/Net Profit Margin on Revenue from operation" is a margin, never the revenue row; the margin
+  # word sits before the match, so it is excluded in the pattern (the live neg window is too short for a prefix).
+  - {metric: revenue, kind: money, unit: inr_cr, labels: ["^revenue(?!.*\\bmargin\\b)", "total revenues?", "(?<!margin\\son\\s)revenue from operations?(?!\\s+margin)", "revenue from contracts? with customers", "^sales\\b", "segment revenue"], neg: "growth|%|intersegment|inter segment|lntersegment|less:|volume|volumes|sales? of (the )?(investments?|fixed assets|assets|securities|shares|properties)|sales promotion|revenue from sale of|from sale of goods|revenue from services?|margin"}
+  # T-133 v5/v6: the statement total (revenue + other income) is not the revenue from operations line, and
+  # "total revenue(s)" is the total only when its own table proves it (revenue + other income = total); the
+  # label map resolves that per table.  v7 keeps "total revenues?" under revenue for the LIVE table path (the KPI
+  # lexicon), because kpi.py has no table arithmetic; the v2 label map's own table rule still decides total_income.
+  - {metric: total_income, kind: money, unit: inr_cr, labels: ["total income"], neg: "growth|%|margin|per|share"}
+  - {metric: pat, kind: money, unit: inr_cr, labels: ["profit after tax(?:ation)?", "^pat\\b"], neg: "margin|%"}
   - {metric: employees, kind: count, unit: count, labels: ["employee headcount", "headcount"]}
   - {metric: ebitda_margin_pct, kind: pct, unit: pct, labels: ["ebitda margins?", "ebitda as a % of (to|turnover|sales|revenue)", "ebitda as a %"], neg: "guidance|expansion|contraction|bps|range|cagr|growth"}
   - {metric: ebitda, kind: money, unit: inr_cr, labels: ["(business )?segment ebitda", "^ebitda\\b", "\\bebitda\\b"], neg: "margin|per|/|%\\s*of|multiple|adjusted"}
   - {metric: roe_pct, kind: pct, unit: pct, labels: ["return on (average )?equity", "\\broe\\b"], neg: "growth|bps"}
+  # T-133 v2: a label that names its own line whole (rule 1).  Before, "Operating Free Cash Flow (EBITDA - Capex)"
+  # was stored as capex and "Sales and marketing expenses" as revenue because the metric word was a substring.
+  - {metric: operating_free_cash_flow, kind: money, unit: inr_cr, labels: ["operating free cash flow"], neg: "margin|growth|%"}
+  - {metric: sales_and_marketing_expense, kind: money, unit: inr_cr, labels: ["sales and marketing expenses?", "selling and marketing expenses?"], neg: "growth|%"}
+  - {metric: total_equity_and_liabilities, kind: money, unit: inr_cr, labels: ["^total equity (and|&) liabilities\\s*$", "^total equity liabilities\\s*$"]}
+  - {metric: interest_coverage, kind: ratio, unit: x, labels: ["interest coverage ratio"]}
+  - {metric: revenue_per_tower_per_month, kind: price, unit: inr, labels: ["revenue per tow(?:er|ers) per month", "revenue per tow ers per month"], neg: "growth|%|sharing"}
+  # T-133 v3: common statement lines whose unit comes from the metric definition, so the label map reads tonnes
+  # for a volume and never defaults the line to money.
+  # T-133 v8: the P&L "dividend income" (a non-cash line reversed in the cash flow) is not the cash receipt.
+  - {metric: dividend_received, kind: money, unit: inr_cr, labels: ["dividend received"], neg: "growth|%|per share"}
+  - {metric: dividend_income, kind: money, unit: inr_cr, labels: ["dividend income"], neg: "growth|%|per share"}
+  - {metric: volume, kind: volume, unit: kt, labels: ["qty in mill te", "quantity in mill te"]}

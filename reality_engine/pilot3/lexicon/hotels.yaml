@@ -1,0 +1,8 @@
+# Hotel/reporting family: ARR and occupancy are measures printed as rows, never table members (T-133 v7).
+# Generic words of the sector, no company names; the like-for-like basis is a dimension (label_map QUALIFIERS).
+family: hotels
+sectors: [hotels]
+entries:
+  # T-133 v8: "arr" is a whole word (an unanchored substring matched "carried", "arrangement").
+  - {metric: arr, kind: money, unit: inr, labels: ["\\barr\\b", "average room rate", "average daily rate"], neg: "growth|%|share|revpar"}
+  - {metric: occupancy_pct, kind: pct, unit: pct, labels: ["occupancy"], neg: "growth|bps|%\\s*of"}
