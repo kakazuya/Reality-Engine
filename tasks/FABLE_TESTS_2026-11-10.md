@@ -56,6 +56,33 @@ only; they cannot see a dropped column.
 - **Accept:** reference set written with the split; `completeness` runs on u8 in under 10 minutes; calibration
   table in the report.
 
+**Tool built (11 Nov 2026, T-177 round 3):** sample/transcribe/reconcile in
+`reality_engine/v2/reference_pages.py`, test `reality_engine/tests/test_v2_reference_pages.py` (3 passed in 0.43 s),
+commands and file columns in `docs/V2_SCHEMA_CONTRACT.md` section 12. `sample` writes the 60 pages (30 deck / 20
+results / 10 annual report, 30 dev / 30 frozen) deterministically: two runs of seed 20261110 gave byte-identical
+`pages.csv` (60 rows, SHA-256 `BEED9B07D7274D24...`, 36.8 s / 40.2 s). Live check on the 8 dev pages actually used
+(4 deck, 2 results, 2 annual report; free readers only, no paid call):
+
+| Reader (free) | Input | Pages with rows | Rows | Verbatim share | Mean s/page | Errors |
+|---|---|---|---|---|---|---|
+| `dots-studio/dots-3-note-preview:free` | text | 8/8 | 233 | 0.987 | 15.5 | 0 |
+| `dots-studio/dots-3-note-preview:free` | image | 8/8 | 225 | 0.956 | 15.9 | 0 |
+| `nvidia/nemotron-3.5-super-vl:free` | text | 8/8 | 228 | 0.987 | 11.6 | 0 |
+| `nvidia/nemotron-3.5-super-vl:free` | image | 6/8 | 367 | 0.608 | 22.5 | 0 |
+| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` | text | 8/8 | 189 | 0.984 | 16.1 | 0 |
+| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` | image | 3/8 | 41 | 0.244 | 5.8 | 0 |
+| `nvidia/nemotron-3-ultra-550b-a55b:free` | text | 8/8 | 229 | 0.987 | 26.1 | 0 |
+| `nvidia/nemotron-3.5-lightning:free` | text | 8/8 | 320 | 0.678 | 28.5 | 0 |
+| `longcat-2.5-preview-free` (Go) | text | 0/1 | 0 | - | 0.4 | HTTP 400 Model is unavailable |
+
+Two free readers clear the 6-of-8 bar with room to spare (Dots on both inputs, all four Nemotrons on text). The
+round-1 empty replies were the model's own `[]` (`out_tok` 2), not the parser: the JSON-Lines prompt with an example
+fixed it. Reconciling the best two distinct readers (Dots text + `nemotron-3.5-super-vl` text) gives 277 cells, 128
+agreed (0.462), 275 verbatim (0.993), 126 settled by script (0.455); agreement is limited by the readers keying the
+same values to different table titles and row labels, and `verbatim` alone does not prove cell ownership. Pages
+`p012` (chart-only, no text layer) and `p041` (auditor's review in prose) are not table pages. The frozen split is
+sampled but not transcribed.
+
 ## 2. T-178: can the first build be salvaged by re-keying? (no new model calls)
 
 - **Hypothesis:** first-build facts, once verified against the text layer and passed through the v2 label map

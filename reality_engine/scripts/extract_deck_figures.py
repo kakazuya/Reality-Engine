@@ -119,6 +119,19 @@ MODELS = {
                                                    "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY_2",
                                                    "price": (0.0, 0.0), "capped": False, "ceiling": 30,
                                                    "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    # Kilo free Nemotron readers (pinged 11 Nov 2026). Same shape as the Dots entry above.
+    "nvidia/nemotron-3.5-super-vl:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
+                                          "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                                          "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
+                                                           "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                                                           "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    "nvidia/nemotron-3-ultra-550b-a55b:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
+                                                "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                                                "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    "nvidia/nemotron-3.5-lightning:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
+                                           "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                                           "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
     # "Space Bunny" (free, OpenCode Zen; the only Zen free model the API accepts: the others answer "free tier can only be
     # used from within OpenCode"). 2026-10-11, 40-page test vs Haiku with reasoning_effort low: 40/40 answered, ~97%
     # identifiable, ~99.7% of Haiku's numbers, no unsupported numbers, median ~6 s; with the default effort 13/40 came
