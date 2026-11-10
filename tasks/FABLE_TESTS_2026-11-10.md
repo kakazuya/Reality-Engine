@@ -1,0 +1,129 @@
+# Three tests from the Fable review (design, 10 Nov 2026)
+
+Owner: Eagle (Fable 5.2). Status: DESIGN, waiting for Shivam's OK to run. Nothing here has been run.
+Source: Fable's review of `docs/FABLE_REVIEW_BRIEF.md` (section 10 there) and Shivam's replies the same night.
+Tickets: T-177 (reference pages + completeness report), T-178 (first-build re-key test), T-179 (raw SQL test),
+T-180 (free-model transcription test).
+
+Each test states a hypothesis, what would prove it wrong, and the decision that follows. No test result is
+reported from a worker's own grade.
+
+## 0. What the first build is (inspected 10 Nov, read-only)
+
+| Store | Holds | Measured |
+|---|---|---|
+| `reality_engine/data/ar_facts.db` (21.9 GB) | model-read annual reports: `ar_facts` (item, value, unit, period, basis, page, quote, model) | 33,268 reports done, 4,898 companies, 5.02 M pages, FY19-FY26; ~33 M facts; random sample of 19,609 facts: 81% value found on the cited page, 17% prose, 0.3% not found; 99.6% carry a quote |
+| `reality_engine/data/deck_figures.db` (10.6 GB) | vision-model-read decks: `facts` (metric, period, raw_number, value, unit), `pages` (text_numbers, primary_recall), `outputs` (raw model output) | 26,511 decks, 2,225 companies, 627,251 pages, 11.8 M facts, Jan 2021 - Sep 2026; pages with >= 10 numbers: 146,204 at recall >= 0.9, 90,635 at 0.7-0.9, 53,388 at 0.4-0.7, 41,278 below 0.4 |
+| `reality_engine/data/concall_facts.db` (0.8 GB) | model-read calls: `cc_items` in 12 lists (key_numbers, guidance, capex, ...), `cc_item_checks` | 7,504 calls, 1,264 companies, 720,692 items; value found in its quote on 259,398 of 646,563 checked items |
+
+Why it answered poorly (one Infosys report read in full, 2,559 facts; a hypothesis until T-178 measures it):
+the values are mostly right, but nothing is keyed. 2,071 distinct item names, 304 categories, 66 unit spellings and
+40 period spellings in one report; 94% of reports take their fiscal year from a filing-month rule (the sampled
+"2026" report holds FY22 figures); the same year appears three times for one company. A question could only reach
+a fact by fuzzy text search over 33 M rows. The pieces built since then (label map, period engine, preferred
+figure, document identity, `known_at`) are exactly what it lacked.
+
+Not salvageable as facts under the 7 Nov ruling: `cc_items.signal`, `direction`, `firmness`, `statement` and
+`deck_figures.chart_trends` are model interpretation. Their verbatim `quote` is usable where the script finds it in
+the page text.
+
+## 1. T-177: reference pages and the completeness report (shared by all three tests)
+
+**Why first:** every test below needs ground truth for a whole page (what the page prints), not a sample of what an
+extractor chose to output. The existing samples (`D:/RealityEngine/v2/review/samples/f*_*.csv`) measure precision
+only; they cannot see a dropped column.
+
+- **Pages:** 60, drawn by script with a fixed seed from p20, u8 and q12 documents (pilot10 excluded: it is the
+  tuning set). 30 deck pages (preferring decks whose sha256 is in `deck_figures.pages`), 20 results pages, 10
+  annual-report pages. Strata: ruled table, unruled deck panel, two-level header, multi-period fact sheet, numbers
+  in words or scale words, chart-only page.
+- **Split:** 30 dev pages (workers may see them), 30 frozen pages (only the scoring script and the reviewer read
+  them; stored outside the repo at `D:/RealityEngine/v2/reference_pages/frozen/`).
+- **How the truth is made:** two different free models each transcribe the page into a grid (row label, column
+  header, value as printed, unit). A script accepts a cell when both agree, the value is verbatim in the text layer
+  and printed totals recompute. Disagreements and chart pages are read by Claude in session; Shivam spot-checks 6
+  pages. Every reference cell carries who settled it.
+- **Completeness report** (`reality_engine/v2/completeness.py`, new; one row per page in a `page_coverage` table):
+  1. number coverage: printed value-numbers that reached a stored cell (number words and scale words converted;
+     dates, page numbers, note references excluded);
+  2. grid check: printed rows x columns against stored cells;
+  3. arithmetic closure: stored parts add up to the printed total;
+  4. cross-source agreement: the same figure in XBRL and in the deck;
+  5. unread pages: no text layer or chart-only, counted as not read.
+- **Gate:** a build is refused when any page's coverage falls against the previous build.
+- **Calibration:** each automatic check is scored against the 60 reference pages (how often it flags a page that is
+  truly incomplete, and how often it misses one).
+- **Accept:** reference set written with the split; `completeness` runs on u8 in under 10 minutes; calibration
+  table in the report.
+
+## 2. T-178: can the first build be salvaged by re-keying? (no new model calls)
+
+- **Hypothesis:** first-build facts, once verified against the text layer and passed through the v2 label map
+  (`reality_engine/v2/label_map.py`) and period engine (`reality_engine/v2/periods.py`), give more complete rows
+  than the round-10 script extractor (`reality_engine/v2/table_cells.py`) on the same pages.
+- **Arms, on the 30 deck and 10 annual-report reference pages:** (a) script cells r10; (b) first-build facts as
+  stored; (c) first-build facts verified + re-keyed; (d) union of (a) and (c) with conflicts flagged.
+- **Measured per arm:** recall against reference cells, precision, share keyed to a metric, share with a resolved
+  period, share verified verbatim. Reported on dev and frozen pages separately.
+- **Wrong if:** arm (c) recall is below arm (a), or its precision after verification is below 95%.
+- **Decision:** if (c) or (d) wins, the first build becomes a candidate layer for the whole universe (re-key job,
+  no re-reading); rows enter the store only with `verified` status. If it loses, keep it as an audit source only.
+- **Also measured:** share of `ar_docs` whose fiscal year is wrong (re-derive from the text, 200 random reports),
+  because a salvaged fact with the wrong year is worse than no fact.
+- **Accept:** `D:/RealityEngine/reports/2026-11-11_t178_first_build_rekey.xlsx` with the four arms and the decision.
+
+## 3. T-179: does removing raw SQL from the answering model help?
+
+- **Hypothesis:** without `pilot3_sql` the cheap model reads the preferred figure from the typed tools and makes
+  fewer misreads and sums errors, with fewer calls.
+- **Questions:** 120, drawn by script with a fixed seed: 60 from the pilot10 600 (20 right, 40 partly on 5 Nov) and
+  60 from u8 + q12 (30 right, 30 not right). The existing hand grade of each is kept as a reference.
+- **Arms:** A = all tools as today; B = `pilot3_sql` absent (switch `REALITY_DATA_NO_PILOT3_SQL=1` in
+  `plugins/reality-data/server/server.py`; the tool is not registered and the server text does not name it).
+  Same model (DeepSeek V4.1 Flash, max effort), same stores, same brief. Each arm runs twice: 480 answers.
+- **Logged per answer:** tool calls by tool, seconds, tokens, tools that returned the figure used
+  (from the worker event log; `reality_engine/pilot3/answer_run_report.py` gains the columns).
+- **Grading:** a separate read-only grader, blind to the arm, arithmetic redone. Before grading the test it grades
+  100 answers that already carry an Opus hand grade; its agreement is reported with the result. A "not disclosed"
+  answer is right only when a text search of the held pages finds nothing, and is reported as its own line.
+- **Read-out:** paired comparison of A against B on the same questions; the difference between the two runs of the
+  same arm is the noise floor. A difference inside that floor is "no effect".
+- **Wrong if:** B is not better than A beyond the noise floor, or B's "cannot answer" share rises by more than its
+  gain in right answers.
+- **Decision:** B wins: remove raw SQL from the answering tool set (kept for development). B loses on questions that
+  needed SQL: list the missing typed lookups; those become the next tool work.
+- **Accept:** `D:/RealityEngine/reports/2026-11-11_t179_sql_ab.xlsx` + csv (per-run report rule).
+
+## 4. T-180: free models transcribing tables, checked by script
+
+- **Hypothesis:** a model that only copies a page's tables into rows, with every row checked by script, beats the
+  rule-based extractor on completeness at equal or better verified precision.
+- **Counter-evidence already held:** the first build's deck readers averaged 0.54-0.68 recall. Its prompt asked for
+  "facts", not a full grid, so it is not the same test; the result may still repeat.
+- **Readers:** Beam and LongCat 2.5 (OpenCode Go, free), every free model the Kilo Gateway lists on the day (Dots,
+  Step and others; the list is recorded), and the r10 script as baseline. No paid model.
+- **Inputs:** (i) the page's text layer in reading order with word positions; (ii) the page image, for models that
+  take images. Each model is run on the inputs it supports.
+- **Prompt:** full grid only: table title, row label, column header as printed, value as printed, unit as printed.
+  No summaries, no computed values, no interpretation.
+- **Script check on every row:** value verbatim in the text layer (or, for image-only pages, agreed by two models);
+  totals, margins and growth columns recompute; row and column counts match the grid check. Failing rows are stored
+  as `unverified` and never served.
+- **Measured on the 60 reference pages, dev and frozen separately:** recall, precision before and after the check,
+  verified share, agreement between two runs of the same model (consistency), seconds and tokens per page, failure
+  and refusal rate.
+- **Wrong if:** no reader reaches verified precision >= 98% with recall at least 15 points above the script, or
+  two runs of the best reader agree on fewer than 95% of cells.
+- **Decision:** a reader wins: pilot it on u8 + q12 decks behind the completeness gate, then a frozen-set answer
+  run. No reader wins: tables stay with scripts, and T-132 resumes with the completeness gate instead of 60-row
+  samples.
+- **Accept:** `D:/RealityEngine/reports/2026-11-12_t180_reader_bakeoff.xlsx` with one row per reader and input.
+
+## 5. Order and load
+
+1. T-177 reference pages (needed by T-178 and T-180). T-179 is independent and runs alongside.
+2. T-178 (no model calls beyond T-177's).
+3. T-180, shaped by what T-178 shows.
+
+DeepSeek runs off-peak only. One heavy build at a time (RAM). Each ticket: a code worker, a separate read-only
+grader, Claude's own sample before any result is quoted.

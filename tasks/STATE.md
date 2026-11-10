@@ -11,7 +11,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `do
 - None. T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) finished 23:20 and is HELD: u8 passes 4 seeds, q12 one seed 85%; zero-loss gate failed (12/21 u8, 14/20 q12 earlier-right rows kept); self-graded only. Shivam to choose r8 or pause with T-132.
 
 ## Next action
-1. T-163: Shivam's decision on r8 (lost-row list) or pause; Fable's review of the brief was given in session 10 Nov night (not yet written into the brief).
+1. Fable review done (brief section 10). Designs in `tasks/FABLE_TESTS_2026-11-10.md`, waiting for Shivam's OK to run: T-177 reference pages + completeness, T-178 first-build re-key, T-179 raw SQL A/B, T-180 free-model transcription. T-163 held with T-132 until T-180 decides.
 2. Then rebuild p20/u8/q12 (docs_collect --profile, build --part stores/transcripts/guidance/kpi/segments, one at a time) and restart reality-data MCP so T-161, T-162, T-164, T-165, T-166, v8.1 go live.
 3. CHOLAFIN KPI branch dsh/20261110T104212Z-67ceeb28: run `.tmp/cholafin_kpi/build.py --tree main|branch --stores <one>` in its worktree for q12, p20, pilot10, n10 one at a time when <= 1 worker builds (RAM reaped it once), then grader, then merge.
 4. s10: T-169 website crawler (Beam), build s10 stores, T-172 frozen split, then T-170 baseline with timed answers.

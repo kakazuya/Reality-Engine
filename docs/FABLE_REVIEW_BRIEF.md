@@ -163,3 +163,28 @@ Worker evidence from 10 Nov (`tasks/efficiency/worker_reviews.jsonl`): rounds pe
 - `reality_engine/v2/table_cells.py`, `label_map.py`, `periods.py`
 - `plugins/reality-data/server/lookups_pilot3.py` (the answer tools)
 - `tasks/efficiency/worker_reviews.jsonl` (every worker round and its independent grade)
+
+## 10. Fable's review (10 Nov 2026, night) and what follows
+
+Read: this brief, `tasks/STATE.md`, the held audit, blueprint sections 4-7, `docs/V2_SCHEMA_CONTRACT.md` sections
+1-3 and 10, the T-132 rows of `tasks/efficiency/worker_reviews.jsonl`. Not read line by line: the extractor code.
+
+- **Honest any-company score is about 50-55%** (p20 baseline 54.8%, q12 50.3%), not 80-88%.
+- **Ceiling on two extractors, not on scripts.** Table cells (12 rounds, 40-47 of 60, earlier-right cells lost each
+  round) and probably segments (7 rounds, T-163 r7 held). XBRL, shareholding, prices, document handling and
+  statement splitting stay as scripts. Hypothesis to test: a model copies tables into rows, a script verifies them.
+- **Answer path.** Raw SQL bypasses the preferred figure; hypothesis to test: remove it from the answering model.
+- **Document-integrity gate before extraction** (link-notice transcripts, duplicates, misdated and mistyped
+  documents). Agreed by Shivam.
+- **Evaluation gaps, agreed by Shivam:** leakage is by company, not by question; run noise is large (132 of 600
+  answers changed grade between two runs); graders uncalibrated; "not disclosed" counts as right only when a search
+  of held pages confirms it, reported as its own line; harvested questions are frozen before the store is built and
+  before any reframing; an automatic loss funnel per question; calls and seconds per answer logged; completeness
+  measured by a set of checks, not digit counting; point-in-time correctness tested.
+- **Stop:** quoting p20's 99.6%; fix days driven by a set's own questions; trusting worker self-grades.
+- **Kept from the 7 Nov ruling:** model inferences are never stored as facts; statements stay verbatim.
+- **First build inspected:** `ar_facts.db`, `deck_figures.db`, `concall_facts.db` are model-read; values mostly
+  verify on the page, but nothing is keyed. Salvage is tested, not assumed.
+
+Tests and their decision rules: `tasks/FABLE_TESTS_2026-11-10.md` (T-177 reference pages and completeness report,
+T-178 first-build re-key, T-179 raw SQL A/B, T-180 free-model transcription). Designs only; none has run.
