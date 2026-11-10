@@ -1,3 +1,5 @@
+> SUPERSEDED 10 Nov 2026 (T-165): historical job record. The current answer brief is `tasks/handoff/T-143_p20_P_brief.md`; `holding` now returns every category and takes `category` and `quarters`.
+
 Goal: Answer every question in D:/RealityEngine/u8/answers/questions_H.json (80 questions, 4 companies: CHOLAFIN, CIPLA, PERSISTENT, TATACONSUM; investor and sector-analyst questions harvested from the web) from the u8 unseen store, one recorded answer per qid. These companies were never used to build the extractors; the run measures how well the store answers real investor questions, so answer each question fully and exactly as an investor asked it.
 
 Files: write ONLY through the recorder; it appends to .tmp/<SYMBOL>_answers.jsonl in your workspace. Scratch answer files go in .tmp/. Do not edit any code. Do not open any file under D:/RealityEngine/u8 except questions_H.json and u8.db (through p3ask).

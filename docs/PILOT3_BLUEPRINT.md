@@ -716,7 +716,9 @@ Two T-087 answers had failed because no holder was named and the September 2025 
   skipped; one newer than the last quarter end is kept -- PERSISTENT's 26-Oct-26 filing). `pilot3_kpi` resolves
   `net interest margin`, `losses and provisions to assets` and `cost of borrowings` and reports `held_quarantined`
   when the row check hid the only row (CHOLAFIN Q2FY27 NIM 7.9). Re-ask of the audit's 11 routing rows on the u8/q12
-  stores: 11/11, plus the CHOLAFIN cost-of-funds row (`.tmp/t165/reask.md` in that worktree);
+  stores, re-run by an independent read-only dsh review (10 Nov): 11/11 reachable, 9 clean, 2 caveated (CHOLAFIN Q4FY26 NIM
+  also returns the 0.68 wrong-scale row; Q1FY27 credit cost has 3 rows, 150 is the one the call states), 0 wrong; the
+  cost-of-funds commentary half answers with `terms="cost of funds"` or `topic=rates`, not "repricing";
   `plugins/reality-data/tests/test_lookups_pilot3.py` 31 passed, 1 skipped. Store defects reported, not fixed:
   CHOLAFIN `nim_pct` Q4FY26 also holds 0.68 (wrong scale, the audit's own defect), Q2FY27's 7.9 is quarantined by a
   hard `unit_kind` check, and the three CHOLAFIN `credit_cost_bps` Q1FY27 rows (150 / 180 / 470) are extraction noise.
