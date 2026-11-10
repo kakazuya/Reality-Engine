@@ -8,13 +8,12 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_1235.md`); method `do
 - Merged 10 Nov: T-161/T-159 (first pages type/date docs), T-162 (SHP known_at from file stamp), T-132 r9 (cells; store `D:/RealityEngine/v2/p20_r9`), T-133 v8 (label map; live KPI +253 right / 0 lost), T-165 (holding every category, GoI/FPI/MF, KPI investor words), T-133 v8.1 (leaf-anchored live KPI labels, EBIDTA, net_revenue; Beam grader: 199/200, 0 stored right rows lost, ~470 junk cells removed; artifacts `D:/RealityEngine/v2/review/label_map_v81`).
 - Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126. Bake-off rescored (scorer fix): Beam 105/108, LongCat 98/108.
 
-## Running (owner: Eagle; Beam via run_deepseek_harness, registered in job_watch)
-- T-164 statements: Beam, worktree `IDM-worktrees/Eagle-T164-statements`, key 1, out in Eagle scratchpad `T164_result.md`.
-- T-163 segments: Beam, worktree `IDM-worktrees/Eagle-T163-segments`, key 2, out `T163_result.md`.
-- dsh-worker MCP now takes `model='beam-free'` (allowed in peak, MSI only; commit ed9e9d83); live MCP server needs a restart to load it.
+## Running (owner: Eagle)
+- Beam code: T-163 r2 (worktree Eagle-T163-segments), T-164 r5 (Eagle-T164-statements, entity precision only). dsh-worker MCP now takes model='beam-free' (live after /mcp).
+- Queued for DeepSeek after 15:30: T-166 r4 (`tasks/handoff/T-166_r4_brief.md`, base 8e9dbc8; Beam r2/r3 lost 22/14 targets).
 
 ## Next action
-1. T-166 SENT BACK (27/28 removals right; lost ADANIPORTS FY26 revenue 36,000-38,000 Cr on a page naming India Ratings; new false row APLAPOLLO 'improved from 4,200'). r2 on branch dsh/20261110T054026Z-90ecbbdb when a code slot frees: per-clause agency check, slide titles not speakers, 'improved from' = actual.
+1. T-166: r4 on DeepSeek (brief above); merge only with 0 targets lost vs main, <=3 junk.
 2. Rebuild p20/u8/q12 now possible (nothing reads p20new.db; guidance part waits for T-166 r2) (docs_collect --profile, build --part stores/transcripts/guidance, KPI now allowed: v8.1 merged) so T-161/T-162 go live; restart reality-data MCP (T-165). Re-ask SHP questions at past dates to close T-162.
 3. T-132 r10 SENT BACK (review 44/60 strict, 0 lost; Bharti p34/p61 51,798 Year Ended Mar-26 stored as Q4, r9 had FY; junk parents; YoY column identity; bullet cell; Titan 871 unit). r11 to the same worker when a code slot is free, after 15:30.
 4. After 15:30: T-164 (statements), T-163 (segments); briefs in `tasks/handoff/`. Max 2 code workers.
