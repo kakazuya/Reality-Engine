@@ -428,17 +428,21 @@ def _model_call(reader: str, prompt: str, image_b64: str | None) -> dict[str, An
 
 
 TRANSCRIBE_PROMPT = (
-    "Transcribe every table on this page into a grid. Output a JSON array of objects, one per cell, "
-    "with keys: \"table\" (table title as printed, or \"\" if none), \"row_label\" (row label as printed), "
-    "\"col_header\" (column header as printed; join multiple header levels with \" > \"), "
-    "\"value\" (value as printed), \"unit\" (unit as printed). "
-    "Copy values verbatim. No summaries, computed values, or interpretation. "
-    "Output [] if the page has no table. Output only the JSON array."
+    "Transcribe every table on this page into a grid. If the page has any table (ruled or unruled, including panels), "
+    "you MUST output one object per cell; do not answer []. Use [] ONLY when the page truly has no table. "
+    "Output a JSON array of objects, one per cell, with keys: \"table\" (table title as printed, or \"\" if none), "
+    "\"row_label\" (row label as printed), \"col_header\" (column header as printed; join multiple header levels with "
+    "\" > \"), \"value\" (value as printed), \"unit\" (unit as printed). "
+    "Copy values verbatim. No summaries, computed values, or interpretation. Output only the JSON array."
 )
 
 
 def _parse_rows(raw: str) -> list[dict[str, Any]]:
     raw = (raw or "").strip()
+    # strip markdown fences
+    if raw.startswith("```"):
+        raw = re.sub(r"^```[a-zA-Z]*\n?", "", raw)
+        raw = re.sub(r"\n?```$", "", raw).strip()
     # try direct JSON
     try:
         obj = json.loads(raw)

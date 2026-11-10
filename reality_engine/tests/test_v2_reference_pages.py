@@ -1,19 +1,47 @@
 import csv
 import json
 import sqlite3
-import tempfile
 import uuid
 from pathlib import Path
 
 from reality_engine.v2 import reference_pages as rp
 
 
-def _tmp_base():
+def _base():
     base = Path(".tmp/t177/_test_tmp")
     base.mkdir(parents=True, exist_ok=True)
     d = base / uuid.uuid4().hex
     d.mkdir()
     return d
+
+
+def _make_store(path, docs):
+    db = path / "store.db"
+    con = sqlite3.connect(str(db))
+    con.execute("CREATE TABLE doc (doc_key TEXT, symbol TEXT, doc_type TEXT, sha256 TEXT, pages INTEGER)")
+    con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT)")
+    for d in docs:
+        con.execute("INSERT INTO doc VALUES (?,?,?,?,?)", (d["key"], d["symbol"], d["type"], d["sha"], d["pages"]))
+        for pg in range(1, d["pages"] + 1):
+            text = d["text"]
+            con.execute("INSERT INTO doc_page VALUES (?,?,?)", (d["key"], pg, text))
+    con.commit()
+    con.close()
+    return db
+
+
+def _sample_docs():
+    docs = []
+    nums = " ".join(str(i) for i in range(1, 40))
+    for i in range(4):
+        docs.append({"key": f"u{i}", "symbol": f"S{i}", "type": "investor_presentation", "sha": "sha", "pages": 1, "text": ""})
+    for i in range(26):
+        docs.append({"key": f"d{i}", "symbol": f"S{i % 13 + 10}", "type": "investor_presentation", "sha": "sha", "pages": 1, "text": nums})
+    for i in range(20):
+        docs.append({"key": f"r{i}", "symbol": f"R{i % 10}", "type": "quarterly_results", "sha": "sha", "pages": 1, "text": nums})
+    for i in range(10):
+        docs.append({"key": f"a{i}", "symbol": f"A{i % 5}", "type": "annual_report", "sha": "sha", "pages": 1, "text": nums})
+    return docs
 
 
 def test_parser_tolerant():
@@ -25,28 +53,35 @@ def test_parser_tolerant():
     rows2 = rp._parse_rows(raw2)
     assert len(rows2) == 1
     assert rows2[0]["value"] == "(1.5)"
+    raw3 = "```json\n[{\"table\":\"T\",\"row_label\":\"Z\",\"col_header\":\"C\",\"value\":\"9\",\"unit\":\"\"}]\n```"
+    rows3 = rp._parse_rows(raw3)
+    assert len(rows3) == 1
 
 
 def test_sampler_determinism_and_quotas():
-    stores = "D:/RealityEngine/p20/p20new.db,D:/RealityEngine/u8/u8.db,D:/RealityEngine/q12/q12.db"
-    base = _tmp_base()
-    out1 = base / "a"
-    out2 = base / "b"
-    rp.sample_pages([s.strip() for s in stores.split(",")], out1, seed=20261110)
-    rp.sample_pages([s.strip() for s in stores.split(",")], out2, seed=20261110)
-    assert (out1 / "pages.csv").read_text() == (out2 / "pages.csv").read_text()
-    rows = list(csv.DictReader((out1 / "pages.csv").open()))
-    assert len(rows) == 60
-    from collections import Counter
-    types = Counter(r["doc type"] for r in rows)
-    assert types["deck"] == 30
-    assert types["results"] == 20
-    assert types["annual_report"] == 10
-    splits = Counter(r["split"] for r in rows)
-    assert splits["dev"] == 30 and splits["frozen"] == 30
+    from unittest.mock import patch
+    with patch("reality_engine.v2.reference_pages._deck_sha_set", lambda: set()):
+        base = _base()
+        db = _make_store(base, _sample_docs())
+        out1 = base / "a"
+        out2 = base / "b"
+        rp.sample_pages([str(db)], out1, seed=20261110)
+        rp.sample_pages([str(db)], out2, seed=20261110)
+        assert (out1 / "pages.csv").read_text() == (out2 / "pages.csv").read_text()
+        rows = list(csv.DictReader((out1 / "pages.csv").open()))
+        assert len(rows) == 60
+        from collections import Counter
+        types = Counter(r["doc type"] for r in rows)
+        assert types["deck"] == 30
+        assert types["results"] == 20
+        assert types["annual_report"] == 10
+        splits = Counter(r["split"] for r in rows)
+        assert splits["dev"] == 30 and splits["frozen"] == 30
 
 
-def _make_store(base, text):
+def test_reconcile_handmade():
+    base = _base()
+    text = "Revenue 100 200 300 Total 600 (1.5)"
     db = base / "store.db"
     con = sqlite3.connect(str(db))
     con.execute("CREATE TABLE doc (doc_key TEXT, source_key TEXT)")
@@ -55,13 +90,6 @@ def _make_store(base, text):
     con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("dk", 1, text))
     con.commit()
     con.close()
-    return db
-
-
-def test_reconcile_handmade():
-    base = _tmp_base()
-    text = "Revenue 100 200 300 Total 600 (1.5)"
-    db = _make_store(base, text)
     pages_csv = base / "pages.csv"
     with pages_csv.open("w", newline="") as fh:
         w = csv.writer(fh)
