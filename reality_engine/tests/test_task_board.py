@@ -338,3 +338,14 @@ def test_advisory_lint_never_blocks_a_commit():
     root = Path(__file__).resolve().parents[2]
     structural = tb.lint_problems(root, include_advisory=False)
     assert not any("missing why" in p or "missing close_when" in p or "not runnable" in p for p in structural)
+
+
+def test_closed_rows_cannot_be_changed_and_owner_clears(tmp_path):
+    """Review fix: a DONE/DROPPED row is not an open row; leaving DOING clears the owner."""
+    from reality_engine.scripts import task_board as tb
+    rows = [tb.parse_row("- T-900 | DROPPED gone | P2 | old | accept: Shivam | from: x | opened 2026-11-01"),
+            tb.parse_row("- T-901 | DOING Eagle | P2 | live | accept: Shivam | from: x | opened 2026-11-01")]
+    import pytest
+    with pytest.raises(tb.BoardError):
+        tb._find(rows, "T-900")
+    assert tb._find(rows, "T-901").id == "T-901"

@@ -236,7 +236,7 @@ def add(*,section,title,accept,source="manual",priority="P2",status="OPEN",root=
     return row.id
 def _find(rows,row_id):
     for row in rows:
-        if row.id==row_id: return row
+        if row.id==row_id and row.word not in ("DONE","DROPPED"): return row
     raise BoardError(f"{row_id} is not an open row")
 def set_status(row_id,status,owner=None,reason=None,root=None):
     word=status.strip().upper()
@@ -246,7 +246,7 @@ def set_status(row_id,status,owner=None,reason=None,root=None):
     new=word+(f" {_plain(owner,'owner')}" if (owner or "").strip() else "")
     with file_lock(root):
         rows=_load_all(root); row=_find(rows,row_id); old=row.status; row.status=new
-        if (owner or "").strip(): row.owner=(owner or "").strip()
+        row.owner=(owner or "").strip() if word in ("DOING","WAITING") else ""
         row.history.append({"when":_today(),"who":(owner or "system").strip() or "system","from":old,"to":new,"reason":reason or "status changed"})
         _save_all(root,rows)
 def _head(root): 
