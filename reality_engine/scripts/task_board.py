@@ -156,7 +156,10 @@ def _regenerate_markdown(root,live,done):
     done_lines=["# Done tickets"]
     for r in done: done_lines.append(r.line())
     _path(root,DONE_RELATIVE).write_text("\n".join(done_lines)+"\n",encoding="utf-8")
-def lint_problems(root=None):
+def lint_problems(root=None, include_advisory=True):
+    """Board defects. Structural ones (duplicates, closed rows left live, missing close marks) block a
+    commit through doc_gate; advisory ones (missing why/close_when, non-runnable accept, rule-like title,
+    stale DOING/OPEN) are reported by `lint` but never block, so legacy rows can be backfilled gradually."""
     problems=[]
     try: live,done=load_rows(root)
     except BoardError as exc: return [str(exc)]
@@ -169,6 +172,8 @@ def lint_problems(root=None):
     for row in done:
         if row.word=="DONE" and not DONE_MARK.match(row.tail): problems.append(f"{row.id} is DONE with no commit hash")
         if row.word=="DROPPED" and row.status.strip()=="DROPPED": problems.append(f"{row.id} is DROPPED with no reason")
+    if not include_advisory:
+        return problems
     for row in live+done:
         if not row.why or len(row.why)<30: problems.append(f"{row.id} missing why (>=30 chars)")
         if not row.close_when: problems.append(f"{row.id} missing close_when")

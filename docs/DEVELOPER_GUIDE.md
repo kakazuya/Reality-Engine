@@ -1105,7 +1105,7 @@ Permissions (`.claude/settings.json`, Shivam 9 Nov 2026): Claude asks only befor
 Two gates enforce it, on `main` only; `python reality_engine/scripts/doc_gate.py --install` writes
 both hooks:
 
-- `.git/hooks/pre-commit` lints the board whenever either tracker file is staged, and keeps
+- `.git/hooks/pre-commit` lints the board whenever either tracker file is staged (structural defects only: `lint_problems(include_advisory=False)` in `doc_gate.tracker_problem`; missing why/close_when, non-runnable accepts, rule-like titles and stale rows are advisory, listed by `task_board lint`, never blocking, so legacy rows can be backfilled gradually), and keeps
   `tasks/TASKS.md` at 150 lines or fewer.
 - `.git/hooks/commit-msg` refuses a message whose `T-<digits>` are all absent from both tracker files, or that names none and has no
   `No-ticket: <reason>` line. `merge_worker` puts the brief's ticket into the merge commit; it does

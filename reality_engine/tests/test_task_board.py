@@ -330,3 +330,11 @@ def test_export_writes_both_files_into_one_sheet(tmp_path):
     sheet = openpyxl.load_workbook(target).active
     assert [cell.value for cell in sheet[1]][0] == "id"
     assert sheet.max_row == 3
+
+
+def test_advisory_lint_never_blocks_a_commit():
+    """Legacy rows without why/close_when are reported by lint but doc_gate's structural lint ignores them."""
+    from reality_engine.scripts import task_board as tb
+    root = Path(__file__).resolve().parents[2]
+    structural = tb.lint_problems(root, include_advisory=False)
+    assert not any("missing why" in p or "missing close_when" in p or "not runnable" in p for p in structural)
