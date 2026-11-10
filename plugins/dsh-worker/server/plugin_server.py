@@ -63,7 +63,7 @@ INSTRUCTIONS = (
     "machinery with named db:/gpu/net: resource locks (every job ships disabled; "
     "confirm=true is required), and job_log returns bounded stdout/stderr tails. "
     "Default policy: one mutating worker per workspace/checkout (each worktree has "
-    "its own lock), DeepSeek V4.1 Flash at max effort, Go account 2, no peak-hour "
+    "its own lock), DeepSeek V4.1 Flash at max effort (or model='beam-free', allowed in peak hours), Go account 2, no DeepSeek peak-hour "
     "starts, a 4-hour hard timeout by default, and no secrets in briefs."
 )
 
@@ -177,7 +177,9 @@ def _compact_jobs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     description=(
         "Start one DeepSeek/dsh worker from a complete brief or repo-local task "
         "file. Returns promptly with job_id and persisted status/result paths. "
-        "Pins deepseek-v4.1-flash, max effort, Go account 2, rejects peak starts, "
+        "model defaults to deepseek-v4.1-flash (max effort, peak starts refused); "
+        "model='beam-free' runs Beam on Go (free, allowed in peak hours, msi only). "
+        "Go account 2 by default (account='1' overrides). "
         "requires heartbeat/control capabilities, and allows one mutating worker "
         "per workspace (the main checkout and each worktree have their own lock). "
         "The per-job control token is persisted DPAPI-encrypted for this Windows "
@@ -262,6 +264,7 @@ def start_worker(
     host: str = "msi",
     dbs: list[str] | None = None,
     account: str | None = None,
+    model: str | None = None,
 ) -> dict[str, Any]:
     return _safe(
         lambda: _get_manager().start_worker(
@@ -292,6 +295,7 @@ def start_worker(
             host=host,
             dbs=dbs,
             account=account,
+            model=model,
         )
     )
 

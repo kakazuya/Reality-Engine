@@ -64,6 +64,14 @@ SERVER_VERSION = "0.4.0"
 SERVER_STARTED_AT = datetime.now(timezone.utc)
 MODEL = "deepseek-v4.1-flash"
 EFFORT = "max"
+# Models start_worker accepts (Shivam 10 Nov: Beam is the peak-hours worker and
+# may build code too).  peak_refused=True keeps the DeepSeek peak-hour start
+# refusal; Beam is free on Go and is not refused in peak hours (the harness
+# itself refuses only DeepSeek models in peak).  effort None = the model's own.
+WORKER_MODELS: dict[str, dict[str, Any]] = {
+    MODEL: {"effort": EFFORT, "peak_refused": True},
+    "beam-free": {"effort": None, "peak_refused": False},
+}
 ACCOUNT = "2"
 KEY_ENV = "OPENCODE_GO_API_KEY_2"
 # account -> key env (the harness uses the same map); account 2 stays the default.
@@ -755,7 +763,9 @@ class Manager:
             )
 
     # ------------------------------------------------------------- provider
-    def _provider_session(self, job_id: str, key_env: str = KEY_ENV) -> str | None:
+    def _provider_session(
+        self, job_id: str, key_env: str = KEY_ENV, model: str = MODEL
+    ) -> str | None:
         """This job's stable OpenCode routing/cache identity (T-069).
 
         The job id is part of the id, so every worker gets its own session; the
@@ -768,7 +778,7 @@ class Manager:
                 return None
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-            return module.worker_session_id(job_id, MODEL, key_env)
+            return module.worker_session_id(job_id, model, key_env)
         except Exception:
             return None
 
@@ -1120,7 +1130,14 @@ class Manager:
         host: str = "msi",
         dbs: list[str] | None = None,
         account: str | None = None,
+        model: str | None = None,
     ) -> dict[str, Any]:
+        model = MODEL if model is None else model
+        if model not in WORKER_MODELS:
+            raise PluginError(
+                "model_invalid", f"model must be one of {tuple(WORKER_MODELS)}"
+            )
+        model_effort = WORKER_MODELS[model]["effort"]
         if not isinstance(use_worktree, bool):
             raise PluginError("worktree_flag_invalid", "use_worktree must be true or false")
         if not isinstance(small_fix, bool):
@@ -1150,14 +1167,15 @@ class Manager:
                 f"test_cmd must be a non-empty command of at most {MAX_TEST_CMD_CHARS} chars",
             )
         now = self.config.now()
-        if is_peak(now):
+        peak_refused = bool(WORKER_MODELS[model]["peak_refused"])
+        if peak_refused and is_peak(now):
             self._log_refusal("start_gate_peak", "peak_hours")
             raise PluginError(
                 "peak_hours",
                 "DeepSeek worker starts are refused during peak hours "
                 "(Mon-Fri 06:30-09:30 and 11:30-15:30 IST)",
             )
-        if is_peak(now + timedelta(seconds=PEAK_START_MARGIN_SECONDS)):
+        if peak_refused and is_peak(now + timedelta(seconds=PEAK_START_MARGIN_SECONDS)):
             # The harness re-checks the real clock when it starts; a start at
             # 06:29:59 could be refused by the launcher a moment later and
             # surface as a launcher failure instead of a clear refusal.
@@ -1201,6 +1219,11 @@ class Manager:
             # The worker sees only its own tracker row, never the whole board.
             text = f"{text.rstrip()}\n\n== Your ticket ==\n{ticket_row}\n"
         brief_first_line = _first_line(text)
+        if host == "hp" and model != MODEL:
+            raise PluginError(
+                "model_not_supported_on_hp",
+                f"host='hp' runs only {MODEL}; start {model} on host='msi'",
+            )
         if host == "hp":
             # HP jobs keep their own launcher, peak refusal and lease-like hard
             # stop (hp_worker.start); none of the MSI worktree/lock machinery
@@ -1486,7 +1509,7 @@ class Manager:
                 "--job-id",
                 job_id,
                 "--model",
-                MODEL,
+                model,
                 "--task-file",
                 paths["brief"],
                 "--out-file",
@@ -1511,7 +1534,7 @@ class Manager:
             # it is the real limit, while the supervisor renews the lease.
             argv += ["--timeout", str(hard_timeout_seconds)]
 
-            provider_session = self._provider_session(job_id, msi_key_env)
+            provider_session = self._provider_session(job_id, msi_key_env, model)
             owner_id = secrets.token_hex(16)
             if provider_session is None:
                 warnings.append("provider_session_unavailable: could not import go_session.py")
@@ -1572,8 +1595,8 @@ class Manager:
                 "writes": write_dbs,
                 "write_roots": write_roots,
                 "resource_locks": data_locks,
-                "model": MODEL,
-                "effort": EFFORT,
+                "model": model,
+                "effort": model_effort,
                 "account": msi_account,
                 "key_env": msi_key_env,
                 "provider_session": provider_session,
@@ -1699,8 +1722,8 @@ class Manager:
                 "approved_by": approved_by,
                 "confirm_repo_root_write": confirm_repo_root_write,
                 "resource_locks": data_locks,
-                "model": MODEL,
-                "effort": EFFORT,
+                "model": model,
+                "effort": model_effort,
                 "account": msi_account,
                 "provider_session": provider_session,
                 "conversation_id": status.get("conversation_id"),

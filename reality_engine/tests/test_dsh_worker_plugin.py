@@ -331,6 +331,43 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(ctx.exception.code, "ticket_unknown")
         self.assertEqual(ctx.exception.details["ticket"], "T-999")
 
+    def test_beam_model_starts_in_peak_and_is_recorded(self):
+        # Shivam 10 Nov: Beam is the peak-hours worker, code work included.
+        real = (REPO / "reality_engine" / "scripts" / "go_session.py").read_text(encoding="utf-8")
+        (self.root / "reality_engine" / "scripts" / "go_session.py").write_text(real, encoding="utf-8")
+        from reality_engine.scripts.go_session import worker_session_id
+
+        peak_env = dict(self.env)
+        peak_env["DSH_WORKER_FAKE_NOW"] = PEAK
+        manager = core.Manager(core.load_config(peak_env))
+        started = manager.start_worker(
+            brief=self._brief("beam in peak"), workspace=".", permission="read-only",
+            model="beam-free",
+        )
+        self.assertTrue(started["ok"], started)
+        self.assertEqual(started["model"], "beam-free")
+        self.assertIsNone(started["effort"])
+        job = json.loads((Path(started["status_path"]).parent / "job.json").read_text(encoding="utf-8"))
+        self.assertEqual(job["model"], "beam-free")
+        argv = job["launcher"]["argv"]
+        self.assertEqual(argv[argv.index("--model") + 1], "beam-free")
+        self.assertNotIn("--peak-ok", argv)
+        self.assertEqual(
+            job["provider_session"],
+            worker_session_id(started["job_id"], "beam-free", core.KEY_ENV),
+        )
+        self._wait_status(started["job_id"], lambda s: s["final"])
+
+    def test_model_validation_and_hp_beam_refused(self):
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(
+                brief=self._brief("x"), permission="read-only", model="gpt-x")
+        self.assertEqual(ctx.exception.code, "model_invalid")
+        with self.assertRaises(core.PluginError) as ctx:
+            self._manager_instance().start_worker(
+                brief=self._brief("x"), permission="read-only", host="hp", model="beam-free")
+        self.assertEqual(ctx.exception.code, "model_not_supported_on_hp")
+
     def test_start_defaults_argv_and_result(self):
         started = self._manager_instance().start_worker(
             brief=self._brief('Do the fake task'), workspace=".", max_result_bytes=1024

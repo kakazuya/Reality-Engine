@@ -100,8 +100,14 @@ attribution.
 
 ## Start behavior
 
-`start_worker` pins `deepseek-v4.1-flash`, `max`, account 2, and refuses
-Monday-Friday 06:30-09:30 / 11:30-15:30 IST. Exactly one of `brief` or
+`start_worker` defaults to `deepseek-v4.1-flash`, `max`, account 2, and refuses
+DeepSeek starts Monday-Friday 06:30-09:30 / 11:30-15:30 IST. `model` picks one
+of `core.WORKER_MODELS`: `model='beam-free'` (Shivam, 10 Nov: Beam is the
+peak-hours worker, code included) runs Beam on Go through the same harness,
+supervisor, worktree, lease and merge machinery, records `effort: null`, and is
+not refused in peak hours; it is MSI only (`host='hp'` refuses it with
+`model_not_supported_on_hp`), and an unknown model is `model_invalid`. The
+two-code-worker limit counts Beam jobs too. Exactly one of `brief` or
 `task_file` is required. `permission` is **required** on every start
 (`read-only`, `workspace-write` or `danger-full-access`); a start without it is
 refused with `permission_required` and there is no default. Every brief must
