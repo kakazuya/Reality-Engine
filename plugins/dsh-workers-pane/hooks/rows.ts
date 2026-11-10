@@ -742,25 +742,22 @@ export function todayCounts(
   return { finished, failed }
 }
 
-/** One running row's live facts: elapsed, tool calls, idle, lease left, then
- * the token and session facts (the last four show `–` until the job states them). */
+/** One running row's live facts, in Shivam's order (10 Nov): tool calls,
+ * output tokens, cached tokens, idle, elapsed, lease left. Token facts show
+ * `–` until the job states them; no session id, total or rate here. */
 export function rowMeta(row: WorkerRow, now: number): string {
   const bits: string[] = []
+  if (row.metrics !== null) {
+    bits.push(`${row.metrics.toolCalls} tools`)
+    bits.push(`${formatTokens(row.metrics.outputTokens)} out`)
+    bits.push(`${formatTokens(row.metrics.cachedTokens)} cached`)
+  }
+  const idle = idleMinutes(row)
+  if (idle !== null) bits.push(`idle ${idle}m`)
   if (row.startedAt !== null) {
     bits.push(formatLive(Math.max(0, now - row.startedAt)))
   }
-  if (row.metrics !== null) bits.push(`${row.metrics.toolCalls} tools`)
-  const idle = idleMinutes(row)
-  if (idle !== null) bits.push(`idle ${idle}m`)
   if (row.leaseMs !== null) bits.push(`lease ${formatLease(row.leaseMs)}`)
-  if (row.metrics !== null) {
-    bits.push(
-      row.providerSession === null ? '–' : row.providerSession.slice(0, 8),
-    )
-    bits.push(`${formatTokens(row.metrics.totalTokens)} total`)
-    bits.push(`${formatTokens(row.metrics.cachedTokens)} cached`)
-    bits.push(`${formatRate(row.metrics.tokensPerSecond)} t/s`)
-  }
   return bits.join(' · ')
 }
 

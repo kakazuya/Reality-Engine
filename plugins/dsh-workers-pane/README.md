@@ -72,12 +72,9 @@ loads of one mod register every hook twice.
   grey. Chips carry dark text on the bright fill so they stay readable.
 - **Band**: one line per running job above the prompt, on the terminal, the
   desktop and the mobile app; hidden when nothing runs and while a survey holds
-  the band. Each line keeps the live facts — elapsed, tool calls, idle, lease
-  left — then adds the job's stable session id (the first 8 characters of
-  `job.json`'s `provider_session`, the `x-opencode-session` routing id), the
-  summed total tokens, the summed cached (cache-read) tokens and the median
-  tokens per second: `20m 00s · 4 tools · idle 5m · lease 1h40 left · 80f552ec
-  · 101k total · 50k cached · 41 t/s`. The title truncates first when the band is
+  the band. Each line shows, in this order (Shivam, 10 Nov 2026): tool calls, output tokens, cached
+  (cache-read) tokens, idle minutes, elapsed time and lease left: `4 tools · 3.6k out · 50k cached · idle 5m
+  · 20m 00s · lease 1h40 left`. No session id, total tokens or rate on this line (the detail card keeps them). The title truncates first when the band is
   narrow. A fact the job has not stated shows `–`, never `0`; jobs written
   before these fields existed still render, with `–` in each new slot.
 - **Detail card**: the tiles are tools, steps, `output` (the output-token count

@@ -508,7 +508,7 @@ test('the mobile summary lists live rows with elapsed, tools, idle and lease', (
 
   expect(text).toContain('**DeepSeek workers** — 2 running · 1 stalled')
   expect(text).toContain(
-    '- ● **Fix the resource watchdog** — 20m 00s · 4 tools · idle 5m · lease 1h40 left · 80f552ec · 60k total · 29k cached · 41 t/s',
+    '- ● **Fix the resource watchdog** — 4 tools · 3.6k out · 29k cached · idle 5m · 20m 00s · lease 1h40 left',
   )
   expect(text).toContain('- ◐ **Chunk every FY26 annual report**')
   expect(text).toContain('idle 35m')
@@ -529,10 +529,10 @@ test('row meta and live rows agree with the pane', () => {
     STALLED_ID,
   ])
   expect(rowMeta(rowFor(RUNNING_ID, true), NOW)).toBe(
-    '20m 00s · 4 tools · idle 5m · lease 1h40 left · 80f552ec · 60k total · 29k cached · 41 t/s',
+    '4 tools · 3.6k out · 29k cached · idle 5m · 20m 00s · lease 1h40 left',
   )
   expect(rowMeta(rowFor(DATA_RUNNING_ID), NOW)).toBe(
-    '5m 00s · idle 5m · lease 1h30 left',
+    'idle 5m · 5m 00s · lease 1h30 left',
   )
 })
 
@@ -558,7 +558,7 @@ test('a job that states nothing new shows dashes, never zero', () => {
   expect(row.providerSession).toBeNull()
   expect(row.dshSessionId).toBeNull()
   expect(rowMeta(row, NOW)).toBe(
-    '20m 00s · 4 tools · idle 5m · lease 1h40 left · – · – total · – cached · – t/s',
+    '4 tools · 3.6k out · – cached · idle 5m · 20m 00s · lease 1h40 left',
   )
 })
 

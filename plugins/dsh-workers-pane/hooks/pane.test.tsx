@@ -621,10 +621,11 @@ test(
       expect(texts).toContain('20m 00s')
       expect(texts).toContain('idle 5m')
       expect(texts).toContain('1h40 left')
-      expect(texts).toContain('80f552ec')
-      expect(texts).toContain('101k total')
+      expect(texts).toContain('3.6k out')
       expect(texts).toContain('50k cached')
-      expect(texts).toContain('41 t/s')
+      expect(texts).not.toContain('80f552ec')
+      expect(texts).not.toContain('total')
+      expect(texts).not.toContain('t/s')
 
       const glyphs = await band.findAll({ type: 'Text', text: '●' })
       expect(glyphs.length).toBeGreaterThan(0)
@@ -662,7 +663,7 @@ test(
     const text = run.text ?? ''
     expect(text).toContain('**DeepSeek workers** — 2 running · 1 stalled')
     expect(text).toContain(
-      '- ● **Fix the resource watchdog** — 20m 00s · 4 tools · idle 5m · lease 1h40 left · 80f552ec · 101k total · 50k cached · 41 t/s',
+      '- ● **Fix the resource watchdog** — 4 tools · 3.6k out · 50k cached · idle 5m · 20m 00s · lease 1h40 left',
     )
     expect(text).toContain('- ◐ **Chunk every FY26 annual report**')
     expect(text).toContain('lease 10m left')
