@@ -79,6 +79,8 @@ def add(*, section: str, text: str, check: str | None = None, ticket_title: str 
 
         title = (ticket_title or f"Gate for ruling: {rule[:120]}").strip()
         ticket = task_board.add(section="Workspace", title=title, accept=ACCEPT,
+                                why=f"ruling intake: {rule[:200]}",
+                                close_when="standing_rules.xlsx shows a code gate for it",
                                 source="ruling intake", root=root)
     return {"chars_left": char_limit - chars, "lines_left": line_limit - lines,
             "ticket": ticket, "sheet": _regenerate()}

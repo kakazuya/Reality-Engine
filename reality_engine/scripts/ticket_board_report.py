@@ -34,8 +34,8 @@ OUT_DIR = Path(os.environ.get("REALITY_REPORTS_DIR", r"D:\RealityEngine\reports"
 NAME = "ticket_board"
 ORDER = ["Open", "In progress", "Pending a bottleneck", "Closed (resolved)", "Sidelined"]
 RESOLVED = re.compile(r"\b(merged|done|fixed|built)\b", re.I)
-COLS = ["id", "status", "priority", "section", "title", "note", "accept", "from", "opened", "closing", "file"]
-WIDTHS = [8, 22, 8, 22, 80, 50, 50, 18, 12, 24, 18]
+COLS = ["id", "status", "priority", "section", "title", "Why", "Close when", "Owner", "Last change", "Links", "note", "accept", "from", "opened", "closing", "file"]
+WIDTHS = [8, 22, 8, 22, 80, 50, 50, 16, 12, 30, 50, 50, 18, 12, 24, 18]
 
 
 def group(status: str) -> str:
@@ -73,8 +73,10 @@ def rows(root: Path | None = None) -> list[dict]:
     out = []
     for r, f in [(r, task_board.LIVE_RELATIVE) for r in live] + [(r, task_board.DONE_RELATIVE) for r in done]:
         out.append({"id": r.id, "status": r.status, "priority": r.priority, "section": r.section or "",
-                    "title": r.title, "note": note(r.status, r.tail), "accept": r.accept, "from": r.source,
-                    "opened": r.opened, "closing": r.tail, "file": f.as_posix(), "group": group(r.status)})
+                    "title": r.title, "Why": r.why, "Close when": r.close_when, "Owner": r.resolved_owner,
+                    "Last change": r.last_change, "Links": ", ".join(r.links), "note": note(r.status, r.tail),
+                    "accept": r.accept, "from": r.source, "opened": r.opened, "closing": r.tail,
+                    "file": f.as_posix(), "group": group(r.status)})
     return out
 
 
@@ -143,11 +145,14 @@ td.id{{white-space:nowrap;font-weight:600}} .P1{{color:var(--p1);font-weight:600
     out.append("</div>")
     for g in ORDER:
         out.append(f'<h2>{esc(g)} ({len(data[g])})</h2><div class="wrap"><table><tr><th>Ticket</th><th>Status</th>'
-                   '<th>Pri</th><th>Title</th><th>Note</th><th>Accept</th><th>Opened</th></tr>')
+                   '<th>Pri</th><th>Title</th><th>Why</th><th>Close when</th><th>Owner</th><th>Last change</th><th>Links</th><th>Note</th><th>Accept</th><th>Opened</th></tr>')
         for r in data[g]:
             out.append(f'<tr><td class="id">{esc(r["id"])}</td><td>{esc(r["status"].split(" ")[0])}</td>'
                        f'<td class="{esc(r["priority"])}">{esc(r["priority"])}</td><td>{esc(r["title"])}</td>'
-                       f'<td class="mut">{esc(r["note"])}</td><td class="mut">{esc(r["accept"])}</td><td>{esc(r["opened"])}</td></tr>')
+                       f'<td class="mut">{esc(r["Why"])}</td><td class="mut">{esc(r["Close when"])}</td>'
+                       f'<td class="mut">{esc(r["Owner"])}</td><td>{esc(r["Last change"])}</td>'
+                       f'<td class="mut">{esc(r["Links"])}</td><td class="mut">{esc(r["note"])}</td>'
+                       f'<td class="mut">{esc(r["accept"])}</td><td>{esc(r["opened"])}</td></tr>')
         out.append("</table></div>")
     out.append("</body></html>")
     path.write_text("".join(out), encoding="utf-8")
