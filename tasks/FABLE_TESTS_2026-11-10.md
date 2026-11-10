@@ -125,5 +125,9 @@ only; they cannot see a dropped column.
 2. T-178 (no model calls beyond T-177's).
 3. T-180, shaped by what T-178 shows.
 
-DeepSeek runs off-peak only. One heavy build at a time (RAM). Each ticket: a code worker, a separate read-only
+**Model rule (Shivam, 10 Nov night): free models first, DeepSeek only where a free model fails at the job.** Page
+reading and transcription use free models only (Beam, LongCat 2.5, Kilo free models); DeepSeek is never a page reader.
+Code workers and graders run on Beam; a DeepSeek worker is used only after a Beam round fails its independent
+grade, and the review log says so. The one planned DeepSeek use is the answering model in T-179 (480 answers,
+off-peak): the target is defined on that model, so swapping it would change the test. One heavy build at a time (RAM). Each ticket: a code worker, a separate read-only
 grader, Claude's own sample before any result is quoted.
