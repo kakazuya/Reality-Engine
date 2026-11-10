@@ -26,10 +26,8 @@ def _make_fixture(base):
     return base, u8, q12
 
 
-def test_determinism_small_fixture():
-    base = Path("fix_t179")
-    if base.exists():
-        import shutil; shutil.rmtree(base)
+def test_determinism_small_fixture(tmp_path):
+    base = tmp_path / "fix_t179"
     base.mkdir()
     base, u8, q12 = _make_fixture(base)
     rows1 = s.build_sample(
@@ -58,10 +56,8 @@ def test_determinism_small_fixture():
     assert all(v <= 12 for v in c.values())
 
 
-def test_cli_writes_csv():
-    base = Path("fix_t179b")
-    if base.exists():
-        import shutil; shutil.rmtree(base)
+def test_cli_writes_csv(tmp_path):
+    base = tmp_path / "fix_t179b"
     base.mkdir()
     base, u8, q12 = _make_fixture(base)
     out = base / "out"

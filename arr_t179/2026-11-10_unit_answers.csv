@@ -1,2 +1,0 @@
-﻿run_id,qid,symbol,use,kind,question,reframed_question,as_of,answer,grade,error,root_cause,fix,source_if_missing,tools,sources,calls,calls_by_tool,first_call_ts,last_call_ts,sql_calls,tool_seconds,wall_seconds
-t,r1,DLF,,,q1,,,a,right,,,,,,[],1,"{""sql"": 1}",1794333963.8779626,1794333964.8779626,1,1.0,1.0

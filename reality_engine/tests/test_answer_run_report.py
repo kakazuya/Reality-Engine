@@ -37,8 +37,8 @@ def test_bad_grade_or_cause_is_refused(tmp_path):
         ar.load(run)
 
 
-def test_call_log_columns():
-    base = __import__("pathlib").Path("arr_t179")
+def test_call_log_columns(tmp_path):
+    base = tmp_path / "arr_t179"
     base.mkdir(exist_ok=True)
     run = base / "g.jsonl"
     rows = [
