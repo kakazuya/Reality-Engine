@@ -115,7 +115,8 @@ Weaknesses we already know:
    column on two-level-header tables; only a diff against the previous store found it.
 4. **Small samples.** Precision gates use 40-60 rows per store; a 90% threshold on 40 rows has a wide interval
    (one grader reported 95% CI 67-87% for a 78% point estimate).
-5. **Question sets.** Banks were rewritten per company set; they cover direct, two-step and ripple questions
+5. **Adopted 10 Nov (Shivam), not yet run:** half of each new set's questions is frozen and never drives fixes (T-172, s10 first), and a 20-company exam set (T-173: micro caps, BSE-only, new sectors, sparse filers) gives the reported any-company number. We want your view on whether this is enough.
+6. **Question sets.** Banks were rewritten per company set; they cover direct, two-step and ripple questions
    (pilot10: direct 85%, two-step 77%, ripple 71%), but not all question shapes appear in every set.
 
 ## 7. Live status of the open tickets (updated as they merge)
