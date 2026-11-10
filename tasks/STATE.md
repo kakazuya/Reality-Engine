@@ -13,7 +13,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 - T-160 n10 (AUBANK BALRAMCHIN SRF LT DMART TATAPOWER ICICIGI DIXON JUBLFOOD MCX): agy harvest 20261109T182713Z-4d398312; build `D:/RealityEngine/n10/build.sh` (fetch running). Held audit DONE: 82/106 u8+q12 misses answerable from held docs (`reports/2026-11-10_held_not_queryable_audit.xlsx`) -> T-161..T-166. Bake-off LongCat vs Beam `night_loop/bakeoff_lc_beam` running.
 
-- Grades done 10 Nov 05:00. T-132 r7 Opus unseen: results 9/30, deck 17/30 (self-grade 28/26: too lenient) -> r8 job 20261109T232642Z-2f46dd6f (`tasks/handoff/T-132_r8_brief.md`). T-133 v5 180/200 (v4 177) but Bharti total revenues lost + hidden NULL drops -> v6 job 20261110T000545Z-48a4a082 (`tasks/handoff/T-133_v6_brief.md`). T-132 r8 under Opus grade `t132_r8_grade`. T-161/T-159 merged (b9e58ae5; PILOT3_BLUEPRINT 9m): `docs_collect --measure` = 15 retypes, 0 re-dates -> rebuild p20/u8/q12 docs + transcripts/guidance, restart MCP.
+- Grades done 10 Nov 05:00. T-133 v5 180/200 (v4 177) but Bharti total revenues lost + hidden NULL drops -> v6 job 20261110T000545Z-48a4a082 (`tasks/handoff/T-133_v6_brief.md`). T-132 r8 Opus results 14/30, deck 23/30 but 8 of 99 earlier right rows lost -> r9 job 20261110T001230Z-e86d1257 (`tasks/handoff/T-132_r9_brief.md`). T-161/T-159 merged (b9e58ae5; PILOT3_BLUEPRINT 9m): `docs_collect --measure` = 15 retypes, 0 re-dates -> rebuild p20/u8/q12 docs + transcripts/guidance, restart MCP.
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
