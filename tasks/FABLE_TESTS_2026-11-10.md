@@ -94,6 +94,20 @@ only; they cannot see a dropped column.
   needed SQL: list the missing typed lookups; those become the next tool work.
 - **Accept:** `D:/RealityEngine/reports/2026-11-11_t179_sql_ab.xlsx` + csv (per-run report rule).
 
+**Harness built (T-179, merged 11 Nov; worker's p3ask rewrite replaced by Eagle with a minimal change).**
+`reality_engine/scripts/p3ask.py` logs calls (`--qid`/`--log` or `P3ASK_QID`/`P3ASK_LOG`, given BEFORE the tool name)
+and honours `P3ASK_NO_SQL=1`; `plugins/reality-data/server/server.py` honours `REALITY_DATA_NO_PILOT3_SQL=1`;
+`reality_engine/scripts/sql_ab_sample.py` draws the questions (`--quotas`, `--max-per-company`);
+`reality_engine/scripts/answer_run_report.py` gained `--call-log`.
+- First look (Shivam, 10 Nov night: results by morning): 60 questions, two arms, two runs each = 240 answers:
+  `python -m reality_engine.scripts.sql_ab_sample --out <dir> --quotas 10,20,15,15 --max-per-company 6`.
+  The other 60 run only if the result is borderline.
+- Arm A (SQL available): `python -m reality_engine.scripts.p3ask --db <store.db> --qid <qid> --log <run>.jsonl <tool> k=v`.
+- Arm B (no SQL): the same with `P3ASK_NO_SQL=1` in the worker's environment.
+- Report: `python -m reality_engine.scripts.answer_run_report --run <graded.jsonl> --name t179_sql_ab --call-log <run>.jsonl`
+  (adds calls, calls_by_tool, sql_calls, tool_seconds, wall_seconds per answer).
+- The one earlier timing on record: 37 answers in 41 minutes by one DeepSeek worker (9 Nov), about 1.1 minutes each.
+
 ## 4. T-180: free models transcribing tables, checked by script
 
 - **Hypothesis:** a model that only copies a page's tables into rows, with every row checked by script, beats the

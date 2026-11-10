@@ -35,3 +35,29 @@ def test_bad_grade_or_cause_is_refused(tmp_path):
     run.write_text(json.dumps({"qid": "x", "grade": "maybe"}), encoding="utf-8")
     with pytest.raises(ValueError):
         ar.load(run)
+
+
+def test_call_log_columns():
+    base = __import__("pathlib").Path("arr_t179")
+    base.mkdir(exist_ok=True)
+    run = base / "g.jsonl"
+    rows = [
+        {"run_id": "t", "qid": "r1", "symbol": "DLF", "question": "q1", "answer": "a", "grade": "right",
+         "root_cause": "", "sources": []},
+    ]
+    run.write_text("\n".join(__import__("json").dumps(r) for r in rows), encoding="utf-8")
+    log = base / "calls.jsonl"
+    import time
+    ts = time.time()
+    log.write_text(__import__("json").dumps({"ts_start": ts, "ts_end": ts + 1.0, "seconds": 1.0, "qid": "r1",
+                              "tool": "sql", "args": "{}", "ok": True, "reply bytes": 10}) + "\n",
+                   encoding="utf-8")
+    x, c = ar.write(ar.load(run), "unit", base, call_log=log)
+    wb = openpyxl.load_workbook(x)
+    hdr = [cell.value for cell in wb["Answers"][1]]
+    assert "calls" in hdr
+    assert "wall_seconds" in hdr
+    x2, c2 = ar.write(ar.load(run), "unit2", base)
+    wb2 = openpyxl.load_workbook(x2)
+    hdr2 = [cell.value for cell in wb2["Answers"][1]]
+    assert "calls" not in hdr2

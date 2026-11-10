@@ -18,12 +18,18 @@ each one returns value, unit, the substituted
 formula text and the parsed inputs (``calc_catalog``).
 A value that parses as JSON (numbers, true/false, objects) is passed as that type, otherwise as text.
 Prints the reply as JSON (UTF-8).  Read-only: the lookups open the database read-only.
+
+T-179: ``--qid <id>`` and ``--log <file.jsonl>`` (or env ``P3ASK_QID`` / ``P3ASK_LOG``), given before the tool
+name, append one JSON line per call (ts_start, ts_end, seconds, qid, tool, args cut at 300 chars, ok, rows_returned,
+reply_bytes); logging never changes the reply and never fails the call.  ``P3ASK_NO_SQL=1`` refuses the ``sql``
+tool and leaves it out of the tool list (the no-SQL arm of the answer test).
 """
 from __future__ import annotations
 
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
@@ -38,13 +44,55 @@ def _value(text: str):
         return text
 
 
-def run(db: str, tool: str, args: dict) -> dict:
+def _no_sql() -> bool:
+    return os.environ.get("P3ASK_NO_SQL") == "1"
+
+
+def tools() -> tuple[str, ...]:
+    return tuple(t for t in TOOLS if not (t == "sql" and _no_sql()))
+
+
+def _log_call(log: str, qid: str | None, tool: str, args: dict, reply, ts_start: float, ts_end: float) -> None:
+    """One JSON line per call; any failure here is swallowed so the lookup's reply is never affected."""
+    try:
+        rows = None
+        if isinstance(reply, list):
+            rows = len(reply)
+        elif isinstance(reply, dict):
+            lists = {k: len(v) for k, v in reply.items() if isinstance(v, list)}
+            rows = lists.get("rows", max(lists.values())) if lists else None
+        record = {"ts_start": ts_start, "ts_end": ts_end, "seconds": round(ts_end - ts_start, 4), "qid": qid,
+                  "tool": tool.removeprefix("pilot3_"),
+                  "args": json.dumps(args, ensure_ascii=False, default=str)[:300],
+                  "ok": not (isinstance(reply, dict) and "error" in reply), "rows_returned": rows,
+                  "reply_bytes": len(json.dumps(reply, ensure_ascii=False, default=str).encode("utf-8"))}
+        path = Path(log)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + chr(10))
+    except Exception:
+        pass
+
+
+def run(db: str, tool: str, args: dict, qid: str | None = None, log: str | None = None) -> dict:
+    qid = qid or os.environ.get("P3ASK_QID")
+    log = log or os.environ.get("P3ASK_LOG")
+    ts_start = time.time()
+    reply = _run(db, tool, args)
+    if log:
+        _log_call(log, qid, tool, args, reply, ts_start, time.time())
+    return reply
+
+
+def _run(db: str, tool: str, args: dict) -> dict:
     os.environ["REALITY_PILOT3_DB"] = db
     if str(SERVER) not in sys.path:
         sys.path.insert(0, str(SERVER))
     name = tool.removeprefix("pilot3_")
-    if name not in TOOLS:
-        return {"error": f"unknown tool {tool!r}; choose from {', '.join(TOOLS)}"}
+    if name == "sql" and _no_sql():
+        return {"error": "sql tool is not available in this run; use the typed tools"}
+    if name not in tools():
+        return {"error": f"unknown tool {tool!r}; choose from {', '.join(tools())}"}
     try:
         if name == "calc":
             import calc
@@ -71,10 +119,15 @@ def run(db: str, tool: str, args: dict) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if len(argv) < 3 or argv[0] != "--db":
-        print(__doc__)
+    opts: dict[str, str] = {}
+    while len(argv) >= 2 and argv[0] in ("--db", "--qid", "--log"):
+        opts[argv[0][2:]] = argv[1]
+        argv = argv[2:]
+    if "db" not in opts or not argv:
+        doc = __doc__ or ""
+        print(doc.replace(" ratings sql calc", " ratings calc") if _no_sql() else doc)
         return 2
-    db, tool, rest = argv[1], argv[2], argv[3:]
+    db, tool, rest = opts["db"], argv[0], argv[1:]
     args = {}
     for item in rest:
         key, sep, val = item.partition("=")
@@ -83,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         args[key] = _value(val)
     sys.stdout.reconfigure(encoding="utf-8")
-    print(json.dumps(run(db, tool, args), ensure_ascii=False, default=str, indent=1))
+    print(json.dumps(run(db, tool, args, qid=opts.get('qid'), log=opts.get('log')), ensure_ascii=False, default=str, indent=1))
     return 0
 
 
