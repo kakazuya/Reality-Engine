@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-10 05:00 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 0 tables and 2 of 73 raw folders.
+Generated 2026-11-10 11:14 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 0 tables and 0 of 73 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -221,9 +221,9 @@ Undocumented: 0 tables and 2 of 73 raw folders.
 | deck_real_test300 | 0 | 0.00 | - | yes |
 | decks | 0 | 0.00 | - | yes |
 | decks_full | 0 | 0.00 | - | yes |
-| ETERNAL_site_documents | 0 | 0.00 | - | **undocumented** |
+| ETERNAL_site_documents | 0 | 0.00 | - | yes |
 | fo_bhavcopy | 0 | 0.00 | - | yes |
-| HDFCBANK_site_documents | 0 | 0.00 | - | **undocumented** |
+| HDFCBANK_site_documents | 0 | 0.00 | - | yes |
 | index_constituents | 0 | 0.00 | - | yes |
 | index_history | 0 | 0.00 | - | yes |
 | INFY_site_documents | 0 | 0.00 | - | yes |

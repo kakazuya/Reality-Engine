@@ -12,7 +12,7 @@ New rulings via `ruling add`. `[check]` = code enforces it. Full wording: `docs/
 - Unpublished data (9 Nov): the answer says 'data not found' with what was searched, plus the nearest supporting point labelled as such; graded right when the search holds up.
 
 ## Models and keys
-- DeepSeek on `dsh` at max effort, off-peak only (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST; read the clock yourself); in peak hours workers default to Beam (`beam-free`, free on Go both keys; `run_deepseek_harness --model beam-free`), also off-peak for cheap tasks (10 Nov: Beam beat LongCat 2.5 in the bake-off, 101 vs 94 of 108 checks and ~5x faster; LongCat no longer the default). dsh workers use Go `account='1'` until key 2 resets (7 Nov). Free `beam-free` (both Go keys) may settle KPI rows and guidance sentences scripts cannot, as a separate step; Opus writes that code.
+- DeepSeek on `dsh` at max effort, off-peak only (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST; read the clock yourself); in peak hours workers default to Beam (`beam-free`, free on Go both keys; `run_deepseek_harness --model beam-free`), also off-peak for cheap tasks (10 Nov: Beam beat LongCat 2.5 in the bake-off, 101 vs 94 of 108 checks and ~5x faster; LongCat no longer the default). No headless Opus runs unless Shivam says so (10 Nov): a separate read-only dsh worker grades a branch it did not write. dsh workers use Go `account='1'` until key 2 resets (7 Nov). Free `beam-free` (both Go keys) may settle KPI rows and guidance sentences scripts cannot, as a separate step; Opus writes that code.
 - `agy` runs only `gemini-3.8-flash-medium`, headless with `--dangerously-skip-permissions`. Settled: DeepSeek answers need Opus's help; testing is at universal scale.
 
 ## How we work
