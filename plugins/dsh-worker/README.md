@@ -79,6 +79,27 @@ Each `start_worker` call creates `runtime/jobs/<job_id>/` containing:
 - `baseline.json` — working-tree snapshot at start
 - `cancel.request` — cancellation marker
 
+## Per-worker RAM (T-171)
+
+Code workers no longer start the data-gather MCP server; data jobs and `start_job` data jobs keep it.
+`reality-data` lazy-imports duckdb and caps its SQLite page cache (32 MB) and mmap (64 MB).
+
+| Process in worker tree | Before (MB) | After (MB) |
+|---|---:|---:|
+| dsh node | 230 | 230 |
+| sandbox + subprocess node | 130 | 130 |
+| reality-data MCP | 210 | ~120 |
+| code-tools MCP | 77 | 77 |
+| data-gather MCP | 76 | 0 (code workers) |
+| harness + supervisor python | 70 | 70 |
+| **Total** | **~793** | **~627** |
+
+Steps 1-2 leave ~627 MB/worker, above the 450 MB target. Step 3 (one shared reality-data server over MCP
+streamable HTTP on localhost, started once by the supervisor and reused by every worker, per-worker stdio as
+fallback) is not implemented because it needs changes inside dsh itself (node package): the supervisor would
+start `plugins/reality-data/server/server.py --http 127.0.0.1:PORT` once, write that port into the per-run patch
+in place of the stdio command, and workers fall back to stdio when the shared server is unreachable.
+
 `status.json` is written atomically under a per-job OS byte-range lock
 (`.record.lock`), so concurrent MCP server processes cannot interleave
 job-record/lease/steering writes. The MCP server does not keep a private

@@ -65,7 +65,7 @@ def connect() -> sqlite3.Connection:
                             "python -m reality_engine.pilot3.build")
         if _conn is not None:
             _conn.close()
-        _conn = core.connect_ro(path, timeout_s=core.READ_TIMEOUT_S, check_same_thread=False, cache_size_kib=-65536)
+        _conn = core.connect_ro(path, timeout_s=core.READ_TIMEOUT_S, check_same_thread=False, cache_size_kib=-16384)
         _conn.row_factory = sqlite3.Row
         _conn_path = path
         return _conn

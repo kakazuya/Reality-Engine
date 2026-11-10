@@ -98,12 +98,15 @@ KEY_ENV = {"1": "OPENCODE_GO_API_KEY", "2": "OPENCODE_GO_API_KEY_2"}
 
 
 def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, control=None, workspace=None,
-                job_id=None):
+                job_id=None, data_job=False):
     """YAML overlay with this worker's stable session header, optional output cap, and heartbeat plugin.
 
     ``job_id`` is the worker's identity (the plugin passes it as ``--job-id``); a hand run passes the resolved
     ``--out-file`` path. Both the header and the status metadata come from ``go_session.worker_session_id``, the
     same function the plugin calls (T-069).
+
+    Code workers do not start the data-gather MCP server (saves ~76 MB per worker);
+    pass ``data_job=True`` (or ``--data-job`` on the CLI) to keep it for data jobs.
     """
     if model in REASONING:
         efforts = "\n".join(f"              {e}: {e}" for e in EFFORTS)
@@ -139,6 +142,8 @@ def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, cont
             patch += f"        followupWaitSeconds: {float(followup_wait):g}\n"
     if workspace is not None and Path(workspace).resolve() != REPO.resolve():
         patch += code_tools_patch(workspace)
+    if not data_job:
+        patch += "- id: mcp-data-gather\n  disabled: true\n"
     return patch
 
 
@@ -214,6 +219,8 @@ def main():
     ap.add_argument("--probe-base-url", help="localhost-only audit proxy; requires --smoke-test")
     ap.add_argument("--extra-patch", help="YAML patch fragment appended after the generated overlay "
                                          "(per-host MCP servers for a worker outside this checkout)")
+    ap.add_argument("--data-job", action="store_true",
+                    help="keep the data-gather MCP server enabled (data jobs only; code workers skip it)")
     a = ap.parse_args()
 
     model, _, effort = a.model.partition("~")
@@ -305,7 +312,8 @@ def main():
         extra = "\n" + Path(a.extra_patch).read_text(encoding="utf-8")
     with tempfile.NamedTemporaryFile("w", suffix=".yml", delete=False, encoding="utf-8") as f:
         f.write(build_patch(model, effort, key_env, a.max_output_tokens, base_url, patch_info,
-                                workspace=a.cwd, job_id=session_job(a.job_id, out)) + extra)
+                                workspace=a.cwd, job_id=session_job(a.job_id, out),
+                                data_job=a.data_job) + extra)
         patch = f.name
     t0 = time.time()
     try:

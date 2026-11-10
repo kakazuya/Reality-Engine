@@ -14,7 +14,7 @@ class HarnessControlsTests(unittest.TestCase):
         self.assertIn('thinkingFormat: deepseek', patch)
         self.assertIn(BASE_URL, patch)
         self.assertNotIn('maxRetries: 0', patch)
-        self.assertNotIn('disabled: true', patch)
+        self.assertIn('- id: mcp-data-gather\n  disabled: true', patch)
 
     def test_capped_probe_disables_auxiliary_title_request(self):
         patch = build_patch('deepseek-v4.1-flash', 'off', 'OPENCODE_GO_API_KEY_2', 128,

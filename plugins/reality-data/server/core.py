@@ -29,10 +29,18 @@ import time
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-try:
-    import duckdb  # type: ignore
-except ImportError:  # pragma: no cover - the pinned interpreter has duckdb
-    duckdb = None
+duckdb = None
+
+
+def _duckdb():
+    global duckdb
+    if duckdb is None:
+        try:
+            import duckdb as _duckdb_mod  # type: ignore
+            duckdb = _duckdb_mod
+        except ImportError:  # pragma: no cover - the pinned interpreter has duckdb
+            duckdb = None
+    return duckdb
 
 # ``REALITY_DATA_ROOT`` is the data directory (the search_docs.py contract);
 # ``REALITY_DATA_REPO_ROOT`` is the checkout root.  Both default from this file,
@@ -169,10 +177,11 @@ def connect_duck():
     global _duck_conn
     with _lock:
         if _duck_conn is None:
-            if duckdb is None:
+            _duckdb_mod = _duckdb()
+            if _duckdb_mod is None:
                 raise DataError("duckdb_missing", "duckdb is not installed for this interpreter")
             path = snapshot_path()
-            _duck_conn = duckdb.connect(str(path), read_only=True)
+            _duck_conn = _duckdb_mod.connect(str(path), read_only=True)
         return _duck_conn
 
 
@@ -185,9 +194,9 @@ def connect_sqlite(key: str):
         if not path.exists():
             raise DataError("db_missing", f"{key} database missing: {path}")
         con = connect_ro(path, timeout_s=READ_TIMEOUT_S, check_same_thread=False,
-                         cache_size_kib=-131072)
+                         cache_size_kib=-32768)
         con.row_factory = sqlite3.Row
-        for pragma in ("PRAGMA busy_timeout=30000", "PRAGMA mmap_size=268435456"):
+        for pragma in ("PRAGMA busy_timeout=30000", "PRAGMA mmap_size=67108864"):
             try:
                 con.execute(pragma)
             except sqlite3.DatabaseError:
@@ -1332,7 +1341,10 @@ def sql(query: str, db: str = "truth", limit: int = 200, timeout_seconds: float 
     if key == DUCK_KEY:
         # A dedicated read-only connection keeps a slow escape-hatch query away
         # from the warm catalog/price connection.
-        con = duckdb.connect(str(snapshot_path()), read_only=True)
+        _duckdb_mod = _duckdb()
+        if _duckdb_mod is None:
+            raise DataError("duckdb_missing", "duckdb is not installed for this interpreter")
+        con = _duckdb_mod.connect(str(snapshot_path()), read_only=True)
         timer = threading.Timer(timeout_seconds, con.interrupt)
         timer.daemon = True
         timer.start()
