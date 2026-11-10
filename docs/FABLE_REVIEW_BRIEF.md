@@ -121,13 +121,13 @@ Weaknesses we already know:
 
 ## 7. Live status of the open tickets (updated as they merge)
 
-Last update: 10 Nov 2026, 20:35 IST.
+Last update: 10 Nov 2026, 20:45 IST.
 
 | Ticket | What | State | Latest independent measurement |
 |---|---|---|---|
 | T-166 | Guidance: only management's own targets | **Merged** (fc1aca12) | 0 targets lost, 1 junk of 27 added; open: 3 wrong speaker names, a volume target keyed as revenue growth |
 | T-133 v8.1 | Label map, live KPI leaf matching | **Merged** | 199/200 sample; 0 stored right rows lost; ~470 junk cells removed |
-| T-164 | Call statements: entities, topics, whole answer turns | Round 7 done, under independent review | r7 worker: entity 91.8/88.9% u8, 88.6/93.9% q12; topic 88.9-93.2%; NGC 36/38; Virupaksha found; 9 calls gain management statements a misread participant block had dropped. r6 independent: entity 78.1/84.2%, topic 82.0/81.4% |
+| T-164 | Call statements: entities, topics, whole answer turns | Round 8 running | r7 independent: 0 statements lost; entity 82.5% u8, 89.8% q12; topics 88.5% / 97.1%; NGC 36/38, Virupaksha found; but 35 IR/moderator/analyst lines promoted to management and the whole-answer lookup breaks its limit across calls |
 | T-163 | Segment / business-line / subsidiary table | Round 5 running | r4: u8 90.0%, q12 67.5% (pre-final), 12/14 audit questions |
 | T-132 | v2 table cells | **Paused after round 12** for this review | r12 (worker's own measure): strict 47/60; 9 of 40 sampled earlier-right r10 cells still lost; replay 179/179; a parent-by-indentation rule broke 6 graded parents and was reverted. r11 independent: 41/60, 27 of 100 sampled right cells lost. Twelve rounds of layout rules have not converged: see question 1 |
 | CHOLAFIN KPI | Sentence extractor: impact ratios, prior-year values, segment figures | Tests pass; 4-store rebuild diff pending | u8 rebuild: 2 wrong removed, 4 corrected, 0 right lost |
