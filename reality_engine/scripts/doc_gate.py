@@ -75,7 +75,7 @@ def tracker_problem(staged: list[str], root: Path | None = None) -> str | None:
         sys.path.insert(0, str(root))
     from reality_engine.scripts import task_board
 
-    problems = task_board.lint_problems(root)
+    problems = task_board.lint_problems(root, include_advisory=False)
     return "tracker lint failed: " + "; ".join(problems[:10]) if problems else None
 
 

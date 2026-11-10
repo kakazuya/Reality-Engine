@@ -33,7 +33,8 @@ Budget: *tool calls before the first edit (default 15 when the Evidence is compl
 time. "No paid calls" when true.*
 
 Ticket: *the row this work closes: `Ticket: T-014`, or `No-ticket: <reason>` when no open row fits. An unknown
-T-number is refused with `ticket_unknown`; add the row first with `python -m reality_engine.scripts.task_board add`.*
+T-number is refused with `ticket_unknown`; add the row first with `python -m reality_engine.scripts.task_board
+add --section <section> --title "<title>" --why "<date and source>" --close-when "<check>" --accept "<runnable command>"`.*
 
 ## Small fixes
 

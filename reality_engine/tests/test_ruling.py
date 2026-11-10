@@ -69,7 +69,9 @@ def test_a_rule_without_a_check_opens_a_gate_ticket(root):
     row = next(item for item in live if item.id == "T-001")
     assert row.section == "Workspace"
     assert row.title == "Gate for ruling: Close every branch in 24 hours."
-    assert row.accept == "standing_rules.xlsx shows a code gate for it"
+    assert row.accept == "Shivam: standing_rules.xlsx shows a code gate for it"
+    assert row.close_when == "standing_rules.xlsx shows a code gate for it"
+    assert row.why.startswith("ruling add on "), row.why
     assert row.source == "ruling intake"
 
 

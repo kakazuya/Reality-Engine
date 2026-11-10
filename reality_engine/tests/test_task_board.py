@@ -1,6 +1,7 @@
 """The ticket tracker: ids, rows, lint, card, the done gate and the commit gate."""
 from __future__ import annotations
 
+import datetime
 import shutil
 import subprocess
 import sys
@@ -26,11 +27,30 @@ def tmp_path():
     remove_tree(path)
 
 
+WHY = "the 30 Oct 2026 run exited 1 before the board reached the finish"
+CLOSE_WHEN = "the named check passes and lint is clean"
+
+
 def _row(row_id="T-001", status="OPEN", priority="P2", title="a ticket",
-         accept="python -c pass", source="test", opened="2026-10-30", tail=""):
+         accept="python -c pass", source="test", opened=None, tail=""):
     line = (f"- {row_id} | {status} | {priority} | {title} | accept: {accept} | "
-            f"from: {source} | opened {opened}")
+            f"from: {source} | opened {opened or datetime.date.today().isoformat()}")
     return f"{line} | {tail}" if tail else line
+
+
+def _obj(row_id="T-001", status="OPEN", priority="P2", title="a ticket",
+         accept="python -c pass", source="test", opened=None, tail="", section="Data",
+         why=WHY, close_when=CLOSE_WHEN):
+    """A row in the jsonl sidecar, which is where why/close_when/links/history live."""
+    opened = opened or datetime.date.today().isoformat()
+    return task_board.Row(row_id, status, priority, title, accept, source, opened,
+                          tail=tail, section=section, why=why, close_when=close_when,
+                          history=[{"when": opened, "who": "test", "from": "", "to": status,
+                                    "reason": "fixture"}])
+
+
+def _saved(root: Path, *rows):
+    task_board._save_all(root, list(rows))
 
 
 def _board(root: Path, rows: dict[str, list[str]] | None = None, done: list[str] | None = None) -> Path:
@@ -52,8 +72,9 @@ def _exit(code: int) -> str:
 
 
 def test_add_allocates_max_plus_one_inside_the_section(tmp_path):
-    _board(tmp_path, {"Data": [_row("T-004")]}, done=[_row("T-009", "DONE", tail="done abcdef1 2026-10-30")])
-    new_id = task_board.add(section="Data", title="next", accept=_exit(0), root=tmp_path)
+    _saved(tmp_path, _obj("T-004"), _obj("T-009", "DONE", tail="done abcdef1 2026-10-30", section=""))
+    new_id = task_board.add(section="Data", title="next", accept=_exit(0), why=WHY,
+                            close_when=CLOSE_WHEN, root=tmp_path)
     assert new_id == "T-010", "the id is the maximum across both files plus one"
     live, _done = task_board.load_rows(tmp_path)
     assert [row.id for row in live if row.section == "Data"] == ["T-004", "T-010"]
@@ -67,11 +88,14 @@ def test_add_allocates_max_plus_one_inside_the_section(tmp_path):
 def test_pipes_and_bad_status_are_refused(tmp_path):
     _board(tmp_path)
     with pytest.raises(task_board.BoardError, match="pipe"):
-        task_board.add(section="Data", title="a | b", accept=_exit(0), root=tmp_path)
-    with pytest.raises(task_board.BoardError):
-        task_board.add(section="Nope", title="x", accept=_exit(0), root=tmp_path)
-    with pytest.raises(task_board.BoardError):
-        task_board.add(section="Data", title="x", accept=_exit(0), status="DOING", root=tmp_path)
+        task_board.add(section="Data", title="a | b", accept=_exit(0), why=WHY,
+                       close_when=CLOSE_WHEN, root=tmp_path)
+    with pytest.raises(task_board.BoardError, match="section"):
+        task_board.add(section="Nope", title="x", accept=_exit(0), why=WHY,
+                       close_when=CLOSE_WHEN, root=tmp_path)
+    with pytest.raises(task_board.BoardError, match="status"):
+        task_board.add(section="Data", title="x", accept=_exit(0), status="DOING", why=WHY,
+                       close_when=CLOSE_WHEN, root=tmp_path)
 
 
 def test_two_concurrent_adds_get_different_ids(tmp_path):
@@ -81,7 +105,8 @@ def test_two_concurrent_adds_get_different_ids(tmp_path):
         f"sys.path.insert(0, r'{REPO}'); "
         "from reality_engine.scripts import task_board as tb; "
         f"tb.ROOT = Path(r'{tmp_path}'); "
-        "print(tb.add(section='Data', title=sys.argv[1], accept='x'))"
+        "print(tb.add(section='Data', title=sys.argv[1], accept='python -c pass', "
+        "why='two writers must get different ids', close_when='both ids differ'))"
     )
     with task_board.file_lock(tmp_path):
         children = [
@@ -107,7 +132,7 @@ def test_done_refuses_when_the_accept_command_fails(tmp_path):
 
 
 def test_done_moves_the_row_with_head_hash(tmp_path):
-    _board(tmp_path, {"Data": [_row(accept=_exit(0))]})
+    _saved(tmp_path, _obj(accept=_exit(0)))
     task_board.done("T-001", root=tmp_path)
     live, done = task_board.load_rows(tmp_path)
     assert live == []
@@ -131,6 +156,86 @@ def test_drop_needs_a_reason(tmp_path):
     task_board.drop("T-001", "merged into T-002", root=tmp_path)
     live, done = task_board.load_rows(tmp_path)
     assert live == [] and done[0].status == "DROPPED merged into T-002"
+
+
+def _days_ago(days: int) -> str:
+    return (datetime.date.today() - datetime.timedelta(days=days)).isoformat()
+
+
+def test_add_requires_why_and_close_when(tmp_path):
+    _board(tmp_path)
+    with pytest.raises(task_board.BoardError, match="why"):
+        task_board.add(section="Data", title="x", accept=_exit(0), close_when=CLOSE_WHEN,
+                       root=tmp_path)
+    with pytest.raises(task_board.BoardError, match="why"):
+        task_board.add(section="Data", title="x", accept=_exit(0), why="too short",
+                       close_when=CLOSE_WHEN, root=tmp_path)
+    with pytest.raises(task_board.BoardError, match="close_when"):
+        task_board.add(section="Data", title="x", accept=_exit(0), why=WHY, root=tmp_path)
+
+
+def test_add_refuses_an_accept_that_cannot_run(tmp_path):
+    _board(tmp_path)
+    with pytest.raises(task_board.BoardError, match="not runnable"):
+        task_board.add(section="Data", title="x", why=WHY, close_when=CLOSE_WHEN,
+                       accept="reports/ list of 10 rows", root=tmp_path)
+    with pytest.raises(task_board.BoardError, match="not runnable"):
+        task_board.add(section="Data", title="x", why=WHY, close_when=CLOSE_WHEN,
+                       accept="python -m pytest reality_engine/tests/test_missing.py -q",
+                       root=tmp_path)
+    assert task_board.add(section="Data", title="x", why=WHY, close_when=CLOSE_WHEN,
+                          accept="Shivam: Shivam reads the report", root=tmp_path) == "T-001"
+    named = tmp_path / "reality_engine" / "tests" / "test_ok.py"
+    named.parent.mkdir(parents=True)
+    named.write_text("", encoding="utf-8")
+    assert task_board.add(section="Data", title="x", why=WHY, close_when=CLOSE_WHEN,
+                          accept="python -m pytest reality_engine/tests/test_ok.py -q",
+                          root=tmp_path) == "T-002"
+
+
+def test_add_refuses_a_rule_like_title(tmp_path):
+    _board(tmp_path)
+    with pytest.raises(task_board.BoardError, match="ruling add"):
+        task_board.add(section="Data", title="Every worker must file a ticket",
+                       accept=_exit(0), why=WHY, close_when=CLOSE_WHEN, root=tmp_path)
+    assert task_board.add(section="Data", title="file the missing ticket",
+                          accept=_exit(0), why=WHY, close_when=CLOSE_WHEN,
+                          root=tmp_path) == "T-001"
+
+
+def test_close_records_the_merge_commit(tmp_path):
+    _saved(tmp_path, _obj())
+    task_board.close("T-001", merged="abc1234", root=tmp_path)
+    _live, done = task_board.load_rows(tmp_path)
+    assert done[0].tail.startswith("done abc1234 "), done[0].tail
+    assert any("abc1234" in change["reason"] for change in done[0].history)
+
+
+def test_set_records_history_with_the_reason(tmp_path):
+    _saved(tmp_path, _obj())
+    task_board.set_status("T-001", "doing", "Wolf", reason="round 2 started", root=tmp_path)
+    live, _done = task_board.load_rows(tmp_path)
+    change = live[0].history[-1]
+    assert (change["from"], change["to"], change["reason"]) == ("OPEN", "DOING Wolf", "round 2 started")
+
+
+def test_lint_flags_stale_doing_owner_and_idle_open(tmp_path):
+    _saved(tmp_path, _obj("T-001", "DOING Wolf", opened=_days_ago(2)),
+           _obj("T-002", opened=_days_ago(9)))
+    problems = task_board.lint_problems(tmp_path)
+    assert any("T-001" in p and "24h" in p for p in problems), problems
+    assert any("T-002" in p and "7 days" in p for p in problems), problems
+
+
+def test_lint_flags_missing_fields_and_non_runnable_accept(tmp_path):
+    _saved(tmp_path, _obj("T-001", why="", close_when=""),
+           _obj("T-002", accept="reports/ list of 10 rows"),
+           _obj("T-003", title="Every worker must file a ticket"))
+    problems = task_board.lint_problems(tmp_path)
+    assert any("T-001" in p and "missing why" in p for p in problems), problems
+    assert any("T-001" in p and "missing close_when" in p for p in problems), problems
+    assert any("T-002" in p and "accept not runnable" in p for p in problems), problems
+    assert any("T-003" in p and "ruling add" in p for p in problems), problems
 
 
 def test_lint_catches_each_defect(tmp_path):
@@ -225,3 +330,22 @@ def test_export_writes_both_files_into_one_sheet(tmp_path):
     sheet = openpyxl.load_workbook(target).active
     assert [cell.value for cell in sheet[1]][0] == "id"
     assert sheet.max_row == 3
+
+
+def test_advisory_lint_never_blocks_a_commit():
+    """Legacy rows without why/close_when are reported by lint but doc_gate's structural lint ignores them."""
+    from reality_engine.scripts import task_board as tb
+    root = Path(__file__).resolve().parents[2]
+    structural = tb.lint_problems(root, include_advisory=False)
+    assert not any("missing why" in p or "missing close_when" in p or "not runnable" in p for p in structural)
+
+
+def test_closed_rows_cannot_be_changed_and_owner_clears(tmp_path):
+    """Review fix: a DONE/DROPPED row is not an open row; leaving DOING clears the owner."""
+    from reality_engine.scripts import task_board as tb
+    rows = [tb.parse_row("- T-900 | DROPPED gone | P2 | old | accept: Shivam | from: x | opened 2026-11-01"),
+            tb.parse_row("- T-901 | DOING Eagle | P2 | live | accept: Shivam | from: x | opened 2026-11-01")]
+    import pytest
+    with pytest.raises(tb.BoardError):
+        tb._find(rows, "T-900")
+    assert tb._find(rows, "T-901").id == "T-901"

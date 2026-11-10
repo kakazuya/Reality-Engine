@@ -744,7 +744,7 @@ three names are in the `pilot3_sql` table list in `plugins/reality-data/server/s
 
 **Drive files other machines uploaded (T-126, 8 Nov 2026).** The manifest listed only this laptop's uploads, so files the MSI, the 17 Oct `arch17` upload, `pdfs/`, `D_pdfs/`, `decks/` and `results_pdfs/` put on Drive were invisible to every `RawStore` reader (the fresh6/hold6 stores stopped at March 2024 although 282 of their 308 FY25-FY27 transcripts, decks and annual reports were on Drive). `python -m reality_engine.scripts.drive_index_unlisted --listing-dir <dir> list index [--dry-run]` lists each Drive top with `rclone lsjson -R --hash` (arch17 through `gdrive_ro:`), writes every file to manifest table `drive_file` (drive_path, size, md5, sha256, drive_id, root, rel), and gives each file no `local_file` row names a row `status='on_drive_unlisted'`, `path='drive:<drive path>'`, mapped by `MAP` (`pdfs/`, `D_pdfs/`, `msi_raw/pdfs/`, `arch17/.../pdfs/` -> root `pdfs`; `msi_raw/raw/` -> `raw`; `decks/`, `results_pdfs/` -> `raw/decks/`, `raw/results_pdfs/`); a (root, rel) already served is left alone, and the manifest is backed up first. 8 Nov run: 186,751 Drive files, 85,933 unlisted, 79,421 added, 6,160 same path, 352 unmapped (`hp_raw` tars and other tops). A Drive file the manifest already names can still lack its own path: T-102 matched any Drive copy by md5, so `pdfs/ANANDRATHI/CONCALL_TRANSCRIPT/f.pdf` was recorded only as the Drive copy of `raw/concall_pdfs/<sha>.pdf`, and a reader asking for `D:/RealityEngine/pdfs/ANANDRATHI/...` found nothing (130 of the 170 q12 rows). Every listed file now gets a row for its own mapped (root, rel) unless that key is served; second run added 43,411. `drive_file.sha256` lets a reader find a file by the hash `corporate_documents.sha256_hash` records. Re-run after any other machine uploads. Test `reality_engine/tests/test_drive_index_unlisted.py`. A profile build reads only its own raw `manifest.csv` (`collect_manifest`), so a newer document needs a manifest row too: `collect_manifest` now builds its store from the default roots plus the profile's raw root, so a row may name a file under the old D: PDF pile (`D:/RealityEngine/pdfs/<SYM>/<TYPE>/<file>`) that only Drive holds. 8 Nov q12 build (fresh6 + hold6 companies): 170 FY25-FY27 transcripts, decks and annual reports from `corporate_documents`, matched to Drive by `drive_file.sha256` then file name, were added as rows (`source='corporate_documents'`, bucket from the doc type).
 
-**Shivam's ticket board (8 Nov 2026).** `reality_engine/scripts/ticket_board_report.py` writes `D:\RealityEngine\reports\ticket_board.xlsx` (summary + one sheet per group: Open, In progress, Pending a bottleneck = WAITING/LOOKING, Closed (resolved) = DONE or DROPPED as merged/done/fixed/built, Sidelined = other DROPPED) and the same `ticket_board.html`, from `tasks/TASKS.md` + `tasks/TASKS_DONE.md`. It is Shivam's source of truth, so it is rewritten after every `task_board` add/set/done/drop and by the `post-commit` hook (installed by `doc_gate.py --install`) when a commit on main touches `tasks/TASKS*`. One-way sync; a file open in Excel is reported and retried at the next sync. `REALITY_TICKET_BOARD_SYNC=0` turns it off; `REALITY_REPORTS_DIR` moves it. Test `reality_engine/tests/test_ticket_board_report.py`. Shivam retired the 3-7 Nov reports on 8 Nov (answer checks, model-vs-store, dig, second read, re-ask, embedding, OCR, night-loop, doc-identity scans, database inventory): they are no longer in `D:\RealityEngine\reports`; copies are on `gdrive:InfoDiffusion_archive/reports/retired_2026-11-08/` under the same names.
+**Shivam's ticket board (10 Nov 2026 rework).** `reality_engine/scripts/ticket_board_report.py` writes `D:\RealityEngine\reports\ticket_board.xlsx` (summary + one sheet per group: Open, In progress, Pending a bottleneck = WAITING/LOOKING, Closed (resolved) = DONE or DROPPED as merged/done/fixed/built, Sidelined = other DROPPED) and the same `ticket_board.html`, from `tasks/TASKS.md` + `tasks/TASKS_DONE.md`, reading `tasks/tickets.jsonl` for why/close_when/owner/links/history when that sidecar exists (the line format is unchanged; section 3 states the storage choice and why). Columns now include Why, Close when, Owner, Last change, Links. It is Shivam's source of truth, so it is rewritten after every `task_board` add/set/done/drop and by the `post-commit` hook (installed by `doc_gate.py --install`) when a commit on main touches `tasks/TASKS*`. One-way sync; a file open in Excel is reported and retried at the next sync. `REALITY_TICKET_BOARD_SYNC=0` turns it off; `REALITY_REPORTS_DIR` moves it. Test `reality_engine/tests/test_ticket_board_report.py`. Shivam retired the 3-7 Nov reports on 8 Nov (answer checks, model-vs-store, dig, second read, re-ask, embedding, OCR, night-loop, doc-identity scans, database inventory): they are no longer in `D:\RealityEngine\reports`; copies are on `gdrive:InfoDiffusion_archive/reports/retired_2026-11-08/` under the same names.
 
 **Session-start budget (8 Nov 2026).** `load_context.py` reserves the ticket card and the `More state` footer before adding optional STATE sections, and adds the decision-log headings last, only while under `LIMIT` (9,800; Claude Code cuts hook output at 10,000). The rulings and STATE's `Now` / `Next action` always print whole. The two caps (RULINGS 8,000 + STATE 4,000) exceed the hook budget together, so keep the pair under ~9,000 in practice (8 Nov: 6,943 + 2,363).
 
@@ -1060,23 +1060,42 @@ output columns are in `docs/V2_SCHEMA_CONTRACT.md` section 11.
 One board for the sessions and the workers (a worker's brief carries only its own row):
 `tasks/TASKS.md` (open rows, one per line, kept in its section) and `tasks/TASKS_DONE.md` (closed
 rows). The id is the maximum across both files plus one, allocated under the `.tmp/task_board.lock`
-file lock.
+file lock (`file_lock`, one lock around the re-read and the write, so two `add`s never share an id).
+
+Storage (10 Nov 2026 rework): the pipe-separated line in `TASKS.md`/`TASKS_DONE.md` is unchanged, and
+the new fields live in a sidecar, `tasks/tickets.jsonl`, one JSON object per ticket (why, close_when,
+owner, links, history). `TASKS.md` is regenerated from the sidecar after every write; when the sidecar
+is absent the two markdown files are read as before, so existing boards, the hooks, `doc_gate` and
+`load_context.py` keep working and old rows simply have empty why/close_when (lint reports them).
+Chosen over rewriting the rows as blocks because every existing reader (the hook lint, the card, the
+report, the worker start gate) already parses the line format, and a line-diffable JSONL keeps the
+history without bloating the 150-line `TASKS.md` cap.
 
 ```bash
 python -m reality_engine.scripts.task_board card        # <= 600 characters; load_context.py prints it
 python -m reality_engine.scripts.task_board list [--section Data] [--status DOING]
-python -m reality_engine.scripts.task_board add --section Data --title "..." --accept "python -m pytest ... -q"
-python -m reality_engine.scripts.task_board set T-014 DOING Wolf
+python -m reality_engine.scripts.task_board add --section Data --title "..." \
+    --why "the failure or request that opened it, with date and source" \
+    --close-when "the check that closes it" --accept "python -m pytest ... -q" [--links a,b]
+python -m reality_engine.scripts.task_board set T-014 DOING Wolf --reason "why it moved"
 python -m reality_engine.scripts.task_board done T-014  # runs `accept:`; a failure keeps the row open
+python -m reality_engine.scripts.task_board close T-014 --merged <commit>  # merged work, no re-run
 python -m reality_engine.scripts.task_board drop T-014 "reason"
 python -m reality_engine.scripts.task_board export tasks.xlsx
 python -m reality_engine.scripts.task_board lint
 ```
 
-`done` runs the row's `accept:` command (with a timeout; the last 20 lines are printed on failure)
-and moves the row to `TASKS_DONE.md` with HEAD's short hash; an `accept: Shivam` row needs
-`done <id> --shivam`. `lint` reports malformed rows, an id in both files, a DONE/DROPPED row in the
-live file, a done row with no commit hash and a dropped row with no reason.
+`add` requires a `why` of at least 30 characters and a `close_when`; a pipeline-separated field is
+refused, and so is a title that reads as a rule ("always", "never", "every worker must"): those go
+through `ruling add`. `accept` must be a runnable command (a `python`/`pytest`/`make`/`sh` command;
+every named `.py` file must exist) or `Shivam: <what he approves>`. `done` runs the command (with a
+timeout; the last 20 lines are printed on failure) and moves the row to `TASKS_DONE.md` with HEAD's
+short hash; a `Shivam: ...` accept needs `done <id> --shivam`. `close --merged` records the merge
+commit instead of re-running the accept. `set` records each status change in the JSONL history with
+the `--reason` (default "status changed"). `drop` needs its reason. `lint` reports malformed rows, an
+id in both files, a DONE/DROPPED row in the live file, a done row with no commit hash, a dropped row
+with no reason, a missing/short `why`, a missing `close_when`, an accept that cannot run, a rule-like
+title, a DOING owner with no activity for 24 h, and an OPEN row idle for 7 days.
 
 Permissions (`.claude/settings.json`, Shivam 9 Nov 2026): Claude asks only before deleting `tasks/STATE.md`,
 `tasks/TASKS.md` or `tasks/TASKS_DONE.md`; editing them is fine, and worktrees, branches and other files are Claude's call.
@@ -1086,7 +1105,7 @@ Permissions (`.claude/settings.json`, Shivam 9 Nov 2026): Claude asks only befor
 Two gates enforce it, on `main` only; `python reality_engine/scripts/doc_gate.py --install` writes
 both hooks:
 
-- `.git/hooks/pre-commit` lints the board whenever either tracker file is staged, and keeps
+- `.git/hooks/pre-commit` lints the board whenever either tracker file is staged (structural defects only: `lint_problems(include_advisory=False)` in `doc_gate.tracker_problem`; missing why/close_when, non-runnable accepts, rule-like titles and stale rows are advisory, listed by `task_board lint`, never blocking, so legacy rows can be backfilled gradually), and keeps
   `tasks/TASKS.md` at 150 lines or fewer.
 - `.git/hooks/commit-msg` refuses a message whose `T-<digits>` are all absent from both tracker files, or that names none and has no
   `No-ticket: <reason>` line. `merge_worker` puts the brief's ticket into the merge commit; it does
@@ -1123,7 +1142,8 @@ Both are logged to the rule ledger under their gate names. Tests:
 `- <rule> [check: <tag>]` as the last bullet of that `## ` section of `tasks/RULINGS.md`, refuses
 without writing when the file would pass 8,000 characters or 40 lines (printing by how much),
 opens a `Workspace` ticket through `task_board.add` when no `--check` is given (`accept:
-standing_rules.xlsx shows a code gate for it`, `from: ruling intake`), and rewrites the
+Shivam: standing_rules.xlsx shows a code gate for it`, `why: ruling add on <date>: ...`,
+`close_when: standing_rules.xlsx shows a code gate for it`, `from: ruling intake`), and rewrites the
 standing-rules sheet (a locked xlsx prints a warning, never a failed ruling). `ruling list`
 prints the bullet count per section and the characters and lines left. The T-127 gate tags
 registered in `standing_rules_report.CODE_GATES` are `worker_review`, `merge_tests` and
