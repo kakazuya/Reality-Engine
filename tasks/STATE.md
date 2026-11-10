@@ -8,10 +8,10 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `do
 - Rulings 10 Nov: frozen hold-out scoring (T-172, T-173); factor rewards dynamic (T-176); OCR only for textless/jumbled pages (T-175); PIB other languages only without English; policy-to-company impact (T-174).
 
 ## Running (owner: Eagle session; claim_worker in the new session)
-- T-163 r7 (DeepSeek) 20261110T162525Z-3ef5482a, base dsh/20261110T151935Z-315b63b8 (r6: u8 100%, q12 87.5%, 13/14).
+- None. T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) finished 23:20 and is HELD: u8 passes 4 seeds, q12 one seed 85%; zero-loss gate failed (12/21 u8, 14/20 q12 earlier-right rows kept); self-graded only. Shivam to choose r8 or pause with T-132.
 
 ## Next action
-1. Review T-163 r7 above: needs >= 90% on 4 seeds and a clean coverage check, then a grader.
+1. T-163: Shivam's decision on r8 (lost-row list) or pause; Fable's review of the brief was given in session 10 Nov night (not yet written into the brief).
 2. Then rebuild p20/u8/q12 (docs_collect --profile, build --part stores/transcripts/guidance/kpi/segments, one at a time) and restart reality-data MCP so T-161, T-162, T-164, T-165, T-166, v8.1 go live.
 3. CHOLAFIN KPI branch dsh/20261110T104212Z-67ceeb28: run `.tmp/cholafin_kpi/build.py --tree main|branch --stores <one>` in its worktree for q12, p20, pilot10, n10 one at a time when <= 1 worker builds (RAM reaped it once), then grader, then merge.
 4. s10: T-169 website crawler (Beam), build s10 stores, T-172 frozen split, then T-170 baseline with timed answers.
