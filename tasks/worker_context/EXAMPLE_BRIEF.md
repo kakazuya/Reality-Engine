@@ -80,7 +80,7 @@ the watchdog would start anything on this laptop.
 Budget: ≤ 25 tool calls before the first edit; ≤ 120 total; ≤ 60 min wall; $0 paid calls.
 
 No-ticket: the worked example predates the tracker; add its row with
-`python -m reality_engine.scripts.task_board add` and name it with `Ticket: T-<digits>` when the work starts.
+`python -m reality_engine.scripts.task_board add --section Workspace --title "..." --why "<date and source>" --close-when "<check>" --accept "python -m pytest ... -q"` and name it with `Ticket: T-<digits>` when the work starts.
 
 Report format:
 1. What each job is and its new setting.

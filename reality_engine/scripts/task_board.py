@@ -98,7 +98,9 @@ def parse_row(line, *, done_file=False):
     else: raise BoardError("status invalid")
     tail=parts[7] if len(parts)==8 else ""
     if tail and not (DONE_MARK.match(tail) or DROPPED_MARK.match(tail)): raise BoardError("tail")
-    return Row(row_id,status,priority,title,accept[8:].strip(),source[6:].strip(),OPENED.match(opened).group(1),tail)
+    opened_match=OPENED.match(opened)
+    assert opened_match is not None
+    return Row(row_id,status,priority,title,accept[8:].strip(),source[6:].strip(),opened_match.group(1),tail)
 def _load_legacy(root):
     live=[]; section=""
     lp=_path(root,LIVE_RELATIVE)
@@ -177,8 +179,8 @@ def lint_problems(root=None):
         age=None
         try: age=(today-datetime.date.fromisoformat(row.last_change)).days
         except ValueError: age=None
-        if row.word=="DOING" and age is not None and age>1: problems.append(f"{row.id} DOING owned by a session not seen for 24h")
-        if row.word=="OPEN" and age is not None and age>7: problems.append(f"{row.id} OPEN with no activity for 7 days")
+        if row.word=="DOING" and age is not None and age>=1: problems.append(f"{row.id} DOING owned by a session not seen for 24h")
+        if row.word=="OPEN" and age is not None and age>=7: problems.append(f"{row.id} OPEN with no activity for 7 days")
     return problems
 @contextlib.contextmanager
 def file_lock(root=None):
@@ -201,14 +203,15 @@ def _next_id(live,done):
     highest=max((int(row.id[2:]) for row in live+done),default=0)
     return f"T-{highest+1:03d}"
 def add(*,section,title,accept,source="manual",priority="P2",status="OPEN",root=None,
-        why="",close_when="",owner="",links=None,history=None):
+        why="",close_when="",owner="",links=None,history=None,allow_rule_title=False):
     section=_plain(section,"section"); title=_plain(title,"title"); accept=_plain(accept,"accept")
     source=_plain(source,"from"); priority=_plain(priority,"priority")
+    if section not in SECTIONS: raise BoardError(f"section must be one of {', '.join(SECTIONS)}")
     if priority not in PRIORITIES: raise BoardError(f"priority must be one of {', '.join(PRIORITIES)}")
-    if len(why.strip())<30: raise BoardError("why must be at least 30 characters")
-    if not close_when.strip(): raise BoardError("close_when must not be empty")
+    if len(why.strip())<30: raise BoardError("why must be at least 30 characters: name the failure or request that opened it")
+    if not close_when.strip(): raise BoardError("close_when must not be empty: name the check that closes it")
     if not _valid_accept(accept,root): raise BoardError(f"accept is not runnable: {accept}")
-    if _looks_like_rule(title): raise BoardError("title reads as a rule; use 'ruling add'")
+    if _looks_like_rule(title) and not allow_rule_title: raise BoardError("title reads as a rule; use 'ruling add'")
     close_when=_plain(close_when,"close_when"); why=why.strip()
     status=" ".join(_plain(status,"status").split())
     word,_,st_owner=status.partition(" ")
@@ -238,7 +241,7 @@ def set_status(row_id,status,owner=None,reason=None,root=None):
     new=word+(f" {_plain(owner,'owner')}" if (owner or "").strip() else "")
     with file_lock(root):
         rows=_load_all(root); row=_find(rows,row_id); old=row.status; row.status=new
-        if (owner or "").strip(): row.owner=owner.strip()
+        if (owner or "").strip(): row.owner=(owner or "").strip()
         row.history.append({"when":_today(),"who":(owner or "system").strip() or "system","from":old,"to":new,"reason":reason or "status changed"})
         _save_all(root,rows)
 def _head(root): 
@@ -311,7 +314,7 @@ def card(root=None):
 def export(path,root=None):
     from openpyxl import Workbook
     live,done=load_rows(root)
-    wb=Workbook(); sheet=wb.active; sheet.title="Tickets"
+    wb=Workbook(); sheet=wb.active; assert sheet is not None; sheet.title="Tickets"
     sheet.append(["id","status","priority","title","accept","from","opened","closing","section","file","why","close_when","owner","last_change","links"])
     for row in live:
         sheet.append([row.id,row.status,row.priority,row.title,row.accept,row.source,row.opened,row.tail,row.section,LIVE_RELATIVE.as_posix(),row.why,row.close_when,row.resolved_owner,row.last_change,", ".join(row.links)])

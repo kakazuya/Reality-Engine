@@ -15,6 +15,7 @@ rewritten afterwards; a locked Excel file is a warning, never a failed ruling.
 from __future__ import annotations
 
 import argparse
+import datetime
 import os
 import sys
 from pathlib import Path
@@ -23,7 +24,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[2]
 RULINGS = Path("tasks") / "RULINGS.md"
 NAME = RULINGS.as_posix()
-ACCEPT = "standing_rules.xlsx shows a code gate for it"
+ACCEPT = "Shivam: standing_rules.xlsx shows a code gate for it"
+CLOSE_WHEN = "standing_rules.xlsx shows a code gate for it"
 
 
 def _limits() -> tuple[int, int]:
@@ -78,9 +80,10 @@ def add(*, section: str, text: str, check: str | None = None, ticket_title: str 
         from reality_engine.scripts import task_board
 
         title = (ticket_title or f"Gate for ruling: {rule[:120]}").strip()
+        why = (f"ruling add on {datetime.date.today().isoformat()}: '{rule[:120]}' was appended "
+               "to tasks/RULINGS.md without a [check: ...] tag")
         ticket = task_board.add(section="Workspace", title=title, accept=ACCEPT,
-                                why=f"ruling intake: {rule[:200]}",
-                                close_when="standing_rules.xlsx shows a code gate for it",
+                                why=why, close_when=CLOSE_WHEN, allow_rule_title=True,
                                 source="ruling intake", root=root)
     return {"chars_left": char_limit - chars, "lines_left": line_limit - lines,
             "ticket": ticket, "sheet": _regenerate()}
