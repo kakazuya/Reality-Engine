@@ -96,7 +96,7 @@ stored rows.
 
 1. T-132 prototype (Wolf) on three pilot20 decks and one results PDF: `table_cell` rows, bbox, base units.
    (Shipped as `reality_engine/v2/table_cells.py` and `build_cells.py`, section 10.)
-2. T-134 period engine and T-135 calc catalog in parallel (two code workers is the cap).
+2. T-134 period engine and T-135 calc catalog in parallel (two code workers was the cap then; 4 since 10 Nov).
 3. T-133 label families for the pilot20 sectors, Opus approval per family (shipped 9 Nov: section 11).
 4. Pilot20 v2 build, same questions as the baseline (`D:/RealityEngine/p20/answers/questions_{P,Q}.json`), grade,
    delta report. Then a fresh unseen set (T-144).

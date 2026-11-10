@@ -1480,6 +1480,7 @@ class PluginTests(unittest.TestCase):
         )
 
     def test_start_refuses_a_third_code_worker(self):
+        self.env["DSH_WORKER_MAX_CODE_WORKERS"] = "2"
         self._running_job("20261108T120000Z-aaaaaaaa", "workspace-write")
         self._running_job("20261108T120001Z-bbbbbbbb", "workspace-write")
         with self.assertRaises(core.PluginError) as ctx:
@@ -1922,7 +1923,12 @@ class PluginTests(unittest.TestCase):
         self.assertEqual(tree["files_changed"], 0)
         self.assertEqual(tree["head"], base_commit)
 
+    def test_default_code_worker_cap_is_four(self):
+        self.assertEqual(core.MAX_CODE_WORKERS, 4)
+        self.assertEqual(self._manager_instance()._max_code_workers(), 4)
+
     def test_worktree_writers_run_in_parallel_and_lock_per_worktree(self):
+        self.env["DSH_WORKER_MAX_CODE_WORKERS"] = "2"
         base_commit = self._init_git_repo()
         self.env["FAKE_LAUNCHER_MODE"] = "slow"
         self.env["FAKE_LAUNCHER_SLEEP"] = "20"

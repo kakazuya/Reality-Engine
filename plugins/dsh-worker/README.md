@@ -133,9 +133,9 @@ worktree writers can run in parallel while two writers in one checkout still
 exclude each other (read-only workers do not take the lock).
 
 Separately, `start_worker` refuses a third **code worker** with
-`code_worker_limit` (Shivam's rule: max 2 code workers at once; T-127). Before
+`code_worker_limit` (Shivam's rule: max `MAX_CODE_WORKERS` = 4 code workers at once since 10 Nov, 2 before; `DSH_WORKER_MAX_CODE_WORKERS` overrides; T-127). Before
 the brief gate it counts running MSI jobs that hold a worktree or a mutating
-permission and refuses when two are already running, returning their job ids in
+permission and refuses when the cap is already running, returning their job ids in
 `running`. `permission="read-only"` starts and `host="hp"` starts are neither
 counted nor refused. The workspace lock above still refuses a second mutating
 worker in the *same* checkout as `workspace_busy`; the limit is what stops a

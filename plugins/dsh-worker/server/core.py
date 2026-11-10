@@ -73,6 +73,8 @@ WORKER_MODELS: dict[str, dict[str, Any]] = {
     "beam-free": {"effort": None, "peak_refused": False},
 }
 ACCOUNT = "2"
+# Shivam 10 Nov: up to 4 code workers on the MSI (was 2 while the browser shared its RAM).
+MAX_CODE_WORKERS = 4
 KEY_ENV = "OPENCODE_GO_API_KEY_2"
 # account -> key env (the harness uses the same map); account 2 stays the default.
 KEY_ENV_BY_ACCOUNT = {"1": "OPENCODE_GO_API_KEY", "2": "OPENCODE_GO_API_KEY_2"}
@@ -1078,10 +1080,19 @@ class Manager:
         }
 
     # ---------------------------------------------------------------- start
+    def _max_code_workers(self) -> int:
+        """The code-worker cap: DSH_WORKER_MAX_CODE_WORKERS, else MAX_CODE_WORKERS."""
+        raw = (self.config.environ or {}).get("DSH_WORKER_MAX_CODE_WORKERS")
+        try:
+            return max(1, int(raw)) if raw else MAX_CODE_WORKERS
+        except ValueError:
+            return MAX_CODE_WORKERS
+
     def _running_code_workers(self) -> list[str]:
         """Jobs that hold a code slot: running, on this host, worktree or mutating permission.
 
-        Shivam's rule: max 2 code workers at once.  Read-only jobs and HP jobs are data or
+        Shivam's rule: max ``MAX_CODE_WORKERS`` code workers at once (2 until 10 Nov; 4 since,
+        when the MSI stopped being used for anything else).  Read-only jobs and HP jobs are data or
         research work, not code, so they are neither counted nor refused.
         """
         # ponytail: check-then-act over the job records, so two starts in the same instant can
@@ -1189,11 +1200,12 @@ class Manager:
             raise PluginError("host_invalid", "host must be 'msi' (default) or 'hp'")
         if host == "msi" and permission != "read-only":
             running = self._running_code_workers()
-            if len(running) >= 2:
+            cap = self._max_code_workers()
+            if len(running) >= cap:
                 self._log_refusal("start_gate_limit", "code_worker_limit", ", ".join(running))
                 raise PluginError(
                     "code_worker_limit",
-                    "two code workers are running (" + ", ".join(running) + "); max 2 code "
+                    f"{len(running)} code workers are running (" + ", ".join(running) + f"); max {cap} code "
                     "workers at once: wait for one to finish, or start it with "
                     "permission='read-only' or on host='hp'",
                     running=running,
