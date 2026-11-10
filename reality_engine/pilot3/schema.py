@@ -229,6 +229,24 @@ def ensure_views(conn: sqlite3.Connection) -> None:
     conn.execute(FIN_QUARTER_CURRENT)
 
 
+# T-164: helpers for transcript statement turn/entity columns and the analyst-question view.
+TRANSCRIPT_STATEMENT_ADDITIONS = (
+    "ALTER TABLE transcript_statement ADD COLUMN entities TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE transcript_statement ADD COLUMN answer_turn INTEGER NOT NULL DEFAULT 0",
+)
+
+
+def ensure_transcript_views(conn: sqlite3.Connection) -> None:
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='transcript_question'").fetchone():
+        return
+    conn.execute("DROP VIEW IF EXISTS analyst_question")
+    conn.execute("CREATE VIEW analyst_question AS SELECT symbol, call_date, analyst, firm, question, "
+                 "topics, entities, call_period, doc_key, answer_turn FROM transcript_question")
+    conn.execute("DROP VIEW IF EXISTS analyst_questions")
+    conn.execute("CREATE VIEW analyst_questions AS SELECT * FROM analyst_question")
+    conn.commit()
+
+
 def _indexes(conn: sqlite3.Connection) -> None:
     for sql in INDEXES:
         table = sql.split(" ON ")[1].split("(")[0]

@@ -24,7 +24,8 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `fin_quarter_printed` (T-057) | every P&L cell a results table prints: current, preceding, year-ago, ytd, prior ytd, last full year, with the check that confirmed it (`xbrl_ok`/`sum_ok`/`repeat_ok`/`unchecked`) | the results PDF's word boxes |
 | `ratio_panel`, `formula` | derived ratios with formula id and input row ids | computed from fin lines |
 | `kpi_series` | company-stated KPIs (order book, AUM, EBITDA/t, NIM, mixes) with period, dimension, `entity` (the company or the named subsidiary, kept apart from `basis`; T-088), quote, page | decks, results, press releases, transcripts |
-| `transcript_statement` | call quotes with speaker, role, topic tags | transcripts |
+| `transcript_statement` | call quotes with speaker, role, topic tags, named entities, answer-turn id (T-164) | transcripts |
+| `transcript_question` (T-164) | analyst questions per call (analyst, firm, question, topics, entities) + `analyst_question` view | transcripts |
 | `guidance` | one row per forward target: metric, period, low/high (NULL for a worded target), unit, revision link | transcripts, decks, results, press releases |
 | `shp_category`, `shp_holder`, `shp_pledge`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings by category with the share count the printed percentage is on, the named holders, the promoter pledge block, share count, dividends, prices, PE/PB/EV | exchange data stores |
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |

@@ -31,10 +31,22 @@ CREATE TABLE IF NOT EXISTS transcript_statement (
   seq INTEGER NOT NULL, speaker TEXT NOT NULL, role TEXT NOT NULL, section TEXT NOT NULL,
   topics TEXT NOT NULL, period_discussed TEXT, period_source TEXT, numbers_json TEXT NOT NULL,
   statement TEXT NOT NULL, quote TEXT NOT NULL, is_fragment INTEGER NOT NULL DEFAULT 0,
+  entities TEXT NOT NULL DEFAULT '', answer_turn INTEGER NOT NULL DEFAULT 0,
   known_at TEXT, known_at_source TEXT, extractor_rule TEXT NOT NULL,
   UNIQUE(symbol, doc_key, page, seq)
 );
 CREATE INDEX IF NOT EXISTS ix_ts_sym_call ON transcript_statement(symbol, call_date);
+CREATE INDEX IF NOT EXISTS ix_ts_turn ON transcript_statement(symbol, doc_key, answer_turn);
+CREATE TABLE IF NOT EXISTS transcript_question (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  symbol TEXT NOT NULL, isin TEXT, doc_key TEXT NOT NULL, call_date TEXT, call_period TEXT, page INTEGER NOT NULL,
+  analyst TEXT, firm TEXT, question TEXT NOT NULL, topics TEXT NOT NULL, entities TEXT NOT NULL DEFAULT '',
+  answer_turn INTEGER NOT NULL DEFAULT 0, known_at TEXT, known_at_source TEXT, extractor_rule TEXT NOT NULL
+);
+CREATE VIEW IF NOT EXISTS analyst_question AS
+  SELECT symbol, call_date, analyst, firm, question, topics, entities, call_period, doc_key, answer_turn
+  FROM transcript_question;
+CREATE VIEW IF NOT EXISTS analyst_questions AS SELECT * FROM analyst_question;
 """
 
 MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December"
@@ -71,7 +83,7 @@ CALL_DATE_RX = re.compile(r"(" + MONTHS + r") (\d{1,2}), (\d{4})")
 ABBR = ("Mr", "Ms", "Mrs", "Dr", "Rs", "No", "vs", "Inc", "Ltd", "approx", "Sr", "Jr", "St", "Co", "Corp", "etc", "i.e", "e.g", "FY", "Q")
 SENT_END_RX = re.compile(r"(?<=[.?!])[\"”’')]*\s+(?=[\"“‘'(A-Z0-9₹$])")
 NOT_SPEAKERS = ("Corporate", "Registered", "Email", "Website", "Phone", "Tel", "Note", "Disclaimer", "Source", "CIN", "Page", "Symbol", "Scrip", "SCRIP", "Sub", "Date", "Ref", "MANAGEMENT", "To", "Dear", "Subject", "Attention")
-QA_START_RX = re.compile(r"question[- ]and[- ]answer|first question|open the floor|q ?& ?a session|take (up )?(the )?questions", re.I)
+QA_START_RX = re.compile(r"question[- ]and[- ]answer|first question|next question|question is from|open the floor|q ?& ?a session|take (up )?(the )?questions", re.I)
 NAME = r"([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})"
 ANALYST_INTRO_RX = re.compile(r"(?i:line of|question (?:is )?from|next question comes from|first question is from)\s+(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)?\s*" + NAME)
 HOST_INTRO_RX = re.compile(r"(?i:over to|hand (?:the )?conference over to|hand it over to)\s+(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)?\s*" + NAME + r"\s+(?i:from|of)\s+")
@@ -355,6 +367,72 @@ def name_marks(text: str, counts: Counter, known: set[str]) -> list[tuple[int, i
     return out
 
 
+# Common words / boilerplate / generic abbreviations that are never a named entity.
+_ENTITY_STOP = {
+    "the", "and", "for", "with", "from", "this", "that", "our", "we", "you", "your", "their", "its",
+    "also", "but", "so", "if", "when", "while", "as", "at", "in", "on", "to", "of", "by", "or", "not",
+    "there", "here", "these", "those", "it", "he", "she", "they", "i", "a", "an",
+    "january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
+    "november", "december", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+    "fy", "q1", "q2", "q3", "q4", "rs", "inr", "usd", "eur", "ceo", "cfo", "md", "coo", "ir", "ebitda",
+    "pat", "eps", "roce", "roe", "crore", "lakh", "million", "billion", "page", "limited", "ltd", "inc",
+    "mr", "ms", "mrs", "dr", "sir", "madam",
+}
+# generic acronyms that are financial/industry shorthand, not company-specific entities
+_GENERIC_ACRONYMS = {"FY", "Q1", "Q2", "Q3", "Q4", "H1", "H2", "INR", "USD", "Rs", "EBITDA", "PAT", "EPS",
+                    "ROCE", "ROE", "CAGR", "YOY", "QOQ", "MOM", "TTM", "LTM", "EBIT", "PBT", "PBIT", "NPC",
+                    "GDP", "CPI", "WPI", "RBI", "GST", "SEBI", "NSE", "BSE", "MCA", "ROC", "PAN", "GSTIN",
+                    "CEO", "CFO", "COO", "MD", "IR", "AGM", "EGM", "NCLT", "NCLAT", "IBC", "IPO", "FPO",
+                    "QIP", "FCCB", "ECB", "FCNR", "NCD", "CP", "OD", "CC", "BG", "LC", "RTGS", "NEFT"}
+
+
+def _candidate_entities(text: str) -> list[str]:
+    out: list[str] = []
+    # acronyms (2+ uppercase letters)
+    for m in re.finditer(r"\b[A-Z]{2,}\b", text):
+        tok = m.group(0)
+        if tok not in _GENERIC_ACRONYMS:
+            out.append(tok)
+    # capitalised multi-word spans (2-4 words)
+    for m in re.finditer(r"\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,3}\b", text):
+        span = m.group(0)
+        first = span.split()[0].lower()
+        if first not in _ENTITY_STOP:
+            out.append(span)
+    # single capitalised proper nouns (recurring ones survive the threshold)
+    for m in re.finditer(r"\b([A-Z][a-z]{3,})\b", text):
+        tok = m.group(1)
+        if tok.lower() in _ENTITY_STOP:
+            continue
+        out.append(tok)
+    return out
+
+
+def _recurring_entities(full_text: str, speaker_names: set[str]) -> set[str]:
+    names_lower = {n.lower() for n in speaker_names}
+    counts: Counter = Counter()
+    for cand in _candidate_entities(full_text):
+        if cand.lower() in names_lower or cand.lower() in _ENTITY_STOP:
+            continue
+        counts[cand] += 1
+    # keep recurring (>=2) OR acronyms appearing once? require >=2 for all to cut noise
+    return {c for c, n in counts.items() if n >= 2}
+
+
+def _entities_in(sentence: str, ent_set: set[str]) -> list[str]:
+    found = []
+    for e in ent_set:
+        if e in sentence:
+            found.append(e)
+    # de-dupe preserving order
+    seen = set()
+    out = []
+    for e in found:
+        if e not in seen:
+            seen.add(e)
+            out.append(e)
+    return out
+
 def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[tuple[int, str]], topics, people, st: dict):
     texts = [t for _, t in pages]
     boiler = boilerplate_lines(texts)
@@ -376,6 +454,10 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
     known = set(p_names) | set(mgmt) | set(analysts)
     segments: list[list] = []
     speaker, section, prev_role = "unknown", "prepared", "moderator"
+    prev_text = ""
+    st.setdefault("questions", [])
+    full_text = "\n".join(t for _, t in pages)
+    ent_set = _recurring_entities(full_text, known)
     for page, raw in pages:
         w = mask_noise(raw, boiler)
         marks = sorted((m.start(1), m.end(), m.group(1)) for rx in (SPEAKER_RX, SPEAKER_MID_RX) for m in rx.finditer(w)
@@ -390,13 +472,20 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
             speaker = name
         for a, b, name in bounds:
             role = role_of(name, sym, people, analysts, mgmt)
-            if role == "unknown" and section == "qa" and prev_role == "moderator":
+            # only introduce an analyst when the moderator's own text names a firm ("from X")
+            if (role == "unknown" and section == "qa" and prev_role == "moderator"
+                    and re.search(r"\bfrom the line of\b", prev_text or "", re.I)
+                    and name.split()[0].lower() in (prev_text or "").lower()):
                 analysts.append(name)
                 role = "analyst"
-            segments.append([page, raw, w, a, b, name, role, section])
+            seg_section = "qa" if role == "analyst" else section
+            segments.append([page, raw, w, a, b, name, role, seg_section])
             if role == "moderator" and QA_START_RX.search(w[a:b]):
                 section = "qa"
+            if role == "analyst":
+                section = "qa"
             prev_role = role
+            prev_text = w[a:b]
     # a media call has no moderator, so QA_START_RX (the moderator's words) never fires: the first participant
     # line from the journalists/analysts list opens the Q&A instead (T-056 review)
     if not any(seg[6] == "moderator" for seg in segments):
@@ -417,16 +506,44 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
             seg[6] = "mgmt"
     seq, started = 0, False
     rows = []
+    turn = 0
+    has_qa = (any(s[6] in ("moderator", "analyst") for s in segments)
+              or len({s[5] for s in segments}) >= 3)
     for page, raw, w, a, b, name, role, section in segments:
-        if role not in ("unknown", "analyst"):
+        if role not in ("unknown", "analyst") or (role == "unknown" and has_qa):
             started = True      # cover letter / headers before the first real speaker are not call content
         if not started:
             continue
-        if role in ("moderator", "analyst"):
+        if role == "moderator":
             continue
-        if role == "unknown":      # cannot tell management from a stray analyst: counted, not stored
-            st["unknown_speakers"][name] += 1
+        if role == "analyst":
+            turn += 1
+            # store the analyst's question as one question row (sentences joined)
+            qsentences = []
+            for (s0, e0) in split_sentences(w[a:b], a):
+                while s0 < e0 and not w[s0].strip():
+                    s0 += 1
+                qq = raw[s0:e0].strip()
+                if len(qq) < 5 or not re.search(r"[A-Za-z]{3}", qq):
+                    continue
+                qsentences.append(" ".join(qq.split()))
+            if qsentences:
+                qtext = " ".join(qsentences)
+                st["questions"].append((sym, None, doc_key, cdate, cperiod, page, name, None, qtext,
+                                       ",".join(tag_topics(topics, sym, qtext)),
+                                       ",".join(_entities_in(qtext, ent_set)), turn, known_at,
+                                       "docs.known_at", "transcript_v1"))
             continue
+        if role == "unknown":
+            # If the call has any Q&A, an unidentified speaker is management the extractor did not
+            # introduce (Virupaksha-type turns); store their answer.  A call with no Q&A at all is
+            # cover-letter / header noise and is only counted.
+            has_qa = (bool(analysts) or any(s[6] == "moderator" for s in segments)
+                      or len({s[5] for s in segments}) >= 3)
+            if not has_qa:
+                st["unknown_speakers"][name] += 1
+                continue
+            role = "mgmt"
         for (s0, e0) in split_sentences(w[a:b], a):
             while s0 < e0 and not w[s0].strip():
                 s0 += 1               # a masked running footer at the segment start ("… Limited 3") is not a quote
@@ -443,13 +560,16 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
             frag = int(not re.search(r"[.?!][\"”’')]*$", q) or q[0].islower())
             rows.append((sym, None, doc_key, cdate, cperiod, page, seq, name, role, section,
                          ",".join(tag_topics(topics, sym, sent)), pdisc, psrc,
-                         json.dumps(numbers_in(sent, cperiod), ensure_ascii=False), sent, q, frag, known_at,
+                         json.dumps(numbers_in(sent, cperiod), ensure_ascii=False), sent, q, frag,
+                         ",".join(_entities_in(sent, ent_set)), turn, known_at,
                          "docs.known_at", "transcript_v1"))
     return rows
 
 
 COLS = ("symbol isin doc_key call_date call_period page seq speaker role section topics period_discussed period_source "
-        "numbers_json statement quote is_fragment known_at known_at_source extractor_rule").split()
+        "numbers_json statement quote is_fragment entities answer_turn known_at known_at_source extractor_rule").split()
+QUESTION_COLS = ("symbol isin doc_key call_date call_period page analyst firm question topics entities answer_turn "
+                 "known_at known_at_source extractor_rule").split()
 
 
 def _transcript_docs(con: sqlite3.Connection, sym: str, sandbox: Path | None):
@@ -484,9 +604,11 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
     con.executescript(SCHEMA)
     stats: dict = {}
     sql = f"INSERT OR IGNORE INTO transcript_statement({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
+    qsql = f"INSERT INTO transcript_question({','.join(QUESTION_COLS)}) VALUES({','.join('?' * len(QUESTION_COLS))})"
     for sym in symbols:
         con.execute("DELETE FROM transcript_statement WHERE symbol=?", (sym,))
-        st = stats[sym] = {"docs": 0, "pages": 0, "needs_ocr": 0, "unknown_speakers": Counter()}
+        con.execute("DELETE FROM transcript_question WHERE symbol=?", (sym,))
+        st = stats[sym] = {"docs": 0, "pages": 0, "needs_ocr": 0, "unknown_speakers": Counter(), "questions": []}
         for index, (doc_key, title, known_at, allp) in enumerate(_transcript_docs(con, sym, sandbox)):
             if limit_docs and index >= limit_docs:
                 break
@@ -496,9 +618,17 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
                 continue
             st["docs"] += 1
             st["pages"] += len(pages)
-            con.executemany(sql, extract_doc(sym, doc_key, title, known_at, pages, topics, people, st))
+            rows = extract_doc(sym, doc_key, title, known_at, pages, topics, people, st)
+            con.executemany(sql, rows)
+            qs = st.get("questions", [])
+            # st["questions"] is list of tuples collected; reset per doc
+            doc_qs = [q for q in qs if q[2] == doc_key]
+            con.executemany(qsql, doc_qs)
+            st["questions"] = [q for q in qs if q[2] != doc_key]
+            st["questions_count"] = len(qs)
         con.commit()
         st["rows"] = con.execute("SELECT count(*) FROM transcript_statement WHERE symbol=?", (sym,)).fetchone()[0]
+        st["questions"] = con.execute("SELECT count(*) FROM transcript_question WHERE symbol=?", (sym,)).fetchone()[0]
         st["unknown_speakers"] = dict(st["unknown_speakers"].most_common(5))
     stats["seconds"] = round(time.time() - t0, 1)
     con.close()
