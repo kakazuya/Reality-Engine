@@ -268,6 +268,7 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
   precision on an 80-row sample (seed 1643) = 100%. 18 audit queries: 17 answered, 1 not answered (APLAPOLLO shared
   services). Tests: transcripts 4, speakers 8, kpi 114 passed (tmp-env errors excluded), profile 8, no-company-literals 7,
   guidance 32, answer_check 25, doc_identity 21, lookups 50 passed + 1 skipped.
+- **T-164 (round 5, 11 Nov 2026).** Entity tags made precise: person names (speakers, participants, direct-address first names), hyphen-split pieces and generic words (AI, IT, Services Industry) dropped; longest span wins per statement; single words only acronyms or recurring non-vocab words. Baseline diff zero. `r5_entity.csv` seed 5164 (80 precision + 40 recall rows). Tests: transcripts 7 passed.
   TATAELXSI, APOLLOHOSP, DLF (window 2023-10-01, compute 2022-07-01; manifest 3,328 rows, 2,111 `ok`):
   `docs_collect` 270 s -> 2,091 docs / 28,566 pages / 218.7 MB; `build --part all` 814.8 s -> 151.2 MB. Parts:
   comparatives 405.6 s, extract 258.3 s, stores 113.8 s (repeat 59.9 s), notes 22.8 s, pages 6.9 s, guidance 5.1 s,

@@ -368,7 +368,7 @@ def name_marks(text: str, counts: Counter, known: set[str]) -> list[tuple[int, i
 
 
 # Finance-metric abbreviations that are NOT entities (they are in the lexicon).
-_FINANCE_METRICS = {"EBITDA", "ROCE", "ROE", "PAT", "PBT", "EPS", "CAGR", "NIM", "AUM", "EBIT", "EBITDAR", "ROA", "ROIC", "ROI", "PE", "PB", "EV", "EPS"}
+_FINANCE_METRICS = {"EBITDA", "ROCE", "ROE", "PAT", "PBT", "EPS", "CAGR", "NIM", "AUM", "EBIT", "EBITDAR", "ROA", "ROIC", "ROI", "PE", "PB", "EV", "EPS", "TTM", "NPA", "NCD", "SIP", "YTD", "ARPU", "ARPP"}
 # Section / slide words that are never entities.
 _SLIDE_WORDS = {"slide", "slides", "section", "agenda", "contents", "overview", "summary", "highlights", "annexure"}
 _LEADING_STOP = {"the", "a", "an", "our", "we", "this", "that", "these", "those", "my", "so", "but", "and", "for", "with", "from", "it", "its", "all", "any"}
@@ -378,6 +378,8 @@ _EN_VOCAB = set()
 _vp = Path(__file__).with_name("en_vocab.txt")
 if _vp.exists():
     _EN_VOCAB.update(x.strip().lower() for x in _vp.read_text(encoding="utf-8").splitlines() if x.strip())
+# Common words that the vocab file misses but are never entities.
+_EN_VOCAB.update({"ai", "it", "perfect", "drink", "fruit", "inaudible", "army", "navy", "salt", "pakistani", "movies", "tv", "moderator", "trailing"})
 def _is_sentence_start(text: str, pos: int) -> bool:
     i = pos - 1
     while i >= 0 and text[i].isspace():
@@ -386,9 +388,23 @@ def _is_sentence_start(text: str, pos: int) -> bool:
         return True
     return text[i] in ".?!:\n"
 
+def _hyphen_piece(text: str, m: re.Match) -> bool:
+    start, end = m.start(), m.end()
+    left = text[max(0, start - 3):start]
+    right = text[end:end + 3]
+    return ("-" in left) or ("-" in right)
+
 
 def _sentences(text: str) -> list[str]:
     return [s for s in re.split(r"(?<=[.?!])\s+", text) if s.strip()]
+
+
+_GENERIC_LAST_WORDS = {"industry", "services", "sector", "market", "business", "group", "company", "limited",
+                       "director", "manager", "officer", "president", "chairman", "secretary", "chief", "outlook",
+                       "relations", "relationship", "head", "conference", "call", "fund", "mutual", "plus", "foundation",
+                       "year"}
+# Title prefixes whose following name is a person (T-164 r5).
+_TITLE_PREFIX_RX = re.compile(r"\b(?:Mr|Ms|Mrs|Dr|Shri)\.?\s+([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})", re.I)
 
 
 def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set[str] | None = None) -> set[str]:
@@ -396,9 +412,17 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
     name_tokens = set()
     for n in speaker_names:
         for t in n.split():
-            name_tokens.add(t.lower().strip(".,"))
+            name_tokens.add(t.lower().strip(".,'’-"))
+    # tokens after Mr./Ms./Mrs./Dr./Shri are person names too
+    for m in _TITLE_PREFIX_RX.finditer(full_text):
+        for t in m.group(1).split():
+            name_tokens.add(t.lower().strip(".,'’-"))
     speaker_lower = {n.lower() for n in speaker_names}
     sentences = _sentences(full_text)
+
+    def _all_hyphen(cand: str) -> bool:
+        occs = list(re.finditer(r"\b" + re.escape(cand) + r"\b", full_text))
+        return bool(occs) and all(_hyphen_piece(full_text, mm) for mm in occs)
 
     result: set[str] = set()
 
@@ -410,39 +434,57 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
             continue
         if span.lower() in speaker_lower:
             continue
-        if all(t in name_tokens for t in toks) and toks:
+        # drop any span that is a speaker name or part of one
+        if any(t in name_tokens for t in toks):
+            continue
+        if any((len(t) >= 4 and (t in nt or nt in t)) for t in toks for nt in name_tokens):
             continue
         if all(t in own_tokens for t in toks) and toks:
             continue
+        # hyphen-split pieces never
+        if _hyphen_piece(full_text, m):
+            continue
+        # drop generic industry phrases whose every word is ordinary vocabulary
+        if all(t in _EN_VOCAB for t in toks) and toks and toks[-1] in _GENERIC_LAST_WORDS:
+            continue
+        # drop spans that are months or date phrases
+        if any(t in {"january","february","march","april","may","june","july","august","september","october","november","december"} for t in toks):
+            continue
         result.add(span)
 
-    # single capitalised words: entity only if they recur in >= 2 statements and have at least
-    # one non-sentence-initial occurrence (sentence-initial alone is never an entity).
+    # single capitalised words (incl. CamelCase): entity only if not in vocab, not a person/company token,
+    # not a hyphen piece, and recurring in >= 2 statements with a non-initial occurrence.
     single_candidates = set()
-    for m in re.finditer(r"\b[A-Z][a-z]{2,}\b", full_text):
-        tok = m.group(0)
-        low = tok.lower()
-        if low in _EN_VOCAB or tok in _FINANCE_METRICS or tok in _PERIOD_WORDS or low in _SLIDE_WORDS or low in _LEADING_STOP:
-            continue
-        if low in name_tokens or low in own_tokens or low in speaker_lower:
-            continue
-        if _is_sentence_start(full_text, m.start()):
-            # only count if some other occurrence is not sentence-initial
-            pass
-        single_candidates.add(tok)
+    for rx in (r"\b[A-Z][a-z]{2,}\b", r"\b[A-Z][a-z]+[A-Z][A-Za-z]*\b"):
+        for m in re.finditer(rx, full_text):
+            tok = m.group(0)
+            low = tok.lower()
+            if low in _EN_VOCAB or tok in _FINANCE_METRICS or tok in _PERIOD_WORDS or low in _SLIDE_WORDS or low in _LEADING_STOP:
+                continue
+            if low in name_tokens or low in own_tokens or low in speaker_lower:
+                continue
+            if any(len(nt) >= 4 and (low in nt or nt in low) for nt in name_tokens):
+                continue
+            if re.search(r"\b" + re.escape(tok) + r"\s*,", full_text):
+                continue
+            if _hyphen_piece(full_text, m):
+                continue
+            single_candidates.add(tok)
     for tok in single_candidates:
-        non_initial = any(not _is_sentence_start(full_text, m.start())
-                          for m in re.finditer(r"\b" + re.escape(tok) + r"\b", full_text))
+        if _all_hyphen(tok):
+            continue
+        non_initial = any(not _is_sentence_start(full_text, mm.start())
+                          for mm in re.finditer(r"\b" + re.escape(tok) + r"\b", full_text))
         if not non_initial:
             continue
         n_stmt = sum(1 for st in sentences if re.search(r"\b" + re.escape(tok) + r"\b", st))
         if n_stmt >= 2:
             result.add(tok)
 
-    # (b) all-caps tokens: entity only if it recurs in >= 2 statements of the call,
-    # is not an ordinary English word, not a finance metric, not a slide/section word.
+    # (b) all-caps tokens of 2-6 letters: entity only if recurring in >= 2 statements,
+    # not an ordinary word, not a finance metric, not a person/company token, not a hyphen piece.
     cap_candidates = set()
-    for m in re.finditer(r"\b[A-Z]{2,}\b", full_text):
+    for m in re.finditer(r"\b[A-Z]{2,6}\b", full_text):
         tok = m.group(0)
         low = tok.lower()
         if low in _EN_VOCAB:
@@ -457,26 +499,16 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
             continue
         if tok.lower() in own_tokens:
             continue
+        if _hyphen_piece(full_text, m):
+            continue
         cap_candidates.add(tok)
 
     for tok in cap_candidates:
-        non_initial = any(not _is_sentence_start(full_text, m.start())
-                          for m in re.finditer(r"\b" + re.escape(tok) + r"\b", full_text))
-        if not non_initial:
+        if _all_hyphen(tok):
             continue
         n_stmt = sum(1 for s in sentences if re.search(r"\b" + re.escape(tok) + r"\b", s))
         if n_stmt >= 2:
             result.add(tok)
-
-    # a single capitalised word that is part of a kept multi-word entity is also an entity
-    # (e.g. "Virupaksha" from "Virupaksha programme"), unless it is an ordinary English word
-    for span in list(result):
-        for tok in span.split():
-            if (tok and tok[0].isupper() and tok.isalpha()
-                    and tok.lower() not in _EN_VOCAB and tok not in _FINANCE_METRICS
-                    and tok not in _PERIOD_WORDS and tok.lower() not in _SLIDE_WORDS
-                    and tok.lower() not in _LEADING_STOP):
-                result.add(tok)
 
     return result
 
@@ -486,14 +518,17 @@ def _entities_in(sentence: str, ent_set: set[str]) -> list[str]:
     for e in ent_set:
         if re.search(r"\b" + re.escape(e) + r"\b", sentence):
             found.append(e)
-    # de-dupe preserving order; prefer longer spans first
+    # de-dupe preserving order; prefer longer spans first; drop spans contained in a longer one
     found.sort(key=len, reverse=True)
     seen = set()
     out = []
     for e in found:
-        if e not in seen:
-            seen.add(e)
-            out.append(e)
+        if e in seen:
+            continue
+        if any(re.search(r"\b" + re.escape(e) + r"\b", sel) for sel in out):
+            continue
+        seen.add(e)
+        out.append(e)
     return out
 
 def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[tuple[int, str]], topics, people, st: dict, company_name: str | None = None):

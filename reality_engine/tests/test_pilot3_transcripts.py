@@ -67,3 +67,39 @@ def test_analyst_question_recorded_with_turn():
     qs = st.get("questions", [])
     assert qs, "no analyst question recorded"
     assert any("safeguard" in (q[8] if isinstance(q, tuple) else q.get("question", "")).lower() for q in qs) or True
+
+
+def test_person_names_not_entities():
+    page1 = ("CORPORATE PARTICIPANTS:\n\nSunil D'Souza\nChief Executive Officer\n\n"
+             "JOURNALISTS\n\nPrashant\nAxis Capital\nNitin Padmanabhan\nEdelweiss\n")
+    page2 = ("Prashant: Could you update?\n"
+             "Sunil D'Souza: Prashant, we are expanding. Mr. Sunil D'Souza oversees. Nitin Padmanabhan Perfect results.\n")
+    rows = _rows([page1, page2])
+    ents = {e.strip() for r in rows for e in (r[17] or "").split(",") if e.strip()}
+    assert not (ents & {"Prashant", "Souza", "Nitin", "Padmanabhan", "Perfect"})
+
+
+def test_longest_span_wins():
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Asha Rao: Azure Cognitive Search is great. Azure and Cognitive too.\n"
+             "Asha Rao: Azure Cognitive Search again.\n")
+    rows = _rows([page1, page2])
+    row = [r for r in rows if "Azure Cognitive Search" in (r[14] or "")][0]
+    ents = [e.strip() for e in (row[17] or "").split(",") if e.strip()]
+    assert "Azure Cognitive Search" in ents
+    assert "Azure" not in ents
+    assert "Cognitive" not in ents
+
+
+def test_single_word_rules():
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Ravi Kumar: Could you update?\n"
+             "Asha Rao: Home Loans are an important product for us. Organic India grows steadily. North America expands rapidly. Ready- to-Drink. AI and IT. BFSI and DOGE are important segments for us.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: Home Loans again are an important product. Organic India again grows. North America again expands. Ready- to-Drink again. AI and IT again. BFSI and DOGE are important segments again.\n")
+    rows = _rows([page1, page2])
+    ents = {e.strip() for r in rows for e in (r[17] or "").split(",") if e.strip()}
+    assert {"Home Loans", "Organic India", "North America", "BFSI", "DOGE"} <= ents
+    assert not (ents & {"Drink", "AI", "IT"})
