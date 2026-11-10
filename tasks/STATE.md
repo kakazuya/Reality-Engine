@@ -10,7 +10,8 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_1235.md`); method `do
 
 ## Running (owner: Eagle)
 - Beam code: T-163 r2 (worktree Eagle-T163-segments), T-164 r5 (Eagle-T164-statements, entity precision only). dsh-worker MCP now takes model='beam-free' (live after /mcp).
-- Queued for DeepSeek after 15:30: T-166 r4 (`tasks/handoff/T-166_r4_brief.md`, base 8e9dbc8; Beam r2/r3 lost 22/14 targets).
+- DeepSeek: T-166 r4 20261110T100247Z-f72d7dc0 (base 8e9dbc8). Next free slot: T-163 r3 on DeepSeek (Beam r2 precision u8 67.5%, q12 45%).
+- Shivam 10 Nov: after T-166, T-164, T-163 merge, Eagle writes a report for Fable 5.2 (measured / not measured / bottleneck / evals / fixes); due tonight. Older-filings fetch deferred until 95% answered.
 
 ## Next action
 1. T-166: r4 on DeepSeek (brief above); merge only with 0 targets lost vs main, <=3 junk.
