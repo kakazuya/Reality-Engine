@@ -8,10 +8,11 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `do
 - Rulings 10 Nov: frozen hold-out scoring (T-172, T-173); factor rewards dynamic (T-176); OCR only for textless/jumbled pages (T-175); PIB other languages only without English; policy-to-company impact (T-174).
 
 ## Running (owner: Eagle session; claim_worker in the new session)
-- None. T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) finished 23:20 and is HELD: u8 passes 4 seeds, q12 one seed 85%; zero-loss gate failed (12/21 u8, 14/20 q12 earlier-right rows kept); self-graded only. Shivam to choose r8 or pause with T-132.
+- T-179 SQL A/B harness (Beam) 20261110T175254Z-55dbf363; T-177 reference-page tool (Beam) 20261110T175308Z-0dd3b9f0. Briefs in `tasks/handoff/`. Both build tools only; Eagle runs the 60 pages and the 480 answers after review.
+- T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) HELD with T-132 until T-180 decides: q12 one seed 85%, zero-loss gate failed, self-graded.
 
 ## Next action
-1. Fable review done (brief section 10). Designs in `tasks/FABLE_TESTS_2026-11-10.md`, waiting for Shivam's OK to run: T-177 reference pages + completeness, T-178 first-build re-key, T-179 raw SQL A/B, T-180 free-model transcription. T-163 held with T-132 until T-180 decides.
+1. Fable tests (`tasks/FABLE_TESTS_2026-11-10.md`, approved by Shivam 10 Nov night; free models first, DeepSeek only after a free model fails): review the two workers above (separate Beam grader each), then run T-177 pages, T-178 re-key, T-179 answers (DeepSeek answerer, off-peak), then T-180.
 2. Then rebuild p20/u8/q12 (docs_collect --profile, build --part stores/transcripts/guidance/kpi/segments, one at a time) and restart reality-data MCP so T-161, T-162, T-164, T-165, T-166, v8.1 go live.
 3. CHOLAFIN KPI branch dsh/20261110T104212Z-67ceeb28: run `.tmp/cholafin_kpi/build.py --tree main|branch --stores <one>` in its worktree for q12, p20, pilot10, n10 one at a time when <= 1 worker builds (RAM reaped it once), then grader, then merge.
 4. s10: T-169 website crawler (Beam), build s10 stores, T-172 frozen split, then T-170 baseline with timed answers.
