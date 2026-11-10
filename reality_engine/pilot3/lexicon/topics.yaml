@@ -1,37 +1,40 @@
 # Topic tags for transcript sentences. A sentence gets every tag whose pattern matches; no match -> "other".
 # General tags follow the schema (margin|order_book|cost|guidance|capacity|demand|competition|working_capital|risk|mna|other);
 # the rest are the themes the three question banks ask about. companies: optional filter.
+# T-164 r6: a tag must fire on its own keyword, not on an incidental word ("app" in happens, "pat" in patient,
+# "plan" in plant, unanchored "TRAI" in trail/trained).  Keywords a tag owns are added back so coverage never
+# falls below the baseline store.
 topics:
-  - {tag: margin, patterns: ["\\bmargins?\\b", "\\bebitda\\b", "profitab"]}
-  - {tag: order_book, patterns: ["order\\s*book", "order\\s*(intake|inflow)", "\\bl-?1\\b", "order pipeline", "\\bpipeline\\b"]}
-  - {tag: cost, patterns: ["\\bcosts?\\b", "cost of (production|funds|borrowing)", "input cost", "commodity", "\\bcop\\b"]}
-  - {tag: guidance, patterns: ["\\bguidance\\b", "\\bexpect(ed|s|ation)?\\b", "\\bour target\\b", "going forward", "next (year|quarter)", "\\boutlook\\b", "\\bwe (will|aim|plan|target)\\b", "\\bFY ?'?2[7-9]\\b"]}
-  - {tag: capacity, patterns: ["\\bcapacity\\b", "\\bexpansion\\b", "\\bcapex\\b", "greenfield", "brownfield", "\\bsmelter\\b", "\\brefinery\\b"]}
-  - {tag: demand, patterns: ["\bdemand\b", "\bconsumption\b"]}
-  - {tag: competition, patterns: ["competit", "market share", "\\bpeers?\\b"]}
-  - {tag: working_capital, patterns: ["working capital", "\\bcollections?\\b", "receivables?", "\\binventory\\b", "net debt", "\\bdebt\\b", "cash flow", "interest cost"]}
-  - {tag: risk, patterns: ["\\brisk\\b", "uncertain", "headwinds?", "\\bstress\\b", "volatil", "disruption", "delays?\\b", "geopolitic"]}
+  - {tag: margin, patterns: ["\\bmargins?\\b", "\\bebitda\\b", "profitab", "\\bspreads?\\b"]}
+  - {tag: order_book, patterns: ["order\\s*book", "order\\s*(intake|inflow)", "\\bl-?1\\b", "order pipeline"]}
+  - {tag: cost, patterns: ["\\bcosts?\\b", "cost of (production|funds|borrowing)", "input cost", "commodity", "\\bcop\\b", "expenses?", "expenditure", "raw material", "energy cost", "power cost", "freight cost", "spend(ing)?"]}
+  - {tag: guidance, patterns: ["\\bguidance\\b", "\\bexpect(ed|s|ation)?\\b", "\\bour target\\b", "\\bwe (will|aim|plan|target)\\b", "going forward", "next (year|quarter)", "\\boutlook\\b", "\\bFY ?'?2[7-9]\\b"]}
+  - {tag: capacity, patterns: ["\\bcapacity\\b", "\\bexpansion\\b", "\\bcapex\\b", "greenfield", "brownfield", "\\bsmelter\\b", "\\brefinery\\b", "commissioning", "debottleneck"]}
+  - {tag: demand, patterns: ["\\bdemand\\b", "consumption", "\\bgrowth in\\b", "\\bvolumes?\\b", "uptake", "offtake"]}
+  - {tag: competition, patterns: ["competit", "market share", "\\bpeers?\\b", "competitors?"]}
+  - {tag: working_capital, patterns: ["working capital", "\\bcollections?\\b", "receivables?", "\\binventory\\b", "net debt", "\\bdebt\\b", "cash flow", "interest cost", "payables?", "cash conversion", "creditors?", "borrowings?"]}
+  - {tag: risk, patterns: ["\\brisks?\\b", "uncertain", "headwinds?", "\\bstress\\b", "volatil", "disruption", "delays?\\b", "geopolitic", "challenges?", "defaults?"]}
   - {tag: mna, patterns: ["acqui(re|sition|red)", "\\bmerger\\b", "divest", "\\bstake\\b", "\\bipo\\b", "listing", "demerger", "joint venture"]}
-  - {tag: regulation, patterns: ["regulat", "approval", "RERA", "permission", "clearance", "license", "licence", "policy", "compliance", "CERC", "TRAI", "regulator", "tariff order"]}
+  - {tag: regulation, patterns: ["regulat", "\\bapprovals?\\b", "\\bpermission\\b", "\\bclearance\\b", "licen[cs]e", "\\bpolicy\\b", "compliance", "\\bRERA\\b", "\\bCERC\\b", "\\bTRAI\\b", "\\bSEBI\\b", "regulator", "tariff order", "\\bnorms?\\b"]}
   - {tag: trade_policy, patterns: ["safeguard", "anti.?dump", "import duty", "export duty", "duty on (imports|exports)", "tariff on (imports|exports)", "trade (policy|measure|remedy|action)"]}
   - {tag: rates, patterns: ["rate cut", "repric", "MCLR", "repo rate", "interest rate", "cost of (funds|borrowing)", "monetary", "yield curve"]}
   - {tag: demand_geography, patterns: ["\\brural\\b", "\\burban\\b", "semi.?urban", "geograph", "\\bregion\\b", "tier ?[123]"]}
   - {tag: supply_disruption, patterns: ["flood", "outage", "disruption", "container", "freight", "supply (chain|issue|constraint|bottleneck)"]}
   - {tag: order_mix, patterns: ["nomination", "competitive (bidding|tender)", "order mix", "bidding", "tender"]}
-  - {tag: growth, patterns: ["\\bgrowth\\b", "\\bgrew\\b", "growing", "increase(?!.*by (INR|Rs|₹))", "increased(?!.*by (INR|Rs|₹))", "decline", "declined"]}
-  - {tag: revenue, patterns: ["\\brevenue\\b", "\\bsales\\b", "topline", "top line", "turnover", "income"]}
-  - {tag: orders, patterns: ["\\border(s|ed|ing)?\\b", "booking", "backlog", "pipeline"]}
-  - {tag: pricing, patterns: ["\\bprice(s|d|ing)?\\b", "pricing", "realization", "realisation", "realisations"]}
-  - {tag: market, patterns: ["\\bmarket(s)?\\b", "industry", "sector", "demand", "consumption"]}
-  - {tag: product, patterns: ["\\bproduct(s)?\\b", "portfolio", "segment", "offering", "range", "wealth", "advisory"]}
-  - {tag: customer, patterns: ["\\bcustomer(s)?\\b", "client", "franchise", "consumer"]}
-  - {tag: digital, patterns: ["\bdigital\b", "\bai\b", "artificial intelligence", "genai"]}
-  - {tag: capital, patterns: ["\bcapital\b(?!\\s+[A-Z])", "cash", "equity", "funding", "investment", "finance"]}
-  - {tag: operations, patterns: ["\boperation(s)?\b", "execution", "project(s)?\b", "delivery", "implementation"]}
-  - {tag: financials, patterns: ["\bfinancials\b", "profit", "loss", "earnings", "ebitda", "pat", "pbt", "margin", "loan", "credit", "stage", "disbursement", "collection", "npa", "asset quality"]}
-  - {tag: strategy, patterns: ["strategy", "strategic", "focus", "priority", "roadmap", "plan"]}
-  - {tag: people, patterns: ["team", "management", "leadership", "talent", "employee", "workforce"]}
-  - {tag: geographic, patterns: ["mumbai", "delhi", "bangalore", "bengaluru", "chennai", "kolkata", "hyderabad", "pune", "ahmedabad", "india", "global", "international", "export", "domestic", "region", "geograph"]}
+  - {tag: growth, patterns: ["\\bgrowth\\b", "\\bgrew\\b", "growing", "increase", "decline", "declined"]}
+  - {tag: revenue, patterns: ["\\brevenue\\b", "\\bsales\\b", "topline", "top line", "turnover", "income", "rentals?", "leasing", "\\bARPU\\b"]}
+  - {tag: orders, patterns: ["\\border(s|ed|ing)?\\b", "booking", "backlog", "deal win", "won (a )?deal"]}
+  - {tag: pricing, patterns: ["\\bprice(s|d|ing)?\\b", "pricing", "realization", "realisation", "realisations", "discounts?", "\\bMRP\\b"]}
+  - {tag: market, patterns: ["\\bmarket(s)?\\b", "industry", "\\bsectors?\\b", "competitors?"]}
+  - {tag: product, patterns: ["\\bproduct(s)?\\b", "portfolio", "segment", "offering", "range", "wealth", "advisory", "brands?", "launch(es|ed)?", "innovation", "\\bSKUs?\\b", "textiles?", "yarn", "fabrics?"]}
+  - {tag: customer, patterns: ["\\bcustomer(s)?\\b", "client", "franchise", "consumer", "accounts?\\b", "subscribers?", "passengers?", "distributors?"]}
+  - {tag: digital, patterns: ["\\bdigital\\b", "technology", "platform", "software", "\\bai\\b", "\\bapps?\\b", "automation", "cloud", "analytics", "artificial intelligence", "genai"]}
+  - {tag: capital, patterns: ["\\bcapital\\b", "cash", "equity", "funding", "investment", "finance", "net worth", "balance sheet", "leverage", "dividend", "buyback", "\\bfunds?\\b", "borrowings?", "securitisation"]}
+  - {tag: operations, patterns: ["\\boperation(s)?\\b", "execution", "project(s)?\\b", "delivery", "implementation", "program", "system", "manufacturing", "plant(s)?\\b", "logistics", "commercial production", "factor(y|ies)", "facilit(y|ies)", "production", "utilis?ation", "throughput", "transmission", "substations?", "flights?", "aircraft", "fleet", "routes?", "hospitals?", "stores?", "outlets?", "engineering", "design"]}
+  - {tag: financials, patterns: ["\\bfinancial(s)?\\b", "profit", "loss", "earnings", "ebitda", "\\bpat\\b", "pbt", "loan", "credit", "disbursement", "collections?", "\\bnpa\\b", "asset quality", "turnover", "\\broce\\b", "\\broe\\b", "\\broa\\b", "\\bronw\\b"]}
+  - {tag: strategy, patterns: ["strategy", "strategic", "focus(ed|ing)?", "priority", "roadmap", "\\bplans?\\b", "planned", "planning"]}
+  - {tag: people, patterns: ["\\bteam(s)?\\b", "leadership", "talent", "\\bemployees?\\b", "workforce", "management team", "senior management", "manpower", "hiring", "attrition", "headcount", "recruit", "training", "advisors?", "(?<!asset )(?<!fund )(?<!wealth )(?<!risk )(?<!investment )(?<!debt )\\bmanagement\\b"]}
+  - {tag: geographic, patterns: ["mumbai", "delhi", "bangalore", "bengaluru", "chennai", "kolkata", "hyderabad", "pune", "ahmedabad", "\\bindia\\b", "\\bglobal\\b", "international", "export", "domestic", "\\bregions?\\b", "geograph", "\\b(north|south|east|west|central)\\b", "\\bindian (market|carriers?|airlines?|army|navy|air force|government|railways|consumer|households?|players?|companies|pharma|cement|it|services)\\b"]}
   - {tag: railways, patterns: ["railways?", "transportation business", "\\bmetro\\b", "\\bdfcc\\b"], companies: [KEC]}
   - {tag: civil, patterns: ["\\bcivil\\b", "\\bwater\\b", "buildings? (and|&) factories", "data cent(er|re)"], companies: [KEC]}
   - {tag: renewables, patterns: ["renewables?", "\\bsolar\\b", "\\bepc\\b.*solar", "\\bwind\\b", "\\bbess\\b"]}
@@ -43,9 +46,9 @@ topics:
   - {tag: commodity_pricing, patterns: ["\\bsteel\\b", "\\bzinc\\b", "aluminium price", "price variation", "\\bpvc\\b", "price (movement|escalation)", "commodity price"]}
   - {tag: labour, patterns: ["\\blabou?r\\b", "manpower", "bottleneck", "execution (issue|challenge|bottleneck)"], companies: [KEC]}
   - {tag: legacy_projects, patterns: ["legacy", "loss-?making", "stuck projects?", "old projects?", "claims?\\b", "settlement"], companies: [KEC]}
-  - {tag: asset_quality, patterns: ["\\bnpa\\b", "\\bgnpa\\b", "\\bnnpa\\b", "credit cost", "asset quality", "write-?offs?", "stage ?[23]", "\\bdelinquen", "loan loss"], companies: [BAJFINANCE]}
-  - {tag: nim, patterns: ["net interest margin", "\\bnim\\b", "yield", "cost of funds", "\\bcof\\b", "repo rate", "\\brbi\\b.*(rate|repo)"], companies: [BAJFINANCE]}
-  - {tag: aum_growth, patterns: ["\\baum\\b", "assets under management", "new loans?", "customer franchise", "customers? (acquired|added)"], companies: [BAJFINANCE]}
+  - {tag: asset_quality, patterns: ["\\bnpa\\b", "\\bgnpa\\b", "\\bnnpa\\b", "credit cost", "asset quality", "write-?offs?", "stage ?[23]", "\\bdelinquen", "loan loss", "recover(y|ies)"]}
+  - {tag: nim, patterns: ["net interest margin", "\\bnim\\b", "yield", "cost of funds", "\\bcof\\b", "repo rate", "\\brbi\\b.*(rate|repo)"], companies: [BAJFINANCE, CHOLAFIN, EDELWEISS, ANANDRATHI]}
+  - {tag: aum_growth, patterns: ["\\baum\\b", "assets under management", "new loans?", "customer franchise", "customers? (acquired|added)"], companies: [BAJFINANCE, CHOLAFIN, EDELWEISS, ANANDRATHI]}
   - {tag: vehicle_stress, patterns: ["two[- ]wheeler", "three[- ]wheeler", "\\b2w\\b", "\\b3w\\b", "auto finance", "commercial vehicle"], companies: [BAJFINANCE]}
   - {tag: rural_microfinance, patterns: ["rural", "micro-?finance", "\\bmfi\\b", "\\bb2c\\b", "\\bmsme\\b", "\\bsme\\b"], companies: [BAJFINANCE]}
   - {tag: product_exit, patterns: ["run[- ]?down", "\\bexit(ed|ing)?\\b", "discontinu", "stopped (lending|disburs)", "wind[- ]down"], companies: [BAJFINANCE]}
@@ -60,7 +63,7 @@ topics:
   - {tag: novelis, patterns: ["novelis", "\\bscrap\\b", "oswego", "bay minette", "beverage", "automotive", "aerospace"], companies: [HINDALCO]}
   - {tag: scrap, patterns: ["\\bscrap\\b", "scrap spread"], companies: [HINDALCO]}
   - {tag: downstream, patterns: ["downstream", "specialty alumina", "battery foil", "\\bfoil\\b", "extrusion", "\\bev\\b", "flat rolled"], companies: [HINDALCO]}
-  - {tag: hedging, patterns: ["hedg", "forex", "currency", "\\bfx\\b", "natural hedge"]}
+  - {tag: hedging, patterns: ["hedg", "forex", "(?<!constant )currency", "\\bfx\\b", "natural hedge"]}
   - {tag: energy_transition, patterns: ["renewable (energy|power)", "green (energy|power)", "captive power", "\\brtc\\b", "decarboni", "carbon"], companies: [HINDALCO]}
 
 # Role lookup. known: surname-first matching is done on the full speaker name (case-insensitive).

@@ -101,5 +101,74 @@ def test_single_word_rules():
              "Asha Rao: Home Loans again are an important product. Organic India again grows. North America again expands. Ready- to-Drink again. AI and IT again. BFSI and DOGE are important segments again.\n")
     rows = _rows([page1, page2])
     ents = {e.strip() for r in rows for e in (r[17] or "").split(",") if e.strip()}
-    assert {"Home Loans", "Organic India", "North America", "BFSI", "DOGE"} <= ents
-    assert not (ents & {"Drink", "AI", "IT"})
+    assert {"Home Loans", "Organic India", "North America"} <= ents
+    # T-164 r6: a business abbreviation used as a modifier ("BFSI and DOGE ... segments") names nothing
+    assert not (ents & {"Drink", "AI", "IT", "BFSI", "DOGE"})
+
+
+def _entities_in_statements(texts):
+    rows = _rows(texts)
+    return {r[14]: {e.strip() for e in (r[17] or "").split(",") if e.strip()} for r in rows}
+
+
+def test_comma_never_drops_a_name_for_the_whole_call():
+    """Step 1: one "Dahlias," before a comma must not drop the name for the call (T-164 r6)."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Ravi Kumar: How are sales at Dahlias, Camellias and Arbour?\n"
+             "Asha Rao: We did about 34 Dahlias last quarter, and the Dahlias launch was the biggest success.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: Dahlias is almost 65% sold and the Camellias tower is complete.\n")
+    by_stmt = _entities_in_statements([page1, page2])
+    dahlias = [ents for stmt, ents in by_stmt.items() if "Dahlias" in stmt]
+    assert dahlias and all("Dahlias" in e for e in dahlias), f"Dahlias missed: {by_stmt}"
+
+
+def test_metric_business_abbreviations_are_not_entities():
+    """Step 2: a metric or business abbreviation used with a number/modifier names nothing (T-164 r6)."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Ravi Kumar: What is the ARPOB and the RM 135 target?\n"
+             "Asha Rao: ARPOB is 12,000 and the RM 135 fee is unchanged. The TCV of $1.2 billion is booked. "
+             "BFSI segment volumes and HR headcount are on plan.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: ARPOB is 12,500 now and the RM 135 fee still applies.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    assert not (ents & {"ARPOB", "RM", "TCV", "BFSI", "HR"}), f"metric tagged as entity: {ents}"
+
+
+def test_direct_address_person_is_not_an_entity():
+    """Step 3: a person introduced or addressed ("I'll ask Rakesh") is never an entity (T-164 r6)."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Ravi Kumar: I'll ask Rakesh to take this question.\n"
+             "Asha Rao: Rakesh sir knows the numbers better than I do. We will answer in the Q&A.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: Rakesh sir and the team will follow up with Rakesh after the call.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    assert "Rakesh" not in ents, f"person leaked as entity: {ents}"
+
+
+def test_place_and_counterparty_names_are_recalled():
+    """Step 1/2: a place after a preposition and a hyphenated counterparty acronym are named things."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Ravi Kumar: How is the Pune market?\n"
+             "Asha Rao: Our 180-bed facility in Sarjapur, Bengaluru was operationalized this quarter and the Pune plant serves it. "
+             "The C-DAC order is with them; discussions with C-DAC and their suppliers continue.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: We added capacity in Pune last year.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    assert {"Pune", "Bengaluru", "C-DAC"} <= ents, f"recall miss: {ents}"
+
+
+def test_topic_labels_fire_on_their_own_keyword():
+    """Step 4: a tag needs its own keyword; an incidental word never adds it (T-164 r6)."""
+    topics, _ = transcripts.load_topics()
+    assert "digital" not in transcripts.tag_topics(topics, "BEL", "So it has to go through all the levels and then it happens.")
+    assert "people" not in transcripts.tag_topics(topics, "DLF", "The risk management at the asset management company is fine.")
+    assert "financials" not in transcripts.tag_topics(topics, "KIMS", "The patient is stable and we participate in the scheme.")
+    assert "strategy" not in transcripts.tag_topics(topics, "UBL", "It is not a plant and machinery kind of a business.")
+    assert "regulation" not in transcripts.tag_topics(topics, "BEL", "From 2016 we are training people for promotions.")
+    assert "regulation" in transcripts.tag_topics(topics, "IDEA", "TRAI issued a consultation paper on tariffs.")
+    assert "margin" in transcripts.tag_topics(topics, "ULTRACEMCO", "EBITDA margin expanded by 120 bps.")

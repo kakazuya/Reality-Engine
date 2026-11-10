@@ -260,15 +260,19 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
 - `build --part all` with 4 OCR dbs: 484 s for 23,558 pages (~2.7 min per company, single process).
 - After the dates + guidance merges: guidance 660 -> 329 rows (KEC 218, BAJFINANCE 52, HINDALCO 59): check recall
   on the next re-answer; kpi_series 38,851; zero Q1FY27 rows from documents known before 2026-04-01.
-- **T-164 (round 3, 11 Nov 2026).** Transcript statements rebuilt for u8 (7 companies, 25,235 statements) and q12
-  (12 companies, 44,166 statements): named entities learned stop-list (cross-symbol >=4 + en_vocab), adjacent
-  capitalised spans joined, answer-turn grouping; `transcript_question` + `analyst_question`/`analyst_questions`
-  views. Topic-tagged 'other' share: u8 72.2% -> 36.2% overall (per company 31.1-39.7%); q12 71.5% -> 37.8% overall
-  (per company 31.1-44.3%). Topic precision on 40 statements/store (seed 1643) = 100% (143/143 topics). Entity
-  precision on an 80-row sample (seed 1643) = 100%. 18 audit queries: 17 answered, 1 not answered (APLAPOLLO shared
-  services). Tests: transcripts 4, speakers 8, kpi 114 passed (tmp-env errors excluded), profile 8, no-company-literals 7,
-  guidance 32, answer_check 25, doc_identity 21, lookups 50 passed + 1 skipped.
-- **T-164 (round 5, 11 Nov 2026).** Entity tags made precise: person names (speakers, participants, direct-address first names), hyphen-split pieces and generic words (AI, IT, Services Industry) dropped; longest span wins per statement; single words only acronyms or recurring non-vocab words. Baseline diff zero. `r5_entity.csv` seed 5164 (80 precision + 40 recall rows). Tests: transcripts 7 passed.
+- **T-164 (round 6, 11 Nov 2026).** Transcript statements rebuilt for u8 (7 companies, 24,329 statements) and q12
+  (12 companies, 39,261 statements), identical to a main-code rebuild (0 differences). Entity rules: the comma test is
+  per occurrence (one "Dahlias," no longer drops the name for the whole call); an all-caps token is an entity only with
+  a name cue (org/programme/place noun, possessive, "from/with X", a verb of agency) and never when it is a metric or a
+  generic business abbreviation (lexicon/business_abbrev.txt: BFSI/TCV/ARPOB/RM/SEZ/HR/MLD/NSR/AGR ...) or is used with a number; person names come
+  from participants, colon marks, titles, honorifics and direct address; single names after a preposition or comma, or
+  before a place noun, are kept for recall. Topic rules: every tag fires on its own keyword (anchored TRAI/RERA/CERC,
+  `\bapps?\b`, `\bplans?\b`, `\bpat\b`), the 18 theme tags stay, and generic coverage was widened (expenses, brands,
+  volumes, training, subscribers, transmission, rentals, ROCE ...), with the finance tags widened beyond one company so
+  'other' is 33.6% u8 / 36.2% q12, below the main baseline on all 19 companies. Seed-6164 measurement: entity precision
+  86.4% / 86.4%, topic label precision 90.8% / 89.5%, Dahlias 122/122, Summit Plaza 11/11, Aureva 2/2. Known gap:
+  recall on single-mention names (9 of 9 untagged) and RBI (1/67). Tests: transcripts 12, speakers 8, kpi 114,
+  no-company-literals 7, guidance 32, answer_check 25, doc_identity 21, profile 8, lookups 50 + 1 skipped.
   TATAELXSI, APOLLOHOSP, DLF (window 2023-10-01, compute 2022-07-01; manifest 3,328 rows, 2,111 `ok`):
   `docs_collect` 270 s -> 2,091 docs / 28,566 pages / 218.7 MB; `build --part all` 814.8 s -> 151.2 MB. Parts:
   comparatives 405.6 s, extract 258.3 s, stores 113.8 s (repeat 59.9 s), notes 22.8 s, pages 6.9 s, guidance 5.1 s,

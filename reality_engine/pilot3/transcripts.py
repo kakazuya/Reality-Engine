@@ -368,11 +368,51 @@ def name_marks(text: str, counts: Counter, known: set[str]) -> list[tuple[int, i
 
 
 # Finance-metric abbreviations that are NOT entities (they are in the lexicon).
-_FINANCE_METRICS = {"EBITDA", "ROCE", "ROE", "PAT", "PBT", "EPS", "CAGR", "NIM", "AUM", "EBIT", "EBITDAR", "ROA", "ROIC", "ROI", "PE", "PB", "EV", "EPS", "TTM", "NPA", "NCD", "SIP", "YTD", "ARPU", "ARPP"}
+_FINANCE_METRICS = {"EBITDA", "ROCE", "ROE", "PAT", "PBT", "EPS", "CAGR", "NIM", "AUM", "EBIT", "EBITDAR", "ROA", "ROIC", "ROI", "PE", "PB", "EV", "EPS", "TTM", "NPA", "NCD", "SIP", "YTD", "ARPU", "ARPP", "CAPEX", "OPEX", "WIP"}
 # Section / slide words that are never entities.
 _SLIDE_WORDS = {"slide", "slides", "section", "agenda", "contents", "overview", "summary", "highlights", "annexure"}
-_LEADING_STOP = {"the", "a", "an", "our", "we", "this", "that", "these", "those", "my", "so", "but", "and", "for", "with", "from", "it", "its", "all", "any"}
-_PERIOD_WORDS = {"FY", "Q1", "Q2", "Q3", "Q4"}
+_LEADING_STOP = {"the", "a", "an", "our", "we", "this", "that", "these", "those", "my", "so", "but", "and", "for", "with", "from", "it", "its", "all", "any", "whereas", "whilst", "while", "though", "although", "however", "also", "then", "now", "thus", "hence", "therefore", "yet"}
+_PERIOD_WORDS = {"FY", "Q1", "Q2", "Q3", "Q4", "QOQ", "YOY", "HOH", "MOM", "WOW"}
+# Title words that are not names ("Mr", "Messrs" ...) (T-164 r6).
+_TITLE_WORDS = {"mr", "ms", "mrs", "dr", "shri", "smt", "sr", "jr", "messrs", "late", "sir", "ji", "madam"}
+# Direct address / introduction: the word after these is a person, not an entity ("I'll ask Rakesh") (T-164 r6).
+_PERSON_CUE_RX = re.compile(
+    r"\b(?:ask|asking|asked|over to|thank(?:s| you)?|line of|question (?:is )?from|"
+    r"next question (?:comes )?from|hand (?:it |the call )?over to)\s+"
+    r"(?:(?:Mr|Ms|Mrs|Dr|Shri)\.?\s+)?([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,2})")
+# "Rakesh sir" / "Rawal ji": a person addressed by an honorific, never an entity (T-164 r6).
+_PERSON_HONORIFIC_RX = re.compile(r"\b([A-Z][A-Za-z.'’\-]+)\s+(?:sir|ji|madam)\b", re.I)
+_MONTH_WORDS = {"january", "february", "march", "april", "may", "june", "july", "august", "september",
+                "october", "november", "december", "monday", "tuesday", "wednesday", "thursday", "friday",
+                "saturday", "sunday"}
+# Ordinary business words that are capitalised in headings ("Communications", "Board", "Tier") but name nothing.
+_GENERIC_WORDS = {"board", "tier", "communications", "communication", "offerings", "offering", "segment", "segments",
+                  "management", "office", "unit", "units", "solutions", "systems", "technologies", "services",
+                  "group", "business", "company", "enterprises", "industries", "ventures", "holdings", "division",
+                  "vertical", "verticals", "region", "regions", "operations", "corporate", "executive", "gen",
+                  "fintech", "suite", "avionics", "campus", "integrated", "crore", "crores", "lakh", "lakhs", "million", "billion", "rupees", "rupee", "dollars", "inr", "usd", "additionally", "further", "overall", "similarly", "accordingly", "financial", "performance", "earnings", "page", "responsibility", "national", "awards", "award", "winner", "hub", "cloud", "genai", "iot", "aif", "amc", "sez", "lifesciences", "greenfield", "ministry", "media", "communication", "quarterly", "annual", "offices"}
+# Nouns a named organisation / programme / project / counterparty is followed by (T-164 r6).  An all-caps
+# token before one of these names something; a metric or business abbreviation is never followed by them.
+_NAMED_NOUNS = ("ltd", "limited", "bank", "finance", "corporation", "corp", "company", "authority", "ministry",
+                "department", "board", "commission", "court", "council", "institute", "university", "foundation",
+                "trust", "scheme", "mission", "programme", "project", "act", "guidelines", "norms", "circular",
+                "notification", "tender", "contract", "order", "orders", "plant", "refinery", "smelter", "mine",
+                "airport", "port", "expressway", "metro", "grid", "corridor", "park", "zone", "phase", "tower",
+                "plaza", "mall", "hospital", "committee", "regulator", "amendment", "deadline", "approval",
+                "clearance", "licen[cs]e", "permission", "party", "parties", "act\\.", "report")
+# Verbs only an organisation / programme / named thing performs (a metric never does).
+_AGENCY_RX = (r"has|have|had|said|says|told|approved|awarded|signed|announced|issued|notified|sanctioned|"
+              r"cleared|won|bagged|supplies|supplied|launched|plans|proposes|develops|manufactures|operates|"
+              r"invited|directed|participated|conducted|visited|urged|released|floated|intends|declared|"
+              r"recommended|seeks|sought|lodged|filed|imposed|waived|extended")
+# "from X" / "with X": X is the object of the preposition, i.e. a named counterparty (T-164 r6).
+_OBJ_PREPS = ("from", "with", "by", "at", "per", "to", "against", "including", "like", "under", "through")
+# "in Pune" / "from C-DAC": a single capitalised word after a locative preposition is a place/counterparty name.
+_LOC_CUE_RX = re.compile(r"\b(?:in|at|from|to|near|across|via|within|outside|into)\s+$")
+# Place nouns a named city/site heads ("Bengaluru facility", "Pune market").
+_LOC_NOUNS = ("facility", "facilities", "plant", "plants", "site", "city", "market", "branch", "branches", "hospital",
+              "hospitals", "office", "campus", "region", "unit", "units", "stores?", "centre", "center", "airport",
+              "court", "hub", "refinery", "smelter", "mine", "terminal", "port", "corridor", "expressway")
 # Ordinary English vocabulary (lowercase) loaded from en_vocab.txt.
 _EN_VOCAB = set()
 _vp = Path(__file__).with_name("en_vocab.txt")
@@ -380,6 +420,9 @@ if _vp.exists():
     _EN_VOCAB.update(x.strip().lower() for x in _vp.read_text(encoding="utf-8").splitlines() if x.strip())
 # Common words that the vocab file misses but are never entities.
 _EN_VOCAB.update({"ai", "it", "perfect", "drink", "fruit", "inaudible", "army", "navy", "salt", "pakistani", "movies", "tv", "moderator", "trailing"})
+# Demonyms, interjections and calendar words: ordinary language, never a named thing (T-164 r6).
+_EN_VOCAB.update({"chinese", "indian", "japanese", "american", "european", "british", "german", "korean",
+                  "russian", "arab", "asian", "african", "god", "diwali", "covid"})
 def _is_sentence_start(text: str, pos: int) -> bool:
     i = pos - 1
     while i >= 0 and text[i].isspace():
@@ -402,9 +445,92 @@ def _sentences(text: str) -> list[str]:
 _GENERIC_LAST_WORDS = {"industry", "services", "sector", "market", "business", "group", "company", "limited",
                        "director", "manager", "officer", "president", "chairman", "secretary", "chief", "outlook",
                        "relations", "relationship", "head", "conference", "call", "fund", "mutual", "plus", "foundation",
-                       "year"}
+                       "year", "board", "campus", "day", "airlines", "sciences", "healthcare", "fintech", "labs",
+                       "office", "meeting", "committee", "department", "division", "unit", "units", "team", "teams", "responsibility", "secretaries", "awards", "performance", "earnings", "page", "media", "communication"}
+# Generic business abbreviations: they label a metric, a segment or a process, never a named thing
+# (T-164 r6 review: ARC, SEZ, TCV, ARPOB, RM ... graded wrong; programme names such as NGC, CSEL, PLI stay).
+# Kept in a lexicon file like en_vocab.txt: an exchange-listed symbol that is also a business term is data, not code.
+_BUSINESS_ABBREV: set[str] = set()
+_bp = Path(__file__).with_name("lexicon") / "business_abbrev.txt"
+if _bp.exists():
+    _BUSINESS_ABBREV.update(x.strip().upper() for x in _bp.read_text(encoding="utf-8").splitlines() if x.strip())
 # Title prefixes whose following name is a person (T-164 r5).
 _TITLE_PREFIX_RX = re.compile(r"\b(?:Mr|Ms|Mrs|Dr|Shri)\.?\s+([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})", re.I)
+
+
+def _windows(text: str, tok: str, positions: list[int]) -> list[str]:
+    """The text around each occurrence, so a per-token test reads a few hundred chars, not the whole call."""
+    return [text[max(0, p - 48):p + len(tok) + 48] for p in positions]
+
+
+def _number_metric(windows: list[str], tok: str) -> bool:
+    """A metric/unit abbreviation is used with a number: "ARPOB 12,000", "TCV of $1.2 billion", "10 MLD",
+    "ARPOB will be around 38,000" - i.e. a number in the same clause (T-164 r6)."""
+    t = re.escape(tok)
+    for w in windows:
+        if re.search(r"\b" + t + r"\b\s*(?:of|at|is|was|were|to|per|stood|reached)?\s*[₹$€£]?\s*\d", w):
+            return True
+        if re.search(r"\d[\d,.]*\s*(?:%|bps)?\s*(?:of\s+)?" + t + r"\b", w):
+            return True
+        if re.search(r"\b" + t + r"\b[^.;:!?]{0,40}\d", w):
+            return True
+    return False
+
+
+def _named_cue(windows: list[str], tok: str) -> bool:
+    """An all-caps token names something only when it is used as a name, not as a business modifier or metric:
+    "with RBI", "HAL has", "DRDO's", "HAL order" - not "BFSI segment", "LAP book", "TCV was" (T-164 r6)."""
+    t = re.escape(tok)
+    head = r"\b" + t + r"(?=\s*(?:[,.;:)!?]|$|\s(?:has|have|had|is|was|were|will|would|can|could|"
+    head += r"should|may|might|must|also|too|as|in|on|of|for|to|with|from|by|at|which|who|that|said|says|told)\b))"
+    for w in windows:
+        if re.search(r"\b" + t + r"\s+(?:" + "|".join(_NAMED_NOUNS) + r")\b", w):
+            return True
+        if re.search(r"\b" + t + r"(?:'s|’s)\b", w):
+            return True
+        if re.search(r"\b(?:" + "|".join(_OBJ_PREPS) + r")\s+(?:the\s+)?" + head, w):
+            return True
+        if re.search(r"\b" + t + r"\s+(?:" + _AGENCY_RX + r")\b", w):
+            return True
+    return False
+
+
+def _strong_cue(windows: list[str], tok: str) -> bool:
+    """Cues a business abbreviation never has: a name noun after it, a possessive, or a verb of agency."""
+    t = re.escape(tok)
+    for w in windows:
+        if re.search(r"\b" + t + r"\s+(?:" + "|".join(_NAMED_NOUNS) + r")\b", w):
+            return True
+        if re.search(r"\b" + t + r"(?:'s|’s)\b", w):
+            return True
+        if re.search(r"\b" + t + r"\s+(?:" + _AGENCY_RX + r")\b", w):
+            return True
+    return False
+
+
+def _modifier_use(windows: list[str], tok: str) -> bool:
+    """More often than not the token is a modifier ("BFSI segment", "LAP book", "SME loans") rather than a name
+    ("with RBI", "HAL has"): a business abbreviation, not an entity (T-164 r6)."""
+    function = {"of", "at", "for", "in", "on", "to", "and", "or", "as", "is", "was", "were", "will", "would",
+                "by", "from", "with", "that", "which", "who", "the", "a", "an", "has", "have", "had", "said",
+                "says", "per", "vs", "versus", "is", "while", "where", "when", "but", "so", "if", "than"}
+    t = re.escape(tok)
+    mod = name = 0
+    for w in windows:
+        mid = w.find(tok)
+        if mid < 0:
+            continue
+        after = w[mid + len(tok):]
+        before = w[:mid]
+        mx = re.match(r"\s+([a-z][a-z\-]+)", after)
+        if mx and mx.group(1) not in function:
+            mod += 1
+        elif after.lstrip().startswith((",", ".", ";", ":", ")", "?", "!")) or re.match(
+                r"\s+(?:has|have|had|is|was|were|will|would|said|says|told|approved|awarded|signed)\b", after):
+            name += 1
+        elif re.search(r"\b(?:from|with|by|at|per|to|under)\s+$", before):
+            name += 1
+    return mod > name
 
 
 def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set[str] | None = None) -> set[str]:
@@ -417,6 +543,12 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
     for m in _TITLE_PREFIX_RX.finditer(full_text):
         for t in m.group(1).split():
             name_tokens.add(t.lower().strip(".,'’-"))
+    # and the person introduced or directly addressed ("over to Rakesh", "I'll ask Prashant") (T-164 r6)
+    for m in _PERSON_CUE_RX.finditer(full_text):
+        for t in m.group(1).split():
+            name_tokens.add(t.lower().strip(".,'’-"))
+    for m in _PERSON_HONORIFIC_RX.finditer(full_text):
+        name_tokens.add(m.group(1).lower().strip(".,'’-"))
     speaker_lower = {n.lower() for n in speaker_names}
     sentences = _sentences(full_text)
 
@@ -424,20 +556,37 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
         occs = list(re.finditer(r"\b" + re.escape(cand) + r"\b", full_text))
         return bool(occs) and all(_hyphen_piece(full_text, mm) for mm in occs)
 
+    def _lowercase_too(span: str) -> bool:
+        """The same phrase exists in ordinary lowercase: the capitals are sentence position, not a name
+        ("Copper" / "copper", "Wealth Management").  An all-caps acronym has no lowercase reading."""
+        return (span != span.upper()
+                and bool(re.search(r"\b" + re.escape(span.lower()) + r"\b", full_text)))
+
+    def _prep_cue(tok: str) -> bool:
+        """A single capitalised word names a place/counterparty when it follows a preposition ("to Pune"),
+        follows a comma in a list ("Sarjapur, Bengaluru") or heads a place noun ("Bengaluru facility")."""
+        t = re.escape(tok)
+        if re.search(r"\b" + t + r"\s+(?:" + "|".join(_LOC_NOUNS) + r")\b", full_text):
+            return True
+        for m in re.finditer(r"\b" + t + r"\b", full_text):
+            left = full_text[max(0, m.start() - 14):m.start()]
+            if _LOC_CUE_RX.search(left) or re.search(r",\s+$", left):
+                return True
+        return False
+
     result: set[str] = set()
 
-    # (a) capitalised multi-word spans: always entities (excluding speaker names / company name).
-    for m in re.finditer(r"\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,3}\b", full_text):
-        span = m.group(0)
+    # (a) capitalised multi-word spans: entities if no person/company/lowercase-ordinary reading.
+    for m in re.finditer(r"\b[A-Z][a-z]{2,}(?:(?:\s*&\s*|\s+)[A-Z][a-z]{2,}){1,3}\b", full_text):
+        span = " ".join(m.group(0).split())
         toks = span.lower().split()
         if toks and toks[0] in _LEADING_STOP:
             continue
         if span.lower() in speaker_lower:
             continue
-        # drop any span that is a speaker name or part of one
+        # drop any span that is a speaker name or part of one (exact token; a fuzzy match would eat names
+        # that merely resemble a person's token, e.g. "Summit Plaza" vs "Sumit") (T-164 r6)
         if any(t in name_tokens for t in toks):
-            continue
-        if any((len(t) >= 4 and (t in nt or nt in t)) for t in toks for nt in name_tokens):
             continue
         if all(t in own_tokens for t in toks) and toks:
             continue
@@ -450,24 +599,39 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
         # drop spans that are months or date phrases
         if any(t in {"january","february","march","april","may","june","july","august","september","october","november","december"} for t in toks):
             continue
+        if _lowercase_too(span):
+            continue
         result.add(span)
 
-    # single capitalised words (incl. CamelCase): entity only if not in vocab, not a person/company token,
-    # not a hyphen piece, and recurring in >= 2 statements with a non-initial occurrence.
+    # single capitalised words (incl. CamelCase): entity only if not in vocab, not a person token,
+    # not a hyphen piece, and recurring in >= 2 statements (or a place/counterparty after a preposition).
+    # A comma next to one occurrence never drops the name for the whole call (T-164 r6: "Dahlias, ...").
     single_candidates = set()
     for rx in (r"\b[A-Z][a-z]{2,}\b", r"\b[A-Z][a-z]+[A-Z][A-Za-z]*\b"):
         for m in re.finditer(rx, full_text):
             tok = m.group(0)
             low = tok.lower()
-            if low in _EN_VOCAB or tok in _FINANCE_METRICS or tok in _PERIOD_WORDS or low in _SLIDE_WORDS or low in _LEADING_STOP:
+            # a capitalised common word is caught by _lowercase_too below; excluding plain vocabulary here
+            # would also drop place names that Indian English word lists carry ("Pune", "Bengaluru") (T-164 r6)
+            if tok in _FINANCE_METRICS or tok.upper() in _PERIOD_WORDS or low in _SLIDE_WORDS or low in _LEADING_STOP:
                 continue
-            if low in name_tokens or low in own_tokens or low in speaker_lower:
+            if low in _MONTH_WORDS or low in name_tokens or low in speaker_lower or low in _GENERIC_WORDS:
+                continue
+            # a demonym / ordinary adjective the word list holds ("European", "Turkish") is not a name
+            if low in _EN_VOCAB and re.search(r"(?:an|ese|ish|ern)$", low):
+                continue
+            # a company word ("Cement", "Limited") is not a name, but the company's own CamelCase name is
+            # ("UltraTech"): keep the exclusion for plain words only
+            if low in own_tokens and not re.search(r"[a-z][A-Z]", tok):
+                continue
+            if not re.search(r"[a-z][A-Z]", tok) and any(
+                    len(ot) >= 4 and (low in ot or ot in low) for ot in own_tokens):
                 continue
             if any(len(nt) >= 4 and (low in nt or nt in low) for nt in name_tokens):
                 continue
-            if re.search(r"\b" + re.escape(tok) + r"\s*,", full_text):
-                continue
             if _hyphen_piece(full_text, m):
+                continue
+            if _lowercase_too(tok):
                 continue
             single_candidates.add(tok)
     for tok in single_candidates:
@@ -478,28 +642,29 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
         if not non_initial:
             continue
         n_stmt = sum(1 for st in sentences if re.search(r"\b" + re.escape(tok) + r"\b", st))
-        if n_stmt >= 2:
+        if n_stmt >= 2 or _prep_cue(tok):
             result.add(tok)
 
-    # (b) all-caps tokens of 2-6 letters: entity only if recurring in >= 2 statements,
-    # not an ordinary word, not a finance metric, not a person/company token, not a hyphen piece.
+    # (b) all-caps tokens (2-6 letters, hyphenated runs kept whole: "C-DAC"): an entity only when it names
+    # something - used as a name, not as a business modifier or metric - and recurs in >= 2 statements (T-164 r6).
+    cap_positions: dict[str, list[int]] = {}
+    for m in re.finditer(r"(?<![A-Za-z0-9])(?:[A-Z]{1,6}(?:-[A-Z]{1,6})+|[A-Z]{2,6})(?![A-Za-z0-9])", full_text):
+        cap_positions.setdefault(m.group(0), []).append(m.start())
     cap_candidates = set()
-    for m in re.finditer(r"\b[A-Z]{2,6}\b", full_text):
-        tok = m.group(0)
+    for tok, poss in cap_positions.items():
         low = tok.lower()
-        if low in _EN_VOCAB:
+        if low in _EN_VOCAB or tok in _FINANCE_METRICS or tok.upper() in _PERIOD_WORDS or low in _SLIDE_WORDS:
             continue
-        if tok in _FINANCE_METRICS:
+        if low in name_tokens or low in own_tokens or low in _TITLE_WORDS:
             continue
-        if tok in _PERIOD_WORDS:
+        if len(re.sub(r"[^A-Z]", "", tok)) < 3:
             continue
-        if low in _SLIDE_WORDS:
+        windows = _windows(full_text, tok, poss)
+        if _number_metric(windows, tok):
             continue
-        if tok.lower() in name_tokens:
+        if not _named_cue(windows, tok):
             continue
-        if tok.lower() in own_tokens:
-            continue
-        if _hyphen_piece(full_text, m):
+        if not _strong_cue(windows, tok) and _modifier_use(windows, tok):
             continue
         cap_candidates.add(tok)
 
@@ -507,7 +672,7 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
         if _all_hyphen(tok):
             continue
         n_stmt = sum(1 for s in sentences if re.search(r"\b" + re.escape(tok) + r"\b", s))
-        if n_stmt >= 2:
+        if n_stmt >= 2 or _strong_cue(_windows(full_text, tok, cap_positions[tok]), tok):
             result.add(tok)
 
     return result
@@ -561,7 +726,10 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
     for t in re.findall(r"[A-Za-z]{3,}", title or ""):
         own_tokens.add(t.lower())
     own_tokens.add(sym.lower())
-    ent_set = _recurring_entities(full_text, known, own_tokens)
+    # every colon-mark speaker is a person, also when the participant block does not name him (T-164 r6)
+    spoken = set(known) | {m.group(1) for rx in (SPEAKER_RX, SPEAKER_MID_RX) for m in rx.finditer(full_text)
+                           if not m.group(1).startswith(NOT_SPEAKERS)}
+    ent_set = _recurring_entities(full_text, spoken, own_tokens)
     for page, raw in pages:
         w = mask_noise(raw, boiler)
         marks = sorted((m.start(1), m.end(), m.group(1)) for rx in (SPEAKER_RX, SPEAKER_MID_RX) for m in rx.finditer(w)
