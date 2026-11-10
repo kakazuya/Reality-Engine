@@ -8,8 +8,8 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `do
 - Rulings 10 Nov: frozen hold-out scoring (T-172, T-173); factor rewards dynamic (T-176); OCR only for textless/jumbled pages (T-175); PIB other languages only without English; policy-to-company impact (T-174).
 
 ## Running (owner: Eagle session; claim_worker in the new session)
-- T-179 answer runs (DeepSeek key 1, 60 questions each, `D:/RealityEngine/t179/questions.json`): A1 20261110T181039Z-fdc2fcd1, B1 (no SQL) 20261110T181056Z-db79356e, A2 20261110T181109Z-3ba4e1e9. **B2 not started** (4-worker cap): start `tasks/handoff/T-179_answers_B2_brief.md` when a slot frees. Harness merged a7c47615.
-- T-177 reference-page tool (Beam) 20261110T175308Z-0dd3b9f0, builds the tool only.
+- T-179 answer runs (DeepSeek key 1, 60 questions each, `D:/RealityEngine/t179/questions.json`): A1 20261110T181039Z-fdc2fcd1, B1 (no SQL) 20261110T181056Z-db79356e, A2 20261110T181109Z-3ba4e1e9, B2 (no SQL) 20261110T181232Z-ce84506e. Harness merged a7c47615.
+- T-177 r1 (Beam) ended with a launcher error; WIP on dsh/20261110T175308Z-0dd3b9f0 (a49f3087). **r2 not started** (worker cap): start `tasks/handoff/T-177_r2_brief.md` on Beam with base = that branch when an answer run ends. Live free-reader list is in that brief.
 - T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) HELD with T-132 until T-180 decides: q12 one seed 85%, zero-loss gate failed, self-graded.
 
 ## Next action
