@@ -554,20 +554,19 @@ model run: `python -m pytest reality_engine/tests/test_dsh_worker_plugin.py -q` 
 ### L3. Per-worker RAM cut (T-171)
 
 Code workers no longer start the data-gather MCP server (saves ~76 MB/worker); data jobs and `start_job` data jobs
-keep it. `reality-data` lazy-imports duckdb and caps its SQLite page cache (32 MB) and mmap (64 MB). Measured per
-worker (4 workers, read-only tiny jobs), before/after:
+keep it. `reality-data` lazy-imports duckdb and caps its SQLite page cache (32 MB) and mmap (64 MB). Per worker, before (measured 10 Nov by Eagle) / after (worker estimate corrected by the independent review):
 
 | Process in worker tree | Before (MB) | After (MB) |
 |---|---:|---:|
 | dsh node | 230 | 230 |
 | sandbox + subprocess node | 130 | 130 |
-| reality-data MCP | 210 | ~120 |
+| reality-data MCP (independent review: 92 -> 83 MB after import, 243 -> 236 MB after 20 calls) | 210 | ~205 |
 | code-tools MCP | 77 | 77 |
 | data-gather MCP | 76 | 0 (code workers) |
 | harness + supervisor python | 70 | 70 |
-| **Total** | **~793** | **~627** |
+| **Total** | **~793** | **~710** |
 
-Steps 1-2 alone leave ~627 MB/worker, above the 450 MB target. Step 3 (one shared reality-data server over MCP
+Steps 1-2 save about 80 MB per worker (almost all from dropping data-gather; the cache caps barely move reality-data's RSS, review job 20261110T110227Z-9f4a169b, latency unchanged within noise, p95 0.85 s -> 1.06 s cold) and leave ~710 MB/worker, above the 450 MB target. Step 3 (one shared reality-data server over MCP
 streamable HTTP on localhost, started once by the supervisor and reused by every worker, per-worker stdio fallback)
 is not implemented because it needs changes inside dsh itself (node package) to point workers at an HTTP transport
 instead of spawning stdio; design: supervisor starts `plugins/reality-data/server/server.py --http 127.0.0.1:PORT`

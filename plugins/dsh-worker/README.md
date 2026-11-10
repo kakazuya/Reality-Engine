@@ -88,13 +88,13 @@ Code workers no longer start the data-gather MCP server; data jobs and `start_jo
 |---|---:|---:|
 | dsh node | 230 | 230 |
 | sandbox + subprocess node | 130 | 130 |
-| reality-data MCP | 210 | ~120 |
+| reality-data MCP (independent review: 92 -> 83 MB after import, 243 -> 236 MB after 20 calls) | 210 | ~205 |
 | code-tools MCP | 77 | 77 |
 | data-gather MCP | 76 | 0 (code workers) |
 | harness + supervisor python | 70 | 70 |
-| **Total** | **~793** | **~627** |
+| **Total** | **~793** | **~710** |
 
-Steps 1-2 leave ~627 MB/worker, above the 450 MB target. Step 3 (one shared reality-data server over MCP
+Steps 1-2 save about 80 MB per worker (almost all from dropping data-gather; the cache caps barely move reality-data's RSS) and leave ~710 MB/worker, above the 450 MB target. Step 3 (one shared reality-data server over MCP
 streamable HTTP on localhost, started once by the supervisor and reused by every worker, per-worker stdio as
 fallback) is not implemented because it needs changes inside dsh itself (node package): the supervisor would
 start `plugins/reality-data/server/server.py --http 127.0.0.1:PORT` once, write that port into the per-run patch
