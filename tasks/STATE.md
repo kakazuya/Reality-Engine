@@ -13,7 +13,7 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 
 - T-160 n10 (AUBANK BALRAMCHIN SRF LT DMART TATAPOWER ICICIGI DIXON JUBLFOOD MCX): agy harvest 20261109T182713Z-4d398312; build `D:/RealityEngine/n10/build.sh` (fetch running). Held audit DONE: 82/106 u8+q12 misses answerable from held docs (`reports/2026-11-10_held_not_queryable_audit.xlsx`) -> T-161..T-166. Bake-off LongCat vs Beam `night_loop/bakeoff_lc_beam` running.
 
-- Grades done 10 Nov 05:00. T-133 v7 (dsh/20261110T005212Z-dd63d59a, 171 tests) and T-132 r9 (dsh/20261110T001230Z-e86d1257, 85 tests, replay 136/136 claimed) await headless Opus grades t133_v7_grade / t132_r9_grade (restarted 09:41 after Wolf limit). T-161/T-159 merged (b9e58ae5; PILOT3_BLUEPRINT 9m): `docs_collect --measure` = 15 retypes, 0 re-dates -> rebuild p20/u8/q12 docs + transcripts/guidance, restart MCP.
+- Grades done 10 Nov 05:00. T-132 r9 MERGED 09:45 (Opus results 21/30, deck 22/30, replay 136/136; store `D:/RealityEngine/v2/p20_r9`, samples `D:/RealityEngine/v2/review/samples`); r10 next. T-133 v7 (dsh/20261110T005212Z-dd63d59a) awaits Opus grade t133_v7_grade. T-161/T-159 merged (b9e58ae5; PILOT3_BLUEPRINT 9m): `docs_collect --measure` = 15 retypes, 0 re-dates -> rebuild p20/u8/q12 docs + transcripts/guidance, restart MCP.
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).

@@ -581,7 +581,7 @@ Replay gate: `.tmp/replay_r9.py` re-checks every row graded right in the r5, r6,
 **136 kept, 0 lost** (r5 40/40, r6 33/33, r7 26/26, r8 37/37; one line per row in `.tmp/v2r9/replay.csv`). The
 eight rows lost in round 8 and the seven junk-parent rows are all restored; the three rows that needed a
 label-prefix or point-period tolerance are listed in the CSV with their old and new values. New seed-37 samples for
-hand grading: `.tmp/f9_results.csv` and `.tmp/f9_deck.csv` (100 each, ungraded).
+hand grading: `.tmp/f9_results.csv` and `.tmp/f9_deck.csv` (100 each, ungraded). Merged 10 Nov 09:45 after the independent Opus grade (seed 37 rows 50-79: results 21/30 strict, deck 22/30; replay 136/136 verified by script; grades `D:/RealityEngine/v2/review/T-132_r9_opus_grades.csv`). The round-9 store is kept read-only at `D:/RealityEngine/v2/p20_r9`; every round's samples (f5-f9), `replay_r9.py` and `replay_r9.csv` are in `D:/RealityEngine/v2/review/samples` (the worktrees are removed).
 
 The full rule set (a-j) was last rewritten for round 5; round 6 adds, under d: the row's own unit cell is split from
 the label and read before the label's scale word; under e: a two-line period label, a bare `Year` segment and the page

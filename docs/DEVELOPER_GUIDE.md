@@ -863,7 +863,7 @@ restatement label keeps `Regrouped Employee Benefits Expense`. The replay gate o
 r5-r8 (136 rows, matched on doc + page + value) is 136 kept / 0 lost in `.tmp/v2r9/replay.csv`; the seed-37 grades
 are ungraded in `.tmp/f9_results.csv` / `.tmp/f9_deck.csv`. Rules a-j, the measured table, the remaining misses and the tests
 (`reality_engine/tests/test_v2_table_cells.py`, 85 in the three v2 test files) are in
-`docs/V2_SCHEMA_CONTRACT.md` section 10.
+`docs/V2_SCHEMA_CONTRACT.md` section 10. Merged 10 Nov 09:45 after the independent Opus grade (seed 37 rows 50-79: results 21/30 strict, deck 22/30; replay 136/136 verified by script; grades `D:/RealityEngine/v2/review/T-132_r9_opus_grades.csv`). The round-9 store is kept read-only at `D:/RealityEngine/v2/p20_r9`; every round's samples (f5-f9), `replay_r9.py` and `replay_r9.csv` are in `D:/RealityEngine/v2/review/samples` (the worktrees are removed).
 
 ### O25. Embedding bake-off and semantic search (T-154, 9 Nov 2026)
 
