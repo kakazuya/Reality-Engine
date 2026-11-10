@@ -1,9 +1,0 @@
-qid,symbol,store path,as_of,question,earlier_grade,source_run
-C1-001,C1,P.db,2026-11-04,q1,R,pilot10
-C2-001,C2,P.db,2026-11-04,q2,R,pilot10
-C3-001,C3,P.db,2026-11-04,q3,R,pilot10
-C4-001,C4,P.db,2026-11-04,q4,R,pilot10
-C0-001,C0,P.db,2026-11-04,q0,P,pilot10
-U1,ACME,U.db,2026-11-04,uq,right,u8
-Q1,BETA,Q.db,2026-10-19,qq,right,q12
-U2,ACME,U.db,2026-11-04,uq2,partly,u8
