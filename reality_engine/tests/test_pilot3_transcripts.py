@@ -172,3 +172,61 @@ def test_topic_labels_fire_on_their_own_keyword():
     assert "regulation" not in transcripts.tag_topics(topics, "BEL", "From 2016 we are training people for promotions.")
     assert "regulation" in transcripts.tag_topics(topics, "IDEA", "TRAI issued a consultation paper on tariffs.")
     assert "margin" in transcripts.tag_topics(topics, "ULTRACEMCO", "EBITDA margin expanded by 120 bps.")
+
+
+def test_topics_anchored_on_their_own_words():
+    """Step 4 (T-164 r7): lease debt/FCF are not working capital, a segment is not a product, DJSI is not capital,
+    a hiring plan is not guidance, and "Government of India" is not a geography."""
+    topics, _ = transcripts.load_topics()
+
+    def tags(sentence, sym="INDIGO"):
+        return transcripts.tag_topics(topics, sym, sentence)
+    assert "working_capital" not in tags("We ended the quarter with a capitalized operating lease liability of 496 billion rupees and a total debt.")
+    assert "working_capital" not in tags("Our free cash flow improved and the balance sheet is strong.")
+    assert "product" not in tags("The IHB segment will continue to drive demand.")
+    assert "guidance" not in tags("We will hire 200 engineers for the new plant this quarter.")
+    assert "guidance" in tags("We will commission the new plant in FY28.")
+    assert "geographic" not in tags("Budget, Government of India has allocated enough for the programme.")
+    assert "capital" not in tags("Our DJSI score has improved by around 80% in the last 2 years.")
+    assert "working_capital" in tags("Working capital improved as receivables and inventory came down.")
+    assert "geographic" in tags("We are expanding into new international markets and exports.")
+
+
+def test_ngc_programme_before_a_comma_is_an_entity():
+    """Step 1 (T-164 r7): the real BEL sentence; an all-caps programme name in a list names something."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Ravi Kumar: How are the large programmes doing?\n"
+             "Asha Rao: So, NGC, there are so many subsystems of NGC, Next Generation Corvette program, "
+             "which definitely will come this year.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: NGC is cleared and the order is signed.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    assert "NGC" in ents, f"NGC missed: {ents}"
+    assert "Next Generation Corvette" in ents, f"programme name missed: {ents}"
+
+
+def test_titles_business_abbreviations_and_metric_spans_are_not_entities():
+    """Step 2 (T-164 r7): titles, business abbreviations and spans ending in a metric/accounting word name nothing."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Ravi Kumar: Could you update us?\n"
+             "Asha Rao: The ARC book and the SEZ unit are on plan, and BFSI segment volumes grew. "
+             "Our Chief Financial Officer said earnings per share improved and Other Intangibles rose. "
+             "The Hyper Scaler Business is doing well and the Managing Director will speak.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: The ARC book, the SEZ unit, BFSI segment, earnings per share, Other Intangibles and "
+             "the Hyper Scaler Business are all on plan again.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    bad = {"ARC", "SEZ", "BFSI", "Chief", "Managing", "Officer", "Director", "Earnings Per Share",
+           "Other Intangibles", "Hyper Scaler Business"}
+    assert not (ents & bad), f"non-entity tagged: {ents & bad}"
+
+
+def test_title_and_metric_spans_in_one_word():
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Asha Rao: Officer and Director are titles. Anniversary is a date. Phase is a stage.\n"
+             "Asha Rao: Officer, Director, Anniversary and Phase again.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    assert not (ents & {"Officer", "Director", "Anniversary", "Phase"}), f"title/metric word tagged: {ents}"

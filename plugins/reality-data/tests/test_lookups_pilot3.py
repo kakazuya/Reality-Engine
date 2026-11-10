@@ -492,6 +492,27 @@ class Pilot3ToolTests(unittest.TestCase):
         out2 = p3.statements("KEC", whole_turn=True)
         self.assertIn("found", out2)
 
+    def test_statements_whole_turn_limit_counts_turns_not_rows(self):
+        """Step 5 (T-164 r7): limit=1 returns one answer turn (all its sentences), not 1 matching row plus
+        its siblings from several turns."""
+        c = sqlite3.connect(DB)
+        cols = ("symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,topics,period_discussed,"
+                "period_source,numbers_json,statement,quote,is_fragment,entities,answer_turn,known_at,"
+                "known_at_source,extractor_rule")
+        for turn, seq0 in ((101, 1), (102, 4)):
+            for k in range(3):
+                stmt = f"Turnword sentence {turn}.{k}."
+                c.execute(f"INSERT INTO transcript_statement({cols}) VALUES ('KEC','r7/turns.pdf','2026-09-01',"
+                          "'Q2FY27',2,?,'A B','ceo','qa','margin','Q2FY27','t','[]',?,?,0,'',?,'2026-09-02T10:00:00',"
+                          "'x','t')", (seq0 + k, stmt, stmt, turn))
+        c.commit()
+        c.close()
+        out = p3.statements("KEC", terms="turnword", limit=1, whole_turn=True)
+        rows = out["rows"]
+        self.assertEqual(len({r["answer_turn"] for r in rows}), 1)
+        self.assertEqual(len(rows), 3)          # the whole turn, not just the matched sentence
+        self.assertEqual(rows[0]["answer_turn"], 101)   # seq order inside the same call
+
     def test_statements_entity_search(self):
         out = p3.statements("KEC", entities="transmission")
         # no entity named transmission in fixture; ensure no crash and found flag sensible

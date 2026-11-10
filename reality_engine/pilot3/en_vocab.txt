@@ -6092,3 +6092,11 @@ zero
 zld
 zone
 zones
+
+swedish
+oligonucleotide
+norwegian
+finnish
+danish
+dutch
+oligonucleotides

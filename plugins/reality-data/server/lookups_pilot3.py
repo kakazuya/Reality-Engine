@@ -906,6 +906,10 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
             period_args += [item, f"{item}%"]
     words = [w for w in re.findall(r"[\w₹%&\-\.]+", rank_terms or "") if len(w) > 2]
     score_sql, score_args = _term_hits("t.statement", words[:8])
+    cap = _cap(limit)
+    # whole_turn: `limit` counts answer turns, not sentences, so fetch enough rows to find that many turns
+    # (T-164 r7: limit=20 used to return 188 rows because the LIMIT bounded matched sentences before expansion)
+    row_cap = cap * 50 if whole_turn else cap
     rows = _q(f"SELECT t.id, t.call_date, t.call_period, t.page, t.speaker, t.role, t.section, t.topics, "
               f"t.period_discussed, t.quote, t.is_fragment, t.entities, t.answer_turn, t.known_at, t.doc_key, d.title, "
               f"(CASE WHEN {topic_sql} THEN 0 ELSE 1 END) AS topic_rank, "
@@ -915,7 +919,19 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
               f"AND a.alias_key=t.doc_key), t.doc_key) WHERE {where}{extra} "
               f"ORDER BY topic_rank, period_rank, term_score DESC, t.is_fragment, t.call_date DESC, t.seq LIMIT ?",
               # the SELECT-list placeholders bind before the WHERE ones
-              (*topic_args, *period_args, *score_args, *args, *eargs, _cap(limit)))
+              (*topic_args, *period_args, *score_args, *args, *eargs, row_cap))
+    if whole_turn and rows:
+        kept, seen = [], set()
+        for r in rows:
+            key = (r["doc_key"], r["answer_turn"]) if r["answer_turn"] else ("row", r["id"])
+            if key in seen:
+                continue
+            seen.add(key)
+            kept.append(key)
+            if len(kept) >= cap:
+                break
+        rows = [r for r in rows
+                if ((r["doc_key"], r["answer_turn"]) if r["answer_turn"] else ("row", r["id"])) in seen]
     out = [{"id": r["id"], "call_date": r["call_date"], "call_period": r["call_period"], "speaker": r["speaker"],
             "role": r["role"], "section": r["section"], "topics": r["topics"],
             "period_discussed": r["period_discussed"], "entities": r["entities"], "answer_turn": r["answer_turn"],

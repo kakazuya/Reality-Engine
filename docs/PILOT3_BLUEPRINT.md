@@ -260,19 +260,22 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
 - `build --part all` with 4 OCR dbs: 484 s for 23,558 pages (~2.7 min per company, single process).
 - After the dates + guidance merges: guidance 660 -> 329 rows (KEC 218, BAJFINANCE 52, HINDALCO 59): check recall
   on the next re-answer; kpi_series 38,851; zero Q1FY27 rows from documents known before 2026-04-01.
-- **T-164 (round 6, 11 Nov 2026).** Transcript statements rebuilt for u8 (7 companies, 24,329 statements) and q12
-  (12 companies, 39,261 statements), identical to a main-code rebuild (0 differences). Entity rules: the comma test is
-  per occurrence (one "Dahlias," no longer drops the name for the whole call); an all-caps token is an entity only with
-  a name cue (org/programme/place noun, possessive, "from/with X", a verb of agency) and never when it is a metric or a
-  generic business abbreviation (lexicon/business_abbrev.txt: BFSI/TCV/ARPOB/RM/SEZ/HR/MLD/NSR/AGR ...) or is used with a number; person names come
-  from participants, colon marks, titles, honorifics and direct address; single names after a preposition or comma, or
-  before a place noun, are kept for recall. Topic rules: every tag fires on its own keyword (anchored TRAI/RERA/CERC,
-  `\bapps?\b`, `\bplans?\b`, `\bpat\b`), the 18 theme tags stay, and generic coverage was widened (expenses, brands,
-  volumes, training, subscribers, transmission, rentals, ROCE ...), with the finance tags widened beyond one company so
-  'other' is 33.6% u8 / 36.2% q12, below the main baseline on all 19 companies. Seed-6164 measurement: entity precision
-  86.4% / 86.4%, topic label precision 90.8% / 89.5%, Dahlias 122/122, Summit Plaza 11/11, Aureva 2/2. Known gap:
-  recall on single-mention names (9 of 9 untagged) and RBI (1/67). Tests: transcripts 12, speakers 8, kpi 114,
-  no-company-literals 7, guidance 32, answer_check 25, doc_identity 21, profile 8, lookups 50 + 1 skipped.
+- **T-164 (round 7, 11 Nov 2026).** Transcript statements rebuilt for u8 (7 companies, 24,956 statements) and q12
+  (12 companies, 40,017), 'other' at or below the main baseline on every one of the 19 companies (u8 30.8-37.7% vs
+  31.1-40.6%, q12 29.4-42.4% vs 32.7-44.3%). Entity rules: the business-abbreviation lexicon is wired into the
+  single-token and all-caps gates; titles and spans ending in a metric/accounting word are dropped; an all-caps
+  programme name before a comma/list or beside a programme noun survives a following amount (NGC tagged in 36 of the
+  38 BEL statements that mention it, was 0 of 36); an ordinary word needs a place/counterparty cue. The DOI-layout
+  participant block corrects a management head the call misread as an analyst (BEL 30.07.2025: the MD's 64 answer
+  segments are management statements, none in `transcript_question`; Virupaksha 2 statements, 0 before), prepared
+  remarks carry their own negative `answer_turn` ids, and `pilot3_statements(whole_turn=True)` bounds the reply by
+  answer turns (limit=20 no longer returns 188 rows). The statement multiset is identical to a main-code rebuild on
+  both stores except that speaker correction in 9 calls (BEL +366/+233/+11/+7/+10 rows, SAIL +261/+187, EDELWEISS
+  +228, KIMS +80), each an unknown/analyst-question -> management-statement correction. Seeds 7164/8164: entity
+  precision 91.8%/88.9% u8 and 88.6%/93.9% q12; topic label precision 88.9%/93.2% u8 and 92.2%/89.4% q12.
+  Artifacts `.tmp/t164/r7_entity_<seed>.csv`, `r7_topic_<seed>.csv`. Tests: transcripts 16, speakers 9, kpi 114,
+  no-company-literals 7, guidance 32, answer_check 25, doc_identity 21, profile 8, lookups_pilot3 34 + 1 skipped,
+  lookups_docs 18.
   TATAELXSI, APOLLOHOSP, DLF (window 2023-10-01, compute 2022-07-01; manifest 3,328 rows, 2,111 `ok`):
   `docs_collect` 270 s -> 2,091 docs / 28,566 pages / 218.7 MB; `build --part all` 814.8 s -> 151.2 MB. Parts:
   comparatives 405.6 s, extract 258.3 s, stores 113.8 s (repeat 59.9 s), notes 22.8 s, pages 6.9 s, guidance 5.1 s,

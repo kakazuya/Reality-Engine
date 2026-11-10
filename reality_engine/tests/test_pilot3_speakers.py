@@ -51,6 +51,29 @@ def test_moderator_introduces_the_management_team():
     assert transcripts.moderator_names(text) == ["Albinder Singh Dhindsa", "Akshant Goyal", "Kunal Swarup"]
 
 
+def test_doi_layout_participant_block_keeps_management_out_of_the_questions():
+    """Step 3 (T-164 r7): the BEL 30.07.2025 block puts the heading on the entry's own line; the MD answers
+    after a moderator interruption and must stay management, never become an analyst question."""
+    page1 = ("MANAGEMENT: MR. MANOJ JAIN– CHAIRMAN AND MANAGING\n"
+             "DIRECTOR – BHARAT ELECTRONICS LIMITED\n\n"
+             "MR. DAMODAR BHATTAD S – DIRECTOR FINANCE AND\nCHIEF FINANCIAL OFFICER – BHARAT ELECTRONICS LIMITED\n\n"
+             "MODERATOR:\nMR. HARSHIT KAPADIA – ELARA SECURITIES PRIVATE LIMITED\n")
+    mgmt, _analysts, _names = transcripts.participants([page1])
+    assert any(transcripts._same_person(k, "Manoj Jain") for k in mgmt), f"DOI block not read: {mgmt}"
+    st = {"unknown_speakers": Counter(), "questions": []}
+    page2 = ("Moderator: Ladies and gentlemen, welcome. We will take the Q&A session now.\n"
+             "Management: We are ready for the questions.\n"
+             "Manoj Jain: Good afternoon. The Virupaksha radar prototype is under development with DRDO.\n"
+             "Moderator: Sorry to interrupt you, sir. Please check your line.\n"
+             "Manoj Jain: Yes, the line is clear now.\n")
+    pages = [(1, page1), (2, page2)]
+    rows = transcripts.extract_doc("BEL", "doc", "Bharat Electronics Limited Q1 FY26", "2026-02-10T10:00:00",
+                                   pages, [], {}, st)
+    manoj = [r for r in rows if "Manoj" in r[7]]
+    assert manoj and all(r[8] == "mgmt" for r in manoj), f"Manoj not management: {[(r[7], r[8]) for r in rows]}"
+    assert not any("Manoj" in (q[6] or "") for q in st["questions"]), "management answer stored as a question"
+
+
 def test_name_only_speaker_lines_are_read_and_analysts_are_not_stored():
     pages = [
         ("External Document © 2026 Infosys Limited 1\n\nCORPORATE PARTICIPANTS:\n\nAsha Rao\n"
