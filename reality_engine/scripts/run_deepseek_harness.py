@@ -66,6 +66,27 @@ FIXED_EFFORT = {m: "max" for m in REASONING if m.startswith("deepseek")}   # Dee
 IST = timezone(timedelta(hours=5, minutes=30))
 
 
+def free_model_refusal(model, flag_path=None, fetch=None):
+    """Shivam 10 Nov: Beam runs only while OpenCode lists it as free.
+
+    Reads tasks/flags/free_models.json (written by free_model_check); a missing
+    or stale entry triggers a fresh check first.  Returns a refusal message when
+    the model is recorded as no longer free, else None (an unreachable page
+    keeps the last known state and never blocks on its own).
+    """
+    from reality_engine.scripts import free_model_check as fmc
+    if model not in fmc.WATCHED:
+        return None
+    path = Path(flag_path) if flag_path else fmc.FLAG
+    entry = fmc.read_flag(path).get(model)
+    if fmc.is_stale(entry):
+        entry = fmc.check(path, fetch=fetch).get(model)
+    if entry and entry.get("free") is False:
+        return (f"{model} is no longer free on OpenCode ({entry.get('row')}, checked "
+                f"{entry.get('checked_at')}): Beam work stops, use DeepSeek (Shivam 10 Nov)")
+    return None
+
+
 def off_peak(now=None):
     """DeepSeek off-peak (OpenCode Go docs): peak is Mon-Fri 01:00-04:00 and 06:00-10:00 UTC = 06:30-09:30 and
     11:30-15:30 IST; every other hour, weekends included, is off-peak (half price). Peak never crosses midnight in UTC,
@@ -200,6 +221,9 @@ def main():
         sys.exit(f"unknown Go model {model!r}; known: {sorted(FREE | PAID)}")
     if model in PAID and not a.allow_paid:
         sys.exit(f"{model} is PAID on Go; pass --allow-paid only with Shivam's approval")
+    beam_refusal = free_model_refusal(model)
+    if beam_refusal:
+        sys.exit(beam_refusal)
     if model in FIXED_EFFORT and effort and effort != FIXED_EFFORT[model] and not a.smoke_test:
         sys.exit(f"{model} always runs at {FIXED_EFFORT[model]} (Shivam's rule); drop ~{effort}")
     if model.startswith("deepseek") and not off_peak() and not a.peak_ok:
