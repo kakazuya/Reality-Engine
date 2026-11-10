@@ -1,4 +1,4 @@
-"""T-133 label dictionary (v7): one metric per printed row label, per sector family.
+"""T-133 label dictionary (v8): one metric per printed row label, per sector family.
 
 A printed row label is normalised (:func:`normalise_label`) and then must match a lexicon phrase **whole**: a label
 that carries a metric phrase plus other words is not that metric.  v1 matched any substring, so
@@ -66,7 +66,20 @@ that carries a metric phrase plus other words is not that metric.  v1 matched an
 12. v7: a parent that names the measure owns its child ("Share of profit of: > Associate and joint venture"),
     a child under a cash-flow movement/adjustment parent is never a ``from_header`` member, a one-letter member
     is a parsing fragment (queued, not proposed), and a "Total ..." row whose qualifier is OCR damage is the
-    section total, not a member.  A total that says "attributable to owners" is the attributable line.
+    section total, not a member.  A total that says "attributable to owners" is the attributable line;
+13. v8: the garbled rule reads a **corpus** vocabulary (every word the cells print in two or more documents, plus
+    the lexicon) and calls a token damage only when it is out of that vocabulary and within edit distance 2 of a
+    word in it, so "CRAR (standalone)", "purchase of treasury shares" and "optic fibre network r kms" queue while
+    "iopening balance" and "gpwis mmt" stay rejected.  A weak member leaf with no readable word queues instead of
+    becoming a ``from_header`` row ("Receivables > Jnvesunents", "Ddutcd"), and a token one edit from a dictionary
+    word is damage whatever the witness ("Pmiit before lax").  The parent's own wording decides an attribution row
+    ("... attributable to > Owners oftl1c Parent Company" is the TCI attributable line), a TCI total that names no
+    owner is the total, a period note under a measure is the measure ("[b) Deferred Tax > Period/ Year"), a
+    "profit from ..." OCR parent owns its segment member, and the label's own unit word wins (``mill te`` ->
+    tonnes, ``network minutes`` -> count, ``current ratio`` -> x; a sales row printed in tonnes -> ``sales_volume``).
+    The map's final pass applies the same :func:`decide_label` rule as the cells pass, so a label only seen in
+    ``kpi_series`` keeps its mix dimension.  The live ``kpi.py`` matcher drops a superseded shorter hit that starts
+    where a longer whole label starts, so "Revenue per tower per month" no longer stores a revenue row beside it.
 
 ``revenue_from_operations`` is a synonym of :data:`METRIC_SYNONYMS`'s canonical ``revenue``; "cash generated from
 operations" (pre-tax) and "net cash from operating activities" (post-tax) are different metrics.
@@ -123,7 +136,7 @@ REJECTED = "rejected"
 FROM_HEADER = "from_header"
 TOTAL_REVENUE = "total_revenue"        # v6: resolved per table to revenue or total_income
 SAMPLE_SIZE = 200
-SAMPLE_SEED = 53
+SAMPLE_SEED = 59                      # v8: the seed-53 sample is graded; a fresh ungraded draw is seed 59.
 SAMPLE_FILE = f"sample_seed{SAMPLE_SEED}.csv"
 REJECTED_SAMPLE_SIZE = 40
 REJECTED_SAMPLE_FILE = f"rejected_seed{SAMPLE_SEED}.csv"
@@ -640,7 +653,6 @@ EXTRA_COMMON: dict[str, tuple[str, ...]] = {
     "coverage_pct": ("coverage",),
     "voice_revenue": ("voice revenue mn", "voice revenue"),
     "data_revenue": ("data revenue mn", "data revenue"),
-    "passive_infrastructure_services": ("passive infrastructure services",),
     "network_operations_cost": ("network operations costs",),
     "current_tax": ("current tax", "current tax expense", "current tax charge", "tax expense current tax"),
     "deferred_tax": ("deferred tax", "deferred tax expense", "deferred tax charge", "deferred tax credit"),
@@ -729,6 +741,9 @@ GENERIC_QUANTIFIERS = {"cumulative", "aggregate", "incremental", "overall", "com
 # line ("total comprehensive income" under an OCI or attribution section).
 CHILD_TOTALS = (("total comprehensive income", "total_comprehensive_income"),)
 
+# v8: a child of an "... attributable to" parent names its subject (the owners' or the NCI line).
+ATTRIBUTION_SUBJECT = re.compile(r"\bowners?\b|\bparent\b|\bcompan(?:y|ies)\b|\bshareholders?\b|\bgroup\b", re.I)
+
 
 # ------------------------------------------------------------------------------------------------ normalisation
 def _is_unit(inner: str) -> bool:
@@ -749,6 +764,9 @@ def _strip_numbering(text: str) -> str:
 
 def _clean(text: str | None) -> str:
     value = str(text or "")
+    # v8: a scan's square/curly bracket is the same bracket ("[b) Deferred Tax" -> "(b) Deferred Tax"), so the
+    # numbering stripper sees the letter mark and the parent keeps its measure.
+    value = value.replace("[", "(").replace("]", ")").replace("{", "(").replace("}", ")")
     value = BRACKET.sub(lambda m: "" if _is_unit(m.group(1) or m.group(2) or "") else m.group(0), value)
     value = value.lower()
     value = _strip_numbering(value)
@@ -1018,10 +1036,33 @@ def _trailing_count(raw: str) -> bool:
     return bool(re.search(r"\s\d{1,4}$", str(raw or "").strip()))
 
 
-def _unreadable_member(text: str) -> bool:
-    """v7: a member label made only of one- or two-letter/number fragments ("8 co i") is OCR damage."""
+def _unreadable_member(text: str, trusted: bool = False, strong: bool = False) -> bool:
+    """v7/v8: a member label that is OCR damage, not a name.
+
+    v7: one- or two-letter/number fragments ("8 co i") are a parsing artifact.  v8: a weak-evidence leaf with no
+    word the dictionary or the corpus knows ("jnvesunents") is an OCR line, so it queues instead of becoming a
+    member; a stronger witness (measure header, entity name, container parent) or the two-document evidence keeps
+    a real name the dictionary lacks ("krishnapatnam").  A token one edit from a dictionary word ("lax" for "tax")
+    is damage whatever the witness.
+    """
     tokens = text.split()
-    return bool(tokens) and all(len(token) <= 2 or token.isdigit() for token in tokens)
+    if not tokens:
+        return False
+    if all(len(token) <= 2 or token.isdigit() for token in tokens):
+        return True
+    vocabulary = _vocabulary()
+    if not any(token in vocabulary for token in tokens):
+        if strong or trusted:
+            return False        # a two-document name or a measure/entity witness is readable evidence
+        return len(text) >= 10  # a long leaf no dictionary knows ("jnvesunents") is an OCR line
+    # a token one edit from a statement-line word ("lax" for "tax") is damage whatever the witness; a near name
+    # ("tower" for "power") is not, because the corpus makes every short word a neighbour of something.
+    for token in tokens:
+        if token in vocabulary or len(token) < 3 or not re.search(r"[aeiou]", token):
+            continue
+        if any(_edit_distance(token, word, 1) <= 1 for word in LINE_WORDS):
+            return True
+    return False
 
 
 def _total_damaged(text: str) -> bool:
@@ -1042,12 +1083,29 @@ def _child_total(plain: str, family: str) -> Proposal | None:
         if plain == phrase or plain.startswith(phrase + " "):
             if "attributable to" in plain:
                 # v7: the owners' share of the total is its own line, not the total with an empty dimension.
-                attribution = ("attribution=nci" if ("non controlling" in plain or "nci" in plain)
-                               else "attribution=owners_of_parent")
+                # v8: only a named subject makes it the attributable line; a heading row that carries the total
+                # ("... attributable to:" with nothing after it) is the total itself (row 135).
+                if "non controlling" in plain or "nci" in plain or "minority" in plain:
+                    attribution = "attribution=nci"
+                elif ATTRIBUTION_SUBJECT.search(plain):
+                    attribution = "attribution=owners_of_parent"
+                else:
+                    return Proposal(metric, "child:total", family, None, "", "5-context", "section")
                 return Proposal(f"{metric}_attributable", "child:total", family, None, attribution,
                                 "5-context", "section")
             return Proposal(metric, "child:total", family, None, "", "5-context", "section")
     return None
+
+
+def _attribution_metric(base: str) -> str:
+    """v8: the line a child attributes, from the parent's own wording ("... attributable to")."""
+    if "total comprehensive income" in base:
+        return "total_comprehensive_income_attributable"
+    if "comprehensive" in base or "reclassif" in base:
+        return "other_comprehensive_income"
+    if "profit" in base or "loss" in base:
+        return "profit_attributable"
+    return ""
 
 
 def truncated_reason(raw: str | None) -> str:
@@ -1107,11 +1165,27 @@ def junk_reason(label_norm: str) -> str:
 
 GARBLED_SHARE = 0.4
 _VOCAB: frozenset[str] | None = None
+_VOCAB_ALL: frozenset[str] | None = None
+_CORPUS_WORDS: frozenset[str] = frozenset()
+_DAMAGE_CACHE: dict[str, bool] = {}
+
+
+def set_corpus_vocabulary(labels: Iterable[str]) -> None:
+    """v8: the words of the labels the corpus prints in two or more documents (a real line is evidence, not damage).
+
+    Called by :func:`read_cells` and :func:`run`; a direct :func:`garbled_reason` call (a unit test) uses the
+    built-in vocabulary alone.
+    """
+    global _CORPUS_WORDS, _VOCAB_ALL
+    words = {word for label in labels for word in str(label or "").split() if word}
+    _CORPUS_WORDS = frozenset(words)
+    _VOCAB_ALL = None
+    _DAMAGE_CACHE.clear()
 
 
 def _vocabulary() -> frozenset[str]:
     """The dictionary the garbled check reads: label filler, measure/line words and the lexicon's common lines."""
-    global _VOCAB
+    global _VOCAB, _VOCAB_ALL
     if _VOCAB is None:
         words: set[str] = set(LABEL_WORDS) | set(LINE_WORDS) | set(MEASURE_WORDS)
         for group in (GENERIC, HEADINGS, METRIC_HINTS, LABEL_UNITS, UNIT_TOKENS):
@@ -1122,16 +1196,47 @@ def _vocabulary() -> frozenset[str]:
                 # no normalise_label here: it repairs tokens with this vocabulary, which would recurse.
                 words.update(strip_units(_clean(phrase)).split())
         _VOCAB = frozenset(word for word in words if word)
-    return _VOCAB
+    if _VOCAB_ALL is None:
+        _VOCAB_ALL = _VOCAB | _CORPUS_WORDS
+    return _VOCAB_ALL
+
+
+def _near_vocabulary(word: str, vocabulary: frozenset[str], limit: int = 2) -> bool:
+    """True when ``word`` is within ``limit`` edits of a word in the vocabulary."""
+    low = word.lower()
+    for candidate in vocabulary:
+        if abs(len(candidate) - len(low)) > limit:
+            continue
+        if low[:2] != candidate[:2] and low[-2:] != candidate[-2:]:
+            continue
+        if _edit_distance(low, candidate, limit) <= limit:
+            return True
+    return False
+
+
+def _ocr_damage(word: str, vocabulary: frozenset[str]) -> bool:
+    """v8: a token is OCR damage only when it is not a word and sits within edit distance 2 of one that is.
+
+    "iopening" is "opening" with a stray mark; "krishnapatnam" and "crar" are real words the dictionary lacks, so
+    they are evidence, not damage.
+    """
+    low = word.lower()
+    cached = _DAMAGE_CACHE.get(low)
+    if cached is not None:
+        return cached
+    damaged = _near_vocabulary(low, vocabulary, 2)
+    _DAMAGE_CACHE[low] = damaged
+    return damaged
 
 
 def garbled_reason(label_norm: str, raw: str | None = None, trusted: bool = False) -> str:
-    """Rule 1 (v3): ``'garbled'`` for an OCR-damaged label, or ``''``.
+    """Rule 1 (v3/v8): ``'garbled'`` for an OCR-damaged label, or ``''``.
 
-    A digit/letter swap ("0ther") is damage anywhere.  Otherwise a label of two or more words is garbled when the
-    dictionary misses 40% or more of its tokens ("gpwis mmt", "mobife ... rnfrastrnctme servi ces"), and a single
-    lower-case word of six or more letters the dictionary does not hold is damage too ("sorrowtngs").  Entity
-    names and acronyms are short or title-case, so they pass.
+    v8: the vocabulary is the lexicon plus every word the corpus prints in two or more documents, and a word counts
+    as damage only when it is out of that vocabulary and within edit distance 2 of a word in it.  A label of two or
+    more words is garbled when at least 40% of its words are damaged.  "CRAR (standalone)", "purchase of treasury
+    shares" and "optic fibre network kms" are real lines, so they queue; "iopening balance" and "gpwis mmt" are
+    damage.  A three-token word soup with no vowel ("xqzt vbnm") is character-level junk too.
 
     v6: ``trusted`` says the same label appeared in two or more documents with clean numeric cells; a real member
     name the dictionary lacks ("krishnapatnam", "lighting and fixtures") is evidence, not damage.
@@ -1139,19 +1244,28 @@ def garbled_reason(label_norm: str, raw: str | None = None, trusted: bool = Fals
     if trusted:
         return ""
     words = label_norm.split()
-    if any(DIGIT_SWAP.match(word) for word in words) and not _digit_damage_readable(label_norm):
-        return "garbled"
+    if not words:
+        return ""
     vocabulary = _vocabulary()
-    damaged = ({word for word in words if re.search(r"[a-z]\d|\d[a-z]", word)}
-               if _digit_damage_readable(label_norm) else set())
-    unknown = [word for word in words
-               if word not in vocabulary and word not in damaged
-               and not (len(word) == 1 and word.isalpha())]
+    readable_digits = _digit_damage_readable(label_norm)
+    if not readable_digits and any(DIGIT_SWAP.match(word) for word in words):
+        return "garbled"
+    letters = [word for word in words if not (len(word) == 1 and word.isalpha())]
+    unknown = [word for word in letters if word not in vocabulary]
+    damaged = [word for word in unknown
+               if _ocr_damage(word, vocabulary) and not (readable_digits and DIGIT_SWAP.match(word))]
     if len(words) >= 2:
-        if unknown and len(unknown) / len(words) >= GARBLED_SHARE:
+        if damaged and len(damaged) / len(words) >= GARBLED_SHARE:
             return "garbled"
-    elif unknown and ((len(words[0]) >= 6 and str(raw or "").strip()[:1].islower())
-                      or len(words[0]) >= 12):
+        if (not damaged and unknown and len(unknown) == len(letters) and len(words) <= 3
+                and not any(re.search(r"[aeiou]", word) for word in words)):
+            return "garbled"
+        return ""
+    word = words[0]
+    if len(word) >= 6 and _ocr_damage(word, vocabulary) \
+            and (len(word) >= 12 or str(raw or "").strip()[:1].islower()):
+        return "garbled"
+    if len(word) >= 12:
         return "garbled"
     return ""
 
@@ -1245,6 +1359,7 @@ class Proposal:
     rule: str = ""
     confidence: str = ""
     status: str = QUEUE
+    unit_kind: str = ""     # v8: the kind the label's own unit word states ("mill te" -> tonnes)
 
 
 def load_lexicons(lexicon_dir: Path = LEXICON_DIR) -> tuple[dict[str, list[Entry]], list[Entry]]:
@@ -1280,10 +1395,12 @@ def load_lexicons(lexicon_dir: Path = LEXICON_DIR) -> tuple[dict[str, list[Entry
                 # common.yaml for the live kpi.py table path, which has no table arithmetic.
                 patterns = tuple(p for p in patterns if p != "total revenues?")
             if str(raw["metric"]) == "working_capital_days":
-                # v7: whole-label matching needs the word "days"/"cycle"; the live sentence path keeps the broad
-                # pattern ("net working capital stands at 155 days") in common.yaml.
-                patterns = tuple(re.sub(r"\(net \)\?working capital\( days\| cycle\)\?",
-                                        r"(net )?working capital (days| cycle)", p) for p in patterns)
+                # v8: the live pattern looks ahead for "days"/"cycle" so the match ends before the printed value;
+                # this map matches whole labels, so the same words are consumed here.
+                patterns = tuple(
+                    re.sub(r"\(net \)\?working capital\(\?=\[\^\.\]\{0,40\}\?\(\?:\\\\bdays\?\\\\b\|\\\\bcycle\\\\b\)\)",
+                           lambda _m: r"(net )?working capital[^.]{0,40}?(?:\bdays?\b|\bcycle\b)", p)
+                    for p in patterns)
             entry = Entry(str(raw["metric"]), patterns=patterns,
                           neg=(str(raw["neg"]) if raw.get("neg") else "",),
                           source=path.stem, kind=str(raw.get("kind") or ""), unit=str(raw.get("unit") or ""))
@@ -1444,6 +1561,23 @@ def unit_kind_of(unit: str | None) -> str:
     if any(word in text for word in ("rs", "inr", "usd", "us$", "₹", "crore", "lakh", "million", "billion",
                                      "mn", "bn")):
         return "money"
+    return ""
+
+
+def label_unit_kind(text: str | None) -> str:
+    """v8: the unit the printed label itself states (``mill te`` -> tonnes, ``network minutes`` -> count,
+    ``current ratio`` -> x), or ``''``.
+
+    The metric definition cannot know this: a volume is tonnes in one row and a count in another, and the printed
+    word is what the figure is.
+    """
+    label = str(text or "").lower()
+    if re.search(r"\b(?:kt|mt|te|tonnes?|tons?)\b", label):
+        return "tonnes"
+    if re.search(r"\bminutes?\b", label):
+        return "count"
+    if re.search(r"\bratio\b", label):
+        return "x"
     return ""
 
 
@@ -1672,6 +1806,10 @@ def _section_metric(parent: str) -> str:
     for needle, metric in SECTION_OVERRIDES:
         if needle in parent:
             return metric
+    if parent.startswith(("profit from ", "profit loss from ")) and "operations" not in parent:
+        # v8: the OCR-split "profit from gm nt b f fin n t nd t" keeps its opening words; the child is the
+        # segment member (row 87), never a from_header row.
+        return "segment_results"
     return ""
 
 
@@ -1898,7 +2036,7 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
     channel, _base = _quantity_channel(plain)
     if channel:
         return full or plain, Proposal("volume", "section:channel", family, None, channel, "5-context",
-                                       "section"), ""
+                                       "section", unit_kind=label_unit_kind(raw)), ""
     if _ambiguous_context(plain, parent_norm):
         return full, None, ""
     if heading_like(plain):
@@ -1920,6 +2058,24 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
         proposal = _context_proposal(plain, parent_norm, family)
         if proposal is not None:
             key_label = full
+    if proposal is None and parent_norm and "attributable to" in parent_norm:
+        # v8: an OCR child ("Owners oftl1c Parent Company") still names the attribution; the parent's measure is
+        # the line and the child's subject is the dimension (row 29).  A child that names its own statement total
+        # keeps that total (the mis-parented TCI line), not the parent's measure.
+        child_total = _child_total(plain, family)
+        if child_total is not None:
+            proposal = child_total
+            key_label = full
+        else:
+            base_parent = parent_norm.split(" attributable to")[0].strip()
+            attribution = ("attribution=non_controlling"
+                           if re.search(r"\bnon\s*controlling\b|\bnci\b|\bminority\b", plain)
+                           else "attribution=owners_of_parent" if ATTRIBUTION_SUBJECT.search(plain) else "")
+            metric = _attribution_metric(base_parent) if (attribution and base_parent) else ""
+            if metric:
+                proposal = Proposal(metric, "section:attribution", family, None, attribution, "5-context",
+                                    "section")
+                key_label = full
     if proposal is None and any(needle in parent_norm for needle in PERCENT_PARENTS):
         base_plain, exclusion_dims = split_exclusions(plain)
         base = (_candidate_proposal(plain, family, seeds, family_entries, common, parsed)
@@ -1986,8 +2142,10 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
             key_label = full
     if proposal is None and not is_section_parent and not CASH_CHANGE_PARENT.search(parent_norm):
         member_evidence = entity_name or container_child or _member_like(plain, has_measure, has_metric_row, peers)
+        strong_member = bool(has_measure or entity_name or container_child)
         if (member_evidence and not subline_child and not quantity_row and not _trailing_count(raw)
-                and not _generic_single(plain, has_measure, entity_name, container_child)):
+                and not _generic_single(plain, has_measure, entity_name, container_child)
+                and not _unreadable_member(plain, trusted, strong_member)):
             dimension = plain
             if parent_norm and not _container_parent(parent_norm) and plain in AMBIGUOUS_MEMBERS:
                 dimension = f"{parent_norm} > {plain}"
@@ -2020,6 +2178,16 @@ def decide_label(raw: str, family: str, seeds: Mapping[tuple[str, str], str],
         proposal = Proposal(metric, "percent:label", family, _section_entry(metric, "section:pct"),
                             proposal.dimension, "1-match", "exact")
         key_label = f"{key_label or plain} %"
+    if proposal is not None and proposal.metric in {"revenue", "segment_revenue"} \
+            and re.search(r"\b(?:kt|mt|te|tonnes?|tons?)\b", str(raw or ""), re.I):
+        # v8: a sales row printed in tonnes is a sales volume, not money (SAIL "Sales Million Tonne").
+        proposal = Proposal("sales_volume", "unit:label", family, None, proposal.dimension, "4-unit", "section")
+    if proposal is not None and proposal.metric != FROM_HEADER and not proposal.unit_kind:
+        unit_kind = label_unit_kind(raw)
+        if unit_kind:
+            proposal = Proposal(proposal.metric, proposal.reason, proposal.family, proposal.entry,
+                                proposal.dimension, proposal.rule, proposal.confidence, proposal.status,
+                                unit_kind)
     return key_label, proposal, rejection
 
 
@@ -2115,6 +2283,7 @@ def read_cells(cells_dir: Path, taxonomy: sqlite3.Connection, table: dict, isin_
     # v7: two periods of one document are the same evidence ("Order Book - 31 Mar26", "Real Estate"); only
     # character-level junk is rejected.
     trusted_labels: set[str] = set()
+    seen_docs: dict[str, set[str]] = defaultdict(set)
     for path in files:
         con = connect_ro(path, timeout_s=60)
         try:
@@ -2124,10 +2293,14 @@ def read_cells(cells_dir: Path, taxonomy: sqlite3.Connection, table: dict, isin_
                 docs, periods = per_label[str(label)]
                 docs.add(str(doc))
                 periods.add(str(header or ""))
+                seen_docs[str(label)].add(f"{path.stem}:{doc}")
             trusted_labels |= {label for label, (docs, periods) in per_label.items()
                                if len(docs) >= 2 or len(periods) >= 2}
         finally:
             con.close()
+    # v8: the garbled rule reads a corpus vocabulary: a word this corpus prints in two or more documents is a
+    # word, not OCR damage.
+    set_corpus_vocabulary(label for label, docs in seen_docs.items() if len(docs) >= 2)
     cells = 0
     for path in files:
         isin = path.stem
@@ -2249,12 +2422,15 @@ def read_cells(cells_dir: Path, taxonomy: sqlite3.Connection, table: dict, isin_
 # ------------------------------------------------------------------------------------------------------ output
 def _metric_defs(proposals: Iterable[Proposal], meta: dict[str, MetricMeta]) -> list[dict]:
     metrics: dict[str, MetricMeta] = {}
+    label_kinds: dict[str, Counter[str]] = defaultdict(Counter)
     sources: dict[str, set[str]] = defaultdict(set)
     for proposal in proposals:
         if not proposal.metric or proposal.metric == FROM_HEADER:
             continue
         sources[proposal.metric].add(proposal.reason)
         metrics.setdefault(proposal.metric, MetricMeta())
+        if proposal.unit_kind:
+            label_kinds[proposal.metric][proposal.unit_kind] += 1
         if proposal.entry is not None:
             entry = proposal.entry
             if entry.unit:
@@ -2271,7 +2447,10 @@ def _metric_defs(proposals: Iterable[Proposal], meta: dict[str, MetricMeta]) -> 
     rows = []
     for metric in sorted(metrics):
         metric_meta = metrics[metric]
-        unit_kind = resolve_unit_kind(metric, metric_meta)
+        # v8: the unit the label's own word states wins over the metric definition (a volume row printed in
+        # "mill te" is tonnes, whatever the cells or the definition say).
+        kinds = label_kinds.get(metric)
+        unit_kind = (kinds.most_common(1)[0][0] if kinds else "") or resolve_unit_kind(metric, metric_meta)
         rows.append({"metric": metric, "kind": metric_kind(metric, unit_kind), "unit_kind": unit_kind,
                      "description": "T-133 proposed metric (" + ", ".join(sorted(sources.get(metric) or {"seed"}))
                      + ")."})
@@ -2425,7 +2604,7 @@ def write_outputs(out_dir: Path, proposals: Mapping[tuple[str, str], Proposal],
     garbled_rows = sum(count for (label_norm, family), count in numeric.items()
                        if rejected.get((label_norm, family)) == "garbled")
     lines = [
-        "label map coverage (T-133 v7)",
+        "label map coverage (T-133 v8)",
         f"numeric table_cell rows: {total_numeric}",
         f"mapped to a proposed metric: {total_mapped} ({100 * total_mapped / total_numeric:.1f}%)"
         if total_numeric else "mapped to a proposed metric: 0",
@@ -2519,6 +2698,9 @@ def run(cells_dir: Path, kpi_dbs: Sequence[Path], out_dir: Path,
         taxonomy.close()
 
     proposals: dict[tuple[str, str], Proposal] = {}
+    # v8: the final map applies the same decision rule as the cell pass (mix dimensions, percent tails, members),
+    # so a label only seen in kpi_series keeps its dimension instead of a bare lexicon match.
+    set_corpus_vocabulary(label for (label, _family), obs in observations.items() if len(obs.docs) >= 2)
     for label_norm, family in sorted(observations):
         if (label_norm, family) in forced:
             continue
@@ -2526,14 +2708,28 @@ def run(cells_dir: Path, kpi_dbs: Sequence[Path], out_dir: Path,
         if item.junk:
             rejected_labels.setdefault((label_norm, family), item.junk)
             continue
-        proposal = _candidate_proposal(label_norm, family, seeds, family_entries, common, item)
-        if label_norm in SECTION_VOCAB and _section_metric(label_norm):
-            metric = _section_metric(label_norm)      # the label itself is a section measure
-            proposal = Proposal(metric, "section:label", family, _section_entry(metric, "section"), "",
-                                "5-context", "section")
+        observed = observations.get((label_norm, family), Observation())
+        trust = len(observed.docs) >= 2
+        _key, proposal, rejection = decide_label(label_norm, family, seeds, family_entries, common,
+                                                trusted=trust)
+        if proposal is not None and proposal.metric == FROM_HEADER:
+            proposal = None
+        if proposal is not None:
+            # v8: the printed label's own unit words are evidence the normalised key loses ("Sales Million
+            # Tonne" normalises to "sales"); they decide a sales volume and a stated unit kind.
+            raw_label = observed.raws.most_common(1)[0][0] if observed.raws else label_norm
+            if proposal.metric in {"revenue", "segment_revenue"} \
+                    and re.search(r"\b(?:kt|mt|te|tonnes?|tons?)\b", str(raw_label), re.I):
+                proposal = Proposal("sales_volume", "unit:label", family, None, proposal.dimension,
+                                    "4-unit", "section")
+            if proposal.metric != FROM_HEADER and not proposal.unit_kind:
+                unit_kind = label_unit_kind(raw_label)
+                if unit_kind:
+                    proposal = Proposal(proposal.metric, proposal.reason, proposal.family, proposal.entry,
+                                        proposal.dimension, proposal.rule, proposal.confidence,
+                                        proposal.status, unit_kind)
         if proposal is None:
-            observed = observations.get((label_norm, family), Observation())
-            garbled = garbled_reason(label_norm, trusted=len(observed.docs) >= 2)
+            garbled = rejection or garbled_reason(label_norm, trusted=trust)
             if garbled:
                 rejected_labels.setdefault((label_norm, family), garbled)
                 continue

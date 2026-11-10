@@ -3,5 +3,6 @@
 family: hotels
 sectors: [hotels]
 entries:
-  - {metric: arr, kind: money, unit: inr, labels: ["arr", "average room rate", "average daily rate"], neg: "growth|%|share|revpar"}
+  # T-133 v8: "arr" is a whole word (an unanchored substring matched "carried", "arrangement").
+  - {metric: arr, kind: money, unit: inr, labels: ["\\barr\\b", "average room rate", "average daily rate"], neg: "growth|%|share|revpar"}
   - {metric: occupancy_pct, kind: pct, unit: pct, labels: ["occupancy"], neg: "growth|bps|%\\s*of"}

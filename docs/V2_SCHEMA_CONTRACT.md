@@ -367,7 +367,7 @@ classes: point headers ('31-12-2024', 'Mar-26') and bare '9M' left without a per
 per-share rows ('EPS') given a crore scale; garbled text-layer headers ('30.011.2028') parsed as data; 'Inc/Dec' difference
 columns read as values. Not yet at the 90% accept.
 
-## 11. Label map (T-133, v7 10 Nov 2026)
+## 11. Label map (T-133, v8 10 Nov 2026)
 
 `reality_engine/v2/label_map.py` turns the printed row labels of the table store and `kpi_series` into one proposed
 metric per sector family, and writes the review queue Opus approves from. The whole-label phrases live in
@@ -408,14 +408,20 @@ assets" line became `total_financial_assets`; none of those can happen now. Unit
 footnote, so `ebitdaal1` is `ebitdaal` and `mundra1` is `mundra` (v6), and a per-unit denominator is never
 stripped (`EBITDA per tonne` stays `ebitda_per_tonne`). A **garbled** label is `status='rejected'` with
 `rule='garbled'`, never a proposal: a token with a digit/letter swap ("0ther"), a digit/letter soup
-("39l" in "> ?,39L.64"), or no dictionary hit for 40% or more of its tokens ("gpwis mmt"), or a single
-lower-case word of six or more letters the dictionary does not hold. The dictionary is the label filler plus the
-common lexicon phrases; a label that matches a lexicon phrase whole is never garbled, a container child
-(`JVs > ...`) is exempt so an acronym member survives, and **v6/v7: a label with a clean numeric cell in two
-periods of one document or in two or more documents is never garbled** - the evidence is checked before the
-dictionary, so real members the dictionary lacks (`krishnapatnam`, `lighting and fixtures`, `lloyd consumer`) and
-real lines with a date or OCR-damaged numbering (`Order Book - 31 Mar26`, `Real Estate`, `Non Participating
-Health`) are proposed, not rejected.
+("39l" in "> ?,39L.64"), or - **v8** - the share of its words that are **OCR damage**. The vocabulary is the
+built-in label/line words, the common lexicon phrases **and the corpus** (every word the cells print in two or more
+documents, collected by `read_cells` and `run` through `set_corpus_vocabulary`); a word counts as damage only when
+it is out of that vocabulary and within edit distance 2 of a word in it, and a label of two or more words is
+garbled when at least 40% of its words are damaged. "CRAR (standalone)", "purchase of treasury shares", "employee
+benefits expense", "revenue from top ten customers", "optic fibre network r kms" and "mundra volume mmt share" are
+real lines, so they queue; "iopening balance", "gpwis mmt" and a no-vowel word soup ("xqzt vbnm") are rejected. A
+label that matches a lexicon phrase whole is never garbled, a container child (`JVs > ...`) is exempt so an acronym
+member survives, and **v6/v7: a label with a clean numeric cell in two periods of one document or in two or more
+documents is never garbled** - the evidence is checked before the dictionary, so real members the dictionary lacks
+(`krishnapatnam`, `lighting and fixtures`, `lloyd consumer`) and real lines with a date or OCR-damaged numbering
+(`Order Book - 31 Mar26`, `Real Estate`, `Non Participating Health`) are proposed, not rejected; **v8:** a trusted
+label still has to look like a word (`ddutcd`, one vowel in six letters, is not a member), and a token one edit from
+a dictionary word ("lax" for "tax") is damage whatever the trust evidence says.
 One-edit OCR typos are repaired token by token (`Provisiuns` -> `provisions`), and a truncated label whose
 unmatched bracket ends the cell ("`(Excl.`") is rejected as `truncated label`; an OCR footnote inside a whole
 label ("`(loss}`", "`(A+B\\`") is not truncation. **v7:** a label whose only damage is a digit glued into one token
@@ -497,7 +503,11 @@ ratios), `current_liability_ratio` is `x` (printed fractions 0.89/0.73 are not 0
 are `pct`. A `from_header` row is always NULL because its column header carries the measure and
 unit (a segment member with 20-26% margin cells is not a money row), while a currency line item (`Unallocable
 Expenses`) keeps `money` from its numeric cells. A money figure's currency still comes from the cell's own unit,
-never from the label map (v1 carried `inr` for dollar lines).
+never from the label map (v1 carried `inr` for dollar lines). **v8:** the label's own unit word wins over the
+metric definition in `metric_def` (`(Excl. Other Qty.(In Mill. Te)` is `volume` in `tonnes`, `Total Minutes on
+Network` is a `count`, `Current Ratio` is `x`); the unit word lives in `Proposal.unit_kind` and `_metric_defs`
+takes the majority of the proposals' stated units before `resolve_unit_kind`. A sales row printed in tonnes is
+`sales_volume`, not money (`Sales Million Tonne`).
 
 **Rule 5 — statement context (v4).** The cell's `section > label` parent separates rows printed in two
 statements: "Interest received" in the cash flow is `interest_received`, on the P&L it is `interest_income`
@@ -528,7 +538,16 @@ movement/adjustment parent is the change (`Changes in assets and liabilities > P
 queues, and a child of an "attributable to" parent made only of short/OCR fragments is the parent's total. A
 `Total ...` row whose qualifier is OCR damage (`Segment Liabilities > Total raabinties`) is the section total, not
 a member. `ARR (LFL)`, `Occupancy % (LFL)` and `Cheques, draft on hand` are measures (the `LFL` basis is a
-qualifier, the cheque line is a statement line), never `from_header` members.
+qualifier, the cheque line is a statement line), never `from_header` members. **v8:** a weak member leaf with no
+word the vocabulary or the corpus knows queues instead of becoming `from_header` (`Receivables > Jnvesunents`,
+`Ddutcd`), while a measure header, an entity name, a container parent or the two-document evidence still carries a
+real name (`JVs > AICTPL (CT-3), JV with MSC`, `krishnapatnam`). The parent's own wording decides an attribution
+row: `... attributable to > Owners oftl1c Parent Company` is `total_comprehensive_income_attributable`
+(`attribution=owners_of_parent`), and a TCI total that names no owner is `total_comprehensive_income`, not the
+owners' line. A period note under a measure is the measure (`[b) Deferred Tax > Period/ Year (7'B)` is
+`deferred_tax[period year 7 b]`; the scan's `[b)` is read as the numbering mark `(b)`), and an OCR-split "profit
+from segments before finance costs..." parent owns its member (`profit from gm nt b f fin n t nd t > Jewellery` is
+`segment_results[jewellery]`).
 
 **Rule 6 — junk, headings and garbage.** A label of digits/period tokens only, a digit glued to a word
 ("expe1", "39l"), a value token ("45,000 160% EBITDA"), a sentence fragment ending in an auxiliary verb ("The Parent
@@ -581,13 +600,23 @@ maps to NULL, a queue with no metric or a rejection; the `--replay <grade.csv>` 
 that rule, treats a documented v4 id rename (`revenue_from_operations` -> `revenue`,
 `cash_generated_from_operations` -> `cash_flow_from_operations`, the two v3 `_pct` slugs) as kept, and treats a
 right `from_header` that now has the section's metric as an upgrade, not a loss. Every kept-with-reason and
-changed row is listed in `replay_report.md`. **v7 splits the two jobs:** the whole-label rule is the map's rule and
-the dry-run diagnostic, while the live `table_v1` extraction path of `reality_engine/pilot3/kpi.py` is `main`'s
-`label_matches` + `_own_row_hits`, unchanged, and `common.yaml` keeps `total revenues?` under `revenue` for it; a
-printed `net cash` is the new `net_cash` id (sign as printed, never negative `net_debt`), a bare `working capital`
-is the new `working_capital` money line (the days KPI needs the word `days`/`cycle`, and a working-capital
-demand-loan row is excluded explicitly), and the whole-label dry run resolves each company's sector family exactly
-as the build does (without it every `sectors:` entry looks lost).
+changed row is carried by the per-row `grade_replay_*.csv`. **v7 splits the two jobs** (the whole-label rule is the map's rule and
+the dry-run diagnostic, the live `table_v1` extraction path of `reality_engine/pilot3/kpi.py` stays on `main`'s
+`label_matches` + `_own_row_hits`); **v8 corrects v7's claim that the lexicon edits do not reach that live path:**
+they do, because `label_matches` reads every yaml. The exclusions therefore sit **in the label pattern**, not in the
+`neg` list whose window is 10 characters before and 14 after a match: `net cash(?! ... generated|from|used|flows?|
+operating|...)`, `\barr\b` (never "carried"/"arrangement"), `(?<!margin\son\s)revenue from operations?(?! margin)`,
+`^(?:net\s+)?working\s+capital\s*$` for the balance and a `working capital ... days|cycle` lookahead for the days
+KPI, `^total equity (and|&) liabilities\s*$`, and the `dividend income` / `dividend received` split. `_own_row_hits`
+drops a shorter hit that starts where a longer whole label starts, so "Revenue per tower per month" and "Sales and
+marketing expenses" no longer store a `revenue` row beside their own metric. The gate is the live A/B
+(`.tmp/live_kpi_ab.py`, output `.tmp/label_map_v8/live_kpi_ab.md`): the live matcher over the distinct `table_v1`
+labels of the five stores (22,005 rows) with `main`'s lexicon vs the branch's, plus the p20_r4 cells; every metric
+moving more than 10 rows must be right-added or junk-removed. The A/B passes: `revenue_per_tower_per_month` +188
+and `sales_and_marketing_expense` +65 are right additions, `revenue` -253, `working_capital_days` -256 and
+`net_debt` -46 are junk removals, `net_cash` adds 1 stored row (no cash-flow total) and `working_capital` 2. The
+whole-label dry run resolves each company's sector family exactly as the build does (without it every `sectors:`
+entry looks lost).
 
 **Outputs** in `--out`: `label_map.db` (the `label_map` and `metric_def` tables, the v2 DDL; `label_map` rows carry
 `dimension`, `unit_kind` and `status`), `review_<family>.csv` and `review_common.csv` (label_norm, example raw
@@ -596,9 +625,9 @@ labels, frequency, companies, proposed_metric, dimension, unit_kind, reason, **r
 `table_cell` rows per family and overall, the rejected count, the mapped-or-queued share, and the 50 most frequent
 unmapped labels), `rejected_seeds.csv`, `seed_changes.csv` (the read-only dry run of the new rule over the
 `table_v1` rows of the `kpi_series` stores, by `(old, new)` metric pair, with each company's sector family
-resolved as the build does), `sample_seed53.csv` (200 proposed
-rows at `random.Random(53)`, spread over families, ungraded, for Opus to grade) and `rejected_seed53.csv`
-(40 labels that stay rejected, `random.Random(53)`, ungraded, so the garbled rule is reviewed on its rejects, not
+resolved as the build does), `sample_seed59.csv` (200 proposed
+rows at `random.Random(59)`, spread over families, ungraded, for Opus to grade) and `rejected_seed59.csv`
+(40 labels that stay rejected, `random.Random(59)`, ungraded, so the garbled rule is reviewed on its rejects, not
 only on its proposals). `rule` is the step that proposed the row (`1-match`, `2-seed`, `3-qualifier`, `3-member`,
 `5-context`, `8-table`, `section:parent`, `section:total`, `table:total`, `section:change`, `section:channel`,
 `percent:label`, `child:total`,
@@ -607,7 +636,7 @@ only on its proposals). `rule` is the step that proposed the row (`1-match`, `2-
 `grade_replay_seed31.csv`, `grade_replay_seed37.csv`, `grade_replay_seed41.csv`, `grade_replay_seed43.csv` and
 `grade_replay_seed47.csv`
 (the graded row, its graded metric, every v6 metric the label can take, the kept/changed/unchanged/LOST status and
-the reason); `replay_report.md` carries the zero-lost summary, every right row kept through a sanctioned rename or
+the reason); the `grade_replay_seed*.csv` files carry the zero-lost summary, every right row kept through a sanctioned rename or
 `from_header` upgrade, every changed wrong row with its reason, the wrong rows still unmapped and the families
 under 60%. A family-specific
 `rejected` row (`current assets` at `tyres_auto_ancillary`) masks a common `*` proposal for that family; a
@@ -623,37 +652,35 @@ textiles_home. Of the 191 basic industries, 135 map and 56 stay `unknown`; none 
 `master_industry` tier covers TITAN, TRENT, ULTRACEMCO, SUNPHARMA and WELSPUNLIV, which have no `company_industry`
 row).
 
-**Measured 10 Nov 2026 (v7)** on `D:/RealityEngine/v2/p20_r4` (read-only, 10 company files, 74,486 `table_cell`
-rows) and the `kpi_series` of `pilot10.db`, `p20/p20new.db`, `u8/u8.db` and `q12/q12.db` (30,298 rows): 5,276
-`(label, family)` observations, 1,940 proposed mappings (rule 1 match 708, seed 436, member 227, qualifier 35,
-context 513, table total 21) and 234 `metric_def` rows (flow 97, stock 62, ratio 68, per_share 3, price 4). Of the
-59,326 numeric table rows, 42,170 (71.1%) map to a proposed metric, 1,313 are rejected as junk/heading/garbled
-(708 rejected labels, 491 of them garbled over 780 numeric cells; v6 rejected 2,284 cells and 887 labels, v5
-rejected 4,881 cells), and 59,172 (99.7%) are mapped or queued in the review CSVs; 154 rows
-have no label. Only `ports_logistics` is near the 60% stop rule (60.1%); the other eight cell families are
-64.1%-77.3%. The stop rule (below 60% overall coverage means stop and report lexicon gaps) was not hit. The seed
-dry run (sector-aware; see rule 10) changes 2,697 of the 19,231 `table_v1` `kpi_series` rows in 32 pairs, against
-v6's 6,770/62: `capex` -> `operating_free_cash_flow` (1,466), `revenue` loses 424 strict-label rows (its 3,083
-`total revenue(s)` rows map again once that alias is back), `working_capital_days` loses its 142 working-capital
-demand-loan rows (junk, excluded explicitly), and `roa_pct`/`crar_pct`/`net_debt` drop below the 10-row gate. Every
-metric that still loses more than 10 rows is listed with five examples and a junk verdict in
-`.tmp/label_map_v7/kpi_dry_run.md` (revenue 424, working_capital_days 142, ebitda 67, debt_to_equity 33, pat 24,
-emerging_markets 20, net_debt 12). The live `table_v1` path of `kpi.py` is unchanged from `main`, so this dry run is
-a diagnostic and no live row moves. Output kept at `.tmp/label_map_v7` (`label_map.db`, the review CSVs,
-`coverage.txt`, `rejected_seeds.csv`, `seed_changes.csv`, `sample_seed53.csv`, `rejected_seed53.csv`,
-`grade_replay_seed31.csv` ... `grade_replay_seed47.csv`, `kpi_dry_run.md`, `replay_report.md`, `build.log`);
-nothing is `approved` until Opus works through the review files.
+**Measured 10 Nov 2026 (v8)** on `D:/RealityEngine/v2/p20_r4` (read-only, 10 company files, 74,486 `table_cell`
+rows) and the `kpi_series` of `pilot10.db`, `p20/p20new.db`, `u8/u8.db`, `q12/q12.db` and `n10/n10.db` (34,910 rows;
+v7 measured four stores): 5,438 `(label, family)` observations, 2,022 proposed mappings (rule 1 match 708, seed
+485, member 228, qualifier 35, context 542, table total 22, label unit 2) and 235 `metric_def` rows (flow 98,
+stock 62, ratio 68, per_share 3, price 4). Of the 59,326 numeric table rows, 42,341 (71.4%) map to a proposed
+metric, 882 are rejected as junk/heading/garbled (431 rejected labels, 197 of them garbled over 397 numeric cells;
+v7 rejected 1,313 cells and 708 labels, 491 garbled - the v8 corpus rule halves the garbled rejections), and 59,172
+(99.7%) are mapped or queued in the review CSVs; 154 rows have no label. Only `ports_logistics` is near the 60% stop
+rule (60.1%); the other eight cell families are 64.2%-77.3%. The stop rule (below 60% overall coverage means stop
+and report lexicon gaps) was not hit. The seed dry run (sector-aware; see rule 10) changes 3,230 of the 22,005
+`table_v1` `kpi_series` rows of the five stores in 33 pairs (the v7 figure, 2,697 of 19,231, measured four stores
+and is not directly comparable); every metric moving more than 10 stored rows is right-added or junk-removed in the
+live A/B of rule 10, which is the merge gate. Output kept at `.tmp/label_map_v8` (`label_map.db`, the review CSVs,
+`coverage.txt`, `rejected_seeds.csv`, `seed_changes.csv`, `sample_seed59.csv`, `rejected_seed59.csv`,
+`grade_replay_seed31.csv` ... `grade_replay_seed53.csv`, `live_kpi_ab.md`, `build.log`); nothing is `approved` until
+Opus works through the review files.
 
-**Opus grade replay (v7, zero lost right rows).** The v5 replay counted a right row dropped to NULL as "fixed";
-v6 counts it LOST (step 8), and v7 keeps that rule over all five grade files. Seed-31 (139/200 right) keeps all
-139, LOST 0; of the 61 wrong rows 33 change, 8 stay the same and 20 are still unmapped (a wrong row may not map,
-but it is never counted as fixed). Seed-37 (170) keeps all 170, LOST 0 (13 changed, 12 unchanged, 5 unmapped).
-Seed-41 (177) keeps all 177, LOST 0 (4 changed, 14 unchanged, 5 unmapped). Seed-43 (180) keeps all 180, LOST 0
-(5 changed, 13 unchanged, 2 unmapped). Seed-47 (181/200 right, the v6 grade) keeps all 181, LOST 0 (8 changed, 8
-unchanged, 3 unmapped): the `from_header` measure rows, the swallowed `consumer` member names, the `net cash`
-sign, the total-liability member and the `ProRlforthe` PAT row are now answered by a real metric or queued
-honestly, and the ARR/occupancy/cheque/share-of-profit rows are no longer members.
-Right rows whose answer changed but stayed right are listed per row in `replay_report.md`: a documented v4
+**Opus grade replay (v8, zero lost right rows).** The v5 replay counted a right row dropped to NULL as "fixed";
+v6 counts it LOST (step 8), and v8 keeps that rule over all six grade files. Seed-31 (139/200 right) keeps all
+139, LOST 0 (32 wrong rows change, 9 stay the same, 20 still unmapped); seed-37 (170) keeps all 170, LOST 0 (13
+changed, 12 unchanged, 5 unmapped); seed-41 (177) keeps all 177, LOST 0 (4 changed, 14 unchanged, 5 unmapped);
+seed-43 (180) keeps all 180, LOST 0 (5 changed, 13 unchanged, 2 unmapped); seed-47 (181) keeps all 181, LOST 0
+(8 changed, 8 unchanged, 3 unmapped); seed-53 (184/200 right, the v7 grade) keeps all 184, LOST 0 (7 changed, 8
+unchanged, 1 unmapped). The v8 run first queued seven graded `from_header` names (mobile services south asia,
+tower infrastructure services, benares hotels ltd, p11ssive infrastructure services, appdcl, trucking and
+asia > passive infrastructure servi) - a near-word damage test was flagging names the corpus had made neighbours
+of ordinary words - so the member guard now reads only a one-edit distance to a **statement-line** word and keeps
+the graded members (zero lost restored).
+Right rows whose answer changed but stayed right are listed per row in the `grade_replay_*.csv` files: a documented v4
 canonical rename (`cash_profit_from_operations_before_derivative_and_pct` ->
 `cash_profit_from_operations_pct`, `operating_expenses_excluding_..._pct` -> `operating_expenses_pct`,
 `revenue_from_operations` -> `revenue`) and a `from_header` row that now has its section's metric (three seed-31
@@ -666,9 +693,9 @@ the cash-flow changes, owners' profit), the mixed unit rows (`eliminations` mone
 the channel/mix members (`volume[fsa]`, `vertical_mix[retail]`, `aum_mix[asset_class=liquid]`), the
 truncated/OCR/merged-label rejects and `Provisiuns` -> `provisions`. The per-row detail is in
 `grade_replay_seed31.csv`, `grade_replay_seed37.csv`, `grade_replay_seed41.csv`, `grade_replay_seed43.csv`,
-`grade_replay_seed47.csv` and `replay_report.md` in `.tmp/label_map_v7`.
+`grade_replay_seed47.csv`, `grade_replay_seed53.csv` in `.tmp/label_map_v8`.
 
-Tests: `reality_engine/tests/test_v2_label_map.py` (65 passed) cover the normalisation and unit-tail stripping, the
+Tests: `reality_engine/tests/test_v2_label_map.py` (69 passed) cover the normalisation and unit-tail stripping, the
 OCR repair table, the OCR space-join and the fuzzy section repair, rule 1 whole-label matching, garbled
 rejection, the seed rule and seed-vs-lexicon conflict, qualifiers/dimensions, the definition basis, the exclusion
 qualifier, measure parents and leaf-wins (CWIP/EPS), member -> `from_header` with the v3 evidence and the keep
@@ -682,10 +709,13 @@ rule, the 18 missed common lines, the `from_header` misuses, the smaller context
 and one test per v7 step (character-level junk only with the two-period evidence, the OCR fixer never rewriting a
 dictionary word, `from_header` only for measures with ARR/occupancy/share-of-profit, and the smaller context rows:
 net cash, working capital, the exceptional-items qualifier, the damaged total, the one-letter child and the
-attributable total). `reality_engine/tests/test_pilot3_kpi.py` (106 collected: 100 pass, 6 fail at setup only
+attributable total) and one test per v8 step (the corpus garbled rule against the 21 over-rejected labels with at
+most 4 left, the measure parent / OCR leaf / attributable total / label units, and the live lexicon exclusions).
+`reality_engine/tests/test_pilot3_kpi.py` (109 collected: 103 pass, 6 fail at setup only
 because pytest's `tmp_path` is denied in this dsh sandbox) covers `row_label_hits` (whole label, block heading,
-plural), `label_text`, the evidence labels, and the v7 step-1 test that the live path keeps `Total revenues` and
-`ROA–PBT`.
+plural), `label_text`, the evidence labels, the v7 step-1 test that the live path keeps `Total revenues` and
+`ROA–PBT`, and the v8 live-lexicon tests (net cash vs cash-flow totals, `arr` anchored, Coal India EBITDA margin
+kept, the borrowing rows and the dividend split, the longest-hit rule).
 
 **Opus reviews (9-10 Nov 2026, history).** Families were right for all 40 pilot companies, but no family was
 approved: v1's substring matcher produced systematic wrong proposals, v2 (whole-label matching) was graded
@@ -708,7 +738,17 @@ AS`/`PAT after Minorities`/`CRAR`/`D/E`/`net debt excluding ...`, only character
 periods of one document count as evidence), the OCR fixer leaves dictionary words alone, `from_header` is kept for
 measure rows (ARR, occupancy, cheques, share of profit) and the smaller row classes (net cash, working capital,
 exceptional items' NCI qualifier, the damaged total, the one-letter segment, the attributable total) are routed -
-with zero lost right rows over all five grade files (rule 10). v1's build `D:/RealityEngine/v2/label_map`, v2's
+with zero lost right rows over all five grade files (rule 10). Opus graded v7 184/200 on seed-53 (v6 181),
+19/40 true junk (v6 15) and confirmed the replay (0 lost over seeds 31-47, 25/25 kept rows), but **blocked the
+merge**: the lexicon edits reach the live matcher, and Opus's live A/B over the 22,005 `table_v1` rows showed
+~1,500 right rows gained but ~470 junk rows **added** (`net_cash` cash-flow totals, working-capital borrowing
+lines, `dividend income` counted as a receipt, unanchored `arr`, revenue margins, and the old revenue row kept
+beside the per-tower/S&M rows). v8 fixes those structurally: every exclusion is in the label pattern (so the live
+matcher's short neg window no longer matters), the longer whole label wins in `_own_row_hits`, the corpus vocabulary
+halves the garbled rejections (708 -> 431 rejected labels), the measure-parent/OCR-leaf/attribution/unit rules route
+the seed-53 errors, and the live A/B gate passes (0 junk added >10, 0 right lost >10; 253 stored rows gain their
+own right metric and 302 junk metric hits are removed, while the cells show ~1,000 right hits added and 105 junk
+hits removed). v1's build `D:/RealityEngine/v2/label_map`, v2's
 `.tmp/label_map_v2` build
-and seed-31 sample, v3's `.tmp/label_map_v3` build and seed-37 sample, v4's/v5's builds and v6's build are
-superseded by `.tmp/label_map_v7`.
+and seed-31 sample, v3's `.tmp/label_map_v3` build and seed-37 sample, v4's/v5's builds, v6's build and v7's build
+are superseded by `.tmp/label_map_v8`.

@@ -1283,6 +1283,52 @@ def test_net_cash_is_its_own_level_not_net_debt():
     assert not [r for r in rows if r.metric in ("net_debt", "net_cash")]
 
 
+# ---------------------------------------------------------------- T-133 v8: live lexicon exclusions
+def test_v8_the_live_lexicon_excludes_cash_flow_and_borrowing_rows():
+    """Step 1: the live matcher reads only 14 characters after a hit, so the exclusion sits in the label pattern."""
+    for cash_flow in ("Net cash generated from operating activities (a)",
+                      "Net Cash Generated From/(Used In) Investing Activities (B)",
+                      "Net cash and cash equivalent outflow",
+                      "(net Cash Operating Profit before working capital changes"):
+        assert "net_cash" not in _metrics("BHARTIARTL", cash_flow), cash_flow
+    assert "net_cash" in _metrics("SUNPHARMA", "Net cash position")
+    assert "net_cash" in _metrics("SUNPHARMA", "Net cash")
+    for margin in ("Net Profit Margin on Revenue from operation", "Gross Profit Margin on Revenue from operation",
+                   "EBITDA Margin on Revenue from operation"):
+        assert "revenue" not in _metrics("COALINDIA", margin), margin
+    assert "ebitda_margin_pct" in _metrics("COALINDIA", "EBITDA Margin on Revenue from operation")
+    assert "revenue" in _metrics("BHARTIARTL", "Revenue from operations")
+    assert "revenue" not in _metrics("BHARTIARTL", "Revenue from operations margin")
+    assert "working_capital" in _metrics("TATAPOWER", "Working capital")
+    for borrowing in ("Working capital loans and demand loan facilities", "Working Capital Borrowing",
+                      "Working capital line of credit", "Bank borrowings - working capital",
+                      "Net increase / (decrease) in working capital demand loans"):
+        assert "working_capital" not in _metrics("TATAPOWER", borrowing), borrowing
+    assert "working_capital_days" in _metrics("KEC", "Net working capital days")
+    assert "working_capital_days" not in _metrics("KEC", "Net working capital")
+    assert "working_capital_days" in _metrics("KEC", "Net working capital stands at 155 days")
+    assert "dividend_income" in _metrics("IHCL", "Dividend income")
+    assert "dividend_received" not in _metrics("IHCL", "Dividend income")
+    assert "dividend_received" in _metrics("BHARTIARTL", "Dividend received")
+    assert "dividend_income" not in _metrics("BHARTIARTL", "Dividend received")
+
+
+def test_v8_arr_is_a_whole_word(monkeypatch):
+    """Step 1: unanchored "arr" matched "carried" and "arrangement"."""
+    monkeypatch.setattr(kpi, "_sector_of", lambda company: "hotels")
+    assert "arr" in _metrics("IHCL", "ARR in Rs (LFL)")
+    assert "arr" not in _metrics("IHCL", "Gain on investments carried at fair value")
+    assert "arr" not in _metrics("IHCL", "Loan arrangement expenses")
+
+
+def test_v8_a_longer_whole_label_replaces_the_superseded_hit():
+    """Step 1: the new whole-label rows replace the old revenue row instead of sitting beside it."""
+    for label, wanted in (("Revenue per tower per month", "revenue_per_tower_per_month"),
+                          ("Sales and marketing expenses", "sales_and_marketing_expense")):
+        hits = kpi._own_row_hits(kpi.label_matches(ENTRIES, "BHARTIARTL", label))
+        assert [e.metric for e, _match in hits] == [wanted], label
+
+
 def test_capex_and_quarter_rules_under_a_profile():
     """Real rows: HINDALCO's "adjusted free cash flow before capex $414" is not capex, a short line of table
     numbers is not a sentence, and "quarterly ... $1,756" is the document's Q4, not its year."""

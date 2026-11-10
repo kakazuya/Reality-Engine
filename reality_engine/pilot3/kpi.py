@@ -637,10 +637,18 @@ def _own_row_hits(hit) -> list:
     """The metric hits a table row label ends with.  A block heading on the same band joins the row string
     ("Leverage" over the "Net Debt" row gives "Leverage Net Debt"), so a hit that another label starts after is a
     heading, not the row's metric.  Overlapping aliases of one label ("Revenues" matches both "^revenue" and
-    "^revenues?") keep every hit: only a label that starts at or after this match's end is a later label."""
+    "^revenues?") keep every hit: only a label that starts at or after this match's end is a later label.
+
+    v8: when two hits start at the same offset the longer whole label wins, so "Revenue per tower per month" is
+    the per-tower line and not also the revenue line (the superseded hit must not be stored beside it)."""
     if len(hit) < 2:
         return hit
-    return [(e, m) for e, m in hit if not any(o.start() >= m.end() for _, o in hit)] or hit
+    longest: dict[int, int] = {}
+    for _, m in hit:
+        longest[m.start()] = max(longest.get(m.start(), 0), m.end())
+    kept = [(e, m) for e, m in hit
+            if longest.get(m.start(), 0) <= m.end() and not any(o.start() >= m.end() for _, o in hit)]
+    return kept or hit
 
 
 def row_label_hits(entries: list[Entry], company: str, raw_label: str, sector: str | None = None):

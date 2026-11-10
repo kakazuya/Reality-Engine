@@ -41,6 +41,16 @@ def need(raw, family="telecom", **context) -> label_map.Proposal:
     return proposal
 
 
+@pytest.fixture
+def member_corpus():
+    """v8: the build's corpus vocabulary knows the member names a single test table cannot teach it."""
+    label_map.set_corpus_vocabulary(("bccl", "mcl", "hazira", "mundra", "ginger", "damas"))
+    try:
+        yield
+    finally:
+        label_map.set_corpus_vocabulary(())
+
+
 def test_normalisation_drops_unit_tails_and_numbering():
     assert label_map.normalise_label("1. Revenue from operations") == "revenue from operations"
     assert label_map.normalise_label("Revenue from Operations (Rs crore)") == "revenue from operations"
@@ -118,7 +128,7 @@ def test_rule_3_a_definition_bracket_sets_the_basis():
     assert ebitda.dimension == "basis=ebitda" and ebitdaal.dimension == "basis=ebitdaal"
 
 
-def test_rule_3_member_labels_are_from_header():
+def test_rule_3_member_labels_are_from_header(member_corpus):
     for label, context in (("BCCL", {"peers": 7}), ("MCL", {"peers": 7}), ("Dahej", {"peers": 4}),
                            ("Hazira", {"peers": 4}), ("Mundra", {"peers": 4}),
                            ("Airtel Business", {"has_metric_row": True}),
@@ -273,9 +283,9 @@ def test_review_queues_carry_rule_confidence_status_and_the_seed43_sample():
     rejected_row = next(row for row in rows if row["label_norm"] == "financial assets")
     assert rejected_row["status"] == "rejected" and rejected_row["rule"] == "heading"
     sample = out / label_map.SAMPLE_FILE
-    assert sample.is_file() and sample.name == "sample_seed53.csv"
+    assert sample.is_file() and sample.name == "sample_seed59.csv"
     rejected_sample = out / label_map.REJECTED_SAMPLE_FILE
-    assert rejected_sample.is_file() and rejected_sample.name == "rejected_seed53.csv"
+    assert rejected_sample.is_file() and rejected_sample.name == "rejected_seed59.csv"
     with rejected_sample.open(encoding="utf-8") as handle:
         assert len(list(csv.DictReader(handle))) == 1
     with sample.open(encoding="utf-8") as handle:
@@ -357,7 +367,7 @@ def test_v3_a_statement_line_is_never_from_header(raw):
     assert proposal is None or proposal.metric != label_map.FROM_HEADER, raw
 
 
-def test_v3_the_graded_keep_list_stays_from_header():
+def test_v3_the_graded_keep_list_stays_from_header(member_corpus):
     for label, context in (("Dahej", {"has_measure": True}), ("Domestic Ports", {"has_measure": True}),
                            ("Ginger", {"has_measure": True}), ("Oriental Hotels Ltd", {"has_measure": True}),
                            ("India", {"has_measure": True}), ("Marine", {"has_measure": True}),
@@ -875,3 +885,81 @@ def test_v7_the_smaller_context_rows_keep_their_meaning():
         "attributable to owners of the parent", "paints_chemicals")
     assert proposal is not None and proposal.metric == "total_comprehensive_income_attributable", proposal
     assert proposal.dimension == "attribution=owners_of_parent"
+
+
+# ---------------------------------------------------------------- T-133 v8
+# The seed-53 review's 21 over-rejected labels, with the ordinary financial words the corpus supplies.
+_V8_CORPUS = ("crar treasury booked fibre linked standalone expense expenses share shares purchase consideration "
+              "liabilities liability subsidiaries subsidiary benefits employee loan loans new revenue customers top "
+              "ten food ordering delivery group life health optic network volume face value opening balance").split()
+_V8_OVER_REJECTED = (
+    "paid up eqwty share cap11al face value of", "purchase of treasury shares",
+    "loan losses and provisions before accelerated ecl", "overall cil",
+    "add reversal ol strip ping activity provision", "loan given to subsidiaries",
+    "other ban lie ij a lances", "emplo ee benefits expense", "consideration paid for business combination",
+    "crar standalone", "linked group life", "total liaj ulities and equity", "india food ordering and delivery",
+    "treaty receivables", "new loans booked no in", "debt secunttc",
+    "welspun global brands limited working capital", "revenue from top ten customers", "non participating health",
+    "mundra volume mmt share", "optic fibre network r kms")
+
+
+def test_v8_the_garbled_rule_spares_real_lines():
+    """Step 3: at most 4 of the 21 seed-53 over-rejected labels may stay rejected; real OCR damage still is."""
+    label_map.set_corpus_vocabulary(_V8_CORPUS)
+    try:
+        rejected = [label for label in _V8_OVER_REJECTED if decide(label, "mining")[2]]
+        assert len(rejected) <= 4, rejected
+        assert label_map.garbled_reason("iopening balance") == "garbled"
+        assert label_map.garbled_reason("gpwis mmt") == "garbled"
+        assert label_map.garbled_reason("xqzt vbnm") == "garbled"
+        assert label_map.garbled_reason("crar standalone") == ""
+    finally:
+        label_map.set_corpus_vocabulary(())
+
+
+def test_v8_the_ocr_garbled_rule_reads_the_corpus():
+    """Step 3: a word the corpus prints in two documents is evidence, not damage."""
+    label_map.set_corpus_vocabulary(("krishnapatnam", "mundra"))
+    try:
+        assert label_map.garbled_reason("krishnapatnam", trusted=True) == ""
+        assert label_map.garbled_reason("mundra volume mmt share") == ""
+    finally:
+        label_map.set_corpus_vocabulary(())
+    assert label_map.garbled_reason("krishnapatnam") == "garbled"
+
+
+def test_v8_a_measure_parent_owns_the_child_and_an_ocr_leaf_queues():
+    """Step 4: from_header_wrong rows 29, 83, 87, 104, 177 and the OCR-leaf rule."""
+    key, proposal, _rejection = decide("TOTAL COMPREHENSIVE INCOME ATTRIBUTABLE TO: > Owners oftl1c Parent Company",
+                                       "asset_management")
+    assert proposal is not None and proposal.metric == "total_comprehensive_income_attributable"
+    assert proposal.dimension == "attribution=owners_of_parent"
+    assert decide("Receivables > Jnvesunents", "asset_management", has_metric_row=True)[1] is None
+    proposal = need("b) Profit from gm,nt, b,f, fin,n, ,nd t,, > Jewellery", "jewellery_lifestyle")
+    assert proposal.metric == "segment_results" and proposal.dimension == "jewellery"
+    proposal = need("[b) Deferred Tax > Period/ Year (7'B)", "mining")
+    assert proposal.metric == "deferred_tax"
+    assert decide("Pmiit before lax", "paints_chemicals")[2] == "garbled"
+    # a TCI total that names no owner is the total, not the owners' line.
+    proposal = need("Items not to be reclassified to profit or loss : > Total comprehensive income for the quarter "
+                    "/ year attrilutable to :", "telecom")
+    assert proposal.metric == "total_comprehensive_income" and proposal.dimension == ""
+
+
+def test_v8_units_and_members_from_the_label():
+    """Step 4: the label's own unit word wins, a member stays a member and the vertical keeps its dimension."""
+    proposal = need("Sales Million Tonne", "metals_ferrous")
+    assert proposal.metric == "sales_volume" and proposal.unit_kind == "tonnes"
+    volume = need("(Excl. Other Qty.(In Mill. Te)", "mining")
+    defs = {row["metric"]: row for row in label_map._metric_defs([volume], {})}
+    assert defs["volume"]["unit_kind"] == "tonnes"
+    proposal = need("Total Minutes on Network Mn", "telecom")
+    defs = {row["metric"]: row for row in label_map._metric_defs([proposal], {})}
+    assert defs[proposal.metric]["unit_kind"] == "count"
+    proposal = need("Current Ratio", "jewellery_lifestyle")
+    defs = {row["metric"]: row for row in label_map._metric_defs([proposal], {})}
+    assert defs[proposal.metric]["unit_kind"] == "x"
+    proposal = need("communication", "it_services")
+    assert proposal.metric == "vertical_mix" and proposal.dimension == "communication"
+    member = decide("passive infrastructure services", "telecom", has_metric_row=True)[1]
+    assert member is None or member.metric == label_map.FROM_HEADER
