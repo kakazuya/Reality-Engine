@@ -324,7 +324,7 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
   per store: entity precision 93.7% (u8 93.5/93.5, q12 98.4/89.6), topic label precision 97.3% (u8 91.8/98.6,
   q12 100/100). Named-programme recall: NGC 39/41, Virupaksha 2/2, Capital Foods 138/140, Tata Copper Plus
   8/9, SG Mart 3/3, Durgapur Steel Plant 9/13. 'other' 30.9-36.5% u8, 27.8-42.3% q12. Artifacts
-  `.tmp/t164/r8_entity_<seed>.csv`, `r8_topic_<seed>.csv` (statement text + right/wrong per item). Tests:
+  `D:/RealityEngine/v2/review/t164_r8/r8_entity_<seed>.csv`, `r8_topic_<seed>.csv` (statement text + right/wrong per item). Tests:
   transcripts 22, speakers 13, kpi 108 passed + 6 errors (the sandbox refuses pytest's tmp_path directory:
   WinError 5), no-company-literals 7, guidance 32, answer_check 25, doc_identity 21, profile 8,
   lookups_pilot3 35 + 1 skipped, lookups_docs 18.

@@ -128,7 +128,7 @@ Last update: 10 Nov 2026, 22:10 IST (end of Eagle's session).
 | T-166 | Guidance: only management's own targets | **Merged** (fc1aca12) | 0 targets lost, 1 junk of 27 added; open: 3 wrong speaker names, a volume target keyed as revenue growth, a table match that skips the rest of a sentence |
 | T-133 v8.1 | Label map, live KPI leaf matching | **Merged** | 199/200 sample; 0 stored right rows lost; ~470 junk cells removed |
 | T-171 (steps 1-2) | Worker RAM | **Merged** | ~80 MB per worker saved; latency unchanged; shared reality-data server still open |
-| T-164 | Call statements: entities, topics, whole answer turns | Round 8 under independent review (job 20261110T162210Z-c295de59) | r8 worker: entity 89.6-98.4%, topic 91.8-100%, IR scripts no longer promoted, SAIL whole-answer limit fixed; r7 independent: entity 82.5% u8, 35 IR/analyst rows promoted |
+| T-164 | Call statements: entities, topics, whole answer turns | **Merged** after round 8 (7f8497c4) | independent: 0 earlier-right rows lost (130 sampled added rows all management; 481 IR lines removed, 0 of 20 sampled were management); entity 96.9% u8 / 86.3% q12, topic 92.6% / 96.2% |
 | T-163 | Segment / business-line / subsidiary table | Round 7 running (job 20261110T162525Z-3ef5482a) | r6 worker: u8 100% (tuned seeds), q12 87.5% on 3 seeds, DLF note restored, 13/14 audit questions; rows fell 739 -> 313 on q12, coverage check in r7 |
 | T-132 | v2 table cells | **Paused after round 12** for this review | r12 worker: strict 47/60; 9 of 40 sampled earlier-right r10 cells still lost; r11 independent: 41/60, 27 of 100 sampled right cells lost |
 | CHOLAFIN KPI | Sentence extractor: impact ratios, prior-year values, segment figures | Tests pass; 4-store rebuild comparison deferred by Shivam (RAM) | u8 rebuild: 2 wrong removed, 4 corrected, 0 right lost |
@@ -138,7 +138,7 @@ Last update: 10 Nov 2026, 22:10 IST (end of Eagle's session).
 
 Decisions made on 10 Nov that bear on your review (all in `tasks/RULINGS.md`): routing (Beam for plumbing and read-only grading, DeepSeek for precision-judged extraction, a separate grader on every branch); score only on frozen sets; factor rewards are recomputed per stock, sector and regime at every point in time, reported as the statistical mode of rewarded factors; OCR only for pages with no text layer or a jumbled one; every policy maps to the companies it touches as advantageous, disadvantageous or neutral with a reason and a figure.
 
-Worker evidence from 10 Nov (`tasks/efficiency/worker_reviews.jsonl`): rounds per ticket today were guidance 4, statements 8, segments 7, table cells 12. Beam's self-reported precision was higher than the independent measurement in every graded round (e.g. 100% / 99.2% claimed vs about 50-71% measured on statements); DeepSeek's self-reports were closer but also overstated once (86.4% claimed vs 78.1% measured). Independent graders (DeepSeek and Beam, read-only) caught every overstatement Claude later verified.
+Worker evidence from 10 Nov (`tasks/efficiency/worker_reviews.jsonl`): rounds per ticket today were guidance 4, statements 8 (merged), segments 7, table cells 12. Beam's self-reported precision was higher than the independent measurement in every graded round (e.g. 100% / 99.2% claimed vs about 50-71% measured on statements); DeepSeek's self-reports were closer but also overstated once (86.4% claimed vs 78.1% measured). Independent graders (DeepSeek and Beam, read-only) caught every overstatement Claude later verified.
 
 ## 8. Questions we want you to judge
 
