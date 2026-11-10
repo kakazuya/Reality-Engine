@@ -8,12 +8,12 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `do
 - Rulings 10 Nov: frozen hold-out scoring (T-172, T-173); factor rewards dynamic (T-176); OCR only for textless/jumbled pages (T-175); PIB other languages only without English; policy-to-company impact (T-174).
 
 ## Running (owner: Eagle session; claim_worker in the new session)
-- T-179: 240 answers done (`D:/RealityEngine/t179/<run>/`; median 34-56 s, 6-9 lookups per answer; B runs 0 served SQL). Grading: 5 read-only DeepSeek graders (key 1), 68 items each (240 test + 100 Opus-graded, shuffled): 20261110T205725Z-b9641902, 205726Z-bbcd45a6, 205727Z-e3a3608a, 205727Z-085ef518, 205728Z-f8bb81ba. Beam dies near 192k input tokens.
-- T-177 r3 (DeepSeek, after two Beam rounds died at the same wall) 20261110T205743Z-f0e6dae5, base dsh/20261110T204856Z-6ab8a1e5 (r2 WIP); brief `tasks/handoff/T-177_r2_brief.md`.
+- T-179 DONE (first look): no effect of removing raw SQL (SQL 96/120 right, no SQL 94/120; same-arm runs disagree on 14-16 of 60). Grader lenient vs Opus (28 of 50 Opus-not-right called right). Median 34-56 s and 6-9 lookups per answer; tools take 1-2 s of that. Result in `tasks/FABLE_TESTS_2026-11-10.md`; data `D:/RealityEngine/t179/`.
+- T-177 tool merged ece2378e (free Kilo readers, text input: 98.7% verbatim on 8 pages). 60-page run with Dots, Nemotron Super VL and Ultra writing to `D:/RealityEngine/v2/reference_pages/` (started 11 Nov ~03:00 by Eagle, background).
 - T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) HELD with T-132 until T-180 decides: q12 one seed 85%, zero-loss gate failed, self-graded.
 
 ## Next action
-1. Fable tests (`tasks/FABLE_TESTS_2026-11-10.md`; free models first, DeepSeek only as the answering model or after a free model fails): when the T-179 runs end, check each call log (arm B must show 0 served sql calls), calibrate a Beam grader on 100 Opus-graded answers, grade blind, report with `answer_run_report --call-log` (time and calls per answer). Review T-177, run the 60 pages, then T-178 (Eagle writes the script), then T-180.
+1. Fable tests: check the 60-page reference run, fix row-label matching between readers (agreed share 0.46), hand-settle disputes, then T-178 (first-build re-key, Eagle writes the script) and T-180. T-179 xlsx report via `answer_run_report --call-log` still to build. Next answer-path test: one answer-ready fact lookup.
 2. Then rebuild p20/u8/q12 (docs_collect --profile, build --part stores/transcripts/guidance/kpi/segments, one at a time) and restart reality-data MCP so T-161, T-162, T-164, T-165, T-166, v8.1 go live.
 3. CHOLAFIN KPI branch dsh/20261110T104212Z-67ceeb28: run `.tmp/cholafin_kpi/build.py --tree main|branch --stores <one>` in its worktree for q12, p20, pilot10, n10 one at a time when <= 1 worker builds (RAM reaped it once), then grader, then merge.
 4. s10: T-169 website crawler (Beam), build s10 stores, T-172 frozen split, then T-170 baseline with timed answers.

@@ -139,6 +139,37 @@ and honours `P3ASK_NO_SQL=1`; `plugins/reality-data/server/server.py` honours `R
   workers use p3ask only (MCP data tools are uncounted and forbidden); time per answer = recorder start to answer.
 - The one earlier timing on record: 37 answers in 41 minutes by one DeepSeek worker (9 Nov), about 1.1 minutes each.
 
+### T-179 first look: result (11 Nov 2026, 60 questions, 240 answers)
+
+Scored by `D:/RealityEngine/t179/score.py` from `D:/RealityEngine/t179/` (answers and call logs per run, grades in
+`grades/`, key in `grade_key_do_not_open/`). Graders: five read-only DeepSeek workers, blind to the arm, 68 items each
+(Beam graders died at about 192k input tokens, so the free model failed first).
+
+| Run | Right | Partly | Wrong | Median s / answer | Lookups (mean) | Answers with <= 2 lookups |
+|---|---|---|---|---|---|---|
+| A1 (SQL) | 50 | 5 | 5 | 50 | 8.7 | 7 |
+| A2 (SQL) | 46 | 12 | 2 | 34 | 6.4 | 10 |
+| B1 (no SQL) | 50 | 10 | 0 | 56 | 8.7 | 8 |
+| B2 (no SQL) | 44 | 12 | 4 | 48 | 8.5 | 10 |
+
+- **No measurable effect of removing raw SQL at this size.** Pooled right: SQL 96/120 (80.0%), no SQL 94/120 (78.3%).
+  Two runs of the SAME arm disagree on 14 (A1 vs A2) and 16 (B1 vs B2) of 60 questions; the arms disagree on 16
+  (A1 vs B1, A2 vs B2). The arm difference is inside the run-to-run noise.
+- By set (right of 30): pilot10 A 28, 28 against B 23, 24; u8+q12 A 22, 18 against B 27, 20. Opposite signs, both small.
+- Both B runs: 0 served sql calls. A runs: 83 and 119 sql calls.
+- **The grader is lenient.** On the 100 answers with an Opus hand grade: of 50 Opus-right it called 45 right; of 50
+  Opus-not-right it called 28 right. Exact agreement 64/100. So the 78-80% above overstates; the arm comparison is
+  still fair because both arms pass through the same grader. Treat absolute levels as an upper bound.
+- **Time:** median 34-56 s per answer, 90th percentile 74-126 s; 0 to 1 of 60 answers under 10 s. Time inside the
+  tools is 1.2-1.6 s per answer: the rest is the model. Lookups: mean 6.4-8.7; 7-10 of 60 answers used two or fewer.
+- "Not disclosed" claims: 11-21 of 60 answers per run made one; the grader found the figure printed in held pages
+  for roughly half of them (attrition/utilisation, quarterly ARPU, block deals, fuel cost per ASK, shareholding rows).
+
+Decision: raw SQL stays for now; removing it is not the lever. The target (one or two lookups, under 10 s) is missed by
+the model's own reading time and lookup count, not by tool speed, so the next test is fewer, answer-ready lookups
+(one fact tool returning the preferred value) rather than tool removal. The other 60 questions are not run: the result
+is not borderline, it is null.
+
 ## 4. T-180: free models transcribing tables, checked by script
 
 - **Hypothesis:** a model that only copies a page's tables into rows, with every row checked by script, beats the
