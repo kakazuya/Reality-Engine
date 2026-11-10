@@ -513,6 +513,37 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertEqual(len(rows), 3)          # the whole turn, not just the matched sentence
         self.assertEqual(rows[0]["answer_turn"], 101)   # seq order inside the same call
 
+    def test_whole_turn_is_keyed_by_document_and_never_sweeps_prepared_remarks(self):
+        """Step 2 (T-164 r8): answer-turn ids collide across two calls of one company and prepared remarks carry
+        negative ids.  limit=2 returns exactly two (document, turn) groups; a prepared-remarks turn appears only
+        when the match itself selected it."""
+        c = sqlite3.connect(DB)
+        cols = ("symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,topics,period_discussed,"
+                "period_source,numbers_json,statement,quote,is_fragment,entities,answer_turn,known_at,"
+                "known_at_source,extractor_rule")
+        for doc, day, seq0 in (("r8/crossA.pdf", "2026-09-03", 20), ("r8/crossB.pdf", "2026-09-04", 20)):
+            for k in range(2):
+                stmt = f"Crossdoc answer {doc[-6]}.{k}."
+                c.execute(f"INSERT INTO transcript_statement({cols}) VALUES ('KEC',?,?,'Q2FY27',2,?,"
+                          "'A B','ceo','qa','margin','Q2FY27','t','[]',?,?,0,'',7,'2026-09-05T10:00:00','x','t')",
+                          (doc, day, seq0 + k, stmt, stmt))
+        for k in range(2):
+            stmt = f"Preparedword remark {k}."
+            c.execute(f"INSERT INTO transcript_statement({cols}) VALUES ('KEC','r8/crossA.pdf','2026-09-03',"
+                      "'Q2FY27',2,?,'A B','ceo','prepared','margin','Q2FY27','t','[]',?,?,0,'',-1,"
+                      "'2026-09-05T10:00:00','x','t')", (30 + k, stmt, stmt))
+        c.commit()
+        c.close()
+        out = p3.statements("KEC", terms="crossdoc", limit=2, whole_turn=True)
+        rows = out["rows"]
+        groups = {(r["provenance"]["source"], r["answer_turn"]) for r in rows}
+        self.assertEqual(len(groups), 2, groups)          # two documents, not one id seen twice
+        self.assertEqual(len(rows), 4)                    # both turns in full
+        self.assertFalse(any("Preparedword" in r["quote"] for r in rows))
+        prep = p3.statements("KEC", terms="preparedword", limit=1, whole_turn=True)["rows"]
+        self.assertEqual({r["answer_turn"] for r in prep}, {-1})
+        self.assertEqual(len(prep), 2)                    # selected prepared remarks expand as their own turn
+
     def test_statements_entity_search(self):
         out = p3.statements("KEC", entities="transmission")
         # no entity named transmission in fixture; ensure no crash and found flag sensible

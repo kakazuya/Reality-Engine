@@ -260,22 +260,29 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
 - `build --part all` with 4 OCR dbs: 484 s for 23,558 pages (~2.7 min per company, single process).
 - After the dates + guidance merges: guidance 660 -> 329 rows (KEC 218, BAJFINANCE 52, HINDALCO 59): check recall
   on the next re-answer; kpi_series 38,851; zero Q1FY27 rows from documents known before 2026-04-01.
-- **T-164 (round 7, 11 Nov 2026).** Transcript statements rebuilt for u8 (7 companies, 24,956 statements) and q12
-  (12 companies, 40,017), 'other' at or below the main baseline on every one of the 19 companies (u8 30.8-37.7% vs
-  31.1-40.6%, q12 29.4-42.4% vs 32.7-44.3%). Entity rules: the business-abbreviation lexicon is wired into the
-  single-token and all-caps gates; titles and spans ending in a metric/accounting word are dropped; an all-caps
-  programme name before a comma/list or beside a programme noun survives a following amount (NGC tagged in 36 of the
-  38 BEL statements that mention it, was 0 of 36); an ordinary word needs a place/counterparty cue. The DOI-layout
-  participant block corrects a management head the call misread as an analyst (BEL 30.07.2025: the MD's 64 answer
-  segments are management statements, none in `transcript_question`; Virupaksha 2 statements, 0 before), prepared
-  remarks carry their own negative `answer_turn` ids, and `pilot3_statements(whole_turn=True)` bounds the reply by
-  answer turns (limit=20 no longer returns 188 rows). The statement multiset is identical to a main-code rebuild on
-  both stores except that speaker correction in 9 calls (BEL +366/+233/+11/+7/+10 rows, SAIL +261/+187, EDELWEISS
-  +228, KIMS +80), each an unknown/analyst-question -> management-statement correction. Seeds 7164/8164: entity
-  precision 91.8%/88.9% u8 and 88.6%/93.9% q12; topic label precision 88.9%/93.2% u8 and 92.2%/89.4% q12.
-  Artifacts `.tmp/t164/r7_entity_<seed>.csv`, `r7_topic_<seed>.csv`. Tests: transcripts 16, speakers 9, kpi 114,
-  no-company-literals 7, guidance 32, answer_check 25, doc_identity 21, profile 8, lookups_pilot3 34 + 1 skipped,
-  lookups_docs 18.
+- **T-164 (round 8, 11 Nov 2026).** Rebuilt from the round-7 baselines: u8 24,835 statements (baseline
+  24,325), q12 43,007 (39,256). Added rows are management statements only (u8 +1,043, q12 +3,775; no
+  ir/moderator/analyst line among the 9 reviewed calls). Speaker rules: an IR or moderator title is never
+  promoted; IR lines are no longer stored (481 baseline IR script rows removed, 462 u8 + 19 q12); a DOI block
+  whose heading stands alone is read and its names keep the block role ("L Krishnakumar", "Anand Rathi"); an
+  initial-led label ("G Vivek:", "S Ranganathan:") starts that speaker's turn (EDELWEISS analyst questions no
+  longer run on as the chairman's statements; BEL Manoj questions 0). Management statements lost vs baseline:
+  15 rows, every one carried another speaker's label inside it (CIPLA analyst questions, IDEA/EDELWEISS
+  sentences reattributed to their real speaker); every one is a question now or is stored under its own
+  speaker. Entities: the longest printed span wins (Capital Foods, Tata Copper Plus, SG Mart, Missile Fire
+  Control System), a single token inside a longer printed name is a fragment, and generic capability phrases
+  (Communication Suite, Navigation Complex System, Electronic Warfare Suite, Youngest Aircraft Fleet) are out;
+  GNPA/GMV/TAM/RCC/WHRS and the learned all-caps metric words (a token beside a figure in 2+ calls and in at
+  least half its uses) are out; the call's own "<Name> Pvt Limited (X)" expansion makes X that company
+  (SBPL). `whole_turn` is keyed on (doc_key, answer_turn) and expands prepared remarks only when selected
+  (SAIL safeguard limit=2: 32 rows, 2 turns). Seeds 9264/10264, 50 entity-tagged and 40 topic-tagged statements
+  per store: entity precision 93.7% (u8 93.5/93.5, q12 98.4/89.6), topic label precision 97.3% (u8 91.8/98.6,
+  q12 100/100). Named-programme recall: NGC 39/41, Virupaksha 2/2, Capital Foods 138/140, Tata Copper Plus
+  8/9, SG Mart 3/3, Durgapur Steel Plant 9/13. 'other' 30.9-36.5% u8, 27.8-42.3% q12. Artifacts
+  `.tmp/t164/r8_entity_<seed>.csv`, `r8_topic_<seed>.csv` (statement text + right/wrong per item). Tests:
+  transcripts 22, speakers 13, kpi 108 passed + 6 errors (the sandbox refuses pytest's tmp_path directory:
+  WinError 5), no-company-literals 7, guidance 32, answer_check 25, doc_identity 21, profile 8,
+  lookups_pilot3 35 + 1 skipped, lookups_docs 18.
   TATAELXSI, APOLLOHOSP, DLF (window 2023-10-01, compute 2022-07-01; manifest 3,328 rows, 2,111 `ok`):
   `docs_collect` 270 s -> 2,091 docs / 28,566 pages / 218.7 MB; `build --part all` 814.8 s -> 151.2 MB. Parts:
   comparatives 405.6 s, extract 258.3 s, stores 113.8 s (repeat 59.9 s), notes 22.8 s, pages 6.9 s, guidance 5.1 s,

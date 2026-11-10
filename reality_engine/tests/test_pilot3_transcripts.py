@@ -230,3 +230,86 @@ def test_title_and_metric_spans_in_one_word():
              "Asha Rao: Officer, Director, Anniversary and Phase again.\n")
     ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
     assert not (ents & {"Officer", "Director", "Anniversary", "Phase"}), f"title/metric word tagged: {ents}"
+
+
+# --- T-164 round 8: the longest printed name, no fragments, no generic capability lists ---------------------
+def test_longest_brand_span_and_no_fragment_in_the_same_call():
+    """Step 3 (T-164 r8): the real TATACONSUM/APLAPOLLO sentences.  "Capital Foods", "Tata Copper Plus" and
+    "SG Mart" are the names; "Capital", "Copper", "Gluco" and "Mart" alone are fragments of them."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Asha Rao: India Foods continued its strong trajectory, including Capital Foods, was up 20%. "
+             "The big brands in the portfolio which are growing are Tata Copper Plus and Tata Gluco Plus.\n"
+             "Ravi Kumar: What about the yard?\n"
+             "Asha Rao: If there is a coil shortage from the yard of SG Mart, we will take 1000 tons. "
+             "Excluding Capital Foods, 11%.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    assert {"Capital Foods", "Tata Copper Plus", "Tata Gluco Plus", "SG Mart"} <= ents, f"long name missed: {ents}"
+    assert not (ents & {"Capital", "Copper", "Gluco", "Mart"}), f"fragment tagged: {ents & {'Capital', 'Copper', 'Gluco', 'Mart'}}"
+
+
+def test_generic_capability_list_is_not_entities():
+    """Step 3 (T-164 r8): the real BEL sentence.  A list of technical capability names
+    ("Communication Suite, Navigation Complex System, ...") names nothing; the fragments are not names either."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Asha Rao: Their technical names are Communication Suite, Navigation Complex System, "
+             "The Combat Weapon Control System, Combat Information System, Torpedo Fire Control System, "
+             "Missile Fire Control System and Electronic Warfare Suite.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: Communication Suite, Navigation, Torpedo, Combat and Missile Fire Control again.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    bad = {"Communication Suite", "Navigation Complex System", "Combat Weapon Control System",
+           "Combat Information System", "Torpedo Fire Control System", "Missile Fire Control System",
+           "Electronic Warfare Suite", "Navigation", "Torpedo", "Combat", "Missile Fire Control"}
+    assert not (ents & bad), f"capability list tagged: {ents & bad}"
+
+
+def test_award_and_cuisine_phrases_are_not_entities():
+    """Step 3 (T-164 r8): the real INDIGO/TATACONSUM phrases.  An award title and a cuisine are not names."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Ravi Kumar: How was the quarter?\n"
+             "Asha Rao: We were recognised as the \u201cWorld\u2019s Youngest Aircraft Fleet 2025\u201d and there is "
+             "no other brand which owns the Desi Chinese space.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: The Youngest Aircraft Fleet award and Desi Chinese again.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    assert not (ents & {"Youngest Aircraft Fleet", "Desi Chinese"}), f"award/cuisine tagged: {ents}"
+
+
+def test_metric_acronyms_from_the_lexicon_are_not_entities():
+    """Step 3 (T-164 r8): GNPA, GMV and TAM are metrics in `lexicon/business_abbrev.txt`, never names."""
+    page1 = ("CORPORATE PARTICIPANTS:\n\nAsha Rao\nChief Financial Officer\n\n"
+             "JOURNALISTS\n\nRavi Kumar\nAxis Capital\n")
+    page2 = ("Asha Rao: GNPA as per RBI norms decreased to 3.97% as against 4% last year and the GNPA "
+             "journey continues. TAM expansion and GMV growth are the plan.\n"
+             "Ravi Kumar: Thanks.\n"
+             "Asha Rao: GNPA, GMV and TAM are the three numbers we track every quarter.\n")
+    ents = {e.strip() for r in _rows([page1, page2]) for e in (r[17] or "").split(",") if e.strip()}
+    assert not (ents & {"GNPA", "GMV", "TAM"}), f"metric tagged as entity: {ents}"
+
+
+def test_store_learns_metric_acronyms_used_with_a_figure_in_two_calls():
+    """Step 3 (T-164 r8): an all-caps token used with a number or % in two or more calls is a metric/unit
+    ("WHRS 26 MW"), while a programme name mostly quoted without a figure (NGC beside an amount now and then)
+    is not learned as one."""
+    learned = transcripts._learned_generic_acronyms([
+        "The WHRS 26 MW unit was commissioned and the WHRS boiler is efficient.",
+        "We added a WHRS 12 MW unit; the plant runs well. NGC order of INR20,000 crores is expected.",
+        "NGC has strong export potential and the NGC programme is on track.",
+    ])
+    assert "WHRS" in learned, learned
+    assert "NGC" not in learned, learned
+
+
+def test_a_document_expansion_makes_the_abbreviation_a_name():
+    """Step 4 (T-164 r8): "Sapien BioSciences Pvt Limited (SBPL)" expands the abbreviation to a company name.
+    SBPL stays a generic term in the lexicon (a segment abbreviation elsewhere) and the call's own expansion
+    makes it a name here."""
+    text = ("Sapien BioSciences Pvt Limited (SBPL) reported revenue of INR100 crore. "
+            "SBPL said the SBPL order book is strong and SBPL will expand.")
+    assert "SBPL" in transcripts._BUSINESS_ABBREV
+    assert "SBPL" in transcripts._company_abbrevs_in(text)
+    ents = transcripts._recurring_entities(text, set(), set(), set())
+    assert "SBPL" in ents, f"expanded company missed: {ents}"

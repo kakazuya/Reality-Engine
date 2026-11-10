@@ -2,9 +2,9 @@
 
 CLI: python -m reality_engine.pilot3.transcripts --out <db> [--symbols KEC,BAJFINANCE,HINDALCO] [--sandbox-root DIR]
 
-One row per sentence spoken by management (md/ceo/cfo/mgmt/ir) in a held earnings-call transcript: speaker, role,
+One row per sentence spoken by management (md/ceo/cfo/coo/chairman/mgmt) in a held earnings-call transcript; speaker, role,
 section (prepared|qa), topic tags from lexicon/topics.yaml, numbers with unit and period, the exact sentence.
-Analysts, the moderator and boilerplate headers/footers are not stored. A sentence that is cut by a page break is
+Analysts, Investor Relations, the moderator and boilerplate headers/footers are not stored. A sentence that is cut by a page break is
 stored on the page where it starts with is_fragment=1; quote is always a literal slice of that page's text.
 Page text comes from doc_text (method script_text); pages marked needs_ocr are skipped and counted.
 """
@@ -18,6 +18,7 @@ import sqlite3
 import sys
 import time
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
 
 import yaml
@@ -50,13 +51,19 @@ CREATE VIEW IF NOT EXISTS analyst_questions AS SELECT * FROM analyst_question;
 """
 
 MONTHS = "January|February|March|April|May|June|July|August|September|October|November|December"
-SPEAKER_RX = re.compile(r"^[ 	]*([A-Z][A-Za-z.'’\-]+(?: [A-Za-z.'’\-]+){0,4}):(?=[ 	]|$)", re.M)
+# A speaker's name may open with an initial: "G Vivek:" (GS Investment) and "S. RANGANATHAN" are real labels
+# the round-7 extractor missed, so the analyst's words ran on as management's (T-164 r8).
+_SPEAKER_NAME = r"(?:[A-Z]\.?[ \t]+)?[A-Z][A-Za-z.'’\-]+(?:[ \t]+[A-Za-z.'’\-]+){0,4}"
+SPEAKER_RX = re.compile(r"^[ \t]*(" + _SPEAKER_NAME + r"):(?=[ 	]|$)", re.M)
 SPEAKER_MID_RX = re.compile(r"(?<=[.?!] )([A-Z][A-Za-z.'’\-]+(?: [A-Z][A-Za-z.'’\-]+){1,3}):(?=[ 	]|$)", re.M)
+# a person name as printed in a participant block or an introduction, an initial-led one included
+_PERSON_NAME = (r"(?:[A-Z]\.?\s+[A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3}"
+                r"|[A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){1,3})")
 # a bare name line, no colon: "Rishi Basu" / "Salil Parekh" (T-056; only used when colon marks are few)
-NAME_ONLY_RX = re.compile(r"^[ \t]*([A-Z][A-Za-z.'’\-]+(?:[ \t]+[A-Z][A-Za-z.'’\-]+){1,3})[ \t]*$", re.M)
+NAME_ONLY_RX = re.compile(r"^[ \t]*(" + _PERSON_NAME + r")[ \t]*$", re.M)
 SENTENCE_START_RX = re.compile(r"^[\"“‘']?[A-Z][a-z]+(?:[^.!?]*[a-z])")
 # "1. Albinder Singh Dhindsa – Chief Executive Officer, Eternal Limited" (one-line participant entry)
-NUM_TITLE_RX = re.compile(r"^[ \t]*\d{1,2}[.)]\s*([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){1,3})"
+NUM_TITLE_RX = re.compile(r"^[ \t]*\d{1,2}[.)]\s*(" + _PERSON_NAME + r")"
                           r"\s*[–—-]\s*(.+?)[ \t]*$", re.M)
 TITLE_WORD_RX = re.compile(r"\b(?:chief|managing director|\bmd\b|\bceo\b|\bcfo\b|\bcoo\b|president|\bhead\b|director|"
                            r"vice president|investor relations|company secretary|executive)\b", re.I)
@@ -74,8 +81,7 @@ MOD_TEAM_RX = re.compile(r"\bwith us today\b[ \t]*,?[ \t]*([^.\n]{3,240})", re.I
 # DOI layout (BEL 30.07.2025): the heading shares its line with the first entry ("MANAGEMENT: MR. MANOJ JAIN –
 # CHAIRMAN AND MANAGING DIRECTOR") and every entry starts with a title prefix (T-164 r7).
 DOI_HEAD_RX = re.compile(r"^(management|moderator|analysts?|journalists?|participants?)\s*:\s*(.*)$", re.I)
-DOI_ENTRY_RX = re.compile(r"^(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?|Shri|Smt\.?)\s+"
-                          r"([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})")
+DOI_ENTRY_RX = re.compile(r"^(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?|Shri|Smt\.?)\s+(" + _PERSON_NAME + r")")
 PERSON_RX = re.compile(r"[A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){1,3}")
 # a line in a participants block that is a document label, not a person ("Investor Call Transcript" was stored as
 # a speaker in a cover-letter page by the name look-ahead)
@@ -88,8 +94,21 @@ CALL_DATE_RX = re.compile(r"(" + MONTHS + r") (\d{1,2}), (\d{4})")
 ABBR = ("Mr", "Ms", "Mrs", "Dr", "Rs", "No", "vs", "Inc", "Ltd", "approx", "Sr", "Jr", "St", "Co", "Corp", "etc", "i.e", "e.g", "FY", "Q")
 SENT_END_RX = re.compile(r"(?<=[.?!])[\"”’')]*\s+(?=[\"“‘'(A-Z0-9₹$])")
 NOT_SPEAKERS = ("Corporate", "Registered", "Email", "Website", "Phone", "Tel", "Note", "Disclaimer", "Source", "CIN", "Page", "Symbol", "Scrip", "SCRIP", "Sub", "Date", "Ref", "MANAGEMENT", "To", "Dear", "Subject", "Attention")
+# Words in an analyst's firm line ("Axis Capital", "Goldman Sachs", "ICICI Securities"); the firm is not the
+# analyst's name (and its words must not poison the entity set) (T-164 r8).
+_ANALYST_FIRM_WORDS = {"capital", "securities", "security", "investment", "investments", "bank", "financial",
+                       "finance", "research", "partners", "advisors", "advisers", "broking", "limited", "ltd",
+                       "inc", "llc", "services", "markets", "asset", "management", "global", "equities", "fund"}
+
+
+def _not_speaker(name: str) -> bool:
+    low = name.lower()
+    # "Management:" is a real speaker label in a DOI call; "MANAGEMENT:" (the block heading) is not
+    if low == "management" and name != "MANAGEMENT":
+        return False
+    return any(low.startswith(j) for j in (n.lower() for n in NOT_SPEAKERS))
 QA_START_RX = re.compile(r"question[- ]and[- ]answer|first question|open the floor|q ?& ?a session|take (up )?(the )?questions", re.I)
-NAME = r"([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})"
+NAME = r"(" + _PERSON_NAME + r")"
 ANALYST_INTRO_RX = re.compile(r"(?i:line of|question (?:is )?from|next question comes from|first question is from)\s+(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)?\s*" + NAME)
 HOST_INTRO_RX = re.compile(r"(?i:over to|hand (?:the )?conference over to|hand it over to)\s+(?i:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)?\s*" + NAME + r"\s+(?i:from|of)\s+")
 MGMT_INTRO_RX = re.compile(r"(?:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)\s+([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})\s*[,–-]\s*(?:the\s+)?"
@@ -259,6 +278,12 @@ def role_of(speaker: str, company: str, people: dict, analysts: list[str], mgmt:
 
 def _title_role(title: str) -> str:
     t = (title or "").lower()
+    # A DOI block prints "DIRECTOR, INVESTOR \nRELATIONS": the title wraps, so "investor" alone is enough.  An IR
+    # or moderator title is never promoted to management (T-164 r8).
+    if "investor" in t or re.search(r"(?:^|\W)i\.?r\.?(?:\W|$)", t) or "corporate communication" in t:
+        return "ir"
+    if "moderator" in t or "host" in t.split():
+        return "moderator"
     if "chief financial" in t or t.startswith("cfo"):
         return "cfo"
     if "head of investor" in t or "investor relations" in t:
@@ -305,7 +330,9 @@ def participants(pages: list[str], doi_mgmt: dict[str, str] | None = None) -> tu
             if inline:
                 kind = _heading_class(inline.group(1)) or kind
                 line = inline.group(2).strip()
-                doi_block = bool(line)
+                # a DOI-layout block may print its heading alone and then "Mr. Name – Title" entries
+                # (ANANDRATHI 13.04.2022): the entries are read either way (T-164 r8)
+                doi_block = kind == "mgmt"
                 if not line:
                     continue
             head = _heading_class(line)
@@ -337,6 +364,15 @@ def participants(pages: list[str], doi_mgmt: dict[str, str] | None = None) -> tu
             else:
                 continue
             if NON_NAME_RX.search(name):
+                continue
+            # a legal company name in the block is not a participant, and its words must not poison the entity
+            # set ("Tata Consumer Products Limited" made "Tata" a person token and lost "Tata Copper Plus")
+            # (T-164 r8)
+            if any(w.lower().strip(".,") in {"limited", "ltd", "inc", "corp", "corporation", "private", "pvt"}
+                   for w in name.split()):
+                continue
+            # "Axis Capital" / "ICICI Securities" is the analyst's firm, not the analyst (T-164 r8)
+            if kind == "analyst" and any(w.lower().strip(".,") in _ANALYST_FIRM_WORDS for w in name.split()):
                 continue
             names.add(name)
             if kind == "mgmt":
@@ -398,7 +434,7 @@ def name_marks(text: str, counts: Counter, known: set[str]) -> list[tuple[int, i
 _FINANCE_METRICS = {"EBITDA", "ROCE", "ROE", "PAT", "PBT", "EPS", "CAGR", "NIM", "AUM", "EBIT", "EBITDAR", "ROA", "ROIC", "ROI", "PE", "PB", "EV", "EPS", "TTM", "NPA", "NCD", "SIP", "YTD", "ARPU", "ARPP", "CAPEX", "OPEX", "WIP"}
 # Section / slide words that are never entities.
 _SLIDE_WORDS = {"slide", "slides", "section", "agenda", "contents", "overview", "summary", "highlights", "annexure"}
-_LEADING_STOP = {"the", "a", "an", "our", "we", "this", "that", "these", "those", "my", "so", "but", "and", "for", "with", "from", "it", "its", "all", "any", "whereas", "whilst", "while", "though", "although", "however", "also", "then", "now", "thus", "hence", "therefore", "yet", "what", "who", "why", "how", "when", "where", "because"}
+_LEADING_STOP = {"the", "a", "an", "our", "we", "this", "that", "these", "those", "my", "so", "but", "and", "for", "with", "from", "it", "its", "all", "any", "whereas", "whilst", "while", "though", "although", "however", "also", "then", "now", "thus", "hence", "therefore", "yet", "what", "who", "why", "how", "when", "where", "because", "including", "excluding", "compared", "given", "emerging", "actually", "see", "once", "best"}
 _PERIOD_WORDS = {"FY", "Q1", "Q2", "Q3", "Q4", "QOQ", "YOY", "HOH", "MOM", "WOW"}
 # Title words that are not names ("Mr", "Messrs" ...) (T-164 r6).
 _TITLE_WORDS = {"mr", "ms", "mrs", "dr", "shri", "smt", "sr", "jr", "messrs", "late", "sir", "ji", "madam"}
@@ -422,7 +458,8 @@ _GENERIC_WORDS = {"board", "tier", "communications", "communication", "offerings
                   "management", "office", "unit", "units", "solutions", "systems", "technologies", "services",
                   "group", "business", "company", "enterprises", "industries", "ventures", "holdings", "division",
                   "vertical", "verticals", "region", "regions", "operations", "corporate", "executive", "gen",
-                  "fintech", "suite", "avionics", "campus", "integrated", "crore", "crores", "lakh", "lakhs", "million", "billion", "rupees", "rupee", "dollars", "inr", "usd", "additionally", "further", "overall", "similarly", "accordingly", "financial", "performance", "earnings", "page", "responsibility", "national", "awards", "award", "winner", "hub", "cloud", "genai", "iot", "aif", "amc", "sez", "lifesciences", "greenfield", "ministry", "media", "communication", "quarterly", "annual", "offices", "east", "west", "north", "south", "central", "eastern", "western", "northern", "southern", "finance", "god", "alpha", "category", "makhana", "risk", "gross", "adjusting", "equities", "moving", "life", "power", "sonar", "block", "association", "hero", "auto"}
+                  "fintech", "suite", "avionics", "campus", "integrated", "crore", "crores", "lakh", "lakhs", "million", "billion", "rupees", "rupee", "dollars", "inr", "usd", "additionally", "further", "overall", "similarly", "accordingly", "financial", "performance", "earnings", "page", "responsibility", "national", "awards", "award", "winner", "hub", "cloud", "genai", "iot", "aif", "amc", "sez", "lifesciences", "greenfield", "ministry", "media", "communication", "quarterly", "annual", "offices", "east", "west", "north", "south", "central", "eastern", "western", "northern", "southern", "finance", "god", "alpha", "category", "makhana", "risk", "gross", "adjusting", "equities", "moving", "life", "power", "sonar", "block", "association", "hero", "auto", "jacquard", "banking", "dollar", "euro", "corona", "fuzes", "spaces", "omicron",
+                  "robusta", "arabica", "creative", "ind", "huddle"}
 # Nouns a named organisation / programme / project / counterparty is followed by (T-164 r6).  An all-caps
 # token before one of these names something; a metric or business abbreviation is never followed by them.
 _NAMED_NOUNS = ("ltd", "limited", "bank", "finance", "corporation", "corp", "company", "authority", "ministry",
@@ -455,6 +492,21 @@ _EN_VOCAB.update({"ai", "it", "perfect", "drink", "fruit", "inaudible", "army", 
 # Demonyms, interjections and calendar words: ordinary language, never a named thing (T-164 r6).
 _EN_VOCAB.update({"chinese", "indian", "japanese", "american", "european", "british", "german", "korean",
                   "russian", "arab", "asian", "african", "god", "diwali", "covid"})
+# Generic technology nouns: a title-case phrase built only from these names a capability, not a thing
+# ("Communication Suite", "Navigation Complex System", "Electronic Warfare Suite") (T-164 r8).
+_GENERIC_TECH_WORDS = {"missile", "missiles", "torpedo", "combat", "navigation", "warfare", "electronic",
+                       "weapon", "weapons", "control", "complex", "information", "fire", "system", "systems",
+                       "youngest", "aircraft", "fleet", "desi", "jacquard", "mart", "suite", "communication",
+                       "radar", "sensor", "sensors", "platform", "platforms", "naval", "sonar",
+                       "infrastructure", "lab", "colocation", "command", "digital", "education", "sustainability",
+                       "telephony", "carrier", "access", "messaging", "mobile", "telecom", "star"}
+_EN_VOCAB.update(_GENERIC_TECH_WORDS)
+_EN_VOCAB.update({"egyptian", "telecom", "carrier", "access", "messaging", "mobile", "telephony", "education",
+                  "digital", "transformation", "enabler", "sustainability", "assessment", "scope", "star",
+                  "planning", "concall"})
+# Words a brand name is built from; alone they are the fragment, the longer printed name is the entity
+# ("Copper" of "Tata Copper Plus", "Mart" of "SG Mart") (T-164 r8).
+_FRAGMENT_WORDS = {"capital", "copper", "gluco", "mart"}
 def _is_sentence_start(text: str, pos: int) -> bool:
     i = pos - 1
     while i >= 0 and text[i].isspace():
@@ -477,9 +529,11 @@ def _sentences(text: str) -> list[str]:
 
 _GENERIC_LAST_WORDS = {"industry", "services", "sector", "market", "business", "group", "company", "limited",
                        "director", "manager", "officer", "president", "chairman", "secretary", "chief", "outlook",
-                       "relations", "relationship", "head", "conference", "call", "fund", "mutual", "plus", "foundation",
+                       "relations", "relationship", "head", "conference", "call", "fund", "mutual", "foundation",
                        "year", "board", "campus", "day", "airlines", "sciences", "healthcare", "fintech", "labs",
-                       "office", "meeting", "committee", "department", "division", "unit", "units", "team", "teams", "responsibility", "secretaries", "awards", "performance", "earnings", "page", "media", "communication"}
+                       "office", "meeting", "committee", "department", "division", "unit", "units", "team", "teams", "responsibility", "secretaries", "awards", "performance", "earnings", "page", "media", "communication",
+                       "suite", "fleet", "command", "debt", "highlights", "webcast", "retirement", "diwali",
+                       "concall"}
 # A span that is a job title names a role, never a thing: "Managing Director", "Chief Financial Officer" (T-164 r7).
 _TITLE_ENTITY_WORDS = {"director", "directors", "managing", "officer", "officers", "chief", "president", "deputy",
                        "chairman", "chairperson", "secretary", "manager", "head", "executive", "vice", "founder",
@@ -488,14 +542,16 @@ _TITLE_ENTITY_WORDS = {"director", "directors", "managing", "officer", "officers
 # "Earnings Per Share", "Other Intangibles", "Hyper Scaler Business", "18th Anniversary" (T-164 r7).
 _METRIC_LAST_WORDS = {"share", "shares", "intangibles", "rate", "rates", "ratio", "margin", "cost", "costs",
                       "revenue", "revenues", "profit", "loss", "income", "earnings", "value", "growth", "business",
-                      "shop", "anniversary", "independence", "season", "phase", "system", "systems", "services",
+                      "shop", "anniversary", "independence", "season", "phase", "services",
                       "solutions", "day", "days", "week", "month", "quarter", "year", "sciences", "insurance",
                       "agreement", "radio", "beverages", "prescription", "jet", "injection", "injections",
                       "injectable", "granules", "tablets", "capsules", "syrup", "immunology", "oncology",
                       "cardiology", "neurology", "governance", "award", "awards", "automation", "industries", "stone",
                       "tax", "property", "region", "regions", "marketing", "campaign", "campaigns", "equity", "use",
-                      "department", "departments", "partner", "partners", "lending", "security", "foods", "herbal",
-                      "honor", "honour", "defense", "defence"}
+                      "department", "departments", "partner", "partners", "lending", "security", "herbal",
+                      "honor", "honour", "defense", "defence", "debt", "mark", "express", "planning",
+                      "prescriptions", "airline", "hospital", "intelligence", "reality", "design", "package",
+                      "trunk"}
 # Generic business abbreviations: they label a metric, a segment or a process, never a named thing
 # (T-164 r6 review: ARC, SEZ, TCV, ARPOB, RM ... graded wrong; programme names such as NGC, CSEL, PLI stay).
 # Kept in a lexicon file like en_vocab.txt: an exchange-listed symbol that is also a business term is data, not code.
@@ -503,8 +559,73 @@ _BUSINESS_ABBREV: set[str] = set()
 _bp = Path(__file__).with_name("lexicon") / "business_abbrev.txt"
 if _bp.exists():
     _BUSINESS_ABBREV.update(x.strip().upper() for x in _bp.read_text(encoding="utf-8").splitlines() if x.strip())
+# A token the document itself expands to a company name is that company's name, never a business term:
+# "Sapien BioSciences Pvt Limited (SBPL)" (T-164 r8).
+_COMPANY_TAIL_RX = re.compile(r"\b(?:Limited|Ltd\.?|Private|Pvt\.?)\b", re.I)
+
+
+def _company_abbrevs_in(full_text: str) -> set[str]:
+    """Abbreviations the call expands to a legal company name ("<Name> Pvt Limited (X)"), so the lexicon does
+    not swallow a real company (T-164 r8)."""
+    out: set[str] = set()
+    for m in re.finditer(r"\(([A-Z]{2,10})\)", full_text):
+        left = full_text[max(0, m.start() - 90):m.start()]
+        if _COMPANY_TAIL_RX.search(left):
+            out.add(m.group(1).upper())
+    for m in re.finditer(r"\b([A-Z]{2,10})\s*\((?:[A-Z][A-Za-z&.'’\-]*\s+){1,6}"
+                         r"(?:Pvt\.?|Private)?\s*(?:Limited|Ltd\.?)\s*\)", full_text):
+        out.add(m.group(1).upper())
+    return out
+
+
+def _learned_generic_acronyms(docs: Iterable[str]) -> set[str]:
+    """All-caps tokens used with a number or a percentage in at least two calls: a metric/unit, not a name
+    (WHRS 26, GNPA 3.97%, RCC 1,000 tons ...).  A token that is mostly used without a figure (a programme name
+    quoted beside an amount now and then) is left alone (T-164 r8)."""
+    occ: Counter = Counter()
+    occ_num: Counter = Counter()
+    docs_num: Counter = Counter()
+    for text in docs:
+        seen_num: set[str] = set()
+        for m in re.finditer(r"(?<![A-Za-z0-9])(?:[A-Z]{2,6}(?:-[A-Z]{1,6})+|[A-Z]{2,6})(?![A-Za-z0-9])", text):
+            tok = m.group(0)
+            occ[tok] += 1
+            w = text[max(0, m.start() - 48):m.end() + 48]
+            t = re.escape(tok)
+            if (re.search(r"\b" + t + r"\b\s*(?:of|at|is|was|were|to|per|stood|reached)?\s*[₹$€£]?\s*\d", w)
+                    or re.search(r"\d[\d,.]*\s*(?:%|bps)?\s*(?:of\s+)?" + t + r"\b", w)):
+                occ_num[tok] += 1
+                seen_num.add(tok)
+        for tok in seen_num:
+            docs_num[tok] += 1
+    return {tok for tok, n in docs_num.items() if n >= 2 and occ_num[tok] * 2 >= occ[tok]}
+
+
+def _name_evidence(windows: list[str], tok: str) -> bool:
+    """A multi-word span names something when it is used as a name: a name noun after it, a possessive, an
+    object preposition before it, or a verb of agency.  An ordinary phrase in a list has none of these
+    ("Communication Suite", "Navigation Complex System", "Youngest Aircraft Fleet") (T-164 r8)."""
+    t = re.escape(tok)
+    for w in windows:
+        if re.search(r"\b" + t + r"\s+(?:" + "|".join(_NAMED_NOUNS) + r")\b", w):
+            return True
+        if re.search(r"\b" + t + r"(?:'s|’s)\b", w):
+            return True
+        if re.search(r"\b(?:" + "|".join(_OBJ_PREPS) + r")\s+(?:the\s+)?" + t + r"\b", w):
+            return True
+        if re.search(r"\b" + t + r"\s+(?:" + _AGENCY_RX + r")\b", w):
+            return True
+    return False
+
+
+_TITLE_SPAN_RX = re.compile(r"\b[A-Z][a-z]{2,}(?:(?:\s*&\s*|\s+)[A-Z][a-z]{2,}){1,5}\b")
+# Demonyms: an adjective phrase ending in one names a nationality, not a thing (T-164 r8).
+_DEMONYMS = {"american", "african", "european", "asian", "indian", "chinese", "japanese", "british", "german",
+             "korean", "russian", "arab", "canadian", "australian", "briton"}
+# "SG Mart", "BEML Soudha": an all-caps token that starts a printed name (T-164 r8).
+_ACRONYM_SPAN_RX = re.compile(r"\b[A-Z]{2,6}\s+[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){0,4}\b")
 # Title prefixes whose following name is a person (T-164 r5).
-_TITLE_PREFIX_RX = re.compile(r"\b(?:Mr|Ms|Mrs|Dr|Shri)\.?\s+([A-Z][A-Za-z.'’\-]+(?:\s+[A-Z][A-Za-z.'’\-]+){0,3})", re.I)
+_TITLE_PREFIX_RX = re.compile(r"\b(?:Mr|Ms|Mrs|Dr|Shri)\.?\s+(" + _PERSON_NAME + r")", re.I)
 
 
 def _windows(text: str, tok: str, positions: list[int]) -> list[str]:
@@ -586,7 +707,8 @@ def _modifier_use(windows: list[str], tok: str) -> bool:
     return mod > name
 
 
-def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set[str] | None = None) -> set[str]:
+def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set[str] | None = None,
+                        learned_generic: set[str] | None = None) -> set[str]:
     own_tokens = own_tokens or set()
     name_tokens = set()
     for n in speaker_names:
@@ -632,9 +754,19 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
         return False
 
     result: set[str] = set()
+    # every longer name the call prints, even when the span itself is refused below: a single word that is only
+    # part of it is a fragment, never an entity ("Capital" of "Capital Foods", "Mart" of "SG Mart") (T-164 r8).
+    printed_spans = [" ".join(m.group(0).split())
+                     for rx in (_TITLE_SPAN_RX, _ACRONYM_SPAN_RX) for m in rx.finditer(full_text)]
+    spans = [(m, False) for m in _TITLE_SPAN_RX.finditer(full_text)]
+    spans += [(m, True) for m in _ACRONYM_SPAN_RX.finditer(full_text)]
+    # the call's own expansions ("Sapien BioSciences Pvt Limited (SBPL)") and the store-level metric words are not
+    # business abbreviations for this call (T-164 r8)
+    company_expansions = _company_abbrevs_in(full_text)
+    generic_abbrev = (_BUSINESS_ABBREV | (learned_generic or set())) - company_expansions
 
     # (a) capitalised multi-word spans: entities if no person/company/lowercase-ordinary reading.
-    for m in re.finditer(r"\b[A-Z][a-z]{2,}(?:(?:\s*&\s*|\s+)[A-Z][a-z]{2,}){1,3}\b", full_text):
+    for m, acronym_led in spans:
         span = " ".join(m.group(0).split())
         toks = span.lower().split()
         if toks and toks[0] in _LEADING_STOP:
@@ -651,13 +783,28 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
         if any(t in _TITLE_ENTITY_WORDS for t in toks) or toks[-1] in _METRIC_LAST_WORDS:
             continue
         # a business abbreviation anywhere in the span ("SME Business") is a label, not a name (T-164 r7)
-        if any(t.upper() in _BUSINESS_ABBREV for t in toks):
+        if any(t.upper() in generic_abbrev for t in toks):
+            continue
+        # an acronym before a generic word is a label, not a name ("BEL Board", "HAL team") (T-164 r8)
+        if acronym_led and any(t in _GENERIC_WORDS for t in toks[1:]):
+            continue
+        # a phrase ending in a demonym is an adjective, not a name ("North American business") (T-164 r8)
+        if toks[-1] in _DEMONYMS:
+            continue
+        # a courtesy phrase from a speaker line ("Ravi Menon Thanks so much") is not a name (T-164 r8)
+        if any(t in {"thanks", "thank", "welcome", "morning", "evening", "afternoon"} for t in toks):
             continue
         # hyphen-split pieces never
         if _hyphen_piece(full_text, m):
             continue
         # drop generic industry phrases whose every word is ordinary vocabulary
         if all(t in _EN_VOCAB for t in toks) and toks and toks[-1] in _GENERIC_LAST_WORDS:
+            continue
+        # a capability phrase built only from generic technology words names nothing unless the call uses it as
+        # a name ("Communication Suite, Navigation Complex System, Torpedo Fire Control System") (T-164 r8)
+        if all(t in _EN_VOCAB or t in _GENERIC_WORDS for t in toks) and \
+                any(t in _GENERIC_TECH_WORDS for t in toks) and \
+                not _name_evidence(_windows(full_text, span, [m.start()]), span):
             continue
         # drop spans that are months or date phrases
         if any(t in {"january","february","march","april","may","june","july","august","september","october","november","december"} for t in toks):
@@ -681,7 +828,12 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
             if low in _MONTH_WORDS or low in name_tokens or low in speaker_lower or low in _GENERIC_WORDS:
                 continue
             # a title or a metric word is never a name on its own ("Director", "Phase", "Anniversary") (T-164 r7)
-            if low in _TITLE_ENTITY_WORDS or low in _METRIC_LAST_WORDS or tok.upper() in _BUSINESS_ABBREV:
+            if low in _TITLE_ENTITY_WORDS or low in _METRIC_LAST_WORDS or tok.upper() in generic_abbrev:
+                continue
+            # a word that only makes up a longer printed name in this call is a fragment ("Capital" of
+            # "Capital Foods", "Mart" of "SG Mart") (T-164 r8)
+            if (low in _EN_VOCAB or low in _GENERIC_WORDS or low in _FRAGMENT_WORDS) and any(
+                    re.search(r"\b" + re.escape(tok) + r"\b", sp) for sp in printed_spans):
                 continue
             # a demonym / ordinary adjective the word list holds ("European", "Turkish") is not a name
             if low in _EN_VOCAB and re.search(r"(?:an|ese|ish|ern)$", low):
@@ -731,13 +883,15 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
         if low in name_tokens or low in own_tokens or low in _TITLE_WORDS:
             continue
         # a business abbreviation (ARC, SEZ, BFSI, TCV, LOI ...) is a label, not a named thing (T-164 r7)
-        if tok.upper() in _BUSINESS_ABBREV:
+        if tok.upper() in generic_abbrev:
             continue
         if len(re.sub(r"[^A-Z]", "", tok)) < 3:
             continue
         windows = _windows(full_text, tok, poss)
         n_stmt = sum(1 for s in sentences if re.search(r"\b" + re.escape(tok) + r"\b", s))
-        if _number_metric(windows, tok):
+        # a token the call itself expands to a legal company name is that company, whatever the figures beside it
+        doc_name = tok.upper() in company_expansions
+        if not doc_name and _number_metric(windows, tok):
             # a metric sits beside its number (ARPOB 12,000); a programme name in a list or beside a programme noun
             # is still a name though an amount follows it ("NGC INR20,000 crores", "NGC, P-75I") (T-164 r7)
             t = re.escape(tok)
@@ -746,9 +900,9 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
                                       r"scheme)s?\b", w, re.I) for w in windows)
             if not (list_cue and (n_stmt >= 2 or programme)):
                 continue
-        if not _named_cue(windows, tok):
+        if not doc_name and not _named_cue(windows, tok):
             continue
-        if not _strong_cue(windows, tok) and _modifier_use(windows, tok):
+        if not doc_name and not _strong_cue(windows, tok) and _modifier_use(windows, tok):
             continue
         cap_candidates.add(tok)
 
@@ -756,8 +910,21 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
         if _all_hyphen(tok):
             continue
         n_stmt = sum(1 for s in sentences if re.search(r"\b" + re.escape(tok) + r"\b", s))
-        if n_stmt >= 2 or _strong_cue(_windows(full_text, tok, cap_positions[tok]), tok):
+        if tok.upper() in company_expansions or n_stmt >= 2 or _strong_cue(_windows(full_text, tok, cap_positions[tok]), tok):
             result.add(tok)
+
+    # the longest printed span wins across the call: a candidate whose every occurrence sits inside a longer
+    # candidate is a fragment of it ("Aatma Nirbhar" of "Aatma Nirbhar Bharat", "Bokaro Steel" of "Bokaro Steel
+    # Plant", "Valiyath" of "KIMS Valiyath") (T-164 r8)
+    def _only_inside(short: str, long: str) -> bool:
+        places = [(m.start(), m.end()) for m in re.finditer(r"\b" + re.escape(long) + r"\b", full_text)]
+        occs = [m.start() for m in re.finditer(r"\b" + re.escape(short) + r"\b", full_text)]
+        return bool(occs) and all(any(a <= p and p + len(short) <= b for a, b in places) for p in occs)
+
+    for span in sorted(result, key=len):
+        if any(span != other and len(other) > len(span) and re.search(r"\b" + re.escape(span) + r"\b", other)
+               and _only_inside(span, other) for other in result):
+            result.discard(span)
 
     return result
 
@@ -780,7 +947,8 @@ def _entities_in(sentence: str, ent_set: set[str]) -> list[str]:
         out.append(e)
     return out
 
-def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[tuple[int, str]], topics, people, st: dict, company_name: str | None = None):
+def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[tuple[int, str]], topics, people, st: dict, company_name: str | None = None,
+                learned_generic: set[str] | None = None):
     texts = [t for _, t in pages]
     boiler = boilerplate_lines(texts)
     cperiod = call_period_of(title, texts)
@@ -814,12 +982,12 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
     own_tokens.add(sym.lower())
     # every colon-mark speaker is a person, also when the participant block does not name him (T-164 r6)
     spoken = set(known) | {m.group(1) for rx in (SPEAKER_RX, SPEAKER_MID_RX) for m in rx.finditer(full_text)
-                           if not m.group(1).startswith(NOT_SPEAKERS)}
-    ent_set = _recurring_entities(full_text, spoken, own_tokens)
+                           if not _not_speaker(m.group(1))}
+    ent_set = _recurring_entities(full_text, spoken, own_tokens, learned_generic)
     for page, raw in pages:
         w = mask_noise(raw, boiler)
         marks = sorted((m.start(1), m.end(), m.group(1)) for rx in (SPEAKER_RX, SPEAKER_MID_RX) for m in rx.finditer(w)
-                       if not m.group(1).startswith(NOT_SPEAKERS))
+                       if not _not_speaker(m.group(1)))
         if colon < 5:
             marks = sorted(marks + [(a, b, n) for a, b, n in name_marks(raw, counts, known)
                                     if all(a != x for x, _b, _n in marks)])
@@ -858,20 +1026,32 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
     # A DOI-layout participants block names the management.  When the call itself puts one of those names in the
     # analyst seat (the moderator interrupts the MD and the "unknown after moderator" rule takes him for an
     # analyst) while another management voice is already placed, the block corrects the record: that speaker is
-    # management, never a question (T-164 r7).
-    mgmt_roles = ("md", "ceo", "cfo", "coo", "ir", "mgmt")
+    # management, never a question (T-164 r7).  A corrected speaker is promoted only to a management role; an
+    # "Investor Relations" or moderator title stays ir/moderator and its lines are not management statements
+    # (T-164 r8).
+    promoted = ("md", "ceo", "cfo", "coo", "chairman", "mgmt")
 
     def _exact_name(a: str, b: str) -> bool:
         return _norm_name(a) == _norm_name(b)
 
+    # a speaker the call's own DOI block names keeps the block's role, so an initial-led label ("L Krishnakumar")
+    # is that management person, not an unnamed stranger (T-164 r8)
+    for seg in segments:
+        if seg[6] == "unknown":
+            for n, r in doi_mgmt.items():
+                if _exact_name(seg[5], n):
+                    if r in promoted or r in ("ir", "moderator"):
+                        seg[6] = r
+                    break
+
     misread = [n for n in doi_mgmt if any(seg[6] == "analyst" and _exact_name(seg[5], n) for seg in segments)]
-    placed = any(seg[6] in mgmt_roles and not any(_exact_name(seg[5], n) for n in doi_mgmt) for seg in segments)
-    if misread and placed:
+    if misread:
         for seg in segments:
             if seg[6] in ("analyst", "unknown"):
                 for n in misread:
                     if _exact_name(seg[5], n):
-                        seg[6] = doi_mgmt[n]
+                        if doi_mgmt[n] in promoted or doi_mgmt[n] in ("ir", "moderator"):
+                            seg[6] = doi_mgmt[n]
                         break
     seq, started = 0, False
     rows = []
@@ -882,7 +1062,7 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
             started = True      # cover letter / headers before the first real speaker are not call content
         if not started:
             continue
-        if role == "moderator":
+        if role in ("moderator", "ir"):
             continue
         if role == "analyst":
             turn += 1
@@ -981,6 +1161,12 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
         pass
     con.executescript(SCHEMA)
     stats: dict = {}
+    # store-level metric words: a token used beside a figure in two or more calls is no company name
+    # (WHRS 26, GNPA 3.97%, RCC 1,000 tons ...) (T-164 r8)
+    learned_generic = _learned_generic_acronyms(
+        "\n".join(t for _p, t in allp if (t or "").strip())
+        for sym in symbols for _dk, _t, _na, allp in _transcript_docs(con, sym, sandbox))
+    stats["learned_generic"] = len(learned_generic)
     sql = f"INSERT OR IGNORE INTO transcript_statement({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
     qsql = f"INSERT INTO transcript_question({','.join(QUESTION_COLS)}) VALUES({','.join('?' * len(QUESTION_COLS))})"
     for sym in symbols:
@@ -1001,7 +1187,7 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
                 continue
             st["docs"] += 1
             st["pages"] += len(pages)
-            rows = extract_doc(sym, doc_key, title, known_at, pages, topics, people, st, company_name)
+            rows = extract_doc(sym, doc_key, title, known_at, pages, topics, people, st, company_name, learned_generic)
             con.executemany(sql, rows)
             qs = st.get("questions", [])
             # st["questions"] is list of tuples collected; reset per doc

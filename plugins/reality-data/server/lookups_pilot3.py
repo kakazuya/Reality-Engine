@@ -857,6 +857,12 @@ def _term_hits(column: str, words: list[str]) -> tuple[str, list]:
     return expr, [f"%{word}%" for word in words]
 
 
+def _turn_key(row: Any) -> tuple:
+    """Identity of a whole answer turn: (document, answer_turn).  Answer-turn ids are per call (two calls of one
+    company collide) and prepared remarks carry negative ids, so a bare id is never a turn (T-164 r8)."""
+    return (row["doc_key"], row["answer_turn"]) if row["answer_turn"] else ("row", row["id"])
+
+
 def statements(symbol: str, topic: str | None = None, terms: str | None = None, date_from: str | None = None,
                date_to: str | None = None, as_of: str | None = None, limit: int = 10,
                role: str | None = None, period: str | None = None,
@@ -923,41 +929,40 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     if whole_turn and rows:
         kept, seen = [], set()
         for r in rows:
-            key = (r["doc_key"], r["answer_turn"]) if r["answer_turn"] else ("row", r["id"])
+            key = _turn_key(r)
             if key in seen:
                 continue
             seen.add(key)
             kept.append(key)
             if len(kept) >= cap:
                 break
-        rows = [r for r in rows
-                if ((r["doc_key"], r["answer_turn"]) if r["answer_turn"] else ("row", r["id"])) in seen]
+        rows = [r for r in rows if _turn_key(r) in seen]
     out = [{"id": r["id"], "call_date": r["call_date"], "call_period": r["call_period"], "speaker": r["speaker"],
             "role": r["role"], "section": r["section"], "topics": r["topics"],
             "period_discussed": r["period_discussed"], "entities": r["entities"], "answer_turn": r["answer_turn"],
             "quote": _trim(r["quote"]),
             "provenance": _prov("transcript_statement", f"{r['doc_key']} p{r['page']}", r["known_at"],
                                 title=r["title"], row_id=r["id"])} for r in rows]
-    # whole answer turn: expand each matched row to all sentences of its answer turn
+    # whole answer turn: expand each matched row to all sentences of its answer turn, keyed by (document, turn):
+    # answer-turn ids collide across calls and prepared-remark ids are negative, so a bare id mixed two calls and
+    # swept prepared remarks in (T-164 r8).  A prepared-remarks turn expands only when it was itself selected.
     extra, eargs = _asof(as_of, "t.known_at")
     if whole_turn and rows:
-        matched_turns = {r["answer_turn"] for r in rows if r["answer_turn"]}
-        if matched_turns:
+        keys = {_turn_key(r) for r in rows if r["answer_turn"]}
+        if keys:
             turn_rows = []
-            placeholders = ",".join("?" * len(matched_turns))
-            # fetch siblings in the same calls
-            doc_keys = {r["doc_key"] for r in rows}
+            doc_keys = sorted({r["doc_key"] for r in rows})
             dk_placeholders = ",".join("?" * len(doc_keys))
             tr = _q(f"SELECT t.id, t.call_date, t.call_period, t.page, t.speaker, t.role, t.section, t.topics, "
                     f"t.period_discussed, t.quote, t.is_fragment, t.entities, t.answer_turn, t.known_at, t.doc_key, d.title "
                     f"FROM transcript_statement t LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a "
                     f"WHERE a.symbol=t.symbol AND a.alias_key=t.doc_key), t.doc_key) "
-                    f"WHERE t.symbol=? AND t.answer_turn IN ({placeholders}) AND t.doc_key IN ({dk_placeholders}){extra} "
+                    f"WHERE t.symbol=? AND t.doc_key IN ({dk_placeholders}){extra} "
                     f"ORDER BY t.call_date DESC, t.seq",
-                    (sym, *matched_turns, *doc_keys, *eargs))
+                    (sym, *doc_keys, *eargs))
             seen_ids = {r["id"] for r in rows}
             for r in tr:
-                if r["id"] in seen_ids:
+                if r["id"] in seen_ids or _turn_key(r) not in keys:
                     continue
                 seen_ids.add(r["id"])
                 turn_rows.append(r)
