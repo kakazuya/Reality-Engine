@@ -1,29 +1,29 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-10 10:40 IST (Wolf)
-History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `docs/V2_SCHEMA_CONTRACT.md`.
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-10 11:20 IST (Wolf, session close)
+History `docs/state_history/` (previous: `STATE_2026-11-10_1120.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 contract `docs/V2_SCHEMA_CONTRACT.md`.
 
 ## Now
-- Stores (DELETE journal mode): `D:/RealityEngine/{u8/u8.db, q12/q12.db, p20/p20new.db}`, prices/valuation 2019 -> 9 Nov 2026; pilot set `pilot10/pilot10.db`. Go key 1 only.
-- Pilot20 FINAL 9 Nov (strict dates + Shivam's ruling: unpublished = 'data not found' + nearest supporting point): **229 / 230 right** (`reports/2026-11-09_p20_final_230.xlsx`); without the ruling 211. Only ADANIPORTS-005 left (figure only on a later transcript). Call questions dated at transcript filing (`questions_P/Q.json` keep `as_of_original`).
-- T-154 semantic stays (Shivam), alongside the table store; index `p20/embed/` (~$0.48 spent).
-- Merged today: T-134 period engine, T-155 prices from 2019, T-139 rating rationales (41 texts, `D:/RealityEngine/outside_doc/ratings_p20`), T-132 round 1 (cells store `D:/RealityEngine/v2/p20_r1`, ~8/30 right), T-156 sql as_of guard, T-157 transcripts (p20 135 -> 151).
+- Stores (DELETE journal mode): `D:/RealityEngine/{u8/u8.db, q12/q12.db, p20/p20new.db}`, pilot set `pilot10/pilot10.db`, n10 being built (T-160). Go key 1 only.
+- Pilot20 FINAL 9 Nov: 229/230 right (`reports/2026-11-09_p20_final_230.xlsx`).
+- Routine (10 Nov rulings): no headless Opus unless Shivam says so; a separate read-only dsh worker grades every branch; max 2 code workers; no dsh starts 11:30-15:30 and 06:30-09:30 Mon-Fri; peak-hour work on Beam (`beam-free`).
+- Merged 10 Nov: T-161/T-159 (first pages type/date docs), T-162 (SHP known_at from file stamp), T-132 r9 (cells; store `D:/RealityEngine/v2/p20_r9`), T-133 v8 (label map; live KPI +253 right / 0 lost), T-165 (holding every category, GoI/FPI/MF, KPI investor words).
 - Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126.
 
-## Running
-- LIVE DEFECT p20 kpi_series: 1,466 OFCF rows stored as capex (fixed on main by T-133; KPI rebuild after v8.1).
-- T-160 n10 (AUBANK BALRAMCHIN SRF LT DMART TATAPOWER ICICIGI DIXON JUBLFOOD MCX): agy harvest 20261109T182713Z-4d398312; build `D:/RealityEngine/n10/build.sh` (fetch running). Held audit DONE: 82/106 u8+q12 misses answerable from held docs (`reports/2026-11-10_held_not_queryable_audit.xlsx`) -> T-161..T-166. Bake-off LongCat vs Beam `night_loop/bakeoff_lc_beam` running.
-
-- T-132 r9 MERGED 09:45 (Opus results 21/30, deck 22/30, replay 136/136; store `D:/RealityEngine/v2/p20_r9`, samples `D:/RealityEngine/v2/review/samples`); r10 done (90 tests, replay 179/179 claimed incl. parents; store `D:/RealityEngine/v2/p20_r10`) under dsh review 20261110T054010Z-90366162. Headless Opus grading STOPPED (Shivam 10 Nov 10:30): reviews now by a separate read-only dsh worker. T-133 v8 MERGED 10:55 (dsh review: 190/200, live KPI +253 right/0 lost; review `plugins/dsh-worker/runtime/jobs/20261110T050407Z-6337de5b/result.md`); v8.1 (`tasks/handoff/T-133_v81_brief.md`) MUST land before any KPI rebuild (~30 junk dividend_income/total_income cells). T-165 MERGED 11:05 (review 11/11 reachable, 0 wrong; restart reality-data MCP to serve it); T-133 v8.1 running 20261110T052550Z-491c3466. T-166 running 20261110T054026Z-90ecbbdb. Queued (no dsh starts 11:30-15:30): T-164, T-163 (`tasks/handoff/T-16x_*_brief.md`). T-162 code merged 10 Nov (SHP known_at = earlier pm-safe file stamp; 29/25/34 p20/u8/q12 filings move earlier) -> takes effect with the same rebuild. T-161/T-159 merged (b9e58ae5; PILOT3_BLUEPRINT 9m): `docs_collect --measure` = 15 retypes, 0 re-dates -> rebuild p20/u8/q12 docs + transcripts/guidance, restart MCP.
+## Running (owner: this Wolf session until they finish)
+- T-133 v8.1 20261110T052550Z-491c3466 (`tasks/handoff/T-133_v81_brief.md`): MUST merge before any KPI rebuild (~30 junk dividend_income/total_income cells).
+- T-166 guidance source check 20261110T054026Z-90ecbbdb.
+- T-132 r10 review (read-only) 20261110T054010Z-90366162 of branch dsh/20261110T041508Z-c1d00b5c (90 tests pass; store `D:/RealityEngine/v2/p20_r10`; samples `D:/RealityEngine/v2/review/samples`).
 
 ## Next action
-1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
-2. T-157 follow-up: Coal India 9, Havells 3, Titan 1 calls not found (widen BSE subject filter); run the fetcher on u8 and q12.
-3. T-133 label map: families approved per family after merge; then T-150 units at write.
-4. T-139 next: India Ratings detail JSON, monthly industry data (ratings.db: 138 rationales, 28 cos).
-5. Standard answer brief: carry the strict-PIT and 'not disclosed' rules from `<Wolf scratch>/T-156_round4_hp.md`.
-6. raw_to_drive sweep (u8 + p20 raw, SHP, transcripts_raw, raw_market masters copied back today).
+1. Read each finished job (worker_result), review: v8.1 and T-166 each get a read-only dsh review (briefs like `tasks/handoff/T-165_review_brief.md`); merge r10 if its review passes (zero right rows lost).
+2. Then rebuild p20/u8/q12 (docs_collect --profile, build --part stores/transcripts/guidance; KPI only after v8.1) so T-161 (15 retypes) and T-162 (88 SHP filings earlier) go live; restart reality-data MCP (also serves T-165). Re-ask SHP questions at past dates to close T-162.
+3. Start queued T-164 (statements) and T-163 (segments) after 15:30 (briefs in `tasks/handoff/`).
+4. Store defects to fix: CHOLAFIN nim_pct Q4FY26 0.68 wrong scale; credit_cost_bps Q1FY27 extra rows 180/470; p20 kpi_series 1,466 OFCF rows as capex (fixed on main, needs KPI rebuild).
+5. Unmerged old branches to decide: dsh/20261106T143135Z-7b2b2cce (WIP guidance, lease expired), dsh/20261107T221506Z-daa1d0c7 (T-113 A row checks), Wolf-agy-20261109T034102Z-5e770d54, Wolf-agy-20261109T182713Z-4d398312 (T-160 harvest).
+6. Bake-off Beam vs LongCat: task r2 scored 0/2 for both models: check the task or scorer (`D:/RealityEngine/night_loop/bakeoff_lc_beam`).
+7. T-157 follow-up: Coal India 9, Havells 3, Titan 1 calls not found; run the fetcher on u8 and q12. T-139 next: India Ratings detail JSON. raw_to_drive sweep.
 
 ## Store copy recipe
 checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE` on the copy (else workers fail "unable to open database file").
 
 ## Merge recipe
-Review row first; merge --no-ff --no-commit; drop PROGRESS_NOTES.md; tests per file; docs; commit `By:`; remove worktree.
+Review row first; merge --no-ff --no-commit; drop PROGRESS_NOTES.md (root only); tests per file; docs; commit `By:`; remove worktree.
