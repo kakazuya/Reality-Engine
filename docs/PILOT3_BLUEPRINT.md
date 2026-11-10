@@ -208,7 +208,12 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   ticket's `*_before` baseline: 11 rows removed, 7 of them the same target back under its own metric, 0 management
   targets lost, 0 junk rows (the 2 APLAPOLLO volume rows are management statements), 0 speaker regressions. Tests
   **40 passed** (four new: the per-clause agency check, the real table, the past figures, the slide-title speaker),
-  and every difference is listed with its quote and grade in `.tmp/t166/r4_diff.md`.
+  and every difference is listed with its quote and grade in `D:/RealityEngine/v2/review/t166_r4/r4_diff.md`.
+  Independent DeepSeek review (job 20261110T104653Z-69e3cace, every row read against its page): 0 management targets
+  lost, 1 junk row added (EDELWEISS FY17 product-mix margin), 0 speaker regressions; open: 3 new wrong speaker names on
+  previously empty fields, APLAPOLLO FY27 20% volume guidance keyed `revenue_growth`, ADANIPORTS p52 "11%-16% growth
+  guidance" missed because a table match ends the sentence, and BHARTIARTL capex 28,000-34,000 is an analyst
+  describing past capex (kept in round 4 only because its brief required it).
 - **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
   `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
   writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into
