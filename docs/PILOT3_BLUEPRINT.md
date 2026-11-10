@@ -169,6 +169,29 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   BAJFINANCE 59, HINDALCO 57), A1 **709/898** with every company level, tests **28 passed**, and the hand read with
   seed 20261112 (HINDALCO 20 of 31 sampled, every other company all rows) is all right: the SBILIFE 14-15% row the
   review reported is now `revenue_growth` (or gone), and its 26-28% margin guidance stays.
+  **T-166 (10 Nov 2026): whose target it is, and the two noise shapes.** The table held outside forecasts as company
+  guidance: Chola's deck prints ICRA's 19-21% housing-finance AUM growth on an "Industry outlook" slide, so
+  `pilot3_guidance('CHOLAFIN')` served it as Cholamandalam's AUM guidance while management guided 22-23%, and BEL's
+  "variability of 25% to 31% EBITDA margins" band and an "INR120-plus million" export target read as 120 crore were
+  stored beside its real 28% and five-figure-crore order intake. `external_forecast()` now rejects a sentence (or
+  the bare sentence before it, when the candidate sentence names no company actor) that attributes the number to a
+  rating agency, research house or industry body (`EXTERNAL_SOURCE`: ICRA, CRISIL, CARE, India Ratings/Ind-Ra,
+  Moody's, S&P, Fitch, IBEF, Brickwork, Acuité, Infomerics, "rating agency", "research house", "brokerage") or
+  states an industry/sector forecast (`INDUSTRY_FORECAST`: "the sector is expected to", "HFCs is expected to",
+  "NBFCs likely to grow"; `AS_PER_EXTERNAL`: "as per ICRA/the industry"); a rating-affirmation line before "we
+  expect 15% growth" does not reject the company's own target because the sentence names "we". On a transcript page
+  without statements the page's own labels are tracked across sentences (`SPEAKER_LABEL`, `INLINE_SPEAKER`, so a
+  wrapped sentence or a label printed on the text line keeps its speaker), and a speaker the moderator introduced as
+  a questioner (`ANALYST_INTRO`, "from the line of Umesh Raut") is never a target; statement rows with role
+  analyst/moderator/unknown are skipped too. Two noise shapes go to review, not the table: an EBITDA-margin range
+  wider than five points (`wide_margin`) and an order-intake value below 1% of the company's own largest
+  `kpi_series` order intake (falling back to annual revenue; `order_intake_scale`). No column was added: an outside
+  forecast is dropped, not labelled, because a `source_kind` column would be a schema change for rows the table
+  should not hold. Measured dry-run on copies of p20/u8/q12 with the HEAD extractor vs this code: p20 175→169, u8
+  140→134, q12 276→268 rows; 28 removed (10 outside forecasts, 10 analyst questions/restatements, 2 wide margin
+  bands, 1 order-intake unit slip), 0 rows whose quote names an agency or an industry forecast left, and no
+  management target lost (the same targets re-read from a label-stripped sentence are counted as rekeys). Tests
+  **36 passed**.
 - **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
   `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
   writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into

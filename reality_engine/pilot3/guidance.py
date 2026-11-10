@@ -33,6 +33,17 @@ guidance cue, a metric word in the sentence itself (never only in the question),
 (ahead of, better than, flattish, in the 70s, high single-digit ...) and a period, and it refuses any sentence
 with a reporting verb or an actual's shape, so a result ("EBITDA margin at 23.7%, coming in at the higher end of
 our guidance") stays a result.
+
+Only the company's own target is a row (T-166).  A sentence (or the bare sentence before it) that attributes the
+number to a rating agency, research house, industry body or "the industry" -- "ICRA expects AUM of AHFCs to rise
+by 19-21%", "CRISIL estimates ...", "as per Ind-Ra ...", "the sector is expected to ...", "NBFCs likely to grow"
+-- is that body's forecast and is dropped, because a Cholamandalam deck's ICRA housing-finance outlook was served
+as Cholamandalam's own AUM guidance.  On a transcript only a management-role statement produces a row: an
+analyst's question ("you guided 25-31%?") is never a target, and a line with no identifiable management speaker
+is skipped rather than trusted.  Two noise shapes go to review instead of the table: a margin range wider than
+five points ("variability of 25% to 31% EBITDA margins" is a product-mix band, not a target) and an order-intake
+value below 1% of the company's own order-intake scale or annual revenue ("INR120-plus million" read as 120
+crore, far below BEL's five-figure-crore order book).
 """
 from __future__ import annotations
 
@@ -116,6 +127,32 @@ HEDGE = re.compile(r"\b(?:difficult|hard|impossible|not possible|unable|too earl
 # "EBITDA per tonne remains at ~$500/t" with no future word before the number is the actual, not a target; a
 # guidance word before it ("the AUM growth estimates … remain at 24 to 25%") keeps the row (T-056 review)
 REMAINS_AT = re.compile(r"\bremains? at\b", re.I)
+# --- whose target is it: the company's, not an outside forecaster's (T-166) ---------------------------
+# A number attributed to a rating agency, research house, industry body or "the industry" is that body's forecast,
+# not the company's own target.  Chola's deck prints ICRA's 19-21% housing-finance AUM growth on a "Sector
+# Outlook / Industry outlook" slide; the row was served as Cholamandalam's AUM guidance while management guided
+# 22-23%.  A named source in the sentence always rejects the candidate; a source in the sentence before it rejects
+# only a sentence that names no company actor ("we", "our", "the company"), so a rating-affirmation boilerplate
+# before "we expect 15% growth" keeps the company's own target.
+INDUSTRY_WORDS = r"industry|sector|markets?|HFCs?|NBFCs?|AHFCs?"
+EXTERNAL_SOURCE = re.compile(
+    r"\b(?:ICRA|CRISIL|India Ratings|Ind-Ra|Moody'?s|S&P|Fitch|IBEF|Brickwork|Acuit[ey]|Infomerics|"
+    r"rating agenc(?:y|ies)|research house|brokerages?)\b", re.I)
+# "CARE" is the one agency whose name is also an everyday word, so it is matched in its printed case only
+CARE_RATINGS = re.compile(r"\bCARE(?:\s+(?:Ratings|EDGE))?\b")
+INDUSTRY_FORECAST = re.compile(
+    r"\b(?:" + INDUSTRY_WORDS + r")\b[^.;]{0,80}?\b(?:is|are|will be|would be|should be)\s+"
+    r"(?:expected|anticipated|forecast|projected|likely|poised)\b|"
+    r"\b(?:" + INDUSTRY_WORDS + r")\b[^.;]{0,50}?\b(?:expected|anticipated|forecast|projected|likely|poised)"
+    r"\s+to\s+(?:grow|expand|rise|increase|decline|decrease|moderate|ease|improve|slow|register|remain)\b", re.I)
+AS_PER_EXTERNAL = re.compile(
+    r"\b(?:as per|according to)\b\s+(?!(?:our|we|the company)\b)(?:the\s+)?(?:" + INDUSTRY_WORDS +
+    r"|ICRA|CRISIL|CARE|India Ratings|Ind-Ra|Moody'?s|S&P|Fitch|IBEF)\b", re.I)
+COMPANY_ACTOR = re.compile(r"\b(?:we|our|us|we['’]re|we['’]ll|we['’]ve|company|management|board)\b", re.I)
+# a rating-affirmation/industry-outlook block that carries no company actor: the sentence after it is that
+# outside view's number unless the company itself speaks ("Growth is expected to ease to 13%-15%…" after
+# "ICRA Rating highlighted that NBFC are …")
+NON_MGMT_ROLES = frozenset({"analyst", "moderator", "unknown"})
 # `other` is kept only with a guidance word in the same clause as the number (T-056 family F): a level of the
 # order book, L1 position or debtors is a fact about the business, not a target.
 OTHER_CUE = re.compile(r"\b(?:target\w*|expect\w*|guidanc\w*|guide\w*|aim\w*|would be|will be|should be)\b", re.I)
@@ -858,13 +895,87 @@ def _transcript_statements(con: sqlite3.Connection, symbol: str) -> dict[str, li
     return out
 
 
-def _speaker_in(page_text: str, sentence: str) -> str | None:
-    """Nearest "Name:" label before the sentence in the page text (used only when transcript_statement has no row)."""
-    pos = page_text.find(sentence[:60])
-    if pos < 0:
+def _kpi_crore(value: float | None, unit: str | None) -> float | None:
+    """A kpi_series amount in crore (T-166)."""
+    if value is None:
         return None
-    labels = [m for m in re.finditer(r"(?m)^[ \t]*([A-Z][A-Za-z.'’\-]+(?: [A-Za-z.'’\-]+){0,4}):[ \t]*$", page_text[:pos])]
-    return labels[-1].group(1) if labels else None
+    v = float(value)
+    if unit in ("inr_cr", "cr", "crore", "crores"):
+        return v
+    if unit in ("inr_bn", "bn"):
+        return v * 100.0
+    if unit == "inr":
+        return v / 1e7
+    return None
+
+
+def company_scale_cr(con: sqlite3.Connection, symbol: str) -> float | None:
+    """The scale an order-intake target is checked against, in crore (T-166).
+
+    The company's own order-intake KPI series is read first (a target far below the largest intake the company
+    ever recorded is a unit slip, never a corridor); without it the annual revenue is used, from the quarterly
+    XBRL lines (largest quarter x 4) and then the annual lines.  ``None`` when the store holds no scale, in which
+    case the check cannot run and the row is kept."""
+    try:
+        vals = [_kpi_crore(r[0], r[1]) for r in con.execute(
+            "SELECT value, unit FROM kpi_series WHERE symbol=? AND metric='order_intake'", (symbol,))]
+        vals = [v for v in vals if v and v > 0]
+        if vals:
+            return max(vals)
+    except sqlite3.Error:
+        pass
+    try:
+        row = con.execute("SELECT MAX(value) FROM fin_quarter_xbrl WHERE symbol=? AND "
+                          "line_item='revenue_from_operations' AND unit='inr'", (symbol,)).fetchone()
+        if row and row[0]:
+            return float(row[0]) * 4 / 1e7
+        row = con.execute("SELECT MAX(value) FROM fin_annual_line WHERE symbol=? AND statement='PL' AND "
+                          "line_item='revenue_from_operations' AND unit='inr'", (symbol,)).fetchone()
+        if row and row[0]:
+            return float(row[0]) / 1e7
+    except sqlite3.Error:
+        pass
+    return None
+
+
+# a participant's "Name:" label on its own line in a transcript page (T-166)
+SPEAKER_LABEL = re.compile(r"(?m)^[ \t]*([A-Z][A-Za-z.'’\-]+(?: [A-Za-z.'’\-]+){0,4}):[ \t]*$")
+# a sentence that opens with its speaker ("Manoj Jain: Presently, we have guided …"): the splitter kept the
+# label on the same line as the text, so the nearest standalone label belongs to the question before it
+INLINE_SPEAKER = re.compile(r"^\s*(?:•\s*)?([A-Z][A-Za-z.'’\-]+(?: [A-Za-z.'’\-]+){0,4}):\s*")
+# the moderator's introduction of a questioner ("The next question is from the line of Umesh Raut from Nomura"):
+# the one reliable analyst mark on a call whose participant block is missing or names everyone "Management".
+# The name stops before "from <firm>", so the firm is never part of the person.
+ANALYST_INTRO = re.compile(r"\b(?:question (?:is )?(?:comes )?from the line of|line of)\s+"
+                           r"([A-Z][A-Za-z.'’\-]+(?: [A-Za-z.'’\-]+){0,2}?)(?=\s+from\b|[.,;:)]|$)", re.I)
+
+
+def analyst_speakers(texts: list[str]) -> tuple[str, ...]:
+    """The speakers the document itself introduces as questioners (T-166)."""
+    names: list[str] = []
+    for text in texts:
+        names.extend(m.group(1) for m in ANALYST_INTRO.finditer(text or ""))
+    return tuple(names)
+
+
+def previous_sentence(before: str) -> str:
+    """The sentence immediately before the one being read, from the page text before it (T-166)."""
+    parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+|•", (before or "").strip()) if p.strip()]
+    return parts[-1] if parts else ""
+
+
+def external_forecast(sentence: str, previous: str = "") -> bool:
+    """True when the sentence, or the bare sentence before it, attributes the number to an outside forecaster.
+
+    A named agency/research house in the sentence always rejects the candidate.  The sentence before it counts
+    only when the candidate's own sentence names no company actor, so an industry outlook ("ICRA Rating
+    highlighted that NBFC … Growth is expected to ease to 13%-15%") is rejected while a rating-affirmation
+    boilerplate followed by "we expect 15% growth" keeps the company's own target."""
+    if EXTERNAL_SOURCE.search(sentence) or CARE_RATINGS.search(sentence) or AS_PER_EXTERNAL.search(sentence):
+        return True
+    if INDUSTRY_FORECAST.search(sentence):
+        return True
+    return not COMPANY_ACTOR.search(sentence) and bool(previous and EXTERNAL_SOURCE.search(previous))
 
 
 def page_sentences(raw: str) -> list[tuple[int, int]]:
@@ -880,26 +991,41 @@ def page_sentences(raw: str) -> list[tuple[int, int]]:
 
 
 def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statements: list[sqlite3.Row],
-                      stats: dict, mgmt_speakers: tuple[str, ...] = (), doc_has_statements: bool = False) -> list[tuple]:
+                      stats: dict, mgmt_speakers: tuple[str, ...] = (), doc_has_statements: bool = False,
+                      revenue_cr: float | None = None, analysts: tuple[str, ...] = ()) -> list[tuple]:
     """Guidance rows (without revision_of) from one page: transcript statements when held, else split sentences.
-    A page of a transcript whose statements are held elsewhere may only contribute a sentence when its "Name:"
-    label is one of that document's management speakers: an analyst's or journalist's words are never a target."""
+    On a transcript page without statements a sentence is kept only when its speaker is not one the document
+    itself introduced as a questioner (T-166): an analyst's words are never a company target."""
     collapsed = " ".join(raw.split())
     items: list[tuple[str, str, str | None]] = []      # (sentence, quote, speaker)
     if statements:
         for st in statements:
+            if (st["role"] or "").lower() in NON_MGMT_ROLES:
+                stats["not_management"] += 1
+                continue
             stmt = " ".join((st["statement"] or "").split())
             if stmt:
                 items.append((stmt, " ".join((st["quote"] or stmt).split()), st["speaker"]))
     else:
+        last_end, speaker = 0, None
         for a, b in page_sentences(raw):
             s = HEADER_TAIL.sub("", " ".join(raw[a:b].split()))
             if not s:
+                last_end = b
                 continue
-            speaker = _speaker_in(raw, s)
-            if doc_has_statements and speaker and not any(_same_person(speaker, m) for m in mgmt_speakers):
+            inline = INLINE_SPEAKER.match(s)
+            if inline and (len(inline.group(1).split()) >= 2
+                           or any(_same_person(inline.group(1), m) for m in mgmt_speakers)):
+                speaker, s = inline.group(1), s[inline.end():]
+            else:
+                # a "Name:" label printed between the previous sentence and this one belongs to this one
+                labels = [m.group(1) for m in SPEAKER_LABEL.finditer(raw[last_end:a])]
+                if labels:
+                    speaker = labels[-1]
+            last_end = b
+            if speaker and any(_same_person(speaker, x) for x in analysts):
                 stats["not_management"] += 1
-                continue
+                continue                # the moderator introduced this speaker as a questioner, never management
             items.append((s, s, speaker))
     call_period = statements[0]["call_period"] if statements else None
     docper = doc_period(doc["filing_date"], doc["known_at"])
@@ -911,6 +1037,9 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
     for sentence, quote, speaker in items:
         if not 20 < len(sentence) < 500:
             continue
+        if EXTERNAL_SOURCE.search(sentence):
+            stats["external_forecast"] += 1
+            continue                    # a spend sentence naming an outside source is not the company's row (T-166)
         for sp in spends(sentence):
             period = _explicit_period(sentence, sp["start"])
             key = (period, sp["low"], sp["high"], sp["unit"])
@@ -939,6 +1068,9 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         pos = collapsed.find(sentence)
         before = collapsed[max(0, pos - BEFORE):pos] if pos >= 0 else ""
         after = collapsed[pos + len(sentence):pos + len(sentence) + AFTER] if pos >= 0 else ""
+        if external_forecast(sentence, previous_sentence(before)):
+            stats["external_forecast"] += 1
+            continue                    # an agency's or the industry's forecast, not the company's target (T-166)
         if not nums:
             # a target said in words has no number to read: it gets a row with low/high NULL (T-058)
             if CUE.search(sentence):
@@ -1038,6 +1170,15 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if chosen["unit"] == "inr" and metric in ("order_intake", "capex", "project_capital_cost", "interest_cost") \
                 and chosen["high"] >= 100:
             chosen = {**chosen, "unit": "inr_cr"}   # "INR9,000-INR10,000" in a crore-scale business is crore
+        if metric == "ebitda_margin" and chosen["high"] - chosen["low"] > 5:
+            stats["wide_margin"] += 1
+            continue                    # "variability of 25% to 31% EBITDA margins" is a band, not a target (T-166)
+        if metric == "order_intake" and revenue_cr:
+            in_crore = chosen["high"] if chosen["unit"] == "inr_cr" else \
+                chosen["high"] / 1e7 if chosen["unit"] == "inr" else None
+            if in_crore is not None and in_crore < 0.01 * revenue_cr:
+                stats["order_intake_scale"] += 1
+                continue                # "INR120-plus million" read as 120 crore: far below its own order book (T-166)
         period = target_period(sentence, before, after, call_period, docper, chosen["start"])
         if not period:
             stats["no_period"] += 1
@@ -1066,6 +1207,7 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
         con.execute("DELETE FROM guidance WHERE symbol=?", (symbol,))
         st = stats_all[symbol] = Counter()
         statements = _transcript_statements(con, symbol)
+        revenue_cr = company_scale_cr(con, symbol)
         # one row per (metric, period, value, unit, said_on) for the whole run: the BSE/NSE copies and the several
         # pages of one document collapse onto the first one (documents are read in known_at order, pages ascending,
         # so that is the earliest knowledge and the lowest page); a later call has its own said_on, so a
@@ -1078,14 +1220,17 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
             by_page: dict[int, list[sqlite3.Row]] = {}
             for row in doc_rows:
                 by_page.setdefault(row["page"], []).append(row)
-            mgmt_speakers = tuple({r["speaker"] for r in doc_rows})
-            pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc["doc_key"],))
+            mgmt_speakers = tuple({r["speaker"] for r in doc_rows
+                                   if (r["role"] or "").lower() not in NON_MGMT_ROLES})
+            pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page",
+                                (doc["doc_key"],)).fetchall()
+            analysts = analyst_speakers([text for _page, text in pages])
             for page, text in pages:
                 if not (text or "").strip():
                     continue
                 st["pages"] += 1
                 for row in extract_sentences(symbol, doc, page, text, by_page.get(page, []), st,
-                                             mgmt_speakers, bool(doc_rows)):
+                                             mgmt_speakers, bool(doc_rows), revenue_cr, analysts):
                     sig = (row[0], row[2], row[3], row[4], row[5], row[6], row[8])
                     if sig in seen:
                         st["duplicate"] += 1

@@ -863,4 +863,118 @@ def test_the_current_target_is_the_latest_document_and_history_keeps_the_chain()
     assert [(r["low"], r["high"]) for r in history] == [(26.0, 27.0), (24.0, 25.0), (22.0, 24.0)], history
 
 
+# --- T-166, 10 Nov 2026: the outside forecast, the speaker and the two noise shapes -----------------------
+def test_an_outside_forecast_is_not_company_guidance():
+    """The real Chola slide sentences (u8): ICRA's and CRISIL's industry outlook and an unlabelled industry
+    forecast are not Cholamandalam's targets, while a management sentence in the same store stays."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t166_forecast.db"
+    docs = [("chola/deck_2026.pdf", "CHOLAFIN", "deck", "2026-07-28", "2026-07-28T17:00:00")]
+    pages = [("chola/deck_2026.pdf", "CHOLAFIN", 1,
+              "Sector Outlook | Chola’s Position | Home Loans - Industry outlook "
+              "• ICRA expects AUM of AHFCs to rise by 19% -21% in FY26 and FY27. "
+              "• The overall growth in HFCs is expected to remain at 12-14% in FY24. "
+              "• Credit costs in the sector are expected to moderate slightly to 2.0-2.2% in FY2027. "
+              "• CRISIL estimates the LAP segment to experience growth at a rate of 10-12% for FY24."),
+             ("chola/deck_2026.pdf", "CHOLAFIN", 2,
+              "ICRA Rating highlighted that NBFC are experiencing a moderation in credit expansion at present. "
+              "Growth is expected to ease to 13% -15% in FY25 and FY26 from the 17% expansion witnessed in the "
+              "previously two fiscal."),
+             ("chola/deck_2026.pdf", "CHOLAFIN", 3,
+              "We still believe we have always guided in the 20% to 25% range for AUM growth, and we still believe "
+              "that will hold.")]
+    write_db(path, docs, pages)
+    guidance.run(str(path), ["CHOLAFIN"])
+    got = rows(path)
+    quotes = [r["quote"] or "" for r in got]
+    assert not [q for q in quotes if "ICRA" in q or "CRISIL" in q or "HFCs" in q or "the sector" in q
+                or "Growth is expected to ease" in q], quotes
+    assert [r for r in got if r["metric"] == "aum_growth" and r["low"] == 20 and r["high"] == 25], got
+
+
+def test_the_previous_sentence_attributes_only_when_the_company_does_not_speak():
+    assert guidance.external_forecast("ICRA expects AUM of AHFCs to rise by 19% -21% in FY26 and FY27.")
+    assert guidance.external_forecast("The overall growth in HFCs is expected to remain at 12-14% in FY24")
+    assert guidance.external_forecast(
+        "Growth is expected to ease to 13% -15% in FY25 and FY26",
+        "ICRA Rating highlighted that NBFC are experiencing a moderation in credit expansion at present.")
+    # a rating boilerplate before the company's own sentence does not make it an outside forecast
+    assert not guidance.external_forecast("We expect revenue growth of 15% for FY27.",
+                                          "ICRA has reaffirmed our rating at AA+.")
+    # an "industry tailwind" is not an industry forecast of the company's number
+    assert not guidance.external_forecast("Structural Tailwinds for Travel & Tourism Industry expected to continue")
+
+
+def test_the_analysts_question_and_the_non_management_role_are_not_guidance():
+    """The real BEL call page: Umesh Raut's question ("order inflow guidance of INR27,000 crores") was stored
+    as an order-intake row because the wrapped sentence never matched its "Name:" label; the label fix and the
+    role check keep it out, and a management statement in the same document still produces its row."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t166_speaker.db"
+    doc = ("bel/call_2025-11-04.pdf", "BEL", "transcript", "2025-11-04", "2025-11-04T17:57:09")
+    pages = [("bel/call_2025-11-04.pdf", "BEL", 1,
+              "Moderator: The next question is from the line of Umesh Raut from Nomura.\n"
+              "Umesh Raut:\nCongrats for a very good set of numbers. Sir, my first question is pertaining to "
+              "order inflow guidance of INR27,000 crores, excluding QRSAM for FY '26. So in that order inflow "
+              "guidance, are we assuming any orders from next-generation corvette?\n"
+              "Manoj Jain:\nCertainly, yes. As I told, in this NGC partial orders because overall NGC has so "
+              "many BEL components."),
+             ("bel/call_2025-11-04.pdf", "BEL", 2,
+              "We expect revenue growth of 15% for FY27."),
+             ("bel/call_2025-11-04.pdf", "BEL", 3,
+              "Manoj Jain: We expect order intake of INR30,000 crores for FY27.")]
+    statements = [
+        # the statement store knows this call only as the generic "Management": the raw page's named MD is
+        # still management, so the analyst-intro set (not the statement speaker list) decides the speaker check
+        ("BEL", "bel/call_2025-11-04.pdf", None, "Q2FY26", 2, 1, "Management", "md",
+         "We expect revenue growth of 15% for FY27.", "We expect revenue growth of 15% for FY27."),
+        ("BEL", "bel/call_2025-11-04.pdf", None, "Q2FY26", 2, 2, "Some Analyst", "analyst",
+         "We expect order intake of INR30,000 crores for FY27.",
+         "We expect order intake of INR30,000 crores for FY27."),
+    ]
+    write_call_db(path, [doc], pages, statements)
+    guidance.run(str(path), ["BEL"])
+    got = rows(path)
+    assert not [r for r in got if "order inflow guidance of INR27,000" in (r["quote"] or "")], got
+    assert not [r for r in got if r["speaker"] == "Some Analyst"], got
+    assert [r for r in got if (r["quote"] or "").startswith("We expect revenue growth of 15%")], got
+    # a named speaker on a page of a call the statement store stored as "Management" is not an analyst
+    assert [r for r in got if r["speaker"] == "Manoj Jain" and r["metric"] == "order_intake"], got
+
+
+def test_a_margin_band_wider_than_five_points_and_a_tiny_order_intake_are_not_targets():
+    """The real BEL rows (u8): "variability of 25% to 31% EBITDA margins" is a product-mix band, not a target,
+    and "INR120-plus million" (read as 120 crore) is far below BEL's own five-figure-crore order intake."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t166_noise.db"
+    write_db(path,
+             [("bel/call_2026-07-28.pdf", "BEL", "deck", "2026-07-28", "2026-07-28T14:01:42")],
+             [("bel/call_2026-07-28.pdf", "BEL", 1,
+               "We have variability of 25% to 31% EBITDA margins based on the product mix in quarter-to-quarter "
+               "etcetera, but at the year end, let me again assure you, we will cross 28%."),
+              ("bel/call_2026-07-28.pdf", "BEL", 2,
+               "We are confident of what our target we have given around INR120-plus million."),
+              ("bel/call_2026-07-28.pdf", "BEL", 3,
+               "As far as order intake is concerned, we expect around INR30,000 crores for the year."),
+              # the width rule on its own: a 7-point range is not a corridor, a 2-point one is
+              ("bel/call_2026-07-28.pdf", "BEL", 4,
+               "We expect an EBITDA margin of 18% to 25% for FY27."),
+              ("bel/call_2026-07-28.pdf", "BEL", 5,
+               "We expect an EBITDA margin of 23% to 25% for FY27.")])
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE kpi_series (symbol TEXT, metric TEXT, value REAL, unit TEXT)")
+    con.executemany("INSERT INTO kpi_series VALUES (?,?,?,?)",
+                    [("BEL", "order_intake", 20000.0, "inr_cr"), ("BEL", "order_intake", 24000.0, "inr_cr"),
+                     ("BEL", "order_intake", 27000.0, "inr_cr")])
+    con.commit()
+    con.close()
+    guidance.run(str(path), ["BEL"])
+    got = rows(path)
+    assert not [r for r in got if r["metric"] == "ebitda_margin" and r["low"] == 25 and r["high"] == 31], got
+    assert not [r for r in got if r["metric"] == "ebitda_margin" and r["low"] == 18 and r["high"] == 25], got
+    assert not [r for r in got if r["metric"] == "order_intake" and r["high"] == 120], got
+    assert [r for r in got if r["metric"] == "order_intake" and r["high"] == 30000], got
+    assert [r for r in got if r["metric"] == "ebitda_margin" and r["low"] == 23 and r["high"] == 25], got
+
+
 
