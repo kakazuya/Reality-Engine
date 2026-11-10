@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-09 19:20 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-10 10:40 IST (Wolf)
 History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `docs/V2_SCHEMA_CONTRACT.md`.
 
 ## Now
@@ -9,16 +9,15 @@ History `docs/state_history/`; method `docs/PILOT3_BLUEPRINT.md`; v2 contract `d
 - Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126.
 
 ## Running
-- T-133 v3 FINISHED (job 20261109T175602Z-486c41d9, coverage 62.9%, 42 tests): headless Opus grading its seed-37 sample, then merge or send back. LIVE DEFECT p20 kpi_series: 1,466 OFCF rows stored as capex (fix in kpi.py via T-133; rebuild after merge).
-
+- LIVE DEFECT p20 kpi_series: 1,466 OFCF rows stored as capex (fixed in the T-133 branch; rebuild after merge).
 - T-160 n10 (AUBANK BALRAMCHIN SRF LT DMART TATAPOWER ICICIGI DIXON JUBLFOOD MCX): agy harvest 20261109T182713Z-4d398312; build `D:/RealityEngine/n10/build.sh` (fetch running). Held audit DONE: 82/106 u8+q12 misses answerable from held docs (`reports/2026-11-10_held_not_queryable_audit.xlsx`) -> T-161..T-166. Bake-off LongCat vs Beam `night_loop/bakeoff_lc_beam` running.
 
-- Grades done 10 Nov 05:00. T-132 r9 MERGED 09:45 (Opus results 21/30, deck 22/30, replay 136/136; store `D:/RealityEngine/v2/p20_r9`, samples `D:/RealityEngine/v2/review/samples`); r10 job 20261110T041508Z-c1d00b5c (`tasks/handoff/T-132_r10_brief.md`). T-133 v7 Opus 184/200, replay 0 lost, but lexicon adds ~470 junk live KPI rows -> v8 job 20261110T042007Z-e294648a (`tasks/handoff/T-133_v8_brief.md`). T-162 code merged 10 Nov (SHP known_at = earlier pm-safe file stamp; 29/25/34 p20/u8/q12 filings move earlier) -> takes effect with the same rebuild. T-161/T-159 merged (b9e58ae5; PILOT3_BLUEPRINT 9m): `docs_collect --measure` = 15 retypes, 0 re-dates -> rebuild p20/u8/q12 docs + transcripts/guidance, restart MCP.
+- T-132 r9 MERGED 09:45 (Opus results 21/30, deck 22/30, replay 136/136; store `D:/RealityEngine/v2/p20_r9`, samples `D:/RealityEngine/v2/review/samples`); r10 job 20261110T041508Z-c1d00b5c (`tasks/handoff/T-132_r10_brief.md`). Headless Opus grading STOPPED (Shivam 10 Nov 10:30): reviews now by a separate read-only dsh worker. T-133 v8 (dsh/20261110T042007Z-e294648a, 178 tests) under dsh review 20261110T050407Z-6337de5b. T-165 routing running 20261110T050415Z-01031c79. Queued for the next free slot (max 2 code workers; no starts 11:30-15:30): T-166, T-164, T-163 (`tasks/handoff/T-16x_*_brief.md`). T-162 code merged 10 Nov (SHP known_at = earlier pm-safe file stamp; 29/25/34 p20/u8/q12 filings move earlier) -> takes effect with the same rebuild. T-161/T-159 merged (b9e58ae5; PILOT3_BLUEPRINT 9m): `docs_collect --measure` = 15 retypes, 0 re-dates -> rebuild p20/u8/q12 docs + transcripts/guidance, restart MCP.
 
 ## Next action
 1. Carry into every answer brief: strict as_of on all tools incl. sql; search-before-'not found' with the searched list; nearest supporting point labelled (ruling 9 Nov, T-158 gate).
 2. T-157 follow-up: Coal India 9, Havells 3, Titan 1 calls not found (widen BSE subject filter); run the fetcher on u8 and q12.
-3. T-132 round 4 merged 22:00 (store `D:/RealityEngine/v2/p20_r4`, 74,486 cells): Opus unseen results ~25/30, deck ~27/30; leftovers in contract s10. T-133 v1 merged 21:25: 27 sector families (0 unknown of 40 pilot cos), `metric_def` stock/flow, review queue `D:/RealityEngine/v2/label_map` (98.3% rows mapped/queued) -> Opus approves per family. Then T-150 units at write.
+3. T-133 label map: families approved per family after merge; then T-150 units at write.
 4. T-139 step 2 merged 22:20: `pilot3_ratings` / `p3ask ratings` over `D:/RealityEngine/outside_doc/ratings.db` now p20+u8+q12: 138 rationales, 592 actions, 28 cos (9 Nov 23:59). Next: India Ratings detail JSON, monthly industry data.
 5. Standard answer brief: carry the strict-PIT and 'not disclosed' rules from `<Wolf scratch>/T-156_round4_hp.md`.
 6. raw_to_drive sweep (u8 + p20 raw, SHP, transcripts_raw, raw_market masters copied back today).

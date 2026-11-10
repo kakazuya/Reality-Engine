@@ -1,0 +1,13 @@
+Ticket: T-163
+Goal: a segment / business-line / subsidiary table so 14 audit questions answer by one query on u8/q12. Scripts first; no company lists (an alias map learned from the documents is fine, a hand list per company is not).
+Evidence and steps:
+1. Read the 14 segment rows of D:/RealityEngine/reports/2026-11-10_held_not_queryable_audit.csv (Tata Consumer growth by business: US coffee, tea, salt, Sampann, RTD; Edelweiss segment revenue from the AR note; DCCDL and EAAA subsidiary figures; Tata Elxsi verticals; POWERGRID telecom Rs 1,014.6 cr; Welspun flooring and home-textile EBITDA; Apollo clusters) and summary section 2 in D:/RealityEngine/night_loop/opus/held_audit/summary.md.
+2. Reuse first: reality_engine/pilot3/xbrl_segments.py (results XBRL segments), the v2 table cells store D:/RealityEngine/v2/p20_r9 (deck/results cells with dimension) and reality_engine/pilot3/notes.py (AR notes). Report what each already holds for the 14 questions before writing new code.
+3. Build: table segment_line(symbol, entity_kind segment|vertical|cluster|brand|subsidiary|jv, entity, line_item, period, value, unit, growth_pct, source doc/page, known_at, method) from (a) the Ind AS 108 segment note in ARs and results, (b) deck segment slides, (c) commentary bullets "<business> grew x%" in decks and call opening remarks (verbatim value_text kept).
+4. Alias map from the documents: when a document prints both names together ("NourishCo (RTD)", "EAAA (Alternatives)"), store the pair; never hand-type pairs per company.
+5. Tool: a pilot3_segments lookup (symbol, entity, line_item, period, as_of) in plugins/reality-data/server/lookups_pilot3.py with strict as_of.
+6. Check the 14 questions on u8 and q12 stores built into .tmp/t163/ (read-only inputs).
+Files: reality_engine/pilot3/ (new module segments.py or extend xbrl_segments.py), reality_engine/pilot3/schema.py, reality_engine/pilot3/build.py (a --part segments), plugins/reality-data/server/lookups_pilot3.py + server.py, tests, docs/PILOT3_BLUEPRINT.md, docs/DEVELOPER_GUIDE.md.
+Accept: (a) tests pass with a test per source kind (segment note, deck slide, commentary bullet, alias) using real printed text; (b) build into .tmp/t163 for u8 and q12; rows per company and source kind; (c) .tmp/t163/questions.md: the 14 questions, the one query each, answer, source page (target >=11/14); (d) docs; (e) exact tool-call count.
+Stop if: a rule needs a company list; or the deck/AR segment parse needs more than ~400 new lines (then do the XBRL + AR note part and report the design).
+Budget: 4 hours, <=130 tool calls, <=25 before first edit. Commit your work. Do not edit tasks/STATE.md. Do not write D:/. Do not commit PROGRESS_NOTES.md.
