@@ -1,0 +1,12 @@
+Ticket: T-132
+Goal: independent read-only review of T-132 round 11 (table cells). You did not write it; grade strictly, do NOT edit code. Merge rule (Shivam): zero earlier-right cells lost. Branch dsh/20261110T130212Z-e11173bd head 90d004a5, worktree R = C:/Users/warri/Downloads/IDM-worktrees/20261110T130212Z-e11173bd (read-only for you). Controller ran tests: test_v2_table_cells 87, test_v2_periods 8, test_v2_schema 3, test_v2_label_map 8: all pass.
+Evidence: worker report: rebuilt p20 cell store R/.tmp/t132_r11 (77,045 cells); replay of graded earlier-right rows r5-r9 179 kept, 0 lost (R/.tmp/t132_r11/replay.csv); worker's fresh seed-1311 sample strict 48/60 (results 26/30, deck 22/30; target was 50) in R/.tmp/t132_r11/grades.csv; r10 store audit R/.tmp/t132_r11/r10_changes.csv: 702 r10 cells no longer held, 452 new, 10,287 changed (4,025 headers, 4,938 labels, 3,822 periods, 454 units). Round-10 review (job 20261110T054010Z-90366162) and its fixes: year columns never quarters (Bharti INE397D01024 p34/p61 51,798 must be 2025-04-01/2026-03-31), parent hygiene, delta-column identity, no bullet cells, HDFC AMC phantom 8489 gone. Stores: r10 D:/RealityEngine/v2/p20_r10/company/<ISIN>.db, r9 D:/RealityEngine/v2/p20_r9, page text D:/RealityEngine/p20/p20new.db doc_page (LIMIT always; open sqlite read-only file:...?mode=ro).
+Steps:
+1. Verify the 179-row replay yourself on 25 random rows (seed 1321): present with same value/period/unit and a right parent.
+2. Lost-cell check: sample 40 of the 702 r10 cells no longer held (seed 1322); grade each r10 cell against the page: was it RIGHT (then it is a loss) or junk (fine to drop). Also sample 30 of the 3,822 period changes and 30 of the 4,938 label changes: r10 right -> r11 wrong counts as a loss.
+3. Fresh sample with your own seed 1323: 30 results + 30 deck cells from R/.tmp/t132_r11, strict grade against page text.
+4. Confirm each round-10 defect fixed with the actual cells (Bharti p34/p61, Apollo p27 cash-flow, Titan p19 PAT unit, Adani p2/p40 and IHCL p50 delta identity, HDFC AMC p7).
+Files: none written (scripts via python - on stdin).
+Accept: final answer holds the replay check, the lost-cell tables with counts (earlier-right cells lost), the fresh-sample grades with strict count, the defect checklist, and MERGE (0 earlier-right lost AND strict >= 48/60) or SEND BACK with top 3 fixes.
+Stop if: you would need to change code to judge something.
+Budget: <=110 tool calls. Do not edit tasks/STATE.md. Do not write D:/.
