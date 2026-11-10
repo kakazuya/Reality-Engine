@@ -166,16 +166,19 @@ _DATE_VALUE = re.compile(
     r"|^\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}$"
     r"|^\d{1,2}[.\-/]\d{4}$")
 _KINDS = (
-    (re.compile(r"\bas\s*(?:at|on|of)\b", re.I), "POINT"),
     (re.compile(r"\bnine\s+months?\b|\b9\s*m(?:onths?)?\b", re.I), "9M"),
-    (re.compile(r"\bsix\s+months?\b|\b6\s*months?\b|\bhalf[\s-]?year\b|\bh1\b", re.I), "H1"),
-    (re.compile(r"\bquarter\b|\bq[1-4]\b", re.I), "Q"),
+    (re.compile(r"\bsix\s+months?\b|\b6\s*months?\b|\bhalf[\s-]?year\b|\bh\s*1\b", re.I), "H1"),
+    (re.compile(r"\bquarter\b|\bq\s*[1-4]\b", re.I), "Q"),
     # 'Vear Ended' is the text layer losing the Y of 'Year' (HDFC AMC prints it) and
     # 'twelve months' is a full year in words (contract 10.i, round-4 class 2).
     (re.compile(r"\b[vy]ear[\s-]?ended\b|\bfor\s+the\s+[vy]ear\b|\bfy\b|"
                 r"\btwelve\s+months?\b|\b12\s*m(?:onths?)?\b", re.I), "FY"),
     # A header segment that is only 'Year' (over its date row) is the full year.
     (re.compile(r"^(?:the\s+)?year$", re.I), "FY"),
+    # 'as at / as on / as of' is the balance-sheet reading and is consulted LAST: a segment
+    # table's 'Quarter ended / As of' column set is a flow unless the row is a balance
+    # (round-8 class 1, Bharti's segment tables).
+    (re.compile(r"\bas\s*(?:at|on|of)\b", re.I), "POINT"),
 )
 # A fiscal year printed as a range ('2025-26', 'FY 25-26'); '25-26' alone is a span label.
 _FY_RANGE = re.compile(r"(?<!\d)((?:19|20)\d{2}|\d{2})\s*[-–/]\s*((?:19|20)\d{2}|\d{2})(?!\d)")
@@ -231,6 +234,47 @@ _ROW_PREFIX = re.compile(r"^(?:add|less|including|excluding)\s*[:\-]\s*", re.I)
 _CASH_TITLE = re.compile(r"\bcash\s*flows?\b", re.I)
 _CASH_OPEN = re.compile(r"\b(?:opening|beginning)\b", re.I)
 _CASH_CLOSE = re.compile(r"\b(?:closing|end)\b", re.I)
+# Round 8, class 1: a balance or level is a POINT at the column date; a flow is the column's
+# period.  The vocabulary is the stock/flow of ``label_map.STOCK_METRICS`` (the same kinds the
+# period engine sums by) plus the market-cap and cash-level labels a deck prints.
+_STOCK_ROW = re.compile(
+    r"\bnet\s+(?:debt|worth)\b|\bgross\s+debt\b|\bdebt\s+equity\b|"
+    r"\b(?:total\s+|long[\s-]term\s+|short[\s-]term\s+|lease\s+)?borrowings?\b|"
+    r"\b(?:total\s+|shareholders['’]?\s+|owners['’]?\s+|net\s+)?(?:equity|worth)\b(?!\s+and\b)|"
+    r"\bcapital\s+employed\b|\bmarket\s+cap(?:itali[sz]ation)?\b|\benterprise\s+value\b|"
+    r"\bcash\s+(?:and\s+)?(?:cash\s+)?(?:equivalents?|balance|level)\b|"
+    r"\bpopulation\s+covered\b|\bcoverage(?:\s*%|\s+ratio)?\b|"
+    r"\b(?:cumulative\s+)?investments?\b(?!\s+income)|"
+    r"\btotal\s+(?:assets?|liabilities)\b|\bsegment\s+(?:assets?|liabilities)\b|"
+    r"\baum\b|\border\s+book\b|\bdeposits\b|\badvances\b|\bworking\s+capital\b|"
+    r"\bdebtors?\b|\breceivables\b|\bpayables\b|\binventor(?:y|ies)\b|\bprovisions?\b|"
+    r"\bnet\s+block\b|\bfixed\s+assets\b|\bcapital\s+work\s+in\s+progress\b", re.I)
+# A cash-flow line that merely names a stock ('purchase of investments', 'net cash generated')
+# is a flow and keeps the column's period.
+_FLOW_ROW = re.compile(
+    r"\b(?:generated|used|raised|purchased|purchases|sold|sale[sd]?|proceeds|invested|"
+    r"net\s+cash|changes?\s+in|additions?|depreciation|amorti[sz]ation|dividend\s+received|"
+    r"interest\s+(?:paid|received|income)|finance\s+cost|increase|decrease|adjustments?|"
+    r"working\s+capital|investment\s+in|impairment\s+loss)\b", re.I)
+# 'in 000s' / "000's" is a thousand-fold scale printed beside the row or over its table.
+_THOUSAND = re.compile(r"\b0{3}'?s\b|\bthousands?\b", re.I)
+# A level KPI printed as people ('Population Covered 2 Bn') is a count, never rupees.
+_COUNT_LEVEL = re.compile(
+    r"\bpopulation\b|\bsubscribers?\b|\bhouseholds?\b|\bcoverage\b|\bconnections?\b|"
+    r"\bhomes?\s+(?:passed|covered)\b|\bsite[sd]?\b|\bvillages?\b|\btowns?\b", re.I)
+# Round 8, class 7: two printed ratio rows merged onto one label line.  The row's own name is
+# the one printed second (the first line's label was glued to it).
+_RATIO_NAME = re.compile(
+    r"\b(?:gross|net|operating|ebitda|ebit|pat|pbt|profit)\s+(?:profit\s+)?margins?\b|"
+    r"\b(?:current\s+liability\s+ratio|debt\s+equity\s+ratio|quick\s+ratio|current\s+ratio|"
+    r"debtors?\s+turnover|inventory\s+turnover|interest\s+coverage|bad\s+debts?|"
+    r"coverage\s+ratio)\b", re.I)
+# A row-number prefix ('1.', '3.3.7', 'IV)') on a measure or section title.
+_SECTION_NUMBER = re.compile(r"^\s*(?:\d{1,2}(?:\.\d{1,2})*\.?|[IVXLC]{1,4}[.)])\s+")
+# A table's own measure section at the left: 'Segment Revenue', 'Segment Results', 'Revenue'.
+_MEASURE_SECTION = re.compile(
+    r"^(?:segment\s+)?(?:revenue|revenues|results|ebitda|ebit|pat|pbt|profit|income|"
+    r"contribution(?:\s+margin)?|investments|capex)$", re.I)
 
 
 # ------------------------------------------------------------------------------- word boxes
@@ -324,6 +368,8 @@ def _joinable(previous: dict[str, Any], word: Any, text: str) -> bool:
     if gap <= 3.0 and _DATE_FULL.match(left + text):
         return True                         # the layer split a date: '3' + '1.03.2026'
     if gap <= 2.5 and left[-1].isdigit() and text[0].isdigit():
+        if len(left) == 3 and len(text) == 3 and left.isdigit() and text.isdigit():
+            return False            # two adjacent 3-digit columns, not one split figure
         # A lost thousands separator ('5 088') or the tail of a decimal the text layer cut
         # off ('7,601.5' + '1'; '2,016' + '32' with the point glyph missing).
         joined = left + text
@@ -333,6 +379,11 @@ def _joinable(previous: dict[str, Any], word: Any, text: str) -> bool:
                     or (len(text) <= 2 and NUMISH.match(dotted) and _grouping_ok(dotted)))
     if left[-1] in ",.-–—−(₹" or text[0] in ",.)%":
         return bool(NUMISH.match(left + text))
+    # A closing bracket split off with its unit: '(400' + 'bps)' is the printed '(400 bps)'.
+    if (gap <= 2.5 and re.fullmatch(r"\(?[-–—−]?\d[\d,]*(?:\.\d+)?", left)
+            and re.fullmatch(r"(?:bps|bp|pp|%|crores?|cr|lakhs?|millions?|mn|billions?|bn)\)",
+                             text, re.I)):
+        return True
     return False
 
 
@@ -457,7 +508,10 @@ def _month_row(row: list[dict[str, Any]]) -> bool:
 
 def _date_parts(row: list[dict[str, Any]]) -> bool:
     """Day/year numbers of a wrapped date row ('31 2025 30 2025 ...', '31.03' over '.2' '024')."""
-    numbers = [token["text"] for token in row if token["num"]]
+    words = [token for token in row if token["text"].strip()]
+    if any(_ALPHA.search(token["text"]) for token in words if not token["num"]):
+        return False                                  # a label row, never a date-parts row
+    numbers = [token["text"] for token in words if token["num"]]
     part = re.compile(r"\d{1,2}|\d{3}|\d{4}|\d{1,2},\d{4}|"
                       r"(?:3[01]|[12]\d|0?[1-9])[.\-/](?:1[0-2]|0?[1-9])"
                       r"(?:[.\-/]\d{2,4})?")
@@ -645,13 +699,15 @@ def _title_phrase(text: str) -> bool:
     rest = re.sub(r"\b\d{1,4}\b", " ", rest)
     words = [word for word in re.findall(r"[A-Za-z]+", rest)
              if word.lower() not in _TITLE_GLUE and word.lower() not in _MONTH_NAMES]
-    return len(words) >= 2
+    # A bare column label ('Var. vs FY24') leaves two words after its period is removed and
+    # used to be taken for a table title, losing the whole growth column (round-8 class 0).
+    return len(words) >= 3
 
 
 _MEASURE_WORD = re.compile(
     r"\b(?:revenue|revenues|income|incomes|ebitda|ebit|pat|pbt|profit|profits|margin|margins|"
-    r"cost|costs|expense|expenses|turnover|sales|aum|nav|nii|premium|volumes?|shipments?|"
-    r"production|orders?|eps|ebt)\b", re.I)
+    r"results?|cost|costs|expense|expenses|turnover|sales|aum|nav|nii|premium|volumes?|"
+    r"shipments?|production|orders?|eps|ebt)\b", re.I)
 
 
 def _measure_text(text: str) -> bool:
@@ -721,6 +777,11 @@ def _headers(header_rows: list[list[dict[str, Any]]], anchors: list[float],
         informative = [phrase for phrase in phrases if not _header_fragment(phrase, gap)]
         if not informative:
             continue
+        if len(informative) == 1 and _measure_name(informative[0]["text"]):
+            # A one-cell measure heading over the whole table ('Segment Revenue' at the left
+            # of Bharti's segment section) names every column (round-8 class 2).
+            measures.append({**informative[0], "text": _measure_name(informative[0]["text"])})
+            continue
         grouped = [phrase for phrase in informative if _measure_heading(phrase, gap)]
         if len(grouped) == len(informative):
             # A row over its period sub-columns names what each column measures.  A row of
@@ -767,6 +828,12 @@ def _headers(header_rows: list[list[dict[str, Any]]], anchors: list[float],
         if not row_phrases:
             continue
         ordered = sorted(row_phrases, key=lambda phrase: phrase["x0"])
+        if len(ordered) == 1:
+            # One measure heading over the whole table ('Segment Revenue' printed once at the
+            # left) names every column of the block (round-8 class 2).
+            for k in range(len(columns)):
+                columns[k].insert(0, f"{kind}={ordered[0]['text']}")
+            continue
         if len(ordered) >= 2 and len(centers) % len(ordered) == 0:
             # The measures repeat once per period group and divide the columns evenly:
             # Revenue | EBITDA | PAT | Revenue | EBITDA | PAT over six columns (round-7
@@ -807,6 +874,11 @@ def _number(text: str) -> tuple[float | None, bool]:
     percent = raw.endswith("%")
     if raw in ("-", "–", "—", "−"):
         return None, percent
+    # '(400 bps)' / '(35 pp)': the closing bracket split off with its unit, and the bracket is
+    # the printed minus (round-8 class 5).
+    bracketed = re.fullmatch(r"\((\d[\d,]*(?:\.\d+)?)\s*(bps|bp|pp|%)\)", raw, re.I)
+    if bracketed and _grouping_ok(bracketed.group(1)):
+        return -float(bracketed.group(1).replace(",", "")), bracketed.group(2) == "%"
     clean = raw
     for marker in ("₹", "Rs.", "Rs", "INR"):
         clean = clean.replace(marker, "")
@@ -1129,10 +1201,11 @@ def period_from_header(header: str | None, filing_date: Any = None,
         return resolved
     # 'H1 > FY27' is the half of FY27, not the whole fiscal year: the span word and the year
     # are printed on two header lines, and the year line alone must not win (round-6 class 5).
-    split_label = re.search(r"\b(Q[1-4]|H[12]|9\s*M)\s*[-/]?\s*FY\s*(\d{2,4})\b",
+    split_label = re.search(r"\b(Q\s*[1-4]|H\s*[12]|9\s*M)\s*[-/]?\s*FY\s*(\d{2,4})\b",
                             " ".join(segments), re.I)
     if split_label:
-        resolved = _direct_label(f"{split_label.group(1)} FY{split_label.group(2)}")
+        span = re.sub(r"\s+", "", split_label.group(1))
+        resolved = _direct_label(f"{span} FY{split_label.group(2)}")
         if resolved:
             return resolved
     resolved = _direct_label(last)
@@ -1186,13 +1259,13 @@ def label_unit(label: str | None) -> tuple[str, float] | None:
         return (_currency_of(label) or "Rs", 1.0)   # money per unit, never the page scale
     if _RATIO_ROW.search(label):
         return ("ratio", 1.0)
-    if _COUNT_ROW.search(label):
+    if _COUNT_ROW.search(label) or _COUNT_LEVEL.search(label):
         return ("count", 1.0)
     return _label_currency(label)                    # only with a printed scale word
 
 
 _UNIT_CELL_WORDS = re.compile(
-    r"^(?:nos?\.?|no\.|numbers?|times|%|bps|te|mt|mw|mmt|mn\s*min|'?000'?s|"
+    r"^(?:nos?\.?|no\.|numbers?|times|%|te|mt|mw|mmt|mn\s*min|'?000'?s|"
     r"inr|rs\.?|₹|us\s*\$|usd|a\s*\$|aud)$", re.I)
 
 
@@ -1216,15 +1289,19 @@ def _row_unit(text: str, label: str | None = None) -> tuple[str, float | None] |
     scale NULL with the currency printed (round-7 class 1).
     """
     found = _unit_of(text)
+    low = " ".join((text or "").lower().split())
+    if label and _COUNT_LEVEL.search(label) and low in _SCALES:
+        return ("count", _SCALES[low][0])  # 'Population Covered 2 Bn' is people, never Rs
     if found:
         return found
-    low = " ".join((text or "").lower().split())
+    if _THOUSAND.fullmatch(low):
+        return ("count", 1000.0)          # "Volume* (in 000's)": a thousand-fold count
     if re.fullmatch(r"nos?\.?|no\.|numbers?", low):
         return ("count", 1.0)
     if re.fullmatch(r"times|ratio", low):
         return ("ratio", 1.0)
-    if low == "%":
-        return ("%", 1.0)
+    if low in ("%", "pp", "bps", "bp"):
+        return (low if low in ("%", "pp") else "bps", 1.0)
     if re.fullmatch(r"te|mt|mw|mmt|kg|mn\s*min|'?000'?s", low):
         return ("count", 1.0)
     currency = _currency_of(text)
@@ -1242,7 +1319,11 @@ def _table_unit(header_rows: list[list[dict[str, Any]]],
     """
     for row in reversed(header_rows):
         text = " ".join(str(token["text"]) for token in row if str(token["text"]).strip())
-        if not text or any(ch.isdigit() for ch in text):
+        if not text:
+            continue
+        if _THOUSAND.search(text):
+            return ("count", 1000.0)      # 'Volume* (in 000's) RHS' over its table
+        if any(ch.isdigit() for ch in text):
             continue
         found = _unit_of(text)
         if found:
@@ -1287,6 +1368,89 @@ def _measure_row(words: list[dict[str, Any]]) -> bool:
     return all(_measure_text(phrase["text"]) for phrase in phrases)
 
 
+def _measure_title(words: list[dict[str, Any]]) -> str | None:
+    """A one-cell measure heading over a table: 'Segment Revenue', 'Revenue', 'EBITDA'.
+
+    Bharti prints its segment tables as numbered sections ('1. Segment Revenue', '2. Segment
+    Results') with the measure names at the left and the periods across the columns, so the
+    measure is a row label, never a two-cell group row (round-8 class 2).
+    """
+    phrases = _join_bracket_phrases(_phrases(words))
+    if len(phrases) != 1:
+        return None
+    return _measure_name(phrases[0]["text"])
+
+
+def _measure_name(text: str | None) -> str | None:
+    """A one-cell measure heading as its name: '1. Segment Revenue' -> 'Segment Revenue'."""
+    raw = (text or "").strip().rstrip("*#†‡").strip()
+    numbered = bool(_SECTION_NUMBER.match(raw))
+    text = _SECTION_NUMBER.sub("", raw).strip().rstrip("*#†‡").strip()
+    if not text or not _MEASURE_WORD.search(text) or not _measure_text(text):
+        return None
+    if numbered or _MEASURE_SECTION.match(text):
+        return text
+    return None
+
+
+def _split_ratio_label(label: str | None) -> str | None:
+    """Two printed ratio rows merged onto one label line: keep the row printed second.
+
+    'Gross Profit Margin on Net Sales Net Profit Margin on Net Sales' is two labels the text
+    layer glued together; the row's own name is the second one (round-8 class 7).
+    """
+    text = (label or "").strip()
+    matches = list(_RATIO_NAME.finditer(text))
+    if len(matches) < 2:
+        return None
+    second = matches[1]
+    if second.start() < len(text) * 0.15:
+        return None
+    tail = text[second.start():].strip(" ,;-")
+    return tail if len(_letters(tail)) >= 6 else None
+
+
+def _table_title(header_rows: list[list[dict[str, Any]]],
+                 stack: list[list[dict[str, Any]]]) -> str | None:
+    """The nearest table or segment title printed over the header stack (round-8 class 3).
+
+    Bharti prints 'Airtel Business' / 'Passive Infrastructure Services' / 'Homes' over its
+    notes' tables; the title is the parent of every row in that table, not a lost line.
+    """
+    if not stack:
+        return None
+    top = min(float(token["y0"]) for token in stack[0])
+    for row in reversed(header_rows):
+        words = [token for token in row if token["text"].strip()]
+        if not words or max(float(token["y1"]) for token in words) >= top:
+            continue
+        text = _SECTION_NUMBER.sub("", " ".join(token["text"] for token in words)).strip()
+        if not text or len(text.split()) > 6 or text.endswith("."):
+            continue
+        if (text.isupper() or re.search(r"\b(?:limited|ltd|plc|company|corporation|inc)\b",
+                                        text, re.I)
+                or re.match(r"^(?:audited|unaudited|consolidated|standalone)\b", text, re.I)):
+            continue                           # a letterhead/statement title, not a table's title
+        if (any(ch.isdigit() for ch in text) or _unit_only(text) or _measure_row(words)
+                or _header_like(words) or _prose_label(text)
+                or re.match(r"^(?:particulars|notes?|consolidated|standalone)$", text, re.I)
+                or re.search(r"\b(?:statement|results?|financials?|presentation|highlights|"
+                             r"profit\s*(?:&|and)\s*loss|balance\s*sheet|financial\s+position|"
+                             r"annual\s+report)\b", text, re.I)):
+            continue
+        return text
+    return None
+
+
+def _title_measure(title: str | None) -> str | None:
+    """A table title that names its measure: '4.1 Revenue Analysis' -> 'Revenue'."""
+    if not title:
+        return None
+    text = re.sub(r"\b(?:analysis|summary|performance|details?)\b", " ", title, flags=re.I)
+    text = " ".join(text.split()).strip()
+    return _measure_name(text)
+
+
 def _header_stack(header_rows: list[list[dict[str, Any]]], anchors: list[float],
                   left: float, right: float | None = None) -> list[list[dict[str, Any]]]:
     """Header rows upward from the table, inside its x-range, stopping at the first prose row."""
@@ -1299,19 +1463,41 @@ def _header_stack(header_rows: list[list[dict[str, Any]]], anchors: list[float],
         words = [token for token in row if token["text"].strip()]
         if not words:
             continue
-        if any((token["x0"] < left < token["x1"])
-               or (token["x0"] < right < token["x1"]) for token in words):
+        if any(token["x0"] < left < token["x1"] for token in words):
             skips += 1
             if kept and skips >= 3:
                 break                           # the stack is above the slide's call-outs
-            continue                            # a line that runs across the table edge
+            continue                            # a label-column word runs across the table edge
+        # A word that only crosses the RIGHT edge (a 'Remarks' column beside the figures, a
+        # long heading) is trimmed, never drops the header row: the Coal India Key Financial
+        # Ratios table lost its date row that way (round-8 class 0).
         inside = [token for token in words
-                  if token["x0"] >= left and token["x1"] <= right]
+                  if token["x0"] >= left and (token["x1"] <= right
+                                              or token["x0"] < right - 4.0)]
         if not inside:
             continue                            # entirely outside the table
         if _prose_row(inside):
             break
-        if _measure_row(inside):
+        row_text = " ".join(token["text"] for token in inside)
+        if len(row_text) > 80 and not _date_phrase(row_text):
+            skips += 1
+            if kept and skips >= 3:
+                break
+            continue                            # a statement title, not a column header
+        phrases = _phrases(inside)
+        spread = min((b["x0"] - a["x1"] for a, b in zip(phrases, phrases[1:])), default=0.0)
+        if _measure_row(inside) and (
+                any(_MEASURE_WORD.search(phrase["text"]) for phrase in phrases)
+                or len(phrases) < len(anchors) or spread >= 0.4 * gap
+                or len({phrase["text"].lower() for phrase in phrases}) < len(phrases)):
+            # A real measure/dimension row spans the columns; a slide title over the table
+            # ('Key Financial Ratios') prints three words at text spacing, not column spacing.
+            kept.append(inside)
+            skips = 0
+            if len(kept) >= 6:
+                break
+            continue
+        if _measure_title(inside):
             # The measure group over its sub-columns may print above the period row (Titan)
             # or below it over the table (Adani's JV tables): keep it either way (round-7
             # class 2).
@@ -1329,7 +1515,7 @@ def _header_stack(header_rows: list[list[dict[str, Any]]], anchors: list[float],
             continue                            # a heading row, but not this table's
         kept.append(inside)
         skips = 0
-        if len(kept) >= 5:
+        if len(kept) >= 6:
             break
     return list(reversed(kept))
 
@@ -1658,7 +1844,10 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
         return [], None
     label_x = [token["x0"] for row in block for token in row
                if not token["num"] and len(token["text"]) > 2]
-    if len(anchors) > 1 and label_x and anchors[0] < statistics.median(label_x):
+    label_right = [token["x1"] for row in block for token in row
+                   if not token["num"] and len(token["text"]) > 2
+                   and token["x1"] <= anchors[-1]]
+    if len(anchors) > 1 and label_right and anchors[0] < statistics.median(label_right):
         anchors = anchors[1:]                     # the printed row-number column
     gap = min((b - a for a, b in zip(anchors, anchors[1:])), default=60.0)
     left = anchors[0] - max(gap, 40.0)
@@ -1676,6 +1865,22 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
     headers = _headers(stack, anchors, left)
     if fallback_headers and not any(headers):
         headers = fallback_headers                 # a statement continued from another page
+    title = _table_title(header_rows, stack)
+    measure = _title_measure(title)
+    if not measure:
+        # A one-cell measure heading printed at the left just over the first figure line
+        # ('1. Segment Revenue' / '2. Segment Results') names every column of the block
+        # (round-8 class 2).  A slide title over the header rows is not one.
+        for row in reversed(header_rows[-4:]):
+            name = _measure_title(row)
+            if name and row[-1]["x1"] <= anchors[0] + 6.0:
+                measure = name
+                break
+            if _header_like(row) or _unit_only(" ".join(t["text"] for t in row)):
+                break
+    if measure:
+        headers = [header if not header else f"measure={measure} > {header}"
+                   for header in headers]         # the title names what every column measures
     if not any(_measure_row(kept) for kept in stack):
         # The measure group row can sit above the five-row header window ('Revenue | EBITDA |
         # PAT' over a JV table's period sub-columns); it still names what the column measures
@@ -1752,6 +1957,16 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
             "y": sum((token["y0"] + token["y1"]) / 2 for token in row) / max(len(row), 1)})
 
     data_items = [item for item in prepared if item["is_data"]]
+    if data_items and not data_items[0]["label"] and header_rows:
+        # The row's own label printed just above the first figure line is the table's first
+        # row, not a header: the Coal India ratios' 'Debt Equity Ratio' (round-8 class 0).
+        last = header_rows[-1]
+        text = " ".join(token["text"] for token in last
+                        if token["text"].strip() and token["x1"] <= left + 2)
+        text = _SECTION_NUMBER.sub("", text).strip()
+        if text and not _prose_label(text) and _letters(text) \
+                and not _header_like(last):
+            data_items[0]["label"] = text
     if len(data_items) >= 2 and sum(1 for item in data_items if not item["label"]) \
             > sum(1 for item in data_items if item["label"]):
         # A two-flow table prints its labels and its figures on separate lines, each label
@@ -1762,7 +1977,8 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
             if item["is_data"] or not item["label"]:
                 continue
             target = next((row for row in data_items
-                           if abs(row["baseline"] - item["baseline"]) <= 2.0), None)
+                           if abs(row["baseline"] - item["baseline"]) <= 2.0
+                           or 0.0 <= row["top"] - item["top"] <= 6.0), None)
             if target is None:
                 target = next((row for row in data_items
                                if row["top"] >= item["baseline"] - 2.0), data_items[-1])
@@ -1781,7 +1997,7 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
             page_span)
 
     cells: list[dict[str, Any]] = []
-    section = ""
+    section = title or ""
     section_x: float | None = None
     pending: list[str] = []
     last_cells: list[dict[str, Any]] = []
@@ -1794,6 +2010,10 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
             if not _letters(label) or (len(_letters(label)) < 3 and not SUB_LABEL.match(label)
                                        and not item["marked"] and not item["numbered"]):
                 continue                           # '-------' / 'St': a separator, not a section
+            measure_name = _measure_name(label)
+            if measure_name:
+                measure = measure_name             # '1. Segment Revenue' names the rows below it
+                continue
             previous = next((j for j in range(position - 1, -1, -1)
                              if prepared[j]["is_data"]), None)
             following = next((j for j in range(position + 1, len(prepared))
@@ -1840,6 +2060,9 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
         pending = []
         own_label = " ".join(parts)
         own_label = re.sub(r"^\(?[a-z]\)\s+(?=[\[(])", "", own_label).strip()  # '(e) [x]'
+        split = _split_ratio_label(own_label)
+        if split:
+            own_label = split              # two printed rows merged into one label (round-8)
         bare_ratio = bool(own_label) and bool(_BARE_RATIO.match(own_label))
         if bare_ratio and line_label:
             # 'as a % of NR' printed under a line item belongs to that item (round-5 class 3).
@@ -1862,8 +2085,10 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
         # 'US$' cell beside 'Average Revenue Per User (ARPU)' is USD, not the page's Rs
         # (round-7 class 1).  A bare currency with no per-unit label keeps scale NULL.
         cell_unit = (row_unit or label_unit(own_label) or _unit_of(own_label)
-                     or label_unit(row_label) or _unit_of(row_label) or unit)
-        point_row = bool(_POINT_ROW.search(row_label))
+                     or _label_currency(row_label) or _unit_of(row_label) or unit)
+        point_row = bool(_POINT_ROW.search(row_label) or (
+            _STOCK_ROW.search(own_label or row_label)
+            and not _FLOW_ROW.search(own_label or row_label)))
         emitted: list[dict[str, Any]] = []
         for token in item["data"]:
             column = min(range(len(anchors)), key=lambda k: abs(anchors[k] - token["x1"]))
@@ -1872,6 +2097,11 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
             header = headers[column] if 0 <= column < len(headers) else None
             if not header:
                 continue                          # no usable column header: not a stored cell
+            if measure:
+                # The measure of the section this row sits in wins over a header that carried
+                # the table's first measure (round-8 class 2).
+                header = re.sub(r"^measure=[^>]*>\s*", "", header)
+                header = f"measure={measure} > {header}"
             period = period_overrides.get(column)
             if period is None:
                 if header_unresolved(header, filing_date, doc_type, balance_sheet, page_span):
@@ -1882,6 +2112,9 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
             value, percent = _number(token["text"])
             if percent:
                 unit_text, scale, value = "%", 1.0, value
+            elif re.search(r"\b(?:bps|bp|pp)\b", token["text"], re.I):
+                unit_text, scale = ("pp" if re.search(r"\bpp\b", token["text"], re.I)
+                                    else "bps"), 1.0
             elif re.search(r"\bbps\b", header, re.I):
                 unit_text, scale = "bps", 1.0     # a bps column is basis points, not money
             elif cell_unit is not None:
@@ -1903,13 +2136,50 @@ def _cells_of_block(rows: list[list[dict[str, Any]]], indices: list[int], table_
                 "method": method})
         cells.extend(emitted)
         last_cells = emitted
+    _flag_junk_cells(cells)
     return cells, headers
+
+
+def _flag_junk_cells(cells: list[dict[str, Any]]) -> None:
+    """A decimal-free figure ~20x BOTH its column neighbours lost its decimal point.
+
+    Havells' OCR prints 300.78 as '30078' beside 723.06 and 517.83 in its own row, and 310.00
+    above it in the same column; no real figure in a financial table is a hundredfold jump
+    across one row (round-8 class 5).
+    """
+    by_column: dict[int, list[dict[str, Any]]] = {}
+    for cell in cells:
+        if cell["value"] is None:
+            continue
+        unit = cell["unit_text"] or ""
+        if unit in ("%", "bps", "pp", "ratio", "count", "inr_per_share"):
+            continue
+        by_column.setdefault(int(cell["col_no"]), []).append(cell)
+    for column_cells in by_column.values():
+        column_cells.sort(key=lambda cell: int(cell["row_no"]))
+        for index, cell in enumerate(column_cells):
+            text = cell["value_text"] or ""
+            if "." in text or "%" in text or len(re.sub(r"\D", "", text)) < 5:
+                continue
+            above = column_cells[index - 1]["value"] if index else None
+            below = (column_cells[index + 1]["value"]
+                     if index + 1 < len(column_cells) else None)
+            references = [abs(value) for value in (above, below) if value]
+            if len(references) == 2 and abs(cell["value"]) >= 1000.0 and all(
+                    abs(cell["value"]) / reference >= 50.0 for reference in references):
+                cell["value"] = None
+                cell["method"] = f"{cell['method']};junk_suspect"
 
 
 def _page_balance_sheet(page: Any) -> bool | None:
     """A page titled Balance Sheet prints as-at columns; a P&L prints quarters."""
     clip = pymupdf.Rect(0, 0, page.rect.width, page.rect.height * 0.30)
     text = " ".join(str(page.get_text("text", clip=clip)).split())
+    # A segment page titled '... Assets and Liabilities as of and for the quarter ended' has a
+    # flow column set; it is not a balance sheet (round-8 class 1, Bharti's segment tables).
+    if re.search(r"\b(?:quarter|half[\s-]?year|nine\s+months?|twelve\s+months?|year|month[s]?)"
+                 r"\s+ended\b", text, re.I):
+        return False
     if _BS_TITLE.search(text):
         return True
     if _PL_TITLE.search(text):
@@ -1967,6 +2237,9 @@ def _next_row_same_columns(current: list[int], index: int,
     return False
 
 
+_FOOTER = re.compile(r"^\s*Page\s+\d+\s+(?:of|/)\s*\d+\s*$", re.I)
+
+
 def _page_cells(page: Any, pno: int, filing_date: Any,
                 carry: list[str | None] | None,
                 doc_type: str | None = None) -> tuple[list[dict[str, Any]],
@@ -1989,6 +2262,8 @@ def _page_cells(page: Any, pno: int, filing_date: Any,
     last_number_y: float | None = None
     for i, row in enumerate(rows):
         numbers = _numeric_count(row)
+        if numbers and _FOOTER.match(" ".join(token["text"] for token in row)):
+            numbers = 0                        # 'Page 14 of 59' is a footer, not a table row
         if numbers >= 2 and i and _month_row(rows[i - 1]) and _date_parts(row):
             for token in row:                     # the day/year half of a wrapped date row
                 token["num"] = False

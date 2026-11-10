@@ -801,12 +801,13 @@ python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir> [--since
     [--types deck,results] [--symbols A,B]
 ```
 
-The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory, round 7 `.tmp/v2r7`)
-wrote 75,846 cells in 128.3 s; 95.1% of cells carry a `period_id`, 85.7% a scale and 0.0% no header (round 6:
+The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory, round 8 `.tmp/v2r8`)
+wrote 75,666 cells in 122.6 s; 95.0% of cells carry a `period_id`, 86.3% a scale and 0.0% no header (round 7:
+75,846 / 95.1% / 85.7% / 0.0%; round 6:
 73,833 / 95.1% / 85.1% / 0.0%; round 5: 74,259 / 94.9% / 85.4% / 0.0%; round 4: 74,486 / 94.9% / 81.9% / 0.0%;
 round 3: 75,394 / 95.0% / 78.4% / 0.0%; round 2: 88,941 / 64.6% / 71.9% / 6.1%; a cell with no label, no readable
-label or no resolvable-period header is not stored). Methods: `text_layer` 70,837, `text_layer;garbled` 1,276,
-`text_layer;delta` 3,726, `text_layer;delta;garbled` 7. `reality_engine/v2/cell_sample.py` draws the hand-grade
+label or no resolvable-period header is not stored). Methods: `text_layer` 69,779, `text_layer;garbled` 1,717, `text_layer;delta` 3,705,
+`text_layer;junk_suspect` 378, `text_layer;delta;garbled` 79, `text_layer;garbled;junk_suspect` 8. `reality_engine/v2/cell_sample.py` draws the hand-grade
 sample (`--store-dir <dir> --n 100 --type deck|results --seed 29 --out <csv>`; columns doc, page, label, header,
 period_id, value_text, unit_text, scale, value, method and a 300-character page snippet). Wolf's own round-7 grade of
 the first 30 cells of each seed-29 sample (`.tmp/f7_results.csv`, `.tmp/f7_deck.csv`): results 28/30, deck 26/30,
@@ -818,11 +819,20 @@ header phrase holding two printed dates is split into two headers; a table title
 `3 months ended | 6 months ended | Year ended` row is read as group spans, a block that yields no cell leaves its
 rows to the block below and a cash-flow table's columns are ordered by the opening/closing cash cross-check; a `bps`
 column is `bps` and `(MMT)` is `MMT`; an `ii)` / `ii,` marker starting mid-label begins its own printed row; and a
-repeated sub-header over date columns becomes `dimension=<text>`. Two rows an earlier round graded right are still
-lost (Coal India results p20's two-column Key Financial Ratios table, whose header dates print left of the figure
-anchors and whose label lines split the block; Indhotel deck p33's `Less : Share of Non Controlling Interest` -96%),
-the open merge gate. Rules a-j, the measured table, the remaining misses and the tests
-(`reality_engine/tests/test_v2_table_cells.py`, 69 in the three v2 test files) are in
+repeated sub-header over date columns becomes `dimension=<text>`. Round 8 restores the two rows an earlier round graded right: Coal India results p20's two-column
+Key Financial Ratios table (a right-edge `Remarks` word no longer drops the date row, and the first figure
+line takes the label printed over it) and Indhotel deck p33's `Less : Share of Non Controlling Interest` -96%
+(a two-word `Var. vs FY24` column is no longer taken for a table title). Round 8 also fixes: a balance/level
+row (net debt, borrowings, shareholders' equity, market cap, cash level, coverage, AUM) is a POINT at the
+column date while a flow stays the column's period, and a page titled '... as of and for the quarter ended'
+is not a balance sheet; a one-cell measure section at the left (`1. Segment Revenue`) and a table title
+(`Revenue Analysis`) enter `col_header` as `measure=`; the nearest table/segment title above the stack is
+the parent of every row; `Q 2` / `H 1` are period words and a short row keeps its printed x-alignment;
+`in 000's` is scale 1000, a bare `Bn` on population/coverage is a count, `(400` + `bps)` is -400 bps and a
+decimal-free figure at least 50x both column neighbours is `;junk_suspect` with the value NULL; a label up to
+6 points above its figures pairs with that row; and a label gluing two ratio names keeps the row printed
+second. Rules a-j, the measured table, the remaining misses and the tests
+(`reality_engine/tests/test_v2_table_cells.py`, 79 in the three v2 test files) are in
 `docs/V2_SCHEMA_CONTRACT.md` section 10.
 
 ### O24. v2 label dictionary: one metric per printed label, per sector family (T-133, 9 Nov 2026)

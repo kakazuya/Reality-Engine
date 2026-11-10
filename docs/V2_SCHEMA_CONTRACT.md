@@ -300,7 +300,7 @@ Round 3 measured 75,394 cells (95.0% a period, 78.4% a scale); round 2 measured 
 cells (9 rows x 4 columns, all headed `Q2 FY27` / `Q2 FY26` / `Q2 FY27` / `Q1 FY27`) and the Asian Paints results p5
 still gives the `Revenue from operations` row with a Q2FY27 cell. Tests:
 `python -m pytest -q reality_engine/tests/test_v2_table_cells.py reality_engine/tests/test_v2_periods.py
-reality_engine/tests/test_v2_schema.py` (69 tests: one fixture per round-1/2/3/4/5/6/7 defect class, the header
+reality_engine/tests/test_v2_schema.py` (79 tests as of round 8: one fixture per round-1/2/3/4/5/6/7/8 defect class, the header
 carry-over, the date-anchor repair, the sampler, and real-PDF smoke checks that skip when the files are absent).
 
 The round-5 sampler, for the hand grade:
@@ -474,6 +474,49 @@ and the r5 seed-17 samples; the remaining r5 differences are the round-6 scale/u
 round:
 `python -m reality_engine.v2.cell_sample --store-dir .tmp/v2r7 --n 100 --type results|deck --seed 29 --out .tmp/f7_results.csv`
 (deck writes `f7_deck.csv`). Opus grades rows 50-79 of each seed-29 sample independently.
+
+**Round 8 (10 Nov 2026).** The structural classes of the round-7 Opus grade are fixed, each with a test in
+`reality_engine/tests/test_v2_table_cells.py` (8 new, `test_round8_step*`): (0) **lost right rows** - a word that
+crosses only the table's RIGHT edge (the `Remarks` column of Coal India's Key Financial Ratios table) is trimmed
+instead of dropping the header row, and the label line printed directly over a block's first figure line is that
+row's label, so CIL results p20 gives `Debt Equity Ratio` / `Current Ratio` again; `_title_phrase` now needs three
+non-glue words, so Indhotel's `Var. vs FY24` growth column is no longer taken for a table title and its
+`Less : Share of Non Controlling Interest` -96% pairs again. (1) **point vs range** - the stock word list of
+`label_map.STOCK_METRICS` bounds a POINT row (net debt, borrowings, shareholders'/owners' equity, net worth,
+market capitalisation, enterprise value, cash level, AUM, order book, receivables/payables/inventory, population
+and coverage), and a flow word in the same label (increase/decrease, adjustments, purchase, proceeds, net cash,
+working capital, impairment loss) keeps the column's period; a page titled "... Assets and Liabilities as of and
+for the quarter ended" is no longer read as a balance sheet. (2) **measure from a measure row** - a one-cell
+measure heading at the left (`1. Segment Revenue`, `2. Segment Results`) names every column of its section,
+taken from the label column and from a table title (`Revenue Analysis` -> `measure=Revenue`). (3) **title parent** -
+the nearest table/segment title above the header stack is the parent of every row (`Airtel Business > Total
+revenues`, `Passive Infrastructure Services > Total revenues`); letterheads (all caps / LIMITED) and statement
+titles are rejected. (4) **column alignment** - `Q 2` / `H 1` count as period words, and a row that prints fewer
+values than columns keeps the printed x-alignment (Adani p12 `(24.41)` is -24.41 on the Q4FY25 column, not FY25).
+(5) **units, scale, sign** - `in 000's` / `000's` is scale 1000, a bare `Bn` on a population/coverage row is a
+count and never Rs, `(400` + `bps)` joins to `(400 bps)` = -400 bps, and a decimal-free figure at least 50x both
+its column neighbours is stored with `value` NULL and `method` carrying `;junk_suspect` (Havells' OCR 300.78 as
+`30078`). (6) **values before labels** - a label printed up to 6 points above its figures pairs with that row
+(Pidilite deck p28: `Staff Costs` 471, `Other Expenses` 485, `EBITDA` 2,071). (7) **two ratios on one label** -
+the text layer gluing two ratio rows together keeps the row printed second (`Net Profit Margin on Net Sales`).
+Measured 10 Nov 2026 with `python -m reality_engine.v2.build_cells --store D:/RealityEngine/p20/p20new.db
+--out .tmp/v2r8` (the same 76 decks and 113 results since 2025-04-01):
+
+| doc type | documents | pages | skipped (no text / no table) | cells | period_id | scale | no header | seconds |
+|---|---|---|---|---|---|---|---|---|
+| deck | 76 | 3,124 | 2,752 (79 / 2,673) | 13,540 | 82.4% | 86.9% | 0.0% | 77.3 |
+| results | 113 | 1,805 | 1,096 (33 / 1,063) | 62,126 | 97.7% | 86.2% | 0.0% | 45.2 |
+| total | 189 | 4,929 | 3,848 (112 / 3,736) | 75,666 | 95.0% | 86.3% | 0.0% | 122.6 |
+
+Methods: `text_layer` 69,779, `text_layer;garbled` 1,717, `text_layer;delta` 3,705,
+`text_layer;junk_suspect` 378, `text_layer;delta;garbled` 79, `text_layer;garbled;junk_suspect` 8. The round-6
+scale regression check (cells whose label is not per-unit, unit Rs/INR/USD, scale 1 and value >= 1000) is **0**.
+The two rows lost in round 7 are restored: the Coal India Key Financial Ratios table yields `Debt Equity Ratio`
+0.13/0.09/0.07 at /2025-09-30, /2025-03-31, /2024-09-30 and the Indhotel `Less : Share of Non Controlling
+Interest` row stores -96% / -83% with `period_id` NULL and `method='text_layer;delta'`. The sampler for this
+round is
+`python -m reality_engine.v2.cell_sample --store-dir .tmp/v2r8 --n 100 --type results|deck --seed 31 --out .tmp/f8_results.csv`
+(deck writes `f8_deck.csv`); rows 50-79 are graded by Opus. The round-7 store stays read-only in its worktree.
 
 The full rule set (a-j) was last rewritten for round 5; round 6 adds, under d: the row's own unit cell is split from
 the label and read before the label's scale word; under e: a two-line period label, a bare `Year` segment and the page

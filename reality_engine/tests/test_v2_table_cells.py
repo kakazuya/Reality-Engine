@@ -1238,7 +1238,7 @@ def test_a_bullet_sentence_is_not_a_row_label(pdf_path):
     cells = extract(_save(pdf_path, lines), "2026-08-07", None, "deck")
     assert cells
     assert not [cell for cell in cells if (cell["row_label"] or "").startswith("•")]
-    assert [cell for cell in cells if cell["row_label"] == "Domestic"]
+    assert [cell for cell in cells if (cell["row_label"] or "").endswith("Domestic")]
 
 
 def test_a_bare_currency_unit_cell_keeps_its_own_currency(pdf_path):
@@ -1466,3 +1466,225 @@ def test_an_interleaved_sub_header_is_a_dimension(pdf_path):
     assert by_col[3]["col_header"] == "dimension=Industry > Dec-24"
     assert by_col[2]["col_header"] == "dimension=HDFC MF > Dec-24"
     assert by_col[3]["period_id"] == _pid(None, "2024-12-31")
+
+# ---------------------------------------------------------------- round 8 defect classes
+
+
+def test_round8_step0a_ratios_header_right_of_the_figures_and_split_blocks(pdf_path):
+    """Step 0a: the Coal India Key Financial Ratios table.
+
+    The dates print left of the figure anchors and a 'Remarks' column prints past the right
+    edge; the row lines split the block.  The header row must survive and every row keep its
+    date (printed text: '30.09.25', '31.03.25', '30.09.24', 'Remarks').
+    """
+    lines = [(60, 40, "Key Financial Ratios", 12),
+             (60, 60, "Ratios", 9),
+             _right(330, 60, "30.09.25", 8), _right(480, 60, "31.03.25", 8),
+             _right(630, 60, "30.09.24", 8), (800, 60, "Remarks", 8),
+             (60, 100, "Debt Equity Ratio", 9),
+             _right(320, 105, "0.13", 8), _right(470, 105, "0.09", 8),
+             _right(620, 105, "0.07", 8),
+             (60, 140, "Current Ratio", 9),
+             _right(320, 145, "1.77", 8), _right(470, 145, "1.74", 8),
+             _right(620, 145, "1.81", 8)]
+    cells = extract(_save(pdf_path, lines), "2025-10-29", None, "results")
+    debt = _by_label(cells, "Debt Equity Ratio")
+    assert {cell["value_text"] for cell in debt} == {"0.13", "0.09", "0.07"}
+    assert {cell["col_header"] for cell in debt} == {"30.09.25", "31.03.25", "30.09.24"}
+    current = _by_label(cells, "Current Ratio")
+    assert {cell["period_id"] for cell in current} == {
+        _pid("2025-07-01", "2025-09-30"), _pid("2025-01-01", "2025-03-31"),
+        _pid("2024-07-01", "2024-09-30")}
+
+
+def test_round8_step0b_a_growth_column_split_after_a_delta_word(pdf_path):
+    """Step 0b: Indhotel p33 pairs its growth column with the row that owns it.
+
+    Printed text: 'Less : Share of Non Controlling Interest' and the split tokens '(400' and
+    'bps)' on Titan p43 / '-96%' in Indhotel's 'Var. vs FY24' column.
+    """
+    lines = [(60, 40, "CONSOLIDATED P&L Q4 & 12MFY25", 9),
+             _center(383, 70, "Q4 FY24", 8), _center(461, 70, "Q4 FY25", 8),
+             _center(535, 70, "Var. vs FY24", 8), _center(620, 70, "12M FY24", 8),
+             _center(700, 70, "12M FY25", 8), _center(774, 70, "Var. vs FY24", 8),
+             (60, 100, "Less : Share of Non Controlling Interest", 9),
+             _right(403, 100, "(21)", 8), _right(500, 100, "(40)", 8),
+             _right(589, 100, "-96%", 8), _right(672, 100, "(71)", 8),
+             _right(753, 100, "(130)", 8), _right(833, 100, "-83%", 8),
+             (60, 130, "Add: Share of Profit/(Loss) in Assoc. & JV's", 9),
+             _right(403, 130, "45", 8), _right(500, 130, "23", 8),
+             _right(589, 130, "-50%", 8), _right(672, 130, "129", 8),
+             _right(753, 130, "77", 8), _right(833, 130, "-40%", 8)]
+    cells = extract(_save(pdf_path, lines), "2025-05-05", None, "deck")
+    deltas = [cell for cell in cells if cell["value_text"] in ("-96%", "-83%")]
+    assert len(deltas) == 2
+    assert {cell["method"] for cell in deltas} == {"text_layer;delta"}
+    assert {cell["period_id"] for cell in deltas} == {None}
+    assert all("Non Controlling Interest" in cell["row_label"] for cell in deltas)
+
+
+def test_round8_step1_a_balance_is_a_point_and_a_flow_is_the_quarter(pdf_path):
+    """Step 1: Bharti's 'Quarter ended / As of' columns hold both a flow and a balance.
+
+    Printed text: 'Long term borrowings' 54,563 at Mar-26 is a POINT; 'Revenue from
+    operations' under the same header is the quarter, never a point.
+    """
+    lines = [(60, 40, "Audited Consolidated Segment-wise Revenue, Results, Assets and "
+                      "Liabilities as of and for the quarter ended June 30, 2026", 9),
+             _center(380, 90, "Quarter ended / As of", 8),
+             _right(380, 105, "March 31, 2026", 8), _right(520, 105, "June 30, 2026", 8),
+             (60, 130, "Revenue from operations", 9),
+             _right(380, 130, "9,167", 8), _right(520, 130, "9,126", 8),
+             (60, 150, "Long term borrowings", 9),
+             _right(380, 150, "54,563", 8), _right(520, 150, "54,744", 8)]
+    cells = extract(_save(pdf_path, lines), "2026-08-04", None, "results")
+    revenue = _by_label(cells, "Revenue from operations")
+    assert {cell["period_id"] for cell in revenue} == {
+        _pid("2026-01-01", "2026-03-31"), _pid("2026-04-01", "2026-06-30")}
+    borrowings = _by_label(cells, "Long term borrowings")
+    assert {cell["period_id"] for cell in borrowings} == {"/2026-03-31", "/2026-06-30"}
+    assert {cell["value_text"] for cell in borrowings} == {"54,563", "54,744"}
+
+
+def test_round8_step2_a_measure_section_names_the_rows_below_it(pdf_path):
+    """Step 2: Bharti's segment table has measure sections, not a period column.
+
+    Printed text: '1. Segment Revenue' over the first group, '2. Segment Results' below it.
+    """
+    lines = [(60, 40, "Audited Consolidated Segment-wise Revenue and Results", 9),
+             (60, 60, "(Rs in Millions)", 8),
+             _right(380, 80, "Dec-25", 8), _right(520, 80, "Dec-24", 8),
+             (60, 100, "1. Segment Revenue", 9),
+             (60, 120, "- Mobile Services India", 9),
+             _right(380, 120, "81,463", 8), _right(520, 120, "75,475", 8),
+             (60, 150, "2. Segment Results", 9),
+             (60, 170, "- Mobile Services India", 9),
+             _right(380, 170, "46,097", 8), _right(520, 170, "70,811", 8)]
+    cells = extract(_save(pdf_path, lines), "2026-02-05", None, "results")
+    revenue = [cell for cell in cells if cell["value_text"] == "81,463"]
+    results = [cell for cell in cells if cell["value_text"] == "46,097"]
+    assert revenue and "measure=Segment Revenue" in revenue[0]["col_header"]
+    assert results and "measure=Segment Results" in results[0]["col_header"]
+
+
+def test_round8_step3_a_segment_title_is_the_parent_of_its_table(pdf_path):
+    """Step 3: Bharti's 'Airtel Business' heading names every row of the table under it."""
+    lines = [(60, 40, "Airtel Business", 11),
+             (60, 60, "Amount in Rs Mn, except ratios", 8),
+             (60, 80, "Quarter Ended", 8),
+             _right(380, 95, "Dec-25", 8), _right(520, 95, "Sep-25", 8),
+             (60, 120, "Total revenues", 9),
+             _right(380, 120, "53,531", 8), _right(520, 120, "52,760", 8),
+             (60, 140, "EBITDA", 9),
+             _right(380, 140, "23,577", 8), _right(520, 140, "21,943", 8)]
+    cells = extract(_save(pdf_path, lines), "2026-02-05", None, "results")
+    assert {cell["row_label"] for cell in cells} == {
+        "Airtel Business > Total revenues", "Airtel Business > EBITDA"}
+    assert {cell["value_text"] for cell in cells
+                    if cell["value_text"] in ("53,531", "52,760")} == {"53,531", "52,760"}
+
+
+def test_round8_step4_a_short_row_is_aligned_by_the_printed_columns(pdf_path):
+    """Step 4: Adani p12's exceptional-items row prints 3 values for 4 columns.
+
+    Printed text: 'Exceptional items (refer note 8)' and '(24.41)'; the row arithmetic
+    (3,556.34 - 24.41 = 3,531.93) puts (24.41) on the Q4FY25 column, not FY25.
+    """
+    lines = [(60, 40, "CONSOLIDATED FINANCIAL RESULTS FOR THE QUARTER ENDED JUNE 30, 2025", 8),
+             (600, 40, "(₹ in crore)", 8),
+             _center(384, 83, "Quarter Ended", 8), _center(524, 83, "Year Ended", 8),
+             _center(340, 94, "June 30,", 8), _center(400, 94, "March 31,", 8),
+             _center(480, 94, "June 30,", 8), _center(544, 94, "March 31,", 8),
+             _center(340, 103, "2025", 8), _center(400, 103, "2025", 8),
+             _center(480, 103, "2024", 8), _center(544, 103, "2025", 8),
+             (40, 140, "Profit before exceptional items and tax", 9),
+             _right(369, 140, "3,847.60", 8), _right(439, 140, "3,556.34", 8),
+             _right(509, 140, "3,738.08", 8), _right(569, 140, "13,279.08", 8),
+             (40, 165, "Exceptional items (refer note 8)", 9),
+             _right(439, 165, "(24.41)", 8), _right(509, 165, "(145.43)", 8),
+             _right(569, 165, "(249.46)", 8)]
+    cells = extract(_save(pdf_path, lines), "2025-08-05", None, "results")
+    exceptional = [cell for cell in cells if cell["value_text"] == "(24.41)"]
+    assert len(exceptional) == 1
+    assert round(exceptional[0]["value"] / 1e7, 2) == -24.41
+    assert exceptional[0]["period_id"] == _pid("2025-01-01", "2025-03-31")
+
+
+def test_round8_step5_units_scale_sign_and_junk(pdf_path):
+    """Step 5: "in 000's" scales a count, a bare 'Bn' level is people, '(400 bps)' is -400.
+
+    Printed text: "Volume* (in 000's)", 'Population Covered | Bn', '(400' + 'bps)'.
+    """
+    from reality_engine.v2.table_cells import _number
+    assert _number("(400 bps)") == (-400.0, False)
+    lines = [(60, 40, "4.1 Customers - Consolidated", 9),
+             (60, 60, "Volume* (in 000's) RHS", 8),
+             _right(380, 80, "Mar-26", 8), _right(520, 80, "Dec-25", 8),
+             (60, 110, "Population Covered", 9), (280, 110, "Bn", 8),
+             _right(380, 110, "2", 8), _right(520, 110, "2", 8),
+             (60, 140, "Net additions", 9),
+             _right(380, 140, "812", 8), _right(520, 140, "5,006", 8)]
+    cells = extract(_save(pdf_path, lines), "2026-05-13", None, "results")
+    population = _by_label(cells, "Population Covered")
+    assert population and {cell["unit_text"] for cell in population} == {"count"}
+    assert {cell["value"] for cell in population} == {2e9}
+    additions = _by_label(cells, "Net additions")
+    assert additions and {cell["scale"] for cell in additions} == {1000.0}
+
+
+def test_round8_step5b_an_ocr_lost_decimal_is_junk_suspect(pdf_path):
+    """Step 5b: Havells p15 prints 300.78 as '30078'; its column neighbours are '310.00'
+    and '0.73', so the value is not stored and the cell is flagged.
+    """
+    lines = [(60, 40, "STATEMENT OF CONSOLIDATED FINANCIAL RESULTS", 9),
+             (60, 50, "(Rs in Crore)", 8),
+             _center(380, 80, "31-Mar-26", 8), _center(520, 80, "31-Dec-25", 8),
+             (60, 110, "Total comprehensive income", 9),
+             _right(380, 110, "724.03", 8), _right(520, 110, "310.00", 8),
+             (60, 140, "Owners of the parent", 9),
+             _right(380, 140, "723.06", 8), _right(520, 140, "30078", 8),
+             (60, 170, "Non-controlling interest", 9),
+             _right(380, 170, "0.33", 8), _right(520, 170, "(0.73)", 8)]
+    cells = extract(_save(pdf_path, lines), "2026-04-22", None, "results")
+    junk = [cell for cell in cells if cell["value_text"] == "30078"]
+    assert len(junk) == 1
+    assert junk[0]["value"] is None and "junk_suspect" in junk[0]["method"]
+    assert round([cell for cell in cells
+                  if cell["value_text"] == "724.03"][0]["value"] / 1e7, 2) == 724.03
+
+
+def test_round8_step6_a_label_just_above_its_figures_keeps_its_own_row(pdf_path):
+    """Step 6: Pidilite deck p28 prints values before labels, 3 points apart.
+
+    Printed text: 'Staff Costs' 471, 'Other Expenses' 485, 'EBITDA' 2,071.
+    """
+    lines = [(60, 40, "EARNINGS SUMMARY - CONSOLIDATED", 9),
+             (270, 60, "In Crs", 8),
+             _right(359, 90, "FY26", 8), _right(418, 90, "FY27", 8),
+             (60, 119, "Staff Costs", 9),
+             _right(359, 122, "471", 8), _right(418, 122, "511", 8),
+             (60, 139, "Other Expenses", 9),
+             _right(359, 142, "485", 8), _right(418, 142, "566", 8),
+             (60, 159, "EBITDA", 9),
+             _right(359, 162, "851", 8), _right(418, 162, "878", 8)]
+    cells = extract(_save(pdf_path, lines), "2026-10-28", None, "deck")
+    by_value = {cell["value_text"]: cell for cell in cells}
+    assert by_value["471"]["row_label"] == "Staff Costs"
+    assert by_value["485"]["row_label"] == "Other Expenses"
+    assert by_value["851"]["row_label"] == "EBITDA"
+
+
+def test_round8_step7_a_merged_ratio_label_keeps_the_second_name(pdf_path):
+    """Step 7: Coal India p16 prints 'Gross Profit Margin on Net Sales Net Profit Margin on
+    Net Sales' as one label; the row's own name is the second ratio (33% is Net).
+    """
+    lines = [(60, 40, "Key Financial Ratios", 9),
+             _right(380, 70, "30.06.24", 8), _right(520, 70, "31.03.24", 8),
+             (60, 100, "Gross Profit Margin on Net Sales Net Profit Margin on Net Sales", 9),
+             _right(380, 100, "43%", 8), _right(520, 100, "37%", 8),
+             (60, 130, "Net Profit Margin on Net Sales", 9),
+             _right(380, 130, "33%", 8), _right(520, 130, "28%", 8)]
+    cells = extract(_save(pdf_path, lines), "2026-02-12", None, "results")
+    merged = [cell for cell in cells if cell["value_text"] == "43%"]
+    assert merged and merged[0]["row_label"].endswith("Net Profit Margin on Net Sales")
+    assert [cell for cell in cells if cell["value_text"] == "33%"]
