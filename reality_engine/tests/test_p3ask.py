@@ -40,3 +40,9 @@ def test_no_sql_arm_refuses_sql(monkeypatch):
     assert "sql" not in p3ask.run("x.db", "nope", {})["error"].split("choose from")[1]
     monkeypatch.delenv("P3ASK_NO_SQL")
     assert "sql" in p3ask.tools()
+
+
+def test_page_tool_rejects_a_quoted_key_and_survives_the_no_sql_arm(monkeypatch):
+    monkeypatch.setenv("P3ASK_NO_SQL", "1")
+    assert "page" in p3ask.tools()
+    assert "doc_key" in p3ask.run("nonexistent.db", "page", {"doc_key": "a' OR 1=1 --", "page": 1})["error"]

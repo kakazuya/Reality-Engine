@@ -106,6 +106,10 @@ and honours `P3ASK_NO_SQL=1`; `plugins/reality-data/server/server.py` honours `R
 - Arm B (no SQL): the same with `P3ASK_NO_SQL=1` in the worker's environment.
 - Report: `python -m reality_engine.scripts.answer_run_report --run <graded.jsonl> --name t179_sql_ab --call-log <run>.jsonl`
   (adds calls, calls_by_tool, sql_calls, tool_seconds, wall_seconds per answer).
+- `p3ask page doc_key=<key> page=<n> [to_page=<n>]` (added 11 Nov) reads page text without raw SQL; both arms have it,
+  so arm B can still open the page a row cites. Without it arm B would have lost page reading, not only SQL.
+- Answer runs: questions `D:/RealityEngine/t179/questions.json`; briefs `tasks/handoff/T-179_answers_{A1,A2,B1,B2}_brief.md`;
+  workers use p3ask only (MCP data tools are uncounted and forbidden); time per answer = recorder start to answer.
 - The one earlier timing on record: 37 answers in 41 minutes by one DeepSeek worker (9 Nov), about 1.1 minutes each.
 
 ## 4. T-180: free models transcribing tables, checked by script

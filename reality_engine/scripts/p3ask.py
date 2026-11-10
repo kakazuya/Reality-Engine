@@ -21,7 +21,8 @@ Prints the reply as JSON (UTF-8).  Read-only: the lookups open the database read
 
 T-179: ``--qid <id>`` and ``--log <file.jsonl>`` (or env ``P3ASK_QID`` / ``P3ASK_LOG``), given before the tool
 name, append one JSON line per call (ts_start, ts_end, seconds, qid, tool, args cut at 300 chars, ok, rows_returned,
-reply_bytes); logging never changes the reply and never fails the call.  ``P3ASK_NO_SQL=1`` refuses the ``sql``
+reply_bytes); logging never changes the reply and never fails the call.  ``page doc_key=<key> page=<n> [to_page=<n>]``
+returns page text (at most 5 pages) without raw SQL.  ``P3ASK_NO_SQL=1`` refuses the ``sql``
 tool and leaves it out of the tool list (the no-SQL arm of the answer test).
 """
 from __future__ import annotations
@@ -34,7 +35,7 @@ from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
 TOOLS = ("kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "semantic", "tech", "ratings",
-         "sql", "calc", "catalog")
+         "page", "sql", "calc", "catalog")
 
 
 def _value(text: str):
@@ -42,6 +43,21 @@ def _value(text: str):
         return json.loads(text)
     except ValueError:
         return text
+
+
+def _page(p3, doc_key: str, page: int, to_page: int | None = None, as_of: str | None = None,
+          max_chars: int = 8000) -> dict:
+    """T-179: the text of one page (or ``page``..``to_page``, at most 5) of a held document, by its doc_key.
+
+    The typed way to read a page, so the no-SQL arm of the answer test can still open the page a row cites.
+    """
+    if "'" in str(doc_key) or ";" in str(doc_key):
+        return {"error": "doc_key must be the key printed by docs/search, unchanged"}
+    first, last = int(page), int(to_page if to_page is not None else page)
+    last = min(max(first, last), first + 4)
+    query = ("SELECT doc_key, page, method, known_at, text FROM doc_page "
+             f"WHERE doc_key = '{doc_key}' AND page BETWEEN {first} AND {last} ORDER BY page")
+    return p3.sql(query, limit=5, max_chars=int(max_chars), as_of=as_of)
 
 
 def _no_sql() -> bool:
@@ -110,6 +126,8 @@ def _run(db: str, tool: str, args: dict) -> dict:
             import lookups_ratings
             return lookups_ratings.ratings(**args)
         import lookups_pilot3 as p3
+        if name == "page":
+            return _page(p3, **args)
         return getattr(p3, name)(**args)
     except TypeError as exc:
         return {"error": f"bad arguments for {name}: {exc}"}
