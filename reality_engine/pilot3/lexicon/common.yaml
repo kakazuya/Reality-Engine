@@ -9,8 +9,10 @@ entries:
   - {metric: working_capital_days, kind: days, unit: days, labels: ["(net )?working capital( days| cycle)?", "\\bnwc\\b"], neg: "%\\s*of|changes|before|generated|ratio|to working capital"}
   - {metric: capex, kind: money, unit: inr_cr, labels: ["\\bcapex\\b", "capital expenditure"], neg: "plan|guidance|%|per cent|per (store|shop|branch|unit|square|sq|tonne|ton|vehicle|mw|kw)"}
   - {metric: revenue, kind: money, unit: inr_cr, labels: ["^revenue", "revenue from operations?", "revenue from contracts? with customers", "^sales\\b", "segment revenue"], neg: "growth|%|intersegment|inter segment|lntersegment|less:|volume|volumes|sales? of (the )?(investments?|fixed assets|assets|securities|shares|properties)|sales promotion|revenue from sale of|from sale of goods|revenue from services?"}
-  # T-133 v5: the statement total (revenue + other income) is not the revenue from operations line.
-  - {metric: total_income, kind: money, unit: inr_cr, labels: ["total revenue", "total revenues", "total income"], neg: "growth|%|margin|per|share"}
+  # T-133 v5/v6: the statement total (revenue + other income) is not the revenue from operations line, and
+  # "total revenue(s)" is the total only when its own table proves it (revenue + other income = total); the
+  # label map resolves that per table, so only "total income" is unconditional here.
+  - {metric: total_income, kind: money, unit: inr_cr, labels: ["total income"], neg: "growth|%|margin|per|share"}
   - {metric: pat, kind: money, unit: inr_cr, labels: ["profit after tax(?:ation)?", "^pat\\b"], neg: "margin|%"}
   - {metric: employees, kind: count, unit: count, labels: ["employee headcount", "headcount"]}
   - {metric: ebitda_margin_pct, kind: pct, unit: pct, labels: ["ebitda margins?", "ebitda as a % of (to|turnover|sales|revenue)", "ebitda as a %"], neg: "guidance|expansion|contraction|bps|range|cagr|growth"}

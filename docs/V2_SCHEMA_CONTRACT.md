@@ -367,7 +367,7 @@ classes: point headers ('31-12-2024', 'Mar-26') and bare '9M' left without a per
 per-share rows ('EPS') given a crore scale; garbled text-layer headers ('30.011.2028') parsed as data; 'Inc/Dec' difference
 columns read as values. Not yet at the 90% accept.
 
-## 11. Label map (T-133, v5 10 Nov 2026)
+## 11. Label map (T-133, v6 10 Nov 2026)
 
 `reality_engine/v2/label_map.py` turns the printed row labels of the table store and `kpi_series` into one proposed
 metric per sector family, and writes the review queue Opus approves from. The whole-label phrases live in
@@ -379,7 +379,8 @@ Build it with:
 
 ```bash
 python -m reality_engine.v2.label_map --cells-dir <v2 store dir> \
-    --kpi-db <pilot3 db> [--kpi-db <pilot3 db> ...] --out <dir> [--taxonomy-db <equity_intelligence.db>]
+    --kpi-db <pilot3 db> [--kpi-db <pilot3 db> ...] --out <dir> [--taxonomy-db <equity_intelligence.db>] \
+    [--replay <opus grade.csv> ...]
 ```
 
 The cells store is built first with `python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir>`
@@ -403,12 +404,19 @@ words is **not** that metric. v1 matched any substring, which is why "Operating 
 became `capex` (2,062 review rows), "Sales and marketing expenses" became `revenue` and every "non financial
 assets" line became `total_financial_assets`; none of those can happen now. Unit/footnote tails (`rs`, `us`,
 `mn`, `cr`, `nos`, `000 s`, a trailing digit or column formula `C=A+B`) are stripped before matching, so
-"capex 1 US$" is `capex` and "Net Debt US$ mn" is `net_debt`. A **garbled** label is `status='rejected'` with
-`rule='garbled'`, never a proposal: a token with a digit/letter swap ("0ther", "expe1"), or no dictionary hit
-for 40% or more of its tokens ("gpwis mmt", "finance cl sts", "passlve infrastructur servlces"), or a single
-lower-case word of six or more letters the dictionary does not hold ("sorrowtngs"). The dictionary is the label
-filler plus the common lexicon phrases; a label that matches a lexicon phrase whole is never garbled, and a
-container child (`JVs > ...`) is exempt so an acronym member survives.
+"capex 1 US$" is `capex` and "Net Debt US$ mn" is `net_debt`; a single footnote digit glued to a word is that
+footnote, so `ebitdaal1` is `ebitdaal` and `mundra1` is `mundra` (v6), and a per-unit denominator is never
+stripped (`EBITDA per tonne` stays `ebitda_per_tonne`). A **garbled** label is `status='rejected'` with
+`rule='garbled'`, never a proposal: a token with a digit/letter swap ("0ther"), a digit/letter soup
+("39l" in "> ?,39L.64"), or no dictionary hit for 40% or more of its tokens ("gpwis mmt"), or a single
+lower-case word of six or more letters the dictionary does not hold. The dictionary is the label filler plus the
+common lexicon phrases; a label that matches a lexicon phrase whole is never garbled, a container child
+(`JVs > ...`) is exempt so an acronym member survives, and **v6: a label seen in two or more documents with a
+clean numeric cell is never garbled** - the evidence is checked before the dictionary, so real members the
+dictionary lacks (`krishnapatnam`, `lighting and fixtures`, `lloyd consumer`) are proposed, not rejected.
+One-edit OCR typos are repaired token by token (`Provisiuns` -> `provisions`), and a truncated label whose
+unmatched bracket ends the cell ("`(Excl.`") is rejected as `truncated label`; an OCR footnote inside a whole
+label ("`(loss}`", "`(A+B\\`") is not truncation.
 
 **Normalisation.** Lower case; OCR tokens repaired (above); leading numbering (`1.`, `(a)`, `i)`, `iv.`) dropped;
 bracketed units and currency (`(Rs crore)`, `(₹ in Lakhs)`, `(%)`, `(as a % of revenue)`) dropped; `%`, currency
@@ -418,9 +426,13 @@ parent, which hid "Total expenses" under "Expenses".
 
 **Rule 2 — seeds.** A `kpi_series` raw label seeds a proposal only when its own label passes rule 1 and the lexicon
 does not disagree (the lexicon is the reviewed contract, the seed a usage witness). A failing seed is ignored and
-listed in `rejected_seeds.csv` with the metric the new rule would give it. The same mapping rule is implemented in
-`reality_engine/pilot3/kpi.py` (`row_label_hits`, used by the `table_v1` path), so the next extraction stores
-`operating_free_cash_flow` where it used to store `capex`.
+listed in `rejected_seeds.csv` with the metric the new rule would give it. v6 adds one exception: a `total
+revenue(s)` seed may say either `revenue` or `total_income`, because rule 8 decides it at the table, so the 1,922
+seed rows v5 rejected as "metric conflict" are accepted again (zero total-revenue conflicts in v6). The same
+mapping rule is implemented in `reality_engine/pilot3/kpi.py` (`row_label_hits`, used by the `table_v1` path), so
+the next extraction stores `operating_free_cash_flow` where it used to store `capex`; `kpi.py` has no table
+arithmetic, so a `total revenue(s)` row there now matches no line rather than guessing either id (the v6 dry run
+lists these rows in `seed_changes.csv`).
 
 **Rule 3 — qualifiers, members and dimensions (v4).** `pre`/`post` tax, `including`/`excluding` lease obligations
 or acceptances, and a definition bracket's basis leave the matched phrase and become `dimension` entries
@@ -447,12 +459,19 @@ keeps its parent in the dimension. **v5:** a generic member named `Others`/`Othe
 no longer collides with the total. A leaf that is only split-header text (`before finance costs and taxes`,
 `after exceptional items`) is the section's total with an empty dimension, not a member. A child whose own
 wording names a statement total wins over the mis-parented parent: `total comprehensive income ...` (OCR joined)
-is `total_comprehensive_income`, `total revenue`/`total income` are `total_income` (never `revenue`),
-`total liabilities` is `total_liabilities`. A parent that says its child is a component of the parent line
+is `total_comprehensive_income`, `total income` is `total_income`, `total revenue(s)` is resolved by its own
+table (rule 8), `total liabilities` is `total_liabilities`. A parent that says its child is a component of the parent line
 (`... comprising of`, `consists of`, `represents`, `details of`, `analysis of`) queues the child; it is a
 sub-line, never a `from_header` member. A member row that is a unit-bearing quantity - its own cells carry a
 count/tonnes/data/power unit, its printed label states a count (`Tugs 10`), or it is a lone aggregating
-adjective (`Cumulative`) - is a KPI row, not a name, and queues.
+adjective (`Cumulative`) - is a KPI row, not a name, and queues. **v6:** a section measure owns its component
+rows (`segment results > exceptional item refer note` is `segment_results[exceptional item refer note]`, while
+the same words standalone are `exceptional_items`), and a leaf `kpi_series` seed never replaces the section
+measure. A `<metric>_mix` row keeps the printed member in the dimension (`Retail` is
+`vertical_mix[retail]`, `Liquid` in an AMC AUM table is `aum_mix[asset_class=liquid]`). A quantity label that
+carries its channel (`FSA Qty.(In Mill. Te)` -> `volume[fsa]`) keeps it, and a bare `Qty.(In Mill. Te)` takes
+the channel of the "`... Price (In Rs./Te.)`" row printed next to it, so FSA/E-Auction/Washed no longer share
+one key.
 
 **Rule 4 — unit kind (v5).** `unit_kind` comes from `metric_def` when the lexicon states it (`pcr_stage3` ->
 `pct`, `production_kt`/`volume` -> `tonnes`, `employees` -> `count`, `interest_coverage` -> `x`), else from the
@@ -463,7 +482,10 @@ metric's own quantity word (`population_covered` -> `count`, `total_gbs_on_netwo
 NULL, and a cell with no value is not unit evidence (a `%` column printed but empty does not split the vote).
 The metric's quantity word is what stops a scale parser's "Rs billion" on `Population Covered Bn` (a count of
 people) or "Mn" on `Total GBs on the network` (data volume) from making the row money. v2 defaulted every
-non-pct/x metric to `money`. A `from_header` row is always NULL because its column header carries the measure and
+non-pct/x metric to `money`. **v6:** a metric whose definition fixes its unit takes precedence over the cell
+majority: `eliminations` is `money` (money cells and % mix cells in one label no longer make the money cells
+ratios), `current_liability_ratio` is `x` (printed fractions 0.89/0.73 are not 0.89%), `aum_mix`/`vertical_mix`
+are `pct`. A `from_header` row is always NULL because its column header carries the measure and
 unit (a segment member with 20-26% margin cells is not a money row), while a currency line item (`Unallocable
 Expenses`) keeps `money` from its numeric cells. A money figure's currency still comes from the cell's own unit,
 never from the label map (v1 carried `inr` for dollar lines).
@@ -483,14 +505,20 @@ phrase that starts the leaf; v2 slugged the raw OCR text, so one printed label c
 parent's metric is not applied to a leaf that itself carries a known metric phrase of a different kind (a paid-up
 equity share capital line under an attributable heading stays in the queue). The brief named `doc_page.section` as
 a second source; `p20/p20new.db`'s `doc_page` has no `section` column, so the parent is the only statement context
-used. **v5:** a bare `Attributable to:` parent is ambiguous for `Non controlling interest` (the same label carries
-the profit attributable and the OCI attributable to NCI), so it queues with no metric; a parent that names profit,
-total comprehensive income or OCI still decides.
+used. **v6:** a bare `Attributable to:` parent is the P&L attribution
+(`profit_attributable[attribution=non_controlling]`), an OCI/reclassified parent is
+`other_comprehensive_income`, a total-comprehensive parent is `total_comprehensive_income_attributable`, and only
+an equity/balance-sheet parent keeps the stock `non_controlling_interest`; the parent is part of the key, so the
+flow and the stock never share a row (v5 queued the bare parent, which hid the flow). A working-capital label
+under a cash-flow "Adjustments for increase/decrease in operating assets/liabilities" parent is the *change*
+(`change_in_trade_receivables`, `change_in_trade_payables`, `changes_in_inventories`), never the balance-sheet
+stock id.
 
 **Rule 6 — junk, headings and garbage.** A label of digits/period tokens only, a digit glued to a word
-("ebitdaal1"), a value token ("45,000 160% EBITDA"), a sentence fragment ending in an auxiliary verb ("The Parent
-Company has"), or a statement heading ("Financial assets", "Particulars") is `status='rejected'`, never a
-proposal; "45 000 160 ebitda" no longer seeds `ebitda`. A one-edit OCR variant of a one-word heading is that
+("expe1", "39l"), a value token ("45,000 160% EBITDA"), a sentence fragment ending in an auxiliary verb ("The Parent
+Company has"), a truncated label ("`(Excl.`"), or a statement heading ("Financial assets", "Particulars") is
+`status='rejected'`, never a proposal; "45 000 160 ebitda" no longer seeds `ebitda`. A trailing footnote digit
+is not a glued word (`ebitdaal1`, `mundra1`). A one-edit OCR variant of a one-word heading is that
 heading (`Particulats` -> `particulars`), and a heading row whose cells are all dash/blank in a table (`Current
 assets` with only "-" at Apollo Tyres) is rejected for that family only: the same label with numbers is that
 table's total and stays mapped. Heading fragments (`Particulars`, `Less`, the OCR `otal`) are `status='rejected'`
@@ -505,25 +533,62 @@ queue. A qualifier that only restates the metric's own definition is not a dimen
 `pbt`/`pbt_before_exceptional` and `post_tax` from `pat`/`pat_before_exceptional`, so one figure no longer sits
 under two dimension keys; `return on equity` keeps `pre_tax`/`post_tax` because lenders print both.
 
+**Rule 8 — total revenue is decided by the table (v6).** `total revenue`/`total revenues` is a marker
+(`label_map.TOTAL_REVENUE`) in the label tier, never a blanket `total_income`: `resolve_total_revenue` reads the
+same table's numeric cells by column and maps the row to `total_income` only when a `revenue` row and an
+`other_income` row in that column add up to the total (Indian Hotels 2,425 + 62 = 2,487 Rs crore), otherwise to
+`revenue` (Bharti "Total revenues" 494,626 Rs mn is the sum of segment revenues, other income separate). Percent
+columns (`Var. vs FY26`) are not proof. The label map stores the family's resolved answer (a proven
+`total_income` wins over a default from another of the family's tables) and every cell carries its own table's
+answer; a label with no proving table defaults to `revenue`. A child whose own wording names the statement total
+still routes before this rule.
+
+**Rule 9 — flow vs stock under one label key (v6).** A working-capital movement under a cash-flow
+"Adjustments for increase/decrease in operating assets/liabilities" parent is `change_in_trade_receivables` /
+`change_in_trade_payables` / `changes_in_inventories`; the same words under "Financial assets"/"Trade payables"
+stay the stock ids. An attribution label under a P&L `Attributable to` parent is `profit_attributable`, under an
+OCI/reclassified parent `other_comprehensive_income`, under a total-comprehensive parent
+`total_comprehensive_income_attributable`, always `attribution=non_controlling` / `attribution=owners_of_parent`;
+`Equity > Non-controlling interests` is the only path to the stock `non_controlling_interest`. The parent is part
+of the key, and the NCI alias/plural (`Non Controlling Interest (NCI)`, `non-controlling interests`) normalises
+to one phrase. A cash-flow change line that states the movement itself (`Decrease/(Increase) in trade
+receivables`) matches the change metric whole.
+
+**Rule 10 — suffixes, evidence and replay honesty (v6).** A suffix that names the metric's own unit is never
+stripped into a broader metric: `EBITDA/ton`, `EBITDA/tonne`, `EBITDA/tonne $/tonne` stay
+`ebitda_per_tonne`, and `CASA %` is `casa_ratio` (percent, not the `casa` money line). A seed stands whenever the
+lexicon agrees or is silent on the label's own wording (rule 2), so `VoNB margin` keeps `vnb_margin`. The garbled
+rule reads evidence first (rule 1). A row the reviewer already graded right is **LOST**, not fixed, when it now
+maps to NULL, a queue with no metric or a rejection; the `--replay <grade.csv>` pass (`replay_grade`) applies
+that rule, treats a documented v4 id rename (`revenue_from_operations` -> `revenue`,
+`cash_generated_from_operations` -> `cash_flow_from_operations`, the two v3 `_pct` slugs) as kept, and treats a
+right `from_header` that now has the section's metric as an upgrade, not a loss. Every kept-with-reason and
+changed row is listed in `replay_report.md`.
+
 **Outputs** in `--out`: `label_map.db` (the `label_map` and `metric_def` tables, the v2 DDL; `label_map` rows carry
 `dimension`, `unit_kind` and `status`), `review_<family>.csv` and `review_common.csv` (label_norm, example raw
 labels, frequency, companies, proposed_metric, dimension, unit_kind, reason, **rule**, **confidence**,
 **status**; every observed label, mapped or not, sorted by frequency), `coverage.txt` (mapped share of the numeric
 `table_cell` rows per family and overall, the rejected count, the mapped-or-queued share, and the 50 most frequent
 unmapped labels), `rejected_seeds.csv`, `seed_changes.csv` (the read-only dry run of the new rule over the
-`table_v1` rows of the `kpi_series` stores, by `(old, new)` metric pair) and `sample_seed43.csv` (200 proposed
-rows at `random.Random(43)`, spread over families, ungraded, for Opus to grade). `rule` is the step that proposed
-the row (`1-match`, `2-seed`, `3-qualifier`, `3-member`, `5-context`, `percent:label`, `child:total`, `6-reject`,
-`heading`, `garbled`); `confidence` is `exact`, `synonym` or `section`. `from_header` has no `metric_def` row: its
-kind comes from the header's measure. The v5 build directory also carries `grade_replay_seed31.csv`,
-`grade_replay_seed37.csv` and `grade_replay_seed41.csv` (Opus's graded rows with the v4 and v5 metric, whether the
-proposal was kept, the v5 dimension and unit kind, and the reason for a mandated change) and `replay_report.md`
-(the zero-lost summary, every changed right row with its reason, and the families under 60%). A family-specific
+`table_v1` rows of the `kpi_series` stores, by `(old, new)` metric pair), `sample_seed47.csv` (200 proposed
+rows at `random.Random(47)`, spread over families, ungraded, for Opus to grade) and `rejected_seed47.csv`
+(40 labels that stay rejected, `random.Random(47)`, ungraded, so the garbled rule is reviewed on its rejects, not
+only on its proposals). `rule` is the step that proposed the row (`1-match`, `2-seed`, `3-qualifier`, `3-member`,
+`5-context`, `8-table`, `table:total`, `section:change`, `section:channel`, `percent:label`, `child:total`,
+`6-reject`, `heading`, `garbled`); `confidence` is `exact`, `synonym` or `section`. `from_header` has no
+`metric_def` row: its kind comes from the header's measure. `--replay <grade.csv>` writes
+`grade_replay_seed31.csv`, `grade_replay_seed37.csv`, `grade_replay_seed41.csv` and `grade_replay_seed43.csv`
+(the graded row, its graded metric, every v6 metric the label can take, the kept/changed/unchanged/LOST status and
+the reason); `replay_report.md` carries the zero-lost summary, every right row kept through a sanctioned rename or
+`from_header` upgrade, every changed wrong row with its reason, the wrong rows still unmapped and the families
+under 60%. A family-specific
 `rejected` row (`current assets` at `tyres_auto_ancillary`) masks a common `*` proposal for that family; a
 consumer must read the exact `sector_family` row before the `*` row.
 
-**Sector families.** `reality_engine/pilot3/sector_map.yaml` now carries 27 families: the ten lexicons (bank, nbfc,
-insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrous, epc_capital_goods, pharma) plus
+**Sector families.** `reality_engine/pilot3/sector_map.yaml` now carries 27 families: the eleven lexicons (bank, nbfc,
+insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrous, epc_capital_goods, pharma,
+asset_management - the last added in v6 for the AMC AUM mix) plus
 cement, retail, airlines, paints_chemicals, consumer_durables, jewellery_lifestyle, hotels, ports_logistics, mining,
 tyres_auto_ancillary, telecom, asset_management, metals_ferrous, utilities_power, healthcare_hospitals, realty and
 textiles_home. Of the 191 basic industries, 135 map and 56 stay `unknown`; none of those 56 is used by a company in
@@ -531,60 +596,69 @@ textiles_home. Of the 191 basic industries, 135 map and 56 stay `unknown`; none 
 `master_industry` tier covers TITAN, TRENT, ULTRACEMCO, SUNPHARMA and WELSPUNLIV, which have no `company_industry`
 row).
 
-**Measured 10 Nov 2026 (v5)** on `D:/RealityEngine/v2/p20_r4` (read-only, 10 company files, 74,486 `table_cell`
-rows) and the `kpi_series` of `pilot10.db` and `p20/p20new.db` (19,628 rows): 4,898 `(label, family)`
-observations, 1,177 proposed mappings (rule 1 match 232, seed 286, member 169, qualifier 24, context 466) and 216
-`metric_def` rows (flow 88, stock 57, ratio 65, per_share 3, price 3). Of the 59,326 numeric table rows, 38,897
-(65.6%) map to a proposed metric, 4,881 are rejected as junk/heading/garbled, and 59,172 (99.7%) are mapped or
-queued in the review CSVs; 154 rows have no label. Three families stay under 60% mapped (`consumer_durables`
-59.2%, `jewellery_lifestyle` 56.8%, `ports_logistics` 53.2%); the other six are 61.3%-73.6%. The stop rule (below
-60% overall coverage means stop and report lexicon gaps) was not hit. The seed dry run changes 4,460 of the
-13,090 `table_v1` `kpi_series` rows in 54 pairs: `revenue` -> `total_income` (2,044, the ticket's total-revenue
-rule), `capex` -> `operating_free_cash_flow` (1,466), `revenue` -> `revenue_per_tower_per_month` (188), 143 rows
-that carried the `revenue` id now match no line (the new total-income phrase's `growth|%|margin` guards), and
-`revenue` -> `sales_and_marketing_expense` (65); 8,016 seed label rows across the two stores fail rule 1 and are
-listed in `rejected_seeds.csv`. Output kept
-at `.tmp/label_map_v5` (`label_map.db`, the review CSVs, `coverage.txt`, `rejected_seeds.csv`, `seed_changes.csv`,
-`sample_seed43.csv`, `grade_replay_seed31.csv`, `grade_replay_seed37.csv`, `grade_replay_seed41.csv`,
-`replay_report.md`); nothing is `approved` until Opus works through the review files.
+**Measured 10 Nov 2026 (v6)** on `D:/RealityEngine/v2/p20_r4` (read-only, 10 company files, 74,486 `table_cell`
+rows) and the `kpi_series` of `pilot10.db`, `p20/p20new.db`, `u8/u8.db` and `q12/q12.db` (30,298 rows): 5,276
+`(label, family)` observations, 1,902 proposed mappings (rule 1 match 705, seed 447, member 200, qualifier 31,
+context 498, table total 21) and 228 `metric_def` rows (flow 94, stock 60, ratio 67, per_share 3, price 4). Of the
+59,326 numeric table rows, 41,882 (70.6%) map to a proposed metric, 2,284 are rejected as junk/heading/garbled
+(887 rejected labels, 559 of them garbled over 1,554 numeric cells; v5 rejected 4,881 cells and the Opus review
+counted 979 garbled labels / 7,907 cells), and 59,172 (99.7%) are mapped or queued in the review CSVs; 154 rows
+have no label. Only `ports_logistics` stays under 60% mapped (59.9%); the other eight cell families are
+62.1%-76.8%. The stop rule (below 60% overall coverage means stop and report lexicon gaps) was not hit. The seed
+dry run changes 6,770 of the 19,231 `table_v1` `kpi_series` rows in 62 pairs: 3,083 rows that carried `revenue`
+now match no line (`total revenue(s)` is table-dependent and `kpi.py` has no table arithmetic), `capex` ->
+`operating_free_cash_flow` (1,466), `roa_pct` -> no line (581), `revenue` -> `revenue_per_tower_per_month` (188),
+`working_capital_days` -> no line (142), `ebitda` -> no line (132), `revenue_usd` -> `revenue` (126) and
+`vertical_mix` -> no line (98); 8,704 seed label rows across the four stores fail rule 1/lexicon and are listed
+in `rejected_seeds.csv`. Output kept at `.tmp/label_map_v6` (`label_map.db`, the review CSVs, `coverage.txt`,
+`rejected_seeds.csv`, `seed_changes.csv`, `sample_seed47.csv`, `rejected_seed47.csv`,
+`grade_replay_seed31.csv`, `grade_replay_seed37.csv`, `grade_replay_seed41.csv`, `grade_replay_seed43.csv`,
+`replay_report.md`, `build.log`); nothing is `approved` until Opus works through the review files.
 
-**Opus grade replay (v5, zero unexplained lost right rows).** Seed-31 (139/200 right) keeps 138 and mandates 1:
-row 50 (`total revenue`) moves from `revenue` to `total_income` because the ticket rules that the statement total
-is never the revenue line; no right row is lost. Seed-37 (170/200 right) keeps 168 and mandates 2, the same
-`total revenue`/`total revenues` change (rows 38 and 105). Seed-41 (177/200 right) keeps all 177. Dimensions
-change on 6/4/5 kept rows: three seed-31 and one seed-37 `... > others` row gain the member dimension (step 2),
-two seed-31 OCI rows gain the member text the empty dimension had merged, `post_tax`/`pre_tax` is dropped from
-`pat`/`pbt` (seed-31 row 34, seed-37 row 149; step 7), and seven OCI dimensions are respelled only
-(`re measurement` -> `remeasurement`, `t otal` -> `total`, the OCR join) - no right row is lost. Of the
-23 seed-41 wrong rows, 22 change: the `%` keys split off (`pbt %`/`ebit %` are margins, rows 128/168), `Others`
-keeps its dimension (18, 48, 127, 136, 192), the split-header row is the total (34), the mis-parented totals are
-routed by their own wording (44, 76, 188), total revenue is `total_income` (174), the sentence/heading rows are
-rejected (131, 143, 164), the quantity/sub-line members queue (93, 114, 148), the ambiguous NCI key queues (101)
-and the three unit kinds are `count`/`data`/`x` (159, 185, 195). Row 40 ("change in trade receivables" sharing the
-balance-sheet id) is the one wrong row this ticket does not change. The per-row detail is in
-`grade_replay_seed31.csv`, `grade_replay_seed37.csv`, `grade_replay_seed41.csv` and `replay_report.md` in
-`.tmp/label_map_v5`.
+**Opus grade replay (v6, zero lost right rows).** The v5 replay counted a right row dropped to NULL as "fixed";
+v6 counts it LOST (step 8). Seed-31 (139/200 right) keeps all 139, LOST 0; of the 61 wrong rows 33 change, 8 stay
+the same and 20 are still unmapped (a wrong row may not map, but it is never counted as fixed). Seed-37 (170)
+keeps all 170, LOST 0 (13 changed, 12 unchanged, 5 unmapped). Seed-41 (177) keeps all 177, LOST 0 (4 changed, 14
+unchanged, 5 unmapped). Seed-43 (180) keeps all 180, LOST 0 (5 changed, 13 unchanged, 2 unmapped). Right rows
+whose answer changed but stayed right are listed per row in `replay_report.md`: a documented v4 canonical rename
+(`cash_profit_from_operations_before_derivative_and_pct` -> `cash_profit_from_operations_pct`,
+`operating_expenses_excluding_..._pct` -> `operating_expenses_pct`, `revenue_from_operations` -> `revenue`) and a
+`from_header` row that now has its section's metric (three seed-31 segment-liability rows). The rule changes the
+review named all land: the total-revenue table proof (IHCL `total_income`, Bharti `revenue`), the flow/stock
+split (`change_in_trade_receivables`/`change_in_trade_payables`, `profit_attributable` and
+`other_comprehensive_income` attribution), the unit suffixes (`ebitda_per_tonne`, `casa_ratio`, `vnb_margin`),
+the 19 seed-31 NULL rows now mapping (inventories, borrowings, depreciation, finance costs, cogs, exceptional
+items, securities premium, sales and marketing, intangible assets, the cash-flow changes, owners' profit), the
+mixed unit rows (`eliminations` money, `current_liability_ratio` x), the channel/mix members
+(`volume[fsa]`, `vertical_mix[retail]`, `aum_mix[asset_class=liquid]`), the truncated/OCR/merged-label rejects and
+`Provisiuns` -> `provisions`. The per-row detail is in `grade_replay_seed31.csv`, `grade_replay_seed37.csv`,
+`grade_replay_seed41.csv`, `grade_replay_seed43.csv` and `replay_report.md` in `.tmp/label_map_v6`.
 
-Tests: `reality_engine/tests/test_v2_label_map.py` (57) cover the normalisation and unit-tail stripping, the OCR
-repair table, the OCR space-join and the fuzzy section repair, rule 1 whole-label matching, garbled
+Tests: `reality_engine/tests/test_v2_label_map.py` (61 passed) cover the normalisation and unit-tail stripping, the
+OCR repair table, the OCR space-join and the fuzzy section repair, rule 1 whole-label matching, garbled
 rejection, the seed rule and seed-vs-lexicon conflict, qualifiers/dimensions, the definition basis, the exclusion
 qualifier, measure parents and leaf-wins (CWIP/EPS), member -> `from_header` with the v3 evidence and the keep
-list, statement lines never becoming members, the profit-attributable/dividend context fixes, the ambiguous
-owners/OCI queue, the ratio-of-the-previous-line base, the percent base metric, the section/known-child guard,
-unit kinds from `metric_def`/quantity word/cells with NULL unknown and NULL `from_header`, canonical ids (`pbt`,
-the cash-flow split, `revenue`, `total_income`), junk/headings, the v5 rules 1-7 (percent split, `Others`
-dimension and split-header total, child-total routing, sentence/heading rejects, quantity/sub-line queue,
-population/GBs/turnover units, redundant tax qualifiers), every line of the T-133 v2, v3, v4 and v5 evidence
-lists, the review CSV columns and the seed-43 sample, the `metric_def` check constraint, and the sector map over
-the four pilot stores (skipped when the stores are absent). `reality_engine/tests/test_pilot3_kpi.py` (105
-collected: 99 pass, 6 fail at setup only because pytest's `tmp_path` is denied in this dsh sandbox) covers
-`row_label_hits` (whole label, block heading, plural), `label_text` and the evidence labels.
+list, statement lines never becoming members, the profit-attributable/dividend context fixes, the ratio-of-the-
+previous-line base, the percent base metric, the section/known-child guard, unit kinds from
+`metric_def`/quantity word/cells with NULL unknown and NULL `from_header`, canonical ids, junk/headings, the v5
+rules 1-7, every line of the T-133 v2-v5 evidence lists, the review CSV columns and the seed-47 samples, the
+`metric_def` check constraint, the sector map over the four pilot stores (skipped when the stores are absent),
+and one test per v6 step: the table total proof, the flow/stock split, the suffix/seed rules, the garbled
+evidence rule, the 18 missed common lines, the `from_header` misuses, the smaller context rows, and the replay
+LOST rule. `reality_engine/tests/test_pilot3_kpi.py` (105 collected: 99 pass, 6 fail at setup only because
+pytest's `tmp_path` is denied in this dsh sandbox) covers `row_label_hits` (whole label, block heading, plural),
+`label_text` and the evidence labels.
 
 **Opus reviews (9-10 Nov 2026, history).** Families were right for all 40 pilot companies, but no family was
 approved: v1's substring matcher produced systematic wrong proposals, v2 (whole-label matching) was graded
 139/200 on its seed-31 sample with three structural classes left (member fallback, unit-kind default, a few wrong
 metrics), v3 (context/member rules) was graded 170/200 on its seed-37 sample with one right row lost (the
-exclusion qualifier in `operating_expenses_pct`), and v4 was graded 177/200 on its seed-41 sample with no
-previously right row lost; v5 fixes the six structural classes in that v4 grade. v1's build
-`D:/RealityEngine/v2/label_map`, v2's `.tmp/label_map_v2` build and seed-31 sample, and v3's `.tmp/label_map_v3`
-build and seed-37 sample are superseded by `.tmp/label_map_v4`, which is superseded by `.tmp/label_map_v5`.
+exclusion qualifier in `operating_expenses_pct`), v4 was graded 177/200 on its seed-41 sample with no
+previously right row lost, and v5 was graded 180/200 on its seed-43 sample: the Opus replay check found the
+blanket `total revenue` -> `total_income` rule wrong for Bharti (1,922 seeds overridden), unit suffixes stripped
+into broader metrics (`EBITDA/ton` -> `ebitda`), flow/stock ids sharing one key (cash-flow changes and NCI), the
+garbled rule over-rejecting 979 labels / 7,907 cells, 18 common metrics with no map row, and a replay that
+counted a right row dropped to NULL as fixed. v6 fixes those classes structurally (rules 8-10) with zero lost
+right rows over the four grade files. v1's build `D:/RealityEngine/v2/label_map`, v2's `.tmp/label_map_v2` build
+and seed-31 sample, v3's `.tmp/label_map_v3` build and seed-37 sample, and v4's and v5's builds are superseded by
+`.tmp/label_map_v6`.

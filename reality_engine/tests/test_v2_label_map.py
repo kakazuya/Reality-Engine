@@ -1,4 +1,4 @@
-"""T-133 label dictionary v5: OCR sections, measure parents, dimensions, units, canonical ids, headings.
+"""T-133 label dictionary v6: table totals, flow/stock context, suffixes, over-rejection, common lines, replay.
 
     python -m pytest -q reality_engine/tests/test_v2_label_map.py
 
@@ -149,7 +149,7 @@ def test_rule_4_unit_kind_is_money_and_currency_comes_from_the_cell():
     assert label_map.resolve_unit_kind("working_capital_days", label_map.MetricMeta(entry_unit="days")) == "days"
     assert label_map.resolve_unit_kind("capex", None) == ""      # v3: unknown is NULL, never money
     for raw, wanted in (("EBITDA 1 US$", "ebitda"), ("Net debt 2 US$", "net_debt"),
-                        ("Total revenue 1 US$", "total_income")):
+                        ("Total revenue 1 US$", "total_revenue")):
         assert need(raw).metric == wanted
 
 
@@ -178,10 +178,12 @@ def test_rule_5_deferred_tax_and_balance_sheet_lines_keep_their_own_metric():
 
 def test_rule_6_junk_is_rejected_not_proposed():
     for raw, why in (("45,000 160% EBITDA", "a value token in the label"),
-                     ("FY23 - 9MFY23", "period tokens only"),
-                     ("ebitdaal1 US$", "digit glued to a word")):
+                     ("FY23 - 9MFY23", "period tokens only")):
         key, proposal, rejection = decide(raw, "mining")
         assert proposal is None and rejection == why, raw
+    # v6: a footnote digit glued to a word ("ebitdaal1", "mundra1") is a footnote, not junk.
+    assert need("ebitdaal1 US$", "mining").metric == "ebitdaal"
+    assert label_map.normalise_label("mundra1") == "mundra"
     assert metric("Assets i Revenue from operations") is None      # rule 1: not revenue
     assert metric("Financial Assets") is None and decide("Financial Assets")[2] == "heading"
 
@@ -201,7 +203,7 @@ def test_every_evidence_line():
         ("Capex 1 US$", "telecom", "capex", ""),
         ("EBITDA 1 US$", "telecom", "ebitda", ""),
         ("Net Debt 2 US$", "telecom", "net_debt", ""),
-        ("Total revenue 1 US$", "telecom", "total_income", ""),
+        ("Total revenue 1 US$", "telecom", "total_revenue", ""),
         ("Net Debt US$ mn", "telecom", "net_debt", ""),
         ("Total equity and liabilities", "hotels", "total_equity_and_liabilities", ""),
         ("Interest Coverage ratio (times)", "telecom", "interest_coverage", ""),
@@ -270,7 +272,11 @@ def test_review_queues_carry_rule_confidence_status_and_the_seed43_sample():
     rejected_row = next(row for row in rows if row["label_norm"] == "financial assets")
     assert rejected_row["status"] == "rejected" and rejected_row["rule"] == "heading"
     sample = out / label_map.SAMPLE_FILE
-    assert sample.is_file() and sample.name == "sample_seed43.csv"
+    assert sample.is_file() and sample.name == "sample_seed47.csv"
+    rejected_sample = out / label_map.REJECTED_SAMPLE_FILE
+    assert rejected_sample.is_file() and rejected_sample.name == "rejected_seed47.csv"
+    with rejected_sample.open(encoding="utf-8") as handle:
+        assert len(list(csv.DictReader(handle))) == 1
     with sample.open(encoding="utf-8") as handle:
         sampled = list(csv.DictReader(handle))
     assert 0 < len(sampled) <= label_map.SAMPLE_SIZE and "family" in sampled[0]
@@ -323,10 +329,6 @@ def test_v3_segment_misspelling_gets_the_section_metric():
 
 
 @pytest.mark.parametrize("raw, why", [
-    ("financial liabifities > sorrowtngs", "a single lower-case OCR token"),
-    ("mobife selfvices south asia > passlve infrastructur servlces", "OCR word soup"),
-    ("kl int nsibleass ts", "OCR word soup"),
-    ("finance cl sts", "OCR word soup"),
     ("iil 0ther lncome", "a digit/letter swap"),
     ("gpwis mmt", "OCR word soup"),
 ])
@@ -377,6 +379,10 @@ def test_v3_profit_attribution_and_dividend_lines():
     assert nci is not None and nci.metric == "profit_attributable"
     assert nci.dimension == "attribution=non_controlling"
     assert need("dividend received").metric == "dividend_received"
+    # v6: the OCR repair of "on controlling interest" must not damage "non controlling".
+    assert label_map.normalise_label("on controlling interest") == "non controlling interest"
+    assert need("Total comprehensive income for the period attributable to > on controlling interest",
+                "jewellery_lifestyle").dimension == "attribution=non_controlling"
 
 
 def test_v3_a_pct_metric_comes_from_the_base_metric_not_a_slug():
@@ -554,14 +560,20 @@ def test_v5_mis_parented_children_route_by_their_own_wording():
              "to: -Own ers of the Company", "paints_chemicals", "total_comprehensive_income"),
             ("Items not to be reclassified to profit or loss : > Total comprehensive income for the quarter / year",
              "telecom", "total_comprehensive_income"),
-            ("Total Revenue", "hotels", "total_income"),
-            ("total revenues", "telecom", "total_income"),
+            ("Total Revenue", "hotels", "total_revenue"),
+            ("total revenues", "telecom", "total_revenue"),
             ("Total revenue from operations", "telecom", "revenue")):
         proposal = need(raw, family)
         assert proposal.metric == wanted, (raw, proposal.metric)
+    # v6 rule 9: a bare P&L "Attributable to:" parent is the flow, with the parent in the key; the OCI parent
+    # above keeps its own key, so the two never share a row.
     key, proposal, rejection = decide("Attributable to: > Non Controlling Interest", "paints_chemicals")
-    assert proposal is None and not rejection
+    assert proposal is not None and proposal.metric == "profit_attributable" and not rejection
+    assert proposal.dimension == "attribution=non_controlling"
     assert key == "attributable to > non controlling interest"
+    oci_key = decide("OTHER COMPREHENSIVE CNCOME ATTRIBUTABLE TO: > Non-controlling interest",
+                     "paints_chemicals")[0]
+    assert oci_key == "other comprehensive income attributable to > non controlling interest"
 
 
 def test_v5_sentence_fragments_and_heading_rows_are_rejected():
@@ -610,3 +622,192 @@ def test_v5_a_redundant_tax_qualifier_is_dropped():
     assert need("Profit after tax").dimension == ""
     assert need("Return on Shareholder's Equity (Pre Tax) %").dimension == "pre_tax"
     assert need("Return on Shareholder's Equity (Post Tax) %").dimension == "post_tax"
+
+
+# ------------------------------------------------------------------------------------------------ v6 (T-133)
+def _table_decisions(rows, family="hotels"):
+    decisions, parsed = {}, {}
+    for raw in dict.fromkeys(row[0] for row in rows):
+        parsed[raw] = label_map.parse_label(*reversed(label_map._split_label(raw)))
+        decisions[raw] = label_map.decide_label(raw, family, {}, FAMILY_ENTRIES, COMMON)
+    label_map.resolve_total_revenue(rows, decisions)
+    return decisions
+
+
+def test_v6_total_revenue_is_decided_by_the_table_not_the_label():
+    """Step 1: total_income only when this table's revenue + other income add up to the total."""
+    ihcl = [("Revenue from operations", "Q4FY25", "Rs crore", 2425.0),
+            ("Other Income", "Q4FY25", "Rs crore", 62.0),
+            ("Total Revenue", "Q4FY25", "Rs crore", 2487.0)]
+    decisions = _table_decisions(ihcl)
+    assert decisions["Total Revenue"][1].metric == "total_income"
+    assert decisions["Other Income"][1].metric == "other_income"
+
+    bharti = [("Total revenues", "Q1FY26", "Rs million", 494626.0),
+              ("Other income", "Q1FY26", "Rs million", 4858.0)]
+    decisions = _table_decisions(bharti, "telecom")
+    assert decisions["Total revenues"][1].metric == "revenue"
+
+    # revenue + other income present but they do not make the total: still the revenue line.
+    broken = [("Revenue from operations", "FY25", "Rs crore", 100.0),
+              ("Other income", "FY25", "Rs crore", 5.0),
+              ("Total revenue", "FY25", "Rs crore", 130.0)]
+    assert _table_decisions(broken)[("Total revenue")][1].metric == "revenue"
+    # the label alone carries the unresolved marker; the map defaults it to revenue.
+    assert need("total revenues", "telecom").metric == "total_revenue"
+    assert label_map.seed_agrees(label_map.TOTAL_REVENUE, "revenue")
+    assert label_map.seed_agrees("revenue", "total_income") is False
+
+
+def test_v6_flow_and_stock_never_share_a_key():
+    """Step 2: cash-flow movements and attribution lines are flows; the balance-sheet ids stay stock."""
+    receivable = label_map.decide_label(
+        "Adjustments for (increase)/ decrease In operating assets: > Trade receivables", "hotels",
+        {}, FAMILY_ENTRIES, COMMON)
+    assert receivable[1] is not None and receivable[1].metric == "change_in_trade_receivables"
+    assert " > " in receivable[0]
+    payable = need("Adjustments for : > Decrease/(Increase) in trade payables", "consumer_durables")
+    assert payable.metric == "change_in_trade_payables"
+    assert need("increase decrease in inventories", "paints_chemicals").metric == "changes_in_inventories"
+
+    pnl = label_map.decide_label("Profit for the pe riod attributable to: > -Non-controlling interest",
+                                 "telecom", {}, FAMILY_ENTRIES, COMMON)
+    assert pnl[1] is not None and pnl[1].metric == "profit_attributable"
+    assert pnl[1].dimension == "attribution=non_controlling"
+    oci = label_map.decide_label("B Items that may be reclassified to profit or loss > Non-controlling interest",
+                                 "consumer_durables", {}, FAMILY_ENTRIES, COMMON)
+    assert oci[1] is not None and oci[1].metric == "other_comprehensive_income"
+    stock = label_map.decide_label("Equity > Non-controlling Interests", "telecom", {}, FAMILY_ENTRIES, COMMON)
+    assert stock[1] is not None and stock[1].metric == "non_controlling_interest"
+    assert len({pnl[0], oci[0], stock[0]}) == 3
+
+
+def test_v6_a_suffix_naming_the_unit_is_never_stripped():
+    """Step 3: EBITDA/ton stays ebitda_per_tonne; CASA % is casa_ratio; a seed survives a silent lexicon."""
+    for raw in ("EBITDA/ton", "EBITDA/tonne $/tonne", "EBITDA per tonne"):
+        assert need(raw, "metals_nonferrous").metric == "ebitda_per_tonne", raw
+    casa = need("CASA %", "bank")
+    assert casa.metric == "casa_ratio"
+    defs = {row["metric"]: row for row in label_map._metric_defs([casa], {})}
+    assert defs["casa_ratio"]["unit_kind"] == "pct" and defs["casa_ratio"]["kind"] == "ratio"
+    seed = label_map.propose_metric("vonb margin", "insurance_life",
+                                    {("vonb margin", "insurance_life"): "vnb_margin"}, FAMILY_ENTRIES, COMMON)
+    assert seed is not None and seed.metric == "vnb_margin"
+    assert label_map.seed_agrees(None, "vnb_margin")       # the lexicon is silent, the seed stands
+
+
+def test_v6_garbled_rejects_only_character_level_junk():
+    """Step 4: a real label seen in two documents is not garbled, even when the dictionary misses it."""
+    assert label_map.garbled_reason("krishnapatnam") == "garbled"
+    assert label_map.garbled_reason("krishnapatnam", trusted=True) == ""
+    trusted = label_map.decide_label("krishnapatnam", "ports_logistics", {}, FAMILY_ENTRIES, COMMON,
+                                     peers=4, trusted=True)
+    assert trusted[1] is not None and trusted[1].metric == label_map.FROM_HEADER
+    assert label_map.decide_label("krishnapatnam", "ports_logistics", {}, FAMILY_ENTRIES, COMMON,
+                                  peers=4)[2] == "garbled"
+    for clean in ("ebitdaal1", "mundra1"):
+        assert label_map.junk_reason(label_map.normalise_label(clean)) == "", clean
+
+
+def test_v6_the_missed_common_metrics_have_a_row():
+    """Step 5: every metric the review named as unmapped maps again (no NULL for a common line)."""
+    cases = (
+        ("inventories", "paints_chemicals", "inventories"),
+        ("current assets > inventories", "paints_chemicals", "inventories"),
+        ("changes in inventories of finished goods stock in trade and work in progress", "paints_chemicals",
+         "changes_in_inventories"),
+        ("cogs", "tyres_auto_ancillary", "cost_of_goods_sold"),
+        ("exceptional items refer note", "paints_chemicals", "exceptional_items"),
+        ("securities premium", "paints_chemicals", "securities_premium"),
+        ("profit for the period year", "paints_chemicals", "pat"),
+        ("current tax liabilities net", "paints_chemicals", "current_tax_liabilities"),
+        ("finance cost net", "paints_chemicals", "finance_cost"),
+        ("revenue from sales", "paints_chemicals", "revenue"),
+        ("tax expense current tax", "paints_chemicals", "current_tax"),
+        ("profit loss before tax and exceptional items", "paints_chemicals", "pbt_before_exceptional"),
+        ("equity holders of the parent", "paints_chemicals", "owners_equity"),
+        ("operating ebitda margin", "paints_chemicals", "ebitda_margin_pct"),
+        ("deferred tax assets net", "paints_chemicals", "deferred_tax_assets"),
+        ("depreciation", "paints_chemicals", "depreciation"),
+        ("borrowings", "paints_chemicals", "borrowings"),
+        ("intangible assets", "paints_chemicals", "intangible_assets"),
+        # the seed-31 OCR rows v5 dropped to NULL: repaired by the seen-spelling table, not lost.
+        ("financial liabifities > sorrowtngs", "paints_chemicals", "borrowings"),
+        ("finance cl sts", "paints_chemicals", "finance_cost"),
+        ("kl int nsibleass ts", "paints_chemicals", "intangible_assets"),
+        ("attributable to > non controlling i iterest", "paints_chemicals", "profit_attributable"),
+        ("expenses > salesandmarlcetingexpenses", "paints_chemicals", "sales_and_marketing_expense"),
+        ("profit attributable to > owners oflhe paunl company", "paints_chemicals", "profit_attributable"),
+        ("expe1 ses > depreciation amortisation and lmpainnent", "paints_chemicals", "depreciation"),
+        ("ftellls to be redassified to profit or loss > tlon contro ling interests", "paints_chemicals",
+         "other_comprehensive_income"),
+    )
+    for raw, family, wanted in cases:
+        assert need(raw, family).metric == wanted, raw
+
+
+def test_v6_from_header_is_not_a_fallback_for_a_broken_row():
+    """Step 6: a truncated label, an OCR number, a typo and two unwrapped lines get their own answer."""
+    assert decide("(Excl.", "mining")[2] == "truncated label"
+    assert decide("Revenue from OPerations > ?,39L.64", "mining")[2] == "digit glued to a word"
+    owners = need("owners ofthe company", "mining")
+    assert owners.metric == "profit_attributable" and owners.dimension == "attribution=owners_of_parent"
+    assert need("PBDIT for the quarter", "paints_chemicals").metric == "ebitda"
+    assert need("Provisiuns", "mining").metric == "provisions"
+    for raw in ("(Excl.", "Revenue from OPerations > ?,39L.64", "owners ofthe company", "PBDIT for the quarter",
+                "Provisiuns"):
+        proposal = metric(raw, "mining", has_metric_row=True, peers=6)
+        assert proposal is None or proposal.metric != label_map.FROM_HEADER, raw
+
+
+def test_v6_the_smaller_rows_keep_their_context():
+    """Step 7: dimensions, units and mix members the review named."""
+    base = need("Data > As % of Customer Base", "telecom")
+    assert base.metric == "pct_of_customer_base" and base.dimension == "data"
+    assert need("Total comprehensive income for the period attributable to > on controlling interest",
+                "jewellery_lifestyle").dimension == "attribution=non_controlling"
+    assert label_map.resolve_unit_kind("eliminations", label_map.MetricMeta(units=Counter({"%": 9}))) == "money"
+    assert label_map.resolve_unit_kind("current_liability_ratio",
+                                       label_map.MetricMeta(units=Counter({"ratio": 9}))) == "x"
+    retail = need("Retail", "it_services")
+    assert retail.metric == "vertical_mix" and retail.dimension == "retail"
+    liquid = need("Liquid", "asset_management")
+    assert liquid.metric == "aum_mix" and liquid.dimension == "asset_class=liquid"
+    # one OCR-merged line carries two metrics: it queues instead of picking one.
+    assert metric("other equity excluding revaluation reserves as at march 31st earnings per share face value "
+                  "off 2 each") is None
+    # Qty.(In Mill. Te) takes the channel of the price row after it.
+    rows = [("Qty.(In Mill. Te)", "31.03.26", "count", 645.99),
+            ("FSA Price (In Rs./Te.)", "31.03.26", "Rs", 2082.66)]
+    ordered = [row[0] for row in rows]
+    parsed = {raw: label_map.parse_label(*reversed(label_map._split_label(raw))) for raw in ordered}
+    decisions = {raw: label_map.decide_label(raw, "mining", {}, FAMILY_ENTRIES, COMMON) for raw in ordered}
+    label_map.resolve_quantity_channels(ordered, parsed, decisions)
+    qty = decisions["Qty.(In Mill. Te)"][1]
+    assert qty is not None
+    assert decisions["Qty.(In Mill. Te)"][0].startswith("fsa > qty in mill te")
+    assert qty.dimension == "fsa"
+
+
+def test_v6_replay_counts_a_right_row_lost_when_it_maps_to_nothing():
+    """Step 8: a row graded right that now maps to NULL/rejected is LOST, never counted as fixed."""
+    folder = Path(".tmp") / "test_label_map_replay"
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True, exist_ok=True)
+    out = folder / "replay.csv"
+    grade = folder / "grade.csv"
+    grade.write_text("row,label_norm,proposed_metric,right,class,note\n"
+                     "1,capex,capex,yes,,\n"
+                     "2,financial assets,other_assets,yes,,\n"
+                     "3,goodwill,goodwill,yes,,\n"
+                     "4,old wrong,revenue,no,wrong_metric,\n", encoding="utf-8")
+    metrics = {"capex": {"capex"}, "old wrong": {"pat"}}
+    result = label_map.replay_grade(grade, metrics, out)
+    # "financial assets" is a heading: no map row and the rule rejects it -> LOST.  "goodwill" has no map
+    # row but the current rule maps it, so it is kept (the replay asks what the rule says now).
+    assert result["graded_right"] == 3 and result["kept"] == 2 and result["lost"] == 1
+    assert result["changed"] == 1
+    with out.open(encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert [row["status"] for row in rows] == ["kept", "LOST", "kept", "changed"]
+    shutil.rmtree(folder, ignore_errors=True)
