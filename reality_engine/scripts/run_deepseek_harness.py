@@ -98,7 +98,7 @@ KEY_ENV = {"1": "OPENCODE_GO_API_KEY", "2": "OPENCODE_GO_API_KEY_2"}
 
 
 def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, control=None, workspace=None,
-                job_id=None, data_job=False, **kwargs):
+                job_id=None, data_job=False):
     """YAML overlay with this worker's stable session header, optional output cap, and heartbeat plugin.
 
     ``job_id`` is the worker's identity (the plugin passes it as ``--job-id``); a hand run passes the resolved
@@ -108,13 +108,6 @@ def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, cont
     Code workers do not start the data-gather MCP server (saves ~76 MB per worker);
     pass ``data_job=True`` (or ``--data-job`` on the CLI) to keep it for data jobs.
     """
-    # Alias handling for callers that name the flag differently.
-    if "disable_data_gather" in kwargs:
-        data_job = not bool(kwargs.get("disable_data_gather"))
-    if kwargs.get("keep_data_gather") or kwargs.get("data_gather"):
-        data_job = True
-    if kwargs.get("enable_data_gather"):
-        data_job = True
     if model in REASONING:
         efforts = "\n".join(f"              {e}: {e}" for e in EFFORTS)
         entry = f"          - id: {model}\n            reasoningEfforts:\n              off: null\n{efforts}"
