@@ -633,14 +633,31 @@ def _qualifier_only(suffix: str) -> bool:
     return words[0] in _QUALIFIER_HEADS and set(words) <= _LABEL_QUALIFIER_WORDS
 
 
-def _own_row_hits(hit) -> list:
-    """The metric hits a table row label ends with.  A block heading on the same band joins the row string
-    ("Leverage" over the "Net Debt" row gives "Leverage Net Debt"), so a hit that another label starts after is a
-    heading, not the row's metric.  Overlapping aliases of one label ("Revenues" matches both "^revenue" and
-    "^revenues?") keep every hit: only a label that starts at or after this match's end is a later label.
+# T-133 v8.1: a "section > label" row's words before ">" name the section (or the row above), never the row: the
+# leaf after ">" owns the value.  These are the tokens that make a leaf another statement line instead of a member
+# name ("Dividend income > Operating Profit before working capital changes" is the operating-profit row).
+_LEAF_LINE_WORDS = frozenset("""
+    allowance amortisation amortization assets borrowings capital cash change changes charges cost costs debt debts
+    depreciation equity expense expenses finance gain gross income interest inventories liabilities loss net
+    operating payables profit receivables revenue sales tax taxes total working written
+""".split())
+_LEAF_HEADER_WORDS = frozenset({"before", "after", "finance", "cost", "costs", "tax", "taxes", "exceptional"})
 
-    v8: when two hits start at the same offset the longer whole label wins, so "Revenue per tower per month" is
-    the per-tower line and not also the revenue line (the superseded hit must not be stored beside it)."""
+
+def _member_leaf(leaf: str) -> bool:
+    """True when a "section > leaf" leaf is a member name (keeps the section's metric), not another line."""
+    words = [word for word in re.findall(r"[a-z0-9]+", leaf.lower())
+             if word not in {"and", "of", "the", "in", "on", "at", "to", "for", "or"}]
+    if not words:
+        return False
+    if words[0] in {"before", "after"} and set(words) & _LEAF_HEADER_WORDS:
+        return True     # a split header ("before finance costs and taxes") is the section total
+    return not (set(words) & _LEAF_LINE_WORDS)
+
+
+def _filter_row_hits(hit) -> list:
+    """v8: when two hits start at the same offset the longer whole label wins, and a hit that another label starts
+    after is a heading, not the row's metric."""
     if len(hit) < 2:
         return hit
     longest: dict[int, int] = {}
@@ -651,6 +668,67 @@ def _own_row_hits(hit) -> list:
     return kept or hit
 
 
+def _leaf_anchored(text: str, leaf_start: int, start: int) -> bool:
+    """True when a leaf hit starts the leaf: only a numbering mark, punctuation or a filler word before it.
+
+    "> (f) Net profit after tax" and "> Total segment revenue" start their leaf's measure; "> • Operating Revenue
+    and Total Income include" is a sentence with its own words before the phrase, so it is not that line.
+    """
+    lead = text[leaf_start:start]
+    if not re.search(r"[A-Za-z]{2,}", lead):
+        return True
+    words = [word for word in re.findall(r"[a-z]+", lead.lower()) if len(word) > 1]
+    return bool(words) and set(words) <= {"total", "net", "gross", "of", "the", "and", "as", "at", "sub"}
+
+
+def _own_row_hits(hit, text: str = "") -> list:
+    """The metric hits a table row label ends with.  A block heading on the same band joins the row string
+    ("Leverage" over the "Net Debt" row gives "Leverage Net Debt"), so a hit that another label starts after is a
+    heading, not the row's metric.  Overlapping aliases of one label ("Revenues" matches both "^revenue" and
+    "^revenues?") keep every hit: only a label that starts at or after this match's end is a later label.
+
+    v8: when two hits start at the same offset the longer whole label wins, so "Revenue per tower per month" is
+    the per-tower line and not also the revenue line (the superseded hit must not be stored beside it).
+
+    v8.1: a ``section > leaf`` label is the leaf's row.  A hit inside the leaf must start the leaf ("Note: >
+    Operating Revenue and Total Income include..." is not the total-income row), and a hit in the section is kept
+    only when the leaf is a member, so the "Dividend income > <another line>" merge no longer stores that line's
+    value as dividend income.  The section words still run the metric's negative list ("strong volume growth ...
+    > Total Income" is a sentence, not the line)."""
+    if text and " > " in text:
+        leaf = text.rsplit(">", 1)[1]
+        leaf_start = len(text) - len(leaf.lstrip())
+        leaf_hits = [(e, m) for e, m in hit if m.start() >= leaf_start]
+        if not leaf_hits:
+            # `label_matches` keeps the first pattern that hits per metric, so a section phrase can mask the
+            # same metric's leaf phrase ("Revenue > Revenue from Operations"): search each section entry's own
+            # patterns again, from the leaf, so the leaf's line is what owns the row.
+            rematched: list = []
+            for e, _ in hit:
+                for rx in e.labels:
+                    again = rx.search(text, leaf_start)
+                    if again is not None:
+                        rematched.append((e, again))
+                        break
+            leaf_hits = rematched
+        anchored = [(e, m) for e, m in leaf_hits if _leaf_anchored(text, leaf_start, m.start())]
+        if leaf_hits:
+            section = text[:leaf_start]
+            kept = [(e, m) for e, m in anchored
+                    if not (e.neg and e.neg.search(section))]
+            if kept:
+                return _filter_row_hits(kept)
+            return []       # the leaf names a line, but not from its first word: a sentence, not this row
+        section_hits = [(e, m) for e, m in hit if m.end() <= leaf_start]
+        # A bracketed leaf is the row's note/definition ("Debt equity ratio (in times) > (i) [Debt comprises ...]"),
+        # so the section still owns the row; an unbracketed line leaf does not (the dividend/EBITDA merges).
+        note_leaf = text[leaf_start:].lstrip().startswith(("(", "["))
+        if section_hits and (note_leaf or _member_leaf(text[leaf_start:])):
+            return _filter_row_hits(section_hits)
+        return []
+    return _filter_row_hits(hit)
+
+
 def row_label_hits(entries: list[Entry], company: str, raw_label: str, sector: str | None = None):
     """[(entry, match)] whose label is the row's whole label (rule 1), longest match first, one per metric.
 
@@ -659,7 +737,8 @@ def row_label_hits(entries: list[Entry], company: str, raw_label: str, sector: s
     revenue line, and "Operating Free Cash Flow (EBITDA - Capex)" is not the capex line.
 
     T-133 v7: this is the **dry-run** rule the label map measures (`kpi_seed_changes`) and the rule a future
-    extraction would use; the live `table_v1` path stays on `label_matches` + `_own_row_hits` (main).
+    extraction would use; the live `table_v1` path stays on `label_matches` + `_own_row_hits` (v8.1 adds the leaf
+    rule there, never this whole-label rule).
     ``sector`` lets a dry run pass the build's resolved family (the profile is not active there).
     """
     text = label_text(raw_label)
@@ -2735,7 +2814,7 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
             hit = label_matches(entries, company, label)
             if not hit:
                 continue
-            hit = _own_row_hits(hit)
+            hit = _own_row_hits(hit, label)
             usd_here = usd_above(i)
             hi = pick_header(r.y, [x for x, _ in nums])
             if hi is None:

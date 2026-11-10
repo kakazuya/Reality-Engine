@@ -1864,6 +1864,54 @@ def test_missing_flow_quarters_are_derived_and_a_stock_is_never_derived():
     con.close()
 
 
+# ---------------------------------------------------------------- T-133 v8.1
+def _row_metrics(label, company="BHARTIARTL", entries=None):
+    entries = ENTRIES if entries is None else entries
+    return [e.metric for e, _ in kpi._own_row_hits(kpi.label_matches(entries, company, label), label)]
+
+
+def test_v81_a_merged_section_label_does_not_own_the_leaf_rows_value():
+    """Step 1: 23 "Dividend income > <another line>" cells stored the leaf's value as dividend income; the leaf
+    after ">" owns the row, and the section phrase keeps only a member leaf ("Segment Liabilities > APMEA")."""
+    assert _row_metrics("Dividend income > Operating Profit before working capital changes") == []
+    assert "dividend_income" not in _row_metrics("Dividend income > Finance costs")
+    assert "dividend_income" not in _row_metrics("Dividend income > Net gain on disposal of PP&E")
+    assert _row_metrics("Adjustments for : > Dividend income") == ["dividend_income"]
+    assert _row_metrics("Cash Flow From Investing Activities > Dividend received") == ["dividend_received"]
+    seg_liabilities = kpi.Entry("segment_liabilities", "money", "inr_cr", [kpi._rx("segment liabilities")], None, None)
+    assert _row_metrics("Segment Liabilities > APMEA", entries=[seg_liabilities]) == ["segment_liabilities"]
+    seg_results = kpi.Entry("segment_results", "money", "inr_cr", [kpi._rx("segment results")], None, None)
+    assert _row_metrics("Segment Results > Before finance costs and taxes",
+                        entries=[seg_results]) == ["segment_results"]
+
+
+def test_v81_a_leaf_line_wins_over_the_section_phrase():
+    """Step 1: when the leaf is another line, the leaf's own metric owns the row, not the section's."""
+    dividend = kpi.Entry("dividend_income", "money", "inr_cr", [kpi._rx("dividend income")], None, None)
+    finance = kpi.Entry("finance_cost", "money", "inr_cr", [kpi._rx("finance costs")], None, None)
+    assert _row_metrics("Dividend income > Finance costs", entries=[dividend, finance]) == ["finance_cost"]
+
+
+def test_v81_total_income_matches_the_leaf_and_not_a_note_or_a_sentence():
+    """Step 1: the new table lines anchor their own leaf, so a note/heading cell is not the Total Income row."""
+    assert _row_metrics("Total income (1+2)") == ["total_income"]
+    assert _row_metrics("Total Income Rs Cr") == ["total_income"]
+    assert _row_metrics("Note: > Operating Revenue and Total Income include") == []
+    assert _row_metrics("strong volume growth and double - digit > Total Income") == []
+
+
+def test_v81_net_debt_to_ebitda_reads_the_ebidta_spelling():
+    """Step 1: SRF's 36 "Net Debt to EBIDTA" rows were unmapped; the ratio's own alias takes the spelling."""
+    assert "net_debt_to_ebitda" in _row_metrics("Net Debt to EBIDTA", company="SRF")
+    assert "net_debt_to_ebitda" in _row_metrics("Net Debt to EBITDA", company="SRF")
+
+
+def test_v81_net_revenues_does_not_collide_with_total_revenues():
+    """Step 1: Bharti's "Net revenues" (176 cells) is never stored as the revenue line."""
+    assert "revenue" not in _row_metrics("Net revenues")
+    assert "revenue" in _row_metrics("Total Revenues")
+
+
 
 
 
