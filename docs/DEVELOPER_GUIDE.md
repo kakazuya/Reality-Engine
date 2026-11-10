@@ -800,7 +800,13 @@ printed date row as its columns), so a date line split onto a second y-row keeps
 `Segment Assets` / `Segment Liabilities` / balance-sheet row is a POINT on the column date (or the end of a
 `Q1 FY27` header); a per-tonne / per-unit / `ARPU` / `ARR` / `RevPAR` / `realisation` row keeps scale 1 and `Rs`; a
 measure group row (`REVENUE | EBITDA | EBITDA MARGIN`) enters `col_header` as `measure=<text>`; and a garbled label
-(`St`, `-------`, `CT2, Yes 529.40`) is not stored. `reality_engine/v2/build_cells.py` reads a pilot3
+(`St`, `-------`, `CT2, Yes 529.40`) is not stored. Round 5 adds: `Six months` / `6 months` / `Half year` over a
+date column is H1; a label's own currency and the scale word beside it beat the page unit (`ARPU US$` is USD scale 1,
+`(US$ Mn)` USD million, `Revenue in ₹ Cr` Rs crore); a bare `as a % of NR` / `% of revenue` / `margin %` row under a
+line item takes that item as its parent; a tall label joins the numbers sharing its top edge (the Coal India
+`MCL ... CMPDIL` rows) and a canonical Roman numeral is a row number while `CIL` is a name; over 30% of a label's
+letters in non-words keeps the cell and its value with `method='text_layer;garbled'`; a decimal tail cut off by the
+text layer (`7,601.5` + `1`, `2,016` + `32`) merges back; and `As > on > 30.06.2025` is a POINT. `reality_engine/v2/build_cells.py` reads a pilot3
 store read-only and writes `doc`, `period` and `table_cell` into `<out>/company/<ISIN>.db`, skipping a document whose
 sha256 is already there:
 
@@ -809,15 +815,55 @@ python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir> [--since
     [--types deck,results] [--symbols A,B]
 ```
 
-The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory) wrote 74,486 cells in
-88.4 s; 94.9% of cells carry a `period_id`, 81.9% a scale and 0.0% no header (round 3: 75,394 / 95.0% / 78.4% / 0.0%;
-round 2: 88,941 / 64.6% / 71.9% / 6.1%; the store is smaller because a cell with no label, no readable label or no
-resolvable-period header is no longer stored). `reality_engine/v2/cell_sample.py` draws the hand-grade sample
-(`--store-dir <dir> --n 100 --type deck|results --seed 13 --out <csv>`; columns doc, page, label, header, period_id,
-value_text, unit_text, scale, value, method and a 300-character page snippet). Wolf's own round-4 grade of the first
-30 cells of each seed-13 sample (`.tmp/f4_results.csv`, `.tmp/f4_deck.csv`): results 27/30, deck 27/30, against
-27/30 and 21/30 in round 3. Rules a-i, the measured table, the remaining misses and the tests
-(`reality_engine/tests/test_v2_table_cells.py`, 45) are in `docs/V2_SCHEMA_CONTRACT.md` section 10.
+The full 189-document pilot20 run (76 decks + 113 results, into a fresh `--out` directory, round 9 `.tmp/v2r9`)
+wrote 77,105 cells in 122.2 s; 95.1% of cells carry a `period_id`, 86.3% a scale and 0.0% no header (round 8:
+75,666 / 95.0% / 86.3% / 0.0%; round 7:
+75,846 / 95.1% / 85.7% / 0.0%; round 6:
+73,833 / 95.1% / 85.1% / 0.0%; round 5: 74,259 / 94.9% / 85.4% / 0.0%; round 4: 74,486 / 94.9% / 81.9% / 0.0%;
+round 3: 75,394 / 95.0% / 78.4% / 0.0%; round 2: 88,941 / 64.6% / 71.9% / 6.1%; a cell with no label, no readable
+label or no resolvable-period header is not stored). Round 9: deck 14,333 cells (round 7 13,995, round 8 13,540),
+results 62,772. Methods: `text_layer` 71,355, `text_layer;garbled` 1,543, `text_layer;delta` 3,738,
+`text_layer;junk_suspect` 388, `text_layer;delta;garbled` 73, `text_layer;garbled;junk_suspect` 8. `reality_engine/v2/cell_sample.py` draws the hand-grade
+sample (`--store-dir <dir> --n 100 --type deck|results --seed 29 --out <csv>`; columns doc, page, label, header,
+period_id, value_text, unit_text, scale, value, method and a 300-character page snippet). Wolf's own round-7 grade of
+the first 30 cells of each seed-29 sample (`.tmp/f7_results.csv`, `.tmp/f7_deck.csv`): results 28/30, deck 26/30,
+against 26/30 and 24/30 in round 6. Round 7 fixes, in the round-6 grade's class order: a bare `US$` unit cell keeps
+its currency (USD, scale 1 on a per-unit row, never the page's Rs); a period header printed once over its measure
+columns spreads over the group and the measure row is kept on either side of it (`measure=Revenue > Q1 FY27`); a
+label whose box sits inside a tall figure box keeps its own figures (the Coal India ratio table's 2,752 / 3,052); a
+header phrase holding two printed dates is split into two headers; a table title is not a column header, a mixed
+`3 months ended | 6 months ended | Year ended` row is read as group spans, a block that yields no cell leaves its
+rows to the block below and a cash-flow table's columns are ordered by the opening/closing cash cross-check; a `bps`
+column is `bps` and `(MMT)` is `MMT`; an `ii)` / `ii,` marker starting mid-label begins its own printed row; and a
+repeated sub-header over date columns becomes `dimension=<text>`. Round 8 restores the two rows an earlier round graded right: Coal India results p20's two-column
+Key Financial Ratios table (a right-edge `Remarks` word no longer drops the date row, and the first figure
+line takes the label printed over it) and Indhotel deck p33's `Less : Share of Non Controlling Interest` -96%
+(a two-word `Var. vs FY24` column is no longer taken for a table title). Round 8 also fixes: a balance/level
+row (net debt, borrowings, shareholders' equity, market cap, cash level, coverage, AUM) is a POINT at the
+column date while a flow stays the column's period, and a page titled '... as of and for the quarter ended'
+is not a balance sheet; a one-cell measure section at the left (`1. Segment Revenue`) and a table title
+(`Revenue Analysis`) enter `col_header` as `measure=`; the nearest table/segment title above the stack is
+the parent of every row; `Q 2` / `H 1` are period words and a short row keeps its printed x-alignment;
+`in 000's` is scale 1000, a bare `Bn` on population/coverage is a count, `(400` + `bps)` is -400 bps and a
+decimal-free figure at least 50x both column neighbours is `;junk_suspect` with the value NULL; a label up to
+6 points above its figures pairs with that row; and a label gluing two ratio names keeps the row printed
+second. Round 9 fixes the round-8 grade and replay classes: a FLOW word inside a label (return, turnover, gain,
+loss, margin, income, expense, restatement) now beats a balance word (equity, investments, inventory, cash), so
+Bharti's ROE, Titan's inventory turnover and the OCI/FX/Restatement rows keep their printed quarter/half/year,
+while operating counts (customer base, towers, co-locations) and balance ratios (debt to working capital, current
+ratio, book value) are points; `measure=` comes only from header rows over the columns, never from a row label
+(`INCOME`, `Revenue from operations`, `1. Segment Revenue`) - the HDFC AMC results p6 keeps all five columns (91
+cells, round 8: 46); on a `Key Financial Ratios` page a 30-September column is H1 and a 31-March column FY (Coal
+India p20's Net Profit Margin 22% is H1), a remarks column is neither a header nor a parent; group headings name a
+RUN of columns split at the midpoint between headings and a sub-header (`Coal | Other Dry | '000 TEUs | MMT`)
+refines only its group run, so Adani's p49/p61 year sequences map by position and its p33/p42/p43 port-volume
+tables keep 247 cells each with `dimension=` parents and MMT / '000-TEU units; a bullet, letterhead, title fragment
+(`th`), remarks column or boxed side figure is no row's parent, `Page 13 of 59` is never a value, and a split
+restatement label keeps `Regrouped Employee Benefits Expense`. The replay gate over every row graded right in
+r5-r8 (136 rows, matched on doc + page + value) is 136 kept / 0 lost in `.tmp/v2r9/replay.csv`; the seed-37 grades
+are ungraded in `.tmp/f9_results.csv` / `.tmp/f9_deck.csv`. Rules a-j, the measured table, the remaining misses and the tests
+(`reality_engine/tests/test_v2_table_cells.py`, 85 in the three v2 test files) are in
+`docs/V2_SCHEMA_CONTRACT.md` section 10.
 
 ### O25. Embedding bake-off and semantic search (T-154, 9 Nov 2026)
 
