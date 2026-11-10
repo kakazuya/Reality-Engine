@@ -9,7 +9,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `do
 
 ## Running (owner: Eagle session; claim_worker in the new session)
 - T-179 DONE (first look): no effect of removing raw SQL (SQL 96/120 right, no SQL 94/120; same-arm runs disagree on 14-16 of 60). Grader lenient vs Opus (28 of 50 Opus-not-right called right). Median 34-56 s and 6-9 lookups per answer; tools take 1-2 s of that. Result in `tasks/FABLE_TESTS_2026-11-10.md`; data `D:/RealityEngine/t179/`.
-- T-177 tool merged ece2378e (free Kilo readers, text input: 98.7% verbatim on 8 pages). 60-page run with Dots, Nemotron Super VL and Ultra writing to `D:/RealityEngine/v2/reference_pages/` (started 11 Nov ~03:00 by Eagle, background).
+- T-177: tool merged ece2378e; 60-page run done in `D:/RealityEngine/v2/reference_pages/` (3 free Kilo readers, text): rows on 60/58/60 pages, 0 errors, 3,355 of 3,635 cells verbatim (92%), but only 857 agreed between two readers (24%): row labels differ, so the reconcile key must match by value and column, not label text.
 - T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) HELD with T-132 until T-180 decides: q12 one seed 85%, zero-loss gate failed, self-graded.
 
 ## Next action
