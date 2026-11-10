@@ -857,10 +857,17 @@ def _term_hits(column: str, words: list[str]) -> tuple[str, list]:
     return expr, [f"%{word}%" for word in words]
 
 
+def _turn_key(row: Any) -> tuple:
+    """Identity of a whole answer turn: (document, answer_turn).  Answer-turn ids are per call (two calls of one
+    company collide) and prepared remarks carry negative ids, so a bare id is never a turn (T-164 r8)."""
+    return (row["doc_key"], row["answer_turn"]) if row["answer_turn"] else ("row", row["id"])
+
+
 def statements(symbol: str, topic: str | None = None, terms: str | None = None, date_from: str | None = None,
                date_to: str | None = None, as_of: str | None = None, limit: int = 10,
                role: str | None = None, period: str | None = None,
-               rank_terms: str | None = None, latest: bool = False) -> dict[str, Any]:
+               rank_terms: str | None = None, latest: bool = False,
+                entities: str | None = None, whole_turn: bool = True) -> dict[str, Any]:
     """Management statements from concall transcripts, exact quotes: topic tag (margin, guidance, capex, order ...),
     free ``terms`` (all words must appear), call-date window, role (ceo / cfo / md / mgmt).
 
@@ -883,6 +890,10 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     for word in re.findall(r"[\w₹%&\-\.]+", terms or ""):
         where += " AND (t.statement LIKE ? OR t.quote LIKE ?)"
         args += [f"%{word}%", f"%{word}%"]
+    if entities:
+        for word in re.findall(r"[\w₹%&\-\.]+", entities or ""):
+            where += " AND t.entities LIKE ?"
+            args += [f"%{word}%"]
     if role:
         where += " AND t.role=?"
         args.append(role.strip().lower())
@@ -901,8 +912,12 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
             period_args += [item, f"{item}%"]
     words = [w for w in re.findall(r"[\w₹%&\-\.]+", rank_terms or "") if len(w) > 2]
     score_sql, score_args = _term_hits("t.statement", words[:8])
+    cap = _cap(limit)
+    # whole_turn: `limit` counts answer turns, not sentences, so fetch enough rows to find that many turns
+    # (T-164 r7: limit=20 used to return 188 rows because the LIMIT bounded matched sentences before expansion)
+    row_cap = cap * 50 if whole_turn else cap
     rows = _q(f"SELECT t.id, t.call_date, t.call_period, t.page, t.speaker, t.role, t.section, t.topics, "
-              f"t.period_discussed, t.quote, t.is_fragment, t.known_at, t.doc_key, d.title, "
+              f"t.period_discussed, t.quote, t.is_fragment, t.entities, t.answer_turn, t.known_at, t.doc_key, d.title, "
               f"(CASE WHEN {topic_sql} THEN 0 ELSE 1 END) AS topic_rank, "
               f"(CASE WHEN {period_sql} THEN 0 ELSE 1 END) AS period_rank, ({score_sql}) AS term_score "
               f"FROM transcript_statement t "
@@ -910,12 +925,59 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
               f"AND a.alias_key=t.doc_key), t.doc_key) WHERE {where}{extra} "
               f"ORDER BY topic_rank, period_rank, term_score DESC, t.is_fragment, t.call_date DESC, t.seq LIMIT ?",
               # the SELECT-list placeholders bind before the WHERE ones
-              (*topic_args, *period_args, *score_args, *args, *eargs, _cap(limit)))
-    out = [{"call_date": r["call_date"], "call_period": r["call_period"], "speaker": r["speaker"],
+              (*topic_args, *period_args, *score_args, *args, *eargs, row_cap))
+    if whole_turn and rows:
+        kept, seen = [], set()
+        for r in rows:
+            key = _turn_key(r)
+            if key in seen:
+                continue
+            seen.add(key)
+            kept.append(key)
+            if len(kept) >= cap:
+                break
+        rows = [r for r in rows if _turn_key(r) in seen]
+    out = [{"id": r["id"], "call_date": r["call_date"], "call_period": r["call_period"], "speaker": r["speaker"],
             "role": r["role"], "section": r["section"], "topics": r["topics"],
-            "period_discussed": r["period_discussed"], "quote": _trim(r["quote"]),
+            "period_discussed": r["period_discussed"], "entities": r["entities"], "answer_turn": r["answer_turn"],
+            "quote": _trim(r["quote"]),
             "provenance": _prov("transcript_statement", f"{r['doc_key']} p{r['page']}", r["known_at"],
                                 title=r["title"], row_id=r["id"])} for r in rows]
+    # whole answer turn: expand each matched row to all sentences of its answer turn, keyed by (document, turn):
+    # answer-turn ids collide across calls and prepared-remark ids are negative, so a bare id mixed two calls and
+    # swept prepared remarks in (T-164 r8).  A prepared-remarks turn expands only when it was itself selected.
+    extra, eargs = _asof(as_of, "t.known_at")
+    if whole_turn and rows:
+        keys = {_turn_key(r) for r in rows if r["answer_turn"]}
+        if keys:
+            turn_rows = []
+            doc_keys = sorted({r["doc_key"] for r in rows})
+            dk_placeholders = ",".join("?" * len(doc_keys))
+            tr = _q(f"SELECT t.id, t.call_date, t.call_period, t.page, t.speaker, t.role, t.section, t.topics, "
+                    f"t.period_discussed, t.quote, t.is_fragment, t.entities, t.answer_turn, t.known_at, t.doc_key, d.title "
+                    f"FROM transcript_statement t LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a "
+                    f"WHERE a.symbol=t.symbol AND a.alias_key=t.doc_key), t.doc_key) "
+                    f"WHERE t.symbol=? AND t.doc_key IN ({dk_placeholders}){extra} "
+                    f"ORDER BY t.call_date DESC, t.seq",
+                    (sym, *doc_keys, *eargs))
+            seen_ids = {r["id"] for r in rows}
+            for r in tr:
+                if r["id"] in seen_ids or _turn_key(r) not in keys:
+                    continue
+                seen_ids.add(r["id"])
+                turn_rows.append(r)
+            if turn_rows:
+                extra_rows = [{"id": r["id"], "call_date": r["call_date"], "call_period": r["call_period"],
+                               "speaker": r["speaker"], "role": r["role"], "section": r["section"],
+                               "topics": r["topics"], "period_discussed": r["period_discussed"],
+                               "entities": r["entities"], "answer_turn": r["answer_turn"],
+                               "quote": _trim(r["quote"]),
+                               "provenance": _prov("transcript_statement", f"{r['doc_key']} p{r['page']}", r["known_at"],
+                                                   title=r["title"], row_id=r["id"])} for r in turn_rows]
+                out = out + extra_rows
+    # drop helper id from output
+    for r in out:
+        r.pop("id", None)
     matched = any(topic in (row["topics"] or "") for row in out) if topic else None
     fallback = None
     if topic and not matched:
@@ -925,6 +987,25 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
             out, fallback = alt, "doc_page_bm25"
     return _reply(sym, out, "pilot3_statements", fallback=fallback,
                   topic_matched=matched, hint=None if out else "no statement in the held calls matches these arguments")
+
+
+def analyst_questions(symbol: str, n_calls: int = 4, as_of: str | None = None) -> dict[str, Any]:
+    sym = resolve_symbol(symbol)
+    extra, eargs = _asof(as_of, "known_at")
+    calls = [r[0] for r in _q("SELECT DISTINCT call_date FROM transcript_question WHERE symbol=?" + extra +
+                                " ORDER BY call_date DESC LIMIT ?", (sym, *eargs, max(1, min(int(n_calls or 4), 20))))]
+    if not calls:
+        return _reply(sym, [], "pilot3_analyst_questions", hint="no analyst questions held")
+    placeholders = ",".join("?" * len(calls))
+    rows = _q("SELECT id, call_date, call_period, analyst, firm, question, topics, entities, known_at, doc_key "
+              "FROM transcript_question WHERE symbol=? AND call_date IN (" + placeholders + ")" + extra +
+              " ORDER BY call_date DESC, id", (sym, *calls, *eargs))
+    out = [{"call_date": r["call_date"], "call_period": r["call_period"], "analyst": r["analyst"],
+            "firm": r["firm"], "question": _trim(r["question"]), "topics": r["topics"],
+            "entities": r["entities"],
+            "provenance": _prov("transcript_question", r["doc_key"], r["known_at"], row_id=r["id"])}
+           for r in rows]
+    return _reply(sym, out, "pilot3_analyst_questions", n_calls=len(calls))
 
 
 def _call_page_hits(sym: str, topic: str, terms: str | None, rank_terms: str | None, date_from: str | None,

@@ -24,7 +24,8 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `fin_quarter_printed` (T-057) | every P&L cell a results table prints: current, preceding, year-ago, ytd, prior ytd, last full year, with the check that confirmed it (`xbrl_ok`/`sum_ok`/`repeat_ok`/`unchecked`) | the results PDF's word boxes |
 | `ratio_panel`, `formula` | derived ratios with formula id and input row ids | computed from fin lines |
 | `kpi_series` | company-stated KPIs (order book, AUM, EBITDA/t, NIM, mixes) with period, dimension, `entity` (the company or the named subsidiary, kept apart from `basis`; T-088), quote, page | decks, results, press releases, transcripts |
-| `transcript_statement` | call quotes with speaker, role, topic tags | transcripts |
+| `transcript_statement` | call quotes with speaker, role, topic tags, named entities, answer-turn id (T-164) | transcripts |
+| `transcript_question` (T-164) | analyst questions per call (analyst, firm, question, topics, entities) + `analyst_question` view | transcripts |
 | `guidance` | one row per forward target: metric, period, low/high (NULL for a worded target), unit, revision link | transcripts, decks, results, press releases |
 | `shp_category`, `shp_holder`, `shp_pledge`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings by category with the share count the printed percentage is on, the named holders, the promoter pledge block, share count, dividends, prices, PE/PB/EV | exchange data stores |
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
@@ -304,7 +305,29 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
 - `build --part all` with 4 OCR dbs: 484 s for 23,558 pages (~2.7 min per company, single process).
 - After the dates + guidance merges: guidance 660 -> 329 rows (KEC 218, BAJFINANCE 52, HINDALCO 59): check recall
   on the next re-answer; kpi_series 38,851; zero Q1FY27 rows from documents known before 2026-04-01.
-- **T-094 five unseen companies (6 Nov 2026, this MSI, scratch under `.tmp/unseen5`).** DALBHARAT, POWERGRID,
+- **T-164 (round 8, 11 Nov 2026).** Rebuilt from the round-7 baselines: u8 24,835 statements (baseline
+  24,325), q12 43,007 (39,256). Added rows are management statements only (u8 +1,043, q12 +3,775; no
+  ir/moderator/analyst line among the 9 reviewed calls). Speaker rules: an IR or moderator title is never
+  promoted; IR lines are no longer stored (481 baseline IR script rows removed, 462 u8 + 19 q12); a DOI block
+  whose heading stands alone is read and its names keep the block role ("L Krishnakumar", "Anand Rathi"); an
+  initial-led label ("G Vivek:", "S Ranganathan:") starts that speaker's turn (EDELWEISS analyst questions no
+  longer run on as the chairman's statements; BEL Manoj questions 0). Management statements lost vs baseline:
+  15 rows, every one carried another speaker's label inside it (CIPLA analyst questions, IDEA/EDELWEISS
+  sentences reattributed to their real speaker); every one is a question now or is stored under its own
+  speaker. Entities: the longest printed span wins (Capital Foods, Tata Copper Plus, SG Mart, Missile Fire
+  Control System), a single token inside a longer printed name is a fragment, and generic capability phrases
+  (Communication Suite, Navigation Complex System, Electronic Warfare Suite, Youngest Aircraft Fleet) are out;
+  GNPA/GMV/TAM/RCC/WHRS and the learned all-caps metric words (a token beside a figure in 2+ calls and in at
+  least half its uses) are out; the call's own "<Name> Pvt Limited (X)" expansion makes X that company
+  (SBPL). `whole_turn` is keyed on (doc_key, answer_turn) and expands prepared remarks only when selected
+  (SAIL safeguard limit=2: 32 rows, 2 turns). Seeds 9264/10264, 50 entity-tagged and 40 topic-tagged statements
+  per store: entity precision 93.7% (u8 93.5/93.5, q12 98.4/89.6), topic label precision 97.3% (u8 91.8/98.6,
+  q12 100/100). Named-programme recall: NGC 39/41, Virupaksha 2/2, Capital Foods 138/140, Tata Copper Plus
+  8/9, SG Mart 3/3, Durgapur Steel Plant 9/13. 'other' 30.9-36.5% u8, 27.8-42.3% q12. Artifacts
+  `.tmp/t164/r8_entity_<seed>.csv`, `r8_topic_<seed>.csv` (statement text + right/wrong per item). Tests:
+  transcripts 22, speakers 13, kpi 108 passed + 6 errors (the sandbox refuses pytest's tmp_path directory:
+  WinError 5), no-company-literals 7, guidance 32, answer_check 25, doc_identity 21, profile 8,
+  lookups_pilot3 35 + 1 skipped, lookups_docs 18.
   TATAELXSI, APOLLOHOSP, DLF (window 2023-10-01, compute 2022-07-01; manifest 3,328 rows, 2,111 `ok`):
   `docs_collect` 270 s -> 2,091 docs / 28,566 pages / 218.7 MB; `build --part all` 814.8 s -> 151.2 MB. Parts:
   comparatives 405.6 s, extract 258.3 s, stores 113.8 s (repeat 59.9 s), notes 22.8 s, pages 6.9 s, guidance 5.1 s,

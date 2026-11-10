@@ -466,7 +466,89 @@ class Pilot3ToolTests(unittest.TestCase):
         tagged = p3.statements("KEC", topic="margin")
         self.assertIsNone(tagged["fallback"])
 
-    def test_docs_listing(self):
+    def test_analyst_questions_view(self):
+        # the view exists and serves rows inserted into transcript_question
+        import sqlite3
+        c = sqlite3.connect(DB)
+        c.execute("INSERT INTO transcript_question(symbol,doc_key,call_date,call_period,page,analyst,firm,question,topics,entities,answer_turn,known_at,known_at_source,extractor_rule) "
+                  "VALUES ('KEC','pdfs/KEC/call.pdf','2026-02-12','Q3FY26',1,'Ravi Kumar','Axis Capital','Could you explain the safeguard duty?','trade_policy','safeguard',1,'2026-02-14T10:00:00','docs.known_at','t')")
+        c.commit()
+        c.close()
+        out = p3.analyst_questions("KEC", n_calls=4)
+        self.assertTrue(out["found"])
+        self.assertEqual(out["rows"][0]["analyst"], "Ravi Kumar")
+        self.assertEqual(out["rows"][0]["firm"], "Axis Capital")
+        self.assertIn("safeguard", out["rows"][0]["question"])
+        # the view is queryable directly
+        c = sqlite3.connect(DB)
+        v = c.execute("SELECT COUNT(*) FROM analyst_questions WHERE symbol='KEC'").fetchone()[0]
+        c.close()
+        self.assertGreaterEqual(v, 1)
+
+    def test_statements_whole_turn_with_entities_filter(self):
+        # whole_turn=True must not crash when an entities filter is supplied (T-164 E)
+        out = p3.statements("KEC", entities="transmission", whole_turn=True)
+        self.assertIn("found", out)
+        out2 = p3.statements("KEC", whole_turn=True)
+        self.assertIn("found", out2)
+
+    def test_statements_whole_turn_limit_counts_turns_not_rows(self):
+        """Step 5 (T-164 r7): limit=1 returns one answer turn (all its sentences), not 1 matching row plus
+        its siblings from several turns."""
+        c = sqlite3.connect(DB)
+        cols = ("symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,topics,period_discussed,"
+                "period_source,numbers_json,statement,quote,is_fragment,entities,answer_turn,known_at,"
+                "known_at_source,extractor_rule")
+        for turn, seq0 in ((101, 1), (102, 4)):
+            for k in range(3):
+                stmt = f"Turnword sentence {turn}.{k}."
+                c.execute(f"INSERT INTO transcript_statement({cols}) VALUES ('KEC','r7/turns.pdf','2026-09-01',"
+                          "'Q2FY27',2,?,'A B','ceo','qa','margin','Q2FY27','t','[]',?,?,0,'',?,'2026-09-02T10:00:00',"
+                          "'x','t')", (seq0 + k, stmt, stmt, turn))
+        c.commit()
+        c.close()
+        out = p3.statements("KEC", terms="turnword", limit=1, whole_turn=True)
+        rows = out["rows"]
+        self.assertEqual(len({r["answer_turn"] for r in rows}), 1)
+        self.assertEqual(len(rows), 3)          # the whole turn, not just the matched sentence
+        self.assertEqual(rows[0]["answer_turn"], 101)   # seq order inside the same call
+
+    def test_whole_turn_is_keyed_by_document_and_never_sweeps_prepared_remarks(self):
+        """Step 2 (T-164 r8): answer-turn ids collide across two calls of one company and prepared remarks carry
+        negative ids.  limit=2 returns exactly two (document, turn) groups; a prepared-remarks turn appears only
+        when the match itself selected it."""
+        c = sqlite3.connect(DB)
+        cols = ("symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,topics,period_discussed,"
+                "period_source,numbers_json,statement,quote,is_fragment,entities,answer_turn,known_at,"
+                "known_at_source,extractor_rule")
+        for doc, day, seq0 in (("r8/crossA.pdf", "2026-09-03", 20), ("r8/crossB.pdf", "2026-09-04", 20)):
+            for k in range(2):
+                stmt = f"Crossdoc answer {doc[-6]}.{k}."
+                c.execute(f"INSERT INTO transcript_statement({cols}) VALUES ('KEC',?,?,'Q2FY27',2,?,"
+                          "'A B','ceo','qa','margin','Q2FY27','t','[]',?,?,0,'',7,'2026-09-05T10:00:00','x','t')",
+                          (doc, day, seq0 + k, stmt, stmt))
+        for k in range(2):
+            stmt = f"Preparedword remark {k}."
+            c.execute(f"INSERT INTO transcript_statement({cols}) VALUES ('KEC','r8/crossA.pdf','2026-09-03',"
+                      "'Q2FY27',2,?,'A B','ceo','prepared','margin','Q2FY27','t','[]',?,?,0,'',-1,"
+                      "'2026-09-05T10:00:00','x','t')", (30 + k, stmt, stmt))
+        c.commit()
+        c.close()
+        out = p3.statements("KEC", terms="crossdoc", limit=2, whole_turn=True)
+        rows = out["rows"]
+        groups = {(r["provenance"]["source"], r["answer_turn"]) for r in rows}
+        self.assertEqual(len(groups), 2, groups)          # two documents, not one id seen twice
+        self.assertEqual(len(rows), 4)                    # both turns in full
+        self.assertFalse(any("Preparedword" in r["quote"] for r in rows))
+        prep = p3.statements("KEC", terms="preparedword", limit=1, whole_turn=True)["rows"]
+        self.assertEqual({r["answer_turn"] for r in prep}, {-1})
+        self.assertEqual(len(prep), 2)                    # selected prepared remarks expand as their own turn
+
+    def test_statements_entity_search(self):
+        out = p3.statements("KEC", entities="transmission")
+        # no entity named transmission in fixture; ensure no crash and found flag sensible
+        self.assertIn("found", out)
+
         out = p3.docs("KEC", "decks")
         self.assertEqual([r["filing_date"] for r in out["rows"]], ["2026-08-10", "2026-02-10"])
         self.assertEqual(out["counts_by_type"], {"deck": 2})
