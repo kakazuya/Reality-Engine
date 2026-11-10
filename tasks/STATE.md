@@ -1,30 +1,28 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-10 12:35 IST (Eagle took over from Wolf)
-History `docs/state_history/` (previous: `STATE_2026-11-10_1235.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 contract `docs/V2_SCHEMA_CONTRACT.md`.
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-10 22:15 IST (Eagle, session close)
+History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md`; Fable review brief `docs/FABLE_REVIEW_BRIEF.md` (live table section 7).
 
 ## Now
-- Stores (DELETE journal mode): `D:/RealityEngine/{u8/u8.db, q12/q12.db, p20/p20new.db}`, pilot set `pilot10/pilot10.db`, n10 being built (T-160). Go key 1 only.
-- Pilot20 FINAL 9 Nov: 229/230 right (`reports/2026-11-09_p20_final_230.xlsx`).
-- Routine (10 Nov rulings): no headless Opus unless Shivam says so; a separate read-only dsh worker grades every branch; max 4 code workers (10 Nov: MSI is dedicated to this work); no dsh starts 11:30-15:30 and 06:30-09:30 Mon-Fri; peak-hour work on Beam (`beam-free`).
-- Merged 10 Nov: T-161/T-159 (first pages type/date docs), T-162 (SHP known_at from file stamp), T-132 r9 (cells; store `D:/RealityEngine/v2/p20_r9`), T-133 v8 (label map; live KPI +253 right / 0 lost), T-165 (holding every category, GoI/FPI/MF, KPI investor words), T-166 r4 guidance (0 lost, 1 junk; D:/RealityEngine/v2/review/t166_r4), T-133 v8.1 (leaf-anchored live KPI labels, EBIDTA, net_revenue; Beam grader: 199/200, 0 stored right rows lost, ~470 junk cells removed; artifacts `D:/RealityEngine/v2/review/label_map_v81`).
-- Waiting Shivam: T-116, T-118, T-121, T-122, T-125, T-126. Bake-off rescored (scorer fix): Beam 105/108, LongCat 98/108.
+- Stores: `D:/RealityEngine/{p20/p20new.db, u8/u8.db, q12/q12.db, n10/n10.db, pilot10/pilot10.db}`; s10 list `D:/RealityEngine/s10/universe_s10.csv` (filings fetched 10 Nov).
+- Routine: code to DeepSeek (precision) or Beam (plumbing, peak hours); a separate read-only grader on every branch; Claude reruns tests + samples; merge only with 0 earlier-right rows lost. Cap 4 code workers. DeepSeek on Go key 1 (key 2 hit its DeepSeek limit 10 Nov; Beam on key 2).
+- Merged 10 Nov: T-133 v8.1, T-166 r4, T-171 steps 1-2, ticket-board rework (why/close_when, close --merged, advisory lint), dsh-worker `model='beam-free'`, free_model_check, worker cap 4, pane order.
+- Rulings 10 Nov: frozen hold-out scoring (T-172, T-173); factor rewards dynamic (T-176); OCR only for textless/jumbled pages (T-175); PIB other languages only without English; policy-to-company impact (T-174).
 
-## Running (owner: Eagle)
-- Beam code: T-163 r2 (worktree Eagle-T163-segments), T-164 r5 (Eagle-T164-statements, entity precision only). dsh-worker MCP now takes model='beam-free' (live after /mcp).
-- Running: T-163 r3, T-164 r6, CHOLAFIN KPI fix (DeepSeek); T-171 RAM branch under Beam review. Cap 4 code workers.
-- Shivam 10 Nov: after T-166, T-164, T-163 merge, Eagle writes a report for Fable 5.2 (measured / not measured / bottleneck / evals / fixes); due tonight. Older-filings fetch deferred until 95% answered.
+## Running (owner: Eagle session; claim_worker in the new session)
+- T-164 r8 grader (read-only) 20261110T162210Z-c295de59 of branch dsh/20261110T151121Z-12fc4af1 (tests pass on 10 files). Merge if 0 losses and entity/topic >= 85%.
+- T-163 r7 (DeepSeek) 20261110T162525Z-3ef5482a, base dsh/20261110T151935Z-315b63b8 (r6: u8 100%, q12 87.5%, 13/14).
 
 ## Next action
-1. T-166 follow-ups: 3 wrong speakers, APLAPOLLO volume keyed revenue_growth, ADANIPORTS p52 11-16% missed, BHARTIARTL analyst capex row.
-2. Rebuild p20/u8/q12 now possible (nothing reads p20new.db; guidance part waits for T-166 r2) (docs_collect --profile, build --part stores/transcripts/guidance, KPI now allowed: v8.1 merged) so T-161/T-162 go live; restart reality-data MCP (T-165). Re-ask SHP questions at past dates to close T-162.
-3. T-132 r10 SENT BACK (review 44/60 strict, 0 lost; Bharti p34/p61 51,798 Year Ended Mar-26 stored as Q4, r9 had FY; junk parents; YoY column identity; bullet cell; Titan 871 unit). r11 to the same worker when a code slot is free, after 15:30.
-4. After 15:30: T-164 (statements), T-163 (segments); briefs in `tasks/handoff/`.
-5. T-133 follow-ups (5/40 real labels still rejected, OCR EPS label, 4 revenue cells): `tasks/efficiency/worker_reviews.jsonl`.
-6. CHOLAFIN KPI fix branch dsh/20261110T104212Z-67ceeb28 (tests pass; u8 rebuild 2 removed/4 fixed/0 lost): Shivam 10 Nov: rerun the q12/p20/pilot10/n10 main-vs-branch rebuild later (`.tmp/cholafin_kpi/build.py --tree main|branch --stores <one>` in its worktree, one store at a time, only when <=1 worker is building; RAM reaped it once), then grader, then merge.
-7. Unmerged old branches to decide: dsh/20261106T143135Z-7b2b2cce, dsh/20261107T221506Z-daa1d0c7 (T-113 A), Wolf-agy-20261109T034102Z-5e770d54, Wolf-agy-20261109T182713Z-4d398312 (T-160).
-8. T-157: Coal India 9, Havells 3, Titan 1 calls not found. T-139; raw_to_drive.
+1. Review the two jobs above; merge T-164 if the grader passes; T-163 needs >= 90% on 4 seeds and a clean coverage check.
+2. Then rebuild p20/u8/q12 (docs_collect --profile, build --part stores/transcripts/guidance/kpi/segments, one at a time) and restart reality-data MCP so T-161, T-162, T-165, T-166, v8.1 go live.
+3. CHOLAFIN KPI branch dsh/20261110T104212Z-67ceeb28: run `.tmp/cholafin_kpi/build.py --tree main|branch --stores <one>` in its worktree for q12, p20, pilot10, n10 one at a time when <= 1 worker builds (RAM reaped it once), then grader, then merge.
+4. s10: T-169 website crawler (Beam), build s10 stores, T-172 frozen split, then T-170 baseline with timed answers.
+5. T-132 paused after r12 pending Fable's review (`docs/FABLE_REVIEW_BRIEF.md`).
+6. Board: backfill why/close_when for the 76 open tickets from the 10 Nov triage (job 20261110T154548Z-13965dd0 output); move Wolf's DOING rows (T-113, T-120, T-130, T-132, T-133, T-134, T-139) to their real owner.
+7. T-166 follow-ups: 3 wrong speakers, APLAPOLLO volume as revenue_growth, ADANIPORTS p52 11-16% missed, BHARTIARTL analyst capex row.
+8. Raw folders `raw_market/masters` and `transcripts_raw` documented in `docs/RAW_DATA_FAMILIES.md` but not in a main doc (data_inventory reports 2 undocumented).
 
 ## Store copy recipe
-checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE` on the copy (else workers fail "unable to open database file").
+checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE` on the copy.
 
 ## Merge recipe
-Review row first; merge --no-ff --no-commit; drop PROGRESS_NOTES.md (root only); tests per file; docs; commit `By:`; remove worktree.
+Grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl.

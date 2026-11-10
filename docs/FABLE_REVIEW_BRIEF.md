@@ -57,7 +57,7 @@ how to make it trustworthy. Be blunt; we want the hardest critique, ranked by ex
 | Answer misses by cause on pilot10 (600) | pilot10 | worker misread 44-89, worker sums/units 18-31, not held 19-24, store defects 10-21 (5 Nov runs) | blueprint section 5 |
 | Cheap model vs Opus on the same store | pilot10 subset | 20 random pairs: Opus 17 right, DeepSeek 11; DeepSeek made more lookups (10.6 vs 8.2), so the gap is reading, not call count; raw SQL was 77 of 126 DeepSeek calls on one question set | blueprint "Model against store: T-084 and T-087" |
 | Retrieval, 112 gold questions, top 10 | pilot3 | bm25 35%, bm25+1B 46%, bm25+8B 52% | blueprint section 5 |
-| Extractor precision measured today (independent graders, own seeds) | u8/q12/p20 | guidance r4: 0 targets lost, 1 junk of 27 added (merged); statements entities 78.1% / 84.2%, topics 82.0% / 81.4% (r6, sent back); segments u8 90.0%, q12 67.5% (r4, q12 unmeasured on final code); table cells strict 41/60 (r11, sent back) | section 7 |
+| Extractor precision measured on 10 Nov (independent graders, own seeds) | u8/q12/p20 | guidance r4: 0 targets lost, 1 junk of 27 added (merged); statements r7: entity 82.5% u8 / 89.8% q12, topics 88.5% / 97.1%; segments r6 (worker): u8 100%, q12 87.5%; table cells r11: strict 41/60 | section 7 |
 | Build cost (5 large companies, one process) | unseen5 | `build --part all` 815 s; scale estimate 52 h on 6 processes, 501 GB for 6,940 companies (upper bound) | blueprint section 7a |
 
 ## 4. What we have NOT measured
@@ -121,17 +121,24 @@ Weaknesses we already know:
 
 ## 7. Live status of the open tickets (updated as they merge)
 
-Last update: 10 Nov 2026, 20:45 IST.
+Last update: 10 Nov 2026, 22:10 IST (end of Eagle's session).
 
 | Ticket | What | State | Latest independent measurement |
 |---|---|---|---|
-| T-166 | Guidance: only management's own targets | **Merged** (fc1aca12) | 0 targets lost, 1 junk of 27 added; open: 3 wrong speaker names, a volume target keyed as revenue growth |
+| T-166 | Guidance: only management's own targets | **Merged** (fc1aca12) | 0 targets lost, 1 junk of 27 added; open: 3 wrong speaker names, a volume target keyed as revenue growth, a table match that skips the rest of a sentence |
 | T-133 v8.1 | Label map, live KPI leaf matching | **Merged** | 199/200 sample; 0 stored right rows lost; ~470 junk cells removed |
-| T-164 | Call statements: entities, topics, whole answer turns | Round 8 running | r7 independent: 0 statements lost; entity 82.5% u8, 89.8% q12; topics 88.5% / 97.1%; NGC 36/38, Virupaksha found; but 35 IR/moderator/analyst lines promoted to management and the whole-answer lookup breaks its limit across calls |
-| T-163 | Segment / business-line / subsidiary table | Round 5 running | r4: u8 90.0%, q12 67.5% (pre-final), 12/14 audit questions |
-| T-132 | v2 table cells | **Paused after round 12** for this review | r12 (worker's own measure): strict 47/60; 9 of 40 sampled earlier-right r10 cells still lost; replay 179/179; a parent-by-indentation rule broke 6 graded parents and was reverted. r11 independent: 41/60, 27 of 100 sampled right cells lost. Twelve rounds of layout rules have not converged: see question 1 |
-| CHOLAFIN KPI | Sentence extractor: impact ratios, prior-year values, segment figures | Tests pass; 4-store rebuild diff pending | u8 rebuild: 2 wrong removed, 4 corrected, 0 right lost |
-| T-167/T-168 | s10 unseen set | List approved; filings fetched (2,719 files, 0 errors) | store build next |
+| T-171 (steps 1-2) | Worker RAM | **Merged** | ~80 MB per worker saved; latency unchanged; shared reality-data server still open |
+| T-164 | Call statements: entities, topics, whole answer turns | Round 8 under independent review (job 20261110T162210Z-c295de59) | r8 worker: entity 89.6-98.4%, topic 91.8-100%, IR scripts no longer promoted, SAIL whole-answer limit fixed; r7 independent: entity 82.5% u8, 35 IR/analyst rows promoted |
+| T-163 | Segment / business-line / subsidiary table | Round 7 running (job 20261110T162525Z-3ef5482a) | r6 worker: u8 100% (tuned seeds), q12 87.5% on 3 seeds, DLF note restored, 13/14 audit questions; rows fell 739 -> 313 on q12, coverage check in r7 |
+| T-132 | v2 table cells | **Paused after round 12** for this review | r12 worker: strict 47/60; 9 of 40 sampled earlier-right r10 cells still lost; r11 independent: 41/60, 27 of 100 sampled right cells lost |
+| CHOLAFIN KPI | Sentence extractor: impact ratios, prior-year values, segment figures | Tests pass; 4-store rebuild comparison deferred by Shivam (RAM) | u8 rebuild: 2 wrong removed, 4 corrected, 0 right lost |
+| T-167/T-168 | s10 unseen set (5 sparse-disclosure + 5 mid/small deck filers) | List approved; filings fetched (2,719 files, 0 errors); website crawler (T-169) and store build next | none yet |
+| T-172 / T-173 | Frozen half of each set's questions; s20 exam set | Adopted 10 Nov, not yet run | none yet |
+| T-176 | Recurring factor-reward engine (replaces the one-off T-118 study) | Opened 10 Nov | T-118's 8 Nov pooled snapshot only |
+
+Decisions made on 10 Nov that bear on your review (all in `tasks/RULINGS.md`): routing (Beam for plumbing and read-only grading, DeepSeek for precision-judged extraction, a separate grader on every branch); score only on frozen sets; factor rewards are recomputed per stock, sector and regime at every point in time, reported as the statistical mode of rewarded factors; OCR only for pages with no text layer or a jumbled one; every policy maps to the companies it touches as advantageous, disadvantageous or neutral with a reason and a figure.
+
+Worker evidence from 10 Nov (`tasks/efficiency/worker_reviews.jsonl`): rounds per ticket today were guidance 4, statements 8, segments 7, table cells 12. Beam's self-reported precision was higher than the independent measurement in every graded round (e.g. 100% / 99.2% claimed vs about 50-71% measured on statements); DeepSeek's self-reports were closer but also overstated once (86.4% claimed vs 78.1% measured). Independent graders (DeepSeek and Beam, read-only) caught every overstatement Claude later verified.
 
 ## 8. Questions we want you to judge
 

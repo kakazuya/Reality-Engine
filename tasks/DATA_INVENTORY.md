@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-10 11:14 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 0 tables and 0 of 73 raw folders.
+Generated 2026-11-10 22:03 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 0 tables and 2 of 73 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -190,7 +190,7 @@ Undocumented: 0 tables and 0 of 73 raw folders.
 | pilot/macro_all.db | `macro_claim` | 21,793 | yes |
 | pilot/macro_all.db | `macro_claim_target` | 44,742 | yes |
 | pilot/macro_all.db | `macro_doc` | 456 | yes |
-| pilot/pilot60_history_manifest.db | `docs` | 303,790 | yes |
+| pilot/pilot60_history_manifest.db | `docs` | 313,653 | yes |
 | pilot/results_notes.db | `results_notes` | 17,989 | yes |
 | results_notes.db | `docs` | 41,606 | yes |
 | results_notes.db | `gate` | 21 | yes |
@@ -235,7 +235,7 @@ Undocumented: 0 tables and 0 of 73 raw folders.
 | nse_announcements | 0 | 0.00 | - | yes |
 | nse_shp_xbrl_pilot | 777 | 0.01 | 2026-11-09 `SHP_1733654_07102026112959_WEB.xml.gz` | yes |
 | originals_lists | 0 | 0.00 | - | yes |
-| pilot60_history | 15,056 | 23.46 | 2026-11-10 `manifest.csv` | yes |
+| pilot60_history | 17,776 | 29.46 | 2026-11-10 `manifest.csv` | yes |
 | price_bands | 0 | 0.00 | - | yes |
 | raw_market/amfi_nav | 0 | 0.00 | - | yes |
 | raw_market/bse_bhav | 5 | 0.00 | 2026-11-09 `BhavCopy_BSE_CM_0_0_0_20261109_F_0000.CSV` | yes |
@@ -245,7 +245,7 @@ Undocumented: 0 tables and 0 of 73 raw folders.
 | raw_market/bse_deliv | 4 | 0.00 | 2026-11-09 `_manifest.csv` | yes |
 | raw_market/bse_index | 0 | 0.00 | - | yes |
 | raw_market/bse_insider | 0 | 0.00 | - | yes |
-| raw_market/masters | 11 | 0.06 | 2026-10-08 `nse_SME_EQUITY_L.csv` | yes |
+| raw_market/masters | 11 | 0.06 | 2026-10-08 `nse_SME_EQUITY_L.csv` | **undocumented** |
 | raw_market/mc_fiidii | 0 | 0.00 | - | yes |
 | raw_market/nsdl_fpi_daily | 0 | 0.00 | - | yes |
 | raw_market/nsdl_fpi_fortnight | 0 | 0.00 | - | yes |
@@ -274,7 +274,7 @@ Undocumented: 0 tables and 0 of 73 raw folders.
 | results_pdfs | 0 | 0.00 | - | yes |
 | runners | 0 | 0.00 | - | yes |
 | tax_sources | 0 | 0.00 | - | yes |
-| transcripts_raw | 17 | 0.01 | 2026-11-09 `sha_index.db` | yes |
+| transcripts_raw | 17 | 0.01 | 2026-11-09 `sha_index.db` | **undocumented** |
 | user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | yes |
 | user_research_drive | 236 | 0.60 | 2026-10-26 `_native_blocked.txt` | yes |
 | vahan | 0 | 0.00 | - | yes |

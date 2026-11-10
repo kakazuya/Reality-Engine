@@ -29,3 +29,5 @@ Moved from `AGENTS.md` on 1 Nov 2026. What is actually on disk today: `tasks/DAT
 | `kec_transcripts/` | KEC call transcripts from kecrpg.com, 45 files, with `_known_at.json` taken from each filed cover letter. | `tasks/pilot60/proto3_text/kec_fetch.py`. |
 | `reddit/` | Reddit question-mining dumps used to build the question bank. | `fetch_reddit_questions.py`. |
 | `D:\RealityEngine\pdfs` (outside `raw/`) | Legacy annual-report PDF pile, 5,364 files, reused rather than duplicated under `raw/pdfs`. | `PDFS_DIR` in `reality_engine/config.py`; `ingest_annual_reports.py`. |
+| `raw_market/masters/` | Exchange security masters: BSE scrip lists (Equity, MT, SME; active, delisted, suspended) as JSON and NSE `EQUITY_L.csv` / `SME_EQUITY_L.csv`, fetched 8 Oct 2026; the source for listing status and symbol/ISIN lists. | security-master loaders (see `grep -r nse_EQUITY_L reality_engine`). |
+| `transcripts_raw/` | Call transcripts fetched from the links printed in one-page transcript cover letters (T-157, 9 Nov), stored by sha256 prefix folder with `sha_index.db` and a `_dedupe` folder. | `reality_engine/pilot3/linked_transcripts.py`. |
