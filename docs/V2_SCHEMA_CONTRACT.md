@@ -1037,3 +1037,73 @@ replay with zero lost right rows. v1's build `D:/RealityEngine/v2/label_map`, v2
 `.tmp/label_map_v2` build
 and seed-31 sample, v3's `.tmp/label_map_v3` build and seed-37 sample, v4's/v5's builds, v6's build and v7's build
 are superseded by `D:/RealityEngine/v2/review/label_map_v81`.
+
+## 12. Reference pages (T-177, 11 Nov 2026)
+
+Whole-page ground truth for the completeness report (design: `tasks/FABLE_TESTS_2026-11-10.md` section 1). Module:
+`reality_engine/v2/reference_pages.py`; test: `reality_engine/tests/test_v2_reference_pages.py`. Uses the free-reader client
+from `reality_engine/scripts/extract_deck_figures.py` (`MODELS`, `render_jpeg_b64`), re-imported not copied.
+
+Commands:
+
+```
+python -m reality_engine.v2.reference_pages sample --stores <db,...> --out <dir> --seed 20261110
+python -m reality_engine.v2.reference_pages transcribe --pages <pages.csv> --reader <MODELS name> --input text|image --out <dir> [--split dev]
+python -m reality_engine.v2.reference_pages reconcile --pages <pages.csv> --runs <dirA> <dirB> --out <dir>
+```
+
+- `sample` reads `doc`/`doc_page` in p20, u8 and q12 (read-only) and writes `pages.csv`: 60 pages, 30 deck / 20
+  results / 10 annual report, only pages with a text layer and >= 15 value-numbers except 4 chart-only/no-text deck
+  pages kept and flagged `unread`. Columns: `page_id, store, symbol, doc key, sha256, doc type, page, stratum,
+  in_first_build, split`. Split rule: 30 `dev` and 30 `frozen`, balanced by doc type, no company above 4 pages; same
+  seed -> byte-identical file (11 Nov: two runs, 60 rows, identical SHA-256 `BEED9B07D7274D24...`, 36.8 s and 40.2 s).
+- `transcribe` saves `<page_id>.raw.txt` (every raw reply, also on error), `<page_id>.rows.json` and
+  `transcribe_log.csv` (`page_id, reader, input, seconds, in_tok, out_tok, error, n_rows`). It refuses any reader whose
+  `price` is not `(0.0, 0.0)` or whose id carries no free marker, and resumes by skipping existing `.rows.json` files.
+  The prompt asks for JSON Lines, one object per cell: `table, row_label, col_header, value, unit`.
+- `reconcile` writes `reference_cells.csv` (`page_id, table, row_label, col_header, value_text, unit_text, agreed,
+  verbatim, sums_ok, settled_by`) and `disputes.csv` (both readers side by side). A cell is `agreed` when both readers
+  give the same normalised value for the same table + row label + column header; `verbatim` when the value string is in
+  the page text layer; `sums_ok` when a printed total equals the sum of the parts within 0.5% / 0.5; `settled_by=script`
+  only when agreed and verbatim. A row with no table, row label and column header cannot be located in the grid and is
+  dropped as `unlabeled` (counted in the per-page print), so prose pages do not collapse into one cell.
+
+Readers tried on 11 Nov 2026 (8 dev pages, same 4 as round 1 plus 4 more: 4 deck, 2 results, 2 annual report; no paid
+model called):
+
+| Reader | Input | Pages with rows | Rows | Verbatim share | Mean s/page | Errors |
+|---|---|---|---|---|---|---|
+| `dots-studio/dots-3-note-preview:free` (Kilo) | text | 8/8 | 233 | 0.987 | 15.5 | 0 |
+| `dots-studio/dots-3-note-preview:free` (Kilo) | image | 8/8 | 225 | 0.956 | 15.9 | 0 |
+| `nvidia/nemotron-3.5-super-vl:free` (Kilo) | text | 8/8 | 228 | 0.987 | 11.6 | 0 |
+| `nvidia/nemotron-3.5-super-vl:free` (Kilo) | image | 6/8 | 367 | 0.608 | 22.5 | 0 |
+| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` (Kilo) | text | 8/8 | 189 | 0.984 | 16.1 | 0 |
+| `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` (Kilo) | image | 3/8 | 41 | 0.244 | 5.8 | 0 |
+| `nvidia/nemotron-3-ultra-550b-a55b:free` (Kilo) | text | 8/8 | 229 | 0.987 | 26.1 | 0 |
+| `nvidia/nemotron-3.5-lightning:free` (Kilo) | text | 8/8 | 320 | 0.678 | 28.5 | 0 |
+| `longcat-2.5-preview-free` (Go) | text | 0/1 | 0 | - | 0.4 | HTTP 400 `Upstream request failed: Model is unavailable.` |
+
+Working readers: the Dots model on both inputs, and the four Nemotron models on text. Image input is only worth using
+with `nemotron-3.5-super-vl` (6/8). LongCat on Go stays unavailable (HTTP 400 with text input, 11 Nov). Step 5 is paid
+now and is not called on any provider; `mimo` (Zen) is skipped because the sandbox denies its log file (EPERM).
+`p012` (stratum `unread`, no text layer) and `p041` (results PDF page 4 is an auditor's review in prose, not a table)
+are why not every page yields real cells.
+
+Root cause of the round-1 empty replies: the model answered, and the reply was literally `[]` (`out_tok` 2), so the
+parser was not dropping rows. The array-of-cells prompt with an explicit "Output [] if the page has no table" fallback
+made the small readers take the fallback; the JSON Lines prompt with a two-line example and "output nothing if the page
+has no printed numbers" returns rows on all 8 pages for six readers. Fence lines are stripped from the reply before
+parsing (JSON array, JSON Lines and single objects all accepted).
+
+Reconcile of the best two distinct readers (Dots text + `nemotron-3.5-super-vl` text) on the 8 pages: 277 cells, 128
+agreed (0.462), 275 verbatim (0.993), 126 settled by script (0.455). Per page (cells / agreed / verbatim): p001
+10/1.000/1.000, p002 18/1.000/1.000, p011 22/0.455/1.000, p012 0/0/0, p013 55/0.000/1.000, p014 90/1.000/0.978,
+p041 20/0.000/1.000, p042 62/0.000/1.000. Agreement is low because the readers key the same printed values to
+different table titles, row labels and headers (on p013 both read the EPS column but one anchors the values to `EPS`
+and the other to the company name row); `verbatim` only proves the string is somewhere on the page, not that it belongs
+to that cell, so it is necessary but not sufficient for a settled cell.
+
+Test runtime: `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2_reference_pages.py -q` -> 3 passed in
+0.43 s (fixtures are small SQLite files under `.tmp`; `tmp_path` is not usable in this sandbox because
+`.tmp/pytest-of-SYSTEM` is ACL-locked by an earlier SYSTEM session). Typecheck: basedpyright 0 errors on the module and
+its test.

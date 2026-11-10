@@ -428,21 +428,25 @@ def _model_call(reader: str, prompt: str, image_b64: str | None) -> dict[str, An
 
 
 TRANSCRIBE_PROMPT = (
-    "Transcribe every table on this page into a grid. If the page has any table (ruled or unruled, including panels), "
-    "you MUST output one object per cell; do not answer []. Use [] ONLY when the page truly has no table. "
-    "Output a JSON array of objects, one per cell, with keys: \"table\" (table title as printed, or \"\" if none), "
-    "\"row_label\" (row label as printed), \"col_header\" (column header as printed; join multiple header levels with "
-    "\" > \"), \"value\" (value as printed), \"unit\" (unit as printed). "
-    "Copy values verbatim. No summaries, computed values, or interpretation. Output only the JSON array."
+    "Transcribe every table on this page into a grid. Output ONE JSON object per line (JSON Lines): no array, no "
+    "markdown, no prose. Each object is one cell and has exactly these five keys: "
+    "{\"table\": \"<table or panel title as printed, or empty>\", "
+    "\"row_label\": \"<row label as printed>\", "
+    "\"col_header\": \"<column header as printed; join header levels with ' > '>\", "
+    "\"value\": \"<value exactly as printed>\", \"unit\": \"<unit as printed>\"}. "
+    "Every printed number belongs to a row, with the label and header that locate it, including unruled panels and "
+    "numbers printed inside charts. If the page has no printed numbers at all, output nothing. "
+    "Copy value and unit exactly as printed; no computed totals, conversions or summaries. "
+    "Example of two lines:\n"
+    "{\"table\": \"Revenue\", \"row_label\": \"Revenue\", \"col_header\": \"Q2FY27\", \"value\": \"1,234\", \"unit\": \"Rs crore\"}\n"
+    "{\"table\": \"Revenue\", \"row_label\": \"Revenue\", \"col_header\": \"Q2FY26\", \"value\": \"1,100\", \"unit\": \"Rs crore\"}"
 )
 
 
 def _parse_rows(raw: str) -> list[dict[str, Any]]:
     raw = (raw or "").strip()
-    # strip markdown fences
-    if raw.startswith("```"):
-        raw = re.sub(r"^```[a-zA-Z]*\n?", "", raw)
-        raw = re.sub(r"\n?```$", "", raw).strip()
+    # strip markdown fence lines anywhere (models wrap JSON arrays and JSON Lines alike)
+    raw = re.sub(r"(?m)^\s*```[a-zA-Z]*\s*$", "", raw).strip()
     # try direct JSON
     try:
         obj = json.loads(raw)
@@ -630,12 +634,15 @@ def reconcile_pages(pages_csv: Path, runs: list[Path], out: Path) -> int:
         doc_key = meta["doc key"]
         page = int(meta["page"])
         text = _page_text_for(store, doc_key, page)
-        norm_text = _norm_space(text).casefold().replace(",", "")
-        # removing thousands separators from text too for verbatim check? keep both
         text_norm = _norm_space(text).casefold()
 
-        rows_a = _load_run_rows(run_a, pid)
-        rows_b = _load_run_rows(run_b, pid)
+        # A cell is located by table + row label + column header; rows with all three empty
+        # (a model transcribing prose or a chart) cannot become reference cells.
+        rows_a_all = _load_run_rows(run_a, pid)
+        rows_b_all = _load_run_rows(run_b, pid)
+        rows_a = [r for r in rows_a_all if any(_norm_space(r.get(k)) for k in ("table", "row_label", "col_header"))]
+        rows_b = [r for r in rows_b_all if any(_norm_space(r.get(k)) for k in ("table", "row_label", "col_header"))]
+        n_unlabeled = (len(rows_a_all) - len(rows_a)) + (len(rows_b_all) - len(rows_b))
 
         # union keys
         keys: list[tuple[str, str, str]] = []
@@ -670,14 +677,8 @@ def reconcile_pages(pages_csv: Path, runs: list[Path], out: Path) -> int:
             if r:
                 table_col_values.setdefault((k[0], k[2]), []).append((k[1], r.get("value", "")))
 
-        sums_ok_map: dict[tuple[str, str, str], bool] = {}
-        for (tbl, col), vals in table_col_values.items():
-            # find total rows
-            for label, value in vals:
-                if _is_total(label if False else None) if False else False:
-                    pass
-            # Actually map label from key; recompute below
         # compute sums_ok per key
+        sums_ok_map: dict[tuple[str, str, str], bool] = {}
         for k in keys:
             r = map_a.get(k) or map_b.get(k)
             label = r.get("row_label", "") if r else ""
@@ -724,7 +725,6 @@ def reconcile_pages(pages_csv: Path, runs: list[Path], out: Path) -> int:
             value_text = va if va else vb
             unit_text = ua if ua else ub
             # verbatim check
-            vnorm = _norm_value(value_text).replace("-", "")
             verbatim = False
             if value_text.strip():
                 # check if value token in text
@@ -766,7 +766,8 @@ def reconcile_pages(pages_csv: Path, runs: list[Path], out: Path) -> int:
 
         agreed_share = (n_agreed / n_cells) if n_cells else 0.0
         verbatim_share = (n_verbatim / n_cells) if n_cells else 0.0
-        print(f"{pid}: cells={n_cells} agreed_share={agreed_share:.3f} verbatim_share={verbatim_share:.3f}")
+        print(f"{pid}: cells={n_cells} agreed_share={agreed_share:.3f} verbatim_share={verbatim_share:.3f} "
+              f"unlabeled={n_unlabeled}")
 
     # write reference_cells.csv
     rc_path = out / "reference_cells.csv"

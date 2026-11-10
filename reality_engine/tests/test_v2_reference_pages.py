@@ -8,6 +8,8 @@ from reality_engine.v2 import reference_pages as rp
 
 
 def _base():
+    # tmp_path cannot be used here: pytest's .tmp/pytest-of-SYSTEM basetemp is ACL-locked by an earlier
+    # SYSTEM-run session in this sandbox (PermissionError). Keep the fixture inside the writable worktree.
     base = Path(".tmp/t177/_test_tmp")
     base.mkdir(parents=True, exist_ok=True)
     d = base / uuid.uuid4().hex
@@ -56,6 +58,13 @@ def test_parser_tolerant():
     raw3 = "```json\n[{\"table\":\"T\",\"row_label\":\"Z\",\"col_header\":\"C\",\"value\":\"9\",\"unit\":\"\"}]\n```"
     rows3 = rp._parse_rows(raw3)
     assert len(rows3) == 1
+    # The production prompt asks for JSON Lines inside a fence; one line per cell.
+    raw4 = ("```json\n"
+            "{\"table\":\"T\",\"row_label\":\"P\",\"col_header\":\"D1\",\"value\":\"5\",\"unit\":\"%\"}\n"
+            "{\"table\":\"T\",\"row_label\":\"P\",\"col_header\":\"D2\",\"value\":\"6\",\"unit\":\"%\"}\n"
+            "```")
+    rows4 = rp._parse_rows(raw4)
+    assert [r["value"] for r in rows4] == ["5", "6"]
 
 
 def test_sampler_determinism_and_quotas():
@@ -109,6 +118,7 @@ def test_reconcile_handmade():
         {"table": "T", "row_label": "Revenue", "col_header": "Q2", "value": "200", "unit": "Rs"},
         {"table": "T", "row_label": "Total", "col_header": "Q1", "value": "(100)", "unit": "Rs"},
         {"table": "T", "row_label": "Revenue", "col_header": "Q3", "value": "999", "unit": "Rs"},
+        {"table": "", "row_label": "", "col_header": "", "value": "777", "unit": "Rs"},
     ]
     (run_a / "p1.rows.json").write_text(json.dumps(rows_a))
     (run_b / "p1.rows.json").write_text(json.dumps(rows_b))
@@ -118,6 +128,8 @@ def test_reconcile_handmade():
     assert total_row["agreed"] == "False"
     q3 = [r for r in rc if r["col_header"] == "Q3"]
     assert len(q3) == 1
+    # A row with no table, label or header cannot be located in the grid: it is not a cell.
+    assert all(r["value_text"] != "777" for r in rc)
     rev = [r for r in rc if r["row_label"] == "Revenue" and r["col_header"] == "Q1"][0]
     assert rev["verbatim"] == "True"
     assert rev["agreed"] == "True"
