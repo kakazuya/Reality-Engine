@@ -197,7 +197,7 @@ def _open_db(path: Path) -> Optional[sqlite3.Connection]:
             path,
             timeout_s=30,
             check_same_thread=False,
-            cache_size_kib=-262144,   # 256 MB page cache
+            cache_size_kib=-65536,   # 64 MB page cache
         )
         con.execute("PRAGMA mmap_size = 1073741824")
         return con

@@ -1120,6 +1120,7 @@ class Manager:
         permission: str | None = None,
         small_fix: bool = False,
         write_scope: str = "workspace",
+        data_job: bool = False,
         confirm_data_write: bool = False,
         confirm_full_access: bool = False,
         confirm_repo_root_write: bool = False,
@@ -1542,6 +1543,8 @@ class Manager:
             argv += ["--control-token-env", heartbeat.CONTROL_TOKEN_ENV]
             if followup_wait_seconds:
                 argv += ["--followup-wait", str(followup_wait_seconds)]
+            if write_scope == "data" or data_job:
+                argv.append("--data-job")
             # hard_timeout_seconds is always set for MSI jobs (4 h default):
             # it is the real limit, while the supervisor renews the lease.
             argv += ["--timeout", str(hard_timeout_seconds)]

@@ -551,6 +551,29 @@ their out-file is `jobs\<job_id>\result.md`, so the harness fallback gives each 
 model run: `python -m pytest reality_engine/tests/test_dsh_worker_plugin.py -q` and
 `python -m pytest reality_engine/tests/test_deepseek_harness_controls.py -q`.
 
+### L3. Per-worker RAM cut (T-171)
+
+Code workers no longer start the data-gather MCP server (saves ~76 MB/worker); data jobs and `start_job` data jobs
+keep it. `reality-data` lazy-imports duckdb and caps its SQLite page cache (32 MB) and mmap (64 MB). Measured per
+worker (4 workers, read-only tiny jobs), before/after:
+
+| Process in worker tree | Before (MB) | After (MB) |
+|---|---:|---:|
+| dsh node | 230 | 230 |
+| sandbox + subprocess node | 130 | 130 |
+| reality-data MCP | 210 | ~120 |
+| code-tools MCP | 77 | 77 |
+| data-gather MCP | 76 | 0 (code workers) |
+| harness + supervisor python | 70 | 70 |
+| **Total** | **~793** | **~627** |
+
+Steps 1-2 alone leave ~627 MB/worker, above the 450 MB target. Step 3 (one shared reality-data server over MCP
+streamable HTTP on localhost, started once by the supervisor and reused by every worker, per-worker stdio fallback)
+is not implemented because it needs changes inside dsh itself (node package) to point workers at an HTTP transport
+instead of spawning stdio; design: supervisor starts `plugins/reality-data/server/server.py --http 127.0.0.1:PORT`
+once, writes the port into the per-run patch instead of the stdio command, and workers fall back to stdio when the
+shared server is unreachable. Tools unchanged: reality-data and code-tools calls still pass.
+
 ### M. Doc review loop and session hooks (T-045)
 
 `reality_engine/scripts/doc_review_loop.py` reviews docs with fresh Haiku 5.5 sessions (`claude -p`, medium effort, tools Read, Grep, Glob and Edit only). The queue is `git ls-files` minus `tasks/handoff/DOC_REVIEW_PROGRESS.csv`, smallest first, so a killed run resumes. It refuses to run on `main`.
