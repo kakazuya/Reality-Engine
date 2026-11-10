@@ -24,14 +24,15 @@ STORES = (Path("D:/RealityEngine/pilot10/pilot10.db"), Path("D:/RealityEngine/p2
 
 
 def decide(raw, family="telecom", seeds=None, *, has_measure=False, has_metric_row=False, peers=0,
-           previous=""):
+           previous="", trusted=False):
     return label_map.decide_label(raw, family, seeds or {}, FAMILY_ENTRIES, COMMON,
                                   has_measure=has_measure, has_metric_row=has_metric_row, peers=peers,
-                                  previous=previous)
+                                  previous=previous, trusted=trusted)
 
 
-def metric(raw, family="telecom", *, has_measure=False, has_metric_row=False, peers=0):
-    return decide(raw, family, None, has_measure=has_measure, has_metric_row=has_metric_row, peers=peers)[1]
+def metric(raw, family="telecom", *, has_measure=False, has_metric_row=False, peers=0, trusted=False):
+    return decide(raw, family, None, has_measure=has_measure, has_metric_row=has_metric_row, peers=peers,
+                  trusted=trusted)[1]
 
 
 def need(raw, family="telecom", **context) -> label_map.Proposal:
@@ -272,9 +273,9 @@ def test_review_queues_carry_rule_confidence_status_and_the_seed43_sample():
     rejected_row = next(row for row in rows if row["label_norm"] == "financial assets")
     assert rejected_row["status"] == "rejected" and rejected_row["rule"] == "heading"
     sample = out / label_map.SAMPLE_FILE
-    assert sample.is_file() and sample.name == "sample_seed47.csv"
+    assert sample.is_file() and sample.name == "sample_seed53.csv"
     rejected_sample = out / label_map.REJECTED_SAMPLE_FILE
-    assert rejected_sample.is_file() and rejected_sample.name == "rejected_seed47.csv"
+    assert rejected_sample.is_file() and rejected_sample.name == "rejected_seed53.csv"
     with rejected_sample.open(encoding="utf-8") as handle:
         assert len(list(csv.DictReader(handle))) == 1
     with sample.open(encoding="utf-8") as handle:
@@ -329,8 +330,8 @@ def test_v3_segment_misspelling_gets_the_section_metric():
 
 
 @pytest.mark.parametrize("raw, why", [
-    ("iil 0ther lncome", "a digit/letter swap"),
     ("gpwis mmt", "OCR word soup"),
+    ("xqzt vbnm", "OCR word soup"),
 ])
 def test_v3_garbled_labels_are_rejected(raw, why):
     _key, proposal, rejection = decide(raw, "telecom", has_metric_row=True, peers=6)
@@ -557,7 +558,7 @@ def test_v5_mis_parented_children_route_by_their_own_wording():
     for raw, family, wanted in (
             ("Segment Assets \"' > Total liabirlties", "telecom", "total_liabilities"),
             ("Profit for the pe riod attributable to: > Total Com pre hensive Income for the period attributable "
-             "to: -Own ers of the Company", "paints_chemicals", "total_comprehensive_income"),
+             "to: -Own ers of the Company", "paints_chemicals", "total_comprehensive_income_attributable"),
             ("Items not to be reclassified to profit or loss : > Total comprehensive income for the quarter / year",
              "telecom", "total_comprehensive_income"),
             ("Total Revenue", "hotels", "total_revenue"),
@@ -811,3 +812,66 @@ def test_v6_replay_counts_a_right_row_lost_when_it_maps_to_nothing():
         rows = list(csv.DictReader(handle))
     assert [row["status"] for row in rows] == ["kept", "LOST", "kept", "changed"]
     shutil.rmtree(folder, ignore_errors=True)
+
+
+def test_v7_rejects_only_character_level_junk():
+    """Step 2: an OCR-damaged but readable line is queued; a label with clean cells in 2 periods is trusted."""
+    for raw, family in (("0ther expenses", "paints_chemicals"), ("1c1 provisions", "telecom"),
+                        ("iil 0ther lncome", "telecom"),
+                        ("total rrabi6ties", "telecom"), ("lec1se liabilities", "telecom")):
+        _key, proposal, rejection = decide(raw, family)
+        assert rejection == "", (raw, rejection)
+        assert proposal is None or proposal.metric != "from_header", raw
+    assert decide("9b bb", "telecom")[2] == "digit glued to a word"
+    assert decide("to1al", "telecom")[2] == "digit glued to a word"
+    # v7 evidence: the same label in two periods of one document (or two documents) is real, not garbled.
+    for raw in ("real estate", "non participating health", "order book 31 mar"):
+        assert decide(raw, "realty", trusted=True)[2] == "", raw
+    assert decide("real estate", "realty")[2] == "garbled"
+    assert metric("Real Estate", "realty", trusted=True) in (None, "real_estate")
+    assert need("Order Book - 31 Mar26", "epc_capital_goods", trusted=True).metric == "order_book"
+
+
+def test_v7_the_ocr_fixer_never_rewrites_a_dictionary_word():
+    """Step 3: "consumer" is a word, so the one-edit fixer must leave it alone (never "consumed")."""
+    assert label_map._repair_token("consumer") == "consumer"
+    assert label_map.normalise_label("Electrical Consumer Durables") == "electrical consumer durables"
+    assert label_map.normalise_label("Lloyd consumer") == "lloyd consumer"
+    assert label_map.normalise_label("Liabi6ties") == "liabilities"
+
+
+def test_v7_from_header_only_when_the_header_names_the_measure():
+    """Step 4: a row that names its own measure is not a from_header member."""
+    proposal = need("ARR in Rs (LFL)", "hotels")
+    assert proposal.metric == "arr" and "lfl" in proposal.dimension, proposal
+    proposal = need("Occupancy % (LFL)", "hotels")
+    assert proposal.metric == "occupancy_pct" and "lfl" in proposal.dimension, proposal
+    proposal = need("Share of profit of: > Associate and joint venture", "jewellery_lifestyle")
+    assert proposal.metric == "share_of_jv_profit", proposal
+    assert proposal.dimension == "associate and joint venture"
+    proposal = need("Changes in assets and liabilities > Provisions", "telecom")
+    assert proposal.metric == "change_in_provisions", proposal
+    assert decide("Cheques, draft on hand", "paints_chemicals")[1] is None
+
+
+def test_v7_the_smaller_context_rows_keep_their_meaning():
+    """Step 5: net cash keeps its sign, working capital is the balance, and the damaged/attribution rows route."""
+    assert need("Net cash", "telecom").metric == "net_cash"
+    assert need("Net Debt", "telecom").metric == "net_debt"
+    assert need("Working capital", "airlines").metric == "working_capital"
+    assert metric("Working capital loans and demand loan facilities", "airlines") is None
+    proposal = need("Exceptional Items (net of tax & NCI)", "telecom")
+    assert proposal.metric == "exceptional_items" and "nci" in proposal.dimension, proposal
+    key, proposal, _rejection = decide("Segment Liabilities > Total raabinties", "telecom")
+    assert proposal is not None and proposal.metric == "segment_liabilities"
+    assert proposal.dimension == "" and key == "segment liabilities"
+    assert decide("Segment Assets > A", "telecom")[1] is None
+    key, proposal, _rejection = decide(
+        "Total comprehensive income for the period attributable to: > ~ 8,. Co. I..", "hotels")
+    assert proposal is not None and proposal.metric == "total_comprehensive_income", proposal
+    assert proposal.dimension == ""
+    key, proposal, _rejection = decide(
+        "Other comprehensive income for the period attributable to: > Total comprehensive income for the period "
+        "attributable to owners of the parent", "paints_chemicals")
+    assert proposal is not None and proposal.metric == "total_comprehensive_income_attributable", proposal
+    assert proposal.dimension == "attribution=owners_of_parent"

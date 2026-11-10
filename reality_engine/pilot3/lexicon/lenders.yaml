@@ -16,7 +16,7 @@ entries:
   - {metric: pcr_stage3, kind: pct, unit: pct, labels: ["(provision )?coverage( ratio)?[^.]{0,30}?stage ?3", "stage ?3[^.]{0,30}?coverage", "\\bpcr\\b"]}
   - {metric: credit_cost_bps, kind: bps, unit: bps, labels: ["credit cost", "loan loss(es)? (and|&) provisions? to average", "loan loss to average"]}
   - {metric: crar_pct, kind: pct, unit: pct, labels: ["capital adequacy", "\\bcrar\\b", "\\bcar\\b"], neg: "tier ?(i|1)\\b|tier ?(ii|2)|tier|loans?|car finance"}
-  - {metric: tier1_pct, kind: pct, unit: pct, labels: ["tier ?(i|1)\\b[^.]{0,20}?(capital|ratio)?", "tier ?(i|1) capital"], neg: "tier ?(ii|2)|\\+|total|car finance"}
+  - {metric: tier1_pct, kind: pct, unit: pct, labels: ["tier ?(i|1)\\b[^.]{0,20}?(crar|capital|ratio)?", "tier ?(i|1) capital"], neg: "tier ?(ii|2)|\\+|total|car finance"}
   - {metric: roa_pct, kind: pct, unit: pct, labels: ["return on (average )?assets", "\\broa\\b"]}
   - {metric: provision_coverage_pct, kind: pct, unit: pct, labels: ["provision coverage ratio", "provision coverage"], neg: "stage ?3"}
   - {metric: loan_loss_provisions, kind: money, unit: inr_cr, labels: ["loan loss(es)? (and|&) provisions", "loan loss provisions?"], neg: "to average|%"}

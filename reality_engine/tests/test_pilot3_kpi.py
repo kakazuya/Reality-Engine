@@ -1090,6 +1090,18 @@ def test_a_row_label_maps_only_when_it_is_the_whole_label():
     assert kpi.row_label_hits(ENTRIES, "HAVELLS", "FY23 - 9MFY23") == []
 
 
+def test_v7_the_live_table_path_keeps_total_revenue_and_roa(monkeypatch):
+    """Step 1: the live table path is main's (label_matches + _own_row_hits), so "Total revenues" and "ROA–PBT"
+    keep their metric; the whole-label dry run maps both after "total revenues?" is back in the KPI lexicon."""
+    assert any(e.metric == "revenue" for e, _ in kpi.label_matches(ENTRIES, "BHARTIARTL", "Total Revenues"))
+    monkeypatch.setattr(kpi, "_sector_of", lambda company: "nbfc")
+    assert any(e.metric == "roa_pct" for e, _ in kpi.label_matches(ENTRIES, "CHOLAFIN", "ROA–PBT"))
+    assert any(e.metric == "revenue" for e, _ in kpi.row_label_hits(ENTRIES, "BHARTIARTL", "Total revenues"))
+    assert any(e.metric == "roa_pct" for e, _ in kpi.row_label_hits(ENTRIES, "CHOLAFIN", "ROA–PBT"))
+    assert [e.metric for e, _ in kpi._own_row_hits(
+        kpi.label_matches(ENTRIES, "HINDALCO", "Leverage Net Debt"))] == ["net_debt"]
+
+
 def test_a_direction_word_is_a_change_not_a_level_and_a_glued_unit_is_a_value():
     """INFY's call says "DSO is down 2 days": 2 is the change, not the 67-day level.  A number glued to a unit the
     lexicon knows ("4.5x", "25kt") is still a value ("2W" and "77k" are not)."""
@@ -1258,15 +1270,17 @@ def test_a_quarter_ended_march_title_is_the_quarter():
         == ["FY26"]
 
 
-def test_net_cash_is_negative_net_debt():
-    """Real rows: SUNPHARMA's "net cash of $3.2 billion" is negative net debt, while ETERNAL's "net cash acquired
-    on acquisition is INR 5 crore" is a transaction, not a level."""
-    rows = kpi.sentence_rows("Consolidated net cash of $3.2 billion as of March 31, 2026", 1, "SUNPHARMA", ENTRIES, DIMS, [])
-    debt = [r for r in rows if r.metric == "net_debt"]
-    assert debt and all(r.value < 0 for r in debt)
+def test_net_cash_is_its_own_level_not_net_debt():
+    """Real rows: SUNPHARMA's "net cash of $3.2 billion" is its own metric with the printed (positive) sign, not
+    net_debt; ETERNAL's "net cash acquired on acquisition is INR 5 crore" is a transaction, not a level."""
+    rows = kpi.sentence_rows("Consolidated net cash of $3.2 billion as of March 31, 2026", 1, "SUNPHARMA",
+                             ENTRIES, DIMS, [])
+    cash = [r for r in rows if r.metric == "net_cash"]
+    assert cash and all(r.value > 0 for r in cash)
+    assert not [r for r in rows if r.metric == "net_debt"]
     rows = kpi.sentence_rows("Net cash acquired on acquisition is INR 5 crore as of March 31, 2026", 1, "ETERNAL",
                              ENTRIES, DIMS, [])
-    assert not [r for r in rows if r.metric == "net_debt"]
+    assert not [r for r in rows if r.metric in ("net_debt", "net_cash")]
 
 
 def test_capex_and_quarter_rules_under_a_profile():
