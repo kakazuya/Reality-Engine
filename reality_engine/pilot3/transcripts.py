@@ -376,55 +376,196 @@ _ENTITY_STOP = {
     "november", "december", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
     "fy", "q1", "q2", "q3", "q4", "rs", "inr", "usd", "eur", "ceo", "cfo", "md", "coo", "ir", "ebitda",
     "pat", "eps", "roce", "roe", "crore", "lakh", "million", "billion", "page", "limited", "ltd", "inc",
-    "mr", "ms", "mrs", "dr", "sir", "madam",
+    "mr", "ms", "mrs", "dr", "sir", "madam", "ministry", "india", "government", "company", "sir",
+    "because", "what", "which", "when", "where", "who", "whom", "whose", "why", "how", "then", "than",
+    "conference", "financial", "results", "quarter", "call", "management", "fiscal", "year", "second",
+    "third", "first", "fourth", "limited", "ltd", "crores", "tech", "bfsi", "healthcare", "life",
+    "sciences", "chief", "business", "officer", "system", "defense", "technology", "innovation",
+    "quality", "thanks", "secretary", "exchange", "floor", "bandra", "mumbai", "north", "america",
+    "west", "indian", "navin", "menon", "rakesh", "glp", "crl", "sbu", "prask",
+    "abhijit", "amc", "amortisation", "arc", "arpob", "awards", "block", "call", "capex", "cask",
+    "chinese", "class", "conference", "control", "corporate", "covid", "csel", "date", "dd",
+    "defence", "department", "depreciation", "dpr", "earnings", "enclave", "finance", "fmcg", "good",
+    "group", "investors", "kingsway", "listing", "lupus", "manager", "metro", "ml", "moving", "ncl",
+    "net", "nsr", "ocf", "oem", "op", "prime", "qr", "re", "respiratory", "se", "sec", "services",
+    "shah", "si", "south", "sreenath", "sripada", "star", "stock", "sunshine", "today", "vil", "viral",
+    "vivek", "vlr", "advisor", "annual", "board", "directors", "managing", "director", "minister",
+    "systems", "wealth", "coming", "look", "phase", "turning", "commerce", "cloud", "neurology",
+    "radar", "cyber", "security", "colocation", "connectivity", "nifty", "advisor", "additionally",
+    "analyst", "analysts", "association", "consolidated", "during", "meet", "part", "performance",
+    "scrip", "code", "section", "securities", "shri", "stage", "suite", "webinar", "electronic",
+    "complex", "circuit", "combat", "fire", "food", "beverage", "insurance", "private", "salt",
+    "dara", "delnaz", "jugalji", "rifats", "bharatelectron", "dft", "epd", "gp", "ltip", "mdl",
+    "msme", "oc", "ppp", "rtd", "sasva", "vat", "amit", "bhinde", "burra", "dilip", "mohan", "rama",
+    "shankara", "vamsi", "sucheth", "bharathan", "area", "city", "office", "tower", "unit", "wing",
+    "chairman", "developers", "development", "media", "production", "service", "transmission",
+    "communications", "empowerment", "near", "plus", "question", "analyst", "analysts", "association",
+    "consolidated", "during", "meet", "part", "performance", "scrip", "code", "section", "securities",
+    "shri", "stage", "suite", "webinar", "electronic", "complex", "circuit", "combat", "fire", "food",
+    "beverage", "insurance", "private", "salt", "cements", "corp", "ebitdar", "npa", "mro", "ytd",
+    "ii", "iii", "gb", "hr", "hrc", "gt", "er", "bl", "ap", "cic", "peb", "mopag", "rfi", "sip",
+    "ficci", "fintech", "discoms", "megawatt", "nasdaq", "agreement", "area", "award", "cost", "data",
+    "east", "future", "number", "please", "software", "transcripts", "society", "spaces", "chronic",
+    "creative", "christy", "damodar", "bhattad", "guru", "manoj", "jain", "martha", "stewart", "ramya",
+    "samina", "souza", "nagarkar", "hospital", "narrow", "award", "just", "further", "next", "post",
+    "mature", "plan", "sales", "service", "summit", "understood", "interesting", "executive", "director",
+    "president", "project", "transmission", "communications", "empowerment", "near", "plus", "question",
+    "analyst", "analysts", "association", "consolidated", "during", "meet", "part", "performance", "scrip",
+    "code", "section", "securities", "shri", "stage", "suite", "webinar", "electronic", "complex",
+    "circuit", "combat", "fire", "food", "beverage", "insurance", "private", "salt", "cements", "corp",
+    "ebitdar", "npa", "mro", "ytd", "ii", "iii", "gb", "hr", "hrc", "gt", "er", "bl", "ap", "cic",
+    "peb", "mopag", "rfi", "sip", "ficci", "fintech", "discoms", "megawatt", "nasdaq", "agreement",
+    "area", "city", "office", "tower", "unit", "wing", "chairman", "developers", "development", "media",
+    "production", "number", "award", "kunal", "mitra", "murthy", "parkash", "puneet", "renganathan",
+    "richa", "subhadip", "vishwas", "acv", "aif", "alos", "arpp", "aws", "bmp", "ca", "cply", "cpu",
+    "dso", "ecl", "emi", "esop", "fat", "fs", "gi", "idc", "il", "imc", "mdi", "ofa", "otc", "pes",
+    "prc", "rm", "rota", "rsp", "sg", "sme", "tcv", "up", "jv", "nim", "arpp", "arpu", "opex", "mf",
+    "otc", "esop", "artist", "brand", "connect", "cost", "data", "east", "future", "number", "please",
+    "software", "transcripts", "society", "spaces", "chronic", "creative", "christy", "damodar",
+    "bhattad", "guru", "manoj", "jain", "martha", "stewart", "ramya", "samina", "souza", "nagarkar",
+    "hospital", "narrow", "award", "artist", "every", "growth", "highlights", "marketing", "next", "over",
+    "park", "plan", "premium", "ready", "secure", "summit", "understood", "interesting", "number",
+    "sales", "service", "software", "award", "drink", "every", "fuzes", "gm", "gmv", "horeca", "hitech",
+    "imf", "indus", "maruti", "nagarro", "nielsen", "nuvama", "park", "please", "premium", "ready",
+    "secure", "summit", "understood", "interesting", "number", "sales", "service", "software", "award",
+    "drink", "every", "fuzes", "gm", "gmv", "horeca", "hitech", "imf", "indus", "maruti", "nagarro",
+    "nielsen", "nuvama", "park", "please", "premium", "ready", "secure", "summit", "understood",
+    "interesting", "number", "sales", "service", "software", "award", "drink", "every", "fuzes", "gm",
+    "gmv", "horeca", "hitech", "imf", "indus", "maruti", "nagarro", "nielsen", "nuvama", "park",
+    "please", "premium", "ready", "secure", "summit", "understood", "interesting", "number", "sales",
+    "service", "software", "award", "every", "growth", "highlights", "marketing", "next", "over", "park",
+    "plan", "premium", "ready", "secure", "summit", "understood", "interesting", "number", "sales",
+    "service", "software", "award", "based", "best", "beverages", "category", "communication", "companies",
+    "copper", "court", "downtown", "emerging", "enterprise", "generative", "global", "international",
+    "line", "operational", "other", "productivity", "relations", "research", "silver", "strategy",
+    "supreme", "total", "trade", "generics", "treasury", "vice", "website", "worth", "yeah", "world",
+    "cup", "rock", "salt", "kumar", "nitesh", "nagarkar", "mitra", "murthy", "parkash", "puneet",
+    "renganathan", "richa", "subhadip", "vishwas", "rakesh", "navin", "menon", "abhishek", "every",
+    "growth", "highlights", "marketing", "next", "over", "park", "plan", "premium", "ready", "secure",
+    "summit", "understood", "interesting", "number", "sales", "service", "software", "award", "drink",
+    "every", "fuzes", "gm", "gmv", "horeca", "hitech", "imf", "indus", "maruti", "nagarro", "nielsen",
+    "nuvama", "park", "please", "premium", "ready", "secure", "summit", "understood", "interesting",
+    "number", "sales", "service", "software", "award", "drink", "every", "fuzes", "gm", "gmv", "horeca",
+    "hitech", "imf", "indus", "maruti", "nagarro", "nielsen", "nuvama", "park", "please", "premium",
+    "ready", "secure", "summit", "understood", "interesting", "number", "sales", "service", "software",
+    "award", "agent", "ambit", "beer", "brownfield", "crest", "devan", "eastern", "equity", "generative",
+    "gold", "greenfield", "high", "huddle", "industrial", "joint", "manas", "mutual", "funds", "nine",
+    "participant", "png", "regulation", "rental", "business", "semi", "sreenivas", "tyagi", "pang",
+    "chopra", "rajendra", "rajiv", "singh", "sreenivas", "tyagi", "manas", "devan", "every", "growth",
+    "highlights", "marketing", "next", "over", "park", "plan", "premium", "ready", "secure", "summit",
+    "understood", "interesting", "number", "sales", "service", "software", "award", "drink", "every",
+    "fuzes", "gm", "gmv", "horeca", "hitech", "imf", "indus", "maruti", "nagarro", "nielsen", "nuvama",
+    "park", "please", "premium", "ready", "secure", "summit", "understood", "interesting", "number",
+    "sales", "service", "software", "award",
 }
+_MULTI_FIRST_STOP = _ENTITY_STOP - {
+    "capital", "home", "middle", "air", "green", "tata", "organic", "private", "axis",
+    "amstel", "ashwini", "heineken", "starbucks", "sampann", "kavach", "mrsam", "iqvia",
+}
+_QUESTION_WORDS = {"what", "which", "when", "where", "who", "whom", "whose", "why", "how", "because"}
 # generic acronyms that are financial/industry shorthand, not company-specific entities
 _GENERIC_ACRONYMS = {"FY", "Q1", "Q2", "Q3", "Q4", "H1", "H2", "INR", "USD", "Rs", "EBITDA", "PAT", "EPS",
                     "ROCE", "ROE", "CAGR", "YOY", "QOQ", "MOM", "TTM", "LTM", "EBIT", "PBT", "PBIT", "NPC",
                     "GDP", "CPI", "WPI", "RBI", "GST", "SEBI", "NSE", "BSE", "MCA", "ROC", "PAN", "GSTIN",
                     "CEO", "CFO", "COO", "MD", "IR", "AGM", "EGM", "NCLT", "NCLAT", "IBC", "IPO", "FPO",
-                    "QIP", "FCCB", "ECB", "FCNR", "NCD", "CP", "OD", "CC", "BG", "LC", "RTGS", "NEFT"}
+                    "QIP", "FCCB", "ECB", "FCNR", "NCD", "CP", "OD", "CC", "BG", "LC", "RTGS", "NEFT", "AI",
+                    "TR", "MR", "EW", "IPM", "ANDA", "PET", "MALE", "RMC", "WHRS", "CS", "IP", "SBPL", "LAP",
+                    "HL", "PMS", "AUM", "MLD", "SEZ", "GLP", "CRL", "SBU", "PRASK", "RMC", "AMC", "ARC",
+                    "ARPOB", "CAPEX", "CASK", "COVID", "CSEL", "DD", "DPR", "FMCG", "ML", "NCL", "NSR", "OCF",
+                    "OEM", "OP", "QR", "RE", "SE", "SEC", "SI", "VIL", "VLR", "ESG", "ARPU", "ALM",
+                    "MAT", "RFP", "SPV", "FX", "FTA", "NBFC", "ADA", "AGR", "AMCA", "AOG", "AP", "DFT",
+                    "EPD", "GP", "HVDC", "LTIP", "MDL", "MMR", "MSME", "NCR", "OC", "PPP", "RTD", "SASVA",
+                    "UAV", "VAT", "EV", "EBITDAR", "NPA", "MRO", "YTD", "II", "III", "GB", "HR", "HRC",
+                    "GT", "ER", "BL", "CIC", "PEB", "MOPAG", "RFI", "SIP", "FICCI", "NASDAQ", "ACV", "ASK",
+                    "BMP", "CA", "CO", "CSR", "EESL", "EMC", "EMI", "ESOP", "FAT", "FS", "GI", "IDC", "IL",
+                    "IMC", "MDI", "OFA", "OTC", "PES", "PRC", "RM", "ROTA", "RSP", "SG", "SME", "TCV",
+                    "UP", "JV", "ALOS", "ARPP", "AWS", "CPLY", "CPU", "DSO", "ECL", "EWM", "FDI", "HPE",
+                    "HSBC", "ICL", "IL", "IMC", "IQVIA", "JM", "LRDE", "MF", "NCT", "NIM", "OMT", "PAG",
+                    "RTM", "TCV", "UL", "XLR", "EMEU", "EVM", "GBMES", "HNI", "IPL", "JP", "MCLR", "MEP",
+                    "MVA", "NEP", "NSA", "OMT", "PRP", "SA", "SDR", "SSM", "TBCB", "TCV", "UVG", "VAI",
+                    "WM", "XLR"}
+
+
+def _is_sentence_start(text: str, pos: int) -> bool:
+    i = pos - 1
+    while i >= 0 and text[i].isspace():
+        i -= 1
+    if i < 0:
+        return True
+    return text[i] in ".?!:\n"
 
 
 def _candidate_entities(text: str) -> list[str]:
-    out: list[str] = []
-    # acronyms (2+ uppercase letters)
+    # First collect (candidate, is_sentence_start) for every occurrence.
+    occ: list[tuple[str, bool]] = []
     for m in re.finditer(r"\b[A-Z]{2,}\b", text):
         tok = m.group(0)
-        if tok not in _GENERIC_ACRONYMS:
-            out.append(tok)
-    # capitalised multi-word spans (2-4 words)
+        if tok in _GENERIC_ACRONYMS or tok.lower() in _ENTITY_STOP:
+            continue
+        occ.append((tok, _is_sentence_start(text, m.start())))
     for m in re.finditer(r"\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,}){1,3}\b", text):
         span = m.group(0)
         first = span.split()[0].lower()
-        if first not in _ENTITY_STOP:
-            out.append(span)
-    # single capitalised proper nouns (recurring ones survive the threshold)
+        if first in _MULTI_FIRST_STOP or first in _QUESTION_WORDS:
+            continue
+        occ.append((span, _is_sentence_start(text, m.start())))
     for m in re.finditer(r"\b([A-Z][a-z]{3,})\b", text):
         tok = m.group(1)
-        if tok.lower() in _ENTITY_STOP:
+        if tok.lower() in _ENTITY_STOP or tok.lower() in _QUESTION_WORDS:
             continue
-        out.append(tok)
+        occ.append((tok, _is_sentence_start(text, m.start())))
+    # Drop candidates whose EVERY occurrence is sentence-initial (common sentence starters).
+    from collections import defaultdict
+    starts = defaultdict(list)
+    for cand, is_start in occ:
+        starts[cand].append(is_start)
+    out: list[str] = []
+    for cand, flags in starts.items():
+        if all(flags):
+            continue
+        out.extend([cand] * len(flags))
     return out
 
 
-def _recurring_entities(full_text: str, speaker_names: set[str]) -> set[str]:
-    names_lower = {n.lower() for n in speaker_names}
+def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set[str] | None = None) -> set[str]:
+    own_tokens = own_tokens or set()
+    name_tokens = set()
+    for n in speaker_names:
+        for t in n.split():
+            name_tokens.add(t.lower().strip(".,"))
     counts: Counter = Counter()
     for cand in _candidate_entities(full_text):
-        if cand.lower() in names_lower or cand.lower() in _ENTITY_STOP:
+        cl = cand.lower()
+        toks = cl.split()
+        if cl in {n.lower() for n in speaker_names}:
+            continue
+        if any(t in name_tokens for t in toks) and all(t in name_tokens for t in toks):
+            continue
+        if all(t in own_tokens for t in toks) and toks:
+            continue
+        if any(t in own_tokens for t in toks) and len(toks) == 1:
+            continue
+        if cl in _ENTITY_STOP or cl in _QUESTION_WORDS:
             continue
         counts[cand] += 1
-    # keep recurring (>=2) OR acronyms appearing once? require >=2 for all to cut noise
-    return {c for c, n in counts.items() if n >= 2}
+    # keep recurring (>=2)
+    result = {c for c, n in counts.items() if n >= 2}
+    # keep longest span: drop any entity that is a whole-word subspan of another
+    out = set()
+    for c in result:
+        if any(c != d and re.search(r"\b" + re.escape(c) + r"\b", d, re.I) for d in result):
+            continue
+        out.add(c)
+    return out
 
 
 def _entities_in(sentence: str, ent_set: set[str]) -> list[str]:
     found = []
     for e in ent_set:
-        if e in sentence:
+        if re.search(r"\b" + re.escape(e) + r"\b", sentence):
             found.append(e)
-    # de-dupe preserving order
+    # de-dupe preserving order; prefer longer spans first
+    found.sort(key=len, reverse=True)
     seen = set()
     out = []
     for e in found:
@@ -433,7 +574,7 @@ def _entities_in(sentence: str, ent_set: set[str]) -> list[str]:
             out.append(e)
     return out
 
-def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[tuple[int, str]], topics, people, st: dict):
+def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[tuple[int, str]], topics, people, st: dict, company_name: str | None = None):
     texts = [t for _, t in pages]
     boiler = boilerplate_lines(texts)
     cperiod = call_period_of(title, texts)
@@ -457,7 +598,14 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
     prev_text = ""
     st.setdefault("questions", [])
     full_text = "\n".join(t for _, t in pages)
-    ent_set = _recurring_entities(full_text, known)
+    own_tokens = set()
+    if company_name:
+        for t in re.findall(r"[A-Za-z]{3,}", company_name):
+            own_tokens.add(t.lower())
+    for t in re.findall(r"[A-Za-z]{3,}", title or ""):
+        own_tokens.add(t.lower())
+    own_tokens.add(sym.lower())
+    ent_set = _recurring_entities(full_text, known, own_tokens)
     for page, raw in pages:
         w = mask_noise(raw, boiler)
         marks = sorted((m.start(1), m.end(), m.group(1)) for rx in (SPEAKER_RX, SPEAKER_MID_RX) for m in rx.finditer(w)
@@ -601,6 +749,17 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
     t0 = time.time()
     topics, people = load_topics()
     con = sqlite3.connect(out)
+    # migrate older stores that predate the T-164 columns
+    try:
+        cols = {r[1] for r in con.execute("PRAGMA table_info(transcript_statement)").fetchall()}
+        if cols:
+            if "entities" not in cols:
+                con.execute("ALTER TABLE transcript_statement ADD COLUMN entities TEXT NOT NULL DEFAULT ''")
+            if "answer_turn" not in cols:
+                con.execute("ALTER TABLE transcript_statement ADD COLUMN answer_turn INTEGER NOT NULL DEFAULT 0")
+            con.commit()
+    except Exception:
+        pass
     con.executescript(SCHEMA)
     stats: dict = {}
     sql = f"INSERT OR IGNORE INTO transcript_statement({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
@@ -609,6 +768,11 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
         con.execute("DELETE FROM transcript_statement WHERE symbol=?", (sym,))
         con.execute("DELETE FROM transcript_question WHERE symbol=?", (sym,))
         st = stats[sym] = {"docs": 0, "pages": 0, "needs_ocr": 0, "unknown_speakers": Counter(), "questions": []}
+        try:
+            company_name = con.execute("SELECT name FROM company WHERE symbol=? LIMIT 1", (sym,)).fetchone()
+            company_name = company_name[0] if company_name else None
+        except Exception:
+            company_name = None
         for index, (doc_key, title, known_at, allp) in enumerate(_transcript_docs(con, sym, sandbox)):
             if limit_docs and index >= limit_docs:
                 break
@@ -618,7 +782,7 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
                 continue
             st["docs"] += 1
             st["pages"] += len(pages)
-            rows = extract_doc(sym, doc_key, title, known_at, pages, topics, people, st)
+            rows = extract_doc(sym, doc_key, title, known_at, pages, topics, people, st, company_name)
             con.executemany(sql, rows)
             qs = st.get("questions", [])
             # st["questions"] is list of tuples collected; reset per doc

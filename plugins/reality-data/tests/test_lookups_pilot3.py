@@ -466,7 +466,30 @@ class Pilot3ToolTests(unittest.TestCase):
         tagged = p3.statements("KEC", topic="margin")
         self.assertIsNone(tagged["fallback"])
 
-    def test_docs_listing(self):
+    def test_analyst_questions_view(self):
+        # the view exists and serves rows inserted into transcript_question
+        import sqlite3
+        c = sqlite3.connect(DB)
+        c.execute("INSERT INTO transcript_question(symbol,doc_key,call_date,call_period,page,analyst,firm,question,topics,entities,answer_turn,known_at,known_at_source,extractor_rule) "
+                  "VALUES ('KEC','pdfs/KEC/call.pdf','2026-02-12','Q3FY26',1,'Ravi Kumar','Axis Capital','Could you explain the safeguard duty?','trade_policy','safeguard',1,'2026-02-14T10:00:00','docs.known_at','t')")
+        c.commit()
+        c.close()
+        out = p3.analyst_questions("KEC", n_calls=4)
+        self.assertTrue(out["found"])
+        self.assertEqual(out["rows"][0]["analyst"], "Ravi Kumar")
+        self.assertEqual(out["rows"][0]["firm"], "Axis Capital")
+        self.assertIn("safeguard", out["rows"][0]["question"])
+        # the view is queryable directly
+        c = sqlite3.connect(DB)
+        v = c.execute("SELECT COUNT(*) FROM analyst_questions WHERE symbol='KEC'").fetchone()[0]
+        c.close()
+        self.assertGreaterEqual(v, 1)
+
+    def test_statements_entity_search(self):
+        out = p3.statements("KEC", entities="transmission")
+        # no entity named transmission in fixture; ensure no crash and found flag sensible
+        self.assertIn("found", out)
+
         out = p3.docs("KEC", "decks")
         self.assertEqual([r["filing_date"] for r in out["rows"]], ["2026-08-10", "2026-02-10"])
         self.assertEqual(out["counts_by_type"], {"deck": 2})

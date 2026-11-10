@@ -18,6 +18,20 @@ topics:
   - {tag: demand_geography, patterns: ["\\brural\\b", "\\burban\\b", "semi.?urban", "geograph", "\\bregion\\b", "tier ?[123]"]}
   - {tag: supply_disruption, patterns: ["flood", "outage", "disruption", "container", "freight", "supply (chain|issue|constraint|bottleneck)"]}
   - {tag: order_mix, patterns: ["nomination", "competitive (bidding|tender)", "order mix", "bidding", "tender"]}
+  - {tag: growth, patterns: ["\\bgrowth\\b", "\\bgrew\\b", "growing", "increase", "increased", "decline", "declined"]}
+  - {tag: revenue, patterns: ["\\brevenue\\b", "\\bsales\\b", "topline", "top line", "turnover", "income"]}
+  - {tag: orders, patterns: ["\\border(s|ed|ing)?\\b", "booking", "backlog", "pipeline"]}
+  - {tag: pricing, patterns: ["\\bprice(s|d|ing)?\\b", "pricing", "realization", "realisation", "realisations"]}
+  - {tag: market, patterns: ["\\bmarket(s)?\\b", "industry", "sector", "demand", "consumption"]}
+  - {tag: product, patterns: ["\\bproduct(s)?\\b", "portfolio", "segment", "offering", "range", "wealth", "advisory"]}
+  - {tag: customer, patterns: ["\\bcustomer(s)?\\b", "client", "franchise", "consumer"]}
+  - {tag: digital, patterns: ["\\bdigital\\b", "technology", "platform", "software", "\\bai\\b", "app"]}
+  - {tag: capital, patterns: ["\\bcapital\\b", "cash", "equity", "funding", "investment", "finance"]}
+  - {tag: operations, patterns: ["\\boperation(s)?\\b", "execution", "project(s)?\\b", "delivery", "implementation", "program", "system", "platform"]}
+  - {tag: financials, patterns: ["\\bfinancial(s)?\\b", "profit", "loss", "earnings", "ebitda", "pat", "pbt", "margin", "loan", "credit", "stage", "disbursement", "collection", "npa", "asset quality"]}
+  - {tag: strategy, patterns: ["strategy", "strategic", "focus", "priority", "roadmap", "plan"]}
+  - {tag: people, patterns: ["team", "management", "leadership", "talent", "employee", "workforce"]}
+  - {tag: geographic, patterns: ["mumbai", "delhi", "bangalore", "bengaluru", "chennai", "kolkata", "hyderabad", "pune", "ahmedabad", "india", "global", "international", "export", "domestic", "region", "geograph"]}
   - {tag: railways, patterns: ["railways?", "transportation business", "\\bmetro\\b", "\\bdfcc\\b"], companies: [KEC]}
   - {tag: civil, patterns: ["\\bcivil\\b", "\\bwater\\b", "buildings? (and|&) factories", "data cent(er|re)"], companies: [KEC]}
   - {tag: renewables, patterns: ["renewables?", "\\bsolar\\b", "\\bepc\\b.*solar", "\\bwind\\b", "\\bbess\\b"]}

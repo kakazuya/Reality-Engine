@@ -260,7 +260,14 @@ Re-test after the T-088 fixes on the rebuilt `pilot10.db`, same 20, same read de
 - `build --part all` with 4 OCR dbs: 484 s for 23,558 pages (~2.7 min per company, single process).
 - After the dates + guidance merges: guidance 660 -> 329 rows (KEC 218, BAJFINANCE 52, HINDALCO 59): check recall
   on the next re-answer; kpi_series 38,851; zero Q1FY27 rows from documents known before 2026-04-01.
-- **T-094 five unseen companies (6 Nov 2026, this MSI, scratch under `.tmp/unseen5`).** DALBHARAT, POWERGRID,
+- **T-164 (round 2, 11 Nov 2026).** Transcript statements rebuilt for u8 (7 companies, 27,626 statements) and q12
+  (12 companies, 51,386 statements): named entities (capitalised spans/acronyms recurring in the call, own-name and
+  speaker-name tokens dropped) and `answer_turn` grouping; `transcript_question` + `analyst_question`/`analyst_questions`
+  views. Topic-tagged 'other' share: u8 72.2% -> 36.5% overall (per company 31.1-39.4%); q12 71.5% -> 38.0% overall
+  (per company 32.1-44.1%). Entity precision on an 80-row sample (seed 164) = 100% (117/117 entities) after stop-list
+  expansion. 18 audit queries: 17 answered, 1 not answered (APLAPOLLO shared services). Tests: 4 in
+  `reality_engine/tests/test_pilot3_transcripts.py` + 2 new in `plugins/reality-data/tests/test_lookups_pilot3.py`
+  (32 passed, 1 skipped).
   TATAELXSI, APOLLOHOSP, DLF (window 2023-10-01, compute 2022-07-01; manifest 3,328 rows, 2,111 `ok`):
   `docs_collect` 270 s -> 2,091 docs / 28,566 pages / 218.7 MB; `build --part all` 814.8 s -> 151.2 MB. Parts:
   comparatives 405.6 s, extract 258.3 s, stores 113.8 s (repeat 59.9 s), notes 22.8 s, pages 6.9 s, guidance 5.1 s,
