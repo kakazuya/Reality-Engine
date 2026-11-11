@@ -21,6 +21,13 @@ The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,
 ## Hardware
 NVIDIA GTX 1050 Ti with 4 GB, 8 CPU threads. Use CUDA, and check `nvidia-smi` before GPU plans. GPU OCR is slower than CPU here.
 
+Local vision models do run on it (T-188, 11 Nov 2026): llama.cpp release **b12284** in `D:/RealityEngine/tools/llamacpp/`
+(CUDA **13.5** dies on Pascal with `ggml-cuda.cu:113: CUDA error`; CUDA **12.4** works, `offloaded 19/19 layers to GPU`),
+weights in `D:/RealityEngine/models/` (recorded in `models/MODELS.md`), runner `reality_engine/v2/local_reader.py`
+(`llama-server` hidden, `-c 8192 -np 1 -ngl 99 --temp 0 -lv 4`, 1.9-3.0 GB VRAM peak, 12-92 s a page for a 0.9B Q8_0
+page reader). `-b 1`/`-ub 1` breaks the vision encoder, so the default ubatch stays. Docs:
+`docs/V2_SCHEMA_CONTRACT.md` section 14.
+
 ## Storage
 Raw data lived on `D:\RealityEngine`; since T-102 (7 Nov 2026) the raw files are uploaded to `gdrive:InfoDiffusion_archive` (`msi_raw/<root>/<rel>`, manifest `D:\RealityEngine\drive_index\raw_to_drive.db`) and the local copies are deleted by `raw_to_drive.py delete` (`D:\RealityEngine\raw\user_research` stays local). Jobs read them on demand through `reality_engine/raw_store.py`: one `rclone copy --files-from` per company into a temp folder, md5-checked and deleted after, so a build works with no raw files on disk. C holds operations and processed databases. Avoid sustained heavy disk work.
 

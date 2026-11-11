@@ -8,9 +8,10 @@ History `docs/state_history/` (previous: `STATE_2026-11-11_1430.md`); method `do
 - Free models on Go (11 Nov): `beam-free`, `longcat-2.5-free` (images), `iceman-contributor-free`; both keys hit LongCat 429s; Kilo free key 1 exhausted, Dots `@kilo2` works.
 - T-188 done (merged 11 Nov 21:30): truth for all 30 frozen2 pages (`handread/`, 1,303 cells; halves `split_hard_normal.csv`; scores `score_local.csv`, `score_local_by_half.txt`). P/R all-30: Dots image 83.8/89.6; DeepSeek v4.1-flash image (Go accepts images) 82.9/75.0, 72 s/page; GLM-OCR local v2 80.8/64.4, 27 s; LightOnOCR-3 75.8/59.0; PaddleOCR-VL-1.6 38.0/39.8; Dots on layout text 62/67 (text layer or OCR alike). TextRecognizer finds 98.2% of truth numbers (text layer 96.2%), 139 pages/min. 1050 Ti: llama.cpp CUDA 12.4 works, 13.5 fails (Pascal dropped). Local readers lose tables/charts without a layout stage.
 - Disclosures (ledger): p20 99.6% was fitted to its own questions (honest 54.8%); original T-177 frozen pages were seen while tuning, frozen2 replaces them.
+- Local readers: `v2/local_reader.py` (llama.cpp b12284 CUDA 12.4, `D:/RealityEngine/tools/llamacpp/cuda12.4`; Q8_0 GGUF + mmproj in `D:/RealityEngine/models/`, list `MODELS.md`); 1.9-3.0 GB VRAM.
 
 ## Merged 11 Nov
-T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 position check v2, T-186 `pilot3_fact` (one call: preferred figure + source + known_at + inputs; XBRL first for annual lines; mismatch flag), T-187 guidance round 5, T-184 run ledger.
+T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 position check v2, T-186 `pilot3_fact` (one call: preferred figure + source + known_at + inputs; XBRL first for annual lines; mismatch flag), T-187 guidance round 5, T-184 run ledger, T-188 HP OCR arm + local readers.
 
 ## Next action
 1. Restart reality-data; re-run the T-179 answer timing with `pilot3_fact` (calls and seconds per answer).
