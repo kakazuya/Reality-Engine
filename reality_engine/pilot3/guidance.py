@@ -40,10 +40,12 @@ by 19-21%", "CRISIL estimates ...", "as per Ind-Ra ...", "the sector is expected
 -- is that body's forecast and is dropped, because a Cholamandalam deck's ICRA housing-finance outlook was served
 as Cholamandalam's own AUM guidance.  On a transcript only a management-role statement produces a row: an
 analyst's question ("you guided 25-31%?") is never a target, and a line with no identifiable management speaker
-is skipped rather than trusted.  Two noise shapes go to review instead of the table: a margin range wider than
-five points ("variability of 25% to 31% EBITDA margins" is a product-mix band, not a target) and an order-intake
-value below 1% of the company's own order-intake scale or annual revenue ("INR120-plus million" read as 120
-crore, far below BEL's five-figure-crore order book).
+is skipped rather than trusted.  Two noise shapes go to review instead of the table: a plain margin range wider
+than five points and an order-intake value below 1% of the company's own order-intake scale or annual revenue
+("INR120-plus million" read as 120 crore, far below BEL's five-figure-crore order book).  A wide margin band the
+company itself calls a band of variability is a target, not noise ("we have variability of 25% to 31% EBITDA
+margins", T-187).  A number a sentence governs with "gross margin" is never the EBITDA margin (T-187): ``guidance``
+holds no ``gross_margin`` metric, so the number is dropped rather than re-keyed under another metric.
 
 An outside source only removes the number in its own clause (T-166 r4): a sentence that prints a rating
 affirmation and then the company's guidance table is still the company's table, so "India Ratings ... reaffirmed
@@ -55,8 +57,12 @@ that merely mentions two of those words stays on the single-number path, so "Rev
 ₹36,000-38,000 Cr and ₹21,000-22,000 Cr" is not a table.  A past movement is never a target ("improved to Rs.
 5,400 from Rs. 4,200", "we have spent Rs 4,200 crores in H1", "achieved 75% of our revised guidance", "used to be
 around Rs 20,000 crores"), and a value stated against a target keeps only the target ("capex of Rs 18,619 crore
-against target of Rs 16,500 crore" stores 16,500).  A speaker is read only from a transcript; a slide title
-("International Ports", "Solid future outlook", "Capex") is never a speaker.
+against target of Rs 16,500 crore" stores 16,500).  A past phrase that restates the company's own guidance is not
+a measurement (T-187): "trending at a higher end of what we had guided earlier, which was a range of 23% to 24%"
+restates the guided band, "we have guided in the press release that ... we have spent ... INR 1,100 crores"
+restates the guided capex, and "our annual CapEx has used to be ... INR 1,200-1,300 crores" states the annual
+run-rate of the metric.  A speaker is read only from a transcript; a slide title ("International Ports", "Solid
+future outlook", "Capex") is never a speaker.
 """
 from __future__ import annotations
 
@@ -195,6 +201,35 @@ FROM_BASE_PRE = re.compile(r"\bfrom\s+(?:₹|Rs\.?|INR|US\$|\$)?\s*$", re.I)
 HAD_TARGET_PRE = re.compile(r"\b(?:had\s+(?:targeted|guided|estimated|expected|planned)|used\s+to\s+be|"
                             r"(?:have|has|had)\s+(?:spent|invested|incurred)|spent)\b[^.;]{0,30}"
                             r"(?:₹|Rs\.?|INR|US\$|\$)?\s*$", re.I)
+# T-187: a past phrase that restates the company's own guidance is not a measurement.  "what we had guided
+# earlier, which was a range of 23% to 24%" restates the guided band; "we have guided in the press release that
+# ... we have spent ... INR 1,100 crores" restates the guided capex; "our annual CapEx has used to be ... INR
+# 1,200-1,300 crores" states the annual run-rate of the metric, which is the level the metric is guided at.
+RESTATED_RANGE_PRE = re.compile(r"\b(?:range|corridor)\s+of\b[^.;]{0,12}$", re.I)
+GUIDE_WORD = re.compile(r"\b(?:guidan\w*|guided|guide)\b", re.I)
+SPENT_PRE = re.compile(r"\b(?:have|has|had)\s+(?:spent|invested|incurred)\b[^.;]{0,30}"
+                       r"(?:₹|Rs\.?|INR|US\$|\$)?\s*$", re.I)
+USED_TO_BE_PRE = re.compile(r"\bused\s+to\s+be\b[^.;]{0,30}(?:₹|Rs\.?|INR|US\$|\$)?\s*$", re.I)
+ANNUAL_LEVEL = re.compile(r"\b(?:annual(?:ly)?|per annum|run[- ]rate|every year)\b", re.I)
+# T-187: a plain wide margin range is still a band, not a target, but the company's own band of variability is
+# one ("we have variability of 25% to 31% EBITDA margins based on the product mix").
+VARIABILITY = re.compile(r"\b(?:variability|variation)\b", re.I)
+# T-187: the number a sentence governs with "gross margin" is not the EBITDA margin.  The last margin phrase
+# before the number decides its subject; a number with no margin phrase before it may be governed by one right
+# after it ("5% to 10% better gross margin").  ``guidance`` has no ``gross_margin`` metric, so the number is
+# dropped rather than stored under another metric.
+MARGIN_PHRASE = re.compile(r"\bgross\s+margins?\b|"
+                           r"\b(?:(?:ebitda|operating|op\.?|core|net|profit|combined)\s+)?margins?\b", re.I)
+GROSS_MARGIN = re.compile(r"\bgross\s+margins?\b", re.I)
+# "5% to 10% better gross margin": the number is a change in the gross margin, printed right before its name
+GROSS_MARGIN_AFTER = re.compile(r"^\s*(?:,\s*)?(?:better|higher|lower|improved?|of|at|around|about|:|-|–|—)?\s*"
+                                r"gross\s+margins?\b", re.I)
+# "a gross margin of 42%" / "42% gross margin": the amount printed as a gross margin, so a bare number of the same
+# value just before or after it is that gross margin's ("So that mix determines the gross margin. So, going
+# forward at the full year, we should have around 42%.")
+GROSS_LEVEL = re.compile(
+    r"\bgross\s+margins?\b[^.;%]{0,25}?(?P<after>\d[\d,]*(?:\.\d+)?)\s*%|"
+    r"(?<![\d.,])(?P<before>\d[\d,]*(?:\.\d+)?)\s*%\s*(?:of\s+)?gross\s+margins?\b", re.I)
 ACHIEVED_OF_GUIDANCE = re.compile(r"\b(?:achieved|attained|clocked|delivered)\s+\d+(?:\.\d+)?\s*%?\s+of\b"
                                   r"[^.;]{0,40}\b(?:guidance|guided)\b", re.I)
 AGAINST_TARGET = re.compile(r"^\s*(?:crores?|cr|lakhs?|million|mn|billion|bn)?\s*(?:,\s*)?"
@@ -704,6 +739,31 @@ def plausible(metric: str, low: float, high: float, unit: str) -> bool:
     return lo <= low <= high <= hi and high > 0
 
 
+def gross_margin_owns(sentence: str, chosen: dict, after: str = "") -> bool:
+    """True when the number is a gross margin's level, never the EBITDA margin's (T-187).
+
+    The last margin phrase before the number decides its subject, so "Gross margin ... 42% and EBITDA margins ...
+    23%" gives 42 to the gross margin and 23 to the EBITDA margin; a number with no margin phrase before it may
+    be governed by one right after it ("5% to 10% better gross margin") or be the gross margin restated just
+    around it ("So that mix determines the gross margin. So, going forward at the full year, we should have
+    around 42%", "we gave around 42% gross margin").  ``guidance`` has no ``gross_margin`` metric, so these
+    numbers are dropped, not re-keyed."""
+    left = sentence[max(0, chosen["start"] - 150):chosen["start"]]
+    marks = list(MARGIN_PHRASE.finditer(left))
+    if marks:
+        return bool(GROSS_MARGIN.fullmatch(marks[-1].group(0)))
+    if GROSS_MARGIN_AFTER.match(sentence[chosen["end"]:chosen["end"] + 40]):
+        return True
+    levels = set()
+    for text in (sentence, after):
+        for m in GROSS_LEVEL.finditer(text):
+            for group in ("after", "before"):
+                value = _num(m.group(group))
+                if value is not None:
+                    levels.add(value)
+    return chosen["low"] in levels or chosen["high"] in levels
+
+
 # --- the metric must be the target's subject (T-049 review, 4 Nov 2026) -------------------------------
 GROWTH_METRICS = {"revenue_growth", "aum_growth"}
 GROWTH_NEAR = re.compile(r"\b(growth|grew|grow\w*|increase[sd]?|decrease[sd]?|declin\w*|rise[s]?|expansion)\b", re.I)
@@ -1117,7 +1177,8 @@ def table_targets(sentence: str) -> list[dict]:
     return out
 
 
-def past_figure(sentence: str, chosen: dict) -> bool:
+def past_figure(sentence: str, chosen: dict, speaker: str | None = None,
+                analysts: tuple[str, ...] = ()) -> bool:
     """True when the number is a past measurement, not a target (T-166 r4).
 
     "improved to Rs. 5,400 from Rs. 4,200", "we have spent Rs. 4,200 crores in H1", "had targeted 7,500", "used
@@ -1130,7 +1191,7 @@ def past_figure(sentence: str, chosen: dict) -> bool:
         return True
     if FROM_BASE_PRE.search(left) and PAST_MOVE_VERB.search(sentence[:chosen["start"]]):
         return True
-    if HAD_TARGET_PRE.search(left):
+    if HAD_TARGET_PRE.search(left) and not restated_guidance(sentence, chosen, left, speaker, analysts):
         return True
     if AGAINST_TARGET.search(window):
         return True
@@ -1139,6 +1200,30 @@ def past_figure(sentence: str, chosen: dict) -> bool:
         return True
     if DELTA_POINTS.search(window):
         return True                    # "nearly 10% points lower than …": the size of a move
+    return False
+
+
+def restated_guidance(sentence: str, chosen: dict, left: str, speaker: str | None = None,
+                      analysts: tuple[str, ...] = ()) -> bool:
+    """True when the past phrase ``left`` restates the company's own guidance, so the number is its target (T-187).
+
+    "EBITDA margin for the full year is trending at a higher end of what we had guided earlier, which was a range
+    of 23% to 24%" restates the guided band; "we have guided in the press release that ... we have spent ...
+    INR 1,100 crores" restates the guided capex; and "our annual CapEx has used to be for India, INR 1,200-1,300
+    crores" states the annual run-rate of the metric.  "2022, we used to be around Rs. 20,000, Rs. 22,000 crores
+    of capex" and "we have spent Rs. 4,200 crores in H1" carry no such restatement and stay measurements.
+
+    Tightened (T-187 r2): an analyst turn never qualifies, and the cue must sit in the same clause as the number, so a
+    guidance word printed earlier in the page/blob cannot rescue a number in a later clause."""
+    if speaker is not None and any(_same_person(speaker, a) for a in (analysts or ())):
+        return False
+    clause = _clause(sentence, chosen["start"])
+    if USED_TO_BE_PRE.search(left):
+        return bool(ANNUAL_LEVEL.search(clause))
+    if SPENT_PRE.search(left):
+        return bool(GUIDE_WORD.search(clause))
+    if RESTATED_RANGE_PRE.search(left):
+        return bool(GUIDE_WORD.search(clause))
     return False
 
 
@@ -1270,7 +1355,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             if external_forecast(sentence, previous, n["start"]):
                 stats["external_forecast"] += 1
                 continue            # the number's own clause is an outside forecaster's, not the company's target
-            if past_figure(sentence, n):
+            if past_figure(sentence, n, speaker, analysts):
                 stats["past_only"] += 1
                 continue            # a movement/spend/actual, not a target (T-166 r4)
             kept.append(n)
@@ -1313,6 +1398,8 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                     and not re.search(r"credit cost|loan loss", sentence, re.I):
                 continue                    # asset-quality actuals are not the credit-cost target
             options = [n for n in nums if plausible(name, n["low"], n["high"], n["unit"])]
+            if name == "ebitda_margin":
+                options = [n for n in options if not gross_margin_owns(sentence, n, after)]   # T-187
             marks = [m.start() for m in rx_by_name[name].finditer(sentence)]
             if marks:
                 # the metric word is in this sentence: the target is the number it introduces, not a chart blob's
@@ -1368,8 +1455,13 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                 and chosen["high"] >= 100:
             chosen = {**chosen, "unit": "inr_cr"}   # "INR9,000-INR10,000" in a crore-scale business is crore
         if metric == "ebitda_margin" and chosen["high"] - chosen["low"] > 5:
-            stats["wide_margin"] += 1
-            continue                    # "variability of 25% to 31% EBITDA margins" is a band, not a target (T-166)
+            clause = _clause(sentence, chosen["start"])
+            mgmt_subject = bool(re.search(r"\b(?:we|our|the company)\b", clause, re.I))
+            mgmt_speaker = speaker is None or not any(_same_person(speaker, a) for a in (analysts or ()))
+            if not (VARIABILITY.search(sentence) and mgmt_subject and mgmt_speaker):
+                stats["wide_margin"] += 1
+                continue            # a plain wide margin range is a band, not a target (T-166); a band of variability
+                                    # the company states itself is its target band (T-187)
         if metric == "order_intake" and revenue_cr:
             in_crore = chosen["high"] if chosen["unit"] == "inr_cr" else \
                 chosen["high"] / 1e7 if chosen["unit"] == "inr" else None

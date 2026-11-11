@@ -942,14 +942,17 @@ def test_the_analysts_question_and_the_non_management_role_are_not_guidance():
     assert [r for r in got if r["speaker"] == "Manoj Jain" and r["metric"] == "order_intake"], got
 
 
-def test_a_margin_band_wider_than_five_points_and_a_tiny_order_intake_are_not_targets():
-    """The real BEL rows (u8): "variability of 25% to 31% EBITDA margins" is a product-mix band, not a target,
-    and "INR120-plus million" (read as 120 crore) is far below BEL's own five-figure-crore order intake."""
+def test_a_variability_band_is_a_target_and_a_plain_wide_range_is_not():
+    """The real BEL rows (u8): "we have variability of 25% to 31% EBITDA margins" is management's own band and is
+    a target (T-187), while a plain 7-point range is not; "INR120-plus million" (read as 120 crore) is far below
+    BEL's own five-figure-crore order intake."""
     TMP.mkdir(exist_ok=True)
     path = TMP / "guidance_t166_noise.db"
     write_db(path,
              [("bel/call_2026-07-28.pdf", "BEL", "deck", "2026-07-28", "2026-07-28T14:01:42")],
              [("bel/call_2026-07-28.pdf", "BEL", 1,
+               # the question that makes the band answer a guidance statement (the real call's Q&A)
+               "Is that really achievable, going forward for the coming quarters, on EBITDA margins? "
                "We have variability of 25% to 31% EBITDA margins based on the product mix in quarter-to-quarter "
                "etcetera, but at the year end, let me again assure you, we will cross 28%."),
               ("bel/call_2026-07-28.pdf", "BEL", 2,
@@ -970,7 +973,7 @@ def test_a_margin_band_wider_than_five_points_and_a_tiny_order_intake_are_not_ta
     con.close()
     guidance.run(str(path), ["BEL"])
     got = rows(path)
-    assert not [r for r in got if r["metric"] == "ebitda_margin" and r["low"] == 25 and r["high"] == 31], got
+    assert [r for r in got if r["metric"] == "ebitda_margin" and r["low"] == 25 and r["high"] == 31], got
     assert not [r for r in got if r["metric"] == "ebitda_margin" and r["low"] == 18 and r["high"] == 25], got
     assert not [r for r in got if r["metric"] == "order_intake" and r["high"] == 120], got
     assert [r for r in got if r["metric"] == "order_intake" and r["high"] == 30000], got
@@ -1081,4 +1084,141 @@ def test_step4_a_slide_title_is_not_a_speaker_and_management_stays():
     assert [r for r in got if r["symbol"] == "BEL" and r["speaker"] == "Management"], got
 
 
+# --- T-187, 11 Nov 2026: the four targets the 11 Nov rebuild lost, and gross margin is not a margin -------------
+def test_t187_the_four_management_targets_are_restored():
+    """The four real management sentences the 11 Nov rebuild dropped: a stated band of variability ("we have
+    variability of 25% to 31% EBITDA margins"), a restated guided band ("which was a range of 23% to 24%"), a
+    present-perfect capex restatement ("we have guided ... we have spent ... INR 1,100 crores") and an annual
+    capex run-rate ("our annual CapEx has used to be ... INR 1200-1300 crores")."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t187_targets.db"
+    bel = ("We have variability of 25% to 31% EBITDA margins based on the product mix in quarter-to-quarter "
+           "etcetera, but at the year end, let me again assure you, we will cross 28%.")
+    cipla = ("EBITDA margin for the full year is trending at a higher end of what we had guided earlier, which was "
+             "a range of 23% to 24%.")
+    indhotel = ("So we have guided in the press release that firstly, in the context of the CAPEX, this year, we "
+                "have spent close to about INR 1,100 crores.")
+    apollo = ("So which is higher than what it has been in the recent past, where our annual CapEx has used to be "
+              "for India, INR 1200 - 1300 crores.")
+    docs = [("t187/bel.pdf", "BEL", "transcript", "2026-07-28", "2026-07-28T17:00:00"),
+            ("t187/cipla.pdf", "CIPLA", "transcript", "2024-01-29", "2024-01-29T17:00:00"),
+            ("t187/indhotel.pdf", "INDHOTEL", "transcript", "2025-05-12", "2025-05-12T17:00:00"),
+            ("t187/apollo.pdf", "APOLLOTYRE", "transcript", "2026-08-11", "2026-08-11T17:00:00")]
+    pages = [
+        ("t187/bel.pdf", "BEL", 16,
+         "Bhavya Gandhi: Is that really achievable, sir, going forward for the coming quarters, on EBITDA "
+         "margins? Manoj Jain: Definitely yes. " + bel),
+        ("t187/cipla.pdf", "CIPLA", 6, cipla),
+        ("t187/indhotel.pdf", "INDHOTEL", 9, indhotel),
+        ("t187/apollo.pdf", "APOLLOTYRE", 8,
+         "Is it fair to say that the main CapEx because you had guided for more than INR 3,000 crores of CapEx "
+         "this year? So the CapEx definitely has started. India quarter CapEx was INR 500 crores. " + apollo),
+    ]
+    statements = [
+        ("BEL", "t187/bel.pdf", None, "Q1FY27", 16, 1, "Manoj Jain", "md", bel, bel),
+        ("CIPLA", "t187/cipla.pdf", None, "Q3FY24", 6, 1, "Ashish Adukia", "cfo", cipla, cipla),
+        ("INDHOTEL", "t187/indhotel.pdf", None, "Q4FY25", 9, 1, "Ankur Dalwani", "mgmt", indhotel, indhotel),
+        ("APOLLOTYRE", "t187/apollo.pdf", None, "Q1FY27", 8, 1, "Gaurav Kumar", "cfo", apollo, apollo),
+    ]
+    write_call_db(path, docs, pages, statements)
+    guidance.run(str(path), ["BEL", "CIPLA", "INDHOTEL", "APOLLOTYRE"])
+    got = {(r["symbol"], r["metric"], r["target_period"], r["low"], r["high"], r["unit"], r["speaker"])
+           for r in rows(path)}
+    assert ("BEL", "ebitda_margin", "FY27", 25.0, 31.0, "pct", "Manoj Jain") in got, got
+    assert ("CIPLA", "ebitda_margin", "FY24", 23.0, 24.0, "pct", "Ashish Adukia") in got, got
+    assert ("INDHOTEL", "capex", "FY26", 1100.0, 1100.0, "inr_cr", "Ankur Dalwani") in got, got
+    assert ("APOLLOTYRE", "capex", "FY27", 1200.0, 1300.0, "inr_cr", "Gaurav Kumar") in got, got
 
+
+def test_t187_gross_margin_is_not_an_ebitda_margin():
+    """T-187: a number governed by "gross margin" is never stored as ``ebitda_margin`` (no ``gross_margin``
+    metric is added), while the EBITDA-margin number of the same sentence stays a row."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t187_gross.db"
+    mixed = "Gross margin for the full year should be around 42% and EBITDA margins would be around 23%."
+    follow = ("So that mix determines the gross margin. So, going forward at the full year, we should have around "
+              "42%. So that way it will average out to 58% and we end up with a gross margin of 42%.")
+    write_db(path,
+             [("t187/bel_gross.pdf", "BEL", "deck", "2024-02-02", "2024-02-02T17:00:00"),
+              ("t187/cipla_gross.pdf", "CIPLA", "deck", "2026-05-15", "2026-05-15T17:00:00")],
+             [("t187/bel_gross.pdf", "BEL", 1, mixed + " " + follow),
+              ("t187/bel_gross.pdf", "BEL", 2, "The gross margin of 40% to 42% will be the range, so 45-"),
+              ("t187/bel_gross.pdf", "BEL", 3,
+               "See currently, the gross margin is not 49% as you said, it is around the range of 44.5% only, for "
+               "up to December, the gross margin is 44.5% only, and we have guided for 42% to 44%."),
+              ("t187/cipla_gross.pdf", "CIPLA", 1,
+               "So chronic will definitely come with 5% to 10% better gross margin.")])
+    guidance.run(str(path), ["BEL", "CIPLA"])
+    got = [(r["metric"], r["target_period"], r["low"], r["high"], r["quote"]) for r in rows(path)]
+    assert ("ebitda_margin", "FY24", 23.0, 23.0, mixed) in got, got
+    assert not [r for r in got if r[0] == "ebitda_margin" and r[2] in (5.0, 40.0, 42.0, 44.5, 49.0)], got
+    # the rule on its own: the last margin phrase before the number decides, and a bare number is the gross margin
+    # the text restates ("we end up with a gross margin of 42%")
+    for text, value, after in (
+            ("The gross margin of 40% to 42% will be the range, so 45-", 40.0, ""),
+            ("So chronic will definitely come with 5% to 10% better gross margin.", 5.0, ""),
+            ("So, going forward at the full year, we should have around 42%.", 42.0,
+             " So that way it will average out to 58% and we end up with a gross margin of 42%.")):
+        number = next(n for n in guidance.numbers(text) if n["low"] == value)
+        assert guidance.gross_margin_owns(text, number, after), text
+    ok = "We expect an EBITDA margin of 23% to 25% for FY27."
+    assert not guidance.gross_margin_owns(ok, guidance.numbers(ok)[0], "")
+
+
+def test_t187_the_three_rightly_removed_classes_stay_out():
+    """The rows the new rules rightly removed stay out after T-187: CHOLAFIN's CRISIL/ICRA industry forecasts, BEL's
+    analyst-question order intake, and ADANIPORTS' "capex" rows whose number is the revenue/EBITDA guidance."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t187_removed.db"
+    chola = [
+        ("chola/deck.pdf", "CHOLAFIN", 1,
+         "• ICRA expects AUM of AHFCs to rise by 19% -21% in FY26 and FY27. "
+         "• The overall growth in HFCs is expected to remain at 12-14% in FY24. "
+         "• CRISIL estimates the LAP segment to experience growth at a rate of 10-12% for FY24."),
+        ("chola/deck.pdf", "CHOLAFIN", 2,
+         "Growth is expected to ease to 13% -15% in FY25 and FY26 from the 17% expansion witnessed in the "
+         "previously two fiscal."),
+    ]
+    bel = [("bel/call.pdf", "BEL", 1,
+            "Moderator: The next question is from the line of Umesh Raut from Nomura.\n"
+            "Umesh Raut:\nSir, my first question is pertaining to order inflow guidance of INR27,000 crores, "
+            "excluding QRSAM for FY '26.\n"
+            "Manoj Jain:\nCertainly, yes.")]
+    ports = [("ports/deck.pdf", "ADANIPORTS", 1, ADANI_FY26_BLOB)]
+    write_call_db(path,
+                  [("chola/deck.pdf", "CHOLAFIN", "deck", "2026-07-28", "2026-07-28T17:00:00"),
+                   ("bel/call.pdf", "BEL", "transcript", "2025-11-04", "2025-11-04T17:57:09"),
+                   ("ports/deck.pdf", "ADANIPORTS", "deck", "2026-05-01", "2026-05-01T17:00:00")],
+                  chola + bel + ports, [])
+    guidance.run(str(path), ["CHOLAFIN", "BEL", "ADANIPORTS"])
+    got = rows(path)
+    assert not [r for r in got if r["symbol"] == "CHOLAFIN"], got
+    assert not [r for r in got if r["metric"] == "order_intake" and r["low"] == 27000], got
+    ports_rows = [r for r in got if r["symbol"] == "ADANIPORTS"]
+    assert [r for r in ports_rows if r["metric"] == "revenue" and (r["low"], r["high"]) == (36000, 38000)], got
+    assert [r for r in ports_rows if r["metric"] == "ebitda" and (r["low"], r["high"]) == (21000, 22000)], got
+    assert not [r for r in ports_rows if r["metric"] == "capex"
+                and (r["low"], r["high"]) in ((36000, 38000), (21000, 22000))], got
+
+
+def test_t187_tightened_rules_keep_out_analysts_and_bare_variability():
+    """T-187 round 2 (grader 20261111T110442Z-708edba0): an analyst restating "the guidance of Rs 1,500 crores of
+    CAPEX" and a bare "variability" sentence with no management subject are never targets."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t187_tight.db"
+    analyst = "Aditya Welekar: Yes, last part is on the guidance of Rs. 1,500 crores of CAPEX."
+    heard = ("Though we have heard about a INR1 lakh crores capex number, as of now, we only understand that the "
+             "spend for this year is INR 35,000 crores.")
+    bare = "Industry margins show variability of 18% to 26% across players depending on the product mix."
+    write_call_db(path,
+                  [("t187b/apl.pdf", "APLAPOLLO", "transcript", "2025-08-01", "2025-08-01T17:00:00"),
+                   ("t187b/sail.pdf", "SAIL", "transcript", "2025-08-12", "2025-08-12T17:00:00")],
+                  [("t187b/apl.pdf", "APLAPOLLO", 5, analyst + " " + bare),
+                   ("t187b/sail.pdf", "SAIL", 4, heard)],
+                  [("APLAPOLLO", "t187b/apl.pdf", None, "Q1FY26", 5, 1, "Aditya Welekar", "analyst", analyst, analyst),
+                   ("APLAPOLLO", "t187b/apl.pdf", None, "Q1FY26", 5, 2, "Anuj Sharma", "analyst", bare, bare)])
+    guidance.run(str(path), ["APLAPOLLO", "SAIL"])
+    got = rows(path)
+    assert not [r for r in got if r["symbol"] == "APLAPOLLO" and r["metric"] == "capex" and r["low"] == 1500], got
+    assert not [r for r in got if r["metric"] == "ebitda_margin" and (r["low"], r["high"]) == (18.0, 26.0)], got
+    assert not [r for r in got if r["symbol"] == "SAIL" and r["low"] in (100000.0, 35000.0)], got
