@@ -1,26 +1,23 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-10 22:15 IST (Eagle, session close)
-History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md`; Fable review brief `docs/FABLE_REVIEW_BRIEF.md` (live table section 7).
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-11 14:10 IST (Eagle)
+History `docs/state_history/` (previous: `STATE_2026-11-11_1430.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-13 = reference pages, readers, completeness); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`.
 
-## Now
-- Stores: `D:/RealityEngine/{p20/p20new.db, u8/u8.db, q12/q12.db, n10/n10.db, pilot10/pilot10.db}`; s10 list `D:/RealityEngine/s10/universe_s10.csv` (filings fetched 10 Nov).
-- Routine: code to DeepSeek (precision) or Beam (plumbing, peak hours); a separate read-only grader on every branch; Claude reruns tests + samples; merge only with 0 earlier-right rows lost. Cap 4 code workers. DeepSeek on Go key 1 (key 2 hit its DeepSeek limit 10 Nov; Beam on key 2).
+## Now (Shivam 11 Nov: settle extraction for every page, text or image; free models in peak)
+- Stores: `D:/RealityEngine/{p20/p20new.db, u8/u8.db, q12/q12.db, n10/n10.db, pilot10/pilot10.db}`.
+- Extraction design under test (T-180/T-182): word boxes for every page (`v2/page_words.py`: text layer upright, else OCR `ocr_page`) -> layout text (`v2/page_layout.py`, one line per printed line) -> free reader in GRID format (`reference_pages transcribe --input layout --format grid`) -> position check (`v2/reference_geom.py`: value on its label's line, header above) -> unread numbers = recall gap. Grid fixed the 8k-token truncation: IHCL p049 unread 158 -> 23, Bharti p046 292 -> 90, ~90% of cells position-verified, all three readers agree.
+- Script baseline r10 (`v2/table_cells.py`) on the 60 reference pages: recall 51% vs readers 69-79% (text input, before grid).
 
-## Running (owner: Eagle session; claim_worker in the new session)
-- T-179 DONE (first look): no effect of removing raw SQL (SQL 96/120 right, no SQL 94/120; same-arm runs disagree on 14-16 of 60). Grader lenient vs Opus (28 of 50 Opus-not-right called right). Median 34-56 s and 6-9 lookups per answer; tools take 1-2 s of that. Result in `tasks/FABLE_TESTS_2026-11-10.md`; data `D:/RealityEngine/t179/`.
-- T-177: reference pages in `D:/RealityEngine/v2/reference_pages/` (3 free Kilo readers, 60 pages). `reference_vote.py` settles 2,063 of 4,143 candidate cells; 98.8% of values are printed on the page but 1,048 are label disputes (readers disagree on the row). Next: arbitrate rows by word positions, then hand-read the rest.
-- Merged 11 Nov: T-181 `doc_integrity.py` report + gate (2c499b56; reports `D:/RealityEngine/reports/doc_integrity_2026-11-11/`; not yet wired into build.py); T-177 `completeness.py` run/gate/calibrate (p20: 9.9% of pages hold any stored value; among those median number coverage deck 0.25, results 0.48, AR 0.06). Position check (script, 30 pages): 83% of reader-agreed cells sit on their label line; chart panels not resolved.
-- T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) HELD with T-132 until T-180 decides: q12 one seed 85%, zero-loss gate failed, self-graded.
-- T-180: reader_score.py scores free-model runs vs position-settled reference cells (recall/precision_verified, pair consistency); real run .tmp/t180_score.xlsx; tests 3 passed.
+## Running
+- Grid runs, 60 reference pages, free Kilo: `D:/RealityEngine/v2/reference_pages/run_{dots,supervl,ultra}_grid`, `run_dots_imggrid` (layout + image); end lines in `grid_status.log`.
+- Store rebuild on copies (`D:/RealityEngine/rebuild_2026-11-11/run_all.sh`, carry linked transcripts, reconcile, integrity gate, then parts): u8 DONE; p20 in `kpi`; q12 next. Live stores untouched until compared.
+- T-180 scorer branch dsh/20261111T082116Z-259da7c5 (Beam): graded MERGE AFTER FIXES (recall must match by word position, dedupe). Eagle fixing at merge.
 
 ## Next action
-1. Fable tests: the ordered pending list is the first section of `tasks/FABLE_TESTS_2026-11-10.md` (10 items; start with item 1, reconcile by value and column, then hand-settle disputes, then T-178 and T-180).
-2. Then rebuild p20/u8/q12 (docs_collect --profile, build --part stores/transcripts/guidance/kpi/segments, one at a time) and restart reality-data MCP so T-161, T-162, T-164, T-165, T-166, v8.1 go live.
-3. CHOLAFIN KPI branch dsh/20261110T104212Z-67ceeb28: run `.tmp/cholafin_kpi/build.py --tree main|branch --stores <one>` in its worktree for q12, p20, pilot10, n10 one at a time when <= 1 worker builds (RAM reaped it once), then grader, then merge.
-4. s10: T-169 website crawler (Beam), build s10 stores, T-172 frozen split, then T-170 baseline with timed answers.
-5. T-132 paused after r12 pending Fable's review (`docs/FABLE_REVIEW_BRIEF.md`).
-6. Board: backfill why/close_when for the 76 open tickets from the 10 Nov triage (job 20261110T154548Z-13965dd0 output); move Wolf's DOING rows (T-113, T-120, T-130, T-132, T-133, T-134, T-139) to their real owner.
-7. T-166 follow-ups: 3 wrong speakers, APLAPOLLO volume as revenue_growth, ADANIPORTS p52 11-16% missed, BHARTIARTL analyst capex row.
-8. Raw folders `raw_market/masters` and `transcripts_raw` documented in `docs/RAW_DATA_FAMILIES.md` but not in a main doc (data_inventory reports 2 undocumented).
+1. When grid runs end: score them (reader_score, by word position) with r10 and text runs; write `D:/RealityEngine/reports/2026-11-12_t180_reader_bakeoff.xlsx`; decide model-in-build for tables.
+2. Hand-settle remaining reference disputes from page images (`v2/reference_pages/png/`), frozen copy under `frozen/`.
+3. Production page reader (new ticket): per store, every table page -> grid reader -> position check -> `page_cell` rows verified/unverified + per-page unread count; second pass on unread lines.
+4. Compare rebuilt p20/u8/q12 with live (row counts per table, earlier-right rows kept), swap in, restart reality-data MCP (T-161..T-166, v8.1 go live).
+5. CHOLAFIN KPI branch dsh/20261110T104212Z-67ceeb28 4-store comparison; s10 store + T-172 frozen split + T-170 baseline.
+6. T-166 follow-ups; board backfill; `raw_market/masters`, `transcripts_raw` into a main doc.
 
 ## Store copy recipe
 checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE` on the copy.

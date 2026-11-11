@@ -58,30 +58,10 @@ def _is_num(text: str) -> bool:
 
 
 def page_words(pdf: Path) -> list[tuple[float, float, float, float, str]]:
-    """Word boxes in reading axes: a page whose text runs sideways (a landscape table printed on a portrait
-    page) is turned so that lines are horizontal again."""
-    import pymupdf
+    """Word boxes in reading axes (delegates to page_words.pdf_words for page 1)."""
+    from reality_engine.v2 import page_words as _pw
 
-    with pymupdf.open(str(pdf)) as doc:
-        page = doc[0]
-        raw: Any = page.get_text("words")
-        words: list[tuple[float, float, float, float, str]] = [
-            (float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4])) for w in raw]
-        dirs: Counter[tuple[int, int]] = Counter()
-        layout: Any = page.get_text("dict")
-        for block in layout.get("blocks", []):
-            for line in block.get("lines", []):
-                d = line.get("dir") or (1.0, 0.0)
-                dirs[(round(d[0]), round(d[1]))] += sum(len(sp.get("text", "")) for sp in line.get("spans", []))
-    dx, dy = dirs.most_common(1)[0][0] if dirs else (1, 0)
-    if (dx, dy) == (1, 0):
-        return words
-    out = []
-    for x0, y0, x1, y1, text in words:
-        us = [x0 * dx + y0 * dy, x1 * dx + y1 * dy]
-        vs = [-x0 * dy + y0 * dx, -x1 * dy + y1 * dx]
-        out.append((min(us), min(vs), max(us), max(vs), text))
-    return out
+    return _pw.pdf_words(pdf, 1)
 
 
 def lines_of(words: list[tuple[float, float, float, float, str]]) -> list[list[int]]:
@@ -141,7 +121,9 @@ class Page:
         """Label text for the value word ``i``: its own line, then joined with a number-less line above/below."""
         n, x = self.line_of[i], self.words[i][0]
         own = self.text_left(n, x)
-        out = [own]
+        whole = " ".join(self.words[j][4] for j in self.lines[n]
+                         if self.words[j][2] <= x + 1 and re.search(r"[A-Za-z]", self.words[j][4]))
+        out = [own] + ([whole] if whole and whole != own else [])
         above = self.text_left(n - 1, x) if n > 0 and not self.has_number(n - 1) else ""
         below = self.text_left(n + 1, x) if n + 1 < len(self.lines) and not self.has_number(n + 1) else ""
         if above:
@@ -189,11 +171,14 @@ class Page:
 
 
 def _label_fits(label_key_: str, texts: list[str]) -> bool:
+    bare = re.sub(r"\d{1,2}$", "", label_key_)        # a footnote mark printed as a separate word ("EBITDA 1")
+    if bare != label_key_ and len(bare) >= 3 and _label_fits(bare, texts):
+        return True
     for text in texts:
         key = label_key(text)
         if not key:
             continue
-        if key == label_key_ or len(label_key_) >= 4 and key.endswith(label_key_) or same_label(key, label_key_) and (
+        if key == label_key_ or len(label_key_) >= 4 and (key.endswith(label_key_) or key.startswith(label_key_))                 or len(key) >= 8 and label_key_.startswith(key) or same_label(key, label_key_) and (
                 min(len(key), len(label_key_)) >= max(4, 0.5 * max(len(key), len(label_key_)))
                 or key not in label_key_ and label_key_ not in key):
             return True
@@ -234,6 +219,8 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
     loose: dict[tuple[str, str], list[tuple[int, dict[str, Any], bool | None]]] = defaultdict(list)
     for ri, cells in enumerate(per_reader):
         for c in cells:
+            if c["value"].strip().casefold() in _BLANK:
+                continue                                   # an empty cell, not a figure
             c["lk"] = str(canon.get(c["lk"], c["lk"]))
             row_ok, col_ok, at = place(page, c) if page else (None, None, None)
             if at is not None:
@@ -251,7 +238,9 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
         heads = Counter(c["col"] for _ri, c, _ok in mine)
         col_votes = [ok for _ri, _c, ok in mine]
         col_ok = True if any(v is True for v in col_votes) else (False if all(v is False for v in col_votes) else None)
-        pick = max((c for _ri, c, _ok in mine), key=lambda c: (names[c["label"]], heads[c["col"]]))
+        col_true = {id(c) for _ri, c, ok in mine if ok is True}
+        pick = max((c for _ri, c, _ok in mine),
+                   key=lambda c: (id(c) in col_true, names[c["label"]], heads[c["col"]]))
         conflict = ""
         if len(by_label) > 1:
             conflict = "two_labels_fit_line"
