@@ -8,10 +8,11 @@ History `docs/state_history/` (previous: `STATE_2026-11-11_1430.md`); method `do
 
 - Run ledger live (Shivam 11 Nov): `D:/RealityEngine/ledger/ledger.db` via `reality_engine/scripts/run_ledger.py` (DEVELOPER_GUIDE s7); Stop hook ingests workers + this session; report `D:/RealityEngine/reports/2026-11-11_run_ledger.xlsx`. Disclosures logged: p20 99.6% was fitted to its own 230 questions (honest 54.8%); T-177 frozen pages p008/p010/p029/p031/p034/p056 were opened while tuning the position check, so a fresh frozen set is needed before quoting reader scores.
 
-## Running
-- Grid runs, 60 reference pages, free Kilo: `D:/RealityEngine/v2/reference_pages/run_{dots,supervl,ultra}_grid`, `run_dots_imggrid` (layout + image); end lines in `grid_status.log`.
-- Store rebuild on copies (`D:/RealityEngine/rebuild_2026-11-11/run_all.sh`, carry linked transcripts, reconcile, integrity gate, then parts): u8 DONE; p20 in `kpi`; q12 next. Live stores untouched until compared.
-- Merged 11 Nov: T-180 `reader_score.py` (matches by word position), T-183 `page_reader.py` (not yet run live: Kilo free quota exhausted on key 1 after ~300 requests; Dots on key 2 `@kilo2` still answers). Fresh frozen set `D:/RealityEngine/v2/reference_pages_frozen2/` (30 pages, seed 20261111, never opened).
+## Running (DeepSeek off-peak from 15:30 IST, Go key 1)
+- T-186 answer-ready `fact` lookup: dsh/20261111T100652Z-e5027efc.
+- T-185 position check v2 (columns from header x-ranges, wrapped labels, charts, reader-error vs checker-miss verdict; dev pages only): dsh/20261111T100731Z-d01aff92.
+- T-187 guidance round 5 (4 management targets lost by the rebuild; gross margin as ebitda_margin): dsh/20261111T100939Z-a783c62b.
+- Rebuild on copies `D:/RealityEngine/rebuild_2026-11-11/`: u8 and p20 done (kpi +472/+1,119, statements +2,204/+6,366, share_capital +164/+166; shp_category -54/-80 = pre-2022-07 index rows outside compute window; guidance lost 4 right rows -> T-187), q12 in kpi. Live stores NOT swapped until T-187 merges.
 
 ## Next action
 1. T-180 done (frozen2): Dots grid+image recall 84% vs r10 36%, first build 41%; precision unmeasured. Next: hand-read precision sample (Shivam 6 pages) and a reader without a daily cap before T-183 runs a store.
