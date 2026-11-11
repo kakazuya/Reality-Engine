@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-10 22:03 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 0 tables and 2 of 73 raw folders.
+Generated 2026-11-11 05:00 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 0 tables and 0 of 73 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -245,7 +245,7 @@ Undocumented: 0 tables and 2 of 73 raw folders.
 | raw_market/bse_deliv | 4 | 0.00 | 2026-11-09 `_manifest.csv` | yes |
 | raw_market/bse_index | 0 | 0.00 | - | yes |
 | raw_market/bse_insider | 0 | 0.00 | - | yes |
-| raw_market/masters | 11 | 0.06 | 2026-10-08 `nse_SME_EQUITY_L.csv` | **undocumented** |
+| raw_market/masters | 11 | 0.06 | 2026-10-08 `nse_SME_EQUITY_L.csv` | yes |
 | raw_market/mc_fiidii | 0 | 0.00 | - | yes |
 | raw_market/nsdl_fpi_daily | 0 | 0.00 | - | yes |
 | raw_market/nsdl_fpi_fortnight | 0 | 0.00 | - | yes |
@@ -274,7 +274,7 @@ Undocumented: 0 tables and 2 of 73 raw folders.
 | results_pdfs | 0 | 0.00 | - | yes |
 | runners | 0 | 0.00 | - | yes |
 | tax_sources | 0 | 0.00 | - | yes |
-| transcripts_raw | 17 | 0.01 | 2026-11-09 `sha_index.db` | **undocumented** |
+| transcripts_raw | 17 | 0.01 | 2026-11-09 `sha_index.db` | yes |
 | user_research | 803 | 32.77 | 2026-11-02 `LISTENING_CHECK.md` | yes |
 | user_research_drive | 236 | 0.60 | 2026-10-26 `_native_blocked.txt` | yes |
 | vahan | 0 | 0.00 | - | yes |

@@ -8,6 +8,31 @@ T-180 (free-model transcription test).
 Each test states a hypothesis, what would prove it wrong, and the decision that follows. No test result is
 reported from a worker's own grade.
 
+## Pending, in order (written 11 Nov 2026, after T-179 and the 60-page run)
+
+Done so far: review written (brief section 10); T-179 first look (null result, below); T-177 tool merged and the 60
+pages transcribed by three free readers. Nothing is running. Each item names who does it and what closes it.
+
+| # | Ticket | What | Who | Model calls | Closes when |
+|---|---|---|---|---|---|
+| 1 | T-177 | Reconcile by value and column position, not label text (two readers agree on only 24% of cells because row labels differ); re-run on the saved outputs of all three readers, majority of three settles a cell | Eagle, script | none | agreed share reported per page; cells settled by script counted |
+| 2 | T-177 | Read the disputes and the 6 pages with no reconciled cell by hand; Shivam spot-checks 6 pages; write `reference_cells.csv` with `settled_by` | Eagle in session + Shivam | none | 30 dev + 30 frozen pages have settled cells; frozen copy under `frozen/` |
+| 3 | T-177 | Completeness report `reality_engine/v2/completeness.py` (number coverage, grid check, arithmetic closure, cross-source, unread pages) with a build gate, scored against the reference pages | DeepSeek code worker (Beam dies near 192k input tokens), separate grader | none | runs on u8 in under 10 minutes; calibration table in this file |
+| 4 | T-178 | First-build re-key: script cells r10 vs `deck_figures`/`ar_facts` facts as stored vs verified + label map + period engine vs union, on the reference pages; fiscal-year error rate on 200 annual reports | Eagle, script | none | four-arm table on dev and frozen pages; salvage decision recorded |
+| 5 | T-180 | Reader bake-off on the reference pages: recall, precision before and after the script check, run-to-run agreement, seconds per page, for Dots, Nemotron Super VL, Nemotron Ultra, Nemotron Nano Omni (text; Dots also image) against the r10 script. The 60-page outputs already held are run 1; one more run gives consistency | Eagle, script | free Kilo only | one row per reader; decision: model-in-build for tables, or scripts with the completeness gate |
+| 6 | T-179 | Formatted answer report (xlsx + csv) from `D:/RealityEngine/t179/` with `answer_run_report --call-log` | Eagle, script | none | files in `D:/RealityEngine/reports/` |
+| 7 | new | Answer-path test 2: one answer-ready fact lookup (preferred value, period, basis, unit, source in one reply) against today's tools; same 60 questions, two runs per arm; stricter grader brief (lists each figure it re-looked-up) | DeepSeek worker builds the lookup; DeepSeek answers; graders | DeepSeek, off-peak | right, lookups and seconds per answer per arm against the same-arm noise |
+| 8 | new | Document-integrity gate before extraction: one-page link-notice transcripts, sha256 duplicates, misdated calls (latest year in text more than a year before filing), mistyped documents; report per store, then a build gate | DeepSeek code worker, separate grader | none | counts per store for u8, q12, p20; gate refuses a store with new defects |
+| 9 | T-163, T-132 | Segments r8 and table cells r13: held until item 5 decides | - | - | decision of item 5 |
+| 10 | STATE items | Rebuild p20/u8/q12 so T-161..T-166 go live; CHOLAFIN KPI branch comparison; s10 store, frozen split (T-172) and timed baseline (T-170); `extract_deck_figures.py` still lists Step 5 entries and a paid default second reader | as in `tasks/STATE.md` | - | - |
+
+Order rule: 1 -> 2 -> 4 and 5 (both need settled reference cells); 3, 6, 8 are independent and can run alongside;
+7 needs DeepSeek off-peak (not 06:30-09:30 or 11:30-15:30 IST on weekdays).
+
+Standing limits learned on 10-11 Nov: Beam workers end at about 192k input tokens, so Beam is for short jobs only;
+LongCat 2.5 and Step 5 do not answer on OpenCode Go; free readers that work are on Kilo (Dots, Nemotron family);
+the DeepSeek grader is lenient against Opus (28 of 50 Opus-not-right answers called right).
+
 ## 0. What the first build is (inspected 10 Nov, read-only)
 
 | Store | Holds | Measured |
