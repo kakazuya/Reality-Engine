@@ -206,18 +206,24 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
     if route == "no_figures":              # a page that prints no figures never reaches a reader
         result["status"] = "no_figures"
         return result
-    if route == "needs_ocr":
+    # T-189: with the image input a page with no usable words (no text layer, OCR not run) is read from the image
+    # alone; its cells cannot be position-checked or digit-checked, so they are served unverified, labelled.
+    no_usable_words = not words or (pw.quality != "ok" and not pw.source.startswith("ocr"))
+    image_only = input_mode == "image" and (route == "needs_ocr" or no_usable_words)
+    if route == "needs_ocr" and not image_only:
         result["status"] = "no_words"
         return result
-    if route != "table_or_chart":
+    if route not in ("table_or_chart", "needs_ocr"):
         result["status"] = "no_table"
         return result
 
-    # no usable words
-    if not words or (pw.quality != "ok" and not pw.source.startswith("ocr")):
+    if no_usable_words and not image_only:
         result["status"] = "no_words"
         result["reason"] = pw.reason
         return result
+    if image_only:
+        words = []
+        result["reason"] = (f"{result['reason']}; " if result["reason"] else "") + "image only: no usable words"
 
     layout = page_layout.layout_text(words)
     image_b64 = None
@@ -294,7 +300,9 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
         value_text = c.get("value_text", "") or ""
         status = "verified" if c.get("settled_by") in ("position", "script+position") else "unverified"
         # T-189: a value whose digits occur nowhere on the page was invented by the reader; never serve it.
-        if not re.sub(r"\D", "", value_text) or re.sub(r"\D", "", value_text) not in page_digits:
+        if image_only:
+            status = "unverified"
+        elif not re.sub(r"\D", "", value_text) or re.sub(r"\D", "", value_text) not in page_digits:
             status = "quarantined"
         x0 = c.get("x0")
         y0 = c.get("y0")
