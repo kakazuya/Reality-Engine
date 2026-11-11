@@ -4,6 +4,7 @@ Fixture stores and a tiny PDF; ``ocr_page`` is monkeypatched, so no model, no re
 """
 from __future__ import annotations
 
+import csv
 import json
 import shutil
 import sqlite3
@@ -309,3 +310,42 @@ def test_kpi_prefers_textrec_on_a_page_both_engines_read(tmp_path, monkeypatch):
     kpi.run(str(out), ["KEC"], tmp_path / "sb", None, None, [str(textrec), str(rapid)])
     assert seen["KEC"][PDF_KEY][1][0] == "textrec reading"
     assert seen["KEC"][PDF_KEY][1][3] == "ocr_textrec"
+
+
+def test_hp_ocr_pdf_dir_plan_takes_one_page_per_pdf(tmp_path):
+    """T-188: a folder of single-page PDFs plans one page per PDF, with no ocr_page row and the same HP copy."""
+    from reality_engine.pilot3 import hp_ocr
+
+    pdfs = tmp_path / "pdf_pages"
+    pdfs.mkdir()
+    for name in ("f001.pdf", "f002.pdf"):
+        _pdf(pdfs / name, ["Revenue 1,234"])
+    plan = hp_ocr.pdf_dir_plan(pdfs)
+    assert [(r["symbol"], r["doc_key"], r["page"], r["pdf_path"]) for r in plan] == [
+        ("frozen2", "f001", 1, str(pdfs / "f001.pdf")), ("frozen2", "f002", 1, str(pdfs / "f002.pdf"))]
+    info = hp_ocr.write_plan(plan, tmp_path / "plan.jsonl", tmp_path / "stage")
+    assert (info["pages"], info["pdfs"]) == (2, 2)
+    written = [json.loads(line) for line in (tmp_path / "plan.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [r["doc_key"] for r in written] == ["f001", "f002"] and "pdf_path" not in written[0]
+    assert all(r["pdf"].startswith("pdfs/") and r["pdf"].endswith(".pdf") for r in written)
+    assert (tmp_path / "stage" / written[0]["pdf"]).is_file()
+
+
+def test_hp_ocr_write_words_writes_pdf_points_and_keeps_the_error_row(tmp_path):
+    """T-188: --words-out writes <page_id>.json boxes in PDF points plus ocr_log.csv; a failed page keeps a row."""
+    from reality_engine.pilot3 import hp_ocr
+
+    rows = [
+        {"id": "frozen2|f001|1", "seconds": 1.5, "error": None,
+         "line_rows": [{"words": [{"text": "Revenue", "confidence": 0.99, "box": [1200, 300, 1800, 360]},
+                                  {"text": "1,234", "confidence": 0.96, "box": [1900, 300, 2100, 360]}]}]},
+        {"id": "frozen2|f002|1", "seconds": 0.5, "error": "PdfiumError: failed", "line_rows": []},
+    ]
+    report = hp_ocr.write_words(rows, tmp_path / "ocr_textrec")
+    assert report == {"pages": 2, "words": 2, "error_pages": 1, "seconds": 2.0}
+    assert json.loads((tmp_path / "ocr_textrec" / "f001.json").read_text(encoding="utf-8")) == [
+        [288.0, 72.0, 432.0, 86.4, "Revenue", 0.99], [456.0, 72.0, 504.0, 86.4, "1,234", 0.96]]
+    assert json.loads((tmp_path / "ocr_textrec" / "f002.json").read_text(encoding="utf-8")) == []
+    log = list(csv.DictReader((tmp_path / "ocr_textrec" / "ocr_log.csv").open(encoding="utf-8")))
+    assert [(r["page_id"], r["words"], r["errors"]) for r in log] == [
+        ("f001", "2", ""), ("f002", "0", "PdfiumError: failed")]

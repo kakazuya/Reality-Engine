@@ -2,7 +2,7 @@
 
 Usage:
     python -m reality_engine.v2.reference_pages sample --stores D:/RealityEngine/p20/p20new.db,... --out <dir> --seed 20261110
-    python -m reality_engine.v2.reference_pages transcribe --pages <pages.csv> --reader <MODELS name> --input text|image|layout|layout_image --out <dir> [--split dev] [--pdf-pages <dir>]
+    python -m reality_engine.v2.reference_pages transcribe --pages <pages.csv> --reader <MODELS name> --input text|image|layout|layout_image --out <dir> [--split dev] [--pdf-pages <dir>] [--ocr-words <dir>]
     python -m reality_engine.v2.reference_pages reconcile --pages <pages.csv> --runs <dirA> <dirB> --out <dir>
 """
 from __future__ import annotations
@@ -575,8 +575,24 @@ LAYOUT_NOTE = ("\n\nPage text laid out as printed: each line below is one printe
                "blank where a column has no number is an empty cell: never move a later number up into it.\n<<<\n")
 
 
-def _layout_for(pdf_pages: Path | None, pid: str) -> str:
+def _ocr_words(folder: Path | None, pid: str) -> list[tuple[float, float, float, float, str]]:
+    """Word boxes of one page from ``<folder>/<pid>.json``: ``[x0, y0, x1, y1, text, conf]`` in PDF points
+    (the OCR output of ``reality_engine.pilot3.hp_ocr fetch --words-out``), as ``layout_text`` takes them."""
+    path = (folder or Path()) / f"{pid}.json"
+    if not path.is_file():
+        return []
+    words = json.loads(path.read_text(encoding="utf-8"))
+    return [(float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4])) for w in words
+            if len(w) >= 5 and str(w[4]).strip()]
+
+
+def _layout_for(pdf_pages: Path | None, pid: str, ocr_words: Path | None = None) -> str:
+    """The page laid out as printed: from OCR word boxes when ``--ocr-words`` is given, else the PDF text layer."""
     from reality_engine.v2.page_layout import layout_text
+
+    if ocr_words:
+        words = _ocr_words(ocr_words, pid)
+        return layout_text(words) if words else ""
     from reality_engine.v2.reference_geom import page_words
 
     pdf = (pdf_pages or Path()) / f"{pid}.pdf"
@@ -584,7 +600,8 @@ def _layout_for(pdf_pages: Path | None, pid: str) -> str:
 
 
 def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, split: str | None = None,
-                     pdf_pages: Path | None = None, grid: bool = False) -> int:
+                     pdf_pages: Path | None = None, grid: bool = False,
+                     ocr_words: Path | None = None) -> int:
     if not _is_free(reader):
         raise SystemExit(f"reader {reader!r} is not a free model; refusing")
     rows_meta = _load_pages_csv(pages_csv)
@@ -618,7 +635,7 @@ def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, s
             prompt = TRANSCRIBE_PROMPT
             res = _model_call(reader, prompt, img if img else None)
         elif input_mode in ("layout", "layout_image"):
-            text = _layout_for(pdf_pages, pid)
+            text = _layout_for(pdf_pages, pid, ocr_words)
             img = ""
             if input_mode == "layout_image" or not text.strip():     # an image-only page still reaches the reader
                 one = (pdf_pages or Path()) / f"{pid}.pdf"
@@ -664,7 +681,8 @@ def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, s
 
 def transcribe(args) -> int:
     return transcribe_pages(Path(args.pages), args.reader, args.input, Path(args.out), args.split,
-                            Path(args.pdf_pages) if args.pdf_pages else None, args.format == "grid")
+                            Path(args.pdf_pages) if args.pdf_pages else None, args.format == "grid",
+                            Path(args.ocr_words) if args.ocr_words else None)
 
 
 # ---------- reconcile ----------
@@ -887,6 +905,9 @@ def main(argv=None) -> int:
     p_trans.add_argument("--format", default="cells", choices=["cells", "grid"],
                          help="grid: one line per printed row (about a tenth of the output tokens of cells)")
     p_trans.add_argument("--pdf-pages", default=None, help="folder of one-page PDFs <page_id>.pdf (layout inputs)")
+    p_trans.add_argument("--ocr-words", default=None,
+                         help="folder of OCR word boxes <page_id>.json in PDF points: build the layout from OCR "
+                              "instead of the PDF text layer (T-188)")
     p_trans.add_argument("--out", required=True, type=Path)
     p_trans.add_argument("--split", default=None)
     p_trans.set_defaults(func=transcribe)

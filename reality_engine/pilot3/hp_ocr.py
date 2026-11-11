@@ -10,21 +10,24 @@ Pipeline (three commands, MSI side):
 * ``plan``  -- read the pages already OCR'd on the MSI (``ocr_page`` rows of ``--input-db``), add
   the pages ``ocr.pending()`` still reports (the one page RapidOCR failed with "Overly large
   image"), resolve every page's PDF the way ``ocr.pending()`` does, and copy only those PDFs to
-  the HP (``<remote-root>\\pdfs\\<sha[:2]>\\<sha>.pdf``).  Writes ``--plan-out``.
+  the HP (``<remote-root>\\pdfs\\<sha[:2]>\\<sha>.pdf``).  Writes ``--plan-out``.  ``--pdf-dir``
+  takes a folder of single-page PDFs instead of the ``ocr_page`` rows (``<stem>.pdf`` is page 1
+  of that page), for the T-188 reader bake-off.
 * ``run``   -- refuse while the console is locked, copy the plan and the HP driver, start it as a
   hidden scheduled task (session 0; the helper it launches is the packaged WinExe), and wait for
   ``ocr_pages.jsonl.gz``.
 * ``fetch`` -- bring the gz and ``summary.json`` back and write ``--out`` (same ``ocr_page`` schema
   as ``ocr.py`` plus ``low_conf_numbers`` and ``error``), ``method='ocr_textrec'``, word boxes in
-  PDF points.
+  PDF points.  ``--words-out <dir>`` writes ``<page_id>.json`` (word boxes only) and
+  ``ocr_log.csv`` instead of the database, which is what ``plan --pdf-dir`` feeds.
 * ``compare`` -- per company pages / numbers / agreements and 10 sample disagreements, as the
   self-contained ``OCR_COMPARE.html`` Shivam reads.
 * ``cleanup`` -- remove the MSIX package, certificate, tasks, copied PDFs and build from the HP.
 
 CLI:
-  python -m reality_engine.pilot3.hp_ocr plan    [--host H] [--remote-root R] [--no-copy]
+  python -m reality_engine.pilot3.hp_ocr plan    [--host H] [--remote-root R] [--no-copy] [--pdf-dir DIR]
   python -m reality_engine.pilot3.hp_ocr run     [--host H] [--timeout 7200] [--no-wait]
-  python -m reality_engine.pilot3.hp_ocr fetch   [--host H] [--out DB]
+  python -m reality_engine.pilot3.hp_ocr fetch   [--host H] [--out DB] [--words-out DIR]
   python -m reality_engine.pilot3.hp_ocr compare [--textrec-db DB] [--html HTML]
   python -m reality_engine.pilot3.hp_ocr cleanup [--host H]
 """
@@ -32,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import csv
 import gzip
 import hashlib
 import json
@@ -260,13 +264,17 @@ def write_plan(plan: list[dict], plan_out: Path, stage: Path) -> dict:
 
 
 def cmd_plan(args) -> int:
-    dbs = {s: path for s, path in input_dbs().items() if s in args.symbols}
-    for path in map(Path, args.input_db):
-        if path.name in {f"ocr_{s}.db" for s in args.symbols}:
-            dbs[path.name[len("ocr_"):-len(".db")]] = path
-    plan, stats = build_plan(args.symbols, dbs, Path(args.pages_db) if args.pages_db else None)
-    info = write_plan(plan, Path(args.plan_out), Path(args.stage))
-    info.update(stats)
+    if args.pdf_dir:
+        plan = pdf_dir_plan(Path(args.pdf_dir))
+        info = write_plan(plan, Path(args.plan_out), Path(args.stage))
+    else:
+        dbs = {s: path for s, path in input_dbs().items() if s in args.symbols}
+        for path in map(Path, args.input_db):
+            if path.name in {f"ocr_{s}.db" for s in args.symbols}:
+                dbs[path.name[len("ocr_"):-len(".db")]] = path
+        plan, stats = build_plan(args.symbols, dbs, Path(args.pages_db) if args.pages_db else None)
+        info = write_plan(plan, Path(args.plan_out), Path(args.stage))
+        info.update(stats)
     print(json.dumps(info, indent=1))
     if args.no_copy:
         return 0
@@ -277,6 +285,16 @@ def cmd_plan(args) -> int:
     _scp(args.plan_out, f"{args.host}:{remote.replace(chr(92), '/')}/plan.jsonl")
     print("copied", info["pages"], "pages /", info["pdfs"], "PDFs /", info["mb"], "MB to", remote)
     return 0
+
+
+PDF_DIR_SYMBOL = "frozen2"
+
+
+def pdf_dir_plan(pdf_dir: Path) -> list[dict]:
+    """One plan row per single-page PDF in a folder (T-188): page_id = the PDF stem, and it is page 1, so
+    ``run``, ``fetch`` and ``cleanup`` stay the pilot3 path."""
+    return [{"symbol": PDF_DIR_SYMBOL, "doc_key": pdf.stem, "page": 1, "doc_type": "deck", "known_at": None,
+             "pdf_path": str(pdf)} for pdf in sorted(Path(pdf_dir).glob("*.pdf"))]
 
 
 # --------------------------------------------------------------------------- #
@@ -400,6 +418,40 @@ def cmd_cleanup(args) -> int:
 # fetch -> ocr_textrec.db
 # --------------------------------------------------------------------------- #
 
+def _words(row: dict) -> list[list]:
+    """Word boxes of one HP row in PDF points (the page was rendered at 300 DPI)."""
+    out: list[list] = []
+    for line in row.get("line_rows") or []:
+        for word in line.get("words") or []:
+            box = word.get("box") or [0, 0, 0, 0]
+            out.append([round(box[0] * 72.0 / 300.0, 2), round(box[1] * 72.0 / 300.0, 2),
+                        round(box[2] * 72.0 / 300.0, 2), round(box[3] * 72.0 / 300.0, 2),
+                        word.get("text") or "", word.get("confidence")])
+    return out
+
+
+def write_words(rows: list[dict], out_dir: str | Path) -> dict:
+    """One ``<page_id>.json`` (word boxes in PDF points) per page plus ``ocr_log.csv`` -- the T-188 output for a
+    folder of PDFs, same rows as the database path, no database."""
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    log_rows: list[dict] = []
+    errors = 0
+    for row in rows:
+        page_id = str(row["id"]).split("|")[1]
+        words = _words(row)
+        (out / f"{page_id}.json").write_text(json.dumps(words, separators=(",", ":")), encoding="utf-8")
+        errors += int(bool(row.get("error")))
+        log_rows.append({"page_id": page_id, "seconds": round(row.get("seconds") or 0.0, 2), "words": len(words),
+                         "errors": row.get("error") or ""})
+    with (out / "ocr_log.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["page_id", "seconds", "words", "errors"])
+        writer.writeheader()
+        writer.writerows(log_rows)
+    return {"pages": len(rows), "words": sum(r["words"] for r in log_rows), "error_pages": errors,
+            "seconds": round(sum(r["seconds"] for r in log_rows), 1)}
+
+
 def write_db(rows: list[dict], plan_out: str | Path, out: str | Path) -> dict:
     """Write fetched HP rows as ``ocr_page`` rows (word boxes x 72/300 -> PDF points) and check coverage."""
     planned = {(r["symbol"], r["doc_key"], r["page"]) for r in
@@ -416,15 +468,9 @@ def write_db(rows: list[dict], plan_out: str | Path, out: str | Path) -> dict:
                            "re-run `run --fresh`")
     con = sqlite3.connect(out)
     con.executescript(SCHEMA)
-    k = 72.0 / 300.0
     stats: dict = {}
     for row in rows:
-        words = []
-        for line in row.get("line_rows") or []:
-            for word in line.get("words") or []:
-                box = word.get("box") or [0, 0, 0, 0]
-                words.append([round(box[0] * k, 2), round(box[1] * k, 2), round(box[2] * k, 2),
-                              round(box[3] * k, 2), word.get("text") or "", word.get("confidence")])
+        words = _words(row)
         text = row.get("text") or ""
         con.execute("INSERT OR REPLACE INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (row["symbol"], row["doc_key"], row["page"], row.get("doc_type"), row.get("known_at"),
@@ -459,6 +505,10 @@ def cmd_fetch(args) -> int:
                     raise
     with gzip.open(args.gz, "rt", encoding="utf-8") as handle:
         rows = [json.loads(line) for line in handle if line.strip()]
+    if args.words_out:
+        report = write_words(rows, args.words_out)
+        print(json.dumps(report, indent=1))
+        return 0 if not report["error_pages"] else 1
     report = write_db(rows, args.plan_out, args.out)
     print(json.dumps(report, indent=1))
     return 0 if not report["missing"] else 1
@@ -613,7 +663,7 @@ engine is shown as an empty cell.</p>
 # --------------------------------------------------------------------------- #
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     sub = ap.add_subparsers(dest="command", required=True)
     pl = sub.add_parser("plan")
     pl.add_argument("--host", default=HOST)
@@ -623,6 +673,8 @@ def main(argv=None) -> int:
     pl.add_argument("--pages-db", default=str(PAGES_DB))
     pl.add_argument("--plan-out", default=str(PLAN_OUT))
     pl.add_argument("--stage", default=str(STAGE))
+    pl.add_argument("--pdf-dir", default=None,
+                    help="a folder of single-page PDFs instead of the ocr_page rows; page_id is the PDF stem")
     pl.add_argument("--no-copy", action="store_true")
     pl.set_defaults(func=cmd_plan)
     ru = sub.add_parser("run")
@@ -639,6 +691,8 @@ def main(argv=None) -> int:
     fe.add_argument("--plan-out", default=str(PLAN_OUT))
     fe.add_argument("--gz", default=str(OCR_DIR / "ocr_pages.jsonl.gz"))
     fe.add_argument("--out", default=str(OUT_DB))
+    fe.add_argument("--words-out", default=None,
+                    help="write <page_id>.json word boxes and ocr_log.csv here instead of the database")
     fe.add_argument("--no-copy", action="store_true", help="use the local --gz (the HP copy is already fetched)")
     fe.set_defaults(func=cmd_fetch)
     co = sub.add_parser("compare")

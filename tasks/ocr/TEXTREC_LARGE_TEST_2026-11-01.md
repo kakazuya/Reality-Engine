@@ -318,6 +318,13 @@ Import-Certificate -FilePath <build>\rebench.cer -CertStoreLocation Cert:\LocalM
 & signtool sign /fd SHA256 /a /f <build>\rebench.pfx /p reb-2026 <build>\textrec.msix
 Add-AppxPackage -Path <build>\textrec.msix -ForceUpdateFromAnyVersion
 
+**Over SSH, `Add-AppxPackage` fails with `0x80070005`** (in the SSH session and in a hidden S4U task
+alike): the AppX Deployment PLM cannot initialize without the interactive session. Since 11 Nov
+(T-188) the install is done by a windowless `WinExe` (calls `PackageManager.AddPackageAsync`) started
+as a hidden `-LogonType Interactive` task, so nothing appears on the screen; the certificate,
+`makeappx` and `signtool` steps above work unchanged over the elevated SSH session. Measured
+details: `machines/HP_LAPTOP.md` ("Installing it headless").
+
 # 4. PE-check, then run a batch in the interactive session (the only way the
 #    engine answers).  The driver does both; shown here so nobody runs a console
 #    build by hand.
