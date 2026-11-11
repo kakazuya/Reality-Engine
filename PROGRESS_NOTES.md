@@ -1,1 +1,0 @@
-- T-185 (2026-11-11T16:06:11): position check v2 done (header-band column model, wrapped labels, chart panels, verdict/how); 9 tests pass, basedpyright 0 errors on reference_geom.py; dev measurement dots 95.4% confirmed/located vs 94.6% before, ultra 93.5% vs 96.1%; verdict counts in docs s12; .tmp/t185_flipped.csv 40 rows seed 7. Next: final accept run + report.
