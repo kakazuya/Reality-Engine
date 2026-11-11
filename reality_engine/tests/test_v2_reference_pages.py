@@ -133,3 +133,52 @@ def test_reconcile_handmade():
     rev = [r for r in rc if r["row_label"] == "Revenue" and r["col_header"] == "Q1"][0]
     assert rev["verbatim"] == "True"
     assert rev["agreed"] == "True"
+
+
+def test_page_layout_main_writes_utf8_on_a_cp1252_console(monkeypatch):
+    """T-188: the rupee sign a page prints must not crash the layout CLI on a cp1252 console."""
+    import io
+    import sys
+
+    from reality_engine.v2 import page_layout
+
+    monkeypatch.setattr(page_layout, "page_words",
+                        lambda pdf: [(0.0, 0.0, 30.0, 8.0, "₹"), (40.0, 0.0, 90.0, 8.0, "1,234")])
+    raw = io.BytesIO()
+    stream = io.TextIOWrapper(raw, encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", stream)
+    assert page_layout.main(["--width", "40", "one-page.pdf"]) == 0
+    stream.flush()
+    assert "₹" in raw.getvalue().decode("utf-8")
+
+
+def test_transcribe_layout_built_from_ocr_words(monkeypatch):
+    """T-188: --ocr-words builds the layout from OCR word boxes, not the PDF text layer."""
+    base = _base()
+    words = base / "ocr_words"
+    words.mkdir()
+    (words / "p1.json").write_text(json.dumps([
+        [40.0, 10.0, 120.0, 20.0, "Revenue", 0.99], [300.0, 10.0, 360.0, 20.0, "1,234", 0.96]]), encoding="utf-8")
+    pages_csv = base / "pages.csv"
+    with pages_csv.open("w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["page_id", "store", "symbol", "doc key", "sha256", "doc type", "page", "stratum",
+                    "in_first_build", "split"])
+        w.writerow(["p1", "q12", "SYM", "dk", "sha", "deck", "1", "ruled_table", "False", "frozen2"])
+    seen: dict = {}
+
+    def fake_call(reader, prompt, image):
+        seen["prompt"] = prompt
+        return {"output": "TABLE: T\nUNIT: \nCOLUMNS: Q1\nRevenue | 1,234", "seconds": 0.1,
+                "in_tok": 0, "out_tok": 0, "error": None}
+
+    monkeypatch.setattr(rp, "_is_free", lambda reader: True)
+    monkeypatch.setattr(rp, "_model_call", fake_call)
+    out = base / "run"
+    assert rp.transcribe_pages(pages_csv, "dots-studio/dots-3-note-preview:free", "layout", out,
+                               grid=True, ocr_words=words) == 0
+    assert "Page text laid out as printed" in seen["prompt"] and "1,234" in seen["prompt"]
+    rows = json.loads((out / "p1.rows.json").read_text(encoding="utf-8"))
+    assert [r["value"] for r in rows] == ["1,234"]
+    # A page with no OCR words falls back to the page image (empty here: no pdf and no store PDF).
+    assert rp._layout_for(None, "absent", words) == ""

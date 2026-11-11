@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import statistics
+import sys
 from pathlib import Path
 
 from reality_engine.v2.reference_geom import lines_of, page_words
@@ -54,7 +55,12 @@ def main(argv=None) -> int:
     ap.add_argument("pdf", type=Path)
     ap.add_argument("--width", type=int, default=180)
     args = ap.parse_args(argv)
-    print(layout_text(page_words(args.pdf), args.width))
+    text = layout_text(page_words(args.pdf), args.width)
+    # A cp1252 console cannot print the rupee sign a page prints: write UTF-8 to the same stream (T-188).
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure:
+        reconfigure(encoding="utf-8")
+    print(text)
     return 0
 
 

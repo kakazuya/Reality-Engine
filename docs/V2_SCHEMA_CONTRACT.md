@@ -1048,7 +1048,7 @@ Commands:
 
 ```
 python -m reality_engine.v2.reference_pages sample --stores <db,...> --out <dir> --seed 20261110
-python -m reality_engine.v2.reference_pages transcribe --pages <pages.csv> --reader <MODELS name> --input text|image --out <dir> [--split dev]
+python -m reality_engine.v2.reference_pages transcribe --pages <pages.csv> --reader <MODELS name> --input text|image|layout|layout_image [--format cells|grid] [--pdf-pages <dir>] [--ocr-words <dir>] --out <dir> [--split dev]
 python -m reality_engine.v2.reference_pages reconcile --pages <pages.csv> --runs <dirA> <dirB> --out <dir>
 ```
 
@@ -1103,10 +1103,11 @@ different table titles, row labels and headers (on p013 both read the EPS column
 and the other to the company name row); `verbatim` only proves the string is somewhere on the page, not that it belongs
 to that cell, so it is necessary but not sufficient for a settled cell.
 
-Test runtime: `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2_reference_pages.py -q` -> 3 passed in
-0.43 s (fixtures are small SQLite files under `.tmp`; `tmp_path` is not usable in this sandbox because
-`.tmp/pytest-of-SYSTEM` is ACL-locked by an earlier SYSTEM session). Typecheck: basedpyright 0 errors on the module and
-its test.
+Test runtime: `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2_reference_pages.py -q` -> 5 passed in
+0.42 s (fixtures are small SQLite files under `.tmp`; `tmp_path` is not usable in this sandbox because
+`.tmp/pytest-of-SYSTEM` is ACL-locked by an earlier SYSTEM session). Two of the five are T-188: the layout CLI writes
+UTF-8 on a cp1252 console, and `--ocr-words` builds the layout from word boxes. Typecheck: basedpyright 0 errors on the
+module and its test.
 
 **Vote of readers (T-177, 11 Nov 2026).** `python -m reality_engine.v2.reference_vote --pages <pages.csv> --runs
 <dirA> <dirB> [<dirC> ...] --out <dir>` replaces the exact-text reconcile for building reference cells: a cell is
@@ -1164,10 +1165,23 @@ frozen2 pages: confirmed-and-wrong 1 -> 0 (Dots, page image) and 59 -> 26 (Beam)
 
 **Layout input for readers (T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/page_layout.py` renders word boxes as
 fixed-width text, one output line per printed line with horizontal position kept (`python -m
-reality_engine.v2.page_layout <one-page.pdf>`). `reference_pages transcribe --input layout|layout_image --pdf-pages
-<dir>` sends that text (plus the page image for `layout_image`, or the image alone when the page has no text layer)
-with a note that a blank in a column is an empty cell. The same renderer takes OCR word boxes, so text-layer and
-image-only pages reach a reader the same way.
+reality_engine.v2.page_layout <one-page.pdf>`; it writes UTF-8 so a page's rupee sign does not crash a cp1252 console).
+`reference_pages transcribe --input layout|layout_image --pdf-pages <dir>` sends that text (plus the page image for
+`layout_image`, or the image alone when the page has no text layer) with a note that a blank in a column is an empty
+cell. The same renderer takes OCR word boxes, so text-layer and image-only pages reach a reader the same way:
+`--ocr-words <dir>` reads `<dir>/<page_id>.json` (`[x0, y0, x1, y1, text, conf]` in PDF points, as
+`reality_engine.pilot3.hp_ocr fetch --words-out` writes them) instead of the PDF text layer, so Dots-on-OCR-text and
+Dots-on-text-layer run the same prompt over the same pages (T-188).
+
+**Frozen2 OCR arms (T-188, 11 Nov 2026, Eagle).** `python -m reality_engine.pilot3.hp_ocr plan --pdf-dir <dir>` plans
+one page per single-page PDF (`page_id` = the stem) through the same `run`/`cleanup`, and `fetch --words-out <dir>`
+writes the word boxes instead of a database. Measured on the 30 frozen2 pages: 30/30 pages read, 0 failed, 8,252 word
+boxes, 1654 number tokens (34 under 0.9 confidence), 139 pages/min of recognition (101 pages/min including the 300 DPI
+render), 27 s end to end with the 10 MB of PDFs copied; `cleanup` left no package, certificate, task or copy. Dots grid
+on the PDF text layer: 27/30 pages with rows, 1,416 rows, 19.3 s/page; on the TextRecognizer layout: 26/30 pages,
+1,398 rows, 20.6 s/page; both 0 errors after re-running transient 502/400 replies. All 30 pages do have a text layer;
+OCR finds more number tokens on 8 (`ocr_vs_layer.csv`). Report: `D:/RealityEngine/v2/reference_pages_frozen2/T188_REPORT.md`;
+scoring against the hand-read truth is Opus's step.
 
 **Grid output (`--format grid`, 11 Nov 2026, Eagle).** The cell-per-JSON-line reply costs about 35 output tokens a
 cell and every free reader stops at its 8,000-token cap: on wide results pages all three readers ended mid-table
