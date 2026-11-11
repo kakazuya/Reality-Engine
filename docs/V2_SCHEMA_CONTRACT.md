@@ -1107,3 +1107,119 @@ Test runtime: `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2
 0.43 s (fixtures are small SQLite files under `.tmp`; `tmp_path` is not usable in this sandbox because
 `.tmp/pytest-of-SYSTEM` is ACL-locked by an earlier SYSTEM session). Typecheck: basedpyright 0 errors on the module and
 its test.
+
+## 13. Completeness report (T-177, 11 Nov 2026)
+
+`reality_engine/v2/completeness.py` answers, page by page and with no model call, how much of what a page prints
+reached the store. It is the check that the precision samples cannot be: T-132 round 11 dropped a whole column on
+two-level-header tables while a replay test still passed because only old cells were compared; the page's number
+coverage falls at once. Test: `reality_engine/tests/test_v2_completeness.py`.
+
+```bash
+python -m reality_engine.v2.completeness run --store <pilot3.db> [<pilot3.db> ...] [--cells <v2 root>] \
+    --out <dir> [--symbols A,B] [--types deck,results,annual_report]
+python -m reality_engine.v2.completeness gate --prev <page_coverage.csv> --new <page_coverage.csv> [--tolerance 0.02]
+python -m reality_engine.v2.completeness calibrate --coverage <page_coverage.csv> \
+    --reference <reference_cells.csv> --pages <pages.csv> --split dev
+```
+
+`--store` takes one or more stores, opened read-only through `reality_engine.db.readonly.connect_ro`; every query is
+per document or over one explicit `doc_key` list. `--cells` is a `<out>/company/<ISIN>.db` cell-store root
+(section 10). `run` writes `page_coverage.csv` and the sidecar `completeness.db`, replacing `page_coverage` rows for
+the stores in the run; the summary prints pages, unread pages, and median and 10th-percentile `number_coverage` per
+doc type.
+
+One row per `(store, doc_key, page)`:
+
+| column | meaning |
+|---|---|
+| `store, symbol, doc_key, sha256, doc_type, page` | the page's identity |
+| `unread` | 1 when there is no `doc_page` row, or its text is empty or under 30 characters; counted, never scored |
+| `numbers_printed` | distinct value-numbers in the page text (rules below) |
+| `numbers_stored` | of those, how many appear as a value in a stored row that cites this document and page |
+| `number_coverage` | `numbers_stored / numbers_printed` (empty when the page prints none) |
+| `grid_rows, grid_cols, grid_cells_printed` | printed table grid from the PDF's word boxes: runs of two or more consecutive rows each with two or more figures aligned to the same right-edge column anchors, summed over the page's grids |
+| `grid_cells_stored` | v2 `table_cell` rows on the page carrying a value |
+| `grid_coverage` | `min(1, grid_cells_stored / grid_cells_printed)`; empty when the PDF is missing, the page has no printed grid, or `--cells` does not cover the document |
+| `cells_built` | 1 when the document is present in the `--cells` store |
+| `sums_checked, sums_closed` | arithmetic closure of stored rows (rules below) |
+| `sources` | the tables whose stored values matched a printed value, `+`-joined |
+| `stored_values` | the sorted `\|`-joined stored magnitudes the page was scored against (lets `calibrate` work from the CSV alone) |
+
+**Number words, scale words and exclusions.** A printed figure is a value after number words are converted
+("twenty-five" -> 25) and a scale word printed right after it is applied ("25 crore" gives the magnitudes 25 and
+250,000,000, because the store keeps either the printed magnitude or base units). Scale words: thousand 1e3,
+lakh/lac 1e5, crore/cr 1e7, million/mn 1e6, billion/bn 1e9. A number word counts only when a scale word, `%`,
+`percent`, `bps` or a physical unit follows it ("one of the largest" is prose). A printed figure is **not** counted
+when it is: a date or period (`31.03.2026`, `31/03/26`, `31 March 2026`, `March 31, 2026`, `Mar-25`, `Mar'24`,
+`Q2FY27`, `H1 FY27`, `9M 25-26`, `FY2025-26`, `2025-26`); a year standing alone (1900-2100 integer); a page number
+(`Page 7`, `Page 7 of 9`, `7 of 9`, a whole line that is the page's own folio); a note or serial number (a
+line-leading 1-2 digit row number before a word: `1. Revenue`, `12) Other`; a number named beside `Note`, `Notes`,
+`Sr. No.`, `Sl. No.`, `S. No.`, `Clause`, `Section`, `Annexure`, `Schedule`, `Chapter`); a footnote mark (`(1)`,
+`(12)` glued to a word); below 1; or a bare year (the `keep` rule of `reality_engine/scripts/extract_deck_figures.py`,
+reused by import). A figure printed twice is one printed value.
+
+**Stored values.** Every table that carries both `doc_key` and `page` is discovered from the schema, not assumed: on
+p20/u8/q12 that is `kpi_series`, `fin_quarter_printed`, `fin_annual_line`, `guidance`, `transcript_statement`,
+`rating_event`, `related_party_txn` and `concentration`; `*_input` tables are extraction inputs and a statement's prose
+`quote` is not a value. A row contributes its numeric value columns, the value divided by its printed scale (the
+store keeps base units in `fin_*` and printed magnitude with a `unit`/`scale` pair in `kpi_series`), and numbers
+parsed from its own printed token (`raw_token`/`raw_value`/`value_text`). With `--cells`, `table_cell` contributes its
+`value`, `value/scale` and `value_text`. Numbers are matched as positive magnitudes rounded to 2 decimals.
+
+**Sums.** For a stored `table_cell` whose row label starts with `Total`, `Sub-total` or `Net` (case-insensitive), the
+stored cells above it in the same table and column - down to the previous total-labelled row - are added and compared
+with it; checked only when the total and at least two parts are stored, closed when within `max(0.5, 0.5% of total)`
+(the reference pages' `sums_ok` tolerance). Sections are not modelled, so a total whose parts span a section heading
+or a `Less:` row reads as not closed: the closed share is a lower bound.
+
+**Gate.** Pages are keyed by `(store, doc_key, page)`. Exit 1 and list the page when `number_coverage` or
+`grid_coverage` falls by more than `--tolerance` (absolute, default 0.02), when a page goes from scored to `unread`,
+or when a page in the previous report is missing from the new one; exit 0 otherwise. Pages only in the new report are
+counted and never fail. This is the check that catches a dropped column.
+
+**Calibration.** Joins the coverage CSV to `pages.csv` by `(sha256, page)` for the chosen split only; `frozen` is
+refused and never read. Reference recall is the share of the page's reference cells whose normalised value is in
+`stored_values`. Prints the per-page table, the Pearson correlation of `number_coverage` against recall (and of
+`grid_coverage` where measurable), and the 0.8 disagreement counts: hits = coverage < 0.8 and recall < 0.8, misses =
+coverage >= 0.8 and recall < 0.8, false alarms = coverage < 0.8 and recall >= 0.8. Writes
+`<coverage dir>/calibration_<split>.csv`.
+
+**Measured 11 Nov 2026.** `run` over p20 with its cell store (`--store D:/RealityEngine/p20/p20new.db --cells
+D:/RealityEngine/v2/p20_r10`): 27,717 pages, 1,339 unread (4.8%), 26,378 scored, **219.8 s (7.9 s per 1,000 pages)**.
+Median `number_coverage` is 0.000 and p10 0.000 for every doc type, because most scored pages were never extracted:
+2,603 of the 26,378 scored pages (9.9%) hold any stored value and only 4,929 pages belong to the 159 documents of the
+p20_r10 cell store. Among pages with a stored value: deck 781 pages, median 0.250; results 1,459, median 0.477;
+annual report 363, median 0.063. Grid was measurable on 7,263 pages and scored on the 1,303 pages that have both a
+printed grid and a cell store (median `grid_coverage` 0.894, p10 0.000). Sums: 2,157 checked, 561 closed (26.0%).
+`gate` on that report against itself: 0 regressions, exit 0. The test's dropped-column fixture exits 1.
+
+Calibration on the dev split (19 p20 pages, and 11 q12 pages in a separate run restricted to the five q12 companies
+that hold them; the q12 run has no cell store, so its coverage comes from the pilot3 fact tables only):
+
+| run | dev pages in report | scored | number_coverage vs recall (Pearson) | grid_coverage vs recall | hits / misses / false alarms |
+|---|---|---|---|---|---|
+| p20 + p20_r10 cells | 19 | 18 | 0.993 | 0.955 over 4 pages | 16 / 0 / 1 |
+| q12, no cells | 11 | 11 | 1.000 | - | 11 / 0 / 0 |
+
+The one false alarm is `p049` (coverage 0.782, recall 0.959); of the 13 pages with recall 0, 12 also have coverage 0
+and the thirteenth (`p046`) has 0.005.
+q12's `run` took 40.3 s for 19,421 pages (2.1 s per 1,000). u8 has no cell store, so the ticket's p20 fallback was
+used for the live run above; a u8 `run` without `--cells` measured 15,335 pages, 832 unread (5.4%), 14,503 scored in
+**164.2 s (10.7 s per 1,000 pages)**. The median number coverage is 0.000 for every doc type on u8 too (the same
+never-extracted-page effect); its calibration is not computable because all 13 u8 reference pages are in the frozen
+split.
+
+Limitations. `fin_annual_line` rows read from `ar_facts.db` carry that store's document id, not the pilot3
+`doc_key` (`doc_alias` is empty in p20 and u8), so only 83 of its 233 distinct document keys join and annual-report
+coverage is a floor. A page whose PDF is missing on disk (147 of the 542 deck/results/annual-report documents of p20)
+has empty grid columns, never zero. Prose figures count as printed, so coverage sits below a table-only recall
+measurement. Cross-source XBRL agreement (design item 4 in `tasks/FABLE_TESTS_2026-11-10.md`) is not part of this
+report.
+
+Test runtime: `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2_completeness.py -q` -> 4 passed in
+0.78 s. The module overrides the builtin `tmp_path` fixture (a plainly created directory under
+`tempfile.gettempdir()`), because this sandbox's `.tmp` holds the ACL-locked `pytest-of-SYSTEM` and a `mkdtemp`
+directory there is created with an ACL that denies the test's own writes. Typecheck: basedpyright 0 errors on the
+module and its test.
+
