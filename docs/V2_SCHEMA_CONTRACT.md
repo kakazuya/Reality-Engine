@@ -1181,6 +1181,29 @@ by located cells. It also reports pages_done, pages_with_error, rows given, unre
 tokens from `transcribe_log.csv`, and pair consistency (share of one run's verified cells that the other also gives) for
 each `--pair`.
 
+**Production page reader (T-183, 11 Nov 2026).** `reality_engine/v2/page_reader.py` reads every table page of a store's
+documents into `page_read`/`page_cell` (WAL SQLite, created if absent): `select_pages(store_db, symbols=None,
+doc_types=("deck","results","annual_report"), limit=None)` picks candidate pages from `doc_page` whose stored text has
+at least 8 number tokens (regex, cheap) or whose `method='needs_ocr'` (OCR words may exist), ordered by `doc_key`,
+`page`; `is_table_page(words)` is true when at least 2 printed lines carry a label and 2+ numbers or the page has 12+
+number words (charts), otherwise the page is logged with status `no_table` with no model call; `read_page(...)` gets
+words via `page_words.words_for`, returns `no_words` (reason kept) when quality is not ok and no OCR words exist, builds
+layout text, sends the page image too (rendered from the PDF via `raw_store`, as `reference_pages` does) when more than
+half the number words sit on lines with no label, calls a FREE reader (refused otherwise) with `GRID_PROMPT` +
+`LAYOUT_NOTE` + layout + `>>>`, parses with `parse_grid` (falling back to `_parse_rows`), normalises, and
+`settle_page([rows], words)`; a second pass runs when unread >= 5, re-asking once with the distinct unread
+`line_text` values plus the layout text, adding rows and re-settling, with `pass=2` recorded. Output:
+`page_read(doc_key, page, symbol, doc_type, known_at, word_source, quality, reason, status in
+{read,no_table,no_words,error}, reader, input in {layout,layout_image}, passes, seconds, in_tok, out_tok, rows, cells,
+verified, unread, error, read_at, PRIMARY KEY(doc_key,page,reader))` and `page_cell(doc_key, page, symbol, known_at,
+reader, table_title, row_label, col_header, value_text, unit_text, status ('verified' when settled_by=='position' else
+'unverified'), conflict, x0, y0, x1, y1)`. A page already present in `page_read` for that reader is skipped (resume);
+`--workers N` (default 3) runs under `concurrent.futures` with one writer (main thread) committing results and a single
+20 s retry on a model error before status `error`. CLI:
+`python -m reality_engine.v2.page_reader --store <db> [--ocr-db <db> ...] --out <db> [--symbols A,B]
+[--doc-types deck,results] [--limit N] [--reader <MODELS name>] [--workers 3]`. Test:
+`reality_engine/tests/test_v2_page_reader.py`.
+
 ## 13. Completeness report (T-177, 11 Nov 2026)
 
 `reality_engine/v2/completeness.py` answers, page by page and with no model call, how much of what a page prints
