@@ -1169,6 +1169,18 @@ row per document with `text_pages`/`ocr_pages`/`none_pages` from `doc_page.metho
 --store <db> --doc-key <k> --page <n>` (prints source, quality and `page_layout.layout_text`). Test:
 `reality_engine/tests/test_v2_page_words.py`.
 
+**Scoring reader runs (T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/reader_score.py` (script only, no model call)
+turns finished transcription runs into one row per reader+input from the position-settled reference cells:
+`python -m reality_engine.v2.reader_score --pages <pages.csv> --pdf-pages <dir> --runs <dir>... [--pair a b]...
+--out <xlsx>` writes sheets `readers` (one row per run x split: dev/frozen/all), `by_type` (per doc type) and `pages`
+(run, page, rows, verified, recall, unread), plus a CSV of the readers sheet beside the XLSX. Recall = reference cells
+(printed words that a position check settles over all runs) on which one of the run's own verified cells sits, divided
+by the reference words on the pages the run covered; matching is by word position, so label and header spelling do not
+matter and a word counts once (Eagle at merge; the first version matched on label and column text and undercounted); precision_verified = verified cells (settled_by position) divided
+by located cells. It also reports pages_done, pages_with_error, rows given, unread numbers, mean seconds per page and
+tokens from `transcribe_log.csv`, and pair consistency (share of one run's verified cells that the other also gives) for
+each `--pair`.
+
 ## 13. Completeness report (T-177, 11 Nov 2026)
 
 `reality_engine/v2/completeness.py` answers, page by page and with no model call, how much of what a page prints
