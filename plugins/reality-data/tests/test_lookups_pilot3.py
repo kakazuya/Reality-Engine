@@ -28,8 +28,8 @@ import lookups_pilot3 as p3  # noqa: E402
 from reality_engine.pilot3 import kpi as kpi_mod, schema, transcripts  # noqa: E402
 
 DB = TMP / "pilot3_fixture.db"
-TOOLS = {"pilot3_kpi", "pilot3_fin", "pilot3_ratio", "pilot3_holding", "pilot3_statements", "pilot3_docs",
-         "pilot3_search", "pilot3_guidance", "pilot3_sql"}
+TOOLS = {"pilot3_fact", "pilot3_kpi", "pilot3_fin", "pilot3_ratio", "pilot3_holding", "pilot3_statements",
+         "pilot3_docs", "pilot3_search", "pilot3_guidance", "pilot3_sql"}
 
 
 def build_fixture() -> None:
@@ -704,6 +704,12 @@ class Pilot3McpTests(unittest.TestCase):
                         out = payload(await session.call_tool(name, args, read_timeout_seconds=60))
                         self.assertTrue(out["found"], name)
                         self.assertTrue(all(r["provenance"]["source"] for r in out["rows"]), name)
+                    one = payload(await session.call_tool("pilot3_fact", {"symbol": "KEC", "metric": "pat",
+                                                                          "period": "FY25"},
+                                                          read_timeout_seconds=60)) or {}
+                    self.assertTrue(one.get("found"))
+                    self.assertEqual((one.get("answer") or {}).get("period"), "FY25")
+                    self.assertEqual(((one.get("answer") or {}).get("source") or {}).get("table"), "fin_annual_line")
                     sql = payload(await session.call_tool("pilot3_sql", {"query": "select count(*) from doc"},
                                                           read_timeout_seconds=60))
                     self.assertEqual(sql["rows"], [[4]])  # fixture has 4 docs since the undated-document test (T-049 guidance)
@@ -743,6 +749,141 @@ class EvAllInvestmentsTests(unittest.TestCase):
         self.assertEqual(inputs["net_debt_all_investments"], -2.0e10)
         self.assertAlmostEqual(inputs["ev_ebitda_all_investments"], (5e10 - 2.0e10) / 3e9, places=2)
         self.assertIn("non-current investments", got["note"])
+
+
+class FactTests(unittest.TestCase):
+    """T-186: one call returns the preferred figure with the source, the period, the basis and the formula inputs."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_fixture()
+        c = sqlite3.connect(DB)
+        c.execute("INSERT INTO fin_annual_line VALUES ('KEC','INE389H01022','FY26','2026-03-31','consolidated',"
+                  "'PL','revenue_from_operations','Revenue from operations',1.234e11,'inr',1.0,'rev.pdf',7,"
+                  "'Revenue from operations 12,340 crore','results','t','r','2026-05-20T10:00:00','x',1,0,"
+                  "'reported','FY')")
+        # T-186: a later annual-report page must not replace the XBRL filing's figure
+        c.executemany("INSERT INTO fin_annual_line VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+            ("KEC", "INE389H01022", "FY25", "2025-03-31", "consolidated", "PL", "revenue_from_operations",
+             "Revenue from operations", 9.5e10, "inr", 1.0, "ar.pdf", 13, "Revenue 95,130 crore",
+             "ar_facts.db", "ar_facts", "9703", "2026-08-28T15:25:34", "x", 1, 0, "reported", "FY"),
+            ("KEC", "INE389H01022", "FY25", "2025-03-31", "consolidated", "PL", "revenue_from_operations",
+             "Revenue from operations", 2.1794e11, "inr", 1.0, "rev_xbrl.xml", None, "Revenue 21,794 crore",
+             "results_xbrl.db", "facts", "rev_xbrl.xml#1", "2025-05-30T22:45:53", "x", 1, 0, "xbrl_reported", "FY")])
+        # T-186: a row the independent checker quarantined is never the answer
+        c.execute("INSERT INTO fin_annual_line VALUES ('KEC','INE389H01022','FY25','2025-03-31','consolidated',"
+                  "'BS','borrowings','Borrowings',3.0e10,'inr',1.0,'bor.pdf',4,'Borrowings 30,000 crore',"
+                  "'results_xbrl.db','facts','bor.xml#1','2025-05-20T10:00:00','x',1,0,'xbrl_reported','FY')")
+        rid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO row_check VALUES ('fin_annual_line',?,'KEC','borrowings','borrowings','infra',"
+                  "'results','table_v1','quarantined',0,'t')", (rid,))
+        c.commit()
+        c.close()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def test_a_reported_line_is_one_answer_with_doc_page_quote_and_known_at(self):
+        out = p3.fact("KEC", "revenue", period="FY26")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "fin")
+        answer = out["answer"]
+        self.assertEqual(answer["value"], 1.234e11)
+        self.assertEqual(answer["unit"], "inr")
+        self.assertEqual(answer["scale_word"], "rupee")
+        self.assertEqual(answer["period"], "FY26")
+        self.assertEqual(answer["basis"], "consolidated")
+        self.assertEqual(answer["source"]["table"], "fin_annual_line")
+        self.assertEqual(answer["source"]["doc_key"], "rev.pdf")
+        self.assertEqual(answer["source"]["page"], 7)
+        self.assertIn("12,340", answer["source"]["quote"])
+        self.assertEqual(answer["known_at"], "2026-05-20T10:00:00")
+        self.assertIsNone(answer["computed"])
+        self.assertTrue(out["why_this_one"])
+
+    def test_basis_asked_is_respected(self):
+        consolidated = p3.fact("KEC", "eps diluted", "FY25")["answer"]
+        self.assertEqual((consolidated["value"], consolidated["basis"]), (60.20, "consolidated"))
+        standalone = p3.fact("KEC", "eps diluted", "FY25", basis="standalone")["answer"]
+        self.assertEqual((standalone["value"], standalone["basis"]), (45.31, "standalone"))
+        self.assertEqual(standalone["unit"], "inr_per_share")
+
+    def test_a_ratio_carries_its_formula_and_inputs(self):
+        out = p3.fact("KEC", "roe", "FY25")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "ratio")
+        answer = out["answer"]
+        self.assertEqual(answer["value"], 12.5)
+        self.assertEqual((answer["unit"], answer["scale_word"]), ("pct", "percent"))
+        self.assertEqual(answer["computed"]["formula"], "100*pat/net_worth")
+        self.assertEqual(answer["computed"]["inputs"][0]["name"], "a")
+
+    def test_as_of_before_the_filing_is_not_found_with_the_search_list(self):
+        out = p3.fact("KEC", "pat", period="FY25", as_of="2025-01-01")
+        self.assertFalse(out["found"])
+        self.assertTrue(out["searched"])
+        self.assertTrue(any(row["names_matched"] for row in out["searched"]))
+        self.assertIn("filed after", out["hint"])
+        self.assertTrue(any("pat" in row["names_matched"] for row in out["searched"]))
+
+    def test_an_unknown_metric_returns_the_nearest_rows(self):
+        out = p3.fact("KEC", "roa")
+        self.assertFalse(out["found"])
+        self.assertTrue(out["nearest"])
+        self.assertTrue(out["nearest"][0]["nearest"])
+        self.assertEqual(out["nearest"][0]["metric"], "roe")
+        self.assertEqual(out["nearest"][0]["table"], "ratio_panel")
+
+    def test_a_holding_word_asks_the_filing_in_force(self):
+        out = p3.fact("KEC", "promoter holding", as_of="2026-06-01")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "holding")
+        answer = out["answer"]
+        self.assertEqual(answer["value"], 52.0)
+        self.assertEqual((answer["unit"], answer["period"]), ("pct", "2026-03-31"))
+        self.assertEqual(answer["source"]["table"], "shp_category")
+        self.assertIsNotNone(answer["known_at"])
+
+    def test_a_company_stated_kpi_is_one_call(self):
+        out = p3.fact("KEC", "order book", "Q3FY26")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "kpi")
+        answer = out["answer"]
+        self.assertEqual(answer["value"], 40000.0)
+        self.assertEqual((answer["unit"], answer["scale_word"]), ("inr_cr", "crore"))
+        self.assertEqual(answer["period"], "Q3FY26")
+        self.assertEqual(answer["source"]["page"], 1)
+        self.assertIn("40,000", answer["source"]["quote"])
+
+    def test_a_share_count_comes_from_share_capital(self):
+        out = p3.fact("KEC", "shares outstanding", as_of="2026-06-01")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "shares")
+        answer = out["answer"]
+        self.assertEqual(answer["value"], 2.6e8)
+        self.assertEqual((answer["unit"], answer["period"]), ("shares", "2025-12-31"))
+        self.assertEqual(answer["source"]["table"], "share_capital")
+
+    def test_an_annual_line_prefers_the_xbrl_filing_over_a_later_report_page(self):
+        out = p3.fact("KEC", "revenue", period="FY25")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["answer"]["value"], 2.1794e11)
+        self.assertNotEqual(out["answer"]["value"], 9.5e10)
+        self.assertTrue(any(a.get("value") == 9.5e10 for a in out.get("alternatives", [])), out)
+
+    def test_a_quarantined_row_is_never_the_answer(self):
+        out = p3.fact("KEC", "borrowings", period="FY25")
+        answer = out.get("answer") or {}
+        self.assertNotEqual(answer.get("value"), 3.0e10, out)
+
+    def test_a_holding_asked_for_a_fiscal_year_says_what_it_returned(self):
+        out = p3.fact("KEC", "promoter holding", period="FY25", as_of="2026-06-01")
+        if out.get("found"):
+            self.assertTrue(out["answer"].get("mismatch"), out)
 
 
 if __name__ == "__main__":

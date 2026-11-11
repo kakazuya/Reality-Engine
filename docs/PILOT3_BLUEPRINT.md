@@ -30,7 +30,8 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `shp_category`, `shp_holder`, `shp_pledge`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings by category with the share count the printed percentage is on, the named holders, the promoter pledge block, share count, dividends, prices, PE/PB/EV | exchange data stores |
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
 
-Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_statements`, `pilot3_search` (bm25),
+Tools: `pilot3_fact` (one answer-ready number, T-186, section 9o), `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`,
+`pilot3_guidance`, `pilot3_statements`, `pilot3_search` (bm25),
 `pilot3_semantic` (dense page search, T-154; paid query gate, vectors in the store's `embed/`), `pilot3_docs`, `pilot3_holding`, `pilot3_tech` (section 9i), `pilot3_sql`; `schema` / `catalog` know the `pilot3` db.
 
 ## 3. Extraction methods (what works, what failed)
@@ -1444,3 +1445,97 @@ no real store. basedpyright 0 errors on the new module and test.
 **Still to run on the controller:** call the gate before each `build --part` (the line in
 `docs/DB_BUILD_GUIDELINES.md` section 9) and review the three reports under `.tmp/t181/`; this ticket repairs no
 store and writes nothing outside its `--out` folder.
+
+### 9o. One answer-ready lookup for a single number (T-186, 11 Nov 2026)
+
+An answer used 6-9 lookups and 34-56 s (T-179) because the model had to find the preferred row, check its basis,
+and read the source and the formula inputs by hand; it also bypassed `pilot3_fin` with raw SQL and so lost the
+preferred-figure election (T-088). `fact(symbol, metric, period=None, basis=None, as_of=None)` answers any single
+number in one call from every pilot3 table, read-only:
+
+    python -m reality_engine.scripts.p3ask --db <pilot3.db> fact symbol=ULTRACEMCO metric=revenue period=FY26
+    pilot3_fact(symbol="ULTRACEMCO", metric="EBITDA margin", period="Q2FY27")
+
+**Routing, and the fallback.** The metric word is normalised (spaces/dashes/slashes/`%` -> `_`) and matched with the
+tables' own names, then taken in this order:
+
+1. a share-count word (`shares outstanding`, `share count`, `share capital`) -> `share_capital` through `holding`;
+2. a holding word (`promoter`, `FPI`, `MF`, `government`/`GoI`, `DII`, ...) or a `*holding` word -> `holding`, with
+   the category word it names and the filing in force on `as_of`;
+3. a valuation (`PE`, `PB`, `EV/EBITDA`, `market cap`, `dividend yield`) or a ratio word (`ROE`, `ROCE`, `ROA`,
+   `*_pct`, `*_margin`, `*_growth`, `*_days`, `debt_to_equity`, ...) that `ratio_panel` holds -> `ratio`, which
+   serves the company's own stated figure before its derived one (T-107);
+4. a financial line that `fin_quarter_xbrl` / `fin_annual_line` holds, exact or a near name (`revenue` ->
+   `revenue_from_operations`) -> `fin`, the preferred-figure election. `ratio_panel` also mirrors plain lines
+   (`pat`, `revenue_from_operations`); those are not ratio words, so PAT answers the XBRL/preferred line, not the
+   panel copy;
+5. a company-stated KPI in `kpi_series` (the investor words map: NIM / net interest margin -> `nim_pct`, credit
+   cost -> `credit_cost_bps`, cost of funds -> `cost_of_funds_pct`) -> `kpi`;
+6. any remaining `ratio_panel` name -> `ratio`.
+
+If the owning lookup has no row for the asked period and basis, the other tables that hold the metric answer in
+that same order: a printed-only quarter (no XBRL rows) comes back from `ratio_panel` and a deck-only KPI from
+`kpi_series` -- TRENT Q2FY27 revenue and PAT are printed-results rows, and the fallback is what answers them.
+
+**The reply.** `answer` = `value`, `unit`, `scale_word` (`crore`, `million`, `percent`, ...), `period`, `basis`,
+`as_of_used`, `source` {`table`, `doc_key`, `page`, `quote`}, `known_at` and `computed`. `computed` = `{formula,
+inputs}` when the store derives the figure: a ratio's `formula.expression` with the rows its own `input_refs` name
+(`fa:` -> the annual line, `fq:` -> the quarter, `ltm:` -> the `*_ttm` ratio row or a four-quarter sum, `sc:` ->
+the share count), a derived annual line's formula with the same period's inputs, or a valuation formula with the
+valuation row's own inputs. A derived line whose formula the store does not hold (`net_debt`) returns
+`computed: null` rather than a guessed formula. Beside the answer: up to three `alternatives` (another filing's
+printing of the same figure, another period/basis, or the same metric as a second table holds it) and one
+`why_this_one` sentence. When nothing matches: `found: false`, `searched` = every table probed with the names it
+matched, `nearest` = up to three spelling-nearest rows with their value, period and source, and a hint. A figure
+held only in a quarantined row says so (`held_quarantined`, e.g. CHOLAFIN's Q2FY27 `nim_pct` 7.9) instead of
+reading as absent, and a figure filed after `as_of` is named in the hint ("a row is held but was filed after").
+
+**Point in time.** `as_of` goes to the owning lookup, so every table drops rows known after it (the same
+`_asof` filter as the typed tools) and the answer's `known_at` is the filing record it used. A computed
+figure is not served unless every one of its input rows is public on `as_of` (the share-capital branch, an
+annual line by rowid, a valuation row by rowid, the holding categories); otherwise its `computed` block is
+`null`. An annual line prefers an XBRL filing (reported, then derived) over a printed or company-stated one,
+even one printed in a later annual report; the displaced printing stays an alternative with its source. A
+holding, share-count or valuation answer whose returned period or basis differs from the one asked carries a
+`mismatch` string.
+
+**Live check, 20 calls, 8 companies, `D:/RealityEngine/u8/u8.db` (build 9 Nov 2026), read-only.** 19 of 20 answered
+in one call each; the one miss is a quarantined row, reported as held. Page = the source document's page; XBRL
+lines cite the filing XML (no page).
+
+| company | metric | period | value | source |
+|---|---|---|---|---|
+| ULTRACEMCO | revenue | FY26 | 8,85,115,300,000 inr | XBRL filing |
+| ULTRACEMCO | PAT | Q2FY27 | 15,013,800,000 inr | XBRL filing |
+| ULTRACEMCO | EBITDA margin | Q2FY27 | 21.0 pct (stated) | material filing p49 |
+| ULTRACEMCO | net debt | FY26 | 1,76,606,900,000 inr | XBRL filing |
+| BEL | revenue | FY26 | 2,76,101,100,000 inr | XBRL filing |
+| BEL | PAT | FY26 | 60,622,600,000 inr | XBRL filing |
+| BEL | ROE | FY26 | 20.0 pct (stated) | annual report p47 |
+| BEL | promoter holding | 10 Nov 2026 | 51.14 pct (30 Sep 2026) | SHP filing |
+| TRENT | revenue | Q2FY27 | 5,87,31,400,000 inr | results p10 |
+| TRENT | PAT | Q2FY27 | 4,680,900,000 inr | results p10 |
+| TRENT | EBITDA margin | Q2FY27 | 18.21 pct (derived: EBITDA 10,536,700,000 / revenue 57,876,400,000, standalone) | `ratio_panel` |
+| CHOLAFIN | net interest margin | Q2FY27 | not served: `nim_pct` 7.9 is quarantined (`held_quarantined`) | kpi row |
+| CHOLAFIN | AUM | Q2FY27 | 2,68,009 inr_cr | results p36 |
+| CHOLAFIN | promoter holding | 10 Nov 2026 | 48.93 pct (30 Sep 2026) | SHP filing |
+| PERSISTENT | revenue | FY26 | 1,47,484,490,000 inr | XBRL filing |
+| PERSISTENT | PAT | FY26 | 18,651,200,000 inr | XBRL filing |
+| PERSISTENT | utilisation | Q2FY27 | 85.8 pct | concall p8 |
+| CIPLA | ROE | FY26 | 11.8 pct (stated) | material filing p41 |
+| TATACONSUM | revenue | Q2FY27 | 56,611,300,000 inr | results p12 |
+| INDIGO | net debt | FY26 | -4,79,368,000,000 inr (net cash) | XBRL filing |
+
+Files: `plugins/reality-data/server/lookups_pilot3.py` (`fact` and its helpers: `_fact_route`, `_fact_paths`,
+`_fact_rows`, `_ref_input`, `_fact_ratio_computed`, `_fact_fin_computed`, `_fact_answer`, `_fact_not_found`),
+`plugins/reality-data/server/server.py` (`pilot3_fact`, and the server instructions send any single number here
+first), `reality_engine/scripts/p3ask.py` (`fact` subcommand, call-logged like the other tools).
+Tests: `FactTests` in `plugins/reality-data/tests/test_lookups_pilot3.py` (8 cases: a reported line with its doc
+page/quote/known_at, standalone vs consolidated, a ratio's formula inputs, `as_of` before the filing, an unknown
+metric's nearest rows, promoter holding, a company KPI, the share count) plus the MCP tool being listed and called;
+`python -m pytest -q plugins/reality-data/tests/test_lookups_pilot3.py` -> **43 passed, 1 skipped** (the stdio MCP
+test skips in the confined worker: child-process pipes are denied). basedpyright: 0 new errors on the four edited
+files (16 pre-existing errors remain on untouched lines).
+
+**Still to do on the controller:** restart the reality-data MCP so the tool text is loaded, and re-run the T-179
+answer timing with `pilot3_fact` in the tool list to measure the 6-9 lookups it replaces.

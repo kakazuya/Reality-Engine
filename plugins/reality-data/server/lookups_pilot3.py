@@ -14,6 +14,7 @@ rows without a ``known_at`` (a row that cannot prove it was public is never show
 from __future__ import annotations
 
 import datetime as dt
+import difflib
 import json
 import os
 import re
@@ -345,7 +346,8 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
                     where += f" AND {col}=?"
                     args.append(val)
             extra, eargs = _asof(as_of)
-            for r in _q(f"SELECT rowid, * FROM fin_annual_line WHERE {where}{extra} "
+            for r in _q(f"SELECT rowid, * FROM fin_annual_line WHERE {where}"
+                        f"{_visible('fin_annual_line', 'rowid')}{extra} "
                         f"ORDER BY fiscal_year DESC, known_at DESC LIMIT ?", (*args, *eargs, cap * 2)):
                 out.append(_fin_row(r, "fin_annual_line", r["fiscal_year"], r["definition"],
                                     _fin_source(r)))
@@ -364,7 +366,8 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
                     where += f" AND {col}=?"
                     args.append(val)
             extra, eargs = _asof(as_of)
-            for r in _q(f"SELECT rowid, * FROM fin_quarter_xbrl WHERE {where}{extra} "
+            for r in _q(f"SELECT rowid, * FROM fin_quarter_xbrl WHERE {where}"
+                        f"{_visible('fin_quarter_xbrl', 'rowid')}{extra} "
                         f"ORDER BY period_end DESC, known_at DESC LIMIT ?", (*args, *eargs, cap * 2)):
                 out.append(_fin_row(r, "fin_quarter_xbrl", r["fiscal_period"], "xbrl_reported",
                                     _fin_source(r)))
@@ -378,7 +381,8 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
                     args.append(val)
             extra, eargs = _asof(as_of)
             printed = _q(f"SELECT rowid, * FROM fin_quarter_printed WHERE {where} "
-                         f"AND basis IN ('standalone','consolidated'){extra} "
+                         f"AND basis IN ('standalone','consolidated')"
+                         f"{_visible('fin_quarter_printed', 'rowid')}{extra} "
                          f"ORDER BY period_end DESC, known_at DESC LIMIT ?", (*args, *eargs, cap * 2))
             for r in printed:
                 if (r["line_item"], r["fiscal_period"]) in got:
@@ -422,9 +426,9 @@ def _visible(tbl: str, row_id: str = "id") -> str:
     """SQL that keeps only rows the checker did not quarantine; empty when the build has no verdict table."""
     if not _has_table("row_check"):
         return ""
-    return (f" AND NOT EXISTS (SELECT 1 FROM row_check rc WHERE rc.tbl='{tbl}' AND rc.row_id={row_id} "
+    ref = f"{tbl}.rowid" if row_id == "rowid" else row_id
+    return (f" AND NOT EXISTS (SELECT 1 FROM row_check rc WHERE rc.tbl='{tbl}' AND rc.row_id={ref} "
             f"AND rc.status='quarantined')")
-
 
 def _check_cols(tbl: str, row_id: str) -> tuple[str, str, str]:
     """(LEFT JOIN, selected columns, hide clause) for the row verdicts; all empty in a build without them."""
@@ -450,6 +454,10 @@ def _add_check(row: dict[str, Any], r: Any) -> dict[str, Any]:
 
 _REPORTING_BASES = ("consolidated", "standalone", "not_stated")
 
+# An annual line's evidence: an XBRL filing first (reported, then derived), a printed / company-stated figure after
+# (T-186: APOLLOHOSP's FY25 revenue took the annual-report page 951,308 over the XBRL filing's 217,940).
+_ANNUAL_RANK = {"xbrl_reported": 3, "xbrl_derived": 2, "reported": 1, "company_stated": 0}
+
 
 def _entity_of(row: Any, symbol: str) -> str:
     """The entity a KPI row reports (T-088): its stored entity, else the subsidiary token an older build left in
@@ -471,10 +479,12 @@ def _fin_row(r: sqlite3.Row, table: str, period: str, definition: str, source: s
         row["column_role"] = r["column_role"]
     if table in ("fin_annual_line", "fin_quarter_printed") and r["quote"]:
         row["quote"] = _trim(r["quote"], 240)
-    if table != "fin_annual_line":      # a quarter: the preferred comparative election needs its filing date
-        row["_table"], row["_known_at"], row["_rowid"] = table, r["known_at"], r["rowid"]
-        if "check_status" in keys:
-            row["_check"] = r["check_status"]
+    # the preferred-figure election needs every row's filing date and store id (T-186: annual lines used to skip it)
+    row["_table"], row["_known_at"], row["_rowid"] = table, r["known_at"], r["rowid"]
+    if "check_status" in keys:
+        row["_check"] = r["check_status"]
+    if table == "fin_annual_line":
+        row["_rank"] = _ANNUAL_RANK.get(definition, 0)
     return row
 
 
@@ -558,8 +568,9 @@ def ratio(symbol: str, ratio: str, period: str | None = None, as_of: str | None 
         args.append(bas)
     extra, eargs = _asof(as_of, "p.known_at")
     rows = _q(f"SELECT p.rowid, p.*, f.expression FROM ratio_panel p LEFT JOIN formula f ON f.formula_id=p.formula_id "
-              f"WHERE {where}{extra} ORDER BY p.period_end DESC, (p.period_type='Q') DESC, "
-              f"(p.basis='consolidated') DESC, p.known_at DESC LIMIT ?", (*args, *eargs, cap))
+              f"WHERE {where}{_visible('ratio_panel', 'p.rowid')}{extra} ORDER BY p.period_end DESC, "
+              f"(p.period_type='Q') DESC, (p.basis='consolidated') DESC, p.known_at DESC LIMIT ?",
+              (*args, *eargs, cap))
     derived = []
     for r in rows:
         row = {"ratio": r["metric"], "period": r["fiscal_period"], "period_type": r["period_type"],
@@ -1323,3 +1334,607 @@ def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0,
     return {"columns": columns, "rows": rows, "row_count": len(rows), "truncated": len(raw) > limit, "as_of": day,
             "max_chars": chars, "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
             "provenance": _db_prov(note="read-only SELECT/WITH, row-limited")}
+
+
+# --- pilot3_fact (T-186): one answer-ready lookup ---------------------------------------------------
+# The answering model asks one question for one number: the value with its unit and scale, the period, the basis,
+# the source document and page, known_at, and -- for a figure the store computes -- the formula and its input rows.
+# The routing and every election reuse the existing lookups, so fact and fin/ratio/kpi/holding never disagree.
+_FACT_VALUATION = ("pe", "p_b", "pb", "ev_ebitda", "market_cap", "dividend_yield", "dividend_yield_pct",
+                   "trailing_eps", "close")
+_FACT_RATIO_NAMES = {"roe", "roce", "roa", "debt_to_equity", "interest_coverage", "current_ratio",
+                     "book_value_per_share", "dividend_payout", "nim", "net_debt_to_ebitda",
+                     "net_debt_to_equity", "pat_ttm", "eps_ttm", "working_capital_days", "nwc_days"}
+_FACT_RATIO_SUFFIXES = ("_pct", "_margin", "_growth", "_days", "_ratio", "_coverage", "_payout", "_per_share",
+                        "_ttm")
+_FACT_SHARES = ("share_count", "shares_outstanding", "share_capital", "shares", "equity_shares")
+_FACT_HOLDING_WORDS = set(_HOLDING_CATEGORY_WORDS) | {"promoter", "promoters", "shareholder", "shareholders",
+                                                     "shareholding"}
+_FACT_UNIT_WORDS = {
+    "inr": "rupee", "inr_cr": "crore", "inr_crore": "crore", "inr_mn": "million", "inr_million": "million",
+    "inr_lakh": "lakh", "inr_bn": "billion", "inr_per_share": "rupee per share", "rs/share": "rupee per share",
+    "pct": "percent", "bps": "basis points", "x": "times", "days": "days", "ratio": "ratio", "count": "count",
+    "count_mn": "million count", "usd_mn": "million USD", "shares": "shares",
+}
+_FACT_VALUATION_COLUMNS = {"close": "close", "shares_outstanding": "shares_outstanding", "market_cap": "market_cap",
+                           "net_worth": "net_worth", "net_debt": "net_debt", "trailing_ebitda": "trailing_ebitda",
+                           "eps_basic": "trailing_eps", "pat": "trailing_pat"}
+_FACT_SCALE_WORDS = ((1e12, "lakh crore"), (1e9, "billion"), (1e7, "crore"), (1e6, "million"), (1e5, "lakh"),
+                     (1e3, "thousand"))
+
+
+def _metric_key(name: str) -> str:
+    """A user's metric word as the tables spell it: spaces / dashes / slashes / '%' become underscores."""
+    return re.sub(r"[%\s\-/]+", "_", str(name or "").strip().lower()).strip("_")
+
+
+def _scale_word(unit: str | None, scale: float | None) -> str:
+    """The word that reads ``value`` in ``unit``: crore, million, percent ... (the store's unit first)."""
+    key = str(unit or "").strip().lower()
+    if key in _FACT_UNIT_WORDS:
+        return _FACT_UNIT_WORDS[key]
+    try:
+        size = float(scale or 1.0)
+    except (TypeError, ValueError):
+        size = 1.0
+    for step, word in _FACT_SCALE_WORDS:
+        if size >= step:
+            return word
+    return "unit"
+
+
+def _split_source(prov: dict[str, Any]) -> tuple[str | None, str | None, int | None]:
+    """(table, document key, page) from a row's provenance: ``doc p3``, ``doc [store row]`` or ``row 12``."""
+    table = prov.get("table")
+    source = str(prov.get("source") or "").strip()
+    match = re.fullmatch(r"(.*?)(?: p(\d+))?(?: \[[^\]]*\])?", source)
+    doc = ((match.group(1) if match else source) or "").strip() or None
+    page = int(match.group(2)) if match and match.group(2) else None
+    if doc and (re.fullmatch(r"row \d+", doc) or table in ("ratio_panel", "valuation_daily", "share_capital")):
+        doc = None                      # a store row, not a document: the table and known_at carry it
+    return table, doc, page
+
+
+def _fact_value(row: dict[str, Any]) -> tuple[Any, str | None, float]:
+    if "quarter_end" in row and "pct" in row:          # shp_category
+        return row.get("pct"), "pct", 1.0
+    if "shares_outstanding" in row:                    # share_capital
+        return row.get("shares_outstanding"), "shares", 1.0
+    return row.get("value"), row.get("unit"), row.get("scale") or 1.0
+
+
+def _fact_alt(row: dict[str, Any], period: str | None = None) -> dict[str, Any]:
+    value, unit, _scale = _fact_value(row)
+    table, doc, page = _split_source(row.get("provenance") or {})
+    return {"value": value, "unit": unit,
+            "period": period or row.get("period") or row.get("date") or row.get("quarter_end"),
+            "basis": row.get("basis"), "table": table, "doc_key": doc, "page": page,
+            "definition": row.get("definition")}
+
+
+def _fact_mismatch(asked_period: str | None, asked_basis: str | None, row: dict[str, Any]) -> str | None:
+    """The period or basis the answer came back for, when it is not the one asked (T-186).
+
+    A holding / share-count / valuation route holds dates, not fiscal labels: answering the latest one for a
+    ``FY25`` ask without saying so reads as the wrong period.  ``FY25`` is the March quarter of that year; a date
+    ask is the quarter end it names.
+    """
+    parts: list[str] = []
+    basis = row.get("basis") or "not_stated"
+    if asked_basis and basis != asked_basis:
+        parts.append(f"asked {asked_basis}, returned {basis}")
+    kind, label = norm_period(asked_period)
+    if label:
+        returned = row.get("period") or row.get("date") or row.get("quarter_end") or row.get("as_of_date")
+        same = str(returned) == label
+        if not same:
+            _rk, rlabel = norm_period(returned)
+            same = rlabel == (f"Q4{label[2:]}" if kind == "FY" else label)
+        if not same:
+            parts.append(f"asked {label}, returned quarter {returned}")
+    return "; ".join(parts) or None
+
+
+def _fact_check_status(row: dict[str, Any]) -> str | None:
+    """The row check's verdict for the answer's row, so a served figure says verified / unverified (T-113, T-186)."""
+    status = row.get("check_status")
+    if status is not None:
+        return status
+    prov = row.get("provenance") or {}
+    table, row_id = prov.get("table"), prov.get("row_id")
+    if table and row_id and _has_table("row_check"):
+        got = _q("SELECT status FROM row_check WHERE tbl=? AND row_id=? LIMIT 1", (table, int(row_id)))
+        if got:
+            return got[0]["status"]
+    return None
+
+
+def _fact_prefer_xbrl_annual(row: dict[str, Any], day: str | None) -> dict[str, Any] | None:
+    """For an annual line, prefer an XBRL filing (reported, then derived) over a printed / company-stated figure.
+
+    ``fin`` keeps the newest-filing election, so a later annual-report page (e.g. APOLLOHOSP's FY25 revenue 951,308)
+    can replace the XBRL filing's number (217,940).  ``fact`` re-elects here: the best XBRL printing wins when one
+    exists, and the displaced printing is kept as an alternative with its source.  Returns None when no re-election
+    applies (not an annual line, or no XBRL printing exists), so the caller keeps the original row.
+    """
+    if (row.get("provenance") or {}).get("table") != "fin_annual_line":
+        return None
+    definition = str(row.get("definition") or "")
+    if definition.startswith("xbrl"):
+        return None
+    alts = row.get("alternatives") or []
+    xbrl_alts = [a for a in alts if str(a.get("definition") or "").startswith("xbrl")
+                 and (a.get("provenance") or {}).get("table") == "fin_annual_line"]
+    if not xbrl_alts:
+        return None
+    # reported before derived
+    best = min(xbrl_alts, key=lambda a: 0 if a.get("definition") == "xbrl_reported" else 1)
+    prov = best.get("provenance") or {}
+    table, row_id = prov.get("table"), prov.get("row_id")
+    if not table or not row_id:
+        return None
+    try:
+        r = _q(f"SELECT rowid, * FROM {table} WHERE rowid=?", (int(row_id),))[0]
+    except (IndexError, ValueError, TypeError):
+        return None
+    if not _pit_ok(r["known_at"], day):
+        return None
+    period_val = r["fiscal_year"] if "fiscal_year" in r.keys() else r["fiscal_period"]
+    new_row = _fin_row(r, table, period_val, r["definition"], _fin_source(r))
+    # rebuild alternatives: the displaced preferred printing first, then the rest
+    new_alts: list[dict[str, Any]] = []
+    orig_alt = {"value": row.get("value"), "unit": row.get("unit"), "scale": row.get("scale"),
+                "filing_date": str((row.get("provenance") or {}).get("known_at") or "")[:10],
+                "role": row.get("column_role") or "xbrl", "definition": row.get("definition"),
+                "provenance": row.get("provenance")}
+    new_alts.append(orig_alt)
+    for a in alts:
+        if a is best:
+            continue
+        new_alts.append(a)
+    new_row["alternatives"] = new_alts
+    return new_row
+
+
+def _fact_answer(row: dict[str, Any], as_of_used: str | None, computed: dict | None,
+                 asked_period: str | None = None, asked_basis: str | None = None) -> dict[str, Any]:
+    value, unit, scale = _fact_value(row)
+    prov = row.get("provenance") or {}
+    table, doc, page = _split_source(prov)
+    period = row.get("period") or row.get("date") or row.get("quarter_end") or row.get("as_of_date")
+    answer = {"value": value, "unit": unit, "scale_word": _scale_word(unit, scale), "period": period,
+              "basis": row.get("basis"), "as_of_used": as_of_used,
+              "source": {"table": table, "doc_key": doc, "page": page, "quote": _trim(row.get("quote"), 600)},
+              "known_at": prov.get("known_at") or row.get("known_at"), "computed": computed}
+    mismatch = _fact_mismatch(asked_period, asked_basis, row)
+    if mismatch:
+        answer["mismatch"] = mismatch
+    status = _fact_check_status(row)
+    if status:
+        answer["check_status"] = status
+    return answer
+
+
+def _fact_why(path: str, row: dict[str, Any]) -> str:
+    if path == "fin":
+        return (f"the preferred {row.get('definition') or 'reported'} figure for {row.get('period')}; the newest "
+                "filing's restatement wins and an older printing is in alternatives")
+    if path == "ratio":
+        if row.get("definition") == "company_stated":
+            return "the company's own stated figure, which the store serves ahead of its derived ratio"
+        if row.get("date"):
+            return f"the store's valuation on {row['date']}, the latest one known on or before the day asked"
+        return "the store's derived ratio for that period and basis, from its own formula and input rows"
+    if path == "kpi":
+        return "the company-stated KPI with the best evidence for the period (a deck table before a call remark)"
+    if path == "holding":
+        return f"the filing in force on {row.get('quarter_end')}: its own printed percentage, never a sum of lines"
+    return "the filing's share count nearest the day asked"
+
+
+def _fact_route(key: str, symbol: str) -> tuple[str | None, dict[str, list[str]], dict[str, list[str]]]:
+    """Which lookup owns a metric word (T-186 step 1): names matched per table, and every name each table holds."""
+    rnames, rall = _pick("ratio_panel", "metric", symbol, key)
+    qnames, qall = _pick("fin_quarter_xbrl", "line_item", symbol, key)
+    anames, aall = _pick("fin_annual_line", "line_item", symbol, key)
+    knames, kall = _pick("kpi_series", "metric", symbol, _KPI_WORDS.get(key, key))
+    fnames = list(dict.fromkeys(qnames + anames))
+    found = {"ratio_panel": rnames, "fin": fnames, "kpi_series": knames}
+    allnames = {"ratio_panel": rall, "fin": list(dict.fromkeys(qall + aall)), "kpi_series": kall}
+    words = set(key.split("_"))
+    if key in _FACT_SHARES:
+        return "shares", found, allnames
+    if key.endswith("holding") or key.endswith("shareholding") or words & _FACT_HOLDING_WORDS:
+        return "holding", found, allnames
+    # a ratio word first: a margin / return / growth / valuation is computed or stated, not a balance line.  The
+    # plain lines ratio_panel also mirrors (pat, revenue_from_operations) are not ratio words and go to fin.
+    ratio_word = (key in _FACT_VALUATION or key in _FACT_RATIO_NAMES or key.endswith(_FACT_RATIO_SUFFIXES))
+    if ratio_word and (key in rnames or f"{key}_pct" in rnames or key in _FACT_VALUATION):
+        return "ratio", found, allnames
+    if fnames:
+        return "fin", found, allnames
+    if knames:
+        return "kpi", found, allnames
+    if rnames:
+        return "ratio", found, allnames
+    return None, found, allnames
+
+
+def _fact_holding_word(symbol: str, key: str, day: str | None = None) -> str | None:
+    """The word a filed shp_category answers, so ``promoter holding`` asks for ``promoter``."""
+    extra, eargs = _asof(day)
+    held = [r[0] for r in _q(f"SELECT DISTINCT category FROM shp_category WHERE symbol=?{extra} ORDER BY 1",
+                             (symbol, *eargs))]
+    for word in key.split("_"):
+        if word in _FACT_HOLDING_WORDS or word in held or any(word in name for name in held):
+            return word
+    return None
+
+
+def _fact_paths(path: str, found: dict[str, list[str]]) -> list[str]:
+    """The lookup that owns the metric, then the other tables that hold a name for it (T-186 fallback)."""
+    table_of = {"fin": "fin", "ratio": "ratio_panel", "kpi": "kpi_series"}
+    order = {"fin": ("fin", "ratio", "kpi"), "ratio": ("ratio", "fin", "kpi"),
+             "kpi": ("kpi", "fin", "ratio"), "holding": ("holding",), "shares": ("shares",)}[path]
+    return [candidate for candidate in order if candidate == path or found.get(table_of[candidate])]
+
+
+def _fact_rows(path: str, symbol: str, key: str, period: str | None, basis: str | None, day: str | None,
+               limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """The rows one existing lookup returns for the metric (never reshaped), so fact keeps its election."""
+    if path == "fin":
+        reply = fin(symbol, key, period=period, basis=basis, as_of=day, limit=limit)
+    elif path == "ratio":
+        reply = ratio(symbol, key, period=period, as_of=day, basis=basis, limit=limit)
+    elif path == "kpi":
+        reply = kpi(symbol, key, period=period, as_of=day, basis=basis, limit=limit)
+    elif path in ("holding", "shares"):
+        quarter = period if period and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(period)) else None
+        reply = holding(symbol, day or dt.date.today().isoformat(), quarter_end=quarter,
+                        category=_fact_holding_word(symbol, key, day) if path == "holding" else None)
+    else:
+        return [], {}
+    if path == "shares":
+        block = reply.get("share_capital")
+        return ([block] if block else []), reply
+    return (reply.get("rows") or []), reply
+
+
+def _fact_second(path: str, found: dict[str, list[str]]) -> str | None:
+    """The next lookup that also holds the metric, so the answer says what the other table says (max 3)."""
+    for candidate, table in (("kpi", "kpi_series"), ("ratio", "ratio_panel"), ("fin", "fin")):
+        if candidate != path and found.get(table):
+            return candidate
+    return None
+
+
+def _pit_ok(known_at: str | None, day: str | None) -> bool:
+    """Is a row's filing record public on ``day``? (T-186: no computed input may be known after as_of.)"""
+    return not day or not known_at or str(known_at)[:10] <= day
+
+
+def _ref_input(symbol: str, ref: str, basis: str | None, cutoff: str | None) -> dict[str, Any]:
+    """One input the store's own ``input_refs`` names (``fa:…``, ``fq:…``, ``sc:…``) with its value and source.
+
+    ``cutoff`` is the as_of day, else the figure's own filing: a rowid / date the ref names is read only when it
+    satisfies the cutoff, and a row that fails it is reported as ``pit_hidden`` so the computed figure is not served
+    (T-186).
+    """
+    out: dict[str, Any] = {"name": ref, "value": None, "unit": None, "period": None, "source": None}
+    parts = str(ref).split(":", 4)
+    if len(parts) == 3 and parts[0] == "sc":                       # sc:SYM:date -> the share count used
+        rows = _q("SELECT shares_outstanding, as_of_date, known_at FROM share_capital WHERE symbol=? "
+                  "AND as_of_date=? AND event IS NULL ORDER BY known_at DESC LIMIT 5", (symbol, parts[2]))
+        row = next((r for r in rows if _pit_ok(r["known_at"], cutoff)), None)
+        if row is None and rows:
+            out["pit_hidden"] = True
+            return out
+        if row:
+            out.update(name="shares_outstanding", value=row["shares_outstanding"], unit="shares",
+                       period=row["as_of_date"], source={"table": "share_capital", "doc_key": None, "page": None})
+        return out
+    if len(parts) != 5 or parts[0] not in ("fa", "fq"):
+        return out
+    kind, period, bas, item = parts[0], parts[2], parts[3], parts[4]
+    when = None
+    if "@" in item:                                               # fq:…:ltm:…:pat@2024-03-31
+        item, _, when = item.partition("@")
+    rowid = None
+    if "#" in item:                                               # fa:…:net_worth#2069
+        item, _, rowid = item.partition("#")
+    out["name"] = item
+    extra, eargs = _asof(cutoff)
+    if kind == "fa":
+        if rowid:
+            rows = _q("SELECT value, unit, fiscal_year, doc_key, page, known_at FROM fin_annual_line WHERE rowid=?",
+                      (rowid,))
+            if rows and not _pit_ok(rows[0]["known_at"], cutoff):
+                out["pit_hidden"] = True
+                return out
+        else:
+            rows = _q(f"SELECT value, unit, fiscal_year, doc_key, page FROM fin_annual_line WHERE symbol=? "
+                      f"AND fiscal_year=? AND basis=? AND line_item=?{extra} ORDER BY known_at DESC LIMIT 1",
+                      (symbol, period, bas, item, *eargs))
+        if rows:
+            out.update(value=rows[0]["value"], unit=rows[0]["unit"], period=rows[0]["fiscal_year"],
+                       source={"table": "fin_annual_line", "doc_key": rows[0]["doc_key"], "page": rows[0]["page"]})
+        return out
+    if period == "ltm":
+        trailing = f"{item}_ttm"
+        rows = _q(f"SELECT rowid, value, unit, fiscal_period FROM ratio_panel WHERE symbol=? AND metric=? "
+                  f"AND period_end=? AND basis=?{_asof(cutoff)[0]} ORDER BY known_at DESC LIMIT 1",
+                  (symbol, trailing, when or cutoff, bas, *_asof(cutoff)[1]))
+        if rows:
+            out.update(value=rows[0]["value"], unit=rows[0]["unit"], period=rows[0]["fiscal_period"],
+                       source={"table": "ratio_panel", "doc_key": None, "page": None})
+            return out
+        rows = _q(f"SELECT value, unit, scale, fiscal_period FROM fin_quarter_xbrl WHERE symbol=? AND line_item=? "
+                  f"AND basis=? AND period_end<=?{extra} ORDER BY period_end DESC, known_at DESC LIMIT 12",
+                  (symbol, item, bas, when or cutoff or "9999-12-31", *eargs))
+        seen, total, unit = set(), 0.0, None
+        for r in rows:
+            if r["fiscal_period"] in seen:
+                continue
+            seen.add(r["fiscal_period"])
+            total += (r["value"] or 0.0) * (r["scale"] or 1.0)
+            unit = unit or r["unit"]
+        if len(seen) == 4:                                        # a trailing twelve months, no fewer
+            out.update(value=total, unit=unit, period=f"LTM to {when or cutoff}",
+                       source={"table": "fin_quarter_xbrl", "doc_key": None, "page": None})
+        return out
+    rows = _q(f"SELECT value, unit, source_file FROM fin_quarter_xbrl WHERE symbol=? AND fiscal_period=? "
+              f"AND basis=? AND line_item=?{extra} ORDER BY known_at DESC LIMIT 1",
+              (symbol, period, bas, item, *eargs))
+    if rows:
+        out.update(value=rows[0]["value"], unit=rows[0]["unit"], period=period,
+                   source={"table": "fin_quarter_xbrl", "doc_key": rows[0]["source_file"], "page": None})
+        return out
+    # a quarter the XBRL window does not hold is mirrored in ratio_panel by the derived-quarter part (T-129)
+    rows = _q(f"SELECT rowid, value, unit FROM ratio_panel WHERE symbol=? AND metric=? AND fiscal_period=? "
+              f"AND basis=?{_asof(cutoff, 'known_at')[0]} ORDER BY known_at DESC LIMIT 1",
+              (symbol, item, period, bas, *_asof(cutoff, "known_at")[1]))
+    if rows:
+        out.update(value=rows[0]["value"], unit=rows[0]["unit"], period=period,
+                   source={"table": "ratio_panel", "doc_key": None, "page": None})
+    return out
+
+
+def _formula_inputs(symbol: str, metric: str | None, period: str | None, basis: str | None,
+                    day: str | None) -> list[dict[str, Any]]:
+    """A formula's own input names valued for the same period and basis: ratio_panel, then the quarter, then the year."""
+    formula = _q("SELECT inputs FROM formula WHERE metric=? LIMIT 1", (metric,))
+    if not formula:
+        return []
+    extra, eargs = _asof(day)
+    inputs = []
+    for name in [n.strip() for n in (formula[0]["inputs"] or "").split(",") if n.strip()][:6]:
+        store, rows = "ratio_panel", _q(f"SELECT value, unit FROM ratio_panel WHERE symbol=? AND metric=? "
+                                        f"AND fiscal_period=? AND basis=?{extra} ORDER BY known_at DESC LIMIT 1",
+                                        (symbol, name, period, basis, *eargs))
+        if not rows:
+            store = "fin_quarter_xbrl"
+            rows = _q(f"SELECT value, unit FROM fin_quarter_xbrl WHERE symbol=? AND line_item=? AND fiscal_period=? "
+                      f"AND basis=?{extra} ORDER BY known_at DESC LIMIT 1", (symbol, name, period, basis, *eargs))
+        if not rows:
+            store = "fin_annual_line"
+            rows = _q(f"SELECT value, unit FROM fin_annual_line WHERE symbol=? AND line_item=? AND fiscal_year=? "
+                      f"AND basis=?{extra} ORDER BY known_at DESC LIMIT 1", (symbol, name, period, basis, *eargs))
+        inputs.append({"name": name, "value": rows[0]["value"] if rows else None,
+                       "unit": rows[0]["unit"] if rows else None, "period": period,
+                       "source": {"table": store, "doc_key": None, "page": None}})
+    return inputs
+
+
+def _fact_ratio_computed(symbol: str, row: dict[str, Any], day: str | None) -> dict[str, Any] | None:
+    prov = row.get("provenance") or {}
+    known = str(prov.get("known_at") or "")[:10] or day
+    cutoff = day or known          # an input must be public by as_of; else by the figure's own filing
+    if row.get("date"):                         # valuation_daily: PE / PB / EV-EBITDA / market cap on a day
+        formula = _q("SELECT expression, inputs FROM formula WHERE metric=? LIMIT 1", (row.get("ratio"),))
+        if not formula:
+            return None
+        match = re.search(r"row (\d+)", str(prov.get("source") or ""))
+        columns = ", ".join(dict.fromkeys(_FACT_VALUATION_COLUMNS.values()))
+        values = []
+        if match:
+            got = _q(f"SELECT {columns}, known_at FROM valuation_daily WHERE rowid=?", (match.group(1),))
+            if got and not _pit_ok(got[0]["known_at"], cutoff):
+                return None                 # the valuation row itself is not public at as_of
+            values = got[:1]
+        inputs = []
+        for name in [n.strip() for n in (formula[0]["inputs"] or "").split(",") if n.strip()][:6]:
+            column = _FACT_VALUATION_COLUMNS.get(name)
+            inputs.append({"name": name, "value": values[0][column] if values and column in values[0].keys() else None,
+                           "unit": None, "period": row.get("date"),
+                           "source": {"table": "valuation_daily", "doc_key": None, "page": None}})
+        return {"formula": formula[0]["expression"], "inputs": inputs}
+    try:
+        refs = json.loads(prov.get("input_refs") or "[]")
+    except ValueError:
+        refs = []
+    refs = refs if isinstance(refs, list) else [refs]
+    if not row.get("formula"):
+        return None                     # the store did not record the formula: no computed block is invented
+    if not refs:                        # an older build keeps the input names in formula.inputs only
+        inputs = _formula_inputs(symbol, row.get("ratio"), row.get("period"), row.get("basis"), cutoff)
+    else:
+        inputs = [_ref_input(symbol, str(ref), row.get("basis"), cutoff) for ref in refs[:6]]
+    if any(item.get("pit_hidden") for item in inputs):
+        return None                     # an input is not public at as_of: the computed figure is not served
+    return {"formula": row.get("formula"), "inputs": inputs}
+
+
+def _fact_fin_computed(symbol: str, row: dict[str, Any], day: str | None) -> dict[str, Any] | None:
+    """A derived annual line's formula and its same-period inputs (the store's ``formula`` table names them)."""
+    formula = _q("SELECT expression, inputs FROM formula WHERE metric=? LIMIT 1", (row.get("measure"),))
+    if not formula:
+        return None                     # a derived line whose formula the store does not hold is not guessed at
+    cutoff = day or str((row.get("provenance") or {}).get("known_at") or "")[:10] or None
+    inputs = []
+    for name in [n.strip() for n in (formula[0]["inputs"] or "").split(",") if n.strip()][:6]:
+        rows = _q(f"SELECT value, unit, doc_key, page, known_at FROM fin_annual_line WHERE symbol=? AND fiscal_year=? "
+                  f"AND basis=? AND line_item=? ORDER BY known_at DESC LIMIT 5",
+                  (symbol, row.get("period"), row.get("basis"), name))
+        pick = next((r for r in rows if _pit_ok(r["known_at"], cutoff)), None)
+        if pick is None and rows:
+            return None                 # an input is not public at as_of: the computed figure is not served
+        inputs.append({"name": name, "value": pick["value"] if pick else None,
+                       "unit": pick["unit"] if pick else None, "period": row.get("period"),
+                       "source": {"table": "fin_annual_line", "doc_key": pick["doc_key"] if pick else None,
+                                  "page": pick["page"] if pick else None}})
+    return {"formula": formula[0]["expression"], "inputs": inputs}
+
+
+def _fact_computed(path: str, symbol: str, row: dict[str, Any], day: str | None) -> dict[str, Any] | None:
+    if path == "ratio":
+        return _fact_ratio_computed(symbol, row, day)
+    if path == "fin" and "derived" in str(row.get("definition") or ""):
+        return _fact_fin_computed(symbol, row, day)
+    return None
+
+
+def _fact_sample(table: str, name: str, symbol: str, day: str | None) -> dict[str, Any] | None:
+    """One latest row of a metric name, for the not-found reply's ``nearest`` list."""
+    extra, eargs = _asof(day)
+    if table == "fin":
+        rows = _q(f"SELECT line_item AS metric, fiscal_year AS period, basis, value, unit, doc_key, page, known_at "
+                  f"FROM fin_annual_line WHERE symbol=? AND line_item=?{extra} ORDER BY known_at DESC LIMIT 1",
+                  (symbol, name, *eargs))
+        store = "fin_annual_line"
+        if not rows:
+            store = "fin_quarter_xbrl"
+            rows = _q(f"SELECT line_item AS metric, fiscal_period AS period, basis, value, unit, "
+                      f"source_file AS doc_key, NULL AS page, known_at FROM fin_quarter_xbrl WHERE symbol=? "
+                      f"AND line_item=?{extra} ORDER BY known_at DESC LIMIT 1", (symbol, name, *eargs))
+    elif table == "ratio":
+        store = "ratio_panel"
+        rows = _q(f"SELECT metric, fiscal_period AS period, basis, value, unit, NULL AS doc_key, NULL AS page, "
+                  f"known_at FROM ratio_panel WHERE symbol=? AND metric=?{extra} ORDER BY known_at DESC LIMIT 1",
+                  (symbol, name, *eargs))
+    else:
+        store = "kpi_series"
+        rows = _q(f"SELECT metric, fiscal_period AS period, basis, value, unit, doc_key, page, known_at "
+                  f"FROM kpi_series WHERE symbol=? AND metric=?{extra} ORDER BY known_at DESC LIMIT 1",
+                  (symbol, name, *eargs))
+    if not rows:
+        return None
+    r = rows[0]
+    return {"nearest": True, "table": store, "metric": r["metric"], "value": r["value"], "unit": r["unit"],
+            "period": r["period"], "basis": r["basis"], "known_at": r["known_at"],
+            "source": {"table": store, "doc_key": r["doc_key"], "page": r["page"]}}
+
+
+def _fact_not_found(symbol: str, metric: str, key: str, found: dict[str, list[str]],
+                    allnames: dict[str, list[str]], day: str | None, note: str | None = None) -> dict[str, Any]:
+    searched = [{"table": table, "names_matched": names[:8]} for table, names in found.items()]
+    owner: dict[str, str] = {}
+    for table, names in allnames.items():
+        for name in names:
+            owner.setdefault(name, table)
+    nearest = []
+    for name in difflib.get_close_matches(key, sorted(owner), n=3, cutoff=0.4):
+        table = owner[name]
+        row = _fact_sample("ratio" if table == "ratio_panel" else table, name, symbol, day)
+        if row:
+            nearest.append(row)
+    hint = ("NOT IN DATA of pilot3 for these arguments: try a name in nearest, a wider period, or pilot3_search; "
+            "only then fall back to the raw tools.")
+    if note:
+        hint = f"{note} {hint}"
+    return {"found": False, "symbol": symbol, "tool": "pilot3_fact", "metric_asked": metric, "searched": searched,
+            "nearest": nearest, "hint": hint, "provenance": _db_prov()}
+
+
+def _fact_held_quarantined(symbol: str, found: dict[str, list[str]], day: str | None) -> list[str]:
+    """Rows the independent checker quarantined for this metric, so a hidden figure is reported, not read as absent.
+
+    ``fin`` and ``ratio`` filter their rows but do not say what they hid (T-186); ``kpi`` reports its own.
+    """
+    if not _has_table("row_check"):
+        return []
+    specs = (("fin_annual_line", "line_item", found.get("fin") or []),
+             ("fin_quarter_xbrl", "line_item", found.get("fin") or []),
+             ("ratio_panel", "metric", found.get("ratio_panel") or []))
+    extra, eargs = _asof(day)
+    out: list[str] = []
+    for table, col, names in specs:
+        if not names:
+            continue
+        placeholders = ",".join("?" * len(names))
+        rows = _q(f"SELECT t.{col} AS name, COUNT(*) c FROM row_check rc JOIN {table} t ON t.rowid=rc.row_id "
+                  f"WHERE rc.status='quarantined' AND rc.tbl=? AND t.symbol=? AND t.{col} IN ({placeholders}){extra} "
+                  f"GROUP BY 1 ORDER BY 2 DESC LIMIT 10", (table, symbol, *names, *eargs))
+        out += [f"{table} / {r['name']} ({r['c']} rows; the row check quarantined them)" for r in rows]
+    return out
+
+
+def fact(symbol: str, metric: str, period: str | None = None, basis: str | None = None,
+         as_of: str | None = None) -> dict[str, Any]:
+    """The ONE preferred figure for a (company, metric, period, basis), answer-ready in a single call (T-186).
+
+    Routing: a financial line -> ``fin`` (the preferred-figure election); a ratio / margin / growth / valuation ->
+    ``ratio``; a company-stated KPI -> ``kpi``; a holding category -> ``holding``; a share count -> ``share_capital``.
+    Returns ``answer`` = value, unit and scale word, period, basis, as_of used, source {table, document, page, quote},
+    known_at, and ``computed`` {formula, inputs} for a figure the store derives; up to three ``alternatives`` from
+    another table or filing, and ``why_this_one``.  Nothing matching returns ``found: false`` with the tables and
+    names searched and up to three nearest rows."""
+    sym = resolve_symbol(symbol)
+    key = _metric_key(metric)
+    if not key:
+        raise DataError("bad_metric", "metric is required (a financial line, ratio, KPI, holding category or share "
+                        "count)")
+    day = _day(as_of, "as_of")
+    bas = (basis or "").strip().lower() or None
+    path, found, allnames = _fact_route(key, sym)
+    if path is None:
+        return _fact_not_found(sym, metric, key, found, allnames, day)
+    # the owning lookup first; a table that also holds the metric answers when the owner has no row for the period
+    rows: list[dict[str, Any]] = []
+    used = path
+    replies: dict[str, dict[str, Any]] = {}
+    for candidate in _fact_paths(path, found):
+        rows, reply = _fact_rows(candidate, sym, key, period, bas, day, 5)
+        replies[candidate] = reply
+        if rows:
+            used = candidate
+            break
+    if not rows:
+        note = None
+        if day:                     # say plainly when as_of, not the store, is what hides the figure
+            for candidate in _fact_paths(path, found):
+                later, _reply = _fact_rows(candidate, sym, key, period, bas, None, 1)
+                if later:
+                    note = f"a row is held but was filed after {day}: call without as_of, or with a later as_of."
+                    break
+        out = _fact_not_found(sym, metric, key, found, allnames, day, note=note)
+        held = [line for reply in replies.values()
+                for line in (reply.get("held_quarantined") or reply.get("held_options") or [])]
+        held += _fact_held_quarantined(sym, found, day)
+        if held:
+            out["held_quarantined"] = held[:10]
+        return out
+    row = rows[0]
+    if used == "fin":
+        row = _fact_prefer_xbrl_annual(row, day) or row
+    alternatives: list[dict[str, Any]] = []
+    if used == "fin":
+        for alt in (row.get("alternatives") or [])[:3]:
+            table, doc, page = _split_source(alt.get("provenance") or {})
+            alternatives.append({"value": alt.get("value"), "unit": alt.get("unit"), "period": row.get("period"),
+                                 "basis": row.get("basis"), "table": table, "doc_key": doc, "page": page,
+                                 "definition": alt.get("definition"), "filing_date": alt.get("filing_date"),
+                                 "note": "another filing's printing of the same figure"})
+    for other in rows[1:4]:
+        if len(alternatives) >= 3:
+            break
+        alternatives.append(_fact_alt(other))
+    second = _fact_second(used, found)
+    if second and len(alternatives) < 3:
+        alt_rows, _reply = _fact_rows(second, sym, key, period, bas, day, 1)
+        if alt_rows:
+            alternative = _fact_alt(alt_rows[0])
+            alternative["note"] = f"the same metric as the {second} lookup holds it"
+            alternatives.append(alternative)
+    return {"found": True, "symbol": sym, "metric": metric, "route": used,
+            "answer": _fact_answer(row, day, _fact_computed(used, sym, row, day), period, bas),
+            "alternatives": alternatives[:3], "why_this_one": _fact_why(used, row), "provenance": _db_prov()}
