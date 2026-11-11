@@ -51,7 +51,7 @@ def select_pages(store_db: Any, symbols: Iterable[str] | None = None, doc_types:
             continue
         t = text or ""
         num_count = len(re.findall(r"\d+(?:[.,]\d+)*", t))
-        if not (num_count >= 8 or (method or "") == "needs_ocr"):
+        if not (num_count >= 4 or (method or "") == "needs_ocr"):   # is_table_page decides; this only skips prose
             continue
         out.append({"doc_key": doc_key, "symbol": symbol, "doc_type": dt,
                     "known_at": known_at, "page": page})
@@ -161,7 +161,7 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
             image_b64 = rp._page_image_b64(store_db, doc_key, page_no)
         except Exception as exc:                      # no image: read the layout text alone, say why
             image_b64 = None
-            result["reason"] = f"chart page, no image: {type(exc).__name__}: {exc}"[:200]
+            result["reason"] = (f"{result['reason']}; " if result["reason"] else "") + f"chart page, no image: {type(exc).__name__}: {exc}"[:200]
         result["input"] = "layout_image" if image_b64 else "layout"
 
     prompt = rp.GRID_PROMPT + (rp.LAYOUT_NOTE + layout + "\n>>>" if layout.strip() else "")
@@ -201,7 +201,9 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
         if res2.get("error"):
             time.sleep(20)
             res2 = rp._model_call(reader, prompt2, image_b64)
-        if not res2.get("error"):
+        if res2.get("error"):                         # first pass kept; the failed second pass is recorded
+            result["error"] = f"second pass: {res2.get('error')}"[:300]
+        else:
             found2 = rp.parse_grid(res2.get("output") or "")
             if not found2:
                 found2 = rp._parse_rows(res2.get("output") or "")
@@ -226,7 +228,7 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
             "symbol": symbol,
             "known_at": known_at,
             "reader": reader,
-            "table_title": "",
+            "table_title": c.get("table", "") or "",
             "row_label": c.get("row_label", "") or "",
             "col_header": c.get("col_header", "") or "",
             "value_text": c.get("value_text", "") or "",
@@ -358,6 +360,8 @@ def main(argv: list[str] | None = None) -> int:
         with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
             futures = {ex.submit(read_page, store_db, p["doc_key"], p["page"], args.reader, ocr_dbs): p for p in todo}
             for fut in as_completed(futures):
+                if fut.cancelled():
+                    continue
                 res = fut.result()
                 _write(con, res)                    # one writer, committed per page: a crash loses one page
                 if QUOTA.search(res.get("error") or ""):

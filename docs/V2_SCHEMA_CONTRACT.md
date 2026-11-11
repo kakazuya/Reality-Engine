@@ -1204,7 +1204,10 @@ reader, table_title, row_label, col_header, value_text, unit_text, status ('veri
 [--doc-types deck,results] [--limit N] [--reader <MODELS name>] [--workers 3]`. Test:
 `reality_engine/tests/test_v2_page_reader.py`. Eagle at merge (11 Nov): each page is written and committed as it finishes (one writer), a rerun retries pages
 whose status is `error`, three free-model quota refusals in a row (HTTP 429 / usage limit) cancel the remaining pages,
-and each invocation writes one `page_reader` row to the run ledger (pages, errors, cells, verified, unread, tokens).
+and each invocation writes one `page_reader` row to the run ledger (pages, errors, cells, verified, unread, tokens). After the read-only grade (20261111T085743Z-ec6c70f6): a cancelled page is skipped, a failed second pass keeps the
+first pass and records its error, a chart page without an image adds that to the word-source reason, `page_cell`
+keeps the reader's table title (`reference_vote.cells_of` and `reference_geom` now carry `table`), and a page needs 4
+number tokens (was 8) to reach `is_table_page`.
 
 ## 13. Completeness report (T-177, 11 Nov 2026)
 

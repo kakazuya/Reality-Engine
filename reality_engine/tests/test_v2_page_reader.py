@@ -128,6 +128,10 @@ def test_second_pass_adds_missed_row(monkeypatch):
     cells = con.execute("SELECT COUNT(*) FROM page_cell").fetchone()[0]
     assert passes == 2
     assert cells >= 10
+    dup = con.execute("SELECT COUNT(*) FROM (SELECT x0, y0 FROM page_cell WHERE x0 IS NOT NULL "
+                      "GROUP BY x0, y0 HAVING COUNT(*) > 1)").fetchone()[0]
+    assert dup == 0                                   # a printed word is one cell even when both passes give it
+    assert con.execute("SELECT COUNT(*) FROM page_cell WHERE table_title<>''").fetchone()[0] > 0
     con.close()
 
 

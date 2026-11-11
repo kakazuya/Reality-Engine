@@ -61,7 +61,8 @@ def cells_of(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
         seen[(lk, norm)] += 1
         out.append({"key": (lk, norm, seen[(lk, norm)]), "lk": lk, "ck": col_key(r.get("col_header")), "norm": norm,
                     "label": _norm_space(r.get("row_label")), "col": _norm_space(r.get("col_header")),
-                    "value": _norm_space(r.get("value")), "unit": _norm_space(r.get("unit"))})
+                    "value": _norm_space(r.get("value")), "unit": _norm_space(r.get("unit")),
+                    "table": _norm_space(r.get("table"))})
     return out
 
 
