@@ -1107,3 +1107,11 @@ Test runtime: `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2
 0.43 s (fixtures are small SQLite files under `.tmp`; `tmp_path` is not usable in this sandbox because
 `.tmp/pytest-of-SYSTEM` is ACL-locked by an earlier SYSTEM session). Typecheck: basedpyright 0 errors on the module and
 its test.
+
+**Vote of readers (T-177, 11 Nov 2026).** `python -m reality_engine.v2.reference_vote --pages <pages.csv> --runs
+<dirA> <dirB> [<dirC> ...] --out <dir>` replaces the exact-text reconcile for building reference cells: a cell is
+(row label key, value, n-th occurrence); settled by script when two or more readers give it and the value is printed
+on the page; `label_dispute` marks a value two readers put under different row labels in the same column. Output
+columns: page_id, split, row_label, col_header, value_text, unit_text, readers, agree_n, verbatim, label_dispute,
+settled_by. Measured on the 60 pages with three free readers: 4,143 candidate cells, 2,063 settled, 1,048 label
+disputes (see `tasks/FABLE_TESTS_2026-11-10.md` section 1).

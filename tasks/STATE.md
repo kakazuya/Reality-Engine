@@ -5,11 +5,11 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `do
 - Stores: `D:/RealityEngine/{p20/p20new.db, u8/u8.db, q12/q12.db, n10/n10.db, pilot10/pilot10.db}`; s10 list `D:/RealityEngine/s10/universe_s10.csv` (filings fetched 10 Nov).
 - Routine: code to DeepSeek (precision) or Beam (plumbing, peak hours); a separate read-only grader on every branch; Claude reruns tests + samples; merge only with 0 earlier-right rows lost. Cap 4 code workers. DeepSeek on Go key 1 (key 2 hit its DeepSeek limit 10 Nov; Beam on key 2).
 - Merged 10 Nov: T-133 v8.1, T-166 r4, T-171 steps 1-2, ticket-board rework (why/close_when, close --merged, advisory lint), T-164 r8 call statements (7f8497c4; independent review 0 losses, entity 96.9/86.3%, topic 92.6/96.2%; evidence D:/RealityEngine/v2/review/t164_r8), dsh-worker `model='beam-free'`, free_model_check, worker cap 4, pane order.
-- Rulings 10 Nov: frozen hold-out scoring (T-172, T-173); factor rewards dynamic (T-176); OCR only for textless/jumbled pages (T-175); PIB other languages only without English; policy-to-company impact (T-174).
 
 ## Running (owner: Eagle session; claim_worker in the new session)
 - T-179 DONE (first look): no effect of removing raw SQL (SQL 96/120 right, no SQL 94/120; same-arm runs disagree on 14-16 of 60). Grader lenient vs Opus (28 of 50 Opus-not-right called right). Median 34-56 s and 6-9 lookups per answer; tools take 1-2 s of that. Result in `tasks/FABLE_TESTS_2026-11-10.md`; data `D:/RealityEngine/t179/`.
-- T-177: tool merged ece2378e; 60-page run done in `D:/RealityEngine/v2/reference_pages/` (3 free Kilo readers, text): rows on 60/58/60 pages, 0 errors, 3,355 of 3,635 cells verbatim (92%), but only 857 agreed between two readers (24%): row labels differ, so the reconcile key must match by value and column, not label text.
+- T-177: reference pages in `D:/RealityEngine/v2/reference_pages/` (3 free Kilo readers, 60 pages). `reference_vote.py` settles 2,063 of 4,143 candidate cells; 98.8% of values are printed on the page but 1,048 are label disputes (readers disagree on the row). Next: arbitrate rows by word positions, then hand-read the rest.
+- Running (DeepSeek key 1, started 10:44 IST 11 Nov): T-177 completeness report 20261111T051419Z-0a0553b9; T-181 document-integrity gate 20261111T051441Z-8e5c9538.
 - T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) HELD with T-132 until T-180 decides: q12 one seed 85%, zero-loss gate failed, self-graded.
 
 ## Next action

@@ -108,6 +108,29 @@ same values to different table titles and row labels, and `verbatim` alone does 
 `p012` (chart-only, no text layer) and `p041` (auditor's review in prose) are not table pages. The frozen split is
 sampled but not transcribed.
 
+**Vote of three readers (pending item 1, 11 Nov 2026).** `reality_engine/v2/reference_vote.py` (tests
+`reality_engine/tests/test_v2_reference_vote.py`) settles a cell when two or more readers give the same value under
+the same row label (label reduced to letters and digits, leading "(a)" / "1." dropped; reply order ignored) and the
+value is printed in the page text. Run on the saved outputs of Dots, Nemotron 3.5 Super VL and Nemotron 3 Ultra
+(text input) for the 60 pages, no new model call:
+
+| | Cells |
+|---|---|
+| Candidate cells (union of three readers; a value under two labels counts twice) | 4,143 |
+| Value printed on the page | 4,094 (98.8%) |
+| Settled by script (two or more readers, same label, printed) | 2,063 |
+| Label disputes (same value and column, different row label between readers) | 1,048 |
+| Not settled in all | 2,080 |
+
+By type, settled: annual report 336 of 604, deck 839 of 1,708, results 888 of 1,831. Three pages have no cell (chart
+or no text layer). The old exact-text reconcile settled 835; outputs of it are kept in `reference_pages/v1/`.
+
+Reading: the free readers copy numbers almost perfectly, but on deck panels, two-level headers and wide results
+tables they often disagree on WHICH ROW a number belongs to (p031 196 candidate cells, 7 settled, 85 label
+disputes). A number in the wrong row is a wrong fact, and the verbatim check cannot see it. So the model-in-build
+idea needs a row check from page geometry (the label printed on the value's own line), not only a verbatim check.
+Next for item 2: arbitrate label disputes by word positions in the text layer, then read by hand only what is left.
+
 ## 2. T-178: can the first build be salvaged by re-keying? (no new model calls)
 
 - **Hypothesis:** first-build facts, once verified against the text layer and passed through the v2 label map
