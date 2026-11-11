@@ -336,15 +336,28 @@ def _snapshot() -> Path:
 
 
 def _read_duckdb(sql: str, params: tuple) -> tuple[list, dict[str, str]]:
+    """Read from the newest truth snapshot that holds the tables the statement names.
+
+    A ``--prices-only`` snapshot (``build_truth_snapshot``) holds prices and corporate-action factors but no
+    research table (``corporate_actions``, ``shp_index``, ...).  When it is the newest file a statement over a
+    research table falls back to the newest older snapshot that has the table, instead of failing the build."""
     import duckdb
 
-    path = _snapshot()
-    con = duckdb.connect(str(path), read_only=True)
-    try:
-        rows = con.execute(sql, params).fetchall()
-        columns = [item[0] for item in con.description]
-    finally:
-        con.close()
+    _snapshot()                      # raises the usual error when no snapshot exists
+    missing: Exception | None = None
+    for path in sorted((DATA_ROOT / "snapshots").glob("truth_*.duckdb"), reverse=True):
+        con = duckdb.connect(str(path), read_only=True)
+        try:
+            rows = con.execute(sql, params).fetchall()
+            columns = [item[0] for item in con.description]
+            break
+        except duckdb.CatalogException as exc:
+            missing = exc
+        finally:
+            con.close()
+    else:
+        assert missing is not None
+        raise missing
     types = {name: _type_of(next((row[i] for row in rows if row[i] is not None), None))
              for i, name in enumerate(columns)}
     return rows, types

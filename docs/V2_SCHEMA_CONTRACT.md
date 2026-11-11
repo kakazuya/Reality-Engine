@@ -1114,7 +1114,34 @@ its test.
 on the page; `label_dispute` marks a value two readers put under different row labels in the same column. Output
 columns: page_id, split, row_label, col_header, value_text, unit_text, readers, agree_n, verbatim, label_dispute,
 settled_by. Measured on the 60 pages with three free readers: 4,143 candidate cells, 2,063 settled, 1,048 label
-disputes (see `tasks/FABLE_TESTS_2026-11-10.md` section 1).
+disputes (see `tasks/FABLE_TESTS_2026-11-10.md` section 1). Label unification (11 Nov, Eagle): two readers' labels
+are one row when the text is a spelling of the same label (one contains the other, or `SequenceMatcher` ratio >= 0.8,
+e.g. a garbled text layer "Oeprecintlon nnd nmortisation") AND the two rows carry at least half the same values, and
+the pairing is unique both ways; "CSEL" and "VF" over the same numbers stay a dispute. New column `label_aliases`.
+
+**Settled by printed position (T-177/T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/reference_geom.py`:
+`python -m reality_engine.v2.reference_geom --pages <pages.csv> --pdf-pages <dir> --runs <dirA> <dirB> ... --out
+<dir>`. `--pdf-pages` holds one single-page PDF per page_id (`D:/RealityEngine/v2/reference_pages/pdf_pages/`, cut
+from the source PDF, fetched from Drive where not local). Each reader cell is placed on the page from the PDF word
+boxes (sideways pages turned upright; a page-column gutter ends a label): the row holds when the value word sits on a
+line whose text left of it spells the row label (or that line joined with a number-less line above/below, for wrapped
+labels); the column holds when a header word with a digit (else any header word) is printed above the value and over
+it; a chart value holds when the panel title is printed above it and the axis label below it. `settled_by` =
+`script+position` (two or more readers, row confirmed), `position` (one reader, row and column confirmed), `script`
+(two or more readers, label or value not locatable, e.g. no text layer); otherwise empty with `conflict`
+(`row_elsewhere`, `column_elsewhere`, `two_labels_fit_line`, `lone_unlocated`, `lone_column_unlocated`,
+`value_not_printed`). A dash or "nil" is an empty cell. `unread_numbers.csv` lists numbers printed in a table column
+(numbers on two or more other lines under it) on a labelled line that no reader gave: the recall gap. Why: a text
+reader given the text layer in reading order sees a results table column by column, so a blank cell shifts every later
+number one row down, and two readers can make the same shift (IHCL p049: "Exceptional items 45271" where that cell is
+blank); a vote cannot see it, word positions can. Test: `reality_engine/tests/test_v2_reference_geom.py`.
+
+**Layout input for readers (T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/page_layout.py` renders word boxes as
+fixed-width text, one output line per printed line with horizontal position kept (`python -m
+reality_engine.v2.page_layout <one-page.pdf>`). `reference_pages transcribe --input layout|layout_image --pdf-pages
+<dir>` sends that text (plus the page image for `layout_image`, or the image alone when the page has no text layer)
+with a note that a blank in a column is an empty cell. The same renderer takes OCR word boxes, so text-layer and
+image-only pages reach a reader the same way.
 
 ## 13. Completeness report (T-177, 11 Nov 2026)
 

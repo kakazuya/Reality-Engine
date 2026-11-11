@@ -70,6 +70,11 @@ Change a rule only with a measurement that supports the change, and note it in `
 
 ## 9. Fast checks for every change
 - **Document-integrity gate before extraction (T-181).** `python -m reality_engine.pilot3.doc_integrity report --store <pilot3.db> --out <dir>` writes `doc_defects.csv` and `summary.csv`; run `python -m reality_engine.pilot3.doc_integrity gate --prev <old summary.csv> --new <new summary.csv>` (exit 1 on a rise) or `gate --store <db> --max link_notice=0,misdated=0` before every `build --part`, and stop the build on a non-zero exit.
+- **Truth snapshot for the stores part.** `gap_loop/prepare._read_duckdb` reads the newest
+  `reality_engine/data/snapshots/truth_*.duckdb` that holds the tables a statement names: a `--prices-only` snapshot
+  (`truth_2026-11-09`, 19 tables) has no `corporate_actions` or `shp_index`, so a statement over those falls back to
+  the newest older full snapshot (`truth_2026-11-04`) instead of failing `build --part stores` (it failed u8 on
+  11 Nov). Test: `reality_engine/tests/test_prepare_snapshot_fallback.py`.
 - Rebuild only what changed: one build part, one company (`python -m reality_engine.pilot3.build --part kpi --symbols KEC`); under a profile (`--profile <json>`, T-056) `--symbols` limits every part, so the same command builds one company of the profile; extraction cached by document hash + extractor version.
 - Fixed check pages per extractor run in seconds (`python -m reality_engine.pilot3.checkpages run`: 314 pages, about 6 s); a fix round is `pytest reality_engine/tests -q -k pilot3 -m "not slow"`.
 - The full rebuild and integration tests (marked `slow`, `-m slow`) run once, at merge. Heavy test suites run one file per process under a RAM cap.

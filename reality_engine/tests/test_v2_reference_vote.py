@@ -49,3 +49,16 @@ def test_unprinted_value_is_never_settled_and_unlocated_rows_are_dropped():
     a.append({"table": "", "row_label": "", "col_header": "", "value": "7", "unit": ""})
     cells, disputes = rv.vote_page([a, list(a)], "PAT 55")
     assert len(cells) == 1 and cells[0]["agree_n"] == 2 and not cells[0]["verbatim"] and len(disputes) == 1
+
+
+def test_two_spellings_of_one_label_are_one_row_but_two_names_are_not():
+    heads = ["FY24", "FY25"]
+    a = _rows("Depreciation and amortisation expenses", heads, ["291,085", "325,111"]) + _rows("SBPL", heads, ["60", "70"])
+    b = _rows("Oeprecintlon nnd nmortisation expenses", heads, ["291,085", "325,111"])         + _rows("SBPL - Secured Business & Personal Loan", heads, ["60", "70"])
+    cells, disputes = rv.vote_page([a, b], "Oeprecintlon nnd nmortisation expenses 291,085 325,111 SBPL 60 70")
+    assert len(cells) == 4 and not disputes and all(c["agree_n"] == 2 for c in cells)
+    assert {c["label_aliases"] for c in cells if "mortisation" in c["row_label"]} != {""}
+    c = _rows("CSEL", heads, ["48,348", "53,922"])
+    d = _rows("VF", heads, ["48,348", "53,922"])
+    cells, disputes = rv.vote_page([c, d], "CSEL VF 48,348 53,922")
+    assert len(disputes) == 4 and all(x["label_dispute"] for x in cells)

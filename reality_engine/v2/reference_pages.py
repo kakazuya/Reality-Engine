@@ -2,7 +2,7 @@
 
 Usage:
     python -m reality_engine.v2.reference_pages sample --stores D:/RealityEngine/p20/p20new.db,... --out <dir> --seed 20261110
-    python -m reality_engine.v2.reference_pages transcribe --pages <pages.csv> --reader <MODELS name> --input text|image --out <dir> [--split dev]
+    python -m reality_engine.v2.reference_pages transcribe --pages <pages.csv> --reader <MODELS name> --input text|image|layout|layout_image --out <dir> [--split dev] [--pdf-pages <dir>]
     python -m reality_engine.v2.reference_pages reconcile --pages <pages.csv> --runs <dirA> <dirB> --out <dir>
 """
 from __future__ import annotations
@@ -520,7 +520,21 @@ def _page_text_for(store: str, doc_key: str, page: int) -> str:
     return text
 
 
-def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, split: str | None = None) -> int:
+LAYOUT_NOTE = ("\n\nPage text laid out as printed: each line below is one printed line and horizontal position is "
+               "kept, so a number belongs to the row label on its own line and to the column header above it. A "
+               "blank where a column has no number is an empty cell: never move a later number up into it.\n<<<\n")
+
+
+def _layout_for(pdf_pages: Path | None, pid: str) -> str:
+    from reality_engine.v2.page_layout import layout_text
+    from reality_engine.v2.reference_geom import page_words
+
+    pdf = (pdf_pages or Path()) / f"{pid}.pdf"
+    return layout_text(page_words(pdf)) if pdf.exists() else ""
+
+
+def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, split: str | None = None,
+                     pdf_pages: Path | None = None) -> int:
     if not _is_free(reader):
         raise SystemExit(f"reader {reader!r} is not a free model; refusing")
     rows_meta = _load_pages_csv(pages_csv)
@@ -553,6 +567,18 @@ def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, s
             img = _page_image_b64(store_path, doc_key, page)
             prompt = TRANSCRIBE_PROMPT
             res = _model_call(reader, prompt, img if img else None)
+        elif input_mode in ("layout", "layout_image"):
+            text = _layout_for(pdf_pages, pid)
+            img = ""
+            if input_mode == "layout_image" or not text.strip():     # an image-only page still reaches the reader
+                one = (pdf_pages or Path()) / f"{pid}.pdf"
+                if one.exists():
+                    with pymupdf.open(str(one)) as doc:
+                        img = render_jpeg_b64(doc[0])
+                else:
+                    img = _page_image_b64(store_path, doc_key, page)
+            prompt = TRANSCRIBE_PROMPT + (LAYOUT_NOTE + text[:24000] + "\n>>>" if text.strip() else "")
+            res = _model_call(reader, prompt, img or None)
         else:
             text = _page_text_for(store, doc_key, page)
             prompt = TRANSCRIBE_PROMPT + "\n\nPage text (words in reading order):\n<<<\n" + text[:12000] + "\n>>>"
@@ -585,7 +611,8 @@ def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, s
 
 
 def transcribe(args) -> int:
-    return transcribe_pages(Path(args.pages), args.reader, args.input, Path(args.out), args.split)
+    return transcribe_pages(Path(args.pages), args.reader, args.input, Path(args.out), args.split,
+                            Path(args.pdf_pages) if args.pdf_pages else None)
 
 
 # ---------- reconcile ----------
@@ -804,7 +831,8 @@ def main(argv=None) -> int:
     p_trans = sub.add_parser("transcribe")
     p_trans.add_argument("--pages", required=True, type=Path)
     p_trans.add_argument("--reader", required=True)
-    p_trans.add_argument("--input", required=True, choices=["text", "image"])
+    p_trans.add_argument("--input", required=True, choices=["text", "image", "layout", "layout_image"])
+    p_trans.add_argument("--pdf-pages", default=None, help="folder of one-page PDFs <page_id>.pdf (layout inputs)")
     p_trans.add_argument("--out", required=True, type=Path)
     p_trans.add_argument("--split", default=None)
     p_trans.set_defaults(func=transcribe)

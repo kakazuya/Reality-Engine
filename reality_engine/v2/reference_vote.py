@@ -20,13 +20,16 @@ import argparse
 import csv
 import re
 from collections import Counter, defaultdict
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
 from reality_engine.v2.reference_pages import _load_pages_csv, _load_run_rows, _norm_space, _norm_value, _page_text_for
 
 CELL_COLS = ["page_id", "split", "row_label", "col_header", "value_text", "unit_text", "readers", "agree_n",
-             "verbatim", "label_dispute", "settled_by"]
+             "verbatim", "label_dispute", "settled_by", "label_aliases"]
+LABEL_RATIO = 0.8        # two spellings of one row label (a garbled text layer, a dropped word)
+LABEL_SHARE = 0.5        # ... that also carry the same values: share of the shorter row's values
 _ENUM = re.compile(r"^\s*(?:\(?[a-z]{1,2}\)|\(?[ivx]{1,4}\)|\(?\d{1,2}\)|\d{1,2}\.|[a-z]\.)\s+", re.I)
 _ORDINAL = re.compile(r"(?<=\d)(st|nd|rd|th)\b", re.I)
 
@@ -62,6 +65,59 @@ def cells_of(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
     return out
 
 
+def same_label(a: str, b: str) -> bool:
+    """Two label keys that spell one row: one contains the other ("SBPL" / "SBPL - Secured Business ..."), or
+    they differ by a few characters ("Oeprecintlon nnd nmortisation" / "Depreciation and amortisation")."""
+    if not a or not b:
+        return False
+    short, long_ = sorted((a, b), key=len)
+    if len(short) >= 3 and short in long_:
+        return True
+    return SequenceMatcher(None, a, b).ratio() >= LABEL_RATIO
+
+
+def unify_labels(per_reader: list[list[dict[str, Any]]]) -> dict[str, str]:
+    """Map each label key to one key per printed row.  Two readers' labels are one row only when the text is a
+    spelling of the same label AND the rows carry the same values (at least ``LABEL_SHARE`` of the shorter row),
+    and the pairing is the only such pairing for both labels; "CSEL" and "VF" over the same numbers stay apart."""
+    values: list[dict[str, set[str]]] = []
+    for cells in per_reader:
+        rows: dict[str, set[str]] = defaultdict(set)
+        for c in cells:
+            rows[c["lk"]].add(c["norm"])
+        values.append(rows)
+    parent: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for i, rows_a in enumerate(values):
+        for j in range(i + 1, len(values)):
+            rows_b = values[j]
+            pairs: dict[str, list[str]] = defaultdict(list)
+            back: dict[str, list[str]] = defaultdict(list)
+            for a, va in rows_a.items():
+                if a in rows_b:
+                    continue
+                for b, vb in rows_b.items():
+                    if b in rows_a or not same_label(a, b):
+                        continue
+                    if len(va & vb) >= max(1, LABEL_SHARE * min(len(va), len(vb))):
+                        pairs[a].append(b)
+                        back[b].append(a)
+            for a, bs in pairs.items():
+                if len(bs) == 1 and len(back[bs[0]]) == 1:
+                    ra, rb = find(a), find(bs[0])
+                    if ra != rb:
+                        keep, drop = sorted((ra, rb), key=lambda r: (len(r), r))
+                        parent[drop] = keep
+    return {k: find(k) for k in list(parent)}
+
+
 def is_verbatim(value: str, text_norm: str, text_nocomma: str) -> bool:
     v = _norm_space(value).casefold()
     if not v:
@@ -73,6 +129,13 @@ def vote_page(readers: list[list[dict[str, str]]], text: str) -> tuple[list[dict
     text_norm = _norm_space(text).casefold()
     text_nocomma = text_norm.replace(",", "")
     per_reader = [cells_of(r) for r in readers]
+    canon = unify_labels(per_reader)
+    for cells in per_reader:                      # re-key on the unified label; the n-th count is per unified row
+        seen: Counter[tuple[str, str]] = Counter()
+        for c in cells:
+            c["lk"] = str(canon.get(c["lk"], c["lk"]))
+            seen[(c["lk"], c["norm"])] += 1
+            c["key"] = (c["lk"], c["norm"], seen[(c["lk"], c["norm"])])
     answering = sum(1 for cells in per_reader if cells)
     holders: dict[tuple[str, str, int], list[tuple[int, dict[str, Any]]]] = defaultdict(list)
     order: list[tuple[str, str, int]] = []
@@ -86,7 +149,8 @@ def vote_page(readers: list[list[dict[str, str]]], text: str) -> tuple[list[dict
     cells_out, disputes = [], []
     for key in order:
         given = holders[key]
-        pick = given[0][1]
+        names = Counter(c["label"] for _ri, c in given)
+        pick = max((c for _ri, c in given), key=lambda c: (names[c["label"]], c["label"].casefold() in text_norm))
         agree_n = len({ri for ri, _ in given})
         verbatim = is_verbatim(pick["value"], text_norm, text_nocomma)
         others = {(ri, lk) for ri, lk in by_value[(pick["norm"], pick["ck"])] if lk != pick["lk"]}
@@ -94,7 +158,8 @@ def vote_page(readers: list[list[dict[str, str]]], text: str) -> tuple[list[dict
         settled = "script" if agree_n >= 2 and verbatim else ""
         cell = {"row_label": pick["label"], "col_header": pick["col"], "value_text": pick["value"],
                 "unit_text": pick["unit"], "readers": answering, "agree_n": agree_n, "verbatim": verbatim,
-                "label_dispute": label_dispute, "settled_by": settled}
+                "label_dispute": label_dispute, "settled_by": settled,
+                "label_aliases": " || ".join(n for n in names if n != pick["label"])}
         cells_out.append(cell)
         if not settled:
             disputes.append({**cell, **{f"reader_{ri}": c["label"] for ri, c in given}})
