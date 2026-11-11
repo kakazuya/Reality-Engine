@@ -49,6 +49,7 @@ One row per line, kept in its section.
 - T-177 | OPEN Eagle | P1 | Reference pages (60, half frozen) and per-page completeness report with a build gate | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/v2/reference_pages/reference_cells.csv').exists() else 1)" | from: Fable review 10 Nov | opened 2026-11-10
 - T-178 | OPEN Eagle | P1 | First-build re-key test: ar_facts/deck_figures facts verified + label map + period engine vs script cells on reference pages | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/reports/2026-11-11_t178_first_build_rekey.xlsx').exists() else 1)" | from: Fable review 10 Nov | opened 2026-11-10
 - T-180 | OPEN Eagle | P1 | Free-model table transcription bake-off (Beam, LongCat 2.5, Kilo free models) with script verification vs r10 script | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/reports/2026-11-12_t180_reader_bakeoff.xlsx').exists() else 1)" | from: Fable review 10 Nov | opened 2026-11-10
+- T-182 | OPEN Eagle | P1 | Word boxes for every page: one source (PDF text layer turned upright, else OCR word boxes from ocr_page), with a text-quality verdict (ok / none / jumbled), feeding layout text and the position check | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('reality_engine/v2/page_words.py').exists() else 1)" | from: Shivam 11 Nov 13:45 (settle extraction for every page, text or image; free models code in peak) | opened 2026-11-11
 
 ## Schema and question map
 
