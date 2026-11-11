@@ -176,16 +176,14 @@ def ocr_words(ocr_dbs: Iterable[Any], doc_key: str, page_no: int) -> list[Word]:
 def words_for(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] = ()) -> PageWords:
     store = raw_store.default_store()
     source_key = None
+    con: Any = connect_ro(store_db)          # a missing store or doc table is an error, not an empty page
     try:
-        con: Any = connect_ro(store_db)
-        try:
-            row = con.execute("SELECT source_key FROM doc WHERE doc_key=?", (doc_key,)).fetchone()
-            if row:
-                source_key = row[0]
-        finally:
-            con.close()
-    except Exception:
-        source_key = None
+        row = con.execute("SELECT source_key FROM doc WHERE doc_key=?", (doc_key,)).fetchone()
+        if row:
+            source_key = row[0]
+    finally:
+        con.close()
+    pdf_error = ""
 
     text_words: list[Word] = []
     text_q = "none"
@@ -196,8 +194,9 @@ def words_for(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] 
             with store.local(source_key) as p:
                 text_words = pdf_words(p, page_no)
             got_text = True
-        except Exception:
+        except Exception as exc:                # corrupt or encrypted PDF: say so in the verdict's reason
             text_words = []
+            pdf_error = f"pdf unreadable: {type(exc).__name__}: {exc}"[:200]
             got_text = False
         text_q, text_r = quality(text_words)
         if text_q == "ok":
@@ -211,7 +210,13 @@ def words_for(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] 
 
     if text_words:
         return PageWords(source="script_text", words=text_words, quality=text_q, reason=text_r)
-    return PageWords(source="none", words=[], quality="none", reason="no words")
+    if not source_key:
+        why = "doc has no source PDF"
+    elif not store.exists(source_key):
+        why = "source PDF neither local nor on Drive"
+    else:
+        why = pdf_error or text_r or "no words"
+    return PageWords(source="none", words=[], quality="none", reason=why)
 
 
 def _survey(store_db: str, ocr_dbs: list[str], out: str) -> None:
