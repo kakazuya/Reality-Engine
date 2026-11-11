@@ -1155,6 +1155,20 @@ tokens, 14-68 s a page; position-verified 364-365 of 401 and 199-200 of 229; num
 complies. When two readers place the same printed word, `reference_geom` takes the column name from a reader whose
 column check passed. A row label ending in a footnote digit ("EBITDA 1") also matches without it.
 
+**Word boxes for every page (T-182, 11 Nov 2026, Eagle).** `reality_engine/v2/page_words.py` is the single input of
+the layout renderer and the position check: `pdf_words(pdf_path, page_no)` turns the PDF text layer upright for any
+page of a multi-page PDF (same logic as `reference_geom.page_words`, now a one-line delegate), `ocr_words(ocr_dbs,
+doc_key, page_no)` reads `ocr_page` rows preferring `ocr_textrec` over `ocr_rapid` and parses `words_json` into
+`(x0, y0, x1, y1, text)` tuples, `quality(words)` returns `("none", reason)` under 20 non-space characters,
+`("jumbled", reason)` when the vowel-less 4+ letter word share exceeds 0.3, words longer than 25 characters exceed
+0.2, or single-character words exceed 0.6 (thresholds are named constants pending T-175 tuning), else `("ok", "")`,
+and `words_for(store_db, doc_key, page_no, ocr_dbs=())` tries the text layer first and falls back to OCR when its
+quality is not `ok`. `PageWords(source, words, quality, reason)` carries the verdict; `source` is `"none"` when no
+words exist. CLI: `python -m reality_engine.v2.page_words survey --store <db> [--ocr-db <db> ...] --out <csv>` (one
+row per document with `text_pages`/`ocr_pages`/`none_pages` from `doc_page.method`, no PDFs opened) and `show
+--store <db> --doc-key <k> --page <n>` (prints source, quality and `page_layout.layout_text`). Test:
+`reality_engine/tests/test_v2_page_words.py`.
+
 ## 13. Completeness report (T-177, 11 Nov 2026)
 
 `reality_engine/v2/completeness.py` answers, page by page and with no model call, how much of what a page prints
