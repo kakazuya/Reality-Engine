@@ -652,6 +652,9 @@ def place(page: Page, cell: dict[str, Any]) -> tuple[bool | None, bool | None, i
     on_row: list[tuple[int, str]] = [(i, "line") for i in occ if page.row_own(i, keys)]
     if not on_row:
         for i in occ:                                 # a chart: the panel title above is the row, the axis label below
+            own = page.text_left(page.line_of[i], page.words[i][0])
+            if re.search(r"[A-Za-z]{3}", own):       # the value's own line names a row: not a chart value (grader)
+                continue
             title = page.chart_title(i)              # the column
             if title and any(_label_fits(k, [title]) for k in keys if k):
                 return True, page.axis_state(i, cell["col"]), i, "chart"

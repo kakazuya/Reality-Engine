@@ -69,7 +69,9 @@ def test_spanning_header_confirm_the_own_group_and_flag_the_other():
     by = {(c["value_text"], c["col_header"]): c for c in cells}
     assert by[("100", "Quarter ended 31-Dec-23")]["verdict"] == "confirmed"
     assert by[("100", "Quarter ended 31-Dec-23")]["how"] == "line"
+    assert by[("100", "Quarter ended 31-Dec-23")]["col_ok"] is True
     assert by[("200", "Nine months ended 31-Dec-23")]["verdict"] == "confirmed"
+    assert by[("200", "Nine months ended 31-Dec-23")]["col_ok"] is True
     wrong = by[("180", "Quarter ended 31-Dec-23")]
     assert wrong["verdict"] == "reader_error_column"
     assert wrong["col_ok"] is False and not wrong["settled_by"]

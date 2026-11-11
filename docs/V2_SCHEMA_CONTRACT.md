@@ -1138,7 +1138,7 @@ rule. `how` records the row source (`line`, `wrap`, `chart`).
 
 Every output cell also carries `verdict`, which separates a reader error from a checker miss: `confirmed` (row and
 column placed), `reader_error_row` (the value sits on a line that a confirmed cell or another reader names as a
-different row), `reader_error_column` (it sits under a different column's header stack), `checker_miss` (label and
+different row; given only to a cell that could not be placed on its own label's line, since a placed cell holds its row by definition), `reader_error_column` (it sits under a different column's header stack), `checker_miss` (label and
 value are on the page, nothing contradicts them, but the rules could not confirm) and `unplaced` (value or label not
 on the page). `settled_by` keeps its old meaning: `script+position` (two or more readers, row confirmed), `position`
 (one reader, row and column confirmed), `script` (two or more readers, label or value not locatable, e.g. no text
@@ -1157,7 +1157,10 @@ printed line text, before/after) is `.tmp/t185_flipped.csv` in the T-185 worktre
 layer in reading order sees a results table column by column, so a blank cell shifts every later number one row
 down, and two readers can make the same shift (IHCL p049: "Exceptional items 45271" where that cell is blank); a
 vote cannot see it, word positions can. Test: `reality_engine/tests/test_v2_reference_geom.py` (spanning header,
-three-line wrapped label, one-line wrap below, chart panel, and each verdict).
+three-line wrapped label, one-line wrap below, chart panel, and each verdict). Eagle at merge (grader 20261111T103725Z-58b66658): the chart rule no longer confirms a value whose own printed
+line carries a row label (that value belongs to that row); the grouping-header split still falls back to the midpoint
+when the lower header row's period kind does not change, a known weakness. Against Opus's hand-read truth on 7 unseen
+frozen2 pages: confirmed-and-wrong 1 -> 0 (Dots, page image) and 59 -> 26 (Beam), checker misses 199 -> 174.
 
 **Layout input for readers (T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/page_layout.py` renders word boxes as
 fixed-width text, one output line per printed line with horizontal position kept (`python -m
