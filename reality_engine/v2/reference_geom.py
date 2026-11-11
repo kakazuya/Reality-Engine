@@ -58,30 +58,10 @@ def _is_num(text: str) -> bool:
 
 
 def page_words(pdf: Path) -> list[tuple[float, float, float, float, str]]:
-    """Word boxes in reading axes: a page whose text runs sideways (a landscape table printed on a portrait
-    page) is turned so that lines are horizontal again."""
-    import pymupdf
+    """Word boxes in reading axes (delegates to page_words.pdf_words for page 1)."""
+    from reality_engine.v2 import page_words as _pw
 
-    with pymupdf.open(str(pdf)) as doc:
-        page = doc[0]
-        raw: Any = page.get_text("words")
-        words: list[tuple[float, float, float, float, str]] = [
-            (float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4])) for w in raw]
-        dirs: Counter[tuple[int, int]] = Counter()
-        layout: Any = page.get_text("dict")
-        for block in layout.get("blocks", []):
-            for line in block.get("lines", []):
-                d = line.get("dir") or (1.0, 0.0)
-                dirs[(round(d[0]), round(d[1]))] += sum(len(sp.get("text", "")) for sp in line.get("spans", []))
-    dx, dy = dirs.most_common(1)[0][0] if dirs else (1, 0)
-    if (dx, dy) == (1, 0):
-        return words
-    out = []
-    for x0, y0, x1, y1, text in words:
-        us = [x0 * dx + y0 * dy, x1 * dx + y1 * dy]
-        vs = [-x0 * dy + y0 * dx, -x1 * dy + y1 * dx]
-        out.append((min(us), min(vs), max(us), max(vs), text))
-    return out
+    return _pw.pdf_words(pdf, 1)
 
 
 def lines_of(words: list[tuple[float, float, float, float, str]]) -> list[list[int]]:
