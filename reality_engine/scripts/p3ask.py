@@ -5,13 +5,14 @@ needs its own server.  ``semantic`` (T-154) ranks one company's pages by embeddi
 ``embed/`` next to the store and needs ``REALITY_DATA_ALLOW_PAID_EMBED=1`` for a new query text.  This CLI runs the SAME lookup code the MCP tools run (``lookups_pilot3`` and ``calc``), so a
 subagent with only a shell asks the test store exactly as a model would ask the MCP.
 
+    python -m reality_engine.scripts.p3ask --db <file.db> fact symbol=KIMS metric=revenue period=Q1FY27
     python -m reality_engine.scripts.p3ask --db <file.db> kpi symbol=KIMS kpi=occupancy period=Q1FY27
     python -m reality_engine.scripts.p3ask --db <file.db> sql "query=SELECT COUNT(*) FROM doc"
     python -m reality_engine.scripts.p3ask --db <file.db> calc "expression=a/b" 'inputs={"a": 1, "b": 2}'
     python -m reality_engine.scripts.p3ask --db <file.db> catalog name=GROWTH \
         'inputs={"now": "22,067 crore", "before": "19,332 crore"}'
 
-Tools: kpi fin ratio holding statements guidance docs search semantic tech ratings sql calc catalog (the ``pilot3_``
+Tools: fact kpi fin ratio holding statements guidance docs search semantic tech ratings sql calc catalog (the ``pilot3_``
 prefix is optional).  ``ratings`` reads the outside-doc rating-rationale store (``REALITY_RATINGS_DB``, default
 ``D:/RealityEngine/outside_doc/ratings.db``) instead of ``--db``.  ``catalog name=list`` prints the named formulas;
 each one returns value, unit, the substituted
@@ -34,8 +35,8 @@ import time
 from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
-TOOLS = ("kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "semantic", "tech", "ratings",
-         "page", "sql", "calc", "catalog")
+TOOLS = ("fact", "kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "semantic", "tech",
+         "ratings", "page", "sql", "calc", "catalog")
 
 
 def _value(text: str):
