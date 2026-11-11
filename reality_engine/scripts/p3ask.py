@@ -12,7 +12,7 @@ subagent with only a shell asks the test store exactly as a model would ask the 
     python -m reality_engine.scripts.p3ask --db <file.db> catalog name=GROWTH \
         'inputs={"now": "22,067 crore", "before": "19,332 crore"}'
 
-Tools: fact kpi fin ratio holding statements guidance docs search semantic tech ratings sql calc catalog (the ``pilot3_``
+Tools: fact cells kpi fin ratio holding statements guidance docs search semantic tech ratings sql calc catalog (the ``pilot3_``
 prefix is optional).  ``ratings`` reads the outside-doc rating-rationale store (``REALITY_RATINGS_DB``, default
 ``D:/RealityEngine/outside_doc/ratings.db``) instead of ``--db``.  ``catalog name=list`` prints the named formulas;
 each one returns value, unit, the substituted
@@ -35,7 +35,7 @@ import time
 from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
-TOOLS = ("fact", "kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "semantic", "tech",
+TOOLS = ("fact", "cells", "kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "semantic", "tech",
          "ratings", "page", "sql", "calc", "catalog")
 
 

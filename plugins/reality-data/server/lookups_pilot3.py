@@ -358,9 +358,12 @@ def cells(symbol: str, terms: str, period: str | None = None, as_of: str | None 
         "filed_at DESC, c.page LIMIT ?", (*args, *eargs, _cap(limit) * 10))
     out: list[dict[str, Any]] = []
     seen: set[tuple] = set()
+    starts = [re.compile(r"(?<![a-z0-9])" + re.escape(w)) for w in words]   # a term starts a word: 'us' != 'business'
     for r in rows:
-        if label and not _period_in(" ".join((r["row_label"] or "", r["col_header"] or "",
-                                              r["table_title"] or "")), label):
+        text = " ".join((r["row_label"] or "", r["col_header"] or "", r["table_title"] or ""))
+        if not all(p.search(text.lower()) for p in starts):
+            continue
+        if label and not _period_in(text, label):
             continue
         sig = (r["doc_key"], r["page"], r["row_label"], r["col_header"], r["value_text"], r["unit_text"])
         if sig in seen:
