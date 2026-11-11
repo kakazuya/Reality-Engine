@@ -20,7 +20,7 @@ running. Each item names who does it and what closes it.
 | 2 | T-177 | Read the disputes and the 6 pages with no reconciled cell by hand; Shivam spot-checks 6 pages; write `reference_cells.csv` with `settled_by` | Eagle in session + Shivam | none | 30 dev + 30 frozen pages have settled cells; frozen copy under `frozen/` |
 | 3 | T-177 | Completeness report `reality_engine/v2/completeness.py` (number coverage, grid check, arithmetic closure, unread pages; cross-source agreement not built) with a build gate, scored against the reference pages — **done 11 Nov, note below** | DeepSeek code worker, separate grader | none | closed: u8 run 164.2 s (bar: under 10 min); p20 calibration 0.993 on 18 dev pages, q12 1.000 on 11 |
 | 4 | T-178 | First-build re-key: script cells r10 vs `deck_figures`/`ar_facts` facts as stored vs verified + label map + period engine vs union, on the reference pages; fiscal-year error rate on 200 annual reports | Eagle, script | none | four-arm table on dev and frozen pages; salvage decision recorded |
-| 5 | T-180 | Reader bake-off on the reference pages: recall, precision before and after the script check, run-to-run agreement, seconds per page, for Dots, Nemotron Super VL, Nemotron Ultra, Nemotron Nano Omni (text; Dots also image) against the r10 script. The 60-page outputs already held are run 1; one more run gives consistency | Eagle, script | free Kilo only | one row per reader; decision: model-in-build for tables, or scripts with the completeness gate |
+| 5 | T-180 | **Done 11 Nov (section 4 result; precision still unmeasured)**. Reader bake-off on the reference pages: recall, precision before and after the script check, run-to-run agreement, seconds per page, for Dots, Nemotron Super VL, Nemotron Ultra, Nemotron Nano Omni (text; Dots also image) against the r10 script. The 60-page outputs already held are run 1; one more run gives consistency | Eagle, script | free Kilo only | one row per reader; decision: model-in-build for tables, or scripts with the completeness gate |
 | 6 | T-179 | Formatted answer report (xlsx + csv) from `D:/RealityEngine/t179/` with `answer_run_report --call-log` | Eagle, script | none | files in `D:/RealityEngine/reports/` |
 | 7 | new | Answer-path test 2: one answer-ready fact lookup (preferred value, period, basis, unit, source in one reply) against today's tools; same 60 questions, two runs per arm; stricter grader brief (lists each figure it re-looked-up) | DeepSeek worker builds the lookup; DeepSeek answers; graders | DeepSeek, off-peak | right, lookups and seconds per answer per arm against the same-arm noise |
 | 8 | new | Document-integrity gate before extraction: one-page link-notice transcripts, sha256 duplicates, misdated calls (latest year in text more than a year before filing), mistyped documents; report per store, then a build gate | DeepSeek code worker, separate grader | none | counts per store for u8, q12, p20; gate refuses a store with new defects |
@@ -286,6 +286,34 @@ is not borderline, it is null.
   run. No reader wins: tables stay with scripts, and T-132 resumes with the completeness gate instead of 60-row
   samples.
 - **Accept:** `D:/RealityEngine/reports/2026-11-12_t180_reader_bakeoff.xlsx` with one row per reader and input.
+
+### T-180 result (11 Nov 2026, Eagle): `D:/RealityEngine/reports/2026-11-12_t180_reader_bakeoff.xlsx`
+
+What changed before scoring: the readers first got the text layer in reading order and replied one JSON cell per line;
+all of them stopped at their 8,000-token cap on wide tables and shifted numbers past blank cells. The reader now gets
+the page laid out as printed (`v2/page_layout.py`) and replies in a grid (`--format grid`, one line per printed row),
+and every cell is placed on the page by word position (`v2/reference_geom.py`). Scored by `v2/reader_score.py`.
+
+**Frozen set used for the score.** The original 30 frozen pages were opened while the position check was tuned
+(disclosed in the run ledger), so a fresh set was drawn: `D:/RealityEngine/v2/reference_pages_frozen2/` (30 pages,
+seed 20261111, never opened). Reference = printed words that the position check places over all arms (not hand-read).
+
+| Arm (frozen2, 30 pages) | Recall of reference | Placed and confirmed | Numbers left unread | s / page |
+|---|---|---|---|---|
+| Dots, grid, layout + page image | 84% | 81% | 445 | 10.7 |
+| Dots, grid, layout | 82% | 79% | 418 | 13.4 |
+| First build (deck_figures / ar_facts) | 41% | 70% | 956 | - |
+| r10 script (`v2/table_cells.py`) | 36% | 75% | 995 | - |
+
+Two Dots runs agree on 96-97% of each other's confirmed cells. On the dev pages (used for tuning) the same reader
+showed 88% / 95%; the fall to 84% / 81% is the honest cost of tuning on dev.
+
+Against the decision rule: recall beats the script by 48 points (rule: 15) and runs agree above 95% (met); verified
+precision >= 98% is NOT measured, because "confirmed" is the share the position check could place, not proof the
+number is right. Decision: tables move to model-in-build (free reader, grid format, every cell position-checked;
+`v2/page_reader.py`, T-183), r10 kept as a second reader; no full run until (1) a hand-read precision sample, (2) a
+reader without a daily cap (Kilo free key 1 stopped after ~300 requests on 11 Nov; only Dots on key 2 answered),
+(3) reader errors and checker misses are separated on frozen pages.
 
 ## 5. Order and load
 

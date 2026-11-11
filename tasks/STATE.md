@@ -14,7 +14,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-11_1430.md`); method `do
 - Merged 11 Nov: T-180 `reader_score.py` (matches by word position), T-183 `page_reader.py` (not yet run live: Kilo free quota exhausted on key 1 after ~300 requests; Dots on key 2 `@kilo2` still answers). Fresh frozen set `D:/RealityEngine/v2/reference_pages_frozen2/` (30 pages, seed 20261111, never opened).
 
 ## Next action
-1. When grid runs end: score them (reader_score, by word position) with r10 and text runs; write `D:/RealityEngine/reports/2026-11-12_t180_reader_bakeoff.xlsx`; decide model-in-build for tables.
+1. T-180 done (frozen2): Dots grid+image recall 84% vs r10 36%, first build 41%; precision unmeasured. Next: hand-read precision sample (Shivam 6 pages) and a reader without a daily cap before T-183 runs a store.
 2. Hand-settle remaining reference disputes from page images (`v2/reference_pages/png/`), frozen copy under `frozen/`.
 3. Production page reader (new ticket): per store, every table page -> grid reader -> position check -> `page_cell` rows verified/unverified + per-page unread count; second pass on unread lines.
 4. Compare rebuilt p20/u8/q12 with live (row counts per table, earlier-right rows kept), swap in, restart reality-data MCP (T-161..T-166, v8.1 go live).
