@@ -13,7 +13,7 @@ import csv
 import json
 import sqlite3
 import time
-from collections import Counter
+from collections import Counter, OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -23,6 +23,8 @@ from reality_engine.db.readonly import connect_ro
 from reality_engine.v2 import page_layout
 
 Word = tuple[float, float, float, float, str]
+
+_OPEN: OrderedDict[str, Any] = OrderedDict()
 
 # Quality thresholds (T-175 will tune).
 MIN_NON_SPACE_CHARS = 20
@@ -41,25 +43,47 @@ class PageWords:
     reason: str = ""
 
 
+def open_pdf(pdf_path: Path | str) -> Any:
+    """The pymupdf document for ``pdf_path``, kept open for the next pages (the last 3 files stay open), so a
+    page loop opens each PDF once instead of once per page.  Do not close the returned document.  A Drive temp
+    (``raw_store.local`` writes it under ``raw_fetch_`` and deletes it on exit) is never cached."""
+    import pymupdf
+
+    key = str(Path(pdf_path).resolve())
+    cacheable = "raw_fetch_" not in key
+    doc = _OPEN.get(key) if cacheable else None
+    if doc is None:
+        doc = pymupdf.open(key)
+        if cacheable:
+            _OPEN[key] = doc
+            while len(_OPEN) > 3:
+                _, old = _OPEN.popitem(last=False)
+                old.close()
+    else:
+        _OPEN.move_to_end(key)
+    return doc
+
+
 def pdf_words(pdf_path: Path | str, page_no: int) -> list[Word]:
     """Text-layer word boxes for page_no (1-based) of a (possibly multi-page) PDF,
     with a sideways page turned upright (same logic as reference_geom.page_words)."""
-    import pymupdf
+    return pdf_words_of(open_pdf(pdf_path), page_no)
 
-    with pymupdf.open(str(pdf_path)) as doc:
-        page = doc[page_no - 1]
-        raw: Any = page.get_text("words")
-        words: list[Word] = [
-            (float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4])) for w in raw
-        ]
-        dirs: Counter[tuple[int, int]] = Counter()
-        layout: Any = page.get_text("dict")
-        for block in layout.get("blocks", []):
-            for line in block.get("lines", []):
-                d = line.get("dir") or (1.0, 0.0)
-                dirs[(round(d[0]), round(d[1]))] += sum(
-                    len(sp.get("text", "")) for sp in line.get("spans", [])
-                )
+
+def pdf_words_of(doc: Any, page_no: int) -> list[Word]:
+    page = doc[page_no - 1]
+    raw: Any = page.get_text("words")
+    words: list[Word] = [
+        (float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4])) for w in raw
+    ]
+    dirs: Counter[tuple[int, int]] = Counter()
+    layout: Any = page.get_text("dict")
+    for block in layout.get("blocks", []):
+        for line in block.get("lines", []):
+            d = line.get("dir") or (1.0, 0.0)
+            dirs[(round(d[0]), round(d[1]))] += sum(
+                len(sp.get("text", "")) for sp in line.get("spans", [])
+            )
     dx, dy = dirs.most_common(1)[0][0] if dirs else (1, 0)
     if (dx, dy) == (1, 0):
         return words

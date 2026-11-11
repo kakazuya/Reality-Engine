@@ -70,9 +70,10 @@ with a reason, using scripts only:
   TextRecognizer via `reality_engine/pilot3/hp_ocr.py` (`plan --pdf-dir` / `fetch --words-out`, merged 11 Nov; extend to
   doc+page lists if needed). Its words feed the route decision again (prose -> text, table -> Dots).
 - `table_or_chart` (number density, ruled/columnar layout, images with numbers): Dots on the **page image** in grid
-  format. `v2/page_reader.py` (T-183) reads layout text today; add an image input (11 Nov measure on 30 hand-read
-  pages: Dots image P 83.8 / R 89.6 vs Dots on layout text ~62 / ~67). Each cell then goes through the position check
-  (`v2/reference_geom.py`) and `row_checks.py`: verified / unverified (served labelled) / quarantined (never served).
+  format. Delivered by T-189 step 2: `page_reader.py --routes <csv> --input image --into-store` reads the routed pages
+  on the image (11 Nov measure on 30 hand-read pages: Dots image P 83.8 / R 89.6 vs Dots on layout text ~62 / ~67), and
+  `pilot3_cells` serves the cells. Each cell then goes through the position check (`v2/reference_geom.py`) and
+  `row_checks.py`: verified / unverified (served labelled) / quarantined (never served).
 - Arm B (only with Shivam's OK): pages where Dots fails the checks go to Haiku 5.5 medium, batches of 8 pages, under
   100k context (11 Nov: Haiku P 91.1 / R 95.2, ~9 s/page per reader). Report A and A+B separately.
 Worker gets: this section, the evidence numbers above, the 11 Nov results (`handread/score_local.csv`), and the stop

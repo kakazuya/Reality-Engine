@@ -292,9 +292,23 @@ PDF_DIR_SYMBOL = "frozen2"
 
 def pdf_dir_plan(pdf_dir: Path) -> list[dict]:
     """One plan row per single-page PDF in a folder (T-188): page_id = the PDF stem, and it is page 1, so
-    ``run``, ``fetch`` and ``cleanup`` stay the pilot3 path."""
-    return [{"symbol": PDF_DIR_SYMBOL, "doc_key": pdf.stem, "page": 1, "doc_type": "deck", "known_at": None,
-             "pdf_path": str(pdf)} for pdf in sorted(Path(pdf_dir).glob("*.pdf"))]
+    ``run``, ``fetch`` and ``cleanup`` stay the pilot3 path.
+
+    T-189: an export made by ``page_route --needs-ocr-pdf-dir`` also writes ``route_export.csv`` (stem -> doc_key,
+    page), so the OCR row lands on the real page, not on page 1 of a synthetic one."""
+    mapping: dict[str, tuple[str, int]] = {}
+    sidecar = Path(pdf_dir) / "route_export.csv"
+    if sidecar.is_file():
+        with sidecar.open(newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                if row.get("stem") and row.get("doc_key"):
+                    mapping[row["stem"]] = (row["doc_key"], int(row["page"]))
+    out: list[dict] = []
+    for pdf in sorted(Path(pdf_dir).glob("*.pdf")):
+        doc_key, page = mapping.get(pdf.stem, (pdf.stem, 1))
+        out.append({"symbol": PDF_DIR_SYMBOL, "doc_key": doc_key, "page": page, "doc_type": "deck", "known_at": None,
+                    "pdf_path": str(pdf)})
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -432,20 +446,22 @@ def _words(row: dict) -> list[list]:
 
 def write_words(rows: list[dict], out_dir: str | Path) -> dict:
     """One ``<page_id>.json`` (word boxes in PDF points) per page plus ``ocr_log.csv`` -- the T-188 output for a
-    folder of PDFs, same rows as the database path, no database."""
+    folder of PDFs, same rows as the database path, no database.  A routed page key (T-189) is a real doc_key, so
+    the file name replaces every character Windows forbids and ``ocr_log.csv`` carries the page_id it belongs to."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     log_rows: list[dict] = []
     errors = 0
     for row in rows:
         page_id = str(row["id"]).split("|")[1]
+        safe = re.sub(r'[\\/:*?"<>|]+', "_", page_id)
         words = _words(row)
-        (out / f"{page_id}.json").write_text(json.dumps(words, separators=(",", ":")), encoding="utf-8")
+        (out / f"{safe}.json").write_text(json.dumps(words, separators=(",", ":")), encoding="utf-8")
         errors += int(bool(row.get("error")))
-        log_rows.append({"page_id": page_id, "seconds": round(row.get("seconds") or 0.0, 2), "words": len(words),
-                         "errors": row.get("error") or ""})
+        log_rows.append({"page_id": page_id, "file": f"{safe}.json", "seconds": round(row.get("seconds") or 0.0, 2),
+                         "words": len(words), "errors": row.get("error") or ""})
     with (out / "ocr_log.csv").open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["page_id", "seconds", "words", "errors"])
+        writer = csv.DictWriter(fh, fieldnames=["page_id", "file", "seconds", "words", "errors"])
         writer.writeheader()
         writer.writerows(log_rows)
     return {"pages": len(rows), "words": sum(r["words"] for r in log_rows), "error_pages": errors,
