@@ -61,6 +61,7 @@ def build_reference(pages_csv: Any, pdf_pages: Any, runs: list[Any]) -> list[dic
                     "lk": label_key(c["row_label"]),
                     "norm": _norm_value(c["value_text"]),
                     "ck": col_key(c["col_header"]),
+                    "pos": (c.get("x0"), c.get("y0")),
                 })
     return out
 
@@ -96,20 +97,11 @@ def _score_one(run_dir: Path, pages_csv: Path, pdf_pages: Path,
                 conflicts[str(c["conflict"])] += 1
 
         ref_on_page = ref_by_page.get(pid, [])
-        run_norm = [{"lk": label_key(c["row_label"]), "norm": _norm_value(c["value_text"]),
-                     "ck": col_key(c["col_header"])} for c in cells]
-        matched = 0
-        for rc in ref_on_page:
-            for rn in run_norm:
-                if rn["norm"] != rc["norm"]:
-                    continue
-                if not (rn["lk"] == rc["lk"] or same_label(rn["lk"], rc["lk"])):
-                    continue
-                if rc["ck"] and rn["ck"] and rc["ck"] != rn["ck"]:
-                    continue
-                matched += 1
-                break
-
+        # A reference cell is a printed word; the run finds it when one of its verified cells sits on that word.
+        # Matching by position needs no label or header spelling, and a word counts once.
+        ref_pos = {rc["pos"] for rc in ref_on_page}
+        run_pos = {(c.get("x0"), c.get("y0")) for c in cells if c.get("settled_by") in ("script+position", "position")}
+        matched = len(ref_pos & run_pos)
         for c in cells:
             cells_all.append({
                 "page_id": pid,
@@ -117,9 +109,10 @@ def _score_one(run_dir: Path, pages_csv: Path, pdf_pages: Path,
                 "norm": _norm_value(c["value_text"]),
                 "ck": col_key(c["col_header"]),
                 "verified": c.get("settled_by") in ("script+position", "position"),
+                "pos": (c.get("x0"), c.get("y0")),
             })
 
-        recall_page = (matched / len(ref_on_page)) if ref_on_page else 0.0
+        recall_page = (matched / len(ref_pos)) if ref_pos else 0.0
         page_metrics.append({
             "page_id": pid,
             "split": (meta.get("split") or "").strip(),
@@ -128,7 +121,7 @@ def _score_one(run_dir: Path, pages_csv: Path, pdf_pages: Path,
             "located": located,
             "verified": verified,
             "unread": len(unread),
-            "ref": len(ref_on_page),
+            "ref": len(ref_pos),
             "matched": matched,
             "recall": recall_page,
         })
@@ -236,15 +229,14 @@ def _make_row(run_result: dict[str, Any], pms: list[dict[str, Any]], split_label
 
 
 def _match_cell(a: dict[str, Any], bcell: dict[str, Any]) -> bool:
+    """Same printed word on the same page (both cells placed), else same value under the same label."""
     if a["page_id"] != bcell["page_id"]:
         return False
+    if a.get("pos") and a["pos"][0] not in (None, "") and a["pos"] == bcell.get("pos"):
+        return True
     if a["norm"] != bcell["norm"]:
         return False
-    if not (a["lk"] == bcell["lk"] or same_label(a["lk"], bcell["lk"])):
-        return False
-    if a["ck"] and bcell["ck"] and a["ck"] != bcell["ck"]:
-        return False
-    return True
+    return a["lk"] == bcell["lk"] or same_label(a["lk"], bcell["lk"])
 
 
 def consistency(a: Any, b: Any) -> tuple[float, float]:

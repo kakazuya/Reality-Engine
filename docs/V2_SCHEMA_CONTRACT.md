@@ -1174,8 +1174,9 @@ turns finished transcription runs into one row per reader+input from the positio
 `python -m reality_engine.v2.reader_score --pages <pages.csv> --pdf-pages <dir> --runs <dir>... [--pair a b]...
 --out <xlsx>` writes sheets `readers` (one row per run x split: dev/frozen/all), `by_type` (per doc type) and `pages`
 (run, page, rows, verified, recall, unread), plus a CSV of the readers sheet beside the XLSX. Recall = reference cells
-matched by the run (same page, same value norm, same label key or `same_label`, and same column key when both have one)
-divided by reference cells on the pages the run covered; precision_verified = verified cells (settled_by position) divided
+(printed words that a position check settles over all runs) on which one of the run's own verified cells sits, divided
+by the reference words on the pages the run covered; matching is by word position, so label and header spelling do not
+matter and a word counts once (Eagle at merge; the first version matched on label and column text and undercounted); precision_verified = verified cells (settled_by position) divided
 by located cells. It also reports pages_done, pages_with_error, rows given, unread numbers, mean seconds per page and
 tokens from `transcribe_log.csv`, and pair consistency (share of one run's verified cells that the other also gives) for
 each `--pair`.
