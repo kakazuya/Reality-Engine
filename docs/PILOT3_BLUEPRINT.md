@@ -198,7 +198,8 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   tracked across sentences (`SPEAKER_LABEL`, `INLINE_SPEAKER`), and a speaker the moderator introduced as a
   questioner (`ANALYST_INTRO`, "from the line of Umesh Raut") is never a target; statement rows with role
   analyst/moderator/unknown are skipped too. Two noise shapes go to review, not the table: an EBITDA-margin range
-  wider than five points (`wide_margin`) and an order-intake value below 1% of the company's own largest
+  wider than five points (`wide_margin`; T-187 later keeps one the company calls a band of variability) and an
+  order-intake value below 1% of the company's own largest
   `kpi_series` order intake (falling back to annual revenue; `order_intake_scale`). No column was added: an outside
   forecast is dropped, not labelled, because a `source_kind` column would be a schema change for rows the table
   should not hold. Measured dry run on the same copies of p20/u8/q12 (pre-T-166 extractor cf03b356 -> round 4): p20
@@ -215,6 +216,30 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   previously empty fields, APLAPOLLO FY27 20% volume guidance keyed `revenue_growth`, ADANIPORTS p52 "11%-16% growth
   guidance" missed because a table match ends the sentence, and BHARTIARTL capex 28,000-34,000 is an analyst
   describing past capex (kept in round 4 only because its brief required it).
+  **T-187 (11 Nov 2026): the four management targets the round-4 rules dropped, and gross margin.** Rebuilding the
+  u8 and p20 stores with the round-4 code lost four rows the live stores held: BEL FY27 `ebitda_margin` 25-31 ("we
+  have variability of 25% to 31% EBITDA margins"), CIPLA FY24 `ebitda_margin` 23-24 ("trending at a higher end of
+  what we had guided earlier, which was a range of 23% to 24%"), INDHOTEL FY26 `capex` 1,100 ("we have guided in
+  the press release ... we have spent close to about INR 1,100 crores") and APOLLOTYRE FY27 `capex` 1,200-1,300
+  ("our annual CapEx has used to be for India, INR 1200 - 1300 crores"). Three general rules restore them without
+  bringing back a round-4 removal: a wide `ebitda_margin` range is kept when the company itself calls it a band of
+  variability (`VARIABILITY`, so "we have variability of 25% to 31%" is management's band while a plain 18-25%
+  range is still not a target); `past_figure` does not reject a past phrase that restates the guidance
+  (`restated_guidance`: "which was a range of X-Y" after "had guided", a present-perfect "we have guided ... we
+  have spent ...", and an "annual ... used to be" run-rate, while "2022, we used to be around Rs.20,000" and "we
+  have spent Rs. 4,200 crores in H1" stay measurements); and a number governed by "gross margin" is never stored
+  as `ebitda_margin` (`gross_margin_owns`: the last margin phrase before the number decides it, a number right
+  before "gross margin" or a bare number whose value the text states as a gross margin is that gross margin).
+  `guidance` has no `gross_margin` metric, so the row is dropped, not re-keyed, and the EBITDA number in the same
+  sentence ("Gross margin ... 42% and EBITDA margins ... 23%") still gets its row. Rebuilt on copies of the 11 Nov
+  u8/p20 stores, the four rows are present and every gone row is rightly removed: u8 **21 gone / 10 added** and p20
+  **4 gone / 31 added** (key `symbol, metric, target_period, low, high`; page-level 25/15 and 9/46) — u8: BEL's
+  four gross-margin `ebitda_margin` rows, its 120-crore unit slip and its 27,000-crore analyst question, Chola's 13
+  CRISIL/ICRA/industry `aum_growth` rows, CIPLA's and Tata Consumer's gross-margin rows, plus BEL 15% FY25 and Tata
+  Consumer 30% FY26 whose same target is kept on another page of the same document; p20: the three ADANIPORTS
+  "capex" rows whose number was the revenue/EBITDA guidance (now keyed `revenue`/`ebitda`/`capex` by the table
+  reader) and PIDILITIND's gross-margin 50. The added sets are the round-4 rebuild's own additions, unchanged, so
+  no CRISIL/industry or analyst-question row comes back. Tests **43 passed**.
 - **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
   `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
   writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into
