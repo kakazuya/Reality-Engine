@@ -61,7 +61,7 @@ Run with `PYTHONIOENCODING=utf-8`; logs `$D/b_<part>.log`; stop on any non-zero 
 dates against the filing record (known_at from the BSE dissemination time, before/after 15:30 IST rule).
 
 ### Step 2 — routed page reading (one dsh worker, DeepSeek off-peak, worktree; new code)
-Build `reality_engine/v2/page_route.py` (+ test) that sorts every page of the store's `doc_page` into exactly one route
+Build a new module `page_route` in `reality_engine/v2/` (+ test) that sorts every page of the store's `doc_page` into exactly one route
 with a reason, using scripts only:
 - `no_figures` (cover letters, intimations, prose without numbers, contents pages, auditor-report prose): no reader.
   This is also the fix for readers inventing figures on such pages (11 Nov: every reader did it on 2-4 pages).

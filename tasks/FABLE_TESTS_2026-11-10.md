@@ -201,7 +201,7 @@ errors.
   `plugins/reality-data/server/server.py`; the tool is not registered and the server text does not name it).
   Same model (DeepSeek V4.1 Flash, max effort), same stores, same brief. Each arm runs twice: 480 answers.
 - **Logged per answer:** tool calls by tool, seconds, tokens, tools that returned the figure used
-  (from the worker event log; `reality_engine/pilot3/answer_run_report.py` gains the columns).
+  (from the worker event log; `reality_engine/scripts/answer_run_report.py` gains the columns).
 - **Grading:** a separate read-only grader, blind to the arm, arithmetic redone. Before grading the test it grades
   100 answers that already carry an Opus hand grade; its agreement is reported with the result. A "not disclosed"
   answer is right only when a text search of the held pages finds nothing, and is reported as its own line.
