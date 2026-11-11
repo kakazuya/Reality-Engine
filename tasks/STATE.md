@@ -11,7 +11,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-11_1430.md`); method `do
 
 ## Running (DeepSeek off-peak from 15:30 IST, Go key 1)
 - T-186 answer-ready `fact` lookup: dsh/20261111T100652Z-e5027efc.
-- T-185 position check v2 (columns from header x-ranges, wrapped labels, charts, reader-error vs checker-miss verdict; dev pages only): dsh/20261111T100731Z-d01aff92.
+- T-185 position check v2 MERGED: on hand-read unseen pages confirmed-wrong 1->0 (Dots) / 59->26 (Beam); misses 199->174. Garbled scan layers still pass wrong cells (T-175).
 - T-187 guidance round 5 (4 management targets lost by the rebuild; gross margin as ebitda_margin): dsh/20261111T100939Z-a783c62b.
 - Rebuild on copies `D:/RealityEngine/rebuild_2026-11-11/`: u8 and p20 done (kpi +472/+1,119, statements +2,204/+6,366, share_capital +164/+166; shp_category -54/-80 = pre-2022-07 index rows outside compute window; guidance lost 4 right rows -> T-187), q12 in kpi. Live stores NOT swapped until T-187 merges.
 
