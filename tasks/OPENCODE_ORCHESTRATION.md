@@ -99,3 +99,16 @@ touching anything OpenCode-related. Companion files:
 **DeepSeek Harness worker (2026-10-20):** `dsh` installed with bun (`bun add -g @deepseek-ai/dsh`), running Go models through a per-run `--patch` that adds the `x-opencode-session` header, one stable id per worker (T-069, 5 Nov: the job id is passed as `--job-id`, or the resolved `--out-file` path for a hand run). Run one task with `python -m reality_engine.scripts.run_deepseek_harness --model beam-free --task-file T.md --out-file O.md [--cwd DIR] [--timeout 900] [--account 1|2, default 2] [--permission read-only]`.
 The answer goes to O.md and the reasoning and errors to O.md.log. Exit codes: 0 ok, 1 failed (e.g. `dsh: QUOTA: 429`), 124 timeout. Free models: beam-free (Shivam 10 Nov: plumbing code in any hour, read-only grading in peak, extraction rules judged by precision go to DeepSeek; both Go keys; bake-off `D:/RealityEngine/night_loop/bakeoff_lc_beam` rescored after the r2 scorer fix: 105 vs LongCat 98 of 108, ~5x faster; also startable through dsh-worker `start_worker(model='beam-free')`, which skips the peak refusal and auto-commits worktree jobs. Beam is used only while free: `python -m reality_engine.scripts.free_model_check` reads the pricing table at opencode.ai/docs/zen and writes `tasks/flags/free_models.json`; the harness re-checks when the flag is over 30 h old and refuses beam-free once it is no longer free; an unreachable page keeps the last state), longcat-2.5-free (10-24 Nov 2026; effort high by default; no longer the default), longcat-2.5-preview-free, minimax-m3.1-flash-free (low effort by default; `~medium` etc. to change it).
 dsh is for DeepSeek models only (others run on OpenCode). deepseek-v4.1-flash always runs at max effort (xhigh until 2026-10-22), only off-peak, i.e. not in peak hours Mon-Fri 06:30-09:30 and 11:30-15:30 IST (weekends are all off-peak; otherwise `--peak-ok` after Shivam confirms), and is paid: it needs `--allow-paid` (approved for concall transcripts only). Default sandbox is read-only, so workers read and Claude writes. Account 1 hit "Go usage limit exceeded" for paid use on 2026-10-20.
+
+## Free models on OpenCode Go, 11 Nov 2026 (Eagle)
+- `GET https://opencode.ai/zen/go/v1/models` lists the free Go models: `beam-free`, `longcat-2.5-free`,
+  `iceman-contributor-free` (and paid `longcat-2.0`). The old id `longcat-2.5-preview-free` now answers "Model is
+  unavailable"; use `longcat-2.5-free`. Zen free models refuse direct API calls (OpenCode CLI only).
+- Probed 11 Nov: all three answer on both Go keys. `longcat-2.5-free` reads page images (named a printed figure
+  correctly); `iceman-contributor-free` and `beam-free` are text only. Go key 2's paid usage limit is reached
+  (`longcat-2.0` returned GoUsageLimitError on key 2).
+- Wired: `plugins/dsh-worker/server/core.py` `WORKER_MODELS` (workers may now run on `longcat-2.5-free` and
+  `iceman-contributor-free`; the dsh-worker MCP server must be restarted to see them),
+  `reality_engine/scripts/run_deepseek_harness.py` `FREE`, `reality_engine/scripts/extract_deck_figures.py` `MODELS`
+  (page readers for `reference_pages transcribe` and `page_reader`).
+- Check the list before choosing a model; the ids change.

@@ -71,6 +71,9 @@ EFFORT = "max"
 WORKER_MODELS: dict[str, dict[str, Any]] = {
     MODEL: {"effort": EFFORT, "peak_refused": True},
     "beam-free": {"effort": None, "peak_refused": False},
+    # Shivam 11 Nov: free on OpenCode Go (ids from GET /zen/go/v1/models): LongCat 2.5 (free to 24 Nov) and Iceman.
+    "longcat-2.5-free": {"effort": None, "peak_refused": False},
+    "iceman-contributor-free": {"effort": None, "peak_refused": False},
 }
 ACCOUNT = "2"
 # Shivam 10 Nov: up to 4 code workers on the MSI (was 2 while the browser shared its RAM).

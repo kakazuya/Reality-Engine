@@ -94,6 +94,14 @@ MODELS = {
                                    "body": {"max_output_tokens": 8000, "reasoning": {"effort": "minimal"}}},
     "mimo-v2.6-flash": {"api": "chat", "price": (0.14, 0.28), "capped": True, "ceiling": 120,
                         "body": {"temperature": 0, "max_tokens": 4000, "thinking": {"type": "disabled"}}},
+    # 11 Nov 2026: the Go id is now longcat-2.5-free (the -preview- id answers "Model is unavailable"); Iceman and
+    # Beam are free on Go too.  Same body as the old LongCat entry; reasoning stays on for LongCat (cannot be off).
+    "longcat-2.5-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 35,
+                         "body": {"temperature": 0, "max_tokens": 16000}},
+    "iceman-contributor-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 35,
+                                "body": {"temperature": 0, "max_tokens": 16000}},
+    "beam-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 32,
+                  "body": {"temperature": 0, "max_tokens": 16000}},
     "longcat-2.5-preview-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 35,
                                  "body": {"temperature": 0, "max_tokens": 8000, "thinking": {"type": "disabled"}}},
     # best labels on the 40-page test (96.3% identifiable, units 94%) but reasoning cannot be switched off:

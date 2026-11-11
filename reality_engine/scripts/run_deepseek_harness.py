@@ -59,7 +59,7 @@ from reality_engine.scripts.dsh_heartbeat import (
 DSH = Path.home() / ".bun" / "bin" / "dsh.exe"
 REPO = Path(__file__).resolve().parents[2]
 BASE_URL = "https://opencode.ai/zen/go/v1"
-FREE = {"beam-free", "longcat-2.5-free", "longcat-2.5-preview-free", "minimax-m3.1-flash-free"}
+FREE = {"beam-free", "longcat-2.5-free", "longcat-2.5-preview-free", "minimax-m3.1-flash-free", "iceman-contributor-free"}
 PAID = {"deepseek-v4.1-flash"}
 REASONING = {"minimax-m3.1-flash-free": "low", "longcat-2.5-free": "high", "deepseek-v4.1-flash": "max"}   # models that take reasoning_effort
 FIXED_EFFORT = {m: "max" for m in REASONING if m.startswith("deepseek")}   # DeepSeek: max only (Shivam 2026-10-22)
