@@ -1350,3 +1350,74 @@ Test runtime: `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2
 directory there is created with an ACL that denies the test's own writes. Typecheck: basedpyright 0 errors on the
 module and its test.
 
+## 14. Local readers on the laptop GPU (T-188, 11 Nov 2026)
+
+`reality_engine/v2/local_reader.py` runs three small open vision models under `llama-server` (llama.cpp) on the MSI's
+GTX 1050 Ti and writes their page reads in the same run format as every other reader: `<page_id>.raw.txt` (the model's
+own reply), `<page_id>.rows.json` (`table, row_label, col_header, value, unit`), `run_log.csv`
+(`page_id, seconds, prompt_tokens, output_tokens, error`), plus `server.log` and `run_meta.json` (weights, prompts,
+backend evidence lines, VRAM peak; the LightOnOCR run predates the `prompts`/`max_tokens` keys and records `prompt`
+alone). Test: `reality_engine/tests/test_v2_local_reader.py`.
+
+```bash
+python -m reality_engine.v2.local_reader models
+python -m reality_engine.v2.local_reader run --model paddlevl --pages <pages.csv> --pdf-pages <dir> --out <run dir> \
+    [--split dev] [--only p001,p002] [--bin D:/RealityEngine/tools/llamacpp/cuda12.4] [--prompt <override>]
+python -m reality_engine.v2.local_reader convert <page.raw.txt>     # converter only, no GPU
+python -m reality_engine.v2.local_reader reconvert <run dir>        # rewrite rows.json from the saved replies
+```
+
+**Weights and prompts.** Q8_0 GGUF + the repo's own mmproj for each (repos, sizes and SHA-256 in
+`D:/RealityEngine/models/MODELS.md`, 4.18 GB total): `PaddleOCR-VL-1.6` (`PaddlePaddle/PaddleOCR-VL-1.6-GGUF`),
+`GLM-OCR` (`ggml-org/GLM-OCR-GGUF`), `LightOnOCR-3-0.8B` (`prithivMLmods/LightOnOCR-3-0.8B-GGUF`). Each model is asked
+with its own card's task prompt, and `prompts` is a list tried in order until the converter finds cells:
+PaddleOCR-VL `Table Recognition:` then `Chart Recognition:` (OTSL), GLM-OCR `Table Recognition:` (HTML), LightOnOCR-3
+the empty prompt of its card (full-page markdown/HTML). All three are region models: the PaddleX / GLM-OCR SDK layout
+pass (PP-DocLayoutV3) has no llama.cpp equivalent, so a whole page is one image.
+
+**Backend.** llama.cpp release **b12284**, Windows CUDA builds only: the **13.5** zip + cudart dies on Pascal
+(`ggml-cuda.cu:113: CUDA error`, exit `0xC0000409`), the **12.4** zip works - `using device CUDA0 (NVIDIA GeForce GTX
+1050 Ti)`, `offloading 19/19 layers to GPU`, `mtmd_backends: using CUDA0 backend`, `-lv 4` keeps those lines in
+`server.log`. Vulkan x64 is kept as a backup and not used. Server: `-c 8192 -np 1 -ngl 99 --temp 0 -lv 4`, started with
+`CREATE_NO_WINDOW` (no console window, no shell), one model at a time, health-checked, stopped after its pages.
+`-b 1`/`-ub 1` breaks the vision batch (`get_sub_batch: failed to add token 0 at index 1`), so the default ubatch stays.
+Page image: the single-page PDF at 200 DPI with the long side capped at 1600 px (`render_png`).
+
+**Converter (`convert`).** OTSL tables (PaddleOCR-VL): `<lcel>` repeats its column, `<ucel>/<xcel>` are blank, `<nl>`
+ends a row, and a row merged into one banner starts a new panel titled with that text. HTML tables (GLM-OCR,
+LightOnOCR): `colspan` repeats and `rowspan` carries down, so a two-level header stays aligned; a reply cut off at
+`max_tokens` keeps its finished rows. GFM pipe tables. Header levels join with `' > '`, a printed `Unit`/`Units` row
+sets the unit of its columns, a cell without a digit is not a figure, and the value is taken as printed. Blank cells are
+kept as absent cells, not shifted: a later number never moves into an empty field.
+
+**Measured on the 30 frozen2 pages** (Q8_0, page image 1600 px, 11 Nov 2026; `run_dots_imggrid` beside them for
+scale - the free cloud reader, 1,393 rows on 27 of 30 pages):
+
+| Run | Model prompt(s) | Pages with rows | Rows | Mean s/page | Max s/page | VRAM peak |
+|---|---|---|---|---|---|---|
+| `run_local_paddlevl_v2` | `Table Recognition:`, then `Chart Recognition:` | 25/30 | 1,367 | 26.3 | 89.3 | 2,773 MiB |
+| `run_local_glmocr_v2` | `Table Recognition:` | 26/30 | 1,039 | 27.3 | 56.0 | 2,977 MiB |
+| `run_local_lighton` | empty (full-page transcription) | 19/30 | 1,014 | 31.5 | 91.5 | 1,886 MiB |
+
+Zero HTTP errors on all three; a page that yields no rows is a model result, not a crash. GLM-OCR's first run
+(`run_local_glmocr`, kept) used the card's **`Text Recognition:`** prompt, which answers in plain lines ("label" on one
+line, its figures on the next), so the converter found only 220 rows on 8 pages; `Table Recognition:` returns HTML and
+reads 1,039 rows on 26 pages, and gets the higher `max_tokens` of 5500 its wordy markup needs. PaddleOCR-VL's v1 and v2
+runs read the same pages (after the converter fixes, applied to both by `reconvert`, both give 1,367 rows on 25 of 30);
+the chart task in the chain changes nothing - on a page with no table cells it answers in prose and costs 8-60 s
+(`f010` 13.0 -> 20.7 s, `f018` 0 rows, 76 s).
+
+On DEV pages the row counts match Dots where the page is one table: p016 141 against 141 and p050 138 against 138 for
+PaddleOCR-VL, p020 65 against 65; GLM-OCR reads 132 on p050 but 52 on p016, where its table task returns only the first
+of the three printed column groups. Chart panels stay a gap: `Chart Recognition:` on a whole page answers in prose, so a
+chart-only deck page yields no cells (p018: 0 rows against Dots' 12, even with the fallback) - a layout crop would be
+needed, which llama.cpp does not provide.
+
+**Speed.** 12-92 s a page on the 4 GB Pascal card at 45-70 tokens/s, generation-bound; PaddleOCR-VL is the fastest and
+LightOnOCR the slowest (it writes the whole page as markdown, and its longest page took 91.5 s at 4,096 tokens). Peak
+VRAM 1.9-3.0 GiB, so the card has room at Q8_0 without a smaller quant. Test runtime:
+`python -m pytest -p no:cacheprovider reality_engine/tests/test_v2_local_reader.py -q` -> 7 passed in 0.33 s;
+basedpyright 0 errors on the module and its test.
+
+
+
