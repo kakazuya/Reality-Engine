@@ -24,7 +24,7 @@ Screensaver and lock: it locks after 180 idle seconds, and a playing video did n
 `C:\RE\repo` code snapshot; `C:\RE\jobs\<job>` job runs; `C:\RE\raw\pilot60_history` raw PDFs; `C:\RE\ocr_large` OCR test. Since 7 Nov (T-102) those folders hold only databases: every other file is on Drive (`hp_raw/hp_<root>.tar` for the ones not already archived; see guide O18), and a job fetches what it needs. The MSI is the source of truth; the HP is disposable. Never copy `D:\Shivam_Private\Manual Dumps` here. Do not share SQLite over the network.
 
 ## Python and tools
-ARM64 Python at `%LOCALAPPDATA%\Programs\Python\Python314-arm64\python.exe`. .NET 8 at `C:\RE\dotnet`. `makeappx` and `signtool` under `C:\RE\bench\sdkbuildtools`. `pymupdf` is not installed, so tests needing `fitz` fail here.
+ARM64 Python at `%LOCALAPPDATA%\Programs\Python\Python314-arm64\python.exe`. x64 Python for offloaded MSI jobs (ruling 10 Nov, until 15 Nov): `C:\RE\py313x64`; copy the job's data to an HP worktree folder, run there, bring results back, delete the HP copy. .NET 8 at `C:\RE\dotnet`. `makeappx` and `signtool` under `C:\RE\bench\sdkbuildtools`. `pymupdf` is not installed, so tests needing `fitz` fail here.
 
 ## TextRecognizer package
 It works only from a signed MSIX with package identity, in the interactive session. Calling it unpackaged gives `E_ACCESSDENIED`. Source: `reality_engine/tools/textrec/`. Build steps: `tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md`. Remove the package and the test certificate after each use: the 2 Nov cleanup left the 1.0.1.0 package installed (certificate already gone), and the 3 Nov pilot3 run removed it. OCR results: `tasks/ocr/OCR_ON_HP_FINDINGS_2026-11-01.md`.

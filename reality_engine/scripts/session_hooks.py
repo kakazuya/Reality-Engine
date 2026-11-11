@@ -47,6 +47,22 @@ def _block(reason: str) -> str:
     return json.dumps({"decision": "block", "reason": reason})
 
 
+def _ledger(transcript: str | None) -> None:
+    """Run ledger (Shivam 11 Nov): at every stop, record this session's tool calls and every worker job, detached so
+    the hook stays fast.  Failures are written to the ledger folder's log, never raised."""
+    import subprocess
+
+    root = Path(__file__).resolve().parents[2]
+    log = Path("D:/RealityEngine/ledger/ingest.log")
+    log.parent.mkdir(parents=True, exist_ok=True)
+    cmds = [[sys.executable, "-m", "reality_engine.scripts.run_ledger", "ingest-dsh"]]
+    if transcript:
+        cmds.append([sys.executable, "-m", "reality_engine.scripts.run_ledger", "ingest-claude", transcript])
+    script = " && ".join(subprocess.list2cmdline(c) for c in cmds)
+    with log.open("a", encoding="utf-8") as fh:
+        subprocess.Popen(script, cwd=root, shell=True, stdout=fh, stderr=fh, creationflags=0x08000000 | 0x00000008)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     try:
@@ -54,6 +70,7 @@ def main(argv: list[str] | None = None) -> int:
             print(KEEP)
         elif args[:1] == ["stop"]:
             payload = json.loads(sys.stdin.read() or "{}")
+            _ledger(payload.get("transcript_path"))
             if not (payload.get("stop_hook_active") or os.environ.get("DOC_REVIEW_LOOP")):
                 lines = job_watch.status(limit=None)
                 live_work = job_watch.live_jobs(skip_acked=True) or job_watch.live_registered()

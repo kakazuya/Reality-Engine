@@ -1,10 +1,12 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-11 14:10 IST (Eagle)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-11 14:45 IST (Eagle)
 History `docs/state_history/` (previous: `STATE_2026-11-11_1430.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-13 = reference pages, readers, completeness); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page, text or image; free models in peak)
 - Stores: `D:/RealityEngine/{p20/p20new.db, u8/u8.db, q12/q12.db, n10/n10.db, pilot10/pilot10.db}`.
 - Extraction design under test (T-180/T-182): word boxes for every page (`v2/page_words.py`: text layer upright, else OCR `ocr_page`) -> layout text (`v2/page_layout.py`, one line per printed line) -> free reader in GRID format (`reference_pages transcribe --input layout --format grid`) -> position check (`v2/reference_geom.py`: value on its label's line, header above) -> unread numbers = recall gap. Grid fixed the 8k-token truncation: IHCL p049 unread 158 -> 23, Bharti p046 292 -> 90, ~90% of cells position-verified, all three readers agree.
 - Script baseline r10 (`v2/table_cells.py`) on the 60 reference pages: recall 51% vs readers 69-79% (text input, before grid).
+
+- Run ledger live (Shivam 11 Nov): `D:/RealityEngine/ledger/ledger.db` via `reality_engine/scripts/run_ledger.py` (DEVELOPER_GUIDE s7); Stop hook ingests workers + this session; report `D:/RealityEngine/reports/2026-11-11_run_ledger.xlsx`. Disclosures logged: p20 99.6% was fitted to its own 230 questions (honest 54.8%); T-177 frozen pages p008/p010/p029/p031/p034/p056 were opened while tuning the position check, so a fresh frozen set is needed before quoting reader scores.
 
 ## Running
 - Grid runs, 60 reference pages, free Kilo: `D:/RealityEngine/v2/reference_pages/run_{dots,supervl,ultra}_grid`, `run_dots_imggrid` (layout + image); end lines in `grid_status.log`.

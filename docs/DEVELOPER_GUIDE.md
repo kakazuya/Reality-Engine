@@ -1701,3 +1701,30 @@ PDFs that read as a call (HAVELLS files transcripts that way); 7 tests in `test_
 10 Nov 2026 `docs_collect` retypes 15 of them from their pages (`docs_collect.reconcile_doc`, section O3), measured
 read-only against the four stores.
 
+
+## 7. Run ledger (Shivam, 11 Nov 2026)
+
+Why: progress stalled twice without a record of where the time and the errors went. Every run of every model is now
+recorded in one SQLite file, `D:/RealityEngine/ledger/ledger.db`, by `reality_engine/scripts/run_ledger.py` (test
+`reality_engine/tests/test_run_ledger.py`).
+
+- **What is recorded.** `run`: one row per dsh/Beam worker or grader job, Claude session, answer run and reader run:
+  model, host, ticket, start, seconds, outcome, tool calls in total and by tool, and how many went through the
+  reality-data MCP tools (`mcp_calls`), raw SQL (`sql_calls`), or data read outside the MCP tools (`workaround_calls`:
+  sqlite/duckdb opened from a shell, a raw PDF read), tool errors, file writes, model steps, tokens, and the review
+  row from `tasks/efficiency/worker_reviews.jsonl`. `tool_call`: every call with its category and argument (300
+  characters). `answer`: per question: tools, raw SQL used, seconds, grade, `workaround_reason`, `gap_class`,
+  `gap_note`. `reader_page`: per page of a transcription run. `gap`: each gap found, its evidence, fix and ticket.
+  `note`: disclosures and decisions (a test set seen by a fix, a score fitted to its own questions).
+- **When.** The project Stop hook (`session_hooks.py stop`) ingests every worker job and the current Claude transcript
+  in a detached process at each stop (log `D:/RealityEngine/ledger/ingest.log`). Answer and reader runs are ingested
+  when they finish (`ingest-answers <dir> --run-id --set`, `ingest-reader <dir>`); gaps and disclosures are written as
+  they are found (`gap`, `note`).
+- **Answer workers.** `pilot3/answer_record.py` refuses an answer that used raw SQL without `workaround_reason` (what
+  the typed tools could not return); `gap_class` / `gap_note` name the data gap behind it. These fields reach the
+  ledger's `answer` table.
+- **Report.** `python -m reality_engine.scripts.run_ledger report` writes
+  `D:/RealityEngine/reports/<date>_run_ledger.xlsx` (runs, by kind and model, answers, workaround reasons, gaps, gaps
+  by class, reader pages, notes).
+- **Backfill on 11 Nov.** 521 worker jobs (455 workers, 66 graders), 76 Claude sessions, 7 reader runs, 4 answer runs
+  (T-179). Worker tool calls 57,596: MCP 5,704, raw SQL 4,534, data read outside the MCP tools 2,659.
