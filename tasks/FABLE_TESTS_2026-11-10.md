@@ -10,14 +10,15 @@ reported from a worker's own grade.
 
 ## Pending, in order (written 11 Nov 2026, after T-179 and the 60-page run)
 
-Done so far: review written (brief section 10); T-179 first look (null result, below); T-177 tool merged and the 60
-pages transcribed by three free readers. Nothing is running. Each item names who does it and what closes it.
+Done so far: review written (brief section 10); T-179 first look (null result, below); T-177 tool merged, the 60
+pages transcribed by three free readers, and the completeness report built and calibrated (notes below). Nothing is
+running. Each item names who does it and what closes it.
 
 | # | Ticket | What | Who | Model calls | Closes when |
 |---|---|---|---|---|---|
-| 1 | T-177 | Reconcile by value and column position, not label text (two readers agree on only 24% of cells because row labels differ); re-run on the saved outputs of all three readers, majority of three settles a cell | Eagle, script | none | agreed share reported per page; cells settled by script counted |
+| 1 | T-177 | Reconcile by value and column position, not label text (two readers agreed on 24% of cells on the 60 pages, 46% on the 8-page check, because row labels differ; DONE 11 Nov, see the vote note in section 1); re-run on the saved outputs of all three readers, majority of three settles a cell | Eagle, script | none | agreed share reported per page; cells settled by script counted |
 | 2 | T-177 | Read the disputes and the 6 pages with no reconciled cell by hand; Shivam spot-checks 6 pages; write `reference_cells.csv` with `settled_by` | Eagle in session + Shivam | none | 30 dev + 30 frozen pages have settled cells; frozen copy under `frozen/` |
-| 3 | T-177 | Completeness report `reality_engine/v2/completeness.py` (number coverage, grid check, arithmetic closure, cross-source, unread pages) with a build gate, scored against the reference pages | DeepSeek code worker (Beam dies near 192k input tokens), separate grader | none | runs on u8 in under 10 minutes; calibration table in this file |
+| 3 | T-177 | Completeness report `reality_engine/v2/completeness.py` (number coverage, grid check, arithmetic closure, unread pages; cross-source agreement not built) with a build gate, scored against the reference pages — **done 11 Nov, note below** | DeepSeek code worker, separate grader | none | closed: u8 run 164.2 s (bar: under 10 min); p20 calibration 0.993 on 18 dev pages, q12 1.000 on 11 |
 | 4 | T-178 | First-build re-key: script cells r10 vs `deck_figures`/`ar_facts` facts as stored vs verified + label map + period engine vs union, on the reference pages; fiscal-year error rate on 200 annual reports | Eagle, script | none | four-arm table on dev and frozen pages; salvage decision recorded |
 | 5 | T-180 | Reader bake-off on the reference pages: recall, precision before and after the script check, run-to-run agreement, seconds per page, for Dots, Nemotron Super VL, Nemotron Ultra, Nemotron Nano Omni (text; Dots also image) against the r10 script. The 60-page outputs already held are run 1; one more run gives consistency | Eagle, script | free Kilo only | one row per reader; decision: model-in-build for tables, or scripts with the completeness gate |
 | 6 | T-179 | Formatted answer report (xlsx + csv) from `D:/RealityEngine/t179/` with `answer_run_report --call-log` | Eagle, script | none | files in `D:/RealityEngine/reports/` |
@@ -150,6 +151,29 @@ Reading: the check confirms most cells the readers agree on in grid tables, and 
 the disputed or single-reader ones, so it separates good from doubtful. It does not resolve chart panels (the row is
 carried by position in a chart or by colour) and it is crude: same line only, no wrapped labels, no labels printed
 above a column. It is a script; a scanned page needs OCR word boxes, not a model.
+
+**Completeness built (11 Nov 2026, T-177 round 4):** `reality_engine/v2/completeness.py` (subcommands `run`, `gate`,
+`calibrate`; no model call) and `reality_engine/tests/test_v2_completeness.py`; columns, exclusion rules, gate rule
+and commands in `docs/V2_SCHEMA_CONTRACT.md` section 13. Live run over p20 with its cell store (`--store
+D:/RealityEngine/p20/p20new.db --cells D:/RealityEngine/v2/p20_r10`): 27,717 pages, 1,339 unread (4.8%), 26,378
+scored, **219.8 s (7.9 s per 1,000 pages)**. Only 2,603 of the scored pages (9.9%) hold any stored value, so the
+median number coverage is 0.000 for every doc type; among pages with a stored value the medians are deck 0.250,
+results 0.477, annual report 0.063. `gate` against itself: 0 regressions, exit 0; the dropped-column fixture makes it
+exit 1. Calibration on the dev split (19 p20 pages with the cell store, 11 q12 pages in a separate run restricted to
+the five companies that hold them; the sample's other 11 dev pages are q12 pages with no cell store):
+
+| run | dev pages | scored | number_coverage vs recall (Pearson) | grid_coverage vs recall | hits / misses / false alarms |
+|---|---|---|---|---|---|
+| p20 + p20_r10 cells | 19 | 18 | 0.993 | 0.955 over 4 pages | 16 / 0 / 1 |
+| q12, no cells | 11 | 11 | 1.000 | - | 11 / 0 / 0 |
+
+The one false alarm is `p049` (coverage 0.782, recall 0.959); of the 13 pages with recall 0, 12 also have coverage 0
+and the thirteenth (`p046`) has 0.005. The
+frozen split was never read. u8 has no v2 cell store, so the ticket's documented p20 fallback was used for the live
+run above; a u8 run without `--cells` measured 15,335 pages, 832 unread (5.4%), 14,503 scored in 164.2 s (10.7 s per
+1,000 pages), so the "runs on u8 in under 10 minutes" bar is met. Test runtime 0.78 s (4 passed), basedpyright 0
+errors.
+
 
 ## 2. T-178: can the first build be salvaged by re-keying? (no new model calls)
 
