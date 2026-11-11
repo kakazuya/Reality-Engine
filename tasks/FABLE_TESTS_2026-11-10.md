@@ -131,6 +131,26 @@ disputes). A number in the wrong row is a wrong fact, and the verbatim check can
 idea needs a row check from page geometry (the label printed on the value's own line), not only a verbatim check.
 Next for item 2: arbitrate label disputes by word positions in the text layer, then read by hand only what is left.
 
+**Position check, first measurement (11 Nov 2026, script only, no model).** `D:/RealityEngine/v2/reference_pages/geom_check.py`
+reads word boxes from the PDF (pymupdf) and asks of each candidate cell: is the value printed on the same line as
+its row label, with the label to its left? Run on the 30 of 60 pages whose PDF is on this disk (15 results/AR tables
+with scale words, 7 deck panels, 4 two-level-header tables, 1 multi-period, 3 unread).
+
+| Cell status from the vote | Cells | Label and value located | Value on the label's line |
+|---|---|---|---|
+| Settled (two or more readers agree) | 1,026 | 892 | 744 (83%) |
+| Label dispute | 584 | 479 | 84 (18%) |
+| One reader only | 677 | 485 | 110 (23%) |
+
+Of 328 disputed values, position picks exactly one label for 70, several labels fit 7, no label fits 234, nothing
+located 17. By page kind, settled cells on the label's line: two-level-header tables 88%, tables with scale words 87%,
+deck panels 65%, multi-period 20%; label disputes on deck panels 2%.
+
+Reading: the check confirms most cells the readers agree on in grid tables, and cells it does not confirm are mostly
+the disputed or single-reader ones, so it separates good from doubtful. It does not resolve chart panels (the row is
+carried by position in a chart or by colour) and it is crude: same line only, no wrapped labels, no labels printed
+above a column. It is a script; a scanned page needs OCR word boxes, not a model.
+
 ## 2. T-178: can the first build be salvaged by re-keying? (no new model calls)
 
 - **Hypothesis:** first-build facts, once verified against the text layer and passed through the v2 label map
