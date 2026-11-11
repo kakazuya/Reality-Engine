@@ -1143,6 +1143,17 @@ reality_engine.v2.page_layout <one-page.pdf>`). `reference_pages transcribe --in
 with a note that a blank in a column is an empty cell. The same renderer takes OCR word boxes, so text-layer and
 image-only pages reach a reader the same way.
 
+**Scoring reader runs (T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/reader_score.py` (script only, no model call)
+turns finished transcription runs into one row per reader+input from the position-settled reference cells:
+`python -m reality_engine.v2.reader_score --pages <pages.csv> --pdf-pages <dir> --runs <dir>... [--pair a b]...
+--out <xlsx>` writes sheets `readers` (one row per run x split: dev/frozen/all), `by_type` (per doc type) and `pages`
+(run, page, rows, verified, recall, unread), plus a CSV of the readers sheet beside the XLSX. Recall = reference cells
+matched by the run (same page, same value norm, same label key or `same_label`, and same column key when both have one)
+divided by reference cells on the pages the run covered; precision_verified = verified cells (settled_by position) divided
+by located cells. It also reports pages_done, pages_with_error, rows given, unread numbers, mean seconds per page and
+tokens from `transcribe_log.csv`, and pair consistency (share of one run's verified cells that the other also gives) for
+each `--pair`.
+
 ## 13. Completeness report (T-177, 11 Nov 2026)
 
 `reality_engine/v2/completeness.py` answers, page by page and with no model call, how much of what a page prints

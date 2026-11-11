@@ -10,6 +10,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-10_2215.md`); method `do
 - T-177: reference pages in `D:/RealityEngine/v2/reference_pages/` (3 free Kilo readers, 60 pages). `reference_vote.py` settles 2,063 of 4,143 candidate cells; 98.8% of values are printed on the page but 1,048 are label disputes (readers disagree on the row). Next: arbitrate rows by word positions, then hand-read the rest.
 - Merged 11 Nov: T-181 `doc_integrity.py` report + gate (2c499b56; reports `D:/RealityEngine/reports/doc_integrity_2026-11-11/`; not yet wired into build.py); T-177 `completeness.py` run/gate/calibrate (p20: 9.9% of pages hold any stored value; among those median number coverage deck 0.25, results 0.48, AR 0.06). Position check (script, 30 pages): 83% of reader-agreed cells sit on their label line; chart panels not resolved.
 - T-163 r7 (dsh/20261110T162525Z-3ef5482a, 71cbca9a) HELD with T-132 until T-180 decides: q12 one seed 85%, zero-loss gate failed, self-graded.
+- T-180: reader_score.py scores free-model runs vs position-settled reference cells (recall/precision_verified, pair consistency); real run .tmp/t180_score.xlsx; tests 3 passed.
 
 ## Next action
 1. Fable tests: the ordered pending list is the first section of `tasks/FABLE_TESTS_2026-11-10.md` (10 items; start with item 1, reconcile by value and column, then hand-settle disputes, then T-178 and T-180).
