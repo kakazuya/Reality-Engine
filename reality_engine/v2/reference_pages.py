@@ -554,12 +554,16 @@ def _page_image_b64(store_path: str, doc_key: str, page: int) -> str:
     row = _cur.fetchone() if _cur is not None else None
     con.close()
     pdf_path = row[0] if row else None
-    if not pdf_path or not Path(pdf_path).is_file():
+    if not pdf_path:
         return ""
-    with pymupdf.open(pdf_path) as doc:
-        if page < 1 or page > len(doc):
-            return ""
-        return render_jpeg_b64(doc[page - 1])
+    # source_key is a raw-store key in newer stores (T-189): resolve it the way page_words does, not as a bare path.
+    from reality_engine import raw_store
+
+    with raw_store.default_store().local(pdf_path) as local:
+        with pymupdf.open(str(local)) as doc:
+            if page < 1 or page > len(doc):
+                return ""
+            return render_jpeg_b64(doc[page - 1])
 
 
 def _page_text_for(store: str, doc_key: str, page: int) -> str:

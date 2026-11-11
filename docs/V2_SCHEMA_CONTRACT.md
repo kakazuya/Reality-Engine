@@ -1225,23 +1225,29 @@ each `--pair`.
 documents into `page_read`/`page_cell` (WAL SQLite, created if absent): `select_pages(store_db, symbols=None,
 doc_types=("deck","results","annual_report"), limit=None)` picks candidate pages from `doc_page` whose stored text has
 at least 8 number tokens (regex, cheap) or whose `method='needs_ocr'` (OCR words may exist), ordered by `doc_key`,
-`page`; `is_table_page(words)` is true when at least 2 printed lines carry a label and 2+ numbers or the page has 12+
-number words (charts), otherwise the page is logged with status `no_table` with no model call; `read_page(...)` gets
+`page`; T-189 (section 15) put `route_page` in front of the reader: only a `table_or_chart` page is read, a page with no
+figures is logged `no_figures`, an unusable text layer `no_words` and any other page `no_table`, with no model call;
+`is_table_page(words)` is the table test the route uses (true when at least 2 printed lines carry a label and 2+
+numbers, or the page has 12+ number words); `read_page(...)` gets
 words via `page_words.words_for`, returns `no_words` (reason kept) when quality is not ok and no OCR words exist, builds
 layout text, sends the page image too (rendered from the PDF via `raw_store`, as `reference_pages` does) when more than
-half the number words sit on lines with no label, calls a FREE reader (refused otherwise) with `GRID_PROMPT` +
+half the number words sit on lines with no label, or for every routed page under `--input image` (T-189), calls a FREE
+reader (refused otherwise) with `GRID_PROMPT` +
 `LAYOUT_NOTE` + layout + `>>>`, parses with `parse_grid` (falling back to `_parse_rows`), normalises, and
 `settle_page([rows], words)`; a second pass runs when unread >= 5, re-asking once with the distinct unread
 `line_text` values plus the layout text, adding rows and re-settling, with `pass=2` recorded. Output:
 `page_read(doc_key, page, symbol, doc_type, known_at, word_source, quality, reason, status in
-{read,no_table,no_words,error}, reader, input in {layout,layout_image}, passes, seconds, in_tok, out_tok, rows, cells,
-verified, unread, error, read_at, PRIMARY KEY(doc_key,page,reader))` and `page_cell(doc_key, page, symbol, known_at,
-reader, table_title, row_label, col_header, value_text, unit_text, status ('verified' when settled_by=='position' else
-'unverified'), conflict, x0, y0, x1, y1)`. A page already present in `page_read` for that reader is skipped (resume);
-`--workers N` (default 3) runs under `concurrent.futures` with one writer (main thread) committing results and a single
-20 s retry on a model error before status `error`. CLI:
-`python -m reality_engine.v2.page_reader --store <db> [--ocr-db <db> ...] --out <db> [--symbols A,B]
-[--doc-types deck,results] [--limit N] [--reader <MODELS name>] [--workers 3]`. Test:
+{read,no_table,no_figures,no_words,error}, reader, input in {layout,layout_image,image,image_layout}, passes, seconds,
+in_tok, out_tok, rows, cells, verified, unread, error, read_at, PRIMARY KEY(doc_key,page,reader))` and `page_cell(doc_key,
+page, symbol, known_at, reader, table_title, row_label, col_header, value_text, unit_text, status ('verified' when
+settled_by is position / script+position, 'unverified' otherwise, 'quarantined' when the value's digits occur nowhere on
+the page - T-189; never served), conflict, x0, y0, x1, y1)`. A page already present in `page_read` for that reader is
+skipped (resume);
+`--workers N` (default 3) runs under `concurrent.futures` with one writer (main thread) committing results and up to 3
+tries (10 s, 30 s backoff) on a model error before status `error`. CLI:
+`python -m reality_engine.v2.page_reader --store <db> [--ocr-db <db> ...] (--out <db> | --into-store) [--routes <csv>]
+[--input layout|image] [--symbols A,B] [--doc-types deck,results] [--limit N] [--reader <MODELS name>] [--workers 3]`.
+Test:
 `reality_engine/tests/test_v2_page_reader.py`. Eagle at merge (11 Nov): each page is written and committed as it finishes (one writer), a rerun retries pages
 whose status is `error`, three free-model quota refusals in a row (HTTP 429 / usage limit) cancel the remaining pages,
 and each invocation writes one `page_reader` row to the run ledger (pages, errors, cells, verified, unread, tokens). After the read-only grade (20261111T085743Z-ec6c70f6): a cancelled page is skipped, a failed second pass keeps the
@@ -1432,6 +1438,95 @@ LightOnOCR the slowest (it writes the whole page as markdown, and its longest pa
 VRAM 1.9-3.0 GiB, so the card has room at Q8_0 without a smaller quant. Test runtime:
 `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2_local_reader.py -q` -> 7 passed in 0.33 s;
 basedpyright 0 errors on the module and its test.
+
+
+## 15. Routed page reading (T-189, 11 Nov 2026)
+
+Evidence behind the routing (30 hand-read frozen2 pages, `D:/RealityEngine/v2/reference_pages_frozen2/handread/score_local.csv`):
+Dots on the page IMAGE reads P 83.8 / R 89.6, Dots on layout text only 62 / 67, so the image is the input for table and
+chart pages. Every reader invented figures on 2-4 pages that print none (cover letters, intimations, contents, auditor
+prose), so such pages must never reach a reader. The position check (`v2/reference_geom.py` `settle_page`) misses many
+right cells (174 of 264 on 7 truth pages), so unverified cells are still served, labelled.
+
+**`reality_engine/v2/page_route.py`** (scripts only, no model calls) sends every page of a store's `doc_page` to
+exactly one route:
+
+| route | rule | reader? |
+|---|---|---|
+| `no_figures` | fewer than 4 printed figures (dates, years, page numbers, phones, PINs, CINs and registration codes do not count), or a cover letter / intimation / contents / auditor-prose page (words such as "Dear Sir/Madam", "Sub:", "Pursuant to Regulation", "Table of Contents", "Independent Auditor's Report") with fewer than 8 figures | never |
+| `needs_ocr` | `page_words.words_for` gives quality `none` or `jumbled` and no usable OCR words exist yet (a jumbled OCR gives `needs_ocr` too, with the reason saying so) | no, until OCR arrives |
+| `table_or_chart` | `page_reader.is_table_page` or `page_reader._chart_like`, or a picture covering 5%+ of the page area with figures on it (pymupdf `get_image_info`, so a logo does not count) | yes, on the PAGE IMAGE |
+| `text_ok` | prose with a clean text layer and figures, no table or chart | no, keep the text layer |
+
+The route order matters: a page whose text layer is unusable is routed `needs_ocr` before the figure count, because its
+numbers cannot be trusted; every other page reads its numbers from the page text (which is the OCR text once OCR words
+exist). A `needs_ocr` page whose OCR arrives later is re-routed by running the CLI again with `--ocr-db`.
+
+```bash
+python -m reality_engine.v2.page_route --store <db> [--ocr-db <db> ...] --out <csv>
+    [--symbols A,B] [--doc-types deck,results] [--limit N] [--needs-ocr-pdf-dir <dir>]
+```
+
+`--out` writes `doc_key,page,doc_type,route,reason,word_source,quality` and prints counts per route and per doc_type.
+`--needs-ocr-pdf-dir` exports every `needs_ocr` page as a single-page PDF named `<safe doc_key>__p<page>.pdf` (the safe
+name replaces every character outside `A-Za-z0-9._-` with `_`) and writes `route_export.csv` (`stem,doc_key,page`) in
+the same folder; `reality_engine/pilot3/hp_ocr.py` `pdf_dir_plan` reads that sidecar, so `plan --pdf-dir` -> `fetch`
+-> `write_db` land the OCR words on the real `doc_key`/page instead of page 1 of a synthetic document (a folder without
+the sidecar keeps the T-188 behaviour, stem = doc_key, page 1). `write_words` writes the word file under a name Windows
+accepts (`<doc_key with \ / : * ? " < > | replaced by _>.json`) and its `ocr_log.csv` row carries both `page_id` and
+`file`, so a routed doc_key still maps back to its page.
+
+**Measured on a COPY of `D:/RealityEngine/n10/n10.db`** (50,799 pages, 3,937 documents, 11 Nov 2026):
+
+| route | pages |
+|---|---|
+| `no_figures` | 10,335 |
+| `needs_ocr` | 1,657 (the build marked 1,971 pages `needs_ocr`; 314 of them had a readable PDF text layer after all) |
+| `table_or_chart` | 36,425 |
+| `text_ok` | 2,382 |
+
+Routing took 1,416 s (2,152 pages/min). By doc_type (no_figures / needs_ocr / table_or_chart / text_ok):
+announcement 5,008 / 949 / 19,888 / 1,536; annual_report 2,358 / 151 / 9,428 / 633; deck 1,735 / 364 / 3,008 / 38;
+press_release 20 / 0 / 244 / 9; results 556 / 193 / 2,650 / 50; transcript 658 / 0 / 1,207 / 116. `page_words.py`
+now keeps the last 3 open PDFs (`open_pdf`), so a page loop opens each document once instead of once per page; the
+first (uncached) attempt routed 2,270 pages in 11 minutes, the cached run 50,799 in 24. `reference_pages._page_image_b64`
+resolves `doc.source_key` through `raw_store.local` now (a raw-store key, not only a bare local path), which is what lets
+the image route and `--input image` find the PDF of a newer store.
+
+**`reality_engine/v2/page_reader.py`** gains `--routes <csv>` (only rows with route `table_or_chart` are read),
+`--input layout|image` (default `layout`, T-183's behaviour; with `image` the page image is sent for every routed page
+plus the layout text when words exist), and `--into-store` (writes `page_read`/`page_cell` into the store itself, same
+schema as `--out`; `--out` still works and both may be given). `--routes` still honours `--doc-types` (default
+`deck,results,annual_report`), so a run that must include announcements passes `--doc-types announcement,deck,results,
+annual_report,...`. A free-model error is retried 3 times in all
+(`RETRY_DELAYS = (10, 30)` seconds); a page still failing is written with `status='error'`, never dropped. The summary
+prints pages/min, per-page mean seconds, failed pages and the cell status counts.
+
+**Cell status.** `verified` = the position check settled it (`settled_by` `position` or `script+position`); `unverified`
+= served and labelled (recall depends on it); `quarantined` = never served, set when the value's digits occur nowhere
+among the page's words or OCR words, or when the page route is `no_figures` (that page is not read at all).
+
+**Serving.** `plugins/reality-data/server/lookups_pilot3.py` `cells(symbol, terms, period=None, as_of=None,
+include_unverified=True, limit=20)` reads `page_cell` joined to `doc` (`known_at <= as_of`), matches every term word
+against `row_label`, `col_header` and `table_title` (case-insensitive), and returns `value_text`, `unit_text`,
+`row_label`, `col_header`, `table_title`, `status`, document `title`/`doc_type`, `page`, `known_at` and provenance like
+`kpi`. Quarantined rows are excluded always; `include_unverified=False` keeps only `verified`. A build without the table
+returns `{"found": false, "reason": "no page_cell table"}`. MCP tool `pilot3_cells` wraps it (registered in
+`plugins/reality-data/server/server.py`), and `pilot3_fact` falls
+back to it when no other pilot3 table holds the metric (the answer names `source: page_cell` and keeps the cell's
+`check_status`).
+
+Tests: `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2_page_route.py -q` -> 7 passed;
+`... reality_engine/tests/test_v2_page_reader.py -q` -> 5 passed; `... plugins/reality-data/tests/test_lookups_pilot3.py
+-q` -> 50 passed, 1 skipped (the stdio server test skips in a confined sandbox); basedpyright 0 errors on every changed
+.py file.
+
+**Reader smoke (11 Nov 23:59, Dots on the page image).** `page_reader --routes <the 6 table_or_chart rows> --input image
+--into-store --reader dots-studio/dots-3-note-preview:free@kilo2 --workers 2` on the n10 copy read 6 of 6 pages with 0
+errors: 180 cells (62 `verified` = 34.4%, 118 `unverified`, 0 `quarantined`), 84 unread; 70.2 s wall for 6 pages (5.1
+pages/min), 20.6 s/page of model time. `pilot3_cells("AUBANK", "employees jun")` then returned the verified printed
+figure `Employees / Jun'25 = 53,235` from page 6 of the FY25 investor presentation (the page text prints
+`Employees 11,151 53,235 4.8x`), with `source: page_cell` provenance.
 
 
 

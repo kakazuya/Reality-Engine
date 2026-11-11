@@ -15,6 +15,7 @@ import sqlite3
 import sys
 import unittest
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[3]
 SERVER_DIR = Path(__file__).resolve().parents[1] / "server"
@@ -29,7 +30,7 @@ from reality_engine.pilot3 import kpi as kpi_mod, schema, transcripts  # noqa: E
 
 DB = TMP / "pilot3_fixture.db"
 TOOLS = {"pilot3_fact", "pilot3_kpi", "pilot3_fin", "pilot3_ratio", "pilot3_holding", "pilot3_statements",
-         "pilot3_docs", "pilot3_search", "pilot3_guidance", "pilot3_sql"}
+         "pilot3_docs", "pilot3_search", "pilot3_guidance", "pilot3_sql", "pilot3_cells"}
 
 
 def build_fixture() -> None:
@@ -71,6 +72,22 @@ def build_fixture() -> None:
     for i, (dk, pg, text, k) in enumerate(pages):
         c.execute("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)", (dk, "KEC", pg, text, "script_text", len(text), k, None))
     c.execute("INSERT INTO doc_page_fts(rowid, text) SELECT rowid, text FROM doc_page")
+    # T-189: the page reader's cells; verified and unverified are served, quarantined never is
+    c.execute("CREATE TABLE page_cell (doc_key TEXT, page INTEGER, symbol TEXT, known_at TEXT, reader TEXT, "
+              "table_title TEXT, row_label TEXT, col_header TEXT, value_text TEXT, unit_text TEXT, status TEXT, "
+              "conflict TEXT, x0 REAL, y0 REAL, x1 REAL, y1 REAL)")
+    c.executemany(
+        "INSERT INTO page_cell VALUES (?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL,NULL)", [
+            ("pdfs/KEC/deck1.pdf", 1, "KEC", "2026-02-10T17:00:00", "dots", "Order Book", "Order book", "Q3FY26",
+             "40,000", "Rs crore", "verified"),
+            ("pdfs/KEC/deck1.pdf", 2, "KEC", "2026-02-10T17:00:00", "dots", "", "Order book", "Q3FY26",
+             "41,500", "Rs crore", "unverified"),
+            ("pdfs/KEC/deck2.pdf", 1, "KEC", "2026-08-10T17:00:00", "dots", "Order Book", "Order book", "Q1FY27",
+             "45,000", "Rs crore", "verified"),
+            ("pdfs/KEC/deck2.pdf", 1, "KEC", "2026-08-10T17:00:00", "dots", "Order Book", "Order book", "Q2FY27",
+             "99,999", "Rs crore", "quarantined"),
+            ("pdfs/KEC/deck2.pdf", 2, "KEC", "2026-08-10T17:00:00", "dots", "", "Gross written premium", "Q2FY27",
+             "2,100", "Rs crore", "verified")])
     c.executemany(
         "INSERT INTO guidance(id,symbol,isin,metric,target_period,low,high,unit,direction,said_on,doc_key,page,quote,"
         "speaker,known_at,known_at_source,revision_of,extractor_rule) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'t')", [
@@ -194,7 +211,7 @@ def build_fixture() -> None:
     c.close()
 
 
-def payload(result):
+def payload(result) -> Any:
     data = getattr(result, "structured_content", None) or getattr(result, "structuredContent", None)
     if data is None:
         for block in result.content:
@@ -419,6 +436,32 @@ class Pilot3ToolTests(unittest.TestCase):
         shown = p3.kpi("KEC", "GNPA", "Q1FY27", include_quarantined=True)
         self.assertEqual(shown["rows"][0]["check_status"], "quarantined")
         self.assertEqual(shown["rows"][0]["value"], 4.2)
+
+    def test_cells_serve_verified_and_unverified_and_hide_quarantined(self):
+        """T-189: unverified cells are served labelled (recall), quarantined cells never are."""
+        out = p3.cells("KEC", "order book")
+        self.assertTrue(out["found"])
+        self.assertEqual({r["status"] for r in out["rows"]}, {"verified", "unverified"})
+        self.assertNotIn("99,999", [r["value_text"] for r in out["rows"]])
+        self.assertProvenance(out["rows"])
+        verified = p3.cells("KEC", "order book", include_unverified=False)
+        self.assertEqual({r["status"] for r in verified["rows"]}, {"verified"})
+
+    def test_cells_are_point_in_time(self):
+        out = p3.cells("KEC", "order book", as_of="2026-06-01")
+        self.assertEqual(sorted(r["value_text"] for r in out["rows"]), ["40,000", "41,500"])
+
+    def test_cells_period_narrows_the_column(self):
+        out = p3.cells("KEC", "order book", period="Q1FY27")
+        self.assertEqual([r["value_text"] for r in out["rows"]], ["45,000"])
+
+    def test_fact_falls_back_to_cells(self):
+        out = p3.fact("KEC", "gross written premium")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "cells")
+        self.assertEqual(out["answer"]["source"]["table"], "page_cell")
+        self.assertEqual(out["answer"]["value"], "2,100")
+        self.assertEqual(out["answer"]["check_status"], "verified")
 
     def test_statements_exact_quote(self):
         out = p3.statements("KEC", topic="margin", terms="improve 50")
@@ -684,10 +727,10 @@ class Pilot3McpTests(unittest.TestCase):
             async with stdio_client(params) as (read, write):
                 async with ClientSession(read, write) as session:
                     init = await session.initialize()
-                    self.assertIn("PILOT3 FIRST", init.instructions)
-                    self.assertIn("company table", init.instructions)
+                    self.assertIn("PILOT3 FIRST", init.instructions or "")
+                    self.assertIn("company table", init.instructions or "")
                     for sym in ("KEC", "BAJFINANCE", "HINDALCO"):
-                        self.assertNotIn(sym, init.instructions)   # T-090: coverage is never a fixed company list
+                        self.assertNotIn(sym, init.instructions or "")   # T-090: coverage is never a fixed company list
                     names = {t.name for t in (await session.list_tools()).tools}
                     self.assertTrue(TOOLS <= names)
                     calls = {

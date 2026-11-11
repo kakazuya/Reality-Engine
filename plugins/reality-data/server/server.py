@@ -290,7 +290,7 @@ def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | No
         hidden = 0
         results_as_of = as_of
         try:
-            results = fn(query, symbol=symbol or inferred, doc_types=doc_types, date_from=date_from,
+            results: Any = fn(query, symbol=symbol or inferred, doc_types=doc_types, date_from=date_from,
                          date_to=date_to, top_k=top, as_of=as_of,
                          include_model_read=include_model_read)
         except ValueError as exc:
@@ -305,7 +305,7 @@ def search_docs(query: str, symbol: str | None = None, doc_types: list[str] | No
             filtered = []
             for hit in results:
                 try:
-                    doc_id = int((hit or {}).get("doc_id"))
+                    doc_id = int((hit or {}).get("doc_id") or 0)
                 except (TypeError, ValueError):
                     filtered.append(hit)
                     continue
@@ -476,6 +476,24 @@ def pilot3_kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | No
                include_quarantined: bool = False) -> dict[str, Any]:
     return _safe(lambda: _p3.kpi(symbol, kpi, period=period, as_of=as_of, dimension=dimension, basis=basis,
                                  limit=limit, include_quarantined=include_quarantined))
+
+
+@server.tool(
+    name="pilot3_cells",
+    description=(
+        "Figures read from table and chart pages (decks, results, annual reports) by the page reader; use when "
+        "pilot3_fact / fin / kpi do not hold the line. terms match all words against the row label, column header "
+        "and table title; period narrows to that fiscal period; as_of drops cells whose document was not known by "
+        "then. Each cell: value_text, unit_text, row_label, col_header, table_title, status, document title, "
+        "doc_type, page, known_at, provenance. status unverified means the position check could not confirm it - "
+        "say so in the answer; status quarantined is never served."
+    ),
+    annotations=_RO,
+)
+def pilot3_cells(symbol: str, terms: str, period: str | None = None, as_of: str | None = None,
+                 include_unverified: bool = True, limit: int = 20) -> dict[str, Any]:
+    return _safe(lambda: _p3.cells(symbol, terms, period=period, as_of=as_of,
+                                   include_unverified=include_unverified, limit=limit))
 
 
 @server.tool(

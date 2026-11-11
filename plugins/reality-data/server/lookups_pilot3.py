@@ -322,6 +322,70 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
                   held_quarantined=held_hidden)
 
 
+# --- pilot3_cells ------------------------------------------------------------------------------------
+def cells(symbol: str, terms: str, period: str | None = None, as_of: str | None = None,
+          include_unverified: bool = True, limit: int = 20) -> dict[str, Any]:
+    """Figures read from table and chart pages (decks, results, annual reports) by the page reader: one cell per
+    printed figure with its row label, column header, table title and status. ``verified`` means the position check
+    settled the cell; ``unverified`` is served and labelled (that is how T-189 keeps recall); ``quarantined`` is
+    never served. ``as_of`` drops cells whose document was not known by then."""
+    sym = resolve_symbol(symbol)
+    if not _has_table("page_cell"):
+        return {"found": False, "symbol": sym, "tool": "pilot3_cells", "reason": "no page_cell table",
+                "provenance": _db_prov()}
+    day = _day(as_of, "as_of")
+    words = [w for w in re.split(r"[^\w%]+", str(terms or "").lower()) if len(w) >= 2]
+    where = ["c.symbol=?", "COALESCE(c.status,'')<>'quarantined'"]
+    args: list[Any] = [sym]
+    for word in words:
+        where.append("lower(COALESCE(c.row_label,'')||' '||COALESCE(c.col_header,'')||' '||"
+                     "COALESCE(c.table_title,'')) LIKE ?")
+        args.append(f"%{word}%")
+    if not include_unverified:
+        where.append("c.status='verified'")
+    extra, eargs = "", []
+    if day:
+        extra = " AND substr(COALESCE(d.known_at, c.known_at),1,10) <= ?"
+        eargs.append(day)
+    kind, label = norm_period(period)
+    rows = _q(
+        "SELECT c.doc_key, c.page, c.symbol, c.reader, c.table_title, c.row_label, c.col_header, c.value_text, "
+        "c.unit_text, c.status, c.conflict, COALESCE(d.title,'') AS title, COALESCE(d.doc_type,'') AS doc_type, "
+        "COALESCE(d.known_at, c.known_at) AS filed_at "
+        "FROM page_cell c LEFT JOIN doc d ON d.doc_key=c.doc_key "
+        f"WHERE {' AND '.join(where)}{extra} "
+        "ORDER BY CASE c.status WHEN 'verified' THEN 0 WHEN 'unverified' THEN 1 ELSE 2 END, "
+        "filed_at DESC, c.page LIMIT ?", (*args, *eargs, _cap(limit) * 10))
+    out: list[dict[str, Any]] = []
+    seen: set[tuple] = set()
+    for r in rows:
+        if label and not _period_in(" ".join((r["row_label"] or "", r["col_header"] or "",
+                                              r["table_title"] or "")), label):
+            continue
+        sig = (r["doc_key"], r["page"], r["row_label"], r["col_header"], r["value_text"], r["unit_text"])
+        if sig in seen:
+            continue
+        seen.add(sig)
+        out.append({
+            "value_text": r["value_text"], "unit_text": r["unit_text"],
+            "row_label": r["row_label"], "col_header": r["col_header"], "table_title": r["table_title"],
+            "status": r["status"] or "unverified", "conflict": r["conflict"] or "",
+            "doc_key": r["doc_key"], "doc_type": _DOC_TYPES.get((r["doc_type"] or "").lower(), r["doc_type"] or ""),
+            "title": r["title"], "page": r["page"], "known_at": r["filed_at"], "reader": r["reader"],
+            "provenance": _prov("page_cell", f"{r['doc_key']} p{r['page']}", r["filed_at"],
+                                doc_type=r["doc_type"], title=r["title"]),
+        })
+        if len(out) >= _cap(limit):
+            break
+    held = None
+    if not out:
+        held = [f"{r[0]} ({r[1]} cells)" for r in _q(
+            "SELECT row_label, COUNT(*) FROM page_cell WHERE symbol=? AND COALESCE(status,'')<>'quarantined' "
+            "GROUP BY 1 ORDER BY 2 DESC LIMIT 20", (sym,))]
+    return _reply(sym, out, "pilot3_cells", terms=terms, period=period, held_labels=held,
+                  include_unverified=include_unverified)
+
+
 # --- pilot3_fin -------------------------------------------------------------------------------------
 def fin(symbol: str, measure: str, period: str | None = None, basis: str | None = None,
         definition: str | None = None, as_of: str | None = None, limit: int = 12) -> dict[str, Any]:
@@ -1270,14 +1334,16 @@ def _as_of_connection(day: str) -> sqlite3.Connection:
     con = core.connect_ro(db_path(), timeout_s=core.READ_TIMEOUT_S, check_same_thread=False)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA query_only=0")   # TEMP views only; the main file stays mode=ro, so nothing can be written
-    tables = [r[0] for r in con.execute("SELECT name FROM main.sqlite_master WHERE type='table' "
-                                         "AND name NOT LIKE '%fts%' AND name NOT LIKE 'sqlite_%'")]
+    _cur = con.execute("SELECT name FROM main.sqlite_master WHERE type='table' "
+                       "AND name NOT LIKE '%fts%' AND name NOT LIKE 'sqlite_%'")
+    tables = [r[0] for r in ((_cur.fetchall() or []) if _cur is not None else [])]
     for table in tables:
         if table == "doc_page":
             con.execute(f"CREATE TEMP VIEW doc_page AS SELECT p.* FROM main.doc_page p JOIN main.doc d "
                         f"ON d.doc_key = p.doc_key WHERE substr(COALESCE(p.known_at, d.known_at), 1, 10) <= '{day}'")
             continue
-        cols = {r[1] for r in con.execute(f'PRAGMA main.table_info("{table}")')}
+        _cur = con.execute(f'PRAGMA main.table_info("{table}")')
+        cols = {r[1] for r in ((_cur.fetchall() or []) if _cur is not None else [])}
         if "known_at" in cols:
             con.execute(f'CREATE TEMP VIEW "{table}" AS SELECT * FROM main."{table}" '
                         f"WHERE known_at IS NOT NULL AND substr(known_at, 1, 10) <= '{day}'")
@@ -1868,6 +1934,28 @@ def _fact_held_quarantined(symbol: str, found: dict[str, list[str]], day: str | 
     return out
 
 
+def _fact_cells(sym: str, metric: str, period: str | None, day: str | None) -> dict[str, Any] | None:
+    """T-189: the page reader's cells when no other table holds the metric; ``source: page_cell`` labels it."""
+    reply = cells(sym, metric, period=period, as_of=day, limit=3)
+    rows = reply.get("rows") or []
+    if not rows:
+        return None
+    row = rows[0]
+    answer = {"value": row["value_text"], "unit": row["unit_text"], "period": row["col_header"] or period,
+              "basis": None, "as_of_used": day,
+              "source": {"table": "page_cell", "doc_key": row["doc_key"], "page": row["page"],
+                         "quote": _trim(f"{row['row_label']} | {row['col_header']}: {row['value_text']}", 600)},
+              "known_at": row["known_at"], "check_status": row["status"], "computed": None}
+    alternatives = [{"value": alt["value_text"], "unit": alt["unit_text"], "period": alt["col_header"],
+                     "table": "page_cell", "doc_key": alt["doc_key"], "page": alt["page"],
+                     "note": f"read from the page, {alt['status']}"} for alt in rows[1:]]
+    return {"found": True, "symbol": sym, "metric": metric, "route": "cells", "answer": answer,
+            "alternatives": alternatives[:3],
+            "why_this_one": "no other pilot3 table holds this metric; the page reader read the figure from a "
+                            "table/chart page, and the status says whether the position check confirmed it",
+            "provenance": _db_prov()}
+
+
 def fact(symbol: str, metric: str, period: str | None = None, basis: str | None = None,
          as_of: str | None = None) -> dict[str, Any]:
     """The ONE preferred figure for a (company, metric, period, basis), answer-ready in a single call (T-186).
@@ -1887,6 +1975,9 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
     bas = (basis or "").strip().lower() or None
     path, found, allnames = _fact_route(key, sym)
     if path is None:
+        from_cells = _fact_cells(sym, metric, period, day)
+        if from_cells:
+            return from_cells
         return _fact_not_found(sym, metric, key, found, allnames, day)
     # the owning lookup first; a table that also holds the metric answers when the owner has no row for the period
     rows: list[dict[str, Any]] = []
@@ -1899,6 +1990,9 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
             used = candidate
             break
     if not rows:
+        from_cells = _fact_cells(sym, metric, period, day)
+        if from_cells:
+            return from_cells
         note = None
         if day:                     # say plainly when as_of, not the store, is what hides the figure
             for candidate in _fact_paths(path, found):
