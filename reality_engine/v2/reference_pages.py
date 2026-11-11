@@ -443,6 +443,56 @@ TRANSCRIBE_PROMPT = (
 )
 
 
+GRID_PROMPT = (
+    "Copy every table on this page as a grid, including unruled panels and numbers printed in charts. For each "
+    "table write these lines and nothing else (no markdown, no prose):\n"
+    "TABLE: <table or panel title as printed, or empty>\n"
+    "UNIT: <unit as printed, or empty>\n"
+    "COLUMNS: <column header 1> | <column header 2> | ...   (join header levels with ' > ')\n"
+    "then one line per printed row: <row label> | <value under column 1> | <value under column 2> | ...\n"
+    "Every row line has exactly one field per column; leave a field empty when that cell is blank on the page. "
+    "Copy labels and values exactly as printed; no computed totals, conversions or summaries. If the page has no "
+    "printed numbers at all, output nothing.\n"
+    "Example:\nTABLE: Revenue\nUNIT: Rs crore\nCOLUMNS: Q2FY27 | Q2FY26\nRevenue | 1,234 | 1,100\nExceptional items |  | 45"
+)
+
+
+def parse_grid(raw: str) -> list[dict[str, Any]]:
+    """Cells from the GRID_PROMPT reply: one cell per non-empty field, its header taken by field position."""
+    rows: list[dict[str, Any]] = []
+    table = unit = pending = ""
+    cols: list[str] = []
+    for line in (raw or "").splitlines():
+        line = line.strip().strip("`")
+        if not line:
+            continue
+        head, _, rest = line.partition(":")
+        tag = head.strip().upper()
+        if tag == "TABLE" and _:
+            table, unit, cols = rest.strip(), "", []
+            continue
+        if tag == "UNIT" and _:
+            unit = rest.strip()
+            continue
+        if tag == "COLUMNS" and _:
+            cols = [c.strip() for c in rest.split("|")]
+            continue
+        if "|" not in line:
+            pending = line                      # a label printed on its own line above its figures
+            continue
+        fields = [f.strip() for f in line.strip("|").split("|")]
+        label, values = fields[0], fields[1:]
+        if not any(ch.isalpha() for ch in label):   # no label field: the figures start at once
+            label, values = pending, fields
+        pending = ""
+        heads = cols[1:] if len(cols) == len(values) + 1 else cols    # COLUMNS also named the label column
+        for n, value in enumerate(values):
+            if value and any(ch.isdigit() for ch in value):            # a unit or a dash is not a figure
+                rows.append({"table": table, "row_label": label,
+                             "col_header": heads[n] if n < len(heads) else f"col{n + 1}", "value": value, "unit": unit})
+    return rows
+
+
 def _parse_rows(raw: str) -> list[dict[str, Any]]:
     raw = (raw or "").strip()
     # strip markdown fence lines anywhere (models wrap JSON arrays and JSON Lines alike)
@@ -534,7 +584,7 @@ def _layout_for(pdf_pages: Path | None, pid: str) -> str:
 
 
 def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, split: str | None = None,
-                     pdf_pages: Path | None = None) -> int:
+                     pdf_pages: Path | None = None, grid: bool = False) -> int:
     if not _is_free(reader):
         raise SystemExit(f"reader {reader!r} is not a free model; refusing")
     rows_meta = _load_pages_csv(pages_csv)
@@ -577,7 +627,8 @@ def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, s
                         img = render_jpeg_b64(doc[0])
                 else:
                     img = _page_image_b64(store_path, doc_key, page)
-            prompt = TRANSCRIBE_PROMPT + (LAYOUT_NOTE + text[:24000] + "\n>>>" if text.strip() else "")
+            prompt = (GRID_PROMPT if grid else TRANSCRIBE_PROMPT) + (
+                LAYOUT_NOTE + text[:24000] + "\n>>>" if text.strip() else "")
             res = _model_call(reader, prompt, img or None)
         else:
             text = _page_text_for(store, doc_key, page)
@@ -585,7 +636,8 @@ def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, s
             res = _model_call(reader, prompt, None)
         parsed = []
         if res["error"] is None:
-            parsed = [_normalize_row(r) for r in _parse_rows(res["output"])]
+            found = parse_grid(res["output"]) if grid else []
+            parsed = [_normalize_row(r) for r in (found or _parse_rows(res["output"]))]   # a reader may ignore grid
         # save raw
         (out / f"{pid}.raw.txt").write_text(res["output"] or "", encoding="utf-8")
         (out / f"{pid}.rows.json").write_text(json.dumps(parsed, ensure_ascii=False, indent=1), encoding="utf-8")
@@ -612,7 +664,7 @@ def transcribe_pages(pages_csv: Path, reader: str, input_mode: str, out: Path, s
 
 def transcribe(args) -> int:
     return transcribe_pages(Path(args.pages), args.reader, args.input, Path(args.out), args.split,
-                            Path(args.pdf_pages) if args.pdf_pages else None)
+                            Path(args.pdf_pages) if args.pdf_pages else None, args.format == "grid")
 
 
 # ---------- reconcile ----------
@@ -832,6 +884,8 @@ def main(argv=None) -> int:
     p_trans.add_argument("--pages", required=True, type=Path)
     p_trans.add_argument("--reader", required=True)
     p_trans.add_argument("--input", required=True, choices=["text", "image", "layout", "layout_image"])
+    p_trans.add_argument("--format", default="cells", choices=["cells", "grid"],
+                         help="grid: one line per printed row (about a tenth of the output tokens of cells)")
     p_trans.add_argument("--pdf-pages", default=None, help="folder of one-page PDFs <page_id>.pdf (layout inputs)")
     p_trans.add_argument("--out", required=True, type=Path)
     p_trans.add_argument("--split", default=None)

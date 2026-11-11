@@ -141,7 +141,9 @@ class Page:
         """Label text for the value word ``i``: its own line, then joined with a number-less line above/below."""
         n, x = self.line_of[i], self.words[i][0]
         own = self.text_left(n, x)
-        out = [own]
+        whole = " ".join(self.words[j][4] for j in self.lines[n]
+                         if self.words[j][2] <= x + 1 and re.search(r"[A-Za-z]", self.words[j][4]))
+        out = [own] + ([whole] if whole and whole != own else [])
         above = self.text_left(n - 1, x) if n > 0 and not self.has_number(n - 1) else ""
         below = self.text_left(n + 1, x) if n + 1 < len(self.lines) and not self.has_number(n + 1) else ""
         if above:
@@ -189,11 +191,14 @@ class Page:
 
 
 def _label_fits(label_key_: str, texts: list[str]) -> bool:
+    bare = re.sub(r"\d{1,2}$", "", label_key_)        # a footnote mark printed as a separate word ("EBITDA 1")
+    if bare != label_key_ and len(bare) >= 3 and _label_fits(bare, texts):
+        return True
     for text in texts:
         key = label_key(text)
         if not key:
             continue
-        if key == label_key_ or len(label_key_) >= 4 and key.endswith(label_key_) or same_label(key, label_key_) and (
+        if key == label_key_ or len(label_key_) >= 4 and (key.endswith(label_key_) or key.startswith(label_key_))                 or len(key) >= 8 and label_key_.startswith(key) or same_label(key, label_key_) and (
                 min(len(key), len(label_key_)) >= max(4, 0.5 * max(len(key), len(label_key_)))
                 or key not in label_key_ and label_key_ not in key):
             return True
@@ -234,6 +239,8 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
     loose: dict[tuple[str, str], list[tuple[int, dict[str, Any], bool | None]]] = defaultdict(list)
     for ri, cells in enumerate(per_reader):
         for c in cells:
+            if c["value"].strip().casefold() in _BLANK:
+                continue                                   # an empty cell, not a figure
             c["lk"] = str(canon.get(c["lk"], c["lk"]))
             row_ok, col_ok, at = place(page, c) if page else (None, None, None)
             if at is not None:
@@ -251,7 +258,9 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
         heads = Counter(c["col"] for _ri, c, _ok in mine)
         col_votes = [ok for _ri, _c, ok in mine]
         col_ok = True if any(v is True for v in col_votes) else (False if all(v is False for v in col_votes) else None)
-        pick = max((c for _ri, c, _ok in mine), key=lambda c: (names[c["label"]], heads[c["col"]]))
+        col_true = {id(c) for _ri, c, ok in mine if ok is True}
+        pick = max((c for _ri, c, _ok in mine),
+                   key=lambda c: (id(c) in col_true, names[c["label"]], heads[c["col"]]))
         conflict = ""
         if len(by_label) > 1:
             conflict = "two_labels_fit_line"

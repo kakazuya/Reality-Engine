@@ -1143,6 +1143,18 @@ reality_engine.v2.page_layout <one-page.pdf>`). `reference_pages transcribe --in
 with a note that a blank in a column is an empty cell. The same renderer takes OCR word boxes, so text-layer and
 image-only pages reach a reader the same way.
 
+**Grid output (`--format grid`, 11 Nov 2026, Eagle).** The cell-per-JSON-line reply costs about 35 output tokens a
+cell and every free reader stops at its 8,000-token cap: on wide results pages all three readers ended mid-table
+(IHCL p049: 82-93 cells of about 230; Bharti p046: about 155 of about 400). `GRID_PROMPT` asks for `TABLE:`, `UNIT:`,
+`COLUMNS: h1 | h2 | ...` and one line per printed row (`label | v1 | v2 | ...`, an empty field for a blank cell);
+`parse_grid` turns it back into cells (a COLUMNS list one longer than the row, i.e. naming the label column, drops its
+first entry; a field without a digit is not a figure; a row whose first field has no letters takes the label printed on
+the line above). Trial on p046 and p049, three readers, layout input: 401 and 229 cells each, 2,100-3,800 output
+tokens, 14-68 s a page; position-verified 364-365 of 401 and 199-200 of 229; numbers left unread fell from 292 to 90
+(p046) and 158 to 23 (p049). Dots ignores the grid instruction under the cell prompt only; under `GRID_PROMPT` it
+complies. When two readers place the same printed word, `reference_geom` takes the column name from a reader whose
+column check passed. A row label ending in a footnote digit ("EBITDA 1") also matches without it.
+
 ## 13. Completeness report (T-177, 11 Nov 2026)
 
 `reality_engine/v2/completeness.py` answers, page by page and with no model call, how much of what a page prints
