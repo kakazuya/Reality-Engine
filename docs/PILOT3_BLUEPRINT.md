@@ -239,7 +239,7 @@ Tools: `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`, `pilot3_guidance`, `pilot3_st
   Consumer 30% FY26 whose same target is kept on another page of the same document; p20: the three ADANIPORTS
   "capex" rows whose number was the revenue/EBITDA guidance (now keyed `revenue`/`ebitda`/`capex` by the table
   reader) and PIDILITIND's gross-margin 50. The added sets are the round-4 rebuild's own additions, unchanged, so
-  no CRISIL/industry or analyst-question row comes back. Tests **43 passed**.
+  no CRISIL/industry or analyst-question row comes back. Tests **43 passed** (r2 tightens `restated_guidance` to same-clause guidance cues plus a management speaker and `VARIABILITY` to a first-person management subject plus a management speaker).
 - **Segments from the raw results XBRL** (`pilot3/xbrl_segments.py`, `build --part segments`, loop 2, 4 Nov 2026):
   `results_xbrl.db.facts` keeps only the undimensioned totals, so a script reads each window filing's instance and
   writes `segment_revenue`, `segment_ebit`, `segment_assets`, `segment_liabilities` per reportable segment into

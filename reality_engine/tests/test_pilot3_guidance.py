@@ -1199,3 +1199,26 @@ def test_t187_the_three_rightly_removed_classes_stay_out():
     assert [r for r in ports_rows if r["metric"] == "ebitda" and (r["low"], r["high"]) == (21000, 22000)], got
     assert not [r for r in ports_rows if r["metric"] == "capex"
                 and (r["low"], r["high"]) in ((36000, 38000), (21000, 22000))], got
+
+
+def test_t187_tightened_rules_keep_out_analysts_and_bare_variability():
+    """T-187 round 2 (grader 20261111T110442Z-708edba0): an analyst restating "the guidance of Rs 1,500 crores of
+    CAPEX" and a bare "variability" sentence with no management subject are never targets."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_t187_tight.db"
+    analyst = "Aditya Welekar: Yes, last part is on the guidance of Rs. 1,500 crores of CAPEX."
+    heard = ("Though we have heard about a INR1 lakh crores capex number, as of now, we only understand that the "
+             "spend for this year is INR 35,000 crores.")
+    bare = "Industry margins show variability of 18% to 26% across players depending on the product mix."
+    write_call_db(path,
+                  [("t187b/apl.pdf", "APLAPOLLO", "transcript", "2025-08-01", "2025-08-01T17:00:00"),
+                   ("t187b/sail.pdf", "SAIL", "transcript", "2025-08-12", "2025-08-12T17:00:00")],
+                  [("t187b/apl.pdf", "APLAPOLLO", 5, analyst + " " + bare),
+                   ("t187b/sail.pdf", "SAIL", 4, heard)],
+                  [("APLAPOLLO", "t187b/apl.pdf", None, "Q1FY26", 5, 1, "Aditya Welekar", "analyst", analyst, analyst),
+                   ("APLAPOLLO", "t187b/apl.pdf", None, "Q1FY26", 5, 2, "Anuj Sharma", "analyst", bare, bare)])
+    guidance.run(str(path), ["APLAPOLLO", "SAIL"])
+    got = rows(path)
+    assert not [r for r in got if r["symbol"] == "APLAPOLLO" and r["metric"] == "capex" and r["low"] == 1500], got
+    assert not [r for r in got if r["metric"] == "ebitda_margin" and (r["low"], r["high"]) == (18.0, 26.0)], got
+    assert not [r for r in got if r["symbol"] == "SAIL" and r["low"] in (100000.0, 35000.0)], got

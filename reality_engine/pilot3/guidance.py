@@ -1177,7 +1177,8 @@ def table_targets(sentence: str) -> list[dict]:
     return out
 
 
-def past_figure(sentence: str, chosen: dict) -> bool:
+def past_figure(sentence: str, chosen: dict, speaker: str | None = None,
+                analysts: tuple[str, ...] = ()) -> bool:
     """True when the number is a past measurement, not a target (T-166 r4).
 
     "improved to Rs. 5,400 from Rs. 4,200", "we have spent Rs. 4,200 crores in H1", "had targeted 7,500", "used
@@ -1190,7 +1191,7 @@ def past_figure(sentence: str, chosen: dict) -> bool:
         return True
     if FROM_BASE_PRE.search(left) and PAST_MOVE_VERB.search(sentence[:chosen["start"]]):
         return True
-    if HAD_TARGET_PRE.search(left) and not restated_guidance(sentence, chosen, left):
+    if HAD_TARGET_PRE.search(left) and not restated_guidance(sentence, chosen, left, speaker, analysts):
         return True
     if AGAINST_TARGET.search(window):
         return True
@@ -1202,19 +1203,28 @@ def past_figure(sentence: str, chosen: dict) -> bool:
     return False
 
 
-def restated_guidance(sentence: str, chosen: dict, left: str) -> bool:
+def restated_guidance(sentence: str, chosen: dict, left: str, speaker: str | None = None,
+                      analysts: tuple[str, ...] = ()) -> bool:
     """True when the past phrase ``left`` restates the company's own guidance, so the number is its target (T-187).
 
     "EBITDA margin for the full year is trending at a higher end of what we had guided earlier, which was a range
     of 23% to 24%" restates the guided band; "we have guided in the press release that ... we have spent ...
     INR 1,100 crores" restates the guided capex; and "our annual CapEx has used to be for India, INR 1,200-1,300
     crores" states the annual run-rate of the metric.  "2022, we used to be around Rs. 20,000, Rs. 22,000 crores
-    of capex" and "we have spent Rs. 4,200 crores in H1" carry no such restatement and stay measurements."""
+    of capex" and "we have spent Rs. 4,200 crores in H1" carry no such restatement and stay measurements.
+
+    Tightened (T-187 r2): an analyst turn never qualifies, and the cue must sit in the same clause as the number, so a
+    guidance word printed earlier in the page/blob cannot rescue a number in a later clause."""
+    if speaker is not None and any(_same_person(speaker, a) for a in (analysts or ())):
+        return False
+    clause = _clause(sentence, chosen["start"])
     if USED_TO_BE_PRE.search(left):
-        return bool(ANNUAL_LEVEL.search(sentence[max(0, chosen["start"] - 120):chosen["start"]]))
+        return bool(ANNUAL_LEVEL.search(clause))
     if SPENT_PRE.search(left):
-        return bool(GUIDE_WORD.search(sentence[:chosen["start"]]))
-    return bool(RESTATED_RANGE_PRE.search(left))
+        return bool(GUIDE_WORD.search(clause))
+    if RESTATED_RANGE_PRE.search(left):
+        return bool(GUIDE_WORD.search(clause))
+    return False
 
 
 def page_sentences(raw: str) -> list[tuple[int, int]]:
@@ -1345,7 +1355,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             if external_forecast(sentence, previous, n["start"]):
                 stats["external_forecast"] += 1
                 continue            # the number's own clause is an outside forecaster's, not the company's target
-            if past_figure(sentence, n):
+            if past_figure(sentence, n, speaker, analysts):
                 stats["past_only"] += 1
                 continue            # a movement/spend/actual, not a target (T-166 r4)
             kept.append(n)
@@ -1444,10 +1454,14 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if chosen["unit"] == "inr" and metric in ("order_intake", "capex", "project_capital_cost", "interest_cost") \
                 and chosen["high"] >= 100:
             chosen = {**chosen, "unit": "inr_cr"}   # "INR9,000-INR10,000" in a crore-scale business is crore
-        if metric == "ebitda_margin" and chosen["high"] - chosen["low"] > 5 and not VARIABILITY.search(sentence):
-            stats["wide_margin"] += 1
-            continue            # a plain wide margin range is a band, not a target (T-166); a band of variability
-                                # the company states itself is its target band (T-187)
+        if metric == "ebitda_margin" and chosen["high"] - chosen["low"] > 5:
+            clause = _clause(sentence, chosen["start"])
+            mgmt_subject = bool(re.search(r"\b(?:we|our|the company)\b", clause, re.I))
+            mgmt_speaker = speaker is None or not any(_same_person(speaker, a) for a in (analysts or ()))
+            if not (VARIABILITY.search(sentence) and mgmt_subject and mgmt_speaker):
+                stats["wide_margin"] += 1
+                continue            # a plain wide margin range is a band, not a target (T-166); a band of variability
+                                    # the company states itself is its target band (T-187)
         if metric == "order_intake" and revenue_cr:
             in_crore = chosen["high"] if chosen["unit"] == "inr_cr" else \
                 chosen["high"] / 1e7 if chosen["unit"] == "inr" else None
