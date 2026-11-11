@@ -17,7 +17,7 @@ import re
 import sqlite3
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -159,8 +159,9 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
     if chart:
         try:
             image_b64 = rp._page_image_b64(store_db, doc_key, page_no)
-        except Exception as exc:
+        except Exception as exc:                      # no image: read the layout text alone, say why
             image_b64 = None
+            result["reason"] = f"chart page, no image: {type(exc).__name__}: {exc}"[:200]
         result["input"] = "layout_image" if image_b64 else "layout"
 
     prompt = rp.GRID_PROMPT + (rp.LAYOUT_NOTE + layout + "\n>>>" if layout.strip() else "")
@@ -273,6 +274,55 @@ def _create_out_db(out_path: Path) -> sqlite3.Connection:
     return con
 
 
+QUOTA = re.compile(r"HTTP 429|rate limit|usage limit", re.I)
+
+
+def _write(con: sqlite3.Connection, res: dict[str, Any]) -> None:
+    con.execute("DELETE FROM page_read WHERE doc_key=? AND page=? AND reader=?", (res["doc_key"], res["page"], res["reader"]))
+    con.execute("DELETE FROM page_cell WHERE doc_key=? AND page=? AND reader=?", (res["doc_key"], res["page"], res["reader"]))
+    con.execute(
+        """INSERT INTO page_read (doc_key, page, symbol, doc_type, known_at, word_source, quality, reason,
+           status, reader, input, passes, seconds, in_tok, out_tok, rows, cells, verified, unread, error, read_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (res["doc_key"], res["page"], res["symbol"], res["doc_type"], res["known_at"], res["word_source"],
+         res["quality"], res["reason"], res["status"], res["reader"], res["input"], res["passes"],
+         res["seconds"], res["in_tok"], res["out_tok"], res["rows"], res["cells"], res["verified"],
+         res["unread"], res["error"], res["read_at"]))
+    con.executemany(
+        """INSERT INTO page_cell (doc_key, page, symbol, known_at, reader, table_title, row_label,
+           col_header, value_text, unit_text, status, conflict, x0, y0, x1, y1)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        [(c["doc_key"], c["page"], c["symbol"], c["known_at"], c["reader"], c["table_title"], c["row_label"],
+          c["col_header"], c["value_text"], c["unit_text"], c["status"], c["conflict"], c["x0"], c["y0"],
+          c["x1"], c["y1"]) for c in res.get("cells_list", [])])
+    con.commit()
+
+
+def _ledger(args: Any, con: sqlite3.Connection, started: datetime, stopped: str) -> None:
+    """Run ledger (Shivam 11 Nov): one run row per page-reader invocation."""
+    import os
+
+    from reality_engine.scripts import run_ledger
+
+    if os.environ.get("PYTEST_CURRENT_TEST"):          # tests never write the real ledger
+        return
+
+    q = con.execute("SELECT COUNT(*), COALESCE(SUM(seconds),0), COALESCE(SUM(in_tok),0), COALESCE(SUM(out_tok),0), "
+                    "SUM(status='error'), SUM(status='read'), COALESCE(SUM(verified),0), COALESCE(SUM(cells),0), "
+                    "COALESCE(SUM(unread),0) FROM page_read WHERE reader=? AND read_at>=?",
+                    (args.reader, started.astimezone().isoformat(timespec="seconds")[:19])).fetchone()
+    led = run_ledger.connect()
+    run_ledger._store_run(led, {
+        "run_id": f"page_reader-{started:%Y%m%dT%H%M%S}", "kind": "page_reader", "ticket": "T-183",
+        "title": f"{args.store} {args.doc_types} {args.symbols or 'all'}", "model": args.reader, "host": "msi",
+        "started_at": started.isoformat(timespec="seconds"), "ended_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "seconds": q[1], "in_tok": q[2], "out_tok": q[3], "items": q[0],
+        "outcome": f"read {q[5]}, errors {q[4]}, cells {q[7]}, verified {q[6]}, unread {q[8]}" + (f"; {stopped}" if stopped else ""),
+        "source": str(args.out)}, [])
+    led.commit()
+    led.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="T-183 production page reader")
     ap.add_argument("--store", required=True)
@@ -297,44 +347,28 @@ def main(argv: list[str] | None = None) -> int:
 
     out_path = Path(args.out)
     con = _create_out_db(out_path)
-    _cur = con.execute("SELECT doc_key, page FROM page_read WHERE reader=?", (args.reader,))
+    # resume: pages already read (or found with no table / no words) are skipped; errored pages are retried
+    _cur = con.execute("SELECT doc_key, page FROM page_read WHERE reader=? AND status<>'error'", (args.reader,))
     done = {(r[0], r[1]) for r in (_cur.fetchall() if _cur is not None else [])}
-    con.close()
-
     todo = [p for p in pages if (p["doc_key"], p["page"]) not in done]
-
-    results: list[dict[str, Any]] = []
+    started = datetime.now(timezone.utc)
+    quota_hits = 0
+    stopped = ""
     if todo:
         with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
             futures = {ex.submit(read_page, store_db, p["doc_key"], p["page"], args.reader, ocr_dbs): p for p in todo}
             for fut in as_completed(futures):
-                results.append(fut.result())
-
-    con = sqlite3.connect(str(out_path))
-    for res in results:
-        _cur = con.execute("SELECT 1 FROM page_read WHERE doc_key=? AND page=? AND reader=?",
-                           (res["doc_key"], res["page"], res["reader"]))
-        exists = _cur.fetchone() if _cur is not None else None
-        if exists:
-            continue
-        con.execute(
-            """INSERT INTO page_read (doc_key, page, symbol, doc_type, known_at, word_source, quality, reason,
-               status, reader, input, passes, seconds, in_tok, out_tok, rows, cells, verified, unread, error, read_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (res["doc_key"], res["page"], res["symbol"], res["doc_type"], res["known_at"], res["word_source"],
-             res["quality"], res["reason"], res["status"], res["reader"], res["input"], res["passes"],
-             res["seconds"], res["in_tok"], res["out_tok"], res["rows"], res["cells"], res["verified"],
-             res["unread"], res["error"], res["read_at"]))
-        for cell in res.get("cells_list", []):
-            con.execute(
-                """INSERT INTO page_cell (doc_key, page, symbol, known_at, reader, table_title, row_label,
-                   col_header, value_text, unit_text, status, conflict, x0, y0, x1, y1)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (cell["doc_key"], cell["page"], cell["symbol"], cell["known_at"], cell["reader"],
-                 cell["table_title"], cell["row_label"], cell["col_header"], cell["value_text"],
-                 cell["unit_text"], cell["status"], cell["conflict"], cell["x0"], cell["y0"],
-                 cell["x1"], cell["y1"]))
-    con.commit()
+                res = fut.result()
+                _write(con, res)                    # one writer, committed per page: a crash loses one page
+                if QUOTA.search(res.get("error") or ""):
+                    quota_hits += 1
+                    if quota_hits >= 3 and not stopped:
+                        stopped = "free-model quota exhausted (3 pages refused); rerun later, errored pages are retried"
+                        for f in futures:
+                            f.cancel()
+                else:
+                    quota_hits = 0
+    _ledger(args, con, started, stopped)
 
     # summary
     _cur = con.execute("SELECT status, COUNT(*) FROM page_read WHERE reader=? GROUP BY status", (args.reader,))

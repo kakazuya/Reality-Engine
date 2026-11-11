@@ -1202,7 +1202,9 @@ reader, table_title, row_label, col_header, value_text, unit_text, status ('veri
 20 s retry on a model error before status `error`. CLI:
 `python -m reality_engine.v2.page_reader --store <db> [--ocr-db <db> ...] --out <db> [--symbols A,B]
 [--doc-types deck,results] [--limit N] [--reader <MODELS name>] [--workers 3]`. Test:
-`reality_engine/tests/test_v2_page_reader.py`.
+`reality_engine/tests/test_v2_page_reader.py`. Eagle at merge (11 Nov): each page is written and committed as it finishes (one writer), a rerun retries pages
+whose status is `error`, three free-model quota refusals in a row (HTTP 429 / usage limit) cancel the remaining pages,
+and each invocation writes one `page_reader` row to the run ledger (pages, errors, cells, verified, unread, tokens).
 
 ## 13. Completeness report (T-177, 11 Nov 2026)
 
