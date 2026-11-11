@@ -36,7 +36,7 @@ from typing import Any
 from reality_engine.v2.reference_pages import _load_pages_csv, _load_run_rows, _norm_space, _norm_value
 from reality_engine.v2.reference_vote import cells_of, label_key, same_label, unify_labels
 
-COLS = ["page_id", "split", "row_label", "col_header", "value_text", "unit_text", "readers", "agree_n", "row_ok",
+COLS = ["page_id", "split", "row_label", "col_header", "value_text", "unit_text", "table", "readers", "agree_n", "row_ok",
         "col_ok", "settled_by", "conflict", "label_aliases", "col_aliases", "line_text", "x0", "y0", "x1", "y1"]
 _NUM = re.compile(r"^[-(]?[\d,]*\d(?:\.\d+)?\)?[%x]?$")
 _STRIP = "*†‡#^~`₹$€£:;|"
@@ -250,7 +250,8 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
             conflict = "lone_column_unlocated"
         settled = "" if conflict else ("script+position" if agree >= 2 else "position")
         out.append({"row_label": pick["label"], "col_header": pick["col"], "value_text": pick["value"],
-                    "unit_text": pick["unit"], "readers": answering, "agree_n": agree, "row_ok": True,
+                    "unit_text": pick["unit"], "table": pick.get("table", ""), "readers": answering, "agree_n": agree,
+                    "row_ok": True,
                     "col_ok": "" if col_ok is None else col_ok, "settled_by": settled, "conflict": conflict,
                     "label_aliases": " || ".join(n for n in names if n != pick["label"]),
                     "col_aliases": " || ".join(h for h in heads if h != pick["col"]),
@@ -270,7 +271,7 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
         else:
             settled, conflict = "", ("lone_unlocated" if verbatim else "value_not_printed")
         out.append({"row_label": pick["label"], "col_header": pick["col"], "value_text": pick["value"],
-                    "unit_text": pick["unit"], "readers": answering, "agree_n": agree,
+                    "unit_text": pick["unit"], "table": pick.get("table", ""), "readers": answering, "agree_n": agree,
                     "row_ok": "" if row_ok is None else row_ok, "col_ok": "", "settled_by": settled,
                     "conflict": conflict, "label_aliases": " || ".join(n for n in names if n != pick["label"]),
                     "col_aliases": "", "line_text": "", "x0": "", "y0": "", "x1": "", "y1": ""})
