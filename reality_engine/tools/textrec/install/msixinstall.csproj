@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- WinExe so the deployment call never opens a console window in the interactive session
+         (machines/HP_LAPTOP.md: installing it headless). Build and use:
+         tasks/ocr/TEXTREC_LARGE_TEST_2026-11-01.md section 11. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <Platforms>ARM64</Platforms>
+    <RuntimeIdentifier>win-arm64</RuntimeIdentifier>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>msixinstall</AssemblyName>
+    <RootNamespace>msixinstall</RootNamespace>
+  </PropertyGroup>
+</Project>
