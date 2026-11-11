@@ -1530,3 +1530,15 @@ figure `Employees / Jun'25 = 53,235` from page 6 of the FY25 investor presentati
 
 
 
+
+**Eagle's changes at merge (12 Nov).** (1) With `--input image`, a routed page with no usable words (no text layer,
+OCR not run) is read from the image alone; its cells cannot be position- or digit-checked, so they are stored
+`unverified` and the page_read `reason` says `image only: no usable words`. (2) `cells` terms must start a word
+(`us` no longer matches `business`). (3) `p3ask` serves `cells` like the MCP's `pilot3_cells`.
+
+**Known defects, open (grader 20261111T184212Z-0535cf58 + AUROPHARMA measure).** `table_or_chart` over-routes: on
+AUROPHARMA (2,595 pages) it took 2,134, including 99 call-transcript pages and an annual-report cover, and 11 of 20
+hand-read routed pages print no table (cover letters, thank-you slides, notes prose); `is_table_page` counts any line
+with two numbers and a word as a table row. All 10 hand-read `no_figures` pages were right. The quarantine digit test
+is a substring of the page's concatenated digits, so `99` passes on a page printing `999`. `figures_in` reads the
+store text while `is_table_page` reads word boxes, so the two can disagree.
