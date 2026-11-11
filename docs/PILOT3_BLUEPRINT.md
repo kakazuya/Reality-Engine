@@ -1347,3 +1347,75 @@ re-filed 2018 call re-dated and typed, the page-5 mention ignored, the one-page 
 **Still to run on the controller (the live stores are not written here):** a `docs_collect` rebuild of p20, u8 and
 q12, then `build --part transcripts` and `--part guidance` for the 15 retyped documents, so `pilot3_statements` and
 the guidance rows see them; `--measure` itself writes nothing.
+
+### 9n. Document-integrity report and gate (T-181, 11 Nov 2026)
+
+A defective document produces a confident wrong answer before any extractor reads it: the 2018 Tata Elxsi call
+stored as filed in 2026 was the only source of a stale "JLR is 24% of revenue" (section 9m).
+`reality_engine/pilot3/doc_integrity.py` reads one pilot3 store read-only (`reality_engine.db.readonly.connect_ro`)
+and counts and names every defect class per document, then gates a build on the counts:
+
+    python -m reality_engine.pilot3.doc_integrity report --store <pilot3.db> --out <dir>
+    python -m reality_engine.pilot3.doc_integrity gate --prev <summary.csv> --new <summary.csv>
+    python -m reality_engine.pilot3.doc_integrity gate --store <pilot3.db> --max link_notice=0,misdated=0
+
+`doc_defects.csv` is one row per document and defect (`doc_key, symbol, doc_type, filing_date, pages, defect,
+detail`); `summary.csv` is `defect, documents, companies` (companies = distinct symbols). `gate` exits 1 and names
+the classes when any count rose against `--prev` or exceeds a `--max` limit, and exits 0 otherwise. The store is
+never written, and every statement is bounded and per document (no `GROUP BY` over `doc_page.text`).
+
+| defect | rule | existing check reused |
+|---|---|---|
+| `link_notice` | a transcript or deck of 1-2 pages whose text is a cover letter, not the call | `doc_identity.check_type` (cover_letter) + `linked_transcripts.STUB_MAX_PAGES` |
+| `duplicate_sha256` | every copy after the earliest-known one of the same sha256 | — |
+| `near_duplicate` | same symbol, type, page count and identical first page (>= 50 chars) under a different sha256 | — |
+| `misdated` | a transcript of 3+ pages whose latest printed year on pages 1-3 is 2+ years before `filing_date`, or whose printed call date is more than 120 days before it; the detail says "already repaired" when the printed call date is the filing date | `call_dates.call_date` (the 9m rule; transcripts only, because a results PDF prints comparatives and a deck prints its period start) |
+| `mistyped` | a call transcript (moderator line on pages 1-3) under another label, or a transcript label whose page 1 is another family (3+ pages) | `doc_identity.classify_type` + `moderator_line` (T-159) |
+| `truncated` | an annual report below 40 pages, or `doc.pages` above the pages held in `doc_page` | `doc_identity.AR_SECTION_PAGES` |
+| `no_text` | more than half of the held pages have no text layer (`chars` 0) | — |
+| `known_at_after_period` | `known_at` more than 30 days after `filing_date`, or missing | — |
+| `missing_period_call` | a results filing with no transcript within 45 days after it (count only) | `linked_transcripts.missing_calls` (T-157), widened from 21 to 45 days |
+
+Measured 11 Nov 2026, read-only (`report` wall time: u8 1.75 s, q12 2.49 s, p20 2.41 s warm, about 9 s cold;
+documents first, companies after the slash):
+
+| defect | u8 (3,208 docs) | q12 (4,275 docs) | p20 (4,948 docs) |
+|---|---|---|---|
+| `link_notice` | 8 / 3 | 64 / 9 | 17 / 3 |
+| `duplicate_sha256` | 240 / 8 | 379 / 12 | 411 / 10 |
+| `near_duplicate` | 3 / 2 | 6 / 5 | 13 / 5 |
+| `misdated` | 0 / 0 | 0 / 0 | 0 / 0 |
+| `mistyped` | 5 / 3 | 4 / 3 | 7 / 2 |
+| `truncated` | 3 / 1 | 8 / 6 | 6 / 5 |
+| `no_text` | 78 / 8 | 304 / 12 | 120 / 10 |
+| `known_at_after_period` | 0 / 0 | 0 / 0 | 0 / 0 |
+| `missing_period_call` | 18 / 3 | 4 / 2 | 13 / 3 |
+
+Against the 10 Nov held audit (71 link notices, u8 240 / q12 379 duplicate copies, 6 misdated, 8 mistyped):
+
+- **Link notices: q12 64 exact, u8 8 vs 7.** The audit counted 1-page notices (CHOLAFIN 6, PERSISTENT 1); the
+  eighth is CIPLA's 2-page stub `pilot60_history/CIPLA/concall_transcript/7d650c16-...pdf`, which the same rule
+  catches. p20 was not in the audit: ADANIPORTS 14, INDHOTEL 2, HAVELLS 1.
+- **Duplicate copies: u8 240 and q12 379 exact.**
+- **Misdated: 0 vs 6, because all six are already repaired in live q12.** TATAELXSI 2018-01-22 and 2018-07-27,
+  APLAPOLLO 2017-12-13 and EDELWEISS 2016-08-10, 2016-11-11, 2018-10-29 now carry the printed call date as
+  `filing_date` and `<date>T23:59:59` as `known_at` (T-161), so the latest printed year is the filing year and the
+  rule no longer fires. A fixture document with a 2018 call filed in 2026 is still caught (test below).
+- **Mistyped: u8 5 (CHOLAFIN 3, CIPLA 1, ULTRACEMCO 1), q12 4 (UBL 2, SAIL, KIMS), p20 7 (HAVELLS 6, INDHOTEL 1),
+  exactly the list section 9m measured.** The audit's 8 for u8+q12 is one below the nine documents 9m names. A
+  results release typed `announcement` is not counted: BSE's own category makes `announcement` the catch-all for
+  those filings (148-174 such rows per store read as results), so only a call transcript with a moderator line is a
+  mistype.
+- **Truncated: q12 8, including the UBL FY25/FY26 annual reports held as 2 pages named in the audit** (also
+  POWERGRID 1, SAIL 1, KIMS 2, APLAPOLLO 1, WELSPUNLIV 1); u8 3 = TRENT's three annual reports at 1-2 pages; p20 6
+  (ASIANPAINT 2, TITAN, INDHOTEL, PIDILITIND, APOLLOTYRE). Every row is an `annual_report` below 40 pages.
+- **No text (304 q12, 78 u8, 120 p20) and missing calls (18 u8, 4 q12, 13 p20) have no audit number**; the audit's
+  `known_at` defect is the shareholding table, not `doc`, and `doc.known_at` is clean on all three stores.
+
+Tests: `python -m pytest -q reality_engine/tests/test_pilot3_doc_integrity.py` **4 passed in 0.6 s** on a tiny
+fixture store covering each class once and both gate forms (1 with a rise/over a limit, 0 without); no network and
+no real store. basedpyright 0 errors on the new module and test.
+
+**Still to run on the controller:** call the gate before each `build --part` (the line in
+`docs/DB_BUILD_GUIDELINES.md` section 9) and review the three reports under `.tmp/t181/`; this ticket repairs no
+store and writes nothing outside its `--out` folder.
