@@ -11,7 +11,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-11_1430.md`); method `do
 ## Running
 - Grid runs, 60 reference pages, free Kilo: `D:/RealityEngine/v2/reference_pages/run_{dots,supervl,ultra}_grid`, `run_dots_imggrid` (layout + image); end lines in `grid_status.log`.
 - Store rebuild on copies (`D:/RealityEngine/rebuild_2026-11-11/run_all.sh`, carry linked transcripts, reconcile, integrity gate, then parts): u8 DONE; p20 in `kpi`; q12 next. Live stores untouched until compared.
-- T-180 scorer branch dsh/20261111T082116Z-259da7c5 (Beam): graded MERGE AFTER FIXES (recall must match by word position, dedupe). Eagle fixing at merge.
+- Merged 11 Nov: T-180 `reader_score.py` (matches by word position), T-183 `page_reader.py` (not yet run live: Kilo free quota exhausted on key 1 after ~300 requests; Dots on key 2 `@kilo2` still answers). Fresh frozen set `D:/RealityEngine/v2/reference_pages_frozen2/` (30 pages, seed 20261111, never opened).
 
 ## Next action
 1. When grid runs end: score them (reader_score, by word position) with r10 and text runs; write `D:/RealityEngine/reports/2026-11-12_t180_reader_bakeoff.xlsx`; decide model-in-build for tables.
