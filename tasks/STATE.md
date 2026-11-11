@@ -4,7 +4,8 @@ History `docs/state_history/` (previous: `STATE_2026-11-11_1430.md`); method `do
 ## Now (Shivam 11 Nov: settle extraction for every page, text or image; free models in peak)
 - Stores: `D:/RealityEngine/{p20/p20new.db, u8/u8.db, q12/q12.db, n10/n10.db, pilot10/pilot10.db}`.
 - Extraction design under test (T-180/T-182): word boxes for every page (`v2/page_words.py`: text layer upright, else OCR `ocr_page`) -> layout text (`v2/page_layout.py`, one line per printed line) -> free reader in GRID format (`reference_pages transcribe --input layout --format grid`) -> position check (`v2/reference_geom.py`: value on its label's line, header above) -> unread numbers = recall gap. Grid fixed the 8k-token truncation: IHCL p049 unread 158 -> 23, Bharti p046 292 -> 90, ~90% of cells position-verified, all three readers agree.
-- Script baseline r10 (`v2/table_cells.py`) on the 60 reference pages: recall 51% vs readers 69-79% (text input, before grid).
+- Hand-read truth (Opus, 7 hardest frozen2 pages, `reference_pages_frozen2/handread/`): Dots grid+image 89.5% precision on figures, 90% recall; checker confirms 98.5%-right but misses 75% of right cells on hard pages; garbled scan text layer makes the checker confirm wrong cells (Beam f016). Scorer `v2/truth_score.py`.
+- DeepSeek budget ~USD 100-200/month (Shivam 11 Nov): new work on Beam/Kilo; LongCat/MiniMax unavailable on Go today.
 
 - Run ledger live (Shivam 11 Nov): `D:/RealityEngine/ledger/ledger.db` via `reality_engine/scripts/run_ledger.py` (DEVELOPER_GUIDE s7); Stop hook ingests workers + this session; report `D:/RealityEngine/reports/2026-11-11_run_ledger.xlsx`. Disclosures logged: p20 99.6% was fitted to its own 230 questions (honest 54.8%); T-177 frozen pages p008/p010/p029/p031/p034/p056 were opened while tuning the position check, so a fresh frozen set is needed before quoting reader scores.
 

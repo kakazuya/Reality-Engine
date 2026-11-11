@@ -315,6 +315,28 @@ number is right. Decision: tables move to model-in-build (free reader, grid form
 reader without a daily cap (Kilo free key 1 stopped after ~300 requests on 11 Nov; only Dots on key 2 answered),
 (3) reader errors and checker misses are separated on frozen pages.
 
+### Hand-read truth on the 7 hardest frozen2 pages (11 Nov 2026, Opus 5.5)
+
+Opus read each page from its image and text layer and wrote the figures in grid format
+(`D:/RealityEngine/v2/reference_pages_frozen2/handread/<page>.truth.txt`; 294 figure cells; two pages hold none).
+Scored by `reality_engine/v2/truth_score.py` (test `reality_engine/tests/test_v2_truth_score.py`): per reader cell
+right or wrong (and why), and the position check against the truth. Result `handread/score_v4.csv`.
+
+| Arm | Precision (all cells) | Precision (figures only) | Recall | Wrong: not a figure / misread / label lost / row-column |
+|---|---|---|---|---|
+| Dots, grid, layout + image | 71% (264/372) | 89.5% (264/295) | 90% | 77 / 5 / 19 / 7 |
+| Beam (Go, free), grid, layout | 62% (230/371) | - | 78% | 29 / 77 / 2 / 33 |
+| Dots, grid, layout only | 41% | - | 52% | 76 / 17 / 19 / 110 |
+| First build | 31% | - | 15% | 0 / 21 / 0 / 77 |
+| r10 script | 1% | - | 0.3% | values right on f020 but the segment column missing |
+
+Position check against the truth (Dots image run): it confirmed 66 cells, 65 right (98.5%), and missed 199 of the
+264 right cells (75%): 90 on the two-level-header page, 48 on the scanned page. **So on hard pages the gap between dev
+and frozen is the checker, not the reader.** One danger: the scanned page's text layer is garbled (28 of 63 true
+values are not in it); Beam copied the garbled numbers and the check confirmed 52 wrong cells, because a garbled string
+is still "printed" in the layer. Fixes: T-185 (column model), T-175 (garbled layer -> check against OCR words),
+T-183 (drop serials/sentences; reject rows without a label).
+
 ## 5. Order and load
 
 1. T-177 reference pages (needed by T-178 and T-180). T-179 is independent and runs alongside.
