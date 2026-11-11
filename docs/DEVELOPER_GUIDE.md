@@ -1716,8 +1716,9 @@ recorded in one SQLite file, `D:/RealityEngine/ledger/ledger.db`, by `reality_en
   characters). `answer`: per question: tools, raw SQL used, seconds, grade, `workaround_reason`, `gap_class`,
   `gap_note`. `reader_page`: per page of a transcription run. `gap`: each gap found, its evidence, fix and ticket.
   `note`: disclosures and decisions (a test set seen by a fix, a score fitted to its own questions).
-- **When.** The project Stop hook (`session_hooks.py stop`) ingests every worker job and the current Claude transcript
-  in a detached process at each stop (log `D:/RealityEngine/ledger/ingest.log`). Answer and reader runs are ingested
+- **When.** The project Stop hook (`session_hooks.py stop`) runs `run_ledger ingest-hook [transcript]` (every worker job,
+  then the current Claude transcript) as one hidden child with `CREATE_NO_WINDOW` and no shell at each stop. The first
+  version used `DETACHED_PROCESS` + a shell, which opened a console window on the MSI at every stop (fixed 11 Nov) (log `D:/RealityEngine/ledger/ingest.log`). Answer and reader runs are ingested
   when they finish (`ingest-answers <dir> --run-id --set`, `ingest-reader <dir>`); gaps and disclosures are written as
   they are found (`gap`, `note`).
 - **Answer workers.** `pilot3/answer_record.py` refuses an answer that used raw SQL without `workaround_reason` (what

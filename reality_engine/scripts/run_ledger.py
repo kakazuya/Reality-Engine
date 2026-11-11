@@ -317,6 +317,8 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="run ledger: every run, every tool call, every gap")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("ingest-dsh")
+    p = sub.add_parser("ingest-hook", help="what the Stop hook runs: every worker job, then the transcript if given")
+    p.add_argument("transcript", nargs="?", type=Path)
     p = sub.add_parser("ingest-claude")
     p.add_argument("transcript", type=Path)
     p.add_argument("--run-id")
@@ -347,7 +349,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", type=Path, default=Path(f"D:/RealityEngine/reports/{datetime.now():%Y-%m-%d}_run_ledger.xlsx"))
     a = ap.parse_args(argv)
     con = connect()
-    if a.cmd == "ingest-dsh":
+    if a.cmd == "ingest-hook":
+        print(f"dsh jobs: {ingest_dsh(con)}")
+        if a.transcript:
+            print(f"tool calls: {ingest_claude(con, a.transcript)}")
+    elif a.cmd == "ingest-dsh":
         print(f"dsh jobs: {ingest_dsh(con)}")
     elif a.cmd == "ingest-claude":
         print(f"tool calls: {ingest_claude(con, a.transcript, a.run_id)}")

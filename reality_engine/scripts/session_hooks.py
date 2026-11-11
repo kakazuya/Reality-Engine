@@ -48,19 +48,19 @@ def _block(reason: str) -> str:
 
 
 def _ledger(transcript: str | None) -> None:
-    """Run ledger (Shivam 11 Nov): at every stop, record this session's tool calls and every worker job, detached so
-    the hook stays fast.  Failures are written to the ledger folder's log, never raised."""
+    """Run ledger (Shivam 11 Nov): at every stop, record this session's tool calls and every worker job.
+
+    One hidden child, no shell: CREATE_NO_WINDOW only.  DETACHED_PROCESS (or a shell) made each python child open its
+    own console window, a pop-up on the MSI screen at every stop (Shivam 11 Nov).  Failures go to the ledger log."""
     import subprocess
 
     root = Path(__file__).resolve().parents[2]
     log = Path("D:/RealityEngine/ledger/ingest.log")
     log.parent.mkdir(parents=True, exist_ok=True)
-    cmds = [[sys.executable, "-m", "reality_engine.scripts.run_ledger", "ingest-dsh"]]
-    if transcript:
-        cmds.append([sys.executable, "-m", "reality_engine.scripts.run_ledger", "ingest-claude", transcript])
-    script = " && ".join(subprocess.list2cmdline(c) for c in cmds)
+    cmd = [sys.executable, "-m", "reality_engine.scripts.run_ledger", "ingest-hook"] + ([transcript] if transcript else [])
     with log.open("a", encoding="utf-8") as fh:
-        subprocess.Popen(script, cwd=root, shell=True, stdout=fh, stderr=fh, creationflags=0x08000000 | 0x00000008)
+        subprocess.Popen(cmd, cwd=root, stdout=fh, stderr=fh, stdin=subprocess.DEVNULL,
+                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
 
 
 def main(argv: list[str] | None = None) -> int:
