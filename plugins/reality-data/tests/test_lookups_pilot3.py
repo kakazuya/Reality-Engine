@@ -762,6 +762,21 @@ class FactTests(unittest.TestCase):
                   "'PL','revenue_from_operations','Revenue from operations',1.234e11,'inr',1.0,'rev.pdf',7,"
                   "'Revenue from operations 12,340 crore','results','t','r','2026-05-20T10:00:00','x',1,0,"
                   "'reported','FY')")
+        # T-186: a later annual-report page must not replace the XBRL filing's figure
+        c.executemany("INSERT INTO fin_annual_line VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+            ("KEC", "INE389H01022", "FY25", "2025-03-31", "consolidated", "PL", "revenue_from_operations",
+             "Revenue from operations", 9.5e10, "inr", 1.0, "ar.pdf", 13, "Revenue 95,130 crore",
+             "ar_facts.db", "ar_facts", "9703", "2026-08-28T15:25:34", "x", 1, 0, "reported", "FY"),
+            ("KEC", "INE389H01022", "FY25", "2025-03-31", "consolidated", "PL", "revenue_from_operations",
+             "Revenue from operations", 2.1794e11, "inr", 1.0, "rev_xbrl.xml", None, "Revenue 21,794 crore",
+             "results_xbrl.db", "facts", "rev_xbrl.xml#1", "2025-05-30T22:45:53", "x", 1, 0, "xbrl_reported", "FY")])
+        # T-186: a row the independent checker quarantined is never the answer
+        c.execute("INSERT INTO fin_annual_line VALUES ('KEC','INE389H01022','FY25','2025-03-31','consolidated',"
+                  "'BS','borrowings','Borrowings',3.0e10,'inr',1.0,'bor.pdf',4,'Borrowings 30,000 crore',"
+                  "'results_xbrl.db','facts','bor.xml#1','2025-05-20T10:00:00','x',1,0,'xbrl_reported','FY')")
+        rid = c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO row_check VALUES ('fin_annual_line',?,'KEC','borrowings','borrowings','infra',"
+                  "'results','table_v1','quarantined',0,'t')", (rid,))
         c.commit()
         c.close()
         os.environ["REALITY_PILOT3_DB"] = str(DB)
@@ -852,6 +867,23 @@ class FactTests(unittest.TestCase):
         self.assertEqual(answer["value"], 2.6e8)
         self.assertEqual((answer["unit"], answer["period"]), ("shares", "2025-12-31"))
         self.assertEqual(answer["source"]["table"], "share_capital")
+
+    def test_an_annual_line_prefers_the_xbrl_filing_over_a_later_report_page(self):
+        out = p3.fact("KEC", "revenue", period="FY25")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["answer"]["value"], 2.1794e11)
+        self.assertNotEqual(out["answer"]["value"], 9.5e10)
+        self.assertTrue(any(a.get("value") == 9.5e10 for a in out.get("alternatives", [])), out)
+
+    def test_a_quarantined_row_is_never_the_answer(self):
+        out = p3.fact("KEC", "borrowings", period="FY25")
+        answer = out.get("answer") or {}
+        self.assertNotEqual(answer.get("value"), 3.0e10, out)
+
+    def test_a_holding_asked_for_a_fiscal_year_says_what_it_returned(self):
+        out = p3.fact("KEC", "promoter holding", period="FY25", as_of="2026-06-01")
+        if out.get("found"):
+            self.assertTrue(out["answer"].get("mismatch"), out)
 
 
 if __name__ == "__main__":

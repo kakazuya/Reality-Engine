@@ -1466,7 +1466,13 @@ held only in a quarantined row says so (`held_quarantined`, e.g. CHOLAFIN's Q2FY
 reading as absent, and a figure filed after `as_of` is named in the hint ("a row is held but was filed after").
 
 **Point in time.** `as_of` goes to the owning lookup, so every table drops rows known after it (the same
-`_asof` filter as the typed tools) and the answer's `known_at` is the filing record it used.
+`_asof` filter as the typed tools) and the answer's `known_at` is the filing record it used. A computed
+figure is not served unless every one of its input rows is public on `as_of` (the share-capital branch, an
+annual line by rowid, a valuation row by rowid, the holding categories); otherwise its `computed` block is
+`null`. An annual line prefers an XBRL filing (reported, then derived) over a printed or company-stated one,
+even one printed in a later annual report; the displaced printing stays an alternative with its source. A
+holding, share-count or valuation answer whose returned period or basis differs from the one asked carries a
+`mismatch` string.
 
 **Live check, 20 calls, 8 companies, `D:/RealityEngine/u8/u8.db` (build 9 Nov 2026), read-only.** 19 of 20 answered
 in one call each; the one miss is a quarantined row, reported as held. Page = the source document's page; XBRL
