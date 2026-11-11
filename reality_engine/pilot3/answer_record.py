@@ -7,7 +7,8 @@ Same CLI as the run-tooling ``record.py`` it replaces:
 
 ``start`` stamps when work on a question begins.  ``answer`` reads
 ``{"qid", "answer", "numbers": [{"value","unit","period","source","quote", "formula", "inputs"}],
-"status": "answered|partial|not_found", "tools": [...]}``, runs
+"status": "answered|partial|not_found", "tools": [...], "workaround_reason", "gap_class", "gap_note"}``
+(the last three for the run ledger; ``workaround_reason`` is required when ``tools`` holds raw SQL), runs
 ``reality_engine.pilot3.number_check`` and appends it with ``finished_at`` -- but only if every number passes.
 A failing answer is NOT recorded: each failure is printed and the process exits 1, so the worker fixes it.
 A second attempt on the same qid carrying ``"check_override": "<reason>"`` is recorded with its failures
@@ -67,6 +68,12 @@ def record(symbol: str, kind: str, argument: str, out_dir: Path | None = None) -
     if payload.get("status") and payload["status"] not in STATUSES:
         print(f"status must be one of {STATUSES}", file=sys.stderr)
         return 2
+    tools = [str(t) for t in (payload.get("tools") or [])]
+    if any(t in ("sql", "pilot3_sql") for t in tools) and not str(payload.get("workaround_reason") or "").strip():
+        # Run ledger (Shivam 11 Nov): raw SQL is a workaround; the answer says which typed tool could not give it.
+        print("NOT recorded: the answer used raw SQL; add \"workaround_reason\" (what the typed tools could not "
+              "return) and, if a data gap caused it, \"gap_class\" and \"gap_note\".", file=sys.stderr)
+        return 1
     report = number_check.check_answer(payload)
     failures = [f for f in report["findings"] if f["severity"] == "fail"]
     override = str(payload.pop("check_override", "") or "").strip()
