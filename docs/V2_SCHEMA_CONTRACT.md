@@ -1119,22 +1119,45 @@ are one row when the text is a spelling of the same label (one contains the othe
 e.g. a garbled text layer "Oeprecintlon nnd nmortisation") AND the two rows carry at least half the same values, and
 the pairing is unique both ways; "CSEL" and "VF" over the same numbers stay a dispute. New column `label_aliases`.
 
-**Settled by printed position (T-177/T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/reference_geom.py`:
+**Settled by printed position (T-177/T-180/T-185, 11 Nov 2026, Eagle).** `reality_engine/v2/reference_geom.py`:
 `python -m reality_engine.v2.reference_geom --pages <pages.csv> --pdf-pages <dir> --runs <dirA> <dirB> ... --out
 <dir>`. `--pdf-pages` holds one single-page PDF per page_id (`D:/RealityEngine/v2/reference_pages/pdf_pages/`, cut
 from the source PDF, fetched from Drive where not local). Each reader cell is placed on the page from the PDF word
 boxes (sideways pages turned upright; a page-column gutter ends a label): the row holds when the value word sits on a
-line whose text left of it spells the row label (or that line joined with a number-less line above/below, for wrapped
-labels); the column holds when a header word with a digit (else any header word) is printed above the value and over
-it; a chart value holds when the panel title is printed above it and the axis label below it. `settled_by` =
-`script+position` (two or more readers, row confirmed), `position` (one reader, row and column confirmed), `script`
-(two or more readers, label or value not locatable, e.g. no text layer); otherwise empty with `conflict`
-(`row_elsewhere`, `column_elsewhere`, `two_labels_fit_line`, `lone_unlocated`, `lone_column_unlocated`,
-`value_not_printed`). A dash or "nil" is an empty cell. `unread_numbers.csv` lists numbers printed in a table column
-(numbers on two or more other lines under it) on a labelled line that no reader gave: the recall gap. Why: a text
-reader given the text layer in reading order sees a results table column by column, so a blank cell shifts every later
-number one row down, and two readers can make the same shift (IHCL p049: "Exceptional items 45271" where that cell is
-blank); a vote cannot see it, word positions can. Test: `reality_engine/tests/test_v2_reference_geom.py`.
+line whose text left of it spells the row label, joined with up to three number-less lines above and one below at
+the label's x-position (a wrapped label); a chart value with no labelled line takes the nearest number-less title
+above it in the same x-band as its row and the nearest axis label below as its column. The column comes from a
+per-table-block model, not header-word presence: the header band is the nearest strong period/date/unit line above
+the value (over earlier rows of the same table, extended through lower header rows such as "Audited"), the number
+columns are the x-clusters of the values below it, and each header phrase is assigned to its column (a grouping row
+with fewer phrases than columns splits where the lower row's period kind changes, e.g. year columns vs month-date
+columns, else at the midpoint between phrases). A cell's column holds when every reader header word printed in the
+band also appears in the value's own column stack, fails when those words match another column's stack (a value in
+the quarter column given a nine-month header), and only where no header band is found falls back to the old presence
+rule. `how` records the row source (`line`, `wrap`, `chart`).
+
+Every output cell also carries `verdict`, which separates a reader error from a checker miss: `confirmed` (row and
+column placed), `reader_error_row` (the value sits on a line that a confirmed cell or another reader names as a
+different row), `reader_error_column` (it sits under a different column's header stack), `checker_miss` (label and
+value are on the page, nothing contradicts them, but the rules could not confirm) and `unplaced` (value or label not
+on the page). `settled_by` keeps its old meaning: `script+position` (two or more readers, row confirmed), `position`
+(one reader, row and column confirmed), `script` (two or more readers, label or value not locatable, e.g. no text
+layer); otherwise empty with `conflict` (`row_elsewhere`, `column_elsewhere`, `two_labels_fit_line`,
+`lone_unlocated`, `lone_column_unlocated`, `value_not_printed`). A dash or "nil" is an empty cell.
+`unread_numbers.csv` lists numbers printed in a table column (numbers on two or more other lines under it) on a
+labelled line that no reader gave: the recall gap. `run()` prints the verdict counts and `page_summary.csv` carries a
+per-page `confirmed` count. Measured on the 30 dev pages only (never the frozen sets): run_dots_imggrid 1,900 output
+cells, 1,624 located, confirmed share of located 94.6% before / 95.4% after (confirmed 1,550, reader_error_row 5,
+reader_error_column 13, checker_miss 173, unplaced 159; how line 1,527 / wrap 24 / chart 73); run_ultra_text 1,395
+cells, 1,025 located, 96.1% before / 93.5% after (confirmed 958, reader_error_row 25, reader_error_column 13,
+checker_miss 212, unplaced 187; how line 937 / wrap 52 / chart 36). The old 95% was inflated by confirming on any
+header word printed above; the checker_miss bucket now holds those cells instead of either confirming them or
+calling them reader errors. A 40-cell seed-7 sample of changed cells (page_id, reader label, reader header, value,
+printed line text, before/after) is `.tmp/t185_flipped.csv` in the T-185 worktree. Why: a text reader given the text
+layer in reading order sees a results table column by column, so a blank cell shifts every later number one row
+down, and two readers can make the same shift (IHCL p049: "Exceptional items 45271" where that cell is blank); a
+vote cannot see it, word positions can. Test: `reality_engine/tests/test_v2_reference_geom.py` (spanning header,
+three-line wrapped label, one-line wrap below, chart panel, and each verdict).
 
 **Layout input for readers (T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/page_layout.py` renders word boxes as
 fixed-width text, one output line per printed line with horizontal position kept (`python -m
