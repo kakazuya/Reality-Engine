@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-13 (worker, T-199 round 3)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-13 05:30 IST (Eagle, T-199 result)
 History `docs/state_history/` (previous: `STATE_2026-11-12_1410.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -9,7 +9,6 @@ History `docs/state_history/` (previous: `STATE_2026-11-12_1410.md`); method `do
 - T-188 reader bake-off (30 frozen2 pages, P/R): Haiku 91.1/95.2, Dots image 83.8/89.6, DeepSeek image 82.9/75.0, GLM-OCR local 80.8/64.4; details `docs/V2_SCHEMA_CONTRACT.md` s14 and `D:/RealityEngine/v2/reference_pages_frozen2/`.
 - T-189 AUROPHARMA (12 Nov): Haiku 81.2%, DeepSeek 76.8%; report `reports/2026-11-12_four_model_answer_test.html`.
 - HP TextRecognizer 1.0.1.0 installed and kept (T-190; key deleted, cert TrustedPeople only).
-- Disclosures: run ledger (p20 fitted 99.6% vs honest 54.8%; T-189 reader arms).
 
 ## Merged 11 Nov
 T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 position check v2, T-186 `pilot3_fact` (preferred figure + source + known_at + inputs), T-187 guidance round 5, T-184 run ledger, T-188 HP OCR arm.
@@ -18,7 +17,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-000. T-199 BLUESTARCO (`tasks/handoff/T-199_BLUESTAR_ATOM_PLAN.md`), 13 Nov: bluestar.db rebuilt v9 + registered; HP OCR 129/143; routes `bluestar/routes.csv`. Atom code r1+r2 MERGED 13 Nov (page_atom v10, `pilot3/atoms.py`, export, file reader; 36-page test: 1,036/2,087 verified, 12 no period). Haiku 72/134 batches read (`bluestar/haiku/`), paused for Pro limit, resumes 02:25 at 2 parallel. Next: load + atoms, truth sample, answers, grading. r3 (T-199, branch): section headings on list-marker/repeated labels (`<section> > <label>`), equal values in two columns both kept, label/header units before the page declaration; the repeated-label `same_doc_conflict` follow-up is fixed by the section prefix; tests atoms 32 / page_reader 11 / reference_pages 7 / reference_geom 11 / lookups 82+1.
+000. T-199 BLUESTARCO DONE 13 Nov, NOT passed: first attempt DeepSeek 82.8% / 73.4%, Haiku 56.2% (blind Opus, 64 frozen q); 60/64 right in some set; losses routing 39, compute 11, reading 6, none missing data. Second pass 84.4%/76.6% (seen). `reports/2026-11-13_bluestar_atom_test.html`. Store: 45,173 atoms (25,672 verified), unseen 20-page sample value 95.5% / recall 81% on financial pages. Next: evidence-pack answerer (script runs every route, model writes from the pack), fix derived capital_employed, page_reader default doc types, then a NEW unseen company.
 00. T-195 DONE: re-run after fixes, DeepSeek 85.5% / 84.1% (2 runs), Haiku 76.8%; `reports/2026-11-12_aurobindo_rerun.html`. T-196 DONE (`reports/2026-11-12_why_answers_stop.html`).
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191 A/B DONE (`reports/2026-11-12_semantic_ab.html`); route `aurobindo_ab/STORE_DEFECTS_SEEN.md` to follow-ups.
