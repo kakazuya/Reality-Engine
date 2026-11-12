@@ -284,7 +284,7 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
             paid, face = r.get("PaidUpValueOfEquityShareCapital"), r.get("FaceValueOfEquityShareCapital")
             if paid and face:
                 sc.append((symbol, r["isin"], r["period_end"], basis, None, None, paid / face, paid, face, "shares",
-                           1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", "results_xbrl.db",
+                            1.0, r["known_at"], "derived_from_capital", "results_xbrl.db",
                            "quarterly", r["file"], None, None))
         fq += _quarter_extras(symbol, meta, {(r[13], r[8]) for r in fq})
         conn.executemany("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "

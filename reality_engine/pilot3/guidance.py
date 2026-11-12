@@ -1280,8 +1280,13 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                 stats["not_management"] += 1
                 continue                # the moderator introduced this speaker as a questioner, never management
             items.append((s, s, speaker))
-    call_period = statements[0]["call_period"] if statements else None
     docper = doc_period(doc["filing_date"], doc["known_at"])
+    # the call period comes from the filing record, never from a year mentioned in the text
+    if docper:
+        fy, q = docper
+        call_period = f"{q}FY{fy:02d}"
+    else:
+        call_period = statements[0]["call_period"] if statements else None
     # a project spend to date is a true fact beside the total (T-056 family D): the range parser blanks it so it
     # cannot pair with the total, and it gets its own row with the period the sentence names ("end of FY26" -> FY26,
     # "end of Q1FY27" -> Q1FY27, "end of Q3FY26" -> Q3FY26)

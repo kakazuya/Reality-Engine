@@ -144,12 +144,20 @@ def _filing_lines(symbol: str, f: dict, ptype: str, facts: list) -> list[tuple]:
     if extra and not profile.is_lender(symbol) and all(i in refs for i in ("pbt_before_exceptional", "finance_cost", "depreciation")):
         parts = [refs[i] for i in ("pbt_before_exceptional", "finance_cost", "depreciation")]
         oth = refs.get("other_income")
+        forex = (refs.get("forex_gain_loss") or refs.get("exchange_gain_loss")
+                 or refs.get("foreign_exchange_gain_loss"))
+        val = sum(p[0] for p in parts) - (oth[0] if oth else 0.0) - (forex[0] if forex else 0.0)
+        quote = "; ".join(f"{p[2]} {p[0]:g}" for p in parts)
+        if oth:
+            quote += f"; less {oth[2]} {oth[0]:g}"
+        if forex:
+            quote += f"; less {forex[2]} {forex[0]:g}"
         out.append(_row(symbol, f, fy, end, basis, "P&L", "ebitda",
                         "EBITDA = profit before exceptional items and tax + finance cost + depreciation - other income "
-                        "(formula F_EBITDA, applied to the period's filed lines)",
-                        sum(p[0] for p in parts) - (oth[0] if oth else 0.0), "inr",
-                        "; ".join(f"{p[2]} {p[0]:g}" for p in parts) + (f"; less {oth[2]} {oth[0]:g}" if oth else ""),
-                        ";".join(p[1] for p in parts + ([oth] if oth else [])), True, "xbrl_derived", ptype))
+                        "- forex gain/loss when printed separately (formula F_EBITDA, applied to the period's filed lines)",
+                        val, "inr", quote,
+                        ";".join(p[1] for p in parts + ([oth] if oth else []) + ([forex] if forex else [])),
+                        True, "xbrl_derived", ptype))
 
     def total(items, label, name, minus=()):
         parts = [refs[i] for i in items if i in refs]
