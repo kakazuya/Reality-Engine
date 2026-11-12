@@ -92,22 +92,26 @@ def db_path(explicit: str | None = None) -> Path:
     return candidate if candidate.is_file() else REAL_DB
 
 
-def load_corpus(db: str | Path | None = None) -> list[Page]:
-    """Every ``doc_page`` row of a corpus document, oldest first by filing record."""
+def load_corpus(db: str | Path | None = None, since: str = SINCE,
+                types: Sequence[str] | None = DOC_TYPES) -> list[Page]:
+    """Every ``doc_page`` row of a corpus document, oldest first by filing record.
+
+    ``since`` is the earliest ``known_at``; ``types=None`` takes every doc type (announcements too), as a
+    one-company store (T-191 AUROPHARMA, filings from 2024-04-01) needs every page it serves."""
     from reality_engine.db.readonly import connect_ro
 
     path = db_path(str(db) if db else None)
     if not Path(path).is_file():
         raise SystemExit(f"STOPPED: pilot3.db not found at {path}")
-    marks = ",".join("?" for _ in DOC_TYPES)
+    type_sql = f"d.doc_type IN ({','.join('?' for _ in types)}) AND " if types else ""
     con = connect_ro(path, timeout_s=60)
     try:
         cursor = con.execute(
             f"SELECT p.doc_key, p.symbol, p.page, COALESCE(p.text,''), "
             f"COALESCE(p.known_at, d.known_at), d.doc_type, COALESCE(d.title,''), d.filing_date, d.source_key "
             f"FROM doc_page p JOIN doc d ON d.doc_key = p.doc_key "
-            f"WHERE d.doc_type IN ({marks}) AND COALESCE(d.known_at,'') >= ? "
-            f"ORDER BY p.symbol, p.doc_key, p.page", (*DOC_TYPES, SINCE))
+            f"WHERE {type_sql}COALESCE(d.known_at,'') >= ? "
+            f"ORDER BY p.symbol, p.doc_key, p.page", (*(types or ()), since))
         rows = (cursor.fetchall() if cursor is not None else None) or []
     finally:
         con.close()
@@ -720,7 +724,7 @@ def cmd_embed(args: argparse.Namespace) -> None:
         out_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         raise SystemExit(f"STOPPED: cannot write {out_dir} ({exc}); pass --out")
-    pages = load_corpus(db)
+    pages = load_corpus(db, since=args.since, types=None if args.all_types else DOC_TYPES)
     client = FakeClient() if args.dry_run else DeepInfraClient(MODELS[args.model]["id"])
     print(f"embed: {MODELS[args.model]['id']} on {len(pages)} pages from {db}"
           f"{' [DRY RUN: fake client, no network]' if args.dry_run else ''}")
@@ -763,6 +767,8 @@ def main(argv: list[str] | None = None) -> None:
     embed.add_argument("--max-usd", type=float, default=1.0, help="stop before a batch would cross this")
     embed.add_argument("--dry-run", action="store_true", help="fake client: random unit vectors, fake usage")
     embed.add_argument("--db", default=None)
+    embed.add_argument("--since", default=SINCE, help="earliest known_at of a page's document")
+    embed.add_argument("--all-types", action="store_true", help="every doc type, announcements included")
     embed.add_argument("--out", default=os.environ.get("PILOT3_EMBED_DIR") or r"D:\RealityEngine\pilot3\embed_test")
     embed.set_defaults(func=cmd_embed)
 

@@ -404,12 +404,7 @@ CLEANUP_PS = r"""
 $ErrorActionPreference='Continue'
 Unregister-ScheduledTask -TaskName 'Pilot3OCR' -Confirm:$false -ErrorAction SilentlyContinue
 Unregister-ScheduledTask -TaskName 'RETextRecBench' -Confirm:$false -ErrorAction SilentlyContinue
-Get-AppxPackage -Name 'RETextRecBench' | Remove-AppxPackage -ErrorAction SilentlyContinue
-foreach($d in 'Cert:\LocalMachine\Root','Cert:\LocalMachine\TrustedPeople','Cert:\CurrentUser\My'){
-  Get-ChildItem $d -ErrorAction SilentlyContinue | Where-Object {$_.Subject -like '*CN=REBench*'} |
-    ForEach-Object { Remove-Item -Path $_.PSPath -Force -ErrorAction SilentlyContinue }
-}
-Remove-Item -Recurse -Force -ErrorAction SilentlyContinue '@ROOT@'
+@REMOVE_PACKAGE@Remove-Item -Recurse -Force -ErrorAction SilentlyContinue '@ROOT@'
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue 'C:\RE\ocr_large\work\pilot3_ocr*'
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue 'C:\RE\ocr_large\textrec_build'
 "package=" + [bool](Get-AppxPackage -Name 'RETextRecBench')
@@ -421,11 +416,27 @@ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue 'C:\RE\ocr_large\textr
 """
 
 
+REMOVE_PACKAGE_PS = r"""
+Get-AppxPackage -Name 'RETextRecBench' | Remove-AppxPackage -ErrorAction SilentlyContinue
+foreach($d in 'Cert:\LocalMachine\Root','Cert:\LocalMachine\TrustedPeople','Cert:\CurrentUser\My'){
+  Get-ChildItem $d -ErrorAction SilentlyContinue | Where-Object {$_.Subject -like '*CN=REBench*'} |
+    ForEach-Object { Remove-Item -Path $_.PSPath -Force -ErrorAction SilentlyContinue }
+}
+"""
+
+
 def cmd_cleanup(args) -> int:
-    """Remove the package, certificate, tasks, copied PDFs and build from the HP (the result is fetched)."""
-    out = _ps(args.host, CLEANUP_PS.replace("@ROOT@", args.remote_root)).stdout
+    """Remove the tasks, copied PDFs and build from the HP (the result is fetched).
+
+    The package stays installed (Shivam, 12 Nov, T-190): its signing key was destroyed after signing and
+    its certificate sits only in the machine TrustedPeople store, so keeping it trusts nothing new, and a
+    reinstall needs the unlocked interactive session. ``--remove-package`` also removes package + cert."""
+    remove = getattr(args, "remove_package", False)
+    script = CLEANUP_PS.replace("@REMOVE_PACKAGE@", REMOVE_PACKAGE_PS if remove else "")
+    out = _ps(args.host, script.replace("@ROOT@", args.remote_root)).stdout
     print(out.strip())
-    return 0 if "package=False" in out and "root=False" in out else 1
+    package_ok = ("package=False" in out) if remove else ("package=True" in out)
+    return 0 if package_ok and "root=False" in out else 1
 
 
 # --------------------------------------------------------------------------- #
@@ -719,6 +730,8 @@ def main(argv=None) -> int:
     cl = sub.add_parser("cleanup")
     cl.add_argument("--host", default=HOST)
     cl.add_argument("--remote-root", default=REMOTE_ROOT)
+    cl.add_argument("--remove-package", action="store_true",
+                    help="also remove the RETextRecBench package and its certificate (default: keep installed)")
     cl.set_defaults(func=cmd_cleanup)
     a = ap.parse_args(argv)
     a.symbols = [s.strip().upper() for s in (getattr(a, "symbols", "") or ",".join(profile.symbols())).split(",")

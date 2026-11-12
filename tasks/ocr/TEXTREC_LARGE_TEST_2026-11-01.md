@@ -312,10 +312,11 @@ $cert = New-SelfSignedCertificate -Type Custom -Subject "CN=REBench" -KeyUsage D
   -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3","2.5.29.19={text}")
 Export-PfxCertificate -Cert $cert -FilePath <build>\rebench.pfx -Password (ConvertTo-SecureString 'reb-2026' -AsPlainText -Force)
 Export-Certificate -Cert $cert -FilePath <build>\rebench.cer
-Import-Certificate -FilePath <build>\rebench.cer -CertStoreLocation Cert:\LocalMachine\Root
 Import-Certificate -FilePath <build>\rebench.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 & makeappx pack /d <build>\pkg /p <build>\textrec.msix /o
 & signtool sign /fd SHA256 /a /f <build>\rebench.pfx /p reb-2026 <build>\textrec.msix
+# 12 Nov (T-190): never import into LocalMachine\Root; use a random password, and delete the key at once
+Remove-Item <build>\rebench.pfx; Remove-Item "Cert:\CurrentUser\My\$($cert.Thumbprint)" -DeleteKey
 Add-AppxPackage -Path <build>\textrec.msix -ForceUpdateFromAnyVersion
 
 **Over SSH, `Add-AppxPackage` fails with `0x80070005`** (in the SSH session and in a hidden S4U task
@@ -347,7 +348,7 @@ C:\RE\dotnet\dotnet.exe publish reality_engine\tools\textrec\experimental\textre
 # then pack/sign/install as above (no PackageDependency in its manifest)
 ```
 
-**Cleanup when finished** (this run did it, see Section 13):
+**Since 12 Nov (T-190) the package stays installed**: see `machines/HP_LAPTOP.md` (TextRecognizer package). The full removal below is now `hp_ocr.py cleanup --remove-package`. **Cleanup when finished** (this run did it, see Section 13):
 `Remove-AppxPackage RETextRecBench; Remove-AppxPackage RETextRecBench20`, delete
 the PFX/CER and remove the certificate from
 `Cert:\LocalMachine\Root` and `Cert:\LocalMachine\TrustedPeople` by thumbprint,

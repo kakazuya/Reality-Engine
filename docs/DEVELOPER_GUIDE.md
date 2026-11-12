@@ -919,7 +919,8 @@ are ungraded in `.tmp/f9_results.csv` / `.tmp/f9_deck.csv`. Rules a-j, the measu
   bge-small 30.9% at 38 pages/s. `tasks/v2/T-154_npu_prep.py` fixes input shapes and FP16 so the HP NPU runs bge-small
   (17.6 pages/s, same recall; int8 breaks recall). Shivam stopped further comparisons (9 Nov).
 - Production index: Nemotron 8B on DeepInfra via `reality_engine/pilot3/embed_test.py embed` into `<store>/embed/`
-  (pilot20: 14,376 + 200 pages, ~$0.48), served by `pilot3_semantic` (`plugins/reality-data/server/lookups_semantic.py`,
+  (pilot20: 14,376 + 200 pages, ~$0.48; `embed --since 2024-04-01 --all-types` takes every doc type, announcements
+  too, for a one-company store: AUROPHARMA 2,595 pages, dry run ~$0.08, T-191), served by `pilot3_semantic` (`plugins/reality-data/server/lookups_semantic.py`,
   README). Re-ask results: `reports/2026-11-09_t154_p20_semantic_reask.xlsx`; Shivam: semantic stays, alongside the table store.
 
 ### O24. v8.1 label dictionary: one metric per printed label, per sector family (T-133, v8.1 10 Nov 2026)

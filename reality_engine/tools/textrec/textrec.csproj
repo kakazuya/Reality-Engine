@@ -22,6 +22,10 @@
     <!-- probe/ is a separate WinExe with its own Main; never compile it into the
          helper (the SDK would otherwise glob every .cs under this folder). -->
     <Compile Remove="probe\**\*.cs" />
+    <!-- install/ is the separate msixinstall WinExe (T-188). Compiled in, its synchronous Main
+         replaced the helper's async Main (CS8892) and textrec.exe exited at once, writing nothing
+         (found 12 Nov, T-190). -->
+    <Compile Remove="install\**\*.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001" />
