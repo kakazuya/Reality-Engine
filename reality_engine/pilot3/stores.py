@@ -263,6 +263,7 @@ def _basis(value: object) -> str:
 def build_quarterly(conn: sqlite3.Connection) -> dict:
     """fin_quarter_xbrl (long form, every reported quarter) and share_capital (paid-up / face value)."""
     schema.create(conn, ("fin_quarter_xbrl", "share_capital"))
+    schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)
     counts = {"fin_quarter_xbrl": {}, "share_capital": {}, "skipped_non_quarter": {}}
     for symbol in profile.symbols():
         rows = fetch(symbol, "results_quarterly")
@@ -285,13 +286,13 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
             if paid and face:
                 sc.append((symbol, r["isin"], r["period_end"], basis, None, None, paid / face, paid, face, "shares",
                            1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", "results_xbrl.db",
-                           "quarterly", r["file"], None, None))
+                           "quarterly", r["file"], None, None, "derived_from_capital"))
         fq += _quarter_extras(symbol, meta, {(r[13], r[8]) for r in fq})
         conn.executemany("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
                          "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
                          "source_table, source_rowid, known_at, known_at_source, is_reported) VALUES ("
                          + ",".join("?" * 20) + ")", fq)
-        conn.executemany("INSERT INTO share_capital VALUES (" + ",".join("?" * 18) + ")", sc)
+        conn.executemany("INSERT INTO share_capital VALUES (" + ",".join("?" * 19) + ")", sc)
         counts["fin_quarter_xbrl"][symbol] = len(fq)
         counts["share_capital"][symbol] = len(sc)
         counts["skipped_non_quarter"][symbol] = skipped
@@ -311,6 +312,7 @@ def build_corporate_events(conn: sqlite3.Connection) -> dict:
     """Split / bonus / buyback events into share_capital (rows with ``event`` set); ISIN windows into
     ``isin_effective_*`` for every share_capital row."""
     counts = {}
+    schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)
     for symbol in profile.symbols():
         rows, _cols = _duck(
             "SELECT id, isin, subject, action_type, ex_date, broadcast_date, known_at_src FROM corporate_actions "
@@ -320,8 +322,8 @@ def build_corporate_events(conn: sqlite3.Connection) -> dict:
             known = kat or bdate or str(ex)
             out.append((symbol, isin, str(ex), None, str(kind).lower(), _ratio(subject or ""), None, None, None,
                         None, None, str(known), "corporate_actions.known_at_src|broadcast_date|ex_date",
-                        "truth snapshot", "corporate_actions", str(id_), None, None))
-        conn.executemany("INSERT INTO share_capital VALUES (" + ",".join("?" * 18) + ")", out)
+                        "truth snapshot", "corporate_actions", str(id_), None, None, None))
+        conn.executemany("INSERT INTO share_capital VALUES (" + ",".join("?" * 19) + ")", out)
         counts[symbol] = len(out)
         for isin, start, end, _src in isin_history(symbol):
             conn.execute("UPDATE share_capital SET isin_effective_from=?, isin_effective_to=? "
@@ -937,11 +939,12 @@ def build_share_fallback(conn: sqlite3.Connection) -> dict:
     the paid-up/face-value division is rounded, so the ratio that needs a share count prefers the pattern row and
     keeps the paid-up one only as a fallback."""
     counts = {}
+    schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)
     for symbol in profile.symbols():
         bases = [r[0] for r in conn.execute("SELECT DISTINCT basis FROM fin_quarter_xbrl WHERE symbol=?", (symbol,))]
         have = {(r[0], r[1]) for r in conn.execute(
             "SELECT as_of_date, basis FROM share_capital WHERE symbol=? AND event IS NULL "
-            "AND source_table='shp_category'", (symbol,))}
+            "AND count_basis='filed_exact'", (symbol,))}
         n = 0
         for isin, quarter_end, shares, known, name, rowid in conn.execute(
                 "SELECT isin, quarter_end, shares, known_at, source_file, rowid FROM shp_category WHERE symbol=? "
@@ -950,10 +953,10 @@ def build_share_fallback(conn: sqlite3.Connection) -> dict:
             for basis in bases:
                 if (quarter_end, basis) in have:
                     continue
-                conn.execute("INSERT INTO share_capital VALUES (" + ",".join("?" * 18) + ")",
+                conn.execute("INSERT INTO share_capital VALUES (" + ",".join("?" * 19) + ")",
                              (symbol, isin, quarter_end, basis, None, None, shares, None, None, "shares", 1.0, known,
                               "shp_category.known_at (shareholding pattern total)", "pilot3.db", "shp_category",
-                              f"{name}#{rowid}", None, None))
+                              f"{name}#{rowid}", None, None, "filed_exact"))
                 have.add((quarter_end, basis))
                 n += 1
         counts[symbol] = n

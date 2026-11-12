@@ -195,7 +195,7 @@ def build_fixture() -> None:
     c.execute("INSERT INTO shp_pledge VALUES ('KEC','I','2025-12-31',0,0,0,1.0e8,NULL,NULL,NULL,NULL,"
               "'shp1.xml','2026-01-20T10:00:00','x')")
     c.execute("INSERT INTO share_capital VALUES ('KEC','I','2025-12-31','consolidated',NULL,NULL,2.6e8,5e8,2,'inr',1,"
-              "'2026-01-30T10:00:00','x','db','t','1',NULL,NULL)")
+              "'2026-01-30T10:00:00','x','db','t','1',NULL,NULL,'derived_from_capital')")
     c.execute("INSERT INTO transcript_statement(symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,"
               "topics,period_discussed,period_source,numbers_json,statement,quote,is_fragment,known_at,known_at_source,"
               "extractor_rule) VALUES ('KEC','old/call.pdf','2026-02-12','Q3FY26',2,1,'A B','ceo','prepared',"

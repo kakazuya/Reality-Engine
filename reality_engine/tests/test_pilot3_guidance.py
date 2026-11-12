@@ -1222,3 +1222,147 @@ def test_t187_tightened_rules_keep_out_analysts_and_bare_variability():
     assert not [r for r in got if r["symbol"] == "APLAPOLLO" and r["metric"] == "capex" and r["low"] == 1500], got
     assert not [r for r in got if r["metric"] == "ebitda_margin" and (r["low"], r["high"]) == (18.0, 26.0)], got
     assert not [r for r in got if r["symbol"] == "SAIL" and r["low"] in (100000.0, 35000.0)], got
+
+# --- T-192 round 4 H2: only a proven subsidiary / associate / JV / acquired company is an entity ------------
+def test_an_entity_needs_subsidiary_proof_not_a_name():
+    """The six rows the review found wrongly hidden stay the group's: an acronym (NTI, LME, APE, AOV), a metric
+    word and the company's own mine project are never an entity.  A proven subsidiary (Novelis from the KPI entity,
+    Bajaj Housing from a related-party relationship) and an acquisition named in the question are entities."""
+    own = ["bajfinance", "bajajfinserv"]
+    known = {"novelis", "bajajhousingfinance"}
+    for raw, context in (("NTI", "opex to NTI of 25-40%"), ("LME", "cost of production linked to LME"),
+                         ("APE", "APE growth trend"), ("AOV", "AOV of 5-6%"),
+                         ("Bandha Mine", "capex of 8,000 crore at Bandha Mine")):
+        assert guidance.foreign_entity(own, known, context, raw) == ("", False), raw
+    # a candidate the store cannot prove is not an entity: the row stays the group's and is labelled unsure
+    assert guidance.foreign_entity(own, known, "Eugia sales grew", "Eugia") == ("", True)
+    assert guidance.foreign_entity(own, known, "Novelis margin at 10%", "Novelis") == ("Novelis", False)
+    assert guidance.foreign_entity(own, known, "Bajaj Housing Finance AUM of 1 lakh crore",
+                                   "Bajaj Housing") == ("Bajaj Housing", False)
+    assert guidance.foreign_entity(own, set(), "this is subject to FTC approval and the Lannett acquisition",
+                                   "Lannett,FTC") == ("Lannett", False)
+
+
+# --- T-192 round 5 J1: the sentence's own scope beats the entity the question names ---------------------------
+def _scope_db(path: Path) -> None:
+    """A HINDALCO Q4 FY26 call: the four quotes the review names, each answered under a Novelis-tagged question."""
+    from reality_engine.pilot3 import kpi
+
+    for suffix in ("", "-wal", "-shm"):
+        Path(str(path) + suffix).unlink(missing_ok=True)
+    con = sqlite3.connect(path)
+    con.execute(schema.TABLES["company"])
+    con.execute(schema.TABLES["doc"])
+    con.execute(schema.TABLES["doc_page"])
+    con.executescript(TRANSCRIPT_SCHEMA)
+    con.executescript(kpi.SCHEMA)
+    con.execute("INSERT INTO company VALUES ('HINDALCO','INE038A01020',NULL,NULL,'profile','500440',"
+                "'Hindalco Industries Ltd')")
+    con.execute("INSERT INTO kpi_series (symbol, metric, dimension, value, unit, scale, period_type, fiscal_period, "
+                "basis, entity, doc_key, page, quote, known_at, extractor_rule, confidence, conf_rank) "
+                "VALUES ('HINDALCO','ebitda','total',1,'inr_cr',1,'FY','FY26','consolidated','Novelis','deck',1,"
+                "'Novelis EBITDA','2026-05-01T10:00:00','table_v1','table',4)")
+    con.execute("INSERT INTO doc(doc_key,symbol,isin,doc_type,doc_family,title,filing_date,known_at,pages) "
+                "VALUES ('hind/call.pdf','HINDALCO',NULL,'transcript','transcript','Q3FY26 Earnings Call',"
+                "'2026-02-18','2026-02-18T12:42:51',5)")
+    quotes = [
+        (2, "Bay Minette,Novelis", 1,
+         "On the capex side, can you give us a sense of the India business capex next year and thereafter, including "
+         "the $750 million of equity infusion that is to be done at Novelis?",
+         "In FY27, the India capex will be about INR12,000 crores, and the Novelis capex will be between, I think, "
+         "about 2.3 billion to 2.4 billion, largely Bay Minette."),
+        (3, "", 2,
+         "On the CAPEX side, we have an idea of the Novelis CAPEX. So, for India, what has happened so far in the "
+         "nine months? What is the target for this year and next year?",
+         "So, this year, our target is about, we will be finishing the year at around INR 8,000 crores, and you need "
+         "to add to that the INR 2,000 crores we paid to get the Bandha Mine."),
+        (4, "Bay Minette", 3,
+         "And on between recycling and smelter, the entire capacity expansion?",
+         "India capex, Pinakin, INR12,000 crores this year, next year will be, I don't know, INR15,000 crores to "
+         "INR17,000 crores, but it's not going to be at the same level as Bay Minette was."),
+        (5, "AV Mineral", 4,
+         "And the India capex, which could get phased out?",
+         "And the India CAPEX, the projects that we have, you know very well, we are going to be spending around "
+         "INR 10,000 crores a year."),
+    ]
+    con.executemany("INSERT INTO doc_page(doc_key,symbol,page,text,method,chars,known_at) "
+                    "VALUES ('hind/call.pdf','HINDALCO',?,?,'script_text',?,NULL)",
+                    [(p, q + " " + text, len(q + " " + text)) for p, _e, _t, q, text in quotes])
+    con.executemany(
+        "INSERT INTO transcript_statement(symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,"
+        "topics,period_discussed,period_source,numbers_json,statement,quote,is_fragment,entities,answer_turn,"
+        "known_at,known_at_source,extractor_rule) VALUES ('HINDALCO','hind/call.pdf','2026-02-18','Q3FY26',?,1,"
+        "'Satish Pai','md','prepared','capex','','call','[]',?,?,0,?,?,'2026-02-18T12:42:51','x','t')",
+        [(p, text, text, ents, turn) for p, ents, turn, _q, text in quotes])
+    con.executemany("INSERT INTO transcript_question(symbol,doc_key,call_date,call_period,page,analyst,firm,question,"
+                    "topics,entities,answer_turn,known_at,known_at_source,extractor_rule) "
+                    "VALUES ('HINDALCO','hind/call.pdf','2026-02-18','Q3FY26',?,'Analyst',NULL,?,'capex',?,?,"
+                    "'2026-02-18T12:42:51','x','t')",
+                    [(p, q, ents, turn) for p, ents, turn, q, _text in quotes])
+    con.commit()
+    con.close()
+
+
+def test_a_sentences_own_scope_beats_the_entity_the_question_names():
+    """J1: the question tags these answers Novelis, but the sentence itself scopes the figure to India (or to the
+    company's own mine/project): the four rows are the group's, never the subsidiary's."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_scope.db"
+    _scope_db(path)
+    guidance.run(str(path), ["HINDALCO"])
+    got = {(r["low"], r["high"], r["target_period"], r["entity"]) for r in rows(path) if r["metric"] == "capex"}
+    assert (12000.0, 12000.0, "FY27", "") in got, got
+    assert (8000.0, 8000.0, "FY26", "") in got, got
+    assert (10000.0, 10000.0, "FY26", "") in got, got
+    assert (15000.0, 17000.0, "FY27", "") in got, got
+    assert not [r for r in rows(path) if r["metric"] == "capex"
+                and (r["low"], r["high"]) in ((12000.0, 12000.0), (8000.0, 8000.0), (10000.0, 10000.0),
+                                              (15000.0, 17000.0)) and r["entity"]], got
+
+
+def test_an_entity_the_question_proves_is_still_the_entitys():
+    """J1: the sentence's scope wins; only a sentence that names no scope at all inherits the question's proven
+    entity.  Lannett (an acquisition) and Novelis (a KPI entity) stay entity rows."""
+    own = ["aurobindo", "aurobindopharmaltd"]
+    lannett = "We think that in the future, we will be able to get a margin of 15% or more."
+    q = "Can you talk about the outlook for the Lannett acquisition?"
+    assert guidance.sentence_entity(own, set(), lannett, lannett.find("15%"), "", "Lannett", q) == ("Lannett", False)
+
+    hind = ["hindalco", "hindalcoindustriesltd"]
+    india = ("So, this year, our target is about, we will be finishing the year at around INR 8,000 crores, and you "
+             "need to add to that the INR 2,000 crores we paid to get the Bandha Mine.")
+    novelis_q = ("On the CAPEX side, we have an idea of the Novelis CAPEX. So, for India, what has happened so far "
+                 "in the nine months? What is the target for this year and next year?")
+    assert guidance.sentence_entity(hind, {"novelis"}, india, india.find("8,000"), "", "Novelis",
+                                    novelis_q) == ("", False)
+    bajaj = "Bajaj Housing Finance AUM of 1 lakh crore"
+    assert guidance.sentence_entity(["bajfinance", "bajajfinancelimited"], {"bajajhousingfinance"}, bajaj,
+                                    bajaj.find("1 lakh"), "", "", "") == ("Bajaj Housing Finance", False)
+    # a speaker or an analyst named in the statement's entity list is a person, never an entity: the row stays the
+    # group's and is not even marked unsure (the HINDALCO/KEC rows the rebuild labelled entity_unsure on a name)
+    capex = "So this year, we have said the capex is going to be around INR8,500 crores."
+    assert guidance.sentence_entity(["hindalco", "hindalcoindustriesltd"], {"novelis"}, capex,
+                                    capex.find("8,500"), "Pinakin", "", "", ("Pinakin",)) == ("", False)
+
+
+def test_known_entity_names_are_read_from_the_store_not_from_code():
+    """The proof is data: a ``kpi_series.entity`` a subsidiary's own release already carries, and a related-party
+    counterparty whose relationship says subsidiary / associate / joint venture."""
+    from reality_engine.pilot3 import kpi
+
+    con = sqlite3.connect(":memory:")
+    con.execute(schema.TABLES["company"])
+    con.executescript(kpi.SCHEMA)
+    con.execute(schema.TABLES["related_party_txn"])
+    con.execute("INSERT INTO company VALUES ('HINDALCO','INE038A01020',NULL,NULL,'1','1','Hindalco Industries Ltd')")
+    con.execute("INSERT INTO kpi_series (symbol, metric, dimension, value, unit, scale, period_type, fiscal_period, "
+                "basis, entity, doc_key, page, quote, known_at, extractor_rule, confidence, conf_rank) "
+                "VALUES ('HINDALCO','ebitda','total',1,'inr_cr',1,'FY','FY26','consolidated','Novelis','d',1,"
+                "'Novelis EBITDA','2026-05-01T10:00:00','table_v1','table',4)")
+    con.execute("INSERT INTO related_party_txn (symbol, counterparty, relationship) VALUES "
+                "('HINDALCO','Bajaj Housing Finance Limited','subsidiary')")
+    con.execute("INSERT INTO related_party_txn (symbol, counterparty, relationship) VALUES "
+                "('HINDALCO','Key Managerial Personnel','key managerial personnel')")
+    got = guidance.known_entity_names(con, "HINDALCO")
+    assert "novelis" in got and any("bajajhousingfinance" in name for name in got)
+    assert not any("personnel" in name for name in got)

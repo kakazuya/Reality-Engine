@@ -69,7 +69,7 @@ FORMULAS = [
      "company states itself stays in kpi_series.nim_pct as its own row, never merged into this one"),
     ("F_ROCE", "roce", "100 * ltm_ebit / capital_employed", "ebit,capital_employed", "pct",
      "capital employed = total assets - current liabilities at the period end (closing, not average)"),
-    ("F_ROE", "roe", "100 * ltm_pat / net_worth", "pat,net_worth", "pct", "closing net worth (equity attributable to owners)"),
+    ("F_ROE", "roe", "100 * ltm_pat / net_worth", "pat,net_worth", "pct", "average owners' equity (opening + closing)/2 when the opening net worth is held; closing net worth (basis=closing_equity) otherwise"),
     ("F_ROA", "roa", "100 * ltm_pat / total_assets", "pat,total_assets", "pct", "closing total assets"),
     ("F_OPEX_NTI", "opex_to_net_total_income_pct",
      "100 * (employee_cost + fee_commission_expense + other_expenses + depreciation) / (total_income - finance_cost)",
@@ -200,15 +200,20 @@ def _share_count(conn: sqlite3.Connection, symbol: str, basis: str, day: str, as
 
     The exact total of a filed shareholding pattern wins over the paid-up / face-value division, which is rounded
     (and net of an ESOP trust for some companies; T-073).  Paid-up capital stays the fallback for a day before the
-    pattern's own filing."""
+    pattern's own filing.  A store built before ``count_basis`` exists still answers: its shareholding-pattern rows
+    are the exact ones by their own ``source_table`` (T-192), so no live store needs a migration to be read."""
+    have = {row[1] for row in conn.execute("PRAGMA table_info(share_capital)")}
+    basis_expr = ("COALESCE(count_basis, CASE WHEN source_table='shp_category' THEN 'filed_exact' END)"
+                  if "count_basis" in have else
+                  "CASE WHEN source_table='shp_category' THEN 'filed_exact' END")
     rows = conn.execute(
-        "SELECT as_of_date, shares_outstanding, known_at, source_table FROM share_capital "
-        "WHERE symbol=? AND basis=? AND event IS NULL AND shares_outstanding>0 AND as_of_date<=? "
+        f"SELECT as_of_date, shares_outstanding, known_at, source_table, {basis_expr} AS count_basis "
+        "FROM share_capital WHERE symbol=? AND basis=? AND event IS NULL AND shares_outstanding>0 AND as_of_date<=? "
         "ORDER BY as_of_date, known_at", (symbol, basis, as_of or day)).fetchall()
     live = [r for r in rows if (r[2] or "")[:10] <= day]
     if not live:
         return None
-    exact = [r for r in live if r[3] == "shp_category"]
+    exact = [r for r in live if r[4] == "filed_exact"]
     row = (exact or live)[-1]
     return row[1], row[2], row[3]
 
@@ -464,6 +469,9 @@ def _input_views(conn: sqlite3.Connection) -> list[str]:
 
 def build_ratios(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("formula", "ratio_panel", "valuation_daily"))
+    # a store built before ``count_basis`` still elects the exact share count: the column the ratio reads is added
+    # here, additively, before any query needs it (T-192)
+    schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)
     conn.executemany("INSERT INTO formula VALUES (?,?,?,?,?,1,?)", FORMULAS)
     counts = {}
     views = _input_views(conn)
@@ -564,6 +572,18 @@ def _balance_ratios_rows(conn: sqlite3.Connection, symbol: str, isin: str | None
             "WHERE symbol=? AND definition IN ('xbrl_reported','xbrl_derived') AND period_type IN ('FY','H1') "
             "AND statement IN ('BS','P&L') ORDER BY known_at", (symbol,)):
         sheets[(basis, fy, end, ptype)][item] = (value, known, rowid)
+    # opening net worth by (basis, period_end) for the ROE average: (value, fy, rowid, known_at), so the average's
+    # own input is named in the row and a grader can rebuild the number from the references.
+    equity_by_end = {}
+    for (basis, fy, end, _ptype), bs in sheets.items():
+        if "net_worth" in bs:
+            equity_by_end.setdefault((basis, end), (bs["net_worth"][0], fy, bs["net_worth"][2], bs["net_worth"][1]))
+    sheets = defaultdict(dict)
+    for basis, fy, end, ptype, item, value, known, rowid in conn.execute(
+            "SELECT basis, fiscal_year, period_end, period_type, line_item, value*scale, known_at, rowid FROM fin_annual_line "
+            "WHERE symbol=? AND definition IN ('xbrl_reported','xbrl_derived') AND period_type IN ('FY','H1') "
+            "AND statement IN ('BS','P&L') ORDER BY known_at", (symbol,)):
+        sheets[(basis, fy, end, ptype)][item] = (value, known, rowid)
     # the lender's book at each sheet date, so a NIM can average the period's opening and closing loan book
     books = {(basis, end): (bs["loans"][0], bs["loans"][1], bs["loans"][2], fy)
              for (basis, fy, end, ptype), bs in sheets.items() if "loans" in bs}
@@ -591,8 +611,20 @@ def _balance_ratios_rows(conn: sqlite3.Connection, symbol: str, isin: str | None
                  "F_BVPS", [ref("net_worth"), f"sc:{symbol}:{end}"], max(nw[1], sh[1] or ""))
         if nw and nw[0] and debt:
             put("debt_to_equity", debt[0] / nw[0], "x", "F_DE", ("total_borrowings", "net_worth"))
+        # ROE on average owners' equity when the opening net worth is held; closing equity only otherwise.
+        opening_end = (date.fromisoformat(start) - timedelta(days=1)).isoformat()
+        opening = equity_by_end.get((basis, opening_end))
         if nw and nw[0] and "pat" in ltm:
-            put("roe", 100.0 * ltm["pat"][0] / nw[0], "pct", "F_ROE", ("net_worth",), ("pat",))
+            if opening and opening[0]:
+                opening_ref = f"fa:{symbol}:{opening[1]}:{basis}:net_worth#{opening[2]}"
+                _put(out, symbol, isin, fy, ptype, start, end, basis, "roe",
+                     100.0 * ltm["pat"][0] / ((opening[0] + nw[0]) / 2.0), "pct", "F_ROE",
+                     [ref("net_worth"), opening_ref, f"fq:{symbol}:ltm:{basis}:pat@{end}"],
+                     max(nw[1], opening[3], ltm["pat"][1]))
+            else:
+                _put(out, symbol, isin, fy, ptype, start, end, "closing_equity", "roe",
+                     100.0 * ltm["pat"][0] / nw[0], "pct", "F_ROE", [ref("net_worth")] +
+                     [f"fq:{symbol}:ltm:{basis}:pat@{end}"], max(nw[1], ltm["pat"][1]))
         if "total_assets" in bs and "pat" in ltm:
             put("roa", 100.0 * ltm["pat"][0] / bs["total_assets"][0], "pct", "F_ROA", ("total_assets",), ("pat",))
         if profile.is_lender(symbol) and "loans" in bs:

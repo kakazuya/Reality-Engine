@@ -113,9 +113,9 @@ def test_valuation_day_before_any_known_quarter_keeps_close_with_null_ratios():
         schema.create(conn, ("price_delivery", "share_capital", "fin_quarter_xbrl", "fin_annual_line",
                              "dividend_event", "valuation_daily"))
         _price(conn, "2020-06-01", close=100.0)
-        conn.execute("INSERT INTO share_capital VALUES (" + ",".join("?" * 18) + ")",
+        conn.execute("INSERT INTO share_capital VALUES (" + ",".join("?" * 19) + ")",
                      (SYM, ISIN, "2019-12-31", "standalone", None, None, 10.0, 10.0, 1.0, "shares", 1.0,
-                      "2020-01-01T10:00:00", "x", "d", "t", "1", None, None))
+                      "2020-01-01T10:00:00", "x", "d", "t", "1", None, None, "derived_from_capital"))
         assert ratios._valuation(conn, SYM, ISIN) == 1
         close, market_cap, pe, pb, ev = conn.execute(
             "SELECT close, market_cap, pe, pb, ev_ebitda FROM valuation_daily").fetchone()

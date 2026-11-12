@@ -77,11 +77,12 @@ from collections import Counter
 from pathlib import Path
 
 from . import profile
+from . import schema
 from .schema import TABLES, GUIDANCE_INDEXES
-from .transcripts import split_sentences, _same_person
+from .transcripts import split_sentences, _same_person, non_results_call
 
 COLS = ("symbol isin metric target_period low high unit direction said_on doc_key page quote speaker "
-        "known_at known_at_source revision_of extractor_rule").split()
+        "known_at known_at_source revision_of extractor_rule entity entity_unsure").split()
 
 DOC_TYPES = ("transcript", "deck", "results", "press_release")
 MAX_ROWS_PER_PAGE = 6
@@ -951,7 +952,8 @@ def _row_rule(sentence: str, metric: str, unit: str, symbol: str, v1_found: bool
 
 
 def worded_row(symbol: str, doc: sqlite3.Row, page: int, sentence: str, quote: str, speaker: str | None,
-               before: str, call_period: str | None, docper: tuple[int, str] | None, stats: dict) -> tuple | None:
+               before: str, call_period: str | None, docper: tuple[int, str] | None, stats: dict,
+               entity: str = "", entity_unsure: bool = False) -> tuple | None:
     """A forward target said in words with no figure (T-058): the metric and the period are read as usual and the
     row keeps ``low``/``high`` NULL, with ``direction`` and the exact quote carrying the magnitude.
 
@@ -995,7 +997,8 @@ def worded_row(symbol: str, doc: sqlite3.Row, page: int, sentence: str, quote: s
     return (symbol, doc["isin"], metric, period, None, None, "pct", worded_direction(sentence, metric, move.start()),
             (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote, speaker,
             doc["known_at"], "doc.known_at", None, _row_rule(sentence, metric, "pct", symbol,
-                                                             bool(CUE_V1.search(sentence))))
+                                                             bool(CUE_V1.search(sentence))), entity,
+            1 if entity_unsure else 0)
 
 
 def _docs(con: sqlite3.Connection, symbol: str):
@@ -1007,11 +1010,266 @@ def _docs(con: sqlite3.Connection, symbol: str):
 def _transcript_statements(con: sqlite3.Connection, symbol: str) -> dict[str, list[sqlite3.Row]]:
     if not con.execute("SELECT 1 FROM sqlite_master WHERE name='transcript_statement'").fetchone():
         return {}
+    have = {row[1] for row in con.execute("PRAGMA table_info(transcript_statement)")}
+    extra = ", entities, answer_turn" if {"entities", "answer_turn"} <= have else ", '' AS entities, 0 AS answer_turn"
     out: dict[str, list[sqlite3.Row]] = {}
-    for row in con.execute("SELECT doc_key, page, call_period, speaker, role, statement, quote FROM "
-                           "transcript_statement WHERE symbol=? ORDER BY doc_key, page, seq", (symbol,)):
+    for row in con.execute("SELECT doc_key, page, call_period, speaker, role, statement, quote"
+                           + extra + " FROM transcript_statement WHERE symbol=? ORDER BY doc_key, page, seq",
+                           (symbol,)):
         out.setdefault(row["doc_key"], []).append(row)
     return out
+
+
+def _question_entities(con: sqlite3.Connection, symbol: str) -> dict[tuple[str, int], tuple[str, str]]:
+    """The entities and the text of each analyst question, by (doc_key, answer_turn): the question a statement
+    answers carries the subsidiary/acquirer the target belongs to when the statement itself names none (T-192)."""
+    if not con.execute("SELECT 1 FROM sqlite_master WHERE name='transcript_question'").fetchone():
+        return {}
+    have = {row[1] for row in con.execute("PRAGMA table_info(transcript_question)")}
+    if not {"entities", "answer_turn", "question"} <= have:
+        return {}
+    return {(r[0], int(r[1] or 0)): (r[2] or "", r[3] or "") for r in con.execute(
+        "SELECT doc_key, answer_turn, entities, question FROM transcript_question WHERE symbol=?", (symbol,))}
+
+
+def own_entity_names(con: sqlite3.Connection, symbol: str) -> list[str]:
+    """Normalised names of the reporting company (symbol and every name the store files it under), so an entity
+    that IS the company is not read as a subsidiary's."""
+    names = {symbol}
+    if con.execute("SELECT 1 FROM sqlite_master WHERE name='company'").fetchone():
+        for (name,) in con.execute("SELECT name FROM company WHERE symbol=?", (symbol,)):
+            if name:
+                names.add(name)
+    return [re.sub(r"[^a-z]", "", str(n).lower()) for n in names if n and len(re.sub(r"[^a-z]", "", str(n).lower())) >= 2]
+
+
+def _norm_entity(raw: str | None) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(raw or "").lower())
+
+
+# words that name a measure, a benchmark or a reporting basis, never a company (T-192 round 4): an acronym is
+# always one of these families, and a metric word in title case ("Margin", "Guidance") is not an entity either
+_NOT_ENTITY_WORDS = {
+    "nti", "lme", "ape", "aov", "aum", "nim", "lme", "roe", "roce", "roa", "pat", "pbt", "ebitda", "ebit", "eps",
+    "revenue", "revenues", "sales", "margin", "margins", "capex", "opex", "cost", "costs", "growth", "volume",
+    "volumes", "price", "prices", "debt", "cash", "tax", "dividend", "order", "orders", "book", "intake",
+    "guidance", "target", "outlook", "business", "segment", "segments", "company", "group", "india", "usa", "us",
+    "uk", "eu", "fy", "the", "and", "our", "its", "jv", "rd", "research", "development", "ebitda",
+}
+# a plant, mine, project or unit is the company's own asset, not an entity its target belongs to
+_NOT_ENTITY_NOUN = re.compile(
+    r"\b(?:mine|plant|project|projects|refinery|smelter|unit|works|mill|complex|facility|site|phase|block|"
+    r"terminal|port|depot|warehouse|expansion|greenfield|brownfield)\b", re.I)
+# the words a filing or a statement uses when it names a subsidiary / associate / JV / acquired company
+_ENTITY_RELATION = re.compile(
+    r"\b(?:subsidiar(?:y|ies)|associates?|associate[sd]?|joint\s+ventures?|\bjv\b|step[- ]down|acquisition|"
+    r"acquisitions|acquirer|acquired|investee)\b", re.I)
+
+
+def known_entity_names(con: sqlite3.Connection, symbol: str) -> set[str]:
+    """Normalised names the store itself knows as subsidiaries, associates, joint ventures or acquired companies.
+
+    The proofs are data, never a name in code: the ``entity`` a KPI row already carries (a subsidiary's own release),
+    and a related-party counterparty whose relationship says subsidiary / associate / joint venture (T-192 round 4).
+    A name the store cannot prove is not an entity; the row stays the group's and says ``entity_unsure``."""
+    names: set[str] = set()
+    tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    own = {_norm_entity(n) for n in own_entity_names(con, symbol)}
+    if "kpi_series" in tables and {"symbol", "entity"} <= {
+            r[1] for r in con.execute("PRAGMA table_info(kpi_series)")}:
+        for (ent,) in con.execute("SELECT DISTINCT entity FROM kpi_series WHERE symbol=?", (symbol,)):
+            word = _norm_entity(ent)
+            if len(word) >= 4 and word not in own and word not in _NOT_ENTITY_WORDS:
+                names.add(word)
+    if "related_party_txn" in tables:
+        for counterparty, relationship in con.execute(
+                "SELECT DISTINCT counterparty, relationship FROM related_party_txn WHERE symbol=?", (symbol,)):
+            if not relationship or not _ENTITY_RELATION.search(relationship):
+                continue
+            word = _norm_entity(counterparty)
+            if len(word) >= 4 and word not in own and word not in _NOT_ENTITY_WORDS:
+                names.add(word)
+    return names
+
+
+def _entity_candidate(raw: str) -> bool:
+    """Could this extracted token name a company at all?  An acronym (NTI, LME, APE, AOV), a metric word, a bare
+    number and a plant/mine/project name never do (T-192 round 4)."""
+    raw = raw.strip(" .;:")
+    word = _norm_entity(raw)
+    if len(word) < 3 or word in _NOT_ENTITY_WORDS or re.fullmatch(r"[\d.,%\- ]+", raw or ""):
+        return False
+    if re.fullmatch(r"[A-Z][A-Z&.\-]{0,5}", raw):        # all caps and short: an acronym, never a company here
+        return False
+    if _NOT_ENTITY_NOUN.search(raw):
+        return False                                     # "Bandha Mine", "Vizag plant": the company's own asset
+    return True
+
+
+def _relation_cue(context: str, raw: str) -> bool:
+    """Does this sentence (or the question it answers) call the token a subsidiary / associate / JV / acquisition?"""
+    for m in re.finditer(re.escape(raw.strip()), context or "", re.I):
+        if _ENTITY_RELATION.search(context[max(0, m.start() - 120):m.end() + 120]):
+            return True
+    return False
+
+
+def foreign_entity(own_names: list[str], known_names: set[str], context: str, *blobs: str) -> tuple[str, bool]:
+    """The subsidiary / associate / JV / acquired company an entity list names, and whether it was unsure.
+
+    A target stated for a named entity other than the company is that entity's, never the group's (T-192).  A token
+    becomes an entity only when the store can prove it is one: it is a name ``kpi_series`` already reports as an
+    entity, it is a related-party counterparty whose relationship says subsidiary/associate/JV, or the sentence
+    (or the question it answers) calls it one.  Otherwise the token is not an entity: the row stays the group's,
+    and ``True`` says the text named a candidate the store could not prove (``entity_unsure``) -- it is never
+    hidden on a guess."""
+    unsure = False
+    for blob in blobs:
+        for raw in re.split(r"[,;]", str(blob or "")):
+            raw = raw.strip(" .;:")
+            word = _norm_entity(raw)
+            if not word or not _entity_candidate(raw):
+                continue
+            if any(len(n) >= 3 and (word in n or n in word) for n in own_names):
+                continue
+            if any(len(k) >= 4 and (word in k or k in word) for k in known_names):
+                return raw, False
+            if _relation_cue(context, raw):
+                return raw, False
+            unsure = True
+    return "", unsure
+
+
+# a geography, a reporting basis or a standalone scope named in the sentence is a scope of its own: the figure
+# belongs to that scope, never to an entity the question happens to name (T-192 round 5).  "US" is matched in caps
+# only, and never in "US$": the lower-case word is a pronoun, a currency amount is no geography.
+_GROUP_SCOPE_WORD = re.compile(
+    r"\b(?:standalone|domestic|consolidated|the\s+company|our\s+company|the\s+group|our\s+group)\b", re.I)
+_OWN_SCOPE_WORD = re.compile(
+    r"\b(?:india|indian|north\s+america|europe|asia|china|uk|united\s+kingdom|japan|middle\s+east|latin\s+"
+    r"america|africa)\b", re.I)
+_OWN_SCOPE_CAPS = re.compile(r"\b(?:US|U\.S\.|USA|U\.S\.A\.)(?!\s*\$)")
+_GROUP, _OWN, _ENTITY = 0, 1, 2      # scope strength at one offset: the company's name/reporting basis wins
+
+
+_NAME_SUFFIX = ("limited", "ltd", "private", "pvt", "company", "co", "plc", "incorporated", "inc", "corporation",
+                "corp", "llp")
+
+
+def _bare_name(word: str) -> str:
+    """A normalised name without its corporate suffix, so "Bajaj Finance" and "Bajaj Finance Limited" are one name."""
+    changed = True
+    while changed:
+        changed = False
+        for suffix in _NAME_SUFFIX:
+            if word.endswith(suffix) and len(word) > len(suffix) + 3:
+                word, changed = word[:-len(suffix)], True
+    return word
+
+
+def _capital_spans(sentence: str):
+    """Every run of one to five capitalised words, with its start: the spans a named company appears as
+    ("Novelis", "Bajaj Housing Finance")."""
+    for m in re.finditer(r"[A-Z][A-Za-z0-9&.'\-]*(?:\s+[A-Z][A-Za-z0-9&.'\-]*){0,4}", sentence):
+        starts = [(w.start() + m.start(), w.end() + m.start())
+                  for w in re.finditer(r"[A-Z][A-Za-z0-9&.'\-]*", m.group(0))]
+        for i, _ in enumerate(starts):
+            for j in range(len(starts), i, -1):
+                yield starts[i][0], sentence[starts[i][0]:starts[j - 1][1]]
+
+
+def _scope_mentions(sentence: str, own_names: list[str], known_names: set[str],
+                    statement_entities: str = "", people: tuple[str, ...] = ()) -> list[tuple[int, str, str]]:
+    """Every scope the sentence names, ``(start, 'group'|'own'|'entity', raw)`` in text order.
+
+    ``group`` is the company itself or a standalone/domestic/consolidated basis; ``own`` is a geography or one of
+    its plants/mines/projects; ``entity`` is a subsidiary/associate/JV/acquired company the store proves, or one the
+    statement's own entity list names (proven or only a candidate: ``_proven_entity`` decides)."""
+    found: list[tuple[int, int, str, str]] = []      # (start, strength, kind, raw)
+    for m in _GROUP_SCOPE_WORD.finditer(sentence):
+        found.append((m.start(), _GROUP, "group", m.group(0)))
+    for m in _OWN_SCOPE_WORD.finditer(sentence):
+        found.append((m.start(), _OWN, "own", m.group(0)))
+    for m in _OWN_SCOPE_CAPS.finditer(sentence):
+        found.append((m.start(), _OWN, "own", m.group(0)))
+    for start, span in _capital_spans(sentence):
+        word = _norm_entity(span)
+        if any(len(n) >= 3 and _bare_name(word) == _bare_name(n) for n in own_names):
+            found.append((start, _GROUP, "group", span))
+        elif any(len(k) >= 4 and _bare_name(word) == _bare_name(k) for k in known_names):
+            found.append((start, _ENTITY, "entity", span))
+    for m in _NOT_ENTITY_NOUN.finditer(sentence):
+        found.append((m.start(), _OWN, "own", m.group(0)))
+    for raw in re.split(r"[,;]", statement_entities or ""):
+        raw = raw.strip(" .;:")
+        word = _norm_entity(raw)
+        if not word or not _entity_candidate(raw):
+            continue
+        if any(len(n) >= 3 and _bare_name(word) == _bare_name(n) for n in own_names):
+            continue
+        if people and any(_same_person(raw, p) for p in people):
+            continue                     # a speaker or an analyst is a person, never a company
+        for m in re.finditer(r"\b" + re.escape(raw) + r"\b", sentence, re.I):
+            found.append((m.start(), _ENTITY, "entity", raw))
+    # one mention per start: an entity beats the group's name, and the longer span wins ("Bajaj Housing" over "Bajaj")
+    best: dict[int, tuple[int, str, str]] = {}
+    for start, rank, kind, raw in found:
+        cur = best.get(start)
+        if cur is None or (rank, len(raw)) > (cur[0], len(cur[2])):
+            best[start] = (rank, kind, raw)
+    return [(start, kind, raw) for start, (_rank, kind, raw) in sorted(best.items())]
+
+
+def _proven_entity(raw: str, own_names: list[str], known_names: set[str], context: str) -> tuple[str, bool]:
+    """``(entity, unsure)`` for one named token: the entity when the store proves it, else the group's + unsure."""
+    word = _norm_entity(raw)
+    if any(len(n) >= 3 and _bare_name(word) == _bare_name(n) for n in own_names):
+        return "", False
+    if any(len(k) >= 4 and _bare_name(word) == _bare_name(k) for k in known_names):
+        return raw, False
+    return (raw, False) if _relation_cue(context, raw) else ("", True)
+
+
+def sentence_entity(own_names: list[str], known_names: set[str], sentence: str, pos: int,
+                    statement_entities: str = "", question_entities: str = "",
+                    question_text: str = "", people: tuple[str, ...] = ()) -> tuple[str, bool]:
+    """The entity a figure at ``pos`` belongs to, and whether it was unsure (T-192 round 5).
+
+    The sentence's own scope wins over the entity the question names: the figure belongs to the nearest entity named
+    before it, or, when the sentence names no entity at all, to the place it belongs to (the company itself, a
+    standalone/domestic/consolidated basis, a geography, its own plant or mine).  A sentence that names only one
+    entity after the figure belongs to it; a sentence that names no scope inherits the question's entity, and only
+    when the question names no group/geography scope of its own and the entity is proven.  A candidate the store
+    cannot prove is never hidden: the row stays the group's, marked ``entity_unsure``.
+    """
+    scopes = _scope_mentions(sentence, own_names, known_names, statement_entities, people)
+    context = sentence + " \n" + (question_text or "")
+    before = [s for s in scopes if s[0] <= pos]
+    if before:
+        entities = [s for s in before if s[1] == "entity"]
+        group = [s for s in before if s[1] == "group"]
+        if entities and not (group and group[-1][0] > entities[-1][0]):
+            return _proven_entity(entities[-1][2], own_names, known_names, context)
+        return "", False
+    if scopes:
+        # no scope before the figure: only a sentence that names exactly one entity (after it) owns the figure
+        named = {(s[1], _norm_entity(s[2])) for s in scopes}
+        if len(named) == 1 and scopes[0][1] == "entity":
+            return _proven_entity(scopes[0][2], own_names, known_names, context)
+        return "", False
+    # the sentence names no scope at all: the question it answers may, but a question that also names the group or a
+    # geography is ambiguous and the row stays the group's (never hide on a guess)
+    candidates = [raw.strip(" .;:") for raw in re.split(r"[,;]", question_entities or "")]
+    candidates = [raw for raw in candidates if _entity_candidate(raw)
+                  and not any(_same_person(raw, p) for p in people)]
+    q_scopes = _scope_mentions(question_text, own_names, known_names, people=people) if question_text else []
+    if any(s[1] in ("own", "group") for s in q_scopes):
+        return "", bool(candidates)      # the question names the group/geography too: never hide on a guess
+    for raw in candidates:
+        got, _unsure = _proven_entity(raw, own_names, known_names, context)
+        if got:
+            return got, False
+    return "", bool(candidates)
 
 
 def _kpi_crore(value: float | None, unit: str | None) -> float | None:
@@ -1241,12 +1499,19 @@ def page_sentences(raw: str) -> list[tuple[int, int]]:
 
 def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statements: list[sqlite3.Row],
                       stats: dict, mgmt_speakers: tuple[str, ...] = (), doc_has_statements: bool = False,
-                      revenue_cr: float | None = None, analysts: tuple[str, ...] = ()) -> list[tuple]:
+                      revenue_cr: float | None = None, analysts: tuple[str, ...] = (),
+                      question_entities: dict[int, tuple[str, str]] | None = None,
+                      own_names: list[str] | None = None,
+                      known_ents: set[str] | None = None) -> list[tuple]:
     """Guidance rows (without revision_of) from one page: transcript statements when held, else split sentences.
     On a transcript page without statements a sentence is kept only when its speaker is not one the document
     itself introduced as a questioner (T-166): an analyst's words are never a company target."""
     collapsed = " ".join(raw.split())
-    items: list[tuple[str, str, str | None]] = []      # (sentence, quote, speaker)
+    question_entities = question_entities or {}
+    people = tuple(mgmt_speakers) + tuple(analysts or ())   # a speaker or an analyst is never an entity
+    own_names = own_names or [re.sub(r"[^a-z]", "", symbol.lower())]
+    known_ents = known_ents or set()
+    items: list[tuple[str, str, str | None, str, int]] = []   # (sentence, quote, speaker, entities, answer_turn)
     if statements:
         for st in statements:
             if (st["role"] or "").lower() in NON_MGMT_ROLES:
@@ -1254,7 +1519,8 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                 continue
             stmt = " ".join((st["statement"] or "").split())
             if stmt:
-                items.append((stmt, " ".join((st["quote"] or stmt).split()), st["speaker"]))
+                items.append((stmt, " ".join((st["quote"] or stmt).split()), st["speaker"],
+                              str(st["entities"] or ""), int(st["answer_turn"] or 0)))
     else:
         # T-166 r4: a speaker belongs to a transcript; a deck's slide title ("International Ports", "Solid future
         # outlook", "Capex") sits on its own line with a colon exactly like a speaker label, so it is never read
@@ -1279,34 +1545,50 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             if speaker and any(_same_person(speaker, x) for x in analysts):
                 stats["not_management"] += 1
                 continue                # the moderator introduced this speaker as a questioner, never management
-            items.append((s, s, speaker))
-    call_period = statements[0]["call_period"] if statements else None
-    docper = doc_period(doc["filing_date"], doc["known_at"])
+            items.append((s, s, speaker, "", 0))
+    doc_title = doc["title"] or ""
+    docper = (None if (doc["doc_type"] or "") == "transcript" and non_results_call(doc_title)
+              else doc_period(doc["filing_date"], doc["known_at"]))
+    # the call period comes from the filing record, never from a year mentioned in the text
+    if docper:
+        fy, q = docper
+        call_period = f"{q}FY{fy:02d}"
+    else:
+        call_period = statements[0]["call_period"] if statements else None
     # a project spend to date is a true fact beside the total (T-056 family D): the range parser blanks it so it
     # cannot pair with the total, and it gets its own row with the period the sentence names ("end of FY26" -> FY26,
     # "end of Q1FY27" -> Q1FY27, "end of Q3FY26" -> Q3FY26)
     rows = []
     seen_spend: set[tuple] = set()
-    for sentence, quote, speaker in items:
+    for sentence, quote, speaker, own_ents, turn in items:
         if not 20 < len(sentence) < 500:
             continue
         if EXTERNAL_SOURCE.search(sentence):
             stats["external_forecast"] += 1
             continue                    # a spend sentence naming an outside source is not the company's row (T-166)
+        q_ents, q_text = question_entities.get(turn, ("", ""))
         for sp in spends(sentence):
             period = _explicit_period(sentence, sp["start"])
             key = (period, sp["low"], sp["high"], sp["unit"])
             if not period or key in seen_spend:
                 continue
             seen_spend.add(key)
+            entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, sp["start"],
+                                                    own_ents, q_ents, q_text, people)
             rows.append((symbol, doc["isin"], "project_capital_spent", period, sp["low"], sp["high"], sp["unit"],
                          direction_of(sentence, "project_capital_spent"),
                          (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
-                         speaker, doc["known_at"], "doc.known_at", None, "guidance_cue_v1"))
-    for index, (sentence, quote, speaker) in enumerate(items):
+                         speaker, doc["known_at"], "doc.known_at", None, "guidance_cue_v1", entity,
+                         1 if entity_unsure else 0))
+    for index, (sentence, quote, speaker, own_ents, turn) in enumerate(items):
         # T-105: the previous management statement supplies a bare metric (transcript statements only: on a deck
         # page the previous block is an unrelated bullet)
         prev = items[index - 1][0] if index and statements else ""
+        # a target stated for a named subsidiary, associate, JV or acquired company (the statement's own entities,
+        # or the question it answers) carries that entity and is never served as the group's (T-192).  The scope
+        # the sentence itself names wins over the question's entity; a candidate the store cannot prove is one is
+        # labelled uncertain and stays the group's.
+        q_ents, q_text = question_entities.get(turn, ("", ""))
         if len(sentence) < 30 or len(sentence) > 400:
             continue
         if re.search(r"\?[\"'”’)]*$", sentence) and not re.search(
@@ -1325,7 +1607,10 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if not nums:
             # a target said in words has no number to read: it gets a row with low/high NULL (T-058)
             if CUE.search(sentence) and not external_forecast(sentence, previous):
-                row = worded_row(symbol, doc, page, sentence, quote, speaker, before, call_period, docper, stats)
+                entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, 0, own_ents, q_ents, q_text,
+                                                        people)
+                row = worded_row(symbol, doc, page, sentence, quote, speaker, before, call_period, docper, stats,
+                                 entity, entity_unsure)
                 if row:
                     rows.append(row)
                     if len(rows) >= MAX_ROWS_PER_PAGE:
@@ -1343,10 +1628,13 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                                                          cell["num"]["start"])
                 if not period:
                     continue
+                entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, cell["num"]["start"],
+                                                        own_ents, q_ents, q_text, people)
                 rows.append((symbol, doc["isin"], cell["metric"], period, cell["num"]["low"], cell["num"]["high"],
                              cell["num"]["unit"], direction_of(sentence, cell["metric"]),
                              (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
-                             speaker, doc["known_at"], "doc.known_at", None, "guidance_table"))
+                             speaker, doc["known_at"], "doc.known_at", None, "guidance_table", entity,
+                             1 if entity_unsure else 0))
                 if len(rows) >= MAX_ROWS_PER_PAGE:
                     break
             continue
@@ -1474,10 +1762,16 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             continue
         if metric == "ebitda_per_tonne" and chosen["unit"] in ("usd", "inr"):
             chosen = {**chosen, "unit": "usd_per_t" if chosen["unit"] == "usd" else "inr_per_t"}
+        # a subsidiary's or investee's target is never the group's (T-192): the entity the statement or the question
+        # it answers names is kept on the row, and the guidance lookup serves only rows whose entity is empty.  The
+        # sentence's own scope (India, the company, its own mine/project) beats the question's entity (round 5).
+        entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, chosen["start"],
+                                                own_ents, q_ents, q_text, people)
         rows.append((symbol, doc["isin"], metric, period, chosen["low"], chosen["high"], chosen["unit"],
                      direction_of(sentence, metric or "other"), (doc["filing_date"] or (doc["known_at"] or "")[:10]),
                      doc["doc_key"], page, quote, speaker, doc["known_at"], "doc.known_at",
-                     None, _row_rule(sentence, metric or "other", chosen["unit"], symbol, v1_found)))
+                     None, _row_rule(sentence, metric or "other", chosen["unit"], symbol, v1_found), entity,
+                     1 if entity_unsure else 0))
         if len(rows) >= MAX_ROWS_PER_PAGE:
             break
     return rows
@@ -1489,6 +1783,7 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
     con.row_factory = sqlite3.Row
     if not con.execute("SELECT 1 FROM sqlite_master WHERE name='guidance'").fetchone():
         con.execute(TABLES["guidance"])
+    schema.ensure_columns(con, "guidance", schema.GUIDANCE_ADDITIONS)
     con.executescript(";".join(GUIDANCE_INDEXES))
     stats_all: dict = {}
     ins = f"INSERT INTO guidance({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
@@ -1496,6 +1791,9 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
         con.execute("DELETE FROM guidance WHERE symbol=?", (symbol,))
         st = stats_all[symbol] = Counter()
         statements = _transcript_statements(con, symbol)
+        asked = _question_entities(con, symbol)
+        own_names = own_entity_names(con, symbol)
+        known_ents = known_entity_names(con, symbol)
         revenue_cr = company_scale_cr(con, symbol)
         # one row per (metric, period, value, unit, said_on) for the whole run: the BSE/NSE copies and the several
         # pages of one document collapse onto the first one (documents are read in known_at order, pages ascending,
@@ -1520,7 +1818,9 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
                     continue
                 st["pages"] += 1
                 for row in extract_sentences(symbol, doc, page, text, by_page.get(page, []), st,
-                                             mgmt_speakers, bool(doc_rows), revenue_cr, analysts):
+                                             mgmt_speakers, bool(doc_rows), revenue_cr, analysts,
+                                             {turn: ents for (doc_key, turn), ents in asked.items()
+                                              if doc_key == doc["doc_key"]}, own_names, known_ents):
                     sig = (row[0], row[2], row[3], row[4], row[5], row[6], row[8])
                     if sig in seen:
                         st["duplicate"] += 1
@@ -1545,9 +1845,10 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
 
 
 def revisions(con: sqlite3.Connection, symbol: str) -> int:
-    """Link every row to the previous row of the same metric+period from an earlier document."""
+    """Link every row to the previous row of the same metric+period from an earlier document (group rows only: a
+    subsidiary's target never supersedes the group's, T-192)."""
     rows = con.execute("SELECT id, metric, target_period, doc_key FROM guidance WHERE symbol=? "
-                       "ORDER BY COALESCE(known_at, said_on), said_on, id", (symbol,)).fetchall()
+                       "AND COALESCE(entity,'')='' ORDER BY COALESCE(known_at, said_on), said_on, id", (symbol,)).fetchall()
     prev: dict[tuple, tuple[int, str]] = {}
     linked = 0
     for row in rows:

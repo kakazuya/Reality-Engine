@@ -144,12 +144,16 @@ def _filing_lines(symbol: str, f: dict, ptype: str, facts: list) -> list[tuple]:
     if extra and not profile.is_lender(symbol) and all(i in refs for i in ("pbt_before_exceptional", "finance_cost", "depreciation")):
         parts = [refs[i] for i in ("pbt_before_exceptional", "finance_cost", "depreciation")]
         oth = refs.get("other_income")
+        val = sum(p[0] for p in parts) - (oth[0] if oth else 0.0)
+        quote = "; ".join(f"{p[2]} {p[0]:g}" for p in parts)
+        if oth:
+            quote += f"; less {oth[2]} {oth[0]:g}"
         out.append(_row(symbol, f, fy, end, basis, "P&L", "ebitda",
                         "EBITDA = profit before exceptional items and tax + finance cost + depreciation - other income "
                         "(formula F_EBITDA, applied to the period's filed lines)",
-                        sum(p[0] for p in parts) - (oth[0] if oth else 0.0), "inr",
-                        "; ".join(f"{p[2]} {p[0]:g}" for p in parts) + (f"; less {oth[2]} {oth[0]:g}" if oth else ""),
-                        ";".join(p[1] for p in parts + ([oth] if oth else [])), True, "xbrl_derived", ptype))
+                        val, "inr", quote,
+                        ";".join(p[1] for p in parts + ([oth] if oth else [])),
+                        True, "xbrl_derived", ptype))
 
     def total(items, label, name, minus=()):
         parts = [refs[i] for i in items if i in refs]
@@ -365,6 +369,12 @@ def table_rows(text: str) -> list[tuple]:
                 if lines[j].lower() not in _SKIP:
                     vals.append(lines[j])
                 j += 1
+            # a row cut by a non-numeric cell ("… 21.4% 22.3% -88 bps 20.4% …") is a row of more columns than the
+            # reader can align: pairing its first percentages with the last header pair stored Q4 values under the
+            # full-year columns (T-192 round 4: AUROPHARMA's Q4 FY25 margin 21.4% became FY25's)
+            nxt = lines[j].strip() if j < len(lines) else ""
+            if nxt and re.match(r"^\(?-?\d[\d,.]*\s*(?:bps|%|x|days)\b", nxt, re.I):
+                continue
             keep = [v for v in vals if (v.endswith("%") if item == "ebitda_margin_pct" else not v.endswith("%"))]
             money = item in ("ebitda", "net_debt", "net_debt_incl_acceptances")
             if len(keep) == len(group) and keep and not (money and not crore):
@@ -379,6 +389,14 @@ def table_rows(text: str) -> list[tuple]:
     return out
 
 
+def _header_period(flat: str, pos: int) -> tuple[str, str] | None:
+    """The first period of a table header above a row: a print whose columns are Q4FY25 | Q4FY24 | … | FY25
+    gives the first value to the first column, never to the document's default year (T-192 round 4: AUROPHARMA's
+    Q4 FY25 EBITDA margin 21.4% was stored as FY25's).  Only a header block of two or more periods counts."""
+    found = [p for p in (_period_of(m) for m in _PERIOD.finditer(flat[max(0, pos - 1500):pos])) if p]
+    return found[0] if len(found) >= 2 else None
+
+
 def sentence_rows(text: str, doc_period: tuple[str, str] | None) -> list[tuple]:
     flat = re.sub(r"\s+", " ", text)
     out = []
@@ -386,7 +404,10 @@ def sentence_rows(text: str, doc_period: tuple[str, str] | None) -> list[tuple]:
         for m in rx.finditer(flat):
             value = _number(m.group(1))
             seg_periods = [p for p in (_period_of(x) for x in _PERIOD.finditer(m.group(0))) if p]
-            period = seg_periods[-1] if seg_periods else doc_period
+            header = None
+            if item == "ebitda_margin_pct" and re.fullmatch(r"(?is)ebitda\s+margins?\s*", flat[m.start():m.start(1)]):
+                header = _header_period(flat, m.start())    # a table row: its first column, not the document's period
+            period = seg_periods[-1] if seg_periods else (header or doc_period)
             if value is None or period is None:
                 continue
             out.append((item, period[0], period[1], value, unit, flat[max(0, m.start() - 20):m.end() + 20]))

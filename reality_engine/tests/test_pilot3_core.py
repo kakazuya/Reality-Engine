@@ -161,7 +161,8 @@ def _seed(conn: sqlite3.Connection) -> None:
                      "source_rowid, known_at, known_at_source, is_reported) VALUES (" + ",".join("?" * 20) + ")", rows)
     conn.execute("INSERT INTO company VALUES ('T','INE000A01010',NULL,NULL,'t','1','Test')")
     conn.execute("INSERT INTO share_capital VALUES ('T','INE000A01010','2025-06-30','consolidated',NULL,NULL,"
-                 "100.0,100.0,1.0,'shares',1.0,'2025-08-01T10:00:00','s','d','t','r',NULL,NULL)")
+                 "100.0,100.0,1.0,'shares',1.0,'2025-08-01T10:00:00','s','d','t','r',NULL,NULL,"
+                 "'derived_from_capital')")
     prices = [("T", "INE000A01010", "NSE", d, 10, 11, 9, 10.0, 10, 1, 1, 1, 1, 50.0, 1.0, 10.0, d, "x", "d", "t", d)
               for d in ("2025-09-01", "2026-02-02", "2026-05-02")]
     conn.executemany("INSERT INTO price_delivery VALUES (" + ",".join("?" * 21) + ")", prices)
@@ -484,7 +485,7 @@ def test_a_quarter_without_a_results_share_count_takes_the_shareholding_pattern_
            (("2026-06-30", 1003240534.0, "2026-07-17T23:38:01"), ("2026-09-30", 1003500000.0, "2026-10-15T18:54:56"))]
     conn.executemany("INSERT INTO shp_category VALUES (" + ",".join("?" * 20) + ")", shp)
     conn.execute("INSERT INTO share_capital VALUES ('KEC','I','2026-06-30','standalone',NULL,NULL,1.0,1.0,1.0,'shares',1.0,"
-                 "'2026-07-30','s','d','t','r',NULL,NULL)")        # the results filing gave June too; T-073 keeps both
+                 "'2026-07-30','s','d','t','r',NULL,NULL,'derived_from_capital')")  # the results filing gave June too; T-073 keeps both
     assert stores.build_share_fallback(conn)["KEC"] == 2           # the exact total joins the rounded paid-up row
     row = conn.execute("SELECT as_of_date, basis, shares_outstanding, known_at, source_table FROM share_capital "
                        "WHERE as_of_date='2026-09-30'").fetchone()

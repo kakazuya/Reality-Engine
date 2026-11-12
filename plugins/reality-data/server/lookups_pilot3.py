@@ -244,6 +244,31 @@ _KPI_WORDS = {
 }
 
 
+# --- pilot3_kpi ---------------------------------------------------------------------------------------
+# T-192: a company that prints its own EBITDA states which measure it is.  The operating definition (the one the
+# derived F_EBITDA formula matches) excludes only non-operating items ("EBITDA (before forex and other income)");
+# a label that also strips an operating cost ("EBITDA before R&D") is a different measure and never outranks it.
+_NON_OPERATING = re.compile(r"forex|foreign exchange|\bfx\b|other income|exceptional|one[- ]?time|non[- ]?operating",
+                            re.I)
+_EBITDA_LABEL = re.compile(r"ebitda\s*(?:\(|before|excluding|ex-)\s*([^\n)]{0,50})", re.I)
+
+
+def _ebitda_rank(row: dict[str, Any]) -> int:
+    """0 for the operating EBITDA, 1 for a measure that strips an operating cost as well."""
+    text = f"{row.get('raw_label') or ''} {row.get('quote') or ''}"
+    m = re.search(r"ebitda\s*(?:before|excluding|ex-)\s*([^\n,;)]{0,40})", text, re.I)
+    if m:
+        return 0 if _NON_OPERATING.search(m.group(1)) else 1
+    m = re.search(r"ebitda\s*\(([^)]{0,60})\)", text, re.I)
+    if m and re.search(r"before|excluding|ex-", m.group(1), re.I):
+        return 0 if _NON_OPERATING.search(m.group(1)) else 1
+    return 0
+
+
+def _definition_rank(row: dict[str, Any], key: str) -> int:
+    return _ebitda_rank(row) if key == "ebitda" else 0
+
+
 def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = None,
         dimension: str | None = None, basis: str | None = None, limit: int = 10,
         include_quarantined: bool = False) -> dict[str, Any]:
@@ -273,8 +298,8 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
         where += hide
     extra, eargs = _asof(as_of, "k.known_at")
     rows = _q(f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.scale, k.fiscal_period, k.period_type, "
-              f"k.as_of_date, k.basis, k.entity, k.doc_key, k.page, k.quote, k.known_at, k.conf_rank, d.doc_key AS dk, "
-              f"d.title, d.doc_type{check_sel} FROM kpi_series k {_DOC_JOIN}{join} WHERE {where}{extra} "
+              f"k.as_of_date, k.basis, k.entity, k.doc_key, k.page, k.quote, k.known_at, k.conf_rank, k.raw_label, "
+              f"d.doc_key AS dk, d.title, d.doc_type{check_sel} FROM kpi_series k {_DOC_JOIN}{join} WHERE {where}{extra} "
               # best evidence first: the extractor's confidence, then a deck/results/filing before a call remark.
               # The window must reach past a measure's duplicates (one value restated in many filings): at 3x the
               # reply size, a restated measure filled it and its lower-confidence period series never arrived (T-049,
@@ -298,11 +323,13 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
         out.append(_add_check({"metric": r["metric"], "dimension": dimension, "value": r["value"],
                                "unit": r["unit"], "period": r["fiscal_period"], "period_type": r["period_type"],
                                "as_of_date": r["as_of_date"], "basis": basis, "entity": entity,
+                               "raw_label": r["raw_label"],
                                "quote": _trim(r["quote"], 300),
                                "provenance": _prov("kpi_series", f"{r['dk'] or r['doc_key']} p{r['page']}",
                                                    r["known_at"], doc_type=r["doc_type"], title=r["title"],
                                                    row_id=r["id"])}, r))
-    out.sort(key=lambda row: 0 if row["entity"] == sym else 1)   # the company's own rows first (T-088)
+    # the company's own rows first (T-088), then the operating definition of a measure that has several (T-192)
+    out.sort(key=lambda row: (0 if row["entity"] == sym else 1, _definition_rank(row, str(row["metric"]))))
     out = out[: _cap(limit)]
     held = None
     held_hidden = None
@@ -488,6 +515,26 @@ def _fin_source(r: sqlite3.Row) -> str:
 def _has_table(name: str) -> bool:
     """A pilot3 table may be absent from an older build (fin_quarter_printed came with T-057)."""
     return bool(_q("SELECT 1 FROM sqlite_master WHERE name=? LIMIT 1", (name,)))
+
+
+_COLUMN_CACHE: dict[str, set[str]] = {}
+
+
+def _columns(table: str) -> set[str]:
+    """The columns one pilot3 table has, read once per database (T-192).
+
+    A live store built before a column existed must still be read by these lookups: they open it read-only and
+    cannot migrate it, so a query names the column only when it is there and falls back to the older rule."""
+    key = f"{db_path()}:{table}"
+    have = _COLUMN_CACHE.get(key)
+    if have is None:
+        have = {row[1] for row in _q(f'PRAGMA table_info("{table}")')}
+        _COLUMN_CACHE[key] = have
+    return have
+
+
+def _has_column(table: str, column: str) -> bool:
+    return column in _columns(table)
 
 
 # --- T-113: the independent row verdicts (row_check / row_check_fail, written by pilot3.build --part checks) -----
@@ -897,14 +944,18 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
                                                                      "provenance")}
                 now_pct, then_pct = pledge["pledged_pct_of_promoter_holding"], before["pledged_pct_of_promoter_holding"]
                 pledge["changed"] = None if now_pct is None or then_pct is None else now_pct != then_pct
-    sc = _q(f"SELECT rowid, * FROM share_capital WHERE symbol=? AND event IS NULL AND as_of_date<=?{extra} "
-            "AND shares_outstanding IS NOT NULL ORDER BY as_of_date DESC, (source_table='shp_category') DESC, "
+    sc_have = _has_column("share_capital", "count_basis")
+    sc_cb = "count_basis" if sc_have else "CASE WHEN source_table='shp_category' THEN 'filed_exact' END"
+    sc_sel = "rowid, *" if sc_have else "rowid, *, NULL AS count_basis"
+    sc = _q(f"SELECT {sc_sel} FROM share_capital WHERE symbol=? AND event IS NULL AND as_of_date<=?{extra} "
+            f"AND shares_outstanding IS NOT NULL ORDER BY as_of_date DESC, ({sc_cb}='filed_exact') DESC, "
             "known_at DESC LIMIT 1", (sym, day, *eargs))
     shares = None
     if sc:
         r = sc[0]
         shares = {"shares_outstanding": r["shares_outstanding"], "paid_up_capital": r["paid_up_capital"],
                   "face_value": r["face_value"], "as_of_date": r["as_of_date"], "basis": r["basis"],
+                  "count_basis": r["count_basis"] or ("filed_exact" if r["source_table"] == "shp_category" else None),
                   "provenance": _prov("share_capital", f"{r['source_db']}.{r['source_table']} row {r['source_rowid']}",
                                       r["known_at"])}
     categories = [r[0] for r in _q(f"SELECT DISTINCT category FROM shp_category WHERE symbol=?{extra} "
@@ -1141,7 +1192,9 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     the kept row says how many (``superseded_rows``); ``history=true`` returns every row as stored.  ``low`` and
     ``high`` are NULL on a target said in words ("high single-digit", "in the 70s, mid-70s or higher"): the
     direction and the quote carry it.  A row the independent checker quarantined is hidden unless
-    ``include_quarantined=True``, and every row says ``check_status`` verified or unverified (T-113)."""
+    ``include_quarantined=True``, and every row says ``check_status`` verified or unverified (T-113).  A target
+    stated for a named subsidiary, segment or investee is stored with that ``entity`` and never returned here: only
+    the group's own guidance is served (T-192)."""
     sym = resolve_symbol(symbol)
     names, allnames = ([], list(GUIDANCE_METRICS))
     if metric:
@@ -1150,7 +1203,14 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
         if not names:
             return _reply(sym, [], "pilot3_guidance", available=allnames[:40], metric_asked=metric)
     kind, label = norm_period(period)
+    # only the group's own targets: a target stated for a named subsidiary, associate, joint venture or acquired
+    # company carries its ``entity`` and is never served as the company's (T-192).  A store built before the column
+    # existed has no entity rows at all, so every row it holds is the group's and is served (T-192 round 4).
+    g_entity = _has_column("guidance", "entity")
+    g_unsure = _has_column("guidance", "entity_unsure")
     where, args = "g.symbol=?", [sym]
+    if g_entity:
+        where += " AND COALESCE(g.entity,'')=''"
     if names:
         where += f" AND g.metric IN ({','.join('?' * len(names))})"
         args += names
@@ -1161,9 +1221,12 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
     if not include_quarantined:
         where += hide
     extra, eargs = _asof(as_of, "g.known_at")
+    ent_sel = (", COALESCE(g.entity,'') AS entity" if g_entity else ", '' AS entity") + \
+              (", COALESCE(g.entity_unsure,0) AS entity_unsure" if g_unsure else ", 0 AS entity_unsure")
     rows = _q(f"SELECT g.id, g.metric, g.target_period, g.low, g.high, g.unit, g.direction, g.said_on, g.doc_key, "
               f"g.page, g.quote, g.speaker, g.known_at, g.revision_of, g.extractor_rule, d.title, d.doc_type, "
-              f"pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on, pv.direction prev_direction{check_sel} "
+              f"pv.low prev_low, pv.high prev_high, pv.said_on prev_said_on, pv.direction prev_direction"
+              f"{ent_sel}{check_sel} "
               f"FROM guidance g LEFT JOIN doc d ON d.doc_key=g.doc_key "
               f"LEFT JOIN guidance pv ON pv.id=g.revision_of{join} WHERE {where}{extra} "
               f"ORDER BY COALESCE(g.known_at, g.said_on) DESC, g.id DESC LIMIT 400", (*args, *eargs))
@@ -1176,15 +1239,18 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
         if r["revision_of"] is not None:
             previous = {"row_id": r["revision_of"], "low": r["prev_low"], "high": r["prev_high"],
                         "said_on": r["prev_said_on"], "direction": r["prev_direction"]}
-        out.append(_add_check({"metric": r["metric"], "period": r["target_period"], "low": r["low"],
-                               "high": r["high"], "unit": r["unit"], "direction": r["direction"],
-                               "said_on": r["said_on"], "quote": _trim(r["quote"]), "speaker": r["speaker"],
-                               "revision_of": r["revision_of"], "previous": previous,
-                               "changed": bool(previous and (previous["low"], previous["high"]) != (r["low"], r["high"])),
-                               "superseded_rows": 0 if history else r["superseded_rows"],
-                               "provenance": _prov("guidance", f"{r['doc_key']} p{r['page']}", r["known_at"],
-                                                   doc_type=r["doc_type"], title=_trim(r["title"], 120),
-                                                   row_id=r["id"])}, r))
+        item = {"metric": r["metric"], "period": r["target_period"], "low": r["low"],
+                "high": r["high"], "unit": r["unit"], "direction": r["direction"],
+                "said_on": r["said_on"], "quote": _trim(r["quote"]), "speaker": r["speaker"],
+                "revision_of": r["revision_of"], "previous": previous,
+                "changed": bool(previous and (previous["low"], previous["high"]) != (r["low"], r["high"])),
+                "superseded_rows": 0 if history else r["superseded_rows"],
+                "provenance": _prov("guidance", f"{r['doc_key']} p{r['page']}", r["known_at"],
+                                    doc_type=r["doc_type"], title=_trim(r["title"], 120),
+                                    row_id=r["id"])}
+        if r["entity_unsure"]:
+            item["entity_unsure"] = True    # the text named a candidate the store cannot prove is a subsidiary
+        out.append(_add_check(item, r))
     held = None
     if not out:   # say what the table does hold, so the next call can be exact
         held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
@@ -1856,7 +1922,19 @@ def _fact_why(path: str, row: dict[str, Any]) -> str:
     return "the filing's share count nearest the day asked"
 
 
-def _fact_route(key: str, symbol: str) -> tuple[str | None, dict[str, list[str]], dict[str, list[str]]]:
+def _kpi_covers(symbol: str, names: list[str], period: str | None) -> bool:
+    """Does ``kpi_series`` hold this metric for the period asked?  The company's own EBITDA is preferred only for
+    a period it actually states; another period must fall through to the derived ratio (T-192 round 4)."""
+    if not names:
+        return False
+    kind, label = norm_period(period)
+    if not label:
+        return True
+    return bool(_q(f"SELECT 1 FROM kpi_series WHERE symbol=? AND metric IN ({','.join('?' * len(names))}) "
+                   "AND fiscal_period=? LIMIT 1", (symbol, *names, label)))
+
+
+def _fact_route(key: str, symbol: str, period: str | None = None) -> tuple[str | None, dict[str, list[str]], dict[str, list[str]]]:
     """Which lookup owns a metric word (T-186 step 1): names matched per table, and every name each table holds."""
     rnames, rall = _pick("ratio_panel", "metric", symbol, key)
     qnames, qall = _pick("fin_quarter_xbrl", "line_item", symbol, key)
@@ -1870,6 +1948,13 @@ def _fact_route(key: str, symbol: str) -> tuple[str | None, dict[str, list[str]]
         return "shares", found, allnames
     if key.endswith("holding") or key.endswith("shareholding") or words & _FACT_HOLDING_WORDS:
         return "holding", found, allnames
+    # T-192: a company's own EBITDA / EBITDA margin is the definition it means; the derived ratio is returned as a
+    # second, labelled alternative.  Two derivations of one line disagreeing is exactly what sent a grader wrong.
+    # Only a period the KPI rows cover takes that route: an earlier or later year still answers from the derived
+    # ratio, never from a different period's company figure.
+    if key in ("ebitda", "ebitda_margin", "ebitda_margin_pct") and found["kpi_series"] \
+            and _kpi_covers(symbol, found["kpi_series"], period):
+        return "kpi", found, allnames
     # a ratio word first: a margin / return / growth / valuation is computed or stated, not a balance line.  The
     # plain lines ratio_panel also mirrors (pat, revenue_from_operations) are not ratio words and go to fin.
     ratio_word = (key in _FACT_VALUATION or key in _FACT_RATIO_NAMES or key.endswith(_FACT_RATIO_SUFFIXES))
@@ -1947,8 +2032,11 @@ def _ref_input(symbol: str, ref: str, basis: str | None, cutoff: str | None) -> 
     out: dict[str, Any] = {"name": ref, "value": None, "unit": None, "period": None, "source": None}
     parts = str(ref).split(":", 4)
     if len(parts) == 3 and parts[0] == "sc":                       # sc:SYM:date -> the share count used
-        rows = _q("SELECT shares_outstanding, as_of_date, known_at FROM share_capital WHERE symbol=? "
-                  "AND as_of_date=? AND event IS NULL ORDER BY known_at DESC LIMIT 5", (symbol, parts[2]))
+        cb = ("count_basis" if _has_column("share_capital", "count_basis")
+              else "CASE WHEN source_table='shp_category' THEN 'filed_exact' END")
+        rows = _q(f"SELECT shares_outstanding, as_of_date, known_at, source_table FROM share_capital "
+                  f"WHERE symbol=? AND as_of_date=? AND event IS NULL ORDER BY ({cb}='filed_exact') DESC, "
+                  "known_at DESC LIMIT 5", (symbol, parts[2]))
         row = next((r for r in rows if _pit_ok(r["known_at"], cutoff)), None)
         if row is None and rows:
             out["pit_hidden"] = True
@@ -2231,7 +2319,7 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
                         "count)")
     day = _day(as_of, "as_of")
     bas = (basis or "").strip().lower() or None
-    path, found, allnames = _fact_route(key, sym)
+    path, found, allnames = _fact_route(key, sym, period)
     if path is None:
         from_cells = _fact_cells(sym, metric, period, day)
         if from_cells:
@@ -2282,7 +2370,9 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
         alternatives.append(_fact_alt(other))
     second = _fact_second(used, found)
     if second and len(alternatives) < 3:
-        alt_rows, _reply = _fact_rows(second, sym, key, period, bas, day, 1)
+        alt_rows, _reply = _fact_rows(second, sym, key, period, bas, day, 3)
+        if used == "kpi":   # the company's own figure is the answer: the second row is the store's computation,
+            alt_rows = [r for r in alt_rows if r.get("definition") != "company_stated"] or alt_rows
         if alt_rows:
             alternative = _fact_alt(alt_rows[0])
             alternative["note"] = f"the same metric as the {second} lookup holds it"
