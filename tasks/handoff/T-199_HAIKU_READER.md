@@ -26,7 +26,11 @@ Page rules:
 - A label defined elsewhere on the page (a legend "Segment 1: EMP & Commercial Air Conditioning Systems", a footnote
   marker) is written as printed followed by the definition in brackets: `Segment 1 (EMP & Commercial Air Conditioning
   Systems)`.
-- A figure with no printed row label: leave the label empty; never make one up.
+- A chart or tile panel's printed title IS the row label of its figures ("Net Cash Position (₹ cr)" | 640 | 175).
+- One figure per cell, never a sentence: a tile "4,120 Channel Partners (As at March 31, 2024)" becomes the row
+  `Channel Partners (As at March 31, 2024) | 4,120`; "3 Year Revenue CAGR 16.9%" becomes `3 Year Revenue CAGR | 16.9%`.
+  A tile without any figure is left out.
+- A figure with no printed label anywhere near it (not even a panel title): leave the label empty; never make one up.
 - When unsure of a digit, leave the cell empty. Never compute, convert, round or total.
 
 Do one page at a time. Do not open any other folder. Do not use Bash. When all 8 reply files are written, answer
