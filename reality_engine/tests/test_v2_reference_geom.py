@@ -117,6 +117,36 @@ def test_chart_panel_takes_the_title_above_and_the_axis_below():
     assert cells[0]["how"] == "chart"
 
 
+def test_equal_values_in_two_columns_of_one_row_keep_both_cells():
+    """T-199: "Current ratio | 1.23 | ... | 1.23" prints the same figure twice; the second cell is placed on the
+    next matching word of its own line, never merged into the first (12 of 18 recall misses on financial pages)."""
+    band = [_w(200, 10, "31.03.2026"), _w(260, 10, "31.03.2025"),
+            _w(10, 30, "Current ratio"), _w(200, 30, "1.23"), _w(260, 30, "1.23")]
+    cells, _unread = rg.settle_page([[_cell("Current ratio", "31.03.2026", "1.23"),
+                                      _cell("Current ratio", "31.03.2025", "1.23")]], band)
+    assert sorted(c["col_header"] for c in cells) == ["31.03.2025", "31.03.2026"]
+    assert all(c["verdict"] == "confirmed" for c in cells), [c["verdict"] for c in cells]
+    # with no header band the columns cannot be confirmed, but both cells are still kept, each one unverified
+    plain = [_w(10, 30, "Current ratio"), _w(200, 30, "1.23"), _w(260, 30, "1.23")]
+    cells, _unread = rg.settle_page([[_cell("Current ratio", "As at 31.03.2026", "1.23"),
+                                      _cell("Current ratio", "As at 31.03.2025", "1.23")]], plain)
+    assert len(cells) == 2
+    assert {c["col_header"] for c in cells} == {"As at 31.03.2026", "As at 31.03.2025"}
+    assert all(c["value_text"] == "1.23" and not c["settled_by"] for c in cells)
+    # only one word printed: the second column's claim stays a loose unverified cell, never merged into the first
+    single = [_w(10, 30, "Current ratio"), _w(200, 30, "1.23")]
+    cells, _unread = rg.settle_page([[_cell("Current ratio", "Q2FY26", "1.23"),
+                                      _cell("Current ratio", "Q1FY26", "1.23")]], single)
+    assert len(cells) == 2
+    assert {c["col_header"] for c in cells} == {"Q1FY26", "Q2FY26"}
+
+
+def test_every_settled_cell_key_is_written_to_the_reference_csv():
+    """``run`` writes the cells with ``csv.DictWriter(COLS)``: a key COLS lacks would crash the reference run."""
+    cells, _unread = rg.settle_page([[_cell("Revenue", "Q2FY26", "100")]], _results_page())
+    assert set(cells[0]) <= set(rg.COLS), set(cells[0]) - set(rg.COLS)
+
+
 def test_verdicts_separate_a_reader_error_from_a_checker_miss_and_an_unplaced_cell():
     words = _results_page()
     # another reader puts 40 on the Profit line: "Exceptional items 40" is a reader error, not a checker miss

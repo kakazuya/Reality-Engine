@@ -352,3 +352,35 @@ def test_a_missing_reply_is_an_error_never_a_guess():
     con.close()
     assert status == "error" and error.startswith("no reply")
     assert cells == 0
+
+
+GRID_SECTIONS = ("TABLE: Segment report\nUNIT: Rs crore\nCOLUMNS: Q2FY26 | Q1FY26\n"
+                 "Segment Revenue\n"
+                 "(a) Electro-mechanical projects | 100 | 90\n"
+                 "Segment Result\n"
+                 "(a) Electro-mechanical projects | 10 | 9\n"
+                 "Total income | 250 | 240")
+
+
+def test_a_section_heading_labels_a_list_marked_row_and_leaves_other_labels_alone():
+    """T-199: four headings print the same "(a) Electro-mechanical projects" label; the stored row label carries
+    its section so two headings are two rows.  A label printed once with no list marker keeps its old text."""
+    base = _base()
+    pdf = _pdf(base / "t.pdf", ["Segment Revenue", "(a) Electro-mechanical projects 100 90",
+                                "Segment Result", "(a) Electro-mechanical projects 10 9",
+                                "Total income 250 240"])
+    text = "(a) Electro-mechanical projects 100 90 10 9 Total income 250 240"
+    db = _store(base, pdf, text)
+    routes = _routes(base, [{"doc_key": "dk", "page": 1, "doc_type": "results", "route": "table_or_chart"}])
+    out_dir = base / "reads"
+    pr.export_pages(db, routes, out_dir)
+    (out_dir / "b001" / f"{pr.page_stem('dk', 1)}.reply.txt").write_text(GRID_SECTIONS, encoding="utf-8")
+    out = base / "out.db"
+    assert pr.main(["--store", str(db), "--out", str(out), "--routes", str(routes),
+                    "--reader", f"file:{out_dir}", "--workers", "1"]) == 0
+    con = sqlite3.connect(str(out))
+    labels = sorted(row[0] for row in con.execute("SELECT row_label FROM page_cell"))
+    con.close()
+    assert "Segment Revenue > (a) Electro-mechanical projects" in labels
+    assert "Segment Result > (a) Electro-mechanical projects" in labels
+    assert "Total income" in labels

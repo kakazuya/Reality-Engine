@@ -40,6 +40,12 @@ def label_key(label: Any) -> str:
     return re.sub(r"[^a-z0-9]+", "", text.casefold())
 
 
+def has_list_marker(label: Any) -> bool:
+    """Does the row label start with a printed list marker ("(a)", "i.", "1.", "a)")?  T-199: only such a label
+    (or one printed twice on the page) is prefixed with its section, so every other label keeps its old text."""
+    return bool(_ENUM.match(str(label or "")))
+
+
 def col_key(header: Any) -> str:
     """Column header without brackets, ordinal suffixes or punctuation ("31st March, 2022 (Audited)" = "31 March 2022")."""
     text = re.sub(r"\([^)]*\)", " ", str(header or ""))
@@ -62,7 +68,7 @@ def cells_of(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
         out.append({"key": (lk, norm, seen[(lk, norm)]), "lk": lk, "ck": col_key(r.get("col_header")), "norm": norm,
                     "label": _norm_space(r.get("row_label")), "col": _norm_space(r.get("col_header")),
                     "value": _norm_space(r.get("value")), "unit": _norm_space(r.get("unit")),
-                    "table": _norm_space(r.get("table"))})
+                    "section": _norm_space(r.get("section")), "table": _norm_space(r.get("table"))})
     return out
 
 

@@ -458,9 +458,14 @@ GRID_PROMPT = (
 
 
 def parse_grid(raw: str) -> list[dict[str, Any]]:
-    """Cells from the GRID_PROMPT reply: one cell per non-empty field, its header taken by field position."""
+    """Cells from the GRID_PROMPT reply: one cell per non-empty field, its header taken by field position.
+
+    A heading row (a label with letters and no figure under it) or a heading line with no ``|`` followed by rows
+    starts a section: every following cell carries it until the next heading or TABLE line (T-199).  The page prints
+    "(a) Electro-mechanical projects" under "Segment Revenue", "Segment Result" and two more headings; without the
+    section the four rows are one label and a segment's revenue conflicts with its result."""
     rows: list[dict[str, Any]] = []
-    table = unit = pending = ""
+    table = unit = pending = section = ""
     cols: list[str] = []
     for line in (raw or "").splitlines():
         line = line.strip().strip("`")
@@ -469,7 +474,7 @@ def parse_grid(raw: str) -> list[dict[str, Any]]:
         head, _, rest = line.partition(":")
         tag = head.strip().upper()
         if tag == "TABLE" and _:
-            table, unit, cols = rest.strip(), "", []
+            table, unit, pending, section, cols = rest.strip(), "", "", "", []
             continue
         if tag == "UNIT" and _:
             unit = rest.strip()
@@ -478,17 +483,22 @@ def parse_grid(raw: str) -> list[dict[str, Any]]:
             cols = [c.strip() for c in rest.split("|")]
             continue
         if "|" not in line:
-            pending = line                      # a label printed on its own line above its figures
+            pending = line                      # a heading, or a label printed on its own line above its figures
             continue
         fields = [f.strip() for f in line.strip("|").split("|")]
         label, values = fields[0], fields[1:]
         if not any(ch.isalpha() for ch in label):   # no label field: the figures start at once
             label, values = pending, fields
+        elif pending:                              # the line above was a heading: this row prints its own label
+            section = pending
         pending = ""
+        if any(ch.isalpha() for ch in label) and not any(values):
+            section = label                        # a heading row: a label with no figure under it
+            continue
         heads = cols[1:] if len(cols) == len(values) + 1 else cols    # COLUMNS also named the label column
         for n, value in enumerate(values):
             if value and any(ch.isdigit() for ch in value):            # a unit or a dash is not a figure
-                rows.append({"table": table, "row_label": label,
+                rows.append({"table": table, "row_label": label, "section": section,
                              "col_header": heads[n] if n < len(heads) else f"col{n + 1}", "value": value, "unit": unit})
     return rows
 
@@ -540,6 +550,7 @@ def _normalize_row(r: dict[str, Any]) -> dict[str, str]:
         "col_header": str(r.get("col_header", r.get("column", r.get("header", ""))) or ""),
         "value": str(r.get("value", r.get("value_text", "")) or ""),
         "unit": str(r.get("unit", r.get("unit_text", "")) or ""),
+        "section": str(r.get("section", "") or ""),
     }
 
 

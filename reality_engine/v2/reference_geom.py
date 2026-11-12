@@ -50,7 +50,7 @@ from reality_engine.v2.reference_vote import cells_of, col_key, label_key, same_
 
 COLS = ["page_id", "split", "row_label", "col_header", "value_text", "unit_text", "table", "readers", "agree_n", "row_ok",
         "col_ok", "settled_by", "conflict", "how", "verdict", "label_aliases", "col_aliases", "line_text", "x0", "y0",
-        "x1", "y1"]
+        "x1", "y1", "section", "label_repeated"]
 VERDICTS = ("confirmed", "reader_error_row", "reader_error_column", "checker_miss", "unplaced")
 _NUM = re.compile(r"^[-(]?[\d,]*\d(?:\.\d+)?\)?[%x]?$")
 _STRIP = "*†‡#^~`₹$€£:;|"
@@ -643,10 +643,16 @@ def _label_fits(label_key_: str, texts: list[str]) -> bool:
     return False
 
 
-def place(page: Page, cell: dict[str, Any]) -> tuple[bool | None, bool | None, int | None, str]:
-    """(row_ok, col_ok, word index, how).  ``how`` is ``line`` / ``wrap`` / ``chart``.  None = could not locate."""
+def place(page: Page, cell: dict[str, Any],
+          taken: dict[int, tuple[str, str]] | None = None) -> tuple[bool | None, bool | None, int | None, str]:
+    """(row_ok, col_ok, word index, how).  ``how`` is ``line`` / ``wrap`` / ``chart``.  None = could not locate.
+
+    ``taken`` maps a word index already claimed by a settled row to that cell's (label key, column key).  A cell of
+    the SAME row printed under a DIFFERENT column takes the next occurrence of its value instead of the claimed word
+    (T-199): a row that prints 1.23 in two columns must keep both cells."""
     keys = {cell["lk"], label_key(cell["label"])}
-    occ = page.occurrences(cell["value"])
+    occ = [i for i in page.occurrences(cell["value"])
+           if not (taken and i in taken and taken[i][0] == cell["lk"] and taken[i][1] != cell.get("ck", ""))]
     if not occ:
         return None, None, None, ""
     on_row: list[tuple[int, str]] = [(i, "line") for i in occ if page.row_own(i, keys)]
@@ -679,12 +685,15 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
     text_norm = _norm_space(text or " ".join(w[4] for w in words or [])).casefold()
     text_nocomma = text_norm.replace(",", "")
     records: list[dict[str, Any]] = []
+    taken: dict[int, tuple[str, str]] = {}
     for ri, cells in enumerate(per_reader):
         for c in cells:
             if c["value"].strip().casefold() in _BLANK:
                 continue                                   # an empty cell, not a figure
             c["lk"] = str(canon.get(c["lk"], c["lk"]))
-            row_ok, col_ok, at, how = place(page, c) if page else (None, None, None, "")
+            row_ok, col_ok, at, how = place(page, c, taken) if page else (None, None, None, "")
+            if at is not None:                             # the word is claimed: a second column cannot take it
+                taken.setdefault(at, (c["lk"], c.get("ck", "")))
             records.append({"ri": ri, "cell": c, "row_ok": row_ok, "col_ok": col_ok, "at": at, "how": how})
     placed: dict[int, list[dict[str, Any]]] = defaultdict(list)
     loose: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -695,12 +704,14 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
             loose[(rec["cell"]["lk"], rec["cell"]["norm"])].append(rec)
     line_names: dict[int, set[str]] = defaultdict(set)
     line_confirmed: dict[int, set[str]] = defaultdict(set)
+    label_lines: dict[str, set[int]] = defaultdict(set)     # a label printed on two lines is two rows (T-199)
     if page:
         for rec in records:
             if rec["at"] is None:
                 continue
             n = page.line_of[rec["at"]]
             line_names[n].add(rec["cell"]["lk"])
+            label_lines[rec["cell"]["lk"]].add(n)
             if rec["col_ok"] is True:
                 line_confirmed[n].add(rec["cell"]["lk"])
     out: list[dict[str, Any]] = []
@@ -740,7 +751,8 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
                     "label_aliases": " || ".join(n for n in names if n != pick["cell"]["label"]),
                     "col_aliases": " || ".join(h for h in heads if h != pick["cell"]["col"]),
                     "line_text": page.row_texts(at)[0], "x0": round(w[0], 1), "y0": round(w[1], 1),  # type: ignore[union-attr]
-                    "x1": round(w[2], 1), "y1": round(w[3], 1)})
+                    "x1": round(w[2], 1), "y1": round(w[3], 1), "section": pick["cell"].get("section", ""),
+                    "label_repeated": len(label_lines.get(lk, ())) > 1})
     for (_lk, _norm), given in loose.items():
         agree = len({rec["ri"] for rec in given})
         names = Counter(rec["cell"]["label"] for rec in given)
@@ -761,7 +773,9 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
                     "row_ok": "" if row_ok is None else row_ok, "col_ok": "", "settled_by": settled,
                     "conflict": conflict, "how": "", "verdict": verdict,
                     "label_aliases": " || ".join(n for n in names if n != pick["cell"]["label"]),
-                    "col_aliases": "", "line_text": "", "x0": "", "y0": "", "x1": "", "y1": ""})
+                    "col_aliases": "", "line_text": "", "x0": "", "y0": "", "x1": "", "y1": "",
+                    "section": pick["cell"].get("section", ""),
+                    "label_repeated": len(label_lines.get(pick["cell"]["lk"], ())) > 1})
     unread: list[dict[str, Any]] = []
     if page:
         nums_at = [(i, n) for n, line in enumerate(page.lines) for i in line if _is_num(page.words[i][4])]

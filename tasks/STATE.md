@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-13 (Eagle, T-199 round 2)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-13 (worker, T-199 round 3)
 History `docs/state_history/` (previous: `STATE_2026-11-12_1410.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -18,7 +18,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-000. T-199 BLUESTARCO (`tasks/handoff/T-199_BLUESTAR_ATOM_PLAN.md`), 13 Nov: bluestar.db rebuilt v9 + registered; HP OCR 129/143; routes `bluestar/routes.csv`. Atom code r1+r2 MERGED 13 Nov (page_atom v10, `pilot3/atoms.py`, export, file reader; 36-page test: 1,036/2,087 verified, 12 no period). Haiku 72/134 batches read (`bluestar/haiku/`), paused for Pro limit, resumes 02:25 at 2 parallel. Next: load + atoms, truth sample, answers, grading. Follow-up: repeated labels lose their section heading (same_doc_conflict).
+000. T-199 BLUESTARCO (`tasks/handoff/T-199_BLUESTAR_ATOM_PLAN.md`), 13 Nov: bluestar.db rebuilt v9 + registered; HP OCR 129/143; routes `bluestar/routes.csv`. Atom code r1+r2 MERGED 13 Nov (page_atom v10, `pilot3/atoms.py`, export, file reader; 36-page test: 1,036/2,087 verified, 12 no period). Haiku 72/134 batches read (`bluestar/haiku/`), paused for Pro limit, resumes 02:25 at 2 parallel. Next: load + atoms, truth sample, answers, grading. r3 (T-199, branch): section headings on list-marker/repeated labels (`<section> > <label>`), equal values in two columns both kept, label/header units before the page declaration; the repeated-label `same_doc_conflict` follow-up is fixed by the section prefix; tests atoms 32 / page_reader 11 / reference_pages 7 / reference_geom 11 / lookups 82+1.
 00. T-195 DONE: re-run after fixes, DeepSeek 85.5% / 84.1% (2 runs), Haiku 76.8%; `reports/2026-11-12_aurobindo_rerun.html`. T-196 DONE (`reports/2026-11-12_why_answers_stop.html`).
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191 A/B DONE (`reports/2026-11-12_semantic_ab.html`); route `aurobindo_ab/STORE_DEFECTS_SEEN.md` to follow-ups.
