@@ -16,7 +16,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 
 ## Next action
 0. After 15:30 (Shivam tops up DeepInfra): T-191 semantic A/B per `tasks/handoff/T-191_SEMANTIC_AB_PLAN.md` Snapshot frozen 12 Nov 15:33 (`aurobindo_ab/SNAPSHOT_SHA256.txt`); next: embed (needs top-up), arms A/B DeepSeek together, blind Opus grading.
-1. T-192 wrong rows: round 3 RUNNING, DeepSeek job 20261112T100117Z-b83f0ffa (started 15:31, branch dsh/20261112T100117Z-b83f0ffa); review against brief G1-G6. A/B does not wait for it.
+1. T-192 wrong rows: round 3 failed review (pilot10 main-vs-branch diff: count_basis crash, guidance entity rule hides 6 group targets, KPI period regressions). Round 4 RUNNING, DeepSeek job 20261112T105109Z-a810bf31 (16:21); review against brief H1-H8 and re-diff pilot10 (Opus copies in scratchpad t192). A/B does not wait for it.
 2. T-194 tool fixes: brief `tasks/handoff/T-194_TOOL_FIXES_BRIEF.md` waits for Shivam.
 3. Branches: 22 unmerged; 5 answer-run note branches deletable; T-163 r4-7 / T-132 r10-12 need review; CHOLAFIN waits for Shivam.
 4. Restart reality-data; T-179 timing with `pilot3_fact`; guidance `gross_margin`; `pilot3_fin` XBRL-first; T-175; T-188 follow-ups; s10 + T-172.
