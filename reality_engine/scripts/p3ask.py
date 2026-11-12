@@ -24,7 +24,8 @@ T-179: ``--qid <id>`` and ``--log <file.jsonl>`` (or env ``P3ASK_QID`` / ``P3ASK
 name, append one JSON line per call (ts_start, ts_end, seconds, qid, tool, args cut at 300 chars, ok, rows_returned,
 reply_bytes); logging never changes the reply and never fails the call.  ``page doc_key=<key> page=<n> [to_page=<n>]``
 returns page text (at most 5 pages) without raw SQL.  ``P3ASK_NO_SQL=1`` refuses the ``sql``
-tool and leaves it out of the tool list (the no-SQL arm of the answer test).
+tool and leaves it out of the tool list (the no-SQL arm of the answer test).  ``P3ASK_NO_SEMANTIC=1`` does the same
+for ``semantic`` (T-191: arm A of the semantic A/B, everything else identical).
 """
 from __future__ import annotations
 
@@ -65,8 +66,13 @@ def _no_sql() -> bool:
     return os.environ.get("P3ASK_NO_SQL") == "1"
 
 
+def _no_semantic() -> bool:
+    return os.environ.get("P3ASK_NO_SEMANTIC") == "1"
+
+
 def tools() -> tuple[str, ...]:
-    return tuple(t for t in TOOLS if not (t == "sql" and _no_sql()))
+    return tuple(t for t in TOOLS
+                 if not (t == "sql" and _no_sql()) and not (t == "semantic" and _no_semantic()))
 
 
 def _log_call(log: str, qid: str | None, tool: str, args: dict, reply, ts_start: float, ts_end: float) -> None:

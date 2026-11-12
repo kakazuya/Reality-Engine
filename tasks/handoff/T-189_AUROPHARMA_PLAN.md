@@ -54,6 +54,9 @@ python -m reality_engine.pilot3.make_profile AUROPHARMA --name aurobindo --root 
 python -m reality_engine.scripts.fetch_pilot60_history --fetch --universe $D/universe_aurobindo.csv \
     --window-start 2024-04-01 --window-end 2026-11-11 --out $D/raw/manifest.csv
 python -m reality_engine.pilot3.docs_collect --profile $D/aurobindo_profile.json
+# 12 Nov (T-193): missing from the first run, so shp_category held only promoter/public and shp_pledge was empty
+python -m reality_engine.scripts.fetch_shp_xbrl_pilot --fetch --universe $D/universe_aurobindo.csv \
+    --raw D:/RealityEngine/raw/nse_shp_xbrl_pilot --db $D/shp_xbrl.db
 for part in registry pages transcripts kpi guidance stores comparatives preferred ratios segments notes checks; do
   python -m reality_engine.pilot3.build --profile $D/aurobindo_profile.json --out $D/aurobindo.db --part $part; done
 ```
