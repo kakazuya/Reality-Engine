@@ -16,7 +16,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 
 ## Next action
 0. T-191 A/B (`aurobindo_ab/`): all 4 arms answered (runs used 2,336 pages, now in `embed_2336_ab_run`; full 2,595 in `embed`, ~$0.0996 total). Haiku graded blind: 54/69 both arms, 4 flips each way. DeepSeek blind grading RUNNING (3 Opus graders). Next: report `reports/2026-11-12_semantic_ab.html`; answerer-found defects in `aurobindo_ab/STORE_DEFECTS_SEEN.md`.
-T-194 tool fixes (approved 16:50): RUNNING DeepSeek 20261112T112819Z-a7d6afbe.
+T-194 MERGED 12 Nov 18:00: `pilot3_topic`, phrase-first search with match counts, page as_of refusal, `event` table (`build --part events`), pharma topic tags. Next: restart reality-data; build events on live stores.
 1. T-192: rounds 3-4 failed review on Opus's pilot10 main-vs-branch diff (round 4: 4 HINDALCO India-capex targets hidden as Novelis; Q4-call flows -> Q4). Round 5 RUNNING 20261112T115218Z-d827ceff (brief J1-J3).
 2. T-194 tool fixes: brief `tasks/handoff/T-194_TOOL_FIXES_BRIEF.md` waits for Shivam.
 3. Branches: 22 unmerged; 5 answer-run note branches deletable; T-163 r4-7 / T-132 r10-12 need review; CHOLAFIN waits for Shivam.

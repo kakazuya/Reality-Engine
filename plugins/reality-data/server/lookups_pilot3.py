@@ -24,6 +24,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 import core
 from core import DataError
 from reality_engine.pilot3 import preferred as p3_preferred
@@ -962,9 +964,13 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
     topic_sql, topic_args = "1", []
     if topic:
         # the tag ranks first rather than filtering: the sentence that answers a "what did they say about margins"
-        # question is often tagged ``nim`` (or untagged) instead of ``margin``
-        topic_sql = "t.topics LIKE ?"
-        topic_args = [f"%{topic.strip().lower()}%"]
+        # question is often tagged ``nim`` (or untagged) instead of ``margin``.  A tag the sector lexicon spells with
+        # underscores ("USFDA inspection" -> usfda_inspection) is matched too (T-194).
+        asked = topic.strip().lower()
+        tag = re.sub(r"[\s\-]+", "_", asked)
+        topic_sql, topic_args = "t.topics LIKE ?", [f"%{asked}%"]
+        if tag != asked:
+            topic_sql, topic_args = "(t.topics LIKE ? OR t.topics LIKE ?)", [f"%{asked}%", f"%{tag}%"]
     for word in re.findall(r"[\w₹%&\-\.]+", terms or ""):
         where += " AND (t.statement LIKE ? OR t.quote LIKE ?)"
         args += [f"%{word}%", f"%{word}%"]
@@ -1214,6 +1220,169 @@ def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
                   "pilot3_docs", counts_by_type=counts)
 
 
+# --- pilot3_topic (T-194): a theme across every call and document, in one call ----------------------
+TOPIC_LIMIT = 20             # items in a reply (a 20-item reply stays near 16 kB); the reply says what the limit cut
+TOPIC_PER_DOC = {"statement": 4, "guidance": 3, "kpi": 3, "cell": 3, "event": 3}
+
+
+def _lex_topics() -> list[dict[str, Any]]:
+    """Every topic tag the lexicon defines: ``topics.yaml`` plus each sector family's own ``topics:`` list."""
+    from reality_engine.pilot3.transcripts import LEX_DIR
+    out: list[dict[str, Any]] = []
+    for path in sorted(LEX_DIR.glob("*.yaml")):
+        try:
+            doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except (OSError, yaml.YAMLError):
+            continue
+        for item in doc.get("topics") or []:
+            if item.get("tag") and item.get("patterns"):
+                out.append(item)
+    return out
+
+
+def _topic_plan(topic: str) -> dict[str, Any]:
+    """The words a topic is asked with, the lexicon tags they select, and every pattern of those tags: a question
+    about "USFDA inspection" also finds OAI, VAI, Form 483 and warning letters, which the ask never printed."""
+    words = [w for w in re.findall(r"[\w&-]+", (topic or "").lower()) if len(w) > 2 or w.isdigit()]
+    tags: list[str] = []
+    sources: list[str] = [re.escape(w) for w in words]
+    for item in _lex_topics():
+        tag_words = [t for t in re.split(r"[_\s]+", str(item["tag"]).lower()) if len(t) >= 4]
+        if any(t == w or t.startswith(w) or w.startswith(t) for t in tag_words for w in words if len(w) >= 4):
+            tags.append(item["tag"])
+            sources += [str(p) for p in item["patterns"]]
+    return {"words": words, "tags": tags, "regexes": [re.compile(s, re.I) for s in dict.fromkeys(sources)]}
+
+
+def _topic_hit(plan: dict[str, Any], *texts: Any) -> bool:
+    blob = " ".join(str(t) for t in texts if t)
+    return any(rx.search(blob) for rx in plan["regexes"])
+
+
+def topic(symbol: str, topic: str, as_of: str | None = None, limit: int = TOPIC_LIMIT,
+          date_from: str | None = None, date_to: str | None = None) -> dict[str, Any]:
+    """Everything the store holds on one theme up to ``as_of``, across every call and document in ONE call, grouped
+    by document date: management's statements verbatim, the related guidance rows, company-stated KPI rows, page
+    cells and event rows (an inspection, dividend, buyback, acquisition or merger).  The ask's own words expand to
+    the lexicon's sector vocabulary ("USFDA inspection" also finds OAI, Form 483, warning letters).  ``counts`` says
+    what matched, what was shown and what the limit cut; ``as_of`` never uses a document first known after it."""
+    sym = resolve_symbol(symbol)
+    if not (topic or "").strip():
+        raise DataError("bad_topic", "topic is required: the words the question is about (e.g. 'Pen-G', 'China plant', "
+                        "'USFDA inspection')")
+    plan = _topic_plan(topic)
+    day = _day(as_of, "as_of")
+    start, end = _day(date_from, "date_from"), _day(date_to, "date_to")
+    cap = _cap(limit, TOPIC_LIMIT)
+    items: list[dict[str, Any]] = []
+    counts = {"statement": 0, "guidance": 0, "kpi": 0, "cell": 0, "event": 0}
+
+    def keep(kind: str, date: str | None, doc_key: str, page: Any, quote: str | None, **fields: Any) -> None:
+        if start and (date or "") < start:
+            return
+        if end and (date or "") > end:
+            return
+        counts[kind] += 1
+        items.append({"kind": kind, "date": (date or "")[:10] or None, "doc_key": doc_key, "page": page,
+                      "quote": _trim(quote, 320), **fields})
+
+    extra, eargs = _asof(as_of, "t.known_at")
+    stmt_doc = ("LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a WHERE a.symbol=t.symbol "
+                "AND a.alias_key=t.doc_key), t.doc_key)")
+    for r in _q(f"SELECT t.id, t.doc_key, t.call_date, t.call_period, t.page, t.speaker, t.role, t.topics, t.quote, "
+                f"t.known_at, d.title, d.doc_type FROM transcript_statement t {stmt_doc} "
+                f"WHERE t.symbol=?{extra} ORDER BY t.call_date DESC, t.seq LIMIT 8000", (sym, *eargs)):
+        if not _topic_hit(plan, r["quote"], r["topics"]):
+            continue
+        keep("statement", r["call_date"], r["doc_key"], r["page"], r["quote"], call_period=r["call_period"],
+             speaker=r["speaker"], role=r["role"], topics=r["topics"], doc_type=r["doc_type"],
+             title=_trim(r["title"], 120),
+             provenance=_prov("transcript_statement", f"{r['doc_key']} p{r['page']}", r["known_at"], row_id=r["id"]))
+
+    extra, eargs = _asof(as_of, "g.known_at")
+    for r in _q(f"SELECT g.id, g.metric, g.target_period, g.low, g.high, g.unit, g.direction, g.said_on, g.doc_key, "
+                f"g.page, g.quote, g.known_at, d.title, d.doc_type FROM guidance g "
+                f"LEFT JOIN doc d ON d.doc_key=g.doc_key WHERE g.symbol=?{extra}{_visible('guidance', 'g.id')} "
+                f"ORDER BY COALESCE(g.known_at, g.said_on) DESC LIMIT 400", (sym, *eargs)):
+        if not _topic_hit(plan, r["quote"], r["metric"], r["target_period"]):
+            continue
+        keep("guidance", r["said_on"], r["doc_key"], r["page"], r["quote"], metric=r["metric"],
+             period=r["target_period"], low=r["low"], high=r["high"], unit=r["unit"], direction=r["direction"],
+             doc_type=r["doc_type"], title=_trim(r["title"], 120),
+             provenance=_prov("guidance", f"{r['doc_key']} p{r['page']}", r["known_at"], row_id=r["id"]))
+
+    extra, eargs = _asof(as_of, "k.known_at")
+    kpi_doc = ("LEFT JOIN doc d ON d.doc_key=COALESCE((SELECT a.doc_key FROM doc_alias a WHERE a.symbol=k.symbol "
+               "AND a.alias_key=k.doc_key), k.doc_key)")
+    for r in _q(f"SELECT k.id, k.metric, k.dimension, k.value, k.unit, k.fiscal_period, k.as_of_date, k.doc_key, "
+                f"k.page, k.quote, k.known_at, d.title FROM kpi_series k {kpi_doc} WHERE k.symbol=?{extra} "
+                f"{_visible('kpi_series', 'k.id')} ORDER BY COALESCE(k.known_at, k.as_of_date) DESC LIMIT 2000",
+                (sym, *eargs)):
+        if not _topic_hit(plan, r["quote"], r["metric"], r["dimension"]):
+            continue
+        keep("kpi", r["as_of_date"] or r["known_at"], r["doc_key"], r["page"], r["quote"], metric=r["metric"],
+             dimension=r["dimension"], value=r["value"], unit=r["unit"], period=r["fiscal_period"],
+             title=_trim(r["title"], 120),
+             provenance=_prov("kpi_series", f"{r['doc_key']} p{r['page']}", r["known_at"], row_id=r["id"]))
+
+    if _has_table("page_cell"):
+        extra, eargs = _asof(as_of, "known_at")
+        for r in _q(f"SELECT doc_key, page, known_at, row_label, col_header, table_title, value_text, unit_text "
+                    f"FROM page_cell WHERE symbol=?{extra} AND status IN ('verified','unverified') "
+                    f"ORDER BY known_at DESC LIMIT 4000", (sym, *eargs)):
+            if not _topic_hit(plan, r["row_label"], r["table_title"], r["col_header"]):
+                continue
+            keep("cell", r["known_at"], r["doc_key"], r["page"], r["row_label"],
+                 value=r["value_text"], unit=r["unit_text"], column=r["col_header"], table=r["table_title"],
+                 provenance=_prov("page_cell", f"{r['doc_key']} p{r['page']}", r["known_at"]))
+
+    if _has_table("event"):
+        extra, eargs = _asof(as_of, "known_at")
+        for r in _q(f"SELECT kind, event_date, end_date, announced, unit, outcome, subject, doc_key, page, quote, "
+                    f"known_at FROM event WHERE symbol=?{extra} ORDER BY COALESCE(event_date, announced) DESC",
+                    (sym, *eargs)):
+            if not _topic_hit(plan, r["subject"], r["quote"], r["unit"], r["outcome"], r["kind"]):
+                continue
+            keep("event", r["event_date"] or r["announced"], r["doc_key"], r["page"], r["quote"] or r["subject"],
+                 event=r["kind"], end_date=r["end_date"], unit=r["unit"], outcome=r["outcome"],
+                 subject=_trim(r["subject"], 200),
+                 provenance=_prov("event", f"{r['doc_key']} p{r['page']}", r["known_at"], kind=r["kind"]))
+
+    matched = len(items)
+    items.sort(key=lambda item: item["date"] or "", reverse=True)
+    groups: dict[tuple, dict[str, Any]] = {}
+    shown = 0
+    for item in items:
+        if shown >= cap:
+            break
+        key = (item["date"] or "", item["doc_key"])
+        group = groups.get(key)
+        if group is None:
+            group = groups[key] = {"date": item["date"], "doc_key": item["doc_key"],
+                                   "doc_type": item.get("doc_type"), "title": item.get("title"), "items": []}
+        group["doc_type"] = group["doc_type"] or item.get("doc_type")
+        group["title"] = group["title"] or item.get("title")
+        if sum(1 for other in group["items"] if other["kind"] == item["kind"]) >= TOPIC_PER_DOC.get(item["kind"], 3):
+            continue
+        # the group already carries the date, document and title, and the provenance carries the page: an item
+        # repeats none of them, or a 25-item reply costs more than the answer needs
+        group["items"].append({k: v for k, v in item.items()
+                               if k not in ("date", "doc_key", "page", "doc_type", "title")})
+        shown += 1
+    ordered = sorted(groups.values(), key=lambda g: (g["date"] or "", g["doc_key"]), reverse=True)
+    text = (f"{shown} of {matched} item(s) on {topic!r} up to {day or 'the latest filing'} "
+            f"({counts['statement']} statement(s), {counts['guidance']} guidance, {counts['kpi']} KPI, "
+            f"{counts['cell']} cell, {counts['event']} event); {matched - shown} cut by the limit")
+    return {"found": bool(shown), "symbol": sym, "tool": "pilot3_topic", "topic": topic, "as_of": day,
+            "tags_matched": plan["tags"], "text": text, "n": shown,
+            "counts": {**counts, "matched": matched, "shown": shown, "cut": matched - shown},
+            "groups": ordered,
+            "as_of_note": f"documents first known after {day} are not used" if day else None,
+            "hint": None if shown else "NOT IN DATA of pilot3 for this topic: try the words management uses, a wider "
+                                       "date_from/date_to, or pilot3_search for the wording; only then the raw tools.",
+            "provenance": _db_prov()}
+
+
 # --- pilot3_search ----------------------------------------------------------------------------------
 def _fts_query(text: str, mode: str) -> str:
     words = [w for w in re.findall(r"[\w₹%]+", text or "") if len(w) > 1 or w.isdigit()]
@@ -1246,8 +1415,10 @@ def _period_in(text: str, label: str) -> bool:
 
 
 def _rank_hits(rows: list[sqlite3.Row], exact: set[int], or_ids: set[int], period: str | None,
-               date_from: str | None, date_to: str | None, dtype: str | None) -> list[sqlite3.Row]:
-    """bm25 order with a boost for an all-word match, the period asked, the filing window and the document type.
+               date_from: str | None, date_to: str | None, dtype: str | None,
+               phrase: set[int] | None = None, short: set[int] | None = None) -> list[sqlite3.Row]:
+    """bm25 order with a boost for an exact-phrase match (then its short-scale printing), an all-word match, the
+    period asked, the filing window and the document type.
 
     bm25's own scale is not comparable across queries, so it is normalised inside the OR candidate set (1 = best
     match, the only set every row's rank comes from) and the boosts are added to that: the page that prints the
@@ -1263,6 +1434,10 @@ def _rank_hits(rows: list[sqlite3.Row], exact: set[int], or_ids: set[int], perio
             score = row["rank"] / low if low else 1.0
         else:
             score = 1.0                                   # an all-word hit outside the OR top
+        if phrase and row["rid"] in phrase:
+            score += 1.00                                    # the exact phrase the question printed (T-194)
+        elif short and row["rid"] in short:
+            score += 0.40                                    # the same amount printed short ("2 bn")
         if row["rid"] in exact:
             score += 0.20                                    # every query word is on the page
         day = str(row["filing_date"] or row["pk"] or row["dk"] or "")[:10]
@@ -1277,13 +1452,44 @@ def _rank_hits(rows: list[sqlite3.Row], exact: set[int], or_ids: set[int], perio
     return [row for _score, _index, row in scored]
 
 
+_SCALE_WORDS = {"bn": "billion", "billion": "billion", "cr": "crore", "crore": "crore", "crores": "crore",
+                "mn": "million", "million": "million", "trn": "trillion", "trillion": "trillion", "k": "thousand",
+                "lakh": "lakh", "lakhs": "lakh"}
+_SHORT_SCALE = {"billion": "bn", "crore": "cr", "million": "mn", "trillion": "trn", "thousand": "k", "lakh": "lakh"}
+_MONEY_RX = re.compile(r"(?:(?:us\$|usd|inr|rs\.?|₹|\$)\s*)?(\d[\d,.]*)\s*"
+                       r"(bn|billion|cr|crores?|mn|million|trn|trillion|lakhs?|k)\b", re.I)
+
+
+def _phrase_terms(query: str) -> tuple[list[str], list[str]]:
+    """The exact phrases a question prints, and the short-scale printing of its money amounts: "2 billion" is the
+    exact phrase, "2 bn" is the same amount printed short and ranks after it (T-194)."""
+    words = [w for w in re.findall(r"[\w₹%]+", query or "") if len(w) > 1 or w.isdigit()]
+    exact = [" ".join(words)] if len(words) > 1 else []
+    short: list[str] = []
+    for match in _MONEY_RX.finditer(query or ""):
+        number = match.group(1).rstrip(".,")
+        scale = _SCALE_WORDS.get(match.group(2).lower().rstrip("s")) or _SCALE_WORDS.get(match.group(2).lower())
+        if not scale:
+            continue
+        for term in (f"{number} {scale}", f"{number} {scale} dollars"):
+            if term not in exact:
+                exact.append(term)
+        short_term = f"{number} {_SHORT_SCALE.get(scale, scale)}"
+        if short_term not in exact and short_term not in short:
+            short.append(short_term)
+    return exact[:6], short[:4]
+
+
 def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
            doc_type: str | None = None, period: str | None = None,
            date_from: str | None = None, date_to: str | None = None) -> dict[str, Any]:
-    """Full-text search over every held page (FTS5 bm25, ranked); exact snippet around the match, page and filing
-    date.  ``period`` (Q1FY27 / FY26), ``date_from``+``date_to`` and ``doc_type`` boost the pages that print the
-    period / were filed in the window / are of that document type."""
+    """Full-text search over every held page (FTS5 bm25, ranked): the exact phrase first, then the words; a money
+    amount is normalised ("US$2 bn" = "$2 billion" = "2 billion").  The reply says how many pages match, how many
+    are shown and lists the hits grouped by document.  ``period`` (Q1FY27 / FY26), ``date_from``+``date_to`` and
+    ``doc_type`` boost the pages that print the period / were filed in the window / are of that document type;
+    ``as_of`` never returns a document first known after that day and says how many matches it hid."""
     sym = resolve_symbol(symbol)
+    day = _day(as_of, "as_of")
     extra, eargs = _asof(as_of, "COALESCE(p.known_at, d.known_at)")
     dflt, dargs = "", ()
     dtype = _DOC_TYPES.get(doc_type.strip().lower(), doc_type.strip().lower()) if doc_type else None
@@ -1300,29 +1506,78 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
               f"d.title, d.filing_date, rank, snippet(doc_page_fts, 0, '[', ']', ' … ', 40) snip "
               f"FROM doc_page_fts f JOIN doc_page p ON p.rowid=f.rowid JOIN doc d ON d.doc_key=p.doc_key "
               f"WHERE doc_page_fts MATCH ? AND p.symbol=?{dflt}{extra} ORDER BY rank LIMIT ?")
-    rows_or, rows_and = [], []
-    for mode in ("or", "and"):
-        match = _fts_query(query, mode)
-        if not match:
-            raise DataError("bad_query", "query needs at least one word")
-        found_rows = _q(select, (match, sym, *dargs, *eargs, cap * 20))
-        if mode == "or":
-            rows_or = found_rows
-        else:
-            rows_and = found_rows
-        if mode == "or" and not rows_and and _fts_query(query, "and") == match:
-            rows_and = rows_or       # one word: the two queries are the same
-    or_ids = {row["rid"] for row in rows_or}
-    exact = {row["rid"] for row in rows_and}
-    found: dict[int, sqlite3.Row] = {row["rid"]: row for row in rows_or}
-    for row in rows_and:
+    count = ("SELECT COUNT(*), COUNT(DISTINCT p.doc_key) FROM doc_page_fts f "
+             "JOIN doc_page p ON p.rowid=f.rowid JOIN doc d ON d.doc_key=p.doc_key "
+             f"WHERE doc_page_fts MATCH ? AND p.symbol=?{dflt}{extra}")
+    and_query, or_query = _fts_query(query, "and"), _fts_query(query, "or")
+    if not or_query:
+        raise DataError("bad_query", "query needs at least one word")
+    exact_terms, short_terms = _phrase_terms(query)
+    phrase_query = " OR ".join(f'"{term}"' for term in exact_terms)
+    short_query = " OR ".join(f'"{term}"' for term in short_terms)
+    found: dict[int, sqlite3.Row] = {}
+    phrase_ids: set[int] = set()
+    if phrase_query:
+        for row in _q(select, (phrase_query, sym, *dargs, *eargs, cap * 20)):
+            found[row["rid"]] = row
+            phrase_ids.add(row["rid"])
+    short_ids: set[int] = set()
+    if short_query:
+        for row in _q(select, (short_query, sym, *dargs, *eargs, cap * 20)):
+            if row["rid"] not in phrase_ids:
+                short_ids.add(row["rid"])
+                found.setdefault(row["rid"], row)
+    and_rows = _q(select, (and_query, sym, *dargs, *eargs, cap * 20)) \
+        if and_query and and_query not in (phrase_query, short_query) else []
+    and_ids = {row["rid"] for row in and_rows}
+    for row in and_rows:
         found.setdefault(row["rid"], row)
-    rows = _rank_hits(list(found.values()), exact, or_ids, period, start, end, dtype)[:cap]
-    match_mode = None if not rows else ("and" if rows[0]["rid"] in exact else "or")
+    or_rows = [] if or_query in (and_query, phrase_query, short_query) else \
+        _q(select, (or_query, sym, *dargs, *eargs, cap * 20))
+    or_ids = {row["rid"] for row in or_rows} | set(found)
+    for row in or_rows:
+        found.setdefault(row["rid"], row)
+    ranked = _rank_hits(list(found.values()), and_ids, or_ids, period, start, end, dtype,
+                        phrase_ids, short_ids)[:cap]
+    match_mode = ("phrase" if phrase_ids else
+                  "and" if any(row["rid"] in and_ids for row in ranked) else "or")
+    count_query = phrase_query if phrase_ids else (and_query if and_ids else or_query)
+    pages_matched, documents_matched = _q(count, (count_query, sym, *dargs, *eargs))[0]
+    pages_short = 0
+    if short_query and phrase_query:
+        pages_short = max(0, _q(count, (f"({short_query}) NOT ({phrase_query})", sym, *dargs, *eargs))[0][0])
+    pages_like = None
+    if phrase_ids:   # a substring scan is wider than the phrase: it also counts "22 billion" for "2 billion"
+        raw = " ".join(w for w in re.findall(r"[\w₹%]+", query or "") if len(w) > 1 or w.isdigit())
+        if raw:
+            pages_like = _q(f"SELECT COUNT(*) FROM doc_page p JOIN doc d ON d.doc_key=p.doc_key "
+                            f"WHERE p.text LIKE ? AND p.symbol=?{dflt}{extra}", (f"%{raw}%", sym, *dargs, *eargs))[0][0]
+            pages_like = pages_like if pages_like > pages_matched + pages_short else None
+    hidden = 0
+    if day:
+        hidden = max(0, _q(count.replace(extra, ""), (count_query, sym, *dargs))[0][0] - pages_matched)
+    documents: list[dict[str, Any]] = []
+    by_doc: dict[str, dict[str, Any]] = {}
+    for r in ranked:
+        group = by_doc.get(r["doc_key"])
+        if group is None:
+            group = by_doc[r["doc_key"]] = {"doc_key": r["doc_key"], "doc_type": r["doc_type"],
+                                            "title": _trim(r["title"], 120), "filing_date": r["filing_date"],
+                                            "pages": []}
+            documents.append(group)
+        group["pages"].append(r["page"])
+    text = (f"{pages_matched} page(s) match {query!r} ({match_mode} match) in {documents_matched} document(s)"
+            + (f"; {pages_short} more print it short" if pages_short else "")
+            + (f"; a substring scan counts {pages_like} (it also counts a longer number)" if pages_like else "")
+            + (f" first known on or before {day}; {hidden} hidden by as_of" if day else "")
+            + f"; {len(ranked)} shown")
     return _reply(sym, [{"doc_type": r["doc_type"], "title": _trim(r["title"], 120), "filing_date": r["filing_date"],
-                         "page": r["page"], "snippet": _trim(r["snip"], 420),
+                         "page": r["page"], "snippet": _trim(r["snip"], 320),
                          "provenance": _prov("doc_page", f"{r['doc_key']} p{r['page']}", r["pk"] or r["dk"])}
-                        for r in rows], "pilot3_search", match_mode=match_mode, period=period)
+                        for r in ranked], "pilot3_search", match_mode=match_mode, period=period, text=text,
+                  pages_matched=pages_matched, documents_matched=documents_matched, shown=len(ranked),
+                  documents=documents, as_of=day, hidden_after_as_of=hidden, pages_short=pages_short,
+                  pages_like=pages_like)
 
 
 # --- pilot3_sql -------------------------------------------------------------------------------------

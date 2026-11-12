@@ -2,6 +2,23 @@
 # other currency is not that metric, and a half-year or nine-month figure is not the quarter.
 family: pharma
 sectors: [pharma]
+
+# T-194: sector topic vocabulary. The tagger adds these tags to a company of this sector family only (the family is
+# the profile's / make_profile's sector), and pilot3_topic expands a question's own words into the same tags. One tag
+# per theme a pharma question names, with the words management actually uses for it.
+topics:
+  - {tag: usfda_inspection, patterns: ["\\busfda\\b", "\\bu\\.?s\\.? ?fda\\b", "\\bfda\\b[^.]{0,25}(inspection|audit|site)", "(?:site|facility|plant|unit|regulatory) inspections?", "\\bgmp\\b", "good manufacturing practice"]}
+  - {tag: oai, patterns: ["\\boai\\b", "official action indicated"]}
+  - {tag: vai, patterns: ["\\bvai\\b", "voluntary action indicated"]}
+  - {tag: warning_letter, patterns: ["warning letters?"]}
+  - {tag: form_483, patterns: ["form ?483", "\\b483s?\\b"]}
+  - {tag: price_erosion, patterns: ["price erosion", "erosion in prices?", "pricing (pressure|erosion|decline|environment)", "price (pressure|decline|erosion)", "price deflation"]}
+  - {tag: anda, patterns: ["\\bandas?\\b", "\\banda\\b (filing|filings|approval|approvals|pipeline|submission)", "abbreviated new drug application"]}
+  - {tag: launch, patterns: ["\\blaunch(es|ed|ing)?\\b", "commerciali[sz](ed|ation|ing)?", "\\bgrevlimid\\b", "product (roll-?out|introduction)", "first[- ]to[- ]market"]}
+  - {tag: biosimilar, patterns: ["biosimilars?", "\\bbiologics?\\b"]}
+  - {tag: api_pli, patterns: ["\\bapis?\\b", "active pharmaceutical ingredient", "\\bpli\\b", "production[- ]linked incentive"]}
+  - {tag: specialty_injectables, patterns: ["specialt(y|ies)", "injectables?", "\\bsterile\\b", "\\bpeptides?\\b", "complex generics?", "\\bcdmo\\b", "contract (development|manufacturing)"]}
+
 entries:
   - {metric: us_revenue_usd, kind: money, unit: usd_mn, labels: ["(formulation )?sales in the (us|u\\.s\\.|united states)", "(us|u\\.s\\.) (formulation )?(sales|revenue)", "north america (sales|revenue)"], neg: "%\\s*of|share|mix|first half|nine months|half year|for the year|₹|rs\\.?|inr|crore"}
   - {metric: us_generics, kind: money, unit: usd_mn, labels: ["(formulation )?sales in the (us|u\\.s\\.|united states)", "us generics", "(us|u\\.s\\.) formulations?", "us formulation sales"], neg: "%\\s*of|share|mix|first half|nine months|half year|for the year|₹|rs\\.?|inr|crore"}

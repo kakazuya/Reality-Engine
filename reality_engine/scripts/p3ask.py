@@ -12,7 +12,7 @@ subagent with only a shell asks the test store exactly as a model would ask the 
     python -m reality_engine.scripts.p3ask --db <file.db> catalog name=GROWTH \
         'inputs={"now": "22,067 crore", "before": "19,332 crore"}'
 
-Tools: fact cells kpi fin ratio holding statements guidance docs search semantic tech ratings sql calc catalog (the ``pilot3_``
+Tools: fact cells kpi fin ratio holding statements guidance docs search topic semantic tech ratings sql calc catalog (the ``pilot3_``
 prefix is optional).  ``ratings`` reads the outside-doc rating-rationale store (``REALITY_RATINGS_DB``, default
 ``D:/RealityEngine/outside_doc/ratings.db``) instead of ``--db``.  ``catalog name=list`` prints the named formulas;
 each one returns value, unit, the substituted
@@ -36,8 +36,8 @@ import time
 from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
-TOOLS = ("fact", "cells", "kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "semantic", "tech",
-         "ratings", "page", "sql", "calc", "catalog")
+TOOLS = ("fact", "cells", "kpi", "fin", "ratio", "holding", "statements", "guidance", "docs", "search", "topic",
+         "semantic", "tech", "ratings", "page", "sql", "calc", "catalog")
 
 
 def _value(text: str):
@@ -59,7 +59,12 @@ def _page(p3, doc_key: str, page: int, to_page: int | None = None, as_of: str | 
     last = min(max(first, last), first + 4)
     query = ("SELECT doc_key, page, method, known_at, text FROM doc_page "
              f"WHERE doc_key = '{doc_key}' AND page BETWEEN {first} AND {last} ORDER BY page")
-    return p3.sql(query, limit=5, max_chars=int(max_chars), as_of=as_of)
+    out = p3.sql(query, limit=5, max_chars=int(max_chars), as_of=as_of)
+    if not out.get("rows") and as_of:
+        # T-194 evidence 5: a document first known after the question's as_of answered four T-189 questions
+        out["note"] = (f"no page of that document is held on or before {as_of}: a document first known after "
+                       "that day cannot answer a point-in-time question")
+    return out
 
 
 def _no_sql() -> bool:

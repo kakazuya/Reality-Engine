@@ -23,7 +23,7 @@ from pathlib import Path
 
 import yaml
 
-from .kpi import LEX_DIR, SANDBOX_ROOT, VAL_RX, _UNIT_BY_SUFFIX, parse_periods, to_float, _norm_cur, profile
+from .kpi import LEX_DIR, SANDBOX_ROOT, VAL_RX, _UNIT_BY_SUFFIX, parse_periods, to_float, _norm_cur, profile, _sector_of
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS transcript_statement (
@@ -119,10 +119,34 @@ MGMT_INTRO_RX = re.compile(r"(?:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)\s+([A-Z][A-Za-z.'’\-
 QUARTER_WORDS = {"first": 1, "second": 2, "third": 3, "fourth": 4}
 
 
-def load_topics():
+def _sector_topics(sector: str | None) -> list[dict]:
+    """The topic vocabulary of a sector family (T-194): a lexicon file's own ``topics:`` list when the file's
+    ``sectors`` name the company's family.  Without a sector (no profile) no sector tag applies."""
+    if not sector:
+        return []
+    out: list[dict] = []
+    for path in sorted(LEX_DIR.glob("*.yaml")):
+        if path.name == "topics.yaml":
+            continue
+        try:
+            family = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except yaml.YAMLError:
+            continue
+        scopes = {str(s).lower() for s in (family.get("sectors") or [])}
+        if sector.lower() not in scopes:
+            continue
+        out += [item for item in (family.get("topics") or []) if item.get("tag") and item.get("patterns")]
+    return out
+
+
+def _compiled(entries: list[dict]) -> list[tuple]:
+    return [(t["tag"], [re.compile(p, re.I) for p in t["patterns"]], t.get("companies")) for t in entries]
+
+
+def load_topics(sector: str | None = None):
+    """General tags from ``topics.yaml`` plus, for a company of a lexicon family, that family's own tags (T-194)."""
     d = yaml.safe_load((LEX_DIR / "topics.yaml").read_text(encoding="utf-8"))
-    topics = [(t["tag"], [re.compile(p, re.I) for p in t["patterns"]], t.get("companies")) for t in d["topics"]]
-    return topics, d.get("people", {})
+    return _compiled(list(d["topics"]) + _sector_topics(sector)), d.get("people", {})
 
 
 def tag_topics(topics, company: str, sentence: str) -> list[str]:
@@ -1147,6 +1171,7 @@ def _transcript_docs(con: sqlite3.Connection, sym: str, sandbox: Path | None):
 def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | None = None) -> dict:
     t0 = time.time()
     topics, people = load_topics()
+    sector_topics = {sym: _compiled(_sector_topics(_sector_of(sym))) for sym in symbols}   # T-194
     con = sqlite3.connect(out)
     # migrate older stores that predate the T-164 columns
     try:
@@ -1187,7 +1212,8 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
                 continue
             st["docs"] += 1
             st["pages"] += len(pages)
-            rows = extract_doc(sym, doc_key, title, known_at, pages, topics, people, st, company_name, learned_generic)
+            rows = extract_doc(sym, doc_key, title, known_at, pages, topics + sector_topics[sym], people, st,
+                               company_name, learned_generic)
             con.executemany(sql, rows)
             qs = st.get("questions", [])
             # st["questions"] is list of tuples collected; reset per doc
@@ -1204,6 +1230,31 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
     return stats
 
 
+def retag(out: str, symbols: list[str] | None = None) -> dict:
+    """Re-run the topic tagger over the statements already stored in ``out`` (T-194), in place, with the company's
+    sector vocabulary.  Returns the share of ``other`` before and after: the tags move, the quotes do not."""
+    con = sqlite3.connect(out)
+    con.execute("PRAGMA journal_mode=DELETE")
+    stats: dict = {}
+    try:
+        known = [r[0] for r in con.execute("SELECT DISTINCT symbol FROM transcript_statement WHERE symbol IS NOT NULL")]
+        for sym in sorted(set(symbols or known)):
+            topics, _people = load_topics(_sector_of(sym))
+            rows = con.execute("SELECT rowid, quote, topics FROM transcript_statement WHERE symbol=?", (sym,)).fetchall()
+            if not rows:
+                continue
+            before = sum(1 for _rid, _quote, tags in rows if "other" in (tags or ""))
+            updates = [(",".join(tag_topics(topics, sym, quote or "")), rid) for rid, quote, _tags in rows]
+            con.executemany("UPDATE transcript_statement SET topics=? WHERE rowid=?", updates)
+            after = sum(1 for tags, _rid in updates if "other" in tags)
+            stats[sym] = {"rows": len(rows), "other_before_pct": round(100.0 * before / len(rows), 1),
+                          "other_after_pct": round(100.0 * after / len(rows), 1)}
+        con.commit()
+    finally:
+        con.close()
+    return stats
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     ap.add_argument("--out", required=True)
@@ -1211,10 +1262,15 @@ def main(argv=None):
     ap.add_argument("--profile", default=None, help="build profile JSON (T-056): companies, pages db, raw root, output")
     ap.add_argument("--sandbox-root", default=str(SANDBOX_ROOT))
     ap.add_argument("--limit-docs", type=int, default=None)
+    ap.add_argument("--retag", action="store_true",
+                    help="re-tag the statements already in --out (T-194); writes only the topics column")
     a = ap.parse_args(argv)
     if a.profile:
         profile.activate(profile.load(a.profile))
     symbols = [s.strip().upper() for s in (a.symbols or ",".join(profile.symbols())).split(",") if s.strip()]
+    if a.retag:
+        print(json.dumps(retag(a.out, symbols), indent=1))
+        return 0
     stats = run(a.out, symbols, None if a.profile else Path(a.sandbox_root), a.limit_docs)
     for k, v in stats.items():
         print(k, v)

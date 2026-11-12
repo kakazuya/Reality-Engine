@@ -33,7 +33,7 @@ _NO_PILOT3_SQL = os.environ.get("REALITY_DATA_NO_PILOT3_SQL") == "1"
 
 INSTRUCTIONS = """Local reality-engine data search. The data is read-only and every answer carries provenance.
 
-PILOT3 FIRST: the pilot3_* tools hold every company in their database's company table -- the whole NSE+BSE universe the build covers (thousands of companies), never a sample of three: check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') instead of assuming a company is absent. For any company in that table (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any single number the answer needs (one financial line, ratio, margin, KPI, holding category or share count) -> pilot3_fact FIRST: one call returns the preferred figure with unit, period, basis, source document + page, known_at and, when the store derives it, the formula with its input rows; any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF/insurance/government (GoI) holding or a four-quarter shareholding path -> pilot3_holding(symbol, as_of, category=..., quarters=5: the baseline plus four quarters; an intra-quarter filing takes a slot) -- FPI sums use fpi_total, never its components added -- every filed shp_category row comes back with pct and pct_basis; share count on a date -> pilot3_holding(symbol, as_of).share_capital; what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); price reaction to a filing, gaps, RSI, moving averages, volume spikes, range position -> pilot3_tech; list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: company, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, doc, doc_page; view fin_quarter_current: the one preferred financial line per symbol, fiscal_period, basis and line_item now, and the quarter tables' preferred_from / preferred_to columns elect the same figure at any past day -- read them or pilot3_fin, never a hand sum over both tables). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A company the database does not hold returns {"found": false} (or error code not_pilot3): only then use the raw tools below or say NOT IN DATA. A {"found": false} answer for a company it does hold lists what is available; read that list and retry. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
+PILOT3 FIRST: the pilot3_* tools hold every company in their database's company table -- the whole NSE+BSE universe the build covers (thousands of companies), never a sample of three: check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') instead of assuming a company is absent. For any company in that table (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any single number the answer needs (one financial line, ratio, margin, KPI, holding category or share count) -> pilot3_fact FIRST: one call returns the preferred figure with unit, period, basis, source document + page, known_at and, when the store derives it, the formula with its input rows; any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); a THEME spread over several calls or documents (Pen-G, a China plant, launches, USFDA inspections, price erosion, the specialty pipeline) -> pilot3_topic FIRST: one call returns the statements verbatim from every call plus the related guidance, KPI, page-cell and event rows, grouped by document date, with the count of what the limit cut; company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF/insurance/government (GoI) holding or a four-quarter shareholding path -> pilot3_holding(symbol, as_of, category=..., quarters=5: the baseline plus four quarters; an intra-quarter filing takes a slot) -- FPI sums use fpi_total, never its components added -- every filed shp_category row comes back with pct and pct_basis; share count on a date -> pilot3_holding(symbol, as_of).share_capital; what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); price reaction to a filing, gaps, RSI, moving averages, volume spikes, range position -> pilot3_tech; list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: company, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, doc, doc_page; view fin_quarter_current: the one preferred financial line per symbol, fiscal_period, basis and line_item now, and the quarter tables' preferred_from / preferred_to columns elect the same figure at any past day -- read them or pilot3_fin, never a hand sum over both tables). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A company the database does not hold returns {"found": false} (or error code not_pilot3): only then use the raw tools below or say NOT IN DATA. A {"found": false} answer for a company it does hold lists what is available; read that list and retry. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
 for a single number, call pilot3_fact first: one call returns the preferred figure with its unit, period, basis, source document + page, known_at and, when the store derives it, the formula with its input rows.
 
 ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) — one call each, before any sql():
@@ -43,6 +43,7 @@ ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) 
 - "what documents / latest deck / latest transcript" -> docs(symbol, doc_type, date_from, date_to)
 - "page N of the <date> presentation" -> doc_page(symbol, date, page)
 - "what did they say about X in the <date> transcript/deck/AR" -> doc_find(symbol, terms, doc_type, date)
+- "what has the company said or done about X across calls" (a theme, a product, inspections) -> pilot3_topic(symbol, topic, as_of)
 - financial numbers, segments, guidance -> facts(symbol, kind, period); OHLCV range -> price(...)
 Symbols, BSE codes, ISINs and names all resolve inside each tool. A {"found": false} answer lists what was checked and the nearest documents: follow its hint, then say NOT IN DATA; do not hand-write SQL over the same tables. Filing dates can be the evening of, or a day after, the date a user names. Exact share counts come from filings; XBRL paid-up capital / face value is rounded.
 
@@ -629,13 +630,36 @@ def pilot3_docs(symbol: str, doc_type: str | None = None, date_from: str | None 
 
 
 @server.tool(
+    name="pilot3_topic",
+    description=(
+        "Everything the store holds on ONE theme up to as_of, across every call and document in one call: "
+        "management's statements verbatim, the related guidance rows, company-stated KPI rows, page cells and event "
+        "rows (regulatory inspections, dividends, buybacks, acquisitions, mergers), grouped by document date. The "
+        "ask's own words expand to the lexicon's sector vocabulary: 'USFDA inspection' also finds OAI, VAI, warning "
+        "letters and Form 483; 'launches' also finds gRevlimid; a money amount matches its short and long form. "
+        "counts says how many items matched, how many are shown and how many the limit cut. Use it FIRST for any "
+        "'what has the company said/done about X' question that spans several calls (Pen-G, a China plant, launches, "
+        "inspections), then pilot3_statements only for one call's wording. date_from/date_to narrow the document "
+        "date; as_of never uses a document first known after that day."
+    ),
+    annotations=_RO,
+)
+def pilot3_topic(symbol: str, topic: str, as_of: str | None = None, limit: int = 25,
+                 date_from: str | None = None, date_to: str | None = None) -> dict[str, Any]:
+    return _safe(lambda: _p3.topic(symbol, topic, as_of=as_of, limit=limit, date_from=date_from, date_to=date_to))
+
+
+@server.tool(
     name="pilot3_search",
     description=(
         "Full-text search (FTS5 bm25, ranked) over the dated text of every held document page of a company the "
-        "pilot database covers. Returns the exact snippet around the match with document, page, filing date "
-        "and known_at. Use after the structured pilot3 tools, or when the question is about wording. period "
+        "pilot database covers. The EXACT PHRASE is tried first, then the words, and a money amount is normalised "
+        "('US$2 bn' = '$2 billion' = '2 billion'); the reply always says how many pages match, how many are shown "
+        "and lists the hits grouped by document. Returns the exact snippet around the match with document, page, "
+        "filing date and known_at. Use after the structured pilot3 tools, or when the question is about wording. period "
         "(Q1FY27 / FY26), date_from+date_to (filing window) and doc_type boost the pages that print the period, "
-        "were filed in the window, or are of that type. as_of drops later pages."
+        "were filed in the window, or are of that type. as_of never returns a document first known after that day "
+        "and says how many matches it hid."
     ),
     annotations=_RO,
 )
@@ -727,6 +751,7 @@ if not _NO_PILOT3_SQL:
         "enforced, default 100, max 500). Tables: company (every company the build covers -- count it, never assume "
         "a sample), doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, "
         "ratio_panel, formula, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, "
+        "event (one row per announcement event: inspection/buyback/dividend/acquisition/merger), "
         "price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, rating_event, concentration, related_party_txn. Views: "
         "fin_quarter_current (the one preferred financial line per symbol, fiscal_period, basis and line_item now). "
         "Financial figures: read fin_quarter_current, or add preferred_from / preferred_to on fin_quarter_xbrl and "

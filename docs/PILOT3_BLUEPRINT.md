@@ -29,10 +29,39 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `guidance` | one row per forward target: metric, period, low/high (NULL for a worded target), unit, revision link | transcripts, decks, results, press releases |
 | `shp_category`, `shp_holder`, `shp_pledge`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings by category with the share count the printed percentage is on, the named holders, the promoter pledge block, share count, dividends, prices, PE/PB/EV | exchange data stores |
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
+| `event` (T-194) | one row per announcement event: `kind` (inspection / buyback / merger / acquisition / dividend), the inspection's `unit`, `event_date` / `end_date`, `outcome` (OAI, VAI, warning letter, Form 483, no observations, EIR received, closed), `subject`, `doc_key` + `page`, `quote`, `known_at` | announcement / press-release title + first page (`pilot3/events.py`) |
 
 Tools: `pilot3_fact` (one answer-ready number, T-186, section 9o), `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`,
-`pilot3_guidance`, `pilot3_statements`, `pilot3_search` (bm25),
+`pilot3_guidance`, `pilot3_statements`, `pilot3_topic` (a theme across every call and document, T-194),
+`pilot3_search` (bm25; exact phrase first, T-194),
 `pilot3_semantic` (dense page search, T-154; paid query gate, vectors in the store's `embed/`), `pilot3_docs`, `pilot3_holding`, `pilot3_tech` (section 9i), `pilot3_sql`; `schema` / `catalog` know the `pilot3` db.
+
+**T-194 (12 Nov 2026) closes the four tool failures the T-189 graders found ("stopped early" was the top miss
+cause for all four models); every rule is general, never per company:**
+- `pilot3_topic(symbol, topic, as_of, limit, date_from, date_to)` answers a theme in ONE call, grouped by document
+  date: the statements verbatim from every call, the related guidance and KPI rows, page cells and `event` rows;
+  `counts` says matched / shown / cut and `text` says it in a sentence. The ask's words expand to the lexicon
+  ("USFDA inspection" also finds OAI, VAI, Form 483 and warning letters; "launches" also finds gRevlimid). A
+  20-item reply stays under 16 kB on the AUROPHARMA store (measured: 6.8-15.8 kB over nine topics); Pen-G comes
+  back from three calls (Feb/May/Aug 2026) in one reply.
+- `pilot3_search` tries the exact phrase first, then the words; a money amount is normalised ("US$2 bn" =
+  "$2 billion" = "2 billion"), the short printing ("2 bn") ranks after the exact one, and every reply states
+  "N page(s) match ... k shown" with `pages_matched`, `pages_short`, `pages_like` and the hits grouped by document
+  (`documents`). On AUROPHARMA "2 billion": 25 pages print it, 4 more print "2 bn", 34 by substring (which also
+  counts "22 billion" / "82 billion" / "182 billion"); the top hits are the $2bn guidance statements, not the
+  $4bn Zentiva page the old OR search returned.
+- `event` (T-194): one row per announcement event, built by `python -m reality_engine.pilot3.events --out <db>`
+  (the `events` build part) from the title and first page. AUROPHARMA: 91 events, 40 of them inspections (14 in
+  FY26), each with its unit and outcome ("all FY26 USFDA inspections" is one call instead of eleven titles).
+- Sector topic vocabulary: a lexicon file's own `topics:` list, applied only to companies of its `sectors:` family
+  (pharma: `usfda_inspection`, `oai`, `vai`, `warning_letter`, `form_483`, `price_erosion`, `anda`, `launch`,
+  `biosimilar`, `api_pli`, `specialty_injectables`). `python -m reality_engine.pilot3.transcripts --out <db>
+  --profile <profile> --retag` re-tags the stored statements in place and reports the share of `other` before and
+  after: AUROPHARMA 38.5% -> 35.7% (2,765 statements, 424 pharma tag assignments) and pilot10 SUNPHARMA 33.1% ->
+  32.4% on top of the general vocabulary (its 75.7% -> 33.1% fall is the T-164 r6 general refresh, not T-194).
+- `as_of` is enforced on every text tool: `pilot3_topic` and `pilot3_search` say the day and how many matches they
+  hid, and the page reader (`page`) returns no row for a document first known after the day and says why (the four
+  look-ahead answers of T-189 came through `page`).
 
 ## 3. Extraction methods (what works, what failed)
 - **Documents**: collected per company into `D:\RealityEngine\pilot3\pages.db`. Dates: `known_at` = exchange
