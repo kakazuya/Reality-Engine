@@ -179,19 +179,39 @@ property of the page or the cell, never a company:
   (`kpi_series.fiscal_period`, `fin_quarter_printed.fiscal_period`, `transcript_statement.call_period`,
   `fin_annual_line.fiscal_year`, `doc_identity.fiscal_year`), reason `period_from_document`, never verified.
   `basis` from the title, else the `col_header` ("Consolidated > QUARTER ENDED ..."), else the page text printed
-  alone. `unit`/`scale` from the cell's own text, else the page's single declaration (`unit_scales` /
-  `check_page_unit` logic; two declarations -> `unit_conflict`); `%`, `x`, `days` and a count keep scale 1. A
-  growth column (`YoY`, `QoQ`, `Growth`, `Change`, `% chg`, `Var`, `Variance`, `▲`/`▼`, `vs`) is unit `change`
+  alone. `unit`/`scale` from the row's own label / `col_header` words first, then the cell's own text, else the
+  page's single declaration (`unit_scales` / `check_page_unit` logic; two declarations -> `unit_conflict`); `%`,
+  `x`, `days` and a count keep scale 1. A growth column (`YoY`, `QoQ`, `Growth`, `Change`, `% chg`, `Var`,
+  `Variance`, `▲`/`▼`, `vs`) is unit `change`
   whatever the value prints, never a level; so is an empty header whose value carries a change marker (▲/▼,
   "up by", bps). `(1,234)` is negative; `-` / Nil is no atom. `definition` is a printed bracket legend
   (`legend:...`) or `row_checks.definition_key` (T-198); the full label is kept. A cell with no row label is never
   verified (`label_missing`).
 - **Statuses.** `verified` only when the cell is position-checked AND its period and unit resolved; everything else
   `unverified` with `check_reasons` (`position_unverified`, `period_unresolved`, `period_ambiguous`,
-  `period_from_document`, `unit_unresolved`, `unit_conflict`, `change_not_level`, `label_missing`; `as_at` is
-  informational and keeps `verified`). Two rows of one document with the same row label, period and basis but
-  different values are both `unverified` (`same_doc_conflict`). Each canonical atom is copied onto its
-  `duplicates.csv` pages with the duplicate's own `doc_key` and `known_at`, and `copied_from=<doc_key>#p<page>`.
+  `period_from_document`, `unit_unresolved`, `unit_conflict`, `change_not_level`, `label_missing`; `as_at` and
+  `count_unit=<word>` are informational and keep `verified`). Two rows of one document with the same row label,
+  period and basis but different values are both `unverified` (`same_doc_conflict`); the row label carries its
+  section, so the same printed label under two headings is two rows, never a conflict. Each canonical atom is
+  copied onto its `duplicates.csv` pages with the duplicate's own `doc_key` and `known_at`, and
+  `copied_from=<doc_key>#p<page>`.
+- **Round 3 (13 Nov): section, equal values, label units.** Measured on the 20-page Blue Star truth sample
+  (`D:/RealityEngine/bluestar/truth/grades_a.csv` / `grades_b.csv`, 03:00): 43 of 211 sampled rows had lost their
+  section, 12 of 18 recall misses were equal values merged, 61 of 291 rows carried a wrong or missing unit.
+  (1) **Section.** `parse_grid` starts a section at a heading row (a label with letters and no figure under it) or
+  at a no-`|` line followed by rows, and every following cell carries it until the next heading or `TABLE` line;
+  `_normalize_row` keeps it. `page_reader` writes it into `page_cell.row_label` as `<section> > <label>` only when
+  the label starts with a printed list marker ("(a)", "i.", "1.", "a)") or the same label is printed on two lines;
+  every other label keeps its old text. (2) **Equal values.** `settle_page`/`place` claim a word: a cell of the
+  same row under a different column takes the next matching word of its line, else it is kept as a loose
+  unverified cell; it is never merged away. Two cells of one row both survive a page that prints "1.23" twice.
+  (3) **Units.** `resolve_unit` reads the row's label / `col_header` first: `ratio`, `times`, `(x)` -> `x`;
+  `days` / "No. of days" -> `days`; `%`, `percent`, `margin`, `share of` -> `pct`; `no.`, `number of`, `count`,
+  `shares`, `votes`, `units`, `tonnes`, `towns`, `dealers`, `partners`, `calls`, `countries`, `facilities`,
+  `stores` -> `count` with reason `count_unit=<word>`; a `sr` / `s.no` / `sl. no` label or a year printed as the
+  value makes no atom. Only a row whose words name none of them takes the page's money declaration, and a value
+  that prints a quantity word ("2.5 million tonnes") is a count at its scale, never rupees.
+  `reference_geom.settle_page` also carries `section` and `label_repeated` into `reference_cells.csv`.
 - **Tools.** `pilot3_cells` serves `page_atom` when the store has rows for the company (resolved `period`, `basis`,
   `unit`, `scale` and numeric `value` beside the printed text; the `period` argument filters the resolved column)
   and falls back to `page_cell` only while the store has no atom rows. `pilot3_fact` and `pilot3_kpi` fall back to
@@ -203,10 +223,14 @@ property of the page or the cell, never a company:
   with a scale, and an `x` / `days` / `count` metric only its own unit. A metric no definition names is not
   filtered (only a definition can prove a unit wrong). `pilot3_topic` lists the atoms on the theme's pages.
   `coverage` names `page_atom` and `page_cell` in exactly one list each.
-- **Tests.** `test_pilot3_atoms.py` 24 (the eight real results headers, the as-at balance sheet, the chart table
-  whose periods are rows, growth columns, ambiguous spans and header/label conflicts), `test_v2_page_reader.py` 10
-  (`--basetemp` is refused inside the dsh sandbox, so the sandbox run uses `-p no:tmpdir` and the documented temp
-  override), `test_pilot3_schema_version.py` 8 (v0 / v8 / v9 -> v10, twice idempotent), `test_lookups_pilot3.py`
+- **Tests.** `test_pilot3_atoms.py` 32 (the eight real results headers, the as-at balance sheet, the chart table
+  whose periods are rows, growth columns, ambiguous spans and header/label conflicts, the label/header unit words,
+  a quantity value, a serial row and a year making no atom, a sectioned label keeping two headings apart),
+  `test_v2_page_reader.py` 11 (`--basetemp` is refused inside the dsh sandbox, so the sandbox run uses
+  `-p no:tmpdir` and the documented temp override; a file-reader page whose two headings print the same
+  "(a)" label), `test_v2_reference_pages.py` 7 (the grid parser, sections, the sampler, reconcile, layout),
+  `test_v2_reference_geom.py` 11 (spanning header, wrapped labels, chart panel, verdicts, equal values in two
+  columns, every settled-cell key present in the CSV columns), `test_pilot3_schema_version.py` 8 (v0 / v8 / v9 -> v10, twice idempotent), `test_lookups_pilot3.py`
   82 passed + 1 skipped (the unit-family class: AUM served in crore not as the pct atom, interest coverage served
   as `x` not rupees, EBITDA margin served as pct not rupees), `test_store_routing.py` 7,
   `test_pilot3_no_company_literals.py` 7. Measured read-only on `aurobindo.db`: of 5,973 printed results cells,

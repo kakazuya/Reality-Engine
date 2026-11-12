@@ -784,12 +784,21 @@ python -m pytest reality_engine/tests/test_pilot3_kpi.py -q
   `unverified` + `check_reasons`); the period reads a dated results header ("QUARTER ENDED (UNAUDITED) >
   30.09.2025" -> `q2fy26`, "AS AT 31.03.2025" -> `fy25` with `as_at`) and a row label that is a period before
   falling back to the document's, a growth column (`YoY`, `QoQ`, `Chg`, `▲`) is unit `change`, never a level, and
-  two values for one row/period/basis in one document are both `same_doc_conflict`. `pilot3_cells` serves the atoms
+  two values for one row/period/basis in one document are both `same_doc_conflict`. Round 3 (13 Nov) writes a row's
+  heading into `page_cell.row_label` as `<section> > <label>` when the label starts with a printed list marker or is
+  printed on two lines (`parse_grid` carries the section; every other label keeps its old text), keeps equal values
+  printed in two columns as two cells (`reference_geom.settle_page` claims each printed word; a claim that finds no
+  other word stays a loose unverified cell), and reads the unit from the row's own label/header words before any page
+  declaration (ratio/times -> `x`, days -> `days`, margin/%/share-of -> `pct`, count nouns -> `count` with
+  `count_unit=<word>`; a `sr`/`s.no` label or a year printed as a value makes no atom; "2.5 million tonnes" is a
+  count, never rupees). `pilot3_cells` serves the atoms
   (resolved fields, period filter on the resolved column) and falls back to `page_cell` only while the store has no
   atom rows; `pilot3_fact`/`pilot3_kpi` fall back to atoms (`source: page_atom`), never serving a change atom as the
   level nor an atom whose unit is not the family the metric's own definition carries (KPI lexicon / ratio formulas);
-  `pilot3_topic` lists atoms. Files: `reality_engine/v2/page_reader.py`, `reality_engine/pilot3/{atoms,schema,build}.py`,
-  `plugins/reality-data/server/lookups_pilot3.py`; tests `test_v2_page_reader.py` 10, `test_pilot3_atoms.py` 24,
+  `pilot3_topic` lists atoms. Files: `reality_engine/v2/page_reader.py`,
+  `reality_engine/v2/{reference_pages,reference_geom,reference_vote}.py`, `reality_engine/pilot3/{atoms,schema,build}.py`,
+  `plugins/reality-data/server/lookups_pilot3.py`; tests `test_v2_page_reader.py` 11, `test_pilot3_atoms.py` 32,
+  `test_v2_reference_pages.py` 7, `test_v2_reference_geom.py` 11,
   `test_pilot3_schema_version.py` 8 (migration v10 twice idempotent), `test_lookups_pilot3.py` 82 + 1 skipped,
   `test_store_routing.py` 7, `test_pilot3_no_company_literals.py` 7. Blueprint section 2 (T-199 block).
 - **T-203: one server, every store (12 Nov 2026).** A test company in its own store no longer needs an edit to

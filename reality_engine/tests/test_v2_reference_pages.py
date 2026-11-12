@@ -46,6 +46,39 @@ def _sample_docs():
     return docs
 
 
+def test_grid_sections_keep_a_printed_label_apart():
+    """T-199: the results page prints "(a) Electro-mechanical projects" under four headings; every row carries the
+    heading above it until the next heading (a label-only line or a label row with no figure) or TABLE line."""
+    raw = ("TABLE: Segment report\n"
+           "UNIT: Rs crore\n"
+           "COLUMNS: Q2FY26 | Q1FY26\n"
+           "Segment Revenue |  |\n"
+           "(a) Electro-mechanical projects | 1,000 | 900\n"
+           "(b) Cooling products | 500 | 450\n"
+           "Segment Result |  |\n"
+           "(a) Electro-mechanical projects | 100 | 90\n"
+           "Segment Assets\n"
+           "(a) Electro-mechanical projects | 2,000 | 1,900\n")
+    rows = rp.parse_grid(raw)
+    assert [(r["section"], r["row_label"], r["value"]) for r in rows] == [
+        ("Segment Revenue", "(a) Electro-mechanical projects", "1,000"),
+        ("Segment Revenue", "(a) Electro-mechanical projects", "900"),
+        ("Segment Revenue", "(b) Cooling products", "500"),
+        ("Segment Revenue", "(b) Cooling products", "450"),
+        ("Segment Result", "(a) Electro-mechanical projects", "100"),
+        ("Segment Result", "(a) Electro-mechanical projects", "90"),
+        ("Segment Assets", "(a) Electro-mechanical projects", "2,000"),
+        ("Segment Assets", "(a) Electro-mechanical projects", "1,900")]
+    assert {r["col_header"] for r in rows} == {"Q2FY26", "Q1FY26"}
+
+
+def test_a_table_without_sections_keeps_every_row_unchanged():
+    raw = "TABLE: P&L\nUNIT: Rs crore\nCOLUMNS: Q2FY26 | Q1FY26\nRevenue | 100 | 90\nProfit | 40 | 30\n"
+    rows = rp.parse_grid(raw)
+    assert [r["section"] for r in rows] == ["", "", "", ""]
+    assert [r["row_label"] for r in rows] == ["Revenue", "Revenue", "Profit", "Profit"]
+
+
 def test_parser_tolerant():
     raw = "some stray text\n{\"table\":\"T\",\"row_label\":\"A\",\"col_header\":\"B\",\"value\":\"1,234\",\"unit\":\"Rs\"}\nmore junk"
     rows = rp._parse_rows(raw)

@@ -17,19 +17,24 @@ each non-quarantined cell that holds a figure into one atom:
   empty with ``period_unresolved``.
 * **basis** -- ``consolidated`` / ``standalone`` from the table title, else the column header ("Consolidated >
   QUARTER ENDED ..."), else the page text when exactly one is printed alone.
-* **unit and scale** -- the cell's own unit text; else the page's single scale declaration (``unit_scales`` /
-  ``check_page_unit`` logic).  ``%``, ``x``, ``days`` and a count keep their unit with scale 1; two different
-  declarations on the page leave the unit unresolved.  A growth column (``YoY``, ``QoQ``, ``Growth``, ``Chg``,
-  ``Var``, ``▲``/``▼``) is unit ``change``, never a level, whatever the value prints; so is an empty header whose
-  value carries a change marker (▲/▼, "up by", "bps").  The serving tools never answer a metric with a ``change``
-  atom, nor with an atom whose unit family is not the one the metric's own definition carries.
+* **unit and scale** -- the row's own label / column header words first (a ratio is ``x``, "No. of days" is
+  ``days``, a margin is ``pct``, "Dealers added" is ``count`` with reason ``count_unit=<word>``); then the cell's own
+  unit text; else the page's single scale declaration (``unit_scales`` / ``check_page_unit`` logic).  ``%``, ``x``,
+  ``days`` and a count keep their unit with scale 1; two different declarations on the page leave the unit
+  unresolved.  A value that prints a quantity word ("2.5 million tonnes") is a count at its scale, never rupees; a
+  serial-number row and a year printed as a value make no atom.  A growth column (``YoY``, ``QoQ``, ``Growth``,
+  ``Chg``, ``Var``, ``▲``/``▼``) is unit ``change``, never a level, whatever the value prints; so is an empty header
+  whose value carries a change marker (▲/▼, "up by", "bps").  The serving tools never answer a metric with a
+  ``change`` atom, nor with an atom whose unit family is not the one the metric's own definition carries.
 * **value** -- ``(1,234)`` is negative, ``-`` / ``Nil`` is no figure (no atom), ``12.3%`` is 12.3 with unit ``pct``.
 * **definition** -- a printed legend in the row label's brackets, else the label's own qualifier through
   ``row_checks.definition_key`` (T-198).  The full label is kept (the legend is part of what the row is).
 
 ``verified`` means the cell is position-checked AND its period and unit resolved; everything else is
 ``unverified`` with ``check_reasons`` naming what is missing.  Two rows of one document with the same row label,
-period and basis but different values are both ``unverified`` (``same_doc_conflict``).
+period and basis but different values are both ``unverified`` (``same_doc_conflict``); a row label carries its
+section ("Segment Result > (a) Electro-mechanical projects", written by ``page_reader``) so the same printed label
+under two headings is two rows, never a conflict (T-199).
 
 ``duplicates.csv`` from ``page_reader export`` names identical pages the reader did not read; each canonical atom
 is copied onto its duplicates with the duplicate's own document key and ``known_at``, and
@@ -293,6 +298,42 @@ def resolve_basis(table_title: str, page_text: str, col_header: str = "") -> str
 
 
 # --- unit and scale ----------------------------------------------------------------------------------
+# T-199 round 3: the row's own words decide the unit before any page declaration.  A page that prints
+# "(Rs in crore)" declares it for its money rows, never for "Current ratio" (x), "(No. of days)" (days),
+# "EBITDA margin" (pct) or "Dealers added" (count); a serial-number row and a year printed as a value are
+# not figures at all (no atom).
+_LABEL_X = re.compile(r"\bratio\b|\btimes\b|\(\s*x\s*\)", re.I)
+_LABEL_DAYS = re.compile(r"\bdays?\b", re.I)
+_LABEL_PCT = re.compile(r"%|\bper\s*cent\b|\bpercent(?:age)?s?\b|\bmargin\b|\bshares?\s+of\b", re.I)
+_LABEL_COUNT = re.compile(      # "shares", not "share": "Equity share capital" is a money row
+    r"\bno\.?\b|\bnumber\s+of\b|\bcount\b|\bshares\b|\bvotes?\b|\bunits?\b|\btonnes?\b|\btons?\b|\btowns?\b|"
+    r"\bdealers?\b|\bpartners?\b|\bcalls?\b|\bcountries\b|\bfacilit(?:y|ies)\b|\bstores?\b", re.I)
+_SERIAL_LABEL = re.compile(r"^\s*(?:sr\.?|s\.?\s*no\.?|sl\.?\s*no\.?)(?![a-z])", re.I)
+_YEAR_VALUE = re.compile(r"^(?:19|20)\d{2}$")
+_NO_ATOM = "no_atom"          # a serial-number label or a year printed as the value: never a figure to serve
+
+
+def _count_unit(word: str) -> str:
+    """``count_unit=<word>``: how a count unit was read, kept beside the atom without making it a doubt."""
+    word = re.sub(r"[^a-z0-9. ]+", "", (word or "").casefold()).strip(" .")
+    return f"count_unit={word or 'count'}"
+
+
+def _label_unit(text: str) -> tuple[str, str] | None:
+    """(unit, reason) the row label or column header itself names, else None."""
+    text = text or ""
+    if _LABEL_X.search(text):
+        return "x", ""
+    if _LABEL_DAYS.search(text):
+        return "days", ""
+    if _LABEL_PCT.search(text):
+        return "pct", ""
+    counted = _LABEL_COUNT.search(text)
+    if counted:
+        return "count", _count_unit(counted.group(0))
+    return None
+
+
 def _unit_from(text: str) -> tuple[str, float, bool]:
     """(unit, scale, named) a unit text names; ``named`` is False when it names no unit at all."""
     text = text or ""
@@ -329,12 +370,29 @@ def _page_declarations(page_text: str) -> set[tuple[str, float]]:
     return declared
 
 
-def resolve_unit(value_text: str, unit_text: str, page_text: str) -> tuple[str, float, str]:
-    """(unit, scale, why unresolved) for one value: its own text, the cell unit, then the page declaration.
+def resolve_unit(value_text: str, unit_text: str, page_text: str,
+                 row_label: str = "", col_header: str = "") -> tuple[str, float, str]:
+    """(unit, scale, why) for one value: the row's own words, then its text, then the page's money declaration.
+
+    The label / header words decide first (T-199): a ratio is ``x`` however the page declares its money, "No. of
+    days" is ``days``, a margin is ``pct``, "Dealers added" is ``count`` with reason ``count_unit=<word>``; only a row
+    whose words name none of them takes the page's declaration.  A value that prints a quantity word ("2.5 million
+    tonnes") is a count at its scale word, never rupees.  A serial-number label or a year printed as the value
+    returns ``_NO_ATOM`` and ``atom_from_cell`` drops it.
 
     A value that prints only a currency word ("Rs 1,234") is rupees at scale 1 and must not override the cell's own
     unit ("Rs crore"): the cell unit carries the scale, so a non-currency unit in the value (%, x, days, count) is the
     only one that outranks it."""
+    if _SERIAL_LABEL.match(row_label or "") or _YEAR_VALUE.match((value_text or "").strip()):
+        return "", 1.0, _NO_ATOM
+    for text in (row_label, col_header):
+        named = _label_unit(text)
+        if named:
+            return named[0], 1.0, named[1]
+    counted = _COUNT.search(value_text or "")
+    if counted:                                  # "2.5 million tonnes": a quantity at its scale word, never inr
+        scales = row_checks.unit_scales(value_text)
+        return "count", (next(iter(scales)) if len(scales) == 1 else 1.0), _count_unit(counted.group(0))
     for text, currency_ok in ((value_text, False), (unit_text, True), (value_text, True)):
         unit, scale, named = _unit_from(text)
         if named and unit and (currency_ok or unit not in ("inr", "usd")):
@@ -460,7 +518,10 @@ def atom_from_cell(cell: dict[str, Any]) -> dict[str, Any] | None:
     if change:                                   # a change marker is never the metric's level
         unit, scale, unit_why = "change", 1.0, ""
     else:
-        unit, scale, unit_why = resolve_unit(cell.get("value_text") or "", cell.get("unit_text") or "", page_text)
+        unit, scale, unit_why = resolve_unit(cell.get("value_text") or "", cell.get("unit_text") or "", page_text,
+                                             row_label, col_header)
+        if unit_why == _NO_ATOM:                 # a serial-number row or a year printed as a value: not a figure
+            return None
     reasons = []
     if (cell.get("status") or "") != "verified":
         reasons.append("position_unverified")
@@ -472,8 +533,9 @@ def atom_from_cell(cell: dict[str, Any]) -> dict[str, Any] | None:
         reasons.append("change_not_level")
     if not row_label.strip():
         reasons.append("label_missing")
-    # ``as_at`` only says how the balance-sheet date was read: it is not a doubt about the figure
-    blocking = [reason for reason in reasons if reason != "as_at"]
+    # ``as_at`` only says how the balance-sheet date was read: it is not a doubt about the figure.  Nor is
+    # ``count_unit=<word>``: the label named the unit, the reason only records which word did.
+    blocking = [reason for reason in reasons if reason != "as_at" and not reason.startswith("count_unit=")]
     return {
         "symbol": cell.get("symbol") or "", "isin": cell.get("isin") or "",
         "doc_key": cell.get("doc_key") or "", "doc_type": cell.get("doc_type") or "",

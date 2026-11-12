@@ -333,3 +333,78 @@ def test_a_consolidated_column_header_sets_the_basis():
     atom = _rows(db)[0]
     assert atom["basis"] == "consolidated"
     assert atom["period"] == "q2fy26"
+
+
+# --- T-199 round 3: the row's own words decide the unit; a serial row and a year make no atom -------------
+
+def test_a_label_word_sets_the_unit_before_the_page_declaration():
+    cases = [("Current ratio", "x"), ("Debt equity ratio (x)", "x"), ("(No. of days)", "days"),
+             ("Working capital days", "days"), ("EBITDA margin", "pct"), ("Margin (%)", "pct"),
+             ("Dealers added", "count"), ("Towns covered", "count"), ("Countries served", "count"),
+             ("Facilities operated", "count")]
+    for label, unit in cases:
+        db = _db(_base(), [_cell(row_label=label, value_text="42", unit_text="")],
+                 page_text="(Rs. in crore)")
+        atoms.run(db)
+        atom = _rows(db)[0]
+        assert (atom["unit"], atom["scale"]) == (unit, 1.0), (label, atom["check_reasons"])
+        assert atom["check_status"] == "verified", (label, atom["check_reasons"])
+
+
+def test_a_column_header_word_sets_a_count_unit():
+    db = _db(_base(), [_cell(row_label="Total income", col_header="(No. of shares)", value_text="42",
+                             unit_text="")])
+    atoms.run(db)
+    atom = _rows(db)[0]
+    assert atom["unit"] == "count"
+    assert "count_unit=no" in atom["check_reasons"]
+
+
+def test_a_count_unit_is_recorded_beside_the_atom_without_making_it_a_doubt():
+    db = _db(_base(), [_cell(row_label="Dealers added", value_text="125", unit_text="")],
+             page_text="(Rs. in crore)")
+    atoms.run(db)
+    atom = _rows(db)[0]
+    assert (atom["unit"], atom["scale"]) == ("count", 1.0)
+    assert "count_unit=dealers" in atom["check_reasons"]
+    assert atom["check_status"] == "verified", atom["check_reasons"]
+
+
+def test_a_value_that_names_a_quantity_is_a_count_never_rupees():
+    db = _db(_base(), [_cell(row_label="Volume handled", value_text="2.5 million tonnes", unit_text="")],
+             page_text="(Rs. in crore)")
+    atoms.run(db)
+    atom = _rows(db)[0]
+    assert (atom["unit"], atom["scale"]) == ("count", 1e6), atom["check_reasons"]
+    assert "count_unit=tonnes" in atom["check_reasons"]
+
+
+def test_a_ratio_label_outranks_the_cell_unit_text():
+    db = _db(_base(), [_cell(row_label="Current ratio", value_text="1.23", unit_text="Rs crore")])
+    atoms.run(db)
+    assert _rows(db)[0]["unit"] == "x"
+
+
+def test_equity_share_capital_is_a_money_row_not_a_share_count():
+    db = _db(_base(), [_cell(row_label="Equity share capital", value_text="41.12", unit_text="Rs crore")],
+             page_text="(Rs. in crore)")
+    atoms.run(db)
+    atom = _rows(db)[0]
+    assert (atom["unit"], atom["scale"]) == ("inr", 1e7), atom["check_reasons"]
+
+
+def test_a_serial_number_row_and_a_year_printed_as_a_value_make_no_atom():
+    db = _db(_base(), [_cell(row_label="Sr. No.", value_text="5", unit_text=""),
+                       _cell(row_label="Year of incorporation", value_text="1943", unit_text="")])
+    assert atoms.run(db)["atoms"] == 0
+
+
+def test_the_section_in_a_row_label_keeps_two_headings_apart():
+    """T-199: ``page_reader`` stores "Segment Revenue > (a) ..." and "Segment Result > (a) ...": two rows, no
+    ``same_doc_conflict`` (the same printed label under two headings used to mark both unverified)."""
+    db = _db(_base(), [_cell(row_label="Segment Revenue > (a) Electro-mechanical projects", value_text="1,000"),
+                       _cell(row_label="Segment Result > (a) Electro-mechanical projects", value_text="100")])
+    atoms.run(db)
+    rows = _rows(db)
+    assert len(rows) == 2
+    assert all(row["check_status"] == "verified" for row in rows), [r["check_reasons"] for r in rows]

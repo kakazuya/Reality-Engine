@@ -40,6 +40,7 @@ from typing import Any, Iterable
 from reality_engine.db.readonly import connect_ro
 from reality_engine.v2 import page_layout, page_words, reference_geom as rg
 from reality_engine.v2 import reference_pages as rp
+from reality_engine.v2.reference_vote import has_list_marker
 
 Word = tuple[float, float, float, float, str]
 
@@ -492,8 +493,22 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
     page_digits = re.sub(r"\D", "", " ".join(w[4] for w in words))
     for ocr_word in page_words.ocr_words(ocr_dbs, doc_key, page_no):
         page_digits += re.sub(r"\D", "", ocr_word[4])
+    # T-199: a section heading is only written into the label where the label alone cannot say which row it is --
+    # a printed list marker ("(a) ..."), the same label printed on two lines (two "Contract liabilities" blocks), or
+    # the reply printing it under two headings even where its words could not be placed.  Every other label keeps its
+    # old text, so earlier stores and the tools' labels stay comparable.
+    reply_sections: dict[str, set[str]] = {}
+    for row in all_rows:
+        raw_label = (row.get("row_label") or "").strip()
+        if raw_label:
+            reply_sections.setdefault(raw_label, set()).add((row.get("section") or "").strip())
     cell_list = []
     for c in cells:
+        row_label = c.get("row_label", "") or ""
+        section = (c.get("section") or "").strip()
+        repeated = c.get("label_repeated") or len(reply_sections.get(row_label, ())) > 1
+        if section and row_label and (has_list_marker(row_label) or repeated):
+            row_label = f"{section} > {row_label}"
         value_text = c.get("value_text", "") or ""
         status = "verified" if c.get("settled_by") in ("position", "script+position") else "unverified"
         # T-189: a value whose digits occur nowhere on the page was invented by the reader; never serve it.
@@ -512,7 +527,7 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
             "known_at": known_at,
             "reader": reader_label,
             "table_title": c.get("table", "") or "",
-            "row_label": c.get("row_label", "") or "",
+            "row_label": row_label,
             "col_header": c.get("col_header", "") or "",
             "value_text": value_text,
             "unit_text": c.get("unit_text", "") or "",

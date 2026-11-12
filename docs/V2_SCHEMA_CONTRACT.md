@@ -1057,7 +1057,8 @@ python -m reality_engine.v2.reference_pages reconcile --pages <pages.csv> --runs
   pages kept and flagged `unread`. Columns: `page_id, store, symbol, doc key, sha256, doc type, page, stratum,
   in_first_build, split`. Split rule: 30 `dev` and 30 `frozen`, balanced by doc type, no company above 4 pages; same
   seed -> byte-identical file (11 Nov: two runs, 60 rows, identical SHA-256 `BEED9B07D7274D24...`, 36.8 s and 40.2 s).
-- `transcribe` saves `<page_id>.raw.txt` (every raw reply, also on error), `<page_id>.rows.json` and
+- `transcribe` saves `<page_id>.raw.txt` (every raw reply, also on error), `<page_id>.rows.json` (the grid rows,
+  including the `section` heading `parse_grid` reads, T-199 round 3) and
   `transcribe_log.csv` (`page_id, reader, input, seconds, in_tok, out_tok, error, n_rows`). It refuses any reader whose
   `price` is not `(0.0, 0.0)` or whose id carries no free marker, and resumes by skipping existing `.rows.json` files.
   The prompt asks for JSON Lines, one object per cell: `table, row_label, col_header, value, unit`.
@@ -1163,6 +1164,17 @@ line carries a row label (that value belongs to that row); the grouping-header s
 when the lower header row's period kind does not change, a known weakness. Against Opus's hand-read truth on 7 unseen
 frozen2 pages: confirmed-and-wrong 1 -> 0 (Dots, page image) and 59 -> 26 (Beam), checker misses 199 -> 174.
 
+T-199 round 3 (13 Nov) adds two rules here. **Equal values.** `settle_page`/`place` claim each printed word
+(`place(page, cell, taken)`): a cell of the same row under a different column (`col_key` of its header) takes the
+next occurrence of its value on the line instead of the claimed word, so "Current ratio 1.23 ... 1.23" keeps both
+cells; when no other occurrence exists it stays a loose unverified cell and is never merged into the first. The
+blocking only applies between cells of the same label key. **Section.** `parse_grid` (and `_normalize_row`) carry
+each row's heading, so every settled cell carries `section` (the reader's heading above the row) and
+`label_repeated` (a label printed on two or more lines is two rows); both are appended to `reference_cells.csv`
+after the bbox columns (T-199). Tests: `test_v2_reference_geom.py` 11 (equal values with and without a header
+band, every settled-cell key present in `COLS`), `test_v2_reference_pages.py` 7 (the segment grid's four sections,
+a table with none).
+
 **Layout input for readers (T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/page_layout.py` renders word boxes as
 fixed-width text, one output line per printed line with horizontal position kept (`python -m
 reality_engine.v2.page_layout <one-page.pdf>`; it writes UTF-8 so a page's rupee sign does not crash a cp1252 console).
@@ -1241,7 +1253,9 @@ reader (refused otherwise) with `GRID_PROMPT` +
 in_tok, out_tok, rows, cells, verified, unread, error, read_at, PRIMARY KEY(doc_key,page,reader))` and `page_cell(doc_key,
 page, symbol, known_at, reader, table_title, row_label, col_header, value_text, unit_text, status ('verified' when
 settled_by is position / script+position, 'unverified' otherwise, 'quarantined' when the value's digits occur nowhere on
-the page - T-189; never served), conflict, x0, y0, x1, y1)`. A page already present in `page_read` for that reader is
+the page - T-189; never served), conflict, x0, y0, x1, y1)`. `row_label` carries the heading above the row as
+`<section> > <label>` when the label starts with a printed list marker ("(a)", "i.", "1.", "a)") or the same label is
+printed on two lines; every other label is stored as printed (T-199 round 3). A page already present in `page_read` for that reader is
 skipped (resume);
 `--workers N` (default 3) runs under `concurrent.futures` with one writer (main thread) committing results and up to 3
 tries (10 s, 30 s backoff) on a model error before status `error`. CLI:
@@ -1374,7 +1388,8 @@ module and its test.
 
 `reality_engine/v2/local_reader.py` runs three small open vision models under `llama-server` (llama.cpp) on the MSI's
 GTX 1050 Ti and writes their page reads in the same run format as every other reader: `<page_id>.raw.txt` (the model's
-own reply), `<page_id>.rows.json` (`table, row_label, col_header, value, unit`), `run_log.csv`
+own reply), `<page_id>.rows.json` (`table, row_label, section, col_header, value, unit`; `section` is the heading
+above the row, empty when the converter names none), `run_log.csv`
 (`page_id, seconds, prompt_tokens, output_tokens, error`), plus `server.log` and `run_meta.json` (weights, prompts,
 backend evidence lines, VRAM peak; the LightOnOCR run predates the `prompts`/`max_tokens` keys and records `prompt`
 alone). Test: `reality_engine/tests/test_v2_local_reader.py`.
@@ -1533,8 +1548,11 @@ the second pass and stores `page_read.reader` / `page_cell.reader` as `haiku_sub
 digit check are unchanged. `python -m reality_engine.pilot3.atoms --store S [--duplicates CSV]` (build part `atoms`,
 after `checks`) resolves each non-quarantined cell into `page_atom` (schema v10) and `pilot3_cells`/`pilot3_fact`/
 `pilot3_kpi`/`pilot3_topic` read it; the resolution rules (dated results headers, periods printed as rows, growth
-columns, the metric's unit family) and statuses are in `docs/PILOT3_BLUEPRINT.md` section 2 (T-199 block). Tests:
-`reality_engine/tests/test_v2_page_reader.py` 10 passed, `reality_engine/tests/test_pilot3_atoms.py` 24 passed,
+columns, the row's own label/header words deciding the unit before the page declaration, a serial row and a year
+making no atom, equal values in two columns both kept, the section prefix on a repeated/list-marked row label, the
+metric's unit family) and statuses are in `docs/PILOT3_BLUEPRINT.md` section 2 (T-199 block). Tests:
+`reality_engine/tests/test_v2_page_reader.py` 11 passed, `reality_engine/tests/test_pilot3_atoms.py` 32 passed,
+`reality_engine/tests/test_v2_reference_pages.py` 7 and `test_v2_reference_geom.py` 11 passed,
 `reality_engine/tests/test_pilot3_schema_version.py` 8 passed (v10 twice idempotent),
 `plugins/reality-data/tests/test_lookups_pilot3.py` 82 passed + 1 skipped.
 

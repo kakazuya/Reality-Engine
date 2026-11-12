@@ -1,0 +1,4 @@
+# T-199 round 3 progress
+
+- 2026-11-13: edits done — section headings in `parse_grid` + `<section> > <label>` in `page_cell` for list-marker/repeated labels; `settle_page`/`place` keep equal values in two columns (word claim by column key); `atoms.resolve_unit` label/header words first (x, days, pct, count with `count_unit=<word>`), serial/year no atom. Tests added in 4 files. Next: typecheck + accept-list runs + docs.
+- 2026-11-13: done — typecheck 0 errors; accept list green (atoms 32, page_reader 11, reference 24, lookups 82+1 skipped, no-literals 7); docs updated (PILOT3_BLUEPRINT, V2_SCHEMA_CONTRACT, DEVELOPER_GUIDE, machines/MSI_LAPTOP.md, tasks/STATE.md); doc_gate rc=0. Sandbox-only note: `tmp_path` fixture tests (`test_pilot3_schema_version.py`, one `test_v2_page_route.py` case) error on the sandbox's denied temp dir, unrelated to this change. Drop this file at merge.
