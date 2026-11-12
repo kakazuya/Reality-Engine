@@ -16,7 +16,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 
 ## Next action
 0. After 15:30 (Shivam tops up DeepInfra): T-191 semantic A/B per `tasks/handoff/T-191_SEMANTIC_AB_PLAN.md` (snapshot, embed $0.08, arms A/B DeepSeek together, blind Opus grading).
-1. T-192 wrong rows: Beam worker 20261112T075239Z-35e1d0fc running; review vs its DIFF + own sample, merge before the A/B snapshot if ready.
+1. T-192 wrong rows: two Beam rounds failed review (logged); round 3 on DeepSeek off-peak from dsh/20261112T080310Z-024abcfe (brief section "Round 3"). A/B does not wait for it.
 2. T-194 tool fixes: brief `tasks/handoff/T-194_TOOL_FIXES_BRIEF.md` waits for Shivam.
 3. Branches: 22 unmerged; 5 answer-run note branches deletable; T-163 r4-7 / T-132 r10-12 need review; CHOLAFIN waits for Shivam.
 4. Restart reality-data; T-179 timing with `pilot3_fact`; guidance `gross_margin`; `pilot3_fin` XBRL-first; T-175; T-188 follow-ups; s10 + T-172.

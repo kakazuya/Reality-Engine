@@ -79,3 +79,23 @@ Fix, verbatim review findings:
 - R5. Steps 3-4 are required: rebuild the touched parts on store COPIES and write `.tmp/T-192_DIFF.md`.
 Accept (round 2): the tests above pass one file at a time; `.tmp/T-192_DIFF.md` shows the five AUROPHARMA rows right
 and per-store changed-row counts. Budget 3 hours.
+
+## Round 3 (DeepSeek v4.1 flash, off-peak; starts from dsh/20261112T080310Z-024abcfe)
+Review of round 2 (Opus, 12 Nov 14:50). Keep: `kpi._kept_columns(cols, current)`; capital-derived share counts ordered
+last in `lookups_pilot3.holding` and `_ref_input`; ROE average equity; call period from `doc_period`.
+Fix, verbatim:
+- G1. `guidance.py` ~line 1459 tests `speaker == "Swami Iyer"`: a person's name in code is a per-company literal and is
+  forbidden. Replace with a rule: a target stated for a named subsidiary/segment/investee (the sentence or the
+  question it answers names an entity other than the company: "Lannett", "Eugia", "Aurobindo Pharma USA", a
+  subsidiary list from the annual report's subsidiary table if held) carries that entity and is never the group's.
+- G2. `stores.py` writes "derived_from_capital" into share_capital's `ratio` column (meant for split ratios). Use or
+  add a proper column (`count_basis`: `filed_exact` | `derived_from_capital`), migrate in `schema.py`, and order on it.
+- G3. EBITDA: no change was made. Serve the company-printed EBITDA and margin (kpi_series / press-release or deck
+  row) as preferred in `pilot3_fact` when one exists for the period and basis; keep the derived one as a second,
+  labelled row. Fix `ebitda_margin_pct` FY25 = 21.4 on aurobindo (a quarter's margin under the annual period).
+- G4. Delete `reality_engine/tests/conftest_tmp.py` (it is not a conftest and does nothing). Use `--basetemp=.tmp/pt`.
+- G5. Tests: one test per defect that FAILS on main and PASSES on the branch; show both runs in your final answer.
+- G6. Rebuild on copies is mandatory (your sandbox may read D:/RealityEngine; write the copies under your `.tmp`):
+  aurobindo + pilot10 at least, parts `stores kpi guidance preferred ratios`; `.tmp/T-192_DIFF.md` with per-table
+  changed-row counts and the five AUROPHARMA rows before/after. Without it the branch is not reviewed.
+Stop if: the pilot10 copy loses any row a test or grader marked right (list them). Budget 3 hours.

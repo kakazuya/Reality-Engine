@@ -7,8 +7,9 @@ this is the first measurement where semantic search is the only difference.
 ## What is held equal
 - **Store:** one frozen snapshot `D:/RealityEngine/aurobindo_ab/aurobindo.db`, copied once before either arm starts
   (copy recipe: checkpoint, copy, `PRAGMA journal_mode=DELETE`). Both arms read the same file. It includes the 12 Nov
-  SHP XBRL rebuild (all holder categories + pledge, exact share count). T-192 row fixes go in only if merged before
-  the snapshot; otherwise after both arms.
+  SHP XBRL rebuild (all holder categories + pledge, exact share count). T-192 row fixes are NOT waited for (12 Nov: two
+  Beam rounds failed review; round 3 on DeepSeek): the wrong rows are the same in both arms, so the A-vs-B
+  difference is unaffected.
 - **Model and settings:** DeepSeek v4.1 flash, max effort, same Go key, both arms started together off-peak.
 - **Questions and brief:** the 69 frozen T-189 questions (`D:/RealityEngine/aurobindo/answers/questions_in.json`), the
   T-189 answer brief word for word, except the store path, the output folder and one tool line.
