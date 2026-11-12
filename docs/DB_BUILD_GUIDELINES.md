@@ -165,7 +165,9 @@ Change a rule only with a measurement that supports the change, and note it in `
   and `target_year` (guidance: the sentence prints a fiscal year or year range that is not the target's year;
   "22-24%" is a percentage, not a year, and a range counts only with an FY prefix, a four-digit end or consecutive
   years).
-- Soft: scaled value, several numbers in a table quote, disagreeing independent sources (`cross_doc`, another
+- Soft: scaled value, several numbers in a table quote whose column the printed header does not pin (T-198: a
+  header naming the row's own period at the value's position pins the column, so the row is not `multi_number`),
+  disagreeing independent sources (`cross_doc`, another
   document AND another wording; a deck table copied into the next deck is one source), `variant` (a PAT / EBITDA /
   revenue / net-debt figure, or a margin / ratio, labelled adjusted / before exceptional / excluding / excl. / ex- /
   pre Ind AS / post Ind AS / of which / per ... unless the metric name says so; round 8 extends it beyond
@@ -186,6 +188,35 @@ Change a rule only with a measurement that supports the change, and note it in `
   division, international, domestic, mix, share, contribution, of revenue/sales, excluding, ex-).  A row carrying
   `label_weak` or `variant` is never `verified`, even when corroborated: corroboration proves the number is printed
   twice, not that the wording names this metric or that a variant is the plain line (round 9).
+- **T-198 (12 Nov 2026): a label's own qualifier is not a conflict; cross-document witnesses are like-for-like.**
+  (1) `qualifier_of` / `label_span` (module-level in `row_checks.py`): a metric label owns the qualifier it carries —
+  the bracket right after it ("EBITDA (before Forex and Other Income)", "Revenue (net of GST)") or the before /
+  after / excluding / ex- / net of / including / adjusted phrase that follows it, run to its own clause (a comma, a
+  semicolon, a sentence break, a bullet or the first number; at most 8 content words; a finite verb before two
+  content words means the words are prose, not a definition — "net debt after investments is at US$ 133"). A
+  foreign metric's label inside that span is the definition's own words ("other income", "R&D", "L1") and is never
+  a `label_conflict`; a foreign label outside it, between the label and the number, still is ("EBITDA / Other
+  income 120 / 1,792" stays quarantined). `check_label` and `check_nearer_label` both mask the extended span.
+  (2) `definition_key` normalises the qualifier to a comparable key ("before:forex,income,other", "before:d,r",
+  "net_of:gst", empty for the plain line) from the printed label — the quote first, the row's stored `raw_label`
+  when the quote cuts it. `cross_doc` groups compare same company, metric, dimension, period, entity, basis AND
+  definition key, so a row of another definition ("EBITDA before R&D" 8,148) never witnesses this one, and a
+  `derived_cumulative_v1` row is never a cross-document witness at all. Each verdict carries the key in
+  `row_check.definition`. (3) `multi_number` no longer fails a table/chart row whose value sits in the column its
+  own period heads: `column_pinned` reads the printed header run above the row from the page text, maps the row's
+  values to the header cells in order and requires the row's `fiscal_period` to name the header at the value's
+  position; a value taken from a YoY/QoQ column or a row whose cells do not line up (a printed n/a) is still not
+  pinned. A pinned row may also witness another document. The check reads the page's own header, never the
+  extractor's parsed table (the checker still shares nothing with the extractors).
+  Measured on copies of two stores (same starting copy, HEAD checker vs this one; `.tmp/T-198_DIFF.md`): aurobindo
+  **45 of 707 verdicts moved** (all quarantined -> unverified; every one keeps its soft checks and carries its
+  qualifier key), pilot10 **10 of 6,728 (0.15%)** (8 unverified -> verified as a cross-definition disagreement
+  disappears, 2 verified -> unverified where a definition's only witness was a plain-line row). **No row moves
+  quarantined -> verified on either store.** `pilot3_fact` (same ticket, `plugins/reality-data/server/
+  lookups_pilot3.py`): when the served figure is derived and the company's own KPI row exists for the same metric,
+  period and basis (any check status, quarantined included), the reply now carries `company_stated` {value, unit,
+  scale_word, period, basis, definition, source, known_at, check_status, why_not_preferred} and `why_this_one`
+  names it, so a derived figure is never called "the preferred" one without the company's own figure beside it.
 - Guidance is `verified` only when ALL of these hold, else soft `not_pinned` with the missing letter(s): (a) a strong
   label of the row's own metric within 45 chars of the number, in the same sentence; (b) no part-scope word between
   that label and the number or right after the number (per showroom/store/unit/tonne unless the metric is per-unit;
@@ -397,7 +428,7 @@ Change a rule only with a measurement that supports the change, and note it in `
   from round 9 (these are round-9 checker totals: the round-10 checker above gives unseen6 38/765/173 and pilot10
   2,298/3,293/452 on the same rows). Tests **68 passed**, the `stores.py` / test typecheck clean.
 - Derived quarters (T-129, 8 Nov): a `kpi_series` row with rule `derived_cumulative_v1` (quote `FY26 242.7 - 9MFY26 185.2`) has no page quote, so `Checker.judge_derived` judges it by its two inputs: verified only when both are verified; `derived_unverified_input` (soft) when one is unverified; `derived_input` (hard) when an input is quarantined, missing or does not difference to the value, when a flow quarter is negative, or when the quarter is larger than its year. Test: `test_a_derived_quarter_is_as_good_as_its_two_inputs`.
-- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (66 passed, 8 Nov) builds a tiny fixture
+- Tests: `python -m pytest reality_engine/tests/test_row_checks.py -q` (72 passed, 12 Nov) builds a tiny fixture
   database from the dev column lists, puts every ticket sentence in page text verbatim, and pins each known-wrong
   and known-right verdict (currency signs both ways, a segment word before a total label, the metric-name guard,
   gross margin as its own metric, the denominator keep rule, "improve by" as a delta, medium-term / CAGR /
@@ -417,7 +448,13 @@ Change a rule only with a measurement that supports the change, and note it in `
   10's six classes each with an invented wrong sentence and a right control: the footnote note, the rating-agency
   projection plus a future fiscal year after the number, the tariff's allowed return on equity, a segment named in
   a total row's quote, the nearer cash label, a past level in narrative - plus the single-source rule and its
-  `xbrl_segment` exemption);
+  `xbrl_segment` exemption), and T-198's fixtures: one label-with-qualifier row per sector ("EBITDA (before Forex
+  and Other Income)", "Revenue (net of GST)", "PAT (after exceptional items)", "Net interest margin (excluding
+  other income)" - the vocabulary has no net-interest-income metric, so the lender fixture uses the label it does
+  name, "Order inflow (including L1)"), a real foreign label outside the qualifier still quarantined, the
+  definition key with its prose control, like-for-like cross_doc with the same-definition disagreement control,
+  and a table row pinned by its printed header with a growth-column control plus the `pilot3_fact` `company_stated`
+  test in `test_pilot3_row_check_serve.py`;
   `python plugins/code-tools/ct.py typecheck reality_engine/pilot3/row_checks.py
   reality_engine/tests/test_row_checks.py` is clean.
 - Acceptance is measured, not trusted: Opus reads a fixed random sample of `verified` rows per release (about 60 per
@@ -430,7 +467,9 @@ Change a rule only with a measurement that supports the change, and note it in `
   tool text in `server.py`) LEFT JOIN the verdicts by `tbl` + `row_id`: a `quarantined` row is dropped unless the call
   passes `include_quarantined=true`, and every served row carries `check_status` (`verified` / `unverified`, NULL when
   the check part has not judged it) plus `check_note` (the soft checks' names) on an unverified row. An `available` /
-  `held_options` / `held_period_dimension` hint never names a metric whose every row is quarantined. Any part that
+  `held_options` / `held_period_dimension` hint still names a metric whose every row is quarantined, and the empty
+  reply then says those rows are held but quarantined (`held_quarantined`), so a hide is not read as "not in data"
+  (T-165). Any part that
   rewrites `guidance` or `kpi_series` (`guidance`, `kpi`, `extract`; all of them in `all`) first deletes that table's
   verdicts, because a rebuilt row has a new id and an old verdict would hide or label the wrong row: **re-run
   `--part checks` after any kpi or guidance rebuild**. A build without
@@ -440,7 +479,8 @@ Change a rule only with a measurement that supports the change, and note it in `
   its time again);
   `kpi('BAJFINANCE','nnpa_pct','FY25')` fell from 8 rows (the 1.18 gross-NPA row among them) to 4,
   `guidance('HDFCBANK')` 3 -> 1 and `guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py`
-  (7 passed); `python -m unittest plugins/reality-data/tests/test_lookups_pilot3.py` (24 passed, no verdict table).
+  (7 passed, 8 Nov; 8 passed with T-198's `company_stated` test on 12 Nov); `python -m unittest
+  plugins/reality-data/tests/test_lookups_pilot3.py` (24 passed, no verdict table).
 
 ## 14. Every page gets text; a canary proves it on unseen companies (T-121, 8 Nov 2026)
 - A fresh 6-company build (`scratchpad/fresh6/fresh6.db`) has 28,528 pages, 1,720 of them (6%) with no text layer

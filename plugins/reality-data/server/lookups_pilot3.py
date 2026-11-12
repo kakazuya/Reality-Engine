@@ -2280,6 +2280,70 @@ def _fact_held_quarantined(symbol: str, found: dict[str, list[str]], day: str | 
     return out
 
 
+_FACT_CHECK_ORDER = ("verified", "unverified", "quarantined")
+
+
+def _fact_is_derived(path: str, row: dict[str, Any]) -> bool:
+    """Is the served figure the store's own computation, not a filing and not the company's statement?"""
+    definition = str(row.get("definition") or "")
+    if path == "ratio":
+        return definition != "company_stated"
+    if path == "fin":
+        return "derived" in definition
+    return False
+
+
+def _fact_company_stated(symbol: str, names: list[str], period: str | None, basis: str | None,
+                         day: str | None) -> dict[str, Any] | None:
+    """The company's own printed figure for the same metric / period / basis, whatever the row check made of it.
+
+    T-198: when the answer is a derived figure, a company-stated row of the same key may exist (a deck table or a
+    call remark) and the old reply called itself "the preferred" figure without naming it.  A quarantined row is
+    still the company's own statement, so it is returned here, labelled with its check status and why the store
+    did not serve it — never silently dropped."""
+    if not names or not _has_table("kpi_series"):
+        return None
+    _kind, label = norm_period(period)
+    where = ["k.symbol=?"]
+    args: list[Any] = [symbol]
+    if label:
+        where.append("k.fiscal_period=?")
+        args.append(label)
+    if basis:
+        where.append("k.basis=?")
+        args.append(basis)
+    if day:
+        where.append("(k.known_at IS NULL OR k.known_at<=?)")
+        args.append(day)
+    judged = _has_table("row_check")
+    extra = (", rc.status AS check_status, (SELECT GROUP_CONCAT(f.check_name, ',') FROM row_check_fail f "
+             "WHERE f.tbl='kpi_series' AND f.row_id=k.id AND f.hard=1) AS check_hard") if judged \
+        else ", NULL AS check_status, NULL AS check_hard"
+    join = " LEFT JOIN row_check rc ON rc.tbl='kpi_series' AND rc.row_id=k.id" if judged else ""
+    marks = ",".join("?" * len(names))
+    rows = _q("SELECT k.value, k.unit, k.scale, k.fiscal_period, k.basis, k.doc_key, k.page, k.known_at, "
+              f"k.raw_label{extra} FROM kpi_series k{join} WHERE " + " AND ".join(where)
+              + f" AND k.metric IN ({marks}) ORDER BY COALESCE(k.known_at,'') DESC LIMIT 8", (*args, *names))
+    if not rows:
+        return None
+    best = sorted(rows, key=lambda r: _FACT_CHECK_ORDER.index(r["check_status"])
+                  if r["check_status"] in _FACT_CHECK_ORDER else 3)[0]
+    status = best["check_status"]
+    if status == "quarantined":
+        why = "the independent row check quarantined it" + \
+            (f" ({best['check_hard'].replace(',', ', ')})" if best["check_hard"] else "")
+    elif status == "unverified":
+        why = "the independent row check could not pin it to a second source"
+    elif status == "verified":
+        why = "the row check verified it, but the store's election kept the derived figure"
+    else:
+        why = "no row check has judged it yet"
+    return {"value": best["value"], "unit": best["unit"], "scale_word": _scale_word(best["unit"], best["scale"]),
+            "period": best["fiscal_period"], "basis": best["basis"], "definition": best["raw_label"],
+            "source": {"table": "kpi_series", "doc_key": best["doc_key"], "page": best["page"]},
+            "known_at": best["known_at"], "check_status": status, "why_not_preferred": why}
+
+
 def _fact_cells(sym: str, metric: str, period: str | None, day: str | None) -> dict[str, Any] | None:
     """T-189: the page reader's cells when no other table holds the metric; ``source: page_cell`` labels it."""
     reply = cells(sym, metric, period=period, as_of=day, limit=3)
@@ -2377,6 +2441,17 @@ def fact(symbol: str, metric: str, period: str | None = None, basis: str | None 
             alternative = _fact_alt(alt_rows[0])
             alternative["note"] = f"the same metric as the {second} lookup holds it"
             alternatives.append(alternative)
-    return {"found": True, "symbol": sym, "metric": metric, "route": used,
-            "answer": _fact_answer(row, day, _fact_computed(used, sym, row, day), period, bas),
-            "alternatives": alternatives[:3], "why_this_one": _fact_why(used, row), "provenance": _db_prov()}
+    answer = _fact_answer(row, day, _fact_computed(used, sym, row, day), period, bas)
+    why = _fact_why(used, row)
+    company_stated = None
+    if _fact_is_derived(used, row):
+        # T-198: never call a derived figure "the preferred" one without naming what the company itself states
+        company_stated = _fact_company_stated(sym, found.get("kpi_series") or [], period, bas, day)
+    if company_stated:
+        label = _trim(company_stated.get("definition"), 60)
+        why = (f"{why}; the company itself states {company_stated['value']} {company_stated['unit']}"
+               f"{' (' + label + ')' if label else ''} for the same period, and that figure is not preferred here "
+               f"— {company_stated['why_not_preferred']}")
+    return {"found": True, "symbol": sym, "metric": metric, "route": used, "answer": answer,
+            "alternatives": alternatives[:3], "why_this_one": why, "provenance": _db_prov(),
+            **({"company_stated": company_stated} if company_stated else {})}

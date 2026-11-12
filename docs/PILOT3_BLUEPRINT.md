@@ -1092,8 +1092,10 @@ and `row_checks.py` itself is not edited. `pilot3_kpi`, `pilot3_guidance` and th
 `row_id`: `status='quarantined'` is dropped unless the call passes `include_quarantined=true`, and every served row
 carries `check_status` (`verified` / `unverified`, NULL when it has no verdict) plus `check_note` (the soft checks'
 names) on an unverified row. The tool text tells the model to prefer verified rows and say "unverified" when quoting
-one; the `available` / `held_options` / `held_period_dimension` hints never name a metric whose every row is
-quarantined. A database without `row_check` (any build made before this part) serves exactly as it did. A part that
+one; the `available` / `held_options` / `held_period_dimension` hints still name a metric whose every row is
+quarantined and the empty reply then says those rows are held but quarantined (`held_quarantined`), so a deliberate
+hide is never read as "not in data" (T-165). A database without `row_check` (any build made before this part) serves
+exactly as it did. A part that
 rewrites `guidance` or `kpi_series` (`guidance`, `kpi`, `extract`; all of them in `all`) first deletes that table's
 verdicts, because a rebuilt row has a new id and the old verdict would hide or label the wrong row -- re-run
 `--part checks` after any kpi or guidance rebuild. Measured on
@@ -1105,8 +1107,24 @@ quarantined). The checker has moved since (build guide section 13, round 10): it
 is an `xbrl_segment` row (build guide section 13, `single_source`), so the build serves fewer but better verified
 rows — re-run `--part checks` into a build and re-measure the part before quoting its time or counts again.
 `kpi('BAJFINANCE','nnpa_pct','FY25')` lost the 1.18 gross-NPA row (8 rows -> 4), `guidance('HDFCBANK')` 3 -> 1 and
-`guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py` (7 passed) and the existing
+`guidance('SBILIFE')` 4 -> 2. Tests: `reality_engine/tests/test_pilot3_row_check_serve.py` (8 passed) and the existing
 serving tests without a verdict table (`plugins/reality-data/tests/test_lookups_pilot3.py`, 24 passed).
+
+**T-198 (12 Nov 2026): a label's own qualifier, like-for-like cross-document checks, an honest derived answer.** The
+checker no longer quarantines a company's own figure because of words inside that figure's label qualifier: a metric
+label owns the bracket or before / after / excluding / net of / including phrase it carries, so "EBITDA (before Forex
+and Other Income)" is one label and its "other income" is the definition, while "EBITDA ... Other income 120 ...
+1,792" is still a real conflict. A row's definition is normalised to a key ("before:forex,income,other",
+"before:d,r") and `cross_doc` compares only same company / metric / dimension / period / entity / basis / definition
+rows; a `derived_cumulative_v1` row never witnesses another. A table row's column is pinned when the printed header
+above it names the row's own period at the value's position, so several numbers in the quote are the table's columns
+rather than a lost cell. Rules and measurements: build guide section 13; the per-store status moves and 15 sampled
+rows per store are in `.tmp/T-198_DIFF.md` (aurobindo 45 of 707 verdicts moved, all quarantined -> unverified;
+pilot10 10 of 6,728, 0.15%; zero quarantined -> verified anywhere). `pilot3_fact` now names the company's own figure
+beside a derived one: when the answer is a derived figure and `kpi_series` holds the company's row for the same
+metric / period / basis (any check status, including quarantined), the reply adds `company_stated` {value, unit,
+definition, source, `check_status`, `why_not_preferred`} and `why_this_one` says so — never "the preferred" derived
+figure alone. Test: `test_fact_names_the_company_stated_figure_it_did_not_prefer`.
 
 ### 9h. Consolidated first in pilot3_kpi; undated XBRL quarters (T-124, 8 Nov 2026)
 

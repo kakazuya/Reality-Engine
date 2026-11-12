@@ -295,6 +295,154 @@ def label_hits(metric: Metric, text: str) -> list[int]:
     return out
 
 
+# T-198: a label's own qualifier is part of its definition, never another metric's claim on the number.  The
+# qualifier is the bracket the label carries ("EBITDA (before Forex and Other Income)") or the before / after /
+# excluding / ex- / net of / including phrase that follows it ("Revenue net of GST").  A foreign label inside
+# that span is the definition's own words ("other income", "R&D"), so it can never be a label conflict; only a
+# foreign label OUTSIDE it, between the label and the number, is one.
+_QUALIFIER_HEAD = re.compile(
+    r"(?<![a-z])(?P<head>before|after|excluding|excl\.?|including|incl\.?|net\s+of|less|of\s+which|"
+    r"adjusted\s+(?:for|to)|ex[- ]|pre[- ]|post[- ])(?![a-z])", re.I)
+_QUALIFIER_CANON = {"net of": "net_of", "of which": "of_which", "adjusted for": "adjusted_for",
+                    "adjusted to": "adjusted_for"}
+# The qualifier's own words: grammatical glue only.  "other" is a content word here ("before other income" is a
+# different definition from "before income"), and a number after the qualifier is the row's value, not its words.
+_QUALIFIER_GLUE = {"and", "or", "the", "a", "an", "of", "in", "on", "to", "for", "its", "our", "as", "with"}
+_QUALIFIER_WORDS = 8      # a definition names its own content in a few words; more is another clause
+_QUALIFIER_END = re.compile(r"[;!?•►|,]|\s[-–—]\s")
+# A definition is a noun phrase: a finite verb in the run starts the sentence's own predicate.  When the verb
+# arrives before even two content words there is no definition at all ("net debt after investments is at US$ 133").
+_QUALIFIER_VERB = frozenset("""
+    is are was were be been being has have had having stands stand stood stands grew grow grows growing rose rise
+    rises fell fall falls reduced reduce reduces increased increase increases decreased decrease decreases
+    remained remain remains came come comes posted post posts reported report reports reached reach reaches closed
+    close closes ended end ends recorded record records dropped drop drops improved improve improves declined
+    decline declines grew
+""".split())
+
+
+def qualifier_of(text: str, start: int, end: int) -> tuple[str, list[str], int]:
+    """(canonical head, sorted content words, span end) of the qualifier a label carries; ('', [], ``end``) when
+    none.  ``span end`` covers the qualifier even when it is a bare bracket ("(in Rs crore)", "(EBITDA - Capex)")
+    or a formula, because those words belong to the label either way."""
+    i = end
+    while i < len(text) and text[i].isspace():
+        i += 1
+    inner, span_end = "", end
+    if i < len(text) and text[i] in "([":
+        close = ")" if text[i] == "(" else "]"
+        j = text.find(close, i + 1)
+        if j != -1:
+            inner, span_end = text[i + 1:j], j + 1
+    words: list[str] = []
+    if inner:
+        m = _QUALIFIER_HEAD.search(inner)
+        if not m:
+            return "", [], span_end
+        head, rest = m.group("head"), inner[m.end():]
+        words = [w for w in re.findall(r"[a-z0-9]+", rest.lower()) if w not in _QUALIFIER_GLUE]
+    else:
+        m = _QUALIFIER_HEAD.match(text, i)
+        if not m:
+            return "", [], end
+        head, rest = m.group("head"), text[m.end():]
+        stop = len(text)
+        hit = numbers_in(rest)
+        if hit:
+            stop = hit[0][1]        # a number after the qualifier is the row's value, not its words
+        for b in _QUALIFIER_END.finditer(rest[:stop]):
+            stop = b.start()
+            break
+        content = 0
+        for n, w in enumerate(re.finditer(r"[A-Za-z0-9]+", rest[:stop])):
+            word = w.group(0).lower()
+            if word in _QUALIFIER_VERB:
+                if content < 2:
+                    return "", [], end      # prose ("after investments is at ..."), not a definition
+                stop = w.start()
+                break
+            if word not in _QUALIFIER_GLUE:
+                content += 1
+                words.append(word)
+            if content > _QUALIFIER_WORDS:
+                stop = w.start()
+                break
+        span_end = m.end() + stop
+    words = words[:_QUALIFIER_WORDS]
+    base = re.sub(r"\s+", " ", head.lower().replace(".", "")).strip()
+    base = base.rstrip("- ").strip()
+    if base.startswith("ex") and base != "excluding":
+        base = "excluding"
+    elif base.startswith("incl"):
+        base = "including"
+    return _QUALIFIER_CANON.get(base, base.replace(" ", "_")), sorted(set(words)), span_end
+
+
+def label_span(text: str, start: int, end: int) -> tuple[int, int]:
+    """A label's span including its own qualifier: a foreign label inside it is the definition, not a conflict."""
+    return start, qualifier_of(text, start, end)[2]
+
+
+def label_spans(m: Metric, text: str) -> list[tuple[int, int]]:
+    """Every strong label of ``m`` in ``text``, each extended over its own qualifier (T-198)."""
+    return [label_span(text, mm.start(), mm.end()) for p in m.labels for mm in p.finditer(text)]
+
+
+def definition_key(m: Metric | None, text: str, pos: int | None = None, stored_label: str = "") -> str:
+    """The definition a row's label carries, as a key two rows can be compared on: ``before:forex,income,other``.
+
+    It is derived from the printed label and its qualifier (the quote first, the row's stored label when the quote
+    cuts it), never from an extractor's own words.  A row whose label carries no qualifier has the empty key: it is
+    the plain line, so it never stands as the same definition as one that qualifies it."""
+    for source in (text or "", fold(stored_label or "")):
+        if m is None or not source:
+            continue
+        spans = [(mm.start(), mm.end()) for p in m.labels for mm in p.finditer(source)]
+        if not spans:
+            continue
+        if pos is not None and source is text:
+            spans.sort(key=lambda se: abs(pos - (se[1] if se[1] <= pos else se[0])))
+        for start, end in spans:
+            head, words, _end = qualifier_of(source, start, end)
+            if head:
+                return f"{head}:{','.join(words)}" if words else head
+    return ""
+
+
+# T-198: a table row's several numbers are the table's columns when the printed header above the row names the
+# row's own period at the value's position.  These are the header words a column can carry: a period
+# (Q4FY25, FY25, H1FY26, 9MFY26, YTD) or a growth column (YoY, QoQ) or a valuation column.
+_HEADER_GROWTH = {"yoy", "qoq", "y-o-y", "q-o-q", "growth", "cagr", "ytd", "ltm", "ttm", "bps"}
+
+
+def header_cells(line: str) -> list[str]:
+    """One printed header line's cells in column order: "Q4FY25", "YoY (%)", "FY25" (a bare unit mark is merged
+    into the cell before it and dropped)."""
+    out: list[str] = []
+    pending = ""
+    for tok in re.findall(r"\S+", line):
+        word = tok.strip("|:—–-")
+        if not word:
+            continue
+        if not re.search(r"[A-Za-z0-9]", word):     # "(%)", "|", "—": the unit of the cell before it
+            if pending:
+                out.append(pending)
+                pending = ""
+            continue
+        if pending:
+            out.append(pending)
+        pending = word
+    if pending:
+        out.append(pending)
+    return out
+
+
+def header_word(cell: str) -> bool:
+    """True for a printed column header: a fiscal period or a growth / valuation column."""
+    low = cell.lower().strip("()")
+    return bool(period_key(cell) or low in _HEADER_GROWTH)
+
+
 _DENOM = re.compile(r"(?<=%)\s+of\s+(?:our|the|total|average|its)?\s*[a-z]+(?:\s+[a-z]+)?|(?:per ?cent|bps|basis points)\s+of\s+(?:our|the|total|average|its)?\s*[a-z]+(?:\s+[a-z]+)?|\bto\s+(?:net|gross|total|average)\s+[a-z]+")
 
 
@@ -722,6 +870,7 @@ class Verdict:
     fails: list[tuple[str, str]] = field(default_factory=list)
     corroborated: bool = False
     filed_only: bool = False
+    definition: str = ""        # T-198: the label's own qualifier, the key cross-document checks compare on
 
     def fail(self, check: str, why: str) -> None:
         self.fails.append((check, why))
@@ -741,6 +890,7 @@ class Checker:
                               for r in self.con.execute("SELECT symbol, name FROM company")}
         self._mgmt: dict[str, str] = {}
         self._witness_cache: dict[int, bool] = {}
+        self._header: dict[tuple[str, int, str], list[str]] = {}
 
     # -- shared --
     def page_text(self, doc_key: str, page: int) -> str | None:
@@ -843,7 +993,9 @@ class Checker:
             return
         # a denominator ("2.5% of our revenues", "40 bps of AUM") names the base, not the metric: blank it
         masked = _DENOM.sub(lambda mm: " " * len(mm.group(0)), text)
-        own_spans = [(mm.start(), mm.end()) for p in m.labels for mm in p.finditer(text)] or                     [(mm.start(), mm.end()) for p in m.weak for mm in p.finditer(text)]
+        # the row's own label owns its qualifier (T-198): "EBITDA (before Forex and Other Income)" holds "other
+        # income", and a foreign label inside that span is the definition, not another metric's claim
+        own_spans = label_spans(m, text) or [(mm.start(), mm.end()) for p in m.weak for mm in p.finditer(text)]
         anchor = min(own, key=lambda h: abs(h - pos))
         lo, hi = sorted((anchor, pos))
         # a competing label counts only when it sits BETWEEN the row's own nearest label and the number, is not
@@ -1248,9 +1400,12 @@ class Checker:
         return pos, self.unit_value_count(text, unit, label_end)
 
     def check_multi_number(self, v: Verdict, m: Metric | None, text: str, pos: int | None, unit: str,
-                           rule: str) -> None:
+                           rule: str, doc_key: str = "", page: int | None = None,
+                           period: str | None = None, quote: str = "") -> None:
         """A label followed by more than two values of the row's unit (a table header row) does not pin a column;
-        any rule, and the row is verified only when another source agrees."""
+        any rule, and the row is verified only when another source agrees.  A table row whose printed header names
+        its own period at the value's position IS pinned (``column_pinned``, T-198): the numbers are the table's
+        columns, which the extractor resolved by the header exactly as this check does."""
         if pos is None:
             return
         label_end = pos
@@ -1258,14 +1413,66 @@ class Checker:
             label = nearest_strong_label(m, text, pos)
             if label is not None and label[2] <= pos:
                 label_end = label[2]
+        pinned = rule in ("table_v1", "chart_v1") and \
+            self.column_pinned(doc_key, page, text, m, pos, period, quote)
         count = self.unit_value_count(text, unit, label_end)
-        if count > 2:
+        if count > 2 and not pinned:
             v.fail("multi_number", f"{count} {unit or 'unit'} values after the label: column not pinned")
         if count > 5:
             v.fail("history_row", f"{count} values after the label: a history row, only a filed figure pins it")
             v.filed_only = True
-        if rule in ("table_v1", "chart_v1") and len({round(n, 4) for n, _, _ in numbers_in(text)}) > 2:
+        if rule in ("table_v1", "chart_v1") and len({round(n, 4) for n, _, _ in numbers_in(text)}) > 2 \
+                and not pinned:
             v.fail("multi_number", f"{len(numbers_in(text))} numbers in the quote: column not pinned")
+
+    def table_header(self, doc_key: str, page: int, quote: str) -> list[str]:
+        """The column headers printed above a table row, in column order, read from the page's own text (T-198).
+
+        A table row's quote carries the row's values but not the column each was read from; the header printed
+        above the row names every column, so the value can be tied to its period without the extractor's table."""
+        raw = self.page_text(doc_key, page) or ""
+        first = next((ln.strip() for ln in (quote or "").splitlines() if ln.strip()), "")
+        target = fold(first)[:60]
+        key = (doc_key, page, target)
+        if key in self._header:
+            return self._header[key]
+        cells: list[str] = []
+        lines = raw.splitlines()
+        idx = next((i for i, ln in enumerate(lines) if target and target in fold(ln)), None)
+        if idx is not None:
+            for ln in reversed(lines[max(0, idx - 60):idx]):
+                found = header_cells(ln)
+                if found and all(header_word(c) for c in found):
+                    cells = found + cells
+                elif cells:
+                    break       # the header run ends at the first line above it that is not a header
+        if not any(period_key(c) for c in cells):
+            cells = []          # a run that names no period is not the table's header
+        self._header[key] = cells
+        return cells
+
+    def column_pinned(self, doc_key: str, page: int | None, text: str, m: Metric | None, pos: int | None,
+                      period: str | None, quote: str) -> bool:
+        """True when the row's value holds the column its own period heads (T-198).
+
+        A table row prints one value per column in the header's order; when the row's own period names the header
+        at the value's position, the column taken is pinned.  Only the table/chart rules use this: a sentence with
+        several numbers is not a table, and a row whose cells do not line up (a printed n/a, a merged cell) is not
+        pinned either.  The check reads the page's printed header itself, never the extractor's parsed table."""
+        if m is None or pos is None or not doc_key or page is None or not period:
+            return False
+        label = nearest_strong_label(m, text, pos)
+        label_end = label[2] if label is not None and label[2] <= pos else pos
+        nums = [(n, start, end) for n, start, end in numbers_in(text)
+                if start >= label_end and not _is_year(n) and not _MONTH.match(text, end)
+                and not (start > 0 and text[start - 1].isalpha())]
+        idx = next((i for i, (_, start, _) in enumerate(nums) if start == pos), None)
+        if idx is None:
+            return False
+        cells = self.table_header(doc_key, page, quote)
+        if len(cells) < 2 or idx >= len(cells):
+            return False
+        return period_key(cells[idx]) == period_key(period)
 
     def check_scale_doubt(self, v: Verdict, canon: str, value: float | None, unit: str, dimension: str,
                           entity: str, symbol: str) -> None:
@@ -1280,10 +1487,16 @@ class Checker:
         v.filed_only = True
 
     def witness_ok(self, r: sqlite3.Row, fin: dict, usd_rev: dict, dim_words: dict) -> bool:
-        """A witness counts only when its own row passes every hard check and is not multi_number."""
+        """A witness counts only when its own row passes every hard check and is not multi_number.
+
+        A row the store derived by arithmetic (``derived_cumulative_v1``) has no page of its own: its two inputs
+        were judged, not the figure, so it never stands as a second source (T-198)."""
         rid = r["id"]
         if rid in self._witness_cache:
             return self._witness_cache[rid]
+        if r["extractor_rule"] == "derived_cumulative_v1":
+            self._witness_cache[rid] = False
+            return False
         m = self.vocab.canon(r["metric"])
         canon = m.name if m else ""
         if r["extractor_rule"] == "xbrl_segment":
@@ -1315,10 +1528,13 @@ class Checker:
         if how == "absent":
             v.fail("value_present", f"{value} not in the quote")
         _, count = self.quote_value_count(m, text, value, r["unit"] or "")
-        if count > 2:
+        if count > 2 and not (r["extractor_rule"] in ("table_v1", "chart_v1")
+                              and self.column_pinned(r["doc_key"], r["page"], text, m, pos,
+                                                     r["fiscal_period"], quote)):
             self._witness_cache[rid] = False
             return False
-        self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "")
+        self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "",
+                                r["doc_key"], r["page"], r["fiscal_period"], quote)
         ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
         self.check_label(v, m, text, pos, ctx)
         self.check_nearer_label(v, m, text, pos, reach=10 ** 9, same_side=True, mask_denominators=True)
@@ -1508,7 +1724,8 @@ class Checker:
         own_before = own[2] <= pos
         # a denominator ("as a % of NOV", "net NPAs to net advances") names the base, not the number's metric
         scanned = _DENOM.sub(lambda mm: " " * len(mm.group(0)), text) if mask_denominators else text
-        own_spans = [(mm.start(), mm.end()) for p in (*m.labels, *m.weak) for mm in p.finditer(text)]
+        # the label's own qualifier belongs to it (T-198): its words are the definition, not a nearer metric
+        own_spans = label_spans(m, text) + [(mm.start(), mm.end()) for p in m.weak for mm in p.finditer(text)]
         best: tuple[int, str, str, int, int] | None = None
         for other in self.vocab.metrics.values():
             if other.name == m.name or other.name in m.related or m.name in other.related:
@@ -1835,14 +2052,20 @@ class Checker:
                     and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"] \
                     and r["value"] is not None and r["value"] > 0:
                 usd_rev[(r["symbol"], r["fiscal_period"])].append((r["id"], r["value"] * (r["scale"] or 1)))
-        # cross-document groups: same company, metric, scope and period, rupee-or-unit value; `single` says the
-        # quote prints at most one value of the unit after the label (only such a quote can corroborate a column)
+        # cross-document groups: same company, metric, scope, period AND definition, rupee-or-unit value; `single`
+        # says the quote prints at most one value of the unit after the label (only such a quote can corroborate a
+        # column).  The definition key (T-198) comes from the printed label's own qualifier, so a row of another
+        # definition ("EBITDA before R&D") never stands as a witness for this one.
         groups: dict[tuple, list[tuple[int, str, float, str, bool]]] = defaultdict(list)
+        definitions: dict[int, str] = {}
         for r in rows:
             m = self.vocab.canon(r["metric"])
-            key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"], r["basis"])
             text = fold(r["quote"] or "")
-            _, count = self.quote_value_count(m, text, r["value"], r["unit"] or "")
+            pos, count = self.quote_value_count(m, text, r["value"], r["unit"] or "")
+            defn = definition_key(m, text, pos, (r["raw_label"] if "raw_label" in r.keys() else "") or "")
+            definitions[r["id"]] = defn
+            key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"],
+                   r["basis"], defn)
             groups[key].append((r["id"], r["doc_key"], (r["value"] or 0) * (r["scale"] or 1),
                                 squash(r["quote"] or "")[:80], count <= 1))
         # the company's own non-total dimension words: a total row whose quote names one is probably that part
@@ -1863,7 +2086,9 @@ class Checker:
             value = r["value"]
             amount = (value or 0) * (r["scale"] or 1)
             # corroboration first: another document with the same value, or the filed statements
-            key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"], r["basis"])
+            key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"],
+                   r["basis"], definitions.get(r["id"], ""))
+            v.definition = key[-1]
             # independent sources only: another document AND another wording (a deck table copied into the next
             # quarter's deck is the same source twice, not a second witness), and the witness itself must pass
             # every hard check and not be multi_number
@@ -1921,7 +2146,8 @@ class Checker:
                 v.fail("value_present", f"{value} not in the quote")
             elif how == "scaled":
                 v.fail("value_scaled", f"{value} only after rescale")
-            self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "")
+            self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "",
+                                    r["doc_key"], r["page"], r["fiscal_period"], quote)
             ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
             self.check_label(v, m, text, pos, ctx)
             self.check_nearer_label(v, m, text, pos, reach=10 ** 9, same_side=True, mask_denominators=True)
@@ -2073,12 +2299,13 @@ def write(out_db: str, verdicts: list[Verdict]) -> None:
     con.executescript("""
         DROP TABLE IF EXISTS row_check; DROP TABLE IF EXISTS row_check_fail;
         CREATE TABLE row_check (tbl TEXT, row_id INTEGER, symbol TEXT, metric TEXT, canon TEXT, sector TEXT,
-            doc_type TEXT, rule TEXT, status TEXT, corroborated INTEGER, checker TEXT, PRIMARY KEY (tbl, row_id));
+            doc_type TEXT, rule TEXT, status TEXT, corroborated INTEGER, checker TEXT, definition TEXT,
+            PRIMARY KEY (tbl, row_id));
         CREATE TABLE row_check_fail (tbl TEXT, row_id INTEGER, check_name TEXT, hard INTEGER, why TEXT);
     """)
-    con.executemany("INSERT INTO row_check VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+    con.executemany("INSERT INTO row_check VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     [(v.table, v.row_id, v.symbol, v.metric, v.canon, v.sector, v.doc_type, v.rule, v.status,
-                      int(v.corroborated), VERSION) for v in verdicts])
+                      int(v.corroborated), VERSION, v.definition) for v in verdicts])
     con.executemany("INSERT INTO row_check_fail VALUES (?,?,?,?,?)",
                     [(v.table, v.row_id, c, int(c in HARD), w) for v in verdicts for c, w in v.fails])
     con.commit()

@@ -28,7 +28,8 @@ DOC = "pdfs/KEC/deck1.pdf"
 # the checker's own output DDL (row_checks.write): the serving tests insert verdicts into the same shape
 _CHECK_DDL = """
 CREATE TABLE row_check (tbl TEXT, row_id INTEGER, symbol TEXT, metric TEXT, canon TEXT, sector TEXT,
-    doc_type TEXT, rule TEXT, status TEXT, corroborated INTEGER, checker TEXT, PRIMARY KEY (tbl, row_id));
+    doc_type TEXT, rule TEXT, status TEXT, corroborated INTEGER, checker TEXT, definition TEXT,
+    PRIMARY KEY (tbl, row_id));
 CREATE TABLE row_check_fail (tbl TEXT, row_id INTEGER, check_name TEXT, hard INTEGER, why TEXT);
 """
 
@@ -102,7 +103,8 @@ def _verdicts(conn):
             ("guidance", 1, SYM, "credit_cost", "quarantined", 0, [("forward_word", 1, "no forward word")]),
             ("guidance", 2, SYM, "revenue_growth", "verified", 1, []),
             ("guidance", 3, SYM, "revenue_growth", "unverified", 0, [("range_spread", 0, "high/low 1.2")])]
-    conn.executemany("INSERT INTO row_check VALUES (?,?,?,?,?,'','','',?,?, 'row_checks_v1')",
+    conn.executemany("INSERT INTO row_check(tbl,row_id,symbol,metric,canon,sector,doc_type,rule,status,corroborated,"
+                     "checker,definition) VALUES (?,?,?,?,'','','',?,?,?,'row_checks_v1','')",
                      [(tbl, rid, sym, metric, "", status, int(corr))
                       for tbl, rid, sym, metric, status, corr, _ in rows])
     conn.executemany("INSERT INTO row_check_fail VALUES (?,?,?,?,?)",
@@ -233,7 +235,9 @@ def test_kpi_hides_quarantined_and_labels_check_status(lookups):
     assert unverified[0]["check_note"] == "multi_number, value_scaled"
     hidden = p3.kpi(SYM, "nnpa_pct", "FY25")
     assert hidden["found"] is False
-    assert "nnpa_pct" not in p3.kpi(SYM, "nonsense")["available"]      # every row of it is quarantined
+    # T-165: the quarantine hides the ROWS, never the metric's name, and the empty reply says they are held
+    assert "nnpa_pct" in p3.kpi(SYM, "nonsense")["available"]
+    assert hidden["held_quarantined"]
     assert "order_book" in p3.kpi(SYM, "nonsense")["available"]
     shown = p3.kpi(SYM, "nnpa_pct", "FY25", include_quarantined=True)
     assert [(r["value"], r["check_status"]) for r in shown["rows"]] == [(1.18, "quarantined")]
@@ -276,3 +280,60 @@ def test_build_without_row_check_serves_exactly_as_before(lookups):
     guidance_rows = p3.guidance(SYM)["rows"]
     assert "credit_cost" in {r["metric"] for r in guidance_rows}
     assert all("check_status" not in r and "check_note" not in r for r in guidance_rows)
+
+
+# --- T-198: a derived answer names the company-stated figure it did not prefer ------------------------------------
+_CS_QUOTE = "EBITDA (before Forex and Other Income)\n6,605"
+
+
+def _derived_and_stated(conn) -> None:
+    """A derived annual EBITDA (the answer fin elects) and the company's own deck row for the same period."""
+    conn.execute(
+        "INSERT INTO fin_annual_line (symbol, isin, fiscal_year, period_end, basis, statement, line_item, caption, "
+        "value, unit, scale, doc_key, page, quote, source_db, source_table, source_rowid, known_at, known_at_source, "
+        "is_reported, is_derived, definition, period_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (SYM, "INE389H01022", "FY25", "2025-03-31", "consolidated", "P&L", "ebitda", "EBITDA", 6582.8, "inr_cr",
+         1e7, "ar.pdf", 42, "EBITDA 6,582.8", "ar_facts", "filed", "9", "2026-05-10T10:00:00", "x", 0, 1,
+         "xbrl_derived", "FY"))
+    conn.execute(
+        "INSERT INTO kpi_series(id,symbol,metric,dimension,value,unit,scale,period_type,fiscal_period,as_of_date,"
+        "basis,doc_key,page,quote,known_at,known_at_source,is_reported,extractor_rule,source_type,entity,raw_label) "
+        "VALUES (6,?,'ebitda','total',6605.0,'inr_cr',1e7,'FY','FY25','2025-03-31','consolidated',?,3,?,"
+        "'2025-05-26T10:00:00','x',1,'table_v1','deck','','EBITDA (before Forex and Other Income)')",
+        (SYM, DOC, _CS_QUOTE))
+
+
+def _fact_reply(lookups, status: str) -> dict:
+    conn, path = _connect()
+    _verdicts(conn)
+    _derived_and_stated(conn)
+    conn.execute("INSERT INTO row_check(tbl,row_id,symbol,metric,canon,sector,doc_type,rule,status,corroborated,"
+                 "checker,definition) VALUES ('kpi_series',6,?,'ebitda','ebitda','','deck','table_v1',?,1,"
+                 "'row_checks_v2','before:forex,income,other')", (SYM, status))
+    conn.execute("INSERT INTO row_check_fail VALUES ('kpi_series',6,'label_conflict',1,'other income')")
+    conn.commit()
+    conn.close()
+    return lookups(path=path).fact(SYM, "ebitda", "FY25")
+
+
+def test_fact_names_the_company_stated_figure_it_did_not_prefer(lookups):
+    """T-198: the answer is the derived figure, but the reply must not call itself preferred without naming what the
+    company printed for the same metric, period and basis — including a row the checker quarantined."""
+    out = _fact_reply(lookups, "quarantined")
+    assert out["found"] is True and out["route"] == "fin"
+    assert out["answer"]["value"] == 6582.8                      # the derived figure is still the answer
+    stated = out["company_stated"]
+    assert (stated["value"], stated["unit"]) == (6605.0, "inr_cr")
+    assert stated["check_status"] == "quarantined"
+    assert stated["definition"] == "EBITDA (before Forex and Other Income)"
+    assert stated["source"]["table"] == "kpi_series" and stated["source"]["page"] == 3
+    assert "quarantined" in stated["why_not_preferred"]
+    assert "6605" in out["why_this_one"] and "not preferred here" in out["why_this_one"]
+    assert "company" in out["why_this_one"].lower()
+
+    # a visible company row is the answer itself, so nothing is named beside it: the rule only speaks when the
+    # store preferred something else (here the checker's quarantine is what hid the company's row)
+    served = _fact_reply(lookups, "verified")
+    assert served["route"] == "kpi" and served["answer"]["value"] == 6605.0
+    assert served["answer"]["check_status"] == "verified"
+    assert "company_stated" not in served
