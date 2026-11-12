@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-12 14:10 IST (Eagle)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-12 18:05 IST (T-194 worker, DeepSeek)
 History `docs/state_history/` (previous: `STATE_2026-11-12_1410.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page, text or image; DeepSeek budget ~USD 100-200/month, free models first)
@@ -10,6 +10,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-12_1410.md`); method `do
 - T-189 AUROPHARMA, 4 models graded (12 Nov): Haiku 81.2%, DeepSeek 76.8%, Gemini 72.5%, MiMo 25/41; none passes 92%. Top miss = stopped early. Report `D:/RealityEngine/reports/2026-11-12_four_model_answer_test.html`. 12 Nov: SHP XBRL fetched (all categories, pledge, exact share count); Q2FY27 transcript not on BSE yet.
 - HP TextRecognizer 1.0.1.0 installed and kept (T-190; key deleted, cert TrustedPeople only).
 - Disclosures (ledger): p20 99.6% fitted to its own questions (honest 54.8%); T-189 reader arms (Dots quota ran out, Haiku 166 pages, DeepSeek 16 pages deleted), HP MSIX missing.
+- T-194 (branch, NOT merged): `pilot3_topic`, exact-phrase `pilot3_search` with counts, pharma `topics:` + `retag` (`other` 38.5->35.7%), `event` table, `as_of` on topic/search/page; evidence in the branch report.
 
 ## Merged 11 Nov
 T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 position check v2, T-186 `pilot3_fact` (one call: preferred figure + source + known_at + inputs; XBRL first for annual lines; mismatch flag), T-187 guidance round 5, T-184 run ledger, T-188 HP OCR arm + local readers.
@@ -17,7 +18,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 ## Next action
 0. After 15:30 (Shivam tops up DeepInfra): T-191 semantic A/B per `tasks/handoff/T-191_SEMANTIC_AB_PLAN.md` Snapshot frozen 12 Nov 15:33 (`aurobindo_ab/SNAPSHOT_SHA256.txt`); next: embed (needs top-up), arms A/B DeepSeek together, blind Opus grading.
 1. T-192 wrong rows: round 3 failed review (pilot10 main-vs-branch diff: count_basis crash, guidance entity rule hides 6 group targets, KPI period regressions). Round 4 RUNNING, DeepSeek job 20261112T105109Z-a810bf31 (16:21); review against brief H1-H8 and re-diff pilot10 (Opus copies in scratchpad t192). A/B does not wait for it.
-2. T-194 tool fixes: brief `tasks/handoff/T-194_TOOL_FIXES_BRIEF.md` waits for Shivam.
+2. T-194: branch finished, waiting review/merge.
 3. Branches: 22 unmerged; 5 answer-run note branches deletable; T-163 r4-7 / T-132 r10-12 need review; CHOLAFIN waits for Shivam.
 4. Restart reality-data; T-179 timing with `pilot3_fact`; guidance `gross_margin`; `pilot3_fin` XBRL-first; T-175; T-188 follow-ups; s10 + T-172.
 

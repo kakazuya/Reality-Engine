@@ -185,7 +185,7 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
     conn.execute("PRAGMA journal_mode=WAL")
     log = {}
     parts = (["registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments",
-              "guidance", "notes", "checks"]
+              "guidance", "notes", "events", "checks"]
              if part == "all" else [part])
     if "comparatives" in parts and not profile.under_profile():
         parts.remove("comparatives")  # no profile: the pilot3 build keeps its present rows (T-057)
@@ -248,6 +248,10 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
                 conn.close()  # the note reader reads doc_page from the db file
                 log["notes"] = run_notes(str(out), symbols)
                 conn = sqlite3.connect(out)
+            elif name == "events":
+                from reality_engine.pilot3.events import build_events
+
+                log["events"] = build_events(conn)
             elif name == "checks":
                 log["checks"] = checks(conn, out, profile_path)
             log[f"seconds_{name}"] = round(time.time() - started, 1)
@@ -264,7 +268,7 @@ def main(argv: list[str] | None = None) -> None:
                     help="build profile JSON (T-056): companies, pages db, raw root, manifest, output, window start")
     ap.add_argument("--out", default=None, help="default: the profile's output, else the real pilot3.db on C")
     ap.add_argument("--pages-db", default=None, help="override the profile's pages database")
-    ap.add_argument("--part", default="all", choices=("registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "notes", "checks", "all"))
+    ap.add_argument("--part", default="all", choices=("registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "notes", "events", "checks", "all"))
     ap.add_argument("--symbols", default=None,
                     help="comma list: without a profile it limits ocr/extract/kpi/transcripts/guidance/notes only (registry/pages/stores/ratios rebuild every company); a profile build limits every part (default: the profile's companies, else the pilot3 three)")
     ap.add_argument("--ocr-db", action="append", default=[], help="ocr_page database written by pilot3.ocr (repeat for one per company)")

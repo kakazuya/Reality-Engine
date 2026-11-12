@@ -40,6 +40,13 @@ TABLES: dict[str, str] = {
         symbol TEXT, isin TEXT, ex_date TEXT, record_date TEXT, fiscal_year TEXT, kind TEXT, amount_per_share REAL,
         face_value REAL, subject TEXT, known_at TEXT, known_at_source TEXT, source_db TEXT, source_table TEXT,
         source_rowid TEXT)""",
+    # T-194: one row per event an announcement names (regulatory inspection, buyback, dividend, acquisition,
+    # merger), built by ``pilot3.events`` from the announcement title and its first page.  ``event_date`` is the
+    # event's own start date when the text prints one, else the filing date; ``announced`` is always the filing.
+    "event": """CREATE TABLE event (
+        symbol TEXT, isin TEXT, kind TEXT, event_date TEXT, end_date TEXT, announced TEXT, unit TEXT,
+        outcome TEXT, subject TEXT, doc_key TEXT, page INTEGER, quote TEXT, known_at TEXT,
+        known_at_source TEXT, source TEXT, extractor_rule TEXT)""",
     "price_delivery": """CREATE TABLE price_delivery (
         symbol TEXT, isin TEXT, exchange TEXT, date TEXT, open REAL, high REAL, low REAL, close REAL,
         prev_close REAL, volume REAL, value_inr REAL, num_trades REAL, deliverable_qty REAL,
@@ -160,6 +167,7 @@ INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_vd ON valuation_daily(symbol, date)",
     "CREATE INDEX IF NOT EXISTS ix_sc ON share_capital(symbol, as_of_date)",
     "CREATE INDEX IF NOT EXISTS ix_div ON dividend_event(symbol, ex_date)",
+    "CREATE INDEX IF NOT EXISTS ix_ev ON event(symbol, kind, event_date)",
     "CREATE INDEX IF NOT EXISTS ix_bbd ON bulk_block_deal(symbol, deal_date)",
     "CREATE INDEX IF NOT EXISTS ix_ins ON insider_trade(symbol, intimation_date)",
     "CREATE INDEX IF NOT EXISTS ix_ip ON index_price(symbol, index_name, date)",

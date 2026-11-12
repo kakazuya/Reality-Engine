@@ -30,7 +30,7 @@ from reality_engine.pilot3 import kpi as kpi_mod, schema, transcripts  # noqa: E
 
 DB = TMP / "pilot3_fixture.db"
 TOOLS = {"pilot3_fact", "pilot3_kpi", "pilot3_fin", "pilot3_ratio", "pilot3_holding", "pilot3_statements",
-         "pilot3_docs", "pilot3_search", "pilot3_guidance", "pilot3_sql", "pilot3_cells"}
+         "pilot3_docs", "pilot3_search", "pilot3_topic", "pilot3_guidance", "pilot3_sql", "pilot3_cells"}
 
 
 def build_fixture() -> None:
@@ -207,6 +207,52 @@ def build_fixture() -> None:
               "extractor_rule) VALUES ('KEC','KEC:old/call.pdf','2026-08-01','Q1FY27',3,2,'C D','md','prepared',"
               "'margin','Q1FY27','t','[]','Margins were steady this quarter','Margins were steady this quarter.',"
               "0,'2026-08-02T10:00:00','x','t')")
+    # T-194 search: the money amount in both printings, plus a "$4 billion" decoy from another business
+    for dk, pg, text, known in (
+            ("pdfs/KEC/deck1.pdf", 3, "Zentiva sales crossed $4 billion in the year.", "2026-02-10T17:00:00"),
+            ("pdfs/KEC/deck2.pdf", 3, "US$2 bn of revenue came from the US business.", "2026-08-10T17:00:00"),
+            ("pdfs/KEC/deck2.pdf", 4, "The company delivered 2 billion doses during the year.",
+             "2026-08-10T17:00:00")):
+        c.execute("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)",
+                  (dk, "KEC", pg, text, "script_text", len(text), known, None))
+    c.execute("INSERT INTO doc_page_fts(doc_page_fts) VALUES ('rebuild')")
+    c.commit()
+    c.close()
+
+
+def build_topic_fixture() -> None:
+    """T-194: the base fixture plus a theme spread over three calls (tagged ``other``, as 38% of the real store's
+    statements are) and the numbers and event beside it -- added here so the statements of one test never change
+    another test's newest-call answers."""
+    build_fixture()
+    c = sqlite3.connect(DB)
+    stmt = ("INSERT INTO transcript_statement(symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,"
+            "topics,period_discussed,period_source,numbers_json,statement,quote,is_fragment,known_at,known_at_source,"
+            "extractor_rule) VALUES ('KEC',?,?,?,?,1,'A B','ceo','qa',?,'Q2FY26','t','[]',?,?,0,?,'x','t')")
+    for doc, day, period, topics, quote, known in (
+            ("KEC:pen/callA.pdf", "2026-03-10", "Q3FY26", "other", "Pen-G volumes for the US market were in line.",
+             "2026-03-12T10:00:00"),
+            ("KEC:pen/callB.pdf", "2026-04-15", "Q4FY26", "other", "Pen-G pricing held up in the March quarter.",
+             "2026-04-17T10:00:00"),
+            ("KEC:pen/callC.pdf", "2026-06-01", "Q1FY27", "usfda_inspection,price_erosion",
+             "The USFDA inspection at Unit VII ended with a Form 483; Pen-G price erosion continued.",
+             "2026-06-03T10:00:00")):
+        c.execute(stmt, (doc, day, period, 4, topics, quote, quote, known))
+    c.execute("INSERT INTO guidance(id,symbol,isin,metric,target_period,low,high,unit,direction,said_on,doc_key,page,"
+              "quote,speaker,known_at,known_at_source,revision_of,extractor_rule) VALUES (4,'KEC','INE389H01022',"
+              "'other','FY27',NULL,NULL,'mn','up','2026-04-15','KEC:pen/callB.pdf',3,"
+              "'Pen-G volumes should grow towards 2 billion doses.','A B','2026-04-17T10:00:00','doc.known_at',NULL,'t')")
+    ins = ("INSERT INTO kpi_series(symbol,metric,dimension,value,unit,scale,period_type,fiscal_period,as_of_date,basis,"
+           "doc_key,page,quote,known_at,known_at_source,is_reported,extractor_rule) "
+           "VALUES ('KEC',?,?,?,?,1,'Q',?,?, 'consolidated',?,1,?,?,'docs.known_at',1,'t')")
+    c.execute(ins, ("pen_g_volume", "total", 2000.0, "count_mn", "Q3FY26", "2026-03-10", "KEC:pen/callA.pdf",
+                    "Pen-G volume 2 billion doses", "2026-03-12T10:00:00"))
+    c.execute("INSERT INTO page_cell VALUES ('KEC:pen/callA.pdf',4,'KEC','2026-03-12T10:00:00','dots','Pen-G',"
+              "'Pen-G volume','Q3FY26','2,000','million doses','verified',NULL,NULL,NULL,NULL,NULL)")
+    c.execute("INSERT INTO event VALUES ('KEC','INE389H01022','inspection','2026-02-02','2026-02-06','2026-02-10',"
+              "'Unit VII','Form 483','USFDA inspection at Unit VII','pdfs/KEC/deck1.pdf',3,"
+              "'The USFDA inspection at Unit VII ended with a Form 483.','2026-02-10T17:00:00','doc.known_at',"
+              "'doc.title+doc_page','pilot3.events')")
     c.commit()
     c.close()
 
@@ -747,6 +793,10 @@ class Pilot3McpTests(unittest.TestCase):
                         out = payload(await session.call_tool(name, args, read_timeout_seconds=60))
                         self.assertTrue(out["found"], name)
                         self.assertTrue(all(r["provenance"]["source"] for r in out["rows"]), name)
+                    topic = payload(await session.call_tool("pilot3_topic", {"symbol": "KEC", "topic": "order book"},
+                                                            read_timeout_seconds=60))
+                    self.assertTrue(topic["found"])
+                    self.assertTrue(all(i["provenance"]["source"] for g in topic["groups"] for i in g["items"]))
                     one = payload(await session.call_tool("pilot3_fact", {"symbol": "KEC", "metric": "pat",
                                                                           "period": "FY25"},
                                                           read_timeout_seconds=60)) or {}
@@ -927,6 +977,121 @@ class FactTests(unittest.TestCase):
         out = p3.fact("KEC", "promoter holding", period="FY25", as_of="2026-06-01")
         if out.get("found"):
             self.assertTrue(out["answer"].get("mismatch"), out)
+
+
+class TopicTests(unittest.TestCase):
+    """T-194: a theme comes back whole -- every call, the numbers and the event -- in one call."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_topic_fixture()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def items(self, out, kind=None):
+        return [item for group in out["groups"] for item in group["items"]
+                if kind is None or item["kind"] == kind]
+
+    def test_a_theme_returns_every_call_with_the_quote_verbatim(self):
+        out = p3.topic("KEC", "Pen-G")
+        self.assertTrue(out["found"])
+        self.assertTrue({"KEC:pen/callA.pdf", "KEC:pen/callB.pdf"} <= {g["doc_key"] for g in out["groups"]})
+        quotes = [i["quote"] for i in self.items(out, "statement")]
+        self.assertIn("Pen-G volumes for the US market were in line.", quotes)
+        self.assertIn("Pen-G pricing held up in the March quarter.", quotes)
+        for item in self.items(out):
+            self.assertTrue(item["provenance"]["source"])
+            self.assertIn("known_at", item["provenance"])
+
+    def test_a_theme_brings_its_guidance_kpi_cells_and_events(self):
+        out = p3.topic("KEC", "Pen-G")
+        kinds = {i["kind"] for i in self.items(out)}
+        self.assertTrue({"statement", "guidance", "kpi", "cell"} <= kinds, kinds)
+        insp = p3.topic("KEC", "USFDA inspection")
+        event = self.items(insp, "event")[0]
+        self.assertEqual((event["event"], event["unit"], event["outcome"]), ("inspection", "Unit VII", "Form 483"))
+        self.assertEqual(event["end_date"], "2026-02-06")
+
+    def test_the_ask_expands_to_the_sector_vocabulary(self):
+        """'Form 483' selects the form_483 tag, whose patterns also find the OAI/VAI wording the ask never printed."""
+        out = p3.topic("KEC", "Form 483")
+        self.assertIn("form_483", out["tags_matched"])
+        quotes = [i["quote"] for i in self.items(out)]
+        self.assertTrue(any("Form 483" in (q or "") for q in quotes), quotes)
+        self.assertIn("usfda_inspection", p3.topic("KEC", "USFDA inspection")["tags_matched"])
+
+    def test_as_of_never_uses_a_later_document_and_says_so(self):
+        out = p3.topic("KEC", "Pen-G", as_of="2026-03-31")
+        statement_groups = {g["doc_key"] for g in out["groups"]
+                            if any(i["kind"] == "statement" for i in g["items"])}
+        self.assertEqual(statement_groups, {"KEC:pen/callA.pdf"})
+        self.assertEqual(out["as_of"], "2026-03-31")
+        self.assertIn("2026-03-31", out["as_of_note"])
+
+    def test_the_limit_states_what_it_cut_and_the_reply_stays_small(self):
+        out = p3.topic("KEC", "Pen-G", limit=1)
+        self.assertEqual(out["counts"]["shown"], 1)
+        self.assertGreater(out["counts"]["cut"], 0)
+        self.assertIn("cut by the limit", out["text"])
+        self.assertLess(len(json.dumps(out)), 20_000)
+
+
+class SearchPhraseTests(unittest.TestCase):
+    """T-194: the exact phrase first, money normalised, the count always stated, hits grouped by document."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_fixture()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def test_the_exact_phrase_ranks_first_and_the_count_is_stated(self):
+        out = p3.search("KEC", "2 billion")
+        self.assertEqual(out["match_mode"], "phrase")
+        self.assertEqual(out["pages_matched"], 1)              # "2 billion doses"
+        self.assertEqual(out["pages_short"], 1)                # "US$2 bn" printed short
+        self.assertIn("match", out["text"])
+        self.assertIn("shown", out["text"])
+        top = {r["provenance"]["source"] for r in out["rows"][:2]}
+        self.assertEqual(top, {"pdfs/KEC/deck2.pdf p3", "pdfs/KEC/deck2.pdf p4"})
+        self.assertNotIn("$4 billion", " ".join(r["snippet"] for r in out["rows"][:2]))
+
+    def test_a_money_amount_is_normalised_both_ways(self):
+        for query in ("2 billion", "US$2 bn", "$2 billion"):
+            out = p3.search("KEC", query)
+            self.assertEqual(out["pages_matched"] + out["pages_short"], 2, query)
+            self.assertEqual(out["match_mode"], "phrase", query)
+
+    def test_hits_are_grouped_by_document(self):
+        out = p3.search("KEC", "order book")
+        self.assertTrue(out["documents"])
+        self.assertEqual({d["doc_key"] for d in out["documents"]},
+                         {r["provenance"]["source"].split(" p")[0] for r in out["rows"]})
+
+    def test_as_of_says_how_many_matches_it_hid(self):
+        out = p3.search("KEC", "order book", as_of="2026-03-01")
+        self.assertGreater(out["hidden_after_as_of"], 0)
+        self.assertIn("hidden by as_of", out["text"])
+        self.assertEqual(out["as_of"], "2026-03-01")
+
+    def test_the_page_reader_refuses_a_document_known_after_as_of_and_says_so(self):
+        """T-194 evidence 5: four T-189 answers read a document filed after the question's as_of through page."""
+        from reality_engine.scripts import p3ask
+
+        out = p3ask._page(p3, "pdfs/KEC/deck2.pdf", 1, as_of="2026-03-01")
+        self.assertEqual(out["rows"], [])
+        self.assertEqual(out["as_of"], "2026-03-01")
+        self.assertIn("cannot answer a point-in-time question", out["note"])
 
 
 if __name__ == "__main__":
