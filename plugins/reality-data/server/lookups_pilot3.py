@@ -896,8 +896,8 @@ def holding(symbol: str, as_of: str, quarter_end: str | None = None, all_categor
                 now_pct, then_pct = pledge["pledged_pct_of_promoter_holding"], before["pledged_pct_of_promoter_holding"]
                 pledge["changed"] = None if now_pct is None or then_pct is None else now_pct != then_pct
     sc = _q(f"SELECT rowid, * FROM share_capital WHERE symbol=? AND event IS NULL AND as_of_date<=?{extra} "
-            "AND shares_outstanding IS NOT NULL ORDER BY as_of_date DESC, (source_table='shp_category') DESC, "
-            "known_at DESC LIMIT 1", (sym, day, *eargs))
+            "AND shares_outstanding IS NOT NULL ORDER BY as_of_date DESC, (ratio='derived_from_capital') ASC, "
+            "(source_table='shp_category') DESC, known_at DESC LIMIT 1", (sym, day, *eargs))
     shares = None
     if sc:
         r = sc[0]
@@ -1692,8 +1692,8 @@ def _ref_input(symbol: str, ref: str, basis: str | None, cutoff: str | None) -> 
     out: dict[str, Any] = {"name": ref, "value": None, "unit": None, "period": None, "source": None}
     parts = str(ref).split(":", 4)
     if len(parts) == 3 and parts[0] == "sc":                       # sc:SYM:date -> the share count used
-        rows = _q("SELECT shares_outstanding, as_of_date, known_at FROM share_capital WHERE symbol=? "
-                  "AND as_of_date=? AND event IS NULL ORDER BY known_at DESC LIMIT 5", (symbol, parts[2]))
+        rows = _q("SELECT shares_outstanding, as_of_date, known_at, ratio FROM share_capital WHERE symbol=? "
+                  "AND as_of_date=? AND event IS NULL ORDER BY (ratio='derived_from_capital') ASC, known_at DESC LIMIT 5", (symbol, parts[2]))
         row = next((r for r in rows if _pit_ok(r["known_at"], cutoff)), None)
         if row is None and rows:
             out["pit_hidden"] = True

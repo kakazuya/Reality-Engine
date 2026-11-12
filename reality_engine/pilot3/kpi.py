@@ -2538,12 +2538,20 @@ def _result_columns(cols):
     return [cols[i] for i in _kept_columns(cols)]
 
 
-def _kept_columns(cols) -> list[int]:
-    """Indices of the columns a results table keeps (the first quarter and every non-quarter column)."""
+def _kept_columns(cols, current=None) -> list[int]:
+    """Indices of the columns a results table keeps (the first quarter and every non-quarter column).
+    When ``current`` names the document's own period, the quarter column carrying that period is the one
+    kept instead of blindly the first, so a comparative quarter is never read as the current value."""
     qs = [i for i, (_, p) in enumerate(cols) if p.ptype == "Q"]
     if len(qs) <= 1:
         return list(range(len(cols)))
-    return [i for i in range(len(cols)) if i == qs[0] or cols[i][1].ptype != "Q"]
+    first_q = qs[0]
+    if current is not None:
+        for i in qs:
+            if cols[i][1].canon == current:
+                first_q = i
+                break
+    return [i for i in range(len(cols)) if i == first_q or cols[i][1].ptype != "Q"]
 
 
 def _bump(stats: dict | None, key: str) -> None:
@@ -2828,7 +2836,7 @@ def table_and_chart_rows(page_words, text: str, page: int, company: str, entries
                 assign = [(x, m) for x, m in nums if lo_x <= x <= hi_x]
                 ncols = len(cols)
                 if len(_headings(rows, hi)) >= 2:     # a results table: only its first (current) quarter column
-                    keep_idx = set(_kept_columns(cols))
+                    keep_idx = set(_kept_columns(cols, default_pers[0].canon if default_pers else None))
             for e, lm in hit:
                 if strict and e.neg and e.neg.search(label):
                     continue      # the row's own label carries the metric's negative word ("... turnover ratio")

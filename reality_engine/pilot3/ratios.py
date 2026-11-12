@@ -16,9 +16,9 @@ from reality_engine.pilot3 import profile, schema
 
 # formula_id, metric, expression, inputs, unit, note
 FORMULAS = [
-    ("F_EBITDA", "ebitda", "pbt_before_exceptional + finance_cost + depreciation - other_income - forex_gain_loss",
-     "pbt_before_exceptional,finance_cost,depreciation,other_income,forex_gain_loss", "inr",
-     "Operating EBITDA excluding other income and forex gain/loss when printed separately; matches KEC's reported Q1 FY27 EBITDA (291 crore)"),
+    ("F_EBITDA", "ebitda", "pbt_before_exceptional + finance_cost + depreciation - other_income",
+     "pbt_before_exceptional,finance_cost,depreciation,other_income", "inr",
+     "Operating EBITDA excluding other income; matches KEC's reported Q1 FY27 EBITDA (291 crore)"),
     ("F_EBIT", "ebit", "pbt_before_exceptional + finance_cost", "pbt_before_exceptional,finance_cost", "inr", ""),
     ("F_EBITDA_M", "ebitda_margin_pct", "100 * ebitda / revenue_from_operations", "ebitda,revenue_from_operations", "pct", ""),
     ("F_EBIT_M", "ebit_margin_pct", "100 * ebit / revenue_from_operations", "ebit,revenue_from_operations", "pct", ""),
@@ -133,17 +133,15 @@ def _quarters(conn: sqlite3.Connection, symbol: str) -> dict:
         out[(basis, end)][item] = (value, known, period, start)
     for (basis, end), items in out.items():
         pbt, fin, dep, oth = (items.get(k) for k in ("pbt_before_exceptional", "finance_cost", "depreciation", "other_income"))
-        forex = items.get("forex_gain_loss") or items.get("exchange_gain_loss") or items.get("foreign_exchange_gain_loss")
         if pbt and fin and not profile.is_lender(symbol):
-            ks = [x[1] for x in (pbt, fin, dep, oth, forex) if x]
+            ks = [x[1] for x in (pbt, fin, dep, oth) if x]
             if any(k is None for k in ks):  # an undated input: the derived line could not be placed in time
                 continue
             period = pbt[2]
             start = pbt[3]
             items["ebit"] = (pbt[0] + fin[0], max(ks), period, start)
             if dep:
-                items["ebitda"] = (pbt[0] + fin[0] + dep[0] - (oth[0] if oth else 0.0)
-                                   - (forex[0] if forex else 0.0), max(ks), period, start)
+                items["ebitda"] = (pbt[0] + fin[0] + dep[0] - (oth[0] if oth else 0.0), max(ks), period, start)
     return out
 
 
@@ -422,13 +420,10 @@ def _panel(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -
                 continue
             start, end = f"20{int(fy[2:]) - 1:02d}-04-01", f"20{int(fy[2:]):02d}-03-31"
             flat = {item: (value, known) for item, (value, known, _end, _start) in items.items()}
-            comps = [flat.get(k) for k in ("pbt_before_exceptional", "finance_cost", "depreciation", "other_income",
-                                           "forex_gain_loss", "exchange_gain_loss", "foreign_exchange_gain_loss")]
-            forex = next((c for c in comps[4:] if c), None)
+            comps = [flat.get(k) for k in ("pbt_before_exceptional", "finance_cost", "depreciation", "other_income")]
             if comps[0] and comps[1] and comps[2] and not profile.is_lender(symbol):
-                flat["ebitda"] = (comps[0][0] + comps[1][0] + comps[2][0] - (comps[3][0] if comps[3] else 0.0)
-                                  - (forex[0] if forex else 0.0),
-                                  max(c[1] for c in comps[:4] + ([forex] if forex else []) if c))
+                flat["ebitda"] = (comps[0][0] + comps[1][0] + comps[2][0] - (comps[3][0] if comps[3] else 0.0),
+                                  max(c[1] for c in comps if c))
                 flat["ebit"] = (comps[0][0] + comps[1][0], max(comps[0][1], comps[1][1]))
             refs = [f"fp:{symbol}:{fy}:{basis}:{item}" for item in flat]
             for item in FLOW_ITEMS:

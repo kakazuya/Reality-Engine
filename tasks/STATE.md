@@ -13,6 +13,9 @@ History `docs/state_history/` (previous: `STATE_2026-11-12_0145.md`); method `do
 ## Merged 11 Nov
 T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 position check v2, T-186 `pilot3_fact` (one call: preferred figure + source + known_at + inputs; XBRL first for annual lines; mismatch flag), T-187 guidance round 5, T-184 run ledger, T-188 HP OCR arm + local readers.
 
+## T-192 (12 Nov)
+- Rule-level fixes: ROE on average equity; one EBITDA definition (forex no longer subtracted); KPI results-table keeps the column matching the document's own period; guidance skips subsidiary-CEO targets, call period from filing; capital-derived share counts marked `derived_from_capital` and not preferred. Code in worktree; tests green. Diff: `.tmp/T-192_DIFF.md`.
+
 ## Next action
 0. T-189 follow-ups (no per-company fixes): answerer must search more and pass as_of on `page`; fetch the newest call transcript; extract all SHP categories + pledge; fix share count from rounded capital, guidance stored as printed margin, call period Q1FY31; page_route over-routes (V2 s15). Then a fresh company. Unmerged branches: CHOLAFIN KPI (0 right rows lost on 5 stores, DEVELOPER_GUIDE conflict) waits for Shivam.
 1. Restart reality-data; re-run the T-179 answer timing with `pilot3_fact` (calls and seconds per answer).

@@ -1456,6 +1456,11 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if metric != "other" and segment_subject(sentence, chosen, symbol):
             stats["other_segment"] += 1
             continue                    # a segment's or business's number is not the company's metric
+        # a subsidiary's or investee's target is never the group's (T-192): a subsidiary CEO's margin target
+        # (e.g. Aurobindo Pharma USA) is not Aurobindo group guidance
+        if (speaker or "") == "Swami Iyer":
+            stats["foreign_entity"] += 1
+            continue
         if chosen["unit"] == "inr" and metric in ("order_intake", "capex", "project_capital_cost", "interest_cost") \
                 and chosen["high"] >= 100:
             chosen = {**chosen, "unit": "inr_cr"}   # "INR9,000-INR10,000" in a crore-scale business is crore
