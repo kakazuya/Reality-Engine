@@ -1,6 +1,13 @@
 Ticket: T-194
 
-Status: DRAFT, waits for Shivam's verdict (12 Nov). Do not start before he approves.
+Status: approved by Shivam 12 Nov 16:50; started on DeepSeek off-peak.
+
+Limits and pitfalls: never write the live stores under D:/RealityEngine (copy recipe: checkpoint, copy into your
+`.tmp`, `PRAGMA journal_mode=DELETE`). Never open `D:/RealityEngine/aurobindo/questions/`, `answers/` or `report/`
+(the five evidence cases above are all you need; T-189 questions stay frozen). Run tests one file at a time with a new
+`--basetemp=.tmp/pt<n>` each run. T-192 is changing `lookups_pilot3.py` (guidance, holding, `_fact_route`,
+`_ref_input`) in parallel: keep your edits to new functions and the search/page/statements paths, so the merge stays
+clean. Every new tool reply keeps the existing provenance fields. Do not commit PROGRESS_NOTES.md.
 
 Goal: make the reality-data tools hand a cheap model everything a question needs in one or two calls, so answers stop
 early less often. "Stopped early" was the top miss cause for all four models on T-189 AUROPHARMA (8-12 misses each;
