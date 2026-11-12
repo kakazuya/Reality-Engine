@@ -1553,3 +1553,129 @@ def test_a_derived_quarter_is_as_good_as_its_two_inputs():
     rows.extend([row(6, "FY25", 430.0, metric="ebitda"), row(7, "9MFY25", 2411.0, metric="ebitda")])
     big = row(8, "Q4FY25", -1981.0, "derived_cumulative_v1", "FY25 430 - 9MFY25 2411", metric="ebitda")
     assert judge({6: "verified", 7: "verified"}, big).status == "quarantined"            # larger than its year
+
+
+# ------------------------------------ T-198: a label's own qualifier, like-for-like cross-doc, a pinned column
+
+def test_definition_key_reads_the_labels_own_qualifier():
+    """The qualifier a label carries is its definition, normalised to a comparable key; no qualifier is the plain
+    line and has the empty key.  Nothing here is a company or a figure from a store."""
+    vocab = rc.load_vocab()
+    ebitda = vocab.canon("ebitda")
+    revenue = vocab.canon("revenue")
+
+    text = rc.fold("EBITDA (before Forex and Other Income) 6,605")
+    assert rc.definition_key(ebitda, text, text.index("6,605")) == "before:forex,income,other"
+    # the same definition written as a following phrase is the same key
+    assert rc.definition_key(ebitda, rc.fold("EBITDA before Forex and Other Income 6,605")) == \
+        "before:forex,income,other"
+    assert rc.definition_key(ebitda, rc.fold("EBITDA before R&D 8,148")) == "before:d,r"
+    # prose after the label is not a definition: a finite verb before two content words ends the run untaken
+    assert rc.definition_key(ebitda, rc.fold("EBITDA after investments is at US$ 133 million")) == ""
+    assert rc.definition_key(ebitda, rc.fold("EBITDA before the accelerated provision grew 21%")) == \
+        "before:accelerated,provision"
+    assert rc.definition_key(revenue, rc.fold("Revenue (net of GST) 31,724")) == "net_of:gst"
+    assert rc.definition_key(ebitda, rc.fold("EBITDA at Rs. 6,605 crores")) == ""
+    # a bracket of units or a source note is part of the label's span but not a definition
+    assert rc.definition_key(ebitda, rc.fold("EBITDA (Rs crore) 6,605")) == ""
+    bracket = rc.fold("EBITDA (before Forex and Other Income) 1")
+    assert rc.qualifier_of(bracket, 0, 6)[2] == bracket.index(")") + 1
+    # a foreign label inside the bracket is inside the label's span; one outside it is not
+    lender = rc.fold("Net interest margin (excluding other income) 3.4%")
+    assert rc.label_span(lender, 0, lender.index(" (")) == (0, lender.index(")") + 1)
+    assert rc.label_span(rc.fold("EBITDA other income 120 1,792"), 0, 6) == (0, 6)
+
+
+QUALIFIER_FIXTURES = [
+    # (id, symbol, sector, metric, period, value, unit, quote, page)
+    (1, "FOREX", "pharma", "ebitda", "FY25", 6605.0, "inr_cr",
+     "EBITDA (before Forex and Other Income)\n6,605"),
+    (2, "GSTCO", "fmcg", "revenue", "FY25", 31724.0, "inr_cr", "Revenue (net of GST)\n31,724"),
+    (3, "EXCEP", "it_services", "pat", "FY25", 3484.0, "inr_cr",
+     "PAT (after exceptional items)\n3,484"),
+    (4, "LENDR", "bank", "nim", "FY25", 3.42, "pct",
+     "Net interest margin (excluding other income)\n3.42%"),
+    (5, "INFLOW", "epc_capital_goods", "order_intake", "FY25", 40000.0, "inr_cr",
+     "Order inflow (including L1)\n40,000"),
+]
+
+
+def test_a_labels_own_qualifier_is_not_a_conflict(tmp_path):
+    """T-198: a foreign label that sits inside the row's own label qualifier is the definition's own words, so it
+    never quarantines the row.  One fixture per sector; the sentence shape is the only thing shared."""
+    pages = {i: quote for i, _sym, _sec, _met, _per, _val, _unit, quote in QUALIFIER_FIXTURES}
+    kpi = [dict(id=i, symbol=sym, metric=met, fiscal_period=per, value=val, unit=unit, quote=quote, page=i,
+                extractor_rule="table_v1", scale=1e7 if unit.startswith("inr") else 1.0)
+           for i, sym, _sec, met, per, val, unit, quote in QUALIFIER_FIXTURES]
+    sectors = {sym: sec for _i, sym, sec, _met, _per, _val, _unit, _quote in QUALIFIER_FIXTURES}
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors=sectors)
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for i, sym, _sec, met, _per, _val, _unit, _quote in QUALIFIER_FIXTURES:
+        status, fails = verdict(out, "kpi_series", i)
+        assert "label_conflict" not in fails, (sym, met, fails)
+        assert "label_foreign" not in fails, (sym, met, fails)
+        assert status != "quarantined", (sym, met, status, fails)
+
+
+def test_a_foreign_label_outside_the_qualifier_still_conflicts(tmp_path):
+    """The rule masks the definition, not every foreign word: "Other income 120" printed between the label and the
+    number is still another metric's claim on the number."""
+    page = "EBITDA\nOther income 120\n1,792"
+    kpi = [dict(id=1, symbol="CONF", metric="ebitda", dimension="total", fiscal_period="FY25", value=1792.0,
+                unit="inr_cr", scale=1e7, quote=page, page=1, extractor_rule="table_v1")]
+    db, profile = build(tmp_path, {1: page}, kpi=kpi, sectors={"CONF": "pharma"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    status, fails = verdict(out, "kpi_series", 1)
+    assert status == "quarantined" and "label_conflict" in fails, fails
+
+
+def test_cross_doc_compares_only_the_same_definition(tmp_path):
+    """T-198: a row of another definition never witnesses this one ("EBITDA before R&D" 8,148 vs "EBITDA before
+    Forex and Other Income" 6,605).  Two rows of the SAME definition that disagree still raise cross_doc."""
+    forex = "EBITDA (before Forex and Other Income)\n6,605"
+    rnd = "EBITDA before R&D\n8,148"
+    kpi = [
+        dict(id=1, symbol="LIKE", metric="ebitda", dimension="total", fiscal_period="FY25", value=6605.0,
+             unit="inr_cr", scale=1e7, quote=forex, page=1, extractor_rule="table_v1"),
+        dict(id=2, symbol="LIKE", metric="ebitda", dimension="total", fiscal_period="FY25", value=8148.0,
+             unit="inr_cr", scale=1e7, quote=rnd, page=1, doc_key="d2", extractor_rule="table_v1"),
+    ]
+    db, profile = build(tmp_path, {1: forex}, kpi=kpi, sectors={"LIKE": "pharma"}, db_name="like1.db")
+    add_doc(db, "d2", {1: rnd})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (1, 2):
+        _status, fails = verdict(out, "kpi_series", rid)
+        assert "cross_doc" not in fails, (rid, fails)
+
+    # the same two figures under one definition are a disagreement, so the rule is not just a blanket exemption
+    kpi[1]["quote"] = "EBITDA (before Forex and Other Income)\n8,148"
+    db2, profile2 = build(tmp_path, {1: forex}, kpi=kpi, sectors={"LIKE": "pharma"}, db_name="like2.db")
+    add_doc(db2, "d2", {1: kpi[1]["quote"]})
+    out2 = run_checks(tmp_path, db2, profile2, ("kpi_series",))
+    assert "cross_doc" in verdict(out2, "kpi_series", 1)[1]
+
+
+PINNED_PAGE = (
+    "Summary Consolidated Profit & Loss Statement\n15\n₹ Crores\nQ4FY25\nQ4FY24\nYoY (%)\nQ3FY25\nQoQ (%)\n"
+    "FY25\nFY24\nYoY (%)\n"
+    "Revenue from Operations\n8,382\n7,580\n10.6%\n7,979\n5.1%\n31,724\n29,002\n9.4%\n"
+    "EBITDA (before Forex and Other Income)\n1,792\n1,687\n6.2%\n1,628\n10.1%\n6,605\n5,843\n13.0%"
+)
+
+
+def test_a_table_rows_column_is_pinned_by_the_printed_header(tmp_path):
+    """T-198: a table row's several numbers are the table's columns when the printed header above the row names the
+    row's own period at the value's position; the column is pinned and multi_number does not fail.  A value taken
+    from a growth column (the header there says YoY, not the period) is still not pinned."""
+    fy25_quote = "EBITDA (before Forex and Other Income)\n1,792\n1,687\n6.2%\n1,628\n10.1%\n6,605"
+    yoy_quote = "EBITDA Margin (%)\n1,792\n1,687\n6.2%"
+    kpi = [
+        dict(id=1, symbol="TBL", metric="ebitda", dimension="total", fiscal_period="FY25", value=6605.0,
+             unit="inr_cr", scale=1e7, quote=fy25_quote, page=1, extractor_rule="table_v1"),
+        dict(id=2, symbol="TBL", metric="ebitda_margin_pct", dimension="total", fiscal_period="FY25", value=6.2,
+             unit="pct", quote=yoy_quote, page=1, extractor_rule="table_v1"),
+    ]
+    db, profile = build(tmp_path, {1: PINNED_PAGE}, kpi=kpi, sectors={"TBL": "pharma"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    assert "multi_number" not in verdict(out, "kpi_series", 1)[1]
+    assert "multi_number" in verdict(out, "kpi_series", 2)[1]
