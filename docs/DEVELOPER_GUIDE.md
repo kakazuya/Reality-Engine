@@ -1194,6 +1194,31 @@ and the staged diff adds a top-level `def` while no test file is staged; a pure 
 Both are logged to the rule ledger under their gate names. Tests:
 `reality_engine/tests/test_doc_gate.py`.
 
+**Store diff before a merge (T-201, 12 Nov 2026).** A branch that changes extractor, store or lookup code is diffed
+against `main` on copies with one command, never rebuilt by hand:
+
+```bash
+python -m reality_engine.scripts.store_diff --store D:\RealityEngine\pilot10\pilot10.db \
+  --profile tasks\night_loop\pilot10_profile.json --parts transcripts,kpi,guidance,ratios \
+  --base main --head <branch|worktree path> --out .tmp\store_diff_<ticket> [--golden rows.csv] [--target pilot10]
+```
+
+It copies the source twice (`<out>/base.db`, `<out>/head.db`; checkpointed, `journal_mode=DELETE`, the source is
+never opened for writing), rebuilds each named part with that side's own code (`git worktree add --detach` for a ref;
+a directory path is used as-is; hidden subprocesses, no shell, each result's exit code and seconds recorded), and
+diffs every table both copies hold by a key per table (`KEYS` in the module): `kpi_series` keeps its value/doc/page
+key and compares `fiscal_period` (the T-192 round-4 relabel), `guidance` keys on the target and compares `entity` and
+served state, `ratio_panel` keys on symbol/metric/period/basis and compares `value`, `transcript_statement` keys on
+doc/page/seq and compares `call_period`; a table with no spec is compared as whole rows by hash. `row_check` /
+`row_check_fail` are not row-diffed (their ids point at rows a rebuild renumbers); their serving effect is: a
+guidance row whose `entity` now names a subsidiary, or one a quarantine verdict hides, is reported as **no longer
+served**. `<out>/STORE_DIFF.md` and `<out>/store_diff.json` carry the counts per table and symbol and 10 sampled
+changed rows with page and quote. The run exits 1 on a gate: a part that fails on head but not on base; a `--golden`
+CSV row (`table,<key columns>,value`) lost or changed; a table above `--max-churn` (default 2%) in a store other than
+`--target`. Sanity on a `pilot10.db` copy, `--base main --head main --parts guidance`: 30 tables, 0 changes, 0 gates,
+38.2 s total (copies 0.5/0.6 s, guidance 13.8/12.3 s). Test `reality_engine/tests/test_store_diff.py` (6 tests,
+fixture stores and a fake builder; no real store, no git).
+
 **Ruling intake (T-127).** `python -m reality_engine.scripts.ruling add --section "<section>"
 --text "<rule>" [--check "<gate tag>"] [--ticket-title "<gate to build>"]` appends
 `- <rule> [check: <tag>]` as the last bullet of that `## ` section of `tasks/RULINGS.md`, refuses

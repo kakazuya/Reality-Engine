@@ -51,6 +51,20 @@ add --section <section> --title "<title>" --why "<date and source>" --close-when
 5. Tool calls before first edit / total, and which Evidence item was missing or wrong (so the next brief improves).
 6. Docs updated: every doc changed for this work, and each stale copy fixed or removed. A branch without this is not merged.
 
+## Merge check (store diff, T-201)
+
+A branch that rebuilds any part of a store is diffed by Opus before the merge with one command, on copies (the live
+store is never touched):
+
+```bash
+python -m reality_engine.scripts.store_diff --store <db> --profile <json> \
+  --parts transcripts,kpi,guidance,ratios --base main --head <branch|worktree path> --out <dir>
+```
+
+It rebuilds each named part with `main`'s code and with the branch's code from the same starting copy, diffs every
+table by key, and exits 1 on a gate (a part that fails only on head, a lost `--golden` row, churn above
+`--max-churn`). Details: `docs/DEVELOPER_GUIDE.md`, "Store diff before a merge (T-201)".
+
 ## Out of scope
 
 *What the worker must not do, even if it looks related. Naming it prevents scope creep.*
