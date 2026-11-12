@@ -55,6 +55,7 @@ One row per line, kept in its section.
 - T-185 | OPEN Eagle | P1 | Position check v2: columns from header x-ranges (not header-word presence), wrapped row labels, chart panels; and a per-cell verdict that separates reader error from checker miss | accept: python -m pytest -q reality_engine/tests/test_v2_reference_geom.py | from: T-180 result 11 Nov | opened 2026-11-11
 - T-187 | OPEN Eagle | P1 | Guidance round 5: restore 4 management targets the 11 Nov rebuild lost (BEL FY27 margin 25-31%, CIPLA FY24 margin 23-24%, INDHOTEL FY26 capex ~1,100 Cr, APOLLOTYRE FY27 capex 1,200-1,300 Cr); stop keying gross margin as ebitda_margin | accept: python -m pytest -q reality_engine/tests/test_pilot3_guidance.py | from: Eagle rebuild compare 11 Nov | opened 2026-11-11
 - T-189 | OPEN Eagle | P1 | Unseen-company test: AUROPHARMA built end to end with routed page reading (text layer / HP TextRecognizer / Dots on table+chart pages), frozen first-order question set answered via MCP and hand-graded; pass bar 92% right; compare with pilot honest baselines | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/aurobindo/report/grades.csv').exists() else 1)" | from: Shivam 11 Nov 22:30 | opened 2026-11-11
+- T-198 | OPEN Eagle | P1 | Row checker: a label's own qualifier is not a conflict; like-for-like cross-doc; pilot3_fact shows a company-stated figure it did not prefer | accept: python -m pytest reality_engine/tests/test_row_checks.py -q | from: Shivam 12 Nov 20:50 | opened 2026-11-12
 
 ## Schema and question map
 
@@ -96,6 +97,7 @@ One row per line, kept in its section.
 - T-186 | OPEN Eagle | P1 | Answer-ready fact lookup: one tool call returns the preferred figure with period, basis, unit, source document and page, known_at, and the formula inputs when computed, for any (company, metric, period, basis) | accept: python -m pytest -q plugins/reality-data/tests/test_lookups_pilot3.py | from: Fable review item 7, 11 Nov | opened 2026-11-11
 - T-192 | OPEN | P1 | Wrong stored rows found by T-189 graders: ROE on average equity, exact share count (not rounded from paid-up capital), one EBITDA definition per line | accept: python -m pytest reality_engine/tests -q -k 'roe or share_count or ebitda' | from: T-189 graders | opened 2026-11-12
 - T-194 | WAITING Shivam | P1 | Tool fixes for early stopping: topic tool across calls, exact-phrase search with counts, sector topic vocabulary, event table, server-enforced as_of | accept: python -m pytest plugins/reality-data/tests/test_lookups_pilot3.py -q | from: T-189 graders | opened 2026-11-12
+- T-197 | OPEN Eagle | P1 | Discoverable tool replies: coverage block, full-text topic/statements, paging, as_of on every tool, event body, cells values (universal, no question tuning) | accept: python -m pytest plugins/reality-data/tests/test_lookups_pilot3.py -q | from: Shivam 12 Nov 20:50 | opened 2026-11-12
 
 ## Bank
 
