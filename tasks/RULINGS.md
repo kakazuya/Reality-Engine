@@ -13,15 +13,15 @@ New rulings via `ruling add`. `[check]` = code enforces it. Full wording: `docs/
 
 ## Models and keys
 - DeepSeek on `dsh` at max effort, off-peak only (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST; read the clock yourself). Routing (10 Nov): Beam (`beam-free`, both keys) writes plumbing code any hour and grades read-only in peak; extraction judged by row precision goes to DeepSeek. Every branch: separate read-only grader, then Claude's tests + sample; merge with 0 earlier-right rows lost. Beam only while free [check: free_model_check]. No headless Opus unless Shivam says so. dsh workers use Go `account='1'` until key 2 resets (7 Nov). Beam may settle KPI rows and guidance sentences scripts cannot, as a separate step; Opus writes that code.
-- `agy` runs only `gemini-3.8-flash-medium`, headless with `--dangerously-skip-permissions`. Settled: DeepSeek answers need Opus's help; testing is at universal scale.
+- `agy` runs only `gemini-3.8-flash-medium`, headless with `--dangerously-skip-permissions`.
 
 ## How we work
 - Claude reviews, workers build; Opus writes ~20-25% (design, tests, review, one working example). Briefs carry evidence (defect rows, file/function/line, a fast check), numbered steps, limits, pitfalls, budget and a stop rule; unknown method -> Opus prototypes first. Check a finished worker against Opus's own tests and sample, log it, then merge [check: worker_review] [check: merge_tests]. No pilot bank reasoning to workers. Page-reading subagents: batches of 8 pages, under 100k context, Haiku medium.
 - Lean: add nothing that does not stop a failure we have had. Max 4 code workers on the MSI (10 Nov) [check: code_worker_limit]; data/research jobs on idle machines. Branches merged or deleted within 24 h.
-- One task stays in one worker session; Opus reviews and guides the next round; new worker only at 1M context or a new task. No live adviser calls to Claude. Tickets hold tests, never rules.
+- One task stays in one worker session; Opus reviews and guides the next round; new worker only at 1M context or a new task. No live adviser calls to Claude. Tickets = in-scope work only; rules here; ideas to `tasks/IDEA_BOX.md` (12 Nov).
 - Architecture (8 Nov): the author never checks own code. Every extracted row passes the independent `row_checks.py` layer (quote anchor, sector fit, own figure, reconciliation, scale): `verified` / `unverified` (served labelled) / `quarantined` (never served); unsure = no row. Releases gate on a hidden hold-out, rulings diff, tool budgets; a fixed random sample is hand-read (~60/stratum). Score only on frozen sets (10 Nov): half of each new set's questions never drive fixes; an exam set (s20: micro/BSE-only/new sectors) gives the reported number. Merge only with zero right rows lost, zero wrong rows verified; structural rules, not per-company.
 - No docs, no merge; doc sweep + data inventory at session close, for Wolf, Eagle and every worker. [check: doc_gate]
-- Start files: `STATE.md` 4,000 characters, this file 8,000, `AGENTS.md` 150 lines. [check: doc_gate]
+- Start files: STATE 4,000 chars, this 8,000, AGENTS 150 lines. [check: doc_gate]
 - Every worker start names `permission`. [check: start gate] HP work is headless. [check: test_hp_headless] No session-length limit (9 Nov); keep notes as you go: what is done and what is pending, in `tasks/STATE.md`.
 - Keep a live watch on every running job (finish, stall, errors); check real progress before reporting; review a finished worker at once. [check: T-050 stop hook]
 - A new task from Shivam becomes a ticket first (`task_board add`); commits on `main` name a ticket. [check: commit-msg]
