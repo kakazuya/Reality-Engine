@@ -1738,10 +1738,11 @@ def test_sequentially_is_the_calls_quarter_and_a_plan_word_in_the_prior_sentence
         profile.activate(None)
 
 
-def test_a_year_phrase_keeps_its_figure_when_the_sentence_names_no_quarter():
-    """T-081: MARUTI's Q3FY26 call says "the figure for our next year's capex, but we are going at the run rate of
-    about INR 10,000 crores a year"; the earlier "for FY26" frame is that figure's year, though the call itself
-    reports Q3FY26.  A quarter word in the figure's own sentence would keep the quarter instead."""
+def test_a_year_phrase_in_a_previous_sentence_is_not_this_figures_span():
+    """T-081 / T-192 round 4: MARUTI's Q3FY26 call says "the figure for our next year's capex, but we are going at
+    the run rate of about INR 10,000 crores a year".  The earlier "for FY26" belongs to the 12,000 run-rate figure,
+    not to this one: a year in the previous sentence never dates the figure (round 4 H5, the AUROPHARMA rule), so
+    the call's own quarter stands.  Before round 4 this kept the previous sentence's FY26."""
     from reality_engine.pilot3 import profile
     profile.activate(_profile_for({"MARUTI": "auto_oem"}))
     try:
@@ -1750,7 +1751,7 @@ def test_a_year_phrase_keeps_its_figure_when_the_sentence_names_no_quarter():
              "I think in March, \nwe'll have the figure for our next year's capex, but we are going at the run rate "
              "of about INR \n10,000 crores a year.")
         rows = kpi.sentence_rows(t, 12, "MARUTI", ENTRIES, DIMS, kpi.parse_periods("Q3FY26"))
-        assert {(r.value, r.fiscal_period) for r in rows if r.metric == "capex"} == {(10000.0, "FY26")}
+        assert {(r.value, r.fiscal_period) for r in rows if r.metric == "capex"} == {(10000.0, "Q3FY26")}
     finally:
         profile.activate(None)
 

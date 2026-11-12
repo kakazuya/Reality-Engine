@@ -6,6 +6,8 @@ rate -- instead of the year's 18.1%.  A ratio printed without a period is the qu
 a year named beside the label ("for FY2026", "for the year") keeps the year, and a column header decides each
 column.  Synthetic input only: no sandbox, no network, no model.
 """
+import pytest
+
 from reality_engine.pilot3 import kpi
 
 ENTRIES, DIMS = kpi.load_lexicon()
@@ -147,6 +149,42 @@ def test_a_row_that_names_its_own_span_keeps_it_over_the_calls_quarter():
     rows = kpi.sentence_rows("Revenue from operations stood at INR 1,000 crore", 1, "T", ENTRIES, DIMS,
                              [q2], "2026-10-28T10:00:00", "consolidated", False, True, fallback_pers=[h1])
     assert [(r.fiscal_period, r.value) for r in rows if r.metric == "revenue"] == [("H1FY27", 1000.0)]
+
+
+# --- T-192 round 5 J2: a Q4 call is the annual-results call ---------------------------------------------------
+def test_a_q4_call_keeps_the_year_for_a_flow_and_the_quarter_for_a_stock(monkeypatch):
+    """J2: a Q4 call reports the full year.  An unlabelled flow (APE, VNB, premium, revenue, PAT, EBITDA) keeps
+    the fiscal year; a stock at the quarter end (AUM, order book, net debt) takes Q4, the same date as the year end.
+    The 36 pilot10 rows relabelled FY26 -> Q4FY26 (SBILIFE APE 221.1/242.7 bn, market share 21.4%) were flows."""
+    fy, q4 = _pers("FY26", "FY"), _pers("Q4FY26", "Q")
+    # Q1-Q3 calls keep the round-4 rule: the filing quarter is the default (a stock figure at that quarter end)
+    q2 = _pers("Q2FY27", "Q")
+    rows = kpi.sentence_rows("Order book stood at 10,000 crore", 3, "T", ENTRIES, DIMS, [q2],
+                             "2026-10-20T10:00:00", "consolidated", False, True, fallback_pers=[fy])
+    assert [(r.fiscal_period, r.value) for r in rows if r.metric == "order_book"] == [("Q2FY27", 10000.0)]
+
+    monkeypatch.setattr(kpi, "_sector_of", lambda company: "insurance_life")
+
+    def got(text, metric):
+        rows = kpi.sentence_rows(text, 4, "SBILIFE", ENTRIES, DIMS, [q4], "2026-05-05T10:00:00", "consolidated",
+                                 False, True, fallback_pers=[fy])
+        return [(r.fiscal_period, r.value) for r in rows if r.metric == metric]
+
+    assert got("APE stands at INR221.1 billion", "ape") == [("FY26", 221.1)]
+    assert got("APE stands at INR242.7 billion", "ape") == [("FY26", 242.7)]
+    assert got("Market share was 21.4%", "market_share") == [("FY26", 21.4)]
+    assert got("assets under management stands at INR4.9 trillion", "aum") == [("Q4FY26", pytest.approx(490000.0))]
+
+
+def test_a_q4_call_gets_the_year_as_its_own_span_fallback():
+    """J2: the call's own headline may print only "Q4 FY26" or "quarter ended 31 March 2026"; either way the year it
+    reports is FY26, so `extract_company` gives `sentence_rows` FY26 as the own-span fallback.  A document that
+    itself states another span keeps it."""
+    assert [p.canon for p in kpi.q4_call_fallback([_pers("Q4FY26", "Q")], None)] == ["FY26"]
+    assert [p.canon for p in kpi.q4_call_fallback([_pers("Q4FY26", "Q")], [])] == ["FY26"]
+    assert [p.canon for p in kpi.q4_call_fallback([_pers("Q4FY26", "Q")], [_pers("FY26", "FY")])] == ["FY26"]
+    assert kpi.q4_call_fallback([_pers("Q2FY26", "Q")], None) is None
+    assert [p.canon for p in kpi.q4_call_fallback([_pers("Q4FY26", "Q")], [_pers("H1FY26", "H")])] == ["H1FY26"]
 
 
 # --- T-192 round 4 H5: a year in the previous sentence is not this figure's span ---------------------------------

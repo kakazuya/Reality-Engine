@@ -1622,6 +1622,30 @@ _RATIO_METRICS = {
 }
 
 
+def _q4_annual_flow(period: Period, fallback: Period, e: Entry) -> bool:
+    """A Q4 (annual-results) call reports the full year (T-192 round 5): an unlabelled flow figure -- revenue, PAT,
+    EBITDA, a premium, APE, VNB, disbursements, order intake -- is the year's, never the quarter's.  Only a stock at
+    the quarter end (AUM, order book, net debt, cash; ``_STOCK_METRICS``) is the Q4 point, the same date as the year
+    end, and ``_q4_twin`` gives that one both labels."""
+    return (period.ptype == "Q" and (period.canon or "").upper().startswith("Q4")
+            and fallback.ptype == "FY" and _yy(period.canon) == _yy(fallback.canon)
+            and e.metric not in _STOCK_METRICS)
+
+
+def q4_call_fallback(default_pers: list[Period], stated_pers: list[Period] | None
+                     ) -> list[Period] | None:
+    """The fiscal year a Q4 (annual-results) call reports, as the own-span fallback for its unlabelled flows.
+
+    The call's own headline may give only "Q4 FY26" or "quarter ended 31 March 2026": either way the year it reports
+    is FY26, so a flow without a period cue keeps the year while a stock at the quarter end takes Q4
+    (``_q4_annual_flow``).  A different span the document itself states is never overridden (T-192 round 5)."""
+    if default_pers and default_pers[0].ptype == "Q" and (default_pers[0].canon or "").startswith("Q4"):
+        fy = "FY" + default_pers[0].canon[-2:]
+        if not stated_pers or (stated_pers[0].ptype == "FY" and stated_pers[0].canon == fy):
+            return [Period(0, 0, fy, "FY", period_end("FY", fy))]
+    return stated_pers
+
+
 def _q4_twin(e: Entry, period: Period) -> Period | None:
     """A stock figure dated 31 March is the year-end and also the Q4 point: GNPA at "31 March 2025" must answer
     both FY25 and Q4FY25.  A flow (revenue, PAT, a margin, ROE) is annual only."""
@@ -1918,6 +1942,9 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                                 # quarter: its unlabelled flow is that half / nine months, not the call's quarter
                                 # (SBILIFE's VNB 32.7 bn H1FY27 was relabelled Q2FY27; T-192 round 4, H3)
                                 stated = fallback_pers[0]
+                            if stated is None:      # a Q4 call is the annual call: an unlabelled flow is the year's
+                                if _q4_annual_flow(period, fallback_pers[0], e):
+                                    stated = fallback_pers[0]
                             if stated is not None and stated.canon != period.canon:
                                 period = stated
                     if period is None:
@@ -3328,6 +3355,11 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
             if call_q:
                 default_pers = [Period(0, 0, call_q, "Q", period_end("Q", call_q))]
                 stated_pers = raw_pers    # the document's own full-year/YTD span, for a row whose words keep it
+        # T-192 round 5: a Q4 call is the annual-results call, so an unlabelled flow figure is the year's even when
+        # the headline prints only "quarter ended 31 March" and no year label.  A stock at the quarter end still
+        # takes Q4 (sentence_rows keeps the default for _STOCK_METRICS).
+        if doc_type == "transcript":
+            stated_pers = q4_call_fallback(default_pers, stated_pers)
         # a release whose first pages name a subsidiary keeps that entity on the pages that do not repeat its name
         doc_basis = "not_stated"
         if profile.under_profile():

@@ -1626,17 +1626,59 @@ changed (count_basis), `kpi_series` 676 -> 678 keys (2 removed, 4 added, 11 peri
 (2 removed/2 added: the FY31 rows become FY26 entity rows; 22 rows gain the entity columns), `ratio_panel` 12
 changed (ROE values and inputs), `transcript_statement` 257 rows relabelled Q1FY31 -> Q1FY26, preferred windows 0
 changed; `fin_annual_line` 489 -> 487 (the FY25 21.4 and FY26 20.3 Q4 columns stored as annual margins are gone).
-Pilot10 per-table: `kpi_series` 6,185 -> 6,236 unique keys — 99 period changes, 57 added, 6 removed (the
+Pilot10 per-table (round 4): `kpi_series` 6,185 -> 6,236 unique keys — 99 period changes, 57 added, 6 removed (the
 KEC/HINDALCO comparative and the SBILIFE VNB-margin misread figure are gone); `ratio_panel` 53 ROE rows changed;
-`guidance` 104 -> 104, 0 removed and 5 entity rows (Novelis ×4, Bajaj Housing ×1: HINDALCO's India capex is tagged
-Novelis by the question's own entity list, so no group target was lost); `transcript_statement` 2,405 rows on 5
-documents gain the filing quarter (SUNPHARMA's "Organon Acquisition Investor Call" keeps NULL); `share_capital` and
-the preferred windows unchanged (no `stores` part on pilot10). **Stop rule hit:** the KPI keys touched are 162 of
-6,185 unique keys (2.6%, limit 2%), all period relabels from this round's rules (the classes and samples are in
-`.tmp/T-192_DIFF.md`); the live stores were not rebuilt. Tests, one file at a time: `test_pilot3_ratios.py` 17
-passed, `test_pilot3_preferred.py` 16, `test_pilot3_kpi_ratio_period.py` 13, `test_pilot3_guidance.py` 46,
-`test_pilot3_transcripts.py` 22, `test_pilot3_no_company_literals.py` 7; `test_pilot3_kpi.py` 108 passed with 6
-setup errors, every one a `PermissionError` from pytest's own `tmp_path` in this sandbox (the known limitation below).
+`guidance` 104 -> 104, 0 removed and 5 entity rows (Novelis ×4, Bajaj Housing ×1); `transcript_statement` 2,405 rows
+on 5 documents gain the filing quarter (SUNPHARMA's "Organon Acquisition Investor Call" keeps NULL);
+`share_capital` and the preferred windows unchanged (no `stores` part on pilot10). The round-5 rules below re-date
+those five entity rows: the final rebuild has 2 entity rows and the four India-capex rows back on the group.
+**Stop rule hit:** the round-4 KPI keys touched are 162 of 6,185 unique keys (2.6%, limit 2%), all period relabels
+from this round's rules (the classes and samples are in `.tmp/T-192_DIFF.md`); the live stores were not rebuilt.
+Tests, one file at a time: `test_pilot3_ratios.py` 17 passed, `test_pilot3_preferred.py` 16,
+`test_pilot3_kpi_ratio_period.py` 13, `test_pilot3_guidance.py` 46, `test_pilot3_transcripts.py` 22,
+`test_pilot3_no_company_literals.py` 7; `test_pilot3_kpi.py` 108 passed with 6 setup errors, every one a
+`PermissionError` from pytest's own `tmp_path` in this sandbox (the known limitation below).
+
+**Round 5 (12 Nov 2026): the sentence's own scope and the Q4 annual call, fixed as rules.** Two review findings,
+both general and both with a fixture test that fails on main.
+
+1. **The sentence's own scope beats the entity the question names** (`guidance.sentence_entity`). The previous rule
+   took the first proven name in the statement's or question's entity list, so four HINDALCO India-capex targets
+   inherited the Novelis tag from an analyst question ("...including the $750 million of equity infusion that is to be
+   done at Novelis"). The new rule resolves the figure's scope from the sentence: the nearest entity named before the
+   number wins; a sentence naming no entity at all belongs to the place it names (the company itself, a
+   standalone/domestic/consolidated basis, a geography, or one of its plants/mines/projects), so the question's entity
+   is never used; only a sentence that names no scope at all inherits a question's entity, and only when the question
+   names no group/geography scope of its own and the entity is proven (a `kpi_series.entity`, a related-party
+   subsidiary/associate/JV, or "subsidiary"/"acquisition" in the text). A sentence that names exactly one entity after
+   the figure belongs to it. Names match on the bare name (corporate suffixes dropped), so a fragment such as
+   "Housing Finance" never matches "Bajaj Housing Finance Limited", and a speaker or analyst named in a
+   statement's entity list is never an entity (the 7 `entity_unsure` rows the first pass set on a person's name are
+   gone). `entity_unsure` is still the only label for an unproved candidate: the row stays the group's, never hidden.
+   Tests `test_a_sentences_own_scope_beats_the_entity_the_question_names`,
+   `test_an_entity_the_question_proves_is_still_the_entitys`.
+2. **A Q4 call is the annual-results call** (`kpi._q4_annual_flow`). A call filed Apr-Jun reports the year (the
+   `doc_default_period` Q4 convention): an unlabelled flow figure — revenue, PAT, EBITDA, a premium, APE, VNB,
+   disbursements, order intake, market share — keeps the fiscal year, while a stock at the quarter end (AUM, order
+   book, net debt, cash: `_STOCK_METRICS`) takes Q4, the same date as the year end. Q1-Q3 calls keep the round-4
+   default (the filing quarter). This returns the 36 SBILIFE/BAJFINANCE/HINDALCO flows round 4 had relabelled
+   FY26 -> Q4FY26 (APE 221.1/242.7 bn, market share 21.4% are FY26 again; AUM 4.9 trillion stays Q4FY26). Test
+   `test_a_q4_call_keeps_the_year_for_a_flow_and_the_quarter_for_a_stock`.
+
+Rebuilt on copies from the same starting file, main code and branch code (parts `stores transcripts kpi guidance
+ratios preferred` for aurobindo, `transcripts kpi guidance ratios` for pilot10). The five AUROPHARMA rows are
+unchanged from round 4 (ROE 9.9 stated / 9.931 average, EBITDA 6,605 crore via `kpi`, FY25 margin 20.8 with the
+21.4 row on Q1FY25, Q1FY27 KPI 21.0, Lannett FY26 entity, 575,377,895 `filed_exact`). Pilot10: the four HINDALCO
+India-capex rows are group rows again, 2 true entity rows remain (Bajaj Housing, and the 1.9-2.2 bn USD capex on the
+release "issued by Novelis Inc. (wholly owned subsidiary)"), and **0 true group targets are lost**. `kpi_series`
+75 period changes (1.2% of 6,185 keys), 56 added, 6 removed; the four J2 rows are FY26/Q4FY26 as above. Stop rule:
+period changes 1.2% (under 2%); touched keys including additions/removals 137 = 2.2%. The live stores were not
+rebuilt. The stale T-081 test that kept a previous sentence's "for FY26" is renamed
+`test_a_year_phrase_in_a_previous_sentence_is_not_this_figures_span` and asserts the call's quarter, matching the
+round-4 rule. Tests, one file at a time: `test_pilot3_guidance.py` 48 passed,
+`test_pilot3_kpi_ratio_period.py` 14, `test_pilot3_ratios.py` 17, `test_pilot3_preferred.py` 16,
+`test_pilot3_no_company_literals.py` 7, `test_pilot3_transcripts.py` 22; `test_pilot3_kpi.py` 108 passed with the 6
+known sandbox `tmp_path` setup errors. Review `.tmp/T-192_DIFF.md`.
 
 **Sandbox note.** pytest's own `tmp_path` cannot run in this confined worker (a directory created after the session
 starts cannot be listed: `WinError 5`), so `test_pilot3_ratios.py` carries a local `tmp_path` fixture that builds the
