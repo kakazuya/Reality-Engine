@@ -19,9 +19,9 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 
 ## Next action
 00. T-195 DONE: re-run after fixes, DeepSeek 85.5% / 84.1% (2 runs), Haiku 76.8%; `reports/2026-11-12_aurobindo_rerun.html`. T-196 DONE (`reports/2026-11-12_why_answers_stop.html`): retries 12/21 right; next fix brief: topic/statements coverage line, checker label rule (EBITDA quarantined), list answer rules, as_of on every tool.
-0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
-1. T-191 A/B DONE (`reports/2026-11-12_semantic_ab.html`): Haiku 54 vs 54; DeepSeek 53 vs 42 but semantic touched no flip (run variance). Route `aurobindo_ab/STORE_DEFECTS_SEEN.md` to follow-ups.
-2. T-194 MERGED 18:00 (topic tool, phrase search counts, page as_of refusal, `event` table, pharma tags); events built on aurobindo; build on other stores.
+0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25: follow-up). Live rebuilt 20:15: aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`); u8/p20/q12 wait for page extraction.
+1. T-191 A/B DONE (`reports/2026-11-12_semantic_ab.html`): 54 vs 54 Haiku, 53 vs 42 DeepSeek but no flip (variance); route `aurobindo_ab/STORE_DEFECTS_SEEN.md`.
+2. T-194 MERGED 18:00 (blueprint s2). T-197 OPEN on its replies: coverage + offset paging, full-text topic/statements, `as_of` hidden docs, event `body_excerpt`, cells values, 19 kB cap; `.tmp/T-197_MEASURE.md`.
 3. Branches: T-163 r4-7 / T-132 r10-12 need review; CHOLAFIN waits for Shivam.
 4. T-179 timing with `pilot3_fact`; guidance `gross_margin`; `pilot3_fin` XBRL-first; T-175; T-188 follow-ups; s10 + T-172.
 

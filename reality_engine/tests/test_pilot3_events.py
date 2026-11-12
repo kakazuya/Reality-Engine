@@ -77,3 +77,44 @@ def test_event_dates_reads_the_range_management_prints():
     assert event_dates("inspected during March 3-7, 2026") == ("2026-03-03", "2026-03-07")
     assert event_dates("a single visit on 4 February 2026") == ("2026-02-04", "2026-02-04")
     assert event_dates("no date printed") == (None, None)
+
+
+def test_an_event_carries_its_document_and_the_sentences_that_answer_it():
+    """T-197: an event row names its document type and title and carries the filing sentences that state the
+    outcome, observations or amount -- the title alone is not the answer."""
+    con = _store()
+    build_events(con)
+    doc_type, title, body = con.execute(
+        "SELECT doc_type, title, body_excerpt FROM event WHERE kind='inspection'").fetchone()
+    assert doc_type == "announcement"
+    assert "USFDA inspection" in title
+    assert "Form 483" in body and "observations" in body
+    con.close()
+
+
+def test_body_excerpt_keeps_the_cue_sentences_not_just_the_first():
+    from reality_engine.pilot3.events import body_excerpt
+
+    text = ("The Board of Directors met today. The board approved an interim dividend of Rs 2 per share and fixed "
+            "the record date as 18 November 2026.")
+    got = body_excerpt(text)
+    assert got
+    assert "approved an interim dividend" in got and "record date" in got
+    assert not got.startswith("The Board of Directors met")
+    assert len(body_excerpt("x. " * 2000) or "") <= 600
+
+
+def test_a_store_built_before_t197_gains_the_body_columns_and_fills_them():
+    con = _store()
+    con.execute("CREATE TABLE event (symbol TEXT, isin TEXT, kind TEXT, event_date TEXT, end_date TEXT, "
+                "announced TEXT, unit TEXT, outcome TEXT, subject TEXT, doc_key TEXT, page INTEGER, quote TEXT, "
+                "known_at TEXT, known_at_source TEXT, source TEXT, extractor_rule TEXT)")
+    build_events(con)
+    columns = {row[1] for row in con.execute("PRAGMA table_info(event)")}
+    assert {"doc_type", "title", "body_excerpt"} <= columns
+    rows = con.execute("SELECT doc_type, title, body_excerpt FROM event").fetchall()
+    assert rows and all(row[0] and row[1] for row in rows)      # every event names its document
+    assert any(row[2] for row in rows)                          # and the ones with held page text carry it
+    merged = con.execute("SELECT body_excerpt FROM event WHERE kind='merger'").fetchone()[0]
+    assert merged is None                                       # no page text held: no invented excerpt
+    con.close()

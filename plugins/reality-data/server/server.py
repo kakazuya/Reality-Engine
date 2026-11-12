@@ -47,6 +47,8 @@ ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) 
 - financial numbers, segments, guidance -> facts(symbol, kind, period); OHLCV range -> price(...)
 Symbols, BSE codes, ISINs and names all resolve inside each tool. A {"found": false} answer lists what was checked and the nearest documents: follow its hint, then say NOT IN DATA; do not hand-write SQL over the same tables. Filing dates can be the evening of, or a day after, the date a user names. Exact share counts come from filings; XBRL paid-up capital / face value is rounded.
 
+READ A TEXT REPLY AS A PAGE, NEVER AS THE WHOLE STORE (T-197). pilot3_topic, pilot3_statements, pilot3_search, pilot3_semantic, pilot3_cells and pilot3_docs return a `coverage` block: searched, not_searched, matched_total, shown, cut, offset, documents (every matching document, even ones whose items were cut), hidden_after_as_of, outside_date_filter. (a) A list question is answered only after paging through every item the reply counted: while coverage.cut is not 0, call the same tool again with offset = coverage.offset + coverage.shown and read the documents it lists. (b) "not disclosed" needs coverage.not_searched empty or each source it names actually read. (c) A headline figure is checked against its table page: read_next names the quoted page and its neighbours. (d) Never narrow by date before the period asked: coverage.outside_date_filter lists the matches a date_from/date_to excluded, with their dates. (e) Prefer the company's printed figure and say when the store's preferred figure is derived. pilot3_topic and pilot3_statements also serve page-text matches (match: tag | text) from decks, annual reports, results and filings, so a theme the tagger missed is still there.
+
 Use catalog() when you need the map: one line per database by default, with db= for that database's tables and query= for a word search across them (db='pilot3' lists the pilot3 store). schema(table, db) gives one table's columns, types, row count, indexes and sample keys — use it instead of PRAGMA/sqlite_master probes. For a specific company go straight to the data tools; resolve is optional because price/facts resolve the symbol themselves. resolve(query) turns a symbol, company name or ISIN into the canonical identity (ISIN history included). price(symbol, start, end=None, adjusted=False) returns OHLCV, delivery quantity/percent and traded value; close is raw unless adjusted=True. facts(symbol, kind=None, period=None, include_model_read=False) returns filed XBRL results first; the annual-report, deck and call extractions are model-read by AI and unverified, withheld unless include_model_read=true or kind is ar/deck/concall, and every row says extraction=filed_xbrl|model_read; kind accepts segments, financials, kpis, guidance, results, deck, concall, ar, or free text; period accepts FY25, Q4FY26 or a date. search_docs(query, symbol=None, doc_types=None, date_from=None, date_to=None, top_k=10, as_of=None, include_model_read=False) returns text passages (as_of drops documents published after that date, and undated ones); its annual-report model-read quotes are withheld unless include_model_read=true; sql(query, db) is a bounded read-only escape hatch.
 
 Examples: price("PPL", "2026-03-30"); facts("PPL", kind="segments", period="FY25"); facts("PPL") for a broad fundamentals answer. Provenance names the database, table and snapshot; quarantine keys are applied to annual-report facts and demo tables are never presented as data."""
@@ -487,14 +489,15 @@ def pilot3_kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | No
         "and table title; period narrows to that fiscal period; as_of drops cells whose document was not known by "
         "then. Each cell: value_text, unit_text, row_label, col_header, table_title, status, document title, "
         "doc_type, page, known_at, provenance. status unverified means the position check could not confirm it - "
-        "say so in the answer; status quarantined is never served."
+        "say so in the answer; status quarantined is never served. coverage says how much matched, how much is "
+        "shown and the next offset; read_next names the quoted page and its neighbours."
     ),
     annotations=_RO,
 )
 def pilot3_cells(symbol: str, terms: str, period: str | None = None, as_of: str | None = None,
-                 include_unverified: bool = True, limit: int = 20) -> dict[str, Any]:
+                 include_unverified: bool = True, limit: int = 20, offset: int = 0) -> dict[str, Any]:
     return _safe(lambda: _p3.cells(symbol, terms, period=period, as_of=as_of,
-                                   include_unverified=include_unverified, limit=limit))
+                                   include_unverified=include_unverified, limit=limit, offset=offset))
 
 
 @server.tool(
@@ -572,17 +575,20 @@ def pilot3_holding(symbol: str, as_of: str, quarter_end: str | None = None,
         "as_of. period (Q4FY26 / FY26) and rank_terms (the question's own words) put the statements of that "
         "period, carrying those words, first; the newest call breaks a tie. latest=true keeps only the newest "
         "call. topic_matched=false says no statement carries that tag; the call page text is then searched "
-        "(bm25, newest call first) and fallback='doc_page_bm25' marks those rows."
+        "(bm25, newest call first) and fallback='doc_page_bm25' marks those rows. The tagged statements are joined by "
+        "the same page-text matcher pilot3_search uses, over EVERY held document type (match: tag | text); coverage "
+        "says what was searched, what is shown and the next offset, outside_date_filter lists matches a date window "
+        "excluded, read_next names the page beside each quote."
     ),
     annotations=_RO,
 )
 def pilot3_statements(symbol: str, topic: str | None = None, terms: str | None = None,
                       date_from: str | None = None, date_to: str | None = None, as_of: str | None = None,
                       limit: int = 10, role: str | None = None, period: str | None = None,
-                      rank_terms: str | None = None, latest: bool = False) -> dict[str, Any]:
+                      rank_terms: str | None = None, latest: bool = False, offset: int = 0) -> dict[str, Any]:
     return _safe(lambda: _p3.statements(symbol, topic=topic, terms=terms, date_from=date_from, date_to=date_to,
                                         as_of=as_of, limit=limit, role=role, period=period,
-                                        rank_terms=rank_terms, latest=latest))
+                                        rank_terms=rank_terms, latest=latest, offset=offset))
 
 
 @server.tool(
@@ -619,14 +625,15 @@ def pilot3_guidance(symbol: str, metric: str | None = None, period: str | None =
         "Documents held for a company the pilot database covers (every deck, transcript, annual report, results "
         "file, press release, announcement the build holds for it), newest first with filing date, page count and "
         "known_at; counts_by_type tells what exists. doc_type: deck | transcript | annual_report | results | "
-        "press_release | announcement."
+        "press_release | announcement. coverage says how many documents match, how many are shown and the next offset."
     ),
     annotations=_RO,
 )
 def pilot3_docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
-                date_to: str | None = None, as_of: str | None = None, limit: int = 20) -> dict[str, Any]:
+                date_to: str | None = None, as_of: str | None = None, limit: int = 20,
+                offset: int = 0) -> dict[str, Any]:
     return _safe(lambda: _p3.docs(symbol, doc_type=doc_type, date_from=date_from, date_to=date_to,
-                                  as_of=as_of, limit=limit))
+                                  as_of=as_of, limit=limit, offset=offset))
 
 
 @server.tool(
@@ -640,13 +647,16 @@ def pilot3_docs(symbol: str, doc_type: str | None = None, date_from: str | None 
         "counts says how many items matched, how many are shown and how many the limit cut. Use it FIRST for any "
         "'what has the company said/done about X' question that spans several calls (Pen-G, a China plant, launches, "
         "inspections), then pilot3_statements only for one call's wording. date_from/date_to narrow the document "
-        "date; as_of never uses a document first known after that day."
+        "date; as_of never uses a document first known after that day. The reply also serves word-level page-text matches "
+        "from every held document type (match: tag | text); coverage says what was searched, what matched, what is "
+        "shown and the next offset, and read_next names the quoted page and its neighbours."
     ),
     annotations=_RO,
 )
 def pilot3_topic(symbol: str, topic: str, as_of: str | None = None, limit: int = 25,
-                 date_from: str | None = None, date_to: str | None = None) -> dict[str, Any]:
-    return _safe(lambda: _p3.topic(symbol, topic, as_of=as_of, limit=limit, date_from=date_from, date_to=date_to))
+                 date_from: str | None = None, date_to: str | None = None, offset: int = 0) -> dict[str, Any]:
+    return _safe(lambda: _p3.topic(symbol, topic, as_of=as_of, limit=limit, date_from=date_from, date_to=date_to,
+                                   offset=offset))
 
 
 @server.tool(
@@ -658,16 +668,18 @@ def pilot3_topic(symbol: str, topic: str, as_of: str | None = None, limit: int =
         "and lists the hits grouped by document. Returns the exact snippet around the match with document, page, "
         "filing date and known_at. Use after the structured pilot3 tools, or when the question is about wording. period "
         "(Q1FY27 / FY26), date_from+date_to (filing window) and doc_type boost the pages that print the period, "
-        "were filed in the window, or are of that type. as_of never returns a document first known after that day "
-        "and says how many matches it hid."
+        "were filed in the window, or are of that type (a date window ranks, it never excludes: coverage says so). as_of "
+        "never returns a document first known after that day and says how many matches it hid. coverage lists every "
+        "matching document and the offset that reads the next page."
     ),
     annotations=_RO,
 )
 def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
                   doc_type: str | None = None, period: str | None = None,
-                  date_from: str | None = None, date_to: str | None = None) -> dict[str, Any]:
+                  date_from: str | None = None, date_to: str | None = None,
+                  offset: int = 0) -> dict[str, Any]:
     return _safe(lambda: _p3.search(symbol, query, as_of=as_of, limit=limit, doc_type=doc_type, period=period,
-                                    date_from=date_from, date_to=date_to))
+                                    date_from=date_from, date_to=date_to, offset=offset))
 
 
 @server.tool(
@@ -684,10 +696,10 @@ def pilot3_search(symbol: str, query: str, as_of: str | None = None, limit: int 
 )
 def pilot3_semantic(symbol: str, query: str, as_of: str | None = None, limit: int = 8,
                     doc_type: str | None = None, date_from: str | None = None, date_to: str | None = None,
-                    chars: int = 1500) -> dict[str, Any]:
+                    chars: int = 1500, offset: int = 0) -> dict[str, Any]:
     import lookups_semantic as _sem
     return _safe(lambda: _sem.semantic(symbol, query, as_of=as_of, limit=limit, doc_type=doc_type,
-                                       date_from=date_from, date_to=date_to, chars=chars))
+                                       date_from=date_from, date_to=date_to, chars=chars, offset=offset))
 
 
 @server.tool(

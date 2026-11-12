@@ -1,10 +1,11 @@
 """T-194: the ``event`` table -- one row per event an announcement names, so a list question ("all FY26 USFDA
 inspections") is one call instead of eleven announcement titles.
 
-Built from the announcement / press-release ``doc`` title and its first page: the kind (regulatory inspection,
+Built from the announcement / press-release ``doc`` title and its first pages: the kind (regulatory inspection,
 buyback, dividend, acquisition, merger), the company unit the inspection named, the inspection dates, the outcome
-the text states (OAI, VAI, warning letter, Form 483, no observations, closed) and the sentence it came from.  Rules
-only, never a company list: the same builder serves every company the build holds.
+the text states (OAI, VAI, warning letter, Form 483, no observations, closed), the sentence it came from and (T-197)
+the body sentences that state the outcome, observations, classification, impact or amount, with the document's type
+and title.  Rules only, never a company list: the same builder serves every company the build holds.
 
 CLI: python -m reality_engine.pilot3.events --out <db> [--symbols A,B]
 """
@@ -14,8 +15,66 @@ import argparse
 import json
 import re
 import sqlite3
+from pathlib import Path
+
+import yaml
 
 from . import schema
+
+LEX_DIR = Path(__file__).resolve().parent / "lexicon"
+BODY_CHARS = 600             # an event's body excerpt: at most 3 sentences, 600 characters
+BODY_SENTENCES = 3
+
+
+def _cue_patterns(name: str = "event_cues") -> tuple[re.Pattern[str], ...]:
+    """The sentences of a filing that answer an event question: its outcome, observations, classification,
+    impact, dates and amounts.  The cues live in the existing lexicon files -- ``common`` carries the generic
+    ones and each sector family adds its own -- so no company or question is special-cased (T-197 step 7)."""
+    sources: list[str] = []
+    for path in sorted(LEX_DIR.glob("*.yaml")):
+        try:
+            doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except (OSError, yaml.YAMLError):
+            continue
+        sources += [str(cue) for cue in doc.get(name) or []]
+    return tuple(re.compile(source, re.I) for source in dict.fromkeys(sources))
+
+
+_CUES: tuple[re.Pattern[str], ...] | None = None
+_AMOUNT_CUES: tuple[re.Pattern[str], ...] | None = None
+
+
+def _around_cue(sentence: str, cues: tuple[re.Pattern[str], ...], width: int = 320) -> str:
+    """A cue sentence that also carries letterhead is cut around the cue, not served from its first character."""
+    if len(sentence) <= 240:
+        return sentence
+    for rx in cues:
+        hit = rx.search(sentence)
+        if hit:
+            start = max(0, hit.start() - 120)
+            if start:
+                start = max(0, sentence.rfind(" ", 0, start) + 1)   # never start mid-word
+            return sentence[start:start + width].strip()
+    return sentence[:width].strip()
+
+
+def body_excerpt(text: str | None) -> str | None:
+    """The sentences that state an event's outcome, observations, classification, impact or amount: split on
+    sentence ends, keep the word-cue sentences first (an amount or percentage sentence only when no word cue
+    matched), at most 3 sentences / 600 characters."""
+    global _CUES, _AMOUNT_CUES
+    if not text:
+        return None
+    clean = re.sub(r"\s+", " ", text).strip()
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+(?=[A-Z0-9(])", clean) if s.strip()]
+    if _CUES is None:
+        _CUES, _AMOUNT_CUES = _cue_patterns(), _cue_patterns("event_amount_cues")
+    chosen = [s for s in sentences if any(rx.search(s) for rx in _CUES)][:BODY_SENTENCES]
+    if not chosen:
+        chosen = [s for s in sentences if any(rx.search(s) for rx in (_AMOUNT_CUES or ()))][:BODY_SENTENCES]
+    if not chosen:
+        chosen = sentences[:BODY_SENTENCES]
+    return (" ".join(_around_cue(s, _CUES + (_AMOUNT_CUES or ())) for s in chosen)[:BODY_CHARS].strip() or None)
 
 # The kinds, in match order.  A regulatory inspection is checked first: its announcement often carries the words
 # "dividend"? no -- but a warning letter is an inspection outcome, so it must not become its own event unless the
@@ -125,16 +184,17 @@ def _quote(text: str, match: re.Match | None, width: int = 400) -> str | None:
 def build_events(conn: sqlite3.Connection) -> dict:
     """Rewrite ``event`` from the announcement titles and their first pages.  One row per event (document, kind)."""
     schema.ensure(conn, ("event",))
+    schema.ensure_columns(conn, "event", schema.EVENT_ADDITIONS)   # a build made before T-197 gains the columns
     conn.execute("DELETE FROM event")
     docs = conn.execute(
-        "SELECT d.doc_key, d.symbol, d.isin, d.title, d.filing_date, COALESCE(d.known_at, d.filing_date) known_at "
-        "FROM doc d WHERE d.doc_type IN ('announcement','press_release') "
+        "SELECT d.doc_key, d.symbol, d.isin, d.title, d.filing_date, COALESCE(d.known_at, d.filing_date) known_at, "
+        "d.doc_type FROM doc d WHERE d.doc_type IN ('announcement','press_release') "
         "ORDER BY COALESCE(d.known_at, d.filing_date)").fetchall()
     rows, seen = [], set()
-    for doc_key, symbol, isin, title, filing_date, known_at in docs:
-        page1 = conn.execute("SELECT text FROM doc_page WHERE doc_key=? ORDER BY page LIMIT 1",
-                             (doc_key,)).fetchone()
-        text = (page1[0] if page1 and page1[0] else "") or ""
+    for doc_key, symbol, isin, title, filing_date, known_at, doc_type in docs:
+        pages = conn.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page LIMIT 2",
+                             (doc_key,)).fetchall()
+        text = "\n".join((page[1] or "") for page in pages)
         kind = _kind(title or "", text)
         if not kind or (doc_key, kind) in seen:
             continue
@@ -143,15 +203,22 @@ def build_events(conn: sqlite3.Connection) -> dict:
         match = next((rx.search(title or "") for k, rx in KINDS if k == kind and rx.search(title or "")), None) \
             or next(rx.search(text) for k, rx in KINDS if k == kind)
         start, end = event_dates(body) if kind == "inspection" else (None, None)
+        excerpt = body_excerpt(text)
+        page = 1
+        if excerpt:                          # the page the excerpt's first sentence was printed on
+            head = excerpt[:40]
+            page = next((int(number) for number, page_text in pages if head and head in (page_text or "")),
+                        int(pages[0][0]) if pages else 1)
         rows.append((symbol, isin, kind, start or filing_date, end, filing_date,
                      _unit(body) if kind == "inspection" else None,
                      _outcome(text) if kind == "inspection" else None,
-                     re.sub(r"\s+", " ", (title or body)[:300]).strip(), doc_key, 1,
+                     re.sub(r"\s+", " ", (title or body)[:300]).strip(), doc_key, page,
                      _quote(body, match), known_at, "doc.known_at", "doc.title+doc_page",
-                     "pilot3.events"))
+                     "pilot3.events", doc_type, title, excerpt))
     conn.executemany(
         "INSERT INTO event (symbol, isin, kind, event_date, end_date, announced, unit, outcome, subject, doc_key, "
-        "page, quote, known_at, known_at_source, source, extractor_rule) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+        "page, quote, known_at, known_at_source, source, extractor_rule, doc_type, title, body_excerpt) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
     conn.commit()
     by_kind: dict[str, int] = {}
     by_symbol: dict[str, int] = {}

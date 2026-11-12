@@ -29,7 +29,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `guidance` | one row per forward target: metric, period, low/high (NULL for a worded target), unit, revision link | transcripts, decks, results, press releases |
 | `shp_category`, `shp_holder`, `shp_pledge`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings by category with the share count the printed percentage is on, the named holders, the promoter pledge block, share count, dividends, prices, PE/PB/EV | exchange data stores |
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
-| `event` (T-194) | one row per announcement event: `kind` (inspection / buyback / merger / acquisition / dividend), the inspection's `unit`, `event_date` / `end_date`, `outcome` (OAI, VAI, warning letter, Form 483, no observations, EIR received, closed), `subject`, `doc_key` + `page`, `quote`, `known_at` | announcement / press-release title + first page (`pilot3/events.py`) |
+| `event` (T-194, T-197) | one row per announcement event: `kind` (inspection / buyback / merger / acquisition / dividend), the inspection's `unit`, `event_date` / `end_date`, `outcome` (OAI, VAI, warning letter, Form 483, no observations, EIR received, closed), `subject`, `doc_key` + `page`, `quote`, `known_at`, and (T-197) `doc_type`, `title`, `body_excerpt` (the sentences of the page that state the outcome, observations, classification, impact or amount) | announcement / press-release title + first two pages (`pilot3/events.py`) |
 
 Tools: `pilot3_fact` (one answer-ready number, T-186, section 9o), `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`,
 `pilot3_guidance`, `pilot3_statements`, `pilot3_topic` (a theme across every call and document, T-194),
@@ -42,7 +42,8 @@ cause for all four models); every rule is general, never per company:**
   date: the statements verbatim from every call, the related guidance and KPI rows, page cells and `event` rows;
   `counts` says matched / shown / cut and `text` says it in a sentence. The ask's words expand to the lexicon
   ("USFDA inspection" also finds OAI, VAI, Form 483 and warning letters; "launches" also finds gRevlimid). A
-  20-item reply stays under 16 kB on the AUROPHARMA store (measured: 6.8-15.8 kB over nine topics); Pen-G comes
+  20-item reply stayed under 16 kB on the AUROPHARMA store (measured: 6.8-15.8 kB over nine topics); T-197 below
+  then adds the coverage block and page-text reach and keeps every reply under 20 kB by construction. Pen-G comes
   back from three calls (Feb/May/Aug 2026) in one reply.
 - `pilot3_search` tries the exact phrase first, then the words; a money amount is normalised ("US$2 bn" =
   "$2 billion" = "2 billion"), the short printing ("2 bn") ranks after the exact one, and every reply states
@@ -62,6 +63,44 @@ cause for all four models); every rule is general, never per company:**
 - `as_of` is enforced on every text tool: `pilot3_topic` and `pilot3_search` say the day and how many matches they
   hid, and the page reader (`page`) returns no row for a document first known after the day and says why (the four
   look-ahead answers of T-189 came through `page`).
+
+**T-197 (12 Nov 2026) makes the reply itself say what it covered, so a partial reply is never read as the whole
+store. Every rule is a property of the reply shape or the search method, never a company, sector or question:**
+- One `coverage` block on every text reply (`topic`, `statements`, `search`, `semantic`, `cells`, `docs`):
+  `searched`, `not_searched` (doc types and sources the tool cannot see, by name), `matched_total`, `shown`, `cut`,
+  `offset`, `documents` = every matching document (doc_key, type, date, title, matching pages, match count; beyond 40
+  summed by type and month), `hidden_after_as_of` (the hidden documents and their dates) and `outside_date_filter`
+  (the matches a `date_from`/`date_to` excluded, with dates). The one-line `text` starts with that scope and the exact
+  next call, e.g. `56 match(es) (12 tagged statement turn(s) + 44 page-text match(es)) in 14 document(s) (8 calls, 3
+  decks, 2 annual reports, 1 filing); 25 shown; 62 cut by the limit - call again with offset=25`.
+- `offset` on `topic`, `statements`, `search`, `semantic`, `cells` and `docs`: deterministic order (date desc, then
+  doc key, then page) and `coverage.next` names the exact next offset. `read_next` names the quoted page and its
+  neighbours, and another page of the same call that prints the same words.
+- Full-text reach: `topic` and `statements` run the same phrase-first `doc_page` matcher `search` uses over ALL
+  document types (untagged transcript pages, deck tables, annual reports, results, press releases, announcements),
+  merge the hits with the tagged rows and label each item `match: tag | text`. The lexicon expansion applies to both.
+- `as_of` on every document-derived tool reports `hidden_after_as_of` with the hidden documents and dates through one
+  shared helper (`_hidden_documents`); `sql` already filters through its temp views.
+- Date filters never silently hide: `statements`/`topic`/`semantic`/`docs` list the excluded matches under
+  `coverage.outside_date_filter`; `search` states that its date window only ranks.
+- `event` rows carry their bodies (step 7): `events.py` stores `doc_type`, `title` and `body_excerpt` -- the cue
+  sentences of the first two pages, the cue word lists living in `lexicon/common.yaml` (`event_cues`, with
+  `event_amount_cues` demoted so a letterhead number never leads) and each sector family's own file (pharma,
+  metals) -- and an older store gains the columns through `schema.EVENT_ADDITIONS`. `topic` shows them.
+- `cells` value cells: a label-only cell now carries the values printed beside it (`values`, with column and unit)
+  and says the reader stored them separately, so a press-release table is never served as labels without numbers.
+- Reply size: every text reply is trimmed below 19 kB (hard cap 20 kB) by a fixed cut order and states what it cut
+  (`coverage.detail`); no reply is ever served above the cap.
+- Instructions: the MCP server text and the `p3ask` help state the general answer rules -- page through every item a
+  reply counted before answering a list question, "not disclosed" needs `not_searched` empty or read, check a
+  headline figure on `read_next`'s table page, never narrow by date before the period asked, prefer the company's
+  printed figure and say when the store's figure is derived.
+- Tests: `test_lookups_pilot3.py` 68 passed + 1 skipped (T-197 class: coverage on every text reply, page-text reach,
+  offset paging, read_next, `hidden_after_as_of` per tool, `outside_date_filter`, label-only cells, every matching
+  document named), `test_pilot3_events.py` 6, `test_p3ask.py` 7, `test_pilot3_no_company_literals.py` 7,
+  `test_lookups_docs.py` 18. Measurement on copies of `pilot10.db` (5 companies) and `aurobindo.db`, 12 generic
+  themes: matched items 3,976 -> 16,759 and 2,413 -> 5,530, every doc type reached (transcript, deck, annual_report,
+  results, press_release, announcement), max reply 19.1 kB, median topic call 0.27-0.34 s; `.tmp/T-197_MEASURE.md`.
 
 ## 3. Extraction methods (what works, what failed)
 - **Documents**: collected per company into `D:\RealityEngine\pilot3\pages.db`. Dates: `known_at` = exchange

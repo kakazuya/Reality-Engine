@@ -18,6 +18,13 @@ The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,
 - `reality_engine/tests/test_worker_context.py` — fails when the built pack exceeds 20,000 bytes.
 - `reality_engine/tests/test_dsh_worker_plugin.py` — `WorkerContextBuilderTests` checks the sections and the byte limit.
 
+## Reality-data tool replies (T-197, 12 Nov 2026)
+- `plugins/reality-data/server/lookups_pilot3.py` — shared `coverage` / paging (`offset`) / `read_next` / `_shrink` reply-cap helpers, page-text reach for `topic` and `statements`, `cells` values, `docs` list paging, `as_of` hidden-document report.
+- `plugins/reality-data/server/lookups_semantic.py` — `offset` + coverage on the semantic ranking.
+- `plugins/reality-data/server/server.py` — `offset` on the six text tools and the general answer rules in the server instructions.
+- `reality_engine/pilot3/events.py` + `schema.py` — `event.doc_type` / `title` / `body_excerpt` (+ the additive `EVENT_ADDITIONS` migration) and `lexicon/{common,pharma,metals}.yaml` `event_cues`.
+- `reality_engine/scripts/p3ask.py` — the reply-reading rules in its help.
+
 ## Hardware
 NVIDIA GTX 1050 Ti with 4 GB, 8 CPU threads. Use CUDA, and check `nvidia-smi` before GPU plans. GPU OCR is slower than CPU here.
 

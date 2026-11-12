@@ -249,10 +249,13 @@ def build_topic_fixture() -> None:
                     "Pen-G volume 2 billion doses", "2026-03-12T10:00:00"))
     c.execute("INSERT INTO page_cell VALUES ('KEC:pen/callA.pdf',4,'KEC','2026-03-12T10:00:00','dots','Pen-G',"
               "'Pen-G volume','Q3FY26','2,000','million doses','verified',NULL,NULL,NULL,NULL,NULL)")
-    c.execute("INSERT INTO event VALUES ('KEC','INE389H01022','inspection','2026-02-02','2026-02-06','2026-02-10',"
+    c.execute("INSERT INTO event (symbol, isin, kind, event_date, end_date, announced, unit, outcome, subject, "
+              "doc_key, page, quote, known_at, known_at_source, source, extractor_rule, doc_type, title, "
+              "body_excerpt) VALUES ('KEC','INE389H01022','inspection','2026-02-02','2026-02-06','2026-02-10',"
               "'Unit VII','Form 483','USFDA inspection at Unit VII','pdfs/KEC/deck1.pdf',3,"
               "'The USFDA inspection at Unit VII ended with a Form 483.','2026-02-10T17:00:00','doc.known_at',"
-              "'doc.title+doc_page','pilot3.events')")
+              "'doc.title+doc_page','pilot3.events','announcement','USFDA inspection at Unit VII',"
+              "'The inspection concluded with a Form 483 carrying two observations.')")
     c.commit()
     c.close()
 
@@ -1016,6 +1019,11 @@ class TopicTests(unittest.TestCase):
         event = self.items(insp, "event")[0]
         self.assertEqual((event["event"], event["unit"], event["outcome"]), ("inspection", "Unit VII", "Form 483"))
         self.assertEqual(event["end_date"], "2026-02-06")
+        # T-197: the event carries the sentences that answer it, and its group names the document type and title
+        self.assertIn("two observations", event["body_excerpt"])
+        group = next(g for g in insp["groups"] if any(i["kind"] == "event" for i in g["items"]))
+        self.assertTrue(group["doc_type"])
+        self.assertTrue(group["title"])
 
     def test_the_ask_expands_to_the_sector_vocabulary(self):
         """'Form 483' selects the form_483 tag, whose patterns also find the OAI/VAI wording the ask never printed."""
@@ -1092,6 +1100,162 @@ class SearchPhraseTests(unittest.TestCase):
         self.assertEqual(out["rows"], [])
         self.assertEqual(out["as_of"], "2026-03-01")
         self.assertIn("cannot answer a point-in-time question", out["note"])
+
+
+class T197ReplyShapeTests(unittest.TestCase):
+    """T-197: every text reply says what it searched, what it could not see, what it cut and where the rest is.
+
+    The fixture is the topic fixture plus (a) one deck page whose theme no transcript tag carries -- the full-text
+    reach must bring it back labelled ``match: text`` -- and (b) a results table whose row label and value are two
+    cells, as the page reader stores them."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_topic_fixture()
+        c = sqlite3.connect(DB)
+        c.execute("INSERT INTO doc_page VALUES ('pdfs/KEC/deck1.pdf','KEC',4,'Foocorp exited the FooRock contract "
+                  "from next year.','script_text',66,'2026-02-10T17:00:00',NULL)")
+        c.execute("INSERT INTO doc_page_fts(doc_page_fts) VALUES ('rebuild')")
+        c.execute("INSERT INTO doc VALUES ('pdfs/KEC/results1.pdf','KEC','INE389H01022','results','results',"
+                  "'Q3 FY26 results','2026-02-05','2026-02-05T18:00:00',3,'sha3','pages.db','D:/raw/results1.pdf')")
+        c.executemany("INSERT INTO page_cell VALUES (?,?,?,?,?,?,?,?,?,?,?,NULL,NULL,NULL,NULL,NULL)", [
+            ("pdfs/KEC/results1.pdf", 1, "KEC", "2026-02-05T18:00:00", "dots", "Segment results",
+             "Revenue from operations", "Q3FY26", None, None, "verified"),
+            ("pdfs/KEC/results1.pdf", 1, "KEC", "2026-02-05T18:00:00", "dots", "Segment results",
+             "", "Q3FY26", "1,234", "Rs crore", "verified")])
+        c.commit()
+        c.close()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def replies(self):
+        return {
+            "topic": p3.topic("KEC", "Pen-G"),
+            "statements": p3.statements("KEC", topic="margin"),
+            "search": p3.search("KEC", "order book"),
+            "cells": p3.cells("KEC", "order book"),
+            "docs": p3.docs("KEC"),
+        }
+
+    def test_every_text_reply_carries_a_coverage_block_and_an_honest_first_line(self):
+        for tool, out in self.replies().items():
+            cov = out["coverage"]
+            for key in ("searched", "not_searched", "matched_total", "shown", "cut", "offset", "documents",
+                        "matched_documents"):
+                self.assertIn(key, cov, tool)
+            self.assertTrue(cov["searched"], tool)
+            self.assertTrue(cov["not_searched"], tool)          # every text tool names what it cannot see
+            self.assertGreaterEqual(cov["shown"], 1, tool)
+            self.assertGreaterEqual(cov["matched_total"], cov["shown"], tool)
+            self.assertIn(f"{cov['matched_total']}", out["text"], tool)
+            self.assertIn("shown", out["text"], tool)
+            self.assertLess(len(json.dumps(out, default=str)), 20_000, tool)
+
+    def test_topic_and_statements_reach_page_text_no_transcript_tag_carries(self):
+        out = p3.topic("KEC", "FooRock")
+        self.assertTrue(out["found"])
+        pages = [item for group in out["groups"] for item in group["items"] if item["kind"] == "page"]
+        self.assertTrue(pages)
+        self.assertEqual(pages[0]["match"], "text")
+        self.assertIn("pdfs/KEC/deck1.pdf", {g["doc_key"] for g in out["groups"] if g["doc_type"] == "deck"})
+        st = p3.statements("KEC", terms="FooRock")
+        self.assertTrue(st["found"])
+        self.assertEqual(st["rows"][0]["match"], "text")
+        self.assertEqual(st["rows"][0]["provenance"]["table"], "doc_page")
+        self.assertEqual(st["rows"][0]["doc_type"], "deck")
+
+    def test_offset_pages_every_matched_item(self):
+        def sources(out):
+            return [(r["provenance"]["source"], r["snippet"]) for r in out["rows"]]
+
+        full = p3.search("KEC", "order book", limit=50)
+        first = p3.search("KEC", "order book", limit=1)
+        second = p3.search("KEC", "order book", limit=1, offset=1)
+        self.assertEqual(first["coverage"]["shown"], 1)
+        self.assertNotEqual(sources(first), sources(second))
+        self.assertEqual(sources(first)[0], sources(full)[0])
+        self.assertEqual(second["coverage"]["offset"], 1)
+        if first["coverage"]["cut"]:
+            self.assertEqual(first["coverage"]["next"]["offset"], 1)
+
+        topic0 = p3.topic("KEC", "Pen-G", limit=1)
+        topic1 = p3.topic("KEC", "Pen-G", limit=1, offset=1)
+        sig = lambda out: (out["groups"][0]["doc_key"], out["groups"][0]["items"][0]["quote"])
+        self.assertNotEqual(sig(topic0), sig(topic1))
+        self.assertEqual(topic0["coverage"]["next"]["offset"], 1)
+
+        cells0 = p3.cells("KEC", "order book", limit=1)
+        cells1 = p3.cells("KEC", "order book", limit=1, offset=1)
+        self.assertNotEqual([r["value_text"] for r in cells0["rows"]],
+                            [r["value_text"] for r in cells1["rows"]])
+
+        docs0 = p3.docs("KEC", limit=1)
+        docs1 = p3.docs("KEC", limit=1, offset=1)
+        self.assertNotEqual([r["doc_key"] for r in docs0["rows"]], [r["doc_key"] for r in docs1["rows"]])
+        self.assertEqual(docs0["coverage"]["next"]["offset"], 1)
+
+        stmt0 = p3.statements("KEC", topic="margin", limit=1)
+        stmt1 = p3.statements("KEC", topic="margin", limit=1, offset=1)
+        self.assertNotEqual([r["quote"] for r in stmt0["rows"]], [r["quote"] for r in stmt1["rows"]])
+
+    def test_read_next_names_the_quoted_page_and_its_neighbours(self):
+        for out in (p3.search("KEC", "order book"), p3.statements("KEC", topic="margin"),
+                    p3.topic("KEC", "Pen-G")):
+            self.assertTrue(out["read_next"])
+            for item in out["read_next"]:
+                self.assertTrue({"doc_key", "page", "reason"} <= set(item), item)
+                self.assertGreaterEqual(int(item["page"]), 1)
+
+    def test_as_of_reports_the_hidden_documents_on_every_document_tool(self):
+        outs = {
+            "kpi": p3.kpi("KEC", "order_book", as_of="2026-03-01"),
+            "fin": p3.fin("KEC", "pat", as_of="2026-03-01"),
+            "ratio": p3.ratio("KEC", "roe", as_of="2026-03-01"),
+            "guidance": p3.guidance("KEC", as_of="2026-03-01"),
+            "cells": p3.cells("KEC", "order book", as_of="2026-03-01"),
+            "statements": p3.statements("KEC", topic="margin", as_of="2026-03-01"),
+            "docs": p3.docs("KEC", as_of="2026-03-01"),
+            "search": p3.search("KEC", "order book", as_of="2026-03-01"),
+            "topic": p3.topic("KEC", "Pen-G", as_of="2026-03-01"),
+        }
+        for tool, out in outs.items():
+            self.assertGreaterEqual(out.get("hidden_after_as_of", 0), 1, tool)
+            self.assertTrue(out.get("hidden_documents"), tool)
+            self.assertTrue(all(d.get("known_at") for d in out["hidden_documents"]), tool)
+        self.assertIn("2026-03-01", outs["topic"]["as_of_note"])
+
+    def test_a_date_filter_lists_what_it_excluded_instead_of_hiding_it(self):
+        st = p3.statements("KEC", terms="Pen-G", date_from="2026-05-01")
+        outside = st["coverage"]["outside_date_filter"]
+        self.assertTrue(outside)
+        self.assertLessEqual({"2026-03-10", "2026-04-15"}, {o["date"] for o in outside})
+        self.assertTrue(all(o["count"] >= 1 and "doc_type" in o for o in outside))
+        tp = p3.topic("KEC", "Pen-G", date_from="2026-05-01")
+        self.assertLessEqual({"2026-03-10", "2026-04-15"},
+                             {o["date"] for o in tp["coverage"]["outside_date_filter"]})
+
+    def test_cells_a_label_only_row_carries_the_values_printed_beside_it(self):
+        out = p3.cells("KEC", "revenue")
+        row = next(r for r in out["rows"] if r["row_label"] == "Revenue from operations")
+        self.assertEqual(row["values"], [{"column": "Q3FY26", "value": "1,234", "unit": "Rs crore"}])
+        self.assertIn("value_missing_note", row)
+
+    def test_a_theme_names_every_matching_document_even_when_its_items_are_cut(self):
+        out = p3.topic("KEC", "Pen-G", limit=1)
+        cov = out["coverage"]
+        self.assertGreaterEqual(cov["matched_documents"], 3)
+        keys = {d["doc_key"] for d in cov["documents"]}
+        self.assertLessEqual({"KEC:pen/callA.pdf", "KEC:pen/callB.pdf"}, keys)
+        self.assertGreater(cov["cut"], 0)
+        self.assertEqual(cov["next"]["offset"], 1)
+
+
+
 
 
 if __name__ == "__main__":

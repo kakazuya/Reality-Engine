@@ -46,10 +46,12 @@ TABLES: dict[str, str] = {
     # T-194: one row per event an announcement names (regulatory inspection, buyback, dividend, acquisition,
     # merger), built by ``pilot3.events`` from the announcement title and its first page.  ``event_date`` is the
     # event's own start date when the text prints one, else the filing date; ``announced`` is always the filing.
+    # T-197: ``body_excerpt`` holds the sentences of the page that state the outcome, observations, classification,
+    # impact or amount, and ``doc_type`` / ``title`` name the document the event came from.
     "event": """CREATE TABLE event (
         symbol TEXT, isin TEXT, kind TEXT, event_date TEXT, end_date TEXT, announced TEXT, unit TEXT,
         outcome TEXT, subject TEXT, doc_key TEXT, page INTEGER, quote TEXT, known_at TEXT,
-        known_at_source TEXT, source TEXT, extractor_rule TEXT)""",
+        known_at_source TEXT, source TEXT, extractor_rule TEXT, doc_type TEXT, title TEXT, body_excerpt TEXT)""",
     "price_delivery": """CREATE TABLE price_delivery (
         symbol TEXT, isin TEXT, exchange TEXT, date TEXT, open REAL, high REAL, low REAL, close REAL,
         prev_close REAL, volume REAL, value_inr REAL, num_trades REAL, deliverable_qty REAL,
@@ -252,6 +254,12 @@ SHARE_CAPITAL_ADDITIONS = (
 GUIDANCE_ADDITIONS = (
     "ALTER TABLE guidance ADD COLUMN entity TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE guidance ADD COLUMN entity_unsure INTEGER NOT NULL DEFAULT 0",
+)
+# T-197: an event row names its document and carries the body sentences that answer the event question.
+EVENT_ADDITIONS = (
+    "ALTER TABLE event ADD COLUMN doc_type TEXT",
+    "ALTER TABLE event ADD COLUMN title TEXT",
+    "ALTER TABLE event ADD COLUMN body_excerpt TEXT",
 )
 
 
