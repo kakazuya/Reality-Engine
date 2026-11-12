@@ -1222,3 +1222,45 @@ def test_t187_tightened_rules_keep_out_analysts_and_bare_variability():
     assert not [r for r in got if r["symbol"] == "APLAPOLLO" and r["metric"] == "capex" and r["low"] == 1500], got
     assert not [r for r in got if r["metric"] == "ebitda_margin" and (r["low"], r["high"]) == (18.0, 26.0)], got
     assert not [r for r in got if r["symbol"] == "SAIL" and r["low"] in (100000.0, 35000.0)], got
+
+# --- T-192 round 4 H2: only a proven subsidiary / associate / JV / acquired company is an entity ------------
+def test_an_entity_needs_subsidiary_proof_not_a_name():
+    """The six rows the review found wrongly hidden stay the group's: an acronym (NTI, LME, APE, AOV), a metric
+    word and the company's own mine project are never an entity.  A proven subsidiary (Novelis from the KPI entity,
+    Bajaj Housing from a related-party relationship) and an acquisition named in the question are entities."""
+    own = ["bajfinance", "bajajfinserv"]
+    known = {"novelis", "bajajhousingfinance"}
+    for raw, context in (("NTI", "opex to NTI of 25-40%"), ("LME", "cost of production linked to LME"),
+                         ("APE", "APE growth trend"), ("AOV", "AOV of 5-6%"),
+                         ("Bandha Mine", "capex of 8,000 crore at Bandha Mine")):
+        assert guidance.foreign_entity(own, known, context, raw) == ("", False), raw
+    # a candidate the store cannot prove is not an entity: the row stays the group's and is labelled unsure
+    assert guidance.foreign_entity(own, known, "Eugia sales grew", "Eugia") == ("", True)
+    assert guidance.foreign_entity(own, known, "Novelis margin at 10%", "Novelis") == ("Novelis", False)
+    assert guidance.foreign_entity(own, known, "Bajaj Housing Finance AUM of 1 lakh crore",
+                                   "Bajaj Housing") == ("Bajaj Housing", False)
+    assert guidance.foreign_entity(own, set(), "this is subject to FTC approval and the Lannett acquisition",
+                                   "Lannett,FTC") == ("Lannett", False)
+
+
+def test_known_entity_names_are_read_from_the_store_not_from_code():
+    """The proof is data: a ``kpi_series.entity`` a subsidiary's own release already carries, and a related-party
+    counterparty whose relationship says subsidiary / associate / joint venture."""
+    from reality_engine.pilot3 import kpi
+
+    con = sqlite3.connect(":memory:")
+    con.execute(schema.TABLES["company"])
+    con.executescript(kpi.SCHEMA)
+    con.execute(schema.TABLES["related_party_txn"])
+    con.execute("INSERT INTO company VALUES ('HINDALCO','INE038A01020',NULL,NULL,'1','1','Hindalco Industries Ltd')")
+    con.execute("INSERT INTO kpi_series (symbol, metric, dimension, value, unit, scale, period_type, fiscal_period, "
+                "basis, entity, doc_key, page, quote, known_at, extractor_rule, confidence, conf_rank) "
+                "VALUES ('HINDALCO','ebitda','total',1,'inr_cr',1,'FY','FY26','consolidated','Novelis','d',1,"
+                "'Novelis EBITDA','2026-05-01T10:00:00','table_v1','table',4)")
+    con.execute("INSERT INTO related_party_txn (symbol, counterparty, relationship) VALUES "
+                "('HINDALCO','Bajaj Housing Finance Limited','subsidiary')")
+    con.execute("INSERT INTO related_party_txn (symbol, counterparty, relationship) VALUES "
+                "('HINDALCO','Key Managerial Personnel','key managerial personnel')")
+    got = guidance.known_entity_names(con, "HINDALCO")
+    assert "novelis" in got and any("bajajhousingfinance" in name for name in got)
+    assert not any("personnel" in name for name in got)

@@ -200,15 +200,20 @@ def _share_count(conn: sqlite3.Connection, symbol: str, basis: str, day: str, as
 
     The exact total of a filed shareholding pattern wins over the paid-up / face-value division, which is rounded
     (and net of an ESOP trust for some companies; T-073).  Paid-up capital stays the fallback for a day before the
-    pattern's own filing."""
+    pattern's own filing.  A store built before ``count_basis`` exists still answers: its shareholding-pattern rows
+    are the exact ones by their own ``source_table`` (T-192), so no live store needs a migration to be read."""
+    have = {row[1] for row in conn.execute("PRAGMA table_info(share_capital)")}
+    basis_expr = ("COALESCE(count_basis, CASE WHEN source_table='shp_category' THEN 'filed_exact' END)"
+                  if "count_basis" in have else
+                  "CASE WHEN source_table='shp_category' THEN 'filed_exact' END")
     rows = conn.execute(
-        "SELECT as_of_date, shares_outstanding, known_at, source_table, count_basis FROM share_capital "
-        "WHERE symbol=? AND basis=? AND event IS NULL AND shares_outstanding>0 AND as_of_date<=? "
+        f"SELECT as_of_date, shares_outstanding, known_at, source_table, {basis_expr} AS count_basis "
+        "FROM share_capital WHERE symbol=? AND basis=? AND event IS NULL AND shares_outstanding>0 AND as_of_date<=? "
         "ORDER BY as_of_date, known_at", (symbol, basis, as_of or day)).fetchall()
     live = [r for r in rows if (r[2] or "")[:10] <= day]
     if not live:
         return None
-    exact = [r for r in live if r[4] == "filed_exact" or (r[4] is None and r[3] == "shp_category")]
+    exact = [r for r in live if r[4] == "filed_exact"]
     row = (exact or live)[-1]
     return row[1], row[2], row[3]
 
@@ -464,6 +469,9 @@ def _input_views(conn: sqlite3.Connection) -> list[str]:
 
 def build_ratios(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("formula", "ratio_panel", "valuation_daily"))
+    # a store built before ``count_basis`` still elects the exact share count: the column the ratio reads is added
+    # here, additively, before any query needs it (T-192)
+    schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)
     conn.executemany("INSERT INTO formula VALUES (?,?,?,?,?,1,?)", FORMULAS)
     counts = {}
     views = _input_views(conn)

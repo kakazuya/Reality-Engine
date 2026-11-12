@@ -180,6 +180,24 @@ def quarter_end_of(label: str | None) -> str | None:
     return {"1": f"{fy - 1}-06-30", "2": f"{fy - 1}-09-30", "3": f"{fy - 1}-12-31", "4": f"{fy}-03-31"}[m.group(1)]
 
 
+# a results/earnings call is about the company's own reported quarter; an acquisition, investor-day or
+# capital-markets call is about a transaction or a plan and reports no quarter of the company (T-192 round 4)
+_RESULTS_CALL = re.compile(r"\b(?:earnings?|results?)\b", re.I)
+_CALL_WORD = re.compile(r"\b(?:call|conference|transcript)\b", re.I)
+
+
+def reports_results(title: str | None) -> bool:
+    """Does this call title name an earnings / results call?  An acquisition or investor-day call does not."""
+    return bool(_RESULTS_CALL.search(title or ""))
+
+
+def non_results_call(title: str | None) -> bool:
+    """A title that is a call but not a results/earnings one: an acquisition, investor-day or similar briefing.
+
+    A title that does not name a call at all is unknown, not evidence: the old filing-record rule stands for it."""
+    return bool(title and _CALL_WORD.search(title) and not reports_results(title))
+
+
 def filing_quarter(known_at: str | None) -> str | None:
     """The quarter a filing reports, from its own filing record: Apr-Jun files Q4, Jul-Sep Q1, Oct-Dec Q2, Jan-Mar
     Q3 of the fiscal year that ends in the following March."""
@@ -196,13 +214,19 @@ def filing_quarter(known_at: str | None) -> str | None:
     return f"Q3FY{year % 100:02d}"
 
 
-def call_period_ok(period: str | None, known_at: str | None) -> str | None:
+def call_period_ok(period: str | None, known_at: str | None, title: str | None = None) -> str | None:
     """The period a call reports: the label its own text gives when that quarter had closed by the filing, else the
     quarter the filing record names.  A call cannot report a quarter that ends after it was filed, so a year the
-    text happens to mention (a long-range ambition, a target year) never becomes the call's period (T-192)."""
+    text happens to mention (a long-range ambition, a target year) never becomes the call's period (T-192).
+
+    ``title`` names the call: only an earnings/results call takes the filing quarter, so an acquisition or
+    investor-day call keeps ``None`` instead of borrowing the results quarter that closed near it (T-192 round 4).
+    A document whose title the store does not hold keeps the old rule: unknown is not evidence of an acquisition."""
     end = quarter_end_of(period)
     if end and end <= (known_at or "")[:10]:
         return period
+    if non_results_call(title):
+        return None
     return filing_quarter(known_at)
 
 
@@ -986,7 +1010,7 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
                 learned_generic: set[str] | None = None):
     texts = [t for _, t in pages]
     boiler = boilerplate_lines(texts)
-    cperiod = call_period_ok(call_period_of(title, texts), known_at)
+    cperiod = call_period_ok(call_period_of(title, texts), known_at, title)
     cdate = call_date_of(texts[0], known_at)
     full = "\n".join(texts)
     doi_mgmt: dict[str, str] = {}

@@ -1556,45 +1556,87 @@ each has a fixture test.
    `input_refs`, so the number can be rebuilt from the row; without the opening year it is closing equity, labelled
    `basis='closing_equity'`. Test `test_roe_uses_average_owners_equity_when_the_opening_year_is_held`.
 2. **One EBITDA definition, and the company's own measure first.** The derived FY25 row included a forex loss because
-   the code looked for `forex_gain_loss`, a line no store files; that key is gone (forex is not derived). The real
-   defect was two derivations disagreeing (6,582.79 and 6,555.61 against the company's 6,605): `pilot3_fact` now
-   routes `ebitda` / `ebitda_margin` to `kpi_series` when the company printed the measure for that period and basis,
-   ranks the operating definition ("EBITDA (before forex and other income)") ahead of one that also strips an
-   operating cost ("EBITDA before R&D"), and returns the derived `ratio_panel` row as a labelled alternative. A
-   margin's numerator and denominator are the same period's and the same row's; an annual period is never filled
-   from a quarter.
+   the code looked for `forex_gain_loss`, a line no store files; that key is gone (forex is not derived, and round 4
+   confirmed no store carries a separate forex line). The real defect was two derivations disagreeing (6,582.79 and
+   6,555.61 against the company's 6,605): `pilot3_fact` routes `ebitda` / `ebitda_margin` to `kpi_series` when the
+   company printed the measure for that period and basis, ranks the operating definition ("EBITDA (before forex and
+   other income)") ahead of one that also strips an operating cost ("EBITDA before R&D"), and returns the derived
+   `ratio_panel` row as a labelled alternative. Round 4 makes the route period-scoped (`_kpi_covers`): an earlier or
+   later year answers from the derived ratio, never from a different period's company figure. A margin's numerator and
+   denominator are the same period's and the same row's; an annual period is never filled from a quarter.
 3. **A comparative column was stored as the current quarter.** The KPI row said Q1 FY27 operating EBITDA margin
    20.4% where deck p13 prints 21.0%. Root cause: `kpi.parse_periods`' month-year pattern matched "Mar" inside the
    label "EBITDA Margin" and read "Margin\n21.0%" as March 2021; the phantom period span swallowed the current
    column's 21.0% and the next value (the Q1 FY26 comparative) became the row. The pattern now needs a word boundary
-   and refuses a decimal tail, so the label's own value is read. `_kept_columns(cols, current)` keeps the results
-   table's column that matches the document's own period. Test
-   `test_a_month_word_inside_a_label_is_not_a_period`, `test_a_results_block_takes_its_own_column_not_the_comparative`.
+   and a real month name (`Mar`, `March`, `Sept`, …), never a word that merely starts with one ("Margin", "Marketing",
+   "Junk"), so the label's own value is read. `_kept_columns(cols, current)` keeps the results table's column that
+   matches the document's own period. Test
+   `test_a_month_word_inside_a_label_is_not_a_period`, `test_a_results_block_takes_its_own_column_not_the_comparative`,
+   `test_a_word_that_only_starts_with_a_month_is_not_a_period`.
 4. **A subsidiary's target stored as the group's.** The FY31 EBITDA margin 15% is Lannett's (an analyst question on
    the transcript names it); it was stored as group guidance, and the transcript carried the call period Q1FY31
    because a year in the text was read as the call's period. `transcripts.call_period_ok` takes the quarter from the
    filing record when the text's label cannot be the call's (a call cannot report a quarter that ends after it was
-   filed), and `guidance.foreign_entity` reads the entities the statement or the analyst question it answers
-   (`transcript_question.entities`, matched by `answer_turn`) names; the entity is written to the new
-   `guidance.entity` column and `pilot3_guidance` serves only rows whose entity is empty. No person or company name
-   is in the code. Tests `test_a_calls_period_comes_from_its_filing_record`,
-   `test_guidance_never_serves_an_entitys_target_as_the_groups`.
+   filed), and round 4 gates it on the title: only an earnings/results call takes the filing quarter, so an
+   acquisition or investor-day call keeps `call_period` NULL (`non_results_call`). `guidance.foreign_entity` reads the
+   entities the statement or the analyst question it answers (`transcript_question.entities`, matched by
+   `answer_turn`) names; round 4 requires proof from data (`known_entity_names`: a `kpi_series.entity` or a
+   related-party relationship) or from the sentence itself ("subsidiary", "acquisition", "associate", "joint
+   venture"), refuses an acronym, a metric, a benchmark and a plant/mine/project name, and keeps an unproved
+   candidate as the group's with `entity_unsure=1`. The entity is written to `guidance.entity` and
+   `pilot3_guidance` serves only rows whose entity is empty. No person or company name is in the code. Tests
+   `test_a_calls_period_comes_from_its_filing_record`,
+   `test_guidance_never_serves_an_entitys_target_as_the_groups`, `test_an_entity_needs_subsidiary_proof_not_a_name`,
+   `test_known_entity_names_are_read_from_the_store_not_from_code`.
 5. **A rounded count served as exact.** `share_capital` held 575,400,000 (paid-up 57.54 crore / face value Re 1)
    as the share count while the SHP XBRL files 575,377,895. The table gains `count_basis`
    (`filed_exact` | `derived_from_capital`, additive migration in `schema.py`); the marker no longer overwrites
    `known_at_source` and no longer sits in `ratio` (which is the split/bonus ratio of an event row); `ratios._share_count`,
-   `pilot3_holding` and the computed-input reader order a filed exact count first for the same date. Tests
+   `pilot3_holding` and the computed-input reader order a filed exact count first for the same date. Round 4 makes
+   every reader tolerate a store built before the column: `PRAGMA table_info` once per connection, the
+   `source_table='shp_category'` rule as the fallback, and `schema.ensure_columns` at the top of `build_ratios`. Tests
    `test_share_count_prefers_a_filed_exact_count_over_a_capital_derived_one`,
-   `test_the_exact_pattern_share_total_wins_over_rounded_paid_up_capital`.
+   `test_the_exact_pattern_share_total_wins_over_rounded_paid_up_capital`,
+   `test_share_count_reads_a_store_built_before_the_column_existed`,
+   `test_build_ratios_migrates_an_old_share_capital_and_does_not_crash`,
+   `test_an_old_share_capital_without_count_basis_is_read_and_prefers_the_filed_count`.
 
-Verified on a copy of the aurobindo store (`transcripts`, `kpi`, `guidance`, `ratios` rebuilt plus the count_basis
-migration; live stores untouched): ROE FY26 9.9 stated / 9.931 derived, EBITDA FY25 6,605 crore (deck p20) and margin
-20.8% (AR p48), Q1FY27 KPI margin 21.0 (deck p13), Lannett entity-tagged and out of group guidance, share count
-575,377,895 `filed_exact`. `kpi_series` rows 806 -> 682 on that store (the phantom March-2021 spans no longer hide the
-current column) and `guidance` 52 -> 45 (seven entity rows). Diff, per-table counts and open problems:
-`.tmp/T-192_DIFF.md`. Tests run one file at a time: `test_pilot3_ratios.py` 15 passed, `test_pilot3_preferred.py`
-14 passed, `test_pilot3_kpi_ratio_period.py` 8 passed, `test_pilot3_guidance.py` 44 passed, `test_pilot3_transcripts.py`
-22 passed, `test_pilot3_price_window.py` 7 passed, `test_pilot3_no_company_literals.py` 7 passed.
+6. **A call's quarter is a default, never an override.** `kpi.sentence_rows(..., fallback_pers=...)` keeps a row's own
+   full-year / nine-month / H1 / YTD span when its sentence or table header names one (SUNPHARMA's full-year sales
+   stay FY26, SBILIFE's VNB 32.7 bn stays H1FY27 rather than Q2FY27), keeps a document's own declared YTD span for its
+   unlabelled flows, and leaves a stock figure at the quarter end. `_frame_period` searches only the label's own
+   sentence, so a previous sentence's forecast year no longer dates the figure (AUROPHARMA Q1 FY25 margin 21.4% is
+   Q1FY25, not FY25). `statements.table_rows` refuses a row cut by a change cell (`21.4% 22.3% -88 bps …`) and
+   `statements.sentence_rows` reads a table row's first column from its header block, so a Q4 margin is no longer
+   stored under the year (the FY25 annual margin 21.4% row is gone; KPI FY25 answers 20.8 from the AR).
+   Tests `test_a_row_that_names_its_own_span_keeps_it_over_the_calls_quarter`,
+   `test_a_year_in_the_previous_sentence_is_not_this_figures_span`,
+   `test_a_table_row_cut_by_a_non_numeric_cell_is_not_stored_under_the_year_column`,
+   `test_ebitda_asked_for_a_period_the_kpi_does_not_cover_answers_from_the_derived_ratio`,
+   `test_an_acquisition_call_keeps_no_call_period`.
+
+Verified on rebuilt copies of the aurobindo and pilot10 stores (main code and this branch from the same starting copy;
+parts `stores transcripts kpi guidance ratios preferred` for aurobindo, `transcripts kpi guidance ratios` for pilot10;
+live stores untouched). Aurobindo: ROE FY26 9.9 stated / 9.931 on average owners' equity, EBITDA FY25 6,605 crore via
+`kpi` with the derived 65,556,100,000 as an alternative, FY25 EBITDA margin 20.8 (AR p48; the 21.4 Q4 row is gone),
+Q1FY27 KPI margin 21.0 (deck p13; the 20.4 comparative row is gone), the 15% Lannett row entity-tagged and not served
+as group guidance (its call period Q1FY26, not Q1FY31), share count 575,377,895 `filed_exact` (the 575,400,000
+rows marked `derived_from_capital`). Aurobindo per-table diff (main-code copy -> branch copy): `share_capital` 78
+changed (count_basis), `kpi_series` 676 -> 678 keys (2 removed, 4 added, 11 period changes), `guidance` 24 -> 24
+(2 removed/2 added: the FY31 rows become FY26 entity rows; 22 rows gain the entity columns), `ratio_panel` 12
+changed (ROE values and inputs), `transcript_statement` 257 rows relabelled Q1FY31 -> Q1FY26, preferred windows 0
+changed; `fin_annual_line` 489 -> 487 (the FY25 21.4 and FY26 20.3 Q4 columns stored as annual margins are gone).
+Pilot10 per-table: `kpi_series` 6,185 -> 6,236 unique keys — 99 period changes, 57 added, 6 removed (the
+KEC/HINDALCO comparative and the SBILIFE VNB-margin misread figure are gone); `ratio_panel` 53 ROE rows changed;
+`guidance` 104 -> 104, 0 removed and 5 entity rows (Novelis ×4, Bajaj Housing ×1: HINDALCO's India capex is tagged
+Novelis by the question's own entity list, so no group target was lost); `transcript_statement` 2,405 rows on 5
+documents gain the filing quarter (SUNPHARMA's "Organon Acquisition Investor Call" keeps NULL); `share_capital` and
+the preferred windows unchanged (no `stores` part on pilot10). **Stop rule hit:** the KPI keys touched are 162 of
+6,185 unique keys (2.6%, limit 2%), all period relabels from this round's rules (the classes and samples are in
+`.tmp/T-192_DIFF.md`); the live stores were not rebuilt. Tests, one file at a time: `test_pilot3_ratios.py` 17
+passed, `test_pilot3_preferred.py` 16, `test_pilot3_kpi_ratio_period.py` 13, `test_pilot3_guidance.py` 46,
+`test_pilot3_transcripts.py` 22, `test_pilot3_no_company_literals.py` 7; `test_pilot3_kpi.py` 108 passed with 6
+setup errors, every one a `PermissionError` from pytest's own `tmp_path` in this sandbox (the known limitation below).
 
 **Sandbox note.** pytest's own `tmp_path` cannot run in this confined worker (a directory created after the session
 starts cannot be listed: `WinError 5`), so `test_pilot3_ratios.py` carries a local `tmp_path` fixture that builds the

@@ -433,3 +433,31 @@ def test_ev_uses_the_latest_filed_balance_sheet_half_year(tmp_path):
         assert json.loads(row[3])["net_debt"] == "bs 2025-09-30 H1 known 2026-02-01"
     finally:
         profile.activate(None)
+
+# --- T-192 round 4 H1: a store built before count_basis existed is still read and migrated by the ratios part ----
+def test_share_count_reads_a_store_built_before_the_column_existed():
+    conn = sqlite3.connect(":memory:")
+    schema.create(conn, ("share_capital",))
+    conn.execute("ALTER TABLE share_capital DROP COLUMN count_basis")
+    old = ("INSERT INTO share_capital (symbol, isin, as_of_date, basis, event, ratio, shares_outstanding, "
+           "paid_up_capital, face_value, unit, scale, known_at, known_at_source, source_db, source_table, "
+           "source_rowid, isin_effective_from, isin_effective_to) VALUES ('T','INE000A01010','2026-06-30',"
+           "'consolidated',NULL,NULL,?,?,1.0,'shares',1.0,?,'x','db','table','r',NULL,NULL)")
+    conn.execute(old, (575_400_000.0, 575_400_000.0, "2026-08-05T21:13:04"))
+    conn.execute(old, (575_377_895.0, None, "2026-07-15T15:31:04"))
+    conn.execute("UPDATE share_capital SET source_table='quarterly' WHERE shares_outstanding=575400000.0")
+    conn.execute("UPDATE share_capital SET source_table='shp_category' WHERE shares_outstanding=575377895.0")
+    conn.commit()
+    shares, _known, _table = ratios._share_count(conn, "T", "consolidated", "2026-09-30")
+    assert shares == 575_377_895.0
+
+
+def test_build_ratios_migrates_an_old_share_capital_and_does_not_crash(tmp_path):
+    _profile(tmp_path)
+    conn = sqlite3.connect(":memory:")
+    schema.create(conn, list(schema.TABLES))
+    conn.execute("ALTER TABLE share_capital DROP COLUMN count_basis")
+    conn.commit()
+    ratios.build_ratios(conn)          # must not raise "no such column: count_basis"
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(share_capital)")}
+    assert "count_basis" in columns

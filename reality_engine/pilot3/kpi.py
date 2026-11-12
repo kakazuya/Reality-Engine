@@ -104,9 +104,9 @@ PERIOD_PATTERNS = [
     ("DATE_DMY", re.compile(r"(?<!\d)(\d{1,2})(?:st|nd|rd|th)?[\s,.-]+(" + _MON_PAT + r")[a-z]*[\s,.-]+['’]?(\d{4}|\d{2})(?!\d)", re.I)),
     ("DATE_MDY", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?!\d)", re.I)),
     ("DATE_NUM", re.compile(r"(?<![\d.,/-])(\d{1,2})([./-])(\d{1,2})\2(20\d{2})(?![\d])")),
-    # a month word must start a word: "Margin\n21.0%" is a label and its value, never March 2021 (T-192: the bogus
-    # March-2021 span swallowed the current quarter's EBITDA margin and the comparative column became the row)
-    ("MON_Y", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*[-\s,'’]+['’]?(\d{4}|\d{2})(?![\d]|\.\d)"
+    # a month word must be a real month name, never a word that merely starts with one: "Margin\n21.0%" is a label
+    # and its value, not March 2021, and "Marketing 22" / "Junk 23" / "Margin 24" are not periods either (T-192 r4)
+    ("MON_Y", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")(?![A-Za-z])[-\s,'’]+['’]?(\d{4}|\d{2})(?![\d]|\.\d)"
                          r"(?!\s*,\s*\d{4})", re.I)),
 ]
 
@@ -1491,11 +1491,15 @@ def _frame_period(text: str, label: int, value: int, period: Period) -> Period |
     is the nine-month figure even in a Q3 document, and "for the six months ended 30 Sep 2025" is H1FY26.  A
     phrase introduced as a comparison ("than in the first half", "last year's six months") does not override."""
     lo = max(_sentence_bounds(text, label)[0], label - 200)
+    sent_lo = _sentence_bounds(text, label)[0]
     if profile.under_profile() and not _QUARTER_CUE.search(text[lo:value]) \
-            and not parse_periods(text[_sentence_bounds(text, label)[0]:value]):
-        fm = _FY_FRAME.search(text[max(0, label - 260):label])
+            and not parse_periods(text[sent_lo:value]):
+        # the year must sit in the label's own sentence: a previous sentence's forecast ("on track to achieve
+        # €880 million plus for FY25") is not this figure's span (T-192 round 4: AUROPHARMA's Q1 FY25 EBITDA
+        # margin 21.4% was stored FY25 by the FY25 of the sentence before it)
+        fm = _FY_FRAME.search(text[sent_lo:label])
         if fm:
-            at = max(0, label - 260) + fm.start()
+            at = sent_lo + fm.start()
             before = text[max(0, at - 32):at]
             if not re.search(r"\b(?:compared|versus|vs\.?|against|previous|last|prior|than)\b", before, re.I):
                 canon = f"FY{_yy(fm.group(1)):02d}"
@@ -1692,11 +1696,41 @@ def _quarter_after_comparative(text: str, start: int, end: int, period: Period) 
     return Period(period.start, period.end, canon, "Q", period_end("Q", canon))
 
 
+_SPAN_CUE = re.compile(
+    r"\b(?:full[\s-]?year|for\s+the\s+year|year\s+ended|nine[\s-]?months?|9M|H1|half[\s-]?year|YTD|"
+    r"year[\s-]to[\s-]date|FY)\b", re.I)
+
+
+def _stated_period(text: str, lo: int, hi: int, fallback_pers: list[Period] | None) -> Period | None:
+    """The span a row's own words name (full year / for the year / FY / nine months / 9M / H1 / half year / YTD),
+    read from the document's own default span.
+
+    A call's forced quarter is only the default for a row with no period cue of its own (T-192 round 4): "India
+    formulation sales for the full year" is the year, "VNB ... H1 FY27" is the half, "nine months" the nine months,
+    even when the call's quarter came from the filing record."""
+    cue = _SPAN_CUE.search(text[lo:hi])
+    if not cue or not fallback_pers:
+        return None
+    word = cue.group(0).lower()
+    want = "9M" if word.startswith(("nine", "9m")) else "H" if word.startswith(("h1", "half")) else "FY"
+    for p in fallback_pers:
+        canon = (p.canon or "").upper()
+        if want == "9M" and canon.startswith("9M"):
+            return p
+        if want == "H" and canon.startswith("H"):
+            return p
+        if want == "FY" and p.ptype == "FY":
+            return p
+    return None
+
+
 def sentence_rows(text: str, page: int, company: str, entries, dims, default_pers: list[Period],
                   filed: str | None = None, doc_basis: str = "not_stated", allow_entity: bool = True,
-                  ratio_quarter: bool = False) -> list[Row]:
+                  ratio_quarter: bool = False, fallback_pers: list[Period] | None = None) -> list[Row]:
     """Rows from a page's running text.  ``ratio_quarter``: the document reports a quarter, so a ratio that names
-    no period of its own is that quarter's (annualised) rate, not the year's (T-107)."""
+    no period of its own is that quarter's (annualised) rate, not the year's (T-107).  ``fallback_pers`` is the
+    document's own period before a call's filing quarter replaced it: a row whose words name a full-year or
+    year-to-date span keeps that span (T-192 round 4)."""
     rows: list[Row] = []
     pers = parse_periods(text)
     per_spans = [(p.start, p.end) for p in pers]
@@ -1875,6 +1909,17 @@ def sentence_rows(text: str, page: int, company: str, entries, dims, default_per
                             period, rule = pair[min(idx, 1)], "sentence_pair_v1"
                     if period is None and idx == 0 and default_pers:
                         period, rule = default_pers[0], "sentence_default_v1"
+                        if fallback_pers:      # the words name a full-year / YTD span: keep that, not the call's quarter
+                            stated = _stated_period(text, sb_lo, hi, fallback_pers)
+                            if stated is None and e.kind in ("money", "count", "volume") \
+                                    and e.metric not in _STOCK_METRICS \
+                                    and (fallback_pers[0].canon or "").upper().startswith(("9M", "H1", "H2")):
+                                # the document itself declares a year-to-date span and the row's words name no
+                                # quarter: its unlabelled flow is that half / nine months, not the call's quarter
+                                # (SBILIFE's VNB 32.7 bn H1FY27 was relabelled Q2FY27; T-192 round 4, H3)
+                                stated = fallback_pers[0]
+                            if stated is not None and stated.canon != period.canon:
+                                period = stated
                     if period is None:
                         continue
                     mq = re.match(r"\s*[,;]?\s*(?:in|for|of|during)\s+(?:Q([1-4])|([1-4])Q)\b(?!\s*[-]?\s*FY)",
@@ -3150,9 +3195,9 @@ def _pages_docs(sym: str, pages_db: Path | str | None, raw_root: Path | None, oc
         return
     try:
         docs = pg.execute(
-            f"SELECT doc_key, doc_type, known_at, source_path, sha256 FROM doc WHERE symbol=? AND doc_type IN "
+            f"SELECT doc_key, doc_type, known_at, source_path, sha256, title FROM doc WHERE symbol=? AND doc_type IN "
             f"({','.join('?' * len(KPI_DOC_TYPES))}) ORDER BY known_at, doc_key", (sym, *KPI_DOC_TYPES)).fetchall()
-        for doc_key, doc_type, known_at, source_path, sha in docs:
+        for doc_key, doc_type, known_at, source_path, sha, title in docs:
             if sha:
                 shas.add(sha)
             pages = pg.execute("SELECT page, text, method FROM doc_page WHERE doc_key=? ORDER BY page",
@@ -3173,7 +3218,7 @@ def _pages_docs(sym: str, pages_db: Path | str | None, raw_root: Path | None, oc
             with _pdf_context(paths) as pdf:      # the store's temp copy stays until this doc is read
                 if doc_type in PDF_DOC_TYPES and pdf is None:
                     st["pdf_missing"] += 1
-                yield doc_key, doc_type, known_at, usable, pdf, opg, "pages.db.doc.known_at"
+                yield doc_key, doc_type, known_at, usable, pdf, opg, "pages.db.doc.known_at", title or ""
     finally:
         pg.close()
 
@@ -3218,7 +3263,7 @@ def _doc_sources(con: sqlite3.Connection | None, sym: str, sandbox: Path | None,
                 have = {p for p, _ in usable}
                 usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
                 st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
-            yield doc_key, doc_type, known_at, usable, pdf, opg, "docs.known_at"
+            yield doc_key, doc_type, known_at, usable, pdf, opg, "docs.known_at", ""
             if pdf is not None:
                 pdf.close()
     if raw_root is None or con is None:
@@ -3246,7 +3291,7 @@ def _doc_sources(con: sqlite3.Connection | None, sym: str, sandbox: Path | None,
                 have = {p for p, _ in usable}
                 usable = sorted(usable + [(p, v[0]) for p, v in opg.items() if p not in have and v[0]])
                 st["ocr_pages_used"] = st.get("ocr_pages_used", 0) + len([p for p in opg if p not in have])
-            yield key, "deck", known_at, usable, pdf, opg, "deck_figures.known_at"
+            yield key, "deck", known_at, usable, pdf, opg, "deck_figures.known_at", ""
 
 
 
@@ -3264,22 +3309,25 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
     sector_only = ({e.metric for e in entries if e.sectors} - {e.metric for e in entries if not e.sectors}) \
         if profile.under_profile() else set()
     st = stats.setdefault(sym, {"pages": 0, "needs_ocr": 0, "docs": 0, "pdf_missing": 0})
-    for doc_key, doc_type, known_at, usable, pdf, opg, src in _doc_sources(con, sym, sandbox, raw_root, limit_docs, st, ocr,
-                                                                          pages_db):
+    for doc_key, doc_type, known_at, usable, pdf, opg, src, title in _doc_sources(con, sym, sandbox, raw_root, limit_docs, st,
+                                                                          ocr, pages_db):
         if only_docs and not any(k in doc_key for k in only_docs):
             continue
         if doc_type == "transcript" and known_at:   # a call cannot be known before it was held (call_dates)
             known_at = call_dates.clamp(None, known_at, [t for _, t in usable[:3]])[1]
-        default_pers = doc_default_period([t for _, t in usable],
-                                          ytd=doc_type != "annual_report" and len(usable) <= 80)
+        raw_pers = doc_default_period([t for _, t in usable],
+                                      ytd=doc_type != "annual_report" and len(usable) <= 80)
+        default_pers, stated_pers = raw_pers, None
         # T-192: a call reports its own quarter.  When the document's headline gives a full year (a target year or a
         # long-range ambition the text mentions), the call's quarter comes from the filing record instead, so an
-        # annual period is never filled from what is really a quarter's figure.
-        if doc_type == "transcript" and known_at and (not default_pers or default_pers[0].ptype != "Q"):
+        # annual period is never filled from what is really a quarter's figure.  Only an earnings/results call takes
+        # that quarter: an acquisition or investor-day call keeps the period its own text states (T-192 round 4).
+        if doc_type == "transcript" and known_at and (not raw_pers or raw_pers[0].ptype != "Q"):
             from .transcripts import call_period_ok   # lazy: transcripts reads this module at import
-            call_q = call_period_ok(None, known_at)
+            call_q = call_period_ok(None, known_at, title or None)
             if call_q:
                 default_pers = [Period(0, 0, call_q, "Q", period_end("Q", call_q))]
+                stated_pers = raw_pers    # the document's own full-year/YTD span, for a row whose words keep it
         # a release whose first pages name a subsidiary keeps that entity on the pages that do not repeat its name
         doc_basis = "not_stated"
         if profile.under_profile():
@@ -3305,7 +3353,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                     st["no_period_long_doc"] = st.get("no_period_long_doc", 0) + 1
             try:
                 srows = sentence_rows(text, page, sym, entries, dims, page_pers, known_at, doc_basis,
-                                      doc_type != "transcript", ratio_quarter)
+                                      doc_type != "transcript", ratio_quarter, fallback_pers=stated_pers)
             except Exception:  # keep the run going, count it
                 srows = []
                 st["errors"] = st.get("errors", 0) + 1

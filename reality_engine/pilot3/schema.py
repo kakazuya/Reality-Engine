@@ -110,15 +110,17 @@ TABLES: dict[str, str] = {
         check_status TEXT, check_detail TEXT, is_reported INTEGER,
         preferred_from TEXT, preferred_to TEXT)""",
     # one row per forward-looking numeric target (guidance.py).  ``doc_key`` is the ticket's ``doc_id``; the
-    # column is named ``doc_key`` like every other pilot3 table.  ``entity`` (T-192) is the subsidiary, segment or
-    # investee a target belongs to when the sentence or the question it answers names one: such a row is never the
-    # group's guidance, and the guidance lookup serves only rows whose entity is empty unless asked otherwise.
+    # column is named ``doc_key`` like every other pilot3 table.  ``entity`` (T-192) is the subsidiary, associate,
+    # joint venture or acquired company a target belongs to when the sentence or the question it answers names one:
+    # such a row is never the group's guidance, and the guidance lookup serves only rows whose entity is empty.
+    # ``entity_unsure`` marks a row whose text named a candidate entity the store cannot prove is a subsidiary: the
+    # row stays the group's (never hidden) and says it was unsure.
     "guidance": """CREATE TABLE guidance (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         symbol TEXT, isin TEXT, metric TEXT, target_period TEXT, low REAL, high REAL, unit TEXT,
         direction TEXT, said_on TEXT, doc_key TEXT, page INTEGER, quote TEXT, speaker TEXT,
         known_at TEXT, known_at_source TEXT, revision_of INTEGER, extractor_rule TEXT,
-        entity TEXT NOT NULL DEFAULT '')""",
+        entity TEXT NOT NULL DEFAULT '', entity_unsure INTEGER NOT NULL DEFAULT 0)""",
     # T-093: one identity verdict per document (doc_identity.py).  A failure sets the document aside; nothing is deleted.
     "doc_identity": """CREATE TABLE doc_identity (
         doc_key TEXT, corporate_doc_id INTEGER, symbol TEXT, isin TEXT, doc_type TEXT, file_where TEXT, verdict TEXT,
@@ -241,6 +243,7 @@ SHARE_CAPITAL_ADDITIONS = (
 )
 GUIDANCE_ADDITIONS = (
     "ALTER TABLE guidance ADD COLUMN entity TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE guidance ADD COLUMN entity_unsure INTEGER NOT NULL DEFAULT 0",
 )
 
 

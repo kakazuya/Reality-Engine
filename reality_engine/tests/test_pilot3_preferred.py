@@ -311,3 +311,37 @@ def test_guidance_never_serves_an_entitys_target_as_the_groups(lookups):
     reply = module.guidance(SYM, "ebitda_margin")
     assert [(r["period"], r["low"]) for r in reply["rows"]] == [("FY27", 21.0)]
 
+
+# --- T-192 round 4: the fact route is period-scoped, and an old store is still read -------------------------
+def test_ebitda_asked_for_a_period_the_kpi_does_not_cover_answers_from_the_derived_ratio(lookups):
+    """T-192 H6: the KPI owns EBITDA only for a period it states.  With KPI EBITDA for FY25 only, an FY24 question
+    must return the derived ratio_panel figure, never an empty reply or the FY25 company figure."""
+    module, conn = lookups()
+    conn.execute("INSERT INTO ratio_panel VALUES (?,?, 'FY24','FY','2023-04-01','2024-03-31','consolidated','ebitda',"
+                 "60000000000.0,'inr',1.0,'F_EBITDA','[]','2024-05-25T19:20:56','x',1)",
+                 (SYM, "INE296A01024"))
+    _kpi_ebitda(conn, 6605.0, "FY25", "EBITDA (before Forex and Other Income)", "2026-05-21T22:12:58")
+    conn.commit()
+    reply = module.fact(SYM, "ebitda", "FY24")
+    assert reply["found"] is True and reply["route"] == "ratio", reply
+    assert reply["answer"]["value"] == pytest.approx(60000000000.0)
+
+
+def test_an_old_share_capital_without_count_basis_is_read_and_prefers_the_filed_count(lookups):
+    """T-192 H1: the lookups open a live store read-only, and six live stores were built before ``count_basis``
+    existed.  ``holding`` must not fail on the missing column, and the shareholding-pattern total must still win
+    over the rounded paid-up/face-value count for the same day."""
+    module, conn = lookups()
+    conn.execute("ALTER TABLE share_capital DROP COLUMN count_basis")
+    old = ("INSERT INTO share_capital (symbol, isin, as_of_date, basis, event, ratio, shares_outstanding, "
+           "paid_up_capital, face_value, unit, scale, known_at, known_at_source, source_db, source_table, "
+           "source_rowid, isin_effective_from, isin_effective_to) VALUES (?,?,'2026-06-30','consolidated',NULL,NULL,"
+           "?,?,1.0,'shares',1.0,?, 'x','db','table','r',NULL,NULL)")
+    conn.execute(old, (SYM, "INE296A01024", 575_400_000.0, 575_400_000.0, "2026-08-05T21:13:04"))
+    conn.execute(old, (SYM, "INE296A01024", 575_377_895.0, None, "2026-07-15T15:31:04"))
+    conn.execute("UPDATE share_capital SET source_table='quarterly' WHERE shares_outstanding=575400000.0")
+    conn.execute("UPDATE share_capital SET source_table='shp_category' WHERE shares_outstanding=575377895.0")
+    conn.commit()
+    reply = module.holding(SYM, "2026-09-30")
+    assert reply["share_capital"]["shares_outstanding"] == pytest.approx(575_377_895.0)
+
