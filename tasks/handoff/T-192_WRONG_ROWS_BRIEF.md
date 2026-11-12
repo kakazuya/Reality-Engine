@@ -99,3 +99,54 @@ Fix, verbatim:
   aurobindo + pilot10 at least, parts `stores kpi guidance preferred ratios`; `.tmp/T-192_DIFF.md` with per-table
   changed-row counts and the five AUROPHARMA rows before/after. Without it the branch is not reviewed.
 Stop if: the pilot10 copy loses any row a test or grader marked right (list them). Budget 3 hours.
+
+## Round 4 (DeepSeek, off-peak; starts from dsh/20261112T100117Z-b83f0ffa)
+Review of round 3 (Opus, 12 Nov 16:25). Opus rebuilt copies of pilot10 with main code and with your branch (parts
+transcripts, kpi, guidance, ratios) and diffed them. Keep: ROE average equity; `_kept_columns(cols, current)`;
+`call_period_ok` / `filing_quarter`; `count_basis`; `_ebitda_rank`; the 8 new tests (Opus ran them on main: the KPI and
+transcript ones fail there as required). Fix, verbatim:
+- H1. BLOCKER. `ratios.py:204` `_share_count` and `lookups_pilot3.py` lines ~927, ~934, ~1732 read
+  `share_capital.count_basis`, which only `stores` adds. On the pilot10 copy `--part ratios` crashed
+  (`sqlite3.OperationalError: no such column: count_basis`), and after a reality-data restart `pilot3_holding` would fail
+  on all six live stores, which have no such column. Lookups open stores read-only: they must tolerate the column being
+  absent (PRAGMA table_info once per connection; fall back to `source_table='shp_category'`). `ratios` must call
+  `schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)` first. Test: a fixture store with the
+  old 18-column share_capital, through `holding()` and `build --part ratios`.
+- H2. STOP RULE HIT: the guidance entity rule hides group targets. On pilot10 it tagged 11 rows; at least 6 are the
+  group's own: BAJFINANCE `opex_to_nti` FY27 25-40 entity "NTI" (x2; NTI = net total income, a metric), HINDALCO
+  `cost_of_production` entity "LME" (a price benchmark), HINDALCO capex FY26 8,000 entity "Bandha Mine" (the company's
+  own mine project), SBILIFE `revenue_growth` FY27 14 entity "APE" (a metric), ETERNAL `ebitda_margin` FY27 5-6 entity
+  "AOV" (a metric). Right ones: Novelis, Bajaj Housing, (Lannett, Merck on aurobindo). Rule to use instead: an entity
+  makes a target non-group only when it is a SUBSIDIARY / associate / JV / acquired company, known from data:
+  the annual report's subsidiary list or related-party table if held (`notes` part), the store's `entity` values that
+  `kpi_series` already uses for subsidiaries, or a filing/statement naming it "subsidiary", "acquisition", "step-down",
+  "associate", "joint venture". An acronym (all caps, <= 4 letters), a metric word, a benchmark, a plant/mine/project
+  name is never an entity. Unsure = keep it group (and label `entity_unsure`), never hide. Test with the 6 wrong rows
+  as fixtures (must stay group) plus Lannett/Novelis (must be entity rows). Re-diff pilot10: zero group targets lost.
+- H3. KPI default period for transcripts (`kpi.py` ~3275): forcing the filing quarter when the document default is not
+  a quarter relabelled 78 pilot10 rows; some got better (KEC order book from a Q2 call -> Q2FY26) but some got worse:
+  SUNPHARMA `domestic_formulations` 192,904 "India formulation sales for the full year" FY26 -> Q4FY26 (wrong);
+  SBILIFE `vnb` 32.7 bn H1FY27 -> Q2FY27 (VNB is reported year-to-date: wrong); 9MFY26 -> Q3FY26 (5 rows) and
+  H1 -> Q2 (8 rows) the same kind. Rule: a row whose sentence or table header says full year / for the year / FY /
+  nine months / 9M / H1 / half year / YTD / year-to-date keeps that period; the filing quarter is only the default for
+  rows with no period cue. Stock figures at a quarter end (order book, AUM, net debt, cash) take the quarter-end
+  period. Test with those three quotes.
+- H4. `kpi.py` MON_Y still matches a word that merely starts with a month abbreviation followed by an integer. Opus's
+  probe on your branch: "EBITDA Margin\n21%" -> "Margin\n21", "Margin 24", "Marketing 22", "Junk 23" all match. Only
+  a real month name (Jan, January, Feb, ..., Sep, Sept, September, ...) followed by a non-letter may match. Add these
+  four to the test.
+- H5. The FY25 `ebitda_margin_pct` 21.4 row on aurobindo (Q1 FY25 transcript p4) is still stored under FY25. Trace it
+  and fix the rule (likely the H3 rule covers it); the rebuilt row must be Q-labelled or carry its own sentence period.
+- H6. `pilot3_fact` routes ebitda / ebitda_margin to `kpi` whenever `kpi_series` holds any EBITDA row for the company.
+  Show with a test that for a period the KPI rows do not cover (e.g. a fixture with KPI EBITDA for FY25 only, asked
+  FY24) the reply still returns the derived ratio_panel figure, not an empty or wrong-period KPI answer.
+- H7. Non-results calls (SUNPHARMA "Organon Acquisition Investor Call", filed 5 May) now get a quarter (Q4FY26) from
+  the filing record. Only a results/earnings call takes a filing quarter; an acquisition/investor-day call keeps
+  call_period NULL. Test with the title.
+- H8. Rebuild on copies BOTH sides yourself (main code and branch code from the same starting copy, so pre-existing
+  drift cancels), for aurobindo and pilot10, parts transcripts kpi guidance ratios, and write `.tmp/T-192_DIFF.md`
+  with per-table removed/added/period-changed counts per store and 10 sampled changed rows per store with quotes.
+Accept: all round-3 tests plus new tests pass one file at a time (use `--basetemp=.tmp/pt<n>` with a NEW name each run);
+pilot10 diff: zero group guidance targets hidden that main served, KPI period changes listed and each class justified.
+Stop if: any pilot10 group target is hidden after H2, or the KPI rows changed exceed 2% of pilot10's kpi_series.
+Budget: 3 hours.
