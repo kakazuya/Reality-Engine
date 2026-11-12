@@ -93,7 +93,6 @@ One row per line, kept in its section.
 - T-179 | OPEN Eagle | P1 | Raw SQL A/B: 120 questions x 2 arms x 2 runs with and without pilot3_sql, calls and seconds logged, grader calibrated | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/reports/2026-11-11_t179_sql_ab.xlsx').exists() else 1)" | from: Fable review 10 Nov | opened 2026-11-10
 - T-186 | OPEN Eagle | P1 | Answer-ready fact lookup: one tool call returns the preferred figure with period, basis, unit, source document and page, known_at, and the formula inputs when computed, for any (company, metric, period, basis) | accept: python -m pytest -q plugins/reality-data/tests/test_lookups_pilot3.py | from: Fable review item 7, 11 Nov | opened 2026-11-11
 - T-199 | OPEN Eagle | P1 | Atom design + unseen-company test: BLUESTARCO (questions frozen before build; Haiku page reading via subagent sessions; tools after T-197/T-198) | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/bluestar/questions/questions.csv').exists() else 1)" | from: Shivam 12 Nov 21:40 | opened 2026-11-12
-- T-202 | OPEN Eagle | P1 | Versioned store schema: schema_version table, numbered migrations, build parts and lookups check the version (from idea I-005) | accept: python -m pytest reality_engine/tests/test_pilot3_no_company_literals.py -q | from: Shivam 12 Nov 22:20 (promoted from idea box) | opened 2026-11-12
 
 ## Bank
 
