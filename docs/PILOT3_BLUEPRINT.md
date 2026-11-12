@@ -162,32 +162,56 @@ property of the page or the cell, never a company:
   unverified (`image_only`).
 - **`pilot3/atoms.py`** (`python -m reality_engine.pilot3.atoms --store S [--duplicates CSV]`; build part `atoms`,
   last after `checks`) writes one `page_atom` per non-quarantined `page_cell` with a parseable value. `period` =
-  `row_checks.period_key` on `col_header`, then the table title, then the page's one printed header line; a relative
-  header (`Q2`, `H1`, `Current quarter`) resolves only against a fiscal year printed on the page; an empty header
-  takes the period the build already assigns the document (`kpi_series.fiscal_period`,
-  `fin_quarter_printed.fiscal_period`, `transcript_statement.call_period`, `fin_annual_line.fiscal_year`,
-  `doc_identity.fiscal_year`), reason `period_from_document`, never verified. `basis` from the title, else the page
-  text printed alone. `unit`/`scale` from the cell's own text, else the page's single declaration (`unit_scales` /
-  `check_page_unit` logic; two declarations -> `unit_conflict`); `%`, `x`, `days` and a count keep scale 1; a change
-  marker (▲/▼, "up by", bps) with no header is unit `change`, never a level. `(1,234)` is negative; `-` / Nil is no
-  atom. `definition` is a printed bracket legend (`legend:...`) or `row_checks.definition_key` (T-198); the full
-  label is kept. A cell with no row label is never verified (`label_missing`).
+  the `col_header` first, then the `row_label`, then the table title, then the page's one printed header line. Both
+  texts read a dated results header before their plain period label: `row_checks.period_key` cannot read
+  "QUARTER ENDED (UNAUDITED) > 30.09.2025", so the span word (quarter / three months, half year / six months, nine
+  months, year / twelve months) and the printed end date (`dd.mm.yyyy`, `dd/mm/yyyy`, `dd-mm-yyyy`,
+  "30th September, 2025", "September 30, 2025", "30-Sep-25") map by the Indian April-March year, verified against
+  `row_checks.period_end` (no second calendar): quarter 30.09.2025 -> `q2fy26`, half year -> `h1fy26`, nine months
+  31.12.2025 -> `9mfy26`, year 31.03.2026 -> `fy26`, quarter 31.03.2024 -> `q4fy24`. `AS AT <date>` (a balance
+  sheet) is the period that date ends (`31.03.2025` -> `fy25`, `30.09.2025` -> `h1fy26`, `30.06` -> `q1`,
+  `31.12` -> `9m`) with the informational reason `as_at`, which does not block `verified`. A chart table's period
+  rows read the same way: a `row_label` that is a period or starts / ends with one (`FY24`, `Q3 FY25`,
+  `Revenue FY24`); a period buried in a longer label is not taken. A header with a printed span that fits no period
+  ("half year ended 31.12"), and a header and a row label naming two different periods, are `period_ambiguous`,
+  never the document's period. A relative header (`Q2`, `H1`, `Current quarter`) resolves only against a fiscal
+  year printed on the page; an empty header takes the period the build already assigns the document
+  (`kpi_series.fiscal_period`, `fin_quarter_printed.fiscal_period`, `transcript_statement.call_period`,
+  `fin_annual_line.fiscal_year`, `doc_identity.fiscal_year`), reason `period_from_document`, never verified.
+  `basis` from the title, else the `col_header` ("Consolidated > QUARTER ENDED ..."), else the page text printed
+  alone. `unit`/`scale` from the cell's own text, else the page's single declaration (`unit_scales` /
+  `check_page_unit` logic; two declarations -> `unit_conflict`); `%`, `x`, `days` and a count keep scale 1. A
+  growth column (`YoY`, `QoQ`, `Growth`, `Change`, `% chg`, `Var`, `Variance`, `▲`/`▼`, `vs`) is unit `change`
+  whatever the value prints, never a level; so is an empty header whose value carries a change marker (▲/▼,
+  "up by", bps). `(1,234)` is negative; `-` / Nil is no atom. `definition` is a printed bracket legend
+  (`legend:...`) or `row_checks.definition_key` (T-198); the full label is kept. A cell with no row label is never
+  verified (`label_missing`).
 - **Statuses.** `verified` only when the cell is position-checked AND its period and unit resolved; everything else
-  `unverified` with `check_reasons` (`position_unverified`, `period_unresolved`, `period_from_document`,
-  `unit_unresolved`, `unit_conflict`, `change_not_level`, `label_missing`). Two rows of one document with the same
-  row label, period and basis but different values are both `unverified` (`same_doc_conflict`). Each canonical atom
-  is copied onto its `duplicates.csv` pages with the duplicate's own `doc_key` and `known_at`, and
-  `copied_from=<doc_key>#p<page>`.
+  `unverified` with `check_reasons` (`position_unverified`, `period_unresolved`, `period_ambiguous`,
+  `period_from_document`, `unit_unresolved`, `unit_conflict`, `change_not_level`, `label_missing`; `as_at` is
+  informational and keeps `verified`). Two rows of one document with the same row label, period and basis but
+  different values are both `unverified` (`same_doc_conflict`). Each canonical atom is copied onto its
+  `duplicates.csv` pages with the duplicate's own `doc_key` and `known_at`, and `copied_from=<doc_key>#p<page>`.
 - **Tools.** `pilot3_cells` serves `page_atom` when the store has rows for the company (resolved `period`, `basis`,
   `unit`, `scale` and numeric `value` beside the printed text; the `period` argument filters the resolved column)
   and falls back to `page_cell` only while the store has no atom rows. `pilot3_fact` and `pilot3_kpi` fall back to
-  atoms when no other table holds the metric (`source: page_atom`) and never serve a `change` atom as the level;
-  `pilot3_topic` lists the atoms on the theme's pages. `coverage` names `page_atom` and `page_cell` in exactly one
-  list each.
-- **Tests.** `test_pilot3_atoms.py` 16, `test_v2_page_reader.py` 10 (`--basetemp` is refused inside the dsh
-  sandbox, so the sandbox run uses `-p no:tmpdir` and the documented temp override), `test_pilot3_schema_version.py`
-  8 (v0 / v8 / v9 -> v10, twice idempotent), `test_lookups_pilot3.py` 79 passed + 1 skipped,
-  `test_store_routing.py` 7, `test_pilot3_no_company_literals.py` 7.
+  atoms when no other table holds the metric (`source: page_atom`) and never serve a `change` atom as the level,
+  nor an atom whose unit is not the metric definition's family: the families come from the definitions already in
+  the repo -- the KPI lexicon's `metric: unit` entries (`kpi.load_lexicon`, what `kpi_series` is extracted with)
+  and the ratio formulas' `metric: unit` (`ratios.FORMULAS`, behind `ratio_panel`) -- so a margin / ROE / growth
+  metric takes only `pct` / `bps`, a revenue / PAT / EBITDA / debt / capex / order-book metric only `inr` / `usd`
+  with a scale, and an `x` / `days` / `count` metric only its own unit. A metric no definition names is not
+  filtered (only a definition can prove a unit wrong). `pilot3_topic` lists the atoms on the theme's pages.
+  `coverage` names `page_atom` and `page_cell` in exactly one list each.
+- **Tests.** `test_pilot3_atoms.py` 24 (the eight real results headers, the as-at balance sheet, the chart table
+  whose periods are rows, growth columns, ambiguous spans and header/label conflicts), `test_v2_page_reader.py` 10
+  (`--basetemp` is refused inside the dsh sandbox, so the sandbox run uses `-p no:tmpdir` and the documented temp
+  override), `test_pilot3_schema_version.py` 8 (v0 / v8 / v9 -> v10, twice idempotent), `test_lookups_pilot3.py`
+  82 passed + 1 skipped (the unit-family class: AUM served in crore not as the pct atom, interest coverage served
+  as `x` not rupees, EBITDA margin served as pct not rupees), `test_store_routing.py` 7,
+  `test_pilot3_no_company_literals.py` 7. Measured read-only on `aurobindo.db`: of 5,973 printed results cells,
+  `period_key` alone resolved 0 and the round-2 resolver reads 5,818 (97.4%; 155 carry no period at all --
+  "S.No", `col2`, cover-letter cells -- and 0 are ambiguous).
 
 ## 3. Extraction methods (what works, what failed)
 - **Documents**: collected per company into `D:\RealityEngine\pilot3\pages.db`. Dates: `known_at` = exchange

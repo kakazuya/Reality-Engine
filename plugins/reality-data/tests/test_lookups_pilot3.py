@@ -1456,5 +1456,74 @@ class T199NoAtomTests(unittest.TestCase):
         self.assertEqual(out["answer"]["source"]["table"], "page_cell")
 
 
+class T199AtomUnitFamilyTests(unittest.TestCase):
+    """T-199 round 2: an atom whose unit is not the family its metric's definition carries is never served.
+
+    Two metrics no extractor table holds: AUM (money) is printed both in crore and as a pct, and interest
+    coverage (a multiple, ``x``) both as a multiple and as rupees.  The store's own order would serve the wrong
+    one first (verified, newest, lowest page): only the definition's unit family keeps it out."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_fixture()
+        c = sqlite3.connect(DB)
+        now = "2026-08-10T17:00:00"
+        later = "2026-09-10T17:00:00"
+        rows = [
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 3, now, "Key metrics", "AUM",
+             "Q1FY27", "q1fy27", "", "inr", 1e7, 45000.0, "45,000", "", None, None, None, None,
+             "haiku_sub", "verified", "", now),
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 4, later, "Key metrics", "AUM",
+             "Q1FY27", "q1fy27", "", "pct", 1.0, 12.5, "12.5%", "", None, None, None, None,
+             "haiku_sub", "verified", "", now),
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 5, now, "Key metrics", "Interest coverage",
+             "Q1FY27", "q1fy27", "", "inr", 1e7, 999.0, "999", "", None, None, None, None,
+             "haiku_sub", "verified", "", now),
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 6, now, "Key metrics", "Interest coverage",
+             "Q1FY27", "q1fy27", "", "x", 1.0, 3.4, "3.4x", "", None, None, None, None,
+             "haiku_sub", "verified", "", now),
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 7, now, "Key metrics", "EBITDA margin",
+             "Q1FY27", "q1fy27", "", "inr", 1e7, 1234.0, "1,234", "", None, None, None, None,
+             "haiku_sub", "verified", "", now),
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 8, now, "Key metrics", "EBITDA margin",
+             "Q1FY27", "q1fy27", "", "pct", 1.0, 18.4, "18.4%", "", None, None, None, None,
+             "haiku_sub", "verified", "", now),
+        ]
+        c.executemany("INSERT INTO page_atom VALUES (" + ",".join("?" * 24) + ")", rows)
+        c.commit()
+        c.close()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def test_an_amount_metric_is_never_served_a_pct_atom(self):
+        out = p3.fact("KEC", "aum")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "atoms")
+        self.assertEqual(out["answer"]["value"], 45000.0)
+        self.assertEqual(out["answer"]["unit"], "inr")
+        self.assertNotIn("pct", {alt["unit"] for alt in out["alternatives"]})
+
+    def test_a_ratio_metric_is_never_served_a_money_atom(self):
+        out = p3.fact("KEC", "interest coverage")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "atoms")
+        self.assertEqual(out["answer"]["value"], 3.4)
+        self.assertEqual(out["answer"]["unit"], "x")
+        self.assertNotIn("inr", {alt["unit"] for alt in out["alternatives"]})
+
+    def test_a_percent_metric_is_never_served_a_money_atom(self):
+        out = p3.fact("KEC", "ebitda margin")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "atoms")
+        self.assertEqual(out["answer"]["value"], 18.4)
+        self.assertEqual(out["answer"]["unit"], "pct")
+        self.assertNotIn("inr", {alt["unit"] for alt in out["alternatives"]})
+
+
 if __name__ == "__main__":
     unittest.main()

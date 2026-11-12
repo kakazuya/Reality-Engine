@@ -781,13 +781,16 @@ python -m pytest reality_engine/tests/test_pilot3_kpi.py -q
   haiku_sub`. `reality_engine/pilot3/atoms.py` (`--store`, `--duplicates`, build part `atoms` after `checks`) writes
   `page_atom` (migration v10 in `schema.py`) with the resolved `period` / `basis` / `unit` / `scale` / `value`, the
   label's `definition` and `check_status` (`verified` only when position-checked AND period+unit resolved; else
-  `unverified` + `check_reasons`); a change marker with no header is unit `change`, never a level, and two values for
-  one row/period/basis in one document are both `same_doc_conflict`. `pilot3_cells` serves the atoms (resolved fields,
-  period filter on the resolved column) and falls back to `page_cell` only while the store has no atom rows;
-  `pilot3_fact`/`pilot3_kpi` fall back to atoms (`source: page_atom`), never serving a change atom as the level;
+  `unverified` + `check_reasons`); the period reads a dated results header ("QUARTER ENDED (UNAUDITED) >
+  30.09.2025" -> `q2fy26`, "AS AT 31.03.2025" -> `fy25` with `as_at`) and a row label that is a period before
+  falling back to the document's, a growth column (`YoY`, `QoQ`, `Chg`, `▲`) is unit `change`, never a level, and
+  two values for one row/period/basis in one document are both `same_doc_conflict`. `pilot3_cells` serves the atoms
+  (resolved fields, period filter on the resolved column) and falls back to `page_cell` only while the store has no
+  atom rows; `pilot3_fact`/`pilot3_kpi` fall back to atoms (`source: page_atom`), never serving a change atom as the
+  level nor an atom whose unit is not the family the metric's own definition carries (KPI lexicon / ratio formulas);
   `pilot3_topic` lists atoms. Files: `reality_engine/v2/page_reader.py`, `reality_engine/pilot3/{atoms,schema,build}.py`,
-  `plugins/reality-data/server/lookups_pilot3.py`; tests `test_v2_page_reader.py` 10, `test_pilot3_atoms.py` 16,
-  `test_pilot3_schema_version.py` 8 (migration v10 twice idempotent), `test_lookups_pilot3.py` 79 + 1 skipped,
+  `plugins/reality-data/server/lookups_pilot3.py`; tests `test_v2_page_reader.py` 10, `test_pilot3_atoms.py` 24,
+  `test_pilot3_schema_version.py` 8 (migration v10 twice idempotent), `test_lookups_pilot3.py` 82 + 1 skipped,
   `test_store_routing.py` 7, `test_pilot3_no_company_literals.py` 7. Blueprint section 2 (T-199 block).
 - **T-203: one server, every store (12 Nov 2026).** A test company in its own store no longer needs an edit to
   `.mcp.json`: `REALITY_PILOT3_STORES` names a registry JSON (`D:/RealityEngine/stores.json` by default, generated

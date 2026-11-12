@@ -229,3 +229,107 @@ def test_a_store_without_page_cell_is_skipped():
     con.commit()
     con.close()
     assert atoms.run(db) == {"skipped": "no page_cell table"}
+
+
+# --- T-199 round 2: periods printed as rows, dated results headers, growth columns ---------------------
+
+def test_a_chart_table_with_periods_as_rows_resolves_each_year():
+    """Haiku's chart reply prints the period as the ROW label; the filing's own period must not be used."""
+    base = _base()
+    page = "TABLE: Orders Booked (Rs Cr)\nCOLUMNS: \nFY23 | 5573\nFY24 | 5477"
+    db = _db(base, [_cell(row_label="FY23", col_header="", value_text="5573", unit_text="Rs crore"),
+                    _cell(row_label="FY24", col_header="", value_text="5477", unit_text="Rs crore")],
+             page_text=page, kpi=[("TST", "order_book", "Q2FY27", "d1")])
+    atoms.run(db)
+    rows = _rows(db)
+    assert {row["period"] for row in rows} == {"fy23", "fy24"}
+    assert not any("period_from_document" in row["check_reasons"] for row in rows)
+    assert all(row["check_status"] == "verified" for row in rows), [r["check_reasons"] for r in rows]
+
+
+def test_a_growth_column_is_a_change_whatever_the_value_prints():
+    for header in ("YoY", "QoQ", "Growth", "% chg", "Var", "Change", "▲", "vs"):
+        base = _base()
+        db = _db(base / header.replace(" ", "_").replace("%", "pct"), [
+            _cell(row_label="Revenue", col_header=header, value_text="6%", unit_text="")])
+        atoms.run(db)
+        atom = _rows(db)[0]
+        assert atom["unit"] == "change", header
+        assert "change_not_level" in atom["check_reasons"], header
+        assert atom["check_status"] == "unverified", header
+
+
+def test_each_results_header_resolves_its_indian_fiscal_period():
+    headers = [("HALF YEAR ENDED (UNAUDITED) > 30.09.2025", "h1fy26"),
+               ("HALF YEAR ENDED > (UNAUDITED) > 30.09.2024", "h1fy25"),
+               ("QUARTER ENDED (UNAUDITED) > 30.09.2025", "q2fy26"),
+               ("AS AT > 30.09.2025 > (UNAUDITED)", "h1fy26"),
+               ("AS AT > 31.03.2025 > (AUDITED)", "fy25"),
+               ("YEAR ENDED (AUDITED) > 31.03.2026", "fy26"),
+               ("QUARTER ENDED (UNAUDITED) (Refer Note 2) > 31.03.2024", "q4fy24"),
+               ("QUARTER ENDED 30th September, 2025", "q2fy26"),
+               ("QUARTER ENDED September 30, 2025", "q2fy26"),
+               ("QUARTER ENDED 30-Sep-25", "q2fy26"),
+               ("NINE MONTHS ENDED 31.12.2025", "9mfy26"),
+               ("Consolidated > QUARTER ENDED (UNAUDITED) > 30.09.2025", "q2fy26")]
+    base = _base()
+    db = _db(base, [_cell(row_label=f"Row {i}", col_header=header, value_text="1,234")
+                    for i, (header, _key) in enumerate(headers)])
+    atoms.run(db)
+    got = {row["col_header"]: row["period"] for row in _rows(db)}
+    assert got == dict(headers)
+
+
+def test_a_span_that_does_not_fit_its_end_month_is_ambiguous_not_the_documents_period():
+    base = _base()
+    db = _db(base, [_cell(row_label="Revenue", col_header="HALF YEAR ENDED > 31.12.2025")],
+             kpi=[("TST", "order_book", "Q2FY27", "d1")])
+    atoms.run(db)
+    atom = _rows(db)[0]
+    assert atom["period"] == ""
+    assert "period_ambiguous" in atom["check_reasons"]
+    assert "period_from_document" not in atom["check_reasons"]
+
+
+def test_a_header_and_a_row_label_naming_different_periods_are_ambiguous():
+    base = _base()
+    db = _db(base, [_cell(row_label="FY24", col_header="Q2FY26")])
+    atoms.run(db)
+    atom = _rows(db)[0]
+    assert atom["period"] == ""
+    assert "period_ambiguous" in atom["check_reasons"]
+
+
+def test_a_row_label_that_is_a_period_or_carries_one_at_an_edge_is_that_period():
+    base = _base()
+    db = _db(base / "a", [_cell(row_label="Q3 FY25", col_header="")])
+    atoms.run(db)
+    assert _rows(db)[0]["period"] == "q3fy25"
+    db = _db(base / "b", [_cell(row_label="Revenue FY24", col_header="")])
+    atoms.run(db)
+    assert _rows(db)[0]["period"] == "fy24"
+    db = _db(base / "c", [_cell(row_label="Revenue for FY24 in India", col_header="")])
+    atoms.run(db)
+    atom = _rows(db)[0]
+    assert atom["period"] == "" and "period_unresolved" in atom["check_reasons"]
+
+
+def test_a_balance_sheet_as_at_header_is_informational_not_a_doubt():
+    base = _base()
+    db = _db(base, [_cell(row_label="Net debt", col_header="AS AT > 31.03.2025 > (AUDITED)",
+                         value_text="1,500", unit_text="Rs crore")])
+    atoms.run(db)
+    atom = _rows(db)[0]
+    assert atom["period"] == "fy25"
+    assert "as_at" in atom["check_reasons"]
+    assert atom["check_status"] == "verified"
+
+
+def test_a_consolidated_column_header_sets_the_basis():
+    base = _base()
+    db = _db(base, [_cell(col_header="Consolidated > QUARTER ENDED (UNAUDITED) > 30.09.2025")],
+             page_text="")
+    atoms.run(db)
+    atom = _rows(db)[0]
+    assert atom["basis"] == "consolidated"
+    assert atom["period"] == "q2fy26"

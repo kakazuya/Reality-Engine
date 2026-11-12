@@ -19,6 +19,7 @@ from __future__ import annotations
 import contextvars
 import datetime as dt
 import difflib
+import functools
 import json
 import os
 import re
@@ -591,8 +592,65 @@ def _atom_matches(metric: str, label: str) -> bool:
     return bool(key) and (norm == key or norm == alias or norm.startswith(key + "_") or key in norm)
 
 
+@functools.lru_cache(maxsize=1)
+def _metric_units() -> dict[str, str]:
+    """metric -> the unit its own definition already carries: the KPI lexicon's entries (what ``kpi_series`` is
+    extracted with) and the ratio formulas behind ``ratio_panel`` (T-199 round 2)."""
+    from reality_engine.pilot3 import kpi as p3_kpi
+    from reality_engine.pilot3 import ratios as p3_ratios
+    units = {entry.metric: entry.unit for entry in p3_kpi.load_lexicon()[0] if entry.unit}
+    units.update({formula[1]: formula[4] for formula in p3_ratios.FORMULAS})
+    return units
+
+
+def _unit_family(unit: str | None) -> str:
+    """pct / x / days / count / money / '' for a unit a metric definition or an atom carries."""
+    key = str(unit or "").strip().lower()
+    if key in ("pct", "percent", "bps", "basis_points", "basis points"):
+        return "pct"
+    if key in ("x", "ratio", "multiple", "times"):
+        return "x"
+    if key.startswith("days"):
+        return "days"
+    if key.startswith("count") or key in ("mn", "million"):
+        return "count"
+    if key.startswith(("inr", "usd", "money")):
+        return "money"
+    return ""
+
+
+def _metric_family(metric: str) -> str:
+    """The unit family the metric's own definition carries; '' when no definition names the metric."""
+    key = _metric_key(metric)
+    units = _metric_units()
+    for name in (key, _KPI_WORDS.get(key, key), f"{key}_pct"):
+        if name in units:
+            return _unit_family(units[name])
+    for name, unit in units.items():
+        if name.startswith(key + "_") or key in name:
+            return _unit_family(unit)
+    return ""
+
+
+def _atom_unit_fits(metric: str, unit: str | None, scale: float | None) -> bool:
+    """T-199 round 2: is this atom's unit the family the metric's own definition carries?
+
+    A ``change`` atom is never a level; a metric whose definition is known takes only an atom of the same family
+    (a margin pct/bps, a revenue or a PAT inr/usd with a scale, a ratio x, a days KPI days).  A metric no
+    definition names is not filtered: only a definition can prove a unit is the wrong one."""
+    if str(unit or "") == "change":
+        return False
+    want = _metric_family(metric)
+    if not want:
+        return True
+    return _unit_family(unit) == want and (want != "money" or bool(scale))
+
+
 def _kpi_atoms(sym: str, metric: str, period: str | None, day: str | None, limit: int) -> list[dict[str, Any]]:
-    """T-199: the resolved printed figures for a KPI no extractor table holds, served as ``page_atom`` rows."""
+    """T-199: the resolved printed figures for a KPI no extractor table holds, served as ``page_atom`` rows.
+
+    Only an atom whose row label names the KPI and whose unit fits the metric's own definition is served: a pct
+    atom never answers an amount KPI, nor an inr atom a ratio (T-199 round 2)."""
     if not _has_table("page_atom"):
         return []
     words = [w for w in re.split(r"[^a-z0-9%]+", str(metric or "").lower()) if len(w) >= 2]
@@ -618,6 +676,8 @@ def _kpi_atoms(sym: str, metric: str, period: str | None, day: str | None, limit
     out: list[dict[str, Any]] = []
     for r in rows:
         if not _atom_matches(metric, r["row_label"]):
+            continue
+        if not _atom_unit_fits(metric, r["unit"], r["scale"]):     # T-199 r2: a pct atom is never the amount
             continue
         out.append({"metric": _metric_key(r["row_label"]), "dimension": "total", "value": r["value"],
                     "unit": r["unit"], "scale": r["scale"], "period": r["period"] or label,
@@ -3272,7 +3332,8 @@ def _fact_atoms(sym: str, metric: str, period: str | None, day: str | None) -> d
     """T-199: the resolved printed figure when no pilot3 table holds the metric; ``source: page_atom`` labels it.
 
     The atom's ``row_label`` is the company's own words, so it is compared as the metric key (spaces as _); a
-    ``change`` atom (a ▲/▼ move with no column header) is never served as the metric's level."""
+    ``change`` atom (a growth column, or a ▲/▼ move with no column header) is never served as the metric's level,
+    and neither is an atom whose unit is not the family the metric's own definition carries (T-199 round 2)."""
     if not _has_table("page_atom"):
         return None
     key = _metric_key(metric)
@@ -3303,7 +3364,8 @@ def _fact_atoms(sym: str, metric: str, period: str | None, day: str | None) -> d
         norm = _metric_key(label_text or "")
         return norm == key or norm == alias or norm.startswith(key + "_") or key in norm
 
-    rows = [r for r in rows if matches(r["row_label"]) or matches(f"{r['row_label']} {r['table_title']}")]
+    rows = [r for r in rows if (matches(r["row_label"]) or matches(f"{r['row_label']} {r['table_title']}"))
+            and _atom_unit_fits(metric, r["unit"], r["scale"])]      # T-199 r2: the unit family must fit
     if not rows:
         return None
     row = rows[0]

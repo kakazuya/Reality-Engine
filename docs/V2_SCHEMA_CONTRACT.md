@@ -1530,10 +1530,11 @@ file:<DIR>` reads `<DIR>/b*/<stem>.reply.txt`, returns `status='error'`, `error=
 the second pass and stores `page_read.reader` / `page_cell.reader` as `haiku_sub`; parse_grid, settle_page and the
 digit check are unchanged. `python -m reality_engine.pilot3.atoms --store S [--duplicates CSV]` (build part `atoms`,
 after `checks`) resolves each non-quarantined cell into `page_atom` (schema v10) and `pilot3_cells`/`pilot3_fact`/
-`pilot3_kpi`/`pilot3_topic` read it; the resolution rules and statuses are in `docs/PILOT3_BLUEPRINT.md` section 2
-(T-199 block). Tests: `reality_engine/tests/test_v2_page_reader.py` 10 passed, `reality_engine/tests/
-test_pilot3_atoms.py` 16 passed, `reality_engine/tests/test_pilot3_schema_version.py` 8 passed (v10 twice
-idempotent), `plugins/reality-data/tests/test_lookups_pilot3.py` 79 passed + 1 skipped.
+`pilot3_kpi`/`pilot3_topic` read it; the resolution rules (dated results headers, periods printed as rows, growth
+columns, the metric's unit family) and statuses are in `docs/PILOT3_BLUEPRINT.md` section 2 (T-199 block). Tests:
+`reality_engine/tests/test_v2_page_reader.py` 10 passed, `reality_engine/tests/test_pilot3_atoms.py` 24 passed,
+`reality_engine/tests/test_pilot3_schema_version.py` 8 passed (v10 twice idempotent),
+`plugins/reality-data/tests/test_lookups_pilot3.py` 82 passed + 1 skipped.
 
 **Reader smoke (11 Nov 23:59, Dots on the page image).** `page_reader --routes <the 6 table_or_chart rows> --input image
 --into-store --reader dots-studio/dots-3-note-preview:free@kilo2 --workers 2` on the n10 copy read 6 of 6 pages with 0

@@ -3,20 +3,26 @@
 ``page_reader`` reads a page into ``page_cell`` rows (one per printed cell, position-checked).  This module turns
 each non-quarantined cell that holds a figure into one atom:
 
-* **period** -- ``row_checks.period_key`` on the column header, then the table title, then the page's one printed
-  header line.  A relative header ("Q2", "H1", "Current quarter") resolves only against a fiscal year printed on the
-  same page.  An empty column header on a KPI tile page (``COLUMNS:  | Q2FY26`` in the prototype) resolves to the
-  reporting period the build already assigns the document (``kpi_series.fiscal_period``,
-  ``fin_quarter_printed.fiscal_period``, ``transcript_statement.call_period``, ``fin_annual_line.fiscal_year``,
-  ``doc_identity.fiscal_year``), never parsed from the title, with reason ``period_from_document`` and status at
-  most ``unverified``.  Anything else is empty with ``period_unresolved``.
-* **basis** -- ``consolidated`` / ``standalone`` from the table title, else the page text when exactly one is
-  printed alone.
+* **period** -- ``row_checks.period_key`` on the column header (a dated results header first: "QUARTER ENDED
+  (UNAUDITED) > 30.09.2025" is ``q2fy26``, "AS AT 31.03.2025" is ``fy25`` with the informational reason
+  ``as_at``, mapped by ``row_checks.period_end``'s April-March calendar), then the row label (a chart table prints
+  periods as rows: a label that is a period or starts / ends with one), then the table title, then the page's one
+  printed header line.  A relative header ("Q2", "H1", "Current quarter") resolves only against a fiscal year
+  printed on the same page.  A header and a row label that name two different periods, and a printed span that
+  fits no period ("half year ended 31.12"), are ``period_ambiguous`` -- never the document's period.  An empty
+  column header on a KPI tile page (``COLUMNS:  | Q2FY26`` in the prototype) resolves to the reporting period the
+  build already assigns the document (``kpi_series.fiscal_period``, ``fin_quarter_printed.fiscal_period``,
+  ``transcript_statement.call_period``, ``fin_annual_line.fiscal_year``, ``doc_identity.fiscal_year``), never
+  parsed from the title, with reason ``period_from_document`` and status at most ``unverified``.  Anything else is
+  empty with ``period_unresolved``.
+* **basis** -- ``consolidated`` / ``standalone`` from the table title, else the column header ("Consolidated >
+  QUARTER ENDED ..."), else the page text when exactly one is printed alone.
 * **unit and scale** -- the cell's own unit text; else the page's single scale declaration (``unit_scales`` /
   ``check_page_unit`` logic).  ``%``, ``x``, ``days`` and a count keep their unit with scale 1; two different
-  declarations on the page leave the unit unresolved.  An empty header whose value carries a change marker
-  (▲/▼, "up by", "bps") is a change, unit ``change``, never a level, and the serving tools never answer a metric
-  with it.
+  declarations on the page leave the unit unresolved.  A growth column (``YoY``, ``QoQ``, ``Growth``, ``Chg``,
+  ``Var``, ``▲``/``▼``) is unit ``change``, never a level, whatever the value prints; so is an empty header whose
+  value carries a change marker (▲/▼, "up by", "bps").  The serving tools never answer a metric with a ``change``
+  atom, nor with an atom whose unit family is not the one the metric's own definition carries.
 * **value** -- ``(1,234)`` is negative, ``-`` / ``Nil`` is no figure (no atom), ``12.3%`` is 12.3 with unit ``pct``.
 * **definition** -- a printed legend in the row label's brackets, else the label's own qualifier through
   ``row_checks.definition_key`` (T-198).  The full label is kept (the legend is part of what the row is).
@@ -63,9 +69,26 @@ _BASIS = re.compile(r"\b(consolidated|standalone)\b", re.I)
 _NUMBER = re.compile(r"[-+]?\d[\d\u00a0\s,]*(?:\.\d+)?")
 _NO_FIGURE = {"-", "–", "—", "na", "n/a", "nil", "none", "nm", "*"}
 _CHANGE_MARK = re.compile(r"[▲▼△▽]|\b(?:up|down|higher|lower)\s+by\b|\bbps\b|basis\s*points?", re.I)
+# T-199 round 2: a growth column prints a change, never the level, whatever the number beside it says.
+_GROWTH_HEADER = re.compile(r"\b(?:yoy|y-o-y|qoq|q-o-q|growth|change|chg|var|variance|vs)\b|[▲▼]", re.I)
 _LEGEND = re.compile(r"\(([^()]{2,})\)\s*$")
 _HEAD_REL = re.compile(r"^(?:q([1-4])|h([12])|(9m|nine\s+months?)|(?:current|this)\s+(quarter|qtr)|"
                        r"(?:current|this)\s+half|(ytd|year[\s-]*to[\s-]*date))$", re.I)
+# T-199 round 2 (defect 4): a results header prints its span word and its end date, which
+# ``row_checks.period_key`` does not read: "HALF YEAR ENDED (UNAUDITED) > 30.09.2025".
+_DATE_SPAN = re.compile(
+    r"\b(?:(?P<q>quarter|three\s+months?|3\s+months?)|(?P<h>half[\s-]?year|six\s+months?|6\s+months?)|"
+    r"(?P<nine>nine\s+months?|9\s+months?)|(?P<fy>year|twelve\s+months?|12\s+months?))\b", re.I)
+_AS_AT = re.compile(r"\bas\s+at\b", re.I)
+_MONTH_NUM = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6, "jul": 7, "aug": 8, "sep": 9,
+              "sept": 9, "oct": 10, "nov": 11, "dec": 12}
+# The date forms ``doc_identity._YEAR_END_RE`` reads, with the day and month captured as well.
+_HEADER_DATE = re.compile(
+    r"\b(?P<d1>\d{1,2})(?:st|nd|rd|th)?[\s./-]+(?P<m1>jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*"
+    r"[,\s./'-]+(?P<y1>\d{4}|\d{2})\b"
+    r"|\b(?P<m2>jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\s+(?P<d2>\d{1,2})(?:st|nd|rd|th)?"
+    r"[,\s]+(?P<y2>\d{4}|\d{2})\b"
+    r"|\b(?P<d3>\d{1,2})[./-](?P<m3>\d{1,2})[./-](?P<y3>\d{4}|\d{2})\b", re.I)
 _VOCAB: row_checks.Vocab | None = None
 
 
@@ -104,6 +127,95 @@ def _header_line_period(page_text: str) -> str:
     return next(iter(keys)) if len(keys) == 1 else ""
 
 
+def _iso_date(m: re.Match[str]) -> str:
+    """The ISO date a ``_HEADER_DATE`` match prints, or '' when its month or day is impossible."""
+    for day, month, year in ((m.group("d1"), m.group("m1"), m.group("y1")),
+                             (m.group("d2"), m.group("m2"), m.group("y2")),
+                             (m.group("d3"), m.group("m3"), m.group("y3"))):
+        if not day or not month or not year:
+            continue
+        num = int(month) if month.isdigit() else _MONTH_NUM.get(month.lower(), 0)
+        yy = int(year)
+        yy = 2000 + yy if len(year) == 2 else yy
+        try:
+            return f"{datetime(yy, num, int(day)):%Y-%m-%d}"
+        except ValueError:
+            return ""
+    return ""
+    return ""
+
+
+def _last_header_date(text: str) -> str:
+    """The last date a header prints ("HALF YEAR ENDED > 30.09.2025"), as ISO, else ''."""
+    found = ""
+    for m in _HEADER_DATE.finditer(text or ""):
+        found = _iso_date(m) or found
+    return found
+
+
+def _date_header_period(text: str) -> tuple[str, str]:
+    """(period key, why) for a header that prints its own span word and end date, else ('', '').
+
+    "QUARTER ENDED (UNAUDITED) > 30.09.2025" -> q2fy26, "AS AT 31.03.2025" -> fy25 with why ``as_at``.  The
+    calendar is ``row_checks.period_end``'s (Indian April-March), never a second one: the key is accepted only when
+    the last day that key names is exactly the printed date.  A printed span that does not fit the date (a half year
+    ended 31.12) is ``period_ambiguous``, never guessed and never the document's period."""
+    joined = re.sub(r"\s*[>|]\s*", " ", text or "")
+    iso = _last_header_date(joined)
+    if not iso:
+        return "", ""
+    span = _DATE_SPAN.search(joined)
+    as_at = bool(_AS_AT.search(joined))
+    if not span and not as_at:
+        return "", ""
+    year, month = int(iso[:4]), int(iso[5:7])
+    fy = year if month <= 3 else year + 1
+    yy = fy % 100
+    head: str | None = None
+    if span and span.group("q"):
+        head = {3: "q4", 6: "q1", 9: "q2", 12: "q3"}.get(month)
+    elif span and span.group("h"):
+        head = {3: "h2", 9: "h1"}.get(month)
+    elif span and span.group("nine"):
+        head = "9m" if month == 12 else None
+    elif span:                                # a full year
+        head = "" if month == 3 else None
+    elif month in (3, 6, 9, 12):              # "as at": the period that balance-sheet date ends
+        head = {3: "", 6: "q1", 9: "h1", 12: "9m"}[month]
+    if head is not None and row_checks.period_end(f"{head}fy{yy:02d}") == iso:
+        return f"{head}fy{yy:02d}", ("as_at" if not span else "")
+    return "", "period_ambiguous"
+
+
+def _header_period(text: str) -> tuple[str, str]:
+    """(period key, why not resolved) for one printed header text: its dated span first, then its period label."""
+    key, why = _date_header_period(text)
+    if key or why:
+        return key, why
+    key = row_checks.period_key(text)
+    return (key, "") if key else ("", "")
+
+
+def _label_period(row_label: str) -> str:
+    """A row label that is a period or carries one as its first or last tokens ("FY24", "Q3 FY25", "Revenue FY24").
+
+    A period buried inside a longer label ("H1FY26 revenue for the group") is not taken: the label is the row's
+    name there, not a period column."""
+    label = re.sub(r"\s+", " ", (row_label or "").strip())
+    if not label:
+        return ""
+    key = row_checks.period_key(label)
+    if key:
+        return key
+    words = label.split(" ")
+    for size in (3, 2, 1):
+        for part in (words[:size], words[-size:]):
+            key = row_checks.period_key(" ".join(part))
+            if key:
+                return key
+    return ""
+
+
 def _current_quarter(known_at: str) -> tuple[str, str]:
     """(quarter head, fiscal year two digits) of an Indian fiscal quarter, from a filing date; ('', '') if none."""
     try:
@@ -116,12 +228,28 @@ def _current_quarter(known_at: str) -> tuple[str, str]:
 
 
 def resolve_period(col_header: str, table_title: str, page_text: str, known_at: str = "",
-                   doc_period: str = "") -> tuple[str, str]:
-    """(period key like ``q2fy26``, why not resolved) for one printed cell."""
-    for text in (col_header, table_title):
-        key = row_checks.period_key(text)
-        if key:
-            return key, ""
+                   doc_period: str = "", row_label: str = "") -> tuple[str, str]:
+    """(period key like ``q2fy26``, why not resolved) for one printed cell.
+
+    Order: the column header, then the row label (a chart table prints periods as rows), then the table title,
+    then the page's one printed header line, then a relative header, then the period the build assigns the
+    document.  A date header counts before its plain period label on the same text ("QUARTER ENDED > 30.09.2025"),
+    and a header and a row label that name two different periods are ``period_ambiguous``, never a silent pick."""
+    col_key, col_why = _header_period(col_header)
+    row_key = _label_period(row_label)
+    if col_key and row_key and col_key != row_key:
+        return "", "period_ambiguous"
+    if col_key:
+        return col_key, col_why
+    if col_why:                                          # a printed span that fits no period: never the document's
+        return "", col_why
+    if row_key:
+        return row_key, ""
+    key, why = _header_period(table_title)
+    if key:
+        return key, why
+    if why:                                              # a printed span that fits no period: never guessed
+        return "", why
     key = _header_line_period(page_text)
     if key:
         return key, ""
@@ -152,13 +280,14 @@ def resolve_period(col_header: str, table_title: str, page_text: str, known_at: 
 
 
 # --- basis -------------------------------------------------------------------------------------------
-def resolve_basis(table_title: str, page_text: str) -> str:
-    """``consolidated`` / ``standalone`` from the table title, else the page when it prints exactly one alone."""
-    title = {m.group(1).lower() for m in _BASIS.finditer(table_title or "")}
-    if len(title) == 1:
-        return title.pop()
-    if len(title) > 1:
-        return ""
+def resolve_basis(table_title: str, page_text: str, col_header: str = "") -> str:
+    """``consolidated`` / ``standalone`` from the table title, else the column header, else the page printed alone."""
+    for text in (table_title, col_header):
+        names = {m.group(1).lower() for m in _BASIS.finditer(text or "")}
+        if len(names) == 1:
+            return names.pop()
+        if len(names) > 1:
+            return ""
     page = {m.group(1).lower() for m in _BASIS.finditer(page_text or "")}
     return page.pop() if len(page) == 1 else ""
 
@@ -323,9 +452,11 @@ def atom_from_cell(cell: dict[str, Any]) -> dict[str, Any] | None:
     row_label = cell.get("row_label") or ""
     col_header = cell.get("col_header") or ""
     period, period_why = resolve_period(col_header, cell.get("table_title") or "", page_text,
-                                        cell.get("known_at") or "", cell.get("doc_period") or "")
-    basis = resolve_basis(cell.get("table_title") or "", page_text)
-    change = not col_header.strip() and bool(_CHANGE_MARK.search(cell.get("value_text") or ""))
+                                        cell.get("known_at") or "", cell.get("doc_period") or "", row_label)
+    basis = resolve_basis(cell.get("table_title") or "", page_text, col_header)
+    # a growth column is a change whatever it prints; an empty header keeps the printed ▲/▼ marker's meaning
+    change = bool(_GROWTH_HEADER.search(col_header)) or (
+        not col_header.strip() and bool(_CHANGE_MARK.search(cell.get("value_text") or "")))
     if change:                                   # a change marker is never the metric's level
         unit, scale, unit_why = "change", 1.0, ""
     else:
@@ -341,6 +472,8 @@ def atom_from_cell(cell: dict[str, Any]) -> dict[str, Any] | None:
         reasons.append("change_not_level")
     if not row_label.strip():
         reasons.append("label_missing")
+    # ``as_at`` only says how the balance-sheet date was read: it is not a doubt about the figure
+    blocking = [reason for reason in reasons if reason != "as_at"]
     return {
         "symbol": cell.get("symbol") or "", "isin": cell.get("isin") or "",
         "doc_key": cell.get("doc_key") or "", "doc_type": cell.get("doc_type") or "",
@@ -351,7 +484,7 @@ def atom_from_cell(cell: dict[str, Any]) -> dict[str, Any] | None:
         "definition": definition_of(row_label),
         "x0": cell.get("x0"), "y0": cell.get("y0"), "x1": cell.get("x1"), "y1": cell.get("y1"),
         "reader": cell.get("reader") or "",
-        "check_status": "unverified" if reasons else "verified",
+        "check_status": "unverified" if blocking else "verified",
         "check_reasons": ",".join(reasons),
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
