@@ -1,13 +1,13 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-12 19:20 IST (Eagle)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-13 (Eagle, T-199 round 2)
 History `docs/state_history/` (previous: `STATE_2026-11-12_1410.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
 - Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; u8/p20/q12 rebuilt 11 Nov 17:10 (T-161..T-166, v8.1, T-187), backups `*_before_rebuild_2026-11-11.db`; reality-data restart needed.
-- Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; only table_or_chart read, on the page IMAGE) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`.
+- Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; only table_or_chart read, on the page IMAGE) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
 - Checker (T-185) misses 174/264 right cells on 7 truth pages; garbled scan layers confirm wrong cells (T-175).
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go; Kilo key 1 exhausted, Dots `@kilo2` quota ran out 12 Nov 00:31.
 - T-188 reader bake-off (30 frozen2 pages, P/R): Haiku 91.1/95.2, Dots image 83.8/89.6, DeepSeek image 82.9/75.0, GLM-OCR local 80.8/64.4; details `docs/V2_SCHEMA_CONTRACT.md` s14 and `D:/RealityEngine/v2/reference_pages_frozen2/`.
-- T-189 AUROPHARMA, 4 models graded (12 Nov): Haiku 81.2%, DeepSeek 76.8%, Gemini 72.5%, MiMo 25/41; none passes 92%. Top miss = stopped early. Report `D:/RealityEngine/reports/2026-11-12_four_model_answer_test.html`. 12 Nov: SHP XBRL fetched (all categories, pledge, exact share count); Q2FY27 transcript not on BSE yet.
+- T-189 AUROPHARMA (12 Nov): Haiku 81.2%, DeepSeek 76.8%; report `reports/2026-11-12_four_model_answer_test.html`.
 - HP TextRecognizer 1.0.1.0 installed and kept (T-190; key deleted, cert TrustedPeople only).
 - Disclosures: run ledger (p20 fitted 99.6% vs honest 54.8%; T-189 reader arms).
 
@@ -18,7 +18,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-000. T-199 BLUESTARCO (`tasks/handoff/T-199_BLUESTAR_ATOM_PLAN.md`), 13 Nov: bluestar.db rebuilt v9 + registered; HP OCR 129/143 (`bluestar/ocr/ocr_bluestar.db`); routes `bluestar/routes.csv` (3,907 table/chart, ~2,060 duplicates). Atom code: dsh 20261112T182128Z-aaf5059f, brief `T-199_ATOM_BRIEF.md`; Haiku rules `T-199_HAIKU_READER.md`. Pending: Haiku reading, truth sample, answers, grading.
+000. T-199 BLUESTARCO (`tasks/handoff/T-199_BLUESTAR_ATOM_PLAN.md`), 13 Nov: bluestar.db rebuilt v9 + registered; HP OCR 129/143; routes `bluestar/routes.csv`. Atom code r1+r2 MERGED 13 Nov (page_atom v10, `pilot3/atoms.py`, export, file reader; 36-page test: 1,036/2,087 verified, 12 no period). Haiku 72/134 batches read (`bluestar/haiku/`), paused for Pro limit, resumes 02:25 at 2 parallel. Next: load + atoms, truth sample, answers, grading. Follow-up: repeated labels lose their section heading (same_doc_conflict).
 00. T-195 DONE: re-run after fixes, DeepSeek 85.5% / 84.1% (2 runs), Haiku 76.8%; `reports/2026-11-12_aurobindo_rerun.html`. T-196 DONE (`reports/2026-11-12_why_answers_stop.html`).
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191 A/B DONE (`reports/2026-11-12_semantic_ab.html`); route `aurobindo_ab/STORE_DEFECTS_SEEN.md` to follow-ups.

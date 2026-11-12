@@ -173,7 +173,8 @@ def checks(conn: sqlite3.Connection, out: Path, profile_path: str | None = None)
 
 
 def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
-          profile_path: str | None = None, ocr_max_seconds: float = 540) -> dict:
+          profile_path: str | None = None, ocr_max_seconds: float = 540,
+          duplicates_csv: str | None = None) -> dict:
     out = Path(out)
     known = profile.symbols()
     symbols = [s.strip().upper() for s in (symbols or known) if s and s.strip()]
@@ -188,7 +189,7 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
     # additive change here, so no part carries column surgery of its own any more.
     log["schema"] = dict(zip(("from_version", "to_version"), schema.migrate(conn)))
     parts = (["registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments",
-              "guidance", "notes", "events", "checks"]
+              "guidance", "notes", "events", "checks", "atoms"]
              if part == "all" else [part])
     if "comparatives" in parts and not profile.under_profile():
         parts.remove("comparatives")  # no profile: the pilot3 build keeps its present rows (T-057)
@@ -257,6 +258,13 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
                 log["events"] = build_events(conn)
             elif name == "checks":
                 log["checks"] = checks(conn, out, profile_path)
+            elif name == "atoms":
+                from reality_engine.pilot3 import atoms
+
+                conn.commit()
+                conn.close()  # the atom builder opens the db file itself and reads doc_page text
+                log["atoms"] = atoms.run(out, duplicates_csv)
+                conn = sqlite3.connect(out)
             log[f"seconds_{name}"] = round(time.time() - started, 1)
         log["rows"] = row_counts(conn)
     finally:
@@ -271,12 +279,14 @@ def main(argv: list[str] | None = None) -> None:
                     help="build profile JSON (T-056): companies, pages db, raw root, manifest, output, window start")
     ap.add_argument("--out", default=None, help="default: the profile's output, else the real pilot3.db on C")
     ap.add_argument("--pages-db", default=None, help="override the profile's pages database")
-    ap.add_argument("--part", default="all", choices=("registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "notes", "events", "checks", "all"))
+    ap.add_argument("--part", default="all", choices=("registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "notes", "events", "checks", "atoms", "all"))
     ap.add_argument("--symbols", default=None,
                     help="comma list: without a profile it limits ocr/extract/kpi/transcripts/guidance/notes only (registry/pages/stores/ratios rebuild every company); a profile build limits every part (default: the profile's companies, else the pilot3 three)")
     ap.add_argument("--ocr-db", action="append", default=[], help="ocr_page database written by pilot3.ocr (repeat for one per company)")
     ap.add_argument("--ocr-max-seconds", type=float, default=540,
                     help="the ocr part stops cleanly after this many seconds and resumes on the next build")
+    ap.add_argument("--duplicates", default=None,
+                    help="page_reader export's duplicates.csv, so --part atoms copies canonical atoms onto identical pages")
     args = ap.parse_args(argv)
     if args.profile:
         loaded = profile.load(args.profile)
@@ -287,7 +297,7 @@ def main(argv: list[str] | None = None) -> None:
     current = profile.active()
     out = Path(args.out) if args.out else (current.out if current is not None else REAL_DB)
     print(json.dumps(build(out, args.part, tuple(args.ocr_db), symbols, args.pages_db, args.profile,
-                           args.ocr_max_seconds),
+                           args.ocr_max_seconds, args.duplicates),
                      indent=1, default=str))
 
 

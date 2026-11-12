@@ -19,6 +19,7 @@ from __future__ import annotations
 import contextvars
 import datetime as dt
 import difflib
+import functools
 import json
 import os
 import re
@@ -583,6 +584,113 @@ def _definition_rank(row: dict[str, Any], key: str) -> int:
     return _ebitda_rank(row) if key == "ebitda" else 0
 
 
+def _atom_matches(metric: str, label: str) -> bool:
+    """Does a printed row label name the metric the caller asked for (the metric key, or its investor alias)?"""
+    key = _metric_key(metric)
+    alias = _KPI_WORDS.get(key, key)
+    norm = _metric_key(label or "")
+    return bool(key) and (norm == key or norm == alias or norm.startswith(key + "_") or key in norm)
+
+
+@functools.lru_cache(maxsize=1)
+def _metric_units() -> dict[str, str]:
+    """metric -> the unit its own definition already carries: the KPI lexicon's entries (what ``kpi_series`` is
+    extracted with) and the ratio formulas behind ``ratio_panel`` (T-199 round 2)."""
+    from reality_engine.pilot3 import kpi as p3_kpi
+    from reality_engine.pilot3 import ratios as p3_ratios
+    units = {entry.metric: entry.unit for entry in p3_kpi.load_lexicon()[0] if entry.unit}
+    units.update({formula[1]: formula[4] for formula in p3_ratios.FORMULAS})
+    return units
+
+
+def _unit_family(unit: str | None) -> str:
+    """pct / x / days / count / money / '' for a unit a metric definition or an atom carries."""
+    key = str(unit or "").strip().lower()
+    if key in ("pct", "percent", "bps", "basis_points", "basis points"):
+        return "pct"
+    if key in ("x", "ratio", "multiple", "times"):
+        return "x"
+    if key.startswith("days"):
+        return "days"
+    if key.startswith("count") or key in ("mn", "million"):
+        return "count"
+    if key.startswith(("inr", "usd", "money")):
+        return "money"
+    return ""
+
+
+def _metric_family(metric: str) -> str:
+    """The unit family the metric's own definition carries; '' when no definition names the metric."""
+    key = _metric_key(metric)
+    units = _metric_units()
+    for name in (key, _KPI_WORDS.get(key, key), f"{key}_pct"):
+        if name in units:
+            return _unit_family(units[name])
+    for name, unit in units.items():
+        if name.startswith(key + "_") or key in name:
+            return _unit_family(unit)
+    return ""
+
+
+def _atom_unit_fits(metric: str, unit: str | None, scale: float | None) -> bool:
+    """T-199 round 2: is this atom's unit the family the metric's own definition carries?
+
+    A ``change`` atom is never a level; a metric whose definition is known takes only an atom of the same family
+    (a margin pct/bps, a revenue or a PAT inr/usd with a scale, a ratio x, a days KPI days).  A metric no
+    definition names is not filtered: only a definition can prove a unit is the wrong one."""
+    if str(unit or "") == "change":
+        return False
+    want = _metric_family(metric)
+    if not want:
+        return True
+    return _unit_family(unit) == want and (want != "money" or bool(scale))
+
+
+def _kpi_atoms(sym: str, metric: str, period: str | None, day: str | None, limit: int) -> list[dict[str, Any]]:
+    """T-199: the resolved printed figures for a KPI no extractor table holds, served as ``page_atom`` rows.
+
+    Only an atom whose row label names the KPI and whose unit fits the metric's own definition is served: a pct
+    atom never answers an amount KPI, nor an inr atom a ratio (T-199 round 2)."""
+    if not _has_table("page_atom"):
+        return []
+    words = [w for w in re.split(r"[^a-z0-9%]+", str(metric or "").lower()) if len(w) >= 2]
+    if not words:
+        return []
+    where = ["a.symbol=?", "COALESCE(a.unit,'')<>'change'"]
+    args: list[Any] = [sym]
+    for word in words:
+        where.append("lower(COALESCE(a.row_label,'')||' '||COALESCE(a.table_title,'')) LIKE ?")
+        args.append(f"%{word}%")
+    _kind, label = norm_period(period)
+    if label:
+        where.append("lower(COALESCE(a.period,''))=lower(?)")
+        args.append(label)
+    extra, eargs = _asof(day, "a.known_at")
+    rows = _q(
+        "SELECT a.doc_key, a.page, a.known_at, a.row_label, a.col_header, a.period, a.basis, a.value, a.unit, "
+        "a.scale, a.value_text, a.check_status, a.check_reasons, COALESCE(d.doc_type,'') AS doc_type, "
+        f"COALESCE(d.title,'') AS title FROM page_atom a LEFT JOIN doc d ON d.doc_key=a.doc_key "
+        f"WHERE {' AND '.join(where)}{extra} "
+        "ORDER BY CASE COALESCE(a.check_status,'') WHEN 'verified' THEN 0 ELSE 1 END, "
+        "substr(COALESCE(a.known_at,''),1,10) DESC, a.page LIMIT 40", (*args, *eargs))
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        if not _atom_matches(metric, r["row_label"]):
+            continue
+        if not _atom_unit_fits(metric, r["unit"], r["scale"]):     # T-199 r2: a pct atom is never the amount
+            continue
+        out.append({"metric": _metric_key(r["row_label"]), "dimension": "total", "value": r["value"],
+                    "unit": r["unit"], "scale": r["scale"], "period": r["period"] or label,
+                    "period_type": None, "as_of_date": None,
+                    "basis": r["basis"] if r["basis"] in _REPORTING_BASES else "not_stated",
+                    "entity": sym, "raw_label": r["row_label"],
+                    "quote": f"{r['row_label']} | {r['col_header']}: {r['value_text']} {r['unit']}".strip(),
+                    "check_status": r["check_status"], "check_reasons": r["check_reasons"], "source": "page_atom",
+                    "provenance": _prov("page_atom", f"p{r['page']}", r["known_at"], doc_type=r["doc_type"],
+                                        title=r["title"])})
+    return out[: _cap(limit)]
+
+
 def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = None,
         dimension: str | None = None, basis: str | None = None, limit: int = 10,
         include_quarantined: bool = False) -> dict[str, Any]:
@@ -594,6 +702,11 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
     # reply says they are held but quarantined (T-165: CHOLAFIN Q2FY27 NIM 7.9 is the only row of its period)
     names, allnames = _pick("kpi_series", "metric", sym, kpi)
     if not names:
+        # T-199: no extractor row names the metric; the resolved printed figure may still answer it
+        atom_rows = _kpi_atoms(sym, kpi, period, _day(as_of, "as_of"), limit)
+        if atom_rows:
+            return _reply(sym, atom_rows, "pilot3_kpi", metrics_matched=[kpi], source="page_atom",
+                          as_of=_day(as_of, "as_of"))
         return _reply(sym, [], "pilot3_kpi", available=allnames[:40], metric_asked=metric_asked)
     kind, label = norm_period(period)
     where, args = f"k.symbol=? AND k.metric IN ({','.join('?' * len(names))})", [sym, *names]
@@ -648,6 +761,10 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
     held = None
     held_hidden = None
     if not out:  # the metric exists: say which periods / dimensions hold it, so the next call can be exact
+        atom_rows = _kpi_atoms(sym, kpi, period, _day(as_of, "as_of"), limit)
+        if atom_rows:                      # T-199: a page atom answers when no extractor row has the period
+            return _reply(sym, atom_rows, "pilot3_kpi", metrics_matched=names, source="page_atom",
+                          as_of=_day(as_of, "as_of"))
         held = [f"{r[0]} / {r[1]} ({r[2]} rows)" for r in _q(
             f"SELECT fiscal_period, dimension, COUNT(*) FROM kpi_series WHERE symbol=? AND metric IN "
             f"({','.join('?' * len(names))}){_visible('kpi_series')} "
@@ -666,6 +783,98 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
 
 
 # --- pilot3_cells ------------------------------------------------------------------------------------
+def _atoms_here(sym: str) -> bool:
+    """Does this store serve resolved page atoms for the company?  A store migrated to v10 but not yet rebuilt by
+    ``build --part atoms`` has the table and no rows: its ``page_cell`` rows still answer (T-199)."""
+    return _has_table("page_atom") and bool(_q("SELECT 1 FROM page_atom WHERE symbol=? LIMIT 1", (sym,)))
+
+
+def _cells_from_atoms(sym: str, terms: str | None, period: str | None, day: str | None,
+                      include_unverified: bool, limit: int, offset: int,
+                      documents: str | None) -> dict[str, Any]:
+    """``pilot3_cells`` over ``page_atom``: the resolved period / basis / unit / scale / value of every figure."""
+    words = [w for w in re.split(r"[^\w%]+", str(terms or "").lower()) if len(w) >= 2]
+    where = ["a.symbol=?"]
+    args: list[Any] = [sym]
+    for word in words:
+        where.append("lower(COALESCE(a.row_label,'')||' '||COALESCE(a.col_header,'')||' '||"
+                     "COALESCE(a.table_title,'')) LIKE ?")
+        args.append(f"%{word}%")
+    if not include_unverified:
+        where.append("a.check_status='verified'")
+    _kind, label = norm_period(period)
+    if label:
+        where.append("lower(COALESCE(a.period,''))=lower(?)")
+        args.append(label)
+    extra, eargs = "", []
+    if day:
+        extra = " AND substr(COALESCE(a.known_at,''),1,10) <= ?"
+        eargs.append(day)
+    cap, start = _window(limit, offset, 20)
+    rows = _q(
+        "SELECT a.doc_key, a.page, a.symbol, a.reader, a.table_title, a.row_label, a.col_header, a.period, "
+        "a.basis, a.unit, a.scale, a.value, a.value_text, a.check_status, a.check_reasons, "
+        "COALESCE(d.title,'') AS title, COALESCE(d.doc_type,'') AS doc_type, a.known_at AS filed_at "
+        "FROM page_atom a LEFT JOIN doc d ON d.doc_key=a.doc_key "
+        f"WHERE {' AND '.join(where)}{extra} "
+        "ORDER BY CASE COALESCE(a.check_status,'') WHEN 'verified' THEN 0 ELSE 1 END, "
+        "substr(COALESCE(a.known_at,''),1,10) DESC, a.page LIMIT ?",
+        (*args, *eargs, max(400, (start + cap) * 10)))
+    matched: list[dict[str, Any]] = []
+    seen: set[tuple] = set()
+    starts = [re.compile(r"(?<![a-z0-9])" + re.escape(w)) for w in words]   # a term starts a word: 'us' != 'business'
+    for r in rows:
+        text = " ".join((r["row_label"] or "", r["col_header"] or "", r["table_title"] or ""))
+        if not all(p.search(text.lower()) for p in starts):
+            continue
+        sig = (r["doc_key"], r["page"], r["row_label"], r["col_header"], r["value_text"], r["unit"])
+        if sig in seen:
+            continue
+        seen.add(sig)
+        matched.append({
+            "value": r["value"], "value_text": r["value_text"], "unit": r["unit"], "unit_text": r["unit"],
+            "scale": r["scale"], "period": r["period"] or None, "basis": r["basis"] or None,
+            "row_label": _trim(r["row_label"], 120), "col_header": _trim(r["col_header"], 80),
+            "table_title": _trim(r["table_title"], 80),
+            "status": r["check_status"] or "unverified", "check_reasons": r["check_reasons"] or "",
+            "doc_key": r["doc_key"], "doc_type": _DOC_TYPES.get((r["doc_type"] or "").lower(), r["doc_type"] or ""),
+            "title": _trim(r["title"], 60), "page": r["page"], "known_at": r["filed_at"], "reader": r["reader"],
+            "provenance": _prov("page_atom", f"p{r['page']}", r["filed_at"]),
+        })
+    page = matched[start:start + cap]
+    held = None
+    if not matched:
+        held = [f"{r[0]} ({r[1]} atoms)" for r in _q(
+            "SELECT row_label, COUNT(*) FROM page_atom WHERE symbol=? GROUP BY 1 ORDER BY 2 DESC LIMIT 20", (sym,))]
+    cut = max(0, len(matched) - len(page))
+    docs = [{"doc_key": r["doc_key"], "doc_type": r["doc_type"], "date": r["known_at"], "title": r["title"],
+             "page": r["page"]} for r in matched]
+    text = _scope_line(len(matched), len(page), cut, start, docs, len({d["doc_key"] for d in docs}))
+    reply = _reply(sym, page, "pilot3_cells", terms=terms, period=period, held_labels=held,
+                   include_unverified=include_unverified, as_of=day, text=text,
+                   coverage=_coverage("cells", ["page_atom (one resolved atom per printed figure: period, basis, "
+                                                "unit, scale, value)",
+                                                "doc (document type, title, filing date)"],
+                                      ["documents whose pages the page reader never parsed",
+                                       "transcript and announcement page text (pilot3_search / pilot3_topic)",
+                                       "page_cell (raw reader cells; served only while page_atom has no rows)"],
+                                      len(matched), len(page), cut, start, documents=docs,
+                                      doc_cap=_doc_cap(documents, cap),
+                                      hidden=_hidden_documents(sym, day)),
+                   read_next=_read_next(page))
+
+    def labels(width: int) -> None:
+        for row in reply["rows"]:
+            row["row_label"] = _trim(row.get("row_label"), width)
+            row["table_title"] = _trim(row.get("table_title"), width)
+
+    return _shrink(reply, [
+        ("row labels cut to 80 characters", lambda: labels(80)),
+        ("the list cut to the first 10 cells", lambda: reply["rows"].__delitem__(slice(10, None))),
+        ("row labels cut to 50 characters", lambda: labels(50)),
+    ])
+
+
 def cells(symbol: str, terms: str, period: str | None = None, as_of: str | None = None,
           include_unverified: bool = True, limit: int = 20, offset: int = 0,
           documents: str | None = None) -> dict[str, Any]:
@@ -674,12 +883,18 @@ def cells(symbol: str, terms: str, period: str | None = None, as_of: str | None 
     settled the cell; ``unverified`` is served and labelled (that is how T-189 keeps recall); ``quarantined`` is
     never served. ``as_of`` drops cells whose document was not known by then; ``offset`` pages a cut reply.
     A row whose value cell the reader stored separately carries the values printed beside it (``values``), so a
-    label-only row is never served as if the table held no figure."""
+    label-only row is never served as if the table held no figure.
+
+    T-199: when the store has ``page_atom`` rows for the company, they answer instead: each row carries the
+    resolved ``period`` / ``basis`` / ``unit`` / ``scale`` / numeric ``value`` beside the printed text, and the
+    ``period`` argument filters the resolved column."""
     sym = resolve_symbol(symbol)
+    day = _day(as_of, "as_of")
+    if _atoms_here(sym):
+        return _cells_from_atoms(sym, terms, period, day, include_unverified, limit, offset, documents)
     if not _has_table("page_cell"):
         return {"found": False, "symbol": sym, "tool": "pilot3_cells", "reason": "no page_cell table",
                 "provenance": _db_prov()}
-    day = _day(as_of, "as_of")
     words = [w for w in re.split(r"[^\w%]+", str(terms or "").lower()) if len(w) >= 2]
     where = ["c.symbol=?", "COALESCE(c.status,'')<>'quarantined'"]
     args: list[Any] = [sym]
@@ -2022,7 +2237,21 @@ def topic(symbol: str, topic: str, as_of: str | None = None, limit: int = TOPIC_
              doc_type=r["doc_type"], title=_trim(r["title"], 120),
              provenance=_prov("kpi_series", f"p{r['page']}", r["known_at"], row_id=r["id"]))
 
-    if _has_table("page_cell"):
+    atoms_here = _has_table("page_atom") and bool(_q("SELECT 1 FROM page_atom WHERE symbol=? LIMIT 1", (sym,)))
+    if atoms_here:
+        # T-199: the resolved atoms are the figures; the raw cells are served only while the store holds no atoms
+        extra, eargs = _asof(as_of, "a.known_at")
+        for r in _q(f"SELECT a.doc_key, a.page, a.known_at, a.row_label, a.col_header, a.table_title, a.value, "
+                    f"a.value_text, a.unit, a.scale, a.period, a.basis, a.check_status, a.check_reasons "
+                    f"FROM page_atom a WHERE a.symbol=?{extra} ORDER BY a.known_at DESC LIMIT 4000", (sym, *eargs)):
+            if not _topic_hit(plan, r["row_label"], r["table_title"], r["col_header"]):
+                continue
+            keep("cell", r["known_at"], r["doc_key"], r["page"], r["row_label"],
+                 value=r["value"], value_text=r["value_text"], unit=r["unit"], scale=r["scale"],
+                 period=r["period"], basis=r["basis"], column=r["col_header"], table=r["table_title"],
+                 check_status=r["check_status"], source="page_atom",
+                 provenance=_prov("page_atom", f"p{r['page']}", r["known_at"]))
+    elif _has_table("page_cell"):
         extra, eargs = _asof(as_of, "known_at")
         for r in _q(f"SELECT doc_key, page, known_at, row_label, col_header, table_title, value_text, unit_text "
                     f"FROM page_cell WHERE symbol=?{extra} AND status IN ('verified','unverified') "
@@ -2116,10 +2345,16 @@ def topic(symbol: str, topic: str, as_of: str | None = None, limit: int = TOPIC_
         {(item["doc_key"], int(item["page"])) for item in shown_items
          if item.get("page") not in (None, "")}))[:8]
     # T-204: a source goes in exactly one list -- one the build has no table for is not "searched".
-    structured = (("guidance", "guidance (forward targets)"),
-                  ("kpi_series", "kpi_series (company-stated KPIs)"),
-                  ("page_cell", "page_cell (table and chart cells)"),
-                  ("event", "event (inspection, dividend, buyback, acquisition, merger)"))
+    structured = [("guidance", "guidance (forward targets)"),
+                  ("kpi_series", "kpi_series (company-stated KPIs)")]
+    if _has_table("page_atom"):
+        structured.append(("page_atom", "page_atom (resolved printed figures)"))
+    skipped_sources: list[str] = []
+    if atoms_here and _has_table("page_cell"):
+        skipped_sources.append("page_cell (raw cells; page_atom served the resolved figures)")
+    else:
+        structured.append(("page_cell", "page_cell (table and chart cells)"))
+    structured.append(("event", "event (inspection, dividend, buyback, acquisition, merger)"))
     missing = [name for name, _label in structured if not _has_table(name)]
     doc_cap = _doc_cap(documents, cap)
     return _trim_topic_reply({
@@ -2129,7 +2364,8 @@ def topic(symbol: str, topic: str, as_of: str | None = None, limit: int = TOPIC_
             "groups": ordered, "read_next": read_next,
             "coverage": _coverage("topic", list(_TEXT_STORES) + [
                 label for name, label in structured if name not in missing],
-                ["pages the build holds no text for (OCR never read them, audio/video links)", *missing],
+                ["pages the build holds no text for (OCR never read them, audio/video links)", *missing,
+                 *skipped_sources],
                 matched, shown, cut, start, documents=docs, doc_cap=doc_cap,
                 document_total=doc_total, outside=outside_list, hidden=hidden),
             "candidate_pages": candidates,
@@ -3092,10 +3328,71 @@ def _fact_company_stated(symbol: str, names: list[str], period: str | None, basi
             "known_at": best["known_at"], "check_status": status, "why_not_preferred": why}
 
 
+def _fact_atoms(sym: str, metric: str, period: str | None, day: str | None) -> dict[str, Any] | None:
+    """T-199: the resolved printed figure when no pilot3 table holds the metric; ``source: page_atom`` labels it.
+
+    The atom's ``row_label`` is the company's own words, so it is compared as the metric key (spaces as _); a
+    ``change`` atom (a growth column, or a ▲/▼ move with no column header) is never served as the metric's level,
+    and neither is an atom whose unit is not the family the metric's own definition carries (T-199 round 2)."""
+    if not _has_table("page_atom"):
+        return None
+    key = _metric_key(metric)
+    alias = _KPI_WORDS.get(key, key)
+    words = [w for w in re.split(r"[^a-z0-9%]+", str(metric or "").lower()) if len(w) >= 2]
+    if not words or not key:
+        return None
+    where = ["a.symbol=?", "COALESCE(a.unit,'')<>'change'"]
+    args: list[Any] = [sym]
+    for word in words:
+        where.append("lower(COALESCE(a.row_label,'')||' '||COALESCE(a.table_title,'')) LIKE ?")
+        args.append(f"%{word}%")
+    _kind, label = norm_period(period)
+    if label:
+        where.append("lower(COALESCE(a.period,''))=lower(?)")
+        args.append(label)
+    extra, eargs = _asof(day, "a.known_at")
+    rows = _q(
+        "SELECT a.doc_key, a.page, a.known_at, a.row_label, a.col_header, a.table_title, a.period, a.basis, "
+        "a.value, a.unit, a.scale, a.value_text, a.check_status, a.check_reasons, "
+        "COALESCE(d.doc_type,'') AS doc_type, COALESCE(d.title,'') AS title "
+        "FROM page_atom a LEFT JOIN doc d ON d.doc_key=a.doc_key "
+        f"WHERE {' AND '.join(where)}{extra} "
+        "ORDER BY CASE COALESCE(a.check_status,'') WHEN 'verified' THEN 0 ELSE 1 END, "
+        "substr(COALESCE(a.known_at,''),1,10) DESC, a.page LIMIT 12", (*args, *eargs))
+
+    def matches(label_text: str) -> bool:
+        norm = _metric_key(label_text or "")
+        return norm == key or norm == alias or norm.startswith(key + "_") or key in norm
+
+    rows = [r for r in rows if (matches(r["row_label"]) or matches(f"{r['row_label']} {r['table_title']}"))
+            and _atom_unit_fits(metric, r["unit"], r["scale"])]      # T-199 r2: the unit family must fit
+    if not rows:
+        return None
+    row = rows[0]
+    answer = {"value": row["value"], "unit": row["unit"], "scale": row["scale"], "value_text": row["value_text"],
+              "period": row["period"] or period, "basis": row["basis"] or None, "as_of_used": day,
+              "source": {"table": "page_atom", "doc_key": row["doc_key"], "page": row["page"],
+                         "quote": _trim(f"{row['row_label']} | {row['col_header']}: {row['value_text']} "
+                                        f"{row['unit']}".strip(), 600)},
+              "known_at": row["known_at"], "check_status": row["check_status"], "computed": None}
+    alternatives = [{"value": alt["value"], "unit": alt["unit"], "period": alt["period"], "table": "page_atom",
+                     "doc_key": alt["doc_key"], "page": alt["page"],
+                     "note": f"read from the page, {alt['check_status']}"} for alt in rows[1:4]]
+    return {"found": True, "symbol": sym, "metric": metric, "route": "atoms", "answer": answer,
+            "alternatives": alternatives[:3],
+            "why_this_one": "no pilot3 table holds this metric for the period; the page reader copied the figure "
+                            "from the company's own table/chart page and the atom resolver resolved its period, "
+                            "unit and scale",
+            "provenance": _db_prov()}
+
+
 def _fact_cells(sym: str, metric: str, period: str | None, day: str | None) -> dict[str, Any] | None:
-    """T-189: the page reader's cells when no other table holds the metric; ``source: page_cell`` labels it."""
+    """T-189/T-199: the resolved page atom, else the page reader's raw cells, when no other table holds the metric."""
+    from_atoms = _fact_atoms(sym, metric, period, day)
+    if from_atoms:
+        return from_atoms
     reply = cells(sym, metric, period=period, as_of=day, limit=3)
-    rows = reply.get("rows") or []
+    rows = [row for row in (reply.get("rows") or []) if row.get("unit") != "change"]   # never a level
     if not rows:
         return None
     row = rows[0]

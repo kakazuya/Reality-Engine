@@ -30,10 +30,11 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `shp_category`, `shp_holder`, `shp_pledge`, `share_capital`, `dividend_event`, `price_delivery`, `valuation_daily` | holdings by category with the share count the printed percentage is on, the named holders, the promoter pledge block, share count, dividends, prices, PE/PB/EV | exchange data stores |
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
 | `event` (T-194, T-197) | one row per announcement event: `kind` (inspection / buyback / merger / acquisition / dividend), the inspection's `unit`, `event_date` / `end_date`, `outcome` (OAI, VAI, warning letter, Form 483, no observations, EIR received, closed), `subject`, `doc_key` + `page`, `quote`, `known_at`, and (T-197) `doc_type`, `title`, `body_excerpt` (the sentences of the page that state the outcome, observations, classification, impact or amount) | announcement / press-release title + first two pages (`pilot3/events.py`) |
+| `page_atom` (T-199) | one row per printed figure of a table/chart page: `table_title`, `row_label`, `col_header`, the resolved `period` / `basis` / `unit` / `scale` / numeric `value` beside `value_text`, the label's `definition`, the cell's bbox, `reader`, `check_status` (`verified` / `unverified`) and `check_reasons` | the page reader's `page_cell` rows, resolved by script (`pilot3/atoms.py`); the page itself is read by a free model or a Haiku subagent session from the exported image + prompt |
 
 **Schema version and numbered migrations (T-202, 12 Nov 2026).** Every store carries `schema_meta(key, value)`
 with `schema_version` and `migrated_at`; a store without it (every build before T-202) is version 0.
-`reality_engine/pilot3/schema.py` holds `MIGRATIONS`, the ordered, ADDITIVE changes from 0 to `LATEST = 9`:
+`reality_engine/pilot3/schema.py` holds `MIGRATIONS`, the ordered, ADDITIVE changes from 0 to `LATEST = 10`:
 
 | v | change (ticket) |
 |---|---|
@@ -46,9 +47,10 @@ with `schema_version` and `migrated_at`; a store without it (every build before 
 | 7 | `row_check.definition` (T-113) |
 | 8 | every index and view on the tables a store holds |
 | 9 | `event.doc_type` / `title` / `body_excerpt` (T-197) |
+| 10 | the `page_atom` table + `(symbol, period)` / `(symbol, doc_key, page)` indexes (T-199) |
 
 `migrate(conn)` applies the missing versions in order in one transaction and records the version; a second run is
-one SELECT (`--status` on a copy: `version` 9, `latest` 9, `pending` empty). `build.py` calls it once at the start
+one SELECT (`--status` on a copy: `version` 10, `latest` 10, `pending` empty). `build.py` calls it once at the start
 of every `build --part`, before any part reads or writes; the parts' old `ensure_columns` / `ensure` calls are gone
 (`ensure_columns` remains a helper inside migrations only), so `build --part ratios` on a copy built before
 `count_basis` no longer fails with `no such column`. CLI: `python -m reality_engine.pilot3.schema --db <copy>
@@ -139,6 +141,77 @@ store. Every rule is a property of the reply shape or the search method, never a
   reached (transcript, deck, annual_report, results, press_release, announcement), max reply 19.1 kB, median topic
   call 0.27-0.34 s; `.tmp/T-197_MEASURE.md`. T-204 re-measured on the live `pilot10.db`: `pilot3_topic` order book,
   limit=2, as_of 2026-10-19 = 5.9 kB (was 8.1 kB), 10 of 49 documents listed, `documents_not_listed` 39.
+
+**T-199 (13 Nov 2026) turns a printed figure into one resolved atom, so a table page is answered from its figures,
+not its text.** T-196 measured ~1,850 of 2,134 AUROPHARMA table/chart pages never read into figures. Every rule is a
+property of the page or the cell, never a company:
+- **Export for a reader that is not an HTTP model.** `python -m reality_engine.v2.page_reader export --store S
+  [--ocr-db D ...] --routes CSV --out DIR [--doc-types ...] [--symbols A,B] [--limit N] [--batch 8]` writes every
+  `table_or_chart` and `needs_ocr` page as `DIR/b<NNN>/<stem>.jpg` + `<stem>.prompt.txt`, and `DIR/manifest.csv`
+  (`batch, stem, doc_key, page, doc_type, known_at, img_scale`). The prompt is exactly what `read_page` sends
+  (`GRID_PROMPT` + `LAYOUT_NOTE` + the page's layout from the text layer / `--ocr-db` words). The image's long side
+  is at most 1,280 px (JPEG 85; the Haiku session overran 100k context at the full render size), `img_scale` records
+  the render ratio, and position checks use the word boxes, never image pixels. `stem` is
+  `page_route._export_page`'s rule (`_FILENAME_SAFE`, 120 chars, `__p<page>`). Pages whose text is identical after
+  whitespace is ignored are one page: only the copy with the earliest `doc.known_at` is exported (the figure was
+  public from then) and `DIR/duplicates.csv` lists canonical -> duplicate; a page with no text is never deduped.
+- **Reply-file reader.** `--reader file:<DIR>` returns `<DIR>/b*/<stem>.reply.txt`; a missing file is
+  `status: error`, `error: no reply` (never a guess), the second pass is skipped, and both `page_read.reader` and
+  `page_cell.reader` store `haiku_sub`. Everything after the call (`parse_grid`, `settle_page`, the digit check,
+  the statuses) is unchanged. A `needs_ocr` page can be read this way with `--input image`: its cells serve
+  unverified (`image_only`).
+- **`pilot3/atoms.py`** (`python -m reality_engine.pilot3.atoms --store S [--duplicates CSV]`; build part `atoms`,
+  last after `checks`) writes one `page_atom` per non-quarantined `page_cell` with a parseable value. `period` =
+  the `col_header` first, then the `row_label`, then the table title, then the page's one printed header line. Both
+  texts read a dated results header before their plain period label: `row_checks.period_key` cannot read
+  "QUARTER ENDED (UNAUDITED) > 30.09.2025", so the span word (quarter / three months, half year / six months, nine
+  months, year / twelve months) and the printed end date (`dd.mm.yyyy`, `dd/mm/yyyy`, `dd-mm-yyyy`,
+  "30th September, 2025", "September 30, 2025", "30-Sep-25") map by the Indian April-March year, verified against
+  `row_checks.period_end` (no second calendar): quarter 30.09.2025 -> `q2fy26`, half year -> `h1fy26`, nine months
+  31.12.2025 -> `9mfy26`, year 31.03.2026 -> `fy26`, quarter 31.03.2024 -> `q4fy24`. `AS AT <date>` (a balance
+  sheet) is the period that date ends (`31.03.2025` -> `fy25`, `30.09.2025` -> `h1fy26`, `30.06` -> `q1`,
+  `31.12` -> `9m`) with the informational reason `as_at`, which does not block `verified`. A chart table's period
+  rows read the same way: a `row_label` that is a period or starts / ends with one (`FY24`, `Q3 FY25`,
+  `Revenue FY24`); a period buried in a longer label is not taken. A header with a printed span that fits no period
+  ("half year ended 31.12"), and a header and a row label naming two different periods, are `period_ambiguous`,
+  never the document's period. A relative header (`Q2`, `H1`, `Current quarter`) resolves only against a fiscal
+  year printed on the page; an empty header takes the period the build already assigns the document
+  (`kpi_series.fiscal_period`, `fin_quarter_printed.fiscal_period`, `transcript_statement.call_period`,
+  `fin_annual_line.fiscal_year`, `doc_identity.fiscal_year`), reason `period_from_document`, never verified.
+  `basis` from the title, else the `col_header` ("Consolidated > QUARTER ENDED ..."), else the page text printed
+  alone. `unit`/`scale` from the cell's own text, else the page's single declaration (`unit_scales` /
+  `check_page_unit` logic; two declarations -> `unit_conflict`); `%`, `x`, `days` and a count keep scale 1. A
+  growth column (`YoY`, `QoQ`, `Growth`, `Change`, `% chg`, `Var`, `Variance`, `▲`/`▼`, `vs`) is unit `change`
+  whatever the value prints, never a level; so is an empty header whose value carries a change marker (▲/▼,
+  "up by", bps). `(1,234)` is negative; `-` / Nil is no atom. `definition` is a printed bracket legend
+  (`legend:...`) or `row_checks.definition_key` (T-198); the full label is kept. A cell with no row label is never
+  verified (`label_missing`).
+- **Statuses.** `verified` only when the cell is position-checked AND its period and unit resolved; everything else
+  `unverified` with `check_reasons` (`position_unverified`, `period_unresolved`, `period_ambiguous`,
+  `period_from_document`, `unit_unresolved`, `unit_conflict`, `change_not_level`, `label_missing`; `as_at` is
+  informational and keeps `verified`). Two rows of one document with the same row label, period and basis but
+  different values are both `unverified` (`same_doc_conflict`). Each canonical atom is copied onto its
+  `duplicates.csv` pages with the duplicate's own `doc_key` and `known_at`, and `copied_from=<doc_key>#p<page>`.
+- **Tools.** `pilot3_cells` serves `page_atom` when the store has rows for the company (resolved `period`, `basis`,
+  `unit`, `scale` and numeric `value` beside the printed text; the `period` argument filters the resolved column)
+  and falls back to `page_cell` only while the store has no atom rows. `pilot3_fact` and `pilot3_kpi` fall back to
+  atoms when no other table holds the metric (`source: page_atom`) and never serve a `change` atom as the level,
+  nor an atom whose unit is not the metric definition's family: the families come from the definitions already in
+  the repo -- the KPI lexicon's `metric: unit` entries (`kpi.load_lexicon`, what `kpi_series` is extracted with)
+  and the ratio formulas' `metric: unit` (`ratios.FORMULAS`, behind `ratio_panel`) -- so a margin / ROE / growth
+  metric takes only `pct` / `bps`, a revenue / PAT / EBITDA / debt / capex / order-book metric only `inr` / `usd`
+  with a scale, and an `x` / `days` / `count` metric only its own unit. A metric no definition names is not
+  filtered (only a definition can prove a unit wrong). `pilot3_topic` lists the atoms on the theme's pages.
+  `coverage` names `page_atom` and `page_cell` in exactly one list each.
+- **Tests.** `test_pilot3_atoms.py` 24 (the eight real results headers, the as-at balance sheet, the chart table
+  whose periods are rows, growth columns, ambiguous spans and header/label conflicts), `test_v2_page_reader.py` 10
+  (`--basetemp` is refused inside the dsh sandbox, so the sandbox run uses `-p no:tmpdir` and the documented temp
+  override), `test_pilot3_schema_version.py` 8 (v0 / v8 / v9 -> v10, twice idempotent), `test_lookups_pilot3.py`
+  82 passed + 1 skipped (the unit-family class: AUM served in crore not as the pct atom, interest coverage served
+  as `x` not rupees, EBITDA margin served as pct not rupees), `test_store_routing.py` 7,
+  `test_pilot3_no_company_literals.py` 7. Measured read-only on `aurobindo.db`: of 5,973 printed results cells,
+  `period_key` alone resolved 0 and the round-2 resolver reads 5,818 (97.4%; 155 carry no period at all --
+  "S.No", `col2`, cover-letter cells -- and 0 are ambiguous).
 
 ## 3. Extraction methods (what works, what failed)
 - **Documents**: collected per company into `D:\RealityEngine\pilot3\pages.db`. Dates: `known_at` = exchange

@@ -1523,6 +1523,21 @@ Tests: `python -m pytest -p no:cacheprovider reality_engine/tests/test_v2_page_r
 -q` -> 50 passed, 1 skipped (the stdio server test skips in a confined sandbox); basedpyright 0 errors on every changed
 .py file.
 
+**T-199 (13 Nov 2026): export -> Haiku -> file reader -> atoms.** The reader no longer has to be an HTTP model.
+`page_reader export --store S [--ocr-db D ...] --routes CSV --out DIR [--doc-types ...] [--batch 8]` writes every
+`table_or_chart` and `needs_ocr` page as `DIR/b<NNN>/<stem>.jpg` (long side at most 1,280 px, JPEG 85; the render
+ratio is `img_scale` in `manifest.csv`) and `<stem>.prompt.txt`, the exact prompt `read_page` sends; identical page
+text is exported once (earliest `doc.known_at`) and `duplicates.csv` lists canonical -> duplicate. `--reader
+file:<DIR>` reads `<DIR>/b*/<stem>.reply.txt`, returns `status='error'`, `error='no reply'` for a missing file, skips
+the second pass and stores `page_read.reader` / `page_cell.reader` as `haiku_sub`; parse_grid, settle_page and the
+digit check are unchanged. `python -m reality_engine.pilot3.atoms --store S [--duplicates CSV]` (build part `atoms`,
+after `checks`) resolves each non-quarantined cell into `page_atom` (schema v10) and `pilot3_cells`/`pilot3_fact`/
+`pilot3_kpi`/`pilot3_topic` read it; the resolution rules (dated results headers, periods printed as rows, growth
+columns, the metric's unit family) and statuses are in `docs/PILOT3_BLUEPRINT.md` section 2 (T-199 block). Tests:
+`reality_engine/tests/test_v2_page_reader.py` 10 passed, `reality_engine/tests/test_pilot3_atoms.py` 24 passed,
+`reality_engine/tests/test_pilot3_schema_version.py` 8 passed (v10 twice idempotent),
+`plugins/reality-data/tests/test_lookups_pilot3.py` 82 passed + 1 skipped.
+
 **Reader smoke (11 Nov 23:59, Dots on the page image).** `page_reader --routes <the 6 table_or_chart rows> --input image
 --into-store --reader dots-studio/dots-3-note-preview:free@kilo2 --workers 2` on the n10 copy read 6 of 6 pages with 0
 errors: 180 cells (62 `verified` = 34.4%, 118 `unverified`, 0 `quarantined`), 84 unread; 70.2 s wall for 6 pages (5.1

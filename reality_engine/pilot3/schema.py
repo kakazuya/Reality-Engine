@@ -161,11 +161,26 @@ TABLES: dict[str, str] = {
         symbol TEXT, isin TEXT, fiscal_year TEXT, entity TEXT, basis TEXT, counterparty TEXT, relationship TEXT,
         txn_type TEXT, amount REAL, balance REAL, unit TEXT, scale REAL, period_end TEXT,
         doc_key TEXT, page INTEGER, quote TEXT, known_at TEXT, known_at_source TEXT, extractor_rule TEXT)""",
+    # T-199: one row per printed figure of a table/chart page, read from the page image by a page reader
+    # (``page_cell``) and resolved by script into period / basis / unit / scale / numeric value (``pilot3.atoms``).
+    # ``check_status`` is ``verified`` only when the cell is position-checked AND its period and unit resolved;
+    # a copied atom (an identical page filed twice) carries ``copied_from=<doc_key>#p<page>`` in ``check_reasons``.
+    "page_atom": """CREATE TABLE page_atom (
+        symbol TEXT, isin TEXT, doc_key TEXT, doc_type TEXT, page INTEGER, known_at TEXT,
+        table_title TEXT, row_label TEXT, col_header TEXT, period TEXT, basis TEXT,
+        unit TEXT, scale REAL, value REAL, value_text TEXT, definition TEXT,
+        x0 REAL, y0 REAL, x1 REAL, y1 REAL, reader TEXT, check_status TEXT, check_reasons TEXT,
+        created_at TEXT)""",
 }
 
 GUIDANCE_INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_gd ON guidance(symbol, metric, target_period)",
     "CREATE INDEX IF NOT EXISTS ix_gd2 ON guidance(symbol, said_on)",
+)
+
+PAGE_ATOM_INDEXES = (
+    "CREATE INDEX IF NOT EXISTS ix_atom_sym_period ON page_atom(symbol, period)",
+    "CREATE INDEX IF NOT EXISTS ix_atom_doc ON page_atom(symbol, doc_key, page)",
 )
 
 NOTES_INDEXES = (
@@ -191,6 +206,7 @@ INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_bbd ON bulk_block_deal(symbol, deal_date)",
     "CREATE INDEX IF NOT EXISTS ix_ins ON insider_trade(symbol, intimation_date)",
     "CREATE INDEX IF NOT EXISTS ix_ip ON index_price(symbol, index_name, date)",
+    *PAGE_ATOM_INDEXES,
     *GUIDANCE_INDEXES,
     *NOTES_INDEXES,
 )
@@ -280,6 +296,7 @@ V_KPI_CONFIDENCE = 6           # T-049 E: kpi_series confidence / conf_rank / me
 V_ROW_CHECK_DEFINITION = 7     # T-113: row_check.definition
 V_INDEXES_AND_VIEWS = 8        # every index and view on the tables a store holds
 V_EVENT_BODY = 9               # T-197: event.doc_type / title / body_excerpt
+V_PAGE_ATOM = 10               # T-199: the page_atom table (one row per resolved printed figure)
 
 # additive columns for tables built before them (a migration adds, never drops)
 SHARE_CAPITAL_ADDITIONS = (
@@ -413,6 +430,12 @@ def _add_indexes_and_views(conn: sqlite3.Connection) -> None:
     ensure_transcript_views(conn)
 
 
+def _add_page_atom(conn: sqlite3.Connection) -> None:
+    _create(conn, ("page_atom",))                      # a build that never ran the atoms part still gains the table
+    for sql in PAGE_ATOM_INDEXES:
+        conn.execute(sql)
+
+
 MIGRATIONS: tuple[tuple[int, str, Callable[[sqlite3.Connection], None]], ...] = (
     (V_SHARE_COUNT_BASIS, "share_capital.count_basis (T-192)", _add_share_count_basis),
     (V_GUIDANCE_ENTITY, "guidance.entity / entity_unsure (T-192)", _add_guidance_entity),
@@ -424,6 +447,7 @@ MIGRATIONS: tuple[tuple[int, str, Callable[[sqlite3.Connection], None]], ...] = 
     (V_ROW_CHECK_DEFINITION, "row_check.definition (T-113)", _add_row_check_definition),
     (V_INDEXES_AND_VIEWS, "every index and view on the tables a store holds", _add_indexes_and_views),
     (V_EVENT_BODY, "event.doc_type / title / body_excerpt (T-197)", _add_event_columns),
+    (V_PAGE_ATOM, "page_atom table (T-199)", _add_page_atom),
 )
 LATEST = MIGRATIONS[-1][0]
 

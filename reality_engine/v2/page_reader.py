@@ -1,4 +1,4 @@
-"""T-183/T-189: production page reader.
+"""T-183/T-189/T-199: production page reader.
 
 Every table/chart page a route sends here is read by a FREE model in grid format
 (today from layout text, or from the page IMAGE with ``--input image``); each cell is
@@ -6,18 +6,31 @@ position-checked (verified/unverified) and a cell whose digits occur nowhere on 
 is quarantined; unread numbers are re-asked once. Resumable, threaded, written to
 page_read/page_cell, either to ``--out`` or into the store itself (``--into-store``).
 
+``--reader file:<DIR>`` is a reader that is not an HTTP model (a Claude Code Haiku
+subagent session writing files): the reply for a page is ``<DIR>/b*/<stem>.reply.txt``,
+a missing file is an error (never a guess), no second pass is asked, and the stored
+``reader`` is ``haiku_sub``.  ``export`` writes what such a reader needs: 8 pages per
+batch folder, each page's image and the exact prompt ``read_page`` would send, plus
+``manifest.csv`` and ``duplicates.csv`` (identical page text is exported once, earliest
+``known_at`` first, so ``pilot3.atoms`` can copy its atoms onto the duplicates).
+
 Usage:
     python -m reality_engine.v2.page_reader --store <db> [--ocr-db <db> ...] (--out <db> | --into-store)
         [--routes <csv>] [--input layout|image] [--symbols A,B] [--doc-types deck,results]
-        [--limit N] [--reader <MODELS name>] [--workers 3]
+        [--limit N] [--reader <MODELS name>|file:<DIR>] [--workers 3]
+    python -m reality_engine.v2.page_reader export --store <db> [--ocr-db <db> ...] --routes <csv> --out <DIR>
+        [--doc-types deck,results] [--symbols A,B] [--limit N] [--batch 8]
 """
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
+import hashlib
 import json
 import re
 import sqlite3
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -31,6 +44,169 @@ from reality_engine.v2 import reference_pages as rp
 Word = tuple[float, float, float, float, str]
 
 RETRY_DELAYS = (10, 30)          # 3 tries in all; the free Kilo endpoint answers 502/429 in bursts
+
+_FILENAME_SAFE = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def page_stem(doc_key: str, page_no: int) -> str:
+    """The file stem one page is exported under: the rule ``page_route._export_page`` uses for its PDFs."""
+    return _FILENAME_SAFE.sub("_", doc_key).strip("_")[:120] + f"__p{page_no}"
+
+
+def reply_file(reply_dir: str | Path, doc_key: str, page_no: int) -> Path:
+    """The reply a file reader wrote for one page: ``<DIR>/b*/<stem>.reply.txt`` (the batch folder is not known)."""
+    found = sorted(Path(reply_dir).glob(f"b*/{page_stem(doc_key, page_no)}.reply.txt"))
+    if found:
+        return found[0]
+    return Path(reply_dir) / "b001" / f"{page_stem(doc_key, page_no)}.reply.txt"
+
+
+def _page_prompt(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] = ()) -> str:
+    """The exact prompt ``read_page`` sends for one page (the image is exported beside it)."""
+    words = page_words.words_for(store_db, doc_key, page_no, ocr_dbs).words
+    layout = page_layout.layout_text(words)
+    return rp.GRID_PROMPT + (rp.LAYOUT_NOTE + layout + "\n>>>" if layout.strip() else "")
+
+
+def _page_records(store_db: Any, pages: list[dict[str, Any]]) -> tuple[dict[str, dict[str, str]],
+                                                                      dict[tuple[str, int], str]]:
+    """(doc_key -> doc meta, (doc_key, page) -> stored page text) for every page an export considers."""
+    con = connect_ro(store_db)
+    try:
+        keys = sorted({str(page["doc_key"]) for page in pages})
+        meta: dict[str, dict[str, str]] = {}
+        texts: dict[tuple[str, int], str] = {}
+        for start in range(0, len(keys), 500):
+            chunk = keys[start:start + 500]
+            marks = ",".join("?" * len(chunk))
+            _cur = con.execute(
+                f"SELECT doc_key, doc_type, known_at, symbol FROM doc WHERE doc_key IN ({marks})", chunk)
+            for doc_key, doc_type, known_at, symbol in ((_cur.fetchall() or []) if _cur is not None else []):
+                meta[doc_key] = {"doc_type": rp._doc_type_norm(doc_type or ""), "known_at": known_at or "",
+                                 "symbol": symbol or ""}
+            _cur = con.execute(f"SELECT doc_key, page, text FROM doc_page WHERE doc_key IN ({marks})", chunk)
+            for doc_key, page, text in ((_cur.fetchall() or []) if _cur is not None else []):
+                texts[(doc_key, int(page))] = text or ""
+        return meta, texts
+    finally:
+        con.close()
+
+
+def _page_image(store_db: Any, doc_key: str, page_no: int, max_side: int = 1280) -> tuple[bytes, float]:
+    """A page's JPEG with its long side at most ``max_side`` and the scale from the rendered size (T-199).
+
+    The Haiku session overran 100k context at the full render size.  Position checks read the text-layer / OCR word
+    boxes, never image pixels, so shrinking the image changes no verdict."""
+    data = base64.b64decode(rp._page_image_b64(store_db, doc_key, page_no))
+    from io import BytesIO
+
+    from PIL import Image
+
+    with Image.open(BytesIO(data)) as image:
+        long_side = max(image.size)
+        if long_side <= max_side:
+            return data, 1.0
+        scale = round(long_side / max_side, 3)
+        image.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+        buffer = BytesIO()
+        image.convert("RGB").save(buffer, format="JPEG", quality=85)
+        return buffer.getvalue(), scale
+
+
+def export_pages(store_db: Any, routes_csv: str | Path, out_dir: str | Path, ocr_dbs: Iterable[Any] = (),
+                 symbols: Iterable[str] | None = None, doc_types: Iterable[str] | None = None,
+                 limit: int | None = None, batch: int = 8) -> dict[str, int]:
+    """Write every ``table_or_chart`` / ``needs_ocr`` page of ``routes_csv`` as one image + one prompt file.
+
+    A ``needs_ocr`` page (no usable words) is exported too: its prompt carries whatever OCR words ``--ocr-db``
+    supplies, and a reader given ``--input image`` reads it from the image and serves its cells unverified.
+
+    Pages whose text is identical (whitespace ignored) are one page: the copy with the earliest ``doc.known_at``
+    is exported (the figure was public from then) and the rest go to ``duplicates.csv`` with the canonical page, so
+    ``pilot3.atoms`` can copy the canonical atoms onto them.  A page with no text is never deduped."""
+    pages = select_routed(routes_csv, store_db, symbols=symbols,
+                          doc_types=tuple(doc_types) if doc_types else None, limit=limit,
+                          routes=("table_or_chart", "needs_ocr"))
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    meta, texts = _page_records(store_db, pages)
+    records: list[dict[str, Any]] = []
+    for page in pages:
+        doc_key, page_no = str(page["doc_key"]), int(page["page"])
+        info = meta.get(doc_key, {})
+        text = texts.get((doc_key, page_no), "")
+        records.append({**page, "doc_key": doc_key, "page": page_no,
+                        "doc_type": page.get("doc_type") or info.get("doc_type", ""),
+                        "known_at": info.get("known_at") or "", "text": text,
+                        "digest": hashlib.sha1(re.sub(r"\s+", "", text).encode("utf-8")).hexdigest()})
+    canonical: list[dict[str, Any]] = []
+    duplicates: list[dict[str, Any]] = []
+    by_digest: dict[str, dict[str, Any]] = {}
+    for record in sorted(records, key=lambda r: (r["known_at"] or "", r["doc_key"], r["page"])):
+        if not re.sub(r"\s+", "", record["text"]):      # a page with no text is never a duplicate
+            canonical.append(record)
+            continue
+        first = by_digest.get(record["digest"])
+        if first is None:
+            by_digest[record["digest"]] = record
+            canonical.append(record)
+        else:
+            duplicates.append({"canonical_doc_key": first["doc_key"], "canonical_page": first["page"],
+                               "duplicate_doc_key": record["doc_key"], "duplicate_page": record["page"]})
+    # deterministic folders: a re-run writes the same stems into the same batch
+    canonical.sort(key=lambda r: (r["doc_key"], r["page"]))
+    manifest: list[dict[str, Any]] = []
+    no_image = 0
+    for index, record in enumerate(canonical):
+        batch_name = f"b{index // max(1, int(batch)) + 1:03d}"
+        folder = out / batch_name
+        folder.mkdir(parents=True, exist_ok=True)
+        stem = page_stem(record["doc_key"], record["page"])
+        (folder / f"{stem}.prompt.txt").write_text(
+            _page_prompt(store_db, record["doc_key"], record["page"], ocr_dbs), encoding="utf-8")
+        scale = 1.0
+        try:
+            image, scale = _page_image(store_db, record["doc_key"], record["page"])
+        except Exception:                              # no PDF behind the page: the layout prompt still stands
+            image = b""
+        if image:
+            (folder / f"{stem}.jpg").write_bytes(image)
+        else:
+            no_image += 1
+        manifest.append({"batch": batch_name, "stem": stem, "doc_key": record["doc_key"], "page": record["page"],
+                         "doc_type": record["doc_type"], "known_at": record["known_at"], "img_scale": scale})
+    with (out / "manifest.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["batch", "stem", "doc_key", "page", "doc_type", "known_at",
+                                                "img_scale"])
+        writer.writeheader()
+        writer.writerows(manifest)
+    with (out / "duplicates.csv").open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["canonical_doc_key", "canonical_page",
+                                                "duplicate_doc_key", "duplicate_page"])
+        writer.writeheader()
+        writer.writerows(duplicates)
+    return {"pages": len(records), "exported": len(manifest), "duplicates": len(duplicates),
+            "batches": len({row["batch"] for row in manifest}), "no_image": no_image}
+
+
+def export_main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="python -m reality_engine.v2.page_reader export",
+                                 description="T-199: export table/chart pages for a file reader (a Haiku session)")
+    ap.add_argument("--store", required=True)
+    ap.add_argument("--ocr-db", action="append", default=[])
+    ap.add_argument("--routes", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--symbols", default=None)
+    ap.add_argument("--doc-types", default=None)
+    ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--batch", type=int, default=8)
+    args = ap.parse_args(argv)
+    symbols = [s.strip().upper() for s in args.symbols.split(",")] if args.symbols else None
+    doc_types = [rp._doc_type_norm(s) for s in args.doc_types.split(",") if s.strip()] if args.doc_types else None
+    summary = export_pages(args.store, args.routes, args.out, args.ocr_db, symbols, doc_types,
+                           args.limit, args.batch)
+    print(json.dumps(summary, indent=1))
+    return 0
 
 
 def select_pages(store_db: Any, symbols: Iterable[str] | None = None, doc_types: tuple[str, ...] = ("deck", "results", "annual_report"), limit: int | None = None) -> list[dict[str, Any]]:
@@ -67,21 +243,27 @@ def select_pages(store_db: Any, symbols: Iterable[str] | None = None, doc_types:
 
 
 def select_routed(routes_csv: str | Path, store_db: Any, symbols: Iterable[str] | None = None,
-                  doc_types: tuple[str, ...] | None = None, limit: int | None = None) -> list[dict[str, Any]]:
-    """The pages a ``page_route`` CSV marks ``table_or_chart`` (T-189): only these reach a reader."""
+                  doc_types: tuple[str, ...] | None = None, limit: int | None = None,
+                  routes: tuple[str, ...] = ("table_or_chart",)) -> list[dict[str, Any]]:
+    """The pages a ``page_route`` CSV marks with one of ``routes`` (T-189): only these reach a reader.
+
+    ``export`` (T-199) and a file reader take ``table_or_chart`` and ``needs_ocr``: a needs_ocr page has no usable
+    words, so the reader is given the page image and its cells serve unverified (``image_only``)."""
     with Path(routes_csv).open(newline="", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh))
     syms = {s.strip().upper() for s in (symbols or []) if str(s).strip()} or None
     wanted = {rp._doc_type_norm(t) for t in doc_types} if doc_types else None
+    wanted_routes = set(routes)
     out: list[dict[str, Any]] = []
     for r in rows:
-        if (r.get("route") or "").strip() != "table_or_chart":
+        route = (r.get("route") or "").strip()
+        if route not in wanted_routes:
             continue
         dt = rp._doc_type_norm(r.get("doc_type") or "")
         if wanted and dt not in wanted:
             continue
         out.append({"doc_key": r["doc_key"], "symbol": "", "doc_type": dt,
-                    "known_at": "", "page": int(r["page"]), "route": "table_or_chart"})
+                    "known_at": "", "page": int(r["page"]), "route": route})
     if syms and out:
         con = connect_ro(store_db)
         try:
@@ -145,8 +327,17 @@ def _normalize_rows(raw_rows: list[dict[str, Any]]) -> list[dict[str, str]]:
     return out
 
 
-def _call(reader: str, prompt: str, image_b64: str | None) -> dict[str, Any]:
-    """One reader call with backoff: 3 tries in all (Kilo answers 502/429 in bursts), then the error is returned."""
+def _call(reader: str, prompt: str, image_b64: str | None, reply_path: Path | None = None) -> dict[str, Any]:
+    """One reader call with backoff: 3 tries in all (Kilo answers 502/429 in bursts), then the error is returned.
+
+    A ``file:<DIR>`` reader (a Haiku subagent session that wrote its reply to a file) returns the file's text,
+    an empty output and ``error: no reply`` when the file is missing, and is never retried or asked twice."""
+    if reader.startswith("file:"):
+        if reply_path is None or not Path(reply_path).is_file():
+            return {"output": "", "seconds": 0.0, "in_tok": 0, "out_tok": 0, "tries": 1,
+                    "error": f"no reply: {reply_path}" if reply_path else "no reply"}
+        return {"output": Path(reply_path).read_text(encoding="utf-8", errors="replace"),
+                "seconds": 0.0, "in_tok": 0, "out_tok": 0, "tries": 1, "error": None}
     res = rp._model_call(reader, prompt, image_b64)
     tries = 1
     while res.get("error") and tries <= len(RETRY_DELAYS):
@@ -158,7 +349,8 @@ def _call(reader: str, prompt: str, image_b64: str | None) -> dict[str, Any]:
 
 
 def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: Iterable[Any] = (),
-              input_mode: str = "layout", route: str | None = None) -> dict[str, Any]:
+              input_mode: str = "layout", route: str | None = None,
+              reply_dir: str | Path | None = None) -> dict[str, Any]:
     con = connect_ro(store_db)
     try:
         _cur = con.execute("SELECT symbol, doc_type, known_at FROM doc WHERE doc_key=?", (doc_key,))
@@ -168,6 +360,11 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
     symbol, doc_type, known_at = "", "", ""
     if row:
         symbol, doc_type, known_at = row[0] or "", rp._doc_type_norm(row[1] or ""), row[2] or ""
+    file_reader = reader.startswith("file:")
+    reader_label = "haiku_sub" if file_reader else reader
+    if file_reader and reply_dir is None:
+        reply_dir = reader.split(":", 1)[1]
+    reply_path = reply_file(reply_dir, doc_key, page_no) if file_reader and reply_dir else None
 
     pw = page_words.words_for(store_db, doc_key, page_no, ocr_dbs)
     words = pw.words
@@ -182,7 +379,7 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
         "reason": pw.reason,
         "route": "",
         "status": "",
-        "reader": reader,
+        "reader": reader_label,
         "input": "layout",
         "passes": 1,
         "tries": 1,
@@ -247,7 +444,7 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
     prompt = rp.GRID_PROMPT + (rp.LAYOUT_NOTE + layout + "\n>>>" if layout.strip() else "")
 
     # first pass
-    res = _call(reader, prompt, image_b64)
+    res = _call(reader, prompt, image_b64, reply_path)
     if res.get("error"):
         result["status"] = "error"
         result["error"] = str(res.get("error") or "")
@@ -270,12 +467,12 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
     passes = 1
     tries = int(res.get("tries") or 1)
 
-    # second pass
-    if len(unread) >= 5:
+    # second pass (never for a file reader: one session answers a page once)
+    if not file_reader and len(unread) >= 5:
         distinct = sorted({u.get("line_text", "") for u in unread if u.get("line_text")})
         prompt2 = (rp.GRID_PROMPT + "Transcribe ONLY the rows on these printed lines, which were missed:\n"
                    + "\n".join(distinct) + "\n" + rp.LAYOUT_NOTE + layout + "\n>>>")
-        res2 = _call(reader, prompt2, image_b64)
+        res2 = _call(reader, prompt2, image_b64, reply_path)
         tries += int(res2.get("tries") or 1)
         if res2.get("error"):                         # first pass kept; the failed second pass is recorded
             result["error"] = f"second pass: {res2.get('error')}"[:300]
@@ -313,7 +510,7 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
             "page": page_no,
             "symbol": symbol,
             "known_at": known_at,
-            "reader": reader,
+            "reader": reader_label,
             "table_title": c.get("table", "") or "",
             "row_label": c.get("row_label", "") or "",
             "col_header": c.get("col_header", "") or "",
@@ -415,6 +612,9 @@ def _ledger(args: Any, con: sqlite3.Connection, started: datetime, stopped: str)
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "export":
+        return export_main(argv[1:])
     ap = argparse.ArgumentParser(description="T-183/T-189 production page reader")
     ap.add_argument("--store", required=True)
     ap.add_argument("--ocr-db", action="append", default=[])
@@ -425,14 +625,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--symbols", default=None)
     ap.add_argument("--doc-types", default="deck,results,annual_report")
     ap.add_argument("--limit", type=int, default=None)
-    ap.add_argument("--reader", required=True)
+    ap.add_argument("--reader", required=True, help="a free MODELS name, or file:<DIR> for replies written to files")
     ap.add_argument("--workers", type=int, default=3)
     args = ap.parse_args(argv)
     if not args.out and not args.into_store:
         raise SystemExit("--out <db> or --into-store is required")
 
-    if not rp._is_free(args.reader):
-        raise SystemExit(f"reader {args.reader!r} is not a free model; refusing")
+    reader = args.reader
+    file_reader = reader.startswith("file:")
+    reply_dir = reader.split(":", 1)[1] if file_reader else None
+    if not file_reader and not rp._is_free(reader):
+        raise SystemExit(f"reader {reader!r} is not a free model; refusing")
+    if file_reader and not reply_dir:
+        raise SystemExit("file:<DIR> needs the directory the replies were written to")
+    args.reader = "haiku_sub" if file_reader else reader      # what page_read stores and resumes on
 
     store_db = args.store
     ocr_dbs = args.ocr_db or []
@@ -440,7 +646,9 @@ def main(argv: list[str] | None = None) -> int:
     doc_types = tuple(s.strip() for s in args.doc_types.split(",") if s.strip())
 
     if args.routes:
-        pages = select_routed(args.routes, store_db, symbols=symbols, doc_types=doc_types, limit=args.limit)
+        routes = ("table_or_chart", "needs_ocr") if file_reader else ("table_or_chart",)
+        pages = select_routed(args.routes, store_db, symbols=symbols, doc_types=doc_types, limit=args.limit,
+                              routes=routes)
     else:
         pages = select_pages(store_db, symbols=symbols, doc_types=doc_types, limit=args.limit)
 
@@ -460,8 +668,8 @@ def main(argv: list[str] | None = None) -> int:
     stopped = ""
     if todo:
         with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
-            futures = {ex.submit(read_page, store_db, p["doc_key"], p["page"], args.reader, ocr_dbs,
-                                 args.input, p.get("route")): p for p in todo}
+            futures = {ex.submit(read_page, store_db, p["doc_key"], p["page"], reader, ocr_dbs,
+                                 args.input, p.get("route"), reply_dir): p for p in todo}
             for fut in as_completed(futures):
                 if fut.cancelled():
                     continue
