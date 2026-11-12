@@ -1,6 +1,6 @@
 # T-195 retry (r2): the answer IS in the store, find it and say why you stopped before
 
-Ticket: T-195
+Ticket: T-196
 Goal: in the T-195 re-run you answered these Aurobindo questions, and an independent grader marked each one NOT fully
 right (incomplete, wrong period, a document filed after the question date, or "not found"). For every one of them the
 complete answer IS held in the store on or before the question's as_of. Find it. Shivam wants to know why answers stop
