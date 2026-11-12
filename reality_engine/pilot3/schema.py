@@ -16,11 +16,14 @@ TABLES: dict[str, str] = {
         doc_key TEXT, symbol TEXT, page INTEGER, text TEXT, method TEXT, chars INTEGER, known_at TEXT,
         ocr_conf REAL,
         PRIMARY KEY (doc_key, page))""",
+    # ``count_basis`` (T-192): how the count was got -- ``filed_exact`` (a filed shareholding pattern's own total)
+    # or ``derived_from_capital`` (paid-up capital / face value, rounded, so never preferred over an exact filing).
+    # ``ratio`` stays what it always was: the split/bonus ratio of an event row.
     "share_capital": """CREATE TABLE share_capital (
         symbol TEXT, isin TEXT, as_of_date TEXT, basis TEXT, event TEXT, ratio TEXT,
         shares_outstanding REAL, paid_up_capital REAL, face_value REAL, unit TEXT, scale REAL,
         known_at TEXT, known_at_source TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT,
-        isin_effective_from TEXT, isin_effective_to TEXT)""",
+        isin_effective_from TEXT, isin_effective_to TEXT, count_basis TEXT)""",
     # ``preferred_from`` / ``preferred_to`` (T-090): the window in which this row is THE figure for its
     # (symbol, line_item, fiscal_period, basis).  ``preferred_to`` NULL means current.  The windows of one key tile
     # its timeline, so plain SQL elects the same row pilot3_fin returns at any day (preferred.py writes them).
@@ -107,12 +110,15 @@ TABLES: dict[str, str] = {
         check_status TEXT, check_detail TEXT, is_reported INTEGER,
         preferred_from TEXT, preferred_to TEXT)""",
     # one row per forward-looking numeric target (guidance.py).  ``doc_key`` is the ticket's ``doc_id``; the
-    # column is named ``doc_key`` like every other pilot3 table.
+    # column is named ``doc_key`` like every other pilot3 table.  ``entity`` (T-192) is the subsidiary, segment or
+    # investee a target belongs to when the sentence or the question it answers names one: such a row is never the
+    # group's guidance, and the guidance lookup serves only rows whose entity is empty unless asked otherwise.
     "guidance": """CREATE TABLE guidance (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         symbol TEXT, isin TEXT, metric TEXT, target_period TEXT, low REAL, high REAL, unit TEXT,
         direction TEXT, said_on TEXT, doc_key TEXT, page INTEGER, quote TEXT, speaker TEXT,
-        known_at TEXT, known_at_source TEXT, revision_of INTEGER, extractor_rule TEXT)""",
+        known_at TEXT, known_at_source TEXT, revision_of INTEGER, extractor_rule TEXT,
+        entity TEXT NOT NULL DEFAULT '')""",
     # T-093: one identity verdict per document (doc_identity.py).  A failure sets the document aside; nothing is deleted.
     "doc_identity": """CREATE TABLE doc_identity (
         doc_key TEXT, corporate_doc_id INTEGER, symbol TEXT, isin TEXT, doc_type TEXT, file_where TEXT, verdict TEXT,
@@ -227,6 +233,26 @@ def ensure_views(conn: sqlite3.Connection) -> None:
             return
     conn.execute("DROP VIEW IF EXISTS fin_quarter_current")
     conn.execute(FIN_QUARTER_CURRENT)
+
+
+# T-192: additive columns for tables built before them (a part re-run migrates, never drops).
+SHARE_CAPITAL_ADDITIONS = (
+    "ALTER TABLE share_capital ADD COLUMN count_basis TEXT",
+)
+GUIDANCE_ADDITIONS = (
+    "ALTER TABLE guidance ADD COLUMN entity TEXT NOT NULL DEFAULT ''",
+)
+
+
+def ensure_columns(conn: sqlite3.Connection, table: str, additions) -> None:
+    """Add the given columns to ``table`` when a build made it before them (additive, never dropped)."""
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
+        return
+    have = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    for sql in additions:
+        column = sql.split(" ADD COLUMN ")[1].split()[0]
+        if column not in have:
+            conn.execute(sql)
 
 
 # T-164: helpers for transcript statement turn/entity columns and the analyst-question view.

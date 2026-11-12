@@ -498,15 +498,19 @@ active one. Without a profile every command behaves exactly as before (the three
   FY26 `eps_basic_fy` 48.615 (the filed annual EPS is 48.62; the Q1 EPS filed before the 1:1 bonus is restated by the
   cumulative split factor, see F_EPS_FY).
 - **Share count**: every quarter end takes the exact `shareholding_pattern` total of `shp_category`
-  (`source_kind='xbrl'`, `known_at` = the SHP's filing) into `share_capital` (`source_table='shp_category'`), written
-  beside the paid-up/face-value row (T-073): SBILIFE 5 quarters (1,003,405,073 at 30 Sep 2026), ETERNAL 9,650,350,647,
-  HINDUNILVR 2,349,591,262, HINDALCO 2,247,226,523. `ratios._share_count` (book value) and `valuation_daily` prefer the
-  pattern row visible by the day and fall back to the rounded paid-up division only before that filing; `pilot3_holding`
-  returns the same row. `valuation_daily` uses the basis that has both a share count and a quarterly statement
+  (`source_kind='xbrl'`, `known_at` = the SHP's filing) into `share_capital` (`source_table='shp_category'`,
+  `count_basis='filed_exact'`), written beside the paid-up/face-value row (T-073): SBILIFE 5 quarters (1,003,405,073 at
+  30 Sep 2026), ETERNAL 9,650,350,647, HINDUNILVR 2,349,591,262, HINDALCO 2,247,226,523. A count divided out of the
+  rounded paid-up capital is `count_basis='derived_from_capital'` and is never preferred over a filed exact count of
+  the same date (T-192, `ratio` stays the split/bonus ratio of an event row only). `ratios._share_count` (book value),
+  `valuation_daily` and `pilot3_holding` order on `count_basis` and fall back to the rounded paid-up division only
+  before that filing. `valuation_daily` uses the basis that has both a share count and a quarterly statement
   (standalone for a company that files no consolidated one, SBILIFE; T-073).
 - **Ratios**: half-year point-in-time ratios (`book_value_per_share`, `roe`, `roa`, `roce`, `net_debt_to_ebitda`, days, ...) are
   also written under the quarter label (`Q2FY27`, same value and formula; the NIM is a period measure and is not copied);
-  `cost_to_income` (F_COST_INCOME, banks); `dividend_payout_pct` uses one DPS per fiscal year (the corporate-action sum wins over
+  `roe` divides the trailing four quarters' PAT by the average of the opening and closing owners' equity when the opening
+  year's net worth is held, and both net-worth rows are named in `input_refs`; without it the row is
+  `basis='closing_equity'` (T-192). `cost_to_income` (F_COST_INCOME, banks); `dividend_payout_pct` uses one DPS per fiscal year (the corporate-action sum wins over
   an annual-report figure); a zero `dividend_yield_pct` is written only when no dividend was declared in 12 months and the last
   filed annual cash flow shows none paid (ETERNAL).
 - **New tables**, read by ISIN (every ISIN the company has had), no placeholder rows: `bulk_block_deal` (2 to 14 rows for BAJFINANCE,
@@ -1539,3 +1543,59 @@ files (16 pre-existing errors remain on untouched lines).
 
 **Still to do on the controller:** restart the reality-data MCP so the tool text is loaded, and re-run the T-179
 answer timing with `pilot3_fact` in the tool list to measure the 6-9 lookups it replaces.
+
+### 9p. The five wrong stored rows a grader caught (T-192, 12 Nov 2026)
+
+Four independent Opus graders on the T-189 AUROPHARMA run caught five kinds of wrong row that every model repeated.
+Each is fixed as a rule (no company, person or ISIN literal in code; `test_pilot3_no_company_literals.py` green) and
+each has a fixture test.
+
+1. **ROE on average owners' equity.** `ratio_panel` FY26 `roe` was PAT / closing equity (9.24%); the annual report
+   p113 states 9.9%, and on average equity (32,653 + 37,891)/2 it is 9.93%. `ratios._balance_ratios_rows` now divides
+   by the average when the opening year's `net_worth` is held and names BOTH net-worth rows plus the LTM PAT in
+   `input_refs`, so the number can be rebuilt from the row; without the opening year it is closing equity, labelled
+   `basis='closing_equity'`. Test `test_roe_uses_average_owners_equity_when_the_opening_year_is_held`.
+2. **One EBITDA definition, and the company's own measure first.** The derived FY25 row included a forex loss because
+   the code looked for `forex_gain_loss`, a line no store files; that key is gone (forex is not derived). The real
+   defect was two derivations disagreeing (6,582.79 and 6,555.61 against the company's 6,605): `pilot3_fact` now
+   routes `ebitda` / `ebitda_margin` to `kpi_series` when the company printed the measure for that period and basis,
+   ranks the operating definition ("EBITDA (before forex and other income)") ahead of one that also strips an
+   operating cost ("EBITDA before R&D"), and returns the derived `ratio_panel` row as a labelled alternative. A
+   margin's numerator and denominator are the same period's and the same row's; an annual period is never filled
+   from a quarter.
+3. **A comparative column was stored as the current quarter.** The KPI row said Q1 FY27 operating EBITDA margin
+   20.4% where deck p13 prints 21.0%. Root cause: `kpi.parse_periods`' month-year pattern matched "Mar" inside the
+   label "EBITDA Margin" and read "Margin\n21.0%" as March 2021; the phantom period span swallowed the current
+   column's 21.0% and the next value (the Q1 FY26 comparative) became the row. The pattern now needs a word boundary
+   and refuses a decimal tail, so the label's own value is read. `_kept_columns(cols, current)` keeps the results
+   table's column that matches the document's own period. Test
+   `test_a_month_word_inside_a_label_is_not_a_period`, `test_a_results_block_takes_its_own_column_not_the_comparative`.
+4. **A subsidiary's target stored as the group's.** The FY31 EBITDA margin 15% is Lannett's (an analyst question on
+   the transcript names it); it was stored as group guidance, and the transcript carried the call period Q1FY31
+   because a year in the text was read as the call's period. `transcripts.call_period_ok` takes the quarter from the
+   filing record when the text's label cannot be the call's (a call cannot report a quarter that ends after it was
+   filed), and `guidance.foreign_entity` reads the entities the statement or the analyst question it answers
+   (`transcript_question.entities`, matched by `answer_turn`) names; the entity is written to the new
+   `guidance.entity` column and `pilot3_guidance` serves only rows whose entity is empty. No person or company name
+   is in the code. Tests `test_a_calls_period_comes_from_its_filing_record`,
+   `test_guidance_never_serves_an_entitys_target_as_the_groups`.
+5. **A rounded count served as exact.** `share_capital` held 575,400,000 (paid-up 57.54 crore / face value Re 1)
+   as the share count while the SHP XBRL files 575,377,895. The table gains `count_basis`
+   (`filed_exact` | `derived_from_capital`, additive migration in `schema.py`); the marker no longer overwrites
+   `known_at_source` and no longer sits in `ratio` (which is the split/bonus ratio of an event row); `ratios._share_count`,
+   `pilot3_holding` and the computed-input reader order a filed exact count first for the same date. Tests
+   `test_share_count_prefers_a_filed_exact_count_over_a_capital_derived_one`,
+   `test_the_exact_pattern_share_total_wins_over_rounded_paid_up_capital`.
+
+Verified on a copy of the aurobindo store (`transcripts`, `kpi`, `guidance`, `ratios` rebuilt plus the count_basis
+migration; live stores untouched): ROE FY26 9.9 stated / 9.931 derived, EBITDA FY25 6,605 crore (deck p20) and margin
+20.8% (AR p48), Q1FY27 KPI margin 21.0 (deck p13), Lannett entity-tagged and out of group guidance, share count
+575,377,895 `filed_exact`. `kpi_series` rows 806 -> 682 on that store (the phantom March-2021 spans no longer hide the
+current column) and `guidance` 52 -> 45 (seven entity rows). Diff, per-table counts and open problems:
+`.tmp/T-192_DIFF.md`. Tests run one file at a time: `test_pilot3_ratios.py` 15 passed, `test_pilot3_preferred.py`
+14 passed, `test_pilot3_kpi_ratio_period.py` 8 passed, `test_pilot3_guidance.py` 44 passed, `test_pilot3_transcripts.py`
+22 passed, `test_pilot3_price_window.py` 7 passed, `test_pilot3_no_company_literals.py` 7 passed.
+
+**Sandbox note.** pytest's own `tmp_path` cannot run in this confined worker (a directory created after the session
+starts cannot be listed: `WinError 5`), so `test_pilot3_ratios.py` carries a local `tmp_path` fixture that builds the
+directory straight from a name; `--basetemp` is refused here. On the controller the accept command runs as written.

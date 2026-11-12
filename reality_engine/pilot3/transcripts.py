@@ -171,6 +171,41 @@ def call_period_of(title: str, texts: list[str]) -> str | None:
     return None
 
 
+def quarter_end_of(label: str | None) -> str | None:
+    """The last day of the quarter a ``QxFYyy`` label names, or None for any other label."""
+    m = re.fullmatch(r"Q([1-4])FY(\d{2})", (label or "").strip().upper())
+    if not m:
+        return None
+    fy = 2000 + int(m.group(2))
+    return {"1": f"{fy - 1}-06-30", "2": f"{fy - 1}-09-30", "3": f"{fy - 1}-12-31", "4": f"{fy}-03-31"}[m.group(1)]
+
+
+def filing_quarter(known_at: str | None) -> str | None:
+    """The quarter a filing reports, from its own filing record: Apr-Jun files Q4, Jul-Sep Q1, Oct-Dec Q2, Jan-Mar
+    Q3 of the fiscal year that ends in the following March."""
+    m = re.match(r"(\d{4})-(\d{2})", (known_at or "")[:10])
+    if not m:
+        return None
+    year, month = int(m.group(1)), int(m.group(2))
+    if 4 <= month <= 6:
+        return f"Q4FY{year % 100:02d}"
+    if 7 <= month <= 9:
+        return f"Q1FY{(year + 1) % 100:02d}"
+    if 10 <= month <= 12:
+        return f"Q2FY{(year + 1) % 100:02d}"
+    return f"Q3FY{year % 100:02d}"
+
+
+def call_period_ok(period: str | None, known_at: str | None) -> str | None:
+    """The period a call reports: the label its own text gives when that quarter had closed by the filing, else the
+    quarter the filing record names.  A call cannot report a quarter that ends after it was filed, so a year the
+    text happens to mention (a long-range ambition, a target year) never becomes the call's period (T-192)."""
+    end = quarter_end_of(period)
+    if end and end <= (known_at or "")[:10]:
+        return period
+    return filing_quarter(known_at)
+
+
 def call_date_of(first_page: str, known_at: str | None) -> str | None:
     m = CALL_DATE_RX.search(first_page[:1500])
     if m:
@@ -951,7 +986,7 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
                 learned_generic: set[str] | None = None):
     texts = [t for _, t in pages]
     boiler = boilerplate_lines(texts)
-    cperiod = call_period_of(title, texts)
+    cperiod = call_period_ok(call_period_of(title, texts), known_at)
     cdate = call_date_of(texts[0], known_at)
     full = "\n".join(texts)
     doi_mgmt: dict[str, str] = {}

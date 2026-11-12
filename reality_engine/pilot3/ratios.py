@@ -202,13 +202,13 @@ def _share_count(conn: sqlite3.Connection, symbol: str, basis: str, day: str, as
     (and net of an ESOP trust for some companies; T-073).  Paid-up capital stays the fallback for a day before the
     pattern's own filing."""
     rows = conn.execute(
-        "SELECT as_of_date, shares_outstanding, known_at, source_table FROM share_capital "
+        "SELECT as_of_date, shares_outstanding, known_at, source_table, count_basis FROM share_capital "
         "WHERE symbol=? AND basis=? AND event IS NULL AND shares_outstanding>0 AND as_of_date<=? "
         "ORDER BY as_of_date, known_at", (symbol, basis, as_of or day)).fetchall()
     live = [r for r in rows if (r[2] or "")[:10] <= day]
     if not live:
         return None
-    exact = [r for r in live if r[3] == "shp_category"]
+    exact = [r for r in live if r[4] == "filed_exact" or (r[4] is None and r[3] == "shp_category")]
     row = (exact or live)[-1]
     return row[1], row[2], row[3]
 
@@ -564,11 +564,12 @@ def _balance_ratios_rows(conn: sqlite3.Connection, symbol: str, isin: str | None
             "WHERE symbol=? AND definition IN ('xbrl_reported','xbrl_derived') AND period_type IN ('FY','H1') "
             "AND statement IN ('BS','P&L') ORDER BY known_at", (symbol,)):
         sheets[(basis, fy, end, ptype)][item] = (value, known, rowid)
-    # opening net worth by (basis, period_end) for the ROE average
+    # opening net worth by (basis, period_end) for the ROE average: (value, fy, rowid, known_at), so the average's
+    # own input is named in the row and a grader can rebuild the number from the references.
     equity_by_end = {}
-    for (basis, _fy, end, _ptype), bs in sheets.items():
+    for (basis, fy, end, _ptype), bs in sheets.items():
         if "net_worth" in bs:
-            equity_by_end.setdefault((basis, end), bs["net_worth"][0])
+            equity_by_end.setdefault((basis, end), (bs["net_worth"][0], fy, bs["net_worth"][2], bs["net_worth"][1]))
     sheets = defaultdict(dict)
     for basis, fy, end, ptype, item, value, known, rowid in conn.execute(
             "SELECT basis, fiscal_year, period_end, period_type, line_item, value*scale, known_at, rowid FROM fin_annual_line "
@@ -604,11 +605,14 @@ def _balance_ratios_rows(conn: sqlite3.Connection, symbol: str, isin: str | None
             put("debt_to_equity", debt[0] / nw[0], "x", "F_DE", ("total_borrowings", "net_worth"))
         # ROE on average owners' equity when the opening net worth is held; closing equity only otherwise.
         opening_end = (date.fromisoformat(start) - timedelta(days=1)).isoformat()
-        opening_nw = equity_by_end.get((basis, opening_end))
+        opening = equity_by_end.get((basis, opening_end))
         if nw and nw[0] and "pat" in ltm:
-            if opening_nw:
-                put("roe", 100.0 * ltm["pat"][0] / ((opening_nw + nw[0]) / 2.0), "pct", "F_ROE",
-                    ("net_worth",), ("pat",))
+            if opening and opening[0]:
+                opening_ref = f"fa:{symbol}:{opening[1]}:{basis}:net_worth#{opening[2]}"
+                _put(out, symbol, isin, fy, ptype, start, end, basis, "roe",
+                     100.0 * ltm["pat"][0] / ((opening[0] + nw[0]) / 2.0), "pct", "F_ROE",
+                     [ref("net_worth"), opening_ref, f"fq:{symbol}:ltm:{basis}:pat@{end}"],
+                     max(nw[1], opening[3], ltm["pat"][1]))
             else:
                 _put(out, symbol, isin, fy, ptype, start, end, "closing_equity", "roe",
                      100.0 * ltm["pat"][0] / nw[0], "pct", "F_ROE", [ref("net_worth")] +

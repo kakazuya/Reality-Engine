@@ -257,3 +257,57 @@ def test_stores_read_the_statement_basis_from_the_page_wording():
     assert stores._statement_basis("The Group does not face a significant liquidity risk. The Group provides "
                                    "for gratuity; the Company contributes.") == "consolidated"
     assert stores._statement_basis("Total 3,749 3,459") is None
+
+
+# --- T-192 2: EBITDA is the company's own operating measure, the derived one a labelled second row ------------
+def _kpi_ebitda(conn, value, period, label, known, rank=4, basis="consolidated"):
+    conn.execute("INSERT INTO kpi_series (symbol, metric, dimension, value, unit, scale, period_type, fiscal_period, "
+                 "basis, doc_key, page, quote, known_at, extractor_rule, confidence, conf_rank, entity, raw_label) "
+                 "VALUES (?,?,'total',?,'inr_cr',1,'FY',?,?,?,?,?,?,'table_v1','table',?,?,?)",
+                 (SYM, "ebitda", value, period, basis, f"BAJFINANCE/deck/{known[:10]}.pdf", 1,
+                  f"{label}\n{value}", known, rank, SYM, label))
+
+
+def test_ebitda_serves_the_companys_printed_measure_not_one_derivation(lookups):
+    """Two company-printed rows and one derived row: the operating definition wins and the derived row is a second,
+    labelled answer.  "EBITDA before R&D" strips an operating cost, so it is a different measure (T-192)."""
+    module, conn = lookups()
+    conn.execute("INSERT INTO ratio_panel VALUES (?,?, 'FY25','FY','2024-04-01','2025-03-31','consolidated','ebitda',"
+                 "65556100000.0,'inr',1.0,'F_EBITDA','[]','2025-05-27T00:01:19','x',1)",
+                 (SYM, "INE296A01024"))
+    _kpi_ebitda(conn, 8148.0, "FY25", "EBITDA before R&D", "2026-05-21T22:12:58")
+    _kpi_ebitda(conn, 6605.0, "FY25", "EBITDA (before Forex and Other Income)", "2026-05-21T22:12:58")
+    conn.commit()
+    reply = module.fact(SYM, "ebitda", "FY25")
+    assert reply["found"] is True and reply["route"] == "kpi"
+    assert reply["answer"]["value"] == pytest.approx(6605.0)
+    # the derived row is kept as a labelled second answer, never merged into the company's own figure
+    assert [a["value"] for a in reply["alternatives"] if a.get("value") in (65556100000.0, 6555.61)], \
+        reply["alternatives"]
+
+
+def test_ebitda_rank_prefers_the_operating_label():
+    from lookups_pilot3 import _ebitda_rank
+
+    assert _ebitda_rank({"raw_label": "EBITDA (before Forex and Other Income)"}) == 0
+    assert _ebitda_rank({"raw_label": "Operating EBITDA"}) == 0
+    assert _ebitda_rank({"raw_label": "EBITDA before R&D"}) == 1
+
+
+# --- T-192 4: a target naming a subsidiary/segment/investee is never the group's ---------------------------
+def test_guidance_never_serves_an_entitys_target_as_the_groups(lookups):
+    module, conn = lookups()
+    conn.execute("INSERT INTO guidance (symbol, isin, metric, target_period, low, high, unit, direction, said_on, "
+                 "doc_key, page, quote, speaker, known_at, known_at_source, revision_of, extractor_rule, entity) "
+                 "VALUES (?,?,'ebitda_margin','FY31',15,15,'pct','flat','2025-08-08','d1',18,'margin of 15% or more',"
+                 "'m','2025-08-08T12:07:00','doc.known_at',NULL,'guidance_cue_v1','Lannett')",
+                 (SYM, "INE296A01024"))
+    conn.execute("INSERT INTO guidance (symbol, isin, metric, target_period, low, high, unit, direction, said_on, "
+                 "doc_key, page, quote, speaker, known_at, known_at_source, revision_of, extractor_rule, entity) "
+                 "VALUES (?,?,'ebitda_margin','FY27',21,21,'pct','up','2026-05-27','d2',6,'north of 21%','m',"
+                 "'2026-05-27T18:14:02','doc.known_at',NULL,'guidance_cue_v1','')",
+                 (SYM, "INE296A01024"))
+    conn.commit()
+    reply = module.guidance(SYM, "ebitda_margin")
+    assert [(r["period"], r["low"]) for r in reply["rows"]] == [("FY27", 21.0)]
+

@@ -59,12 +59,86 @@ def test_quarterly_only_lines_make_no_annual_row():
     assert conn.execute("SELECT COUNT(*) FROM ratio_panel WHERE metric='opex_to_net_total_income_pct'").fetchone()[0] == 0
 
 
+# --- T-192 1: ROE on average owners' equity, and the opening input named ----------------------------------------
+def _annual(conn, fy, end, item, value, known, statement="BS"):
+    conn.execute("INSERT INTO fin_annual_line (symbol, isin, fiscal_year, period_end, basis, statement, line_item, "
+                 "caption, value, unit, scale, known_at, known_at_source, is_reported, is_derived, definition, "
+                 "period_type) VALUES ('T','INE000A01010',?,?,'consolidated',?,?,?,?,'inr',1.0,?,'x',1,0,"
+                 "'xbrl_derived','FY')", (fy, end, statement, item, item, value, known))
+
+
+def _quarter(conn, period, begin, end, item, value, known):
+    conn.execute("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, audited, "
+                 "statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, source_table, "
+                 "source_rowid, known_at, known_at_source, is_reported) "
+                 "VALUES ('T','INE000A01010',?,?,?,'consolidated','A','P&L',?,?,?,'inr',1.0,'f','d','t','r',?,'s',1)",
+                 (begin, end, period, item, item, value, known))
+
+
+def test_roe_uses_average_owners_equity_when_the_opening_year_is_held():
+    """T-192: 3,502.97 crore PAT over the average of the opening and closing owners' equity, not the closing one,
+    and both net-worth inputs are named so the row can be rebuilt from its references."""
+    conn = sqlite3.connect(":memory:")
+    schema.create(conn, list(schema.TABLES))
+    conn.execute("INSERT INTO company VALUES ('T','INE000A01010',NULL,NULL,'1','1','T Ltd')")
+    _annual(conn, "FY25", "2025-03-31", "net_worth", 326_533_200_000.0, "2025-05-27T00:01:19")
+    _annual(conn, "FY26", "2026-03-31", "net_worth", 378_909_700_000.0, "2026-05-21T22:12:58")
+    for period, begin, end, pat, known in (
+            ("Q1FY26", "2025-04-01", "2025-06-30", 8_000_000_000.0, "2025-08-05T21:00:00"),
+            ("Q2FY26", "2025-07-01", "2025-09-30", 9_000_000_000.0, "2025-11-05T21:00:00"),
+            ("Q3FY26", "2025-10-01", "2025-12-31", 9_029_700_000.0, "2026-02-09T21:00:00"),
+            ("Q4FY26", "2026-01-01", "2026-03-31", 9_000_000_000.0, "2026-05-21T22:12:58")):
+        _quarter(conn, period, begin, end, "pat", pat, known)
+    conn.commit()
+    out: list = []
+    ratios._panel(conn, "T", "INE000A01010", out)
+    ratios._balance_ratios(conn, "T", "INE000A01010", out)
+    conn.executemany("INSERT INTO ratio_panel VALUES (" + ",".join("?" * 16) + ")", out)
+    basis, value, refs = conn.execute(
+        "SELECT basis, value, input_refs FROM ratio_panel WHERE symbol='T' AND metric='roe' AND fiscal_period='FY26'"
+    ).fetchone()
+    assert basis == "consolidated"                       # not the closing-equity fallback
+    assert value == pytest.approx(100.0 * 35_029_700_000.0 / ((326_533_200_000.0 + 378_909_700_000.0) / 2.0))
+    assert sum("net_worth" in r for r in json.loads(refs)) == 2, refs
+
+
+def test_share_count_prefers_a_filed_exact_count_over_a_capital_derived_one():
+    """T-192: 575,400,000 is 57.54 crore / Re 1, rounded, and filed later than the exact pattern count of the same
+    day.  The count basis decides, never the known_at order or the table name."""
+    conn = sqlite3.connect(":memory:")
+    schema.create(conn, ("share_capital",))
+    columns = ("symbol, isin, as_of_date, basis, shares_outstanding, unit, scale, known_at, known_at_source, "
+               "source_db, source_table, count_basis")
+    conn.execute(f"INSERT INTO share_capital ({columns}) VALUES ('T','I','2026-06-30','consolidated',575400000.0,"
+                 "'shares',1.0,'2026-08-05T21:13:04','x','results_xbrl.db','quarterly','derived_from_capital')")
+    conn.execute(f"INSERT INTO share_capital ({columns}) VALUES ('T','I','2026-06-30','consolidated',575377895.0,"
+                 "'shares',1.0,'2026-07-15T15:31:04','x','pilot3.db','shp_holding','filed_exact')")
+    conn.commit()
+    shares, _known, _table = ratios._share_count(conn, "T", "consolidated", "2026-09-30")
+    assert shares == 575_377_895.0
+
+
 # --- T-056 loop 2: compute-only history, bank and insurer lines, quarter-labelled half-year ratios -----------------
+import uuid  # noqa: E402
+from pathlib import Path  # noqa: E402
+
 import pytest  # noqa: E402
 
 from reality_engine.pilot3 import profile, stores  # noqa: E402
 
 SYM, SISIN = "T", "INE000A01010"
+
+
+@pytest.fixture()
+def tmp_path():
+    """A fresh directory per test under ``.tmp`` (T-192).
+
+    pytest's own factory numbers its base directory by listing it, and the confined Windows sandbox denies
+    listing any directory created after the session began (WinError 5), so every ``tmp_path`` test errored at
+    setup here.  This builds the directory straight from a name: the same contract, nothing else changes."""
+    path = Path(".tmp") / "pytest" / uuid.uuid4().hex[:8]
+    path.mkdir(parents=True, exist_ok=False)
+    return path
 
 
 def _profile(tmp_path, compute_start: str | None = "2025-01-01", window_start="2026-01-01", lender=False):
@@ -97,7 +171,7 @@ def _four_quarters(conn):
         ("Q4FY26", "2026-03-31", "2026-05-01T10:00:00", {"eps_basic": 1.3, "pat": 130.0, "revenue_from_operations": 1300.0})])
     conn.execute("INSERT INTO company VALUES (?,?,NULL,NULL,'t','1','T Ltd')", (SYM, SISIN))
     conn.execute("INSERT INTO share_capital VALUES (?,?,'2025-06-30','consolidated',NULL,NULL,100.0,100.0,1.0,'shares',1.0,"
-                 "'2025-08-01T10:00:00','s','d','t','r',NULL,NULL)", (SYM, SISIN))
+                 "'2025-08-01T10:00:00','s','d','t','r',NULL,NULL,'derived_from_capital')", (SYM, SISIN))
     conn.executemany("INSERT INTO price_delivery VALUES (" + ",".join("?" * 21) + ")",
                      [(SYM, SISIN, "NSE", d, 10, 11, 9, 10.0, 10, 1, 1, 1, 1, 50.0, 1.0, 10.0, d, "x", "d", "t", d)
                       for d in ("2025-09-01", "2026-02-02", "2026-05-02")])
@@ -246,12 +320,12 @@ def test_gross_margin_uses_stock_in_trade_and_inventory_change(tmp_path):
 def test_the_exact_pattern_share_total_wins_over_rounded_paid_up_capital():
     conn = sqlite3.connect(":memory:")
     schema.create(conn, list(schema.TABLES))
-    for as_of, shares, known, table in (
-            ("2026-09-30", 2_220_000_000.0, "2026-08-07T10:00:00", "quarterly"),
-            ("2026-09-30", 2_247_226_523.0, "2026-10-19T10:00:00", "shp_category"),
-            ("2025-12-31", 2_220_000_000.0, "2026-01-20T10:00:00", "quarterly")):
+    for as_of, shares, known, table, count_basis in (
+            ("2026-09-30", 2_220_000_000.0, "2026-08-07T10:00:00", "quarterly", "derived_from_capital"),
+            ("2026-09-30", 2_247_226_523.0, "2026-10-19T10:00:00", "shp_category", "filed_exact"),
+            ("2025-12-31", 2_220_000_000.0, "2026-01-20T10:00:00", "quarterly", "derived_from_capital")):
         conn.execute("INSERT INTO share_capital VALUES (?,?,?,'consolidated',NULL,NULL,?,NULL,NULL,'shares',1.0,?,"
-                     "'s','d',?,'r',NULL,NULL)", (SYM, SISIN, as_of, shares, known, table))
+                     "'s','d',?,'r',NULL,NULL,?)", (SYM, SISIN, as_of, shares, known, table, count_basis))
     sh = ratios._share_count(conn, SYM, "consolidated", "2026-10-20")
     assert sh is not None and sh[0] == 2_247_226_523.0
     # before the pattern was filed the rounded paid-up row is the only fallback
@@ -263,7 +337,7 @@ def _valuation_fixture(conn, share_known="2026-10-20T10:00:00", prices=("2026-10
     conn.execute("INSERT INTO company VALUES (?,?,NULL,NULL,'t','1','T Ltd')", (SYM, SISIN))
     _quarter_rows(conn, [("Q2FY27", "2026-09-30", "2026-10-23T10:00:00", {"eps_basic": 5.0, "pat": 500.0})])
     conn.execute("INSERT INTO share_capital VALUES (?,?,'2026-09-30','consolidated',NULL,NULL,100.0,100.0,1.0,"
-                 "'shares',1.0,?,'s','d','shp_category','r',NULL,NULL)", (SYM, SISIN, share_known))
+                 "'shares',1.0,?,'s','d','shp_category','r',NULL,NULL,'filed_exact')", (SYM, SISIN, share_known))
     conn.executemany("INSERT INTO price_delivery VALUES (" + ",".join("?" * 21) + ")",
                      [(SYM, SISIN, "NSE", d, 10, 11, 9, 10.0, 10, 1, 1, 1, 1, 50.0, 1.0, 10.0, d, "x", "d", "t", d)
                       for d in prices])
@@ -341,7 +415,8 @@ def test_ev_uses_the_latest_filed_balance_sheet_half_year(tmp_path):
             ("Q3FY26", "2025-12-31", "2026-01-10T10:00:00", {"eps_basic": 1.0, "ebitda": 100.0}),
             ("Q4FY26", "2026-03-31", "2026-01-20T10:00:00", {"eps_basic": 1.0, "ebitda": 100.0})])
         conn.execute("INSERT INTO share_capital VALUES (?,?,'2026-01-01','consolidated',NULL,NULL,100.0,100.0,1.0,"
-                     "'shares',1.0,'2026-01-05T10:00:00','s','d','shp_category','r',NULL,NULL)", (SYM, SISIN))
+                     "'shares',1.0,'2026-01-05T10:00:00','s','d','shp_category','r',NULL,NULL,'filed_exact')",
+                     (SYM, SISIN))
         conn.execute("INSERT INTO fin_annual_line VALUES (?,?,'H1FY26','2025-09-30','consolidated','BS','net_debt','c',"
                      "400.0,'inr',1.0,'d',NULL,'q','db','t','r','2026-02-01T10:00:00','k',1,1,'xbrl_derived','H1')",
                      (SYM, SISIN))

@@ -208,7 +208,7 @@ def test_the_window_keeps_shareholding_quarters_from_compute_start():
             ["2025-09-30", "2025-12-31"]
         # what ratios.py reads for a later quarter is still the latest pattern count, not the added older one
         conn.executemany("INSERT INTO share_capital VALUES ('TESTCO','INE000A01010',?,'consolidated',NULL,NULL,?,"
-                         "NULL,NULL,'shares',1.0,'2025-11-01','x','d','shp_category','r',NULL,NULL)",
+                         "NULL,NULL,'shares',1.0,'2025-11-01','x','d','shp_category','r',NULL,NULL,'filed_exact')",
                          [("2025-09-30", 9e7), ("2025-12-31", 1e8)])
         assert ratios._share_count(conn, "TESTCO", "consolidated", "2026-03-31") == \
             (1e8, "2025-11-01", "shp_category")

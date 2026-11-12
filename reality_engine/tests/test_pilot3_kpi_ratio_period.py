@@ -75,3 +75,32 @@ def test_a_column_header_decides_each_ratios_period():
     assert {(r.fiscal_period, r.value) for r in rows if r.metric == "roe_pct"} == {
         ("Q4FY26", 20.03), ("Q4FY25", 18.74), ("FY26", 19.22)}
     assert all(r.quote in text for r in rows)
+
+
+# --- T-192 3: a table's current column, not the comparative, and a call's quarter from the filing record --------
+def test_a_month_word_inside_a_label_is_not_a_period():
+    """T-192: "Margin\\n21.0%" was read as March 2021.  The bogus span swallowed the current quarter's EBITDA margin,
+    so the comparative column (20.4%) became the row for Q1FY27 (the deck prints 21.0%)."""
+    assert kpi.parse_periods("EBITDA Margin\n21.0%\n20.4%\n60 bps\n20.3%") == []
+
+
+def test_a_results_block_takes_its_own_column_not_the_comparative():
+    """The deck's P&L table: EBITDA Margin 21.0% (Q1FY27) | 20.4% (Q1FY26) | 60 bps.  The row is the current
+    quarter's 21.0%, never the comparative 20.4%."""
+    block = ("₹ Cr.\nQ1FY27\nQ1FY26\nY-o-Y Chg. (%)\nQ4FY26\nQ-o-Q Chg. (%)\n"
+             "EBITDA Margin\n21.0%\n20.4%\n60 bps\n20.3%\n69 bps\n")
+    default = [p for p in kpi.parse_periods("Q1FY27") if p.canon == "Q1FY27"]
+    rows = kpi.sentence_rows(block, 1, "T", ENTRIES, DIMS, default, "2026-08-05T19:55:37", "consolidated",
+                             False, True)
+    got = [(r.fiscal_period, r.value) for r in rows if r.metric == "ebitda_margin_pct"]
+    assert got and got[0] == ("Q1FY27", 21.0), got
+
+
+def test_a_calls_period_comes_from_its_filing_record():
+    """T-192 4: a transcript filed 8 Aug 2025 reports Q1 FY26.  A year the text mentions (a target year) never
+    becomes the call's period, and a stored Q1FY31 label is impossible."""
+    from reality_engine.pilot3 import transcripts
+
+    assert transcripts.call_period_ok("Q1FY31", "2025-08-08T12:07:00") == "Q1FY26"
+    assert transcripts.call_period_ok("Q4FY26", "2026-05-27T18:14:02") == "Q4FY26"   # a plausible label stands
+    assert transcripts.call_period_ok(None, "2026-02-16T11:17:34") == "Q3FY26"

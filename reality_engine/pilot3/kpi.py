@@ -104,7 +104,10 @@ PERIOD_PATTERNS = [
     ("DATE_DMY", re.compile(r"(?<!\d)(\d{1,2})(?:st|nd|rd|th)?[\s,.-]+(" + _MON_PAT + r")[a-z]*[\s,.-]+['’]?(\d{4}|\d{2})(?!\d)", re.I)),
     ("DATE_MDY", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?!\d)", re.I)),
     ("DATE_NUM", re.compile(r"(?<![\d.,/-])(\d{1,2})([./-])(\d{1,2})\2(20\d{2})(?![\d])")),
-    ("MON_Y", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*[-\s,'’]+['’]?(\d{4}|\d{2})(?!\d)(?!\s*,\s*\d{4})", re.I)),
+    # a month word must start a word: "Margin\n21.0%" is a label and its value, never March 2021 (T-192: the bogus
+    # March-2021 span swallowed the current quarter's EBITDA margin and the comparative column became the row)
+    ("MON_Y", re.compile(r"(?<![A-Za-z])(" + _MON_PAT + r")[a-z]*[-\s,'’]+['’]?(\d{4}|\d{2})(?![\d]|\.\d)"
+                         r"(?!\s*,\s*\d{4})", re.I)),
 ]
 
 
@@ -3269,6 +3272,14 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
             known_at = call_dates.clamp(None, known_at, [t for _, t in usable[:3]])[1]
         default_pers = doc_default_period([t for _, t in usable],
                                           ytd=doc_type != "annual_report" and len(usable) <= 80)
+        # T-192: a call reports its own quarter.  When the document's headline gives a full year (a target year or a
+        # long-range ambition the text mentions), the call's quarter comes from the filing record instead, so an
+        # annual period is never filled from what is really a quarter's figure.
+        if doc_type == "transcript" and known_at and (not default_pers or default_pers[0].ptype != "Q"):
+            from .transcripts import call_period_ok   # lazy: transcripts reads this module at import
+            call_q = call_period_ok(None, known_at)
+            if call_q:
+                default_pers = [Period(0, 0, call_q, "Q", period_end("Q", call_q))]
         # a release whose first pages name a subsidiary keeps that entity on the pages that do not repeat its name
         doc_basis = "not_stated"
         if profile.under_profile():

@@ -77,11 +77,12 @@ from collections import Counter
 from pathlib import Path
 
 from . import profile
+from . import schema
 from .schema import TABLES, GUIDANCE_INDEXES
 from .transcripts import split_sentences, _same_person
 
 COLS = ("symbol isin metric target_period low high unit direction said_on doc_key page quote speaker "
-        "known_at known_at_source revision_of extractor_rule").split()
+        "known_at known_at_source revision_of extractor_rule entity").split()
 
 DOC_TYPES = ("transcript", "deck", "results", "press_release")
 MAX_ROWS_PER_PAGE = 6
@@ -951,7 +952,8 @@ def _row_rule(sentence: str, metric: str, unit: str, symbol: str, v1_found: bool
 
 
 def worded_row(symbol: str, doc: sqlite3.Row, page: int, sentence: str, quote: str, speaker: str | None,
-               before: str, call_period: str | None, docper: tuple[int, str] | None, stats: dict) -> tuple | None:
+               before: str, call_period: str | None, docper: tuple[int, str] | None, stats: dict,
+               entity: str = "") -> tuple | None:
     """A forward target said in words with no figure (T-058): the metric and the period are read as usual and the
     row keeps ``low``/``high`` NULL, with ``direction`` and the exact quote carrying the magnitude.
 
@@ -995,7 +997,7 @@ def worded_row(symbol: str, doc: sqlite3.Row, page: int, sentence: str, quote: s
     return (symbol, doc["isin"], metric, period, None, None, "pct", worded_direction(sentence, metric, move.start()),
             (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote, speaker,
             doc["known_at"], "doc.known_at", None, _row_rule(sentence, metric, "pct", symbol,
-                                                             bool(CUE_V1.search(sentence))))
+                                                             bool(CUE_V1.search(sentence))), entity)
 
 
 def _docs(con: sqlite3.Connection, symbol: str):
@@ -1007,11 +1009,53 @@ def _docs(con: sqlite3.Connection, symbol: str):
 def _transcript_statements(con: sqlite3.Connection, symbol: str) -> dict[str, list[sqlite3.Row]]:
     if not con.execute("SELECT 1 FROM sqlite_master WHERE name='transcript_statement'").fetchone():
         return {}
+    have = {row[1] for row in con.execute("PRAGMA table_info(transcript_statement)")}
+    extra = ", entities, answer_turn" if {"entities", "answer_turn"} <= have else ", '' AS entities, 0 AS answer_turn"
     out: dict[str, list[sqlite3.Row]] = {}
-    for row in con.execute("SELECT doc_key, page, call_period, speaker, role, statement, quote FROM "
-                           "transcript_statement WHERE symbol=? ORDER BY doc_key, page, seq", (symbol,)):
+    for row in con.execute("SELECT doc_key, page, call_period, speaker, role, statement, quote"
+                           + extra + " FROM transcript_statement WHERE symbol=? ORDER BY doc_key, page, seq",
+                           (symbol,)):
         out.setdefault(row["doc_key"], []).append(row)
     return out
+
+
+def _question_entities(con: sqlite3.Connection, symbol: str) -> dict[tuple[str, int], str]:
+    """The entities each analyst question names, by (doc_key, answer_turn): the question a statement answers
+    carries the entity the target belongs to when the statement itself names none (T-192)."""
+    if not con.execute("SELECT 1 FROM sqlite_master WHERE name='transcript_question'").fetchone():
+        return {}
+    have = {row[1] for row in con.execute("PRAGMA table_info(transcript_question)")}
+    if not {"entities", "answer_turn"} <= have:
+        return {}
+    return {(r[0], int(r[1] or 0)): (r[2] or "") for r in con.execute(
+        "SELECT doc_key, answer_turn, entities FROM transcript_question WHERE symbol=? AND entities<>''",
+        (symbol,))}
+
+
+def own_entity_names(con: sqlite3.Connection, symbol: str) -> list[str]:
+    """Normalised names of the reporting company (symbol and every name the store files it under), so an entity
+    that IS the company is not read as a subsidiary's."""
+    names = {symbol}
+    if con.execute("SELECT 1 FROM sqlite_master WHERE name='company'").fetchone():
+        for (name,) in con.execute("SELECT name FROM company WHERE symbol=?", (symbol,)):
+            if name:
+                names.add(name)
+    return [re.sub(r"[^a-z]", "", str(n).lower()) for n in names if n]
+
+
+def foreign_entity(own_names: list[str], *blobs: str) -> str:
+    """The subsidiary / segment / investee an entity list names, or '' when it names only the company itself.
+
+    A target stated for a named entity other than the company is that entity's, never the group's (T-192): the
+    entity comes from the transcript's own statement/question entity lists, which the readers extract from the
+    text, so no company or person name lives here."""
+    for blob in blobs:
+        for raw in re.split(r"[,;]", str(blob or "")):
+            word = re.sub(r"[^a-z]", "", raw.lower())
+            if not word or any(word in n or n in word for n in own_names):
+                continue
+            return raw.strip()
+    return ""
 
 
 def _kpi_crore(value: float | None, unit: str | None) -> float | None:
@@ -1241,12 +1285,16 @@ def page_sentences(raw: str) -> list[tuple[int, int]]:
 
 def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statements: list[sqlite3.Row],
                       stats: dict, mgmt_speakers: tuple[str, ...] = (), doc_has_statements: bool = False,
-                      revenue_cr: float | None = None, analysts: tuple[str, ...] = ()) -> list[tuple]:
+                      revenue_cr: float | None = None, analysts: tuple[str, ...] = (),
+                      question_entities: dict[int, str] | None = None,
+                      own_names: list[str] | None = None) -> list[tuple]:
     """Guidance rows (without revision_of) from one page: transcript statements when held, else split sentences.
     On a transcript page without statements a sentence is kept only when its speaker is not one the document
     itself introduced as a questioner (T-166): an analyst's words are never a company target."""
     collapsed = " ".join(raw.split())
-    items: list[tuple[str, str, str | None]] = []      # (sentence, quote, speaker)
+    question_entities = question_entities or {}
+    own_names = own_names or [re.sub(r"[^a-z]", "", symbol.lower())]
+    items: list[tuple[str, str, str | None, str, int]] = []   # (sentence, quote, speaker, entities, answer_turn)
     if statements:
         for st in statements:
             if (st["role"] or "").lower() in NON_MGMT_ROLES:
@@ -1254,7 +1302,8 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                 continue
             stmt = " ".join((st["statement"] or "").split())
             if stmt:
-                items.append((stmt, " ".join((st["quote"] or stmt).split()), st["speaker"]))
+                items.append((stmt, " ".join((st["quote"] or stmt).split()), st["speaker"],
+                              str(st["entities"] or ""), int(st["answer_turn"] or 0)))
     else:
         # T-166 r4: a speaker belongs to a transcript; a deck's slide title ("International Ports", "Solid future
         # outlook", "Capex") sits on its own line with a colon exactly like a speaker label, so it is never read
@@ -1279,7 +1328,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             if speaker and any(_same_person(speaker, x) for x in analysts):
                 stats["not_management"] += 1
                 continue                # the moderator introduced this speaker as a questioner, never management
-            items.append((s, s, speaker))
+            items.append((s, s, speaker, "", 0))
     docper = doc_period(doc["filing_date"], doc["known_at"])
     # the call period comes from the filing record, never from a year mentioned in the text
     if docper:
@@ -1292,12 +1341,13 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
     # "end of Q1FY27" -> Q1FY27, "end of Q3FY26" -> Q3FY26)
     rows = []
     seen_spend: set[tuple] = set()
-    for sentence, quote, speaker in items:
+    for sentence, quote, speaker, own_ents, turn in items:
         if not 20 < len(sentence) < 500:
             continue
         if EXTERNAL_SOURCE.search(sentence):
             stats["external_forecast"] += 1
             continue                    # a spend sentence naming an outside source is not the company's row (T-166)
+        entity = foreign_entity(own_names, own_ents, question_entities.get(turn, ""))
         for sp in spends(sentence):
             period = _explicit_period(sentence, sp["start"])
             key = (period, sp["low"], sp["high"], sp["unit"])
@@ -1307,11 +1357,14 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             rows.append((symbol, doc["isin"], "project_capital_spent", period, sp["low"], sp["high"], sp["unit"],
                          direction_of(sentence, "project_capital_spent"),
                          (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
-                         speaker, doc["known_at"], "doc.known_at", None, "guidance_cue_v1"))
-    for index, (sentence, quote, speaker) in enumerate(items):
+                         speaker, doc["known_at"], "doc.known_at", None, "guidance_cue_v1", entity))
+    for index, (sentence, quote, speaker, own_ents, turn) in enumerate(items):
         # T-105: the previous management statement supplies a bare metric (transcript statements only: on a deck
         # page the previous block is an unrelated bullet)
         prev = items[index - 1][0] if index and statements else ""
+        # a target stated for a named subsidiary, segment or investee (the statement's own entities, or the
+        # question it answers) carries that entity and is never served as the group's (T-192)
+        entity = foreign_entity(own_names, own_ents, question_entities.get(turn, ""))
         if len(sentence) < 30 or len(sentence) > 400:
             continue
         if re.search(r"\?[\"'”’)]*$", sentence) and not re.search(
@@ -1330,7 +1383,8 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if not nums:
             # a target said in words has no number to read: it gets a row with low/high NULL (T-058)
             if CUE.search(sentence) and not external_forecast(sentence, previous):
-                row = worded_row(symbol, doc, page, sentence, quote, speaker, before, call_period, docper, stats)
+                row = worded_row(symbol, doc, page, sentence, quote, speaker, before, call_period, docper, stats,
+                                 entity)
                 if row:
                     rows.append(row)
                     if len(rows) >= MAX_ROWS_PER_PAGE:
@@ -1351,7 +1405,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                 rows.append((symbol, doc["isin"], cell["metric"], period, cell["num"]["low"], cell["num"]["high"],
                              cell["num"]["unit"], direction_of(sentence, cell["metric"]),
                              (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
-                             speaker, doc["known_at"], "doc.known_at", None, "guidance_table"))
+                             speaker, doc["known_at"], "doc.known_at", None, "guidance_table", entity))
                 if len(rows) >= MAX_ROWS_PER_PAGE:
                     break
             continue
@@ -1456,11 +1510,6 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         if metric != "other" and segment_subject(sentence, chosen, symbol):
             stats["other_segment"] += 1
             continue                    # a segment's or business's number is not the company's metric
-        # a subsidiary's or investee's target is never the group's (T-192): a subsidiary CEO's margin target
-        # (e.g. Aurobindo Pharma USA) is not Aurobindo group guidance
-        if (speaker or "") == "Swami Iyer":
-            stats["foreign_entity"] += 1
-            continue
         if chosen["unit"] == "inr" and metric in ("order_intake", "capex", "project_capital_cost", "interest_cost") \
                 and chosen["high"] >= 100:
             chosen = {**chosen, "unit": "inr_cr"}   # "INR9,000-INR10,000" in a crore-scale business is crore
@@ -1484,10 +1533,12 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             continue
         if metric == "ebitda_per_tonne" and chosen["unit"] in ("usd", "inr"):
             chosen = {**chosen, "unit": "usd_per_t" if chosen["unit"] == "usd" else "inr_per_t"}
+        # a subsidiary's or investee's target is never the group's (T-192): the entity the statement or the question
+        # it answers names is kept on the row, and the guidance lookup serves only rows whose entity is empty
         rows.append((symbol, doc["isin"], metric, period, chosen["low"], chosen["high"], chosen["unit"],
                      direction_of(sentence, metric or "other"), (doc["filing_date"] or (doc["known_at"] or "")[:10]),
                      doc["doc_key"], page, quote, speaker, doc["known_at"], "doc.known_at",
-                     None, _row_rule(sentence, metric or "other", chosen["unit"], symbol, v1_found)))
+                     None, _row_rule(sentence, metric or "other", chosen["unit"], symbol, v1_found), entity))
         if len(rows) >= MAX_ROWS_PER_PAGE:
             break
     return rows
@@ -1499,6 +1550,7 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
     con.row_factory = sqlite3.Row
     if not con.execute("SELECT 1 FROM sqlite_master WHERE name='guidance'").fetchone():
         con.execute(TABLES["guidance"])
+    schema.ensure_columns(con, "guidance", schema.GUIDANCE_ADDITIONS)
     con.executescript(";".join(GUIDANCE_INDEXES))
     stats_all: dict = {}
     ins = f"INSERT INTO guidance({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
@@ -1506,6 +1558,8 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
         con.execute("DELETE FROM guidance WHERE symbol=?", (symbol,))
         st = stats_all[symbol] = Counter()
         statements = _transcript_statements(con, symbol)
+        asked = _question_entities(con, symbol)
+        own_names = own_entity_names(con, symbol)
         revenue_cr = company_scale_cr(con, symbol)
         # one row per (metric, period, value, unit, said_on) for the whole run: the BSE/NSE copies and the several
         # pages of one document collapse onto the first one (documents are read in known_at order, pages ascending,
@@ -1530,7 +1584,9 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
                     continue
                 st["pages"] += 1
                 for row in extract_sentences(symbol, doc, page, text, by_page.get(page, []), st,
-                                             mgmt_speakers, bool(doc_rows), revenue_cr, analysts):
+                                             mgmt_speakers, bool(doc_rows), revenue_cr, analysts,
+                                             {turn: ents for (doc_key, turn), ents in asked.items()
+                                              if doc_key == doc["doc_key"]}, own_names):
                     sig = (row[0], row[2], row[3], row[4], row[5], row[6], row[8])
                     if sig in seen:
                         st["duplicate"] += 1
@@ -1555,9 +1611,10 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
 
 
 def revisions(con: sqlite3.Connection, symbol: str) -> int:
-    """Link every row to the previous row of the same metric+period from an earlier document."""
+    """Link every row to the previous row of the same metric+period from an earlier document (group rows only: a
+    subsidiary's target never supersedes the group's, T-192)."""
     rows = con.execute("SELECT id, metric, target_period, doc_key FROM guidance WHERE symbol=? "
-                       "ORDER BY COALESCE(known_at, said_on), said_on, id", (symbol,)).fetchall()
+                       "AND COALESCE(entity,'')='' ORDER BY COALESCE(known_at, said_on), said_on, id", (symbol,)).fetchall()
     prev: dict[tuple, tuple[int, str]] = {}
     linked = 0
     for row in rows:
