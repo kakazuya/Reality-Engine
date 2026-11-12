@@ -22,8 +22,9 @@ Every result carries provenance, and AGENTS.md rule 13 (quarantine) is applied.
 
 **T-194 (12 Nov 2026)** closes the T-189 "stopped early" tool failures. `pilot3_topic(symbol, topic, as_of,
 date_from, date_to, limit)` returns everything on one theme in one call, grouped by document date: statements
-verbatim from every call, related guidance / KPI / page-cell / `event` rows, with `counts` matched / shown / cut (a
-20-item reply stays under 16 kB). `pilot3_search` now tries the exact phrase first, normalises a money amount
+verbatim from every call, related guidance / KPI / page-cell / `event` rows, with `counts` matched / shown / cut (at
+that version a 20-item reply stayed under 16 kB; T-197 below adds the coverage block and page-text reach and caps
+every text reply at 20 kB). `pilot3_search` now tries the exact phrase first, normalises a money amount
 ("US$2 bn" = "$2 billion" = "2 billion"), ranks the short printing ("2 bn") after the exact one, and always states
 "N page(s) match ... k shown" with `pages_matched`, `pages_short`, `pages_like` and the hits grouped by document.
 The new `event` table holds one row per announcement event (regulatory inspection with unit / dates / outcome,
@@ -32,6 +33,24 @@ buyback, merger, acquisition, dividend); rebuild it with `python -m reality_engi
 statement tagger to companies of that sector family and by `pilot3_topic` to the ask's words;
 `python -m reality_engine.pilot3.transcripts --out <db> --profile <profile> --retag` re-tags the stored statements
 in place and reports the share of `other` before and after.
+
+**T-197 (12 Nov 2026) makes every text reply a page, never the whole store.** `pilot3_topic`, `pilot3_statements`,
+`pilot3_search`, `pilot3_semantic`, `pilot3_cells` and `pilot3_docs` now carry a `coverage` block -- `searched`,
+`not_searched` (the sources the tool cannot see, by name), `matched_total`, `shown`, `cut`, `offset`, `documents`
+(every matching document with type, date, title, matching pages and match count; more than 40 are summed by type and
+month), `hidden_after_as_of` (with the hidden documents and their dates) and `outside_date_filter` (the matches a
+`date_from`/`date_to` excluded). Their one-line `text` starts with that scope and the exact next call. Every text
+tool takes `offset=` to read the next page, returns `read_next` (the quoted page and its neighbours, and for a call
+the pages that print the same words), and stays under the 20 kB cap by construction (a heavy theme is trimmed in a
+fixed order and says what it cut). `pilot3_topic` and `pilot3_statements` also run the phrase-first page-text matcher
+over EVERY held document type -- an untagged call page, a deck table, an annual-report note or a filing body comes
+back with `match: text` -- and `event` rows carry the document type, title and a `body_excerpt` of the sentences that
+state the outcome, observations, classification, impact or amount (`python -m reality_engine.pilot3.events --out
+<db>` rebuilds them; a store made before T-197 gains the columns). `pilot3_cells` serves a label-only row with the
+values printed beside it (`values`), and `as_of` reports the documents it hid on every document-derived tool.
+Measured on copies of `pilot10.db` and `aurobindo.db`: 12 generic themes x 5 companies, matched items 3,976 -> 16,759
+(pilot10) and 2,413 -> 5,530 (aurobindo), every doc type reached, max reply 19.1 kB, median topic call 0.27-0.34 s
+(`.tmp/T-197_MEASURE.md`).
 
 `facts` kinds: `segments`, `financials`, `kpis`, `guidance`, `results`, `deck`,
 `concall`, `ar`, or free text. `period`: `FY25`, `Q4FY26`, `2025-03-31`, omitted.

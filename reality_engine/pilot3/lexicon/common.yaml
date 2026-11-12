@@ -46,3 +46,31 @@ entries:
   - {metric: dividend_received, kind: money, unit: inr_cr, labels: ["dividend received"], neg: "growth|%|per share"}
   - {metric: dividend_income, kind: money, unit: inr_cr, labels: ["dividend income"], neg: "growth|%|per share"}
   - {metric: volume, kind: volume, unit: kt, labels: ["qty in mill te", "quantity in mill te"]}
+
+# T-197: the sentences of an announcement that answer a question about an event -- its outcome, observations,
+# classification, impact, dates and amounts.  ``pilot3.events`` stores them as ``event.body_excerpt``; a sector
+# family adds the words its own events print.
+event_cues:
+  - 'concluded'
+  - 'observations?'
+  - 'classified'
+  - 'classification'
+  - 'outcome'
+  - 'impact'
+  - 'no (?:observations|non-compliance)'
+  - 'per share'
+  - 'record date'
+  - 'ex[- ]date'
+  - 'consideration'
+  - 'approved'
+  - 'withdrawn'
+  - 'effective'
+  - 'closed'
+  - 'commissioned'
+  - 'expected to (?:complete|close)'
+
+# T-197: an amount or percentage sentence answers "how much" only when no word cue above matched, so a letterhead
+# that prints a number never leads the excerpt.
+event_amount_cues:
+  - '(?:rs\.?|inr|₹|us\$|\$)\s*[\d,.]+'
+  - '\b\d+(?:\.\d+)?\s*%'

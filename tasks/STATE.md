@@ -18,7 +18,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-000. RUNNING (code workers 4/4): T-197 tool replies 20261112T153055Z-22cfe831; T-201 store diff 20261112T162829Z-6c561fe1; T-202 schema version 20261112T162856Z-1006f23c; T-203 store routing 20261112T162914Z-5036266e. T-199 BLUESTARCO: harvest done, questions being frozen; build after T-201..T-203 merge.
+000. MERGED 22:15: T-197 tool replies, T-201 `store_diff`. RUNNING: T-202 schema version 20261112T162856Z-1006f23c, T-203 store routing 20261112T162914Z-5036266e. T-199 BLUESTARCO questions frozen; build after T-202/T-203. Live stores: rebuild `events` part.
 00. T-195 DONE: re-run after fixes, DeepSeek 85.5% / 84.1% (2 runs), Haiku 76.8%; `reports/2026-11-12_aurobindo_rerun.html`. T-196 DONE (`reports/2026-11-12_why_answers_stop.html`).
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191 A/B DONE (`reports/2026-11-12_semantic_ab.html`): Haiku 54 vs 54; DeepSeek 53 vs 42 but semantic touched no flip (run variance). Route `aurobindo_ab/STORE_DEFECTS_SEEN.md` to follow-ups.

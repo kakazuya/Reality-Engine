@@ -14,3 +14,11 @@ entries:
   - {metric: copper_rods_volume_kt, kind: volume, unit: kt, labels: ["copper cc rods?", "cc rods?", "(copper )?rods? (sales )?volumes?"], neg: "price|cost"}
   - {metric: capacity, kind: volume, unit: kt, labels: ["(installed|rated|smelter) capacity", "capacity of"], neg: "utili[sz]ation"}
   - {metric: utilisation, kind: pct, unit: pct, labels: ["capacity utili[sz]ation", "utili[sz]ation"], neg: "waste|recycl|gypsum|fly ash|plastic|landfill"}
+# T-197: the words a metals event prints when it states what happened (commissioning, expansion, dispatch).
+event_cues:
+  - 'commissioned'
+  - 'commissioning'
+  - 'smelter'
+  - 'expansion'
+  - 'debottleneck'
+  - 'dispatches?'

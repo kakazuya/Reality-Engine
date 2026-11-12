@@ -151,15 +151,18 @@ def _query_vector(text: str, model: str) -> tuple[np.ndarray, bool]:
 
 def semantic(symbol: str, query: str, as_of: str | None = None, limit: int = 8, doc_type: str | None = None,
              date_from: str | None = None, date_to: str | None = None, chars: int = PAGE_CHARS,
-             model: str = DEFAULT_MODEL) -> dict[str, Any]:
-    """Pages of one company whose meaning is closest to ``query`` (cosine, best first), known by ``as_of``."""
+             model: str = DEFAULT_MODEL, offset: int = 0) -> dict[str, Any]:
+    """Pages of one company whose meaning is closest to ``query`` (cosine, best first), known by ``as_of``.
+    ``offset`` pages a cut ranking; ``coverage`` says what was searched, what can never be ranked (pages with no
+    vector) and how much of the ranking this page shows."""
     if not str(query or "").strip():
         raise DataError("bad_query", "query needs text")
     if model not in MODELS:
         raise DataError("bad_model", f"model must be one of {sorted(MODELS)}")
     sym = p3.resolve_symbol(symbol)
-    cap = p3._cap(limit, 8)
+    cap, start = p3._window(limit, offset, 8)
     width = max(200, min(int(chars or PAGE_CHARS), MAX_PAGE_CHARS))
+    day = p3._day(as_of, "as_of")
     where, args = ["p.symbol=?"], [sym]
     extra, eargs = p3._asof(as_of, "COALESCE(p.known_at, d.known_at)")
     dtype = p3._DOC_TYPES.get(doc_type.strip().lower(), doc_type.strip().lower()) if doc_type else None
@@ -167,30 +170,46 @@ def semantic(symbol: str, query: str, as_of: str | None = None, limit: int = 8, 
         where.append("d.doc_type=?")
         args.append(dtype)
     for field, value, op in (("date_from", date_from, ">="), ("date_to", date_to, "<=")):
-        day = p3._day(value, field)
-        if day:
+        date = p3._day(value, field)
+        if date:
             where.append(f"substr(COALESCE(d.filing_date, d.known_at, ''),1,10) {op} ?")
-            args.append(day)
+            args.append(date)
     pool = p3._q("SELECT p.doc_key, p.page, d.doc_type, d.title, d.filing_date, "
                  "COALESCE(p.known_at, d.known_at) known FROM doc_page p JOIN doc d ON d.doc_key=p.doc_key "
                  f"WHERE {' AND '.join(where)}{extra}", (*args, *eargs))
     matrix, rows = _vectors(model)
     covered = [(rows[(r["doc_key"], int(r["page"]))], r) for r in pool if (r["doc_key"], int(r["page"])) in rows]
-    coverage = {"pool_pages": len(pool), "pages_with_vectors": len(covered),
-                "note": "only pages with a vector are ranked; the index holds transcripts, decks, results, press "
-                        "releases and annual reports known from 2025-04-01, text only"}
+    coverage: dict[str, Any] = {
+        "searched": ["doc_page (the vector index over every embedded page: transcripts, decks, results, press "
+                     "releases, annual reports known from 2025-04-01, text only)"],
+        "not_searched": ["pages with no vector (documents outside the embedding window, scanned pages, audio/video)",
+                         "structured tables: kpi_series, guidance, page_cell, fin_*, event (use pilot3_kpi / "
+                         "pilot3_guidance / pilot3_cells / pilot3_fin / pilot3_topic)"],
+        "pool_pages": len(pool), "pages_with_vectors": len(covered),
+        "note": "only pages with a vector are ranked; the index holds transcripts, decks, results, press "
+                "releases and annual reports known from 2025-04-01, text only"}
     if not covered:
-        return p3._reply(sym, [], "pilot3_semantic", coverage=coverage)
+        coverage.update({"matched_total": 0, "shown": 0, "cut": 0, "offset": start})
+        return p3._reply(sym, [], "pilot3_semantic", coverage=coverage, as_of=day)
     vector, paid = _query_vector(str(query).strip(), model)
     index = np.fromiter((i for i, _r in covered), dtype=np.int64, count=len(covered))
     scores = np.asarray(matrix[index], dtype=np.float32) @ vector
-    order = np.argsort(-scores, kind="stable")[:cap]
+    order = np.argsort(-scores, kind="stable")
     hits = []
-    for position in order:
+    for position in order[start:start + cap]:
         _i, r = covered[int(position)]
         text = p3._q("SELECT text FROM doc_page WHERE doc_key=? AND page=?", (r["doc_key"], r["page"]))
         hits.append({"doc_type": r["doc_type"], "title": p3._trim(r["title"], 120), "filing_date": r["filing_date"],
                      "page": r["page"], "score": round(float(scores[int(position)]), 4),
                      "text": p3._trim(text[0]["text"] if text else "", width),
                      "provenance": p3._prov("doc_page", f"{r['doc_key']} p{r['page']}", r["known"])})
-    return p3._reply(sym, hits, "pilot3_semantic", coverage=coverage, model=MODELS[model], paid_query=paid)
+    entries = [{"doc_key": r["doc_key"], "doc_type": r["doc_type"], "date": r["filing_date"], "title": r["title"],
+                "page": r["page"]} for _i, r in covered]
+    cut = max(0, len(covered) - start - len(hits))
+    coverage.update({"matched_total": len(covered), "shown": len(hits), "cut": cut, "offset": start})
+    coverage.update(p3._documents_index(entries))
+    text = p3._scope_line(len(covered), len(hits), cut, start, entries, coverage.get("matched_documents", 0),
+                          parts="pages ranked by meaning")
+    return p3._reply(sym, hits, "pilot3_semantic", coverage=coverage, as_of=day, text=text, model=MODELS[model],
+                     paid_query=paid, read_next=p3._read_next(hits),
+                     hint=None if hits else "no page of this company carries a vector for the filters asked")

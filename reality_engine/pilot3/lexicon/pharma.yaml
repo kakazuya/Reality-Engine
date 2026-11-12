@@ -32,3 +32,13 @@ entries:
   - {metric: pending_andas, kind: count, unit: count, labels: ["pending andas?", "andas? pending", "andas? awaiting"], neg: "ndas?", strict: ["pending andas?\\s*(?:of|at|:)?\\s*(?=\\d)", "andas? pending\\s*(?:of|at|:)?\\s*(?=\\d)"]}
   - {metric: chronic_share, kind: pct, unit: pct, labels: ["chronic( therapies| segment)?", "chronic[^.]{0,20}?(share|%|contribution)"], neg: "guidance|growth", strict: ["chronic (?:segment|therapy|therapies|portfolio)[^.]{0,40}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
   - {metric: market_share, kind: pct, unit: pct, labels: ["market share"], neg: "previous|target|guidance|growth", strict: ["market share[^.]{0,30}?(?=\\d+(?:\\.\\d+)?\\s*%)"]}
+event_cues:
+  - 'form ?483'
+  - '\b483\b'
+  - 'warning letter'
+  - 'official action indicated'
+  - '\boai\b'
+  - 'voluntary action indicated'
+  - '\bvai\b'
+  - 'establishment inspection report'
+  - 'data integrity'

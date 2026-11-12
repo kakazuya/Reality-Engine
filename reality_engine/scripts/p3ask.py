@@ -26,6 +26,14 @@ reply_bytes); logging never changes the reply and never fails the call.  ``page 
 returns page text (at most 5 pages) without raw SQL.  ``P3ASK_NO_SQL=1`` refuses the ``sql``
 tool and leaves it out of the tool list (the no-SQL arm of the answer test).  ``P3ASK_NO_SEMANTIC=1`` does the same
 for ``semantic`` (T-191: arm A of the semantic A/B, everything else identical).
+
+T-197: a text reply (topic, statements, search, semantic, cells, docs) is one PAGE of what matched, never the whole
+store.  It carries ``coverage`` -- searched, not_searched, matched_total, shown, cut, offset, documents (every
+matching document, even ones whose items were cut), hidden_after_as_of, outside_date_filter -- and its ``text``
+line starts with the honest scope.  Pass ``offset=`` to read the next page while ``coverage.cut`` is not 0; a list
+question is finished only when it is 0.  ``read_next`` names the quoted page and its neighbours; ``match: tag |
+text`` separates a tagged statement from a page-text hit, and ``outside_date_filter`` lists the matches a
+date_from/date_to excluded, with their dates.
 """
 from __future__ import annotations
 
@@ -165,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps({"error": f"argument {item!r} is not key=value"}))
             return 2
         args[key] = _value(val)
-    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8")   # type: ignore[attr-defined]
     print(json.dumps(run(db, tool, args, qid=opts.get('qid'), log=opts.get('log')), ensure_ascii=False, default=str, indent=1))
     return 0
 
