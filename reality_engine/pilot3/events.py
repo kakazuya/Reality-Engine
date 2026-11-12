@@ -183,8 +183,7 @@ def _quote(text: str, match: re.Match | None, width: int = 400) -> str | None:
 
 def build_events(conn: sqlite3.Connection) -> dict:
     """Rewrite ``event`` from the announcement titles and their first pages.  One row per event (document, kind)."""
-    schema.ensure(conn, ("event",))
-    schema.ensure_columns(conn, "event", schema.EVENT_ADDITIONS)   # a build made before T-197 gains the columns
+    schema.migrate(conn)         # T-202: the event table, its T-197 columns and its index, on any older store
     conn.execute("DELETE FROM event")
     docs = conn.execute(
         "SELECT d.doc_key, d.symbol, d.isin, d.title, d.filing_date, COALESCE(d.known_at, d.filing_date) known_at, "

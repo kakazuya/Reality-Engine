@@ -263,7 +263,6 @@ def _basis(value: object) -> str:
 def build_quarterly(conn: sqlite3.Connection) -> dict:
     """fin_quarter_xbrl (long form, every reported quarter) and share_capital (paid-up / face value)."""
     schema.create(conn, ("fin_quarter_xbrl", "share_capital"))
-    schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)
     counts = {"fin_quarter_xbrl": {}, "share_capital": {}, "skipped_non_quarter": {}}
     for symbol in profile.symbols():
         rows = fetch(symbol, "results_quarterly")
@@ -312,7 +311,6 @@ def build_corporate_events(conn: sqlite3.Connection) -> dict:
     """Split / bonus / buyback events into share_capital (rows with ``event`` set); ISIN windows into
     ``isin_effective_*`` for every share_capital row."""
     counts = {}
-    schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)
     for symbol in profile.symbols():
         rows, _cols = _duck(
             "SELECT id, isin, subject, action_type, ex_date, broadcast_date, known_at_src FROM corporate_actions "
@@ -939,7 +937,6 @@ def build_share_fallback(conn: sqlite3.Connection) -> dict:
     the paid-up/face-value division is rounded, so the ratio that needs a share count prefers the pattern row and
     keeps the paid-up one only as a fallback."""
     counts = {}
-    schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)
     for symbol in profile.symbols():
         bases = [r[0] for r in conn.execute("SELECT DISTINCT basis FROM fin_quarter_xbrl WHERE symbol=?", (symbol,))]
         have = {(r[0], r[1]) for r in conn.execute(
@@ -1075,6 +1072,7 @@ def build_index_prices(conn: sqlite3.Connection) -> dict:
 
 
 def build_stores(conn: sqlite3.Connection) -> dict:
+    schema.migrate(conn)         # T-202: every store arrives on the current schema before a query reads a column
     result = {"quarterly": build_quarterly(conn)}
     result["corporate_events"] = build_corporate_events(conn)
     result["fin_annual_line"] = build_annual(conn)

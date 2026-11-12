@@ -33,6 +33,7 @@ import yaml
 import core
 from core import DataError
 from reality_engine.pilot3 import preferred as p3_preferred
+from reality_engine.pilot3 import schema as p3_schema
 from reality_engine.pilot3.guidance import current_rows as _guidance_current_rows
 from reality_engine.pilot3.lender import filed_lender
 
@@ -474,7 +475,13 @@ def _prov(table: str, source: str, known_at: str | None, **extra: Any) -> dict[s
 def _db_prov(**extra: Any) -> dict[str, Any]:
     path = db_path()
     built = time.strftime("%Y-%m-%d", time.localtime(path.stat().st_mtime)) if path.exists() else None
-    out: dict[str, Any] = {"db": "pilot3", "path": str(path), "read_only": True, "built": built}
+    have = store_version()
+    out: dict[str, Any] = {"db": "pilot3", "path": str(path), "read_only": True, "built": built,
+                           "schema_version": have}
+    if have < p3_schema.LATEST:   # T-202: say it plainly instead of quietly serving the older rule
+        out["schema_note"] = (f"store schema v{have}, latest v{p3_schema.LATEST}: a lookup falls back to the older "
+                              "rule for a column this build lacks; migrate a copy with python -m "
+                              "reality_engine.pilot3.schema --db <store> --migrate")
     entries = [] if _pinned() is not None else stores()
     symbol = _SYMBOL.get()
     for row in entries:
@@ -851,6 +858,25 @@ def _has_table(name: str) -> bool:
 
 
 _COLUMN_CACHE: dict[str, set[str]] = {}
+_VERSION_CACHE: dict[str, int] = {}
+
+
+def store_version() -> int:
+    """The schema version of the store these lookups serve (T-202), read once per routed store path.
+
+    T-203 routes each call to the store that holds its symbol, so the cache key is the path ``db_path()`` returns,
+    never the process.  A read-only connection never migrates: the version only decides which column a lookup may
+    name, and a store that predates ``schema_meta`` (version 0) is still probed, so a live store built with the
+    column keeps its current answer.  Every tool reply's provenance carries it."""
+    key = str(db_path())
+    have = _VERSION_CACHE.get(key)
+    if have is None:
+        try:
+            have = p3_schema.version(connect())
+        except (DataError, sqlite3.Error):
+            have = 0
+        _VERSION_CACHE[key] = have
+    return have
 
 
 def _columns(table: str) -> set[str]:
@@ -866,7 +892,22 @@ def _columns(table: str) -> set[str]:
     return have
 
 
+# The first store version that carries a column a lookup falls back on (T-202): on a migrated store the version
+# answers without a PRAGMA, and an older store is still probed, so the fallback stays exactly as it was.
+_COLUMN_MIN_VERSION = {
+    ("share_capital", "count_basis"): p3_schema.V_SHARE_COUNT_BASIS,
+    ("guidance", "entity"): p3_schema.V_GUIDANCE_ENTITY,
+    ("guidance", "entity_unsure"): p3_schema.V_GUIDANCE_ENTITY,
+    ("event", "doc_type"): p3_schema.V_EVENT_BODY,
+    ("event", "title"): p3_schema.V_EVENT_BODY,
+    ("event", "body_excerpt"): p3_schema.V_EVENT_BODY,
+}
+
+
 def _has_column(table: str, column: str) -> bool:
+    floor = _COLUMN_MIN_VERSION.get((table, column))
+    if floor is not None and store_version() >= floor:
+        return True
     return column in _columns(table)
 
 

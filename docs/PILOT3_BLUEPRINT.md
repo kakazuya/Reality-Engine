@@ -31,6 +31,38 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
 | `event` (T-194, T-197) | one row per announcement event: `kind` (inspection / buyback / merger / acquisition / dividend), the inspection's `unit`, `event_date` / `end_date`, `outcome` (OAI, VAI, warning letter, Form 483, no observations, EIR received, closed), `subject`, `doc_key` + `page`, `quote`, `known_at`, and (T-197) `doc_type`, `title`, `body_excerpt` (the sentences of the page that state the outcome, observations, classification, impact or amount) | announcement / press-release title + first two pages (`pilot3/events.py`) |
 
+**Schema version and numbered migrations (T-202, 12 Nov 2026).** Every store carries `schema_meta(key, value)`
+with `schema_version` and `migrated_at`; a store without it (every build before T-202) is version 0.
+`reality_engine/pilot3/schema.py` holds `MIGRATIONS`, the ordered, ADDITIVE changes from 0 to `LATEST = 9`:
+
+| v | change (ticket) |
+|---|---|
+| 1 | `share_capital.count_basis` (T-192) |
+| 2 | `guidance.entity` / `guidance.entity_unsure` (T-192) |
+| 3 | the `event` table (T-194) |
+| 4 | `preferred_from` / `preferred_to` on both quarter tables + `fin_quarter_current` (T-090) |
+| 5 | `transcript_statement` / `transcript_question`, `entities` / `answer_turn`, the `analyst_question` views (T-164) |
+| 6 | the `kpi_series` confidence columns (T-049 E) |
+| 7 | `row_check.definition` (T-113) |
+| 8 | every index and view on the tables a store holds |
+| 9 | `event.doc_type` / `title` / `body_excerpt` (T-197) |
+
+`migrate(conn)` applies the missing versions in order in one transaction and records the version; a second run is
+one SELECT (`--status` on a copy: `version` 9, `latest` 9, `pending` empty). `build.py` calls it once at the start
+of every `build --part`, before any part reads or writes; the parts' old `ensure_columns` / `ensure` calls are gone
+(`ensure_columns` remains a helper inside migrations only), so `build --part ratios` on a copy built before
+`count_basis` no longer fails with `no such column`. CLI: `python -m reality_engine.pilot3.schema --db <copy>
+--status|--migrate`. To add a change: append the next number with the ticket that needs it, make it idempotent and
+additive (`CREATE TABLE`/`INDEX IF NOT EXISTS`, `ADD COLUMN` only when absent, guard an index on its columns),
+extend `reality_engine/tests/test_pilot3_schema_version.py`, and run `--migrate` on copies of
+pilot10/aurobindo/u8 proving every table's row count is unchanged (done for 0 -> 9: row counts identical; pilot10 and
+aurobindo gained only `schema_meta`, u8 also the empty `event` table and its missing T-192/T-113 columns). Rolled out:
+`stores.py`, `ratios.py`, `guidance.py`, `transcripts.py`, `events.py`, `kpi.py`, `xbrl_segments.py`,
+`preferred.py`, `row_checks.py` and `build.py` call `schema.migrate` instead of surgery of their own. The read-only
+server (`plugins/reality-data/server/lookups_pilot3.py`) never migrates: `store_version()` is cached per routed
+store path (T-203), `_has_column` answers from the version on a migrated store and still probes `_columns` on a
+version-0 store (the fallback is exactly what it was), and every reply's `provenance.schema_version` names the
+store, with a `schema_note` when it is older than the server.
 Tools: `pilot3_fact` (one answer-ready number, T-186, section 9o), `pilot3_fin`, `pilot3_ratio`, `pilot3_kpi`,
 `pilot3_guidance`, `pilot3_statements`, `pilot3_topic` (a theme across every call and document, T-194),
 `pilot3_search` (bm25; exact phrase first, T-194),
@@ -984,7 +1016,7 @@ no company name in code.
 filing's restated year-ago column) while `pilot3_fin` returned the second. The election has one home now.
 
 - **One rule, one module.** `reality_engine/pilot3/preferred.py` holds `order_key` / `elect` / `evidence_rank` /
-  `displayable_printed` / `apply` / `ensure_columns`. The rule: newest `known_at`, then evidence rank (XBRL 5,
+  `displayable_printed` / `apply` (the preferred columns are migration 4 in `schema.py`, T-202). The rule: newest `known_at`, then evidence rank (XBRL 5,
   `xbrl_ok` 4, `repeat_ok` 2, `sum_ok` 1, unchecked 0), then the first stored row (`-rowid`, which keeps the answers
   `pilot3_fin` gave before the move). An XBRL row suppresses the printed twins of the same key (the lookup always
   treated them as duplicates); a printed cell whose `raw_token` is not one printed number never competes.
@@ -1684,7 +1716,8 @@ each has a fixture test.
    `known_at_source` and no longer sits in `ratio` (which is the split/bonus ratio of an event row); `ratios._share_count`,
    `pilot3_holding` and the computed-input reader order a filed exact count first for the same date. Round 4 makes
    every reader tolerate a store built before the column: `PRAGMA table_info` once per connection, the
-   `source_table='shp_category'` rule as the fallback, and `schema.ensure_columns` at the top of `build_ratios`. Tests
+   `source_table='shp_category'` rule as the fallback, and `schema.migrate` at the top of `build_ratios`
+   (T-202 numbers the change as migration 1, so the column is added before any query reads it). Tests
    `test_share_count_prefers_a_filed_exact_count_over_a_capital_derived_one`,
    `test_the_exact_pattern_share_total_wins_over_rounded_paid_up_capital`,
    `test_share_count_reads_a_store_built_before_the_column_existed`,

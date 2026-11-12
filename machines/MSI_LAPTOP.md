@@ -29,8 +29,14 @@ The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,
 - `plugins/reality-data/server/lookups_pilot3.py` — shared `coverage` / paging (`offset`) / `read_next` / `_shrink` reply-cap helpers, page-text reach for `topic` and `statements`, `cells` values, `docs` list paging, `as_of` hidden-document report.
 - `plugins/reality-data/server/lookups_semantic.py` — `offset` + coverage on the semantic ranking.
 - `plugins/reality-data/server/server.py` — `offset` on the six text tools and the general answer rules in the server instructions.
-- `reality_engine/pilot3/events.py` + `schema.py` — `event.doc_type` / `title` / `body_excerpt` (+ the additive `EVENT_ADDITIONS` migration) and `lexicon/{common,pharma,metals}.yaml` `event_cues`.
+- `reality_engine/pilot3/events.py` + `schema.py` — `event.doc_type` / `title` / `body_excerpt` (migration v9 in `schema.py`, T-202: the build part no longer adds them) and `lexicon/{common,pharma,metals}.yaml` `event_cues`.
 - `reality_engine/scripts/p3ask.py` — the reply-reading rules in its help.
+
+## Schema version and migrations (T-202, 12 Nov 2026)
+- `reality_engine/pilot3/schema.py` — `schema_meta.schema_version` / `migrated_at`, the numbered additive `MIGRATIONS` list (v9 = T-197's event columns), `migrate` / `version` / `pending`, and the `--status|--migrate` CLI.
+- `reality_engine/pilot3/build.py` + `stores.py`, `ratios.py`, `guidance.py`, `transcripts.py`, `events.py`, `kpi.py`, `xbrl_segments.py`, `preferred.py`, `row_checks.py` — one `schema.migrate(conn)` at the start of a build run (and in a part run straight from a script); the old per-part `ensure_columns` / `ensure` surgery is gone.
+- `plugins/reality-data/server/lookups_pilot3.py` — `store_version()` (one cached read per routed store path), the `_has_column` version floors and `provenance.schema_version` / `schema_note`; a read-only server never migrates.
+- `reality_engine/tests/test_pilot3_schema_version.py` — a version-0 store (18-column `share_capital`, no `guidance.entity`) and a v8 store gain the columns in place with their rows unchanged, migrate twice is a no-op, and read-only lookups answer on a version-0 store.
 
 ## Hardware
 NVIDIA GTX 1050 Ti with 4 GB, 8 CPU threads. Use CUDA, and check `nvidia-smi` before GPU plans. GPU OCR is slower than CPU here.

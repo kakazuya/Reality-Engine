@@ -818,7 +818,7 @@ def _shares(conn, symbol: str, basis: str, day: str) -> float | None:
 
 def run(conn: sqlite3.Connection, symbols=None, review_path: Path | str | None = None) -> dict:
     """Read every ``results`` document's P&L pages for ``symbols`` and rewrite their ``fin_quarter_printed`` rows."""
-    schema.ensure(conn, (TABLE,))
+    schema.ensure(conn, (TABLE,))       # the part's own table: created when absent, never rebuilt here
     want = [s.strip().upper() for s in (symbols or profile.symbols()) if s and s.strip()]
     review: list[dict] = []
     stats: dict = {}

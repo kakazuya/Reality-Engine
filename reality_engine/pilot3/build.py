@@ -184,6 +184,9 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
     conn = sqlite3.connect(out)
     conn.execute("PRAGMA journal_mode=WAL")
     log = {}
+    # T-202: the one migration per run, BEFORE any part reads or writes.  A store built by older code gains every
+    # additive change here, so no part carries column surgery of its own any more.
+    log["schema"] = dict(zip(("from_version", "to_version"), schema.migrate(conn)))
     parts = (["registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios", "extract", "segments",
               "guidance", "notes", "events", "checks"]
              if part == "all" else [part])

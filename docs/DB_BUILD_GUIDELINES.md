@@ -553,3 +553,17 @@ Change a rule only with a measurement that supports the change, and note it in `
   reported not found (WARN, exit 0), a partly row verified is a WARN. The file shadows pytest's `tmp_path` with a
   `.tmp` directory, as the other pilot3 test files do.
 
+## 16. Schema changes are numbered migrations (T-202, 12 Nov 2026)
+- **One function changes a store's schema.** A new column, table, view or index goes into `MIGRATIONS` in
+  `reality_engine/pilot3/schema.py` as the next number, named for its ticket; the migration is additive and
+  idempotent (`CREATE ... IF NOT EXISTS`, `ADD COLUMN` only when absent) and never drops or rewrites a row. `migrate`
+  runs it in order and records `schema_meta.schema_version`. A build part calls `schema.migrate` and nothing else:
+  no `ALTER TABLE` and no per-part `ensure_columns` outside the migration list.
+- **Prove it on copies before a live store.** `python -m reality_engine.pilot3.schema --db <copy> --status` lists the
+  version and pending steps, `--migrate` applies them; then every table's row count must be identical (the T-202
+  rollout on pilot10/aurobindo/u8: 0 -> 9, no row-count change) and a second run must be a no-op. A change a later
+  ticket needs (T-197's `event.doc_type` / `title` / `body_excerpt` are v9) is folded into that list, never added by
+  the build part that reads it. A read-only lookup
+  never migrates: it falls back to the older rule and its provenance reports `schema_version`, with a `schema_note`
+  when the store is older than the server.
+

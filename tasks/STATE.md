@@ -18,7 +18,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-000. T-199 BLUESTARCO atom test: hand-off `tasks/handoff/T-199_BLUESTAR_ATOM_PLAN.md` (fresh session: wait for T-202 merge, delete partial bluestar.db, build, route, OCR, atom brief). MERGED 12 Nov: T-197, T-198, T-201, T-203. RUNNING: T-202 round 2 20261112T173001Z-e88d8f6c.
+000. T-199 BLUESTARCO atom test: hand-off `tasks/handoff/T-199_BLUESTAR_ATOM_PLAN.md` (fresh session: wait for T-202 merge, delete partial bluestar.db, build, route, OCR, atom brief). MERGED 12 Nov: T-197, T-198, T-200, T-201, T-202 (schema v9), T-203. RUNNING: T-204 small fixes 20261112T174852Z-2cd1706f.
 00. T-195 DONE: re-run after fixes, DeepSeek 85.5% / 84.1% (2 runs), Haiku 76.8%; `reports/2026-11-12_aurobindo_rerun.html`. T-196 DONE (`reports/2026-11-12_why_answers_stop.html`).
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191 A/B DONE (`reports/2026-11-12_semantic_ab.html`); route `aurobindo_ab/STORE_DEFECTS_SEEN.md` to follow-ups.

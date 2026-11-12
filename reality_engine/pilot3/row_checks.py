@@ -102,6 +102,8 @@ from pathlib import Path
 
 import yaml
 
+from reality_engine.pilot3 import schema
+
 VERSION = "row_checks_v2"
 VOCAB_PATH = Path(__file__).with_name("row_checks_vocab.yaml")
 
@@ -2296,13 +2298,8 @@ def sectors_from(profile: str | None, con: sqlite3.Connection) -> dict[str, str]
 
 def write(out_db: str, verdicts: list[Verdict]) -> None:
     con = sqlite3.connect(out_db)
-    con.executescript("""
-        DROP TABLE IF EXISTS row_check; DROP TABLE IF EXISTS row_check_fail;
-        CREATE TABLE row_check (tbl TEXT, row_id INTEGER, symbol TEXT, metric TEXT, canon TEXT, sector TEXT,
-            doc_type TEXT, rule TEXT, status TEXT, corroborated INTEGER, checker TEXT, definition TEXT,
-            PRIMARY KEY (tbl, row_id));
-        CREATE TABLE row_check_fail (tbl TEXT, row_id INTEGER, check_name TEXT, hard INTEGER, why TEXT);
-    """)
+    con.executescript("DROP TABLE IF EXISTS row_check; DROP TABLE IF EXISTS row_check_fail;")
+    con.executescript(schema.ROW_CHECK_SCHEMA)
     con.executemany("INSERT INTO row_check VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                     [(v.table, v.row_id, v.symbol, v.metric, v.canon, v.sector, v.doc_type, v.rule, v.status,
                       int(v.corroborated), VERSION, v.definition) for v in verdicts])

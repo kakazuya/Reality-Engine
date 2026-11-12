@@ -23,6 +23,7 @@ from pathlib import Path
 
 import yaml
 
+from . import schema
 from .kpi import LEX_DIR, SANDBOX_ROOT, VAL_RX, _UNIT_BY_SUFFIX, parse_periods, to_float, _norm_cur, profile, _sector_of
 
 SCHEMA = """
@@ -1014,7 +1015,7 @@ def _recurring_entities(full_text: str, speaker_names: set[str], own_tokens: set
 
 def _entities_in(sentence: str, ent_set: set[str]) -> list[str]:
     found = []
-    for e in ent_set:
+    for e in sorted(ent_set):        # a set's order is per-process: sort, so two builds write the same list (T-202)
         if re.search(r"\b" + re.escape(e) + r"\b", sentence):
             found.append(e)
     # de-dupe preserving order; prefer longer spans first; drop spans contained in a longer one
@@ -1232,18 +1233,7 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
     topics, people = load_topics()
     sector_topics = {sym: _compiled(_sector_topics(_sector_of(sym))) for sym in symbols}   # T-194
     con = sqlite3.connect(out)
-    # migrate older stores that predate the T-164 columns
-    try:
-        cols = {r[1] for r in con.execute("PRAGMA table_info(transcript_statement)").fetchall()}
-        if cols:
-            if "entities" not in cols:
-                con.execute("ALTER TABLE transcript_statement ADD COLUMN entities TEXT NOT NULL DEFAULT ''")
-            if "answer_turn" not in cols:
-                con.execute("ALTER TABLE transcript_statement ADD COLUMN answer_turn INTEGER NOT NULL DEFAULT 0")
-            con.commit()
-    except Exception:
-        pass
-    con.executescript(SCHEMA)
+    schema.migrate(con)          # T-202: transcript tables, the T-164 columns and the question views, one entry point
     stats: dict = {}
     # store-level metric words: a token used beside a figure in two or more calls is no company name
     # (WHRS 26, GNPA 3.97%, RCC 1,000 tons ...) (T-164 r8)

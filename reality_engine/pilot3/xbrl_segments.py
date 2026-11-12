@@ -29,7 +29,7 @@ from pathlib import Path
 from reality_engine.config import raw_dir
 from reality_engine.gap_loop import prepare
 from reality_engine import raw_store
-from reality_engine.pilot3 import kpi, profile
+from reality_engine.pilot3 import kpi, profile, schema
 from reality_engine.pilot3.registry import all_isins
 from reality_engine.pilot3.stores import _basis, fiscal_period
 
@@ -279,11 +279,7 @@ def _filings(symbol: str) -> list[dict]:
 
 
 def _ensure_table(con: sqlite3.Connection) -> None:
-    con.executescript(kpi.SCHEMA)
-    have = {r[1] for r in con.execute("PRAGMA table_info(kpi_series)")}
-    for name, ddl in kpi.NEW_COLS:
-        if name not in have:
-            con.execute(f"ALTER TABLE kpi_series ADD COLUMN {name} {ddl}")
+    schema.migrate(con)          # T-202: kpi_series and its confidence columns, never a hand ALTER here
 
 
 def run(db_path: str, symbols: list[str], raw_root: Path | None = None) -> dict:

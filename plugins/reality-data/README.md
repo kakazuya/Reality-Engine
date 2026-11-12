@@ -63,6 +63,12 @@ off. `pilot3_sql` takes `symbol=` or `store=` and, with neither, lists the regis
 registry (the stores are ordered freshest build first, so its rows match the current code; the repo's own
 `pilot3.db` is the last fallback):
 
+**T-202 (12 Nov 2026): the reply names the store's schema version.** Every `pilot3_*` provenance block carries
+`schema_version` (from `schema_meta`, read once per routed store path); a store older than the server adds
+`schema_note` naming its version and the CLI that migrates a copy
+(`python -m reality_engine.pilot3.schema --db <store> --status|--migrate`). The read-only server never migrates a
+store: a lookup falls back to the older rule for a column its store lacks.
+
 ```powershell
 python -m reality_engine.scripts.store_registry --scan D:/RealityEngine --out D:/RealityEngine/stores.json
 ```

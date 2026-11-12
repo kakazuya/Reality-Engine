@@ -35,7 +35,7 @@ from pathlib import Path
 import yaml
 
 from .. import config, raw_store
-from . import call_dates, profile
+from . import call_dates, profile, schema
 
 LEX_DIR = Path(__file__).parent / "lexicon"
 SANDBOX_ROOT = Path("D:/RealityEngine/sandbox")
@@ -3609,11 +3609,7 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
         pages_db: Path | str | None = None) -> dict:
     t0 = time.time()
     con = sqlite3.connect(out)
-    con.executescript(SCHEMA)
-    have_cols = {r[1] for r in con.execute("PRAGMA table_info(kpi_series)")}
-    for name, ddl in NEW_COLS:
-        if name not in have_cols:
-            con.execute(f"ALTER TABLE kpi_series ADD COLUMN {name} {ddl}")
+    schema.migrate(con)          # T-202: kpi_series and its confidence columns, on any older store
     ocr_paths = [ocr_db] if isinstance(ocr_db, (str, Path)) else list(ocr_db or ())
     ocr_cons = [sqlite3.connect(f"file:{Path(d).as_posix()}?mode=ro", uri=True) for d in ocr_paths]
     stats: dict = {}

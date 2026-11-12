@@ -1,9 +1,19 @@
 """DDL for the pilot3 core tables (T-049 part A).  Every fact row carries symbol, isin, period, basis,
 value, unit, scale, ``known_at`` (from the filing record) and its source (doc + page, or source db +
-table + rowid).  ``create(conn, tables)`` drops and recreates the named tables, so a part re-runs cleanly."""
+table + rowid).  ``create(conn, tables)`` drops and recreates the named tables, so a part re-runs cleanly.
+
+Schema version (T-202): every pilot3 store carries ``schema_meta.schema_version``.  ``MIGRATIONS`` is the ordered
+list of additive changes since a store without the table (version 0), and ``migrate`` is the ONE function that
+changes an existing store's schema: build parts call it before they write (``build.py`` once per run).  A
+read-only lookup never migrates; it reads ``version`` and falls back to the older rule instead (lookups_pilot3).
+CLI: ``python -m reality_engine.pilot3.schema --db <store> --status|--migrate``."""
 from __future__ import annotations
 
+import argparse
+import json
 import sqlite3
+import time
+from collections.abc import Callable
 
 TABLES: dict[str, str] = {
     "company": """CREATE TABLE company (
@@ -44,7 +54,7 @@ TABLES: dict[str, str] = {
         face_value REAL, subject TEXT, known_at TEXT, known_at_source TEXT, source_db TEXT, source_table TEXT,
         source_rowid TEXT)""",
     # T-194: one row per event an announcement names (regulatory inspection, buyback, dividend, acquisition,
-    # merger), built by ``pilot3.events`` from the announcement title and its first page.  ``event_date`` is the
+    # merger), built by ``pilot3.events`` from the announcement title and its first pages.  ``event_date`` is the
     # event's own start date when the text prints one, else the filing date; ``announced`` is always the filing.
     # T-197: ``body_excerpt`` holds the sentences of the page that state the outcome, observations, classification,
     # impact or amount, and ``doc_type`` / ``title`` name the document the event came from.
@@ -213,6 +223,14 @@ PARTS = {
 }
 
 
+ROW_CHECK_SCHEMA = """
+CREATE TABLE IF NOT EXISTS row_check (tbl TEXT, row_id INTEGER, symbol TEXT, metric TEXT, canon TEXT, sector TEXT,
+    doc_type TEXT, rule TEXT, status TEXT, corroborated INTEGER, checker TEXT, definition TEXT,
+    PRIMARY KEY (tbl, row_id));
+CREATE TABLE IF NOT EXISTS row_check_fail (tbl TEXT, row_id INTEGER, check_name TEXT, hard INTEGER, why TEXT);
+"""
+
+
 def create(conn: sqlite3.Connection, names) -> None:
     for name in names:
         if name == "doc_page":
@@ -236,18 +254,34 @@ def ensure(conn: sqlite3.Connection, names) -> None:
 
 def ensure_views(conn: sqlite3.Connection) -> None:
     """Recreate ``fin_quarter_current`` when both quarter tables carry the preferred columns (T-090); an older build
-    gains them when the ``preferred`` part runs, and until then the view is left alone rather than failing."""
+    gains them when the ``preferred`` migration runs, and until then the view is left alone rather than failing."""
     tables = ("fin_quarter_xbrl", "fin_quarter_printed")
     for table in tables:
         if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
             return
-        if not {"preferred_from", "preferred_to"} <= {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}:
+        if not {"preferred_from", "preferred_to"} <= _columns(conn, table):
             return
     conn.execute("DROP VIEW IF EXISTS fin_quarter_current")
     conn.execute(FIN_QUARTER_CURRENT)
 
 
-# T-192: additive columns for tables built before them (a part re-run migrates, never drops).
+# --- T-202: the schema version and its numbered migrations -----------------------------------------------
+# One row per numbered, ADDITIVE change: (version, name, fn(conn)).  A migration only creates a table / index
+# (IF NOT EXISTS) or adds a column that is absent; it never drops, rewrites or reorders a row, so any older store
+# migrates in place and running one twice is a no-op.  To add a change, append the next number here (never edit or
+# renumber a released one), give it the ticket that needs it, make it idempotent, and extend
+# reality_engine/tests/test_pilot3_schema_version.py.
+V_SHARE_COUNT_BASIS = 1        # T-192: share_capital.count_basis
+V_GUIDANCE_ENTITY = 2          # T-192: guidance.entity / entity_unsure
+V_EVENT_TABLE = 3              # T-194: the event table
+V_PREFERRED_WINDOWS = 4        # T-090: preferred_from / preferred_to + fin_quarter_current
+V_TRANSCRIPT_TURNS = 5         # T-164: transcript tables, entities / answer_turn, analyst_question views
+V_KPI_CONFIDENCE = 6           # T-049 E: kpi_series confidence / conf_rank / method / ocr_conf / source_type / entity
+V_ROW_CHECK_DEFINITION = 7     # T-113: row_check.definition
+V_INDEXES_AND_VIEWS = 8        # every index and view on the tables a store holds
+V_EVENT_BODY = 9               # T-197: event.doc_type / title / body_excerpt
+
+# additive columns for tables built before them (a migration adds, never drops)
 SHARE_CAPITAL_ADDITIONS = (
     "ALTER TABLE share_capital ADD COLUMN count_basis TEXT",
 )
@@ -261,28 +295,188 @@ EVENT_ADDITIONS = (
     "ALTER TABLE event ADD COLUMN title TEXT",
     "ALTER TABLE event ADD COLUMN body_excerpt TEXT",
 )
+PREFERRED_ADDITIONS = (
+    "ALTER TABLE {table} ADD COLUMN preferred_from TEXT",
+    "ALTER TABLE {table} ADD COLUMN preferred_to TEXT",
+)
+ROW_CHECK_ADDITIONS = (
+    "ALTER TABLE row_check ADD COLUMN definition TEXT",
+)
+TRANSCRIPT_STATEMENT_ADDITIONS = (
+    "ALTER TABLE transcript_statement ADD COLUMN entities TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE transcript_statement ADD COLUMN answer_turn INTEGER NOT NULL DEFAULT 0",
+)
+TRANSCRIPT_QUESTION_ADDITIONS = (
+    "ALTER TABLE transcript_question ADD COLUMN entities TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE transcript_question ADD COLUMN answer_turn INTEGER NOT NULL DEFAULT 0",
+)
+TRANSCRIPT_VIEW_COLUMNS = {"symbol", "call_date", "analyst", "firm", "question", "topics", "entities",
+                           "call_period", "doc_key", "answer_turn"}
+
+
+def _has_table(conn: sqlite3.Connection, name: str) -> bool:
+    return bool(conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (name,)).fetchone())
+
+
+def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+
+
+def _script(conn: sqlite3.Connection, script: str) -> None:
+    """Run a DDL script statement by statement: ``executescript`` commits a pending transaction first, which would
+    break ``migrate``'s one transaction, and these scripts hold no semicolon inside a literal."""
+    for statement in script.split(";"):
+        if statement.strip():
+            conn.execute(statement)
 
 
 def ensure_columns(conn: sqlite3.Connection, table: str, additions) -> None:
-    """Add the given columns to ``table`` when a build made it before them (additive, never dropped)."""
-    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
+    """Add the given columns to ``table`` when it exists without them (additive, never dropped).
+
+    A thin helper for the migrations below only: a build part moves a store forward with ``migrate``, never with a
+    column call of its own (T-202)."""
+    if not _has_table(conn, table):
         return
-    have = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    have = _columns(conn, table)
     for sql in additions:
         column = sql.split(" ADD COLUMN ")[1].split()[0]
         if column not in have:
             conn.execute(sql)
 
 
-# T-164: helpers for transcript statement turn/entity columns and the analyst-question view.
-TRANSCRIPT_STATEMENT_ADDITIONS = (
-    "ALTER TABLE transcript_statement ADD COLUMN entities TEXT NOT NULL DEFAULT ''",
-    "ALTER TABLE transcript_statement ADD COLUMN answer_turn INTEGER NOT NULL DEFAULT 0",
+def _create(conn: sqlite3.Connection, names) -> None:
+    for name in names:
+        conn.execute(TABLES[name].replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ", 1))
+
+
+def _add_share_count_basis(conn: sqlite3.Connection) -> None:
+    ensure_columns(conn, "share_capital", SHARE_CAPITAL_ADDITIONS)
+
+
+def _add_guidance_entity(conn: sqlite3.Connection) -> None:
+    _create(conn, ("guidance",))                      # a build that never ran the guidance part still gains the table
+    ensure_columns(conn, "guidance", GUIDANCE_ADDITIONS)
+    for sql in GUIDANCE_INDEXES:
+        conn.execute(sql)
+
+
+def _add_event_table(conn: sqlite3.Connection) -> None:
+    _create(conn, ("event",))
+    conn.execute("CREATE INDEX IF NOT EXISTS ix_ev ON event(symbol, kind, event_date)")
+
+
+def _add_event_columns(conn: sqlite3.Connection) -> None:
+    ensure_columns(conn, "event", EVENT_ADDITIONS)     # a store at v3..v8 has the table, not its T-197 columns
+
+
+def _add_preferred_windows(conn: sqlite3.Connection) -> None:
+    for table in ("fin_quarter_xbrl", "fin_quarter_printed"):
+        ensure_columns(conn, table, tuple(sql.format(table=table) for sql in PREFERRED_ADDITIONS))
+    ensure_views(conn)
+
+
+def _add_transcript_turns(conn: sqlite3.Connection) -> None:
+    from reality_engine.pilot3 import transcripts      # late: transcripts imports kpi, never this module
+
+    if not _has_table(conn, "transcript_statement"):
+        _script(conn, transcripts.SCHEMA)              # a build that never ran the extractor still gains the tables
+    else:                                              # older store: add the T-164 columns BEFORE the index naming them
+        ensure_columns(conn, "transcript_statement", TRANSCRIPT_STATEMENT_ADDITIONS)
+        ensure_columns(conn, "transcript_question", TRANSCRIPT_QUESTION_ADDITIONS)
+        if {"symbol", "call_date"} <= _columns(conn, "transcript_statement"):
+            conn.execute("CREATE INDEX IF NOT EXISTS ix_ts_sym_call ON transcript_statement(symbol, call_date)")
+        if {"symbol", "doc_key", "answer_turn"} <= _columns(conn, "transcript_statement"):
+            conn.execute("CREATE INDEX IF NOT EXISTS ix_ts_turn ON transcript_statement(symbol, doc_key, answer_turn)")
+    ensure_transcript_views(conn)
+
+
+def _add_kpi_confidence(conn: sqlite3.Connection) -> None:
+    from reality_engine.pilot3 import kpi              # late: kpi is heavy and is not needed to read a version
+
+    if not _has_table(conn, "kpi_series"):
+        _script(conn, kpi.SCHEMA)                      # a build that never ran a KPI part still gains the table
+        return
+    ensure_columns(conn, "kpi_series",
+                   tuple(f"ALTER TABLE kpi_series ADD COLUMN {name} {ddl}" for name, ddl in kpi.NEW_COLS))
+    if {"symbol", "metric", "fiscal_period"} <= _columns(conn, "kpi_series"):    # a partial store keeps its shape
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_kpi_sym_metric ON kpi_series(symbol, metric, fiscal_period)")
+
+
+def _add_row_check_definition(conn: sqlite3.Connection) -> None:
+    _script(conn, ROW_CHECK_SCHEMA)                    # the verdict tables build --part checks copies in (T-113)
+    ensure_columns(conn, "row_check", ROW_CHECK_ADDITIONS)
+
+
+def _add_indexes_and_views(conn: sqlite3.Connection) -> None:
+    _indexes(conn)
+    ensure_views(conn)
+    ensure_transcript_views(conn)
+
+
+MIGRATIONS: tuple[tuple[int, str, Callable[[sqlite3.Connection], None]], ...] = (
+    (V_SHARE_COUNT_BASIS, "share_capital.count_basis (T-192)", _add_share_count_basis),
+    (V_GUIDANCE_ENTITY, "guidance.entity / entity_unsure (T-192)", _add_guidance_entity),
+    (V_EVENT_TABLE, "event table (T-194)", _add_event_table),
+    (V_PREFERRED_WINDOWS, "fin_quarter preferred windows + fin_quarter_current (T-090)", _add_preferred_windows),
+    (V_TRANSCRIPT_TURNS, "transcript tables, entities / answer_turn, analyst_question views (T-164)",
+     _add_transcript_turns),
+    (V_KPI_CONFIDENCE, "kpi_series confidence columns (T-049 E)", _add_kpi_confidence),
+    (V_ROW_CHECK_DEFINITION, "row_check.definition (T-113)", _add_row_check_definition),
+    (V_INDEXES_AND_VIEWS, "every index and view on the tables a store holds", _add_indexes_and_views),
+    (V_EVENT_BODY, "event.doc_type / title / body_excerpt (T-197)", _add_event_columns),
 )
+LATEST = MIGRATIONS[-1][0]
+
+
+def version(conn: sqlite3.Connection) -> int:
+    """The store's schema version; a store without ``schema_meta`` is version 0 (every build before T-202)."""
+    try:
+        row = conn.execute("SELECT value FROM schema_meta WHERE key='schema_version'").fetchone()
+    except sqlite3.OperationalError:
+        return 0
+    try:
+        return int(row[0]) if row else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def pending(conn: sqlite3.Connection) -> list[tuple[int, str]]:
+    """``[(version, name)]`` of the migrations this store has not had yet."""
+    current = version(conn)
+    return [(number, name) for number, name, _fn in MIGRATIONS if number > current]
+
+
+def migrate(conn: sqlite3.Connection) -> tuple[int, int]:
+    """Apply the missing migrations in order and record the version: ``(from_version, to_version)``.
+
+    Additive and idempotent: a store already at ``LATEST`` is a no-op (one SELECT), and running it twice changes
+    nothing.  A newer store (built by later code) is left alone, never downgraded."""
+    conn.execute("CREATE TABLE IF NOT EXISTS schema_meta (key TEXT PRIMARY KEY, value TEXT)")
+    from_version = version(conn)
+    todo = [(number, name, fn) for number, name, fn in MIGRATIONS if number > from_version]
+    if not todo:
+        return from_version, from_version
+    started = not conn.in_transaction
+    if started:
+        conn.execute("BEGIN")
+    try:
+        for _number, _name, fn in todo:
+            fn(conn)
+        to_version = todo[-1][0]
+        conn.execute("INSERT OR REPLACE INTO schema_meta(key, value) VALUES ('schema_version', ?)", (str(to_version),))
+        conn.execute("INSERT OR REPLACE INTO schema_meta(key, value) VALUES ('migrated_at', ?)",
+                     (time.strftime("%Y-%m-%dT%H:%M:%S"),))
+    except Exception:
+        if started:
+            conn.rollback()
+        raise
+    if started:
+        conn.commit()
+    return from_version, to_version
 
 
 def ensure_transcript_views(conn: sqlite3.Connection) -> None:
-    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='transcript_question'").fetchone():
+    if not _has_table(conn, "transcript_question") or not TRANSCRIPT_VIEW_COLUMNS <= _columns(conn, "transcript_question"):
         return
     conn.execute("DROP VIEW IF EXISTS analyst_question")
     conn.execute("CREATE VIEW analyst_question AS SELECT symbol, call_date, analyst, firm, question, "
@@ -295,5 +489,38 @@ def ensure_transcript_views(conn: sqlite3.Connection) -> None:
 def _indexes(conn: sqlite3.Connection) -> None:
     for sql in INDEXES:
         table = sql.split(" ON ")[1].split("(")[0]
-        if conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
+        if not _has_table(conn, table):
+            continue
+        wanted = {part.strip().split()[0] for part in sql.split("(", 1)[1].split(")")[0].split(",")}
+        if wanted <= _columns(conn, table):            # a partial old table keeps its shape; the index waits
             conn.execute(sql)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """``--status`` prints the store's version and pending migrations; ``--migrate`` applies them.  A copy only:
+    the CLI writes the file it is given (the live stores are migrated by the build, never from here)."""
+    ap = argparse.ArgumentParser(prog="python -m reality_engine.pilot3.schema", description=__doc__)
+    ap.add_argument("--db", required=True, help="the pilot3 store (a copy, until the build migrates the live one)")
+    group = ap.add_mutually_exclusive_group(required=True)
+    group.add_argument("--status", action="store_true", help="print the schema version and pending migrations")
+    group.add_argument("--migrate", action="store_true", help="apply the pending migrations")
+    args = ap.parse_args(argv)
+    conn = sqlite3.connect(args.db)
+    try:
+        from_version = version(conn)
+        todo = pending(conn)
+        if args.migrate:
+            from_version, to_version = migrate(conn)
+            todo = pending(conn)
+        else:
+            to_version = from_version
+        out = {"db": args.db, "version": to_version, "latest": LATEST, "from_version": from_version,
+               "pending": [{"version": number, "name": name} for number, name in todo]}
+        print(json.dumps(out, indent=1))
+    finally:
+        conn.close()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

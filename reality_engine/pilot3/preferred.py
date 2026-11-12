@@ -116,17 +116,6 @@ def elect(rows: list[dict]) -> list[dict]:
     return [{k: v for k, v in row.items() if not k.startswith("_")} for row in out]
 
 
-def ensure_columns(conn: sqlite3.Connection) -> None:
-    """Add ``preferred_from`` / ``preferred_to`` to a quarter table built before T-090 (additive, never dropped)."""
-    for table in QUARTER_TABLES:
-        if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
-            continue
-        have = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
-        for column in ("preferred_from", "preferred_to"):
-            if column not in have:
-                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} TEXT")
-
-
 def apply(conn: sqlite3.Connection, symbols: Iterable[str] | None = None) -> dict[str, Any]:
     """Write the preferred windows for ``symbols`` (default: the build's companies) into both quarter tables.
 
@@ -134,7 +123,7 @@ def apply(conn: sqlite3.Connection, symbols: Iterable[str] | None = None) -> dic
     exists for the key it is the candidate set (the printed twins are its duplicates), else the displayable printed
     rows are.  The max of ``order_key`` at each distinct ``known_at`` is preferred from that instant until the next
     one, as whole days.  ``symbols`` limits the run exactly like the other build parts."""
-    ensure_columns(conn)
+    schema.migrate(conn)         # T-202: preferred_from / preferred_to on a quarter table built before T-090
     missing = [name for name in QUARTER_TABLES
                if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (name,)).fetchone()]
     if missing:      # a build without ``comparatives`` keeps no printed table: nothing to elect across

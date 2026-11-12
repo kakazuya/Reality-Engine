@@ -468,10 +468,10 @@ def _input_views(conn: sqlite3.Connection) -> list[str]:
 
 
 def build_ratios(conn: sqlite3.Connection) -> dict:
+    # T-202: the one migration entry point (a store built before ``count_basis`` gains it before any query reads
+    # it, T-192), and a part run straight from a script still arrives on a current schema.
+    schema.migrate(conn)
     schema.create(conn, ("formula", "ratio_panel", "valuation_daily"))
-    # a store built before ``count_basis`` still elects the exact share count: the column the ratio reads is added
-    # here, additively, before any query needs it (T-192)
-    schema.ensure_columns(conn, "share_capital", schema.SHARE_CAPITAL_ADDITIONS)
     conn.executemany("INSERT INTO formula VALUES (?,?,?,?,?,1,?)", FORMULAS)
     counts = {}
     views = _input_views(conn)

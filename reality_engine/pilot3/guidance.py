@@ -78,7 +78,6 @@ from pathlib import Path
 
 from . import profile
 from . import schema
-from .schema import TABLES, GUIDANCE_INDEXES
 from .transcripts import split_sentences, _same_person, non_results_call
 
 COLS = ("symbol isin metric target_period low high unit direction said_on doc_key page quote speaker "
@@ -1781,10 +1780,7 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
     t0 = time.time()
     con = sqlite3.connect(out)
     con.row_factory = sqlite3.Row
-    if not con.execute("SELECT 1 FROM sqlite_master WHERE name='guidance'").fetchone():
-        con.execute(TABLES["guidance"])
-    schema.ensure_columns(con, "guidance", schema.GUIDANCE_ADDITIONS)
-    con.executescript(";".join(GUIDANCE_INDEXES))
+    schema.migrate(con)          # T-202: the guidance table, its entity columns and indexes, one entry point
     stats_all: dict = {}
     ins = f"INSERT INTO guidance({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
     for symbol in symbols:
