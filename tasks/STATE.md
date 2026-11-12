@@ -15,9 +15,9 @@ History `docs/state_history/` (previous: `STATE_2026-11-12_1410.md`); method `do
 T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 position check v2, T-186 `pilot3_fact` (one call: preferred figure + source + known_at + inputs; XBRL first for annual lines; mismatch flag), T-187 guidance round 5, T-184 run ledger, T-188 HP OCR arm + local readers.
 
 ## Next action
-0. After 15:30 (Shivam tops up DeepInfra): T-191 semantic A/B per `tasks/handoff/T-191_SEMANTIC_AB_PLAN.md` Snapshot frozen 12 Nov 15:33 (`aurobindo_ab/SNAPSHOT_SHA256.txt`). Embedded 2,336/2,595 pages (9-cent cap; 259 results/PR/announcement pages left). RUNNING: DeepSeek arm A 20261112T113533Z-3194da78, B 20261112T113554Z-92428bc8; Haiku arms (OK 16:50) 14 subagents -> `aurobindo_ab/haiku_{A,B}/`. Next: blind Opus grading of 4 sets, report.
-T-194 tool fixes approved 16:50: RUNNING DeepSeek 20261112T112819Z-a7d6afbe.
-1. T-192 wrong rows: round 3 failed review (pilot10 main-vs-branch diff: count_basis crash, guidance entity rule hides 6 group targets, KPI period regressions). Round 4 RUNNING, DeepSeek job 20261112T105109Z-a810bf31 (16:21); review against brief H1-H8 and re-diff pilot10 (Opus copies in scratchpad t192). A/B does not wait for it.
+0. T-191 A/B (`aurobindo_ab/`): all 4 arms answered (runs used 2,336 pages, now in `embed_2336_ab_run`; full 2,595 in `embed`, ~$0.0996 total). Haiku graded blind: 54/69 both arms, 4 flips each way. DeepSeek blind grading RUNNING (3 Opus graders). Next: report `reports/2026-11-12_semantic_ab.html`; answerer-found defects in `aurobindo_ab/STORE_DEFECTS_SEEN.md`.
+T-194 tool fixes (approved 16:50): RUNNING DeepSeek 20261112T112819Z-a7d6afbe.
+1. T-192: rounds 3-4 failed review on Opus's pilot10 main-vs-branch diff (round 4: 4 HINDALCO India-capex targets hidden as Novelis; Q4-call flows -> Q4). Round 5 RUNNING 20261112T115218Z-d827ceff (brief J1-J3).
 2. T-194 tool fixes: brief `tasks/handoff/T-194_TOOL_FIXES_BRIEF.md` waits for Shivam.
 3. Branches: 22 unmerged; 5 answer-run note branches deletable; T-163 r4-7 / T-132 r10-12 need review; CHOLAFIN waits for Shivam.
 4. Restart reality-data; T-179 timing with `pilot3_fact`; guidance `gross_margin`; `pilot3_fin` XBRL-first; T-175; T-188 follow-ups; s10 + T-172.
