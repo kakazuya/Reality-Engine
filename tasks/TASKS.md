@@ -95,6 +95,7 @@ One row per line, kept in its section.
 - T-179 | OPEN Eagle | P1 | Raw SQL A/B: 120 questions x 2 arms x 2 runs with and without pilot3_sql, calls and seconds logged, grader calibrated | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/reports/2026-11-11_t179_sql_ab.xlsx').exists() else 1)" | from: Fable review 10 Nov | opened 2026-11-10
 - T-186 | OPEN Eagle | P1 | Answer-ready fact lookup: one tool call returns the preferred figure with period, basis, unit, source document and page, known_at, and the formula inputs when computed, for any (company, metric, period, basis) | accept: python -m pytest -q plugins/reality-data/tests/test_lookups_pilot3.py | from: Fable review item 7, 11 Nov | opened 2026-11-11
 - T-192 | OPEN | P1 | Wrong stored rows found by T-189 graders: ROE on average equity, exact share count (not rounded from paid-up capital), one EBITDA definition per line | accept: python -m pytest reality_engine/tests -q -k 'roe or share_count or ebitda' | from: T-189 graders | opened 2026-11-12
+- T-194 | WAITING Shivam | P1 | Tool fixes for early stopping: topic tool across calls, exact-phrase search with counts, sector topic vocabulary, event table, server-enforced as_of | accept: python -m pytest plugins/reality-data/tests/test_lookups_pilot3.py -q | from: T-189 graders | opened 2026-11-12
 
 ## Bank
 
