@@ -33,7 +33,7 @@ _NO_PILOT3_SQL = os.environ.get("REALITY_DATA_NO_PILOT3_SQL") == "1"
 
 INSTRUCTIONS = """Local reality-engine data search. The data is read-only and every answer carries provenance.
 
-PILOT3 FIRST: the pilot3_* tools hold every company in their database's company table -- the whole NSE+BSE universe the build covers (thousands of companies), never a sample of three: check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') instead of assuming a company is absent. For any company in that table (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database (dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any single number the answer needs (one financial line, ratio, margin, KPI, holding category or share count) -> pilot3_fact FIRST: one call returns the preferred figure with unit, period, basis, source document + page, known_at and, when the store derives it, the formula with its input rows; any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); a THEME spread over several calls or documents (Pen-G, a China plant, launches, USFDA inspections, price erosion, the specialty pipeline) -> pilot3_topic FIRST: one call returns the statements verbatim from every call plus the related guidance, KPI, page-cell and event rows, grouped by document date, with the count of what the limit cut; company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF/insurance/government (GoI) holding or a four-quarter shareholding path -> pilot3_holding(symbol, as_of, category=..., quarters=5: the baseline plus four quarters; an intra-quarter filing takes a slot) -- FPI sums use fpi_total, never its components added -- every filed shp_category row comes back with pct and pct_basis; share count on a date -> pilot3_holding(symbol, as_of).share_capital; what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); price reaction to a filing, gaps, RSI, moving averages, volume spikes, range position -> pilot3_tech; list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: company, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, doc, doc_page; view fin_quarter_current: the one preferred financial line per symbol, fiscal_period, basis and line_item now, and the quarter tables' preferred_from / preferred_to columns elect the same figure at any past day -- read them or pilot3_fin, never a hand sum over both tables). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A company the database does not hold returns {"found": false} (or error code not_pilot3): only then use the raw tools below or say NOT IN DATA. A {"found": false} answer for a company it does hold lists what is available; read that list and retry. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
+PILOT3 FIRST: the pilot3_* tools hold every company in their database's company table -- the whole NSE+BSE universe the build covers (thousands of companies), never a sample of three: check coverage with pilot3_sql ('SELECT COUNT(*) FROM company') instead of assuming a company is absent. For any company in that table (symbol, BSE code, ISIN or name) every question goes to the pilot3_* tools before any other tool. They read one script-built database per call: the registered store that holds the company (REALITY_PILOT3_STORES; one store per test company), with dated page text of every held document, KPI series, reported and derived financial lines, ratios, shareholding, management statements, forward guidance) and every row carries provenance (table, source document + page or store row, known_at). Route: any single number the answer needs (one financial line, ratio, margin, KPI, holding category or share count) -> pilot3_fact FIRST: one call returns the preferred figure with unit, period, basis, source document + page, known_at and, when the store derives it, the formula with its input rows; any forward-looking target (revenue growth, EBITDA margin, order-intake target, NIM, credit cost, AUM growth, capex, cost of production/tonne, interest-cost cut; "what guidance/outlook/target/corridor did they give", "did the guidance change between calls") -> pilot3_guidance FIRST (one row per target with period, low/high, unit, direction and the row it revised); a THEME spread over several calls or documents (Pen-G, a China plant, launches, USFDA inspections, price erosion, the specialty pipeline) -> pilot3_topic FIRST: one call returns the statements verbatim from every call plus the related guidance, KPI, page-cell and event rows, grouped by document date, with the count of what the limit cut; company-stated KPI (order book, AUM, EBITDA/tonne, NIM, shipments) -> pilot3_kpi; reported or derived financial line (revenue, PAT, net debt, borrowings, capex, EPS; FY26, H1FY26, Q2FY26; standalone/consolidated) -> pilot3_fin; margin, ROE, ROCE, growth, days, PE, PB, EV/EBITDA, market cap -> pilot3_ratio; promoter/FPI/MF/insurance/government (GoI) holding or a four-quarter shareholding path -> pilot3_holding(symbol, as_of, category=..., quarters=5: the baseline plus four quarters; an intra-quarter filing takes a slot) -- FPI sums use fpi_total, never its components added -- every filed shp_category row comes back with pct and pct_basis; share count on a date -> pilot3_holding(symbol, as_of).share_capital; what management said in a call (margins, capex, outlook, other commentary) -> pilot3_statements (falls back to the call page text when no statement carries the topic); price reaction to a filing, gaps, RSI, moving averages, volume spikes, range position -> pilot3_tech; list documents -> pilot3_docs; anything else in the text -> pilot3_search; arbitrary table query -> pilot3_sql (tables: company, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, ratio_panel, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, price_delivery, bulk_block_deal, insider_trade, index_price, transcript_statement, guidance, doc, doc_page; view fin_quarter_current: the one preferred financial line per symbol, fiscal_period, basis and line_item now, and the quarter tables' preferred_from / preferred_to columns elect the same figure at any past day -- read them or pilot3_fin, never a hand sum over both tables). Pass as_of (YYYY-MM-DD) for any question dated in the past: rows known after it are dropped. A company the database does not hold returns {"found": false} (or error code not_pilot3): only then use the raw tools below or say NOT IN DATA. A {"found": false} answer for a company it does hold lists what is available; read that list and retry. pilot3_fin defaults to the consolidated statement and labels the basis on every row; standalone is an explicit argument. pilot3_sql cuts text cells at max_chars (default 400): pass max_chars=8000 for long page text or a full quote. Do not open raw PDFs or the large databases when a pilot3 tool answers.
 for a single number, call pilot3_fact first: one call returns the preferred figure with its unit, period, basis, source document + page, known_at and, when the store derives it, the formula with its input rows.
 
 ROUTE BY QUESTION SHAPE FIRST (other companies, or after pilot3 says not found) — one call each, before any sql():
@@ -117,13 +117,26 @@ def _warm_search() -> None:
         "count, description) plus the vector indexes. Narrow it with db='<key>' "
         "(that database's tables: description, key columns, row count, coverage) or "
         "query='<word>' (tables matching the word anywhere). schema(table, db) is the "
-        "per-table tool. refresh=true re-introspects the live files (slower)."
+        "per-table tool. store=<name|path> reads one registered pilot3 store; without it, "
+        "db='pilot3' lists the registered stores. refresh=true re-introspects the live files (slower)."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
 def catalog(refresh: bool = False, db: str | None = None,
-            query: str | None = None) -> dict[str, Any]:
-    return _safe(lambda: catalog_mod.catalog_view(db=db, query=query, refresh=refresh))
+            query: str | None = None, store: str | None = None) -> dict[str, Any]:
+    def run() -> dict[str, Any]:
+        import lookups_pilot3 as p3
+        key = db
+        if store:
+            p3.select_store(store)
+            key = db or "pilot3"
+        elif str(db or "").strip().lower() in ("pilot3", "pilot", "p3") and p3.routing_enabled():
+            return p3.store_listing("catalog(db='pilot3') spans several registered stores; pass store= for one "
+                                    "store's path and live row counts")
+        else:
+            p3.reset_store()
+        return catalog_mod.catalog_view(db=key, query=query, refresh=refresh)
+    return _safe(run)
 
 
 @server.tool(
@@ -132,12 +145,27 @@ def catalog(refresh: bool = False, db: str | None = None,
         "One table's shape in one call: columns with types, row count, indexes, date "
         "coverage and up to three sample rows of its key columns. Resolved from the "
         "catalog cache, so it is fast and needs no warm search index; a miss returns "
-        "the nearest table names. Use it instead of PRAGMA/sqlite_master probes."
+        "the nearest table names. store=<name|path> reads one registered pilot3 store "
+        "(db defaults to pilot3). Use it instead of PRAGMA/sqlite_master probes."
     ),
     annotations=ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False),
 )
-def schema(table: str, db: str | None = None) -> dict[str, Any]:
-    return _safe(lambda: catalog_mod.get_schema(table, db=db))
+def schema(table: str, db: str | None = None, store: str | None = None) -> dict[str, Any]:
+    def run() -> dict[str, Any]:
+        import lookups_pilot3 as p3
+        key = db
+        if store:
+            p3.select_store(store)
+            key = db or "pilot3"
+        else:
+            p3.reset_store()
+        out = catalog_mod.get_schema(table, db=key)
+        if not store and str(key or "").strip().lower() in ("pilot3", "pilot", "p3") and p3.routing_enabled():
+            out["stores"] = [{"name": row["name"], "path": str(row["path"])} for row in p3.stores()]
+            out["hint"] = ("the schema is the same across a build family; pass store= to read the row counts and "
+                           "samples of a specific registered store")
+        return out
+    return _safe(run)
 
 
 @server.tool(
@@ -747,8 +775,9 @@ if not _NO_PILOT3_SQL:
     @server.tool(
         name="pilot3_sql",
         description=(
-            "Bounded read-only SELECT/WITH over the pilot3 database (REALITY_PILOT3_DB names another build; limit "
-        "enforced, default 100, max 500). Tables: company (every company the build covers -- count it, never assume "
+            "Bounded read-only SELECT/WITH over ONE pilot3 store: pass symbol=<company> (the registered store that "
+        "holds it answers) or store=<a registered store's name or path>; with neither, the registered stores are "
+        "listed instead of guessing; REALITY_PILOT3_DB pins one store. Limit enforced, default 100, max 500. Tables: company (every company the build covers -- count it, never assume "
         "a sample), doc, doc_page, doc_alias, kpi_series, fin_annual_line, fin_quarter_xbrl, fin_quarter_printed, "
         "ratio_panel, formula, valuation_daily, shp_category, shp_holder, shp_pledge, share_capital, dividend_event, "
         "event (one row per announcement event: inspection/buyback/dividend/acquisition/merger), "
@@ -766,8 +795,10 @@ if not _NO_PILOT3_SQL:
     ),
     annotations=_RO,
     )
-    def pilot3_sql(query: str, limit: int = 100, max_chars: int = 400, as_of: str | None = None) -> dict[str, Any]:
-        return _safe(lambda: _p3.sql(query, limit=limit, max_chars=max_chars, as_of=as_of))
+    def pilot3_sql(query: str, limit: int = 100, max_chars: int = 400, as_of: str | None = None,
+                   store: str | None = None, symbol: str | None = None) -> dict[str, Any]:
+        return _safe(lambda: _p3.sql(query, limit=limit, max_chars=max_chars, as_of=as_of,
+                                     store=store, symbol=symbol))
 # --- end lookups: pilot3 ---
 
 
