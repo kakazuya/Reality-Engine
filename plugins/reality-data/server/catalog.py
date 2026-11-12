@@ -555,7 +555,7 @@ def catalog_view(db: str | None = None, query: str | None = None,
         return {
             "db": key,
             "kind": chosen["kind"],
-            "path": chosen["path"],
+            "path": str(db_path(key)),
             "description": chosen["description"],
             "table_count": len(tables),
             "tables": tables,

@@ -1,13 +1,15 @@
-"""T-124: call one reality-data pilot3 lookup from the shell, against any build (``--db``).
+"""T-124: call one reality-data pilot3 lookup from the shell, against any build.
 
-The reality-data MCP serves one database per server start (``REALITY_PILOT3_DB``); a test store (q12, a hold-out)
-needs its own server.  ``semantic`` (T-154) ranks one company's pages by embedding; it reads the vectors in
-``embed/`` next to the store and needs ``REALITY_DATA_ALLOW_PAID_EMBED=1`` for a new query text.  This CLI runs the SAME lookup code the MCP tools run (``lookups_pilot3`` and ``calc``), so a
+The reality-data MCP resolves each call's symbol to the store that holds it (``REALITY_PILOT3_STORES``, T-203);
+``--db`` pins ONE build instead (a hold-out store, an A/B run).  ``semantic`` (T-154) ranks one company's pages by
+embedding; it reads the vectors in ``embed/`` next to the store and needs ``REALITY_DATA_ALLOW_PAID_EMBED=1`` for
+a new query text.  This CLI runs the SAME lookup code the MCP tools run (``lookups_pilot3`` and ``calc``), so a
 subagent with only a shell asks the test store exactly as a model would ask the MCP.
 
     python -m reality_engine.scripts.p3ask --db <file.db> fact symbol=KIMS metric=revenue period=Q1FY27
+    python -m reality_engine.scripts.p3ask fact symbol=KIMS metric=revenue period=Q1FY27  # via the registry
     python -m reality_engine.scripts.p3ask --db <file.db> kpi symbol=KIMS kpi=occupancy period=Q1FY27
-    python -m reality_engine.scripts.p3ask --db <file.db> sql "query=SELECT COUNT(*) FROM doc"
+    python -m reality_engine.scripts.p3ask sql "query=SELECT COUNT(*) FROM doc" store=<name>  # no --db: one store
     python -m reality_engine.scripts.p3ask --db <file.db> calc "expression=a/b" 'inputs={"a": 1, "b": 2}'
     python -m reality_engine.scripts.p3ask --db <file.db> catalog name=GROWTH \
         'inputs={"now": "22,067 crore", "before": "19,332 crore"}'
@@ -56,10 +58,11 @@ def _value(text: str):
 
 
 def _page(p3, doc_key: str, page: int, to_page: int | None = None, as_of: str | None = None,
-          max_chars: int = 8000) -> dict:
+          max_chars: int = 8000, store: str | None = None) -> dict:
     """T-179: the text of one page (or ``page``..``to_page``, at most 5) of a held document, by its doc_key.
 
     The typed way to read a page, so the no-SQL arm of the answer test can still open the page a row cites.
+    ``store`` names the registered store when the call does not go through ``--db`` (T-203).
     """
     if "'" in str(doc_key) or ";" in str(doc_key):
         return {"error": "doc_key must be the key printed by docs/search, unchanged"}
@@ -67,7 +70,7 @@ def _page(p3, doc_key: str, page: int, to_page: int | None = None, as_of: str | 
     last = min(max(first, last), first + 4)
     query = ("SELECT doc_key, page, method, known_at, text FROM doc_page "
              f"WHERE doc_key = '{doc_key}' AND page BETWEEN {first} AND {last} ORDER BY page")
-    out = p3.sql(query, limit=5, max_chars=int(max_chars), as_of=as_of)
+    out = p3.sql(query, limit=5, max_chars=int(max_chars), as_of=as_of, store=store)
     if not out.get("rows") and as_of:
         # T-194 evidence 5: a document first known after the question's as_of answered four T-189 questions
         out["note"] = (f"no page of that document is held on or before {as_of}: a document first known after "
@@ -110,7 +113,7 @@ def _log_call(log: str, qid: str | None, tool: str, args: dict, reply, ts_start:
         pass
 
 
-def run(db: str, tool: str, args: dict, qid: str | None = None, log: str | None = None) -> dict:
+def run(db: str | None, tool: str, args: dict, qid: str | None = None, log: str | None = None) -> dict:
     qid = qid or os.environ.get("P3ASK_QID")
     log = log or os.environ.get("P3ASK_LOG")
     ts_start = time.time()
@@ -120,8 +123,9 @@ def run(db: str, tool: str, args: dict, qid: str | None = None, log: str | None 
     return reply
 
 
-def _run(db: str, tool: str, args: dict) -> dict:
-    os.environ["REALITY_PILOT3_DB"] = db
+def _run(db: str | None, tool: str, args: dict) -> dict:
+    if db:  # --db pins one store; without it the registry routes each symbol (T-203)
+        os.environ["REALITY_PILOT3_DB"] = db
     if str(SERVER) not in sys.path:
         sys.path.insert(0, str(SERVER))
     name = tool.removeprefix("pilot3_")
@@ -161,11 +165,11 @@ def main(argv: list[str] | None = None) -> int:
     while len(argv) >= 2 and argv[0] in ("--db", "--qid", "--log"):
         opts[argv[0][2:]] = argv[1]
         argv = argv[2:]
-    if "db" not in opts or not argv:
+    if not argv:
         doc = __doc__ or ""
         print(doc.replace(" ratings sql calc", " ratings calc") if _no_sql() else doc)
         return 2
-    db, tool, rest = opts["db"], argv[0], argv[1:]
+    db, tool, rest = opts.get("db"), argv[0], argv[1:]
     args = {}
     for item in rest:
         key, sep, val = item.partition("=")

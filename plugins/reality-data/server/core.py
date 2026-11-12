@@ -165,8 +165,14 @@ def db_path(key: str) -> Path:
     if key == DUCK_KEY:
         return snapshot_path()
     if key == "pilot3":
-        # the pilot3 tools honour REALITY_PILOT3_DB (fixture tests): resolve the same file they read
-        return Path(os.environ.get("REALITY_PILOT3_DB") or DB_FILES["pilot3"])
+        # the pilot3_* tools own the store choice (T-203): a pinned REALITY_PILOT3_DB, else the registered store
+        # that holds the symbol this call resolved, else the repo build.  Lazy import: core stays importable with
+        # no server directory on sys.path.
+        try:
+            import lookups_pilot3 as _p3
+            return _p3.db_path()
+        except Exception:
+            return Path(os.environ.get("REALITY_PILOT3_DB") or DB_FILES["pilot3"])
     try:
         return DB_FILES[key]
     except KeyError:
@@ -185,23 +191,60 @@ def connect_duck():
         return _duck_conn
 
 
+def _wal_gone(path: Path) -> bool:
+    """True when a store has no WAL file (or an empty one): only then is ``immutable=1`` not a stale read."""
+    wal = Path(str(path) + "-wal")
+    try:
+        return not wal.exists() or wal.stat().st_size == 0
+    except OSError:
+        return False
+
+
+def connect_pilot3(path: Path, timeout_s: float = READ_TIMEOUT_S) -> sqlite3.Connection:
+    """A read-only pilot3 store connection.
+
+    A finished store whose WAL side files are gone still records WAL mode in its header, and SQLite then cannot
+    open ``mode=ro`` (it wants to create the ``-wal``); ``immutable=1`` reads such a store as the frozen snapshot
+    it is.  SQLite may only fail on the first table read, so the open is proved by one bounded statement.  A store
+    that still HAS a WAL is never read immutably (that would drop its latest commits): its open failure is raised.
+    A store rebuilt after the server opened it needs a reconnected server.
+    """
+    con: sqlite3.Connection | None = None
+    try:
+        con = connect_ro(path, timeout_s=timeout_s, check_same_thread=False, cache_size_kib=-32768)
+        con.cursor().execute("SELECT 1 FROM sqlite_master LIMIT 1").fetchone()
+        return con
+    except sqlite3.OperationalError as exc:
+        if "unable to open database file" not in str(exc) or not _wal_gone(path):
+            raise
+        if con is not None:
+            try:
+                con.close()
+            except sqlite3.Error:
+                pass
+        return connect_ro(path, timeout_s=timeout_s, check_same_thread=False, cache_size_kib=-32768,
+                          immutable=True)
+
+
 def connect_sqlite(key: str):
+    # keyed by path, not by db key: a routed pilot3 store (or a changed REALITY_PILOT3_DB) opens its own
+    # read-only connection instead of reusing another store's (T-203)
+    path = db_path(key)
     with _lock:
-        con = _sqlite_conns.get(key)
+        con = _sqlite_conns.get(str(path))
         if con is not None:
             return con
-        path = db_path(key)
         if not path.exists():
             raise DataError("db_missing", f"{key} database missing: {path}")
-        con = connect_ro(path, timeout_s=READ_TIMEOUT_S, check_same_thread=False,
-                         cache_size_kib=-32768)
+        con = connect_pilot3(path) if key == "pilot3" else connect_ro(
+            path, timeout_s=READ_TIMEOUT_S, check_same_thread=False, cache_size_kib=-32768)
         con.row_factory = sqlite3.Row
         for pragma in ("PRAGMA busy_timeout=30000", "PRAGMA mmap_size=67108864"):
             try:
                 con.execute(pragma)
             except sqlite3.DatabaseError:
                 pass
-        _sqlite_conns[key] = con
+        _sqlite_conns[str(path)] = con
         return con
 
 

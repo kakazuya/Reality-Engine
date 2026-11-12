@@ -12,6 +12,13 @@ Main machine, hostname `Sumit`. Runs Claude, dsh workers, merges, GPU work and s
 - Closing the session that owns a worker can kill it.
 - Merged worktrees get removed, since each holds a large search cache.
 
+## reality-data store routing (T-203, 12 Nov 2026)
+`plugins/reality-data/server/lookups_pilot3.py` resolves each `pilot3_*` call to the registered store that holds
+the symbol (`REALITY_PILOT3_STORES`, default `D:/RealityEngine/stores.json`); `core.py` (`db_path`,
+`connect_pilot3`, `connect_sqlite`), `server.py` (`catalog`/`schema`/`pilot3_sql` `store=`), `catalog.py`,
+`reality_engine/scripts/store_registry.py` (generator) and `reality_engine/scripts/p3ask.py` (`--db` optional)
+carry it. `REALITY_PILOT3_DB` pins one store. Test: `plugins/reality-data/tests/test_store_routing.py`.
+
 ## Worker context pack
 The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,000 bytes). It is an index, not a repo map: `code-tools` outline/typecheck and reality-data lookup commands, test selection, sandbox limits, conventions, and a pointer to `tasks/STATE.md`.
 - `reality_engine/scripts/build_worker_context.py` — builder, trimmed to the lookup sections, writes the pack and `schemas/<db>.md`.

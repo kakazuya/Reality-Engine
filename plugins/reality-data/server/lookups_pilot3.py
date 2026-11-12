@@ -1,11 +1,14 @@
-"""pilot3 lookups: the one database the reality-data server serves through the ``pilot3_*`` tools (T-049 F).
+"""pilot3 lookups: the databases the reality-data server serves through the ``pilot3_*`` tools (T-049 F).
 
 ``pilot3.db`` is built by scripts (``python -m reality_engine.pilot3.build``): dated page text of every held
 document, KPI series, reported and derived financial lines, ratios, shareholding, management statements.
-``REALITY_PILOT3_DB`` names another build (a profile's, e.g. pilot10).  The companies the tools accept are the ones
-the database's ``company`` table holds (T-090: the covered universe, never a fixed list of three); a database built
-before the table existed falls back to the bundled pilot3 companies.
-These tools answer from it first; the raw files are touched only when a tool says NOT IN DATA.
+``REALITY_PILOT3_STORES`` names a registry of store paths (``python -m reality_engine.scripts.store_registry``);
+each call resolves its symbol against the stores IN THE REGISTRY'S ORDER and opens the first one that holds it
+(T-203).  ``REALITY_PILOT3_DB`` still pins one store (the tests and A/B runs do this) and switches routing off.
+The companies the tools accept are the ones the chosen store's ``company`` table holds (T-090: the covered
+universe, never a fixed list of three); a database built before the table existed falls back to the bundled
+pilot3 companies.  These tools answer from the store first; the raw files are touched only when a tool says
+NOT IN DATA.
 
 Read-only (``connect_ro``), small replies, and every row carries ``provenance`` = table, source (document +
 page, or store table + row) and ``known_at``.  ``as_of`` drops rows whose ``known_at`` is after that day, and
@@ -13,6 +16,7 @@ rows without a ``known_at`` (a row that cannot prove it was public is never show
 """
 from __future__ import annotations
 
+import contextvars
 import datetime as dt
 import difflib
 import json
@@ -36,8 +40,9 @@ _MAIN = Path(r"C:\Users\warri\Downloads\Info_Diffusion_Model\reality_engine\data
 MAX_LIMIT = 50
 QUOTE_CHARS = 600
 _lock = threading.Lock()
-_conn: sqlite3.Connection | None = None
-_conn_path: Path | None = None
+_conns: dict[Path, sqlite3.Connection] = {}          # one read-only connection per store path
+_STORE: contextvars.ContextVar[Path | None] = contextvars.ContextVar("pilot3_store", default=None)
+_SYMBOL: contextvars.ContextVar[str | None] = contextvars.ContextVar("pilot3_symbol", default=None)
 
 _DOC_TYPES = {
     "deck": "deck", "decks": "deck", "presentation": "deck", "investor presentation": "deck",
@@ -49,37 +54,102 @@ _DOC_TYPES = {
 }
 
 
-def db_path() -> Path:
+# --- the store registry (T-203) ---------------------------------------------------------------------
+def stores() -> list[dict[str, Any]]:
+    """The registered stores in priority order (``REALITY_PILOT3_STORES``, else the generated
+    ``D:/RealityEngine/stores.json``); ``[]`` when no registry is configured or readable."""
+    try:
+        from reality_engine.scripts.store_registry import load_registry
+        return load_registry()
+    except Exception:  # no registry, bad JSON, or a launch without the checkout root on sys.path
+        return []
+
+
+def routing_enabled() -> bool:
+    """Does a symbol get answered from whichever registered store holds it?  A pinned ``REALITY_PILOT3_DB``
+    switches routing off: that store and no other is read (tests, A/B runs)."""
+    return not os.environ.get("REALITY_PILOT3_DB") and bool(stores())
+
+
+def _pinned() -> Path | None:
     env = os.environ.get("REALITY_PILOT3_DB")
-    if env:
-        return Path(env)
+    return Path(env) if env else None
+
+
+def _default_path() -> Path:
     here = core.DATA / "pilot3" / "pilot3.db"
     return here if here.is_file() else _MAIN
 
 
-def connect() -> sqlite3.Connection:
-    global _conn, _conn_path
-    path = db_path()
+def db_path() -> Path:
+    """The store the current call reads: the pinned env var, the store ``resolve_symbol`` chose, else the
+    repo's own pilot3 build."""
+    pin = _pinned()
+    if pin is not None:
+        return pin
+    return _STORE.get() or _default_path()
+
+
+def _open(path: Path) -> sqlite3.Connection:
+    """One cached read-only connection per store path (thread-safe; a store is never written)."""
     with _lock:
-        if _conn is not None and _conn_path == path:
-            return _conn
+        con = _conns.get(path)
+        if con is not None:
+            return con
         if not path.is_file():
             raise DataError("pilot3_db_missing", f"pilot3.db not found at {path}; build it with "
-                            "python -m reality_engine.pilot3.build")
-        if _conn is not None:
-            _conn.close()
-        _conn = core.connect_ro(path, timeout_s=core.READ_TIMEOUT_S, check_same_thread=False, cache_size_kib=-16384)
-        _conn.row_factory = sqlite3.Row
-        _conn_path = path
-        return _conn
+                            "python -m reality_engine.pilot3.build, or fix the store registry "
+                            "(REALITY_PILOT3_STORES)")
+        con = core.connect_pilot3(path, timeout_s=core.READ_TIMEOUT_S)
+        con.row_factory = sqlite3.Row
+        _conns[path] = con
+        return con
+
+
+def connect() -> sqlite3.Connection:
+    return _open(db_path())
 
 
 def close() -> None:
-    global _conn
     with _lock:
-        if _conn is not None:
-            _conn.close()
-            _conn = None
+        for con in _conns.values():
+            con.close()
+        _conns.clear()
+
+
+def select_store(store: str) -> Path:
+    """Select a registered store by name / path (or any store file) for the rest of this call."""
+    text = str(store or "").strip()
+    if not text:
+        raise DataError("bad_store", "store is required")
+    entries = stores()
+    for row in entries:
+        names = {row["name"].lower(), row["path"].name.lower(), row["path"].stem.lower(), str(row["path"]).lower()}
+        if text.lower() in names:
+            _STORE.set(row["path"])
+            return row["path"]
+    path = Path(text).expanduser()
+    if path.is_file():
+        _STORE.set(path)
+        return path
+    raise DataError("bad_store", f"unknown pilot3 store {store!r}; registered stores: "
+                    + (", ".join(row["name"] for row in entries) or "none (set REALITY_PILOT3_STORES)"))
+
+
+def reset_store() -> None:
+    """Forget the store a previous call in this context resolved: a call that names no symbol reads the default."""
+    _STORE.set(None)
+    _SYMBOL.set(None)
+
+
+def store_listing(hint: str | None = None) -> dict[str, Any]:
+    """The registered stores, for a call that names neither a symbol nor a store."""
+    entries = stores()
+    rows = [{"name": row["name"], "path": str(row["path"]), "built": row["built"],
+             "companies": len(row["symbols"]), "sample": list(row["symbols"][:3])} for row in entries]
+    return {"stores": rows, "n": len(rows),
+            "hint": hint or ("pass symbol= to answer from the store that holds it, or store= to query that store "
+                             "directly; REALITY_PILOT3_DB pins a single store")}
 
 
 def _q(sql: str, params: tuple = ()) -> list[sqlite3.Row]:
@@ -107,29 +177,81 @@ def pilot_symbols() -> tuple[str, ...]:
         return ()
 
 
+def _symbols_in(path: Path) -> tuple[str, ...]:
+    """Every company one store's ``company`` table holds (empty for an unreadable / old build)."""
+    try:
+        rows = _open(path).execute("SELECT DISTINCT symbol FROM company WHERE symbol IS NOT NULL AND symbol<>'' "
+                                   "ORDER BY symbol").fetchall()
+        return tuple(row[0] for row in rows)
+    except (DataError, sqlite3.DatabaseError):
+        return ()
+
+
+def _match_in(path: Path, text: str, symbols: tuple[str, ...] | None = None) -> str | None:
+    """The company one store holds under ``text`` (symbol, ISIN, BSE code or name); ``None`` when it holds none."""
+    key = text.upper()
+    held = symbols if symbols is not None else _symbols_in(path)
+    if key in held:
+        return key
+    try:
+        row = _open(path).execute("SELECT symbol FROM company WHERE isin=? OR bse_code=? OR upper(name) LIKE ? "
+                                  "LIMIT 1", (key, text, f"%{key}%")).fetchone()
+    except (DataError, sqlite3.DatabaseError):
+        return None
+    return str(row[0]).upper() if row and row[0] else None
+
+
+def _spellings(text: str) -> list[str]:
+    """The shared resolver's NSE/BSE spellings for a name like BAJAJ FINANCE (empty when it knows none)."""
+    try:
+        ident = core.resolve_one(text)
+    except Exception:
+        return []
+    return [str(cand).upper() for cand in (ident.get("nse_symbol"), ident.get("bse_symbol")) if cand]
+
+
 def resolve_symbol(symbol: str) -> str:
-    """A symbol / BSE code / ISIN / name of a company the database holds; anything else is a DataError."""
+    """A symbol / BSE code / ISIN / name of a company one registered store holds; the store that holds it is
+    selected for the rest of this call.  A pinned ``REALITY_PILOT3_DB`` searches that store only."""
     text = (symbol or "").strip()
     if not text:
         raise DataError("bad_symbol", "symbol is required")
-    key = text.upper()
-    allowed = pilot_symbols()
-    if key in allowed:
-        return key
-    for row in _q("SELECT symbol FROM company WHERE isin=? OR bse_code=? OR upper(name) LIKE ? LIMIT 1",
-                  (key, text, f"%{key}%")):
-        if row[0] in allowed:
-            return row[0]
-    try:  # the shared resolver knows more spellings (BAJAJ FINANCE, KEC INTERNATIONAL)
-        ident = core.resolve_one(text)
-        for cand in (ident.get("nse_symbol"), ident.get("bse_symbol")):
-            if cand and cand.upper() in allowed:
-                return cand.upper()
-    except Exception:
-        pass
-    raise DataError("not_pilot3", f"{symbol!r} is not a company this pilot database holds: its company table lists "
-                    f"{len(allowed)} companies (pilot3_sql 'SELECT symbol FROM company' to search them); use the "
-                    "general tools (facts, docs, search_docs) for a company it does not hold")
+    pin = _pinned()
+    entries = [] if pin is not None else stores()
+    if pin is not None:
+        candidates: list[tuple[Path, tuple[str, ...] | None]] = [(pin, None)]
+    elif entries:
+        candidates = [(row["path"], tuple(row["symbols"])) for row in entries]
+    else:
+        candidates = [(db_path(), None)]
+    chosen: Path | None = None
+    key: str | None = None
+    for path, held in candidates:
+        found = _match_in(path, text, held)
+        if found:
+            key, chosen = found, path
+            break
+    if key is None:  # a name only the shared resolver spells (BAJAJ FINANCE -> BAJFINANCE)
+        for spelling in _spellings(text):
+            for path, held in candidates:
+                if spelling in (held if held is not None else _symbols_in(path)):
+                    key, chosen = spelling, path
+                    break
+            if key:
+                break
+    if key is None:
+        if entries:
+            where = ", ".join(f"{row['name']} ({row['path']})" for row in entries)
+            message = (f"{symbol!r} is not a company any of the {len(entries)} registered pilot3 stores holds: "
+                       f"{where}; use the general tools (facts, docs, search_docs) for a company they do not hold")
+        else:
+            message = (f"{symbol!r} is not a company this pilot database holds: its company table lists "
+                       f"{len(_symbols_in(candidates[0][0]))} companies; use the general tools (facts, docs, "
+                       "search_docs) for a company it does not hold")
+        raise DataError("not_pilot3", message)
+    _STORE.set(chosen)
+    _SYMBOL.set(key)
+    return key
 
 
 def _day(value: str | None, field: str) -> str | None:
@@ -352,7 +474,15 @@ def _prov(table: str, source: str, known_at: str | None, **extra: Any) -> dict[s
 def _db_prov(**extra: Any) -> dict[str, Any]:
     path = db_path()
     built = time.strftime("%Y-%m-%d", time.localtime(path.stat().st_mtime)) if path.exists() else None
-    return {"db": "pilot3", "path": str(path), "read_only": True, "built": built, **extra}
+    out: dict[str, Any] = {"db": "pilot3", "path": str(path), "read_only": True, "built": built}
+    entries = [] if _pinned() is not None else stores()
+    symbol = _SYMBOL.get()
+    for row in entries:
+        if row["path"] == path:
+            out["store"] = row["name"]
+        elif symbol and symbol in set(row["symbols"]):
+            out.setdefault("also_held_in", []).append(str(row["path"]))
+    return {**out, **extra}
 
 
 def _reply(symbol: str, rows: list[dict], tool: str, **extra: Any) -> dict[str, Any]:
@@ -2182,9 +2312,12 @@ def _as_of_connection(day: str) -> sqlite3.Connection:
 
 
 def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0,
-        max_chars: int = SQL_TEXT_CHARS, as_of: str | None = None) -> dict[str, Any]:
-    """Bounded, read-only SELECT/WITH over the pilot3 database (``REALITY_PILOT3_DB`` names another build; any
-    table or view; see ``schema`` rows below on a miss).
+        max_chars: int = SQL_TEXT_CHARS, as_of: str | None = None,
+        store: str | None = None, symbol: str | None = None) -> dict[str, Any]:
+    """Bounded, read-only SELECT/WITH over ONE pilot3 store, chosen by ``store`` (a registered store's name or
+    path) or by its ``symbol`` (the store that holds it, T-203); with neither, and a store registry configured,
+    the registered stores are listed instead of guessing.  ``REALITY_PILOT3_DB`` pins one store and switches
+    routing off.
 
     Financial figures: ``fin_quarter_current`` gives the one preferred line per (symbol, fiscal_period, basis,
     line_item) now, and ``preferred_from`` / ``preferred_to`` on ``fin_quarter_xbrl`` and ``fin_quarter_printed``
@@ -2196,6 +2329,13 @@ def sql(query: str, limit: int = 100, timeout_seconds: float = 5.0,
     ``as_of`` (YYYY-MM-DD): every table with a ``known_at`` column, and ``doc_page`` through its document, shows
     only rows known on or before that day (T-156); pass it for any dated question.  ``doc_page_fts`` is not
     filtered itself, so join its hits to ``doc_page``."""
+    if store:
+        select_store(store)
+    elif symbol:
+        resolve_symbol(symbol)
+    elif _pinned() is None and stores():
+        return store_listing("pilot3_sql names no store and no symbol, so it cannot pick one; pass symbol= (the "
+                             "store that holds it answers) or store= (a registered store's name or path)")
     text = core._strip_sql(query or "")
     if not text:
         raise DataError("bad_query", "pilot3_sql needs a SELECT or WITH query")
