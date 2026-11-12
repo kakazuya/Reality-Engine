@@ -56,3 +56,26 @@ Stop if: a fix would change more than 2% of a table's rows in any store other th
 stop for review); or a defect needs a judgement about what the company meant (write it up, skip it).
 
 Budget: 3 hours; one session.
+
+## Round 2 (12 Nov 14:25, Opus review of dsh/20261112T075239Z-35e1d0fc; you start from that branch)
+Keep: the ROE average-equity rule in `ratios.py` and the call period from `doc_period` in `guidance.py`.
+Fix, verbatim review findings:
+- R1. `ratios.py` / `statements.py` forex: the keys `forex_gain_loss`, `exchange_gain_loss`,
+  `foreign_exchange_gain_loss` exist in NO store (checked: `SELECT DISTINCT line_item FROM fin_annual_line` and
+  `fin_quarter_xbrl` on aurobindo.db), so EBITDA did not change. Find how the filed XBRL actually carries forex (grep
+  the results_xbrl parser and the AUROPHARMA FY25 quarterly lines); if forex is not a separate filed line, do not
+  derive it. Instead: when the company prints its own EBITDA (deck / press release KPI row, `kpi_series`), serve that
+  as the preferred EBITDA and margin, with the derived one kept as a second, labelled row. And fix `ebitda_margin_pct`
+  FY25 = 21.4, which is the Q4 FY25 quarter margin under the annual period: an annual row is never filled from a
+  quarter.
+- R2. `stores.py` line 287: you replaced the `known_at_source` text with "derived_from_capital". That destroys the
+  provenance. Revert it; mark the derived count in its own field (or the `unit`/`definition` column the table has),
+  and make the share-count preference (`lookups_pilot3` holding / `preferred`) pick a filed exact count (SHP
+  `shp_category` total) over a capital-derived one for the same date.
+- R3. Defect 3 (KPI Q1 FY27 operating EBITDA margin 20.4 vs 21.0 printed, deck p7/p13) and defect 4 (Lannett margin
+  stored as group guidance) were not touched. Do them.
+- R4. No tests were written. For every defect add a test that FAILS on main and passes on your branch (fixture rows).
+  The 9 `test_pilot3_ratios.py` errors are a tmpdir problem: set `--basetemp=.tmp/pt` and make them run.
+- R5. Steps 3-4 are required: rebuild the touched parts on store COPIES and write `.tmp/T-192_DIFF.md`.
+Accept (round 2): the tests above pass one file at a time; `.tmp/T-192_DIFF.md` shows the five AUROPHARMA rows right
+and per-store changed-row counts. Budget 3 hours.
