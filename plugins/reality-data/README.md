@@ -36,9 +36,11 @@ in place and reports the share of `other` before and after.
 
 **T-197 (12 Nov 2026) makes every text reply a page, never the whole store.** `pilot3_topic`, `pilot3_statements`,
 `pilot3_search`, `pilot3_semantic`, `pilot3_cells` and `pilot3_docs` now carry a `coverage` block -- `searched`,
-`not_searched` (the sources the tool cannot see, by name), `matched_total`, `shown`, `cut`, `offset`, `documents`
-(every matching document with type, date, title, matching pages and match count; more than 40 are summed by type and
-month), `hidden_after_as_of` (with the hidden documents and their dates) and `outside_date_filter` (the matches a
+`not_searched` (the sources the tool cannot see, by name; a source is in exactly one of the two lists),
+`matched_total`, `shown`, `cut`, `offset`, `documents` (the matching documents with type, date, title, matching
+pages and match count; at most `max(limit*3, 10)` by default, the rest summed by type and month and counted in
+`documents_not_listed`; `documents=all` lists every one), `hidden_after_as_of` (with the hidden documents and
+their dates, inside `coverage` only) and `outside_date_filter` (the matches a
 `date_from`/`date_to` excluded). Their one-line `text` starts with that scope and the exact next call. Every text
 tool takes `offset=` to read the next page, returns `read_next` (the quoted page and its neighbours, and for a call
 the pages that print the same words), and stays under the 20 kB cap by construction (a heavy theme is trimmed in a
@@ -50,7 +52,10 @@ state the outcome, observations, classification, impact or amount (`python -m re
 values printed beside it (`values`), and `as_of` reports the documents it hid on every document-derived tool.
 Measured on copies of `pilot10.db` and `aurobindo.db`: 12 generic themes x 5 companies, matched items 3,976 -> 16,759
 (pilot10) and 2,413 -> 5,530 (aurobindo), every doc type reached, max reply 19.1 kB, median topic call 0.27-0.34 s
-(`.tmp/T-197_MEASURE.md`).
+(`.tmp/T-197_MEASURE.md`). **T-204 (12 Nov 2026)** sizes a `pilot3_topic` page to its items (`max(6 kB, 3 kB x limit)`,
+18 kB cap), so a two-item page lists 10 of its documents and names the rest; `pilot3_topic symbol=KEC topic="order
+book" limit=2 as_of=2026-10-19` fell from 8.1 kB to 5.9 kB (10 of 49 documents listed, `documents_not_listed` 39),
+`hidden_documents` sits in `coverage` only, and a store without `page_cell` names it in `not_searched` only.
 
 **T-203 (12 Nov 2026): one server, every store.** The `pilot3_*` tools no longer need one store per server start.
 `REALITY_PILOT3_STORES` names a registry JSON (`D:/RealityEngine/stores.json` by default); `resolve_symbol`, the

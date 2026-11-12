@@ -151,10 +151,11 @@ def _query_vector(text: str, model: str) -> tuple[np.ndarray, bool]:
 
 def semantic(symbol: str, query: str, as_of: str | None = None, limit: int = 8, doc_type: str | None = None,
              date_from: str | None = None, date_to: str | None = None, chars: int = PAGE_CHARS,
-             model: str = DEFAULT_MODEL, offset: int = 0) -> dict[str, Any]:
+             model: str = DEFAULT_MODEL, offset: int = 0, documents: str | None = None) -> dict[str, Any]:
     """Pages of one company whose meaning is closest to ``query`` (cosine, best first), known by ``as_of``.
     ``offset`` pages a cut ranking; ``coverage`` says what was searched, what can never be ranked (pages with no
-    vector) and how much of the ranking this page shows."""
+    vector) and how much of the ranking this page shows; ``documents='all'`` lists every matching document in
+    ``coverage`` instead of the default max(limit*3, 10)."""
     if not str(query or "").strip():
         raise DataError("bad_query", "query needs text")
     if model not in MODELS:
@@ -207,7 +208,7 @@ def semantic(symbol: str, query: str, as_of: str | None = None, limit: int = 8, 
                 "page": r["page"]} for _i, r in covered]
     cut = max(0, len(covered) - start - len(hits))
     coverage.update({"matched_total": len(covered), "shown": len(hits), "cut": cut, "offset": start})
-    coverage.update(p3._documents_index(entries))
+    coverage.update(p3._documents_index(entries, p3._doc_cap(documents, cap)))
     text = p3._scope_line(len(covered), len(hits), cut, start, entries, coverage.get("matched_documents", 0),
                           parts="pages ranked by meaning")
     return p3._reply(sym, hits, "pilot3_semantic", coverage=coverage, as_of=day, text=text, model=MODELS[model],

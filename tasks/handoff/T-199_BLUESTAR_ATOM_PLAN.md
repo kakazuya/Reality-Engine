@@ -23,9 +23,10 @@ and `tasks/RULINGS.md` only.
   500067), 267 files from BSE 2024-04-01..2026-11-11 (222 filings, 14 decks, 11 results, 11 transcripts, 5 annual
   reports, 4 audio links; 0 errors), `raw/manifest.csv` (329 rows), `pages.db` (263 docs, 5,749 pages, 233 needs_ocr),
   `shp_xbrl.db` (10 SHP XBRL filings). Scripts `fetch.sh`, `fetch2.sh`, `build.sh`.
-- Recipe defect found: `fetch_pilot60_history --out` does not write the per-company manifest; it writes the shared
-  `D:/RealityEngine/raw/pilot60_history/manifest.csv`. Workaround used: filter that file by ISIN into
-  `bluestar/raw/manifest.csv` before `docs_collect`. (Fix as a small ticket; T-189 plan step 1 notes it.)
+- Recipe defect (fixed in T-204, 12 Nov): `fetch_pilot60_history --out` used to write only the shared
+  `D:/RealityEngine/raw/pilot60_history/manifest.csv`; it now also writes this run's universe ISINs to `--out`, so
+  `raw/manifest.csv` comes from the fetch directly. The first run's workaround was filtering that file by ISIN into
+  `bluestar/raw/manifest.csv` before `docs_collect`.
 - A first build was started with main code and STOPPED by Shivam's instruction (the build runs in a fresh session):
   `bluestar.db` holds registry, pages, transcripts, kpi, guidance and a partial `stores`. DELETE `bluestar.db*` and
   rebuild from scratch (step 3).

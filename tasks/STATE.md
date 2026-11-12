@@ -17,6 +17,9 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 ## T-192 (merged 12 Nov)
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
+## T-204 (12 Nov, branch)
+`fetch_pilot60_history --fetch --out` now writes the run's universe rows (T-189 step 1 needs no ISIN filter); `coverage.documents` is capped at `max(limit*3,10)` (`documents=all` for every one, `documents_not_listed` counts the rest, `hidden_documents` in `coverage` only), a store without `page_cell` names it in `not_searched` only, and a `pilot3_topic` page is sized to its items (`max(6 kB, 3 kB x limit)`, 18 kB cap). KEC order book limit=2 as_of 2026-10-19: 8.1 -> 5.9 kB, 10 of 49 documents listed. Tests: `test_lookups_pilot3.py` 72 passed + 1 skipped, `test_fetch_manifest_out.py` 3, `test_pilot3_no_company_literals.py` 7, `test_store_routing.py` 7.
+
 ## Next action
 000. T-199 BLUESTARCO atom test: hand-off `tasks/handoff/T-199_BLUESTAR_ATOM_PLAN.md` (fresh session: wait for T-202 merge, delete partial bluestar.db, build, route, OCR, atom brief). MERGED 12 Nov: T-197, T-198, T-201, T-203. RUNNING: T-202 round 2 20261112T173001Z-e88d8f6c.
 00. T-195 DONE: re-run after fixes, DeepSeek 85.5% / 84.1% (2 runs), Haiku 76.8%; `reports/2026-11-12_aurobindo_rerun.html`. T-196 DONE (`reports/2026-11-12_why_answers_stop.html`).

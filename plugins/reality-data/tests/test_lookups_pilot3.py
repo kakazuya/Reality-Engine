@@ -1155,6 +1155,9 @@ class T197ReplyShapeTests(unittest.TestCase):
             self.assertIn(f"{cov['matched_total']}", out["text"], tool)
             self.assertIn("shown", out["text"], tool)
             self.assertLess(len(json.dumps(out, default=str)), 20_000, tool)
+            if "documents_not_listed" in cov:      # T-204: the count always matches the list
+                self.assertEqual(cov["matched_documents"] - len(cov["documents"]),
+                                 cov["documents_not_listed"], tool)
 
     def test_topic_and_statements_reach_page_text_no_transcript_tag_carries(self):
         out = p3.topic("KEC", "FooRock")
@@ -1224,9 +1227,13 @@ class T197ReplyShapeTests(unittest.TestCase):
             "topic": p3.topic("KEC", "Pen-G", as_of="2026-03-01"),
         }
         for tool, out in outs.items():
-            self.assertGreaterEqual(out.get("hidden_after_as_of", 0), 1, tool)
-            self.assertTrue(out.get("hidden_documents"), tool)
-            self.assertTrue(all(d.get("known_at") for d in out["hidden_documents"]), tool)
+            cov = out.get("coverage") or {}
+            hidden = cov.get("hidden_documents") or out.get("hidden_documents")
+            self.assertGreaterEqual(cov.get("hidden_after_as_of", out.get("hidden_after_as_of", 0)), 1, tool)
+            self.assertTrue(hidden, tool)
+            self.assertTrue(all(d.get("known_at") for d in hidden), tool)
+            if cov:
+                self.assertNotIn("hidden_documents", out, tool)     # inside coverage only (T-204)
         self.assertIn("2026-03-01", outs["topic"]["as_of_note"])
 
     def test_a_date_filter_lists_what_it_excluded_instead_of_hiding_it(self):
@@ -1253,6 +1260,83 @@ class T197ReplyShapeTests(unittest.TestCase):
         self.assertLessEqual({"KEC:pen/callA.pdf", "KEC:pen/callB.pdf"}, keys)
         self.assertGreater(cov["cut"], 0)
         self.assertEqual(cov["next"]["offset"], 1)
+
+
+class T204ThemeSizeTests(unittest.TestCase):
+    """T-204: a two-item topic reply does not pay for the whole document list -- coverage.documents is capped at
+    max(limit*3, 10) and documents_not_listed states the rest, unless the caller asks for ``documents='all'``."""
+
+    DOCS = 60
+
+    @classmethod
+    def setUpClass(cls):
+        build_topic_fixture()
+        c = sqlite3.connect(DB)
+        for i in range(cls.DOCS):
+            key = f"pdfs/KEC/theme{i:02d}.pdf"
+            c.execute("INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                      (key, "KEC", "INE389H01022", "deck", "deck", f"Widget deck {i}", "2026-05-01",
+                       "2026-05-01T17:00:00", 1, f"sha_w{i}", "pages.db", f"D:/raw/theme{i:02d}.pdf"))
+            c.execute("INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)",
+                      (key, "KEC", 1, "Widgetcycle volume was 2,000 in the quarter.", "script_text", 46,
+                       "2026-05-01T17:00:00", None))
+        c.execute("INSERT INTO doc_page_fts(doc_page_fts) VALUES ('rebuild')")
+        c.commit()
+        c.close()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def test_a_two_item_theme_lists_ten_documents_and_names_the_rest(self):
+        out = p3.topic("KEC", "Widgetcycle", limit=2)
+        cov = out["coverage"]
+        self.assertEqual(cov["matched_documents"], self.DOCS)
+        self.assertEqual(len(cov["documents"]), 10)           # max(limit*3, 10)
+        self.assertEqual(cov["documents_not_listed"], self.DOCS - 10)
+        self.assertTrue(cov["summarised_documents"])
+        self.assertLess(len(json.dumps(out, default=str).encode("utf-8")), 6_000)
+
+    def test_documents_all_lists_every_matching_document(self):
+        cov = p3.topic("KEC", "Widgetcycle", limit=2, documents="all")["coverage"]
+        self.assertEqual(len(cov["documents"]), self.DOCS)
+        self.assertNotIn("documents_not_listed", cov)
+
+    def test_documents_all_reaches_docs_and_search_too(self):
+        docs = p3.docs("KEC", limit=1, documents="all")["coverage"]
+        self.assertEqual(len(docs["documents"]), docs["matched_documents"])
+        searched = p3.search("KEC", "Widgetcycle", limit=1, documents="all")["coverage"]
+        self.assertEqual(len(searched["documents"]), searched["matched_documents"])
+
+
+class T204MissingTableTests(unittest.TestCase):
+    """T-204: a source the store has no table for goes only to not_searched, never also to searched."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_topic_fixture()
+        c = sqlite3.connect(DB)
+        c.execute("DROP TABLE page_cell")
+        c.commit()
+        c.close()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def test_a_source_is_in_exactly_one_list(self):
+        cov = p3.topic("KEC", "Pen-G")["coverage"]
+        searched = {name.split(" ")[0] for name in cov["searched"]}
+        not_searched = {name.split(" ")[0] for name in cov["not_searched"]}
+        self.assertFalse(searched & not_searched)
+        self.assertIn("page_cell", not_searched)
+        self.assertNotIn("page_cell", searched)
 
 
 
