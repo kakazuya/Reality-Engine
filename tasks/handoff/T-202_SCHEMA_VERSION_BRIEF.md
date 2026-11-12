@@ -48,3 +48,26 @@ Stop if: a migration would need to rewrite or drop data (report); the change set
 helpers (coordinate instead).
 
 Budget: 3 hours, DeepSeek off-peak. Never write live stores. Do not commit PROGRESS_NOTES.md.
+
+## Round 2 (12 Nov 23:00, Opus review of dsh/20261112T162856Z-1006f23c; start from that branch)
+Review: good. Opus ran `store_diff` (base main, head your branch) on an aurobindo copy, parts transcripts, kpi, guidance,
+stores, preferred, ratios, checks, events: every part exit 0 on both sides; check verdicts identical; only
+`schema_meta` added. Two findings: (1) the `event` table differs because your branch predates T-197 (merged after you
+started); (2) `transcript_statement.entities` order flips between runs ("FDA,EMA" -> "EMA,FDA"): set iteration order,
+not your change, but sort the joined entity list so builds are deterministic.
+Do now:
+- R1. `git merge main` into your branch. It conflicts in `reality_engine/pilot3/schema.py`, `reality_engine/pilot3/events.py`
+  and `plugins/reality-data/server/lookups_pilot3.py`: T-197 added `EVENT_ADDITIONS` (`event.doc_type`, `title`,
+  `body_excerpt`) and its own ensure call in events.py; T-203 added store routing (`db_path`/`connect` with a ContextVar,
+  per-path read-only connections, `provenance.store` / `also_held_in`). Keep BOTH sides' behaviour: fold T-197's event
+  columns into a new numbered migration (v9) and call `schema.migrate` instead of the events-local ensure; make
+  `store_version()` cache per routed store path (T-203 connections are per path) and keep `provenance.schema_version`
+  next to T-203's `store` fields.
+- R2. Sort entity lists before joining wherever `transcript_statement.entities` / `transcript_question.entities` are
+  written (transcripts.py), so two builds of the same store are identical.
+- R3. Re-run, one file per process: test_pilot3_schema_version, test_pilot3_events, test_store_routing,
+  test_lookups_pilot3, test_pilot3_transcripts, test_pilot3_ratios, test_pilot3_preferred, test_pilot3_guidance,
+  test_store_diff, test_pilot3_no_company_literals. Then `python -m reality_engine.scripts.store_diff --store <copy of
+  aurobindo.db> --profile D:/RealityEngine/aurobindo/aurobindo_profile.json --parts transcripts,kpi,guidance,stores,events
+  --base main --head <your worktree path> --out .tmp/sd` and report: gates must be 0 except `schema_meta` added.
+Stop if: a conflict needs a behaviour choice between T-197/T-203 and your change (write it up). Budget: 1.5 hours.
