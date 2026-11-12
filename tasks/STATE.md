@@ -18,7 +18,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-0. T-192 r5 MERGED 19:20 (review: 0 pilot10 group targets lost, KPI period churn 1.4%; MARUTI exports 447,774 FY26->FY25 in 2 rows is a known follow-up). Next: rebuild parts transcripts kpi guidance ratios preferred (+stores for count_basis) on the six live stores (backup first), then restart reality-data.
+0. T-192 r5 MERGED 19:20 (review: 0 pilot10 group targets lost, KPI period churn 1.4%; MARUTI exports 447,774 FY26->FY25 in 2 rows is a known follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction). Restart reality-data.
 1. T-191 A/B DONE (`reports/2026-11-12_semantic_ab.html`): Haiku 54 vs 54; DeepSeek 53 vs 42 but semantic touched no flip (run variance). Route `aurobindo_ab/STORE_DEFECTS_SEEN.md` to follow-ups.
 2. T-194 MERGED 18:00 (topic tool, phrase search counts, page as_of refusal, `event` table, pharma tags); events built on aurobindo; build on other stores.
 3. Branches: T-163 r4-7 / T-132 r10-12 need review; CHOLAFIN waits for Shivam; delete superseded T-192 r1/r2/r4 branches.
