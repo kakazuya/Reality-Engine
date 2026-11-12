@@ -2,7 +2,7 @@
 
 Claude's control panel for Antigravity CLI (`agy`) coding jobs, modelled on dsh-worker. Model is pinned to
 `gemini-3.8-flash-medium` (Shivam, 7 Nov 2026). Registered in `.mcp.json` as `agy-worker`. Code: `server/agy_worker_mcp.py` (the MCP tools), `server/agy_core.py`
-(jobs, event parsing, quota), `server/runner.py` (the detached run), `server/agy_tools_mcp.py` (Gemini's check runner).
+(jobs, event parsing, quota), `server/runner.py` (the detached run; on exit it writes `exit.json` and sets `job.json` `phase` to `ended` with the outcome, T-200), `server/agy_tools_mcp.py` (Gemini's check runner).
 
 | Tool | What it does |
 |---|---|

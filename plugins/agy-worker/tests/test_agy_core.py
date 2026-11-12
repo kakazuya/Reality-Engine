@@ -46,3 +46,16 @@ def test_bad_job_id_rejected():
     except ValueError:
         return
     raise AssertionError("path traversal accepted")
+
+
+def test_runner_marks_job_json_ended(tmp_path):
+    """T-200: job.json phase follows exit.json, so a watcher keyed on job.json sees the end."""
+    import json
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "server"))
+    import runner
+    (tmp_path / "job.json").write_text(json.dumps({"job_id": "x", "phase": "running"}), encoding="utf-8")
+    runner.mark_ended(tmp_path, {"outcome": "completed", "ended_at": "2026-11-12T18:00:00+00:00"})
+    job = json.loads((tmp_path / "job.json").read_text(encoding="utf-8"))
+    assert job["phase"] == "ended" and job["outcome"] == "completed"

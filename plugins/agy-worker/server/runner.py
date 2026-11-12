@@ -40,6 +40,18 @@ def main(d: Path) -> None:
             c = core._git("-c", "user.name=kakazuya (Wolf agy-worker)", "commit", "-q", "-m", msg, cwd=ws)
             info["committed"] = c.returncode == 0
     (d / "exit.json").write_text(json.dumps(info), encoding="utf-8")
+    mark_ended(d, info)
+
+
+def mark_ended(d: Path, info: dict) -> None:
+    """job.json's phase follows exit.json (T-200): a watcher keyed on job.json saw finished jobs as 'running'."""
+    path = d / "job.json"
+    try:
+        job = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    job.update(phase="ended", outcome=info.get("outcome"), ended_at=info.get("ended_at"))
+    path.write_text(json.dumps(job, indent=1), encoding="utf-8")
 
 
 if __name__ == "__main__":
