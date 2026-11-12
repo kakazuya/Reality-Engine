@@ -109,7 +109,8 @@ def test_a_version_zero_store_migrates_to_latest_and_keeps_its_rows(tmp_path):
     for table in ("fin_quarter_xbrl", "fin_quarter_printed"):
         assert {"preferred_from", "preferred_to"} <= columns(conn, table)
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master")}
-    assert {"event", "row_check", "row_check_fail", "fin_quarter_current", "transcript_statement"} <= tables
+    assert {"event", "row_check", "row_check_fail", "fin_quarter_current", "transcript_statement",
+            "page_atom"} <= tables
     assert {"doc_type", "title", "body_excerpt"} <= columns(conn, "event")
     assert "definition" in columns(conn, "row_check")
     assert conn.execute("SELECT shares_outstanding, known_at, source_table FROM share_capital").fetchall() == \
@@ -146,11 +147,32 @@ def test_a_version_eight_store_gains_the_t197_event_columns(tmp_path):
                  "'2026-07-02T10:00:00')")
     conn.commit()
     assert schema.version(conn) == 8
-    assert [number for number, _name in schema.pending(conn)] == [schema.V_EVENT_BODY]
+    assert [number for number, _name in schema.pending(conn)] == [schema.V_EVENT_BODY, schema.V_PAGE_ATOM]
     assert schema.migrate(conn) == (8, schema.LATEST)
     assert {"doc_type", "title", "body_excerpt"} <= columns(conn, "event")
     row = conn.execute("SELECT symbol, kind, quote FROM event").fetchall()
     assert row == [("TST", "inspection", "USFDA inspected")]
+    assert schema.migrate(conn) == (schema.LATEST, schema.LATEST)
+    conn.close()
+
+
+def test_a_version_nine_store_gains_the_page_atom_table_in_place(tmp_path):
+    """T-199: ``page_atom`` is migration v10; a v9 store gains it additively, with both indexes, and keeps its rows."""
+    path = old_store(tmp_path / "v9.db")
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE schema_meta (key TEXT PRIMARY KEY, value TEXT)")
+    conn.execute("INSERT INTO schema_meta VALUES ('schema_version', '9')")
+    conn.commit()
+    assert schema.version(conn) == 9
+    assert [number for number, _name in schema.pending(conn)] == [schema.V_PAGE_ATOM]
+    assert schema.migrate(conn) == (9, schema.LATEST)
+    atom_columns = {"symbol", "isin", "doc_key", "doc_type", "page", "known_at", "table_title", "row_label",
+                    "col_header", "period", "basis", "unit", "scale", "value", "value_text", "definition",
+                    "x0", "y0", "x1", "y1", "reader", "check_status", "check_reasons", "created_at"}
+    assert atom_columns <= columns(conn, "page_atom")
+    indexes = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")}
+    assert {"ix_atom_sym_period", "ix_atom_doc"} <= indexes
+    assert conn.execute("SELECT shares_outstanding FROM share_capital").fetchone()[0] == 12345678.0
     assert schema.migrate(conn) == (schema.LATEST, schema.LATEST)
     conn.close()
 

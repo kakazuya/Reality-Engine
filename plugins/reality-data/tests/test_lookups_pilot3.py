@@ -1342,5 +1342,119 @@ class T204MissingTableTests(unittest.TestCase):
 
 
 
+class T199AtomServeTests(unittest.TestCase):
+    """T-199: the serving tools read the resolved ``page_atom`` rows beside the existing tables.
+
+    The atoms below name the same figures the fixture's raw cells hold (order book), plus one KPI no extractor
+    table holds (gross written premium) and one change marker that is never served as a level."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_fixture()
+        c = sqlite3.connect(DB)
+        now = "2026-08-10T17:00:00"
+        rows = [
+            ("KEC", "INE389H01022", "pdfs/KEC/deck1.pdf", "deck", 1, "2026-02-10T17:00:00", "Order Book",
+             "Order book", "Q3FY26", "q3fy26", "", "inr", 1e7, 40000.0, "40,000", "", None, None, None, None,
+             "haiku_sub", "verified", "", now),
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 1, now, "Order Book",
+             "Order book", "Q1FY27", "q1fy27", "", "inr", 1e7, 45000.0, "45,000", "", None, None, None, None,
+             "haiku_sub", "verified", "", now),
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 2, now, "", "Gross written premium",
+             "Q1FY27", "q1fy27", "", "inr", 1e7, 2100.0, "2,100", "", None, None, None, None,
+             "haiku_sub", "verified", "", now),
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 2, now, "", "Order book growth",
+             "", "q1fy27", "", "change", 1.0, 12.5, "12.5%", "", None, None, None, None,
+             "haiku_sub", "unverified", "change_not_level", now),
+            ("KEC", "INE389H01022", "pdfs/KEC/deck2.pdf", "deck", 2, now, "", "Margin",
+             "", "q1fy27", "", "pct", 1.0, 18.4, "18.4%", "", None, None, None, None,
+             "haiku_sub", "unverified", "period_from_document", now),
+        ]
+        c.executemany("INSERT INTO page_atom VALUES (" + ",".join("?" * 24) + ")", rows)
+        c.commit()
+        c.close()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def test_cells_serve_the_resolved_atom_fields_and_status(self):
+        out = p3.cells("KEC", "order book")
+        self.assertTrue(out["found"])
+        periods = {row["period"] for row in out["rows"]}
+        self.assertEqual(periods, {"q3fy26", "q1fy27"})
+        row = next(r for r in out["rows"] if r["period"] == "q1fy27")
+        self.assertEqual((row["value"], row["unit"], row["scale"]), (45000.0, "inr", 1e7))
+        self.assertEqual(row["status"], "verified")
+        self.assertEqual(row["provenance"]["table"], "page_atom")
+        self.assertNotIn("99,999", [r["value_text"] for r in out["rows"]])     # the quarantined cell has no atom
+
+    def test_cells_period_filters_the_resolved_column(self):
+        out = p3.cells("KEC", "order book", period="Q1FY27")
+        self.assertEqual({row["period"] for row in out["rows"]}, {"q1fy27"})
+        self.assertTrue(any(row["value"] == 45000.0 for row in out["rows"]))
+        self.assertFalse(any(row["period"] == "q3fy26" for row in out["rows"]))
+        out = p3.cells("KEC", "order book", include_unverified=False)
+        self.assertEqual({row["status"] for row in out["rows"]}, {"verified"})
+
+    def test_fact_serves_a_page_atom_when_no_table_holds_the_metric(self):
+        out = p3.fact("KEC", "gross written premium")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "atoms")
+        self.assertEqual(out["answer"]["source"]["table"], "page_atom")
+        self.assertEqual(out["answer"]["value"], 2100.0)
+        self.assertEqual(out["answer"]["period"], "q1fy27")
+        self.assertEqual(out["answer"]["check_status"], "verified")
+
+    def test_fact_never_serves_a_change_marker_as_the_level(self):
+        out = p3.fact("KEC", "order book growth")
+        self.assertFalse(out["found"])
+
+    def test_topic_lists_atoms_and_names_page_atom_in_searched_only(self):
+        out = p3.topic("KEC", "order book")
+        self.assertGreaterEqual(out["counts"]["cell"], 1)
+        cells = [item for group in out["groups"] for item in group["items"] if item["kind"] == "cell"]
+        self.assertTrue(cells)
+        self.assertEqual({item["source"] for item in cells}, {"page_atom"})
+        self.assertIn("inr", {item["unit"] for item in cells})
+        self.assertTrue(all(item.get("check_status") for item in cells))
+        cov = out["coverage"]
+        searched = {name.split(" ")[0] for name in cov["searched"]}
+        not_searched = {name.split(" ")[0] for name in cov["not_searched"]}
+        self.assertIn("page_atom", searched)
+        self.assertNotIn("page_cell", searched)
+        self.assertIn("page_cell", not_searched)
+        self.assertFalse(searched & not_searched)
+
+
+class T199NoAtomTests(unittest.TestCase):
+    """T-199: a store with no ``page_atom`` rows still answers from the raw ``page_cell`` rows (the fallback)."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_fixture()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def test_cells_fall_back_to_page_cell(self):
+        out = p3.cells("KEC", "order book")
+        self.assertTrue(out["found"])
+        self.assertEqual({row["provenance"]["table"] for row in out["rows"]}, {"page_cell"})
+        self.assertEqual({row["status"] for row in out["rows"]}, {"verified", "unverified"})
+
+    def test_fact_falls_back_through_cells_to_page_cell(self):
+        out = p3.fact("KEC", "gross written premium")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["answer"]["source"]["table"], "page_cell")
+
+
 if __name__ == "__main__":
     unittest.main()
