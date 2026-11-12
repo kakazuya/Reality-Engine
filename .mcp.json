@@ -20,6 +20,7 @@
       "env": {
         "REALITY_DATA_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model/reality_engine/data",
         "REALITY_DATA_REPO_ROOT": "C:/Users/warri/Downloads/Info_Diffusion_Model",
+        "REALITY_PILOT3_DB": "D:/RealityEngine/aurobindo/aurobindo.db",
         "PYTHONUTF8": "1"
       }
     },
