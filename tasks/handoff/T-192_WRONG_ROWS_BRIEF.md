@@ -150,3 +150,30 @@ Accept: all round-3 tests plus new tests pass one file at a time (use `--basetem
 pilot10 diff: zero group guidance targets hidden that main served, KPI period changes listed and each class justified.
 Stop if: any pilot10 group target is hidden after H2, or the KPI rows changed exceed 2% of pilot10's kpi_series.
 Budget: 3 hours.
+
+## Round 5 (DeepSeek; starts from dsh/20261112T105109Z-a810bf31)
+Review of round 4 (Opus, 12 Nov 17:40): Opus rebuilt pilot10 from the same live copy with main and with your branch
+(transcripts kpi guidance ratios). Good: tests pass per file (ratios 17, preferred 16, kpi_ratio_period 13, guidance 46,
+transcripts 22, literals 7, shp_holder 5, price_window 7); ratios no longer crashes; the 6 round-3 false entities are
+gone; Organon call stays NULL; MON_Y fixed; BAJFINANCE credit cost "2.09% in FY26" FY25 -> FY26 is a real fix.
+Keep all of it. Fix, verbatim:
+- J1. STOP RULE HIT AGAIN: 4 HINDALCO group targets are hidden as `entity='Novelis'`; every one is INDIA capex:
+  p14 "And the India CAPEX ... around INR 10,000 crores a year"; p20 "our target is about ... INR 8,000 crores ... the
+  Bandha Mine"; p11 "In FY27, the India capex will be about INR12,000 crores, and the Novelis capex will be ...";
+  p11 "India capex, Pinakin, INR12,000 crores this year, next year ... INR15,000 crores to INR17,000 crores".
+  The entity came from the analyst question. Rule: the sentence's own scope wins over the question's: when the
+  sentence names the company itself, a home-country/standalone scope ("India", "standalone", "domestic", the
+  company's name), or a different entity than the question, the question's entity is not used; when a sentence names
+  two scopes, a figure belongs to the scope named nearest before it. Only when the sentence names no scope at all may
+  the question's entity apply, and then only if that entity is proven (your known_entity_names). Test with these four
+  quotes (group) and the Lannett/Bajaj Housing ones (entity).
+- J2. KPI default for a Q4 (results) call: 36 pilot10 rows moved FY26 -> Q4FY26, e.g. SBILIFE `ape` "APE stands at
+  INR221.1 billion" and "INR242.7 billion", `market_share` 21.4% — these are the year's figures (a Q4 call reports the
+  full year for flows). Rule: in a call whose filing quarter is Q4, a flow figure (APE, VNB, premium, revenue,
+  disbursements, order intake, PAT, EBITDA) with no period cue keeps the fiscal year; a stock at the quarter end (AUM,
+  order book, net debt, leverage, cash) may take Q4 (same date as the year end). Q1-Q3 calls keep your round-4 rule.
+  Test with the two APE quotes (FY26) and SBILIFE AUM "assets under management stands at INR4.9 trillion" (Q4FY26 ok).
+- J3. Re-diff pilot10 (main vs branch from the same copy): guidance group rows lost must be 0 (main 104); KPI period
+  changes must fall under 2% of keys (main 6,185 keys), each class listed in `.tmp/T-192_DIFF.md` with 3 quotes.
+Accept: the round-4 tests plus J1/J2 tests pass, one file at a time; DIFF shows 0 group targets lost and KPI churn < 2%.
+Stop if: either number is missed after one honest attempt (report it). Budget: 2 hours.
