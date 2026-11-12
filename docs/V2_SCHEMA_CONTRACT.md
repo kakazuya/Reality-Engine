@@ -1472,7 +1472,9 @@ python -m reality_engine.v2.page_route --store <db> [--ocr-db <db> ...] --out <c
 name replaces every character outside `A-Za-z0-9._-` with `_`) and writes `route_export.csv` (`stem,doc_key,page`) in
 the same folder; `reality_engine/pilot3/hp_ocr.py` `pdf_dir_plan` reads that sidecar, so `plan --pdf-dir` -> `fetch`
 -> `write_db` land the OCR words on the real `doc_key`/page instead of page 1 of a synthetic document (a folder without
-the sidecar keeps the T-188 behaviour, stem = doc_key, page 1). `write_words` writes the word file under a name Windows
+the sidecar keeps the T-188 behaviour, stem = doc_key, page 1). Each plan row carries `render_page: 1` (T-199, 13 Nov):
+the HP driver `tasks/pilot60/proto3_text/hp_ocr_pages.py` renders that page of the one-page PDF while the row keeps
+the real page; before the fix it rendered page N of a one-page PDF and 141 of 143 Blue Star pages failed. `write_words` writes the word file under a name Windows
 accepts (`<doc_key with \ / : * ? " < > | replaced by _>.json`) and its `ocr_log.csv` row carries both `page_id` and
 `file`, so a routed doc_key still maps back to its page.
 

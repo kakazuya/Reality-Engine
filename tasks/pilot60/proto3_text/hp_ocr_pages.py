@@ -85,7 +85,7 @@ def main() -> int:
         images.mkdir(parents=True, exist_ok=True)
         entries = [{"id": key(row), "image": str(images / f"{start + index:06d}.png")}
                    for index, row in enumerate(batch)]
-        jobs = [(key(row), str(docs / (row.get("pdf") or row["file_name"])), row["page"] - 1, 300,
+        jobs = [(key(row), str(docs / (row.get("pdf") or row["file_name"])), int(row.get("render_page") or row["page"]) - 1, 300,
                  entry["image"], "gray") for row, entry in zip(batch, entries)]
         t0 = time.time()
         failed_render: dict[str, str] = {}

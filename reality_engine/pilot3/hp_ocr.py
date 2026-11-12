@@ -306,8 +306,9 @@ def pdf_dir_plan(pdf_dir: Path) -> list[dict]:
     out: list[dict] = []
     for pdf in sorted(Path(pdf_dir).glob("*.pdf")):
         doc_key, page = mapping.get(pdf.stem, (pdf.stem, 1))
-        out.append({"symbol": PDF_DIR_SYMBOL, "doc_key": doc_key, "page": page, "doc_type": "deck", "known_at": None,
-                    "pdf_path": str(pdf)})
+        # the exported PDF holds only that page: render its page 1, keep the real page for the row (T-199)
+        out.append({"symbol": PDF_DIR_SYMBOL, "doc_key": doc_key, "page": page, "render_page": 1, "doc_type": "deck",
+                    "known_at": None, "pdf_path": str(pdf)})
     return out
 
 

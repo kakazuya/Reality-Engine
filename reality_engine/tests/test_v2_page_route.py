@@ -107,6 +107,19 @@ def test_needs_ocr_export_maps_back_through_hp_ocr_plan():
     assert [(r["doc_key"], r["page"]) for r in plan] == [("a/b:jumbled", 1)]
 
 
+def test_pdf_dir_plan_renders_page_one_of_a_later_page(tmp_path):
+    """T-199: an exported page 19 is a one-page PDF; the HP must render its page 1, the row keeps page 19
+    (the 12 Nov run rendered page 19 of a one-page PDF and failed 141 of 143 pages)."""
+    import csv
+    (tmp_path / "x__p19.pdf").write_bytes(b"%PDF-1.4")
+    with (tmp_path / "route_export.csv").open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["stem", "doc_key", "page"])
+        w.writerow(["x__p19", "a/x.pdf", 19])
+    plan = hp_ocr.pdf_dir_plan(tmp_path)
+    assert [(r["doc_key"], r["page"], r["render_page"]) for r in plan] == [("a/x.pdf", 19, 1)]
+
+
 def test_write_words_accepts_a_routed_doc_key():
     """A routed page's id carries a real doc_key: the word file name is safe and the log still names the page."""
     import csv
