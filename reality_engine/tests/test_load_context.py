@@ -89,3 +89,13 @@ def test_broken_tracker_never_costs_the_rulings(monkeypatch):
     monkeypatch.setattr(board, "card", boom)
     text = load_context.build()
     assert "# Shivam's rulings" in text and "task card unavailable" in text
+
+
+def test_due_ideas_lists_open_ideas_past_their_review_date():
+    from reality_engine.scripts.load_context import due_ideas
+    text = ("# Idea box\n\n## I-001: Old idea\n- Review trigger: stage `prediction`; review by 2026-01-01\n- Status: parked\n\n"
+            "## I-002: Future idea\n- Review trigger: stage `maintenance`; review by 2099-01-01\n- Status: parked\n\n"
+            "## I-003: Promoted idea\n- Review trigger: stage `maintenance`; review by 2026-01-01\n"
+            "- Status: promoted to T-999 (2026-01-02)\n")
+    due = due_ideas(text, "2026-06-01")
+    assert len(due) == 1 and due[0].startswith("- I-001 Old idea") and "prediction" in due[0]

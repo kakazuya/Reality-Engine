@@ -48,9 +48,34 @@ def recent_decisions(text: str, count: int = 5) -> list[str]:
     return re.findall(r"^## .*$", text, flags=re.M)[-count:]
 
 
+def due_ideas(text: str, today: str | None = None) -> list[str]:
+    """Ideas in tasks/IDEA_BOX.md that are still open and whose review date has passed (Shivam, 12 Nov: ideas must be
+    re-read at their trigger and proposed for promotion, never left to sit)."""
+    import datetime
+    import re
+
+    day = today or datetime.date.today().isoformat()
+    out: list[str] = []
+    for block in re.split(r"\n(?=## I-\d+)", text):
+        head = re.match(r"## (I-\d+): (.+)", block)
+        due = re.search(r"Review trigger:.*?review by (\d{4}-\d{2}-\d{2})", block)
+        status = re.search(r"Status: (\S+)", block)
+        if not head or not due or not status or status.group(1) not in ("parked", "next"):
+            continue
+        if due.group(1) <= day:
+            stage = re.search(r"stage `([^`]+)`", block)
+            out.append(f"- {head.group(1)} {head.group(2)} (stage {stage.group(1) if stage else '?'}, "
+                       f"due {due.group(1)})")
+    return out
+
+
 def build() -> str:
     rulings = _read(ROOT / "tasks" / "RULINGS.md")
     parts: list[str] = []
+    ideas = due_ideas(_read(ROOT / "tasks" / "IDEA_BOX.md"))
+    if ideas:
+        parts.append("# Ideas due for review: read each in tasks/IDEA_BOX.md and propose promote / keep / drop "
+                     "to Shivam\n" + "\n".join(ideas))
     if len(rulings) > LIMIT - RESERVE:
         over = len(rulings) - RULINGS_BUDGET
         parts.append(f"RULINGS.md is {over} chars over its 8,000 budget: Opus must shorten it")
