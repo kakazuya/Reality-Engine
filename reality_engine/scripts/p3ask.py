@@ -30,8 +30,9 @@ tool and leaves it out of the tool list (the no-SQL arm of the answer test).  ``
 for ``semantic`` (T-191: arm A of the semantic A/B, everything else identical).
 
 T-197: a text reply (topic, statements, search, semantic, cells, docs) is one PAGE of what matched, never the whole
-store.  It carries ``coverage`` -- searched, not_searched, matched_total, shown, cut, offset, documents (every
-matching document, even ones whose items were cut), hidden_after_as_of, outside_date_filter -- and its ``text``
+store.  It carries ``coverage`` -- searched, not_searched, matched_total, shown, cut, offset, documents (the matching
+documents; at most max(limit*3,10) by default, the rest counted in documents_not_listed -- pass ``documents=all`` for
+every one), hidden_after_as_of, outside_date_filter -- and its ``text``
 line starts with the honest scope.  Pass ``offset=`` to read the next page while ``coverage.cut`` is not 0; a list
 question is finished only when it is 0.  ``read_next`` names the quoted page and its neighbours; ``match: tag |
 text`` separates a tagged statement from a page-text hit, and ``outside_date_filter`` lists the matches a

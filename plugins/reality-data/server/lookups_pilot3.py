@@ -312,7 +312,9 @@ def _cap(limit: Any, default: int = 10) -> int:
 # reply as the whole store and never has to guess the next call.  Every rule here is a property of the reply
 # shape: no company, sector or question is special-cased.
 MAX_OFFSET = 5000                 # a paging loop is bounded; the reply says the exact next offset
-COVERAGE_DOCUMENTS = 40           # documents listed per reply; more are summarised by type and month
+COVERAGE_DOCUMENTS = 40           # documents listed when a caller passes no limit-scaled cap (T-204)
+DOCUMENTS_PER_ITEM = 3            # coverage.documents lists at most max(limit*3, 10) documents by default
+DOCUMENTS_MIN = 10
 REPLY_BYTES = 19_000              # every text reply is trimmed below this (the hard cap is 20 kB)
 _DOC_LABELS = {"transcript": "calls", "deck": "decks", "annual_report": "annual reports", "results": "results",
                "press_release": "filings", "announcement": "filings", "audio_link": "audio links"}
@@ -345,10 +347,19 @@ def _hidden_documents(symbol: str, day: str | None) -> dict[str, Any]:
     return out
 
 
-def _documents_index(entries: list[dict[str, Any]]) -> dict[str, Any]:
+def _doc_cap(documents: Any, limit: int) -> int | None:
+    """How many matched documents ``coverage.documents`` lists: ``documents='all'`` names every one, otherwise at
+    most max(limit*3, 10), so a two-item reply does not pay for forty documents (T-204)."""
+    if str(documents or "").strip().lower() == "all":
+        return None
+    return max(int(limit) * DOCUMENTS_PER_ITEM, DOCUMENTS_MIN)
+
+
+def _documents_index(entries: list[dict[str, Any]],
+                     cap: int | None = COVERAGE_DOCUMENTS) -> dict[str, Any]:
     """EVERY document a reply matched: key, type, date, title, matching pages and match count, so a document whose
-    items were cut is still named.  More than ``COVERAGE_DOCUMENTS``: the first 40 are listed and the rest are
-    summed by type and month (a reply never grows past what a model can read)."""
+    items were cut is still named.  Only the first ``cap`` are listed (``None`` = every one); the rest are summed by
+    type and month and counted in ``documents_not_listed`` (a reply never grows past what a model can read)."""
     by: dict[str, dict[str, Any]] = {}
     for entry in entries:
         key = entry.get("doc_key")
@@ -367,9 +378,12 @@ def _documents_index(entries: list[dict[str, Any]]) -> dict[str, Any]:
         doc["date"] = doc["date"] or (entry.get("date") or "")[:10] or None
         doc["title"] = doc["title"] or _trim(entry.get("title"), 60)
     listed = sorted(by.values(), key=lambda d: (d["date"] or "", d["doc_key"]), reverse=True)
-    out: dict[str, Any] = {"documents": listed[:COVERAGE_DOCUMENTS], "matched_documents": len(listed)}
+    shown = listed if cap is None else listed[:cap]
+    out: dict[str, Any] = {"documents": shown, "matched_documents": len(listed)}
+    if len(listed) > len(shown):
+        out["documents_not_listed"] = len(listed) - len(shown)
     summary: dict[tuple[str, str], int] = {}
-    for doc in listed[COVERAGE_DOCUMENTS:]:
+    for doc in listed[len(shown):]:
         key = (str(doc["doc_type"] or "?"), (doc["date"] or "")[:7])
         summary[key] = summary.get(key, 0) + doc["matches"]
     if summary:
@@ -409,13 +423,14 @@ def _scope_line(matched: int, shown: int, cut: int, offset: int, documents: list
 
 
 def _coverage(tool: str, searched: list[str], not_searched: list[str], matched_total: int, shown: int, cut: int,
-              offset: int = 0, documents: list[dict[str, Any]] | None = None, document_total: int | None = None,
+              offset: int = 0, documents: list[dict[str, Any]] | None = None,
+              doc_cap: int | None = COVERAGE_DOCUMENTS, document_total: int | None = None,
               outside: list[dict[str, Any]] | None = None, hidden: dict[str, Any] | None = None) -> dict[str, Any]:
     """The coverage block every text reply carries (T-197 step 1)."""
     cov: dict[str, Any] = {"searched": list(searched), "not_searched": [s for s in not_searched if s],
                            "matched_total": matched_total, "shown": shown, "cut": cut, "offset": offset}
     if documents is not None:
-        cov.update(_documents_index(documents))
+        cov.update(_documents_index(documents, doc_cap))
         if document_total is not None:
             cov["matched_documents"] = document_total
     if outside:
@@ -499,8 +514,10 @@ def _reply(symbol: str, rows: list[dict], tool: str, **extra: Any) -> dict[str, 
         # one shared point-in-time report (T-197 step 5): every tool that serves document-derived rows says which
         # documents the passed as_of hid and on what dates, so a miss after a date is never read as "not held".
         hidden = _hidden_documents(symbol, extra.get("as_of"))
+        covered = set(out.get("coverage") or {})
         for key, value in hidden.items():
-            out.setdefault(key, value)
+            if key not in covered:      # a text reply carries the point-in-time block inside coverage only (T-204)
+                out.setdefault(key, value)
     if not rows:
         out.setdefault("hint", "NOT IN DATA of pilot3 for these arguments: check the 'available' list, widen the "
                        "period or as_of, try pilot3_search; only then fall back to the raw tools.")
@@ -650,7 +667,8 @@ def kpi(symbol: str, kpi: str, period: str | None = None, as_of: str | None = No
 
 # --- pilot3_cells ------------------------------------------------------------------------------------
 def cells(symbol: str, terms: str, period: str | None = None, as_of: str | None = None,
-          include_unverified: bool = True, limit: int = 20, offset: int = 0) -> dict[str, Any]:
+          include_unverified: bool = True, limit: int = 20, offset: int = 0,
+          documents: str | None = None) -> dict[str, Any]:
     """Figures read from table and chart pages (decks, results, annual reports) by the page reader: one cell per
     printed figure with its row label, column header, table title and status. ``verified`` means the position check
     settled the cell; ``unverified`` is served and labelled (that is how T-189 keeps recall); ``quarantined`` is
@@ -737,6 +755,7 @@ def cells(symbol: str, terms: str, period: str | None = None, as_of: str | None 
                                       ["documents whose pages the page reader never parsed",
                                        "transcript and announcement page text (pilot3_search / pilot3_topic)"],
                                       len(matched), len(page), cut, start, documents=docs,
+                                      doc_cap=_doc_cap(documents, cap),
                                       hidden=_hidden_documents(sym, day)),
                    read_next=_read_next(page))
 
@@ -1382,7 +1401,8 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
                date_to: str | None = None, as_of: str | None = None, limit: int = 10,
                role: str | None = None, period: str | None = None,
                rank_terms: str | None = None, latest: bool = False,
-                entities: str | None = None, whole_turn: bool = True, offset: int = 0) -> dict[str, Any]:
+                entities: str | None = None, whole_turn: bool = True, offset: int = 0,
+                documents: str | None = None) -> dict[str, Any]:
     """Management statements from concall transcripts, exact quotes: topic tag (margin, guidance, capex, order ...),
     free ``terms`` (all words must appear), call-date window, role (ceo / cfo / md / mgmt).
 
@@ -1544,7 +1564,8 @@ def statements(symbol: str, topic: str | None = None, terms: str | None = None, 
                        ["structured tables: kpi_series, guidance, page_cell, fin_* "
                         "(pilot3_kpi / pilot3_guidance / pilot3_cells / pilot3_fin)",
                         "questions the company did not answer (no statement is held for an unanswered question)"],
-                       matched_total, shown_items, cut, start, documents=docs, outside=outside, hidden=hidden),
+                       matched_total, shown_items, cut, start, documents=docs,
+                       doc_cap=_doc_cap(documents, cap), outside=outside, hidden=hidden),
                    read_next=read_next,
                    hint=None if out else "no statement in the held calls matches these arguments")
 
@@ -1730,7 +1751,8 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
 
 # --- pilot3_docs ------------------------------------------------------------------------------------
 def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None, date_to: str | None = None,
-         as_of: str | None = None, limit: int = 20, offset: int = 0) -> dict[str, Any]:
+         as_of: str | None = None, limit: int = 20, offset: int = 0,
+         documents: str | None = None) -> dict[str, Any]:
     """The documents pilot3 holds for a company, newest first (known_at = filing record), with page counts.
     ``offset`` pages a cut list; the reply says how many documents match, which are shown and what is cut."""
     sym = resolve_symbol(symbol)
@@ -1765,6 +1787,7 @@ def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
                                       ["documents the build never collected (they are not in this store)",
                                        "page text and tables (pilot3_search / pilot3_cells / pilot3_topic)"],
                                       total, len(page), cut, start, documents=entries,
+                                      doc_cap=_doc_cap(documents, cap),
                                       hidden=_hidden_documents(sym, day)))
 
     def titles(width: int) -> None:
@@ -1777,6 +1800,7 @@ def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
             del listed[keep:]
             reply["coverage"]["documents_not_listed"] = reply["coverage"]["matched_documents"] - keep
 
+    full_list = _doc_cap(documents, cap) is None      # documents='all': the explicit list outranks the byte cap
     return _shrink(reply, [
         ("document titles cut to 60 characters", lambda: titles(60)),
         ("the list cut to the first 10 documents", lambda: reply["rows"].__delitem__(slice(10, None))),
@@ -1789,7 +1813,9 @@ def docs(symbol: str, doc_type: str | None = None, date_from: str | None = None,
 TOPIC_LIMIT = 20             # items in a reply (a 20-item reply stays near 16 kB); the reply says what the limit cut
 TOPIC_PER_DOC = {"statement": 4, "guidance": 3, "kpi": 2, "cell": 2, "event": 2, "page": 2}
 TOPIC_QUOTE_CHARS = 220      # the quote shown per item; the page itself is named in read_next
-TOPIC_REPLY_BYTES = 18_000   # the reply is trimmed in a fixed order until it fits (never below matched/shown/cut)
+TOPIC_REPLY_BYTES = 18_000   # the largest a full (20-item) topic page may get
+TOPIC_BYTES_PER_ITEM = 3_000  # a page is sized to its items: 2 items -> 6 kB, 20 -> the 18 kB cap (T-204)
+TOPIC_MIN_BYTES = 6_000      # the coverage block (documents, hidden list, summary) needs about this much
 
 
 def _lex_topics() -> list[dict[str, Any]]:
@@ -1845,29 +1871,50 @@ def _reply_bytes(reply: dict[str, Any]) -> int:
     return len(json.dumps(reply, ensure_ascii=False, default=str).encode("utf-8"))
 
 
-def _shrink(reply: dict[str, Any], cuts: list[tuple[str, Any]], where: str = "coverage") -> dict[str, Any]:
+def _shrink(reply: dict[str, Any], cuts: list[tuple[str, Any]], where: str = "coverage",
+            cap: int = REPLY_BYTES) -> dict[str, Any]:
     """Apply the cuts in order until the reply fits its byte cap, and say which cuts it took: a heavy theme is
     summarised, never served past the cap and never silently (T-197 step 1)."""
     applied: list[str] = []
-    if _reply_bytes(reply) <= REPLY_BYTES:
+    if _reply_bytes(reply) <= cap:
         return reply
     for label, cut in cuts:
         cut()
         applied.append(label)
-        if _reply_bytes(reply) <= REPLY_BYTES:
+        if isinstance(reply.get(where), dict):
+            # the note itself costs bytes, so it is written before the fit is measured, never after
+            reply[where]["detail"] = "; ".join(applied) + " to keep the reply within its byte cap"
+        if _reply_bytes(reply) <= cap:
             break
-    if applied and isinstance(reply.get(where), dict):
-        reply[where]["detail"] = "; ".join(applied) + " to keep the reply within its byte cap"
     return reply
 
 
-def _trim_topic_reply(reply: dict[str, Any]) -> dict[str, Any]:
+def _topic_bytes(limit: int) -> int:
+    """A topic page is sized to its items: a two-item page gets 6 kB, a full 20-item page the 18 kB cap (T-204)."""
+    return min(TOPIC_REPLY_BYTES, max(TOPIC_MIN_BYTES, int(limit) * TOPIC_BYTES_PER_ITEM))
+
+
+def _trim_topic_reply(reply: dict[str, Any], limit: int = TOPIC_LIMIT,
+                      keep_documents: bool = False) -> dict[str, Any]:
     """Keep a topic reply under its byte cap by cutting the optional detail in a fixed order -- the counts, the
-    honest scope line and the document keys are never cut (T-197 step 1)."""
-    if _reply_bytes(reply) <= TOPIC_REPLY_BYTES:
+    honest scope line and the document keys are never cut (T-197 step 1).  ``keep_documents`` (the caller asked
+    for ``documents='all'``) leaves the explicit document list whole; the other cuts still apply (T-204)."""
+    cap = _topic_bytes(limit)
+    if _reply_bytes(reply) <= cap:
         return reply
     groups = reply.get("groups") or []
     docs = (reply.get("coverage") or {}).get("documents") or []
+
+    def hidden_documents_cut(keep: int) -> None:
+        listed = (reply.get("coverage") or {}).get("hidden_documents") or []
+        if len(listed) > keep:      # hidden_after_as_of still counts every hidden document
+            del listed[keep:]
+
+    def summaries_cut(keep: int) -> None:
+        cells = (reply.get("coverage") or {}).get("summarised_documents") or []
+        if len(cells) > keep:
+            reply["coverage"]["summarised_cells"] = max(reply["coverage"].get("summarised_cells") or 0, len(cells))
+            del cells[keep:]
 
     def quotes(width: int) -> None:
         for group in groups:
@@ -1886,23 +1933,26 @@ def _trim_topic_reply(reply: dict[str, Any]) -> dict[str, Any]:
         ("event body excerpts cut to 300 characters", lambda: bodies(300)),
         # the cheapest cut for what the model loses: the cut documents keep their type, date and match count in
         # the type+month summary, and matched_documents still states how many there were
-        ("document list cut to the first 20, the rest summarised by type", lambda: docs.__delitem__(
-            slice(20, None)) if len(docs) > 20 else None),
+        ("document list cut to the first 20, the rest summarised by type",
+         lambda: None if keep_documents else (docs.__delitem__(slice(20, None)) if len(docs) > 20 else None)),
         ("document titles cut", lambda: [doc.pop("title", None) for doc in docs]),
         ("document page lists cut", lambda: [doc.pop("pages", None) for doc in docs]),
+        ("the hidden-document list cut to the first five, its count kept", lambda: hidden_documents_cut(5)),
+        ("the document summary cut to six type-month cells", lambda: summaries_cut(6)),
         ("quotes cut to 110 characters", lambda: quotes(110)),
         ("event body excerpts cut to 180 characters", lambda: bodies(180)),
         ("quotes cut to 70 characters", lambda: quotes(70)),
         ("group titles cut", lambda: [group.pop("title", None) for group in groups]),
     ]
-    reply = _shrink(reply, cuts)
+    reply = _shrink(reply, cuts, cap=cap)
     if reply["coverage"].get("matched_documents", 0) > len(docs):
         reply["coverage"]["documents_not_listed"] = reply["coverage"]["matched_documents"] - len(docs)
     return reply
 
 
 def topic(symbol: str, topic: str, as_of: str | None = None, limit: int = TOPIC_LIMIT,
-          date_from: str | None = None, date_to: str | None = None, offset: int = 0) -> dict[str, Any]:
+          date_from: str | None = None, date_to: str | None = None, offset: int = 0,
+          documents: str | None = None) -> dict[str, Any]:
     """Everything the store holds on one theme up to ``as_of``, across every call and document in ONE call, grouped
     by document date: management's statements verbatim, the related guidance rows, company-stated KPI rows, page
     cells, event rows (an inspection, dividend, buyback, acquisition or merger) AND the word-level page text of
@@ -2065,23 +2115,28 @@ def topic(symbol: str, topic: str, as_of: str | None = None, limit: int = TOPIC_
         ask_words, sorted({item["doc_key"] for item in shown_items}),
         {(item["doc_key"], int(item["page"])) for item in shown_items
          if item.get("page") not in (None, "")}))[:8]
+    # T-204: a source goes in exactly one list -- one the build has no table for is not "searched".
+    structured = (("guidance", "guidance (forward targets)"),
+                  ("kpi_series", "kpi_series (company-stated KPIs)"),
+                  ("page_cell", "page_cell (table and chart cells)"),
+                  ("event", "event (inspection, dividend, buyback, acquisition, merger)"))
+    missing = [name for name, _label in structured if not _has_table(name)]
+    doc_cap = _doc_cap(documents, cap)
     return _trim_topic_reply({
             "found": bool(shown), "symbol": sym, "tool": "pilot3_topic", "topic": topic, "as_of": day,
             "tags_matched": plan["tags"], "text": text, "n": shown,
             "counts": {**counts, "matched": matched, "shown": shown, "cut": cut},
             "groups": ordered, "read_next": read_next,
             "coverage": _coverage("topic", list(_TEXT_STORES) + [
-                "guidance (forward targets)", "kpi_series (company-stated KPIs)",
-                "page_cell (table and chart cells)", "event (inspection, dividend, buyback, acquisition, merger)"],
-                ["pages the build holds no text for (OCR never read them, audio/video links)",
-                 *[name for name in ("page_cell", "event", "guidance", "kpi_series") if not _has_table(name)]],
-                matched, shown, cut, start, documents=docs, document_total=doc_total, outside=outside_list,
-                hidden=hidden),
-            "candidate_pages": candidates, **hidden,
+                label for name, label in structured if name not in missing],
+                ["pages the build holds no text for (OCR never read them, audio/video links)", *missing],
+                matched, shown, cut, start, documents=docs, doc_cap=doc_cap,
+                document_total=doc_total, outside=outside_list, hidden=hidden),
+            "candidate_pages": candidates,
             "as_of_note": f"documents first known after {day} are not used" if day else None,
             "hint": None if shown else "NOT IN DATA of pilot3 for this topic: try the words management uses, a wider "
                                        "date_from/date_to, or pilot3_search for the wording; only then the raw tools.",
-            "provenance": _db_prov()})
+            "provenance": _db_prov()}, limit=cap, keep_documents=doc_cap is None)
 
 
 # --- pilot3_search ----------------------------------------------------------------------------------
@@ -2183,7 +2238,8 @@ def _phrase_terms(query: str) -> tuple[list[str], list[str]]:
 
 def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
            doc_type: str | None = None, period: str | None = None,
-           date_from: str | None = None, date_to: str | None = None, offset: int = 0) -> dict[str, Any]:
+           date_from: str | None = None, date_to: str | None = None, offset: int = 0,
+           documents: str | None = None) -> dict[str, Any]:
     """Full-text search over every held page (FTS5 bm25, ranked): the exact phrase first, then the words; a money
     amount is normalised ("US$2 bn" = "$2 billion" = "2 billion").  The reply says how many pages match, how many
     are shown and what is cut, and lists EVERY matching document (not only the ones on this page).  ``period``
@@ -2265,7 +2321,7 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
                   f"JOIN doc_page p ON p.rowid=f.rowid JOIN doc d ON d.doc_key=p.doc_key "
                   f"WHERE doc_page_fts MATCH ? AND p.symbol=?{dflt}{extra} "
                   f"ORDER BY d.filing_date DESC, p.page LIMIT 800", (count_query, sym, *dargs, *eargs))
-    documents: list[dict[str, Any]] = []
+    page_documents: list[dict[str, Any]] = []
     by_doc: dict[str, dict[str, Any]] = {}
     for r in ranked:                    # the documents this page's rows came from (the full list is in coverage)
         group = by_doc.get(r["doc_key"])
@@ -2273,7 +2329,7 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
             group = by_doc[r["doc_key"]] = {"doc_key": r["doc_key"], "doc_type": r["doc_type"],
                                             "title": _trim(r["title"], 60), "filing_date": r["filing_date"],
                                             "pages": []}
-            documents.append(group)
+            page_documents.append(group)
         if r["page"] not in group["pages"] and len(group["pages"]) < 3:
             group["pages"].append(r["page"])
     cut = max(0, pages_matched - start - len(ranked))
@@ -2290,6 +2346,7 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
                           "structured tables: kpi_series, guidance, page_cell, fin_*, event "
                           "(pilot3_kpi / pilot3_guidance / pilot3_cells / pilot3_fin / pilot3_topic)"],
                          pages_matched, len(ranked), cut, start, documents=entries,
+                         doc_cap=_doc_cap(documents, cap),
                          document_total=documents_matched, hidden=_hidden_documents(sym, day))
     if start_day or end_day:
         coverage["date_filter_effect"] = ("date_from/date_to rank the pages filed in the window; this tool never "
@@ -2301,7 +2358,7 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
                           "provenance": _prov("doc_page", f"{r['doc_key']} p{r['page']}", r["pk"] or r["dk"])}
                          for r in ranked], "pilot3_search", match_mode=match_mode, period=period, text=text,
                    pages_matched=pages_matched, documents_matched=documents_matched, shown=len(ranked),
-                   documents=documents, as_of=day, hidden_after_as_of=hidden, pages_short=pages_short,
+                   documents=page_documents, as_of=day, hidden_after_as_of=hidden, pages_short=pages_short,
                    pages_like=pages_like, coverage=coverage,
                    read_next=_read_next([{"doc_key": r["doc_key"], "page": r["page"]} for r in ranked]))
 
@@ -2315,11 +2372,12 @@ def search(symbol: str, query: str, as_of: str | None = None, limit: int = 10,
             del listed[keep:]
             reply["coverage"]["documents_not_listed"] = reply["coverage"]["matched_documents"] - keep
 
+    full_list = _doc_cap(documents, cap) is None      # documents='all': the explicit list outranks the byte cap
     return _shrink(reply, [
         ("snippets cut to 200 characters", lambda: snippets(200)),
         ("document titles cut", lambda: [doc.pop("title", None) for doc in reply["coverage"]["documents"]]),
         ("snippets cut to 120 characters", lambda: snippets(120)),
-        ("document list cut to the first 20 of the rank", lambda: documents_cut(20)),
+        ("document list cut to the first 20 of the rank", lambda: None if full_list else documents_cut(20)),
     ])
 
 

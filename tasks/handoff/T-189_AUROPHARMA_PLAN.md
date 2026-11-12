@@ -53,8 +53,8 @@ python -m reality_engine.pilot3.make_profile AUROPHARMA --name aurobindo --root 
     --compute-start 2019-01-01 --out $D/aurobindo_profile.json
 python -m reality_engine.scripts.fetch_pilot60_history --fetch --universe $D/universe_aurobindo.csv \
     --window-start 2024-04-01 --window-end 2026-11-11 --out $D/raw/manifest.csv
-# 12 Nov (T-199): --out does not get the per-company manifest; the fetch writes the shared
-# D:/RealityEngine/raw/pilot60_history/manifest.csv. Filter it by ISIN into $D/raw/manifest.csv before docs_collect.
+# 12 Nov (T-204): --out now gets the rows of this run's universe ISINs (same columns as the shared manifest),
+# so docs_collect reads $D/raw/manifest.csv directly.
 python -m reality_engine.pilot3.docs_collect --profile $D/aurobindo_profile.json
 # 12 Nov (T-193): missing from the first run, so shp_category held only promoter/public and shp_pledge was empty
 python -m reality_engine.scripts.fetch_shp_xbrl_pilot --fetch --universe $D/universe_aurobindo.csv \

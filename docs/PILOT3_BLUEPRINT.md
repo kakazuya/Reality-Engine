@@ -100,8 +100,10 @@ cause for all four models); every rule is general, never per company:**
 store. Every rule is a property of the reply shape or the search method, never a company, sector or question:**
 - One `coverage` block on every text reply (`topic`, `statements`, `search`, `semantic`, `cells`, `docs`):
   `searched`, `not_searched` (doc types and sources the tool cannot see, by name), `matched_total`, `shown`, `cut`,
-  `offset`, `documents` = every matching document (doc_key, type, date, title, matching pages, match count; beyond 40
-  summed by type and month), `hidden_after_as_of` (the hidden documents and their dates) and `outside_date_filter`
+  `offset`, `documents` = the matching documents (doc_key, type, date, title, matching pages, match count; at most
+  `max(limit*3, 10)` by default, the rest summed by type and month and counted in `documents_not_listed`;
+  `documents=all` lists every one), `hidden_after_as_of` (the hidden documents and their dates, inside `coverage`
+  only) and `outside_date_filter`
   (the matches a `date_from`/`date_to` excluded, with dates). The one-line `text` starts with that scope and the exact
   next call, e.g. `56 match(es) (12 tagged statement turn(s) + 44 page-text match(es)) in 14 document(s) (8 calls, 3
   decks, 2 annual reports, 1 filing); 25 shown; 62 cut by the limit - call again with offset=25`.
@@ -122,17 +124,21 @@ store. Every rule is a property of the reply shape or the search method, never a
 - `cells` value cells: a label-only cell now carries the values printed beside it (`values`, with column and unit)
   and says the reader stored them separately, so a press-release table is never served as labels without numbers.
 - Reply size: every text reply is trimmed below 19 kB (hard cap 20 kB) by a fixed cut order and states what it cut
-  (`coverage.detail`); no reply is ever served above the cap.
+  (`coverage.detail`); `pilot3_topic` sizes its own budget to the page (`max(6 kB, 3 kB x limit)`, 18 kB cap, T-204),
+  and `documents=all` keeps the explicitly requested document list rather than trading it for the cap.
 - Instructions: the MCP server text and the `p3ask` help state the general answer rules -- page through every item a
   reply counted before answering a list question, "not disclosed" needs `not_searched` empty or read, check a
   headline figure on `read_next`'s table page, never narrow by date before the period asked, prefer the company's
   printed figure and say when the store's figure is derived.
-- Tests: `test_lookups_pilot3.py` 68 passed + 1 skipped (T-197 class: coverage on every text reply, page-text reach,
+- Tests: `test_lookups_pilot3.py` 72 passed + 1 skipped (T-197 class: coverage on every text reply, page-text reach,
   offset paging, read_next, `hidden_after_as_of` per tool, `outside_date_filter`, label-only cells, every matching
-  document named), `test_pilot3_events.py` 6, `test_p3ask.py` 7, `test_pilot3_no_company_literals.py` 7,
-  `test_lookups_docs.py` 18. Measurement on copies of `pilot10.db` (5 companies) and `aurobindo.db`, 12 generic
-  themes: matched items 3,976 -> 16,759 and 2,413 -> 5,530, every doc type reached (transcript, deck, annual_report,
-  results, press_release, announcement), max reply 19.1 kB, median topic call 0.27-0.34 s; `.tmp/T-197_MEASURE.md`.
+  document named; T-204 class: 10 of 60 theme documents at limit=2 under 6 kB, `documents=all` on topic/docs/search,
+  a source in exactly one list), `test_fetch_manifest_out.py` 3, `test_pilot3_events.py` 6, `test_p3ask.py` 7,
+  `test_pilot3_no_company_literals.py` 7, `test_lookups_docs.py` 18. Measurement on copies of `pilot10.db` (5
+  companies) and `aurobindo.db`, 12 generic themes: matched items 3,976 -> 16,759 and 2,413 -> 5,530, every doc type
+  reached (transcript, deck, annual_report, results, press_release, announcement), max reply 19.1 kB, median topic
+  call 0.27-0.34 s; `.tmp/T-197_MEASURE.md`. T-204 re-measured on the live `pilot10.db`: `pilot3_topic` order book,
+  limit=2, as_of 2026-10-19 = 5.9 kB (was 8.1 kB), 10 of 49 documents listed, `documents_not_listed` 39.
 
 ## 3. Extraction methods (what works, what failed)
 - **Documents**: collected per company into `D:\RealityEngine\pilot3\pages.db`. Dates: `known_at` = exchange

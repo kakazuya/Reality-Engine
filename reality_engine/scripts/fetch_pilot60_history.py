@@ -8,6 +8,9 @@ The universe is ``tasks/pilot60/UNIVERSE.csv`` by default; ``--universe`` points
 CSV (e.g. ``tasks/pilot60/UNIVERSE_ADD3.csv`` for the three names added on 2026-11-01).
 ``--window-start/--window-end`` move the filing window (default 2019-01-01..2024-04-01, the
 period the 60's FY2024-25-onward documents were already held).
+``--out`` with ``--fetch`` also writes the manifest rows of the run's universe ISINs to that CSV
+(same columns as the shared manifest), so a one-company run ends with its own ``manifest.csv``;
+with ``--coverage`` it names the coverage matrix path.
 
 Metadata comes from the existing ``bse_announcements.db`` plus the BSE
 ``AnnSubCategoryGetData`` API (the DB feed starts 2020-01-01, the window starts
@@ -50,6 +53,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 UNIVERSE_CSV = PROJECT_ROOT / "tasks" / "pilot60" / "UNIVERSE.csv"
 ROOT = RAW_ROOT / "pilot60_history"
 MANIFEST_CSV = ROOT / "manifest.csv"
+COVERAGE_MD = PROJECT_ROOT / "tasks" / "pilot60" / "HISTORY_COVERAGE_2026-10-30.md"
 # Live databases are read from REALITY_DATA_ROOT (the worktree data dir is empty); the
 # manifest DB is the one database this job writes, and it lives with the live data.
 DATA_ROOT = Path(os.environ.get("REALITY_DATA_ROOT") or DATA_DIR)
@@ -634,9 +638,11 @@ class Manifest:
         cur = self.con.execute(f"SELECT {','.join(FIELDS)} FROM docs")
         return [dict(zip(FIELDS, r)) for r in cur]
 
-    def write_csv(self, path=MANIFEST_CSV):
-        rows = sorted(self.rows(), key=lambda r: (r["symbol_at_time"] or "",
-                                                  r["dissem_ts"] or "", r["newsid"]))
+    def write_csv(self, path=MANIFEST_CSV, isins=None):
+        """The shared manifest, or (``isins`` given) only the rows of those ISINs -- one company's own manifest
+        for ``--out``, with exactly the same columns (T-204)."""
+        rows = sorted((r for r in self.rows() if isins is None or r["isin"] in isins),
+                      key=lambda r: (r["symbol_at_time"] or "", r["dissem_ts"] or "", r["newsid"]))
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".csv.part")
         with tmp.open("w", newline="", encoding="utf-8") as f:
@@ -1078,8 +1084,10 @@ def main(argv=None):
                     help="seconds between BSE requests overall (0.3 = 200/min)")
     ap.add_argument("--tries", type=int, default=4)
     ap.add_argument("--refresh-meta", action="store_true", help="ignore the .tmp metadata cache")
-    ap.add_argument("--out", default=str(PROJECT_ROOT / "tasks" / "pilot60" /
-                                         "HISTORY_COVERAGE_2026-10-30.md"))
+    ap.add_argument("--out", default=None,
+                    help="--fetch: also write the manifest rows of this run's universe ISINs here (the shared "
+                         "manifest.csv is always written); --coverage: the coverage matrix path "
+                         f"(default {COVERAGE_MD.name})")
     args = ap.parse_args(argv)
     setup_logging(LOG_DIR / f"{datetime.now():%Y%m%d_%H%M%S}.log" if args.fetch else None)
 
@@ -1130,15 +1138,22 @@ def main(argv=None):
     if args.fetch:
         stats = fetch_rows(jobs, manifest, workers=args.workers, interval=args.interval,
                            tries=args.tries, limit=args.limit)
+        run_isins = {row["isin"] for row in universe}
         n = manifest.write_csv()
+        if args.out:
+            # this run's own manifest beside the shared one, so docs_collect can read --out directly (T-204)
+            own = manifest.write_csv(Path(args.out), isins=run_isins)
+            logger.info("per-company manifest: %d of %d shared rows -> %s", own, n, args.out)
         logger.info("fetch done: %s; manifest rows %d", stats, n)
         if not args.limit:
             scan_pass(manifest)
             manifest.write_csv()
+            if args.out:
+                manifest.write_csv(Path(args.out), isins=run_isins)
     if args.scan and not args.fetch:
         logger.info("scan: %s", scan_pass(manifest))
     if args.coverage:
-        logger.info("coverage: %s", coverage(manifest, Path(args.out), universe))
+        logger.info("coverage: %s", coverage(manifest, Path(args.out) if args.out else COVERAGE_MD, universe))
         manifest.write_csv()
     if not (args.fetch or args.scan or args.coverage or args.measure):
         ap.error("pick one of --measure, --fetch, --scan, --coverage, --verify")
