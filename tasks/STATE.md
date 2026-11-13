@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-14 02:20 IST (Eagle)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-14 03:10 IST (Eagle)
 History `docs/state_history/` (previous: `STATE_2026-11-14_0220.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -16,13 +16,13 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-0. Roles (Shivam 13-14 Nov): DeepSeek builds; agy `gemini-4-hydrogen-high` answers, searches questions, codes on trial; Opus 5.5 medium grades blind. Go key 1 only (restart dsh-worker MCP to load the key-1 default).
-1. T-205 r13: Hydrogen arms S (tools + pack seed) and P (pack only) answering into `D:/RealityEngine/bluestar/answers_r13/`; code on branch `dsh/20261113T182621Z-4b624470` (not merged, includes r12). Next Wolf session grades blind: commands in JOURNAL 14 Nov Eagle. r14 first change: trim packs to needed items (~25k chars), pass inline.
-2. T-208: KEI/MEDANTA/PVRINOX stores built + 411 pages HP-OCR'd; PVRINOX Q2FY27 revenue still missing (printed reader ignores OCR, wrapped label, no Q2 XBRL; guide T-208). Fix before using them for the verdict.
-3. T-209 MERGED: `D:/RealityEngine/structured/structured_universe.db` (SHP categories, pledge, balance sheet); pledge flag 0 = 0%. Raw cache to Drive pending.
-4. T-210 MERGED code; panel run waits for 7 GB free RAM: `python -m reality_engine.research.factor_deep --out .tmp/t210 --project`, then full.
-5. T-207 awaits Shivam's accept. KPI guards 67ceeb28: Hydrogen port killed (RAM), redo. BS-040 grade was wrong (`report_r12/BS-040_check.md`).
-6. Older: T-191 defects list; T-194 events aurobindo only; T-179; `pilot3_fin` XBRL-first; T-172 frozen split.
+0. Roles (Shivam 13-14 Nov): DeepSeek builds; agy `gemini-4-hydrogen-high` answers, searches questions, codes on trial (shell works with the skip flag); Opus 5.5 medium grades blind. Go key 1 only (restart dsh-worker MCP).
+1. NEXT (Wolf, after 13:30 IST 14 Nov): blind-grade T-205 r13 with Opus medium, commands in JOURNAL 14 Nov Eagle: Hydrogen arm P 26/64 and arm S 18/64 (both STOPPED by Shivam: pack design rejected), with DeepSeek r12 pack, ds_a, ds_b. Code on branch `dsh/20261113T182621Z-4b624470` (not merged).
+2. Shivam 14 Nov: dumping a gathered pack on the model is rejected. Round 14 = lean planned lookups: model names exact facts, scripts/tools return only those rows, follow-ups for gaps, no seed pack; Hydrogen vs DeepSeek, right answers + tokens per question.
+3. T-208: KEI/MEDANTA/PVRINOX stores + 411 pages HP-OCR'd; PVRINOX Q2FY27 revenue missing (printed reader ignores OCR, wrapped label, no Q2 XBRL; guide T-208). Fix before the verdict.
+4. T-209 MERGED: `D:/RealityEngine/structured/structured_universe.db`; pledge flag 0 = 0%. Raw cache to Drive pending.
+5. T-210 MERGED code; panel run needs 7 GB free: `python -m reality_engine.research.factor_deep --out .tmp/t210 --project`, then full.
+6. T-207 awaits Shivam's accept. KPI guards 67ceeb28 port: redo. BS-040 grade wrong (`report_r12/BS-040_check.md`). T-172 frozen split; T-191; T-194; T-179.
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff before a store merge: `reality_engine.scripts.store_diff` (DEVELOPER_GUIDE).
