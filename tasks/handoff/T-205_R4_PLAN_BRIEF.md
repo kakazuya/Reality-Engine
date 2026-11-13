@@ -25,7 +25,7 @@ Evidence (round-3 packs `D:/RealityEngine/bluestar/pack/pack_BS-*.json`, judge `
   carries `row` and `text` and the pack repeats text at top level.
 
 Files: `reality_engine/answer/evidence_pack.py` (keep `plan()` and `gather()` working as they are; add beside them),
-`reality_engine/answer/routes.yaml`, new `reality_engine/answer/menu.py`, new `reality_engine/answer/plan_model.py`,
+`reality_engine/answer/routes.yaml`, new modules `menu` and `plan_model` in that package (built on branch `dsh/20261113T103928Z-0a9aa11d`, not on main yet),
 `reality_engine/answer/pack_recall.py` (a `--planner model|script` switch), `reality_engine/tests/test_evidence_pack.py`
 plus a new `test_plan_model.py`, `docs/DEVELOPER_GUIDE.md` (the evidence-pack paragraph), one line in `tasks/STATE.md`.
 

@@ -6,6 +6,33 @@ architecture / execution / output. Every new session reads the latest entry firs
 "Carry forward" bullets). Transcripts and the run ledger keep WHAT happened; this file keeps WHY and what we learned.
 Keep entries short; facts with numbers; no repetition of STATE or tickets.
 
+## 2026-11-13 21:45 Wolf wrap-up (same session, closed on resume): loose ends and the next session's plan
+
+Closing checks: doc sweep clean (round-4 brief reworded: its two new modules live on the unmerged branch); data
+inventory regenerated (0 undocumented tables); no worker or grader running. Nothing pushed.
+
+Left open, with where it lives:
+- T-205 branch `dsh/20261113T103928Z-0a9aa11d` (c264b5a3) and its worktree are kept, NOT merged: code is sound
+  (52 tests) but the path scored 40/64. Evidence: `D:/RealityEngine/bluestar/{pack_r9,pack_r11,answers_r12,report_r12}`;
+  grades decoded in `report_r12/graded_decoded_r12.json`; key `key_private/key_r12.csv`.
+- Unchecked: one new-path answer (the order-book-to-revenue question) cites an order book of Rs 5,141.78 crore the
+  grader found on no held page; the judges' five non-verbatim prose quotes; Go key 2 "subscription required" (worker's
+  report) and `pilot3/second_read.py` still trying key 2 first; three stale live assertions in `test_pilot3_tech.py`.
+- Old worktrees still on disk (T-163 r4-7, T-132 r10-12 dsh branches of 10 Nov; three Wolf-agy): review or tag, then remove.
+- Nine Eagle tickets shown merged in STATE but still OPEN on the board (T-177, 178, 182, 183, 185, 186, 187, 189, 190).
+
+Plan for the next session, in order (each needs Shivam's word first):
+1. Rule on T-205's next step. Recommended: keep plan + pack + script check, add at most two follow-up gather rounds
+   for parts that are short or not_found, then answer again. Gate: no question right in round 12 may fall; judge the
+   packs before the answer run; blind headless-Opus grade with the old runs beside it. Alternative: tool run seeded
+   with the pack.
+2. Measuring stick before more tuning: s10 raw fetch (T-168) and frozen split (T-172), so a few points mean something;
+   then a NEW unseen company for the verdict (Blue Star and Aurobindo are development sets).
+3. Structured layer at universe scale (script only): shareholding categories + pledge from exchange XML, balance-sheet
+   lines from filed results; feeds the T-207 factors still unmeasured (pledge, FPI/MF change, ROE/ROCE).
+4. T-207: Shivam's accept; then round 3 only if he wants regime coverage (needs a falling-market sample).
+5. Document-layer scale stays behind the 95% gate: reader cost at scale and the parked v2 tickets (I-014) come back then.
+
 ## 2026-11-13 21:20 Wolf (neo-claim-worker-progress-review): direction-only session; factor rewards; answer path rounds 4-12
 
 Work done: Shivam ruled Claude directs and reviews only, workers build. Board cut 86 -> 51 open (IDEA_BOX I-013..I-015).
