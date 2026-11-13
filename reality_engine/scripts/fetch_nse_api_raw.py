@@ -308,6 +308,13 @@ def fetch_integrated_xbrl():
     out = ROOT / "nse_results_xbrl"
     out.mkdir(parents=True, exist_ok=True)
     have = {p.name for p in out.iterdir()}
+    # Raw files move to Drive after parsing (7 Nov), so the local folder is no record of what is held: a file already
+    # parsed into results_xbrl.db is held too, else every run re-downloads the whole archive (T-212).
+    parsed = Path(__file__).resolve().parents[1] / "data" / "results_xbrl.db"
+    if parsed.is_file():
+        import sqlite3
+        with sqlite3.connect(f"file:{parsed.as_posix()}?mode=ro", uri=True) as db:
+            have |= {r[0] for r in db.execute("SELECT file FROM filings")}
     urls = set()
     for idx in RESULT_INDICES:
         for jf in (ROOT / f"nse_integrated_{idx}").glob("*.json"):

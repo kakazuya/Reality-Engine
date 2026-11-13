@@ -17,7 +17,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 
 ## Next action
 0. Roles (Shivam 13-14 Nov): DeepSeek builds; agy `gemini-4-hydrogen-high` answers, searches questions, codes on trial (shell works with the skip flag); Opus 5.5 medium grades blind. Go key 1 only (restart dsh-worker MCP).
-1. DONE 14 Nov 05:00 (Wolf): r13 blind grades, report `D:/RealityEngine/reports/2026-11-14_r13_grading.html`. Paired BS-001..026: Hydrogen pack 24, DS lean B 22, DS pack 20, DS lean A 19; full 64: DS B 54, A 50, pack 46. 36 of 44 misses = routing. agy grader ran 1 batch then hit the 5-h quota; Wolf graded batches 2-8 inline. r13 branch may now be merged or archived.
+1. DONE 14 Nov 05:00 (Wolf): r13 blind grades, report `D:/RealityEngine/reports/2026-11-14_r13_grading.html`. Paired BS-001..026: Hydrogen pack 24, DS lean B 22, DS pack 20, DS lean A 19; full 64: DS B 54, A 50, pack 46. 36 of 44 misses = routing. Wolf graded batches 2-8 inline (agy quota).
 2. Shivam 14 Nov: dumping a gathered pack on the model is rejected. Round 14 = lean planned lookups: model names exact facts, scripts/tools return only those rows, follow-ups for gaps, no seed pack; Hydrogen vs DeepSeek, right answers + tokens per question.
 3. T-208: KEI/MEDANTA/PVRINOX stores + 411 pages HP-OCR'd; PVRINOX Q2FY27 revenue missing (printed reader ignores OCR, wrapped label, no Q2 XBRL; guide T-208). Fix before the verdict.
 4. T-209 MERGED: `D:/RealityEngine/structured/structured_universe.db`; pledge flag 0 = 0%. Raw `nse_shp_xbrl_universe` to Drive pending.

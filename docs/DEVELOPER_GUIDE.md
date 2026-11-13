@@ -118,6 +118,15 @@ python reality_engine/cli.py run-phase1 --days 25 --top 200 --workers 8
 python reality_engine/cli.py verify-checkpoint
 ```
 
+**Results XBRL refresh (T-212, 14 Nov 2026).** `python -m reality_engine.scripts.fetch_nse_api_raw --datasets
+nse_integrated,nse_integrated_xbrl` re-reads NSE's integrated-filing index (every page) and downloads each listed XBRL
+not already held, then `python -m reality_engine.scripts.parse_nse_results_xbrl` parses only files not in `filings`.
+Since raw files move to Drive after parsing (7 Nov), `fetch_integrated_xbrl` counts a file as held when it is in the
+local `raw_market/nse_results_xbrl/` folder OR already a `filings.file` row of `reality_engine/data/results_xbrl.db`;
+before this, an emptied local folder made every run re-download the whole archive. On 14 Nov the index had last been
+read ~2 Nov, so `results_xbrl.db` held 2026-09-30 results for 307 symbols against ~2,400 for 2026-06-30 (PVRINOX's
+28 Oct Q2FY27 filings among the missing); the refresh listed 4,205 new files.
+
 ### C. Visual Dashboard Workflow
 Launch the interactive Streamlit dashboard:
 ```bash
