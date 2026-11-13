@@ -27,3 +27,5 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff before a store merge: `reality_engine.scripts.store_diff` (DEVELOPER_GUIDE).
+
+- T-205 round 2: max_chars enforced (<=120k), per-call page pick (8 transcripts + 3 decks/results), scorer normalised (period/date/year/page/doc-key dropped); CSVs regenerated; BS-028 truth in pack (60/45 days), BS-034 partial (12% only), BS-036 partial (8-10/12%).
