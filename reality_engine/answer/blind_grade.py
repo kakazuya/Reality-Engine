@@ -46,7 +46,9 @@ For each question:
    pilot3_ratio, pilot3_kpi, pilot3_guidance, pilot3_statements, pilot3_topic, pilot3_cells, pilot3_holding,
    pilot3_tech, pilot3_docs, pilot3_search, pilot3_sql, pilot3_calc. Read the cited pages (pilot3_docs,
    pilot3_search, pilot3_cells) and prefer the printed page (results statement, deck, transcript) over any derived
-   row. Respect as_of: a document known after the question's as_of may not be used.
+   row. Respect as_of: a document known after the question's as_of may not be used. Before calling any figure
+   absent, search it with AND without thousands separators (5,141.78 and 5141.78), in lakh/crore and million forms,
+   and with the Rs/₹/cr variants: filings often print numbers without commas (BS-040, 14 Nov).
 2. Redo every arithmetic step (growth, margins, shares, sums). A figure off by more than rounding is wrong.
 3. Grade each answer:
    - `right`: every figure or fact asked is correct (value, unit, period, basis), nothing material missing, nothing

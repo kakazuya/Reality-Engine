@@ -1,7 +1,7 @@
 """agy-worker core (T-112): run Antigravity CLI (`agy`) coding jobs headless in a Wolf- worktree, like dsh-worker.
 
 The model is the job's own, allowlisted to MODELS (Shivam's ruling 13 Nov 2026: coding stays on
-gemini-3.8-flash-medium, the T-205 answer arm uses gemini-4-hydrogen-high, the blind grader claude-opus-5-5-medium).
+gemini-4-hydrogen-high (Flash 3.8 dropped 14 Nov), the T-205 answer arm uses gemini-4-hydrogen-high, the blind grader claude-opus-5-5-medium).
 One job = one `agy -p <brief>` run with `--output-format stream-json`, launched by a detached runner (runner.py) so
 it survives this server; the runner writes events.jsonl, then exit.json, then auto-commits the worktree diff. Status
 is parsed from events.jsonl only.
@@ -21,10 +21,9 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-MODEL = "gemini-3.8-flash-medium"
+MODEL = "gemini-4-hydrogen-high"
 MODELS = {  # the only models a job may run (T-205 round 13); anything else is refused before a job is created
-    "gemini-3.8-flash-medium": "coding (default)",
-    "gemini-4-hydrogen-high": "T-205 answer arm (pack / seeded tool run)",
+    "gemini-4-hydrogen-high": "coding (default, on trial), question search, T-205 answer arm (Shivam 14 Nov: Flash 3.8 dropped)",
     "claude-opus-5-5-medium": "T-205 blind grader",
 }
 SERVER_DIR = Path(__file__).resolve().parent

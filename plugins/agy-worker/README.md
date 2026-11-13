@@ -1,14 +1,14 @@
 # agy-worker (T-112)
 
 Claude's control panel for Antigravity CLI (`agy`) coding jobs, modelled on dsh-worker. Each job names its model,
-allowlisted (`agy_core.MODELS`, T-205 round 13): `gemini-3.8-flash-medium` (coding, default),
-`gemini-4-hydrogen-high` (the T-205 answer arm) and `claude-opus-5-5-medium` (the T-205 blind grader); any other id
+allowlisted (`agy_core.MODELS`, T-205 round 13): `gemini-4-hydrogen-high` (default: coding on trial, question search,
+the T-205 answer arm; Gemini 3.8 Flash dropped by Shivam 14 Nov) and `claude-opus-5-5-medium` (the T-205 blind grader); any other id
 is refused before a job is created. Registered in `.mcp.json` as `agy-worker`. Code: `server/agy_worker_mcp.py` (the MCP tools), `server/agy_core.py`
 (jobs, event parsing, quota), `server/runner.py` (the detached run; on exit it writes `exit.json` and sets `job.json` `phase` to `ended` with the outcome, T-200), `server/agy_tools_mcp.py` (Gemini's check runner).
 
 | Tool | What it does |
 |---|---|
-| `start_worker(brief, use_worktree=True, base, timeout_seconds=3600, test_cmd, model="gemini-3.8-flash-medium")` | worktree `IDM-worktrees/Wolf-agy-<job_id>` on branch `Wolf-agy-<job_id>`, then a detached `runner.py` runs `agy -p <brief> --model <model> --mode accept-edits --output-format stream-json`; returns at once; an unlisted model is refused |
+| `start_worker(brief, use_worktree=True, base, timeout_seconds=3600, test_cmd, model="gemini-4-hydrogen-high")` | worktree `IDM-worktrees/Wolf-agy-<job_id>` on branch `Wolf-agy-<job_id>`, then a detached `runner.py` runs `agy -p <brief> --model <model> --mode accept-edits --output-format stream-json`; returns at once; an unlisted model is refused |
 | `worker_status(job_id)` | done, outcome, elapsed, tool calls by tool, tokens (input, output, thinking, cache), last tool, denied actions, tool errors; parsed from `events.jsonl`, no model call |
 | `worker_result(job_id)` | final answer, branch, head, diff stat |
 | `resume_worker(job_id, message, timeout_seconds=3600, model=None)` | continues that job's own Gemini conversation (`agy --conversation <id>`) in the same worktree and branch, as a new job with `resumed_from`; `model` overrides the old job's (allowlisted) model, omitted keeps it; for review notes and unfinished steps (one task stays in one worker session) |
