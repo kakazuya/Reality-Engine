@@ -57,8 +57,8 @@ Template:
 - Data: held: prices 2019+, ratio_panel, shp_category, guidance, flows. Neighbours: H04, H14, H18, H19, H23 in
   `tasks/HYPOTHESIS_REGISTER.md`.
 - Review trigger: stage `prediction`; review by 2026-12-15
-- Status: parked
-- History: 2026-11-12 moved from ticket T-176.
+- Status: promoted to T-207 (2026-11-13)
+- History: 2026-11-12 moved from ticket T-176. 2026-11-13 Shivam: start now, not 15 Dec.
 
 ## I-003: Main-vs-branch store diff tool
 - Created: 2026-11-12 22:00 IST, by Eagle, during the T-192 reviews
@@ -155,3 +155,65 @@ Template:
 - Data: raw_to_drive (held).
 - Review trigger: stage `maintenance`; review by 2026-11-26
 - Status: parked
+
+## I-013: Workspace enforcement and worker tooling set
+- Created: 2026-11-13 16:15 IST, by Wolf, during the board cut Shivam approved 13 Nov
+- Context (what caused it): These were opened 2-10 Nov as P1 but none stopped a failure that recurred in the week to 13 Nov; the answer score stayed near 80% while they sat open (board had 86 open, ~50 P1).
+- Purpose (what it is for): Keep the board to the critical path (answerer, measuring set, factor study); re-open one only when the failure it prevents happens again.
+- Idea: the parked tickets, each to be re-opened as its own ticket when its trigger is met:
+  - T-001: Enforce worker tool-call budgets in code; a worker used 266+ against 120, and another 181 against 150
+  - T-002: Block by hook: git push, private folder reads, printed keys, --no-verify, gate edits, git stash, full suite on the MSI
+  - T-003: Merge gate: tests, doc gate, accept check, Docs updated line, hidden evaluation, rulings diff (workspace step 3)
+  - T-127: Shivam's directions enforced by code, not Claude's memory: (1) one intake command records a new direction in RULINGS.md, the standing-rules sheet and 
+  - T-171: Cut per-worker RAM. Measured 10 Nov: each dsh worker holds ~0.8 GB before it runs anything: dsh node 230 MB, sandbox+subprocess node 130 MB, its own r
+  - T-112: agy-worker MCP: start, status (tool calls by tool, tokens, quota left), result and cancel for Antigravity CLI coding jobs in a Wolf- worktree, like ds
+- Data: as recorded in each dropped ticket row (`tasks/TASKS_DONE.md` / board history).
+- Review trigger: stage `maintenance`; review by 2026-11-27
+- Status: parked
+- History: 2026-11-13 moved from tickets by the board cut.
+
+## I-014: v2 storage and architecture set
+- Created: 2026-11-13 16:15 IST, by Wolf, during the board cut Shivam approved 13 Nov
+- Context (what caused it): T-199 (13 Nov): none of 56 lost grades on Blue Star was missing data or a store-layout fault; 39 were routing. Re-architecting storage before the answer path passes spends effort where no points are lost.
+- Purpose (what it is for): Universe-scale storage design, to be done once the answer path passes on an unseen company and the factor study says which facts are worth storing.
+- Idea: the parked tickets, each to be re-opened as its own ticket when its trigger is met:
+  - T-145: v2 storage layout: per-company SQLite files (facts + evidence + full-text), DuckDB over Parquet for market series and cross-company screens, a catalog
+  - T-146: One fact, many sources: a figure printed in deck, results and press release is one fact row with several evidence links; agreement count feeds row che
+  - T-147: Parse once, map many: keep each document's parsed output (tables, sections, statements) beside the store so later schema versions re-map without re-re
+  - T-148: Incremental build by document, keyed by content hash: a new filing touches only its company file; reruns skip documents already done
+  - T-149: Entities for segments and subsidiaries (Blinkit, Novelis, BHFL, Westside/Zudio, SAE Towers) linked to the parent; every fact names its entity
+  - T-150: Units normalised at write: base-unit value plus the original unit text and scale; read side never converts
+  - T-152: Golden tables per type: ~50 hand-checked tables per type (deck KPI, segment note, FX sensitivity, results P&L); every extractor change scored on them 
+  - T-153: Warm MCP server for v2: cached file handles and connections so tool start-up does not dominate the 1 s budget
+  - T-142: Row checks for v2 rows: parts sum to totals, printed QoQ/YoY columns agree with derived rows, XBRL reconciliation; verified without a second source wh
+  - T-123: Document difficulty report, refreshed with every build: per doc type x company x filing year, text coverage (canary), verdict rates (verified / unveri
+  - T-094: Universe readiness: no hand lists of companies in build or tools (LENDERS in ratios.py, kpi.COMPANIES, gap_loop COMPANIES, docs_collect KEC manifest),
+  - T-098: Build applies window_start to documents, not only stores: scratch builds from the pilot60_history manifest held 2019+ documents (hold6 531 of 611 guid
+- Data: as recorded in each dropped ticket row (`tasks/TASKS_DONE.md` / board history).
+- Review trigger: stage `pilot-95-pass`; review by 2026-12-01
+- Status: parked
+- History: 2026-11-13 moved from tickets by the board cut.
+
+## I-015: Extraction breadth set (wait for the factor study)
+- Created: 2026-11-13 16:15 IST, by Wolf, during the board cut Shivam approved 13 Nov
+- Context (what caused it): Goal ruling (8 Nov): least information that predicts 6m-2y. T-118 found most of the signal in earnings, margin, valuation, promoter and insider data; these tickets widen extraction before T-207 says which further facts are rewarded.
+- Purpose (what it is for): Extract only what the factor-reward study (T-207) or a failed frozen-set question shows is needed. T-132 (rounds 10-12) and T-163 (rounds 4-7) have unreviewed branches: review or tag them before deleting.
+- Idea: the parked tickets, each to be re-opened as its own ticket when its trigger is met:
+  - T-138: Annual-report notes as tables: guarantees, contingent liabilities, related parties (standalone and consolidated apart), FX sensitivity, ratings, segme
+  - T-140: Events table: dated policy, tariff, regulation, results, orders, M&A and rating events with effective dates and companies touched, so 'since <date>' c
+  - T-174: Policy-to-company impact map: each held policy/regulation row linked to the companies it touches with a verdict (advantageous, disadvantageous, neutra
+  - T-139: Outside sources: rating-agency rationale notes (CRISIL, ICRA, CARE, India Ratings), official monthly industry data (auto sales, cement output, airline
+  - T-120: Pilot10 history 2019-2024: fetch BSE documents for HDFCBANK, SBILIFE, INFY, MARUTI, ETERNAL (the other five are already in pilot60_history) and build 
+  - T-052: pilot3 OCR run to completion over every needs_ocr page (sandbox and pages.db), then rebuild pilot3.db with the OCR pages
+  - T-068: Settle doubtful KPI rows with free beam-free on both Go keys, as a step after the build with saved verdicts; gate its accuracy on hand-read rows befor
+  - T-100: Prototype the announcement type reader: classify each 2024-04+ announcement from its own text (first page, more pages until clear), not the exchange c
+  - T-106: Scope on every guidance and KPI row: group, segment or subsidiary (Blinkit, District, BHFL), so a segment target is never served as the company's. Fai
+  - T-175: Jumbled text-layer detector: flag pages whose text layer exists but reads as garbage (broken encoding, glued words, reversed or scattered characters) 
+  - T-133: Label dictionary: cluster row labels across companies into one metric per sector family; Opus approves each family once; review queue for frequent unm
+  - T-134: Period engine: exact start/end on every value; derive quarters from 9M/H1/FY, TTM, year-ago-as-known-at-date pairs as stored rows with formula and inp
+  - T-132: Table store: every printed table cell of decks, results, fact sheets, investor presentations and annual-report notes as a row (doc, page, row label, c
+  - T-163: Segment and business-line table from AR segment notes and deck slides (segment, vertical, cluster, brand, subsidiary) with an alias map (NourishCo = R
+- Data: as recorded in each dropped ticket row (`tasks/TASKS_DONE.md` / board history).
+- Review trigger: stage `prediction`; review by 2026-11-27
+- Status: parked
+- History: 2026-11-13 moved from tickets by the board cut.
