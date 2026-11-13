@@ -6,6 +6,26 @@ architecture / execution / output. Every new session reads the latest entry firs
 "Carry forward" bullets). Transcripts and the run ledger keep WHAT happened; this file keeps WHY and what we learned.
 Keep entries short; facts with numbers; no repetition of STATE or tickets.
 
+## 2026-11-13 16:45 Eagle wrap-up (sv-t-199-blue-star-atom): evidence pack rounds 2-3
+
+Work done since the entry below: evidence pack (T-205, Beam) round 2 (cap, per-call pages) and round 3 (symbol,
+phrase search for figures, date periods, semantic pages per call, route_errors) merged (`708ab7aa`, `58d27ade`);
+round-2 judge: enough 21 / partly 27 / missing 16 of 64 (`bluestar/pack/pack_judge_r2.csv`); round-3 judge running
+at close (Beam job 20261113T100438Z-add44400, output `.tmp/judge/pack_judge.csv` in its worktree). Journal ruling,
+start-hook pointer, memory note added (T-206).
+
+What worked: measuring the gatherer alone with a reader-judge before building the answer step exposed the planner
+bugs in one pass (empty symbol, wrong metric, wrong period, word-only page choice).
+
+What did not, and why: Beam workers wrote outside their workspace despite the brief (write limits belong in the Stop
+rule); the round-1 judge took 9 minutes for 64 large packs (treat fast judges as suspect; ask them to quote the found
+text).
+
+Carry forward:
+- Read the round-3 judge (job 20261113T100438Z-add44400); if enough < ~55/64, switch to a model-written lookup plan.
+- Then build the answer step + number post-check (DeepSeek, off-peak), test on a NEW unseen company.
+- Briefs: write limits in the Stop rule; judges must quote the pack text they matched.
+
 ## 2026-11-13 Eagle (sv-t-199-blue-star-atom): Blue Star atom test, then the evidence-pack prototype
 
 Objective: test the "atom" design (one stored row per printed figure, read by Haiku from page images) on an UNSEEN

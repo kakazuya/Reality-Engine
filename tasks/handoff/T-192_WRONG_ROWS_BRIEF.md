@@ -93,7 +93,7 @@ Fix, verbatim:
 - G3. EBITDA: no change was made. Serve the company-printed EBITDA and margin (kpi_series / press-release or deck
   row) as preferred in `pilot3_fact` when one exists for the period and basis; keep the derived one as a second,
   labelled row. Fix `ebitda_margin_pct` FY25 = 21.4 on aurobindo (a quarter's margin under the annual period).
-- G4. Delete `reality_engine/tests/conftest_tmp.py` (it is not a conftest and does nothing). Use `--basetemp=.tmp/pt`.
+- G4. Delete the stray tests conftest_tmp file (done; it was not a conftest). Use `--basetemp=.tmp/pt`.
 - G5. Tests: one test per defect that FAILS on main and PASSES on the branch; show both runs in your final answer.
 - G6. Rebuild on copies is mandatory (your sandbox may read D:/RealityEngine; write the copies under your `.tmp`):
   aurobindo + pilot10 at least, parts `stores kpi guidance preferred ratios`; `.tmp/T-192_DIFF.md` with per-table
