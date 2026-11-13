@@ -16,12 +16,12 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
+00000000. T-209 MERGED 14 Nov: `D:/RealityEngine/structured/structured_universe.db` SHP categories + pledge (27,306 filings), balance sheet (21,433 filings); Guide O19c.
 0000000. 14 Nov: Go key 2 retired, key 1 only (merged; restart dsh-worker MCP). Hydrogen coding trial 1 passed.
 000000. Shivam 13 Nov 23:50 (Eagle): roles for answer tests: DeepSeek builds, `gemini-4-hydrogen-high` (agy) answers, Opus 5.5 medium (agy `claude-opus-5-5-medium`) grades blind. Order: T-205 r13 = tool run seeded with the pack (arm S) vs pack path answered by Hydrogen (arm P), graded with r12/ds_a/ds_b; gather rounds on top in r14 (`tasks/handoff/T-205_R13_BRIEF.md`). Verdict on >=3 unseen companies: T-208 (KEI, MEDANTA, PVRINOX stores). T-209 universe SHP + pledge + balance sheet.
 00000. T-207 MERGED: 6 stable factors need only P&L, promoter, insider, prices (`docs/research/T-207_factor_rewards.md`).
 0000. T-205 r12 branch `dsh/20261113T103928Z-0a9aa11d` (c264b5a3, NOT merged; r13 builds on it): 40/64 right vs old tool runs 43, 46. BS-040 grade was wrong: `report_r12/BS-040_check.md`.
-000. T-199 BLUESTARCO NOT passed (DeepSeek 82.8/73.4%, Haiku 56.2%). Open: derived capital_employed.
-0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
+0. T-192 r5 merged; aurobindo, pilot10, n10 rebuilt 12 Nov; u8/p20/q12 not.
 1. T-191 `aurobindo_ab/STORE_DEFECTS_SEEN.md`; T-194 events on aurobindo only.
 3. T-163/T-132 branches kept as archive/ tags (I-015); KPI guards 67ceeb28 needs rebase.
 4. T-179; `pilot3_fin` XBRL-first; s10 + T-172.

@@ -45,6 +45,11 @@ The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,
 - `plugins/reality-data/server/lookups_pilot3.py` — `cells`/`fact`/`kpi`/`topic` read `page_atom` first, with `page_cell` the fallback while a store has no atoms.
 - Tests: `reality_engine/tests/test_pilot3_atoms.py` (32), `reality_engine/tests/test_v2_page_reader.py` (11, `--basetemp` needs `-p no:tmpdir` in the dsh sandbox), `reality_engine/tests/test_v2_reference_pages.py` (7), `reality_engine/tests/test_v2_reference_geom.py` (11), `plugins/reality-data/tests/test_lookups_pilot3.py` (82 + 1 skipped).
 
+## Structured universe store (T-209, 13 Nov 2026)
+- `reality_engine/structured/universe_build.py` — the universe builder: threaded resumable fetch of the SHP XBRL (`--fetch`, pooled sessions, stops itself when over 5 % of a rolling 100 requests fail twice), parses through `reality_engine/pilot3/stores.py` (`parse_shp_xbrl`, never a second parser), extracts the balance-sheet lines from `results_xbrl.db` (`--balance`), and writes `coverage.csv` / `sample20.csv` (`--report`).
+- `reality_engine/tests/test_structured_universe.py` — two SHP fixtures (pledge / no pledge), a results fixture, idempotent re-parse, a revision keeping its own `known_at`, and the Blue Star 2024-06-30 known answer.
+- Store `D:/RealityEngine/structured/structured_universe.db`; new raw folder `D:/RealityEngine/raw/nse_shp_xbrl_universe/` (still local until the controller moves it to Drive like the pilot folder).
+
 ## Hardware
 NVIDIA GTX 1050 Ti with 4 GB, 8 CPU threads. Use CUDA, and check `nvidia-smi` before GPU plans. GPU OCR is slower than CPU here.
 
