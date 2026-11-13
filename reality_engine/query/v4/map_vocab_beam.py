@@ -48,7 +48,7 @@ ROOT = HERE.parents[2]
 UNIVERSE = ROOT / "tasks" / "pilot60" / "UNIVERSE.csv"
 URL = "https://opencode.ai/zen/go/v1/chat/completions"
 MODEL = "beam-free"
-KEY_ENVS = ("OPENCODE_GO_API_KEY_2", "OPENCODE_GO_API_KEY")
+KEY_ENVS = ("OPENCODE_GO_API_KEY",)
 BATCH = 50
 CONTEXT_CHARS = 150
 AGREEMENT_N = 500
@@ -888,7 +888,7 @@ def main(argv=None) -> int:
 
     key = next((os.environ[e] for e in KEY_ENVS if os.environ.get(e)), "")
     if not key:
-        print("no OPENCODE_GO_API_KEY_2 / OPENCODE_GO_API_KEY in the environment",
+        print("no OPENCODE_GO_API_KEY in the environment",
               file=sys.stderr)
         return 2
     labels = labels_of(con)

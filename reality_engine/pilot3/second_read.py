@@ -49,7 +49,7 @@ from reality_engine.toolbelt.cost_ledger import record_usage
 
 URL = "https://opencode.ai/zen/go/v1/chat/completions"
 MODEL = "beam-free"
-KEY_ENVS = ("OPENCODE_GO_API_KEY_2", "OPENCODE_GO_API_KEY")
+KEY_ENVS = ("OPENCODE_GO_API_KEY",)
 JOB = "pilot3_second_read"
 CALLER = "pilot3_second_read"
 REASONING_EFFORT = "low"

@@ -14,7 +14,7 @@
             input:
               - text
               - image
-        apiKeyEnv: OPENCODE_GO_API_KEY_2
+        apiKeyEnv: OPENCODE_GO_API_KEY
         baseURL: https://opencode.ai/inference/go/openai/v1
 - id: agent-default-model
   name: "@deepseek-ai/dsh-agent-default-model"

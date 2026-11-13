@@ -1,7 +1,7 @@
 """Run a JSONL of worker tasks in parallel through run_deepseek_harness and print ONE compact summary table.
 
     python -m reality_engine.scripts.dsh_batch --tasks tasks.jsonl --model beam-free [--workers 3]
-        [--account 2] [--timeout 900] [--summary summary.json] [--allow-paid] [--peak-ok]
+        [--account 1] [--timeout 900] [--summary summary.json] [--allow-paid] [--peak-ok]
 
 Each JSONL line: {"id": str, "task": str, "source_file": str (optional), "out": str, "model": str (optional)}.
 If an output parses as a JSON array whose items carry "quote" fields and source_file is given, every quote is
@@ -113,12 +113,13 @@ def main():
     ap.add_argument("--tasks", required=True, help="JSONL of {id, task, source_file?, out, model?}")
     ap.add_argument("--model", required=True, help="default Go model id for tasks without their own")
     ap.add_argument("--workers", type=int, default=3)
-    ap.add_argument("--account", choices=("1", "2"), default="2")
+    ap.add_argument("--account", default="1", help="OpenCode Go key (default 1: OPENCODE_GO_API_KEY; key 2 retired 14 Nov)")
     ap.add_argument("--timeout", type=int, default=900)
     ap.add_argument("--summary", default=None, help="summary.json path (default: next to the tasks file)")
     ap.add_argument("--allow-paid", action="store_true")
     ap.add_argument("--peak-ok", action="store_true", help="DeepSeek at peak (Mon-Fri 06:30-09:30, 11:30-15:30 IST), only after Shivam confirms")
     a = ap.parse_args()
+    a.account = h.validate_account(a.account)
 
     tasks = [json.loads(ln) for ln in Path(a.tasks).read_text(encoding="utf-8").splitlines() if ln.strip()]
     for t in tasks:

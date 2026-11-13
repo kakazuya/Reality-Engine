@@ -283,3 +283,15 @@ def test_billing_error_stops_the_run(tmp_path):
     make_dir(tmp_path)
     with pytest.raises(second_read.BillingError):
         second_read.run(tmp_path, ["NW-001"], tmp_path / "flags.jsonl", client=billing, key="k1")
+
+
+def test_key_envs_default_to_key_1_only(monkeypatch):
+    from reality_engine.query.v4 import map_vocab_beam
+    from reality_engine.scripts import resource_watchdog
+
+    assert second_read.KEY_ENVS == ("OPENCODE_GO_API_KEY",)
+    assert map_vocab_beam.KEY_ENVS == ("OPENCODE_GO_API_KEY",)
+    monkeypatch.setattr(resource_watchdog, "user_env", lambda: {"OPENCODE_GO_API_KEY": "k1-only"})
+    assert second_read.resolve_key() == "k1-only"
+    monkeypatch.setattr(resource_watchdog, "user_env", lambda: {})
+    assert second_read.resolve_key() == ""

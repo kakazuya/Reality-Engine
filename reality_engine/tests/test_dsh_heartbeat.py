@@ -356,7 +356,7 @@ class ProcessHeartbeatTests(unittest.TestCase):
             heartbeat=config,
             control_token="t" * 64,
             run_id=name,
-            metadata={"model": "fake", "effort": "xhigh", "account": "2", "permission": "read-only"},
+            metadata={"model": "fake", "effort": "xhigh", "account": "1", "permission": "read-only"},
             control_ready_timeout=timeout,
         )
 
@@ -405,7 +405,7 @@ class ProcessHeartbeatTests(unittest.TestCase):
                 heartbeat=HeartbeatConfig(idle_seconds=30, response_window_seconds=5, max_unanswered=2),
                 control_token="t" * 64,
                 run_id="text-terminated",
-                metadata={"model": "fake", "effort": "xhigh", "account": "2",
+                metadata={"model": "fake", "effort": "xhigh", "account": "1",
                           "permission": "read-only"},
                 control_ready_timeout=20,
             )
@@ -839,7 +839,7 @@ class RealDshControlIntegrationTests(unittest.TestCase):
                         ),
                         control_token=token,
                         run_id=run_id,
-                        metadata={"model": "beam-free", "effort": "", "account": "2",
+                        metadata={"model": "beam-free", "effort": "", "account": "1",
                                   "permission": "read-only", "followup_wait_seconds": 4},
                         control_ready_timeout=25,
                     )
@@ -1040,7 +1040,7 @@ class RealDshControlIntegrationTests(unittest.TestCase):
                 heartbeat=HeartbeatConfig(idle_seconds=0.5, response_window_seconds=5.0, max_unanswered=2),
                 control_token=token,
                 run_id=run_id,
-                metadata={"model": "beam-free", "effort": "", "account": "2", "permission": "read-only"},
+                metadata={"model": "beam-free", "effort": "", "account": "1", "permission": "read-only"},
                 control_ready_timeout=25,
             )
             self.assertEqual(result.rc, 0, result.detail)

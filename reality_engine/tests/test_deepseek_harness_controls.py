@@ -1,15 +1,23 @@
 """Local checks only: no credentials, subprocesses, inference or database access."""
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
 from reality_engine.scripts.go_session import worker_session_id
-from reality_engine.scripts.run_deepseek_harness import BASE_URL, build_patch, session_job
+from reality_engine.scripts.run_deepseek_harness import (
+    BASE_URL,
+    KEY_ENV,
+    build_patch,
+    session_job,
+    validate_account,
+)
 
 
 class HarnessControlsTests(unittest.TestCase):
     def test_production_patch_stays_stable(self):
-        patch = build_patch('deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY_2')
-        self.assertEqual(patch, build_patch('deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY_2'))
+        patch = build_patch('deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY')
+        self.assertEqual(patch, build_patch('deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY'))
         self.assertIn('reasoningEffort: xhigh', patch)
         self.assertIn('thinkingFormat: deepseek', patch)
         self.assertIn(BASE_URL, patch)
@@ -17,8 +25,8 @@ class HarnessControlsTests(unittest.TestCase):
         self.assertIn('- id: mcp-data-gather\n  disabled: true', patch)
 
     def test_capped_probe_disables_auxiliary_title_request(self):
-        patch = build_patch('deepseek-v4.1-flash', 'off', 'OPENCODE_GO_API_KEY_2', 128,
-                            'http://127.0.0.1:12345/go2/v1')
+        patch = build_patch('deepseek-v4.1-flash', 'off', 'OPENCODE_GO_API_KEY', 128,
+                            'http://127.0.0.1:12345/go1/v1')
         self.assertIn('maxTokens: 128', patch)
         self.assertIn('reasoningEffort: off', patch)
         self.assertIn('off: null', patch)
@@ -27,14 +35,14 @@ class HarnessControlsTests(unittest.TestCase):
 
     def test_accounts_have_distinct_session_headers(self):
         one = build_patch('deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY')
-        two = build_patch('deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY_2')
+        alt = build_patch('deepseek-v4.1-flash', 'xhigh', 'ALT_KEY_ENV')
         def header(patch):
             return next(line.strip() for line in patch.splitlines() if 'x-opencode-session:' in line)
-        self.assertNotEqual(header(one), header(two))
+        self.assertNotEqual(header(one), header(alt))
 
     def test_caps_can_be_changed_without_changing_routing_session(self):
-        low = build_patch('deepseek-v4.1-flash', 'low', 'OPENCODE_GO_API_KEY_2', 64)
-        high = build_patch('deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY_2', 1024)
+        low = build_patch('deepseek-v4.1-flash', 'low', 'OPENCODE_GO_API_KEY', 64)
+        high = build_patch('deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY', 1024)
         self.assertIn('maxTokens: 64', low)
         self.assertIn('maxTokens: 1024', high)
         self.assertEqual(next(l for l in low.splitlines() if 'x-opencode-session:' in l),
@@ -42,7 +50,7 @@ class HarnessControlsTests(unittest.TestCase):
 
     def test_heartbeat_patch_loads_local_control_plugin_without_secrets(self):
         patch = build_patch(
-            'deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY_2',
+            'deepseek-v4.1-flash', 'xhigh', 'OPENCODE_GO_API_KEY',
             control={
                 'plugin': Path('reality_engine/scripts/dsh_heartbeat_control.mjs').resolve(),
                 'endpoint': Path('C:/tmp/run.control.json'),
@@ -54,10 +62,9 @@ class HarnessControlsTests(unittest.TestCase):
         self.assertNotIn('DSH_HEARTBEAT_TOKEN', patch)
         self.assertNotIn('X-DSH-Heartbeat-Token', patch)
 
-
     def test_one_provider_session_per_job(self):
         """T-069: two job ids give two ids; the same job id gives the same id twice."""
-        model, key = 'deepseek-v4.1-flash', 'OPENCODE_GO_API_KEY_2'
+        model, key = 'deepseek-v4.1-flash', 'OPENCODE_GO_API_KEY'
         job_one = '20261104T184919Z-f7c4d41b'
         job_two = '20261104T195121Z-636c4920'
 
@@ -78,6 +85,28 @@ class HarnessControlsTests(unittest.TestCase):
         self.assertEqual(session_job(None, 'out/a.md'), session_job(None, 'out/a.md'))
         self.assertNotEqual(session_job(None, 'out/a.md'), session_job(None, 'out/b.md'))
         self.assertEqual(session_job('job-1', 'out/a.md'), 'job-1')
+
+    def test_account_1_default_and_account_2_refused(self):
+        self.assertEqual(KEY_ENV, {"1": "OPENCODE_GO_API_KEY"})
+        self.assertEqual(validate_account("1"), "1")
+        with self.assertRaises(SystemExit) as ctx:
+            validate_account("2")
+        self.assertIn("Go key 2 retired 14 Nov", str(ctx.exception))
+        with self.assertRaises(SystemExit):
+            validate_account("9")
+
+    def test_cli_account_2_refused_for_harness_and_batch(self):
+        for mod, extra in (
+            ("reality_engine.scripts.run_deepseek_harness", ["--model", "beam-free", "--task", "hi", "--out-file", "out.md"]),
+            ("reality_engine.scripts.dsh_batch", ["--tasks", "tasks.jsonl", "--model", "beam-free"]),
+        ):
+            with self.subTest(mod=mod):
+                proc = subprocess.run(
+                    [sys.executable, "-m", mod, *extra, "--account", "2"],
+                    capture_output=True, text=True,
+                )
+                self.assertNotEqual(proc.returncode, 0)
+                self.assertIn("Go key 2 retired 14 Nov", proc.stderr)
 
 
 if __name__ == '__main__':

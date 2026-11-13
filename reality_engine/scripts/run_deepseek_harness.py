@@ -2,12 +2,12 @@
 as a worker.
 
     python -m reality_engine.scripts.run_deepseek_harness --model beam-free \
-        --task-file task.md --out-file out.md [--cwd DIR] [--timeout 900] [--account 1|2] [--permission read-only]
+        --task-file task.md --out-file out.md [--cwd DIR] [--timeout 900] [--account 1] [--permission read-only]
 
 dsh is installed with bun (`bun add -g @deepseek-ai/dsh`, Shivam 2026-10-20: bun only, never npm). Go needs an
 `x-opencode-session: <uuid>` header on every request (else 400 MissingSessionID). dsh's pi-ai provider route takes
 `headers`, so each run writes a temporary `--patch` overlay that declares an `opencode-go` route with a stable session id
-(one per worker: the job id, or the resolved `--out-file` for a hand run; T-069) and selects the model. The key is read from the Windows user env (OPENCODE_GO_API_KEY or _2) and never printed.
+(one per worker: the job id, or the resolved `--out-file` for a hand run; T-069) and selects the model. The key is read from the Windows user env (OPENCODE_GO_API_KEY) and never printed.
 
 The task goes in on stdin and the final answer goes to --out-file. dsh's stderr (reasoning, `dsh: <code>` errors) goes
 to <out-file>.log. The exit code is dsh's (0 = task completed, 1 = failed), 124 = explicit hard timeout, 125 = heartbeat
@@ -94,7 +94,17 @@ def off_peak(now=None):
     u = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
     return not (u.weekday() < 5 and (1 <= u.hour < 4 or 6 <= u.hour < 10))
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
-KEY_ENV = {"1": "OPENCODE_GO_API_KEY", "2": "OPENCODE_GO_API_KEY_2"}
+KEY_ENV = {"1": "OPENCODE_GO_API_KEY"}
+
+
+def validate_account(account):
+    """Validate Go account selector; key 2 retired 14 Nov 2026."""
+    value = str(account)
+    if value == "2":
+        sys.exit("Go key 2 retired 14 Nov")
+    if value not in KEY_ENV:
+        sys.exit(f"--account must be '1' (got {account!r})")
+    return value
 
 
 def build_patch(model, effort, key_env, max_tokens=None, base_url=BASE_URL, control=None, workspace=None,
@@ -206,7 +216,7 @@ def main():
     ap.add_argument("--status-file", help="machine-readable supervision record (default: <out-file>.status.json)")
     ap.add_argument("--control-token-env",
                     help="name of an environment variable holding the per-run control token (default: generate one)")
-    ap.add_argument("--account", choices=("1", "2"), default="2", help="which OpenCode Go key (default 2; account 1 is exhausted)")
+    ap.add_argument("--account", default="1", help="which OpenCode Go key (default 1: OPENCODE_GO_API_KEY; key 2 retired 14 Nov)")
     ap.add_argument("--permission", choices=("read-only", "workspace-write", "danger-full-access"),
                     default="read-only", help="dsh sandbox mode (default read-only: workers read, Claude writes)")
     ap.add_argument("--allow-paid", action="store_true", help="allow a paid Go model (needs Shivam's go-ahead)")
@@ -222,6 +232,7 @@ def main():
     ap.add_argument("--data-job", action="store_true",
                     help="keep the data-gather MCP server enabled (data jobs only; code workers skip it)")
     a = ap.parse_args()
+    a.account = validate_account(a.account)
 
     model, _, effort = a.model.partition("~")
     if model not in FREE | PAID:

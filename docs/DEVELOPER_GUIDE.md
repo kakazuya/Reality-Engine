@@ -547,7 +547,7 @@ value as the header, so both are computed by one shared function. The plugin pas
 started by hand derives it from the resolved `--out-file` path, so repeating a command repeats its id and a different
 out-file gets a different one. HP jobs (`reality_engine/scripts/hp_worker.py`) do not call `go_session` directly;
 their out-file is `jobs\<job_id>\result.md`, so the harness fallback gives each HP job its own stable id.
-`session_id(job, model, key, lane)` keeps its signature for every other caller. Tests, one file per process and no
+`session_id(job, model, key, lane)` keeps its signature for every other caller. OpenCode Go key 2 retired 14 Nov 2026: key 1 (`OPENCODE_GO_API_KEY`, `account='1'`) is the only default/fallback and `account='2'` is refused (`Go key 2 retired 14 Nov`) across `plugins/dsh-worker/server/core.py`, `plugins/dsh-worker/server/plugin_server.py`, `run_deepseek_harness`, `dsh_batch`, `hp_worker`, `second_read`, `map_vocab_beam`, `promote_vocab`, `extract60`, `concall_deepseek`, `concall_pilot`, `deepseek_heartbeat`, `extract_deck_figures`, `new_reader_check`, and `truth_judge`. Tests, one file per process and no
 model run: `python -m pytest reality_engine/tests/test_dsh_worker_plugin.py -q` and
 `python -m pytest reality_engine/tests/test_deepseek_harness_controls.py -q`.
 

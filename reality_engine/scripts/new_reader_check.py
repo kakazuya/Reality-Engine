@@ -93,7 +93,7 @@ def add_go_reader(model, note):
     if model not in readers:
         readers.insert(readers.index("gemma-4-31b-it") if "gemma-4-31b-it" in readers else len(readers), model)
     prof["models"][model] = {"api": "opencode-go", "prompt": "plain", "slots": 32, "rpm": None, "tpm": None, "rpd": None,
-                             "per_key": False, "test": note, "go_keys": ["OPENCODE_GO_API_KEY", "OPENCODE_GO_API_KEY_2"]}
+                             "per_key": False, "test": note, "go_keys": ["OPENCODE_GO_API_KEY"]}
     PROFILES.write_text(json.dumps(prof, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 

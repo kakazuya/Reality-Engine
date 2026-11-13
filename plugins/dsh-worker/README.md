@@ -16,10 +16,10 @@ provider route, credentials, or Codex's main model.
 - Windows job objects, `taskkill` (with a native parent-PID fallback for
   restricted tokens) and DPAPI (`CryptProtectData`, ctypes) for owned-tree
   containment/cancellation and the persisted per-job control token
-- Existing dsh installation and the launcher's inherited OpenCode Go account 2
-  environment (`OPENCODE_GO_API_KEY_2`). The plugin never reads or writes that
-  key; it only passes `--account 2`, or `--account 1` (`OPENCODE_GO_API_KEY`) when
-  `start_worker` is called with `account='1'` (MSI and HP alike since 7 Nov 2026). Keys stay in the environment, never in this
+- Existing dsh installation and the launcher's inherited OpenCode Go account 1
+  environment (`OPENCODE_GO_API_KEY`). The plugin never reads or writes that
+  key; it only passes `--account 1` (MSI and HP alike; Go key 2 retired 14 Nov 2026
+  and `account='2'` is refused). Keys stay in the environment, never in this
   manifest or a job record.
 
 Check with the pinned interpreter:
@@ -121,7 +121,7 @@ attribution.
 
 ## Start behavior
 
-`start_worker` defaults to `deepseek-v4.1-flash`, `max`, account 2, and refuses
+`start_worker` defaults to `deepseek-v4.1-flash`, `max`, account 1 (key 2 retired 14 Nov), and refuses
 DeepSeek starts Monday-Friday 06:30-09:30 / 11:30-15:30 IST. `model` picks one
 of `core.WORKER_MODELS`: `model='beam-free'` (Shivam, 10 Nov: Beam is the
 peak-hours worker, code included) runs Beam on Go through the same harness,
@@ -339,7 +339,7 @@ that had ended still reports `finished` when the poller has died;
 `worker_result` re-fetches a final result that an earlier ssh timeout left
 missing. HP jobs have no dsh control channel, so `message_worker` returns
 `not_supported_on_hp` instead of failing on a missing control record. HP keeps
-its own launcher defaults (`reality_engine/scripts/hp_worker.py`, described in the `start_worker` text in `server/plugin_server.py`): Go account 2 (key 1 hit its limit, 6 Nov) and a 1800 s hard stop unless
+its own launcher defaults (`reality_engine/scripts/hp_worker.py`, described in the `start_worker` text in `server/plugin_server.py`): Go account 1 (key 2 retired 14 Nov) and a 1800 s hard stop unless
 `hard_timeout_seconds` is passed.
 
 ## Worktree writers
@@ -550,7 +550,7 @@ file is **not** completion. Use these instead:
 
 `start_worker` also refuses a start within 120 s of a peak window
 (`peak_hours_imminent`), and, for the real launcher, refuses up front when the
-dsh binary (`dsh_missing`) or `OPENCODE_GO_API_KEY_2` (`api_key_missing`,
+dsh binary (`dsh_missing`) or `OPENCODE_GO_API_KEY` (`api_key_missing`,
 presence check only) is absent, instead of launching a job that fails seconds
 later. An unreadable `status.json` (e.g. briefly locked by antivirus) is phase
 `unknown`, never `lost`.

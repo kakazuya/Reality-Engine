@@ -1477,10 +1477,9 @@ def main(argv=None) -> int:
         from reality_engine.scripts.resource_watchdog import user_env
 
         env = user_env()
-        key = next((env[e] for e in ("OPENCODE_GO_API_KEY_2", "OPENCODE_GO_API_KEY")
-                    if env.get(e)), "")
+        key = env.get("OPENCODE_GO_API_KEY") or ""
         if not key:
-            print("no OPENCODE_GO_API_KEY_2 / OPENCODE_GO_API_KEY in the environment",
+            print("no OPENCODE_GO_API_KEY in the environment",
                   file=sys.stderr)
             return 2
         try:
