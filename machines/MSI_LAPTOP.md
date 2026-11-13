@@ -15,6 +15,9 @@ Main machine, hostname `Sumit`. Runs Claude, dsh workers, merges, GPU work and s
 ## Factor studies (T-210, 14 Nov 2026)
 `reality_engine/research/factor_deep.py` + `reality_engine/tests/test_factor_deep.py` (13 synthetic tests) deepen the T-207 reward study: per-sector rewarded sets, exposure/IC pair correlations and clusters, per-company empirical-Bayes shrinkage, sector Fama-MacBeth redundancy, 595-pair tercile interactions with a 20-permutation gate, sparse stepwise combinations, and a pilot-store KPI arm. Report `docs/research/T-210_factor_deep_study.md`. Full panel run needs >= 7 GB free RAM (DuckDB snapshot build); it did not start on 14 Nov because 89 one-minute samples (00:12-01:42) ranged 2.6-4.7 GB with three workers running.
 
+## Printed results reader (T-208 round 3, 14 Nov 2026)
+`reality_engine/v2/page_words.py` (`dictionary`, `dictionary_score`, `quality`), `reality_engine/pilot3/comparatives.py` (`match_line`/`_fuzzy_score`/`_prefix_score`, `_continues`/`_data_labels`, `read_page(ocr=)`, `_table_rows(ocr=, fill_table=)`, `run(store_db=, ocr_dbs=)`), `reality_engine/pilot3/build.py` (comparatives gets `store_db=out` and `ocr_inputs`) and `reality_engine/tests/test_comparatives_wrapped_ocr.py` (6 tests): a results page whose text layer scores under 0.75 on the label dictionary is read from its OCR words, OCR cells only fill what the text layer lost and must reconcile, and a wrapped label is joined before it names a row. Proof runs: `.tmp/store_diff_t208r3_{12,13,14,15}` (pvrinox 1.20 %, kei 0.96 %, medanta 1.52 %, bluestar 1.51 %; gates 0, no longer served 0); rules and numbers in `docs/DEVELOPER_GUIDE.md` "T-208 round 3".
+
 ## reality-data store routing (T-203, 12 Nov 2026)
 `plugins/reality-data/server/lookups_pilot3.py` resolves each `pilot3_*` call to the registered store that holds
 the symbol (`REALITY_PILOT3_STORES`, default `D:/RealityEngine/stores.json`); `core.py` (`db_path`,

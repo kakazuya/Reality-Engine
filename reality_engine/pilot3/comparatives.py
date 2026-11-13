@@ -114,12 +114,16 @@ def lexicon() -> list[tuple[str, str]]:
     return _LEX
 
 
-def _fuzzy_score(pattern: str, label: str) -> float:
-    """Every token of the pattern matched by a distinct label token in the same order (``tot il`` -> ``total``)."""
+def _fuzzy_score(pattern: str, label: str) -> tuple[float, int]:
+    """Every token of the pattern matched by a distinct label token in the same order (``tot il`` -> ``total``).
+
+    Returns ``(score, first matched label token)`` so a wrapped label can require the match to start in its own
+    first line (T-208 round 3).  A long word skipped between two matched words makes the label a different line:
+    ``Other comprehensive income`` is not ``other income``, while an OCR split (``bef ore``) still matches."""
     want, have = pattern.split(), label.split()
     if len(want) < 2:
-        return 0.0
-    total, last, first = 0.0, -1, None
+        return 0.0, 0
+    total, last, first, used = 0.0, -1, None, []
     for token in want:
         best, at = 0.0, None
         for i in range(last + 1, len(have)):
@@ -127,20 +131,46 @@ def _fuzzy_score(pattern: str, label: str) -> float:
             if score > best:
                 best, at = score, i
         if at is None or best < 0.74:
-            return 0.0
+            return 0.0, 0
         last = at
         first = at if first is None else first
+        used.append(at)
         total += best
     if first is not None and (last - first + 1) > len(want) + 1:   # a couple of words apart at most
+        return 0.0, 0
+    skipped = [have[i] for i in range(first or 0, last + 1) if i not in used]
+    if skipped and len(want) < 3 and any(len(word) > 3 and word.isalpha() for word in skipped):
+        return 0.0, 0                  # a word inside a two-token phrase is a different line: "other comprehensive
+    return total / len(want), (first or 0)   # income" is not "other income"; "tol 11 expenses" is OCR noise
+
+
+def _prefix_score(pattern: str, label: str) -> float:
+    """An OCR-truncated label that prints only the start of a pattern: ``Revenue fro`` -> ``revenue from operations``.
+
+    Only the printed tokens are scored, one small penalty per pattern token the scan lost, so the full phrase always
+    beats a truncation of it.  The value it carries is still stored only when the page's arithmetic confirms it."""
+    want, have = pattern.split(), label.split()
+    if len(have) < 2 or len(have) > len(want) or len(want) - len(have) > 2:
         return 0.0
-    return total / len(want)
+    total = 0.0
+    for token, printed in zip(want, have):
+        score = SequenceMatcher(None, token, printed).ratio()
+        if score < 0.74:
+            return 0.0
+        total += score
+    return total / len(have) * (1.0 - 0.1 * (len(want) - len(have)))
 
 
-def match_line(label: str) -> str | None:
+def match_line(label: str, anchor: int | None = None, prefix_ok: bool = False) -> str | None:
     """Canonical line item for a printed label, or None.  The most specific pattern wins: more matched tokens
     first (``total revenue from operalions`` -> ``revenue_from_operations``, not ``total_income``), then an
     exact phrase, then OCR-tolerant token similarity.  A percentage or margin row never maps (KEC's
-    ``Operating Margin excluding exceptional item (%)`` is not the exceptional-items rupee line)."""
+    ``Operating Margin excluding exceptional item (%)`` is not the exceptional-items rupee line).
+
+    ``anchor`` (T-208 round 3): the deepest label token a match may start at.  A wrapped label is matched with
+    ``anchor=2`` so its continuation line alone ("... exceptional items and tax" under "Profit before share in net
+    profit of joint venture,") cannot name the row.  ``prefix_ok`` lets an OCR-truncated label match the start of a
+    pattern; its figure is kept only when the page's arithmetic confirms it."""
     if _PCT_LABEL.search((label or "").lower()):
         return None
     text = _norm(label)
@@ -150,21 +180,33 @@ def match_line(label: str) -> str | None:
     best, found = 0.0, None
     for pattern, item in lexicon():
         tokens = pattern.split()
+        start = 0
         if len(tokens) == 1:
             if pattern in words:
                 score = 1.0
+                start = words.index(pattern)
             elif len(pattern) >= 4:      # an OCR-mangled single word still matches ("Baic" -> basic)
-                ratio = max((SequenceMatcher(None, pattern, word).ratio() for word in words if len(word) >= 4),
-                            default=0.0)
+                ratio, at = 0.0, 0
+                for i, word in enumerate(words):
+                    if len(word) >= 4:
+                        got = SequenceMatcher(None, pattern, word).ratio()
+                        if got > ratio:
+                            ratio, at = got, i
                 score = ratio if ratio >= 0.78 else 0.0
+                start = at
             else:
                 score = 0.0
         elif pattern in text:
             score = 1.02
+            start = len(text[: text.find(pattern)].split())
         else:
-            score = _fuzzy_score(pattern, text)
+            score, start = _fuzzy_score(pattern, text)
+            if score < 0.8 and prefix_ok:
+                score, start = _prefix_score(pattern, text), 0
             if score < 0.8:
                 continue
+        if anchor is not None and start > anchor:
+            continue
         score *= len(tokens)
         if score > best:
             best, found = score, item
@@ -603,13 +645,50 @@ def _layout_hint(header_rows, anchors) -> list[str] | None:
     return None
 
 
-def read_page(rows) -> dict | None:
+def _continues(previous: str, label: str) -> bool:
+    """Does ``label`` continue the label line ``previous``?  A wrapped label's second line starts mid-phrase: a
+    lower-case word (``and tax``, ``exceptional items and tax``) after a line that ends mid-sentence.  A
+    capitalised line is a new heading -- "Other comprehensive income/(expense)" is a section, not the first line of
+    the row that follows it -- and so is a numbered row printed under a heading ending with a comma."""
+    first = (label.split() or [""])[0]
+    if not first:
+        return False
+    if first in ("and", "or", "of"):
+        return True
+    return first[0].islower() and previous.rstrip().endswith((",", "and", "or", "of", "the"))
+
+
+def _data_labels(data_rows) -> list[tuple[str, bool]]:
+    """The label of every data row, with a wrapped label line joined to the row it belongs to (T-208 round 3).
+
+    A line that prints no number and that the next numbered row continues (``_continues``) is the first line of
+    that row's label: p9 of a results PDF prints ``Profit before share in net profit /(loss) of joint venture,``
+    and only then ``exceptional items and tax (1-2) 3,511 ...``.  Matching the continuation alone named the row
+    ``exceptional_items``; the joined label is matched with ``anchor=2`` so a phrase that lives only in the
+    continuation cannot name the row."""
+    out: list[tuple[str, bool]] = []
+    previous_label, previous_numbered = "", True
+    for row in data_rows:
+        label = _label(row).strip()
+        numbered = bool(_tokens(_strip_row_number(row)))
+        if numbered and not previous_numbered and _continues(previous_label, label):
+            out.append(((previous_label + " " + label).strip(), True))
+        else:
+            out.append((label, False))
+        previous_label, previous_numbered = label, numbered
+    return out
+
+
+def read_page(rows, ocr: bool = False) -> dict | None:
     """A P&L table page rebuilt from word-box ``rows``, or None when the page is not one.
 
     The page needs a title with "results" (OCR tolerant), no US-dollar unit, no auditor's report, no segment
     heading, a header of period words and at least 8 rows with 3 or more numeric columns; balance sheet, cash
     flow, ratio and segment pages are never read here.  It must carry a P&L shape -- an income line and a
-    profit line -- so a notes page whose few matched rows are costs is refused."""
+    profit line -- so a notes page whose few matched rows are costs is refused.
+
+    ``ocr`` (T-208 round 3): the rows are OCR words, so a truncated label may match the start of a pattern; the
+    figure it carries is stored only when the page's arithmetic confirms it (``_table_rows``)."""
     if not rows:
         return None
     text = " ".join(w[4] for row in rows for w in row)
@@ -629,12 +708,13 @@ def read_page(rows) -> dict | None:
         return None
     first = None
     for i, row in enumerate(rows):
-        if match_line(_label(row)):
+        if match_line(_label(row), prefix_ok=ocr):
             first = i
             break
     if first is None:
         return None
     header_rows, data_rows = rows[:first], rows[first:]
+    labels = _data_labels(data_rows)
     rows3 = sum(1 for row in data_rows if len(_tokens(_strip_row_number(row))) >= 3)
     if rows3 < 8:
         return None
@@ -644,26 +724,30 @@ def read_page(rows) -> dict | None:
     if _less_before_profit(data_rows):
         return None
     values: dict = defaultdict(lambda: defaultdict(list))
-    labels: dict[str, str] = {}
+    captions: dict[str, str] = {}
     for index, row in enumerate(data_rows):
-        item = match_line(_label(row))
+        label, joined = labels[index]
+        # A printed label names the row only from its own start (a prefix word such as "Net" or "(b)" is allowed,
+        # a phrase buried mid-label is not: "Profit/(Loss) after exceptional item and tax from discontinued
+        # operations" is not the exceptional-items line; T-208 round 3).
+        item = match_line(label, anchor=2, prefix_ok=ocr)
         if item is None:
             continue
         cells = _assign_tokens(row, anchors)
         if len(cells) < 2:          # a badly scanned table keeps a row whose cells partly print (MARUTI)
             continue
-        labels.setdefault(item, _label(row).strip())
+        captions.setdefault(item, label.strip())
         quote = " ".join(w[4] for w in row)
         for at, token in cells.items():
             token["quote"] = quote
             token["row"] = index
-            token["label"] = _label(row)
+            token["label"] = label
             values[at][item].append(token)
     if not values or not _pl_shape(values, rows3):
         return None
     decimals = _decimals([t["text"] for col in values.values() for tokens in col.values() for t in tokens])
     return {"anchors": anchors, "dates": _header_dates(header_rows, len(anchors)), "values": values,
-            "labels": labels, "text": text, "head": head, "header_rows": header_rows[:12],
+            "labels": captions, "text": text, "head": head, "header_rows": header_rows[:12],
             "decimals": decimals, "scale": _unit(text), "hint": _layout_hint(header_rows, anchors)}
 
 
@@ -816,15 +900,21 @@ def _shares(conn, symbol: str, basis: str, day: str) -> float | None:
     return row[0] if row and row[0] else None
 
 
-def run(conn: sqlite3.Connection, symbols=None, review_path: Path | str | None = None) -> dict:
-    """Read every ``results`` document's P&L pages for ``symbols`` and rewrite their ``fin_quarter_printed`` rows."""
+def run(conn: sqlite3.Connection, symbols=None, review_path: Path | str | None = None, store_db=None,
+        ocr_dbs=()) -> dict:
+    """Read every ``results`` document's P&L pages for ``symbols`` and rewrite their ``fin_quarter_printed`` rows.
+
+    ``store_db`` + ``ocr_dbs`` (T-208 round 3): the store whose ``doc`` table names each page's PDF and the OCR
+    databases holding its OCR words.  When given, a page whose text layer the label dictionary scores under 0.75
+    is read from its OCR words (see ``page_words.words_for``), and those figures are kept only when the page's
+    own arithmetic confirms them."""
     schema.ensure(conn, (TABLE,))       # the part's own table: created when absent, never rebuilt here
     want = [s.strip().upper() for s in (symbols or profile.symbols()) if s and s.strip()]
     review: list[dict] = []
     stats: dict = {}
     for symbol in want:
         conn.execute(f"DELETE FROM {TABLE} WHERE symbol=?", (symbol,))
-        stats[symbol] = _extract_symbol(conn, symbol, review)
+        stats[symbol] = _extract_symbol(conn, symbol, review, store_db=store_db, ocr_dbs=ocr_dbs)
     conn.commit()
     if review_path:
         path = Path(review_path)
@@ -839,7 +929,23 @@ def run(conn: sqlite3.Connection, symbols=None, review_path: Path | str | None =
     return stats
 
 
-def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict]) -> dict:
+def _ocr_page_rows(store_db, doc_key: str, page_no: int, ocr_dbs) -> list | None:
+    """The page's OCR word rows when its text layer scores under the label dictionary, else None (T-208 round 3)."""
+    if store_db is None:
+        return None
+    from reality_engine.v2 import page_words
+
+    try:
+        got = page_words.words_for(store_db, doc_key, page_no, ocr_dbs)
+    except Exception:                      # a store without doc/doc_page must not stop the part
+        return None
+    if not got.source.startswith("ocr") or not got.words:
+        return None
+    return rows_from_words(got.words)
+
+
+def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], store_db=None,
+                    ocr_dbs=()) -> dict:
     started = time.time()
     isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
     isin = isin[0] if isin else None
@@ -875,11 +981,23 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict]) -
                 entry["pages"] += 1
                 pages += 1
                 word_rows = rows_from_words(_page_words(pdf[page_no - 1]))
+                table = None
+                fill_table = None
+                ocr_all = False
+                ocr_rows = _ocr_page_rows(store_db, doc_key, page_no, ocr_dbs) if ocr_dbs else None
+                if ocr_rows:
+                    base = read_page(word_rows) if word_rows else None
+                    ocr_table = read_page(ocr_rows, ocr=True)
+                    if base is not None:
+                        table, fill_table = base, ocr_table      # the text layer leads; OCR fills what it lost
+                    elif ocr_table is not None:
+                        word_rows, table, ocr_all = ocr_rows, ocr_table, True
+                if table is None and word_rows:
+                    table = read_page(word_rows)
                 if not word_rows:
-                    entry["empty_pages"].append(page_no)          # no text layer: needs OCR, never guessed
+                    entry["empty_pages"].append(page_no)          # no text layer and no readable OCR
                     previous = None
                     continue
-                table = read_page(word_rows)
                 if table is None:
                     table = _continuation(word_rows, previous)
                 if table is None:
@@ -888,7 +1006,8 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict]) -
                 tables += 1
                 entry["tables"] += 1
                 previous = table
-                new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review)
+                new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review,
+                                  ocr=ocr_all, fill_table=fill_table)
                 entry["rows"] += len(new)
                 for row in new:
                     entry["basis"][row[7]] = entry["basis"].get(row[7], 0) + 1
@@ -1132,8 +1251,83 @@ def _derive_tax(columns: dict) -> None:
                         "quote": f"{cur['quote']} | {dfr['quote']}", "item": "tax", "row": None, "derived": True}
 
 
-def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review) -> list[tuple]:
-    """Resolve this table's roles, parse its cells, run the checks, and return the rows to store."""
+def _parsed_cells(values, roles, chosen, decimals, eps_dec, scale, captions, review, symbol, doc_key, page_no,
+                  ocr: bool = False) -> dict[str, dict]:
+    """The parsed cells of one table, one per (column role, line item); ``ocr`` marks a cell read from OCR words."""
+    columns: dict[str, dict] = {}
+    for at, role in enumerate(roles):
+        if role is None:
+            continue
+        cells: dict = {}
+        for item, tokens in values.get(at, {}).items():
+            if item == "face_value":
+                continue
+            best = next((t for t in tokens if t["row"] == chosen.get(item)), tokens[0])
+            parsed = _parse_cell(item, best["text"], decimals, eps_dec)
+            if parsed is None:
+                review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
+                               "column_role": role, "raw_token": best["raw"], "check": "unreadable", "detail": ""})
+                continue
+            cell = {"value": parsed[0] * (1.0 if item.startswith("eps_") else scale),
+                    "raw": best["raw"], "repaired": parsed[1], "caption": captions.get(item, ""),
+                    "quote": best["quote"], "item": item, "row": best["row"]}
+            if ocr:
+                cell["ocr"] = True
+            cells[item] = cell
+        columns[role] = cells
+    return columns
+
+
+def _assign_status(columns, end: str, xbrl: dict, basis: str, decimals: int, scale: float,
+                   eps_dec: int) -> None:
+    """Set every cell's status (xbrl_ok beats sum_ok beats unchecked) and its period."""
+    for role, cells in columns.items():
+        period_end, ptype = _role_period(role, end)
+        for item, cell in cells.items():
+            if item == "_fails":
+                continue
+            cell["status"] = "xbrl_ok" if _xbrl_ok(
+                xbrl, basis, period_end, item, cell["value"], _tol(item, decimals, scale, cell["raw"], eps_dec)) \
+                else cell.get("ident", "unchecked")
+            cell["period_end"], cell["ptype"] = period_end, ptype
+
+
+def _derive_revenue(columns) -> None:
+    """No row prints revenue, total income - other income does (HINDUNILVR); never for a bank or an insurer, whose
+    "revenue" is interest income / net premium and has its own row."""
+    for role, cells in columns.items():
+        if ({"interest_income", "operating_profit", "net_premium"} & set(cells)) and \
+                "revenue_from_operations" not in cells:
+            continue
+        if "revenue_from_operations" not in cells and "total_income" in cells and "other_income" in cells:
+            ti, oi = cells["total_income"], cells["other_income"]
+            cells["revenue_from_operations"] = {
+                "value": ti["value"] - oi["value"], "raw": f"{ti['raw']} {oi['raw']}", "item": "revenue_from_operations",
+                "caption": f"{ti['caption']} - {oi['caption']}", "quote": f"{ti['quote']} | {oi['quote']}",
+                "ident": "sum_ok", "repaired": False, "row": None, "derived": True,
+                "period_end": ti["period_end"], "ptype": ti["ptype"], "status": "sum_ok"}
+
+
+def _cross_column_marks(columns, end: str, rupee_tol: float) -> None:
+    """Across columns on a Q2 table: current + preceding = ytd marks every cell of the identity ``sum_ok``."""
+    if end[5:7] != "09" or not {"ytd", "current", "preceding"} <= set(columns):
+        return
+    for item in (set(columns["current"]) & set(columns["preceding"]) & set(columns["ytd"])) - {"_fails"}:
+        cur, pre, ytd = columns["current"][item], columns["preceding"][item], columns["ytd"][item]
+        ok = abs(cur["value"] + pre["value"] - ytd["value"]) <= (0.02 if item == "eps_basic" else rupee_tol)
+        if ok:
+            for cell in (cur, pre, ytd):
+                cell.setdefault("ident", "sum_ok")
+
+
+def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review, ocr: bool = False,
+                fill_table: dict | None = None) -> list[tuple]:
+    """Resolve this table's roles, parse its cells, run the checks, and return the rows to store.
+
+    T-208 round 3: on a results page whose text layer is garbled (``ocr``) the figures read from OCR words are
+    kept only when the page's own arithmetic or the XBRL confirms them; a clean text layer is read exactly as
+    before.  ``fill_table`` is the same page read from the text layer: its value replaces an OCR cell the checks
+    did not confirm, and it keeps the old rule (a printed figure may be stored unchecked)."""
     anchors = table["anchors"]
     head_text = " ".join(w[4] for row in (table.get("header_rows") or []) for w in row)
     end = _period_end(table.get("dates"), known_at, head_text or table["text"])
@@ -1164,24 +1358,23 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     eps_dec = _eps_decimals(values)
     shares = _shares(conn, symbol, basis, known_at)
     chosen = _choose_rows(values, roles, end, xbrl, basis, scale, decimals, rupee_tol, eps_dec)
-    columns: dict[str, dict] = {}
-    for at, role in enumerate(roles):
-        if role is None:
-            continue
-        cells = {}
-        for item, tokens in values.get(at, {}).items():
-            if item == "face_value":
-                continue
-            best = next((t for t in tokens if t["row"] == chosen.get(item)), tokens[0])
-            parsed = _parse_cell(item, best["text"], decimals, eps_dec)
-            if parsed is None:
-                review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
-                               "column_role": role, "raw_token": best["raw"], "check": "unreadable", "detail": ""})
-                continue
-            cells[item] = {"value": parsed[0] * (1.0 if item.startswith("eps_") else scale),
-                           "raw": best["raw"], "repaired": parsed[1], "caption": table["labels"].get(item, ""),
-                           "quote": best["quote"], "item": item, "row": best["row"]}
-        columns[role] = cells
+    columns = _parsed_cells(values, roles, chosen, decimals, eps_dec, scale, table["labels"], review,
+                            symbol, doc_key, page_no, ocr=ocr)
+    fill: dict[str, dict] = {}
+    if fill_table is not None:
+        fill_choice = _roles(fill_table.get("dates"), end, len(fill_table["anchors"]), fill_table["values"],
+                             xbrl, basis_hint, fill_table["scale"], fill_table["decimals"], fill_table.get("hint"))
+        if fill_choice is not None and fill_choice["basis"] == basis and fill_choice["scale"] == scale \
+                and set(fill_choice["roles"]) == set(roles):
+            fill_dec = fill_table["decimals"]
+            fill_eps = _eps_decimals(fill_table["values"])
+            fill_chosen = _choose_rows(fill_table["values"], fill_choice["roles"], end, xbrl, basis, scale,
+                                       fill_dec, _tol("total_income", fill_dec, scale), fill_eps)
+            fill = _parsed_cells(fill_table["values"], fill_choice["roles"], fill_chosen, fill_dec, fill_eps,
+                                 scale, fill_table["labels"], review, symbol, doc_key, page_no, ocr=True)
+            for role in columns:
+                for item, cell in fill.get(role, {}).items():
+                    columns[role].setdefault(item, cell)
     _derive_tax(columns)
     bracketed = _debit_costs(columns)
     if bracketed is None:
@@ -1198,25 +1391,9 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                        "column_role": None, "raw_token": None, "check": "not_pl_costs",
                        "detail": "every cost in brackets but no identity holds"})
         return []
-    # across columns: current + preceding = ytd on a Q2 table; EPS current + preceding ~ ytd within 0.02
-    if end[5:7] == "09" and {"ytd", "current", "preceding"} <= set(columns):
-        for item in (set(columns["current"]) & set(columns["preceding"]) & set(columns["ytd"])) - {"_fails"}:
-            cur, pre, ytd = columns["current"][item], columns["preceding"][item], columns["ytd"][item]
-            ok = abs(cur["value"] + pre["value"] - ytd["value"]) <= (0.02 if item == "eps_basic" else rupee_tol)
-            if ok:
-                for cell in (cur, pre, ytd):
-                    cell.setdefault("ident", "sum_ok")
-    # status per cell: xbrl_ok beats sum_ok beats unchecked; a failed or unconfirmed-repaired cell stores nothing
-    out: list[tuple] = []
+    _cross_column_marks(columns, end, rupee_tol)
+    _assign_status(columns, end, xbrl, basis, decimals, scale, eps_dec)
     for role, cells in columns.items():
-        period_end, ptype = _role_period(role, end)
-        for item, cell in cells.items():
-            if item == "_fails":
-                continue
-            cell["status"] = "xbrl_ok" if _xbrl_ok(
-                xbrl, basis, period_end, item, cell["value"], _tol(item, decimals, scale, cell["raw"], eps_dec)) \
-                else cell.get("ident", "unchecked")
-            cell["period_end"], cell["ptype"] = period_end, ptype
         for item, names, target, want, unsure in cells.get("_fails", []):
             cell = cells.get(item)
             if cell is None or cell["status"] in CHECK_OK:
@@ -1236,19 +1413,34 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                                    "column_role": role, "raw_token": cell["raw"], "check": "repair_unconfirmed",
                                    "detail": ""})
                 del cells[item]
-    # derived revenue: no row prints it, total income - other income does (HINDUNILVR); never for a bank or
-    # an insurer, whose "revenue" is interest income / net premium and has its own row
-    for role, cells in columns.items():
-        if ({"interest_income", "operating_profit", "net_premium"} & set(cells)) and \
-                "revenue_from_operations" not in cells:
-            continue
-        if "revenue_from_operations" not in cells and "total_income" in cells and "other_income" in cells:
-            ti, oi = cells["total_income"], cells["other_income"]
-            cells["revenue_from_operations"] = {
-                "value": ti["value"] - oi["value"], "raw": f"{ti['raw']} {oi['raw']}", "item": "revenue_from_operations",
-                "caption": f"{ti['caption']} - {oi['caption']}", "quote": f"{ti['quote']} | {oi['quote']}",
-                "ident": "sum_ok", "repaired": False, "row": None, "derived": True,
-                "period_end": ti["period_end"], "ptype": ti["ptype"], "status": "sum_ok"}
+    if ocr or fill:
+        # OCR cells never replace what the text layer printed, and an OCR figure the page's own arithmetic does
+        # not confirm is never stored ("no row beats a wrong row").  A wrong printed revenue is dropped first so
+        # the identity can confirm the value derived from the figures that do reconcile.
+        for role, cells in columns.items():
+            stale = cells.get("revenue_from_operations")
+            if stale is not None and stale.get("ocr") and stale.get("status") not in CHECK_OK:
+                review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no,
+                               "line_item": "revenue_from_operations", "column_role": role,
+                               "raw_token": stale["raw"], "check": "ocr_unreconciled",
+                               "detail": f"value={stale['value']}"})
+                del cells["revenue_from_operations"]
+        _derive_revenue(columns)
+        for cells in columns.values():
+            _check_column(cells, rupee_tol, ambiguous)
+            _eps_ok(cells, shares)
+        _assign_status(columns, end, xbrl, basis, decimals, scale, eps_dec)
+        for role, cells in columns.items():
+            for item, cell in list(cells.items()):
+                if item == "_fails" or not cell.get("ocr") or cell["status"] in CHECK_OK:
+                    continue
+                review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
+                               "column_role": role, "raw_token": cell["raw"], "check": "ocr_unreconciled",
+                               "detail": f"value={cell['value']}"})
+                del cells[item]
+    else:
+        _derive_revenue(columns)
+    out: list[tuple] = []
     for role, cells in columns.items():
         for item, cell in cells.items():
             if item == "_fails":
