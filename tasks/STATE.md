@@ -18,7 +18,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 ## Next action
 000000. Shivam 13 Nov 23:50 (Eagle): roles for answer tests: DeepSeek builds, `gemini-4-hydrogen-high` (agy) answers, Opus 5.5 medium (agy `claude-opus-5-5-medium`) grades blind. Order: T-205 r13 = tool run seeded with the pack (arm S) vs pack path answered by Hydrogen (arm P), graded with r12/ds_a/ds_b; gather rounds on top in r14 (`tasks/handoff/T-205_R13_BRIEF.md`). Verdict on >=3 unseen companies: T-208 (KEI, MEDANTA, PVRINOX stores). T-209 universe SHP + pledge + balance sheet.
 00000. Claude directs and reviews only; DeepSeek builds (13 Nov). T-207 MERGED: 6 stable factors need only P&L, promoter, insider, prices (`docs/research/T-207_factor_rewards.md`).
-0000. T-205 r12 branch `dsh/20261113T103928Z-0a9aa11d` (c264b5a3, NOT merged; r13 builds on it): 40/64 right vs old tool runs 43, 46. JOURNAL 13 Nov Wolf; `bluestar/report_r12`.
+0000. T-205 r12 branch `dsh/20261113T103928Z-0a9aa11d` (c264b5a3, NOT merged; r13 builds on it): 40/64 right vs old tool runs 43, 46. BS-040 grade was wrong: `report_r12/BS-040_check.md`.
 000. T-199 BLUESTARCO 13 Nov NOT passed (DeepSeek 82.8% / 73.4%, Haiku 56.2%). Store 45,173 atoms (25,672 verified). Open: derived capital_employed, page_reader doc types.
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191: `aurobindo_ab/STORE_DEFECTS_SEEN.md`.
