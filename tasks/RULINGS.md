@@ -13,7 +13,7 @@ New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/r
 
 ## Models and keys
 - DeepSeek on `dsh` at max effort, off-peak only (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST; read the clock yourself). Routing (10 Nov): Beam (`beam-free`, both keys) writes plumbing code any hour and grades read-only in peak; extraction judged by row precision goes to DeepSeek. Every branch: read-only grader, then Claude's tests + sample; merge with 0 right rows lost. Beam only while free [check: free_model_check]. No headless Opus unless Shivam says so. dsh workers use Go `account='1'` until key 2 resets (7 Nov). Beam may settle KPI/guidance rows scripts cannot (separate step; Opus code).
-- `agy`: coding `gemini-3.8-flash-medium`; answer tests (13 Nov): `gemini-4-hydrogen-high` answers, Opus 5.5 medium grades.
+- `agy` (13 Nov): only `gemini-4-hydrogen-high` (answers, question search); Flash 3.8 dropped. Opus 5.5 medium grades.
 
 ## How we work
 - Claude reviews, workers build; Opus writes ~20-25% (design, tests, review, one working example). Briefs carry evidence (defect rows, file/function/line, a fast check), numbered steps, limits, pitfalls, budget and a stop rule; unknown method -> Opus prototypes first. Check a finished worker on Opus's own tests and sample, log, merge [check: worker_review] [check: merge_tests]. No pilot bank reasoning to workers. Page-reading subagents: batches of 8 pages, under 100k context, Haiku medium.
