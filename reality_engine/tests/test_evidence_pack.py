@@ -53,3 +53,18 @@ def test_truth_tokens():
     t = pr.truth_tokens('revenue was 1,234.5 crore and "strong growth"')
     assert "1234.5" in t["numbers"]
     assert "strong growth" in t["phrases"]
+
+
+def test_part_status():
+    assert ep.part_status([{"found": True}]) == "found"
+    assert ep.part_status([{"found": True}, {"found": False}]) == "some"
+    assert ep.part_status([{"found": False}]) == "none"
+    assert ep.part_status([]) == "none"
+
+
+def test_planned_reply_items_get_unique_ids():
+    first = ep._reply_to_items("fin", {"rows": [{"text": "a"}, {"text": "b"}]}, start=0, lookup=0)
+    second = ep._reply_to_items("fin", {"rows": [{"text": "c"}]}, start=len(first), lookup=1)
+    assert [it["id"] for it in first + second] == ["fin-1", "fin-2", "fin-3"]
+    assert {it["lookup"] for it in first} == {0}
+    assert {it["lookup"] for it in second} == {1}

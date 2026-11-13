@@ -148,6 +148,19 @@ def live(monkeypatch):
 
 
 # --- fixture tests ----------------------------------------------------------------------------------
+def test_day0_for_shared_rule_before_after_and_weekend():
+    """T-205 round 7: the extracted rule matches the old inline reaction rule for the three cases."""
+    from lookups_tech import day0_for
+    dates = ["2026-10-29", "2026-10-30", "2026-11-02"]
+    before, rule_before = day0_for(dates, "2026-10-29T10:00:00")
+    assert before == 0 and "same session" in rule_before
+    after, rule_after = day0_for(dates, "2026-10-29T16:13:56")
+    assert after == 1 and "next session" in rule_after
+    weekend, rule_weekend = day0_for(dates, "2026-10-31T09:00:00")
+    assert weekend == 2 and "not a trading session" in rule_weekend
+    assert day0_for(dates, "2026-12-31T09:00:00")[0] is None
+
+
 def test_reaction_day0_is_the_next_session_after_a_late_filing():
     out = tech_mod.tech("FIX", "reaction", as_of="2026-06-02")
     by_known = {f["known_at"]: f for f in out["rows"]}

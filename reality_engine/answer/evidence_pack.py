@@ -315,8 +315,8 @@ def _page_score(text, topic_words, phrase):
         score += 5
     return score
 
-def _item(route, idx, doc_key="", doc_type="", page=None, known_at=None, text="", row=None):
-    return {
+def _item(route, idx, doc_key="", doc_type="", page=None, known_at=None, text="", row=None, lookup=None):
+    item = {
         "id": f"{route}-{idx}",
         "route": route,
         "doc_key": doc_key or "",
@@ -326,6 +326,9 @@ def _item(route, idx, doc_key="", doc_type="", page=None, known_at=None, text=""
         "text": _truncate_to_cap(text, route),
         "row": row,
     }
+    if lookup is not None:
+        item["lookup"] = lookup       # which planned lookup produced it (the coverage list reports its ids)
+    return item
 
 
 def _rows_of(reply):
@@ -374,11 +377,25 @@ def _page_of(r):
 
 
 def _text_of(r):
+    """An item's text: a typed row leads with its own value / unit / period, so the figure is readable, never
+    only the raw quote it was extracted from (the raw XBRL value is in rupees, the row's value is in its unit)."""
     if isinstance(r, dict):
+        head = ""
+        value = r.get("value")
+        if isinstance(value, (int, float, str)) and str(value).strip():
+            head = " ".join(str(x) for x in (value, r.get("unit"), r.get("period")) if x not in (None, ""))
+            if str(r.get("unit") or "").lower() == "inr" and isinstance(value, (int, float)) \
+                    and abs(float(value)) >= 100000:
+                head += f" (~{float(value) / 1e7:,.2f} crore)"   # the rupee row in the unit the filings quote
+            if r.get("basis"):
+                head += f" {r['basis']}"
+            if r.get("formula"):
+                head += f" | formula: {r['formula']}"
+            head += " | "
         for key in ("text", "snippet", "quote", "content", "row"):
             if r.get(key):
-                return str(r.get(key))
-        return json.dumps(r, ensure_ascii=False, default=str)
+                return head + str(r[key])
+        return head + json.dumps(r, ensure_ascii=False, default=str)
     return str(r)
 
 
@@ -388,29 +405,31 @@ def _doc_type_of(r):
     return ""
 
 
-def _reply_to_items(route, reply):
+def _reply_to_items(route, reply, start=0, lookup=None):
     items = []
     if isinstance(reply, dict) and "error" in reply:
         return items
     rows = _rows_of(reply)
     if rows:
         for r in rows:
-            items.append(_item(route, len(items) + 1,
+            items.append(_item(route, start + len(items) + 1,
                                doc_key=str(_doc_key_of(r, reply) or ""),
                                doc_type=_doc_type_of(r),
                                page=_page_of(r),
                                known_at=_known_at_of(r),
                                text=_text_of(r),
-                               row=r if isinstance(r, dict) else None))
+                               row=r if isinstance(r, dict) else None,
+                               lookup=lookup))
     else:
         # single reply -> one item
-        items.append(_item(route, 1,
+        items.append(_item(route, start + 1,
                            doc_key=str(_doc_key_of(reply)) if isinstance(reply, dict) else "",
                            doc_type=_doc_type_of(reply) if isinstance(reply, dict) else "",
                            page=_page_of(reply) if isinstance(reply, dict) else None,
                            known_at=_known_at_of(reply) if isinstance(reply, dict) else None,
                            text=json.dumps(reply, ensure_ascii=False, default=str),
-                           row=reply if isinstance(reply, dict) else None))
+                           row=reply if isinstance(reply, dict) else None,
+                           lookup=lookup))
     return items
 
 
@@ -438,12 +457,15 @@ def _apply_quota(items, quota):
     return out
 
 
-def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None):  # type: ignore[assignment]
+def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None,  # type: ignore[assignment]
+           lookups: list | None = None, parts: list | None = None):
     _setup(db)
     import lookups_pilot3 as p3
     import lookups_semantic
     import lookups_tech
 
+    if not str(symbol or "").strip():
+        raise ValueError("gather needs the company symbol: an empty symbol silently disables every lookup")
     if not quota:
         quota = _ROUTES.get("quotas", {}) or {}
 
@@ -530,45 +552,127 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
     if "holding" in kinds:
         tasks.append(("holding", lambda: p3.holding(symbol=symbol, as_of=as_of)))
 
-    # run in thread pool
-    route_replies = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-        futmap = {ex.submit(fn): route for route, fn in tasks}
-        for fut in concurrent.futures.as_completed(futmap):
-            route = futmap[fut]
-            try:
-                rep = fut.result()
-            except Exception as exc:
-                rep = {"error": str(exc)}
-            route_replies.setdefault(route, []).append(rep)
+    # Union (T-205 round 5): the round-3 script routes run exactly as before, at full quota, AND the model's plan
+    # lookups run on top.  A plan lookup never replaces a script route; the script keeps its own quota net.
+    lookup_meta = {}
+    extra_meta = {}
+    if lookups is not None:
+        plan_tasks = []
+        for i, lookup in enumerate(lookups):
+            route = str(lookup.get("route") or "")
+            args = {k: v for k, v in (lookup.get("args") or {}).items() if k not in ("symbol", "as_of")}
+            lookup_meta[i] = {"part": str(lookup.get("part") or ""), "route": route, "args": dict(args)}
+            plan_tasks.append((i, route, lambda route=route, args=args: _run_lookup(
+                p3, lookups_semantic, lookups_tech, route, symbol, args, as_of)))
+        tasks = [(None, route, fn) for route, fn in tasks] + plan_tasks
+    else:
+        tasks = [(None, route, fn) for route, fn in tasks]
+
+    def run_tasks(batch):
+        replies = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            futmap = {ex.submit(fn): (idx, route) for idx, route, fn in batch}
+            for fut in concurrent.futures.as_completed(futmap):
+                idx, route = futmap[fut]
+                try:
+                    rep = fut.result()
+                except Exception as exc:
+                    rep = {"error": str(exc)}
+                replies.setdefault((idx, route), []).append(rep)
+        return replies
+
+    route_replies = run_tasks(tasks)
+
+    # Round 2, deterministic script retries beside the plan:
+    #  * an empty planned lookup is retried without its period, then with each significant word of terms/query alone;
+    #  * a fin/fact metric+period also fetches the printed cells for that metric and period;
+    #  * a search/statement hit in a call or deck reads the full page of its top 3 hits.
+    if lookups is not None:
+        next_id = 100000
+        round2 = []
+        seen_derived: set[tuple] = set()
+        for i, meta in lookup_meta.items():
+            replies = route_replies.get((i, meta["route"])) or []
+            empty = all(isinstance(rep, dict) and ("error" in rep or rep.get("found") is False
+                                                   or not _rows_of(rep)) for rep in replies)
+            if empty:
+                for retry in retry_args(meta["route"], meta["args"]):
+                    rid = next_id
+                    next_id += 1
+                    extra_meta[rid] = {"part": meta["part"], "route": meta["route"], "args": retry,
+                                       "kind": "retry", "of": i}
+                    round2.append((rid, meta["route"],
+                                   lambda route=meta["route"], retry=retry: _run_lookup(
+                                       p3, lookups_semantic, lookups_tech, route, symbol, retry, as_of)))
+            printed = cells_for(meta["route"], meta["args"])
+            if printed:
+                key = ("cells", json.dumps(printed, sort_keys=True))
+                if key not in seen_derived:
+                    seen_derived.add(key)
+                    rid = next_id
+                    next_id += 1
+                    extra_meta[rid] = {"part": meta["part"], "route": "cells", "args": printed,
+                                       "kind": "derived", "of": i}
+                    round2.append((rid, "cells", lambda a=printed: _run_lookup(
+                        p3, lookups_semantic, lookups_tech, "cells", symbol, a, as_of)))
+            if meta["route"] in ("search", "statements"):
+                for doc_key, page, doc_type in page_hits(replies, limit=3):
+                    key = ("page", doc_key, page)
+                    if key in seen_derived:
+                        continue
+                    seen_derived.add(key)
+                    rid = next_id
+                    next_id += 1
+                    page_args = {"doc_key": doc_key, "page": page, "doc_type": doc_type}
+                    extra_meta[rid] = {"part": meta["part"], "route": "page", "args": page_args,
+                                       "kind": "derived", "of": i}
+                    round2.append((rid, "page", lambda a=page_args: _run_lookup(
+                        p3, lookups_semantic, lookups_tech, "page", symbol, a, as_of)))
+        if round2:
+            for key, reps in run_tasks(round2).items():
+                route_replies.setdefault(key, []).extend(reps)
 
     # convert to items
     all_items = []
     route_stats = {}
-    for route, replies in route_replies.items():
+    lookup_found = {}
+    route_counter = {}
+    for (idx, route), replies in route_replies.items():
         ritems = []
+        meta = lookup_meta.get(idx) or extra_meta.get(idx) or {}
         for rep in replies:
             if isinstance(rep, dict):
                 if "error" in rep:
-                    route_errors.append({"route": route, "error": rep.get("error")})
+                    route_errors.append({"route": route, "args": meta.get("args"),
+                                         "error": rep.get("error")})
+                    if idx is not None:
+                        lookup_found[idx] = {"found": False, "error": str(rep.get("error") or "")}
                     continue
                 if rep.get("found") is False:
-                    route_errors.append({"route": route, "found": False,
-                                        "hint": rep.get("hint"),
-                                        "available": (rep.get("available") or rep.get("metrics_matched"))})
+                    route_errors.append({"route": route, "args": meta.get("args"), "found": False,
+                                         "hint": rep.get("hint"),
+                                         "available": (rep.get("available") or rep.get("metrics_matched"))})
+                    if idx is not None:
+                        lookup_found[idx] = {"found": False, "hint": rep.get("hint"),
+                                             "available": (rep.get("available") or rep.get("metrics_matched"))}
                     continue
-            ritems.extend(_reply_to_items(route, rep))
+            start = route_counter.get(route, 0)
+            new_items = _reply_to_items(route, rep, start=start, lookup=idx)
+            route_counter[route] = start + len(new_items)
+            ritems.extend(new_items)
         # as_of drop
         ritems = [it for it in ritems if _asof_ok(it.get("known_at"), as_of)]
         # dedupe within route
         ritems = _dedupe(ritems)
         route_stats[route] = {"returned": len(ritems), "kept": 0, "cut": 0}
         all_items.extend((route, it) for it in ritems)
+        if idx is not None and idx not in lookup_found:
+            lookup_found[idx] = {"found": bool(ritems)}
 
     # flatten
     flat_items = [it for (_, it) in all_items]
 
-    # page reads for statement/list/guidance kinds
+    # page reads for statement/list/guidance kinds (round-3 behaviour, kept in the union too)
     if any(k in kinds for k in ("statement", "list", "guidance")) or kind == "all":
         p3mod = p3
         _p3ask = None
@@ -779,14 +883,17 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
                 continue
             flat_items.extend(_emit_page(dk, int(pg), it.get("doc_type", ""), it.get("known_at")))
 
-    # dedupe all
-    flat_items = _dedupe(flat_items)
-
-    # as_of drop
+    # as_of drop (plan items are deduped after the split, so a plan item always wins its duplicate text)
     flat_items = [it for it in flat_items if _asof_ok(it.get("known_at"), as_of)]
 
-    # quota per route
-    flat_items = _apply_quota(flat_items, quota)
+    # Union order and quota: the plan gets its own quota and the round-3 script net keeps its full one, so a plan
+    # lookup can never eat a script item of the same route.
+    plan_items = _dedupe([it for it in flat_items if it.get("lookup") is not None])
+    plan_keys = {_item_key(it) for it in plan_items}
+    script_items = [it for it in _dedupe([it for it in flat_items if it.get("lookup") is None])
+                    if _item_key(it) not in plan_keys]
+    plan_items = _apply_quota(plan_items, quota)
+    script_items = _apply_quota(script_items, quota)
 
     periods = set(plan.get("periods") or [])
     def _period_match(it):
@@ -795,12 +902,25 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
             if p and p.lower() in txt.lower():
                 return 0
         return 1
-    # round-robin across routes for diversity, each route sorted by period match then known_at desc
+
+    # plan items: by part, then the order the plan wrote its lookups (a retry/derived item follows its lookup)
+    part_order = {str(p.get("id") if isinstance(p, dict) else p): n for n, p in enumerate(parts or [])}
+    lookup_part = {i: str(m.get("part") or "") for i, m in lookup_meta.items()}
+    lookup_seq = {i: i for i in lookup_meta}
+
+    def _plan_key(it):
+        i = it.get("lookup")
+        seq = lookup_seq.get(i, i if isinstance(i, int) else 0)
+        return (part_order.get(lookup_part.get(i, ""), len(part_order)), seq)
+
+    plan_items.sort(key=_plan_key)
+
+    # script items: round-3 round-robin across routes (period match, then known_at)
     by_route = {}
-    for it in flat_items:
+    for it in script_items:
         by_route.setdefault(it["route"], []).append(it)
     for r in by_route:
-        by_route[r].sort(key=lambda it: (_period_match(it),), )
+        by_route[r].sort(key=lambda it: (_period_match(it),))
         by_route[r].sort(key=lambda it: (it.get("known_at") or ""), reverse=True)
         by_route[r].sort(key=lambda it: (_period_match(it),))
     merged = []
@@ -815,27 +935,22 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
                 progressed = True
         if not progressed:
             break
-    flat_items = merged
+    script_items = merged
+    flat_items = plan_items + script_items
 
-    # total cap: truncate page texts already per-item; drop lowest-ranked items
-    # rank best first (reuse _period_match defined above)
-    ranked_idx = sorted(range(len(flat_items)),
-                        key=lambda i: (_period_match(flat_items[i]),))
-    # stable by known_at desc within same period match
-    ranked_idx.sort(key=lambda i: (flat_items[i].get("known_at") or ""), reverse=True)
-    ranked_idx.sort(key=lambda i: (_period_match(flat_items[i]),))
-    kept_idx = set()
-    total = 0
+    # total cap: a plan item is never dropped; script items are dropped from the end once the cap is reached
+    kept = []
     dropped = []
-    for i in ranked_idx:
-        tlen = len(flat_items[i].get("text") or "")
-        sep = 2 if kept_idx else 0
-        if total + sep + tlen <= max_chars:
-            kept_idx.add(i)
+    total = 0
+    for it in flat_items:
+        tlen = len(it.get("text") or "")
+        sep = 2 if kept else 0
+        if it.get("lookup") is not None or total + sep + tlen <= max_chars:
+            kept.append(it)
             total += sep + tlen
         else:
-            dropped.append(flat_items[i])
-    kept = [flat_items[i] for i in range(len(flat_items)) if i in kept_idx]
+            dropped.append(it)
+    plan_over_cap = total > max_chars
     # log what was cut
     try:
         import sys as _sys
@@ -857,15 +972,60 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
 
     text = "\n\n".join(it.get("text") or "" for it in kept)
     routes_nonempty = sorted({it["route"] for it in kept})
+
+    coverage = []
+    if lookups is not None:
+        kept_by_lookup: dict[int, list[str]] = {}
+        for it in kept:
+            if it.get("lookup") is not None:
+                kept_by_lookup.setdefault(it["lookup"], []).append(it["id"])
+        for part in (parts or []):
+            pid = str(part.get("id") if isinstance(part, dict) else part)
+            ptext = str(part.get("text") if isinstance(part, dict) else "")
+            entries = []
+            for i, meta in lookup_meta.items():
+                if str(meta["part"]) != pid:
+                    continue
+                info = lookup_found.get(i) or {"found": False}
+                retries = []
+                derived = []
+                for rid, em in extra_meta.items():
+                    if em.get("of") != i:
+                        continue
+                    items = kept_by_lookup.get(rid, [])
+                    record = {"route": em["route"], "args": em["args"],
+                              "found": bool(items),          # zero items is not found (T-205 round 6)
+                              "items": items}
+                    (retries if em["kind"] == "retry" else derived).append(record)
+                base_items = kept_by_lookup.get(i, [])
+                base_found = bool(base_items)          # a reply with rows that all dedupe away has 0 items
+                found = base_found or any(r["found"] for r in retries) or any(d["found"] for d in derived)
+                entries.append({"route": meta["route"], "args": meta["args"], "found": found,
+                                "base_found": base_found, "items": base_items,
+                                "retries": retries, "derived": derived,
+                                "error": str(info.get("error") or ""), "hint": info.get("hint")})
+            status = part_status(entries)
+            coverage_entry = {"part": pid, "text": ptext, "lookups": entries,
+                              "found": status == "found", "status": status}
+            if not entries:
+                coverage_entry["reason"] = "no lookup planned"
+            coverage.append(coverage_entry)
+
     pack = {
         "symbol": symbol,
         "as_of": as_of,
         "plan": plan,
+        "planner": "model" if lookups is not None else "script",
+        "parts": parts or [],
+        "coverage": coverage,
         "items": kept,
         "text": text,
         "chars": len(text),
         "pack_chars": len(text),
         "items_count": len(kept),
+        "plan_items": sum(1 for it in kept if it.get("lookup") is not None),
+        "script_items": sum(1 for it in kept if it.get("lookup") is None),
+        "plan_over_cap": plan_over_cap,
         "routes_nonempty": routes_nonempty,
         "route_stats": route_stats,
         "route_errors": route_errors,
@@ -873,6 +1033,287 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
         "seconds": round(time.time() - t0, 3),
     }
     return pack
+
+
+def part_status(entries: list[dict]) -> str:
+    """``found`` (every lookup for the part returned items), ``none`` (no lookup did), else ``some``."""
+    if not entries:
+        return "none"
+    hits = sum(1 for e in entries if e.get("found"))
+    if hits == len(entries):
+        return "found"
+    return "some" if hits else "none"
+
+
+def _item_key(it: dict) -> tuple:
+    return (it.get("doc_key"), it.get("page"), (it.get("text") or "")[:120])
+
+
+def retry_args(route: str, args: dict) -> list[dict]:
+    """The deterministic script retries for a planned lookup that returned nothing (T-205 round 5).
+
+    Round 3's word sweep: the same lookup without its period, then once per significant word of ``terms``/``query``
+    alone.  A page or price lookup is not retried (it either exists or does not).
+    """
+    if route in ("page", "price_rows"):
+        return []
+    base = {k: v for k, v in args.items() if k != "period"}
+    out: list[dict] = []
+    if base != args:
+        out.append(dict(base))
+    key = "terms" if "terms" in args else "query" if "query" in args else None
+    if key:
+        words = [w for w in _tokenize(str(args.get(key) or "")) if len(w) >= 3 and w not in STOP_WORDS]
+        for word in words[:6]:
+            forms = [word]
+            for pref in ("un", "non", "in", "dis", "im"):     # round 3's variants: unallocable -> allocable
+                if word.startswith(pref) and len(word) > len(pref) + 3:
+                    forms.append(word[len(pref):])
+            for form in forms:
+                retry = {k: v for k, v in base.items() if k != key}
+                retry[key] = form
+                out.append(retry)
+    return out[:8]
+
+
+def cells_for(route: str, args: dict) -> dict | None:
+    """The printed `cells` lookup that must accompany a planned fin/fact metric+period (T-205 round 5)."""
+    period = args.get("period")
+    if not period:
+        return None
+    metric = args.get("measure") if route == "fin" else args.get("metric") if route == "fact" else None
+    if not metric:
+        return None
+    return {"terms": str(metric), "period": str(period)}
+
+
+def page_hits(replies: list, limit: int = 3) -> list[tuple[str, int, str]]:
+    """The first ``limit`` distinct (doc_key, page, doc_type) hits in a call or deck, for a full-page read."""
+    out: list[tuple[str, int, str]] = []
+    seen: set[tuple[str, int]] = set()
+    for rep in replies:
+        for row in _rows_of(rep):
+            if not isinstance(row, dict):
+                continue
+            doc_type = str(_doc_type_of(row) or ((row.get("provenance") or {}) if isinstance(row.get("provenance"), dict) else {}).get("doc_type") or "").lower()
+            if doc_type not in ("transcript", "deck"):
+                continue
+            doc_key, page = row.get("doc_key"), row.get("page")
+            if not doc_key or page is None:
+                continue
+            try:
+                page = int(page)
+            except (TypeError, ValueError):
+                continue
+            key = (str(doc_key), page)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append((key[0], page, doc_type))
+            if len(out) >= limit:
+                return out
+    return out
+
+
+def _run_lookup(p3, lookups_semantic, lookups_tech, route, symbol, args, as_of):
+    """Run one validated planned lookup; the symbol and the as_of are injected here, never taken from the plan."""
+    if route == "semantic":
+        return lookups_semantic.semantic(symbol=symbol, query=str(args.get("query") or ""), limit=8, as_of=as_of)
+    if route == "tech":
+        return lookups_tech.tech(symbol=symbol, as_of=as_of, **args)
+    if route == "price_rows":
+        from reality_engine.answer import lookups_extra
+        return lookups_extra.price_rows(p3, symbol, as_of, **args)
+    if route == "holding":
+        from reality_engine.answer import lookups_extra
+        reply = p3.holding(symbol=symbol, as_of=as_of, **args)
+        if isinstance(reply, dict) and reply.get("found"):
+            try:
+                extra = lookups_extra.holding_share_rows(p3, str(reply.get("symbol") or symbol), args, reply)
+            except Exception as exc:                     # a share-count join must never fail the holding lookup
+                extra = []
+                reply = dict(reply)
+                reply["share_count_error"] = str(exc)
+            if extra:
+                reply = dict(reply)
+                reply["rows"] = list(reply.get("rows") or []) + extra
+        return reply
+    if route == "page":
+        try:
+            import p3ask as _p3ask
+        except Exception:
+            from reality_engine.scripts import p3ask as _p3ask
+        return _p3ask._page(p3, str(args.get("doc_key") or ""), int(args.get("page") or 1),
+                            to_page=args.get("to_page"), as_of=as_of, max_chars=6000)
+    if route not in ("fact", "fin", "kpi", "ratio", "cells", "guidance", "holding",
+                     "statements", "docs", "search", "topic"):
+        return {"error": f"unknown planned route {route!r}"}
+    return getattr(p3, route)(symbol=symbol, as_of=as_of, **args)
+
+
+
+_PATH_RE = re.compile(r"[A-Za-z]:[/\\][^\s\"',]+")
+
+
+def _clean_value(value):
+    """Drop a row's provenance blob, absolute file paths and null/empty fields; keep every figure and quote."""
+    if isinstance(value, dict):
+        return {k: _clean_value(v) for k, v in value.items()
+                if k != "provenance" and v not in (None, "", [], {})}
+    if isinstance(value, list):
+        return [_clean_value(v) for v in value]
+    if isinstance(value, str):
+        return _PATH_RE.sub("", value)
+    return value
+
+
+def _row_text(it: dict) -> str:
+    body = str(it.get("text") or "")
+    if body[:1] in ("{", "["):
+        try:
+            return json.dumps(_clean_value(json.loads(body)), ensure_ascii=False, default=str)
+        except (ValueError, TypeError):
+            pass
+    if not body and it.get("row") is not None:
+        return json.dumps(_clean_value(it["row"]), ensure_ascii=False, default=str)
+    return body
+
+
+def _reading_block(index: int, it: dict) -> str:
+    head = f"[{index}] {it.get('route')} doc={it.get('doc_key') or '-'} p{it.get('page')}"
+    if it.get("known_at"):
+        head += f" known={it.get('known_at')}"
+    return f"{head}\n{_row_text(it)}"
+
+_TYPED_ROUTES = frozenset({"cells", "fin", "fact", "kpi", "holding", "price", "price_rows", "ratio", "guidance"})
+_NUM_RE = re.compile(r"\d[\d,]*\.?\d*")
+
+
+def _carries_number(text: str) -> bool:
+    for m in _NUM_RE.finditer(text or ""):
+        raw = m.group(0)
+        if "." in raw or len(raw.replace(",", "")) >= 3:
+            return True
+    return False
+
+
+def _query_terms(pack: dict) -> list[str]:
+    plan = pack.get("plan") or {}
+    terms = [str(w) for w in (plan.get("topic_words") or []) if w]
+    terms += [w for w in _tokenize(str(plan.get("question") or "")) if len(w) >= 3 and w not in STOP_WORDS]
+    return list(dict.fromkeys(terms))
+
+
+def reading_text(pack: dict, max_chars: int = 150000) -> str:
+    """The reading copy: question, parts, coverage, then each item as round 6 printed it -- a lead line plus the row
+    content (quote and every numeric field) or the whole page/statement text.
+
+    Only allowed trimming: a row's provenance blob, absolute file paths and null/empty fields are removed, and an
+    identical item prints once.  Over ``max_chars`` script page/rest items are dropped from the lowest rank up and
+    logged in ``reading_cut``; typed rows and plan items are never dropped.
+    """
+    head = [f"QUESTION (as of {pack.get('as_of') or '-'}):", str((pack.get("plan") or {}).get("question") or ""), ""]
+    parts = pack.get("parts") or []
+    if parts:
+        head.append("PARTS:")
+        for part in parts:
+            head.append(f"  {part.get('id')}: {part.get('text') or ''}")
+        head.append("")
+    if pack.get("coverage"):
+        head.append("COVERAGE (part-level status, then every lookup):")
+        for part in pack["coverage"]:
+            pid = part.get("part") or part.get("id") or ""
+            head.append(f"  {pid} [{part.get('status') or 'none'}] {part.get('text') or ''}"
+                        + (f" -- {part['reason']}" if part.get("reason") else ""))
+            for entry in part.get("lookups") or []:
+                args = json.dumps(entry.get("args") or {}, ensure_ascii=False)
+                marker = "found" if entry.get("base_found") else "NOT FOUND"
+                head.append(f"    {entry.get('route')} {args} -> {marker}, "
+                            f"{len(entry.get('items') or [])} items")
+                for retry in entry.get("retries") or []:
+                    head.append(f"      retry {retry.get('route')} "
+                                f"{json.dumps(retry.get('args') or {}, ensure_ascii=False)} -> "
+                                f"{'found' if retry.get('found') else 'NOT FOUND'}, "
+                                f"{len(retry.get('items') or [])} items")
+                for derived in entry.get("derived") or []:
+                    head.append(f"      derived {derived.get('route')} "
+                                f"{json.dumps(derived.get('args') or {}, ensure_ascii=False)} -> "
+                                f"{'found' if derived.get('found') else 'NOT FOUND'}, "
+                                f"{len(derived.get('items') or [])} items")
+        head.append("")
+    prefix = "\n".join(head)
+    items = pack.get("items") or []
+    part_ids = [str(p.get("id") if isinstance(p, dict) else p) for p in parts] or ["p1"]
+    item_part = {}
+    for cov in pack.get("coverage") or []:
+        pid = cov.get("part") or "p1"
+        for entry in cov.get("lookups") or []:
+            for sub in [entry] + list(entry.get("retries") or []) + list(entry.get("derived") or []):
+                for iid in sub.get("items") or []:
+                    item_part[str(iid)] = pid
+    part_order = {pid: n for n, pid in enumerate(part_ids)}
+
+    def _group(it: dict) -> int:
+        text = it.get("text") or ""
+        periods = [str(p) for p in (pack.get("plan") or {}).get("periods") or [] if p]
+        if _carries_number(text) and any(p.lower() in text.lower() for p in periods):
+            return 0
+        if it.get("route") in _TYPED_ROUTES:
+            return 1
+        if it.get("route") == "page":
+            return 2
+        return 3
+
+    plan_items = [it for it in items if it.get("lookup") is not None]
+    plan_items.sort(key=lambda it: part_order.get(item_part.get(str(it.get("id")), part_ids[0]), 99))
+    script_items = sorted([it for it in items if it.get("lookup") is None], key=_group)
+    ordered = plan_items + script_items
+    entries, seen = [], set()
+    for index, it in enumerate(ordered, 1):
+        block = _reading_block(index, it)
+        if block in seen:                      # an identical item prints once
+            continue
+        seen.add(block)
+        entries.append({"it": it, "plan": it.get("lookup") is not None, "text": block})
+
+    budget = max_chars - 400
+    chosen, total, cut = [], len(prefix) + 2, []
+    for entry in entries:
+        if entry["plan"]:
+            chosen.append(entry)
+            total += len(entry["text"]) + 2
+    for entry in entries:
+        if entry["plan"]:
+            continue
+        typed = entry["it"].get("route") in _TYPED_ROUTES
+        if typed or total + len(entry["text"]) + 2 <= budget:
+            chosen.append(entry)
+            total += len(entry["text"]) + 2
+        else:
+            cut.append({"id": str(entry["it"].get("id") or ""), "route": entry["it"].get("route"),
+                        "doc_key": entry["it"].get("doc_key"), "page": entry["it"].get("page")})
+    label = (f"ITEMS ({len(items)}: {sum(1 for e in chosen if e['plan'])} plan-lookup items, "
+             f"{sum(1 for e in chosen if not e['plan'])} script items; whole items, no windows)")
+    if cut:
+        label += f"; {len(cut)} script page/rest items cut for the {max_chars}-char cap: " + ", ".join(
+            f"{c['route']} {str(c['doc_key'] or '').rsplit('/', 1)[-1]} p{c['page']}" for c in cut[:8])
+        if len(cut) > 8:
+            label += f" (+{len(cut) - 8} more)"
+    pack["reading_cut"] = cut
+    pack["reading_cut_count"] = len(cut)
+    pack["reading_plan_items"] = sum(1 for e in chosen if e["plan"])
+    pack["reading_script_items"] = sum(1 for e in chosen if not e["plan"])
+    pack["reading_over_cap"] = max(0, total - max_chars)
+    out = prefix + "\n" + label + "\n"
+    out += "\n".join(e["text"] for e in chosen)
+    return out.strip() + "\n"
+
+def write_reading(pack: dict, path, max_chars: int = 60000) -> int:
+    """Write the reading copy beside the pack; returns its character count and records what the cap cut."""
+    text = reading_text(pack, max_chars=max_chars)
+    Path(path).write_text(text, encoding="utf-8")
+    pack["reading_chars"] = len(text)
+    return len(text)
 
 
 # aliases for tests
