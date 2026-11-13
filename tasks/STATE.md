@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-13 16:45 IST (Eagle, close)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-13 15:55 IST (Wolf)
 History `docs/state_history/` (previous: `STATE_2026-11-12_1410.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -17,7 +17,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-0000. T-205 evidence pack: r1-r3 merged (`reality_engine/answer/`); r2 judge enough 21/64; r3 judge running (Beam 20261113T100438Z-add44400, `.tmp/judge/pack_judge.csv` in its worktree). Next: read it; if < ~55/64 use a model-written lookup plan -> answer step + number check -> NEW unseen company.
+0000. T-205 evidence pack: r1-r3 merged (`reality_engine/answer/`); r3 judge enough 27 / partly 30 / missing 7 of 64 (`bluestar/pack/pack_judge_r3.csv`), 2 of 5 checked lenient, packs 170k-440k chars. Below ~55: next a model-written lookup plan -> answer step + number check -> NEW unseen company.
 000. T-199 BLUESTARCO DONE 13 Nov, NOT passed: first attempt DeepSeek 82.8% / 73.4%, Haiku 56.2% (blind Opus, 64 frozen q); 60/64 right in some set; losses routing 39, compute 11, reading 6, none missing data. Second pass 84.4%/76.6% (seen). `reports/2026-11-13_bluestar_atom_test.html`. Store: 45,173 atoms (25,672 verified), unseen 20-page sample value 95.5% / recall 81% on financial pages. Next: evidence-pack answerer (script runs every route, model writes from the pack), fix derived capital_employed, page_reader default doc types, then a NEW unseen company.
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191 follow-ups: `aurobindo_ab/STORE_DEFECTS_SEEN.md`.
