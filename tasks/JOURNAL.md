@@ -6,6 +6,31 @@ architecture / execution / output. Every new session reads the latest entry firs
 "Carry forward" bullets). Transcripts and the run ledger keep WHAT happened; this file keeps WHY and what we learned.
 Keep entries short; facts with numbers; no repetition of STATE or tickets.
 
+## 2026-11-14 05:00 Wolf (neo-r13-blind-grading): T-207 accept, PVRINOX fix worker, Q2 XBRL gap, r13 grades
+
+Work done: T-207 closed (Shivam: accepted, continuous) -> ruling amended, T-211 month-end job opened. T-208 r3 worker
+started (printed reader: OCR words for garbled pages, wrapped labels, reconciliation guard). Found results_xbrl.db holds
+Q2FY27 for 307 symbols only (index stale since ~2 Nov) -> T-212, fetch running (4,205 files). Graded r13 (236 answers).
+
+What worked:
+- Grading by SQL/page-text scripts (g.py in the session scratchpad) instead of MCP tools: one pilot3_search reply was
+  ~10k tokens; a regex over doc_page with 150-char windows gave the same truth in ~1k. 196 answers graded in ~2 h.
+- A consistency pass across graders caught BS-040 (company-wide order book used as the segment's) graded right by me
+  and the same pattern graded wrong by the agy grader on BS-008; aligned to the stricter rule.
+
+What did not, and why:
+- agy Opus grader: one batch of 40 answers = 159k fresh + 1.4M cached tokens and the whole 5-h Claude quota on the
+  Google account. Eagle's "after 13:30" timing was a quota wait; 8 batches would need ~7 windows. Fix: the grader should
+  get a compact truth sheet per question (or SQL access) instead of exploring with MCP tools.
+
+What to improve:
+- Answer path (36 of 44 misses = routing): answers stop at the first tool reply. Round 14 should make the model name
+  each fact it needs and check off each part of the question before answering (BS-026 PLI, BS-037, BS-049, BS-056).
+
+Carry forward:
+- Review T-208 r3 worker 20261113T210004Z-c8d0d947; T-212 parse + raw to Drive, rerun after the 14 Nov deadline.
+- Round 14 brief (lean planned lookups) against DS B baseline 54/64, 2 calls/question.
+
 ## 2026-11-14 03:15 Eagle wrap-up (sv-seed-pack-test-plan): Hydrogen arms, four workers, pack design rejected
 
 Work done: rulings recorded (agy = `gemini-4-hydrogen-high` only, Flash dropped; Opus 5.5 medium grades; Go key 1
