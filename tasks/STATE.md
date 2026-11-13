@@ -23,7 +23,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191: `aurobindo_ab/STORE_DEFECTS_SEEN.md`.
 2. T-194: events built on aurobindo only.
-3. Branches T-163 r4-7 / T-132 r10-12 unreviewed (I-015); CHOLAFIN waits for Shivam.
+3. T-163/T-132 branches kept as archive/ tags (I-015); KPI guards 67ceeb28 needs rebase.
 4. T-179; `pilot3_fin` XBRL-first; s10 + T-172.
 
 ## Recipes
