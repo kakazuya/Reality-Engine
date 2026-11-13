@@ -913,6 +913,25 @@ snapshot, DuckDB memory_limit 5 GB) writes `factor_ic.csv`, `fama_macbeth.csv`, 
 year, the ranked factors per horizon and the store limits it found (2019 quarterly filings, the 2022
 shareholding backfill): `docs/research/T-118_factor_weights.md`.
 
+### O19b. Point-in-time factor rewards (T-207, 13 Nov 2026)
+
+`reality_engine/research/factor_rewards.py` (tests `reality_engine/tests/test_factor_rewards.py`, 11
+passed) imports the T-118 panel builder and asks the different question: at every month-end, which
+factors had been rewarded over 6/12/24 months using only ICs whose forward return was already
+realised (`known_date` = rebalance + horizon sessions). It reports the rewarded set, the share of
+rated months (60% sign rule, |Newey-West t| >= 2, 12-month rating floor), the dated enters/leaves,
+per sector group (sector merge reported), size tercile and Nifty 500 TRI regime, and a walk-forward
+test of DYNAMIC (trailing rewarded set) against STATIC (first rated window frozen) and an
+EQUAL fixed-convention score, with Benjamini-Hochberg over the 70% claims. Round 2 adds the T-118
+block decomposition, block-balanced scores, the expanding PERSISTENT mode, the cross-horizon test,
+the staleness table and (under `--placebo`) 20 seeded cross-sectional permutations as the empirical
+false-claim rate. `python -m reality_engine.research.factor_rewards --out .tmp/t207` (261 s,
+read-only snapshot, 5 GB limit; `--placebo` total 520 s) caches `panel.parquet` and writes
+`rewarded_by_date.csv`, `mode.csv`, `shifts.csv`, `walk_forward.csv`, `round2_blocks.csv`,
+`staleness.csv` (plus `placebo.csv`, `placebo_factors.csv` with the flag). Method, the reproduction
+of the pooled T-118 ICs, the stable/shifting/thin tables and the unmeasured factors:
+`docs/research/T-207_factor_rewards.md`.
+
 ### O20. v2 period engine (T-134, 9 Nov 2026)
 
 `reality_engine/v2/periods.py` gives every v2 value an exact start/end (`period_row`, `fiscal_label`: Q2FY27,

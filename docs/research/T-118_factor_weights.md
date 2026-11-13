@@ -208,6 +208,12 @@ whole move. Full table for both windows: `.tmp/t118/sector_split.csv`.
 
 ## 7. What the results say
 
+**Follow-up (T-207, 13 Nov 2026).** This ranking is pooled over 2021-2026 and therefore uses the
+future; it is a map of what moved returns, not a selection rule a month-end could have used.
+`docs/research/T-207_factor_rewards.md` recomputes the reward point-in-time at every month-end and
+tests dynamic against fixed factor choice. Read its tables before treating any factor here as stably
+rewarded; the 22-test T-118 module is imported unchanged.
+
 Ranked by how much of the forward return the data actually explains, per horizon:
 
 1. **Valuation level is the most consistent single factor**: earnings yield (and its mirror P/E) is
