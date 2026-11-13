@@ -197,7 +197,7 @@ Template:
 ## I-015: Extraction breadth set (wait for the factor study)
 - Created: 2026-11-13 16:15 IST, by Wolf, during the board cut Shivam approved 13 Nov
 - Context (what caused it): Goal ruling (8 Nov): least information that predicts 6m-2y. T-118 found most of the signal in earnings, margin, valuation, promoter and insider data; these tickets widen extraction before T-207 says which further facts are rewarded.
-- Purpose (what it is for): Extract only what the factor-reward study (T-207) or a failed frozen-set question shows is needed. T-132 (rounds 10-12) and T-163 (rounds 4-7) have unreviewed branches: review or tag them before deleting.
+- Purpose (what it is for): Extract only what the factor-reward study (T-207) or a failed frozen-set question shows is needed. T-132 rounds 10-12 and T-163 rounds 4-7 are kept as tags `archive/dsh-20261110T135516Z-604d3c37` and `archive/dsh-20261110T162525Z-3ef5482a` (14 Nov, Eagle; unreviewed, branches deleted); start from them when re-opened. Flash agy outputs kept as tags: T-154 reranker notes `archive/Wolf-agy-20261109T034102Z-5e770d54`, T-160 n10 question harvest `archive/Wolf-agy-20261109T182713Z-4d398312` (Flash is retired; redo the harvest with Hydrogen).
 - Idea: the parked tickets, each to be re-opened as its own ticket when its trigger is met:
   - T-138: Annual-report notes as tables: guarantees, contingent liabilities, related parties (standalone and consolidated apart), FX sensitivity, ratings, segme
   - T-140: Events table: dated policy, tariff, regulation, results, orders, M&A and rating events with effective dates and companies touched, so 'since <date>' c
