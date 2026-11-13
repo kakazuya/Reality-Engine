@@ -167,7 +167,7 @@ def run_set(questions_path: str, truths: dict, store: str, out_dir: str, symbol_
         symbol = q.get("symbol") or symbol_default
         truth = truths.get(qid, "")
         t0 = time.time()
-        p = ep.plan(question, as_of)
+        p = ep.plan(question, as_of, symbol=symbol)
         pack = ep.gather(store, symbol, p, as_of)
         elapsed = time.time() - t0
         pack_path = Path(out_dir) / f"pack_{qid}.json"
