@@ -99,3 +99,14 @@ def test_due_ideas_lists_open_ideas_past_their_review_date():
             "- Status: promoted to T-999 (2026-01-02)\n")
     due = due_ideas(text, "2026-06-01")
     assert len(due) == 1 and due[0].startswith("- I-001 Old idea") and "prediction" in due[0]
+
+
+def test_latest_journal_points_to_the_newest_entry():
+    """Shivam, 13 Nov: every session reads the latest journal entry; the hook names it (newest first)."""
+    from reality_engine.scripts.load_context import latest_journal
+
+    text = ("# Journal\n\n## 2026-11-13 Eagle: second\nCarry forward:\n- b1\n- b2\n\n"
+            "## 2026-11-12 Eagle: first\nCarry forward:\n- a1\n")
+    out = latest_journal(text, lines=1)
+    assert "2026-11-13 Eagle: second" in out and "- b1" in out and "- b2" not in out and "a1" not in out
+    assert latest_journal("no entries") == ""

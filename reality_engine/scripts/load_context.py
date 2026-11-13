@@ -69,6 +69,26 @@ def due_ideas(text: str, today: str | None = None) -> list[str]:
     return out
 
 
+JOURNAL_LINES = 0
+JOURNAL_LINE_CHARS = 110
+
+
+def latest_journal(text: str, lines: int = JOURNAL_LINES) -> str:
+    """Pointer to the newest tasks/JOURNAL.md entry plus its first carry-forward lines (Shivam, 13 Nov: every session
+    reads the latest journal entry).  Entries are ``## <date> ...`` blocks, newest first; the carry-forward lines are
+    the bullets under ``Carry forward:``.  Kept short: the hook output is capped at 10,000 characters."""
+    head = re.search(r"^## .+$", text, flags=re.M)
+    if not head:
+        return ""
+    block = text[head.start():]
+    nxt = re.search(r"^## ", block[3:], flags=re.M)
+    block = block[: nxt.start() + 3] if nxt else block
+    carry = re.search(r"Carry forward:\s*\n((?:\s*- .*\n?)+)", block)
+    bullets = [b.strip()[:JOURNAL_LINE_CHARS] for b in (carry.group(1).splitlines() if carry else []) if b.strip()][:lines]
+    return "\n".join([f"# Journal: read the latest entry of tasks/JOURNAL.md first ({head.group(0)[3:].strip()[:60]})"]
+                     + bullets)
+
+
 def build() -> str:
     rulings = _read(ROOT / "tasks" / "RULINGS.md")
     parts: list[str] = []
@@ -80,6 +100,9 @@ def build() -> str:
         over = len(rulings) - RULINGS_BUDGET
         parts.append(f"RULINGS.md is {over} chars over its 8,000 budget: Opus must shorten it")
     parts.append(rulings)
+    journal = latest_journal(_read(ROOT / "tasks" / "JOURNAL.md"))
+    if journal:
+        parts.append(journal)
     live = _live_state()
     for name in WHOLE:
         body = live["sections"].get(name)

@@ -26,7 +26,7 @@
 > **`tasks/FRAMEWORK.md` is the authority file** (set by Shivam, 2026-10-08) and overrides this guide wherever they disagree: cash-only long book, risk limits, benchmark, proof rules, and the order of work. Read it when a task touches those. Moat / ENI / ripple seeds are set aside until a tested strategy beats them.
 
 ## Start here, and read nothing else first
-1. `tasks/RULINGS.md` and `tasks/STATE.md`: Shivam's rulings, current step, exact next action, running jobs, blockers. A session start hook (`reality_engine/scripts/load_context.py`) loads both, also after compaction.
+1. `tasks/RULINGS.md` and `tasks/STATE.md`: Shivam's rulings, current step, exact next action, running jobs, blockers. A session start hook (`reality_engine/scripts/load_context.py`) loads both, also after compaction, and names the latest `tasks/JOURNAL.md` entry (learnings: what worked, what failed and why); read that entry next.
 2. The brief or the one plan it names.
 3. Only the files that brief names. Find code with grep/read, or `code-tools` `outline` for one file's symbols, and data with reality-data (`catalog`, `schema`). Do not survey the repo, and do not read `tasks/archive/`, `.tmp/` or job folders unless the task names them.
 
