@@ -208,6 +208,20 @@ def test_coverage_has_one_entry_per_part(store):
     assert pack["coverage"][0]["status"] in ("found", "some")
 
 
+def test_reading_copy_prints_the_pack_id_not_a_position():
+    pack = {"as_of": AS_OF, "plan": {"question": "revenue?", "periods": ["Q2FY27"]},
+            "parts": [{"id": "p1", "text": "revenue in Q2FY27"}],
+            "items": [{"id": "fin-3", "route": "fin", "doc_key": "results/q2.pdf", "page": 5,
+                       "text": "Revenue 1,100.00 crore Q2FY27"},
+                      {"id": "semantic-1", "route": "semantic", "doc_key": "deck.pdf", "page": 10,
+                       "text": "Financial highlights"}]}
+    text = ep.reading_text(pack)
+    assert "[fin-3] doc=results/q2.pdf p5" in text
+    assert "[semantic-1] doc=deck.pdf p10" in text
+    assert "[1] fin" not in text and " fin doc=" not in text      # the round-9 position is gone
+    assert ep.reading_order(pack) == ["fin-3", "semantic-1"]
+
+
 def test_reading_copy_prints_each_item_once(store):
     pack = {"as_of": AS_OF, "plan": {"question": "revenue?"},
             "parts": [{"id": "p1", "text": "revenue in Q2FY27"}],

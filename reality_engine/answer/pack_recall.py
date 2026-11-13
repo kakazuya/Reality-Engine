@@ -41,10 +41,13 @@ _PAGE_RE = re.compile(r"\b(?:p\.?\s*\d+|page\s+\d+)\b", re.I)
 # a document key fragment, not a share count: only tokens with a letter or a hyphen are noise (T-205 round 6)
 _UUID_RE = re.compile(r"\b(?=[0-9a-f-]{8,}\b)(?=[0-9a-f-]*[a-f-])[0-9a-f-]+\b", re.I)
 _DATE_ISO_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+# an item's lead label is metadata, never evidence (round 11 prints [fin-3] where round 9 printed [1])
+_ITEM_LABEL_RE = re.compile(r"(?m)^\[[^\]\n]{1,40}\] (?=[^\n]*doc=)")
 
 
 def _strip_noise(text: str) -> str:
     t = text or ""
+    t = _ITEM_LABEL_RE.sub("", t)
     t = _PERIOD_RE.sub(" ", t)
     t = _DATE_ISO_RE.sub(" ", t)
     t = _PAGE_RE.sub(" ", t)

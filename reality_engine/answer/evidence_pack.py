@@ -1179,8 +1179,9 @@ def _row_text(it: dict) -> str:
     return body
 
 
-def _reading_block(index: int, it: dict) -> str:
-    head = f"[{index}] {it.get('route')} doc={it.get('doc_key') or '-'} p{it.get('page')}"
+def _reading_block(it: dict) -> str:
+    """The item lead line carries the ONE id the check resolves, and nothing else that looks like an id."""
+    head = f"[{it.get('id') or '-'}] doc={it.get('doc_key') or '-'} p{it.get('page')}"
     if it.get("known_at"):
         head += f" known={it.get('known_at')}"
     return f"{head}\n{_row_text(it)}"
@@ -1269,8 +1270,8 @@ def reading_text(pack: dict, max_chars: int = 150000) -> str:
     script_items = sorted([it for it in items if it.get("lookup") is None], key=_group)
     ordered = plan_items + script_items
     entries, seen = [], set()
-    for index, it in enumerate(ordered, 1):
-        block = _reading_block(index, it)
+    for it in ordered:
+        block = _reading_block(it)
         if block in seen:                      # an identical item prints once
             continue
         seen.add(block)
@@ -1314,6 +1315,11 @@ def write_reading(pack: dict, path, max_chars: int = 60000) -> int:
     Path(path).write_text(text, encoding="utf-8")
     pack["reading_chars"] = len(text)
     return len(text)
+
+
+def reading_order(pack: dict, max_chars: int = 150000) -> list[str]:
+    """The item ids in the order the reading copy prints them: the positional map a pre-round-11 id needs."""
+    return [m.group(1) for m in re.finditer(r"^\[([^\]\s]+)\] doc=", reading_text(pack, max_chars=max_chars), re.M)]
 
 
 # aliases for tests

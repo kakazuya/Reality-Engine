@@ -17,7 +17,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 
 ## Next action
 00000. Shivam 13 Nov: Claude directs and reviews only; DeepSeek workers build. Board cut 86 -> 51 open (parked sets: IDEA_BOX I-013..I-015). T-207 factor-reward engine opened (brief `tasks/handoff/T-207_FACTOR_REWARDS_BRIEF.md`).
-0000. T-205 r10 answer step built (`answer_step.py`: 1 call + 1 repair, script calcs, checked figures, resumable). Default `deepseek-v4.1-flash`; Beam answers `.tmp/answers_r10_beam/`. Blue Star 46 (39 ok, 7 unparseable): 66/75 parts, 9 not_found, 4 abstained; Aurobindo 51. Next: raise max_tokens, resume.
+0000. T-205 r12: figure/result tokens formatted by script (crore, %, thousands separators); an unresolved calc names its input + existing figures in the repair and writes "not computed"; Blue Star 64 answers in `.tmp/answers_r12/bluestar` (200 figures, 165 quoted, 35 value-only, 0 removed). Next: blind grade.
 000. T-199 BLUESTARCO DONE 13 Nov, NOT passed: first attempt DeepSeek 82.8% / 73.4%, Haiku 56.2% (blind Opus, 64 frozen q); 60/64 right in some set; losses routing 39, compute 11, reading 6, none missing data. `reports/2026-11-13_bluestar_atom_test.html`. Store: 45,173 atoms (25,672 verified), unseen 20-page sample value 95.5% / recall 81% on financial pages. Open store defects: derived capital_employed, page_reader default doc types.
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191 follow-ups: `aurobindo_ab/STORE_DEFECTS_SEEN.md`.
