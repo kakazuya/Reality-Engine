@@ -6,6 +6,44 @@ architecture / execution / output. Every new session reads the latest entry firs
 "Carry forward" bullets). Transcripts and the run ledger keep WHAT happened; this file keeps WHY and what we learned.
 Keep entries short; facts with numbers; no repetition of STATE or tickets.
 
+## 2026-11-13 21:20 Wolf (neo-claim-worker-progress-review): direction-only session; factor rewards; answer path rounds 4-12
+
+Work done: Shivam ruled Claude directs and reviews only, workers build. Board cut 86 -> 51 open (IDEA_BOX I-013..I-015).
+T-207 factor-reward engine built in 2 rounds, audited, merged. T-205 answer path rounds 4-12 on one branch
+(`dsh/20261113T103928Z-0a9aa11d`, c264b5a3, not merged): model-written plan from a store menu, union gather, reading
+copy, one answer call, script calcs and citation check. Reader-judge of round-9 packs: enough 41 / partly 23 / missing 0
+of 64. Blind headless-Opus grade of 64 seen Blue Star questions: new path 40 right (62.5%); the two 13 Nov tool runs
+re-graded 43 and 46 (they were 47 and 53 on 13 Nov, so this grader is stricter; agreement 56 and 55 of 64).
+
+What worked:
+- Gates that compare with the previous round on the text the model will read; the worker stopped and named questions
+  instead of tuning. An offline re-check of saved replies recovered a broken run with almost no new model calls.
+- Judges with a helper script that refuses a row whose quote is not verbatim, one row saved per question.
+- T-207: fixed thresholds in the brief, later additions labelled; an independent audit quoting the proving code line.
+- Packs judged enough gave 33 of 41 right; packs judged partly 7 of 23: the judge predicts the grade.
+
+What did not, and why:
+- The new path does not beat the tool loop yet: 17 of 24 losses are evidence the pack never gathered. One fixed pack
+  cannot follow up; the tool loop can.
+- My errors: a 60,000-character cap never measured (rounds 7-8 lost evidence, round 9 undid it); a 210-minute hard
+  stop for a ten-round session; three parallel Beam judges beside the worker's Beam calls (429 on Go key 1); not running
+  the judge on round 6. My collinear-counting guess on T-207 was wrong; the round-2 test showed staleness.
+- Round 10 ran 97 answers through a check that could not resolve item ids (about 6.1M input tokens) and reported the
+  failure rate as a statistic.
+- Re-grading the same answers moved 8-9 of 64 grades: 64 questions cannot separate designs a few points apart.
+
+What to improve:
+- Input: every brief names the previous round's file to compare against; every runner has a first-ten stop gate.
+- Design: pack first, then a bounded follow-up (a second plan and gather for parts that are short) before the answer.
+- Execution: no size or time limit without a measurement; Beam one worker at a time per key; judge early.
+- Output: grade old and new sets together blind every time, so grader drift is visible.
+
+Carry forward:
+- T-205 not passed and not merged; Shivam to rule on the next step (bounded second gather vs tool run seeded with the pack).
+- T-207 merged, awaits Shivam's accept: stable factors need only P&L, promoter holding, insider trades, prices.
+- Larger frozen set (s10) is still the measuring-stick blocker; structured-layer build awaits Shivam's go.
+- Grading goes to headless Opus (Shivam 13 Nov); paid DeepSeek allowed when Beam is rate limited.
+
 ## 2026-11-13 16:45 Eagle wrap-up (sv-t-199-blue-star-atom): evidence pack rounds 2-3
 
 Work done since the entry below: evidence pack (T-205, Beam) round 2 (cap, per-call pages) and round 3 (symbol,
