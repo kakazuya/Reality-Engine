@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sqlite3
 import time
 from collections import Counter, OrderedDict
@@ -33,6 +34,17 @@ LONG_WORD_SHARE_THRESHOLD = 0.2
 LONG_WORD_CHARS = 25
 SINGLE_CHAR_SHARE_THRESHOLD = 0.6
 _VOWELS = set("aeiouAEIOU")
+
+# T-208 round 3: the page's tokens must mostly be words the build knows.  Same rule and 0.75 threshold as round 2
+# (a page token is clean when it is a word of the build's label lexicon or of the repo's English word list, or a
+# clean number), measured on the page's WORD BOXES.  A page below the threshold is read from its OCR words.
+DICTIONARY_SCORE_THRESHOLD = 0.75
+MIN_SCORED_TOKENS = 30
+_LEXICON = Path(__file__).resolve().parents[1] / "pilot3" / "lexicon"
+_ENGLISH = Path(__file__).resolve().parents[1] / "pilot3" / "en_vocab.txt"
+_NUMBER_TOKEN = re.compile(r"^[0-9][0-9,.\-()]*$")
+_EDGE_PUNCT = ".,;:()[]'\"\u2019\u2018\u201c\u201d"
+_DICTIONARY: frozenset[str] | None = None
 
 
 @dataclass
@@ -99,6 +111,60 @@ def _no_vowel(word: str) -> bool:
     return not any(c in _VOWELS for c in word)
 
 
+def dictionary() -> frozenset[str]:
+    """Words the build knows: every label pattern of ``pilot3/lexicon/*.yaml``, ``business_abbrev.txt`` and the
+    repo's English word list (``pilot3/en_vocab.txt``).  Read once per process."""
+    global _DICTIONARY
+    if _DICTIONARY is None:
+        words: set[str] = set()
+
+        def add(text: str) -> None:
+            words.update(w for w in re.split(r"[^a-z0-9]+", text.lower()) if w)
+
+        import yaml
+
+        for path in sorted(_LEXICON.glob("*.yaml")):
+            try:
+                stack: list[Any] = [yaml.safe_load(path.read_text(encoding="utf-8"))]
+            except (OSError, yaml.YAMLError):
+                continue
+            while stack:
+                item = stack.pop()
+                if isinstance(item, str):
+                    add(item)
+                elif isinstance(item, list):
+                    stack.extend(item)
+                elif isinstance(item, dict):
+                    stack.extend(item.keys())
+                    stack.extend(item.values())
+        for path in (_LEXICON / "business_abbrev.txt", _ENGLISH):
+            try:
+                add(path.read_text(encoding="utf-8"))
+            except OSError:
+                continue
+        _DICTIONARY = frozenset(words)
+    return _DICTIONARY
+
+
+def dictionary_score(words: list[Word]) -> dict | None:
+    """``{share, clean, scored}`` of the page's tokens, or None under ``MIN_SCORED_TOKENS`` scored tokens.
+
+    Single characters and bare separators are not scored; a number is clean whatever its digits, so a garbled
+    text layer is caught by its WORDS (``Revpnul'``), not by its figures."""
+    vocabulary = dictionary()
+    clean = scored = 0
+    for word in words:
+        text = str(word[4]).strip()
+        if len(text) <= 1 or not any(c.isalnum() for c in text):
+            continue
+        scored += 1
+        if _NUMBER_TOKEN.match(text) or text.strip(_EDGE_PUNCT).lower() in vocabulary:
+            clean += 1
+    if scored < MIN_SCORED_TOKENS:
+        return None
+    return {"share": clean / scored, "clean": clean, "scored": scored}
+
+
 def quality(words: list[Word]) -> tuple[str, str]:
     """Verdict on a list of word boxes: ('none', reason) / ('jumbled', reason) / ('ok', '')."""
     text = " ".join(w[4] for w in words)
@@ -119,6 +185,10 @@ def quality(words: list[Word]) -> tuple[str, str]:
     single_n = sum(1 for w in words if len(w[4]) == 1)
     if single_n / total > SINGLE_CHAR_SHARE_THRESHOLD:
         return "jumbled", "share of single-character words > 0.6"
+    verdict = dictionary_score(words)
+    if verdict is not None and verdict["share"] < DICTIONARY_SCORE_THRESHOLD:
+        return "jumbled", (f"label-dictionary share {verdict['share']:.2f} < {DICTIONARY_SCORE_THRESHOLD} "
+                           f"({verdict['clean']} of {verdict['scored']} tokens clean)")
     return "ok", ""
 
 

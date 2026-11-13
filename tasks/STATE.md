@@ -19,7 +19,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 0. Roles (Shivam 13-14 Nov): DeepSeek builds; agy `gemini-4-hydrogen-high` answers, searches questions, codes on trial (shell works with the skip flag); Opus 5.5 medium grades blind. Go key 1 only (restart dsh-worker MCP).
 1. DONE 14 Nov 05:00 (Wolf): r13 blind grades, report `D:/RealityEngine/reports/2026-11-14_r13_grading.html`. Paired BS-001..026: Hydrogen pack 24, DS lean B 22, DS pack 20, DS lean A 19; full 64: DS B 54, A 50, pack 46. 36 of 44 misses = routing. Wolf graded batches 2-8 inline (agy quota).
 2. Shivam 14 Nov: dumping a gathered pack on the model is rejected. Round 14 = lean planned lookups: model names exact facts, scripts/tools return only those rows, follow-ups for gaps, no seed pack; Hydrogen vs DeepSeek, right answers + tokens per question.
-3. T-212: Q2FY27 XBRL 2,597 symbols incl PVRINOX; re-run after deadline. T-208: KEI/MEDANTA/PVRINOX stores + 411 pages HP-OCR'd; PVRINOX Q2FY27 revenue missing (r3 worker running). Fix before the verdict.
+3. T-212: Q2FY27 XBRL 2,597 symbols; re-run after deadline. T-208 r3 MERGED: PVRINOX Q2FY27 20,620 SA / 21,051 consol (= XBRL). NEXT: rebuild s10 stores + bluestar with --ocr-db, then verdict.
 4. T-209 MERGED: `D:/RealityEngine/structured/structured_universe.db`; pledge flag 0 = 0%. Raw `nse_shp_xbrl_universe` to Drive pending.
 5. T-210 MERGED code; panel run needs 7 GB free: `python -m reality_engine.research.factor_deep --out .tmp/t210 --project`, then full.
 6. T-207 accepted 14 Nov as continuous: T-211 = month-end re-run job (Wolf). KPI guards 67ceeb28 port: redo. BS-040 grade wrong (`report_r12/BS-040_check.md`). T-172 frozen split; T-191; T-194; T-179.

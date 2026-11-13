@@ -213,7 +213,8 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
                 from reality_engine.pilot3 import comparatives
 
                 log["comparatives"] = comparatives.run(
-                    conn, symbols, out.with_name(f"{out.stem}_comparatives_review.csv"))
+                    conn, symbols, out.with_name(f"{out.stem}_comparatives_review.csv"),
+                    store_db=out, ocr_dbs=ocr_inputs(out, ocr_dbs))
             elif name == "preferred":
                 from reality_engine.pilot3 import preferred
 

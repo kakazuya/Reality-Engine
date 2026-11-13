@@ -1786,7 +1786,70 @@ python -m reality_engine.pilot3.regression_set score --all                      
      dictionary score, not only its share heuristics; (4) the durable Q2FY27 fix is the NSE XBRL filing --
      `results_xbrl.db` holds 566 filings for 2026-09-30 but only 2026-03-31 and 2026-06-30 for INE191H01014, so a fetch
      is missing, not a parse. `.tmp/prove_fix.py` prints both word sources through `comparatives.read_page` as the
-     evidence for (b) and (c).
+     evidence for (b) and (c). Round 3 implements (1)-(3); the XBRL fetch (4) is still missing but no longer needed
+     for the printed revenue.
+- **T-208 round 3: the printed reader takes OCR words for garbled pages and joins wrapped labels (14 Nov 2026).**
+  Code: `reality_engine/v2/page_words.py` (`dictionary`, `dictionary_score`, `quality`), `reality_engine/pilot3/comparatives.py`
+  (`match_line`, `_fuzzy_score`, `_prefix_score`, `_continues`, `_data_labels`, `read_page`, `_table_rows`, `run`,
+  `_extract_symbol`), `reality_engine/pilot3/build.py` (passes `store_db=out` and `ocr_inputs(out, ocr_dbs)`),
+  test `reality_engine/tests/test_comparatives_wrapped_ocr.py` (6 tests).
+  1. **Dictionary-score rule (`page_words.quality`).** A page token is CLEAN when it is a clean number, a word of the
+     build's label lexicon (`pilot3/lexicon/*.yaml` + `business_abbrev.txt`) or a word of `pilot3/en_vocab.txt`; score
+     = clean / scored tokens; single characters and bare separators are not scored; fewer than 30 scored tokens is
+     `too_short` and not judged. **Threshold 0.75** (same as round 2). Measured on word boxes: PVRINOX `fa10203c` p3
+     0.47 and p9 0.60 (both `jumbled`; round 2's page-text score with the docs/tasks prose corpus gave 0.59/0.78 --
+     `en_vocab.txt` stands in for that corpus so a build needs no checkout). Below the threshold `words_for` returns
+     the `ocr_page` words.
+  2. **`comparatives` reads those words.** `run(..., store_db=<db>, ocr_dbs=<ocr dbs>)`; for each results page
+     `_extract_symbol` asks `page_words.words_for`; when the text layer scores under the threshold and OCR exists, the
+     text layer's own table leads and the OCR table only FILLS items it lost (an OCR cell never replaces a printed
+     cell); a page with no text layer is read from OCR alone. Every OCR-read cell is gated: it is stored only when the
+     page's own arithmetic or the XBRL confirms it (`ocr_unreconciled` in the review CSV otherwise), and a gated
+     `revenue_from_operations` is dropped before the existing total-income-minus-other-income derivation runs. No
+     coverage-row bookkeeping is touched, so a right printed row cannot be lost to an OCR guess.
+  3. **Wrapped labels.** `_data_labels` joins a label line that prints no number to the next numbered row when the
+     next label starts mid-phrase (a lower-case first word or `and`/`or`/`of` after a line ending mid-sentence);
+     `match_line` then matches the joined label with `anchor=2`, so a phrase that lives only in the continuation
+     ("... exceptional items and tax") cannot name the row. All printed labels are matched with `anchor=2`: a phrase
+     buried mid-label is not the row (`Profit/(Loss) after exceptional item and tax from discontinued operations` is
+     not `exceptional_items`). A two-token pattern may not skip an alphabetic word longer than three characters
+     (`Other comprehensive income` is not `other income`), while OCR split noise (`tol 11 expenses`) still matches;
+     an OCR-truncated label may match the START of a pattern (`Revenue fro` -> `revenue from operations`) and its
+     figure is kept only when the arithmetic confirms it.
+  4. **Tests.** `python -m pytest reality_engine/tests/test_comparatives_wrapped_ocr.py -q` -> 6 passed (wrapped
+     label joins; p9's profit line is not `exceptional_items`; a page under the dictionary threshold takes its OCR
+     words; an OCR figure that breaks the arithmetic is not stored, the derived one is; a truncated label is kept only
+     when its figure reconciles). Existing `test_pilot3_comparatives.py` 21 passed, `test_v2_page_words.py` 5 passed.
+  5. **Proof on copies** (`python -m reality_engine.scripts.store_diff`, `--parts comparatives,preferred,ratios`,
+     `--base <main checkout> --head .`; the sandbox cannot create `git worktree` under the main repo's `.git`, so the
+     main checkout path is passed instead of `main`; the store's `ocr_textrec.db`/`ocr_bluestar.db` is copied beside
+     each copy as `<stem>_ocr.db` because the diff's rebuild passes no `--ocr-db`):
+     - PVRINOX (`--target pvrinox`, `.tmp/store_diff_t208r3_12`): `fin_quarter_printed` 1,248 -> 1,270 (15 removed,
+       37 added, 1.20 %), `ratio_panel` 541 -> 551 (1 changed), gates 0, **no longer served 0**. `fin_quarter_current`
+       Q2FY27: standalone `revenue_from_operations` **20,620 mn (p3)**, consolidated **21,051 mn (p9)**, both
+       `sum_ok`; `exceptional_items` **3,511 gone** (and 4,267). The consolidated figure is derived from the page's
+       own arithmetic (21,393 - 342); the OCR's `1,051` was rejected by `total_income = revenue + other_income` and by
+       `current + preceding = ytd`, and the standalone 20,620 is the printed row behind the truncated label.
+     - KEI (`.tmp/store_diff_t208r3_13`): 2,184 -> 2,172 (21 removed, 9 added, 0.96 %), gates 0, no longer served 0.
+       Removed: 3 mixed-unit `total_income` note rows and 5 tiny `tax`/`other_income` note rows that were unchecked
+       duplicates; 5 `tax` rows CHANGED to the correct XBRL-confirmed values (e.g. Q1FY27 current 5.59 -> 950.24 mn)
+       and the `11 Other Comprehensive Income/(Loss)` row no longer lands as `other_income`.
+     - MEDANTA (`.tmp/store_diff_t208r3_14`): 1,971 -> 2,082 (30 removed, 141 added, 1.52 %), gates 0, no longer
+       served 0; 108 new keys, all OCR-filled `sum_ok` rows from a page that printed (e.g. page 15: pbt/pat/tax/
+       total comprehensive income for H1FY23 and FY23). The "removed" rows are whole-row hash changes on the same key
+       (added twin rows), not lost keys; 3 unchecked `exceptional_items` rows taken from a "Profit before ... exceptional
+       items and tax" line are gone (same defect as 3,511).
+     - BLUESTAR (`.tmp/store_diff_t208r3_15`): 1,850 -> 1,839 (28 removed, 17 added, 1.51 %), gates 0, no longer
+       served 0. `exceptional_items` now comes from the real "Exceptional items (refer note 4)" row (Q2FY27 current
+       133.61 -> 23.02, H1FY27 259.23 -> 32.19, Q1FY27 preceding 125.62 -> 9.17) instead of the "Profit before share
+       of profit of joint ventures, exceptional items and tax" line; two `pbt_before_exceptional` rows are added from
+       that line; mixed-unit note rows (page 7/12) are gone.
+     The four stores' only remaining unchecked losses are mixed-unit note rows and the removed `exceptional_items`
+     lines above; every store reports 0 rows the serving tools would no longer return. The `ratios` part changes only
+     PVRINOX's `pat_before_exceptional_ttm` (2.99 -> 6.50 bn, the bogus 3,511 no longer subtracted).
+  6. **Open.** The NSE XBRL filing for PVRINOX 2026-09-30 is still missing (`results_xbrl.db`), so the current
+     revenue is `fin_quarter_printed`, not XBRL. Untested on the remaining stores: the dictionary threshold may flag
+     other jumbled pages and the OCR fill will then add rows (all gated); run the same store_diff before merging.
 
 ## 5. Code tools: outline and typecheck (T-054, 4 Nov 2026)
 
