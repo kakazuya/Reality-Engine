@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-13 16:10 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-13 17:20 IST (Wolf)
 History `docs/state_history/` (previous: `STATE_2026-11-12_1410.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -16,7 +16,7 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-00000. Shivam 13 Nov: Claude directs and reviews only; DeepSeek workers build. Board cut 86 -> 51 open (parked sets: IDEA_BOX I-013..I-015). T-207 factor-reward engine opened (brief `tasks/handoff/T-207_FACTOR_REWARDS_BRIEF.md`).
+00000. Shivam 13 Nov: Claude directs and reviews only; DeepSeek workers build. Board cut 86 -> 51 open (parked sets: IDEA_BOX I-013..I-015). T-207 r1+r2 built: `docs/research/T-207_factor_rewards.md`.
 0000. T-205: r3 judge enough 27 / partly 30 / missing 7 of 64 (`bluestar/pack/pack_judge_r3.csv`; 2 of 5 checked lenient). Round 4 = model-written plan from a store menu (`tasks/handoff/T-205_R4_PLAN_BRIEF.md`); then independent judge -> answer step + number check -> NEW unseen company.
 000. T-199 BLUESTARCO DONE 13 Nov, NOT passed: first attempt DeepSeek 82.8% / 73.4%, Haiku 56.2% (blind Opus, 64 frozen q); 60/64 right in some set; losses routing 39, compute 11, reading 6, none missing data. `reports/2026-11-13_bluestar_atom_test.html`. Store: 45,173 atoms (25,672 verified), unseen 20-page sample value 95.5% / recall 81% on financial pages. Open store defects: derived capital_employed, page_reader default doc types.
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
