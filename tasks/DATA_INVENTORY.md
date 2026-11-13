@@ -1,6 +1,6 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-14 02:18 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Generated 2026-11-14 05:00 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
 Undocumented: 0 tables and 0 of 74 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
@@ -195,8 +195,8 @@ Undocumented: 0 tables and 0 of 74 raw folders.
 | results_notes.db | `docs` | 41,606 | yes |
 | results_notes.db | `gate` | 21 | yes |
 | results_notes.db | `notes` | 306,389 | yes |
-| results_xbrl.db | `facts` | 14,018,478 | yes |
-| results_xbrl.db | `filings` | 146,934 | yes |
+| results_xbrl.db | `facts` | 14,922,723 | yes |
+| results_xbrl.db | `filings` | 151,139 | yes |
 | results_xbrl.db | `filings_isin` | 183,029 | yes |
 | pilot3/pages.db | `doc` | 15,348 | yes |
 | pilot3/pages.db | `doc_page` | 23,259 | yes |
@@ -234,7 +234,7 @@ Undocumented: 0 tables and 0 of 74 raw folders.
 | material_announcement | 0 | 0.00 | - | yes |
 | nse_announcements | 0 | 0.00 | - | yes |
 | nse_shp_xbrl_pilot | 797 | 0.01 | 2026-11-12 `SHP_1741009_17102026084603_WEB.xml.gz` | yes |
-| nse_shp_xbrl_universe | 27,307 | 0.28 | 2026-11-14 `SHP_1486098_18072025110921_WEB.xml.gz` | yes |
+| nse_shp_xbrl_universe | 27,307 | 0.28 | 2026-11-14 `SHP_1751659_03112026122429_WEB.xml.gz` | yes |
 | originals_lists | 0 | 0.00 | - | yes |
 | pilot60_history | 18,416 | 30.42 | 2026-11-12 `manifest.csv` | yes |
 | price_bands | 0 | 0.00 | - | yes |
@@ -258,14 +258,14 @@ Undocumented: 0 tables and 0 of 74 raw folders.
 | raw_market/nse_fii_stats | 0 | 0.00 | - | yes |
 | raw_market/nse_full | 5 | 0.00 | 2026-11-09 `sec_bhavdata_full_09112026.csv` | yes |
 | raw_market/nse_index | 5 | 0.00 | 2026-11-09 `ind_close_all_09112026.csv` | yes |
-| raw_market/nse_integrated_equities | 0 | 0.00 | - | yes |
-| raw_market/nse_integrated_sme | 0 | 0.00 | - | yes |
+| raw_market/nse_integrated_equities | 8 | 0.00 | 2026-11-14 `page_008.json` | yes |
+| raw_market/nse_integrated_sme | 12 | 0.00 | 2026-11-14 `page_012.json` | yes |
 | raw_market/nse_part_oi | 0 | 0.00 | - | yes |
 | raw_market/nse_part_vol | 0 | 0.00 | - | yes |
 | raw_market/nse_pit_gg | 0 | 0.00 | - | yes |
 | raw_market/nse_pit_gg_sme | 0 | 0.00 | - | yes |
 | raw_market/nse_pit_gg_xml | 0 | 0.00 | - | yes |
-| raw_market/nse_results_xbrl | 0 | 0.00 | - | yes |
+| raw_market/nse_results_xbrl | 4,205 | 0.77 | 2026-11-14 `INTEGRATED_FILING_NONINDAS_1758164_14112026010144_` | yes |
 | raw_market/nse_sast | 0 | 0.00 | - | yes |
 | raw_market/nse_short | 0 | 0.00 | - | yes |
 | raw_market/nse_shp_index | 0 | 0.00 | - | yes |
