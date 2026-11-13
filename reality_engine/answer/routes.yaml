@@ -23,4 +23,7 @@ quotas:
   ratio: 20
   tech: 10
   holding: 10
-  page: 6
+  page: 8
+per_item_caps:
+  page: 4000
+  default: 6000

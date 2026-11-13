@@ -1882,4 +1882,4 @@ recorded in one SQLite file, `D:/RealityEngine/ledger/ledger.db`, by `reality_en
 
 ## Evidence pack (T-205)
 
-Retrieval-only prototype: python -m reality_engine.answer.pack_recall --set bluestar --workspace . (or urobindo) builds one pack_<qid>.json per question under .tmp/pack/<set>/ and writes pack_recall.csv (qid,kind,hit,found,missing,pack_chars,items,seconds,routes_nonempty) plus a per-kind summary. No model calls; semantic route needs REALITY_DATA_ALLOW_PAID_EMBED=1.
+Retrieval-only prototype (round 2): python -m reality_engine.answer.pack_recall --set bluestar --workspace . (or aurobindo) builds one pack_<qid>.json per question under .tmp/pack/<set>/ and writes pack_recall.csv (qid,kind,hit,found,missing,phrase_hits,pack_chars,items,seconds,routes_nonempty) plus a per-kind summary. max_chars (120000) enforced on final pack; page route picks one best page per call transcript (up to 8 calls) plus top 3 decks/results; scorer drops period/date/year/page/doc-key noise and keeps decimals/3+-digit/percent figures. No model calls; semantic route needs REALITY_DATA_ALLOW_PAID_EMBED=1.

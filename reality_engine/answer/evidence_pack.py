@@ -222,6 +222,45 @@ def _asof_ok(known_at, as_of):
     return ka <= str(as_of)[:10]
 
 
+_ITEM_CAPS = (_ROUTES.get("per_item_caps") or {}) if isinstance(_ROUTES, dict) else {}
+
+
+def _item_cap(route):
+    return int(_ITEM_CAPS.get(route, _ITEM_CAPS.get("default", 6000)))
+
+
+def _truncate_to_cap(text, route):
+    cap = _item_cap(route)
+    t = text or ""
+    return t[:cap]
+
+def _best_window(text, words, cap):
+    t = text or ""
+    if len(t) <= cap:
+        return t
+    low = t.lower()
+    pos = 0
+    for w in (words or []):
+        i = low.find(str(w).lower())
+        if i >= 0:
+            pos = i
+            break
+    start = max(0, pos - cap // 2)
+    if start + cap > len(t):
+        start = max(0, len(t) - cap)
+    return t[start:start + cap]
+
+
+def _page_score(text, topic_words, phrase):
+    low = (text or "").lower()
+    score = 0
+    for w in (topic_words or []):
+        if w:
+            score += low.count(str(w).lower())
+    if phrase and str(phrase).lower() in low:
+        score += 5
+    return score
+
 def _item(route, idx, doc_key="", doc_type="", page=None, known_at=None, text="", row=None):
     return {
         "id": f"{route}-{idx}",
@@ -230,7 +269,7 @@ def _item(route, idx, doc_key="", doc_type="", page=None, known_at=None, text=""
         "doc_type": doc_type or "",
         "page": page,
         "known_at": known_at,
-        "text": (text or "")[:6000] if route != "page" else (text or "")[:6000],
+        "text": _truncate_to_cap(text, route),
         "row": row,
     }
 
@@ -254,6 +293,7 @@ def _doc_key_of(r, reply=None):
         if isinstance(prov, dict):
             src = prov.get("source") or prov.get("doc_key")
             if src:
+                src = re.sub(r"\s+p\d+\s*$", "", str(src))
                 return src
     return ""
 
@@ -425,72 +465,153 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
 
     # page reads for statement/list/guidance kinds
     if any(k in kinds for k in ("statement", "list", "guidance")) or kind == "all":
-        # pick top pages from semantic rows
-        sem_items = [it for it in flat_items if it["route"] == "semantic"]
-        # rank by score not available; use order
-        chosen = []
-        seen_pages = set()
-        for it in sem_items:
-            key = (it.get("doc_key"), it.get("page"))
-            if key in seen_pages:
-                continue
-            seen_pages.add(key)
-            chosen.append(it)
-            if len(chosen) >= 6:
-                break
-        # also from topic? skip for simplicity
         p3mod = p3
-        for it in chosen:
+        _p3ask = None
+        try:
+            import p3ask as _p3ask
+        except Exception:
+            try:
+                from reality_engine.scripts import p3ask as _p3ask
+            except Exception:
+                _p3ask = None
+
+        def _fetch_page(dk, pg):
+            if _p3ask is None:
+                return None
+            try:
+                return _p3ask._page(p3mod, str(dk), int(pg), as_of=as_of, max_chars=6000)
+            except Exception:
+                return None
+
+        def _fetch_next(dk, pg):
+            if _p3ask is None:
+                return None
+            try:
+                return _p3ask._page(p3mod, str(dk), int(pg) + 1, as_of=as_of, max_chars=6000)
+            except Exception:
+                return None
+
+        def _best_window_local(txt):
+            return _best_window(txt or "", topic_words, _item_cap("page"))
+
+        def _emit_page(dk, pg, doc_type, ka_fallback):
+            rep = _fetch_page(dk, pg)
+            if not (isinstance(rep, dict) and rep.get("rows")):
+                return []
+            out = []
+            for row in rep["rows"]:
+                txt = row.get("text") if isinstance(row, dict) else str(row)
+                page_no = row.get("page") if isinstance(row, dict) else pg
+                ka = row.get("known_at") if isinstance(row, dict) else ka_fallback
+                if not _asof_ok(ka, as_of):
+                    continue
+                txt = _best_window_local(txt)
+                out.append(_item("page", len(flat_items) + len(out) + 1,
+                                 doc_key=dk, doc_type=doc_type or "",
+                                 page=page_no, known_at=ka, text=txt))
+            try:
+                nrep = _fetch_next(dk, pg)
+                if isinstance(nrep, dict) and nrep.get("rows"):
+                    for row in nrep["rows"]:
+                        txt = row.get("text") if isinstance(row, dict) else str(row)
+                        page_no = row.get("page") if isinstance(row, dict) else (pg + 1)
+                        ka = row.get("known_at") if isinstance(row, dict) else ka_fallback
+                        if not _asof_ok(ka, as_of):
+                            continue
+                        txt = _best_window_local(txt)
+                        out.append(_item("page", len(flat_items) + len(out) + 1,
+                                         doc_key=dk, doc_type=doc_type or "",
+                                         page=page_no, known_at=ka, text=txt))
+            except Exception:
+                pass
+            return out
+
+        def _best_page_for_doc(dk):
+            try:
+                q = "SELECT page, text, known_at FROM doc_page WHERE doc_key = '%s'" % str(dk).replace(chr(39), "")
+                rep = p3mod.sql(q, limit=200, max_chars=8000, as_of=as_of)
+            except Exception:
+                rep = None
+            pages = _rows_of(rep) if rep else []
+            if not pages:
+                return None
+            best = None
+            best_score = -1
+            for pgrow in pages:
+                if isinstance(pgrow, dict):
+                    pgno = pgrow.get("page")
+                    txt = pgrow.get("text")
+                    ka = pgrow.get("known_at")
+                elif isinstance(pgrow, (list, tuple)):
+                    pgno = pgrow[0] if len(pgrow) > 0 else None
+                    txt = pgrow[1] if len(pgrow) > 1 else ""
+                    ka = pgrow[2] if len(pgrow) > 2 else None
+                else:
+                    pgno = None
+                    txt = str(pgrow)
+                    ka = None
+                if not _asof_ok(ka, as_of):
+                    continue
+                sc = _page_score(txt or "", topic_words, " ".join(topic_words))
+                if sc > best_score:
+                    best_score = sc
+                    best = (pgno, ka)
+            if best is None and pages:
+                first = pages[0]
+                if isinstance(first, dict):
+                    best = (first.get("page"), first.get("known_at"))
+                elif isinstance(first, (list, tuple)):
+                    best = (first[0] if len(first)>0 else None, first[2] if len(first)>2 else None)
+                else:
+                    best = (None, None)
+            return best
+
+        # semantic best page per transcript doc
+        sem_page_by_doc = {}
+        for it in flat_items:
+            if it.get("route") == "semantic":
+                dk = it.get("doc_key")
+                pg = it.get("page")
+                if dk and pg is not None and dk not in sem_page_by_doc:
+                    sem_page_by_doc[dk] = pg
+
+        transcript_docs = []
+        try:
+            drep = p3mod.docs(symbol=symbol, doc_type="transcript", as_of=as_of, limit=50)
+            for r in _rows_of(drep):
+                dk = _doc_key_of(r, drep)
+                if dk:
+                    transcript_docs.append((str(dk), _doc_type_of(r) or "transcript", _known_at_of(r)))
+        except Exception:
+            transcript_docs = []
+
+        transcript_docs.sort(key=lambda x: (x[2] or ""), reverse=True)
+        for dk, dt, ka in transcript_docs[:8]:
+            bp = _best_page_for_doc(dk)
+            if not bp or bp[0] is None:
+                continue
+            flat_items.extend(_emit_page(dk, int(bp[0]), dt, bp[1] or ka))
+
+        sem_items = [it for it in flat_items if it["route"] == "semantic"]
+        deckres = []
+        seen_docs = set()
+        for it in sem_items:
+            dt = (it.get("doc_type") or "").lower()
+            if dt not in ("deck", "results", "result", "presentation"):
+                continue
+            key = it.get("doc_key")
+            if key in seen_docs:
+                continue
+            seen_docs.add(key)
+            deckres.append(it)
+            if len(deckres) >= 3:
+                break
+        for it in deckres:
             dk = it.get("doc_key")
             pg = it.get("page")
             if not dk or pg is None:
                 continue
-            try:
-                rep = p3mod.sql if False else None
-            except Exception:
-                rep = None
-            # use p3ask._page via import
-            try:
-                import p3ask
-                page_rep = p3ask._page(p3mod, str(dk), int(pg), as_of=as_of, max_chars=6000)
-            except Exception:
-                try:
-                    from reality_engine.scripts import p3ask as _p3ask
-                    page_rep = _p3ask._page(p3mod, str(dk), int(pg), as_of=as_of, max_chars=6000)
-                except Exception as exc:
-                    page_rep = {"error": str(exc)}
-            if isinstance(page_rep, dict) and page_rep.get("rows"):
-                for row in page_rep["rows"]:
-                    txt = row.get("text") if isinstance(row, dict) else str(row)
-                    page_no = row.get("page") if isinstance(row, dict) else pg
-                    ka = row.get("known_at") if isinstance(row, dict) else it.get("known_at")
-                    if not _asof_ok(ka, as_of):
-                        continue
-                    flat_items.append(_item("page", len(flat_items) + 1,
-                                            doc_key=dk, doc_type=it.get("doc_type", ""),
-                                            page=page_no, known_at=ka, text=txt or ""))
-                # next page if hit in last 20% of page
-                try:
-                    # if page text length and hit position? We'll just fetch next page always? Spec: plus next page when hit in last 20%. We'll fetch next page unconditionally for safety (cap quota 6)
-                    next_rep = None
-                    try:
-                        import p3ask as _p3ask
-                        next_rep = _p3ask._page(p3mod, str(dk), int(pg) + 1, as_of=as_of, max_chars=6000)
-                    except Exception:
-                        from reality_engine.scripts import p3ask as _p3ask
-                        next_rep = _p3ask._page(p3mod, str(dk), int(pg) + 1, as_of=as_of, max_chars=6000)
-                    if isinstance(next_rep, dict) and next_rep.get("rows"):
-                        for row in next_rep["rows"]:
-                            txt = row.get("text") if isinstance(row, dict) else str(row)
-                            page_no = row.get("page") if isinstance(row, dict) else (pg + 1)
-                            ka = row.get("known_at") if isinstance(row, dict) else it.get("known_at")
-                            if not _asof_ok(ka, as_of):
-                                continue
-                            flat_items.append(_item("page", len(flat_items) + 1,
-                                                    doc_key=dk, doc_type=it.get("doc_type", ""),
-                                                    page=page_no, known_at=ka, text=txt or ""))
-                except Exception:
-                    pass
+            flat_items.extend(_emit_page(dk, int(pg), it.get("doc_type", ""), it.get("known_at")))
 
     # dedupe all
     flat_items = _dedupe(flat_items)
@@ -530,15 +651,33 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
             break
     flat_items = merged
 
-    # total cap
-    kept = []
+    # total cap: truncate page texts already per-item; drop lowest-ranked items
+    # rank best first (reuse _period_match defined above)
+    ranked_idx = sorted(range(len(flat_items)),
+                        key=lambda i: (_period_match(flat_items[i]),))
+    # stable by known_at desc within same period match
+    ranked_idx.sort(key=lambda i: (flat_items[i].get("known_at") or ""), reverse=True)
+    ranked_idx.sort(key=lambda i: (_period_match(flat_items[i]),))
+    kept_idx = set()
     total = 0
-    for it in flat_items:
-        tlen = len(it.get("text") or "")
-        if total + tlen > max_chars and kept:
-            break
-        kept.append(it)
-        total += tlen
+    dropped = []
+    for i in ranked_idx:
+        tlen = len(flat_items[i].get("text") or "")
+        sep = 2 if kept_idx else 0
+        if total + sep + tlen <= max_chars:
+            kept_idx.add(i)
+            total += sep + tlen
+        else:
+            dropped.append(flat_items[i])
+    kept = [flat_items[i] for i in range(len(flat_items)) if i in kept_idx]
+    # log what was cut
+    try:
+        import sys as _sys
+        for it in dropped:
+            _sys.stderr.write("cut: %s %s p%s (%d chars)\n" % (it.get("route"), it.get("doc_key"), it.get("page"), len(it.get("text") or "")))
+    except Exception:
+        pass
+    cut_log = ["%s %s p%s (%d chars)" % (it.get("route"), it.get("doc_key"), it.get("page"), len(it.get("text") or "")) for it in dropped]
 
     # route stats final
     for route in set(it["route"] for it in flat_items):
@@ -563,12 +702,22 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
         "items_count": len(kept),
         "routes_nonempty": routes_nonempty,
         "route_stats": route_stats,
+        "cut_log": cut_log,
         "seconds": round(time.time() - t0, 3),
     }
     return pack
 
 
 # aliases for tests
-normalize_number = None
+def normalize_number(tok):
+    try:
+        from reality_engine.answer import pack_recall as _pr
+        return _pr.normalize_number(tok)
+    except Exception:
+        t = (tok or "").strip().replace(",", "")
+        if "." in t:
+            t = t.rstrip("0").rstrip(".")
+        return t
+
 def normalize_numbers(text):
     return re.findall(r"\d[\d,]*\.?\d*", text or "")

@@ -22,18 +22,48 @@ os.environ.setdefault("REALITY_DATA_ALLOW_PAID_EMBED", "1")
 def normalize_number(tok: str) -> str:
     t = (tok or "").strip()
     t = t.replace(",", "")
-    # strip trailing zeros after decimal
     if "." in t:
         t = t.rstrip("0").rstrip(".")
     return t
 
 
+_PERIOD_RE = re.compile(r"(?:Q[1-4]|H[12]|9M)\s*FY\s*\d{2,4}|FY\s*\d{2,4}", re.I)
+_PAGE_RE = re.compile(r"\b(?:p\.?\s*\d+|page\s+\d+)\b", re.I)
+_UUID_RE = re.compile(r"\b[0-9a-f]{8,}\b", re.I)
+_DATE_ISO_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
+
+
+def _strip_noise(text: str) -> str:
+    t = text or ""
+    t = _PERIOD_RE.sub(" ", t)
+    t = _DATE_ISO_RE.sub(" ", t)
+    t = _PAGE_RE.sub(" ", t)
+    t = _UUID_RE.sub(" ", t)
+    # drop years 1990-2035
+    def _yr(m):
+        y = int(m.group(0))
+        return " " if 1990 <= y <= 2035 else m.group(0)
+    t = re.sub(r"\b\d{4}\b", _yr, t)
+    return t
+
+
 def _extract_numbers(text: str) -> list[str]:
+    cleaned = _strip_noise(text or "")
     out = []
-    for m in re.finditer(r"\d[\d,]*\.?\d*", text or ""):
-        v = normalize_number(m.group(0))
-        if v:
-            out.append(v)
+    for m in re.finditer(r"\d[\d,]*\.?\d*", cleaned):
+        raw = m.group(0)
+        # percentage check
+        end = m.end()
+        is_pct = end < len(cleaned) and cleaned[end:end+1] == "%"
+        v = normalize_number(raw)
+        if not v:
+            continue
+        # keep rules: decimal point, 3+ digits, or percentage
+        has_decimal = "." in raw
+        digit_count = len(raw.replace(",", "").replace(".", ""))
+        if not (has_decimal or digit_count >= 3 or is_pct):
+            continue
+        out.append(v)
     return out
 
 
@@ -49,17 +79,31 @@ def _extract_quoted(text: str, n: int = 3) -> list[str]:
     return out[:n]
 
 
+def _key_phrases(text: str, n: int = 3) -> list[str]:
+    # quoted first; fallback to a few 2-4 word noun-ish chunks not implemented (keep quoted)
+    return _extract_quoted(text, n)
+
+
 def truth_tokens(truth: str) -> dict:
     nums = _extract_numbers(truth or "")
-    phrases = _extract_quoted(truth or "", 3)
+    phrases = _key_phrases(truth or "", 3)
     return {"numbers": nums, "phrases": phrases}
 
 
 def _num_set(text: str) -> set[float]:
     s = set()
-    for m in re.finditer(r"\d[\d,]*\.?\d*", text or ""):
+    cleaned = _strip_noise(text or "")
+    for m in re.finditer(r"\d[\d,]*\.?\d*", cleaned):
+        raw = m.group(0)
+        end = m.end()
+        is_pct = end < len(cleaned) and cleaned[end:end+1] == "%"
+        # keep rules
+        has_decimal = "." in raw
+        digit_count = len(raw.replace(",", "").replace(".", ""))
+        if not (has_decimal or digit_count >= 3 or is_pct):
+            continue
         try:
-            s.add(float(m.group(0).replace(",", "")))
+            s.add(float(raw.replace(",", "")))
         except ValueError:
             pass
     return s
@@ -77,7 +121,6 @@ def score_pack(pack_text: str, truth: str) -> tuple[str, list[str], list[str]]:
             pass
     found_floats = truth_floats & pack_nums
     missing_floats = truth_floats - pack_nums
-    # map back to strings
     found_strs = [n for n in truth_nums if _safe_float(n) in found_floats]
     missing_strs = [n for n in truth_nums if _safe_float(n) in missing_floats]
     if truth_floats:
@@ -91,6 +134,12 @@ def score_pack(pack_text: str, truth: str) -> tuple[str, list[str], list[str]]:
     if any(p.lower() in low for p in tt["phrases"]):
         return "hit", [], []
     return "miss", [], []
+
+
+def phrase_hits(pack_text: str, truth: str) -> int:
+    tt = truth_tokens(truth)
+    low = (pack_text or "").lower()
+    return sum(1 for p in tt["phrases"] if p.lower() in low)
 
 
 def _safe_float(x):
@@ -121,27 +170,25 @@ def run_set(questions_path: str, truths: dict, store: str, out_dir: str, symbol_
         p = ep.plan(question, as_of)
         pack = ep.gather(store, symbol, p, as_of)
         elapsed = time.time() - t0
-        # write pack file
         pack_path = Path(out_dir) / f"pack_{qid}.json"
         pack_path.write_text(json.dumps(pack, ensure_ascii=False, default=str), encoding="utf-8")
         status, found, missing = score_pack(pack.get("text", ""), truth)
+        ph = phrase_hits(pack.get("text", ""), truth)
         rows_out.append({
             "qid": qid,
             "kind": p.get("kind"),
             "hit": status,
             "found": ";".join(found),
             "missing": ";".join(missing),
+            "phrase_hits": ph,
             "pack_chars": pack.get("chars", 0),
             "items": pack.get("items_count", len(pack.get("items", []))),
             "seconds": round(elapsed, 3),
             "routes_nonempty": ";".join(pack.get("routes_nonempty", [])),
         })
-    # write CSV
-    csv_path = Path(out_dir).parent / "pack_recall.csv" if False else Path(out_dir) / "pack_recall.csv"
-    # The brief wants out .tmp/pack/bluestar/pack_recall.csv? Actually "Output CSV" unspecified location; put in out_dir
     csv_path = Path(out_dir) / "pack_recall.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=["qid", "kind", "hit", "found", "missing", "pack_chars", "items", "seconds", "routes_nonempty"])
+        w = csv.DictWriter(f, fieldnames=["qid", "kind", "hit", "found", "missing", "phrase_hits", "pack_chars", "items", "seconds", "routes_nonempty"])
         w.writeheader()
         w.writerows(rows_out)
     return rows_out
@@ -158,14 +205,12 @@ def main():
         questions_path = "D:/RealityEngine/bluestar/answers/questions_in.json"
         store = "D:/RealityEngine/bluestar/bluestar.db"
         out_dir = str(ws / ".tmp" / "pack" / "bluestar")
-        # truths
         import csv as _csv
         rows = []
         for fn in ("grades_1.csv", "grades_2.csv", "grades_3.csv"):
             with open(f"D:/RealityEngine/bluestar/report/{fn}", newline="", encoding="utf-8") as f:
                 rows.extend(list(_csv.DictReader(f)))
         truths = {}
-        # group by qid, take longest truth
         by_qid = {}
         for r in rows:
             by_qid.setdefault(r["qid"], []).append(r)
