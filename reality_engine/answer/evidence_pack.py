@@ -85,13 +85,9 @@ def _extract_metrics(question: str) -> list[str]:
         if mt and mt.issubset(toks):
             out.append(m)
             continue
-        # primary-token match: metric's first word present in question
-        primary = m.split("_")[0].lower()
-        if len(primary) >= 3 and primary in toks:
-            out.append(m)
-            continue
         ql = question.lower()
-        if m.lower().replace("_", " ") in ql:
+        phrase = m.lower().replace("_", " ")
+        if re.search(r"\b" + re.escape(phrase) + r"\b", ql):
             out.append(m)
     # de-dupe
     seen = set()
@@ -134,6 +130,32 @@ def _normalize_period(p: str) -> str:
     return re.sub(r"\s+", "", p).upper()
 
 
+_MONTHS = {"jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+           "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+           "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9, "oct": 10,
+           "october": 10, "nov": 11, "november": 11, "dec": 12, "december": 12}
+
+
+def _periods_from_date(iso: str) -> list[str]:
+    out = []
+    try:
+        import datetime as _dt
+        from reality_engine.pilot3 import row_checks as _rc
+        d = _dt.date.fromisoformat(iso)
+    except Exception:
+        return out
+    for fy in (d.year - 1, d.year, d.year + 1):
+        two = fy % 100
+        for label in (f"Q1FY{two:02d}", f"Q2FY{two:02d}", f"Q3FY{two:02d}", f"Q4FY{two:02d}",
+                      f"H1FY{two:02d}", f"H2FY{two:02d}", f"9MFY{two:02d}", f"FY{two:02d}"):
+            try:
+                if _rc.period_end(label) == iso:
+                    out.append(_normalize_period(label))
+            except Exception:
+                pass
+    return out
+
+
 def _extract_periods(question: str, as_of: str) -> list[str]:
     periods: set[str] = set()
     ql = question.lower()
@@ -142,6 +164,20 @@ def _extract_periods(question: str, as_of: str) -> list[str]:
                 r"\bFY\s*\d{2,4}\b"):
         for m in re.finditer(pat, question, re.I):
             periods.add(_normalize_period(m.group(0)))
+    # dates -> periods via row_checks calendar
+    for m in re.finditer(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\b", question):
+        day, mon, year = m.group(1), m.group(2).lower()[:3], m.group(3)
+        # handle full month names too
+        full = m.group(2).lower()
+        mi = _MONTHS.get(full) or _MONTHS.get(mon)
+        if mi:
+            iso = f"{year}-{mi:02d}-{int(day):02d}"
+            for p in _periods_from_date(iso):
+                periods.add(p)
+    for m in re.finditer(r"\b(\d{4})-(\d{2})-(\d{2})\b", question):
+        iso = m.group(0)
+        for p in _periods_from_date(iso):
+            periods.add(p)
     # latest/last/this quarter
     if any(p in ql for p in ("latest quarter", "last quarter", "this quarter", "current quarter", "latest q")):
         periods.add(_current_quarter(as_of))
@@ -193,6 +229,21 @@ def plan(question: str, as_of: str = "", symbol: str = "") -> dict:
     topic_words = [w for w in _tokenize(question) if w not in stop]
     # remove company-ish capitalized? already lower
     kind = _classify(question)
+    extra_stop = {"percentage", "percent", "change", "versus", "compared", "compare", "share", "how",
+                  "much", "many", "what", "which", "when", "where", "move", "moved", "over", "preceding"}
+    def _period_like(w):
+        return bool(re.match(r"^(q[1-4]|h[12]|9m)fy\d{2,4}$", w)) or bool(re.match(r"^fy\d{2,4}$", w)) or w.isdigit()
+    cells_words = [w for w in topic_words if (not _period_like(w)) and w not in extra_stop and len(w) >= 3]
+    # de-dupe
+    seen = set()
+    uniq = []
+    for w in cells_words:
+        if w in seen:
+            continue
+        seen.add(w)
+        uniq.append(w)
+    cells_words = uniq
+    cells_terms = " ".join(cells_words)
     return {
         "question": question,
         "as_of": as_of,
@@ -201,6 +252,9 @@ def plan(question: str, as_of: str = "", symbol: str = "") -> dict:
         "metrics": metrics,
         "periods": periods,
         "topic_words": topic_words,
+        "noun_phrases": list(cells_words),
+        "cells_terms": cells_terms,
+        "cells_words": cells_words,
         "ratios": ratios,
     }
 
@@ -395,42 +449,84 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
 
     t0 = time.time()
     tasks = []  # (route, fn)
+    route_errors = []
 
     topic_words = plan.get("topic_words") or []
     phrase = " ".join(topic_words) if topic_words else (plan.get("question") or "")
+    cells_words = plan.get("cells_words") or []
+    if not cells_words:
+        cells_words = [w for w in (plan.get("topic_words") or []) if len(w) >= 3]
+    # variants: strip common prefixes so "unallocable" also tries "allocable"
+    variants = set(cells_words)
+    for w in list(cells_words):
+        for pref in ("un", "non", "in", "dis", "im"):
+            if w.startswith(pref) and len(w) > len(pref) + 3:
+                variants.add(w[len(pref):])
+    cells_words = list(variants)
+    cells_phrase = " ".join(cells_words)
     tasks.append(("semantic", lambda: lookups_semantic.semantic(symbol=symbol, query=phrase, limit=8, as_of=as_of)))
     tasks.append(("search", lambda: p3.search(symbol=symbol, query=phrase, as_of=as_of)))
+    for w in cells_words:
+        ww = w
+        tasks.append(("search", lambda ww=ww: p3.search(symbol=symbol, query=ww, as_of=as_of)))
     tasks.append(("topic", lambda: p3.topic(symbol=symbol, topic=phrase, limit=25, as_of=as_of)))
 
     kind = plan.get("kind", "fact")
     kinds = [kind] if kind != "all" else ["fact", "statement", "list", "guidance", "compute", "price", "holding"]
-    metrics = plan.get("metrics") or []
+    metrics = [m for m in (plan.get("metrics") or []) if m]
     periods = plan.get("periods") or [None]
+    if not periods:
+        periods = [None]
     ratios = plan.get("ratios") or []
 
+    exact_metrics = metrics
+
     if "fact" in kinds or kind == "all":
-        if not metrics:
-            metrics = [""]
-        if not periods:
-            periods = [None]
-        for m in metrics:
+        # exact metric routes
+        for m in (exact_metrics if exact_metrics else []):
             for p in periods:
                 mm, pp = m, p
                 tasks.append(("fact", lambda mm=mm, pp=pp: p3.fact(symbol=symbol, metric=mm, period=pp, as_of=as_of)))
+                tasks.append(("fin", lambda mm=mm, pp=pp: p3.fin(symbol=symbol, measure=mm, period=pp, as_of=as_of)))
                 tasks.append(("cells", lambda mm=mm, pp=pp: p3.cells(symbol=symbol, terms=mm, period=pp, as_of=as_of)))
-        for m in (metrics if metrics != [""] else []):
+        for m in (exact_metrics if exact_metrics else []):
             for p in periods:
                 mm, pp = m, p
                 tasks.append(("kpi", lambda mm=mm, pp=pp: p3.kpi(symbol=symbol, kpi=mm, period=pp, as_of=as_of)))
+        # cells for each noun word (label search needs all words; single words maximise recall)
+        for w in cells_words:
+            for p in periods:
+                ww, pp = w, p
+                tasks.append(("cells", lambda ww=ww, pp=pp: p3.cells(symbol=symbol, terms=ww, period=pp, as_of=as_of)))
+        # fin with the joined phrase only when no exact metric (avoid noisy not_found otherwise)
+        if (not exact_metrics) and cells_phrase:
+            for p in periods:
+                cp, pp = cells_phrase, p
+                tasks.append(("fin", lambda cp=cp, pp=pp: p3.fin(symbol=symbol, measure=cp, period=pp, as_of=as_of)))
     if "guidance" in kinds:
         tasks.append(("guidance", lambda: p3.guidance(symbol=symbol, as_of=as_of)))
     if "compute" in kinds:
-        rlist = ratios if ratios else metrics
-        for r in (rlist if rlist else [""]):
+        rlist = ratios if ratios else exact_metrics
+        for r in (rlist if rlist else []):
             rr = r
             tasks.append(("ratio", lambda rr=rr: p3.ratio(symbol=symbol, ratio=rr, as_of=as_of)))
+        # cells/fin for inputs
+        for m in (exact_metrics if exact_metrics else []):
+            for p in periods:
+                mm, pp = m, p
+                tasks.append(("cells", lambda mm=mm, pp=pp: p3.cells(symbol=symbol, terms=mm, period=pp, as_of=as_of)))
+                tasks.append(("fin", lambda mm=mm, pp=pp: p3.fin(symbol=symbol, measure=mm, period=pp, as_of=as_of)))
+        for w in cells_words:
+            for p in periods:
+                ww, pp = w, p
+                tasks.append(("cells", lambda ww=ww, pp=pp: p3.cells(symbol=symbol, terms=ww, period=pp, as_of=as_of)))
+        if cells_phrase and not exact_metrics:
+            for p in periods:
+                cp, pp = cells_phrase, p
+                tasks.append(("fin", lambda cp=cp, pp=pp: p3.fin(symbol=symbol, measure=cp, period=pp, as_of=as_of)))
     if "price" in kinds:
         tasks.append(("tech", lambda: lookups_tech.tech(symbol=symbol, kind="range", as_of=as_of)))
+        tasks.append(("tech", lambda: lookups_tech.tech(symbol=symbol, kind="reaction", as_of=as_of, doc_type="results")))
     if "holding" in kinds:
         tasks.append(("holding", lambda: p3.holding(symbol=symbol, as_of=as_of)))
 
@@ -452,6 +548,15 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
     for route, replies in route_replies.items():
         ritems = []
         for rep in replies:
+            if isinstance(rep, dict):
+                if "error" in rep:
+                    route_errors.append({"route": route, "error": rep.get("error")})
+                    continue
+                if rep.get("found") is False:
+                    route_errors.append({"route": route, "found": False,
+                                        "hint": rep.get("hint"),
+                                        "available": (rep.get("available") or rep.get("metrics_matched"))})
+                    continue
             ritems.extend(_reply_to_items(route, rep))
         # as_of drop
         ritems = [it for it in ritems if _asof_ok(it.get("known_at"), as_of)]
@@ -585,12 +690,73 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
         except Exception:
             transcript_docs = []
 
+        # semantic query vector for per-page ranking (cached; may be unavailable)
+        _qv = None
+        _matrix = None
+        _rowmap = None
+        try:
+            import lookups_semantic as _ls
+            _qv, _ = _ls._query_vector(phrase or (plan.get("question") or ""), "8b")
+            _matrix, _rowmap = _ls._vectors("8b")
+        except Exception:
+            _qv = None
+
+        def _best_pages_for_doc(dk, n=2):
+            try:
+                q = "SELECT page, text, known_at FROM doc_page WHERE doc_key = '%s'" % str(dk).replace(chr(39), "")
+                rep = p3mod.sql(q, limit=500, max_chars=8000, as_of=as_of)
+            except Exception:
+                rep = None
+            pages = _rows_of(rep) if rep else []
+            if not pages:
+                return []
+            scored = []
+            for pgrow in pages:
+                if isinstance(pgrow, dict):
+                    pgno = pgrow.get("page")
+                    txt = pgrow.get("text")
+                    ka = pgrow.get("known_at")
+                elif isinstance(pgrow, (list, tuple)):
+                    pgno = pgrow[0] if len(pgrow) > 0 else None
+                    txt = pgrow[1] if len(pgrow) > 1 else ""
+                    ka = pgrow[2] if len(pgrow) > 2 else None
+                else:
+                    pgno = None
+                    txt = str(pgrow)
+                    ka = None
+                if not _asof_ok(ka, as_of):
+                    continue
+                if pgno is None:
+                    continue
+                sc = _page_score(txt or "", topic_words, " ".join(topic_words))
+                if _qv is not None and _matrix is not None and _rowmap is not None:
+                    try:
+                        idx = _rowmap.get((str(dk), int(pgno)))
+                        if idx is not None:
+                            sc = sc + float((_matrix[idx] @ _qv)) * 10.0
+                    except Exception:
+                        pass
+                scored.append((sc, pgno, ka))
+            if not scored:
+                return []
+            scored.sort(key=lambda x: x[0], reverse=True)
+            out = []
+            seen_pg = set()
+            for sc, pgno, ka in scored:
+                if pgno in seen_pg:
+                    continue
+                seen_pg.add(pgno)
+                out.append((pgno, ka))
+                if len(out) >= n:
+                    break
+            return out
+
         transcript_docs.sort(key=lambda x: (x[2] or ""), reverse=True)
         for dk, dt, ka in transcript_docs[:8]:
-            bp = _best_page_for_doc(dk)
-            if not bp or bp[0] is None:
-                continue
-            flat_items.extend(_emit_page(dk, int(bp[0]), dt, bp[1] or ka))
+            for bp_pg, bp_ka in _best_pages_for_doc(dk, 2):
+                if bp_pg is None:
+                    continue
+                flat_items.extend(_emit_page(dk, int(bp_pg), dt, bp_ka or ka))
 
         sem_items = [it for it in flat_items if it["route"] == "semantic"]
         deckres = []
@@ -702,6 +868,7 @@ def gather(db, symbol, plan, as_of, max_chars: int = 120000, quota: dict = None)
         "items_count": len(kept),
         "routes_nonempty": routes_nonempty,
         "route_stats": route_stats,
+        "route_errors": route_errors,
         "cut_log": cut_log,
         "seconds": round(time.time() - t0, 3),
     }

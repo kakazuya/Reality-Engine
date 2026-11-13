@@ -4,26 +4,27 @@ always:
   - search
   - topic
 per_kind:
-  fact: [fact, cells, kpi]
+  fact: [fact, cells, kpi, fin]
   statement: [page]
   list: [page]
   guidance: [guidance, page]
-  compute: [ratio, fact, cells]
+  compute: [ratio, fact, cells, fin]
   price: [tech]
   holding: [holding]
-  all: [fact, cells, kpi, guidance, ratio, tech, holding, page]
+  all: [fact, cells, kpi, guidance, ratio, tech, holding, page, fin]
 quotas:
   semantic: 8
-  search: 20
+  search: 60
   topic: 25
   fact: 20
   cells: 40
   kpi: 20
   guidance: 20
   ratio: 20
+  fin: 20
   tech: 10
-  holding: 10
-  page: 8
+  holding: 50
+  page: 16
 per_item_caps:
   page: 4000
   default: 6000
