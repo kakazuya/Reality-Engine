@@ -1664,9 +1664,10 @@ python -m reality_engine.pilot3.regression_set score --all                      
   `kpi_series` 391/666/475, `guidance` 36/23/15, `transcript_statement` 1,128/4,330/3,276, `shp_category` 44/34/46,
   `price_delivery` 3,892/1,976/3,892. Side-by-side with `bluestar.db`: `D:/RealityEngine/s10/coverage_after.csv`;
   per-family per-quarter input: `<sym>/coverage_before.csv`; the pages with no or a jumbled text layer are listed in
-  `<sym>/ocr_needed.csv` (KEI 169 = 168 no-text + 1 jumbled, MEDANTA 56, PVRINOX 184 = 180 + 4), never OCR'd here.
+  `<sym>/ocr_needed.csv` (KEI 169 = 168 no-text + 1 jumbled, MEDANTA 56, PVRINOX 184 = 180 + 4); round 2 OCR'd
+  them on the HP (bullet below).
   **Skipped (not run):** embedding (paid DeepInfra, needs
-  Shivam's OK), `ocr` (RapidOCR; the pages are listed in `ocr_needed.csv`, OCR runs on the HP), and the model-based
+  Shivam's OK), `ocr` (RapidOCR; T-208 round 2 used the HP TextRecognizer on those pages instead), and the model-based
   `atoms`/`page_reader` step (not in the Blue Star part order; `atoms` follows `checks` only in the code's `all`
   order). **Known gap:** the s10 fetch held announcements, not the SHP XBRL family, so `shp_holder` and `shp_pledge`
   are empty in all three (the `shp_index` promoter/public rows still land in `shp_category`). Sector keys: KEI
@@ -1678,9 +1679,70 @@ python -m reality_engine.pilot3.regression_set score --all                      
   **Eagle review (14 Nov):** period labels are right in the stores (Q4 rows present; `coverage_before.csv` labels
   are filing quarters). Defect: PVRINOX Q2 FY27 results (`quarterly_results/fa10203c...pdf`) carry a garbled embedded
   text layer ("Revpnul' from ooerulions") that the jumbled-layer check passed as ok, so revenue_from_operations is
-  missing for Q2 FY27 in both bases and consolidated `exceptional_items` holds the PBT figure (3,511). Before any
-  answer test the three stores need HP OCR of `ocr_needed.csv` plus every results/deck page whose text layer fails a
-  label-dictionary hit rate, then a rebuild. Registry stays separate until then.
+  missing for Q2 FY27 in both bases and consolidated `exceptional_items` holds the PBT figure (3,511). The HP OCR of
+  every `ocr_needed.csv` page plus every results/press-release/deck page under a label-dictionary hit rate ran in
+  round 2 (next bullet); the defect is NOT gone and needs a code change (three causes listed there). Registry stays
+  separate until then.
+- **T-208 round 2: OCR the bad pages on the HP, then rebuild (14 Nov 2026).** No code change; scripts under `.tmp/`
+  (`score_pages.py`, `make_seed.py`, `merge_ocr.py`, `backup_dbs.py`, `coverage.py`, `prove_fix.py`).
+  1. **Garbled layers the round-1 check missed.** Rule fixed before the first run: a page token is CLEAN when it is a
+     word of the build's label lexicon (`reality_engine/pilot3/lexicon/*.yaml` + `business_abbrev.txt`) or of the repo's
+     own English prose (`docs/`, `tasks/`), or a clean number; score = clean / scored tokens (single characters and
+     bare separators not scored); pages under 30 tokens are `too_short`. **Threshold 0.75**; scope results /
+     press_release / deck. Result: 2,436 pages scored (KEI 866, MEDANTA 814, PVRINOX 756), **95 under 0.75 that round
+     1 passed as ok**: KEI 26 (deck 20, results 6), MEDANTA 32 (deck 24, results 8), PVRINOX 37 (deck 31,
+     press_release 2, results 4). PVRINOX `fa10203c` p3 scores 0.5852 (474 of 810 clean) and is on the list.
+     Artifacts: `<sym>/ocr_score_pages.csv` (all pages) and `<sym>/ocr_plan_round2.csv` (round-1 list + these).
+     One page above the threshold was added by hand, disclosed: `fa10203c` p9 (0.7827, the consolidated P&L; the
+     ticket names that figure and its labels are garbled).
+  2. **OCR on the HP** (console unlocked flags=1; one company at a time; hidden S4U task, nothing on screen): the seed
+     `.tmp/ocr_<SYM>.db` is an `ocr_page` database holding the pages the score added, so `plan --input-db <seed>
+     --pages-db <pages.db>` lists exactly those plus `ocr.pending()` (the needs_ocr pages):
+     `python -m reality_engine.pilot3.hp_ocr plan --symbols <SYM> --input-db .tmp/ocr_<SYM>.db --pages-db
+     D:/RealityEngine/s10/<n>/pages.db --plan-out D:/RealityEngine/s10/<n>/ocr/hp_plan.jsonl --stage
+     D:/RealityEngine/s10/<n>/ocr/hp_stage`, then `run --timeout 900`, `fetch --plan-out ... --gz
+     .../ocr/ocr_pages.jsonl.gz --out .../ocr/ocr_textrec.db`, `cleanup` (keeps the installed package, removes the
+     tasks and copied PDFs: `package=True root=False task=False`). 504 page reads in 4 runs (409 round-1 + 95
+     score-found; KEI 194, MEDANTA 88, PVRINOX 217 + 5), 319 s (95 pages/min), **5 error rows = 1.0%** (MEDANTA 1,
+     PVRINOX 4 `NullReferenceException`), 500 unique pages in the three `ocr/ocr_textrec.db`.
+  3. **Merge into each `pages.db`**, pre-registered rule: a page OCR'd text replaces the layer when the page is
+     `needs_ocr`, or when its OCR dictionary score is at least the old score + 0.10; the old method label is kept for
+     audit; an OCR error or empty text keeps the page. Result **411 pages take OCR text** (KEI 168, MEDANTA 62,
+     PVRINOX 181): 399 `needs_ocr` -> method `ocr_textrec`, and **12 results pages** keep `script_text` with the OCR
+     text (MEDANTA 7, PVRINOX 5) because the OCR is a clear improvement. 84 OCR'd pages kept their layer (75 deck,
+     7 results, 2 press_release: OCR did not beat it by 0.10; their OCR rows stay in the db), plus the 5 error pages.
+     `<sym>/ocr_merge_log.csv` lists all 500 OCR'd pages with the current method, both dictionary scores and the
+     decision (`already_ocr` 411, `keep` 84, `keep_ocr_error` 5); a second merge run is a no-op.
+  4. **Backups and rebuild.** Each store backed up as `<sym>_before_ocr_2026-11-14.db` (sqlite backup API), then the
+     13 parts again (`build --profile <json> --out <sym>.db --part <part>`, logs `b2_<part>.log`): **39 runs rc=0**,
+     8.4 min total (KEI 193 s, MEDANTA 146 s, PVRINOX 166 s). Store `doc_page.needs_ocr` 168/56/180 -> **0/1/4**;
+     `doc_page` method `ocr_textrec` 0 -> 168/55/176; FTS reindexed. **Every answer table's row count is unchanged**
+     (`fin_quarter_printed` 2,184/1,971/1,248; `kpi_series` 391/666/475; `transcript_statement` 1,128/4,330/3,276;
+     `guidance` 36/23/15): the KPI/transcript extractors now read the OCR pages (`needs_ocr` 0 in their logs) but find
+     no row they did not already have there, and the printed reader does not read them at all. Before/after per
+     company and table: **`D:/RealityEngine/s10/coverage_after_ocr.csv`** (132 rows).
+  5. **The PVRINOX defect is NOT gone, and the OCR path alone cannot remove it** (stop-and-describe rule; no
+     `reality_engine/` change made). In the rebuilt store `fin_quarter_current` has no `revenue_from_operations` for
+     Q2FY27 in either basis and consolidated `exceptional_items` is still 3,511 mn (p9); `pilot3_fin` returns
+     `found=false`. Three independent causes: (a) `comparatives` reads `page.get_text("words")` from the PDF, never
+     `doc_page` or `ocr_page` -- 12 results pages changed in `pages.db` and `fin_quarter_printed` is row-for-row the
+     same (2,184/1,971/1,248 rows, all three stores; PVRINOX Q2FY27: 18 printed rows, no revenue), so
+     `--ocr-db`/`page_atom` cannot help; (b) the `exceptional_items` row is a **wrapped printed label**: p9 prints
+     "Profit before share in net profit /(loss) of joint venture," then "3 exceptional items and tax (1-2) 3,511 ...",
+     and the continuation line matches `exceptional_items` alone -- this reproduces in the PDF layer AND the OCR words,
+     so the garbled layer was never its cause; (c) the TextRecognizer truncates p3's label to "Revenue fro" (the page
+     prints "Revenue from operations", 20,620 read correctly; total income 20,907 = 20,620 + other income 287) and
+     reads p9's current-quarter revenue as "1,051" (the printed value is 21,051: 6-month 37,273 = 21,051 + 16,222,
+     and total income 21,393 = 21,051 + other income 342), so feeding OCR words as-is would store a 20x-wrong
+     consolidated revenue. `v2/page_words.words_for` also calls p3/p9 `ok` (its share heuristics), so the T-189 route
+     returns the garbled PDF words for them. Needed: (1) `comparatives._extract_symbol` to take its words from
+     `v2.page_words.words_for(store, doc_key, page, ocr_dbs)` and use the OCR words when the dictionary score is under
+     the threshold, with `build.py` passing its `ocr_inputs` to `comparatives.run`; (2) join a wrapped label line to
+     the row it belongs to before `match_line` (a general rule, any company); (3) make `page_words.quality` use the
+     dictionary score, not only its share heuristics; (4) the durable Q2FY27 fix is the NSE XBRL filing --
+     `results_xbrl.db` holds 566 filings for 2026-09-30 but only 2026-03-31 and 2026-06-30 for INE191H01014, so a fetch
+     is missing, not a parse. `.tmp/prove_fix.py` prints both word sources through `comparatives.read_page` as the
+     evidence for (b) and (c).
 
 ## 5. Code tools: outline and typecheck (T-054, 4 Nov 2026)
 
