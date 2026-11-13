@@ -1,0 +1,26 @@
+# Routes the evidence pack runs, and their per-route item quotas.
+always:
+  - semantic
+  - search
+  - topic
+per_kind:
+  fact: [fact, cells, kpi]
+  statement: [page]
+  list: [page]
+  guidance: [guidance, page]
+  compute: [ratio, fact, cells]
+  price: [tech]
+  holding: [holding]
+  all: [fact, cells, kpi, guidance, ratio, tech, holding, page]
+quotas:
+  semantic: 8
+  search: 20
+  topic: 25
+  fact: 20
+  cells: 40
+  kpi: 20
+  guidance: 20
+  ratio: 20
+  tech: 10
+  holding: 10
+  page: 6

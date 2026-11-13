@@ -1,0 +1,1 @@
+"""Evidence-pack builder (retrieval only, no model calls)."""

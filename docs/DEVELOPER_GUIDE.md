@@ -1878,3 +1878,8 @@ recorded in one SQLite file, `D:/RealityEngine/ledger/ledger.db`, by `reality_en
   by class, reader pages, notes).
 - **Backfill on 11 Nov.** 521 worker jobs (455 workers, 66 graders), 76 Claude sessions, 7 reader runs, 4 answer runs
   (T-179). Worker tool calls 57,596: MCP 5,704, raw SQL 4,534, data read outside the MCP tools 2,659.
+
+
+## Evidence pack (T-205)
+
+Retrieval-only prototype: python -m reality_engine.answer.pack_recall --set bluestar --workspace . (or urobindo) builds one pack_<qid>.json per question under .tmp/pack/<set>/ and writes pack_recall.csv (qid,kind,hit,found,missing,pack_chars,items,seconds,routes_nonempty) plus a per-kind summary. No model calls; semantic route needs REALITY_DATA_ALLOW_PAID_EMBED=1.
