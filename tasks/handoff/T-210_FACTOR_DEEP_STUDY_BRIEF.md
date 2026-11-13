@@ -58,5 +58,8 @@ Accept: tests pass; report exists with every table above and its placebo/multipl
 Pitfalls: overlapping horizons make t-values optimistic (lags = h-1 months); a sector with few names reaches 70% by a
 handful of months (say so); never pool regimes; company time series at 24m are ~3 independent windows (say so); no
 look-ahead in shrinkage (sector prior from data known at t only); memory: chunk by sector, RAM must stay < 90%.
+RAM (14 Nov 00:10): only 3.6 GB of 16 GB free; three other workers run. Build and run the synthetic tests first; start
+the panel run only when free RAM >= 7 GB (check with PowerShell `Get-CimInstance Win32_OperatingSystem`), re-checking
+every 10 minutes for up to 90 minutes; if still short, stop after the tests and say so (Claude reruns it).
 Stop if: the T-207 reproduction (its section 2 table) does not match to 0.001; projected runtime > 4 hours; 5 hours.
 Budget: 5 hours, 400 tool calls.
