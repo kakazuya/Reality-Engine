@@ -77,7 +77,7 @@ def _status(
             "pid": os.getpid(),
             "model": "deepseek-v4.1-flash",
             "reasoning_effort": "xhigh",
-            "account": "2",
+            "account": "1",
             "permission": "workspace-write",
             "cwd": os.getcwd(),
             "provider_routing_session_id": "provider-session-test",
@@ -202,7 +202,7 @@ def main() -> int:
     if "--help" in args:
         print(
             "usage: fake_launcher --model M --task-file T --out-file O --cwd C "
-            "--timeout S --account 2 --permission P --allow-paid "
+            "--timeout S --account 1 --permission P --allow-paid "
             "--max-output-tokens N --no-refresh"
         )
         if os.environ.get("FAKE_HEARTBEAT_FLAGS") == "1":

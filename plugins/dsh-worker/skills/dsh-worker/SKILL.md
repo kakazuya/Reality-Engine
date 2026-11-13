@@ -59,7 +59,7 @@ the repo has moved on, and do not paste its contents into briefs.
 - `start_worker` — pass exactly one of `brief` or `task_file`, and an explicit
   `permission` (required; refused as `permission_required` when absent). It
   returns promptly with `job_id`, `status_path`, `result_path`, and warnings. It
-  pins `deepseek-v4.1-flash`, max, Go account 2. Optional settings are bounded:
+  pins `deepseek-v4.1-flash`, max, Go account 1. Optional settings are bounded:
   `heartbeat_interval_seconds` (default 900), `missed_replies` (default 2),
   `max_output_tokens`, `max_result_bytes`, `hard_timeout_seconds` (default
   14400 = 4 h; the real wall-clock limit, passed as `--timeout`),

@@ -3,7 +3,7 @@ RealityEngine-DeepSeekHeartbeat (scripts/run_deepseek_heartbeat.cmd); no Claude 
 
 1. Mechanical, no LLM, every hour: if a transcript reader (Beam / MiniMax, prompt v3) is not running and its log does not
    end in RUN_COMPLETE, restart it with the same command (hidden, detached). Logged to the hotline.
-2. Off-peak only (peak = Mon-Fri 06:30-09:30 + 11:30-15:30 IST; weekends off-peak): run DeepSeek (dsh, xhigh, account 2) with the heartbeat brief:
+2. Off-peak only (peak = Mon-Fri 06:30-09:30 + 11:30-15:30 IST; weekends off-peak): run DeepSeek (dsh, xhigh, account 1) with the heartbeat brief:
    check the jobs, spot-check fresh reader output, append one status entry to data/hotline/hotline.md. If something needs
    the orchestrator (a decision, a fix DeepSeek may not make, a repeated failure), DeepSeek writes
    data/hotline/needs_claude.md; the next Claude session reads that first (DeepSeek cannot open a Claude session).
@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 LOGS = ROOT / "reality_engine/data/logs"
 HOT = ROOT / "reality_engine/data/hotline"
 PY = sys.executable.replace("pythonw.exe", "python.exe")
-KEYS = "OPENCODE_GO_API_KEY,OPENCODE_GO_API_KEY_2"
+KEYS = "OPENCODE_GO_API_KEY"
 READERS = {   # name: (model, args, reader log)
     # Beam 2026-10-20 20:05 (Shivam): upstream 429 on every call since 11:52 -> 6 workers, not 32 (ramp by bisection
     # while 429s stay ~0). While the lane is rate-limited the reader itself sends ONE tap call every 15 min

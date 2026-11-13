@@ -76,7 +76,7 @@ def test_worker_command_carries_the_msi_model_and_launch_flags():
     command = hp_worker.worker_command(paths, r"C:\Users\zen7s", permission="workspace-write",
                                        timeout=None, max_output_tokens=None)
     assert "--model deepseek-v4.1-flash" in command
-    assert "--account 2" in command  # default: Go key 2 (OPENCODE_GO_API_KEY_2), key 1 at its limit
+    assert "--account 1" in command  # default: Go key 1 (OPENCODE_GO_API_KEY); key 2 retired 14 Nov
     assert "--allow-paid" in command
     assert "--no-refresh" in command
     assert "--extra-patch" in command and "hp_mcp.yml" in command
@@ -88,8 +88,11 @@ def test_worker_command_carries_the_msi_model_and_launch_flags():
 def test_worker_command_account_override():
     paths = hp_worker.job_parts("hp-1")
     command = hp_worker.worker_command(paths, r"C:\Users\zen7s", permission="read-only",
-                                       timeout=None, max_output_tokens=None, account="2")
-    assert "--account 2" in command
+                                       timeout=None, max_output_tokens=None, account="1")
+    assert "--account 1" in command
+    with pytest.raises(SystemExit, match="Go key 2 retired 14 Nov"):
+        hp_worker.worker_command(paths, r"C:\Users\zen7s", permission="read-only",
+                                 timeout=None, max_output_tokens=None, account="2")
     with pytest.raises(SystemExit):
         hp_worker.worker_command(paths, r"C:\Users\zen7s", permission="read-only",
                                  timeout=None, max_output_tokens=None, account="9")
@@ -386,7 +389,7 @@ def test_start_writes_the_runtime_record(monkeypatch, tmp_path):
 
     record = json.loads(Path(hp_worker.record_paths(job_id)["job"]).read_text(encoding="utf-8"))
     assert record["host"] == "hp"
-    assert record["account"] == "2"
+    assert record["account"] == "1"
     assert record["limits"]["hard_timeout_seconds"] == 900
     status = hp_worker.read_status(job_id)
     assert status["phase"] == "running"
@@ -394,6 +397,13 @@ def test_start_writes_the_runtime_record(monkeypatch, tmp_path):
     assert status["title"] == "# Task — bench"
     assert spawned == [job_id]
     assert (runtime / "jobs" / job_id / "brief.md").is_file()
+
+
+def test_start_refuses_retired_account_2(tmp_path):
+    brief = tmp_path / "brief.md"
+    brief.write_text("# Task\n", encoding="utf-8")
+    with pytest.raises(SystemExit, match="Go key 2 retired 14 Nov"):
+        hp_worker.start(brief, [], None, "HEAD", "workspace-write", None, None, True, account="2")
 
 
 def test_start_refuses_a_pilot_db_that_does_not_exist(monkeypatch, tmp_path):

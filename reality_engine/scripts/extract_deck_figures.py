@@ -207,12 +207,10 @@ if os.environ.get("KILO_API_KEY_2"):   # second Kilo account joins the primaries
 # ~170 MB RAM per process, so few slots each.
 for _m, _n in (("step-5-preview-free", 3), ("mimo-v2.6-flash-free", 3), ("muse-spark-1.3-contributor-free", 3)):
     MODELS[f"{_m}@zen"] = {"api": "cli", "id": _m, "price": (0.0, 0.0), "capped": False, "ceiling": _n, "body": {}}
-# Second OpenCode Go account (2026-10-13): its own free Step allowance (Go Step's limit resets daily at 00:00 UTC)
-if os.environ.get("OPENCODE_GO_API_KEY_2"):
-    MODELS["step-5-preview-free@go2"] = dict(MODELS["step-5-preview-free"], id="step-5-preview-free", key_env="OPENCODE_GO_API_KEY_2")
 # OpenCode Go's free Step has been rate-limited since 2026-10-11 21:27: last, so it does not draw pages ahead of working readers
+# Go key 2 retired 14 Nov; key 1 only.
 ALSO_SECOND = ["stepfun/step-5-preview-free@kilo", "step-5-preview-free@zen", "mimo-v2.6-flash-free@zen",
-               "muse-spark-1.3-contributor-free@zen", "step-5-preview-free"] + (["step-5-preview-free@go2"] if os.environ.get("OPENCODE_GO_API_KEY_2") else [])
+               "muse-spark-1.3-contributor-free@zen", "step-5-preview-free"]
 # Kilo routes free models through its own OpenRouter account: every Kilo key shares one quota per model (a 1,000/day cap on
 # Inkling Small was already used up on 2026-10-10 for both keys), so extra Kilo accounts add no free-model capacity.
 RENDER_PROCS, RENDER_AHEAD, RENDER_TIMEOUT = 2, 4, 900

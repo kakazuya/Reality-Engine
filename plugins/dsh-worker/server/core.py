@@ -75,12 +75,24 @@ WORKER_MODELS: dict[str, dict[str, Any]] = {
     "longcat-2.5-free": {"effort": None, "peak_refused": False},
     "iceman-contributor-free": {"effort": None, "peak_refused": False},
 }
-ACCOUNT = "2"
+ACCOUNT = "1"
 # Shivam 10 Nov: up to 4 code workers on the MSI (was 2 while the browser shared its RAM).
 MAX_CODE_WORKERS = 4
-KEY_ENV = "OPENCODE_GO_API_KEY_2"
-# account -> key env (the harness uses the same map); account 2 stays the default.
-KEY_ENV_BY_ACCOUNT = {"1": "OPENCODE_GO_API_KEY", "2": "OPENCODE_GO_API_KEY_2"}
+KEY_ENV = "OPENCODE_GO_API_KEY"
+# account -> key env (the harness uses the same map); Go key 2 retired 14 Nov, key 1 only.
+KEY_ENV_BY_ACCOUNT = {"1": "OPENCODE_GO_API_KEY"}
+
+
+def _validate_account(account: str | None) -> str:
+    """Validate Go account selector; key 2 retired 14 Nov 2026."""
+    if account is None:
+        return ACCOUNT
+    value = str(account)
+    if value == "2":
+        raise PluginError("account_invalid", "Go key 2 retired 14 Nov")
+    if value not in KEY_ENV_BY_ACCOUNT:
+        raise PluginError("account_invalid", "account must be '1'")
+    return value
 MODEL_LAUNCHER_MODULE = "reality_engine.scripts.run_deepseek_harness"
 PERMISSIONS = ("read-only", "workspace-write", "danger-full-access")
 # Additional write authority on top of the dsh sandbox mode.  dsh 0.2.1 has one
@@ -1253,10 +1265,8 @@ class Manager:
                 account=account,
                 brief_first_line=brief_first_line,
             )
-        # MSI jobs honour ``account`` too (Shivam 7 Nov: key 2 hit its Go limit, key 1 works); default stays 2.
-        if account is not None and str(account) not in KEY_ENV_BY_ACCOUNT:
-            raise PluginError("account_invalid", "account must be '1' or '2'")
-        msi_account = str(account) if account is not None else ACCOUNT
+        # MSI jobs honour ``account``; Go key 2 retired 14 Nov, so only '1' is accepted.
+        msi_account = _validate_account(account)
         msi_key_env = KEY_ENV_BY_ACCOUNT[msi_account]
         if use_worktree:
             # The worktree derives its own workspace; the repository root is
@@ -2251,8 +2261,8 @@ class Manager:
                         "dbs entries must be DB file names under REALITY_DATA_ROOT",
                     )
                 names.append(name.strip())
-        if account is not None and str(account) not in ("1", "2"):
-            raise PluginError("account_invalid", "account must be '1' or '2'")
+        if account is not None:
+            _validate_account(account)
         brief_dir = self.config.runtime_dir / "hp" / "briefs"
         brief_dir.mkdir(parents=True, exist_ok=True)
         brief_path = brief_dir / f"{iso().replace(':', '')}.md"

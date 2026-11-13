@@ -1774,8 +1774,8 @@ class Reader:
         try:
             from reality_engine.scripts.resource_watchdog import user_env
             env = user_env()
-            # Go key 1 is dead (403 "subscription required", STATE 2026-10-24); key 2 only.
-            self._keys = [env[k] for k in ("OPENCODE_GO_API_KEY_2", "OPENCODE_GO_API_KEY")
+            # Go key 2 retired 14 Nov; key 1 only.
+            self._keys = [env[k] for k in ("OPENCODE_GO_API_KEY",)
                           if env.get(k)][:1]
         except Exception:  # noqa: BLE001 - a missing key is "no free model path", not a crash
             self._keys = []

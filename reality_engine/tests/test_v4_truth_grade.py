@@ -649,7 +649,6 @@ def test_judge_refuses_without_a_key(monkeypatch):
     import truth_judge
 
     monkeypatch.delenv("OPENCODE_GO_API_KEY", raising=False)
-    monkeypatch.delenv("OPENCODE_GO_API_KEY_2", raising=False)
     assert truth_judge.available() is False
     with pytest.raises(RuntimeError):
         truth_judge.judge({"mid": "T1", "question": "q", "answer": "a"})

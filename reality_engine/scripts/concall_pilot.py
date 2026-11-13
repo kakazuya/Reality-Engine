@@ -28,14 +28,13 @@ GO = {"longcat-2.5-preview-free", "beam-free"}
 
 # reader name -> (model id, prompt file): round 2 (2026-10-18) adds rules learned from round 1's judged errors
 ALIASES = {"longcat-v2": ("longcat-2.5-preview-free", "prompt_v2.md"),
-           # round 3 (2026-10-18): paid Go models, prompt v2, all on Go key 2 (key 1's monthly allowance is used up)
+           # round 3 (2026-10-18): paid Go models, prompt v2 (Go key 2 retired 14 Nov; key 1 only)
            "mimo-v2.6-flash": ("mimo-v2.6-flash", "prompt_v2.md"),
            "deepseek-v4.1-flash": ("deepseek-v4.1-flash", "prompt_v2.md"),
            "muse-spark-1.3-contributor": ("muse-spark-1.3-contributor", "prompt_v2.md"),
            # round 4 (2026-10-18 evening): same model id after DeepSeek's 1017 release; tokens/quality vs round 3 tell
            # whether Go now serves V4.1-Flash-1017
            "deepseek-v4.1-flash-r4": ("deepseek-v4.1-flash", "prompt_v2.md")}
-GO_KEY2_ONLY = {"mimo-v2.6-flash", "deepseek-v4.1-flash", "muse-spark-1.3-contributor", "deepseek-v4.1-flash-r4"}
 RESPONSES_API = {"muse-spark-1.3-contributor"}   # Muse answers only on /responses (chat/completions gives 400)
 # round 5 (2026-10-19, Shivam: every free model on Zen and Go vs DeepSeek, prompt v2): reader 'zen-<id>' runs
 # opencode/<id> through `opencode run` (Zen free tier answers only inside OpenCode; 200k context, transcripts ~12k
@@ -188,10 +187,8 @@ def run(models, workers):
                 key = None
             elif resolve(m)[0] == "google":
                 key = gkeys[n % len(gkeys)]
-            elif m in GO_KEY2_ONLY:
-                key = env["OPENCODE_GO_API_KEY_2"]
             else:
-                key = env["OPENCODE_GO_API_KEY" if n % 2 == 0 else "OPENCODE_GO_API_KEY_2"]
+                key = env["OPENCODE_GO_API_KEY"]
             jobs.append((m, item, key))
     # interleave models (transcript 1 of every model, then transcript 2 ...): one failing upstream (Nemotron Lightning
     # 502s, 2026-10-19) no longer holds every slot while the other models wait
@@ -373,7 +370,7 @@ def verify(reader, workers):
         for k in LISTS:
             for i, it in enumerate(data.get(k) or []):
                 iid = f"{k}:{i}"; ids[iid] = (k, it); lines.append(json.dumps({"id": iid, **it}, ensure_ascii=False))
-        key = env["OPENCODE_GO_API_KEY" if n % 2 == 0 else "OPENCODE_GO_API_KEY_2"]
+        key = env["OPENCODE_GO_API_KEY"]
         p = VERIFY_PROMPT.replace("{items}", "\n".join(lines)).replace("{text}", text)
         for attempt in range(4):
             try:

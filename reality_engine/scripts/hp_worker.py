@@ -3,7 +3,7 @@
 
     python -m reality_engine.scripts.hp_worker start <brief.md> [--dbs a.db,b.db]
         [--pilot-db PATH] [--test-cmd CMD] [--commit HEAD] [--permission workspace-write]
-        [--timeout S] [--max-output-tokens N] [--account 1|2] [--peak-ok]
+        [--timeout S] [--max-output-tokens N] [--account 1] [--peak-ok]
     python -m reality_engine.scripts.hp_worker status [<id>]
     python -m reality_engine.scripts.hp_worker result <id>
     python -m reality_engine.scripts.hp_worker fetch-patch <id> [--branch NAME]
@@ -32,8 +32,8 @@ for normal review.
 Env: ``HP_RUN_HOST`` / ``HP_RUN_ROOT`` / ``HP_RUN_SSH`` / ``HP_RUN_SCP`` as in
 ``hp_run``; ``HP_WORKER_PY`` (remote interpreter; default the ARM64 Python 3.14
 already carrying ``mcp`` + ``cryptography``); ``REALITY_DATA_ROOT`` (source of
-``--dbs``); ``HP_WORKER_ACCOUNT`` (default 2: every paid call uses Go key 2,
-``OPENCODE_GO_API_KEY_2``, since key 1 hit 99% of its limit on 6 Nov); ``DSH_WORKER_RUNTIME_DIR`` (where the dsh-worker MCP
+``--dbs``); ``HP_WORKER_ACCOUNT`` (default 1: every paid call uses Go key 1,
+``OPENCODE_GO_API_KEY``; Go key 2 retired 14 Nov); ``DSH_WORKER_RUNTIME_DIR`` (where the dsh-worker MCP
 keeps its jobs; default the main checkout's ``plugins/dsh-worker/runtime``).
 
 ``--pilot-db`` copies one profile database from anywhere on this laptop (for
@@ -71,7 +71,7 @@ NODE_DIR = r"C:\RE\node24\node-v24.22.2-win-arm64"
 PY_DEFAULT = r"%USERPROFILE%\AppData\Local\Programs\Python\Python314-arm64\python.exe"
 MODEL = "deepseek-v4.1-flash"
 EFFORT = "max"
-ACCOUNT = os.environ.get("HP_WORKER_ACCOUNT", "2")
+ACCOUNT = os.environ.get("HP_WORKER_ACCOUNT", "1")
 LEASE_SECONDS = int(os.environ.get("HP_WORKER_LEASE_SECONDS", "1800"))
 POLL_INTERVAL = int(os.environ.get("HP_WORKER_POLL_SECONDS", "10"))
 POLL_TIMEOUT = int(os.environ.get("HP_WORKER_POLL_TIMEOUT", "15"))
@@ -399,14 +399,22 @@ def compose_brief(text: str, *, job_id: str, paths: dict[str, str],
     return f"{header}{facts}\n{text.rstrip()}\n\n{_standing_instructions()}"
 
 
+def _resolve_account(account: str | None) -> str:
+    """Resolve and validate the Go account; key 2 retired 14 Nov 2026."""
+    resolved = str(account or ACCOUNT)
+    if resolved == "2":
+        raise SystemExit("Go key 2 retired 14 Nov")
+    if resolved != "1":
+        raise SystemExit("--account must be 1")
+    return resolved
+
+
 def worker_command(paths: dict[str, str], home: str, *, permission: str,
                    timeout: int | None, max_output_tokens: int | None,
                    account: str | None = None) -> str:
     """The command line ``run.cmd`` runs inside the job checkout."""
     python = remote_python(home)
-    account = str(account or ACCOUNT)
-    if account not in ("1", "2"):
-        raise SystemExit("--account must be 1 or 2")
+    account = _resolve_account(account)
     argv = [
         f'"{python}" -m reality_engine.scripts.run_deepseek_harness',
         f"--model {MODEL}",
@@ -573,6 +581,7 @@ def start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
           peak_ok: bool, account: str | None = None,
           pilot_db: Path | None = None) -> str:
     """Create one HP job, launch it detached, and return its job id."""
+    account = _resolve_account(account)
     if not off_peak() and not peak_ok:
         now = datetime.now(IST)
         raise SystemExit(
@@ -585,9 +594,6 @@ def start(brief: Path, dbs: list[str], test_cmd: str | None, commit: str,
         pilot_db = Path(pilot_db).expanduser()
         if not pilot_db.is_file():
             raise SystemExit(f"--pilot-db not found: {pilot_db}")
-    account = str(account or ACCOUNT)
-    if account not in ("1", "2"):
-        raise SystemExit("--account must be 1 or 2")
     if timeout is None:
         timeout = LEASE_SECONDS  # lease-like hard stop: an HP worker never outlives its controller
     job_id = new_job_id()
@@ -1100,8 +1106,8 @@ def main(argv: list[str] | None = None) -> int:
                    choices=("read-only", "workspace-write", "danger-full-access"))
     p.add_argument("--timeout", type=int, default=None, help="hard wall-clock cutoff, seconds")
     p.add_argument("--max-output-tokens", type=int, default=None)
-    p.add_argument("--account", default=None, choices=("1", "2"),
-                   help="OpenCode Go key: 1 = OPENCODE_GO_API_KEY, 2 = _2 (default on both machines)")
+    p.add_argument("--account", default=None,
+                   help="OpenCode Go key: 1 = OPENCODE_GO_API_KEY (default; key 2 retired 14 Nov)")
     p.add_argument("--peak-ok", action="store_true",
                    help="allow a DeepSeek start in the MSI's peak window (needs Shivam's go-ahead)")
     p = sub.add_parser("status", help="job states, exit codes, result size, last progress")

@@ -52,7 +52,7 @@ Reply with JSON only: {{"verdict":"RIGHT|PARTIAL|WRONG","reason":"<one line, max
 
 
 def key() -> str:
-    return os.environ.get("OPENCODE_GO_API_KEY_2") or os.environ.get("OPENCODE_GO_API_KEY") or ""
+    return os.environ.get("OPENCODE_GO_API_KEY") or ""
 
 
 def available() -> bool:
@@ -81,7 +81,7 @@ def judge(row: Mapping[str, Any], api_key: str | None = None,
 
     api_key = api_key or key()
     if not api_key:
-        raise RuntimeError("no OPENCODE_GO_API_KEY / OPENCODE_GO_API_KEY_2 in this environment")
+        raise RuntimeError("no OPENCODE_GO_API_KEY in this environment")
     prompt = PROMPT.format(
         question=row.get("question") or "",
         as_of=f"AS OF: {row.get('as_of')}\n" if row.get("as_of") else "",
@@ -159,7 +159,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--panel-file", type=Path, default=PANEL)
     args = parser.parse_args(list(argv) if argv is not None else None)
     if not available():
-        print("no OPENCODE_GO_API_KEY / OPENCODE_GO_API_KEY_2: the free judge cannot run",
+        print("no OPENCODE_GO_API_KEY: the free judge cannot run",
               file=sys.stderr)
         return 2
     rows = [json.loads(line) for line in args.panel_file.read_text(encoding="utf-8").splitlines()

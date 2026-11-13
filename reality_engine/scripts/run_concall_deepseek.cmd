@@ -1,5 +1,5 @@
 @echo off
-rem 2026 concall transcripts -> DeepSeek V4.1 Flash on OpenCode Go key 2 (concall_deepseek.py). Restarts after a crash.
+rem 2026 concall transcripts -> DeepSeek V4.1 Flash on OpenCode Go key 1 (concall_deepseek.py). Restarts after a crash.
 rem Log: reality_engine\data\logs\concall_deepseek.log ; output reality_engine\data\concall_facts.db
 cd /d "%~dp0\..\.."
 set /a tries=0

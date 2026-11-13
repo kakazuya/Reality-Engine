@@ -249,7 +249,7 @@ class VisibilityTests(StressBase):
 
     def test_failure_reason_surfaces_launcher_cause_without_reasoning(self):
         cases = {
-            "OPENCODE_GO_API_KEY_2 is not set": "api_key_env_missing",
+            "OPENCODE_GO_API_KEY is not set": "api_key_env_missing",
             "dsh not found at C:/x/dsh.exe; install with: bun add -g @deepseek-ai/dsh": "dsh_binary_missing",
             "06:31 IST is in DeepSeek peak hours (Mon-Fri 06:30-09:30, 11:30-15:30 IST)": "peak_hours_refused",
             "dsh: provider request timed out after 600s": "provider_timeout",

@@ -14,7 +14,7 @@ Budget guard (Go per-model limits; DeepSeek V4.1 Flash $80/month on Go): never c
 7 days under WEEK_CAP (estimated from tokens at off-peak prices); an HTTP 429 limit answer benches the key for 30 min.
 Resumable: a doc with status ok/skip_* is never re-read.
 
-    python -m reality_engine.scripts.concall_deepseek [--workers 8] [--limit N] [--keys OPENCODE_GO_API_KEY_2] [--dry-run]
+    python -m reality_engine.scripts.concall_deepseek [--workers 8] [--limit N] [--keys OPENCODE_GO_API_KEY] [--dry-run]
 """
 import argparse
 import concurrent.futures as cf
@@ -302,7 +302,7 @@ def main():
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--sample", type=int, default=0, help="random validation batch of N docs (seeded by N)")
-    ap.add_argument("--keys", default="OPENCODE_GO_API_KEY_2")
+    ap.add_argument("--keys", default="OPENCODE_GO_API_KEY")
     ap.add_argument("--week-cap", type=float, default=WEEK_CAP,
                     help="our own 7-day spend guard; Go's weekly limit resets on a fixed day, so set this high and let "
                          "Go's 429 (bench 30 min) enforce the week when a reset is due")
@@ -349,6 +349,8 @@ def main():
     if a.dry_run:
         return
     keys = [k.strip() for k in a.keys.split(",") if k.strip()]
+    if any(k.startswith("OPENCODE_GO_API_KEY") and k != "OPENCODE_GO_API_KEY" for k in keys):
+        sys.exit("Go key 2 retired 14 Nov")
     n = {}
     with cf.ThreadPoolExecutor(a.workers) as ex:
         for i, st in enumerate(ex.map(lambda t: work(t, keys, OUT_DB), todo), 1):

@@ -377,7 +377,7 @@ class PluginTests(unittest.TestCase):
         job = json.loads((Path(started["status_path"]).parent / "job.json").read_text(encoding="utf-8"))
         self.assertEqual(job["model"], "deepseek-v4.1-flash")
         self.assertEqual(job["effort"], "max")
-        self.assertEqual(job["account"], "2")
+        self.assertEqual(job["account"], "1")
         self.assertEqual(job["permission"], "read-only")
         self.assertEqual(job["heartbeat"]["interval_seconds"], 900)
         self.assertEqual(job["heartbeat"]["missed_replies_allowed"], 2)
@@ -394,7 +394,7 @@ class PluginTests(unittest.TestCase):
         argv = job["launcher"]["argv"]
         self.assertIn("--allow-paid", argv)
         self.assertIn("--model", argv)
-        self.assertEqual(argv[argv.index("--account") + 1], "2")
+        self.assertEqual(argv[argv.index("--account") + 1], "1")
         self.assertEqual(argv[argv.index("--model") + 1], "deepseek-v4.1-flash")
         self.assertNotIn("--peak-ok", argv)
         self.assertIn("--heartbeat-interval", argv)
@@ -2697,6 +2697,26 @@ class PluginTests(unittest.TestCase):
         with self.assertRaises(core.PluginError) as ctx:
             manager.start_worker(brief=self._brief("# Task"), host="hp", permission="read-only")
         self.assertEqual(ctx.exception.code, "peak_hours")
+
+    def test_account_1_allowed_and_account_2_refused(self):
+        manager = self._manager_instance()
+        started = manager.start_worker(
+            brief=self._brief("explicit key 1"), permission="read-only", account="1"
+        )
+        self.assertTrue(started["ok"], started)
+        job = json.loads((Path(started["status_path"]).parent / "job.json").read_text(encoding="utf-8"))
+        self.assertEqual(job["account"], "1")
+        self.assertEqual(job["key_env"], "OPENCODE_GO_API_KEY")
+        self._wait_status(started["job_id"], lambda s: s["final"])
+
+        for host in ("msi", "hp"):
+            with self.subTest(host=host):
+                with self.assertRaises(core.PluginError) as ctx:
+                    manager.start_worker(
+                        brief=self._brief("retired key 2"), permission="read-only", host=host, account="2"
+                    )
+                self.assertEqual(ctx.exception.code, "account_invalid")
+                self.assertIn("Go key 2 retired 14 Nov", ctx.exception.message)
 
     def test_hp_cancel_requires_confirm_and_calls_the_hp_launcher(self):
         job_id = self._write_hp_record(phase="running")
