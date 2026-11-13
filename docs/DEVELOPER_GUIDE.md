@@ -125,7 +125,7 @@ Since raw files move to Drive after parsing (7 Nov), `fetch_integrated_xbrl` cou
 local `raw_market/nse_results_xbrl/` folder OR already a `filings.file` row of `reality_engine/data/results_xbrl.db`;
 before this, an emptied local folder made every run re-download the whole archive. On 14 Nov the index had last been
 read ~2 Nov, so `results_xbrl.db` held 2026-09-30 results for 307 symbols against ~2,400 for 2026-06-30 (PVRINOX's
-28 Oct Q2FY27 filings among the missing); the refresh listed 4,205 new files.
+28 Oct Q2FY27 filings among the missing); the refresh listed 4,205 new files Run 14 Nov 03:10-04:00 IST: 4,205 downloaded, 0 errors; parsed 4,199 ok + 6 no_facts (47 files/s); 2026-09-30 now 4,705 filings / 2,597 symbols. PVRINOX Q2FY27 XBRL: revenue from operations 20,620 mn standalone, 21,051 mn consolidated (other income 287 / 342), matching the printed pages T-208 reads. Raw files stay local until the post-deadline re-run, then one `raw_to_drive` sweep.
 
 ### C. Visual Dashboard Workflow
 Launch the interactive Streamlit dashboard:
