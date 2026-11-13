@@ -6,6 +6,57 @@ architecture / execution / output. Every new session reads the latest entry firs
 "Carry forward" bullets). Transcripts and the run ledger keep WHAT happened; this file keeps WHY and what we learned.
 Keep entries short; facts with numbers; no repetition of STATE or tickets.
 
+## 2026-11-14 03:15 Eagle wrap-up (sv-seed-pack-test-plan): Hydrogen arms, four workers, pack design rejected
+
+Work done: rulings recorded (agy = `gemini-4-hydrogen-high` only, Flash dropped; Opus 5.5 medium grades; Go key 1
+only). Merged: Go key-1 clean-up (written by Hydrogen, coding trial 1), T-209 universe SHP/pledge/balance-sheet store,
+T-208 r1+r2 unseen stores (KEI, MEDANTA, PVRINOX) with 411 pages HP-OCR'd, T-210 factor deep-study engine (panel run
+not done: RAM). Board: 8 merged tickets closed; 5 old worktrees tagged `archive/*` and removed. T-205 r13 harness
+reviewed (63 tests) but NOT merged; Hydrogen arm S stopped at 18/64, arm P at 26/64 by Shivam.
+
+What worked:
+- Briefs with a stop rule on code changes: T-208 r2 stopped instead of storing PVRINOX revenue 1,051 for 21,051 and
+  named three causes. RAM gate in the T-210 brief avoided a reaper kill.
+- Hydrogen as coder: followed a file-list brief, found 20 more call sites than named, separated pre-existing test
+  failures correctly (18 min, 441k tokens). With `--dangerously-skip-permissions` it runs shell commands (43 tonight).
+- Own-sample checks caught: BS-040 grader error (5141.78 printed without a comma), garbled text layer passed as ok.
+
+What did not, and why:
+- My scheduling: two answer arms + a Hydrogen trial in parallel on 3.6 GB free with three workers -> Claude Code killed
+  all five of my jobs. Rule I broke: check free RAM before each launch, run heavy jobs one at a time.
+- A merge commit (T-210, 02:20) lost its second parent after a doc_gate refusal and carried only STATE; I deleted the
+  branch. Recovered from the commit id at close (d0f4735f). Check `git show -s --format=%P` after any refused merge.
+- Pack design (Shivam: "bullshit"): scripts union every route into a 100k-char pack and the model reads it like a PDF.
+  Arm S re-sent the pack on every tool turn: median 140k fresh + 920k cached tokens/question, ~0.4% weekly Gemini
+  per question (~27% per 64). DeepSeek lean tool runs did ~3 calls, ~22 s/question and scored 43-46 vs pack 40.
+- The 3-question smoke said 78 s/question; real arm S median was ~170 s. Smoke on 3 easy questions misleads.
+
+What to improve:
+- Design (Shivam 14 Nov): round 14 = lean planned lookups: model names exact facts; tools return only those rows
+  (value, period, basis, source, known_at, formula inputs); targeted follow-ups for gaps; no seed pack; compact tool
+  replies. Measure right answers AND tokens per question, Hydrogen vs DeepSeek.
+- Store: printed-results reader must take OCR words for garbled pages and join wrapped labels (T-208 guide).
+- Execution: heavy runs one at a time; RAM check before each start; never parallel answer arms on the MSI.
+
+Grading handover (next Wolf session, after 13:30 IST; Opus 5.5 medium via agy; do not merge r13 before):
+```
+cd C:/Users/warri/Downloads/IDM-worktrees/20261113T182621Z-4b624470
+python -m reality_engine.answer.blind_grade make --set hyd_pack=D:/RealityEngine/bluestar/answers_r13/arm_p \
+  --set hyd_seeded=D:/RealityEngine/bluestar/answers_r13/arm_s --set ds_pack=D:/RealityEngine/bluestar/answers_r12 \
+  --set ds_a=D:/RealityEngine/bluestar/answers_ds_a --set ds_b=D:/RealityEngine/bluestar/answers_ds_b \
+  --out D:/RealityEngine/bluestar/report_r13 --questions D:/RealityEngine/bluestar/answers/questions_in.json --batch 8
+python -m reality_engine.answer.blind_grade run --out D:/RealityEngine/bluestar/report_r13 --workspace .
+python -m reality_engine.answer.blind_grade decode --out D:/RealityEngine/bluestar/report_r13
+```
+Hydrogen answered only BS-001..BS-026 (P) and BS-001..BS-018 (S): compare all sets on those questions (paired), and
+report the full-64 numbers for the DeepSeek sets separately. Grader rule added: search figures with and without
+thousands separators. BS-040 truth in `report_r12/BS-040_check.md`.
+
+Carry forward:
+- Grade r13 (paired on the questions Hydrogen answered); then round 14 lean planned lookups, not packs.
+- PVRINOX Q2FY27 revenue defect + its missing XBRL before the unseen-company verdict; T-172 frozen split.
+- T-210 panel run when 7 GB RAM is free; T-207 accept from Shivam; restart dsh-worker MCP for the key-1 default.
+
 ## 2026-11-13 21:45 Wolf wrap-up (same session, closed on resume): loose ends and the next session's plan
 
 Closing checks: doc sweep clean (round-4 brief reworded: its two new modules live on the unmerged branch); data

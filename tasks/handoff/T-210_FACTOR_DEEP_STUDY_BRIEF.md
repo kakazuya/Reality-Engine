@@ -11,7 +11,7 @@ before any result is seen, walk-forward, placebo, multiplicity.
 Evidence (checked by Claude 14 Nov):
 - T-207 engine: `reality_engine/research/factor_rewards.py` (realised_ic, build_ic_table, rewarded_at, sector_map,
   add_size_buckets, regime_labels, walk_forward, permute_panel, placebo_counts, bh_survivors) on the panel of
-  `reality_engine/research/factor_weights.build_panel` (35 factors, 2,253 companies, 71 month-ends 2021-01..2026-11,
+  ``build_panel` in reality_engine/research/factor_weights.py` (35 factors, 2,253 companies, 71 month-ends 2021-01..2026-11,
   snapshot `truth_2026-11-04.duckdb`, memory_limit 5 GB). Report `docs/research/T-207_factor_rewards.md`: six factors
   stable at all horizons (insider net buy, earnings yield, log P/E, own 5y margin and PAT percentiles, promoter 1q);
   24m dynamic selection failed on stale signs (R2.5); 3 of 4 regime cells too thin. Reuse the engine: import, do not copy.

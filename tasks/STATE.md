@@ -20,7 +20,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 1. NEXT (Wolf, after 13:30 IST 14 Nov): blind-grade T-205 r13 with Opus medium, commands in JOURNAL 14 Nov Eagle: Hydrogen arm P 26/64 and arm S 18/64 (both STOPPED by Shivam: pack design rejected), with DeepSeek r12 pack, ds_a, ds_b. Code on branch `dsh/20261113T182621Z-4b624470` (not merged).
 2. Shivam 14 Nov: dumping a gathered pack on the model is rejected. Round 14 = lean planned lookups: model names exact facts, scripts/tools return only those rows, follow-ups for gaps, no seed pack; Hydrogen vs DeepSeek, right answers + tokens per question.
 3. T-208: KEI/MEDANTA/PVRINOX stores + 411 pages HP-OCR'd; PVRINOX Q2FY27 revenue missing (printed reader ignores OCR, wrapped label, no Q2 XBRL; guide T-208). Fix before the verdict.
-4. T-209 MERGED: `D:/RealityEngine/structured/structured_universe.db`; pledge flag 0 = 0%. Raw cache to Drive pending.
+4. T-209 MERGED: `D:/RealityEngine/structured/structured_universe.db`; pledge flag 0 = 0%. Raw `nse_shp_xbrl_universe` to Drive pending.
 5. T-210 MERGED code; panel run needs 7 GB free: `python -m reality_engine.research.factor_deep --out .tmp/t210 --project`, then full.
 6. T-207 awaits Shivam's accept. KPI guards 67ceeb28 port: redo. BS-040 grade wrong (`report_r12/BS-040_check.md`). T-172 frozen split; T-191; T-194; T-179.
 

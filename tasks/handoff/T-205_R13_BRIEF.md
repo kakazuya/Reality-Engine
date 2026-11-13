@@ -30,7 +30,7 @@ Steps:
    {`gemini-3.8-flash-medium` (default, coding), `gemini-4-hydrogen-high`, `claude-opus-5-5-medium`}; anything else
    refused. `quota` unchanged. Tests in `plugins/agy-worker/tests/test_agy_core.py`. Update the docstring and the MCP
    instructions string (they say "pinned to flash-medium").
-2. `reality_engine/answer/agy_call.py`: `run_agy(prompt, model, *, cwd, timeout, log_path) -> dict` (final text,
+2. `agy_call.py` (new module in `reality_engine/answer/`, branch `dsh/20261113T182621Z-4b624470`): `run_agy(prompt, model, *, cwd, timeout, log_path) -> dict` (final text,
    tool calls by tool, tokens, seconds, error). One stable session per question is not needed (no Go key here).
    Retries: once on a transport error, never on a model answer. Unit-test with a fake agy binary (a small python
    script passed via an env var), never the real one in tests.
@@ -45,7 +45,7 @@ Steps:
    for that question as "evidence already gathered: start from it, check it, fill what is missing with tools".
    Output `answers.jsonl` in the ds_a format (qid, question, as_of, answer, tools, sources, confidence) plus
    `calls.jsonl` from the event log. Resumable (skip qids already written).
-5. `reality_engine/answer/blind_grade.py`: generalise make_blind to N named sets (labels A..), seeded shuffle per
+5. `blind_grade.py` (same branch): generalise make_blind to N named sets (labels A..), seeded shuffle per
    question, private key outside the grader's view, batches of 8 questions per grader run, grader = agy
    `claude-opus-5-5-medium` with GRADING_1.md rules (tool names swapped to MCP), one JSON line per (qid, label) with
    grade right/partly/wrong + reason; a decoder that writes per-set totals, a per-question table and pairwise
