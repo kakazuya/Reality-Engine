@@ -932,6 +932,42 @@ read-only snapshot, 5 GB limit; `--placebo` total 520 s) caches `panel.parquet` 
 of the pooled T-118 ICs, the stable/shifting/thin tables and the unmeasured factors:
 `docs/research/T-207_factor_rewards.md`.
 
+### O19c. Deep factor rewards: sectors, companies, pairs, combinations (T-210, 14 Nov 2026)
+
+`reality_engine/research/factor_deep.py` (tests `reality_engine/tests/test_factor_deep.py`, 13
+passed) imports the T-207 engine and the T-118 panel builder unchanged and deepens the reward
+question: per **sector group** the rewarded factors (T-207 rule reused), the exposure pairs whose
+cross-sectional Spearman correlation averages |rho| >= 0.5 (0.7 = one cluster), the pairs whose
+monthly ICs move together or oppositely, a Fama-MacBeth joint model per sector and horizon with
+clustered twins reduced to their strongest member (coverage >= 80%, at most 8 regressors; a factor
+is "redundant" when its univariate reward is significant and the joint Newey-West |t| < 1.5), every
+one of the 595 factor pairs tested as the IC of A inside the top versus the bottom tercile of B
+(A is the earlier factor in `FACTORS` order, 20 names per tercile, so a sector-month under 60 names
+is not tested)
+(claimed only at NW |t| >= 2.5, Benjamini-Hochberg 10% over all pair x sector x horizon cells, and
+above the 95th percentile of 20 seeded within-date permutations of B), and a per-sector sparse
+combination chosen by forward stepwise (max 6 factors, add only on a trailing-IC gain >= 0.005, only
+data known at t) and scored walk-forward against the T-207 EQUAL convention and the universe DYNAMIC
+set, with its own 20-permutation placebo. Per company, a time-series rank IC of each factor over
+months realised by the last month-end, shrunk to its sector's mean by empirical-Bayes weights
+(tau^2/(tau^2+s^2), `s^2` = sampling variance; companies under 24 usable months are sector-only);
+gaps of |shrunk - prior| >= 0.10 are reported, top 200 by months. A sector-KPI arm reads the seven
+pilot stores' `kpi_series` read-only, builds level / YoY / change-in-YoY factors and runs the same
+IC and tercile tests at 6 and 12 months for metrics carrying >= 8 companies in a sector group;
+every result from it is labelled method pilot. `python -m reality_engine.research.factor_deep --out
+.tmp/t210` builds or reuses `.tmp/t210/panel.parquet`, gates on the T-118 reproduction (< 0.005),
+then writes `sector_mode.csv`, `sector_claims.csv`, `corr_exposure.csv`, `corr_ic.csv`,
+`corr_exposure_pairs.csv`, `corr_ic_pairs.csv`, `univariate_sector.csv`,
+`fama_macbeth_sector.csv`, `redundancy.csv`, `company_own_ic.csv`, `company_shrunk.csv`,
+`company_gaps.csv`, `interactions.csv`, `interactions_null.csv`, `interaction_claims.csv`,
+`sparse_monthly.csv`, `sparse_summary.csv` (+ `_6m` / `_24m`), `placebo.csv`, `kpi_panel.csv`,
+`kpi_ic.csv`, `kpi_interactions.csv` and the coverage tables. `--project` times one sector and
+prints the projection; `--placebo-runs 0` / `--no-placebo` and `--skip-kpi` cut arms. The run was
+**not started in this session**: free RAM was sampled once a minute for the brief's 90-minute limit
+(89 samples, 14 Nov 00:12-01:42) and ranged 2.6-4.7 GB of 16 GB against the brief's 7 GB gate while
+three other workers ran. The synthetic validation and the pre-registered design are in
+`docs/research/T-210_factor_deep_study.md`; Claude reruns the panel.
+
 ### O20. v2 period engine (T-134, 9 Nov 2026)
 
 `reality_engine/v2/periods.py` gives every v2 value an exact start/end (`period_row`, `fiscal_label`: Q2FY27,

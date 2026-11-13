@@ -12,6 +12,9 @@ Main machine, hostname `Sumit`. Runs Claude, dsh workers, merges, GPU work and s
 - Closing the session that owns a worker can kill it.
 - Merged worktrees get removed, since each holds a large search cache.
 
+## Factor studies (T-210, 14 Nov 2026)
+`reality_engine/research/factor_deep.py` + `reality_engine/tests/test_factor_deep.py` (13 synthetic tests) deepen the T-207 reward study: per-sector rewarded sets, exposure/IC pair correlations and clusters, per-company empirical-Bayes shrinkage, sector Fama-MacBeth redundancy, 595-pair tercile interactions with a 20-permutation gate, sparse stepwise combinations, and a pilot-store KPI arm. Report `docs/research/T-210_factor_deep_study.md`. Full panel run needs >= 7 GB free RAM (DuckDB snapshot build); it did not start on 14 Nov because 89 one-minute samples (00:12-01:42) ranged 2.6-4.7 GB with three workers running.
+
 ## reality-data store routing (T-203, 12 Nov 2026)
 `plugins/reality-data/server/lookups_pilot3.py` resolves each `pilot3_*` call to the registered store that holds
 the symbol (`REALITY_PILOT3_STORES`, default `D:/RealityEngine/stores.json`); `core.py` (`db_path`,
