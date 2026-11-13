@@ -192,6 +192,31 @@ def test_repair_call_keeps_a_name_the_menu_prints(store):
     assert result["lookups"][0]["args"]["measure"] == "revenue_from_operations"
 
 
+def test_agy_plan_model_is_allowed_and_routed(store, monkeypatch):
+    """T-205 round 13: --plan-model agy:<id> goes through agy_call; a paid direct model is still refused."""
+    monkeypatch.setattr(plan_model.agy_call, "client_for", lambda model, **kw: _agy_client())
+    result = plan_model.write_plan("What was revenue in Q2FY27?", AS_OF, menu.render(_menu(store)),
+                                   "agy:gemini-4-hydrogen-high", menu=_menu(store))
+    assert result["planner"] == "model" and result["model"] == "agy:gemini-4-hydrogen-high"
+    assert result["lookups"][0]["route"] == "fin"
+    with pytest.raises(ValueError):
+        plan_model.write_plan("q", AS_OF, "menu", "gpt-4-paid", menu=_menu(store),
+                              client=lambda *a: {"content": "{}"})
+
+
+def _agy_client():
+    reply = ('{"parts": [{"id": "p1", "text": "revenue Q2FY27"}], "lookups": '
+             '[{"part": "p1", "route": "fin", "args": {"measure": "revenue_from_operations", '
+             '"period": "Q2FY27"}}]}')
+
+    def client(system, user, key=""):  # noqa: ARG001
+        return {"content": reply}
+
+    client.tools = {}
+    client.data_tool_calls = {"data": 0}
+    return client
+
+
 def test_coverage_has_one_entry_per_part(store):
     parts = [{"id": "p1", "text": "the 52-week range"}, {"id": "p2", "text": "the ROE"}]
     lookups = [{"part": "p1", "route": "tech", "args": {"kind": "range"}},

@@ -1,5 +1,9 @@
 """The answer step (T-205 round 11): one model reads one reading copy and answers it.
 
+The model may be the paid DeepSeek flash (``--answer-model``) or an agy model (``--answer-model
+agy:gemini-4-hydrogen-high``, routed by ``agy_call``); the prompt, the reply protocol and every check are the same
+on both routes, so the pack arm (T-205 round 13) answers round 12's reading copies unchanged.
+
 `write_answer(question, as_of, reading_text, coverage, model)` makes ONE model call (plus at most one repair)
 returning a JSON answer: one entry per plan part with ``status`` (answered / not_found), prose, ``figures`` (value,
 unit, period, item_id, quote), ``calcs`` (name, expression, inputs) and a ``final_answer`` with ``{{name}}``
@@ -29,6 +33,7 @@ from typing import Any, Callable
 
 import requests
 
+from reality_engine.answer import agy_call
 from reality_engine.answer import evidence_pack as ep
 from reality_engine.scripts.go_session import session_id
 
@@ -747,7 +752,10 @@ def write_answer(question: str, as_of: str, reading_text: str, coverage: list[di
             pass
 
     call = client or call_model
-    api_key = key or ("" if client else resolve_key())
+    agy_route = agy_call.is_agy_model(model) if client is None else False
+    if agy_route:                          # arm P: same prompt, Hydrogen through agy; no key needed
+        call = agy_call.client_for(model)
+    api_key = key or ("" if (client or agy_route) else resolve_key())
     raw: list[str] = []
     raw_finish: list[str] = []
     calls = 0
@@ -779,6 +787,12 @@ def write_answer(question: str, as_of: str, reading_text: str, coverage: list[di
                        "in_tok": tokens["in"], "out_tok": tokens["out"],
                        "seconds": round(time.time() - t0, 3), "cached": False,
                        "prompt_version": PROMPT_VERSION, "input_chars": len(reading_text)})
+        tools = getattr(call, "tools", None)
+        if isinstance(tools, dict):        # arm P record: the pack is the evidence, so a store lookup is a finding
+            seen = getattr(call, "data_tool_calls", {"data": 0})
+            result["model_tools"] = dict(tools)
+            result["model_tool_calls"] = sum(tools.values())
+            result["model_data_tool_calls"] = int(seen.get("data") or 0)
         if save_dir:
             try:
                 Path(save_dir).mkdir(parents=True, exist_ok=True)
@@ -1112,7 +1126,8 @@ def main(argv: list[str] | None = None) -> int:
                         "figures": 0, "figures_cited": 0, "figures_removed": 0, "verified_value_only": 0,
                         "calcs": 0, "check_failures": 0, "unverified": 0,
                         "initial_failures": 0, "repair_used": 0, "unparseable": 0, "model_error": 0,
-                        "rate_limited": 0, "calls": 0, "in_tok": 0, "out_tok": 0, "reused": 0}
+                        "rate_limited": 0, "calls": 0, "in_tok": 0, "out_tok": 0, "reused": 0,
+                        "model_tool_calls": 0, "model_data_tool_calls": 0}
     rate_stop, gate_stop, gate = False, False, {}
     seconds = []
     for q in qs:
@@ -1136,8 +1151,11 @@ def main(argv: list[str] | None = None) -> int:
                     if reused is not None:
                         answer = reused
             if answer is None:
+                client = (agy_call.client_for(args.answer_model, cwd=args.workspace,
+                                              log_dir=out_dir / "agy_calls" / qid)
+                          if agy_call.is_agy_model(args.answer_model) else None)
                 answer = write_answer(question, as_of, reading, pack.get("coverage") or [], args.answer_model,
-                                      pack=pack, cache_dir=cache_dir)
+                                      pack=pack, cache_dir=cache_dir, client=client)
                 time.sleep(2)                                 # one question at a time, never in parallel
             answer_path.write_text(json.dumps(answer, ensure_ascii=False, default=str), encoding="utf-8")
         parts = answer.get("parts") or []
@@ -1164,6 +1182,8 @@ def main(argv: list[str] | None = None) -> int:
             "model": answer.get("model"),
             "in_tok": int(answer.get("in_tok") or 0),
             "out_tok": int(answer.get("out_tok") or 0),
+            "model_tool_calls": int(answer.get("model_tool_calls") or 0),
+            "model_data_tool_calls": int(answer.get("model_data_tool_calls") or 0),
         })
         counts["answered"] += sum(1 for p in parts if p.get("status") == "answered")
         counts["not_found"] += sum(1 for p in parts if p.get("status") == "not_found")
@@ -1185,6 +1205,8 @@ def main(argv: list[str] | None = None) -> int:
         counts["calls"] += int(answer.get("model_calls") or 0)
         counts["in_tok"] += int(answer.get("in_tok") or 0)
         counts["out_tok"] += int(answer.get("out_tok") or 0)
+        counts["model_tool_calls"] += int(answer.get("model_tool_calls") or 0)
+        counts["model_data_tool_calls"] += int(answer.get("model_data_tool_calls") or 0)
         if answer.get("status") == "rate_limited":
             counts["rate_limited"] += 1
             if counts["rate_limited"] > 10:                   # stop, keep what is written (T-205 round 10 note)

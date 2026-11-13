@@ -331,6 +331,30 @@ def test_gate_trips_when_more_than_twenty_percent_of_cited_figures_are_removed()
     assert step.first_ten_gate([{"figures_cited": 10, "figures_removed": 9}] * 9)["tripped"] is False
 
 
+def test_agy_model_routes_through_agy_call_and_records_tools(monkeypatch):
+    """T-205 round 13 arm P: the same prompt over agy, and the answer file says whether the model left the pack."""
+    seen = []
+
+    def fake_client_for(model, **kwargs):
+        def client(system, user, key=""):  # noqa: ARG001
+            seen.append((model, "no tools" in system))
+            return {"content": json.dumps(_answer()), "in_tok": 3, "out_tok": 4}
+
+        client.tools = {"pilot3_fact": 2}
+        client.data_tool_calls = {"data": 2}
+        return client
+
+    monkeypatch.setattr(step.agy_call, "client_for", fake_client_for)
+    monkeypatch.setattr(step, "resolve_key", lambda: (_ for _ in ()).throw(AssertionError("a key on the agy route")))
+    answer = step.write_answer("revenue?", "2026-11-11", READING, PACK["coverage"], "agy:gemini-4-hydrogen-high",
+                               pack=PACK)
+    assert seen and seen[0][0] == "agy:gemini-4-hydrogen-high" and seen[0][1] is True
+    assert answer["model"] == "agy:gemini-4-hydrogen-high"
+    assert answer["model_tools"] == {"pilot3_fact": 2} and answer["model_data_tool_calls"] == 2
+    assert answer["in_tok"] == 3 and answer["out_tok"] == 4
+    assert answer["calculations"][0]["result"] == pytest.approx(10.0)
+
+
 def test_recheck_maps_old_positional_ids_without_a_model_call():
     import uuid
     root = REPO_ROOT / ".tmp" / f"recheck_test_{uuid.uuid4().hex[:8]}"

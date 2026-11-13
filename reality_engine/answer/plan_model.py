@@ -7,8 +7,10 @@ name against the same menu; a rejected entry gets ONE repair call and then lands
 reply that is not valid JSON even after the repair call falls back to the script planner (``planner`` =
 ``script_fallback``), never to a guessed plan.
 
-Free model only (``beam-free`` by default); a paid model name is refused before any call is made.  The session id is
-the stable ``go_session.session_id`` the rest of the repo uses, so a rerun keeps the provider's prompt cache.
+Free model only (``beam-free`` by default); a paid model name is refused before any call is made, while an
+``agy:<id>`` name (T-205 round 13, ``--plan-model agy:gemini-4-hydrogen-high``) routes through ``agy_call``.  The
+session id is the stable ``go_session.session_id`` the rest of the repo uses, so a rerun keeps the provider's prompt
+cache.
 """
 from __future__ import annotations
 
@@ -22,6 +24,7 @@ from typing import Any, Callable
 
 import requests
 
+from reality_engine.answer import agy_call
 from reality_engine.scripts.go_session import session_id
 
 URL = "https://opencode.ai/zen/go/v1/chat/completions"
@@ -501,7 +504,8 @@ def write_plan(question: str, as_of: str, menu_text: str, model: str = MODEL, *,
     ``model_calls``, ``raw_replies`` and ``seconds``.  Cached by (question, as_of, menu text, model) when
     ``cache_dir`` is given, so a rerun costs no model call.
     """
-    if "free" not in str(model).lower():
+    agy_route = agy_call.is_agy_model(model)
+    if not agy_route and "free" not in str(model).lower():
         raise ValueError(f"{model!r} is not a free model: this planner never calls a paid one")
     t0 = time.time()
     cache = _cache_path(cache_dir, question, as_of, menu_text, model) if cache_dir else None
@@ -515,8 +519,9 @@ def write_plan(question: str, as_of: str, menu_text: str, model: str = MODEL, *,
         except (OSError, json.JSONDecodeError):
             pass
 
-    call = client or call_model
-    api_key = key or ("" if client else resolve_key())
+    call = client or (agy_call.client_for(model, log_dir=Path(cache_dir) / "agy" if cache_dir else None)
+                      if agy_route else call_model)
+    api_key = key or ("" if (client or agy_route) else resolve_key())
     raw: list[str] = []
     calls = 0
 

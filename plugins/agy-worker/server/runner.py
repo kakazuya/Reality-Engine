@@ -14,7 +14,8 @@ def main(d: Path) -> None:
     job = json.loads((d / "job.json").read_text(encoding="utf-8"))
     ws = Path(job["workspace"])
     brief = (d / "brief.md").read_text(encoding="utf-8")
-    cmd = [str(core.AGY), "-p", brief, "--model", core.MODEL, "--mode", "accept-edits", "--output-format",
+    model = job.get("model") or core.MODEL
+    cmd = [str(core.AGY), "-p", brief, "--model", model, "--mode", "accept-edits", "--output-format",
            "stream-json", "--print-timeout", f"{job['timeout_seconds']}s", "--disable-slash-commands"]
     if job.get("bypass_permissions", True):  # Shivam, 8 Nov: run agy headless with permissions bypassed
         cmd.append("--dangerously-skip-permissions")
@@ -36,7 +37,7 @@ def main(d: Path) -> None:
     if job.get("branch"):
         core._git("add", "-A", cwd=ws)
         if core._git("diff", "--cached", "--quiet", cwd=ws).returncode:
-            msg = f"agy-worker {job['job_id']} ({core.MODEL}): {outcome}\n\nNo-ticket: worker branch, reviewed before merge"
+            msg = f"agy-worker {job['job_id']} ({model}): {outcome}\n\nNo-ticket: worker branch, reviewed before merge"
             c = core._git("-c", "user.name=kakazuya (Wolf agy-worker)", "commit", "-q", "-m", msg, cwd=ws)
             info["committed"] = c.returncode == 0
     (d / "exit.json").write_text(json.dumps(info), encoding="utf-8")
