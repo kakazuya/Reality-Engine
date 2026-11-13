@@ -1639,6 +1639,38 @@ python -m reality_engine.pilot3.regression_set score --all                      
   - **Fast check.** `python -m reality_engine.pilot3.build --profile tasks/night_loop/pilot10_profile.json --part comparatives --symbols HDFCBANK,MARUTI,KEC --out D:\RealityEngine\pilot10\scratch\w_cmp.db` takes 30-40 s; all ten take about 4 min. `--part ratios --out <copy>` (about 5 s) rebuilds every company from the merged quarters. Measured on the pilot10 copy 5 Nov 2026 (pre-T-073 baseline): 6,685 rows (fix round; 5,587 before), A1 651 -> 682 of 898, `valuation_daily.pe` days BAJFINANCE 188 (244 before the fix), ETERNAL 130 (72), HINDALCO 245, HINDUNILVR 178, INFY 8, KEC 188 (117), MARUTI 130 (6), SBILIFE 6, SUNPHARMA 246, HDFCBANK 11; `pytest reality_engine/tests/test_pilot3_comparatives.py -q` 18 passed.
   - **T-073 store defects (5 Nov 2026; blueprint 9c).** Four general rules, no company named. (1) `build_share_fallback` writes the `shp_category` `shareholding_pattern` total (`source_table='shp_category'`) for every quarter end and basis beside the paid-up row; `ratios._share_count` / `_valuation` prefer it by its own `known_at`, `pilot3_holding` orders it first. (2) `stores.STOCK_COST_TAGS` reads `PurchasesOfStockInTrade` and the finished-goods inventory change from `results_xbrl.facts` (the `quarterly` view lacks them), the same captions are in `lexicon/results_lines.yaml`, and `ratios._gross_margin` (`F_GROSS_M`) = (revenue - materials - purchases - inventory change) / revenue for non-lenders. (3) The printed role pool follows the quarter end and the column count (Q1 "year ended" is `last_fy`, Q4 is `ytd`/`prior_ytd`, a 5/6-column Q2/Q3 carries `last_fy`), `_assign_tokens` matches monotonically so a missing middle cell cannot slide the columns, `_valuation` requires both a share count and a quarterly statement on its basis, and a missing last full year comes from `fin_annual_line` (`last_fy(annual)+ytd-prior_ytd`, stated in `input_refs.ttm`). (4) A YTD flow in a document filed after the quarter ended, with no period in its own sentence, is `fiscal_period='YTD'` with `as_of_date` = filing day; a segment named after a share of the total ("~70% from T&D") keeps the row `total` (`kpi.py`). (5) The pilot10 profile sets `compute_start='2024-07-01'` and lists KEC's earlier ISIN `INE389H01014` and SUNPHARMA's `INE044A01028`: the four quarters before the window are read through `<table>_input` and the ratios TEMP views, so `valuation_daily` has PE/EV on all 269 sessions for every company with a share count from 1 Oct 2025 (was 11-255 PE, 0-245 EV; both counts predate T-155, which keeps valuation days from `price_start`, NULL PE/PB/EV before the first known quarter) and INFY's 2025-11-14 PE is 22.14 on trailing EPS 67.87; the document answer tables still start at the window (0 earlier document rows, 0 `known_at > date`, 0 ratio rows before their period end). EV/EBITDA uses the latest filed annual **or half-year** balance sheet and `input_refs.net_debt` names it (HINDALCO rests on FY26: no derived H1 net debt); lenders keep none. SBILIFE keeps 230 valuation sessions (first exact share count known 2025-11-28) and PE from 2026-01-28. Measured: A1 759/898 (round 1 732), no company below, checkpages 145; `test_pilot3_comparatives.py` 21, `test_pilot3_ratios.py` 12, `test_pilot3_profile.py` 6 of 7 (one pre-existing failure, see blueprint 9c).
 
+- **T-208 unseen stores: KEI, MEDANTA, PVRINOX (14 Nov 2026).** Three measurement stores built from the s10 raw
+  (T-168) with the Blue Star recipe and **no code change**: `D:/RealityEngine/s10/{kei,medanta,pvrinox}/<name>.db`
+  (profile JSON, `pages.db` and `raw/manifest.csv` beside each). The per-company manifest is the shared
+  `D:\RealityEngine\raw\pilot60_history\manifest.csv` filtered to the company's ISIN (only `status='ok'` rows are read;
+  the PDFs were already on disk under `raw\pilot60_history\<SYM>`: KEI 307, MEDANTA 438, PVRINOX 321 ok files).
+  Commands, one company at a time: `python -m reality_engine.pilot3.make_profile <SYM> --name <n> --root
+  D:\RealityEngine\s10\<n> --window-start 2024-04-01 --compute-start 2019-01-01 --out <n>_profile.json`, then
+  `docs_collect --profile <json>` (also writes `pages.db`), then `build --profile <json> --out <n>.db --part <part>`
+  for `registry pages transcripts kpi guidance stores comparatives preferred ratios segments notes checks events`
+  (logs `b_<part>.log`). Result, all 13 parts rc=0: KEI 284 docs / 3,526 pages (168 needs_ocr), MEDANTA 425 / 3,653
+  (56), PVRINOX 315 / 3,777 (180); `fin_quarter_xbrl` 472/404/405, `fin_quarter_printed` 2,184/1,971/1,248,
+  `kpi_series` 391/666/475, `guidance` 36/23/15, `transcript_statement` 1,128/4,330/3,276, `shp_category` 44/34/46,
+  `price_delivery` 3,892/1,976/3,892. Side-by-side with `bluestar.db`: `D:/RealityEngine/s10/coverage_after.csv`;
+  per-family per-quarter input: `<sym>/coverage_before.csv`; the pages with no or a jumbled text layer are listed in
+  `<sym>/ocr_needed.csv` (KEI 169 = 168 no-text + 1 jumbled, MEDANTA 56, PVRINOX 184 = 180 + 4), never OCR'd here.
+  **Skipped (not run):** embedding (paid DeepInfra, needs
+  Shivam's OK), `ocr` (RapidOCR; the pages are listed in `ocr_needed.csv`, OCR runs on the HP), and the model-based
+  `atoms`/`page_reader` step (not in the Blue Star part order; `atoms` follows `checks` only in the code's `all`
+  order). **Known gap:** the s10 fetch held announcements, not the SHP XBRL family, so `shp_holder` and `shp_pledge`
+  are empty in all three (the `shp_index` promoter/public rows still land in `shp_category`). Sector keys: KEI
+  `consumer_durables` (taxonomy "Cables - Electricals"), MEDANTA `healthcare_hospitals`, PVRINOX `retail` (the closest
+  family; the taxonomy maps "Film Production Distribution & Exhibition" to `unknown`). Stores are written to the new
+  registry `D:/RealityEngine/s10/stores_s10.json` (`python -m reality_engine.scripts.store_registry --scan
+  D:/RealityEngine/s10 --no-default --out D:/RealityEngine/s10/stores_s10.json`); the live `stores.json` is unchanged
+  for Claude to review. Accept passed: all three `<sym>.db` exist.
+  **Eagle review (14 Nov):** period labels are right in the stores (Q4 rows present; `coverage_before.csv` labels
+  are filing quarters). Defect: PVRINOX Q2 FY27 results (`quarterly_results/fa10203c...pdf`) carry a garbled embedded
+  text layer ("Revpnul' from ooerulions") that the jumbled-layer check passed as ok, so revenue_from_operations is
+  missing for Q2 FY27 in both bases and consolidated `exceptional_items` holds the PBT figure (3,511). Before any
+  answer test the three stores need HP OCR of `ocr_needed.csv` plus every results/deck page whose text layer fails a
+  label-dictionary hit rate, then a rebuild. Registry stays separate until then.
+
 ## 5. Code tools: outline and typecheck (T-054, 4 Nov 2026)
 
 Retired 4 Nov 2026 (moved to the Recycle Bin, history in `tasks/archive/code-intel_install/`): the `plugins/code-intel` plugin — its AST index and CLI, and the stdio server's core, LSP client and server modules — and its test module.
