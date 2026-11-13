@@ -16,14 +16,14 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action
-00000. Shivam 13 Nov: Claude directs and reviews only; DeepSeek workers build. Board cut 86 -> 51 open (parked sets: IDEA_BOX I-013..I-015). T-207 r1+r2 built: `docs/research/T-207_factor_rewards.md`.
+00000. Shivam 13 Nov: Claude directs and reviews only; DeepSeek workers build. Board cut to 51 open (I-013..I-015). T-207 r1+r2 MERGED, audit clean, awaits Shivam: 6 stable factors need only P&L, promoter, insider, prices; 24m selection fails (stale signs) (`docs/research/T-207_factor_rewards.md`).
 0000. T-205: r3 judge enough 27 / partly 30 / missing 7 of 64 (`bluestar/pack/pack_judge_r3.csv`; 2 of 5 checked lenient). Round 4 = model-written plan from a store menu (`tasks/handoff/T-205_R4_PLAN_BRIEF.md`); then independent judge -> answer step + number check -> NEW unseen company.
-000. T-199 BLUESTARCO DONE 13 Nov, NOT passed: first attempt DeepSeek 82.8% / 73.4%, Haiku 56.2% (blind Opus, 64 frozen q); 60/64 right in some set; losses routing 39, compute 11, reading 6, none missing data. `reports/2026-11-13_bluestar_atom_test.html`. Store: 45,173 atoms (25,672 verified), unseen 20-page sample value 95.5% / recall 81% on financial pages. Open store defects: derived capital_employed, page_reader default doc types.
+000. T-199 BLUESTARCO DONE 13 Nov, NOT passed: first attempt DeepSeek 82.8% / 73.4%, Haiku 56.2% (blind Opus, 64 frozen q); 60/64 right in some set; losses routing 39, compute 11, reading 6, none missing data. `reports/2026-11-13_bluestar_atom_test.html`. Store: 45,173 atoms (25,672 verified), unseen 20-page sample value 95.5% / recall 81% on financial pages. Open: derived capital_employed, page_reader doc types.
 0. T-192 r5 MERGED 19:20 (MARUTI exports FY26->FY25 in 2 rows: follow-up). Live rebuilt 12 Nov 20:15 (all parts rc=0): aurobindo, pilot10, n10 (backups `*_before_t192_2026-11-12.db`). u8/p20/q12 NOT rebuilt (wait for page-by-page extraction).
 1. T-191 follow-ups: `aurobindo_ab/STORE_DEFECTS_SEEN.md`.
 2. T-194 MERGED 18:00; events built on aurobindo only.
-3. Branches T-163 r4-7 / T-132 r10-12 unreviewed (tickets parked, I-015); CHOLAFIN waits for Shivam.
-4. T-179 timing; `pilot3_fin` XBRL-first; s10 + T-172.
+3. Branches T-163 r4-7 / T-132 r10-12 unreviewed (I-015); CHOLAFIN waits for Shivam.
+4. T-179; `pilot3_fin` XBRL-first; s10 + T-172.
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff before a store merge: `reality_engine.scripts.store_diff` (DEVELOPER_GUIDE).
