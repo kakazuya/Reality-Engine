@@ -932,6 +932,17 @@ read-only snapshot, 5 GB limit; `--placebo` total 520 s) caches `panel.parquet` 
 of the pooled T-118 ICs, the stable/shifting/thin tables and the unmeasured factors:
 `docs/research/T-207_factor_rewards.md`.
 
+### O19c. Structured universe store: ownership and balance sheet at universe scale (T-209, 13 Nov 2026)
+
+`reality_engine/structured/universe_build.py` (tests `reality_engine/tests/test_structured_universe.py`: two SHP fixtures, a results fixture, idempotent re-parse, a revision keeping its own `known_at`, and the Blue Star 2024-06-30 known answer; `python -m pytest reality_engine/tests/test_structured_universe.py reality_engine/tests/test_pilot3_shp_holder.py -q` -> 10 passed) builds one SQLite store, `D:/RealityEngine/structured/structured_universe.db`, for every NSE company with a filing since 2024-04-01. Script only: no model calls, no network except the raw XBRL fetch. The SHP parser is `reality_engine/pilot3/stores.py` `parse_shp_xbrl` (imported, never copied).
+
+- `shp_category`: 149,155 rows over 3,060 ISINs from 27,306 parsed filings - promoter, public, fpi_total (the filing's own `InstitutionsForeign` line, never a sum of its components), mf, insurance, `other_dii` (derived: the `InstitutionsDomestic` summary less mf and insurance, written only when both are reported) and government, each with shares, pct and the percentage base (`pct_base_shares` / `pct_basis`).
+- `shp_pledge`: 26,999 rows - encumbrance flags, promoter/pledged shares, the printed pledge pct and its basis (4,602 `of_promoter_holding`, 8,459 `zero_ambiguous`, 13,937 `none` where the filing has no encumbrance block).
+- `balance_sheet`: 125,564 rows from 41,931 results filings (21,433 with rows) - total equity (`Equity`, else `ShareholdersFunds + MinorityInterest`), borrowings non-current/current/total, cash and total assets at the filing's own period end, plus `capital_employed` derived as equity + borrowings - cash (`is_reported=0`). Per half-year 2,458-2,846 companies at Sep/Mar and 19-155 at the other quarter ends; 323 results filings are skipped for having no broadcast/dissemination timestamp.
+- `filing` / `bs_filing` are the coverage denominators. Every row carries `isin` (canonical through `symbol_isin_history` for SHP and `results_xbrl.filings_isin` for results), symbol, period end, basis, unit, source file and `known_at` (the exchange broadcast/dissemination time, never a crawl date).
+- Gaps: 27 indexed SHP filings return NSE 404 and 26 carry a placeholder `.../-` link (kept as `pending` / `unusable`), one file (`SHP_195290_1350846_18012025044035_WEB.xml`) is corrupt at source; 722 distinct SHP period ends because initial/listing-date filings print their own instant (an April date) instead of a quarter end.
+- Commands: `python -m reality_engine.structured.universe_build --fetch` (resumable, pooled sessions, throttled to ~6 req/s, stops itself when over 5 % of a rolling 100-request window fails twice), `--parse`, `--balance`, `--report`; no flag runs all four. `--report` writes `coverage.csv` (per period: companies with a row / companies with a filing) and `sample20.csv` (seed 20261113) beside the store, plus `report.md`. Raw cache: `D:/RealityEngine/raw/nse_shp_xbrl_universe/` (27,307 gzipped XBRL, 0.28 GB per `tasks/DATA_INVENTORY.md`; still local for the controller to move to Drive).
+
 ### O20. v2 period engine (T-134, 9 Nov 2026)
 
 `reality_engine/v2/periods.py` gives every v2 value an exact start/end (`period_row`, `fiscal_label`: Q2FY27,

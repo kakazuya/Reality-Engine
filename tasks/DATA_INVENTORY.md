@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-13 23:37 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 0 tables and 0 of 73 raw folders.
+Generated 2026-11-14 01:05 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 0 tables and 0 of 74 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -234,6 +234,7 @@ Undocumented: 0 tables and 0 of 73 raw folders.
 | material_announcement | 0 | 0.00 | - | yes |
 | nse_announcements | 0 | 0.00 | - | yes |
 | nse_shp_xbrl_pilot | 797 | 0.01 | 2026-11-12 `SHP_1741009_17102026084603_WEB.xml.gz` | yes |
+| nse_shp_xbrl_universe | 27,307 | 0.28 | 2026-11-14 `SHP_195672_1353418_20012025061410_WEB.xml.gz` | yes |
 | originals_lists | 0 | 0.00 | - | yes |
 | pilot60_history | 18,416 | 30.42 | 2026-11-12 `manifest.csv` | yes |
 | price_bands | 0 | 0.00 | - | yes |

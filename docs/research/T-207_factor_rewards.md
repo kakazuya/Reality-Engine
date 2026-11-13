@@ -359,16 +359,22 @@ that would supply it:
 
 | factor | why not measured | table needed |
 |---|---|---|
-| ROE, ROCE | the snapshot has paid-up capital and face value but no book equity or capital employed | a balance-sheet results table (equity, capital employed) in the snapshot |
-| promoter pledge | `shp_index` holds only promoter % and public % | `shp_pledge` (pilot3 stores) |
-| FPI holding change | `shp_index` has no category rows | `shp_category`, `fpi_total` |
-| mutual-fund holding change | same | `shp_category` |
+| ROE, ROCE | the snapshot has paid-up capital and face value but no book equity or capital employed | `D:/RealityEngine/structured/structured_universe.db` `balance_sheet` (total equity, borrowings, cash, total assets; `capital_employed` derived) — built 13 Nov 2026 (T-209) |
+| promoter pledge | `shp_index` holds only promoter % and public % | `structured_universe.db` `shp_pledge` (the promoter encumbrance block, with the percentage base; T-209) |
+| FPI holding change | `shp_index` has no category rows | `structured_universe.db` `shp_category`, `fpi_total` (T-209) |
+| mutual-fund holding change | same | `structured_universe.db` `shp_category`, `mf` (T-209) |
 | guidance raised or cut | no guidance series in the snapshot | `pilot3_guidance` |
 
 The 12-month sales-share split is measured but is not a stable selector; the sector median P/S change
 is stable at 24m but is a ~20-series timing variable, not a company-level factor (T-118's caveat).
 ROE/ROCE would need the balance sheet for every quarter, not a year-end snapshot, to keep the point
 in time honest.
+
+T-209 (13 Nov 2026) built the universe store the first four rows name: every NSE shareholding XBRL
+filing since 2024-04-01 with its category holdings and promoter pledge, and the half-year
+balance-sheet lines from the results XBRL, each with `known_at` (script only; no model calls). The
+factors stay **unmeasured in this report** until that store is joined into the panel — the snapshot
+is still T-207's only panel input — so this section keeps its "not measured, not no effect" reading.
 
 **Round 2 (R2.7) does not change this section.** The stable set still needs only results P&L
 (revenue, PAT, operating margin), promoter holding, insider trades and prices; valuation and the
