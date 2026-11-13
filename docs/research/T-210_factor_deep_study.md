@@ -26,7 +26,8 @@ for the brief's 90-minute limit (89 samples, 00:12-01:42 on 14 Nov) and ranged *
 after the tests and say so; Claude reruns the panel. So this document fixes the design, proves the
 machinery on planted synthetic panels, and states exactly what the rerun must produce and where.
 **It contains no result numbers, because none were computed.** The CSVs under `.tmp/t210/` are the
-deliverable of the rerun; sections 5-6 are the contract they must fill.
+deliverable of the rerun; section 4 is the table contract and section 5 the limits the results must
+be read against.
 
 ## 1. What is fixed before any result (brief, 14 Nov)
 
