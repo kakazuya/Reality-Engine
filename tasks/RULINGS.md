@@ -13,7 +13,7 @@ New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/r
 
 ## Models and keys
 - DeepSeek on `dsh` at max effort, off-peak only (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST; read the clock yourself). Routing (10 Nov): Beam (`beam-free`, both keys) writes plumbing code any hour and grades read-only in peak; extraction judged by row precision goes to DeepSeek. Every branch: read-only grader, then Claude's tests + sample; merge with 0 right rows lost. Beam only while free [check: free_model_check]. No headless Opus unless Shivam says so. dsh workers use Go `account='1'` until key 2 resets (7 Nov). Beam may settle KPI/guidance rows scripts cannot (separate step; Opus code).
-- `agy` runs only `gemini-3.8-flash-medium`, headless with `--dangerously-skip-permissions`.
+- `agy`: coding `gemini-3.8-flash-medium`; answer tests (13 Nov): `gemini-4-hydrogen-high` answers, Opus 5.5 medium grades.
 
 ## How we work
 - Claude reviews, workers build; Opus writes ~20-25% (design, tests, review, one working example). Briefs carry evidence (defect rows, file/function/line, a fast check), numbered steps, limits, pitfalls, budget and a stop rule; unknown method -> Opus prototypes first. Check a finished worker on Opus's own tests and sample, log, merge [check: worker_review] [check: merge_tests]. No pilot bank reasoning to workers. Page-reading subagents: batches of 8 pages, under 100k context, Haiku medium.
@@ -25,7 +25,7 @@ New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/r
 - Every worker start names `permission`. [check: start gate] HP work is headless. [check: test_hp_headless] No session-length limit (9 Nov); done/pending notes in `tasks/STATE.md`.
 - Live watch on every running job (finish, stall, errors); check real progress before reporting; review a finished worker at once. [check: T-050 stop hook]
 - A new task from Shivam becomes a ticket first (`task_board add`); commits on `main` name a ticket. [check: commit-msg]
-- Log every worker (`tasks/efficiency/worker_reviews.jsonl` -> `WORKER_REVIEW_LOG.xlsx`) and apply lessons to the next brief. [check: worker_review] Bring ranked ideas from measurements unprompted. RAM <90% or CPU <70% used = start useful work. Report compute waste. Decide what you can; never argue rulings. Titles keep `sv-`/`neo-` prefixes.
+- Log every worker (`tasks/efficiency/worker_reviews.jsonl` -> `WORKER_REVIEW_LOG.xlsx`) and apply lessons to the next brief. [check: worker_review] Bring ranked ideas from measurements unprompted. RAM <90% or CPU <70% used = start useful work. Report compute waste. Decide what you can; never argue rulings.
 - Run ledger (11 Nov): log every run of every model (DEVELOPER_GUIDE s7); answers say why raw SQL was used; report overfit at once.
 - Journal (13 Nov): add a tasks/JOURNAL.md entry (work, what worked, what failed and why, fixes) at 400k context and at wrap-up; read the latest at start.
 
