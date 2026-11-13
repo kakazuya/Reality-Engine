@@ -22,7 +22,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 3. T-208: KEI/MEDANTA/PVRINOX stores + 411 pages HP-OCR'd; PVRINOX Q2FY27 revenue missing (printed reader ignores OCR, wrapped label, no Q2 XBRL; guide T-208). Fix before the verdict.
 4. T-209 MERGED: `D:/RealityEngine/structured/structured_universe.db`; pledge flag 0 = 0%. Raw `nse_shp_xbrl_universe` to Drive pending.
 5. T-210 MERGED code; panel run needs 7 GB free: `python -m reality_engine.research.factor_deep --out .tmp/t210 --project`, then full.
-6. T-207 awaits Shivam's accept. KPI guards 67ceeb28 port: redo. BS-040 grade wrong (`report_r12/BS-040_check.md`). T-172 frozen split; T-191; T-194; T-179.
+6. T-207 accepted 14 Nov as continuous: T-211 = month-end re-run job (Wolf). KPI guards 67ceeb28 port: redo. BS-040 grade wrong (`report_r12/BS-040_check.md`). T-172 frozen split; T-191; T-194; T-179.
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff before a store merge: `reality_engine.scripts.store_diff` (DEVELOPER_GUIDE).
