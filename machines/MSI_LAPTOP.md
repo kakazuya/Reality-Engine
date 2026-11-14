@@ -71,7 +71,8 @@ The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,
   8), `run` (Opus 5.5 medium via agy, strict one-JSON-line-per-grade, one re-ask), `decode` (per-set totals,
   per-question table, pairwise agreement).
 - `plugins/agy-worker/server/agy_core.py` + `runner.py` + `agy_worker_mcp.py` — `MODELS` allowlist
-  (`gemini-4-hydrogen-high` default, `claude-opus-5-5-medium`; Flash 3.8 dropped 14 Nov) and a `model`
+  (`gemini-4-argon-high` default from 14 Nov until its weekly limit is used, then `gemini-4-hydrogen-high`;
+  `claude-opus-5-5-medium`; high effort only; Flash 3.8 dropped 14 Nov) and a `model`
   argument on `start`/`resume`; anything else is refused.
 - Tests: `reality_engine/tests/test_agy_call.py`, `test_seeded_run.py`, `test_blind_grade.py`,
   `plugins/agy-worker/tests/test_agy_core.py`. In the dsh sandbox `tmp_path` dirs are created 0700 and cannot be
