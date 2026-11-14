@@ -1,5 +1,7 @@
 # T-213 round 14: planned lookups, code checks, code-written follow-ups (no pack)
 
+Archived 14 Nov (Wolf): the code is on tag `archive/Wolf-T-213-r14b` (not merged; replay lost to DS lean run B). Paths below are under reality_engine/ on that tag.
+
 Ticket: T-213
 
 Goal: one answer loop, driven by code, for any model. The model names the exact facts it needs; code fetches only
@@ -16,7 +18,7 @@ correct percentage next to an amount stated 10x. Pack runs cost ~1M tokens/quest
 Evidence (read these, nothing else needed to start):
 - Lookups: `reality_engine/scripts/p3ask.py` (`run(db, tool, args, qid, log)`, `TOOLS`, `_page`) -- call in-process.
 - Model call over the Go API: `reality_engine/answer/plan_model.py` (`URL`, `resolve_key`, `call_model`; stable
-  session id from `reality_engine/scripts/go_session.session_id`). Hydrogen: `reality_engine/answer/agy_call.py`.
+  session id from ``session_id` in reality_engine/scripts/go_session.py`). Hydrogen: `reality_engine/answer/agy_call.py`.
 - Validated plans and the menu: `plan_model.validate`, `reality_engine/answer/menu.py` (company menu under 8,000 chars).
 - Number matching rules already written: `reality_engine/answer/answer_step.py` (offline re-check, separator/scale
   variants, calc inputs). Reuse; do not fork.
@@ -53,11 +55,11 @@ Design (fixed; change only with a written reason in the result):
    tools disabled in the prompt: the loop is the only route to data). Same loop, same checks.
 
 Steps:
-1. Tests first, `reality_engine/tests/test_checked_lookups.py`, model mocked (fixture items, no store needed for
+1. Tests first, `tests/test_checked_lookups.py`, model mocked (fixture items, no store needed for
    C1-C3 and C5; a tiny fixture sqlite for C4): one failing case and one passing case per check; a follow-up text
    test (names the part, contains the probe's page, contains no generic exhortation); a loop test (fail -> follow-up ->
    pass; and fail x3 -> labelled not_found_after); token/turn counters recorded.
-2. Module `reality_engine/answer/checked_lookups.py` with CLI:
+2. Module `answer/checked_lookups.py` with CLI:
    `python -m reality_engine.answer.checked_lookups --set bluestar --model go|agy --out <dir> [--limit N] [--qids ...]`
    writing `answers.jsonl` (ds_a shape: qid, question, as_of, answer, tools, sources, confidence + turns,
    followups, checks_failed_first, checks_failed_final, tokens_in, tokens_out, seconds) and `calls.jsonl` (one line
@@ -68,11 +70,11 @@ Steps:
 4. Docs: an "O21. Checked lookups (T-213, round 14)" block in `docs/DEVELOPER_GUIDE.md` (design, checks, CLI, files);
    PROGRESS_NOTES lines.
 
-Files: new `reality_engine/answer/checked_lookups.py`, new test file, `docs/DEVELOPER_GUIDE.md`; small reuse edits in
+Files: new `answer/checked_lookups.py`, new test file, `docs/DEVELOPER_GUIDE.md`; small reuse edits in
 `answer_step.py` / `plan_model.py` only if a function must be made importable (no behaviour change, say so). Stores are
 read-only. Outputs of the smoke under this worktree's `.tmp/r14_smoke/`.
-Accept: python -m pytest reality_engine/tests/test_checked_lookups.py -q
-Test command: python -m pytest reality_engine/tests/test_checked_lookups.py reality_engine/tests/test_plan_model.py -q
+Accept: python -m pytest tests/test_checked_lookups.py -q
+Test command: python -m pytest tests/test_checked_lookups.py reality_engine/tests/test_plan_model.py -q
 Pitfalls: no evidence pack anywhere (do not import evidence_pack.gather); a check must never pass an answer by
 loosening (no fuzzy number match beyond the listed variants); follow-up text must come only from check results; as_of
 on every lookup; run pytest per file; check free RAM before the smoke (stop under 2 GB); never print the key.

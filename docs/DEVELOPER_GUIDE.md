@@ -2111,6 +2111,87 @@ recorded in one SQLite file, `D:/RealityEngine/ledger/ledger.db`, by `reality_en
   (T-179). Worker tool calls 57,596: MCP 5,704, raw SQL 4,534, data read outside the MCP tools 2,659.
 
 
+## Answer arms, round 13 (T-205, 13 Nov 2026)
+
+Shivam's order: the seeded tool run FIRST, then the round-12 pack path answered by the same model, graded blind
+together with the earlier sets. Model route: `gemini-4-hydrogen-high` answers and `claude-opus-5-5-medium` grades,
+both through the `agy` CLI; DeepSeek builds and smoke-tests only, Claude launches the full runs.
+
+**The two arms.**
+
+* **Arm P (pack), `reality_engine/answer/answer_step.py`.** The round-12 path unchanged: one round-11 reading copy
+  per question, ONE model call per question plus at most one repair, the script's calc evaluator, the figure/citation
+  check and the first-ten gate. Only the transport changes: `--answer-model agy:gemini-4-hydrogen-high` routes the
+  same bytes through `reality_engine/answer/agy_call.py`, and each `answer_<qid>.json` gains `model_tools` and
+  `model_data_tool_calls` so the record says whether the model left the pack for the store (it must not: the pack is
+  the evidence). `pack_recall.py --plan-model agy:<id>` likewise routes the plan step through `agy_call`; a paid
+  direct model is still refused by `plan_model.write_plan`.
+* **Arm S (seeded tool run), `reality_engine/answer/seeded_run.py`.** Per question ONE agy Hydrogen run whose prompt
+  is the T-199 answer rules rewritten for the `pilot3_*` MCP tools (`pilot3_fact` first for a single number, then
+  `fin`/`ratio`/`kpi`/`guidance`/`statements`/`topic`/`cells`/`docs`/`search`/`semantic`/`holding`/`tech`/`sql`, every
+  call with `symbol` and `as_of`, arithmetic through `pilot3_calc`, always `as_of`), plus the question, its as_of,
+  and the same pack's reading copy labelled "evidence already gathered: start from it, check it, fill what is missing
+  with tools". The model answers one JSON object (`answer`, `sources`, `confidence`); the tools in the record come
+  from the agy event log, never from the model's claim. `answers.jsonl` is the ds_a shape (qid, question, as_of,
+  answer, tools, sources, sql_reason, confidence) with `tool_calls`, `tools_by_name`, `parsed`, `model`, `seconds`,
+  `ok`, `error`; `calls.jsonl` holds one line per agy run (attempts, tokens, tool calls by tool, log path).
+  Resumable: a qid already in `answers.jsonl` is skipped.
+
+**The agy route (`agy_call.run_agy`).** `agy -p <prompt> --model <id> --mode accept-edits --output-format
+stream-json --print-timeout <n>s --disable-slash-commands --dangerously-skip-permissions`, no shell, stdout to the
+event log and `CREATE_NO_WINDOW` (MSI rule). The event log is parsed by the agy-worker's own
+``parse_events` in plugins/agy-worker/server/agy_core.py` (one parser in the repo). One retry on a transport error (no final
+response, the process failed to start); a run that produced a final answer is NEVER retried. Windows caps a command
+line at 32,767 characters while a pack reading copy is ~75,000, so a prompt over 24,000 characters is written to
+`<cwd>/.tmp/agy_prompts/prompt_<stamp>_<chars>.txt` and the argv carries a one-line pointer that the model reads
+first (`read_file`/`view_file`); that read is the only tool call arm P shows. Tests use a fake agy script passed as an
+argv list — the real binary is never called in tests.
+
+**The commands Claude runs (full 64 questions).** From the repo root, each run writes its own directory:
+
+```
+python -m reality_engine.answer.seeded_run --set bluestar --packs D:/RealityEngine/bluestar/pack_r11 \
+    --out .tmp/answers_r13/arm_s --workspace .                      # arm S FIRST (Shivam's order)
+python -m reality_engine.answer.answer_step --set bluestar --packs D:/RealityEngine/bluestar/pack_r11 \
+    --out .tmp/answers_r13/arm_p --answer-model agy:gemini-4-hydrogen-high --workspace .
+python -m reality_engine.answer.blind_grade make --set pack=.tmp/answers_r13/arm_p \
+    --set seeded=.tmp/answers_r13/arm_s --set ds_a=D:/RealityEngine/bluestar/answers_ds_a \
+    --set ds_b=D:/RealityEngine/bluestar/answers_ds_b --out D:/RealityEngine/bluestar/report_r13 \
+    --questions D:/RealityEngine/bluestar/answers/questions_in.json --batch 8
+python -m reality_engine.answer.blind_grade run  --out D:/RealityEngine/bluestar/report_r13 --workspace .
+python -m reality_engine.answer.blind_grade decode --out D:/RealityEngine/bluestar/report_r13
+```
+
+`make` shuffles the labels per question with `--seed` (default 20261114), writes `grade_in_<n>.jsonl` (8 questions
+each), `GRADING.md` and the key at `<out>/../key_private/key_<out.name>.csv`; the grader is told never to open it.
+`run` is one agy `claude-opus-5-5-medium` call per batch and accepts ONE JSON line per (qid, label): `qid`, `label`,
+`grade` (`right`/`partly`/`wrong`/`not_held`), `root_cause`, `truth`, `note`; strict parsing, one re-ask when a batch
+does not parse, and the missing lines are reported in `grade_run.json` (`unparsed`). `decode` writes `decoded.json`
+and `per_question.csv`: per-set totals (`not_held` counts as right, ruling 9 Nov), the per-question table, and
+pairwise agreement (`agree_grade` on the strict grade, `agree_right` on right-or-not_held). The grade rules are
+GRADING_1.md with the shell's `p3ask` swapped for the same `pilot3_*` MCP tools, because the agy grader has no shell;
+`--rules <file>` replaces them.
+
+**Round-13 smoke (13 Nov, BS-001..BS-003, agy runs in the worker).** Arm P: 3/3 answered, 8 figures quoted, 0
+data-tool calls, 3 model calls, 204,091 input / 22,898 output tokens, median 52.85 s. Arm S: 3/3 answered, 47 tool
+calls, 0 unparsed, 233 s total. One Opus batch: 6/6 grades parsed, both sets 3/3 right, 3/3 agreement. Files under
+`.tmp/r13_smoke/`. Stop rule checked before building: agy runs in the sandbox and `pilot3_fact` resolves BLUESTARCO to
+`D:\RealityEngine\bluestar\bluestar.db` through the store registry. Tests: `python -m pytest plugins/agy-worker/tests
+reality_engine/tests/test_answer_step.py reality_engine/tests/test_plan_model.py reality_engine/tests/test_agy_call.py
+reality_engine/tests/test_seeded_run.py reality_engine/tests/test_blind_grade.py -q` (63 passed, 1 skipped).
+
+---
+
 ## Evidence pack (T-205)
 
-Retrieval-only prototype (round 3): python -m reality_engine.answer.pack_recall --set bluestar --workspace . (or aurobindo) builds one pack_<qid>.json per question under .tmp/pack/<set>/ and writes pack_recall.csv. plan now carries the resolved symbol, exact-only metric matching (no primary-token guessing), dates mapped to periods via row_checks.period_end, call pages ranked by semantic+topic hits (best 2 per transcript), noun-phrase cells/search, fin added to fact/compute routes, route_errors logged. max_chars (120000) enforced; scorer drops period/date/year/page/doc-key noise. No model calls; semantic route needs REALITY_DATA_ALLOW_PAID_EMBED=1.
+Two planners live in `reality_engine/answer/`. `--planner script` is the round-3 word-matching plan. `--planner model` builds a per-company menu (`menu.build`, read-only, `menu.render` under 8,000 chars: financial lines by table with annual-only cash-flow/balance-sheet lines, KPI/ratio names with period ranges, guidance metrics with call dates, holding categories and quarter ends, the price range and `price_rows`, calls and decks by doc key/date/pages, other doc types as counts) and asks ONE free Beam call (`beam-free`, `--plan-model`) for the question's `parts` and at most 25 `{part, route, args}`; `plan_model.validate` checks every route (`routes.yaml` `plan_routes`), argument and menu name, one repair call fixes what it can, rejected entries go to `route_errors`, and invalid JSON after the repair falls back to the script planner (`planner: "script_fallback"`). `gather(..., lookups=, parts=)` is a UNION: the round-3 script routes run at full quota AND the plan lookups run, each with its own per-route quota; a planned lookup that returns nothing is retried by script (without its period, then each significant word of `terms`/`query` alone, logged under the lookup's `retries`); every planned `fin`/`fact` metric+period also fetches the printed `cells` for it (`derived`); every `search`/`statements` hit in a call or deck reads the full page of its top 3 hits (`derived`); `lookups_extra.price_rows` serves price sessions with the previous session's close, adjusted close and a first-to-last adjusted return (prior close, multi-year return; a range over 80 sessions returns its two endpoints and the return row, never 1,500 sessions), and holding lookups add the filed share count at each quarter end asked. Coverage is per part with an explicit all/some/none `status`, each lookup's items, retries and derived lookups; a lookup or retry with 0 items prints `not found` and counts as not found. The pack keeps plan-lookup items first. The reading copy (`pack_<qid>.txt`, the scored and answered text) is the round-6 rendering with a **150,000-character cap**: a typed row prints its lead line plus the row content (the `quote` and every numeric field), page/statement text prints whole, an identical item prints once, and the only trimming is a row's provenance blob, absolute paths and null/empty fields. Over 150k only script page/rest items are dropped from the lowest rank up (logged in `reading_cut`); typed rows and plan items are never dropped. Compaction to 60,000 characters was tried in rounds 7-8 and lost evidence (reading-copy hit/partial/miss 34/20/10 and 27/31/11 in round 6 -> 27/26/11 and 26/30/13 in round 8): do not repeat it. The score is the reading copy's bytes (`hit`), with `hit_json` and `hit_rounded` beside it; `hit_clean` was removed because it misclassified real figures. `pack_recall._strip_noise` ignores an item's lead label, so the label is not evidence: rescored with that rule the round-9 and the round-11 copies both score 36/20/8 (Blue Star) and 30/29/10 (Aurobindo); the older 37 included BS-017's truth number 116 matching the positional label `[116]`, which the copy's text does not carry. Kept: `event_doc` price rows, 0 items = NOT FOUND, every part needs a lookup, and the shared `lookups_tech.day0_for` rule. Each question writes `pack_<qid>.json`, `pack_<qid>.txt` and `plan_<qid>.json` (validated plan + raw replies); plans cache in `.tmp/plan_cache/` by (question, as_of, menu text, model, rules version). Run: `python -m reality_engine.answer.pack_recall --set bluestar --workspace . --planner model --out .tmp/pack_r11/bluestar` (or `aurobindo`; summary in `summary.json`, `--limit N` for a smoke run). The semantic route needs `REALITY_DATA_ALLOW_PAID_EMBED=1`. Tests: `python -m pytest reality_engine/tests/test_evidence_pack.py reality_engine/tests/test_plan_model.py -q --basetemp=.tmp/pt1` (the model call is mocked; the round-5 tests cover the union, retries, cells-for-fin and price_rows).
+
+## Answer step (T-205 round 11)
+
+`python -m reality_engine.answer.answer_step --set bluestar --packs .tmp/pack_r11/bluestar --out .tmp/answers_r11/bluestar --answer-model deepseek-v4.1-flash --retry-unparseable --reuse .tmp/answers_r10/bluestar --reuse-packs .tmp/pack_r9/bluestar` reads one round-11 reading copy per question and makes ONE model call (stable Go session id). The default is the approved paid `deepseek-v4.1-flash` (Shivam, 13 Nov, while Beam is rate limited); `beam-free` is still selectable. A 429 waits 30, 60, 120 then 240 seconds; a question still limited is written with `status: "rate_limited"`, a finished answer is skipped on resume, `--retry-unparseable` re-asks the unparseable ones, and `--reuse DIR` reuses a round-10 saved reply that passes the new check offline (`--reuse-packs`, default `.tmp/pack_r9/<set>`, supplies the old copy's printed order for its positional ids), so a fixed check need not re-buy the answers. Files: `reality_engine/answer/answer_step.py` (this section), `reality_engine/answer/evidence_pack.py` (`_reading_block` prints the id, `reading_order` exposes the printed order) and `reality_engine/answer/pack_recall.py` (`_strip_noise` ignores the lead label).
+
+Round 10's defect: the reading copy printed a position (`[1] fin ...`) while the check wanted the pack id (`fin-3`); the model copied `fin-1`, `12` or `[21]`, so 108 of 119 Blue Star figures cited an id the copy never printed, and the offline re-check recovered 96 of them by mapping the old positions. The round-11 copy prints each item's pack id as the only label (`[fin-3] doc=... p...`); `check_answer()` resolves exactly that id, tolerant of brackets, case and surrounding spaces, and nothing else. A figure's quote must appear in its cited item after whitespace/line-break normalisation; a quote that still differs falls back to the value appearing in that item's text (unit and printed-rounded forms allowed; a bare 4-digit integer in the item is matched even though it is a year elsewhere), kept as `verified_value_only` and flagged, never removed; a value that is not in the cited item is still removed. Dates (30 September 2026, 31.03.2026), fiscal-period labels (Q2FY27, H1, FY2025-26, 52-week), page references (p. 9), ordinals and labelled references (1st, Segment 1, Table 2, Tier-3), years and counts restating the question are not figures, so they are neither checked nor scrubbed; everything else is.
+
+The model never computes: `compute()` evaluates each calc expression with an AST arithmetic-only evaluator, fills `{{name}}` placeholders and keeps the formula with its inputs beside the answer. Round 10 also dropped the calcs the model wrote INSIDE a part (the JSON skeleton has `calcs` per part) because the normaliser read only a top-level key: 16 Blue Star answers kept raw `{{...}}` text. `_normalise` now collects per-part calcs, remaps the part-relative input indices onto the flattened figures list, and a calc whose input figure did not pass the citation check fails (`did not pass the check`), so a removed figure cannot leak back through a computation; a placeholder with no calculation becomes `[unverified]` and is listed. Every number of the final answer must be a checked figure or a computed result. Failures go back in ONE repair call, and whatever still fails is removed and listed under `unverified` — never silently kept. Empty or length-cut replies are retried once; `MAX_TOKENS` is 8,000 (the longest valid round-10 reply was 2,034 output tokens). The runner's first-ten gate stops a run when more than 20% of cited figures were removed, printing the reasons. A part is `not_found` only with coverage status none or it states what it read (`abstained_with_evidence`).
+
+`--recheck` re-runs compute + check on the saved `raw_replies` with no model call (old positional ids map through the old reading copy's printed order; figures whose id cannot be mapped are reported and counted as removed): round 10 Blue Star 96 of 119 figures were saved by the id fix, 42 of 52 parseable answers had nothing removed (90 verified, 7 `verified_value_only`, 22 removed: 16 quote+value, 5 unmapped id, 1 value); Aurobindo 88 of 130 and 50 of 66 (92 / 10 / 28: 11 quote+value, 14 unmapped id, 3 value). `--refill` replays the same replies and rewrites the answers (calcs, placeholders, scrub) with no model call. Round-11 Blue Star result: 64/64 answers, 0 unparseable, 199 figures cited, 165 quote-verified, 34 `verified_value_only`, 0 removed, 64 answers with nothing removed, 98 parts answered / 17 not_found / 9 abstained, 27 calcs, 35 answers reused; 39 model calls (including the first-ten gate run), 1,355,853 input and 153,423 output tokens, 901.2 s of model time (max 84.6 s). Answers cache in `.tmp/answer_cache/` by (reading-copy hash, model, prompt version); each question writes `answer_<qid>.json` plus one `answers.csv`/`summary.json`, and `recheck.json`/`refill.json` beside them. Tests (model mocked): `python -m pytest reality_engine/tests/test_answer_step.py reality_engine/tests/test_evidence_pack.py reality_engine/tests/test_plan_model.py -q --basetemp=.tmp/pt1` (50 passed). Round 12 formats figure and result tokens in the text by script (integers without `.0`, thousands separators, rupee amounts of one crore or more as crore at two decimals, percentages at two decimals with no space before `%`, a percentage difference labelled `percentage points` once), names the calc, the unresolved input and the figures that do exist in the repair, and after repair replaces only that result with `not computed (input missing: <name>)` while flagging the part; six answers were re-asked and the rest refilled offline into `.tmp/answers_r12/bluestar` (200 figures cited: 165 quoted, 35 `verified_value_only`, 0 removed; 29 calcs; round-12 cost 9 model calls, 269,098 input and 27,562 output tokens) — 52 tests pass.

@@ -59,3 +59,25 @@ def test_runner_marks_job_json_ended(tmp_path):
     runner.mark_ended(tmp_path, {"outcome": "completed", "ended_at": "2026-11-12T18:00:00+00:00"})
     job = json.loads((tmp_path / "job.json").read_text(encoding="utf-8"))
     assert job["phase"] == "ended" and job["outcome"] == "completed"
+
+
+def test_model_allowlist_refuses_anything_else(tmp_path, monkeypatch):
+    """T-205 round 13: start and resume take an allowlisted model, never a silent pin."""
+    assert agy_core.MODELS["gemini-4-hydrogen-high"] and agy_core.MODELS["claude-opus-5-5-medium"]
+    refused = agy_core.start("brief", use_worktree=False, model="gpt-9-ultra")
+    assert refused["ok"] is False and "allowlisted" in refused["error"]
+    assert agy_core.check_model(agy_core.MODEL) is None
+    # Shivam 14 Nov: Gemini 3.8 Flash dropped; Hydrogen high is the default and Flash is refused
+    assert agy_core.MODEL == "gemini-4-hydrogen-high"
+    assert agy_core.check_model("gemini-3.8-flash-medium") is not None
+
+    monkeypatch.setattr(agy_core, "RUNTIME", tmp_path / "runtime")
+    job = agy_core.job_dir("20261113T000000Z-abcdef01")
+    job.mkdir(parents=True)
+    (job / "job.json").write_text(json.dumps({"job_id": "20261113T000000Z-abcdef01", "model": agy_core.MODEL}),
+                                  encoding="utf-8")
+    (job / "events.jsonl").write_text(json.dumps({"event": "init", "init": {"conversation_id": "c1"}}) + "\n",
+                                      encoding="utf-8")
+    (job / "exit.json").write_text(json.dumps({"outcome": "completed"}), encoding="utf-8")
+    refused = agy_core.resume("20261113T000000Z-abcdef01", "more", model="gemini-9-nope")
+    assert refused["ok"] is False and "allowlisted" in refused["error"]

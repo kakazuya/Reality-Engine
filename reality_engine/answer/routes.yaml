@@ -3,6 +3,27 @@ always:
   - semantic
   - search
   - topic
+# The model-written plan (T-205 round 4) runs these routes as written, plus the `always` routes at HALF quota.
+plan_routes:
+  - fact
+  - fin
+  - kpi
+  - ratio
+  - cells
+  - guidance
+  - page
+  - price_rows
+  - tech
+  - holding
+  - statements
+  - docs
+  - search
+  - topic
+  - semantic
+always_half:
+  semantic: 4
+  search: 30
+  topic: 12
 per_kind:
   fact: [fact, cells, kpi, fin]
   statement: [page]

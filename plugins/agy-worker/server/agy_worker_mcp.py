@@ -12,29 +12,34 @@ from mcp.server import MCPServer  # noqa: E402
 import agy_core as core  # noqa: E402
 
 INSTRUCTIONS = (
-    "Antigravity CLI (agy) coding workers, model pinned to gemini-3.8-flash-medium (Shivam's ruling). start_worker "
-    "returns at once with a job_id; each job runs headless in its own Wolf-agy-<job_id> worktree and auto-commits its "
-    "diff when it ends. worker_status gives done/outcome, elapsed, tool calls by tool, tokens (input, output, thinking, "
-    "cache) and denied actions, parsed from the job's event log without any model call. worker_result gives the final "
-    "answer, branch, head and diff stat. quota shows the account's limits left. Gemini has no shell: it runs checks "
-    "through the agy-tools MCP (run_check, allowlisted pytest/ruff/basedpyright/git read commands).")
+    "Antigravity CLI (agy) coding workers. The model is allowlisted to gemini-4-hydrogen-high (default: coding on trial, "
+    "question search, T-205 answer arm; Flash 3.8 dropped 14 Nov) and claude-opus-5-5-medium (T-205 blind grader); any other id is "
+    "refused. start_worker returns at once with a job_id; each job runs headless in its own Wolf-agy-<job_id> "
+    "worktree and auto-commits its diff when it ends. worker_status gives done/outcome, elapsed, tool calls by tool, "
+    "tokens (input, output, thinking, cache) and denied actions, parsed from the job's event log without any model "
+    "call. worker_result gives the final answer, branch, head and diff stat. quota shows the account's limits left. "
+    "Gemini has no shell: it runs checks through the agy-tools MCP (run_check, allowlisted "
+    "pytest/ruff/basedpyright/git read commands).")
 server = MCPServer(name="agy-worker", version="0.1.0", instructions=INSTRUCTIONS)
 
 
 @server.tool(name="start_worker", description=(
-    "Start one agy coding job from a complete prescriptive brief. use_worktree (default true) creates branch "
-    "Wolf-agy-<job_id> from base (default HEAD). timeout_seconds is the hard limit (default 3600). test_cmd is "
-    "recorded for the reviewer. Returns job_id at once."))
+    "Start one agy coding job from a complete prescriptive brief. model is allowlisted: gemini-4-hydrogen-high "
+    "(default), claude-opus-5-5-medium; any other id is refused. use_worktree "
+    "(default true) creates branch Wolf-agy-<job_id> from base (default HEAD). timeout_seconds is the hard limit "
+    "(default 3600). test_cmd is recorded for the reviewer. Returns job_id at once."))
 def start_worker(brief: str, use_worktree: bool = True, base: str | None = None, timeout_seconds: int = 3600,
-                 test_cmd: str | None = None) -> dict[str, Any]:
-    return core.start(brief, use_worktree, base, timeout_seconds, test_cmd)
+                 test_cmd: str | None = None, model: str = core.MODEL) -> dict[str, Any]:
+    return core.start(brief, use_worktree, base, timeout_seconds, test_cmd, model)
 
 
 @server.tool(name="resume_worker", description=(
     "Continue a finished job's own Gemini conversation in the same worktree and branch with a follow-up message "
-    "(review notes, 'finish steps 2-4'). Returns a new job_id that points back with resumed_from."))
-def resume_worker(job_id: str, message: str, timeout_seconds: int = 3600) -> dict[str, Any]:
-    return core.resume(job_id, message, timeout_seconds)
+    "(review notes, 'finish steps 2-4'). model overrides the old job's model (allowlisted, else refused); omitted "
+    "keeps it. Returns a new job_id that points back with resumed_from."))
+def resume_worker(job_id: str, message: str, timeout_seconds: int = 3600,
+                  model: str | None = None) -> dict[str, Any]:
+    return core.resume(job_id, message, timeout_seconds, model)
 
 
 @server.tool(name="worker_status", description="Done flag, outcome, elapsed, tool calls by tool, tokens, last tool, "

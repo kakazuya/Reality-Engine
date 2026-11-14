@@ -1,8 +1,10 @@
 # T-213 round 14b: make the follow-ups actionable (probe pages become items), close three loop holes
 
+Archived 14 Nov (Wolf): the code is on tag `archive/Wolf-T-213-r14b` (not merged; replay lost to DS lean run B). Paths below are under reality_engine/ on that tag.
+
 Ticket: T-213
 
-Goal: the round-14 loop (branch `dsh/20261113T214924Z-bcef5051`, `reality_engine/answer/checked_lookups.py`) works,
+Goal: the round-14 loop (branch `dsh/20261113T214924Z-bcef5051`, `answer/checked_lookups.py`) works,
 but a replay of 6 Blue Star questions showed its follow-ups often cannot be acted on. Fix these five structural
 faults. No per-question or per-company rule; no evidence pack.
 
@@ -31,7 +33,7 @@ Evidence (replay output, read-only: `D:/RealityEngine/bluestar/answers_r14_repla
    current variant rule.
 
 Steps:
-1. Tests first in `reality_engine/tests/test_checked_lookups.py` (mocked model, fixture store): one test per fault
+1. Tests first in `tests/test_checked_lookups.py` (mocked model, fixture store): one test per fault
    above that fails on the current code and passes after the fix (fault 5: "Rs 679.0 crore" vs item 67.90 crore fails;
    "Rs 67.90 crore" and "679 mn" pass).
 2. Fix in `checked_lookups.py` only.
@@ -39,11 +41,11 @@ Steps:
 4. Docs: extend the O26 block in `docs/DEVELOPER_GUIDE.md` with a "round 14b" paragraph (the five rules).
 No model calls in this round (off-peak ends 06:30 IST; Claude runs the replay).
 
-Files: `reality_engine/answer/checked_lookups.py`, `reality_engine/tests/test_checked_lookups.py`,
+Files: `answer/checked_lookups.py`, `tests/test_checked_lookups.py`,
 `docs/DEVELOPER_GUIDE.md`. Do not edit `tasks/STATE.md` (Claude owns it). Read the replay files; write nothing under
 D:/RealityEngine.
-Accept: python -m pytest reality_engine/tests/test_checked_lookups.py -q
-Test command: python -m pytest reality_engine/tests/test_checked_lookups.py reality_engine/tests/test_plan_model.py -q
+Accept: python -m pytest tests/test_checked_lookups.py -q
+Test command: python -m pytest tests/test_checked_lookups.py reality_engine/tests/test_plan_model.py -q
 Pitfalls: probe pages added as items count toward the 20-lookup cap (raise the cap only for probe fetches, by 6 at
 most, and say so); never loosen C2 for numbers that have a unit word; the follow-up text still comes only from check
 results; use `--basetemp` under the worktree `.tmp` for pytest (the round-14 worker hit an ACL error on

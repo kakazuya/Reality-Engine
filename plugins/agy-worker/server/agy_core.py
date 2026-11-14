@@ -1,8 +1,10 @@
 """agy-worker core (T-112): run Antigravity CLI (`agy`) coding jobs headless in a Wolf- worktree, like dsh-worker.
 
-Model is pinned to gemini-3.8-flash-medium (Shivam's ruling, 7 Nov 2026). One job = one `agy -p <brief>` run with
-`--output-format stream-json`, launched by a detached runner (runner.py) so it survives this server; the runner
-writes events.jsonl, then exit.json, then auto-commits the worktree diff. Status is parsed from events.jsonl only.
+The model is the job's own, allowlisted to MODELS (Shivam's ruling 13 Nov 2026: coding stays on
+gemini-4-hydrogen-high (Flash 3.8 dropped 14 Nov), the T-205 answer arm uses gemini-4-hydrogen-high, the blind grader claude-opus-5-5-medium).
+One job = one `agy -p <brief>` run with `--output-format stream-json`, launched by a detached runner (runner.py) so
+it survives this server; the runner writes events.jsonl, then exit.json, then auto-commits the worktree diff. Status
+is parsed from events.jsonl only.
 
 Job layout: <runtime>/jobs/<job_id>/{job.json, brief.md, events.jsonl, stderr.log, exit.json, runner.pid}
 """
@@ -19,7 +21,11 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-MODEL = "gemini-3.8-flash-medium"
+MODEL = "gemini-4-hydrogen-high"
+MODELS = {  # the only models a job may run (T-205 round 13); anything else is refused before a job is created
+    "gemini-4-hydrogen-high": "coding (default, on trial), question search, T-205 answer arm (Shivam 14 Nov: Flash 3.8 dropped)",
+    "claude-opus-5-5-medium": "T-205 blind grader",
+}
 SERVER_DIR = Path(__file__).resolve().parent
 REPO = Path(os.environ.get("AGY_WORKER_REPO_ROOT", SERVER_DIR.parents[2]))
 RUNTIME = Path(os.environ.get("AGY_WORKER_RUNTIME", SERVER_DIR.parent / "runtime"))
@@ -51,9 +57,19 @@ def _save(job: dict) -> None:
     (job_dir(job["job_id"]) / "job.json").write_text(json.dumps(job, indent=1), encoding="utf-8")
 
 
+def check_model(model: str) -> str | None:
+    """``None`` when the job may run this model, else the refusal text (one line, names the allowlist)."""
+    if model in MODELS:
+        return None
+    return f"model {model!r} is not allowlisted: {', '.join(MODELS)}"
+
+
 def start(brief: str, use_worktree: bool = True, base: str | None = None, timeout_seconds: int = 3600,
-          test_cmd: str | None = None) -> dict:
+          test_cmd: str | None = None, model: str = MODEL) -> dict:
     """Create the worktree, write the brief, launch the detached runner; returns at once."""
+    refusal = check_model(model)
+    if refusal:
+        return {"ok": False, "error": refusal}
     if not AGY.exists():
         return {"ok": False, "error": f"agy not found at {AGY}"}
     job_id = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + "-" + secrets.token_hex(4)
@@ -68,7 +84,7 @@ def start(brief: str, use_worktree: bool = True, base: str | None = None, timeou
         r = _git("worktree", "add", "-b", branch, str(workspace), base_sha)
         if r.returncode:
             return {"ok": False, "error": "git worktree add failed", "detail": r.stderr[-800:]}
-    job = {"job_id": job_id, "model": MODEL, "created_at": _now(), "workspace": str(workspace), "branch": branch,
+    job = {"job_id": job_id, "model": model, "created_at": _now(), "workspace": str(workspace), "branch": branch,
            "base": base_sha, "timeout_seconds": timeout_seconds, "test_cmd": test_cmd, "phase": "starting"}
     _save(job)
     return _launch(job, d)
@@ -123,10 +139,15 @@ def parse_events(path: Path) -> dict:
     return out
 
 
-def resume(job_id: str, message: str, timeout_seconds: int = 3600) -> dict:
+def resume(job_id: str, message: str, timeout_seconds: int = 3600, model: str | None = None) -> dict:
     """Continue the same agy conversation in the same worktree (one task stays in one worker session): a new job
-    record that points at the old job's workspace, branch and conversation id."""
+    record that points at the old job's workspace, branch and conversation id. ``model`` overrides the old job's
+    model (allowlisted, else refused); omitted keeps it."""
     old = _load(job_id)
+    model = model or old.get("model") or MODEL
+    refusal = check_model(model)
+    if refusal:
+        return {"ok": False, "error": refusal}
     conv = parse_events(job_dir(job_id) / "events.jsonl").get("conversation_id")
     if not conv:
         return {"ok": False, "error": "no conversation id in the old job's events"}
@@ -136,8 +157,8 @@ def resume(job_id: str, message: str, timeout_seconds: int = 3600) -> dict:
     d = job_dir(new_id)
     d.mkdir(parents=True)
     (d / "brief.md").write_text(message, encoding="utf-8")
-    job = {k: old.get(k) for k in ("model", "workspace", "branch", "base", "test_cmd")}
-    job.update(job_id=new_id, created_at=_now(), timeout_seconds=timeout_seconds, phase="starting",
+    job = {k: old.get(k) for k in ("workspace", "branch", "base", "test_cmd")}
+    job.update(job_id=new_id, model=model, created_at=_now(), timeout_seconds=timeout_seconds, phase="starting",
                conversation_id=conv, resumed_from=job_id)
     _save(job)
     return _launch(job, d)

@@ -138,6 +138,23 @@ def _threshold(value: Any, default: float) -> float:
 
 
 # --- reaction ----------------------------------------------------------------------------------------
+def day0_for(dates: list[str], known_at: str) -> tuple[int | None, str]:
+    """``(index into dates, rule)`` for a filing disseminated at ``known_at``: the filing session when it was out at
+    or before the 15:30 IST close, else the next session (T-205 round 6: one rule, shared with the answer price rows)."""
+    filing_day = known_at[:10]
+    filed_at = known_at[11:19] if len(known_at) >= 19 else "00:00:00"
+    same = filed_at <= CLOSE_TIME
+    pos = bisect.bisect_left(dates, filing_day)
+    on_session = pos < len(dates) and dates[pos] == filing_day
+    if on_session and same:
+        return pos, f"same session: filed {filed_at} IST, at or before the 15:30 close"
+    j = bisect.bisect_right(dates, filing_day)
+    i0 = j if j < len(dates) else None
+    rule = (f"next session: filed {filed_at} IST, after the 15:30 close" if on_session
+            else f"next session: {filing_day} is not a trading session")
+    return i0, rule
+
+
 def _reaction(sym: str, px: list[dict], as_of: str, start: str | None, end: str | None, sessions: int,
               doc_type: str, limit: int) -> dict[str, Any]:
     dtype = p3._DOC_TYPES.get(doc_type.strip().lower(), doc_type.strip().lower())
@@ -158,18 +175,7 @@ def _reaction(sym: str, px: list[dict], as_of: str, start: str | None, end: str 
     for doc in docs:
         known = doc["known_at"]
         filing_day = known[:10]
-        filed_at = known[11:19] if len(known) >= 19 else "00:00:00"
-        same = filed_at <= CLOSE_TIME
-        pos = bisect.bisect_left(dates, filing_day)
-        on_session = pos < len(px) and dates[pos] == filing_day
-        if on_session and same:
-            i0: int | None = pos
-            rule = f"same session: filed {filed_at} IST, at or before the 15:30 close"
-        else:
-            j = bisect.bisect_right(dates, filing_day)
-            i0 = j if j < len(px) else None
-            rule = (f"next session: filed {filed_at} IST, after the 15:30 close" if on_session
-                    else f"next session: {filing_day} is not a trading session")
+        i0, rule = day0_for(dates, str(known))
         entry: dict[str, Any] = {"known_at": known, "doc_key": doc["doc_key"], "title": doc["title"],
                                  "filing_date": filing_day, "day0": None, "day0_rule": rule, "rows": [],
                                  "cum_1d_pct": None, "cum_5s_pct": None}

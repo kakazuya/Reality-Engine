@@ -56,6 +56,27 @@ The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,
 - `reality_engine/tests/test_structured_universe.py` — two SHP fixtures (pledge / no pledge), a results fixture, idempotent re-parse, a revision keeping its own `known_at`, and the Blue Star 2024-06-30 known answer.
 - Store `D:/RealityEngine/structured/structured_universe.db`; new raw folder `D:/RealityEngine/raw/nse_shp_xbrl_universe/` (still local until the controller moves it to Drive like the pilot folder).
 
+## Answer arms and blind grading (T-205 round 13, 13 Nov 2026)
+- `reality_engine/answer/agy_call.py` — `run_agy(prompt, model, cwd=, timeout=, log_path=)`: one headless `agy` run,
+  hidden window, no shell, stream-json log parsed by ``parse_events` in plugins/agy-worker/server/agy_core.py` (one parser);
+  one retry on a transport error and never on a model answer; a prompt over 24,000 chars goes to
+  `<cwd>/.tmp/agy_prompts/*.txt` with a read-me pointer (Windows 32,767-char argv cap); `client_for` adapts to the
+  `answer_step` / `plan_model` client signature. Tests fake the binary via an argv list.
+- `reality_engine/answer/seeded_run.py` — arm S (`python -m reality_engine.answer.seeded_run --set bluestar
+  --packs ... --out ...`): one agy Hydrogen run per question with the pilot3_* MCP tools and the pack as seed;
+  `answers.jsonl` (ds_a shape) + `calls.jsonl`, resumable.
+- `reality_engine/answer/answer_step.py` / `plan_model.py` — `--answer-model agy:<id>` / `--plan-model agy:<id>` route
+  the unchanged round-12 prompts through `agy_call`; each answer records `model_tools` / `model_data_tool_calls`.
+- `reality_engine/answer/blind_grade.py` — `make` (N sets, labels A.., seeded shuffle, key in `key_private/`, batches of
+  8), `run` (Opus 5.5 medium via agy, strict one-JSON-line-per-grade, one re-ask), `decode` (per-set totals,
+  per-question table, pairwise agreement).
+- `plugins/agy-worker/server/agy_core.py` + `runner.py` + `agy_worker_mcp.py` — `MODELS` allowlist
+  (`gemini-4-hydrogen-high` default, `claude-opus-5-5-medium`; Flash 3.8 dropped 14 Nov) and a `model`
+  argument on `start`/`resume`; anything else is refused.
+- Tests: `reality_engine/tests/test_agy_call.py`, `test_seeded_run.py`, `test_blind_grade.py`,
+  `plugins/agy-worker/tests/test_agy_core.py`. In the dsh sandbox `tmp_path` dirs are created 0700 and cannot be
+  listed: run `python -m pytest ... --basetemp=<dir>` with a `mkdir`-mode plugin (`-p`) or unsandboxed.
+
 ## Hardware
 NVIDIA GTX 1050 Ti with 4 GB, 8 CPU threads. Use CUDA, and check `nvidia-smi` before GPU plans. GPU OCR is slower than CPU here.
 
