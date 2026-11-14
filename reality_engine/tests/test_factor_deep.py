@@ -368,3 +368,29 @@ def test_build_panel_parquet_matches_build_panel_and_prunes_columns(tmp_path):
     assert all(f in sliced.columns and f + "_z" in sliced.columns for f in fw.FACTORS)
     assert sliced["earnings_yield_z"].dtype == np.float32
     assert sliced["earnings_yield"].dtype == np.float64
+
+
+def test_kpi_ic_and_interactions_handle_mixed_datetime_resolution():
+    panel, dates = _panel(periods=12, n_companies=16, n_sectors=1)
+    panel["date"] = pd.to_datetime(panel["date"]).astype("datetime64[ns]")
+    syms = sorted(panel["symbol"].unique())
+    rows = []
+    for d in dates[:8]:
+        for i, sym in enumerate(syms):
+            rows.append({
+                "symbol": sym, "metric": "m_a", "dimension": "", "quarter": 20241,
+                "known_at": (d - pd.Timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                "level": float(i), "yoy": float(i) * 0.1, "yoy_chg": 0.01, "unit": "x", "store": "s",
+            })
+            rows.append({
+                "symbol": sym, "metric": "m_b", "dimension": "", "quarter": 20241,
+                "known_at": (d - pd.Timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                "level": float(len(syms) - i), "yoy": float(len(syms) - i) * 0.1, "yoy_chg": 0.02, "unit": "x", "store": "s",
+            })
+    kpi = pd.DataFrame(rows)
+    kpi["known_at"] = pd.to_datetime(kpi["known_at"]).astype("datetime64[us]")
+    ics, cov = fd.kpi_ic(kpi, panel, ["6m", "12m"], min_companies=8, min_names=6)
+    assert not ics.empty
+    assert not cov.empty
+    pairs = fd.kpi_interactions(kpi, panel, "12m", min_companies=8)
+    assert not pairs.empty

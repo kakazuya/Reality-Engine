@@ -549,7 +549,6 @@ def _interaction_pass(
     brief's within-date permutation of B); A and the target stay real.
     """
     target = f"excess_{HORIZONS[horizon]}"
-    order = {f: i for i, f in enumerate(factors)}
     rows = []
     for group, g in panel.groupby(group_col, observed=True, sort=True):
         if not isinstance(group, str):
@@ -559,27 +558,23 @@ def _interaction_pass(
             if len(sub) < 3 * INTERACTION_MIN_NAMES:
                 continue
             y = sub[target].to_numpy(dtype=float)
-            for pivot in factors:
-                later = [a for a in factors if order[a] > order[pivot]]
-                if not later:
-                    continue
-                if permuted is None:
-                    b = sub[pivot].to_numpy(dtype=float)
-                else:
-                    b = permuted.loc[sub.index, pivot].to_numpy(dtype=float)
+            sub_arr = sub[factors].to_numpy(dtype=float)
+            perm_arr = permuted.loc[sub.index, factors].to_numpy(dtype=float) if permuted is not None else None
+            for p_idx, pivot in enumerate(factors[:-1]):
+                b = sub_arr[:, p_idx] if perm_arr is None else perm_arr[:, p_idx]
                 masks = _tercile_masks(b, y)
                 if masks is None:
                     continue
                 hi, lo = masks
-                top = sub.loc[hi, later]
-                bottom = sub.loc[lo, later]
+                top = sub_arr[hi]
+                bottom = sub_arr[lo]
                 yt = y[hi]
                 yb = y[lo]
-                for a in later:
-                    ic_hi = rank_ic(top[a].to_numpy(dtype=float), yt)
-                    ic_lo = rank_ic(bottom[a].to_numpy(dtype=float), yb)
+                for a_idx in range(p_idx + 1, len(factors)):
+                    ic_hi = rank_ic(top[:, a_idx], yt)
+                    ic_lo = rank_ic(bottom[:, a_idx], yb)
                     if np.isfinite(ic_hi) and np.isfinite(ic_lo):
-                        rows.append((group, date, a, pivot, ic_hi - ic_lo))
+                        rows.append((group, date, factors[a_idx], pivot, ic_hi - ic_lo))
     return pd.DataFrame(rows, columns=["group", "date", "factor_a", "factor_b", "diff"])
 
 
@@ -957,6 +952,25 @@ def kpi_factor_panel(raw: pd.DataFrame) -> pd.DataFrame:
     return out.dropna(subset=["quarter"]).reset_index(drop=True)
 
 
+def _align_kpi_to_panel(kpi: pd.DataFrame, panel: pd.DataFrame, horizons: list[str]) -> pd.DataFrame:
+    """Pair each KPI known_at with the first panel month-end on or after it."""
+    date_dtype = panel["date"].dtype
+    month_ends = pd.DataFrame(
+        {"date": pd.Series(sorted(panel["date"].unique()), dtype=date_dtype)}
+    )
+    k = kpi.dropna(subset=["known_at"]).copy()
+    dt = pd.to_datetime(k["known_at"], errors="coerce")
+    if getattr(dt.dt, "tz", None) is not None:
+        dt = dt.dt.tz_convert(None)
+    k["known_at"] = dt.astype(date_dtype)
+    k = k.dropna(subset=["known_at"]).sort_values("known_at")
+    aligned = pd.merge_asof(
+        k, month_ends, left_on="known_at", right_on="date", direction="forward", tolerance=pd.Timedelta(days=100)
+    ).dropna(subset=["date"])
+    price = panel[["date", "symbol"] + [f"excess_{HORIZONS[h]}" for h in horizons]].dropna(subset=["symbol"])
+    return aligned.merge(price, on=["date", "symbol"], how="inner", suffixes=("", "_px"))
+
+
 def kpi_ic(
     kpi: pd.DataFrame, panel: pd.DataFrame, horizons: list[str],
     group_col: str = "sector_group", min_companies: int = KPI_MIN_COMPANIES,
@@ -973,13 +987,7 @@ def kpi_ic(
                                   "months", "mean_ic", "nw_t"])
     if kpi.empty:
         return empty, pd.DataFrame()
-    month_ends = pd.DataFrame({"date": pd.DatetimeIndex(sorted(panel["date"].unique()))})
-    k = kpi.dropna(subset=["known_at"]).sort_values("known_at")
-    aligned = pd.merge_asof(
-        k, month_ends, left_on="known_at", right_on="date", direction="forward", tolerance=pd.Timedelta(days=100)
-    ).dropna(subset=["date"])
-    price = panel[["date", "symbol"] + [f"excess_{HORIZONS[h]}" for h in horizons]].dropna(subset=["symbol"])
-    aligned = aligned.merge(price, on=["date", "symbol"], how="inner", suffixes=("", "_px"))
+    aligned = _align_kpi_to_panel(kpi, panel, horizons)
     sector = (panel.dropna(subset=[group_col]).groupby("symbol", observed=True)[group_col].last())
     aligned["sector_group"] = aligned["symbol"].map(sector)
     rows, coverage = [], []
@@ -1019,13 +1027,7 @@ def kpi_interactions(kpi: pd.DataFrame, panel: pd.DataFrame, horizon: str = "12m
     empty = pd.DataFrame(columns=["group", "metric_a", "metric_b", "months", "mean_diff", "nw_t"])
     if kpi.empty:
         return empty
-    month_ends = pd.DataFrame({"date": pd.DatetimeIndex(sorted(panel["date"].unique()))})
-    k = kpi.dropna(subset=["known_at"]).sort_values("known_at")
-    aligned = pd.merge_asof(
-        k, month_ends, left_on="known_at", right_on="date", direction="forward", tolerance=pd.Timedelta(days=100)
-    ).dropna(subset=["date"])
-    price = panel[["date", "symbol", f"excess_{HORIZONS[horizon]}"]].dropna(subset=["symbol"])
-    aligned = aligned.merge(price, on=["date", "symbol"], how="inner")
+    aligned = _align_kpi_to_panel(kpi, panel, [horizon])
     target = f"excess_{HORIZONS[horizon]}"
     pairs = []
     for date, d in aligned.groupby("date", observed=True, sort=True):
