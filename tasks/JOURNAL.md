@@ -6,6 +6,26 @@ architecture / execution / output. Every new session reads the latest entry firs
 "Carry forward" bullets). Transcripts and the run ledger keep WHAT happened; this file keeps WHY and what we learned.
 Keep entries short; facts with numbers; no repetition of STATE or tickets.
 
+## 2026-11-14 06:20 Wolf (same session): round 14 checked lookups built, replayed, failed
+
+Work done: T-213 r14 + r14b (checked_lookups.py, 29 tests) built by two DeepSeek workers; replay on the 29 r13-miss
+questions: 6 right / 12 partly / 11 wrong vs DS tool run B 19/9/1 on the same questions; ~32k in + 16k out tokens,
+164 s per question. T-208 r3 merged (PVRINOX 20,620/21,051 = XBRL); s10 stores rebuilt live; T-212 XBRL 2,597 symbols.
+
+What did not, and why:
+- C4 probe = keyword FTS over the whole store: hits were director bios, staff lists, e-voting text; the model spent
+  both follow-ups rebutting them. A check is only as good as the search behind its follow-up.
+- Items capped at 600 chars split Q&A: the analyst's question without the MD's reply (BS-025, BS-020).
+- statements terms=AND and a 12-lookup plan cap starved the model; DS tool runs read whole pages freely.
+- holding rows reached the model without values (item extraction bug, BS-058).
+
+What to improve: keep code checks for coverage/numbers/speaker, but make the follow-up a scoped instruction
+("read the latest call / this quarter's deck / the AR section, whole pages") rather than keyword hits; no item cap on
+transcript Q&A; test any new loop on 5 known-miss questions before a full replay.
+
+Carry forward: Shivam to choose the next round-14 design; bluestar.db rebuild with the T-208 r3 reader (exceptional
+items 23.02); r13 branch + r14/r14b branches unmerged (r14 not to merge as default path).
+
 ## 2026-11-14 05:00 Wolf (neo-r13-blind-grading): T-207 accept, PVRINOX fix worker, Q2 XBRL gap, r13 grades
 
 Work done: T-207 closed (Shivam: accepted, continuous) -> ruling amended, T-211 month-end job opened. T-208 r3 worker
