@@ -2182,6 +2182,61 @@ reality_engine/tests/test_seeded_run.py reality_engine/tests/test_blind_grade.py
 
 ---
 
+## Answer checker, round 15 (T-213, 14 Nov 2026)
+
+Shivam kept run B (the DeepSeek agent with `p3ask`, unlimited calls, whole pages: 54/64) as the
+baseline and asked for a code checker around it: no model call inside the checker, no
+per-question rule, no evidence pack, and a follow-up text built only from what the code found.
+`reality_engine/answer/answer_checker.py` reads one answer set (`answers.jsonl` + `calls.jsonl`,
+the T-199 shape) and one store, and reports five checks per answer. A repair agent
+(`tasks/handoff/T-213_R15_REPAIR_BRIEF.md`, run by Claude) then rewrites only the flagged lines
+and re-runs the checker (max 2 rounds).
+
+**The five checks.** `C1` look-ahead: every cited source and every document named in words
+("FY26 annual report", "Q2FY27 call") is known at or before `as_of`; the fact names the late
+document and its `known_at`. `C2` calls covered: a question asking how something changed
+(change/across/revised/trend **and** calls, management, guidance or commentary) must cite every
+transcript whose call falls in the window the question names, or the last four calls; the fact
+lists the missing calls by period, `doc_key` and date. `C3` speaker: a sentence attributing
+figures to management must have each figure on a cited transcript page under a management
+speaker label (role `md`/`mgmt`; `md` is the Managing Director's row, `mgmt` the CFO's, so both
+are management); when the figure sits under another label, or a named call is not cited, the
+fact names the speaker/page. Hyphenated ranges ("Rs 12-13 crore") are matched as a range, not
+as two integers. `C4` scope: a segment question must carry a scope word in the answer, and the
+segment's own printed figure for the same metric and date — found in `doc_page` with a 2-gram
+match on the question's metric words and the question's date/quarter — must be the value used;
+the fact prints the segment figure, its document and page. `C5` dug before "not found": a
+not-found/not-stated part needs at least three of search, semantic, topic, cells and statements,
+one `page` read, and four distinct lookup tools in `calls.jsonl`.
+
+**CLI and output.**
+```
+python -m reality_engine.answer.answer_checker --db <store> --answers <folder> --out <file.jsonl> [--qid BS-031 ...]
+```
+One output line per answer: `{"qid", "checks": [{"id", "ok", "fact"}], "followup"}`, where
+`followup` is empty or `Check failed: C3 - <fact>. Look again in <doc list>.` for each failed
+check. The checker never opens the grades; grades are used only to measure it.
+
+**Measured on run B (14 Nov, `answers_ds_b`, `.tmp/r15/check_ds_b.jsonl`).** 64 answers,
+15 flagged. Of the 10 graded misses (1 wrong, 9 partly) it flags 9: BS-008 and BS-040 (C4, the
+company-wide 7,229.22 cr order book used for the segment's 5,141.78 cr), BS-018 (C3, the
+analyst's Rs 12-13 cr given to management), BS-027 and BS-034 (C3, figures under a non-management
+speaker or a named call not cited), BS-026 and BS-051 (C5, not-found after three routes),
+BS-031 (C1, the FY26 annual report at an as_of of 2024-11-30) and BS-036 (C2, one of six calls
+cited). It does not flag BS-025 (prose wording the checks cannot see). It flags 6 of the 54
+non-miss answers — the three `not_held` answers (BS-009, BS-055, BS-059, which did stop early)
+and three right answers whose management figure sat off the cited page (BS-016, BS-017,
+BS-019); the target was >=8 of 10 misses and <=8 false alarms.
+
+**Tests.** `python -m pytest reality_engine/tests/test_answer_checker.py -q` (10 tests, 10
+passed): a tmp store built from a few real Blue Star rows, one failing-then-passing test per
+check on the run-B cases (BS-031, BS-034, BS-018, BS-008, BS-026), a check that a
+figure-change-between-quarters question is not a calls question, and a CLI test. The tests build
+their case directory under `.tmp/answer_checker_tests/` because pytest's own `tmp_path` cannot
+scandir under the Windows sandbox; `--basetemp` is not needed.
+
+---
+
 ## Evidence pack (T-205)
 
 Two planners live in `reality_engine/answer/`. `--planner script` is the round-3 word-matching plan. `--planner model` builds a per-company menu (`menu.build`, read-only, `menu.render` under 8,000 chars: financial lines by table with annual-only cash-flow/balance-sheet lines, KPI/ratio names with period ranges, guidance metrics with call dates, holding categories and quarter ends, the price range and `price_rows`, calls and decks by doc key/date/pages, other doc types as counts) and asks ONE free Beam call (`beam-free`, `--plan-model`) for the question's `parts` and at most 25 `{part, route, args}`; `plan_model.validate` checks every route (`routes.yaml` `plan_routes`), argument and menu name, one repair call fixes what it can, rejected entries go to `route_errors`, and invalid JSON after the repair falls back to the script planner (`planner: "script_fallback"`). `gather(..., lookups=, parts=)` is a UNION: the round-3 script routes run at full quota AND the plan lookups run, each with its own per-route quota; a planned lookup that returns nothing is retried by script (without its period, then each significant word of `terms`/`query` alone, logged under the lookup's `retries`); every planned `fin`/`fact` metric+period also fetches the printed `cells` for it (`derived`); every `search`/`statements` hit in a call or deck reads the full page of its top 3 hits (`derived`); `lookups_extra.price_rows` serves price sessions with the previous session's close, adjusted close and a first-to-last adjusted return (prior close, multi-year return; a range over 80 sessions returns its two endpoints and the return row, never 1,500 sessions), and holding lookups add the filed share count at each quarter end asked. Coverage is per part with an explicit all/some/none `status`, each lookup's items, retries and derived lookups; a lookup or retry with 0 items prints `not found` and counts as not found. The pack keeps plan-lookup items first. The reading copy (`pack_<qid>.txt`, the scored and answered text) is the round-6 rendering with a **150,000-character cap**: a typed row prints its lead line plus the row content (the `quote` and every numeric field), page/statement text prints whole, an identical item prints once, and the only trimming is a row's provenance blob, absolute paths and null/empty fields. Over 150k only script page/rest items are dropped from the lowest rank up (logged in `reading_cut`); typed rows and plan items are never dropped. Compaction to 60,000 characters was tried in rounds 7-8 and lost evidence (reading-copy hit/partial/miss 34/20/10 and 27/31/11 in round 6 -> 27/26/11 and 26/30/13 in round 8): do not repeat it. The score is the reading copy's bytes (`hit`), with `hit_json` and `hit_rounded` beside it; `hit_clean` was removed because it misclassified real figures. `pack_recall._strip_noise` ignores an item's lead label, so the label is not evidence: rescored with that rule the round-9 and the round-11 copies both score 36/20/8 (Blue Star) and 30/29/10 (Aurobindo); the older 37 included BS-017's truth number 116 matching the positional label `[116]`, which the copy's text does not carry. Kept: `event_doc` price rows, 0 items = NOT FOUND, every part needs a lookup, and the shared `lookups_tech.day0_for` rule. Each question writes `pack_<qid>.json`, `pack_<qid>.txt` and `plan_<qid>.json` (validated plan + raw replies); plans cache in `.tmp/plan_cache/` by (question, as_of, menu text, model, rules version). Run: `python -m reality_engine.answer.pack_recall --set bluestar --workspace . --planner model --out .tmp/pack_r11/bluestar` (or `aurobindo`; summary in `summary.json`, `--limit N` for a smoke run). The semantic route needs `REALITY_DATA_ALLOW_PAID_EMBED=1`. Tests: `python -m pytest reality_engine/tests/test_evidence_pack.py reality_engine/tests/test_plan_model.py -q --basetemp=.tmp/pt1` (the model call is mocked; the round-5 tests cover the union, retries, cells-for-fin and price_rows).
