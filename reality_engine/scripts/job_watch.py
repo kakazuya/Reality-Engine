@@ -820,6 +820,52 @@ def add(
     _save_state(path, state)
 
 
+AGY_JOBS_DIR = REPO_ROOT / "plugins" / "agy-worker" / "runtime" / "jobs"
+
+
+def _k(n: Any) -> str:
+    n = int(n or 0)
+    return f"{n / 1000:.0f}k" if n >= 10000 else (f"{n / 1000:.1f}k" if n >= 1000 else str(n))
+
+
+def agy_lines(jobs_dir: Path | None = None, now: datetime | None = None) -> list[str]:
+    """One RUNNING line per live agy (Hydrogen) job: elapsed, steps, tool calls and tokens.
+
+    Read from the job's own ``events.jsonl`` with the agy-worker parser (no model call);
+    shown by ``status`` only, so ``wait`` semantics are unchanged.  Any failure yields no line.
+    """
+    now = now or datetime.now(timezone.utc)
+    root = Path(jobs_dir or AGY_JOBS_DIR)
+    if not root.is_dir():
+        return []
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "_agy_core_for_watch", REPO_ROOT / "plugins" / "agy-worker" / "server" / "agy_core.py")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)  # type: ignore[union-attr]
+    except Exception:
+        return []
+    lines: list[str] = []
+    for job_dir in sorted(root.iterdir()):
+        job = _read_json(job_dir / "job.json")
+        if not isinstance(job, dict) or job.get("phase") != "running" or (job_dir / "exit.json").exists():
+            continue
+        try:
+            ev = core.parse_events(job_dir / "events.jsonl")
+        except Exception:
+            continue
+        tok = ev.get("tokens") or {}
+        started = _iso(job.get("created_at")) or now
+        lines.append(
+            f"RUNNING agy {job.get('job_id', job_dir.name)} ({job.get('model', '?')}) {_minutes(started, now)}m, "
+            f"{ev.get('steps', 0)} steps, {ev.get('tool_calls', 0)} tool calls, tokens in {_k(tok.get('input_tokens'))}"
+            f" / cached {_k(tok.get('cache_read_tokens'))} / out {_k(tok.get('output_tokens'))}"
+            f" / thinking {_k(tok.get('thinking_tokens'))}"
+        )
+    return lines
+
+
 def _option(args: list[str], name: str, default: str) -> str:
     if name in args:
         index = args.index(name)
@@ -837,6 +883,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if not args or args[0] == "status":
             for line in status():
+                print(line)
+            for line in agy_lines():
                 print(line)
             return 0
         if args[0] == "wait":

@@ -450,7 +450,10 @@ of every local folder, so a live overnight job could sit past the limit while
 
 `reality_engine/scripts/job_watch.py` prints only the jobs that need attention,
 with no model call and no network call. A `UserPromptSubmit` hook in
-`.claude/settings.json` runs it on every prompt, so its lines reach the session:
+`.claude/settings.json` runs it on every prompt, so its lines reach the session: `status` also prints one
+`RUNNING agy <job_id> (<model>) Nm, S steps, T tool calls, tokens in / cached / out / thinking` line per live
+agy (Hydrogen) job (`agy_lines`, 14 Nov), parsed from the job's `events.jsonl` with `parse_events` in
+plugins/agy-worker/server/agy_core.py; `wait` ignores agy jobs (register one with `add` and `--pid`).
 
 ```bash
 python -m reality_engine.scripts.job_watch status   # at most 12 lines; silent when healthy

@@ -936,3 +936,21 @@ def test_main_wait_accepts_its_flags(monkeypatch):
     monkeypatch.setattr(job_watch, "wait", fake_wait)
     assert job_watch.main(["wait", "--timeout-seconds", "2", "--poll-seconds", "0.05", "--ignore-existing"]) == 0
     assert seen == {"timeout_seconds": 2.0, "poll_seconds": 0.05, "ignore_existing": True}
+
+
+def test_agy_lines_show_steps_calls_and_tokens(tmp_path):
+    import json as _json
+    from datetime import datetime as _dt, timezone as _tz
+    from reality_engine.scripts import job_watch as jw
+    d = tmp_path / "20261114T000000Z-abcdef12"
+    d.mkdir()
+    (d / "job.json").write_text(_json.dumps({"job_id": d.name, "model": "gemini-4-hydrogen-high",
+                                             "created_at": "2026-11-14T00:00:00+00:00", "phase": "running"}))
+    ev = {"step_update": {"state": "DONE", "step_type": "tool", "tool_name": "read_file",
+                          "usage": {"input_tokens": 12000, "cache_read_tokens": 500, "output_tokens": 40}}}
+    (d / "events.jsonl").write_text(_json.dumps(ev) + "\n")
+    lines = jw.agy_lines(tmp_path, now=_dt(2026, 11, 14, 0, 5, tzinfo=_tz.utc))
+    assert lines == [f"RUNNING agy {d.name} (gemini-4-hydrogen-high) 5m, 1 steps, 1 tool calls, "
+                     "tokens in 12k / cached 500 / out 40 / thinking 0"]
+    (d / "exit.json").write_text("{}")
+    assert jw.agy_lines(tmp_path) == []
