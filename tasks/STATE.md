@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-14 10:30 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-14 13:50 IST (Wolf)
 History `docs/state_history/` (previous: `STATE_2026-11-14_0220.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -18,7 +18,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 ## Next action
 0. Roles: DeepSeek builds; agy `gemini-4-hydrogen-high` answers, searches questions, codes on trial (shell works with the skip flag); Opus 5.5 medium grades blind. Go key 1 only (restart dsh-worker MCP).
 1. DONE 14 Nov 05:00 (Wolf): r13 blind grades, report `D:/RealityEngine/reports/2026-11-14_r13_grading.html`. Paired BS-001..026: Hydrogen pack 24, DS lean B 22, DS pack 20, DS lean A 19; full 64: DS B 54, A 50, pack 46. 36 of 44 misses = routing. Wolf graded batches 2-8 inline (agy quota).
-2. T-213 round 14 (checked lookups) replay 6/12/11 vs DS lean B 19/9/1: probe noise, 600-char items, narrow lookups. Archived: tag `archive/Wolf-T-213-r14b`. r12+r13 answer arms MERGED 14 Nov (Wolf); lean tool run B is the baseline. Next design: Shivam. NEXT SESSION: answer tuning on top of lean run B.
+2. T-213: r14 archived (tag `archive/Wolf-T-213-r14b`). r15 MERGED 14 Nov: `answer/answer_checker.py` (C1-C5) + DeepSeek repair of flagged answers: run B 54/9/1 -> 57/7/0 (Wolf, not blind; report s5b). Left: facts in older calls never opened (BS-026/027/034/036). Next: theme-calls check.
 3. T-212: Q2FY27 XBRL 2,597 symbols. Session cron died at close: run the fetch+parse by hand after 15 Nov 09:17, then raw_to_drive. T-208 r3 MERGED, s10 + bluestar rebuilt; verdict pending.
 4. T-209 MERGED: `D:/RealityEngine/structured/structured_universe.db`; pledge flag 0 = 0%. Raw `nse_shp_xbrl_universe` to Drive pending.
 5. T-210 panel needs 7 GB; MSI idles at ~5.9 GB free: run on HP or chunk it. `python -m reality_engine.research.factor_deep --out .tmp/t210 --project`.

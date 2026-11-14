@@ -248,3 +248,10 @@ Carry forward:
 - Failed + why: merge_worker conflicted on STATE/MSI_LAPTOP because the branch edited shared docs; doc_gate refused the first commit without a STATE change.
 - Improvements: T-210 7 GB need is unreachable on the MSI (~5.9 GB free at idle); chunk the panel or run on the HP.
 - Carry forward: answer tuning on lean run B (next session, Shivam's design call); T-212 re-run by hand after 15 Nov 09:17; s10 verdict; T-211.
+
+## 2026-11-14 13:50 IST, Wolf
+- Work: T-213 r15: DeepSeek built `answer_checker.py` (C1 late source, C2 calls in window, C3 speaker, C4 segment scope, C5 searched before not-found) in 25 min; repair pass on the 15 flagged run-B answers in 20 min / 97 calls. T-210 handed to Hydrogen (agy) with a low-RAM brief. job_watch status + `agy-workers` mod show live Hydrogen steps/tools/tokens.
+- Worked: run B 54/9/1 -> 57/7/0, no right answer lost; checker flags 9/10 misses at 6 false alarms, all 6 survived repair.
+- Failed + why: a follow-up naming the right figure did not stop the agent mislabelling 7,229.22 as the segment book (C4 passes once a scope word is present); facts in older calls (Q3FY25 PLI, Q3FY26 label cost, Q1FY27 8-10%) stay unread because no check names those calls. Grades are not blind.
+- Improvements: a theme-calls check (statements matching the question's theme words -> calls that must be read); C4 should compare the stated figure with the printed segment figure, not only look for a scope word.
+- Carry forward: blind re-grade if Shivam wants the number firm; T-210 Hydrogen run; T-212 by hand after 15 Nov 09:17.
