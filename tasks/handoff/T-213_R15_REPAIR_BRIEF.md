@@ -8,7 +8,7 @@ answers from the store. Keep every unflagged answer byte-for-byte: the checker s
 about them and editing them only risks the 54 that are right.
 
 Inputs (read-only):
-- `/CHECK_DSB` — the checker output, one JSON line per answer:
+- `.tmp/r15/check_ds_b.jsonl` — the checker output (make it first: `python -m reality_engine.answer.answer_checker --db D:/RealityEngine/bluestar/bluestar.db --answers D:/RealityEngine/bluestar/answers_ds_b --out .tmp/r15/check_ds_b.jsonl`; expect 64 answers, 15 flagged), one JSON line per answer:
   `{"qid", "checks": [{"id", "ok", "fact"}], "followup"}`. `followup` is empty for an answer
   that passed all five checks. Repair only the lines where it is not empty.
 - `D:/RealityEngine/bluestar/answers_ds_b/answers.jsonl` — the run-B answers, one line per
@@ -69,6 +69,8 @@ Output: `.tmp/r15/answers_repaired/answers.jsonl`, one JSON line per question fo
 Files: write only `.tmp/r15/answers_repaired/answers.jsonl` and `calls.jsonl` (and the
 re-check output). The store, the run-B answer folder, the checker and everything else are
 read-only. Do not edit code.
+
+Evidence: Wolf re-ran the checker on run B (14 Nov 13:20): 15 flagged, 9 of the 10 graded misses among them; 6 flags are likely false (BS-016/017/019 C3 figure off the cited page, BS-009/055/059 C5 on genuine not-held answers), so confirm each flag against the page before changing anything. The re-check's C5 counts only this run's calls log.
 
 Accept: 64 lines, valid JSON, one per qid; every flagged qid either has `changed: true` with a
 `change_note` naming its check, or `changed: false` with the reason the flag was not a defect.
