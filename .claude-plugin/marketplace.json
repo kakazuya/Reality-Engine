@@ -9,6 +9,10 @@
     {
       "name": "dsh-workers",
       "source": "./plugins/dsh-workers-pane"
+    },
+    {
+      "name": "agy-workers",
+      "source": "./plugins/agy-workers-pane"
     }
   ]
 }

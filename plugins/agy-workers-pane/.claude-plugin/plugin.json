@@ -1,0 +1,1 @@
+{ "name": "agy-workers", "version": "0.1.0", "description": "Above-prompt rows for running agy (Gemini Hydrogen) worker jobs: tools, output, cached tokens, idle, elapsed", "types": "./types/index.d.ts" }

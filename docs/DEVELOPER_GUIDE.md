@@ -454,6 +454,9 @@ with no model call and no network call. A `UserPromptSubmit` hook in
 `RUNNING agy <job_id> (<model>) Nm, S steps, T tool calls, tokens in / cached / out / thinking` line per live
 agy (Hydrogen) job (`agy_lines`, 14 Nov), parsed from the job's `events.jsonl` with `parse_events` in
 plugins/agy-worker/server/agy_core.py; `wait` ignores agy jobs (register one with `add` and `--pid`).
+The `agy-workers` mod (`plugins/agy-workers-pane/`, README there; installed user scope on both accounts from
+the repo's `reality-engine` marketplace) pins the same counts above the prompt, one row per running agy job, next
+to the dsh-workers band.
 
 ```bash
 python -m reality_engine.scripts.job_watch status   # at most 12 lines; silent when healthy
