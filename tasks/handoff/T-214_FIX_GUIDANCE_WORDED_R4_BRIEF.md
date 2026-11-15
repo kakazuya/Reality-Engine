@@ -1,0 +1,14 @@
+# T-214 fix B round 4: one right row lost and one present-state row added on three more unseen stores
+
+Ticket: T-214
+Goal: round 3 (your branch, head e7fb52e4, checked out here) passed its eight stores. Opus ran it on three further stores (s10 set: kei, medanta, pvrinox): 8 rows added (about 6 right), 1 existing right row REMOVED. Fix the two classes below; removed must be 0 on all eleven stores. Opus then tests on stores you have not seen; rules must be structural.
+Files: `reality_engine/pilot3/guidance.py`, `reality_engine/tests/test_pilot3_guidance.py`. s10 stores: `D:/RealityEngine/s10/<n>/<n>.db` with `<n>_profile.json` (n = kei, medanta, pvrinox); the other eight as in round 3.
+Evidence:
+1. Removed right row (medanta, ebitda_margin FY27, rule guidance_cue_v1 on main): "But I think that we believe, generally speaking, that the margin profile of the matured units is largely stable, and we are working to see if we can tweak out inefficiencies wherever we can." A row `main` already stores must not be dropped by the new worded gates unless it is a question or a refusal: apply the round-1..3 gates (commitment shape, forward period, meta, year) only to sentences `main`'s rule would NOT have taken; for sentences the old rule takes, only the question/tag-question and refusal bans apply. Verify with your counters which gate dropped it.
+2. Added wrong row (medanta, ebitda_margin FY25): "That being said, we believe that the margins which are actually reflected on a full year basis as well as on a quarter basis for our Lucknow as well as all our units actually are still exceptionally high." Present-state description (are/is + still/currently/already, no future verb governing the metric) is not guidance on the NEW worded path.
+3. Added wrong metric (medanta, revenue_growth): "...you will see a better picture of how this ARPOB moves on an annualized basis." A named KPI (ARPOB, AUM, order book...) in the committed clause must not be stored as revenue_growth; if the committed clause's metric is not in the guidance metric list, no row.
+Steps: 1) Tests first (row kept for sentence 1; no row for 2 and 3). 2) Fix as described. 3) store_diff on all eleven stores; table of removed/added/changed; list every removed row with its text. 4) Re-score the graded set. 5) `.tmp/guidance_added_r4.csv` with all added rows. 6) Docs to round-4 rule and numbers.
+Accept: `python -m pytest -q reality_engine/tests/test_pilot3_guidance.py` passes; removed rows on the eleven stores are only questions/tag questions/refusals (list them); graded set >= 85% right with >= 12 of 18 kept.
+Pitfalls: no store or company names in code or repo docs; never write to D:.
+Stop if: rule 1 (old-rule sentences bypass the new gates) brings back any of the 53 graded-wrong rows: report which.
+Budget: 90 minutes.
