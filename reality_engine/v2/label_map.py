@@ -124,7 +124,7 @@ from typing import Iterable, Mapping, Sequence, cast
 import yaml
 
 from reality_engine.db.readonly import connect_ro
-from reality_engine.pilot3.make_profile import family_of, label_of, main_store, sector_map
+from reality_engine.pilot3.make_profile import bse_family, family_of, label_of, main_store, sector_map
 from reality_engine.v2 import schema
 
 LEXICON_DIR = Path(__file__).resolve().parents[1] / "pilot3" / "lexicon"
@@ -1684,7 +1684,8 @@ def _rows(con: sqlite3.Connection, sql: str, params: Sequence[object] = ()) -> l
 
 def company_family(taxonomy: sqlite3.Connection, table: dict, isin: str | None = None,
                    symbol: str | None = None) -> str:
-    """The sector family of a company, by the make_profile path: company_industry, else master_industry."""
+    """The sector family of a company, by the make_profile path: company_industry, else master_industry, else the
+    BSE industry on ``board_meetings``."""
     if taxonomy.row_factory is not sqlite3.Row:
         taxonomy.row_factory = sqlite3.Row
     basic, industry = label_of(taxonomy, [isin] if isin else [], symbol)
@@ -1693,6 +1694,8 @@ def company_family(taxonomy: sqlite3.Connection, table: dict, isin: str | None =
         row = taxonomy.execute("SELECT industry FROM master_companies WHERE isin=? OR nse_symbol=? LIMIT 1",
                                (isin or "", symbol or "")).fetchone()
         family = (table.get("master_industry") or {}).get(row["industry"] if row else "", UNKNOWN)
+        if family == UNKNOWN:
+            family = bse_family(taxonomy, [isin] if isin else [], table)
     return family
 
 

@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 
 from reality_engine.db.readonly import connect_ro
-from reality_engine.pilot3.make_profile import (UNKNOWN, company_row, family_of, is_lender, main_store, mapped_share,
-                                                results_store, same_issuer, sector_map)
+from reality_engine.pilot3.make_profile import (UNKNOWN, bse_family, company_row, family_of, is_lender, main_store,
+                                                mapped_share, results_store, same_issuer, sector_map)
 from reality_engine.pilot3.scale_report import parts_from_log, report
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,7 +31,8 @@ NOT_COMPANIES = {"BSE", "NSE", "TOTAL"}     # also listed symbols, but in code t
 
 def _symbols() -> set[str]:
     conn = connect_ro(str(main_store()))
-    held = {row[0] for row in conn.execute("SELECT nse_symbol FROM master_companies WHERE nse_symbol IS NOT NULL")}
+    rows = conn.execute("SELECT nse_symbol FROM master_companies WHERE nse_symbol IS NOT NULL") or []
+    held = {row[0] for row in rows if row}
     return held - NOT_COMPANIES
 
 
@@ -70,6 +71,61 @@ def test_family_comes_from_the_taxonomy_and_unknown_is_never_a_guess():
     assert family_of("Something New", "Banks", table) == "bank"
     assert family_of("Something New", "Also New", table) == UNKNOWN
     assert family_of(None, None, table) == UNKNOWN
+
+
+def test_sector_map_maps_only_the_unambiguous_industries_and_the_rest_stay_unknown():
+    """T-214: an industry that fits one family cleanly maps to it; one no family fits stays an honest `unknown`
+    (a wrong sector would verify wrong rows, so a guess is worse than the gap)."""
+    table = sector_map()
+    assert family_of("Software Products", "IT - Software", table) == "it_services"
+    assert family_of("Explosives", "Chemicals & Petrochemicals", table) == "paints_chemicals"
+    assert family_of("Investment Company", "Finance", table) == "unknown"  # holding companies are not lenders (Wolf review)
+    assert family_of("Plastic Products - Consumer", "Consumer Durables", table) == "consumer_durables"
+    for basic, industry in (("Sugar", "Agricultural Food & other Products"),
+                            ("Packaging", "Industrial Products"),
+                            ("Paper & Paper Products", "Paper Forest & Jute Products"),
+                            ("LPG/CNG/PNG/LNG Supplier", "Gas"),
+                            ("Lubricants", "Petroleum Products"),
+                            ("Oil Equipment & Services", "Oil"),
+                            ("Diversified Commercial Services", "Commercial Services & Supplies"),
+                            ("Film Production Distribution & Exhibition", "Entertainment")):
+        assert family_of(basic, industry, table) == UNKNOWN, basic
+
+
+def _taxonomy_db(industry: str | None, board: tuple[str, ...] = ()) -> sqlite3.Connection:
+    """A company with no `company_industry` row, one master industry and the BSE values `board`."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript("""
+        CREATE TABLE master_companies (isin TEXT, nse_symbol TEXT, bse_code TEXT, company_name TEXT, industry TEXT);
+        CREATE TABLE company_industry (isin TEXT, symbol TEXT, basic_industry TEXT, industry TEXT);
+        CREATE TABLE board_meetings (isin TEXT, symbol TEXT, industry TEXT);
+        CREATE TABLE symbol_isin_history (symbol TEXT, isin TEXT, first_date TEXT);
+        CREATE TABLE isin_rekey_log (symbol TEXT, old_isin TEXT, new_isin TEXT);
+        CREATE TABLE corporate_documents (symbol TEXT, isin TEXT);
+        CREATE TABLE shp_index (symbol TEXT, isin TEXT);
+    """)
+    conn.execute("INSERT INTO master_companies VALUES ('INE000000001', 'NOINDUSTRY', '500000', 'No Industry Ltd', ?)",
+                 (industry,))
+    for value in board:
+        conn.execute("INSERT INTO board_meetings VALUES ('INE000000001', 'NOINDUSTRY', ?)", (value,))
+    return conn
+
+
+def test_sector_falls_back_to_the_bse_industry_last_and_only_a_single_value():
+    """T-214: with no company_industry row, master_companies.industry comes first, then the BSE industry on
+    board_meetings; two BSE values or an unmapped name never pick a family."""
+    table = sector_map()
+    conn = _taxonomy_db("General Diversified", ("Construction",))
+    assert company_row(conn, "NOINDUSTRY", table)["sector"] == "epc_capital_goods"
+    conn = _taxonomy_db("General Diversified", ("Construction", "Packaging"))
+    assert company_row(conn, "NOINDUSTRY", table)["sector"] == UNKNOWN       # two values: never pick one
+    conn = _taxonomy_db("General Diversified", ("Packaging",))
+    assert company_row(conn, "NOINDUSTRY", table)["sector"] == UNKNOWN       # a name no family fits
+    conn = _taxonomy_db("Information Technology", ("Packaging",))
+    assert company_row(conn, "NOINDUSTRY", table)["sector"] == "it_services"  # the master tier comes first
+    assert bse_family(conn, ["INE000000001"], table) == UNKNOWN
+    conn.close()
 
 
 def test_profile_row_from_the_stores():
@@ -111,6 +167,7 @@ def test_lender_is_the_taxonomy_and_the_mapped_share_is_reported():
     share = mapped_share(conn, table)
     assert share["active"] == share["family"] + share["unknown"] and share["active"] > 0
     assert share["family"] and share["no_label"]
+    assert share["by_bse_industry"] >= 0
 
 
 def test_scale_report_separates_a_fixed_cost():

@@ -17,7 +17,9 @@ without any error.
 
 The label is looked up by every one of those ISINs and then by the symbol; when the exchange taxonomy has no row at
 all, ``master_companies.industry`` is a second tier but only for the coarse names that map cleanly to a family
-(``master_industry`` in ``sector_map.yaml``).  A company still without a label stays ``unknown``.
+(``master_industry`` in ``sector_map.yaml``), and the BSE industry its scrip master carries on ``board_meetings`` a
+third (``bse_industry``, used only when every filing prints the same value).  A company still without a label stays
+``unknown``.
 
 The profile's ``lender`` flag comes from the exchange taxonomy, which exists before the build.  ``--check-db``
 compares it with the filed lines of a built database (``lender.py``) and prints every disagreement; that second
@@ -141,6 +143,20 @@ def label_of(conn: sqlite3.Connection, isins: list[str], symbol: str | None = No
     return (None, None)
 
 
+def bse_family(conn: sqlite3.Connection, isins: list[str], table: dict) -> str:
+    """The BSE taxonomy family, used when ``company_industry`` has no row: ``board_meetings.industry`` is the BSE
+    industry the scrip master carries, and only a single value across the issuer's filings is trusted."""
+    isins = [isin for isin in isins if isin]
+    if not isins:
+        return UNKNOWN
+    marks = ",".join("?" * len(isins))
+    row = conn.execute("SELECT COUNT(DISTINCT industry), MIN(industry) FROM board_meetings "
+                       "WHERE isin IN (" + marks + ") AND industry IS NOT NULL AND industry<>''", isins).fetchone()
+    if row and row[0] == 1:
+        return (table.get("bse_industry") or {}).get(row[1], UNKNOWN)
+    return UNKNOWN
+
+
 def company_row(conn: sqlite3.Connection, key: str, table: dict,
                 results_conn: sqlite3.Connection | None = None) -> dict:
     """One company entry from the stores.  ``key`` is a symbol or an ISIN; everything else is joined by ISIN."""
@@ -155,6 +171,8 @@ def company_row(conn: sqlite3.Connection, key: str, table: dict,
     family = family_of(basic, industry, table)
     if family == UNKNOWN and basic is None and industry is None:
         family = (table.get("master_industry") or {}).get(master["industry"] or "", UNKNOWN)
+        if family == UNKNOWN:
+            family = bse_family(conn, isins, table)
     return {"symbol": symbol, "name": master["company_name"], "bse_code": str(master["bse_code"] or ""),
             "isins": isins, "sector": family, "lender": is_lender(basic, industry, table)}
 
@@ -175,19 +193,23 @@ def mapped_share(conn: sqlite3.Connection, table: dict) -> dict:
     """Active companies by what the taxonomy can place, and the tier that placed each family:
 
     ``family`` (any tier), ``unknown`` (no family), ``no_label`` (no ``company_industry`` row by ISIN or symbol),
-    and the family counts by tier (current ISIN, a historical ISIN, the symbol, ``master_companies.industry``).
+    and the family counts by tier (current ISIN, a historical ISIN, the symbol, ``master_companies.industry``,
+    the BSE ``board_meetings.industry``).
     """
     out = {"active": 0, "family": 0, "unknown": 0, "no_label": 0,
-           "by_current_isin": 0, "by_history_isin": 0, "by_symbol": 0, "by_master_industry": 0}
+           "by_current_isin": 0, "by_history_isin": 0, "by_symbol": 0, "by_master_industry": 0,
+           "by_bse_industry": 0}
     rows = conn.execute("SELECT isin, nse_symbol, industry FROM master_companies WHERE is_active=1").fetchall()
     for row in rows:
         out["active"] += 1
         current, symbol = row["isin"], row["nse_symbol"]
-        basic, industry = label_of(conn, [current])
+        candidates = [current] if current else []
+        basic, industry = label_of(conn, candidates)
         tier = "by_current_isin" if basic or industry else None
         if tier is None and symbol:
             history = [r[0] for r in conn.execute("SELECT DISTINCT isin FROM symbol_isin_history WHERE symbol=?",
                                                   (symbol,)) if r[0] != current]
+            candidates += history
             basic, industry = label_of(conn, history)
             tier = "by_history_isin" if basic or industry else None
         if tier is None and symbol:
@@ -196,7 +218,11 @@ def mapped_share(conn: sqlite3.Connection, table: dict) -> dict:
         family = family_of(basic, industry, table)
         if tier is None:
             family = (table.get("master_industry") or {}).get(row["industry"] or "", UNKNOWN)
-            tier = "by_master_industry" if family != UNKNOWN else tier
+            if family != UNKNOWN:
+                tier = "by_master_industry"
+            else:
+                family = bse_family(conn, candidates, table)
+                tier = "by_bse_industry" if family != UNKNOWN else tier
         if tier is None:
             out["no_label"] += 1
         if family == UNKNOWN:
@@ -255,7 +281,8 @@ def main(argv: list[str] | None = None) -> None:
     total = share["active"]
     print(f"active companies: {total}; family {share['family']} ({100 * share['family'] / total:.1f}%: "
           f"current ISIN {share['by_current_isin']}, history ISIN {share['by_history_isin']}, "
-          f"symbol {share['by_symbol']}, master industry {share['by_master_industry']}), "
+          f"symbol {share['by_symbol']}, master industry {share['by_master_industry']}, "
+          f"BSE industry {share['by_bse_industry']}), "
           f"unknown {share['unknown']} ({100 * share['unknown'] / total:.1f}%), "
           f"no label {share['no_label']} ({100 * share['no_label'] / total:.1f}%)")
 
