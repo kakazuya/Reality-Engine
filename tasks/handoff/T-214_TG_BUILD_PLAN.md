@@ -30,6 +30,9 @@ Ticket: T-214 (with T-178, T-215, T-216, T-213, T-113, T-025, T-141, T-111)
    `concall_facts.db` 720k items) be verified against page text, re-keyed with the label map + period engine, and
    re-dated (fiscal year from the report text, known_at from the filing record)? Decides how much of the build needs
    no model call. Plan: `tasks/FABLE_TESTS_2026-11-10.md` section 2. Script work, DeepSeek or Argon worker.
+   **Result 15 Nov: audit-only** — verified+re-keyed facts recall 47.4% vs the r10 script's 26.9%, but frozen
+   precision 78.3% (bar 95%), so no first-build facts enter the build as a candidate layer; every page the build
+   needs is read. Script `reality_engine/scripts/t178_salvage.py`, numbers in the Fable-tests section 2 result.
 2. **T-215 raw_to_drive delete scope** (P1): delete must touch only the given roots; one call would have removed
    603 GB. Small, test-first.
 3. **Build pipeline measure on 10 queue companies** (T-214 step 1): the pilot3 build steps (`pilot3/build_all`

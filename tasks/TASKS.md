@@ -34,7 +34,6 @@ One row per line, kept in its section.
 - T-020 | OPEN | P2 | OCR after workspace step 4: TextRecognizer first pass, stronger reader for low-confidence numbers; last accuracy pilot failed its gate | accept: Shivam | from: RULINGS, GATE_STATE | opened 2026-11-02
 - T-029 | OPEN | P3 | When OCR resumes after workspace step 4: decide a second Haiku baseline on about 100 fresh pages, batches of 8; first run: 100 pages, 995,856 tokens | accept: Shivam | from: Shivam 2 Nov | opened 2026-11-02
 - T-137 | OPEN | P1 | Guidance chain v2: every forward statement verbatim (speaker, call date, metric, period, range), linked to the target it revises; a call and its transcript are one event; delivered-vs-guided computed | accept: pilot20 guidance rows hand-read: >=95% right; Eternal/SBI Life/BEL guidance-history questions answered right | from: Shivam 9 Nov 01:10 | opened 2026-11-09
-- T-178 | DOING Wolf | P1 | First-build re-key test: ar_facts/deck_figures facts verified + label map + period engine vs script cells on reference pages | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/reports/2026-11-11_t178_first_build_rekey.xlsx').exists() else 1)" | from: Fable review 10 Nov | opened 2026-11-10
 
 ## Schema and question map
 

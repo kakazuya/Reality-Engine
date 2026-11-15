@@ -12,6 +12,12 @@ Main machine, hostname `Sumit`. Runs Claude, dsh workers, merges, GPU work and s
 - Closing the session that owns a worker can kill it.
 - Merged worktrees get removed, since each holds a large search cache.
 
+## First-build salvage test (T-178, 15 Nov 2026)
+`reality_engine/scripts/t178_salvage.py` (four arms on the 30 deck reference pages, a 200-report fiscal-year check, queue coverage and the decision xlsx) and `reality_engine/tests/test_t178_salvage.py` (3 tests: number normaliser + verbatim check).
+- Arm (c) = first-build facts kept only when the printed number appears in the page text layer, then re-keyed through `reality_engine/v2/label_map.py`'s built map (`D:/RealityEngine/v2/label_map/label_map.db`) and `reality_engine/v2/periods.py`; the r10 script arm re-runs `v2/table_cells.py` on the page PDFs (the stored `run_script_r10` has rows for only 7 of the 30 deck pages).
+- Measured 15 Nov: recall 47.4% for (c) vs 26.9% for (a), frozen precision 78.3% (bar 95%) -> audit-only; 94.4% of (c)'s printed values occur among the page's reference values, so the loss is keying (row/column), not misread numbers.
+- Output `.tmp/t178/t178_first_build_rekey.xlsx` (`arms`, `fy_check`, `coverage`, `decision`). AR PDFs were not local and rclone cannot run in the dsh sandbox, so the fy rows use `ar_facts` quotes (a proxy); rerun the script on an unsandboxed host for the PDF-text-layer proof.
+
 ## Factor studies (T-210, 14 Nov 2026)
 `reality_engine/research/factor_deep.py` + `reality_engine/tests/test_factor_deep.py` (13 synthetic tests) deepen the T-207 reward study: per-sector rewarded sets, exposure/IC pair correlations and clusters, per-company empirical-Bayes shrinkage, sector Fama-MacBeth redundancy, 595-pair tercile interactions with a 20-permutation gate, sparse stepwise combinations, and a pilot-store KPI arm. Report `docs/research/T-210_factor_deep_study.md`. Full panel run needs >= 7 GB free RAM (DuckDB snapshot build); it did not start on 14 Nov because 89 one-minute samples (00:12-01:42) ranged 2.6-4.7 GB with three workers running.
 
