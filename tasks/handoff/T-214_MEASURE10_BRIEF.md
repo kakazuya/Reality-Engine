@@ -16,6 +16,9 @@ Files:
   `registry pages transcripts kpi guidance stores comparatives preferred ratios segments notes checks events`, one log `b_<part>.log` per part.
 - Page routes: `reality_engine/v2/page_route.py` (`no_figures` / `text_ok` / `needs_ocr` / `table_or_chart`).
 
+Store names: use `--name c01` ... `c10` in queue order (rows of universe10.csv), so stores are `D:/RealityEngine/tg_build/measure10/cNN/cNN.db`; no symbol in any repo file.
+Fetch result (15 Nov 18:54): 1,834 ok files, 4.36 GB: material_filing 1,490, quarterly_results 136, investor_presentation 95, concall_transcript 45, annual_report 33, press release 14; 31 PDFs guessed scanned.
+
 Steps:
 1. Write `reality_engine/scripts/tg_measure_build.py`: for one symbol run the recipe part by part as subprocesses
    (hidden: CREATE_NO_WINDOW, no shell), and record per part: wall seconds, return code, peak RSS of the child tree
