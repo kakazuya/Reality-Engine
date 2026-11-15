@@ -52,10 +52,12 @@ One row per line, kept in its section.
 - T-179 | OPEN Eagle | P1 | Raw SQL A/B: 120 questions x 2 arms x 2 runs with and without pilot3_sql, calls and seconds logged, grader calibrated | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/reports/2026-11-11_t179_sql_ab.xlsx').exists() else 1)" | from: Fable review 10 Nov | opened 2026-11-10
 - T-199 | OPEN Eagle | P1 | Atom design + unseen-company test: BLUESTARCO (questions frozen before build; Haiku page reading via subagent sessions; tools after T-197/T-198) | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('D:/RealityEngine/bluestar/questions/questions.csv').exists() else 1)" | from: Shivam 12 Nov 21:40 | opened 2026-11-12
 - T-213 | DOING Wolf | P1 | Round 14 answer loop: model names exact facts, code fetches only those rows, code checks coverage/numbers/quotes+speaker/not-found probe/kind rules and sends code-written follow-ups (max 2); no pack; DeepSeek (Go) and Hydrogen (agy) adapters | accept: python -c "import pathlib,sys;sys.exit(0 if pathlib.Path('reality_engine/tests/test_checked_lookups.py').exists() else 1)" | from: Shivam 14 Nov 03:20 | opened 2026-11-14
+- T-218 | OPEN Wolf | P1 | Modular store repair: part stamps, store_repair runner (re-run one part across stores with a before/after diff gate) and the store-repair notes system; written by Claude | accept: python -m reality_engine.scripts.store_repair --stale --root D:/RealityEngine/tg_build | from: Shivam 16 Nov | opened 2026-11-16
 
 ## Bank
 
 - T-018 | OPEN | P2 | Refuse a bank rebuild that changes the frozen 1,901 questions or ruled rows, or names a non-pilot stock | accept: python -m pytest reality_engine/tests/test_bank_guard.py -q | from: enforcement plan | opened 2026-11-02
+- T-217 | OPEN Wolf | P1 | Question bank for the Telegram companies: Gemini 3.8 Flash medium (agy) harvests real investor questions from the web and YouTube per company, then writes grounded variants; questions.db + Excel | accept: python -m reality_engine.scripts.tg_questions check --db D:/RealityEngine/tg_build/questions.db --min-companies 93 | from: Shivam 16 Nov | opened 2026-11-16
 
 ## Research
 

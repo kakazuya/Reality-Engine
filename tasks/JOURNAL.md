@@ -262,3 +262,10 @@ Carry forward:
 - Failed + why: two agy runs died on DNS drops (no retry in the runner); raw_to_drive delete is global (603 GB dry run) - caught by a dry run before use.
 - Improvements: T-215 delete scope; T-216 agy retry; sparse factor arm needs NaN-tolerant scoring.
 - Carry forward: T-214 plan file lists the pre-build fix order; start with T-178 and T-215.
+
+## 2026-11-16 01:40 IST, Wolf (session close)
+- Work: T-215 delete scope fixed (603 GB were `drive:` pseudo rows); T-178 salvage = audit-only; T-209 SHP raw to Drive; 10 Telegram stores built and measured (T-214 step 3); gap diagnosis (4 classes); fix A (shp NULL isin) and fix C (sector map) merged; fix B guidance rounds 1-3 rejected, round 4 running; HP laptop wiped before access ended; agy keeps Flash 3.8 medium and runs the model Shivam names; tickets T-217, T-218.
+- Worked: trial on company 1 before the other nine; a read-only diagnosis worker gave file:line causes for the fix briefs; hand-reading every added guidance row and diffing on UNSEEN stores caught what "0 removed" on the worker's own stores hid (three times).
+- Failed + why: I offered a batch build of 83 companies (Shivam: one at a time); a brief named a wrong file path; the guidance worded path took 4 rounds because each round was judged on stores the worker had seen; I had removed Flash from the allowlist for good (Shivam: never drop a model); background watches were reaped twice on low memory with 3 workers running.
+- Improvements: T-218 part stamps + repair runner so a fix costs minutes on built stores; keep a rotating unseen-store pool for every extractor change; verify brief paths from the diagnosis output; 2 workers at a time on the MSI now the HP is gone.
+- Carry forward: hand-off file `tasks/handoff/T-217_T-218_HANDOFF_2026-11-16.md`; review fix B round 4; restart agy-worker MCP; usage window ends Tue 17 Nov 10:30 IST.

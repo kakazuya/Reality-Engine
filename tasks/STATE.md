@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-15 22:15 IST (T-214 fix A)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-16 01:45 IST (Wolf)
 History `docs/state_history/` (previous: `STATE_2026-11-15_1530.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -16,12 +16,12 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
-0. Roles: DeepSeek builds; agy `gemini-4-argon-high` first, then Hydrogen high (high only); Haiku reads images; Opus medium grades blind. Go key 1 only.
-1. T-214 Telegram build: plan, gap diagnosis and fix order in `tasks/handoff/T-214_TG_BUILD_PLAN.md`; queue `D:/RealityEngine/tg_build/build_queue.csv` (93: 11/6/76, 2 demo ISINs to drop). T-215 DONE. T-178 DONE: first build audit-only (xlsx in reports). 10 stores built 15 Nov in `tg_build/measure10/` (medians 263 s / 339 MB / 17.4 MB; 24,925 pages, 16,066 table/chart, 3,176 OCR; guide T-214 bullet). Gaps (share of 93): no NSE XBRL 10, no SHP 11, no transcript 38, sector unknown 38. Fix A, C MERGED; fix B (guidance) round 3 running. RULING 15 Nov: ONE COMPANY AT A TIME (build, check, fix, sign off, next); company 1 first. Open: transcript fetch, BSE results/SHP fetch, taxonomy fetch; then plan items 4-7.
+0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
+1. T-214 Telegram build: plan, gap diagnosis and fix order in `tasks/handoff/T-214_TG_BUILD_PLAN.md`; queue `D:/RealityEngine/tg_build/build_queue.csv` (93: 11/6/76, 2 demo ISINs to drop). T-215 DONE. T-178 DONE: first build audit-only (xlsx in reports). 10 stores built 15 Nov in `tg_build/measure10/` (medians 263 s / 339 MB / 17.4 MB; 24,925 pages, 16,066 table/chart, 3,176 OCR; guide T-214 bullet). Gaps (share of 93): no NSE XBRL 10, no SHP 11, no transcript 38, sector unknown 38. Fix A, C MERGED; fix B round 4 running (dsh 20261115T182250Z-28594a39), unmerged. 16 Nov: T-217 question bank (Flash 3.8 medium, agy) + T-218 modular store repair (Claude writes): read tasks/handoff/T-217_T-218_HANDOFF_2026-11-16.md. HP gone. Open: transcript fetch, BSE results/SHP fetch, taxonomy fetch; then plan items 4-7.
 2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0 (not blind, report s5b). Next checks (theme calls, C4 figure) measured on Telegram stores with frozen halves.
 3. T-210 MERGED 15 Nov: factor_deep peak 0.64 GB; results `docs/research/T-210_factor_deep_study.md`, outputs `D:/RealityEngine/research/t210_2026-11-14/`. Sparse arm flawed (complete-case coverage). T-211 monthly job next (Wolf).
-4. T-212 DONE 15 Nov: Q2FY27 XBRL 5,242 filings / 2,904 symbols; raw swept to Drive.
-5. T-216 agy retry on DNS drops. T-209: raw `nse_shp_xbrl_universe` on Drive (27,307 files, md5-checked), local copy deleted 15 Nov.
+4. T-212, T-209 DONE 15 Nov (Q2FY27 XBRL 5,242 filings; SHP raw on Drive).
+5. T-216 agy retry on DNS drops.
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff: `reality_engine.scripts.store_diff`.
