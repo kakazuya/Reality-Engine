@@ -77,6 +77,7 @@ The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,
   8), `run` (Opus 5.5 medium via agy, strict one-JSON-line-per-grade, one re-ask), `decode` (per-set totals,
   per-question table, pairwise agreement).
 - `plugins/agy-worker/server/agy_core.py` + `runner.py` + `agy_worker_mcp.py` — `MODELS` allowlist
+  - 16 Nov (Shivam): no model is dropped. `plugins/agy-worker/server/agy_core.py` `MODELS` also holds `gemini-3.8-flash-medium` (the old Antigravity account lists only Flash, no Argon or Hydrogen); the model in use is the one Shivam names, stored in `plugins/agy-worker/runtime/current_model.txt` by `set_current_model()` and read by `current_model()` at each start (`agy_worker_mcp.py` `start_worker` takes it when no model is passed). Now: `gemini-3.8-flash-medium`. Restart the agy-worker MCP server to load the change.
   (`gemini-4-argon-high` default from 14 Nov until its weekly limit is used, then `gemini-4-hydrogen-high`;
   `claude-opus-5-5-medium`; high effort only; Flash 3.8 dropped 14 Nov) and a `model`
   argument on `start`/`resume`; anything else is refused.

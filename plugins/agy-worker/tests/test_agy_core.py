@@ -67,10 +67,15 @@ def test_model_allowlist_refuses_anything_else(tmp_path, monkeypatch):
     refused = agy_core.start("brief", use_worktree=False, model="gpt-9-ultra")
     assert refused["ok"] is False and "allowlisted" in refused["error"]
     assert agy_core.check_model(agy_core.MODEL) is None
-    # Shivam 14 Nov: Argon high first (never xhigh/max), Hydrogen high after; Flash 3.8 refused
+    # Shivam 14 Nov: Argon high first (never xhigh/max), Hydrogen high after; 16 Nov: Flash 3.8 medium stays allowed
     assert agy_core.MODEL == "gemini-4-argon-high" and "gemini-4-hydrogen-high" in agy_core.MODELS
     assert agy_core.check_model("gemini-4-argon-medium") is not None and agy_core.check_model("gemini-4-hydrogen-xhigh") is not None
-    assert agy_core.check_model("gemini-3.8-flash-medium") is not None
+    assert agy_core.check_model("gemini-3.8-flash-medium") is None and agy_core.check_model("gemini-3.8-flash-high") is not None
+    monkeypatch.setattr(agy_core, "RUNTIME", tmp_path / "rt_model")
+    assert agy_core.current_model() == agy_core.MODEL                      # no file: the default
+    assert agy_core.set_current_model("gpt-9-ultra") is not None and agy_core.current_model() == agy_core.MODEL
+    assert agy_core.set_current_model("gemini-3.8-flash-medium") is None
+    assert agy_core.current_model() == "gemini-3.8-flash-medium"           # the model Shivam named is used
 
     monkeypatch.setattr(agy_core, "RUNTIME", tmp_path / "runtime")
     job = agy_core.job_dir("20261113T000000Z-abcdef01")

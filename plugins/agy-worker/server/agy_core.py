@@ -1,7 +1,10 @@
 """agy-worker core (T-112): run Antigravity CLI (`agy`) coding jobs headless in a Wolf- worktree, like dsh-worker.
 
 The model is the job's own, allowlisted to MODELS (Shivam's ruling 13 Nov 2026: coding stays on
-gemini-4-argon-high first, then gemini-4-hydrogen-high (14 Nov; Flash 3.8 dropped), the T-205 answer arm uses gemini-4-hydrogen-high, the blind grader claude-opus-5-5-medium).
+gemini-4-argon-high first, then gemini-4-hydrogen-high (14 Nov), the T-205 answer arm uses gemini-4-hydrogen-high, the blind grader claude-opus-5-5-medium).
+Shivam 16 Nov: no model is dropped for good. gemini-3.8-flash-medium stays allowlisted (his other Antigravity account
+has only Flash), and the model in use is the one he names: it is kept in ``<runtime>/current_model.txt`` and read by
+``current_model()`` at every start; without that file the default is MODEL.
 One job = one `agy -p <brief>` run with `--output-format stream-json`, launched by a detached runner (runner.py) so
 it survives this server; the runner writes events.jsonl, then exit.json, then auto-commits the worktree diff. Status
 is parsed from events.jsonl only.
@@ -24,7 +27,8 @@ from pathlib import Path
 MODEL = "gemini-4-argon-high"  # Shivam 14 Nov: use up Argon first, high only (never xhigh/max)
 MODELS = {  # the only models a job may run (T-205 round 13); anything else is refused before a job is created
     "gemini-4-argon-high": "default for coding, answers and question search while its weekly limit lasts (Shivam 14 Nov)",
-    "gemini-4-hydrogen-high": "after Argon: coding, question search, T-205 answer arm (Shivam 14 Nov: Flash 3.8 dropped)",
+    "gemini-4-hydrogen-high": "after Argon: coding, question search, T-205 answer arm (Shivam 14 Nov)",
+    "gemini-3.8-flash-medium": "the account that has only Flash: question harvest, boilerplate code (Shivam 16 Nov; medium only)",
     "claude-opus-5-5-medium": "T-205 blind grader",
 }
 SERVER_DIR = Path(__file__).resolve().parent
@@ -58,6 +62,24 @@ def _save(job: dict) -> None:
     (job_dir(job["job_id"]) / "job.json").write_text(json.dumps(job, indent=1), encoding="utf-8")
 
 
+def current_model() -> str:
+    """The model Shivam last named (``<runtime>/current_model.txt``, one allowlisted id), else MODEL."""
+    try:
+        name = (RUNTIME / "current_model.txt").read_text(encoding="utf-8").strip()
+    except OSError:
+        return MODEL
+    return name if name in MODELS else MODEL
+
+
+def set_current_model(model: str) -> str | None:
+    """Record the model Shivam named; returns the refusal text when it is not allowlisted."""
+    refusal = check_model(model)
+    if refusal is None:
+        RUNTIME.mkdir(parents=True, exist_ok=True)
+        (RUNTIME / "current_model.txt").write_text(model + chr(10), encoding="utf-8")
+    return refusal
+
+
 def check_model(model: str) -> str | None:
     """``None`` when the job may run this model, else the refusal text (one line, names the allowlist)."""
     if model in MODELS:
@@ -66,8 +88,9 @@ def check_model(model: str) -> str | None:
 
 
 def start(brief: str, use_worktree: bool = True, base: str | None = None, timeout_seconds: int = 3600,
-          test_cmd: str | None = None, model: str = MODEL) -> dict:
+          test_cmd: str | None = None, model: str | None = None) -> dict:
     """Create the worktree, write the brief, launch the detached runner; returns at once."""
+    model = model or current_model()
     refusal = check_model(model)
     if refusal:
         return {"ok": False, "error": refusal}
@@ -145,7 +168,7 @@ def resume(job_id: str, message: str, timeout_seconds: int = 3600, model: str | 
     record that points at the old job's workspace, branch and conversation id. ``model`` overrides the old job's
     model (allowlisted, else refused); omitted keeps it."""
     old = _load(job_id)
-    model = model or old.get("model") or MODEL
+    model = model or old.get("model") or current_model()
     refusal = check_model(model)
     if refusal:
         return {"ok": False, "error": refusal}
@@ -246,7 +269,7 @@ def cancel(job_id: str, confirm: bool = False) -> dict:
 
 def quota() -> dict:
     """The account's Gemini and Claude/GPT limits left, from `agy -p /usage` (no model call)."""
-    r = subprocess.run([str(AGY), "-p", "/usage", "--model", MODEL, "--print-timeout", "60s"], capture_output=True,
+    r = subprocess.run([str(AGY), "-p", "/usage", "--model", current_model(), "--print-timeout", "60s"], capture_output=True,
                        text=True, encoding="utf-8", timeout=90, creationflags=CREATE_NO_WINDOW)
     rows = []
     for line in r.stdout.splitlines():

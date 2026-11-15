@@ -13,16 +13,16 @@ New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/r
 
 ## Models and keys
 - DeepSeek on `dsh` at max effort, off-peak only (peak Mon-Fri 06:30-09:30, 11:30-15:30 IST; read the clock yourself). Routing (10 Nov): Beam (`beam-free`) writes plumbing code any hour and grades read-only in peak; extraction judged by row precision goes to DeepSeek. Every branch: read-only grader, then Claude's tests + sample; merge with 0 right rows lost. Beam only while free [check: free_model_check]. No headless Opus unless Shivam says so. Go key 1 only (14 Nov). Beam may settle KPI/guidance rows scripts cannot (separate step; Opus code).
-- `agy` (14 Nov): `gemini-4-argon-high` until its weekly limit, then `gemini-4-hydrogen-high`; high only; in weekday DeepSeek peak hours coding goes to agy (15 Nov). Opus medium grades.
+- `agy`: run the model Shivam names (Argon high, Hydrogen high, `gemini-3.8-flash-medium`; none dropped, 16 Nov); default Argon, then Hydrogen; weekday DeepSeek peak hours: coding goes to agy. Opus medium grades.
 
 ## How we work
 - Claude reviews, workers build; Opus writes ~20-25% (design, tests, review, one working example). Briefs carry evidence (defect rows, file/function/line, a fast check), numbered steps, limits, pitfalls, budget and a stop rule; unknown method -> Opus prototypes first. Check a finished worker on Opus's own tests and sample, log, merge [check: worker_review] [check: merge_tests]. No pilot bank reasoning to workers. Page-reading subagents: batches of 8 pages, under 100k context, Haiku medium.
-- Lean: add nothing that does not stop a failure we have had. Max 4 code workers on the MSI (10 Nov) [check: code_worker_limit]; data jobs on idle machines. Branches merged or deleted within 24 h.
+- Stores (16 Nov): one company at a time; modular: small repair scripts per store part, no whole-store rebuild; defects+fixes in store-repair notes; Claude writes store code, DeepSeek/Flash boilerplate only. Lean: add nothing that does not stop a failure we have had. Max 4 code workers on the MSI (10 Nov) [check: code_worker_limit]; data jobs on idle machines. Branches merged or deleted within 24 h.
 - One task, one worker session (new worker at 1M context or a new task); Opus reviews each round. No live adviser calls to Claude. Tickets = in-scope work; rules here; ideas to `tasks/IDEA_BOX.md` (why, purpose, review trigger; Claude proposes promotion when due) (12 Nov).
 - Architecture (8 Nov): the author never checks own code. Every extracted row passes the independent `row_checks.py` layer (quote anchor, sector fit, own figure, reconciliation, scale): `verified` / `unverified` (served labelled) / `quarantined` (never served); unsure = no row. Releases gate on a hidden hold-out, rulings diff, tool budgets; ~60 rows/stratum hand-read. Score only on frozen sets (10 Nov): half of each new set's questions never drive fixes; an exam set (s20: micro/BSE-only/new sectors) gives the reported number. Merge only with zero right rows lost, zero wrong rows verified; structural rules, not per-company.
 - No docs, no merge; doc sweep + data inventory at session close, for Wolf, Eagle and every worker. [check: doc_gate]
 - Start files: STATE 4,000, this 8,000, AGENTS 150 lines. [check: doc_gate]
-- Every worker start names `permission`. [check: start gate] HP work is headless. [check: test_hp_headless] No session-length limit (9 Nov); done/pending notes in `tasks/STATE.md`.
+- Every worker start names `permission`. [check: start gate] No session-length limit (9 Nov); done/pending notes in `tasks/STATE.md`.
 - Live watch on every running job (finish, stall, errors); check real progress before reporting; review a finished worker at once. [check: T-050 stop hook]
 - A new task from Shivam becomes a ticket first (`task_board add`); commits on `main` name a ticket. [check: commit-msg]
 - Log every worker (`tasks/efficiency/worker_reviews.jsonl` -> `WORKER_REVIEW_LOG.xlsx`) and apply lessons to the next brief. [check: worker_review] Bring ranked ideas from measurements unprompted. RAM <90% or CPU <70% used = start useful work. Report compute waste. Decide what you can; never argue rulings.
@@ -31,7 +31,7 @@ New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/r
 
 ## Data and machines
 - Raw files live only on Drive (7 Nov): jobs download, write the database, delete the copy; check size and hash on Drive before deleting a local copy; test fetches may stay local until `raw_to_drive`. Kept local: `D:\RealityEngine\raw\user_research`.
-- OCR on the HP only, headless, only for pages with no or a jumbled text layer (10 Nov) (TextRecognizer 300 DPI first, stronger reader for low-confidence numbers). Until 15 Nov, MSI RAM short: run on the HP (`machines/HP_LAPTOP.md`), bring results back, delete the HP copy (10 Nov). No PostgreSQL for now. Never touch `Downloads\Telegram Desktop` (his brother's) or his personal Downloads folders.
+- HP laptop gone (16 Nov). OCR only for pages with no or a jumbled text layer; MSI route untested No PostgreSQL for now. Never touch `Downloads\Telegram Desktop` (his brother's) or his personal Downloads folders.
 
 ## Never
 - Print or copy keys; read `D:\Shivam_Private\Manual Dumps` or send it anywhere; put amounts in the repo or decision log. Push without his OK (given for merged main, 3 Nov). Use paid models (DeepInfra, Haiku beyond an approved run) without his OK.
