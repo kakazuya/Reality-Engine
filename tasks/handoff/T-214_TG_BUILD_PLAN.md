@@ -39,6 +39,8 @@ Ticket: T-214 (with T-178, T-215, T-216, T-213, T-113, T-025, T-141, T-111)
    chain as used for Blue Star / s10) restricted to FY2024-25+, script layers only; record per company: wall time,
    peak RAM, disk, pages by route (`no_figures` / `text_ok` / `needs_ocr` / `table_or_chart`), and how many table
    pages the XBRL already covers. Output `D:/RealityEngine/tg_build/pilot10_measure.csv`.
+   **Result 15 Nov:** all ten built and measured, 0 failed steps; command, columns, totals and medians are in the
+   Developer Guide's "T-214 step 3" bullet (`reality_engine/scripts/tg_measure_build.py`).
 4. **On-demand table-page reading** (T-214 step 2): a model reads a `table_or_chart` page only when an answer needs
    it; rows pass the independent row checks (T-113) before storage and are cached. Free readers first, DeepSeek on a
    failed check (ruling 10 Nov).

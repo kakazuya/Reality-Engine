@@ -2136,6 +2136,43 @@ sessions (about 43k fixed + 7k per sheet, 5-6 sheets per session). Working files
 `build_queue.csv` live in `D:/RealityEngine/tg_build/` (private, never GitHub); tier rules and the pre-build fix order
 are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
 
+- **T-214 step 3: the 10-company measured script-only build (15 Nov 2026).**
+  `reality_engine/scripts/tg_measure_build.py` runs one company at a time through the T-208 recipe above
+  (`make_profile` with `--window-start 2024-04-01 --compute-start 2019-01-01`, `docs_collect --profile`, then
+  `build --profile <json> --out <root>/cNN/cNN.db --part <part>` for the 13 parts), each step a subprocess with
+  `CREATE_NO_WINDOW` and no shell. No OCR, embedding or model read is run. Per step it records wall seconds, return
+  code and the peak RSS of the child tree (psutil, one sample a second); a tree over `--ram-gb` (default 4 GB) is
+  killed and recorded `ram_stop`, one over `--max-part-minutes` (default 40) is killed and the run stops. Each
+  company gets `<root>/cNN/` (`cNN_profile.json`, `pages.db`, `cNN.db`, `b_<step>.log` per step, `routes.csv`,
+  `parts.csv`, `cNN_measure.json`); the run writes `<root>/pilot10_measure.csv` (one row per company) and
+  `<root>/parts.csv` (company x step) and copies the measure CSV to `D:/RealityEngine/tg_build/pilot10_measure.csv`
+  (the ticket's accept path). A company whose measure JSON exists is reused, not rebuilt, unless `--force`:
+  ```
+  python -m reality_engine.scripts.tg_measure_build --root D:/RealityEngine/tg_build/measure10
+  python -m reality_engine.scripts.tg_measure_build --root D:/RealityEngine/tg_build/measure10 --only 1 --force
+  ```
+  Columns. Measure: `company, symbol, sector, raw_ok_files, raw_ok_mb, docs, pages`, the four routes
+  (`route_no_figures, route_needs_ocr, route_table_or_chart, route_text_ok`), `table_or_chart_share`,
+  `tc_pages_xbrl_covered, tc_xbrl_share` (a results document counts as XBRL-covered when its filing date is 15-100
+  days after a `fin_quarter_xbrl` period end the store holds), `store_mb, db_bytes` (db + WAL), the row counts of
+  `fin_quarter_xbrl, fin_quarter_printed, kpi_series, guidance, transcript_statement, shp_category, price_delivery`,
+  `wall_s, build_s, route_s, peak_rss_mb, failed, failed_tail5, log_dir`. Parts: `company, symbol, part, seconds,
+  rc, peak_rss_mb, ram_stop, timed_out, log, tail5` (`make_profile` and `docs_collect` are rows too: 15 steps per
+  company).
+  Result, the first ten companies of the queue, all 150 steps rc=0, no `ram_stop`, no timeout: 1,834 ok raw files /
+  4.36 GB -> 1,813 docs (the 21 `concall_audio_link` rows are not documents) and 24,925 pages -- 4,861
+  `no_figures`, 3,176 `needs_ocr` (12.7 %), 16,066 `table_or_chart`, 822 `text_ok`. **Per company, median
+  (max):** wall 263 s (374 s), of which the 15 recipe steps are 183 s (259 s) and the route measurement 81 s
+  (119 s); peak child RSS 339 MB (377 MB); store 17.4 MB (25.3 MB); pages 2,394 (4,747); docs 163 (352);
+  `table_or_chart` share 0.66 (0.76). Ten-company totals: 44.0 min wall, 165 MB of stores. **Table/chart pages the
+  XBRL already covers: 1,460 of 16,066 (9.1 %), per-company median 7 % (max 32 %)** -- the other 14,606 are the
+  batch's on-demand model-read pool, and the 12.7 % `needs_ocr` pages need an OCR/image-read budget. Sector keys
+  `make_profile` picked are recorded, not fixed: four companies `unknown`, the other six in a family. Findings for
+  the batch (not build failures): one store holds no `fin_quarter_xbrl` row at all (printed comparatives only) and
+  five have no `guidance` row.
+  Test: `python -m pytest -q reality_engine/tests/test_tg_measure_build.py` -> 6 passed (peak-RSS sampler on a fake
+  part, `ram_stop`, timeout, last-5-lines on failure, a `parts.csv` and a `pilot10_measure.csv` row).
+
 ## Answer arms, round 13 (T-205, 13 Nov 2026)
 
 Shivam's order: the seeded tool run FIRST, then the round-12 pack path answered by the same model, graded blind
