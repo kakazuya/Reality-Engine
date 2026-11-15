@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-15 15:30 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-15 18:30 IST (Wolf)
 History `docs/state_history/` (previous: `STATE_2026-11-15_1530.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -8,6 +8,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-15_1530.md`); method `do
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go; Kilo key 1 exhausted, Dots `@kilo2` quota ran out 12 Nov 00:31.
 - T-188 reader bake-off (30 frozen2 pages, P/R): Haiku 91.1/95.2, Dots image 83.8/89.6, DeepSeek image 82.9/75.0, GLM-OCR local 80.8/64.4; details `docs/V2_SCHEMA_CONTRACT.md` s14 and `D:/RealityEngine/v2/reference_pages_frozen2/`.
 - T-189 AUROPHARMA (12 Nov): Haiku 81.2%, DeepSeek 76.8% (`reports/2026-11-12_four_model_answer_test.html`).
+- T-178 (15 Nov, Wolf): first-build re-key, 30 deck reference pages: arm (c) recall 47.4% vs script (a) 26.9%, frozen precision 78.3% (<95%) -> audit-only, no T-214 salvage layer. `reality_engine/scripts/t178_salvage.py`, test `t178_salvage.py`, xlsx `.tmp/t178/`; AR-PDF fy check needs raw_store outside the sandbox.
 
 ## Merged 11 Nov
 T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 position check v2, T-186 `pilot3_fact` (preferred figure + source + known_at + inputs), T-187 guidance round 5, T-184 run ledger, T-188 HP OCR arm.
@@ -17,7 +18,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 0. Roles: DeepSeek builds; agy `gemini-4-argon-high` first, then Hydrogen high (high only); Haiku reads images; Opus medium grades blind. Go key 1 only.
-1. T-214 Telegram build: plan + pre-build fix order in `tasks/handoff/T-214_TG_BUILD_PLAN.md`; queue `D:/RealityEngine/tg_build/build_queue.csv` (93: tiers 11/6/76, PEAD score via Haiku). First: T-178 salvage (Wolf), T-215 raw_to_drive delete scope (would delete 603 GB), 10-company measured build.
+1. T-214 Telegram build: plan + pre-build fix order in `tasks/handoff/T-214_TG_BUILD_PLAN.md`; queue `D:/RealityEngine/tg_build/build_queue.csv` (93: tiers 11/6/76, PEAD score via Haiku). Next: T-215 raw_to_drive delete scope (would delete 603 GB), 10-company measured build.
 2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0 (not blind, report s5b). Next checks (theme calls, C4 figure) measured on Telegram stores with frozen halves.
 3. T-210 MERGED 15 Nov: factor_deep peak 0.64 GB; results `docs/research/T-210_factor_deep_study.md`, outputs `D:/RealityEngine/research/t210_2026-11-14/`. Sparse arm flawed (complete-case coverage). T-211 monthly job next (Wolf).
 4. T-212 DONE 15 Nov: Q2FY27 XBRL 5,242 filings / 2,904 symbols; raw swept to Drive.

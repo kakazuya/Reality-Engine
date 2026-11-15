@@ -32,3 +32,11 @@ Evidence: reference pages in first build = 30 deck pages only (results/AR refere
 Pitfalls: the DBs are 10-22 GB on C: — never copy them, never write to them; keep RAM < 2 GB (stream rows, no pandas of whole tables); MSI RAM is short. Do not touch `D:/RealityEngine/tg_build` except reading build_queue.csv.
 Stop if: label_map/periods APIs can't take first-build labels without code changes > 100 lines (report and stop); or any query runs > 10 minutes.
 Budget: 3 hours, DeepSeek max effort.
+
+## Result (2026-11-15, Wolf)
+- Script `reality_engine/scripts/t178_salvage.py`, test `reality_engine/tests/test_t178_salvage.py` (3 passed), xlsx `.tmp/t178/t178_first_build_rekey.xlsx` (`arms`, `fy_check`, `coverage`, `decision`).
+- Arm (c) recall 47.4% (809/1,708) vs arm (a) 26.9% (459/1,708) on the 30 deck pages, but frozen precision (c) 78.3% < the 95% bar -> **audit-only**: no salvage layer, no re-key job for T-214. Union (d): recall 49.8%, precision 54.6%, 23 same-row value conflicts.
+- Arm (a) reads only 8 of the 30 deck pages (the round-10 script extracts no table on the other 22 and the stored `run_script_r10` has rows for 7). Arm (c) keeps 1,075 of 1,086 stored facts (99.0% verbatim, 77.4% period-resolved, 29.4% keyed to a metric); 94.4% of its printed values are among the page's reference values, so the loss is keying (the model's metric/period split is not the page's row/column grid), not a misread number.
+- Fiscal year: 200 random `ar_docs` (seed 178), 127 derivable from the report's own quoted year phrases: 9/120 wrong on `filing_month_rule` (7.5%), 0/7 on `fiscal_period_end`. No AR PDF is local on this machine and rclone is blocked in the dsh sandbox, so `fy_derived_from_pdf_text` is 0; the script's PDF-text arm needs a `raw_store` fetch on an unsandboxed host.
+- Queue coverage since 2024-04-01 (93 symbols, counts only): deck 512 docs / 15,400 pages / 193,405 final facts; annual reports 249 docs / 49,463 pages / 310,099 facts; calls 233 `status='ok'` docs / 20,881 items.
+- The ticket's accept path `D:/RealityEngine/reports/2026-11-11_t178_first_build_rekey.xlsx` is outside the worker sandbox; copy `.tmp/t178/t178_first_build_rekey.xlsx` there before running the accept command.

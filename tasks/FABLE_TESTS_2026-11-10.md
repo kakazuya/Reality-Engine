@@ -190,6 +190,7 @@ errors.
 - **Also measured:** share of `ar_docs` whose fiscal year is wrong (re-derive from the text, 200 random reports),
   because a salvaged fact with the wrong year is worse than no fact.
 - **Accept:** `D:/RealityEngine/reports/2026-11-11_t178_first_build_rekey.xlsx` with the four arms and the decision.
+- **Result (15 Nov, Wolf):** audit-only. Arm (c) recall 47.4% (809/1,708) beats arm (a) 26.9% (459/1,708), but frozen precision is 78.3% against the 95% bar; union (d) recall 49.8%, precision 54.6%, 23 same-row conflicts. Arm (a) reads only 8 of the 30 deck pages. 94.4% of (c)'s printed values occur among the page's reference values, so the loss is keying (the model's metric/period split is not the page's row/column grid), not a misread number. Script `reality_engine/scripts/t178_salvage.py`, test `reality_engine/tests/test_t178_salvage.py`, xlsx `.tmp/t178/`. Fiscal-year check (200 `ar_docs`, seed 178): 127 derivable from the report's own quotes, 9/120 (7.5%) wrong on `filing_month_rule`, 0/7 on `fiscal_period_end`; the PDF-text arm needs a `raw_store` fetch outside the dsh sandbox.
 
 ## 3. T-179: does removing raw SQL from the answering model help?
 
