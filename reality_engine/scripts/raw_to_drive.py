@@ -9,7 +9,7 @@ Four steps, each resumable, each recorded in the manifest (a small SQLite file, 
     upload   ``rclone copy --files-from`` of the missing files to ``gdrive:InfoDiffusion_archive/msi_raw/<root>/<rel>``
              with ``--checksum``, then a fresh listing of ``msi_raw`` re-runs ``compare``
     delete   removes a local file only when its md5 and size are on Drive (``--delete``; the default lists what it
-             would remove). Never touches a database file.
+             would remove). Only files under this call's ``--root`` folders (T-215). Never touches a database file.
 
     python -m reality_engine.scripts.raw_to_drive --root D:/RealityEngine/raw --root D:/RealityEngine/pdfs \\
         --listing-dir D:/RealityEngine/drive_index --manifest D:/RealityEngine/drive_index/raw_to_drive.db hash compare
@@ -110,15 +110,25 @@ def step_compare(con: sqlite3.Connection, listing_dir: Path) -> None:
           f"({(con.execute('SELECT SUM(size) FROM local_file WHERE status=?', ('missing',)).fetchone()[0] or 0) / 1e9:.1f} GB)")
 
 
+def _norm(path: str) -> str:
+    return os.path.normcase(os.path.normpath(os.path.abspath(path)))
+
+
+def _under(path: str, folders: list[str]) -> bool:
+    """True when ``path`` is one of ``folders`` (normalised) or inside one, on a folder boundary: ``raw_other`` is
+    not under ``raw`` (T-215)."""
+    p = _norm(path)
+    return any(p == f or p.startswith(f.rstrip(os.sep) + os.sep) for f in folders)
+
+
 def _kept(path: str, prefixes: list[str]) -> bool:
-    p = os.path.normcase(os.path.normpath(path))
-    return any(p.startswith(k) for k in prefixes)
+    return _under(path, prefixes)
 
 
 def step_upload(con: sqlite3.Connection, listing_dir: Path, roots: list[str], bwlimit: str,
                 keep: list[str] | None = None) -> None:
     """``keep``: path prefixes not uploaded either (the research library is already on the shared Drive)."""
-    prefixes = [os.path.normcase(os.path.normpath(k)) for k in (keep or [])]
+    prefixes = [_norm(k) for k in (keep or [])]
     by_root = {Path(r).name: r for r in roots}
     for name, root in by_root.items():
         rels = [r for (p, r) in con.execute("SELECT path, rel FROM local_file WHERE status='missing' AND root=? "
@@ -143,11 +153,18 @@ def step_upload(con: sqlite3.Connection, listing_dir: Path, roots: list[str], bw
     step_compare(con, listing_dir)
 
 
-def step_delete(con: sqlite3.Connection, really: bool, keep: list[str] | None = None) -> None:
-    """``keep``: path prefixes never deleted (Shivam 7 Nov: the research library ``raw/user_research`` stays local)."""
-    prefixes = [os.path.normcase(os.path.normpath(k)) for k in (keep or [])]
+def step_delete(con: sqlite3.Connection, really: bool, keep: list[str] | None = None,
+                roots: list[str] | None = None) -> None:
+    """Delete only files under ``roots`` (the ``--root`` folders of this call; T-215: the manifest keeps every root
+    ever hashed, and a global delete would have removed 603 GB). ``keep``: path prefixes never deleted (Shivam 7 Nov:
+    the research library ``raw/user_research`` stays local)."""
+    if not roots:
+        raise ValueError("step_delete needs the --root folders to delete from")
+    folders = [_norm(r) for r in roots]
+    prefixes = [_norm(k) for k in (keep or [])]
     rows = [(p, s) for p, s in con.execute(
-        "SELECT path, size FROM local_file WHERE status='on_drive' AND deleted_at IS NULL") if not _kept(p, prefixes)]
+        "SELECT path, size FROM local_file WHERE status='on_drive' AND deleted_at IS NULL")
+        if _under(p, folders) and not _kept(p, prefixes)]
     total = sum(s for _, s in rows)
     if not really:
         print(f"delete (dry run): {len(rows)} files, {total / 1e9:.1f} GB would be removed; pass --delete")
@@ -190,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
         elif step == "upload":
             step_upload(con, Path(a.listing_dir), a.root, a.bwlimit, a.keep)
         else:
-            step_delete(con, a.delete, a.keep)
+            step_delete(con, a.delete, a.keep, a.root)
     return 0
 
 
