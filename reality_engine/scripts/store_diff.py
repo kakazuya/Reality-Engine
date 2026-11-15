@@ -37,7 +37,8 @@ from reality_engine.db.readonly import connect_ro
 
 ROOT = Path(__file__).resolve().parents[2]
 LIMIT = 10                      # sampled rows per table in the report
-SKIP_TABLES = {"row_check", "row_check_fail"}      # verdicts: compared through their serving effect, not row ids
+SKIP_TABLES = {"row_check", "row_check_fail",      # verdicts: compared through their serving effect, not row ids
+               "part_stamp", "schema_meta"}       # T-218 build stamps and the migration time: not store rows
 IGNORED_COLUMNS = {"id", "row_id", "revision_of"}  # intra-store pointers a rebuild renumbers
 
 # The key of one row per table (T-201).  A column named here is the row's identity across the two builds; every

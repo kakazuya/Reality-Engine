@@ -642,7 +642,7 @@ The dry run prints round 1's units, sizes and tiers and calls no model. A real r
 
 ### O. pilot3 database (T-049)
 
-`reality_engine/pilot3/` builds ONE SQLite database by scripts only (no model, no network), so the pilot questions are answered by plain SQL; it began with KEC, BAJFINANCE and HINDALCO, and since T-056/T-090 the `pilot3_*` tools serve every company the chosen store's `company` table holds (T-203: the store routed by `REALITY_PILOT3_STORES`, or the pinned `REALITY_PILOT3_DB`). Part A (the core, this section) is `schema.py` (DDL), `registry.py`, `stores.py`, `ratios.py`, `queries.py`, `oracle.py`, `call_dates.py` (transcript call dates, used by `registry.py` and `kpi.py`) and `build.py`; part B (`kpi.py`, `transcripts.py`, `lexicon/`) is a separate worker's; part D is `statements.py` (below). `__init__.py` finds the read-only stores (`REALITY_DATA_ROOT`, else this checkout's `reality_engine/data`, else the main checkout's) and sets `REALITY_DATA_ROOT` before `gap_loop.prepare` is imported.
+`reality_engine/pilot3/` builds ONE SQLite database by scripts only (no model, no network), so the pilot questions are answered by plain SQL; it began with KEC, BAJFINANCE and HINDALCO, and since T-056/T-090 the `pilot3_*` tools serve every company the chosen store's `company` table holds (T-203: the store routed by `REALITY_PILOT3_STORES`, or the pinned `REALITY_PILOT3_DB`). Part A (the core, this section) is `schema.py` (DDL), `registry.py`, `stores.py`, `ratios.py`, `queries.py`, `oracle.py`, `call_dates.py` (transcript call dates, used by `registry.py` and `kpi.py`), `part_stamp.py` (T-218: one stamp per finished part, written by `build.py`) and `build.py`; part B (`kpi.py`, `transcripts.py`, `lexicon/`) is a separate worker's; part D is `statements.py` (below). `__init__.py` finds the read-only stores (`REALITY_DATA_ROOT`, else this checkout's `reality_engine/data`, else the main checkout's) and sets `REALITY_DATA_ROOT` before `gap_loop.prepare` is imported.
 
 ```bash
 python -m reality_engine.pilot3.build --out .tmp/pilot3.db --part all    # registry | ocr | pages | stores | comparatives | preferred | ratios | extract | kpi | transcripts | segments | guidance | notes | checks | all; 484 s on 4 Nov 2026 (23,558 pages) before the ocr part; a first OCR run adds up to --ocr-max-seconds (540)
@@ -2174,6 +2174,66 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   five have no `guidance` row.
   Test: `python -m pytest -q reality_engine/tests/test_tg_measure_build.py` -> 6 passed (peak-RSS sampler on a fake
   part, `ram_stop`, timeout, last-5-lines on failure, a `parts.csv` and a `pilot10_measure.csv` row).
+
+## Modular store repair (T-218, 16 Nov 2026)
+
+Shivam 16 Nov: repair one part of a built store; never rebuild the whole store. `reality_engine/pilot3/part_stamp.py`
+writes one `part_stamp` row after every finished part (`part`, `code_hash`, `out_hash`, `inputs`, `built_at`,
+`seconds`, `git_head`), and `build.py` stamps the part it ran (`extract` stamps `kpi` and `transcripts`). `code_hash`
+covers `PART_FILES`: the part's module, the lexicon and map files it reads, and the helpers that decide its rows. A
+shared file is hashed by the functions the part uses (`../gap_loop/prepare.py::store_copies,_read_sqlite`), so a
+helper fix marks only the parts that call it; shared plumbing is left out, so a migration does not mark every store
+stale. `out_hash` is an order-free hash of `PART_TABLES` (a `table-prefix*` drops the columns a later part writes);
+`inputs` records the `out_hash` of each upstream part. `stale()` lists a part as `never stamped`, `code changed`,
+`<part> output changed` or `after <part>`.
+
+`reality_engine/scripts/store_repair.py` runs the named part and the parts that read from it, in build order:
+
+```bash
+python -m reality_engine.scripts.store_repair --stale --root D:/RealityEngine/tg_build
+python -m reality_engine.scripts.store_repair --baseline auto --root <root> [--stores c01]
+python -m reality_engine.scripts.store_repair --part guidance --root <root> --stores c01,c02 [--no-dependants] [--note R-003]
+python -m reality_engine.scripts.store_repair --part stale --root <root> --stores c01 [--approve-loss]
+python -m reality_engine.scripts.store_repair --accept <run id> --root <root> --stores c01
+python -m reality_engine.scripts.store_repair note add|set|list ...
+```
+
+- `--baseline <commit|auto>` stamps a store built before stamps existed with that commit's code. `auto` reads the
+  store file's modified time, so give the commit when the file was touched since the build.
+- `--part` needs `--stores`: one company at a time. A part runs when it is named, when it is stale at its turn, or when
+  an earlier part that ran rewrites one of its tables (`part_stamp.rewrites`: `stores` -> `preferred`, `kpi` ->
+  `segments`). `--no-dependants` runs the named parts only; `--part stale` re-runs what `--stale` lists.
+- Gate: a failed part, or any table with a removed row or a lost served row, puts the store back and keeps the result
+  as `repair/<run>/after.db` + `diff.json`, so `--accept <run id>` can put it in place after a hand-read.
+  `--approve-loss` skips the row gate.
+- `note add|set|list` keeps one entry per defect under `tasks/store_repair/` (`notes.jsonl` plus a generated
+  `INDEX.md`); stores are named by build folder, never by company. Every repair and accept appends one line to
+  `<root>/repair_log.jsonl`; database copies are kept for the 2 newest runs per store.
+- First use on the ten measured stores in `D:/RealityEngine/tg_build/measure10`, baselined at the commits they were
+  built from (c01-c07 `e48b848bd4`, c08-c10 `7616ee321c`): `--stale` listed exactly `profile` (fix C) and `stores`
+  (fix A) with their readers. c02 ran `profile` + `stores` + `preferred`, skipped 12 parts and took 45.5 s against the
+  263 s median full build, diff empty. The first c02 attempt was REFUSED: `stores` rewrote 450 `fin_quarter_xbrl` rows
+  and `preferred` had been skipped, so its windows would have been lost; that is why `rewrites` exists. c01 with all
+  15 parts forced: 187.7 s, diff empty (a rebuild is deterministic). c04: 135.2 s, 7 `kpi_series` rows added, 0
+  removed. c03, c05, c06: 33-36 s, diff empty.
+- Tests: `python -m pytest -q reality_engine/tests/test_store_repair.py` -> 13 passed (fixture stores only, a fake
+  step runner: stamps, stale reasons, baseline, rewrites, the skip rule, add-only kept, lost row refused and
+  accepted, failed part restored, lock, notes).
+
+### Question bank (T-217, 16 Nov 2026)
+
+`reality_engine/scripts/tg_questions.py` builds the investor-question bank for the Telegram queue: `harvest` runs one
+agy job per company (`gemini-3.8-flash-medium`, cwd `D:/RealityEngine/tg_build/questions_raw`; only the company name
+and exchange symbol are sent), `load` re-reads the raw JSON files and verifies the links, `check` passes a company at
+>= 20 stored questions and >= 5 verified found, `export` writes the Excel workbook. The script, not the model, decides
+`found` vs `found_unverified`: a `found` question keeps that kind only when its page loads and names the company; a
+PDF on the company's own site is taken on its address. A `created` question without `grounding_fact` or
+`data_needed` is dropped and counted, every second question per kind is frozen by hash (T-172), and `word_overlap` is
+stored as a hand-read hint only. Trial on queue positions 1-3: 46/44/47 questions, 441-884 s and 190k-393k tokens per
+company, 121/49/78 tool calls; position 3 had only 2 verified found questions because the model gave invalid YouTube
+links, so the prompt was tightened. The bank (`questions.db`, the Excel export) lives on D:, and no company list is
+written in the repo. Test: `python -m pytest -q reality_engine/tests/test_tg_questions.py` -> 7 passed (injected
+fetcher and runner: queue, name tokens, validation, freezing, load/summarise, fenced JSON, one harvest run).
 
 ## Answer arms, round 13 (T-205, 13 Nov 2026)
 
