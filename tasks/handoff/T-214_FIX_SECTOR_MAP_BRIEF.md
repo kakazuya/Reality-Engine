@@ -1,0 +1,11 @@
+# T-214 fix C: sector key `unknown` for mapped-able industries
+
+Ticket: T-214
+Goal: fewer queue companies get sector `unknown` from `make_profile`, using data already held (no network).
+Files: `reality_engine/pilot3/make_profile.py` (~150-160, the industry lookup), `reality_engine/pilot3/sector_map.yaml` (line ~237 lists "Software Products" as unknown; header comment lines 7-9 is stale), tests for make_profile/sector map. Source read-only: `reality_engine/data/equity_intelligence.db` (`company_industry` ~2,055 rows, `master_companies.industry`, `master_industry`), queue `D:/RealityEngine/tg_build/build_queue.csv` (PRIVATE: counts only, no names in repo files or your answer).
+Steps: 1) Script (in `.tmp/`): for the 93 queue ISINs print the industry value each carries from every held source and the sector key make_profile gives; group by industry value with counts. 2) For each industry value that maps to `unknown` but clearly fits an existing sector family, add the mapping in sector_map.yaml (e.g. Software Products -> it_services; Film Production Distribution & Exhibition stays as is unless a family fits). Do NOT invent new sector families. 3) Where `company_industry` has no row, add a fallback order in make_profile to other held industry fields if they exist (list the fields you found; "General Diversified" is not a usable value). 4) Tests: each new mapping; fallback order; an unmapped value still returns `unknown`. 5) Report before/after count of `unknown` on the 93 and the list of industry VALUES (not companies) still unmapped, and how many have no industry in any held source (needs a fetch). 6) Fix the stale yaml comment; DEVELOPER_GUIDE line.
+Accept: `python -m pytest -q reality_engine/tests -k "make_profile or sector"` passes; before/after counts in the final answer; pilot10 companies' sector keys unchanged (check with make_profile on the pilot10 profile symbols; list any change).
+Evidence: diagnosis 15 Nov: 38/93 unknown = 20 with no `company_industry` row + 18 with an unmapped industry; unknown stores hold 62-132 KPI rows vs 357-1,417 in labelled ones.
+Pitfalls: a wrong sector is worse than `unknown` (sector-fit row checks would verify wrong rows): map only unambiguous industries, leave the rest.
+Stop if: fewer than 5 of the 38 can be mapped from held data (report; the fix is then a taxonomy fetch).
+Budget: 90 minutes.
