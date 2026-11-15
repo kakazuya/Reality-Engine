@@ -1,5 +1,7 @@
 # HP laptop
 
+> **16 Nov 2026 00:50 IST: access to this laptop has ended (Shivam).** Before it ended Wolf deleted the project data under `C:\RE` (data, jobs, t154, raw, t102, db, sandbox, answers, out, OCR test folders, bench, cap, repo) and removed the user environment variables `OPENCODE_GO_API_KEY`, `OPENCODE_GO_API_KEY_2`, `CLAUDE_CODE_OAUTH_TOKEN`. Left: tool installs (dotnet, Python, node, OCR models, textrec builds), helper scripts and logs, and the `.dsh` / `.gemini` profile folders. Nothing below can be run any more; OCR for pages without a text layer needs a new route (RapidOCR on the MSI CPU or Haiku image reading, untested for this use).
+
 HP OmniBook 5, Windows 11 on ARM64, Snapdragon X with 8 cores, 16 GB. Shivam may be using it, and access is agreed until 15 Nov 2026 (Shivam, 2 Nov).
 
 ## Headless rule (Shivam, 1 Nov 2026)
