@@ -21,7 +21,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0 (not blind, report s5b). Next checks (theme calls, C4 figure) measured on Telegram stores with frozen halves.
 3. T-210 MERGED 15 Nov: factor_deep peak 0.64 GB; results `docs/research/T-210_factor_deep_study.md`, outputs `D:/RealityEngine/research/t210_2026-11-14/`. Sparse arm flawed (complete-case coverage). T-211 monthly job next (Wolf).
 4. T-212 DONE 15 Nov: Q2FY27 XBRL 5,242 filings / 2,904 symbols; raw swept to Drive.
-5. T-216 agy retry on DNS drops. T-209: raw `nse_shp_xbrl_universe` (325 MB) upload running 15 Nov 16:30; delete after md5 check.
+5. T-216 agy retry on DNS drops. T-209: raw `nse_shp_xbrl_universe` on Drive (27,307 files, md5-checked), local copy deleted 15 Nov.
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff before a store merge: `reality_engine.scripts.store_diff` (DEVELOPER_GUIDE).
