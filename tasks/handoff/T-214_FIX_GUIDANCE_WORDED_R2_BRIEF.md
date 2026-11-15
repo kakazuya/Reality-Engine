@@ -2,7 +2,7 @@
 
 Ticket: T-214
 Goal: round 1 (your branch, commits fc9e4bfe + e2a9a5b8, checked out here) added 71 rows on five stores; Opus hand-read them: 18 right, 53 wrong (25%). Keep the drop counters and the refusal reading; tighten the worded path and the question-metric path until the added rows are at least 85% right on this graded set, with 0 existing rows removed.
-Files: `reality_engine/pilot3/guidance.py`, `reality_engine/tests/test_pilot3_guidance.py`; graded rows `.tmp/guidance_added_graded_wolf.csv` (copied into this worktree's `.tmp/`; columns row, store, metric, target_period, grade, text).
+Files: `reality_engine/pilot3/guidance.py`, `reality_engine/tests/test_pilot3_guidance.py`; graded rows `D:/RealityEngine/tg_build/measure10/guidance_added_graded_wolf.csv` (read-only; columns row, store, metric, target_period, grade, text).
 Evidence (wrong classes, with real rows):
 1. Past/explanatory sentence with a forward-tense tail: "Though the production and sales have normalized in Q2FY25, ... resulted in lower-than-expected revenue growth and profitability in Q1FY25." (6 rows)
 2. Analyst question without '?' or analyst speech: "So, in this year also, are we going to see that Q4 is going to be stronger..." ; "Sales guys have been given way more aggressive target than you are even telling me it's 20."
