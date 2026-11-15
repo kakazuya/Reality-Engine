@@ -632,7 +632,7 @@ python -m reality_engine.v2.label_map --cells-dir <v2 store dir> \
 The cells store is built first with `python -m reality_engine.v2.build_cells --store <pilot3.db> --out <dir>`
 (section 10). A company file is named by its ISIN; `company_family` places it through the same
 `company_industry` -> `sector_map.yaml` path as `make_profile`, with `master_companies.industry` as the second
-tier.
+tier and the BSE industry on `board_meetings` as the third (T-214).
 
 **Rule 1 — OCR repair and whole-label matching (v4).** OCR spellings already seen in the cells are repaired
 first, one token at a time, through an explicit table (`liabi6ties`/`liabiities`/`fiabilities` -> `liabilities`,
@@ -917,10 +917,10 @@ insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrou
 asset_management - the last added in v6 for the AMC AUM mix) plus
 cement, retail, airlines, paints_chemicals, consumer_durables, jewellery_lifestyle, hotels, ports_logistics, mining,
 tyres_auto_ancillary, telecom, asset_management, metals_ferrous, utilities_power, healthcare_hospitals, realty and
-textiles_home. Of the 191 basic industries, 135 map and 56 stay `unknown`; none of those 56 is used by a company in
-`pilot10.db`, `p20/p20new.db`, `u8/u8.db` or `q12/q12.db` (63 company rows, every one now has a family; the
-`master_industry` tier covers TITAN, TRENT, ULTRACEMCO, SUNPHARMA and WELSPUNLIV, which have no `company_industry`
-row).
+textiles_home. Of the 191 basic industries, 139 map and 52 stay `unknown` (T-214, 15 Nov 2026); none of those 52 is
+used by a company in `pilot10.db`, `p20/p20new.db`, `u8/u8.db` or `q12/q12.db` (63 company rows, every one now has
+a family; T-214 re-checked: 0 sector changes on those rows; the `master_industry` tier covers TITAN, TRENT,
+ULTRACEMCO, SUNPHARMA and WELSPUNLIV, which have no `company_industry` row).
 
 **Measured 10 Nov 2026 (v8.1)** on `D:/RealityEngine/v2/p20_r4` (read-only, 10 company files, 74,486 `table_cell`
 rows) and the `kpi_series` of `pilot10.db`, `p20/p20new.db`, `u8/u8.db`, `q12/q12.db` and `n10/n10.db` (34,910 rows;

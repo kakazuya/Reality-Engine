@@ -46,13 +46,15 @@ Change a rule only with a measurement that supports the change, and note it in `
   reports the year, and an insurer's ROEV and VNB margin stay the year's (a roll-forward over the year).
 - The taxonomy -> family map is `reality_engine/pilot3/sector_map.yaml`, read by `make_profile.py` and
   `reality_engine/v2/label_map.py` (not under `lexicon/`, where every yaml is a KPI lexicon). It lists all 191 basic
-  industries of `company_industry`: 135 map to one of 27 families and 56 are an honest `unknown` (common lexicons
-  only). By ISIN 1,620 of the 2,041 labelled ISINs (79.4%) are in a family and 421 (20.6%) unknown; across the 5,358
-  active companies 1,638 (30.6%) are in a family (1,565 by current ISIN, 9 by a historical ISIN, 64 by the
-  master-industry tier), 3,720 (69.4%) unknown and 3,309 (61.8%) have no taxonomy row at all, mostly BSE-only (T-133
-  remap, 9 Nov 2026). The
+  industries of `company_industry`: 139 map to one of 27 families and 52 are an honest `unknown` (common lexicons
+  only; T-214 returned Software Products, Explosives, Investment Company and Plastic Products - Consumer to a family,
+  15 Nov 2026). By ISIN 1,669 of the 2,041 labelled ISINs (81.8%) are in a family and 372 (18.2%) unknown; across the
+  5,358 active companies 1,784 (33.3%) are in a family (1,612 by current ISIN, 9 by a historical ISIN, 64 by the
+  master-industry tier, 99 by the BSE industry on `board_meetings`), 3,574 (66.7%) unknown and 3,210 (59.9%) have no
+  taxonomy row at all, mostly BSE-only. The
   label is looked up by every ISIN and then by the symbol (14 labels rescued); `master_companies.industry` is a
-  second tier only where the taxonomy has nothing, and only for names that map cleanly (usable for 495 of 5,358).
+  second tier only where the taxonomy has nothing, and only for names that map cleanly (usable for 495 of 5,358),
+  then a single BSE industry value from `board_meetings` (46 clean names).
 
 ## 6. Models only where the rules are unsure
 - Rule-based readers mark their confidence. Only low-confidence rows go to a model: a sentence with two figures, a

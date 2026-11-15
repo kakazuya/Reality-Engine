@@ -1,14 +1,20 @@
-# Exchange taxonomy (company_industry, joined by ISIN) -> pilot3 lexicon sector (T-094, T-133).
+# Exchange taxonomy (company_industry, joined by ISIN) -> pilot3 lexicon sector (T-094, T-133, T-214).
 # Read by make_profile.py and reality_engine/v2/label_map.py.  Keep it out of lexicon/: every yaml there is read
 # as a KPI lexicon.
 #
 # basic_industry is tried first, then industry; a name listed as `unknown` has no lexicon family and
 # builds on the common lexicons only, and a name not listed at all is `unknown` too.  This file lists all
-# 191 basic industries of company_industry so the gap is visible, not guessed: 135 map to one of
-# the 27 families the label dictionary carries, 56 are unknown and no pilot company
-# (pilot10, p20, u8, q12) has any of them.
+# 191 basic industries of company_industry so the gap is visible, not guessed: 139 map to one of
+# the 27 families the label dictionary carries, 52 are unknown and no pilot company
+# (pilot10, p20, u8, q12) has any of them (T-214, 15 Nov 2026: Software Products, Explosives, Investment Company
+# and Plastic Products - Consumer left the unknown list).
 #
 # Families: bank, nbfc, insurance_life, auto_oem, consumer_internet, fmcg, it_services, metals_nonferrous, metals_ferrous, epc_capital_goods, pharma, cement, retail, airlines, paints_chemicals, consumer_durables, jewellery_lifestyle, hotels, ports_logistics, mining, tyres_auto_ancillary, telecom, asset_management, utilities_power, healthcare_hospitals, realty, textiles_home.
+#
+# When company_industry has no row at all, make_profile falls back in this order: master_companies.industry
+# (`master_industry` below, coarse and only the clean names), then the BSE industry the scrip master carries on
+# board_meetings (`bse_industry` below, only the names that fit one family cleanly).  Anything else stays `unknown`
+# and is reported, never guessed.
 #
 # lender is the taxonomy's own list (Banks, NBFC, Housing Finance, Microfinance, Insurance), independent of
 # whether a lexicon family exists (a general insurer is a lender with no sector lexicon).  The second check
@@ -35,6 +41,7 @@ basic_industry:
   "Financial Institution": nbfc
   "Holding Company": nbfc
   "Housing Finance Company": nbfc
+  "Investment Company": nbfc
   "Microfinance Institutions": nbfc
   "Non Banking Financial Company (NBFC)": nbfc
   # insurance_life
@@ -64,6 +71,7 @@ basic_industry:
   "Business Process Outsourcing (BPO)/ Knowledge Process Outsourcing (KPO)": it_services
   "Computers - Software & Consulting": it_services
   "IT Enabled Services": it_services
+  "Software Products": it_services
   # metals_nonferrous
   "Aluminium": metals_nonferrous
   "Aluminium Copper & Zinc Products": metals_nonferrous
@@ -103,6 +111,7 @@ basic_industry:
   "Carbon Black": paints_chemicals
   "Commodity Chemicals": paints_chemicals
   "Dyes And Pigments": paints_chemicals
+  "Explosives": paints_chemicals
   "Fertilizers": paints_chemicals
   "Industrial Gases": paints_chemicals
   "Paints": paints_chemicals
@@ -118,6 +127,7 @@ basic_industry:
   "Household Appliances": consumer_durables
   "Houseware": consumer_durables
   "Other Electrical Equipment": consumer_durables
+  "Plastic Products - Consumer": consumer_durables
   # jewellery_lifestyle
   "Footwear": jewellery_lifestyle
   "Garments & Apparels": jewellery_lifestyle
@@ -205,14 +215,12 @@ basic_industry:
   "E-Learning": unknown
   "Education": unknown
   "Electronic Media": unknown
-  "Explosives": unknown
   "Film Production Distribution & Exhibition": unknown
   "Forest Products": unknown
   "Gas Transmission/Marketing": unknown
   "General Insurance": unknown
   "Glass - Industrial": unknown
   "Healthcare Research Analytics & Technology": unknown
-  "Investment Company": unknown
   "LPG/CNG/PNG/LNG Supplier": unknown
   "Lubricants": unknown
   "Meat Products including Poultry": unknown
@@ -225,7 +233,6 @@ basic_industry:
   "Other Financial Services": unknown
   "Packaging": unknown
   "Paper & Paper Products": unknown
-  "Plastic Products - Consumer": unknown
   "Plastic Products - Industrial": unknown
   "Plywood Boards/ Laminates": unknown
   "Print Media": unknown
@@ -234,7 +241,6 @@ basic_industry:
   "Rubber": unknown
   "Sanitary Ware": unknown
   "Seafood": unknown
-  "Software Products": unknown
   "Sugar": unknown
   "TV Broadcasting & Software Production": unknown
   "Trading & Distributors": unknown
@@ -313,3 +319,74 @@ master_industry:
   "Power": utilities_power
   "Telecommunication": telecom
   "Chemicals": paints_chemicals
+
+# Third tier, used only when company_industry and master_companies.industry have both failed: the BSE industry the
+# scrip master carries on every board-meeting intimation (1,104 symbols, 74 values).  It is finer than the coarse
+# master industry, so only the names that fit one family cleanly are listed; a value it does not list stays `unknown`.
+bse_industry:
+  # bank
+  "Banks": bank
+  # nbfc
+  "Finance": nbfc
+  "Finance - Housing": nbfc
+  "Financial Institution": nbfc
+  # epc_capital_goods
+  "Construction": epc_capital_goods
+  "Electrical Equipment": epc_capital_goods
+  "Compressors / Pumps": epc_capital_goods
+  "Diesel Engines": epc_capital_goods
+  "Transmission Towers": epc_capital_goods
+  # it_services
+  "Computers - Software": it_services
+  # pharma
+  "Pharmaceuticals": pharma
+  # cement
+  "Cement And Cement Products": cement
+  # metals_ferrous
+  "Steel And Steel Products": metals_ferrous
+  "Electrodes": metals_ferrous
+  "Refractories": metals_ferrous
+  # metals_nonferrous
+  "Aluminium": metals_nonferrous
+  # textiles_home
+  "Textiles - Cotton": textiles_home
+  "Textiles - Synthetic": textiles_home
+  "Textile Products": textiles_home
+  # tyres_auto_ancillary
+  "Auto Ancillaries": tyres_auto_ancillary
+  "Tyres": tyres_auto_ancillary
+  "Castings/Forgings": tyres_auto_ancillary
+  "Bearings": tyres_auto_ancillary
+  "Abrasives": tyres_auto_ancillary
+  # auto_oem
+  "Automobiles - 4 Wheelers": auto_oem
+  "Automobiles - 2 And 3 Wheelers": auto_oem
+  # paints_chemicals
+  "Paints": paints_chemicals
+  "Chemicals - Speciality": paints_chemicals
+  "Chemicals - Inorganic": paints_chemicals
+  "Chemicals - Organic": paints_chemicals
+  "Petrochemicals": paints_chemicals
+  "Dyes And Pigments": paints_chemicals
+  "Fertilisers": paints_chemicals
+  "Pesticides And Agrochemicals": paints_chemicals
+  # jewellery_lifestyle
+  "Gems Jewellery And Watches": jewellery_lifestyle
+  "Leather And Leather Products": jewellery_lifestyle
+  # hotels
+  "Hotels": hotels
+  # ports_logistics
+  "Shipping": ports_logistics
+  # utilities_power
+  "Power": utilities_power
+  # telecom
+  "Telecommunication - Services": telecom
+  # fmcg
+  "Personal Care": fmcg
+  "Cigarettes": fmcg
+  "Brew/Distilleries": fmcg
+  "Tea And Coffee": fmcg
+  # consumer_durables
+  "Airconditioners": consumer_durables
+  # mining
+  "Mining": mining
