@@ -1912,3 +1912,21 @@ known sandbox `tmp_path` setup errors. Review `.tmp/T-192_DIFF.md`.
 **Sandbox note.** pytest's own `tmp_path` cannot run in this confined worker (a directory created after the session
 starts cannot be listed: `WinError 5`), so `test_pilot3_ratios.py` carries a local `tmp_path` fixture that builds the
 directory straight from a name; `--basetemp` is refused here. On the controller the accept command runs as written.
+
+### 9q. Modular store repair: part stamps and the diff gate (T-218, 16 Nov 2026)
+
+A built store is repaired one part at a time, never rebuilt whole. `pilot3/part_stamp.py` records one `part_stamp`
+row per part a build finishes: the hash of the code that built it, the hash of the rows it wrote and the output hashes
+of the parts it read. `stale()` then names the parts behind and why: never stamped, code changed, `<part> output
+changed`, or `after <part>`. A part whose code changed but whose re-run writes the same rows leaves its own readers
+fresh, so a repair stops where the change stops. `scripts/store_repair.py` runs a part and its readers under a
+before/after diff gate: a failed part, or any table that loses a row or a served row, puts the store back and keeps
+the refused result as `after.db` + `diff.json` for a hand-read `--accept`.
+
+First use on the ten measured stores (baselined at their build commits): `--stale` listed exactly `profile` and
+`stores`, with their readers. On c02 the first attempt was REFUSED: `stores` rewrote 450 `fin_quarter_xbrl` rows while
+`preferred` had been skipped, so its windows would have been lost; `part_stamp.rewrites` now forces a later part that
+writes a table an earlier part rewrote. After that, c02 ran `profile` + `stores` + `preferred`, skipped 12 parts, and
+finished in 45.5 s against a 263 s median full build with an empty diff. Forcing all 15 parts on c01 took 187.7 s with
+an empty diff (a rebuild is deterministic); c04 added 7 `kpi_series` rows and removed none; c03, c05 and c06 took
+33-36 s with an empty diff.
