@@ -243,3 +243,4 @@ tasks/pilot60/proto3_text/ocr_pages.jsonl.gz
 tasks/efficiency/WORKER_REVIEW_LOG.xlsx
 reality_engine/data/pilot3/
 tasks/.doc_sweep_head
+reality_engine/data/tg_company_isins.json
