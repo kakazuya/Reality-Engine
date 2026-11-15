@@ -1,6 +1,6 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-14 12:32 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Generated 2026-11-15 15:35 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
 Undocumented: 0 tables and 0 of 74 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
@@ -156,9 +156,9 @@ Undocumented: 0 tables and 0 of 74 raw folders.
 | equity_intelligence.db | `substrate_quarantine` | 11,048 | yes |
 | equity_intelligence.db | `symbol_isin_history` | 9,360 | yes |
 | equity_intelligence.db | `tax_rules` | 20 | yes |
-| equity_intelligence.db | `telegram_post_tags` | 420 | yes |
-| equity_intelligence.db | `telegram_posts` | 4,527 | yes |
-| equity_intelligence.db | `tg_company_mentions` | 261 | yes |
+| equity_intelligence.db | `telegram_post_tags` | 1,490 | yes |
+| equity_intelligence.db | `telegram_posts` | 5,022 | yes |
+| equity_intelligence.db | `tg_company_mentions` | 1,572 | yes |
 | equity_intelligence.db | `tg_order_schedule` | 1,040 | yes |
 | equity_intelligence.db | `tg_orders` | 219 | yes |
 | equity_intelligence.db | `tg_pead_signals` | 731 | yes |
@@ -195,8 +195,8 @@ Undocumented: 0 tables and 0 of 74 raw folders.
 | results_notes.db | `docs` | 41,606 | yes |
 | results_notes.db | `gate` | 21 | yes |
 | results_notes.db | `notes` | 306,389 | yes |
-| results_xbrl.db | `facts` | 14,922,723 | yes |
-| results_xbrl.db | `filings` | 151,139 | yes |
+| results_xbrl.db | `facts` | 15,027,309 | yes |
+| results_xbrl.db | `filings` | 151,678 | yes |
 | results_xbrl.db | `filings_isin` | 183,029 | yes |
 | pilot3/pages.db | `doc` | 15,348 | yes |
 | pilot3/pages.db | `doc_page` | 23,259 | yes |
@@ -258,14 +258,14 @@ Undocumented: 0 tables and 0 of 74 raw folders.
 | raw_market/nse_fii_stats | 0 | 0.00 | - | yes |
 | raw_market/nse_full | 5 | 0.00 | 2026-11-09 `sec_bhavdata_full_09112026.csv` | yes |
 | raw_market/nse_index | 5 | 0.00 | 2026-11-09 `ind_close_all_09112026.csv` | yes |
-| raw_market/nse_integrated_equities | 8 | 0.00 | 2026-11-14 `page_008.json` | yes |
-| raw_market/nse_integrated_sme | 12 | 0.00 | 2026-11-14 `page_012.json` | yes |
+| raw_market/nse_integrated_equities | 0 | 0.00 | - | yes |
+| raw_market/nse_integrated_sme | 0 | 0.00 | - | yes |
 | raw_market/nse_part_oi | 0 | 0.00 | - | yes |
 | raw_market/nse_part_vol | 0 | 0.00 | - | yes |
 | raw_market/nse_pit_gg | 0 | 0.00 | - | yes |
 | raw_market/nse_pit_gg_sme | 0 | 0.00 | - | yes |
 | raw_market/nse_pit_gg_xml | 0 | 0.00 | - | yes |
-| raw_market/nse_results_xbrl | 4,205 | 0.77 | 2026-11-14 `INTEGRATED_FILING_NONINDAS_1758164_14112026010144_` | yes |
+| raw_market/nse_results_xbrl | 0 | 0.00 | - | yes |
 | raw_market/nse_sast | 0 | 0.00 | - | yes |
 | raw_market/nse_short | 0 | 0.00 | - | yes |
 | raw_market/nse_shp_index | 0 | 0.00 | - | yes |

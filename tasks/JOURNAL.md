@@ -255,3 +255,10 @@ Carry forward:
 - Failed + why: a follow-up naming the right figure did not stop the agent mislabelling 7,229.22 as the segment book (C4 passes once a scope word is present); facts in older calls (Q3FY25 PLI, Q3FY26 label cost, Q1FY27 8-10%) stay unread because no check names those calls. Grades are not blind.
 - Improvements: a theme-calls check (statements matching the question's theme words -> calls that must be read); C4 should compare the stated figure with the printed segment figure, not only look for a scope word.
 - Carry forward: blind re-grade if Shivam wants the number firm; T-210 Hydrogen run; T-212 by hand after 15 Nov 09:17.
+
+## 2026-11-15 15:30 IST, Wolf (session close)
+- Work: T-210 merged (Hydrogen, Argon docs): factor_deep 3.7 -> 0.64 GB peak, full study 93 min. T-212 closed: 5,242 filings / 2,904 symbols, raw to Drive. agy default moved to Argon high (ruling). agy-workers status mod. Telegram priority build: refreshed topics 7/683, 653 companies in 60 days, mcap filter 800-20k (368), Haiku read 507 PEAD cards in 9 sessions (calibrated ~43k + 7k/sheet, all < 86k), tiered queue of 93. Tickets T-214/215/216 opened; T-178 to Wolf; T-205 dropped; T-208 done.
+- Worked: header-crop + 12-card sheets cut image tokens ~10x; 2-then-4 calibration set session size first time; Haiku reads 24/24 right.
+- Failed + why: two agy runs died on DNS drops (no retry in the runner); raw_to_drive delete is global (603 GB dry run) - caught by a dry run before use.
+- Improvements: T-215 delete scope; T-216 agy retry; sparse factor arm needs NaN-tolerant scoring.
+- Carry forward: T-214 plan file lists the pre-build fix order; start with T-178 and T-215.

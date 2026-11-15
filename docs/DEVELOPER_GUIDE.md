@@ -2124,6 +2124,18 @@ recorded in one SQLite file, `D:/RealityEngine/ledger/ledger.db`, by `reality_en
   (T-179). Worker tool calls 57,596: MCP 5,704, raw SQL 4,534, data read outside the MCP tools 2,659.
 
 
+## Telegram priority build queue (T-214, 15 Nov 2026)
+
+Shivam 14-15 Nov: stores are built on demand per company, Telegram companies first. Refresh the source topics (read-only
+on Telegram, a copy of `reality_engine/data/telegram_session.session`): `python reality_engine/scripts/tg_backfill.py
+--topics 7,683` (Big Orders, PEAD), `python reality_engine/scripts/tag_telegram_posts.py`, `python -m
+reality_engine.scripts.tg_company_mentions --topics 7,683 --no-download` (writes `tg_company_mentions` and the
+git-ignored `reality_engine/data/tg_company_isins.json`). PEAD posts are image cards; their header (PEAD score, forward
+PE, quarter, NSE symbol or BSE code, company, MCap) is cropped and stacked 12 per sheet and read by Haiku subagent
+sessions (about 43k fixed + 7k per sheet, 5-6 sheets per session). Working files and the 93-company
+`build_queue.csv` live in `D:/RealityEngine/tg_build/` (private, never GitHub); tier rules and the pre-build fix order
+are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
+
 ## Answer arms, round 13 (T-205, 13 Nov 2026)
 
 Shivam's order: the seeded tool run FIRST, then the round-12 pack path answered by the same model, graded blind

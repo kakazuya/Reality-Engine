@@ -1,5 +1,5 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-14 13:50 IST (Wolf)
-History `docs/state_history/` (previous: `STATE_2026-11-14_0220.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-15 15:30 IST (Wolf)
+History `docs/state_history/` (previous: `STATE_2026-11-15_1530.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
 - Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; u8/p20/q12 rebuilt 11 Nov 17:10 (T-161..T-166, v8.1, T-187), backups `*_before_rebuild_2026-11-11.db`; reality-data restart needed.
@@ -15,14 +15,13 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 ## T-192 (merged 12 Nov)
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
-## Next action
-0. Roles: DeepSeek builds; agy `gemini-4-hydrogen-high` answers, searches questions, codes on trial (shell works with the skip flag); Opus 5.5 medium grades blind. Go key 1 only (restart dsh-worker MCP).
-1. DONE 14 Nov 05:00 (Wolf): r13 blind grades, report `D:/RealityEngine/reports/2026-11-14_r13_grading.html`. Paired BS-001..026: Hydrogen pack 24, DS lean B 22, DS pack 20, DS lean A 19; full 64: DS B 54, A 50, pack 46. 36 of 44 misses = routing. Wolf graded batches 2-8 inline (agy quota).
-2. T-213: r14 archived (tag `archive/Wolf-T-213-r14b`). r15 MERGED 14 Nov: `answer/answer_checker.py` (C1-C5) + DeepSeek repair of flagged answers: run B 54/9/1 -> 57/7/0 (Wolf, not blind; report s5b). Left: facts in older calls never opened (BS-026/027/034/036). Next: theme-calls check.
-3. T-212: Q2FY27 XBRL 2,597 symbols. Session cron died at close: run the fetch+parse by hand after 15 Nov 09:17, then raw_to_drive. T-208 r3 MERGED, s10 + bluestar rebuilt; verdict pending.
-4. T-209 MERGED: `D:/RealityEngine/structured/structured_universe.db`; pledge flag 0 = 0%. Raw `nse_shp_xbrl_universe` to Drive pending.
-5. T-210 panel needs 7 GB; MSI idles at ~5.9 GB free: run on HP or chunk it. `python -m reality_engine.research.factor_deep --out .tmp/t210 --project`.
-6. T-207 accepted 14 Nov as continuous: T-211 = month-end re-run job (Wolf). KPI guards 67ceeb28 port: redo. BS-040 grade wrong (`report_r12/BS-040_check.md`). T-172 frozen split; T-191; T-194; T-179.
+## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
+0. Roles: DeepSeek builds; agy `gemini-4-argon-high` first, then Hydrogen high (high only); Haiku reads images; Opus medium grades blind. Go key 1 only.
+1. T-214 Telegram build: plan + pre-build fix order in `tasks/handoff/T-214_TG_BUILD_PLAN.md`; queue `D:/RealityEngine/tg_build/build_queue.csv` (93: tiers 11/6/76, PEAD score via Haiku). First: T-178 salvage (Wolf), T-215 raw_to_drive delete scope (would delete 603 GB), 10-company measured build.
+2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0 (not blind, report s5b). Next checks (theme calls, C4 figure) measured on Telegram stores with frozen halves.
+3. T-210 MERGED 15 Nov: factor_deep peak 0.64 GB; results `docs/research/T-210_factor_deep_study.md`, outputs `D:/RealityEngine/research/t210_2026-11-14/`. Sparse arm flawed (complete-case coverage). T-211 monthly job next (Wolf).
+4. T-212 DONE 15 Nov: Q2FY27 XBRL 5,242 filings / 2,904 symbols; raw swept to Drive.
+5. T-216 agy retry on DNS drops. T-209: raw `nse_shp_xbrl_universe` to Drive pending (after T-215).
 
 ## Recipes
 Store copy: checkpoint -> copy to D:/RealityEngine/<set>/ -> `PRAGMA journal_mode=DELETE`. Merge: grader row first; merge_worker; drop root PROGRESS_NOTES.md; tests per file; docs; remove worktree; log in worker_reviews.jsonl. Store diff before a store merge: `reality_engine.scripts.store_diff` (DEVELOPER_GUIDE).
