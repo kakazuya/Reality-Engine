@@ -1,0 +1,17 @@
+# T-214 fix B round 3: three defects found on stores round 2 never saw
+
+Ticket: T-214
+Goal: round 2 (your branch, head 04d87c26, checked out here) scored 15/15 on the graded set it was tuned on. Opus ran it on three stores it had not seen (c05, c07, c10): 16 rows added, about 11 right, and 2 existing right rows REMOVED. Fix the three defect classes below without losing the round-2 result. Opus will then test on other unseen stores; do not tune to store text.
+Files: `reality_engine/pilot3/guidance.py`, `reality_engine/tests/test_pilot3_guidance.py`. Diff tool: `python -m reality_engine.scripts.store_diff --store D:/RealityEngine/tg_build/measure10/<n>/<n>.db --profile D:/RealityEngine/tg_build/measure10/<n>/<n>_profile.json --parts guidance --base C:/Users/warri/Downloads/Info_Diffusion_Model --head . --out .tmp/diff_r3/<n>` (worked unsandboxed from this worktree; if `--base` as a checkout path fails in your sandbox use the exported tree as in round 2).
+Evidence:
+1. Existing rows removed (rule: zero right rows lost). Both were `guidance_cue_v1` rows on main and are right:
+   - "EBITDA margin is too early for us to talk about it, but we expect EBITDA margin to be in line with our defence business." (c10, ebitda_margin) - a refusal clause followed by "but we expect <metric>" is a commitment; the refusal must only cancel its own clause.
+   - "...where the margins are higher and the market is very supportive in terms of the sales in absorbing growth, we are expecting better growth in the forthcoming couple of years." (c05, revenue_growth)
+   Find which round-1/2 gate dropped each (use your drop counters) and narrow that gate.
+2. Analyst question taken through the question/context numeric path: "You expect to win Rs.1.5 to Rs.2,000 crore of order every year, right?" stored as interest_cost 1.5 (c07, rule ...v2_context). A sentence ending in '?' or a tag question (", right?", "correct?", "is that right?") or spoken by a non-management speaker must never give a row on any path; and the metric must come from the sentence or the question, never a default.
+3. Meta and wrong-period rows: "The company made its guidance on order acquisition, profitability, EBITDA and PAT margin." (no target stated -> no row); "We have the target that by 2029 or 2030, we should have the water and power revenue more or less equal." stored with target_period FY26 (a stated calendar/fiscal year in the sentence must set the period; if it cannot be mapped, no row).
+Steps: 1) Tests first, one per sentence above (expected: rows for the two in class 1; no row for class 2 and the meta sentence; period FY29/FY30 or no row for the 2029 sentence). 2) Fix. 3) Re-run store_diff on c02, c03, c06, c08, bluestar (`D:/RealityEngine/bluestar/bluestar.db` with its profile) AND c05, c07, c10: report removed/changed/added per store; removed must be 0 everywhere. 4) Re-score the graded set as in round 2. 5) Write all added rows of the eight stores to `.tmp/guidance_added_r3.csv`. 6) Docs: update the round-2 text you wrote to the round-3 rule and numbers.
+Accept: `python -m pytest -q reality_engine/tests/test_pilot3_guidance.py` passes; 0 removed and 0 changed in all eight diffs; graded set still >= 85% right with >= 12 of 18 kept; the class-2 and meta rows are gone from c07.
+Pitfalls: structural rules only; no store or company names in code or repo docs (c02..c10 labels only); never write to D:.
+Stop if: fixing class 1 brings back more than 3 of the 53 graded-wrong rows (report the trade-off).
+Budget: 2 hours.
