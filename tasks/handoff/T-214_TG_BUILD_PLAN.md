@@ -61,3 +61,11 @@ Ticket: T-214 (with T-178, T-215, T-216, T-213, T-113, T-025, T-141, T-111)
   stores are 25-80 MB per company; D: has ~536 GB free.
 - Answer path: run B (DeepSeek agent, p3ask, unlimited lookups) 54/64 -> 57/64 with the round-15 checker + repair
   (not blind). Grades and report: `D:/RealityEngine/reports/2026-11-14_r13_grading.html` s5b.
+
+## Gap diagnosis on the 10 measured stores (15 Nov, read-only DeepSeek job 20261115T153222Z-4400ca40; Wolf re-checked 4 counts)
+All four gaps are silent empties (rc=0). Share of the 93-company queue in brackets.
+1. **No XBRL quarters (10/93):** `results_xbrl.db` holds NSE XBRL only; BSE-only companies get nothing (`pilot3/prepare.py` results query by ISIN). Fix: BSE results-XBRL fetch family keyed by scrip code. Size M.
+2. **No shareholding rows (11/93):** 9 have no `shp_index` rows (index is NSE-only); 2 are dropped because `shp_index.isin` is NULL (1,654 rows / 78 symbols) and the build filters on ISIN. Fix: symbol fallback + ISIN backfill (S); BSE shareholding fetch (M).
+3. **No guidance rows:** 38/93 have no call transcript in `corporate_documents`; the fetch manifest is BSE-API only, and one company's 10 transcripts held in `corporate_documents` never reached its manifest. Fix: transcript fetch family + reconcile `corporate_documents` into the manifest (M). Where transcripts exist, `guidance.py` drops cue-but-no-number sentences that fail `WORDED_MOVE` without counting them (23 and 155 sentences in two stores), and numeric answers whose metric is only in the analyst's question. Fix: widen the worded path, read the metric from the question turn, count every drop (S).
+4. **Sector `unknown` (38/93):** 20 have no `company_industry` row, 18 carry an industry `sector_map.yaml` does not map. `unknown` switches off the sector KPI lexicon (62-132 KPI rows vs 357-1,417), sector topic tags and sector-fit row checks. Fix: taxonomy ingest for missing ISINs, BSE industry fetch, map the unmapped industries (S-M).
+Also: 2 queue rows are demo ISINs (`INE_AUTO_*`, tiers 2 and 3) and must be taken out of the queue.
