@@ -248,3 +248,149 @@ def test_kpi_panel_builds_yoy_and_change_in_yoy():
     assert abs(q9["yoy"] - 0.5) < 1e-12   # 300 / 200 - 1
     assert abs(q9["yoy_chg"] + 0.5) < 1e-12  # 0.5 - 1.0
     assert np.isnan(kpi.iloc[0]["yoy"])
+
+
+# --------------------------------------------------------------------------- #
+# Chunked panel builder and column-pruned loader
+# --------------------------------------------------------------------------- #
+def test_build_panel_parquet_matches_build_panel_and_prunes_columns(tmp_path):
+    import duckdb
+    from reality_engine.research import factor_weights as fw
+
+    sessions = pd.DatetimeIndex(pd.bdate_range("2023-01-02", periods=600))
+    idx = np.arange(len(sessions))
+    px_frames = []
+    for k in range(4):
+        px_frames.append(pd.DataFrame({
+            "exch": "NSE",
+            "entity_id": f"E{k}",
+            "date": sessions,
+            "isin": f"INE00000000{k}",
+            "symbol": f"SYM{k}",
+            "close": (100.0 + 10 * k) * (1.0005 + 0.0001 * k) ** idx,
+            "adj_close": (100.0 + 10 * k) * (1.0005 + 0.0001 * k) ** idx,
+            "tr_close": (100.0 + 10 * k) * (1.0008 + 0.0001 * k) ** idx,
+            "value_inr": 2e7,
+            "delivery_pct": 45.0 + k,
+        }))
+    px = pd.concat(px_frames, ignore_index=True)
+    tri = pd.DataFrame({
+        "index_name": "NIFTY 500",
+        "date": sessions.strftime("%Y-%m-%d"),
+        "tri": 1000.0 * 1.0004 ** idx,
+    })
+    q_ends = pd.date_range("2022-03-31", "2025-03-31", freq="QE")
+    res_rows = []
+    shp_rows = []
+    for k in range(4):
+        for qi, qe in enumerate(q_ends):
+            res_rows.append({
+                "trading_isin": f"INE00000000{k}",
+                "consolidated": "Consolidated",
+                "period_end": qe.strftime("%Y-%m-%d"),
+                "fy_start": f"FY{qe.year if qe.month >= 4 else qe.year - 1}",
+                "known_at_utc": (qe + pd.Timedelta(days=30)).strftime("%Y-%m-%dT10:00:00Z"),
+                "RevenueFromOperations": 1000.0 + 20 * qi + 50 * k,
+                "ProfitLossForPeriod": 100.0 + 2 * qi + 10 * k,
+                "InterestEarned": np.nan,
+                "Expenses": 850.0 + 15 * qi,
+                "FinanceCosts": 20.0,
+                "DepreciationDepletionAndAmortisationExpense": 30.0,
+                "ytd_RevenueFromOperations": np.nan,
+                "ytd_ProfitLossForPeriod": np.nan,
+                "PaidUpValueOfEquityShareCapital": 100.0,
+                "FaceValueOfEquityShareCapital": 10.0,
+            })
+            shp_rows.append({
+                "isin": f"INE00000000{k}",
+                "quarter_end": qe.strftime("%Y-%m-%d"),
+                "promoter_pct": 50.0 + 0.1 * qi + k,
+                "known_at_utc": (qe + pd.Timedelta(days=20)).strftime("%Y-%m-%dT10:00:00Z"),
+            })
+    ins = pd.DataFrame({
+        "symbol": ["SYM0", "SYM1"],
+        "known_at_utc": ["2024-05-10T09:00:00Z", "2024-06-12T09:00:00Z"],
+        "transaction_type": ["Buy", "Sell"],
+        "securities_value": [5e6, 3e6],
+        "intimation_date": ["2024-05-10", "2024-06-12"],
+    })
+    hist = pd.DataFrame({
+        "symbol": [f"SYM{k}" for k in range(4)],
+        "isin": [f"INE00000000{k}" for k in range(4)],
+        "first_date": ["2020-01-01"] * 4,
+        "last_date": ["2026-12-31"] * 4,
+        "n_days": [1500] * 4,
+    })
+    ind = pd.DataFrame({
+        "isin": [f"INE00000000{k}" for k in range(4)],
+        "sector": ["Chemicals", "Chemicals", "Healthcare", "Healthcare"],
+    })
+
+    snap = tmp_path / "snap.duckdb"
+    con = duckdb.connect(str(snap))
+    for name, df in (
+        ("px_daily", px), ("index_tri", tri), ("results_key", pd.DataFrame(res_rows)),
+        ("shp_index", pd.DataFrame(shp_rows)), ("nse_insider", ins),
+        ("symbol_isin_history", hist), ("company_industry", ind),
+    ):
+        con.register(f"_{name}", df)
+        con.execute(f"CREATE TABLE {name} AS SELECT * FROM _{name}")
+    con.close()
+
+    start, end = str(sessions[260].date()), str(sessions[-1].date())
+    parquet_path = tmp_path / "panel.parquet"
+    meta = fw.build_panel_parquet(snap, start, end, parquet_path, entity_batch_size=2, memory_limit="512MB", threads=1)
+    assert parquet_path.exists()
+
+    con = fw.connect(snap, memory_limit="512MB", threads=1)
+    try:
+        ref, ref_meta = fw.build_panel(con, start, end)
+    finally:
+        con.close()
+
+    assert meta["rows"] == ref_meta["rows"]
+    assert meta["companies"] == ref_meta["companies"]
+    got = pd.read_parquet(parquet_path).sort_values(["date", "entity_id"]).reset_index(drop=True)
+    ref = ref.sort_values(["date", "entity_id"]).reset_index(drop=True)
+    assert set(got.columns) == set(ref.columns)
+    got = got[ref.columns]
+    for col in ref.columns:
+        if pd.api.types.is_numeric_dtype(ref[col]):
+            a = ref[col].to_numpy(dtype=float)
+            b = got[col].to_numpy(dtype=float)
+            assert np.array_equal(np.isnan(a), np.isnan(b))
+            ok = ~np.isnan(a)
+            if ok.any():
+                np.testing.assert_allclose(a[ok], b[ok], atol=1e-12, rtol=1e-12)
+
+    sliced = fd._load_panel_slice(parquet_path)
+    assert not any(c.endswith("_sn") for c in sliced.columns)
+    assert all(f in sliced.columns and f + "_z" in sliced.columns for f in fw.FACTORS)
+    assert sliced["earnings_yield_z"].dtype == np.float32
+    assert sliced["earnings_yield"].dtype == np.float64
+
+
+def test_kpi_ic_and_interactions_handle_mixed_datetime_resolution():
+    panel, dates = _panel(periods=12, n_companies=16, n_sectors=1)
+    panel["date"] = pd.to_datetime(panel["date"]).astype("datetime64[ns]")
+    syms = sorted(panel["symbol"].unique())
+    rows = []
+    for d in dates[:8]:
+        for i, sym in enumerate(syms):
+            rows.append({
+                "symbol": sym, "metric": "m_a", "dimension": "", "quarter": 20241,
+                "known_at": (d - pd.Timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                "level": float(i), "yoy": float(i) * 0.1, "yoy_chg": 0.01, "unit": "x", "store": "s",
+            })
+            rows.append({
+                "symbol": sym, "metric": "m_b", "dimension": "", "quarter": 20241,
+                "known_at": (d - pd.Timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                "level": float(len(syms) - i), "yoy": float(len(syms) - i) * 0.1, "yoy_chg": 0.02, "unit": "x", "store": "s",
+            })
+    kpi = pd.DataFrame(rows)
+    kpi["known_at"] = pd.to_datetime(kpi["known_at"]).astype("datetime64[us]")
+    ics, cov = fd.kpi_ic(kpi, panel, ["6m", "12m"], min_companies=8, min_names=6)
+    assert not ics.empty
+    assert not cov.empty
+    pairs = fd.kpi_interactions(kpi, panel, "12m", min_companies=8)
+    assert not pairs.empty

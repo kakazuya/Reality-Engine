@@ -18,6 +18,7 @@ and reads the dated DuckDB snapshot read-only. See
 from __future__ import annotations
 
 import argparse
+import gc
 import math
 import re
 import time
@@ -548,7 +549,6 @@ def _interaction_pass(
     brief's within-date permutation of B); A and the target stay real.
     """
     target = f"excess_{HORIZONS[horizon]}"
-    order = {f: i for i, f in enumerate(factors)}
     rows = []
     for group, g in panel.groupby(group_col, observed=True, sort=True):
         if not isinstance(group, str):
@@ -558,27 +558,23 @@ def _interaction_pass(
             if len(sub) < 3 * INTERACTION_MIN_NAMES:
                 continue
             y = sub[target].to_numpy(dtype=float)
-            for pivot in factors:
-                later = [a for a in factors if order[a] > order[pivot]]
-                if not later:
-                    continue
-                if permuted is None:
-                    b = sub[pivot].to_numpy(dtype=float)
-                else:
-                    b = permuted.loc[sub.index, pivot].to_numpy(dtype=float)
+            sub_arr = sub[factors].to_numpy(dtype=float)
+            perm_arr = permuted.loc[sub.index, factors].to_numpy(dtype=float) if permuted is not None else None
+            for p_idx, pivot in enumerate(factors[:-1]):
+                b = sub_arr[:, p_idx] if perm_arr is None else perm_arr[:, p_idx]
                 masks = _tercile_masks(b, y)
                 if masks is None:
                     continue
                 hi, lo = masks
-                top = sub.loc[hi, later]
-                bottom = sub.loc[lo, later]
+                top = sub_arr[hi]
+                bottom = sub_arr[lo]
                 yt = y[hi]
                 yb = y[lo]
-                for a in later:
-                    ic_hi = rank_ic(top[a].to_numpy(dtype=float), yt)
-                    ic_lo = rank_ic(bottom[a].to_numpy(dtype=float), yb)
+                for a_idx in range(p_idx + 1, len(factors)):
+                    ic_hi = rank_ic(top[:, a_idx], yt)
+                    ic_lo = rank_ic(bottom[:, a_idx], yb)
                     if np.isfinite(ic_hi) and np.isfinite(ic_lo):
-                        rows.append((group, date, a, pivot, ic_hi - ic_lo))
+                        rows.append((group, date, factors[a_idx], pivot, ic_hi - ic_lo))
     return pd.DataFrame(rows, columns=["group", "date", "factor_a", "factor_b", "diff"])
 
 
@@ -663,13 +659,16 @@ def interaction_study(
     if runs <= 0:
         return observed, None
     frames = []
+    slim = panel[["sector_group", "date"] + factors]
     for run in range(runs):
-        permuted = permute_within_groups(panel, "sector_group", seed + run, factors)
+        permuted = permute_within_groups(slim, "sector_group", seed + run, factors)
         for horizon in horizons:
             s = _summarise_interactions(_interaction_pass(panel, horizon, factors, permuted), horizon)
             if not s.empty:
                 s["run"] = run
                 frames.append(s)
+        del permuted
+        gc.collect()
     null = pd.concat(frames, ignore_index=True) if frames else None
     return observed, null
 
@@ -763,17 +762,22 @@ def sparse_walk_forward(
     known = {pd.Timestamp(d): pd.Timestamp(k) for d, k in zip(dates, known_frame) if pd.notna(k)}
     dyn = rewarded_sets(rewarded, horizon)
     factors = [f for f in (factors or FACTORS) if f in panel.columns and f + "_z" in panel.columns]
+    zcols = [f + "_z" for f in factors]
+    need_cols = ["date", target] + factors + zcols
     monthly = []
     for group, g in panel.groupby(group_col, observed=True, sort=True):
         if not isinstance(group, str):
             continue
+        g_slim = g[need_cols]
         cache = {}
-        for date, sub in g.groupby("date", observed=True, sort=True):
+        for date, sub in g_slim.groupby("date", observed=True, sort=True):
             sub = sub.dropna(subset=[target])
             if len(sub) >= INTERACTION_MIN_NAMES:
                 cache[pd.Timestamp(date)] = sub
         if len(cache) < MIN_KNOWN_MONTHS:
+            del cache
             continue
+        ic_cache: dict[tuple[pd.Timestamp, str], float] = {}
         for t in sorted(cache):
             train = training_months(known, t, window)
             train = [m for m in train if m in cache]
@@ -785,9 +789,16 @@ def sparse_walk_forward(
             nxt = nxt[0]
             trailing = {}
             for factor in factors:
-                vals = [rank_ic(cache[m][factor].to_numpy(dtype=float),
-                                cache[m][target].to_numpy(dtype=float)) for m in train]
-                vals = [v for v in vals if np.isfinite(v)]
+                vals = []
+                for m in train:
+                    key = (m, factor)
+                    val = ic_cache.get(key)
+                    if val is None:
+                        val = rank_ic(cache[m][factor].to_numpy(dtype=float),
+                                      cache[m][target].to_numpy(dtype=float))
+                        ic_cache[key] = val
+                    if np.isfinite(val):
+                        vals.append(val)
                 if len(vals) >= MIN_KNOWN_MONTHS:
                     trailing[factor] = float(np.mean(vals))
             pool = candidate_pool(trailing)
@@ -807,6 +818,8 @@ def sparse_walk_forward(
                 "train_months": len(train), "train_ic": train_ic,
                 "sparse_ic": sparse_ic, "equal_ic": equal_ic, "dynamic_ic": dynamic_ic,
             })
+        del cache, ic_cache
+        gc.collect()
     mdf = pd.DataFrame(monthly)
     rows = []
     for group, g in mdf.groupby("group", observed=True, sort=True) if not mdf.empty else []:
@@ -939,6 +952,25 @@ def kpi_factor_panel(raw: pd.DataFrame) -> pd.DataFrame:
     return out.dropna(subset=["quarter"]).reset_index(drop=True)
 
 
+def _align_kpi_to_panel(kpi: pd.DataFrame, panel: pd.DataFrame, horizons: list[str]) -> pd.DataFrame:
+    """Pair each KPI known_at with the first panel month-end on or after it."""
+    date_dtype = panel["date"].dtype
+    month_ends = pd.DataFrame(
+        {"date": pd.Series(sorted(panel["date"].unique()), dtype=date_dtype)}
+    )
+    k = kpi.dropna(subset=["known_at"]).copy()
+    dt = pd.to_datetime(k["known_at"], errors="coerce")
+    if getattr(dt.dt, "tz", None) is not None:
+        dt = dt.dt.tz_convert(None)
+    k["known_at"] = dt.astype(date_dtype)
+    k = k.dropna(subset=["known_at"]).sort_values("known_at")
+    aligned = pd.merge_asof(
+        k, month_ends, left_on="known_at", right_on="date", direction="forward", tolerance=pd.Timedelta(days=100)
+    ).dropna(subset=["date"])
+    price = panel[["date", "symbol"] + [f"excess_{HORIZONS[h]}" for h in horizons]].dropna(subset=["symbol"])
+    return aligned.merge(price, on=["date", "symbol"], how="inner", suffixes=("", "_px"))
+
+
 def kpi_ic(
     kpi: pd.DataFrame, panel: pd.DataFrame, horizons: list[str],
     group_col: str = "sector_group", min_companies: int = KPI_MIN_COMPANIES,
@@ -955,13 +987,7 @@ def kpi_ic(
                                   "months", "mean_ic", "nw_t"])
     if kpi.empty:
         return empty, pd.DataFrame()
-    month_ends = pd.DataFrame({"date": pd.DatetimeIndex(sorted(panel["date"].unique()))})
-    k = kpi.dropna(subset=["known_at"]).sort_values("known_at")
-    aligned = pd.merge_asof(
-        k, month_ends, left_on="known_at", right_on="date", direction="forward", tolerance=pd.Timedelta(days=100)
-    ).dropna(subset=["date"])
-    price = panel[["date", "symbol"] + [f"excess_{HORIZONS[h]}" for h in horizons]].dropna(subset=["symbol"])
-    aligned = aligned.merge(price, on=["date", "symbol"], how="inner", suffixes=("", "_px"))
+    aligned = _align_kpi_to_panel(kpi, panel, horizons)
     sector = (panel.dropna(subset=[group_col]).groupby("symbol", observed=True)[group_col].last())
     aligned["sector_group"] = aligned["symbol"].map(sector)
     rows, coverage = [], []
@@ -1001,13 +1027,7 @@ def kpi_interactions(kpi: pd.DataFrame, panel: pd.DataFrame, horizon: str = "12m
     empty = pd.DataFrame(columns=["group", "metric_a", "metric_b", "months", "mean_diff", "nw_t"])
     if kpi.empty:
         return empty
-    month_ends = pd.DataFrame({"date": pd.DatetimeIndex(sorted(panel["date"].unique()))})
-    k = kpi.dropna(subset=["known_at"]).sort_values("known_at")
-    aligned = pd.merge_asof(
-        k, month_ends, left_on="known_at", right_on="date", direction="forward", tolerance=pd.Timedelta(days=100)
-    ).dropna(subset=["date"])
-    price = panel[["date", "symbol", f"excess_{HORIZONS[horizon]}"]].dropna(subset=["symbol"])
-    aligned = aligned.merge(price, on=["date", "symbol"], how="inner")
+    aligned = _align_kpi_to_panel(kpi, panel, [horizon])
     target = f"excess_{HORIZONS[horizon]}"
     pairs = []
     for date, d in aligned.groupby("date", observed=True, sort=True):
@@ -1077,6 +1097,29 @@ def _sector_ic_table(
     return out[["horizon", "split", "group", "factor", "date", "known_date", "ic"]]
 
 
+def _needed_panel_columns() -> list[str]:
+    """Only the columns factor_deep reads (drops *_sn and raw intermediate columns)."""
+    return (
+        ["date", "entity_id", "symbol", "sector", "excess_126", "excess_252", "excess_504"]
+        + list(FACTORS)
+        + [f + "_z" for f in FACTORS]
+    )
+
+
+def _load_panel_slice(panel_path: Path) -> pd.DataFrame:
+    """Read only needed columns from parquet and downcast *_z columns to float32."""
+    import pyarrow.parquet as pq
+
+    available = set(pq.read_schema(panel_path).names)
+    cols = [c for c in _needed_panel_columns() if c in available]
+    panel = pd.read_parquet(panel_path, columns=cols)
+    for f in FACTORS:
+        zc = f + "_z"
+        if zc in panel.columns:
+            panel[zc] = panel[zc].astype(np.float32)
+    return panel
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="T-210 factor-reward deep study")
     ap.add_argument("--out", default=".tmp/t210")
@@ -1088,6 +1131,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-placebo", action="store_true")
     ap.add_argument("--skip-kpi", action="store_true")
     ap.add_argument("--kpi-root", default=KPI_ROOT)
+    ap.add_argument("--sector-groups", default=None,
+                    help="optional comma-separated subset of sector groups to run")
     ap.add_argument("--project", action="store_true",
                     help="time one sector and print the full-run projection, then stop")
     args = ap.parse_args(argv)
@@ -1100,16 +1145,12 @@ def main(argv: list[str] | None = None) -> int:
     runs = 0 if args.no_placebo else max(0, args.placebo_runs)
 
     if panel_path.exists() and not args.rebuild_panel:
-        panel = pd.read_parquet(panel_path)
+        panel = _load_panel_slice(panel_path)
         print(f"panel: {len(panel):,} rows loaded from {panel_path}")
     else:
-        con = connect(snapshot)
-        try:
-            from reality_engine.research.factor_weights import build_panel
-            panel, meta = build_panel(con, args.start, args.end)
-        finally:
-            con.close()
-        panel.to_parquet(panel_path, index=False)
+        from reality_engine.research.factor_weights import build_panel_parquet
+        meta = build_panel_parquet(snapshot, args.start, args.end, panel_path)
+        panel = _load_panel_slice(panel_path)
         print(f"panel: {meta['rows']:,} rows x {meta['companies']:,} companies, "
               f"{meta['rebalances']} rebalances {meta['first_date']}..{meta['last_date']} "
               f"({time.time() - t0:.0f}s) -> {panel_path}")
@@ -1138,7 +1179,12 @@ def main(argv: list[str] | None = None) -> int:
     reproduction.to_csv(out / "t118_reproduction.csv", index=False, float_format="%.6g")
 
     mapping, sector_report = sector_map(panel)
-    panel = add_sector_group(panel, mapping)
+    panel["sector_group"] = panel["sector"].map(normalise_sector).map(mapping)
+    panel.drop(columns=["sector"], inplace=True)
+    if args.sector_groups:
+        wanted = [s.strip() for s in args.sector_groups.split(",") if s.strip()]
+        panel = panel[panel["sector_group"].isin(wanted)].reset_index(drop=True)
+        sector_report = sector_report[sector_report["group"].isin(wanted)].reset_index(drop=True)
     groups = group_names(panel)
     print(f"\nsector groups ({len(groups)}): {', '.join(groups)}")
     sector_report.to_csv(out / "sector_groups.csv", index=False)
@@ -1215,6 +1261,8 @@ def main(argv: list[str] | None = None) -> int:
     redundancy = redundancy_table(univariate, fm, model, exposure)
     redundancy.to_csv(out / "redundancy.csv", index=False, float_format="%.6g")
     print(f"redundancy: {int(redundancy['redundant'].sum())} rewarded factors with joint |t| < {REDUNDANT_T}")
+    del ic_table, exposure, ic_corr_tables, exposure_pairs, ic_pairs, univariate, coverage, fm_frames, fm, redundancy
+    gc.collect()
 
     # ---- step 2: per-company shrunk estimates (as of the last month-end) ------ #
     as_of = pd.Timestamp(dates[-1])
@@ -1231,6 +1279,8 @@ def main(argv: list[str] | None = None) -> int:
     gaps.to_csv(out / "company_gaps.csv", index=False, float_format="%.6g")
     print(f"companies: {own['entity_id'].nunique() if not own.empty else 0} with a >= {COMPANY_MIN_MONTHS}-month series; "
           f"{len(gaps)} reportable gaps (top {min(200, len(gaps))} in company_gaps.csv)")
+    del own, shrunk, gaps
+    gc.collect()
 
     # ---- step 3: interactions with the permutation gate ----------------------- #
     observed, null = interaction_study(panel, list(HORIZONS), runs=runs)
@@ -1242,15 +1292,22 @@ def main(argv: list[str] | None = None) -> int:
     print(f"interactions: {len(observed):,} pair x sector x horizon cells, "
           f"{int(claims_int['claimed'].sum()) if 'claimed' in claims_int else 0} claimed "
           f"({time.time() - t0:.0f}s)")
+    observed_claims = int(claims_int["claimed"].sum()) if "claimed" in claims_int else 0
+    del observed, claims_int
+    gc.collect()
 
     # ---- step 4: sparse combinations, walk forward ---------------------------- #
     mdf, summary = sparse_walk_forward(panel, rewarded, calendar, "12m")
     mdf.to_csv(out / "sparse_monthly.csv", index=False, float_format="%.6g")
     summary.to_csv(out / "sparse_summary.csv", index=False, float_format="%.6g")
+    observed_beats_both = int(summary["beats_both"].sum()) if not summary.empty else 0
+    del mdf, summary
     for horizon in ("6m", "24m"):
         _m, s = sparse_walk_forward(panel, rewarded, calendar, horizon)
         if not s.empty:
             s.to_csv(out / f"sparse_summary_{horizon}.csv", index=False, float_format="%.6g")
+        del _m, s
+    gc.collect()
 
     # ---- placebo counts for every claim type ---------------------------------- #
     placebo_rows = []
@@ -1259,14 +1316,17 @@ def main(argv: list[str] | None = None) -> int:
         from reality_engine.research.factor_rewards import permute_panel
         claimed_obs = int(sector_mode["stable_70"].sum())
         claimed_null = []
+        slim_rew = panel[["date", "sector_group", "excess_126", "excess_252", "excess_504"] + factors]
         for run in range(runs):
-            shuffled = permute_panel(panel, PLACEBO_SEED + run)
-            shuffled = add_sector_group(shuffled, mapping)
-            ic_p = _sector_ic_table(shuffled, dates, calendar, [f for f in FACTORS if f in panel.columns])
+            shuffled = permute_panel(slim_rew, PLACEBO_SEED + run, factors=factors)
+            ic_p = _sector_ic_table(shuffled, dates, calendar, factors)
             rew_p = build_rewarded(ic_p, dates, windows=(MAIN_WINDOW,))
             mode_p = mode_table(rew_p)
             claimed_null.append(int(mode_p[(mode_p["split"] == "sector")
                                            & (mode_p["window"] == MAIN_WINDOW)]["stable_70"].sum()))
+            del shuffled, ic_p, rew_p, mode_p
+            gc.collect()
+        del slim_rew
         placebo_rows.append({"claim": "sector stable-70 cells", "observed": claimed_obs,
                              "placebo_mean": float(np.mean(claimed_null)),
                              "placebo_max": int(np.max(claimed_null)), "runs": runs})
@@ -1274,7 +1334,8 @@ def main(argv: list[str] | None = None) -> int:
               f"max {int(np.max(claimed_null))} ({time.time() - t_placebo:.0f}s)")
         # interaction claims under the same permutation design (the null table)
         int_null_claims = interaction_placebo_counts(null)
-        observed_claims = int(claims_int["claimed"].sum()) if "claimed" in claims_int else 0
+        del null
+        gc.collect()
         if not int_null_claims:
             int_null_claims = [0]
         placebo_rows.append({"claim": "interaction claims", "observed": observed_claims,
@@ -1284,17 +1345,24 @@ def main(argv: list[str] | None = None) -> int:
               f"null mean {np.mean(int_null_claims):.2f} max {int(np.max(int_null_claims))}")
         # combination claims under permuted exposures
         combo_null = []
+        slim_combo = panel[["date", "sector_group", "excess_252"] + factors + [f + "_z" for f in factors]]
         for run in range(runs):
-            permuted = permute_within_groups(panel, "sector_group", PLACEBO_SEED + run)
+            permuted = permute_within_groups(slim_combo, "sector_group", PLACEBO_SEED + run, factors=factors)
             _m, s = sparse_walk_forward(permuted, rewarded, calendar, "12m")
             combo_null.append(int(s["beats_both"].sum()) if not s.empty else 0)
+            del permuted, _m, s
+            gc.collect()
+        del slim_combo
         placebo_rows.append({"claim": "sparse beats both baselines (12m)",
-                             "observed": int(summary["beats_both"].sum()) if not summary.empty else 0,
+                             "observed": observed_beats_both,
                              "placebo_mean": float(np.mean(combo_null)),
                              "placebo_max": int(np.max(combo_null)), "runs": runs})
         print(f"combination placebo: observed {placebo_rows[-1]['observed']}, "
               f"null mean {np.mean(combo_null):.2f} max {int(np.max(combo_null))}")
         pd.DataFrame(placebo_rows).to_csv(out / "placebo.csv", index=False, float_format="%.6g")
+    else:
+        del null
+        gc.collect()
 
     # ---- step 5: KPI arm ------------------------------------------------------ #
     if not args.skip_kpi:

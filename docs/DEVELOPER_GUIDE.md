@@ -959,39 +959,46 @@ of the pooled T-118 ICs, the stable/shifting/thin tables and the unmeasured fact
 - Commands: `python -m reality_engine.structured.universe_build --fetch` (resumable, pooled sessions, throttled to ~6 req/s, stops itself when over 5 % of a rolling 100-request window fails twice), `--parse`, `--balance`, `--report`; no flag runs all four. `--report` writes `coverage.csv` (per period: companies with a row / companies with a filing) and `sample20.csv` (seed 20261113) beside the store, plus `report.md`. Raw cache: `D:/RealityEngine/raw/nse_shp_xbrl_universe/` (27,307 gzipped XBRL, 0.28 GB per `tasks/DATA_INVENTORY.md`; still local for the controller to move to Drive).
 ### O19d. Deep factor rewards: sectors, companies, pairs, combinations (T-210, 14 Nov 2026)
 
-`reality_engine/research/factor_deep.py` (tests `reality_engine/tests/test_factor_deep.py`, 13
-passed) imports the T-207 engine and the T-118 panel builder unchanged and deepens the reward
-question: per **sector group** the rewarded factors (T-207 rule reused), the exposure pairs whose
-cross-sectional Spearman correlation averages |rho| >= 0.5 (0.7 = one cluster), the pairs whose
-monthly ICs move together or oppositely, a Fama-MacBeth joint model per sector and horizon with
-clustered twins reduced to their strongest member (coverage >= 80%, at most 8 regressors; a factor
-is "redundant" when its univariate reward is significant and the joint Newey-West |t| < 1.5), every
-one of the 595 factor pairs tested as the IC of A inside the top versus the bottom tercile of B
-(A is the earlier factor in `FACTORS` order, 20 names per tercile, so a sector-month under 60 names
-is not tested)
-(claimed only at NW |t| >= 2.5, Benjamini-Hochberg 10% over all pair x sector x horizon cells, and
-above the 95th percentile of 20 seeded within-date permutations of B), and a per-sector sparse
-combination chosen by forward stepwise (max 6 factors, add only on a trailing-IC gain >= 0.005, only
-data known at t) and scored walk-forward against the T-207 EQUAL convention and the universe DYNAMIC
-set, with its own 20-permutation placebo. Per company, a time-series rank IC of each factor over
-months realised by the last month-end, shrunk to its sector's mean by empirical-Bayes weights
-(tau^2/(tau^2+s^2), `s^2` = sampling variance; companies under 24 usable months are sector-only);
-gaps of |shrunk - prior| >= 0.10 are reported, top 200 by months. A sector-KPI arm reads the seven
-pilot stores' `kpi_series` read-only, builds level / YoY / change-in-YoY factors and runs the same
-IC and tercile tests at 6 and 12 months for metrics carrying >= 8 companies in a sector group;
-every result from it is labelled method pilot. `python -m reality_engine.research.factor_deep --out
-.tmp/t210` builds or reuses `.tmp/t210/panel.parquet`, gates on the T-118 reproduction (< 0.005),
-then writes `sector_mode.csv`, `sector_claims.csv`, `corr_exposure.csv`, `corr_ic.csv`,
-`corr_exposure_pairs.csv`, `corr_ic_pairs.csv`, `univariate_sector.csv`,
-`fama_macbeth_sector.csv`, `redundancy.csv`, `company_own_ic.csv`, `company_shrunk.csv`,
-`company_gaps.csv`, `interactions.csv`, `interactions_null.csv`, `interaction_claims.csv`,
-`sparse_monthly.csv`, `sparse_summary.csv` (+ `_6m` / `_24m`), `placebo.csv`, `kpi_panel.csv`,
-`kpi_ic.csv`, `kpi_interactions.csv` and the coverage tables. `--project` times one sector and
-prints the projection; `--placebo-runs 0` / `--no-placebo` and `--skip-kpi` cut arms. The run was
-**not started in this session**: free RAM was sampled once a minute for the brief's 90-minute limit
-(89 samples, 14 Nov 00:12-01:42) and ranged 2.6-4.7 GB of 16 GB against the brief's 7 GB gate while
-three other workers ran. The synthetic validation and the pre-registered design are in
-`docs/research/T-210_factor_deep_study.md`; Claude reruns the panel.
+`reality_engine/research/factor_deep.py` (tests `reality_engine/tests/test_factor_deep.py`, 15
+passed) imports the T-207 engine unchanged and uses `factor_weights.build_panel_parquet()` to
+deepen the reward question: per **sector group** the rewarded factors (T-207 rule reused), the
+exposure pairs whose cross-sectional Spearman correlation averages |rho| >= 0.5 (0.7 = one
+cluster), the pairs whose monthly ICs move together or oppositely, a Fama-MacBeth joint model per
+sector and horizon with clustered twins reduced to their strongest member (coverage >= 80%, at most
+8 regressors; a factor is "redundant" when its univariate reward is significant and the joint
+Newey-West |t| < 1.5), every one of the 595 factor pairs tested as the IC of A inside the top
+versus the bottom tercile of B (A is the earlier factor in `FACTORS` order, 20 names per tercile,
+so a sector-month under 60 names is not tested; claimed only at NW |t| >= 2.5, Benjamini-Hochberg
+10% over all pair x sector x horizon cells, and above the 95th percentile of 20 seeded within-date
+permutations of B), and a per-sector sparse combination chosen by forward stepwise (max 6 factors,
+add only on a trailing-IC gain >= 0.005, only data known at t) and scored walk-forward against the
+T-207 EQUAL convention and the universe DYNAMIC set, with its own 20-permutation placebo. Per
+company, a time-series rank IC of each factor over months realised by the last month-end, shrunk to
+its sector's mean by empirical-Bayes weights (tau^2/(tau^2+s^2), `s^2` = sampling variance;
+companies under 24 usable months are sector-only); gaps of |shrunk - prior| >= 0.10 are reported,
+top 200 by months. A sector-KPI arm reads the seven pilot stores' `kpi_series` read-only, builds
+level / YoY / change-in-YoY factors and runs the same IC and tercile tests at 6 and 12 months for
+metrics carrying >= 8 companies in a sector group; every result from it is labelled method pilot.
+`python -m reality_engine.research.factor_deep --out .tmp/t210` builds or reuses
+`.tmp/t210/panel.parquet`, gates on the T-118 reproduction (< 0.005), then writes `sector_mode.csv`,
+`sector_claims.csv`, `corr_exposure.csv`, `corr_ic.csv`, `corr_exposure_pairs.csv`,
+`corr_ic_pairs.csv`, `univariate_sector.csv`, `fama_macbeth_sector.csv`, `redundancy.csv`,
+`company_own_ic.csv`, `company_shrunk.csv`, `company_gaps.csv`, `interactions.csv`,
+`interactions_null.csv`, `interaction_claims.csv`, `sparse_monthly.csv`, `sparse_summary.csv` (+
+`_6m` / `_24m`), `placebo.csv`, `kpi_panel.csv`, `kpi_ic.csv`, `kpi_interactions.csv` and the
+coverage tables. `--project` times one sector and prints the projection; `--placebo-runs 0` /
+`--no-placebo` and `--skip-kpi` cut arms; `--sector-groups` filters sectors. To fit 16 GB laptops
+without changing any statistic, `factor_weights.connect()` defaults to `memory_limit='2GB',
+threads=2`, `build_panel_parquet()` queries `px_daily` in 400-entity batches (dropping DuckDB temp
+tables per batch and closing DuckDB before loading fundamentals) and streams 2-year chunks to
+`panel.parquet`, `_load_panel_slice()` reads only the 77 required columns and downcasts `*_z`
+columns to `float32` (raw `FACTORS` and returns stay `float64`), and placebo permutations run and
+are freed one at a time. Measured peak working set dropped from **3.70 GB** (baseline panel build)
+to **0.64 GB** with `--rebuild-panel` (`0.60 min` panel build) and **0.41 GB** across the full
+study reusing `panel.parquet` (`93.5 min` total: `2.1 min` sector ICs, `0.6 min`
+correlations/FM/company ICs, `22.6 min` interactions + 20 permutations, `3.2 min` sparse
+walk-forward, `64.8 min` sector + combination placebos, `0.2 min` KPI pilot). Results and design
+are in `docs/research/T-210_factor_deep_study.md`.
 
 ### O20. v2 period engine (T-134, 9 Nov 2026)
 

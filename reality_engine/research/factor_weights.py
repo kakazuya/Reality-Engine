@@ -364,10 +364,10 @@ def default_snapshot() -> Path:
     raise FileNotFoundError(f"{SNAPSHOT_NAME} not found in {[str(c) for c in candidates]}")
 
 
-def connect(snapshot: Path) -> duckdb.DuckDBPyConnection:
+def connect(snapshot: Path, memory_limit: str = "2GB", threads: int = 2) -> duckdb.DuckDBPyConnection:
     con = duckdb.connect(str(snapshot), read_only=True)
-    con.execute("SET memory_limit='5GB'")
-    con.execute("SET threads=4")
+    con.execute(f"SET memory_limit='{memory_limit}'")
+    con.execute(f"SET threads={int(threads)}")
     con.execute("SET preserve_insertion_order=false")
     return con
 
@@ -378,30 +378,46 @@ def _isin_entity(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     ).df()
 
 
-def build_price_panel(con: duckdb.DuckDBPyConnection, start: str, end: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Universe + price factors per rebalance date, plus the trading calendar.
-
-    Universe: a price that day, median daily traded value over the prior 60
-    sessions >= Rs 1 crore, >= 250 sessions of history. Forward returns join on
-    the session index, so a company with no price on the horizon date gets no
-    target (dropped, never padded).
-    """
+def _init_price_tables(con: duckdb.DuckDBPyConnection, start: str, end: str) -> pd.DataFrame:
+    """Create the shared calendar, rebalance and benchmark temp tables in DuckDB."""
     statements = [
-        """CREATE OR REPLACE TEMP TABLE t118_pxp AS
-           SELECT entity_id, date, close, adj_close, tr_close, value_inr, delivery_pct, isin, symbol
-           FROM (SELECT *, row_number() OVER (PARTITION BY entity_id, date ORDER BY (exch = 'NSE') DESC) rn
-                 FROM px_daily) WHERE rn = 1""",
         """CREATE OR REPLACE TEMP TABLE t118_cal AS
            SELECT date, CAST(row_number() OVER (ORDER BY date) AS BIGINT) AS i
            FROM (SELECT DISTINCT date FROM px_daily WHERE exch = 'NSE')""",
-        """CREATE OR REPLACE TEMP TABLE t118_pxi AS
-           SELECT p.entity_id, p.date, c.i, p.close, p.adj_close, p.tr_close, p.value_inr,
-                  p.delivery_pct, p.isin, p.symbol
-           FROM t118_pxp p JOIN t118_cal c USING (date)""",
         f"""CREATE OR REPLACE TEMP TABLE t118_rebal AS
             SELECT date, i FROM (
               SELECT date, i, row_number() OVER (PARTITION BY date_trunc('month', date) ORDER BY date DESC) m
               FROM t118_cal WHERE date BETWEEN DATE '{start}' AND DATE '{end}') WHERE m = 1""",
+        f"""CREATE OR REPLACE TEMP TABLE t118_bmi AS
+            SELECT c.i, t.tri FROM index_tri t JOIN t118_cal c ON c.date = CAST(t.date AS DATE)
+            WHERE t.index_name = '{BENCHMARK}' AND t.tri IS NOT NULL""",
+    ]
+    for sql in statements:
+        con.execute(sql)
+    cal = con.execute("SELECT date, i FROM t118_cal ORDER BY i").df()
+    cal["date"] = pd.to_datetime(cal["date"])
+    return cal
+
+
+def _price_panel_for_entities(con: duckdb.DuckDBPyConnection, entities: list) -> pd.DataFrame:
+    """Build the price panel and forward targets for one batch of entity_ids."""
+    batch_df = pd.DataFrame({"entity_id": entities})
+    con.register("_t118_batch_df", batch_df)
+    try:
+        con.execute("CREATE OR REPLACE TEMP TABLE t118_batch AS SELECT DISTINCT entity_id FROM _t118_batch_df")
+    finally:
+        con.unregister("_t118_batch_df")
+
+    statements = [
+        """CREATE OR REPLACE TEMP TABLE t118_pxp AS
+           SELECT entity_id, date, close, adj_close, tr_close, value_inr, delivery_pct, isin, symbol
+           FROM (SELECT p.*, row_number() OVER (PARTITION BY p.entity_id, p.date ORDER BY (p.exch = 'NSE') DESC) rn
+                 FROM px_daily p JOIN t118_batch b ON p.entity_id = b.entity_id) WHERE rn = 1""",
+        """CREATE OR REPLACE TEMP TABLE t118_pxi AS
+           SELECT p.entity_id, p.date, c.i, p.close, p.adj_close, p.tr_close, p.value_inr,
+                  p.delivery_pct, p.isin, p.symbol
+           FROM t118_pxp p JOIN t118_cal c USING (date)""",
+        "DROP TABLE IF EXISTS t118_pxp",
         """CREATE OR REPLACE TEMP TABLE t118_px AS
            SELECT entity_id, date, i, isin, symbol, close, adj_close, tr_close,
                   med_value_60, n_hist_250,
@@ -426,14 +442,11 @@ def build_price_panel(con: duckdb.DuckDBPyConnection, start: str, end: str) -> t
             WHERE p.adj_close > 0
               AND p.med_value_60 >= {MIN_VALUE_CRORE * 1e7}
               AND p.n_hist_250 >= {MIN_HISTORY_SESSIONS}""",
-        f"""CREATE OR REPLACE TEMP TABLE t118_bmi AS
-            SELECT c.i, t.tri FROM index_tri t JOIN t118_cal c ON c.date = CAST(t.date AS DATE)
-            WHERE t.index_name = '{BENCHMARK}' AND t.tri IS NOT NULL""",
+        "DROP TABLE IF EXISTS t118_px",
     ]
     for sql in statements:
         con.execute(sql)
 
-    cal = con.execute("SELECT date, i FROM t118_cal ORDER BY i").df()
     univ = con.execute(
         """SELECT date, entity_id, isin, symbol, close, adj_close, adj_close_252, tr_close,
                   med_value_60, n_hist_250, mom_12_1, reversal_1m, vol_12m, delivery_3m
@@ -451,13 +464,51 @@ def build_price_panel(con: duckdb.DuckDBPyConnection, start: str, end: str) -> t
                 JOIN t118_bmi b1 ON b1.i = u.i + {h}"""
         ).df()
         univ = univ.merge(
-            fwd.assign(excess= fwd["tr_ret"] - fwd["bm_ret"])[["date", "entity_id", "excess"]],
+            fwd.assign(excess=fwd["tr_ret"] - fwd["bm_ret"])[["date", "entity_id", "excess"]],
             on=["date", "entity_id"],
             how="left",
         ).rename(columns={"excess": f"excess_{h}"})
 
+    for tbl in ("t118_pxi", "t118_univ", "t118_batch"):
+        con.execute(f"DROP TABLE IF EXISTS {tbl}")
     univ["date"] = pd.to_datetime(univ["date"])
-    cal["date"] = pd.to_datetime(cal["date"])
+    return univ
+
+
+def build_price_panel(
+    con: duckdb.DuckDBPyConnection, start: str, end: str, entity_batch_size: int = 400
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Universe + price factors per rebalance date, plus the trading calendar.
+
+    Universe: a price that day, median daily traded value over the prior 60
+    sessions >= Rs 1 crore, >= 250 sessions of history. Forward returns join on
+    the session index, so a company with no price on the horizon date gets no
+    target (dropped, never padded).
+    """
+    cal = _init_price_tables(con, start, end)
+    entities = [
+        r[0]
+        for r in con.execute(
+            f"SELECT DISTINCT entity_id FROM px_daily "
+            f"WHERE date BETWEEN DATE '{start}' AND DATE '{end}' ORDER BY entity_id"
+        ).fetchall()
+    ]
+    if not entities:
+        cols = [
+            "date", "entity_id", "isin", "symbol", "close", "adj_close", "adj_close_252",
+            "tr_close", "med_value_60", "n_hist_250", "mom_12_1", "reversal_1m",
+            "vol_12m", "delivery_3m",
+        ] + [f"excess_{h}" for h in HORIZONS.values()]
+        univ = pd.DataFrame(columns=cols)
+        univ["date"] = pd.to_datetime(univ["date"])
+    else:
+        chunks = [
+            _price_panel_for_entities(con, entities[pos:pos + entity_batch_size])
+            for pos in range(0, len(entities), entity_batch_size)
+        ]
+        univ = pd.concat(chunks, ignore_index=True).sort_values(["date", "entity_id"]).reset_index(drop=True)
+    con.execute("DROP TABLE IF EXISTS t118_cal")
+    con.execute("DROP TABLE IF EXISTS t118_bmi")
     return univ, cal
 
 
@@ -509,7 +560,10 @@ def build_ownership(con: duckdb.DuckDBPyConnection, cal: pd.DataFrame) -> tuple[
     ins = ins.merge(hist, on="symbol", how="inner")
     trade_date = ist_date(ins["known_at_utc"])
     ins = ins[(trade_date >= ins["first_date"]) & (trade_date <= ins["last_date"])]
-    ins = ins.sort_values("n_days", ascending=False).drop_duplicates(["symbol", "known_at_utc", "securities_value"])
+    ins = ins.sort_values(
+        ["n_days", "symbol", "known_at_utc", "transaction_type", "securities_value", "isin"],
+        ascending=[False, True, True, True, True, True],
+    ).drop_duplicates(["symbol", "known_at_utc", "securities_value"])
     ins = ins.merge(isin_map, on="isin", how="inner")
     ins["avail_date"] = pit_sessions(ins["known_at_utc"], pd.DatetimeIndex(cal["date"])).to_numpy()
     ins["net_value"] = np.where(ins["transaction_type"].eq("Buy"), ins["securities_value"], -ins["securities_value"])
@@ -577,6 +631,49 @@ def rerating_factors(panel: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values(["date", "entity_id"]).reset_index(drop=True)
 
 
+def _entity_pctiles(panel: pd.DataFrame) -> pd.DataFrame:
+    """Trailing 5-year margin and PAT percentiles within each entity."""
+    out = panel.sort_values(["entity_id", "date"]).copy()
+    for col, name in (("op_margin", "op_margin_pctile"), ("ttm_pat", "pat_pctile")):
+        out[name] = out.groupby("entity_id", sort=False)[col].transform(
+            lambda s: s.rolling(PEAK_WINDOW_MONTHS, min_periods=PEAK_MIN_MONTHS).rank(pct=True)
+        )
+    return out.sort_values(["date", "entity_id"]).reset_index(drop=True)
+
+
+def _sector_medians(panel: pd.DataFrame) -> pd.DataFrame:
+    """Per (date, sector) median log P/S and log P/E and their 12m/36m changes."""
+    grp = panel.groupby(["date", "sector"], observed=True)
+    ps_med = grp["ps_ratio"].median().where(grp["ps_ratio"].count() >= MIN_SECTOR_NAMES)
+    pe_med = grp["pe_ratio"].median().where(grp["pe_ratio"].count() >= MIN_SECTOR_NAMES)
+    smed = pd.DataFrame({"ps": ps_med, "pe": pe_med}).reset_index().sort_values(["sector", "date"])
+    for col in ("ps", "pe"):
+        for months, low, high in ((12, 330, 400), (36, 1040, 1160)):
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)  # NaT differences
+                gap = (smed["date"] - smed.groupby("sector", sort=False)["date"].shift(months)).dt.days
+            change = smed[col] - smed.groupby("sector", sort=False)[col].shift(months)
+            smed[f"sector_{col}_chg_{months}m"] = change.where(gap.between(low, high))
+    return smed.rename(columns={"ps": "sector_ps_median", "pe": "sector_pe_median"})
+
+
+def _apply_sector_cross_section(panel: pd.DataFrame, smed: pd.DataFrame) -> pd.DataFrame:
+    """Attach sector medians/changes and compute peak_growth_trap within each date."""
+    cols = [
+        "date", "sector", "sector_ps_median", "sector_pe_median",
+        "sector_ps_chg_12m", "sector_ps_chg_36m", "sector_pe_chg_12m", "sector_pe_chg_36m",
+    ]
+    out = panel.sort_values(["date", "entity_id"]).merge(smed[cols], on=["date", "sector"], how="left")
+    out["ps_vs_sector"] = out["ps_ratio"] - out["sector_ps_median"]
+    tercile = out.groupby("date")["q_pat_yoy"].transform(
+        lambda s: pd.qcut(s, 3, labels=False, duplicates="drop") if s.notna().sum() >= 30 else np.nan
+    )
+    known = tercile.notna() & out["op_margin_pctile"].notna() & out["q_pat_yoy"].notna()
+    hot = (tercile == 2) & (out["op_margin_pctile"] > 0.80)
+    out["peak_growth_trap"] = np.where(known, hot.astype(float), np.nan)
+    return out
+
+
 def sector_factors(panel: pd.DataFrame) -> pd.DataFrame:
     """Sector re-rating and the company's position inside its own history (Shivam, 8 Nov).
 
@@ -589,46 +686,9 @@ def sector_factors(panel: pd.DataFrame) -> pd.DataFrame:
     trailing five years (60 monthly rows, at least PEAK_MIN_MONTHS), plus the
     "growth still in the top tercile at a peak margin" interaction.
     """
-    out = panel.sort_values(["date", "entity_id"]).copy()
-    grp = out.groupby(["date", "sector"], observed=True)
-    out["sector_ps_median"] = grp["ps_ratio"].transform("median").where(
-        grp["ps_ratio"].transform("count") >= MIN_SECTOR_NAMES
-    )
-    out["sector_pe_median"] = grp["pe_ratio"].transform("median").where(
-        grp["pe_ratio"].transform("count") >= MIN_SECTOR_NAMES
-    )
-    out["ps_vs_sector"] = out["ps_ratio"] - out["sector_ps_median"]
-
-    smed = (
-        out.groupby(["date", "sector"], observed=True)
-        .agg(ps=("sector_ps_median", "first"), pe=("sector_pe_median", "first"))
-        .reset_index()
-        .sort_values(["sector", "date"])
-    )
-    for col in ("ps", "pe"):
-        for months, low, high in ((12, 330, 400), (36, 1040, 1160)):
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", RuntimeWarning)  # NaT differences
-                gap = (smed["date"] - smed.groupby("sector", sort=False)["date"].shift(months)).dt.days
-            change = smed[col] - smed.groupby("sector", sort=False)[col].shift(months)
-            smed[f"sector_{col}_chg_{months}m"] = change.where(gap.between(low, high))
-    keep = ["date", "sector", "sector_ps_chg_12m", "sector_ps_chg_36m",
-            "sector_pe_chg_12m", "sector_pe_chg_36m"]
-    out = out.merge(smed[keep], on=["date", "sector"], how="left")
-
-    out = out.sort_values(["entity_id", "date"])
-    for col, name in (("op_margin", "op_margin_pctile"), ("ttm_pat", "pat_pctile")):
-        out[name] = out.groupby("entity_id", sort=False)[col].transform(
-            lambda s: s.rolling(PEAK_WINDOW_MONTHS, min_periods=PEAK_MIN_MONTHS).rank(pct=True)
-        )
-    out = out.sort_values(["date", "entity_id"]).reset_index(drop=True)
-    tercile = out.groupby("date")["q_pat_yoy"].transform(
-        lambda s: pd.qcut(s, 3, labels=False, duplicates="drop") if s.notna().sum() >= 30 else np.nan
-    )
-    known = tercile.notna() & out["op_margin_pctile"].notna() & out["q_pat_yoy"].notna()
-    hot = (tercile == 2) & (out["op_margin_pctile"] > 0.80)
-    out["peak_growth_trap"] = np.where(known, hot.astype(float), np.nan)
-    return out
+    out = _entity_pctiles(panel)
+    smed = _sector_medians(out)
+    return _apply_sector_cross_section(out, smed)
 
 
 def sector_split(panel: pd.DataFrame) -> pd.DataFrame:
@@ -660,13 +720,14 @@ def sector_split(panel: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values(["window", "rerating_share"], ascending=[True, True]).reset_index(drop=True)
 
 
-def build_panel(con: duckdb.DuckDBPyConnection, start: str, end: str) -> tuple[pd.DataFrame, dict]:
-    """Full monthly panel: universe x price/fundamental/ownership factors x targets."""
-    price, cal = build_price_panel(con, start, end)
-    facts, fact_meta = build_facts(con, cal)
-    promoter, insider = build_ownership(con, cal)
-    sectors = build_sectors(con)
-
+def _attach_and_derive(
+    price: pd.DataFrame,
+    facts: pd.DataFrame,
+    promoter: pd.DataFrame,
+    insider: pd.DataFrame,
+    sectors: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach fundamentals/ownership/sectors to a price slice and compute entity-local factors."""
     panel = attach_asof(
         price,
         facts,
@@ -692,7 +753,179 @@ def build_panel(con: duckdb.DuckDBPyConnection, start: str, end: str) -> tuple[p
         panel.loc[is_fin, col] = np.nan
 
     panel = rerating_factors(panel)
-    panel = sector_factors(panel)
+    return _entity_pctiles(panel)
+
+
+def _arrow_schema_from_df(df: pd.DataFrame):
+    """Explicit pyarrow schema so all-null columns in a chunk keep their expected types."""
+    import pyarrow as pa
+
+    fields = []
+    str_cols = {"entity_id", "isin", "symbol", "sector"}
+    dt_cols = {"date", "period_end", "quarter_end"}
+    int_cols = {"n_hist_250"}
+    for col in df.columns:
+        if col in str_cols:
+            fields.append(pa.field(col, pa.large_string()))
+        elif col in dt_cols or pd.api.types.is_datetime64_any_dtype(df[col]):
+            fields.append(pa.field(col, pa.timestamp("ns")))
+        elif col in int_cols or pd.api.types.is_integer_dtype(df[col]):
+            fields.append(pa.field(col, pa.int64()))
+        else:
+            fields.append(pa.field(col, pa.float64()))
+    return pa.schema(fields)
+
+
+def _table_from_chunk(df: pd.DataFrame, schema):
+    import pyarrow as pa
+
+    work = df.copy()
+    for field in schema:
+        name = field.name
+        if pa.types.is_floating(field.type):
+            work[name] = pd.to_numeric(work[name], errors="coerce").astype("float64")
+        elif pa.types.is_integer(field.type):
+            work[name] = pd.to_numeric(work[name], errors="coerce").astype("int64")
+        elif pa.types.is_timestamp(field.type):
+            work[name] = pd.to_datetime(work[name]).astype("datetime64[ns]")
+        else:
+            work[name] = work[name].astype("string")
+    return pa.Table.from_pandas(work, schema=schema, preserve_index=False)
+
+
+def build_panel_parquet(
+    snapshot: Path,
+    start: str,
+    end: str,
+    parquet_path: Path,
+    entity_batch_size: int = 400,
+    memory_limit: str = "2GB",
+    threads: int = 2,
+) -> dict:
+    """Build the monthly panel in entity batches and year chunks, streaming to parquet."""
+    import pyarrow.parquet as pq
+
+    parquet_path = Path(parquet_path)
+    parquet_path.parent.mkdir(parents=True, exist_ok=True)
+    stage1_path = parquet_path.with_suffix(".stage1.parquet")
+    tmp_out = parquet_path.with_suffix(".parquet.tmp")
+    for p in (stage1_path, tmp_out):
+        if p.exists():
+            p.unlink()
+
+    con = connect(snapshot, memory_limit=memory_limit, threads=threads)
+    try:
+        cal = _init_price_tables(con, start, end)
+        facts, fact_meta = build_facts(con, cal)
+        promoter, insider = build_ownership(con, cal)
+        sectors = build_sectors(con)
+        entities = [
+            r[0]
+            for r in con.execute(
+                f"SELECT DISTINCT entity_id FROM px_daily "
+                f"WHERE date BETWEEN DATE '{start}' AND DATE '{end}' ORDER BY entity_id"
+            ).fetchall()
+        ]
+
+        writer1 = None
+        schema1 = None
+        try:
+            for pos in range(0, len(entities), entity_batch_size):
+                batch = entities[pos:pos + entity_batch_size]
+                batch_set = set(batch)
+                price_b = _price_panel_for_entities(con, batch)
+                if price_b.empty:
+                    continue
+                chunk = _attach_and_derive(
+                    price_b,
+                    facts[facts["entity_id"].isin(batch_set)],
+                    promoter[promoter["entity_id"].isin(batch_set)],
+                    insider[insider["entity_id"].isin(batch_set)],
+                    sectors[sectors["entity_id"].isin(batch_set)],
+                )
+                if schema1 is None:
+                    schema1 = _arrow_schema_from_df(chunk)
+                    writer1 = pq.ParquetWriter(stage1_path, schema1)
+                writer1.write_table(_table_from_chunk(chunk, schema1))
+        finally:
+            if writer1 is not None:
+                writer1.close()
+        con.execute("DROP TABLE IF EXISTS t118_cal")
+        con.execute("DROP TABLE IF EXISTS t118_rebal")
+        con.execute("DROP TABLE IF EXISTS t118_bmi")
+    finally:
+        con.close()
+
+    del facts, promoter, insider, sectors
+    if not stage1_path.exists():
+        raise ValueError(f"No panel rows produced for {start}..{end}")
+
+    smed_in = pd.read_parquet(stage1_path, columns=["date", "sector", "ps_ratio", "pe_ratio"])
+    smed = _sector_medians(smed_in)
+    del smed_in
+
+    dates_col = pd.read_parquet(stage1_path, columns=["date"])["date"]
+    years = sorted(int(y) for y in pd.to_datetime(dates_col).dt.year.unique())
+    del dates_col
+
+    factor_cols = list(FACTORS)
+    writer2 = None
+    schema2 = None
+    total_rows = 0
+    rebalances: set = set()
+    companies: set = set()
+    min_date, max_date = None, None
+    try:
+        for yr in years:
+            yr_start = pd.Timestamp(f"{yr}-01-01")
+            yr_end = pd.Timestamp(f"{yr}-12-31")
+            chunk = pd.read_parquet(
+                stage1_path,
+                filters=[("date", ">=", yr_start), ("date", "<=", yr_end)],
+            )
+            if chunk.empty:
+                continue
+            chunk = _apply_sector_cross_section(chunk, smed)
+            chunk = winsor_z(chunk, factor_cols)
+            chunk = sector_z(chunk, factor_cols)
+            chunk = chunk.sort_values(["date", "entity_id"]).reset_index(drop=True)
+            total_rows += len(chunk)
+            rebalances.update(chunk["date"].unique())
+            companies.update(chunk["entity_id"].unique())
+            cmin, cmax = chunk["date"].min(), chunk["date"].max()
+            min_date = cmin if min_date is None or cmin < min_date else min_date
+            max_date = cmax if max_date is None or cmax > max_date else max_date
+            if schema2 is None:
+                schema2 = _arrow_schema_from_df(chunk)
+                writer2 = pq.ParquetWriter(tmp_out, schema2)
+            writer2.write_table(_table_from_chunk(chunk, schema2))
+    finally:
+        if writer2 is not None:
+            writer2.close()
+        if stage1_path.exists():
+            stage1_path.unlink()
+
+    tmp_out.replace(parquet_path)
+    return {
+        **fact_meta,
+        "rebalances": int(len(rebalances)),
+        "rows": int(total_rows),
+        "companies": int(len(companies)),
+        "first_date": str(pd.Timestamp(min_date).date()),
+        "last_date": str(pd.Timestamp(max_date).date()),
+    }
+
+
+def build_panel(con: duckdb.DuckDBPyConnection, start: str, end: str) -> tuple[pd.DataFrame, dict]:
+    """Full monthly panel: universe x price/fundamental/ownership factors x targets."""
+    price, cal = build_price_panel(con, start, end)
+    facts, fact_meta = build_facts(con, cal)
+    promoter, insider = build_ownership(con, cal)
+    sectors = build_sectors(con)
+    con.execute("DROP TABLE IF EXISTS t118_rebal")
+
+    panel = _attach_and_derive(price, facts, promoter, insider, sectors)
+    panel = _apply_sector_cross_section(panel, _sector_medians(panel))
 
     factor_cols = list(FACTORS)
     panel = winsor_z(panel, factor_cols)
