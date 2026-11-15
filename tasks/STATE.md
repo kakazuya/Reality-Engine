@@ -20,7 +20,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 1. T-214 Telegram build: plan, gap diagnosis and fix order in `tasks/handoff/T-214_TG_BUILD_PLAN.md`; queue `D:/RealityEngine/tg_build/build_queue.csv` (93: 11/6/76, 2 demo ISINs to drop). T-215 DONE. T-178 DONE: first build audit-only (xlsx in reports). 10 stores built 15 Nov in `tg_build/measure10/` (medians 263 s / 339 MB / 17.4 MB; 24,925 pages, 16,066 table/chart, 3,176 OCR; guide T-214 bullet). Gaps (share of 93): no NSE XBRL 10, no SHP 11, no transcript 38, sector unknown 38. Fix A, C MERGED; fix B round 4 running (dsh 20261115T182250Z-28594a39), unmerged. 16 Nov: T-217 question bank (Flash 3.8 medium, agy) + T-218 modular store repair (Claude writes): read tasks/handoff/T-217_T-218_HANDOFF_2026-11-16.md. HP gone. Open: transcript fetch, BSE results/SHP fetch, taxonomy fetch; then plan items 4-7.
 2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0 (not blind, report s5b). Next checks (theme calls, C4 figure) measured on Telegram stores with frozen halves.
 3. T-210 MERGED 15 Nov: factor_deep peak 0.64 GB; results `docs/research/T-210_factor_deep_study.md`, outputs `D:/RealityEngine/research/t210_2026-11-14/`. Sparse arm flawed (complete-case coverage). T-211 monthly job next (Wolf).
-4. T-212, T-209 DONE 15 Nov (Q2FY27 XBRL 5,242 filings; SHP raw on Drive).
+4. T-212, T-209 DONE 15 Nov (Q2FY27 XBRL; `nse_shp_xbrl_universe` on Drive).
 5. T-216 agy retry on DNS drops.
 
 ## Recipes
