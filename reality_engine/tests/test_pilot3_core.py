@@ -385,6 +385,54 @@ def test_shp_rows_under_an_older_isin_are_copied_to_the_symbol(monkeypatch):
         shutil.rmtree(folder, ignore_errors=True)
 
 
+def test_shp_index_rows_without_an_isin_reach_shp_category_by_symbol(monkeypatch):
+    """T-214: a store whose ``shp_index`` rows carry a NULL isin still gets its ``shp_category`` rows.
+
+    The NULL-isin rows come in by the company's own symbol (``shp_index.symbol``); the ISIN filter is unchanged for
+    rows that carry one, and neither another symbol's NULL-isin row nor a non-null ISIN of our symbol comes in."""
+    folder = Path(os.environ.get("TEMP") or tempfile.gettempdir()) / f"pilot3_shp_null_isin_{uuid.uuid4().hex[:8]}"
+    data = folder / "data"
+    data.mkdir(parents=True)
+    try:
+        src = sqlite3.connect(data / "equity_intelligence.db")
+        src.execute("CREATE TABLE shp_index (record_id TEXT, symbol TEXT, isin TEXT, quarter_end TEXT, "
+                    "promoter_pct REAL, public_pct REAL, revised TEXT, file TEXT, broadcast_at TEXT, "
+                    "submission_date TEXT)")
+        src.executemany("INSERT INTO shp_index VALUES (?,?,?,?,?,?,?,?,?,?)", [
+            ("1", "NULCO", None, "2026-06-30", 51.7, 48.3, None, "SHP_1_15072026064527_WEB.xml",
+             "2026-07-15T18:45:00", "2026-07-14"),
+            ("2", "NULCO", None, "2026-03-31", 52.5, 47.5, None, "SHP_2_15042026064527_WEB.xml",
+             "2026-04-15T18:45:00", "2026-04-14"),
+            ("3", "OTHER", None, "2026-06-30", 70.0, 30.0, None, "SHP_3_15072026064527_WEB.xml",
+             "2026-07-15T18:45:00", "2026-07-14"),
+            ("4", "NULCO", "INE000A01010", "2025-12-31", 53.0, 47.0, None, "SHP_4_15012026064527_WEB.xml",
+             "2026-01-15T18:45:00", "2026-01-14"),
+            ("5", "NULCO", "INE000A01999", "2025-09-30", 54.0, 46.0, None, "SHP_5_15102025064527_WEB.xml",
+             "2025-10-15T18:45:00", "2025-10-14"),
+        ])
+        src.commit()
+        src.close()
+        monkeypatch.setattr(stores.prepare, "DATA_ROOT", data)
+        monkeypatch.setattr(profile, "symbols", lambda: ("NULCO",))
+        monkeypatch.setattr(stores, "all_isins", lambda symbol: ("INE000A01010",))
+        monkeypatch.setattr(profile, "company", lambda symbol: profile.ProfileCompany(
+            symbol=symbol, isins=("INE000A01010",)).gap_company())
+        monkeypatch.setattr(stores, "SHP_XBRL", folder / "no_xbrl")
+        conn = _conn()
+        stores.build_shp(conn)
+        assert conn.execute("SELECT quarter_end, isin, category, pct FROM shp_category WHERE symbol='NULCO' "
+                            "ORDER BY quarter_end, category").fetchall() == [
+            ("2025-12-31", "INE000A01010", "promoter", 53.0),
+            ("2025-12-31", "INE000A01010", "public", 47.0),
+            ("2026-03-31", None, "promoter", 52.5),
+            ("2026-03-31", None, "public", 47.5),
+            ("2026-06-30", None, "promoter", 51.7),
+            ("2026-06-30", None, "public", 48.3)]
+        assert conn.execute("SELECT COUNT(*) FROM shp_category WHERE symbol='OTHER'").fetchone()[0] == 0
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+
 def _annual(conn, symbol, fy, end, ptype, item, value, statement="BS", known="2026-05-16T10:00:00"):
     conn.execute(
         "INSERT INTO fin_annual_line(symbol,isin,fiscal_year,period_end,basis,statement,line_item,caption,value,"

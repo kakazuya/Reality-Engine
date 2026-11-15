@@ -218,14 +218,20 @@ def test_the_window_keeps_shareholding_quarters_from_compute_start():
         shutil.rmtree(folder, ignore_errors=True)
 
 
-def test_build_shp_warns_when_the_xbrl_folder_is_empty(tmp_path, monkeypatch, capsys):
+def test_build_shp_warns_when_the_xbrl_folder_is_empty(monkeypatch, capsys):
     """8 Nov: raw SHP files moved to Drive left the folder empty and pledge/holder tables silently empty."""
     import sqlite3 as _sq
     from reality_engine.pilot3 import stores as _st
-    monkeypatch.setattr(_st, "SHP_XBRL", tmp_path)
-    monkeypatch.setattr(_st.profile, "symbols", lambda: ())
-    _st.build_shp(_sq.connect(":memory:"))
-    assert "no SHP XBRL files" in capsys.readouterr().err
+    # The harness's .tmp folder denies nested mkdir in this sandbox; its private TEMP folder does not (so no tmp_path).
+    folder = Path(os.environ.get("TEMP") or tempfile.gettempdir()) / f"pilot3_shp_empty_{uuid.uuid4().hex[:8]}"
+    folder.mkdir(parents=True)
+    try:
+        monkeypatch.setattr(_st, "SHP_XBRL", folder)
+        monkeypatch.setattr(_st.profile, "symbols", lambda: ())
+        _st.build_shp(_sq.connect(":memory:"))
+        assert "no SHP XBRL files" in capsys.readouterr().err
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
 
 
 def test_shp_known_at_takes_the_earlier_pm_safe_file_stamp():

@@ -51,7 +51,8 @@ DOC_TYPES = {
 def store_copies(company: Company) -> tuple[dict, ...]:
     """One entry per table copied from a read-only SQLite store, filtered to this company's ISINs
     (every ISIN, so a changed ISIN keeps its history): the table, the store, the table in it, the
-    key the rows were filtered by, and the SELECT (which adds ``known_at``)."""
+    key the rows were filtered by, and the SELECT (which adds ``known_at``).  ``shp_index`` rows of an older
+    NSE feed carry no ISIN at all: those come in by the company's own symbol (T-214)."""
     isin = company.isin_clause()
     params = company.isin_params
     return (
@@ -74,9 +75,10 @@ def store_copies(company: Company) -> tuple[dict, ...]:
          "key": company.isin_key,
          "sql": f"SELECT *, filed_at AS known_at FROM cc_items WHERE {isin}", "params": params},
         {"table": "shp_index", "db": "equity_intelligence.db", "source": "shp_index",
-         "key": company.isin_key,
+         "key": f"{company.isin_key} or null-isin rows of symbol={company.symbol}",
          "sql": "SELECT *, coalesce(broadcast_at, submission_date) AS known_at FROM shp_index "
-                f"WHERE {isin}", "params": params},
+                f"WHERE ({isin} OR (isin IS NULL AND symbol=?))",
+         "params": params + (company.symbol,)},
         {"table": "announcements", "db": "bse_announcements.db", "source": "ann",
          "key": f"symbol={company.symbol}",
          "sql": "SELECT *, coalesce(DissemDT, News_submission_dt, NEWS_DT) AS known_at FROM ann "
