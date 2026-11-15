@@ -41,7 +41,7 @@ import sqlite3
 import time
 from pathlib import Path
 
-from reality_engine.pilot3 import REAL_DB, SANDBOX, profile, registry, schema, stores
+from reality_engine.pilot3 import REAL_DB, SANDBOX, part_stamp, profile, registry, schema, stores
 
 
 EXTRACT_TABLES = ("kpi_series", "transcript_statement")
@@ -267,6 +267,9 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
                 log["atoms"] = atoms.run(out, duplicates_csv)
                 conn = sqlite3.connect(out)
             log[f"seconds_{name}"] = round(time.time() - started, 1)
+            # T-218: the part finished, so the store records which code built it (a part that raised leaves no stamp)
+            for stamped in (("kpi", "transcripts") if name == "extract" else (name,)):
+                part_stamp.write(conn, stamped, log[f"seconds_{name}"])
         log["rows"] = row_counts(conn)
     finally:
         conn.close()
