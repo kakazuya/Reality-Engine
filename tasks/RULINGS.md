@@ -30,7 +30,7 @@ New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/r
 - Journal (13 Nov): add a tasks/JOURNAL.md entry (work, what worked, what failed and why, fixes) at 400k context and at wrap-up; read the latest at start.
 
 ## Data and machines
-- Raw files live only on Drive (7 Nov): jobs download, write the database, delete the copy; check size and hash on Drive before deleting a local copy; test fetches may stay local until `raw_to_drive`. Kept local: `D:\RealityEngine\raw\user_research`.
+- Raw files only on Drive (7 Nov): download, write the database, delete the copy after a Drive hash check; tests local till `raw_to_drive`. Kept local: `raw\user_research`. Tools/trackers (16 Nov): local, Drive or GitHub only; no cloud until deployed.
 - HP laptop gone (16 Nov). OCR only for pages with no or a jumbled text layer; MSI route untested No PostgreSQL for now. Never touch `Downloads\Telegram Desktop` (his brother's) or his personal Downloads folders.
 
 ## Never

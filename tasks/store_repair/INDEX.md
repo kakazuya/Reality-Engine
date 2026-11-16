@@ -5,7 +5,7 @@ One entry per store defect, like one notebook cell: the question that exposed it
 | id | status | part | scope | tags | stores repaired |
 |---|---|---|---|---|---|
 | R-001 | open | guidance | general | guidance, worded-guidance, transcript, speaker |  |
-| R-002 | fix_written | docs_collect | general | transcript, fetch, nse, bse, no-call-filed |  |
+| R-002 | fix_written | docs_collect | general | transcript, fetch, nse, bse, no-call-filed | c08 |
 | R-003 | fixed | events | general | events, order-win, regulation-30, announcement | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-004 | fixed | stores | general | shareholding, xbrl, fpi, mutual-funds, drive | c01, c02, c03, c04, c05, c06, c07, c08, c09 |
 | R-005 | fixed | kpi | general | kpi, unit, lakh, scale, row-check | c01, c03, c04, c05, c06, c07, c08, c09, c10 |
@@ -33,7 +33,7 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Code:** reality_engine/scripts/nse_announcements.py::AnnouncementFetcher.download_kind, reality_engine/scripts/fetch_bse_announcements_daily.py::main, reality_engine/pilot3/docs_collect.py::discover
 - **Store tables touched:** doc, doc_page, transcript_statement, guidance
 - **Tags:** transcript, fetch, nse, bse, no-call-filed; **scope:** general
-- **Stores repaired:** -; runs: -
+- **Stores repaired:** c08; runs: 20261116T160339
 
 ## R-003 (fixed, part `events`, opened 2026-11-16)
 
