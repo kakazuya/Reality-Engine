@@ -3410,21 +3410,34 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                 ocr_words = opg[page][1]
                 st["ocr_pages"] = st.get("ocr_pages", 0) + 1
             if _page_may_have_table(text):
-                try:
-                    if layer_words:
+                if layer_words:     # one try per source: a layer that raises must not cost the OCR rows (review)
+                    try:
                         trows = table_and_chart_rows(layer_words, text, page, sym, entries, dims, page_pers, st, doc_basis)
-                    if ocr_words is not None:
-                        # R-010: on a page with a text layer the layer's cells lead and OCR adds only the cells the
-                        # layer lacked (an OCR reading once dropped a right EBITDA cell the layer held)
-                        have = {(r.metric, r.dimension, r.period_type, r.fiscal_period) for r in trows}
-                        extra = [r for r in table_and_chart_rows(ocr_words, text, page, sym, entries, dims,
-                                                                 page_pers, st, doc_basis)
-                                 if (r.metric, r.dimension, r.period_type, r.fiscal_period) not in have]
-                        ocr_ids = {id(r) for r in extra}
-                        trows = trows + extra
-                except Exception:
-                    st["errors"] = st.get("errors", 0) + 1
-            if page in opg and not layer_words:  # a scanned page: every row on it comes from the OCR reading
+                    except Exception:
+                        st["errors"] = st.get("errors", 0) + 1
+                if ocr_words is not None:
+                    # R-010: on a page with a text layer the layer's cells lead and OCR adds only the cells the layer
+                    # lacked (an OCR reading once dropped a right EBITDA cell the layer held).  A cell both read with
+                    # different values keeps the layer's (what the store held before OCR) and is counted
+                    # (ocr_conflict) for review; the second reading's diagnostics go to a scratch dict, so the
+                    # build's counters see each page once.
+                    try:
+                        ocr_rows = table_and_chart_rows(ocr_words, text, page, sym, entries, dims, page_pers,
+                                                        {} if trows else st, doc_basis)
+                    except Exception:
+                        ocr_rows = []
+                        st["errors"] = st.get("errors", 0) + 1
+                    have = {(r.metric, r.dimension, r.period_type, r.fiscal_period): r.value for r in trows}
+                    extra = []
+                    for r in ocr_rows:
+                        key = (r.metric, r.dimension, r.period_type, r.fiscal_period)
+                        if key not in have:
+                            extra.append(r)
+                        elif abs(have[key] - r.value) > 1e-9:
+                            st["ocr_conflict"] = st.get("ocr_conflict", 0) + 1
+                    ocr_ids = {id(r) for r in extra}
+                    trows = trows + extra
+            if page in opg and not layer_page:   # a scanned page: every row on it comes from the OCR reading
                 method, ocr_conf = ocr_method, ocr_page_conf
             basis = page_basis(text, sym)
             if basis == "not_stated" and _is_entity_basis(doc_basis):

@@ -390,8 +390,22 @@ def test_kpi_layer_cells_lead_and_ocr_adds_only_missing_cells(monkeypatch):
     monkeypatch.setattr(kpi, "segment_revenue_rows", lambda *a, **k: [])
     monkeypatch.setattr(kpi, "drop_reason", lambda *a, **k: None)
     monkeypatch.setattr(kpi, "doc_default_period", lambda *a, **k: [])
+    stats: dict = {}
     got = sorted((r["page"], r["fiscal_period"], r["value"], r["method"])
-                 for r in kpi.extract_company("KEC", None, {}) if r["metric"] == "ebitda")
+                 for r in kpi.extract_company("KEC", None, stats) if r["metric"] == "ebitda")
     assert got == [(1, "Q3FY26", 143.7, "text_layer"), (1, "Q4FY25", 104.6, "ocr_textrec"),
                    (1, "Q4FY26", 138.4, "text_layer"),
                    (2, "Q3FY26", 999.0, "ocr_textrec"), (2, "Q4FY25", 104.6, "ocr_textrec")]
+    assert stats["KEC"]["ocr_conflict"] == 1          # page 1 Q3FY26: layer 143.7 kept, OCR 999.0 counted
+
+    # a layer read that raises still leaves the OCR rows of the page (one try per source)
+    def raising_layer(words, *a, **k):
+        if words == ["layer"]:
+            raise IndexError("garbled layer")
+        return fake_table(words)
+
+    monkeypatch.setattr(kpi, "table_and_chart_rows", raising_layer)
+    stats = {}
+    got = sorted((r["page"], r["fiscal_period"], r["method"])
+                 for r in kpi.extract_company("KEC", None, stats) if r["metric"] == "ebitda" and r["page"] == 1)
+    assert got == [(1, "Q3FY26", "ocr_textrec"), (1, "Q4FY25", "ocr_textrec")] and stats["KEC"]["errors"] == 1

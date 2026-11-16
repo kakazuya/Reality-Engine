@@ -91,7 +91,6 @@ NON_NAME_RX = re.compile(r"\b(?:transcript|call|conference|investor|investors|pr
 PAGE_NO_RX = re.compile(r"^[ \t]*Page \d+ of \d+[ \t]*$", re.M)
 DIGITS_RX = re.compile(r"\d+")
 DATE_LINE_RX = re.compile(r"^[ \t]*(?:" + MONTHS + r") \d{1,2}, \d{4}[ \t]*$", re.M)
-CALL_DATE_RX = re.compile(r"(" + MONTHS + r") (\d{1,2}), (\d{4})")
 ABBR = ("Mr", "Ms", "Mrs", "Dr", "Rs", "No", "vs", "Inc", "Ltd", "approx", "Sr", "Jr", "St", "Co", "Corp", "etc", "i.e", "e.g", "FY", "Q")
 SENT_END_RX = re.compile(r"(?<=[.?!])[\"”’')]*\s+(?=[\"“‘'(A-Z0-9₹$])")
 NOT_SPEAKERS = ("Corporate", "Registered", "Email", "Website", "Phone", "Tel", "Note", "Disclaimer", "Source", "CIN", "Page", "Symbol", "Scrip", "SCRIP", "Sub", "Date", "Ref", "MANAGEMENT", "To", "Dear", "Subject", "Attention",
@@ -257,16 +256,14 @@ def call_period_ok(period: str | None, known_at: str | None, title: str | None =
     return filing_quarter(known_at)
 
 
-HELD_ON_RX = re.compile(r"(?i:held on|conducted on|call on)\s+(?:\w+day,?\s+)?(" + MONTHS + r") (\d{1,2}),? (\d{4})")
-
-
 def call_date_of(first_page: str, known_at: str | None) -> str | None:
-    """The call's date: a date written after 'held on' first (a cover letter's own date is the filing day, R-011),
-    else the first date on the page, else ``known_at``."""
-    m = HELD_ON_RX.search(first_page[:3000]) or CALL_DATE_RX.search(first_page[:1500])
-    if m:
-        mon = [x.lower() for x in MONTHS.split("|")].index(m.group(1).lower()) + 1
-        return f"{int(m.group(3)):04d}-{mon:02d}-{int(m.group(2)):02d}"
+    """The call's date: ``call_dates.call_date`` (a date a call cue such as 'held on' introduces, either day order,
+    any case, else the first date printed), else ``known_at``.  One reader for both modules: the regex this module
+    had took a cover letter's own date (R-011), and its 'held on' variant took any 'call on <date>' (review)."""
+    from .call_dates import call_date
+    found = call_date([first_page])
+    if found:
+        return found
     return (known_at or "")[:10] or None
 
 

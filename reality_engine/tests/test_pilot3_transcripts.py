@@ -328,3 +328,15 @@ def test_call_date_prefers_held_on_over_the_cover_letter_date():
     cover = "August 12, 2024\nThe Secretary\nSub: Transcript of Earnings Call held on August 7, 2024, for the quarter"
     assert transcripts.call_date_of(cover, "2024-08-12T18:40:01") == "2024-08-07"
     assert transcripts.call_date_of("Earnings call\nFebruary 10, 2026\nModerator: welcome", None) == "2026-02-10"
+
+
+def test_call_date_ignores_other_calls_and_reads_day_first_dates():
+    """Review of R-011: a previous or next call named in the text is not this call; day-first and upper-case
+    dates after 'held on' are read (call_dates.call_date is the one reader)."""
+    assert transcripts.call_date_of("Q2 FY26 Earnings Call\nAugust 8, 2025\nModerator: As indicated on our previous "
+                                    "call on May 14, 2025, demand improved", None) == "2025-08-08"
+    assert transcripts.call_date_of("Q2 FY26 Earnings Call\nAugust 8, 2025\nOur next call on November 10, 2025",
+                                    None) == "2025-08-08"
+    assert transcripts.call_date_of("The earnings call held on Tuesday, 14th May 2024 discussed", "2024-05-16") == \
+        "2024-05-14"
+    assert transcripts.call_date_of("CALL HELD ON AUGUST 7, 2024", "2024-08-12") == "2024-08-07"
