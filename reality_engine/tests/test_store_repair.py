@@ -197,3 +197,13 @@ def test_notes_roundtrip_and_index(tmp_path):
     assert saved["status"] == "fixed" and saved["repaired"] == ["c07"] and saved["runs"] == ["r1"]
     index = (tmp_path / "INDEX.md").read_text(encoding="utf-8")
     assert "R-001" in index and "symbol fallback" in index and "promoter holding" in index
+    # every note carries where the fix lives, what it touches, tags and scope; the CLI splits the comma lists
+    store_repair.note_set("R-001", {"code": ["pilot3/stores.py::build_shp"], "tables": ["shp_category"],
+                                    "tags": ["shareholding", "xbrl"], "scope": "general"}, notes_dir=tmp_path)
+    index = (tmp_path / "INDEX.md").read_text(encoding="utf-8")
+    assert "pilot3/stores.py::build_shp" in index and "shareholding, xbrl" in index and "**scope:** general" in index
+    grid = store_repair.write_grid(tmp_path / "no_stores", store_repair.read_notes(tmp_path), tmp_path / "g.xlsx")
+    from openpyxl import load_workbook
+    notes_sheet = load_workbook(grid)["notes"]
+    assert [c.value for c in notes_sheet[2]][:6] == ["R-001", "fixed", note["opened"], "stores", "general",
+                                                    "shareholding, xbrl"]

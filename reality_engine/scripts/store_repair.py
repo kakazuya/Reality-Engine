@@ -41,7 +41,13 @@ from reality_engine.scripts import store_diff
 REPO = Path(__file__).resolve().parents[2]
 NOTES_DIR = REPO / "tasks" / "store_repair"
 STATUSES = ("open", "fix_written", "fixed", "wontfix")
-NOTE_FIELDS = ("question", "store", "part", "symptom", "cause", "fix", "status")
+NOTE_FIELDS = ("question", "store", "part", "symptom", "cause", "fix", "status", "code", "tables", "tags", "scope")
+# Shivam 16 Nov: every fix is located and written up like a notebook cell: what was wrong in the store and why, the
+# fix, the code it lives in (``code``: file::function, comma list), the store tables it touches (``tables``), free
+# ``tags`` to find it by, and whether it is a ``general`` rule or holds for one ``company`` only.
+LIST_FIELDS = ("code", "tables", "tags")
+SCOPES = ("general", "company")
+GRID_XLSX = REPO / "reports" / "store_repair_grid.xlsx"
 
 
 # --- stores ------------------------------------------------------------------------------------------------------
@@ -246,17 +252,79 @@ def write_notes(notes: list[dict], notes_dir: Path = NOTES_DIR) -> None:
     notes_dir.mkdir(parents=True, exist_ok=True)
     (notes_dir / "notes.jsonl").write_text(
         "".join(json.dumps(n, ensure_ascii=False) + "\n" for n in notes), encoding="utf-8", newline="\n")
+    def joined(value) -> str:
+        return ", ".join(value) if isinstance(value, list) else str(value or "")
+
     lines = ["# Store-repair notes (generated from notes.jsonl by `store_repair note`; do not edit by hand)", "",
-             "One entry per store defect: the question that exposed it, the part, the cause, the fix, the stores "
-             "repaired. Stores are named by their build folder, never by company.", "",
-             "| id | status | part | symptom | cause | fix | stores repaired |", "|---|---|---|---|---|---|---|"]
+             "One entry per store defect, like one notebook cell: the question that exposed it, what was wrong and "
+             "why, the fix, the code and store tables it touches, its tags and scope, the stores repaired. Stores "
+             "are named by their build folder, never by company. Grid of stores x parts: "
+             "`reports/store_repair_grid.xlsx` (`store_repair note grid`).", "",
+             "| id | status | part | scope | tags | stores repaired |", "|---|---|---|---|---|---|"]
     for n in notes:
-        cells = [n["id"], n["status"], n.get("part") or "", n.get("symptom") or "", n.get("cause") or "",
-                 n.get("fix") or "", ", ".join(n.get("repaired") or [])]
+        cells = [n["id"], n["status"], n.get("part") or "", n.get("scope") or "", joined(n.get("tags")),
+                 joined(n.get("repaired"))]
         lines.append("| " + " | ".join(str(c).replace("|", "/").replace("\n", " ") for c in cells) + " |")
-    lines += ["", "## Questions that exposed them", ""]
-    lines += [f"- {n['id']} ({n.get('store') or '-'}): {n.get('question') or '-'}" for n in notes]
+    for n in notes:
+        lines += ["", f"## {n['id']} ({n['status']}, part `{n.get('part') or '-'}`, opened {n.get('opened') or '-'})",
+                  "", f"- **Question that exposed it** ({n.get('store') or '-'}): {n.get('question') or '-'}",
+                  f"- **What was wrong:** {n.get('symptom') or '-'}",
+                  f"- **Why:** {n.get('cause') or '-'}",
+                  f"- **Fix:** {n.get('fix') or '-'}",
+                  f"- **Code:** {joined(n.get('code')) or '-'}",
+                  f"- **Store tables touched:** {joined(n.get('tables')) or '-'}",
+                  f"- **Tags:** {joined(n.get('tags')) or '-'}; **scope:** {n.get('scope') or '-'}",
+                  f"- **Stores repaired:** {joined(n.get('repaired')) or '-'}; runs: {joined(n.get('runs')) or '-'}"]
     (notes_dir / "INDEX.md").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
+def write_grid(root: Path, notes: list[dict] | None = None, out: Path = GRID_XLSX) -> Path:
+    """Excel workbook: sheet ``grid`` has one row per store and one column per part (the notebook view: each cell
+    says whether that part of that store is up to date and which notes repaired it); sheet ``notes`` lists every
+    note with all its fields."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    notes = read_notes() if notes is None else notes
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "grid"
+    parts = list(part_stamp.ORDER)
+    ws.append(["store", *parts])
+    fills = {"ok": PatternFill("solid", fgColor="D9EAD3"), "stale": PatternFill("solid", fgColor="FCE5CD")}
+    for store in find_stores(root):
+        try:
+            conn = sqlite3.connect(f"file:{store['db']}?mode=ro", uri=True)
+            stale = dict(part_stamp.stale(conn))
+            conn.close()
+        except Exception as exc:  # noqa: BLE001 - one unreadable store is one row saying so
+            stale = {p: f"unreadable: {exc}" for p in parts}
+        row = [store["name"]]
+        for part in parts:
+            ids = [n["id"] for n in notes if n.get("part") == part and store["name"] in (n.get("repaired") or [])]
+            state = stale.get(part)
+            row.append(("stale: " + state if state else "ok") + (f" | {', '.join(ids)}" if ids else ""))
+        ws.append(row)
+        for cell in ws[ws.max_row][1:]:
+            cell.fill = fills["stale" if str(cell.value).startswith(("stale", "unreadable")) else "ok"]
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+    sheet = wb.create_sheet("notes")
+    columns = ["id", "status", "opened", "part", "scope", "tags", "symptom", "cause", "fix", "code", "tables",
+               "question", "store", "repaired", "runs"]
+    sheet.append(columns)
+    for n in notes:
+        sheet.append([", ".join(n[c]) if isinstance(n.get(c), list) else n.get(c) for c in columns])
+    for cell in sheet[1]:
+        cell.font = Font(bold=True)
+    for col, width in zip("ABCDEFGHIJKLMNO", (7, 11, 11, 13, 10, 24, 50, 60, 60, 40, 30, 50, 12, 30, 24)):
+        sheet.column_dimensions[col].width = width
+    for row in sheet.iter_rows(min_row=2):
+        for cell in row:
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(out)
+    return out
 
 
 def note_add(fields: dict, notes_dir: Path = NOTES_DIR) -> dict:
@@ -286,13 +354,23 @@ def note_main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="store_repair note")
     sub = ap.add_subparsers(dest="cmd", required=True)
     add, change, _listing = sub.add_parser("add"), sub.add_parser("set"), sub.add_parser("list")
+    grid = sub.add_parser("grid", help="write reports/store_repair_grid.xlsx: stores x parts, and every note")
+    grid.add_argument("--root", required=True, help="folder holding the stores")
     change.add_argument("id")
     change.add_argument("--repaired", default="", help="comma list of stores repaired for this defect")
     for p in (add, change):
         for name in NOTE_FIELDS:
-            p.add_argument(f"--{name}", default=None, choices=STATUSES if name == "status" else None)
+            p.add_argument(f"--{name}", default=None,
+                           choices=STATUSES if name == "status" else SCOPES if name == "scope" else None,
+                           help="comma list" if name in LIST_FIELDS else None)
     args = ap.parse_args(argv)
+    if args.cmd == "grid":
+        print(write_grid(Path(args.root)))
+        return 0
     fields = {name: getattr(args, name, None) for name in NOTE_FIELDS}
+    for name in LIST_FIELDS:
+        if fields[name]:
+            fields[name] = [s.strip() for s in fields[name].split(",") if s.strip()]
     if args.cmd == "add":
         if not (fields["part"] and fields["symptom"]):
             raise SystemExit("note add needs at least --part and --symptom")
