@@ -194,3 +194,16 @@ def test_reconcile_share_count_reads_the_pattern_and_deletes_only_the_slip():
     conn.execute("INSERT INTO shp_category VALUES ('B','2024-12-31','shareholding_pattern','xbrl',225440000,'2025-01-14')")
     assert stores.reconcile_share_count(conn) == {"B": 1}
     assert conn.execute("SELECT basis FROM share_capital").fetchall() == [("consolidated",)]
+
+
+def test_with_no_pattern_total_the_nearest_agreeing_quarter_judges():
+    """R-008 third version: SEAMECLTD Q3FY20 standalone XBRL said 24.53 million shares, consolidated 25.43 million,
+    and both filings said 25.43 million the quarters either side; no shareholding pattern is held before 2024."""
+    from reality_engine.pilot3 import stores
+    row = lambda basis, date, shares: ("S", "I", date, basis, None, None, shares, shares * 10, 10.0)
+    rows = [row("standalone", "2019-09-30", 25_430_000), row("consolidated", "2019-09-30", 25_430_000),
+            row("standalone", "2019-12-31", 24_530_000), row("consolidated", "2019-12-31", 25_430_000),
+            row("standalone", "2020-03-31", 25_430_000), row("consolidated", "2020-03-31", 25_430_000)]
+    kept = stores._parent_share_count(rows)
+    assert ("2019-12-31", "standalone") not in [(r[2], r[3]) for r in kept] and len(kept) == 5
+    assert stores._parent_share_count(rows[2:4]) == rows[3:3] + [rows[2]]   # nothing to judge by: consolidated goes

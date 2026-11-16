@@ -826,29 +826,41 @@ def _shp_known(file: str | None, broadcast: str | None) -> tuple[str | None, str
 def _parent_share_count(rows: list[tuple], totals: dict[str, float] | None = None) -> list[tuple]:
     """Paid-up equity is the parent's, whatever the statement basis: when the standalone and consolidated results
     filings of one quarter end differ by more than 1% in share count, one of them is a filing slip and its row is
-    dropped.  The judge is the shareholding-pattern total of the same quarter end (``totals``: {as_of_date: shares}):
-    the row further from it goes.  With no pattern total the consolidated row goes.  A quarter with only one basis
-    is kept.  Row layout: share_capital's (index 2 = as_of_date, 3 = basis, 6 = shares).
+    dropped: the row further from the reference count goes.  The reference is the shareholding-pattern total of the
+    same quarter end (``totals``: {as_of_date: shares}); with none that day, the reference nearest in date among the
+    pattern totals and the quarters whose two filings agree (share counts move rarely, so a neighbour judges a slip);
+    with no reference at all the consolidated row goes.  A quarter with only one basis is kept.  Row layout:
+    share_capital's (index 2 = as_of_date, 3 = basis, 6 = shares).  Which filed figure to keep is a cleaning choice:
+    each kept row keeps its own known_at.
 
-    R-008, 16 Nov: SPMLINFRA's Q2FY27 consolidated XBRL gave paid-up capital Rs 13.88 lakh (694,000 shares) against
-    Rs 17.83 crore standalone (89.2 million; pattern 84.8 million): consolidated dropped.  BLKASHYAP's Q3FY25
-    standalone XBRL gave 255.44 million against 225.44 million consolidated and in the pattern: standalone dropped
-    (the first version of this fix always kept standalone and would have deleted the right row)."""
-    totals = totals or {}
+    R-008, 16 Nov: SPMLINFRA Q2FY27 consolidated XBRL said 694,000 shares against 89.2 million standalone (pattern
+    84.8 million): consolidated dropped.  BLKASHYAP Q3FY25 standalone said 255.44 million against 225.44 million
+    consolidated and in the pattern: standalone dropped.  SEAMECLTD Q3FY20 standalone said 24.53 million against
+    25.43 million consolidated and in every neighbouring quarter, before any pattern is held: standalone dropped.
+    (Version 1 always kept standalone; version 2 did so whenever the pattern total of that date was missing.)"""
     by_date: dict[str, dict[str, float]] = {}
     for r in rows:
         if r[6]:
             by_date.setdefault(r[2], {})[r[3]] = r[6]
-    drop: set[tuple[str, str]] = set()
-    for date, got in by_date.items():
+
+    def split(got: dict[str, float]) -> bool:
         alone, cons = got.get("standalone"), got.get("consolidated")
-        if not (alone and cons) or abs(cons - alone) <= 0.01 * alone:
+        return bool(alone and cons) and abs(cons - alone) > 0.01 * alone
+
+    refs = {d: got.get("standalone") or got.get("consolidated") for d, got in by_date.items()
+            if not split(got) and len(got) == 2}
+    refs.update(totals or {})
+    ordinal = {d: date.fromisoformat(d[:10]).toordinal() for d in set(refs) | set(by_date)}
+    drop: set[tuple[str, str]] = set()
+    for day, got in by_date.items():
+        if not split(got):
             continue
-        total = totals.get(date)
-        if total:
-            drop.add((date, "standalone" if abs(alone - total) > abs(cons - total) else "consolidated"))
-        else:
-            drop.add((date, "consolidated"))
+        near = min(refs, key=lambda d: abs(ordinal[d] - ordinal[day]), default=None)
+        if near is None:
+            drop.add((day, "consolidated"))
+            continue
+        ref = refs[near]
+        drop.add((day, "standalone" if abs(got["standalone"] - ref) > abs(got["consolidated"] - ref) else "consolidated"))
     return [r for r in rows if (r[2], r[3]) not in drop]
 
 
