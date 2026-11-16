@@ -7,10 +7,11 @@ One entry per store defect, like one notebook cell: the question that exposed it
 | R-001 | open | guidance | general | guidance, worded-guidance, transcript, speaker |  |
 | R-002 | fix_written | docs_collect | general | transcript, fetch, nse, bse, no-call-filed |  |
 | R-003 | fixed | events | general | events, order-win, regulation-30, announcement | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
-| R-004 | open | stores | general | shareholding, xbrl, fpi, mutual-funds, drive | c01 |
+| R-004 | fixed | stores | general | shareholding, xbrl, fpi, mutual-funds, drive | c01, c02, c03, c04, c05, c06, c07, c08, c09 |
 | R-005 | fix_written | kpi | general | kpi, unit, lakh, scale, row-check | c01, c03, c04, c07 |
 | R-006 | fixed | comparatives | general | results, unit, lakh, scale, xbrl, scan | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-007 | open | kpi | general | kpi, revenue-definition, deck, annual-report, derived |  |
+| R-008 | open | stores | general | share-capital, results, scale |  |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -45,16 +46,16 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Tags:** events, order-win, regulation-30, announcement; **scope:** general
 - **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10; runs: 20261116T054008, 20261116T054133, 20261116T054138, 20261116T054142, 20261116T054146, 20261116T054151, 20261116T054155, 20261116T054159, 20261116T054203, 20261116T054207
 
-## R-004 (open, part `stores`, opened 2026-11-16)
+## R-004 (fixed, part `stores`, opened 2026-11-16)
 
 - **Question that exposed it** (c01): How have FPI and mutual fund holdings moved over the last four quarters?
 - **What was wrong:** shp_category holds promoter and public only (2 rows per quarter, source shp_index); no FPI, MF, insurance or pledge rows
 - **Why:** pilot3/stores.py build_shp read only the local pilot folder raw/nse_shp_xbrl_pilot (none of these companies' files); their filings since 2024-04 are on Drive under nse_shp_xbrl_universe (T-209), never looked up
-- **Fix:** stores._shp_parsed looks up each file shp_index names in the pilot then universe folder, on disk or on Drive via raw_store (temp copy deleted); c01 copy: +369 shp_category (10 quarters), +130 shp_holder, +10 shp_pledge, +20 share_capital; 20 index rows rekeyed (pct base filled, pct unchanged), so each store's repair is refused and accepted after a hand-read. Quarters before 2024-04 are held nowhere (BSE/NSE shareholding fetch)
+- **Fix:** stores._shp_parsed looks up each file shp_index names in the pilot then universe folder, on disk or on Drive via raw_store (temp copy deleted). Applied c01-c09 (16 Nov), each refused by the gate and accepted after a check: no shareholding percentage changed, 358-757 category rows and 15-468 named holders added per store, KPI verdicts unchanged. Share counts now also come from intra-quarter shareholding filings, so allotments show earlier (c09: 187.2 m -> 464.3 m shares from 1 May 2026 instead of 14 May; c07 book value per share H1FY27 16,329 -> 133.57, the old figure used a bad 694,000-share quarterly row). c10 has no shareholding index (fetch gap). Quarters before 2024-04 are held nowhere
 - **Code:** reality_engine/pilot3/stores.py::_shp_parsed, reality_engine/pilot3/stores.py::build_shp
 - **Store tables touched:** shp_category, shp_holder, shp_pledge, share_capital, valuation_daily
 - **Tags:** shareholding, xbrl, fpi, mutual-funds, drive; **scope:** general
-- **Stores repaired:** c01; runs: -
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09; runs: -
 
 ## R-005 (fix_written, part `kpi`, opened 2026-11-16)
 
@@ -87,4 +88,15 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Code:** reality_engine/pilot3/kpi.py::derive_quarters, reality_engine/pilot3/kpi.py (revenue captions)
 - **Store tables touched:** kpi_series
 - **Tags:** kpi, revenue-definition, deck, annual-report, derived; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-008 (open, part `stores`, opened 2026-11-16)
+
+- **Question that exposed it** (c07): What is the book value per share now?
+- **What was wrong:** share_capital holds 694,000 shares for 2026-09-30 from the quarterly results (source 'quarterly'), against 84.8 million in the shareholding pattern of the same date
+- **Why:** not diagnosed: the quarterly results reader took a share-count figure about 120 times too small (perhaps a face-value or lakh column)
+- **Fix:** -
+- **Code:** reality_engine/pilot3/stores.py (share_capital from quarterly results)
+- **Store tables touched:** share_capital, ratio_panel, valuation_daily
+- **Tags:** share-capital, results, scale; **scope:** general
 - **Stores repaired:** -; runs: -
