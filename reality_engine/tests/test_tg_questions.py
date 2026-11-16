@@ -73,6 +73,18 @@ def test_nse_archive_pdf_is_taken_on_the_filers_symbol_only():
     assert not tg_questions.url_names_company("https://www.india.com/x.pdf", "Bharat India Limited", "BIL")
 
 
+def test_a_pdf_with_a_random_name_is_judged_on_its_text_layer():
+    url = "https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname=97f6136a.pdf"
+    payload = {"questions": [{"question": "What did Acme say about steel margins?", "kind": "found",
+                              "theme": "transcript", "source_url": url}]}
+    named = tg_questions.clean_rows(payload, "Acme Steel Ltd", "ACME",
+                                    _fetcher({url: (200, "Scrip Name: ACME  Transcript of Q2 FY26 call")}))[0]
+    other = tg_questions.clean_rows(payload, "Acme Steel Ltd", "ACME",
+                                    _fetcher({url: (200, "Scrip Name: OTHERCO  Transcript")}))[0]
+    assert (named[0]["kind"], other[0]["kind"]) == ("found", "found_unverified")
+    assert tg_questions.pdf_text(b"%PDF-1.4 broken") == ""
+
+
 def test_name_tokens_drops_stop_words_and_keeps_three_words_plus_symbol():
     assert tg_questions.name_tokens("Acme Steel and Wire Industries Limited", "ACME") == \
         ["acme", "steel", "wire", "acme"]

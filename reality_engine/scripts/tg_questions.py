@@ -144,9 +144,24 @@ def fetch(url: str, timeout: float = 20.0) -> tuple[int, str]:
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "en"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return int(resp.status), resp.read(2_000_000).decode("utf-8", errors="replace")
+            status, body = int(resp.status), resp.read(8_000_000)
     except Exception as exc:  # noqa: BLE001 - any fetch failure means "not verified", never a crash
         return int(getattr(exc, "code", 0) or 0), ""
+    return status, pdf_text(body) if body.startswith(b"%PDF") else body[:2_000_000].decode("utf-8", errors="replace")
+
+
+def pdf_text(body: bytes, pages: int = 3) -> str:
+    """The text layer of a PDF's first pages, so a filing is judged on what it prints (16 Nov: 30 questions from
+    BSE attachments named by a random id, e.g. 'Scrip Name: BHAGERIA ... Transcript of Q2 & H1 FY26').
+    A scan or an unreadable file gives '' and stays unverified."""
+    try:
+        import io
+
+        import pypdf
+        reader = pypdf.PdfReader(io.BytesIO(body))
+        return " ".join((page.extract_text() or "") for page in reader.pages[:pages])
+    except Exception:  # noqa: BLE001 - a broken PDF is "not verified", never a crash
+        return ""
 
 
 def page_is_document(url: str, page: str) -> bool:
@@ -221,9 +236,9 @@ def clean_rows(payload: dict, company: str, symbol: str, fetcher=fetch) -> tuple
             status, page = pages.get(url, (0, ""))
             row.update(source_url=url or None, source_title=str(q.get("source_title") or "").strip() or None,
                        http_status=status, word_overlap=word_overlap(text, page))
-            # a PDF's bytes are not text: a document on the company's own site is taken on its address
-            named = (url_names_company(url, company, symbol) if page_is_document(url, page)
-                     else page_names_company(page, company, symbol))
+            # a PDF is judged on its text layer (``fetch`` reads it) or, with none, on its address
+            named = page_names_company(page, company, symbol) or (
+                page_is_document(url, page) and url_names_company(url, company, symbol))
             if not (status == 200 and named):
                 row["kind"] = "found_unverified"
         seen.add(key)
