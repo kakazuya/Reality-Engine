@@ -103,3 +103,17 @@ def pytest_configure(config):
         "markers",
         "slow: builds the whole pilot3 database or reads the full stores; excluded by -m 'not slow' in fix rounds",
     )
+
+
+@pytest.fixture(autouse=True)
+def _shp_files_stay_local(monkeypatch):
+    """T-218 R-004: ``pilot3.stores.build_shp`` looks up a shareholding file its index names on Drive.  A test never
+    reads the machine's Drive manifest: an already-imported ``stores`` gets a raw store with no manifest (a test that
+    wants a Drive file sets ``stores._shp_raw_store`` itself).  Nothing is imported here."""
+    import sys
+    from pathlib import Path
+
+    mod = sys.modules.get("reality_engine.pilot3.stores")
+    if mod is not None and hasattr(mod, "_shp_raw_store"):
+        monkeypatch.setattr(mod, "_shp_raw_store",
+                            lambda: mod.raw_store.RawStore(manifest=Path("no_such_manifest_for_tests.db")))

@@ -4,21 +4,27 @@ price_delivery, shp_category.  Rows are read through the gap loop's own copy spe
 the filing record the store carries.  No model, no network."""
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import gzip
+import os
 import re
 import sqlite3
 import sys
 import xml.etree.ElementTree as ET
+import zlib
 from bisect import bisect_right
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
+from reality_engine import raw_store
 from reality_engine.gap_loop import prepare
-from reality_engine.pilot3 import SHP_XBRL, profile, schema
+from reality_engine.pilot3 import SHP_XBRL, SHP_XBRL_UNIVERSE, profile, schema
 from reality_engine.pilot3.registry import all_isins, isin_history
 
 CR = 1e7  # rupees per crore
+# shp_category / shp_holder ``source_db``: the raw folder a shareholding XBRL file came from.
+SHP_PILOT_LABEL, SHP_UNIVERSE_LABEL = "nse_shp_xbrl_pilot", "nse_shp_xbrl_universe"
 
 # The history window a profile keeps (T-056): every store table and its date column.  No profile -> no filter.
 WINDOW_COLUMNS = {"fin_quarter_xbrl": "period_end", "fin_annual_line": "period_end", "shp_category": "quarter_end",
@@ -817,19 +823,81 @@ def _shp_known(file: str | None, broadcast: str | None) -> tuple[str | None, str
     return broadcast, "shp_index.broadcast_at"
 
 
+def _shp_raw_store() -> raw_store.RawStore:
+    """The raw store with the universe folder as its own manifest root: T-209 uploaded it as root
+    ``nse_shp_xbrl_universe`` (file name as ``rel``), while the pilot folder sits under ``raw``."""
+    return raw_store.RawStore(roots={**raw_store._default_roots(), SHP_UNIVERSE_LABEL: SHP_XBRL_UNIVERSE})
+
+
+def _shp_parsed() -> tuple[dict[str, dict], dict[str, str]]:
+    """Every shareholding XBRL file the build reads, parsed: ``{file name: parse}`` and ``{file name: raw folder}``.
+
+    The local pilot folder is read whole, as before.  R-004 (T-218): a store of any other company held the index's
+    promoter and public lines only, because its filings are not in that folder.  So every file a ``shp_index`` row of
+    the profile's companies names and the pilot folder lacks is looked up by name in the pilot folder and then the
+    universe folder (T-209: every filing since 2024-04-01), on disk or on Drive through ``raw_store``: one download
+    for the lot, deleted once the bytes are read (raw files live only on Drive).  A file held nowhere or unreadable
+    is named on stderr and leaves that quarter with its index rows; ``REALITY_RAW_FETCH=0`` keeps the build offline."""
+    parsed: dict[str, dict] = {}
+    origin: dict[str, str] = {}
+    if SHP_XBRL.is_dir():
+        for path in sorted(SHP_XBRL.glob("*.xml.gz")):
+            parsed[path.name[:-3]] = parse_shp_xbrl(gzip.open(path).read())
+            origin[path.name[:-3]] = SHP_PILOT_LABEL
+    wanted = sorted({str(r["file"]) for symbol in profile.symbols() for r in fetch(symbol, "shp_index")
+                     if r.get("file") and str(r["file"]).startswith("SHP_")} - set(parsed))
+    if not wanted:
+        if not parsed:   # 8 Nov: raw moved to Drive, the folder was empty and pledge/holder tables came out empty
+            print(f"WARNING build_shp: no SHP XBRL files in {SHP_XBRL} and no shp_index file to look up; shp_holder "
+                  "and shp_pledge will be empty", file=sys.stderr)
+        return parsed, origin
+    folders = ((SHP_PILOT_LABEL, SHP_XBRL), (SHP_UNIVERSE_LABEL, SHP_XBRL_UNIVERSE))
+    found: dict[str, tuple[str, Path]] = {}
+    for name in wanted:                                   # on disk first: no manifest read, no network
+        for label, folder in folders:
+            if (folder / f"{name}.gz").is_file():
+                found[name] = (label, folder / f"{name}.gz")
+                break
+    store = None
+    if len(found) < len(wanted) and os.environ.get("REALITY_RAW_FETCH", "1").strip().lower() not in (
+            "0", "false", "off", "no"):
+        store = _shp_raw_store()
+        for name in wanted:
+            for label, folder in folders:
+                if name not in found and store.exists(folder / f"{name}.gz"):
+                    found[name] = (label, folder / f"{name}.gz")
+    unreadable = []
+    with contextlib.ExitStack() as stack:
+        if store is not None:
+            stack.enter_context(store.prefetch([path for _label, path in found.values()]))
+        for name, (label, path) in found.items():
+            try:
+                if store is None:
+                    blob = gzip.open(path).read()
+                else:
+                    with store.local(path) as local:
+                        blob = gzip.open(local).read()
+                parsed[name], origin[name] = parse_shp_xbrl(blob), label
+            except (OSError, EOFError, zlib.error, ET.ParseError) as exc:
+                unreadable.append(f"{name} ({type(exc).__name__})")
+    missing = [name for name in wanted if name not in found]
+    if missing:
+        print(f"WARNING build_shp: {len(missing)} of {len(wanted)} shareholding files the index names are not in "
+              f"{SHP_PILOT_LABEL} or {SHP_UNIVERSE_LABEL}, on disk or on Drive"
+              f"{'' if store is not None else ' (Drive not asked)'}; those quarters keep the index rows only",
+              file=sys.stderr)
+    if unreadable:
+        print(f"WARNING build_shp: unreadable shareholding files skipped: {', '.join(unreadable)}", file=sys.stderr)
+    return parsed, origin
+
+
 def build_shp(conn: sqlite3.Connection) -> dict:
     """shp_category (shp_index promoter / public per quarter + the holder categories of every SHP XBRL file),
     shp_holder (the named holders, one row per category and name per quarter) and shp_pledge (the promoter
     encumbrance block), each carrying the file's own ``known_at`` and the percentage base it prints on."""
     schema.create(conn, ("shp_category", "shp_holder", "shp_pledge"))
-    counts, xbrl_files = {}, {}
-    if SHP_XBRL.is_dir():
-        for path in sorted(SHP_XBRL.glob("*.xml.gz")):
-            xbrl_files[path.name[:-3]] = path
-    if not xbrl_files:   # 8 Nov: raw moved to Drive, the folder was empty and pledge/holder tables came out empty
-        print(f"WARNING build_shp: no SHP XBRL files in {SHP_XBRL}; shp_holder and shp_pledge will be empty "
-              "(fetch gdrive:InfoDiffusion_archive/msi_raw/raw/nse_shp_xbrl_pilot first)", file=sys.stderr)
-    parsed_files ={name: parse_shp_xbrl(gzip.open(path).read()) for name, path in xbrl_files.items()}
+    counts = {}
+    parsed_files, origin = _shp_parsed()
     bases = {}
     for parsed in parsed_files.values():
         if _quarter(parsed):
@@ -867,7 +935,7 @@ def build_shp(conn: sqlite3.Connection) -> dict:
                 cat = MEMBERS.get(member, _snake(member))
                 out.append((symbol, isin, inst, cat, member, f.get("NumberOfShares"),
                             f.get(PCT), f.get("NumberOfShareholders"),
-                            "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 1,
+                            "pct", "xbrl", name, origin[name], "xml.gz", name, revised, known, src, 1,
                             base, base_label))
                 if cat.startswith("fpi"):
                     fpi[(cat, inst)] = f
@@ -876,7 +944,7 @@ def build_shp(conn: sqlite3.Connection) -> dict:
                     continue
                 out.append((symbol, isin, inst, "fpi_total", "InstitutionsForeign (FII/FPI line)",
                             f.get("NumberOfShares"), f.get(PCT), None,
-                            "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 1,
+                            "pct", "xbrl", name, origin[name], "xml.gz", name, revised, known, src, 1,
                             base, base_label))
             for inst in {i for (_c, i) in fpi} - {i for i in ifor if ("fpi", i) not in fpi}:
                 pick = [fpi[k] for k in fpi if k[1] == inst and k[0] == "fpi"] or \
@@ -885,7 +953,7 @@ def build_shp(conn: sqlite3.Connection) -> dict:
                     out.append((symbol, isin, inst, "fpi_total", "FPI (derived: sum of FPI members)",
                                 sum(p.get("NumberOfShares") or 0 for p in pick),
                                 sum(p.get(PCT) or 0 for p in pick),
-                                None, "pct", "xbrl", name, "nse_shp_xbrl_pilot", "xml.gz", name, revised, known, src, 0,
+                                None, "pct", "xbrl", name, origin[name], "xml.gz", name, revised, known, src, 0,
                                 base, base_label))
             for (axis, _domain), f in parsed["holders"].items():
                 cat, holder = _holder_category(axis), f.get("NameOfTheShareholder")
@@ -895,7 +963,7 @@ def build_shp(conn: sqlite3.Connection) -> dict:
                 row = (symbol, isin, quarter, cat, holder, f.get("NumberOfShares"),
                        f.get(PCT, pac_pct), f.get("NumberOfShareholders"), f.get("NameOfThePAC"), pac_pct,
                        f.get("NumberOfSharesEncumberedUnderPledged", f.get("PledgedOrEncumberedNumberOfShares")),
-                       name, "nse_shp_xbrl_pilot", "xml.gz", known, src)
+                       name, origin[name], "xml.gz", known, src)
                 key = (isin, quarter, cat, holder)
                 if key not in holders or (holders[key][14] or "") <= (known or ""):
                     holders[key] = row
