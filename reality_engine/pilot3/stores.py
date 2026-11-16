@@ -292,6 +292,7 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
                 sc.append((symbol, r["isin"], r["period_end"], basis, None, None, paid / face, paid, face, "shares",
                            1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", "results_xbrl.db",
                            "quarterly", r["file"], None, None, "derived_from_capital"))
+        sc = _parent_share_count(sc)
         fq += _quarter_extras(symbol, meta, {(r[13], r[8]) for r in fq})
         conn.executemany("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
                          "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
@@ -821,6 +822,23 @@ def _shp_known(file: str | None, broadcast: str | None) -> tuple[str | None, str
     if not broadcast or (later is not None and later > timedelta(hours=1)):   # a re-broadcast, not clock noise
         return when.isoformat(), "file name timestamp (pm-safe)"
     return broadcast, "shp_index.broadcast_at"
+
+
+def _parent_share_count(rows: list[tuple]) -> list[tuple]:
+    """Paid-up equity is the parent's, whatever the statement basis: a consolidated filing whose share count
+    differs by more than 1% from the standalone filing of the same quarter end is a filing slip, and its row is
+    dropped (the standalone one and the shareholding total stay).  R-008, 16 Nov: SPMLINFRA's Q2FY27 consolidated
+    XBRL gave paid-up capital Rs 13.88 lakh (694,000 shares) against Rs 17.83 crore standalone (89.2 million),
+    and book value per share came out at 16,329 for 133.6.  Row layout: share_capital's (index 2 = as_of_date,
+    3 = basis, 6 = shares)."""
+    standalone = {r[2]: r[6] for r in rows if r[3] == "standalone" and r[6]}
+    keep = []
+    for r in rows:
+        alone = standalone.get(r[2])
+        if r[3] == "consolidated" and alone and r[6] and abs(r[6] - alone) > 0.01 * alone:
+            continue
+        keep.append(r)
+    return keep
 
 
 def _shp_raw_store() -> raw_store.RawStore:

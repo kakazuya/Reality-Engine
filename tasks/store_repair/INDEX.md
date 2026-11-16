@@ -11,7 +11,7 @@ One entry per store defect, like one notebook cell: the question that exposed it
 | R-005 | fixed | kpi | general | kpi, unit, lakh, scale, row-check | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-006 | fixed | comparatives | general | results, unit, lakh, scale, xbrl, scan | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-007 | open | kpi | general | kpi, revenue-definition, deck, annual-report, derived |  |
-| R-008 | open | stores | general | share-capital, results, scale |  |
+| R-008 | fix_written | stores | general | share-capital, results, scale | c07 |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -90,13 +90,13 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Tags:** kpi, revenue-definition, deck, annual-report, derived; **scope:** general
 - **Stores repaired:** -; runs: -
 
-## R-008 (open, part `stores`, opened 2026-11-16)
+## R-008 (fix_written, part `stores`, opened 2026-11-16)
 
 - **Question that exposed it** (c07): What is the book value per share now?
 - **What was wrong:** share_capital holds 694,000 shares for 2026-09-30 from the quarterly results (source 'quarterly'), against 84.8 million in the shareholding pattern of the same date
-- **Why:** not diagnosed: the quarterly results reader took a share-count figure about 120 times too small (perhaps a face-value or lakh column)
-- **Fix:** -
-- **Code:** reality_engine/pilot3/stores.py (share_capital from quarterly results)
+- **Why:** SPMLINFRA's Q2FY27 consolidated results XBRL filed paid-up equity capital Rs 13.88 lakh against Rs 17.83 crore in the standalone filing of the same day (a filing slip); share_capital derived 694,000 shares from it
+- **Fix:** stores._parent_share_count: paid-up equity is the parent's, so a consolidated quarterly row more than 1% from the same quarter's standalone row is dropped (standalone and shareholding totals stay); a consolidated row with no standalone that quarter is kept. c07: 1 row removed, nothing else changed (book value per share was already right after R-004)
+- **Code:** reality_engine/pilot3/stores.py::_parent_share_count, reality_engine/pilot3/stores.py::build_quarterly
 - **Store tables touched:** share_capital, ratio_panel, valuation_daily
 - **Tags:** share-capital, results, scale; **scope:** general
-- **Stores repaired:** -; runs: -
+- **Stores repaired:** c07; runs: -

@@ -151,3 +151,14 @@ def test_a_file_held_nowhere_and_a_file_that_does_not_parse_are_named_not_fatal(
     err = capsys.readouterr().err
     assert _counts(conn) == (0, 0, 0)
     assert "1 of 2 shareholding files" in err and OTHER in err and "unreadable" in err
+
+
+def test_a_consolidated_share_count_far_from_standalone_is_dropped():
+    from reality_engine.pilot3 import stores
+    row = lambda basis, date, shares: ("S", "I", date, basis, None, None, shares, shares * 2, 2.0)
+    rows = [row("standalone", "2026-09-30", 89_166_000), row("consolidated", "2026-09-30", 694_000),
+            row("standalone", "2026-06-30", 88_472_000), row("consolidated", "2026-06-30", 88_472_000),
+            row("consolidated", "2026-03-31", 83_143_500)]       # no standalone that quarter: kept
+    kept = stores._parent_share_count(rows)
+    assert [(r[2], r[3]) for r in kept] == [("2026-09-30", "standalone"), ("2026-06-30", "standalone"),
+                                            ("2026-06-30", "consolidated"), ("2026-03-31", "consolidated")]
