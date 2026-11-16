@@ -30,6 +30,7 @@ sidecar so the OCR rows land back on the real doc_key/page.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import re
 import time
@@ -238,6 +239,35 @@ def _pages(store_db: str, symbols: list[str] | None, doc_types: list[str] | None
         con.close()
 
 
+def _pages_prefetched(store_db: str, symbols: list[str] | None, doc_types: list[str] | None):
+    """``_pages`` with each document's PDF downloaded once while its pages are routed.
+
+    A store whose raw files moved to Drive fetched the whole PDF again for every page (``words_for`` and
+    ``_images_share`` each call ``raw_store.local``): thousands of rclone calls for one store.  Inside
+    ``prefetch`` both find the one copy; a PDF on disk is not touched."""
+    from reality_engine import raw_store
+
+    store = raw_store.default_store()
+    current, sources, stack = None, {}, contextlib.ExitStack()
+    con = connect_ro(store_db)
+    try:
+        sources = dict(con.execute("SELECT doc_key, source_key FROM doc").fetchall())
+    finally:
+        con.close()
+    with stack:
+        for item in _pages(store_db, symbols, doc_types):
+            if item[0] != current:
+                stack.close()
+                current = item[0]
+                source = sources.get(current)
+                if source:
+                    try:
+                        stack.enter_context(store.prefetch([source]))
+                    except Exception:          # a failed download leaves the per-page path to report it
+                        pass
+            yield item
+
+
 def run(store_db: str, ocr_dbs: list[str], out: str, symbols: list[str] | None = None,
         doc_types: list[str] | None = None, limit: int | None = None,
         needs_ocr_pdf_dir: str | None = None) -> list[dict[str, str]]:
@@ -254,7 +284,7 @@ def run(store_db: str, ocr_dbs: list[str], out: str, symbols: list[str] | None =
         writer = csv.DictWriter(fh, fieldnames=["doc_key", "page", "doc_type", "route", "reason",
                                                 "word_source", "quality"])
         writer.writeheader()
-        for doc_key, _symbol, doc_type, page in _pages(store_db, symbols, doc_types):
+        for doc_key, _symbol, doc_type, page in _pages_prefetched(store_db, symbols, doc_types):
             info = route_detail(store_db, doc_key, page, ocr_dbs)
             row = {"doc_key": doc_key, "page": page, "doc_type": doc_type, "route": info["route"],
                    "reason": info["reason"], "word_source": info["word_source"], "quality": info["quality"]}

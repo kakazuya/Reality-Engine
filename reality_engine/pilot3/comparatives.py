@@ -26,6 +26,7 @@ import time
 from collections import defaultdict
 from datetime import date
 from difflib import SequenceMatcher
+from functools import lru_cache
 from pathlib import Path
 
 from reality_engine import raw_store
@@ -114,6 +115,20 @@ def lexicon() -> list[tuple[str, str]]:
     return _LEX
 
 
+@lru_cache(maxsize=500_000)
+def _ratio(a: str, b: str) -> float:
+    """``SequenceMatcher(None, a, b).ratio()``, cached: a results page compares the same lexicon tokens with the
+    same label words thousands of times (3.3 million calls, ~95 % of the comparatives part on a 4,700-page store)."""
+    return SequenceMatcher(None, a, b).ratio()
+
+
+def _ratio_cap(a: str, b: str) -> float:
+    """The highest ratio two strings of these lengths can reach (``2 * shorter / (a + b)``), checked before
+    ``_ratio`` so a pair that cannot beat the current best is never compared; the result is unchanged."""
+    total = len(a) + len(b)
+    return 2.0 * min(len(a), len(b)) / total if total else 1.0
+
+
 def _fuzzy_score(pattern: str, label: str) -> tuple[float, int]:
     """Every token of the pattern matched by a distinct label token in the same order (``tot il`` -> ``total``).
 
@@ -127,7 +142,9 @@ def _fuzzy_score(pattern: str, label: str) -> tuple[float, int]:
     for token in want:
         best, at = 0.0, None
         for i in range(last + 1, len(have)):
-            score = SequenceMatcher(None, token, have[i]).ratio()
+            if _ratio_cap(token, have[i]) <= max(best, 0.7399):
+                continue                        # cannot pass 0.74 nor beat the best: same answer, no compare
+            score = _ratio(token, have[i])
             if score > best:
                 best, at = score, i
         if at is None or best < 0.74:
@@ -154,7 +171,7 @@ def _prefix_score(pattern: str, label: str) -> float:
         return 0.0
     total = 0.0
     for token, printed in zip(want, have):
-        score = SequenceMatcher(None, token, printed).ratio()
+        score = _ratio(token, printed)
         if score < 0.74:
             return 0.0
         total += score
@@ -189,7 +206,7 @@ def match_line(label: str, anchor: int | None = None, prefix_ok: bool = False) -
                 ratio, at = 0.0, 0
                 for i, word in enumerate(words):
                     if len(word) >= 4:
-                        got = SequenceMatcher(None, pattern, word).ratio()
+                        got = _ratio(pattern, word)
                         if got > ratio:
                             ratio, at = got, i
                 score = ratio if ratio >= 0.78 else 0.0

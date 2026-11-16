@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import csv
+import functools
 import itertools
 import re
 import sqlite3
@@ -2176,12 +2177,14 @@ def _mix_title(rows, hi: int, entries, company):
     return e, s, hint
 
 
-def _page_bases() -> list[dict]:
-    """Lexicon page entity names -> basis (data: company words never live here)."""
+@functools.lru_cache(maxsize=1)
+def _page_bases() -> tuple[dict, ...]:
+    """Lexicon page entity names -> basis (data: company words never live here).  Read once per process: it was
+    parsed again for every page (1,269 YAML loads, 8 s of a 65 s kpi part on a 4,700-page store)."""
     p = LEX_DIR / "page_entities.yaml"
     if not p.is_file():
-        return []
-    return (yaml.safe_load(p.read_text(encoding="utf-8")) or {}).get("page_bases") or []
+        return ()
+    return tuple((yaml.safe_load(p.read_text(encoding="utf-8")) or {}).get("page_bases") or [])
 
 
 def _entity_words() -> dict[str, str]:
