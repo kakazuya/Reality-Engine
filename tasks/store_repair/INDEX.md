@@ -12,6 +12,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 | R-006 | fixed | comparatives | general | results, unit, lakh, scale, xbrl, scan | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-007 | open | kpi | general | kpi, revenue-definition, deck, annual-report, derived |  |
 | R-008 | fixed | stores | general | share-capital, results, scale | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
+| R-009 | fixed | raw_fetch | general | fetch, nse, bse, fallback, raw |  |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -108,3 +109,15 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 - **Store tables touched:** share_capital, ratio_panel, valuation_daily
 - **Tags:** share-capital, results, scale; **scope:** general
 - **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10; runs: 20261116T185056, 20261116T185257, 20261116T185953, 20261116T190126
+
+## R-009 (fixed, part `raw_fetch`, opened 2026-11-16)
+
+1. **Why it had to be done** (question that exposed it, measure10 (91 build)): Any question on VIVIANA or SAKAR (two of the 91 queue companies): their stores would hold no filing at all
+2. **What the problem was:** The 91-company raw fetch logged 'no BSE scrip code' for VIVIANA and SAKAR and would have built two empty stores **Root cause:** fetch_pilot60_history lists filings from BSE only; its NSE fallback existed but was opt-in (--nse-fallback), so a run that forgot the flag silently skipped NSE-only/SME names
+3. **What was missing:** an automatic NSE fallback: every company the BSE feed returns nothing for must be listed from NSE without anyone remembering a flag or writing a one-off script
+4. **How it was fixed:** --nse-fallback is now on by default (argparse BooleanOptionalAction; --no-nse-fallback turns it off): any company with zero BSE rows (no scrip code, NSE-only, SME, delisted from BSE) is listed from the NSE corporate-announcements API and its attachments fetched in the same run. The 91 fetch is re-run with it before the build
+5. **What can come next:** same both-way fallback for the other feeds that are single-exchange today: results XBRL is NSE-only (10 of 93 queue companies get no quarters) and the shareholding index is NSE-only (11 of 93) -> a BSE fallback keyed by scrip code; a per-company coverage line in the build that names which exchange served each part
+- **Code:** reality_engine/scripts/fetch_pilot60_history.py::main
+- **Store tables touched:** doc, doc_page
+- **Tags:** fetch, nse, bse, fallback, raw; **scope:** general
+- **Stores repaired:** -; runs: -

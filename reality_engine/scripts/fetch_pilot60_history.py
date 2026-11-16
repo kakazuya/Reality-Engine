@@ -1068,8 +1068,10 @@ def main(argv=None):
     ap.add_argument("--fetch", action="store_true", help="download attachments (resumable)")
     ap.add_argument("--scan", action="store_true", help="set is_scanned_guess for held PDFs")
     ap.add_argument("--coverage", action="store_true", help="write the coverage matrix markdown")
-    ap.add_argument("--nse-fallback", action="store_true",
-                    help="also list NSE announcements for names with no BSE feed")
+    ap.add_argument("--nse-fallback", action=argparse.BooleanOptionalAction, default=True,
+                    help="list NSE announcements for every name the BSE feed returns nothing for (no scrip code, "
+                         "NSE-only/SME, delisted from BSE); on by default since 16 Nov (R-009), "
+                         "--no-nse-fallback turns it off")
     ap.add_argument("--verify", type=int, default=0,
                     help="open N random held PDFs and write the content check markdown")
     ap.add_argument("--universe", default=str(UNIVERSE_CSV),

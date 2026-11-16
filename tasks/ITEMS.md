@@ -4,7 +4,7 @@ Tickets, ideas, rulings and store defects in one place. Each source keeps its ow
 
 | type | open | closed |
 |---|---|---|
-| defect | 3 | 5 |
+| defect | 3 | 6 |
 | idea | 11 | 4 |
 | ruling | 27 | 0 |
 | ticket | 44 | 175 |
