@@ -240,31 +240,22 @@ def _pages(store_db: str, symbols: list[str] | None, doc_types: list[str] | None
 
 
 def _pages_prefetched(store_db: str, symbols: list[str] | None, doc_types: list[str] | None):
-    """``_pages`` with each document's PDF downloaded once while its pages are routed.
+    """``_pages`` with each document's PDF downloaded at most once while its pages are routed.
 
-    A store whose raw files moved to Drive fetched the whole PDF again for every page (``words_for`` and
-    ``_images_share`` each call ``raw_store.local``): thousands of rclone calls for one store.  Inside
-    ``prefetch`` both find the one copy; a PDF on disk is not touched."""
+    A store whose raw files moved to Drive fetched the whole PDF again for every page that needed its words or
+    pictures (``words_for`` and ``_images_share`` each call ``raw_store.local``).  Inside ``keep`` the first such
+    call downloads it and the rest of the document's pages reuse the copy; a document whose pages are all decided
+    from the stored text is never downloaded (prefetching every document up front was 2x slower on c05)."""
     from reality_engine import raw_store
 
     store = raw_store.default_store()
-    current, sources, stack = None, {}, contextlib.ExitStack()
-    con = connect_ro(store_db)
-    try:
-        sources = dict(con.execute("SELECT doc_key, source_key FROM doc").fetchall())
-    finally:
-        con.close()
+    current, stack = None, contextlib.ExitStack()
     with stack:
         for item in _pages(store_db, symbols, doc_types):
             if item[0] != current:
                 stack.close()
                 current = item[0]
-                source = sources.get(current)
-                if source:
-                    try:
-                        stack.enter_context(store.prefetch([source]))
-                    except Exception:          # a failed download leaves the per-page path to report it
-                        pass
+                stack.enter_context(store.keep())
             yield item
 
 

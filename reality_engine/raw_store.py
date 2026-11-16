@@ -205,6 +205,7 @@ class RawStore:
         self._loaded = False
         self._load_lock = threading.Lock()
         self._fetched: dict[tuple[str, str], Path] = {}
+        self._keep_dir: Path | None = None
 
     # -- index -------------------------------------------------------------------------------------
     @property
@@ -379,6 +380,13 @@ class RawStore:
                 yield fetched                       # inside prefetch: already downloaded
                 return
             row = self._rows.get(key)
+            if row is not None and self._keep_dir is not None:
+                got = self._fetch({key: row[:2]}, self._keep_dir).get(key)
+                if got is None:
+                    raise FileNotFoundError(str(target))
+                self._fetched[key] = got            # inside keep(): later calls reuse this copy
+                yield got
+                return
             if row is not None:
                 temp = Path(tempfile.mkdtemp(prefix="raw_fetch_"))
                 try:
@@ -390,6 +398,20 @@ class RawStore:
                     shutil.rmtree(temp, ignore_errors=True)
                 return
         raise FileNotFoundError(f"{target} is not local and not in the T-102 manifest {self.manifest}")
+
+    @contextlib.contextmanager
+    def keep(self):
+        """Inside this block a Drive-only file is downloaded on its first ``local`` call and kept for the next
+        ones; every kept copy is deleted on exit.  Unlike ``prefetch`` nothing is downloaded that no caller asks
+        for (T-220: a page loop that prefetched every document was 2x slower than fetching only the needed ones)."""
+        previous_dir, previous = self._keep_dir, self._fetched
+        temp = Path(tempfile.mkdtemp(prefix="raw_fetch_"))
+        self._keep_dir, self._fetched = temp, dict(previous)
+        try:
+            yield
+        finally:
+            self._keep_dir, self._fetched = previous_dir, previous
+            shutil.rmtree(temp, ignore_errors=True)
 
     @contextlib.contextmanager
     def prefetch(self, paths):
