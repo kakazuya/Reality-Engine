@@ -13,9 +13,10 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 | R-007 | open | kpi | general | kpi, revenue-definition, deck, annual-report, derived |  |
 | R-008 | fixed | stores | general | share-capital, results, scale | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-009 | fixed | raw_fetch | general | fetch, nse, bse, fallback, raw |  |
-| R-010 | fix_written | pages | general | ocr, hp | c01, c03, c04, c10, c15, c16, c19, c22, c24, c25, c26, c28 |
+| R-010 | fix_written | pages | general | ocr, hp | c01, c03, c04, c10, c15, c16, c19, c22, c24, c25, c26, c28, c30, c50, c51, c60, c72, c80, c82, c83, c84, c85, c89, c91 |
 | R-011 | fix_written | transcripts | general | transcripts, ocr |  |
 | R-012 | open | docs_collect | general | transcripts, raw_fetch |  |
+| R-013 | open | comparatives | general | ocr, R-010 |  |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -135,7 +136,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 - **Code:** reality_engine/pilot3/build.py, reality_engine/scripts/store_repair.py
 - **Store tables touched:** doc_page, fin_quarter_printed, kpi_series
 - **Tags:** ocr, hp; **scope:** general
-- **Stores repaired:** c01, c03, c04, c10, c15, c16, c19, c22, c24, c25, c26, c28; runs: 20261116T225524, 20261116T230114
+- **Stores repaired:** c01, c03, c04, c10, c15, c16, c19, c22, c24, c25, c26, c28, c30, c50, c51, c60, c72, c80, c82, c83, c84, c85, c89, c91; runs: 20261116T225524, 20261116T230114, 20261117T025927, 20261117T030109, 20261117T031511, 20261117T032238, 20261117T032402, 20261117T032523, 20261117T032641, 20261117T032822, 20261117T033011, 20261117T035447, 20261117T035547, 20261117T040516, 20261117T041758, 20261117T042710, 20261117T042925, 20261117T043024, 20261117T043134, 20261117T043253, 20261117T043802, 20261117T044004, 20261117T044159
 
 ## R-011 (fix_written, part `transcripts`, opened 2026-11-16)
 
@@ -159,4 +160,16 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 - **Code:** -
 - **Store tables touched:** doc, doc_page, transcript_statement
 - **Tags:** transcripts, raw_fetch; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-013 (open, part `comparatives`, opened 2026-11-17)
+
+1. **Why it had to be done** (question that exposed it, c05,c07,c08,c09,c20,c21): Why did the OCR merge (R-010) get refused on most stores?
+2. **What the problem was:** store_repair refused the R-010 pages repair: fin_quarter_printed rows from scanned pages are removed and some have no same-value row after (c05 12, c07 3, c08 1, c09 12, c20 4, c21 1). Most removed rows are wrong parses of a jumbled text layer (e.g. GAYAPROJ FY25 standalone total income 3,46,572.20 lakh), but a few look right (SPMLINFRA Q3FY25 PBT 126,517 thousand from 'Profi/lloss) before Excaptional ltems'). **Root cause:** Once a page has OCR text the printed-table parser reads only that text; a line the OCR splits or misreads gives no row, and the layer row it replaced is gone.
+3. **What was missing:** A rule for printed rows on pages with both a jumbled layer and OCR: which source leads, and whether a layer row the OCR does not reproduce survives when it passes the checks.
+4. **How it was fixed:** Proposed: parse both; OCR rows lead on a jumbled page; keep a layer row for a (period, basis, line) the OCR misses only if it passes row_checks (reconciles with its siblings); log every layer/OCR value conflict, as kpi does since R-010.
+5. **What can come next:** Write the rule in the comparatives part with a test on c07 p5 and c20 p7; re-run the refused stores and accept only with zero right rows lost. Until then those stores keep their as-built rows.
+- **Code:** -
+- **Store tables touched:** fin_quarter_printed
+- **Tags:** ocr, R-010; **scope:** general
 - **Stores repaired:** -; runs: -
