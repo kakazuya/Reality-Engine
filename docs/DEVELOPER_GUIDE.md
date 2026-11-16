@@ -2237,6 +2237,20 @@ python -m reality_engine.scripts.store_repair note add|set|list ...
   step runner: stamps, stale reasons, baseline, rewrites, the skip rule, add-only kept, lost row refused and
   accepted, failed part restored, lock, notes).
 
+### One view over every tracked item (T-219, 16 Nov 2026)
+
+Shivam 16 Nov: tickets, ideas, rulings and store defects in four shapes become patchwork, and Claude must keep a
+persistent memory of the work; trackers stay local, on Drive or in git/GitHub (Issues allowed), never a cloud
+service. `reality_engine/scripts/items.py` reads all four sources into one item shape (type, id, status, title,
+why, tags, links, source, opened, review_by): `tasks/tickets.jsonl` (written by `task_board`), `tasks/IDEA_BOX.md`,
+`tasks/RULINGS.md` (one item per bullet, id `RUL-<section>-<n>`) and `tasks/store_repair/notes.jsonl` (written by
+`store_repair note`). Links are the T-/I-/R-/H- ids an item's text names, shown with the linked item's status.
+`items render` writes `tasks/ITEMS.md` and `reports/items.xlsx` (generated, never hand-edited); `items due` lists
+ideas past their review date and open store defects; `items list [--type] [--open]`. Each source keeps its own
+writer and its hooks, so nothing else changed. First render: 45 open tickets, 11 open ideas, 27 rulings, 4 open
+defects. Not built yet: a GitHub Issues mirror (`gh`). Test: `python -m pytest -q reality_engine/tests/test_items.py`
+-> 1 passed.
+
 ### Question bank (T-217, 16 Nov 2026)
 
 `reality_engine/scripts/tg_questions.py` builds the investor-question bank for the Telegram queue: `harvest` runs one
