@@ -1930,3 +1930,7 @@ writes a table an earlier part rewrote. After that, c02 ran `profile` + `stores`
 finished in 45.5 s against a 263 s median full build with an empty diff. Forcing all 15 parts on c01 took 187.7 s with
 an empty diff (a rebuild is deterministic); c04 added 7 `kpi_series` rows and removed none; c03, c05 and c06 took
 33-36 s with an empty diff.
+
+### 9r. Order wins from the prescribed disclosure table (T-025, 16 Nov 2026)
+
+An order win is read by the labels of the Regulation 30 table every issuer must use, not by a company's wording: `pilot3/order_wins.py` writes `order_win` (size in crore or USD million, execution period in months, awarder, the printed words beside each figure). Method lessons from the ten measured stores: full rupee figures (`Rs. 28,59,32,004/-`) are as common as crore figures; exchange headlines are hand-typed and can differ from the filing (flagged, the filing wins); one filing can hold two orders; scanned tables print labels and values out of order, so a value that contains a label is dropped; the word `order` alone is mostly courts and tax offices, so a win needs a winning verb or the table.

@@ -147,7 +147,7 @@ def test_a_version_eight_store_gains_the_t197_event_columns(tmp_path):
                  "'2026-07-02T10:00:00')")
     conn.commit()
     assert schema.version(conn) == 8
-    assert [number for number, _name in schema.pending(conn)] == [schema.V_EVENT_BODY, schema.V_PAGE_ATOM]
+    assert [number for number, _name in schema.pending(conn)] == [schema.V_EVENT_BODY, schema.V_PAGE_ATOM, schema.V_ORDER_WIN]
     assert schema.migrate(conn) == (8, schema.LATEST)
     assert {"doc_type", "title", "body_excerpt"} <= columns(conn, "event")
     row = conn.execute("SELECT symbol, kind, quote FROM event").fetchall()
@@ -164,7 +164,7 @@ def test_a_version_nine_store_gains_the_page_atom_table_in_place(tmp_path):
     conn.execute("INSERT INTO schema_meta VALUES ('schema_version', '9')")
     conn.commit()
     assert schema.version(conn) == 9
-    assert [number for number, _name in schema.pending(conn)] == [schema.V_PAGE_ATOM]
+    assert [number for number, _name in schema.pending(conn)] == [schema.V_PAGE_ATOM, schema.V_ORDER_WIN]
     assert schema.migrate(conn) == (9, schema.LATEST)
     atom_columns = {"symbol", "isin", "doc_key", "doc_type", "page", "known_at", "table_title", "row_label",
                     "col_header", "period", "basis", "unit", "scale", "value", "value_text", "definition",

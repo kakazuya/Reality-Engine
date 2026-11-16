@@ -219,12 +219,15 @@ def build_events(conn: sqlite3.Connection) -> dict:
         "page, quote, known_at, known_at_source, source, extractor_rule, doc_type, title, body_excerpt) "
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
     conn.commit()
+    from reality_engine.pilot3 import order_wins
+
+    orders = order_wins.build(conn)          # T-025: the order-win filings, in their own table
     by_kind: dict[str, int] = {}
     by_symbol: dict[str, int] = {}
     for row in rows:
         by_kind[row[2]] = by_kind.get(row[2], 0) + 1
         by_symbol[row[0]] = by_symbol.get(row[0], 0) + 1
-    return {"rows": len(rows), "by_kind": by_kind, "by_symbol": by_symbol}
+    return {"rows": len(rows), "by_kind": by_kind, "by_symbol": by_symbol, "order_win": orders}
 
 
 def main(argv=None):

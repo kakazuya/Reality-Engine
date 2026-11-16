@@ -8,8 +8,9 @@
 Per company a web model (default ``gemini-3.8-flash-medium`` through ``answer/agy_call.run_agy``) searches the web
 and YouTube for the questions investors really ask, then learns the company's own business and writes grounded
 variants.  Only the company NAME and exchange symbol leave this machine (Shivam's approval covers names; nothing
-else from the Telegram list is sent).  The model writes one JSON file per company under ``<root>/questions_raw``;
-it runs with that folder as its working directory, never the repo.
+else from the Telegram list is sent).  Each run has a working folder of its own
+(``<root>/questions_raw/work/<isin>``, never the repo); the script keeps its JSON file as
+``<root>/questions_raw/<isin>.json`` and the event logs in ``<root>/questions_logs``.
 
 What the script (not the model) decides:
 * **verified**: a ``found`` question keeps that kind only when its source page loads and names the company; else it
@@ -27,6 +28,7 @@ import csv
 import hashlib
 import json
 import re
+import shutil
 import sqlite3
 import sys
 import time
@@ -259,18 +261,30 @@ def read_payload(path: Path) -> dict | None:
 
 
 def harvest_one(entry: dict, raw: Path, model: str, timeout: int, runner=None) -> dict:
-    """One agy run for one company; the model writes ``<raw>/<isin>.json``."""
+    """One agy run for one company, in a working folder of its own.
+
+    The model runs in ``<raw>/work/<isin>/`` and writes ``<isin>.json`` there; the script then moves that file to
+    ``<raw>/<isin>.json``.  A run never sees another company's file or the logs (``<raw>/../questions_logs``): on
+    16 Nov one run tidied the shared folder and deleted the log and fifteen other companies' raw files."""
     from reality_engine.answer import agy_call
 
-    out_path = raw / f"{entry['isin']}.json"
+    work = raw / "work" / entry["isin"]
+    work.mkdir(parents=True, exist_ok=True)
+    out_path = work / f"{entry['isin']}.json"
     out_path.unlink(missing_ok=True)
     prompt = PROMPT.format(company=entry["company"].title(), symbol=entry["symbol"],
                            out_path=out_path.as_posix(), themes=", ".join(THEMES))
     run = runner or agy_call.run_agy
     started = time.strftime("%Y-%m-%dT%H:%M:%S")
-    reply = run(prompt, model, cwd=raw, timeout=timeout, log_path=raw / "logs" / f"{entry['isin']}.jsonl")
+    reply = run(prompt, model, cwd=work, timeout=timeout,
+                log_path=raw.parent / "questions_logs" / f"{entry['isin']}.jsonl")
+    payload = read_payload(out_path)
+    kept = raw / f"{entry['isin']}.json"
+    if payload is not None:
+        shutil.copy2(out_path, kept)
+    shutil.rmtree(work, ignore_errors=True)
     return {"isin": entry["isin"], "symbol": entry["symbol"], "started_at": started, "reply": reply,
-            "payload": read_payload(out_path), "out_path": str(out_path)}
+            "payload": payload, "out_path": str(kept)}
 
 
 def cmd_harvest(args: argparse.Namespace) -> int:
@@ -282,7 +296,7 @@ def cmd_harvest(args: argparse.Namespace) -> int:
     if args.limit:
         todo = todo[: args.limit]
     raw = Path(args.raw)
-    (raw / "logs").mkdir(parents=True, exist_ok=True)
+    raw.mkdir(parents=True, exist_ok=True)
     print(f"harvest: {len(todo)} companies, model {args.model}, {args.workers} at a time", flush=True)
     failed = 0
     with ThreadPoolExecutor(max_workers=args.workers) as pool:

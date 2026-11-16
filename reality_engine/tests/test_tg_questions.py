@@ -156,5 +156,8 @@ def test_harvest_one_reads_the_json_the_runner_writes(tmp_path):
     assert result["payload"]["questions"][0]["question"] == "What drives volume?"
     assert result["out_path"] == str(raw / "INE000A01001.json")
     assert result["reply"]["tool_calls"] == 2 and result["symbol"] == "ACME"
-    assert seen["cwd"] == raw and seen["model"] == "test-model"
-    assert Path(result["out_path"]).as_posix() in seen["prompt"] and "Acme Steel Industries" in seen["prompt"]
+    work = raw / "work" / "INE000A01001"                    # each run has a folder of its own, removed afterwards
+    assert seen["cwd"] == work and seen["model"] == "test-model" and not work.exists()
+    assert seen["log_path"].parent == tmp_path / "questions_logs"   # logs sit outside anything a run can tidy
+    assert (work / "INE000A01001.json").as_posix() in seen["prompt"] and "Acme Steel Industries" in seen["prompt"]
+    assert (raw / "INE000A01001.json").is_file()

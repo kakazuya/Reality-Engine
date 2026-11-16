@@ -62,6 +62,13 @@ TABLES: dict[str, str] = {
         symbol TEXT, isin TEXT, kind TEXT, event_date TEXT, end_date TEXT, announced TEXT, unit TEXT,
         outcome TEXT, subject TEXT, doc_key TEXT, page INTEGER, quote TEXT, known_at TEXT,
         known_at_source TEXT, source TEXT, extractor_rule TEXT, doc_type TEXT, title TEXT, body_excerpt TEXT)""",
+    # T-025 / store-repair note R-003: one row per order-win filing, read from the Regulation 30 disclosure table
+    # by ``pilot3.order_wins`` (awarder, size in crore, execution period); the printed words sit beside each figure.
+    "order_win": """CREATE TABLE order_win (
+        symbol TEXT, isin TEXT, announced TEXT, doc_key TEXT, page INTEGER, seq INTEGER, awarder TEXT, nature TEXT,
+        terms TEXT, domestic TEXT, value_cr REAL, value_usd_mn REAL, value_text TEXT, value_source TEXT,
+        duration_months REAL, duration_text TEXT, promoter_interest TEXT, related_party TEXT, title_value_cr REAL,
+        title_mismatch INTEGER, title TEXT, quote TEXT, known_at TEXT, known_at_source TEXT, extractor_rule TEXT)""",
     "price_delivery": """CREATE TABLE price_delivery (
         symbol TEXT, isin TEXT, exchange TEXT, date TEXT, open REAL, high REAL, low REAL, close REAL,
         prev_close REAL, volume REAL, value_inr REAL, num_trades REAL, deliverable_qty REAL,
@@ -297,6 +304,7 @@ V_ROW_CHECK_DEFINITION = 7     # T-113: row_check.definition
 V_INDEXES_AND_VIEWS = 8        # every index and view on the tables a store holds
 V_EVENT_BODY = 9               # T-197: event.doc_type / title / body_excerpt
 V_PAGE_ATOM = 10               # T-199: the page_atom table (one row per resolved printed figure)
+V_ORDER_WIN = 11               # T-025: the order_win table (one row per order-win filing)
 
 # additive columns for tables built before them (a migration adds, never drops)
 SHARE_CAPITAL_ADDITIONS = (
@@ -436,6 +444,11 @@ def _add_page_atom(conn: sqlite3.Connection) -> None:
         conn.execute(sql)
 
 
+def _add_order_win(conn: sqlite3.Connection) -> None:
+    _create(conn, ("order_win",))
+    conn.execute("CREATE INDEX IF NOT EXISTS ix_ow ON order_win(symbol, announced)")
+
+
 MIGRATIONS: tuple[tuple[int, str, Callable[[sqlite3.Connection], None]], ...] = (
     (V_SHARE_COUNT_BASIS, "share_capital.count_basis (T-192)", _add_share_count_basis),
     (V_GUIDANCE_ENTITY, "guidance.entity / entity_unsure (T-192)", _add_guidance_entity),
@@ -448,6 +461,7 @@ MIGRATIONS: tuple[tuple[int, str, Callable[[sqlite3.Connection], None]], ...] = 
     (V_INDEXES_AND_VIEWS, "every index and view on the tables a store holds", _add_indexes_and_views),
     (V_EVENT_BODY, "event.doc_type / title / body_excerpt (T-197)", _add_event_columns),
     (V_PAGE_ATOM, "page_atom table (T-199)", _add_page_atom),
+    (V_ORDER_WIN, "order_win table (T-025)", _add_order_win),
 )
 LATEST = MIGRATIONS[-1][0]
 

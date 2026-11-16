@@ -61,7 +61,7 @@ PART_FILES: dict[str, tuple[str, ...]] = {
     "segments": ("xbrl_segments.py", "../gap_loop/prepare.py::_read_sqlite"),
     "guidance": ("guidance.py", "lexicon/dimensions.yaml"),
     "notes": ("notes.py", "notes_lexicon.yaml"),
-    "events": ("events.py",),
+    "events": ("events.py", "order_wins.py"),
     "checks": ("row_checks.py", "row_checks_vocab.yaml", "number_check.py"),
     "atoms": ("atoms.py",),
 }
@@ -81,7 +81,7 @@ PART_TABLES: dict[str, tuple[str, ...]] = {
     "segments": ("kpi_series",),
     "guidance": ("guidance",),
     "notes": ("rating_event", "concentration", "related_party_txn"),
-    "events": ("event",),
+    "events": ("event", "order_win"),
     "checks": ("row_check", "row_check_fail"),
     "atoms": ("page_atom",),
 }
