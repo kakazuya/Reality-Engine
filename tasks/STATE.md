@@ -15,11 +15,11 @@ T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 positi
 Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUIDE T-192 bullets (ROE average equity, company EBITDA first, `count_basis`, sentence-scope entities with `entity_unsure`, filing-quarter call periods, Q4 flows keep the year).
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
+0a. 16 Nov (Shivam): build ALL 91 stores, then random question trials. Running: fetch91 -> NSE pass (R-009) -> `tg_measure_build` on `measure10/universe91.csv`. T-220/221 merged.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
 1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c10`. Repair notes R-001..R-006 as cards (code, tables, tags, scope) in `tasks/store_repair/INDEX.md`; grid stores x parts `reports/store_repair_grid.xlsx` (`store_repair note grid`). 16 Nov: R-004 MERGED (re-run on c01 after R-005, then c02-c09, hand-read each); R-005 KPI lakh unit fixed, accepted c01 c03 c04 c07, refused c02 c05 c06 c08 c09 c10 await hand-read. R-002: 34 of 37 no-transcript companies filed none on either exchange (record no call filed); 600 NSE transcripts on Drive (`raw/nse_announcements/tg_queue_2026-11-16`), BSE feed 19 Oct-16 Nov fetching into `analysis/bse_announcements.db` (stores read `reality_engine/data/` copy: copy rows across). Next session: read `tasks/handoff/T-217_T-218_T-219_HANDOFF_2026-11-16c.md` (jobs to restart, open items). Proposed: two-tier fixes + per-company completeness check.
 2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0 (not blind, report s5b). Next checks (theme calls, C4 figure) measured on Telegram stores with frozen halves.
 3. T-210 MERGED 15 Nov: factor_deep peak 0.64 GB; results `docs/research/T-210_factor_deep_study.md`, outputs `D:/RealityEngine/research/t210_2026-11-14/`. Sparse arm flawed (complete-case coverage). T-211 monthly job next (Wolf).
-4. T-212, T-209 DONE 15 Nov (Q2FY27 XBRL; `nse_shp_xbrl_universe` on Drive).
 5. T-216 agy retry on DNS drops.
 
 ## Recipes
