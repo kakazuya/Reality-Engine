@@ -292,7 +292,6 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
                 sc.append((symbol, r["isin"], r["period_end"], basis, None, None, paid / face, paid, face, "shares",
                            1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", "results_xbrl.db",
                            "quarterly", r["file"], None, None, "derived_from_capital"))
-        sc = _parent_share_count(sc)
         fq += _quarter_extras(symbol, meta, {(r[13], r[8]) for r in fq})
         conn.executemany("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
                          "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
@@ -824,21 +823,55 @@ def _shp_known(file: str | None, broadcast: str | None) -> tuple[str | None, str
     return broadcast, "shp_index.broadcast_at"
 
 
-def _parent_share_count(rows: list[tuple]) -> list[tuple]:
-    """Paid-up equity is the parent's, whatever the statement basis: a consolidated filing whose share count
-    differs by more than 1% from the standalone filing of the same quarter end is a filing slip, and its row is
-    dropped (the standalone one and the shareholding total stay).  R-008, 16 Nov: SPMLINFRA's Q2FY27 consolidated
-    XBRL gave paid-up capital Rs 13.88 lakh (694,000 shares) against Rs 17.83 crore standalone (89.2 million),
-    and book value per share came out at 16,329 for 133.6.  Row layout: share_capital's (index 2 = as_of_date,
-    3 = basis, 6 = shares)."""
-    standalone = {r[2]: r[6] for r in rows if r[3] == "standalone" and r[6]}
-    keep = []
+def _parent_share_count(rows: list[tuple], totals: dict[str, float] | None = None) -> list[tuple]:
+    """Paid-up equity is the parent's, whatever the statement basis: when the standalone and consolidated results
+    filings of one quarter end differ by more than 1% in share count, one of them is a filing slip and its row is
+    dropped.  The judge is the shareholding-pattern total of the same quarter end (``totals``: {as_of_date: shares}):
+    the row further from it goes.  With no pattern total the consolidated row goes.  A quarter with only one basis
+    is kept.  Row layout: share_capital's (index 2 = as_of_date, 3 = basis, 6 = shares).
+
+    R-008, 16 Nov: SPMLINFRA's Q2FY27 consolidated XBRL gave paid-up capital Rs 13.88 lakh (694,000 shares) against
+    Rs 17.83 crore standalone (89.2 million; pattern 84.8 million): consolidated dropped.  BLKASHYAP's Q3FY25
+    standalone XBRL gave 255.44 million against 225.44 million consolidated and in the pattern: standalone dropped
+    (the first version of this fix always kept standalone and would have deleted the right row)."""
+    totals = totals or {}
+    by_date: dict[str, dict[str, float]] = {}
     for r in rows:
-        alone = standalone.get(r[2])
-        if r[3] == "consolidated" and alone and r[6] and abs(r[6] - alone) > 0.01 * alone:
+        if r[6]:
+            by_date.setdefault(r[2], {})[r[3]] = r[6]
+    drop: set[tuple[str, str]] = set()
+    for date, got in by_date.items():
+        alone, cons = got.get("standalone"), got.get("consolidated")
+        if not (alone and cons) or abs(cons - alone) <= 0.01 * alone:
             continue
-        keep.append(r)
-    return keep
+        total = totals.get(date)
+        if total:
+            drop.add((date, "standalone" if abs(alone - total) > abs(cons - total) else "consolidated"))
+        else:
+            drop.add((date, "consolidated"))
+    return [r for r in rows if (r[2], r[3]) not in drop]
+
+
+def reconcile_share_count(conn: sqlite3.Connection) -> dict:
+    """R-008: apply ``_parent_share_count`` to the share counts derived from results filings, once the
+    shareholding-pattern totals are in ``shp_category`` (after ``build_shp``; before ``build_share_fallback``).
+    Returns {symbol: rows dropped}."""
+    dropped: dict[str, int] = {}
+    symbols = [r[0] for r in conn.execute("SELECT DISTINCT symbol FROM share_capital WHERE source_table='quarterly'")]
+    for symbol in symbols:
+        rows = conn.execute("SELECT rowid, * FROM share_capital WHERE symbol=? AND source_table='quarterly' "
+                            "AND event IS NULL", (symbol,)).fetchall()
+        totals = {q: n for q, n in conn.execute(
+            "SELECT quarter_end, shares FROM shp_category WHERE symbol=? AND category='shareholding_pattern' "
+            "AND source_kind='xbrl' AND shares IS NOT NULL AND shares > 0 AND known_at IS NOT NULL "
+            "ORDER BY quarter_end, known_at", (symbol,))}   # latest filing wins
+        kept = {r[0] for r in _parent_share_count([(r[0], *r[2:]) for r in rows], totals)}
+        gone = [r[0] for r in rows if r[0] not in kept]
+        conn.executemany("DELETE FROM share_capital WHERE rowid=?", [(g,) for g in gone])
+        if gone:
+            dropped[symbol] = len(gone)
+    conn.commit()
+    return dropped
 
 
 def _shp_raw_store() -> raw_store.RawStore:
@@ -1167,6 +1200,7 @@ def build_stores(conn: sqlite3.Connection) -> dict:
     result["statements"] = statements.build_statements(conn)
     result["price_delivery"] = build_prices(conn)
     result["shp_category"] = build_shp(conn)
+    result["share_count_slips"] = reconcile_share_count(conn)   # R-008: needs the pattern totals, before the fallback
     if profile.under_profile():  # without a profile the three-company build stays exactly as it was
         result["share_capital_from_shp"] = build_share_fallback(conn)
         result["bulk_block_deal"] = build_deals(conn)

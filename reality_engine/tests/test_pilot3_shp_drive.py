@@ -162,3 +162,35 @@ def test_a_consolidated_share_count_far_from_standalone_is_dropped():
     kept = stores._parent_share_count(rows)
     assert [(r[2], r[3]) for r in kept] == [("2026-09-30", "standalone"), ("2026-06-30", "standalone"),
                                             ("2026-06-30", "consolidated"), ("2026-03-31", "consolidated")]
+
+
+def test_the_shareholding_total_judges_which_share_count_is_the_slip():
+    """R-008 second version: BLKASHYAP Q3FY25 standalone XBRL said 255.44 million, consolidated and the pattern
+    225.44 million, so the standalone row goes; SPMLINFRA Q2FY27 consolidated said 694,000 against 89.2 million
+    standalone and 84.8 million in the pattern, so the consolidated row goes; a quarter with no pattern total
+    falls back to dropping consolidated."""
+    from reality_engine.pilot3 import stores
+    row = lambda basis, date, shares: ("S", "I", date, basis, None, None, shares, shares, 1.0)
+    rows = [row("standalone", "2024-12-31", 255_440_000), row("consolidated", "2024-12-31", 225_440_000),
+            row("standalone", "2026-09-30", 89_166_000), row("consolidated", "2026-09-30", 694_000),
+            row("standalone", "2025-06-30", 100_000_000), row("consolidated", "2025-06-30", 90_000_000)]
+    totals = {"2024-12-31": 225_440_000, "2026-09-30": 84_800_000}
+    kept = stores._parent_share_count(rows, totals)
+    assert [(r[2], r[3]) for r in kept] == [("2024-12-31", "consolidated"), ("2026-09-30", "standalone"),
+                                            ("2025-06-30", "standalone")]
+
+
+def test_reconcile_share_count_reads_the_pattern_and_deletes_only_the_slip():
+    import sqlite3
+    from reality_engine.pilot3 import stores
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE share_capital (symbol, isin, as_of_date, basis, event, ratio, shares_outstanding, "
+                 "paid_up_capital, face_value, unit, scale, known_at, known_at_source, source_db, source_table, "
+                 "source_rowid, isin_effective_from, isin_effective_to, count_basis)")
+    conn.execute("CREATE TABLE shp_category (symbol, quarter_end, category, source_kind, shares, known_at)")
+    for basis, n in (("standalone", 255_440_000), ("consolidated", 225_440_000)):
+        conn.execute("INSERT INTO share_capital VALUES ('B','I','2024-12-31',?,NULL,NULL,?,?,1.0,'shares',1.0,"
+                     "'2025-02-07','k','results_xbrl.db','quarterly','f',NULL,NULL,'derived_from_capital')", (basis, n, n))
+    conn.execute("INSERT INTO shp_category VALUES ('B','2024-12-31','shareholding_pattern','xbrl',225440000,'2025-01-14')")
+    assert stores.reconcile_share_count(conn) == {"B": 1}
+    assert conn.execute("SELECT basis FROM share_capital").fetchall() == [("consolidated",)]

@@ -95,8 +95,8 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Question that exposed it** (c07): What is the book value per share now?
 - **What was wrong:** share_capital holds 694,000 shares for 2026-09-30 from the quarterly results (source 'quarterly'), against 84.8 million in the shareholding pattern of the same date
 - **Why:** SPMLINFRA's Q2FY27 consolidated results XBRL filed paid-up equity capital Rs 13.88 lakh against Rs 17.83 crore in the standalone filing of the same day (a filing slip); share_capital derived 694,000 shares from it
-- **Fix:** stores._parent_share_count: paid-up equity is the parent's, so a consolidated quarterly row more than 1% from the same quarter's standalone row is dropped (standalone and shareholding totals stay); a consolidated row with no standalone that quarter is kept. c07: 1 row removed, nothing else changed (book value per share was already right after R-004)
-- **Code:** reality_engine/pilot3/stores.py::_parent_share_count, reality_engine/pilot3/stores.py::build_quarterly
+- **Fix:** Second version (16 Nov evening): when the standalone and consolidated results filings of one quarter end differ by more than 1% in share count, the shareholding-pattern total of that date judges: the row further from it is dropped (stores.reconcile_share_count, run after build_shp and before build_share_fallback); no pattern total -> consolidated dropped. The first version always kept standalone and on c01 would have deleted the right row: BLKASHYAP Q3FY25 standalone XBRL said 255.44 million shares, consolidated and the pattern 225.44 million. c07 (SPMLINFRA, consolidated 694,000) was repaired with the first version; same outcome under the second.
+- **Code:** reality_engine/pilot3/stores.py::_parent_share_count, reality_engine/pilot3/stores.py::reconcile_share_count, reality_engine/pilot3/stores.py::build_stores
 - **Store tables touched:** share_capital, ratio_panel, valuation_daily
 - **Tags:** share-capital, results, scale; **scope:** general
 - **Stores repaired:** c07; runs: -
