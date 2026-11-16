@@ -58,6 +58,15 @@ def test_read_queue_skips_demo_isins_and_gives_one_based_positions(tmp_path):
     assert [r["position"] for r in rows] == [1, 2]
 
 
+def test_nse_archive_pdf_is_taken_on_the_filers_symbol_only():
+    ok = "https://nsearchives.nseindia.com/corporate/ACME_13112023113801_transcript.pdf"
+    other = "https://nsearchives.nseindia.com/corporate/ACMEX_13112023113801_transcript.pdf"
+    assert tg_questions.url_names_company(ok, "Acme Steel Limited", "ACME")
+    assert not tg_questions.url_names_company(other, "Acme Steel Limited", "ACME")
+    assert not tg_questions.url_names_company(ok, "Acme Steel Limited", "")
+    assert tg_questions.url_names_company("https://www.acmesteel.com/ir/q2.pdf", "Acme Steel Limited", "ACME")
+
+
 def test_name_tokens_drops_stop_words_and_keeps_three_words_plus_symbol():
     assert tg_questions.name_tokens("Acme Steel and Wire Industries Limited", "ACME") == \
         ["acme", "steel", "wire", "acme"]

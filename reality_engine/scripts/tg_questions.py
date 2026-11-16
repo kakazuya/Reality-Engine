@@ -153,8 +153,20 @@ def page_is_document(url: str, page: str) -> bool:
     return url.lower().split("?")[0].endswith(".pdf") or page.startswith("%PDF")
 
 
+EXCHANGE_ARCHIVES = ("nsearchives.nseindia.com", "archives.nseindia.com")
+
+
 def url_names_company(url: str, company: str, symbol: str) -> bool:
-    host = re.sub(r"^https?://(www\.)?", "", url.lower()).split("/")[0]
+    """A PDF on the company's own site, or an NSE archive file named ``<SYMBOL>_<timestamp>...``.
+
+    NSE names every filing attachment by the filer's symbol (16 Nov: 16 of 21 questions from PANAMAPET's own
+    call transcripts on nsearchives were left unverified because only the host was read).
+    """
+    low = url.lower()
+    host = re.sub(r"^https?://(www\.)?", "", low).split("/")[0]
+    if host in EXCHANGE_ARCHIVES and symbol:
+        name = low.split("?")[0].rsplit("/", 1)[-1]
+        return name.startswith(symbol.lower() + "_")
     return any(token in host for token in name_tokens(company, symbol) if len(token) > 3)
 
 

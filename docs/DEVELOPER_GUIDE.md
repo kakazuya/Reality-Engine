@@ -2231,7 +2231,7 @@ agy job per company (`gemini-3.8-flash-medium`; each run in its own folder `D:/R
 and exchange symbol are sent), `load` re-reads the raw JSON files and verifies the links, `check` passes a company at
 >= 20 stored questions and >= 5 verified found, `export` writes the Excel workbook. The script, not the model, decides
 `found` vs `found_unverified`: a `found` question keeps that kind only when its page loads and names the company; a
-PDF on the company's own site is taken on its address. A `created` question without `grounding_fact` or
+PDF on the company's own site is taken on its address, and so is an NSE archive file (`nsearchives.nseindia.com/corporate/<SYMBOL>_...`), which NSE names by the filer's symbol (16 Nov: 62 of 191 unverified questions in 4 companies were the companies' own call transcripts there; `load` re-verifies after a harvest). A `created` question without `grounding_fact` or
 `data_needed` is dropped and counted, every second question per kind is frozen by hash (T-172), and `word_overlap` is
 stored as a hand-read hint only. Trial on queue positions 1-3: 46/44/47 questions, 441-884 s and 190k-393k tokens per
 company, 121/49/78 tool calls; position 3 had only 2 verified found questions because the model gave invalid YouTube
