@@ -1,13 +1,12 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-16 11:30 IST (Wolf)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-16 15:40 IST (Wolf)
 History `docs/state_history/` (previous: `STATE_2026-11-15_1530.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
 - Stores `D:/RealityEngine/{p20/p20new.db,u8/u8.db,q12/q12.db,n10/n10.db,pilot10/pilot10.db}`; u8/p20/q12 rebuilt 11 Nov 17:10, backups `*_before_rebuild_2026-11-11.db`; reality-data restart needed.
 - Extraction: `v2/page_words.py` -> `page_layout.py` -> `page_route.py` (T-189, four routes; only table_or_chart read, on the page IMAGE) -> `reference_geom.py` (T-185) -> `page_reader.py` writes page_cell verified/unverified/quarantined, served by `pilot3_cells`. T-199 atoms (`page_atom` v10): `docs/PILOT3_BLUEPRINT.md` T-199 block.
 - Checker (T-185) misses 174/264 right cells on 7 truth pages; garbled scan layers confirm wrong cells (T-175).
-- Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go; Kilo key 1 exhausted, Dots `@kilo2` quota ran out 12 Nov 00:31.
-- T-188 reader bake-off (30 frozen2 pages, P/R): Haiku 91.1/95.2, Dots image 83.8/89.6, DeepSeek image 82.9/75.0, GLM-OCR local 80.8/64.4; details `docs/V2_SCHEMA_CONTRACT.md` s14 and `D:/RealityEngine/v2/reference_pages_frozen2/`.
-- T-189 AUROPHARMA (12 Nov): Haiku 81.2%, DeepSeek 76.8% (`reports/2026-11-12_four_model_answer_test.html`).
+- Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
+- T-188 reader bake-off and T-189 answer test: `docs/V2_SCHEMA_CONTRACT.md` s14, `reports/2026-11-12_four_model_answer_test.html`.
 
 ## Merged 11 Nov
 T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 position check v2, T-186 `pilot3_fact`, T-187 guidance round 5, T-184 run ledger, T-188 HP OCR arm.
@@ -17,7 +16,7 @@ Rules and rebuilt-copy numbers: `docs/PILOT3_BLUEPRINT.md` s9p and DEVELOPER_GUI
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
-1. T-214 Telegram build: plan and gaps in `tasks/handoff/T-214_TG_BUILD_PLAN.md`; queue `D:/RealityEngine/tg_build/build_queue.csv` (93: 11/6/76, 2 demo ISINs to drop). T-215, T-178 DONE. 10 stores built 15 Nov in `tg_build/measure10/` (numbers: guide T-214 bullet). Gaps (of 93): no NSE XBRL 10, no SHP 11, no transcript 38, sector unknown 38. Fix A, C MERGED; fix B CLOSED, not merged (plan item 3). T-218 runner in use: all ten stores repaired and up to date; repair notes R-001..R-005 in `tasks/store_repair/INDEX.md`; R-003 order wins written (`pilot3/order_wins.py`, table `order_win`; store 1: 19 rows in a 2.5 s repair; stores 2-10 next). T-217: 37 of 91 stored. Next session: read `tasks/handoff/T-217_T-218_HANDOFF_2026-11-16b.md` (Shivam 16 Nov: fetch families approved, restart the harvest; R-004 branch to merge).
+1. T-214/T-218 Telegram build: plan `tasks/handoff/T-214_TG_BUILD_PLAN.md`, queue `D:/RealityEngine/tg_build/build_queue.csv`, stores `tg_build/measure10/c01..c10`. Repair notes R-001..R-006 as cards (code, tables, tags, scope) in `tasks/store_repair/INDEX.md`; grid stores x parts `reports/store_repair_grid.xlsx` (`store_repair note grid`). 16 Nov: R-004 MERGED (re-run on c01 after R-005, then c02-c09, hand-read each); R-005 KPI lakh unit fixed, accepted c01 c03 c04 c07, refused c02 c05 c06 c08 c09 c10 await hand-read. R-002: 34 of 37 no-transcript companies filed none on either exchange (record no call filed); 600 NSE transcripts on Drive (`raw/nse_announcements/tg_queue_2026-11-16`), BSE feed 19 Oct-16 Nov fetching into `analysis/bse_announcements.db` (stores read `reality_engine/data/` copy: copy rows across). T-217 harvest: 81 of 91 companies; Flash restarts 16:03 for the rest; then `tg_questions load` (3 link-verification fixes) and `check`; q078/q079 done on Sonnet with weak sets. Proposed: two-tier fixes + per-company completeness check.
 2. T-213: r15 MERGED (`answer/answer_checker.py` C1-C5 + repair): run B 54/9/1 -> 57/7/0 (not blind, report s5b). Next checks (theme calls, C4 figure) measured on Telegram stores with frozen halves.
 3. T-210 MERGED 15 Nov: factor_deep peak 0.64 GB; results `docs/research/T-210_factor_deep_study.md`, outputs `D:/RealityEngine/research/t210_2026-11-14/`. Sparse arm flawed (complete-case coverage). T-211 monthly job next (Wolf).
 4. T-212, T-209 DONE 15 Nov (Q2FY27 XBRL; `nse_shp_xbrl_universe` on Drive).

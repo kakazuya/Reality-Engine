@@ -48,8 +48,8 @@ One entry per store defect, like one notebook cell: the question that exposed it
 
 - **Question that exposed it** (c01): How have FPI and mutual fund holdings moved over the last four quarters?
 - **What was wrong:** shp_category holds promoter and public only (2 rows per quarter, source shp_index); no FPI, MF, insurance or pledge rows
-- **Why:** the company's shareholding XBRL is not in the store source; only the index summary is read
-- **Fix:** not written; check nse_shp_xbrl_universe on Drive (T-209) before any fetch
+- **Why:** pilot3/stores.py build_shp read only the local pilot folder raw/nse_shp_xbrl_pilot (none of these companies' files); their filings since 2024-04 are on Drive under nse_shp_xbrl_universe (T-209), never looked up
+- **Fix:** stores._shp_parsed looks up each file shp_index names in the pilot then universe folder, on disk or on Drive via raw_store (temp copy deleted); c01 copy: +369 shp_category (10 quarters), +130 shp_holder, +10 shp_pledge, +20 share_capital; 20 index rows rekeyed (pct base filled, pct unchanged), so each store's repair is refused and accepted after a hand-read. Quarters before 2024-04 are held nowhere (BSE/NSE shareholding fetch)
 - **Code:** reality_engine/pilot3/stores.py::_shp_parsed, reality_engine/pilot3/stores.py::build_shp
 - **Store tables touched:** shp_category, shp_holder, shp_pledge, share_capital, valuation_daily
 - **Tags:** shareholding, xbrl, fpi, mutual-funds, drive; **scope:** general

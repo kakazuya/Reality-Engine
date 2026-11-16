@@ -18,6 +18,8 @@ SANDBOX = Path(r"D:\RealityEngine\sandbox")
 PAGES_DB = Path(r"D:\RealityEngine\pilot3\pages.db")
 REAL_DB = MAIN_DATA / "pilot3" / "pilot3.db"
 SHP_XBRL = Path(r"D:\RealityEngine\raw\nse_shp_xbrl_pilot")
+# Every NSE shareholding XBRL filed since 2024-04-01 (T-209); on Drive under the manifest root of the same name.
+SHP_XBRL_UNIVERSE = Path(r"D:\RealityEngine\raw\nse_shp_xbrl_universe")
 
 
 def data_root() -> Path:
