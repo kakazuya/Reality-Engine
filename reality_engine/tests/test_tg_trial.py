@@ -90,3 +90,15 @@ def test_check_flags_give_ups_after_one_tool_kind(tmp):
     bad = dict(tg_trial.check(answers, calls, batch))
     assert set(bad) == {2, 4}                       # 1 answered, 3 tried two tool kinds
     assert "1 tool kinds" in bad[2] and bad[4] == "no answer"
+
+
+def test_check_with_prev_lists_unchanged_give_ups(tmp):
+    def w(name, rows):
+        p = tmp / name
+        p.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        return p
+    batch = w("b.jsonl", [{"qid": 1}, {"qid": 2}])
+    prev = w("p.jsonl", [{"qid": 1, "status": "partly", "answer": "x"}, {"qid": 2, "status": "partly", "answer": "y"}])
+    answers = w("a.jsonl", [{"qid": 1, "status": "partly", "answer": "x"}, {"qid": 2, "status": "partly", "answer": "z"}])
+    calls = w("c.jsonl", [{"qid": q, "tool": t} for q in (1, 2) for t in ("search", "topic", "docs")])
+    assert dict(tg_trial.check(answers, calls, batch, 3, prev)) == {1: "same answer text as the first pass"}

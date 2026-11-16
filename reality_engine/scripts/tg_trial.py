@@ -126,13 +126,15 @@ def merge(trial: int, trials: Path = TRIALS) -> dict:
             "frozen_grades": dict(score[1]), "open_grades": dict(score[0])}
 
 
-def check(answers: Path, calls: Path, batch: Path, min_kinds: int = 2) -> list[tuple]:
+def check(answers: Path, calls: Path, batch: Path, min_kinds: int = 2, prev: Path | None = None) -> list[tuple]:
     """``(qid, why)`` for every question of ``batch`` whose answer breaks the brief: no answer, no logged call, or
     ``not_found``/``partly`` after fewer than ``min_kinds`` different tools (trial 1: a free worker gave up after one
-    ``search`` on 30 of 44 questions)."""
+    ``search`` on 30 of 44 questions).  With ``prev`` (a first-pass answer file), a ``partly``/``not_found`` answer
+    whose text is unchanged from that pass is listed too: a rework once logged new calls and kept every answer."""
     def lines(p: Path):
         return [json.loads(x) for x in p.open(encoding="utf-8") if x.strip()] if p.is_file() else []
     got = {r["qid"]: r for r in lines(answers)}
+    before = {r["qid"]: r for r in lines(prev)} if prev else {}
     used: dict[str, list] = defaultdict(list)
     for c in lines(calls):
         used[str(c.get("qid"))].append(c.get("tool"))
@@ -147,6 +149,9 @@ def check(answers: Path, calls: Path, batch: Path, min_kinds: int = 2) -> list[t
                 why.append("no logged call")
             if a.get("status") in ("not_found", "partly") and len(set(tools)) < min_kinds:
                 why.append(f"{a.get('status')} after {len(tools)} calls of {len(set(tools))} tool kinds")
+            if (a.get("status") in ("not_found", "partly") and q in before
+                    and before[q].get("answer") == a.get("answer")):
+                why.append("same answer text as the first pass")
         if why:
             bad.append((q, "; ".join(why)))
     return bad
@@ -168,9 +173,10 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--calls", required=True)
     c.add_argument("--batch", required=True)
     c.add_argument("--min-kinds", type=int, default=2)
+    c.add_argument("--prev", default=None, help="first-pass answers: an unchanged partly/not_found answer is listed")
     a = ap.parse_args(argv)
     if a.cmd == "check":
-        bad = check(Path(a.answers), Path(a.calls), Path(a.batch), a.min_kinds)
+        bad = check(Path(a.answers), Path(a.calls), Path(a.batch), a.min_kinds, Path(a.prev) if a.prev else None)
         print(json.dumps({"rework": len(bad), "qids": [{"qid": q, "why": w} for q, w in bad]}, indent=1))
         return 1 if bad else 0
     res = sample(a.trial, a.per_company, a.batches, a.seed, a.repeat) if a.cmd == "sample" else merge(a.trial)
