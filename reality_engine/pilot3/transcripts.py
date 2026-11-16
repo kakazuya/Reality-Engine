@@ -94,7 +94,9 @@ DATE_LINE_RX = re.compile(r"^[ \t]*(?:" + MONTHS + r") \d{1,2}, \d{4}[ \t]*$", r
 CALL_DATE_RX = re.compile(r"(" + MONTHS + r") (\d{1,2}), (\d{4})")
 ABBR = ("Mr", "Ms", "Mrs", "Dr", "Rs", "No", "vs", "Inc", "Ltd", "approx", "Sr", "Jr", "St", "Co", "Corp", "etc", "i.e", "e.g", "FY", "Q")
 SENT_END_RX = re.compile(r"(?<=[.?!])[\"”’')]*\s+(?=[\"“‘'(A-Z0-9₹$])")
-NOT_SPEAKERS = ("Corporate", "Registered", "Email", "Website", "Phone", "Tel", "Note", "Disclaimer", "Source", "CIN", "Page", "Symbol", "Scrip", "SCRIP", "Sub", "Date", "Ref", "MANAGEMENT", "To", "Dear", "Subject", "Attention")
+NOT_SPEAKERS = ("Corporate", "Registered", "Email", "Website", "Phone", "Tel", "Note", "Disclaimer", "Source", "CIN", "Page", "Symbol", "Scrip", "SCRIP", "Sub", "Date", "Ref", "MANAGEMENT", "To", "Dear", "Subject", "Attention",
+                # cover-letter fields an OCR'd page 1 adds (R-011): five of them flipped a name-line call into colon mode
+                "Fax", "Encl", "BSE", "NSE")
 # Words in an analyst's firm line ("Axis Capital", "Goldman Sachs", "ICICI Securities"); the firm is not the
 # analyst's name (and its words must not poison the entity set) (T-164 r8).
 _ANALYST_FIRM_WORDS = {"capital", "securities", "security", "investment", "investments", "bank", "financial",
@@ -255,8 +257,13 @@ def call_period_ok(period: str | None, known_at: str | None, title: str | None =
     return filing_quarter(known_at)
 
 
+HELD_ON_RX = re.compile(r"(?i:held on|conducted on|call on)\s+(?:\w+day,?\s+)?(" + MONTHS + r") (\d{1,2}),? (\d{4})")
+
+
 def call_date_of(first_page: str, known_at: str | None) -> str | None:
-    m = CALL_DATE_RX.search(first_page[:1500])
+    """The call's date: a date written after 'held on' first (a cover letter's own date is the filing day, R-011),
+    else the first date on the page, else ``known_at``."""
+    m = HELD_ON_RX.search(first_page[:3000]) or CALL_DATE_RX.search(first_page[:1500])
     if m:
         mon = [x.lower() for x in MONTHS.split("|")].index(m.group(1).lower()) + 1
         return f"{int(m.group(3)):04d}-{mon:02d}-{int(m.group(2)):02d}"

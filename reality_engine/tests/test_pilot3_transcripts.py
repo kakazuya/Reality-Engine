@@ -313,3 +313,18 @@ def test_a_document_expansion_makes_the_abbreviation_a_name():
     assert "SBPL" in transcripts._company_abbrevs_in(text)
     ents = transcripts._recurring_entities(text, set(), set(), set())
     assert "SBPL" in ents, f"expanded company missed: {ents}"
+
+
+def test_cover_letter_fields_are_not_speakers():
+    """R-011: an OCR'd cover letter ('Fax:', 'BSE Scrip Code:', 'NSE Symbol:', 'Encl.:') must not count as colon
+    speaker marks, or a name-line transcript flips into colon mode and yields no statement at all."""
+    for label in ("Fax", "BSE Scrip Code", "NSE Symbol", "Encl .", "Encl"):
+        assert transcripts._not_speaker(label)
+    for name in ("Vinod Kashyap", "Moderator", "Management"):
+        assert not transcripts._not_speaker(name)
+
+
+def test_call_date_prefers_held_on_over_the_cover_letter_date():
+    cover = "August 12, 2024\nThe Secretary\nSub: Transcript of Earnings Call held on August 7, 2024, for the quarter"
+    assert transcripts.call_date_of(cover, "2024-08-12T18:40:01") == "2024-08-07"
+    assert transcripts.call_date_of("Earnings call\nFebruary 10, 2026\nModerator: welcome", None) == "2026-02-10"

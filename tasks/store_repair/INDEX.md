@@ -13,6 +13,9 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 | R-007 | open | kpi | general | kpi, revenue-definition, deck, annual-report, derived |  |
 | R-008 | fixed | stores | general | share-capital, results, scale | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-009 | fixed | raw_fetch | general | fetch, nse, bse, fallback, raw |  |
+| R-010 | fix_written | pages | general | ocr, hp | c10, c15 |
+| R-011 | fix_written | transcripts | general | transcripts, ocr |  |
+| R-012 | open | docs_collect | general | transcripts, raw_fetch |  |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -120,4 +123,40 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 - **Code:** reality_engine/scripts/fetch_pilot60_history.py::main
 - **Store tables touched:** doc, doc_page
 - **Tags:** fetch, nse, bse, fallback, raw; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-010 (fix_written, part `pages`, opened 2026-11-16)
+
+1. **Why it had to be done** (question that exposed it, c01): Why: scanned results and deck pages carry figures that questions ask for (quarterly revenue, PAT), and the store held no text for them
+2. **What the problem was:** c01 (BLKASHYAP): 38 pages routed needs_ocr had empty doc_page text; printed results rows came from a garbled scan layer ('Total Income 0313.90 95,200.40 71363]') and 8 of them were wrong figures **Root cause:** the 91 build runs no OCR part; the HP TextRecognizer output sits in cNN/ocr/ocr_textrec.db, which no part reads
+3. **What was missing:** OCR text in doc_page and OCR words for comparatives/kpi on scanned pages
+4. **How it was fixed:** copy cNN/ocr/ocr_textrec.db to cNN/cNN_ocr.db (the file build.ocr_inputs already reads), then store_repair --part pages (dependants). c01: 37 pages filled, fin_quarter_printed +280 rows (175 xbrl_ok, 87 sum_ok), 8 garbled rows dropped, 3 tax values corrected to the XBRL figure; 0 served rows lost
+5. **What can come next:** 71 of c01's 109 OCR pages have a jumbled text layer (method script_text): doc_page keeps the layer there, kpi too; switch them to OCR only if trial 1 shows a miss caused by it
+- **Code:** reality_engine/pilot3/build.py, reality_engine/scripts/store_repair.py
+- **Store tables touched:** doc_page, fin_quarter_printed, kpi_series
+- **Tags:** ocr, hp; **scope:** general
+- **Stores repaired:** c10, c15; runs: 20261116T225524, 20261116T230114
+
+## R-011 (fix_written, part `transcripts`, opened 2026-11-16)
+
+1. **Why it had to be done** (question that exposed it, c06): Why: management statements and guidance are answered from transcript_statement; a call with 0 statements answers nothing
+2. **What the problem was:** c06 (SUBEXLTD): 7 of 11 held call transcripts gave 0 statements (3,142 stored); the HP OCR of one cover page then emptied an eighth call (699 statements lost) **Root cause:** cover-letter fields ('Fax:', 'BSE Scrip Code:', 'NSE Symbol:', 'Encl.:') counted as colon speaker marks; 5 or more flip a name-line transcript into colon mode, which finds no speakers. Separately call_date took the letter's own date, not 'held on <date>'
+3. **What was missing:** statements of every call whose filing starts with a cover letter
+4. **How it was fixed:** transcripts.NOT_SPEAKERS gains Fax, Encl, BSE, NSE; call_date_of prefers a date after 'held on/conducted on/call on'. Tests in test_pilot3_transcripts.py. SUBEX: 0 empty calls, 6,888 statements (was 3,142); other built stores unchanged
+5. **What can come next:** re-run the transcripts part on every store (store_repair --part stale) and read the call_date changes in the diff
+- **Code:** reality_engine/pilot3/transcripts.py
+- **Store tables touched:** transcript_statement, transcript_question
+- **Tags:** transcripts, ocr; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-012 (open, part `docs_collect`, opened 2026-11-16)
+
+1. **Why it had to be done** (question that exposed it, c26): Why: a company whose transcripts are only links has no call statements or guidance at all
+2. **What the problem was:** 15 of 109 transcript filings in the first 36 stores are a one-page letter with a link to the company website (c26 NELCAST 11 of 11, c08 NAVKARCORP 3 of 3, c07 1 of 12) **Root cause:** the exchange filing holds the cover letter only; the transcript PDF sits on the company site
+3. **What was missing:** the linked transcript PDFs
+4. **How it was fixed:** not written: a general fetcher that reads the URL (or the named pdf) from a 1-3 page transcript letter, downloads it to Drive via raw_store, and adds it as the transcript document
+5. **What can come next:** write the fetcher after the build; measure on all 91 stores
+- **Code:** -
+- **Store tables touched:** doc, doc_page, transcript_statement
+- **Tags:** transcripts, raw_fetch; **scope:** general
 - **Stores repaired:** -; runs: -
