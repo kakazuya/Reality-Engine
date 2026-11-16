@@ -8,7 +8,7 @@ One entry per store defect, like one notebook cell: the question that exposed it
 | R-002 | fix_written | docs_collect | general | transcript, fetch, nse, bse, no-call-filed |  |
 | R-003 | fixed | events | general | events, order-win, regulation-30, announcement | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-004 | open | stores | general | shareholding, xbrl, fpi, mutual-funds, drive |  |
-| R-005 | fix_written | kpi | general | kpi, unit, lakh, scale, row-check | c01, c03, c04 |
+| R-005 | fix_written | kpi | general | kpi, unit, lakh, scale, row-check | c01, c03, c04, c07 |
 | R-006 | fixed | comparatives | general | results, unit, lakh, scale, xbrl, scan | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
@@ -64,7 +64,7 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Code:** reality_engine/pilot3/kpi.py::page_money_unit, reality_engine/pilot3/kpi.py::_page_unit_canon, reality_engine/pilot3/row_checks.py::check_page_unit, reality_engine/pilot3/row_checks.py::_rescaled_exactly
 - **Store tables touched:** kpi_series, row_check, row_check_fail
 - **Tags:** kpi, unit, lakh, scale, row-check; **scope:** general
-- **Stores repaired:** c01, c03, c04; runs: 20261116T145556, 20261116T145711
+- **Stores repaired:** c01, c03, c04, c07; runs: 20261116T145556, 20261116T145711
 
 ## R-006 (fixed, part `comparatives`, opened 2026-11-16)
 
