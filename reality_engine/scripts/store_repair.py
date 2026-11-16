@@ -278,6 +278,54 @@ def write_notes(notes: list[dict], notes_dir: Path = NOTES_DIR) -> None:
     (notes_dir / "INDEX.md").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
+COMPLETENESS_COLUMNS = ["store", "symbol", "xbrl_quarters", "xbrl_latest", "printed_quarters", "shp_xbrl_quarters",
+                        "shp_index_quarters", "shp_latest", "transcripts", "transcript_latest", "guidance_rows",
+                        "kpi_verified", "kpi_unverified", "kpi_quarantined", "order_wins", "decks", "annual_reports",
+                        "results_docs", "latest_doc", "price_latest"]
+
+
+def completeness(db: Path | str, since: str = "2024-04-01") -> dict:
+    """What one store holds per part, counted from its own tables (no model): the sign-off check for a company.
+
+    Shivam 16 Nov: a company is signed off part by part; an empty count is 'not extracted' or 'not filed' and is
+    told apart by the repair notes (R-002: no call filed on either exchange), never assumed."""
+    conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+
+    def one(sql: str, *args):
+        try:
+            return conn.execute(sql, args).fetchone()[0]
+        except sqlite3.Error:
+            return None
+
+    kpi = dict(conn.execute("SELECT status, COUNT(*) FROM row_check WHERE tbl='kpi_series' GROUP BY status")
+               ) if one("SELECT COUNT(*) FROM sqlite_master WHERE name='row_check'") else {}
+    docs = dict(conn.execute("SELECT doc_type, COUNT(*) FROM doc GROUP BY doc_type")
+                ) if one("SELECT COUNT(*) FROM sqlite_master WHERE name='doc'") else {}
+    out = {
+        "symbol": one("SELECT group_concat(symbol) FROM company"),
+        "xbrl_quarters": one("SELECT COUNT(DISTINCT period_end) FROM fin_quarter_xbrl WHERE period_end >= ? "
+                             "AND julianday(period_end) - julianday(period_start) < 100", since),
+        "xbrl_latest": one("SELECT MAX(period_end) FROM fin_quarter_xbrl"),
+        "printed_quarters": one("SELECT COUNT(DISTINCT period_end) FROM fin_quarter_printed WHERE period_end >= ? "
+                                "AND period_type = 'quarter'", since),
+        "shp_xbrl_quarters": one("SELECT COUNT(DISTINCT quarter_end) FROM shp_category WHERE source_kind='xbrl'"),
+        "shp_index_quarters": one("SELECT COUNT(DISTINCT quarter_end) FROM shp_category WHERE source_kind='index'"),
+        "shp_latest": one("SELECT MAX(quarter_end) FROM shp_category"),
+        "transcripts": docs.get("transcript", 0),
+        "transcript_latest": one("SELECT MAX(filing_date) FROM doc WHERE doc_type='transcript'"),
+        "guidance_rows": one("SELECT COUNT(*) FROM guidance"),
+        "kpi_verified": kpi.get("verified", 0), "kpi_unverified": kpi.get("unverified", 0),
+        "kpi_quarantined": kpi.get("quarantined", 0),
+        "order_wins": one("SELECT COUNT(*) FROM order_win"),
+        "decks": docs.get("deck", 0), "annual_reports": docs.get("annual_report", 0),
+        "results_docs": docs.get("results", 0),
+        "latest_doc": one("SELECT MAX(filing_date) FROM doc"),
+        "price_latest": one("SELECT MAX(date) FROM price_delivery"),
+    }
+    conn.close()
+    return out
+
+
 def write_grid(root: Path, notes: list[dict] | None = None, out: Path = GRID_XLSX) -> Path:
     """Excel workbook: sheet ``grid`` has one row per store and one column per part (the notebook view: each cell
     says whether that part of that store is up to date and which notes repaired it); sheet ``notes`` lists every
@@ -308,6 +356,16 @@ def write_grid(root: Path, notes: list[dict] | None = None, out: Path = GRID_XLS
         for cell in ws[ws.max_row][1:]:
             cell.fill = fills["stale" if str(cell.value).startswith(("stale", "unreadable")) else "ok"]
     for cell in ws[1]:
+        cell.font = Font(bold=True)
+    done = wb.create_sheet("completeness")
+    done.append(COMPLETENESS_COLUMNS)
+    for store in find_stores(root):
+        try:
+            row = completeness(store["db"])
+        except Exception as exc:  # noqa: BLE001 - one unreadable store is one row saying so
+            row = {"symbol": f"unreadable: {exc}"}
+        done.append([store["name"], *[row.get(c) for c in COMPLETENESS_COLUMNS[1:]]])
+    for cell in done[1]:
         cell.font = Font(bold=True)
     sheet = wb.create_sheet("notes")
     columns = ["id", "status", "opened", "part", "scope", "tags", "symptom", "cause", "fix", "code", "tables",

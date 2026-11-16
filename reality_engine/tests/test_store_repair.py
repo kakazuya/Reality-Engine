@@ -207,3 +207,15 @@ def test_notes_roundtrip_and_index(tmp_path):
     notes_sheet = load_workbook(grid)["notes"]
     assert [c.value for c in notes_sheet[2]][:6] == ["R-001", "fixed", note["opened"], "stores", "general",
                                                     "shareholding, xbrl"]
+
+
+def test_completeness_counts_what_a_store_holds(tmp_path):
+    db = tmp_path / "s.db"
+    con = sqlite3.connect(db)
+    con.executescript("CREATE TABLE company(symbol TEXT); INSERT INTO company VALUES('ACME');"
+                      "CREATE TABLE doc(doc_type TEXT, filing_date TEXT);"
+                      "INSERT INTO doc VALUES('transcript','2026-11-10'),('deck','2026-11-12');")
+    con.commit(); con.close()
+    got = store_repair.completeness(db)
+    assert (got["symbol"], got["transcripts"], got["transcript_latest"], got["decks"]) == ("ACME", 1, "2026-11-10", 1)
+    assert got["xbrl_quarters"] is None and got["kpi_verified"] == 0      # a missing table is unknown, never zero rows

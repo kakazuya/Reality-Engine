@@ -2215,7 +2215,12 @@ python -m reality_engine.scripts.store_repair note add|set|list ...
   (a rule for every company, or a fix that holds for one only). `INDEX.md` prints one card per note (question,
   what was wrong, why, fix, code, tables, tags, scope, stores repaired, runs). `note grid --root <root>` writes
   `reports/store_repair_grid.xlsx`: sheet `grid` has one row per store and one column per part (`ok` or
-  `stale: <reason>`, plus the notes that repaired that cell), sheet `notes` every field of every note.
+  `stale: <reason>`, plus the notes that repaired that cell), sheet `notes` every field of every note, and sheet
+  `completeness` the sign-off counts per store (`store_repair.completeness`, read-only: XBRL and printed result
+  quarters since 2024-04, shareholding quarters by source, transcripts, guidance rows, KPI verdicts, order wins,
+  decks, annual reports, results documents, latest document and price dates; a missing table is blank, not 0).
+  First read, 16 Nov: c09 has XBRL for 7 of 10 quarters; c10 has no XBRL and no shareholding (fetch gaps); c06 has
+  11 transcripts and 0 guidance rows (R-001 worded path); c01 has no transcript (no call filed, R-002).
 - First use on the ten measured stores in `D:/RealityEngine/tg_build/measure10`, baselined at the commits they were
   built from (c01-c07 `e48b848bd4`, c08-c10 `7616ee321c`): `--stale` listed exactly `profile` (fix C) and `stores`
   (fix A) with their readers. c02 ran `profile` + `stores` + `preferred`, skipped 12 parts and took 45.5 s against the
