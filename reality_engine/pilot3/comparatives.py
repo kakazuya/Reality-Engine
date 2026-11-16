@@ -523,13 +523,16 @@ def _unit(text: str) -> float | None:
     """Rupee scale from the page's unit words (crore/lakh/million/thousand), None when the page prints none.
 
     Tolerant to OCR and spacing: ``Rs. inCrore``, ``(tin crore)``, ``(f in Million)`` and ``llNR crore`` all read."""
-    compact = re.sub(r"[^a-z]", "", text.lower())
-    best = None
-    for word, scale in (("crore", 1e7), ("lakh", 1e5), ("million", 1e6), ("thousand", 1e3), ("billion", 1e9)):
-        at = compact.find(word)
-        if at >= 0 and (best is None or at < best[0]):
-            best = (at, scale)
-    return best[1] if best else None
+    match = _UNIT_DECLARED.search(text.lower())
+    return _UNIT_SCALES[(match[1] or match[2])[:4]] if match else None
+
+
+# A page DECLARES its unit as "in <unit>" or as the currency followed at once by the unit ("Rs. Crore").  A unit word
+# after a figure is a sentence of the notes ("a provision of Rs. 20 crore"), not the table's unit: store-repair note
+# R-006, where such a note on a lakh page had every figure of three results filings stored 100 times too large.
+_UNIT_DECLARED = re.compile(r"in\s*(crore|lakh|lac|million|thousand|billion)"
+                            r"|(?:rs\.?|inr|nr|₹|`)\s*\(?\s*(crore|lakh|lac|million|thousand|billion)")
+_UNIT_SCALES = {"cror": 1e7, "lakh": 1e5, "lac": 1e5, "mill": 1e6, "thou": 1e3, "bill": 1e9}
 
 
 def _columns(data_rows) -> list[float]:
@@ -1517,7 +1520,9 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
     best = None
     for roles in candidates:
         for basis in bases:
-            for sc in ([scale] if scale else [1e5, 1e6, 1e7]):
+            # the page's declared scale is tried first and wins a tie; a scale the XBRL figures confirm beats a
+            # declared one they do not (R-006: the unit line can be missing from the text layer)
+            for sc in ([scale] if scale else []) + [s for s in (1e5, 1e6, 1e7) if s != scale]:
                 if basis not in ("standalone", "consolidated"):
                     score = 0
                 else:
