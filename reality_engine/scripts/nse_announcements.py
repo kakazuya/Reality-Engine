@@ -593,6 +593,31 @@ class AnnouncementFetcher:
             logger.info("%s: %d rows (%d new)", symbol, len(rows), new)
         return stats
 
+    def download_kind(self, symbols: List[str], kind: str = "transcript") -> Dict[str, int]:
+        """Download, from the JSONL already written, only the attachments whose ``record_kind`` is ``kind``.
+
+        No listing call: a fetch run marks its windows done, so a later download pass reads the stored rows.
+        The narrow ``transcript`` kind leaves out the meet family (intimations, audio links), which the
+        ``transcript`` bucket keeps (T-218, R-002: 333 transcript rows against 1,673 bucket rows on 93 companies).
+        """
+        stats = {"downloaded": 0, "download_skipped": 0, "download_error": 0, "rows": 0}
+        folder = self.out / "attachments"
+        for symbol in symbols:
+            for record in self.read_symbol(symbol):
+                if record_kind(record.get("raw") or {}) != kind:
+                    continue
+                stats["rows"] += 1
+                path = folder / symbol / re.sub(r"[^A-Za-z0-9._-]+", "_",
+                                                str(record.get("attachment_url") or "").rsplit("/", 1)[-1])[:120]
+                if path.name and not needs_download(path, row_size_bytes(record["raw"])):
+                    stats["download_skipped"] += 1
+                    continue
+                self.sleep(self.interval)
+                got = self.download(record, folder)
+                stats[{"ok": "downloaded", "skipped": "download_skipped", "error": "download_error"}[got]] += 1
+            logger.info("%s: %d %s rows so far", symbol, stats["rows"], kind)
+        return stats
+
     def read_symbol(self, symbol: str) -> List[Dict[str, Any]]:
         path = self.out / f"{symbol}.jsonl"
         if not path.exists():
@@ -720,6 +745,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                     help="run the N companies whose old transcripts have no BSE news id")
     ap.add_argument("--recall", metavar="OUT_DIR", default=None,
                     help="print the recall table for an existing fetch directory")
+    ap.add_argument("--attachments-only", metavar="KIND", choices=("transcript", "meet"), default=None,
+                    help="no listing: download from the stored JSONL only the rows of this record_kind")
     ap.add_argument("--log-level", default="INFO")
     args = ap.parse_args(argv)
     logging.basicConfig(level=getattr(logging, str(args.log_level).upper(), logging.INFO),
@@ -756,6 +783,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         ap.error(f"unknown --download-buckets: {', '.join(unknown)} (choose from {', '.join(BUCKETS)})")
     fetcher = AnnouncementFetcher(Path(args.out), interval=args.interval)
     t0 = time.time()
+    if args.attachments_only:
+        stats = fetcher.download_kind(symbols, args.attachments_only)
+        stats["seconds"] = round(time.time() - t0, 1)
+        stats["requests"] = fetcher.requests_made
+        print(json.dumps(stats, indent=1))
+        return 0
     stats = fetcher.run(symbols, args.frm, args.to, filters, args.download,
                         download_buckets=download_buckets)
     stats["seconds"] = round(time.time() - t0, 1)

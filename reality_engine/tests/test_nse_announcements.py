@@ -272,6 +272,23 @@ class DownloadBucketTests(unittest.TestCase):
                       download_buckets=["procedural"])
         self.assertEqual(stats["downloaded"], 1)
 
+    def test_download_kind_reads_stored_rows_and_skips_meet_paperwork(self):
+        out = tmpdir(self)
+        transcript_row = self._row()
+        meet_row = self._row(
+            desc="Analysts/Institutional Investor Meet/Con. Call Updates", seq_id="7654322",
+            attchmntText="Intimation of schedule of analyst / institutional investor meet",
+            attchmntFile="https://archives.nseindia.com/corporate/MEET.pdf")
+        listing = AnnouncementFetcher(out, interval=3, isin_map={}, sleep=lambda seconds: None,
+                                      client=FakeClient([FakeResponse(200, {"data": [transcript_row, meet_row]})]))
+        listing.run(["RELIANCE"], "2024-04-01", "2024-04-30")
+        f = AnnouncementFetcher(out, interval=3, isin_map={}, sleep=lambda seconds: None,
+                                client=FakeClient([FakeResponse(200, content=b"%PDF-1.4 transcript")]))
+        stats = f.download_kind(["RELIANCE"], "transcript")
+        self.assertEqual((stats["rows"], stats["downloaded"]), (1, 1))
+        again = f.download_kind(["RELIANCE"], "transcript")      # the file is held: no second request
+        self.assertEqual((again["downloaded"], again["download_skipped"]), (0, 1))
+
 
 class ResumeTests(unittest.TestCase):
     def test_size_parsing(self):
@@ -351,10 +368,10 @@ class BackoffTests(unittest.TestCase):
         self.assertEqual(f.get("https://www.nseindia.com/api/x").status_code, 404)
         self.assertEqual(f.sleeps, [])
 
-    def test_interval_floor_is_three_seconds(self):
+    def test_interval_floor_is_min_interval(self):
         f = AnnouncementFetcher(tmpdir(self), interval=0.2,
                                 client=FakeClient([]), isin_map={})
-        self.assertEqual(f.interval, 3.0)
+        self.assertEqual(f.interval, 0.5)          # MIN_INTERVAL since 80af0be7 (NSE took 400/min)
 
 
 if __name__ == "__main__":
