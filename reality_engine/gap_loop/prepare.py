@@ -69,8 +69,8 @@ def store_copies(company: Company) -> tuple[dict, ...]:
         {"table": "results_quarterly", "db": "results_xbrl.db", "source": "quarterly",
          "key": company.isin_key,
          "sql": "SELECT *, coalesce(dissem_ts, broadcast_ts, (SELECT f.filing_ts FROM filings f "
-                "WHERE f.file=quarterly.file), xbrl_file_ts(file)) AS known_at FROM quarterly "
-                f"WHERE {isin}", "params": params},
+                "WHERE f.file=quarterly.file), xbrl_file_ts(file)) AS known_at "
+                f"FROM {{view:quarterly where {company.isin_clause('f.isin')}}} AS quarterly", "params": params},
         {"table": "concall_items", "db": "concall_facts.db", "source": "cc_items",
          "key": company.isin_key,
          "sql": f"SELECT *, filed_at AS known_at FROM cc_items WHERE {isin}", "params": params},
@@ -314,6 +314,28 @@ def xbrl_file_ts(name: object) -> str | None:
         return None
 
 
+_VIEW_MARK = re.compile(r"\{view:(\w+) where (.+?)\}")
+
+
+def _filtered_view(con, sql: str) -> str:
+    """Expand ``{view:<name> where <filter>}`` into the view's own SELECT with the filter added before its GROUP BY.
+
+    SQLite does not push a WHERE on a non-grouped column into an aggregate view, so ``SELECT ... FROM quarterly
+    WHERE isin IN (...)`` aggregated all 111k filings of the 7 GB results_xbrl.db (13 s a call, several calls a
+    build) before filtering; the filter inside the view's WHERE reads one company's filings (0.01 s), same rows."""
+    def expand(m: re.Match) -> str:
+        row = con.execute("SELECT sql FROM sqlite_master WHERE type='view' AND name=?", (m.group(1),)).fetchone()
+        if not row:
+            raise RuntimeError(f"no view {m.group(1)}")
+        body = re.split(r"\bAS\s", row[0], maxsplit=1, flags=re.I)[1]
+        head, sep, tail = body.rpartition("GROUP BY")
+        if not sep:
+            raise RuntimeError(f"view {m.group(1)} has no GROUP BY to filter before")
+        glue = " AND " if re.search(r"\bWHERE\b", head, re.I) else " WHERE "
+        return f"({head.rstrip()}{glue}({m.group(2)}) GROUP BY{tail})"
+    return _VIEW_MARK.sub(expand, sql)
+
+
 def _read_sqlite(db: str, source: str, sql: str, params: tuple) -> tuple[list, dict[str, str]]:
     path = DATA_ROOT / db
     if not path.is_file():
@@ -321,7 +343,7 @@ def _read_sqlite(db: str, source: str, sql: str, params: tuple) -> tuple[list, d
     con = connect_ro(path, timeout_s=120)
     con.create_function("xbrl_file_ts", 1, xbrl_file_ts, deterministic=True)
     try:
-        cursor = con.execute(sql, params)
+        cursor = con.execute(_filtered_view(con, sql), params)
         columns = [item[0] for item in cursor.description]
         kinds = {name: (kind or "TEXT") for _, name, kind, *_ in con.execute(f'PRAGMA table_info("{source}")')}
         return cursor.fetchall(), {name: kinds.get(name, "TEXT") for name in columns}

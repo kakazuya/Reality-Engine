@@ -578,6 +578,10 @@ def connect_out(path: Path) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path, timeout=60)
     conn.execute("PRAGMA journal_mode=WAL")
+    # one commit per document; under WAL, NORMAL syncs at checkpoints instead of every commit (0.25 s each on
+    # D:, 13 s for 51 documents).  A power cut can lose the last documents' commits, never corrupt the file,
+    # and docs_collect re-runs from the manifest.
+    conn.execute("PRAGMA synchronous=NORMAL")
     conn.executescript(SCHEMA)
     return conn
 

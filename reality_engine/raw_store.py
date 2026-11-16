@@ -200,12 +200,29 @@ class RawStore:
         self.transfers = transfers
         # (root, lower-case rel) -> (drive_path, md5, the rel as written), so a Windows path matches a
         # manifest row whatever its case while the file is still named the way the raw store names it.
-        self._rows: dict[tuple[str, str], tuple[str, str | None, str]] = {}
-        self._children: dict[tuple[str, str], dict[str, str]] = {}
+        self._rows_data: dict[tuple[str, str], tuple[str, str | None, str]] = {}
+        self._children_data: dict[tuple[str, str], dict[str, str]] = {}
+        self._loaded = False
         self._fetched: dict[tuple[str, str], Path] = {}
-        self._load()
 
     # -- index -------------------------------------------------------------------------------------
+    @property
+    def _rows(self) -> dict[tuple[str, str], tuple[str, str | None, str]]:
+        self._ensure()
+        return self._rows_data
+
+    @property
+    def _children(self) -> dict[tuple[str, str], dict[str, str]]:
+        self._ensure()
+        return self._children_data
+
+    def _ensure(self) -> None:
+        """Load the manifest on the first lookup that needs it, not at construction: the manifest holds ~290k
+        rows (3-16 s to read) and a build step whose files are all on disk never asks it anything."""
+        if not self._loaded:
+            self._loaded = True
+            self._load()
+
     def _load(self) -> None:
         """Read the manifest once (rows that have a Drive path; ``raw/user_research`` stays local)."""
         if not self.manifest.is_file():
@@ -223,10 +240,10 @@ class RawStore:
             root_key = str(root).strip().lower()
             rel_text = str(rel).replace("\\", "/").strip("/")
             key = (root_key, rel_text.lower())
-            self._rows[key] = (str(drive), str(md5).lower() if md5 else None, rel_text)
+            self._rows_data[key] = (str(drive), str(md5).lower() if md5 else None, rel_text)
             parent = ""
             for part in rel_text.split("/")[:-1]:
-                self._children.setdefault((root_key, parent), {})[part.lower()] = part
+                self._children_data.setdefault((root_key, parent), {})[part.lower()] = part
                 parent = f"{parent}/{part.lower()}" if parent else part.lower()
 
     def _drive_on(self) -> bool:

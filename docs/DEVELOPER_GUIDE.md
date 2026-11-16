@@ -2139,6 +2139,22 @@ sessions (about 43k fixed + 7k per sheet, 5-6 sheets per session). Working files
 `build_queue.csv` live in `D:/RealityEngine/tg_build/` (private, never GitHub); tier rules and the pre-build fix order
 are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
 
+- **T-220: build efficiency pass (16 Nov 2026, Wolf).** cProfile of the build parts on a c05 copy (4,747 pages;
+  parts share of build time on the ten stores: docs_collect 26 %, comparatives 25 %, stores 17 %, kpi 15 %); every
+  change is output-identical (c05 copy: 42 tables row-for-row equal, ids and part-stamp hashes aside; 80-page
+  route CSV byte-equal). (1) `gap_loop.prepare` `results_quarterly`: SQLite does not push `WHERE isin` into the
+  aggregate view `quarterly`, so each read aggregated all 111k filings of results_xbrl.db (13-47 s); the spec now
+  writes `{view:quarterly where f.isin IN (...)}`, which `_filtered_view` expands into the view's own SELECT with
+  the filter before its GROUP BY (0.02 s, same rows and types). (2) `comparatives._fuzzy_score`: 3.3 M
+  SequenceMatcher calls were ~95 % of the part; `_ratio` caches the ratio and `_ratio_cap` skips a pair whose
+  length bound cannot pass 0.74 or beat the best (part 137 s -> 10 s under the profiler). (3) `kpi._page_bases`
+  reads page_entities.yaml once per process (1,269 loads, 8 s). (4) `raw_store.RawStore` loads its 290k-row Drive
+  manifest on the first lookup that needs it, not in `__init__` (3-16 s per process whose files are on disk).
+  (5) `v2.page_route.run` prefetches each document's PDF once (`_pages_prefetched`) instead of a Drive fetch per
+  page. (6) `docs_collect.connect_out` sets `synchronous=NORMAL` under WAL (one commit per document cost 0.25 s).
+  Not changed (measured, open): the stores part re-downloads every shareholding XBRL from Drive on each rebuild
+  (92 s of 117 s on c05); `kpi.parse_periods` 14 s (cache hit rate not measured); `RawStore.walk` sorts the whole
+  manifest per call.
 - **T-214 step 3: the 10-company measured script-only build (15 Nov 2026).**
   `reality_engine/scripts/tg_measure_build.py` runs one company at a time through the T-208 recipe above
   (`make_profile` with `--window-start 2024-04-01 --compute-start 2019-01-01`, `docs_collect --profile`, then
