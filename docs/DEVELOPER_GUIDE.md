@@ -2304,6 +2304,18 @@ links, so the prompt was tightened. The bank (`questions.db`, the Excel export) 
 written in the repo. Test: `python -m pytest -q reality_engine/tests/test_tg_questions.py` -> 7 passed (injected
 fetcher and runner: queue, name tokens, validation, freezing, load/summarise, fenced JSON, one harvest run).
 
+### Randomised question trials over the Telegram stores (16 Nov 2026)
+
+Shivam's order (16 Nov): build all 91 queue stores, then trial 1, 2, ... until 90% right, fixing each gap with a
+general script. `reality_engine/scripts/tg_trial.py sample --trial N` draws K questions per built company from
+`questions.db` (default 2: one open, one frozen; `found_unverified` excluded; never a question an earlier trial
+asked) into `D:/RealityEngine/tg_build/trials/trialN/questions.jsonl` plus `batch_XX.jsonl` (whole companies per
+batch, one per answer worker); `--repeat M` also re-asks trial M's open questions to check the fixes. Workers follow
+`tasks/handoff/tg_trial_answer_brief.md` (p3ask `--db <store>`, a `gap` field per answer) and write `answers/`;
+a separate grader writes `grades/`; `merge` joins them into `graded.jsonl` (answer_run_report input) and prints the
+right-rate on frozen and open questions apart. Only the frozen rate is the reported score. Test:
+`python -m pytest -q reality_engine/tests/test_tg_trial.py` -> 2 passed.
+
 ## Answer arms, round 13 (T-205, 13 Nov 2026)
 
 Shivam's order: the seeded tool run FIRST, then the round-12 pack path answered by the same model, graded blind
