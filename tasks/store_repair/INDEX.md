@@ -11,7 +11,7 @@ One entry per store defect, like one notebook cell: the question that exposed it
 | R-005 | fixed | kpi | general | kpi, unit, lakh, scale, row-check | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-006 | fixed | comparatives | general | results, unit, lakh, scale, xbrl, scan | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-007 | open | kpi | general | kpi, revenue-definition, deck, annual-report, derived |  |
-| R-008 | fix_written | stores | general | share-capital, results, scale | c01, c07 |
+| R-008 | fixed | stores | general | share-capital, results, scale | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -90,7 +90,7 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Tags:** kpi, revenue-definition, deck, annual-report, derived; **scope:** general
 - **Stores repaired:** -; runs: -
 
-## R-008 (fix_written, part `stores`, opened 2026-11-16)
+## R-008 (fixed, part `stores`, opened 2026-11-16)
 
 - **Question that exposed it** (c07): What is the book value per share now?
 - **What was wrong:** share_capital holds 694,000 shares for 2026-09-30 from the quarterly results (source 'quarterly'), against 84.8 million in the shareholding pattern of the same date
@@ -99,4 +99,4 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Code:** reality_engine/pilot3/stores.py::_parent_share_count, reality_engine/pilot3/stores.py::reconcile_share_count, reality_engine/pilot3/stores.py::build_stores
 - **Store tables touched:** share_capital, ratio_panel, valuation_daily
 - **Tags:** share-capital, results, scale; **scope:** general
-- **Stores repaired:** c01, c07; runs: -
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10; runs: 20261116T185056, 20261116T185257, 20261116T185953, 20261116T190126
