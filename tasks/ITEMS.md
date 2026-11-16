@@ -14,7 +14,7 @@ Tickets, ideas, rulings and store defects in one place. Each source keeps its ow
 - **R-001** [open] Worded guidance (no number) is missed, and widening the sentence patterns loses right rows on unseen stores — links: T-214 (open)
 - **R-002** [fix_written] Store holds no call transcript: 0 transcript_statement and 0 guidance rows (38 of 93 queue companies)
 - **R-007** [open] After R-005 the annual report's revenue rows (lakh pages) are read correctly and disagree with the deck's 'Revenue': FY24 standalone 665.57 crore (AR, revenue f — links: R-005 (fixed)
-- **R-008** [open] share_capital holds 694,000 shares for 2026-09-30 from the quarterly results (source 'quarterly'), against 84.8 million in the shareholding pattern of the same 
+- **R-008** [fix_written] share_capital holds 694,000 shares for 2026-09-30 from the quarterly results (source 'quarterly'), against 84.8 million in the shareholding pattern of the same  — links: R-004 (fixed)
 
 ## Open tickets
 
