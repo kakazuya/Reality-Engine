@@ -3435,6 +3435,10 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                             extra.append(r)
                         elif abs(have[key] - r.value) > 1e-9:
                             st["ocr_conflict"] = st.get("ocr_conflict", 0) + 1
+                            if len(st.setdefault("ocr_conflicts", [])) < 50:   # which cell, for the review step
+                                st["ocr_conflicts"].append({"doc_key": doc_key, "page": page, "metric": r.metric,
+                                                            "period": r.fiscal_period, "layer": have[key],
+                                                            "ocr": r.value})
                     ocr_ids = {id(r) for r in extra}
                     trows = trows + extra
             if page in opg and not layer_page:   # a scanned page: every row on it comes from the OCR reading

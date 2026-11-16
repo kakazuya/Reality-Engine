@@ -340,3 +340,12 @@ def test_call_date_ignores_other_calls_and_reads_day_first_dates():
     assert transcripts.call_date_of("The earnings call held on Tuesday, 14th May 2024 discussed", "2024-05-16") == \
         "2024-05-14"
     assert transcripts.call_date_of("CALL HELD ON AUGUST 7, 2024", "2024-08-12") == "2024-08-07"
+
+
+def test_call_date_cue_wrapped_onto_the_next_line():
+    """Second review of R-011: a cover letter whose cue ends one line above the call date."""
+    letter = ("February 15, 2024\nSub: Transcript\nthe transcript of the said conference call conducted on\n"
+              "Thursday, February 08, 2024 is enclosed")
+    assert transcripts.call_date_of(letter, "2024-02-15") == "2024-02-08"
+    assert transcripts.call_date_of("February 15, 2024\nthe transcript of the call was conducted on February 08, 2024",
+                                    None) == "2024-02-08"

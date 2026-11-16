@@ -38,8 +38,9 @@ _MONTH = {m.lower(): i + 1 for i, m in enumerate(MONTHS.split("|"))}
 RX_MDY = re.compile(rf"\b({MONTHS})\s+(\d{{1,2}})(?:st|nd|rd|th)?,?\s+(\d{{4}})\b", re.I)
 RX_DMY = re.compile(rf"\b(\d{{1,2}})(?:st|nd|rd|th)?\s+(?:of\s+)?({MONTHS})[,\s]+(\d{{4}})\b", re.I)
 # "Q4 FY '26 Results Conference Call" / "earnings call held on" right before the date
-CUE = re.compile(r"(?:held on|conference call|earnings call|investor call|results call|analyst call)\b[^.\n]{0,60}$",
-                 re.I)
+# the cue may end one line above its date ("... call conducted on\nThursday, February 08, 2024"; R-011 review)
+CUE = re.compile(r"(?:held on|conducted on|conference call|earnings call|investor call|results call|analyst call)\b"
+                 r"[^.\n]{0,60}\n?[^.\n]{0,30}$", re.I)
 
 
 def _iso(year: int, month: int, day: int) -> str | None:
