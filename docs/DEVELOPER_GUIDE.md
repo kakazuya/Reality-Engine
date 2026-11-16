@@ -2139,6 +2139,14 @@ sessions (about 43k fixed + 7k per sheet, 5-6 sheets per session). Working files
 `build_queue.csv` live in `D:/RealityEngine/tg_build/` (private, never GitHub); tier rules and the pre-build fix order
 are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
 
+- **T-214 HP OCR night (16-17 Nov 2026).** Shivam lent the HP until 06:00 IST. `reality_engine/scripts/tg_hp_ocr_night.py
+  --root <measure root> --until 05:40` walks the built stores (`cNN/routes.csv` present, no `cNN/ocr/ocr_textrec.db`)
+  in order, seeds `cNN/ocr/ocr_<SYM>.db` with one empty `ocr_page` row per `routes.csv` `needs_ocr` page (no or
+  jumbled text layer; `ocr.pending()` alone sees only the no-text pages: c01 38 of 103), then `hp_ocr plan`,
+  `run --fresh` (without `--fresh` the HP resumes and returns the previous batch), `fetch` into
+  `cNN/ocr/ocr_textrec.db`; ledger `<root>/hp_ocr_night.jsonl`. A failed store is retried twice after a pause (the
+  console-lock probe once answered -1 transiently); at the stop time it runs `hp_ocr cleanup` (package kept). c01:
+  109 pages, 1 error, 134 s with the PDF copy. Merging the OCR text into `pages.db` is a later repair step.
 - **T-220: build efficiency pass (16 Nov 2026, Wolf).** cProfile of the build parts on a c05 copy (4,747 pages;
   parts share of build time on the ten stores: docs_collect 26 %, comparatives 25 %, stores 17 %, kpi 15 %); every
   change is output-identical (c05 copy: 42 tables row-for-row equal, ids and part-stamp hashes aside; 80-page
