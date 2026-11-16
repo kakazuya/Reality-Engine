@@ -198,3 +198,45 @@ def test_missing_everywhere_raises_like_a_missing_file(tmp_path):
     with pytest.raises(FileNotFoundError):
         with store.local(tmp_path / "raw" / "nowhere.pdf"):
             pass
+
+
+def test_lazy_manifest_load_is_thread_safe(tmp_path, monkeypatch):
+    """T-220 review: a lookup on a second thread during the first load must wait for the full index."""
+    import threading
+    import time
+
+    from reality_engine import raw_store as rs
+
+    store = rs.RawStore(manifest=tmp_path / "none.db", roots={"raw": tmp_path / "raw"})
+    started = threading.Event()
+
+    def slow_load(self=store):
+        started.set()
+        time.sleep(0.3)
+        self._rows_data[("raw", "a/b.pdf")] = ("top/a/b.pdf", None, "a/b.pdf")
+
+    monkeypatch.setattr(store, "_load", slow_load)
+    first = threading.Thread(target=lambda: store._rows)
+    first.start()
+    started.wait(2)
+    assert ("raw", "a/b.pdf") in store._rows          # blocks until the first load has finished
+    first.join()
+
+
+def test_lazy_manifest_load_retries_after_error(tmp_path, monkeypatch):
+    from reality_engine import raw_store as rs
+
+    store = rs.RawStore(manifest=tmp_path / "none.db", roots={"raw": tmp_path / "raw"})
+    calls = []
+
+    def failing():
+        calls.append(1)
+        raise OSError("drive index busy")
+
+    monkeypatch.setattr(store, "_load", failing)
+    for _ in range(2):
+        try:
+            store._rows
+        except OSError:
+            pass
+    assert len(calls) == 2

@@ -203,6 +203,7 @@ class RawStore:
         self._rows_data: dict[tuple[str, str], tuple[str, str | None, str]] = {}
         self._children_data: dict[tuple[str, str], dict[str, str]] = {}
         self._loaded = False
+        self._load_lock = threading.Lock()
         self._fetched: dict[tuple[str, str], Path] = {}
 
     # -- index -------------------------------------------------------------------------------------
@@ -219,9 +220,12 @@ class RawStore:
     def _ensure(self) -> None:
         """Load the manifest on the first lookup that needs it, not at construction: the manifest holds ~290k
         rows (3-16 s to read) and a build step whose files are all on disk never asks it anything."""
-        if not self._loaded:
-            self._loaded = True
-            self._load()
+        if self._loaded:
+            return
+        with self._load_lock:               # page_reader shares one store across worker threads
+            if not self._loaded:
+                self._load()                # a failed load raises here and is tried again on the next lookup
+                self._loaded = True
 
     def _load(self) -> None:
         """Read the manifest once (rows that have a Drive path; ``raw/user_research`` stays local)."""

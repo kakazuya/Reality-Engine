@@ -2149,7 +2149,9 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   SequenceMatcher calls were ~95 % of the part; `_ratio` caches the ratio and `_ratio_cap` skips a pair whose
   length bound cannot pass 0.74 or beat the best (part 137 s -> 10 s under the profiler). (3) `kpi._page_bases`
   reads page_entities.yaml once per process (1,269 loads, 8 s). (4) `raw_store.RawStore` loads its 290k-row Drive
-  manifest on the first lookup that needs it, not in `__init__` (3-16 s per process whose files are on disk).
+  manifest on the first lookup that needs it, not in `__init__` (3-16 s per process whose files are on disk),
+  under a lock with the flag set after the load (the read-only review caught a race: a second page_reader thread
+  saw an empty index during the first load; a failed load is retried on the next lookup).
   (5) `v2.page_route.run` prefetches each document's PDF once (`_pages_prefetched`) instead of a Drive fetch per
   page. (6) `docs_collect.connect_out` sets `synchronous=NORMAL` under WAL (one commit per document cost 0.25 s).
   Not changed (measured, open): the stores part re-downloads every shareholding XBRL from Drive on each rebuild
