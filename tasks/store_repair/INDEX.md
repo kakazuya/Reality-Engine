@@ -7,9 +7,10 @@ One entry per store defect, like one notebook cell: the question that exposed it
 | R-001 | open | guidance | general | guidance, worded-guidance, transcript, speaker |  |
 | R-002 | fix_written | docs_collect | general | transcript, fetch, nse, bse, no-call-filed |  |
 | R-003 | fixed | events | general | events, order-win, regulation-30, announcement | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
-| R-004 | open | stores | general | shareholding, xbrl, fpi, mutual-funds, drive |  |
+| R-004 | open | stores | general | shareholding, xbrl, fpi, mutual-funds, drive | c01 |
 | R-005 | fix_written | kpi | general | kpi, unit, lakh, scale, row-check | c01, c03, c04, c07 |
 | R-006 | fixed | comparatives | general | results, unit, lakh, scale, xbrl, scan | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
+| R-007 | open | kpi | general | kpi, revenue-definition, deck, annual-report, derived |  |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -53,7 +54,7 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Code:** reality_engine/pilot3/stores.py::_shp_parsed, reality_engine/pilot3/stores.py::build_shp
 - **Store tables touched:** shp_category, shp_holder, shp_pledge, share_capital, valuation_daily
 - **Tags:** shareholding, xbrl, fpi, mutual-funds, drive; **scope:** general
-- **Stores repaired:** -; runs: -
+- **Stores repaired:** c01; runs: -
 
 ## R-005 (fix_written, part `kpi`, opened 2026-11-16)
 
@@ -76,3 +77,14 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Store tables touched:** fin_quarter_printed, fin_quarter_current, kpi_series, row_check
 - **Tags:** results, unit, lakh, scale, xbrl, scan; **scope:** general
 - **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10; runs: 20261116T054404, 20261116T092917, 20261116T092943, 20261116T093035, 20261116T093154, 20261116T093301, 20261116T093353, 20261116T093447, 20261116T093514, 20261116T093845
+
+## R-007 (open, part `kpi`, opened 2026-11-16)
+
+- **Question that exposed it** (c02): What was the Q4 revenue, and how did it move from the year before?
+- **What was wrong:** After R-005 the annual report's revenue rows (lakh pages) are read correctly and disagree with the deck's 'Revenue': FY24 standalone 665.57 crore (AR, revenue from operations 66,556.67 lakh) against 706.7 (deck); the cumulative derivation then refuses Q4 = FY - 9M, so 6 derived Q4 rows (4 verified) are no longer written
+- **Why:** not diagnosed: the deck's 'Revenue' line probably includes other income (706.7 - 665.57 = 41.1); kpi maps both captions to one metric 'revenue'
+- **Fix:** -
+- **Code:** reality_engine/pilot3/kpi.py::derive_quarters, reality_engine/pilot3/kpi.py (revenue captions)
+- **Store tables touched:** kpi_series
+- **Tags:** kpi, revenue-definition, deck, annual-report, derived; **scope:** general
+- **Stores repaired:** -; runs: -
