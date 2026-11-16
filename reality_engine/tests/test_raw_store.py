@@ -240,3 +240,31 @@ def test_lazy_manifest_load_retries_after_error(tmp_path, monkeypatch):
         except OSError:
             pass
     assert len(calls) == 2
+
+
+def test_keep_fetches_on_first_use_once_and_cleans_up(tmp_path):
+    from reality_engine import raw_store as rs
+
+    calls = []
+
+    def runner(cmd):
+        calls.append(cmd)
+        dest = Path(cmd[2])
+        listing = Path(cmd[cmd.index("--files-from") + 1]).read_text(encoding="utf-8").split()
+        for rel in listing:
+            (dest / rel).parent.mkdir(parents=True, exist_ok=True)
+            (dest / rel).write_bytes(b"%PDF-1.4")
+
+    store = rs.RawStore(manifest=tmp_path / "none.db", roots={"raw": tmp_path / "raw"}, runner=runner)
+    store._loaded = True
+    store._rows_data[("raw", "a/b.pdf")] = ("top/a/b.pdf", None, "a/b.pdf")
+    target = tmp_path / "raw" / "a" / "b.pdf"
+    with store.keep():
+        assert not calls                                  # nothing fetched until asked
+        with store.local(target) as first:
+            kept = first
+        with store.local(target) as second:
+            assert second == kept and second.is_file()
+        assert len(calls) == 1
+    assert not kept.exists()                              # deleted on exit
+    assert store._keep_dir is None

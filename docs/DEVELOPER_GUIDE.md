@@ -2152,8 +2152,11 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   manifest on the first lookup that needs it, not in `__init__` (3-16 s per process whose files are on disk),
   under a lock with the flag set after the load (the read-only review caught a race: a second page_reader thread
   saw an empty index during the first load; a failed load is retried on the next lookup).
-  (5) `v2.page_route.run` prefetches each document's PDF once (`_pages_prefetched`) instead of a Drive fetch per
-  page. (6) `docs_collect.connect_out` sets `synchronous=NORMAL` under WAL (one commit per document cost 0.25 s).
+  (5) `v2.page_route.run` downloads a Drive-only PDF at most once per document (`_pages_prefetched` inside the new
+  `RawStore.keep()`: fetched on the first page that needs it, reused for the rest, deleted at the document's
+  end) instead of once per page; full c05 route with its PDFs on Drive 596 s -> 122 s, CSV byte-equal. A first
+  version prefetched every document up front and was slower (1,167 s): most documents are routed from stored
+  text alone. (6) `docs_collect.connect_out` sets `synchronous=NORMAL` under WAL (one commit per document cost 0.25 s).
   Not changed (measured, open): the stores part re-downloads every shareholding XBRL from Drive on each rebuild
   (92 s of 117 s on c05); `kpi.parse_periods` 14 s (cache hit rate not measured); `RawStore.walk` sorts the whole
   manifest per call.
