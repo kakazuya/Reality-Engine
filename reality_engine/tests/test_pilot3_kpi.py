@@ -815,6 +815,13 @@ def test_a_bare_rupee_value_keeps_the_page_unit():
         assert kpi._page_unit_canon("inr_cr", "1,012.9", ent, "( in billion)") == "inr_bn"
         assert kpi._page_unit_canon("inr_cr", "1,012.9 crore", ent, "( in billion)") == "inr_cr"
         assert kpi._page_unit_canon("inr_cr", "1,012.9", ent, "") == "inr_cr"
+        # R-005: a results page printed in lakhs; a crore figure in a note sentence is not a declaration
+        lakh_page = "(Rs. in Lakhs)\nRevenue from operations 3,117.64\nNote: a provision of Rs. 20 crore"
+        assert kpi.page_money_unit(lakh_page) == "inr_lakh"
+        assert kpi._page_unit_canon("inr_cr", "3,117.64", ent, lakh_page) == "inr_lakh"
+        val, unit, scale = kpi.finalize_unit("inr_lakh", 3117.64, "inr_cr")
+        assert (round(val, 4), unit, scale) == (31.1764, "inr_cr", 1e7)
+        assert kpi.page_money_unit("(Rs. in Lakhs) ... (Rs. in Crore)") is None      # two declarations: unsure
     finally:
         profile.activate(None)
 

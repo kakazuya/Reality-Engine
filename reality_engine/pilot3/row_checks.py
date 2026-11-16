@@ -694,6 +694,30 @@ _MAGNITUDE = {"million": "mn", "mn": "mn", "billion": "bn", "bn": "bn", "crore":
               "cr": "cr", "lakh": "lakh", "lakhs": "lakh", "lac": "lakh", "lacs": "lakh", "thousand": "thousand"}
 
 
+_SCALE_OF = {"thousand": 1e3, "lakh": 1e5, "mn": 1e6, "cr": 1e7, "bn": 1e9}
+
+
+def _col(row, name: str):
+    """A column of a sqlite3.Row or dict, None when the table has no such column."""
+    try:
+        return row[name]
+    except (IndexError, KeyError):
+        return None
+
+
+def _rescaled_exactly(raw_value: object, value: object, declared: str, row_scale: str) -> bool:
+    """True when ``value`` is the printed number moved from the page's declared scale to the row's (0.01% slack)."""
+    try:
+        printed = float(re.sub(r"[^\d.\-]", "", str(raw_value)))
+        stored = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
+    if declared not in _SCALE_OF or row_scale not in _SCALE_OF or printed == 0:
+        return False
+    expected = printed * _SCALE_OF[declared] / _SCALE_OF[row_scale]
+    return abs(stored - expected) <= 1e-4 * abs(expected)
+
+
 def unit_family(text: str) -> str:
     """inr / usd / '' for a unit declaration or unit string.  A page that declares rupees says nothing about a
     row printed in dollars on the same page (a US-GAAP table under an Indian header), so only a declaration of
@@ -1171,10 +1195,11 @@ class Checker:
                                         f"{value:g} without a printed minus or bracket")
 
     def check_page_unit(self, v: Verdict, text: str, pos: int | None, doc_key: str, page: int, quote: str,
-                        unit: str) -> None:
+                        unit: str, raw_value: object = None, value: object = None) -> None:
         """The page declares one scale above the table ("All amounts are in million of Indian Rupees",
         "(Rs. in Mn)", "(in Crores)"); a row whose unit names another scale is a rescale error, unless the quote
-        prints its own scale word at the number."""
+        prints its own scale word at the number, or the stored value is exactly the printed number moved from the
+        declared scale to the row's (R-005, 16 Nov: '29,132.35' on a lakh page stored as 291.32 crore is right)."""
         m_u = re.fullmatch(r"(?:inr|usd)_(mn|cr|bn|lakh|thousand)", (unit or "").lower())
         if pos is None or not m_u:
             return
@@ -1192,6 +1217,8 @@ class Checker:
         if declared_family and declared_family != row_family:
             return
         if declared and declared != m_u.group(1):
+            if _rescaled_exactly(raw_value, value, declared, m_u.group(1)):
+                return
             v.fail("page_unit", f"the page declares '{decl.group(0).strip()}' but the row unit is {unit}")
 
     def check_question_next(self, v: Verdict, text: str, pos: int | None) -> None:
@@ -1544,7 +1571,8 @@ class Checker:
         self.check_regulated_rate(v, m, text, pos, r["unit"] or "")
         self.check_currency(v, m, text, pos, r["unit"] or "")
         self.check_net_cash_sign(v, m, text, pos, value)
-        self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "")
+        self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "",
+                             _col(r, "raw_value"), _col(r, "value"))
         self.check_company_speaker(v, text, pos, r["doc_key"], r["page"], quote)
         self.check_speaker_turn(v, r["doc_key"], r["page"], quote, text, pos)
         self.check_range(v, text, pos)
@@ -2158,7 +2186,8 @@ class Checker:
             self.check_regulated_rate(v, m, text, pos, r["unit"] or "")
             self.check_currency(v, m, text, pos, r["unit"] or "")
             self.check_net_cash_sign(v, m, text, pos, value)
-            self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "")
+            self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "",
+                                 _col(r, "raw_value"), _col(r, "value"))
             self.check_company_speaker(v, text, pos, r["doc_key"], r["page"], quote)
             self.check_speaker_turn(v, r["doc_key"], r["page"], quote, text, pos)
             self.check_range(v, text, pos)

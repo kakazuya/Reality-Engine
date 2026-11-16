@@ -1223,6 +1223,8 @@ def test_page_unit_declaration_conflicts_with_the_row_unit(tmp_path):
         4: "All amounts are in crore\nRevenue 800",
         5: "(Rs. in Mn)\nRevenue 900 crore",
         6: "All amounts are in ₹ crore\nRevenues 19,277",
+        7: "(Rs. in Lakhs)\nRevenue from operations 3,117.64",
+        8: "(Rs. in Lakhs)\nRevenue from operations 3,117.64",
     }
     kpi = [
         dict(id=1, symbol="A", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
@@ -1238,9 +1240,16 @@ def test_page_unit_declaration_conflicts_with_the_row_unit(tmp_path):
         # a rupee page declaration does not judge a dollar row printed on the same page
         dict(id=6, symbol="F", metric="revenue_usd", dimension="total", fiscal_period="FY26", period_type="FY",
              value=19277.0, unit="usd_mn", scale=1e6, quote="Revenues 19,277", page=6),
+        # R-005: lakhs moved to crore exactly is right; the printed number kept as crore is the rescale error
+        dict(id=7, symbol="G", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=31.1764, unit="inr_cr", scale=1e7, quote="Revenue from operations 3,117.64", page=7,
+             raw_value="3,117.64"),
+        dict(id=8, symbol="H", metric="revenue", dimension="total", fiscal_period="FY26", period_type="FY",
+             value=3117.64, unit="inr_cr", scale=1e7, quote="Revenue from operations 3,117.64", page=8,
+             raw_value="3,117.64"),
     ]
     db, profile = build(tmp_path, pages, kpi=kpi,
-                        sectors={s: "it_services" for s in "ABCDEF"})
+                        sectors={s: "it_services" for s in "ABCDEFGH"})
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
     status, fails = verdict(out, "kpi_series", 1)
     assert status == "quarantined" and "page_unit" in fails, fails
@@ -1250,6 +1259,8 @@ def test_page_unit_declaration_conflicts_with_the_row_unit(tmp_path):
     assert "page_unit" not in verdict(out, "kpi_series", 4)[1]
     # the quote's own unit word wins over the page header
     assert "page_unit" not in verdict(out, "kpi_series", 5)[1]
+    assert "page_unit" not in verdict(out, "kpi_series", 7)[1]
+    assert "page_unit" in verdict(out, "kpi_series", 8)[1]
     assert "page_unit" not in verdict(out, "kpi_series", 6)[1]
 
 

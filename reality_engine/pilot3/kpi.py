@@ -976,18 +976,22 @@ class Row:
     rule: str
 
 
-_PAGE_UNIT_RX = re.compile(r"(?:₹|`|rs\.?|inr)\s*(?:in\s+|\()?\s*(billion|bn|million|mn|mm)\b"
-                           r"|\(\s*(?:in\s+)?(billion|bn|million|mn|mm)\s*\)", re.I)
+_PAGE_UNIT_RX = re.compile(r"(?:₹|`|rs\.?|inr)\s*(?:in\s+|\()?\s*(billion|bn|million|mn|mm|lakhs?|lacs?|crores?)\b"
+                           r"|\(\s*(?:in\s+)?(billion|bn|million|mn|mm|lakhs?|lacs?|crores?)\s*\)", re.I)
+_PAGE_UNITS = {"billion": "inr_bn", "bn": "inr_bn", "lakh": "inr_lakh", "lakhs": "inr_lakh", "lac": "inr_lakh",
+               "lacs": "inr_lakh", "crore": "inr_cr", "crores": "inr_cr"}
 
 
 def page_money_unit(text: str) -> str | None:
-    """inr_bn / inr_mn when the page declares one such unit for its rupee table ("(₹ in billion)"), else None.
+    """inr_bn / inr_mn / inr_lakh / inr_cr when the page declares one such unit for its rupee table ("(₹ in billion)",
+    "Rs. in Lakhs"), else None.  R-005 (16 Nov): a results page printed in lakhs had its bare table figures stored as
+    crore (Q4FY24 revenue 3,117.64 'crore' for 31.18), and the row checker quarantined 57 rows on the page unit.
     The currency glyph is often lost from the text layer ("( in billion)"), so a parenthetical unit note counts too.
     Two different declarations on a page: None (ambiguous)."""
     found = set()
     for m in _PAGE_UNIT_RX.finditer(text):
         u = (m.group(1) or m.group(2) or "").lower()
-        found.add("inr_bn" if u in ("billion", "bn") else "inr_mn")
+        found.add(_PAGE_UNITS.get(u, "inr_mn"))
     return found.pop() if len(found) == 1 else None
 
 
@@ -1047,7 +1051,7 @@ def _page_unit_canon(unit: str | None, raw: str, e: Entry, text: str) -> str | N
     if re.search(r"crore|\bcr\b|lakh", raw or "", re.I):
         return unit
     pu = page_money_unit(text)
-    return pu if pu in ("inr_bn", "inr_mn") else unit
+    return pu if pu in ("inr_bn", "inr_mn", "inr_lakh") else unit
 
 
 def _own_names(company: str) -> list[str]:
