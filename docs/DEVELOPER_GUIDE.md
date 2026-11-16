@@ -2212,8 +2212,11 @@ python -m reality_engine.scripts.store_repair note add|set|list ...
   `<root>/repair_log.jsonl`; database copies are kept for the 2 newest runs per store.
 - Shivam 16 Nov: every fix is written up like one notebook cell. A note also carries `--code` (file::function,
   comma list: where the fix lives), `--tables` (the store tables it touches), `--tags` and `--scope general|company`
-  (a rule for every company, or a fix that holds for one only). `INDEX.md` prints one card per note (question,
-  what was wrong, why, fix, code, tables, tags, scope, stores repaired, runs). `note grid --root <root>` writes
+  (a rule for every company, or a fix that holds for one only). Shivam 16 Nov (evening): every patch is written up
+  in five points, so a note also takes `--missing` (what the store or code lacked) and `--next` (what can follow).
+  `INDEX.md` prints one card per note: 1 why it had to be done (the question), 2 what the problem was (symptom +
+  root cause), 3 what was missing, 4 how it was fixed, 5 what can come next; then code, tables, tags, scope, stores
+  repaired, runs. The grid's notes sheet and `items` (T-219) carry the two new fields. `note grid --root <root>` writes
   `reports/store_repair_grid.xlsx`: sheet `grid` has one row per store and one column per part (`ok` or
   `stale: <reason>`, plus the notes that repaired that cell), sheet `notes` every field of every note, and sheet
   `completeness` the sign-off counts per store (`store_repair.completeness`, read-only: XBRL and printed result

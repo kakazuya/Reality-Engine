@@ -128,7 +128,7 @@ def defects(path: Path = DEFECTS) -> list[Item]:
         if not line.strip():
             continue
         n = json.loads(line)
-        text = " ".join(str(n.get(k) or "") for k in ("symptom", "cause", "fix", "question"))
+        text = " ".join(str(n.get(k) or "") for k in ("symptom", "cause", "missing", "fix", "next", "question"))
         out.append(Item("defect", n["id"], n.get("status") or "", n.get("symptom") or "", n.get("cause") or "",
                         [*(n.get("tags") or []), n.get("part") or "", n.get("scope") or ""], _links(n["id"], text),
                         "tasks/store_repair/notes.jsonl", n.get("opened") or ""))

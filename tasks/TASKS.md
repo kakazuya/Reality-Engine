@@ -16,7 +16,6 @@ One row per line, kept in its section.
 - T-184 | OPEN | P2 | Gate for ruling: Run ledger (11 Nov): log every run of every model (DEVELOPER_GUIDE s7); answers say why raw SQL was used; report overfit | accept: Shivam: standing_rules.xlsx shows a code gate for it | from: ruling intake | opened 2026-11-11
 - T-206 | OPEN | P2 | Gate for ruling: Journal (13 Nov): add a tasks/JOURNAL.md entry (work, what worked, what failed and why, fixes) at 400k context and at wr | accept: Shivam: standing_rules.xlsx shows a code gate for it | from: ruling intake | opened 2026-11-13
 - T-216 | OPEN Wolf | P2 | agy-worker runner: retry a run once on a transport/DNS error by resuming the same conversation; log the retry | accept: python -m pytest plugins/agy-worker/tests/test_agy_core.py -q | from: Wolf 15 Nov (T-210) | opened 2026-11-15
-- T-219 | OPEN Wolf | P1 | Unified items: tickets, ideas, rulings, store defects in one file-per-item format with generated views; GitHub Issues mirror | accept: python -m pytest -q reality_engine/tests/test_task_board.py | from: Shivam 16 Nov | opened 2026-11-16
 
 ## Data
 

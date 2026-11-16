@@ -41,7 +41,8 @@ from reality_engine.scripts import store_diff
 REPO = Path(__file__).resolve().parents[2]
 NOTES_DIR = REPO / "tasks" / "store_repair"
 STATUSES = ("open", "fix_written", "fixed", "wontfix")
-NOTE_FIELDS = ("question", "store", "part", "symptom", "cause", "fix", "status", "code", "tables", "tags", "scope")
+NOTE_FIELDS = ("question", "store", "part", "symptom", "cause", "missing", "fix", "next", "status", "code", "tables",
+               "tags", "scope")
 # Shivam 16 Nov: every fix is located and written up like a notebook cell: what was wrong in the store and why, the
 # fix, the code it lives in (``code``: file::function, comma list), the store tables it touches (``tables``), free
 # ``tags`` to find it by, and whether it is a ``general`` rule or holds for one ``company`` only.
@@ -256,8 +257,9 @@ def write_notes(notes: list[dict], notes_dir: Path = NOTES_DIR) -> None:
         return ", ".join(value) if isinstance(value, list) else str(value or "")
 
     lines = ["# Store-repair notes (generated from notes.jsonl by `store_repair note`; do not edit by hand)", "",
-             "One entry per store defect, like one notebook cell: the question that exposed it, what was wrong and "
-             "why, the fix, the code and store tables it touches, its tags and scope, the stores repaired. Stores "
+             "One entry per store defect or patch, five points each (Shivam 16 Nov): why it had to be done, what the "
+             "problem was, what was missing, how it was fixed, what can come next; then the code and store tables it "
+             "touches, its tags and scope, the stores repaired. Stores "
              "are named by their build folder, never by company. Grid of stores x parts: "
              "`reports/store_repair_grid.xlsx` (`store_repair note grid`).", "",
              "| id | status | part | scope | tags | stores repaired |", "|---|---|---|---|---|---|"]
@@ -267,10 +269,12 @@ def write_notes(notes: list[dict], notes_dir: Path = NOTES_DIR) -> None:
         lines.append("| " + " | ".join(str(c).replace("|", "/").replace("\n", " ") for c in cells) + " |")
     for n in notes:
         lines += ["", f"## {n['id']} ({n['status']}, part `{n.get('part') or '-'}`, opened {n.get('opened') or '-'})",
-                  "", f"- **Question that exposed it** ({n.get('store') or '-'}): {n.get('question') or '-'}",
-                  f"- **What was wrong:** {n.get('symptom') or '-'}",
-                  f"- **Why:** {n.get('cause') or '-'}",
-                  f"- **Fix:** {n.get('fix') or '-'}",
+                  "", f"1. **Why it had to be done** (question that exposed it, {n.get('store') or '-'}): "
+                  f"{n.get('question') or '-'}",
+                  f"2. **What the problem was:** {n.get('symptom') or '-'} **Root cause:** {n.get('cause') or '-'}",
+                  f"3. **What was missing:** {n.get('missing') or '-'}",
+                  f"4. **How it was fixed:** {n.get('fix') or '-'}",
+                  f"5. **What can come next:** {n.get('next') or '-'}",
                   f"- **Code:** {joined(n.get('code')) or '-'}",
                   f"- **Store tables touched:** {joined(n.get('tables')) or '-'}",
                   f"- **Tags:** {joined(n.get('tags')) or '-'}; **scope:** {n.get('scope') or '-'}",
@@ -368,14 +372,14 @@ def write_grid(root: Path, notes: list[dict] | None = None, out: Path = GRID_XLS
     for cell in done[1]:
         cell.font = Font(bold=True)
     sheet = wb.create_sheet("notes")
-    columns = ["id", "status", "opened", "part", "scope", "tags", "symptom", "cause", "fix", "code", "tables",
-               "question", "store", "repaired", "runs"]
+    columns = ["id", "status", "opened", "part", "scope", "tags", "symptom", "cause", "missing", "fix", "next", "code",
+               "tables", "question", "store", "repaired", "runs"]
     sheet.append(columns)
     for n in notes:
         sheet.append([", ".join(n[c]) if isinstance(n.get(c), list) else n.get(c) for c in columns])
     for cell in sheet[1]:
         cell.font = Font(bold=True)
-    for col, width in zip("ABCDEFGHIJKLMNO", (7, 11, 11, 13, 10, 24, 50, 60, 60, 40, 30, 50, 12, 30, 24)):
+    for col, width in zip("ABCDEFGHIJKLMNOPQ", (7, 11, 11, 13, 10, 24, 50, 60, 50, 60, 50, 40, 30, 50, 12, 30, 24)):
         sheet.column_dimensions[col].width = width
     for row in sheet.iter_rows(min_row=2):
         for cell in row:

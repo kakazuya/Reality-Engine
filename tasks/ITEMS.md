@@ -4,17 +4,16 @@ Tickets, ideas, rulings and store defects in one place. Each source keeps its ow
 
 | type | open | closed |
 |---|---|---|
-| defect | 4 | 4 |
+| defect | 3 | 5 |
 | idea | 11 | 4 |
 | ruling | 27 | 0 |
-| ticket | 45 | 174 |
+| ticket | 44 | 175 |
 
 ## Open defects
 
 - **R-001** [open] Worded guidance (no number) is missed, and widening the sentence patterns loses right rows on unseen stores — links: T-214 (open)
 - **R-002** [fix_written] Store holds no call transcript: 0 transcript_statement and 0 guidance rows (38 of 93 queue companies)
 - **R-007** [open] After R-005 the annual report's revenue rows (lakh pages) are read correctly and disagree with the deck's 'Revenue': FY24 standalone 665.57 crore (AR, revenue f — links: R-005 (fixed)
-- **R-008** [fix_written] share_capital holds 694,000 shares for 2026-09-30 from the quarterly results (source 'quarterly'), against 84.8 million in the shareholding pattern of the same  — links: R-004 (fixed)
 
 ## Open tickets
 
@@ -62,7 +61,6 @@ Tickets, ideas, rulings and store defects in one place. Each source keeps its ow
 - **T-216** [open] agy-worker runner: retry a run once on a transport/DNS error by resuming the same conversation; log the retry — links: T-210 (done)
 - **T-217** [open] Question bank for the Telegram companies: Gemini 3.8 Flash medium (agy) harvests real investor questions from the web and YouTube per company, then writes groun
 - **T-218** [open] Modular store repair: part stamps, store_repair runner (re-run one part across stores with a before/after diff gate) and the store-repair notes system; written 
-- **T-219** [open] Unified items: tickets, ideas, rulings, store defects in one file-per-item format with generated views; GitHub Issues mirror
 
 ## Open ideas
 
