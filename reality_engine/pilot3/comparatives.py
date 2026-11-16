@@ -531,7 +531,8 @@ def _unit(text: str) -> float | None:
 # after a figure is a sentence of the notes ("a provision of Rs. 20 crore"), not the table's unit: store-repair note
 # R-006, where such a note on a lakh page had every figure of three results filings stored 100 times too large.
 _UNIT_DECLARED = re.compile(r"in\s*(crore|lakh|lac|million|thousand|billion)"
-                            r"|(?:rs\.?|inr|nr|₹|`)\s*\(?\s*(crore|lakh|lac|million|thousand|billion)")
+                            # a scan prints "in" as "on" / "rn": up to three letters, never a digit, before the unit
+                            r"|(?:rs\.?|inr|nr|₹|`)\s*\(?\s*[a-z]{0,3}\s*(crore|lakh|lac|million|thousand|billion)")
 _UNIT_SCALES = {"cror": 1e7, "lakh": 1e5, "lac": 1e5, "mill": 1e6, "thou": 1e3, "bill": 1e9}
 
 

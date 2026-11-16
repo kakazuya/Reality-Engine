@@ -404,3 +404,15 @@ def test_xbrl_index_reads_the_compute_start_input_table():
     assert cmp.xbrl_index(conn, "AAAA")[("consolidated", "2024-12-31")]["eps_basic"] == 9.0
     _xbrl(conn, "2024-12-31", "eps_basic", 10.0)
     assert cmp.xbrl_index(conn, "AAAA")[("consolidated", "2024-12-31")]["eps_basic"] == 10.0
+
+
+def test_unit_is_read_only_where_the_page_declares_it():
+    """Repair note R-006: a unit word after a figure is a note sentence, not the table's unit."""
+    from reality_engine.pilot3.comparatives import _unit
+
+    for text, scale in (("Rs. inCrore", 1e7), ("(tin crore)", 1e7), ("(f in Million)", 1e6), ("llNR crore", 1e7),
+                        ("(Rs. In Lakhs)", 1e5), ("(Rin lakhs ) PARTICULARS", 1e5), ("Rs on Lakhs Year Ended", 1e5),
+                        ("Rs. rnlakhs Year Ended", 1e5), ("quarter ended march cin lakhs", 1e5)):
+        assert _unit(text) == scale, text
+    assert _unit("has already made a provision of Rs. 20 crore during the year") is None
+    assert _unit("exceptional item includes Rs 17.82 crore towards arbitration") is None
