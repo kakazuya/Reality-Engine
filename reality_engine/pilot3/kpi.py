@@ -3398,18 +3398,34 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                 st["errors"] = st.get("errors", 0) + 1
             trows: list[Row] = []
             method, ocr_conf = "text_layer", None
-            words = None
+            ocr_ids: set[int] = set()            # rows read from the OCR words carry the OCR method
+            layer_words = ocr_words = None
+            ocr_method, ocr_page_conf = method, None
+            # a page whose text IS its OCR text had no usable layer (pages.db needs_ocr): OCR alone reads it
+            layer_page = not (page in opg and text == opg[page][0])
+            if layer_page and pdf is not None and 0 < page <= pdf.page_count and _page_may_have_table(text):
+                layer_words = pdf[page - 1].get_text("words") or None
             if page in opg:                      # page read by OCR: word boxes come from the stored OCR, not the PDF
-                method, ocr_conf = opg[page][3], opg[page][2]
-                words = opg[page][1]
+                ocr_method, ocr_page_conf = opg[page][3], opg[page][2]
+                ocr_words = opg[page][1]
                 st["ocr_pages"] = st.get("ocr_pages", 0) + 1
-            elif pdf is not None and 0 < page <= pdf.page_count and _page_may_have_table(text):
-                words = pdf[page - 1].get_text("words")
-            if words is not None and _page_may_have_table(text):
+            if _page_may_have_table(text):
                 try:
-                    trows = table_and_chart_rows(words, text, page, sym, entries, dims, page_pers, st, doc_basis)
+                    if layer_words:
+                        trows = table_and_chart_rows(layer_words, text, page, sym, entries, dims, page_pers, st, doc_basis)
+                    if ocr_words is not None:
+                        # R-010: on a page with a text layer the layer's cells lead and OCR adds only the cells the
+                        # layer lacked (an OCR reading once dropped a right EBITDA cell the layer held)
+                        have = {(r.metric, r.dimension, r.period_type, r.fiscal_period) for r in trows}
+                        extra = [r for r in table_and_chart_rows(ocr_words, text, page, sym, entries, dims,
+                                                                 page_pers, st, doc_basis)
+                                 if (r.metric, r.dimension, r.period_type, r.fiscal_period) not in have]
+                        ocr_ids = {id(r) for r in extra}
+                        trows = trows + extra
                 except Exception:
                     st["errors"] = st.get("errors", 0) + 1
+            if page in opg and not layer_words:  # a scanned page: every row on it comes from the OCR reading
+                method, ocr_conf = ocr_method, ocr_page_conf
             basis = page_basis(text, sym)
             if basis == "not_stated" and _is_entity_basis(doc_basis):
                 basis = doc_basis
@@ -3452,7 +3468,9 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                            period_type=r.period_type, fiscal_period=r.fiscal_period, as_of_date=r.as_of, basis=row_basis,
                            doc_key=doc_key, page=page, quote=r.quote, known_at=known_at, known_at_source=src,
                            is_reported=1, raw_label=r.raw_label, raw_value=r.raw_value, extractor_rule=r.rule,
-                           confidence=conf, conf_rank=rank, method=method, ocr_conf=ocr_conf, source_type=doc_type,
+                           confidence=conf, conf_rank=rank,
+                           method=ocr_method if id(r) in ocr_ids else method,
+                           ocr_conf=ocr_page_conf if id(r) in ocr_ids else ocr_conf, source_type=doc_type,
                            entity=row_entity)
     if con is not None:
         con.close()

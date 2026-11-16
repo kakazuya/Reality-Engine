@@ -349,3 +349,49 @@ def test_hp_ocr_write_words_writes_pdf_points_and_keeps_the_error_row(tmp_path):
     log = list(csv.DictReader((tmp_path / "ocr_textrec" / "ocr_log.csv").open(encoding="utf-8")))
     assert [(r["page_id"], r["words"], r["errors"]) for r in log] == [
         ("f001", "2", ""), ("f002", "0", "PdfiumError: failed")]
+
+
+def test_kpi_layer_cells_lead_and_ocr_adds_only_missing_cells(monkeypatch):
+    """R-010: on a page with a text layer AND an OCR reading, the layer's table rows stay (an OCR reading once
+    dropped a right EBITDA cell) and OCR rows are added only for (metric, dimension, period) cells the layer
+    lacked, labelled with the OCR method.  A scanned page (its text IS the OCR text) is read from OCR alone."""
+
+    def row(metric, period, value):
+        return kpi.Row(metric, "total", value, "inr_cr", 1.0, "Q", period, None, "not_stated", 1,
+                       f"{metric} {value}", metric, str(value), "table_v1")
+
+    def fake_table(words, *a, **k):
+        if words == ["layer"]:
+            return [row("ebitda", "Q4FY26", 138.4), row("ebitda", "Q3FY26", 143.7)]
+        return [row("ebitda", "Q3FY26", 999.0), row("ebitda", "Q4FY25", 104.6)]   # OCR: lost Q4FY26, misread Q3
+
+    class Page:
+        def __init__(self, words):
+            self.words = words
+
+        def get_text(self, kind):
+            return self.words
+
+    class Pdf:
+        page_count = 2
+        pages = [Page(["layer"]), Page([])]
+
+        def __getitem__(self, i):
+            return self.pages[i]
+
+    opg = {1: ("ocr text one", ["ocr"], 0.9, "ocr_textrec"), 2: ("ocr text two", ["ocr"], 0.8, "ocr_textrec")}
+    usable = [(1, "layer text Q4FY26 Q3FY26"), (2, "ocr text two")]
+    monkeypatch.setattr(kpi, "_doc_sources", lambda *a, **k: iter([
+        ("doc", "deck", "2026-05-20", usable, Pdf(), opg, "test", "Deck")]))
+    monkeypatch.setattr(kpi, "table_and_chart_rows", fake_table)
+    monkeypatch.setattr(kpi, "sentence_rows", lambda *a, **k: [])
+    monkeypatch.setattr(kpi, "_page_may_have_table", lambda text: True)
+    monkeypatch.setattr(kpi, "pie_mix_rows", lambda *a, **k: [])
+    monkeypatch.setattr(kpi, "segment_revenue_rows", lambda *a, **k: [])
+    monkeypatch.setattr(kpi, "drop_reason", lambda *a, **k: None)
+    monkeypatch.setattr(kpi, "doc_default_period", lambda *a, **k: [])
+    got = sorted((r["page"], r["fiscal_period"], r["value"], r["method"])
+                 for r in kpi.extract_company("KEC", None, {}) if r["metric"] == "ebitda")
+    assert got == [(1, "Q3FY26", 143.7, "text_layer"), (1, "Q4FY25", 104.6, "ocr_textrec"),
+                   (1, "Q4FY26", 138.4, "text_layer"),
+                   (2, "Q3FY26", 999.0, "ocr_textrec"), (2, "Q4FY25", 104.6, "ocr_textrec")]
