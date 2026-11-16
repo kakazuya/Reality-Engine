@@ -8,7 +8,7 @@ One entry per store defect, like one notebook cell: the question that exposed it
 | R-002 | fix_written | docs_collect | general | transcript, fetch, nse, bse, no-call-filed | c08 |
 | R-003 | fixed | events | general | events, order-win, regulation-30, announcement | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-004 | fixed | stores | general | shareholding, xbrl, fpi, mutual-funds, drive | c01, c02, c03, c04, c05, c06, c07, c08, c09 |
-| R-005 | fixed | kpi | general | kpi, unit, lakh, scale, row-check | c01, c03, c04, c05, c06, c07, c08, c09, c10 |
+| R-005 | fixed | kpi | general | kpi, unit, lakh, scale, row-check | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-006 | fixed | comparatives | general | results, unit, lakh, scale, xbrl, scan | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-007 | open | kpi | general | kpi, revenue-definition, deck, annual-report, derived |  |
 | R-008 | open | stores | general | share-capital, results, scale |  |
@@ -62,11 +62,11 @@ One entry per store defect, like one notebook cell: the question that exposed it
 - **Question that exposed it** (c01): What is the order book and how many years of revenue does it cover?
 - **What was wrong:** 117 of 182 kpi_series rows quarantined, 13 verified
 - **Why:** kpi.page_money_unit read only billion/million page declarations, so bare table figures on a page printed 'Rs. in Lakhs' were stored as crore (100x); the row checker's page_unit then quarantined them, and also quarantined a correctly rescaled row because it compared units only
-- **Fix:** kpi: lakh/crore page declarations (declared only; two different declarations = unsure); row_checks.check_page_unit passes a row whose value is exactly the printed number moved from the declared scale. Applied 16 Nov to c01 c03-c10 after a hand-read of each diff: every re-valued row divided by exactly 100; rows dropped without a twin were wrong crore figures (quarantined or unverified), no verified row lost; c01 quarantined 85 -> 49, c08 111 -> 86 (verified 23 -> 39), c10 42 -> 34. c02 HELD: 4 verified Q4 rows derived as FY - 9M from the deck would be lost because the annual report's revenue (now read right) disagrees with the deck's (R-007)
+- **Fix:** kpi: lakh/crore page declarations (declared only; two different declarations = unsure); row_checks.check_page_unit passes a row whose value is exactly the printed number moved from the declared scale. Applied 16 Nov to all ten stores after a hand-read of each diff: every re-valued row divided by exactly 100; rows dropped without a twin were wrong crore figures. c02 accepted with Shivam's OK although 4 verified Q4 rows derived as FY - 9M from the deck are no longer written (the annual report's revenue now disagrees with the deck's: R-007 restores them once revenue captions are told apart)
 - **Code:** reality_engine/pilot3/kpi.py::page_money_unit, reality_engine/pilot3/kpi.py::_page_unit_canon, reality_engine/pilot3/row_checks.py::check_page_unit, reality_engine/pilot3/row_checks.py::_rescaled_exactly
 - **Store tables touched:** kpi_series, row_check, row_check_fail
 - **Tags:** kpi, unit, lakh, scale, row-check; **scope:** general
-- **Stores repaired:** c01, c03, c04, c05, c06, c07, c08, c09, c10; runs: 20261116T145556, 20261116T145711
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10; runs: 20261116T145556, 20261116T145711
 
 ## R-006 (fixed, part `comparatives`, opened 2026-11-16)
 
