@@ -65,6 +65,12 @@ def test_nse_archive_pdf_is_taken_on_the_filers_symbol_only():
     assert not tg_questions.url_names_company(other, "Acme Steel Limited", "ACME")
     assert not tg_questions.url_names_company(ok, "Acme Steel Limited", "")
     assert tg_questions.url_names_company("https://www.acmesteel.com/ir/q2.pdf", "Acme Steel Limited", "ACME")
+    # the site's name is a prefix of the symbol, not one of the name words
+    assert tg_questions.url_names_company("https://www.autoaxle.com/ir/call.pdf", "Automotive Axles Limited", "AUTOAXLES")
+    assert tg_questions.url_names_company("https://www.ntecpl.co.in/x.pdf", "Ntecpl Ltd", "NTE")
+    assert not tg_questions.url_names_company("https://images.moneycontrol.com/x.pdf", "Automotive Axles Limited",
+                                              "AUTOAXLES")
+    assert not tg_questions.url_names_company("https://www.india.com/x.pdf", "Bharat India Limited", "BIL")
 
 
 def test_name_tokens_drops_stop_words_and_keeps_three_words_plus_symbol():

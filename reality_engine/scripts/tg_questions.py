@@ -167,7 +167,12 @@ def url_names_company(url: str, company: str, symbol: str) -> bool:
     if host in EXCHANGE_ARCHIVES and symbol:
         name = low.split("?")[0].rsplit("/", 1)[-1]
         return name.startswith(symbol.lower() + "_")
-    return any(token in host for token in name_tokens(company, symbol) if len(token) > 3)
+    if any(token in host for token in name_tokens(company, symbol) if len(token) > 3):
+        return True
+    # the site's own name inside the symbol or the joined name: autoaxle.com for AUTOAXLES (16 Nov, 18 questions)
+    label = host.split(".")[-3] if host.endswith((".co.in", ".org.in", ".net.in")) else host.split(".")[-2:][0]
+    joined = "".join(re.findall(r"[a-z0-9]+", company.lower()))
+    return len(label) >= 6 and (label in symbol.lower() or label in joined)
 
 
 def word_overlap(question: str, page: str) -> float | None:
