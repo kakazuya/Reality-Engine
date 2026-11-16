@@ -13,6 +13,7 @@ rules); this script reads all four into one item shape and writes the views:
     python -m reality_engine.scripts.items list [--type idea] [--open]
     python -m reality_engine.scripts.items render     # tasks/ITEMS.md + reports/items.xlsx
     python -m reality_engine.scripts.items due        # ideas whose review date has passed, open defects
+    python -m reality_engine.scripts.items github [--apply]   # mirror open tickets/defects to GitHub Issues
 
 Links are any T-NNN / I-NNN / R-NNN / H-NN the item's text names, so a defect that names its ticket, or a ticket
 that names an idea, shows up on both.  Read-only over the sources; the views are generated, never hand-edited.
@@ -22,10 +23,13 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 REPO = Path(__file__).resolve().parents[2]
 TICKETS = REPO / "tasks" / "tickets.jsonl"
@@ -36,6 +40,12 @@ ITEMS_MD = REPO / "tasks" / "ITEMS.md"
 ITEMS_XLSX = REPO / "reports" / "items.xlsx"
 LINK = re.compile(r"\b(?:T-\d{3}|I-\d{3}|R-\d{3}|H-\d{2,3})\b")
 OPEN = {"open", "doing", "parked", "next", "fix_written", "active"}
+MIRRORED = {"ticket", "defect"}
+MARKER = "<!-- item:{id} -->"
+MARKER_RE = re.compile(r"<!-- item:(\S+) -->")
+GH_LIST = ["gh", "issue", "list", "--state", "all", "--limit", "1000",
+           "--json", "number,title,body,state,labels"]
+Run = Callable[..., Any]
 
 
 @dataclass
@@ -175,6 +185,110 @@ def render(items: list[Item], md: Path = ITEMS_MD, xlsx: Path = ITEMS_XLSX) -> t
     return md, xlsx
 
 
+def issue_body(item: Item) -> str:
+    """The GitHub issue body for one item: marker line first, then why, tags, links, source and opened."""
+    lines = [MARKER.format(id=item.id)]
+    if item.why:
+        lines += ["", item.why.strip()]
+    for label, value in (("Tags", ", ".join(t for t in item.tags if t)), ("Links", ", ".join(item.links)),
+                         ("Source", item.source), ("Opened", item.opened)):
+        if value:
+            lines.append(f"- {label}: {value}")
+    return "\n".join(lines) + "\n"
+
+
+def github_plan(items: list[Item], existing: list[dict]) -> list[dict]:
+    """The gh actions that make GitHub mirror the open tickets and defects (pure; no subprocess).
+
+    ``existing`` is the parsed ``gh issue list --state all --json number,title,body,state,labels`` output.
+    """
+    known: dict[str, dict] = {}  # ponytail: first issue per marker wins; a duplicate marker needs a manual close
+    for issue in existing:
+        marker = MARKER_RE.search(str(issue.get("body") or ""))
+        if marker:
+            known.setdefault(marker.group(1), issue)
+    actions: list[dict] = []
+    open_ids = set()
+    for i in items:
+        if i.type not in MIRRORED or not i.is_open:
+            continue
+        open_ids.add(i.id)
+        title, body = f"{i.id}: {i.title}"[:200], issue_body(i)
+        issue = known.get(i.id)
+        if issue is None:
+            actions.append({"action": "create", "id": i.id, "title": title, "body": body,
+                            "labels": [f"item:{i.type}"]})
+            continue
+        closed = str(issue.get("state") or "").lower() == "closed"
+        if closed or str(issue.get("title") or "") != title \
+                or str(issue.get("body") or "").strip() != body.strip():
+            edit = {"action": "edit", "id": i.id, "number": issue.get("number"),
+                    "title": title, "body": body}
+            if closed:
+                edit["reopen"] = True
+            actions.append(edit)
+    for issue in existing:
+        marker = MARKER_RE.search(str(issue.get("body") or ""))
+        if marker and marker.group(1) not in open_ids \
+                and str(issue.get("state") or "").lower() != "closed":
+            actions.append({"action": "close", "id": marker.group(1), "number": issue.get("number")})
+    return actions
+
+
+def _gh(args: list[str], run: Run) -> None:
+    proc = run(["gh", *args], capture_output=True, text=True)
+    code = getattr(proc, "returncode", 0)
+    if code:
+        print(f"gh {' '.join(args[:2])} exited {code}: "
+              f"{(getattr(proc, 'stderr', None) or '').strip()}", file=sys.stderr)
+
+
+def github_apply(actions: list[dict], run: Run = subprocess.run) -> None:
+    """Run the planned gh commands, both labels first.  ``run`` is injectable so tests never touch gh."""
+    for label in ("item:ticket", "item:defect"):
+        _gh(["label", "create", label, "--force"], run)
+    for action in actions:
+        number = str(action.get("number"))
+        if action["action"] == "create":
+            _gh(["issue", "create", "--title", action["title"], "--body", action["body"],
+                 "--label", ",".join(action["labels"])], run)
+        elif action["action"] == "close":
+            _gh(["issue", "close", number], run)
+        elif action["action"] == "edit":
+            if action.get("reopen"):
+                _gh(["issue", "reopen", number], run)
+            _gh(["issue", "edit", number, "--title", action["title"], "--body", action["body"]], run)
+
+
+def github_existing(run: Run = subprocess.run) -> list[dict]:
+    """The repo's issues, through the same injectable gh runner the apply step uses."""
+    proc = run(GH_LIST, capture_output=True, text=True)
+    if getattr(proc, "returncode", 0):
+        raise SystemExit(f"gh issue list failed: {(getattr(proc, 'stderr', None) or '').strip()}")
+    return json.loads(getattr(proc, "stdout", None) or "[]")
+
+
+def github(items: list[Item], apply: bool = False, run: Run = subprocess.run) -> int:
+    """Print the mirror plan; with ``apply`` also run it.  Dry run by default, never a token read."""
+    actions = github_plan(items, github_existing(run))
+    for action in actions:
+        if action["action"] == "create":
+            print(f"create  {action['id']}  {action['title'][:100]}")
+        elif action["action"] == "edit":
+            verb = "reopen+" if action.get("reopen") else "edit"
+            print(f"{verb:<8} #{action['number']}  {action['title'][:100]}")
+        else:
+            print(f"close   #{action['number']}  {action['id']}")
+    if not actions:
+        print("GitHub already mirrors every open ticket and defect")
+    elif apply:
+        github_apply(actions, run)
+        print(f"{len(actions)} action(s) applied")
+    else:
+        print(f"{len(actions)} action(s) pending; dry run, pass --apply to run them")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -183,6 +297,8 @@ def main(argv: list[str] | None = None) -> int:
     ls.add_argument("--open", action="store_true")
     sub.add_parser("render")
     sub.add_parser("due")
+    gh_cmd = sub.add_parser("github")
+    gh_cmd.add_argument("--apply", action="store_true", help="run the gh commands; default is a dry run")
     args = ap.parse_args(argv)
     items = load()
     if args.cmd == "render":
@@ -191,6 +307,8 @@ def main(argv: list[str] | None = None) -> int:
     elif args.cmd == "due":
         for i in due(items):
             print(f"{i.id:<14} {i.type:<7} {i.status:<12} {i.review_by or '-':<11} {i.title[:100]}")
+    elif args.cmd == "github":
+        return github(items, apply=args.apply)
     else:
         for i in items:
             if (args.type is None or i.type == args.type) and (not args.open or i.is_open):

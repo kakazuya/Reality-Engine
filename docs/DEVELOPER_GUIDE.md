@@ -2249,8 +2249,12 @@ why, tags, links, source, opened, review_by): `tasks/tickets.jsonl` (written by 
 `items render` writes `tasks/ITEMS.md` and `reports/items.xlsx` (generated, never hand-edited); `items due` lists
 ideas past their review date and open store defects; `items list [--type] [--open]`. Each source keeps its own
 writer and its hooks, so nothing else changed. First render: 45 open tickets, 11 open ideas, 27 rulings, 4 open
-defects. Not built yet: a GitHub Issues mirror (`gh`). Test: `python -m pytest -q reality_engine/tests/test_items.py`
--> 1 passed.
+defects. `items github [--apply]` mirrors every open ticket and open store defect to the repo's GitHub Issues:
+`github_plan` is pure and keys one issue per item by the body marker `<!-- item:<id> -->`: create when missing
+(labels `item:ticket` / `item:defect`), edit when the title or body drifted, reopening a closed issue whose item
+is still open, close an open issue whose item is done or gone. Ideas and rulings are never mirrored; a dry run
+prints the actions, `--apply` runs `gh` with argv lists (both labels first, no token read). Test:
+`python -m pytest -q reality_engine/tests/test_items.py` -> 10 passed.
 
 ### Question bank (T-217, 16 Nov 2026)
 
