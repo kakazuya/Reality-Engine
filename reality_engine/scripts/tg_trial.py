@@ -126,6 +126,32 @@ def merge(trial: int, trials: Path = TRIALS) -> dict:
             "frozen_grades": dict(score[1]), "open_grades": dict(score[0])}
 
 
+def check(answers: Path, calls: Path, batch: Path, min_kinds: int = 2) -> list[tuple]:
+    """``(qid, why)`` for every question of ``batch`` whose answer breaks the brief: no answer, no logged call, or
+    ``not_found``/``partly`` after fewer than ``min_kinds`` different tools (trial 1: a free worker gave up after one
+    ``search`` on 30 of 44 questions)."""
+    def lines(p: Path):
+        return [json.loads(x) for x in p.open(encoding="utf-8") if x.strip()] if p.is_file() else []
+    got = {r["qid"]: r for r in lines(answers)}
+    used: dict[str, list] = defaultdict(list)
+    for c in lines(calls):
+        used[str(c.get("qid"))].append(c.get("tool"))
+    bad = []
+    for q in [r["qid"] for r in lines(batch)]:
+        a, tools = got.get(q), used.get(str(q), [])
+        why = []
+        if not a:
+            why.append("no answer")
+        else:
+            if not tools:
+                why.append("no logged call")
+            if a.get("status") in ("not_found", "partly") and len(set(tools)) < min_kinds:
+                why.append(f"{a.get('status')} after {len(tools)} calls of {len(set(tools))} tool kinds")
+        if why:
+            bad.append((q, "; ".join(why)))
+    return bad
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -137,7 +163,16 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--repeat", type=int, default=None, help="also re-ask this trial's open questions")
     m = sub.add_parser("merge")
     m.add_argument("--trial", type=int, required=True)
+    c = sub.add_parser("check", help="list the qids whose answer breaks the brief (worker runs it before finishing)")
+    c.add_argument("--answers", required=True)
+    c.add_argument("--calls", required=True)
+    c.add_argument("--batch", required=True)
+    c.add_argument("--min-kinds", type=int, default=2)
     a = ap.parse_args(argv)
+    if a.cmd == "check":
+        bad = check(Path(a.answers), Path(a.calls), Path(a.batch), a.min_kinds)
+        print(json.dumps({"rework": len(bad), "qids": [{"qid": q, "why": w} for q, w in bad]}, indent=1))
+        return 1 if bad else 0
     res = sample(a.trial, a.per_company, a.batches, a.seed, a.repeat) if a.cmd == "sample" else merge(a.trial)
     print(json.dumps(res, indent=1))
     return 0

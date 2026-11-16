@@ -75,3 +75,18 @@ def test_merge_scores_frozen_and_open_apart(tmp):
             fh.write(json.dumps({"qid": r["qid"], "grade": "right" if r["frozen"] else "wrong"}) + "\n")
     res = tg_trial.merge(1, tmp / "trials")
     assert res["frozen"].startswith("2/2") and res["open"].startswith("0/2")
+
+
+def test_check_flags_give_ups_after_one_tool_kind(tmp):
+    def w(name, rows):
+        p = tmp / name
+        p.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+        return p
+    batch = w("b.jsonl", [{"qid": q} for q in (1, 2, 3, 4)])
+    answers = w("a.jsonl", [{"qid": 1, "status": "answered"}, {"qid": 2, "status": "not_found"},
+                            {"qid": 3, "status": "partly"}])
+    calls = w("c.jsonl", [{"qid": 1, "tool": "fact"}, {"qid": "2", "tool": "search"}, {"qid": 2, "tool": "search"},
+                          {"qid": 3, "tool": "search"}, {"qid": 3, "tool": "statements"}])
+    bad = dict(tg_trial.check(answers, calls, batch))
+    assert set(bad) == {2, 4}                       # 1 answered, 3 tried two tool kinds
+    assert "1 tool kinds" in bad[2] and bad[4] == "no answer"

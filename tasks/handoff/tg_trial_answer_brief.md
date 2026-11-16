@@ -21,7 +21,18 @@ anything else). `sql` is the last resort; say why when you use it.
      "gap": "<what the store should have held to answer fully, with the tool/table you looked in; '' if none>",
      "status": "answered | partly | not_found | out_of_scope"}
 
+Routes by theme (try these before giving up; a `search` alone is never enough):
+- accounting (receivables, debt, cash flow, margins, write-offs): fin, ratio, fact, then search/page for the note.
+- long_vs_short (is this an entry / valuation): tech (52-week range, moving averages), ratio (PE, PB, ROE), fin trend.
+- revenue_sources, segments, geography: kpi, fin, topic, search; read the page the hit names (`page`).
+- forward_profitability, next_two_quarters: guidance, statements, topic, then the last two quarters' fin.
+- integration_pivot (acquisitions, new businesses): topic, statements, docs, search, page.
+- transcript (what management said on a call): statements, topic, docs (doc_type transcript).
+
 Rules:
+- `partly` or `not_found` needs at least three different tools from the routes above; before you finish run
+  `python -m reality_engine.scripts.tg_trial check --answers {answers} --calls {calls} --batch {batch} --min-kinds 3`
+  and redo every qid it lists (append a new line for that qid; the last line wins).
 - Every figure comes from a tool reply; compute ratios with `calc` and show the formula.
 - A question about opinion or the future is answered from what management said or guided, quoted with date.
 - `not_found` only after at least two different tools; name both in `gap`.
