@@ -20,35 +20,40 @@ stores held them only as page text.  No model; the frame is the cash-flow reader
    '31-Mar-25' / 'Mar-25' and en-dash variants alongside full dates), else the nearest header printed above the heading
    in the same horizontal span; a note printed with more than two figure columns is not read.
 3. Lines: ``ar_statements._read_lines`` (words right of the prior column dropped, wrapped labels joined, page
-   furniture and footnotes dropped), dropping wrapped date/header lines carrying day/year integers ('Particulars March
-   31 March 31' or split '2025 2024'), and re-keeping empty-label lines that print both figure columns as totals.
+   furniture and footnotes dropped), dropping wrapped date/header/unit/footnote-prose lines, flushing separately
+   around empty-label total lines and bare roman/letter marker captions so neither merges into an adjacent item
+   label, and re-keeping empty-label lines that print both figure columns as totals.
 4. Gate, per block and column: the item lines since the block opened (a 'Less:' line printed without a bracket
-   is subtracted) add up to the next total line ('Total', 'Sub total', or a line that prints figures and no words,
+   is subtracted, as is a single 'Current portion of Non-current borrowings...' deduction line closing a block total
+   into a net total) add up to the next total line ('Total', 'Sub total', or a line that prints figures and no words,
    '(A)'), within the printed rounding.  A total that adds up ALL block totals and loose items since the (sub-)note
    opened is the grand total (demoting an earlier intermediate grand if a subsequent outer section adds into a larger
    all-items grand total); a second section total that does not add up everything since the (sub-)note opened is a
    block total.  An unlettered trailing block whose total equals the sole preceding unlettered block total with no ~2x
    grand total later is an alternative break-up and is stopped.  A grand total whose label combines block markers
-   ('(A)+(B)+(C)', 'Total (a+b)') stays ``<note>_total`` whatever follows.  Prose footnote lines (sentence words or >8
-   words of text) never mark a block total as ``followed``.  A block that does not add up writes nothing; a column where
-   two rows would share a line_item writes nothing; a region where a (sub-)note's items do not sum to its ``_total``
-   writes nothing.
+   ('(A)+(B)+(C)', 'Total (a+b)') stays ``<note>_total`` whatever follows.  Two-column item lines with figures always
+   set ``followed`` regardless of label length; only single-column stray numbers inside prose never mark a block total
+   as ``followed``.  A block that does not add up writes
+   nothing; a column where two rows would share a line_item writes nothing; a region where a (sub-)note's items do
+   not sum to its ``_total`` writes nothing.
 5. Tie-out gate (face statements): every emitted ``_total`` row (``revenue_from_operations_total``,
    ``finance_costs_total``, ``borrowings_noncurrent_total``, ``borrowings_current_total``) is compared in rupees against
    the held face-statement candidates for ``(fiscal_year, basis)`` from ``fin_annual_line`` (statement 'P&L'/'BS',
    ``period_type='FY'``, preferring the year's own filing then ``facts`` -> ``ar_facts`` -> others, verifying revenue
    quote/caption is revenue from operations and not 'Total Revenue' / 'Total Income') and ``fin_quarter_printed``
    full-year columns (``lower(period_type)='fy'`` and ``column_role IN ('ytd', 'prior_ytd', 'last_fy')``, dropping
-   malformed raw tokens).  Candidates are ranked by own filing (Q4 ``ytd`` / own-year AR), checked status (``sum_ok`` /
-   ``xbrl_ok`` / ``repeat_ok``), then earlier ``known_at``; when several face candidates disagree, the note ties if it
-   matches any CHECKED one (never an unchecked non-primary candidate alone).  Tolerance is the printed rounding of the
-   larger unit (e.g. 0.5 lakh or 0.01 crore) + 0.1%.  When items add up and the disagreeing candidate is XBRL of
-   another filing (restated / scope difference), the rows are kept marked ``'face figure differs: <value> <source>'``;
-   otherwise a disagreeing column writes nothing (``'total does not tie to the statement'``); a note with no face
-   figure held appends ``'; not tied to a statement figure'``.
+   malformed raw tokens and ``unchecked`` 0.0/``last_fy`` rows).  Candidates are ranked by own filing (Q4 ``ytd`` /
+   own-year AR), checked status (``sum_ok`` / ``xbrl_ok`` / ``repeat_ok``), then earlier ``known_at``; when several
+   face candidates disagree, the note ties if it matches any CHECKED one (never an unchecked non-primary candidate
+   alone).  Tolerance is the printed rounding of the larger unit (e.g. 0.5 lakh or 0.01 crore) + 0.1%.  When items add
+   up, the gap is <= 1% of the face, the total is not captioned 'Sub-total', and the total is the last figure line of the
+   note with no '(Contd.)' continuation on the next page, an XBRL candidate of another filing is marked ``'face figure
+   differs: <value> <source>'``; otherwise a disagreeing column writes nothing (``'total does not tie to the
+   statement'``); a note with no face figure held appends ``'; not tied to a statement figure'``.
 6. Unit & rows: unit is read only from unit-phrase lines ('(Rs in lakhs)', 'All amounts are in ...', '` in Crores'),
-   never from prose sentences containing an amount ('Pledge of FDR of Rs. 3.70 Crores').  One row per item and one per
-   total; slugs trim on word boundaries (up to 96 chars); sub-totals fall back to the caption above instead of
+   never from prose sentences containing an amount ('Pledge of FDR of Rs. 3.70 Crores'), falling back to the unit
+   declared at the start of the same-basis notes section when the page prints no other unit.  One row per item and one
+   per total; slugs trim on word boundaries (up to 96 chars); sub-totals fall back to the caption above instead of
    ``subtotal:subtotal``.  Generic 'Borrowings' notes are classified by the nearest Balance-Sheet section heading above
    ('NON-CURRENT LIABILITIES' / 'CURRENT LIABILITIES'), else split by 'Non-current' / 'Current' sub-blocks, and
    ``borrowings_unclassified`` never displaces a classified note for the same ``(fiscal_year, basis)``.  Ranking: tied
@@ -89,6 +94,7 @@ _PROSE_HEADING = re.compile(r"\b(includes?|amount\s+of|ratios?|details\s+of|matu
 _ORDINAL = re.compile(r"^\s*\d{1,2}\s*(st|nd|rd|th)\b", re.I)
 _TOTAL = re.compile(r"^\W*(sub[- ]?)?total\b", re.I)
 _LESS = re.compile(r"^\W*less\b", re.I)
+_DEDUCT_LINE = re.compile(r"^\W*(?:less\b|current\s+(?:portion|maturit)|deduct|transferred\s+to\b)", re.I)
 # a column-header or unit line inside the note: never a group caption
 _HEADERISH = re.compile(r"particulars|year\s+ended|as\s+at|for\s+the\b|\b(in\s+lakhs?|in\s+crores?|in\s+millions?|amount)\b|"
                         r"\b(march|april|june|september|december)\b|\b20\d\d\b|overview|statutory|reports?\b", re.I)
@@ -376,14 +382,19 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
     all_items: list[A.Line] = []      # every item in the current (sub-)note since it opened
     done: list[A.Line] = []           # block totals since the last grand total
     sub, group, head = "", "", ""
+    in_note_foot = False
     for ln_i, ln in enumerate(lines):
         label = ln.label.strip()
         v = ln.values[k] if ln.values else None
         if v is None and _SUBBLOCK.search(label) and len(label) < 40:
             sub = "noncurrent" if re.search(r"non", label, re.I) else "current"
             items, all_items, group, head = [], [], "", ""
+            in_note_foot = False
             continue
         if v is None:
+            if out and _FOOTNOTE_HEAD.match(label):
+                in_note_foot = True
+                continue
             # a 'Less: Current maturities of long-term debt (refer note 21)' caption counts at any length
             if ((len(label) < 50 or _LESS.search(label)) and readable(label) and not is_heading(label)
                     and not _HEADERISH.search(label) and not _SENTENCE.search(label) and not _date_of(label)):
@@ -437,6 +448,22 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
                         break
                 out.append((sub, list(items), ln, "block", head, False))
                 done.append(ln)
+            elif (done and len(parts) == 1 and _DEDUCT_LINE.search(parts[0].label) and readable(parts[0].label)
+                  and abs((sum(d.values[k] for d in done) - abs(parts[0].values[k])) - ln.values[k])
+                  <= 0.5 * 10 ** (-max(i.decimals for i in done + parts + [ln])) * (len(done) + 2) + 1e-9):
+                # a single deduction line ('Current portion of Non-current borrowings...') after a block total
+                # subtracted to reach the net total (c85 p188): store it negative so items sum cleanly to total
+                neg = A.Line(parts[0].label if _LESS.search(parts[0].label) else f"Less: {parts[0].label}",
+                             parts[0].values, parts[0].decimals, parts[0].quote, parts[0].page, parts[0].section)
+                items = [(items[0][0], neg)]
+                all_items[-1] = neg
+                whole_note = _adds(all_items, ln, k) and not any(b[0] == sub and b[3] == "grand" for b in out)
+                if whole_note:
+                    out.append((sub, list(items), ln, "grand", head, False))
+                    done = []
+                else:
+                    out.append((sub, list(items), ln, "block", head, False))
+                    done = [ln]
             elif not label:
                 # an unnamed figures-only line that does not close the open block is a partial sub-total (e.g. for
                 # one caption inside a larger block): leave items intact so the block's Total still sums them
@@ -451,8 +478,10 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
                 all_items, done = [], []
             continue
         # figures printed after a block's total, in the same (sub-)note: that block is not the whole note
-        # (a number embedded in a prose footnote like '36 to 60 months' is never a figure line for followed)
-        if not (_PROSE_LINE.search(label) or len(label.split()) > 8):
+        # a two-column item line with >8 words still sets followed; prose/footnotes and single-column prose do not
+        both_cols = len(ln.values) >= 2 and ln.values[0] is not None and ln.values[1] is not None
+        if (not in_note_foot and not _PROSE_LINE.search(label) and not _FOOTNOTE_START.match(label)
+                and (both_cols or len(label.split()) <= 8)):
             out = [b[:5] + (True,) if b[0] == sub and idx not in locked else b for idx, b in enumerate(out)]
         if _LESS.search(group) and not _LESS.search(ln.label):
             # an item under a 'Less:' caption line is subtracted like a 'Less:' item
@@ -685,16 +714,44 @@ _MONTH_WORD = re.compile(
 )
 
 
+_MARKER_START = re.compile(r"^\W*(?:\(?[ivx]{1,4}\)?[.):]\s+|\(?[a-z]\)[.):]?\s+|[a-z][.)]\s+)", re.I)
+_FOOTNOTE_START = re.compile(r"^\W*(?:\*+|#|@|notes?\s*[-:])", re.I)
+_FOOTNOTE_HEAD = re.compile(r"^\W*(?:\*+\s*(?:includes?|represents?|consists?)|notes?\s*[:\-]\s*$)", re.I)
+_PROSE_SENT_END = re.compile(r"(?<!ltd)(?<!pvt)(?<!no)(?<!co)(?<!rs)(?<!cr)(?<!mn)(?<!st)(?<!a/c)\.\s*$", re.I)
+
+
+def _flush_seg(seg_words: list, centres: list[float], gap: float, page: int, out: list[A.Line]) -> bool:
+    """Run ``A._read_lines`` on one chunk, returning True if a signature line stopped the page."""
+    if not seg_words:
+        return False
+    body = A._read_lines(seg_words, centres, page)
+    b = 0
+    for line in lines_of(seg_words):
+        label, vals, dec, quote, n_nums = _parse_line_cols(seg_words, line, centres, gap)
+        if A._SIGNATURE.search(label):
+            return True
+        if b < len(body) and body[b].quote == quote:
+            out.append(body[b])
+            b += 1
+        elif (not label and vals[0] is not None and vals[1] is not None and n_nums == 2
+              and not (A._HEADER_LINE.search(quote)
+                       and all(v == int(v) and 1990 <= abs(v) <= 2100 for v in vals))):
+            out.append(A.Line("", vals, dec, quote, page))
+    if b < len(body):
+        out.extend(body[b:])
+    return False
+
+
 def _read_lines(words, centres: list[float], page: int) -> list[A.Line]:
-    """Drop pure date-header lines (e.g. '31-Mar-2025 31-Mar-2024', 'Particulars March 31 March 31') so they never
-    merge onto a lowercase first item, run ``A._read_lines``, and re-insert empty-label lines that print exactly the
-    note's two figure columns."""
+    """Drop date/unit/footnote-prose lines before ``A._read_lines``, flush separately around empty-label total
+    lines and bare roman/letter marker captions so neither merges into an adjacent item label."""
     gap = abs(centres[1] - centres[0])
-    # Filter pure date-header lines before A._read_lines so '31-Mar-2025 31-Mar-2024' (vals=[None, None]) cannot
-    # merge with a lowercase first item ('a) Sale of Products').
-    body_words: list = []
+    out: list[A.Line] = []
+    seg_words: list = []
+    in_footnote = False
+    dropped_open_prose = False
     for ln in lines_of(words):
-        label, vals, dec, quote, _ = _parse_line_cols(words, ln, centres, gap)
+        label, vals, dec, quote, n_nums = _parse_line_cols(words, ln, centres, gap)
         line_text = " ".join(words[i][4] for i in ln)
         header_vals = (
             vals != [None, None]
@@ -707,26 +764,58 @@ def _read_lines(words, centres: list[float], page: int) -> list[A.Line]:
             )
         )
         if _is_date_chunk(line_text) or header_vals or (vals == [None, None] and (
-            _HEADERISH.search(label) or is_heading(label) or (len(label.split()) <= 5 and A._unit(label))
+            _HEADERISH.search(label) or is_heading(label)
+            or _line_unit(label) is not None or _line_unit(line_text) is not None
         )):
             continue
-        body_words.extend(words[i] for i in ln)
-    body = A._read_lines(body_words, centres, page)
-    out: list[A.Line] = []
-    b = 0
-    for line in lines_of(body_words):
-        label, vals, dec, quote, n_nums = _parse_line_cols(body_words, line, centres, gap)
-        if A._SIGNATURE.search(label):
-            break
-        if b < len(body) and body[b].quote == quote:
-            out.append(body[b])
-            b += 1
-        elif (not label and vals[0] is not None and vals[1] is not None and n_nums == 2
-              and not (A._HEADER_LINE.search(quote)
-                       and all(v == int(v) and 1990 <= abs(v) <= 2100 for v in vals))):
-            out.append(A.Line("", vals, dec, quote, page))
-    if b < len(body):
-        out.extend(body[b:])
+        if vals == [None, None]:
+            if A._SIGNATURE.search(label):
+                _flush_seg(seg_words, centres, gap, page, out)
+                return out
+            if _FOOTNOTE_HEAD.match(label):
+                if _flush_seg(seg_words, centres, gap, page, out):
+                    return out
+                seg_words = []
+                out.append(A.Line(label, [None, None], 0, quote, page))
+                in_footnote = True
+                dropped_open_prose = False
+                continue
+            is_prose = bool(
+                _FOOTNOTE_START.match(label)
+                or _UNIT_AMOUNT.search(label)
+                or _PROSE_LINE.search(label)
+                or (_PROSE_SENT_END.search(label) and len(label.split()) >= 5)
+            )
+            if in_footnote:
+                if _MARKER_START.match(label) and not is_prose and len(label.split()) <= 8:
+                    in_footnote = False
+                    dropped_open_prose = False
+                else:
+                    if is_prose and not _PROSE_SENT_END.search(label):
+                        dropped_open_prose = True
+                    continue
+            elif is_prose:
+                in_footnote = True
+                dropped_open_prose = not _PROSE_SENT_END.search(label)
+                continue
+            if _MARKER_START.match(label):
+                if _flush_seg(seg_words, centres, gap, page, out):
+                    return out
+                seg_words = [words[i] for i in ln]
+                continue
+        else:
+            if dropped_open_prose and ((vals[0] is None) != (vals[1] is None)) and label[:1].islower():
+                continue
+            in_footnote = False
+            dropped_open_prose = False
+            if not label and vals[0] is not None and vals[1] is not None and n_nums == 2:
+                if _flush_seg(seg_words, centres, gap, page, out):
+                    return out
+                seg_words = []
+                out.append(A.Line("", vals, dec, quote, page))
+                continue
+        seg_words.extend(words[i] for i in ln)
+    _flush_seg(seg_words, centres, gap, page, out)
     return out
 
 
@@ -926,7 +1015,7 @@ def _cand_matches(note_inr: float, tot_dec: int, note_unit: str, note_scale: flo
 
 def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: float,
                    face_entry: list[FaceCand] | tuple[float, float, str] | None,
-                   doc_key: str = "") -> tuple[str, FaceCand | None]:
+                   doc_key: str = "", allow_differs: bool = True) -> tuple[str, FaceCand | None]:
     """Return ``(status, matched_or_primary_cand)`` where ``status`` is ``'tied'``, ``'differs'``,
     ``'disagree'``, or ``'no_face'``."""
     if not face_entry:
@@ -944,8 +1033,8 @@ def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: flo
     for c in cands[1:]:
         if c.checked and _cand_matches(note_inr, tot_dec, note_unit, note_scale, c):
             return "tied", c
-    if (c0.is_xbrl and c0.doc_key and c0.doc_key != doc_key and c0.inr > 0
-            and abs(note_inr - c0.inr) <= 0.25 * max(abs(note_inr), abs(c0.inr))):
+    if (allow_differs and c0.is_xbrl and c0.doc_key and c0.doc_key != doc_key and c0.inr > 0
+            and abs(note_inr - c0.inr) <= 0.01 * abs(c0.inr)):
         return "differs", c0
     return "disagree", c0
 
@@ -975,12 +1064,15 @@ def _bs_section_above(words, lines: list[list[int]], first: int, x_left: float, 
 def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: str | None,
               doc_section: str | None = None,
               face_targets: dict[tuple[str, str, str], tuple[float, float, str]] | None = None,
-              force_standalone: bool = False) -> tuple[list[Row], list[dict]]:
+              force_standalone: bool = False,
+              doc_unit: tuple[str, float] | None = None,
+              contd_notes: set[str] | None = None) -> tuple[list[Row], list[dict]]:
     pw = words_for(store_db, doc_key, page)
     if not pw.words:
         return [], []
     if face_targets is None:
         face_targets = load_face_targets(store_db)
+    contd_set = contd_notes or set()
     words = A._norm(pw.words)
     lines = lines_of(words)
     rows, log = [], []
@@ -1029,7 +1121,7 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                         None)
         if not unit:
             found = {_line_unit(" ".join(words[i][4] for i in ln)) for ln in lines} - {None}
-            unit = found.pop() if len(found) == 1 else None
+            unit = found.pop() if len(found) == 1 else (doc_unit if not found else None)
         if not unit:
             log.append({"page": page, "note": note, "ok": 0, "why": "no unit printed"})
             continue
@@ -1061,6 +1153,7 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
             clash = {n for n in base if base.count(n) > 1}
             decs_by_sub: dict[tuple[str, str], list[int]] = defaultdict(list)
             tot_decs_by_sub: dict[tuple[str, str], int] = {}
+            tot_quote_by_sub: dict[tuple[str, str], str] = {}
             split_subs = {b[0] for b in found if b[0]}
             for sub, items, total, kind, caption, followed in found:
                 n_ok += 1
@@ -1089,6 +1182,7 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                 is_total = (kind == "grand" or len(same) == 1) and not followed
                 if is_total:
                     name = f"{nm}_total{tag}"
+                    tot_quote_by_sub[(nm, tag)] = total.quote[:300]
                 else:
                     cap_txt = caption or (items[0][0] if items else "") or (items[0][1].label if items else "")
                     lbl_txt = total.label
@@ -1127,6 +1221,12 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                     break
             if reg_bad:
                 break
+            # last non-prose figure line in the cropped note for column k (D3 iii)
+            fig_lines_k = [ln for ln in body if ln.values and ln.values[k] is not None and (
+                (len(ln.values) >= 2 and ln.values[0] is not None and ln.values[1] is not None)
+                or not (_PROSE_LINE.search(ln.label) or len(ln.label.split()) > 8)
+            )]
+            last_fig_quote = fig_lines_k[-1].quote[:300] if fig_lines_k else ""
             # tie-out gate against face statement when held; disagreeing note writes nothing
             kept_col: list[Row] = []
             for (nm, tag), _decs in decs_by_sub.items():
@@ -1135,8 +1235,15 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                 tot_rows = [r for r in sub_rows if r.line_item == tot_key]
                 if len(tot_rows) == 1 and not tag and nm in _TIED_NOTES:
                     t_dec = tot_decs_by_sub.get((nm, tag), 2)
+                    allow_diff = (
+                        not re.match(r"^\W*sub[- ]?totals?\b", tot_rows[0].caption.strip(), re.I)
+                        and tot_quote_by_sub.get((nm, tag), "") == last_fig_quote
+                        and nm not in contd_set
+                        and note not in contd_set
+                    )
                     status, m_cand = _tie_out_check(
-                        tot_rows[0].value, t_dec, unit[0], unit[1], face_targets.get((fy, basis, nm)), doc_key
+                        tot_rows[0].value, t_dec, unit[0], unit[1], face_targets.get((fy, basis, nm)), doc_key,
+                        allow_differs=allow_diff,
                     )
                     if status == "disagree":
                         log.append({"page": page, "note": nm, "ok": 0, "why": "total does not tie to the statement"})
@@ -1177,6 +1284,26 @@ def _update_section(text: str, cur: str | None) -> str | None:
     return cur
 
 
+def _contd_notes_in(text: str) -> set[str]:
+    out: set[str] = set()
+    for ln in (text or "").splitlines()[:15]:
+        t = ln.strip()
+        if not t or not _CONTD.search(t):
+            continue
+        cleaned = _CONTD.sub("", t).strip()
+        if is_heading(cleaned):
+            for name, rx in NOTES:
+                if rx.search(cleaned):
+                    out.add(name)
+                    break
+    return out
+
+
+def _page_declared_unit(text: str) -> tuple[str, float] | None:
+    found = {_line_unit(ln.strip()) for ln in (text or "").splitlines() if ln.strip()} - {None}
+    return found.pop() if len(found) == 1 else None
+
+
 def run_store(db: Path, store: str, dry: bool = False) -> dict:
     conn = sqlite3.connect(db if not dry else f"file:{db.as_posix()}?mode=ro", uri=dry)
     sym, isin = conn.execute("SELECT symbol, isin FROM company LIMIT 1").fetchone()
@@ -1192,16 +1319,21 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
                                  t or "", re.I) for _, t in pages)
         last = None if any_cons else "standalone"
         last_sec: str | None = None
-        for page, text in pages:
+        last_unit: tuple[str, float] | None = None
+        for idx, (page, text) in enumerate(pages):
             if any_cons:
                 # only a title phrase in the page head moves the running basis, never prose
                 nxt = title_basis((text or "")[:400])
                 if nxt and nxt != last:
                     last = nxt
                     last_sec = None
+                    last_unit = None
+            last_unit = _page_declared_unit(text or "") or last_unit
             if text and heads.search(text):
+                contd_notes = _contd_notes_in(pages[idx + 1][1]) if idx + 1 < len(pages) and pages[idx + 1][0] == page + 1 else set()
                 rows, lg = read_page(str(db), doc_key, page, known_at or filing_date or "", last,
-                                     doc_section=last_sec, face_targets=face_targets, force_standalone=not any_cons)
+                                     doc_section=last_sec, face_targets=face_targets, force_standalone=not any_cons,
+                                     doc_unit=last_unit, contd_notes=contd_notes)
                 cand += rows
                 for x in lg:
                     log.append({"doc_key": doc_key, **x})

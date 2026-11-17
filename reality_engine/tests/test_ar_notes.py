@@ -608,3 +608,143 @@ def test_r8_slug_no_midword_truncation_and_no_subtotal_subtotal():
     demoted = [b for b in blks if b[3] == "block" and b[2].values[0] == 1780.07][0]
     assert demoted[4] and "subtotal" not in demoted[4].lower()
 
+
+# --- T-223 review round 9 (D1 subtotal promotion, D2/D4 long two-col item followed, D3 <=1% & last-fig/no-contd, D5 label merge, D6 doc_unit) ---
+
+def test_r9_d1_subtotal_caption_not_promoted_and_disagree_rejected(monkeypatch):
+    # c84 p246: page ends at 'Sub-total 142,809.06' (face XBRL 148,166.29 is 3.6% higher): never becomes _total or 'differs'
+    words = (
+        _wline(20, (40, "Notes to Consolidated Financial Statements"))
+        + _wline(40, (40, "21.0 Revenue from operations"), (480, "(Rs. in Lakh)"))
+        + _wline(54, (320, "March 31, 2026"), (440, "March 31, 2025"))
+        + _wline(68, (40, "Sale of products"))
+        + _wline(82, (40, "Finished goods"), (350, "1,41,680.38"), (470, "1,40,905.52"))
+        + _wline(96, (40, "Stock-in-trade"), (350, "1,128.68"), (470, "1,234.53"))
+        + _wline(110, (240, "Sub-total"), (350, "1,42,809.06"), (470, "1,42,140.05"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    face = {
+        ("FY26", "consolidated", "revenue_from_operations"): [
+            N.FaceCand(14816629000.0, 1.0, "inr", True, True, 4, "2026-05-21", "facts", "XBRL_26.xml", True)
+        ],
+    }
+    rows, log = N.read_page("x.db", "ar26.pdf", 246, "2026-08-01", "consolidated", face_targets=face)
+    assert [r for r in rows if r.fiscal_year == "FY26"] == []
+    assert any(l["why"] == "total does not tie to the statement" for l in log)
+
+
+def test_r9_d2_d4_long_two_col_deduction_sets_followed_and_closes_net_total(monkeypatch):
+    # c85 p188: 'Current portion of Non-current borrowings disclosed in current borrowings stated below' (>8 words, 2 cols)
+    # must set followed on 38,518.72 and subtract to 29,648.12 (= face)
+    words = (
+        _wline(20, (40, "Notes to Financial Statements"))
+        + _wline(40, (40, "19. Borrowings"), (480, "(Rs. in Lakhs)"))
+        + _wline(54, (320, "As at 31 March 2025"), (440, "As at 31 March 2024"))
+        + _wline(66, (40, "Non-current Borrowings"))
+        + _wline(78, (40, "Term loans"), (350, "37,332.36"), (470, "33,692.88"))
+        + _wline(92, (40, "Under financial assistance scheme"), (350, "1,186.36"), (470, "3,548.70"))
+        + _wline(106, (350, "38,518.72"), (470, "37,241.58"))
+        + _wline(120, (40, "Current portion of Non-current borrowings disclosed in current borrowings"),
+                 (350, "8,870.60"), (470, "11,090.83"))
+        + _wline(134, (40, "stated below"))
+        + _wline(148, (350, "29,648.12"), (470, "26,150.75"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    face = {
+        ("FY25", "standalone", "borrowings_noncurrent"): [
+            N.FaceCand(2964812000.0, 1.0, "inr", True, True, 4, "2025-05-12", "facts", "XBRL_25.xml", True)
+        ],
+    }
+    rows, _ = N.read_page("x.db", "ar25.pdf", 188, "2025-08-01", "standalone", face_targets=face)
+    fy25 = {r.line_item: (r.value, r.tie_status) for r in rows if r.fiscal_year == "FY25"}
+    assert fy25["borrowings_noncurrent_total"] == (29648.12, "tied")
+    assert any(v == -8870.60 for v, _ in fy25.values())
+
+
+def test_r9_d3_differs_requires_1pct_and_no_contd_continuation(monkeypatch):
+    # <=1% XBRL differs is kept only when not followed by a '(Contd.)' continuation on the next page
+    words = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(34, (40, "(All amounts are in Rs. Lakhs)"))
+        + _wline(50, (40, "16 LONG TERM BORROWINGS"))
+        + _wline(64, (320, "31st March, 2026"), (460, "31st March, 2025"))
+        + _wline(78, (40, "Term Loans From Bank"), (350, "18,869.44"), (470, "18,101.25"))
+        + _wline(92, (40, "Less : Current Maturities"), (350, "(3,791.07)"), (470, "(2,040.00)"))
+        + _wline(106, (40, "Total"), (350, "15,078.37"), (470, "16,061.25"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    face = {
+        ("FY26", "standalone", "borrowings_noncurrent"): [
+            N.FaceCand(1507837000.0, 1.0, "inr", True, True, 4, "2026-05-14", "facts", "XBRL_26.xml", True)
+        ],
+        ("FY25", "standalone", "borrowings_noncurrent"): [
+            N.FaceCand(1597187000.0, 1.0, "inr", True, True, 4, "2025-05-29", "facts", "XBRL_25.xml", True)
+        ],
+    }
+    contd = N._contd_notes_in("16 LONG TERM BORROWINGS (Contd.)\nParticulars")
+    assert "borrowings_noncurrent" in contd
+    rows_contd, log = N.read_page("x.db", "ar26.pdf", 172, "2026-08-01", "standalone",
+                                  face_targets=face, contd_notes=contd)
+    assert [r for r in rows_contd if r.fiscal_year == "FY25"] == []
+    assert any(l["why"] == "total does not tie to the statement" for l in log)
+
+
+def test_r9_d5_no_merge_of_marker_unit_or_footnote_sentence(monkeypatch):
+    # c11 two-col 'Rs. In Lacs Rs. In Lacs', c74 'ii. Liability...', c56 footnote '...in previous year.' must stay unmerged
+    words = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(40, (40, "15(a) Long Term Borrowings"), (320, "31-Mar-2025"), (440, "31-Mar-2024"))
+        + _wline(54, (320, "Rs. In"), (360, "Lacs"), (440, "Rs. In"), (480, "Lacs"))
+        + _wline(68, (40, "a) Non Convertible Debenture"), (350, "100.00"), (470, "200.00"))
+        + _wline(82, (40, "Less: Current Maturities"), (350, "40.00"), (470, "50.00"))
+        + _wline(96, (350, "60.00"), (470, "150.00"))
+        + _wline(110, (40, "ii. Liability Component of Debenture"))
+        + _wline(124, (40, "Optionally Convertible"), (350, "10.00"), (470, "20.00"))
+        + _wline(138, (40, "Total"), (350, "70.00"), (470, "170.00"))
+        + _wline(152, (40, "Revenues from customer A represent Rs. 100 lakhs which was 10% of the Company's"))
+        + _wline(166, (40, "total sale of finished goods in previous year."))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "ar25.pdf", 115, "2025-08-01", "standalone", face_targets={})
+    items = {r.line_item for r in rows if r.fiscal_year == "FY25"}
+    assert "borrowings_noncurrent:a_non_convertible_debenture" in items
+    assert "borrowings_noncurrent:less_current_maturities" in items
+    assert not any("rs_in_lacs" in x or "liability_component" in x or "previous_year" in x for x in items)
+
+
+def test_r9_d6_doc_unit_fallback_only_when_page_has_no_unit(monkeypatch):
+    words = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(40, (40, "18. Short Term Borrowings"))
+        + _wline(54, (320, "As at 31 March 2024"), (440, "As at 31 March 2023"))
+        + _wline(68, (40, "- Lien on FDR for Rs. 3.38 millions in the name of company."))
+        + _wline(82, (40, "Cash credit"), (350, "132.42"), (470, "100.00"))
+        + _wline(96, (40, "Total"), (350, "132.42"), (470, "100.00"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "ar24.pdf", 129, "2024-08-01", "standalone",
+                          face_targets={}, doc_unit=("inr_million", 1e6))
+    assert rows and all(r.unit == "inr_million" for r in rows)
+    # _page_declared_unit detects initial notes unit header cleanly
+    assert N._page_declared_unit("Notes to Standalone Financial Statements\n(All amount in INR Millions unless otherwise stated)") == ("inr_million", 1e6)
+
+
+def test_r9_followed_ignores_footnote_head_and_two_col_prose(monkeypatch):
+    # c36 '* Includes' breakdown and c52/c70 two-column prose sentences below Total never demote <note>_total
+    words = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(40, (40, "Note 29 : Finance costs"), (320, "(Rs in Crore)"))
+        + _wline(54, (320, "31st March, 2026"), (440, "31st March, 2025"))
+        + _wline(68, (40, "On Loans"), (350, "14.00"), (470, "18.83"))
+        + _wline(82, (40, "Other borrowing costs *"), (350, "0.16"), (470, "0.15"))
+        + _wline(96, (40, "Total"), (350, "14.16"), (470, "18.98"))
+        + _wline(110, (40, "* Includes"))
+        + _wline(124, (40, "i) Interest on Tax Deducted at Source"), (350, "0.01"), (470, "0.02"))
+        + _wline(138, (40, "All loans repayable on demand carry rate from"), (350, "9.50"), (470, "10.75"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "ar26.pdf", 280, "2026-08-01", "standalone", face_targets={})
+    tots = {r.fiscal_year: (r.line_item, r.value) for r in rows if r.line_item == "finance_costs_total"}
+    assert tots == {"FY26": ("finance_costs_total", 14.16), "FY25": ("finance_costs_total", 18.98)}
+
+
