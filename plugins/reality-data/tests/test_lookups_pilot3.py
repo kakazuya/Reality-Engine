@@ -1687,6 +1687,57 @@ class T223R019ReplyClarityTests(unittest.TestCase):
         self.assertEqual(latest["answer"]["period"], "Q2FY27")
         self.assertEqual(latest["answer"]["value_cr"], 82.29)
 
+    def test_sub_cent_crore_figures_omit_cr_fields_and_keep_inr(self):
+        c = sqlite3.connect(DB)
+        c.execute(
+            "INSERT INTO guidance(id,symbol,isin,metric,target_period,low,high,unit,direction,said_on,doc_key,page,"
+            "quote,speaker,known_at,known_at_source,revision_of,extractor_rule) VALUES "
+            "(23,'R19','INE999R01019','ebitda','FY27',1739.82,2500.0,'inr','flat','2026-08-01','pdfs/KEC/deck2.pdf',1,"
+            "'Rs.1739.82 to Rs.2500.0 (Rs.- In Million)','MD','2026-08-01T10:00:00','doc.known_at',NULL,'t')"
+        )
+        c.commit()
+        c.close()
+
+        g = p3.guidance("R19", metric="ebitda")["rows"][0]
+        self.assertEqual(g["low_inr"], 1739.82)
+        self.assertEqual(g["high_inr"], 2500.0)
+        self.assertNotIn("low_cr", g)
+        self.assertNotIn("high_cr", g)
+
+        small = p3._add_money({"value": 50000.0, "unit": "inr"}, 50000.0, "inr", 1.0)
+        self.assertEqual(small["value_inr"], 50000.0)
+        self.assertNotIn("value_cr", small)
+
+        edge = p3._add_money({"value": 100000.0, "unit": "inr"}, 100000.0, "inr", 1.0)
+        self.assertEqual(edge["value_inr"], 100000.0)
+        self.assertEqual(edge["value_cr"], 0.01)
+
+    def test_ref_input_ltm_lakh_quarter_series_does_not_rescale_cr(self):
+        c = sqlite3.connect(DB)
+        quarters = [
+            ("2025-07-01", "2025-09-30", "Q2FY26", 100.0),
+            ("2025-10-01", "2025-12-31", "Q3FY26", 120.0),
+            ("2026-01-01", "2026-03-31", "Q4FY26", 130.0),
+            ("2026-04-01", "2026-06-30", "Q1FY27", 150.0),
+        ]
+        for start, end, fp, val in quarters:
+            c.execute(
+                "INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, audited, "
+                "statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, source_table, source_rowid, "
+                "known_at, known_at_source, is_reported) VALUES "
+                "('R19','INE999R01019',?,?,?,'consolidated','u','PL','pat','Tag',?,'inr_lakh',100000.0,"
+                "'q.xml','results_xbrl.db','quarterly','q.xml','2026-08-01T10:00:00','x',1)",
+                (start, end, fp, val),
+            )
+        c.commit()
+        c.close()
+
+        ref = p3._ref_input("R19", "fq:R19:ltm:consolidated:pat@2026-06-30", "consolidated", "2026-08-15")
+        self.assertEqual(ref["value"], 50000000.0)
+        self.assertEqual(ref["unit"], "inr")
+        self.assertEqual(ref["value_inr"], 50000000.0)
+        self.assertEqual(ref["value_cr"], 5.0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2,7 +2,9 @@
 
 A quarterly results PDF prints, beside the current quarter, the preceding and year-ago quarters, the
 year-to-date and the last full year.  ``fin_quarter_xbrl`` holds only the window's quarters, so YoY, QoQ and
-TTM cannot be computed from XBRL alone.  This part rebuilds every P&L column from the page's **word boxes**
+TTM cannot be computed from XBRL alone.  For a June period end, ``ytd``/``prior_ytd`` are never emitted (at
+June a 5/6-column or 8-column side-by-side table holds quarters, an unmapped H1/repeat column, or ``last_fy``,
+which is stored only when header dates or P&L identities confirm it; see ``_role_set``).  This part rebuilds every P&L column from the page's **word boxes**
 (``page.get_text("words")``, rows by y-centre, columns by x) -- the stored page text scatters a table --
 maps each printed label to the canonical line item the XBRL store uses (``lexicon/results_lines.yaml``),
 and stores a cell only when a check confirms it: the XBRL value of that quarter (``xbrl_ok``) or one of the
@@ -397,20 +399,34 @@ def _quarter(period_end: str, ptype: str) -> tuple[str, str, str]:
     if ptype == "fy":
         return f"FY{str(fy)[2:]}", f"{fy - 1}-04-01", "fy"
     if ptype == "ytd":
-        label = "H1" if m == 9 else ("9M" if m == 12 else "FY")
+        if m not in (9, 12):
+            raise ValueError(f"ytd period cannot end in month {m:02d} ({period_end})")
+        label = "H1" if m == 9 else "9M"
         return f"{label}FY{str(fy)[2:]}", f"{fy - 1}-04-01", "ytd"
     q = {6: 1, 9: 2, 12: 3, 3: 4}.get(m)
     start = {6: f"{y}-04-01", 9: f"{y}-07-01", 12: f"{y}-10-01", 3: f"{y}-01-01"}.get(m, f"{y}-01-01")
     return f"Q{q or '?'}FY{str(fy)[2:]}", start, "quarter"
 
 
-def _role_set(end: str, count: int) -> list[str]:
+def _role_set(end: str, count: int) -> list[str | None]:
     """Positions a results table of this quarter and column count prints them in.
 
-    The pool has to contain the roles the layout can print: a Q2/Q3 table carries a quarter pair, a half/nine-month
-    pair and (with five or six columns) the last full year; a Q4 table carries the quarter pair and the two full
-    years.  Without ``last_fy`` in the pool no TTM can ever be formed from that filing (T-073)."""
+    The pool has to contain the roles the layout can print: a Q1 (June-end) table has no March-FY year-to-date
+    columns (``current, preceding, year_ago, last_fy``; five- or six-column June layouts -- including a
+    December-year six-month pair or a five-column Q1 + two-year table -- leave non-March year-to-date slots as
+    ``None`` so no June-end YTD row is ever stored, and an eight-column side-by-side Q1 table reads its first
+    four columns only); a Q2/Q3 table carries a quarter pair, a half/nine-month pair and (with five or six
+    columns) the last full year; a Q4 table carries the quarter pair and the two full years.  Without ``last_fy``
+    in the pool no TTM can ever be formed from that filing (T-073)."""
     m = int(end[5:7])
+    if m == 6:
+        if count <= 3:
+            return list(ROLE_ORDER[:count])
+        if count == 4 or count >= 7:
+            return ["current", "preceding", "year_ago", "last_fy"]
+        if count == 5:
+            return ["current", "preceding", "year_ago", None, "last_fy"]
+        return ["current", "preceding", "year_ago", None, None, "last_fy"]
     if count == 6:
         return ["current", "preceding", "year_ago", "ytd", "prior_ytd", "last_fy"]
     if count == 5:
@@ -1466,6 +1482,8 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         for item, cell in cells.items():
             if item == "_fails":
                 continue
+            if cell["ptype"] == "ytd" and cell["period_end"][5:7] not in ("09", "12"):
+                continue
             fiscal, start, ptype = _quarter(cell["period_end"], cell["ptype"])
             unit = "inr_per_share" if item.startswith("eps_") else "inr"
             detail = []
@@ -1530,8 +1548,8 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
         if covered and header != default:
             chance = header
     bases = [basis_hint] if basis_hint else (["consolidated", "standalone"] if xbrl else ["unchecked"])
-    target = list(hint) if hint else None
-    candidates: list[list[str]] = []
+    target = list(hint) if (hint and end[5:7] != "06") else None
+    candidates: list[list[str | None]] = []
     for roles in (target, chance, default):
         if roles is not None and roles not in candidates:
             candidates.append(roles)
@@ -1557,24 +1575,24 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
             "header_used": bool(chance and roles == chance)}
 
 
-def _roles_from_dates(dates, end: str, default: list[str], count: int) -> tuple[list[str], bool]:
+def _roles_from_dates(dates, end: str, default: list[str | None], count: int) -> tuple[list[str | None], bool]:
     """Header order: the day/month/year each column prints, checked against the role's expected date.
 
     Quarter columns come first and the ytd/year columns after them in every Indian results layout, so each
     group of roles is permuted over its own slots and the permutation the dates support best wins; the layout's
     own order breaks a tie (HDFCBANK's year-ago column is misread 39.09.2026 -- the count and the quarter
     decide).  A company that puts the year-ago before the preceding quarter (HINDUNILVR) is still read right."""
-    expected = {role: _expected_date(role, end) for role in default}
+    expected = {role: _expected_date(role, end) for role in default if role}
     quarter = [r for r in default if r in ("current", "preceding", "year_ago")]
     group = [r for r in default if r not in ("current", "preceding", "year_ago")]
 
-    def best_order(roles: list[str], start: int) -> list[str]:
+    def best_order(roles: list[str | None], start: int) -> list[str | None]:
         best, best_score = list(roles), -1
-        for perm in itertools.permutations(roles):
+        for perm in dict.fromkeys(itertools.permutations(roles)):
             score = 0
             for i, role in enumerate(perm):
                 at = start + i
-                if dates and at < len(dates) and _date_match(dates[at], expected[role]):
+                if role and dates and at < len(dates) and _date_match(dates[at], expected[role]):
                     score += 1
             score = score * 10 + sum(1 for i, role in enumerate(perm) if role == roles[i])
             if score > best_score:

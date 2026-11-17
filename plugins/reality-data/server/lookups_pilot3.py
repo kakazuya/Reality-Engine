@@ -521,8 +521,11 @@ _INR_UNIT_MULTIPLIER = {
 }
 
 
-def _money_inr_cr(value: Any, unit: str | None, scale: Any = None) -> tuple[float, float] | None:
-    """Return ``(value_inr, value_cr)`` for an INR money figure, else None for non-money / per-share / FX units."""
+def _money_inr_cr(value: Any, unit: str | None, scale: Any = None) -> tuple[float, float | None] | None:
+    """Return ``(value_inr, value_cr)`` for an INR money figure, else None for non-money / per-share / FX units.
+
+    ``value_cr`` is omitted (``None``) when the magnitude is under 0.01 crore (Rs. 1 lakh) so tiny rupee figures do
+    not round to ``0.0``."""
     if value is None or isinstance(value, bool):
         return None
     try:
@@ -541,14 +544,17 @@ def _money_inr_cr(value: Any, unit: str | None, scale: Any = None) -> tuple[floa
         sc = None
     mult = sc if (sc is not None and sc != 1.0) else unit_mult
     inr = num * mult
-    return inr, round(inr / 1e7, 2)
+    cr = round(inr / 1e7, 2) if abs(inr) >= 1e5 else None
+    return inr, cr
 
 
 def _add_money(row: dict[str, Any], value: Any, unit: str | None, scale: Any = None) -> dict[str, Any]:
-    """Attach ``value_inr`` and ``value_cr`` in place when ``(value, unit, scale)`` is an INR money figure."""
+    """Attach ``value_inr`` (and ``value_cr`` when >= 0.01 crore) in place when ``(value, unit, scale)`` is INR."""
     pair = _money_inr_cr(value, unit, scale)
     if pair is not None:
-        row["value_inr"], row["value_cr"] = pair
+        row["value_inr"] = pair[0]
+        if pair[1] is not None:
+            row["value_cr"] = pair[1]
     return row
 
 
@@ -2112,10 +2118,14 @@ def guidance(symbol: str, metric: str | None = None, period: str | None = None, 
                                     row_id=r["id"])}
         low_money = _money_inr_cr(r["low"], r["unit"])
         if low_money is not None:
-            item["low_inr"], item["low_cr"] = low_money
+            item["low_inr"] = low_money[0]
+            if low_money[1] is not None:
+                item["low_cr"] = low_money[1]
         high_money = _money_inr_cr(r["high"], r["unit"])
         if high_money is not None:
-            item["high_inr"], item["high_cr"] = high_money
+            item["high_inr"] = high_money[0]
+            if high_money[1] is not None:
+                item["high_cr"] = high_money[1]
         if r["entity_unsure"]:
             item["entity_unsure"] = True    # the text named a candidate the store cannot prove is a subsidiary
         out.append(_add_check(item, r))
@@ -3246,9 +3256,10 @@ def _ref_input(symbol: str, ref: str, basis: str | None, cutoff: str | None) -> 
             total += (r["value"] or 0.0) * (r["scale"] or 1.0)
             unit = unit or r["unit"]
         if len(seen) == 4:                                        # a trailing twelve months, no fewer
-            out.update(value=total, unit=unit, period=f"LTM to {when or cutoff}",
+            ltm_unit = "inr" if _money_inr_cr(1.0, unit) is not None else unit
+            out.update(value=total, unit=ltm_unit, period=f"LTM to {when or cutoff}",
                        source={"table": "fin_quarter_xbrl", "doc_key": None, "page": None})
-            _add_money(out, total, unit, 1.0)
+            _add_money(out, total, ltm_unit, 1.0)
         return out
     rows = _q(f"SELECT value, unit, scale, source_file FROM fin_quarter_xbrl WHERE symbol=? AND fiscal_period=? "
               f"AND basis=? AND line_item=?{extra} ORDER BY known_at DESC LIMIT 1",

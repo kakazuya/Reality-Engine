@@ -416,3 +416,127 @@ def test_unit_is_read_only_where_the_page_declares_it():
         assert _unit(text) == scale, text
     assert _unit("has already made a provision of Rs. 20 crore during the year") is None
     assert _unit("exceptional item includes Rs 17.82 crore towards arbitration") is None
+
+
+# ---------------------------------------------------------------- R-020: June-end layouts never write FYFY ytd rows ----------------
+def test_june_role_sets_and_quarter_guard():
+    assert cmp._role_set("2026-06-30", 4) == ["current", "preceding", "year_ago", "last_fy"]
+    assert cmp._role_set("2026-06-30", 5) == ["current", "preceding", "year_ago", None, "last_fy"]
+    assert cmp._role_set("2026-06-30", 6) == ["current", "preceding", "year_ago", None, None, "last_fy"]
+    assert cmp._role_set("2026-06-30", 8) == ["current", "preceding", "year_ago", "last_fy"]
+    with pytest.raises(ValueError):
+        cmp._quarter("2026-06-30", "ytd")
+
+
+def _june_rows(vals_per_row):
+    return [
+        ("1 Revenue from operations", vals_per_row[0]),
+        ("2 Other income", vals_per_row[1]),
+        ("3 Total income", vals_per_row[2]),
+        ("4 Total expenses", vals_per_row[3]),
+        ("5 Profit before exceptional items and tax", vals_per_row[4]),
+        ("6 Total tax expense", vals_per_row[5]),
+        ("7 Profit for the period", vals_per_row[6]),
+        ("8 Basic EPS", vals_per_row[7]),
+    ]
+
+
+def _page_n(rows, dates, title="Statement of Standalone Unaudited Financial Results",
+            subhead="", unit="Rs. inCrore"):
+    cols = tuple(200.0 + 70.0 * i for i in range(len(dates)))
+    words = [(40.0, 5.0, 120.0, 13.0, title, 0, 0, 0), (40.0, 15.0, 110.0, 23.0, unit, 0, 0, 0)]
+    if subhead:
+        words.append((200.0, 20.0, 480.0, 28.0, subhead, 0, 0, 0))
+    words += [(cols[i] - 7.0 * len(text), 27.0, cols[i], 33.0, text, 0, 0, 0) for i, text in enumerate(dates)]
+    for idx, (label, values) in enumerate(rows):
+        y = 50.0 + 10.0 * idx
+        x = 20.0
+        for word in label.split():
+            w = 7.0 * len(word)
+            words.append((x, y - 3.0, x + w, y + 3.0, word, 0, 0, 0))
+            x += w + 3.0
+        words += [(cols[i] - 7.0 * len(v), y - 3.0, cols[i], y + 3.0, v, 0, 0, 0) for i, v in enumerate(values)]
+    return cmp.rows_from_words(words)
+
+
+def test_june_five_col_two_fy_layout_takes_last_fy_and_drops_prior_fy():
+    """MENONBE layout: Q1, Q4, Q1-1, FY25, FY24 -> col 3 is last_fy, col 4 writes nothing, 0 FYFY."""
+    dates = ("30.06.2025", "31.03.2025", "30.06.2024", "31.03.2025", "31.03.2024")
+    rows = _june_rows([
+        ("500", "450", "400", "1,700", "2,000"),
+        ("10", "10", "10", "40", "50"),
+        ("510", "460", "410", "1,740", "2,050"),
+        ("400", "360", "320", "1,400", "1,650"),
+        ("110", "100", "90", "340", "400"),
+        ("28", "25", "22", "85", "100"),
+        ("82", "75", "68", "255", "300"),
+        ("1.5", "1.4", "1.2", "4.5", "5.3"),
+    ])
+    table = cmp.read_page(_page_n(rows, dates))
+    stored = cmp._table_rows(_conn(), "AAAA", "INE000A01001", "doc1", 5, "2025-07-25T12:00:00", table, {}, [])
+    assert not any(r[4].startswith("FYFY") or r[5] == "ytd" for r in stored)
+    rev_last = _cells(stored, "revenue_from_operations", "last_fy")
+    assert len(rev_last) == 1 and rev_last[0][3] == "2025-03-31" and rev_last[0][4] == "FY25"
+    assert rev_last[0][11] == 1700 * 1e7
+
+
+def test_june_five_col_ytd_plus_fy_layout_takes_col4_as_last_fy():
+    """HYPERSOFT layout: Q1, Q4, Q1-1, Q1-YTD (30.06), FY25 (31.03) -> col 3 writes nothing, col 4 is last_fy."""
+    dates = ("30.06.2025", "31.03.2025", "30.06.2024", "30.06.2025", "31.03.2025")
+    rows = _june_rows([
+        ("992.00", "777.00", "14.00", "992.00", "805.00"),
+        ("3.00", "5.00", "3.00", "3.00", "6.00"),
+        ("995.00", "782.00", "17.00", "995.00", "811.00"),
+        ("882.00", "654.00", "18.00", "882.00", "763.00"),
+        ("113.00", "128.00", "(1.00)", "113.00", "48.00"),
+        ("29.00", "13.00", "0.00", "29.00", "13.00"),
+        ("84.00", "115.00", "(1.00)", "84.00", "35.00"),
+        ("2.00", "2.70", "0.00", "2.00", "0.80"),
+    ])
+    table = cmp.read_page(_page_n(rows, dates))
+    stored = cmp._table_rows(_conn(), "AAAA", "INE000A01001", "doc1", 4, "2025-08-13T12:00:00", table, {}, [])
+    assert not any(r[4].startswith("FYFY") or r[5] == "ytd" for r in stored)
+    rev_last = _cells(stored, "revenue_from_operations", "last_fy")
+    assert len(rev_last) == 1 and rev_last[0][3] == "2025-03-31" and rev_last[0][4] == "FY25"
+    assert rev_last[0][11] == 805 * 1e7
+
+
+def test_june_six_col_december_year_skips_six_month_columns():
+    """RSYSTEMS layout: 3M cols + 6M June-end cols + Dec-year FY -> 6M cols write nothing, no FYFY."""
+    dates = ("30.06.2026", "31.03.2026", "30.06.2025", "30.06.2026", "30.06.2025", "31.12.2025")
+    rows = _june_rows([
+        ("600", "575", "462", "1,175", "904", "1,958"),
+        ("1", "17", "47", "18", "49", "54"),
+        ("601", "592", "509", "1,193", "953", "2,012"),
+        ("522", "502", "410", "1,024", "798", "1,732"),
+        ("79", "90", "99", "169", "155", "280"),
+        ("25", "24", "23", "49", "41", "69"),
+        ("54", "66", "76", "120", "114", "211"),
+        ("4.5", "5.5", "6.3", "10.0", "9.5", "17.6"),
+    ])
+    table = cmp.read_page(_page_n(rows, dates, subhead="Three months ended Six months ended Year ended"))
+    stored = cmp._table_rows(_conn(), "AAAA", "INE000A01001", "doc1", 3, "2026-08-04T12:00:00", table, {}, [])
+    assert not any(r[4].startswith("FYFY") or r[5] == "ytd" for r in stored)
+    assert {r[6] for r in stored} == {"current", "preceding", "year_ago", "last_fy"}
+    assert _cells(stored, "revenue_from_operations", "last_fy")[0][11] == 1958 * 1e7
+
+
+def test_june_eight_col_side_by_side_reads_standalone_last_fy_only():
+    """8-col side-by-side Q1 (BLKASHYAP/SESHAPAPER): col 3 is standalone last_fy, cols 4-7 write nothing."""
+    dates = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026",
+             "30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026")
+    rows = _june_rows([
+        ("492.00", "591.00", "385.00", "1,710.00", "493.00", "592.00", "386.00", "1,711.00"),
+        ("13.00", "12.00", "14.00", "49.00", "12.00", "12.00", "14.00", "49.00"),
+        ("505.00", "603.00", "399.00", "1,759.00", "505.00", "604.00", "400.00", "1,760.00"),
+        ("460.00", "570.00", "360.00", "1,650.00", "461.00", "571.00", "361.00", "1,651.00"),
+        ("45.00", "33.00", "39.00", "109.00", "44.00", "33.00", "39.00", "109.00"),
+        ("11.00", "6.00", "13.00", "24.00", "12.00", "6.00", "13.00", "24.00"),
+        ("34.00", "27.00", "26.00", "85.00", "32.00", "27.00", "26.00", "85.00"),
+        ("5.60", "4.50", "4.30", "14.10", "5.30", "4.50", "4.30", "14.10"),
+    ])
+    table = cmp.read_page(_page_n(rows, dates, title="Statement of Standalone and Consolidated Financial Results"))
+    stored = cmp._table_rows(_conn(), "AAAA", "INE000A01001", "doc1", 2, "2026-08-05T12:00:00", table, {}, [])
+    assert not any(r[4].startswith("FYFY") or r[5] == "ytd" for r in stored)
+    assert {r[6] for r in stored} == {"current", "preceding", "year_ago", "last_fy"}
+    assert _cells(stored, "revenue_from_operations", "last_fy")[0][11] == 1710 * 1e7

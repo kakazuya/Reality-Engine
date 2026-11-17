@@ -885,7 +885,10 @@ Four general rules, no company name in code.
   change) / revenue, quarterly and annual, non-lenders only. HINDUNILVR Q2 FY27 consolidated 47.57% (materials
   6,408 cr + purchases 3,654 cr - inventory change 507 cr over revenue 18,226 cr).
 - **Valuation history.** The printed role pool depends on the current quarter end and the column count
-  (`_role_set`), so a Q1 table's "year ended" column is `last_fy`, a Q4 table's is `ytd`/`prior_ytd` and a five- or
+  (`_role_set`): a Q1 (June-end) table has no March-FY year-to-date columns (4/8-column Q1 layouts use
+  `current, preceding, year_ago, last_fy`; 5/6-column June layouts, including December-year six-month tables,
+  leave non-March `ytd`/`prior_ytd` slots `None` so no June-end `ytd` row is ever stored and `_quarter` refuses
+  `ytd` outside September/December), a Q4 table's "year ended" column is `ytd`/`prior_ytd` and a five- or
   six-column Q2/Q3 table carries `last_fy`; `_assign_tokens` matches values to columns monotonically, so a missing
   middle cell cannot slide the half-year EPS under the year-ago quarter. `_valuation` picks the basis with both a
   share count and a quarterly statement (a stray consolidated printed page no longer strands the standalone filer,

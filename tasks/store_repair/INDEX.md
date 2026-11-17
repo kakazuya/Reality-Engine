@@ -9,9 +9,10 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-013 | open | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general |  |
 | R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-014 | open | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general |  |
-| R-019 | open | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
+| R-020 | fix_written | wrong | 20/91 (scan) | 3 |  | 60 | comparatives | general |  |
+| R-019 | fix_written | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
 | R-017 | fix_written | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c48, c49, c50, c51, c52, c53, c54, c55, c56, c59, c60, c61, c62, c63, c64, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
-| R-016 | open | missed | 16/91 (trial) | 1 | 17 (16) | 33 | kpi | general |  |
+| R-016 | open | missed | 16/91 (trial) | 1 | 17 (16) | 33 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-018 | open | missed | 9/91 (scan) | 1 | 1 (1) | 10 | holding | general |  |
 | R-001 | open | missed |  | 1 |  |  | guidance | general |  |
 | R-002 | fix_written | missed |  | 1 |  |  | docs_collect | general | c08 |
@@ -213,26 +214,26 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 1. **Why it had to be done** (question that exposed it, all): Trial 1: three-year ROCE/ROE trend, FY24 cash flow, capex commitments, PP&E/CWIP schedule (JYOTISTRUC, VIDHIING, KRYSTAL, BIRLACABLE, POLYPLEX, SAKAR, FAZE3Q, BBL, DBOL)
 2. **What the problem was:** 21 trial-1 answers graded not_extracted; 12 of them need an annual-report statement or note the store holds as page text only: cash-flow statement before FY25 (KRYSTAL, BIRLACABLE, POLYPLEX, SAKAR), the Key Financial Ratios note (JYOTISTRUC, VIDHIING), PP&E/CWIP schedule (FAZE3Q), capital commitments (BBL), other operating revenue (DBOL). **Root cause:** fin_annual_line is filled from XBRL (FY25 onward) and printed quarterly results; annual-report statements and notes are read only as page text, so earlier years and note-level lines have no rows.
 3. **What was missing:** Rows from the AR cash-flow statement (CFO, capex, both columns), the ratios note (printed ROCE/ROE/margins with year), PP&E/CWIP movement and capital commitments.
-4. **How it was fixed:** Part 1 done 17 Nov (T-222): pilot3/ar_statements.py reads every printed cash-flow statement (both columns, both bases) into fin_annual_line source_table='ar_statement', gated by CFO+CFI+CFF = net change; XBRL years keep XBRL; 755/813 columns pass, 630/666 printed totals agree with XBRL; 11,422 rows in 76 stores; three fresh-session reviews, round 3 passed. Cash-flow store-years printed but empty: 80 -> 8.
-5. **What can come next:** T-223: segment note, borrowings note, revenue break-up and PP&E/CWIP notes on the same frame; then BS/P&L for pre-FY25 years and the ratios note; re-ask the 12 trial-1 questions in trial 2
+4. **How it was fixed:** Part 1 (T-222, 17 Nov): AR cash-flow reader, 11,422 rows in 76 stores. Part 2 (T-223, 18 Nov): pilot3/ar_notes.py reads the borrowings (non-current/current/unclassified), revenue-from-operations break-up and finance-cost notes into fin_annual_line source_table='ar_note' (items add up to the printed total; sub-tables, four-column and two-up blocks cut; unit above the first figure; basis from title phrases); 4 independent review rounds, round 4 PASS 23/23; written to all 91 stores: 3,332 rows in 47 stores, 0 removed. A recovery of refused regions (+2,062 rows, 62 stores) is in review.
+5. **What can come next:** merge the recovery after its review; PP&E/CWIP movement, capital commitments, ratios note, pre-FY25 BS/P&L; re-ask the 12 trial-1 questions in trial 2
 - **Kind:** missed (annual-report statements and notes are held as page text but not turned into rows; doc_map (17 Nov) finds the sections and no reader fills them: PP&E note printed but empty in 85 stores, capital commitments 72, CWIP 64, revenue break-up 60, finance costs 61, cash flow (pre-FY25) 75); **severity:** 85/91 companies (scan); **criticality:** 1; **trial questions failed:** 11; **priority:** 96
-- **Code:** reality_engine/pilot3/ar_statements.py
+- **Code:** reality_engine/pilot3/ar_statements.py, reality_engine/pilot3/ar_notes.py
 - **Store tables touched:** fin_annual_line, ratio_panel, page_cell
 - **Tags:** trial1, not_extracted; **scope:** general
-- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91; runs: 20261117T131627, 20261117T131912, 20261117T134249, 20261117T141620, 20261117T144250
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91; runs: 20261117T131627, 20261117T131912, 20261117T134249, 20261117T141620, 20261117T144250, 20261118T004719, 20261118T010832
 
 ## R-016 (open, part `kpi`, opened 2026-11-17)
 
 1. **Why it had to be done** (question that exposed it, all): Trial 1: segment results, bank NIM, volumes (NILKAMAL Retail EBIT, DHANBANK yield/NIM, ALICON tonnage, DBOL cane crushed)
 2. **What the problem was:** Segment tables in quarterly results (NILKAMAL p4) and KPI tables in decks/calls (DHANBANK NIM, ALICON tonnage, DBOL cane crushed/recovery, MANINFRA cash+investments 697.6 cr) are held as page text with no row; answers said 'not disclosed' and were graded wrong or partly. **Root cause:** kpi extraction keys on known metric labels; segment result tables and sector KPIs outside its dictionary give no row.
 3. **What was missing:** segment revenue/result rows from the results' segment note; sector KPI dictionary entries for banks (NIM, yield, cost of deposits) and process industries (tonnage, crushing, recovery).
-4. **How it was fixed:** Proposed: segment-note reader for quarterly results (Ind AS 108 table: segment, revenue, result, period columns) and dictionary entries for the named KPIs.
-5. **What can come next:** Count how many of the 91 stores print a segment note; prototype on NILKAMAL p4; re-ask in trial 2.
+4. **How it was fixed:** 18 Nov (T-223, branch Eagle-T-223-readers): pilot3/segments_printed.py reads the Ind AS 108 segment table printed in quarterly results into kpi_series source_type='printed_segment' (revenue, EBIT, assets, liabilities, capital employed; segments add up to the printed total; column roles from header dates checked against the filing's P&L, never the same page; basis from the title rows); 5 independent review rounds, round 5 PASS 20/20; kpi_series UNIQUE key gains basis (kpi.ensure_unique_with_basis). Written to all 91 stores: 2,632 rows in 19 stores, 0 removed.
+5. **What can come next:** sector KPI dictionary (bank NIM/yield, tonnage, cane crushed) and deck/call KPI tables; re-ask the trial-1 segment questions in trial 2
 - **Kind:** missed (printed tables in results, decks and announcements (segments, NIM, tonnage, fund use, project cards) are held as page text but not turned into rows); **severity:** 16/91 companies (trial); **criticality:** 1; **trial questions failed:** 17; **priority:** 33
-- **Code:** -
+- **Code:** reality_engine/pilot3/segments_printed.py, reality_engine/pilot3/kpi.py::ensure_unique_with_basis
 - **Store tables touched:** kpi_series, fin_quarter_printed
 - **Tags:** trial1, not_extracted; **scope:** general
-- **Stores repaired:** -; runs: -
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91; runs: 20261117T233908, 20261117T233945, 20261118T002837
 
 ## R-017 (fix_written, part `kpi`, opened 2026-11-17)
 
@@ -260,15 +261,28 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Tags:** trial1, raw_missing; **scope:** general
 - **Stores repaired:** -; runs: -
 
-## R-019 (open, part `tools`, opened 2026-11-17)
+## R-019 (fix_written, part `tools`, opened 2026-11-17)
 
 1. **Why it had to be done** (question that exposed it, -): trial 1 qids 150, 7630, 4678, 4686, 7070, 6394, 6437, 4519, 6231
 2. **What the problem was:** 9 trial-1 answers wrong or partly from a misreading of a right row (BLKASHYAP ROE 0.53% for 5.39% from net worth 526.76 cr read as 5267.6; PREMEXPLN 2024 '500-600 crore' target quoted though calls state a 1,000 cr run rate; HYPERSOFT quarter revenue; NRAIL promoter group summed from two holders instead of the 74.29% category row; RAJRILTD price before 2024) **Root cause:** tool replies give value and unit separately and leave the scale and the superseding row to the answerer
 3. **What was missing:** a normalised value in crore beside every money figure, a superseded_by link on guidance rows, the category total in holding replies, BSE closes before the NSE series
-4. **How it was fixed:** -
-5. **What can come next:** p3ask/reality-data replies: add value_cr; guidance marks the latest row per target; holding returns the category row first; tech falls back to BSE closes
+4. **How it was fixed:** 18 Nov (branch Eagle-T-223-readers 9583845f): reality-data replies carry value_inr/value_cr on INR money, guidance is_latest/superseded_by, holding category totals first with part_of on holders, pilot3_tech falls back to BSE closes before the NSE series, pilot3_fact routes to fin_quarter_printed. Written by agy Hydrogen high, dsh review PASS (0 wrong numbers/links/PIT leaks over 82-92 stores). Restart the reality-data server to load it.
+5. **What can come next:** follow-ups in agy job b6ffb652 (no 0.0 crore below 0.01 cr; LTM rescale); re-ask the 9 trial-1 questions in trial 2
 - **Kind:** wrong (the stored row is right but the tool reply invites a wrong reading: lakh/crore/Mn scale, a superseded guidance row, a quarter revenue election, a category total not shown beside named holders, no price before the NSE series); **severity:** 8/91 companies (trial); **criticality:** 3; **trial questions failed:** 9; **priority:** 51
 - **Code:** -
 - **Store tables touched:** guidance, shp_category, price_delivery
 - **Tags:** units, guidance, holding, tech, reading; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-020 (fix_written, part `comparatives`, opened 2026-11-18)
+
+1. **Why it had to be done** (question that exposed it, -): found by agy R-019 job on HYPERSOFT (c90); scan 18 Nov: 1,334 fin_quarter_printed rows in 20 stores
+2. **What the problem was:** fin_quarter_printed rows labelled FYFY25/FYFY26/FYFY27 (period_end June) **Root cause:** comparatives._quarter maps a ytd period ending in June to the label 'FY' and prefixes FY again; segments_printed.periods_for refuses this case since 17 Nov, comparatives does not
+3. **What was missing:** the same rule in comparatives: a ytd/prior_ytd role at a June end is the quarter itself (or a non-March year) and is not stored as a year-to-date row
+4. **How it was fixed:** 18 Nov (T-223, branch Wolf-agy-20261117T195129Z-b6ffb652): comparatives._quarter now raises ValueError on ytd at a non-09/12 end; _role_set maps June (m==6) layouts to ['current','preceding','year_ago','last_fy'] (4 or >=7 cols), placing None on H1/duplicate cols (5 cols -> [...,None,'last_fy'], 6 cols -> [...,None,None,'last_fy']) instead of ytd/prior_ytd; _roles skips _layout_hint on June-end tables and _roles_from_dates ignores None placeholders; _table_rows drops any residual ytd row outside 09/12. Dry-run on .tmp copies of all 20 stores took FYFY rows 1,334 -> 0 (HEAD re-run vs fix confirmed 0 rows changed outside June-end pages).
+5. **What can come next:** Re-run store_repair --part comparatives on the 20 stores.
+- **Kind:** wrong (a June-quarter results column with role ytd/prior_ytd is stored with fiscal_period 'FYFY<yy>' (period_type ytd): a label no question can match, and for a non-March company a wrong period); **severity:** 20/91 companies (scan); **criticality:** 3; **trial questions failed:** -; **priority:** 60
+- **Code:** reality_engine/pilot3/comparatives.py::_quarter, _role_set, _roles, _roles_from_dates, _table_rows
+- **Store tables touched:** fin_quarter_printed
+- **Tags:** period, ytd, june; **scope:** general
 - **Stores repaired:** -; runs: -
