@@ -5,45 +5,49 @@ services, other operating revenue) and finance costs are printed as a note with 
 stores held them only as page text.  No model; the frame is the cash-flow reader's (``ar_statements``):
 
 1. Notes: on every annual-report page, a short, title-like heading line (<= 70 characters, no ':' followed by more words
-   after the note number, no sentence words such as 'includes', 'amount of', 'ratio', 'details of') that names the
-   note ('16 Long term borrowings', 'Note 11(b) - Financial Liabilities - Borrowings (Current)', '25 Revenue from
-   operations', '28 Finance costs') opens it; the note runs until the next numbered heading, a second table printed inside
-   it (disaggregation, reconciliation with contract price, break-up of revenue / transacted price / price adjustments,
-   geography, terms of repayment, ...: ``_SUBTABLE``) or the page end.  A date line ('31st March 2026', '31-Mar-2025',
-   '31-Mar-25', 'Mar-25') is never a heading; a '(Contd.)' heading opens nothing.  On a two-up page (two blocks printed
-   side by side), each note region is restricted horizontally to its own block (heading left edge minus a small margin
-   up to the next side-by-side block's left edge) before reading columns, units or lines.
+   after the note number, no sentence words such as 'includes', 'amount of', 'ratio', 'details of', and never a
+   statement line carrying figures like 'Revenue from Operations 31 59,461.09 49,433.28') that names the note
+   ('16 Long term borrowings', 'Note 11(b) - Financial Liabilities - Borrowings (Current)', '25 Revenue from
+   operations', '28 Finance costs') opens it.  On a two-up page (two blocks printed side by side), headings are matched
+   strictly per chunk (never across a horizontal column gap except a bare note-number prefix beside its title), and
+   each note region is cropped horizontally to its heading chunk before reading columns, units or lines.  Inside the
+   cropped note, the note runs until the next numbered heading or a second table printed inside it (disaggregation,
+   reconciliation, break-up of revenue/interest, transacted price adjustments, 'comprises', 'products-wise', 'details
+   of sales': ``_SUBTABLE``); if an outer lettered/roman section ('B) OTHER OPERATING INCOME') resumes after an
+   internal sub-table, the sub-table is skipped and the note continues to its true grand total.  A date line ('31st
+   March 2026', '31-Mar-2025', '31-Mar-25', 'Mar-25') is never a heading; a '(Contd.)' heading opens nothing.
 2. Columns: the first pair of period-end dates in the note, newer on the left (``_columns``, reading '31-Mar-2025' /
    '31-Mar-25' / 'Mar-25' and en-dash variants alongside full dates), else the nearest header printed above the heading
    in the same horizontal span; a note printed with more than two figure columns is not read.
 3. Lines: ``ar_statements._read_lines`` (words right of the prior column dropped, wrapped labels joined, page
-   furniture and footnotes dropped), re-keeping empty-label lines that print both figure columns as total candidates.
+   furniture and footnotes dropped), dropping wrapped date/header lines carrying day/year integers ('Particulars March
+   31 March 31' or split '2025 2024'), and re-keeping empty-label lines that print both figure columns as totals.
 4. Gate, per block and column: the item lines since the block opened (a 'Less:' line printed without a bracket
    is subtracted) add up to the next total line ('Total', 'Sub total', or a line that prints figures and no words,
    '(A)'), within the printed rounding.  A total that adds up ALL block totals and loose items since the (sub-)note
-   opened is the grand total; a second section total that does not add up everything since the (sub-)note opened is a
-   block total.  A grand total whose label is a combination of the block markers printed above it ('(A)+(B)+(C)',
-   'Total (a+b)', 'Total (A+B)') stays ``<note>_total`` whatever follows in the note.  Prose footnote lines (sentence
-   words or >8 words of text) never mark a block total as ``followed``.  A block that does not add up writes nothing;
-   a column where two rows would share a line_item writes nothing; a region where a (sub-)note's items do not sum to
-   its ``_total`` writes nothing.
-5. Rows: one per item and one per total.  ``line_item`` = ``<note>[:sub]:<item slug>``; the note total
-   ``<note>_total[:sub]`` is a marker-combination grand total, another grand total with no figures after it, or a lone
-   block with no figures after it in the (sub-)note; every other block total is
-   ``<note>[:sub]_subtotal:<caption>_<printed label>``.  A generic 'Borrowings' note split by 'Non-current' /
-   'Current' writes ``borrowings_noncurrent`` / ``borrowings_current``; unsplit it is ``borrowings_unclassified`` (never
-   read as total debt).  A note printing current and non-current columns side by side (four columns) is refused.  A
-   'Total (ii) Current' line closes the block and opens the current sub-note.  An item under a 'Less:' caption line is
-   subtracted; an all-zero column never passes the gate.  The unit comes from the lines strictly above the first figure
-   line of the note (never from footnotes below the figures), else the nearest unit line above its heading, else the
-   page's only unit.  An item is named by its own label; the bare caption above it (never a sentence) is prefixed only
-   when the label is a caption's tail ('In rupees') or two items would share a name.  A 'Less:' item is stored negative,
-   so a block's items sum to its total.  Unit from the note or page, ``fiscal_year`` from the column date.  Basis from a
-   title phrase in the page head ('Notes to the Consolidated Financial Statements', 'Standalone Balance Sheet'), else the
-   last such title on an earlier page of the report, never from prose; a report with no consolidated statement is
-   standalone outright.  ``known_at`` = the report's filing time, ``source_table='ar_note'``.  One page and column per
-   (year, basis, note), items, sub-totals and total together: the year's own report first, else the latest report's
-   prior column.
+   opened is the grand total (demoting an earlier intermediate grand if a subsequent outer section adds into a larger
+   all-items grand total); a second section total that does not add up everything since the (sub-)note opened is a
+   block total.  An unlettered trailing block whose total equals the sole preceding unlettered block total with no ~2x
+   grand total later is an alternative break-up and is stopped.  A grand total whose label combines block markers
+   ('(A)+(B)+(C)', 'Total (a+b)') stays ``<note>_total`` whatever follows.  Prose footnote lines (sentence words or >8
+   words of text) never mark a block total as ``followed``.  A block that does not add up writes nothing; a column where
+   two rows would share a line_item writes nothing; a region where a (sub-)note's items do not sum to its ``_total``
+   writes nothing.
+5. Tie-out gate (face statements): every emitted ``_total`` row (``revenue_from_operations_total``,
+   ``finance_costs_total``, ``borrowings_noncurrent_total``, ``borrowings_current_total``) is compared in rupees against
+   the held face-statement figure for ``(fiscal_year, basis)`` from ``fin_annual_line`` (statement 'P&L'/'BS',
+   ``period_type='FY'``, preferring ``facts`` -> ``ar_facts`` -> others) or ``fin_quarter_printed`` (Q4 full-year
+   columns: ``lower(period_type)='fy'`` and ``column_role IN ('ytd', 'prior_ytd')``), within the printed rounding of the
+   larger unit (e.g. 0.5 lakh or 0.01 crore) + 0.1%.  A disagreeing column writes nothing (logged as ``'total does not
+   tie to the statement'``); a note with no face figure held appends ``'; not tied to a statement figure'`` to its
+   rows' ``definition``.
+6. Rows & ranking: one per item and one per total.  ``line_item`` = ``<note>[:sub]:<item slug>``; ``<note>_total[:sub]``
+   is the note total.  A generic 'Borrowings' note ('NOTE 23 : BORROWINGS') is classified by the nearest Balance-Sheet
+   section heading above it ('NON-CURRENT LIABILITIES' / 'CURRENT LIABILITIES' on the page or previous page), else
+   split by 'Non-current' / 'Current' sub-blocks inside it; if still unsplit it stays ``borrowings_unclassified`` (never
+   displacing or standing alongside a classified borrowings note for the same ``(fiscal_year, basis)``).  One page and
+   column per ``(fiscal_year, basis, note)``: tied to the face statement first, then own column, latest report, and lower
+   page number within a document.
 
     python -m reality_engine.pilot3.ar_notes run --root D:/RealityEngine/tg_build/measure10 [--stores c18] [--dry --out <dir>]
 """
@@ -85,12 +89,18 @@ _HEADERISH = re.compile(r"particulars|year\s+ended|as\s+at|for\s+the\b|\b(in\s+l
                         r"\b(march|april|june|september|december)\b|\b20\d\d\b|overview|statutory|reports?\b", re.I)
 _CONT = re.compile(r"^\W*(in|from|on|of|by|for|to|with|under|-|–)\s", re.I)
 _CONTD = re.compile(r"\(?\s*cont(d|inued)?\b\.*\s*\)?", re.I)
-# a second table printed inside the note (disaggregation, reconciliation, terms of repayment): the note ends there
+# a second table printed inside the note (disaggregation, reconciliation, terms of repayment, break-up, comprises):
+# skipped if an outer lettered/roman section (e.g. 'B) OTHER OPERATING INCOME') resumes after it, else ends the note
 _SUBTABLE = re.compile(r"disaggregat|reconcil|contract\s+(balances|price|assets|liabilit)|timing\s+of|sales\s+channel|"
                        r"geograph|performance\s+obligation|unsatisfied|by\s+(nature|type|market|region|customer)|"
                        r"terms\s+(and|of)\s+(conditions|repayment)|repayment\s+(schedule|terms)|maturity\s+(profile|analysis)|"
                        r"rate\s+of\s+interest|nature\s+of\s+security|reportable\s+segment|"
-                       r"break[- ]?up\s+of\s+(?:revenue|sales)|transacted\s+price|(?:contract|transacted|price)\s+adjustments?", re.I)
+                       r"break[- ]?up\s+of\b|transacted\s+price|(?:contract|transacted|price)\s+adjustments?|"
+                       r"\bcomprises?\b|products?[- ]?wise|details\s+of\s+(?:sales|revenue|borrowings|finance\s+costs?)", re.I)
+# Balance-Sheet section headers above an unclassified Borrowings note ('NON-CURRENT LIABILITIES', 'CURRENT LIABILITIES')
+_BS_SECTION = re.compile(r"^\s*(?:[ivx0-9a-z]{1,3}[.)]\s+)?(non\s*[-–]?\s*current\s+liabilities|current\s+liabilities)\b", re.I)
+_BS_RESET = re.compile(r"^\s*(?:[ivx0-9a-z]{1,3}[.)]\s+)?(?:(?:non\s*[-–]?\s*current\s+|current\s+)?assets|equity|shareholders'?\s+funds)\s*$", re.I)
+_BARE_NOTE_NUM = re.compile(r"^(?:note\s*[-:]?\s*)?\(?\d{1,2}(?:\.\d{1,2})?(?:\([a-z]\)|[a-z])?\)?[-:.)]*$", re.I)
 # the basis is read from a title line only ('Notes to the Consolidated Financial Statements', 'Standalone Balance
 # Sheet'), never from prose ('tracked at consolidated level')
 _BASIS_TITLE = re.compile(r"notes?\s+(forming\s+part\s+)?(of\s+|to\s+)?(the\s+)?(audited\s+)?(consolidated|stand[- ]?alone)|"
@@ -105,7 +115,7 @@ def title_basis(text: str) -> str | None:
     found = {("consolidated" if m.group(0).lower().find("consolidated") >= 0 else "standalone")
              for m in _BASIS_TITLE.finditer(text or "")}
     return found.pop() if len(found) == 1 else None
-_SUBBLOCK = re.compile(r"^\W*(\(?[a-z0-9]{1,3}\)\s*)?(non\s*[-–]?\s*current|current)\b(?!\s+(maturit|portion|tax|liabilit|assets))", re.I)
+_SUBBLOCK = re.compile(r"^\W*(?:\(?[a-z0-9]{1,3}[.):]\s*)?(non\s*[-–]?\s*current|current)\b(?!\s+(maturit|portion|tax|liabilit|assets))", re.I)
 # a header printing current and non-current columns side by side ('Current   Non-Current'): a four-column note
 
 
@@ -150,7 +160,7 @@ _MONTH_YEAR_RE = re.compile(
     rf"(?:\s*{_DASH_SEP}\s*(20\d\d|[1-3]\d)|\s+(20\d\d))(?![\w%])",
     re.I,
 )
-_DATE_FILLER = re.compile(r"\b(as\s+at|for\s+the|year\s+ended|period\s+ended)\b|[-–—.,:/()]", re.I)
+_DATE_FILLER = re.compile(r"\b(as\s+at|for\s+the|year\s+ended|period\s+ended|particulars|notes?(?:\s+no\.?)?|description|sr\.?\s*no\.?)\b|[-–—.,:/()]", re.I)
 
 
 def _date_of(text: str) -> list[tuple[int, int, str]]:
@@ -198,13 +208,18 @@ def _is_date_chunk(text: str) -> bool:
 
 def is_heading(text: str, max_len: int = 70) -> bool:
     """A short, title-like numbered note heading ('27 Finance costs', 'Note 11(b) - Borrowings'); a date line
-    ('31st March 2026  31st March 2025', '31-Mar-2025  31-Mar-2024') or a numbered prose sentence
-    ('2. Debt-Equity Ratio: Debt (includes ...)') is not one."""
+    ('31st March 2026  31st March 2025', '31-Mar-2025  31-Mar-2024'), a numbered prose sentence
+    ('2. Debt-Equity Ratio: Debt (includes ...)'), or a statement line carrying figures
+    ('Revenue from Operations 31 59,461.09 49,433.28') is not one."""
     t = text.strip()
     if len(t) > max_len or not _HEADING.search(t) or _ORDINAL.match(t) or _date_of(t):
         return False
     rest = _HEADING_PREFIX.sub("", t, count=1)
     if re.search(r":\s*[A-Za-z0-9]", rest) or _PROSE_HEADING.search(t):
+        return False
+    clean_rest = re.sub(r"\((?:refer|note|see|schedule|annexure)[^)]*\)", "", rest, flags=re.I)
+    fig_toks = [tok for tok in clean_rest.split() if any(ch.isdigit() for ch in tok) and A.number(tok) is not None]
+    if len(fig_toks) >= 2 or any(re.search(r"\d\.\d{2}\b|,\d{3}\b", tok) for tok in fig_toks):
         return False
     return True
 
@@ -243,8 +258,23 @@ def _split_chunks(words, line: list[int], gap_min: float = 40.0) -> list[list[in
     return chunks
 
 
+def _heading_segs(words, line: list[int]) -> list[list[int]]:
+    """Horizontal chunks of ``line`` for heading detection: merge a bare note number ('24.') only with the title
+    chunk immediately beside it, never merging two side-by-side blocks, and drop trailing unit/date chunks."""
+    chunks = _split_chunks(words, line)
+    if len(chunks) >= 2 and _BARE_NOTE_NUM.fullmatch(" ".join(words[i][4] for i in chunks[0]).strip()):
+        chunks = [chunks[0] + chunks[1]] + chunks[2:]
+    while len(chunks) >= 2:
+        tail = " ".join(words[i][4] for i in chunks[-1])
+        if (len(chunks[-1]) <= 4 and A._unit(tail)) or _is_date_chunk(tail):
+            chunks = chunks[:-1]
+        else:
+            break
+    return chunks
+
+
 def _line_heading_text(words, line: list[int]) -> str:
-    """Line text for heading checks, dropping far-right unit or date header chunks separated by a large gap."""
+    """Line text for single-column heading checks, dropping far-right unit or date header chunks."""
     chunks = _split_chunks(words, line)
     while len(chunks) >= 2:
         tail = " ".join(words[i][4] for i in chunks[-1])
@@ -256,28 +286,36 @@ def _line_heading_text(words, line: list[int]) -> str:
 
 
 def note_regions(words, lines) -> list[tuple[str, int, int]]:
-    """(note, first line index, end line index) for every note heading on the page."""
-    texts = [" ".join(words[i][4] for i in ln) for ln in lines]
-    heads = []
-    for n, (ln, t) in enumerate(zip(lines, texts)):
-        ht = _line_heading_text(words, ln)
-        name = note_of(ht)
-        if name:
-            heads.append((n, name))
-        elif is_heading(ht, max_len=90) and n > 0:
-            heads.append((n, None))         # another note's heading closes the previous one
-        else:
-            # two-up page: a target heading may start in a right-hand chunk on the same y-line
-            for seg in _split_chunks(words, ln)[1:]:
-                if (seg_name := note_of(" ".join(words[i][4] for i in seg))):
-                    heads.append((n, seg_name))
+    """(note, first line index, end line index) for every note heading on the page, matched per chunk."""
+    heads: list[tuple[int, str | None, int, int]] = []  # (line_idx, name_or_None, chunk_idx, n_chunks)
+    for n, ln in enumerate(lines):
+        segs = _heading_segs(words, ln)
+        matched = False
+        for idx, seg in enumerate(segs):
+            seg_txt = " ".join(words[i][4] for i in seg)
+            if (seg_name := note_of(seg_txt)):
+                heads.append((n, seg_name, idx, len(segs)))
+                matched = True
+                break
+        if not matched and n > 0:
+            for idx, seg in enumerate(segs):
+                seg_txt = " ".join(words[i][4] for i in seg)
+                if is_heading(seg_txt, max_len=90):
+                    heads.append((n, None, idx, len(segs)))
                     break
     out = []
-    for k, (n, name) in enumerate(heads):
+    for k, (n, name, idx, n_segs) in enumerate(heads):
         if not name:
             continue
-        end = heads[k + 1][0] if k + 1 < len(heads) else len(lines)
-        end = next((j for j in range(n + 1, end) if _SUBTABLE.search(texts[j])), end)
+        x0 = words[_heading_segs(words, lines[n])[idx][0]][0]
+        end = len(lines)
+        for m_n, _m_name, m_idx, m_n_segs in heads[k + 1:]:
+            m_x0 = words[_heading_segs(words, lines[m_n])[m_idx][0]][0]
+            # on a two-up line, a heading in a different horizontal column does not close this note
+            if (n_segs > 1 or m_n_segs > 1) and abs(m_x0 - x0) > 150.0:
+                continue
+            end = m_n
+            break
         out.append((name, n, end))
     return out
 
@@ -329,7 +367,7 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
     all_items: list[A.Line] = []      # every item in the current (sub-)note since it opened
     done: list[A.Line] = []           # block totals since the last grand total
     sub, group, head = "", "", ""
-    for ln in lines:
+    for ln_i, ln in enumerate(lines):
         label = ln.label.strip()
         v = ln.values[k] if ln.values else None
         if v is None and _SUBBLOCK.search(label) and len(label) < 40:
@@ -361,7 +399,32 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
                 else:
                     out.append((sub, list(items), ln, "block", head, False))
                     done = [ln]
+            elif (any(b[0] == sub and b[3] == "grand" for b in out)
+                  and _adds(all_items, ln, k) and all(readable(i.label) for i in parts)
+                  and _adds([next(b[2] for b in reversed(out) if b[0] == sub and b[3] == "grand")] + done + parts, ln, k)):
+                # an earlier block total matched all items seen up to that point, before another section (e.g. 'B)')
+                # arrived and summed into the true note grand total: demote the earlier one to 'block'
+                g_idx = max(idx for idx, b in enumerate(out) if b[0] == sub and b[3] == "grand")
+                gb = out[g_idx]
+                out[g_idx] = (gb[0], gb[1], gb[2], "block", gb[4] or "subtotal", True)
+                locked.discard(g_idx)
+                if _is_marker_grand(ln.label, [gb[2]] + done):
+                    locked.add(len(out))
+                out.append((sub, list(items), ln, "grand", "", False))
+                done = []
             elif parts and _adds(parts, ln, k) and all(readable(i.label) for i in parts):
+                # an unlettered trailing block whose total equals the sole preceding unlettered block total (with no
+                # grand total ~2x later in the column) is an alternative break-up of the same note total: stop here
+                if (len(done) == 1 and len(out) == 1 and out[0][0] == sub and out[0][3] == "block"
+                        and _adds([done[0]], ln, k) and not _block_markers(done[0].label) and not _block_markers(ln.label)):
+                    later_grand = any(
+                        _TOTAL.search(rem.label) and rem.values and rem.values[k] is not None
+                        and abs(rem.values[k]) > 1.5 * abs(ln.values[k])
+                        for rem in lines[ln_i + 1:]
+                    )
+                    if not later_grand:
+                        out = [b[:5] + (False,) if idx not in locked else b for idx, b in enumerate(out)]
+                        break
                 out.append((sub, list(items), ln, "block", head, False))
                 done.append(ln)
             elif not label:
@@ -406,6 +469,7 @@ class Row:
     definition: str
     own: bool
     source: str
+    tie_status: str = "no_face"
 
 
 _NON_LABEL_WORDS = re.compile(
@@ -466,7 +530,7 @@ def _columns_above(words, lines, first: int, x_left: float = float("-inf"), x_ri
 
 def _heading_span(words, line: list[int], note: str) -> tuple[float, float]:
     """(x_left, x_right) from the heading line: left edge minus margin, and right heading's left edge if two-up."""
-    chunks = _split_chunks(words, line)
+    chunks = _heading_segs(words, line)
     h_idx = 0
     if len(chunks) > 1:
         for idx, seg in enumerate(chunks):
@@ -507,15 +571,47 @@ def _right_block_edge(sub_words, sl: list[list[int]], centres: list[float]) -> f
     return float("inf")
 
 
+_OUTER_A = re.compile(r"^\s*(?:\([AI1]\)|[AI][.)])\s+[A-Za-z]")
+_OUTER_CAPS_CONT = re.compile(r"^\s*(?:\([B-Z]\)|[B-Z]\)|(?:II|III|IV|V)[.)])\s+[A-Z]{2,}")
+_OUTER_TITLE_CONT = re.compile(r"^\s*(?:\([B-Z]\)|[B-Z]\)|(?:II|III|IV|V)[.)])\s+[A-Z]")
+
+
 def _cut_subtable(sub_words, sl: list[list[int]]) -> tuple[list, list[list[int]]]:
-    """Stop at the first subsequent heading or sub-table header inside the cropped block."""
+    """Stop at the first subsequent heading; skip an internal sub-table if an outer section (e.g. 'B) OTHER...')
+    resumes after it, otherwise stop at the sub-table."""
     for j in range(1, len(sl)):
-        t = " ".join(sub_words[i][4] for i in sl[j])
-        ht = _line_heading_text(sub_words, sl[j])
-        if is_heading(ht, max_len=90) or _SUBTABLE.search(t):
+        segs0 = _heading_segs(sub_words, sl[j])[0]
+        if is_heading(" ".join(sub_words[i][4] for i in segs0), max_len=90):
             sl = sl[:j]
             sub_words = [sub_words[i] for ln in sl for i in ln]
             return sub_words, lines_of(sub_words)
+    texts = [" ".join(sub_words[i][4] for i in ln) for ln in sl]
+    kept: list[list[int]] = []
+    outer_a_before = False
+    j = 0
+    while j < len(sl):
+        t = texts[j]
+        fig_count = sum(1 for tok in t.split() if re.search(r"\d\.\d|,\d{3}", tok))
+        if j > 0 and _SUBTABLE.search(t) and not _TOTAL.search(t) and fig_count < 2:
+            resume = None
+            for k in range(j + 1, len(sl)):
+                kt = texts[k]
+                if _SUBTABLE.search(kt) or _TOTAL.search(kt):
+                    continue
+                if _OUTER_CAPS_CONT.match(kt) or (outer_a_before and _OUTER_TITLE_CONT.match(kt)):
+                    resume = k
+                    break
+            if resume is not None:
+                j = resume
+                continue
+            break
+        if j > 0 and _OUTER_A.match(t):
+            outer_a_before = True
+        kept.append(sl[j])
+        j += 1
+    if len(kept) != len(sl):
+        sub_words = [sub_words[i] for ln in kept for i in ln]
+        return sub_words, lines_of(sub_words)
     return sub_words, sl
 
 
@@ -572,17 +668,35 @@ def _parse_line_cols(words, line: list[int], centres: list[float], gap: float) -
     return label, vals, max(decs), quote, n_nums
 
 
+_MONTH_WORD = re.compile(
+    r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|june?|july?|aug(?:ust)?|"
+    r"sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b",
+    re.I,
+)
+
+
 def _read_lines(words, centres: list[float], page: int) -> list[A.Line]:
-    """Drop pure date-header lines (e.g. '31-Mar-2025 31-Mar-2024') so they never merge onto a lowercase first item,
-    run ``A._read_lines``, and re-insert empty-label lines that print exactly the note's two figure columns."""
+    """Drop pure date-header lines (e.g. '31-Mar-2025 31-Mar-2024', 'Particulars March 31 March 31') so they never
+    merge onto a lowercase first item, run ``A._read_lines``, and re-insert empty-label lines that print exactly the
+    note's two figure columns."""
     gap = abs(centres[1] - centres[0])
     # Filter pure date-header lines before A._read_lines so '31-Mar-2025 31-Mar-2024' (vals=[None, None]) cannot
     # merge with a lowercase first item ('a) Sale of Products').
     body_words: list = []
     for ln in lines_of(words):
-        label, vals, _, quote, _ = _parse_line_cols(words, ln, centres, gap)
+        label, vals, dec, quote, _ = _parse_line_cols(words, ln, centres, gap)
         line_text = " ".join(words[i][4] for i in ln)
-        if _is_date_chunk(line_text) or (vals == [None, None] and (
+        header_vals = (
+            vals != [None, None]
+            and dec == 0
+            and (
+                (all(v is None or (v == int(v) and (1 <= abs(v) <= 31 or 1990 <= abs(v) <= 2100)) for v in vals)
+                 and bool(_HEADERISH.search(label) or _MONTH_WORD.search(label)))
+                or (not label and vals[0] is not None and vals[1] is not None
+                    and 1990 <= vals[0] <= 2100 and 1990 <= vals[1] <= 2100 and abs(vals[0] - vals[1]) <= 2)
+            )
+        )
+        if _is_date_chunk(line_text) or header_vals or (vals == [None, None] and (
             _HEADERISH.search(label) or is_heading(label) or (len(label.split()) <= 5 and A._unit(label))
         )):
             continue
@@ -606,15 +720,143 @@ def _read_lines(words, centres: list[float], page: int) -> list[A.Line]:
     return out
 
 
-def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: str | None) -> tuple[list[Row], list[dict]]:
+_TIED_NOTES = {
+    "revenue_from_operations": ("P&L", ("revenue_from_operations",)),
+    "finance_costs": ("P&L", ("finance_cost", "finance_costs")),
+    "borrowings_noncurrent": ("BS", ("borrowings_noncurrent",)),
+    "borrowings_current": ("BS", ("borrowings_current",)),
+}
+_FACE_LINE_TO_NOTE = {
+    ("P&L", "revenue_from_operations"): "revenue_from_operations",
+    ("P&L", "finance_cost"): "finance_costs",
+    ("P&L", "finance_costs"): "finance_costs",
+    ("BS", "borrowings_noncurrent"): "borrowings_noncurrent",
+    ("BS", "borrowings_current"): "borrowings_current",
+}
+_CURRENCY_UNITS = {"inr", "inr_lakh", "inr_crore", "inr_million", "inr_thousand", "₹"}
+
+
+def load_face_targets(store_db: str) -> dict[tuple[str, str, str], tuple[float, float, str]]:
+    """Load face-statement targets ``(fiscal_year, basis, note) -> (value_inr, scale, unit)`` read-only.
+    Prefers ``fin_annual_line`` (``facts`` -> ``ar_facts`` -> others) over ``fin_quarter_printed`` Q4 full-year
+    columns (``lower(period_type)='fy'`` and ``column_role IN ('ytd', 'prior_ytd')``)."""
+    targets: dict[tuple[str, str, str], tuple[tuple, tuple[float, float, str]]] = {}
+    try:
+        dbp = Path(store_db)
+        if not dbp.is_file():
+            return {}
+        conn = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return {}
+    try:
+        try:
+            q1 = (
+                "SELECT fiscal_year, basis, statement, line_item, value, unit, scale, source_table, known_at "
+                "FROM fin_annual_line WHERE statement IN ('P&L', 'BS') AND period_type='FY' "
+                "AND value IS NOT NULL AND line_item IN "
+                "('revenue_from_operations', 'finance_cost', 'finance_costs', 'borrowings_noncurrent', 'borrowings_current')"
+            )
+            for fy, basis, stmt, li, val, unit, scale, src_tbl, ka in conn.execute(q1):
+                note = _FACE_LINE_TO_NOTE.get((stmt, li))
+                u = (unit or "").lower()
+                if not note or u not in _CURRENCY_UNITS or not scale or float(scale) <= 0:
+                    continue
+                src_rank = 2 if src_tbl == "facts" else (1 if src_tbl == "ar_facts" else 0)
+                prio = (1, src_rank, ka or "")
+                key = (fy, basis, note)
+                if key not in targets or prio > targets[key][0]:
+                    targets[key] = (prio, (float(val) * float(scale), float(scale), u))
+        except sqlite3.Error:
+            pass
+        try:
+            q2 = (
+                "SELECT fiscal_period, basis, statement, line_item, value, unit, scale, check_status, known_at "
+                "FROM fin_quarter_printed WHERE lower(period_type)='fy' "
+                "AND column_role IN ('ytd', 'prior_ytd') AND value IS NOT NULL "
+                "AND line_item IN ('revenue_from_operations', 'finance_cost', 'finance_costs')"
+            )
+            for fp, basis, stmt, li, val, unit, scale, cs, ka in conn.execute(q2):
+                note = _FACE_LINE_TO_NOTE.get((stmt, li))
+                u = (unit or "").lower()
+                if not note or u not in _CURRENCY_UNITS or not scale or float(scale) <= 0:
+                    continue
+                cs_s = (cs or "").lower()
+                prio = (0, 0 if cs_s == "unchecked" else 1, 1 if cs_s == "sum_ok" else 0,
+                        1 if cs_s == "xbrl_ok" else 0, 0 if cs_s == "repeat_ok" else 1, ka or "")
+                key = (fp, basis, note)
+                if key not in targets or prio > targets[key][0]:
+                    targets[key] = (prio, (float(val) * float(scale), float(scale), u))
+        except sqlite3.Error:
+            pass
+    finally:
+        conn.close()
+    return {k: v[1] for k, v in targets.items()}
+
+
+def _unit_round_inr(unit_name: str, scale: float, decimals: int) -> float:
+    step = 0.5 * (10 ** (-decimals)) * scale
+    if unit_name == "inr_crore":
+        return max(step, 0.01 * scale)
+    if unit_name == "inr_lakh":
+        return max(step, 0.5 * scale)
+    if unit_name == "inr_million":
+        return max(step, 0.05 * scale)
+    return step
+
+
+def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: float,
+                   face_entry: tuple[float, float, str] | None) -> str:
+    """'tied', 'disagree', or 'no_face' comparing note_total * scale against face statement figure in INR."""
+    if face_entry is None:
+        return "no_face"
+    face_inr, face_scale, face_unit = face_entry
+    note_inr = tot_val * note_scale
+    note_round = _unit_round_inr(note_unit, note_scale, tot_dec)
+    face_round = _unit_round_inr(face_unit, face_scale, 2 if face_unit == "inr_crore" else 0)
+    tol = max(note_round, face_round) + 0.001 * max(abs(note_inr), abs(face_inr)) + 1.0
+    return "tied" if abs(note_inr - face_inr) <= tol else "disagree"
+
+
+def _bs_section_above(words, lines: list[list[int]], first: int, x_left: float, x_right: float,
+                      doc_section: str | None) -> str | None:
+    """Nearest Balance Sheet section header ('borrowings_noncurrent' / 'borrowings_current') above line ``first``."""
+    for j in range(first - 1, -1, -1):
+        txt = " ".join(words[i][4] for i in lines[j] if x_left - 20.0 <= words[i][0] < x_right).strip()
+        if not txt:
+            continue
+        if _BS_RESET.match(txt):
+            return None
+        if (m := _BS_SECTION.match(txt)):
+            return "borrowings_noncurrent" if "non" in m.group(1).lower() else "borrowings_current"
+    for j in range(first - 1, -1, -1):
+        if len(_split_chunks(words, lines[j])) != 1:
+            continue
+        txt = " ".join(words[i][4] for i in lines[j]).strip()
+        if _BS_RESET.match(txt):
+            return None
+        if (m := _BS_SECTION.match(txt)):
+            return "borrowings_noncurrent" if "non" in m.group(1).lower() else "borrowings_current"
+    return doc_section
+
+
+def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: str | None,
+              doc_section: str | None = None,
+              face_targets: dict[tuple[str, str, str], tuple[float, float, str]] | None = None,
+              force_standalone: bool = False) -> tuple[list[Row], list[dict]]:
     pw = words_for(store_db, doc_key, page)
     if not pw.words:
         return [], []
+    if face_targets is None:
+        face_targets = load_face_targets(store_db)
     words = A._norm(pw.words)
     lines = lines_of(words)
     rows, log = [], []
     for reg_i, (note, first, end) in enumerate(note_regions(words, lines)):
         x_left, x_right = _heading_span(words, lines[first], note)
+        if note == "borrowings_unclassified":
+            sec = _bs_section_above(words, lines, first, x_left, x_right, doc_section)
+            if sec:
+                note = sec
         region = [i for ln in lines[first:end] for i in ln]
         sub_words = [words[i] for i in region if x_left <= words[i][0] < x_right]
         sl = lines_of(sub_words)
@@ -659,7 +901,9 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
             log.append({"page": page, "note": note, "ok": 0, "why": "no unit printed"})
             continue
         body = _read_lines(sub_words, cols[0], page)
-        basis = title_basis(" ".join(" ".join(words[i][4] for i in ln) for ln in lines[:12])) or doc_basis
+        basis = "standalone" if force_standalone else (
+            title_basis(" ".join(" ".join(words[i][4] for i in ln) for ln in lines[:12])) or doc_basis
+        )
         if basis not in ("standalone", "consolidated"):
             log.append({"page": page, "note": note, "ok": 0, "why": "basis not printed"})
             continue
@@ -667,6 +911,7 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
         n_ok = 0
         reg_rows: list[Row] = []
         reg_bad = False
+        tie_fail_logged = False
         for k in (0, 1):
             fy = A.fiscal_label(ends[k])
             own = ends[k] == max(ends)
@@ -682,11 +927,18 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
             base = [_slug(i.label) for b in found for _g, i in b[1]]
             clash = {n for n in base if base.count(n) > 1}
             decs_by_sub: dict[tuple[str, str], list[int]] = defaultdict(list)
+            tot_decs_by_sub: dict[tuple[str, str], int] = {}
+            split_subs = {b[0] for b in found if b[0]}
             for sub, items, total, kind, caption, followed in found:
                 n_ok += 1
-                # a generic 'Borrowings' note split into non-current / current is those two notes
-                nm, tag = (f"borrowings_{sub}", "") if note == "borrowings_unclassified" and sub else (note, f":{sub}" if sub else "")
+                # a Borrowings note split into non-current / current subsections is those two notes
+                split_borr = bool(sub) and (
+                    note == "borrowings_unclassified"
+                    or (note.startswith("borrowings_") and len(split_subs) > 1)
+                )
+                nm, tag = (f"borrowings_{sub}", "") if split_borr else (note, f":{sub}" if sub else "")
                 decs_by_sub[(nm, tag)].append(total.decimals)
+                tot_decs_by_sub[(nm, tag)] = total.decimals
                 for group, i in items:
                     own_label = _slug(i.label)
                     tail = bool(_CONT.match(i.label))      # 'In rupees', 'From banks', '- Term loans': a caption's tail
@@ -739,19 +991,57 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                     break
             if reg_bad:
                 break
-            reg_rows += col_rows
+            # tie-out gate against face statement when held; disagreeing note writes nothing
+            kept_col: list[Row] = []
+            for (nm, tag), _decs in decs_by_sub.items():
+                sub_rows = [r for r in col_rows if note_of_row(r.line_item) == nm and (not tag or f"{tag}:" in r.line_item or r.line_item == f"{nm}_total{tag}")]
+                tot_key = f"{nm}_total{tag}"
+                tot_rows = [r for r in sub_rows if r.line_item == tot_key]
+                if len(tot_rows) == 1 and not tag and nm in _TIED_NOTES:
+                    t_dec = tot_decs_by_sub.get((nm, tag), 2)
+                    status = _tie_out_check(tot_rows[0].value, t_dec, unit[0], unit[1], face_targets.get((fy, basis, nm)))
+                    if status == "disagree":
+                        log.append({"page": page, "note": nm, "ok": 0, "why": "total does not tie to the statement"})
+                        tie_fail_logged = True
+                        n_ok -= sum(1 for b in found if (f"borrowings_{b[0]}" if (bool(b[0]) and (note == "borrowings_unclassified" or (note.startswith("borrowings_") and len(split_subs) > 1))) else note) == nm)
+                        continue
+                    for r in sub_rows:
+                        r.tie_status = status
+                        if status == "no_face":
+                            r.definition = f"{r.definition}; not tied to a statement figure"
+                else:
+                    for r in sub_rows:
+                        r.tie_status = "no_face"
+                        r.definition = f"{r.definition}; not tied to a statement figure"
+                kept_col.extend(sub_rows)
+            reg_rows += kept_col
         if reg_bad:
             log.append({"page": page, "note": note, "ok": 0, "why": "items do not sum to total"})
             continue
         rows += reg_rows
+        if not reg_rows and tie_fail_logged:
+            continue
         log.append({"page": page, "note": note, "ok": n_ok, "why": "" if n_ok else "no block adds up"})
     return rows, log
+
+
+def _update_section(text: str, cur: str | None) -> str | None:
+    for ln in (text or "").splitlines():
+        t = ln.strip()
+        if not t:
+            continue
+        if _BS_RESET.match(t):
+            cur = None
+        elif (m := _BS_SECTION.match(t)):
+            cur = "borrowings_noncurrent" if "non" in m.group(1).lower() else "borrowings_current"
+    return cur
 
 
 def run_store(db: Path, store: str, dry: bool = False) -> dict:
     conn = sqlite3.connect(db if not dry else f"file:{db.as_posix()}?mode=ro", uri=dry)
     sym, isin = conn.execute("SELECT symbol, isin FROM company LIMIT 1").fetchone()
     docs = conn.execute("SELECT doc_key, known_at, filing_date FROM doc WHERE doc_type='annual_report'").fetchall()
+    face_targets = load_face_targets(str(db))
     cand, log = [], []
     heads = re.compile(r"borrowings|revenue\s+from\s+operations|finance\s+costs?", re.I)
     for doc_key, known_at, filing_date in docs:
@@ -761,28 +1051,38 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
         any_cons = any(re.search(r"consolidated\s+(balance\s+sheet|statement\s+of\s+profit|financial\s+statements)",
                                  t or "", re.I) for _, t in pages)
         last = None if any_cons else "standalone"
+        last_sec: str | None = None
         for page, text in pages:
             if any_cons:
                 # only a title phrase in the page head moves the running basis, never prose
-                last = title_basis((text or "")[:400]) or last
-            if not text or not heads.search(text):
-                continue
-            rows, lg = read_page(str(db), doc_key, page, known_at or filing_date or "", last)
-            if not any_cons:
-                for r in rows:
-                    r.basis = "standalone"        # a report with no consolidated statement is standalone outright
-            cand += rows
-            for x in lg:
-                log.append({"doc_key": doc_key, **x})
-    # one report per (year, basis, note): own column first, then the latest report
+                nxt = title_basis((text or "")[:400])
+                if nxt and nxt != last:
+                    last = nxt
+                    last_sec = None
+            if text and heads.search(text):
+                rows, lg = read_page(str(db), doc_key, page, known_at or filing_date or "", last,
+                                     doc_section=last_sec, face_targets=face_targets, force_standalone=not any_cons)
+                cand += rows
+                for x in lg:
+                    log.append({"doc_key": doc_key, **x})
+            last_sec = _update_section(text or "", last_sec)
+    # never let an unclassified borrowings note stand alongside or displace a classified one for the same (year, basis)
+    classified = {(r.fiscal_year, r.basis) for r in cand
+                  if note_of_row(r.line_item) in ("borrowings_noncurrent", "borrowings_current")}
+    cand = [r for r in cand
+            if note_of_row(r.line_item) != "borrowings_unclassified" or (r.fiscal_year, r.basis) not in classified]
+    # one report per (year, basis, note): tied to face statement first, then own column, latest report, lower page
     # one source per (year, basis, note): items, sub-totals and the total of a note always come from one page and column
+    def _rank(r: Row):
+        return (r.tie_status == "tied", r.own, r.known_at, r.doc_key, -r.page, r.source)
+
     best = {}
     for r in cand:
         key = (r.fiscal_year, r.basis, note_of_row(r.line_item))
-        rank = (r.own, r.known_at, r.doc_key, r.page, r.source)
+        rank = _rank(r)
         if key not in best or rank > best[key]:
             best[key] = rank
-    rows = [r for r in cand if (r.own, r.known_at, r.doc_key, r.page, r.source) == best[(r.fiscal_year, r.basis, note_of_row(r.line_item))]]
+    rows = [r for r in cand if _rank(r) == best[(r.fiscal_year, r.basis, note_of_row(r.line_item))]]
     if not dry:
         conn.execute("DELETE FROM fin_annual_line WHERE source_table=? AND symbol=?", (SOURCE_TABLE, sym))
         conn.executemany(
