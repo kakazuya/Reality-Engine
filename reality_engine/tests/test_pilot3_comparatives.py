@@ -424,8 +424,9 @@ def test_june_role_sets_and_quarter_guard():
     assert cmp._role_set("2026-06-30", 5) == ["current", "preceding", "year_ago", None, "last_fy"]
     assert cmp._role_set("2026-06-30", 6) == ["current", "preceding", "year_ago", None, None, "last_fy"]
     assert cmp._role_set("2026-06-30", 8) == ["current", "preceding", "year_ago", "last_fy"]
-    with pytest.raises(ValueError):
-        cmp._quarter("2026-06-30", "ytd")
+    assert cmp._quarter("2026-06-30", "ytd") is None
+    assert cmp._quarter("2026-03-31", "ytd") is None
+    assert cmp._quarter("2026-09-30", "ytd") == ("H1FY27", "2026-04-01", "ytd")
 
 
 def _june_rows(vals_per_row):
@@ -515,7 +516,9 @@ def test_june_six_col_december_year_skips_six_month_columns():
         ("4.5", "5.5", "6.3", "10.0", "9.5", "17.6"),
     ])
     table = cmp.read_page(_page_n(rows, dates, subhead="Three months ended Six months ended Year ended"))
-    stored = cmp._table_rows(_conn(), "AAAA", "INE000A01001", "doc1", 3, "2026-08-04T12:00:00", table, {}, [])
+    store_fy = {("unchecked", "2026-03-31"): {"revenue_from_operations": [1958 * 1e7]}}
+    stored = cmp._table_rows(_conn(), "AAAA", "INE000A01001", "doc1", 3, "2026-08-04T12:00:00",
+                             table, {}, [], store_fy=store_fy)
     assert not any(r[4].startswith("FYFY") or r[5] == "ytd" for r in stored)
     assert {r[6] for r in stored} == {"current", "preceding", "year_ago", "last_fy"}
     assert _cells(stored, "revenue_from_operations", "last_fy")[0][11] == 1958 * 1e7
@@ -540,3 +543,79 @@ def test_june_eight_col_side_by_side_reads_standalone_last_fy_only():
     assert not any(r[4].startswith("FYFY") or r[5] == "ytd" for r in stored)
     assert {r[6] for r in stored} == {"current", "preceding", "year_ago", "last_fy"}
     assert _cells(stored, "revenue_from_operations", "last_fy")[0][11] == 1710 * 1e7
+
+
+def test_date_match_requires_year_when_requested():
+    assert cmp._date_match((3, 2024), (3, 2024), require_year=True)
+    assert cmp._date_match((None, 2024), (3, 2024), require_year=True)
+    assert not cmp._date_match((3, None), (3, 2024), require_year=True)
+    assert not cmp._date_match((3, 2023), (3, 2024), require_year=True)
+
+
+def test_june_five_col_incomplete_year_row_and_store_fy_resolution():
+    """HYPERSOFT b4e661b1 layout: 5 date cells with 4 years on next line resolves FY24 over FY23;
+    without any year match or FY reference, neither annual column is guessed."""
+    rows = _june_rows([
+        ("13.93", "18.85", "24.60", "82.60", "86.95"),
+        ("3.37", "3.96", "1.57", "10.40", "9.05"),
+        ("17.30", "22.81", "26.17", "93.07", "96.00"),
+        ("18.49", "36.65", "28.52", "118.09", "104.37"),
+        ("(1.19)", "(13.84)", "(2.35)", "(25.02)", "(8.37)"),
+        ("0.00", "0.00", "0.00", "0.00", "0.00"),
+        ("(1.19)", "(13.84)", "(2.35)", "(25.02)", "(8.37)"),
+        ("(0.03)", "(0.33)", "(0.06)", "(0.59)", "(0.20)"),
+    ])
+    # 1) Split header: col 0 has June 30, 2024; cols 1..4 put years 2024, 2023, 2024, 2023 on the row below.
+    cols = tuple(200.0 + 70.0 * i for i in range(5))
+    top_dates = ("June, 30, 2024", "March, 31,", "June, 30,", "March 31,", "March 31,")
+    sub_years = ("2024", "2023", "2024", "2023")
+    words = [
+        (40.0, 5.0, 180.0, 13.0, "Statement of Audited Financial Results for the quarter ended 30-06-2024", 0, 0, 0),
+        (40.0, 15.0, 110.0, 23.0, "Rs. in Lakhs", 0, 0, 0),
+    ]
+    for i, t in enumerate(top_dates):
+        cx = cols[i] - 48.0
+        for part in t.split():
+            pw = 6.0 * len(part)
+            words.append((cx, 24.0, cx + pw, 30.0, part, 0, 0, 0))
+            cx += pw + 2.0
+    words += [(cols[i + 1] - 28.0, 32.0, cols[i + 1], 38.0, y, 0, 0, 0) for i, y in enumerate(sub_years)]
+    for idx, (label, values) in enumerate(rows):
+        y = 50.0 + 10.0 * idx
+        x = 20.0
+        for word in label.split():
+            w = 7.0 * len(word)
+            words.append((x, y - 3.0, x + w, y + 3.0, word, 0, 0, 0))
+            x += w + 3.0
+        words += [(cols[i] - 7.0 * len(v), y - 3.0, cols[i], y + 3.0, v, 0, 0, 0) for i, v in enumerate(values)]
+    table = cmp.read_page(cmp.rows_from_words(words))
+    assert table["dates"] == [(6, 2024), (3, 2024), (6, 2023), (3, 2024), (3, 2023)]
+    stored = cmp._table_rows(_conn(), "HYP", "INE000A01001", "doc1", 6, "2024-08-05T12:00:00", table, {}, [])
+    rev_last = _cells(stored, "revenue_from_operations", "last_fy")
+    assert len(rev_last) == 1 and rev_last[0][11] == pytest.approx(82.60 * 1e5)
+
+    # 2) Strip header years completely: without store_fy/XBRL, writes nothing for last_fy;
+    #    with store_fy holding FY24, resolves col 3 (FY24) rather than defaulting to col 4 (FY23).
+    table_no_yr = dict(table, dates=[(6, 2024), (3, None), (6, None), (3, None), (3, None)])
+    stored_none = cmp._table_rows(_conn(), "HYP", "INE000A01001", "doc1", 6, "2024-08-05T12:00:00", table_no_yr, {}, [])
+    assert _cells(stored_none, "revenue_from_operations", "last_fy") == []
+
+    store_fy = {("unchecked", "2024-03-31"): {"total_income": [93.07 * 1e5], "other_income": [10.40 * 1e5]}}
+    stored_fy = cmp._table_rows(_conn(), "HYP", "INE000A01001", "doc1", 6, "2024-08-05T12:00:00",
+                                table_no_yr, {}, [], store_fy=store_fy)
+    rev_last_fy = _cells(stored_fy, "revenue_from_operations", "last_fy")
+    assert len(rev_last_fy) == 1 and rev_last_fy[0][11] == pytest.approx(82.60 * 1e5)
+
+
+def test_june_eight_col_halves_must_match():
+    """Wide June pages whose halves differ (or single-basis mixed tables) are never read as Sx4+Cx4."""
+    dates = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026",
+             "30.06.2026", "30.09.2025", "30.06.2025", "31.03.2026")
+    rows = _june_rows([("100",) * 8, ("10",) * 8, ("110",) * 8, ("90",) * 8,
+                       ("20",) * 8, ("5",) * 8, ("15",) * 8, ("1.0",) * 8])
+    t_mismatch = cmp.read_page(_page_n(rows, dates, title="Statement of Standalone and Consolidated Financial Results"))
+    assert cmp._table_rows(_conn(), "AAAA", "INE000A01001", "doc1", 2, "2026-08-05T12:00:00", t_mismatch, {}, []) == []
+
+    dates_ok = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026") * 2
+    t_single = cmp.read_page(_page_n(rows, dates_ok, title="Statement of Standalone Financial Results"))
+    assert cmp._table_rows(_conn(), "AAAA", "INE000A01001", "doc1", 8, "2026-08-05T12:00:00", t_single, {}, []) == []

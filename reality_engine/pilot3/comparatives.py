@@ -2,9 +2,11 @@
 
 A quarterly results PDF prints, beside the current quarter, the preceding and year-ago quarters, the
 year-to-date and the last full year.  ``fin_quarter_xbrl`` holds only the window's quarters, so YoY, QoQ and
-TTM cannot be computed from XBRL alone.  For a June period end, ``ytd``/``prior_ytd`` are never emitted (at
-June a 5/6-column or 8-column side-by-side table holds quarters, an unmapped H1/repeat column, or ``last_fy``,
-which is stored only when header dates or P&L identities confirm it; see ``_role_set``).  This part rebuilds every P&L column from the page's **word boxes**
+TTM cannot be computed from XBRL alone.  For a June period end, ``ytd``/``prior_ytd`` are never emitted (``_quarter``
+refuses them with ``None``): wide (>=7-col) June pages are read only when ``_side_by_side_ok`` confirms mirrored
+S/C halves, and a June ``last_fy`` column is stored only when its previous-March year is matched in the header
+(``_date_match(..., require_year=True)``) or its values match XBRL/prior store FY rows (never by default position;
+see ``_role_set`` and ``_roles``).  This part rebuilds every P&L column from the page's **word boxes**
 (``page.get_text("words")``, rows by y-centre, columns by x) -- the stored page text scatters a table --
 maps each printed label to the canonical line item the XBRL store uses (``lexicon/results_lines.yaml``),
 and stores a cell only when a check confirms it: the XBRL value of that quarter (``xbrl_ok``) or one of the
@@ -84,6 +86,9 @@ def _month(text: str) -> int | None:
 _SINGLE_OCR = set("OoIltrsSE")
 _OCR = {"O": "0", "o": "0", "I": "1", "l": "1", "t": "1", "r": "1", "s": "5", "S": "5", "E": "8"}
 _DATE_ONE = re.compile(r"^(\d{1,2})\s*[.,/\-]\s*(\d{1,2})\s*[.,/\-]\s*(\d{2,4})$")
+_DAY_MON_YR = re.compile(r"^(\d{1,2})(?:st|nd|rd|th)?[-./'\s]?([A-Za-z]{3,9})[-./',]*(\d{2,4})[.,]?$")
+_MON_DAY_YR = re.compile(r"^([A-Za-z]{3,9})[-./'\s]?(\d{1,2})(?:st|nd|rd|th)?[,.'\-/]+(\d{2,4})[.,]?$")
+_DAY_YR = re.compile(r"^(\d{1,2})(?:st|nd|rd|th)?[,.'\-/]+(\d{2,4})[.,]?$")
 _YEAR = re.compile(r"^(19|20)\d{2}$")
 _DAY = re.compile(r"^(\d{1,2})(?:st|nd|rd|th)?[.,]?$")
 _DAY_MONTH_YEAR = re.compile(r"(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})[,.]?\s+((?:19|20)\d{2})")
@@ -392,15 +397,15 @@ def _fy_of(end: str) -> str:
     return f"FY{str(y + 1 if m >= 4 else y)[2:]}"
 
 
-def _quarter(period_end: str, ptype: str) -> tuple[str, str, str]:
-    """``(fiscal_period, period_start, period_type)`` for a printed column."""
+def _quarter(period_end: str, ptype: str) -> tuple[str, str, str] | None:
+    """``(fiscal_period, period_start, period_type)`` for a printed column, or None when invalid."""
     y, m = int(period_end[:4]), int(period_end[5:7])
     fy = y + 1 if m >= 4 else y
     if ptype == "fy":
         return f"FY{str(fy)[2:]}", f"{fy - 1}-04-01", "fy"
     if ptype == "ytd":
         if m not in (9, 12):
-            raise ValueError(f"ytd period cannot end in month {m:02d} ({period_end})")
+            return None
         label = "H1" if m == 9 else "9M"
         return f"{label}FY{str(fy)[2:]}", f"{fy - 1}-04-01", "ytd"
     q = {6: 1, 9: 2, 12: 3, 3: 4}.get(m)
@@ -458,12 +463,14 @@ def _expected_date(role: str, end: str) -> tuple[int, int]:
     return m, y
 
 
-def _date_match(got: tuple, want: tuple) -> bool:
+def _date_match(got: tuple, want: tuple, *, require_year: bool = False) -> bool:
     gm, gy = got
     wm, wy = want
     if gm is not None and gm != wm:
         return False
     if gy is not None and gy != wy:
+        return False
+    if require_year and gy is None:
         return False
     return gm is not None or gy is not None
 
@@ -507,6 +514,28 @@ def _header_cells(row) -> list[dict]:
                           "year": year})
             pending = None
             continue
+        dmy = _DAY_MON_YR.match(text)
+        if dmy:
+            day, mon, yr = int(dmy[1]), _month(dmy[2]), int(dmy[3])
+            if mon and 1 <= day <= 31 and (len(dmy[3]) == 2 or 1900 <= yr <= 2099):
+                cells.append({"month": mon, "day": day, "year": yr + 2000 if yr < 100 else yr})
+                pending = None
+                continue
+        mdy = _MON_DAY_YR.match(text)
+        if mdy:
+            mon, day, yr = _month(mdy[1]), int(mdy[2]), int(mdy[3])
+            if mon and 1 <= day <= 31 and (len(mdy[3]) == 2 or 1900 <= yr <= 2099):
+                cells.append({"month": mon, "day": day, "year": yr + 2000 if yr < 100 else yr})
+                pending = None
+                continue
+        if pending is not None and pending["day"] is None and pending["year"] is None:
+            dy = _DAY_YR.match(text)
+            if dy:
+                day, yr = int(dy[1]), int(dy[2])
+                if 1 <= day <= 31 and (len(dy[2]) == 2 or 1900 <= yr <= 2099):
+                    pending["day"] = day
+                    pending["year"] = yr + 2000 if yr < 100 else yr
+                    continue
         joined = re.match(r"^([A-Za-z]{3,9})(\d{1,2})[.,]?$", text)
         month = _month(joined[1] if joined else re.sub(r"[^a-z]", "", low))
         if joined and month:
@@ -546,6 +575,11 @@ def _header_dates(header_rows, count: int) -> list[tuple] | None:
                     for cell, year in zip(cells, years):
                         if cell["year"] is None:
                             cell["year"] = year
+                    break
+                missing = [cell for cell in cells if cell["year"] is None]
+                if missing and len(years) == len(missing):
+                    for cell, year in zip(missing, years):
+                        cell["year"] = year
                     break
             return [(c["month"], c["year"]) for c in cells]
     return None
@@ -991,6 +1025,7 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
         "SELECT doc_key, known_at, source_key, sha256 FROM doc WHERE symbol=? AND doc_type='results' "
         "AND source_key IS NOT NULL AND known_at IS NOT NULL ORDER BY known_at", (symbol,)).fetchall()
     rows: list[tuple] = []
+    store_fy: dict[tuple[str, str], dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     seen: set[str] = set()
     duplicates: list[str] = []
     files: list[dict] = []
@@ -1044,10 +1079,12 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
                 entry["tables"] += 1
                 previous = table
                 new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review,
-                                  ocr=ocr_all, fill_table=fill_table)
+                                  ocr=ocr_all, fill_table=fill_table, store_fy=store_fy)
                 entry["rows"] += len(new)
                 for row in new:
                     entry["basis"][row[7]] = entry["basis"].get(row[7], 0) + 1
+                    if row[5] == "fy":
+                        store_fy[(row[7], row[3])][row[9]].append(row[11])
                 rows.extend(new)
             if not entry["rows"] and not entry["reason"]:
                 entry["reason"] = "no_pl_table"
@@ -1358,7 +1395,7 @@ def _cross_column_marks(columns, end: str, rupee_tol: float) -> None:
 
 
 def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review, ocr: bool = False,
-                fill_table: dict | None = None) -> list[tuple]:
+                fill_table: dict | None = None, store_fy: dict | None = None) -> list[tuple]:
     """Resolve this table's roles, parse its cells, run the checks, and return the rows to store.
 
     T-208 round 3: on a results page whose text layer is garbled (``ocr``) the figures read from OCR words are
@@ -1383,8 +1420,12 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             values_by_item.setdefault(item, set()).update(t["row"] for t in tokens)
     ambiguous = {item for item, rows in values_by_item.items() if len(rows) > 1}
     basis_hint = _page_basis(table["text"], table.get("head"))
-    choice = _roles(table.get("dates"), end, count, values, xbrl, basis_hint, table["scale"], decimals,
-                    table.get("hint"))
+    dates = table.get("dates")
+    if end[5:7] == "06" and dates is None and fill_table is not None and fill_table.get("dates") \
+            and len(fill_table["dates"]) == count:
+        dates = fill_table["dates"]
+    choice = _roles(dates, end, count, values, xbrl, basis_hint, table["scale"], decimals,
+                    table.get("hint"), header_rows=table.get("header_rows"), store_fy=store_fy)
     if choice is None:
         review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
                        "column_role": None, "raw_token": None, "check": "no_scale_or_roles",
@@ -1400,7 +1441,8 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     fill: dict[str, dict] = {}
     if fill_table is not None:
         fill_choice = _roles(fill_table.get("dates"), end, len(fill_table["anchors"]), fill_table["values"],
-                             xbrl, basis_hint, fill_table["scale"], fill_table["decimals"], fill_table.get("hint"))
+                             xbrl, basis_hint, fill_table["scale"], fill_table["decimals"], fill_table.get("hint"),
+                             header_rows=fill_table.get("header_rows"), store_fy=store_fy)
         if fill_choice is not None and fill_choice["basis"] == basis and fill_choice["scale"] == scale \
                 and set(fill_choice["roles"]) == set(roles):
             fill_dec = fill_table["decimals"]
@@ -1484,7 +1526,10 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                 continue
             if cell["ptype"] == "ytd" and cell["period_end"][5:7] not in ("09", "12"):
                 continue
-            fiscal, start, ptype = _quarter(cell["period_end"], cell["ptype"])
+            q = _quarter(cell["period_end"], cell["ptype"])
+            if q is None:
+                continue
+            fiscal, start, ptype = q
             unit = "inr_per_share" if item.startswith("eps_") else "inr"
             detail = []
             if table["scale"] is None:
@@ -1537,10 +1582,73 @@ def _period_end(dates, known_at: str, text: str = "") -> str | None:
     return best
 
 
+def _side_by_side_ok(header_rows, dates, count: int) -> bool:
+    """True only when a wide (>=7-column) June table is two mirrored four-column S/C halves."""
+    if count < 8:
+        return False
+    flat = " ".join(w[4] for row in (header_rows or []) for w in row).lower().replace("-", "").replace(" ", "")
+    if "standalon" not in flat or "consolidat" not in flat:
+        return False
+    if dates and len(dates) >= 8:
+        left, right = dates[:4], dates[-4:]
+        for (lm, _ly), (rm, _ry) in zip(left, right):
+            if lm is not None and rm is not None and lm != rm:
+                return False
+        for (lm, _ly), want_m in zip(left, (6, 3, 6, 3)):
+            if lm is not None and lm != want_m:
+                return False
+    return True
+
+
+def _fy_refs(basis: str, period_end: str, xbrl: dict, store_fy: dict | None) -> dict[str, list[float]]:
+    """Known full-year values for ``period_end`` from XBRL and earlier store FY rows."""
+    refs: dict[str, list[float]] = defaultdict(list)
+    if basis in ("standalone", "consolidated"):
+        for item, val in xbrl.get((basis, period_end), {}).items():
+            refs[item].append(val)
+    if store_fy:
+        for (b, pe), items in store_fy.items():
+            if pe != period_end:
+                continue
+            if basis in ("standalone", "consolidated") and b not in (basis, "unchecked"):
+                continue
+            for item, vals in items.items():
+                refs[item].extend(vals)
+    return refs
+
+
+def _june_last_fy_confirmed(at: int, dates, end: str, values: dict, xbrl: dict, store_fy: dict | None,
+                             basis: str, scale: float, decimals: int) -> bool:
+    """True when a June table's ``last_fy`` column has its March year matched or matches an FY value."""
+    want_year = int(end[:4])
+    if dates and at < len(dates) and _date_match(dates[at], (3, want_year), require_year=True):
+        return True
+    refs = _fy_refs(basis, _last_fy_end(end), xbrl, store_fy)
+    if not refs:
+        return False
+    eps_dec = _eps_decimals(values)
+    for item, tokens in values.get(at, {}).items():
+        wants = refs.get(item)
+        if not wants:
+            continue
+        for token in tokens:
+            parsed = _parse_cell(item, token["text"], decimals, eps_dec)
+            if parsed is None or abs(parsed[0]) == 0.0:
+                continue
+            val = parsed[0] * (1.0 if item.startswith("eps_") else scale)
+            tol = _tol(item, decimals, scale, token["text"], eps_dec)
+            if any(_close(val, want, tol) for want in wants):
+                return True
+    return False
+
+
 def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: str | None,
-           scale: float | None, decimals: int, hint: list[str] | None = None) -> dict | None:
+           scale: float | None, decimals: int, hint: list[str] | None = None,
+           header_rows=None, store_fy: dict | None = None) -> dict | None:
     """Column roles (header order first, a header layout hint second, layout by quarter last), basis and scale,
     checked against XBRL; the earlier candidate wins a tie."""
+    if end[5:7] == "06" and count >= 7 and not _side_by_side_ok(header_rows, dates, count):
+        return None
     default = _role_set(end, count)
     chance = None
     if dates and len(dates) == count:
@@ -1553,16 +1661,34 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
     for roles in (target, chance, default):
         if roles is not None and roles not in candidates:
             candidates.append(roles)
+    if end[5:7] == "06" and count in (5, 6):
+        want_year = int(end[:4])
+        base = chance or default
+        lfy_at = base.index("last_fy") if "last_fy" in base else -1
+        has_year = bool(lfy_at >= 0 and dates and lfy_at < len(dates)
+                        and _date_match(dates[lfy_at], (3, want_year), require_year=True))
+        if has_year:
+            candidates = [base]
+        else:
+            q_part = base[:3]
+            tail_n = count - 3
+            for pos in range(tail_n):
+                tail: list[str | None] = [None] * tail_n
+                tail[pos] = "last_fy"
+                cand = list(q_part) + tail
+                if cand not in candidates:
+                    candidates.append(cand)
     best = None
     for roles in candidates:
         for basis in bases:
             # the page's declared scale is tried first and wins a tie; a scale the XBRL figures confirm beats a
             # declared one they do not (R-006: the unit line can be missing from the text layer)
             for sc in ([scale] if scale else []) + [s for s in (1e5, 1e6, 1e7) if s != scale]:
-                if basis not in ("standalone", "consolidated"):
+                use_fy = store_fy if (scale is None or sc == scale) else None
+                if basis not in ("standalone", "consolidated") and not (end[5:7] == "06" and use_fy):
                     score = 0
                 else:
-                    score = _score_roles(roles, end, values, xbrl, basis, sc, decimals)
+                    score = _score_roles(roles, end, values, xbrl, basis, sc, decimals, store_fy=use_fy)
                 if best is None or score > best[0]:
                     best = (score, roles, basis, sc)
     if best is None or (best[0] == 0 and scale is None):
@@ -1570,6 +1696,11 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
     _score, roles, basis, sc = best
     if best[0] == 0 and basis_hint is None:
         basis = "unchecked"          # neither the title nor the XBRL match settles the basis
+    roles = list(roles)
+    if end[5:7] == "06" and "last_fy" in roles:
+        at = roles.index("last_fy")
+        if not _june_last_fy_confirmed(at, dates, end, values, xbrl, store_fy, basis, sc, decimals):
+            roles[at] = None
     periods = {role: _role_period(role, end) for role in roles if role}
     return {"roles": roles, "basis": basis, "scale": sc, "periods": periods, "score": best[0],
             "header_used": bool(chance and roles == chance)}
@@ -1592,7 +1723,8 @@ def _roles_from_dates(dates, end: str, default: list[str | None], count: int) ->
             score = 0
             for i, role in enumerate(perm):
                 at = start + i
-                if role and dates and at < len(dates) and _date_match(dates[at], expected[role]):
+                if role and dates and at < len(dates) and _date_match(
+                        dates[at], expected[role], require_year=(role == "last_fy")):
                     score += 1
             score = score * 10 + sum(1 for i, role in enumerate(perm) if role == roles[i])
             if score > best_score:
@@ -1603,24 +1735,44 @@ def _roles_from_dates(dates, end: str, default: list[str | None], count: int) ->
     return roles, bool(dates) and len(dates) == count
 
 
-def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: int) -> int:
+def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: int,
+                 store_fy: dict | None = None) -> int:
     tol = _tol("total_income", decimals, scale)
     eps_dec = _eps_decimals(values)
     score = 0
-    for at, role in enumerate(roles):
-        if not role:
-            continue
-        period_end, _ptype = _role_period(role, end)
+    if basis in ("standalone", "consolidated"):
+        for at, role in enumerate(roles):
+            if not role:
+                continue
+            period_end, _ptype = _role_period(role, end)
+            for item, tokens in values.get(at, {}).items():
+                for token in tokens:
+                    parsed = _parse_cell(item, token["text"], decimals, eps_dec)
+                    if parsed is None:
+                        continue
+                    value = parsed[0] * (1.0 if item.startswith("eps_") else scale)
+                    if _xbrl_ok(xbrl, basis, period_end, item, value,
+                                _tol(item, decimals, scale, token["text"], eps_dec)):
+                        score += 10 if role == "current" else 5
+    if end[5:7] == "06" and "last_fy" in roles and store_fy:
+        at = roles.index("last_fy")
+        lfy_end = _last_fy_end(end)
+        refs = _fy_refs(basis, lfy_end, {}, store_fy)
         for item, tokens in values.get(at, {}).items():
+            wants = refs.get(item)
+            if not wants:
+                continue
             for token in tokens:
                 parsed = _parse_cell(item, token["text"], decimals, eps_dec)
-                if parsed is None:
+                if parsed is None or abs(parsed[0]) == 0.0:
                     continue
                 value = parsed[0] * (1.0 if item.startswith("eps_") else scale)
-                if _xbrl_ok(xbrl, basis, period_end, item, value,
-                            _tol(item, decimals, scale, token["text"], eps_dec)):
-                    score += 10 if role == "current" else 5
-    if end[5:7] == "09" and all(r in roles for r in ("current", "preceding", "ytd")):
+                item_tol = _tol(item, decimals, scale, token["text"], eps_dec)
+                if not _xbrl_ok(xbrl, basis, lfy_end, item, value, item_tol) and any(
+                        _close(value, want, item_tol) for want in wants):
+                    score += 5
+    if basis in ("standalone", "consolidated") and end[5:7] == "09" and all(
+            r in roles for r in ("current", "preceding", "ytd")):
         i, j, k = roles.index("current"), roles.index("preceding"), roles.index("ytd")
         for item in (set(values.get(i, {})) & set(values.get(j, {})) & set(values.get(k, {}))):
             got = []
