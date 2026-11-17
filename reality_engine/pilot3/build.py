@@ -216,6 +216,10 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
                 conn.close()  # the reader opens the db file itself (page words come through words_for)
                 log["ar_statements"] = {k: v for k, v in ar_statements.run_store(out, out.stem).items()
                                         if k not in ("checks", "xbrl", "row_list")}
+                # T-223: borrowings, revenue break-up and finance-cost notes (same table, source_table 'ar_note')
+                from reality_engine.pilot3 import ar_notes
+
+                log["ar_notes"] = {k: v for k, v in ar_notes.run_store(out, out.stem).items() if k not in ("log", "row_list")}
                 conn = sqlite3.connect(out)
             elif name == "comparatives":
                 from reality_engine.pilot3 import comparatives
@@ -245,6 +249,11 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
                 conn.commit()
                 conn.close()  # the segment reader opens the db file itself and needs kpi_series from the extract part
                 log["segments"] = run_segments(str(out), symbols)
+                # T-223: the segment table printed in quarterly results (XBRL rows are kept where they exist)
+                from reality_engine.pilot3 import segments_printed
+
+                log["segments_printed"] = {k: v for k, v in segments_printed.run_store(out, out.stem).items()
+                                           if k not in ("log", "agree", "row_list")}
                 conn = sqlite3.connect(out)
             elif name == "guidance":
                 from reality_engine.pilot3.guidance import run as run_guidance
