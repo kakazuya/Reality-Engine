@@ -24,10 +24,11 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-MODEL = "gemini-4-argon-high"  # Shivam 14 Nov: use up Argon first, high only (never xhigh/max)
+MODEL = "gemini-4-hydrogen-high"  # Shivam 17 Nov: Hydrogen high for coding and reasoning (account neo47verma)
 MODELS = {  # the only models a job may run (T-205 round 13); anything else is refused before a job is created
-    "gemini-4-argon-high": "default for coding, answers and question search while its weekly limit lasts (Shivam 14 Nov)",
-    "gemini-4-hydrogen-high": "after Argon: coding, question search, T-205 answer arm (Shivam 14 Nov)",
+    "gemini-4-hydrogen-high": "coding and reasoning (Shivam 17 Nov)",
+    "gemini-4-argon-medium": "searching questions for companies (Shivam 17 Nov)",
+    "gemini-4-argon-high": "kept allowlisted; not the default since 17 Nov",
     "gemini-3.8-flash-medium": "the account that has only Flash: question harvest, boilerplate code (Shivam 16 Nov; medium only)",
     "claude-opus-5-5-medium": "T-205 blind grader",
 }

@@ -77,10 +77,7 @@ The generated pack is `tasks/worker_context/CONTEXT.md`: about 5.7 KB (limit 20,
   8), `run` (Opus 5.5 medium via agy, strict one-JSON-line-per-grade, one re-ask), `decode` (per-set totals,
   per-question table, pairwise agreement).
 - `plugins/agy-worker/server/agy_core.py` + `runner.py` + `agy_worker_mcp.py` — `MODELS` allowlist
-  - 16 Nov (Shivam): no model is dropped. `plugins/agy-worker/server/agy_core.py` `MODELS` also holds `gemini-3.8-flash-medium` (the old Antigravity account lists only Flash, no Argon or Hydrogen); the model in use is the one Shivam names, stored in `plugins/agy-worker/runtime/current_model.txt` by `set_current_model()` and read by `current_model()` at each start (`agy_worker_mcp.py` `start_worker` takes it when no model is passed). Now: `gemini-3.8-flash-medium`. Restart the agy-worker MCP server to load the change.
-  (`gemini-4-argon-high` default from 14 Nov until its weekly limit is used, then `gemini-4-hydrogen-high`;
-  `claude-opus-5-5-medium`; high effort only; Flash 3.8 dropped 14 Nov) and a `model`
-  argument on `start`/`resume`; anything else is refused.
+  - 17 Nov (Shivam): agy is logged in to the Hydrogen account (neo47verma, Google AI Pro; Hydrogen, Argon, Flash and Opus/Sonnet listed). `MODELS`: `gemini-4-hydrogen-high` (coding and reasoning, default `MODEL`), `gemini-4-argon-medium` (searching questions for companies), `gemini-4-argon-high`, `gemini-3.8-flash-medium`, `claude-opus-5-5-medium` (blind grader); none dropped. The model in use is stored in `plugins/agy-worker/runtime/current_model.txt` (`set_current_model()` / `current_model()`, taken by `start_worker` when no model is passed); now `gemini-4-hydrogen-high`. A job may pass `model` on `start`/`resume`; anything else is refused. Restart the agy-worker MCP server to load a change. One Windows user holds one agy login (Credential Manager entry `gemini:antigravity`).
 - Tests: `reality_engine/tests/test_agy_call.py`, `test_seeded_run.py`, `test_blind_grade.py`,
   `plugins/agy-worker/tests/test_agy_core.py`. In the dsh sandbox `tmp_path` dirs are created 0700 and cannot be
   listed: run `python -m pytest ... --basetemp=<dir>` with a `mkdir`-mode plugin (`-p`) or unsandboxed.
