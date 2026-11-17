@@ -619,3 +619,91 @@ def test_june_eight_col_halves_must_match():
     dates_ok = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026") * 2
     t_single = cmp.read_page(_page_n(rows, dates_ok, title="Statement of Standalone Financial Results"))
     assert cmp._table_rows(_conn(), "AAAA", "INE000A01001", "doc1", 8, "2026-08-05T12:00:00", t_single, {}, []) == []
+
+
+def test_header_dates_merges_split_column_across_adjacent_rows():
+    """KITEX a8bc224d p8: March31 shifted one row up and 2024 one row down still resolves all 4 cols."""
+    rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00"),
+        ("10.00", "10.00", "10.00", "40.00"),
+        ("510.00", "460.00", "410.00", "1,740.00"),
+        ("400.00", "360.00", "320.00", "1,400.00"),
+        ("110.00", "100.00", "90.00", "340.00"),
+        ("28.00", "25.00", "22.00", "85.00"),
+        ("82.00", "75.00", "68.00", "255.00"),
+        ("1.50", "1.40", "1.20", "4.50"),
+    ])
+    cols = (200.0, 270.0, 340.0, 410.0)
+    words = [
+        (40.0, 5.0, 220.0, 13.0, "Statement of Consolidated Financial Results for the quarter ended June 30, 2024", 0, 0, 0),
+        (40.0, 15.0, 110.0, 23.0, "Rupees in lakhs", 0, 0, 0),
+        (cols[1] - 42.0, 22.0, cols[1], 28.0, "March31", 0, 0, 0),
+        (cols[0] - 48.0, 30.0, cols[0] - 28.0, 36.0, "June", 0, 0, 0),
+        (cols[0] - 26.0, 30.0, cols[0] - 14.0, 36.0, "30,", 0, 0, 0),
+        (cols[0] - 12.0, 30.0, cols[0], 36.0, "2024", 0, 0, 0),
+        (cols[2] - 48.0, 30.0, cols[2] - 28.0, 36.0, "June", 0, 0, 0),
+        (cols[2] - 26.0, 30.0, cols[2] - 14.0, 36.0, "30,", 0, 0, 0),
+        (cols[2] - 12.0, 30.0, cols[2], 36.0, "2023", 0, 0, 0),
+        (cols[3] - 48.0, 30.0, cols[3] - 28.0, 36.0, "March", 0, 0, 0),
+        (cols[3] - 26.0, 30.0, cols[3] - 14.0, 36.0, "31,", 0, 0, 0),
+        (cols[3] - 12.0, 30.0, cols[3], 36.0, "2024", 0, 0, 0),
+        (cols[1] - 24.0, 38.0, cols[1], 44.0, "2024", 0, 0, 0),
+    ]
+    for idx, (label, values) in enumerate(rows):
+        y = 55.0 + 10.0 * idx
+        x = 20.0
+        for word in label.split():
+            w = 7.0 * len(word)
+            words.append((x, y - 3.0, x + w, y + 3.0, word, 0, 0, 0))
+            x += w + 3.0
+        words += [(cols[i] - 7.0 * len(v), y - 3.0, cols[i], y + 3.0, v, 0, 0, 0) for i, v in enumerate(values)]
+    table = cmp.read_page(cmp.rows_from_words(words))
+    assert table["dates"] == [(6, 2024), (3, 2024), (6, 2023), (3, 2024)]
+    stored = cmp._table_rows(_conn(), "KITEX", "INE000A01001", "doc1", 8, "2024-08-12T12:00:00", table, {}, [])
+    rev_last = _cells(stored, "revenue_from_operations", "last_fy")
+    assert len(rev_last) == 1 and rev_last[0][3] == "2024-03-31" and rev_last[0][11] == 1700 * 1e5
+
+
+def test_page_basis_matches_space_split_standalone_before_consolidated():
+    """NILKAMAL 442ae482 p5: 'Standa lone' on left and 'Consolidated' on right names left half standalone."""
+    assert cmp._page_basis("UNAUDITED FINANCIAL RESULTS Standa lone Consolidated") == "standalone"
+    dates = ("30.06.2025", "31.03.2025", "30.06.2024", "31.03.2025") * 2
+    rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00", "900.00", "850.00", "800.00", "3,200.00"),
+        ("10.00", "10.00", "10.00", "40.00", "20.00", "20.00", "20.00", "80.00"),
+        ("510.00", "460.00", "410.00", "1,740.00", "920.00", "870.00", "820.00", "3,280.00"),
+        ("400.00", "360.00", "320.00", "1,400.00", "700.00", "650.00", "600.00", "2,600.00"),
+        ("110.00", "100.00", "90.00", "340.00", "220.00", "220.00", "220.00", "680.00"),
+        ("28.00", "25.00", "22.00", "85.00", "55.00", "55.00", "55.00", "170.00"),
+        ("82.00", "75.00", "68.00", "255.00", "165.00", "165.00", "165.00", "510.00"),
+        ("1.50", "1.40", "1.20", "4.50", "3.00", "3.00", "3.00", "9.50"),
+    ])
+    table = cmp.read_page(_page_n(rows, dates, title="Financial Results Standa lone Consolidated"))
+    stored = cmp._table_rows(_conn(), "NIL", "INE000A01001", "doc1", 5, "2025-08-01T12:00:00", table, {}, [])
+    assert stored and {r[7] for r in stored} == {"standalone"}
+    assert _cells(stored, "revenue_from_operations", "last_fy")[0][11] == 1700 * 1e7
+
+
+def test_june_last_fy_drops_unchecked_cell_when_text_and_ocr_disagree():
+    """BLKASHYAP abba81be p2: unconfirmed last_fy text-layer 5,191.84 vs OCR 8,191.84 writes nothing."""
+    dates = ("30.06.2024", "31.03.2024", "30.06.2023", "31.03.2024")
+    base_rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00"),
+        ("10.00", "10.00", "10.00", "40.00"),
+        ("510.00", "460.00", "410.00", "1,740.00"),
+        ("400.00", "360.00", "320.00", "1,400.00"),
+        ("110.00", "100.00", "90.00", "340.00"),
+        ("28.00", "25.00", "22.00", "85.00"),
+        ("82.00", "75.00", "68.00", "255.00"),
+        ("1.50", "1.40", "1.20", "4.50"),
+    ])
+    text_rows = base_rows + [("Other expenses", ("100.00", "90.00", "80.00", "519.18"))]
+    ocr_rows = base_rows + [("Other expenses", ("100.00", "90.00", "80.00", "819.18"))]
+    t_text = cmp.read_page(_page_n(text_rows, dates))
+    t_ocr = cmp.read_page(_page_n(ocr_rows, dates), ocr=True)
+    review: list[dict] = []
+    stored = cmp._table_rows(_conn(), "BLK", "INE000A01001", "doc1", 2, "2024-08-14T12:00:00",
+                             t_text, {}, review, fill_table=t_ocr)
+    assert _cells(stored, "other_expenses", "last_fy") == []
+    assert any(r["check"] == "ocr_text_disagree" and r["line_item"] == "other_expenses" for r in review)
+    assert _cells(stored, "total_income", "last_fy")[0][11] == 1740 * 1e7

@@ -511,21 +511,21 @@ def _header_cells(row) -> list[dict]:
             if year < 100:
                 year += 2000
             cells.append({"month": month if 1 <= month <= 12 else None, "day": day if 1 <= day <= 31 else None,
-                          "year": year})
+                          "year": year, "x": word[0]})
             pending = None
             continue
         dmy = _DAY_MON_YR.match(text)
         if dmy:
             day, mon, yr = int(dmy[1]), _month(dmy[2]), int(dmy[3])
             if mon and 1 <= day <= 31 and (len(dmy[3]) == 2 or 1900 <= yr <= 2099):
-                cells.append({"month": mon, "day": day, "year": yr + 2000 if yr < 100 else yr})
+                cells.append({"month": mon, "day": day, "year": yr + 2000 if yr < 100 else yr, "x": word[0]})
                 pending = None
                 continue
         mdy = _MON_DAY_YR.match(text)
         if mdy:
             mon, day, yr = _month(mdy[1]), int(mdy[2]), int(mdy[3])
             if mon and 1 <= day <= 31 and (len(mdy[3]) == 2 or 1900 <= yr <= 2099):
-                cells.append({"month": mon, "day": day, "year": yr + 2000 if yr < 100 else yr})
+                cells.append({"month": mon, "day": day, "year": yr + 2000 if yr < 100 else yr, "x": word[0]})
                 pending = None
                 continue
         if pending is not None and pending["day"] is None and pending["year"] is None:
@@ -540,11 +540,11 @@ def _header_cells(row) -> list[dict]:
         month = _month(joined[1] if joined else re.sub(r"[^a-z]", "", low))
         if joined and month:
             day = int(joined[2])
-            cells.append({"month": month, "day": day if 1 <= day <= 31 else None, "year": None})
+            cells.append({"month": month, "day": day if 1 <= day <= 31 else None, "year": None, "x": word[0]})
             pending = None
             continue
         if month:
-            pending = {"month": month, "day": None, "year": None}
+            pending = {"month": month, "day": None, "year": None, "x": word[0]}
             cells.append(pending)
             continue
         if pending is not None and _DAY.match(text):
@@ -558,8 +558,24 @@ def _header_cells(row) -> list[dict]:
             elif cells and cells[-1]["year"] is None:
                 cells[-1]["year"] = int(text)
             else:
-                cells.append({"month": None, "day": None, "year": int(text)})
+                cells.append({"month": None, "day": None, "year": int(text), "x": word[0]})
     return cells
+
+
+def _pair_header_years(cells: list[dict], header_rows, at: int, count: int) -> list[tuple]:
+    for other in header_rows[at + 1:at + 3] + header_rows[max(0, at - 2):at]:
+        years = [int(w[4].strip()) for w in other if _YEAR.match(w[4].strip())]
+        if len(years) == count:
+            for cell, year in zip(cells, years):
+                if cell["year"] is None:
+                    cell["year"] = year
+            break
+        missing = [cell for cell in cells if cell["year"] is None]
+        if missing and len(years) == len(missing):
+            for cell, year in zip(missing, years):
+                cell["year"] = year
+            break
+    return [(c["month"], c["year"]) for c in cells]
 
 
 def _header_dates(header_rows, count: int) -> list[tuple] | None:
@@ -569,19 +585,17 @@ def _header_dates(header_rows, count: int) -> list[tuple] | None:
         if len(cells) != count:
             continue
         if any(c["month"] is not None or c["year"] is not None for c in cells):
-            for other in header_rows[i + 1:i + 3] + header_rows[max(0, i - 2):i]:
-                years = [int(w[4].strip()) for w in other if _YEAR.match(w[4].strip())]
-                if len(years) == count:
-                    for cell, year in zip(cells, years):
-                        if cell["year"] is None:
-                            cell["year"] = year
-                    break
-                missing = [cell for cell in cells if cell["year"] is None]
-                if missing and len(years) == len(missing):
-                    for cell, year in zip(missing, years):
-                        cell["year"] = year
-                    break
-            return [(c["month"], c["year"]) for c in cells]
+            return _pair_header_years(cells, header_rows, i, count)
+    if count >= 4:
+        for i, row in enumerate(header_rows):
+            cells = _header_cells(row)
+            if len(cells) != count - 1 or not any(c["month"] is not None or c["year"] is not None for c in cells):
+                continue
+            adj = header_rows[max(0, i - 1):i] + header_rows[i + 1:i + 2]
+            extra = [c for r in adj for c in _header_cells(r) if c["month"] is not None]
+            if len(extra) == 1:
+                merged = sorted(cells + extra, key=lambda c: c["x"])
+                return _pair_header_years(merged, header_rows, i, count)
     return None
 
 
@@ -844,24 +858,41 @@ def _close(got: float, want: float, tol: float) -> bool:
     return abs(got - want) <= tol
 
 
-def _page_basis(text: str, head: str | None = None) -> str | None:
+_BASIS_SPACE = (
+    ("standalone", re.compile(r"\bstand\s*a\s*lon\w*")),
+    ("consolidated", re.compile(r"\bcon\s*solidat\w*")),
+)
+_BASIS_SPLIT = (
+    ("standalone", re.compile(r"\bstand\s*[-\s]*a\s*-?\s*lon\w*")),
+    ("consolidated", re.compile(r"\bcon\s*[-\s]*solidat\w*")),
+)
+
+
+def _basis_positions(text: str, *, allow_hyphen: bool = False) -> dict[str, int]:
+    """First offset of ``standalone`` and ``consolidated`` in ``text``, space-split and OCR tolerant."""
+    low = (text or "").lower()
+    found: dict[str, int] = {}
+    for name, pat in (_BASIS_SPLIT if allow_hyphen else _BASIS_SPACE):
+        at = low.find(name)
+        if at < 0:
+            hit = pat.search(low)
+            at = hit.start() if hit else -1
+        if at < 0:
+            for word in re.findall(r"[a-z]{7,}", low):
+                if SequenceMatcher(None, word, name).ratio() >= 0.8:
+                    at = low.find(word)
+                    break
+        if at >= 0:
+            found[name] = at
+    return found
+
+
+def _page_basis(text: str, head: str | None = None, *, allow_hyphen: bool = False) -> str | None:
     """Standalone / consolidated from the page title (the head rows), never from a note lower on the page.
 
-    Tolerant to OCR: ``ca"nsolidated`` and ``Consolidstcd`` still say consolidated."""
+    Tolerant to OCR and space-splits: ``Standa lone``, ``ca"nsolidated`` and ``Consolidstcd`` all match."""
     for source in (head, text):
-        low = (source or "").lower()
-        if not low:
-            continue
-        found: dict[str, int] = {}
-        for name in ("standalone", "consolidated"):
-            at = low.find(name)
-            if at < 0:
-                for word in re.findall(r"[a-z]{7,}", low):
-                    if SequenceMatcher(None, word, name).ratio() >= 0.8:
-                        at = low.find(word)
-                        break
-            if at >= 0:
-                found[name] = at
+        found = _basis_positions(source or "", allow_hyphen=allow_hyphen)
         if not found:
             continue
         if len(found) == 1:
@@ -1026,6 +1057,7 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
         "AND source_key IS NOT NULL AND known_at IS NOT NULL ORDER BY known_at", (symbol,)).fetchall()
     rows: list[tuple] = []
     store_fy: dict[tuple[str, str], dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    disagreed: dict[tuple[str, int, str, str, str], tuple[float, float]] = {}
     seen: set[str] = set()
     duplicates: list[str] = []
     files: list[dict] = []
@@ -1079,7 +1111,7 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
                 entry["tables"] += 1
                 previous = table
                 new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review,
-                                  ocr=ocr_all, fill_table=fill_table, store_fy=store_fy)
+                                  ocr=ocr_all, fill_table=fill_table, store_fy=store_fy, disagreed=disagreed)
                 entry["rows"] += len(new)
                 for row in new:
                     entry["basis"][row[7]] = entry["basis"].get(row[7], 0) + 1
@@ -1091,6 +1123,17 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
             files.append(entry)
             pdf.close()
     rows = _apply_repeats(rows)
+    if disagreed:
+        kept: list[tuple] = []
+        for row in rows:
+            pair = disagreed.get((row[16], row[17], row[6], row[7], row[9]))
+            if pair is not None and row[20] not in CHECK_OK:
+                review.append({"symbol": symbol, "doc_key": row[16], "page": row[17], "line_item": row[9],
+                               "column_role": row[6], "raw_token": row[14], "check": "ocr_text_disagree",
+                               "detail": f"text={pair[0]} ocr={pair[1]}"})
+                continue
+            kept.append(row)
+        rows = kept
     conn.executemany(
         f"INSERT INTO {TABLE} (symbol, isin, period_start, period_end, fiscal_period, period_type, column_role, "
         "basis, statement, line_item, caption, value, unit, scale, raw_token, quote, doc_key, page, known_at, "
@@ -1395,7 +1438,8 @@ def _cross_column_marks(columns, end: str, rupee_tol: float) -> None:
 
 
 def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review, ocr: bool = False,
-                fill_table: dict | None = None, store_fy: dict | None = None) -> list[tuple]:
+                fill_table: dict | None = None, store_fy: dict | None = None,
+                disagreed: dict | None = None) -> list[tuple]:
     """Resolve this table's roles, parse its cells, run the checks, and return the rows to store.
 
     T-208 round 3: on a results page whose text layer is garbled (``ocr``) the figures read from OCR words are
@@ -1419,7 +1463,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         for item, tokens in col.items():
             values_by_item.setdefault(item, set()).update(t["row"] for t in tokens)
     ambiguous = {item for item, rows in values_by_item.items() if len(rows) > 1}
-    basis_hint = _page_basis(table["text"], table.get("head"))
+    basis_hint = _page_basis(table["text"], table.get("head"), allow_hyphen=(end[5:7] == "06"))
     dates = table.get("dates")
     if end[5:7] == "06" and dates is None and fill_table is not None and fill_table.get("dates") \
             and len(fill_table["dates"]) == count:
@@ -1517,6 +1561,20 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                                "column_role": role, "raw_token": cell["raw"], "check": "ocr_unreconciled",
                                "detail": f"value={cell['value']}"})
                 del cells[item]
+        if end[5:7] == "06" and fill and "last_fy" in columns:
+            for item, cell in list(columns["last_fy"].items()):
+                if item == "_fails" or cell["status"] in CHECK_OK:
+                    continue
+                ocr_cell = fill.get("last_fy", {}).get(item)
+                if ocr_cell is not None and not _close(cell["value"], ocr_cell["value"], rupee_tol):
+                    if disagreed is None:
+                        review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no,
+                                       "line_item": item, "column_role": "last_fy",
+                                       "raw_token": cell["raw"], "check": "ocr_text_disagree",
+                                       "detail": f"text={cell['value']} ocr={ocr_cell['value']}"})
+                        del columns["last_fy"][item]
+                    else:
+                        disagreed[(doc_key, page_no, "last_fy", basis, item)] = (cell["value"], ocr_cell["value"])
     else:
         _derive_revenue(columns)
     out: list[tuple] = []
@@ -1586,8 +1644,8 @@ def _side_by_side_ok(header_rows, dates, count: int) -> bool:
     """True only when a wide (>=7-column) June table is two mirrored four-column S/C halves."""
     if count < 8:
         return False
-    flat = " ".join(w[4] for row in (header_rows or []) for w in row).lower().replace("-", "").replace(" ", "")
-    if "standalon" not in flat or "consolidat" not in flat:
+    flat = " ".join(w[4] for row in (header_rows or []) for w in row)
+    if set(_basis_positions(flat, allow_hyphen=True)) != {"standalone", "consolidated"}:
         return False
     if dates and len(dates) >= 8:
         left, right = dates[:4], dates[-4:]
