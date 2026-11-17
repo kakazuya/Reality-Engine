@@ -91,9 +91,15 @@ def pick(stores: list[dict], names: str | None) -> list[dict]:
     return [by_name[n] for n in wanted]
 
 
+def _is_locked_error(exc: sqlite3.OperationalError) -> bool:
+    msg = str(exc).lower()
+    return "locked" in msg or "busy" in msg
+
+
 def stale_of(db: Path, hashes: dict[str, str]) -> dict[str, str]:
-    conn = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)
+    conn = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True, timeout=120)
     try:
+        conn.execute("PRAGMA busy_timeout=120000")
         return part_stamp.stale(conn, hashes)
     finally:
         conn.close()
@@ -162,8 +168,21 @@ def summary_of(diff: dict) -> dict:
 
 def _restore(store: dict, run_dir: Path, keep_after: bool) -> None:
     """Put the store and its profile back as they were; keep the refused result as ``after.db`` when asked."""
-    for suffix in ("-wal", "-shm"):
-        Path(f"{store['db']}{suffix}").unlink(missing_ok=True)
+    try:
+        for suffix in ("-wal", "-shm"):
+            Path(f"{store['db']}{suffix}").unlink(missing_ok=True)
+    except OSError:
+        # Another reader still holds -wal/-shm open (e.g. on Windows): restore pages via SQLite's backup API.
+        src = sqlite3.connect(f"file:{(run_dir / 'before.db').as_posix()}?mode=ro", uri=True, timeout=30)
+        dst = sqlite3.connect(store["db"], timeout=30)
+        try:
+            dst.execute("PRAGMA busy_timeout=30000")
+            src.backup(dst)
+        finally:
+            dst.close()
+            src.close()
+        shutil.copy2(run_dir / "before_profile.json", store["profile"])
+        return
     if keep_after:
         shutil.copy2(store["db"], run_dir / "after.db")
         shutil.copy2(store["profile"], run_dir / "after_profile.json")
@@ -171,12 +190,13 @@ def _restore(store: dict, run_dir: Path, keep_after: bool) -> None:
     shutil.copy2(run_dir / "before_profile.json", store["profile"])
 
 
-def repair_store(store: dict, parts: list[str], run_id: str, approve_loss: bool = False, runner=default_runner,
+def repair_store(store: dict, parts: list[str], run_id: str, approve_loss: bool = False, runner=None,
                  ram_gb: float = 4.0, timeout_s: float = 2400.0, forced=None, hashes=None) -> dict:
     """Re-run ``parts`` (already in build order) on one store behind the diff gate; returns the run record.
 
     ``forced`` are the parts that run whatever their stamp says (default: all of ``parts``); every other part runs
     only if it is stale when its turn comes, so a re-run that wrote the same rows stops the chain there."""
+    runner = default_runner if runner is None else runner
     run_dir = store["dir"] / "repair" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     lock = store["dir"] / "repair.lock"
@@ -206,8 +226,9 @@ def repair_store(store: dict, parts: list[str], run_id: str, approve_loss: bool 
                 _restore(store, run_dir, keep_after=False)
                 return record
             if part in ("profile", "docs_collect"):       # not build parts: the runner stamps them itself
-                conn = sqlite3.connect(store["db"])
+                conn = sqlite3.connect(store["db"], timeout=120)
                 try:
+                    conn.execute("PRAGMA busy_timeout=120000")
                     part_stamp.write(conn, part, row.get("seconds"), out=file_outs(store).get(part, ""))
                 finally:
                     conn.close()
@@ -221,6 +242,18 @@ def repair_store(store: dict, parts: list[str], run_id: str, approve_loss: bool 
             _restore(store, run_dir, keep_after=True)
         else:
             record["outcome"] = "repaired"
+        return record
+    except sqlite3.OperationalError as exc:
+        if not _is_locked_error(exc):
+            raise
+        if (run_dir / "before.db").is_file() and (run_dir / "before_profile.json").is_file():
+            try:
+                _restore(store, run_dir, keep_after=False)
+            except Exception as restore_exc:  # noqa: BLE001 - keep multi-store run alive even if restore hits lock
+                record.update(outcome="skipped: database locked",
+                              detail=f"{exc}; restore failed: {restore_exc}"[:600])
+                return record
+        record.update(outcome="skipped: database locked", detail=str(exc)[:600])
         return record
     finally:
         record["seconds"] = round(time.time() - started, 1)
@@ -583,7 +616,14 @@ def main(argv: list[str] | None = None) -> int:
         records = []
         for store in pick(stores, args.stores):
             if args.part == "stale":
-                behind = stale_of(store["db"], hashes)
+                try:
+                    behind = stale_of(store["db"], hashes)
+                except sqlite3.OperationalError as exc:
+                    if not _is_locked_error(exc):
+                        raise
+                    records.append({"store": store["name"], "run": run_id, "parts": [],
+                                    "outcome": "skipped: database locked", "detail": str(exc)[:600]})
+                    continue
                 parts = [p for p in part_stamp.ORDER if p in behind]
                 # only a part behind for its own reason must run; the rest run if their inputs really change
                 named = [p for p in parts if behind[p] in ("code changed", "never stamped")]
