@@ -8,9 +8,6 @@ History `docs/state_history/` (previous: `STATE_2026-11-15_1530.md`); method `do
 - Free models: `beam-free`, `longcat-2.5-free`, `iceman-contributor-free` on Go.
 - T-188 reader bake-off and T-189 answer test: `docs/V2_SCHEMA_CONTRACT.md` s14, `reports/2026-11-12_four_model_answer_test.html`.
 
-## Merged 11 Nov
-T-182 page_words, T-180 reader_score + bake-off, T-183 page_reader, T-185 position check v2, T-186 `pilot3_fact`, T-187 guidance round 5, T-184 run ledger, T-188 HP OCR arm.
-
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
 0a. 18 Nov night (Eagle, Shivam asleep): branch `Eagle-T-223-readers` NOT on main. DONE + in stores: segments (`pilot3/segments_printed.py`, r5 PASS, 2,632 rows/19 stores, kpi_series UNIQUE+basis), notes (`pilot3/ar_notes.py`, r4 PASS, 3,332 rows/47 stores), R-019 tool replies merged (restart reality-data). IN FLIGHT: notes recovery agy 61e72755 (+2,062 rows) under dsh review 672fa85d -> merge -> store_repair --part ar_statements; R-020 FYFY (1,334 rows/20 stores) + R-019 follow-ups agy b6ffb652 -> dsh review -> --part comparatives. Coding: agy Hydrogen high first (RULINGS 17 Nov); reviewers dsh in worktrees (workspace-write). Then: main merge with docs, PP&E/CWIP, trial 2.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
