@@ -1718,3 +1718,13 @@ def test_a_table_rows_column_is_pinned_by_the_printed_header(tmp_path):
     out = run_checks(tmp_path, db, profile, ("kpi_series",))
     assert "multi_number" not in verdict(out, "kpi_series", 1)[1]
     assert "multi_number" in verdict(out, "kpi_series", 2)[1]
+
+
+def test_rescaled_exactly_reads_the_printed_number_only():
+    from reality_engine.pilot3.row_checks import _rescaled_exactly
+    # R-017 (17 Nov): "Rs. 193.76 lakhs" stored as 1.9376 crore is right; the "." of "Rs." is not a decimal point
+    assert _rescaled_exactly("Rs. 193.76", 1.9376, "lakh", "cr")
+    assert _rescaled_exactly("negative INR 86", -86.0, "mn", "mn")
+    assert not _rescaled_exactly("Rs.20000", 20000.0, "mn", "cr")
+    assert _rescaled_exactly("Rs.20000", 2000.0, "mn", "cr")
+    assert not _rescaled_exactly("", 1.0, "mn", "cr")

@@ -725,10 +725,14 @@ def _own_scale_word(text: str, pos: int) -> str | None:
 
 def _rescaled_exactly(raw_value: object, value: object, declared: str, row_scale: str) -> bool:
     """True when ``value`` is the printed number moved from the page's declared scale to the row's (0.01% slack)."""
+    # the printed number only: "Rs. 193.76" must not read as ".193.76"; the sign may be a word ("negative INR 86")
+    m = re.search(r"\d[\d,]*(?:\.\d+)?", str(raw_value or ""))
     try:
-        printed = float(re.sub(r"[^\d.\-]", "", str(raw_value)))
-        stored = float(value)  # type: ignore[arg-type]
+        printed = float(m.group(0).replace(",", "")) if m else float("nan")
+        stored = abs(float(value))  # type: ignore[arg-type]
     except (TypeError, ValueError):
+        return False
+    if printed != printed:
         return False
     if declared not in _SCALE_OF or row_scale not in _SCALE_OF or printed == 0:
         return False
