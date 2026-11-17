@@ -273,12 +273,13 @@ def parse_periods(text: str) -> list[Period]:
 NUM_CORE = r"\(?-?\d{1,3}(?:,\d{2,3})+(?:\.\d+)?\)?|\(?-?\d+(?:\.\d+)?\)?"
 VAL_RX = re.compile(
     r"(?<![A-Za-z0-9])(?P<cur>₹|`|Rs\.?|INR|US\$|USD|\$|EUR|€)?\s?(?P<num>" + NUM_CORE + r")\s?"
-    r"(?P<suf>crores?|crs?\b\.?|lakhs?|mn\b|mm\b|million|billion|trillion|bn\b|tn\b|kt\b|kilo ?tonnes?|tonnes?|tons?|mt\b|%|per ?cent|bps|basis points|x\b|times|days)?",
+    r"(?:\+\s?(?=crores?|crs?\b|lakhs?|mns?\b|million|billion|bn\b))?"   # R-017: "INR 1,900+ Mn"
+    r"(?P<suf>crores?|crs?\b\.?|lakhs?|mns?\b|mm\b|million|billion|trillion|bn\b|tn\b|kt\b|kilo ?tonnes?|tonnes?|tons?|mt\b|%|per ?cent|bps|basis points|x\b|times|days)?",
     re.I)
 _UNIT_BY_SUFFIX = {
     "crore": "inr_cr", "crores": "inr_cr", "cr": "inr_cr", "crs": "inr_cr",
     "lakh": "lakh", "lakhs": "lakh",
-    "mn": "mn", "mm": "mn", "million": "mn", "billion": "bn", "bn": "bn", "trillion": "tn", "tn": "tn",
+    "mn": "mn", "mns": "mn", "mm": "mn", "million": "mn", "billion": "bn", "bn": "bn", "trillion": "tn", "tn": "tn",
     "kt": "kt", "kilotonne": "kt", "kilotonnes": "kt", "kilo tonne": "kt", "kilo tonnes": "kt",
     "tonne": "tonnes", "tonnes": "tonnes", "ton": "tonnes", "tons": "tonnes", "mt": "mt",
     "%": "pct", "per cent": "pct", "percent": "pct", "bps": "bps", "basis points": "bps",
@@ -978,7 +979,9 @@ class Row:
 
 
 _PAGE_UNIT_RX = re.compile(r"(?:₹|`|rs\.?|inr)\s*(?:in\s+|\()?\s*(billion|bn|million|mn|mm|lakhs?|lacs?|crores?)\b"
-                           r"|\(\s*(?:in\s+)?(billion|bn|million|mn|mm|lakhs?|lacs?|crores?)\s*\)", re.I)
+                           r"|\(\s*(?:in\s+)?(billion|bn|million|mn|mm|lakhs?|lacs?|crores?)\s*\)"
+                           # R-017: the rupee glyph read as a letter, "EBITDA (C in Million)"
+                           r"|\(\s*[c`]\s+in\s+(billion|bn|million|mn|mm|lakhs?|lacs?|crores?)\s*\)", re.I)
 _PAGE_UNITS = {"billion": "inr_bn", "bn": "inr_bn", "lakh": "inr_lakh", "lakhs": "inr_lakh", "lac": "inr_lakh",
                "lacs": "inr_lakh", "crore": "inr_cr", "crores": "inr_cr"}
 
@@ -991,7 +994,7 @@ def page_money_unit(text: str) -> str | None:
     Two different declarations on a page: None (ambiguous)."""
     found = set()
     for m in _PAGE_UNIT_RX.finditer(text):
-        u = (m.group(1) or m.group(2) or "").lower()
+        u = next((g for g in m.groups() if g), "").lower()
         found.add(_PAGE_UNITS.get(u, "inr_mn"))
     return found.pop() if len(found) == 1 else None
 

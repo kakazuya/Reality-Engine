@@ -56,6 +56,9 @@ Checks (``check`` names in ``row_check_fail``):
                       with a negative value the quote does not print as a minus / bracket
     page_unit         (kpi) the page's declared scale ("in million", "Rs. in Mn", "(in Crores)") is not the
                       row's unit
+    own_scale         (kpi) the quote prints its own scale at the number ("Rs.20000 mns", "INR 1,900+ Mn",
+                      "EBITDA (C in Million) 1233.00") and the row's unit names another, unless the value was
+                      moved exactly to the row's scale (R-017, 17 Nov)
     same_doc_conflict (kpi) two rows of the same company / metric / scope / period from the SAME document
                       disagree by more than 1.5% after scale -> unverified (unless one is a variant)
     question_next     (kpi) the speaker cannot be found and the sentence after the number asks a question ->
@@ -110,7 +113,7 @@ VOCAB_PATH = Path(__file__).with_name("row_checks_vocab.yaml")
 HARD = {"list_order", "delta_value", "quote_on_page", "value_present", "label_present", "label_conflict", "label_foreign", "sector_fit", "third_party",
         "forward_word", "past_figure", "null_value", "range_order", "plausible", "future_period", "past_target",
         "fin_conflict", "part_not_total", "period_word", "currency", "target_frame", "target_year",
-        "not_company_speaker", "range_value", "unit_kind", "net_cash_sign", "page_unit",
+        "not_company_speaker", "range_value", "unit_kind", "net_cash_sign", "page_unit", "own_scale",
         "footnote_note", "regulated_rate", "derived_input"}
 SOFT = {"value_scaled", "range_spread", "multi_number", "cross_doc", "no_vocab", "no_page_text",
         "unknown_sector", "label_weak", "label_context", "forward_context", "variant", "entity_mismatch",
@@ -689,7 +692,7 @@ _PAGE_UNIT = re.compile(
     r"|(?:rs\.?|inr|₹|`)\s*\.?\s*(million|mn|billion|bn|crores?|cr|lakhs?|lacs?|thousand)\b"
     r"|\bin\s+(million|mn|billion|bn|crores?|cr|lakhs?|lacs?|thousand)\s+(?:of\s+)?"
     r"(?:indian\s+rupees?|inr|rupees?)\b", re.I)
-_MAGNITUDE_WORD = re.compile(r"\b(?:million|mn|billion|bn|crores?|cr|lakhs?|lacs?|thousand)\b", re.I)
+_MAGNITUDE_WORD = re.compile(r"\b(?:millions?|mns?|billions?|bn|crores?|cr|lakhs?|lacs?|thousand)\b", re.I)
 _MAGNITUDE = {"million": "mn", "mn": "mn", "billion": "bn", "bn": "bn", "crore": "cr", "crores": "cr",
               "cr": "cr", "lakh": "lakh", "lakhs": "lakh", "lac": "lakh", "lacs": "lakh", "thousand": "thousand"}
 
@@ -703,6 +706,21 @@ def _col(row, name: str):
         return row[name]
     except (IndexError, KeyError):
         return None
+
+
+def _own_scale_word(text: str, pos: int) -> str | None:
+    """The scale word printed with the number at ``pos``: right after it ("20000 mns", "1,900+ Mn", "22,449
+    million"), or else in the row label just before it with no other number between ("EBITDA (C in Million)
+    1233.00").  None when neither is there."""
+    m = re.match(r"[\d,.()\-]*\s?\+?\s?(millions?|mns?|billions?|bn|crores?|cr|lakhs?|lacs?|thousand)\b",
+                 text[pos:pos + 40], re.I)
+    if m:
+        return m.group(1)
+    before = text[max(0, pos - 40):pos]
+    words = list(_MAGNITUDE_WORD.finditer(before))
+    if words and not re.search(r"\d", before[words[-1].end():]):
+        return words[-1].group(0)
+    return None
 
 
 def _rescaled_exactly(raw_value: object, value: object, declared: str, row_scale: str) -> bool:
@@ -1202,6 +1220,16 @@ class Checker:
         declared scale to the row's (R-005, 16 Nov: '29,132.35' on a lakh page stored as 291.32 crore is right)."""
         m_u = re.fullmatch(r"(?:inr|usd)_(mn|cr|bn|lakh|thousand)", (unit or "").lower())
         if pos is None or not m_u:
+            return
+        own = _own_scale_word(text, pos)
+        if own is not None:
+            # R-017 (17 Nov): the quote prints its own scale at the number ("Rs.20000 mns", "INR 1,900+ Mn",
+            # "EBITDA (C in Million) 1233.00"); a row whose unit names another scale is the same rescale error,
+            # unless the stored value is the printed number moved exactly to the row's scale.
+            said = _MAGNITUDE.get(own.lower().rstrip("s"), "")
+            if (said and said != m_u.group(1) and not (unit or "").lower().startswith("usd")
+                    and not _rescaled_exactly(raw_value, value, said, m_u.group(1))):
+                v.fail("own_scale", f"the quote prints '{own}' at the number but the row unit is {unit}")
             return
         if _MAGNITUDE_WORD.search(text[max(0, pos - 60):pos + 40]):
             return

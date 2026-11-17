@@ -1264,6 +1264,34 @@ def test_page_unit_declaration_conflicts_with_the_row_unit(tmp_path):
     assert "page_unit" not in verdict(out, "kpi_series", 6)[1]
 
 
+def test_own_scale_word_at_the_number_judges_the_row_unit(tmp_path):
+    # R-017 (17 Nov, trial 1): "Rs.20000 mns" and "INR 1,900+ Mn" were stored as crore and served unverified
+    pages = {1: "order book above Rs.20000 mns as on 31st March, 2024",
+             2: "order book stands at INR 1,900+ Mn as on Q1FY25",
+             3: "EBITDA (C in Million) 1233.00",
+             4: "order book above Rs.20000 mns as on 31st March, 2024",
+             5: "order book of Rs 2,050 crore ($ 246 million)"}
+    row = dict(symbol="A", dimension="total", fiscal_period="FY24", period_type="FY")
+    kpi = [dict(row, id=1, metric="order_book", value=20000.0, unit="inr_cr", scale=1e7, raw_value="Rs.20000",
+                quote="order book above Rs.20000 mns", page=1),
+           dict(row, id=2, metric="order_book", value=1900.0, unit="inr_cr", scale=1e7, raw_value="INR 1,900",
+                quote="order book stands at INR 1,900+ Mn", page=2),
+           dict(row, id=3, metric="ebitda", value=1233.0, unit="inr_cr", scale=1e7, raw_value="1233.00",
+                quote="EBITDA (C in Million) 1233.00", page=3),
+           # moved exactly from million to crore, or kept in million: right
+           dict(row, id=4, metric="order_book", value=2000.0, unit="inr_cr", scale=1e7, raw_value="20000",
+                quote="order book above Rs.20000 mns", page=4),
+           dict(row, id=5, metric="order_book", value=2050.0, unit="inr_cr", scale=1e7, raw_value="2,050",
+                quote="order book of Rs 2,050 crore", page=5)]
+    db, profile = build(tmp_path, pages, kpi=kpi, sectors={"A": "engineering"})
+    out = run_checks(tmp_path, db, profile, ("kpi_series",))
+    for rid in (1, 2, 3):
+        status, fails = verdict(out, "kpi_series", rid)
+        assert status == "quarantined" and "own_scale" in fails, (rid, fails)
+    for rid in (4, 5):
+        assert "own_scale" not in verdict(out, "kpi_series", rid)[1]
+
+
 def test_variant_words_extend_to_debt_and_margins(tmp_path):
     pages = {
         1: "Adjusted Net Debt 500",

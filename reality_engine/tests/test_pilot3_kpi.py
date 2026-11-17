@@ -1923,3 +1923,17 @@ def test_v81_net_revenues_does_not_collide_with_total_revenues():
 
 
 
+
+
+def test_million_spellings_are_read_as_million():
+    # R-017 (17 Nov, trial 1): "mns", "1,900+ Mn" and "(C in Million)" were stored as crore
+    from reality_engine.pilot3 import kpi as k
+    for text, value in [("order book above Rs.20000 mns as on", 20000.0),
+                        ("order book stands at INR 1,900+ Mn as on Q1FY25", 1900.0),
+                        ("total revenue stood at Rs. 22,449 million in FY 2023-24", 22449.0)]:
+        assert [(v.value, v.unit) for v in k.find_values(text, "money", "inr_cr", 0, len(text), [])] == \
+            [(value, "inr_mn")], text
+    text = "revenue of Rs 2,050 crore, up 10 + 5"
+    assert [(v.value, v.unit) for v in k.find_values(text, "money", "inr_cr", 0, len(text), [])][0] == \
+        (2050.0, "inr_cr")
+    assert k.page_money_unit("EBITDA (C in Million)\n1233.00") == "inr_mn"

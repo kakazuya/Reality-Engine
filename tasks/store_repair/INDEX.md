@@ -10,7 +10,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-015 | open | missed | 91/91 (scan) | 1 | 11 (11) | 102 | comparatives | general |  |
 | R-014 | open | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general |  |
 | R-019 | open | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
-| R-017 | open | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general |  |
+| R-017 | fix_written | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general | c04 |
 | R-016 | open | missed | 16/91 (trial) | 1 | 17 (16) | 33 | kpi | general |  |
 | R-018 | open | missed | 9/91 (scan) | 1 | 1 (1) | 10 | holding | general |  |
 | R-001 | open | missed |  | 1 |  |  | guidance | general |  |
@@ -234,18 +234,18 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Tags:** trial1, not_extracted; **scope:** general
 - **Stores repaired:** -; runs: -
 
-## R-017 (open, part `kpi`, opened 2026-11-17)
+## R-017 (fix_written, part `kpi`, opened 2026-11-17)
 
 1. **Why it had to be done** (question that exposed it, c53,SIMPLEXINF,NSIL): Trial 1: KABRAEXTRU FY26 PAT, SIMPLEXINF FY24 order book, NSIL PE
 2. **What the problem was:** 3 wrong stored rows found by the grader and checked: KABRAEXTRU kpi_series FY26 pat 34 inr_cr (AR p37 quote 'PAT\n34' is the FY25 column; FY26 is (2.44)); SIMPLEXINF order book FY24 20000 inr_cr from a quote in mns (10x); KABRAEXTRU order book 1900 inr_cr from 'INR 1,900+ Mn'; NSIL valuation_daily PE off (PAT unit vs share count). **Root cause:** kpi table reader assigns the first value of a two-column row to the current period when the row label line carries only one number; sentence reader takes 'Mn'/'mns' as crore in some phrasings; PE uses a PAT row in a different unit.
 3. **What was missing:** A period check (value must sit under its column header) and a unit check for 'Mn/mns' in the kpi readers; a unit-consistent PE input.
-4. **How it was fixed:** Proposed: period-column alignment check before a table row is kept; Mn/mns token mapped to inr_mn; PE built from the preferred PAT in rupees.
+4. **How it was fixed:** One general unit fix, not per company: the KPI reader now reads 'mns', '1,900+ Mn' and '(C in Million)' as million (pilot3/kpi.py VAL_RX, _UNIT_BY_SUFFIX, _PAGE_UNIT_RX), and the independent checker gets a hard rule own_scale (row_checks.check_page_unit/_own_scale_word): a quote that prints its own scale at the number must agree with the row unit. Before it, a nearby scale word made the checker skip the page-unit test without comparing. c04 (SIMPLEXINF) re-run: order book FY24 now 20000 inr_mn (2,000 crore), revenue FY24 10109 standalone / 13885 consolidated inr_mn recovered as verified, 0 rows removed. KABRAEXTRU FY26 pat (FY25 column), NSIL PE and NAVKARCORP's JSW deck are still open.
 5. **What can come next:** Find all kpi rows with quote like 'Mn'/'mns' stored as inr_cr across 91 stores and all single-number table rows; fix, repair, accept only with no right rows lost.
 - **Kind:** wrong (a row served as true holds another year's column, a million figure stored as crore, a PE from mismatched units, or a deck of another issuer filed under the company (NAVKARCORP); scan suspects: 51 kpi rows in 10 stores quote Mn/million but are stored in crore, 2 stores with PE above 500 or below 0); **severity:** 12/91 companies (suspect); **criticality:** 3; **trial questions failed:** 4; **priority:** 48
-- **Code:** -
+- **Code:** pilot3/kpi.py::find_values, pilot3/kpi.py::page_money_unit, pilot3/row_checks.py::check_page_unit, pilot3/row_checks.py::_own_scale_word
 - **Store tables touched:** kpi_series, valuation_daily
 - **Tags:** trial1, wrong_row; **scope:** general
-- **Stores repaired:** -; runs: -
+- **Stores repaired:** c04; runs: 20261117T085856
 
 ## R-018 (open, part `holding`, opened 2026-11-17)
 
