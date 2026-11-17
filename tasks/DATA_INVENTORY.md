@@ -1,7 +1,7 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-16 11:25 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
-Undocumented: 0 tables and 0 of 74 raw folders.
+Generated 2026-11-17 12:34 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Undocumented: 0 tables and 1 of 74 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
 
@@ -21,7 +21,7 @@ Undocumented: 0 tables and 0 of 74 raw folders.
 | ar_facts.db | `ar_facts_replaced` | 31,533 | yes |
 | ar_facts.db | `ar_pieces` | 681,871 | yes |
 | ar_facts.db | `ar_skipped_pages` | 521,224 | yes |
-| bse_announcements.db | `ann` | 1,947,087 | yes |
+| bse_announcements.db | `ann` | 1,982,423 | yes |
 | bse_announcements.db | `done` | 33,194 | yes |
 | concall_facts.db | `cc_docs` | 140,700 | yes |
 | concall_facts.db | `cc_item_checks` | 646,563 | yes |
@@ -190,7 +190,7 @@ Undocumented: 0 tables and 0 of 74 raw folders.
 | pilot/macro_all.db | `macro_claim` | 21,793 | yes |
 | pilot/macro_all.db | `macro_claim_target` | 44,742 | yes |
 | pilot/macro_all.db | `macro_doc` | 456 | yes |
-| pilot/pilot60_history_manifest.db | `docs` | 322,237 | yes |
+| pilot/pilot60_history_manifest.db | `docs` | 377,338 | yes |
 | pilot/results_notes.db | `results_notes` | 17,989 | yes |
 | results_notes.db | `docs` | 41,606 | yes |
 | results_notes.db | `gate` | 21 | yes |
@@ -232,11 +232,11 @@ Undocumented: 0 tables and 0 of 74 raw folders.
 | macro_pdfs | 0 | 0.00 | - | yes |
 | maruti_transcripts | 0 | 0.00 | - | yes |
 | material_announcement | 0 | 0.00 | - | yes |
-| nse_announcements | 0 | 0.00 | - | yes |
+| nse_announcements | 697 | 0.66 | 2026-11-16 `download.log` | yes |
 | nse_shp_xbrl_pilot | 797 | 0.01 | 2026-11-12 `SHP_1741009_17102026084603_WEB.xml.gz` | yes |
-| nse_shp_xbrl_universe | 0 | 0.00 | - | yes |
+| nse_shp_xbrl_universe | 0 | 0.00 | - | **undocumented** |
 | originals_lists | 0 | 0.00 | - | yes |
-| pilot60_history | 20,251 | 34.78 | 2026-11-15 `manifest.csv` | yes |
+| pilot60_history | 14,301 | 33.57 | 2026-11-16 `manifest.csv` | yes |
 | price_bands | 0 | 0.00 | - | yes |
 | raw_market/amfi_nav | 0 | 0.00 | - | yes |
 | raw_market/bse_bhav | 5 | 0.00 | 2026-11-09 `BhavCopy_BSE_CM_0_0_0_20261109_F_0000.CSV` | yes |
