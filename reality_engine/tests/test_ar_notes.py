@@ -114,3 +114,102 @@ def test_less_caption_and_all_zero_column():
     got = N.blocks(lines, 0)
     assert len(got) == 1 and got[0][1][1][1].label.startswith("Less:")
     assert N.blocks(lines, 1) == []                          # 0 - 0 = 0 proves nothing
+
+
+# --- T-223 review defects (D1, D2, D3, D5) ---
+
+def _wline(y: float, *cells: tuple[float, str]) -> list[tuple[float, float, float, float, str]]:
+    """Synthetic word boxes for one printed line: (x, text) pairs."""
+    out = []
+    for x, text in cells:
+        for word in text.split(" "):
+            out.append((x, y, x + 6 * len(word), y + 8, word))
+            x += 6 * len(word) + 4
+    return out
+
+
+def test_d1_two_up_page_crops_to_own_block(monkeypatch):
+    # Left half: trade payables ageing table; right half: Note 19 Borrowings closed by Note 20 on a shared y-line
+    words = (
+        _wline(20, (40, "Notes to Consolidated Financial Statements"))
+        + _wline(40, (40, "NOTE 17 : TRADE PAYABLES"), (640, "NOTE 19 : BORROWINGS"))
+        + _wline(54, (40, "Ageing schedule of trade payable"), (1080, "in Lakhs"))
+        + _wline(68, (200, "Not due"), (350, "Total"), (640, "Particulars"), (960, "March 31, 2026"), (1080, "March 31, 2025"))
+        + _wline(82, (40, "Undisputed Dues MSME"), (200, "10.00"), (350, "10.00"), (640, "Cash credit"), (980, "100.00"), (1100, "50.00"))
+        + _wline(96, (40, "Undisputed Dues Others"), (200, "20.00"), (350, "20.00"), (640, "Term loans"), (980, "200.00"), (1100, "150.00"))
+        + _wline(110, (40, "Current Trade Payables"), (200, "30.00"), (350, "30.00"), (640, "Total"), (980, "300.00"), (1100, "200.00"))
+        + _wline(124, (40, "Payables other"), (350, "999.00"), (640, "NOTE 20 : OTHER FINANCIAL LIABILITIES"))
+        + _wline(138, (640, "Deferred income"), (980, "500.00"), (1100, "400.00"))
+        + _wline(152, (640, "Total"), (980, "500.00"), (1100, "400.00"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _log = N.read_page("x.db", "doc", 1, "2026-06-01", None)
+    items = {(r.fiscal_year, r.line_item): r.value for r in rows}
+    assert items[("FY26", "borrowings_unclassified:cash_credit")] == 100.0
+    assert items[("FY26", "borrowings_unclassified:term_loans")] == 200.0
+    assert items[("FY26", "borrowings_unclassified_total")] == 300.0
+    assert not any("trade" in r.line_item or "undisputed" in r.line_item or "deferred" in r.line_item for r in rows)
+
+    # Also when the target note sits on the LEFT half and another table sits on the RIGHT half
+    left_words = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(40, (40, "19. Borrowings (Current)"), (640, "20. Trade Payables"))
+        + _wline(54, (440, "in Lakhs"), (1080, "in Lakhs"))
+        + _wline(68, (40, "Particulars"), (340, "March 31, 2026"), (450, "March 31, 2025"),
+                 (640, "Particulars"), (960, "March 31, 2026"), (1080, "March 31, 2025"))
+        + _wline(82, (40, "Cash credit"), (360, "120.00"), (470, "80.00"), (640, "MSME dues"), (980, "50.00"), (1100, "40.00"))
+        + _wline(96, (40, "Total"), (360, "120.00"), (470, "80.00"), (640, "Total"), (980, "50.00"), (1100, "40.00"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": left_words})())
+    lrows, _ = N.read_page("x.db", "doc", 1, "2026-06-01", None)
+    assert {(r.fiscal_year, r.line_item): r.value for r in lrows}[("FY26", "borrowings_current_total")] == 120.0
+
+
+def test_d2_unit_from_above_first_figure_never_footnote(monkeypatch):
+    words = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(40, (40, "13. Borrowings (non-current)"))
+        + _wline(54, (420, "(Rs. in million)"))
+        + _wline(68, (40, "Particulars"), (320, "December 31, 2025"), (440, "December 31, 2024"))
+        + _wline(82, (40, "Motor vehicle loan"), (350, "27.26"), (470, "24.47"))
+        + _wline(96, (40, "Total"), (350, "27.26"), (470, "24.47"))
+        + _wline(110, (40, "Notes: Issued debentures of face value of Rs. 1 Lakh each."))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "doc", 1, "2026-03-01", None)
+    assert rows and all(r.unit == "inr_million" for r in rows)
+
+
+def test_d3_marker_combination_grand_total_stays_total_when_followed():
+    lines = [
+        _ln("Secured"), _ln("Working capital loan", 2225.38, 8640.46), _ln("(A)", 2225.38, 8640.46),
+        _ln("Unsecured"), _ln("Term loan", 4100.00, 2200.00), _ln("(B)", 4100.00, 2200.00),
+        _ln("Current maturities", 650.00, 0.0), _ln("(C)", 650.00, 0.0),
+        _ln("(A)+(B)+(C)", 6975.38, 10840.46),
+        _ln("Interest rate footnote", 180.00, 180.00),
+    ]
+    got = N.blocks(lines, 0)
+    assert got[-1][3] == "grand" and got[-1][5] is False
+    # Same for 'Total (a+b)' and 'Total borrowing (A+B)'
+    lines2 = [
+        _ln("Loan 1", 15.84, 13.01), _ln("Total - Secured (A)", 15.84, 13.01),
+        _ln("Loan 2", 2675.91, 0.0), _ln("Total - Unsecured (B)", 2675.91, 0.0),
+        _ln("Total borrowing (A+B)", 2691.75, 13.01),
+        _ln("Footnote number", 36.0, 36.0),
+    ]
+    got2 = N.blocks(lines2, 0)
+    assert got2[-1][3] == "grand" and got2[-1][5] is False
+    # A plain 'Total' (not a marker combination) followed by figures still gets followed=True
+    lines3 = [_ln("Loan 1", 10.0, 10.0), _ln("(A)", 10.0, 10.0), _ln("Total", 10.0, 10.0), _ln("Extra", 5.0, 5.0)]
+    assert N.blocks(lines3, 0)[-1][5] is True
+
+
+def test_d5_prose_lines_never_open_a_note():
+    assert N.note_of("19. Non - current financial liabilities - Borrowings") == "borrowings_noncurrent"
+    assert N.note_of("Note 11(b) - Financial Liabilities - Borrowings (Current)") == "borrowings_current"
+    assert N.note_of("2. Debt-Equity Ratio: Debt (includes Borrowings and Current & Non-Current Lease Liabilities)") is None
+    assert N.note_of("2. Debt-Equity Ratio: Debt (includes Borrowings)") is None
+    assert N.note_of("31 Amount of total borrowings (long-term and short-term) of the related party") is None
+    assert N.note_of("31 Amount of total borrowings") is None
+    assert N.note_of("21.1 Details of the secured long-term borrowings:") is None
+    assert N.note_of("19. " + "Non-current financial liabilities - Borrowings " * 2) is None
