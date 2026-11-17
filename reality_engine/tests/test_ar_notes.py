@@ -276,3 +276,84 @@ def test_l2_figures_only_total_line_kept_as_total_candidate(monkeypatch):
     assert by[("FY23", "borrowings_noncurrent_total")] == 16.94
     assert by[("FY22", "borrowings_noncurrent_total")] == 13.23
     assert not any("227" in r.caption or r.value == 227.0 for r in rows)
+
+
+# --- T-223 review round 5 defects (D1: transacted-price subtable, D2: two-section grand total, D3: prose followed) ---
+
+def test_d1_breakup_and_transacted_price_subtable_ends_note(monkeypatch):
+    words = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(40, (40, "24 REVENUE FROM OPERATIONS"))
+        + _wline(54, (320, "Year ended 31-03-2024"), (440, "Year ended 31-03-2023"))
+        + _wline(68, (350, "` crores"), (470, "` crores"))
+        + _wline(82, (40, "A) REVENUE FROM SALE OF PRODUCTS"))
+        + _wline(96, (40, "Paper and Paper Boards"))
+        + _wline(110, (40, "India"), (350, "1535.96"), (470, "1642.90"))
+        + _wline(124, (40, "Rest of the World"), (350, "216.80"), (470, "379.84"))
+        + _wline(138, (350, "1752.76"), (470, "2022.74"))
+        + _wline(152, (40, "Stock in Trade"))
+        + _wline(166, (40, "India"), (350, "27.31"), (470, "28.78"))
+        + _wline(180, (350, "1780.07"), (470, "2051.52"))
+        + _wline(194, (40, "Break-up of Revenue from Sale of Products -"))
+        + _wline(208, (40, "Transacted Price and adjustments"))
+        + _wline(222, (40, "Sales Value at Transacted price"), (350, "1885.11"), (470, "2161.75"))
+        + _wline(236, (40, "Less : Adjustments:"))
+        + _wline(250, (40, "Cash Discount"), (350, "38.79"), (470, "47.97"))
+        + _wline(264, (40, "Other Discounts / Incentives"), (350, "66.25"), (470, "62.26"))
+        + _wline(278, (350, "105.04"), (470, "110.23"))
+        + _wline(292, (350, "1780.07"), (470, "2051.52"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "doc", 1, "2024-08-01", None)
+    assert N._SUBTABLE.search("Break-up of Revenue from Sale of Products -")
+    assert N._SUBTABLE.search("Contract price adjustments")
+    assert not any("transacted" in r.line_item or "discount" in r.line_item for r in rows)
+    fy24_items = [r for r in rows if r.fiscal_year == "FY24" and "_total" not in r.line_item and "_subtotal" not in r.line_item]
+    fy24_tot = [r for r in rows if r.fiscal_year == "FY24" and r.line_item == "revenue_from_operations_total"]
+    assert len(fy24_tot) == 1 and abs(sum(r.value for r in fy24_items) - fy24_tot[0].value) < 1e-6
+
+
+def test_d2_two_section_borrowings_without_note_total_writes_no_grand_total(monkeypatch):
+    # c53 KABRAEXTRU style: Long term (1107.39 - 544.90 = 562.49) then Current (4449.39 + 3000 + 544.90 = 7994.29),
+    # with no overall note total: neither section total may become borrowings_unclassified_total.
+    words = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(40, (40, "17 Borrowings"))
+        + _wline(54, (420, "(Amount in Lakhs)"))
+        + _wline(68, (340, "31 March 2024"), (460, "31 March 2023"))
+        + _wline(82, (40, "Long term borrowing"))
+        + _wline(96, (40, "Secured"), (350, "1,107.39"), (470, "1,689.95"))
+        + _wline(110, (350, "1,107.39"), (470, "1,689.95"))
+        + _wline(124, (40, "Less - Current maturity of long term borrowing"), (350, "544.90"), (470, "574.45"))
+        + _wline(138, (350, "562.49"), (470, "1,115.49"))
+        + _wline(152, (40, "Loans repayable on demand"))
+        + _wline(166, (40, "Secured (ii)"), (350, "4,449.39"), (470, "2,712.23"))
+        + _wline(180, (40, "Unsecured"), (350, "3,000.00"), (470, "2,996.01"))
+        + _wline(194, (350, "7,449.39"), (470, "5,708.24"))
+        + _wline(208, (40, "Add - Current maturity of long term borrowing"), (350, "544.90"), (470, "574.45"))
+        + _wline(222, (350, "7,994.29"), (470, "6,282.69"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "doc", 1, "2024-08-01", None)
+    assert rows and not any(r.line_item == "borrowings_unclassified_total" for r in rows)
+
+
+def test_d3_prose_footnote_number_never_sets_followed(monkeypatch):
+    words = (
+        _wline(20, (40, "Notes to Consolidated Financial Statements"))
+        + _wline(40, (40, "13. Borrowings (non-current)"))
+        + _wline(54, (420, "(H in million)"))
+        + _wline(68, (40, "Particulars"), (320, "December 31, 2023"), (440, "December 31, 2022"))
+        + _wline(82, (40, "Term loans"))
+        + _wline(96, (40, "- Motor vehicle loan"), (350, "27.58"), (470, "20.44"))
+        + _wline(110, (40, "Less: Current maturities of term loans"), (350, "10.64"), (470, "7.21"))
+        + _wline(124, (350, "16.94"), (470, "13.23"))
+        + _wline(138, (40, "per annum. The term loans are repayable in equated monthly instalments ranging from"),
+                 (350, "36"), (400, "to 60 months from the date of loan."))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "doc", 1, "2024-05-17", None)
+    by = {(r.fiscal_year, r.line_item): r.value for r in rows}
+    assert by[("FY23", "borrowings_noncurrent_total")] == 16.94
+    assert by[("FY22", "borrowings_noncurrent_total")] == 13.23
+    assert not any("227" in r.caption or r.value == 227.0 for r in rows)

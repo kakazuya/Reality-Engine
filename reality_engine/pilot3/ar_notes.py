@@ -8,11 +8,11 @@ stores held them only as page text.  No model; the frame is the cash-flow reader
    after the note number, no sentence words such as 'includes', 'amount of', 'ratio', 'details of') that names the
    note ('16 Long term borrowings', 'Note 11(b) - Financial Liabilities - Borrowings (Current)', '25 Revenue from
    operations', '28 Finance costs') opens it; the note runs until the next numbered heading, a second table printed inside
-   it (disaggregation, reconciliation with contract price, geography, terms of repayment, ...: ``_SUBTABLE``) or the
-   page end.  A date line ('31st March 2026', '31-Mar-2025', '31-Mar-25', 'Mar-25') is never a heading; a '(Contd.)'
-   heading opens nothing.  On a two-up page (two blocks printed side by side), each note region is restricted
-   horizontally to its own block (heading left edge minus a small margin up to the next side-by-side block's left edge)
-   before reading columns, units or lines.
+   it (disaggregation, reconciliation with contract price, break-up of revenue / transacted price / price adjustments,
+   geography, terms of repayment, ...: ``_SUBTABLE``) or the page end.  A date line ('31st March 2026', '31-Mar-2025',
+   '31-Mar-25', 'Mar-25') is never a heading; a '(Contd.)' heading opens nothing.  On a two-up page (two blocks printed
+   side by side), each note region is restricted horizontally to its own block (heading left edge minus a small margin
+   up to the next side-by-side block's left edge) before reading columns, units or lines.
 2. Columns: the first pair of period-end dates in the note, newer on the left (``_columns``, reading '31-Mar-2025' /
    '31-Mar-25' / 'Mar-25' and en-dash variants alongside full dates), else the nearest header printed above the heading
    in the same horizontal span; a note printed with more than two figure columns is not read.
@@ -20,10 +20,13 @@ stores held them only as page text.  No model; the frame is the cash-flow reader
    furniture and footnotes dropped), re-keeping empty-label lines that print both figure columns as total candidates.
 4. Gate, per block and column: the item lines since the block opened (a 'Less:' line printed without a bracket
    is subtracted) add up to the next total line ('Total', 'Sub total', or a line that prints figures and no words,
-   '(A)'), within the printed rounding.  A total that adds up the block totals above it plus any loose items printed
-   after them is the grand total.  A grand total whose label is a combination of the block markers printed above it
-   ('(A)+(B)+(C)', 'Total (a+b)', 'Total (A+B)') stays ``<note>_total`` whatever follows in the note.  A block that
-   does not add up writes nothing; a column where two rows would share a line_item writes nothing.
+   '(A)'), within the printed rounding.  A total that adds up ALL block totals and loose items since the (sub-)note
+   opened is the grand total; a second section total that does not add up everything since the (sub-)note opened is a
+   block total.  A grand total whose label is a combination of the block markers printed above it ('(A)+(B)+(C)',
+   'Total (a+b)', 'Total (A+B)') stays ``<note>_total`` whatever follows in the note.  Prose footnote lines (sentence
+   words or >8 words of text) never mark a block total as ``followed``.  A block that does not add up writes nothing;
+   a column where two rows would share a line_item writes nothing; a region where a (sub-)note's items do not sum to
+   its ``_total`` writes nothing.
 5. Rows: one per item and one per total.  ``line_item`` = ``<note>[:sub]:<item slug>``; the note total
    ``<note>_total[:sub]`` is a marker-combination grand total, another grand total with no figures after it, or a lone
    block with no figures after it in the (sub-)note; every other block total is
@@ -86,13 +89,15 @@ _CONTD = re.compile(r"\(?\s*cont(d|inued)?\b\.*\s*\)?", re.I)
 _SUBTABLE = re.compile(r"disaggregat|reconcil|contract\s+(balances|price|assets|liabilit)|timing\s+of|sales\s+channel|"
                        r"geograph|performance\s+obligation|unsatisfied|by\s+(nature|type|market|region|customer)|"
                        r"terms\s+(and|of)\s+(conditions|repayment)|repayment\s+(schedule|terms)|maturity\s+(profile|analysis)|"
-                       r"rate\s+of\s+interest|nature\s+of\s+security|reportable\s+segment", re.I)
+                       r"rate\s+of\s+interest|nature\s+of\s+security|reportable\s+segment|"
+                       r"break[- ]?up\s+of\s+(?:revenue|sales)|transacted\s+price|(?:contract|transacted|price)\s+adjustments?", re.I)
 # the basis is read from a title line only ('Notes to the Consolidated Financial Statements', 'Standalone Balance
 # Sheet'), never from prose ('tracked at consolidated level')
 _BASIS_TITLE = re.compile(r"notes?\s+(forming\s+part\s+)?(of\s+|to\s+)?(the\s+)?(audited\s+)?(consolidated|stand[- ]?alone)|"
                           r"(consolidated|stand[- ]?alone)\s+(balance\s+sheet|statement\s+of|financial\s+statements|cash\s+flow)",
                           re.I)
 _SENTENCE = re.compile(r"\.\s*$|\b(is|are|was|were|has|have|had|being|which|includes?)\b", re.I)
+_PROSE_LINE = re.compile(r"\b(is|are|was|were|has|have|had|being|which|includes?|shall|will|carries|repayable)\b", re.I)
 
 
 def title_basis(text: str) -> str | None:
@@ -314,13 +319,14 @@ def _is_marker_grand(label: str, done: list[A.Line]) -> bool:
 
 def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Line]], A.Line, str, str, bool]]:
     """(sub-block, [(group, item)], total, kind, caption, followed) for each total line of one column whose items add
-    up to it; ``followed``: figures (or a total that adds up nothing) come after it in the same (sub-)note.
+    up to it; ``followed``: non-prose figures (or a total that adds up nothing) come after it in the same (sub-)note.
     ``group`` is the bare caption the item is printed under ('Secured', 'Term loans from banks'); kind is 'block',
-    or 'grand' for a total that adds up the block totals printed above it since the last grand total; caption is the
-    first bare caption of the block ('Secured', 'Unsecured')."""
+    or 'grand' for the note's single grand total that adds up ALL block totals and loose items since the (sub-)note
+    opened; caption is the first bare caption of the block ('Secured', 'Unsecured')."""
     out = []
     locked: set[int] = set()          # marker-combination grand totals stay <note>_total whatever follows
     items: list[tuple[str, A.Line]] = []
+    all_items: list[A.Line] = []      # every item in the current (sub-)note since it opened
     done: list[A.Line] = []           # block totals since the last grand total
     sub, group, head = "", "", ""
     for ln in lines:
@@ -328,7 +334,7 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
         v = ln.values[k] if ln.values else None
         if v is None and _SUBBLOCK.search(label) and len(label) < 40:
             sub = "noncurrent" if re.search(r"non", label, re.I) else "current"
-            items, group, head = [], "", ""
+            items, all_items, group, head = [], [], "", ""
             continue
         if v is None:
             # a 'Less: Current maturities of long-term debt (refer note 21)' caption counts at any length
@@ -339,14 +345,22 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
             continue
         if _TOTAL.search(label) or not re.search(r"[A-Za-z]{2}", label):
             parts = [i for _, i in items]
-            # a grand total: the block totals above it (and any loose items printed after the last of them) add up
+            # a grand total: the block totals above it (and any loose items printed after the last of them) add up,
+            # AND it accounts for every item since the (sub-)note opened (a second section total without that is a block)
             if ln.values[k] == 0 and all(i.values[k] == 0 for i in parts + done):
                 pass                                    # an all-zero column adds up by itself: proves nothing
             elif done and _adds(done + parts, ln, k) and all(readable(i.label) for i in parts):
-                if _is_marker_grand(ln.label, done):
-                    locked.add(len(out))
-                out.append((sub, list(items), ln, "grand", "", False))
-                done = []
+                whole_note = _adds(all_items, ln, k) and not any(
+                    b[0] == sub and b[3] == "grand" for b in out
+                )
+                if whole_note:
+                    if _is_marker_grand(ln.label, done):
+                        locked.add(len(out))
+                    out.append((sub, list(items), ln, "grand", "", False))
+                    done = []
+                else:
+                    out.append((sub, list(items), ln, "block", head, False))
+                    done = [ln]
             elif parts and _adds(parts, ln, k) and all(readable(i.label) for i in parts):
                 out.append((sub, list(items), ln, "block", head, False))
                 done.append(ln)
@@ -361,14 +375,17 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
             m = _SUB_AFTER_TOTAL.search(label)
             if m and _TOTAL.search(label):
                 sub = "noncurrent" if re.search(r"non", m.group(1), re.I) else "current"
-                done = []
+                all_items, done = [], []
             continue
         # figures printed after a block's total, in the same (sub-)note: that block is not the whole note
-        out = [b[:5] + (True,) if b[0] == sub and idx not in locked else b for idx, b in enumerate(out)]
+        # (a number embedded in a prose footnote like '36 to 60 months' is never a figure line for followed)
+        if not (_PROSE_LINE.search(label) or len(label.split()) > 8):
+            out = [b[:5] + (True,) if b[0] == sub and idx not in locked else b for idx, b in enumerate(out)]
         if _LESS.search(group) and not _LESS.search(ln.label):
             # an item under a 'Less:' caption line is subtracted like a 'Less:' item
             ln = A.Line(f"Less: {ln.label}", ln.values, ln.decimals, ln.quote, ln.page, ln.section)
         items.append((group, ln))
+        all_items.append(ln)
     return out
 
 
@@ -564,10 +581,10 @@ def _read_lines(words, centres: list[float], page: int) -> list[A.Line]:
     body_words: list = []
     for ln in lines_of(words):
         label, vals, _, quote, _ = _parse_line_cols(words, ln, centres, gap)
-        if vals == [None, None] and (
-            _is_date_chunk(label) or _HEADERISH.search(label) or is_heading(label)
-            or (len(label.split()) <= 5 and A._unit(label))
-        ):
+        line_text = " ".join(words[i][4] for i in ln)
+        if _is_date_chunk(line_text) or (vals == [None, None] and (
+            _HEADERISH.search(label) or is_heading(label) or (len(label.split()) <= 5 and A._unit(label))
+        )):
             continue
         body_words.extend(words[i] for i in ln)
     body = A._read_lines(body_words, centres, page)
@@ -648,25 +665,35 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
             continue
         ends = cols[1]
         n_ok = 0
+        reg_rows: list[Row] = []
+        reg_bad = False
         for k in (0, 1):
             fy = A.fiscal_label(ends[k])
             own = ends[k] == max(ends)
             col_rows = []
             found = blocks(body, k)
+            # a lone unfollowed block whose printed total is a bare section marker ('(A)') is an incomplete half of a
+            # multi-page note (part (B) sits on the next page): never stand in for the complete note
+            if (len(found) == 1 and not found[0][5] and found[0][3] == "block"
+                    and re.fullmatch(r"\W*\([a-z0-9]{1,2}\)\W*", found[0][2].label.strip(), re.I)):
+                found = []
             # an item is named by its own label; the caption it is printed under is added only where two items of
             # the column would otherwise share a name (the indent that shows where a caption ends is not read)
             base = [_slug(i.label) for b in found for _g, i in b[1]]
             clash = {n for n in base if base.count(n) > 1}
+            decs_by_sub: dict[tuple[str, str], list[int]] = defaultdict(list)
             for sub, items, total, kind, caption, followed in found:
                 n_ok += 1
                 # a generic 'Borrowings' note split into non-current / current is those two notes
                 nm, tag = (f"borrowings_{sub}", "") if note == "borrowings_unclassified" and sub else (note, f":{sub}" if sub else "")
+                decs_by_sub[(nm, tag)].append(total.decimals)
                 for group, i in items:
                     own_label = _slug(i.label)
                     tail = bool(_CONT.match(i.label))      # 'In rupees', 'From banks', '- Term loans': a caption's tail
                     slug = _slug(f"{group} {i.label}") if group and (tail or own_label in clash) else own_label
                     # a 'Less:' line is stored negative, so the items of a block sum to its total
                     val = -abs(i.values[k]) if _LESS.search(i.label) else i.values[k]
+                    decs_by_sub[(nm, tag)].append(i.decimals)
                     col_rows.append(Row(fy, ends[k], basis, f"{nm}{tag}:{slug}", i.label[:200],
                                     val, unit[0], unit[1], doc_key, page, i.quote[:300], known_at,
                                     f"ar_note_reader: {nm}{tag}, items add up to the printed total", own,
@@ -697,7 +724,26 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                 log.append({"page": page, "note": note, "ok": 0, "why": f"column {k}: a line item named twice"})
                 n_ok -= len(found)
                 continue
-            rows += col_rows
+            # whole-note invariant: if a column writes a _total row, all items of that (sub-)note must sum to it
+            for (nm, tag), decs in decs_by_sub.items():
+                tot_key = f"{nm}_total{tag}"
+                tot_rows = [r for r in col_rows if r.line_item == tot_key]
+                if len(tot_rows) != 1:
+                    continue
+                item_rows = [r for r in col_rows if note_of_row(r.line_item) == nm
+                             and "_subtotal" not in r.line_item and r.line_item != tot_key
+                             and (not tag or f"{tag}:" in r.line_item)]
+                tol = 0.5 * 10 ** (-max(decs, default=2)) * (len(item_rows) + 1) + 1e-9
+                if abs(sum(r.value for r in item_rows) - tot_rows[0].value) > tol:
+                    reg_bad = True
+                    break
+            if reg_bad:
+                break
+            reg_rows += col_rows
+        if reg_bad:
+            log.append({"page": page, "note": note, "ok": 0, "why": "items do not sum to total"})
+            continue
+        rows += reg_rows
         log.append({"page": page, "note": note, "ok": n_ok, "why": "" if n_ok else "no block adds up"})
     return rows, log
 
