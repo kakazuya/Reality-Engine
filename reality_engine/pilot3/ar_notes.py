@@ -9,14 +9,15 @@ stores held them only as page text.  No model; the frame is the cash-flow reader
    note ('16 Long term borrowings', 'Note 11(b) - Financial Liabilities - Borrowings (Current)', '25 Revenue from
    operations', '28 Finance costs') opens it; the note runs until the next numbered heading, a second table printed inside
    it (disaggregation, reconciliation with contract price, geography, terms of repayment, ...: ``_SUBTABLE``) or the
-   page end.  A date line ('31st March 2026') is never a heading; a '(Contd.)' heading opens nothing.  On a two-up page
-   (two blocks printed side by side), each note region is restricted horizontally to its own block (heading left edge
-   minus a small margin up to the next side-by-side block's left edge) before reading columns, units or lines.
-2. Columns: the first pair of period-end dates in the note, newer on the left (``ar_statements._columns``), else
-   the nearest header printed above the heading in the same horizontal span; a note printed with more than two figure
-   columns is not read.
+   page end.  A date line ('31st March 2026', '31-Mar-2025', '31-Mar-25', 'Mar-25') is never a heading; a '(Contd.)'
+   heading opens nothing.  On a two-up page (two blocks printed side by side), each note region is restricted
+   horizontally to its own block (heading left edge minus a small margin up to the next side-by-side block's left edge)
+   before reading columns, units or lines.
+2. Columns: the first pair of period-end dates in the note, newer on the left (``_columns``, reading '31-Mar-2025' /
+   '31-Mar-25' / 'Mar-25' and en-dash variants alongside full dates), else the nearest header printed above the heading
+   in the same horizontal span; a note printed with more than two figure columns is not read.
 3. Lines: ``ar_statements._read_lines`` (words right of the prior column dropped, wrapped labels joined, page
-   furniture and footnotes dropped).
+   furniture and footnotes dropped), re-keeping empty-label lines that print both figure columns as total candidates.
 4. Gate, per block and column: the item lines since the block opened (a 'Less:' line printed without a bracket
    is subtracted) add up to the next total line ('Total', 'Sub total', or a line that prints figures and no words,
    '(A)'), within the printed rounding.  A total that adds up the block totals above it plus any loose items printed
@@ -46,6 +47,7 @@ stores held them only as page text.  No model; the frame is the cash-flow reader
 from __future__ import annotations
 
 import argparse
+import calendar
 import csv
 import json
 import re
@@ -71,7 +73,7 @@ NOTES = (
 )
 _HEADING = re.compile(r"^\s*(note\s*[-:]?\s*)?\(?\d{1,2}(\.\d{1,2})?\s*(\([a-z]\)|[a-z])?\)?\s*[-:.)]*\s*[A-Za-z]", re.I)
 _HEADING_PREFIX = re.compile(r"^\s*(?:note\s*[-:]?\s*)?\(?\d{1,2}(?:\.\d{1,2})?\s*(?:\([a-z]\)|[a-z])?\)?\s*[-:.)]*\s*", re.I)
-_PROSE_HEADING = re.compile(r"\b(includes?|amount\s+of|ratios?|details\s+of)\b", re.I)
+_PROSE_HEADING = re.compile(r"\b(includes?|amount\s+of|ratios?|details\s+of|maturity\s+(?:profile|analysis))\b", re.I)
 _ORDINAL = re.compile(r"^\s*\d{1,2}\s*(st|nd|rd|th)\b", re.I)
 _TOTAL = re.compile(r"^\W*(sub[- ]?)?total\b", re.I)
 _LESS = re.compile(r"^\W*less\b", re.I)
@@ -83,7 +85,7 @@ _CONTD = re.compile(r"\(?\s*cont(d|inued)?\b\.*\s*\)?", re.I)
 # a second table printed inside the note (disaggregation, reconciliation, terms of repayment): the note ends there
 _SUBTABLE = re.compile(r"disaggregat|reconcil|contract\s+(balances|price|assets|liabilit)|timing\s+of|sales\s+channel|"
                        r"geograph|performance\s+obligation|unsatisfied|by\s+(nature|type|market|region|customer)|"
-                       r"terms\s+(and|of)\s+(conditions|repayment)|repayment\s+(schedule|terms)|maturity\s+profile|"
+                       r"terms\s+(and|of)\s+(conditions|repayment)|repayment\s+(schedule|terms)|maturity\s+(profile|analysis)|"
                        r"rate\s+of\s+interest|nature\s+of\s+security|reportable\s+segment", re.I)
 # the basis is read from a title line only ('Notes to the Consolidated Financial Statements', 'Standalone Balance
 # Sheet'), never from prose ('tracked at consolidated level')
@@ -121,12 +123,80 @@ class NoteLine:
     page: int
 
 
+# Period-end dates including abbreviated forms ('31-Mar-2025', '31–Mar–2025', '31-Mar-25', 'Mar-25').
+_DASH_SEP = r"[-–—./]"
+_DATE_RES = (
+    re.compile(
+        rf"(?<!\d)(?<![A-Za-z][-.–—/])(\d{{1,2}})\s*(?:st|nd|rd|th)?(?:\s*{_DASH_SEP}\s*|\s+)"
+        rf"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*"
+        rf"(?:[,.]\s*|\s*{_DASH_SEP}\s*|\s+)(20\d\d|[1-3]\d)(?!\d)",
+        re.I,
+    ),
+    re.compile(
+        rf"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?"
+        rf"(?:\s*{_DASH_SEP}\s*|\s+)(\d{{1,2}})\s*(?:st|nd|rd|th)?"
+        rf"(?:[,.]\s*|\s*{_DASH_SEP}\s*|\s+)(20\d\d|[1-3]\d)(?!\d)",
+        re.I,
+    ),
+    re.compile(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](20\d\d)(?!\d)"),
+)
+_MONTH_YEAR_RE = re.compile(
+    rf"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?"
+    rf"(?:\s*{_DASH_SEP}\s*(20\d\d|[1-3]\d)|\s+(20\d\d))(?![\w%])",
+    re.I,
+)
+_DATE_FILLER = re.compile(r"\b(as\s+at|for\s+the|year\s+ended|period\s+ended)\b|[-–—.,:/()]", re.I)
+
+
+def _date_of(text: str) -> list[tuple[int, int, str]]:
+    """(start, end, ISO date) of every period-end date printed in ``text``."""
+    out: list[tuple[int, int, str]] = []
+    for n, rx in enumerate(_DATE_RES):
+        for m in rx.finditer(text):
+            if any(not (m.end() <= s or m.start() >= e) for s, e, _ in out):
+                continue
+            g = m.groups()
+            try:
+                if n == 0:
+                    d, mo, y = int(g[0]), A._MONTHS[g[1][:3].lower()], (int(g[2]) if len(g[2]) == 4 else 2000 + int(g[2]))
+                elif n == 1:
+                    mo, d, y = A._MONTHS[g[0][:3].lower()], int(g[1]), (int(g[2]) if len(g[2]) == 4 else 2000 + int(g[2]))
+                else:
+                    d, mo, y = int(g[0]), int(g[1]), int(g[2])
+                if 1 <= d <= 31 and 1 <= mo <= 12:
+                    out.append((m.start(), m.end(), f"{y:04d}-{mo:02d}-{d:02d}"))
+            except (KeyError, ValueError):
+                continue
+    for m in _MONTH_YEAR_RE.finditer(text):
+        if any(not (m.end() <= s or m.start() >= e) for s, e, _ in out):
+            continue
+        mo_s, y_dash, y_space = m.groups()
+        mo = A._MONTHS[mo_s[:3].lower()]
+        ys = y_dash or y_space
+        y = int(ys) if len(ys) == 4 else 2000 + int(ys)
+        d = calendar.monthrange(y, mo)[1]
+        out.append((m.start(), m.end(), f"{y:04d}-{mo:02d}-{d:02d}"))
+    return sorted(out)
+
+
+def _is_date_chunk(text: str) -> bool:
+    dates = _date_of(text)
+    if not dates:
+        return False
+    pos, rest = 0, []
+    for s, e, _ in dates:
+        rest.append(text[pos:s])
+        pos = e
+    rest.append(text[pos:])
+    return not _DATE_FILLER.sub("", "".join(rest)).strip()
+
+
 def is_heading(text: str, max_len: int = 70) -> bool:
     """A short, title-like numbered note heading ('27 Finance costs', 'Note 11(b) - Borrowings'); a date line
-    ('31st March 2026  31st March 2025') or a numbered prose sentence ('2. Debt-Equity Ratio: Debt (includes ...)')
-    is not one."""
+    ('31st March 2026  31st March 2025', '31-Mar-2025  31-Mar-2024') or a numbered prose sentence
+    ('2. Debt-Equity Ratio: Debt (includes ...)') is not one."""
     t = text.strip()
-    if len(t) > max_len or not _HEADING.search(t) or _ORDINAL.match(t) or A._date_of(t):
+    if len(t) > max_len or not _HEADING.search(t) or _ORDINAL.match(t) or _date_of(t):
         return False
     rest = _HEADING_PREFIX.sub("", t, count=1)
     if re.search(r":\s*[A-Za-z0-9]", rest) or _PROSE_HEADING.search(t):
@@ -169,10 +239,14 @@ def _split_chunks(words, line: list[int], gap_min: float = 40.0) -> list[list[in
 
 
 def _line_heading_text(words, line: list[int]) -> str:
-    """Line text for heading checks, dropping a far-right unit tag ('(H in lakhs)') separated by a large gap."""
+    """Line text for heading checks, dropping far-right unit or date header chunks separated by a large gap."""
     chunks = _split_chunks(words, line)
-    if len(chunks) >= 2 and len(chunks[-1]) <= 4 and A._unit(" ".join(words[i][4] for i in chunks[-1])):
-        chunks = chunks[:-1]
+    while len(chunks) >= 2:
+        tail = " ".join(words[i][4] for i in chunks[-1])
+        if (len(chunks[-1]) <= 4 and A._unit(tail)) or _is_date_chunk(tail):
+            chunks = chunks[:-1]
+        else:
+            break
     return " ".join(words[i][4] for c in chunks for i in c)
 
 
@@ -259,7 +333,7 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
         if v is None:
             # a 'Less: Current maturities of long-term debt (refer note 21)' caption counts at any length
             if ((len(label) < 50 or _LESS.search(label)) and readable(label) and not is_heading(label)
-                    and not _HEADERISH.search(label) and not _SENTENCE.search(label)):
+                    and not _HEADERISH.search(label) and not _SENTENCE.search(label) and not _date_of(label)):
                 group = label.rstrip(":").strip()
                 head = head or group
             continue
@@ -276,6 +350,10 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
             elif parts and _adds(parts, ln, k) and all(readable(i.label) for i in parts):
                 out.append((sub, list(items), ln, "block", head, False))
                 done.append(ln)
+            elif not label:
+                # an unnamed figures-only line that does not close the open block is a partial sub-total (e.g. for
+                # one caption inside a larger block): leave items intact so the block's Total still sums them
+                continue
             elif parts or done:
                 # a total that closes nothing: what came before it is not the whole note
                 out = [b[:5] + (True,) if b[0] == sub and idx not in locked else b for idx, b in enumerate(out)]
@@ -320,13 +398,50 @@ _NON_LABEL_WORDS = re.compile(
 )
 
 
+def _columns(words, lines: list[list[int]]) -> tuple[list[float], list[str]] | None:
+    """Centres (x) of the current and prior columns and their period ends, using ``_date_of``."""
+    for n, line in enumerate(lines[:30]):
+        text, spans = A._spans(words, line)
+        dates = _date_of(text)
+        dates = [d for n_, d in enumerate(dates)
+                 if not (n_ + 1 < len(dates) and re.fullmatch(r"\s*(to|-|–|—)\s*", text[d[1]:dates[n_ + 1][0]], re.I))]
+        if dates and re.fullmatch(r"\s*(to|-|–|—)\s*", text[dates[-1][1]:], re.I) and n + 1 < len(lines):
+            below, _ = A._spans(words, lines[n + 1])
+            bd = _date_of(below)
+            if bd:
+                dates[-1] = (dates[-1][0], dates[-1][1], bd[0][2])
+        for (a0, b0, e0), (a1, b1, e1) in zip(dates, dates[1:]):
+            c0, c1 = A._centre(words, spans, a0, b0), A._centre(words, spans, a1, b1)
+            if c0 is not None and c1 is not None and c1 > c0 and e0 > e1:
+                return [c0, c1], [e0, e1]
+        fys = [(i, int(m.group(1))) for i in line
+               if (m := re.fullmatch(r"(?:FY\s*)?(20\d\d)\s*-\s*\d{2,4}", words[i][4].strip(" ,.)")))]
+        if len(fys) == 2 and fys[0][1] == fys[1][1] + 1:
+            centres = [(words[i][0] + words[i][2]) / 2 for i, _ in fys]
+            return centres, [f"{fys[0][1] + 1:04d}-03-31", f"{fys[1][1] + 1:04d}-03-31"]
+        years = [(i, int(words[i][4].strip(" ,.)")[-4:])) for i in line
+                 if re.fullmatch(r"20\d\d", words[i][4].strip(" ,.)"))]
+        if len(years) == 2 and years[0][1] == years[1][1] + 1 and n > 0:
+            above, _ = A._spans(words, lines[n - 1])
+            mo = next((v for k, v in A._MONTHS.items() if re.search(rf"\b{k}", above, re.I)), 3)
+            text_days = re.findall(r"(\d{1,2})\s*,", text)
+            day = int(text_days[0]) if text_days else (31 if mo in (1, 3, 5, 7, 8, 10, 12) else 30)
+            centres = []
+            for i, _ in years:
+                j = line.index(i)
+                left = words[line[j - 1]][0] if j > 0 and re.fullmatch(r"\d{1,2}(st|nd|rd|th)?,?", words[line[j - 1]][4]) else words[i][0]
+                centres.append((left + words[i][2]) / 2)
+            return centres, [f"{years[0][1]:04d}-{mo:02d}-{day:02d}", f"{years[1][1]:04d}-{mo:02d}-{day:02d}"]
+    return None
+
+
 def _columns_above(words, lines, first: int, x_left: float = float("-inf"), x_right: float = float("inf")):
     """The nearest column header printed above the note's heading in its horizontal span."""
     span_lines = [[i for i in ln if x_left <= words[i][0] < x_right] for ln in lines[:first]]
     for j in range(first - 1, -1, -1):
         window = [ln for ln in span_lines[max(j - 1, 0): j + 1] if ln]
         if window:
-            cols = A._columns(words, window)
+            cols = _columns(words, window)
             if cols:
                 return cols
     return None
@@ -407,10 +522,71 @@ def _first_figure_line(sub_words, sl: list[list[int]], centres: list[float]) -> 
         if not vals:
             continue
         txt = " ".join(sub_words[i][4] for i in ln)
-        if A._date_of(txt) or (A._HEADER_LINE.search(txt) and all(v == int(v) and 1990 <= abs(v) <= 2100 for v in vals)):
+        if _date_of(txt) or (A._HEADER_LINE.search(txt) and all(v == int(v) and 1990 <= abs(v) <= 2100 for v in vals)):
             continue
         return j
     return len(sl)
+
+
+def _parse_line_cols(words, line: list[int], centres: list[float], gap: float) -> tuple[str, list, int, str, int]:
+    """Extract label, two-column values, max decimals, quote and column-number count for one printed line."""
+    label_words, vals, decs, kept = [], [None, None], [0, 0], []
+    n_nums = 0
+    for i in line:
+        tok = words[i][4]
+        if words[i][0] > centres[1] + 0.7 * gap:
+            continue
+        kept.append(i)
+        xc = (words[i][0] + words[i][2]) / 2
+        d = [abs(xc - c) for c in centres]
+        k = 0 if d[0] <= d[1] else 1
+        parsed = A.number(tok) if (any(ch.isdigit() for ch in tok) or tok.strip() in A._DASH) else None
+        if parsed is not None and d[k] <= 0.6 * gap and words[i][0] > centres[0] - 1.6 * gap:
+            n_nums += 1
+            if vals[k] is None:
+                vals[k], decs[k] = parsed
+            continue
+        if parsed is not None and words[i][0] > centres[0] - 0.9 * gap:
+            n_nums += 1
+            continue
+        label_words.append(tok)
+    label = " ".join(label_words).strip()
+    quote = " ".join(words[i][4] for i in kept) if vals != [None, None] else label
+    return label, vals, max(decs), quote, n_nums
+
+
+def _read_lines(words, centres: list[float], page: int) -> list[A.Line]:
+    """Drop pure date-header lines (e.g. '31-Mar-2025 31-Mar-2024') so they never merge onto a lowercase first item,
+    run ``A._read_lines``, and re-insert empty-label lines that print exactly the note's two figure columns."""
+    gap = abs(centres[1] - centres[0])
+    # Filter pure date-header lines before A._read_lines so '31-Mar-2025 31-Mar-2024' (vals=[None, None]) cannot
+    # merge with a lowercase first item ('a) Sale of Products').
+    body_words: list = []
+    for ln in lines_of(words):
+        label, vals, _, quote, _ = _parse_line_cols(words, ln, centres, gap)
+        if vals == [None, None] and (
+            _is_date_chunk(label) or _HEADERISH.search(label) or is_heading(label)
+            or (len(label.split()) <= 5 and A._unit(label))
+        ):
+            continue
+        body_words.extend(words[i] for i in ln)
+    body = A._read_lines(body_words, centres, page)
+    out: list[A.Line] = []
+    b = 0
+    for line in lines_of(body_words):
+        label, vals, dec, quote, n_nums = _parse_line_cols(body_words, line, centres, gap)
+        if A._SIGNATURE.search(label):
+            break
+        if b < len(body) and body[b].quote == quote:
+            out.append(body[b])
+            b += 1
+        elif (not label and vals[0] is not None and vals[1] is not None and n_nums == 2
+              and not (A._HEADER_LINE.search(quote)
+                       and all(v == int(v) and 1990 <= abs(v) <= 2100 for v in vals))):
+            out.append(A.Line("", vals, dec, quote, page))
+    if b < len(body):
+        out.extend(body[b:])
+    return out
 
 
 def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: str | None) -> tuple[list[Row], list[dict]]:
@@ -420,13 +596,13 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
     words = A._norm(pw.words)
     lines = lines_of(words)
     rows, log = [], []
-    for note, first, end in note_regions(words, lines):
+    for reg_i, (note, first, end) in enumerate(note_regions(words, lines)):
         x_left, x_right = _heading_span(words, lines[first], note)
         region = [i for ln in lines[first:end] for i in ln]
         sub_words = [words[i] for i in region if x_left <= words[i][0] < x_right]
         sl = lines_of(sub_words)
         sub_words, sl = _cut_subtable(sub_words, sl)
-        cols = A._columns(sub_words, sl[:8]) or _columns_above(words, lines, first, x_left, x_right)
+        cols = _columns(sub_words, sl[:8]) or _columns_above(words, lines, first, x_left, x_right)
         if not cols:
             log.append({"page": page, "note": note, "ok": 0, "why": "no two period-end columns"})
             continue
@@ -437,7 +613,7 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                 sub_words = [w for w in sub_words if w[0] < x_right]
                 sl = lines_of(sub_words)
                 sub_words, sl = _cut_subtable(sub_words, sl)
-                cols = A._columns(sub_words, sl[:8]) or _columns_above(words, lines, first, x_left, x_right)
+                cols = _columns(sub_words, sl[:8]) or _columns_above(words, lines, first, x_left, x_right)
                 if not cols:
                     log.append({"page": page, "note": note, "ok": 0, "why": "no two period-end columns"})
                     continue
@@ -465,7 +641,7 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
         if not unit:
             log.append({"page": page, "note": note, "ok": 0, "why": "no unit printed"})
             continue
-        body = A._read_lines(sub_words, cols[0], page)
+        body = _read_lines(sub_words, cols[0], page)
         basis = title_basis(" ".join(" ".join(words[i][4] for i in ln) for ln in lines[:12])) or doc_basis
         if basis not in ("standalone", "consolidated"):
             log.append({"page": page, "note": note, "ok": 0, "why": "basis not printed"})
@@ -494,16 +670,27 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                     col_rows.append(Row(fy, ends[k], basis, f"{nm}{tag}:{slug}", i.label[:200],
                                     val, unit[0], unit[1], doc_key, page, i.quote[:300], known_at,
                                     f"ar_note_reader: {nm}{tag}, items add up to the printed total", own,
-                                    f"{doc_key}#p{page}#{k}"))
+                                    f"{doc_key}#p{page}#r{reg_i}#{k}"))
                 # the note total is the grand total, or the one block of its (sub-)note; every other block total is
                 # a sub-total named by its caption and printed label
                 same = [b for b in found if b[0] == sub]
                 is_total = (kind == "grand" or len(same) == 1) and not followed
-                name = (f"{nm}_total{tag}" if is_total
-                        else f"{nm}{tag}_subtotal:{_slug(f'{caption} {total.label}') or 'block'}")
+                if is_total:
+                    name = f"{nm}_total{tag}"
+                else:
+                    sub_slug = _slug(f"{caption} {total.label}") or (
+                        _slug(items[0][1].label) if not caption and not total.label and items else "block"
+                    ) or "block"
+                    name = f"{nm}{tag}_subtotal:{sub_slug}"
+                    used = {r.line_item for r in col_rows}
+                    if name in used:
+                        base_name, idx = name, 2
+                        while f"{base_name}_{idx}" in used:
+                            idx += 1
+                        name = f"{base_name}_{idx}"
                 col_rows.append(Row(fy, ends[k], basis, name, total.label[:200] or "Total",
                                     total.values[k], unit[0], unit[1], doc_key, page, total.quote[:300], known_at,
-                                    f"ar_note_reader: {nm}{tag} {kind} total", own, f"{doc_key}#p{page}#{k}"))
+                                    f"ar_note_reader: {nm}{tag} {kind} total", own, f"{doc_key}#p{page}#r{reg_i}#{k}"))
             # a line item named twice in one column is ambiguous: the column writes nothing
             names = [r.line_item for r in col_rows]
             if len(names) != len(set(names)):
@@ -546,10 +733,10 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
     best = {}
     for r in cand:
         key = (r.fiscal_year, r.basis, note_of_row(r.line_item))
-        rank = (r.own, r.known_at, r.doc_key, r.page)
+        rank = (r.own, r.known_at, r.doc_key, r.page, r.source)
         if key not in best or rank > best[key]:
             best[key] = rank
-    rows = [r for r in cand if (r.own, r.known_at, r.doc_key, r.page) == best[(r.fiscal_year, r.basis, note_of_row(r.line_item))]]
+    rows = [r for r in cand if (r.own, r.known_at, r.doc_key, r.page, r.source) == best[(r.fiscal_year, r.basis, note_of_row(r.line_item))]]
     if not dry:
         conn.execute("DELETE FROM fin_annual_line WHERE source_table=? AND symbol=?", (SOURCE_TABLE, sym))
         conn.executemany(

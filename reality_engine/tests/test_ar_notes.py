@@ -213,3 +213,66 @@ def test_d5_prose_lines_never_open_a_note():
     assert N.note_of("31 Amount of total borrowings") is None
     assert N.note_of("21.1 Details of the secured long-term borrowings:") is None
     assert N.note_of("19. " + "Non-current financial liabilities - Borrowings " * 2) is None
+
+
+# --- T-223 review defects L1 & L2 (abbreviated date headers, figures-only totals) ---
+
+def test_l1_abbreviated_date_headers_not_headings_and_read_as_columns(monkeypatch):
+    for hdr in ("31-Mar-2025 31-Mar-2024", "31–Mar–2025 31–Mar–2024", "31-Mar-25 31-Mar-24", "Mar-25 Mar-24"):
+        assert not N.is_heading(hdr)
+        w = _wline(20, (40, "Particulars"), (340, hdr.split()[0]), (440, hdr.split()[1]))
+        cols = N._columns(w, N.lines_of(w))
+        assert cols and cols[1] == ["2025-03-31", "2024-03-31"]
+
+    words = (
+        _wline(20, (40, "Notes to the Consolidated Financial Statements"))
+        + _wline(40, (40, "24 REVENUE FROM OPERATIONS"))
+        + _wline(54, (420, "(Rs in Crores)"))
+        + _wline(68, (340, "31-Mar-2025"), (440, "31-Mar-2024"))
+        + _wline(82, (40, "a) Sale of Products"), (350, "493.14"), (450, "437.77"))
+        + _wline(96, (40, "b) Other Operating Revenues"), (350, "4.69"), (450, "13.61"))
+        + _wline(110, (40, "TOTAL"), (350, "497.83"), (450, "451.38"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "doc", 1, "2025-08-20", None)
+    by = {(r.fiscal_year, r.line_item): r.value for r in rows}
+    assert by[("FY25", "revenue_from_operations:a_sale_of_products")] == 493.14
+    assert by[("FY24", "revenue_from_operations:b_other_operating_revenues")] == 13.61
+    assert by[("FY25", "revenue_from_operations_total")] == 497.83
+    assert all(r.unit == "inr_crore" and r.basis == "consolidated" for r in rows)
+
+    # Also when heading and abbreviated dates sit on the same line, or 2-digit year columns
+    same_line = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(40, (40, "24 REVENUE FROM OPERATIONS"), (340, "31-Mar-24"), (440, "31-Mar-23"))
+        + _wline(54, (420, "(Rs in Lakhs)"))
+        + _wline(68, (40, "a) Sale of Products"), (350, "100.00"), (450, "80.00"))
+        + _wline(82, (40, "TOTAL"), (350, "100.00"), (450, "80.00"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": same_line})())
+    srows, _ = N.read_page("x.db", "doc", 1, "2024-07-13", None)
+    assert {(r.fiscal_year, r.line_item): r.value for r in srows}[("FY24", "revenue_from_operations_total")] == 100.0
+
+
+def test_l2_figures_only_total_line_kept_as_total_candidate(monkeypatch):
+    words = (
+        _wline(20, (40, "Notes to Consolidated Financial Statements"))
+        + _wline(40, (40, "13. Borrowings (non-current)"))
+        + _wline(54, (420, "(H in million)"))
+        + _wline(68, (40, "Particulars"), (320, "December 31, 2023"), (440, "December 31, 2022"))
+        + _wline(82, (40, "Term loans"))
+        + _wline(96, (40, "- Motor vehicle loan"), (350, "27.58"), (470, "20.44"))
+        + _wline(110, (40, "Less:"))
+        + _wline(124, (40, "Current maturities of term loans"), (350, "10.64"), (470, "7.21"))
+        + _wline(138, (350, "16.94"), (470, "13.23"))
+        + _wline(152, (40, "Notes: Repayable in monthly instalments."))
+        + _wline(180, (470, "227"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "doc", 1, "2024-05-17", None)
+    by = {(r.fiscal_year, r.line_item): r.value for r in rows}
+    assert by[("FY23", "borrowings_noncurrent:term_loans_motor_vehicle_loan")] == 27.58
+    assert by[("FY23", "borrowings_noncurrent:less_current_maturities_of_term_loans")] == -10.64
+    assert by[("FY23", "borrowings_noncurrent_total")] == 16.94
+    assert by[("FY22", "borrowings_noncurrent_total")] == 13.23
+    assert not any("227" in r.caption or r.value == 227.0 for r in rows)
