@@ -31,7 +31,7 @@ New rulings via `ruling add`; `[check]` = enforced by code. Full wording `docs/r
 
 ## Data and machines
 - Raw files only on Drive (7 Nov): download, write the database, delete the copy after a Drive hash check; tests local till `raw_to_drive`. Kept local: `raw\user_research`. Tools/trackers (16 Nov): local, Drive or GitHub only; no cloud until deployed.
-- HP laptop gone (16 Nov). OCR only for pages with no or a jumbled text layer; MSI route untested No PostgreSQL for now. Never touch `Downloads\Telegram Desktop` (his brother's) or his personal Downloads folders.
+- HP gone (17 Nov): OCR (bad text layer only) by Kilo Dots on the page image, Haiku where Dots fails. No PostgreSQL. Never touch `Downloads\Telegram Desktop` (his brother's) or his personal Downloads folders.
 
 ## Never
 - Print or copy keys; read `D:\Shivam_Private\Manual Dumps` or send it anywhere; put amounts in the repo or decision log. Push without his OK (given for merged main, 3 Nov). Use paid models (DeepInfra, Haiku beyond an approved run) without his OK.
