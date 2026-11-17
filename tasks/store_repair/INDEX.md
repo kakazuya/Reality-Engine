@@ -9,7 +9,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-013 | open | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general |  |
 | R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-014 | open | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general |  |
-| R-020 | open | wrong | 20/91 (scan) | 3 |  | 60 | comparatives | general |  |
+| R-020 | fix_written | wrong | 20/91 (scan) | 3 |  | 60 | comparatives | general |  |
 | R-019 | fix_written | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
 | R-017 | fix_written | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c48, c49, c50, c51, c52, c53, c54, c55, c56, c59, c60, c61, c62, c63, c64, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-016 | open | missed | 16/91 (trial) | 1 | 17 (16) | 33 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
@@ -274,15 +274,15 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Tags:** units, guidance, holding, tech, reading; **scope:** general
 - **Stores repaired:** -; runs: -
 
-## R-020 (open, part `comparatives`, opened 2026-11-18)
+## R-020 (fix_written, part `comparatives`, opened 2026-11-18)
 
 1. **Why it had to be done** (question that exposed it, -): found by agy R-019 job on HYPERSOFT (c90); scan 18 Nov: 1,334 fin_quarter_printed rows in 20 stores
 2. **What the problem was:** fin_quarter_printed rows labelled FYFY25/FYFY26/FYFY27 (period_end June) **Root cause:** comparatives._quarter maps a ytd period ending in June to the label 'FY' and prefixes FY again; segments_printed.periods_for refuses this case since 17 Nov, comparatives does not
 3. **What was missing:** the same rule in comparatives: a ytd/prior_ytd role at a June end is the quarter itself (or a non-March year) and is not stored as a year-to-date row
-4. **How it was fixed:** proposed: in comparatives, drop or relabel ytd/prior_ytd columns at a June end (as segments_printed.periods_for), test, re-run comparatives on the 20 stores with zero right rows lost
-5. **What can come next:** brief Hydrogen after the notes jobs; store_repair --part comparatives on the 20 stores
+4. **How it was fixed:** 18 Nov (T-223, branch Wolf-agy-20261117T195129Z-b6ffb652): comparatives._quarter returns None on non-09/12 ytd; _role_set maps June layouts without ytd/prior_ytd; _date_match(..., require_year=True), _header_cells (carrying word x), _pair_header_years, and _header_dates (merging 1 adjacent month cell into count-1 rows, recovering c22 a8bc224d p8 15 FY24 consolidated rows) resolve [FY, prior FY] by printed date instead of position; _june_last_fy_confirmed requires header March-year match or XBRL/store-FY value match; _side_by_side_ok and _page_basis share _basis_positions for space-split 'Standa lone' (c34 442ae482 p5-p6 OCI/TCI consolidated->standalone) and June hyphenated 'STAND-ALONE' (c60); unconfirmed June last_fy cells where OCR and text disagree (c01 abba81be p2 other_expenses 5,191.84, c22 b3fb5eed p9) are dropped after _apply_repeats. Eagle-T-223-readers base vs fix dry-run on .tmp copies of 20 stores: FYFY 1,334 (orig) / 1,408 (base+OCR) -> 0 (rem=317, add=359, chg=474 across c34/c60 basis moves, c27 Sep re-date, June last_fy/c25 fixes, ocr_text_disagree drops, repeat_ok upgrades; 0 wrong non-June edits).
+5. **What can come next:** Re-run store_repair --part comparatives on the 20 stores (stores repaired stays '-' until repair runs). Note: RSYSTEMS c75 year ended 31.12.2025 is still stored as FY26/2026-03-31 (pre-existing, _last_fy_end assumes March); handle non-March FY ends separately.
 - **Kind:** wrong (a June-quarter results column with role ytd/prior_ytd is stored with fiscal_period 'FYFY<yy>' (period_type ytd): a label no question can match, and for a non-March company a wrong period); **severity:** 20/91 companies (scan); **criticality:** 3; **trial questions failed:** -; **priority:** 60
-- **Code:** reality_engine/pilot3/comparatives.py::_quarter, _role_period
+- **Code:** reality_engine/pilot3/comparatives.py::_quarter, _role_set, _date_match, _header_dates, _header_cells, _pair_header_years, _basis_positions, _page_basis, _side_by_side_ok, _june_last_fy_confirmed, _roles, _roles_from_dates, _score_roles, _table_rows, _extract_symbol
 - **Store tables touched:** fin_quarter_printed
 - **Tags:** period, ytd, june; **scope:** general
 - **Stores repaired:** -; runs: -
