@@ -35,19 +35,24 @@ stores held them only as page text.  No model; the frame is the cash-flow reader
    writes nothing.
 5. Tie-out gate (face statements): every emitted ``_total`` row (``revenue_from_operations_total``,
    ``finance_costs_total``, ``borrowings_noncurrent_total``, ``borrowings_current_total``) is compared in rupees against
-   the held face-statement figure for ``(fiscal_year, basis)`` from ``fin_annual_line`` (statement 'P&L'/'BS',
-   ``period_type='FY'``, preferring ``facts`` -> ``ar_facts`` -> others) or ``fin_quarter_printed`` (Q4 full-year
-   columns: ``lower(period_type)='fy'`` and ``column_role IN ('ytd', 'prior_ytd')``), within the printed rounding of the
-   larger unit (e.g. 0.5 lakh or 0.01 crore) + 0.1%.  A disagreeing column writes nothing (logged as ``'total does not
-   tie to the statement'``); a note with no face figure held appends ``'; not tied to a statement figure'`` to its
-   rows' ``definition``.
-6. Rows & ranking: one per item and one per total.  ``line_item`` = ``<note>[:sub]:<item slug>``; ``<note>_total[:sub]``
-   is the note total.  A generic 'Borrowings' note ('NOTE 23 : BORROWINGS') is classified by the nearest Balance-Sheet
-   section heading above it ('NON-CURRENT LIABILITIES' / 'CURRENT LIABILITIES' on the page or previous page), else
-   split by 'Non-current' / 'Current' sub-blocks inside it; if still unsplit it stays ``borrowings_unclassified`` (never
-   displacing or standing alongside a classified borrowings note for the same ``(fiscal_year, basis)``).  One page and
-   column per ``(fiscal_year, basis, note)``: tied to the face statement first, then own column, latest report, and lower
-   page number within a document.
+   the held face-statement candidates for ``(fiscal_year, basis)`` from ``fin_annual_line`` (statement 'P&L'/'BS',
+   ``period_type='FY'``, preferring the year's own filing then ``facts`` -> ``ar_facts`` -> others, verifying revenue
+   quote/caption is revenue from operations and not 'Total Revenue' / 'Total Income') and ``fin_quarter_printed``
+   full-year columns (``lower(period_type)='fy'`` and ``column_role IN ('ytd', 'prior_ytd', 'last_fy')``, dropping
+   malformed raw tokens).  Candidates are ranked by own filing (Q4 ``ytd`` / own-year AR), checked status (``sum_ok`` /
+   ``xbrl_ok`` / ``repeat_ok``), then earlier ``known_at``; when several face candidates disagree, the note ties if it
+   matches any CHECKED one (never an unchecked non-primary candidate alone).  Tolerance is the printed rounding of the
+   larger unit (e.g. 0.5 lakh or 0.01 crore) + 0.1%.  When items add up and the disagreeing candidate is XBRL of
+   another filing (restated / scope difference), the rows are kept marked ``'face figure differs: <value> <source>'``;
+   otherwise a disagreeing column writes nothing (``'total does not tie to the statement'``); a note with no face
+   figure held appends ``'; not tied to a statement figure'``.
+6. Unit & rows: unit is read only from unit-phrase lines ('(Rs in lakhs)', 'All amounts are in ...', '` in Crores'),
+   never from prose sentences containing an amount ('Pledge of FDR of Rs. 3.70 Crores').  One row per item and one per
+   total; slugs trim on word boundaries (up to 96 chars); sub-totals fall back to the caption above instead of
+   ``subtotal:subtotal``.  Generic 'Borrowings' notes are classified by the nearest Balance-Sheet section heading above
+   ('NON-CURRENT LIABILITIES' / 'CURRENT LIABILITIES'), else split by 'Non-current' / 'Current' sub-blocks, and
+   ``borrowings_unclassified`` never displaces a classified note for the same ``(fiscal_year, basis)``.  Ranking: tied
+   first, then own column, latest report, and lower page number within a document.
 
     python -m reality_engine.pilot3.ar_notes run --root D:/RealityEngine/tg_build/measure10 [--stores c18] [--dry --out <dir>]
 """
@@ -241,8 +246,12 @@ def note_of_row(line_item: str) -> str:
     return re.sub(r"_(sub)?total$", "", line_item.split(":")[0])
 
 
-def _slug(label: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")[:60]
+def _slug(label: str, limit: int = 96) -> str:
+    s = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")
+    if len(s) <= limit:
+        return s
+    cut = s[:limit + 1].rfind("_")
+    return s[:cut] if cut >= limit // 2 else s[:limit]
 
 
 def _split_chunks(words, line: list[int], gap_min: float = 40.0) -> list[list[int]]:
@@ -406,11 +415,12 @@ def blocks(lines: list[A.Line], k: int) -> list[tuple[str, list[tuple[str, A.Lin
                 # arrived and summed into the true note grand total: demote the earlier one to 'block'
                 g_idx = max(idx for idx, b in enumerate(out) if b[0] == sub and b[3] == "grand")
                 gb = out[g_idx]
-                out[g_idx] = (gb[0], gb[1], gb[2], "block", gb[4] or "subtotal", True)
+                fallback_cap = gb[4] or (gb[1][0][0] if gb[1] else "") or (gb[1][0][1].label if gb[1] else "")
+                out[g_idx] = (gb[0], gb[1], gb[2], "block", fallback_cap, True)
                 locked.discard(g_idx)
                 if _is_marker_grand(ln.label, [gb[2]] + done):
                     locked.add(len(out))
-                out.append((sub, list(items), ln, "grand", "", False))
+                out.append((sub, list(items), ln, "grand", head, False))
                 done = []
             elif parts and _adds(parts, ln, k) and all(readable(i.label) for i in parts):
                 # an unlettered trailing block whose total equals the sole preceding unlettered block total (with no
@@ -736,11 +746,93 @@ _FACE_LINE_TO_NOTE = {
 _CURRENCY_UNITS = {"inr", "inr_lakh", "inr_crore", "inr_million", "inr_thousand", "₹"}
 
 
-def load_face_targets(store_db: str) -> dict[tuple[str, str, str], tuple[float, float, str]]:
-    """Load face-statement targets ``(fiscal_year, basis, note) -> (value_inr, scale, unit)`` read-only.
-    Prefers ``fin_annual_line`` (``facts`` -> ``ar_facts`` -> others) over ``fin_quarter_printed`` Q4 full-year
-    columns (``lower(period_type)='fy'`` and ``column_role IN ('ytd', 'prior_ytd')``)."""
-    targets: dict[tuple[str, str, str], tuple[tuple, tuple[float, float, str]]] = {}
+@dataclass
+class FaceCand:
+    inr: float
+    scale: float
+    unit: str
+    checked: bool
+    own_filing: bool
+    src_tier: int
+    known_at: str
+    source: str
+    doc_key: str
+    is_xbrl: bool = False
+
+
+_BAD_REV_FACE = re.compile(r"\btotal\s+income\b|\btotal\s+revenue(?!\s+from\s+operations)\b", re.I)
+_GOOD_REV_AR = re.compile(r"revenue\s+from\s+operations|income\s+from\s+operations|operating\s+revenue|sale\s+of", re.I)
+_PRIOR_QUOTE = re.compile(r"\b(?:previous|prior)\s+year\b|\bcomparative\b", re.I)
+_UNIT_AMOUNT = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:lakhs?|lacs?|crores?|millions?|crs?|mns?)\b|(?:rs\.?|inr|₹|`)\s*\d[\d,.]*",
+    re.I,
+)
+_UNIT_DECL = re.compile(
+    r"\ball\s+amounts?\b|\bamount\s+in\b|(?:rs\.?|inr|rupees|h|`|₹)\s*in\s+(?:lakh|lac|crore|cr|million|mn|thousand)|"
+    r"\(\s*(?:rs\.?|inr|rupees|h|`|₹)?\s*(?:in\s+)?(?:lakhs?|lacs?|crores?|millions?|thousands?|crs?|mns?)\s*\)",
+    re.I,
+)
+
+
+def _line_unit(text: str) -> tuple[str, float] | None:
+    """Unit only from a genuine unit phrase line ('(Rs in lakhs)', 'All amounts are in ...', '` in Crores'),
+    never from a prose sentence carrying a numeric amount ('Pledge of FDR of Rs. 3.70 Crores')."""
+    t = text.strip()
+    if not t or _UNIT_AMOUNT.search(t):
+        return None
+    u = A._unit(t)
+    if not u:
+        return None
+    if _UNIT_DECL.search(t):
+        return u if len(t.split()) <= 20 else None
+    if _PROSE_LINE.search(t) or _SENTENCE.search(t) or len(t.split()) > 10:
+        return None
+    return u
+
+
+def _malformed_token(tok: str | None, checked: bool) -> bool:
+    """True when ``raw_token`` in ``fin_quarter_printed`` has OCR corruption that makes its parsed scale unsafe."""
+    if not tok:
+        return False
+    s = tok.strip().strip("()")
+    if not s:
+        return False
+    if re.search(r"[A-Za-z]", s):
+        return True
+    if re.search(r",\d{4,}\.", s):        # e.g. '2,55039.9' parsed 10x wrong
+        return True
+    if checked:
+        return False
+    if s.count(".") > 1 or re.search(r"\s", s):
+        return True
+    if "," in s:
+        parts = s.split(".", 1)[0].split(",")
+        if len(parts[-1]) != 3 or any(len(p) not in (2, 3) for p in parts[1:-1]):
+            return True
+    return False
+
+
+def _rev_quote_ok(note: str, caption: str | None, quote: str | None, src_table: str | None) -> bool:
+    if note != "revenue_from_operations":
+        return True
+    cap, qt = caption or "", quote or ""
+    if _BAD_REV_FACE.search(cap) or _BAD_REV_FACE.search(qt):
+        return False
+    if src_table == "ar_facts" and not _GOOD_REV_AR.search(f"{cap} {qt}"):
+        return False
+    return True
+
+
+def _cand_key(c: FaceCand):
+    return (-int(c.own_filing), -int(c.checked), -c.src_tier, c.known_at or "9999")
+
+
+def load_face_targets(store_db: str) -> dict[tuple[str, str, str], list[FaceCand]]:
+    """Load ranked face-statement candidates ``(fiscal_year, basis, note) -> [FaceCand]`` read-only.
+    Prefers the year's own filing (Q4 ``ytd`` or own-year AR), then checked status, then earlier ``known_at``;
+    includes ``column_role IN ('ytd', 'prior_ytd', 'last_fy')`` from ``fin_quarter_printed``, drops malformed
+    raw tokens, and verifies revenue quotes are revenue from operations (not Total Revenue / Total Income)."""
+    cands: dict[tuple[str, str, str], list[FaceCand]] = defaultdict(list)
     try:
         dbp = Path(store_db)
         if not dbp.is_file():
@@ -751,46 +843,67 @@ def load_face_targets(store_db: str) -> dict[tuple[str, str, str], tuple[float, 
     try:
         try:
             q1 = (
-                "SELECT fiscal_year, basis, statement, line_item, value, unit, scale, source_table, known_at "
-                "FROM fin_annual_line WHERE statement IN ('P&L', 'BS') AND period_type='FY' "
-                "AND value IS NOT NULL AND line_item IN "
+                "SELECT fiscal_year, basis, statement, line_item, caption, quote, value, unit, scale, "
+                "source_table, doc_key, known_at FROM fin_annual_line WHERE statement IN ('P&L', 'BS') "
+                "AND period_type='FY' AND value IS NOT NULL AND line_item IN "
                 "('revenue_from_operations', 'finance_cost', 'finance_costs', 'borrowings_noncurrent', 'borrowings_current')"
             )
-            for fy, basis, stmt, li, val, unit, scale, src_tbl, ka in conn.execute(q1):
+            for fy, basis, stmt, li, cap, qt, val, unit, scale, src_tbl, dkey, ka in conn.execute(q1):
                 note = _FACE_LINE_TO_NOTE.get((stmt, li))
                 u = (unit or "").lower()
                 if not note or u not in _CURRENCY_UNITS or not scale or float(scale) <= 0:
                     continue
-                src_rank = 2 if src_tbl == "facts" else (1 if src_tbl == "ar_facts" else 0)
-                prio = (1, src_rank, ka or "")
-                key = (fy, basis, note)
-                if key not in targets or prio > targets[key][0]:
-                    targets[key] = (prio, (float(val) * float(scale), float(scale), u))
+                if not _rev_quote_ok(note, cap, qt, src_tbl):
+                    continue
+                is_xbrl = src_tbl == "facts"
+                own_f = is_xbrl or not _PRIOR_QUOTE.search(qt or "")
+                tier = 4 if is_xbrl else (3 if src_tbl == "ar_facts" else 1)
+                cands[(fy, basis, note)].append(FaceCand(
+                    inr=float(val) * float(scale), scale=float(scale), unit=u,
+                    checked=True, own_filing=own_f, src_tier=tier,
+                    known_at=ka or "", source=src_tbl or "fin_annual_line",
+                    doc_key=dkey or "", is_xbrl=is_xbrl,
+                ))
         except sqlite3.Error:
             pass
         try:
             q2 = (
-                "SELECT fiscal_period, basis, statement, line_item, value, unit, scale, check_status, known_at "
+                "SELECT fiscal_period, column_role, basis, statement, line_item, caption, quote, value, "
+                "unit, scale, raw_token, check_status, doc_key, known_at "
                 "FROM fin_quarter_printed WHERE lower(period_type)='fy' "
-                "AND column_role IN ('ytd', 'prior_ytd') AND value IS NOT NULL "
+                "AND column_role IN ('ytd', 'prior_ytd', 'last_fy') AND value IS NOT NULL "
                 "AND line_item IN ('revenue_from_operations', 'finance_cost', 'finance_costs')"
             )
-            for fp, basis, stmt, li, val, unit, scale, cs, ka in conn.execute(q2):
+            for fp, role, basis, stmt, li, cap, qt, val, unit, scale, rtok, cs, dkey, ka in conn.execute(q2):
                 note = _FACE_LINE_TO_NOTE.get((stmt, li))
                 u = (unit or "").lower()
                 if not note or u not in _CURRENCY_UNITS or not scale or float(scale) <= 0:
                     continue
                 cs_s = (cs or "").lower()
-                prio = (0, 0 if cs_s == "unchecked" else 1, 1 if cs_s == "sum_ok" else 0,
-                        1 if cs_s == "xbrl_ok" else 0, 0 if cs_s == "repeat_ok" else 1, ka or "")
-                key = (fp, basis, note)
-                if key not in targets or prio > targets[key][0]:
-                    targets[key] = (prio, (float(val) * float(scale), float(scale), u))
+                checked = cs_s in ("sum_ok", "xbrl_ok", "repeat_ok")
+                role_s = (role or "").lower()
+                if not checked and (float(val) == 0.0 or role_s == "last_fy"):
+                    continue
+                if _malformed_token(rtok, checked):
+                    continue
+                if not _rev_quote_ok(note, cap, qt, "fin_quarter_printed"):
+                    continue
+                own_f = role_s == "ytd"
+                tier = 2 if role_s in ("ytd", "prior_ytd") else 1
+                src_tag = f"fqp:{role_s}"
+                cands[(fp, basis, note)].append(FaceCand(
+                    inr=float(val) * float(scale), scale=float(scale), unit=u,
+                    checked=checked, own_filing=own_f, src_tier=tier,
+                    known_at=ka or "", source=src_tag,
+                    doc_key=dkey or "", is_xbrl=False,
+                ))
         except sqlite3.Error:
             pass
     finally:
         conn.close()
-    return {k: v[1] for k, v in targets.items()}
+    for key in cands:
+        cands[key].sort(key=_cand_key)
+    return dict(cands)
 
 
 def _unit_round_inr(unit_name: str, scale: float, decimals: int) -> float:
@@ -804,17 +917,37 @@ def _unit_round_inr(unit_name: str, scale: float, decimals: int) -> float:
     return step
 
 
-def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: float,
-                   face_entry: tuple[float, float, str] | None) -> str:
-    """'tied', 'disagree', or 'no_face' comparing note_total * scale against face statement figure in INR."""
-    if face_entry is None:
-        return "no_face"
-    face_inr, face_scale, face_unit = face_entry
-    note_inr = tot_val * note_scale
+def _cand_matches(note_inr: float, tot_dec: int, note_unit: str, note_scale: float, c: FaceCand) -> bool:
     note_round = _unit_round_inr(note_unit, note_scale, tot_dec)
-    face_round = _unit_round_inr(face_unit, face_scale, 2 if face_unit == "inr_crore" else 0)
-    tol = max(note_round, face_round) + 0.001 * max(abs(note_inr), abs(face_inr)) + 1.0
-    return "tied" if abs(note_inr - face_inr) <= tol else "disagree"
+    face_round = _unit_round_inr(c.unit, c.scale, 2 if c.unit == "inr_crore" else 0)
+    tol = max(note_round, face_round) + 0.001 * max(abs(note_inr), abs(c.inr)) + 1.0
+    return abs(note_inr - c.inr) <= tol
+
+
+def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: float,
+                   face_entry: list[FaceCand] | tuple[float, float, str] | None,
+                   doc_key: str = "") -> tuple[str, FaceCand | None]:
+    """Return ``(status, matched_or_primary_cand)`` where ``status`` is ``'tied'``, ``'differs'``,
+    ``'disagree'``, or ``'no_face'``."""
+    if not face_entry:
+        return "no_face", None
+    if isinstance(face_entry, tuple):
+        cands = [FaceCand(inr=face_entry[0], scale=face_entry[1], unit=face_entry[2],
+                          checked=True, own_filing=True, src_tier=4, known_at="",
+                          source="face", doc_key="", is_xbrl=False)]
+    else:
+        cands = sorted(face_entry, key=_cand_key)
+    note_inr = tot_val * note_scale
+    c0 = cands[0]
+    if _cand_matches(note_inr, tot_dec, note_unit, note_scale, c0):
+        return "tied", c0
+    for c in cands[1:]:
+        if c.checked and _cand_matches(note_inr, tot_dec, note_unit, note_scale, c):
+            return "tied", c
+    if (c0.is_xbrl and c0.doc_key and c0.doc_key != doc_key and c0.inr > 0
+            and abs(note_inr - c0.inr) <= 0.25 * max(abs(note_inr), abs(c0.inr))):
+        return "differs", c0
+    return "disagree", c0
 
 
 def _bs_section_above(words, lines: list[list[int]], first: int, x_left: float, x_right: float,
@@ -885,17 +1018,17 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
         if any(four_columns(" ".join(sub_words[i][4] for i in ln)) for ln in sl[:10]):
             log.append({"page": page, "note": note, "ok": 0, "why": "current and non-current columns (four columns)"})
             continue
-        # the unit printed above the first figure line of the note (never footnotes below), else the nearest unit
-        # line above its heading; the page's first unit only when every unit printed on the page agrees
+        # the unit printed above the first figure line of the note (never footnotes or prose amounts below), else
+        # the nearest unit-phrase line above its heading; the page's declared unit only when every unit line agrees
         fig_idx = _first_figure_line(sub_words, sl, cols[0])
         unit = next((u for j in range(fig_idx - 1, -1, -1)
-                     if (u := A._unit(" ".join(sub_words[i][4] for i in sl[j])))), None)
+                     if (u := _line_unit(" ".join(sub_words[i][4] for i in sl[j])))), None)
         if not unit:
             unit = next((u for j in range(first - 1, -1, -1)
-                         if (u := A._unit(" ".join(words[i][4] for i in lines[j] if x_left <= words[i][0] < x_right)))),
+                         if (u := _line_unit(" ".join(words[i][4] for i in lines[j] if x_left <= words[i][0] < x_right)))),
                         None)
         if not unit:
-            found = {A._unit(" ".join(words[i][4] for i in ln)) for ln in lines} - {None}
+            found = {_line_unit(" ".join(words[i][4] for i in ln)) for ln in lines} - {None}
             unit = found.pop() if len(found) == 1 else None
         if not unit:
             log.append({"page": page, "note": note, "ok": 0, "why": "no unit printed"})
@@ -957,9 +1090,12 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                 if is_total:
                     name = f"{nm}_total{tag}"
                 else:
-                    sub_slug = _slug(f"{caption} {total.label}") or (
-                        _slug(items[0][1].label) if not caption and not total.label and items else "block"
-                    ) or "block"
+                    cap_txt = caption or (items[0][0] if items else "") or (items[0][1].label if items else "")
+                    lbl_txt = total.label
+                    if _slug(lbl_txt) in ("subtotal", "sub_total", "total", "") and cap_txt:
+                        sub_slug = _slug(cap_txt)
+                    else:
+                        sub_slug = _slug(f"{caption} {lbl_txt}") or _slug(cap_txt) or "block"
                     name = f"{nm}{tag}_subtotal:{sub_slug}"
                     used = {r.line_item for r in col_rows}
                     if name in used:
@@ -999,7 +1135,9 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                 tot_rows = [r for r in sub_rows if r.line_item == tot_key]
                 if len(tot_rows) == 1 and not tag and nm in _TIED_NOTES:
                     t_dec = tot_decs_by_sub.get((nm, tag), 2)
-                    status = _tie_out_check(tot_rows[0].value, t_dec, unit[0], unit[1], face_targets.get((fy, basis, nm)))
+                    status, m_cand = _tie_out_check(
+                        tot_rows[0].value, t_dec, unit[0], unit[1], face_targets.get((fy, basis, nm)), doc_key
+                    )
                     if status == "disagree":
                         log.append({"page": page, "note": nm, "ok": 0, "why": "total does not tie to the statement"})
                         tie_fail_logged = True
@@ -1009,6 +1147,8 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                         r.tie_status = status
                         if status == "no_face":
                             r.definition = f"{r.definition}; not tied to a statement figure"
+                        elif status == "differs" and m_cand is not None:
+                            r.definition = f"{r.definition}; face figure differs: {m_cand.inr / unit[1]:.2f} {m_cand.doc_key or m_cand.source}"
                 else:
                     for r in sub_rows:
                         r.tie_status = "no_face"

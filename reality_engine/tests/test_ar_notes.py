@@ -511,3 +511,100 @@ def test_b5_bs_section_heading_classifies_generic_borrowings(monkeypatch):
     rows, _ = N.read_page("x.db", "doc", 139, "2024-05-20", None, face_targets={})
     assert {r.line_item for r in rows} == {"borrowings_current:working_capital_loans_from_banks", "borrowings_current_total"}
 
+
+# --- T-223 review round 8 (face ranking / last_fy / quote check, unit prose guard, XBRL differs, slug/subtotal style) ---
+
+def test_r8_face_loader_priority_last_fy_malformed_and_quote_filter(tmp_path):
+    import sqlite3
+    db = tmp_path / "store.db"
+    conn = sqlite3.connect(db)
+    conn.execute("CREATE TABLE fin_annual_line (fiscal_year TEXT, basis TEXT, statement TEXT, line_item TEXT, caption TEXT, quote TEXT, value REAL, unit TEXT, scale REAL, source_table TEXT, doc_key TEXT, known_at TEXT, period_type TEXT)")
+    conn.execute("CREATE TABLE fin_quarter_printed (fiscal_period TEXT, period_type TEXT, column_role TEXT, basis TEXT, statement TEXT, line_item TEXT, caption TEXT, quote TEXT, value REAL, unit TEXT, scale REAL, raw_token TEXT, check_status TEXT, doc_key TEXT, known_at TEXT)")
+    # 1. Own filing (ytd, earlier known_at) beats later prior_ytd even when both unchecked (c46)
+    conn.execute("INSERT INTO fin_quarter_printed VALUES ('FY24','fy','ytd','consolidated','P&L','finance_cost','Finance costs','',406872000,'inr',1.0,'4,068.72','unchecked','q4_24','2024-05-16')")
+    conn.execute("INSERT INTO fin_quarter_printed VALUES ('FY24','fy','prior_ytd','consolidated','P&L','finance_cost','Finance costs','',405272000,'inr',1.0,'405272','unchecked','q4_25','2025-05-12')")
+    # 2. last_fy is loaded (c01 FY24), unchecked malformed token '2,55039.9' is dropped (c74)
+    conn.execute("INSERT INTO fin_quarter_printed VALUES ('FY24','fy','last_fy','standalone','P&L','finance_cost','Finance cost','',488319000,'inr',1.0,'4,883.19','repeat_ok','q2_25','2024-11-11')")
+    conn.execute("INSERT INTO fin_quarter_printed VALUES ('FY23','fy','prior_ytd','standalone','P&L','revenue_from_operations','Revenue from operations','',2550399000,'inr',1.0,'2,55039.9','unchecked','q4_24','2024-05-30')")
+    # 3. 'Total Revenue' / 'Total Income from operations' skipped for revenue_from_operations (c41, c44)
+    conn.execute("INSERT INTO fin_annual_line VALUES ('FY25','standalone','P&L','revenue_from_operations','Total Revenue','Total Revenue 15215.46',15215.46,'inr_lakh',100000.0,'ar_facts','ar25','2025-08-18','FY')")
+    conn.execute("INSERT INTO fin_quarter_printed VALUES ('FY24','fy','ytd','standalone','P&L','revenue_from_operations','(a) Revenue from operations','Total Income from operations (a+b) 2,384.88',23848800000,'inr',1.0,'2,384.88','repeat_ok','q4_24','2024-04-24')")
+    conn.commit()
+    conn.close()
+
+    ft = N.load_face_targets(str(db))
+    assert ft[("FY24", "consolidated", "finance_costs")][0].inr == 406872000.0
+    assert ft[("FY24", "standalone", "finance_costs")][0].inr == 488319000.0
+    assert ("FY23", "standalone", "revenue_from_operations") not in ft
+    assert ("FY25", "standalone", "revenue_from_operations") not in ft
+    assert ("FY24", "standalone", "revenue_from_operations") not in ft
+
+
+def test_r8_unit_ignores_prose_with_amount_c18_p172(monkeypatch):
+    # c18 p172: page unit is '(All amounts are in ₹ Lakhs ...)', sentence above note 18 has 'Rs. 3.70 Crores'
+    words = (
+        _wline(20, (40, "Notes on Financial Statements for the year ended 31st March, 2026"))
+        + _wline(34, (40, "(All amounts are in ₹ Lakhs except unless otherwise stated)"))
+        + _wline(54, (40, "-Pledge of FDR of Rs. 3.70 Crores in the name of SVG Fashions Pvt. Ltd."))
+        + _wline(74, (40, "18 Short Term Borrowings"))
+        + _wline(88, (320, "As at 31st March, 2026"), (460, "As at 31st March, 2025"))
+        + _wline(102, (40, "Working Capital Loans"), (350, "258.31"), (470, "2,496.65"))
+        + _wline(116, (40, "Inter-Corporate Loans"), (350, "3,121.52"), (470, "3,275.08"))
+        + _wline(130, (40, "Total"), (350, "3,379.83"), (470, "5,771.73"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    rows, _ = N.read_page("x.db", "doc", 172, "2026-05-20", "standalone", face_targets={})
+    assert rows and all(r.unit == "inr_lakh" for r in rows)
+
+
+def test_r8_xbrl_other_filing_differs_keeps_rows_when_items_add(monkeypatch):
+    # c18 FY25 noncurrent: note prints 16,061.25 (18,101.25 - 2,040.00); XBRL of another filing says 15,971.87 (0.56%)
+    words = (
+        _wline(20, (40, "Notes to Standalone Financial Statements"))
+        + _wline(34, (40, "(All amounts are in Rs. Lakhs)"))
+        + _wline(50, (40, "16 LONG TERM BORROWINGS"))
+        + _wline(64, (320, "31st March, 2026"), (460, "31st March, 2025"))
+        + _wline(78, (40, "Term Loans From Bank"), (350, "18,869.44"), (470, "18,101.25"))
+        + _wline(92, (40, "Less : Current Maturities"), (350, "(3,791.07)"), (470, "(2,040.00)"))
+        + _wline(106, (40, "Total"), (350, "15,078.37"), (470, "16,061.25"))
+    )
+    monkeypatch.setattr(N, "words_for", lambda *a, **k: type("P", (), {"words": words})())
+    face = {
+        ("FY26", "standalone", "borrowings_noncurrent"): [
+            N.FaceCand(1507837000.0, 1.0, "inr", True, True, 4, "2026-05-14", "facts", "XBRL_26.xml", True)
+        ],
+        ("FY25", "standalone", "borrowings_noncurrent"): [
+            N.FaceCand(1597187000.0, 1.0, "inr", True, True, 4, "2025-05-29", "facts", "XBRL_25.xml", True)
+        ],
+    }
+    rows, _ = N.read_page("x.db", "ar26.pdf", 172, "2026-08-01", "standalone", face_targets=face)
+    fy26 = [r for r in rows if r.fiscal_year == "FY26"]
+    fy25 = [r for r in rows if r.fiscal_year == "FY25"]
+    assert all(r.tie_status == "tied" for r in fy26)
+    assert fy25 and all(r.tie_status == "differs" and "face figure differs: 15971.87 XBRL_25.xml" in r.definition for r in fy25)
+
+
+def test_r8_slug_no_midword_truncation_and_no_subtotal_subtotal():
+    long_lbl = "Total outstanding dues of micro enterprises and small enterprises payable"
+    s = N._slug(long_lbl)
+    assert s == "total_outstanding_dues_of_micro_enterprises_and_small_enterprises_payable"
+    assert N._slug("a " * 60, limit=30).endswith("a")
+    # c83 demoted subtotal names caption ('stock_in_trade' / 'a_revenue...'), never 'subtotal:subtotal'
+    lines = [
+        N.A.Line("A) REVENUE FROM SALE OF PRODUCTS", None, 2, "A)", 205),
+        N.A.Line("India", [1535.96, 1642.90], 2, "India 1535.96", 205),
+        N.A.Line("Rest of the World", [216.80, 379.84], 2, "RoW 216.80", 205),
+        N.A.Line("", [1752.76, 2022.74], 2, "1752.76", 205),
+        N.A.Line("Stock in Trade", None, 2, "Stock in Trade", 205),
+        N.A.Line("India", [27.31, 28.78], 2, "India 27.31", 205),
+        N.A.Line("", [1780.07, 2051.52], 2, "1780.07", 205),
+        N.A.Line("B) OTHER OPERATING INCOME", None, 2, "B)", 205),
+        N.A.Line("Export Benefits", [4.68, 8.22], 2, "Export 4.68", 205),
+        N.A.Line("Sale of Scrap", [16.81, 22.79], 2, "Scrap 16.81", 205),
+        N.A.Line("", [21.49, 31.01], 2, "21.49", 205),
+        N.A.Line("", [1801.56, 2082.53], 2, "1801.56", 205),
+    ]
+    blks = N.blocks(lines, 0)
+    demoted = [b for b in blks if b[3] == "block" and b[2].values[0] == 1780.07][0]
+    assert demoted[4] and "subtotal" not in demoted[4].lower()
+
