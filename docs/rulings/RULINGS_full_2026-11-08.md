@@ -41,3 +41,11 @@ When Shivam rules or corrects something, write it here before the next action. `
 
 - Tickets, rules and ideas are three separate places (Shivam, 12 Nov 2026): "tickets is specifically for the current work that is in the scope right now, and if anything is needing fixing or removing, then the ticket is created for that... don't put ideas into tickets, and similarly don't put rules into tickets. Rules goes into rules, tickets into tickets, and ideas into idea box." Untested ideas (which factors move prices and how, peer comparison, policy comparison, competition) go to `tasks/IDEA_BOX.md`; backtest-ready hypotheses stay in `tasks/HYPOTHESIS_REGISTER.md`.
 - Ideas carry their reason (Shivam, 12 Nov 2026): "ideas should be stored in such a way that we know what context was the cause behind generating this idea, what is the purpose of this idea, why and when was this idea created, and when we are reaching to that stage you have to read the idea and suggest me should this be converted into tickets or not. Otherwise ideas will keep sitting there and I will forget." Each idea in `tasks/IDEA_BOX.md` has created (date, by, during), context, purpose, review trigger (stage + review-by date) and status history; `load_context.py` lists overdue ideas at every session start, and Claude proposes promote / keep / drop.
+
+## Documents for small companies (Shivam, 17 Nov 2026)
+For smaller companies almost all of the information comes from the annual report, the quarterly financial results,
+credit-rating documents, or ad hoc announcements: order wins, material business gain or loss, audit matters, change
+in management. These are held and read first; call transcripts and investor decks, which most small companies do not
+file, are extras. (Folded into the 7 Nov "Documents" ruling in tasks/RULINGS.md; the 7 Nov text "annual reports by
+script, selected sections only (in full only for a company with no calls or decks); keep credit-rating and borrowing
+documents" is superseded by it.)

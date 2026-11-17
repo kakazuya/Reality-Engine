@@ -7,7 +7,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | id | status | kind | severity (basis) | criticality | trial failed (companies) | priority | part | scope | stores repaired |
 |---|---|---|---|---|---|---|---|---|---|
 | R-013 | open | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general |  |
-| R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general |  |
+| R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-014 | open | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general |  |
 | R-019 | open | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
 | R-017 | fix_written | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c48, c49, c50, c51, c52, c53, c54, c55, c56, c59, c60, c61, c62, c63, c64, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
@@ -213,13 +213,13 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 1. **Why it had to be done** (question that exposed it, all): Trial 1: three-year ROCE/ROE trend, FY24 cash flow, capex commitments, PP&E/CWIP schedule (JYOTISTRUC, VIDHIING, KRYSTAL, BIRLACABLE, POLYPLEX, SAKAR, FAZE3Q, BBL, DBOL)
 2. **What the problem was:** 21 trial-1 answers graded not_extracted; 12 of them need an annual-report statement or note the store holds as page text only: cash-flow statement before FY25 (KRYSTAL, BIRLACABLE, POLYPLEX, SAKAR), the Key Financial Ratios note (JYOTISTRUC, VIDHIING), PP&E/CWIP schedule (FAZE3Q), capital commitments (BBL), other operating revenue (DBOL). **Root cause:** fin_annual_line is filled from XBRL (FY25 onward) and printed quarterly results; annual-report statements and notes are read only as page text, so earlier years and note-level lines have no rows.
 3. **What was missing:** Rows from the AR cash-flow statement (CFO, capex, both columns), the ratios note (printed ROCE/ROE/margins with year), PP&E/CWIP movement and capital commitments.
-4. **How it was fixed:** Proposed: an AR statement/note reader on the page-cell route (table pages already routed table_or_chart) that writes fin_annual_line rows with the printed comparative year, labelled source=annual_report; ratio_panel keeps derived values and gains a printed column.
-5. **What can come next:** Prototype on the 9 named companies' ARs, hand-read 20 rows, then run as a repair part on all stores; re-ask the 12 questions in trial 2.
+4. **How it was fixed:** Part 1 done 17 Nov (T-222): pilot3/ar_statements.py reads every printed cash-flow statement (both columns, both bases) into fin_annual_line source_table='ar_statement', gated by CFO+CFI+CFF = net change; XBRL years keep XBRL; 755/813 columns pass, 630/666 printed totals agree with XBRL; 11,422 rows in 76 stores; three fresh-session reviews, round 3 passed. Cash-flow store-years printed but empty: 80 -> 8.
+5. **What can come next:** T-223: segment note, borrowings note, revenue break-up and PP&E/CWIP notes on the same frame; then BS/P&L for pre-FY25 years and the ratios note; re-ask the 12 trial-1 questions in trial 2
 - **Kind:** missed (annual-report statements and notes are held as page text but not turned into rows; doc_map (17 Nov) finds the sections and no reader fills them: PP&E note printed but empty in 85 stores, capital commitments 72, CWIP 64, revenue break-up 60, finance costs 61, cash flow (pre-FY25) 75); **severity:** 85/91 companies (scan); **criticality:** 1; **trial questions failed:** 11; **priority:** 96
-- **Code:** -
+- **Code:** reality_engine/pilot3/ar_statements.py
 - **Store tables touched:** fin_annual_line, ratio_panel, page_cell
 - **Tags:** trial1, not_extracted; **scope:** general
-- **Stores repaired:** -; runs: -
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91; runs: 20261117T131627, 20261117T131912, 20261117T134249, 20261117T141620, 20261117T144250
 
 ## R-016 (open, part `kpi`, opened 2026-11-17)
 

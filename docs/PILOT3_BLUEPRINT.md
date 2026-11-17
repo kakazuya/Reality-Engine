@@ -1934,3 +1934,67 @@ an empty diff (a rebuild is deterministic); c04 added 7 `kpi_series` rows and re
 ### 9r. Order wins from the prescribed disclosure table (T-025, 16 Nov 2026)
 
 An order win is read by the labels of the Regulation 30 table every issuer must use, not by a company's wording: `pilot3/order_wins.py` writes `order_win` (size in crore or USD million, execution period in months, awarder, the printed words beside each figure). Method lessons from the ten measured stores: full rupee figures (`Rs. 28,59,32,004/-`) are as common as crore figures; exchange headlines are hand-typed and can differ from the filing (flagged, the filing wins); one filing can hold two orders; scanned tables print labels and values out of order, so a value that contains a label is dropped; the word `order` alone is mostly courts and tax offices, so a win needs a winning verb or the table.
+
+### 9s. Annual-report cash-flow statement reader (T-222, store-repair note R-015, 17 Nov 2026)
+
+`fin_annual_line` held cash-flow rows only from XBRL (FY25 onward), so FY23-FY24 cash flows sat in the stores as page
+text. `pilot3/ar_statements.py` (build part `ar_statements`, after `stores`, read by `ratios`) reads the printed
+statement of every held annual report, with no model:
+- pages: those `doc_map.yaml` labels `cash_flow` whose printed title names a cash-flow statement; a statement printed
+  in two titled halves side by side is read left then right (the right half only when its columns carry the same
+  period ends); the next page too when the statement stops before the financing total or the closing cash, unless
+  that page starts a new statement (another basis, or a title followed by operating activities); reading stops at
+  the notes, the signature block, page furniture and footnotes ('prepared under the indirect method');
+- words: `v2.page_words.words_for` (text layer, OCR boxes where the layer is bad), NFKC-normalised ('ﬁnancing'),
+  grouped into printed lines; a statement printed beside another block (changes in equity, notes) is cut at the
+  title group's edges (never at its own '(Contd.)' half), words right of the prior column are dropped, and a label
+  wrapped onto the next line is joined when it is visibly cut (ends in a joining word, or the tail is a bracket);
+- columns: the first pair of period-end dates from the left in the header ('31st March, 2024', '31.03.2024',
+  'March 31, 2024', '2024-25'); a 'from - to' column takes its 'to' date, also when it wraps onto the next line,
+  and its rows say 'part year from <start>' unless the period is a plain twelve months; failing a header, the two
+  most-filled numeric x clusters of the body with the period end from the title date, current on the left unless
+  the header prints 'Previous' before 'Current' or the years oldest first;
+- unit from the page (lakh / crore / million / thousand incl. "'000"); no unit = no rows;
+- canonical lines (the XBRL names: `cash_flow_from_operations/investing/financing`, `net_change_in_cash`,
+  `cash_at_beginning/end`, `fx_effect_on_cash`, `profit_before_tax`, `depreciation`, `income_tax_paid`,
+  `purchase_of_ppe`, `sale_of_ppe`, `ppe_purchase_net_of_sale`, `dividends_paid`, `interest_paid`, derived `capex`),
+  each counted only in its own block (an operating 'loss on sale of PPE' is not a sale); the FX effect only below
+  the financing total or when it names cash; nothing is named after the closing cash (the cash-balance table under
+  it); `interest_paid` is a financing line naming interest or finance cost, never lease, non-controlling,
+  accrued, proceeds or dividend, one that says 'paid' first; PPE words exclude 'intangible' and a bare 'investment
+  property'; a 'sale / (acquisition)' or '(net)' PPE line is `ppe_purchase_net_of_sale` with its printed sign;
+  payments (`purchase_of_ppe`, tax, dividends, interest) are stored with the sign turned (payment positive, a net
+  refund negative), as XBRL does; every other printed line is `cf_printed_line` with its caption and printed sign;
+- gate per column: CFO + CFI + CFF = net change, or opening + the three = closing, or either with the FX effect,
+  within the printed rounding; a column that fails writes nothing and is listed in the check CSV;
+- XBRL years keep XBRL (filed figures stay as filed): the printed totals are only compared with them; one whole
+  statement column per year and basis (`pick_statements`: the year's own report first, else the latest report's
+  prior column), never rows of two reports mixed; `known_at` is the report's filing time,
+  `source_table='ar_statement'`.
+
+Measured on the 91 Telegram stores (17 Nov, final): 412 statements, 755 of 813 columns passed the identity, 58
+refused; printed totals agree with XBRL on 630 of 666 comparisons (95%). The disagreements pass the printed identity,
+so they are mostly filing differences (MICEL FY25: CFO and CFI differ by the same amount, a reclassification;
+AUTOAXLES FY25: XBRL CFI +63.8 cr against a printed (94.1), the XBRL sign looks wrong). Live: 11,422 rows in 76
+stores, FY24 operating cash flow in 74. 8 stores hold no annual report at all (R-014).
+
+Review (the author never checks own code): Claude's hand-read of 30 rows found a page footer read as a line and a
+net tax refund stored as a payment. Three headless reviews in fresh sessions (`claude -p --model opus`, read-only
+tools; briefs and reports `D:/RealityEngine/tg_build/ar_cf/review_brief*.md`, `review_report*.txt`):
+round 1 FAILED on 12 points (operating FX adjustment named as FX effect; net PPE line stored as gross purchase with a
+derived capex; two reports mixed in one year; footnote as a line; side-by-side header; continuation into the next
+statement; lease interest; 'intangible'/'investment property'; column order; caption key; docs; tests); round 2
+FAILED on 3 new ones ('from - to' header gave the start date: BLUSPRING's 103 rows were filed under FY24;
+non-controlling and accrued interest named `interest_paid`; a 'foreign currency accounts' cash component named as FX
+effect) plus recall losses (two titled halves, RSWM); round 3 PASSED (20/20 rows right; tests 25 passed) with two
+labelling points fixed after it (a full year marked 'part year'; a wrapped capitalised word lost from a caption).
+Each store change ran behind the store_repair gate; every refused run was checked to remove only `ar_statement` rows
+with no other table changed, then `--accept`ed. Open (recall only, no wrong rows): a second reconciling item between
+the financing total and the net change (BODALCHEM hyperinflation loss, HESTERBIO item (E)) is refused; a statement
+that breaks inside the operating block is not joined; in 14 year-basis blocks without XBRL the store also holds
+`ar_facts` CF rows of the same line (an `ar_facts` question: c77 FY26 holds two CFO rows there). Review CSVs:
+`D:/RealityEngine/tg_build/ar_cf/dry_r4/`. Next: balance sheet and P&L for every printed year on the same frame, then
+the notes (PP&E, CWIP, commitments, revenue break-up, finance costs, segments).
+
+    python -m reality_engine.pilot3.ar_statements run --root D:/RealityEngine/tg_build/measure10 [--stores c16] --dry --out <dir>
+    python -m reality_engine.scripts.store_repair --part ar_statements --root <root> --stores c01,c02 --note R-015

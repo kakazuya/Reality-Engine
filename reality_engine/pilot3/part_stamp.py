@@ -39,7 +39,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 
 # The order one company is built in (``build --part all`` order, with the two steps before it).
-ORDER = ("profile", "docs_collect", "registry", "ocr", "pages", "stores", "comparatives", "preferred", "ratios",
+ORDER = ("profile", "docs_collect", "registry", "ocr", "pages", "stores", "ar_statements", "comparatives", "preferred", "ratios",
          "transcripts", "kpi", "segments", "guidance", "notes", "events", "checks", "atoms")
 # What the Telegram recipe runs for every company; ``ocr`` and ``atoms`` are stamped only where they were run.
 RECIPE = tuple(p for p in ORDER if p not in ("ocr", "atoms"))
@@ -53,6 +53,8 @@ PART_FILES: dict[str, tuple[str, ...]] = {
     "pages": ("registry.py",),
     "stores": ("stores.py", "statements.py",
                "../gap_loop/prepare.py::store_copies,duck_copies,_read_duckdb,_read_sqlite,_snapshot"),
+    "ar_statements": ("ar_statements.py", "doc_map.yaml", "doc_map.py::Section,load,label",
+                      "../v2/page_words.py", "../v2/reference_geom.py::lines_of"),
     "comparatives": ("comparatives.py", "lexicon/results_lines.yaml", "../v2/page_words.py"),
     "preferred": ("preferred.py",),
     "ratios": ("ratios.py",),
@@ -73,6 +75,7 @@ PART_TABLES: dict[str, tuple[str, ...]] = {
     "pages": ("doc_page",),
     "stores": ("fin_quarter_xbrl-preferred*", "fin_annual_line", "share_capital", "shp_category", "shp_holder",
                "shp_pledge", "dividend_event", "price_delivery", "bulk_block_deal", "insider_trade", "index_price"),
+    "ar_statements": ("fin_annual_line",),
     "comparatives": ("fin_quarter_printed-preferred*",),
     "preferred": ("fin_quarter_xbrl", "fin_quarter_printed"),
     "ratios": ("ratio_panel", "valuation_daily", "formula"),
@@ -95,9 +98,10 @@ UPSTREAM: dict[str, tuple[str, ...]] = {
     "ocr": ("docs_collect",),
     "pages": ("registry", "docs_collect", "ocr"),
     "stores": ("registry",),
+    "ar_statements": ("pages", "stores"),
     "comparatives": ("pages", "stores"),
     "preferred": ("stores", "comparatives"),
-    "ratios": ("stores", "preferred"),
+    "ratios": ("stores", "preferred", "ar_statements"),
     "transcripts": ("pages",),
     "kpi": ("pages", "profile"),
     "segments": ("kpi",),

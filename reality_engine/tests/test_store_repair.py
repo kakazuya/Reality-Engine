@@ -130,7 +130,8 @@ def test_a_part_whose_table_an_earlier_part_rewrote_runs_again():
 def test_dependants_follow_build_order():
     assert part_stamp.dependants(["kpi"]) == ["kpi", "segments", "guidance", "checks"]
     assert part_stamp.dependants(["guidance"]) == ["guidance", "checks"]
-    assert part_stamp.dependants(["stores"])[:4] == ["stores", "comparatives", "preferred", "ratios"]
+    assert part_stamp.dependants(["stores"])[:5] == ["stores", "ar_statements", "comparatives", "preferred", "ratios"]
+    assert part_stamp.dependants(["ar_statements"])[:2] == ["ar_statements", "ratios"]
 
 
 def test_an_unforced_part_with_unchanged_inputs_is_skipped(tmp_path):

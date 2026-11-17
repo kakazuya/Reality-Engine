@@ -50,7 +50,7 @@ doc_types:
         items: [cash_flow_from_operations, capex, cash_flow_from_investing, cash_flow_from_financing,
                 dividends_paid, interest_paid]
         table: fin_annual_line (statement CF)
-        reader: ar_facts (FY25+ only)
+        reader: ar_statements (every printed year, CFO+CFI+CFF checked; XBRL kept for FY25+)
         expect: {table: fin_annual_line, where: "statement='CF'", per: [fiscal_year, prior_year]}
       key_ratios_note:
         heading: []
