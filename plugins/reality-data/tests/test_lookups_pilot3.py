@@ -1525,5 +1525,168 @@ class T199AtomUnitFamilyTests(unittest.TestCase):
         self.assertNotIn("inr", {alt["unit"] for alt in out["alternatives"]})
 
 
+class T223R019ReplyClarityTests(unittest.TestCase):
+    """T-223 (R-019): money value_inr/value_cr, guidance superseded_by/is_latest, holding category-first + part_of,
+    tech BSE fallback, and fact routing to fin_quarter_printed."""
+
+    @classmethod
+    def setUpClass(cls):
+        build_fixture()
+        c = sqlite3.connect(DB)
+        c.execute("INSERT INTO company VALUES ('R19','INE999R01019',NULL,NULL,'t','599999','R19 Test Ltd')")
+        c.execute(
+            "INSERT INTO fin_annual_line VALUES ('R19','INE999R01019','FY26','2026-03-31','consolidated','BS',"
+            "'net_worth','Total equity',52676.0,'inr_lakh',100000.0,'ar.pdf',176,'Total equity 52,676','ar_facts',"
+            "'ar_facts','1','2026-09-07T17:29:24','doc',1,0,'reported','FY')"
+        )
+        c.execute(
+            "INSERT INTO guidance(id,symbol,isin,metric,target_period,low,high,unit,direction,said_on,doc_key,page,"
+            "quote,speaker,known_at,known_at_source,revision_of,extractor_rule) VALUES "
+            "(20,'R19','INE999R01019','capex','FY27',100.0,150.0,'inr_cr','up','2026-06-01','pdfs/KEC/deck1.pdf',1,"
+            "'Capex 100-150 cr','MD','2026-06-01T10:00:00','doc.known_at',NULL,'t')"
+        )
+        c.executemany("INSERT INTO shp_category VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+            ("R19", "INE999R01019", "2026-09-30", "aif", "AIF", 1000.0, 0.1, 1, "pct", "xbrl", "s.xml", "db", "t", "1",
+             None, "2026-10-16T12:00:00", "x", 1, 1000000.0, "total_shares"),
+            ("R19", "INE999R01019", "2026-09-30", "promoter", "PromoterGroup", 742900.0, 74.29, 3, "pct", "xbrl",
+             "s.xml", "db", "t", "2", None, "2026-10-16T12:00:00", "x", 1, 1000000.0, "total_shares"),
+            ("R19", "INE999R01019", "2026-09-30", "promoter_individuals", "Individuals", 737200.0, 73.72, 2, "pct",
+             "xbrl", "s.xml", "db", "t", "3", None, "2026-10-16T12:00:00", "x", 1, 1000000.0, "total_shares"),
+        ])
+        c.executemany("INSERT INTO shp_holder VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", [
+            ("R19", "INE999R01019", "2026-09-30", "promoter_individuals", "Promoter A", 470500.0, 47.05, 1,
+             None, None, None, "s.xml", "db", "xml.gz", "2026-10-16T12:00:00", "x"),
+            ("R19", "INE999R01019", "2026-09-30", "promoter_individuals", "Promoter B", 266700.0, 26.67, 1,
+             None, None, None, "s.xml", "db", "xml.gz", "2026-10-16T12:00:00", "x"),
+        ])
+        c.executemany(
+            "INSERT INTO price_delivery (symbol,exchange,date,open,high,low,close,prev_close,volume,delivery_pct,"
+            "adj_factor,adj_close,known_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [
+                ("R19", "BSE", "2020-01-02", 10.0, 11.0, 9.5, 10.5, 10.0, 1000.0, 50.0, 1.0, 10.5, "2020-01-02"),
+                ("R19", "BSE", "2020-06-01", 12.0, 15.0, 11.5, 14.0, 10.5, 2000.0, 60.0, 1.0, 14.0, "2020-06-01"),
+                ("R19", "NSE", "2024-04-01", 50.0, 52.0, 49.0, 51.0, 50.0, 5000.0, 40.0, 1.0, 51.0, "2024-04-01"),
+            ],
+        )
+        # Printed-only quarterly revenue (like HYPERSOFT, no fin_quarter_xbrl row)
+        c.execute(
+            "INSERT INTO fin_quarter_printed (symbol, isin, period_start, period_end, fiscal_period, period_type, "
+            "column_role, basis, statement, line_item, caption, value, unit, scale, raw_token, quote, doc_key, "
+            "page, known_at, known_at_source, check_status, check_detail, is_reported) "
+            "VALUES ('R19','INE999R01019','2026-07-01','2026-09-30','Q2FY27','quarter','current','consolidated',"
+            "'P&L','revenue_from_operations','Revenue from Operations',822911000.0,'inr',1.0,'8,229.11',"
+            "'Revenue from Operations 8,229.11','pdfs/KEC/deck2.pdf',10,'2026-10-23T19:00:00','doc.known_at','sum_ok',NULL,1)"
+        )
+        c.execute(
+            "INSERT INTO kpi_series(symbol,metric,dimension,value,unit,scale,period_type,fiscal_period,as_of_date,basis,"
+            "doc_key,page,quote,known_at,known_at_source,is_reported,extractor_rule) "
+            "VALUES ('R19','revenue','total',82.67,'inr_cr',1e7,'FY','FY24','2024-03-31','not_stated',"
+            "'pdfs/KEC/deck1.pdf',5,'Revenue 82.67','2024-05-29T18:00:00','doc',1,'t')"
+        )
+        c.commit()
+        c.close()
+        os.environ["REALITY_PILOT3_DB"] = str(DB)
+        p3.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        p3.close()
+        os.environ.pop("REALITY_PILOT3_DB", None)
+
+    def test_money_figures_carry_value_inr_and_value_cr_while_non_money_do_not(self):
+        fin_nw = p3.fin("R19", "net_worth", period="FY26")
+        row = fin_nw["rows"][0]
+        self.assertEqual(row["value_inr"], 5267600000.0)
+        self.assertEqual(row["value_cr"], 526.76)
+
+        fact_nw = p3.fact("R19", "net_worth", period="FY26")
+        self.assertEqual(fact_nw["answer"]["value_inr"], 5267600000.0)
+        self.assertEqual(fact_nw["answer"]["value_cr"], 526.76)
+
+        kpi_ob = p3.kpi("KEC", "order_book", period="Q3FY26")["rows"][0]
+        self.assertEqual(kpi_ob["value_inr"], 4e11)
+        self.assertEqual(kpi_ob["value_cr"], 40000.0)
+
+        # Non-money and per-share units must get neither value_inr nor value_cr
+        for non_money in (
+            p3.kpi("KEC", "nim", period="Q1FY27")["rows"][0],
+            p3.kpi("KEC", "credit_cost", period="Q1FY27")["rows"][0],
+            p3.fin("KEC", "eps_diluted", period="FY25")["rows"][0],
+            p3.ratio("KEC", "roe", period="FY25")["rows"][0],
+            p3.fact("KEC", "roe", period="FY25")["answer"],
+            p3.fact("KEC", "promoter holding", as_of="2026-06-01")["answer"],
+            p3.fact("KEC", "shares outstanding", as_of="2026-06-01")["answer"],
+        ):
+            self.assertNotIn("value_inr", non_money, non_money)
+            self.assertNotIn("value_cr", non_money, non_money)
+
+    def test_guidance_marks_superseded_by_and_is_latest_and_keeps_history(self):
+        hist = p3.guidance("KEC", metric="revenue", history=True)
+        self.assertEqual([r["said_on"] for r in hist["rows"]], ["2026-08-10", "2026-02-10"])
+        latest, old = hist["rows"]
+        self.assertTrue(latest["is_latest"])
+        self.assertIsNone(latest["superseded_by"])
+        self.assertFalse(old["is_latest"])
+        self.assertEqual(old["superseded_by"]["row_id"], 2)
+        self.assertEqual(old["superseded_by"]["said_on"], "2026-08-10")
+        self.assertNotIn("low_cr", latest)
+
+        capex = p3.guidance("R19", metric="capex")["rows"][0]
+        self.assertEqual(capex["low_cr"], 100.0)
+        self.assertEqual(capex["high_cr"], 150.0)
+        self.assertEqual(capex["low_inr"], 1.0e9)
+        self.assertTrue(capex["is_latest"])
+
+    def test_holding_puts_category_total_first_and_labels_holders_part_of(self):
+        out = p3.holding("R19", as_of="2026-10-19")
+        self.assertEqual(out["rows"][0]["category"], "promoter")
+        self.assertEqual(out["rows"][0]["pct"], 74.29)
+        self.assertEqual([h["holder"] for h in out["holders"]], ["Promoter A", "Promoter B"])
+        for h in out["holders"]:
+            self.assertEqual(h["part_of"]["category"], "promoter_individuals")
+            self.assertEqual(h["part_of"]["pct"], 73.72)
+            self.assertEqual(h["part_of"]["parent_category"], "promoter")
+            self.assertEqual(h["part_of"]["parent_pct"], 74.29)
+
+    def test_tech_falls_back_to_bse_when_nse_has_no_rows_before_date(self):
+        import lookups_tech as tech_mod
+        from unittest import mock
+
+        out = tech_mod.tech("R19", "range", as_of="2020-07-01")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["source"], "bse")
+        self.assertEqual(out["rows"][0]["last_close"], 14.0)
+        self.assertEqual(out["rows"][0]["provenance"]["source"], "BSE 2020-06-01")
+
+        # Market-table fallback when store price_delivery has no BSE rows for the symbol
+        with mock.patch.object(tech_mod, "_sessions", return_value=[]), \
+             mock.patch.object(tech_mod.core, "resolve_one", return_value={
+                 "isin": "INE999R01019", "nse_symbol": "R19", "bse_code": "599999", "isin_history": []
+             }), \
+             mock.patch.object(tech_mod.core, "_price_table", return_value=(
+                 ["date", "open", "high", "low", "close", "prev_close", "volume", "delivery_pct", "adj_close"],
+                 [{"date": "2019-01-01", "open": 0.19, "high": 0.19, "low": 0.19, "close": 0.19,
+                   "prev_close": 0.19, "volume": 900.0, "delivery_pct": 100.0, "adj_close": 0.19}]
+             )):
+            mkt = tech_mod.tech("R19", "range", as_of="2019-06-01")
+        self.assertTrue(mkt["found"])
+        self.assertEqual(mkt["source"], "bse")
+        self.assertEqual(mkt["rows"][0]["last_close"], 0.19)
+        self.assertEqual(mkt["rows"][0]["provenance"]["table"], "px_bse_adj")
+
+    def test_fact_routes_printed_quarterly_lines_to_fin_when_xbrl_absent(self):
+        out = p3.fact("R19", "revenue", period="Q2FY27")
+        self.assertTrue(out["found"])
+        self.assertEqual(out["route"], "fin")
+        self.assertEqual(out["answer"]["value_cr"], 82.29)
+        self.assertEqual(out["answer"]["basis"], "consolidated")
+        self.assertEqual(out["answer"]["source"]["table"], "fin_quarter_printed")
+
+        latest = p3.fact("R19", "revenue")
+        self.assertEqual(latest["route"], "fin")
+        self.assertEqual(latest["answer"]["period"], "Q2FY27")
+        self.assertEqual(latest["answer"]["value_cr"], 82.29)
+
+
 if __name__ == "__main__":
     unittest.main()
