@@ -2314,7 +2314,22 @@ batch, one per answer worker); `--repeat M` also re-asks trial M's open question
 `tasks/handoff/tg_trial_answer_brief.md` (p3ask `--db <store>`, a `gap` field per answer) and write `answers/`;
 a separate grader writes `grades/`; `merge` joins them into `graded.jsonl` (answer_run_report input) and prints the
 right-rate on frozen and open questions apart. Only the frozen rate is the reported score. Test:
-`python -m pytest -q reality_engine/tests/test_tg_trial.py` -> 2 passed.
+`python -m pytest -q reality_engine/tests/test_tg_trial.py` -> 5 passed.
+
+`tg_trial check --answers --calls --batch [--min-kinds 3] [--prev <first pass>]` lists the qids whose answer
+breaks the brief: no answer, no logged p3ask call, `partly`/`not_found` after fewer than `min-kinds` different
+tools, or (with `--prev`) a `partly`/`not_found` answer unchanged from an earlier pass. The answer brief makes the
+worker run it before finishing. `merge` applies the 9 Nov ruling: a `partly`/`not_held` grade whose root cause is
+`question` (the grader's own search confirms no filing states it) counts as right; `grade_strict` keeps the grader's
+grade, and both rates are printed; `scope_out` questions are not scored.
+
+Trial 1 (17 Nov, 182 questions): beam-free answerers gave up after one search (30 of 44 in one batch) and, sent
+back, logged extra calls while keeping every answer word for word, so answering and grading run on DeepSeek
+(`tasks/handoff/tg_trial1/`). Score: frozen 52/87 right (60%; strict 49%), open 54/88 (61%). Non-right causes:
+raw_missing 28, question 23, not_extracted 21, reading 12, wrong_row 3, routing 3, compute 2. The fixes are store
+repair notes R-014 (calls/decks not held: 27 stores hold neither), R-015 (AR statements and notes not extracted),
+R-016 (segment notes and sector KPIs), R-017 (wrong kpi rows: column and Mn/crore), R-018 (9 stores without
+shareholding). Report `D:/RealityEngine/reports/2026-11-17_tg_trial1.xlsx`.
 
 ## Answer arms, round 13 (T-205, 13 Nov 2026)
 

@@ -103,15 +103,19 @@ def merge(trial: int, trials: Path = TRIALS) -> dict:
         return got
 
     answers, grades = load("answers"), load("grades")
-    rows, score = [], {0: Counter(), 1: Counter()}
+    rows, score, strict_score = [], {0: Counter(), 1: Counter()}, {0: Counter(), 1: Counter()}
     for qid, q in qs.items():
         a, g = answers.get(qid, {}), grades.get(qid, {})
-        grade = g.get("grade") or ("" if a else "unanswered")
+        grade = strict = g.get("grade") or ("" if a else "unanswered")
+        if grade in ("partly", "not_held") and g.get("root_cause") == "question":
+            grade = "right"     # ruling 9 Nov: 'not found' + what was searched is right when the search holds up
         score[q["frozen"]][grade] += 1
+        strict_score[q["frozen"]][strict] += 1
         rows.append({"run_id": f"tg_trial{trial}", "qid": qid, "symbol": q["symbol"], "question": q["question"],
                      "reframed_question": a.get("reframed_question", ""), "as_of": q["as_of"],
                      "use": "frozen" if q["frozen"] else "open", "kind": q["theme"], "tools": a.get("tools", []),
                      "answer": a.get("answer", ""), "sources": a.get("sources", []), "grade": grade,
+                     "grade_strict": strict,
                      "error": g.get("error", ""), "root_cause": g.get("root_cause", ""), "fix": g.get("fix", ""),
                      "source_if_missing": g.get("source_if_missing", ""), "gap": a.get("gap", "")})
     with (out / "graded.jsonl").open("w", encoding="utf-8") as fh:
@@ -119,10 +123,11 @@ def merge(trial: int, trials: Path = TRIALS) -> dict:
             fh.write(json.dumps(r, ensure_ascii=False) + "\n")
 
     def rate(c: Counter) -> str:
-        n = sum(c.values())
+        n = sum(c.values()) - c["scope_out"]          # a question no filing can answer is not scored
         return f"{c['right']}/{n} right ({100 * c['right'] / n:.0f}%)" if n else "none"
 
     return {"graded": len(rows), "answered": len(answers), "frozen": rate(score[1]), "open": rate(score[0]),
+            "frozen_strict": rate(strict_score[1]), "open_strict": rate(strict_score[0]),
             "frozen_grades": dict(score[1]), "open_grades": dict(score[0])}
 
 

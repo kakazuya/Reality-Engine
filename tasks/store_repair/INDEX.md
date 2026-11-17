@@ -17,6 +17,11 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 | R-011 | fix_written | transcripts | general | transcripts, ocr |  |
 | R-012 | open | docs_collect | general | transcripts, raw_fetch |  |
 | R-013 | open | comparatives | general | ocr, R-010 |  |
+| R-014 | open | docs_collect | general | trial1, raw_missing |  |
+| R-015 | open | comparatives | general | trial1, not_extracted |  |
+| R-016 | open | kpi | general | trial1, not_extracted |  |
+| R-017 | open | kpi | general | trial1, wrong_row |  |
+| R-018 | open | holding | general | trial1, raw_missing |  |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -172,4 +177,64 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 - **Code:** -
 - **Store tables touched:** fin_quarter_printed
 - **Tags:** ocr, R-010; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-014 (open, part `docs_collect`, opened 2026-11-17)
+
+1. **Why it had to be done** (question that exposed it, all): Trial 1: what did the call/deck the question needs say? (e.g. NELCAST backward integration, PANAMAPET drilling-lubricant target, GAYAPROJ arbitration)
+2. **What the problem was:** 28 of 182 trial-1 answers graded raw_missing: the filing that states the answer is not in the store. 37 of 91 stores hold no call transcript, 30 no investor deck, 27 neither (e.g. GAYAPROJ, NSIL, NILKAMAL, DHANBANK, HYPERSOFT); NELCAST's 11 and RANEHOLDIN's transcripts are cover letters with a link only (R-012). **Root cause:** R-002 found most no-transcript companies filed none on the exchange, but company websites and BSE/NSE attachments were not searched for decks; link-only transcripts are not followed.
+3. **What was missing:** A per-company register of which calls and decks exist anywhere (exchange, company site), so 'not filed' and 'not fetched' are told apart.
+4. **How it was fixed:** Proposed: R-012 link follower for transcript cover letters; a deck/transcript finder over the company IR page for the 27 companies with neither; record 'no call held' when none exists.
+5. **What can come next:** Measure on the 27: how many have a deck or transcript on their IR page; then fetch and re-run docs/pages/transcripts for those stores; re-ask the 28 raw_missing questions in trial 2.
+- **Code:** -
+- **Store tables touched:** doc, transcript_statement
+- **Tags:** trial1, raw_missing; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-015 (open, part `comparatives`, opened 2026-11-17)
+
+1. **Why it had to be done** (question that exposed it, all): Trial 1: three-year ROCE/ROE trend, FY24 cash flow, capex commitments, PP&E/CWIP schedule (JYOTISTRUC, VIDHIING, KRYSTAL, BIRLACABLE, POLYPLEX, SAKAR, FAZE3Q, BBL, DBOL)
+2. **What the problem was:** 21 trial-1 answers graded not_extracted; 12 of them need an annual-report statement or note the store holds as page text only: cash-flow statement before FY25 (KRYSTAL, BIRLACABLE, POLYPLEX, SAKAR), the Key Financial Ratios note (JYOTISTRUC, VIDHIING), PP&E/CWIP schedule (FAZE3Q), capital commitments (BBL), other operating revenue (DBOL). **Root cause:** fin_annual_line is filled from XBRL (FY25 onward) and printed quarterly results; annual-report statements and notes are read only as page text, so earlier years and note-level lines have no rows.
+3. **What was missing:** Rows from the AR cash-flow statement (CFO, capex, both columns), the ratios note (printed ROCE/ROE/margins with year), PP&E/CWIP movement and capital commitments.
+4. **How it was fixed:** Proposed: an AR statement/note reader on the page-cell route (table pages already routed table_or_chart) that writes fin_annual_line rows with the printed comparative year, labelled source=annual_report; ratio_panel keeps derived values and gains a printed column.
+5. **What can come next:** Prototype on the 9 named companies' ARs, hand-read 20 rows, then run as a repair part on all stores; re-ask the 12 questions in trial 2.
+- **Code:** -
+- **Store tables touched:** fin_annual_line, ratio_panel, page_cell
+- **Tags:** trial1, not_extracted; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-016 (open, part `kpi`, opened 2026-11-17)
+
+1. **Why it had to be done** (question that exposed it, all): Trial 1: segment results, bank NIM, volumes (NILKAMAL Retail EBIT, DHANBANK yield/NIM, ALICON tonnage, DBOL cane crushed)
+2. **What the problem was:** Segment tables in quarterly results (NILKAMAL p4) and KPI tables in decks/calls (DHANBANK NIM, ALICON tonnage, DBOL cane crushed/recovery, MANINFRA cash+investments 697.6 cr) are held as page text with no row; answers said 'not disclosed' and were graded wrong or partly. **Root cause:** kpi extraction keys on known metric labels; segment result tables and sector KPIs outside its dictionary give no row.
+3. **What was missing:** segment revenue/result rows from the results' segment note; sector KPI dictionary entries for banks (NIM, yield, cost of deposits) and process industries (tonnage, crushing, recovery).
+4. **How it was fixed:** Proposed: segment-note reader for quarterly results (Ind AS 108 table: segment, revenue, result, period columns) and dictionary entries for the named KPIs.
+5. **What can come next:** Count how many of the 91 stores print a segment note; prototype on NILKAMAL p4; re-ask in trial 2.
+- **Code:** -
+- **Store tables touched:** kpi_series, fin_quarter_printed
+- **Tags:** trial1, not_extracted; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-017 (open, part `kpi`, opened 2026-11-17)
+
+1. **Why it had to be done** (question that exposed it, c53,SIMPLEXINF,NSIL): Trial 1: KABRAEXTRU FY26 PAT, SIMPLEXINF FY24 order book, NSIL PE
+2. **What the problem was:** 3 wrong stored rows found by the grader and checked: KABRAEXTRU kpi_series FY26 pat 34 inr_cr (AR p37 quote 'PAT\n34' is the FY25 column; FY26 is (2.44)); SIMPLEXINF order book FY24 20000 inr_cr from a quote in mns (10x); KABRAEXTRU order book 1900 inr_cr from 'INR 1,900+ Mn'; NSIL valuation_daily PE off (PAT unit vs share count). **Root cause:** kpi table reader assigns the first value of a two-column row to the current period when the row label line carries only one number; sentence reader takes 'Mn'/'mns' as crore in some phrasings; PE uses a PAT row in a different unit.
+3. **What was missing:** A period check (value must sit under its column header) and a unit check for 'Mn/mns' in the kpi readers; a unit-consistent PE input.
+4. **How it was fixed:** Proposed: period-column alignment check before a table row is kept; Mn/mns token mapped to inr_mn; PE built from the preferred PAT in rupees.
+5. **What can come next:** Find all kpi rows with quote like 'Mn'/'mns' stored as inr_cr across 91 stores and all single-number table rows; fix, repair, accept only with no right rows lost.
+- **Code:** -
+- **Store tables touched:** kpi_series, valuation_daily
+- **Tags:** trial1, wrong_row; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-018 (open, part `holding`, opened 2026-11-17)
+
+1. **Why it had to be done** (question that exposed it, SHREEREF,PANCHMAHQ,YASHHV,NITTAGELA,UNIFIED,AFCOM,SUDARSHAN,CNCRD,HYPERSOFT): Trial 1: UNIFIED promoter stake cut (4.97%) and who bought
+2. **What the problem was:** 9 of 91 stores have no shp_category rows at all (UNIFIED, HYPERSOFT, YASHHV, SUDARSHAN, ...), so pilot3_holding returns nothing; the UNIFIED question was graded not_held. **Root cause:** Not yet traced: the shareholding fetch/load for these companies gave no rows (likely BSE-only or SME listings outside the NSE shareholding feed).
+3. **What was missing:** Quarterly shareholding pattern for these 9 companies.
+4. **How it was fixed:** Proposed: BSE shareholding fallback (already open as R-009) for every store with zero shp rows.
+5. **What can come next:** Confirm the cause per company (exchange, listing type); fetch via BSE; re-run holding part; re-ask in trial 2.
+- **Code:** -
+- **Store tables touched:** shp_category, shp_holder
+- **Tags:** trial1, raw_missing; **scope:** general
 - **Stores repaired:** -; runs: -

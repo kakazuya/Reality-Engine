@@ -102,3 +102,21 @@ def test_check_with_prev_lists_unchanged_give_ups(tmp):
     answers = w("a.jsonl", [{"qid": 1, "status": "partly", "answer": "x"}, {"qid": 2, "status": "partly", "answer": "z"}])
     calls = w("c.jsonl", [{"qid": q, "tool": t} for q in (1, 2) for t in ("search", "topic", "docs")])
     assert dict(tg_trial.check(answers, calls, batch, 3, prev)) == {1: "same answer text as the first pass"}
+
+
+def test_merge_counts_an_upheld_not_disclosed_as_right(tmp):
+    out = tmp / "trial9"
+    (out / "answers").mkdir(parents=True)
+    (out / "grades").mkdir()
+    qs = [{"qid": q, "symbol": "X", "question": "?", "theme": "t", "frozen": 1, "as_of": "2026-11-16"} for q in (1, 2, 3)]
+    (out / "questions.jsonl").write_text("".join(json.dumps(r) + "\n" for r in qs), encoding="utf-8")
+    (out / "answers" / "a.jsonl").write_text("".join(json.dumps({"qid": q, "answer": "a"}) + "\n" for q in (1, 2, 3)),
+                                             encoding="utf-8")
+    grades = [{"qid": 1, "grade": "partly", "root_cause": "question"}, {"qid": 2, "grade": "partly",
+              "root_cause": "not_extracted"}, {"qid": 3, "grade": "scope_out", "root_cause": "question"}]
+    (out / "grades" / "g.jsonl").write_text("".join(json.dumps(g) + "\n" for g in grades), encoding="utf-8")
+    res = tg_trial.merge(9, trials=tmp)
+    assert res["frozen"] == "1/2 right (50%)" and res["frozen_strict"] == "0/2 right (0%)"
+    rows = [json.loads(x) for x in (out / "graded.jsonl").open(encoding="utf-8")]
+    assert [(r["grade"], r["grade_strict"]) for r in rows] == [("right", "partly"), ("partly", "partly"),
+                                                                 ("scope_out", "scope_out")]
