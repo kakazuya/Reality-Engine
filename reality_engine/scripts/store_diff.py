@@ -332,13 +332,32 @@ def copy_store(src: Path, dest: Path) -> float:
     return round(time.time() - started, 1)
 
 
-def _checkpoint(path: Path) -> None:
-    con = sqlite3.connect(path)
-    try:
-        con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-        con.execute("PRAGMA journal_mode=DELETE")
-    finally:
-        con.close()
+def _checkpoint(path: Path, timeout_s: float = 120.0, retries: int = 3, sleep_s: float = 2.0) -> None:
+    """Checkpoint WAL into ``path`` and switch to ``DELETE`` mode, waiting and retrying if another reader holds a lock."""
+    attempts = max(1, retries)
+    last_err: sqlite3.OperationalError | None = None
+    for attempt in range(attempts):
+        con = None
+        try:
+            con = sqlite3.connect(path, timeout=timeout_s)
+            con.execute(f"PRAGMA busy_timeout={int(timeout_s * 1000)}")
+            con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            row = con.execute("PRAGMA journal_mode=DELETE").fetchone()
+            if row and str(row[0]).lower() != "delete":
+                raise sqlite3.OperationalError(f"database is locked (journal_mode={row[0]})")
+            return
+        except sqlite3.OperationalError as exc:
+            msg = str(exc).lower()
+            if "locked" not in msg and "busy" not in msg:
+                raise
+            last_err = exc
+        finally:
+            if con is not None:
+                con.close()
+        if attempt + 1 < attempts:
+            time.sleep(sleep_s)
+    if last_err is not None:
+        raise last_err
 
 
 def build_side(db: Path, parts: list[str], cwd: Path, profile: str, out: Path, side: str,

@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from reality_engine.pilot3 import part_stamp
-from reality_engine.scripts import store_repair
+from reality_engine.scripts import store_diff, store_repair
 
 
 @pytest.fixture()
@@ -36,7 +36,7 @@ def _store(root: Path, name: str = "c01", guidance_rows: int = 2) -> dict:
                      [(10 + i, 12 + i) for i in range(guidance_rows)])
     conn.commit()
     conn.close()
-    return store_repair.find_stores(root)[0]
+    return [s for s in store_repair.find_stores(root) if s["name"] == name][0]
 
 
 def _runner(sql: str | None, rc: int = 0):
@@ -257,3 +257,39 @@ def test_completeness_counts_what_a_store_holds(tmp_path):
     got = store_repair.completeness(db)
     assert (got["symbol"], got["transcripts"], got["transcript_latest"], got["decks"]) == ("ACME", 1, "2026-11-10", 1)
     assert got["xbrl_quarters"] is None and got["kpi_verified"] == 0      # a missing table is unknown, never zero rows
+
+
+def test_locked_store_is_skipped_restored_and_next_store_processed(tmp_path, monkeypatch):
+    c01 = _store(tmp_path, "c01")
+    c02 = _store(tmp_path, "c02")
+    con = sqlite3.connect(c01["db"])
+    con.execute("PRAGMA journal_mode=WAL")
+    con.close()
+
+    reader = sqlite3.connect(f"file:{c01['db'].as_posix()}?mode=ro", uri=True)
+    reader.execute("BEGIN")
+    assert reader.execute("SELECT COUNT(*) FROM guidance").fetchone()[0] == 2
+
+    orig_checkpoint = store_diff._checkpoint
+    monkeypatch.setattr(store_diff, "_checkpoint",
+                        lambda path: orig_checkpoint(path, timeout_s=0.1, retries=2, sleep_s=0.05))
+    add = ("INSERT INTO guidance (symbol, metric, target_period, low, high, doc_key, page, quote) "
+           "VALUES ('AAA', 'ebitda_margin', 'FY27', 20, 22, 'd2', 3, 'q')")
+    monkeypatch.setattr(store_repair, "default_runner", _runner(add))
+
+    try:
+        rc = store_repair.main(["--part", "guidance", "--no-dependants", "--root", str(tmp_path), "--stores", "c01,c02"])
+    finally:
+        reader.commit()
+        reader.close()
+
+    assert rc == 1
+    log_rows = [json.loads(line) for line in (tmp_path / "repair_log.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert [(r["store"], r["outcome"]) for r in log_rows] == [("c01", "skipped: database locked"), ("c02", "repaired")]
+    run_files = list((c01["dir"] / "repair").glob("*/run.json"))
+    assert len(run_files) == 1
+    assert json.loads(run_files[0].read_text(encoding="utf-8"))["outcome"] == "skipped: database locked"
+    assert _count(c01["db"]) == 2
+    assert _count(c02["db"]) == 3
+    assert not (c01["dir"] / "repair.lock").exists()
+    assert not (c02["dir"] / "repair.lock").exists()
