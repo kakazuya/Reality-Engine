@@ -885,8 +885,13 @@ Four general rules, no company name in code.
   change) / revenue, quarterly and annual, non-lenders only. HINDUNILVR Q2 FY27 consolidated 47.57% (materials
   6,408 cr + purchases 3,654 cr - inventory change 507 cr over revenue 18,226 cr).
 - **Valuation history.** The printed role pool depends on the current quarter end and the column count
-  (`_role_set`), so a Q1 table's "year ended" column is `last_fy`, a Q4 table's is `ytd`/`prior_ytd` and a five- or
-  six-column Q2/Q3 table carries `last_fy`; `_assign_tokens` matches values to columns monotonically, so a missing
+  (`_role_set`): a Q1 (June-end) table has no March-FY year-to-date columns (4-column and mirrored
+  side-by-side S/C 8-column Q1 layouts verified by `_side_by_side_ok` use `current, preceding, year_ago, last_fy`;
+  5/6-column June layouts leave non-March `ytd`/`prior_ytd` slots `None`, `_quarter` returns `None` for
+  non-09/12 `ytd`, `_date_match(..., require_year=True)` resolves `[FY, prior FY]` by date rather than default
+  position, and a June `last_fy` column writes nothing unless its previous-March year or an XBRL/store FY
+  value matches), a Q4 table's "year ended" column is `ytd`/`prior_ytd` and a five- or six-column Q2/Q3 table
+  carries `last_fy`; `_assign_tokens` matches values to columns monotonically, so a missing
   middle cell cannot slide the half-year EPS under the year-ago quarter. `_valuation` picks the basis with both a
   share count and a quarterly statement (a stray consolidated printed page no longer strands the standalone filer,
   SBILIFE), and where the filing prints ytd + prior-ytd but no last full year the last year comes from its own
