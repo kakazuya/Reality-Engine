@@ -42,12 +42,26 @@ REPO = Path(__file__).resolve().parents[2]
 NOTES_DIR = REPO / "tasks" / "store_repair"
 STATUSES = ("open", "fix_written", "fixed", "wontfix")
 NOTE_FIELDS = ("question", "store", "part", "symptom", "cause", "missing", "fix", "next", "status", "code", "tables",
-               "tags", "scope")
+               "tags", "scope", "kind", "kind_why", "companies_hit", "companies_of", "hit_basis", "trial_failed",
+               "trial_companies")
 # Shivam 16 Nov: every fix is located and written up like a notebook cell: what was wrong in the store and why, the
 # fix, the code it lives in (``code``: file::function, comma list), the store tables it touches (``tables``), free
 # ``tags`` to find it by, and whether it is a ``general`` rule or holds for one ``company`` only.
 LIST_FIELDS = ("code", "tables", "tags")
 SCOPES = ("general", "company")
+# Shivam 17 Nov: every defect carries a severity and a criticality score, and fixes go in priority order.
+#   severity    = how many companies the defect hits (companies_hit of companies_of; hit_basis says how it was
+#                 counted: 'scan' of every store's tables, 'trial' graded answers, or 'suspect' unconfirmed scan hits);
+#   criticality = what the defect does to the data (kind) and why (kind_why): 'wrong' (a row or reply is served as
+#                 true and is not: the answer is wrong without warning) 3, 'corrupt' (the source text itself is
+#                 damaged, e.g. a jumbled text layer, so rows read from it are lost or wrong) 2, 'missed' (the data is
+#                 absent: the answer says not found) 1;
+#   priority    = criticality x (companies hit + trial questions failed): more companies and more failed trial
+#                 questions move a fix up; a wrong row outranks a missing one of the same reach.
+KINDS = ("wrong", "corrupt", "missed")
+CRITICALITY = {"wrong": 3, "corrupt": 2, "missed": 1}
+INT_FIELDS = ("companies_hit", "companies_of", "trial_failed", "trial_companies")
+HIT_BASES = ("scan", "trial", "suspect")
 GRID_XLSX = REPO / "reports" / "store_repair_grid.xlsx"
 
 
@@ -249,6 +263,23 @@ def read_notes(notes_dir: Path = NOTES_DIR) -> list[dict]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
+def scores(note: dict) -> dict:
+    """severity, criticality and priority of one note (Shivam 17 Nov); empty strings where the note is not scored."""
+    crit = CRITICALITY.get(note.get("kind") or "")
+    hit, of = note.get("companies_hit"), note.get("companies_of")
+    severity = f"{hit}/{of}" if hit is not None and of else (str(hit) if hit is not None else "")
+    priority = crit * ((hit or 0) + (note.get("trial_failed") or 0)) if crit and hit is not None else ""
+    return {"severity": severity, "criticality": crit or "", "priority": priority}
+
+
+def by_priority(notes: list[dict]) -> list[dict]:
+    """open and fix_written notes, highest priority first (unscored last), then fixed and wontfix."""
+    def key(n):
+        pr = scores(n)["priority"]
+        return (n.get("status") not in ("open", "fix_written"), pr == "", -(pr or 0), n["id"])
+    return sorted(notes, key=key)
+
+
 def write_notes(notes: list[dict], notes_dir: Path = NOTES_DIR) -> None:
     notes_dir.mkdir(parents=True, exist_ok=True)
     (notes_dir / "notes.jsonl").write_text(
@@ -262,10 +293,19 @@ def write_notes(notes: list[dict], notes_dir: Path = NOTES_DIR) -> None:
              "touches, its tags and scope, the stores repaired. Stores "
              "are named by their build folder, never by company. Grid of stores x parts: "
              "`reports/store_repair_grid.xlsx` (`store_repair note grid`).", "",
-             "| id | status | part | scope | tags | stores repaired |", "|---|---|---|---|---|---|"]
-    for n in notes:
-        cells = [n["id"], n["status"], n.get("part") or "", n.get("scope") or "", joined(n.get("tags")),
-                 joined(n.get("repaired"))]
+             "Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores counted; basis scan / trial "
+             "/ suspect), **criticality** = kind of damage: wrong 3 (served as true, answer wrong without warning), "
+             "corrupt 2 (source text damaged), missed 1 (absent, answer says not found); **priority** = criticality "
+             "x (companies hit + trial questions failed). Live notes are listed highest priority first.", "",
+             "| id | status | kind | severity (basis) | criticality | trial failed (companies) | priority | part "
+             "| scope | stores repaired |", "|---|---|---|---|---|---|---|---|---|---|"]
+    for n in by_priority(notes):
+        sc = scores(n)
+        trial = (f"{n['trial_failed']} ({n.get('trial_companies', '-')})" if n.get("trial_failed") is not None
+                 else "")
+        cells = [n["id"], n["status"], n.get("kind") or "",
+                 f"{sc['severity']} ({n.get('hit_basis') or '-'})" if sc["severity"] else "", sc["criticality"],
+                 trial, sc["priority"], n.get("part") or "", n.get("scope") or "", joined(n.get("repaired"))]
         lines.append("| " + " | ".join(str(c).replace("|", "/").replace("\n", " ") for c in cells) + " |")
     for n in notes:
         lines += ["", f"## {n['id']} ({n['status']}, part `{n.get('part') or '-'}`, opened {n.get('opened') or '-'})",
@@ -275,6 +315,11 @@ def write_notes(notes: list[dict], notes_dir: Path = NOTES_DIR) -> None:
                   f"3. **What was missing:** {n.get('missing') or '-'}",
                   f"4. **How it was fixed:** {n.get('fix') or '-'}",
                   f"5. **What can come next:** {n.get('next') or '-'}",
+                  f"- **Kind:** {n.get('kind') or '-'} ({n.get('kind_why') or '-'}); **severity:** "
+                  f"{scores(n)['severity'] or '-'} companies ({n.get('hit_basis') or '-'}); **criticality:** "
+                  f"{scores(n)['criticality'] or '-'}; **trial questions failed:** "
+                  f"{n.get('trial_failed') if n.get('trial_failed') is not None else '-'}; "
+                  f"**priority:** {scores(n)['priority'] or '-'}",
                   f"- **Code:** {joined(n.get('code')) or '-'}",
                   f"- **Store tables touched:** {joined(n.get('tables')) or '-'}",
                   f"- **Tags:** {joined(n.get('tags')) or '-'}; **scope:** {n.get('scope') or '-'}",
@@ -373,10 +418,12 @@ def write_grid(root: Path, notes: list[dict] | None = None, out: Path = GRID_XLS
         cell.font = Font(bold=True)
     sheet = wb.create_sheet("notes")
     columns = ["id", "status", "opened", "part", "scope", "tags", "symptom", "cause", "missing", "fix", "next", "code",
-               "tables", "question", "store", "repaired", "runs"]
+               "tables", "question", "store", "repaired", "runs", "kind", "kind_why", "severity", "hit_basis",
+               "criticality", "trial_failed", "trial_companies", "priority"]
     sheet.append(columns)
-    for n in notes:
-        sheet.append([", ".join(n[c]) if isinstance(n.get(c), list) else n.get(c) for c in columns])
+    for n in by_priority(notes):
+        row = {**n, **scores(n)}
+        sheet.append([", ".join(row[c]) if isinstance(row.get(c), list) else row.get(c) for c in columns])
     for cell in sheet[1]:
         cell.font = Font(bold=True)
     for col, width in zip("ABCDEFGHIJKLMNOPQ", (7, 11, 11, 13, 10, 24, 50, 60, 50, 60, 50, 40, 30, 50, 12, 30, 24)):
@@ -389,11 +436,37 @@ def write_grid(root: Path, notes: list[dict] | None = None, out: Path = GRID_XLS
     return out
 
 
+def tally(graded: Path, note_map: Path, notes_dir: Path = NOTES_DIR) -> dict:
+    """Count each note's failed trial questions and companies from a trial's ``graded.jsonl`` and a ``{qid: note
+    id}`` map (the attribution of each non-right answer to the defect behind it), and write them on the notes."""
+    owner = {str(k): v for k, v in json.loads(note_map.read_text(encoding="utf-8")).items()}
+    failed: dict[str, list] = {}
+    for line in graded.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        r = json.loads(line)
+        if r.get("grade") in ("right", "scope_out"):
+            continue
+        nid = owner.get(str(r["qid"]))
+        if nid is None:
+            raise SystemExit(f"qid {r['qid']} ({r.get('grade')}) has no note in {note_map}")
+        failed.setdefault(nid, []).append(r["symbol"])
+    notes = read_notes(notes_dir)
+    unknown = sorted(set(failed) - {n["id"] for n in notes})
+    if unknown:
+        raise SystemExit(f"map names notes that do not exist: {unknown}")
+    for n in notes:
+        if n["id"] in failed:
+            n["trial_failed"], n["trial_companies"] = len(failed[n["id"]]), len(set(failed[n["id"]]))
+    write_notes(notes, notes_dir)
+    return {k: {"failed": len(v), "companies": len(set(v))} for k, v in sorted(failed.items())}
+
+
 def note_add(fields: dict, notes_dir: Path = NOTES_DIR) -> dict:
     notes = read_notes(notes_dir)
     number = max((int(n["id"].split("-")[1]) for n in notes), default=0) + 1
     note = {"id": f"R-{number:03d}", "opened": time.strftime("%Y-%m-%d"), "status": "open", "repaired": [], "runs": [],
-            **{k: v for k, v in fields.items() if v}}
+            **{k: v for k, v in fields.items() if v not in (None, "", [])}}
     notes.append(note)
     write_notes(notes, notes_dir)
     return note
@@ -403,7 +476,7 @@ def note_set(note_id: str, fields: dict, repaired=(), run: str | None = None, no
     notes = read_notes(notes_dir)
     for note in notes:
         if note["id"] == note_id:
-            note.update({k: v for k, v in fields.items() if v})
+            note.update({k: v for k, v in fields.items() if v not in (None, "", [])})
             note["repaired"] = sorted(set(note.get("repaired") or []) | set(repaired))
             if run and run not in note.setdefault("runs", []):
                 note["runs"].append(run)
@@ -418,32 +491,44 @@ def note_main(argv: list[str]) -> int:
     add, change, _listing = sub.add_parser("add"), sub.add_parser("set"), sub.add_parser("list")
     grid = sub.add_parser("grid", help="write reports/store_repair_grid.xlsx: stores x parts, and every note")
     grid.add_argument("--root", required=True, help="folder holding the stores")
+    tal = sub.add_parser("tally", help="write each note's failed trial questions/companies from a graded trial")
+    tal.add_argument("--graded", required=True, help="the trial's graded.jsonl")
+    tal.add_argument("--map", required=True, help="JSON {qid: note id} for every non-right answer")
     change.add_argument("id")
     change.add_argument("--repaired", default="", help="comma list of stores repaired for this defect")
     for p in (add, change):
         for name in NOTE_FIELDS:
             p.add_argument(f"--{name}", default=None,
-                           choices=STATUSES if name == "status" else SCOPES if name == "scope" else None,
+                           choices=STATUSES if name == "status" else SCOPES if name == "scope" else
+                           KINDS if name == "kind" else HIT_BASES if name == "hit_basis" else None,
+                           type=int if name in INT_FIELDS else str,
                            help="comma list" if name in LIST_FIELDS else None)
     args = ap.parse_args(argv)
     if args.cmd == "grid":
         print(write_grid(Path(args.root)))
+        return 0
+    if args.cmd == "tally":
+        print(json.dumps(tally(Path(args.graded), Path(args.map)), indent=1))
         return 0
     fields = {name: getattr(args, name, None) for name in NOTE_FIELDS}
     for name in LIST_FIELDS:
         if fields[name]:
             fields[name] = [s.strip() for s in fields[name].split(",") if s.strip()]
     if args.cmd == "add":
-        if not (fields["part"] and fields["symptom"]):
-            raise SystemExit("note add needs at least --part and --symptom")
+        if not (fields["part"] and fields["symptom"] and fields["kind"] and fields["kind_why"]
+                and fields["companies_hit"] is not None and fields["companies_of"] and fields["hit_basis"]):
+            raise SystemExit("note add needs --part, --symptom and the scores (Shivam 17 Nov): --kind, --kind_why, "
+                             "--companies_hit, --companies_of, --hit_basis")
         print(json.dumps(note_add(fields), indent=1, ensure_ascii=False))
     elif args.cmd == "set":
         print(json.dumps(note_set(args.id, fields, [s for s in args.repaired.split(",") if s]), indent=1,
                          ensure_ascii=False))
     else:
-        for n in read_notes():
-            print(f"{n['id']} {n['status']:<11} {n.get('part') or '-':<12} {n.get('symptom') or ''}"
-                  f"  [repaired: {', '.join(n.get('repaired') or []) or '-'}]")
+        for n in by_priority(read_notes()):
+            sc = scores(n)
+            print(f"{n['id']} {n['status']:<11} p={sc['priority'] if sc['priority'] != '' else '-':<4} "
+                  f"{n.get('kind') or '-':<8} sev={sc['severity'] or '-':<7} {n.get('part') or '-':<12} "
+                  f"{(n.get('symptom') or '')[:90]}  [repaired: {', '.join(n.get('repaired') or []) or '-'}]")
     return 0
 
 

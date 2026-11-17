@@ -2229,6 +2229,17 @@ python -m reality_engine.scripts.store_repair --accept <run id> --root <root> --
 python -m reality_engine.scripts.store_repair note add|set|list ...
 ```
 
+Shivam 17 Nov: every defect is scored and the fixes go in priority order. `note add` refuses a note without
+`--kind wrong|corrupt|missed` and `--kind_why` (what the defect does to the data and why), `--companies_hit`,
+`--companies_of` and `--hit_basis scan|trial|suspect` (how the companies were counted: a scan of every store's tables,
+graded trial answers, or unconfirmed scan hits). `store_repair.scores` gives **severity** = companies hit of companies
+counted, **criticality** = wrong 3 (a row or reply served as true is not: the answer is wrong without warning),
+corrupt 2 (the source text is damaged, so rows read from it are lost or wrong), missed 1 (absent: the answer says not
+found), and **priority** = criticality x (companies hit + trial questions failed). `note tally --graded
+<trial>/graded.jsonl --map <trial>/note_map.json` (`{qid: note id}` for every non-right answer; the trial grader
+names the note per answer, field `note`) writes `trial_failed` and `trial_companies` on each note and stops on a
+failed answer with no note. `note list`, `INDEX.md` and the grid's notes sheet list live notes highest priority first.
+
 - `--baseline <commit|auto>` stamps a store built before stamps existed with that commit's code. `auto` reads the
   store file's modified time, so give the commit when the file was touched since the build.
 - `--part` needs `--stores`: one company at a time. A part runs when it is named, when it is stale at its turn, or when

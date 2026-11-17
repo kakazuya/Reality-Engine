@@ -209,6 +209,43 @@ def test_notes_roundtrip_and_index(tmp_path):
                                                     "shareholding, xbrl"]
 
 
+def test_note_scores_order_and_tally(tmp_path):
+    # Shivam 17 Nov: severity = companies hit, criticality = kind (wrong 3, corrupt 2, missed 1),
+    # priority = criticality x (companies hit + trial questions failed); live notes listed by priority
+    base = {"part": "kpi", "symptom": "s", "kind_why": "w", "companies_of": 91, "hit_basis": "scan"}
+    store_repair.note_add({**base, "kind": "missed", "companies_hit": 20}, tmp_path)          # R-001
+    store_repair.note_add({**base, "kind": "wrong", "companies_hit": 0}, tmp_path)            # R-002
+    store_repair.note_add({**base, "kind": "corrupt", "companies_hit": 5}, tmp_path)          # R-003
+    store_repair.note_add({"part": "x", "symptom": "unscored"}, tmp_path)                      # R-004
+    graded = tmp_path / "graded.jsonl"
+    graded.write_text("".join(json.dumps(r) + "\n" for r in [
+        {"qid": 1, "symbol": "A", "grade": "wrong"}, {"qid": 2, "symbol": "B", "grade": "partly"},
+        {"qid": 3, "symbol": "B", "grade": "partly"}, {"qid": 4, "symbol": "C", "grade": "right"},
+        {"qid": 5, "symbol": "D", "grade": "scope_out"}]), encoding="utf-8")
+    nmap = tmp_path / "map.json"
+    nmap.write_text(json.dumps({"1": "R-001", "2": "R-002", "3": "R-002"}), encoding="utf-8")
+    assert store_repair.tally(graded, nmap, tmp_path) == {"R-001": {"failed": 1, "companies": 1},
+                                                          "R-002": {"failed": 2, "companies": 1}}
+    notes = {n["id"]: n for n in store_repair.read_notes(tmp_path)}
+    assert store_repair.scores(notes["R-001"]) == {"severity": "20/91", "criticality": 1, "priority": 21}
+    assert store_repair.scores(notes["R-002"]) == {"severity": "0/91", "criticality": 3, "priority": 6}
+    assert store_repair.scores(notes["R-003"])["priority"] == 10
+    assert store_repair.scores(notes["R-004"]) == {"severity": "", "criticality": "", "priority": ""}
+    assert [n["id"] for n in store_repair.by_priority(list(notes.values()))] == ["R-001", "R-003", "R-002", "R-004"]
+    index = (tmp_path / "INDEX.md").read_text(encoding="utf-8")
+    assert "| R-001 | open | missed | 20/91 (scan) | 1 | 1 (1) | 21 |" in index
+    # a failed answer with no note, or a map naming an unknown note, stops the tally
+    nmap.write_text(json.dumps({"1": "R-001", "2": "R-009", "3": "R-002"}), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        store_repair.tally(graded, nmap, tmp_path)
+    nmap.write_text(json.dumps({"1": "R-001"}), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        store_repair.tally(graded, nmap, tmp_path)
+    # the CLI refuses a new note without its scores
+    with pytest.raises(SystemExit):
+        store_repair.note_main(["add", "--part", "kpi", "--symptom", "s"])
+
+
 def test_completeness_counts_what_a_store_holds(tmp_path):
     db = tmp_path / "s.db"
     con = sqlite3.connect(db)

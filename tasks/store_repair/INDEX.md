@@ -2,26 +2,29 @@
 
 One entry per store defect or patch, five points each (Shivam 16 Nov): why it had to be done, what the problem was, what was missing, how it was fixed, what can come next; then the code and store tables it touches, its tags and scope, the stores repaired. Stores are named by their build folder, never by company. Grid of stores x parts: `reports/store_repair_grid.xlsx` (`store_repair note grid`).
 
-| id | status | part | scope | tags | stores repaired |
-|---|---|---|---|---|---|
-| R-001 | open | guidance | general | guidance, worded-guidance, transcript, speaker |  |
-| R-002 | fix_written | docs_collect | general | transcript, fetch, nse, bse, no-call-filed | c08 |
-| R-003 | fixed | events | general | events, order-win, regulation-30, announcement | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
-| R-004 | fixed | stores | general | shareholding, xbrl, fpi, mutual-funds, drive | c01, c02, c03, c04, c05, c06, c07, c08, c09 |
-| R-005 | fixed | kpi | general | kpi, unit, lakh, scale, row-check | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
-| R-006 | fixed | comparatives | general | results, unit, lakh, scale, xbrl, scan | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
-| R-007 | open | kpi | general | kpi, revenue-definition, deck, annual-report, derived |  |
-| R-008 | fixed | stores | general | share-capital, results, scale | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
-| R-009 | fixed | raw_fetch | general | fetch, nse, bse, fallback, raw |  |
-| R-010 | fix_written | pages | general | ocr, hp | c01, c03, c04, c10, c15, c16, c19, c22, c24, c25, c26, c28, c30, c50, c51, c60, c72, c80, c82, c83, c84, c85, c89, c91 |
-| R-011 | fix_written | transcripts | general | transcripts, ocr |  |
-| R-012 | open | docs_collect | general | transcripts, raw_fetch |  |
-| R-013 | open | comparatives | general | ocr, R-010 |  |
-| R-014 | open | docs_collect | general | trial1, raw_missing |  |
-| R-015 | open | comparatives | general | trial1, not_extracted |  |
-| R-016 | open | kpi | general | trial1, not_extracted |  |
-| R-017 | open | kpi | general | trial1, wrong_row |  |
-| R-018 | open | holding | general | trial1, raw_missing |  |
+Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores counted; basis scan / trial / suspect), **criticality** = kind of damage: wrong 3 (served as true, answer wrong without warning), corrupt 2 (source text damaged), missed 1 (absent, answer says not found); **priority** = criticality x (companies hit + trial questions failed). Live notes are listed highest priority first.
+
+| id | status | kind | severity (basis) | criticality | trial failed (companies) | priority | part | scope | stores repaired |
+|---|---|---|---|---|---|---|---|---|---|
+| R-013 | open | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general |  |
+| R-015 | open | missed | 91/91 (scan) | 1 | 11 (11) | 102 | comparatives | general |  |
+| R-014 | open | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general |  |
+| R-019 | open | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
+| R-017 | open | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general |  |
+| R-016 | open | missed | 16/91 (trial) | 1 | 17 (16) | 33 | kpi | general |  |
+| R-018 | open | missed | 9/91 (scan) | 1 | 1 (1) | 10 | holding | general |  |
+| R-001 | open | missed |  | 1 |  |  | guidance | general |  |
+| R-002 | fix_written | missed |  | 1 |  |  | docs_collect | general | c08 |
+| R-007 | open | wrong |  | 3 |  |  | kpi | general |  |
+| R-010 | fix_written | corrupt |  | 2 |  |  | pages | general | c01, c03, c04, c10, c15, c16, c19, c22, c24, c25, c26, c28, c30, c50, c51, c60, c72, c80, c82, c83, c84, c85, c89, c91 |
+| R-011 | fix_written | missed |  | 1 |  |  | transcripts | general |  |
+| R-012 | open | missed |  | 1 |  |  | docs_collect | general |  |
+| R-003 | fixed |  |  |  |  |  | events | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
+| R-004 | fixed |  |  |  |  |  | stores | general | c01, c02, c03, c04, c05, c06, c07, c08, c09 |
+| R-005 | fixed |  |  |  |  |  | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
+| R-006 | fixed |  |  |  |  |  | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
+| R-008 | fixed |  |  |  |  |  | stores | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
+| R-009 | fixed |  |  |  |  |  | raw_fetch | general |  |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -30,6 +33,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** a guidance reader that knows the document type and who is speaking (management vs analyst); a test set of worded-guidance sentences from unseen stores
 4. **How it was fixed:** not written; Claude to redesign per document type and speaker; evidence D:/RealityEngine/tg_build/fixB_evidence
 5. **What can come next:** Claude redesigns the worded path per document type and speaker, measured on unseen stores with zero right rows lost before it enters the build
+- **Kind:** missed (-); **severity:** - companies (-); **criticality:** 1; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/guidance.py::worded path
 - **Store tables touched:** guidance
 - **Tags:** guidance, worded-guidance, transcript, speaker; **scope:** general
@@ -42,6 +46,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** a transcript fetch beyond the BSE API (NSE listing), the BSE feed after 19 Oct, and a 'no call filed' record so an empty store is not taken for an extraction gap
 4. **How it was fixed:** fetch family approved 16 Nov: nse_announcements listing for the queue + --attachments-only transcript (600 files, 52 companies, 610 MB, on Drive) and fetch_bse_announcements_daily 19 Oct-16 Nov (35,336 rows copied into reality_engine/data/bse_announcements.db; 34 queue companies filed a Q2 FY27 transcript, none of the 34 with no transcript). Next: rebuild docs_collect + transcripts + guidance store by store; a company with none on either exchange is recorded as no call filed, not a gap
 5. **What can come next:** rebuild docs_collect, transcripts and guidance store by store on the 91 build; record no-call-filed companies; keep the daily BSE feed running
+- **Kind:** missed (-); **severity:** - companies (-); **criticality:** 1; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/scripts/nse_announcements.py::AnnouncementFetcher.download_kind, reality_engine/scripts/fetch_bse_announcements_daily.py::main, reality_engine/pilot3/docs_collect.py::discover
 - **Store tables touched:** doc, doc_page, transcript_statement, guidance
 - **Tags:** transcript, fetch, nse, bse, no-call-filed; **scope:** general
@@ -54,6 +59,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** an order-win event kind and a value column on events
 4. **How it was fixed:** pilot3/order_wins.py (prescribed Regulation 30 table by label, headline fallback) writes order_win in the events part; c01: 19 rows, Rs 6,361 crore, 2.5 s repair
 5. **What can come next:** T-025: execution period and customer per order, order book vs revenue cover in the backtest timing
+- **Kind:** - (-); **severity:** - companies (-); **criticality:** -; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/order_wins.py, reality_engine/pilot3/events.py
 - **Store tables touched:** order_win
 - **Tags:** events, order-win, regulation-30, announcement; **scope:** general
@@ -66,6 +72,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** a lookup of the universe shareholding folder on Drive (T-209); BSE shareholding for BSE-only companies (c10)
 4. **How it was fixed:** stores._shp_parsed looks up each file shp_index names in the pilot then universe folder, on disk or on Drive via raw_store (temp copy deleted). Applied c01-c09 (16 Nov), each refused by the gate and accepted after a check: no shareholding percentage changed, 358-757 category rows and 15-468 named holders added per store, KPI verdicts unchanged. Share counts now also come from intra-quarter shareholding filings, so allotments show earlier (c09: 187.2 m -> 464.3 m shares from 1 May 2026 instead of 14 May; c07 book value per share H1FY27 16,329 -> 133.57, the old figure used a bad 694,000-share quarterly row). c10 has no shareholding index (fetch gap). Quarters before 2024-04 are held nowhere
 5. **What can come next:** BSE shareholding fetch for BSE-only companies; ISIN backfill on shp_index
+- **Kind:** - (-); **severity:** - companies (-); **criticality:** -; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/stores.py::_shp_parsed, reality_engine/pilot3/stores.py::build_shp
 - **Store tables touched:** shp_category, shp_holder, shp_pledge, share_capital, valuation_daily
 - **Tags:** shareholding, xbrl, fpi, mutual-funds, drive; **scope:** general
@@ -78,6 +85,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** lakh and crore page declarations in kpi.page_money_unit; a unit check that accepts a correctly rescaled figure
 4. **How it was fixed:** kpi: lakh/crore page declarations (declared only; two different declarations = unsure); row_checks.check_page_unit passes a row whose value is exactly the printed number moved from the declared scale. Applied 16 Nov to all ten stores after a hand-read of each diff: every re-valued row divided by exactly 100; rows dropped without a twin were wrong crore figures. c02 accepted with Shivam's OK although 4 verified Q4 rows derived as FY - 9M from the deck are no longer written (the annual report's revenue now disagrees with the deck's: R-007 restores them once revenue captions are told apart)
 5. **What can come next:** R-007 (deck vs annual report revenue captions) restores the 4 derived Q4 rows on c02
+- **Kind:** - (-); **severity:** - companies (-); **criticality:** -; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/kpi.py::page_money_unit, reality_engine/pilot3/kpi.py::_page_unit_canon, reality_engine/pilot3/row_checks.py::check_page_unit, reality_engine/pilot3/row_checks.py::_rescaled_exactly
 - **Store tables touched:** kpi_series, row_check, row_check_fail
 - **Tags:** kpi, unit, lakh, scale, row-check; **scope:** general
@@ -90,6 +98,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** a rule that only a declared unit counts, and a cross-check of the declared scale against XBRL
 4. **How it was fixed:** _unit reads only a declared unit ('in lakhs', 'Rs. Crore'); _roles lets an XBRL-confirmed scale beat a declared one. Unseen ten-company store (copy diff, 16 Nov): 0 values changed, 0 rows lost; 698 rows on 6 pages only gained the label 'scale from XBRL'
 5. **What can come next:** apply the XBRL scale check to every page-read table, not only printed results
+- **Kind:** - (-); **severity:** - companies (-); **criticality:** -; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/comparatives.py::_unit, reality_engine/pilot3/comparatives.py::_roles
 - **Store tables touched:** fin_quarter_printed, fin_quarter_current, kpi_series, row_check
 - **Tags:** results, unit, lakh, scale, xbrl, scan; **scope:** general
@@ -102,6 +111,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** separate metrics for 'revenue from operations' and deck 'Revenue' (likely incl. other income)
 4. **How it was fixed:** -
 5. **What can come next:** diagnose on c02, split the captions in kpi, re-derive Q4 = FY - 9M from like-for-like lines
+- **Kind:** wrong (-); **severity:** - companies (-); **criticality:** 3; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/kpi.py::derive_quarters, reality_engine/pilot3/kpi.py (revenue captions)
 - **Store tables touched:** kpi_series
 - **Tags:** kpi, revenue-definition, deck, annual-report, derived; **scope:** general
@@ -114,6 +124,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** a reconciliation of share counts between the standalone and consolidated results filings of one quarter, judged by the shareholding total
 4. **How it was fixed:** Third version (16 Nov evening): when the standalone and consolidated results filings of one quarter end differ by more than 1% in share count, the row further from a reference count is dropped (stores._parent_share_count via stores.reconcile_share_count, after build_shp, before build_share_fallback). Reference: the shareholding-pattern total of that date, else the nearest in date among pattern totals and quarters whose two filings agree, else consolidated is dropped. Version 1 always kept standalone (wrong on c01 BLKASHYAP Q3FY25: standalone 255.44m vs 225.44m consolidated and pattern); version 2 kept standalone when no pattern total that date (wrong on c02 SEAMECLTD Q3FY20: standalone 24.53m vs 25.43m in every neighbouring quarter). c01 applied (v2, same result under v3); c07 applied with v1.
 5. **What can come next:** run the same reconciliation on the 81 new stores; flag any quarter where no reference count exists
+- **Kind:** - (-); **severity:** - companies (-); **criticality:** -; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/stores.py::_parent_share_count, reality_engine/pilot3/stores.py::reconcile_share_count, reality_engine/pilot3/stores.py::build_stores
 - **Store tables touched:** share_capital, ratio_panel, valuation_daily
 - **Tags:** share-capital, results, scale; **scope:** general
@@ -126,6 +137,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** an automatic NSE fallback: every company the BSE feed returns nothing for must be listed from NSE without anyone remembering a flag or writing a one-off script
 4. **How it was fixed:** --nse-fallback is now on by default (argparse BooleanOptionalAction; --no-nse-fallback turns it off): any company with zero BSE rows (no scrip code, NSE-only, SME, delisted from BSE) is listed from the NSE corporate-announcements API and its attachments fetched in the same run. The 91 fetch is re-run with it before the build
 5. **What can come next:** same both-way fallback for the other feeds that are single-exchange today: results XBRL is NSE-only (10 of 93 queue companies get no quarters) and the shareholding index is NSE-only (11 of 93) -> a BSE fallback keyed by scrip code; a per-company coverage line in the build that names which exchange served each part
+- **Kind:** - (-); **severity:** - companies (-); **criticality:** -; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/scripts/fetch_pilot60_history.py::main
 - **Store tables touched:** doc, doc_page
 - **Tags:** fetch, nse, bse, fallback, raw; **scope:** general
@@ -138,6 +150,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** OCR text in doc_page and OCR words for comparatives/kpi on scanned pages
 4. **How it was fixed:** copy cNN/ocr/ocr_textrec.db to cNN/cNN_ocr.db (the file build.ocr_inputs already reads), then store_repair --part pages (dependants). c01: 37 pages filled, fin_quarter_printed +280 rows (175 xbrl_ok, 87 sum_ok), 8 garbled rows dropped, 3 tax values corrected to the XBRL figure; 0 served rows lost
 5. **What can come next:** a cell layer and OCR both read with different values keeps the layer's value and is listed in the kpi part's stats (ocr_conflicts: doc_key, page, metric, period, both values; first 50): read that list after the re-run and switch to OCR where the page shows the layer wrong (c01's garbled results layer is the known case)
+- **Kind:** corrupt (-); **severity:** - companies (-); **criticality:** 2; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/build.py, reality_engine/scripts/store_repair.py
 - **Store tables touched:** doc_page, fin_quarter_printed, kpi_series
 - **Tags:** ocr, hp; **scope:** general
@@ -150,6 +163,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** statements of every call whose filing starts with a cover letter
 4. **How it was fixed:** transcripts.NOT_SPEAKERS gains Fax, Encl, BSE, NSE; call_date_of uses call_dates.call_date, whose cue now also takes 'conducted on' and a cue ending one line above the date (two dsh reviews: 52ce737f, 5ad73687). A letter that prints its own date and names the call date with no cue still gives the letter date. Tests in test_pilot3_transcripts.py. SUBEX: 0 empty calls, 6,888 statements (was 3,142)
 5. **What can come next:** re-run the transcripts part on every store (store_repair --part stale) and read the call_date changes in the diff
+- **Kind:** missed (-); **severity:** - companies (-); **criticality:** 1; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/transcripts.py
 - **Store tables touched:** transcript_statement, transcript_question
 - **Tags:** transcripts, ocr; **scope:** general
@@ -162,6 +176,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** the linked transcript PDFs
 4. **How it was fixed:** not written: a general fetcher that reads the URL (or the named pdf) from a 1-3 page transcript letter, downloads it to Drive via raw_store, and adds it as the transcript document
 5. **What can come next:** write the fetcher after the build; measure on all 91 stores
+- **Kind:** missed (-); **severity:** - companies (-); **criticality:** 1; **trial questions failed:** -; **priority:** -
 - **Code:** -
 - **Store tables touched:** doc, doc_page, transcript_statement
 - **Tags:** transcripts, raw_fetch; **scope:** general
@@ -174,6 +189,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** A rule for printed rows on pages with both a jumbled layer and OCR: which source leads, and whether a layer row the OCR does not reproduce survives when it passes the checks.
 4. **How it was fixed:** Proposed: parse both; OCR rows lead on a jumbled page; keep a layer row for a (period, basis, line) the OCR misses only if it passes row_checks (reconciles with its siblings); log every layer/OCR value conflict, as kpi does since R-010.
 5. **What can come next:** Write the rule in the comparatives part with a test on c07 p5 and c20 p7; re-run the refused stores and accept only with zero right rows lost. Until then those stores keep their as-built rows.
+- **Kind:** corrupt (pages with a jumbled text layer: rows built from them may be lost or wrong, and the OCR repair that would fix them changes printed rows, so 69 repairs wait for a hand-read); **severity:** 69/91 companies (scan); **criticality:** 2; **trial questions failed:** -; **priority:** 138
 - **Code:** -
 - **Store tables touched:** fin_quarter_printed
 - **Tags:** ocr, R-010; **scope:** general
@@ -186,6 +202,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** A per-company register of which calls and decks exist anywhere (exchange, company site), so 'not filed' and 'not fetched' are told apart.
 4. **How it was fixed:** Proposed: R-012 link follower for transcript cover letters; a deck/transcript finder over the company IR page for the 27 companies with neither; record 'no call held' when none exists.
 5. **What can come next:** Measure on the 27: how many have a deck or transcript on their IR page; then fetch and re-run docs/pages/transcripts for those stores; re-ask the 28 raw_missing questions in trial 2.
+- **Kind:** missed (the call/deck that states the answer is not in the store: link-only or not fetched, or never filed (R-002: 34 of 37 no-transcript companies filed none on either exchange, so many of these cannot be fixed)); **severity:** 40/91 companies (scan); **criticality:** 1; **trial questions failed:** 27; **priority:** 67
 - **Code:** -
 - **Store tables touched:** doc, transcript_statement
 - **Tags:** trial1, raw_missing; **scope:** general
@@ -198,6 +215,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** Rows from the AR cash-flow statement (CFO, capex, both columns), the ratios note (printed ROCE/ROE/margins with year), PP&E/CWIP movement and capital commitments.
 4. **How it was fixed:** Proposed: an AR statement/note reader on the page-cell route (table pages already routed table_or_chart) that writes fin_annual_line rows with the printed comparative year, labelled source=annual_report; ratio_panel keeps derived values and gains a printed column.
 5. **What can come next:** Prototype on the 9 named companies' ARs, hand-read 20 rows, then run as a repair part on all stores; re-ask the 12 questions in trial 2.
+- **Kind:** missed (annual-report statements and notes are held as page text but not turned into rows; no store holds an FY24 cash-flow line); **severity:** 91/91 companies (scan); **criticality:** 1; **trial questions failed:** 11; **priority:** 102
 - **Code:** -
 - **Store tables touched:** fin_annual_line, ratio_panel, page_cell
 - **Tags:** trial1, not_extracted; **scope:** general
@@ -210,6 +228,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** segment revenue/result rows from the results' segment note; sector KPI dictionary entries for banks (NIM, yield, cost of deposits) and process industries (tonnage, crushing, recovery).
 4. **How it was fixed:** Proposed: segment-note reader for quarterly results (Ind AS 108 table: segment, revenue, result, period columns) and dictionary entries for the named KPIs.
 5. **What can come next:** Count how many of the 91 stores print a segment note; prototype on NILKAMAL p4; re-ask in trial 2.
+- **Kind:** missed (printed tables in results, decks and announcements (segments, NIM, tonnage, fund use, project cards) are held as page text but not turned into rows); **severity:** 16/91 companies (trial); **criticality:** 1; **trial questions failed:** 17; **priority:** 33
 - **Code:** -
 - **Store tables touched:** kpi_series, fin_quarter_printed
 - **Tags:** trial1, not_extracted; **scope:** general
@@ -222,6 +241,7 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** A period check (value must sit under its column header) and a unit check for 'Mn/mns' in the kpi readers; a unit-consistent PE input.
 4. **How it was fixed:** Proposed: period-column alignment check before a table row is kept; Mn/mns token mapped to inr_mn; PE built from the preferred PAT in rupees.
 5. **What can come next:** Find all kpi rows with quote like 'Mn'/'mns' stored as inr_cr across 91 stores and all single-number table rows; fix, repair, accept only with no right rows lost.
+- **Kind:** wrong (a row served as true holds another year's column, a million figure stored as crore, a PE from mismatched units, or a deck of another issuer filed under the company (NAVKARCORP); scan suspects: 51 kpi rows in 10 stores quote Mn/million but are stored in crore, 2 stores with PE above 500 or below 0); **severity:** 12/91 companies (suspect); **criticality:** 3; **trial questions failed:** 4; **priority:** 48
 - **Code:** -
 - **Store tables touched:** kpi_series, valuation_daily
 - **Tags:** trial1, wrong_row; **scope:** general
@@ -234,7 +254,21 @@ One entry per store defect or patch, five points each (Shivam 16 Nov): why it ha
 3. **What was missing:** Quarterly shareholding pattern for these 9 companies.
 4. **How it was fixed:** Proposed: BSE shareholding fallback (already open as R-009) for every store with zero shp rows.
 5. **What can come next:** Confirm the cause per company (exchange, listing type); fetch via BSE; re-run holding part; re-ask in trial 2.
+- **Kind:** missed (no shp_category rows at all, so every shareholding question fails); **severity:** 9/91 companies (scan); **criticality:** 1; **trial questions failed:** 1; **priority:** 10
 - **Code:** -
 - **Store tables touched:** shp_category, shp_holder
 - **Tags:** trial1, raw_missing; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-019 (open, part `tools`, opened 2026-11-17)
+
+1. **Why it had to be done** (question that exposed it, -): trial 1 qids 150, 7630, 4678, 4686, 7070, 6394, 6437, 4519, 6231
+2. **What the problem was:** 9 trial-1 answers wrong or partly from a misreading of a right row (BLKASHYAP ROE 0.53% for 5.39% from net worth 526.76 cr read as 5267.6; PREMEXPLN 2024 '500-600 crore' target quoted though calls state a 1,000 cr run rate; HYPERSOFT quarter revenue; NRAIL promoter group summed from two holders instead of the 74.29% category row; RAJRILTD price before 2024) **Root cause:** tool replies give value and unit separately and leave the scale and the superseding row to the answerer
+3. **What was missing:** a normalised value in crore beside every money figure, a superseded_by link on guidance rows, the category total in holding replies, BSE closes before the NSE series
+4. **How it was fixed:** -
+5. **What can come next:** p3ask/reality-data replies: add value_cr; guidance marks the latest row per target; holding returns the category row first; tech falls back to BSE closes
+- **Kind:** wrong (the stored row is right but the tool reply invites a wrong reading: lakh/crore/Mn scale, a superseded guidance row, a quarter revenue election, a category total not shown beside named holders, no price before the NSE series); **severity:** 8/91 companies (trial); **criticality:** 3; **trial questions failed:** 9; **priority:** 51
+- **Code:** -
+- **Store tables touched:** guidance, shp_category, price_delivery
+- **Tags:** units, guidance, holding, tech, reading; **scope:** general
 - **Stores repaired:** -; runs: -
