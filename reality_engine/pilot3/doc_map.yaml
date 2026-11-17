@@ -1,0 +1,281 @@
+# Document map (Shivam 17 Nov): which data sits in which document, in which section, how the section reads,
+# roughly where it sits, and the store table it must land in.  Read by reality_engine/pilot3/doc_map.py, which
+# labels every held page with its section and checks that each held section produced its rows.
+#
+# Scope (Shivam 17 Nov): financial statements, quarterly and annual notes, management discussion, investor
+# presentations and conference calls.  Sector-neutral wording only: no company names, no page numbers.
+#
+# Per section:
+#   heading   regexes, any one must match in the page's first `head_chars` characters (the printed title)
+#   all       regexes that must all match somewhere on the page (the section's own row labels)
+#   any       regexes of which at least `min_any` must match (default 1 when given)
+#   none      regexes that rule the page out (a different section that shares words)
+#   where     [from, to]: the usual position in the document as a share of its pages (a hint for review, never a
+#             filter: a section outside it is still labelled, and counted in the map report)
+#   items     the data the section holds
+#   table     the store table the items must land in; `reader` names the code that fills it ('' = none yet)
+#   expect    the must-exist rule: rows the table must hold for each labelled page's document (by fiscal year of
+#             the document), checked by `doc_map check`
+# Regexes are case-insensitive; single-quoted YAML so a backslash stays a regex backslash.
+
+head_chars: 600
+
+doc_types:
+  annual_report:
+    sections:
+      balance_sheet:
+        heading: ['balance\s+sheet\s+as\s+at', 'balance\s+sheet']
+        all: ['total\s+equity\s+and\s+liabilities|total\s+liabilities', 'non[- ]?current\s+assets|fixed\s+assets']
+        none: ['cash\s+flows?\s+from\s+operating']
+        where: [0.35, 0.95]
+        items: [total_assets, total_equity, borrowings_current, borrowings_noncurrent, trade_receivables,
+                inventories, cash_and_equivalents, cwip]
+        table: fin_annual_line (statement BS)
+        reader: ''
+        expect: {table: fin_annual_line, where: "statement='BS'", per: [fiscal_year, prior_year]}
+      profit_and_loss:
+        heading: ['statement\s+of\s+profit\s+(and|&)\s+loss', 'profit\s+and\s+loss\s+account']
+        all: ['revenue\s+from\s+operations|income\s+from\s+operations', 'profit\s+before\s+tax|total\s+expenses']
+        none: ['cash\s+flows?\s+from\s+operating']
+        where: [0.35, 0.95]
+        items: [revenue, other_income, total_expenses, finance_costs, depreciation, exceptional_items,
+                profit_before_tax, tax, pat, eps]
+        table: fin_annual_line (statement P&L)
+        reader: ''
+        expect: {table: fin_annual_line, where: "statement='P&L'", per: [fiscal_year, prior_year]}
+      cash_flow:
+        heading: ['cash\s+flow']
+        all: ['operating\s+activities', 'investing\s+activities']
+        where: [0.35, 0.95]
+        items: [cash_flow_from_operations, capex, cash_flow_from_investing, cash_flow_from_financing,
+                dividends_paid, interest_paid]
+        table: fin_annual_line (statement CF)
+        reader: ar_facts (FY25+ only)
+        expect: {table: fin_annual_line, where: "statement='CF'", per: [fiscal_year, prior_year]}
+      key_ratios_note:
+        heading: []
+        all: ['ratio']
+        any: ['current\s+ratio', 'debt[- ]equity\s+ratio', 'debt\s+service\s+coverage', 'return\s+on\s+(capital\s+employed|equity)',
+              'net\s+profit\s+ratio', 'trade\s+receivables?\s+turnover', 'inventory\s+turnover']
+        min_any: 3
+        where: [0.5, 1.0]
+        items: [current_ratio, debt_equity, dscr, roe, roce, net_profit_margin, receivables_turnover,
+                inventory_turnover]
+        table: ratio_panel (company_stated)
+        reader: ''
+        expect: {}   # ratio_panel holds derived ratios only; the printed note has no table yet
+      ppe_note:
+        heading: []
+        all: ['property,?\s+plant\s+(and|&)\s+equipment', 'gross\s+(carrying|block)|accumulated\s+depreciation']
+        where: [0.45, 1.0]
+        items: [gross_block, additions, disposals, accumulated_depreciation, net_block]
+        table: page_cell / fin_annual_line (note PPE)
+        reader: ''
+        expect: {table: fin_annual_line, where: "statement='NOTE' AND line_item LIKE 'ppe_%'", per: [fiscal_year]}
+      cwip_ageing:
+        heading: []
+        all: ['capital\s+work[- ]in[- ]progress', 'less\s+than\s+1\s+year|1\s*-\s*2\s+years']
+        where: [0.45, 1.0]
+        items: [cwip_total, cwip_ageing_buckets]
+        table: fin_annual_line (note CWIP)
+        reader: ''
+        expect: {table: fin_annual_line, where: "statement='NOTE' AND line_item LIKE 'cwip_%'", per: [fiscal_year]}
+      capital_commitments:
+        heading: []
+        all: ['capital\s+commitments?|remaining\s+to\s+be\s+executed\s+on\s+capital\s+account']
+        where: [0.5, 1.0]
+        items: [capital_commitments]
+        table: fin_annual_line (note commitments)
+        reader: ''
+        expect: {table: fin_annual_line, where: "line_item='capital_commitments'", per: [fiscal_year]}
+      segment_note:
+        heading: []
+        all: ['segment']
+        any: ['segment\s+revenue', 'segment\s+results?', 'operating\s+segments?', 'reportable\s+segments?']
+        min_any: 2
+        where: [0.5, 1.0]
+        items: [segment_revenue, segment_result, segment_assets, geography_revenue]
+        table: kpi_series (dimension = segment)
+        reader: segments (XBRL; printed note not read)
+        expect: {table: kpi_series, where: "dimension NOT IN ('','total')", per: [fiscal_year]}
+      revenue_breakup_note:
+        heading: []
+        all: ['revenue\s+from\s+operations']
+        any: ['sale\s+of\s+products', 'sale\s+of\s+services', 'other\s+operating\s+revenues?', 'scrap\s+sales', 'export\s+incentives?']
+        min_any: 2
+        where: [0.5, 1.0]
+        items: [sale_of_products, sale_of_services, other_operating_revenue]
+        table: fin_annual_line (note revenue)
+        reader: ''
+        expect: {table: fin_annual_line, where: "line_item IN ('sale_of_products','sale_of_services','other_operating_revenue')", per: [fiscal_year]}
+      finance_cost_note:
+        heading: []
+        all: ['finance\s+costs?']
+        any: ['interest\s+(expense|on\s+borrowings)', 'other\s+borrowing\s+costs?', 'bank\s+charges', 'interest\s+on\s+lease']
+        min_any: 2
+        where: [0.5, 1.0]
+        items: [interest_on_borrowings, other_borrowing_costs, lease_interest]
+        table: fin_annual_line (note finance costs)
+        reader: ''
+        expect: {table: fin_annual_line, where: "line_item LIKE 'finance_cost_%'", per: [fiscal_year]}
+      investments_note:
+        heading: []
+        all: ['investments?', 'equity\s+(instruments|shares)']
+        any: ['number\s+of\s+shares|no\.\s+of\s+shares', 'fully\s+paid', 'subsidiar', 'joint\s+venture', 'associate']
+        min_any: 2
+        where: [0.5, 1.0]
+        items: [investee, shares_held, carrying_value]
+        table: page_cell (note investments)
+        reader: ''
+        expect: {}
+      mdna:
+        heading: ['management\s*(''|’)?s?\s+discussion\s+(and|&)\s+analysis']
+        all: []
+        where: [0.05, 0.5]
+        items: [industry_view, operating_metrics, reasons_for_change, key_ratio_changes_with_reasons, outlook]
+        table: transcript_statement (doc_type annual_report) + kpi_series
+        reader: kpi (sentences)
+        expect: {}
+      directors_report:
+        heading: ['(directors|board)(''|’)?s?\s+report']
+        all: []
+        where: [0.05, 0.5]
+        items: [dividend, capex_plans, credit_rating, state_of_affairs]
+        table: transcript_statement + rating_event
+        reader: notes (ratings)
+        expect: {}
+
+  results:
+    sections:
+      results_table:
+        heading: ['(statement\s+of\s+)?(standalone|consolidated)?\s*(un)?audited\s+(standalone\s+|consolidated\s+)?financial\s+results',
+                  'financial\s+results\s+for\s+the\s+(quarter|half\s+year|year)']
+        all: ['revenue\s+from\s+operations|income\s+from\s+operations|interest\s+earned', 'quarter\s+ended|three\s+months\s+ended|half\s+year\s+ended']
+        where: [0.0, 1.0]
+        items: [revenue, other_income, expenses, finance_costs, depreciation, exceptional_items, pbt, tax, pat, eps]
+        table: fin_quarter_printed
+        reader: comparatives
+        expect: {table: fin_quarter_printed, where: "", per: [period_end]}
+      segment_table:
+        heading: []
+        all: ['segment']
+        any: ['segment\s+revenue', 'segment\s+results?', 'segment\s+assets', 'segment\s+liabilities']
+        min_any: 2
+        where: [0.0, 1.0]
+        items: [segment_revenue, segment_result, segment_assets, segment_liabilities]
+        table: kpi_series (dimension = segment)
+        reader: ''
+        expect: {table: kpi_series, where: "dimension NOT IN ('','total')", per: [period_end]}
+      assets_liabilities:
+        heading: ['statement\s+of\s+assets\s+and\s+liabilities', 'balance\s+sheet']
+        all: ['total\s+assets|total\s+equity\s+and\s+liabilities']
+        where: [0.0, 1.0]
+        items: [total_assets, total_equity, borrowings, receivables, inventories, cash]
+        table: fin_annual_line (statement BS, H1/FY)
+        reader: statements (XBRL)
+        expect: {}
+      cash_flow:
+        heading: ['cash\s+flow']
+        all: ['operating\s+activities']
+        where: [0.0, 1.0]
+        items: [cash_flow_from_operations, capex]
+        table: fin_annual_line (statement CF, H1/FY)
+        reader: statements (XBRL)
+        expect: {}
+      results_notes:
+        heading: []
+        all: ['notes?\s*:|^\s*\d+\.\s']
+        any: ['exceptional', 'board\s+of\s+directors', 'limited\s+review', 'previous\s+(period|year)s?.{0,40}regrouped', 'subsidiar', 'scheme\s+of', 'ind\s*as']
+        min_any: 2
+        where: [0.0, 1.0]
+        items: [exceptional_item_detail, acquisitions, scheme_status, auditor_qualification]
+        table: transcript_statement (doc_type results)
+        reader: ''
+        expect: {}
+      bank_ratios:
+        heading: []
+        all: ['npa']
+        any: ['gross\s+npa', 'net\s+npa', 'capital\s+adequacy', 'return\s+on\s+assets', 'provision\s+coverage']
+        min_any: 2
+        where: [0.0, 1.0]
+        items: [gnpa_pct, nnpa_pct, car_pct, roa_pct, pcr_pct]
+        table: kpi_series
+        reader: kpi (table)
+        expect: {}
+
+  deck:
+    sections:
+      financial_summary:
+        heading: []
+        all: ['revenue|total\s+income', 'ebitda|pat|profit']
+        any: ['q[1-4]\s*fy\s*\d{2}', 'h[12]\s*fy\s*\d{2}', 'fy\s*\d{2}', 'yoy', 'qoq']
+        min_any: 2
+        where: [0.0, 0.7]
+        items: [revenue, ebitda, ebitda_margin, pat, eps]
+        table: kpi_series
+        reader: kpi
+        expect: {table: kpi_series, where: "metric IN ('revenue','ebitda','pat')", per: [doc]}
+      segment_mix:
+        heading: []
+        all: ['segment|business\s+mix|vertical|division|product\s+mix|geograph']
+        any: ['revenue', 'ebit', 'share', '%']
+        min_any: 2
+        where: [0.0, 1.0]
+        items: [segment_revenue, segment_ebit, mix_pct]
+        table: kpi_series (dimension = segment)
+        reader: kpi (partly)
+        expect: {}
+      order_book:
+        heading: []
+        all: ['order\s+(book|backlog|inflow|intake)']
+        where: [0.0, 1.0]
+        items: [order_book, order_inflow, book_to_bill]
+        table: kpi_series
+        reader: kpi
+        expect: {}
+      operating_kpis:
+        heading: []
+        all: []
+        any: ['volume', 'tonn', 'capacity\s+utili[sz]ation', 'realisation|realization', 'per\s+tonne', 'nim', 'aum', 'store\s+count', 'arpu']
+        min_any: 2
+        where: [0.0, 1.0]
+        items: [volume, capacity_utilisation, realisation, per_unit_ebitda, nim, aum]
+        table: kpi_series
+        reader: kpi (sector lexicon)
+        expect: {}
+      balance_sheet_summary:
+        heading: []
+        all: ['net\s+worth|total\s+equity|borrowings|net\s+debt', 'cash']
+        where: [0.3, 1.0]
+        items: [net_worth, gross_debt, net_debt, cash_and_investments]
+        table: kpi_series
+        reader: kpi
+        expect: {}
+      guidance:
+        heading: []
+        all: ['outlook|guidance|target|going\s+forward|way\s+forward|fy\s*\d{2}e']
+        where: [0.5, 1.0]
+        items: [revenue_target, margin_target, capex_plan]
+        table: guidance
+        reader: guidance
+        expect: {}
+
+  transcript:
+    sections:
+      opening_remarks:
+        heading: []
+        all: ['(good\s+(morning|afternoon|evening)|thank\s+you)', 'quarter|year']
+        none: ['first\s+question\s+is\s+from']
+        where: [0.0, 0.4]
+        items: [results_commentary, segment_commentary, outlook, capex, order_book]
+        table: transcript_statement
+        reader: transcripts
+        expect: {table: transcript_statement, where: "", per: [doc]}
+      qa:
+        heading: []
+        all: ['question\s+is\s+from|next\s+question|participant|analyst']
+        where: [0.2, 1.0]
+        items: [management_answers, guidance, numbers_stated_in_answers]
+        table: transcript_statement + guidance + kpi_series
+        reader: transcripts, guidance, kpi
+        expect: {}

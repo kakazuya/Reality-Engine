@@ -7,10 +7,10 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | id | status | kind | severity (basis) | criticality | trial failed (companies) | priority | part | scope | stores repaired |
 |---|---|---|---|---|---|---|---|---|---|
 | R-013 | open | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general |  |
-| R-015 | open | missed | 91/91 (scan) | 1 | 11 (11) | 102 | comparatives | general |  |
+| R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general |  |
 | R-014 | open | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general |  |
 | R-019 | open | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
-| R-017 | fix_written | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general | c04 |
+| R-017 | fix_written | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general | c01, c02, c03, c04, c07, c08, c09, c11, c12, c16, c20, c21, c22, c23, c25, c26, c28, c30, c31, c32, c33, c35, c38, c39, c43, c45, c52, c54, c60, c63, c64, c66, c67, c72, c73, c78, c79, c80, c81, c83, c85, c89, c90 |
 | R-016 | open | missed | 16/91 (trial) | 1 | 17 (16) | 33 | kpi | general |  |
 | R-018 | open | missed | 9/91 (scan) | 1 | 1 (1) | 10 | holding | general |  |
 | R-001 | open | missed |  | 1 |  |  | guidance | general |  |
@@ -215,7 +215,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 3. **What was missing:** Rows from the AR cash-flow statement (CFO, capex, both columns), the ratios note (printed ROCE/ROE/margins with year), PP&E/CWIP movement and capital commitments.
 4. **How it was fixed:** Proposed: an AR statement/note reader on the page-cell route (table pages already routed table_or_chart) that writes fin_annual_line rows with the printed comparative year, labelled source=annual_report; ratio_panel keeps derived values and gains a printed column.
 5. **What can come next:** Prototype on the 9 named companies' ARs, hand-read 20 rows, then run as a repair part on all stores; re-ask the 12 questions in trial 2.
-- **Kind:** missed (annual-report statements and notes are held as page text but not turned into rows; no store holds an FY24 cash-flow line); **severity:** 91/91 companies (scan); **criticality:** 1; **trial questions failed:** 11; **priority:** 102
+- **Kind:** missed (annual-report statements and notes are held as page text but not turned into rows; doc_map (17 Nov) finds the sections and no reader fills them: PP&E note printed but empty in 85 stores, capital commitments 72, CWIP 64, revenue break-up 60, finance costs 61, cash flow (pre-FY25) 75); **severity:** 85/91 companies (scan); **criticality:** 1; **trial questions failed:** 11; **priority:** 96
 - **Code:** -
 - **Store tables touched:** fin_annual_line, ratio_panel, page_cell
 - **Tags:** trial1, not_extracted; **scope:** general
@@ -245,7 +245,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Code:** pilot3/kpi.py::find_values, pilot3/kpi.py::page_money_unit, pilot3/row_checks.py::check_page_unit, pilot3/row_checks.py::_own_scale_word
 - **Store tables touched:** kpi_series, valuation_daily
 - **Tags:** trial1, wrong_row; **scope:** general
-- **Stores repaired:** c04; runs: 20261117T085856
+- **Stores repaired:** c01, c02, c03, c04, c07, c08, c09, c11, c12, c16, c20, c21, c22, c23, c25, c26, c28, c30, c31, c32, c33, c35, c38, c39, c43, c45, c52, c54, c60, c63, c64, c66, c67, c72, c73, c78, c79, c80, c81, c83, c85, c89, c90; runs: 20261117T085856, 20261117T085952
 
 ## R-018 (open, part `holding`, opened 2026-11-17)
 
