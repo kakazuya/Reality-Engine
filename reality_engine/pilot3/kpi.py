@@ -44,8 +44,7 @@ KPI_DOC_TYPES = ("deck", "results", "press_release", "transcript", "annual_repor
 PDF_DOC_TYPES = ("deck", "results", "press_release", "annual_report")  # table/chart mode needs the PDF
 OCR_METHOD_RANK = {"ocr_textrec": 2, "ocr_rapid": 1}  # several --ocr-db: the HP TextRecognizer reading wins
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS kpi_series (
+_KPI_TABLE_DDL = """CREATE TABLE IF NOT EXISTS kpi_series (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   symbol TEXT NOT NULL, isin TEXT, metric TEXT NOT NULL, dimension TEXT NOT NULL DEFAULT 'total',
   value REAL NOT NULL, unit TEXT NOT NULL, scale REAL NOT NULL DEFAULT 1,
@@ -57,10 +56,49 @@ CREATE TABLE IF NOT EXISTS kpi_series (
   method TEXT NOT NULL DEFAULT 'text_layer', ocr_conf REAL,
   source_type TEXT NOT NULL DEFAULT '',
   entity TEXT NOT NULL DEFAULT '',
-  UNIQUE(symbol, metric, dimension, fiscal_period, value, unit, doc_key, page)
-);
-CREATE INDEX IF NOT EXISTS ix_kpi_sym_metric ON kpi_series(symbol, metric, fiscal_period);
-"""
+  UNIQUE(symbol, metric, dimension, fiscal_period, basis, value, unit, doc_key, page)
+)"""
+SCHEMA = f"\n{_KPI_TABLE_DDL};\nCREATE INDEX IF NOT EXISTS ix_kpi_sym_metric ON kpi_series(symbol, metric, fiscal_period);\n"
+
+
+def ensure_unique_with_basis(conn: sqlite3.Connection) -> bool:
+    """Rebuild ``kpi_series`` in one transaction if its UNIQUE key lacks ``basis`` (T-223).
+
+    Idempotent: returns False without touching the database if ``kpi_series`` is absent, has no UNIQUE
+    constraint, or already includes ``basis`` in its UNIQUE key.
+    """
+    row = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='kpi_series'").fetchone()
+    if not row or not row[0]:
+        return False
+    uniques = re.findall(r"\bUNIQUE\s*\(([^)]+)\)", row[0], re.IGNORECASE)
+    if not uniques:
+        return False
+    if any("basis" in {c.strip().strip('"`[]').lower() for c in cols.split(",")} for cols in uniques):
+        return False
+    indexes = [
+        r[0]
+        for r in conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='kpi_series' AND sql IS NOT NULL"
+        ).fetchall()
+    ]
+    new_ddl = _KPI_TABLE_DDL.replace("CREATE TABLE IF NOT EXISTS kpi_series", "CREATE TABLE kpi_series_new", 1)
+    own_tx = not conn.in_transaction
+    if own_tx:
+        conn.execute("BEGIN")
+    try:
+        conn.execute(new_ddl)
+        conn.execute("INSERT INTO kpi_series_new SELECT * FROM kpi_series")
+        conn.execute("DROP TABLE kpi_series")
+        conn.execute("ALTER TABLE kpi_series_new RENAME TO kpi_series")
+        for idx_sql in indexes:
+            conn.execute(idx_sql)
+    except Exception:
+        if own_tx and conn.in_transaction:
+            conn.rollback()
+        raise
+    if own_tx:
+        conn.commit()
+    return True
 
 # confidence of a row by the rule that wrote it: table_row > table_chart > sentence > sentence_default (T-049 E)
 RULE_CONF = {"table_v1": ("table_row", 4), "mix_v1": ("table_row", 4), "chart_v1": ("table_chart", 3),

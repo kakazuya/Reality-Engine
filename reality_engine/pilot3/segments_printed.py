@@ -520,6 +520,8 @@ def _swap_ocr(by_block: dict, mapping: dict[str, str], ratio: float = 0.5) -> di
 def run_store(db: Path, store: str, dry: bool = False) -> dict:
     head_chars, sections = doc_map.load()
     conn = sqlite3.connect(db if not dry else f"file:{db.as_posix()}?mode=ro", uri=dry)
+    if not dry:
+        kpi.ensure_unique_with_basis(conn)
     sym, isin = conn.execute("SELECT symbol, isin FROM company LIMIT 1").fetchone()
     docs = conn.execute("SELECT doc_key, known_at, filing_date FROM doc WHERE doc_type='results' AND known_at IS NOT NULL "
                         "ORDER BY known_at").fetchall()

@@ -202,3 +202,55 @@ def test_letter_swap_takes_the_missing_usual_name():
     # a genuinely new segment unlike the missing one keeps its name
     blocks[("d4", 1, "standalone", "segment_revenue", "Q4")] = {"textiles", "fabric"}
     assert S._swap_ocr(blocks, {"yarn": "yarn", "fabric": "fabric", "textiles": "textiles"})["textiles"] == "textiles"
+
+
+def test_ensure_unique_with_basis_rebuilds_once_and_allows_both_bases():
+    from reality_engine.pilot3 import kpi
+
+    old_ddl = """
+    CREATE TABLE kpi_series (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      symbol TEXT NOT NULL, isin TEXT, metric TEXT NOT NULL, dimension TEXT NOT NULL DEFAULT 'total',
+      value REAL NOT NULL, unit TEXT NOT NULL, scale REAL NOT NULL DEFAULT 1,
+      period_type TEXT NOT NULL, fiscal_period TEXT NOT NULL, as_of_date TEXT,
+      basis TEXT NOT NULL DEFAULT 'not_stated', doc_key TEXT NOT NULL, page INTEGER NOT NULL,
+      quote TEXT NOT NULL, known_at TEXT, known_at_source TEXT, is_reported INTEGER NOT NULL DEFAULT 1,
+      raw_label TEXT, raw_value TEXT, extractor_rule TEXT NOT NULL,
+      confidence TEXT NOT NULL DEFAULT 'sentence', conf_rank INTEGER NOT NULL DEFAULT 2,
+      method TEXT NOT NULL DEFAULT 'text_layer', ocr_conf REAL,
+      source_type TEXT NOT NULL DEFAULT '',
+      entity TEXT NOT NULL DEFAULT '',
+      UNIQUE(symbol, metric, dimension, fiscal_period, value, unit, doc_key, page)
+    );
+    CREATE INDEX ix_kpi_sym_metric ON kpi_series(symbol, metric, fiscal_period);
+    """
+    con = sqlite3.connect(":memory:")
+    con.executescript(old_ddl)
+    row_vals = (
+        "NILKAMAL", "segment_revenue", "lifestyle_furniture_furnishings",
+        2273213000.0, "inr", 1.0, "FY", "FY23", "2023-03-31",
+        "standalone", "bec16b21.pdf", 13, "Lifestyle Furniture 2,27,32.13",
+        "2023-05-20T18:00:00", "doc.known_at", 1, "Lifestyle Furniture", "2,27,32.13",
+        "printed_segment_v1", "printed_sum_checked", 4, "table", None, "printed_segment", "NILKAMAL",
+    )
+    ins = f"INSERT INTO kpi_series(id, {','.join(kpi.COLS)}) VALUES(?, {','.join('?' * len(kpi.COLS))})"
+    con.execute(ins, (10, *row_vals))
+    row_vals_2 = (*row_vals[:2], "plastics", 900000000.0, *row_vals[4:])
+    con.execute(ins, (25, *row_vals_2))
+    con.commit()
+
+    before_rows = con.execute("SELECT * FROM kpi_series ORDER BY id").fetchall()
+    assert kpi.ensure_unique_with_basis(con) is True
+    after_rows = con.execute("SELECT * FROM kpi_series ORDER BY id").fetchall()
+    assert after_rows == before_rows
+    assert [r[0] for r in after_rows] == [10, 25]
+    assert con.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_kpi_sym_metric'").fetchone()
+
+    # same figure, period, doc, and page with the other basis now inserts cleanly
+    consol_vals = (*row_vals[:9], "consolidated", *row_vals[10:])
+    con.execute(f"INSERT INTO kpi_series({','.join(kpi.COLS)}) VALUES({','.join('?' * len(kpi.COLS))})", consol_vals)
+    assert con.execute("SELECT count(*) FROM kpi_series").fetchone()[0] == 3
+
+    # second call is a no-op
+    assert kpi.ensure_unique_with_basis(con) is False
+    assert con.execute("SELECT id FROM kpi_series ORDER BY id").fetchall() == [(10,), (25,), (26,)]
