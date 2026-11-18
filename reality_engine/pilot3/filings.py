@@ -361,6 +361,12 @@ def _load_nse_filings(nse_root: Path, targets: dict[str, dict]) -> dict[str, lis
     return out
 
 
+def _is_linked_doc(doc: _Doc, sym: str = "") -> bool:
+    sk = (doc.source_key or "").replace("\\", "/").lower()
+    seg = f"linked_docs/{sym.lower()}/" if sym else "linked_docs/"
+    return f"/{seg}" in sk or sk.startswith(seg)
+
+
 def _match_filings_to_docs(filings: list[_Filing], docs: list[_Doc]) -> dict[int, int]:
     """Return ``{filing_idx: doc_idx}`` for filings that carry an attachment and match a held doc."""
     by_basename: dict[str, int] = {}
@@ -371,15 +377,25 @@ def _match_filings_to_docs(filings: list[_Filing], docs: list[_Doc]) -> dict[int
     matched: dict[int, int] = {}
     used_per_exchange: set[tuple[str, int]] = set()
 
+    # Pass 0 (Fix A): NSE all-digit seq_id -> nse_{filing_id}.pdf (1-to-1 per exchange)
+    for f_idx, f in enumerate(filings):
+        if f.exchange != "NSE" or not (f.filing_id.isascii() and f.filing_id.isdigit()):
+            continue
+        d_idx = by_basename.get(f"nse_{f.filing_id}.pdf")
+        if d_idx is not None and (f.exchange, d_idx) not in used_per_exchange:
+            matched[f_idx] = d_idx
+            used_per_exchange.add((f.exchange, d_idx))
+
     # Pass 1: exact attachment file name == basename of doc.source_key
     for f_idx, f in enumerate(filings):
-        if not f.attachment:
+        if f_idx in matched or not f.attachment:
             continue
         bn = _basename(f.attachment)
         if bn and bn in by_basename:
             d_idx = by_basename[bn]
-            matched[f_idx] = d_idx
-            used_per_exchange.add((f.exchange, d_idx))
+            if (f.exchange, d_idx) not in used_per_exchange:
+                matched[f_idx] = d_idx
+                used_per_exchange.add((f.exchange, d_idx))
 
     # Pass 2: doc.title equal to headline prefix AND doc.known_at within 1 day of filed_at (1-to-1 per exchange)
     doc_dts = [_parse_dt(d.known_at) for d in docs]
@@ -392,7 +408,7 @@ def _match_filings_to_docs(filings: list[_Filing], docs: list[_Doc]) -> dict[int
             continue
         hl_norm = _norm(f.headline)
         for d_idx, doc in enumerate(docs):
-            if (f.exchange, d_idx) in used_per_exchange or not doc.title_norm:
+            if (f.exchange, d_idx) in used_per_exchange or not doc.title_norm or _is_linked_doc(doc):
                 continue
             d_dt = doc_dts[d_idx]
             if d_dt is None:
@@ -471,6 +487,7 @@ def _process_symbol(
 ) -> dict:
     matches = _match_filings_to_docs(filings, docs)
     matched_doc_indices = set(matches.values())
+    linked_docs = [doc for doc in docs if _is_linked_doc(doc, sym)]
     link_cache: dict[str, list[str]] = {}
     filing_dts = [_parse_dt(f.filed_at) for f in filings]
 
@@ -507,7 +524,13 @@ def _process_symbol(
     for f_idx, f in enumerate(filings):
         status, held_doc_key, held_doc_type, held_pages, link_urls_json = prelim[f_idx]
         twin_filing_id: str | None = None
-        if status == "not_fetched":
+        resolved_doc_key: str | None = None
+        prefix = f"{f.exchange.lower()}_{f.filing_id.lower()}_"
+        resolved_doc = next((d for d in linked_docs if d.source_basename.startswith(prefix)), None)
+        if status in ("link_only", "not_fetched") and resolved_doc is not None:
+            status = "link_held"
+            resolved_doc_key = resolved_doc.doc_key
+        elif status == "not_fetched":
             other_ex = "NSE" if f.exchange == "BSE" else "BSE"
             twin = _find_twin(f, filing_dts[f_idx], held_by_exchange.get(other_ex, []))
             if twin is not None:
@@ -544,7 +567,8 @@ def _process_symbol(
         rows.append((
             f.exchange, f.filing_id, f.symbol, f.isin, f.filed_at, f.exchange_category,
             f.exchange_subcategory, f.headline, f.attachment, f.kind_hint,
-            held_doc_key, held_doc_type, held_pages, link_urls_json, twin_filing_id, status,
+            held_doc_key, held_doc_type, held_pages, link_urls_json, twin_filing_id,
+            resolved_doc_key, status,
         ))
 
     conn.execute("DELETE FROM filing WHERE symbol=?", (sym,))
@@ -552,7 +576,8 @@ def _process_symbol(
         conn.executemany(
             "INSERT INTO filing (exchange, filing_id, symbol, isin, filed_at, exchange_category, "
             "exchange_subcategory, headline, attachment, kind_hint, held_doc_key, held_doc_type, "
-            "held_pages, link_urls, twin_filing_id, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "held_pages, link_urls, twin_filing_id, resolved_doc_key, status) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             rows,
         )
 
@@ -587,7 +612,14 @@ def run(
     conn = sqlite3.connect(store_db, timeout=60) if own else store_db
     try:
         schema.ensure(conn, ("filing",))
-        schema.ensure_columns(conn, "filing", ("ALTER TABLE filing ADD COLUMN twin_filing_id TEXT",))
+        schema.ensure_columns(
+            conn,
+            "filing",
+            (
+                "ALTER TABLE filing ADD COLUMN twin_filing_id TEXT",
+                "ALTER TABLE filing ADD COLUMN resolved_doc_key TEXT",
+            ),
+        )
         schema.ensure_views(conn)
         wanted = {s.strip().upper() for s in symbols if s and s.strip()} if symbols is not None else None
         targets: dict[str, dict] = {}

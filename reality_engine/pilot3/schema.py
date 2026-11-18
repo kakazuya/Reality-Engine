@@ -184,7 +184,8 @@ TABLES: dict[str, str] = {
         exchange TEXT NOT NULL, filing_id TEXT NOT NULL, symbol TEXT NOT NULL, isin TEXT,
         filed_at TEXT, exchange_category TEXT, exchange_subcategory TEXT, headline TEXT,
         attachment TEXT, kind_hint TEXT, held_doc_key TEXT, held_doc_type TEXT,
-        held_pages INTEGER, link_urls TEXT, twin_filing_id TEXT, status TEXT NOT NULL,
+        held_pages INTEGER, link_urls TEXT, twin_filing_id TEXT, resolved_doc_key TEXT,
+        status TEXT NOT NULL,
         PRIMARY KEY (exchange, filing_id, symbol))""",
 }
 
@@ -271,8 +272,9 @@ FILING_COVERAGE = """CREATE VIEW filing_coverage AS
            END AS fiscal_quarter,
            kind_hint,
            SUM(CASE WHEN status != 'held_twin' THEN 1 ELSE 0 END) AS filed,
-           SUM(CASE WHEN status = 'held' THEN 1 ELSE 0 END) AS held,
+           SUM(CASE WHEN status IN ('held', 'link_held') THEN 1 ELSE 0 END) AS held,
            SUM(CASE WHEN status = 'link_only' THEN 1 ELSE 0 END) AS link_only,
+           SUM(CASE WHEN status = 'link_held' THEN 1 ELSE 0 END) AS link_held,
            SUM(CASE WHEN status = 'held_twin' THEN 1 ELSE 0 END) AS twin,
            SUM(CASE WHEN status = 'not_fetched' THEN 1 ELSE 0 END) AS not_fetched,
            SUM(CASE WHEN status = 'no_attachment' THEN 1 ELSE 0 END) AS no_attachment
@@ -353,6 +355,7 @@ V_PAGE_ATOM = 10               # T-199: the page_atom table (one row per resolve
 V_ORDER_WIN = 11               # T-025: the order_win table (one row per order-win filing)
 V_FILING = 12                  # T-223: the filing table and filing_coverage view (R-014)
 V_FILING_TWIN = 13             # T-223: filing.twin_filing_id and updated filing_coverage view (R-014)
+V_FILING_RESOLVED = 14         # T-223: filing.resolved_doc_key and filing_coverage link_held (R-012/R-014)
 
 # additive columns for tables built before them (a migration adds, never drops)
 SHARE_CAPITAL_ADDITIONS = (
@@ -509,6 +512,11 @@ def _add_filing_twin(conn: sqlite3.Connection) -> None:
     ensure_views(conn)
 
 
+def _add_filing_resolved(conn: sqlite3.Connection) -> None:
+    ensure_columns(conn, "filing", ("ALTER TABLE filing ADD COLUMN resolved_doc_key TEXT",))
+    ensure_views(conn)
+
+
 MIGRATIONS: tuple[tuple[int, str, Callable[[sqlite3.Connection], None]], ...] = (
     (V_SHARE_COUNT_BASIS, "share_capital.count_basis (T-192)", _add_share_count_basis),
     (V_GUIDANCE_ENTITY, "guidance.entity / entity_unsure (T-192)", _add_guidance_entity),
@@ -524,6 +532,7 @@ MIGRATIONS: tuple[tuple[int, str, Callable[[sqlite3.Connection], None]], ...] = 
     (V_ORDER_WIN, "order_win table (T-025)", _add_order_win),
     (V_FILING, "filing table and filing_coverage view (T-223)", _add_filing),
     (V_FILING_TWIN, "filing.twin_filing_id and filing_coverage twin/no_attachment (T-223)", _add_filing_twin),
+    (V_FILING_RESOLVED, "filing.resolved_doc_key and filing_coverage link_held (T-223)", _add_filing_resolved),
 )
 LATEST = MIGRATIONS[-1][0]
 
