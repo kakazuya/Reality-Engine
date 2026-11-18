@@ -21,8 +21,10 @@ How a statement is read (no model):
    under it); every other printed line is kept as ``cf_printed_line`` with its caption and printed sign.
 6. Checks, per column: CFO + CFI + CFF = net change (or opening + the three = closing), within the printed
    rounding.  A column that fails, or prints no total, writes nothing and is reported.  Where XBRL rows exist for
-   that year and basis, the store keeps XBRL (filed figures stay as filed) and the printed totals are only compared
-   with it: the agreement rate measures this reader.
+   that year, basis, and line_item, the store keeps XBRL (filed figures stay as filed) and drops the duplicate
+   printed line, while keeping printed-only lines (opening/closing cash, net change, FX effect, ``cf_printed_line``);
+   the printed totals are compared with XBRL to measure this reader, and a cash identity check
+   (``begin + change (+ fx) = end``) is logged to ``check_log`` without dropping rows.
 7. One row per (year, basis, line): the current column of that year's own report first, else the prior column of
    the next year's report (its ``definition`` says so).  ``known_at`` is the report's own filing time.
 
@@ -705,10 +707,10 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
                 continue
             candidates += rows_of(st, st.known_at, check_log)
         xbrl = _xbrl(conn)
-        # XBRL agreement on the printed totals; XBRL years keep XBRL rows only
+        # XBRL agreement on the printed totals; per-line precedence keeps printed-only lines (R-025)
         agree = []
         chosen = pick_statements(candidates)
-        xbrl_years = {(fy, b) for fy, b, _ in xbrl}
+        xbrl_lines = {(fy, b, item) for fy, b, item in xbrl}
         rows = []
         for r in chosen:
             if r.line_item in ("cash_flow_from_operations", "cash_flow_from_investing", "cash_flow_from_financing"):
@@ -717,8 +719,29 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
                     v = r.value * r.scale
                     agree.append({"fiscal_year": r.fiscal_year, "basis": r.basis, "line_item": r.line_item,
                                   "printed": v, "xbrl": x, "ok": abs(v - x) <= 0.005 * max(abs(x), 1) + r.scale})
-            if (r.fiscal_year, r.basis) not in xbrl_years:
+            if (r.fiscal_year, r.basis, r.line_item) not in xbrl_lines:
                 rows.append(r)
+        by_doc_yr: dict[tuple[str, str, str], dict[str, Row]] = {}
+        for r in rows:
+            if r.line_item in ("cash_at_beginning", "net_change_in_cash", "cash_at_end", "fx_effect_on_cash"):
+                by_doc_yr.setdefault((r.fiscal_year, r.basis, r.doc_key), {})[r.line_item] = r
+        for (fy, basis, doc_key), items in by_doc_yr.items():
+            if not {"cash_at_beginning", "net_change_in_cash", "cash_at_end"} <= items.keys():
+                continue
+            beg_r, chg_r, end_r = items["cash_at_beginning"], items["net_change_in_cash"], items["cash_at_end"]
+            fx_r = items.get("fx_effect_on_cash")
+            begin = beg_r.value * beg_r.scale
+            change = chg_r.value * chg_r.scale
+            fx = fx_r.value * fx_r.scale if fx_r is not None else 0.0
+            end = end_r.value * end_r.scale
+            scale = end_r.scale
+            ok = abs(begin + change + fx - end) <= 0.005 * max(abs(end), 1) + scale
+            col = end_r.source.rsplit("#", 1)[-1] if "#" in end_r.source else ""
+            why = (f"cash_identity: begin+change{'+fx' if fx_r is not None else ''}=end" if ok else
+                   f"cash_identity mismatch: {beg_r.value} + {chg_r.value}"
+                   + (f" + {fx_r.value}" if fx_r is not None else "") + f" != {end_r.value} ({end_r.unit})")
+            check_log.append({"doc_key": doc_key, "page": end_r.page, "basis": basis, "column": col,
+                              "fiscal_year": fy, "ok": ok, "why": why})
         if not dry:
             conn.execute("DELETE FROM fin_annual_line WHERE source_table=? AND symbol=?", (SOURCE_TABLE, sym))
             conn.executemany(

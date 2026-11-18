@@ -22,7 +22,8 @@ CUR, PRI = 400.0, 480.0
 
 
 def statement_words(title="Standalone Statement of Cash Flows for the year ended 31st March 2024",
-                    unit="(All amounts in Rs. Lakhs)", cfi="(1,146.47)", net="791.51", left_block=""):
+                    unit="(All amounts in Rs. Lakhs)", cfi="(1,146.47)", net="791.51", end_cash="885.22",
+                    left_block="", extra_printed=False):
     rows = [
         (20, [(30, title)] if not left_block else [(30, left_block), (300, title)]),
         (32, [(300 if left_block else 380, unit)]),
@@ -31,18 +32,24 @@ def statement_words(title="Standalone Statement of Cash Flows for the year ended
         (72, [(30, "Profit before tax"), (CUR + 10, "575.94"), (PRI + 10, "390.47")]),
         (84, [(30, "Depreciation and amortisation"), (CUR + 10, "71.45"), (PRI + 10, "46.57")]),
         (96, [(30, "Less : Tax paid"), (CUR + 10, "(99.01)"), (PRI + 10, "(18.56)")]),
-        (108, [(30, "Net cash from operating activities"), (CUR + 10, "22.71"), (PRI + 10, "717.80")]),
-        (120, [(30, "Cash flows from investing activities")]),
-        (132, [(30, "Purchase of property, plant and equipment"), (CUR + 10, "(123.06)"), (PRI + 10, "(36.32)")]),
-        (144, [(30, "Net cash used in investing activities"), (CUR + 10, cfi), (PRI + 10, "(320.08)")]),
-        (156, [(30, "Cash flows from financing activities")]),
-        (168, [(30, "Dividend paid"), (CUR + 10, "(20.00)"), (PRI + 10, "-")]),
-        (180, [(30, "Net cash from financing activities"), (CUR + 10, "1,915.27"), (PRI + 10, "(308.90)")]),
-        (192, [(30, "Net increase in cash and cash equivalents"), (CUR + 10, net), (PRI + 10, "88.81")]),
-        (204, [(30, "Cash and cash equivalents at the beginning of the year"), (CUR + 10, "93.71"), (PRI + 10, "4.90")]),
-        (216, [(30, "Cash and cash equivalents at the end of the year"), (CUR + 10, "885.22"), (PRI + 10, "93.71")]),
-        (240, [(30, "Annual Report 2023-24"), (CUR + 10, "105")]),
-        (252, [(30, "As per our report of even date")]),
+    ]
+    shift = 0
+    if extra_printed:
+        rows.append((108, [(30, "Changes in working capital"), (CUR + 10, "15.00"), (PRI + 10, "10.00")]))
+        shift = 12
+    rows += [
+        (108 + shift, [(30, "Net cash from operating activities"), (CUR + 10, "22.71"), (PRI + 10, "717.80")]),
+        (120 + shift, [(30, "Cash flows from investing activities")]),
+        (132 + shift, [(30, "Purchase of property, plant and equipment"), (CUR + 10, "(123.06)"), (PRI + 10, "(36.32)")]),
+        (144 + shift, [(30, "Net cash used in investing activities"), (CUR + 10, cfi), (PRI + 10, "(320.08)")]),
+        (156 + shift, [(30, "Cash flows from financing activities")]),
+        (168 + shift, [(30, "Dividend paid"), (CUR + 10, "(20.00)"), (PRI + 10, "-")]),
+        (180 + shift, [(30, "Net cash from financing activities"), (CUR + 10, "1,915.27"), (PRI + 10, "(308.90)")]),
+        (192 + shift, [(30, "Net increase in cash and cash equivalents"), (CUR + 10, net), (PRI + 10, "88.81")]),
+        (204 + shift, [(30, "Cash and cash equivalents at the beginning of the year"), (CUR + 10, "93.71"), (PRI + 10, "4.90")]),
+        (216 + shift, [(30, "Cash and cash equivalents at the end of the year"), (CUR + 10, end_cash), (PRI + 10, "93.71")]),
+        (240 + shift, [(30, "Annual Report 2023-24"), (CUR + 10, "105")]),
+        (252 + shift, [(30, "As per our report of even date")]),
     ]
     words = []
     for y, cells in rows:
@@ -143,8 +150,7 @@ CREATE TABLE fin_annual_line (symbol TEXT, isin TEXT, fiscal_year TEXT, period_e
 """
 
 
-def test_run_store_writes_non_xbrl_years_and_compares_xbrl(tmp_path, monkeypatch):
-    db = tmp_path / "c99.db"
+def _setup_store(db, xbrl_facts=()):
     conn = sqlite3.connect(db)
     conn.executescript(SCHEMA)
     conn.execute("INSERT INTO company VALUES ('TESTCO','INE000TEST01')")
@@ -153,19 +159,37 @@ def test_run_store_writes_non_xbrl_years_and_compares_xbrl(tmp_path, monkeypatch
     text = ("Standalone Statement of Cash Flows for the year ended 31st March 2024\n"
             "Cash flows from operating activities\nCash flows from investing activities\n")
     conn.execute("INSERT INTO doc_page (doc_key, page, text) VALUES ('ar24', 5, ?)", (text,))
-    # XBRL holds FY24: the printed FY24 totals are compared, only FY23 is written
-    conn.execute("INSERT INTO fin_annual_line (symbol, fiscal_year, basis, statement, line_item, value, scale, "
-                 "source_table, period_type) VALUES ('TESTCO','FY24','standalone','CF','cash_flow_from_operations',"
-                 "2271000, 1, 'facts', 'FY')")
+    for fy, basis, item, value in xbrl_facts:
+        conn.execute("INSERT INTO fin_annual_line (symbol, fiscal_year, basis, statement, line_item, value, scale, "
+                     "source_table, period_type) VALUES ('TESTCO',?,?,'CF',?,?,1,'facts','FY')",
+                     (fy, basis, item, value))
     conn.commit()
     conn.close()
-    words = statement_words()
+
+
+def test_run_store_per_line_xbrl_precedence_and_non_xbrl_year(tmp_path, monkeypatch):
+    db = tmp_path / "c99.db"
+    # (a) XBRL holds FY24 CFO/CFI/CFF only; (b) FY23 has no XBRL rows
+    _setup_store(db, [
+        ("FY24", "standalone", "cash_flow_from_operations", 2271000),
+        ("FY24", "standalone", "cash_flow_from_investing", -114647000),
+        ("FY24", "standalone", "cash_flow_from_financing", 191527000),
+    ])
+    words = statement_words(extra_printed=True)
     monkeypatch.setattr(A, "words_for", lambda *a, **k: type("P", (), {"words": words})())
     res = A.run_store(db, "c99")
-    assert res["xbrl_compared"] == 1 and res["xbrl_agree"] == 1
+    assert res["xbrl_compared"] == 3 and res["xbrl_agree"] == 3
     conn = sqlite3.connect(db)
-    got = conn.execute("SELECT DISTINCT fiscal_year FROM fin_annual_line WHERE source_table='ar_statement'").fetchall()
-    assert got == [("FY23",)]
+    fy24_items = {r[0] for r in conn.execute(
+        "SELECT line_item FROM fin_annual_line WHERE source_table='ar_statement' AND fiscal_year='FY24'")}
+    # XBRL-covered totals are NOT written by ar_statement; printed-only lines ARE kept
+    assert not ({"cash_flow_from_operations", "cash_flow_from_investing", "cash_flow_from_financing"} & fy24_items)
+    assert {"cash_at_beginning", "cash_at_end", "net_change_in_cash", "cf_printed_line"} <= fy24_items
+    # Non-XBRL year (FY23) keeps all printed rows including CFO/CFI/CFF
+    fy23_items = {r[0] for r in conn.execute(
+        "SELECT line_item FROM fin_annual_line WHERE source_table='ar_statement' AND fiscal_year='FY23'")}
+    assert {"cash_flow_from_operations", "cash_flow_from_investing", "cash_flow_from_financing",
+            "cash_at_beginning", "cash_at_end", "net_change_in_cash", "cf_printed_line"} <= fy23_items
     unit, scale, known = conn.execute("SELECT unit, scale, known_at FROM fin_annual_line WHERE "
                                       "source_table='ar_statement' LIMIT 1").fetchone()
     assert (unit, scale, known) == ("inr_lakh", 1e5, "2024-08-24T10:00:00")
@@ -176,6 +200,32 @@ def test_run_store_writes_non_xbrl_years_and_compares_xbrl(tmp_path, monkeypatch
     conn = sqlite3.connect(db)
     assert conn.execute("SELECT COUNT(*) FROM fin_annual_line WHERE source_table='ar_statement'").fetchone()[0] == n
     conn.close()
+
+
+def test_run_store_cash_identity_check_logs_ok_and_not_ok_without_dropping_rows(tmp_path, monkeypatch):
+    # Consistent set: 93.71 + 791.51 == 885.22 (FY24) and 4.90 + 88.81 == 93.71 (FY23)
+    db_ok = tmp_path / "c98_ok.db"
+    _setup_store(db_ok, [("FY24", "standalone", "cash_flow_from_operations", 2271000)])
+    words_ok = statement_words()
+    monkeypatch.setattr(A, "words_for", lambda *a, **k: type("P", (), {"words": words_ok})())
+    res_ok = A.run_store(db_ok, "c98")
+    id_checks_ok = [c for c in res_ok["checks"] if c["why"].startswith("cash_identity")]
+    assert len(id_checks_ok) == 2 and all(c["ok"] for c in id_checks_ok)
+
+    # Inconsistent set: FY24 cash_at_end=999.99 (93.71 + 791.51 != 999.99); CFO+CFI+CFF=net_change still passes
+    db_bad = tmp_path / "c98_bad.db"
+    _setup_store(db_bad, [("FY24", "standalone", "cash_flow_from_operations", 2271000)])
+    words_bad = statement_words(end_cash="999.99")
+    monkeypatch.setattr(A, "words_for", lambda *a, **k: type("P", (), {"words": words_bad})())
+    res_bad = A.run_store(db_bad, "c98")
+    id_by_fy = {c["fiscal_year"]: c for c in res_bad["checks"] if c["why"].startswith("cash_identity")}
+    assert id_by_fy["FY24"]["ok"] is False and id_by_fy["FY23"]["ok"] is True
+    # Failing the cash identity check logs the failure but keeps the printed rows
+    conn = sqlite3.connect(db_bad)
+    kept = conn.execute("SELECT line_item, value FROM fin_annual_line WHERE source_table='ar_statement' "
+                        "AND fiscal_year='FY24' AND line_item IN ('cash_at_beginning','net_change_in_cash','cash_at_end')").fetchall()
+    conn.close()
+    assert dict(kept) == {"cash_at_beginning": 93.71, "net_change_in_cash": 791.51, "cash_at_end": 999.99}
 
 
 @pytest.mark.parametrize("label,expected", [

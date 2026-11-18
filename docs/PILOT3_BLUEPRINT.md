@@ -1992,10 +1992,14 @@ statement of every held annual report, with no model:
   refund negative), as XBRL does; every other printed line is `cf_printed_line` with its caption and printed sign;
 - gate per column: CFO + CFI + CFF = net change, or opening + the three = closing, or either with the FX effect,
   within the printed rounding; a column that fails writes nothing and is listed in the check CSV;
-- XBRL years keep XBRL (filed figures stay as filed): the printed totals are only compared with them; one whole
-  statement column per year and basis (`pick_statements`: the year's own report first, else the latest report's
-  prior column), never rows of two reports mixed; `known_at` is the report's filing time,
-  `source_table='ar_statement'`.
+- per-line XBRL precedence (R-025, 18 Nov): XBRL wins per `(fiscal_year, basis, line_item)` (filed figures stay
+  as filed, and printed totals are compared with them); printed-only lines that XBRL lacks (`cash_at_beginning`,
+  `cash_at_end`, `net_change_in_cash`, `fx_effect_on_cash`, `cf_printed_line`, and any other item absent from XBRL)
+  are kept; where `cash_at_beginning`, `net_change_in_cash`, and `cash_at_end` (+ `fx_effect_on_cash` if present)
+  exist for a `(fy, basis, doc)`, `begin + change (+ fx) = end` within `0.005 * max(|end|, 1) + scale` is logged
+  to `check_log` without dropping rows; one whole statement column per year and basis (`pick_statements`: the year's
+  own report first, else the latest report's prior column), never rows of two reports mixed; `known_at` is the
+  report's filing time, `source_table='ar_statement'`.
 
 Measured on the 91 Telegram stores (17 Nov, final): 412 statements, 755 of 813 columns passed the identity, 58
 refused; printed totals agree with XBRL on 630 of 666 comparisons (95%). The disagreements pass the printed identity,
