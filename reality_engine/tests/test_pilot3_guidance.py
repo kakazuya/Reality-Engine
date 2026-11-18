@@ -1424,3 +1424,56 @@ def test_parent_call_guidance_entity_and_regression():
     o_15 = [r for r in o_rows if r["low"] == 15.0]
     assert o_10 and o_10[0]["entity"] == "" and o_10[0]["entity_unsure"] == 0
     assert o_15 and o_15[0]["entity"] == "" and o_15[0]["entity_unsure"] == 0
+
+
+def test_parent_call_guidance_lookback_and_including():
+    """T-223 review round 1: guidance uses preceding paragraph sentences, stops at speaker boundaries, and ignores 'including X'."""
+    TMP.mkdir(exist_ok=True)
+    path = TMP / "guidance_parent_r1.db"
+    for suffix in ("", "-wal", "-shm"):
+        Path(str(path) + suffix).unlink(missing_ok=True)
+    con = sqlite3.connect(path)
+    con.execute(schema.TABLES["company"])
+    con.execute(schema.TABLES["doc"])
+    con.execute(schema.TABLES["doc_page"])
+    con.executescript(TRANSCRIPT_SCHEMA)
+    con.execute("INSERT INTO company VALUES ('NAVKARCORP','INE278M01019',NULL,NULL,'1','1',"
+                "'Navkar Corporation Limited')")
+    parent_title = ("transcript of investor conference call 22 07 2025 - parent company call: "
+                    "JSW Infrastructure Limited (linked from BSE filing 4b6379f4-6b99-404b-8d2f-587d87973770)")
+    con.execute(
+        "INSERT INTO doc(doc_key,symbol,isin,doc_type,doc_family,title,filing_date,known_at,pages) "
+        "VALUES ('parent/r1.pdf','NAVKARCORP','INE278M01019','transcript','transcript',?,'2025-07-22',"
+        "'2025-07-22T18:00:00',3)", (parent_title,))
+
+    # Page 1: Navkar named in preceding sentence of same speaker turn -> keeps subsidiary ("")
+    s_lookback = "We expect revenue growth of 18% for FY26."
+    p1 = ("Rinkesh Roy: Navkar Corporation delivered strong operational results in Q1 FY26. "
+          f"{s_lookback}")
+    # Page 2: Navkar only in an "including X" list -> JSW Infrastructure Limited
+    s_inc = ("Overall, Logistics business, including Navkar and the rakes business expects "
+             "revenue growth of 22% for FY26.")
+    p2 = f"Rinkesh Roy: {s_inc}"
+    # Page 3: Navkar in earlier speaker turn, no Navkar in this speaker turn -> JSW Infrastructure Limited
+    s_other_turn = "We expect capex of INR500 crores for FY26."
+    p3 = ("Moderator: Navkar Corporation had a strong quarter.\n"
+          f"Rinkesh Roy: {s_other_turn}")
+
+    for pg, txt in ((1, p1), (2, p2), (3, p3)):
+        con.execute("INSERT INTO doc_page(doc_key,symbol,page,text,method,chars,known_at) "
+                    "VALUES ('parent/r1.pdf','NAVKARCORP',?,?,'script_text',?,NULL)", (pg, txt, len(txt)))
+    con.executemany(
+        "INSERT INTO transcript_statement(symbol,doc_key,call_date,call_period,page,seq,speaker,role,section,"
+        "topics,period_discussed,period_source,numbers_json,statement,quote,is_fragment,known_at,known_at_source,"
+        "extractor_rule) VALUES ('NAVKARCORP','parent/r1.pdf',NULL,'Q1FY26',?,1,'Rinkesh Roy','ceo','prepared',"
+        "'guidance','','call','[]',?,?,0,'x','x','t')",
+        [(1, s_lookback, s_lookback), (2, s_inc, s_inc), (3, s_other_turn, s_other_turn)])
+    con.commit()
+    con.close()
+
+    guidance.run(str(path), ["NAVKARCORP"])
+    got = rows(path, "symbol='NAVKARCORP'")
+    by_low = {r["low"]: (r["entity"], r["entity_unsure"]) for r in got}
+    assert by_low[18.0] == ("", 0)
+    assert by_low[22.0] == ("JSW Infrastructure Limited", 0)
+    assert by_low[500.0] == ("JSW Infrastructure Limited", 0)

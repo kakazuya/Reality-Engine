@@ -3552,8 +3552,16 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                     rank = max(1, rank - 2)
                 row_basis, row_dim = _row_basis(r.dimension, r.basis)
                 row_entity = _row_entity(sym, r.dimension, r.basis, basis, doc_basis, text, r.quote, name_on_page)
-                if parent and not linked_transcripts.mentions_company(r.quote, sym, company_names, parent):
-                    row_entity = parent
+                if parent:
+                    qpos = text.find(r.quote) if r.quote else -1
+                    if qpos >= 0:
+                        named = linked_transcripts.names_subsidiary_near(
+                            text, qpos, qpos + len(r.quote), sym, company_names, parent)
+                    else:
+                        named = linked_transcripts.names_subsidiary_near(
+                            r.quote or "", 0, len(r.quote or ""), sym, company_names, parent)
+                    if not named:
+                        row_entity = parent
                 yield dict(symbol=sym, metric=r.metric, dimension=row_dim, value=r.value, unit=r.unit, scale=r.scale,
                            period_type=r.period_type, fiscal_period=r.fiscal_period, as_of_date=r.as_of, basis=row_basis,
                            doc_key=doc_key, page=page, quote=r.quote, known_at=known_at, known_at_source=src,

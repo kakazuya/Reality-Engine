@@ -1047,10 +1047,33 @@ def own_entity_names(con: sqlite3.Connection, symbol: str) -> list[str]:
             for n in _raw_company_names(con, symbol) if n and len(re.sub(r"[^a-z]", "", str(n).lower())) >= 2]
 
 
+def _locate_in_raw(raw: str, sentence: str) -> tuple[int, int] | None:
+    if not raw or not sentence:
+        return None
+    pos = raw.find(sentence)
+    if pos >= 0:
+        return pos, pos + len(sentence)
+    words = sentence.split()
+    if not words:
+        return None
+    m = re.search(r"\s+".join(re.escape(w) for w in words), raw)
+    return (m.start(), m.end()) if m else None
+
+
 def _reporting_entity(entity: str, entity_unsure: bool, parent: str | None,
-                      sentence: str, symbol: str, company_names: tuple[str, ...]) -> tuple[str, bool]:
-    """Attribute a parent-call sentence to ``parent`` unless the sentence names the store's own subsidiary."""
-    if parent and not linked_transcripts.mentions_company(sentence, symbol, company_names, parent):
+                      sentence: str, symbol: str, company_names: tuple[str, ...],
+                      raw: str = "") -> tuple[str, bool]:
+    """Attribute a parent-call sentence to ``parent`` unless the sentence or preceding context names the subsidiary."""
+    if not parent:
+        return entity, entity_unsure
+    span = _locate_in_raw(raw, sentence) if raw else None
+    if raw and span is not None:
+        named = linked_transcripts.names_subsidiary_near(
+            raw, span[0], span[1], symbol, company_names, parent)
+    else:
+        named = linked_transcripts.names_subsidiary_near(
+            sentence, 0, len(sentence), symbol, company_names, parent)
+    if not named:
         return parent, False
     return entity, entity_unsure
 
@@ -1590,7 +1613,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             seen_spend.add(key)
             entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, sp["start"],
                                                     own_ents, q_ents, q_text, people)
-            entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names)
+            entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names, raw)
             rows.append((symbol, doc["isin"], "project_capital_spent", period, sp["low"], sp["high"], sp["unit"],
                          direction_of(sentence, "project_capital_spent"),
                          (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
@@ -1625,7 +1648,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             if CUE.search(sentence) and not external_forecast(sentence, previous):
                 entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, 0, own_ents, q_ents, q_text,
                                                         people)
-                entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names)
+                entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names, raw)
                 row = worded_row(symbol, doc, page, sentence, quote, speaker, before, call_period, docper, stats,
                                  entity, entity_unsure)
                 if row:
@@ -1647,7 +1670,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                     continue
                 entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, cell["num"]["start"],
                                                         own_ents, q_ents, q_text, people)
-                entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names)
+                entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names, raw)
                 rows.append((symbol, doc["isin"], cell["metric"], period, cell["num"]["low"], cell["num"]["high"],
                              cell["num"]["unit"], direction_of(sentence, cell["metric"]),
                              (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
@@ -1785,7 +1808,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         # sentence's own scope (India, the company, its own mine/project) beats the question's entity (round 5).
         entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, chosen["start"],
                                                 own_ents, q_ents, q_text, people)
-        entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names)
+        entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names, raw)
         rows.append((symbol, doc["isin"], metric, period, chosen["low"], chosen["high"], chosen["unit"],
                      direction_of(sentence, metric or "other"), (doc["filing_date"] or (doc["known_at"] or "")[:10]),
                      doc["doc_key"], page, quote, speaker, doc["known_at"], "doc.known_at",

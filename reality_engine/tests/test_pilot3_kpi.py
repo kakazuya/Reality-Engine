@@ -1986,3 +1986,65 @@ def test_parent_call_kpi_entity_and_subsidiary_exception(tmp_path):
     own_163 = [r for r in rows if r[0] == "own/call.pdf" and r[1] == "revenue" and r[2] == 163.0]
     assert own_1314 and own_1314[0][3] == "NAVKARCORP"
     assert own_163 and own_163[0][3] == "NAVKARCORP"
+
+
+def test_parent_call_kpi_context_and_including_rules(tmp_path):
+    """T-223 review round 1: full-sentence expansion, 3-sentence lookback, speaker-turn isolation, and 'including X'."""
+    pages = tmp_path / "pages_parent_r1.db"
+    c = sqlite3.connect(pages)
+    c.executescript("""
+      CREATE TABLE company(symbol TEXT, isin TEXT, bse_code TEXT, sector TEXT, industry TEXT,
+                           family TEXT, name TEXT);
+      CREATE TABLE doc(doc_key TEXT, symbol TEXT, doc_type TEXT, title TEXT, filing_date TEXT, known_at TEXT,
+                       source_path TEXT, sha256 TEXT, pages INT, source_record TEXT, known_at_source TEXT);
+      CREATE TABLE doc_page(doc_key TEXT, page INT, text TEXT, method TEXT, known_at TEXT);
+    """)
+    c.execute("INSERT INTO company VALUES('NAVKARCORP','INE278M01019','539332',NULL,NULL,NULL,"
+              "'Navkar Corporation Limited')")
+    parent_title = ("transcript of investor conference call 22 07 2025 - parent company call: "
+                    "JSW Infrastructure Limited (linked from BSE filing 4b6379f4-6b99-404b-8d2f-587d87973770)")
+    normal_title = "transcript of investor conference call 22 07 2025 (linked from BSE filing own)"
+    p1 = (
+        "Q1 FY26 Earnings Conference Call\n"
+        "Rinkesh Roy: Overall, Rs. 265 crores uptick is there in the revenue from operations on a Y-o-Y basis, "
+        "if you look at, of which Rs. 162 crores is Navkar.\n"
+    )
+    p2 = (
+        "Rinkesh Roy: Navkar Corporation delivered strong operational and financial results in Q1 FY26. "
+        "Total EXIM cargo volume reached at 81,000 TEUs in Q1 FY26. "
+        "Domestic cargo volume stood at 2,75,000 metric tonnes, up 11% YoY. "
+        "The revenue from operations rose to Rs. 138 crores, reflecting a 17% increase.\n"
+        "Moderator: Thank you.\n"
+        "Devanshu Bansal: Overall, Logistics business, including Navkar and the rakes business has generated a "
+        "revenue from operation of INR237 crores.\n"
+        "Rinkesh Roy: H1 of FY26, it is -- EBITDA was at INR134 crores from Fujairah.\n"
+    )
+    for dk, title, known in (
+        ("parent/call.pdf", parent_title, "2025-11-10T18:00:00"),
+        ("own/call.pdf", normal_title, "2025-11-11T18:00:00"),
+    ):
+        c.execute("INSERT INTO doc VALUES(?,'NAVKARCORP','transcript',?,'2025-11-10',?,NULL,?,2,'','')",
+                  (dk, title, known, dk))
+        c.execute("INSERT INTO doc_page VALUES(?,1,?,'script_text','2025-11-10')", (dk, p1))
+        c.execute("INSERT INTO doc_page VALUES(?,2,?,'script_text','2025-11-10')", (dk, p2))
+    c.commit()
+    c.close()
+
+    out = tmp_path / "kpi_parent_r1.db"
+    kpi.run(str(out), ["NAVKARCORP"], None, raw_root=None, pages_db=pages)
+    con = sqlite3.connect(out)
+    rows = con.execute(
+        "SELECT doc_key, metric, value, entity FROM kpi_series WHERE symbol='NAVKARCORP'"
+    ).fetchall()
+    con.close()
+
+    parent_by = {(m, v): ent for dk, m, v, ent in rows if dk == "parent/call.pdf"}
+    own_by = {(m, v): ent for dk, m, v, ent in rows if dk == "own/call.pdf"}
+
+    assert parent_by[("revenue", 162.0)] == "NAVKARCORP"
+    assert parent_by[("revenue", 138.0)] == "NAVKARCORP"
+    assert parent_by[("revenue", 237.0)] == "JSW Infrastructure Limited"
+    assert parent_by[("ebitda", 134.0)] == "JSW Infrastructure Limited"
+
+    for key in (("revenue", 162.0), ("revenue", 138.0), ("revenue", 237.0), ("ebitda", 134.0)):
+        assert own_by[key] == "NAVKARCORP"
