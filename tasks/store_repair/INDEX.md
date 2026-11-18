@@ -20,7 +20,6 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-002 | fix_written | missed |  | 1 |  |  | docs_collect | general | c08 |
 | R-007 | open | wrong |  | 3 |  |  | kpi | general |  |
 | R-010 | fix_written | corrupt |  | 2 |  |  | pages | general | c01, c03, c04, c10, c15, c16, c19, c22, c24, c25, c26, c28, c30, c50, c51, c60, c72, c80, c82, c83, c84, c85, c89, c91 |
-| R-011 | fix_written | missed |  | 1 |  |  | transcripts | general |  |
 | R-012 | fix_written | missed |  | 1 |  |  | docs_collect | general | c08, c27, c29, c33, c38, c56, c71, c73, c81 |
 | R-003 | fixed |  |  |  |  |  | events | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-004 | fixed |  |  |  |  |  | stores | general | c01, c02, c03, c04, c05, c06, c07, c08, c09 |
@@ -28,6 +27,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-006 | fixed |  |  |  |  |  | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-008 | fixed |  |  |  |  |  | stores | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-009 | fixed |  |  |  |  |  | raw_fetch | general |  |
+| R-011 | fixed | missed |  | 1 |  |  | transcripts | general |  |
 
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
@@ -159,13 +159,13 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Tags:** ocr, hp; **scope:** general
 - **Stores repaired:** c01, c03, c04, c10, c15, c16, c19, c22, c24, c25, c26, c28, c30, c50, c51, c60, c72, c80, c82, c83, c84, c85, c89, c91; runs: 20261116T225524, 20261116T230114, 20261117T025927, 20261117T030109, 20261117T031511, 20261117T032238, 20261117T032402, 20261117T032523, 20261117T032641, 20261117T032822, 20261117T033011, 20261117T035447, 20261117T035547, 20261117T040516, 20261117T041758, 20261117T042710, 20261117T042925, 20261117T043024, 20261117T043134, 20261117T043253, 20261117T043802, 20261117T044004, 20261117T044159
 
-## R-011 (fix_written, part `transcripts`, opened 2026-11-16)
+## R-011 (fixed, part `transcripts`, opened 2026-11-16)
 
 1. **Why it had to be done** (question that exposed it, c06): Why: management statements and guidance are answered from transcript_statement; a call with 0 statements answers nothing
 2. **What the problem was:** c06 (SUBEXLTD): 7 of 11 held call transcripts gave 0 statements (3,142 stored); the HP OCR of one cover page then emptied an eighth call (699 statements lost) **Root cause:** cover-letter fields ('Fax:', 'BSE Scrip Code:', 'NSE Symbol:', 'Encl.:') counted as colon speaker marks; 5 or more flip a name-line transcript into colon mode, which finds no speakers. Separately call_date took the letter's own date, not 'held on <date>'
 3. **What was missing:** statements of every call whose filing starts with a cover letter
 4. **How it was fixed:** transcripts.NOT_SPEAKERS gains Fax, Encl, BSE, NSE; call_date_of uses call_dates.call_date, whose cue now also takes 'conducted on' and a cue ending one line above the date (two dsh reviews: 52ce737f, 5ad73687). A letter that prints its own date and names the call date with no cue still gives the letter date. Tests in test_pilot3_transcripts.py. SUBEX: 0 empty calls, 6,888 statements (was 3,142)
-5. **What can come next:** 18 Nov 20:10 (Wolf): follow-up merged 872afced: the reader took 'Earnings call for the Quarter ended 31st December, 2025' as the call date (23 transcripts in 13 stores stored at a quarter end, e.g. SPMLINFRA 17 Feb 2026 call stored 2025-12-31). Period-end dates are now skipped, 'May 31,2024' and '06-August-2026' are read, pages 1-3 are read, and a call-naming cue beats a bare 'held on' (COSMOFIRST/ c17 board meeting 18 Oct vs call 28 Oct). 122 of 398 live transcript dates move, all 0-18 days before filing. Transcripts re-run on the affected stores next.
+5. **What can come next:** 18 Nov 20:10 (Wolf): follow-up merged 872afced: the reader took 'Earnings call for the Quarter ended 31st December, 2025' as the call date (23 transcripts in 13 stores stored at a quarter end, e.g. SPMLINFRA 17 Feb 2026 call stored 2025-12-31). Period-end dates are now skipped, 'May 31,2024' and '06-August-2026' are read, pages 1-3 are read, and a call-naming cue beats a bare 'held on' (COSMOFIRST/ c17 board meeting 18 Oct vs call 28 Oct). 122 of 398 live transcript dates move, all 0-18 days before filing. Transcripts re-run on the affected stores next. Done 20:40: transcripts re-run and accepted after hand-read on c05 c12 c17 c19 c32 c36 c37 c39 c41 c42 c46 c48 c61 c64 c66 c69 c79 c81 c82 c85 c86 c87 (only call_date changed; questions identical apart from the date), and c07 full chain (FY25 finance costs kept; H1FY27 diluted EPS 4.6/4.75 dropped: OCR misreads, the printed quarters sum to 4.89/4.95).
 - **Kind:** missed (-); **severity:** - companies (-); **criticality:** 1; **trial questions failed:** -; **priority:** -
 - **Code:** reality_engine/pilot3/transcripts.py
 - **Store tables touched:** transcript_statement, transcript_question
