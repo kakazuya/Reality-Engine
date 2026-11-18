@@ -608,6 +608,8 @@ def _check_candidate(
     intent: str,
     anchor_date: str | None,
     company_names: Iterable[str] | str | None,
+    *,
+    check_company: bool = True,
 ) -> dict[str, Any]:
     pages = len(texts)
     min_pages = {"deck": 5, "results": 2, "annual_report": 40}.get(intent, 3)
@@ -645,20 +647,21 @@ def _check_candidate(
         if kind == "deck" and pages < 5:
             return {"status": "failed", "reason": "too_short"}
 
-    page1 = texts[0] if texts else ""
-    if not _check_company(first2, company_names):
-        return {
-            "status": "failed",
-            "reason": "other_company",
-            "printed_company": _printed_company_line(page1),
-        }
-    mismatch_co = _group_company_mismatch(page1, company_names)
-    if mismatch_co is not None:
-        return {
-            "status": "failed",
-            "reason": "other_company",
-            "printed_company": mismatch_co,
-        }
+    if check_company:
+        page1 = texts[0] if texts else ""
+        if not _check_company(first2, company_names):
+            return {
+                "status": "failed",
+                "reason": "other_company",
+                "printed_company": _printed_company_line(page1),
+            }
+        mismatch_co = _group_company_mismatch(page1, company_names)
+        if mismatch_co is not None:
+            return {
+                "status": "failed",
+                "reason": "other_company",
+                "printed_company": mismatch_co,
+            }
 
     if anchor_date and kind in ("transcript", "deck"):
         try:
@@ -700,6 +703,8 @@ def _validate_pdf_bytes(
     anchor_date: str | None,
     company_names: Iterable[str] | str | None,
     get_fn: GetFn,
+    *,
+    check_company: bool = True,
 ) -> dict[str, Any]:
     try:
         texts, uris = linked_transcripts.pdf_info(data)
@@ -708,7 +713,7 @@ def _validate_pdf_bytes(
 
     direct: dict[str, Any] | None = None
     if intent == "results" and len(texts) == 2:
-        direct = _check_candidate(url, data, texts, intent, anchor_date, company_names)
+        direct = _check_candidate(url, data, texts, intent, anchor_date, company_names, check_company=check_company)
         if direct["status"] == "resolved":
             return direct
 
@@ -733,7 +738,9 @@ def _validate_pdf_bytes(
             except Exception:  # noqa: BLE001
                 last_err = {"status": "failed", "reason": "not_pdf"}
                 continue
-            res = _check_candidate(nxt_url, nxt_data, nxt_texts, intent, anchor_date, company_names)
+            res = _check_candidate(
+                nxt_url, nxt_data, nxt_texts, intent, anchor_date, company_names, check_company=check_company
+            )
             if res["status"] == "resolved":
                 return res
             last_err = res
@@ -741,7 +748,7 @@ def _validate_pdf_bytes(
             return direct
         return last_err if last_err and last_err["reason"] != "too_short" else {"status": "failed", "reason": "too_short"}
 
-    return _check_candidate(url, data, texts, intent, anchor_date, company_names)
+    return _check_candidate(url, data, texts, intent, anchor_date, company_names, check_company=check_company)
 
 
 def _is_html(ctype: str, data: bytes) -> bool:
@@ -758,6 +765,7 @@ def resolve(
     company_names: Iterable[str] | str | None,
     *,
     get: GetFn | None = None,
+    check_company: bool = True,
 ) -> dict[str, Any]:
     """Fetch ``target`` (PDF, 1-2 page PDF cover, or HTML investor page) and validate the candidate document."""
     get_fn = get or default_get
@@ -766,7 +774,9 @@ def resolve(
         return {"status": "failed", "reason": err}
     final_url, ctype, data = got
     if data[:5] == b"%PDF-":
-        return _validate_pdf_bytes(final_url, data, intent, anchor_date, company_names, get_fn)
+        return _validate_pdf_bytes(
+            final_url, data, intent, anchor_date, company_names, get_fn, check_company=check_company
+        )
     if not _is_html(ctype, data):
         return {"status": "failed", "reason": "not_pdf"}
 
@@ -800,7 +810,9 @@ def resolve(
         if c_data[:5] != b"%PDF-":
             first_fail = first_fail or {"status": "failed", "reason": "not_pdf"}
             continue
-        res = _validate_pdf_bytes(c_url, c_data, intent, anchor_date, company_names, get_fn)
+        res = _validate_pdf_bytes(
+            c_url, c_data, intent, anchor_date, company_names, get_fn, check_company=check_company
+        )
         if res["status"] == "resolved":
             return res
         first_fail = first_fail or res
@@ -1026,7 +1038,8 @@ def _resolve_target_to_item(
     planned_calls: dict[tuple[str, str], list[date]],
     get_fn: GetFn,
 ) -> dict[str, Any]:
-    res = resolve(target, intent, anchor_date, company_names, get=get_fn)
+    check_co = item.get("source") != "exchange"
+    res = resolve(target, intent, anchor_date, company_names, get=get_fn, check_company=check_co)
     if res["status"] != "resolved":
         return {
             **item,

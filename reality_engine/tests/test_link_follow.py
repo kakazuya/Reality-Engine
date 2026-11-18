@@ -974,7 +974,14 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
              "2025-06-01", "2025-06-01T18:00:00", 80, "sha_ar_held", "pages.db", "ar_held.pdf"),
             ("d_res_sha", "NAVKAR", "INE278M01019", "results", "results", "Old Sha Results",
              "2024-05-20", "2024-05-20T18:00:00", 2, held_res_sha, "pages.db", "res_sha.pdf"),
+            ("d_cov_other", "NAVKAR", "INE278M01019", "announcement", "announcement", "Cover Other",
+             "2024-11-30", "2024-11-30T18:00:00", 1, "sha_cov_other", "pages.db", "cov_other.pdf"),
         ],
+    )
+    conn.execute(
+        "INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)",
+        ("d_cov_other", "NAVKAR", 1, "See https://navkar.com/other_co_tx.pdf",
+         "script_text", 45, "2024-11-30T18:00:00", None),
     )
     conn.executemany(
         "INSERT INTO filing VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -999,13 +1006,18 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
             # Valid 2-page results (>2 days from held) -> resolved (even with old date inside text: no call-date check)
             ("BSE", "r_ok", "NAVKAR", "INE278M01019", "2024-11-12T18:00:00", "Result", "Financial Results",
              "Q2 FY25 Results", "r_ok.pdf", "results", None, None, None, None, None, None, "not_fetched"),
-            # Failed results: too_short (1p), not_results (2p), other_company (2p)
+            # Exchange results PDF with no company name on pages 1-2 (image letterhead) -> resolved
+            ("BSE", "r_img_hdr", "NAVKAR", "INE278M01019", "2024-11-30T18:00:00", "Result", "Financial Results",
+             "Q2 Results Img Header", "r_img_hdr.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            # Failed results: too_short (1p), not_results (2p)
             ("BSE", "r_short", "NAVKAR", "INE278M01019", "2024-11-20T18:00:00", "Result", "Financial Results",
              "Short", "r_short.pdf", "results", None, None, None, None, None, None, "not_fetched"),
             ("BSE", "r_bad", "NAVKAR", "INE278M01019", "2024-11-25T18:00:00", "Result", "Financial Results",
              "Not results", "r_bad.pdf", "results", None, None, None, None, None, None, "not_fetched"),
-            ("BSE", "r_other", "NAVKAR", "INE278M01019", "2024-11-30T18:00:00", "Result", "Financial Results",
-             "Other Co", "r_other.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            # Same no-company PDF as a link_follow target -> other_company
+            ("BSE", "lf_other", "NAVKAR", "INE278M01019", "2024-11-30T18:00:00", "Company Update",
+             "Transcript", "Link", "cov_other.pdf", "transcript", "d_cov_other", "announcement", 1,
+             json.dumps(["https://navkar.com/other_co_tx.pdf"]), None, None, "link_only"),
             # Same-sha dedupe for results (>2 days from held filing_date) -> outcome 'held'
             ("BSE", "r_sha", "NAVKAR", "INE278M01019", "2024-08-10T18:00:00", "Result", "Financial Results",
              "Duplicate copy", "r_sha.pdf", "results", None, None, None, None, None, None, "not_fetched"),
@@ -1026,12 +1038,12 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
         "Navkar Corporation Limited\nStatement of Unaudited Financial Results\nJanuary 15, 2020",
         "Notes to Financial Results for the quarter ended September 30, 2024.",
     ])
+    res_img_hdr_pdf = _make_pdf([
+        "To, National Stock Exchange of India Ltd.\nStatement of Unaudited Financial Results",
+        "Notes to Financial Results for the quarter ended September 30, 2024.",
+    ])
     res_short_pdf = _make_pdf(["Navkar Corporation Limited\nStatement of Unaudited Financial Results"])
     res_bad_pdf = _make_pdf(["Navkar Corporation Limited\nOutcome of Meeting", "Details of appointment."])
-    res_other_pdf = _make_pdf([
-        "JSW Infrastructure Limited\nStatement of Unaudited Financial Results",
-        "Notes referencing Navkar subsidiary.",
-    ])
     ar_ok_pdf = _make_pdf(
         ["Navkar Corporation Limited\nAnnual Report 2023-24", "Directors' Report"]
         + [f"Annual report page {i}" for i in range(3, 41)]
@@ -1046,9 +1058,10 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
     bse_base = "https://www.bseindia.com/xml-data/corpfiling/AttachHis/"
     blobs = {
         f"{bse_base}r_ok.pdf": res_ok_pdf,
+        f"{bse_base}r_img_hdr.pdf": res_img_hdr_pdf,
         f"{bse_base}r_short.pdf": res_short_pdf,
         f"{bse_base}r_bad.pdf": res_bad_pdf,
-        f"{bse_base}r_other.pdf": res_other_pdf,
+        "https://navkar.com/other_co_tx.pdf": res_img_hdr_pdf,
         f"{bse_base}r_sha.pdf": held_res_pdf,
         f"{bse_base}ar_ok.pdf": ar_ok_pdf,
         f"{bse_base}ar_short.pdf": ar_short_pdf,
@@ -1073,9 +1086,10 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
     assert not any(x in u for u in fetched for x in ("skip", "hsd", "pre"))
 
     assert by_fid["r_ok"]["outcome"] == "resolved" and by_fid["r_ok"]["kind"] == "results"
+    assert by_fid["r_img_hdr"]["outcome"] == "resolved" and by_fid["r_img_hdr"]["kind"] == "results"
     assert by_fid["r_short"]["outcome"] == "failed" and by_fid["r_short"]["reason"] == "too_short"
     assert by_fid["r_bad"]["outcome"] == "failed" and by_fid["r_bad"]["reason"] == "not_results"
-    assert by_fid["r_other"]["outcome"] == "failed" and by_fid["r_other"]["reason"] == "other_company"
+    assert by_fid["lf_other"]["outcome"] == "failed" and by_fid["lf_other"]["reason"] == "other_company"
     assert by_fid["r_sha"]["outcome"] == "held" and by_fid["r_sha"]["sha256"] == held_res_sha
 
     assert by_fid["ar_ok"]["outcome"] == "resolved" and by_fid["ar_ok"]["kind"] == "annual_report"
@@ -1084,7 +1098,7 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
 
     store_dir = tmp_path / "store_out"
     counts = lf.apply_plan(store_dir, items, raw_root=tmp_path / "raw_out")
-    assert counts["resolved"] == 2
+    assert counts["resolved"] == 3
     assert counts["skipped_notice"] == 3
     assert counts["held_same_day"] == 2
     assert counts["held"] == 1
@@ -1100,7 +1114,7 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
     header_cols = [c.strip() for c in report.splitlines()[0].split("|")[1:-1]]
     row_cols = [c.strip() for c in report.splitlines()[2].split("|")[1:-1]]
     rmap = dict(zip(header_cols, row_cols))
-    assert rmap["results_resolved"] == "1"
+    assert rmap["results_resolved"] == "2"
     assert rmap["ar_resolved"] == "1"
     assert rmap["skipped_notice"] == "3"
     assert rmap["held_same_day"] == "2"
