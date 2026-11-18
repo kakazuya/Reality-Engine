@@ -306,3 +306,119 @@ def test_choose_columns_accepts_segment_revenue_between_pl_revenue_and_total_inc
     assert sc == 1e5 and periods is not None
     assert periods[0][1] == "Q4FY26" and periods[3][1] == "FY26"
     assert "total_income" in how
+
+
+def test_t223_ocr_prefix_and_dominant_target_swap():
+    assert S.segment_name("(al Domestic") == "Domestic"
+    assert S.segment_name("{bl Overseas") == "Overseas"
+    assert S.segment_name("! bl Overseas") == "Overseas"
+    assert S.segment_name("l(a) Domestic") == "Domestic"
+
+    by_block = {}
+    for i in range(11):
+        by_block[(f"d{i}", 7, "consolidated", "segment_ebit", f"FY{i}")] = {"domestic", "overseas"}
+    for i in range(4):
+        by_block[(f"e{i}", 11, "consolidated", "segment_ebit", f"FY{20+i}")] = {"al_oornesllc", "overseas"}
+    by_block[("e99", 11, "consolidated", "segment_ebit", "FY24")] = {"al_domestic", "overseas"}
+    mapping = {n: n for n in ("domestic", "overseas", "al_oornesllc", "al_domestic")}
+    out = S._swap_ocr(by_block, mapping)
+    assert out["al_domestic"] == "domestic"
+    assert out["al_oornesllc"] == "domestic"
+
+
+def test_t223_disaggregates_others_and_preserves_reorg(tmp_path, monkeypatch):
+    from reality_engine.pilot3 import kpi
+
+    dim_of = lambda r: S.normalise(r[1])
+    own_reorg = [
+        ("segment_revenue", "Furniture", "FY24", "FY", "2024-03-31", "standalone", 500e7, "500.00", "", "d1", 1, "2024", True, False),
+        ("segment_revenue", "Plastics", "FY24", "FY", "2024-03-31", "standalone", 300e7, "300.00", "", "d1", 1, "2024", True, False),
+    ]
+    comp_reorg = [
+        ("segment_revenue", "B2B Division", "FY24", "FY", "2024-03-31", "standalone", 450e7, "450.00", "", "d2", 1, "2025", False, False),
+        ("segment_revenue", "Retail Division", "FY24", "FY", "2024-03-31", "standalone", 350e7, "350.00", "", "d2", 1, "2025", False, False),
+    ]
+    assert not S._disaggregates_others(own_reorg, comp_reorg, dim_of)
+
+    db = tmp_path / "t_seg.db"
+    con = sqlite3.connect(db)
+    con.executescript(f"""
+    CREATE TABLE company (symbol TEXT, isin TEXT);
+    CREATE TABLE doc (doc_key TEXT, doc_type TEXT, filing_date TEXT, known_at TEXT);
+    CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT);
+    CREATE TABLE fin_quarter_printed (
+        symbol TEXT, doc_key TEXT, basis TEXT, period_end TEXT, period_type TEXT,
+        column_role TEXT, line_item TEXT, value REAL, scale REAL, page INTEGER
+    );
+    CREATE TABLE kpi_series (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        {','.join(f'{c} TEXT' if c in ('symbol','isin','metric','dimension','unit','period_type','fiscal_period','as_of_date','basis','doc_key','quote','known_at','known_at_source','raw_label','raw_value','extractor_rule','confidence','method','source_type','entity') else f'{c} REAL' if c in ('value','scale','ocr_conf') else f'{c} INTEGER' for c in kpi.COLS)},
+        UNIQUE(symbol, metric, dimension, fiscal_period, basis, value, unit, doc_key, page)
+    );
+    """)
+    con.execute("INSERT INTO company VALUES ('TESTSEG', 'INE000000099')")
+    con.execute("INSERT INTO doc VALUES ('q1_26.pdf', 'results', '2025-09-10', '2025-09-10T10:00:00')")
+    con.execute("INSERT INTO doc VALUES ('q1_27.pdf', 'results', '2026-08-06', '2026-08-06T10:00:00')")
+    seg_txt = "Consolidated Segment wise Revenue, Results, Assets and Liabilities (Rs. in Crores)"
+    doc_txt = f"{seg_txt}\n1. Segment Revenue\n3. Segment Assets"
+    con.execute("INSERT INTO doc_page VALUES ('q1_26.pdf', 6, ?)", (doc_txt,))
+    con.execute("INSERT INTO doc_page VALUES ('q1_27.pdf', 6, ?)", (doc_txt,))
+    con.executemany(
+        "INSERT INTO fin_quarter_printed VALUES (?,?,?,?,?,?,?,?,?,?)",
+        [
+            ("TESTSEG", "q1_26.pdf", "consolidated", "2025-06-30", "quarter", "current", "revenue_from_operations", 125.72e7, 1.0, 2),
+            ("TESTSEG", "q1_26.pdf", "consolidated", "2025-03-31", "quarter", "preceding", "revenue_from_operations", 120.00e7, 1.0, 2),
+            ("TESTSEG", "q1_26.pdf", "consolidated", "2024-06-30", "quarter", "year_ago", "revenue_from_operations", 115.00e7, 1.0, 2),
+            ("TESTSEG", "q1_27.pdf", "consolidated", "2026-06-30", "quarter", "current", "revenue_from_operations", 139.50e7, 1.0, 2),
+            ("TESTSEG", "q1_27.pdf", "consolidated", "2026-03-31", "quarter", "preceding", "revenue_from_operations", 132.40e7, 1.0, 2),
+            ("TESTSEG", "q1_27.pdf", "consolidated", "2025-06-30", "quarter", "year_ago", "revenue_from_operations", 125.72e7, 1.0, 2),
+        ],
+    )
+    con.commit()
+    con.close()
+
+    qcols = (300, 380, 460)
+    def _qnum(y, label, *vals):
+        return _row(y, (30, label), *[(x + 50 - 6 * len(v), v) for x, v in zip(qcols, vals)])
+
+    p_26 = [
+        _row(10, (30, seg_txt)),
+        _row(20, (30, "Particulars"), (300, "30.06.2025"), (380, "31.03.2025"), (460, "30.06.2024")),
+        _row(36, (30, "1. Segment Revenue")),
+        _qnum(48, "a) Packaging Films", "100.00", "96.00", "92.00"),
+        _qnum(60, "b) Others", "25.72", "24.00", "23.00"),
+        _qnum(72, "Total", "125.72", "120.00", "115.00"),
+        _qnum(84, "Net Sales / Income from Operations", "125.72", "120.00", "115.00"),
+        _row(100, (30, "3. Segment Assets")),
+        _qnum(112, "a) Packaging Films", "500.00", "490.00", "480.00"),
+        _qnum(124, "b) Others", "287.82", "280.00", "270.00"),
+        _qnum(136, "Total", "787.82", "770.00", "750.00"),
+    ]
+    p_27 = [
+        _row(10, (30, seg_txt)),
+        _row(20, (30, "Particulars"), (300, "30.06.2026"), (380, "31.03.2026"), (460, "30.06.2025")),
+        _row(36, (30, "1. Segment Revenue")),
+        _qnum(48, "a) Packaging Films", "110.00", "105.00", "100.00"),
+        _qnum(60, "b) Consumer Care", "4.00", "3.00", "2.48"),
+        _qnum(72, "c) Polymer Films", "25.00", "24.00", "22.86"),
+        _qnum(84, "d) Others", "0.50", "0.40", "0.38"),
+        _qnum(96, "Total", "139.50", "132.40", "125.72"),
+        _qnum(108, "Net Sales / Income from Operations", "139.50", "132.40", "125.72"),
+        _row(124, (30, "3. Segment Assets")),
+        _qnum(136, "a) Packaging Films", "520.00", "510.00", "500.00"),
+        _qnum(148, "b) Consumer Care", "120.00", "119.00", "118.52"),
+        _qnum(160, "c) Polymer Films", "170.00", "169.50", "169.30"),
+        _qnum(172, "Total", "810.00", "798.50", "787.82"),
+    ]
+    word_map = {
+        ("q1_26.pdf", 6): [w for r in p_26 for w in r],
+        ("q1_27.pdf", 6): [w for r in p_27 for w in r],
+    }
+    monkeypatch.setattr(S, "words_for", lambda _db, dk, pg: type("P", (), {"words": word_map[(dk, pg)]})())
+    res = S.run_store(db, "tseg", dry=True)
+    q1_26 = {(r[1], r[2]): r[3] for r in res["row_list"] if r[7] == "Q1FY26"}
+    assert q1_26[("segment_revenue", "consumer_care")] == 2.48e7
+    assert q1_26[("segment_revenue", "polymer_films")] == 22.86e7
+    assert q1_26[("segment_revenue", "others")] == 0.38e7
+    assert q1_26[("segment_assets", "consumer_care")] == 118.52e7
+    assert q1_26[("segment_assets", "polymer_films")] == 169.30e7
