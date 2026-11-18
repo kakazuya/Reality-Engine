@@ -1035,24 +1035,19 @@ def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: flo
     else:
         cands = sorted(face_entry, key=_cand_key)
     note_inr = tot_val * note_scale
-    if own and note_known_at:
-        # A future filing's comparative column (own_filing=False, known_at later than this AR) may reflect a later
-        # restatement; it can confirm a tie, but must never discard this year's own as-filed note.
-        contemp = [c for c in cands if c.own_filing or not c.known_at or c.known_at[:10] <= note_known_at[:10]]
-        if not contemp:
-            if _cand_matches(note_inr, tot_dec, note_unit, note_scale, cands[0]):
-                return "tied", cands[0]
-            for c in cands[1:]:
-                if c.checked and _cand_matches(note_inr, tot_dec, note_unit, note_scale, c):
-                    return "tied", c
-            return "no_face", None
-        cands = contemp
     c0 = cands[0]
     if _cand_matches(note_inr, tot_dec, note_unit, note_scale, c0):
         return "tied", c0
     for c in cands[1:]:
         if c.checked and _cand_matches(note_inr, tot_dec, note_unit, note_scale, c):
             return "tied", c
+    if own and note_known_at:
+        # A future filing's comparative column (own_filing=False, known_at later than this AR) may reflect a later
+        # restatement; it can confirm a tie, but must never discard this year's own as-filed note.
+        contemp = [c for c in cands if c.own_filing or not c.known_at or c.known_at[:10] <= note_known_at[:10]]
+        if not contemp:
+            return "no_face", None
+        c0 = contemp[0]
     if (allow_differs and c0.is_xbrl and c0.doc_key and c0.doc_key != doc_key and c0.inr > 0
             and abs(note_inr - c0.inr) <= 0.01 * abs(c0.inr)):
         return "differs", c0
