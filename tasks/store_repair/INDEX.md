@@ -13,7 +13,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-019 | fix_written | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
 | R-017 | fix_written | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c48, c49, c50, c51, c52, c53, c54, c55, c56, c59, c60, c61, c62, c63, c64, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-016 | open | missed | 16/91 (trial) | 1 | 17 (16) | 33 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
-| R-021 | fix_written | wrong | 9/91 (scan) | 3 |  | 27 | comparatives | general |  |
+| R-021 | fix_written | wrong | 9/91 (scan) | 3 |  | 27 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c23, c24, c25, c26, c27, c28, c30, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c55, c56, c57, c58, c59, c60, c62, c63, c64, c65, c66, c67, c69, c70, c71, c72, c73, c74, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c89, c90, c91 |
 | R-018 | open | missed | 9/91 (scan) | 1 | 1 (1) | 10 | holding | general |  |
 | R-001 | open | missed |  | 1 |  |  | guidance | general |  |
 | R-002 | fix_written | missed |  | 1 |  |  | docs_collect | general | c08 |
@@ -208,7 +208,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Code:** pilot3/filings.py::run, pilot3/schema.py::FILING_COVERAGE, pilot3/part_stamp.py::ORDER, pilot3/build.py::build
 - **Store tables touched:** filing
 - **Tags:** trial1, raw_missing; **scope:** general
-- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91; runs: 20261118T141441, 20261118T145000
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91; runs: 20261118T141441, 20261118T145000, 20261118T165235
 
 ## R-015 (open, part `comparatives`, opened 2026-11-17)
 
@@ -221,7 +221,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Code:** reality_engine/pilot3/ar_statements.py, reality_engine/pilot3/ar_notes.py
 - **Store tables touched:** fin_annual_line, ratio_panel, page_cell
 - **Tags:** trial1, not_extracted; **scope:** general
-- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91; runs: 20261117T131627, 20261117T131912, 20261117T134249, 20261117T141620, 20261117T144250, 20261118T004719, 20261118T010832, 20261118T040955, 20261118T060509
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91; runs: 20261117T131627, 20261117T131912, 20261117T134249, 20261117T141620, 20261117T144250, 20261118T004719, 20261118T010832, 20261118T040955, 20261118T060509, 20261118T170117
 
 ## R-016 (open, part `kpi`, opened 2026-11-17)
 
@@ -299,4 +299,4 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Code:** reality_engine/pilot3/comparatives.py
 - **Store tables touched:** fin_quarter_printed
 - **Tags:** ocr, R-013, xbrl, comparatives, T-223; **scope:** general
-- **Stores repaired:** -; runs: -
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c23, c24, c25, c26, c27, c28, c30, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c55, c56, c57, c58, c59, c60, c62, c63, c64, c65, c66, c67, c69, c70, c71, c72, c73, c74, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c89, c90, c91; runs: 20261118T163248
