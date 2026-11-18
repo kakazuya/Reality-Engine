@@ -6,7 +6,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 
 | id | status | kind | severity (basis) | criticality | trial failed (companies) | priority | part | scope | stores repaired |
 |---|---|---|---|---|---|---|---|---|---|
-| R-013 | open | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general |  |
+| R-013 | fix_written | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general |  |
 | R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-014 | open | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general |  |
 | R-020 | fix_written | wrong | 20/91 (scan) | 3 |  | 60 | comparatives | general | c01, c02, c03, c04, c05, c07, c08, c09, c10, c11, c13, c14, c15, c16, c17, c18, c19, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c41, c42, c43, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c88, c89, c90, c91 |
@@ -183,15 +183,15 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Tags:** transcripts, raw_fetch; **scope:** general
 - **Stores repaired:** -; runs: -
 
-## R-013 (open, part `comparatives`, opened 2026-11-17)
+## R-013 (fix_written, part `comparatives`, opened 2026-11-17)
 
 1. **Why it had to be done** (question that exposed it, c05,c07,c08,c09,c20,c21): Why did the OCR merge (R-010) get refused on most stores?
 2. **What the problem was:** store_repair refused the R-010 pages repair: fin_quarter_printed rows from scanned pages are removed and some have no same-value row after (c05 12, c07 3, c08 1, c09 12, c20 4, c21 1). Most removed rows are wrong parses of a jumbled text layer (e.g. GAYAPROJ FY25 standalone total income 3,46,572.20 lakh), but a few look right (SPMLINFRA Q3FY25 PBT 126,517 thousand from 'Profi/lloss) before Excaptional ltems'). **Root cause:** Once a page has OCR text the printed-table parser reads only that text; a line the OCR splits or misreads gives no row, and the layer row it replaced is gone.
 3. **What was missing:** A rule for printed rows on pages with both a jumbled layer and OCR: which source leads, and whether a layer row the OCR does not reproduce survives when it passes the checks.
-4. **How it was fixed:** Rule approved by Shivam 18 Nov: both readings agree -> keep; OCR leads where they differ but is stored verified only if confirmed; a layer-only figure is kept only if confirmed by XBRL, the page's line arithmetic, quarter-sum across columns, or the same figure in another filing, else not stored and logged; drops of unconfirmable figures are counted apart and do not refuse a repair; a lost CONFIRMED right row still refuses. Code not written.
-5. **What can come next:** Write the rule in the comparatives part with a test on c07 p5 and c20 p7; re-run the refused stores and accept only with zero right rows lost. Until then those stores keep their as-built rows.
+4. **How it was fixed:** OCR and text layer resolved independently on their own column sets; agreeing cells kept (agreed); disagreeing cells ranked by xbrl_ok > repeat_ok > sum_ok > unchecked (OCR on ties) and logged (ocr_text_disagree); layer-only kept only if CHECK_OK else layer_unconfirmed; store_repair gate counts OCR-page unchecked drops as unconfirmed_drops without blocking and accepts CHECK_OK replacements of equal value. Review 18 Nov (Eagle, own sample c21+c09, 20 rows; agy Opus review died on its Claude limit): no right row lost (the one XBRL-right lost row is held from another filing); confirmed-and-right rows c21 205->248, c09 406->477; unconfirmed wrong rows c21 67->13, c09 105->39; PASS.
+5. **What can come next:** Apply store_repair --part comparatives to the stores with OCR pages (the 69 that waited); accept per the gate (unconfirmed drops allowed). Follow-up: rows marked sum_ok that contradict XBRL for the same key (c09 39, c21 29 after R-013) should not carry a confirmed status.
 - **Kind:** corrupt (pages with a jumbled text layer: rows built from them may be lost or wrong, and the OCR repair that would fix them changes printed rows, so 69 repairs wait for a hand-read); **severity:** 69/91 companies (scan); **criticality:** 2; **trial questions failed:** -; **priority:** 138
-- **Code:** -
+- **Code:** reality_engine/pilot3/comparatives.py::_table_rows, _resolve_columns, _build_row, _has_repeat_match, _LADDER, _extract_symbol;reality_engine/scripts/store_repair.py::_fin_quarter_printed_drops, _ocr_pages, _store_ocr_dbs, losses
 - **Store tables touched:** fin_quarter_printed
 - **Tags:** ocr, R-010; **scope:** general
 - **Stores repaired:** -; runs: -

@@ -148,16 +148,138 @@ def default_runner(part: str, cmd: list[str], log: Path, ram_gb: float, timeout_
     return run_step(part, cmd, log, interval_s=1.0, ram_gb=ram_gb, timeout_s=timeout_s)
 
 
-def losses(diff: dict) -> list[dict]:
+def _store_ocr_dbs(store: dict) -> list[Path]:
+    from reality_engine.pilot3 import build
+
+    paths = [Path(p) for p in build.ocr_inputs(store["db"])]
+    ocr_dir = store["dir"] / "ocr"
+    if ocr_dir.is_dir():
+        for p in sorted(ocr_dir.glob("*.db")):
+            if p not in paths:
+                paths.append(p)
+    return [p for p in paths if p.is_file()]
+
+
+def _ocr_pages(ocr_dbs) -> set[tuple[str, int]]:
+    pages: set[tuple[str, int]] = set()
+    for path in ocr_dbs or ():
+        p = Path(path)
+        if not p.is_file():
+            continue
+        con = sqlite3.connect(f"file:{p.as_posix()}?mode=ro", uri=True, timeout=30)
+        try:
+            for dk, pg in con.execute("SELECT DISTINCT doc_key, page FROM ocr_page"):
+                if dk is not None and pg is not None:
+                    pages.add((str(dk), int(pg)))
+        except sqlite3.Error:
+            pass
+        finally:
+            con.close()
+    return pages
+
+
+def _fin_quarter_printed_drops(before_db: Path, after_db: Path, ocr_dbs=()) -> tuple[int, int]:
+    """Count ``(unconfirmed_drops, blocking_drops)`` among removed ``fin_quarter_printed`` rows.
+
+    A removed row whose old ``check_status`` was ``'unchecked'`` and whose ``(doc_key, page)`` has OCR rows is
+    an ``unconfirmed_drop`` (R-013); a removed ``CHECK_OK`` row is non-blocking only when an equal-value row
+    for ``(symbol, basis, line_item, period_end, period_type)`` exists after.  Every other removal blocks."""
+    from collections import Counter
+    from reality_engine.pilot3.comparatives import CHECK_OK
+
+    table = "fin_quarter_printed"
+    base = store_diff.connect_ro(before_db, timeout_s=120)
+    head = store_diff.connect_ro(after_db, timeout_s=120)
+    try:
+        if not store_diff._has_table(base, table):
+            return 0, 0
+        bc = store_diff._columns(base, table)
+        hc = store_diff._columns(head, table) if store_diff._has_table(head, table) else []
+        cols = list(dict.fromkeys([*bc, *hc]))
+
+        def aligned(rows, table_cols):
+            idx = {c: i for i, c in enumerate(table_cols)}
+            return [tuple(store_diff._norm(r[idx[c]]) if c in idx else None for c in cols) for r in rows]
+
+        base_rows = aligned(store_diff._fetch(base, table, bc), bc)
+        head_rows = aligned(store_diff._fetch(head, table, hc), hc) if hc else []
+    finally:
+        base.close()
+        head.close()
+
+    keep = [i for i, c in enumerate(cols) if c not in store_diff.IGNORED_COLUMNS]
+
+    def row_hash(row):
+        return store_diff._hash(tuple(row[i] for i in keep))
+
+    head_counts = Counter(row_hash(r) for r in head_rows)
+    removed_rows: list[tuple] = []
+    for row in base_rows:
+        h = row_hash(row)
+        if head_counts[h] > 0:
+            head_counts[h] -= 1
+        else:
+            removed_rows.append(row)
+    if not removed_rows:
+        return 0, 0
+
+    idx = {c: i for i, c in enumerate(cols)}
+    after_values: dict[tuple, list] = {}
+    for row in head_rows:
+        key = tuple(row[idx[c]] if c in idx else None
+                    for c in ("symbol", "basis", "line_item", "period_end", "period_type"))
+        after_values.setdefault(key, []).append(row[idx["value"]] if "value" in idx else None)
+
+    ocr_pages = _ocr_pages(ocr_dbs)
+    unconfirmed_drops = 0
+    blocking_drops = 0
+    for row in removed_rows:
+        status = row[idx["check_status"]] if "check_status" in idx else None
+        dk = row[idx["doc_key"]] if "doc_key" in idx else None
+        pg = row[idx["page"]] if "page" in idx else None
+        if status == "unchecked" and dk is not None and pg is not None and (str(dk), int(pg)) in ocr_pages:
+            unconfirmed_drops += 1
+        elif status in CHECK_OK:
+            key = tuple(row[idx[c]] if c in idx else None
+                        for c in ("symbol", "basis", "line_item", "period_end", "period_type"))
+            old_val = row[idx["value"]] if "value" in idx else None
+            candidates = after_values.get(key, ())
+            if old_val is None:
+                matched = any(v is None for v in candidates)
+            else:
+                matched = any(v is not None and abs(float(v) - float(old_val)) <= 1e-6 * max(
+                    1.0, abs(float(v)), abs(float(old_val))) for v in candidates)
+            if not matched:
+                blocking_drops += 1
+        else:
+            blocking_drops += 1
+    return unconfirmed_drops, blocking_drops
+
+
+def losses(diff: dict, before_db: Path | None = None, after_db: Path | None = None, ocr_dbs=()) -> list[dict]:
     """Tables of a ``diff_store`` report that lost a row or a served row."""
     out = []
     for name, table in sorted(diff["tables"].items()):
         removed = int(table.get("removed") or 0)
         lost = int((table.get("served") or {}).get("lost") or 0)
         if removed or lost:
-            out.append({"table": name, "removed": removed, "served_lost": lost, "added": int(table.get("added") or 0),
-                        "changed": int(table.get("changed") or 0)})
+            entry = {"table": name, "removed": removed, "served_lost": lost, "added": int(table.get("added") or 0),
+                     "changed": int(table.get("changed") or 0)}
+            if name == "fin_quarter_printed" and removed and before_db is not None and after_db is not None:
+                unconfirmed_drops, blocking_drops = _fin_quarter_printed_drops(before_db, after_db, ocr_dbs)
+                entry["unconfirmed_drops"] = unconfirmed_drops
+                if not lost and not blocking_drops:
+                    entry["non_blocking"] = True
+            out.append(entry)
     return out
+
+
+def _has_blocking_losses(loss_entries: list[dict]) -> bool:
+    blocking = False
+    for entry in loss_entries:
+        if not entry.pop("non_blocking", False):
+            blocking = True
+    return blocking
 
 
 def summary_of(diff: dict) -> dict:
@@ -236,8 +358,8 @@ def repair_store(store: dict, parts: list[str], run_id: str, approve_loss: bool 
         diff = store_diff.diff_store(run_dir / "before.db", store["db"])
         (run_dir / "diff.json").write_text(json.dumps(diff, indent=1, default=str), encoding="utf-8")
         record["diff"] = summary_of(diff)
-        record["losses"] = losses(diff)
-        if record["losses"] and not approve_loss:
+        record["losses"] = losses(diff, run_dir / "before.db", store["db"], _store_ocr_dbs(store))
+        if _has_blocking_losses(record["losses"]) and not approve_loss:
             record.update(outcome="refused", detail=f"rows lost; read {run_dir / 'diff.json'}, then --accept {run_id}")
             _restore(store, run_dir, keep_after=True)
         else:

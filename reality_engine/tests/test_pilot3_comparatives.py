@@ -869,3 +869,354 @@ def test_leading_comma_ocr_token_does_not_veto_clean_text():
     fc = _cells(stored, "finance_cost", "last_fy")
     assert len(fc) == 1 and fc[0][11] == 7036.28 * 1e7
     assert not any(r["check"] == "ocr_text_disagree" for r in review)
+
+
+# ---------------------------------------------------------------- R-013: jumbled layer + OCR lead rule -------------------------------
+def _build_pdf_and_ocr(tmp_dir, layer_rows, ocr_rows, *, title="Statement of Consolidated Unaudited Financial Results",
+                       unit="Rs. inCrore", dates=DATES, jumbled: bool = True, cols=COLS,
+                       xbrl_rows=(), extra_docs=()):
+    import csv
+    import json
+    import pymupdf
+
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = tmp_dir / "res.pdf"
+    doc = pymupdf.open()
+    page = doc.new_page(width=800, height=600)
+    page.insert_text((40, 20), title, fontsize=8)
+    page.insert_text((40, 35), unit, fontsize=8)
+    for anchor, dtext in zip(cols, dates):
+        w = pymupdf.get_text_length(dtext, fontsize=7)
+        page.insert_text((anchor - w, 50), dtext, fontsize=7)
+    for idx, (label, values) in enumerate(layer_rows):
+        y = 70.0 + 14.0 * idx
+        page.insert_text((20, y), label, fontsize=7)
+        for anchor, val in zip(cols, values):
+            w = pymupdf.get_text_length(val, fontsize=7)
+            page.insert_text((anchor - w, y), val, fontsize=7)
+    if jumbled:
+        # 45 vowel-carrying non-words push page_words.dictionary_score below 0.75 while keeping the table readable
+        for i in range(15):
+            page.insert_text((20, 320 + 12 * i), f"Zxv{i}omer Qlarton{i} Vroptex{i}", fontsize=7)
+    doc.save(str(pdf_path))
+    doc.close()
+
+    ocr_db = tmp_dir / "store_ocr.db"
+    ocr_db.unlink(missing_ok=True)
+    if ocr_rows is not None:
+        ocon = sqlite3.connect(str(ocr_db))
+        ocon.execute("CREATE TABLE ocr_page (symbol TEXT, doc_key TEXT, page INTEGER, doc_type TEXT, "
+                     "known_at TEXT, text TEXT, words_json TEXT, ocr_conf REAL, n_boxes INTEGER, dpi INTEGER, "
+                     "seconds REAL, method TEXT)")
+        ocr_words = [[40.0, 5.0, 180.0, 13.0, title, 0.95], [40.0, 15.0, 110.0, 23.0, unit, 0.95]]
+        for anchor, dtext in zip(cols, dates):
+            ocr_words.append([anchor - 7.0 * len(dtext), 27.0, anchor, 33.0, dtext, 0.95])
+        for idx, (label, values) in enumerate(ocr_rows):
+            y = 50.0 + 10.0 * idx
+            x = 20.0
+            for word in label.split():
+                width = 7.0 * len(word)
+                ocr_words.append([x, y - 3.0, x + width, y + 3.0, word, 0.95])
+                x += width + 3.0
+            for anchor, val in zip(cols, values):
+                ocr_words.append([anchor - 7.0 * len(val), y - 3.0, anchor, y + 3.0, val, 0.95])
+        ocon.execute("INSERT INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                     ("AAAA", "res.pdf", 1, "results", "2026-10-20T12:00:00", "ocr", json.dumps(ocr_words),
+                      0.95, len(ocr_words), 300, 1.0, "ocr_textrec"))
+        ocon.commit()
+        ocon.close()
+
+    store_db = tmp_dir / "store.db"
+    store_db.unlink(missing_ok=True)
+    conn = sqlite3.connect(str(store_db))
+    conn.executescript("""
+        CREATE TABLE company (symbol TEXT, isin TEXT, isin_from TEXT, isin_to TEXT, isin_source TEXT, bse_code TEXT, name TEXT);
+        CREATE TABLE fin_quarter_xbrl (symbol TEXT, isin TEXT, period_start TEXT, period_end TEXT, fiscal_period TEXT,
+            basis TEXT, audited TEXT, statement TEXT, line_item TEXT, xbrl_tag TEXT, value REAL, unit TEXT, scale REAL,
+            source_file TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT, known_at TEXT, known_at_source TEXT,
+            is_reported INTEGER);
+        CREATE TABLE share_capital (symbol TEXT, isin TEXT, as_of_date TEXT, basis TEXT, event TEXT, ratio TEXT,
+            shares_outstanding REAL, paid_up_capital REAL, face_value REAL, unit TEXT, scale REAL, known_at TEXT,
+            known_at_source TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT, isin_effective_from TEXT,
+            isin_effective_to TEXT);
+        CREATE TABLE doc (doc_key TEXT PRIMARY KEY, symbol TEXT, isin TEXT, doc_type TEXT, doc_family TEXT, title TEXT,
+            filing_date TEXT, known_at TEXT, pages INTEGER, sha256 TEXT, source TEXT, source_key TEXT);
+    """)
+    conn.execute("INSERT INTO company (symbol, isin, isin_from) VALUES ('AAAA', 'INE000A01001', '2019-01-01')")
+    for basis, end, item, val in xbrl_rows:
+        conn.execute("INSERT INTO fin_quarter_xbrl (symbol, basis, period_start, period_end, fiscal_period, "
+                     "line_item, value, known_at) VALUES ('AAAA', ?, '2026-04-01', ?, 'Q1FY27', ?, ?, "
+                     "'2026-10-19T10:00:00')", (basis, end, item, val))
+    conn.execute("INSERT INTO doc VALUES ('res.pdf','AAAA','INE000A01001','results','results','Results',"
+                 "'2026-10-20','2026-10-20T12:00:00',1,'sha1','bse',?)", (str(pdf_path),))
+    for dk, fdate, k_at, e_rows, e_dates, e_cols in extra_docs:
+        epath = tmp_dir / f"{dk}.pdf"
+        edoc = pymupdf.open()
+        epage = edoc.new_page(width=800, height=600)
+        epage.insert_text((40, 20), title, fontsize=8)
+        epage.insert_text((40, 35), unit, fontsize=8)
+        for anchor, dtext in zip(e_cols, e_dates):
+            w = pymupdf.get_text_length(dtext, fontsize=7)
+            epage.insert_text((anchor - w, 50), dtext, fontsize=7)
+        for idx, (label, values) in enumerate(e_rows):
+            y = 70.0 + 14.0 * idx
+            epage.insert_text((20, y), label, fontsize=7)
+            for anchor, val in zip(e_cols, values):
+                w = pymupdf.get_text_length(val, fontsize=7)
+                epage.insert_text((anchor - w, y), val, fontsize=7)
+        edoc.save(str(epath))
+        edoc.close()
+        conn.execute("INSERT INTO doc VALUES (?,'AAAA','INE000A01001','results','results','Results',"
+                     "?,?,1,?,'bse',?)", (dk, fdate, k_at, f"sha_{dk}", str(epath)))
+    conn.commit()
+    review_csv = tmp_dir / "review.csv"
+    cmp.run(conn, ["AAAA"], review_path=review_csv, store_db=store_db,
+            ocr_dbs=[ocr_db] if ocr_rows is not None else ())
+    rows = conn.execute(
+        f"SELECT symbol, isin, period_start, period_end, fiscal_period, period_type, column_role, basis, statement, "
+        f"line_item, caption, value, unit, scale, raw_token, quote, doc_key, page, known_at, known_at_source, "
+        f"check_status, check_detail, is_reported FROM {cmp.TABLE}"
+    ).fetchall()
+    conn.close()
+    with review_csv.open(newline="", encoding="utf-8") as fh:
+        review = list(csv.DictReader(fh))
+    return rows, review
+
+
+def test_r013_jumbled_page_ocr_leads_when_layer_disagrees():
+    import uuid
+    from pathlib import Path
+
+    layer = [(lbl, ("9,999",) + vals[1:] if lbl.startswith("3 ") else vals) for lbl, vals in ROWS]
+    rows, review = _build_pdf_and_ocr(Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ROWS)
+    ti = _cells(rows, "total_income", "current")
+    assert len(ti) == 1 and ti[0][11] == 1100 * 1e7 and ti[0][20] == "sum_ok"
+    assert any(r["check"] == "ocr_text_disagree" and r["line_item"] == "total_income" and r["column_role"] == "current"
+               for r in review)
+
+
+def test_r013_layer_only_figure_completing_arithmetic_is_stored_sum_ok():
+    import uuid
+    from pathlib import Path
+
+    # Use June 4-column layout (no cross-column ytd mark) so only total_income - total_expenses can confirm PBT.
+    # Layer has garbled total_income (9,999) and right PBT (300); OCR has right total_income (1,100) and expenses (800)
+    # but garbled PBT label so OCR misses PBT.
+    dates = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026")
+    cols = (200.0, 260.0, 320.0, 380.0)
+    base_rows = [(lbl, vals[:4]) for lbl, vals in ROWS]
+    layer = [(lbl, ("9,999",) + vals[1:] if lbl.startswith("3 ") else vals) for lbl, vals in base_rows]
+    ocr = [("Xyz before Qrs", vals) if lbl.startswith("5 ") else (lbl, vals) for lbl, vals in base_rows]
+    rows, _review = _build_pdf_and_ocr(Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ocr, dates=dates, cols=cols)
+    pbt = _cells(rows, "pbt_before_exceptional", "current")
+    assert len(pbt) == 1 and pbt[0][11] == 300 * 1e7 and pbt[0][20] == "sum_ok"
+
+
+def test_r013_layer_only_unconfirmed_figure_dropped_and_logged():
+    import uuid
+    from pathlib import Path
+
+    # current + preceding != ytd (408 + 360 != 758), so nothing confirms other_expenses
+    layer = ROWS + [("9 Other expenses", ("408", "360", "300", "758", "650", "1,400"))]
+    ocr = ROWS + [("9 Oth3r xyz", ("408", "360", "300", "758", "650", "1,400"))]
+    rows, review = _build_pdf_and_ocr(Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ocr)
+    assert _cells(rows, "other_expenses", "current") == []
+    assert any(r["check"] == "layer_unconfirmed" and r["line_item"] == "other_expenses"
+               and r["column_role"] == "current" and r["raw_token"] == "408" for r in review)
+
+
+def test_r013_clean_page_without_ocr_keeps_unchecked_layer_rows():
+    import uuid
+    from pathlib import Path
+
+    clean = ROWS + [("9 Other expenses", ("408", "360", "300", "758", "650", "1,400"))]
+    rows, review = _build_pdf_and_ocr(Path(".tmp/pytest") / uuid.uuid4().hex[:8], clean, None, jumbled=False)
+    oe = _cells(rows, "other_expenses", "current")
+    assert len(oe) == 1 and oe[0][11] == 408 * 1e7 and oe[0][20] == "unchecked"
+    assert not any(r["check"] == "layer_unconfirmed" for r in review)
+
+
+def test_r013_side_by_side_jumbled_page_yields_both_bases():
+    import uuid
+    from pathlib import Path
+
+    dates = ("31.03.2026", "31.12.2025", "31.03.2025", "31.03.2026", "31.03.2025") * 2
+    cols = tuple(160.0 + 60.0 * i for i in range(10))
+    ocr_rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00", "1,500.00", "900.00", "850.00", "800.00", "3,200.00", "2,800.00"),
+        ("10.00", "10.00", "10.00", "40.00", "30.00", "20.00", "20.00", "20.00", "80.00", "60.00"),
+        ("510.00", "460.00", "410.00", "1,740.00", "1,530.00", "920.00", "870.00", "820.00", "3,280.00", "2,860.00"),
+        ("400.00", "360.00", "320.00", "1,400.00", "1,200.00", "700.00", "650.00", "600.00", "2,600.00", "2,200.00"),
+        ("110.00", "100.00", "90.00", "340.00", "330.00", "220.00", "220.00", "220.00", "680.00", "660.00"),
+        ("28.00", "25.00", "22.00", "85.00", "80.00", "55.00", "55.00", "55.00", "170.00", "160.00"),
+        ("82.00", "75.00", "68.00", "255.00", "250.00", "165.00", "165.00", "165.00", "510.00", "500.00"),
+        ("1.50", "1.40", "1.20", "4.50", "4.00", "3.00", "3.00", "3.00", "9.50", "9.00"),
+    ])
+    # Text layer garbles total_income on both halves (9999.00); OCR has the right figures and both basis headers.
+    layer_rows = [(lbl, ("9999.00",) * 10 if lbl.startswith("3 ") else vals) for lbl, vals in ocr_rows]
+    rows, review = _build_pdf_and_ocr(
+        Path(".tmp/pytest") / uuid.uuid4().hex[:8],
+        layer_rows, ocr_rows,
+        title="Financial Results STANDALONE CONSOLIDATED",
+        dates=dates, cols=cols,
+    )
+    sa_ti = [r for r in rows if r[7] == "standalone" and r[9] == "total_income" and r[6] == "current"]
+    co_ti = [r for r in rows if r[7] == "consolidated" and r[9] == "total_income" and r[6] == "current"]
+    assert len(sa_ti) == 1 and sa_ti[0][11] == 510 * 1e7 and sa_ti[0][20] == "sum_ok"
+    assert len(co_ti) == 1 and co_ti[0][11] == 920 * 1e7 and co_ti[0][20] == "sum_ok"
+    assert any(r["check"] == "ocr_text_disagree" and r["line_item"] == "total_income" for r in review)
+
+
+def test_r013_unreadable_ocr_table_falls_back_to_layer_with_rule3():
+    import uuid
+    from pathlib import Path
+
+    # OCR has only 1 row (read_page returns None), while layer has the full P&L table + unconfirmed other_expenses.
+    layer = ROWS + [("9 Other expenses", ("408", "360", "300", "758", "650", "1,400"))]
+    ocr = [("1 Revenue from operations", ("1,000", "900", "800", "1,900", "1,700", "3,500"))]
+    rows, review = _build_pdf_and_ocr(Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ocr)
+    assert len(_cells(rows, "total_income", "current")) == 1
+    assert _cells(rows, "other_expenses", "current") == []
+    assert any(r["check"] == "layer_unconfirmed" and r["line_item"] == "other_expenses" for r in review)
+
+
+def test_r013_ladder_confirmed_layer_beats_ocr_leading_digit_drop():
+    import uuid
+    from pathlib import Path
+
+    # Q2 cross-column identity (current + preceding = ytd) confirms layer's 363,278 as sum_ok,
+    # while OCR dropped the leading digit (63,278) and fails cross-column check -> confirmed layer wins.
+    layer = ROWS + [("6a Current tax", ("363,278", "200,000", "150,000", "563,278", "400,000", "900,000"))]
+    ocr = ROWS + [("6a Current tax", ("63,278", "200,000", "150,000", "563,278", "400,000", "900,000"))]
+    rows, review = _build_pdf_and_ocr(Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ocr,
+                                      unit="Rs. in Thousands")
+    ct = _cells(rows, "current_tax", "current")
+    assert len(ct) == 1 and ct[0][11] == 363278 * 1e3 and ct[0][20] == "sum_ok"
+    assert any(r["check"] == "ocr_text_disagree" and r["line_item"] == "current_tax" for r in review)
+
+
+def test_r013_ladder_layer_xbrl_ok_eps_kept_when_ocr_differs():
+    import uuid
+    from pathlib import Path
+
+    dates = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026")
+    cols = (200.0, 260.0, 320.0, 380.0)
+    base = [(lbl, vals[:4]) for lbl, vals in ROWS[:-1]]
+    layer = base + [
+        ("8 Basic EPS", ("0.38", "0.30", "0.25", "1.20")),
+        ("9 Diluted EPS", ("2.85", "2.10", "1.90", "8.50")),
+    ]
+    ocr = base + [
+        ("8 Basic EPS", ("9.38", "0.30", "0.25", "1.20")),
+        ("9 Diluted EPS", ("8.85", "2.10", "1.90", "8.50")),
+    ]
+    rows, review = _build_pdf_and_ocr(
+        Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ocr, dates=dates, cols=cols,
+        xbrl_rows=[("consolidated", "2026-06-30", "eps_basic", 0.38),
+                   ("consolidated", "2026-06-30", "eps_diluted", 2.85)],
+    )
+    eb = _cells(rows, "eps_basic", "current")
+    ed = _cells(rows, "eps_diluted", "current")
+    assert len(eb) == 1 and eb[0][11] == 0.38 and eb[0][20] == "xbrl_ok"
+    assert len(ed) == 1 and ed[0][11] == 2.85 and ed[0][20] == "xbrl_ok"
+    assert any(r["check"] == "ocr_text_disagree" and r["line_item"] == "eps_basic" for r in review)
+
+
+def test_r013_ladder_layer_xbrl_ok_exceptional_zero_beats_ocr_mislabelled():
+    import uuid
+    from pathlib import Path
+
+    dates = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026")
+    cols = (200.0, 260.0, 320.0, 380.0)
+    layer = [
+        ("1 Revenue from operations", ("1,000", "900", "800", "3,500")),
+        ("2 Other income", ("100", "90", "80", "350")),
+        ("3 Total income", ("1,100", "990", "880", "3,850")),
+        ("4 Total expenses", ("800", "720", "640", "2,800")),
+        ("5 Profit before exceptional items and tax", ("300", "270", "240", "1,050")),
+        ("6 Exceptional items", ("0.00", "0.00", "0.00", "0.00")),
+        ("7 Profit before tax", ("300", "270", "240", "1,050")),
+        ("8 Total tax expense", ("75", "67", "60", "262")),
+        ("9 Profit for the period", ("225", "203", "180", "788")),
+    ]
+    ocr = [
+        ("6 Exceptional items", ("1,266.17", "0.00", "0.00", "0.00")) if lbl.startswith("6 ") else (lbl, vals)
+        for lbl, vals in layer
+    ]
+    rows, review = _build_pdf_and_ocr(
+        Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ocr, dates=dates, cols=cols,
+        xbrl_rows=[("consolidated", "2026-06-30", "exceptional_items", 0.0)],
+    )
+    exc = _cells(rows, "exceptional_items", "current")
+    assert len(exc) == 1 and exc[0][11] == 0.0 and exc[0][20] == "xbrl_ok"
+    assert any(r["check"] == "ocr_text_disagree" and r["line_item"] == "exceptional_items" for r in review)
+
+
+def test_r013_ladder_xbrl_ok_beats_losing_sum_ok():
+    import uuid
+    from pathlib import Path
+
+    dates = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026")
+    cols = (200.0, 260.0, 320.0, 380.0)
+    layer = [
+        ("1 Revenue from operations", ("1,000", "900", "800", "3,500")),
+        ("2 Other income", ("100", "90", "80", "350")),
+        ("3 Total income", ("1,100", "990", "880", "3,850")),
+        ("4 Total expenses", ("800", "720", "640", "2,800")),
+        ("5 Profit before tax", ("300", "270", "240", "1,050")),
+        ("6 Total tax expense", ("1", "67", "60", "262")),
+        ("7 Profit for the period", ("299", "203", "180", "788")),
+        ("8 Basic EPS", ("10.5", "9.5", "8.4", "36.8")),
+    ]
+    # OCR has wrong tax=-25 and wrong pat=325 so OCR's own arithmetic (300 - (-25) = 325) marks tax=-25 as sum_ok.
+    ocr = [
+        ("6 Total tax expense", ("-25", "67", "60", "262")) if lbl.startswith("6 ")
+        else ("7 Profit for the period", ("325", "203", "180", "788")) if lbl.startswith("7 ")
+        else (lbl, vals)
+        for lbl, vals in layer
+    ]
+    rows, _review = _build_pdf_and_ocr(
+        Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ocr, dates=dates, cols=cols,
+        xbrl_rows=[("consolidated", "2026-06-30", "tax", 1 * 1e7)],
+    )
+    tax = _cells(rows, "tax", "current")
+    assert len(tax) == 1 and tax[0][11] == 1 * 1e7 and tax[0][20] == "xbrl_ok"
+
+
+def test_r013_ladder_ocr_xbrl_ok_beats_layer_sum_ok():
+    import uuid
+    from pathlib import Path
+
+    dates = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026")
+    cols = (200.0, 260.0, 320.0, 380.0)
+    ocr = [(lbl, vals[:4]) for lbl, vals in ROWS]
+    # Layer misreads both tax=85 and pat=215 so layer satisfies 300 - 85 = 215 (sum_ok), while OCR tax=75 is xbrl_ok.
+    layer = [
+        ("6 Total tax expense", ("85", "67", "60", "262")) if lbl.startswith("6 ")
+        else ("7 Profit for the period", ("215", "203", "180", "788")) if lbl.startswith("7 ")
+        else (lbl, vals)
+        for lbl, vals in ocr
+    ]
+    rows, _review = _build_pdf_and_ocr(
+        Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ocr, dates=dates, cols=cols,
+        xbrl_rows=[("consolidated", "2026-06-30", "tax", 75 * 1e7)],
+    )
+    tax = _cells(rows, "tax", "current")
+    assert len(tax) == 1 and tax[0][11] == 75 * 1e7 and tax[0][20] == "xbrl_ok"
+
+
+def test_r013_ladder_repeat_ok_promotes_layer_disagreed_value():
+    import uuid
+    from pathlib import Path
+
+    dates = ("30.06.2026", "31.03.2026", "30.06.2025", "31.03.2026")
+    cols = (200.0, 260.0, 320.0, 380.0)
+    base = [(lbl, vals[:4]) for lbl, vals in ROWS]
+    layer = base + [("6a Current tax", ("120", "100", "90", "380"))]
+    ocr = base + [("6a Current tax", ("150", "100", "90", "380"))]
+    rows, _review = _build_pdf_and_ocr(
+        Path(".tmp/pytest") / uuid.uuid4().hex[:8], layer, ocr, dates=dates, cols=cols,
+        extra_docs=[("prior.pdf", "2026-07-25", "2026-07-25T12:00:00", layer, dates, cols)],
+    )
+    ct = [r for r in _cells(rows, "current_tax", "current") if r[16] == "res.pdf"]
+    assert len(ct) == 1 and ct[0][11] == 120 * 1e7 and ct[0][20] == "repeat_ok"

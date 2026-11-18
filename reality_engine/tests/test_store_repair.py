@@ -293,3 +293,77 @@ def test_locked_store_is_skipped_restored_and_next_store_processed(tmp_path, mon
     assert _count(c02["db"]) == 3
     assert not (c01["dir"] / "repair.lock").exists()
     assert not (c02["dir"] / "repair.lock").exists()
+
+
+def _fqp_store(tmp_path: Path, name: str = "c01") -> dict:
+    from reality_engine.pilot3 import schema
+
+    store = _store(tmp_path, name, guidance_rows=0)
+    conn = sqlite3.connect(store["db"])
+    schema.ensure(conn, ("fin_quarter_printed",))
+    conn.executemany(
+        "INSERT INTO fin_quarter_printed (symbol, isin, period_start, period_end, fiscal_period, period_type, "
+        "column_role, basis, statement, line_item, caption, value, unit, scale, raw_token, quote, doc_key, page, "
+        "known_at, known_at_source, check_status, check_detail, is_reported) VALUES "
+        "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [
+            ("AAA", "INE1", "2025-10-01", "2025-12-31", "Q3FY26", "quarter", "current", "standalone", "P&L",
+             "total_income", "Total Income", 1000.0, "inr", 1.0, "1,000", "q", "d1", 5,
+             "2026-02-01", "doc.known_at", "xbrl_ok", None, 1),
+            ("AAA", "INE1", "2025-10-01", "2025-12-31", "Q3FY26", "quarter", "current", "standalone", "P&L",
+             "other_expenses", "Other Expenses", 200.0, "inr", 1.0, "200", "q", "d1", 5,
+             "2026-02-01", "doc.known_at", "unchecked", None, 1),
+            ("AAA", "INE1", "2025-10-01", "2025-12-31", "Q3FY26", "quarter", "current", "standalone", "P&L",
+             "depreciation", "Depreciation", 50.0, "inr", 1.0, "50", "q", "d2", 9,
+             "2026-02-01", "doc.known_at", "unchecked", None, 1),
+        ],
+    )
+    conn.commit()
+    conn.close()
+    ocr = sqlite3.connect(store["dir"] / f"{name}_ocr.db")
+    ocr.execute("CREATE TABLE ocr_page (doc_key TEXT, page INTEGER)")
+    ocr.execute("INSERT INTO ocr_page VALUES ('d1', 5)")
+    ocr.commit()
+    ocr.close()
+    return store
+
+
+def test_gate_allows_unconfirmed_drop_on_ocr_page_and_equal_value_confirmed_replacement(tmp_path):
+    store = _fqp_store(tmp_path)
+
+    # Remove the unchecked row on OCR page (d1, 5) and replace xbrl_ok row with an equal-value row (different detail)
+    def run(part, cmd, log, ram_gb, timeout_s):
+        db = Path(cmd[cmd.index("--out") + 1])
+        conn = sqlite3.connect(db)
+        conn.executescript(
+            "DELETE FROM fin_quarter_printed WHERE line_item='other_expenses';"
+            "UPDATE fin_quarter_printed SET check_detail='agreed' WHERE line_item='total_income';"
+        )
+        part_stamp.write(conn, part, 0.1, head="test")
+        conn.close()
+        return {"part": part, "seconds": 0.1, "rc": 0, "peak_rss_mb": 1.0, "ram_stop": False, "timed_out": False,
+                "tail5": ""}
+
+    record = store_repair.repair_store(store, ["comparatives"], "r1", runner=run)
+    assert record["outcome"] == "repaired"
+    fqp_loss = [l for l in record["losses"] if l["table"] == "fin_quarter_printed"][0]
+    assert fqp_loss["removed"] == 2
+    assert fqp_loss["unconfirmed_drops"] == 1
+
+
+def test_gate_refuses_confirmed_drop_and_clean_page_unchecked_drop(tmp_path):
+    store1 = _fqp_store(tmp_path / "b1")
+    rec1 = store_repair.repair_store(
+        store1, ["comparatives"], "r1",
+        runner=_runner("DELETE FROM fin_quarter_printed WHERE line_item='total_income'"),
+    )
+    assert rec1["outcome"] == "refused"
+    assert rec1["losses"][0]["unconfirmed_drops"] == 0
+
+    store2 = _fqp_store(tmp_path / "b2")
+    rec2 = store_repair.repair_store(
+        store2, ["comparatives"], "r1",
+        runner=_runner("DELETE FROM fin_quarter_printed WHERE line_item='depreciation'"),
+    )
+    assert rec2["outcome"] == "refused"
+    assert rec2["losses"][0]["unconfirmed_drops"] == 0
