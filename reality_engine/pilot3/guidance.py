@@ -1063,16 +1063,19 @@ def _locate_in_raw(raw: str, sentence: str) -> tuple[int, int] | None:
 def _reporting_entity(entity: str, entity_unsure: bool, parent: str | None,
                       sentence: str, symbol: str, company_names: tuple[str, ...],
                       raw: str = "") -> tuple[str, bool]:
-    """Attribute a parent-call sentence to ``parent`` unless the sentence or preceding context names the subsidiary;
-    set ``entity_unsure=True`` when neither the subsidiary nor the parent is named in that context."""
+    """Attribute a parent-call sentence: subsidiary in-sentence -> today's entity; subsidiary in look-back only ->
+    today's entity with ``entity_unsure=True``; otherwise ``parent``, unsure unless ``parent`` is named."""
     if not parent:
         return entity, entity_unsure
     span = _locate_in_raw(raw, sentence) if raw else None
     ctx, lo, hi = (raw, span[0], span[1]) if (raw and span is not None) else (sentence, 0, len(sentence))
-    if linked_transcripts.names_subsidiary_near(ctx, lo, hi, symbol, company_names, parent):
+    sub_where = linked_transcripts.names_subsidiary_near(ctx, lo, hi, symbol, company_names, parent)
+    if sub_where == "sentence":
         return entity, entity_unsure
-    parent_named = linked_transcripts.names_company_near(ctx, lo, hi, parent)
-    return parent, not parent_named
+    if sub_where == "lookback":
+        return entity, True
+    parent_where = linked_transcripts.names_company_near(ctx, lo, hi, parent)
+    return parent, parent_where is None
 
 
 def _norm_entity(raw: str | None) -> str:
