@@ -471,3 +471,21 @@ def test_round4_layouts_confirm_nothing_wrong():
     for words, cell, value in cases:
         cells, _ = rg.settle_page([[cell]], words)
         assert not _conf(cells, value), cell
+
+
+def test_page_title_date_never_heads_a_column():
+    """c09 GAYAPROJ Q2FY27 results (real page): the title "... ENDED 30th SEPTEMBER, 2026" sat in the header band
+    over the 30.09.2025 comparative column, so a reader's "30.09.2026" for the 2025 figure was confirmed."""
+    words = [_w(120, 5, "STATEMENT"), _w(175, 5, "OF"), _w(190, 5, "CONSOLIDATED"), _w(255, 5, "RESULTS"),
+             _w(300, 5, "FOR"), _w(320, 5, "QUARTER"), _w(365, 5, "ENDED"), _w(400, 5, "30th"),
+             _w(425, 5, "SEPTEMBER,"), _w(480, 5, "2026"),
+             _w(200, 20, "Quarter"), _w(240, 20, "Ended"),
+             _w(200, 32, "30.09.2026"), _w(300, 32, "30.06.2026"), _w(400, 32, "30.09.2025"),
+             _w(10, 47, "Total"), _w(40, 47, "Income"), _w(205, 47, "12,162.59"), _w(305, 47, "25,403.37"),
+             _w(405, 47, "8,262.96"),
+             _w(10, 62, "Expenses"), _w(205, 62, "11,000.00"), _w(305, 62, "20,000.00"), _w(405, 62, "7,000.00")]
+    assert rg.Page(words).title_line(0)
+    wrong, _ = rg.settle_page([[_cell("Total Income", "Quarter Ended > 30.09.2026", "8,262.96")]], words)
+    right, _ = rg.settle_page([[_cell("Total Income", "Quarter Ended > 30.09.2025", "8,262.96")]], words)
+    assert not _conf(wrong, "8,262.96")
+    assert _conf(right, "8,262.96") == "position"

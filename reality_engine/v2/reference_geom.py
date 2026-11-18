@@ -322,6 +322,25 @@ class Page:
                 return True
         return False
 
+    def title_line(self, line: int) -> bool:
+        """A page or table title, the company name, address or CIN line: four or more words of letters in one run
+        ("STATEMENT OF UN-AUDITED CONSOLIDATED FINANCIAL RESULTS ... ENDED 30th SEPTEMBER, 2026") or a registration
+        code.  Its words never head a column, even where they sit over one (T-225: a title's "2026" put a 30.09.2025
+        column under 30.09.2026 on a real results page)."""
+        words = [self.words[j][4] for j in self.lines[line]]
+        if any(re.fullmatch(r"(?:cin|regd\.?|registered|office:?|limited|ltd\.?|statement|results?)", w.strip(",.:;()").casefold()) for w in words):
+            return True
+        run = best = 0
+        prev_x1 = None
+        for j in self.lines[line]:
+            w = self.words[j]
+            alpha = bool(re.fullmatch(r"[A-Za-z][A-Za-z&'\-]*[,.:]?", w[4]))
+            close = prev_x1 is None or w[0] - prev_x1 <= max(14.0, 1.5 * self.h)
+            run = (run + 1 if close else 1) if alpha else 0
+            best = max(best, run)
+            prev_x1 = w[2]
+        return best >= 4
+
     def is_header_line(self, line: int) -> bool:
         return any(_is_header_word(self.words[i][4]) for i in self.lines[line])
 
@@ -629,7 +648,7 @@ class Page:
                 for ci, centre in enumerate(centres):
                     kinds[ci] = _period_kind(low[min(range(len(low)), key=lambda k: abs(lp[k] - centre))][2])
             left = min((col["x0"] for col in cols), default=0.0) - self.h
-            for m in band:
+            for m in [m for m in band if not self.title_line(m)]:
                 # a phrase wholly left of the number columns ("₹ Crores" over the labels) heads no column (T-225)
                 phrases = [p for p in self._header_phrases(m, cols) if p[1] >= left]
                 if not phrases:
@@ -706,7 +725,8 @@ class Page:
         if self.word_header_state(i, header) is not True:
             return None
         band = self.header_band(self.line_of[i])
-        band_tokens = set(_header_tokens(" ".join(self.words[j][4] for m in band for j in self.lines[m])))
+        band_tokens = set(_header_tokens(" ".join(self.words[j][4] for m in band if not self.title_line(m)
+                                                  for j in self.lines[m])))
         cols, ci = self._word_columns(i)
         own = set(_header_tokens(" ".join(cols[ci]["stack"]))) if ci is not None else set()
         needed = [t for t in _header_tokens(header) if t in band_tokens and t not in _WORD_STOP]
@@ -736,7 +756,8 @@ class Page:
             return None
         stacks = [" ".join(col["stack"]) for col in cols]
         vocab = set(_header_tokens(" ".join(stacks)))
-        band_tokens = set(_header_tokens(" ".join(self.words[j][4] for m in band for j in self.lines[m])))
+        band_tokens = set(_header_tokens(" ".join(self.words[j][4] for m in band if not self.title_line(m)
+                                                  for j in self.lines[m])))
         # a reader header naming a number printed nowhere in the band ("Mat 37,2020" copied from a misread layer,
         # where only "2020" is printed) is not the printed header: confirm nothing, by any rule (T-225)
         if any(t.isdigit() and t not in vocab and t not in band_tokens for t in reader):
