@@ -734,6 +734,47 @@ def test_side_by_side_non_june_10col_stores_both_bases():
     assert {r[6]: r[11] for r in co}["ytd"] == 3200 * 1e7
 
 
+
+def test_side_by_side_half_with_empty_column_does_not_crash():
+    """c91 drift run 18 Nov: a split half whose current column holds no figure raised KeyError in _choose_rows."""
+    dates = ("31.03.2026", "31.12.2025", "31.03.2025", "31.03.2026", "31.03.2025") * 2
+    rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00", "1,500.00", "900.00", "850.00", "800.00", "3,200.00", "2,800.00"),
+        ("10.00", "10.00", "10.00", "40.00", "30.00", "20.00", "20.00", "20.00", "80.00", "60.00"),
+        ("510.00", "460.00", "410.00", "1,740.00", "1,530.00", "920.00", "870.00", "820.00", "3,280.00", "2,860.00"),
+        ("400.00", "360.00", "320.00", "1,400.00", "1,200.00", "700.00", "650.00", "600.00", "2,600.00", "2,200.00"),
+        ("110.00", "100.00", "90.00", "340.00", "330.00", "220.00", "220.00", "220.00", "680.00", "660.00"),
+        ("28.00", "25.00", "22.00", "85.00", "80.00", "55.00", "55.00", "55.00", "170.00", "160.00"),
+        ("82.00", "75.00", "68.00", "255.00", "250.00", "165.00", "165.00", "165.00", "510.00", "500.00"),
+        ("1.50", "1.40", "1.20", "4.50", "4.00", "3.00", "3.00", "3.00", "9.50", "9.00"),
+    ]) + [("9 Basic EPS", ("1.50", "1.40", "1.20", "4.50", "4.00", "3.00", "3.00", "3.00", "9.50", "9.00"))]
+    table = cmp.read_page(_page_n(rows, dates, title="Financial Results STAND-ALONE CONSOLIDATED"))
+    table["values"].pop(5, None)
+    halves = cmp._split_side_by_side(table)
+    assert halves is not None and halves[1]["values"][0] == {}
+    cmp._table_rows(_conn(), "MICEL", "INE000A01001", "doc1", 2, "2026-05-15T12:00:00", table, {}, [])
+
+
+def test_side_by_side_eps_decimals_come_from_whole_table():
+    """c91 03fcddb7 p3: standalone half prints EPS '213 181' (points lost), consolidated '1.90 3.04': 2.13, not 213."""
+    dates = ("30.06.2025", "31.03.2025", "30.06.2024", "31.03.2025") * 2
+    rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00", "900.00", "850.00", "800.00", "3,200.00"),
+        ("10.00", "10.00", "10.00", "40.00", "20.00", "20.00", "20.00", "80.00"),
+        ("510.00", "460.00", "410.00", "1,740.00", "920.00", "870.00", "820.00", "3,280.00"),
+        ("400.00", "360.00", "320.00", "1,400.00", "700.00", "650.00", "600.00", "2,600.00"),
+        ("110.00", "100.00", "90.00", "340.00", "220.00", "220.00", "220.00", "680.00"),
+        ("28.00", "25.00", "22.00", "85.00", "55.00", "55.00", "55.00", "170.00"),
+        ("82.00", "75.00", "68.00", "255.00", "165.00", "165.00", "165.00", "510.00"),
+        ("213", "181", "050", "294", "2.15", "1.90", "0.50", "3.04"),
+    ])
+    table = cmp.read_page(_page_n(rows, dates, title="Financial Results STANDALONE CONSOLIDATED"))
+    halves = cmp._split_side_by_side(table)
+    assert halves is not None and all(h["eps_decimals"] == 2 for h in halves)
+    stored = cmp._table_rows(_conn(), "C91", "INE000A01001", "doc1", 3, "2025-08-01T12:00:00", table, {}, [])
+    sa = {r[6]: r[11] for r in stored if r[7] == "standalone" and r[9] == "eps_basic"}
+    assert sa and all(v < 10 for v in sa.values()), sa
+
 def test_fill_negative_cost_does_not_abort_text_layer_table():
     """GREENPOWER c1e7c4d2 p27: OCR fill reading '(228)' on a missing cost cell never rejects the clean table."""
     dates = ("30.06.2025", "31.03.2025", "30.06.2024", "31.03.2025")

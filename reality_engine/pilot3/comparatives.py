@@ -1513,7 +1513,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         return []
     roles, basis, scale = choice["roles"], choice["basis"], choice["scale"]
     rupee_tol = _tol("total_income", decimals, scale)
-    eps_dec = _eps_decimals(values)
+    eps_dec = table.get("eps_decimals", _eps_decimals(values))
     shares = _shares(conn, symbol, basis, known_at)
     chosen = _choose_rows(values, roles, end, xbrl, basis, scale, decimals, rupee_tol, eps_dec)
     columns = _parsed_cells(values, roles, chosen, decimals, eps_dec, scale, table["labels"], review,
@@ -1747,16 +1747,20 @@ def _split_side_by_side(table: dict) -> list[dict] | None:
     else:
         half_dates = (None, None)
     halves: list[dict] = []
+    eps_dec = table.get("eps_decimals", _eps_decimals(table["values"]))   # one half may print EPS without points
     for i, basis in enumerate(sides):
         offset = i * half
         half_anchors = anchors[offset:offset + half]
         half_table = dict(table)
         half_table["anchors"] = half_anchors
-        half_table["values"] = {at - offset: col for at, col in table["values"].items()
-                                if offset <= at < offset + half}
+        # keep the build's default-empty columns: a half whose column holds no figure must read as empty
+        half_table["values"] = defaultdict(lambda: defaultdict(list),
+                                           {at - offset: col for at, col in table["values"].items()
+                                            if offset <= at < offset + half})
         half_table["dates"] = half_dates[i]
         half_table["hint"] = _layout_hint(table.get("header_rows") or [], half_anchors)
         half_table["basis"] = basis
+        half_table["eps_decimals"] = eps_dec
         halves.append(half_table)
     return halves
 
