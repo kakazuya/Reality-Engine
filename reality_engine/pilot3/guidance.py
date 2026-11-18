@@ -76,8 +76,7 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from . import profile
-from . import schema
+from . import linked_transcripts, profile, schema
 from .transcripts import split_sentences, _same_person, non_results_call
 
 COLS = ("symbol isin metric target_period low high unit direction said_on doc_key page quote speaker "
@@ -1031,15 +1030,29 @@ def _question_entities(con: sqlite3.Connection, symbol: str) -> dict[tuple[str, 
         "SELECT doc_key, answer_turn, entities, question FROM transcript_question WHERE symbol=?", (symbol,))}
 
 
+def _raw_company_names(con: sqlite3.Connection, symbol: str) -> list[str]:
+    """Raw names of the reporting company (symbol and every name the store files it under)."""
+    names = [symbol] if symbol else []
+    if con.execute("SELECT 1 FROM sqlite_master WHERE name='company'").fetchone():
+        for (name,) in con.execute("SELECT name FROM company WHERE symbol=?", (symbol,)):
+            if name and name not in names:
+                names.append(name)
+    return names
+
+
 def own_entity_names(con: sqlite3.Connection, symbol: str) -> list[str]:
     """Normalised names of the reporting company (symbol and every name the store files it under), so an entity
     that IS the company is not read as a subsidiary's."""
-    names = {symbol}
-    if con.execute("SELECT 1 FROM sqlite_master WHERE name='company'").fetchone():
-        for (name,) in con.execute("SELECT name FROM company WHERE symbol=?", (symbol,)):
-            if name:
-                names.add(name)
-    return [re.sub(r"[^a-z]", "", str(n).lower()) for n in names if n and len(re.sub(r"[^a-z]", "", str(n).lower())) >= 2]
+    return [re.sub(r"[^a-z]", "", str(n).lower())
+            for n in _raw_company_names(con, symbol) if n and len(re.sub(r"[^a-z]", "", str(n).lower())) >= 2]
+
+
+def _reporting_entity(entity: str, entity_unsure: bool, parent: str | None,
+                      sentence: str, symbol: str, company_names: tuple[str, ...]) -> tuple[str, bool]:
+    """Attribute a parent-call sentence to ``parent`` unless the sentence names the store's own subsidiary."""
+    if parent and not linked_transcripts.mentions_company(sentence, symbol, company_names, parent):
+        return parent, False
+    return entity, entity_unsure
 
 
 def _norm_entity(raw: str | None) -> str:
@@ -1501,7 +1514,8 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                       revenue_cr: float | None = None, analysts: tuple[str, ...] = (),
                       question_entities: dict[int, tuple[str, str]] | None = None,
                       own_names: list[str] | None = None,
-                      known_ents: set[str] | None = None) -> list[tuple]:
+                      known_ents: set[str] | None = None,
+                      raw_names: tuple[str, ...] | list[str] | None = None) -> list[tuple]:
     """Guidance rows (without revision_of) from one page: transcript statements when held, else split sentences.
     On a transcript page without statements a sentence is kept only when its speaker is not one the document
     itself introduced as a questioner (T-166): an analyst's words are never a company target."""
@@ -1546,6 +1560,8 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                 continue                # the moderator introduced this speaker as a questioner, never management
             items.append((s, s, speaker, "", 0))
     doc_title = doc["title"] or ""
+    parent = linked_transcripts.parent_company_of(doc_title)
+    company_names = tuple(raw_names) if raw_names is not None else tuple(own_names)
     docper = (None if (doc["doc_type"] or "") == "transcript" and non_results_call(doc_title)
               else doc_period(doc["filing_date"], doc["known_at"]))
     # the call period comes from the filing record, never from a year mentioned in the text
@@ -1574,6 +1590,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             seen_spend.add(key)
             entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, sp["start"],
                                                     own_ents, q_ents, q_text, people)
+            entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names)
             rows.append((symbol, doc["isin"], "project_capital_spent", period, sp["low"], sp["high"], sp["unit"],
                          direction_of(sentence, "project_capital_spent"),
                          (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
@@ -1608,6 +1625,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
             if CUE.search(sentence) and not external_forecast(sentence, previous):
                 entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, 0, own_ents, q_ents, q_text,
                                                         people)
+                entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names)
                 row = worded_row(symbol, doc, page, sentence, quote, speaker, before, call_period, docper, stats,
                                  entity, entity_unsure)
                 if row:
@@ -1629,6 +1647,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
                     continue
                 entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, cell["num"]["start"],
                                                         own_ents, q_ents, q_text, people)
+                entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names)
                 rows.append((symbol, doc["isin"], cell["metric"], period, cell["num"]["low"], cell["num"]["high"],
                              cell["num"]["unit"], direction_of(sentence, cell["metric"]),
                              (doc["filing_date"] or (doc["known_at"] or "")[:10]), doc["doc_key"], page, quote,
@@ -1766,6 +1785,7 @@ def extract_sentences(symbol: str, doc: sqlite3.Row, page: int, raw: str, statem
         # sentence's own scope (India, the company, its own mine/project) beats the question's entity (round 5).
         entity, entity_unsure = sentence_entity(own_names, known_ents, sentence, chosen["start"],
                                                 own_ents, q_ents, q_text, people)
+        entity, entity_unsure = _reporting_entity(entity, entity_unsure, parent, sentence, symbol, company_names)
         rows.append((symbol, doc["isin"], metric, period, chosen["low"], chosen["high"], chosen["unit"],
                      direction_of(sentence, metric or "other"), (doc["filing_date"] or (doc["known_at"] or "")[:10]),
                      doc["doc_key"], page, quote, speaker, doc["known_at"], "doc.known_at",
@@ -1789,6 +1809,7 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
         statements = _transcript_statements(con, symbol)
         asked = _question_entities(con, symbol)
         own_names = own_entity_names(con, symbol)
+        raw_names = tuple(_raw_company_names(con, symbol))
         known_ents = known_entity_names(con, symbol)
         revenue_cr = company_scale_cr(con, symbol)
         # one row per (metric, period, value, unit, said_on) for the whole run: the BSE/NSE copies and the several
@@ -1816,7 +1837,7 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
                 for row in extract_sentences(symbol, doc, page, text, by_page.get(page, []), st,
                                              mgmt_speakers, bool(doc_rows), revenue_cr, analysts,
                                              {turn: ents for (doc_key, turn), ents in asked.items()
-                                              if doc_key == doc["doc_key"]}, own_names, known_ents):
+                                              if doc_key == doc["doc_key"]}, own_names, known_ents, raw_names):
                     sig = (row[0], row[2], row[3], row[4], row[5], row[6], row[8])
                     if sig in seen:
                         st["duplicate"] += 1

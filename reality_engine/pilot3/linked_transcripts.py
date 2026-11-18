@@ -48,6 +48,65 @@ CLUSTER_GAP_DAYS = 45
 BSE_PDF_URL = "https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname={name}"
 MIN_INTERVAL_S = 1.0                      # <= one request a second per host
 LAST_REQUEST: dict[str, float] = {}
+_PARENT_CALL_RX = re.compile(r"parent company call:\s*(.+?)\s*\(linked from", re.I)
+_OWN_SUFFIX_RX = re.compile(r"(?:corporation|limited|ltd|corp|private|pvt|inc|llp)$")
+
+
+def parent_call_title(label: str, parent: str | None, exchange: str, filing_id: str) -> str:
+    """Format a linked-doc headline, labelling a parent-company call so extractors credit the parent."""
+    parent_co = str(parent or "").strip()
+    if parent_co:
+        return f"{label} - parent company call: {parent_co} (linked from {exchange} filing {filing_id})"
+    return f"{label} (linked from {exchange} filing {filing_id})"
+
+
+def parent_company_of(title: str | None) -> str | None:
+    """Return the parent company name from a parent-call doc title, or None for any other document."""
+    if not title:
+        return None
+    match = _PARENT_CALL_RX.search(str(title))
+    if not match:
+        return None
+    name = match.group(1).strip()
+    return name or None
+
+
+def _strip_own_suffix(name: str) -> str:
+    cur = re.sub(r"[^a-z0-9]", "", name.lower())
+    while True:
+        nxt = _OWN_SUFFIX_RX.sub("", cur)
+        if nxt == cur or len(nxt) < 4:
+            return cur
+        cur = nxt
+
+
+def mentions_company(text: str | None, symbol: str, company_names: Iterable[str] = (),
+                     parent: str | None = None) -> bool:
+    """True when ``text`` names the store company (its symbol or a distinctive token of its own names)."""
+    if not text:
+        return False
+    from . import link_follow
+
+    raw_names = [str(n).strip() for n in (symbol, *company_names) if n and str(n).strip()]
+    word_tokens = list(link_follow._distinctive_name_tokens(raw_names))
+    for raw in raw_names:
+        if " " in raw:
+            continue
+        stem = _strip_own_suffix(raw)
+        if len(stem) >= 4 and stem not in link_follow.COMPANY_STOPWORDS and stem not in word_tokens:
+            word_tokens.append(stem)
+    if parent:
+        parent_tokens = set(link_follow._distinctive_name_tokens(parent))
+        word_tokens = [tok for tok in word_tokens if tok not in parent_tokens]
+    for tok in word_tokens:
+        if re.search(rf"\b{re.escape(tok)}\b", text, re.I):
+            return True
+    sym = str(symbol or "").strip()
+    if sym:
+        flags = 0 if len(sym) < 4 else re.I
+        if re.search(rf"\b{re.escape(sym)}\b", text, flags):
+            return True
+    return False
 
 
 # --------------------------------------------------------------------------- URLs

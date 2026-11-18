@@ -194,3 +194,19 @@ def test_bse_candidates_orders_transcripts_before_meet_outcomes():
             ]
     got = lt.bse_candidates("517354", "2025-01-10", "2025-01-31", Client())
     assert [g["url"].rsplit("=", 1)[-1] for g in got] == ["t.pdf", "m.pdf"]
+
+
+def test_parent_company_of_and_parent_call_title_round_trip():
+    title = ("transcript of investor conference call 22 07 2025 - parent company call: "
+             "JSW Infrastructure Limited (linked from BSE filing 4b6379f4-6b99-404b-8d2f-587d87973770)")
+    assert lt.parent_company_of(title) == "JSW Infrastructure Limited"
+    assert lt.parent_company_of("transcript of investor conference call 22 07 2025 (linked from BSE filing abc)") is None
+    assert lt.parent_company_of("Conference Call Q1 FY26") is None
+    assert lt.parent_company_of(None) is None
+    built = lt.parent_call_title("transcript of investor conference call 22 07 2025",
+                                 "JSW Infrastructure Limited", "BSE",
+                                 "4b6379f4-6b99-404b-8d2f-587d87973770")
+    assert built == title
+    plain = lt.parent_call_title("transcript of investor conference call 22 07 2025", None, "BSE", "abc")
+    assert plain == "transcript of investor conference call 22 07 2025 (linked from BSE filing abc)"
+    assert lt.parent_company_of(plain) is None
