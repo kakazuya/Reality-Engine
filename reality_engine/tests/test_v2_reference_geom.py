@@ -522,3 +522,39 @@ def test_merged_column_headers_and_serial_columns_are_not_titles():
              _w(360, 10, "ended"), _w(388, 10, "31"), _w(401, 10, "March"), _w(429, 10, "2023"),
              _w(10, 25, "Revenue"), _w(205, 25, "10"), _w(380, 25, "12")]
     assert not rg.Page(words).title_line(0)
+
+
+def test_round7_title_shapes():
+    """Review round 7 (agy 20261118T174950Z-f3c64eb4): a two-"ENDED" title sentence is still a title; a right-hand
+    Unit column and a repeated "Financial Results" group row do not make a title."""
+    W = lambda x0, y0, x1, y1, t: (x0, y0, x1, y1, t)   # noqa: E731
+    title = [W(20, 10, 70, 18, "STATEMENT"), W(75, 10, 85, 18, "OF"), W(90, 10, 125, 18, "RESULTS"),
+             W(135, 10, 150, 18, "FOR"), W(160, 10, 175, 18, "THE"), W(185, 10, 220, 18, "QUARTER"),
+             W(228, 10, 253, 18, "ENDED"), W(265, 10, 315, 18, "30.09.2026"), W(325, 10, 340, 18, "AND"),
+             W(350, 10, 370, 18, "YEAR"), W(378, 10, 403, 18, "ENDED"), W(415, 10, 465, 18, "31.03.2026"),
+             W(220, 25, 255, 33, "Quarter"), W(262, 25, 287, 33, "Ended"),
+             W(370, 25, 405, 33, "Quarter"), W(412, 25, 437, 33, "Ended"),
+             W(225, 38, 275, 46, "30.09.2025"), W(375, 38, 425, 46, "30.09.2024"),
+             W(10, 55, 70, 63, "Total Income"), W(230, 55, 270, 63, "8,262.96"), W(380, 55, 420, 63, "7,500.00"),
+             W(10, 70, 80, 78, "Total Expenses"), W(230, 70, 270, 78, "7,000.00"), W(380, 70, 420, 78, "6,400.00")]
+    cells, _ = rg.settle_page([[_cell("Total Income", "Quarter Ended > 30.09.2026", "8,262.96")]], title)
+    assert not _conf(cells, "8,262.96")
+    unit = [W(180, 10, 210, 18, "Before"), W(218, 10, 273, 18, "exceptional"), W(280, 10, 305, 18, "items"),
+            W(312, 10, 327, 18, "and"), W(335, 10, 350, 18, "tax"), W(400, 10, 425, 18, "After"), W(432, 10, 447, 18, "tax"),
+            W(180, 25, 230, 33, "31.03.2025"), W(300, 25, 350, 33, "31.03.2025"), W(420, 25, 440, 33, "Unit"),
+            W(10, 40, 40, 48, "Profit"), W(185, 40, 200, 48, "100"), W(305, 40, 315, 48, "75"), W(420, 40, 445, 48, "Lakhs"),
+            W(10, 55, 30, 63, "Loss"), W(185, 55, 195, 63, "10"), W(305, 55, 310, 63, "7"), W(420, 55, 445, 63, "Lakhs")]
+    # KNOWN GAP (review r7 4.2): a group header over a non-figure "Unit" column heads no column, so a reader's
+    # "After tax" is ignored and the date alone confirms. Refusing printed-but-unheaded words cost 72 right cells on the
+    # 60 dev reference pages, so it is documented, not fixed.
+    assert not rg.Page(unit).title_line(1)
+    group = [W(180, 10, 230, 18, "Standalone"), W(236, 10, 281, 18, "Financial"), W(286, 10, 321, 18, "Results"),
+             W(332, 10, 392, 18, "Consolidated"), W(398, 10, 443, 18, "Financial"), W(448, 10, 483, 18, "Results"),
+             W(180, 25, 230, 33, "31.03.2025"), W(260, 25, 310, 33, "31.03.2024"),
+             W(340, 25, 390, 33, "31.03.2025"), W(420, 25, 470, 33, "31.03.2024"),
+             W(10, 40, 45, 48, "Revenue"), W(185, 40, 200, 48, "100"), W(265, 40, 275, 48, "90"), W(345, 40, 360, 48, "400"),
+             W(425, 40, 440, 48, "350"),
+             W(10, 55, 30, 63, "Cost"), W(185, 55, 195, 63, "60"), W(265, 55, 275, 63, "55"), W(345, 55, 360, 63, "240"),
+             W(425, 55, 440, 63, "210")]
+    cells, _ = rg.settle_page([[_cell("Revenue", "Consolidated Financial Results > 31.03.2025", "100")]], group)
+    assert not _conf(cells, "100")

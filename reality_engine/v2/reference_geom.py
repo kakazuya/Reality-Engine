@@ -334,9 +334,16 @@ class Page:
             return True
         if words and re.fullmatch(r"(?:particulars|s\.?\s*no\.?|s[il1]\.?|sr\.?|no\.?)", words[0].strip(",.:;()").casefold()):
             return False
-        period_hits = Counter(t for t in (_tok(w) for w in words) if t in ("quarter", "month", "months", "year", "ended"))
-        if any(n >= 2 for n in period_hits.values()):
-            return False                              # two column headers run together ("Quarter ... Quarter ...")
+        toks = [_tok(w) for w in words]
+        sentence = any(t in ("and", "of", "statement", "results", "financial", "unaudited", "audited") for t in toks)
+        period_hits = Counter(t for t in toks if t in ("quarter", "month", "months", "year", "ended"))
+        if any(n >= 2 for n in period_hits.values()) and not sentence:
+            return False      # two column headers run together ("Quarter ... Quarter ..."); a title sentence
+                              # ("... QUARTER ENDED 30.09.2026 AND YEAR ENDED ...") repeats "ended" too (review r7)
+        content = Counter(t for t in toks if len(t) > 3 and t.isalpha() and t not in
+                          ("quarter", "month", "months", "year", "ended", "with", "from", "that", "this"))
+        if any(n >= 2 for n in content.values()):
+            return False      # "Standalone Financial Results  Consolidated Financial Results": a group row (review r7)
         gap = max(14.0, 1.5 * self.h)
         runs: list[list[int]] = [[idx[0]]] if idx else []
         for a, b in zip(idx, idx[1:]):
@@ -349,12 +356,14 @@ class Page:
             return False
         figs = []                                  # table figures: right of each line's row label (no serial nos.)
         for m in range(line + 1, min(len(self.lines), line + 12)):
-            lab = max((self.words[j][2] for j in self.lines[m] if re.search(r"[A-Za-z]{2}", self.words[j][4])),
-                      default=None)
-            if lab is not None:
-                figs += [j for j in self.lines[m] if self._digit_figure(j) and self.words[j][0] > lab]
+            first_fig = min((self.words[j][0] for j in self.lines[m] if self._digit_figure(j)
+                             and any(re.search(r"[A-Za-z]{2}", self.words[k][4]) and self.words[k][2] < self.words[j][0]
+                                     for k in self.lines[m])), default=None)
+            if first_fig is not None:              # the LEFT label run ends before the first figure after it; a
+                figs += [j for j in self.lines[m]  # "Lakhs"/"Unit" column right of the figures moves nothing
+                         if self._digit_figure(j) and self.words[j][0] >= first_fig]
         if not figs:
-            return True
+            return False                           # no table under it to judge against: not a title (review r7)
         x0, x1 = min(self.words[j][0] for j in figs), max(self.words[j][2] for j in figs)
         span = min(self.words[longest[-1]][2], x1) - max(self.words[longest[0]][0], x0)
         # one phrase over (nearly) every column decides no column; a phrase running in from the label area over
@@ -625,6 +634,16 @@ class Page:
             if cur and (w[0] - self.words[cur[-1]][2] > gap or (moved and period) or restart or touching):
                 out.append(self._phrase(cur))
                 cur = []
+            elif cur and cols and len(_tok(w[4])) > 3 and _tok(w[4]) in {_tok(self.words[k][4]) for k in cur}:
+                # a content word repeats ("Standalone Financial Results  Consolidated Financial Results"): two
+                # headers run together; split where the words start sitting nearest another column (review r7)
+                def near(k: int) -> int:
+                    c = (self.words[k][0] + self.words[k][2]) / 2
+                    return min(range(len(cols)), key=lambda q: abs(centres[q] - c))
+                cut = next((x for x in range(1, len(cur)) if near(cur[x]) != near(cur[0])), None)
+                if cut is not None:
+                    out.append(self._phrase(cur[:cut]))
+                    cur = cur[cut:]
             cur.append(j)
             last_col = col
         if cur:
