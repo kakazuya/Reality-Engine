@@ -20,6 +20,7 @@ import bisect
 import datetime as dt
 from typing import Any
 
+import core
 import lookups_pilot3 as p3
 from core import DataError
 
@@ -79,18 +80,57 @@ def _adj(row: dict) -> float | None:
     return row["adj_close"] if row["adj_close"] is not None else row["close"]
 
 
-def _prov(row: dict) -> dict[str, Any]:
+def _prov(row: dict, exchange: str = EXCHANGE) -> dict[str, Any]:
     day = row["date"]
-    return {"table": "price_delivery", "source": f"{EXCHANGE} {day}", "known_at": row.get("known_at") or day}
+    table = row.get("_source_table") or "price_delivery"
+    return {"table": table, "source": f"{exchange} {day}", "known_at": row.get("known_at") or day}
 
 
-def _sessions(sym: str, as_of: str) -> list[dict]:
+def _sessions(sym: str, as_of: str, exchange: str = EXCHANGE) -> list[dict]:
     rows = p3._q(
         "SELECT date, open, high, low, close, prev_close, volume, delivery_pct, adj_close, known_at "
         "FROM price_delivery WHERE symbol=? AND exchange=? AND date<=? ORDER BY date",
-        (sym, EXCHANGE, as_of),
+        (sym, exchange, as_of),
     )
     return [dict(r) for r in rows]
+
+
+def _bse_market_sessions(sym: str, as_of: str) -> list[dict]:
+    """Fallback to DuckDB market tables (px_bse_adj, then px_bse) when the store has no BSE rows."""
+    try:
+        identity = core.resolve_one(sym)
+        isins = core._identity_isins(identity)
+        symbols = core._identity_symbols(identity, sym)
+        bse_code = identity.get("bse_code")
+        if bse_code and str(bse_code).upper() not in symbols:
+            symbols.append(str(bse_code).upper())
+        end_d = dt.date.fromisoformat(as_of)
+        start_d = dt.date(1990, 1, 1)
+        for table in ("px_bse_adj", "px_bse"):
+            _, rows = core._price_table(table, isins, symbols, start_d, end_d, 10000)
+            if not rows:
+                continue
+            out: list[dict] = []
+            for r in rows:
+                d = r.get("date")
+                day = d.isoformat() if isinstance(d, dt.date) else str(d)[:10]
+                out.append({
+                    "date": day,
+                    "open": r.get("open"),
+                    "high": r.get("high"),
+                    "low": r.get("low"),
+                    "close": r.get("close"),
+                    "prev_close": r.get("prev_close"),
+                    "volume": r.get("volume"),
+                    "delivery_pct": r.get("delivery_pct"),
+                    "adj_close": r.get("adj_close"),
+                    "known_at": day,
+                    "_source_table": table,
+                })
+            return out
+    except Exception:
+        return []
+    return []
 
 
 def _index_moves(sym: str, as_of: str) -> tuple[str | None, dict[str, float]]:
@@ -121,9 +161,9 @@ def _reply(sym: str, kind: str, as_of: str, found: bool = True, rows: list | Non
                            "method": METHODS[kind], "n": len(rows), "rows": rows, **extra,
                            "provenance": p3._db_prov()}
     if not found:
-        out["hint"] = (f"NOT IN DATA of pilot3 for {sym} / {kind} / as_of {as_of}: the build holds no NSE session "
-                       "for that day, too little history for the measure, or no filing of the requested doc_type; "
-                       "widen the range or check pilot3_docs, then say NOT IN DATA.")
+        out["hint"] = (f"NOT IN DATA of pilot3 for {sym} / {kind} / as_of {as_of}: the build holds no NSE or BSE "
+                       "session for that day, too little history for the measure, or no filing of the requested "
+                       "doc_type; widen the range or check pilot3_docs, then say NOT IN DATA.")
     return out
 
 
@@ -156,7 +196,7 @@ def day0_for(dates: list[str], known_at: str) -> tuple[int | None, str]:
 
 
 def _reaction(sym: str, px: list[dict], as_of: str, start: str | None, end: str | None, sessions: int,
-              doc_type: str, limit: int) -> dict[str, Any]:
+              doc_type: str, limit: int, exchange: str = EXCHANGE) -> dict[str, Any]:
     dtype = p3._DOC_TYPES.get(doc_type.strip().lower(), doc_type.strip().lower())
     where = ["symbol=?", "doc_type=?", "known_at IS NOT NULL", "substr(known_at,1,10)<=?"]
     args: list[Any] = [sym, dtype, as_of]
@@ -205,7 +245,7 @@ def _reaction(sym: str, px: list[dict], as_of: str, start: str | None, end: str 
                 "volume_mean_20": _r(prior_mean),
                 "delivery_pct": _r(row["delivery_pct"]),
                 "index_pct": index_pct.get(row["date"]),
-                "provenance": _prov(row),
+                "provenance": _prov(row, exchange),
             })
         entry.update({"day0": px[i0]["date"], "rows": rows,
                       "cum_1d_pct": rows[0]["cum_pct"] if rows else None,
@@ -213,13 +253,14 @@ def _reaction(sym: str, px: list[dict], as_of: str, start: str | None, end: str 
                       "cum_window_pct": rows[-1]["cum_pct"] if rows else None,
                       "window_sessions": len(rows)})
         filings.append(entry)
+    extra = {"source": "bse"} if exchange == "BSE" else {}
     return _reply(sym, "reaction", as_of, bool(filings), filings, index_name=index_name,
-                  doc_type=dtype, start=start, end=end, sessions=sessions)
+                  doc_type=dtype, start=start, end=end, sessions=sessions, **extra)
 
 
 # --- gaps --------------------------------------------------------------------------------------------
 def _gaps(sym: str, px: list[dict], as_of: str, start: str | None, end: str | None,
-          threshold: Any) -> dict[str, Any]:
+          threshold: Any, exchange: str = EXCHANGE) -> dict[str, Any]:
     gap_threshold = _threshold(threshold, 0.03)
     window_end = end or as_of
     if start is None:
@@ -262,12 +303,14 @@ def _gaps(sym: str, px: list[dict], as_of: str, start: str | None, end: str | No
             "delivery_mean_250": _r(delivery_mean),
             "delivery_ratio": _r(row["delivery_pct"] / delivery_mean) if row["delivery_pct"] is not None
             and delivery_mean else None,
-            "provenance": _prov(row),
+            "provenance": _prov(row, exchange),
         })
+    extra = {"source": "bse"} if exchange == "BSE" else {}
     return _reply(sym, "gaps", as_of, True, rows, threshold=round(gap_threshold, 4),
                   start=window_start, end=window_end,
                   note=None if rows else f"no session gapped by {gap_threshold * 100:g}% or more in "
-                                         f"{window_start}..{window_end}")
+                                         f"{window_start}..{window_end}",
+                  **extra)
 
 
 # --- RSI (Wilder 14 on adjusted close) ---------------------------------------------------------------
@@ -292,7 +335,7 @@ def _wilder(closes: list[float], period: int = 14) -> list[float | None]:
     return out
 
 
-def _rsi(sym: str, px: list[dict], as_of: str, window: Any) -> dict[str, Any]:
+def _rsi(sym: str, px: list[dict], as_of: str, window: Any, exchange: str = EXCHANGE) -> dict[str, Any]:
     closes = [_adj(row) for row in px]
     prices = [c for c in closes if c is not None]
     values = _wilder(prices, 14)
@@ -307,7 +350,8 @@ def _rsi(sym: str, px: list[dict], as_of: str, window: Any) -> dict[str, Any]:
             defined.append((i, value))
     points = defined[-n:]
     rsi_at = dict(points)
-    series = [{"date": px[i]["date"], "adj_close": _r(prices[i]), "rsi": _r(value), "provenance": _prov(px[i])}
+    series = [{"date": px[i]["date"], "adj_close": _r(prices[i]), "rsi": _r(value),
+               "provenance": _prov(px[i], exchange)}
               for i, value in points]
     divergence: dict[str, Any] = {"window": len(points), "bullish_divergence": False, "bearish_divergence": False,
                                   "lows": [], "highs": []}
@@ -318,20 +362,21 @@ def _rsi(sym: str, px: list[dict], as_of: str, window: Any) -> dict[str, Any]:
         highs = sorted(indexes, key=lambda i: (-prices[i], i))[:2]
         highs.sort()
         divergence["lows"] = [{"date": px[i]["date"], "adj_close": _r(prices[i]), "rsi": _r(rsi_at[i]),
-                               "provenance": _prov(px[i])} for i in lows]
+                               "provenance": _prov(px[i], exchange)} for i in lows]
         divergence["highs"] = [{"date": px[i]["date"], "adj_close": _r(prices[i]), "rsi": _r(rsi_at[i]),
-                                "provenance": _prov(px[i])} for i in highs]
+                                "provenance": _prov(px[i], exchange)} for i in highs]
         divergence["bullish_divergence"] = (prices[lows[1]] < prices[lows[0]]
                                             and rsi_at[lows[1]] > rsi_at[lows[0]])
         divergence["bearish_divergence"] = (prices[highs[1]] > prices[highs[0]]
                                             and rsi_at[highs[1]] < rsi_at[highs[0]])
     last = len(px) - 1
+    extra = {"source": "bse"} if exchange == "BSE" else {}
     return _reply(sym, "rsi", as_of, True, [], rsi=_r(values[last]), rsi_date=px[last]["date"],
-                  adj_close=_r(prices[last]), window=len(points), series=series, divergence=divergence)
+                  adj_close=_r(prices[last]), window=len(points), series=series, divergence=divergence, **extra)
 
 
 # --- SMA 50 / 200 ------------------------------------------------------------------------------------
-def _sma_block(px: list[dict], closes: list[float | None], period: int) -> dict[str, Any]:
+def _sma_block(px: list[dict], closes: list[float | None], period: int, exchange: str = EXCHANGE) -> dict[str, Any]:
     prices = [c for c in closes if c is not None]
     if len(prices) != len(closes) or len(prices) < period:
         return {"period": period, "insufficient_history": True, "sessions_available": len(closes),
@@ -360,18 +405,20 @@ def _sma_block(px: list[dict], closes: list[float | None], period: int) -> dict[
     return {"period": period, "insufficient_history": False, "value": _r(values[last]), "adj_close": _r(prices[last]),
             "pct_vs_sma": _pct(prices[last], values[last]), "last_cross": last_cross,
             "last_cross_direction": last_cross_direction, "sessions": len(prices),
-            "provenance": _prov(px[last])}
+            "provenance": _prov(px[last], exchange)}
 
 
-def _ma(sym: str, px: list[dict], as_of: str) -> dict[str, Any]:
+def _ma(sym: str, px: list[dict], as_of: str, exchange: str = EXCHANGE) -> dict[str, Any]:
     closes = [_adj(row) for row in px]
-    rows = [_sma_block(px, closes, period) for period in (50, 200)]
+    rows = [_sma_block(px, closes, period, exchange) for period in (50, 200)]
+    extra = {"source": "bse"} if exchange == "BSE" else {}
     return _reply(sym, "ma", as_of, True, rows, close=_r(px[-1]["close"]), close_date=px[-1]["date"],
-                  adj_close=_r(closes[-1]))
+                  adj_close=_r(closes[-1]), **extra)
 
 
 # --- volume spikes -----------------------------------------------------------------------------------
-def _volume_spikes(sym: str, px: list[dict], as_of: str, threshold: Any) -> dict[str, Any]:
+def _volume_spikes(sym: str, px: list[dict], as_of: str, threshold: Any,
+                   exchange: str = EXCHANGE) -> dict[str, Any]:
     multiple_threshold = _float(threshold, 3.0)
     if multiple_threshold <= 0:
         raise DataError("bad_threshold", f"threshold must be a positive volume multiple, got {threshold!r}")
@@ -393,15 +440,17 @@ def _volume_spikes(sym: str, px: list[dict], as_of: str, threshold: Any) -> dict
         rows.append({"date": row["date"], "volume": row["volume"], "multiple": _r(multiple),
                      "close": row["close"], "ret_pct": _pct(row["close"], row["prev_close"]),
                      "delivery_pct": _r(row["delivery_pct"]),
-                     "volume_mean_20": _r(mean), "provenance": _prov(row)})
+                     "volume_mean_20": _r(mean), "provenance": _prov(row, exchange)})
+    extra = {"source": "bse"} if exchange == "BSE" else {}
     return _reply(sym, "volume_spikes", as_of, True, rows, threshold=multiple_threshold,
                   start=window_start, end=window_end, baseline="mean volume of the prior 20 sessions",
                   note=None if rows else f"no session traded {multiple_threshold:g}x its prior-20 mean or more in "
-                                         f"{window_start}..{window_end}")
+                                         f"{window_start}..{window_end}",
+                  **extra)
 
 
 # --- 52-week range -----------------------------------------------------------------------------------
-def _range(sym: str, px: list[dict], as_of: str) -> dict[str, Any]:
+def _range(sym: str, px: list[dict], as_of: str, exchange: str = EXCHANGE) -> dict[str, Any]:
     window_start = (dt.date.fromisoformat(as_of) - dt.timedelta(days=365)).isoformat()
     window = [row for row in px if row["date"] >= window_start and row["close"] is not None]
     if not window:
@@ -424,9 +473,10 @@ def _range(sym: str, px: list[dict], as_of: str) -> dict[str, Any]:
         "window_start": window_start,
         "window_end": last["date"],
         "sessions": len(window),
-        "provenance": _prov(last),
+        "provenance": _prov(last, exchange),
     }
-    return _reply(sym, "range", as_of, True, [row], window_start=window_start)
+    extra = {"source": "bse"} if exchange == "BSE" else {}
+    return _reply(sym, "range", as_of, True, [row], window_start=window_start, **extra)
 
 
 # --- entry point -------------------------------------------------------------------------------------
@@ -436,6 +486,7 @@ def tech(symbol: str, kind: str, as_of: str | None = None, start: str | None = N
     """Price reaction to a filing, gaps, Wilder RSI, SMA 50/200 crosses, volume spikes, 52-week range.
 
     kind: reaction | gaps | rsi | ma | volume_spikes | range.  as_of drops every session after that day.
+    Falls back to BSE closes (store ``price_delivery`` then market tables) when NSE has no sessions by the date.
     """
     sym = p3.resolve_symbol(symbol)
     name = (kind or "").strip().lower().replace("-", "_")
@@ -446,18 +497,25 @@ def tech(symbol: str, kind: str, as_of: str | None = None, start: str | None = N
     end_day = p3._day(end, "end")
     if start_day and end_day and start_day > end_day:
         raise DataError("bad_range", f"start {start_day} is after end {end_day}")
-    px = _sessions(sym, asof)
+    exchange = EXCHANGE
+    px = _sessions(sym, asof, EXCHANGE)
+    need_bse = (not px) or (name in ("gaps", "reaction") and end_day and not any(r["date"] <= end_day for r in px))
+    if need_bse:
+        bse_px = _sessions(sym, asof, "BSE") or _bse_market_sessions(sym, asof)
+        if bse_px and (not px or (end_day and any(r["date"] <= end_day for r in bse_px))):
+            px = bse_px
+            exchange = "BSE"
     if not px:
-        return _reply(sym, name, asof, False, [], reason="no NSE session on or before as_of")
+        return _reply(sym, name, asof, False, [], reason="no NSE or BSE session on or before as_of")
     if name == "reaction":
         return _reaction(sym, px, asof, start_day, end_day, _int(sessions, 5, 1, 30), doc_type,
-                         p3._cap(limit, 10))
+                         p3._cap(limit, 10), exchange)
     if name == "gaps":
-        return _gaps(sym, px, asof, start_day, end_day, threshold)
+        return _gaps(sym, px, asof, start_day, end_day, threshold, exchange)
     if name == "rsi":
-        return _rsi(sym, px, asof, window)
+        return _rsi(sym, px, asof, window, exchange)
     if name == "ma":
-        return _ma(sym, px, asof)
+        return _ma(sym, px, asof, exchange)
     if name == "volume_spikes":
-        return _volume_spikes(sym, px, asof, threshold)
-    return _range(sym, px, asof)
+        return _volume_spikes(sym, px, asof, threshold, exchange)
+    return _range(sym, px, asof, exchange)

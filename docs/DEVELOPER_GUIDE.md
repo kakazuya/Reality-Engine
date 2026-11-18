@@ -2250,7 +2250,9 @@ failed answer with no note. `note list`, `INDEX.md` and the grid's notes sheet l
   `--approve-loss` skips the row gate.
 - `note add|set|list` keeps one entry per defect under `tasks/store_repair/` (`notes.jsonl` plus a generated
   `INDEX.md`); stores are named by build folder, never by company. Every repair and accept appends one line to
-  `<root>/repair_log.jsonl`; database copies are kept for the 2 newest runs per store.
+  `<root>/repair_log.jsonl`; database copies are kept for the 2 newest runs per store. `store_diff._checkpoint` waits
+  up to 120 s and retries when another process holds a read lock, and if a store stays locked `store_repair` restores
+  it, records `skipped: database locked` in `repair_log.jsonl`, and continues with the next store.
 - Shivam 16 Nov: every fix is written up like one notebook cell. A note also carries `--code` (file::function,
   comma list: where the fix lives), `--tables` (the store tables it touches), `--tags` and `--scope general|company`
   (a rule for every company, or a fix that holds for one only). Shivam 16 Nov (evening): every patch is written up

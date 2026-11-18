@@ -6,12 +6,15 @@ no git, no subprocess.  The failing-part case injects a fake builder, as the CLI
 from __future__ import annotations
 
 import sqlite3
+import threading
+import time
 import uuid
 from pathlib import Path
 
 import pytest
 
-from reality_engine.scripts.store_diff import (build_gates, build_side, churn_gates, diff_store, golden_gates)
+from reality_engine.scripts.store_diff import (_checkpoint, build_gates, build_side, churn_gates, diff_store,
+                                               golden_gates)
 
 DDL = """
 CREATE TABLE kpi_series (id INTEGER PRIMARY KEY, symbol TEXT, metric TEXT, dimension TEXT, value REAL,
@@ -145,3 +148,48 @@ def test_churn_gate_skips_the_named_target_store(tmp_path):
     assert churn_gates(tables, 2.0, tmp_path / "pilot10.db", None)[0]["gate"] == "churn"
     assert churn_gates(tables, 2.0, tmp_path / "pilot10.db", "pilot10") == []
     assert churn_gates(tables, 6.0, tmp_path / "pilot10.db", "other") == []
+
+
+def test_checkpoint_waits_for_active_reader_and_succeeds(tmp_path):
+    db = tmp_path / "wal_store.db"
+    con = sqlite3.connect(db)
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("CREATE TABLE t (x INTEGER)")
+    con.execute("INSERT INTO t VALUES (1)")
+    con.commit()
+    con.close()
+
+    reader = sqlite3.connect(f"file:{db.as_posix()}?mode=ro", uri=True)
+    reader.execute("BEGIN")
+    assert reader.execute("SELECT x FROM t").fetchall() == [(1,)]
+
+    writer = sqlite3.connect(db)
+    writer.execute("INSERT INTO t VALUES (2)")
+    writer.commit()
+    writer.close()
+
+    errors: list[BaseException] = []
+
+    def run_checkpoint():
+        try:
+            _checkpoint(db)
+        except BaseException as exc:  # noqa: BLE001 - capture any failure from worker thread
+            errors.append(exc)
+
+    thread = threading.Thread(target=run_checkpoint)
+    thread.start()
+    time.sleep(1.0)
+    assert thread.is_alive()
+    reader.commit()
+    reader.close()
+    thread.join(timeout=15)
+
+    assert not thread.is_alive()
+    assert errors == []
+    assert not Path(f"{db}-wal").exists()
+    check = sqlite3.connect(db)
+    try:
+        assert check.execute("PRAGMA journal_mode").fetchone()[0].lower() == "delete"
+        assert check.execute("SELECT x FROM t ORDER BY x").fetchall() == [(1,), (2,)]
+    finally:
+        check.close()
