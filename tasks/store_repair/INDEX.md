@@ -16,6 +16,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-021 | fix_written | wrong | 9/91 (scan) | 3 |  | 27 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c89, c90, c91 |
 | R-018 | open | missed | 9/91 (scan) | 1 | 1 (1) | 10 | holding | general |  |
 | R-023 | open | wrong | 1/91 (suspect) | 3 |  | 3 | stores | general |  |
+| R-024 | open | wrong | 1/91 (scan) | 3 |  | 3 | guidance | general |  |
 | R-022 | fix_written | missed | 2/91 (scan) | 1 |  | 2 | segments | general |  |
 | R-001 | open | missed |  | 1 |  |  | guidance | general |  |
 | R-002 | fix_written | missed |  | 1 |  |  | docs_collect | general | c08 |
@@ -327,4 +328,17 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Code:** -
 - **Store tables touched:** fin_quarter_printed
 - **Tags:** eps, discontinued_ops; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-024 (open, part `guidance`, opened 2026-11-18)
+
+1. **Why it had to be done** (question that exposed it, c08): Does JSW Infrastructure's deck capex belong in NAVKARCORP's store, and under which entity?
+2. **What the problem was:** c08 NAVKARCORP guidance holds ~120 capex rows with entity='' (Navkar's own) taken from investor decks filed under Navkar that present JSW Infrastructure's port projects, e.g. 'Construction of 7mtpa berth to handle dry bulk cargo, Estimated Capex Rs 600 crore', 'Estimated Capex Rs 2,359 Crore Dharamtar', 'Estimated Capex Rs 4,119 crore' (docs 16043a7f, 235173f5 and earlier quarterly decks). **Root cause:** The decks are filed on the exchange under NAVKARCORP but are the parent's (JSW Infra) group decks; guidance takes a deck's projects as the store company's own. The 18 Nov parent-calls ruling covers call transcripts only.
+3. **What was missing:** A ruling: whether a parent's deck belongs in the subsidiary's store, and if so under the parent's entity (as parent-call transcripts now are).
+4. **How it was fixed:** None until Shivam rules. If yes: type such decks as parent documents (reporting entity = parent) the same way link_follow labels parent calls, so kpi/guidance take entity = parent unless the sentence names the subsidiary.
+5. **What can come next:** QUESTION FOR SHIVAM (raised by Eagle and Wolf, 18 Nov). Decks unchanged meanwhile.
+- **Kind:** wrong (a parent's project capex served as the subsidiary's own guidance); **severity:** 1/91 companies (scan); **criticality:** 3; **trial questions failed:** -; **priority:** 3
+- **Code:** -
+- **Store tables touched:** guidance, kpi_series
+- **Tags:** parent_company, deck, ruling_needed; **scope:** general
 - **Stores repaired:** -; runs: -
