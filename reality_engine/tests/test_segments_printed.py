@@ -254,3 +254,55 @@ def test_ensure_unique_with_basis_rebuilds_once_and_allows_both_bases():
     # second call is a no-op
     assert kpi.ensure_unique_with_basis(con) is False
     assert con.execute("SELECT id FROM kpi_series ORDER BY id").fetchall() == [(10,), (25,), (26,)]
+
+
+def test_swap_ocr_ignores_rarer_typo_variant_and_resolves_chain():
+    """RSWM: 'yam' (11 blocks) and 'a_yam' (4 blocks) both resolve to 'yarn' (27 blocks)."""
+    by_block = {}
+    for i in range(27):
+        by_block[("doc1", 7, "standalone", "rev", f"P{i}")] = {"fabric", "yarn"}
+    for i in range(11):
+        by_block[("doc2", 6, "standalone", "rev", f"Q{i}")] = {"fabric", "yam"}
+    for i in range(4):
+        by_block[("doc3", 11, "standalone", "liab", f"R{i}")] = {"fabric", "a_yam"}
+    mapping = {n: n for n in ("fabric", "yarn", "yam", "a_yam")}
+    out = S._swap_ocr(by_block, mapping)
+    assert out == {"fabric": "fabric", "yarn": "yarn", "yam": "yarn", "a_yam": "yarn"}
+
+
+def test_choose_columns_accepts_segment_revenue_between_pl_revenue_and_total_income():
+    """MICEL: segment revenue including non-interest other income sits within [revenue_from_operations, total_income]."""
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE fin_quarter_printed (symbol TEXT, basis TEXT, period_end TEXT, "
+                "period_type TEXT, line_item TEXT, value REAL, scale REAL, doc_key TEXT, page INTEGER)")
+    pl_rows = [
+        ("MICEL", "standalone", "2026-03-31", "quarter", "revenue_from_operations", 507949000.0, 1.0, "d1", 2),
+        ("MICEL", "standalone", "2026-03-31", "quarter", "total_income", 511418000.0, 1.0, "d1", 2),
+        ("MICEL", "standalone", "2025-12-31", "quarter", "revenue_from_operations", 126305000.0, 1.0, "d1", 2),
+        ("MICEL", "standalone", "2025-12-31", "quarter", "total_income", 127772000.0, 1.0, "d1", 2),
+        ("MICEL", "standalone", "2025-03-31", "quarter", "revenue_from_operations", 280672000.0, 1.0, "d1", 2),
+        ("MICEL", "standalone", "2025-03-31", "quarter", "total_income", 283737000.0, 1.0, "d1", 2),
+        ("MICEL", "standalone", "2026-03-31", "fy", "revenue_from_operations", 872783000.0, 1.0, "d1", 2),
+        ("MICEL", "standalone", "2026-03-31", "fy", "total_income", 884402000.0, 1.0, "d1", 2),
+        ("MICEL", "standalone", "2025-03-31", "fy", "revenue_from_operations", 617285000.0, 1.0, "d1", 2),
+        ("MICEL", "standalone", "2025-03-31", "fy", "total_income", 629469000.0, 1.0, "d1", 2),
+    ]
+    con.executemany("INSERT INTO fin_quarter_printed VALUES (?,?,?,?,?,?,?,?,?)", pl_rows)
+    table = {
+        "end": "2026-03-31",
+        "decimals": 2,
+        "scale": 1e5,
+        "anchors": [100.0, 200.0, 300.0, 400.0, 500.0],
+        "dates": [(3, 2026), (12, 2025), (3, 2025), (3, 2026), (3, 2025)],
+        "cells": [
+            S.Cell(metric="_revenue_line", name="", column=0, value=5092.31, raw="5092.31", quote="", repaired=False),
+            S.Cell(metric="_revenue_line", name="", column=1, value=1263.20, raw="1263.20", quote="", repaired=False),
+            S.Cell(metric="_revenue_line", name="", column=2, value=2810.84, raw="2810.84", quote="", repaired=False),
+            S.Cell(metric="_revenue_line", name="", column=3, value=8780.26, raw="8780.26", quote="", repaired=False),
+            S.Cell(metric="_revenue_line", name="", column=4, value=6211.04, raw="6211.04", quote="", repaired=False),
+        ],
+    }
+    periods, sc, how = S.choose_columns(con, "MICEL", table, [0, 1, 2, 3, 4], "standalone", 1e5, "d1", 4)
+    assert sc == 1e5 and periods is not None
+    assert periods[0][1] == "Q4FY26" and periods[3][1] == "FY26"
+    assert "total_income" in how

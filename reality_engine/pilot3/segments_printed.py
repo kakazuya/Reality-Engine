@@ -330,11 +330,14 @@ def choose_columns(conn, symbol: str, table: dict, group: list[int], basis: str,
     roles and the printed unit, and its year-to-date revenue total may not be below its quarter's.  P&L rows read
     from this same page (``doc_key``, ``page``) are left out: a page never confirms itself."""
     pl: dict[tuple, list[float]] = defaultdict(list)
-    for end, ptype, value in conn.execute(
-            "SELECT period_end, period_type, value * coalesce(scale, 1) FROM fin_quarter_printed WHERE symbol=? AND "
-            "basis=? AND line_item='revenue_from_operations' AND NOT (doc_key IS ? AND page IS ?)",
+    pl_ti: dict[tuple, list[float]] = defaultdict(list)
+    for end, ptype, item, value in conn.execute(
+            "SELECT period_end, period_type, line_item, value * coalesce(scale, 1) FROM fin_quarter_printed "
+            "WHERE symbol=? AND basis=? AND line_item IN ('revenue_from_operations','total_income') "
+            "AND NOT (doc_key IS ? AND page IS ?)",
             (symbol, basis, doc_key, page)):
-        pl[(end, "fy" if ptype == "fy" else ("quarter" if ptype == "quarter" else "ytd"))].append(value)
+        key = (end, "fy" if ptype == "fy" else ("quarter" if ptype == "quarter" else "ytd"))
+        (pl if item == "revenue_from_operations" else pl_ti)[key].append(value)
     cells = [c for c in table["cells"] if c.column in group]
     rev = {c.column: c.value for c in cells if c.metric == "_revenue_line"}
     strong = bool(rev)
@@ -344,34 +347,58 @@ def choose_columns(conn, symbol: str, table: dict, group: list[int], basis: str,
     cands = role_candidates(table, group)
     if not cands:
         return None, None, "header dates contradict the column roles"
-    best, any_miss = None, False
+    best, bounded, near, any_miss = None, None, None, False
     for k, roles in enumerate(cands):
         periods = periods_for(roles, group, table["end"])
         if periods is None:
             continue
         for j, sc in enumerate(([page_scale] if page_scale else []) + [s for s in (1e5, 1e7, 1e6, 1e3) if s != page_scale]):
-            hits = misses = 0
+            hits = misses = b_hits = b_misses = near_misses = 0
+            own_ok = True
             for col, v in rev.items():
                 p = periods.get(col)
                 if p is None:
                     continue
-                want = pl.get((p[0], _coarse(p[2])))
+                k_pl = (p[0], _coarse(p[2]))
+                want = pl.get(k_pl)
                 if not want:
                     continue
                 if any(abs(v * sc - x) <= 0.5 * unit * sc + 0.002 * abs(x) for x in want):
                     hits += 1
+                    b_hits += 1
                 else:
                     misses += 1
+                    tis = pl_ti.get(k_pl) or want
+                    tol = 0.5 * unit * sc + 0.002 * max(abs(x) for x in want + tis)
+                    lo, hi = min(want) - tol, max(want + tis) + tol
+                    if lo <= v * sc <= hi:
+                        b_hits += 1
+                    else:
+                        b_misses += 1
+                        if p[4]:
+                            own_ok = False
+                        if hi > 0 and abs(v * sc - hi) <= 0.05 * hi:
+                            near_misses += 1
+                        else:
+                            near_misses += 10
             # every column with a P&L figure must agree (strong revenue line or the segment total alike): one
             # coincidental match never outweighs a shifted order
-            if misses:
-                any_miss = any_miss or hits > 0 or strong
+            if not misses:
+                rank = (hits, -k, -j)
+                if hits and (best is None or rank > best[0]):
+                    best = (rank, periods, sc)
                 continue
-            rank = (hits, -k, -j)
-            if hits and (best is None or rank > best[0]):
-                best = (rank, periods, sc)
+            any_miss = any_miss or hits > 0 or strong
+            if not b_misses and b_hits and (bounded is None or (b_hits, -k, -j) > bounded[0]):
+                bounded = ((b_hits, -k, -j), periods, sc)
+            elif k == 0 and sc == page_scale and own_ok and b_hits >= 3 and b_misses == 1 and near_misses == 1:
+                near = (periods, sc)
     if best:
         return best[1], best[2], "revenue line = P&L revenue"
+    if bounded:
+        return bounded[1], bounded[2], "revenue line within P&L [revenue, total_income]"
+    if near:
+        return near[0], near[1], "revenue line matches P&L (one prior column restated)"
     if any_miss:
         return None, None, "revenue line disagrees with the P&L under every column order"
     if not page_scale:
@@ -508,12 +535,20 @@ def _swap_ocr(by_block: dict, mapping: dict[str, str], ratio: float = 0.5) -> di
             rest = names - {r}
             fits = {next(iter(t - rest)) for t, ks in support.items()
                     if len(ks - {key}) >= 2 and len(t) == len(names) and rest < t}
-            fits = {f for f in fits if f not in names and SequenceMatcher(None, r, f).ratio() >= ratio}
-            if len(fits) == 1 and blocks_of[r] < blocks_of[next(iter(fits))]:
+            fits = {f for f in fits if f not in names and blocks_of[f] > blocks_of[r]
+                    and not any(r in s and f in s for _k, s in sets)
+                    and SequenceMatcher(None, r, f).ratio() >= ratio}
+            if len(fits) == 1:
                 f = fits.pop()
-                for n, c in mapping.items():
+                for n, c in list(out.items()):
                     if c == r:
                         out[n] = f
+    for n, c in list(out.items()):
+        seen = {n}
+        while c in out and out[c] != c and out[c] not in seen:
+            seen.add(c)
+            c = out[c]
+        out[n] = c
     return out
 
 
