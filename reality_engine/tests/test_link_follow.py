@@ -14,6 +14,22 @@ pymupdf = pytest.importorskip("pymupdf")
 from reality_engine.pilot3 import docs_collect, link_follow as lf, schema  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _isolate_master_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(lf, "MASTER_DB", tmp_path / "unused_master.db")
+
+
+def _make_master_db(path: Path, rows: list[tuple[str, int | None]]) -> Path:
+    mconn = sqlite3.connect(path)
+    mconn.execute(
+        "CREATE TABLE master_companies (isin TEXT, nse_symbol TEXT, bse_code TEXT, company_name TEXT, is_active INTEGER)"
+    )
+    mconn.executemany("INSERT INTO master_companies (company_name, is_active) VALUES (?,?)", rows)
+    mconn.commit()
+    mconn.close()
+    return path
+
+
 def _make_pdf(pages: list[str], link_uri: str | None = None) -> bytes:
     doc = pymupdf.open()
     for idx, text in enumerate(pages):
@@ -1126,10 +1142,12 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
 
 # --------------------------------------------------------------------------- Parent calls (T-223, 18 Nov ruling)
 def test_parent_names_from_shp_holder(tmp_path: Path):
+    master_db = _make_master_db(tmp_path / "master.db", [("JSW Infrastructure Limited", 1)])
+
     no_shp_db = tmp_path / "no_shp.db"
     conn_no = _init_store(no_shp_db)
-    assert lf._parent_names(conn_no, "NAVKAR", ["NAVKAR", "Navkar Corporation Limited"]) == []
-    assert lf._company_meta(conn_no)["NAVKAR"]["parents"] == []
+    assert lf._parent_names(conn_no, "NAVKAR", ["NAVKAR", "Navkar Corporation Limited"], master_db=master_db) == []
+    assert lf._company_meta(conn_no, master_db=master_db)["NAVKAR"]["parents"] == []
     conn_no.close()
 
     db_path = tmp_path / "shp.db"
@@ -1138,6 +1156,10 @@ def test_parent_names_from_shp_holder(tmp_path: Path):
     conn.execute(
         "INSERT INTO company VALUES ('NAVKARCORP','INE278M01019','2020-01-01',NULL,'logistics','539332',"
         "'Navkar Corporation Limited')"
+    )
+    conn.execute(
+        "INSERT INTO company VALUES ('SEAMECLTD','INE497B01018','2020-01-01',NULL,'shipping','526807',"
+        "'Seamec Limited')"
     )
     conn.executemany(
         "INSERT INTO shp_holder (symbol, quarter_end, category, holder_name, pct) VALUES (?,?,?,?,?)",
@@ -1148,13 +1170,23 @@ def test_parent_names_from_shp_holder(tmp_path: Path):
             ("NAVKARCORP", "2026-09-30", "Promoter", "Jsw Port Logistics Private Limited", 70.37),
             ("NAVKARCORP", "2026-09-30", "Promoter", "JSW Infrastructure Limited", 0.0),
             ("NAVKARCORP", "2026-09-30", "Public", "Some Mutual Fund", 5.0),
+            # (f) Unlisted majority holders not in master_companies
+            ("SEAMECLTD", "2026-09-30", "Promoter", "HAL OFFSHORE LIMITED", 51.0),
+            ("SEAMECLTD", "2026-09-30", "Promoter", "Some Holdco Limited", 60.0),
         ],
     )
     conn.commit()
 
+    # (a) Listed parent returned; Private Limited & non-majority non-group excluded
     own = ["NAVKARCORP", "Navkar Corporation Limited"]
-    assert lf._parent_names(conn, "NAVKARCORP", own) == ["JSW Infrastructure Limited"]
-    assert lf._company_meta(conn)["NAVKARCORP"]["parents"] == ["JSW Infrastructure Limited"]
+    assert lf._parent_names(conn, "NAVKARCORP", own, master_db=master_db) == ["JSW Infrastructure Limited"]
+    assert lf._company_meta(conn, master_db=master_db)["NAVKARCORP"]["parents"] == ["JSW Infrastructure Limited"]
+
+    # (f) Unlisted majority holders not in master_companies -> []
+    assert lf._parent_names(conn, "SEAMECLTD", ["SEAMECLTD", "Seamec Limited"], master_db=master_db) == []
+
+    # (g) Missing master_db file -> []
+    assert lf._parent_names(conn, "NAVKARCORP", own, master_db=tmp_path / "missing_master.db") == []
     conn.close()
 
 
@@ -1276,10 +1308,12 @@ def test_check_candidate_and_apply_plan_parent_company_transcript(tmp_path: Path
     conn.commit()
     conn.close()
 
+    master_db = _make_master_db(tmp_path / "master.db", [("JSW Infrastructure Limited", 1)])
     items = lf.plan_store(
         db_path,
         symbols=["NAVKARCORP"],
         get=lambda u: (u, "application/pdf", jsw_tx_pdf),
+        master_db=master_db,
     )
     assert len(items) == 1
     assert items[0]["outcome"] == "resolved"

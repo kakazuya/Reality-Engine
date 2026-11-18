@@ -29,6 +29,7 @@ from reality_engine.db.readonly import connect_ro
 from reality_engine.pilot3 import call_dates, doc_identity, linked_transcripts
 
 DEFAULT_RAW_ROOT = Path(r"D:\RealityEngine\raw\linked_docs")
+MASTER_DB = Path(__file__).resolve().parents[2] / "reality_engine" / "data" / "equity_intelligence.db"
 MAX_BYTES = 40 * 1024 * 1024
 REQUEST_TIMEOUT_S = 60.0
 SITE_MAX_LINKS_PER_PAGE = 12
@@ -894,10 +895,62 @@ def _holder_first_word(name: str) -> str:
     return parts[0].strip(".,;:").upper() if parts else ""
 
 
+def _master_name_variants(name: str) -> list[str]:
+    variants = [name]
+    if re.search(r"\bLimited\b", name, re.I):
+        variants.append(re.sub(r"\bLimited\b", "Ltd", name, flags=re.I))
+        variants.append(re.sub(r"\bLimited\b", "Ltd.", name, flags=re.I))
+    if re.search(r"\bLtd\.?(?=\s|$)", name, re.I):
+        variants.append(re.sub(r"\bLtd\.?(?=\s|$)", "Limited", name, flags=re.I))
+        variants.append(re.sub(r"\bLtd\.?(?=\s|$)", "Ltd", name, flags=re.I))
+    return list(dict.fromkeys(v.strip() for v in variants if v.strip()))
+
+
+def _filter_listed_parents(candidates: list[str], master_db: Path | str | None) -> list[str]:
+    if not candidates:
+        return []
+    raw_path = master_db if master_db is not None else MASTER_DB
+    if not str(raw_path).strip():
+        return []
+    db_path = Path(raw_path)
+    if not db_path.is_file():
+        return []
+    mconn: sqlite3.Connection | None = None
+    try:
+        mconn = connect_ro(db_path, timeout_s=10.0)
+        listed: list[str] = []
+        seen: set[str] = set()
+        for cand in candidates:
+            matched: str | None = None
+            for variant in _master_name_variants(cand):
+                cur = mconn.execute(
+                    "SELECT company_name FROM master_companies "
+                    "WHERE LOWER(company_name)=LOWER(?) AND COALESCE(is_active,1)=1 LIMIT 1",
+                    (variant,),
+                )
+                row = cur.fetchone() if cur is not None else None
+                if row and row[0]:
+                    matched = str(row[0]).strip()
+                    break
+            if matched:
+                key = matched.lower()
+                if key not in seen:
+                    seen.add(key)
+                    listed.append(matched)
+        return listed
+    except sqlite3.Error:
+        return []
+    finally:
+        if mconn is not None:
+            mconn.close()
+
+
 def _parent_names(
     conn: sqlite3.Connection,
     symbol: str,
     own_names: Iterable[str] | str | None,
+    *,
+    master_db: Path | str | None = None,
 ) -> list[str]:
     has_shp = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shp_holder'"
@@ -933,7 +986,7 @@ def _parent_names(
                 group_tokens.add(tok)
 
     own_tokens = set(_distinctive_name_tokens(own_names))
-    parents: list[str] = []
+    candidates: list[str] = []
     seen: set[str] = set()
     for name, pct in parsed:
         if not _PUBLIC_HOLDER_RE.search(name) or _PRIVATE_HOLDER_RE.search(name):
@@ -947,11 +1000,15 @@ def _parent_names(
         key = name.lower()
         if key not in seen:
             seen.add(key)
-            parents.append(name)
-    return parents
+            candidates.append(name)
+    return _filter_listed_parents(candidates, master_db)
 
 
-def _company_meta(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
+def _company_meta(
+    conn: sqlite3.Connection,
+    *,
+    master_db: Path | str | None = None,
+) -> dict[str, dict[str, Any]]:
     meta: dict[str, dict[str, Any]] = {}
     cols = {row[1] for row in conn.execute("PRAGMA table_info(company)")}
     name_col = "name" if "name" in cols else ("company_name" if "company_name" in cols else "NULL")
@@ -972,7 +1029,7 @@ def _company_meta(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
         if name and str(name).strip() and str(name).strip() not in entry["names"]:
             entry["names"].append(str(name).strip())
     for sym_u, entry in meta.items():
-        entry["parents"] = _parent_names(conn, sym_u, entry["names"])
+        entry["parents"] = _parent_names(conn, sym_u, entry["names"], master_db=master_db)
     return meta
 
 
@@ -1228,6 +1285,7 @@ def plan_store(
     *,
     get: GetFn | None = None,
     symbols: Iterable[str] | None = None,
+    master_db: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     """Build fetch plan items for ``link_only`` and ``not_fetched`` (transcript/deck/results/annual_report) rows."""
     get_fn = get or default_get
@@ -1242,7 +1300,7 @@ def plan_store(
         held_shas = {str(sha).lower() for (sha,) in conn.execute("SELECT sha256 FROM doc WHERE sha256 IS NOT NULL")}
         held_tx, held_decks = _load_held_call_index(conn)
         held_res_ar = _load_held_doc_dates(conn, ("results", "annual_report"))
-        meta = _company_meta(conn)
+        meta = _company_meta(conn, master_db=master_db)
 
         link_rows = conn.execute(
             "SELECT exchange, filing_id, symbol, isin, filed_at, held_doc_key, link_urls "
@@ -1621,6 +1679,7 @@ def find_site_docs(
     get: GetFn | None = None,
     since: str = "2024-04-01",
     kinds: Iterable[str] | None = None,
+    master_db: Path | str | None = None,
 ) -> dict[str, Any]:
     """Discover a company's website from held doc page-1 text, crawl investor pages, and validate call PDFs."""
     get_fn = get or default_get
@@ -1640,7 +1699,7 @@ def find_site_docs(
                     "items": [], "verdict": "no_website"}
         held_shas = {str(sha).lower() for (sha,) in conn.execute("SELECT sha256 FROM doc WHERE sha256 IS NOT NULL")}
         held_tx, held_decks = _load_held_call_index(conn)
-        meta = _company_meta(conn)
+        meta = _company_meta(conn, master_db=master_db)
         info = meta.get(sym_u, {"isin": None, "bse_code": None, "names": [sym_u], "parents": []})
     finally:
         if should_close:
