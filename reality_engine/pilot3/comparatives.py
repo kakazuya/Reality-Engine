@@ -65,6 +65,7 @@ _TITLE = re.compile(r"\bresults\b")
 # A ratio or margin row is never a rupee line; a discontinued-only row is never the continuing/total line.
 _PCT_LABEL = re.compile(r"%|\bmargin")
 _DISCONTINUED_LABEL = re.compile(r"\bdiscontinu(?:ed|ing)\b|\bdiscounting\s+operations\b|[-–]ounting\s+operations\b")
+_CONTINUING_HEADING = re.compile(r"\bcontinuing\b|\bcon\s*t[i1l]n\s*[ui1l]\s*\w*\s+op")
 _COST_ITEMS = ("finance_cost", "depreciation", "employee_cost", "total_expenses", "other_expenses",
                "cost_of_materials")
 _INCOME_ITEMS = ("revenue_from_operations", "total_income", "interest_income", "net_premium", "gross_premium")
@@ -826,15 +827,31 @@ def read_page(rows, ocr: bool = False) -> dict | None:
         return None
     values: dict = defaultdict(lambda: defaultdict(list))
     captions: dict[str, str] = {}
+    section: str | None = None
     for index, row in enumerate(data_rows):
         label, joined = labels[index]
+        cells = _assign_tokens(row, anchors)
+        if not _tokens(_strip_row_number(row)) or not cells:
+            low_lbl = label.lower()
+            is_disc = bool(_DISCONTINUED_LABEL.search(low_lbl))
+            is_cont = bool(_CONTINUING_HEADING.search(_norm(label)))
+            if is_disc and not is_cont:
+                section = "discontinued"
+            elif is_cont and not is_disc:
+                section = "continuing"
+            elif is_disc and is_cont:
+                section = None
+            continue
         # A printed label names the row only from its own start (a prefix word such as "Net" or "(b)" is allowed,
         # a phrase buried mid-label is not: "Profit/(Loss) after exceptional item and tax from discontinued
         # operations" is not the exceptional-items line; T-208 round 3).
         item = match_line(label, anchor=2, prefix_ok=ocr)
         if item is None:
             continue
-        cells = _assign_tokens(row, anchors)
+        if not item.startswith("eps_"):
+            section = None
+        elif section == "discontinued":
+            continue
         if len(cells) < 2:          # a badly scanned table keeps a row whose cells partly print (MARUTI)
             continue
         captions.setdefault(item, label.strip())
