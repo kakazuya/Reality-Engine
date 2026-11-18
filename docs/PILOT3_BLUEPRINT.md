@@ -1599,7 +1599,8 @@ and `collect_manifest`, so a rebuild and a profile build behave the same) reads 
   raise a transcript's date to its call, T-049 review) is more than 120 days *before* `filing_date` takes that date as
   `filing_date` and `<date>T23:59:59` as `known_at`; `source_record.date_source='printed'` plus
   `record_filing_date`/`record_known_at`/`record_type` record the change. A date that a period-end phrase
-  ('quarter ended', 'year ended', 'as on') introduces is never a call date (R-011 follow-up, 18 Nov). A date is never moved later and only pages
+  ('quarter ended', 'year ended', 'as on') introduces is never a call date (R-011 follow-up, 18 Nov). Dates may print
+  as "May 31,2024" or "06-August-2026"; the call date is read from pages 1-3. A date is never moved later and only pages
   1-3 are read, so a 2026 call that mentions 2018 on page 5 keeps its date. The date rule is a transcript's only: a
   results PDF prints its period end (SAIL 2020-09-14 -> 2015 comparatives only, and SAIL 2021-10-29 -> 2021-06-30 is a
   121-day gap) and a deck prints its period start (a HINDALCO Q4 FY25 deck filed 2025-11-21 prints "April 1, 2025"),

@@ -256,12 +256,13 @@ def call_period_ok(period: str | None, known_at: str | None, title: str | None =
     return filing_quarter(known_at)
 
 
-def call_date_of(first_page: str, known_at: str | None) -> str | None:
-    """The call's date: ``call_dates.call_date`` (a date a call cue such as 'held on' introduces, either day order,
-    any case, else the first date printed), else ``known_at``.  One reader for both modules: the regex this module
-    had took a cover letter's own date (R-011), and its 'held on' variant took any 'call on <date>' (review)."""
+def call_date_of(texts: list[str], known_at: str | None) -> str | None:
+    """The call's date: ``call_dates.call_date`` across the first pages (a date a call cue such as 'held on'
+    introduces, either day order, any case, skipping period-end dates, else the first date printed), else
+    ``known_at``.  One reader for both modules: the regex this module had took a cover letter's own date (R-011),
+    and its 'held on' variant took any 'call on <date>' (review)."""
     from .call_dates import call_date
-    found = call_date([first_page])
+    found = call_date(texts)
     if found:
         return found
     return (known_at or "")[:10] or None
@@ -1040,7 +1041,7 @@ def extract_doc(sym: str, doc_key: str, title: str, known_at: str, pages: list[t
     texts = [t for _, t in pages]
     boiler = boilerplate_lines(texts)
     cperiod = call_period_ok(call_period_of(title, texts), known_at, title)
-    cdate = call_date_of(texts[0], known_at)
+    cdate = call_date_of(texts, known_at)
     full = "\n".join(texts)
     doi_mgmt: dict[str, str] = {}
     p_mgmt, p_analysts, p_names = participants(texts, doi_mgmt)

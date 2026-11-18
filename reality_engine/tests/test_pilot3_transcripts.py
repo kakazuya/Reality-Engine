@@ -327,28 +327,28 @@ def test_cover_letter_fields_are_not_speakers():
 
 def test_call_date_prefers_held_on_over_the_cover_letter_date():
     cover = "August 12, 2024\nThe Secretary\nSub: Transcript of Earnings Call held on August 7, 2024, for the quarter"
-    assert transcripts.call_date_of(cover, "2024-08-12T18:40:01") == "2024-08-07"
-    assert transcripts.call_date_of("Earnings call\nFebruary 10, 2026\nModerator: welcome", None) == "2026-02-10"
+    assert transcripts.call_date_of([cover], "2024-08-12T18:40:01") == "2024-08-07"
+    assert transcripts.call_date_of(["Earnings call\nFebruary 10, 2026\nModerator: welcome"], None) == "2026-02-10"
 
 
 def test_call_date_ignores_other_calls_and_reads_day_first_dates():
     """Review of R-011: a previous or next call named in the text is not this call; day-first and upper-case
     dates after 'held on' are read (call_dates.call_date is the one reader)."""
-    assert transcripts.call_date_of("Q2 FY26 Earnings Call\nAugust 8, 2025\nModerator: As indicated on our previous "
-                                    "call on May 14, 2025, demand improved", None) == "2025-08-08"
-    assert transcripts.call_date_of("Q2 FY26 Earnings Call\nAugust 8, 2025\nOur next call on November 10, 2025",
+    assert transcripts.call_date_of(["Q2 FY26 Earnings Call\nAugust 8, 2025\nModerator: As indicated on our previous "
+                                     "call on May 14, 2025, demand improved"], None) == "2025-08-08"
+    assert transcripts.call_date_of(["Q2 FY26 Earnings Call\nAugust 8, 2025\nOur next call on November 10, 2025"],
                                     None) == "2025-08-08"
-    assert transcripts.call_date_of("The earnings call held on Tuesday, 14th May 2024 discussed", "2024-05-16") == \
+    assert transcripts.call_date_of(["The earnings call held on Tuesday, 14th May 2024 discussed"], "2024-05-16") == \
         "2024-05-14"
-    assert transcripts.call_date_of("CALL HELD ON AUGUST 7, 2024", "2024-08-12") == "2024-08-07"
+    assert transcripts.call_date_of(["CALL HELD ON AUGUST 7, 2024"], "2024-08-12") == "2024-08-07"
 
 
 def test_call_date_cue_wrapped_onto_the_next_line():
     """Second review of R-011: a cover letter whose cue ends one line above the call date."""
     letter = ("February 15, 2024\nSub: Transcript\nthe transcript of the said conference call conducted on\n"
               "Thursday, February 08, 2024 is enclosed")
-    assert transcripts.call_date_of(letter, "2024-02-15") == "2024-02-08"
-    assert transcripts.call_date_of("February 15, 2024\nthe transcript of the call was conducted on February 08, 2024",
+    assert transcripts.call_date_of([letter], "2024-02-15") == "2024-02-08"
+    assert transcripts.call_date_of(["February 15, 2024\nthe transcript of the call was conducted on February 08, 2024"],
                                     None) == "2024-02-08"
 
 
@@ -360,7 +360,7 @@ def test_call_date_skips_period_end_on_spmlinfra_cover_letter():
     )
     page2 = "SPML Infra Limited\nQ3 FY26 Earnings Conference Call\nFebruary 17, 2026"
     assert call_dates.call_date([cover, page2]) == "2026-02-17"
-    assert transcripts.call_date_of(cover, None) == "2026-02-17"
+    assert transcripts.call_date_of([cover], None) == "2026-02-17"
     # End-anchored check: 'ended' later in the line must not hide an earlier 'held on' call date
     assert call_dates.call_date(
         ["call held on 17th February, 2026 for the quarter ended 31st December, 2025"]
@@ -378,18 +378,43 @@ def test_call_date_cosmofirst_prefers_cued_call_over_cover_date():
     """T-223 / R-011: COSMOFIRST cover date is ignored when the call cue introduces February 12, 2026."""
     cover = "February 19, 2026 ... the transcript of Analyst/Investor Earning Call held on February 12, 2026."
     assert call_dates.call_date([cover]) == "2026-02-12"
-    assert transcripts.call_date_of(cover, None) == "2026-02-12"
+    assert transcripts.call_date_of([cover], None) == "2026-02-12"
 
 
 def test_call_date_skips_nine_months_ended_before_conference_call_date():
     """T-223 / R-011: period-end date before the conference call sentence is skipped."""
     text = "Results for the quarter and nine months ended December 31, 2025. The conference call was held on February 5, 2026"
     assert call_dates.call_date([text]) == "2026-02-05"
-    assert transcripts.call_date_of(text, None) == "2026-02-05"
+    assert transcripts.call_date_of([text], None) == "2026-02-05"
 
 
 def test_call_date_returns_none_when_only_period_end_printed():
     """T-223 / R-011: a period-end date alone is neither a cued date nor a fallback first date."""
     text = "for the year ended March 31, 2025"
     assert call_dates.call_date([text]) is None
-    assert transcripts.call_date_of(text, None) is None
+    assert transcripts.call_date_of([text], None) is None
+
+
+def test_call_date_reads_comma_without_space():
+    """T-223 / R-011 r2: Premier Explosives cover letter prints 'May 31,2024' with no space after the comma."""
+    text = ("for the fourth quarter and year ended 31st March, 2024. "
+            "Conference Call hosted by, Stellar IR Advisors Private Limited, on May 31,2024")
+    assert call_dates.call_date([text]) == "2024-05-31"
+    assert transcripts.call_date_of([text], None) == "2024-05-31"
+
+
+def test_call_date_reads_dashed_day_month_year_dates():
+    """T-223 / R-011 r2: VIVIANA and COSMOFIRST print hyphen-separated dates."""
+    viviana = "the transcripts of Investor/analyst call held on Thursday, 06-August-2026"
+    cosmofirst = "Q3 & 9M FY25 Earnings Conference Call\n12-February-2025"
+    assert call_dates.call_date([viviana]) == "2026-08-06"
+    assert call_dates.call_date([cosmofirst]) == "2025-02-12"
+    assert transcripts.call_date_of([viviana], None) == "2026-08-06"
+    assert transcripts.call_date_of([cosmofirst], None) == "2025-02-12"
+
+
+def test_call_date_of_reads_pages_1_to_3_when_cover_has_only_period_end():
+    """T-223 / R-011 r2: call_date_of reads pages 1-3 so page 2 beats the filing-date fallback."""
+    page1 = "Date: 13.08.2026\nfor the quarter ended on 30th June, 2026"
+    page2 = "Earnings Conference Call\nAugust 6, 2026"
+    assert transcripts.call_date_of([page1, page2], "2026-08-13T18:00:00") == "2026-08-06"
