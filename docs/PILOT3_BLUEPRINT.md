@@ -890,7 +890,11 @@ Four general rules, no company name in code.
   5/6-column June layouts leave non-March `ytd`/`prior_ytd` slots `None`, `_quarter` returns `None` for
   non-09/12 `ytd`, `_date_match(..., require_year=True)` resolves `[FY, prior FY]` by date rather than default
   position, and a June `last_fy` column writes nothing unless its previous-March year or an XBRL/store FY
-  value matches), a Q4 table's "year ended" column is `ytd`/`prior_ytd` and a five- or six-column Q2/Q3 table
+  value matches; `read_number` rejects leading-comma OCR truncations, `_debit_costs` runs before merging OCR
+  `fill_table` cells, `_continuation` stops before `Notes:` so bottom-of-P&L rows recover, and
+  `_split_side_by_side` splits 8/10/12-column S/C pages into both halves with each half's header basis, paired
+  with `reality_engine/pilot3/segments_printed.py` whose `choose_columns` falls back to
+  `[revenue_from_operations, total_income]` bounds and `_swap_ocr` requires higher-count non-co-occurring targets), a Q4 table's "year ended" column is `ytd`/`prior_ytd` and a five- or six-column Q2/Q3 table
   carries `last_fy`; `_assign_tokens` matches values to columns monotonically, so a missing
   middle cell cannot slide the half-year EPS under the year-ago quarter. `_valuation` picks the basis with both a
   share count and a quarterly statement (a stray consolidated printed page no longer strands the standalone filer,

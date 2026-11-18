@@ -665,7 +665,7 @@ def test_header_dates_merges_split_column_across_adjacent_rows():
 
 
 def test_page_basis_matches_space_split_standalone_before_consolidated():
-    """NILKAMAL 442ae482 p5: 'Standa lone' on left and 'Consolidated' on right names left half standalone."""
+    """NILKAMAL 442ae482 p5: 'Standa lone' on left and 'Consolidated' on right stores both halves with right bases."""
     assert cmp._page_basis("UNAUDITED FINANCIAL RESULTS Standa lone Consolidated") == "standalone"
     dates = ("30.06.2025", "31.03.2025", "30.06.2024", "31.03.2025") * 2
     rows = _june_rows([
@@ -680,8 +680,10 @@ def test_page_basis_matches_space_split_standalone_before_consolidated():
     ])
     table = cmp.read_page(_page_n(rows, dates, title="Financial Results Standa lone Consolidated"))
     stored = cmp._table_rows(_conn(), "NIL", "INE000A01001", "doc1", 5, "2025-08-01T12:00:00", table, {}, [])
-    assert stored and {r[7] for r in stored} == {"standalone"}
-    assert _cells(stored, "revenue_from_operations", "last_fy")[0][11] == 1700 * 1e7
+    assert stored and {r[7] for r in stored} == {"standalone", "consolidated"}
+    sa_rev = [r for r in stored if r[7] == "standalone" and r[9] == "revenue_from_operations" and r[6] == "last_fy"]
+    co_rev = [r for r in stored if r[7] == "consolidated" and r[9] == "revenue_from_operations" and r[6] == "last_fy"]
+    assert sa_rev[0][11] == 1700 * 1e7 and co_rev[0][11] == 3200 * 1e7
 
 
 def test_june_last_fy_drops_unchecked_cell_when_text_and_ocr_disagree():
@@ -707,3 +709,116 @@ def test_june_last_fy_drops_unchecked_cell_when_text_and_ocr_disagree():
     assert _cells(stored, "other_expenses", "last_fy") == []
     assert any(r["check"] == "ocr_text_disagree" and r["line_item"] == "other_expenses" for r in review)
     assert _cells(stored, "total_income", "last_fy")[0][11] == 1740 * 1e7
+
+
+def test_side_by_side_non_june_10col_stores_both_bases():
+    """MICEL a8f6ea20 p2: 10-column STAND-ALONE | CONSOLIDATED table stores all columns for both bases."""
+    dates = ("31.03.2026", "31.12.2025", "31.03.2025", "31.03.2026", "31.03.2025") * 2
+    rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00", "1,500.00", "900.00", "850.00", "800.00", "3,200.00", "2,800.00"),
+        ("10.00", "10.00", "10.00", "40.00", "30.00", "20.00", "20.00", "20.00", "80.00", "60.00"),
+        ("510.00", "460.00", "410.00", "1,740.00", "1,530.00", "920.00", "870.00", "820.00", "3,280.00", "2,860.00"),
+        ("400.00", "360.00", "320.00", "1,400.00", "1,200.00", "700.00", "650.00", "600.00", "2,600.00", "2,200.00"),
+        ("110.00", "100.00", "90.00", "340.00", "330.00", "220.00", "220.00", "220.00", "680.00", "660.00"),
+        ("28.00", "25.00", "22.00", "85.00", "80.00", "55.00", "55.00", "55.00", "170.00", "160.00"),
+        ("82.00", "75.00", "68.00", "255.00", "250.00", "165.00", "165.00", "165.00", "510.00", "500.00"),
+        ("1.50", "1.40", "1.20", "4.50", "4.00", "3.00", "3.00", "3.00", "9.50", "9.00"),
+    ])
+    table = cmp.read_page(_page_n(rows, dates, title="Financial Results STAND-ALONE CONSOLIDATED"))
+    stored = cmp._table_rows(_conn(), "MICEL", "INE000A01001", "doc1", 2, "2026-05-15T12:00:00", table, {}, [])
+    sa = [r for r in stored if r[7] == "standalone" and r[9] == "revenue_from_operations"]
+    co = [r for r in stored if r[7] == "consolidated" and r[9] == "revenue_from_operations"]
+    assert {r[6]: r[11] for r in sa}["current"] == 500 * 1e7
+    assert {r[6]: r[11] for r in co}["current"] == 900 * 1e7
+    assert {r[6]: r[11] for r in sa}["ytd"] == 1700 * 1e7
+    assert {r[6]: r[11] for r in co}["ytd"] == 3200 * 1e7
+
+
+def test_fill_negative_cost_does_not_abort_text_layer_table():
+    """GREENPOWER c1e7c4d2 p27: OCR fill reading '(228)' on a missing cost cell never rejects the clean table."""
+    dates = ("30.06.2025", "31.03.2025", "30.06.2024", "31.03.2025")
+    base_rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00"),
+        ("10.00", "10.00", "10.00", "40.00"),
+        ("510.00", "460.00", "410.00", "1,740.00"),
+        ("400.00", "360.00", "320.00", "1,400.00"),
+        ("110.00", "100.00", "90.00", "340.00"),
+        ("28.00", "25.00", "22.00", "85.00"),
+        ("82.00", "75.00", "68.00", "255.00"),
+        ("1.50", "1.40", "1.20", "4.50"),
+    ])
+    t_text = cmp.read_page(_page_n(base_rows, dates))
+    t_ocr = cmp.read_page(_page_n(base_rows + [("Finance costs", ("5.00", "4.00", "(228)", "20.00"))], dates), ocr=True)
+    review: list[dict] = []
+    stored = cmp._table_rows(_conn(), "GRN", "INE000A01001", "doc1", 27, "2025-08-01T12:00:00",
+                             t_text, {}, review, fill_table=t_ocr)
+    assert stored and not any(r["check"] == "not_pl_costs" for r in review)
+    assert [r for r in stored if r[9] == "finance_cost" and r[6] == "year_ago"] == []
+
+
+def test_continuation_recovers_bottom_of_pl_above_notes():
+    """MENONBE 0e806637 p8: continuation stops before 'Notes:-' summary table and recovers OCI/TCI/EPS."""
+    dates = ("30.06.2025", "31.03.2025", "30.06.2024", "31.03.2025")
+    prev_rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00"),
+        ("10.00", "10.00", "10.00", "40.00"),
+        ("510.00", "460.00", "410.00", "1,740.00"),
+        ("400.00", "360.00", "320.00", "1,400.00"),
+        ("110.00", "100.00", "90.00", "340.00"),
+        ("28.00", "25.00", "22.00", "85.00"),
+        ("82.00", "75.00", "68.00", "255.00"),
+        ("1.50", "1.40", "1.20", "4.50"),
+    ])[:-1] + [("Cost of materials consumed", ("200.00", "180.00", "160.00", "700.00"))]  # 8 rows ending without EPS
+    previous = cmp.read_page(_page_n(prev_rows, dates))
+    cols = previous["anchors"]
+    words = []
+    cont_items = [
+        ("Total Other Comprehensive Income", ("3.36", "15.77", "0.54", "(19.21)")),
+        ("Total Comprehensive Income", ("846.30", "676.40", "616.23", "2,474.25")),
+        ("Basic EPS", ("1.50", "1.18", "1.10", "4.45")),
+        ("Diluted EPS", ("1.50", "1.18", "1.10", "4.45")),
+    ]
+    for idx, (lbl, vals) in enumerate(cont_items):
+        y = 40.0 + 10.0 * idx
+        words.append((20.0, y - 3.0, 140.0, y + 3.0, lbl, 0, 0, 0))
+        words += [(cols[i] - 7.0 * len(v), y - 3.0, cols[i], y + 3.0, v, 0, 0, 0) for i, v in enumerate(vals)]
+    # Notes:- 3-column summary below continuation
+    words.append((20.0, 100.0, 70.0, 106.0, "Notes:-", 0, 0, 0))
+    for r_i, (lbl, v1, v2, v3) in enumerate([("Total Income", "6880.64", "5838.99", "17.84"),
+                                            ("PAT", "842.95", "615.69", "36.91"),
+                                            ("PBT", "1106.08", "822.83", "34.42")]):
+        y = 120.0 + 10.0 * r_i
+        words.append((20.0, y - 3.0, 100.0, y + 3.0, lbl, 0, 0, 0))
+        words += [(260.0 + 80.0 * k, y - 3.0, 310.0 + 80.0 * k, y + 3.0, val, 0, 0, 0)
+                  for k, val in enumerate((v1, v2, v3))]
+    cont = cmp._continuation(cmp.rows_from_words(words), previous)
+    assert cont is not None and len(cont["anchors"]) == 4
+    stored = cmp._table_rows(_conn(), "MEN", "INE000A01001", "doc1", 8, "2025-07-26T12:00:00", cont, {}, [])
+    cur = {r[9]: r[11] for r in stored if r[6] == "current"}
+    assert cur["other_comprehensive_income"] == 3.36 * 1e7
+    assert cur["total_comprehensive_income"] == 846.30 * 1e7
+    assert cur["eps_basic"] == 1.50
+
+
+def test_leading_comma_ocr_token_does_not_veto_clean_text():
+    """ESTER 125d3c0e p7: OCR ',036.28' returns None so it never triggers ocr_text_disagree on clean 7,036.28."""
+    assert cmp.read_number(",036.28", 2) is None
+    dates = ("30.06.2024", "31.03.2024", "30.06.2023", "31.03.2024")
+    base_rows = _june_rows([
+        ("500.00", "450.00", "400.00", "1,700.00"),
+        ("10.00", "10.00", "10.00", "40.00"),
+        ("510.00", "460.00", "410.00", "1,740.00"),
+        ("400.00", "360.00", "320.00", "1,400.00"),
+        ("110.00", "100.00", "90.00", "340.00"),
+        ("28.00", "25.00", "22.00", "85.00"),
+        ("82.00", "75.00", "68.00", "255.00"),
+        ("1.50", "1.40", "1.20", "4.50"),
+    ])
+    t_text = cmp.read_page(_page_n(base_rows + [("Finance costs", ("16.76", "17.98", "16.76", "7,036.28"))], dates))
+    t_ocr = cmp.read_page(_page_n(base_rows + [("Finance costs", ("16.76", "17.98", "16.76", ",036.28"))], dates), ocr=True)
+    review: list[dict] = []
+    stored = cmp._table_rows(_conn(), "EST", "INE000A01001", "doc1", 7, "2024-08-12T12:00:00",
+                             t_text, {}, review, fill_table=t_ocr)
+    fc = _cells(stored, "finance_cost", "last_fy")
+    assert len(fc) == 1 and fc[0][11] == 7036.28 * 1e7
+    assert not any(r["check"] == "ocr_text_disagree" for r in review)

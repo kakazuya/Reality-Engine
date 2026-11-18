@@ -365,6 +365,8 @@ def read_number(raw_text: str, decimals: int) -> tuple[float, bool] | None:
     repaired = bool(re.search(r"[A-Za-z]", text))
     for letter, digit in _OCR.items():
         text = text.replace(letter, digit)
+    if text.startswith(","):
+        return None                     # leading comma is OCR-truncated digits (',036.28' for '7,036.28')
     if not re.fullmatch(r"[\d.,\-–—]+", text):
         return None
     digits = re.sub(r"[^0-9]", "", text)
@@ -1109,9 +1111,25 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
                     continue
                 tables += 1
                 entry["tables"] += 1
+                prev = previous
                 previous = table
-                new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review,
+                page_review: list[dict] = []
+                new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, page_review,
                                   ocr=ocr_all, fill_table=fill_table, store_fy=store_fy, disagreed=disagreed)
+                if not new and prev is not None:
+                    cont = _continuation(ocr_rows if ocr_all else word_rows, prev)
+                    if cont is not None:
+                        cont_review: list[dict] = []
+                        cont_rows = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, cont, xbrl,
+                                                cont_review, ocr=ocr_all, store_fy=store_fy, disagreed=disagreed)
+                        if cont_rows:
+                            table = cont
+                            previous = cont
+                            new = cont_rows
+                            page_review = cont_review
+                if not new:
+                    previous = None
+                review.extend(page_review)
                 entry["rows"] += len(new)
                 for row in new:
                     entry["basis"][row[7]] = entry["basis"].get(row[7], 0) + 1
@@ -1169,6 +1187,10 @@ def _continuation(word_rows, previous: dict | None) -> dict | None:
     if first is None:
         return None
     data_rows = word_rows[first:]
+    for i, row in enumerate(data_rows):
+        if i > 0 and re.match(r"^notes?\b\s*[:.\-]", _label(row).strip(), re.I):
+            data_rows = data_rows[:i]
+            break
     anchors = _columns(data_rows)
     if len(anchors) != len(previous["anchors"]) or any(
             abs(a - b) > 10.0 for a, b in zip(anchors, previous["anchors"])):
@@ -1177,6 +1199,7 @@ def _continuation(word_rows, previous: dict | None) -> dict | None:
         return None
     table = dict(previous)
     table["values"] = defaultdict(lambda: defaultdict(list))
+    table["labels"] = {}
     for index, row in enumerate(data_rows):
         item = match_line(_label(row))
         if item is None:
@@ -1193,8 +1216,9 @@ def _continuation(word_rows, previous: dict | None) -> dict | None:
             table["values"][at][item].append(token)
     if not table["values"]:
         return None
-    if not set(table["labels"]) & set(previous["labels"]):
-        return None                      # no line item in common: not the same statement
+    cont_only = set(_PL_BOTTOM) | {"other_comprehensive_income", "paid_up_capital", "tax", "current_tax", "deferred_tax"}
+    if not (set(table["labels"]) & set(previous["labels"])) and not (set(table["labels"]) <= cont_only):
+        return None                      # no line item in common and not the bottom-of-P&L continuation
     return table
 
 
@@ -1446,6 +1470,18 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     kept only when the page's own arithmetic or the XBRL confirms them; a clean text layer is read exactly as
     before.  ``fill_table`` is the same page read from the text layer: its value replaces an OCR cell the checks
     did not confirm, and it keeps the old rule (a printed figure may be stored unchecked)."""
+    halves = _split_side_by_side(table)
+    if halves is not None:
+        count = len(table["anchors"])
+        fill_halves = (_split_side_by_side(fill_table)
+                       if fill_table is not None and len(fill_table["anchors"]) == count else None)
+        out_rows: list[tuple] = []
+        for i, half_table in enumerate(halves):
+            fill_half = fill_halves[i] if fill_halves is not None else None
+            out_rows.extend(_table_rows(conn, symbol, isin, doc_key, page_no, known_at, half_table, xbrl,
+                                        review, ocr=ocr, fill_table=fill_half, store_fy=store_fy,
+                                        disagreed=disagreed))
+        return out_rows
     anchors = table["anchors"]
     head_text = " ".join(w[4] for row in (table.get("header_rows") or []) for w in row)
     end = _period_end(table.get("dates"), known_at, head_text or table["text"])
@@ -1463,7 +1499,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         for item, tokens in col.items():
             values_by_item.setdefault(item, set()).update(t["row"] for t in tokens)
     ambiguous = {item for item, rows in values_by_item.items() if len(rows) > 1}
-    basis_hint = _page_basis(table["text"], table.get("head"), allow_hyphen=(end[5:7] == "06"))
+    basis_hint = table.get("basis") or _page_basis(table["text"], table.get("head"), allow_hyphen=(end[5:7] == "06"))
     dates = table.get("dates")
     if end[5:7] == "06" and dates is None and fill_table is not None and fill_table.get("dates") \
             and len(fill_table["dates"]) == count:
@@ -1482,6 +1518,12 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     chosen = _choose_rows(values, roles, end, xbrl, basis, scale, decimals, rupee_tol, eps_dec)
     columns = _parsed_cells(values, roles, chosen, decimals, eps_dec, scale, table["labels"], review,
                             symbol, doc_key, page_no, ocr=ocr)
+    bracketed = _debit_costs(columns)
+    if bracketed is None:
+        review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
+                       "column_role": None, "raw_token": None, "check": "not_pl_costs",
+                       "detail": "a cost line prints in brackets inside a mixed page"})
+        return []
     fill: dict[str, dict] = {}
     if fill_table is not None:
         fill_choice = _roles(fill_table.get("dates"), end, len(fill_table["anchors"]), fill_table["values"],
@@ -1497,14 +1539,14 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                                  scale, fill_table["labels"], review, symbol, doc_key, page_no, ocr=True)
             for role in columns:
                 for item, cell in fill.get(role, {}).items():
+                    if item in _COST_ITEMS and cell["value"] < 0:
+                        if bracketed:
+                            cell["value"] = -cell["value"]
+                            cell["bracketed"] = True
+                        else:
+                            continue            # never let OCR noise like '(228)' inject a negative cost
                     columns[role].setdefault(item, cell)
     _derive_tax(columns)
-    bracketed = _debit_costs(columns)
-    if bracketed is None:
-        review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
-                       "column_role": None, "raw_token": None, "check": "not_pl_costs",
-                       "detail": "a cost line prints in brackets inside a mixed page"})
-        return []
     for cells in columns.values():
         cells["_fails"] = _check_column(cells, rupee_tol, ambiguous)
         _eps_ok(cells, shares)
@@ -1638,6 +1680,85 @@ def _period_end(dates, known_at: str, text: str = "") -> str | None:
         if candidate <= day and (date.fromisoformat(day) - date.fromisoformat(candidate)).days <= 160:
             best = max(best or candidate, candidate)
     return best
+
+
+def _row_basis_x(row, *, allow_hyphen: bool = False) -> dict[str, float]:
+    """Approximate x-centre of ``standalone`` / ``consolidated`` words in one header row."""
+    spans: list[tuple[int, int, float]] = []
+    parts: list[str] = []
+    pos = 0
+    for word in row:
+        txt = word[4]
+        if parts:
+            pos += 1
+        end = pos + len(txt)
+        spans.append((pos, end, (word[0] + word[2]) / 2.0))
+        parts.append(txt)
+        pos = end
+    found = _basis_positions(" ".join(parts), allow_hyphen=allow_hyphen)
+    out: dict[str, float] = {}
+    for name, offset in found.items():
+        for s, e, x in spans:
+            if s <= offset < e:
+                out[name] = x
+                break
+    return out
+
+
+def _basis_header_sides(header_rows, anchors: list[float], *, allow_hyphen: bool = True) -> tuple[str, str] | None:
+    """``(left_basis, right_basis)`` for an even ``>= 8`` column table with both S and C headings."""
+    count = len(anchors)
+    if count < 8 or count % 2:
+        return None
+    half = count // 2
+    mid = (anchors[half - 1] + anchors[half]) / 2.0
+    for row in reversed(header_rows or []):
+        xs = _row_basis_x(row, allow_hyphen=allow_hyphen)
+        if set(xs) != {"standalone", "consolidated"}:
+            continue
+        sx, cx = xs["standalone"], xs["consolidated"]
+        if sx < mid <= cx:
+            return ("standalone", "consolidated")
+        if cx < mid <= sx:
+            return ("consolidated", "standalone")
+    flat = " ".join(w[4] for row in (header_rows or []) for w in row)
+    pos = _basis_positions(flat, allow_hyphen=allow_hyphen)
+    if set(pos) != {"standalone", "consolidated"}:
+        return None
+    return ("standalone", "consolidated") if pos["standalone"] < pos["consolidated"] else ("consolidated", "standalone")
+
+
+def _split_side_by_side(table: dict) -> list[dict] | None:
+    """Split a side-by-side Standalone/Consolidated table (8, 10 or 12 columns) into its two halves."""
+    anchors = table.get("anchors") or []
+    count = len(anchors)
+    if count < 8 or count % 2 or table.get("basis") is not None:
+        return None
+    sides = _basis_header_sides(table.get("header_rows") or [], anchors, allow_hyphen=True)
+    if sides is None:
+        return None
+    half = count // 2
+    dates = table.get("dates")
+    if dates and len(dates) == count:
+        left_d, right_d = dates[:half], dates[half:]
+        if any(lm is not None and rm is not None and lm != rm for (lm, _ly), (rm, _ry) in zip(left_d, right_d)):
+            return None
+        half_dates = (left_d, right_d)
+    else:
+        half_dates = (None, None)
+    halves: list[dict] = []
+    for i, basis in enumerate(sides):
+        offset = i * half
+        half_anchors = anchors[offset:offset + half]
+        half_table = dict(table)
+        half_table["anchors"] = half_anchors
+        half_table["values"] = {at - offset: col for at, col in table["values"].items()
+                                if offset <= at < offset + half}
+        half_table["dates"] = half_dates[i]
+        half_table["hint"] = _layout_hint(table.get("header_rows") or [], half_anchors)
+        half_table["basis"] = basis
+        halves.append(half_table)
+    return halves
 
 
 def _side_by_side_ok(header_rows, dates, count: int) -> bool:
