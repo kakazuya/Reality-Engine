@@ -48,7 +48,7 @@ from pathlib import Path
 
 import yaml
 
-from reality_engine.pilot3 import profile
+from reality_engine.pilot3 import fiscal, profile
 from reality_engine.pilot3.schema import TABLES, NOTES_INDEXES
 
 # Not under lexicon/: kpi.load_lexicon and transcripts read every yaml in that folder as a KPI lexicon.
@@ -232,7 +232,7 @@ def header_columns(lines: list[str], i: int) -> tuple[list[tuple[str, str]], int
             break
     cols = []
     for _k, year in tokens[:2]:
-        end = f"{year}-{md[0]:02d}-{md[1]:02d}" if md else f"{year}-03-31"
+        end = f"{year}-{md[0]:02d}-{md[1]:02d}" if md else fiscal.fy_end_date(year)
         cols.append((f"FY{year % 100:02d}", end))
     return cols, max(k for k, _y in tokens[:2]) + 1
 
@@ -337,21 +337,17 @@ def _doc_fy(doc) -> str | None:
     """The fiscal year a document belongs to: an annual report / results file reports the year that ended, an
     announcement is dated inside the year in progress."""
     day = (doc["filing_date"] or doc["known_at"] or "")[:10]
-    m = re.match(r"(\d{4})-(\d{2})", day)
-    if not m:
+    if not re.match(r"(\d{4})-(\d{2})", day):
         return None
-    year, month = int(m.group(1)), int(m.group(2))
     if doc["doc_type"] in ("annual_report", "results"):
-        year = year if month >= 4 else year - 1
-    else:
-        year = year + 1 if month >= 4 else year
-    return f"FY{year % 100:02d}"
+        return fiscal.fy_label(fiscal.last_fy_end(day))
+    return fiscal.fy_label(day)
 
 
 def _fy_period(fiscal_year: str | None) -> str | None:
     if not fiscal_year or not re.fullmatch(r"FY\d{2}", fiscal_year):
         return None
-    return f"20{fiscal_year[2:]}-03-31"
+    return fiscal.fy_end_date(fiscal_year)
 
 
 # --- rating_event -------------------------------------------------------------------------------------------------
@@ -787,7 +783,7 @@ def _category_columns(lines: list[str], i: int, lex: dict):
     for year in years:
         if year not in distinct:
             distinct.append(year)
-    return cats, [(f"FY{y % 100:02d}", f"{y}-03-31") for y in distinct[:2]], j
+    return cats, [(fiscal.fy_label(end), end) for end in (fiscal.fy_end_date(y) for y in distinct[:2])], j
 
 
 def category_rows(symbol: str, isin: str, entity: str, doc, page: int, text: str, lex: dict) -> list[dict]:
@@ -994,60 +990,61 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
         entity = _entity_name(con, symbol)
         st = stats_all[symbol] = Counter()
         symbol_started = time.time()
-        for doc_type, names in _TABLES_OF_DOC_TYPE.items():
-            words = [w.lower() for w in (lex["prefilter"].get(doc_type) or [])]
-            for index, doc in enumerate(_docs(con, symbol, doc_type)):
-                if limit_docs is not None and index >= limit_docs:
-                    break
-                docs_pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page",
-                                         (doc["doc_key"],)).fetchall()
-                follow = 0            # pages still inside the related-party note that started at a cue page
-                for page_index, (page, text) in enumerate(docs_pages):
-                    if not (text or "").strip():
-                        continue
-                    candidate = any(word in text.lower() for word in words)
-                    if not candidate and follow <= 0:
-                        continue
-                    st["pages"] += 1
-                    per_page: list[dict] = []
-                    rpt: list[dict] = []
-                    rpt_cue = any(cue.search(text) for cue in lex["rpt_cues"])
-                    if doc_type == "annual_report" and (rpt_cue or follow > 0):
-                        rpt = related_party_rows(symbol, doc["isin"], entity, doc, page, text, lex)
-                        if any(r["unit"] is None for r in rpt):
-                            unit, scale = page_unit(docs_pages, page_index)
-                            for r in rpt:
-                                if r["unit"] is None:
-                                    r["unit"], r["scale"] = unit, scale
-                        parties = {r["counterparty"] for r in rpt}
-                        if len(parties) >= (1 if rpt_cue else 3):
-                            follow = RPT_NEAR
-                        else:
-                            rpt = []
-                            follow -= 1
-                    if candidate and doc_type == "annual_report":
-                        for name in names:
-                            if name == "related_party_txn":
-                                per_page.extend(rpt)
-                            else:
-                                per_page.extend(PAGE_EXTRACTORS[name](symbol, doc["isin"], entity, doc, page,
-                                                                      text, lex))
-                    elif doc_type == "annual_report":
-                        per_page.extend(rpt)
-                    elif candidate:
-                        per_page.extend(trigger_rows(symbol, doc["isin"], entity, doc, page, text, lex))
-                    for row in per_page:
-                        name = ("rating_event" if row["extractor_rule"].startswith("rating_") else
-                                "concentration" if row["extractor_rule"].startswith("conc_") else "related_party_txn")
-                        sig = tuple(v for k, v in row.items() if k not in ("doc_key", "known_at",
-                                                                           "known_at_source", "quote"))
-                        if sig in seen[name]:
-                            st["duplicate"] += 1
+        with fiscal.use(fiscal.fy_end_month(con, symbol)):
+            for doc_type, names in _TABLES_OF_DOC_TYPE.items():
+                words = [w.lower() for w in (lex["prefilter"].get(doc_type) or [])]
+                for index, doc in enumerate(_docs(con, symbol, doc_type)):
+                    if limit_docs is not None and index >= limit_docs:
+                        break
+                    docs_pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page",
+                                             (doc["doc_key"],)).fetchall()
+                    follow = 0            # pages still inside the related-party note that started at a cue page
+                    for page_index, (page, text) in enumerate(docs_pages):
+                        if not (text or "").strip():
                             continue
-                        seen[name].add(sig)
-                        con.execute(ins[name], [row.get(c) for c in COLS[name]])
-                        st[name] += 1
-        con.commit()
+                        candidate = any(word in text.lower() for word in words)
+                        if not candidate and follow <= 0:
+                            continue
+                        st["pages"] += 1
+                        per_page: list[dict] = []
+                        rpt: list[dict] = []
+                        rpt_cue = any(cue.search(text) for cue in lex["rpt_cues"])
+                        if doc_type == "annual_report" and (rpt_cue or follow > 0):
+                            rpt = related_party_rows(symbol, doc["isin"], entity, doc, page, text, lex)
+                            if any(r["unit"] is None for r in rpt):
+                                unit, scale = page_unit(docs_pages, page_index)
+                                for r in rpt:
+                                    if r["unit"] is None:
+                                        r["unit"], r["scale"] = unit, scale
+                            parties = {r["counterparty"] for r in rpt}
+                            if len(parties) >= (1 if rpt_cue else 3):
+                                follow = RPT_NEAR
+                            else:
+                                rpt = []
+                                follow -= 1
+                        if candidate and doc_type == "annual_report":
+                            for name in names:
+                                if name == "related_party_txn":
+                                    per_page.extend(rpt)
+                                else:
+                                    per_page.extend(PAGE_EXTRACTORS[name](symbol, doc["isin"], entity, doc, page,
+                                                                          text, lex))
+                        elif doc_type == "annual_report":
+                            per_page.extend(rpt)
+                        elif candidate:
+                            per_page.extend(trigger_rows(symbol, doc["isin"], entity, doc, page, text, lex))
+                        for row in per_page:
+                            name = ("rating_event" if row["extractor_rule"].startswith("rating_") else
+                                    "concentration" if row["extractor_rule"].startswith("conc_") else "related_party_txn")
+                            sig = tuple(v for k, v in row.items() if k not in ("doc_key", "known_at",
+                                                                               "known_at_source", "quote"))
+                            if sig in seen[name]:
+                                st["duplicate"] += 1
+                                continue
+                            seen[name].add(sig)
+                            con.execute(ins[name], [row.get(c) for c in COLS[name]])
+                            st[name] += 1
+            con.commit()
         stats_all[symbol] = {**dict(st), "seconds": round(time.time() - symbol_started, 2)}
     stats_all["seconds"] = round(time.time() - t0, 1)
     stats_all["rows"] = {name: dict(con.execute(f"SELECT symbol, COUNT(*) FROM {name} GROUP BY symbol"))

@@ -23,7 +23,7 @@ from pathlib import Path
 
 import yaml
 
-from . import schema
+from . import fiscal, schema
 from .kpi import LEX_DIR, SANDBOX_ROOT, VAL_RX, _UNIT_BY_SUFFIX, parse_periods, to_float, _norm_cur, profile, _sector_of
 
 SCHEMA = """
@@ -199,11 +199,7 @@ def call_period_of(title: str, texts: list[str]) -> str | None:
 
 def quarter_end_of(label: str | None) -> str | None:
     """The last day of the quarter a ``QxFYyy`` label names, or None for any other label."""
-    m = re.fullmatch(r"Q([1-4])FY(\d{2})", (label or "").strip().upper())
-    if not m:
-        return None
-    fy = 2000 + int(m.group(2))
-    return {"1": f"{fy - 1}-06-30", "2": f"{fy - 1}-09-30", "3": f"{fy - 1}-12-31", "4": f"{fy}-03-31"}[m.group(1)]
+    return fiscal.quarter_end_date(label)
 
 
 # a results/earnings call is about the company's own reported quarter; an acquisition, investor-day or
@@ -225,19 +221,8 @@ def non_results_call(title: str | None) -> bool:
 
 
 def filing_quarter(known_at: str | None) -> str | None:
-    """The quarter a filing reports, from its own filing record: Apr-Jun files Q4, Jul-Sep Q1, Oct-Dec Q2, Jan-Mar
-    Q3 of the fiscal year that ends in the following March."""
-    m = re.match(r"(\d{4})-(\d{2})", (known_at or "")[:10])
-    if not m:
-        return None
-    year, month = int(m.group(1)), int(m.group(2))
-    if 4 <= month <= 6:
-        return f"Q4FY{year % 100:02d}"
-    if 7 <= month <= 9:
-        return f"Q1FY{(year + 1) % 100:02d}"
-    if 10 <= month <= 12:
-        return f"Q2FY{(year + 1) % 100:02d}"
-    return f"Q3FY{year % 100:02d}"
+    """The quarter a filing reports, from its own filing record using the active ``fiscal.current()`` year-end."""
+    return fiscal.filing_quarter(known_at)
 
 
 def call_period_ok(period: str | None, known_at: str | None, title: str | None = None) -> str | None:
@@ -1266,8 +1251,9 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
                 continue
             st["docs"] += 1
             st["pages"] += len(pages)
-            rows = extract_doc(sym, doc_key, title, known_at, pages, topics + sector_topics[sym], people, st,
-                               company_name, learned_generic)
+            with fiscal.use(fiscal.fy_end_month(con, sym)):
+                rows = extract_doc(sym, doc_key, title, known_at, pages, topics + sector_topics[sym], people, st,
+                                   company_name, learned_generic)
             con.executemany(sql, rows)
             qs = st.get("questions", [])
             # st["questions"] is list of tuples collected; reset per doc

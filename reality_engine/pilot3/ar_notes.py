@@ -79,7 +79,7 @@ from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from reality_engine.pilot3 import ar_statements as A
+from reality_engine.pilot3 import ar_statements as A, fiscal
 from reality_engine.pilot3.segments_printed import readable
 from reality_engine.v2.page_words import words_for
 from reality_engine.v2.reference_geom import lines_of
@@ -545,12 +545,12 @@ def _columns(words, lines: list[list[int]]) -> tuple[list[float], list[str]] | N
                if (m := re.fullmatch(r"(?:FY\s*)?(20\d\d)\s*-\s*\d{2,4}", words[i][4].strip(" ,.)")))]
         if len(fys) == 2 and fys[0][1] == fys[1][1] + 1:
             centres = [(words[i][0] + words[i][2]) / 2 for i, _ in fys]
-            return centres, [f"{fys[0][1] + 1:04d}-03-31", f"{fys[1][1] + 1:04d}-03-31"]
+            return centres, [fiscal.fy_end_date(fys[0][1] + 1), fiscal.fy_end_date(fys[1][1] + 1)]
         years = [(i, int(words[i][4].strip(" ,.)")[-4:])) for i in line
                  if re.fullmatch(r"20\d\d", words[i][4].strip(" ,.)"))]
         if len(years) == 2 and years[0][1] == years[1][1] + 1 and n > 0:
             above, _ = A._spans(words, lines[n - 1])
-            mo = next((v for k, v in A._MONTHS.items() if re.search(rf"\b{k}", above, re.I)), 3)
+            mo = next((v for k, v in A._MONTHS.items() if re.search(rf"\b{k}", above, re.I)), fiscal.current())
             text_days = re.findall(r"(\d{1,2})\s*,", text)
             day = int(text_days[0]) if text_days else (31 if mo in (1, 3, 5, 7, 8, 10, 12) else 30)
             centres = []
@@ -1574,56 +1574,57 @@ def _select_sources(cand: list[Row]) -> list[Row]:
 def run_store(db: Path, store: str, dry: bool = False) -> dict:
     conn = sqlite3.connect(db if not dry else f"file:{db.as_posix()}?mode=ro", uri=dry)
     sym, isin = conn.execute("SELECT symbol, isin FROM company LIMIT 1").fetchone()
-    docs = conn.execute("SELECT doc_key, known_at, filing_date FROM doc WHERE doc_type='annual_report'").fetchall()
-    face_targets = load_face_targets(str(db))
-    cand, log = [], []
-    heads = re.compile(r"borrowings|revenue\s+from\s+operations|finance\s+costs?", re.I)
-    for doc_key, known_at, filing_date in docs:
-        pages = conn.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc_key,)).fetchall()
-        # a notes page that names no basis takes the basis of the nearest page before it that names one (the
-        # standalone and consolidated sections are contiguous); a report with no consolidated statement is standalone
-        any_cons = any(re.search(r"consolidated\s+(balance\s+sheet|statement\s+of\s+profit|financial\s+statements)",
-                                 t or "", re.I) for _, t in pages)
-        doc_face = _extract_ar_face(str(db), doc_key, known_at or filing_date or "", pages, any_cons)
-        last = None if any_cons else "standalone"
-        last_sec: str | None = None
-        last_unit: tuple[str, float] | None = None
-        for idx, (page, text) in enumerate(pages):
-            if any_cons:
-                # only a title phrase in the page head moves the running basis, never prose
-                nxt = title_basis((text or "")[:400])
-                if nxt and nxt != last:
-                    last = nxt
-                    last_sec = None
-                    last_unit = None
-            last_unit = _page_declared_unit(text or "") or last_unit
-            if text and heads.search(text):
-                contd_notes = _contd_notes_in(pages[idx + 1][1]) if idx + 1 < len(pages) and pages[idx + 1][0] == page + 1 else set()
-                rows, lg = read_page(str(db), doc_key, page, known_at or filing_date or "", last,
-                                     doc_section=last_sec, face_targets=face_targets, force_standalone=not any_cons,
-                                     doc_unit=last_unit, contd_notes=contd_notes, doc_face=doc_face)
-                cand += rows
-                for x in lg:
-                    log.append({"doc_key": doc_key, **x})
-            last_sec = _update_section(text or "", last_sec)
-    # never let an unclassified borrowings note stand alongside or displace a classified one for the same (year, basis)
-    classified = {(r.fiscal_year, r.basis) for r in cand
-                  if note_of_row(r.line_item) in ("borrowings_noncurrent", "borrowings_current")}
-    cand = [r for r in cand
-            if note_of_row(r.line_item) != "borrowings_unclassified" or (r.fiscal_year, r.basis) not in classified]
-    # up to two sources per (year, basis, note): as-filed (own=True) plus restated (own=False, later, differs)
-    rows = _select_sources(cand)
-    if not dry:
-        conn.execute("DELETE FROM fin_annual_line WHERE source_table=? AND symbol=?", (SOURCE_TABLE, sym))
-        conn.executemany(
-            "INSERT INTO fin_annual_line (symbol, isin, fiscal_year, period_end, basis, statement, line_item, caption, "
-            "value, unit, scale, doc_key, page, quote, source_db, source_table, source_rowid, known_at, "
-            "known_at_source, is_reported, is_derived, definition, period_type) "
-            "VALUES (?,?,?,?,?,'NOTE',?,?,?,?,?,?,?,?,'doc_page',?,?,?,'doc.known_at',1,0,?,'FY')",
-            [(sym, isin, r.fiscal_year, r.period_end, r.basis, r.line_item, r.caption, r.value, r.unit, r.scale,
-              r.doc_key, r.page, r.quote, SOURCE_TABLE, f"{r.doc_key}#p{r.page}", r.known_at, r.definition)
-             for r in rows])
-        conn.commit()
+    with fiscal.use(fiscal.fy_end_month(conn, sym)):
+        docs = conn.execute("SELECT doc_key, known_at, filing_date FROM doc WHERE doc_type='annual_report'").fetchall()
+        face_targets = load_face_targets(str(db))
+        cand, log = [], []
+        heads = re.compile(r"borrowings|revenue\s+from\s+operations|finance\s+costs?", re.I)
+        for doc_key, known_at, filing_date in docs:
+            pages = conn.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page", (doc_key,)).fetchall()
+            # a notes page that names no basis takes the basis of the nearest page before it that names one (the
+            # standalone and consolidated sections are contiguous); a report with no consolidated statement is standalone
+            any_cons = any(re.search(r"consolidated\s+(balance\s+sheet|statement\s+of\s+profit|financial\s+statements)",
+                                     t or "", re.I) for _, t in pages)
+            doc_face = _extract_ar_face(str(db), doc_key, known_at or filing_date or "", pages, any_cons)
+            last = None if any_cons else "standalone"
+            last_sec: str | None = None
+            last_unit: tuple[str, float] | None = None
+            for idx, (page, text) in enumerate(pages):
+                if any_cons:
+                    # only a title phrase in the page head moves the running basis, never prose
+                    nxt = title_basis((text or "")[:400])
+                    if nxt and nxt != last:
+                        last = nxt
+                        last_sec = None
+                        last_unit = None
+                last_unit = _page_declared_unit(text or "") or last_unit
+                if text and heads.search(text):
+                    contd_notes = _contd_notes_in(pages[idx + 1][1]) if idx + 1 < len(pages) and pages[idx + 1][0] == page + 1 else set()
+                    rows, lg = read_page(str(db), doc_key, page, known_at or filing_date or "", last,
+                                         doc_section=last_sec, face_targets=face_targets, force_standalone=not any_cons,
+                                         doc_unit=last_unit, contd_notes=contd_notes, doc_face=doc_face)
+                    cand += rows
+                    for x in lg:
+                        log.append({"doc_key": doc_key, **x})
+                last_sec = _update_section(text or "", last_sec)
+        # never let an unclassified borrowings note stand alongside or displace a classified one for the same (year, basis)
+        classified = {(r.fiscal_year, r.basis) for r in cand
+                      if note_of_row(r.line_item) in ("borrowings_noncurrent", "borrowings_current")}
+        cand = [r for r in cand
+                if note_of_row(r.line_item) != "borrowings_unclassified" or (r.fiscal_year, r.basis) not in classified]
+        # up to two sources per (year, basis, note): as-filed (own=True) plus restated (own=False, later, differs)
+        rows = _select_sources(cand)
+        if not dry:
+            conn.execute("DELETE FROM fin_annual_line WHERE source_table=? AND symbol=?", (SOURCE_TABLE, sym))
+            conn.executemany(
+                "INSERT INTO fin_annual_line (symbol, isin, fiscal_year, period_end, basis, statement, line_item, caption, "
+                "value, unit, scale, doc_key, page, quote, source_db, source_table, source_rowid, known_at, "
+                "known_at_source, is_reported, is_derived, definition, period_type) "
+                "VALUES (?,?,?,?,?,'NOTE',?,?,?,?,?,?,?,?,'doc_page',?,?,?,'doc.known_at',1,0,?,'FY')",
+                [(sym, isin, r.fiscal_year, r.period_end, r.basis, r.line_item, r.caption, r.value, r.unit, r.scale,
+                  r.doc_key, r.page, r.quote, SOURCE_TABLE, f"{r.doc_key}#p{r.page}", r.known_at, r.definition)
+                 for r in rows])
+            conn.commit()
     conn.close()
     notes = defaultdict(set)
     for r in rows:

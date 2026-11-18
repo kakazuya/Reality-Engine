@@ -1,13 +1,29 @@
-"""Tests for reality_engine.pilot3.fiscal and phase-1 non-March fiscal year routing (T-223)."""
+"""Tests for reality_engine.pilot3.fiscal and non-March fiscal year routing (T-223, phases 1 & 2)."""
 from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
 import sqlite3
+from types import SimpleNamespace
 
 import pytest
 
-from reality_engine.pilot3 import comparatives, fiscal, kpi, profile, ratios, schema, stores
+from reality_engine.pilot3 import (
+    ar_notes,
+    ar_statements,
+    comparatives,
+    fiscal,
+    guidance,
+    kpi,
+    notes,
+    profile,
+    ratios,
+    row_checks,
+    schema,
+    statements,
+    stores,
+    transcripts,
+)
 
 
 # --- Reference March-year functions (must match fiscal(..., fy_end=3) identically) ----------------------
@@ -444,3 +460,304 @@ def test_c75_and_c08_stores_readonly():
         assert fiscal.fy_end_month(c08, sym) == 3
     finally:
         c08.close()
+
+
+# --- Phase 2: transcripts, guidance, statements, stores, ar_statements, ar_notes, notes ---------------
+def test_phase2_fiscal_helpers_march_and_december():
+    # Default March matches historical logic identically
+    assert fiscal.quarter_end_date("Q1FY26") == "2025-06-30"
+    assert fiscal.quarter_end_date("Q2FY26") == "2025-09-30"
+    assert fiscal.quarter_end_date("Q3FY26") == "2025-12-31"
+    assert fiscal.quarter_end_date("Q4FY26") == "2026-03-31"
+    assert fiscal.quarter_end_date("FY26") is None
+    assert fiscal.filing_quarter("2026-05-06T18:00:00") == "Q4FY26"
+    assert fiscal.filing_quarter("2026-08-11") == "Q1FY27"
+    assert fiscal.filing_quarter("2026-11-10") == "Q2FY27"
+    assert fiscal.filing_quarter("2026-02-18") == "Q3FY26"
+
+    with fiscal.use(12):
+        assert fiscal.quarter_end_date("Q1FY26") == "2026-03-31"
+        assert fiscal.quarter_end_date("Q2FY26") == "2026-06-30"
+        assert fiscal.quarter_end_date("Q3FY26") == "2026-09-30"
+        assert fiscal.quarter_end_date("Q4FY25") == "2025-12-31"
+        assert fiscal.filing_quarter("2026-05-06T18:00:00") == "Q1FY26"
+        assert fiscal.filing_quarter("2026-08-11") == "Q2FY26"
+        assert fiscal.filing_quarter("2026-11-10") == "Q3FY26"
+        assert fiscal.filing_quarter("2026-02-18") == "Q4FY25"
+
+
+def test_transcripts_under_fy_end_12(tmp_path):
+    # March default unchanged
+    assert transcripts.filing_quarter("2026-05-06T12:00:00") == "Q4FY26"
+    assert transcripts.quarter_end_of("Q1FY26") == "2025-06-30"
+
+    with fiscal.use(12):
+        assert transcripts.filing_quarter("2026-05-06T12:00:00") == "Q1FY26"
+        assert transcripts.quarter_end_of("Q1FY26") == "2026-03-31"
+        # Explicit company-titled Q1FY26 stays Q1FY26; undated Q2 call in Aug infers Q2FY26; future Q1FY27 rejected
+        assert transcripts.call_period_ok("Q1FY26", "2026-05-06") == "Q1FY26"
+        assert transcripts.call_period_ok(None, "2026-08-11") == "Q2FY26"
+        assert transcripts.call_period_ok("Q1FY27", "2026-05-06") == "Q1FY26"
+
+    db = tmp_path / "tr.db"
+    con = sqlite3.connect(db)
+    schema.create(con, ["company", "doc", "doc_page"])
+    con.execute("INSERT INTO company (symbol, isin, name) VALUES ('RSYSTEMS', 'INE411H01032', 'R Systems')")
+    con.execute("INSERT INTO doc (doc_key, symbol, doc_type, title, known_at) "
+                "VALUES ('ar1', 'RSYSTEMS', 'annual_report', 'AR', '2026-04-01')")
+    for pg in (1, 2, 3):
+        con.execute("INSERT INTO doc_page (doc_key, symbol, page, text) "
+                    "VALUES ('ar1', 'RSYSTEMS', ?, 'For the year ended December 31, 2025')", (pg,))
+    con.execute("INSERT INTO doc (doc_key, symbol, doc_type, title, known_at) "
+                "VALUES ('tr1', 'RSYSTEMS', 'transcript', 'Earnings Call', '2026-08-11T18:00:00')")
+    con.execute(
+        "INSERT INTO doc_page (doc_key, symbol, page, text) VALUES ('tr1', 'RSYSTEMS', 1, ?)",
+        ("CORPORATE PARTICIPANTS:\n\nNitesh Bansal\nChief Executive Officer\n\n"
+         "ANALYSTS\n\nAmit Jain\nAxis Capital\n",),
+    )
+    con.execute(
+        "INSERT INTO doc_page (doc_key, symbol, page, text) VALUES ('tr1', 'RSYSTEMS', 2, ?)",
+        ("Moderator: Good evening everyone.\n"
+         "Nitesh Bansal: Revenue grew strongly in the quarter.\n"
+         "Amit Jain: How are deal wins trending?\n"
+         "Nitesh Bansal: Deal pipeline remains healthy across geographies.\n",),
+    )
+    con.commit()
+    con.close()
+    transcripts.run(str(db), ["RSYSTEMS"], None)
+    con = sqlite3.connect(db)
+    try:
+        ts_periods = {r[0] for r in con.execute("SELECT call_period FROM transcript_statement WHERE symbol='RSYSTEMS'")}
+        tq_periods = {r[0] for r in con.execute("SELECT call_period FROM transcript_question WHERE symbol='RSYSTEMS'")}
+        assert ts_periods == {"Q2FY26"}
+        assert tq_periods == {"Q2FY26"}
+    finally:
+        con.close()
+
+
+def test_guidance_under_fy_end_12():
+    assert guidance.doc_period("2026-05-07", None) == (26, "Q4")
+    with fiscal.use(12):
+        assert guidance.doc_period("2026-05-07", None) == (26, "Q1")
+        assert guidance.doc_period("2026-02-18", None) == (25, "Q4")
+        # Q1 call in May 2026 guiding "for this year" targets FY26 (under March it looked like Q4 -> FY27)
+        assert guidance.target_period(
+            "We expect revenue growth of 12% for this year.", "", "", "Q1FY26", (26, "Q1"), 25
+        ) == "FY26"
+        assert guidance.target_period(
+            "Margins will be 18% in the next quarter.", "", "", "Q1FY26", (26, "Q1"), 16
+        ) == "Q2FY26"
+
+
+def test_statements_and_dividends_under_fy_end_12(monkeypatch):
+    # March default unchanged
+    assert statements._fy("2026-03-31") == "FY26"
+    assert statements._dividend_fy(date(2025, 11, 19), "interim") == "FY26"
+    assert statements._dividend_fy(date(2025, 6, 15), "final") == "FY25"
+
+    with fiscal.use(12):
+        assert statements._fy("2025-12-31") == "FY25"
+        assert statements._quarter_end("Q1FY26") == "2026-03-31"
+        assert statements._period_of(statements._PERIOD.search("31 Mar 2026")) == ("Q", "Q1FY26")
+        assert statements._dividend_fy(date(2025, 11, 19), "interim") == "FY25"
+        assert statements._dividend_fy(date(2025, 5, 14), "final") == "FY24"
+        assert statements._dividend_fy(date(2025, 5, 14), "interim") == "FY25"
+
+    conn = sqlite3.connect(":memory:")
+    schema.create(conn, ["company", "doc", "doc_page", "fin_annual_line"])
+    conn.execute("INSERT INTO company (symbol, isin) VALUES ('RSYSTEMS', 'INE411H01032')")
+    conn.execute("INSERT INTO doc (doc_key, symbol, doc_type) VALUES ('ar1', 'RSYSTEMS', 'annual_report')")
+    for pg in (1, 2, 3):
+        conn.execute("INSERT INTO doc_page (doc_key, symbol, page, text) "
+                     "VALUES ('ar1', 'RSYSTEMS', ?, 'Year ended December 31, 2025')", (pg,))
+    monkeypatch.setattr(statements, "profile", SimpleNamespace(
+        symbols=lambda: ["RSYSTEMS"], under_profile=lambda: False, is_lender=lambda _s: False,
+    ))
+    monkeypatch.setattr(statements, "_duck", lambda *_a, **_k: (
+        [(101, "INE411H01032", "Interim Dividend - Rs 6 Per Share", date(2025, 5, 14),
+          None, 1.0, date(2025, 5, 1))],
+        ["id", "isin", "subject", "ex_date", "rec_date", "face_value", "broadcast_date"],
+    ))
+    statements.build_dividends(conn)
+    assert conn.execute("SELECT fiscal_year FROM dividend_event WHERE symbol='RSYSTEMS'").fetchone() == ("FY25",)
+    assert conn.execute(
+        "SELECT fiscal_year, period_end FROM fin_annual_line WHERE symbol='RSYSTEMS' AND line_item='dividend_per_share'"
+    ).fetchone() == ("FY25", "2025-12-31")
+
+    monkeypatch.setattr(statements, "fetch", lambda _s, _t: [
+        {"file": "x_fy25.xml", "isin": "INE411H01032", "period_end": "2025-12-31",
+         "reporting_quarter": "Fourth quarter", "consolidated": "Consolidated", "known_at": "2026-02-15", "status": "ok"},
+        {"file": "x_h126.xml", "isin": "INE411H01032", "period_end": "2026-06-30",
+         "reporting_quarter": "Half yearly", "consolidated": "Consolidated", "known_at": "2026-08-10", "status": "ok"},
+    ])
+    monkeypatch.setattr(statements.prepare, "_read_sqlite", lambda _db, _tbl, _sql, params: (
+        [("Assets", "OneI", None, None, "2025-12-31" if "fy25" in params[0] else "2026-06-30", 500.0, "INR", 1)],
+        ["concept", "context", "period_start", "period_end", "instant", "value", "unit", "rowid"],
+    ))
+    statements.build_xbrl_statements(conn)
+    xbrl_rows = conn.execute(
+        "SELECT fiscal_year, period_end, period_type FROM fin_annual_line "
+        "WHERE symbol='RSYSTEMS' AND definition='xbrl_reported' ORDER BY period_end"
+    ).fetchall()
+    assert xbrl_rows == [("FY25", "2025-12-31", "FY"), ("H1FY26", "2026-06-30", "H1")]
+    conn.close()
+
+
+def test_stores_annual_under_fy_end_12():
+    assert stores._fy_label(None, "2025-03-31") == "FY25"
+    with fiscal.use(12):
+        assert stores._fy_label(None, "2025-12-31") == "FY25"
+        assert stores._fy_label(None, "2025-03-31") is None
+        rows = stores._annual_rows(
+            "RSYSTEMS",
+            [{"src_rowid": 1, "isin": "INE411H01032", "item": "Total assets", "value": 100.0,
+              "value_raw": "", "value_check": "found", "unit": "inr_million", "quote": "", "period": None,
+              "fiscal_year": "2025-12-31", "basis": "consolidated", "doc_id": 74160, "page": 10,
+              "known_at": "2026-03-01"}],
+            lambda _doc, _page: None,
+            "ar_facts.db",
+        )
+        assert len(rows) == 1
+        assert (rows[0][2], rows[0][3]) == ("FY25", "2025-12-31")
+
+
+def test_ar_statements_and_ar_notes_under_fy_end_12():
+    assert ar_statements.fiscal_label("2025-03-31") == "FY25"
+    assert ar_statements.fiscal_label("2023-12-31") == "FY23"
+
+    words = [
+        (50.0, 10.0, 90.0, 20.0, "As"), (95.0, 10.0, 115.0, 20.0, "At"),
+        (200.0, 25.0, 220.0, 35.0, "31,"), (225.0, 25.0, 260.0, 35.0, "2025"),
+        (300.0, 25.0, 320.0, 35.0, "31,"), (325.0, 25.0, 360.0, 35.0, "2024"),
+    ]
+    lines = [[0, 1], [2, 3, 4, 5]]
+    fy_words = [(200.0, 10.0, 260.0, 20.0, "2024-25"), (300.0, 10.0, 360.0, 20.0, "2023-24")]
+
+    with fiscal.use(12):
+        assert ar_statements.fiscal_label("2025-12-31") == "FY25"
+        assert ar_statements.fiscal_label("2026-03-31") == "FY26"
+        assert ar_statements._columns(words, lines)[1] == ["2025-12-31", "2024-12-31"]
+        assert ar_statements._columns(fy_words, [[0, 1]])[1] == ["2025-12-31", "2024-12-31"]
+        assert ar_notes._columns(words, lines)[1] == ["2025-12-31", "2024-12-31"]
+        assert ar_notes._columns(fy_words, [[0, 1]])[1] == ["2025-12-31", "2024-12-31"]
+
+
+def test_notes_and_rpt_under_fy_end_12():
+    march_ar = {"doc_type": "annual_report", "filing_date": "2026-07-07", "known_at": None}
+    assert notes._doc_fy(march_ar) == "FY26"
+    assert notes._fy_period("FY26") == "2026-03-31"
+    assert notes.header_columns(["Particulars", "2026 2025"], 1)[0] == [("FY26", "2026-03-31"), ("FY25", "2025-03-31")]
+
+    dec_ar = {"doc_key": "d1", "doc_type": "annual_report", "filing_date": "2026-04-15", "known_at": "2026-04-15"}
+    dec_ann = {"doc_key": "d2", "doc_type": "announcement", "filing_date": "2025-11-10", "known_at": "2025-11-10"}
+    lex = notes.lexicon()
+    with fiscal.use(12):
+        assert notes._doc_fy(dec_ar) == "FY25"
+        assert notes._doc_fy(dec_ann) == "FY25"
+        assert notes._fy_period("FY25") == "2025-12-31"
+        assert notes.header_columns(["Particulars", "2025 2024"], 1)[0] == [("FY25", "2025-12-31"), ("FY24", "2024-12-31")]
+        assert notes._category_columns(["Parent Subsidiaries", "2025 2024"], 0, lex)[1] == [
+            ("FY25", "2025-12-31"), ("FY24", "2024-12-31")
+        ]
+        rpt_page = (
+            "Notes to the Consolidated Financial Statements\n"
+            "Related party disclosures\n"
+            "(In Rs. million)\n"
+            "Particulars\n"
+            "2025 2024\n"
+            "Remuneration to KMP\n"
+            "Salaries and other employee benefits\n"
+            "120 110\n"
+            "Directors sitting fees\n"
+            "15 12\n"
+            "Holding Company Services\n"
+            "Parent Management fees\n"
+            "50 40"
+        )
+        out = notes.related_party_rows("RSYSTEMS", "INE411H01032", "R Systems", dec_ar, 1, rpt_page, lex)
+        assert out
+        assert {(r["fiscal_year"], r["period_end"]) for r in out} == {("FY25", "2025-12-31"), ("FY24", "2024-12-31")}
+
+
+def test_fiscal_quarter_end_and_half_end():
+    assert fiscal.quarter_end("Q1FY26") == "2025-06-30"
+    assert fiscal.quarter_end("Q4FY26") == "2026-03-31"
+    assert fiscal.half_end("H1FY26") == "2025-09-30"
+    assert fiscal.half_end("H2FY26") == "2026-03-31"
+    assert fiscal.half_end("Q1FY26") is None
+
+    with fiscal.use(12):
+        assert fiscal.quarter_end("Q1FY26") == "2026-03-31"
+        assert fiscal.quarter_end("Q4FY25") == "2025-12-31"
+        assert fiscal.half_end("H1FY26") == "2026-06-30"
+        assert fiscal.half_end("H2FY25") == "2025-12-31"
+
+
+def test_row_checks_under_fy_end_12(tmp_path):
+    # March default unchanged
+    for lbl, expected in (
+        ("Q1FY26", "2025-06-30"), ("Q2FY26", "2025-09-30"), ("Q3FY26", "2025-12-31"),
+        ("Q4FY26", "2026-03-31"), ("H1FY26", "2025-09-30"), ("H2FY26", "2026-03-31"),
+        ("9MFY26", "2025-12-31"), ("FY26", "2026-03-31"),
+    ):
+        assert row_checks.period_end(lbl) == expected
+    assert row_checks.fiscal_ending_year("2026-05-01") == 2027
+    assert row_checks.fiscal_ending_year("2026-02-01") == 2026
+
+    with fiscal.use(12):
+        for lbl, expected in (
+            ("Q1FY26", "2026-03-31"), ("Q2FY26", "2026-06-30"), ("Q3FY26", "2026-09-30"),
+            ("Q4FY26", "2026-12-31"), ("H1FY26", "2026-06-30"), ("H2FY26", "2026-12-31"),
+            ("9MFY26", "2026-09-30"), ("FY26", "2026-12-31"),
+        ):
+            assert row_checks.period_end(lbl) == expected
+        assert row_checks.fiscal_ending_year("2026-05-01") == 2026
+        assert row_checks.fiscal_ending_year("2026-02-01") == 2026
+        assert row_checks.fiscal_ending_year("1999-12-01") == 1999
+
+    db = tmp_path / "rc.db"
+    out_db = tmp_path / "rc_out.db"
+    con = sqlite3.connect(db)
+    schema.create(con, ["company", "doc", "doc_page", "guidance"])
+    con.executescript(kpi.SCHEMA)
+    con.execute("INSERT INTO company (symbol, isin, name) VALUES ('RSYSTEMS', 'INE411H01032', 'R Systems')")
+    con.execute("INSERT INTO doc (doc_key, symbol, doc_type, known_at) "
+                "VALUES ('ar1', 'RSYSTEMS', 'annual_report', '2026-04-01')")
+    for pg in (1, 2, 3):
+        con.execute("INSERT INTO doc_page (doc_key, symbol, page, text) "
+                    "VALUES ('ar1', 'RSYSTEMS', ?, 'For the year ended December 31, 2025')", (pg,))
+    g_quote = "We expect Q2FY26 EBITDA margin of 18%."
+    k_quote = "EBITDA margin stood at 17% for Q1FY26."
+    con.execute("INSERT INTO doc (doc_key, symbol, doc_type, known_at) "
+                "VALUES ('tr1', 'RSYSTEMS', 'transcript', '2026-05-07T18:00:00')")
+    con.execute("INSERT INTO doc_page (doc_key, symbol, page, text) VALUES ('tr1', 'RSYSTEMS', 1, ?)",
+                (f"{g_quote} {k_quote}",))
+    con.execute(
+        "INSERT INTO guidance (id, symbol, metric, target_period, low, high, unit, direction, said_on, doc_key, page, quote, known_at, extractor_rule) "
+        "VALUES (1, 'RSYSTEMS', 'ebitda_margin', 'Q2FY26', 18.0, 18.0, 'pct', 'flat', '2026-05-07', 'tr1', 1, ?, '2026-05-07', 'guidance_cue_v1')",
+        (g_quote,),
+    )
+    con.execute(
+        "INSERT INTO kpi_series (id, symbol, metric, dimension, period_type, fiscal_period, basis, value, unit, scale, doc_key, page, quote, known_at, extractor_rule) "
+        "VALUES (1, 'RSYSTEMS', 'ebitda_margin', 'total', 'Q', 'Q1FY26', 'consolidated', 17.0, 'pct', 1.0, 'tr1', 1, ?, '2026-05-07', 'prose_v1')",
+        (k_quote,),
+    )
+    con.execute(
+        "INSERT INTO kpi_series (id, symbol, metric, dimension, period_type, fiscal_period, basis, value, unit, scale, doc_key, page, quote, known_at, extractor_rule) "
+        "VALUES (2, 'RSYSTEMS', 'ebitda_margin', 'total', 'Q', 'Q2FY26', 'consolidated', 18.0, 'pct', 1.0, 'tr1', 1, ?, '2026-05-07', 'prose_v1')",
+        (g_quote,),
+    )
+    con.commit()
+    con.close()
+
+    prof = tmp_path / "prof.json"
+    prof.write_text('{"companies": [{"symbol": "RSYSTEMS", "sector": "it_services"}]}', encoding="utf-8")
+    row_checks.run(str(db), str(out_db), profile=str(prof))
+    out = sqlite3.connect(out_db)
+    try:
+        fails = out.execute("SELECT tbl, row_id, check_name FROM row_check_fail").fetchall()
+        assert ("guidance", 1, "past_target") not in fails
+        assert ("kpi_series", 1, "future_period") not in fails
+        assert ("kpi_series", 2, "future_period") in fails
+    finally:
+        out.close()

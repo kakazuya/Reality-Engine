@@ -76,7 +76,7 @@ import time
 from collections import Counter
 from pathlib import Path
 
-from . import linked_transcripts, profile, schema
+from . import fiscal, linked_transcripts, profile, schema
 from .transcripts import split_sentences, _same_person, non_results_call
 
 COLS = ("symbol isin metric target_period low high unit direction said_on doc_key page quote speaker "
@@ -481,20 +481,12 @@ def _yy(text: str) -> str:
 
 
 def doc_period(filing_date: str | None, known_at: str | None) -> tuple[int, str] | None:
-    """(fiscal year number, quarter) of the period a filing reports: Apr-Jun files Q4 of that year, Jul-Sep Q1
-    of the next, Oct-Dec Q2, Jan-Mar Q3."""
+    """(fiscal year number, quarter) of the period a filing reports using the active ``fiscal.current()`` year-end."""
     day = (filing_date or (known_at or "")[:10] or "")[:10]
-    m = re.match(r"(\d{4})-(\d{2})", day)
-    if not m:
+    q_label = fiscal.filing_quarter(day)
+    if not q_label:
         return None
-    year, month = int(m.group(1)), int(m.group(2))
-    if 4 <= month <= 6:
-        return year % 100, "Q4"
-    if 7 <= month <= 9:
-        return (year + 1) % 100, "Q1"
-    if 10 <= month <= 12:
-        return (year + 1) % 100, "Q2"
-    return year % 100, "Q3"
+    return int(q_label[-2:]), q_label[:2]
 
 
 def split_period(label: str | None) -> tuple[int | None, str | None]:
@@ -1853,27 +1845,28 @@ def run(out: str, symbols: list[str], limit_docs: int | None = None) -> dict:
             pages = con.execute("SELECT page, text FROM doc_page WHERE doc_key=? ORDER BY page",
                                 (doc["doc_key"],)).fetchall()
             analysts = analyst_speakers([text for _page, text in pages])
-            for page, text in pages:
-                if not (text or "").strip():
-                    continue
-                st["pages"] += 1
-                for row in extract_sentences(symbol, doc, page, text, by_page.get(page, []), st,
-                                             mgmt_speakers, bool(doc_rows), revenue_cr, analysts,
-                                             {turn: ents for (doc_key, turn), ents in asked.items()
-                                              if doc_key == doc["doc_key"]}, own_names, known_ents, raw_names):
-                    sig = (row[0], row[2], row[3], row[4], row[5], row[6], row[8])
-                    if sig in seen:
-                        st["duplicate"] += 1
-                        if row[12]:
-                            kept = con.execute("SELECT speaker FROM guidance WHERE id=?", (seen[sig],)).fetchone()
-                            if kept and not kept[0]:
-                                con.execute("UPDATE guidance SET speaker=? WHERE id=?", (row[12], seen[sig]))
-                                st["speaker_recovered"] += 1
+            with fiscal.use(fiscal.fy_end_month(con, symbol)):
+                for page, text in pages:
+                    if not (text or "").strip():
                         continue
-                    cur = con.execute(ins, row)
-                    seen[sig] = int(cur.lastrowid or 0)
-                    st["rows"] += 1
-                    st[row[2]] += 1
+                    st["pages"] += 1
+                    for row in extract_sentences(symbol, doc, page, text, by_page.get(page, []), st,
+                                                 mgmt_speakers, bool(doc_rows), revenue_cr, analysts,
+                                                 {turn: ents for (doc_key, turn), ents in asked.items()
+                                                  if doc_key == doc["doc_key"]}, own_names, known_ents, raw_names):
+                        sig = (row[0], row[2], row[3], row[4], row[5], row[6], row[8])
+                        if sig in seen:
+                            st["duplicate"] += 1
+                            if row[12]:
+                                kept = con.execute("SELECT speaker FROM guidance WHERE id=?", (seen[sig],)).fetchone()
+                                if kept and not kept[0]:
+                                    con.execute("UPDATE guidance SET speaker=? WHERE id=?", (row[12], seen[sig]))
+                                    st["speaker_recovered"] += 1
+                            continue
+                        cur = con.execute(ins, row)
+                        seen[sig] = int(cur.lastrowid or 0)
+                        st["rows"] += 1
+                        st[row[2]] += 1
         con.commit()
         revs = revisions(con, symbol)
         st["revisions"] = revs
