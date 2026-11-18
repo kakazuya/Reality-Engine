@@ -160,8 +160,11 @@ def test_filings_register_matching_statuses_and_dedupe(tmp_path: Path):
     # Pre-seed an OTH filing row to verify per-symbol delete+rewrite leaves other companies alone.
     schema.ensure(conn, ("filing",))
     conn.execute(
-        "INSERT INTO filing VALUES ('BSE','keep-oth','OTH','INE000B01010','2025-05-12T15:00:00',"
-        "'Result','Financial Results','Keep me','oth_res.pdf','results','d_oth','results',8,NULL,NULL,'held')"
+        "INSERT INTO filing (exchange, filing_id, symbol, isin, filed_at, exchange_category, "
+        "exchange_subcategory, headline, attachment, kind_hint, held_doc_key, held_doc_type, "
+        "held_pages, link_urls, twin_filing_id, resolved_doc_key, status) "
+        "VALUES ('BSE','keep-oth','OTH','INE000B01010','2025-05-12T15:00:00',"
+        "'Result','Financial Results','Keep me','oth_res.pdf','results','d_oth','results',8,NULL,NULL,NULL,'held')"
     )
     conn.commit()
 
@@ -306,3 +309,73 @@ def test_part_stamp_places_filings_after_docs_collect():
     assert "filings" in part_stamp.RECIPE
     assert part_stamp.PART_TABLES["filings"] == ("filing",)
     assert part_stamp.part_files("filings")
+
+
+def test_fix_a_nse_seq_id_matches_nse_prefix_pdf(tmp_path: Path):
+    """c12 bug shape: NSE seq_id=105811821 matches doc source_key .../nse_105811821.pdf even with a different attachment name."""
+    conn = sqlite3.connect(":memory:")
+    conn.execute(schema.TABLES["company"])
+    conn.execute(schema.TABLES["doc"])
+    conn.execute(schema.TABLES["doc_page"])
+    conn.execute("INSERT INTO company VALUES ('VIVIANA','INE000C01010','2020-01-01',NULL,'test',NULL,'Viviana Power')")
+    conn.execute(
+        "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            "viv_1", "VIVIANA", "INE000C01010", "announcement", "announcement", "Different local title",
+            "2026-11-07", "2026-11-07T18:00:00", 4, "shaviv", "pages.db",
+            "D:/RealityEngine/raw/pilot60_history/VIVIANA/material_filing/nse_105811821.pdf",
+        ),
+    )
+    conn.commit()
+
+    nse_root = tmp_path / "nse"
+    (nse_root / "tg_queue_2026-11-16").mkdir(parents=True)
+    row = {
+        "symbol": "VIVIANA", "isin": "INE000C01010", "subject": "Outcome of Board Meeting",
+        "desc": "Outcome of Board Meeting", "kind": "other", "known_at": "2026-11-07T18:00:00",
+        "attachment_url": "https://nsearchives.nseindia.com/corporate/VIVIANA_07112026_covering_letter.pdf",
+        "seq_id": "105811821", "file_size": "100.00 KB",
+        "raw": {
+            "attchmntFile": "https://nsearchives.nseindia.com/corporate/VIVIANA_07112026_covering_letter.pdf",
+            "attchmntText": "Covering letter", "attFileSize": "100.00 KB",
+        },
+    }
+    (nse_root / "tg_queue_2026-11-16" / "VIVIANA.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+    filings.run(conn, symbols=["VIVIANA"], bse_db=tmp_path / "missing_bse.db", nse_root=nse_root)
+    got = conn.execute(
+        "SELECT status, held_doc_key FROM filing WHERE symbol='VIVIANA' AND exchange='NSE' AND filing_id='105811821'"
+    ).fetchone()
+    assert got == ("held", "viv_1")
+    conn.close()
+
+
+def test_fix_b_linked_doc_marks_filing_link_held_and_updates_coverage(tmp_path: Path):
+    """A held doc under linked_docs/<SYMBOL>/<EXCHANGE>_<FILING_ID>_*.pdf sets status='link_held' and resolved_doc_key."""
+    conn = _make_store()
+    conn.execute(
+        "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        (
+            "d_resolved", "TST", "INE000A01010", "transcript", "transcript",
+            "Q4 call (linked from BSE filing bse-3)", "2025-05-15", "2025-05-15T17:00:00",
+            14, "sha_resolved", "manifest.csv",
+            r"D:\RealityEngine\raw\linked_docs\TST\BSE_bse-3_abcdef123456.pdf",
+        ),
+    )
+    conn.commit()
+    bse_db = _make_bse_db(tmp_path / "bse_announcements.db")
+    nse_root = _make_nse_root(tmp_path / "nse_announcements")
+
+    filings.run(conn, symbols=["TST"], bse_db=bse_db, nse_root=nse_root)
+    row = conn.execute(
+        "SELECT status, held_doc_key, resolved_doc_key FROM filing "
+        "WHERE symbol='TST' AND exchange='BSE' AND filing_id='bse-3'"
+    ).fetchone()
+    assert row == ("link_held", "d_link", "d_resolved")
+
+    cov = conn.execute(
+        "SELECT filed, held, link_only, link_held FROM filing_coverage "
+        "WHERE symbol='TST' AND fiscal_quarter='Q1FY26' AND kind_hint='transcript'"
+    ).fetchone()
+    assert cov == (1, 1, 0, 1)
+    conn.close()
