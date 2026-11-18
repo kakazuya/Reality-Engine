@@ -253,7 +253,9 @@ def test_resolve_rejections_and_one_hop_cover_redirect():
         return url, "text/plain", b"not a pdf"
 
     names = ["JSWINFRA", "JSW Infrastructure Limited"]
-    assert lf.resolve("https://x/parent.pdf", "transcript", "2026-07-22", names, get=fake_get)["reason"] == "wrong_company"
+    parent_res = lf.resolve("https://x/parent.pdf", "transcript", "2026-07-22", names, get=fake_get)
+    assert parent_res["reason"] == "other_company"
+    assert parent_res["printed_company"] == "JSW Steel Limited"
     assert lf.resolve("https://x/short.pdf", "transcript", "2026-07-22", names, get=fake_get)["reason"] == "too_short"
     assert lf.resolve("https://x/not_tx.pdf", "transcript", "2026-07-22", names, get=fake_get)["reason"] == "not_transcript"
     assert lf.resolve("https://x/stale.pdf", "transcript", "2026-07-22", names, get=fake_get)["reason"] == "date_mismatch"
@@ -292,7 +294,7 @@ def test_plan_store_twin_dedupe_exchange_not_fetched_and_idempotent_manifest(tmp
         "Thank you",
     ])
     held_pdf = _make_pdf([
-        "Navkar Corporation Limited\nAlready Held Transcript\nMay 10, 2025",
+        "Navkar Corporation Limited\nAlready Held Transcript\nFebruary 10, 2025",
         "Moderator: Already held.",
         "Page 3",
     ])
@@ -306,9 +308,9 @@ def test_plan_store_twin_dedupe_exchange_not_fetched_and_idempotent_manifest(tmp
             ("d_tx_cover_nse", "NAVKAR", "INE278M01019", "announcement", "announcement", "Cover NSE",
              "2025-05-16", "2025-05-16T17:00:00", 1, "sha_c2", "pages.db", "c2.pdf"),
             ("d_held_cover", "NAVKAR", "INE278M01019", "announcement", "announcement", "Cover Held",
-             "2025-05-12", "2025-05-12T10:00:00", 1, "sha_c3", "pages.db", "c3.pdf"),
+             "2025-02-12", "2025-02-12T10:00:00", 1, "sha_c3", "pages.db", "c3.pdf"),
             ("d_existing_tx", "NAVKAR", "INE278M01019", "transcript", "transcript", "Held tx",
-             "2025-05-10", "2025-05-10T10:00:00", 3, held_sha, "pages.db", "held_tx.pdf"),
+             "2025-02-10", "2025-02-10T10:00:00", 3, held_sha, "pages.db", "held_tx.pdf"),
         ],
     )
     conn.executemany(
@@ -319,7 +321,7 @@ def test_plan_store_twin_dedupe_exchange_not_fetched_and_idempotent_manifest(tmp
             ("d_tx_cover_nse", "NAVKAR", 1, "Please find transcript at https://navkar.com/q4.pdf",
              "script_text", 48, "2025-05-16T17:00:00", None),
             ("d_held_cover", "NAVKAR", 1, "Please find transcript at https://navkar.com/already.pdf",
-             "script_text", 50, "2025-05-12T10:00:00", None),
+             "script_text", 50, "2025-02-12T10:00:00", None),
         ],
     )
     conn.executemany(
@@ -333,7 +335,7 @@ def test_plan_store_twin_dedupe_exchange_not_fetched_and_idempotent_manifest(tmp
              "Earnings Call Transcript", "Transcript link", "https://nse/c2.pdf", "transcript",
              "d_tx_cover_nse", "announcement", 1, json.dumps(["https://navkar.com/q4.pdf"]), None, None, "link_only"),
             # Already held by sha
-            ("BSE", "b2", "NAVKAR", "INE278M01019", "2025-05-12T10:00:00", "Company Update",
+            ("BSE", "b2", "NAVKAR", "INE278M01019", "2025-02-12T10:00:00", "Company Update",
              "Earnings Call Transcript", "Held link", "c3.pdf", "transcript",
              "d_held_cover", "announcement", 1, json.dumps(["https://navkar.com/already.pdf"]), None, None, "link_only"),
             # not_fetched deck on BSE (uses AttachHis URL)
@@ -471,5 +473,261 @@ def test_find_site_docs_and_cli(tmp_path: Path, capsys):
     out_json = tmp_path / "plan.json"
     rc = lf.main(["--store-dir", str(store_dir), "--plan-only", "--symbols", "NAVKAR", "--json", str(out_json)])
     assert rc == 0
-    assert "| NAVKAR |" in capsys.readouterr().out
+    out_text = capsys.readouterr().out
+    assert "| NAVKAR |" in out_text
+    assert "link letters by intent" in out_text
     assert json.loads(out_json.read_text(encoding="utf-8")) == []
+
+
+# --------------------------------------------------------------------------- Round 2 fixes
+def test_fiscal_year_range_tag_parsing_and_seamec_site_q1_fy2026_27(tmp_path: Path):
+    assert lf.parse_quarter_tag("Q1 FY 2026-27") == "Q1FY27"
+    assert lf.parse_quarter_tag("Q2 FY 2024-25") == "Q2FY25"
+    assert lf.parse_quarter_tag("Q4 FY24") == "Q4FY24"
+    assert lf.parse_quarter_tag("Q4 FY 2026") == "Q4FY26"
+    assert lf._quarter_matches_text("Transcripts of Earning Call for Q1 FY 2026-27.pdf", "Q1FY27") is True
+    assert lf._quarter_matches_text("Transcripts of Earning Call for Q1 FY 2026-27.pdf", "Q1FY26") is False
+
+    db_path = tmp_path / "seamec.db"
+    conn = _init_store(db_path)
+    conn.execute(
+        "INSERT INTO company VALUES ('SEAMECLTD','INE497B01018','2020-01-01',NULL,'shipping','526807',"
+        "'Seamec Limited')"
+    )
+    for i in range(1, 4):
+        conn.execute(
+            "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (f"s_{i}", "SEAMECLTD", "INE497B01018", "results", "results", f"R{i}",
+             "2026-05-10", "2026-05-10T10:00:00", 2, f"ss_{i}", "pages.db", f"s{i}.pdf"),
+        )
+        conn.execute(
+            "INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)",
+            (f"s_{i}", "SEAMECLTD", 1, "Visit www.seamec.in", "script_text", 20, "2026-05-10T10:00:00", None),
+        )
+    conn.commit()
+    conn.close()
+
+    seamec_tx = _make_pdf([
+        "Seamec Limited\nQ1 FY 2026-27 Earnings Call Transcript\nAugust 14, 2026",
+        "Moderator: Ladies and gentlemen, good day.",
+        "Management discussion.",
+    ])
+
+    def fake_get(url: str) -> tuple[str, str, bytes]:
+        if url == "https://www.seamec.in/":
+            return url, "text/html", (
+                b"<html><body>"
+                b"<a href='/upload/Transcripts%20of%20Earning%20Call%20for%20Q1%20FY%202026-27.pdf'>"
+                b"Transcripts of Earning Call for Q1 FY 2026-27</a>"
+                b"</body></html>"
+            )
+        if "2026-27" in url:
+            return url, "application/pdf", seamec_tx
+        raise AssertionError(url)
+
+    res = lf.find_site_docs(db_path, "SEAMECLTD", get=fake_get, since="2024-04-01")
+    assert res["verdict"] == "found"
+    assert len(res["items"]) == 1
+    assert res["items"][0]["outcome"] == "resolved"
+
+
+def test_site_finder_runs_only_for_missing_kinds_and_site_all_overrides(tmp_path: Path):
+    store_dir = tmp_path / "c_kinds"
+    store_dir.mkdir()
+    db_path = store_dir / "c_kinds.db"
+    conn = _init_store(db_path)
+    for i in range(1, 4):
+        conn.execute(
+            "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            (f"r_{i}", "NAVKAR", "INE278M01019", "results", "results", f"R{i}",
+             "2025-05-10", "2025-05-10T10:00:00", 2, f"rs_{i}", "pages.db", f"r{i}.pdf"),
+        )
+        conn.execute(
+            "INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)",
+            (f"r_{i}", "NAVKAR", 1, "www.navkarcorp.com", "script_text", 20, "2025-05-10T10:00:00", None),
+        )
+    # NAVKAR holds a transcript (>=3 pages) and a deck since 2024-04-01
+    conn.execute(
+        "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        ("tx_1", "NAVKAR", "INE278M01019", "transcript", "transcript", "Held tx",
+         "2025-05-15", "2025-05-15T10:00:00", 10, "txsha", "pages.db", "tx1.pdf"),
+    )
+    conn.execute(
+        "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        ("dk_1", "NAVKAR", "INE278M01019", "deck", "deck", "Held deck",
+         "2025-05-15", "2025-05-15T10:00:00", 15, "dksha", "pages.db", "dk1.pdf"),
+    )
+    conn.commit()
+    conn.close()
+
+    fetches: list[str] = []
+
+    def fake_get(url: str) -> tuple[str, str, bytes]:
+        fetches.append(url)
+        if url == "https://www.navkarcorp.com/":
+            return url, "text/html", (
+                b"<html><body>"
+                b"<a href='/files/q2-transcript-10-10-2025.pdf'>Transcript 10-10-2025</a>"
+                b"<a href='/files/q2-presentation-10-10-2025.pdf'>Investor Presentation 10-10-2025</a>"
+                b"</body></html>"
+            )
+        if url.endswith("q2-transcript-10-10-2025.pdf"):
+            return url, "application/pdf", _make_pdf([
+                "Navkar Corporation Limited\nTranscript\nOctober 10, 2025",
+                "Moderator: Welcome.",
+                "Page 3",
+            ])
+        return url, "application/pdf", _make_pdf([
+            "Navkar Corporation Limited\nInvestor Presentation\nOctober 10, 2025",
+            "Slide 2", "Slide 3", "Slide 4", "Slide 5",
+        ])
+
+    # Default kinds=None -> both transcript and deck already held -> not_needed with zero fetches
+    res_skip = lf.find_site_docs(db_path, "NAVKAR", get=fake_get, since="2024-04-01")
+    assert res_skip["verdict"] == "not_needed"
+    assert fetches == []
+
+    # Override with kinds=('transcript', 'deck') (as --site-all does) -> crawls and resolves both
+    res_all = lf.find_site_docs(db_path, "NAVKAR", get=fake_get, since="2024-04-01", kinds=("transcript", "deck"))
+    assert res_all["verdict"] == "found"
+    assert len(fetches) > 0
+    assert sorted(it["kind"] for it in res_all["items"]) == ["deck", "transcript"]
+
+    # When only deck is missing, only deck is fetched (transcript PDF skipped)
+    conn = sqlite3.connect(db_path)
+    conn.execute("DELETE FROM doc WHERE doc_key='dk_1'")
+    conn.commit()
+    conn.close()
+    fetches.clear()
+    res_deck_only = lf.find_site_docs(db_path, "NAVKAR", get=fake_get, since="2024-04-01")
+    assert res_deck_only["verdict"] == "found"
+    assert [it["kind"] for it in res_deck_only["items"]] == ["deck"]
+    assert not any("transcript" in u for u in fetches)
+
+
+def test_same_call_dedupe_dup_in_plan_needs_ocr_and_report(tmp_path: Path):
+    db_path = tmp_path / "dedupe.db"
+    conn = _init_store(db_path)
+
+    # Store already holds a transcript with printed call date May 15, 2025 (different bytes) and a deck on May 15, 2025
+    conn.executemany(
+        "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        [
+            ("held_tx_call", "NAVKAR", "INE278M01019", "transcript", "transcript", "Held call",
+             "2025-05-20", "2025-05-20T18:00:00", 8, "sha_held_tx", "pages.db", "held_tx.pdf"),
+            ("held_dk_call", "NAVKAR", "INE278M01019", "deck", "deck", "Held deck",
+             "2025-05-15", "2025-05-15T18:00:00", 12, "sha_held_dk", "pages.db", "held_dk.pdf"),
+            ("cov_same_tx", "NAVKAR", "INE278M01019", "announcement", "announcement", "Cover 1",
+             "2025-05-19", "2025-05-19T10:00:00", 1, "sha_c1", "pages.db", "c1.pdf"),
+            ("cov_new_1", "NAVKAR", "INE278M01019", "announcement", "announcement", "Cover 2",
+             "2025-08-12", "2025-08-12T10:00:00", 1, "sha_c2", "pages.db", "c2.pdf"),
+            ("cov_new_2", "NAVKAR", "INE278M01019", "announcement", "announcement", "Cover 3",
+             "2025-08-14", "2025-08-14T10:00:00", 1, "sha_c3", "pages.db", "c3.pdf"),
+            ("cov_parent", "NAVKAR", "INE278M01019", "announcement", "announcement", "Cover 4",
+             "2025-11-10", "2025-11-10T10:00:00", 1, "sha_c4", "pages.db", "c4.pdf"),
+            ("cov_scan", "NAVKAR", "INE278M01019", "announcement", "announcement", "Cover 5",
+             "2025-11-12", "2025-11-12T10:00:00", 1, "sha_c5", "pages.db", "c5.pdf"),
+        ],
+    )
+    conn.executemany(
+        "INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)",
+        [
+            ("held_tx_call", "NAVKAR", 1, "Navkar Corporation Limited\nConference Call May 15, 2025",
+             "script_text", 60, "2025-05-20T18:00:00", None),
+            ("cov_same_tx", "NAVKAR", 1, "Transcript at https://navkar.com/may.pdf",
+             "script_text", 40, "2025-05-19T10:00:00", None),
+            ("cov_new_1", "NAVKAR", 1, "Transcript at https://navkar.com/aug1.pdf",
+             "script_text", 40, "2025-08-12T10:00:00", None),
+            ("cov_new_2", "NAVKAR", 1, "Transcript at https://navkar.com/aug2.pdf",
+             "script_text", 40, "2025-08-14T10:00:00", None),
+            ("cov_parent", "NAVKAR", 1, "Transcript at https://navkar.com/parent.pdf",
+             "script_text", 40, "2025-11-10T10:00:00", None),
+            ("cov_scan", "NAVKAR", 1, "Transcript at https://navkar.com/scan.pdf",
+             "script_text", 40, "2025-11-12T10:00:00", None),
+        ],
+    )
+    conn.executemany(
+        "INSERT INTO filing VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [
+            # Same-call transcript (different bytes from held_tx_call, call date May 15, 2025)
+            ("BSE", "f1", "NAVKAR", "INE278M01019", "2025-05-19T10:00:00", "Company Update",
+             "Earnings Call Transcript", "Tx 1", "c1.pdf", "transcript", "cov_same_tx", "announcement", 1,
+             json.dumps(["https://navkar.com/may.pdf"]), None, None, "link_only"),
+            # Same-call deck (anchor date May 18 within 10d of held_dk_call 2025-05-15)
+            ("BSE", "f2", "NAVKAR", "INE278M01019", "2025-05-18T10:00:00", "Company Update",
+             "Investor Presentation", "Deck", "dk2.pdf", "deck", None, None, None, None, None, None, "not_fetched"),
+            # Two different URLs for the same August 10 call -> f3 resolved, f4 dup_in_plan
+            ("BSE", "f3", "NAVKAR", "INE278M01019", "2025-08-12T10:00:00", "Company Update",
+             "Earnings Call Transcript", "Aug 1", "c2.pdf", "transcript", "cov_new_1", "announcement", 1,
+             json.dumps(["https://navkar.com/aug1.pdf"]), None, None, "link_only"),
+            ("NSE", "f4", "NAVKAR", "INE278M01019", "2025-08-14T10:00:00", "other",
+             "Earnings Call Transcript", "Aug 2", "c3.pdf", "transcript", "cov_new_2", "announcement", 1,
+             json.dumps(["https://navkar.com/aug2.pdf"]), None, None, "link_only"),
+            # Parent company PDF -> other_company + printed_company
+            ("BSE", "f5", "NAVKAR", "INE278M01019", "2025-11-10T10:00:00", "Company Update",
+             "Earnings Call Transcript", "Parent", "c4.pdf", "transcript", "cov_parent", "announcement", 1,
+             json.dumps(["https://navkar.com/parent.pdf"]), None, None, "link_only"),
+            # Empty / scanned PDF (<50 chars on pages 1-2) -> needs_ocr
+            ("BSE", "f6", "NAVKAR", "INE278M01019", "2025-11-12T10:00:00", "Company Update",
+             "Earnings Call Transcript", "Scan", "c5.pdf", "transcript", "cov_scan", "announcement", 1,
+             json.dumps(["https://navkar.com/scan.pdf"]), None, None, "link_only"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    may_tx = _make_pdf([
+        "Navkar Corporation Limited\nTranscript May 15, 2025\nSite copy",
+        "Moderator: Good day.",
+        "Page 3",
+    ])
+    may_dk = _make_pdf([
+        "Navkar Corporation Limited\nInvestor Presentation",
+        "Slide 2", "Slide 3", "Slide 4", "Slide 5",
+    ])
+    aug_tx_1 = _make_pdf([
+        "Navkar Corporation Limited\nTranscript August 10, 2025\nCopy A",
+        "Moderator: Welcome.",
+        "Page 3",
+    ])
+    aug_tx_2 = _make_pdf([
+        "Navkar Corporation Limited\nTranscript August 11, 2025\nCopy B",
+        "Moderator: Welcome all.",
+        "Page 3",
+    ])
+    parent_tx = _make_pdf([
+        "JSW Infrastructure Limited\nQ2 FY26 Earnings Conference Call\nNovember 8, 2025",
+        "Moderator: Welcome.",
+        "Page 3",
+    ])
+    scan_tx = _make_pdf(["", "", ""])
+
+    blobs = {
+        "https://navkar.com/may.pdf": may_tx,
+        "https://www.bseindia.com/xml-data/corpfiling/AttachHis/dk2.pdf": may_dk,
+        "https://navkar.com/aug1.pdf": aug_tx_1,
+        "https://navkar.com/aug2.pdf": aug_tx_2,
+        "https://navkar.com/parent.pdf": parent_tx,
+        "https://navkar.com/scan.pdf": scan_tx,
+    }
+    items = lf.plan_store(db_path, get=lambda u: (u, "application/pdf", blobs[u]))
+    by_fid = {it["filing_id"]: it for it in items}
+
+    assert by_fid["f1"]["outcome"] == "held_same_call"
+    assert by_fid["f1"]["held_doc_key"] == "held_tx_call"
+    assert by_fid["f2"]["outcome"] == "held_same_call"
+    assert by_fid["f2"]["held_doc_key"] == "held_dk_call"
+    assert by_fid["f3"]["outcome"] == "resolved"
+    assert by_fid["f4"]["outcome"] == "dup_in_plan"
+    assert by_fid["f5"]["outcome"] == "failed"
+    assert by_fid["f5"]["reason"] == "other_company"
+    assert by_fid["f5"]["printed_company"] == "JSW Infrastructure Limited"
+    assert by_fid["f6"]["outcome"] == "failed"
+    assert by_fid["f6"]["reason"] == "needs_ocr"
+
+    report = lf.format_report(items)
+    assert "held_same_call" in report
+    assert "dup_in_plan" in report
+    assert "other_company" in report
+    assert "link letters by intent" in report
+    assert "JSW Infrastructure Limited" in report

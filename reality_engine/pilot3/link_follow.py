@@ -117,6 +117,8 @@ RUN_CSV_HEADER: tuple[str, ...] = (
     "target",
     "outcome",
     "reason",
+    "held_doc_key",
+    "printed_company",
     "pages",
     "sha256",
     "url",
@@ -166,7 +168,10 @@ _DMY_NAME_RE = re.compile(
     rf"(?<!\d)(\d{{1,2}})(?:st|nd|rd|th)?[-\s]+(?:of[-\s]+)?({_MONTH_RE})[-\s,]+(20\d{{2}})(?!\d)",
     re.I,
 )
-_QTAG_RE = re.compile(r"(?<![a-z0-9])q([1-4])[-_\s]*fy[-_\s]*(?:20)?(\d{2})(?![a-z0-9])", re.I)
+_QTAG_RE = re.compile(
+    r"(?<![a-z0-9])q([1-4])[-_\s]*fy[-_\s]*(?:20)?(\d{2})(?:[-–/](?:20)?(\d{2}))?(?![a-z0-9])",
+    re.I,
+)
 _DOMAIN_URL_RE = re.compile(r"https?://([a-z0-9-]+(?:\.[a-z0-9-]+)+)", re.I)
 _DOMAIN_WWW_RE = re.compile(r"\b(www\.[a-z0-9-]+(?:\.[a-z0-9-]+)+)", re.I)
 
@@ -375,12 +380,23 @@ def _dates_from_text(text: str) -> list[date]:
     return found
 
 
+def _match_to_qtag(m: re.Match[str]) -> str:
+    q_num, y1, y2 = m.group(1), m.group(2), m.group(3)
+    fy = y2 if (y2 is not None and int(y2) == (int(y1) + 1) % 100) else y1
+    return f"Q{q_num}FY{fy}"
+
+
+def parse_quarter_tag(text: str) -> str | None:
+    """Parse ``Q1 FY 2026-27`` / ``Q2 FY25`` style quarter tags into ``Q1FY27``."""
+    m = _QTAG_RE.search(text or "")
+    return _match_to_qtag(m) if m else None
+
+
 def _quarter_matches_text(text: str, tag: str) -> bool:
     if not tag or "FY" not in tag:
         return False
-    q_part, fy_part = tag.split("FY", 1)
-    q_num = q_part.lstrip("Qq")
-    return bool(re.search(rf"(?<![a-z0-9])q[-_\s]*{q_num}[-_\s]*fy[-_\s]*(?:20)?{fy_part}(?![a-z0-9])", text, re.I))
+    want = tag.upper()
+    return any(_match_to_qtag(m) == want for m in _QTAG_RE.finditer(text or ""))
 
 
 def _score_pdf_link(href: str, anchor_text: str, intent: str, anchor_date: str | None) -> int:
@@ -457,6 +473,14 @@ def _check_company(first2: str, company_names: Iterable[str] | str | None) -> bo
     return False
 
 
+def _printed_company_line(page1: str) -> str | None:
+    for line in (page1 or "").splitlines():
+        clean = " ".join(line.split())
+        if clean and re.search(r"\b(?:limited|ltd)\b", clean, re.I):
+            return clean[:120]
+    return None
+
+
 def _check_candidate(
     url: str,
     data: bytes,
@@ -469,6 +493,10 @@ def _check_candidate(
     min_pages = 5 if intent == "deck" else 3
     if pages < min_pages:
         return {"status": "failed", "reason": "too_short"}
+
+    first2 = "\n".join(texts[:2])
+    if len(first2.strip()) < 50:
+        return {"status": "failed", "reason": "needs_ocr"}
 
     first3 = "\n".join(texts[:3])
     is_tx = bool(linked_transcripts.TRANSCRIPT_TEXT.search(first3) or doc_identity.moderator_line(first3))
@@ -487,9 +515,12 @@ def _check_candidate(
         if kind == "deck" and pages < 5:
             return {"status": "failed", "reason": "too_short"}
 
-    first2 = "\n".join(texts[:2])
     if not _check_company(first2, company_names):
-        return {"status": "failed", "reason": "wrong_company"}
+        return {
+            "status": "failed",
+            "reason": "other_company",
+            "printed_company": _printed_company_line(texts[0] if texts else ""),
+        }
 
     if anchor_date:
         try:
@@ -703,10 +734,100 @@ def _base_item(
         "target": target,
         "outcome": None,
         "reason": "",
+        "held_doc_key": None,
+        "printed_company": None,
         "pages": 0,
         "sha256": None,
         "url": None,
     }
+
+
+def _parse_iso_date(value: Any) -> date | None:
+    text = str(value or "").strip()[:10]
+    if len(text) != 10:
+        return None
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _load_held_call_index(
+    conn: sqlite3.Connection,
+) -> tuple[dict[str, list[tuple[str, list[date]]]], dict[str, list[tuple[str, date]]]]:
+    """Load held transcript call/filing dates and deck filing dates once per store."""
+    tx_pages: dict[tuple[str, str], tuple[str | None, str | None, list[str]]] = {}
+    for sym, dk, fd, ka, text in conn.execute(
+        "SELECT d.symbol, d.doc_key, d.filing_date, d.known_at, dp.text "
+        "FROM doc d "
+        "LEFT JOIN doc_page dp ON dp.doc_key = d.doc_key AND dp.page <= ? "
+        "WHERE d.doc_type = 'transcript' AND d.pages >= 3 "
+        "ORDER BY d.symbol, d.doc_key, dp.page",
+        (call_dates.PAGES,),
+    ):
+        sym_u = str(sym or "").strip().upper()
+        key = (sym_u, str(dk))
+        if key not in tx_pages:
+            tx_pages[key] = (fd, ka, [])
+        if text:
+            tx_pages[key][2].append(str(text))
+
+    held_tx: dict[str, list[tuple[str, list[date]]]] = {}
+    for (sym_u, dk), (fd, ka, texts) in tx_pages.items():
+        dates_list: list[date] = []
+        if texts:
+            printed = _parse_iso_date(call_dates.call_date(texts))
+            if printed is not None:
+                dates_list.append(printed)
+        f_dt = _parse_iso_date(fd or ka)
+        if f_dt is not None and f_dt not in dates_list:
+            dates_list.append(f_dt)
+        if dates_list:
+            held_tx.setdefault(sym_u, []).append((dk, dates_list))
+
+    held_decks: dict[str, list[tuple[str, date]]] = {}
+    for sym, dk, fd, ka in conn.execute(
+        "SELECT symbol, doc_key, filing_date, known_at "
+        "FROM doc WHERE doc_type = 'deck' ORDER BY symbol, doc_key"
+    ):
+        sym_u = str(sym or "").strip().upper()
+        f_dt = _parse_iso_date(fd or ka)
+        if f_dt is not None:
+            held_decks.setdefault(sym_u, []).append((str(dk), f_dt))
+
+    return held_tx, held_decks
+
+
+def _check_same_call_or_dup(
+    symbol: str,
+    kind: str,
+    texts: list[str],
+    anchor_date: str | None,
+    held_tx: dict[str, list[tuple[str, list[date]]]],
+    held_decks: dict[str, list[tuple[str, date]]],
+    planned_calls: dict[tuple[str, str], list[date]],
+) -> tuple[str, str | None]:
+    if kind == "transcript":
+        cand_call_dt = _parse_iso_date(call_dates.call_date(texts))
+        if cand_call_dt is not None:
+            for dk, dts in held_tx.get(symbol, ()):
+                if any(abs((cand_call_dt - hd).days) <= 7 for hd in dts):
+                    return "held_same_call", dk
+        plan_dt = cand_call_dt or _parse_iso_date(anchor_date)
+    else:
+        cand_anchor_dt = _parse_iso_date(anchor_date)
+        if cand_anchor_dt is not None:
+            for dk, hd in held_decks.get(symbol, ()):
+                if abs((cand_anchor_dt - hd).days) <= 10:
+                    return "held_same_call", dk
+        plan_dt = cand_anchor_dt
+
+    if plan_dt is not None:
+        existing = planned_calls.get((symbol, kind), [])
+        if any(abs((plan_dt - pd).days) <= 7 for pd in existing):
+            return "dup_in_plan", None
+        planned_calls.setdefault((symbol, kind), []).append(plan_dt)
+    return "resolved", None
 
 
 def _resolve_target_to_item(
@@ -716,11 +837,20 @@ def _resolve_target_to_item(
     anchor_date: str | None,
     company_names: list[str],
     held_shas: set[str],
+    held_tx: dict[str, list[tuple[str, list[date]]]],
+    held_decks: dict[str, list[tuple[str, date]]],
+    planned_calls: dict[tuple[str, str], list[date]],
     get_fn: GetFn,
 ) -> dict[str, Any]:
     res = resolve(target, intent, anchor_date, company_names, get=get_fn)
     if res["status"] != "resolved":
-        return {**item, "target": target, "outcome": "failed", "reason": res["reason"]}
+        return {
+            **item,
+            "target": target,
+            "outcome": "failed",
+            "reason": res["reason"],
+            "printed_company": res.get("printed_company"),
+        }
     sha = linked_transcripts._sha256(res["data"])
     if sha in held_shas:
         return {
@@ -732,17 +862,29 @@ def _resolve_target_to_item(
             "sha256": sha,
             "url": res["url"],
         }
-    return {
+    outcome, held_doc_key = _check_same_call_or_dup(
+        str(item["symbol"]),
+        str(res["kind"]),
+        res["texts"],
+        anchor_date,
+        held_tx,
+        held_decks,
+        planned_calls,
+    )
+    out: dict[str, Any] = {
         **item,
         "target": target,
         "kind": res["kind"],
-        "outcome": "resolved",
+        "outcome": outcome,
+        "held_doc_key": held_doc_key,
         "pages": res["pages"],
         "sha256": sha,
         "url": res["url"],
-        "data": res["data"],
-        "texts": res["texts"],
     }
+    if outcome == "resolved":
+        out["data"] = res["data"]
+        out["texts"] = res["texts"]
+    return out
 
 
 def plan_store(
@@ -762,6 +904,7 @@ def plan_store(
         if not has_filing:
             return []
         held_shas = {str(sha).lower() for (sha,) in conn.execute("SELECT sha256 FROM doc WHERE sha256 IS NOT NULL")}
+        held_tx, held_decks = _load_held_call_index(conn)
         meta = _company_meta(conn)
 
         link_rows = conn.execute(
@@ -778,6 +921,7 @@ def plan_store(
 
         plan: list[dict[str, Any]] = []
         seen_targets: set[tuple[str, str]] = set()
+        planned_calls: dict[tuple[str, str], list[date]] = {}
 
         for exchange, filing_id, symbol, isin, filed_at, held_doc_key, link_urls_json in link_rows:
             sym_u = str(symbol or "").strip().upper()
@@ -821,9 +965,9 @@ def plan_store(
             for t in fresh_targets:
                 seen_targets.add((sym_u, t))
                 attempt = _resolve_target_to_item(
-                    base, t, intent, anchor, info["names"], held_shas, get_fn
+                    base, t, intent, anchor, info["names"], held_shas, held_tx, held_decks, planned_calls, get_fn
                 )
-                if attempt["outcome"] in ("resolved", "held"):
+                if attempt["outcome"] in ("resolved", "held", "held_same_call", "dup_in_plan"):
                     chosen = attempt
                     break
                 if chosen is None:
@@ -854,7 +998,11 @@ def plan_store(
                 target=target,
             )
             anchor = str(filed_at)[:10] if filed_at else None
-            plan.append(_resolve_target_to_item(base, target, intent, anchor, info["names"], held_shas, get_fn))
+            plan.append(
+                _resolve_target_to_item(
+                    base, target, intent, anchor, info["names"], held_shas, held_tx, held_decks, planned_calls, get_fn
+                )
+            )
 
         return plan
     finally:
@@ -1050,9 +1198,8 @@ def _site_link_date(href: str, anchor_text: str) -> str | None:
     dates = _dates_from_text(combined)
     if dates:
         return dates[0].isoformat()
-    m = _QTAG_RE.search(combined)
-    if m:
-        tag = f"Q{m.group(1)}FY{m.group(2)}"
+    tag = parse_quarter_tag(combined)
+    if tag:
         nom = _quarter_nominal_date(tag)
         if nom:
             return nom.isoformat()
@@ -1068,23 +1215,51 @@ def _site_link_intent(href: str, anchor_text: str) -> str | None:
     return None
 
 
+def _missing_site_kinds(conn: sqlite3.Connection, symbol: str, since: str) -> set[str]:
+    has_tx = conn.execute(
+        "SELECT 1 FROM doc WHERE symbol=? AND doc_type='transcript' AND pages>=3 "
+        "AND substr(COALESCE(NULLIF(filing_date, ''), known_at, ''), 1, 10) >= ? LIMIT 1",
+        (symbol, since),
+    ).fetchone()
+    has_deck = conn.execute(
+        "SELECT 1 FROM doc WHERE symbol=? AND doc_type='deck' "
+        "AND substr(COALESCE(NULLIF(filing_date, ''), known_at, ''), 1, 10) >= ? LIMIT 1",
+        (symbol, since),
+    ).fetchone()
+    missing: set[str] = set()
+    if not has_tx:
+        missing.add("transcript")
+    if not has_deck:
+        missing.add("deck")
+    return missing
+
+
 def find_site_docs(
     store_db: Path | str | sqlite3.Connection,
     symbol: str,
     *,
     get: GetFn | None = None,
     since: str = "2024-04-01",
+    kinds: Iterable[str] | None = None,
 ) -> dict[str, Any]:
     """Discover a company's website from held doc page-1 text, crawl investor pages, and validate call PDFs."""
     get_fn = get or default_get
     sym_u = symbol.strip().upper()
     conn, should_close = _open_ro(store_db)
     try:
+        if kinds is None:
+            wanted_kinds = _missing_site_kinds(conn, sym_u, since)
+        else:
+            wanted_kinds = {str(k).strip().lower() for k in kinds if k}
+        if not wanted_kinds:
+            return {"website": None, "pages_crawled": 0, "pdfs_seen": 0, "undated_skipped": 0,
+                    "items": [], "verdict": "not_needed"}
         website = _detect_website(conn, sym_u)
         if not website:
             return {"website": None, "pages_crawled": 0, "pdfs_seen": 0, "undated_skipped": 0,
                     "items": [], "verdict": "no_website"}
         held_shas = {str(sha).lower() for (sha,) in conn.execute("SELECT sha256 FROM doc WHERE sha256 IS NOT NULL")}
+        held_tx, held_decks = _load_held_call_index(conn)
         meta = _company_meta(conn)
         info = meta.get(sym_u, {"isin": None, "bse_code": None, "names": [sym_u]})
     finally:
@@ -1131,9 +1306,10 @@ def find_site_docs(
 
     undated_skipped = 0
     items: list[dict[str, Any]] = []
+    planned_calls: dict[tuple[str, str], list[date]] = {}
     for pdf_url, anchor_text in pdfs_seen.items():
         intent = _site_link_intent(pdf_url, anchor_text)
-        if intent is None:
+        if intent is None or intent not in wanted_kinds:
             continue
         link_date = _site_link_date(pdf_url, anchor_text)
         if not link_date:
@@ -1159,12 +1335,42 @@ def find_site_docs(
                 ),
                 "outcome": "failed",
                 "reason": res["reason"],
+                "printed_company": res.get("printed_company"),
             })
             continue
 
         sha = linked_transcripts._sha256(res["data"])
-        outcome = "held" if sha in held_shas else "resolved"
-        item = {
+        if sha in held_shas:
+            items.append({
+                **_base_item(
+                    exchange="SITE",
+                    filing_id=sha[:16],
+                    symbol=sym_u,
+                    isin=info["isin"],
+                    bse_code=info["bse_code"],
+                    filed_at=None,
+                    source="company_site",
+                    intent=intent,
+                    target=pdf_url,
+                ),
+                "kind": res["kind"],
+                "outcome": "held",
+                "pages": res["pages"],
+                "sha256": sha,
+                "url": res["url"],
+            })
+            continue
+
+        outcome, held_doc_key = _check_same_call_or_dup(
+            sym_u,
+            str(res["kind"]),
+            res["texts"],
+            link_date,
+            held_tx,
+            held_decks,
+            planned_calls,
+        )
+        item: dict[str, Any] = {
             **_base_item(
                 exchange="SITE",
                 filing_id=sha[:16],
@@ -1178,6 +1384,7 @@ def find_site_docs(
             ),
             "kind": res["kind"],
             "outcome": outcome,
+            "held_doc_key": held_doc_key,
             "pages": res["pages"],
             "sha256": sha,
             "url": res["url"],
@@ -1187,7 +1394,7 @@ def find_site_docs(
             item["texts"] = res["texts"]
         items.append(item)
 
-    has_docs = any(it["outcome"] in ("resolved", "held") for it in items)
+    has_docs = any(it["outcome"] in ("resolved", "held", "held_same_call") for it in items)
     verdict = "found" if has_docs else "no_call_documents_on_site"
     return {
         "website": website,
@@ -1216,12 +1423,35 @@ def _resolve_store_db(store_dir: Path) -> Path:
     raise FileNotFoundError(f"Could not find store database in {store_dir}")
 
 
+def _dedupe_combined_plan(items: list[dict[str, Any]]) -> None:
+    """Mark duplicate resolved calls across ``plan_store`` + ``find_site_docs`` in one run as ``dup_in_plan``."""
+    seen: dict[tuple[str, str], list[date]] = {}
+    for item in items:
+        if item.get("outcome") != "resolved":
+            continue
+        sym = str(item.get("symbol") or "")
+        kind = str(item.get("kind") or item.get("intent") or "")
+        texts = item.get("texts") or []
+        dt = _parse_iso_date(call_dates.call_date(texts)) if kind == "transcript" and texts else None
+        if dt is None:
+            dt = _parse_iso_date(item.get("filed_at") or _site_link_date(str(item.get("target") or ""), ""))
+        if dt is None:
+            continue
+        existing = seen.get((sym, kind), [])
+        if any(abs((dt - pd).days) <= 7 for pd in existing):
+            item["outcome"] = "dup_in_plan"
+            item.pop("data", None)
+            item.pop("texts", None)
+        else:
+            seen.setdefault((sym, kind), []).append(dt)
+
+
 def format_report(
     items: list[dict[str, Any]],
     site_results: dict[str, dict[str, Any]] | None = None,
     symbols: Iterable[str] | None = None,
 ) -> str:
-    """Format a per-symbol summary table of planned/applied link-follow and site-finder items."""
+    """Format per-symbol summary tables for link-follow, exchange, site-finder, and letter intents."""
     by_sym: dict[str, list[dict[str, Any]]] = {}
     for sym in symbols or ():
         by_sym.setdefault(sym, [])
@@ -1231,15 +1461,17 @@ def format_report(
         by_sym.setdefault(sym, [])
 
     lines = [
-        "| symbol | link_only | resolved | held | audio_only | invitation | failed | exch_resolved | site_verdict | site_docs |",
-        "|---|---|---|---|---|---|---|---|---|---|",
+        "| symbol | link_only | resolved | held | held_same_call | dup_in_plan | audio_only | invitation | other_company | failed | exch_resolved | site_verdict | site_docs |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for sym in sorted(by_sym):
         mine = by_sym[sym]
         links = [i for i in mine if i.get("source") == "link_follow"]
         exch = [i for i in mine if i.get("source") == "exchange"]
         site_items = [i for i in mine if i.get("source") == "company_site"]
-        c = Counter(str(i.get("outcome") or "") for i in links)
+        c_links = Counter(str(i.get("outcome") or "") for i in links)
+        c_all = Counter(str(i.get("outcome") or "") for i in mine)
+        other_co = sum(1 for i in mine if i.get("outcome") == "failed" and i.get("reason") == "other_company")
         failed_reasons = Counter(str(i.get("reason") or "unknown") for i in mine if i.get("outcome") == "failed")
         fail_str = (
             f"{sum(failed_reasons.values())} ({','.join(f'{k}:{v}' for k, v in sorted(failed_reasons.items()))})"
@@ -1251,9 +1483,33 @@ def format_report(
         site_verdict = str(site_info["verdict"]) if site_info else "-"
         site_docs = sum(1 for i in site_items if i.get("outcome") in ("resolved", "held")) if site_info else 0
         lines.append(
-            f"| {sym} | {len(links)} | {c['resolved']} | {c['held']} | {c['audio_only']} | "
-            f"{c['invitation']} | {fail_str} | {exch_res} | {site_verdict} | {site_docs} |"
+            f"| {sym} | {len(links)} | {c_links['resolved']} | {c_links['held']} | {c_all['held_same_call']} | "
+            f"{c_all['dup_in_plan']} | {c_links['audio_only']} | {c_links['invitation']} | {other_co} | "
+            f"{fail_str} | {exch_res} | {site_verdict} | {site_docs} |"
         )
+
+    lines.append("")
+    lines.append("link letters by intent")
+    lines.append("| symbol | transcript | deck | audio | invitation | unknown |")
+    lines.append("|---|---|---|---|---|---|")
+    for sym in sorted(by_sym):
+        links = [i for i in by_sym[sym] if i.get("source") == "link_follow"]
+        ic = Counter(str(i.get("intent") or "unknown") for i in links)
+        lines.append(
+            f"| {sym} | {ic['transcript']} | {ic['deck']} | {ic['audio']} | {ic['invitation']} | {ic['unknown']} |"
+        )
+
+    other_items = [
+        i for i in items if i.get("outcome") == "failed" and i.get("reason") == "other_company"
+    ]
+    if other_items:
+        lines.append("")
+        lines.append("other_company PDFs")
+        for it in other_items:
+            lines.append(
+                f"OTHER_COMPANY {it['symbol']} {it['exchange']}:{it['filing_id']} "
+                f"printed={it.get('printed_company') or '-'} target={it.get('target') or '-'}"
+            )
     return "\n".join(lines)
 
 
@@ -1261,7 +1517,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
     parser.add_argument("--store-dir", required=True, help="store folder holding <store>.db and raw/manifest.csv")
     parser.add_argument("--plan-only", action="store_true", help="plan only; do not write PDFs or manifest.csv")
-    parser.add_argument("--site", action="store_true", help="also crawl each symbol's company website")
+    parser.add_argument("--site", action="store_true", help="also crawl each symbol's company website for missing kinds")
+    parser.add_argument("--site-all", action="store_true", help="search website for both transcript and deck")
     parser.add_argument("--symbols", default="", help="comma-separated symbols (default: all)")
     parser.add_argument("--json", default="", help="write plan items (without data/texts) to JSON")
     parser.add_argument("--raw-root", default=str(DEFAULT_RAW_ROOT), help="raw root for resolved PDFs")
@@ -1273,7 +1530,8 @@ def main(argv: list[str] | None = None) -> int:
 
     items = plan_store(store_db, symbols=symbols)
     site_results: dict[str, dict[str, Any]] = {}
-    if args.site:
+    run_site = args.site or args.site_all
+    if run_site:
         if symbols is None:
             conn, _ = _open_ro(store_db)
             try:
@@ -1282,15 +1540,17 @@ def main(argv: list[str] | None = None) -> int:
                 conn.close()
         else:
             syms = symbols
+        kinds = ("transcript", "deck") if args.site_all else None
         for sym in syms:
-            res = find_site_docs(store_db, sym)
+            res = find_site_docs(store_db, sym, kinds=kinds)
             site_results[sym] = res
             items.extend(res["items"])
+        _dedupe_combined_plan(items)
 
     if not args.plan_only:
         apply_plan(store_dir, items, raw_root=Path(args.raw_root))
 
-    print(format_report(items, site_results if args.site else None, symbols=symbols))
+    print(format_report(items, site_results if run_site else None, symbols=symbols))
     if args.json:
         payload = [{k: v for k, v in item.items() if k not in ("data", "texts")} for item in items]
         Path(args.json).write_text(json.dumps(payload, indent=1), encoding="utf-8")
