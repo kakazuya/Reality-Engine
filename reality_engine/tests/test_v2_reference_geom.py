@@ -368,3 +368,60 @@ def test_one_number_line_and_dash_columns_keep_their_band():
     p = rg.Page(words)
     assert len(p.columns_for(p.line_of[len(words) - 1])) == 2
     assert not rg._is_header_word("12,03,22") and rg._is_header_word("31,03,2022")
+
+
+# -- T-225 round 4: review round 3's failing inputs (agy 20261118T162632Z-d592e3d2) ----------------------------
+
+def test_group_snap_uses_the_local_gap():
+    words = [_w(170, 10, "Consolidated"), _w(325, 10, "Standalone"),
+             _w(180, 25, "FY24"), _w(260, 25, "Q4FY24"), _w(340, 25, "Q3FY24"), _w(490, 25, "FY23"),
+             _w(10, 40, "Revenue"), _w(185, 40, "100"), _w(265, 40, "25"), _w(345, 40, "30"), _w(495, 40, "90"),
+             _w(10, 55, "Cost"), _w(185, 55, "60"), _w(265, 55, "15"), _w(345, 55, "20"), _w(495, 55, "55")]
+    cells, _ = rg.settle_page([[_cell("Revenue", "Standalone > Q4FY24", "25")]], words)
+    assert not _conf(cells, "25")
+
+
+def test_day_number_is_not_a_year_part():
+    words = [_w(160, 10, "9M"), _w(173, 10, "ended"), _w(200, 10, "31"), _w(213, 10, "Mar"), _w(232, 10, "2024"),
+             _w(270, 10, "9M"), _w(283, 10, "ended"), _w(310, 10, "31"), _w(323, 10, "Mar"), _w(342, 10, "2023"),
+             _w(10, 25, "Revenue"), _w(190, 25, "100"), _w(300, 25, "80"),
+             _w(10, 40, "Cost"), _w(190, 40, "60"), _w(300, 40, "50")]
+    cells, _ = rg.settle_page([[_cell("Revenue", "9M ended 31 Mar 2023", "100")]], words)
+    assert not _conf(cells, "100")
+    assert not rg._is_year_part("31") and rg._is_year_part("FY24") and rg._is_year_part("2024")
+
+
+def test_shifted_sibling_group_heads_no_column():
+    words = [_w(185, 10, "Standalone"), _w(240, 10, "Consolidated"),
+             _w(190, 25, "Shares"), _w(300, 25, "Amount"), _w(370, 25, "Total"),
+             _w(10, 40, "Equity"), _w(195, 40, "100"), _w(305, 40, "50"), _w(375, 40, "150"),
+             _w(10, 55, "Reserve"), _w(195, 55, "200"), _w(305, 55, "60"), _w(375, 55, "260")]
+    cells, _ = rg.settle_page([[_cell("Equity", "Consolidated > Shares", "100")]], words)
+    assert not _conf(cells, "100")
+    words = [_w(175, 10, "Standalone"), _w(225, 10, "Consolidated"),
+             _w(190, 22, "31-Dec-23"), _w(290, 22, "31-Dec-23"),
+             _w(190, 34, "Shares"), _w(290, 34, "Amount"),
+             _w(10, 50, "Equity"), _w(195, 50, "100"), _w(295, 50, "50"),
+             _w(10, 65, "Reserve"), _w(195, 65, "200"), _w(295, 65, "60")]
+    cells, _ = rg.settle_page([[_cell("Equity", "Consolidated > 31-Dec-23 > Shares", "100")]], words)
+    assert not _conf(cells, "100")
+
+
+def test_column_does_not_climb_into_the_table_above():
+    words = [_w(200, 10, "Amount"), _w(280, 10, "Shares"),
+             _w(10, 25, "OldRow"), _w(205, 25, "99"), _w(285, 25, "9"),
+             _w(10, 40, "Note"), _w(35, 40, "text"),
+             _w(10, 55, "More"), _w(35, 55, "text"),
+             _w(200, 70, "Shares"), _w(280, 70, "Amount"),
+             _w(10, 85, "NewRow"), _w(205, 85, "200"), _w(285, 85, "20")]
+    cells, _ = rg.settle_page([[_cell("NewRow", "Amount", "200")]], words)
+    assert not _conf(cells, "200")
+
+
+def test_wide_empty_mark_does_not_bridge_columns():
+    words = [_w(10, 10, "Particulars"), _w(200, 10, "FY25"), _w(232, 10, "FY24"),
+             _w(10, 25, "Row1"), _w(200, 25, "100"), _w(232, 25, "90"),
+             _w(10, 40, "Row2"), _w(200, 40, "100"), _w(218, 40, "n.a."),
+             _w(10, 55, "Row3"), _w(200, 55, "50"), _w(232, 55, "40")]
+    cells, _ = rg.settle_page([[_cell("Row1", "FY24", "100")]], words)
+    assert not _conf(cells, "100")
