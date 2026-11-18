@@ -40,7 +40,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from reality_engine.pilot3 import doc_map
+from reality_engine.pilot3 import doc_map, fiscal
 from reality_engine.v2.page_words import words_for
 from reality_engine.v2.reference_geom import lines_of
 
@@ -154,9 +154,9 @@ def _date_of(text: str) -> list[tuple[int, int, str]]:
 
 
 def fiscal_label(end: str) -> str:
-    """FY label of a period end: March 2024 -> FY24 (a year ending Jan-Mar belongs to the FY named by its year)."""
-    y, m = int(end[:4]), int(end[5:7])
-    return f"FY{(y if m <= 3 else y + 1) % 100:02d}" if m != 12 else f"FY{y % 100:02d}"
+    """FY label of a period end: March 2024 -> FY24 (a year ending Dec under default March preserves FY{yy})."""
+    m = int(end[5:7])
+    return fiscal.fy_label(end, 12 if m == 12 and fiscal.current() == 3 else None)
 
 
 def number(tok: str) -> tuple[float, int] | None:
@@ -318,14 +318,14 @@ def _columns(words: list[Word], lines: list[list[int]]) -> tuple[list[float], li
                if (m := re.fullmatch(r"(?:FY\s*)?(20\d\d)\s*-\s*\d{2,4}", words[i][4].strip(" ,.)")))]
         if len(fys) == 2 and fys[0][1] == fys[1][1] + 1:
             centres = [(words[i][0] + words[i][2]) / 2 for i, _ in fys]
-            return centres, [f"{fys[0][1] + 1:04d}-03-31", f"{fys[1][1] + 1:04d}-03-31"]
+            return centres, [fiscal.fy_end_date(fys[0][1] + 1), fiscal.fy_end_date(fys[1][1] + 1)]
         # a date split over two printed lines ('As At March' / '31, 2025   31, 2024'): two year tokens at the
-        # right, the month from the line above (March when none is printed)
+        # right, the month from the line above (fiscal year-end month when none is printed)
         years = [(i, int(words[i][4].strip(" ,.)")[-4:])) for i in line
                  if re.fullmatch(r"20\d\d", words[i][4].strip(" ,.)"))]
         if len(years) == 2 and years[0][1] == years[1][1] + 1 and n > 0:
             above, _ = _spans(words, lines[n - 1])
-            mo = next((v for k, v in _MONTHS.items() if re.search(rf"\b{k}", above, re.I)), 3)
+            mo = next((v for k, v in _MONTHS.items() if re.search(rf"\b{k}", above, re.I)), fiscal.current())
             text_days = re.findall(r"(\d{1,2})\s*,", text)
             day = int(text_days[0]) if text_days else (31 if mo in (1, 3, 5, 7, 8, 10, 12) else 30)
             centres = []
@@ -672,63 +672,64 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
     head_chars, sections = doc_map.load()
     conn = sqlite3.connect(db if not dry else f"file:{db.as_posix()}?mode=ro", uri=dry)
     sym, isin = conn.execute("SELECT symbol, isin FROM company LIMIT 1").fetchone()
-    docs = conn.execute("SELECT doc_key, filing_date, known_at FROM doc WHERE doc_type='annual_report'").fetchall()
-    statements, check_log = [], []
-    for doc_key, filing_date, known_at in docs:
-        pages = dict(conn.execute("SELECT page, text FROM doc_page WHERE doc_key=?", (doc_key,)).fetchall())
-        for page in sorted(pages):
-            if "cash_flow" not in doc_map.label(pages[page] or "", "annual_report", sections, head_chars):
+    with fiscal.use(fiscal.fy_end_month(conn, sym)):
+        docs = conn.execute("SELECT doc_key, filing_date, known_at FROM doc WHERE doc_type='annual_report'").fetchall()
+        statements, check_log = [], []
+        for doc_key, filing_date, known_at in docs:
+            pages = dict(conn.execute("SELECT page, text FROM doc_page WHERE doc_key=?", (doc_key,)).fetchall())
+            for page in sorted(pages):
+                if "cash_flow" not in doc_map.label(pages[page] or "", "annual_report", sections, head_chars):
+                    continue
+                st = read_statement(str(db), doc_key, page, pages[page] or "", pages.get(page + 1))
+                if st is None:
+                    continue
+                st.known_at = known_at or filing_date or ""
+                statements.append(st)
+        # a statement with no printed basis is standalone unless it is the report's second statement
+        by_doc: dict[str, list[Statement]] = {}
+        for st in statements:
+            by_doc.setdefault(st.doc_key, []).append(st)
+        for sts in by_doc.values():
+            unknown = [st for st in sts if not st.basis]
+            named = {st.basis for st in sts if st.basis}
+            for st in unknown:
+                if len(unknown) == 1 and "standalone" not in named:
+                    st.basis = "standalone"   # the report's only unnamed statement, and no other standalone one
+                else:
+                    st.problems.append("basis not printed and the report holds another unnamed statement")
+        candidates: list[Row] = []
+        for st in statements:
+            if st.problems:
+                check_log.append({"doc_key": st.doc_key, "page": st.page, "basis": st.basis, "column": "",
+                                  "fiscal_year": "", "ok": False, "why": "; ".join(st.problems)})
                 continue
-            st = read_statement(str(db), doc_key, page, pages[page] or "", pages.get(page + 1))
-            if st is None:
-                continue
-            st.known_at = known_at or filing_date or ""
-            statements.append(st)
-    # a statement with no printed basis is standalone unless it is the report's second statement
-    by_doc: dict[str, list[Statement]] = {}
-    for st in statements:
-        by_doc.setdefault(st.doc_key, []).append(st)
-    for sts in by_doc.values():
-        unknown = [st for st in sts if not st.basis]
-        named = {st.basis for st in sts if st.basis}
-        for st in unknown:
-            if len(unknown) == 1 and "standalone" not in named:
-                st.basis = "standalone"   # the report's only unnamed statement, and no other standalone one
-            else:
-                st.problems.append("basis not printed and the report holds another unnamed statement")
-    candidates: list[Row] = []
-    for st in statements:
-        if st.problems:
-            check_log.append({"doc_key": st.doc_key, "page": st.page, "basis": st.basis, "column": "",
-                              "fiscal_year": "", "ok": False, "why": "; ".join(st.problems)})
-            continue
-        candidates += rows_of(st, st.known_at, check_log)
-    xbrl = _xbrl(conn)
-    # XBRL agreement on the printed totals; XBRL years keep XBRL rows only
-    agree = []
-    chosen = pick_statements(candidates)
-    xbrl_years = {(fy, b) for fy, b, _ in xbrl}
-    rows = []
-    for r in chosen:
-        if r.line_item in ("cash_flow_from_operations", "cash_flow_from_investing", "cash_flow_from_financing"):
-            x = xbrl.get((r.fiscal_year, r.basis, r.line_item))
-            if x is not None:
-                v = r.value * r.scale
-                agree.append({"fiscal_year": r.fiscal_year, "basis": r.basis, "line_item": r.line_item,
-                              "printed": v, "xbrl": x, "ok": abs(v - x) <= 0.005 * max(abs(x), 1) + r.scale})
-        if (r.fiscal_year, r.basis) not in xbrl_years:
-            rows.append(r)
-    if not dry:
-        conn.execute("DELETE FROM fin_annual_line WHERE source_table=? AND symbol=?", (SOURCE_TABLE, sym))
-        conn.executemany(
-            "INSERT INTO fin_annual_line (symbol, isin, fiscal_year, period_end, basis, statement, line_item, caption, "
-            "value, unit, scale, doc_key, page, quote, source_db, source_table, source_rowid, known_at, "
-            "known_at_source, is_reported, is_derived, definition, period_type) "
-            "VALUES (?,?,?,?,?,'CF',?,?,?,?,?,?,?,?,'doc_page',?,?,?,'doc.known_at',?,?,?,'FY')",
-            [(sym, isin, r.fiscal_year, r.period_end, r.basis, r.line_item, r.caption, r.value, r.unit, r.scale,
-              r.doc_key, r.page, r.quote, SOURCE_TABLE, f"{r.doc_key}#p{r.page}", r.known_at, 1 - r.is_derived,
-              r.is_derived, r.definition) for r in rows])
-        conn.commit()
+            candidates += rows_of(st, st.known_at, check_log)
+        xbrl = _xbrl(conn)
+        # XBRL agreement on the printed totals; XBRL years keep XBRL rows only
+        agree = []
+        chosen = pick_statements(candidates)
+        xbrl_years = {(fy, b) for fy, b, _ in xbrl}
+        rows = []
+        for r in chosen:
+            if r.line_item in ("cash_flow_from_operations", "cash_flow_from_investing", "cash_flow_from_financing"):
+                x = xbrl.get((r.fiscal_year, r.basis, r.line_item))
+                if x is not None:
+                    v = r.value * r.scale
+                    agree.append({"fiscal_year": r.fiscal_year, "basis": r.basis, "line_item": r.line_item,
+                                  "printed": v, "xbrl": x, "ok": abs(v - x) <= 0.005 * max(abs(x), 1) + r.scale})
+            if (r.fiscal_year, r.basis) not in xbrl_years:
+                rows.append(r)
+        if not dry:
+            conn.execute("DELETE FROM fin_annual_line WHERE source_table=? AND symbol=?", (SOURCE_TABLE, sym))
+            conn.executemany(
+                "INSERT INTO fin_annual_line (symbol, isin, fiscal_year, period_end, basis, statement, line_item, caption, "
+                "value, unit, scale, doc_key, page, quote, source_db, source_table, source_rowid, known_at, "
+                "known_at_source, is_reported, is_derived, definition, period_type) "
+                "VALUES (?,?,?,?,?,'CF',?,?,?,?,?,?,?,?,'doc_page',?,?,?,'doc.known_at',?,?,?,'FY')",
+                [(sym, isin, r.fiscal_year, r.period_end, r.basis, r.line_item, r.caption, r.value, r.unit, r.scale,
+                  r.doc_key, r.page, r.quote, SOURCE_TABLE, f"{r.doc_key}#p{r.page}", r.known_at, 1 - r.is_derived,
+                  r.is_derived, r.definition) for r in rows])
+            conn.commit()
     conn.close()
     return {"store": store, "symbol": sym, "statements": len(statements),
             "columns_ok": sum(1 for c in check_log if c["ok"]), "columns_failed": sum(1 for c in check_log if not c["ok"]),

@@ -479,13 +479,17 @@ def _ar_page_bases(spec: dict, symbol: str):
 
 
 def _fy_label(period: object, fiscal_year: object) -> str | None:
-    """The FY label an ar_facts row is stored under: its period column, else the March year-end it files."""
+    """The FY label an ar_facts row is stored under: its period column, else the fiscal year-end it files."""
     fy = str(period or "")
     m = re.fullmatch(r"FY(?:20)?(\d\d)", fy)
     if m:
         return "FY" + m.group(1)
-    m = re.match(r"(\d{4})-03-31", str(fiscal_year or ""))
-    return "FY" + m.group(1)[2:] if m else None
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", str(fiscal_year or ""))
+    if not m:
+        return None
+    end = m.group(0)
+    label = fiscal.fy_label(end)
+    return label if end == fiscal.fy_end_date(label) else None
 
 
 # The forms an annual report prints a column's own year in (T-115).  The range is read before the label so
@@ -559,7 +563,7 @@ def _annual_rows(symbol: str, rows: list[dict], basis_of, source_db: str) -> lis
             continue             # the same figure printed twice in one document (a table and its summary)
         seen.add(key)
         definition = "company_stated" if hit[0] in COMPANY_STATED else "reported"
-        out.append((symbol, r["isin"], fy, f"20{fy[2:]}-03-31", basis, hit[1], hit[0], r["item"],
+        out.append((symbol, r["isin"], fy, fiscal.fy_end_date(fy), basis, hit[1], hit[0], r["item"],
                     float(r["value"]), unit, scale, str(r["doc_id"]), r["page"], r["quote"], source_db,
                     "ar_facts", str(r["src_rowid"]), r["known_at"], "ar_facts.filed_at", 1, 0, definition, "FY"))
     return out
@@ -570,17 +574,18 @@ def build_annual(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("fin_annual_line",))
     counts = {}
     for symbol in profile.symbols():
-        spec = _spec(symbol, "ar_facts")
-        sql = spec["sql"].replace("SELECT *,", "SELECT rowid AS src_rowid, *,", 1)
-        rows, types = prepare._read_sqlite(spec["db"], spec["source"], sql, spec["params"])
-        cols = list(types)
-        basis_of, close_pages = _ar_page_bases(spec, symbol)
-        try:
-            out = _annual_rows(symbol, [dict(zip(cols, raw)) for raw in rows], basis_of, spec["db"])
-        finally:
-            close_pages()
-        conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * 23) + ")", out)
-        counts[symbol] = len(out)
+        with fiscal.use(fiscal.fy_end_month(conn, symbol)):
+            spec = _spec(symbol, "ar_facts")
+            sql = spec["sql"].replace("SELECT *,", "SELECT rowid AS src_rowid, *,", 1)
+            rows, types = prepare._read_sqlite(spec["db"], spec["source"], sql, spec["params"])
+            cols = list(types)
+            basis_of, close_pages = _ar_page_bases(spec, symbol)
+            try:
+                out = _annual_rows(symbol, [dict(zip(cols, raw)) for raw in rows], basis_of, spec["db"])
+            finally:
+                close_pages()
+            conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * 23) + ")", out)
+            counts[symbol] = len(out)
     conn.commit()
     return counts
 

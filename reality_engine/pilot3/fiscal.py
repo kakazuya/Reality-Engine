@@ -228,3 +228,33 @@ def last_fy_end(period_end: str, fy_end: int | None = None) -> str:
     lfy_year = y - 1 if m <= fe else y
     last_day = calendar.monthrange(lfy_year, fe)[1]
     return f"{lfy_year:04d}-{fe:02d}-{last_day:02d}"
+
+
+def quarter_end_date(label: str | None, fy_end: int | None = None) -> str | None:
+    """Last day (``'YYYY-MM-DD'``) of the quarter named by ``label`` (e.g. ``'Q1FY26'``), or ``None``."""
+    m = re.fullmatch(r"Q([1-4])FY(\d{2})", (label or "").strip().upper())
+    if not m:
+        return None
+    fe = _resolve_fy_end(fy_end)
+    q, ye = int(m.group(1)), 2000 + int(m.group(2))
+    start_month = (fe % 12) + 1
+    start_year = ye if fe == 12 else ye - 1
+    ty, tm = divmod(start_year * 12 + (start_month - 1) + (q * 3 - 1), 12)
+    tm += 1
+    return f"{ty:04d}-{tm:02d}-{calendar.monthrange(ty, tm)[1]:02d}"
+
+
+def filing_quarter(known_at: str | None, fy_end: int | None = None) -> str | None:
+    """Quarter label a results filing / call reports from its filing date (three months prior lies in that quarter)."""
+    m = re.match(r"(\d{4})-(\d{2})", (known_at or "")[:10])
+    if not m:
+        return None
+    fe = _resolve_fy_end(fy_end)
+    year, month = int(m.group(1)), int(m.group(2))
+    if not 1 <= month <= 12:
+        return None
+    py, pm = divmod(year * 12 + (month - 1) - 3, 12)
+    pm += 1
+    q = ((pm - ((fe % 12) + 1)) % 12) // 3 + 1
+    fy = _fy_end_calendar_year(f"{py:04d}-{pm:02d}-01", fe)
+    return f"Q{q}FY{fy % 100:02d}"

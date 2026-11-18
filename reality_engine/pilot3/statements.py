@@ -10,12 +10,13 @@ Source of every row: the XBRL file name (``doc_key``), ``results_xbrl.db`` table
 filing's dissemination time as ``known_at``.  No model, no network."""
 from __future__ import annotations
 
+import calendar
 import re
 import sqlite3
 from datetime import date
 
 from reality_engine.gap_loop import prepare
-from reality_engine.pilot3 import profile, schema
+from reality_engine.pilot3 import fiscal, profile, schema
 from reality_engine.pilot3.registry import all_isins
 from reality_engine.pilot3.stores import EXTRA_QUARTER_TAGS, QUARTER_TAGS, SECTOR_TAGS, _basis, _duck, fetch
 
@@ -67,8 +68,7 @@ H1_QUARTERS = ("Half yearly", "Second quarter")
 
 
 def _fy(period_end: str) -> str:
-    y, m = int(period_end[:4]), int(period_end[5:7])
-    return f"FY{str(y + 1 if m >= 4 else y)[2:]}"
+    return fiscal.fy_label(period_end)
 
 
 def _days(a: str, b: str) -> int | None:
@@ -206,23 +206,27 @@ def build_xbrl_statements(conn: sqlite3.Connection) -> dict:
     """Year-end and half-year balance sheets, cash flows and annual P&L lines of every XBRL filing held."""
     counts = {}
     for symbol in profile.symbols():
-        filings = [f for f in fetch(symbol, "results_filings") if f.get("status") == "ok"]
-        rows: list[tuple] = []
-        for f in filings:
-            end, quarter = str(f["period_end"] or ""), f["reporting_quarter"]
-            if end[5:] == "03-31" and quarter in FY_QUARTERS:
-                ptype = "FY"
-            elif end[5:] == "09-30" and quarter in H1_QUARTERS:
-                ptype = "H1"
-            else:
-                continue
-            facts, _ = prepare._read_sqlite(
-                "results_xbrl.db", "facts",
-                "SELECT concept, context, period_start, period_end, instant, value, unit, rowid FROM facts WHERE file=?",
-                (f["file"],))
-            rows += _filing_lines(symbol, f, ptype, facts)
-        conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * COLS) + ")", rows)
-        counts[symbol] = len(rows)
+        with fiscal.use(fiscal.fy_end_month(conn, symbol)):
+            filings = [f for f in fetch(symbol, "results_filings") if f.get("status") == "ok"]
+            rows: list[tuple] = []
+            for f in filings:
+                end, quarter = str(f["period_end"] or ""), f["reporting_quarter"]
+                if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", end):
+                    continue
+                fy_lbl = fiscal.fy_label(end)
+                if end == fiscal.fy_end_date(fy_lbl) and quarter in FY_QUARTERS:
+                    ptype = "FY"
+                elif end == fiscal.quarter_end_date(f"Q2{fy_lbl}") and quarter in H1_QUARTERS:
+                    ptype = "H1"
+                else:
+                    continue
+                facts, _ = prepare._read_sqlite(
+                    "results_xbrl.db", "facts",
+                    "SELECT concept, context, period_start, period_end, instant, value, unit, rowid FROM facts WHERE file=?",
+                    (f["file"],))
+                rows += _filing_lines(symbol, f, ptype, facts)
+            conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * COLS) + ")", rows)
+            counts[symbol] = len(rows)
     conn.commit()
     return counts
 
@@ -232,11 +236,12 @@ _AMOUNT = re.compile(r"(?:rs\.?|re\.?|inr|₹)\s*([\d]+(?:\.\d+)?)", re.I)
 
 
 def _dividend_fy(ex: date, kind: str) -> str:
-    """Final and special dividends (ex-date April to September) belong to the year that closed in March
-    before; interim ones (October to March) to the year that closes in the next March."""
-    if kind == "interim":
-        return f"FY{str(ex.year + 1 if ex.month >= 4 else ex.year)[2:]}"
-    return f"FY{str(ex.year if ex.month <= 9 else ex.year + 1)[2:]}"
+    """Final and special dividends (ex-date in the first 6 months after fiscal close) belong to the year that
+    just closed; interim ones (and later final/special ones) belong to the active fiscal year."""
+    day = ex.isoformat()
+    if kind != "interim" and fiscal.march_equivalent_month(ex.month) in (4, 5, 6, 7, 8, 9):
+        return fiscal.fy_label(fiscal.last_fy_end(day))
+    return fiscal.fy_label(day)
 
 
 def build_dividends(conn: sqlite3.Connection) -> dict:
@@ -244,37 +249,38 @@ def build_dividends(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("dividend_event",))
     counts = {}
     for symbol in profile.symbols():
-        rows, _ = _duck(
-            "SELECT id, isin, subject, ex_date, rec_date, face_value, broadcast_date FROM corporate_actions "
-            "WHERE symbol=? AND action_type='DIVIDEND' ORDER BY ex_date", (symbol,))
-        events, per_year = [], {}
-        for id_, isin, subject, ex, rec, face, bdate in rows:
-            m = _AMOUNT.search(subject or "")
-            if not m or ex is None:
-                continue
-            amount = float(m.group(1))
-            low = (subject or "").lower()
-            kind = "special" if "special" in low else "interim" if "interim" in low else \
-                "final" if ex.month in (4, 5, 6, 7, 8, 9) else "interim"
-            fy = _dividend_fy(ex, kind)
-            known = f"{bdate or ex}"
-            src = "corporate_actions.broadcast_date" if bdate else "ex_date (declaration was earlier)"
-            events.append((symbol, isin, str(ex), str(rec) if rec else None, fy, kind, amount, face, subject, known, src,
-                           "truth snapshot", "corporate_actions", str(id_)))
-            per_year.setdefault((fy, kind == "special"), []).append((ex, amount, id_, subject, isin, known))
-        conn.executemany("INSERT INTO dividend_event VALUES (" + ",".join("?" * 14) + ")", events)
-        lines = []
-        for (fy, special), evs in sorted(per_year.items()):
-            total = sum(e[1] for e in evs)
-            item = "special_dividend_per_share" if special else "dividend_per_share"
-            lines.append((symbol, evs[-1][4], fy, f"20{fy[2:]}-03-31", "not_stated", "P&L", item,
-                          f"{item.replace('_', ' ')}, sum of NSE corporate actions: " + "; ".join(e[3] for e in evs),
-                          total, "inr_per_share", 1.0, "truth snapshot/corporate_actions", None,
-                          "; ".join(e[3] for e in evs), "truth snapshot", "corporate_actions",
-                          ",".join(str(e[2]) for e in evs), max(e[5] for e in evs),
-                          "corporate_actions.broadcast_date|ex_date", 1, 1 if len(evs) > 1 else 0, "reported", "FY"))
-        conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * COLS) + ")", lines)
-        counts[symbol] = len(events)
+        with fiscal.use(fiscal.fy_end_month(conn, symbol)):
+            rows, _ = _duck(
+                "SELECT id, isin, subject, ex_date, rec_date, face_value, broadcast_date FROM corporate_actions "
+                "WHERE symbol=? AND action_type='DIVIDEND' ORDER BY ex_date", (symbol,))
+            events, per_year = [], {}
+            for id_, isin, subject, ex, rec, face, bdate in rows:
+                m = _AMOUNT.search(subject or "")
+                if not m or ex is None:
+                    continue
+                amount = float(m.group(1))
+                low = (subject or "").lower()
+                kind = "special" if "special" in low else "interim" if "interim" in low else \
+                    "final" if fiscal.march_equivalent_month(ex.month) in (4, 5, 6, 7, 8, 9) else "interim"
+                fy = _dividend_fy(ex, kind)
+                known = f"{bdate or ex}"
+                src = "corporate_actions.broadcast_date" if bdate else "ex_date (declaration was earlier)"
+                events.append((symbol, isin, str(ex), str(rec) if rec else None, fy, kind, amount, face, subject, known, src,
+                               "truth snapshot", "corporate_actions", str(id_)))
+                per_year.setdefault((fy, kind == "special"), []).append((ex, amount, id_, subject, isin, known))
+            conn.executemany("INSERT INTO dividend_event VALUES (" + ",".join("?" * 14) + ")", events)
+            lines = []
+            for (fy, special), evs in sorted(per_year.items()):
+                total = sum(e[1] for e in evs)
+                item = "special_dividend_per_share" if special else "dividend_per_share"
+                lines.append((symbol, evs[-1][4], fy, fiscal.fy_end_date(fy), "not_stated", "P&L", item,
+                              f"{item.replace('_', ' ')}, sum of NSE corporate actions: " + "; ".join(e[3] for e in evs),
+                              total, "inr_per_share", 1.0, "truth snapshot/corporate_actions", None,
+                              "; ".join(e[3] for e in evs), "truth snapshot", "corporate_actions",
+                              ",".join(str(e[2]) for e in evs), max(e[5] for e in evs),
+                              "corporate_actions.broadcast_date|ex_date", 1, 1 if len(evs) > 1 else 0, "reported", "FY"))
+            conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * COLS) + ")", lines)
+            counts[symbol] = len(events)
     conn.commit()
     return counts
 
@@ -282,7 +288,6 @@ def build_dividends(conn: sqlite3.Connection) -> dict:
 # --- company-stated measures, read by script from deck / transcript / press-release pages -------------
 STATED_DOC_TYPES = ("deck", "press_release", "results", "transcript")
 _MON = {m: i + 1 for i, m in enumerate(("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"))}
-_QEND = {1: "06-30", 2: "09-30", 3: "12-31", 4: "03-31"}
 _PERIOD = re.compile(
     r"(?<![A-Za-z0-9])(?:(Q[1-4])\s*FY\s*['’]?(?:20)?(\d{2})|(H[12])\s*FY\s*['’]?(?:20)?(\d{2})|"
     r"FY\s*['’]?(?:20)?(\d{2})|(\d{1,2})(?:st|nd|rd|th)?[-\s]([A-Za-z]{3})[a-z]*[-\s']*(\d{2,4}))(?![0-9])", re.I)
@@ -324,11 +329,11 @@ def _period_of(m: re.Match) -> tuple[str, str] | None:
     if m.group(5):
         return "FY", f"FY{m.group(5)}"
     mon = _MON.get(m.group(7).lower())
-    q = {6: 1, 9: 2, 12: 3, 3: 4}.get(mon)
-    if q is None:
+    if mon is None:
         return None
     year = int(m.group(8)) + (2000 if len(m.group(8)) == 2 else 0)
-    return "Q", f"Q{q}FY{str(year + 1 if mon >= 4 else year)[2:]}"
+    q_label = fiscal.fiscal_quarter(f"{year:04d}-{mon:02d}-{calendar.monthrange(year, mon)[1]:02d}")
+    return ("Q", q_label) if q_label else None
 
 
 def _number(token: str) -> float | None:
@@ -445,8 +450,7 @@ def _stated_pages(conn: sqlite3.Connection, symbol: str):
 
 
 def _quarter_end(label: str) -> str:
-    q, fy = int(label[1]), 2000 + int(label[4:6])
-    return f"{fy if q == 4 else fy - 1}-{_QEND[q]}"
+    return fiscal.quarter_end_date(label) or ""
 
 
 def _derived_flow(conn: sqlite3.Connection, symbol: str, label: str) -> tuple[float, float] | None:
@@ -455,8 +459,7 @@ def _derived_flow(conn: sqlite3.Connection, symbol: str, label: str) -> tuple[fl
     if label.startswith("Q"):
         ends = [_quarter_end(label)]
     else:
-        y = 2000 + int(label[2:4])
-        ends = [f"{y - 1}-06-30", f"{y - 1}-09-30", f"{y - 1}-12-31", f"{y}-03-31"]
+        ends = [fiscal.quarter_end_date(f"Q{q}{label}") or "" for q in (1, 2, 3, 4)]
     total_e = total_r = 0.0
     for end in ends:
         got = dict(conn.execute(
@@ -516,53 +519,54 @@ def build_company_stated(conn: sqlite3.Connection) -> dict:
     fin_annual_line rows with definition 'company_stated'; quarter rows have fiscal_year QnFYyy, period_type Q."""
     counts = {}
     for symbol in profile.symbols():
-        isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
-        isin = isin[0] if isin else None
-        found: dict[tuple, tuple] = {}
-        doc_period: dict[str, tuple | None] = {}
-        for dk, pg, text, known, dtype, title, src in _stated_pages(conn, symbol):
-            if dk not in doc_period:
-                if pg <= 3:
-                    head = _PERIOD.search(text[:400])
-                    doc_period[dk] = _period_of(head) if head else None
-                else:   # only a chart page of this document matched the filter: date it from its title pages
-                    first = conn.execute("SELECT text FROM doc_page WHERE doc_key=? AND page<=3 ORDER BY page",
-                                         (dk,)).fetchall()
-                    doc_period[dk] = _first_period(" ".join(t for (t,) in first)) if first else None
-            first = _PERIOD.search(text[:300])
-            page_period = _period_of(first) if first else None
-            if page_period and page_period[0] != "Q":
-                page_period = None
-            consolidated = "consolidated" if re.search(r"consolidated", text, re.I) else "not_stated"
-            for item, kind, label, value, unit, quote in table_rows(text) + sentence_rows(text, page_period or doc_period.get(dk)):
-                if item == "cash_flow_from_operations":
-                    flat = re.sub(r"\s+", " ", text)
-                    pos = flat.find(quote) if quote else -1
-                    local = [_period_of(m) for m in _PERIOD.finditer(flat[max(0, pos - 160):pos + 80])] if pos >= 0 else []
-                    local = [p for p in local if p]
-                    if local:
-                        kind, label = local[-1]            # "In FY26, our businesses ... cash flows amounting to ..."
-                    elif doc_period.get(dk):
-                        kind, label = doc_period[dk]       # an annual flow belongs to the document's period
-                for pk, pl in _stated_periods(kind, label, item):
-                    key = (consolidated, pl, item, round(value, 4))
-                    if key not in found or (known or "") < (found[key][0] or ""):
-                        found[key] = (known, dk, pg, quote, unit, pk, src)
-        rows_out, dropped = [], 0
-        for (basis, pl, item, value), (known, dk, pg, quote, unit, pk, src) in sorted(found.items()):
-            end = _quarter_end(pl) if pl.startswith("Q") else f"20{pl[2:]}-03-31" if pl.startswith("FY") else None
-            if end is None or not _plausible(conn, symbol, item, pl, value, unit):
-                dropped += 1
-                continue
-            rows_out.append((symbol, isin, pl, end, basis,
-                             "CF" if item == "cash_flow_from_operations" else "P&L" if item.startswith("ebitda") else "BS",
-                             item, f"{item.replace('_', ' ')} as printed by the company", value, unit,
-                             1e7 if unit == "inr_crore" else 1.0, dk, pg, quote, src, "doc_page", f"{dk}#{pg}", known,
-                             "doc_page.known_at (filing record of the document)", 1, 0, "company_stated", pk))
-        # pages taken from pages.db are copied into this database so every quote can be checked here
-        _import_pages(conn, symbol, {(r[11], r[12]) for r in rows_out if r[14] == "pages.db"})
-        conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * COLS) + ")", rows_out)
-        counts[symbol] = {"rows": len(rows_out), "dropped_by_plausibility_gate": dropped}
+        with fiscal.use(fiscal.fy_end_month(conn, symbol)):
+            isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
+            isin = isin[0] if isin else None
+            found: dict[tuple, tuple] = {}
+            doc_period: dict[str, tuple | None] = {}
+            for dk, pg, text, known, dtype, title, src in _stated_pages(conn, symbol):
+                if dk not in doc_period:
+                    if pg <= 3:
+                        head = _PERIOD.search(text[:400])
+                        doc_period[dk] = _period_of(head) if head else None
+                    else:   # only a chart page of this document matched the filter: date it from its title pages
+                        first = conn.execute("SELECT text FROM doc_page WHERE doc_key=? AND page<=3 ORDER BY page",
+                                             (dk,)).fetchall()
+                        doc_period[dk] = _first_period(" ".join(t for (t,) in first)) if first else None
+                first = _PERIOD.search(text[:300])
+                page_period = _period_of(first) if first else None
+                if page_period and page_period[0] != "Q":
+                    page_period = None
+                consolidated = "consolidated" if re.search(r"consolidated", text, re.I) else "not_stated"
+                for item, kind, label, value, unit, quote in table_rows(text) + sentence_rows(text, page_period or doc_period.get(dk)):
+                    if item == "cash_flow_from_operations":
+                        flat = re.sub(r"\s+", " ", text)
+                        pos = flat.find(quote) if quote else -1
+                        local = [_period_of(m) for m in _PERIOD.finditer(flat[max(0, pos - 160):pos + 80])] if pos >= 0 else []
+                        local = [p for p in local if p]
+                        if local:
+                            kind, label = local[-1]            # "In FY26, our businesses ... cash flows amounting to ..."
+                        elif doc_period.get(dk):
+                            kind, label = doc_period[dk]       # an annual flow belongs to the document's period
+                    for pk, pl in _stated_periods(kind, label, item):
+                        key = (consolidated, pl, item, round(value, 4))
+                        if key not in found or (known or "") < (found[key][0] or ""):
+                            found[key] = (known, dk, pg, quote, unit, pk, src)
+            rows_out, dropped = [], 0
+            for (basis, pl, item, value), (known, dk, pg, quote, unit, pk, src) in sorted(found.items()):
+                end = _quarter_end(pl) if pl.startswith("Q") else fiscal.fy_end_date(pl) if pl.startswith("FY") else None
+                if not end or not _plausible(conn, symbol, item, pl, value, unit):
+                    dropped += 1
+                    continue
+                rows_out.append((symbol, isin, pl, end, basis,
+                                 "CF" if item == "cash_flow_from_operations" else "P&L" if item.startswith("ebitda") else "BS",
+                                 item, f"{item.replace('_', ' ')} as printed by the company", value, unit,
+                                 1e7 if unit == "inr_crore" else 1.0, dk, pg, quote, src, "doc_page", f"{dk}#{pg}", known,
+                                 "doc_page.known_at (filing record of the document)", 1, 0, "company_stated", pk))
+            # pages taken from pages.db are copied into this database so every quote can be checked here
+            _import_pages(conn, symbol, {(r[11], r[12]) for r in rows_out if r[14] == "pages.db"})
+            conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * COLS) + ")", rows_out)
+            counts[symbol] = {"rows": len(rows_out), "dropped_by_plausibility_gate": dropped}
     conn.commit()
     return counts
 
@@ -657,37 +661,38 @@ def build_ar_statements(conn: sqlite3.Connection) -> dict:
         return counts
     try:
         for symbol in profile.symbols():
-            held = {r[0] for r in conn.execute("SELECT doc_key FROM doc WHERE symbol=? AND doc_type='annual_report'", (symbol,))}
-            isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
-            isin = isin[0] if isin else None
-            newest = conn.execute("SELECT MAX(known_at) FROM doc WHERE symbol=? AND doc_type='annual_report'", (symbol,)).fetchone()[0] or ""
-            docs = [d for d in other.execute("SELECT doc_key, known_at, pages FROM doc WHERE symbol=? AND doc_type='annual_report' "
-                                             "AND pages>50", (symbol,)) if d[0] not in held and (d[1] or "") > newest]
-            rows, used = [], set()
-            for dk, known, _pages in docs:
-                for page, text in other.execute(
-                        "SELECT page, text FROM doc_page WHERE doc_key=? AND (lower(text) LIKE '%cash flow%' OR "
-                        "lower(text) LIKE '%total assets%')", (dk,)):
-                    head = text[:300].upper()
-                    basis = "consolidated" if "CONSOLIDATED FINANCIAL STATEMENTS" in head else \
-                        "standalone" if "STANDALONE FINANCIAL STATEMENTS" in head else None
-                    yr = re.search(r"Annual Report (20\d\d)-(\d\d)", text)
-                    if not basis or not yr:
-                        continue
-                    fy = f"FY{yr.group(2)}"
-                    prev = f"FY{int(yr.group(2)) - 1:02d}"
-                    for item, stmt, cur, old, quote in ar_statement_rows(text):
-                        for fiscal, value in ((fy, cur), (prev, old)):
-                            if fiscal == prev and fiscal != fy:
-                                continue  # the prior year is already held from its own report
-                            rows.append((symbol, isin, fiscal, f"20{fiscal[2:]}-03-31", basis, stmt, item,
-                                         f"{item.replace('_', ' ')} as printed in the annual report", value, "inr_crore", 1e7,
-                                         dk, page, quote, "pages.db", "doc_page", f"{dk}#{page}", known,
-                                         "doc_page.known_at (filing record of the document)", 1, 0, "reported", "FY"))
-                        used.add((dk, page))
-            conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * COLS) + ")", rows)
-            _import_pages(conn, symbol, used)
-            counts[symbol] = len(rows)
+            with fiscal.use(fiscal.fy_end_month(conn, symbol)):
+                held = {r[0] for r in conn.execute("SELECT doc_key FROM doc WHERE symbol=? AND doc_type='annual_report'", (symbol,))}
+                isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
+                isin = isin[0] if isin else None
+                newest = conn.execute("SELECT MAX(known_at) FROM doc WHERE symbol=? AND doc_type='annual_report'", (symbol,)).fetchone()[0] or ""
+                docs = [d for d in other.execute("SELECT doc_key, known_at, pages FROM doc WHERE symbol=? AND doc_type='annual_report' "
+                                                 "AND pages>50", (symbol,)) if d[0] not in held and (d[1] or "") > newest]
+                rows, used = [], set()
+                for dk, known, _pages in docs:
+                    for page, text in other.execute(
+                            "SELECT page, text FROM doc_page WHERE doc_key=? AND (lower(text) LIKE '%cash flow%' OR "
+                            "lower(text) LIKE '%total assets%')", (dk,)):
+                        head = text[:300].upper()
+                        basis = "consolidated" if "CONSOLIDATED FINANCIAL STATEMENTS" in head else \
+                            "standalone" if "STANDALONE FINANCIAL STATEMENTS" in head else None
+                        yr = re.search(r"Annual Report (20\d\d)-(\d\d)", text)
+                        if not basis or not yr:
+                            continue
+                        fy = f"FY{yr.group(2)}"
+                        prev = f"FY{int(yr.group(2)) - 1:02d}"
+                        for item, stmt, cur, old, quote in ar_statement_rows(text):
+                            for fy_lbl, value in ((fy, cur), (prev, old)):
+                                if fy_lbl == prev and fy_lbl != fy:
+                                    continue  # the prior year is already held from its own report
+                                rows.append((symbol, isin, fy_lbl, fiscal.fy_end_date(fy_lbl), basis, stmt, item,
+                                             f"{item.replace('_', ' ')} as printed in the annual report", value, "inr_crore", 1e7,
+                                             dk, page, quote, "pages.db", "doc_page", f"{dk}#{page}", known,
+                                             "doc_page.known_at (filing record of the document)", 1, 0, "reported", "FY"))
+                            used.add((dk, page))
+                conn.executemany("INSERT INTO fin_annual_line VALUES (" + ",".join("?" * COLS) + ")", rows)
+                _import_pages(conn, symbol, used)
+                counts[symbol] = len(rows)
     finally:
         other.close()
     conn.commit()
