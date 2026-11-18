@@ -367,3 +367,75 @@ def test_gate_refuses_confirmed_drop_and_clean_page_unchecked_drop(tmp_path):
     )
     assert rec2["outcome"] == "refused"
     assert rec2["losses"][0]["unconfirmed_drops"] == 0
+
+
+def test_accept_works_when_live_store_unchanged_and_records_fingerprint(tmp_path):
+    store = _store(tmp_path)
+    record = store_repair.repair_store(store, ["guidance"], "r1", runner=_runner("DELETE FROM guidance WHERE low=10"))
+    assert record["outcome"] == "refused"
+    run_json = store["dir"] / "repair" / "r1" / "run.json"
+    saved = json.loads(run_json.read_text(encoding="utf-8"))
+    assert len(saved["live_fingerprint"]) == 64
+    assert saved["live_fingerprint"] == store_repair._live_fingerprint(store["db"])
+
+    rc = store_repair.main(["--accept", "r1", "--root", str(tmp_path), "--stores", "c01"])
+    assert rc == 0
+    assert _count(store["db"]) == 1
+    log_rows = [json.loads(line) for line in (tmp_path / "repair_log.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert log_rows[-1]["outcome"] == "repaired"
+
+
+def test_accept_refuses_when_live_store_changed_after_refused_run(tmp_path):
+    store = _store(tmp_path)
+    record = store_repair.repair_store(store, ["guidance"], "r1", runner=_runner("DELETE FROM guidance WHERE low=10"))
+    assert record["outcome"] == "refused"
+
+    # Simulate another repair/part writing a row to the live store (including WAL write before checkpoint).
+    conn = sqlite3.connect(store["db"])
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("INSERT INTO guidance (symbol, metric, target_period, low, high, doc_key, page, quote) "
+                 "VALUES ('AAA', 'pat_margin', 'FY27', 15, 17, 'd3', 2, 'q')")
+    conn.commit()
+    conn.close()
+
+    rc = store_repair.main(["--accept", "r1", "--root", str(tmp_path), "--stores", "c01"])
+    assert rc == 1
+    log_rows = [json.loads(line) for line in (tmp_path / "repair_log.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert log_rows[-1]["outcome"] == "refused"
+    assert "c01" in log_rows[-1]["detail"] and "r1" in log_rows[-1]["detail"]
+    assert "the live store changed after this run (another repair or part ran); re-run the repair instead" in log_rows[-1]["detail"]
+    assert _count(store["db"]) == 3
+    assert (store["dir"] / "repair" / "r1" / "after.db").is_file()
+
+    # --accept-stale must not override a known fingerprint mismatch.
+    rc_stale = store_repair.main(["--accept", "r1", "--accept-stale", "--root", str(tmp_path), "--stores", "c01"])
+    assert rc_stale == 1
+    assert _count(store["db"]) == 3
+
+
+def test_accept_refuses_old_run_without_fingerprint_unless_accept_stale(tmp_path):
+    store = _store(tmp_path)
+    record = store_repair.repair_store(store, ["guidance"], "r1", runner=_runner("DELETE FROM guidance WHERE low=10"))
+    assert record["outcome"] == "refused"
+
+    run_json = store["dir"] / "repair" / "r1" / "run.json"
+    saved = json.loads(run_json.read_text(encoding="utf-8"))
+    saved.pop("live_fingerprint", None)
+    run_json.write_text(json.dumps(saved, indent=1), encoding="utf-8")
+
+    rc = store_repair.main(["--accept", "r1", "--root", str(tmp_path), "--stores", "c01"])
+    assert rc == 1
+    log_rows = [json.loads(line) for line in (tmp_path / "repair_log.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert log_rows[-1]["outcome"] == "refused"
+    assert "c01" in log_rows[-1]["detail"] and "r1" in log_rows[-1]["detail"]
+    assert "the live store changed after this run (another repair or part ran); re-run the repair instead" in log_rows[-1]["detail"]
+    assert _count(store["db"]) == 2
+    assert (store["dir"] / "repair" / "r1" / "after.db").is_file()
+
+    rc_stale = store_repair.main(["--accept", "r1", "--accept-stale", "--root", str(tmp_path), "--stores", "c01"])
+    assert rc_stale == 0
+    assert _count(store["db"]) == 1
+    assert not (store["dir"] / "repair" / "r1" / "after.db").exists()
+    log_rows = [json.loads(line) for line in (tmp_path / "repair_log.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert log_rows[-1]["outcome"] == "repaired" and log_rows[-1]["accepted_stale"] is True
+    assert json.loads(run_json.read_text(encoding="utf-8"))["accepted_stale"] is True
