@@ -306,3 +306,65 @@ def test_well_formed_accepts_printed_variants():
     assert not rg._figure_token("2.1.1") and not rg._figure_token("2022.01.31")
     assert rg._figure_token("l,234.56")
     assert not rg._is_header_word("45,67,89")
+
+
+# -- T-225 round 3: review round 2's failing inputs (agy 20261118T161741Z-92d10f2d) ----------------------------
+
+def test_group_split_does_not_snap_to_a_far_period_kind_change():
+    words = [_w(200, 10, "Consolidated"), _w(400, 10, "Standalone"),
+             _w(180, 25, "FY24"), _w(260, 25, "Q4FY24"), _w(380, 25, "Q3FY24"), _w(460, 25, "FY23"),
+             _w(10, 40, "Revenue"), _w(185, 40, "100"), _w(265, 40, "25"), _w(385, 40, "30"), _w(465, 40, "90"),
+             _w(10, 55, "Cost"), _w(185, 55, "60"), _w(265, 55, "15"), _w(385, 55, "20"), _w(465, 55, "55")]
+    cells, _ = rg.settle_page([[_cell("Revenue", "Standalone > Q4FY24", "25")]], words)
+    assert not _conf(cells, "25")
+
+
+def test_group_beyond_the_word_header_gap_blocks_the_word_fallback():
+    words = [_w(190, 10, "Quarter"), _w(230, 10, "ended"), _w(340, 10, "Nine"), _w(365, 10, "months"),
+             _w(190, 44, "31-Dec-23"), _w(340, 44, "31-Dec-23"),
+             _w(190, 56, "Shares"), _w(340, 56, "Amount"),
+             _w(10, 72, "Equity"), _w(195, 72, "100"), _w(345, 72, "50"),
+             _w(10, 86, "Other"), _w(195, 86, "200"), _w(345, 86, "60")]
+    cells, _ = rg.settle_page([[_cell("Equity", "Nine months > 31-Dec-23 > Shares", "100")]], words)
+    assert not _conf(cells, "100")
+
+
+def test_year_first_headers_keep_their_years():
+    words = [_w(180, 10, "2024"), _w(205, 10, "Q1"), _w(225, 10, "2023"), _w(250, 10, "Q1"),
+             _w(10, 25, "Revenue"), _w(205, 25, "100"), _w(250, 25, "80"),
+             _w(10, 40, "Cost"), _w(205, 40, "60"), _w(250, 40, "50")]
+    cells, _ = rg.settle_page([[_cell("Revenue", "2023 Q1", "100")]], words)
+    assert not _conf(cells, "100")
+
+
+def test_spanning_word_header_and_section_break_confirm_nothing_wrong():
+    words = [_w(220, 10, "Total"), _w(190, 25, "Direct"), _w(260, 25, "Amount"),
+             _w(10, 40, "Sales"), _w(195, 40, "100"), _w(265, 40, "200"),
+             _w(10, 55, "Cost"), _w(195, 55, "60"), _w(265, 55, "120")]
+    cells, _ = rg.settle_page([[_cell("Sales", "Total", "100")]], words)
+    assert not _conf(cells, "100")
+    words = [_w(200, 10, "Shares"), _w(280, 10, "Amount"),
+             _w(10, 25, "Row1"), _w(205, 25, "100"), _w(285, 25, "10"),
+             _w(10, 40, "Section"), _w(50, 40, "one"),
+             _w(10, 55, "Additional"), _w(200, 55, "Amount"),
+             _w(10, 70, "Row2"), _w(205, 70, "200"), _w(285, 70, "20")]
+    cells, _ = rg.settle_page([[_cell("Row2", "Amount", "200")]], words)
+    assert not _conf(cells, "200")
+
+
+def test_tight_word_headers_do_not_merge():
+    words = [_w(200, 10, "No.", cw=5), _w(218, 10, "of", cw=5), _w(230, 10, "shares", cw=5), _w(262, 10, "Amount", cw=5),
+             _w(10, 25, "Opening"), _w(205, 25, "1,000"), _w(275, 25, "15"),
+             _w(10, 40, "Bonus"), _w(215, 40, "-"), _w(275, 40, "10")]
+    cells, _ = rg.settle_page([[_cell("Bonus", "No. of shares", "10")]], words)
+    assert not _conf(cells, "10")
+
+
+def test_one_number_line_and_dash_columns_keep_their_band():
+    words = [_w(10, 10, "Particulars"), _w(200, 10, "FY25"), _w(260, 10, "FY24"),
+             _w(10, 25, "A"), _w(200, 25, "100"), _w(265, 25, "-"),
+             _w(10, 40, "B"), _w(200, 40, "60"), _w(265, 40, "-"),
+             _w(10, 55, "C"), _w(205, 55, "10"), _w(265, 55, "5")]
+    p = rg.Page(words)
+    assert len(p.columns_for(p.line_of[len(words) - 1])) == 2
+    assert not rg._is_header_word("12,03,22") and rg._is_header_word("31,03,2022")

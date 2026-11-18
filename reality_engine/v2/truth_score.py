@@ -142,7 +142,7 @@ def checker_words(pdf: Path, ocr_dir: Path | None, mode: str = "fallback") -> An
             out.append((float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4])))
         except (TypeError, ValueError, IndexError):
             continue
-    return out or layer
+    return out if out or mode == "ocr" else layer   # an empty OCR file is no second look
 
 
 def run(truth_dir: Path, pdf_pages: Path, runs: list[Path], ocr_dir: Path | None = None,

@@ -67,7 +67,8 @@ _DATE = re.compile(r"^(?:\d{1,2}[-./]\d{1,2}[-./]\d{2,4}|\d{1,2}(?:st|nd|rd|th)?
                    r"|(?:19|20)\d{2}|\d{1,2}[-./][a-z]{3,9})$")
 # A date printed with odd separators ("31.03.2022", "31,03,22").  The last group is 2 or 4 digits: an Indian-grouped
 # number ("1,03,086") ends in a 3-digit group and is a value, not a date (T-225).
-_DATE_TYPO = re.compile(r"^(?:0?[1-9]|[12]\d|3[01])[.,\-/](?:0?[1-9]|1[0-2])[.,\-/](?:\d{2}|(?:19|20)\d{2})$"
+_DATE_TYPO = re.compile(r"^(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:\d{2}|(?:19|20)\d{2})$"
+                        r"|^(?:0?[1-9]|[12]\d|3[01]),(?:0?[1-9]|1[0-2]),(?:19|20)\d{2}$"
                         r"|^(?:0?[1-9]|1[0-2])[.\-/](?:0?[1-9]|[12]\d|3[01])[.\-/](?:19|20)\d{2}$")
 # A month and year in one word: "Dec22", "Mar-23", "March2023", "Dec'22" (T-225).
 _MONTH_YEAR = re.compile(r"^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]{0,6}[-'.’/]?(?:\d{2}|(?:19|20)\d{2})$")
@@ -188,6 +189,18 @@ def _is_period_word(text: str) -> bool:
     t = _tok(text)
     return bool(t) and bool(t in _PERIOD_WORDS or t in _MONTHS or _QTR.match(t) or _PERIOD.match(t)
                         or _DATE.match(t) or _DATE_TYPO.match(t) or _MONTH_YEAR.match(t))
+
+
+def _is_sub_period(text: str) -> bool:
+    return bool(re.fullmatch(r"q[1-4]|h[12]|\d{1,2}m", _tok(text)))
+
+
+def _is_year_part(text: str) -> bool:
+    return bool(re.fullmatch(r"(?:fy)?'?\d{2}|(?:fy)?(?:19|20)\d{2}|(?:19|20)\d{2}-\d{2,4}|fy\d{2,4}[a-z]?", _tok(text)))
+
+
+def _is_period_part(text: str) -> bool:
+    return _is_sub_period(text) or _is_year_part(text)
 
 
 def _period_kind(text: str) -> str:
@@ -446,10 +459,20 @@ class Page:
         return _header_match(header, label)
 
     # -- header band and column model ---------------------------------------------------------------------------
+    def _blank_cell(self, j: int) -> bool:
+        """An empty-cell mark ("-", "nil") printed right of its line's row label (not the dash opening "- Owner")."""
+        if str(self.words[j][4]).strip().casefold() not in _BLANK:
+            return False
+        n = self.line_of[j]
+        letters = [k for k in self.lines[n] if re.search(r"[A-Za-z]{2}", self.words[k][4])]
+        return not letters or self.words[j][0] > max(self.words[k][2] for k in letters)
+
     def _value_x_band(self, n: int) -> tuple[float, float]:
         nums = [j for j in self.lines[n]                # a digit is required: "- Owner" opens with a dash (T-225)
                 if _is_num(self.words[j][4]) and _tok(self.words[j][4]) not in _BLANK
                 and re.search(r"\d", self.words[j][4])]
+        if nums:                                         # empty-cell marks right of the label widen the band
+            nums += [j for j in self.lines[n] if self._blank_cell(j)]
         if not nums:
             nums = self.lines[n]
         return min(self.words[j][0] for j in nums), max(self.words[j][2] for j in nums)
@@ -548,10 +571,8 @@ class Page:
             period = bool(re.search(r"\d", w[4])) or _tok(w[4]) in _MONTHS
             # a period prefix ("Q3", "9M", "H1") after a phrase that already names a year starts a new column's
             # phrase: "Q3 FY21  Q3 FY20^" is two headers, not one (T-225)
-            restart = bool(re.fullmatch(r"q[1-4]|h[12]|\d{1,2}m", _tok(w[4]))) and any(
-                re.search(r"(?:fy)?\d{2,4}", _tok(self.words[k][4])) and not re.fullmatch(r"q[1-4]|h[12]|\d{1,2}m",
-                                                                                       _tok(self.words[k][4]))
-                for k in cur)
+            restart = _is_period_part(w[4]) and any(_is_sub_period(self.words[k][4]) for k in cur) \
+                and any(_is_year_part(self.words[k][4]) for k in cur)
             if cur and (w[0] - self.words[cur[-1]][2] > gap or (moved and period) or restart):
                 out.append(self._phrase(cur))
                 cur = []
@@ -578,7 +599,10 @@ class Page:
             nums = [j for m in self._block(n, band) for j in self.lines[m]
                     if _is_num(self.words[j][4]) and _tok(self.words[j][4]) not in _BLANK
                     and re.search(r"\d", self.words[j][4]) and not _is_header_word(self.words[j][4])]
-            cols = _cluster_columns(nums, self.words, max(8.0, 1.2 * self.h))
+            blanks = [j for m in self._block(n, band) for j in self.lines[m] if self._blank_cell(j)]
+            cols = _cluster_columns(nums + blanks, self.words, max(8.0, 1.2 * self.h))
+            figs = set(nums)
+            cols = [col for col in cols if any(j in figs for j in col["members"])]   # a dash-only column is none
             counted = [col for col in cols if col["n"] >= 2]
             if counted:
                 cols = counted
@@ -619,8 +643,13 @@ class Page:
             lo, hi = bounds[-1] + 1, len(centres) - (len(phrases) - k)
             best = min(max(default, lo), hi)
             changes = [b for b in range(lo, hi + 1) if 0 < b < len(kinds) and kinds[b] != kinds[b - 1]]
-            if changes:
-                best = min(changes, key=lambda b: abs(b - best))
+            if changes and len(centres) > 1:
+                # snap only to a kind change lying near the midpoint between the two group phrases (T-225 review
+                # r2: a far change moved "Consolidated > Q4FY24" under "Standalone")
+                step = (centres[-1] - centres[0]) / (len(centres) - 1) or 1.0
+                near_mid = [b for b in changes if abs((centres[b - 1] + centres[b]) / 2 - mid) <= 0.5 * step]
+                if near_mid:
+                    best = min(near_mid, key=lambda b: abs(b - best))
             bounds.append(best)
         bounds.append(len(centres))
         assign: list[int] = []
@@ -653,7 +682,14 @@ class Page:
             return bool(state)
         # the band cannot decide (a merged or split column model): the stricter word-header test may confirm, but
         # never calls the cell a reader error there
-        return True if self.word_header_state(i, header) is True else None
+        if self.word_header_state(i, header) is not True:
+            return None
+        band = self.header_band(self.line_of[i])
+        band_tokens = set(_header_tokens(" ".join(self.words[j][4] for m in band for j in self.lines[m])))
+        cols, ci = self._word_columns(i)
+        own = set(_header_tokens(" ".join(cols[ci]["stack"]))) if ci is not None else set()
+        needed = [t for t in _header_tokens(header) if t in band_tokens and t not in _WORD_STOP]
+        return True if all(t in own for t in needed) else None
 
     def _band_state(self, i: int, header: str) -> bool | str | None:
         """Does the reader's column header name the stack over the value's column?  Every reader word that is
@@ -711,7 +747,7 @@ class Page:
         top = n
         for step in (-1, 1):
             m, misses = n + step, 0
-            while 0 <= m < len(self.lines) and misses < 2 and abs(m - n) <= 60:
+            while 0 <= m < len(self.lines) and misses < 4 and abs(m - n) <= 60:
                 nums = [j for j in self.lines[m] if self._digit_num(j) and not _is_header_word(self.words[j][4])]
                 hit = [j for j in nums if self.words[j][0] <= x1 and self.words[j][2] >= x0]
                 if hit:
@@ -765,7 +801,7 @@ class Page:
                 return min(range(len(cols)), key=lambda q: abs(centres[q] - c))
             for j in line:
                 gap = self.words[j][0] - self.words[phrases[-1][-1]][2] if phrases else 1e9
-                if phrases and (gap <= 0.3 * self.h or gap <= max(6.0, 1.2 * self.h)
+                if phrases and (gap <= 0 or gap <= max(6.0, 1.2 * self.h)
                                 and nearest(j) == nearest(phrases[-1][-1])):
                     phrases[-1].append(j)
                 else:
@@ -775,8 +811,15 @@ class Page:
                 c = (x0p + x1p) / 2
                 if not left <= c <= right:
                     continue
-                k = min(range(len(cols)), key=lambda q: abs(centres[q] - c))
-                cols[k]["stack"].insert(0, " ".join(self.words[j][4] for j in ph))
+                text = " ".join(self.words[j][4] for j in ph)
+                pad = 0.5 * self.h
+                over = [q for q in range(len(cols)) if x0p <= cols[q]["x1"] + pad and x1p >= cols[q]["x0"] - pad]
+                if not over:                         # between columns: a spanning group over its two neighbours
+                    rightq = [q for q in range(len(cols)) if centres[q] >= c]
+                    leftq = [q for q in range(len(cols)) if centres[q] < c]
+                    over = ([leftq[-1]] if leftq else []) + ([rightq[0]] if rightq else [])
+                for q in over:
+                    cols[q]["stack"].insert(0, text)
         ci = self._column_of(i, cols)
         return cols, ci
 
@@ -841,8 +884,9 @@ def _cluster_columns(nums: list[int], words: list[tuple[float, float, float, flo
             cols[-1]["x0"] = min(cols[-1]["x0"], x0)
             cols[-1]["x1"] = max(cols[-1]["x1"], x1)
             cols[-1]["n"] += 1
+            cols[-1].setdefault("members", []).append(j)
         else:
-            cols.append({"x0": x0, "x1": x1, "n": 1})
+            cols.append({"x0": x0, "x1": x1, "n": 1, "members": [j]})
     return cols
 
 
@@ -1006,8 +1050,10 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
             elif not well_formed(rec["value_text"]):
                 rec["settled_by"], rec["conflict"], rec["verdict"] = "", "malformed_value", "unplaced"
     if alt_words and words and not garbled:
+        held = {(label_key(r["row_label"]), _norm_value(r["value_text"])) for r in out if r["settled_by"]}
         redo = [rec for rec in out if not rec["settled_by"] and rec["conflict"] in ("value_not_printed",
-                                                                                  "lone_unlocated")]
+                                                                                  "lone_unlocated")
+                and (label_key(rec["row_label"]), _norm_value(rec["value_text"])) not in held]
         if redo:
             again, _ = settle_page([[{"table": r["table"], "row_label": r["row_label"], "col_header": r["col_header"],
                                       "value": r["value_text"], "unit": r["unit_text"]} for r in redo]], alt_words)
