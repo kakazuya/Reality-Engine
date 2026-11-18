@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger("reality_engine.ocr_engine")
+
+# Detector input size under DirectML. Bake-off 18 Nov 2026 (reports/2026-11-18_ocr_bakeoff.html, 90 truth pages,
+# GTX 1050 Ti): 1024 lost 10-13 points of numeric recall (85.0% vs 97.7% on the hand-read set); 2000 (the RapidOCR
+# default) matches the CPU's accuracy at ~2x the speed, peak ~3.98 GB VRAM. Lower it with REALITY_OCR_MAX_SIDE only
+# on a card with less memory.
+DML_MAX_SIDE_LEN = int(os.environ.get("REALITY_OCR_MAX_SIDE", "2000"))
 
 
 class FinancialOCREngine:
@@ -100,12 +107,12 @@ class FinancialOCREngine:
                 providers = ort.get_available_providers()
                 if "DmlExecutionProvider" in providers:
                     # RapidOCR v3: EngineConfig.onnxruntime.use_dml (DirectML / D3D12)
-                    # small tables -> cap max_side_len to shrink det input, boost latency
+                    # full-size detector input: a 1024 cap cost 10-13 points of recall (DML_MAX_SIDE_LEN above)
                     try:
                         params = {
                             "EngineConfig.onnxruntime.use_dml": True,
                             "Global.log_level": "ERROR",
-                            "Global.max_side_len": 1024,
+                            "Global.max_side_len": DML_MAX_SIDE_LEN,
                         }
                         self.engine = RapidOCR(params=params)
                         self.provider = "DML (DirectML)"
