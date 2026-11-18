@@ -418,3 +418,27 @@ def test_call_date_of_reads_pages_1_to_3_when_cover_has_only_period_end():
     page1 = "Date: 13.08.2026\nfor the quarter ended on 30th June, 2026"
     page2 = "Earnings Conference Call\nAugust 6, 2026"
     assert transcripts.call_date_of([page1, page2], "2026-08-13T18:00:00") == "2026-08-06"
+
+
+def test_call_date_strong_call_cue_beats_board_meeting_held_on():
+    """T-223 / R-011 r3: a cue naming a call on page 2 beats a bare 'held on' for a board meeting on page 1."""
+    page1 = "Date: October 30, 2025. ... the Meeting of the Board of Directors of the Company held on 18th October, 2025 ..."
+    page2 = '... Q2 and H1 FY \'26 Earnings Conference Call"\n\nOctober 28, 2025'
+    assert call_dates.call_date([page1, page2]) == "2025-10-28"
+    assert transcripts.call_date_of([page1, page2], "2025-10-30T18:00:00") == "2025-10-28"
+
+
+def test_call_date_weak_held_on_cue_still_beats_no_cue():
+    """T-223 / R-011 r3: a bare 'held on' cue still beats an uncued cover date when no strong call cue exists."""
+    page = "transcript of the Extra-Ordinary General Meeting held on 8th July, 2024"
+    assert call_dates.call_date([page]) == "2024-07-08"
+    assert call_dates.call_date([f"Date: 15th July, 2024. {page}"]) == "2024-07-08"
+
+
+def test_call_date_prefers_conference_call_over_earlier_virtual_meeting_and_cover_date():
+    """T-223 / R-011 r3: conference call date wins over earlier cover date and virtual meeting mention."""
+    page = (
+        "Date: 21ST January 2025 ... a Virtual meeting held with Tiger Assets on Saturday, 11th January 2025. "
+        '... Q2 FY \'25 Conference Call" January 11, 2025'
+    )
+    assert call_dates.call_date([page]) == "2025-01-11"

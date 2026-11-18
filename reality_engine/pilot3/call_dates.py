@@ -41,6 +41,8 @@ RX_DMY = re.compile(rf"\b(\d{{1,2}})(?:st|nd|rd|th)?[-\s]+(?:of\s+)?({MONTHS})(?
 # the cue may end one line above its date ("... call conducted on\nThursday, February 08, 2024"; R-011 review)
 CUE = re.compile(r"(?:held on|conducted on|conference call|earnings call|investor call|results call|analyst call)\b"
                  r"[^.\n]{0,60}\n?[^.\n]{0,30}$", re.I)
+# Strong cue marker: a call-naming word in the 80-char cue window beats a bare 'held on' (e.g. board meeting)
+CALL_WORD = re.compile(r"\b(?:call|con-?call|conference|webinar|earnings\s+meet)", re.I)
 # Period-end phrase immediately before a date (e.g. "for the 3rd Quarter ended 31st December, 2025", R-011 follow-up)
 PERIOD_END = re.compile(
     r"\b(?:ended|ending|end(?:ed)?\s+on|as\s+(?:on|at)|period\s+(?:from|to)"
@@ -71,22 +73,27 @@ def _dates(text: str) -> list[tuple[int, str]]:
 
 
 def call_date(texts: list[str], pages: int = PAGES) -> str | None:
-    """The call date printed in the first pages: the date a call cue introduces, else the first date printed.
+    """The call date printed in the first pages: the first strong call-cued date (a cue naming a call word), else
+    the first weak cued date (e.g. bare 'held on'), else the first date printed.
 
     A date that a period-end phrase ('quarter ended', 'year ended', 'as on', ``PERIOD_END``) introduces within
     its preceding 40 chars is skipped, so it is neither a cued call date nor the fallback first date.
     """
+    weak: str | None = None
     first: str | None = None
     for text in texts[:pages]:
         found = [(pos, iso) for pos, iso in _dates(text)
                  if not PERIOD_END.search(text[max(0, pos - 40):pos])]
         if not found:
             continue
-        cued = [(pos, iso) for pos, iso in found if CUE.search(text[max(0, pos - 80):pos])]
-        if cued:
-            return cued[0][1]
+        for pos, iso in found:
+            win = text[max(0, pos - 80):pos]
+            if CUE.search(win):
+                if CALL_WORD.search(win):
+                    return iso
+                weak = weak or iso
         first = first or found[0][1]
-    return first
+    return weak or first
 
 
 def _days(iso: str) -> int:
