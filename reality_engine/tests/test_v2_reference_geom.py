@@ -213,8 +213,12 @@ def test_garbled_layer_confirms_nothing():
     words = _results_page() + [_w(10, 100 + 15 * k, f"Row{k}") for k in range(5)] \
         + [_w(200, 100 + 15 * k, t) for k, t in enumerate(junk)] \
         + [_w(260, 100 + 15 * k, f"{k + 1},234.56") for k in range(5)]
-    assert rg.layer_garbled(words)
+    assert not rg.layer_garbled(words)                 # 10 figure tokens: too few to judge
+    many = words + [_w(10, 200 + 15 * k, f"Row{k}x") for k in range(12)]         + [_w(200, 200 + 15 * k, f"{k}6rn.1{k}") for k in range(12)]
+    assert rg.layer_garbled(many)
     assert not rg.layer_garbled(_results_page())
+    assert rg.well_formed("₹2.40crore") and rg.well_formed("(₹0.00crore).") and not rg.well_formed("₹2.4Ocrore")
+    words = many
     cells, _ = rg.settle_page([[_cell("Revenue", "Q2FY26", "100")]], words)
     assert not cells[0]["settled_by"] and cells[0]["conflict"] == "garbled_layer"
 
@@ -222,3 +226,17 @@ def test_garbled_layer_confirms_nothing():
 def test_reader_header_with_an_unprinted_number_is_not_confirmed():
     cells, _ = rg.settle_page([[_cell("Profit", "Q2FY26 Mat 37", "40")]], _results_page())
     assert not cells[0]["settled_by"]
+
+
+def test_word_headers_place_a_column_without_period_words():
+    """p008 shape: 'No. of shares | Amount' over two number columns, no period word anywhere."""
+    words = [
+        _w(200, 10, "No."), _w(220, 10, "of"), _w(235, 10, "shares"), _w(300, 10, "Amount"),
+        _w(10, 25, "Opening"), _w(200, 25, "97,18,084"), _w(300, 25, "97.18"),
+        _w(10, 40, "Closing"), _w(200, 40, "95,91,514"), _w(300, 40, "95.91"),
+    ]
+    cells, _ = rg.settle_page([[_cell("Closing", "Equity > Amount", "95.91"),
+                                _cell("Opening", "Equity > Amount", "97,18,084")]], words)
+    by = {c["value_text"]: c for c in cells}
+    assert by["95.91"]["settled_by"] == "position"
+    assert not by["97,18,084"]["settled_by"] and by["97,18,084"]["conflict"] == "column_elsewhere"

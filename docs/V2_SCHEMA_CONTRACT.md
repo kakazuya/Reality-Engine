@@ -1199,6 +1199,7 @@ the 60 unlabelled dev reference pages it removed 310 of 1,889 confirmations, mos
 model merges columns and borrows phrases (title lines inside the band, S.No/Note columns). Open: the column model
 itself (dev and frozen gap 87% vs 65%), measured next on the 60-page set by reading flips, not on the frozen half.
 Tests: `test_v2_reference_geom.py` (+7), `test_v2_truth_score.py` (+1).
+Round 1b (same day): `GARBLED_MIN_FIGURES` 5 -> 20 and `well_formed` drops a glued unit ("₹2.40crore") - the first gate flagged two clean dev reference pages (IHCL p049 on 1 odd token of 5; POWERGRID p005 on glued units). Word headers: where the band test cannot decide, `word_header_state` reads the words printed over the value's own number column above its top data row and matches the reader's lowest header level ("No. of shares", "Amount", "Total other equity", "9M FY20^"); a rival number on the same line whose column carries the same words makes it undecided. On the 60 unlabelled dev reference pages (Dots image runs) confirmed cells 1,889 -> 2,157 of 2,891; the 31 word-header flips were each read against the page layout and are right. Dev truth half: 380/426 right Dots cells confirmed (89.2%), 0 wrong.
 
 **Layout input for readers (T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/page_layout.py` renders word boxes as
 fixed-width text, one output line per printed line with horizontal position kept (`python -m
