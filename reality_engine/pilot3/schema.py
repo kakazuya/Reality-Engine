@@ -178,7 +178,20 @@ TABLES: dict[str, str] = {
         unit TEXT, scale REAL, value REAL, value_text TEXT, definition TEXT,
         x0 REAL, y0 REAL, x1 REAL, y1 REAL, reader TEXT, check_status TEXT, check_reasons TEXT,
         created_at TEXT)""",
+    # T-223 (R-014): per-store filing register (every BSE/NSE filing and whether we hold it, a link-only cover
+    # letter, or did not fetch it).  ``kind_hint`` comes from exchange labels ONLY and is never used as ``doc_type``.
+    "filing": """CREATE TABLE filing (
+        exchange TEXT NOT NULL, filing_id TEXT NOT NULL, symbol TEXT NOT NULL, isin TEXT,
+        filed_at TEXT, exchange_category TEXT, exchange_subcategory TEXT, headline TEXT,
+        attachment TEXT, kind_hint TEXT, held_doc_key TEXT, held_doc_type TEXT,
+        held_pages INTEGER, link_urls TEXT, status TEXT NOT NULL,
+        PRIMARY KEY (exchange, filing_id, symbol))""",
 }
+
+FILING_INDEXES = (
+    "CREATE INDEX IF NOT EXISTS ix_filing_sym_status ON filing(symbol, status, kind_hint)",
+    "CREATE INDEX IF NOT EXISTS ix_filing_sym_filed ON filing(symbol, filed_at)",
+)
 
 GUIDANCE_INDEXES = (
     "CREATE INDEX IF NOT EXISTS ix_gd ON guidance(symbol, metric, target_period)",
@@ -216,6 +229,7 @@ INDEXES = (
     *PAGE_ATOM_INDEXES,
     *GUIDANCE_INDEXES,
     *NOTES_INDEXES,
+    *FILING_INDEXES,
 )
 
 FTS = """CREATE VIRTUAL TABLE doc_page_fts USING fts5(text, content='doc_page', content_rowid='rowid',
@@ -236,6 +250,30 @@ FIN_QUARTER_CURRENT = """CREATE VIEW fin_quarter_current AS
            'fin_quarter_printed', doc_key, page, column_role, check_status, NULL
     FROM fin_quarter_printed
     WHERE preferred_from IS NOT NULL AND preferred_to IS NULL"""
+
+# T-223 (R-014): per symbol x Indian FY quarter of filed_at (Q1=Apr-Jun) x kind_hint coverage counts.
+FILING_COVERAGE = """CREATE VIEW filing_coverage AS
+    SELECT symbol,
+           CASE
+               WHEN length(filed_at) >= 7
+                    AND CAST(substr(filed_at, 6, 2) AS INTEGER) BETWEEN 1 AND 12
+                    AND substr(filed_at, 1, 4) GLOB '[0-9][0-9][0-9][0-9]'
+               THEN 'Q' || ((CASE WHEN CAST(substr(filed_at, 6, 2) AS INTEGER) >= 4
+                                  THEN CAST(substr(filed_at, 6, 2) AS INTEGER) - 1
+                                  ELSE CAST(substr(filed_at, 6, 2) AS INTEGER) + 11 END) / 3)
+                    || 'FY' || printf('%02d',
+                        (CASE WHEN CAST(substr(filed_at, 6, 2) AS INTEGER) >= 4
+                              THEN CAST(substr(filed_at, 1, 4) AS INTEGER) + 1
+                              ELSE CAST(substr(filed_at, 1, 4) AS INTEGER) END) % 100)
+               ELSE 'unknown'
+           END AS fiscal_quarter,
+           kind_hint,
+           COUNT(*) AS filed,
+           SUM(CASE WHEN status = 'held' THEN 1 ELSE 0 END) AS held,
+           SUM(CASE WHEN status = 'link_only' THEN 1 ELSE 0 END) AS link_only,
+           SUM(CASE WHEN status = 'not_fetched' THEN 1 ELSE 0 END) AS not_fetched
+    FROM filing
+    GROUP BY symbol, fiscal_quarter, kind_hint"""
 
 PARTS = {
     "registry": ("company", "doc", "doc_alias"),
@@ -276,8 +314,11 @@ def ensure(conn: sqlite3.Connection, names) -> None:
 
 
 def ensure_views(conn: sqlite3.Connection) -> None:
-    """Recreate ``fin_quarter_current`` when both quarter tables carry the preferred columns (T-090); an older build
-    gains them when the ``preferred`` migration runs, and until then the view is left alone rather than failing."""
+    """Recreate ``fin_quarter_current`` when both quarter tables carry the preferred columns (T-090), and
+    ``filing_coverage`` when ``filing`` exists (T-223); older builds gain them on migration."""
+    if _has_table(conn, "filing"):
+        conn.execute("DROP VIEW IF EXISTS filing_coverage")
+        conn.execute(FILING_COVERAGE)
     tables = ("fin_quarter_xbrl", "fin_quarter_printed")
     for table in tables:
         if not conn.execute("SELECT 1 FROM sqlite_master WHERE name=?", (table,)).fetchone():
@@ -305,6 +346,7 @@ V_INDEXES_AND_VIEWS = 8        # every index and view on the tables a store hold
 V_EVENT_BODY = 9               # T-197: event.doc_type / title / body_excerpt
 V_PAGE_ATOM = 10               # T-199: the page_atom table (one row per resolved printed figure)
 V_ORDER_WIN = 11               # T-025: the order_win table (one row per order-win filing)
+V_FILING = 12                  # T-223: the filing table and filing_coverage view (R-014)
 
 # additive columns for tables built before them (a migration adds, never drops)
 SHARE_CAPITAL_ADDITIONS = (
@@ -449,6 +491,13 @@ def _add_order_win(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS ix_ow ON order_win(symbol, announced)")
 
 
+def _add_filing(conn: sqlite3.Connection) -> None:
+    _create(conn, ("filing",))
+    for sql in FILING_INDEXES:
+        conn.execute(sql)
+    ensure_views(conn)
+
+
 MIGRATIONS: tuple[tuple[int, str, Callable[[sqlite3.Connection], None]], ...] = (
     (V_SHARE_COUNT_BASIS, "share_capital.count_basis (T-192)", _add_share_count_basis),
     (V_GUIDANCE_ENTITY, "guidance.entity / entity_unsure (T-192)", _add_guidance_entity),
@@ -462,6 +511,7 @@ MIGRATIONS: tuple[tuple[int, str, Callable[[sqlite3.Connection], None]], ...] = 
     (V_EVENT_BODY, "event.doc_type / title / body_excerpt (T-197)", _add_event_columns),
     (V_PAGE_ATOM, "page_atom table (T-199)", _add_page_atom),
     (V_ORDER_WIN, "order_win table (T-025)", _add_order_win),
+    (V_FILING, "filing table and filing_coverage view (T-223)", _add_filing),
 )
 LATEST = MIGRATIONS[-1][0]
 

@@ -58,6 +58,7 @@ KEYS: dict[str, tuple[str, ...]] = {
     "dividend_event": ("symbol", "ex_date", "kind", "fiscal_year"),
     "event": ("symbol", "kind", "event_date", "doc_key", "page"),
     "order_win": ("symbol", "doc_key", "seq"),
+    "filing": ("exchange", "filing_id", "symbol"),
     "formula": ("formula_id",),
 }
 SERVED_BY_ENTITY = {"guidance"}    # the serving lookup hides a guidance row whose entity names another issuer

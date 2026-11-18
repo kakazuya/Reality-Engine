@@ -1,4 +1,4 @@
-"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|ocr|pages|stores|comparatives|preferred|ratios|extract|segments|kpi|transcripts|guidance|notes|checks|all]``
+"""CLI: ``python -m reality_engine.pilot3.build --out <db> [--part registry|ocr|pages|filings|stores|comparatives|preferred|ratios|extract|segments|kpi|transcripts|guidance|notes|checks|all]``
        ``[--symbols KEC[,BAJFINANCE,HINDALCO]] [--ocr-db <ocr.db> ...] [--ocr-max-seconds 540]``.
 
 Builds every pilot3 table in one file.  No network, no model.  Pages and documents come from pages.db (sandbox
@@ -188,7 +188,7 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
     # T-202: the one migration per run, BEFORE any part reads or writes.  A store built by older code gains every
     # additive change here, so no part carries column surgery of its own any more.
     log["schema"] = dict(zip(("from_version", "to_version"), schema.migrate(conn)))
-    parts = (["registry", "ocr", "pages", "stores", "ar_statements", "comparatives", "preferred", "ratios", "extract", "segments",
+    parts = (["registry", "ocr", "pages", "filings", "stores", "ar_statements", "comparatives", "preferred", "ratios", "extract", "segments",
               "guidance", "notes", "events", "checks", "atoms"]
              if part == "all" else [part])
     if "comparatives" in parts and not profile.under_profile():
@@ -207,6 +207,13 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
                 log["ocr"] = ocr_part(out, symbols, pages_db, ocr_max_seconds)
             elif name == "pages":
                 log["doc_page"] = registry.build_pages(conn, ocr_inputs(out, ocr_dbs))
+            elif name == "filings":
+                from reality_engine.pilot3 import filings
+
+                conn.commit()
+                conn.close()  # filings reads company/doc/doc_page from the db file and BSE/NSE sources
+                log["filings"] = {k: v for k, v in filings.run(out, symbols).items() if k != "link_only_rows"}
+                conn = sqlite3.connect(out)
             elif name == "stores":
                 log["stores"] = stores.build_stores(conn)
             elif name == "ar_statements":
@@ -300,7 +307,7 @@ def main(argv: list[str] | None = None) -> None:
                     help="build profile JSON (T-056): companies, pages db, raw root, manifest, output, window start")
     ap.add_argument("--out", default=None, help="default: the profile's output, else the real pilot3.db on C")
     ap.add_argument("--pages-db", default=None, help="override the profile's pages database")
-    ap.add_argument("--part", default="all", choices=("registry", "ocr", "pages", "stores", "ar_statements", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "notes", "events", "checks", "atoms", "all"))
+    ap.add_argument("--part", default="all", choices=("registry", "ocr", "pages", "filings", "stores", "ar_statements", "comparatives", "preferred", "ratios", "extract", "segments", "kpi", "transcripts", "guidance", "notes", "events", "checks", "atoms", "all"))
     ap.add_argument("--symbols", default=None,
                     help="comma list: without a profile it limits ocr/extract/kpi/transcripts/guidance/notes only (registry/pages/stores/ratios rebuild every company); a profile build limits every part (default: the profile's companies, else the pilot3 three)")
     ap.add_argument("--ocr-db", action="append", default=[], help="ocr_page database written by pilot3.ocr (repeat for one per company)")

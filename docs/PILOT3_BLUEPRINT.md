@@ -31,10 +31,11 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 | `bulk_block_deal`, `insider_trade`, `index_price` (profile builds, T-056 loop 2) | bulk/block deals and SEBI insider trades per company (none held = no rows); the stock against `Nifty 50` (and a profile's `extra_indices`) per trading day with 1/3/6/12-month relative return in points | `equity_intelligence.db` + price rows |
 | `event` (T-194, T-197) | one row per announcement event: `kind` (inspection / buyback / merger / acquisition / dividend), the inspection's `unit`, `event_date` / `end_date`, `outcome` (OAI, VAI, warning letter, Form 483, no observations, EIR received, closed), `subject`, `doc_key` + `page`, `quote`, `known_at`, and (T-197) `doc_type`, `title`, `body_excerpt` (the sentences of the page that state the outcome, observations, classification, impact or amount) | announcement / press-release title + first two pages (`pilot3/events.py`) |
 | `page_atom` (T-199) | one row per printed figure of a table/chart page: `table_title`, `row_label`, `col_header`, the resolved `period` / `basis` / `unit` / `scale` / numeric `value` beside `value_text`, the label's `definition`, the cell's bbox, `reader`, `check_status` (`verified` / `unverified`) and `check_reasons` | the page reader's `page_cell` rows, resolved by script (`pilot3/atoms.py`); the page itself is read by a free model or a Haiku subagent session from the exported image + prompt |
+| `filing` (T-223, R-014) | per-store filing register: one row per BSE/NSE filing (`exchange`, `filing_id`, `filed_at`, `kind_hint`, `held_doc_key`, `held_doc_type`, `held_pages`, `link_urls`, `status`) plus `filing_coverage` view by Indian FY quarter | BSE `bse_announcements.db:ann` + NSE `nse_announcements/<run>/<SYMBOL>.jsonl` matched against `doc`/`doc_page` (`pilot3/filings.py`) |
 
 **Schema version and numbered migrations (T-202, 12 Nov 2026).** Every store carries `schema_meta(key, value)`
 with `schema_version` and `migrated_at`; a store without it (every build before T-202) is version 0.
-`reality_engine/pilot3/schema.py` holds `MIGRATIONS`, the ordered, ADDITIVE changes from 0 to `LATEST = 10`:
+`reality_engine/pilot3/schema.py` holds `MIGRATIONS`, the ordered, ADDITIVE changes from 0 to `LATEST = 12`:
 
 | v | change (ticket) |
 |---|---|
@@ -48,6 +49,8 @@ with `schema_version` and `migrated_at`; a store without it (every build before 
 | 8 | every index and view on the tables a store holds |
 | 9 | `event.doc_type` / `title` / `body_excerpt` (T-197) |
 | 10 | the `page_atom` table + `(symbol, period)` / `(symbol, doc_key, page)` indexes (T-199) |
+| 11 | the `order_win` table (T-025) |
+| 12 | the `filing` table and `filing_coverage` view (T-223) |
 
 `migrate(conn)` applies the missing versions in order in one transaction and records the version; a second run is
 one SELECT (`--status` on a copy: `version` 10, `latest` 10, `pending` empty). `build.py` calls it once at the start
@@ -2009,3 +2012,15 @@ the notes (PP&E, CWIP, commitments, revenue break-up, finance costs, segments).
 
     python -m reality_engine.pilot3.ar_statements run --root D:/RealityEngine/tg_build/measure10 [--stores c16] --dry --out <dir>
     python -m reality_engine.scripts.store_repair --part ar_statements --root <root> --stores c01,c02 --note R-015
+
+### 9t. Per-store filing register (T-223, store-repair note R-014, 18 Nov 2026)
+
+An empty store means not extracted, never "not held", until raw sources are checked. `pilot3/filings.py` (build part `filings` in `build.py`, in `part_stamp.ORDER` right after `docs_collect`; `store_diff` keys rows on `(exchange, filing_id, symbol)`) writes per-company `filing` rows and the `filing_coverage` view (per `symbol` x Indian FY quarter of `filed_at` where Q1=Apr-Jun x `kind_hint`: `filed`, `held`, `link_only`, `not_fetched`), so a store tells apart "never filed", "not fetched", and "only a cover letter with a link":
+
+- **Sources (read-only):** BSE `bse_announcements.db:ann` queried bounded by `SCRIP_CD = company.bse_code` via `connect_ro`; NSE JSONL listings under `D:/RealityEngine/raw/nse_announcements/<run folder>/<SYMBOL>.jsonl` (`tg_queue_2026-11-16`, `run_2026-10-28`, `pilot_2026-10-28`, `transcript_gap_2026-10-28`), deduplicated by `seq_id`; and held `doc` / `doc_page` rows in the store.
+- **Hint, never type:** `kind_hint` (`results`, `annual_report`, `transcript`, `deck`, `call_recording`, `call_intimation`, `rating`, `order_win`, `shareholding`, `other`) is classified from exchange labels only (`exchange_category`, `exchange_subcategory`, `headline`, BSE `NEWSSUB`) and is never written into `doc.doc_type` — a document is always typed by its own pages (`doc.doc_type`).
+- **Matching & statuses:** filings with an attachment match held docs first by attachment filename (`ATTACHMENTNAME` / basename of NSE `attchmntFile`) equal to basename of `doc.source_key`, else whitespace-normalised `doc.title` equal to the headline prefix and `doc.known_at` within 1 day of `filed_at` (paired 1-to-1 per exchange by smallest time gap). Status is `no_attachment` (empty attachment), `not_fetched` (no doc matched), `link_only` (matched held doc has `<= 3` pages, mentions `call`/`transcript`/`presentation`/`recording`, and has URLs extracted via `linked_transcripts.stub_urls` / `urls_from_text`), or `held`.
+
+    python -m reality_engine.pilot3.filings --out <store_copy.db> [--symbols SYM]
+    python -m reality_engine.scripts.store_repair --part filings --no-dependants --root <root> --stores c01
+

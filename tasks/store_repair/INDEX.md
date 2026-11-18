@@ -8,7 +8,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 |---|---|---|---|---|---|---|---|---|---|
 | R-013 | fix_written | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general |  |
 | R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
-| R-014 | open | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general |  |
+| R-014 | fix_written | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general |  |
 | R-020 | fix_written | wrong | 20/91 (scan) | 3 |  | 60 | comparatives | general | c01, c02, c03, c04, c05, c07, c08, c09, c10, c11, c13, c14, c15, c16, c17, c18, c19, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c41, c42, c43, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c88, c89, c90, c91 |
 | R-019 | fix_written | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
 | R-017 | fix_written | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c48, c49, c50, c51, c52, c53, c54, c55, c56, c59, c60, c61, c62, c63, c64, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
@@ -196,16 +196,16 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Tags:** ocr, R-010; **scope:** general
 - **Stores repaired:** -; runs: -
 
-## R-014 (open, part `docs_collect`, opened 2026-11-17)
+## R-014 (fix_written, part `docs_collect`, opened 2026-11-17)
 
 1. **Why it had to be done** (question that exposed it, all): Trial 1: what did the call/deck the question needs say? (e.g. NELCAST backward integration, PANAMAPET drilling-lubricant target, GAYAPROJ arbitration)
 2. **What the problem was:** 28 of 182 trial-1 answers graded raw_missing: the filing that states the answer is not in the store. 37 of 91 stores hold no call transcript, 30 no investor deck, 27 neither (e.g. GAYAPROJ, NSIL, NILKAMAL, DHANBANK, HYPERSOFT); NELCAST's 11 and RANEHOLDIN's transcripts are cover letters with a link only (R-012). **Root cause:** R-002 found most no-transcript companies filed none on the exchange, but company websites and BSE/NSE attachments were not searched for decks; link-only transcripts are not followed.
 3. **What was missing:** A per-company register of which calls and decks exist anywhere (exchange, company site), so 'not filed' and 'not fetched' are told apart.
-4. **How it was fixed:** Proposed: R-012 link follower for transcript cover letters; a deck/transcript finder over the company IR page for the 27 companies with neither; record 'no call held' when none exists.
-5. **What can come next:** Measure on the 27: how many have a deck or transcript on their IR page; then fetch and re-run docs/pages/transcripts for those stores; re-ask the 28 raw_missing questions in trial 2.
+4. **How it was fixed:** Per-store filing register (pilot3.filings -> table filing + view filing_coverage) matching BSE ann and NSE JSONL listings against held doc/doc_page and flagging link_only cover letters via linked_transcripts.
+5. **What can come next:** Run filings on the 91 stores; widen linked_transcripts to cover letters typed announcement; fetch missing filings and IR pages.
 - **Kind:** missed (the call/deck that states the answer is not in the store: link-only or not fetched, or never filed (R-002: 34 of 37 no-transcript companies filed none on either exchange, so many of these cannot be fixed)); **severity:** 40/91 companies (scan); **criticality:** 1; **trial questions failed:** 27; **priority:** 67
-- **Code:** -
-- **Store tables touched:** doc, transcript_statement
+- **Code:** pilot3/filings.py::run, pilot3/schema.py::FILING_COVERAGE, pilot3/part_stamp.py::ORDER, pilot3/build.py::build
+- **Store tables touched:** filing
 - **Tags:** trial1, raw_missing; **scope:** general
 - **Stores repaired:** -; runs: -
 
