@@ -152,6 +152,13 @@ _AR_TEXT_RE = re.compile(
     re.I,
 )
 _COMPANY_SUFFIX_RE = re.compile(r"\b(?:Limited|Ltd)\b(?!\s+Review\b)", re.I)
+_MARKET_BODY_RE = re.compile(
+    r"\b(?:BSE|National\s+Stock\s+Exchange|Stock\s+Exchange|Metropolitan\s+Stock|MSEI|NSDL|CDSL|"
+    r"Central\s+Depository|National\s+Securities\s+Depository|Link\s+Intime|KFin|Kfintech|Bigshare|"
+    r"Registrar|SEBI|Securities\s+and\s+Exchange\s+Board|CRISIL|ICRA|CARE\s+Ratings|India\s+Ratings|"
+    r"Acuite|Brickwork|Infomerics)\b",
+    re.I,
+)
 
 _TX_LINK_RE = re.compile(r"transcript|con[-_ ]?call|earnings[-_ ]?call|conference[-_ ]?call", re.I)
 _DECK_LINK_RE = re.compile(r"presentation|investor[-_ ]?ppt|\bppt\b", re.I)
@@ -554,7 +561,10 @@ def _page1_company_names(page1: str) -> list[str]:
             words = prefix.split()[-6:]
             if not words or not any(re.search(r"[A-Za-z0-9]", w) for w in words):
                 continue
-            names.append(f"{' '.join(words)} {m.group(0)}")
+            cand = f"{' '.join(words)} {m.group(0)}"
+            if _MARKET_BODY_RE.search(cand):
+                continue
+            names.append(cand)
     return names
 
 

@@ -935,6 +935,23 @@ def test_group_company_page1_limited_check():
     assert res_jsw_only["reason"] == "other_company"
     assert res_jsw_only["printed_company"] == "JSW Infrastructure Limited"
 
+    # Addressee exchanges / market & service bodies on page 1 (own letterhead is an image) -> not other_company
+    madras_names = ["MADRASFERT", "Madras Fertilizers Limited"]
+    addressee_results = _make_pdf([
+        "To,\nBSE Limited ... National Stock Exchange of India Ltd.\n"
+        "Statement of Unaudited Financial Results\nScrip: MADRASFERT",
+        "Notes to Financial Results for the quarter ended September 30, 2024.",
+    ])
+    res_addressee = lf.resolve(
+        "https://x/madras_res.pdf",
+        "results",
+        "2024-11-12",
+        madras_names,
+        get=lambda u: (u, "application/pdf", addressee_results),
+    )
+    assert res_addressee["status"] == "resolved" and res_addressee["kind"] == "results"
+    assert lf._page1_company_names("BSE Limited ... National Stock Exchange of India Ltd.") == []
+
 
 def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Path):
     db_path = tmp_path / "res_ar.db"
