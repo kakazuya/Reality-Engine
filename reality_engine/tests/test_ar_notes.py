@@ -748,3 +748,150 @@ def test_r9_followed_ignores_footnote_head_and_two_col_prose(monkeypatch):
     assert tots == {"FY26": ("finance_costs_total", 14.16), "FY25": ("finance_costs_total", 18.98)}
 
 
+# --- T-223 (R-015 follow-up): as-filed + restated sources, PIT serving ---
+
+def _row(fy, basis, item, val, doc, page, ka, own, tie="no_face", unit="inr_lakh", scale=1e5, dec=2, reg=0, col=0):
+    return N.Row(
+        fy, "2024-03-31", basis, item, item, val, unit, scale, doc, page, f"{item} {val}", ka,
+        f"ar_note_reader: {N.note_of_row(item)}", own, f"{doc}#p{page}#r{reg}#{col}", tie_status=tie, decimals=dec,
+    )
+
+
+def test_t223_as_filed_and_restated_kept_when_values_differ(tmp_path, monkeypatch):
+    import importlib.util
+    import sqlite3
+    import sys
+    from pathlib import Path
+    from reality_engine.pilot3 import schema
+
+    # Synthetic store with FY24 AR (as-filed 318.35) + FY25 AR (restated FY24 323.81) + Q4 FY25 prior_ytd face 323.81
+    db = tmp_path / "store.db"
+    conn = sqlite3.connect(db)
+    schema.create(conn, ["company", "doc", "doc_page", "fin_annual_line", "fin_quarter_printed", "fin_quarter_xbrl"])
+    conn.execute("INSERT INTO company (symbol, isin, name) VALUES ('TESTCO', 'INE000000001', 'Test Co Ltd')")
+    conn.execute("INSERT INTO doc (doc_key, doc_type, filing_date, known_at, title) VALUES ('ar24.pdf', 'annual_report', '2024-08-30', '2024-08-30T20:00:00', 'AR 2023-24')")
+    conn.execute("INSERT INTO doc (doc_key, doc_type, filing_date, known_at, title) VALUES ('ar25.pdf', 'annual_report', '2025-09-03', '2025-09-03T20:00:00', 'AR 2024-25')")
+    conn.execute("INSERT INTO doc_page (doc_key, page, text) VALUES ('ar24.pdf', 254, 'Consolidated Statement of Profit and Loss\n23 Finance costs')")
+    conn.execute("INSERT INTO doc_page (doc_key, page, text) VALUES ('ar25.pdf', 250, 'Consolidated Statement of Profit and Loss\n23 Finance costs')")
+    # Later Q4 FY25 filing restated FY24 prior_ytd to 323.81 lakh: must NOT reject ar24.pdf (318.35)
+    conn.execute(
+        "INSERT INTO fin_quarter_printed (symbol, isin, period_end, fiscal_period, period_type, column_role, basis, "
+        "statement, line_item, caption, value, unit, scale, raw_token, check_status, doc_key, page, known_at) "
+        "VALUES ('TESTCO','INE000000001','2024-03-31','FY24','fy','prior_ytd','consolidated','P&L','finance_cost',"
+        "'Finance costs',32381000.0,'inr',1.0,'323.81','unchecked','q4_25.pdf',1,'2025-05-12T13:00:00')"
+    )
+    conn.commit()
+    conn.close()
+
+    pages = {
+        ("ar24.pdf", 254): (
+            _wline(20, (40, "Notes to Consolidated Financial Statements"))
+            + _wline(40, (40, "23 Finance costs"), (440, "(Rs. in lakhs)"))
+            + _wline(54, (320, "31 March 2024"), (440, "31 March 2023"))
+            + _wline(68, (40, "Interest on borrowings"), (350, "164.20"), (470, "206.58"))
+            + _wline(82, (40, "Bank Processing Charges"), (350, "154.15"), (470, "157.46"))
+            + _wline(96, (40, "Total"), (350, "318.35"), (470, "364.04"))
+        ),
+        ("ar25.pdf", 250): (
+            _wline(20, (40, "Notes to Consolidated Financial Statements"))
+            + _wline(40, (40, "23 Finance costs"), (440, "(Rs. in lakhs)"))
+            + _wline(54, (320, "31 March 2025"), (440, "31 March 2024"))
+            + _wline(68, (40, "Interest on borrowings"), (350, "165.87"), (470, "163.30"))
+            + _wline(82, (40, "Interest expense on lease liabilities"), (350, "9.45"), (470, "6.36"))
+            + _wline(96, (40, "Bank Processing Charges"), (350, "72.64"), (470, "154.15"))
+            + _wline(110, (40, "Total"), (350, "247.96"), (470, "323.81"))
+        ),
+    }
+    monkeypatch.setattr(N, "words_for", lambda _db, dk, pg: type("P", (), {"words": pages[(dk, pg)]})())
+    res = N.run_store(db, "t00")
+    fy24 = [r for r in res["row_list"] if r.fiscal_year == "FY24"]
+    as_filed = [r for r in fy24 if r.doc_key == "ar24.pdf"]
+    restated = [r for r in fy24 if r.doc_key == "ar25.pdf"]
+    assert {r.line_item: r.value for r in as_filed} == {
+        "finance_costs:interest_on_borrowings": 164.20,
+        "finance_costs:bank_processing_charges": 154.15,
+        "finance_costs_total": 318.35,
+    }
+    assert all("restated in" not in r.definition for r in as_filed)
+    assert {r.line_item: r.value for r in restated} == {
+        "finance_costs:interest_on_borrowings": 163.30,
+        "finance_costs:interest_expense_on_lease_liabilities": 6.36,
+        "finance_costs:bank_processing_charges": 154.15,
+        "finance_costs_total": 323.81,
+    }
+    tot_r = [r for r in restated if r.line_item == "finance_costs_total"][0]
+    assert "restated in ar25.pdf p250 (2025-09-03) (as-filed 318.35 in ar24.pdf p254 (2024-08-30))" in tot_r.definition
+    lease_r = [r for r in restated if "lease" in r.line_item][0]
+    assert "restated in ar25.pdf p250 (2025-09-03) (as-filed absent in ar24.pdf p254 (2024-08-30))" in lease_r.definition
+
+    # Serving check: as_of 2024-12-31 returns as-filed (318.35); 2025-12-31 and today return restated (323.81)
+    server = Path(__file__).resolve().parents[2] / "plugins" / "reality-data" / "server"
+    monkeypatch.setenv("REALITY_PILOT3_DB", str(db))
+    if str(server) not in sys.path:
+        sys.path.insert(0, str(server))
+    spec = importlib.util.spec_from_file_location("lookups_pilot3_test", server / "lookups_pilot3.py")
+    assert spec is not None and spec.loader is not None
+    lp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lp)
+    try:
+        r_2024 = lp.fin("TESTCO", "finance_costs_total", period="FY24", basis="consolidated", as_of="2024-12-31")["rows"]
+        assert len(r_2024) == 1 and r_2024[0]["value"] == 318.35 and r_2024[0]["restated"] is False
+        r_2025 = lp.fin("TESTCO", "finance_costs_total", period="FY24", basis="consolidated", as_of="2025-12-31")["rows"]
+        assert len(r_2025) == 1 and r_2025[0]["value"] == 323.81 and r_2025[0]["restated"] is True
+        assert r_2025[0]["alternatives"][0]["value"] == 318.35
+        r_now = lp.fin("TESTCO", "finance_costs_total", period="FY24", basis="consolidated")["rows"]
+        assert len(r_now) == 1 and r_now[0]["value"] == 323.81 and r_now[0]["restated"] is True
+    finally:
+        lp.close()
+
+
+def test_t223_restated_dropped_when_equal_and_kept_on_line_shift():
+    # 1. Identical values (even when later AR is tied and earlier is no_face) -> as-filed only
+    cand_eq = [
+        _row("FY24", "standalone", "finance_costs:interest", 100.0, "ar24.pdf", 10, "2024-08-15", True, tie="no_face"),
+        _row("FY24", "standalone", "finance_costs_total", 100.0, "ar24.pdf", 10, "2024-08-15", True, tie="no_face"),
+        _row("FY24", "standalone", "finance_costs:interest", 100.0, "ar25.pdf", 12, "2025-08-15", False, tie="tied"),
+        _row("FY24", "standalone", "finance_costs_total", 100.0, "ar25.pdf", 12, "2025-08-15", False, tie="tied"),
+    ]
+    got_eq = N._select_sources(cand_eq)
+    assert [r.doc_key for r in got_eq] == ["ar24.pdf", "ar24.pdf"]
+
+    # 2. Extra 0.0 line omitted in later report, plus lakh vs crore rounding -> dropped
+    cand_zero = [
+        _row("FY24", "standalone", "finance_costs:interest", 164.20, "ar24.pdf", 10, "2024-08-15", True),
+        _row("FY24", "standalone", "finance_costs:fx", 0.00, "ar24.pdf", 10, "2024-08-15", True),
+        _row("FY24", "standalone", "finance_costs_total", 164.20, "ar24.pdf", 10, "2024-08-15", True),
+        _row("FY24", "standalone", "finance_costs:interest", 1.64, "ar25.pdf", 12, "2025-08-15", False, unit="inr_crore", scale=1e7),
+        _row("FY24", "standalone", "finance_costs_total", 1.64, "ar25.pdf", 12, "2025-08-15", False, unit="inr_crore", scale=1e7),
+    ]
+    assert [r.doc_key for r in N._select_sources(cand_zero)] == ["ar24.pdf"] * 3
+
+    # 3. Same total, but two item lines shifted beyond tolerance -> restated kept
+    cand_shift = [
+        _row("FY24", "consolidated", "revenue_from_operations:finished_goods", 1000.0, "ar24.pdf", 20, "2024-09-01", True),
+        _row("FY24", "consolidated", "revenue_from_operations:traded_goods", 200.0, "ar24.pdf", 20, "2024-09-01", True),
+        _row("FY24", "consolidated", "revenue_from_operations_total", 1200.0, "ar24.pdf", 20, "2024-09-01", True),
+        _row("FY24", "consolidated", "revenue_from_operations:finished_goods", 1100.0, "ar25.pdf", 22, "2025-09-01", False),
+        _row("FY24", "consolidated", "revenue_from_operations:traded_goods", 100.0, "ar25.pdf", 22, "2025-09-01", False),
+        _row("FY24", "consolidated", "revenue_from_operations_total", 1200.0, "ar25.pdf", 22, "2025-09-01", False),
+    ]
+    got_shift = N._select_sources(cand_shift)
+    assert len(got_shift) == 6
+    assert {r.doc_key for r in got_shift} == {"ar24.pdf", "ar25.pdf"}
+    assert all("restated in ar25.pdf" in r.definition for r in got_shift if r.doc_key == "ar25.pdf")
+    assert all("restated in" not in r.definition for r in got_shift if r.doc_key == "ar24.pdf")
+
+
+def test_t223_no_own_year_report_uses_later_report():
+    cand = [
+        _row("FY25", "standalone", "borrowings_current:term_loan", 500.0, "ar26.pdf", 172, "2026-09-01", False, tie="tied"),
+        _row("FY25", "standalone", "borrowings_current_total", 500.0, "ar26.pdf", 172, "2026-09-01", False, tie="tied"),
+        _row("FY25", "standalone", "borrowings_current:term_loan", 490.0, "ar26_old.pdf", 170, "2026-08-01", False, tie="no_face"),
+        _row("FY25", "standalone", "borrowings_current_total", 490.0, "ar26_old.pdf", 170, "2026-08-01", False, tie="no_face"),
+    ]
+    got = N._select_sources(cand)
+    assert len(got) == 2
+    assert all(r.doc_key == "ar26.pdf" and "restated in" not in r.definition for r in got)
+
+
+

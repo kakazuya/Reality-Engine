@@ -56,8 +56,14 @@ stores held them only as page text.  No model; the frame is the cash-flow reader
    per total; slugs trim on word boundaries (up to 96 chars); sub-totals fall back to the caption above instead of
    ``subtotal:subtotal``.  Generic 'Borrowings' notes are classified by the nearest Balance-Sheet section heading above
    ('NON-CURRENT LIABILITIES' / 'CURRENT LIABILITIES'), else split by 'Non-current' / 'Current' sub-blocks, and
-   ``borrowings_unclassified`` never displaces a classified note for the same ``(fiscal_year, basis)``.  Ranking: tied
-   first, then own column, latest report, and lower page number within a document.
+   ``borrowings_unclassified`` never displaces a classified note for the same ``(fiscal_year, basis)``.  Source
+   selection per ``(fiscal_year, basis, note)`` keeps up to two sources with each source's items, sub-totals and
+   total coming from one page and column: (a) AS-FILED = best ``own=True`` source (tied first, then latest report,
+   lower page; a future comparative ``own_filing=False`` face candidate never rejects an ``own=True`` note as
+   disagreeing); and (b) RESTATED = best ``own=False`` source whose ``known_at`` is later than (a)'s and whose
+   figures differ from (a)'s beyond printed rounding tolerance, with (b)'s ``definition`` annotated
+   ``'restated in <later report> (as-filed <value> in <earlier report>)'``.  If no ``own=True`` source exists,
+   the best ``own=False`` source is kept alone.
 
     python -m reality_engine.pilot3.ar_notes run --root D:/RealityEngine/tg_build/measure10 [--stores c18] [--dry --out <dir>]
 """
@@ -70,7 +76,7 @@ import json
 import re
 import sqlite3
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from reality_engine.pilot3 import ar_statements as A
@@ -509,6 +515,7 @@ class Row:
     own: bool
     source: str
     tie_status: str = "no_face"
+    decimals: int = 2
 
 
 _NON_LABEL_WORDS = re.compile(
@@ -1015,7 +1022,8 @@ def _cand_matches(note_inr: float, tot_dec: int, note_unit: str, note_scale: flo
 
 def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: float,
                    face_entry: list[FaceCand] | tuple[float, float, str] | None,
-                   doc_key: str = "", allow_differs: bool = True) -> tuple[str, FaceCand | None]:
+                   doc_key: str = "", allow_differs: bool = True,
+                   own: bool = False, note_known_at: str = "") -> tuple[str, FaceCand | None]:
     """Return ``(status, matched_or_primary_cand)`` where ``status`` is ``'tied'``, ``'differs'``,
     ``'disagree'``, or ``'no_face'``."""
     if not face_entry:
@@ -1027,6 +1035,18 @@ def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: flo
     else:
         cands = sorted(face_entry, key=_cand_key)
     note_inr = tot_val * note_scale
+    if own and note_known_at:
+        # A future filing's comparative column (own_filing=False, known_at later than this AR) may reflect a later
+        # restatement; it can confirm a tie, but must never discard this year's own as-filed note.
+        contemp = [c for c in cands if c.own_filing or not c.known_at or c.known_at[:10] <= note_known_at[:10]]
+        if not contemp:
+            if _cand_matches(note_inr, tot_dec, note_unit, note_scale, cands[0]):
+                return "tied", cands[0]
+            for c in cands[1:]:
+                if c.checked and _cand_matches(note_inr, tot_dec, note_unit, note_scale, c):
+                    return "tied", c
+            return "no_face", None
+        cands = contemp
     c0 = cands[0]
     if _cand_matches(note_inr, tot_dec, note_unit, note_scale, c0):
         return "tied", c0
@@ -1175,7 +1195,7 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                     col_rows.append(Row(fy, ends[k], basis, f"{nm}{tag}:{slug}", i.label[:200],
                                     val, unit[0], unit[1], doc_key, page, i.quote[:300], known_at,
                                     f"ar_note_reader: {nm}{tag}, items add up to the printed total", own,
-                                    f"{doc_key}#p{page}#r{reg_i}#{k}"))
+                                    f"{doc_key}#p{page}#r{reg_i}#{k}", decimals=i.decimals))
                 # the note total is the grand total, or the one block of its (sub-)note; every other block total is
                 # a sub-total named by its caption and printed label
                 same = [b for b in found if b[0] == sub]
@@ -1199,7 +1219,8 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                         name = f"{base_name}_{idx}"
                 col_rows.append(Row(fy, ends[k], basis, name, total.label[:200] or "Total",
                                     total.values[k], unit[0], unit[1], doc_key, page, total.quote[:300], known_at,
-                                    f"ar_note_reader: {nm}{tag} {kind} total", own, f"{doc_key}#p{page}#r{reg_i}#{k}"))
+                                    f"ar_note_reader: {nm}{tag} {kind} total", own, f"{doc_key}#p{page}#r{reg_i}#{k}",
+                                    decimals=total.decimals))
             # a line item named twice in one column is ambiguous: the column writes nothing
             names = [r.line_item for r in col_rows]
             if len(names) != len(set(names)):
@@ -1243,7 +1264,7 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                     )
                     status, m_cand = _tie_out_check(
                         tot_rows[0].value, t_dec, unit[0], unit[1], face_targets.get((fy, basis, nm)), doc_key,
-                        allow_differs=allow_diff,
+                        allow_differs=allow_diff, own=own, note_known_at=known_at,
                     )
                     if status == "disagree":
                         log.append({"page": page, "note": nm, "ok": 0, "why": "total does not tie to the statement"})
@@ -1304,6 +1325,103 @@ def _page_declared_unit(text: str) -> tuple[str, float] | None:
     return found.pop() if len(found) == 1 else None
 
 
+def _row_tol(a: Row, b: Row) -> float:
+    ra = 0.5 * (10 ** (-a.decimals)) * a.scale
+    rb = 0.5 * (10 ** (-b.decimals)) * b.scale
+    return max(ra, rb) + 1e-6 * max(abs(a.value * a.scale), abs(b.value * b.scale)) + 1.0
+
+
+def _is_zero_row(r: Row) -> bool:
+    return abs(r.value * r.scale) <= 0.5 * (10 ** (-r.decimals)) * r.scale + 1.0
+
+
+def _rows_differ(a_rows: list[Row], b_rows: list[Row]) -> bool:
+    """True when any line in ``b_rows`` differs from ``a_rows`` beyond printed rounding tolerance."""
+    a_by = {r.line_item: r for r in a_rows}
+    b_by = {r.line_item: r for r in b_rows}
+    unmatched_a: list[Row] = []
+    unmatched_b: list[Row] = []
+    for key in set(a_by) | set(b_by):
+        ra, rb = a_by.get(key), b_by.get(key)
+        if ra is not None and rb is not None:
+            if abs(ra.value * ra.scale - rb.value * rb.scale) > _row_tol(ra, rb):
+                return True
+        elif ra is not None and not _is_zero_row(ra):
+            unmatched_a.append(ra)
+        elif rb is not None and not _is_zero_row(rb):
+            unmatched_b.append(rb)
+    if len(unmatched_a) != len(unmatched_b):
+        return True
+    if not unmatched_a:
+        return False
+
+    def _kind(r: Row) -> int:
+        if r.line_item.endswith("_total") or "_total:" in r.line_item:
+            return 2
+        if "_subtotal:" in r.line_item:
+            return 1
+        return 0
+
+    sa = sorted(unmatched_a, key=lambda r: (_kind(r), r.value * r.scale))
+    sb = sorted(unmatched_b, key=lambda r: (_kind(r), r.value * r.scale))
+    return any(_kind(ra) != _kind(rb) or abs(ra.value * ra.scale - rb.value * rb.scale) > _row_tol(ra, rb)
+               for ra, rb in zip(sa, sb))
+
+
+def _report_label(r: Row) -> str:
+    name = Path(r.doc_key).name if r.doc_key else r.source
+    day = (r.known_at or "")[:10]
+    return f"{name} p{r.page} ({day})" if day else f"{name} p{r.page}"
+
+
+def _mark_restated(a_rows: list[Row], b_rows: list[Row]) -> list[Row]:
+    a_by = {r.line_item: r for r in a_rows}
+    earlier = _report_label(a_rows[0])
+    later = _report_label(b_rows[0])
+    out: list[Row] = []
+    for r in b_rows:
+        ra = a_by.get(r.line_item)
+        if ra is None:
+            as_filed = "absent"
+        elif ra.unit == r.unit:
+            as_filed = f"{ra.value:.2f}"
+        else:
+            as_filed = f"{ra.value:.2f} {ra.unit}"
+        note_txt = f"restated in {later} (as-filed {as_filed} in {earlier})"
+        out.append(replace(r, definition=f"{r.definition}; {note_txt}"))
+    return out
+
+
+def _select_sources(cand: list[Row]) -> list[Row]:
+    """Per (fiscal_year, basis, note) keep up to two single-page/column sources:
+    (a) AS-FILED = best ``own=True`` source; (b) RESTATED = best ``own=False`` source with later ``known_at``
+    whose figures differ from (a)'s beyond tolerance.  When no ``own=True`` source exists, keep (b) alone."""
+    def _src_rank(src_rows: list[Row]):
+        r0 = src_rows[0]
+        return (any(r.tie_status == "tied" for r in src_rows), r0.known_at, r0.doc_key, -r0.page, r0.source)
+
+    by_key: dict[tuple[str, str, str], dict[str, list[Row]]] = defaultdict(lambda: defaultdict(list))
+    for r in cand:
+        by_key[(r.fiscal_year, r.basis, note_of_row(r.line_item))][r.source].append(r)
+
+    out: list[Row] = []
+    for key in sorted(by_key):
+        srcs = list(by_key[key].values())
+        own_srcs = [s for s in srcs if s[0].own]
+        other_srcs = [s for s in srcs if not s[0].own]
+        if own_srcs:
+            a_rows = max(own_srcs, key=_src_rank)
+            out.extend(a_rows)
+            later_other = [s for s in other_srcs if (s[0].known_at or "") > (a_rows[0].known_at or "")]
+            if later_other:
+                b_rows = max(later_other, key=_src_rank)
+                if _rows_differ(a_rows, b_rows):
+                    out.extend(_mark_restated(a_rows, b_rows))
+        elif other_srcs:
+            out.extend(max(other_srcs, key=_src_rank))
+    return out
+
+
 def run_store(db: Path, store: str, dry: bool = False) -> dict:
     conn = sqlite3.connect(db if not dry else f"file:{db.as_posix()}?mode=ro", uri=dry)
     sym, isin = conn.execute("SELECT symbol, isin FROM company LIMIT 1").fetchone()
@@ -1343,18 +1461,8 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
                   if note_of_row(r.line_item) in ("borrowings_noncurrent", "borrowings_current")}
     cand = [r for r in cand
             if note_of_row(r.line_item) != "borrowings_unclassified" or (r.fiscal_year, r.basis) not in classified]
-    # one report per (year, basis, note): tied to face statement first, then own column, latest report, lower page
-    # one source per (year, basis, note): items, sub-totals and the total of a note always come from one page and column
-    def _rank(r: Row):
-        return (r.tie_status == "tied", r.own, r.known_at, r.doc_key, -r.page, r.source)
-
-    best = {}
-    for r in cand:
-        key = (r.fiscal_year, r.basis, note_of_row(r.line_item))
-        rank = _rank(r)
-        if key not in best or rank > best[key]:
-            best[key] = rank
-    rows = [r for r in cand if _rank(r) == best[(r.fiscal_year, r.basis, note_of_row(r.line_item))]]
+    # up to two sources per (year, basis, note): as-filed (own=True) plus restated (own=False, later, differs)
+    rows = _select_sources(cand)
     if not dry:
         conn.execute("DELETE FROM fin_annual_line WHERE source_table=? AND symbol=?", (SOURCE_TABLE, sym))
         conn.executemany(
