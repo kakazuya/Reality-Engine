@@ -894,4 +894,93 @@ def test_t223_no_own_year_report_uses_later_report():
     assert all(r.doc_key == "ar26.pdf" and "restated in" not in r.definition for r in got)
 
 
+def test_t223_own_note_ties_via_later_checked_comparative_when_contemp_ytd_disagrees(tmp_path, monkeypatch):
+    import sqlite3
+    from reality_engine.pilot3 import schema
+
+    # Pattern (c72): Q4 FY24 printed ytd has a mis-aligned column figure (contemp non-empty), while later Q2 FY25
+    # last_fy (129,312.86; 1,054.19) and Q4 FY25 prior_ytd (129,337.80; 1,054.19) hold checked full-year figures.
+    # Own-year FY24 AR must tie via the checked comparative candidates; revenue keeps both as-filed + restated,
+    # finance_costs keeps as-filed and drops the equal restated note.
+    db = tmp_path / "store.db"
+    conn = sqlite3.connect(db)
+    schema.create(conn, ["company", "doc", "doc_page", "fin_annual_line", "fin_quarter_printed", "fin_quarter_xbrl"])
+    conn.execute("INSERT INTO company (symbol, isin, name) VALUES ('TESTCO', 'INE000000002', 'Test Co Two')")
+    conn.execute("INSERT INTO doc (doc_key, doc_type, filing_date, known_at, title) VALUES ('ar24.pdf', 'annual_report', '2024-07-15', '2024-07-15T14:39:20', 'AR 2023-24')")
+    conn.execute("INSERT INTO doc (doc_key, doc_type, filing_date, known_at, title) VALUES ('ar25.pdf', 'annual_report', '2025-08-30', '2025-08-30T11:45:34', 'AR 2024-25')")
+    conn.execute("INSERT INTO doc_page (doc_key, page, text) VALUES ('ar24.pdf', 128, '28 Revenue from operations')")
+    conn.execute("INSERT INTO doc_page (doc_key, page, text) VALUES ('ar24.pdf', 130, '30 Finance costs')")
+    conn.execute("INSERT INTO doc_page (doc_key, page, text) VALUES ('ar25.pdf', 146, '28 Revenue from operations')")
+    conn.execute("INSERT INTO doc_page (doc_key, page, text) VALUES ('ar25.pdf', 147, '30 Finance costs')")
+    fqp_rows = [
+        ("FY24", "ytd", "revenue_from_operations", "(a) Revenue from Operations", 3864155000.0, "38,641.55", "sum_ok", "q4_24.pdf", "2024-05-27T16:47:23"),
+        ("FY24", "last_fy", "revenue_from_operations", "(a) Revenue from Operations", 12931286000.0, "129,312.86", "sum_ok", "q2_25.pdf", "2024-11-08T17:53:52"),
+        ("FY24", "prior_ytd", "revenue_from_operations", "(a) Revenue from Operations", 12933780000.0, "129,337.80", "sum_ok", "q4_25.pdf", "2025-05-28T17:09:09"),
+        ("FY24", "ytd", "finance_cost", "(d) Finance costs", 30963000.0, "309.63", "unchecked", "q4_24.pdf", "2024-05-27T16:47:23"),
+        ("FY24", "last_fy", "finance_cost", "(d) Finance costs", 105419000.0, "1,054.19", "repeat_ok", "q2_25.pdf", "2024-11-08T17:53:52"),
+        ("FY24", "prior_ytd", "finance_cost", "(d) Finance costs", 105419000.0, "1,054.19", "repeat_ok", "q4_25.pdf", "2025-05-28T17:09:09"),
+    ]
+    for fp, role, li, cap, val, rtok, cs, dk, ka in fqp_rows:
+        conn.execute(
+            "INSERT INTO fin_quarter_printed (symbol, isin, period_end, fiscal_period, period_type, column_role, basis, "
+            "statement, line_item, caption, value, unit, scale, raw_token, check_status, doc_key, page, known_at) "
+            "VALUES ('TESTCO','INE000000002','2024-03-31',?,'fy',?,'standalone','P&L',?,?,?,'inr',1.0,?,?,?,1,?)",
+            (fp, role, li, cap, val, rtok, cs, dk, ka),
+        )
+    conn.commit()
+    conn.close()
+
+    pages = {
+        ("ar24.pdf", 128): (
+            _wline(20, (40, "Notes to Financial Statements"))
+            + _wline(40, (40, "28 Revenue from operations"), (440, "(Rs. in lakhs)"))
+            + _wline(54, (320, "31 March 2024"), (440, "31 March 2023"))
+            + _wline(68, (40, "Domestic sale"), (350, "1,14,047.28"), (470, "1,50,000.00"))
+            + _wline(82, (40, "Export sale"), (350, "15,265.58"), (470, "26,245.55"))
+            + _wline(96, (40, "Total"), (350, "1,29,312.86"), (470, "1,76,245.55"))
+        ),
+        ("ar24.pdf", 130): (
+            _wline(20, (40, "Notes to Financial Statements"))
+            + _wline(40, (40, "30 Finance costs"), (440, "(Rs. in lakhs)"))
+            + _wline(54, (320, "31 March 2024"), (440, "31 March 2023"))
+            + _wline(68, (40, "Interest expenses"), (350, "880.28"), (470, "700.00"))
+            + _wline(82, (40, "Interest on lease liability"), (350, "173.91"), (470, "150.00"))
+            + _wline(96, (40, "Total"), (350, "1,054.19"), (470, "850.00"))
+        ),
+        ("ar25.pdf", 146): (
+            _wline(20, (40, "Notes to Financial Statements"))
+            + _wline(40, (40, "28 Revenue from operations"), (440, "(Rs. in lakhs)"))
+            + _wline(54, (320, "31 March 2025"), (440, "31 March 2024"))
+            + _wline(68, (40, "Domestic sale"), (350, "1,40,000.00"), (470, "1,14,047.28"))
+            + _wline(82, (40, "Export sale"), (350, "25,000.00"), (470, "15,265.58"))
+            + _wline(96, (40, "Profit on sale of raw material"), (350, "903.17"), (470, "24.94"))
+            + _wline(110, (40, "Total"), (350, "1,65,903.17"), (470, "1,29,337.80"))
+        ),
+        ("ar25.pdf", 147): (
+            _wline(20, (40, "Notes to Financial Statements"))
+            + _wline(40, (40, "30 Finance costs"), (440, "(Rs. in lakhs)"))
+            + _wline(54, (320, "31 March 2025"), (440, "31 March 2024"))
+            + _wline(68, (40, "Interest expenses"), (350, "5,900.00"), (470, "880.28"))
+            + _wline(82, (40, "Lease liabilities"), (350, "191.19"), (470, "173.91"))
+            + _wline(96, (40, "Total"), (350, "6,091.19"), (470, "1,054.19"))
+        ),
+    }
+    monkeypatch.setattr(N, "words_for", lambda _db, dk, pg: type("P", (), {"words": pages[(dk, pg)]})())
+    res = N.run_store(db, "t72")
+    fy24 = [r for r in res["row_list"] if r.fiscal_year == "FY24"]
+    rev_24 = [(r.doc_key, r.line_item, r.value, r.tie_status) for r in fy24 if N.note_of_row(r.line_item) == "revenue_from_operations"]
+    assert ("ar24.pdf", "revenue_from_operations_total", 129312.86, "tied") in rev_24
+    assert ("ar25.pdf", "revenue_from_operations_total", 129337.80, "tied") in rev_24
+    restated_rev_tot = [r for r in fy24 if r.doc_key == "ar25.pdf" and r.line_item == "revenue_from_operations_total"][0]
+    assert "restated in ar25.pdf p146 (2025-08-30) (as-filed 129312.86 in ar24.pdf p128 (2024-07-15))" in restated_rev_tot.definition
+
+    fc_24 = [(r.doc_key, r.line_item, r.value, r.tie_status) for r in fy24 if N.note_of_row(r.line_item) == "finance_costs"]
+    assert fc_24 == [
+        ("ar24.pdf", "finance_costs:interest_expenses", 880.28, "tied"),
+        ("ar24.pdf", "finance_costs:interest_on_lease_liability", 173.91, "tied"),
+        ("ar24.pdf", "finance_costs_total", 1054.19, "tied"),
+    ]
+
+
+
 
