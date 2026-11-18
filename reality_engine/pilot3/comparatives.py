@@ -62,8 +62,9 @@ _CASH_PAGE = re.compile(r"cash\s+flows?|statement\s+of\s+changes\s+in\s+equity")
 _SEGMENT = re.compile(r"\bsegment")
 _RECON = re.compile(r"reconciliation\s+of|non[-\s]?ifrs")   # a non-IFRS reconciliation is not the P&L table
 _TITLE = re.compile(r"\bresults\b")
-# A ratio or margin row is never a rupee line; a cost line printed in brackets is not a P&L expense.
+# A ratio or margin row is never a rupee line; a discontinued-only row is never the continuing/total line.
 _PCT_LABEL = re.compile(r"%|\bmargin")
+_DISCONTINUED_LABEL = re.compile(r"\bdiscontinu(?:ed|ing)\b|\bdiscounting\s+operations\b")
 _COST_ITEMS = ("finance_cost", "depreciation", "employee_cost", "total_expenses", "other_expenses",
                "cost_of_materials")
 _INCOME_ITEMS = ("revenue_from_operations", "total_income", "interest_income", "net_premium", "gross_premium")
@@ -203,7 +204,10 @@ def match_line(label: str, anchor: int | None = None, prefix_ok: bool = False) -
     ``anchor=2`` so its continuation line alone ("... exceptional items and tax" under "Profit before share in net
     profit of joint venture,") cannot name the row.  ``prefix_ok`` lets an OCR-truncated label match the start of a
     pattern; its figure is kept only when the page's arithmetic confirms it."""
-    if _PCT_LABEL.search((label or "").lower()):
+    low = (label or "").lower()
+    if _PCT_LABEL.search(low):
+        return None
+    if _DISCONTINUED_LABEL.search(low) and "continuing" not in low:
         return None
     text = _norm(label)
     if not text:
@@ -346,7 +350,7 @@ def _decimals(tokens) -> int:
     """Decimal places of the table: the majority reading of the last separator."""
     votes: dict[int, int] = defaultdict(int)
     for text in tokens:
-        m = re.search(r"[.,](\d+)$", text)
+        m = re.search(r"[.,](\d+)$", (text or "").strip().strip("()"))
         if not m:
             continue
         n = len(m[1])
@@ -473,7 +477,9 @@ def _expected_date(role: str, end: str) -> tuple[int, int]:
     return m, y
 
 
-def _date_match(got: tuple, want: tuple, *, require_year: bool = False) -> bool:
+def _date_match(got: tuple | None, want: tuple, *, require_year: bool = False) -> bool:
+    if not got:
+        return False
     gm, gy = got
     wm, wy = want
     if gm is not None and gm != wm:
@@ -1084,6 +1090,7 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
     store_fy: dict[tuple[str, str], dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     disagreed: dict[tuple[str, int, str, str, str], tuple[float, float]] = {}
     layer_pending: set[tuple[str, int, str, str, str]] = set()
+    ocr_pending: set[tuple[str, int, str, str, str]] = set()
     seen: set[str] = set()
     duplicates: list[str] = []
     files: list[dict] = []
@@ -1107,69 +1114,82 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
             entry = {"doc_key": doc_key, "known_at": known_at[:10], "pages": 0, "tables": 0, "rows": 0,
                      "basis": {}, "empty_pages": [], "reason": ""}
             previous = None
+            prev_layer = None
             for page_no in range(1, pdf.page_count + 1):
                 entry["pages"] += 1
                 pages += 1
-                word_rows = rows_from_words(_page_words(pdf[page_no - 1]))
+                layer_rows = rows_from_words(_page_words(pdf[page_no - 1]))
+                word_rows = layer_rows
                 table = None
                 fill_table = None
                 ocr_all = False
                 layer_only = False
                 ocr_rows = _ocr_page_rows(store_db, doc_key, page_no, ocr_dbs) if ocr_dbs else None
+                base = read_page(layer_rows) if (ocr_rows and layer_rows) else None
                 if ocr_rows:
-                    base = read_page(word_rows) if word_rows else None
                     ocr_table = read_page(ocr_rows, ocr=True)
                     if ocr_table is not None:
                         word_rows, table, fill_table, ocr_all = ocr_rows, ocr_table, base, True
                     elif base is not None:
                         table, layer_only = base, True
-                if table is None and word_rows:
-                    table = read_page(word_rows)
-                if not word_rows and not ocr_rows:
+                if table is None and layer_rows:
+                    table = base if base is not None else read_page(layer_rows)
+                if not layer_rows and not ocr_rows:
                     entry["empty_pages"].append(page_no)          # no text layer and no readable OCR
                     previous = None
+                    prev_layer = None
                     continue
                 if table is None:
                     if ocr_rows:
                         table = _continuation(ocr_rows, previous)
                         if table is not None:
                             word_rows, ocr_all = ocr_rows, True
-                    if table is None and word_rows:
-                        table = _continuation(word_rows, previous)
+                            if layer_rows:
+                                fill_table = _continuation(layer_rows, prev_layer or previous)
+                    if table is None and layer_rows:
+                        table = _continuation(layer_rows, prev_layer or previous)
                         if table is not None and ocr_rows:
                             layer_only = True
                 if table is None:
                     previous = None
+                    prev_layer = None
                     continue
                 tables += 1
                 entry["tables"] += 1
                 prev = previous
+                prev_lay = prev_layer
                 previous = table
+                prev_layer = fill_table if ocr_all else (base or table)
                 page_review: list[dict] = []
                 new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, page_review,
                                   ocr=ocr_all, fill_table=fill_table, store_fy=store_fy, disagreed=disagreed,
                                   layer_only=layer_only, layer_pending=layer_pending,
-                                  annual_facts=annual_facts)
+                                  ocr_pending=ocr_pending, annual_facts=annual_facts)
                 if not new and prev is not None:
-                    cont = _continuation(ocr_rows if ocr_all else word_rows, prev)
+                    cont = _continuation(ocr_rows if ocr_all else layer_rows, prev)
                     if cont is not None:
+                        cont_fill = (_continuation(layer_rows, prev_lay or prev)
+                                     if (ocr_all and layer_rows) else None)
                         cont_review: list[dict] = []
                         cont_rows = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, cont, xbrl,
-                                                cont_review, ocr=ocr_all, store_fy=store_fy, disagreed=disagreed,
-                                                layer_only=layer_only, layer_pending=layer_pending,
+                                                cont_review, ocr=ocr_all, fill_table=cont_fill, store_fy=store_fy,
+                                                disagreed=disagreed, layer_only=layer_only,
+                                                layer_pending=layer_pending, ocr_pending=ocr_pending,
                                                 annual_facts=annual_facts)
                         if cont_rows:
                             table = cont
                             previous = cont
+                            prev_layer = cont_fill if ocr_all else cont
                             new = cont_rows
                             page_review = cont_review
                 if not new:
                     previous = None
+                    prev_layer = None
                 review.extend(page_review)
                 entry["rows"] += len(new)
                 for row in new:
                     entry["basis"][row[7]] = entry["basis"].get(row[7], 0) + 1
-                    if row[5] == "fy":
+                    if row[5] == "fy" and row[20] in CHECK_OK:
                         store_fy[(row[7], row[3])][row[9]].append(row[11])
                 rows.extend(new)
             if not entry["rows"] and not entry["reason"]:
@@ -1190,7 +1210,7 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
                 swapped = True
         if swapped:
             rows = _apply_repeats(rows)
-    if disagreed or layer_pending:
+    if disagreed or layer_pending or ocr_pending:
         kept: list[tuple] = []
         for row in rows:
             key = (row[16], row[17], row[6], row[7], row[9])
@@ -1198,6 +1218,11 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
                 review.append({"symbol": symbol, "doc_key": row[16], "page": row[17], "line_item": row[9],
                                "column_role": row[6], "raw_token": row[14], "check": "layer_unconfirmed",
                                "detail": ""})
+                continue
+            if key in ocr_pending and row[20] not in CHECK_OK:
+                review.append({"symbol": symbol, "doc_key": row[16], "page": row[17], "line_item": row[9],
+                               "column_role": row[6], "raw_token": row[14], "check": "ocr_unreconciled",
+                               "detail": f"value={row[11]}"})
                 continue
             if key in disagreed and row[20] not in CHECK_OK:
                 continue
@@ -1304,7 +1329,7 @@ def _eps_decimals(values: dict) -> int:
             if not item.startswith("eps_"):
                 continue
             for token in tokens:
-                m = re.search(r"[.,](\d{1,2})[.,]?$", token["text"].strip())
+                m = re.search(r"[.,](\d{1,2})[.,]?$", token["text"].strip().strip("()"))
                 if m:
                     votes[len(m[1])] += 1
     return max(votes, key=lambda key: (votes[key], key)) if votes else 0
@@ -1319,7 +1344,7 @@ def _tol(item: str, decimals: int, scale: float, text: str | None = None,
         if digits is None:
             digits = 0
             if text:
-                m = re.search(r"[.,](\d{1,2})[.,]?$", text.strip())
+                m = re.search(r"[.,](\d{1,2})[.,]?$", text.strip().strip("()"))
                 digits = len(m[1]) if m else 0
         return 2.0 / (10.0 ** digits)
     return 2.0 / (10.0 ** decimals) * scale
@@ -1335,24 +1360,27 @@ def _row_label(values: dict, item: str, row: int) -> str:
 
 def _choose_rows(values: dict, roles: list, end: str, xbrl: dict, basis: str, scale: float, decimals: int,
                  tol: float, eps_decimals: int = 0) -> dict:
-    """One printed row per line item: the row whose CURRENT column equals XBRL wins (EPS printed three times),
-    then a row whose label starts with ``Total`` for a total, then the earliest row."""
+    """One printed row per line item: the row whose CURRENT column is closest to XBRL wins (EPS printed three
+    times), then a row whose label starts with ``Total`` for a total, then the earliest row."""
     current = roles.index("current") if "current" in roles else None
     chosen: dict = {}
     for item in {name for col in values.values() for name in col}:
         rows_present = sorted({t["row"] for col in values.values() for t in col.get(item, [])})
         best = rows_present[0] if rows_present else None
         if current is not None and len(rows_present) > 1:
+            best_diff = None
             for row in rows_present:
                 token = next((t for t in values[current].get(item, []) if t["row"] == row), None)
                 if token is None:
                     continue
                 parsed = _parse_cell(item, token["text"], decimals, eps_decimals)
-                if parsed and _xbrl_ok(xbrl, basis, end, item,
-                                       parsed[0] * (1.0 if item.startswith("eps_") else scale),
-                                       _tol(item, decimals, scale, token["text"], eps_decimals)):
-                    best = row
-                    break
+                if parsed:
+                    diff = _xbrl_diff(xbrl, basis, end, item,
+                                      parsed[0] * (1.0 if item.startswith("eps_") else scale),
+                                      _tol(item, decimals, scale, token["text"], eps_decimals))
+                    if diff is not None and (best_diff is None or diff < best_diff):
+                        best_diff = diff
+                        best = row
         if current is None or len(rows_present) > 1:
             if best == rows_present[0] and item in _TOTAL_ITEMS:
                 totals = [row for row in rows_present if _row_label(values, item, row).startswith("total")]
@@ -1385,7 +1413,7 @@ def _fallback_end(known_at: str) -> str | None:
 def _printed_tolerance(raw: str | None, value: float) -> float | None:
     """Rupees of the last printed decimal of a stored cell, read back from its raw token (``14,491.79`` -> 200,000
     on a crore table).  None when the token cannot be read as a number."""
-    text = re.sub(r"\s+", "", raw or "")
+    text = re.sub(r"\s+", "", raw or "").strip("()")
     if not text:
         return None
     m = re.search(r"[.,](\d{1,2})[.,]?$", text)
@@ -1399,7 +1427,8 @@ def _printed_tolerance(raw: str | None, value: float) -> float | None:
 def _apply_repeats(rows: list[tuple]) -> list[tuple]:
     """``repeat_ok``: the same symbol, basis, period_end, period_type and line item, printed by a DIFFERENT filing
     (another date) at the same value within tolerance.  Two independent readings of two PDFs agree.  Each row keeps
-    its own ``known_at``: the filing date is still what a past date may see, even though its agreement came later."""
+    its own ``known_at``: the filing date is still what a past date may see, even though its agreement came later.
+    Rows with ``xbrl_conflict`` in ``check_detail`` never receive ``repeat_ok`` (XBRL outranks repetition)."""
     groups: dict = defaultdict(list)
     for i, row in enumerate(rows):
         groups[(row[0], row[7], row[3], row[5], row[9])].append(i)
@@ -1410,11 +1439,13 @@ def _apply_repeats(rows: list[tuple]) -> list[tuple]:
             continue
         for i in idxs:
             row = out[i]
-            if row[20] != "unchecked":
+            if row[20] != "unchecked" or (row[21] and "xbrl_conflict" in row[21]):
                 continue
             tol_i = _printed_tolerance(row[14], row[11])
             for j in idxs:
                 if j == i or out[j][18][:10] == row[18][:10]:
+                    continue
+                if out[j][21] and "xbrl_conflict" in out[j][21]:
                     continue
                 tol_j = _printed_tolerance(out[j][14], out[j][11])
                 tol = max((t for t in (tol_i, tol_j) if t is not None), default=0.0)
@@ -1428,10 +1459,14 @@ def _apply_repeats(rows: list[tuple]) -> list[tuple]:
 
 def _has_repeat_match(alt: tuple, rows: list[tuple]) -> bool:
     """True when ``alt`` matches a row from a DIFFERENT filing date on ``(symbol, basis, period_end, period_type, item)``."""
+    if alt[21] and "xbrl_conflict" in alt[21]:
+        return False
     key = (alt[0], alt[7], alt[3], alt[5], alt[9])
     tol_a = _printed_tolerance(alt[14], alt[11])
     for other in rows:
         if (other[0], other[7], other[3], other[5], other[9]) != key or other[18][:10] == alt[18][:10]:
+            continue
+        if other[21] and "xbrl_conflict" in other[21]:
             continue
         tol_b = _printed_tolerance(other[14], other[11])
         tol = max((t for t in (tol_a, tol_b) if t is not None), default=0.0)
@@ -1442,18 +1477,22 @@ def _has_repeat_match(alt: tuple, rows: list[tuple]) -> bool:
 
 def _debit_costs(columns: dict) -> bool | None:
     """A cost line printed in brackets means the table is not the P&L (a segment reconciliation); only a table
-    where EVERY cost line prints in brackets by convention may stand, with the magnitudes read positive.  Returns
-    True when such a page was negated, False when no cost is negative, None when the page is refused."""
+    where EVERY cost line prints in brackets by convention may stand, with the magnitudes read positive, or a
+    mixed table whose ``total_expenses`` is non-negative (e.g. a single negative expense credit/reversal).
+    Returns True when all costs were negated, False when no cost is negative (or mixed with non-negative
+    total_expenses), None when ``total_expenses`` itself prints negative in a mixed table."""
     cells = [(item, cell) for col in columns.values() for item, cell in col.items() if item in _COST_ITEMS]
-    negative = [cell for _item, cell in cells if cell["value"] < 0]
+    negative = [(item, cell) for item, cell in cells if cell["value"] < 0]
     if not negative:
         return False
-    if len(negative) != len(cells):
+    if len(negative) == len(cells):
+        for _item, cell in negative:
+            cell["value"] = -cell["value"]
+            cell["bracketed"] = True
+        return True
+    if any(item == "total_expenses" for item, _cell in negative):
         return None
-    for cell in negative:
-        cell["value"] = -cell["value"]
-        cell["bracketed"] = True
-    return True
+    return False
 
 
 def _derive_tax(columns: dict) -> None:
@@ -1502,16 +1541,27 @@ def _parsed_cells(values, roles, chosen, decimals, eps_dec, scale, captions, rev
 
 
 def _assign_status(columns, end: str, xbrl: dict, basis: str, decimals: int, scale: float,
-                   eps_dec: int) -> None:
-    """Set every cell's status (xbrl_ok beats sum_ok beats unchecked) and its period."""
+                   eps_dec: int, annual_facts: dict | None = None) -> None:
+    """Set every cell's status: XBRL outranks arithmetic and repetition (match -> ``xbrl_ok``; mismatch against a held
+    XBRL figure -> ``unchecked`` with ``xbrl_conflict``; otherwise ``sum_ok`` or ``unchecked``)."""
     for role, cells in columns.items():
         period_end, ptype = _role_period(role, end)
         for item, cell in cells.items():
             if item == "_fails":
                 continue
-            cell["status"] = "xbrl_ok" if _xbrl_ok(
-                xbrl, basis, period_end, item, cell["value"], _tol(item, decimals, scale, cell["raw"], eps_dec)) \
-                else cell.get("ident", "unchecked")
+            matched_diff, conflict = _xbrl_conflict(
+                xbrl, basis, period_end, item, cell["value"],
+                _tol(item, decimals, scale, cell["raw"], eps_dec),
+                ptype=ptype, annual_facts=annual_facts)
+            if matched_diff is not None:
+                cell["status"] = "xbrl_ok"
+                cell.pop("xbrl_conflict", None)
+            elif conflict is not None:
+                cell["status"] = "unchecked"
+                cell["xbrl_conflict"] = conflict
+            else:
+                cell["status"] = cell.get("ident", "unchecked")
+                cell.pop("xbrl_conflict", None)
             cell["period_end"], cell["ptype"] = period_end, ptype
 
 
@@ -1555,7 +1605,7 @@ def _resolve_columns(columns: dict[str, dict], end: str, rupee_tol: float, ambig
                      shares: float | None, xbrl: dict, basis: str, decimals: int, scale: float,
                      eps_dec: int, bracketed: bool, review: list[dict], symbol: str, doc_key: str,
                      page_no: int, *, drop_ocr_unreconciled: bool, log_review: bool,
-                     recheck_after_revenue: bool = True) -> dict[str, dict] | None:
+                     recheck_after_revenue: bool = True, annual_facts: dict | None = None) -> dict[str, dict] | None:
     """Run P&L identities, cross-column marks, XBRL checks, and derived tax/revenue on one column set."""
     _derive_tax(columns)
     for cells in columns.values():
@@ -1563,13 +1613,33 @@ def _resolve_columns(columns: dict[str, dict], end: str, rupee_tol: float, ambig
         _eps_ok(cells, shares)
     if bracketed and not any(isinstance(cell, dict) and cell.get("ident") == "sum_ok"
                              for cells in columns.values() for cell in cells.values()):
+        _assign_status(columns, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
+        kept_xbrl = {
+            role: {k: v for k, v in cells.items() if isinstance(v, dict) and v.get("status") == "xbrl_ok"}
+            for role, cells in columns.items()
+        }
+        if any(kept_xbrl.values()):
+            return kept_xbrl
         if log_review:
             review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
                            "column_role": None, "raw_token": None, "check": "not_pl_costs",
                            "detail": "every cost in brackets but no identity holds"})
         return None
     _cross_column_marks(columns, end, rupee_tol)
-    _assign_status(columns, end, xbrl, basis, decimals, scale, eps_dec)
+    _assign_status(columns, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
+    has_negative_cost = any(
+        isinstance(cell, dict) and item in _COST_ITEMS and cell["value"] < 0
+        for cells in columns.values() for item, cell in cells.items()
+    )
+    if has_negative_cost and not any(
+        isinstance(cell, dict) and cell.get("status") in CONFIRMED
+        for cells in columns.values() for cell in cells.values()
+    ):
+        if log_review:
+            review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
+                           "column_role": None, "raw_token": None, "check": "not_pl_costs",
+                           "detail": "a cost line prints in brackets inside an unconfirmed page"})
+        return None
     for role, cells in columns.items():
         for item, _names, target, want, unsure in cells.get("_fails", []):
             cell = cells.get(item)
@@ -1594,7 +1664,8 @@ def _resolve_columns(columns: dict[str, dict], end: str, rupee_tol: float, ambig
     if drop_ocr_unreconciled:
         for role, cells in columns.items():
             stale = cells.get("revenue_from_operations")
-            if stale is not None and stale.get("ocr") and not stale.get("agreed") and stale["status"] not in CHECK_OK:
+            if (stale is not None and stale.get("ocr") and not stale.get("agreed")
+                    and stale["status"] not in CHECK_OK and "total_income" in cells and "other_income" in cells):
                 if log_review:
                     review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no,
                                    "line_item": "revenue_from_operations", "column_role": role,
@@ -1606,7 +1677,20 @@ def _resolve_columns(columns: dict[str, dict], end: str, rupee_tol: float, ambig
         for cells in columns.values():
             _check_column(cells, rupee_tol, ambiguous)
             _eps_ok(cells, shares)
-        _assign_status(columns, end, xbrl, basis, decimals, scale, eps_dec)
+        _assign_status(columns, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
+    else:
+        for cells in columns.values():
+            rev = cells.get("revenue_from_operations")
+            if rev is not None and rev.get("derived"):
+                matched_diff, conflict = _xbrl_conflict(
+                    xbrl, basis, rev["period_end"], "revenue_from_operations", rev["value"],
+                    _tol("revenue_from_operations", decimals, scale, rev["raw"], eps_dec),
+                    ptype=rev["ptype"], annual_facts=annual_facts)
+                if matched_diff is not None:
+                    rev["status"] = "xbrl_ok"
+                elif conflict is not None:
+                    rev["status"] = "unchecked"
+                    rev["xbrl_conflict"] = conflict
     return columns
 
 
@@ -1635,6 +1719,8 @@ def _build_row(symbol: str, isin: str | None, role: str, basis: str, item: str, 
         detail.append("header_used")
     if cell.get("agreed"):
         detail.append("agreed")
+    if cell.get("xbrl_conflict") is not None:
+        detail.append(f"xbrl_conflict {cell['xbrl_conflict']}")
     return (symbol, isin, start, cell["period_end"], fiscal, ptype, role, basis, "P&L", item,
             cell["caption"], cell["value"], unit, 1.0, cell["raw"], cell["quote"], doc_key, page_no,
             known_at, "doc.known_at", cell["status"], "; ".join(detail) or None,
@@ -1644,7 +1730,8 @@ def _build_row(symbol: str, isin: str | None, role: str, basis: str, item: str, 
 def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review, ocr: bool = False,
                 fill_table: dict | None = None, store_fy: dict | None = None,
                 disagreed: dict | None = None, layer_only: bool = False,
-                layer_pending: set | None = None, annual_facts: dict | None = None) -> list[tuple]:
+                layer_pending: set | None = None, ocr_pending: set | None = None,
+                annual_facts: dict | None = None) -> list[tuple]:
     """Resolve this table's roles, parse its cells, run the checks, and return the rows to store.
 
     R-013 (18 Nov 2026): on a jumbled results page with OCR (``ocr=True``), OCR and the text layer (``fill_table``)
@@ -1655,7 +1742,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     halves = _split_side_by_side(table)
     if halves is not None:
         count = len(table["anchors"])
-        fill_halves = (_split_side_by_side(fill_table)
+        fill_halves = (_split_side_by_side(fill_table, sides=(halves[0]["basis"], halves[1]["basis"]))
                        if fill_table is not None and len(fill_table["anchors"]) == count else None)
         out_rows: list[tuple] = []
         for i, half_table in enumerate(halves):
@@ -1663,7 +1750,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             out_rows.extend(_table_rows(conn, symbol, isin, doc_key, page_no, known_at, half_table, xbrl,
                                         review, ocr=ocr, fill_table=fill_half, store_fy=store_fy,
                                         disagreed=disagreed, layer_only=layer_only, layer_pending=layer_pending,
-                                        annual_facts=annual_facts))
+                                        ocr_pending=ocr_pending, annual_facts=annual_facts))
         return out_rows
     anchors = table["anchors"]
     head_text = " ".join(w[4] for row in (table.get("header_rows") or []) for w in row)
@@ -1704,10 +1791,20 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                 cell["src"] = "layer"
     bracketed = _debit_costs(columns)
     if bracketed is None:
-        review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
-                       "column_role": None, "raw_token": None, "check": "not_pl_costs",
-                       "detail": "a cost line prints in brackets inside a mixed page"})
-        return []
+        _assign_status(columns, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
+        xbrl_kept = []
+        for role, cells in columns.items():
+            for item, cell in cells.items():
+                if cell.get("status") == "xbrl_ok":
+                    built = _build_row(symbol, isin, role, basis, item, cell, doc_key, page_no, known_at,
+                                       table["scale"] is None, fallback, bool(choice.get("header_used")))
+                    if built is not None:
+                        xbrl_kept.append(built)
+        if not xbrl_kept:
+            review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
+                           "column_role": None, "raw_token": None, "check": "not_pl_costs",
+                           "detail": "a cost line prints in brackets inside a mixed page"})
+        return xbrl_kept
     fill: dict[str, dict] = {}
     fill_dec = decimals
     fill_eps = eps_dec
@@ -1719,7 +1816,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                              header_rows=fill_table.get("header_rows"), store_fy=store_fy,
                              annual_facts=annual_facts)
         if fill_choice is not None and fill_choice["basis"] == basis and fill_choice["scale"] == scale \
-                and set(fill_choice["roles"]) == set(roles):
+                and {r for r in fill_choice["roles"] if r} == {r for r in roles if r}:
             fill_dec = fill_table["decimals"]
             fill_eps = fill_table.get("eps_decimals", _eps_decimals(fill_table["values"]))
             layer_ambiguous = _ambiguous_items(fill_table["values"])
@@ -1735,11 +1832,13 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         for role in columns:
             rdict: dict[str, dict] = {}
             for item, cell in fill.get(role, {}).items():
-                if item in _COST_ITEMS and cell["value"] < 0:
+                if item == "total_expenses" and cell["value"] < 0:
                     if bracketed:
                         cell = dict(cell, value=-cell["value"], bracketed=True)
                     else:
                         continue
+                elif item in _COST_ITEMS and cell["value"] < 0 and bracketed:
+                    cell = dict(cell, value=-cell["value"], bracketed=True)
                 else:
                     cell = dict(cell)
                 cell["src"] = "layer"
@@ -1752,7 +1851,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                 lc_raw = raw_layer.get(role, {}).get(item)
                 if lc_raw is None:
                     continue
-                item_tol = _tol(item, decimals, scale, oc_raw["raw"], eps_dec)
+                item_tol = 1e-6 if item.startswith("eps_") else _tol(item, decimals, scale, oc_raw["raw"], eps_dec)
                 if _close(oc_raw["value"], lc_raw["value"], item_tol):
                     oc_raw["agreed"] = True
                     lc_raw["agreed"] = True
@@ -1768,6 +1867,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             end, rupee_tol, ambiguous, shares, xbrl, basis, decimals, scale, eps_dec,
             bool(bracketed), review, symbol, doc_key, page_no,
             drop_ocr_unreconciled=True, log_review=True, recheck_after_revenue=True,
+            annual_facts=annual_facts,
         )
         if res_ocr is None:
             return []
@@ -1777,6 +1877,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             end, fill_rupee_tol, layer_ambiguous, shares, xbrl, basis, fill_dec, scale, fill_eps,
             bool(bracketed), review, symbol, doc_key, page_no,
             drop_ocr_unreconciled=False, log_review=False, recheck_after_revenue=True,
+            annual_facts=annual_facts,
         ) or {}
 
         columns = {role: {} for role in raw_ocr}
@@ -1799,7 +1900,16 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                         continue
                     o_score = _LADDER.get(oc["status"], 0) if oc is not None else -1
                     l_score = _LADDER.get(lc["status"], 0) if lc is not None else -1
-                    winner, loser = (lc, oc) if l_score > o_score else (oc, lc)
+                    if l_score == o_score == 3 and oc is not None and lc is not None:
+                        period_end, ptype = _role_period(role, end)
+                        item_tol = _tol(item, decimals, scale, oc["raw"], eps_dec)
+                        od = _xbrl_diff(xbrl, basis, period_end, item, oc["value"], item_tol,
+                                        ptype=ptype, annual_facts=annual_facts)
+                        ld = _xbrl_diff(xbrl, basis, period_end, item, lc["value"], item_tol,
+                                        ptype=ptype, annual_facts=annual_facts)
+                        winner, loser = (lc, oc) if (ld is not None and (od is None or ld < od)) else (oc, lc)
+                    else:
+                        winner, loser = (lc, oc) if l_score > o_score else (oc, lc)
                     if winner is None:
                         continue
                     if winner["status"] in CHECK_OK:
@@ -1838,7 +1948,18 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                 if (role, item) not in disagree_pairs and item not in raw_o and item not in columns[role] and item not in recheck_layer[role]:
                     recheck_layer[role][item] = dict(cell)
 
-        if any(recheck_layer.values()) or any(
+        disagree_probe: dict[str, dict] = {role: {} for role in raw_ocr}
+        for role in raw_ocr:
+            for item in raw_ocr[role]:
+                cur = columns[role].get(item)
+                if cur is not None and cur["status"] in CHECK_OK:
+                    continue
+                if (role, item) in disagree_pairs and item in raw_layer.get(role, {}):
+                    disagree_probe[role][item] = dict(raw_layer[role][item], _disagree_try=True)
+                elif item not in columns[role] and item not in recheck_layer[role]:
+                    disagree_probe[role][item] = dict(raw_ocr[role][item], _disagree_try=True)
+
+        if any(recheck_layer.values()) or any(disagree_probe.values()) or any(
             cell.get("ocr") and not cell.get("agreed") and cell["status"] not in CHECK_OK
             for cells in columns.values() for cell in cells.values()
         ):
@@ -1846,17 +1967,20 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             for role, pending in recheck_layer.items():
                 for item, cell in pending.items():
                     probe[role][item] = dict(cell, _layer_try=True)
+            for role, pending in disagree_probe.items():
+                for item, cell in pending.items():
+                    probe[role][item] = cell
             _derive_tax(probe)
             for cells in probe.values():
                 _check_column(cells, rupee_tol, ambiguous)
                 _eps_ok(cells, shares)
             _cross_column_marks(probe, end, rupee_tol)
-            _assign_status(probe, end, xbrl, basis, decimals, scale, eps_dec)
+            _assign_status(probe, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
             _derive_revenue(probe)
             for cells in probe.values():
                 _check_column(cells, rupee_tol, ambiguous)
                 _eps_ok(cells, shares)
-            _assign_status(probe, end, xbrl, basis, decimals, scale, eps_dec)
+            _assign_status(probe, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
             for role, pending in recheck_layer.items():
                 for item, raw_cell in pending.items():
                     pcell = probe.get(role, {}).get(item)
@@ -1872,8 +1996,33 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                         period_end, ptype = _role_period(role, end)
                         raw_cell["status"] = "unchecked"
                         raw_cell["period_end"], raw_cell["ptype"] = period_end, ptype
+                        _, conflict = _xbrl_conflict(
+                            xbrl, basis, period_end, item, raw_cell["value"],
+                            _tol(item, fill_dec, scale, raw_cell["raw"], fill_eps),
+                            ptype=ptype, annual_facts=annual_facts)
+                        if conflict is not None:
+                            raw_cell["xbrl_conflict"] = conflict
                         columns[role][item] = raw_cell
                         layer_pending.add((doc_key, page_no, role, basis, item))
+            for role, pending in disagree_probe.items():
+                for item, raw_cell in pending.items():
+                    pcell = probe.get(role, {}).get(item)
+                    if pcell is not None and pcell["status"] in CHECK_OK:
+                        pcell.pop("_disagree_try", None)
+                        columns[role][item] = pcell
+                        if disagreed is not None:
+                            disagreed.pop((doc_key, page_no, role, basis, item), None)
+            for role in columns:
+                ptax = probe.get(role, {}).get("tax")
+                if ptax is not None and ptax.get("derived") and "tax" not in columns[role]:
+                    if ptax["status"] in CHECK_OK:
+                        columns[role]["tax"] = ptax
+                    elif ptax.get("src") == "layer" and layer_pending is not None:
+                        columns[role]["tax"] = ptax
+                        layer_pending.add((doc_key, page_no, role, basis, "tax"))
+                    elif ptax.get("ocr") and ocr_pending is not None:
+                        columns[role]["tax"] = ptax
+                        ocr_pending.add((doc_key, page_no, role, basis, "tax"))
             for role, cells in columns.items():
                 for item, cell in list(cells.items()):
                     if item == "_fails" or cell["status"] in CHECK_OK or cell.get("agreed"):
@@ -1884,6 +2033,8 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                         pcell = probe.get(role, {}).get(item)
                         if pcell is not None and pcell["status"] in CHECK_OK:
                             cells[item] = pcell
+                        elif ocr_pending is not None:
+                            ocr_pending.add((doc_key, page_no, role, basis, item))
                         else:
                             review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no,
                                            "line_item": item, "column_role": role,
@@ -1904,7 +2055,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             columns, end, rupee_tol, ambiguous, shares, xbrl, basis, decimals, scale, eps_dec,
             bool(bracketed), review, symbol, doc_key, page_no,
             drop_ocr_unreconciled=bool(ocr or fill or layer_only), log_review=True,
-            recheck_after_revenue=bool(ocr or fill or layer_only),
+            recheck_after_revenue=bool(ocr or fill or layer_only), annual_facts=annual_facts,
         )
         if resolved is None:
             return []
@@ -1924,10 +2075,13 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                             layer_pending.add((doc_key, page_no, role, basis, item))
                         continue
                     if cell.get("ocr") and not cell.get("agreed"):
-                        review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
-                                       "column_role": role, "raw_token": cell["raw"], "check": "ocr_unreconciled",
-                                       "detail": f"value={cell['value']}"})
-                        del cells[item]
+                        if ocr_pending is not None:
+                            ocr_pending.add((doc_key, page_no, role, basis, item))
+                        else:
+                            review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
+                                           "column_role": role, "raw_token": cell["raw"], "check": "ocr_unreconciled",
+                                           "detail": f"value={cell['value']}"})
+                            del cells[item]
             if not ocr and not layer_only and end[5:7] == "06" and fill and "last_fy" in columns:
                 for item, cell in list(columns["last_fy"].items()):
                     if item == "_fails" or cell["status"] in CHECK_OK:
@@ -1956,9 +2110,43 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     return out
 
 
-def _xbrl_ok(xbrl: dict, basis: str, period_end: str, item: str, value: float, tol: float) -> bool:
+def _xbrl_wants(xbrl: dict, basis: str, period_end: str, item: str, *,
+                ptype: str = "quarter", annual_facts: dict | None = None) -> tuple[float, ...]:
+    """Period-type-aware XBRL references for ``(basis, period_end, item)``: ``fy`` uses ``fin_annual_line``
+    facts, ``quarter`` uses ``fin_quarter_xbrl``, ``ytd`` has no XBRL flow figures, and point-in-time
+    ``paid_up_capital`` checks ``fin_quarter_xbrl`` when annual facts hold no row."""
+    if ptype == "fy":
+        wants = tuple((annual_facts or {}).get((basis, period_end), {}).get(item, ()))
+        if wants:
+            return wants
+        if item != "paid_up_capital":
+            return ()
+    elif ptype != "quarter" and item != "paid_up_capital":
+        return ()
     want = xbrl.get((basis, period_end), {}).get(item)
-    return want is not None and _close(value, want, tol)
+    return (want,) if want is not None else ()
+
+
+def _xbrl_conflict(xbrl: dict, basis: str, period_end: str, item: str, value: float, tol: float,
+                   ptype: str = "quarter", annual_facts: dict | None = None) -> tuple[float | None, float | None]:
+    """Return ``(matched_diff, conflict_want)``: one is populated when XBRL holds a figure for the period."""
+    wants = _xbrl_wants(xbrl, basis, period_end, item, ptype=ptype, annual_facts=annual_facts)
+    if not wants:
+        return None, None
+    diffs = [abs(value - want) for want in wants if _close(value, want, tol)]
+    if diffs:
+        return min(diffs), None
+    return None, min(wants, key=lambda want: abs(value - want))
+
+
+def _xbrl_diff(xbrl: dict, basis: str, period_end: str, item: str, value: float, tol: float,
+               ptype: str = "quarter", annual_facts: dict | None = None) -> float | None:
+    return _xbrl_conflict(xbrl, basis, period_end, item, value, tol, ptype=ptype, annual_facts=annual_facts)[0]
+
+
+def _xbrl_ok(xbrl: dict, basis: str, period_end: str, item: str, value: float, tol: float,
+             ptype: str = "quarter", annual_facts: dict | None = None) -> bool:
+    return _xbrl_diff(xbrl, basis, period_end, item, value, tol, ptype=ptype, annual_facts=annual_facts) is not None
 
 
 def _period_end(dates, known_at: str, text: str = "") -> str | None:
@@ -2031,13 +2219,15 @@ def _basis_header_sides(header_rows, anchors: list[float], *, allow_hyphen: bool
     return ("standalone", "consolidated") if pos["standalone"] < pos["consolidated"] else ("consolidated", "standalone")
 
 
-def _split_side_by_side(table: dict) -> list[dict] | None:
+def _split_side_by_side(table: dict, sides: tuple[str, str] | None = None) -> list[dict] | None:
     """Split a side-by-side Standalone/Consolidated table (8, 10 or 12 columns) into its two halves."""
     anchors = table.get("anchors") or []
     count = len(anchors)
     if count < 8 or count % 2 or table.get("basis") is not None:
         return None
-    sides = _basis_header_sides(table.get("header_rows") or [], anchors, allow_hyphen=True)
+    detected = _basis_header_sides(table.get("header_rows") or [], anchors, allow_hyphen=True)
+    used_fallback = detected is None and sides is not None
+    sides = detected or sides
     if sides is None:
         return None
     half = count // 2
@@ -2045,8 +2235,11 @@ def _split_side_by_side(table: dict) -> list[dict] | None:
     if dates and len(dates) == count:
         left_d, right_d = dates[:half], dates[half:]
         if any(lm is not None and rm is not None and lm != rm for (lm, _ly), (rm, _ry) in zip(left_d, right_d)):
-            return None
-        half_dates = (left_d, right_d)
+            if not used_fallback:
+                return None
+            half_dates = (None, None)
+        else:
+            half_dates = (left_d, right_d)
     else:
         half_dates = (None, None)
     halves: list[dict] = []
@@ -2240,7 +2433,7 @@ def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: i
         for at, role in enumerate(roles):
             if not role:
                 continue
-            period_end, _ptype = _role_period(role, end)
+            period_end, ptype = _role_period(role, end)
             for item, tokens in values.get(at, {}).items():
                 for token in tokens:
                     parsed = _parse_cell(item, token["text"], decimals, eps_dec)
@@ -2248,7 +2441,8 @@ def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: i
                         continue
                     value = parsed[0] * (1.0 if item.startswith("eps_") else scale)
                     if _xbrl_ok(xbrl, basis, period_end, item, value,
-                                _tol(item, decimals, scale, token["text"], eps_dec)):
+                                _tol(item, decimals, scale, token["text"], eps_dec),
+                                ptype=ptype, annual_facts=annual_facts):
                         score += 10 if role == "current" else 5
     if end[5:7] == "06" and "last_fy" in roles and (store_fy or annual_facts):
         at = roles.index("last_fy")
@@ -2264,7 +2458,8 @@ def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: i
                     continue
                 value = parsed[0] * (1.0 if item.startswith("eps_") else scale)
                 item_tol = _tol(item, decimals, scale, token["text"], eps_dec)
-                if not _xbrl_ok(xbrl, basis, lfy_end, item, value, item_tol) and any(
+                if not _xbrl_ok(xbrl, basis, lfy_end, item, value, item_tol,
+                                ptype="fy", annual_facts=annual_facts) and any(
                         _close(value, want, item_tol) for want in wants):
                     score += 5
     if basis in ("standalone", "consolidated") and end[5:7] == "09" and all(
