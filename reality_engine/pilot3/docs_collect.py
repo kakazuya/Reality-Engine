@@ -18,12 +18,14 @@
 4. Writes ``DOC_COVERAGE.xlsx``: counts and newest dates, the FY25-FY27 expected-but-missing
    documents, and the BSE announcement attachments whose headline is held but body is not (the fetch
    worklist).
-5. Corrects the record from the document's own first pages (T-161/T-159): a meet-outcome filing whose
-   pages 1-3 read as a call and print the moderator line is typed ``transcript``, and a transcript whose
-   printed call date is 120+ days before its filing date takes that date as ``filing_date``/``known_at``
-   (a company-site crawl dates a 2016 call by the 2026 crawl day).  The change is visible in
-   ``source_record`` (``date_source``/``type_source`` = ``printed``) and never moves a date later.
-   ``--measure`` prints, read-only, what those rules would change in a store.
+5. Corrects the record from the document's own first pages (T-161/T-159/T-223): a meet-outcome filing whose
+   pages 1-3 read as a call and print the moderator line is typed ``transcript``, a ``concall_audio_link``
+   manifest row whose PDF has 3+ pages and matches ``moderator_line`` or ``TRANSCRIPT_TEXT`` on pages 1-3 is
+   kept as ``transcript`` (T-223, ``type_source='printed'``), and a transcript whose printed call date is
+   120+ days before its filing date takes that date as ``filing_date``/``known_at`` (a company-site crawl
+   dates a 2016 call by the 2026 crawl day).  The change is visible in ``source_record``
+   (``date_source``/``type_source`` = ``printed``) and never moves a date later.  ``--measure`` prints,
+   read-only, what the ``reconcile_doc`` rules would change in a store.
 
 Idempotent: a document whose sha256 is already in ``pages.db`` is not re-read.  Read-only on every store.
 """
@@ -48,6 +50,7 @@ from reality_engine.gap_loop.prepare import DOC_TYPES, MIN_PAGE_CHARS, _clean_pa
 from reality_engine.pilot3 import profile
 from reality_engine.pilot3.call_dates import PAGES as CALL_DATE_PAGES, call_date
 from reality_engine.pilot3.doc_identity import classify_type, moderator_line
+from reality_engine.pilot3.linked_transcripts import TRANSCRIPT_TEXT
 
 RAW_ROOT = Path(os.environ.get("REALITY_RAW_ROOT", r"D:\RealityEngine\raw"))
 LEGACY_PDFS = Path(os.environ.get("REALITY_PDFS_LEGACY_DIR", r"D:\RealityEngine\pdfs"))
@@ -747,6 +750,22 @@ def _manifest_path(row: dict, symbol: str, prof: profile.Profile) -> Path:
     return path
 
 
+def _audio_link_is_transcript(path: Path) -> bool:
+    """True when a ``concall_audio_link`` PDF is actually a 3+ page call transcript (T-223, R-012)."""
+    import fitz
+
+    try:
+        with fitz.open(str(path)) as pdf:
+            if pdf.needs_pass and not pdf.authenticate(""):
+                return False
+            if pdf.page_count < PRINTED_PAGES:
+                return False
+            first3 = "\n".join(_clean_page(pdf[n].get_text("text")) for n in range(PRINTED_PAGES))
+    except Exception:
+        return False
+    return moderator_line(first3) or bool(TRANSCRIPT_TEXT.search(first3))
+
+
 def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path, log=print,
                      store: raw_store.RawStore | None = None) -> dict:
     """pages.db from a profile's raw manifest only: the ``status='ok'`` rows of the requested companies.
@@ -754,8 +773,9 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
     No store lookup and no directory walk: the manifest names each filing, its local file, its dissemination
     time and its bucket, so ``known_at`` is the row's ``dissem_ts`` and a row without one is counted, not
     written (a document that cannot be dated cannot prove it was public).  A bucket with no document behind it
-    (``concall_audio_link``, ``skip``) and a row whose file is neither local nor on Drive do not become rows
-    either.  A company is one ``prefetch``: every file it needs is downloaded once and deleted after."""
+    (``skip``, and ``concall_audio_link`` unless its PDF has 3+ pages and reads as a transcript) and a row
+    whose file is neither local nor on Drive do not become rows either.  A company is one ``prefetch``: every
+    file it needs is downloaded once and deleted after."""
     conn = connect_out(out)
     counts: dict[str, dict] = {}
     started = time.time()
@@ -765,16 +785,27 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
     store = store or raw_store.RawStore(roots={**raw_store._default_roots(), prof.raw_root.name.lower(): prof.raw_root})
     for symbol in symbols:
         stat = counts[symbol] = {"rows": 0, "docs": 0, "pages": 0, "needs_ocr": 0, "undated": 0, "missing": 0,
-                                 "errors": 0, "not_documents": 0, "dupes": 0, "redated": 0, "retyped": 0}
+                                 "errors": 0, "not_documents": 0, "dupes": 0, "redated": 0, "retyped": 0,
+                                 "audio_link_transcripts": 0}
         seen: set[str] = set()
         mine = [r for r in rows if str(r.get("symbol_at_time") or "").strip().upper() == symbol]
         with store.prefetch(_manifest_path(r, symbol, prof) for r in mine):
             for row in sorted(mine, key=lambda r: str(r.get("dissem_ts") or "")):
                 stat["rows"] += 1
-                doc_type = BUCKET_TYPES.get(str(row.get("bucket") or "").strip().lower())
+                bucket = str(row.get("bucket") or "").strip().lower()
+                doc_type = BUCKET_TYPES.get(bucket)
+                from_audio_link = False
                 if doc_type is None:
-                    stat["not_documents"] += 1
-                    continue
+                    if bucket == "concall_audio_link":
+                        path = _manifest_path(row, symbol, prof)
+                        if store.exists(path):
+                            with store.local(path) as source:
+                                if _audio_link_is_transcript(Path(source)):
+                                    doc_type = "transcript"
+                                    from_audio_link = True
+                    if doc_type is None:
+                        stat["not_documents"] += 1
+                        continue
                 ident = str(row.get("newsid") or row.get("local_path") or row.get("url") or "").strip()
                 if ident and ident in seen:
                     stat["dupes"] += 1
@@ -801,6 +832,9 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
                 stat["retyped"] += 1 if notes.get("type_source") else 0
                 meta = {k: row.get(k) for k in ("newsid", "bucket", "category", "subcat", "headline", "url", "sha256")}
                 meta.update(notes)
+                if from_audio_link:
+                    meta["type_source"] = "printed"
+                    stat["audio_link_transcripts"] += 1
                 conn.execute("INSERT OR REPLACE INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", (
                     key, symbol, row.get("isin"), doc_type,
                     _title(row.get("headline"), row.get("subcat"), row.get("category")) or path.stem,
