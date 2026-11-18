@@ -2357,4 +2357,103 @@ def test_eps_blocks_skip_discontinued_and_keep_continuing():
     conn.close()
 
 
+def test_discontinued_pl_line_and_eps_heading_preserve_eps():
+    """R-023 follow-up (T-223): blank discontinued P&L lines (e.g. SALSTEEL) never start a discontinued EPS
+    section, and an 'Earnings per ...' heading resets any prior section before Basic/Diluted."""
+    cols4 = (320.0, 400.0, 480.0, 560.0)
+    dates_q1 = ("30.06.2024", "31.03.2024", "30.06.2023", "31.03.2024")
+
+    def _w4(x1: float, text: str, y: float) -> tuple:
+        return (x1 - 4.0 * len(text), y - 3.0, x1, y + 3.0, text, 0, 0, 0)
+
+    def _build_4col_page(body_rows):
+        words = [
+            (40.0, 5.0, 220.0, 13.0, "Statement of Standalone Unaudited Financial Results", 0, 0, 0),
+            (40.0, 15.0, 120.0, 23.0, "Rs. in Crores", 0, 0, 0),
+        ]
+        words += [_w4(cols4[i], dt, 30.0) for i, dt in enumerate(dates_q1)]
+        for idx, (lbl, vals, col_idxs) in enumerate(body_rows):
+            y, x = 50.0 + 10.0 * idx, 20.0
+            for word in lbl.split():
+                w = 4.0 * len(word)
+                words.append((x, y - 3.0, x + w, y + 3.0, word, 0, 0, 0))
+                x += w + 2.5
+            for col_i, val in zip(col_idxs, vals):
+                words.append(_w4(cols4[col_i], val, y))
+        return cmp.rows_from_words(words)
+
+    pl_head4 = [
+        ("1 Revenue from operations", ("100.00", "120.00", "95.00", "410.00"), range(4)),
+        ("2 Other income", ("1.00", "2.00", "1.50", "6.00"), range(4)),
+        ("3 Total income", ("101.00", "122.00", "96.50", "416.00"), range(4)),
+        ("4 Total expenses", ("100.80", "118.50", "96.35", "415.30"), range(4)),
+        ("5 Profit before tax", ("0.20", "3.50", "0.15", "0.70"), range(4)),
+        ("6 Tax expense", ("0.04", "0.80", "0.05", "0.23"), range(4)),
+    ]
+
+    conn = _conn()
+
+    # (a) SALSTEEL Q1FY25 layout: blank discontinued P&L lines (OCR-noisy) + OCI + equity + Earnings per equity share
+    rows_salsteel = pl_head4 + [
+        ("Profit / (Loss) from discontinuing operatrons", (), ()),
+        ("Tax expense of discontinuing operations", (), ()),
+        ("Profw(Loss) from Discontinuing operatlons (after tax)", (), ()),
+        ("Net Profit / (Loss) for the period (lx + Xll )", (), ()),
+        ("Other Comprehensive income (Net of Tax)", ("0.01", "(0.08)", "0.04", "0.03"), range(4)),
+        ("Total Comprehensive income/(Loss) (after tax)", ("0.17", "2.62", "0.14", "0.50"), range(4)),
+        ("Paid-up Equity Share Capital (Face value Rs. 10/- each)", ("84.97", "84.97", "84.97", "84.97"), range(4)),
+        ("Earnings per equity share :", (), ()),
+        ("(1) Basic", ("0.02", "0.32", "0.01", "0.06"), range(4)),
+        ("(2) Diluted", ("0.02", "0.32", "0.01", "0.06"), range(4)),
+    ]
+    table_sal = cmp.read_page(_build_4col_page(rows_salsteel))
+    assert table_sal is not None
+    stored_sal = cmp._table_rows(
+        conn, "SALSTEEL", "INE000A01002", "doc_sal", 3, "2024-08-12T12:00:00", table_sal, {}, [],
+    )
+    assert [
+        _cells(stored_sal, "eps_basic", role)[0][11]
+        for role in ("current", "preceding", "year_ago", "last_fy")
+    ] == pytest.approx([0.02, 0.32, 0.01, 0.06])
+    assert [
+        _cells(stored_sal, "eps_diluted", role)[0][11]
+        for role in ("current", "preceding", "year_ago", "last_fy")
+    ] == pytest.approx([0.02, 0.32, 0.01, 0.06])
+
+    # (c) Blank discontinued P&L line followed directly (no EPS heading, no matched non-EPS row) by (a) Basic
+    rows_direct = pl_head4 + [
+        ("7 Profit for the period", ("0.16", "2.70", "0.10", "0.47"), range(4)),
+        ("Profit / (Loss) from discontinued operations", (), ()),
+        ("(a) Basic", ("1.00", "2.00", "3.00", "4.00"), range(4)),
+    ]
+    table_direct = cmp.read_page(_build_4col_page(rows_direct))
+    assert table_direct is not None
+    stored_direct = cmp._table_rows(
+        conn, "SALSTEEL", "INE000A01002", "doc_dir", 3, "2024-08-12T12:00:00", table_direct, {}, [],
+    )
+    assert [
+        _cells(stored_direct, "eps_basic", role)[0][11]
+        for role in ("current", "preceding", "year_ago", "last_fy")
+    ] == pytest.approx([1.00, 2.00, 3.00, 4.00])
+
+    # (d) Short 'Discontinued Operations' heading followed by OCR-noisy 'Eamings per equity share :' resets section
+    rows_eps_reset = pl_head4 + [
+        ("7 Profit for the period", ("0.16", "2.70", "0.10", "0.47"), range(4)),
+        ("Discontinued Operations", (), ()),
+        ("Eamings per equity share :", (), ()),
+        ("(1) Basic", ("1.50", "2.50", "3.50", "4.50"), range(4)),
+    ]
+    table_reset = cmp.read_page(_build_4col_page(rows_eps_reset))
+    assert table_reset is not None
+    stored_reset = cmp._table_rows(
+        conn, "SALSTEEL", "INE000A01002", "doc_rst", 3, "2024-08-12T12:00:00", table_reset, {}, [],
+    )
+    assert [
+        _cells(stored_reset, "eps_basic", role)[0][11]
+        for role in ("current", "preceding", "year_ago", "last_fy")
+    ] == pytest.approx([1.50, 2.50, 3.50, 4.50])
+    conn.close()
+
+
+
 

@@ -65,7 +65,9 @@ _TITLE = re.compile(r"\bresults\b")
 # A ratio or margin row is never a rupee line; a discontinued-only row is never the continuing/total line.
 _PCT_LABEL = re.compile(r"%|\bmargin")
 _DISCONTINUED_LABEL = re.compile(r"\bdiscontinu(?:ed|ing)\b|\bdiscounting\s+operations\b|[-–]ounting\s+operations\b")
+_DISC_PL_WORD = re.compile(r"\b(?:pro[f]\w*|loss|tax|expens|income|revenue|before|after)")
 _CONTINUING_HEADING = re.compile(r"\bcontinuing\b|\bcon\s*t[i1l]n\s*[ui1l]\s*\w*\s+op")
+_EPS_HEADING = re.compile(r"\bea(?:r\s*n|m)\s*[i1l]?\s*ngs?\s+p[ce]r\b")
 _COST_ITEMS = ("finance_cost", "depreciation", "employee_cost", "total_expenses", "other_expenses",
                "cost_of_materials")
 _INCOME_ITEMS = ("revenue_from_operations", "total_income", "interest_income", "net_premium", "gross_premium")
@@ -832,9 +834,15 @@ def read_page(rows, ocr: bool = False) -> dict | None:
         label, joined = labels[index]
         cells = _assign_tokens(row, anchors)
         if not _tokens(_strip_row_number(row)) or not cells:
-            low_lbl = label.lower()
-            is_disc = bool(_DISCONTINUED_LABEL.search(low_lbl))
-            is_cont = bool(_CONTINUING_HEADING.search(_norm(label)))
+            norm_lbl = _norm(label)
+            if _EPS_HEADING.search(norm_lbl):
+                section = None
+            is_disc = (
+                bool(_DISCONTINUED_LABEL.search(label.lower()))
+                and not _DISC_PL_WORD.search(norm_lbl)
+                and len(norm_lbl.split()) <= 6
+            )
+            is_cont = bool(_CONTINUING_HEADING.search(norm_lbl))
             if is_disc and not is_cont:
                 section = "discontinued"
             elif is_cont and not is_disc:
