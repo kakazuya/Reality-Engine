@@ -19,7 +19,7 @@ from pathlib import Path
 
 from reality_engine import raw_store
 from reality_engine.gap_loop import prepare
-from reality_engine.pilot3 import SHP_XBRL, SHP_XBRL_UNIVERSE, profile, schema
+from reality_engine.pilot3 import SHP_XBRL, SHP_XBRL_UNIVERSE, fiscal, profile, schema
 from reality_engine.pilot3.registry import all_isins, isin_history
 
 CR = 1e7  # rupees per crore
@@ -111,16 +111,8 @@ def _isin_marks(symbol: str) -> tuple[str, tuple]:
 
 
 def fiscal_period(period_end: str) -> str | None:
-    """Q1FY27 for a quarter ending 2026-06-30 (Indian FY: April to March)."""
-    try:
-        y, m = int(period_end[:4]), int(period_end[5:7])
-    except (TypeError, ValueError):
-        return None
-    q = {6: 1, 9: 2, 12: 3, 3: 4}.get(m)
-    if q is None:
-        return None
-    fy = y + 1 if m >= 4 else y
-    return f"Q{q}FY{str(fy)[2:]}"
+    """Q1FY27 for a quarter ending 2026-06-30 (or active ``fiscal.current()`` year-end)."""
+    return fiscal.fiscal_quarter(period_end)
 
 
 def _days(a: str, b: str) -> int | None:
@@ -271,36 +263,37 @@ def build_quarterly(conn: sqlite3.Connection) -> dict:
     schema.create(conn, ("fin_quarter_xbrl", "share_capital"))
     counts = {"fin_quarter_xbrl": {}, "share_capital": {}, "skipped_non_quarter": {}}
     for symbol in profile.symbols():
-        rows = fetch(symbol, "results_quarterly")
-        fq, sc, skipped, meta = [], [], 0, {}
-        for r in rows:
-            span = _days(r["period_start"], r["period_end"])
-            if span is None or not 80 <= span <= 100:
-                skipped += 1
-                continue
-            period, basis = fiscal_period(r["period_end"]), _basis(r["consolidated"])
-            meta[r["file"]] = (r["isin"], r["period_start"], r["period_end"], period, basis, r["audited"], r["known_at"])
-            for tag, (item, statement, unit) in QUARTER_TAGS.items():
-                value = r.get(tag)
-                if value is None:
+        with fiscal.use(fiscal.fy_end_month(conn, symbol)):
+            rows = fetch(symbol, "results_quarterly")
+            fq, sc, skipped, meta = [], [], 0, {}
+            for r in rows:
+                span = _days(r["period_start"], r["period_end"])
+                if span is None or not 80 <= span <= 100:
+                    skipped += 1
                     continue
-                fq.append((symbol, r["isin"], r["period_start"], r["period_end"], period, basis, r["audited"],
-                           statement, item, tag, float(value), unit, 1.0, r["file"], "results_xbrl.db",
-                           "quarterly", r["file"], r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", 1))
-            paid, face = r.get("PaidUpValueOfEquityShareCapital"), r.get("FaceValueOfEquityShareCapital")
-            if paid and face:
-                sc.append((symbol, r["isin"], r["period_end"], basis, None, None, paid / face, paid, face, "shares",
-                           1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", "results_xbrl.db",
-                           "quarterly", r["file"], None, None, "derived_from_capital"))
-        fq += _quarter_extras(symbol, meta, {(r[13], r[8]) for r in fq})
-        conn.executemany("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
-                         "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
-                         "source_table, source_rowid, known_at, known_at_source, is_reported) VALUES ("
-                         + ",".join("?" * 20) + ")", fq)
-        conn.executemany("INSERT INTO share_capital VALUES (" + ",".join("?" * 19) + ")", sc)
-        counts["fin_quarter_xbrl"][symbol] = len(fq)
-        counts["share_capital"][symbol] = len(sc)
-        counts["skipped_non_quarter"][symbol] = skipped
+                period, basis = fiscal_period(r["period_end"]), _basis(r["consolidated"])
+                meta[r["file"]] = (r["isin"], r["period_start"], r["period_end"], period, basis, r["audited"], r["known_at"])
+                for tag, (item, statement, unit) in QUARTER_TAGS.items():
+                    value = r.get(tag)
+                    if value is None:
+                        continue
+                    fq.append((symbol, r["isin"], r["period_start"], r["period_end"], period, basis, r["audited"],
+                               statement, item, tag, float(value), unit, 1.0, r["file"], "results_xbrl.db",
+                               "quarterly", r["file"], r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", 1))
+                paid, face = r.get("PaidUpValueOfEquityShareCapital"), r.get("FaceValueOfEquityShareCapital")
+                if paid and face:
+                    sc.append((symbol, r["isin"], r["period_end"], basis, None, None, paid / face, paid, face, "shares",
+                               1.0, r["known_at"], "results_xbrl.quarterly.dissem_ts|broadcast_ts|filings.filing_ts|file name stamp", "results_xbrl.db",
+                               "quarterly", r["file"], None, None, "derived_from_capital"))
+            fq += _quarter_extras(symbol, meta, {(r[13], r[8]) for r in fq})
+            conn.executemany("INSERT INTO fin_quarter_xbrl (symbol, isin, period_start, period_end, fiscal_period, basis, "
+                             "audited, statement, line_item, xbrl_tag, value, unit, scale, source_file, source_db, "
+                             "source_table, source_rowid, known_at, known_at_source, is_reported) VALUES ("
+                             + ",".join("?" * 20) + ")", fq)
+            conn.executemany("INSERT INTO share_capital VALUES (" + ",".join("?" * 19) + ")", sc)
+            counts["fin_quarter_xbrl"][symbol] = len(fq)
+            counts["share_capital"][symbol] = len(sc)
+            counts["skipped_non_quarter"][symbol] = skipped
     conn.commit()
     return counts
 

@@ -41,7 +41,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from reality_engine import raw_store
-from reality_engine.pilot3 import profile, schema
+from reality_engine.pilot3 import fiscal, profile, schema
 
 TABLE = "fin_quarter_printed"
 # What ratios.py and pilot3_fin may use.  ``repeat_ok`` (T-057 round 2): the same symbol, basis,
@@ -408,24 +408,23 @@ def _shift(date_text: str, months: int) -> str:
 
 
 def _fy_of(end: str) -> str:
-    y, m = int(end[:4]), int(end[5:7])
-    return f"FY{str(y + 1 if m >= 4 else y)[2:]}"
+    return fiscal.fy_label(end)
 
 
 def _quarter(period_end: str, ptype: str) -> tuple[str, str, str] | None:
     """``(fiscal_period, period_start, period_type)`` for a printed column, or None when invalid."""
     y, m = int(period_end[:4]), int(period_end[5:7])
-    fy = y + 1 if m >= 4 else y
+    eq_m = fiscal.march_equivalent_month(m)
     if ptype == "fy":
-        return f"FY{str(fy)[2:]}", f"{fy - 1}-04-01", "fy"
+        return fiscal.fy_label(period_end), fiscal.fy_start(period_end), "fy"
     if ptype == "ytd":
-        if m not in (9, 12):
+        if eq_m not in (9, 12):
             return None
-        label = "H1" if m == 9 else "9M"
-        return f"{label}FY{str(fy)[2:]}", f"{fy - 1}-04-01", "ytd"
-    q = {6: 1, 9: 2, 12: 3, 3: 4}.get(m)
+        months = 6 if eq_m == 9 else 9
+        return fiscal.ytd_label(period_end, months), fiscal.fy_start(period_end), "ytd"
+    q_label = fiscal.fiscal_quarter(period_end) or f"Q?{fiscal.fy_label(period_end)}"
     start = {6: f"{y}-04-01", 9: f"{y}-07-01", 12: f"{y}-10-01", 3: f"{y}-01-01"}.get(m, f"{y}-01-01")
-    return f"Q{q or '?'}FY{str(fy)[2:]}", start, "quarter"
+    return q_label, start, "quarter"
 
 
 def _role_set(end: str, count: int) -> list[str | None]:
@@ -438,7 +437,7 @@ def _role_set(end: str, count: int) -> list[str | None]:
     four columns only); a Q2/Q3 table carries a quarter pair, a half/nine-month pair and (with five or six
     columns) the last full year; a Q4 table carries the quarter pair and the two full years.  Without ``last_fy``
     in the pool no TTM can ever be formed from that filing (T-073)."""
-    m = int(end[5:7])
+    m = fiscal.march_equivalent_month(int(end[5:7]))
     if m == 6:
         if count <= 3:
             return list(ROLE_ORDER[:count])
@@ -473,8 +472,9 @@ def _expected_date(role: str, end: str) -> tuple[int, int]:
         return (m - 3, y) if m > 3 else (m + 9, y - 1)
     if role in ("year_ago", "prior_ytd"):
         return m, y - 1
-    if role == "last_fy":          # the last completed fiscal year ends in March
-        return 3, y
+    if role == "last_fy":
+        lfy = _last_fy_end(end)
+        return int(lfy[5:7]), int(lfy[:4])
     return m, y
 
 
@@ -1111,6 +1111,12 @@ def _ocr_page_rows(store_db, doc_key: str, page_no: int, ocr_dbs) -> list | None
 
 def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], store_db=None,
                     ocr_dbs=()) -> dict:
+    with fiscal.use(fiscal.fy_end_month(conn, symbol)):
+        return _extract_symbol_body(conn, symbol, review, store_db=store_db, ocr_dbs=ocr_dbs)
+
+
+def _extract_symbol_body(conn: sqlite3.Connection, symbol: str, review: list[dict], store_db=None,
+                         ocr_dbs=()) -> dict:
     started = time.time()
     isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
     isin = isin[0] if isin else None
@@ -1739,7 +1745,7 @@ def _derive_revenue(columns) -> None:
 
 def _cross_column_marks(columns, end: str, rupee_tol: float) -> None:
     """Across columns on a Q2 table: current + preceding = ytd marks every cell of the identity ``sum_ok``."""
-    if end[5:7] != "09" or not {"ytd", "current", "preceding"} <= set(columns):
+    if fiscal.march_equivalent_month(int(end[5:7])) != 9 or not {"ytd", "current", "preceding"} <= set(columns):
         return
     for item in (set(columns["current"]) & set(columns["preceding"]) & set(columns["ytd"])) - {"_fails"}:
         cur, pre, ytd = columns["current"][item], columns["preceding"][item], columns["ytd"][item]
@@ -1846,12 +1852,12 @@ def _resolve_columns(columns: dict[str, dict], end: str, rupee_tol: float, ambig
 def _build_row(symbol: str, isin: str | None, role: str, basis: str, item: str, cell: dict,
                doc_key: str, page_no: int, known_at: str, scale_from_xbrl: bool,
                fallback: bool, header_used: bool) -> tuple | None:
-    if cell["ptype"] == "ytd" and cell["period_end"][5:7] not in ("09", "12"):
+    if cell["ptype"] == "ytd" and fiscal.march_equivalent_month(int(cell["period_end"][5:7])) not in (9, 12):
         return None
     q = _quarter(cell["period_end"], cell["ptype"])
     if q is None:
         return None
-    fiscal, start, ptype = q
+    fp_label, start, ptype = q
     unit = "inr_per_share" if item.startswith("eps_") else "inr"
     detail = []
     if scale_from_xbrl:
@@ -1870,7 +1876,7 @@ def _build_row(symbol: str, isin: str | None, role: str, basis: str, item: str, 
         detail.append("agreed")
     if cell.get("xbrl_conflict") is not None:
         detail.append(f"xbrl_conflict {cell['xbrl_conflict']}")
-    return (symbol, isin, start, cell["period_end"], fiscal, ptype, role, basis, "P&L", item,
+    return (symbol, isin, start, cell["period_end"], fp_label, ptype, role, basis, "P&L", item,
             cell["caption"], cell["value"], unit, 1.0, cell["raw"], cell["quote"], doc_key, page_no,
             known_at, "doc.known_at", cell["status"], "; ".join(detail) or None,
             0 if cell.get("derived") else 1)
@@ -1914,9 +1920,10 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     count = len(anchors)
     decimals = table["decimals"]
     ambiguous = _ambiguous_items(values)
-    basis_hint = table.get("basis") or _page_basis(table["text"], table.get("head"), allow_hyphen=(end[5:7] == "06"))
+    is_q1 = fiscal.march_equivalent_month(int(end[5:7])) == 6
+    basis_hint = table.get("basis") or _page_basis(table["text"], table.get("head"), allow_hyphen=is_q1)
     dates = table.get("dates")
-    if end[5:7] == "06" and dates is None and fill_table is not None and fill_table.get("dates") \
+    if is_q1 and dates is None and fill_table is not None and fill_table.get("dates") \
             and len(fill_table["dates"]) == count:
         dates = fill_table["dates"]
     choice = _roles(dates, end, count, values, xbrl, basis_hint, table["scale"], decimals,
@@ -2264,7 +2271,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                                            "column_role": role, "raw_token": cell["raw"], "check": "ocr_unreconciled",
                                            "detail": f"value={cell['value']}"})
                             del cells[item]
-            if not ocr and not layer_only and end[5:7] == "06" and fill and "last_fy" in columns:
+            if not ocr and not layer_only and is_q1 and fill and "last_fy" in columns:
                 for item, cell in list(columns["last_fy"].items()):
                     if item == "_fails" or cell["status"] in CHECK_OK:
                         continue
@@ -2458,7 +2465,7 @@ def _side_by_side_ok(header_rows, dates, count: int) -> bool:
             if lm is not None and rm is not None and lm != rm:
                 return False
         for (lm, _ly), want_m in zip(left, (6, 3, 6, 3)):
-            if lm is not None and lm != want_m:
+            if lm is not None and fiscal.march_equivalent_month(lm) != want_m:
                 return False
     return True
 
@@ -2486,11 +2493,11 @@ def _fy_refs(basis: str, period_end: str, xbrl: dict, store_fy: dict | None,
 def _june_last_fy_confirmed(at: int, dates, end: str, values: dict, xbrl: dict, store_fy: dict | None,
                              basis: str, scale: float, decimals: int,
                              annual_facts: dict | None = None) -> bool:
-    """True when a June table's ``last_fy`` column has its March year matched or matches an FY value."""
-    want_year = int(end[:4])
-    if dates and at < len(dates) and _date_match(dates[at], (3, want_year), require_year=True):
+    """True when a Q1 table's ``last_fy`` column has its prior FY-end year matched or matches an FY value."""
+    lfy = _last_fy_end(end)
+    if dates and at < len(dates) and _date_match(dates[at], (int(lfy[5:7]), int(lfy[:4])), require_year=True):
         return True
-    refs = _fy_refs(basis, _last_fy_end(end), xbrl, store_fy, annual_facts)
+    refs = _fy_refs(basis, lfy, xbrl, store_fy, annual_facts)
     if not refs:
         return False
     eps_dec = _eps_decimals(values)
@@ -2515,7 +2522,8 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
            annual_facts: dict | None = None) -> dict | None:
     """Column roles (header order first, a header layout hint second, layout by quarter last), basis and scale,
     checked against XBRL; the earlier candidate wins a tie."""
-    if end[5:7] == "06" and count >= 7 and not _side_by_side_ok(header_rows, dates, count):
+    is_q1 = fiscal.march_equivalent_month(int(end[5:7])) == 6
+    if is_q1 and count >= 7 and not _side_by_side_ok(header_rows, dates, count):
         return None
     default = _role_set(end, count)
     chance = None
@@ -2524,17 +2532,17 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
         if covered and header != default:
             chance = header
     bases = [basis_hint] if basis_hint else (["consolidated", "standalone"] if xbrl else ["unchecked"])
-    target = list(hint) if (hint and end[5:7] != "06") else None
+    target = list(hint) if (hint and not is_q1) else None
     candidates: list[list[str | None]] = []
     for roles in (target, chance, default):
         if roles is not None and roles not in candidates:
             candidates.append(roles)
-    if end[5:7] == "06" and count in (5, 6):
-        want_year = int(end[:4])
+    if is_q1 and count in (5, 6):
+        lfy = _last_fy_end(end)
         base = chance or default
         lfy_at = base.index("last_fy") if "last_fy" in base else -1
         has_year = bool(lfy_at >= 0 and dates and lfy_at < len(dates)
-                        and _date_match(dates[lfy_at], (3, want_year), require_year=True))
+                        and _date_match(dates[lfy_at], (int(lfy[5:7]), int(lfy[:4])), require_year=True))
         if has_year:
             candidates = [base]
         else:
@@ -2554,7 +2562,7 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
             for sc in ([scale] if scale else []) + [s for s in (1e5, 1e6, 1e7) if s != scale]:
                 use_fy = store_fy if (scale is None or sc == scale) else None
                 use_annual = annual_facts if (scale is None or sc == scale) else None
-                if basis not in ("standalone", "consolidated") and not (end[5:7] == "06" and (use_fy or use_annual)):
+                if basis not in ("standalone", "consolidated") and not (is_q1 and (use_fy or use_annual)):
                     score = 0
                 else:
                     score = _score_roles(roles, end, values, xbrl, basis, sc, decimals,
@@ -2567,7 +2575,7 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
     if best[0] == 0 and basis_hint is None:
         basis = "unchecked"          # neither the title nor the XBRL match settles the basis
     roles = list(roles)
-    if end[5:7] == "06" and "last_fy" in roles:
+    if is_q1 and "last_fy" in roles:
         at = roles.index("last_fy")
         if not _june_last_fy_confirmed(at, dates, end, values, xbrl, store_fy, basis, sc, decimals,
                                        annual_facts=annual_facts):
@@ -2626,7 +2634,8 @@ def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: i
                                 _tol(item, decimals, scale, token["text"], eps_dec),
                                 ptype=ptype, annual_facts=annual_facts):
                         score += 10 if role == "current" else 5
-    if end[5:7] == "06" and "last_fy" in roles and (store_fy or annual_facts):
+    eq_m = fiscal.march_equivalent_month(int(end[5:7]))
+    if eq_m == 6 and "last_fy" in roles and (store_fy or annual_facts):
         at = roles.index("last_fy")
         lfy_end = _last_fy_end(end)
         refs = _fy_refs(basis, lfy_end, {}, store_fy, annual_facts)
@@ -2644,7 +2653,7 @@ def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: i
                                 ptype="fy", annual_facts=annual_facts) and any(
                         _close(value, want, item_tol) for want in wants):
                     score += 5
-    if basis in ("standalone", "consolidated") and end[5:7] == "09" and all(
+    if basis in ("standalone", "consolidated") and eq_m == 9 and all(
             r in roles for r in ("current", "preceding", "ytd")):
         i, j, k = roles.index("current"), roles.index("preceding"), roles.index("ytd")
         for item in (set(values.get(i, {})) & set(values.get(j, {})) & set(values.get(k, {}))):
@@ -2674,18 +2683,18 @@ def _role_period(role: str, end: str) -> tuple[str, str]:
         return _shift(end, -3), "quarter"
     if role == "year_ago":
         return _shift(end, -12), "quarter"
+    is_fy_end = fiscal.march_equivalent_month(int(end[5:7])) == 3
     if role == "ytd":
-        return end, "fy" if end[5:7] == "03" else "ytd"
+        return end, "fy" if is_fy_end else "ytd"
     if role == "prior_ytd":
-        return _shift(end, -12), "fy" if end[5:7] == "03" else "ytd"
+        return _shift(end, -12), "fy" if is_fy_end else "ytd"
     if role == "last_fy":
         return _last_fy_end(end), "fy"
     return end, "quarter"
 
 
 def _last_fy_end(end: str) -> str:
-    y, m = int(end[:4]), int(end[5:7])
-    return f"{y - 1}-03-31" if m == 3 else f"{y}-03-31"
+    return fiscal.last_fy_end(end)
 
 
 # ------------------------------------------------------------------ consumers (ratios.py) -----------------------------------------------
