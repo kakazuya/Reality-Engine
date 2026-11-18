@@ -1,3 +1,4 @@
+import pytest
 """T-177/T-180/T-185: reference cells settled by printed position; page text laid out as printed."""
 from reality_engine.v2 import reference_geom as rg
 from reality_engine.v2.page_layout import layout_text
@@ -558,3 +559,56 @@ def test_round7_title_shapes():
              W(425, 55, 440, 63, "210")]
     cells, _ = rg.settle_page([[_cell("Revenue", "Consolidated Financial Results > 31.03.2025", "100")]], group)
     assert not _conf(cells, "100")
+
+
+# -- T-225 round 9: dsh review round 8 (20261118T181459Z-0d7360da) - captions shared over columns -----------------
+
+def _results_four():
+    W = lambda x0, y0, x1, y1, t: (x0, y0, x1, y1, t)   # noqa: E731
+    return [W(300, 90, 335, 98, "Quarter"), W(370, 90, 405, 98, "Quarter"), W(440, 90, 475, 98, "Quarter"),
+            W(510, 90, 545, 98, "Year"),
+            W(300, 102, 330, 110, "Ended"), W(370, 102, 400, 110, "Ended"), W(440, 102, 470, 110, "Ended"),
+            W(510, 102, 540, 110, "Ended"),
+            W(290, 116, 340, 124, "30.09.2026"), W(360, 116, 410, 124, "30.06.2026"), W(430, 116, 480, 124, "30.09.2025"),
+            W(500, 116, 550, 124, "31.03.2026"),
+            W(10, 140, 70, 148, "Total"), W(75, 140, 110, 148, "Income"), W(300, 140, 340, 148, "12,162.59"),
+            W(370, 140, 410, 148, "25,403.37"), W(440, 140, 480, 148, "8,262.96"), W(510, 140, 550, 148, "98,483.90"),
+            W(10, 154, 70, 162, "Total"), W(75, 154, 120, 162, "Expenses"), W(300, 154, 340, 162, "11,000.00"),
+            W(370, 154, 410, 162, "20,000.00"), W(440, 154, 480, 162, "7,000.00"), W(510, 154, 550, 162, "80,000.00")]
+
+
+@pytest.mark.xfail(strict=True, reason="T-225 open: a caption phrase shared over several columns adds its period to every column stack (dsh review r8 4.1-4.3); needs the column-model rework")
+def test_shared_caption_period_never_confirms_another_column():
+    W = lambda x0, y0, x1, y1, t: (x0, y0, x1, y1, t)   # noqa: E731
+    caption = [W(340, 76, 358, 84, "Half"), W(361, 76, 380, 84, "Year"), W(382, 76, 405, 84, "Ended"),
+               W(408, 76, 454, 84, "30.09.2026")]
+    cells, _ = rg.settle_page([[_cell("Total Income", "Quarter Ended > 30.09.2026", "8,262.96")]],
+                              caption + _results_four())
+    assert not _conf(cells, "8,262.96")
+    cells, _ = rg.settle_page([[_cell("Total Income", "Quarter Ended > 30.09.2025", "8,262.96")]],
+                              caption + _results_four())
+    assert _conf(cells, "8,262.96") == "position"
+
+
+@pytest.mark.xfail(strict=True, reason="T-225 open: a caption phrase shared over several columns adds its period to every column stack (dsh review r8 4.1-4.3); needs the column-model rework")
+def test_short_deck_title_period_never_confirms_another_column():
+    W = lambda x0, y0, x1, y1, t: (x0, y0, x1, y1, t)   # noqa: E731
+    words = [W(250, 46, 259, 54, "Q2"), W(262, 46, 280, 54, "FY27"), W(283, 46, 329, 54, "Highlights"),
+             W(10, 62, 60, 70, "Particulars"), W(220, 62, 240, 70, "Q2"), W(243, 62, 265, 70, "FY26"),
+             W(300, 62, 320, 70, "Q2"), W(323, 62, 345, 70, "FY27"), W(380, 62, 400, 70, "YoY"),
+             W(10, 80, 50, 88, "Revenue"), W(220, 80, 265, 88, "4,521.30"), W(300, 80, 345, 88, "5,102.10"),
+             W(380, 80, 400, 88, "13%"),
+             W(10, 94, 50, 102, "EBITDA"), W(220, 94, 260, 102, "900.10"), W(300, 94, 340, 102, "1,020.50"),
+             W(380, 94, 400, 102, "13%")]
+    cells, _ = rg.settle_page([[_cell("Revenue", "Q2 FY27", "4,521.30")]], words)
+    assert not _conf(cells, "4,521.30")
+
+
+@pytest.mark.xfail(strict=True, reason="T-225 open: repeated-word split cuts by nearest column, one word late on shifted headers (dsh review r8 4.4); cutting at the repeat cost 21 right cells on the dev reference pages")
+def test_repeated_word_split_lands_on_the_second_header():
+    words = [_w(209, 86, "Standalone", cw=4.6), _w(258, 86, "Financial", cw=4.6), _w(302, 86, "Results", cw=4.6),
+             _w(337, 86, "Consolidated", cw=4.6), _w(396, 86, "Financial", cw=4.6), _w(440, 86, "Results", cw=4.6)]
+    p = rg.Page(words + [_w(10, 110, "Revenue"), _w(270, 110, "100"), _w(440, 110, "400"),
+                         _w(10, 125, "Cost"), _w(270, 125, "60"), _w(440, 125, "200")])
+    texts = [ph[2] for ph in p._header_phrases(0, [{"x0": 270, "x1": 292}, {"x0": 440, "x1": 462}])]
+    assert texts == ["Standalone Financial Results", "Consolidated Financial Results"], texts
