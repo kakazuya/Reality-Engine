@@ -731,3 +731,104 @@ def test_same_call_dedupe_dup_in_plan_needs_ocr_and_report(tmp_path: Path):
     assert "other_company" in report
     assert "link letters by intent" in report
     assert "JSW Infrastructure Limited" in report
+
+
+# --------------------------------------------------------------------------- Round 3 fixes
+def test_krystal_listing_page_context_and_quarter_and_date_window():
+    assert lf.parse_quarter_tag("Q4 & FY 2025") == "Q4FY25"
+    assert lf.parse_quarter_tag("Q4 and FY2023-24") == "Q4FY24"
+
+    page_url = "https://krystal-group.com/earnings-call-recording-transcripts/"
+    html = (
+        "<html><body>"
+        "<a href='/wp-content/uploads/2026/05/KISLQ4_FY26_Earnings_Call_Transcript.pdf'>12.05.2026</a>"
+        "<a href='/wp-content/uploads/2025/07/Finalletter-2.pdf'>Q4 &amp; FY 2025</a>"
+        "<a href='/wp-content/uploads/2025/06/Krystal-Integrated-Services_Q4-FY24-Transcript_final-1.pdf'>"
+        "Q4 &amp; FY2023-24</a>"
+        "</body></html>"
+    ).encode()
+
+    pdf_fy25 = _make_pdf([
+        "Krystal Integrated Services Limited\nQ4 FY25 Conference Call Transcript\nMay 12, 2025",
+        "Moderator: Welcome.",
+        "Page 3",
+    ])
+    pdf_fy26 = _make_pdf([
+        "Krystal Integrated Services Limited\nQ4 FY26 Conference Call Transcript\nMay 12, 2026",
+        "Moderator: Welcome.",
+        "Page 3",
+    ])
+    tried: list[str] = []
+
+    def fake_get(url: str) -> tuple[str, str, bytes]:
+        if url == page_url:
+            return url, "text/html", html
+        tried.append(url)
+        if url.endswith("Finalletter-2.pdf"):
+            return url, "application/pdf", pdf_fy25
+        if url.endswith("KISLQ4_FY26_Earnings_Call_Transcript.pdf"):
+            return url, "application/pdf", pdf_fy26
+        raise AssertionError(f"unexpected URL tried: {url}")
+
+    names = ["KRYSTAL", "Krystal Integrated Services Limited"]
+    res_2025 = lf.resolve(page_url, "transcript", "2025-05-15", names, get=fake_get)
+    assert res_2025["status"] == "resolved"
+    assert tried[0].endswith("Finalletter-2.pdf")
+    assert res_2025["url"].endswith("Finalletter-2.pdf")
+
+    tried.clear()
+    res_2026 = lf.resolve(page_url, "transcript", "2026-05-20", names, get=fake_get)
+    assert res_2026["status"] == "resolved"
+    assert tried[0].endswith("KISLQ4_FY26_Earnings_Call_Transcript.pdf")
+    assert res_2026["url"].endswith("KISLQ4_FY26_Earnings_Call_Transcript.pdf")
+
+    # Date window: -45 days before anchor up to +10 days after anchor
+    assert lf._score_pdf_link("https://x/a.pdf", "01.04.2025", "transcript", "2025-05-15", page_url) == 6
+    assert lf._score_pdf_link("https://x/a.pdf", "25.05.2025", "transcript", "2025-05-15", page_url) == 6
+    assert lf._score_pdf_link("https://x/a.pdf", "20.03.2025", "transcript", "2025-05-15", page_url) == 3  # 56d before
+    assert lf._score_pdf_link("https://x/a.pdf", "30.05.2025", "transcript", "2025-05-15", page_url) == 3  # 15d after
+
+
+def test_default_get_403_retries_with_browser_headers(monkeypatch):
+    import requests
+
+    seen_headers: list[dict[str, str]] = []
+
+    class FakeResp:
+        def __init__(self, status_code: int, url: str, body: bytes = b"", ctype: str = "text/html") -> None:
+            self.status_code = status_code
+            self.url = url
+            self.headers = {"Content-Type": ctype, "Content-Length": str(len(body))}
+            self._body = body
+
+        def iter_content(self, chunk_size: int = 65536):
+            if self._body:
+                yield self._body
+
+        def close(self) -> None:
+            pass
+
+    class FakeSession:
+        def get(self, url, headers=None, timeout=None, allow_redirects=True, stream=True):
+            seen_headers.append(dict(headers or {}))
+            ua = (headers or {}).get("User-Agent", "")
+            if "Chrome/130.0" in ua:
+                return FakeResp(200, "https://www.esafbank.com/disclosures/", b"<html>ok</html>")
+            return FakeResp(403, url, b"Forbidden")
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(requests, "Session", FakeSession)
+    final_url, ctype, body = lf.default_get(
+        "https://www.esafbank.com/investor-relation/?id=disclosure-to-stock-exchanges",
+        sleep=lambda _s: None,
+    )
+    assert len(seen_headers) == 2
+    assert seen_headers[0]["User-Agent"] == lf.DEFAULT_HEADERS["User-Agent"]
+    assert "Chrome/130.0" in seen_headers[1]["User-Agent"]
+    assert seen_headers[1]["Accept"] == "text/html,application/pdf,*/*"
+    assert seen_headers[1]["Accept-Language"] == "en-IN,en;q=0.9"
+    assert final_url == "https://www.esafbank.com/disclosures/"
+    assert ctype == "text/html"
+    assert body == b"<html>ok</html>"

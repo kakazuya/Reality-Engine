@@ -169,7 +169,7 @@ _DMY_NAME_RE = re.compile(
     re.I,
 )
 _QTAG_RE = re.compile(
-    r"(?<![a-z0-9])q([1-4])[-_\s]*fy[-_\s]*(?:20)?(\d{2})(?:[-–/](?:20)?(\d{2}))?(?![a-z0-9])",
+    r"(?<!\d)q([1-4])[-_\s]*(?:(?:&|and)[-_\s]*)?fy[-_\s]*(?:20)?(\d{2})(?:[-–/](?:20)?(\d{2}))?(?![a-z0-9])",
     re.I,
 )
 _DOMAIN_URL_RE = re.compile(r"https?://([a-z0-9-]+(?:\.[a-z0-9-]+)+)", re.I)
@@ -211,6 +211,17 @@ class _AnchorParser(HTMLParser):
             self._buf = []
 
 
+_BROWSER_HEADERS: dict[str, str] = {
+    **DEFAULT_HEADERS,
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/pdf,*/*",
+    "Accept-Language": "en-IN,en;q=0.9",
+}
+
+
 # --------------------------------------------------------------------------- HTTP
 def default_get(url: str, *, attempts: int = 3, backoff: float = 2.0, sleep=time.sleep) -> tuple[str, str, bytes]:
     """Polite HTTP GET using ``linked_transcripts`` per-host pacing, 60 s timeout, max 40 MB."""
@@ -218,8 +229,12 @@ def default_get(url: str, *, attempts: int = 3, backoff: float = 2.0, sleep=time
 
     host = (urlparse(url).netloc or "").lower()
     session = requests.Session()
+    headers = dict(DEFAULT_HEADERS)
+    retried_403 = False
     try:
-        for attempt in range(1, attempts + 1):
+        attempt = 0
+        while attempt < attempts:
+            attempt += 1
             gap = linked_transcripts.LAST_REQUEST.get(host, 0.0) + linked_transcripts.MIN_INTERVAL_S - time.monotonic()
             if gap > 0:
                 sleep(gap)
@@ -227,7 +242,7 @@ def default_get(url: str, *, attempts: int = 3, backoff: float = 2.0, sleep=time
             try:
                 resp = session.get(
                     url,
-                    headers=DEFAULT_HEADERS,
+                    headers=headers,
                     timeout=REQUEST_TIMEOUT_S,
                     allow_redirects=True,
                     stream=True,
@@ -238,6 +253,11 @@ def default_get(url: str, *, attempts: int = 3, backoff: float = 2.0, sleep=time
                 sleep(backoff * attempt)
                 continue
             try:
+                if resp.status_code == 403 and not retried_403:
+                    retried_403 = True
+                    headers = dict(_BROWSER_HEADERS)
+                    attempt -= 1
+                    continue
                 if resp.status_code == 429 or resp.status_code >= 500:
                     if attempt == attempts:
                         raise _HttpStatusError(resp.status_code)
@@ -399,14 +419,26 @@ def _quarter_matches_text(text: str, tag: str) -> bool:
     return any(_match_to_qtag(m) == want for m in _QTAG_RE.finditer(text or ""))
 
 
-def _score_pdf_link(href: str, anchor_text: str, intent: str, anchor_date: str | None) -> int:
+def _intent_matches(text: str, intent: str) -> bool:
+    if intent == "transcript":
+        return bool(_TX_LINK_RE.search(text))
+    if intent == "deck":
+        return bool(_DECK_LINK_RE.search(text))
+    if intent == "unknown":
+        return bool(_TX_LINK_RE.search(text) or _DECK_LINK_RE.search(text))
+    return False
+
+
+def _score_pdf_link(
+    href: str,
+    anchor_text: str,
+    intent: str,
+    anchor_date: str | None,
+    page_url: str = "",
+) -> int:
     combined = f"{href} {anchor_text}"
     score = 0
-    if intent == "transcript" and _TX_LINK_RE.search(combined):
-        score += 3
-    elif intent == "deck" and _DECK_LINK_RE.search(combined):
-        score += 3
-    elif intent == "unknown" and (_TX_LINK_RE.search(combined) or _DECK_LINK_RE.search(combined)):
+    if _intent_matches(combined, intent) or (page_url and _intent_matches(page_url, intent)):
         score += 3
 
     if anchor_date:
@@ -415,7 +447,7 @@ def _score_pdf_link(href: str, anchor_text: str, intent: str, anchor_date: str |
         except ValueError:
             anchor_dt = None
         if anchor_dt is not None:
-            if any(abs((dt - anchor_dt).days) <= 30 for dt in _dates_from_text(combined)):
+            if any(-45 <= (dt - anchor_dt).days <= 10 for dt in _dates_from_text(combined)):
                 score += 3
             tag = linked_transcripts.quarter_tag(anchor_date[:10])
             if tag and _quarter_matches_text(combined, tag):
@@ -636,7 +668,7 @@ def resolve(
         if href in seen_href:
             continue
         seen_href.add(href)
-        sc = _score_pdf_link(href, anchor_text, intent, anchor_date)
+        sc = _score_pdf_link(href, anchor_text, intent, anchor_date, page_url=final_url)
         if sc >= 4:
             scored.append((sc, -idx, href))
 
