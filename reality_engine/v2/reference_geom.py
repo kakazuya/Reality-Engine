@@ -323,23 +323,44 @@ class Page:
         return False
 
     def title_line(self, line: int) -> bool:
-        """A page or table title, the company name, address or CIN line: four or more words of letters in one run
-        ("STATEMENT OF UN-AUDITED CONSOLIDATED FINANCIAL RESULTS ... ENDED 30th SEPTEMBER, 2026") or a registration
-        code.  Its words never head a column, even where they sit over one (T-225: a title's "2026" put a 30.09.2025
-        column under 30.09.2026 on a real results page)."""
-        words = [self.words[j][4] for j in self.lines[line]]
-        if any(re.fullmatch(r"(?:cin|regd\.?|registered|office:?|limited|ltd\.?|statement|results?)", w.strip(",.:;()").casefold()) for w in words):
+        """A page or table title or a registration line, whose words must never head a column (T-225: a title's
+        "30th SEPTEMBER, 2026" put a 30.09.2025 column under 30.09.2026 on a real results page).  Only two shapes:
+        a CIN / registered-office line, or a line whose longest phrase has five or more words and spans 85% or more
+        of the table's width (a logo word beside it does not matter).  A line split into several phrases ("Standalone Results | Consolidated Results", "For the quarter
+        ended | For the year ended") is a group row and stays: it is what tells repeated date columns apart."""
+        idx = self.lines[line]
+        words = [self.words[j][4] for j in idx]
+        if any(re.fullmatch(r"(?:cin|regd\.?|registered)", w.strip(",.:;()").casefold()) for w in words):
             return True
-        run = best = 0
-        prev_x1 = None
-        for j in self.lines[line]:
-            w = self.words[j]
-            alpha = bool(re.fullmatch(r"[A-Za-z][A-Za-z&'\-]*[,.:]?", w[4]))
-            close = prev_x1 is None or w[0] - prev_x1 <= max(14.0, 1.5 * self.h)
-            run = (run + 1 if close else 1) if alpha else 0
-            best = max(best, run)
-            prev_x1 = w[2]
-        return best >= 4
+        if words and re.fullmatch(r"(?:particulars|s\.?\s*no\.?|s[il1]\.?|sr\.?|no\.?)", words[0].strip(",.:;()").casefold()):
+            return False
+        period_hits = Counter(t for t in (_tok(w) for w in words) if t in ("quarter", "month", "months", "year", "ended"))
+        if any(n >= 2 for n in period_hits.values()):
+            return False                              # two column headers run together ("Quarter ... Quarter ...")
+        gap = max(14.0, 1.5 * self.h)
+        runs: list[list[int]] = [[idx[0]]] if idx else []
+        for a, b in zip(idx, idx[1:]):
+            if self.words[b][0] - self.words[a][2] > gap:
+                runs.append([b])
+            else:
+                runs[-1].append(b)
+        longest = max(runs, key=lambda r: sum(1 for j in r if re.search(r"[A-Za-z]{2}", self.words[j][4])), default=[])
+        if sum(1 for j in longest if re.search(r"[A-Za-z]{2}", self.words[j][4])) < 5:
+            return False
+        figs = []                                  # table figures: right of each line's row label (no serial nos.)
+        for m in range(line + 1, min(len(self.lines), line + 12)):
+            lab = max((self.words[j][2] for j in self.lines[m] if re.search(r"[A-Za-z]{2}", self.words[j][4])),
+                      default=None)
+            if lab is not None:
+                figs += [j for j in self.lines[m] if self._digit_figure(j) and self.words[j][0] > lab]
+        if not figs:
+            return True
+        x0, x1 = min(self.words[j][0] for j in figs), max(self.words[j][2] for j in figs)
+        span = min(self.words[longest[-1]][2], x1) - max(self.words[longest[0]][0], x0)
+        # one phrase over (nearly) every column decides no column; a phrase running in from the label area over
+        # half the columns or more is a title too (a group row sits over the columns only)
+        from_labels = self.words[longest[0]][0] < x0 - 3.0 * self.h
+        return span >= 0.85 * (x1 - x0) or (from_labels and span >= 0.5 * (x1 - x0))
 
     def is_header_line(self, line: int) -> bool:
         return any(_is_header_word(self.words[i][4]) for i in self.lines[line])

@@ -489,3 +489,36 @@ def test_page_title_date_never_heads_a_column():
     right, _ = rg.settle_page([[_cell("Total Income", "Quarter Ended > 30.09.2025", "8,262.96")]], words)
     assert not _conf(wrong, "8,262.96")
     assert _conf(right, "8,262.96") == "position"
+
+
+def test_group_rows_are_not_titles():
+    """Review round 6: a group row split into phrases must stay in the band (it tells repeated dates apart)."""
+    for left, right in (("For the quarter ended", "For the year ended"), ("Standalone Results", "Consolidated Results"),
+                        ("Segment Revenue", "Segment Results")):
+        words = []
+        x = 180
+        for t in left.split():
+            words.append(_w(x, 10, t)); x += 5 * len(t) + 5
+        x = 380
+        for t in right.split():
+            words.append(_w(x, 10, t)); x += 5 * len(t) + 5
+        words += [_w(180, 25, "31.03.2025"), _w(260, 25, "31.03.2024"), _w(380, 25, "31.03.2025"), _w(460, 25, "31.03.2024"),
+                  _w(10, 40, "Revenue"), _w(185, 40, "100"), _w(265, 40, "90"), _w(385, 40, "400"), _w(465, 40, "350"),
+                  _w(10, 55, "Cost"), _w(185, 55, "60"), _w(265, 55, "50"), _w(385, 55, "200"), _w(465, 55, "150")]
+        assert not rg.Page(words).title_line(0), left
+        cells, _ = rg.settle_page([[_cell("Revenue", f"{right} > 31.03.2025", "100")]], words)
+        assert not _conf(cells, "100"), right
+
+
+def test_merged_column_headers_and_serial_columns_are_not_titles():
+    """p057 / p003 (real pages): "SI. Particulars Quarter Quarter Nine Month Year ended" and two "For the year ended
+    ..." headers run together are column headers, never a title."""
+    words = [_w(10, 10, "SI."), _w(30, 10, "Particulars"), _w(200, 10, "Quarter"), _w(240, 10, "Quarter"),
+             _w(280, 10, "Nine"), _w(302, 10, "Month"), _w(332, 10, "Year"), _w(355, 10, "ended"),
+             _w(10, 25, "Revenue"), _w(205, 25, "10"), _w(245, 25, "12"), _w(285, 25, "30"), _w(335, 25, "40")]
+    assert not rg.Page(words).title_line(0)
+    words = [_w(150, 10, "For"), _w(168, 10, "the"), _w(186, 10, "year"), _w(209, 10, "ended"), _w(237, 10, "31"),
+             _w(250, 10, "March"), _w(278, 10, "2024"), _w(301, 10, "For"), _w(319, 10, "the"), _w(337, 10, "year"),
+             _w(360, 10, "ended"), _w(388, 10, "31"), _w(401, 10, "March"), _w(429, 10, "2023"),
+             _w(10, 25, "Revenue"), _w(205, 25, "10"), _w(380, 25, "12")]
+    assert not rg.Page(words).title_line(0)
