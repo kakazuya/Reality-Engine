@@ -221,7 +221,7 @@ def test_names_subsidiary_near_sentence_lookback_boundaries_and_including():
           "if you look at, of which Rs. 162 crores is Navkar.")
     q1 = "revenue from operations on a Y-o-Y basis, if you look at, of which Rs."
     pos1 = t1.find(q1)
-    assert lt.names_subsidiary_near(t1, pos1, pos1 + len(q1), "NAVKARCORP", names, parent) is True
+    assert lt.names_subsidiary_near(t1, pos1, pos1 + len(q1), "NAVKARCORP", names, parent) == "sentence"
 
     # Subject in preceding sentence within 3 sentences of the same paragraph
     t2 = ("Navkar Corporation delivered strong operational and financial results in Q1 FY26. "
@@ -230,7 +230,7 @@ def test_names_subsidiary_near_sentence_lookback_boundaries_and_including():
           "The revenue from operations rose to Rs. 138 crores, reflecting a 17% increase.")
     q2 = "revenue from operations rose to Rs. 138 crores"
     pos2 = t2.find(q2)
-    assert lt.names_subsidiary_near(t2, pos2, pos2 + len(q2), "NAVKARCORP", names, parent) is True
+    assert lt.names_subsidiary_near(t2, pos2, pos2 + len(q2), "NAVKARCORP", names, parent) == "lookback"
 
     # More than 3 sentences back stops
     t_far = (
@@ -239,7 +239,7 @@ def test_names_subsidiary_near_sentence_lookback_boundaries_and_including():
         "The revenue from operations rose to Rs. 138 crores."
     )
     pos_far = t_far.find(q2)
-    assert lt.names_subsidiary_near(t_far, pos_far, pos_far + len(q2), "NAVKARCORP", names, parent) is False
+    assert lt.names_subsidiary_near(t_far, pos_far, pos_far + len(q2), "NAVKARCORP", names, parent) is None
 
     # Stops early when a preceding sentence names the parent or another company
     t_stop = (
@@ -248,7 +248,7 @@ def test_names_subsidiary_near_sentence_lookback_boundaries_and_including():
         "The revenue from operations rose to Rs. 138 crores."
     )
     pos_stop = t_stop.find(q2)
-    assert lt.names_subsidiary_near(t_stop, pos_stop, pos_stop + len(q2), "NAVKARCORP", names, parent) is False
+    assert lt.names_subsidiary_near(t_stop, pos_stop, pos_stop + len(q2), "NAVKARCORP", names, parent) is None
 
     # Stops at blank line or speaker line
     t_speaker = (
@@ -257,36 +257,36 @@ def test_names_subsidiary_near_sentence_lookback_boundaries_and_including():
     )
     q3 = "EBITDA was at INR134 crores"
     pos3 = t_speaker.find(q3)
-    assert lt.names_subsidiary_near(t_speaker, pos3, pos3 + len(q3), "NAVKARCORP", names, parent) is False
+    assert lt.names_subsidiary_near(t_speaker, pos3, pos3 + len(q3), "NAVKARCORP", names, parent) is None
 
     t_blank = (
         "Navkar Corporation delivered strong operational results.\n\n"
         "H1 of FY26, it is -- EBITDA was at INR134 crores from Fujairah."
     )
     pos4 = t_blank.find(q3)
-    assert lt.names_subsidiary_near(t_blank, pos4, pos4 + len(q3), "NAVKARCORP", names, parent) is False
+    assert lt.names_subsidiary_near(t_blank, pos4, pos4 + len(q3), "NAVKARCORP", names, parent) is None
 
     # "including X" list does not attribute the parent segment sentence to the subsidiary
     t_inc = ("Overall, Logistics business, including Navkar and the rakes business has generated a "
              "revenue from operation of INR237 crores")
     q_inc = "revenue from operation of INR237 crores"
     pos_inc = t_inc.find(q_inc)
-    assert lt.names_subsidiary_near(t_inc, pos_inc, pos_inc + len(q_inc), "NAVKARCORP", names, parent) is False
+    assert lt.names_subsidiary_near(t_inc, pos_inc, pos_inc + len(q_inc), "NAVKARCORP", names, parent) is None
 
     # Subsidiary as subject before "including" still counts
     t_subj = "Navkar, including its ICDs, generated revenue of INR163 crores."
     pos_subj = t_subj.find("revenue of INR163 crores")
-    assert lt.names_subsidiary_near(t_subj, pos_subj, pos_subj + 24, "NAVKARCORP", names, parent) is True
+    assert lt.names_subsidiary_near(t_subj, pos_subj, pos_subj + 24, "NAVKARCORP", names, parent) == "sentence"
 
     # Parent check via shared names_company_near helper
     t_parent = "JSW Infrastructure expects capex of Rs. 4,000 crores in FY26."
-    assert lt.names_company_near(t_parent, 0, len(t_parent), parent) is True
+    assert lt.names_company_near(t_parent, 0, len(t_parent), parent) == "sentence"
     t_parent_lookback = (
         "JSW continues to expand port capacity. "
         "The total capital expenditure for the project is estimated at Rs. 380 crores."
     )
     q_capex = "estimated at Rs. 380 crores"
     pos_c = t_parent_lookback.find(q_capex)
-    assert lt.names_company_near(t_parent_lookback, pos_c, pos_c + len(q_capex), parent) is True
+    assert lt.names_company_near(t_parent_lookback, pos_c, pos_c + len(q_capex), parent) == "lookback"
     t_none = "The total capital expenditure for the project is estimated at Rs. 380 crores."
-    assert lt.names_company_near(t_none, 0, len(t_none), parent) is False
+    assert lt.names_company_near(t_none, 0, len(t_none), parent) is None

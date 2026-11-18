@@ -201,9 +201,11 @@ def _paragraph_bounds(text: str, lo: int, hi: int) -> tuple[int, int]:
 
 def _search_sentences_near(text: str | None, start: int, end: int, patterns: list[tuple[str, int]],
                            lookback: int = 3, *, exclude_including: bool = False,
-                           stop_pred: Callable[[str], bool] | None = None) -> bool:
+                           stop_pred: Callable[[str], bool] | None = None) -> str | None:
+    """Return ``'sentence'`` if ``patterns`` match the holding sentence, ``'lookback'`` if they
+    match within ``lookback`` preceding sentences of the same paragraph, else ``None``."""
     if not text or not patterns:
-        return False
+        return None
     n = len(text)
     lo = max(0, min(start, n))
     hi = max(lo, min(end, n))
@@ -225,21 +227,21 @@ def _search_sentences_near(text: str | None, start: int, end: int, patterns: lis
     for i in range(first_idx, last_idx + 1):
         a, b = spans[i]
         if _sentence_matches_patterns(para[a:b], patterns, exclude_including=exclude_including):
-            return True
+            return "sentence"
     for i in range(first_idx - 1, max(-1, first_idx - 1 - lookback), -1):
         a, b = spans[i]
         sent = para[a:b]
         if stop_pred is not None and stop_pred(sent):
             break
         if _sentence_matches_patterns(sent, patterns, exclude_including=exclude_including):
-            return True
-    return False
+            return "lookback"
+    return None
 
 
 def names_company_near(text: str | None, start: int, end: int, names: Iterable[str] | str | None,
-                       lookback: int = 3) -> bool:
-    """True when the sentence holding ``text[start:end]`` or up to ``lookback`` preceding sentences
-    in the same paragraph name a distinctive token of ``names``."""
+                       lookback: int = 3) -> str | None:
+    """Return ``'sentence'`` or ``'lookback'`` when the sentence holding ``text[start:end]`` or up to
+    ``lookback`` preceding sentences in the same paragraph name a distinctive token of ``names``, else ``None``."""
     patterns = _company_patterns(names)
     return _search_sentences_near(
         text, start, end, patterns, lookback=lookback,
@@ -249,9 +251,10 @@ def names_company_near(text: str | None, start: int, end: int, names: Iterable[s
 
 def names_subsidiary_near(text: str | None, start: int, end: int, symbol: str,
                           company_names: Iterable[str] = (), parent: str | None = None,
-                          lookback: int = 3) -> bool:
-    """True when the sentence holding ``text[start:end]`` or up to ``lookback`` preceding sentences
-    in the same paragraph name the store's own company (excluding ``including X`` lists)."""
+                          lookback: int = 3) -> str | None:
+    """Return ``'sentence'`` or ``'lookback'`` when the sentence holding ``text[start:end]`` or up to
+    ``lookback`` preceding sentences in the same paragraph name the store's own company (excluding
+    ``including X`` lists), else ``None``."""
     patterns = _subsidiary_patterns(symbol, company_names, parent)
     return _search_sentences_near(
         text, start, end, patterns, lookback=lookback, exclude_including=True,

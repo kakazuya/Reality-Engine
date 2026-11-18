@@ -2031,7 +2031,7 @@ def test_parent_call_kpi_context_and_including_rules(tmp_path):
     c.close()
 
     out = tmp_path / "kpi_parent_r1.db"
-    kpi.run(str(out), ["NAVKARCORP"], None, raw_root=None, pages_db=pages)
+    stats = kpi.run(str(out), ["NAVKARCORP"], None, raw_root=None, pages_db=pages)
     con = sqlite3.connect(out)
     rows = con.execute(
         "SELECT doc_key, metric, value, entity FROM kpi_series WHERE symbol='NAVKARCORP'"
@@ -2042,9 +2042,61 @@ def test_parent_call_kpi_context_and_including_rules(tmp_path):
     own_by = {(m, v): ent for dk, m, v, ent in rows if dk == "own/call.pdf"}
 
     assert parent_by[("revenue", 162.0)] == "NAVKARCORP"
-    assert parent_by[("revenue", 138.0)] == "NAVKARCORP"
+    assert ("revenue", 138.0) not in parent_by
+    assert stats["NAVKARCORP"]["parent_call_ambiguous"] == 1
     assert parent_by[("revenue", 237.0)] == "JSW Infrastructure Limited"
     assert parent_by[("ebitda", 134.0)] == "JSW Infrastructure Limited"
 
     for key in (("revenue", 162.0), ("revenue", 138.0), ("revenue", 237.0), ("ebitda", 134.0)):
         assert own_by[key] == "NAVKARCORP"
+
+
+def test_parent_call_kpi_drops_ambiguous_lookback_and_counts_stat(tmp_path):
+    """T-223 round 4: when a subsidiary appears only in look-back sentences, kpi drops the row and
+    counts ``parent_call_ambiguous``; a normal doc keeps the row unchanged."""
+    pages = tmp_path / "pages_parent_r4.db"
+    c = sqlite3.connect(pages)
+    c.executescript("""
+      CREATE TABLE company(symbol TEXT, isin TEXT, bse_code TEXT, sector TEXT, industry TEXT,
+                           family TEXT, name TEXT);
+      CREATE TABLE doc(doc_key TEXT, symbol TEXT, doc_type TEXT, title TEXT, filing_date TEXT, known_at TEXT,
+                       source_path TEXT, sha256 TEXT, pages INT, source_record TEXT, known_at_source TEXT);
+      CREATE TABLE doc_page(doc_key TEXT, page INT, text TEXT, method TEXT, known_at TEXT);
+    """)
+    c.execute("INSERT INTO company VALUES('NAVKARCORP','INE278M01019','539332',NULL,NULL,NULL,"
+              "'Navkar Corporation Limited')")
+    parent_title = ("transcript of investor conference call 22 07 2025 - parent company call: "
+                    "JSW Infrastructure Limited (linked from BSE filing 4b6379f4-6b99-404b-8d2f-587d87973770)")
+    normal_title = "transcript of investor conference call 22 07 2025 (linked from BSE filing own)"
+    p1 = (
+        "Q1 FY26 Earnings Conference Call\n"
+        "...share of third-party stands at a record high of 52%... Navkar Corporation has delivered an "
+        "outstanding performance in the first quarter of FY26, highlighted by a strong recovery in "
+        "operational volumes and a return to profitability. Total revenue for the quarter stood at "
+        "Rs. 1,314 crores, reflecting a growth of 19% year-on-year."
+    )
+    c.execute("INSERT INTO doc VALUES('parent/r4.pdf','NAVKARCORP','transcript',?,'2025-07-22',"
+              "'2025-07-22T18:00:00',NULL,'sha_p',1,'','')", (parent_title,))
+    c.execute("INSERT INTO doc_page VALUES('parent/r4.pdf',1,?,'script_text','2025-07-22')", (p1,))
+    c.commit()
+    c.close()
+
+    out_p = tmp_path / "kpi_parent_r4.db"
+    stats_p = kpi.run(str(out_p), ["NAVKARCORP"], None, raw_root=None, pages_db=pages)
+    con = sqlite3.connect(out_p)
+    assert con.execute("SELECT metric, value, entity FROM kpi_series WHERE symbol='NAVKARCORP'").fetchall() == []
+    con.close()
+    assert stats_p["NAVKARCORP"]["parent_call_ambiguous"] == 1
+
+    # Same text without parent-call label keeps the row as NAVKARCORP
+    c = sqlite3.connect(pages)
+    c.execute("UPDATE doc SET title=? WHERE doc_key='parent/r4.pdf'", (normal_title,))
+    c.commit()
+    c.close()
+    out_n = tmp_path / "kpi_own_r4.db"
+    stats_n = kpi.run(str(out_n), ["NAVKARCORP"], None, raw_root=None, pages_db=pages)
+    con = sqlite3.connect(out_n)
+    got_n = con.execute("SELECT metric, value, entity FROM kpi_series WHERE symbol='NAVKARCORP'").fetchall()
+    con.close()
+    assert ("revenue", 1314.0, "NAVKARCORP") in got_n
+    assert stats_n["NAVKARCORP"].get("parent_call_ambiguous", 0) == 0

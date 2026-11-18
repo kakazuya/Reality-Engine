@@ -3555,12 +3555,16 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                 if parent:
                     qpos = text.find(r.quote) if r.quote else -1
                     if qpos >= 0:
-                        named = linked_transcripts.names_subsidiary_near(
+                        sub_where = linked_transcripts.names_subsidiary_near(
                             text, qpos, qpos + len(r.quote), sym, company_names, parent)
                     else:
-                        named = linked_transcripts.names_subsidiary_near(
+                        sub_where = linked_transcripts.names_subsidiary_near(
                             r.quote or "", 0, len(r.quote or ""), sym, company_names, parent)
-                    if not named:
+                    if sub_where == "lookback":
+                        # kpi_series has no entity_unsure flag: drop ambiguous look-back-only rows on parent calls.
+                        st["parent_call_ambiguous"] = st.get("parent_call_ambiguous", 0) + 1
+                        continue
+                    if sub_where is None:
                         # kpi_series has no entity_unsure flag, so a no-name sentence on a parent call takes the parent.
                         row_entity = parent
                 yield dict(symbol=sym, metric=r.metric, dimension=row_dim, value=r.value, unit=r.unit, scale=r.scale,

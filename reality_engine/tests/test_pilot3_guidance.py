@@ -1474,7 +1474,7 @@ def test_parent_call_guidance_lookback_and_including():
     guidance.run(str(path), ["NAVKARCORP"])
     got = rows(path, "symbol='NAVKARCORP'")
     by_low = {r["low"]: (r["entity"], r["entity_unsure"]) for r in got}
-    assert by_low[18.0] == ("", 0)
+    assert by_low[18.0] == ("", 1)
     assert by_low[22.0] == ("JSW Infrastructure Limited", 1)
     assert by_low[500.0] == ("JSW Infrastructure Limited", 1)
 
