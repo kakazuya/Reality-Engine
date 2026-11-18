@@ -1500,9 +1500,13 @@ def _choose_rows(values: dict, roles: list, end: str, xbrl: dict, basis: str, sc
                     xbrl_conflicts += 1
             total_pref = 1 if (xbrl_matches == 0 and item in _TOTAL_ITEMS
                                and _row_label(values, item, row).startswith("total")) else 0
-            ident_hits = _row_ident_hits(item, val_by_col, values, roles, decimals, eps_decimals, scale, tol)
+            ident_hits = (_row_ident_hits(item, val_by_col, values, roles, decimals, eps_decimals, scale, tol)
+                          if (xbrl_matches > 0 or item in ("total_income", "total_expenses",
+                                                           "pbt_before_exceptional", "pbt", "pat",
+                                                           "total_comprehensive_income")) else 0)
+            read_tie = len(val_by_col) if xbrl_matches > 0 else 0
             key = (xbrl_matches, -xbrl_conflicts, cur_match, -round(total_diff, 6),
-                   total_pref, ident_hits, len(val_by_col), -row)
+                   total_pref, ident_hits, read_tie, -row)
             if best_key is None or key > best_key:
                 best_key = key
                 best = row
@@ -2098,24 +2102,47 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             cell.get("ocr") and not cell.get("agreed") and cell["status"] not in CHECK_OK
             for cells in columns.values() for cell in cells.values()
         ):
+            def _run_probe(pdict: dict[str, dict]) -> None:
+                _derive_tax(pdict)
+                for cells in pdict.values():
+                    _check_column(cells, rupee_tol, ambiguous)
+                    _eps_ok(cells, shares)
+                _cross_column_marks(pdict, end, rupee_tol)
+                _assign_status(pdict, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
+                _derive_revenue(pdict)
+                for cells in pdict.values():
+                    _check_column(cells, rupee_tol, ambiguous)
+                    _eps_ok(cells, shares)
+                _assign_status(pdict, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
+
             probe = {r: {k: dict(v) for k, v in c.items()} for r, c in columns.items()}
             for role, pending in recheck_layer.items():
                 for item, cell in pending.items():
                     probe[role][item] = dict(cell, _layer_try=True)
-            for role, pending in disagree_probe.items():
-                for item, cell in pending.items():
-                    probe[role][item] = cell
-            _derive_tax(probe)
-            for cells in probe.values():
-                _check_column(cells, rupee_tol, ambiguous)
-                _eps_ok(cells, shares)
-            _cross_column_marks(probe, end, rupee_tol)
-            _assign_status(probe, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
-            _derive_revenue(probe)
-            for cells in probe.values():
-                _check_column(cells, rupee_tol, ambiguous)
-                _eps_ok(cells, shares)
-            _assign_status(probe, end, xbrl, basis, decimals, scale, eps_dec, annual_facts=annual_facts)
+            _run_probe(probe)
+            for role, cells in columns.items():
+                for item, cell in list(cells.items()):
+                    if item == "_fails" or cell["status"] in CHECK_OK:
+                        continue
+                    pcell = probe.get(role, {}).get(item)
+                    if pcell is not None and pcell["status"] in CHECK_OK and _close(
+                        cell["value"], pcell["value"], 1e-9
+                    ):
+                        cells[item] = pcell
+            if any(
+                disagree_probe.get(r, {}).get(it) is not None and (columns[r].get(it) is None or columns[r][it]["status"] not in CHECK_OK)
+                for r in disagree_probe for it in disagree_probe[r]
+            ):
+                probe = {r: {k: dict(v) for k, v in c.items()} for r, c in columns.items()}
+                for role, pending in recheck_layer.items():
+                    for item, cell in pending.items():
+                        if item not in probe[role] or probe[role][item]["status"] not in CHECK_OK:
+                            probe[role][item] = dict(cell, _layer_try=True)
+                for role, pending in disagree_probe.items():
+                    for item, cell in pending.items():
+                        if item not in probe[role] or probe[role][item]["status"] not in CHECK_OK:
+                            probe[role][item] = cell
+                _run_probe(probe)
             for role, pending in recheck_layer.items():
                 for item, raw_cell in pending.items():
                     pcell = probe.get(role, {}).get(item)
