@@ -1061,7 +1061,11 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
         f"{bse_base}r_img_hdr.pdf": res_img_hdr_pdf,
         f"{bse_base}r_short.pdf": res_short_pdf,
         f"{bse_base}r_bad.pdf": res_bad_pdf,
-        "https://navkar.com/other_co_tx.pdf": res_img_hdr_pdf,
+        "https://navkar.com/other_co_tx.pdf": _make_pdf([
+            "To, National Stock Exchange of India Ltd.\nQ2 FY25 Earnings Conference Call\n"
+            "Moderator: Ladies and gentlemen, good day and welcome to the conference call.",
+            "Management remarks.", "Questions and answers.", "Closing remarks.",
+        ]),
         f"{bse_base}r_sha.pdf": held_res_pdf,
         f"{bse_base}ar_ok.pdf": ar_ok_pdf,
         f"{bse_base}ar_short.pdf": ar_short_pdf,
