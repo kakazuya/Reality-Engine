@@ -8,7 +8,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 |---|---|---|---|---|---|---|---|---|---|
 | R-013 | fix_written | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general | c01, c02, c03, c04, c05, c07, c08, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c23, c24, c25, c26, c27, c28, c29, c30, c32, c33, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c89, c90, c91 |
 | R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
-| R-014 | fix_written | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62 |
+| R-014 | fix_written | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-020 | fix_written | wrong | 20/91 (scan) | 3 |  | 60 | comparatives | general | c01, c02, c03, c04, c05, c07, c08, c09, c10, c11, c13, c14, c15, c16, c17, c18, c19, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c41, c42, c43, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c88, c89, c90, c91 |
 | R-019 | fix_written | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
 | R-017 | fix_written | wrong | 12/91 (suspect) | 3 | 4 (4) | 48 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c48, c49, c50, c51, c52, c53, c54, c55, c56, c59, c60, c61, c62, c63, c64, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
@@ -19,7 +19,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-007 | open | wrong |  | 3 |  |  | kpi | general |  |
 | R-010 | fix_written | corrupt |  | 2 |  |  | pages | general | c01, c03, c04, c10, c15, c16, c19, c22, c24, c25, c26, c28, c30, c50, c51, c60, c72, c80, c82, c83, c84, c85, c89, c91 |
 | R-011 | fix_written | missed |  | 1 |  |  | transcripts | general |  |
-| R-012 | open | missed |  | 1 |  |  | docs_collect | general |  |
+| R-012 | fix_written | missed |  | 1 |  |  | docs_collect | general | c08, c27, c29, c33, c38, c56, c71, c73, c81 |
 | R-003 | fixed |  |  |  |  |  | events | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
 | R-004 | fixed |  |  |  |  |  | stores | general | c01, c02, c03, c04, c05, c06, c07, c08, c09 |
 | R-005 | fixed |  |  |  |  |  | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10 |
@@ -170,18 +170,18 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Tags:** transcripts, ocr; **scope:** general
 - **Stores repaired:** -; runs: -
 
-## R-012 (open, part `docs_collect`, opened 2026-11-16)
+## R-012 (fix_written, part `docs_collect`, opened 2026-11-16)
 
 1. **Why it had to be done** (question that exposed it, c26): Why: a company whose transcripts are only links has no call statements or guidance at all
 2. **What the problem was:** 15 of 109 transcript filings in the first 36 stores are a one-page letter with a link to the company website (c26 NELCAST 11 of 11, c08 NAVKARCORP 3 of 3, c07 1 of 12) **Root cause:** the exchange filing holds the cover letter only; the transcript PDF sits on the company site
 3. **What was missing:** the linked transcript PDFs
-4. **How it was fixed:** not written: a general fetcher that reads the URL (or the named pdf) from a 1-3 page transcript letter, downloads it to Drive via raw_store, and adds it as the transcript document
-5. **What can come next:** write the fetcher after the build; measure on all 91 stores
+4. **How it was fixed:** 18 Nov (T-223, Wolf): pilot3/link_follow.py classifies each link_only cover letter (transcript/deck/audio/invitation), resolves PDFs, investor pages and short links with page/company/date/same-call checks, also fetches exchange transcripts/decks never downloaded and searches company sites for companies lacking them; documents enter via the store's raw/manifest.csv and store_repair --part docs_collect. Root cause found on the way: 17 of 323 manifest rows bucketed concall_audio_link were full transcripts that docs_collect dropped; now kept when their pages read as a call. filings: NSE docs nse_<seq_id>.pdf now match (c12 0->206 held); status link_held. All-91 plan: of 322 link letters 157 invitations, 84 audio, 4 new transcripts; 30 new docs in 9 stores. Written (hand-read diffs): c29 +6 decks, c38 +4 transcripts/+841 statements, c27 +3, c56 +8 (+1,575 statements), c33 +2, c73 +1, c08 +1 (joint JSW-Navkar call), c71 +1, c81 +1. c59 VIDHIING held: its repair also drops 3 as-reported FY24 ar_note rows (Eagle's part).
+5. **What can come next:** round 4 (agy): stricter transcript accept (moderator line), letterhead other_company, results/annual-report not_fetched fetch; then all 91 stores; NAVKARCORP parent JSW calls await Shivam
 - **Kind:** missed (-); **severity:** - companies (-); **criticality:** 1; **trial questions failed:** -; **priority:** -
-- **Code:** -
-- **Store tables touched:** doc, doc_page, transcript_statement
+- **Code:** reality_engine/pilot3/link_follow.py, reality_engine/pilot3/filings.py::_match_filings_to_docs, _process_symbol, reality_engine/pilot3/docs_collect.py::collect_manifest, _audio_link_is_transcript
+- **Store tables touched:** doc, doc_page, transcript_statement, transcript_question, guidance, filing
 - **Tags:** transcripts, raw_fetch; **scope:** general
-- **Stores repaired:** -; runs: -
+- **Stores repaired:** c08, c27, c29, c33, c38, c56, c71, c73, c81; runs: 20261118T152020, 20261118T152955
 
 ## R-013 (fix_written, part `comparatives`, opened 2026-11-17)
 
@@ -202,12 +202,12 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 2. **What the problem was:** 28 of 182 trial-1 answers graded raw_missing: the filing that states the answer is not in the store. 37 of 91 stores hold no call transcript, 30 no investor deck, 27 neither (e.g. GAYAPROJ, NSIL, NILKAMAL, DHANBANK, HYPERSOFT); NELCAST's 11 and RANEHOLDIN's transcripts are cover letters with a link only (R-012). **Root cause:** R-002 found most no-transcript companies filed none on the exchange, but company websites and BSE/NSE attachments were not searched for decks; link-only transcripts are not followed.
 3. **What was missing:** A per-company register of which calls and decks exist anywhere (exchange, company site), so 'not filed' and 'not fetched' are told apart.
 4. **How it was fixed:** Per-store filing register (pilot3.filings -> table filing + view filing_coverage) matching BSE ann and NSE JSONL listings against held doc/doc_page, marking pre-2024-04-01 unheld filings out_of_window, linking cross-exchange twins (held_twin via twin_filing_id within 2% size or single same-day kind_hint match), and flagging link_only cover letters via linked_transcripts.
-5. **What can come next:** Run filings on the 91 stores; widen linked_transcripts to cover letters typed announcement; fetch missing filings and IR pages.
+5. **What can come next:** Filing register on all 91 (18 Nov, with NSE seq_id fix). Link follower (R-012) wrote 27 docs into 9 stores; site finder: 37 company sites hold no call documents, 2 no website, 2 unreachable (ESAF blocks scripts); next: results/AR not_fetched fetch, record no-call-held per company
 - **Kind:** missed (the call/deck that states the answer is not in the store: link-only or not fetched, or never filed (R-002: 34 of 37 no-transcript companies filed none on either exchange, so many of these cannot be fixed)); **severity:** 40/91 companies (scan); **criticality:** 1; **trial questions failed:** 27; **priority:** 67
 - **Code:** pilot3/filings.py::run, pilot3/schema.py::FILING_COVERAGE, pilot3/part_stamp.py::ORDER, pilot3/build.py::build
 - **Store tables touched:** filing
 - **Tags:** trial1, raw_missing; **scope:** general
-- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62; runs: 20261118T141441
+- **Stores repaired:** c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91; runs: 20261118T141441, 20261118T145000
 
 ## R-015 (open, part `comparatives`, opened 2026-11-17)
 
