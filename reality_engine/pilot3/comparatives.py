@@ -64,7 +64,7 @@ _RECON = re.compile(r"reconciliation\s+of|non[-\s]?ifrs")   # a non-IFRS reconci
 _TITLE = re.compile(r"\bresults\b")
 # A ratio or margin row is never a rupee line; a discontinued-only row is never the continuing/total line.
 _PCT_LABEL = re.compile(r"%|\bmargin")
-_DISCONTINUED_LABEL = re.compile(r"\bdiscontinu(?:ed|ing)\b|\bdiscounting\s+operations\b")
+_DISCONTINUED_LABEL = re.compile(r"\bdiscontinu(?:ed|ing)\b|\bdiscounting\s+operations\b|[-–]ounting\s+operations\b")
 _COST_ITEMS = ("finance_cost", "depreciation", "employee_cost", "total_expenses", "other_expenses",
                "cost_of_materials")
 _INCOME_ITEMS = ("revenue_from_operations", "total_income", "interest_income", "net_premium", "gross_premium")
@@ -853,13 +853,21 @@ def read_page(rows, ocr: bool = False) -> dict | None:
 
 
 # ------------------------------------------------------------------ XBRL side -------------------------------------------------------------
+class _XbrlIndex(defaultdict):
+    """``{(basis, period_end): {item: value}}`` tracking keys present ONLY in ``fin_quarter_xbrl_input``."""
+
+    def __init__(self) -> None:
+        super().__init__(dict)
+        self.input_only: set[tuple[str, str, str]] = set()
+
+
 def xbrl_index(conn: sqlite3.Connection, symbol: str) -> dict:
     """``{(basis, period_end): {item: value}}`` for the symbol's XBRL quarters.
 
     With a ``compute_start`` the quarters before the window live in ``fin_quarter_xbrl_input``; they are inputs
     only, but a printed prior-year column is checked against them (T-073).  The main table wins when both hold a
     quarter."""
-    values: dict = defaultdict(dict)
+    values = _XbrlIndex()
     tables = (["fin_quarter_xbrl_input"] if conn.execute(
         "SELECT 1 FROM sqlite_master WHERE name='fin_quarter_xbrl_input'").fetchone() else []) + ["fin_quarter_xbrl"]
     for table in tables:
@@ -867,6 +875,10 @@ def xbrl_index(conn: sqlite3.Connection, symbol: str) -> dict:
                 f"SELECT basis, period_end, line_item, value FROM {table} "
                 "WHERE symbol=? AND basis IN ('standalone','consolidated')", (symbol,)):
             values[(basis, end)][item] = value
+            if table == "fin_quarter_xbrl_input":
+                values.input_only.add((basis, end, item))
+            else:
+                values.input_only.discard((basis, end, item))
     return values
 
 
@@ -979,11 +991,15 @@ def _check_column(cells: dict, tol: float, ambiguous: set[str] | None = None) ->
 
 
 def _eps_ok(cells: dict, shares: float | None) -> None:
-    """EPS ~ pat / shares within 1.5%, when a share count is known."""
-    eps, pat = cells.get("eps_basic"), cells.get("pat")
-    if eps and pat and shares and shares > 0:
-        want = pat["value"] / shares
-        if abs(eps["value"] - want) <= max(0.015 * abs(want), 0.02):
+    """Basic and diluted EPS ~ pat / shares within 1.5%, when a share count is known."""
+    pat = cells.get("pat")
+    if not (pat and shares and shares > 0):
+        return
+    want = pat["value"] / shares
+    tol = max(0.015 * abs(want), 0.02)
+    for eps_item in ("eps_basic", "eps_diluted"):
+        eps = cells.get(eps_item)
+        if eps is not None and abs(eps["value"] - want) <= tol:
             eps["ident"] = "sum_ok"
 
 
@@ -1335,6 +1351,40 @@ def _eps_decimals(values: dict) -> int:
     return max(votes, key=lambda key: (votes[key], key)) if votes else 0
 
 
+def _resolve_eps_decimals(values: dict, roles: list, end: str, xbrl: dict, basis: str, scale: float,
+                          decimals: int, annual_facts: dict | None = None) -> int:
+    """Use the table's EPS decimal count, falling back to XBRL-confirmed 2 decimals when all EPS points were dropped."""
+    eps_dec = _eps_decimals(values)
+    if eps_dec or not xbrl or basis not in ("standalone", "consolidated"):
+        return eps_dec
+    if any(re.search(r"[.,](\d{1,2})[.,]?$", token["text"].strip().strip("()"))
+           for col in values.values() for item, tokens in col.items()
+           if item.startswith("eps_") for token in tokens):
+        return 0
+
+    def _hits(candidate_dec: int) -> int:
+        hits = 0
+        for at, role in enumerate(roles):
+            if not role:
+                continue
+            period_end, ptype = _role_period(role, end)
+            for item, tokens in values.get(at, {}).items():
+                if not item.startswith("eps_"):
+                    continue
+                for token in tokens:
+                    parsed = _parse_cell(item, token["text"], decimals, candidate_dec)
+                    if parsed is not None and _xbrl_ok(
+                        xbrl, basis, period_end, item, parsed[0],
+                        _tol(item, decimals, scale, token["text"], candidate_dec),
+                        ptype=ptype, annual_facts=annual_facts,
+                    ):
+                        hits += 1
+                        break
+        return hits
+
+    return 2 if _hits(2) > _hits(0) else 0
+
+
 def _tol(item: str, decimals: int, scale: float, text: str | None = None,
          eps_decimals: int | None = None) -> float:
     """2 units of the last printed decimal: rupees of the table's scale for a rupee line, its OWN printed
@@ -1358,34 +1408,104 @@ def _row_label(values: dict, item: str, row: int) -> str:
     return ""
 
 
+def _col_item_values(col_values: dict, name: str, decimals: int, eps_decimals: int, scale: float) -> list[float]:
+    """Parsed rupee values for ``name`` in one raw column, deriving ``tax = current_tax + deferred_tax`` if absent."""
+    tokens = col_values.get(name, [])
+    out: list[float] = []
+    for t in tokens:
+        parsed = _parse_cell(name, t["text"], decimals, eps_decimals)
+        if parsed is not None:
+            out.append(parsed[0] * (1.0 if name.startswith("eps_") else scale))
+    if not out and name == "tax" and "current_tax" in col_values and "deferred_tax" in col_values:
+        curs = _col_item_values(col_values, "current_tax", decimals, eps_decimals, scale)
+        dfrs = _col_item_values(col_values, "deferred_tax", decimals, eps_decimals, scale)
+        if curs and dfrs:
+            out.append(curs[0] + dfrs[0])
+    return out
+
+
+def _row_ident_hits(item: str, val_by_col: dict[int, float], values: dict, roles: list,
+                    decimals: int, eps_decimals: int, scale: float, tol: float) -> int:
+    """Count column arithmetic identities satisfied by placing ``val_by_col[at]`` for ``item``."""
+    hits = 0
+    for at, val in val_by_col.items():
+        col_values = values.get(at, {})
+        identities = _BANK_IDENTITIES if ("interest_income" in col_values or "operating_profit" in col_values) else _IDENTITIES
+        matched = False
+        for target, inputs in identities:
+            in_names = [n for n, _s in inputs]
+            if item == target:
+                choices = [_col_item_values(col_values, n, decimals, eps_decimals, scale) for n in in_names]
+                if all(choices):
+                    for combo in itertools.product(*choices):
+                        if _close(sum(v * s for v, (_n, s) in zip(combo, inputs)), val, tol):
+                            matched = True
+                            break
+            elif item in in_names:
+                targets = _col_item_values(col_values, target, decimals, eps_decimals, scale)
+                choices = [[val] if n == item else _col_item_values(col_values, n, decimals, eps_decimals, scale)
+                           for n in in_names]
+                if targets and all(choices):
+                    for tv in targets:
+                        if any(_close(sum(v * s for v, (_n, s) in zip(combo, inputs)), tv, tol)
+                               for combo in itertools.product(*choices)):
+                            matched = True
+                            break
+            if matched:
+                hits += 1
+                break
+    return hits
+
+
 def _choose_rows(values: dict, roles: list, end: str, xbrl: dict, basis: str, scale: float, decimals: int,
-                 tol: float, eps_decimals: int = 0) -> dict:
-    """One printed row per line item: the row whose CURRENT column is closest to XBRL wins (EPS printed three
-    times), then a row whose label starts with ``Total`` for a total, then the earliest row."""
-    current = roles.index("current") if "current" in roles else None
+                 tol: float, eps_decimals: int = 0, annual_facts: dict | None = None) -> dict:
+    """One printed row per line item: score across all XBRL-backed columns (most XBRL matches, fewest conflicts,
+    ``current`` match, smallest diff), then ``Total`` label for totals when no XBRL matches, then column
+    arithmetic, readable cells, and earliest row."""
+    role_slots = [(at, role, *_role_period(role, end)) for at, role in enumerate(roles) if role]
     chosen: dict = {}
     for item in {name for col in values.values() for name in col}:
         rows_present = sorted({t["row"] for col in values.values() for t in col.get(item, [])})
-        best = rows_present[0] if rows_present else None
-        if current is not None and len(rows_present) > 1:
-            best_diff = None
-            for row in rows_present:
-                token = next((t for t in values[current].get(item, []) if t["row"] == row), None)
+        if len(rows_present) <= 1:
+            chosen[item] = rows_present[0] if rows_present else None
+            continue
+        best_key = None
+        best = rows_present[0]
+        for row in rows_present:
+            xbrl_matches = 0
+            xbrl_conflicts = 0
+            cur_match = 0
+            total_diff = 0.0
+            val_by_col: dict[int, float] = {}
+            for at, role, period_end, ptype in role_slots:
+                token = next((t for t in values.get(at, {}).get(item, []) if t["row"] == row), None)
                 if token is None:
                     continue
                 parsed = _parse_cell(item, token["text"], decimals, eps_decimals)
-                if parsed:
-                    diff = _xbrl_diff(xbrl, basis, end, item,
-                                      parsed[0] * (1.0 if item.startswith("eps_") else scale),
-                                      _tol(item, decimals, scale, token["text"], eps_decimals))
-                    if diff is not None and (best_diff is None or diff < best_diff):
-                        best_diff = diff
-                        best = row
-        if current is None or len(rows_present) > 1:
-            if best == rows_present[0] and item in _TOTAL_ITEMS:
-                totals = [row for row in rows_present if _row_label(values, item, row).startswith("total")]
-                if totals:
-                    best = totals[0]
+                if parsed is None:
+                    continue
+                val = parsed[0] * (1.0 if item.startswith("eps_") else scale)
+                val_by_col[at] = val
+                matched_diff, conflict = _xbrl_conflict(
+                    xbrl, basis, period_end, item, val,
+                    _tol(item, decimals, scale, token["text"], eps_decimals),
+                    ptype=ptype, annual_facts=annual_facts,
+                )
+                if matched_diff is not None:
+                    xbrl_matches += 1
+                    total_diff += matched_diff
+                    if role == "current":
+                        cur_match = 1
+                elif conflict is not None:
+                    xbrl_conflicts += 1
+            total_pref = 1 if (xbrl_matches == 0 and item in _TOTAL_ITEMS
+                               and _row_label(values, item, row).startswith("total")) else 0
+            ident_hits = _row_ident_hits(item, val_by_col, values, roles, decimals, eps_decimals, scale, tol)
+            key = (xbrl_matches, -xbrl_conflicts, cur_match, -round(total_diff, 6),
+                   total_pref, ident_hits, len(val_by_col), -row)
+            if best_key is None or key > best_key:
+                best_key = key
+                best = row
         chosen[item] = best
     return chosen
 
@@ -1540,6 +1660,33 @@ def _parsed_cells(values, roles, chosen, decimals, eps_dec, scale, captions, rev
     return columns
 
 
+def _apply_cell_xbrl_status(cell: dict, xbrl: dict, basis: str, period_end: str, item: str,
+                            decimals: int, scale: float, eps_dec: int, ptype: str,
+                            annual_facts: dict | None = None) -> None:
+    """Resolve one cell's confirmation status against XBRL.
+
+    Pre-window ``fin_quarter_xbrl_input`` entries confirm matching figures (``xbrl_ok``) and block unconfirmed
+    ``repeat_ok`` guesses, but never override a self-consistent comparative column whose own page arithmetic
+    confirmed ``sum_ok`` when ``fin_quarter_xbrl`` holds no row for that quarter."""
+    matched_diff, conflict = _xbrl_conflict(
+        xbrl, basis, period_end, item, cell["value"],
+        _tol(item, decimals, scale, cell["raw"], eps_dec),
+        ptype=ptype, annual_facts=annual_facts)
+    if matched_diff is not None:
+        cell["status"] = "xbrl_ok"
+        cell.pop("xbrl_conflict", None)
+    elif conflict is not None and not (
+        cell.get("ident") == "sum_ok"
+        and ptype == "quarter"
+        and (basis, period_end, item) in getattr(xbrl, "input_only", ())
+    ):
+        cell["status"] = "unchecked"
+        cell["xbrl_conflict"] = conflict
+    else:
+        cell["status"] = cell.get("ident", "unchecked")
+        cell.pop("xbrl_conflict", None)
+
+
 def _assign_status(columns, end: str, xbrl: dict, basis: str, decimals: int, scale: float,
                    eps_dec: int, annual_facts: dict | None = None) -> None:
     """Set every cell's status: XBRL outranks arithmetic and repetition (match -> ``xbrl_ok``; mismatch against a held
@@ -1549,19 +1696,7 @@ def _assign_status(columns, end: str, xbrl: dict, basis: str, decimals: int, sca
         for item, cell in cells.items():
             if item == "_fails":
                 continue
-            matched_diff, conflict = _xbrl_conflict(
-                xbrl, basis, period_end, item, cell["value"],
-                _tol(item, decimals, scale, cell["raw"], eps_dec),
-                ptype=ptype, annual_facts=annual_facts)
-            if matched_diff is not None:
-                cell["status"] = "xbrl_ok"
-                cell.pop("xbrl_conflict", None)
-            elif conflict is not None:
-                cell["status"] = "unchecked"
-                cell["xbrl_conflict"] = conflict
-            else:
-                cell["status"] = cell.get("ident", "unchecked")
-                cell.pop("xbrl_conflict", None)
+            _apply_cell_xbrl_status(cell, xbrl, basis, period_end, item, decimals, scale, eps_dec, ptype, annual_facts)
             cell["period_end"], cell["ptype"] = period_end, ptype
 
 
@@ -1587,7 +1722,7 @@ def _cross_column_marks(columns, end: str, rupee_tol: float) -> None:
         return
     for item in (set(columns["current"]) & set(columns["preceding"]) & set(columns["ytd"])) - {"_fails"}:
         cur, pre, ytd = columns["current"][item], columns["preceding"][item], columns["ytd"][item]
-        ok = abs(cur["value"] + pre["value"] - ytd["value"]) <= (0.02 if item == "eps_basic" else rupee_tol)
+        ok = abs(cur["value"] + pre["value"] - ytd["value"]) <= (0.02 if item.startswith("eps_") else rupee_tol)
         if ok:
             for cell in (cur, pre, ytd):
                 cell.setdefault("ident", "sum_ok")
@@ -1682,15 +1817,8 @@ def _resolve_columns(columns: dict[str, dict], end: str, rupee_tol: float, ambig
         for cells in columns.values():
             rev = cells.get("revenue_from_operations")
             if rev is not None and rev.get("derived"):
-                matched_diff, conflict = _xbrl_conflict(
-                    xbrl, basis, rev["period_end"], "revenue_from_operations", rev["value"],
-                    _tol("revenue_from_operations", decimals, scale, rev["raw"], eps_dec),
-                    ptype=rev["ptype"], annual_facts=annual_facts)
-                if matched_diff is not None:
-                    rev["status"] = "xbrl_ok"
-                elif conflict is not None:
-                    rev["status"] = "unchecked"
-                    rev["xbrl_conflict"] = conflict
+                _apply_cell_xbrl_status(rev, xbrl, basis, rev["period_end"], "revenue_from_operations",
+                                        decimals, scale, eps_dec, rev["ptype"], annual_facts)
     return columns
 
 
@@ -1780,9 +1908,12 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         return []
     roles, basis, scale = choice["roles"], choice["basis"], choice["scale"]
     rupee_tol = _tol("total_income", decimals, scale)
-    eps_dec = table.get("eps_decimals", _eps_decimals(values))
+    eps_dec = table.get("eps_decimals")
+    if eps_dec is None:
+        eps_dec = _resolve_eps_decimals(values, roles, end, xbrl, basis, scale, decimals, annual_facts)
     shares = _shares(conn, symbol, basis, known_at)
-    chosen = _choose_rows(values, roles, end, xbrl, basis, scale, decimals, rupee_tol, eps_dec)
+    chosen = _choose_rows(values, roles, end, xbrl, basis, scale, decimals, rupee_tol, eps_dec,
+                          annual_facts=annual_facts)
     columns = _parsed_cells(values, roles, chosen, decimals, eps_dec, scale, table["labels"], review,
                             symbol, doc_key, page_no, ocr=ocr)
     if layer_only:
@@ -1818,10 +1949,14 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         if fill_choice is not None and fill_choice["basis"] == basis and fill_choice["scale"] == scale \
                 and {r for r in fill_choice["roles"] if r} == {r for r in roles if r}:
             fill_dec = fill_table["decimals"]
-            fill_eps = fill_table.get("eps_decimals", _eps_decimals(fill_table["values"]))
+            fill_eps = fill_table.get("eps_decimals")
+            if fill_eps is None:
+                fill_eps = _resolve_eps_decimals(fill_table["values"], fill_choice["roles"], end, xbrl, basis,
+                                                 scale, fill_dec, annual_facts)
             layer_ambiguous = _ambiguous_items(fill_table["values"])
             fill_chosen = _choose_rows(fill_table["values"], fill_choice["roles"], end, xbrl, basis, scale,
-                                       fill_dec, _tol("total_income", fill_dec, scale), fill_eps)
+                                       fill_dec, _tol("total_income", fill_dec, scale), fill_eps,
+                                       annual_facts=annual_facts)
             fill = _parsed_cells(fill_table["values"], fill_choice["roles"], fill_chosen, fill_dec, fill_eps,
                                  scale, fill_table["labels"], review, symbol, doc_key, page_no, ocr=(not ocr))
     scale_from_xbrl = table["scale"] is None
@@ -2025,15 +2160,18 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                         ocr_pending.add((doc_key, page_no, role, basis, "tax"))
             for role, cells in columns.items():
                 for item, cell in list(cells.items()):
-                    if item == "_fails" or cell["status"] in CHECK_OK or cell.get("agreed"):
+                    if item == "_fails" or cell["status"] in CHECK_OK:
                         continue
-                    if (role, item) in disagree_pairs or cell.get("src") == "layer":
+                    pcell = probe.get(role, {}).get(item)
+                    if pcell is not None and pcell["status"] in CHECK_OK and _close(
+                        cell["value"], pcell["value"], 1e-9
+                    ):
+                        cells[item] = pcell
+                        continue
+                    if cell.get("agreed") or (role, item) in disagree_pairs or cell.get("src") == "layer":
                         continue
                     if cell.get("ocr"):
-                        pcell = probe.get(role, {}).get(item)
-                        if pcell is not None and pcell["status"] in CHECK_OK:
-                            cells[item] = pcell
-                        elif ocr_pending is not None:
+                        if ocr_pending is not None:
                             ocr_pending.add((doc_key, page_no, role, basis, item))
                         else:
                             review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no,
@@ -2472,7 +2610,7 @@ def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: i
                 got.append(None if parsed is None else parsed[0])
             if any(g is None for g in got):
                 continue
-            if item == "eps_basic":
+            if item.startswith("eps_"):
                 score += 5 if abs(got[0] + got[1] - got[2]) <= 0.02 else 0
             else:
                 score += 5 if abs(got[0] + got[1] - got[2]) * scale <= tol else 0
