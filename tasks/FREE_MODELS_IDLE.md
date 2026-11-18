@@ -17,6 +17,10 @@ tests) once ingestion is done. Sources: `reader_watch.json` (free lists, refresh
   122 rows on a c09 results page). LongCat's reasoning cannot be turned off: ~200 s and ~14k output tokens a page,
   134 rows, so it needs many requests in flight. `beam-free` refuses image input (HTTP 400); it reads layout text only.
   Iceman: not used for page reading (Shivam 18 Nov).
+  30 hand-read truth pages, 19 Nov (T-225): Dots 86.1% precision / 92.0% recall, 2,979 tokens and 10.9 s a page, 0
+  wrong verified; HY4 reasoning off 80.4% / 71.9%, 4,963 tokens, 14.5 s, 6 wrong verified; HY4 low reasoning
+  (`hy4-flash-free@low`) 82.8% / 80.4%, 12,297 tokens, 57.3 s, drops units ("7.9" for "7.9%"). Shivam 19 Nov: HY4
+  runs with reasoning OFF only; its cells are rechecked with Dots later. `@low` stays registered but unused.
 - **Google**: per project and per model; Gemini Flash models have small daily caps (~20/day/project for 3.8 Flash).
 
 ## Idle (free, not used by ingestion)

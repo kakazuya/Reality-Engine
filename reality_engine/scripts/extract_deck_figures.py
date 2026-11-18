@@ -108,6 +108,9 @@ MODELS = {
     # empty answer (c09 results page: none -> 7.7 s, 122 rows; low / thinking-disabled -> 43 s, 0 rows).
     "hy4-flash-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 30,
                        "body": {"temperature": 0, "max_tokens": 8000, "reasoning_effort": "none"}},
+    # Same model with low reasoning and room to think (Shivam 18 Nov: test whether reasoning improves its figures).
+    "hy4-flash-free@low": {"api": "chat", "id": "hy4-flash-free", "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                           "body": {"temperature": 0, "max_tokens": 32000, "reasoning_effort": "low"}},
     "longcat-2.5-preview-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 35,
                                  "body": {"temperature": 0, "max_tokens": 8000, "thinking": {"type": "disabled"}}},
     # best labels on the 40-page test (96.3% identifiable, units 94%) but reasoning cannot be switched off:
