@@ -30,7 +30,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 ## R-001 (open, part `guidance`, opened 2026-11-16)
 
 1. **Why it had to be done** (question that exposed it, pilot10, n10): What guidance did management give on margins for the year, and did it change between calls?
-2. **What the problem was:** Worded guidance (no number) is missed, and widening the sentence patterns loses right rows on unseen stores **Root cause:** pilot3/guidance.py worded path: four worker rounds (T-214 fix B) each failed on fresh stores; tag-question ban ignores who speaks; accounting-policy pages are in scope
+2. **What the problem was:** Worded guidance (no number) is missed, and widening the sentence patterns loses right rows on unseen stores. Also wrong metric tags (18 Nov, c38 RANEHOLDIN, Rane Group Q4 FY26 call p12): 'ROCE for that business, I expect within 2 years to start exc[eeding 20%]' stored as ebitda_margin FY27 20 pct; same call, a margin sentence with no number stored as ebitda_margin with null low/high **Root cause:** pilot3/guidance.py worded path: four worker rounds (T-214 fix B) each failed on fresh stores; tag-question ban ignores who speaks; accounting-policy pages are in scope
 3. **What was missing:** a guidance reader that knows the document type and who is speaking (management vs analyst); a test set of worded-guidance sentences from unseen stores
 4. **How it was fixed:** not written; Claude to redesign per document type and speaker; evidence D:/RealityEngine/tg_build/fixB_evidence
 5. **What can come next:** Claude redesigns the worded path per document type and speaker, measured on unseen stores with zero right rows lost before it enters the build
