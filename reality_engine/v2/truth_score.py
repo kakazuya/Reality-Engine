@@ -24,7 +24,8 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from reality_engine.v2.reference_geom import layer_garbled, page_words, settle_page
+from reality_engine.v2.page_words import quality as page_words_quality
+from reality_engine.v2.reference_geom import page_words, settle_page
 from reality_engine.v2.reference_pages import _load_run_rows, _norm_value, parse_grid
 from reality_engine.v2.reference_vote import label_key, same_label
 
@@ -36,7 +37,7 @@ def truth_cells(path: Path) -> list[dict[str, str]]:
     return [r for r in parse_grid("\n".join(line for line in text.splitlines() if not line.startswith("#")))]
 
 
-_NOTE_REF = re.compile(r"\(?\s*(?:refer|see)?\s*notes?\s*(?:no\.?)?\s*\d+[a-z]?(?:\s*(?:and|&|,)\s*\d+[a-z]?)*\s*\)?", re.I)
+_NOTE_REF = re.compile(r"\(\s*(?:refer|see)?\s*notes?\s*(?:no\.?)?\s*\d{1,3}[a-z]?(?!\d)(?:\s*(?:and|&|,)\s*\d{1,3}[a-z]?(?!\d))*\s*(?:\([a-z0-9]+\))?\s*\)|(?:refer|see)\s+notes?\s*(?:no\.?)?\s*\d{1,3}[a-z]?(?!\d)", re.I)  # only "(Refer note 2)" / "refer note 2"
 
 
 def _col_ok(reader_col: str, truth_col: str) -> bool:
@@ -128,11 +129,20 @@ def checker_words(pdf: Path, ocr_dir: Path | None, mode: str = "fallback") -> An
     ocr_path = ocr_dir / f"{pdf.stem}.json" if ocr_dir else None
     if mode == "layer" or not ocr_path or not ocr_path.exists():
         return layer
-    if mode == "fallback" and layer and not layer_garbled(layer):
+    if mode == "fallback" and layer and page_words_quality(layer)[0] == "ok":   # same rule as page_words.words_for
         return layer
     import json
-    return [(float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4]))
-            for w in json.loads(ocr_path.read_text(encoding="utf-8")) if len(w) > 4]
+    try:
+        data = json.loads(ocr_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return layer
+    out = []
+    for w in data or []:
+        try:
+            out.append((float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4])))
+        except (TypeError, ValueError, IndexError):
+            continue
+    return out or layer
 
 
 def run(truth_dir: Path, pdf_pages: Path, runs: list[Path], ocr_dir: Path | None = None,

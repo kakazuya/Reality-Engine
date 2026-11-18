@@ -47,3 +47,11 @@ def test_note_reference_under_a_header_is_not_a_period():
     assert _col_ok("Quarter ended March 31, 2022 (Unaudited)",
                    "Quarter ended > March 31, 2022 > (Unaudited) (Refer note 2)")
     assert not _col_ok("Quarter ended March 31, 2021", "Quarter ended > March 31, 2022 > (Refer note 2)")
+
+
+def test_note_stripping_never_hides_a_real_header():
+    from reality_engine.v2.truth_score import _col_ok
+    assert not _col_ok("2024 > Note 3", "2024 > Note 2")
+    assert not _col_ok("Note 5 (Amount)", "Note 2 (Amount)")
+    assert not _col_ok("As at > 2023", "As at > Note 2, 2024")
+    assert not _col_ok("March 30, 2024", "Note 31 March 2024")

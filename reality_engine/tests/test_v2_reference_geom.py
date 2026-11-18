@@ -251,3 +251,58 @@ def test_ocr_second_look_confirms_a_value_the_layer_misprints():
     assert cells[0]["settled_by"] == "position" and cells[0]["how"] == "ocr"
     cells, _ = rg.settle_page([[_cell("Tax2", "Q1FY26", "(359.72)")]], layer, alt_words=ocr)
     assert not cells[0]["settled_by"]                     # OCR places it under Q2FY26, not Q1FY26
+
+
+# -- T-225 round 2: the independent review's failing inputs (agy 20261118T155709Z-739f82b1) ------------------
+
+def _conf(cells, value):
+    return next(c for c in cells if c["value_text"] == value)["settled_by"]
+
+
+def test_unprinted_number_in_reader_header_blocks_the_word_fallback():
+    words = [_w(200, 10, "31-Dec-23"), _w(300, 10, "31-Dec-22"),
+             _w(200, 25, "Shares"), _w(300, 25, "Amount"),
+             _w(10, 40, "Equity"), _w(205, 40, "100"), _w(305, 40, "50"),
+             _w(10, 55, "Other"), _w(205, 55, "200"), _w(305, 55, "60")]
+    cells, _ = rg.settle_page([[_cell("Equity", "31-Dec-21 > Shares", "100")]], words)
+    assert not _conf(cells, "100")
+
+
+def test_word_header_blank_rival_and_single_letter_columns():
+    words = [_w(200, 10, "India"), _w(300, 10, "Export"), _w(200, 25, "Gross"), _w(300, 25, "Gross"),
+             _w(10, 40, "Sales"), _w(205, 40, "100"), _w(305, 40, "-"),
+             _w(10, 55, "Other"), _w(205, 55, "20"), _w(305, 55, "30")]
+    cells, _ = rg.settle_page([[_cell("Sales", "Export > Gross", "100")]], words)
+    assert not _conf(cells, "100")
+    words = [_w(200, 10, "Segment"), _w(240, 10, "A"), _w(300, 10, "Segment"), _w(340, 10, "B"),
+             _w(10, 25, "Revenue"), _w(205, 25, "100"), _w(305, 25, "150"),
+             _w(10, 40, "Cost"), _w(205, 40, "60"), _w(305, 40, "70")]
+    cells, _ = rg.settle_page([[_cell("Revenue", "Segment B", "100"), _cell("Revenue", "Segment B", "150")]], words)
+    assert not _conf(cells, "100") and _conf(cells, "150") == "position"
+
+
+def test_word_header_does_not_bleed_into_the_next_column():
+    words = [_w(200, 10, "No."), _w(215, 10, "of"), _w(228, 10, "shares"), _w(262, 10, "Amount"),
+             _w(10, 25, "Opening"), _w(200, 25, "1,000"), _w(270, 25, "10"),
+             _w(10, 40, "Bonus"), _w(210, 40, "-"), _w(270, 40, "12")]
+    cells, _ = rg.settle_page([[_cell("Bonus", "No. of shares", "12")]], words)
+    assert not _conf(cells, "12")
+
+
+def test_month_year_headers_form_a_band_with_groups():
+    words = [_w(200, 10, "Consolidated"), _w(400, 10, "Standalone"),
+             _w(180, 25, "Mar'23"), _w(260, 25, "Dec22"), _w(380, 25, "Mar'23"), _w(460, 25, "Dec22"),
+             _w(10, 40, "Revenue"), _w(185, 40, "100"), _w(265, 40, "90"), _w(385, 40, "50"), _w(465, 40, "40"),
+             _w(10, 55, "Cost"), _w(185, 55, "60"), _w(265, 55, "55"), _w(385, 55, "30"), _w(465, 55, "25")]
+    cells, _ = rg.settle_page([[_cell("Revenue", "Consolidated > Mar'23", "50"),
+                                _cell("Revenue", "Standalone > Mar'23", "50")]], words)
+    assert all(c["settled_by"] != "position" or c["col_header"].startswith("Standalone") for c in cells)
+
+
+def test_well_formed_accepts_printed_variants():
+    for v in ("(12.9%)", "(12.5x)", "—0.45", "−0.45", "(-0.45)", "12.5X", "-₹1,234", "(€1,234)", "Rs.1,234",
+              "2.40crore*", "1,234‡", "1,234^", "{24,300)"):
+        assert rg.well_formed(v), v
+    assert not rg._figure_token("2.1.1") and not rg._figure_token("2022.01.31")
+    assert rg._figure_token("l,234.56")
+    assert not rg._is_header_word("45,67,89")
