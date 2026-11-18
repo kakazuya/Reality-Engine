@@ -212,7 +212,10 @@ def build(out: Path, part: str = "all", ocr_dbs=(), symbols=None, pages_db=None,
 
                 conn.commit()
                 conn.close()  # filings reads company/doc/doc_page from the db file and BSE/NSE sources
-                log["filings"] = {k: v for k, v in filings.run(out, symbols).items() if k != "link_only_rows"}
+                log["filings"] = {
+                    sym: {k: v for k, v in stats.items() if k not in ("link_only_rows", "twin_pairs")}
+                    for sym, stats in filings.run(out, symbols).items()
+                }
                 conn = sqlite3.connect(out)
             elif name == "stores":
                 log["stores"] = stores.build_stores(conn)

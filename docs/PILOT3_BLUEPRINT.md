@@ -35,7 +35,7 @@ Started 4 Nov 2026 (Eagle). Update it in the same commit as any change it descri
 
 **Schema version and numbered migrations (T-202, 12 Nov 2026).** Every store carries `schema_meta(key, value)`
 with `schema_version` and `migrated_at`; a store without it (every build before T-202) is version 0.
-`reality_engine/pilot3/schema.py` holds `MIGRATIONS`, the ordered, ADDITIVE changes from 0 to `LATEST = 12`:
+`reality_engine/pilot3/schema.py` holds `MIGRATIONS`, the ordered, ADDITIVE changes from 0 to `LATEST = 13`:
 
 | v | change (ticket) |
 |---|---|
@@ -51,6 +51,7 @@ with `schema_version` and `migrated_at`; a store without it (every build before 
 | 10 | the `page_atom` table + `(symbol, period)` / `(symbol, doc_key, page)` indexes (T-199) |
 | 11 | the `order_win` table (T-025) |
 | 12 | the `filing` table and `filing_coverage` view (T-223) |
+| 13 | `filing.twin_filing_id` and `filing_coverage` twin / `out_of_window` / `no_attachment` rules (T-223) |
 
 `migrate(conn)` applies the missing versions in order in one transaction and records the version; a second run is
 one SELECT (`--status` on a copy: `version` 10, `latest` 10, `pending` empty). `build.py` calls it once at the start
@@ -2015,11 +2016,11 @@ the notes (PP&E, CWIP, commitments, revenue break-up, finance costs, segments).
 
 ### 9t. Per-store filing register (T-223, store-repair note R-014, 18 Nov 2026)
 
-An empty store means not extracted, never "not held", until raw sources are checked. `pilot3/filings.py` (build part `filings` in `build.py`, in `part_stamp.ORDER` right after `docs_collect`; `store_diff` keys rows on `(exchange, filing_id, symbol)`) writes per-company `filing` rows and the `filing_coverage` view (per `symbol` x Indian FY quarter of `filed_at` where Q1=Apr-Jun x `kind_hint`: `filed`, `held`, `link_only`, `not_fetched`), so a store tells apart "never filed", "not fetched", and "only a cover letter with a link":
+An empty store means not extracted, never "not held", until raw sources are checked. `pilot3/filings.py` (build part `filings` in `build.py`, in `part_stamp.ORDER` right after `docs_collect`; `store_diff` keys rows on `(exchange, filing_id, symbol)`) writes per-company `filing` rows and the `filing_coverage` view (per `symbol` x Indian FY quarter of `filed_at` where Q1=Apr-Jun x `kind_hint`: `filed`, `held`, `link_only`, `twin`, `not_fetched`, `no_attachment`, excluding `out_of_window` and counting each twin pair once in `filed`), so a store tells apart "never filed", "not fetched", "held on the other exchange", "before window", and "only a cover letter with a link":
 
 - **Sources (read-only):** BSE `bse_announcements.db:ann` queried bounded by `SCRIP_CD = company.bse_code` via `connect_ro`; NSE JSONL listings under `D:/RealityEngine/raw/nse_announcements/<run folder>/<SYMBOL>.jsonl` (`tg_queue_2026-11-16`, `run_2026-10-28`, `pilot_2026-10-28`, `transcript_gap_2026-10-28`), deduplicated by `seq_id`; and held `doc` / `doc_page` rows in the store.
 - **Hint, never type:** `kind_hint` (`results`, `annual_report`, `transcript`, `deck`, `call_recording`, `call_intimation`, `rating`, `order_win`, `shareholding`, `other`) is classified from exchange labels only (`exchange_category`, `exchange_subcategory`, `headline`, BSE `NEWSSUB`) and is never written into `doc.doc_type` — a document is always typed by its own pages (`doc.doc_type`).
-- **Matching & statuses:** filings with an attachment match held docs first by attachment filename (`ATTACHMENTNAME` / basename of NSE `attchmntFile`) equal to basename of `doc.source_key`, else whitespace-normalised `doc.title` equal to the headline prefix and `doc.known_at` within 1 day of `filed_at` (paired 1-to-1 per exchange by smallest time gap). Status is `no_attachment` (empty attachment), `not_fetched` (no doc matched), `link_only` (matched held doc has `<= 3` pages, mentions `call`/`transcript`/`presentation`/`recording`, and has URLs extracted via `linked_transcripts.stub_urls` / `urls_from_text`), or `held`.
+- **Matching, window & twins:** filings with an attachment match held docs first by attachment filename (`ATTACHMENTNAME` / basename of NSE `attchmntFile`) equal to basename of `doc.source_key`, else whitespace-normalised `doc.title` equal to the headline prefix and `doc.known_at` within 1 day of `filed_at` (paired 1-to-1 per exchange by smallest time gap). Filings before `WINDOW_START = "2024-04-01"` that are not held become `out_of_window` (held ones stay `held` / `link_only`). In-window `not_fetched` filings whose OTHER exchange has a held/link-only filing within 1 day become `held_twin` (with `twin_filing_id`) when attachment sizes agree within 2% (BSE `Fld_Attachsize` vs NSE `file_size`/`raw.attFileSize`), or when either size is missing if they share `kind_hint` and there is exactly one held candidate on that day. Other statuses: `no_attachment`, `not_fetched`, `link_only` (`<= 3` pages, mentions `call`/`transcript`/`presentation`/`recording`, URLs via `linked_transcripts.stub_urls` / `urls_from_text`), or `held`.
 
     python -m reality_engine.pilot3.filings --out <store_copy.db> [--symbols SYM]
     python -m reality_engine.scripts.store_repair --part filings --no-dependants --root <root> --stores c01

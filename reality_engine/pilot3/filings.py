@@ -17,9 +17,17 @@ a link" only when every exchange filing is listed beside the store's held docume
 * **Matching**: attachment file name (BSE ``ATTACHMENTNAME`` or basename of NSE ``attchmntFile``) equal to
   basename of ``doc.source_key``, else whitespace-normalised ``doc.title`` equal to the headline prefix and
   ``doc.known_at`` within 1 day of ``filed_at`` (paired 1-to-1 per exchange by smallest time gap).
-* **Statuses**: ``no_attachment`` (exchange row carries no attachment), ``not_fetched`` (no held doc matched),
-  ``link_only`` (matched held doc has ``<= 3`` pages, mentions call/transcript/presentation/recording, and
-  carries a URL via :func:`linked_transcripts.stub_urls` / :func:`linked_transcripts.urls_from_text`), or ``held``.
+* **Window & exchange twins**:
+  * Filings before ``WINDOW_START`` (``2024-04-01``) that are not held get ``status='out_of_window'`` (held ones
+    stay ``held`` / ``link_only``).
+  * An in-window ``not_fetched`` filing whose OTHER exchange has a held/link-only filing within 1 day is marked
+    ``status='held_twin'`` with ``twin_filing_id`` when attachment sizes agree within 2% (BSE ``Fld_Attachsize``
+    vs NSE ``file_size``/``raw.attFileSize``); if either size is missing, it requires the same ``kind_hint`` and
+    exactly one held candidate on that day.
+* **Statuses**: ``held``, ``link_only`` (matched held doc has ``<= 3`` pages, mentions
+  call/transcript/presentation/recording, and carries a URL via :func:`linked_transcripts.stub_urls` /
+  :func:`linked_transcripts.urls_from_text`), ``held_twin``, ``not_fetched``, ``no_attachment``, or
+  ``out_of_window``.
 
 CLI: ``python -m reality_engine.pilot3.filings --out <store.db> [--symbols SYM1,SYM2]``
 """
@@ -41,9 +49,19 @@ from reality_engine.pilot3 import data_root, linked_transcripts, schema
 
 DEFAULT_NSE_ROOT = Path(r"D:\RealityEngine\raw\nse_announcements")
 NSE_FOLDERS = ("tg_queue_2026-11-16", "run_2026-10-28", "pilot_2026-10-28", "transcript_gap_2026-10-28")
+WINDOW_START = "2024-04-01"
 HEADLINE_MAX = 400
 LINK_MAX_PAGES = 3
 MATCH_WINDOW_SECONDS = 86400
+TWIN_SIZE_TOLERANCE = 0.02
+
+_SIZE_RE = re.compile(r"^([\d,]+(?:\.\d+)?)\s*(b|bytes?|kb|kib|mb|mib|gb|gib)?$", re.I)
+_SIZE_MULTS = {
+    "": 1.0, "b": 1.0, "byte": 1.0, "bytes": 1.0,
+    "kb": 1024.0, "kib": 1024.0,
+    "mb": 1024.0 ** 2, "mib": 1024.0 ** 2,
+    "gb": 1024.0 ** 3, "gib": 1024.0 ** 3,
+}
 
 _LINK_KEYWORD = re.compile(r"(?<![a-z])(?:concall|call|transcript|presentation|recording)s?(?![a-z])", re.I)
 _RECORDING_RE = re.compile(
@@ -82,6 +100,8 @@ class _Filing:
     exchange_subcategory: str | None
     headline: str
     attachment: str | None
+    size_bytes: float | None
+    size_label: str | None
     kind_hint: str
 
 
@@ -106,6 +126,24 @@ def _basename(path_or_url: object) -> str:
         return ""
     clean = text.split("?", 1)[0].split("#", 1)[0].replace("\\", "/")
     return os.path.basename(clean).lower()
+
+
+def _parse_size_bytes(value: object) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value) if value > 0 else None
+    text = str(value).strip()
+    if not text or text in ("-", "None", "null", "NA", "N/A"):
+        return None
+    match = _SIZE_RE.match(text)
+    if not match:
+        return None
+    num = float(match.group(1).replace(",", ""))
+    mult = _SIZE_MULTS.get((match.group(2) or "").lower())
+    if mult is None or num <= 0:
+        return None
+    return num * mult
 
 
 def _iso_dt(value: object) -> str | None:
@@ -137,6 +175,11 @@ def _parse_dt(value: object) -> datetime | None:
         return datetime.fromisoformat(iso[:19])
     except ValueError:
         return None
+
+
+def _in_window(filed_at: str | None) -> bool:
+    day = (filed_at or "")[:10]
+    return not (len(day) == 10 and day < WINDOW_START)
 
 
 def classify_kind_hint(
@@ -218,17 +261,19 @@ def _load_bse_filings(
         return out
     params = list(dict.fromkeys(params))
     marks = ",".join("?" * len(params))
-    sql = (
-        "SELECT NEWSID, SCRIP_CD, ATTACHMENTNAME, NEWSSUB, HEADLINE, CATEGORYNAME, SUBCATNAME, "
-        f"NEWS_DT, DissemDT FROM ann WHERE SCRIP_CD IN ({marks})"
-    )
     con = connect_ro(bse_db, timeout_s=60)
     try:
+        cols = {row[1] for row in con.execute("PRAGMA table_info(ann)")}
+        size_col = "Fld_Attachsize" if "Fld_Attachsize" in cols else "NULL AS Fld_Attachsize"
+        sql = (
+            "SELECT NEWSID, SCRIP_CD, ATTACHMENTNAME, NEWSSUB, HEADLINE, CATEGORYNAME, SUBCATNAME, "
+            f"NEWS_DT, DissemDT, {size_col} FROM ann WHERE SCRIP_CD IN ({marks})"
+        )
         rows = con.execute(sql, params).fetchall()
     finally:
         con.close()
 
-    for newsid, scrip_cd, att, newssub, headline, cat, subcat, news_dt, dissem_dt in rows:
+    for newsid, scrip_cd, att, newssub, headline, cat, subcat, news_dt, dissem_dt, attach_size in rows:
         code = str(scrip_cd or "").strip()
         syms = code_to_syms.get(code, [])
         if not syms:
@@ -238,6 +283,8 @@ def _load_bse_filings(
         cat_clean = _norm(cat) or None
         sub_clean = _norm(subcat) or None
         att_clean = str(att or "").strip() or None
+        size_bytes = _parse_size_bytes(attach_size)
+        size_label = f"{int(size_bytes)} B" if size_bytes is not None else None
         hint = classify_kind_hint(cat_clean, sub_clean, hl_text, _norm(newssub))
         for sym in syms:
             out[sym].append(_Filing(
@@ -250,6 +297,8 @@ def _load_bse_filings(
                 exchange_subcategory=sub_clean,
                 headline=hl_text[:HEADLINE_MAX],
                 attachment=att_clean,
+                size_bytes=size_bytes,
+                size_label=size_label,
                 kind_hint=hint,
             ))
     return out
@@ -287,6 +336,9 @@ def _load_nse_filings(nse_root: Path, targets: dict[str, dict]) -> dict[str, lis
                 else:
                     headline = desc or txt
                 att = str(raw.get("attchmntFile") or obj.get("attachment_url") or "").strip() or None
+                raw_size = obj.get("file_size") or raw.get("attFileSize")
+                size_bytes = _parse_size_bytes(raw_size)
+                size_label = str(raw_size).strip() if size_bytes is not None else None
                 cat = _norm(obj.get("kind") or obj.get("subject")) or None
                 sub = desc or _norm(obj.get("subject")) or None
                 isin = str(obj.get("isin") or raw.get("sm_isin") or "").strip() or _pick_isin(info["isins"], filed_at)
@@ -302,6 +354,8 @@ def _load_nse_filings(nse_root: Path, targets: dict[str, dict]) -> dict[str, lis
                     exchange_subcategory=sub,
                     headline=headline[:HEADLINE_MAX],
                     attachment=att,
+                    size_bytes=size_bytes,
+                    size_label=size_label,
                     kind_hint=hint,
                 ))
     return out
@@ -370,6 +424,45 @@ def _doc_links(conn: sqlite3.Connection, doc: _Doc) -> list[str]:
     return list(dict.fromkeys(urls))
 
 
+def _find_twin(
+    f: _Filing,
+    f_dt: datetime | None,
+    held_other: list[tuple[_Filing, datetime | None]],
+) -> _Filing | None:
+    """Match an in-window ``not_fetched`` filing to a held twin on the OTHER exchange.
+
+    Within 1 day, attachment sizes within 2% match unconditionally; if either size is missing, require the same
+    ``kind_hint`` AND exactly one held candidate on that day.  Never pairs two filings of the same exchange.
+    """
+    if f_dt is None or not held_other:
+        return None
+    if f.size_bytes is not None:
+        size_hits: list[tuple[float, float, _Filing]] = []
+        for cand, c_dt in held_other:
+            if cand.exchange == f.exchange or c_dt is None or cand.size_bytes is None:
+                continue
+            gap = abs((c_dt - f_dt).total_seconds())
+            if gap > MATCH_WINDOW_SECONDS:
+                continue
+            rel = abs(f.size_bytes - cand.size_bytes) / max(f.size_bytes, cand.size_bytes)
+            if rel <= TWIN_SIZE_TOLERANCE:
+                size_hits.append((rel, gap, cand))
+        if size_hits:
+            size_hits.sort(key=lambda item: (item[0], item[1], item[2].filing_id))
+            return size_hits[0][2]
+
+    f_day = (f.filed_at or "")[:10]
+    if len(f_day) != 10:
+        return None
+    same_day = [
+        cand for cand, _c_dt in held_other
+        if cand.exchange != f.exchange and (cand.filed_at or "")[:10] == f_day and cand.kind_hint == f.kind_hint
+    ]
+    if len(same_day) == 1 and (f.size_bytes is None or same_day[0].size_bytes is None):
+        return same_day[0]
+    return None
+
+
 def _process_symbol(
     conn: sqlite3.Connection,
     sym: str,
@@ -379,53 +472,79 @@ def _process_symbol(
     matches = _match_filings_to_docs(filings, docs)
     matched_doc_indices = set(matches.values())
     link_cache: dict[str, list[str]] = {}
+    filing_dts = [_parse_dt(f.filed_at) for f in filings]
+
+    # First pass: direct held / link_only vs no_attachment / not_fetched / out_of_window
+    prelim: list[tuple[str, str | None, str | None, int | None, str | None]] = []
+    held_by_exchange: dict[str, list[tuple[_Filing, datetime | None]]] = {"BSE": [], "NSE": []}
+    for f_idx, f in enumerate(filings):
+        d_idx = matches.get(f_idx)
+        if d_idx is not None:
+            doc = docs[d_idx]
+            if doc.doc_key not in link_cache:
+                link_cache[doc.doc_key] = _doc_links(conn, doc)
+            urls = link_cache[doc.doc_key]
+            if urls:
+                status, lu = "link_only", json.dumps(urls)
+            else:
+                status, lu = "held", None
+            prelim.append((status, doc.doc_key, doc.doc_type, doc.pages, lu))
+            held_by_exchange.setdefault(f.exchange, []).append((f, filing_dts[f_idx]))
+        elif not _in_window(f.filed_at):
+            prelim.append(("out_of_window", None, None, None, None))
+        elif not f.attachment:
+            prelim.append(("no_attachment", None, None, None, None))
+        else:
+            prelim.append(("not_fetched", None, None, None, None))
 
     rows: list[tuple] = []
     by_exchange: Counter[str] = Counter()
     by_status: Counter[str] = Counter()
     hint_x_status: dict[str, Counter[str]] = {}
     link_only_rows: list[dict] = []
+    twin_pairs: list[dict] = []
 
     for f_idx, f in enumerate(filings):
-        by_exchange[f.exchange] += 1
-        d_idx = matches.get(f_idx)
-        if not f.attachment:
-            status = "no_attachment"
-            held_doc_key = held_doc_type = held_pages = link_urls_json = None
-        elif d_idx is None:
-            status = "not_fetched"
-            held_doc_key = held_doc_type = held_pages = link_urls_json = None
-        else:
-            doc = docs[d_idx]
-            held_doc_key = doc.doc_key
-            held_doc_type = doc.doc_type
-            held_pages = doc.pages
-            if doc.doc_key not in link_cache:
-                link_cache[doc.doc_key] = _doc_links(conn, doc)
-            urls = link_cache[doc.doc_key]
-            if urls:
-                status = "link_only"
-                link_urls_json = json.dumps(urls)
-                link_only_rows.append({
+        status, held_doc_key, held_doc_type, held_pages, link_urls_json = prelim[f_idx]
+        twin_filing_id: str | None = None
+        if status == "not_fetched":
+            other_ex = "NSE" if f.exchange == "BSE" else "BSE"
+            twin = _find_twin(f, filing_dts[f_idx], held_by_exchange.get(other_ex, []))
+            if twin is not None:
+                status = "held_twin"
+                twin_filing_id = twin.filing_id
+                twin_pairs.append({
                     "exchange": f.exchange,
                     "filing_id": f.filing_id,
+                    "twin_exchange": twin.exchange,
+                    "twin_filing_id": twin.filing_id,
                     "filed_at": f.filed_at,
-                    "headline": f.headline[:80],
-                    "first_url": urls[0],
                     "kind_hint": f.kind_hint,
-                    "held_doc_type": doc.doc_type,
-                    "held_doc_key": doc.doc_key,
+                    "headline": f.headline[:100],
+                    "size": f.size_label,
+                    "twin_headline": twin.headline[:100],
+                    "twin_size": twin.size_label,
                 })
-            else:
-                status = "held"
-                link_urls_json = None
+        elif status == "link_only":
+            urls = json.loads(link_urls_json or "[]")
+            link_only_rows.append({
+                "exchange": f.exchange,
+                "filing_id": f.filing_id,
+                "filed_at": f.filed_at,
+                "headline": f.headline[:80],
+                "first_url": urls[0] if urls else "",
+                "kind_hint": f.kind_hint,
+                "held_doc_type": held_doc_type,
+                "held_doc_key": held_doc_key,
+            })
 
+        by_exchange[f.exchange] += 1
         by_status[status] += 1
         hint_x_status.setdefault(f.kind_hint, Counter())[status] += 1
         rows.append((
             f.exchange, f.filing_id, f.symbol, f.isin, f.filed_at, f.exchange_category,
             f.exchange_subcategory, f.headline, f.attachment, f.kind_hint,
-            held_doc_key, held_doc_type, held_pages, link_urls_json, status,
+            held_doc_key, held_doc_type, held_pages, link_urls_json, twin_filing_id, status,
         ))
 
     conn.execute("DELETE FROM filing WHERE symbol=?", (sym,))
@@ -433,7 +552,7 @@ def _process_symbol(
         conn.executemany(
             "INSERT INTO filing (exchange, filing_id, symbol, isin, filed_at, exchange_category, "
             "exchange_subcategory, headline, attachment, kind_hint, held_doc_key, held_doc_type, "
-            "held_pages, link_urls, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "held_pages, link_urls, twin_filing_id, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             rows,
         )
 
@@ -450,6 +569,8 @@ def _process_symbol(
         "held_docs_unmatched": len(unmatched_docs),
         "held_results_ar_total": len(res_ar_docs),
         "held_results_ar_unmatched": len(res_ar_unmatched),
+        "twin_pairs_count": len(twin_pairs),
+        "twin_pairs": twin_pairs,
         "link_only_rows": link_only_rows,
     }
 
@@ -466,6 +587,8 @@ def run(
     conn = sqlite3.connect(store_db, timeout=60) if own else store_db
     try:
         schema.ensure(conn, ("filing",))
+        schema.ensure_columns(conn, "filing", ("ALTER TABLE filing ADD COLUMN twin_filing_id TEXT",))
+        schema.ensure_views(conn)
         wanted = {s.strip().upper() for s in symbols if s and s.strip()} if symbols is not None else None
         targets: dict[str, dict] = {}
         for sym, isin, isin_from, isin_to, bse_code in conn.execute(
