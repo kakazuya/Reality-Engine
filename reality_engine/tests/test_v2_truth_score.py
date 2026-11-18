@@ -40,3 +40,10 @@ def test_page_without_figures_scores_every_cell_wrong():
     (TMP / "q.truth.txt").write_text("# notice page: no figures\n", encoding="utf-8")
     c = ts.score_page([_cell("", "Sr. No.", "1"), _cell("", "Sr. No.", "2")], ts.truth_cells(TMP / "q.truth.txt"), WORDS)
     assert c["truth"] == 0 and c["right"] == 0 and c["wrong_not_a_figure"] == 2
+
+
+def test_note_reference_under_a_header_is_not_a_period():
+    from reality_engine.v2.truth_score import _col_ok
+    assert _col_ok("Quarter ended March 31, 2022 (Unaudited)",
+                   "Quarter ended > March 31, 2022 > (Unaudited) (Refer note 2)")
+    assert not _col_ok("Quarter ended March 31, 2021", "Quarter ended > March 31, 2022 > (Refer note 2)")

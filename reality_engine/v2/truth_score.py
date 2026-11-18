@@ -24,7 +24,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from reality_engine.v2.reference_geom import page_words, settle_page
+from reality_engine.v2.reference_geom import layer_garbled, page_words, settle_page
 from reality_engine.v2.reference_pages import _load_run_rows, _norm_value, parse_grid
 from reality_engine.v2.reference_vote import label_key, same_label
 
@@ -36,9 +36,16 @@ def truth_cells(path: Path) -> list[dict[str, str]]:
     return [r for r in parse_grid("\n".join(line for line in text.splitlines() if not line.startswith("#")))]
 
 
+_NOTE_REF = re.compile(r"\(?\s*(?:refer|see)?\s*notes?\s*(?:no\.?)?\s*\d+[a-z]?(?:\s*(?:and|&|,)\s*\d+[a-z]?)*\s*\)?", re.I)
+
+
 def _col_ok(reader_col: str, truth_col: str) -> bool:
     """Column compatible: every digit token of the truth header's last level is in the reader header, and when the
-    truth header has a last-level word ('India SA', 'Total'), the reader header names it too."""
+    truth header has a last-level word ('India SA', 'Total'), the reader header names it too.  A note reference
+    printed under a header ("(Refer note 2)") names no period, so its number is not required (T-225)."""
+    reader_col = _NOTE_REF.sub(" ", reader_col)
+    truth_col = ">".join(lv for lv in (_NOTE_REF.sub(" ", lv) for lv in truth_col.split(">"))
+                         if re.search(r"[A-Za-z0-9]", lv)) or truth_col   # a level that was only a note is dropped
     t_last = truth_col.split(">")[-1].casefold()
     r = set(_TOKEN.findall(reader_col.casefold()))
     t_digits = {t for t in _TOKEN.findall(t_last) if t.isdigit()}
@@ -113,7 +120,23 @@ def score_page(rows: list[dict[str, str]], truth: list[dict[str, str]], words: A
     return c
 
 
-def run(truth_dir: Path, pdf_pages: Path, runs: list[Path]) -> list[dict[str, Any]]:
+def checker_words(pdf: Path, ocr_dir: Path | None, mode: str = "fallback") -> Any:
+    """The word boxes the checker reads.  ``fallback``: the PDF text layer, or the OCR words (``<ocr_dir>/<page>.json``,
+    ``[x0, y0, x1, y1, text, conf]`` in PDF points) when the layer is missing or garbled (T-225); ``ocr``: OCR words
+    wherever they exist; ``layer``: the text layer only."""
+    layer = page_words(pdf) if pdf.exists() else None
+    ocr_path = ocr_dir / f"{pdf.stem}.json" if ocr_dir else None
+    if mode == "layer" or not ocr_path or not ocr_path.exists():
+        return layer
+    if mode == "fallback" and layer and not layer_garbled(layer):
+        return layer
+    import json
+    return [(float(w[0]), float(w[1]), float(w[2]), float(w[3]), str(w[4]))
+            for w in json.loads(ocr_path.read_text(encoding="utf-8")) if len(w) > 4]
+
+
+def run(truth_dir: Path, pdf_pages: Path, runs: list[Path], ocr_dir: Path | None = None,
+        words_mode: str = "fallback") -> list[dict[str, Any]]:
     out = []
     pages = sorted(p.name.split(".")[0] for p in truth_dir.glob("*.truth.txt"))
     for rd in runs:
@@ -121,7 +144,7 @@ def run(truth_dir: Path, pdf_pages: Path, runs: list[Path]) -> list[dict[str, An
         for pid in pages:
             truth = truth_cells(truth_dir / f"{pid}.truth.txt")
             pdf = pdf_pages / f"{pid}.pdf"
-            c = score_page(_load_run_rows(rd, pid), truth, page_words(pdf) if pdf.exists() else None)
+            c = score_page(_load_run_rows(rd, pid), truth, checker_words(pdf, ocr_dir, words_mode))
             tot.update(c)
             out.append({"run": rd.name, "page": pid, **{k: c[k] for k in KEYS}})
         out.append({"run": rd.name, "page": "ALL", **{k: tot[k] for k in KEYS}})
@@ -138,8 +161,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--pdf-pages", required=True, type=Path)
     ap.add_argument("--runs", nargs="+", required=True, type=Path)
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--ocr-words", type=Path, help="dir of <page_id>.json OCR word boxes (T-225)")
+    ap.add_argument("--words", choices=["fallback", "ocr", "layer"], default="fallback")
     a = ap.parse_args(argv)
-    rows = run(a.truth, a.pdf_pages, a.runs)
+    rows = run(a.truth, a.pdf_pages, a.runs, a.ocr_words, a.words)
     if a.out:
         with a.out.open("w", newline="", encoding="utf-8") as fh:
             w = csv.DictWriter(fh, fieldnames=["run", "page"] + KEYS)

@@ -65,7 +65,11 @@ _QTR = re.compile(r"^q[1-4](?:fy)?\d{0,4}$")
 _PERIOD = re.compile(r"^(?:fy|h[12](?:fy)?)\d{1,4}$")
 _DATE = re.compile(r"^(?:\d{1,2}[-./]\d{1,2}[-./]\d{2,4}|\d{1,2}(?:st|nd|rd|th)?[-./]?[a-z]{3,9}[-./]?\d{0,4}"
                    r"|(?:19|20)\d{2}|\d{1,2}[-./][a-z]{3,9})$")
-_DATE_TYPO = re.compile(r"^\d{1,2}[.,\-/]\d{1,2}[.,\-/]\d{2,4}$")
+# A date printed with odd separators ("31.03.2022", "31,03,22").  The last group is 2 or 4 digits: an Indian-grouped
+# number ("1,03,086") ends in a 3-digit group and is a value, not a date (T-225).
+_DATE_TYPO = re.compile(r"^\d{1,2}[.,\-/]\d{1,2}[.,\-/](?:\d{2}|\d{4})$")
+# A month and year in one word: "Dec22", "Mar-23", "March2023", "Dec'22" (T-225).
+_MONTH_YEAR = re.compile(r"^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]{0,6}[-'.]?(?:\d{2}|(?:19|20)\d{2})$")
 
 
 def word_value(text: str) -> str:
@@ -75,6 +79,31 @@ def word_value(text: str) -> str:
 
 
 _BLANK = {"-", "--", "–", "—", "nil", "na", "n.a.", "n/a", "nm"}
+
+
+# A well-formed printed figure (T-225): western 1,234,567 or Indian 1,23,45,678 grouping or plain digits, optional
+# decimals, sign, brackets, %, x or a footnote star.  "206,61", "4,7t186", "1.24.285.61" are scan misreads.
+_WELL_FORMED = re.compile(r"^[(\-–+]?(?:\d{1,3}(?:,\d{3})+|\d{1,2}(?:,\d{2})*,\d{3}|\d+)(?:\.\d+)?\)?[%x*]?$")
+GARBLED_MIN_FIGURES = 5         # figure tokens a page must print before its layer can be judged
+GARBLED_SHARE = 0.15            # malformed share at or above which the layer is a scan misread (dev pages: 0.04 vs 0.44)
+
+
+def well_formed(value: str) -> bool:
+    t = str(value or "").strip().strip("₹$€£*†#").replace(" ", "")
+    return bool(_WELL_FORMED.match(t))
+
+
+def _figure_token(t: str) -> bool:
+    """A printed word that should be a table figure: a separator, 3+ digits, not a date/period/time/code."""
+    return (bool(re.search(r"[.,]", t)) and len(re.sub(r"\D", "", t)) >= 3 and ":" not in t
+            and not re.match(r"^[A-Za-z]", t) and not _is_header_word(t) and not re.search(r"\d[.,]$", t))
+
+
+def layer_garbled(words: list[tuple[float, float, float, float, str]] | None) -> bool:
+    """A text layer whose figures are scan misreads ("18,527,91J", "6rn.18"): confirming a reader's value against
+    it would confirm the misread, so such a page confirms nothing until OCR words replace the layer (T-175, T-225)."""
+    figs = [w[4] for w in words or [] if _figure_token(w[4])]
+    return len(figs) >= GARBLED_MIN_FIGURES and sum(1 for t in figs if not well_formed(t)) / len(figs) >= GARBLED_SHARE
 
 
 def _is_num(text: str) -> bool:
@@ -95,7 +124,8 @@ def _is_header_word(text: str) -> bool:
         return False
     if t in _HEADER_WORDS or t in _UNIT_WORDS or t in _MONTHS:
         return True
-    return bool(_QTR.match(t) or _PERIOD.match(t) or _DATE.match(t) or _DATE_TYPO.match(t))
+    return bool(_QTR.match(t) or _PERIOD.match(t) or _DATE.match(t) or _DATE_TYPO.match(t)
+                or _MONTH_YEAR.match(t))
 
 
 def _header_tokens(text: str) -> list[str]:
@@ -391,8 +421,9 @@ class Page:
 
     # -- header band and column model ---------------------------------------------------------------------------
     def _value_x_band(self, n: int) -> tuple[float, float]:
-        nums = [j for j in self.lines[n]
-                if _is_num(self.words[j][4]) and _tok(self.words[j][4]) not in _BLANK]
+        nums = [j for j in self.lines[n]                # a digit is required: "- Owner" opens with a dash (T-225)
+                if _is_num(self.words[j][4]) and _tok(self.words[j][4]) not in _BLANK
+                and re.search(r"\d", self.words[j][4])]
         if not nums:
             nums = self.lines[n]
         return min(self.words[j][0] for j in nums), max(self.words[j][2] for j in nums)
@@ -408,13 +439,17 @@ class Page:
             self._bands[n] = []
             return []
         m = n - 1
+        vx0, vx1 = self._value_x_band(n)
+        pad = max(40.0, 3.0 * self.h)
         while m >= 0 and n - m <= 120:
             if m < n - 1 and min(self.words[j][1] for j in self.lines[m + 1]) \
                     - max(self.words[j][3] for j in self.lines[m]) > max(30.0, 5.0 * self.h):
                 m = -1
                 break
+            # a period word over the value columns: "year" ending a wrapped row label at the left is not a header
             if self.is_header_line(m) and _strong_header([self.words[j] for j in self.lines[m]]) \
-                    and any(_is_period_word(self.words[j][4]) for j in self.lines[m]):
+                    and any(_is_period_word(self.words[j][4]) and self.words[j][2] >= vx0 - pad
+                            and self.words[j][0] <= vx1 + pad for j in self.lines[m]):
                 break
             m -= 1
         if m < 0:
@@ -499,7 +534,7 @@ class Page:
         if band:
             nums = [j for m in self._block(n, band) for j in self.lines[m]
                     if _is_num(self.words[j][4]) and _tok(self.words[j][4]) not in _BLANK
-                    and not _is_header_word(self.words[j][4])]
+                    and re.search(r"\d", self.words[j][4]) and not _is_header_word(self.words[j][4])]
             cols = _cluster_columns(nums, self.words, max(8.0, 1.2 * self.h))
             counted = [col for col in cols if col["n"] >= 2]
             if counted:
@@ -513,8 +548,10 @@ class Page:
                 lp = [(p[0] + p[1]) / 2 for p in low]
                 for ci, centre in enumerate(centres):
                     kinds[ci] = _period_kind(low[min(range(len(low)), key=lambda k: abs(lp[k] - centre))][2])
+            left = min((col["x0"] for col in cols), default=0.0) - self.h
             for m in band:
-                phrases = self._header_phrases(m, cols)
+                # a phrase wholly left of the number columns ("₹ Crores" over the labels) heads no column (T-225)
+                phrases = [p for p in self._header_phrases(m, cols) if p[1] >= left]
                 if not phrases:
                     continue
                 assign = self._assign_phrases(phrases, centres, kinds)
@@ -585,6 +622,11 @@ class Page:
             return None
         own = set(_header_tokens(stacks[ci]))
         if all(t in own for t in required):
+            # a reader header naming a number printed nowhere in the band ("Mat 37,2020" copied from a misread
+            # layer, where only "2020" is printed) is not the printed header: confirm nothing (T-225)
+            band_tokens = set(_header_tokens(" ".join(self.words[j][4] for m in band for j in self.lines[m])))
+            if any(t.isdigit() and t not in vocab and t not in band_tokens for t in reader):
+                return None
             return True
         for k, other in enumerate(stacks):
             if k != ci and all(t in set(_header_tokens(other)) for t in required):
@@ -776,6 +818,13 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
                     "col_aliases": "", "line_text": "", "x0": "", "y0": "", "x1": "", "y1": "",
                     "section": pick["cell"].get("section", ""),
                     "label_repeated": len(label_lines.get(pick["cell"]["lk"], ())) > 1})
+    garbled = layer_garbled(words)
+    for rec in out:                                   # T-225: never confirm a misread layer or a malformed value
+        if rec["settled_by"] in ("position", "script+position", "script"):
+            if garbled:
+                rec["settled_by"], rec["conflict"] = "", "garbled_layer"
+            elif not well_formed(rec["value_text"]):
+                rec["settled_by"], rec["conflict"] = "", "malformed_value"
     unread: list[dict[str, Any]] = []
     if page:
         nums_at = [(i, n) for n, line in enumerate(page.lines) for i in line if _is_num(page.words[i][4])]

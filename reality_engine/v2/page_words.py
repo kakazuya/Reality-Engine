@@ -185,6 +185,10 @@ def quality(words: list[Word]) -> tuple[str, str]:
     single_n = sum(1 for w in words if len(w[4]) == 1)
     if single_n / total > SINGLE_CHAR_SHARE_THRESHOLD:
         return "jumbled", "share of single-character words > 0.6"
+    from reality_engine.v2.reference_geom import GARBLED_SHARE, layer_garbled   # lazy: reference_geom imports us
+
+    if layer_garbled(words):                    # figures misread by a scan layer ("18,527,91J"): OCR them (T-225)
+        return "jumbled", f"malformed figure share >= {GARBLED_SHARE}"
     verdict = dictionary_score(words)
     if verdict is not None and verdict["share"] < DICTIONARY_SCORE_THRESHOLD:
         return "jumbled", (f"label-dictionary share {verdict['share']:.2f} < {DICTIONARY_SCORE_THRESHOLD} "

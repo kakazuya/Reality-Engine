@@ -164,3 +164,61 @@ def test_verdicts_separate_a_reader_error_from_a_checker_miss_and_an_unplaced_ce
     unknown, _unread = rg.settle_page([[_cell("Nonexistent row", "Q2FY26", "100")]], words)
     assert unknown[0]["verdict"] == "unplaced"
 
+
+
+# -- T-225 checker rebuild, round 1 ------------------------------------------------------------------------------
+
+def test_indian_grouped_number_is_a_value_not_a_date():
+    assert not rg._is_header_word("1,03,086")
+    assert rg._is_header_word("31,03,2022") and rg._is_header_word("31.03.22")
+
+
+def test_month_year_word_is_a_header():
+    assert all(rg._is_header_word(t) for t in ("Dec22", "Mar-23", "March2023", "Dec'22"))
+    assert not rg._is_header_word("Decor")
+
+
+def _month_year_page():
+    """f013 shape: 'Particulars Dec22 Mar23' header, an Indian-grouped first row, narrow numbers below."""
+    return [
+        _w(10, 10, "Particulars"), _w(200, 10, "Dec22"), _w(260, 10, "Mar23"),
+        _w(10, 25, "Assets"), _w(190, 25, "1,03,086"), _w(250, 25, "1,12,075"),
+        _w(10, 40, "Cash"), _w(205, 40, "5,054"), _w(265, 40, "2,961"),
+    ]
+
+
+def test_row_under_an_indian_grouped_row_keeps_its_column():
+    cells, _ = rg.settle_page([[_cell("Cash", "Dec22", "5,054"), _cell("Cash", "Mar23", "2,961")]],
+                              _month_year_page())
+    assert {c["value_text"]: c["settled_by"] for c in cells} == {"5,054": "position", "2,961": "position"}
+
+
+def test_wrapped_label_word_on_the_left_is_not_a_header():
+    words = _results_page() + [_w(10, 90, "year"), _w(10, 105, "-"), _w(20, 105, "Owner"), _w(200, 105, "55"),
+                               _w(260, 105, "44")]
+    cells, _ = rg.settle_page([[_cell("Owner", "Q1FY26", "44")]], words)
+    assert cells[0]["settled_by"] == "position"
+
+
+def test_malformed_value_is_never_confirmed():
+    assert rg.well_formed("1,23,456.78") and rg.well_formed("(0.45)") and rg.well_formed("12.5%")
+    assert not any(rg.well_formed(v) for v in ("206,61", "4,7t186", "1.24.285.61", "7,O7,180,78"))
+    words = _results_page() + [_w(10, 90, "Other"), _w(200, 90, "206,61")]
+    cells, _ = rg.settle_page([[_cell("Other", "Q2FY26", "206,61")]], words)
+    assert not cells[0]["settled_by"] and cells[0]["conflict"] == "malformed_value"
+
+
+def test_garbled_layer_confirms_nothing():
+    junk = ["18,527,91J", "6rn.18", "4,7t186", "1,301,.24", "1,,799.94"]
+    words = _results_page() + [_w(10, 100 + 15 * k, f"Row{k}") for k in range(5)] \
+        + [_w(200, 100 + 15 * k, t) for k, t in enumerate(junk)] \
+        + [_w(260, 100 + 15 * k, f"{k + 1},234.56") for k in range(5)]
+    assert rg.layer_garbled(words)
+    assert not rg.layer_garbled(_results_page())
+    cells, _ = rg.settle_page([[_cell("Revenue", "Q2FY26", "100")]], words)
+    assert not cells[0]["settled_by"] and cells[0]["conflict"] == "garbled_layer"
+
+
+def test_reader_header_with_an_unprinted_number_is_not_confirmed():
+    cells, _ = rg.settle_page([[_cell("Profit", "Q2FY26 Mat 37", "40")]], _results_page())
+    assert not cells[0]["settled_by"]

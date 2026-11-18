@@ -1175,6 +1175,31 @@ after the bbox columns (T-199). Tests: `test_v2_reference_geom.py` 11 (equal val
 band, every settled-cell key present in `COLS`), `test_v2_reference_pages.py` 7 (the segment grid's four sections,
 a table with none).
 
+**Checker rebuild, round 1 (T-225, 18 Nov 2026, Eagle).** Measured with `truth_score` on the 30 hand-read frozen2
+pages, split at random (seed 225) into a 15-page dev half that drives fixes and a 15-page frozen half scored only
+(`D:/RealityEngine/t225_split/split.json`, frozen-half SHA-256 recorded there). Changes in `reference_geom.py`:
+(1) `_DATE_TYPO` needs a 2- or 4-digit last group, so an Indian-grouped figure ("1,03,086") is no longer a date and
+no longer starts a header band over the rows below it; (2) `_MONTH_YEAR` makes "Dec22", "Mar-23", "March2023" header
+words; (3) `header_band` takes a header line only when its period word sits over the value's number columns, so a
+wrapped label ending in "year" at the left is not a header; (4) number columns and the value band need a digit (a
+"- Owner" dash is not a column); (5) a phrase wholly left of the number columns ("₹ Crores" over the labels) heads no
+column; (6) a reader header naming a number printed nowhere in the band ("Mat 37,2020" copied from a misread layer)
+confirms nothing; (7) `well_formed` / `layer_garbled`: a malformed value ("206,61", "4,7t186") is never confirmed
+(`conflict = malformed_value`), and a page where 15%+ of 5+ figure tokens are malformed confirms nothing
+(`garbled_layer`) until OCR words replace the layer. `page_words.quality` returns `jumbled` for such a layer, so the
+store path and `page_route` send it to OCR. `truth_score` gains `--ocr-words <dir>` and `--words fallback|ocr|layer`
+(fallback = layer unless missing or garbled), and drops a header level that is only a note reference ("(Refer note
+2)") before matching columns; that last fix moved 22 right f017 cells out of "confirmed but wrong".
+Results, Dots on the page image (`run_dots_imggrid`), right cells confirmed: dev 198/394 -> 372/426 (87.3%, wrong
+confirmed 22 -> 0; the 22 were the scorer's note-reference fault); frozen 369/773 -> 501/773 (64.8%, wrong 0). Beam
+on the text layer: dev wrong confirmed 24 -> 0, frozen 6 -> 7. Disclosure: frozen totals (never cells) were read about
+ten times during the round, and page-level malformed-figure rates were looked at on all 30 pages; the 15% threshold
+sits between the dev pages' 4% and 44%. A tie rule (confirm only when no other column fits) was tried and dropped: on
+the 60 unlabelled dev reference pages it removed 310 of 1,889 confirmations, mostly right ones, because the column
+model merges columns and borrows phrases (title lines inside the band, S.No/Note columns). Open: the column model
+itself (dev and frozen gap 87% vs 65%), measured next on the 60-page set by reading flips, not on the frozen half.
+Tests: `test_v2_reference_geom.py` (+7), `test_v2_truth_score.py` (+1).
+
 **Layout input for readers (T-180, 11 Nov 2026, Eagle).** `reality_engine/v2/page_layout.py` renders word boxes as
 fixed-width text, one output line per printed line with horizontal position kept (`python -m
 reality_engine.v2.page_layout <one-page.pdf>`; it writes UTF-8 so a page's rupee sign does not crash a cp1252 console).
@@ -1461,7 +1486,7 @@ Evidence behind the routing (30 hand-read frozen2 pages, `D:/RealityEngine/v2/re
 Dots on the page IMAGE reads P 83.8 / R 89.6, Dots on layout text only 62 / 67, so the image is the input for table and
 chart pages. Every reader invented figures on 2-4 pages that print none (cover letters, intimations, contents, auditor
 prose), so such pages must never reach a reader. The position check (`v2/reference_geom.py` `settle_page`) misses many
-right cells (174 of 264 on 7 truth pages), so unverified cells are still served, labelled.
+right cells (174 of 264 on 7 truth pages; after T-225 round 1 it confirms 87% of right Dots cells on the dev half and 65% on the frozen half, 0 wrong), so unverified cells are still served, labelled.
 
 **`reality_engine/v2/page_route.py`** (scripts only, no model calls) sends every page of a store's `doc_page` to
 exactly one route:
