@@ -277,3 +277,16 @@ def test_names_subsidiary_near_sentence_lookback_boundaries_and_including():
     t_subj = "Navkar, including its ICDs, generated revenue of INR163 crores."
     pos_subj = t_subj.find("revenue of INR163 crores")
     assert lt.names_subsidiary_near(t_subj, pos_subj, pos_subj + 24, "NAVKARCORP", names, parent) is True
+
+    # Parent check via shared names_company_near helper
+    t_parent = "JSW Infrastructure expects capex of Rs. 4,000 crores in FY26."
+    assert lt.names_company_near(t_parent, 0, len(t_parent), parent) is True
+    t_parent_lookback = (
+        "JSW continues to expand port capacity. "
+        "The total capital expenditure for the project is estimated at Rs. 380 crores."
+    )
+    q_capex = "estimated at Rs. 380 crores"
+    pos_c = t_parent_lookback.find(q_capex)
+    assert lt.names_company_near(t_parent_lookback, pos_c, pos_c + len(q_capex), parent) is True
+    t_none = "The total capital expenditure for the project is estimated at Rs. 380 crores."
+    assert lt.names_company_near(t_none, 0, len(t_none), parent) is False

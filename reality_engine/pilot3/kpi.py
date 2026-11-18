@@ -3561,6 +3561,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                         named = linked_transcripts.names_subsidiary_near(
                             r.quote or "", 0, len(r.quote or ""), sym, company_names, parent)
                     if not named:
+                        # kpi_series has no entity_unsure flag, so a no-name sentence on a parent call takes the parent.
                         row_entity = parent
                 yield dict(symbol=sym, metric=r.metric, dimension=row_dim, value=r.value, unit=r.unit, scale=r.scale,
                            period_type=r.period_type, fiscal_period=r.fiscal_period, as_of_date=r.as_of, basis=row_basis,

@@ -32,7 +32,7 @@ import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from reality_engine import raw_store
 from reality_engine.config import DEFAULT_HEADERS
@@ -121,16 +121,48 @@ def _subsidiary_patterns(symbol: str, company_names: Iterable[str], parent: str 
     return patterns
 
 
+def _company_patterns(names: Iterable[str] | str | None) -> list[tuple[str, int]]:
+    from . import link_follow
+
+    if names is None:
+        return []
+    raw_names = [names] if isinstance(names, str) else list(names)
+    cleaned = [str(n).strip() for n in raw_names if n and str(n).strip()]
+    patterns: list[tuple[str, int]] = [
+        (rf"\b{re.escape(tok)}\b", re.I)
+        for tok in link_follow._distinctive_name_tokens(cleaned)
+    ]
+    seen = {p[0].lower() for p in patterns}
+    for raw in cleaned:
+        for word in re.findall(r"\b[A-Z][A-Z0-9]{1,15}\b", raw):
+            rx = rf"\b{re.escape(word)}\b"
+            if rx.lower() not in seen:
+                seen.add(rx.lower())
+                patterns.append((rx, 0))
+    return patterns
+
+
 def _in_including_list(sentence: str, start: int) -> bool:
     m = _INCLUDING_PRE_RX.search(sentence[:start])
     return bool(m and not _CLAUSE_VERB_RX.search(m.group(1)))
 
 
-def _sentence_names_subsidiary(sentence: str, patterns: list[tuple[str, int]]) -> bool:
+def _sentence_matches_patterns(sentence: str, patterns: list[tuple[str, int]],
+                               *, exclude_including: bool = False) -> bool:
     for rx, flags in patterns:
         for m in re.finditer(rx, sentence, flags):
-            if not _in_including_list(sentence, m.start()):
+            if not exclude_including or not _in_including_list(sentence, m.start()):
                 return True
+    return False
+
+
+def _names_other_legal_entity(sentence: str, patterns: list[tuple[str, int]]) -> bool:
+    for m in _LEGAL_ENTITY_RX.finditer(sentence):
+        head = " ".join(m.group(1).split()).lower()
+        if head in _MARKET_BODIES:
+            continue
+        if not any(re.search(rx, m.group(0), flags) for rx, flags in patterns):
+            return True
     return False
 
 
@@ -145,13 +177,7 @@ def _names_parent_or_other_company(sentence: str, sub_patterns: list[tuple[str, 
                 continue
             if re.search(rf"\b{re.escape(word)}\b", sentence):
                 return True
-    for m in _LEGAL_ENTITY_RX.finditer(sentence):
-        head = " ".join(m.group(1).split()).lower()
-        if head in _MARKET_BODIES:
-            continue
-        if not any(re.search(rx, m.group(0), flags) for rx, flags in sub_patterns):
-            return True
-    return False
+    return _names_other_legal_entity(sentence, sub_patterns)
 
 
 def _paragraph_bounds(text: str, lo: int, hi: int) -> tuple[int, int]:
@@ -173,15 +199,10 @@ def _paragraph_bounds(text: str, lo: int, hi: int) -> tuple[int, int]:
     return para_start, max(para_start, para_end)
 
 
-def names_subsidiary_near(text: str | None, start: int, end: int, symbol: str,
-                          company_names: Iterable[str] = (), parent: str | None = None,
-                          lookback: int = 3) -> bool:
-    """True when the sentence holding ``text[start:end]`` or up to ``lookback`` preceding sentences
-    in the same paragraph name the store's own company (excluding ``including X`` lists)."""
-    if not text:
-        return False
-    patterns = _subsidiary_patterns(symbol, company_names, parent)
-    if not patterns:
+def _search_sentences_near(text: str | None, start: int, end: int, patterns: list[tuple[str, int]],
+                           lookback: int = 3, *, exclude_including: bool = False,
+                           stop_pred: Callable[[str], bool] | None = None) -> bool:
+    if not text or not patterns:
         return False
     n = len(text)
     lo = max(0, min(start, n))
@@ -203,16 +224,39 @@ def names_subsidiary_near(text: str | None, start: int, end: int, symbol: str,
     first_idx, last_idx = hit_indices[0], hit_indices[-1]
     for i in range(first_idx, last_idx + 1):
         a, b = spans[i]
-        if _sentence_names_subsidiary(para[a:b], patterns):
+        if _sentence_matches_patterns(para[a:b], patterns, exclude_including=exclude_including):
             return True
     for i in range(first_idx - 1, max(-1, first_idx - 1 - lookback), -1):
         a, b = spans[i]
         sent = para[a:b]
-        if _names_parent_or_other_company(sent, patterns, parent):
+        if stop_pred is not None and stop_pred(sent):
             break
-        if _sentence_names_subsidiary(sent, patterns):
+        if _sentence_matches_patterns(sent, patterns, exclude_including=exclude_including):
             return True
     return False
+
+
+def names_company_near(text: str | None, start: int, end: int, names: Iterable[str] | str | None,
+                       lookback: int = 3) -> bool:
+    """True when the sentence holding ``text[start:end]`` or up to ``lookback`` preceding sentences
+    in the same paragraph name a distinctive token of ``names``."""
+    patterns = _company_patterns(names)
+    return _search_sentences_near(
+        text, start, end, patterns, lookback=lookback,
+        stop_pred=lambda sent: _names_other_legal_entity(sent, patterns),
+    )
+
+
+def names_subsidiary_near(text: str | None, start: int, end: int, symbol: str,
+                          company_names: Iterable[str] = (), parent: str | None = None,
+                          lookback: int = 3) -> bool:
+    """True when the sentence holding ``text[start:end]`` or up to ``lookback`` preceding sentences
+    in the same paragraph name the store's own company (excluding ``including X`` lists)."""
+    patterns = _subsidiary_patterns(symbol, company_names, parent)
+    return _search_sentences_near(
+        text, start, end, patterns, lookback=lookback, exclude_including=True,
+        stop_pred=lambda sent: _names_parent_or_other_company(sent, patterns, parent),
+    )
 
 
 def mentions_company(text: str | None, symbol: str, company_names: Iterable[str] = (),
@@ -221,7 +265,7 @@ def mentions_company(text: str | None, symbol: str, company_names: Iterable[str]
     if not text:
         return False
     patterns = _subsidiary_patterns(symbol, company_names, parent)
-    return bool(patterns and _sentence_names_subsidiary(text, patterns))
+    return bool(patterns and _sentence_matches_patterns(text, patterns, exclude_including=True))
 
 
 # --------------------------------------------------------------------------- URLs
