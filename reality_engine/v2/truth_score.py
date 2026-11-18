@@ -97,10 +97,10 @@ def wrong_kind(cell: dict[str, str], truth: list[dict[str, str]]) -> str:
     return "wrong_row_or_column"
 
 
-def score_page(rows: list[dict[str, str]], truth: list[dict[str, str]], words: Any) -> Counter:
+def score_page(rows: list[dict[str, str]], truth: list[dict[str, str]], words: Any, alt_words: Any = None) -> Counter:
     c: Counter = Counter()
     figures = [r for r in rows if any(ch.isdigit() for ch in (r.get("value") or ""))]
-    cells, _unread = settle_page([figures], words)
+    cells, _unread = settle_page([figures], words, alt_words=alt_words)
     confirmed = {(x["row_label"], x["col_header"], _norm_value(x["value_text"])) for x in cells
                  if x["settled_by"] == "position"}
     used: set[int] = set()
@@ -144,7 +144,10 @@ def run(truth_dir: Path, pdf_pages: Path, runs: list[Path], ocr_dir: Path | None
         for pid in pages:
             truth = truth_cells(truth_dir / f"{pid}.truth.txt")
             pdf = pdf_pages / f"{pid}.pdf"
-            c = score_page(_load_run_rows(rd, pid), truth, checker_words(pdf, ocr_dir, words_mode))
+            words = checker_words(pdf, ocr_dir, words_mode)
+            has_ocr = bool(ocr_dir and (ocr_dir / f"{pid}.json").exists())
+            ocr = checker_words(pdf, ocr_dir, "ocr") if has_ocr and words_mode == "fallback" else None
+            c = score_page(_load_run_rows(rd, pid), truth, words, ocr)
             tot.update(c)
             out.append({"run": rd.name, "page": pid, **{k: c[k] for k in KEYS}})
         out.append({"run": rd.name, "page": "ALL", **{k: tot[k] for k in KEYS}})

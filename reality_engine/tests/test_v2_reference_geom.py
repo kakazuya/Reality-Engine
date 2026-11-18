@@ -240,3 +240,14 @@ def test_word_headers_place_a_column_without_period_words():
     by = {c["value_text"]: c for c in cells}
     assert by["95.91"]["settled_by"] == "position"
     assert not by["97,18,084"]["settled_by"] and by["97,18,084"]["conflict"] == "column_elsewhere"
+
+
+def test_ocr_second_look_confirms_a_value_the_layer_misprints():
+    layer = _results_page() + [_w(10, 90, "Tax2"), _w(200, 90, "(359,72)")]
+    ocr = _results_page() + [_w(10, 90, "Tax2"), _w(200, 90, "(359.72)")]
+    cells, _ = rg.settle_page([[_cell("Tax2", "Q2FY26", "(359.72)")]], layer)
+    assert not cells[0]["settled_by"]
+    cells, _ = rg.settle_page([[_cell("Tax2", "Q2FY26", "(359.72)")]], layer, alt_words=ocr)
+    assert cells[0]["settled_by"] == "position" and cells[0]["how"] == "ocr"
+    cells, _ = rg.settle_page([[_cell("Tax2", "Q1FY26", "(359.72)")]], layer, alt_words=ocr)
+    assert not cells[0]["settled_by"]                     # OCR places it under Q2FY26, not Q1FY26

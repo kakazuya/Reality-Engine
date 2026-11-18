@@ -786,7 +786,11 @@ def place(page: Page, cell: dict[str, Any],
 
 
 def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, float, float, float, str]] | None,
-                text: str = "") -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+                text: str = "", alt_words: list[tuple[float, float, float, float, str]] | None = None
+                ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """``alt_words``: OCR word boxes of the same page.  A cell whose value the layer does not print (a scan layer's
+    "(359,72)" for 359.72) is placed again on them and confirmed only when they place both its row and column
+    (T-225); ``how`` is then ``ocr``."""
     per_reader = [cells_of(r) for r in readers]
     canon = unify_labels(per_reader)
     answering = sum(1 for c in per_reader if c)
@@ -892,6 +896,17 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
                 rec["settled_by"], rec["conflict"] = "", "garbled_layer"
             elif not well_formed(rec["value_text"]):
                 rec["settled_by"], rec["conflict"] = "", "malformed_value"
+    if alt_words and words and not garbled:
+        redo = [rec for rec in out if not rec["settled_by"] and rec["conflict"] in ("value_not_printed",
+                                                                                  "lone_unlocated")]
+        if redo:
+            again, _ = settle_page([[{"table": r["table"], "row_label": r["row_label"], "col_header": r["col_header"],
+                                      "value": r["value_text"], "unit": r["unit_text"]} for r in redo]], alt_words)
+            ok = {(c["row_label"], c["col_header"], c["value_text"]) for c in again if c["settled_by"] == "position"}
+            for rec in redo:
+                if (rec["row_label"], rec["col_header"], rec["value_text"]) in ok and well_formed(rec["value_text"]):
+                    rec.update(settled_by="position", conflict="", verdict="confirmed", how="ocr", row_ok=True,
+                               col_ok=True)
     unread: list[dict[str, Any]] = []
     if page:
         nums_at = [(i, n) for n, line in enumerate(page.lines) for i in line if _is_num(page.words[i][4])]
