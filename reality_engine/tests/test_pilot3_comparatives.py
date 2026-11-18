@@ -1903,3 +1903,340 @@ def test_xbrl_conflict_blocks_repeat_ok_and_sum_ok_and_drops_ocr_only(tmp_path):
     conn.close()
     assert sep_conflicts == []
 
+
+def test_prewindow_xbrl_input_preserves_sum_ok_but_blocks_unconfirmed_repeat(tmp_path):
+    """T-223 Cause 1: unserved pre-window fin_quarter_xbrl_input still yields xbrl_ok on matches and blocks
+    unconfirmed component lines, but never strips self-consistent sum_ok cells when fin_quarter_xbrl is empty."""
+    import json, pymupdf
+
+    d = tmp_path / "xbrl_input"
+    d.mkdir()
+    conn = _conn()
+    conn.execute("CREATE TABLE fin_quarter_xbrl_input (symbol TEXT, basis TEXT, period_end TEXT, line_item TEXT, value REAL)")
+    for item, val in (
+        ("total_income", 810000000.0),
+        ("total_expenses", 690000000.0),
+        ("pbt_before_exceptional", 120000000.0),
+        ("other_expenses", 300000000.0),
+    ):
+        conn.execute("INSERT INTO fin_quarter_xbrl_input VALUES ('AAAA','standalone','2023-09-30',?,?)", (item, val))
+    dates = ("30.09.2024", "30.06.2024", "30.09.2023", "30.09.2024", "30.09.2023", "31.03.2024")
+    dates2 = ("31.12.2024", "30.09.2024", "31.12.2023", "31.12.2024", "31.12.2023", "31.03.2024")
+    ocr_db = d / "ocr.db"
+    ocon = sqlite3.connect(ocr_db)
+    ocon.execute("CREATE TABLE ocr_page (doc_key TEXT, page INTEGER, method TEXT, words_json TEXT)")
+    ppath = d / "q2.pdf"
+    doc = pymupdf.open()
+    pg = doc.new_page(width=800, height=600)
+    pg.insert_text((40, 20), "Garbled xxx yyy zzz", fontsize=8)
+    for i in range(15):
+        pg.insert_text((20, 320 + 12 * i), f"Zxv{i}omer Qlarton{i} Vroptex{i}", fontsize=7)
+    doc.save(str(ppath))
+    doc.close()
+    conn.execute("INSERT INTO doc VALUES ('q2.pdf','AAAA','INE000A01001','results','results','Results',"
+                 "'2024-11-10','2024-11-10T12:00:00',1,'sha_q2','bse',?)", (str(ppath),))
+    rows_ocr = [
+        ("1 Revenue from operations", ("9,000.35", "8,200.92", "8,000.0", "17,201.27", "16,000.00", "32,000.00")),
+        ("2 Other income", ("100.00", "90.00", "39.0", "190.00", "80.00", "200.00")),
+        ("3 Total income", ("9,100.35", "8,290.92", "8,039.0", "17,391.27", "16,080.00", "32,200.00")),
+        ("4a Other expenses", ("2,000.00", "1,800.00", "1,500.0", "3,800.00", "3,100.00", "6,000.00")),
+        ("4 Total expenses", ("7,500.00", "7,000.00", "6,870.3", "14,500.00", "13,800.00", "28,000.00")),
+        ("5. Profit before exceptional and extraordinary items and tax", ("1,600.35", "1,290.92", "1,168.7", "2,891.27", "2,280.00", "4,200.00")),
+        ("6 Total tax expense", ("400.00", "320.00", "290.0", "720.00", "570.00", "1,050.00")),
+        ("7 Profit for the period", ("1,200.35", "970.92", "878.7", "2,171.27", "1,710.00", "3,150.00")),
+    ]
+    c_wide = (340.0, 420.0, 500.0, 580.0, 660.0, 740.0)
+    words = [(40.0, 15.0, 220.0, 23.0, "Statement of Standalone Unaudited Financial Results"),
+             (40.0, 28.0, 120.0, 36.0, "Rs. in Lakhs")]
+    for a, dt in zip(c_wide, dates):
+        words.append((a - 45.0, 44.0, a, 52.0, dt))
+    for idx, (lbl, vals) in enumerate(rows_ocr):
+        y = 65.0 + 14.0 * idx
+        x = 20.0
+        for tok in lbl.split():
+            words.append((x, y - 3.0, x + 4.5 * len(tok), y + 3.0, tok))
+            x += 4.5 * len(tok) + 2.5
+        for a, v in zip(c_wide, vals):
+            words.append((a - 4.5 * len(v), y - 3.0, a, y + 3.0, v))
+    ocon.execute("INSERT INTO ocr_page VALUES ('q2.pdf', 1, 'ocr_rapid', ?)", (json.dumps(words),))
+
+    # Second clean PDF repeating the unconfirmed 2023-09-30 other_expenses (1,500.0 lakh = 150M vs xbrl_input 300M)
+    ppath2 = d / "q3_clean.pdf"
+    doc2 = pymupdf.open()
+    pg2 = doc2.new_page(width=800, height=600)
+    pg2.insert_text((40, 20), "Statement of Standalone Unaudited Financial Results", fontsize=8)
+    pg2.insert_text((40, 35), "Rs. in Lakhs", fontsize=8)
+    for a, dt in zip(c_wide, dates2):
+        pg2.insert_text((a - pymupdf.get_text_length(dt, fontsize=7), 50), dt, fontsize=7)
+    rows_clean = [
+        ("1 Revenue from operations", ("9,100.00", "9,000.35", "8,000.00", "26,300.00", "16,000.00", "32,000.00")),
+        ("2 Other income", ("100.00", "100.00", "39.00", "290.00", "80.00", "200.00")),
+        ("3 Total income", ("9,200.00", "9,100.35", "8,039.00", "26,590.00", "16,080.00", "32,200.00")),
+        ("4a Other expenses", ("2,100.00", "2,000.00", "1,500.00", "5,900.00", "3,100.00", "6,000.00")),
+        ("4 Total expenses", ("7,600.00", "7,500.00", "6,870.30", "22,100.00", "13,800.00", "28,000.00")),
+        ("5. Profit before exceptional and extraordinary items and tax", ("1,600.00", "1,600.35", "1,168.70", "4,490.00", "2,280.00", "4,200.00")),
+        ("6 Total tax expense", ("400.00", "400.00", "290.00", "1,120.00", "570.00", "1,050.00")),
+        ("7 Profit for the period", ("1,200.00", "1,200.35", "878.70", "3,370.00", "1,710.00", "3,150.00")),
+    ]
+    for idx, (lbl, vals) in enumerate(rows_clean):
+        y = 70.0 + 14.0 * idx
+        pg2.insert_text((20, y), lbl, fontsize=7)
+        for a, v in zip(c_wide, vals):
+            pg2.insert_text((a - pymupdf.get_text_length(v, fontsize=7), y), v, fontsize=7)
+    doc2.save(str(ppath2))
+    doc2.close()
+    conn.execute("INSERT INTO doc VALUES ('q3_clean.pdf','AAAA','INE000A01001','results','results','Results',"
+                 "'2025-02-10','2025-02-10T12:00:00',1,'sha_q3','bse',?)", (str(ppath2),))
+    ocon.commit()
+    ocon.close()
+    conn.commit()
+    sdb = d / "store.db"
+    dst = sqlite3.connect(sdb)
+    conn.backup(dst)
+    dst.close()
+    cmp.run(conn, ["AAAA"], store_db=sdb, ocr_dbs=[ocr_db])
+    kept = {
+        (r[9], r[20], r[21])
+        for r in conn.execute(
+            f"SELECT * FROM {cmp.TABLE} WHERE doc_key='q2.pdf' AND column_role='year_ago'"
+        )
+    }
+    conn.close()
+    assert ("total_income", "sum_ok", None) in kept
+    assert ("total_expenses", "sum_ok", None) in kept
+    assert ("pbt_before_exceptional", "sum_ok", None) in kept
+    assert all(r[0] != "other_expenses" for r in kept)
+
+
+def test_choose_rows_uses_all_columns_and_arithmetic_and_eps_ok_covers_diluted():
+    """T-223 Cause 2: _choose_rows inspects non-current XBRL columns (unreadable current or current tie) and
+    arithmetic ties; _eps_ok checks eps_diluted alongside eps_basic; _cross_column_marks uses 0.02 for eps_diluted."""
+    conn = _conn()
+    conn.execute("INSERT INTO share_capital (symbol, as_of_date, basis, shares_outstanding, known_at) "
+                 "VALUES ('AAAA', '2024-03-31', 'standalone', 10000000.0, '2024-05-01T00:00:00')")
+    _xbrl(conn, "2024-12-31", "eps_basic", -0.68, basis="standalone")
+    _xbrl(conn, "2024-12-31", "eps_diluted", -0.68, basis="standalone")
+    _xbrl(conn, "2025-12-31", "eps_basic", -1.25, basis="standalone")
+    _xbrl(conn, "2025-12-31", "eps_diluted", -1.25, basis="standalone")
+    _xbrl(conn, "2024-03-31", "eps_diluted", -2.17, basis="standalone")
+    _xbrl(conn, "2025-03-31", "eps_basic", -2.18, basis="standalone")
+    _xbrl(conn, "2025-03-31", "eps_diluted", -2.18, basis="standalone")
+    xbrl = cmp.xbrl_index(conn, "AAAA")
+    af = {("standalone", "2024-03-31"): {"eps_diluted": [-2.17]},
+          ("standalone", "2025-03-31"): {"eps_basic": [-2.18], "eps_diluted": [-2.18]}}
+
+    # Q3FY25 table: current eps_diluted has broken parens on both rows, last_fy settles row 2 (-2.17);
+    # 9MFY25 pat = -2,410 lakh / 10 cr shares = -2.41 confirms eps_diluted via _eps_ok.
+    d_q3_25 = ("31.12.2024", "30.09.2024", "31.12.2023", "31.12.2024", "31.12.2023", "31.03.2024")
+    r_q3_25 = [
+        ("1 Revenue from operations", ("1,000.00", "900.00", "800.00", "1,900.00", "1,700.00", "4,000.00")),
+        ("2 Other income", ("100.00", "90.00", "80.00", "190.00", "170.00", "400.00")),
+        ("3 Total income", ("1,100.00", "990.00", "880.00", "2,090.00", "1,870.00", "4,400.00")),
+        ("4 Total expenses", ("1,168.00", "1,044.00", "900.00", "2,331.00", "2,000.00", "4,617.00")),
+        ("5 Profit before tax", ("(68.00)", "(54.00)", "(20.00)", "(241.00)", "(130.00)", "(217.00)")),
+        ("6 Total tax expense", ("0.00", "0.00", "0.00", "0.00", "0.00", "0.00")),
+        ("7 Profit for the period", ("(68.00)", "(54.00)", "(20.00)", "(241.00)", "(130.00)", "(217.00)")),
+        ("8a Basic EPS", ("(0.72)", "(0.56)", "(0.22)", "(2.48)", "(1.35)", "(1.03)")),
+        ("8b Diluted EPS", ("(0.72", "(0.56)", "(0.22)", "2.48)", "(1.35)", "(1.03)")),
+        ("9a Basic", ("(0.68)", "(0.54)", "(0.20)", "(2.41)", "(1.30)", "(2.17)")),
+        ("9b Diluted", ("0.68)", "(0.54)", "(0.20)", "(2.41)", "(1.30)", "(2.17)")),
+    ]
+    def _wide_page(rows, unit="Rs. in Lakhs", title="Statement of Standalone Unaudited Financial Results", dates=d_q3_25):
+        c_wide = (280.0, 360.0, 440.0, 520.0, 600.0, 680.0)
+        words = [(40.0, 5.0, 220.0, 13.0, title, 0, 0, 0), (40.0, 15.0, 120.0, 23.0, unit, 0, 0, 0)]
+        for anchor, text in zip(c_wide, dates):
+            words.append((anchor - 4.0 * len(text), 27.0, anchor, 33.0, text, 0, 0, 0))
+        for i, (lbl, vals) in enumerate(rows):
+            y, x = 50.0 + 10.0 * i, 20.0
+            for word in lbl.split():
+                w = 4.0 * len(word)
+                words.append((x, y - 3.0, x + w, y + 3.0, word, 0, 0, 0))
+                x += w + 2.5
+            for anchor, text in zip(c_wide, vals):
+                words.append((anchor - 4.0 * len(text), y - 3.0, anchor, y + 3.0, text, 0, 0, 0))
+        return cmp.rows_from_words(words)
+
+    t1 = cmp.read_page(_wide_page(r_q3_25, unit="Rs. in Lakhs",
+                                  title="Statement of Standalone Unaudited Financial Results", dates=d_q3_25), ocr=True)
+    out1 = cmp._table_rows(conn, "AAAA", "INE000A01001", "doc25", 4, "2025-01-30T12:00:00", t1, xbrl, [], annual_facts=af)
+    ed1 = _cells(out1, "eps_diluted", "ytd")
+    assert len(ed1) == 1 and ed1[0][11] == pytest.approx(-2.41) and ed1[0][20] == "sum_ok"
+
+    # Q3FY26 table: current ties (-1.25 == -1.25), year_ago (-0.68) and last_fy (-2.18) pick total EPS (-2.41)
+    d_q3_26 = ("31.12.2025", "30.09.2025", "31.12.2024", "31.12.2025", "31.12.2024", "31.03.2025")
+    r_q3_26 = [
+        ("1 Revenue from operations", ("1,000.00", "900.00", "1,000.00", "1,900.00", "1,900.00", "4,000.00")),
+        ("2 Other income", ("100.00", "90.00", "100.00", "190.00", "190.00", "400.00")),
+        ("3 Total income", ("1,100.00", "990.00", "1,100.00", "2,090.00", "2,090.00", "4,400.00")),
+        ("4 Total expenses", ("1,225.00", "1,065.00", "1,168.00", "2,370.00", "2,331.00", "4,618.00")),
+        ("5 Profit before tax", ("(125.00)", "(75.00)", "(68.00)", "(280.00)", "(241.00)", "(218.00)")),
+        ("6 Total tax expense", ("0.00", "0.00", "0.00", "0.00", "0.00", "0.00")),
+        ("7 Profit for the period", ("(125.00)", "(75.00)", "(68.00)", "(280.00)", "(241.00)", "(218.00)")),
+        ("8a Basic EPS", ("(1.25)", "(0.75)", "(0.72)", "(2.80)", "(2.48)", "(2.24)")),
+        ("8b Diluted EPS", ("(1.25)", "(0.75)", "(0.72)", "(2.80)", "(2.48)", "(2.24)")),
+        ("9a Basic", ("(1.25)", "(0.75)", "(0.68)", "(2.80)", "(2.41)", "(2.18)")),
+        ("9b Diluted", ("(1.25)", "(0.75)", "(0.68)", "(2.80)", "(2.41)", "(2.18)")),
+    ]
+    t2 = cmp.read_page(_wide_page(r_q3_26, unit="Rs. in Lakhs",
+                                  title="Statement of Standalone Unaudited Financial Results", dates=d_q3_26))
+    out2 = cmp._table_rows(conn, "AAAA", "INE000A01001", "doc26", 4, "2026-02-04T12:00:00", t2, xbrl, [], annual_facts=af)
+    repeated = cmp._apply_repeats(out1 + out2)
+    py_eb = [r for r in repeated if r[16] == "doc26" and r[6] == "prior_ytd" and r[9] == "eps_basic"]
+    py_ed = [r for r in repeated if r[16] == "doc26" and r[6] == "prior_ytd" and r[9] == "eps_diluted"]
+    assert py_eb[0][11] == pytest.approx(-2.41) and py_eb[0][20] in cmp.CHECK_OK
+    assert py_ed[0][11] == pytest.approx(-2.41) and py_ed[0][20] in cmp.CHECK_OK
+
+    # Arithmetic tie-breaker on duplicate PAT rows & Q2 cross-column tolerance for eps_diluted (0.02, not rupee_tol)
+    r_dup_pat = [
+        ("1 Revenue from operations", ("1,000.00", "900.00", "800.00", "1,900.00", "3,100.17", "3,500.00")),
+        ("2 Other income", ("100.00", "90.00", "80.00", "190.00", "208.56", "350.00")),
+        ("3 Total income", ("1,100.00", "990.00", "880.00", "2,090.00", "3,308.73", "3,850.00")),
+        ("4 Total expenses", ("800.00", "720.00", "640.00", "1,520.00", "3,099.91", "2,800.00")),
+        ("5 Profit before tax", ("300.00", "270.00", "240.00", "570.00", "208.82", "1,050.00")),
+        ("6 Total tax expense", ("75.00", "67.00", "60.00", "142.00", "40.06", "262.00")),
+        ("7 Profit after tax", ("225.00", "203.00", "180.00", "428.00", "166.76", "788.00")),
+        ("7b Profit for the period", ("225.00", "203.00", "180.00", "428.00", "168.76", "788.00")),
+        ("8b Diluted EPS", ("1.00", "1.00", "0.80", "5.00", "0.75", "3.00")),
+    ]
+    t3 = cmp.read_page(_wide_page(r_dup_pat, unit="Rs. in Crore", dates=DATES))
+    out3 = cmp._table_rows(conn, "AAAA", "INE000A01001", "doc3", 4, "2026-10-20T12:00:00", t3, {}, [])
+    pat_py = _cells(out3, "pat", "prior_ytd")
+    assert len(pat_py) == 1 and pat_py[0][11] == pytest.approx(168.76 * 1e7) and pat_py[0][20] == "sum_ok"
+    ed_ytd = _cells(out3, "eps_diluted", "ytd")
+    assert ed_ytd[0][20] == "unchecked"   # 1.00 + 1.00 != 5.00 (0.02 tolerance, never rupee_tol)
+    conn.close()
+
+
+def test_integer_eps_without_decimal_dots_uses_xbrl_two_decimals_for_repeat(tmp_path):
+    """T-223 Cause 3: when every EPS token lost its dot ('070', '198', '197'), XBRL matching sets eps_decimals=2."""
+    import json, pymupdf
+
+    d = tmp_path / "eps_nodot"
+    d.mkdir()
+    conn = _conn()
+    _xbrl(conn, "2024-12-31", "eps_basic", 0.70, basis="standalone")
+    _xbrl(conn, "2024-12-31", "eps_diluted", 0.70, basis="standalone")
+    _xbrl(conn, "2024-09-30", "eps_basic", 0.78, basis="standalone")
+    dates1 = ("31.12.2024", "30.09.2024", "31.12.2023", "31.12.2024", "31.12.2023", "31.03.2024")
+    rows1 = [
+        ("1 Revenue from operations", ("1,000.00", "900.00", "800.00", "1,900.00", "1,700.00", "4,000.00")),
+        ("2 Other income", ("100.00", "90.00", "80.00", "190.00", "170.00", "400.00")),
+        ("3 Total income", ("1,100.00", "990.00", "880.00", "2,090.00", "1,870.00", "4,400.00")),
+        ("4 Total expenses", ("800.00", "720.00", "640.00", "1,520.00", "1,360.00", "3,200.00")),
+        ("5 Profit before tax", ("300.00", "270.00", "240.00", "570.00", "510.00", "1,200.00")),
+        ("6 Total tax expense", ("75.00", "67.00", "60.00", "142.00", "127.00", "300.00")),
+        ("7 Profit for the period", ("225.00", "203.00", "180.00", "428.00", "383.00", "900.00")),
+        ("8a Basic EPS", ("070", "078", "040", "198", "120", "040")),
+        ("8b Diluted EPS", ("070", "077", "040", "197", "120", "040")),
+    ]
+    p1 = d / "y1.pdf"
+    doc1 = pymupdf.open()
+    pg1 = doc1.new_page(width=800, height=600)
+    pg1.insert_text((40, 20), "Statement of Standalone Unaudited Financial Results", fontsize=8)
+    pg1.insert_text((40, 35), "Rs. in Lakhs", fontsize=8)
+    for a, dt in zip(COLS, dates1):
+        pg1.insert_text((a - pymupdf.get_text_length(dt, fontsize=7), 50), dt, fontsize=7)
+    for idx, (lbl, vals) in enumerate(rows1):
+        y = 70.0 + 14.0 * idx
+        pg1.insert_text((20, y), lbl, fontsize=7)
+        for a, v in zip(COLS, vals):
+            pg1.insert_text((a - pymupdf.get_text_length(v, fontsize=7), y), v, fontsize=7)
+    doc1.save(str(p1))
+    doc1.close()
+    conn.execute("INSERT INTO doc VALUES ('y1.pdf','AAAA','INE000A01001','results','results','Results',"
+                 "'2025-02-06','2025-02-06T12:00:00',1,'sha_y1','bse',?)", (str(p1),))
+
+    # Year 2: clean layer '197' vs bad OCR '107' on 9MFY25 eps_diluted must match 1.97 via _has_repeat_match
+    dates2 = ("31.12.2025", "30.09.2025", "31.12.2024", "31.12.2025", "31.12.2024", "31.03.2025")
+    layer2 = [
+        ("1 Revenue from operations", ("1,100.00", "1,000.00", "1,000.00", "2,100.00", "1,900.00", "4,100.00")),
+        ("2 Other income", ("110.00", "100.00", "100.00", "210.00", "190.00", "410.00")),
+        ("3 Total income", ("1,210.00", "1,100.00", "1,100.00", "2,310.00", "2,090.00", "4,510.00")),
+        ("4 Total expenses", ("880.00", "800.00", "800.00", "1,680.00", "1,520.00", "3,300.00")),
+        ("5 Profit before tax", ("330.00", "300.00", "300.00", "630.00", "570.00", "1,210.00")),
+        ("6 Total tax expense", ("82.00", "75.00", "75.00", "157.00", "142.00", "302.00")),
+        ("7 Profit for the period", ("248.00", "225.00", "225.00", "473.00", "428.00", "908.00")),
+        ("8a Basic EPS", ("090", "085", "070", "250", "198", "280")),
+        ("8b Diluted EPS", ("090", "085", "070", "250", "197", "280")),
+    ]
+    ocr2 = layer2[:-2] + [
+        ("8a Basic EPS", ("0.90", "0.85", "0.70", "2.50", "1.98", "2.80")),
+        ("8b Diluted EPS", ("0.90", "0.85", "0.70", "2.50", "1.07", "2.80")),
+    ]
+    p2 = d / "y2.pdf"
+    doc2 = pymupdf.open()
+    pg2 = doc2.new_page(width=800, height=600)
+    pg2.insert_text((40, 20), "Statement of Standalone Unaudited Financial Results", fontsize=8)
+    pg2.insert_text((40, 35), "Rs. in Lakhs", fontsize=8)
+    for a, dt in zip(COLS, dates2):
+        pg2.insert_text((a - pymupdf.get_text_length(dt, fontsize=7), 50), dt, fontsize=7)
+    for idx, (lbl, vals) in enumerate(layer2):
+        y = 70.0 + 14.0 * idx
+        pg2.insert_text((20, y), lbl, fontsize=7)
+        for a, v in zip(COLS, vals):
+            pg2.insert_text((a - pymupdf.get_text_length(v, fontsize=7), y), v, fontsize=7)
+    for i in range(15):
+        pg2.insert_text((20, 320 + 12 * i), f"Zxv{i}omer Qlarton{i} Vroptex{i}", fontsize=7)
+    doc2.save(str(p2))
+    doc2.close()
+    conn.execute("INSERT INTO doc VALUES ('y2.pdf','AAAA','INE000A01001','results','results','Results',"
+                 "'2026-02-13','2026-02-13T12:00:00',1,'sha_y2','bse',?)", (str(p2),))
+    ocr_db = d / "ocr.db"
+    ocon = sqlite3.connect(ocr_db)
+    ocon.execute("CREATE TABLE ocr_page (doc_key TEXT, page INTEGER, method TEXT, words_json TEXT)")
+    words = [(40.0, 15.0, 220.0, 23.0, "Statement of Standalone Unaudited Financial Results"),
+             (40.0, 28.0, 120.0, 36.0, "Rs. in Lakhs")]
+    for a, dt in zip(COLS, dates2):
+        words.append((a - 40.0, 44.0, a, 52.0, dt))
+    for idx, (lbl, vals) in enumerate(ocr2):
+        y = 65.0 + 14.0 * idx
+        x = 20.0
+        for tok in lbl.split():
+            words.append((x, y - 3.0, x + 6.0 * len(tok), y + 3.0, tok))
+            x += 6.0 * len(tok) + 3.0
+        for a, v in zip(COLS, vals):
+            words.append((a - 6.0 * len(v), y - 3.0, a, y + 3.0, v))
+    ocon.execute("INSERT INTO ocr_page VALUES ('y2.pdf', 1, 'ocr_rapid', ?)", (json.dumps(words),))
+    ocon.commit()
+    ocon.close()
+    conn.commit()
+    sdb = d / "store.db"
+    dst = sqlite3.connect(sdb)
+    conn.backup(dst)
+    dst.close()
+    cmp.run(conn, ["AAAA"], store_db=sdb, ocr_dbs=[ocr_db])
+    y2_ed = conn.execute(
+        f"SELECT value, check_status FROM {cmp.TABLE} "
+        "WHERE doc_key='y2.pdf' AND column_role='prior_ytd' AND line_item='eps_diluted'"
+    ).fetchall()
+    conn.close()
+    assert len(y2_ed) == 1 and y2_ed[0][0] == pytest.approx(1.97) and y2_ed[0][1] == "repeat_ok"
+
+
+def test_probe_promotes_sum_ok_onto_agreed_partner_cells(tmp_path):
+    """T-223 Cause 4: when probe confirms an identity via a layer-only partner cell (tci from layer + pat/oci agreed),
+    the already-agreed partner cell (oci) also receives sum_ok instead of staying unchecked."""
+    ocr = [
+        ("1 Revenue from operations", ("1,000.00", "900.00", "800.00", "1,900.00", "1,451.86", "4,000.00")),
+        ("2 Other income", ("100.00", "90.00", "80.00", "190.00", "446.98", "400.00")),
+        ("3 Total income", ("1,100.00", "990.00", "880.00", "2,090.00", "1,898.84", "4,400.00")),
+        ("4 Total expenses", ("800.00", "720.00", "640.00", "1,520.00", "2,310.79", "3,200.00")),
+        ("5 Profit before tax", ("300.00", "270.00", "240.00", "570.00", "(411.95)", "1,200.00")),
+        ("7 Profit for the period", ("225.00", "203.00", "180.00", "428.00", "(534.53)", "900.00")),
+        ("8 Total other comprehensive income", ("10.00", "6.00", "5.00", "16.00", "14.63", "22.00")),
+        ("9 Total comprehensive income", ("235.00", "209.00", "185.00", "444.00", "519.90)", "922.00")),
+    ]
+    layer = [
+        ("Xyz garbled pat", vals) if lbl.startswith("7 ")
+        else ("9 Total comprehensive income", ("235.00", "209.00", "185.00", "444.00", "(519.90)", "922.00"))
+        if lbl.startswith("9 ") else (lbl, vals)
+        for lbl, vals in ocr
+    ]
+    c_wide = (340.0, 420.0, 500.0, 580.0, 660.0, 740.0)
+    rows, _rev = _build_pdf_and_ocr(tmp_path / "probe_agreed", layer, ocr, cols=c_wide)
+    oci_py = _cells(rows, "other_comprehensive_income", "prior_ytd")
+    tci_py = _cells(rows, "total_comprehensive_income", "prior_ytd")
+    assert len(tci_py) == 1 and tci_py[0][20] == "sum_ok"
+    assert len(oci_py) == 1 and oci_py[0][11] == pytest.approx(14.63 * 1e7) and oci_py[0][20] == "sum_ok"
+
+
