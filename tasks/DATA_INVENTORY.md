@@ -1,6 +1,6 @@
 # Data inventory: generated, do not edit
 
-Generated 2026-11-18 05:00 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
+Generated 2026-11-18 06:43 IST by `reality_engine/scripts/data_inventory.py`. Check here before saying data is not held. 'Undocumented' means no main doc names it.
 Undocumented: 0 tables and 1 of 74 raw folders.
 
 ## Report tables held cell by cell (`equity_intelligence.mkt_report_cells`)
