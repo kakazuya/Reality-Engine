@@ -13,6 +13,10 @@ tests) once ingestion is done. Sources: `reader_watch.json` (free lists, refresh
 - **Go page readers (18 Nov, T-225)**: `hy4-flash-free` (Tencent HY4 Flash, image) added to
   `reality_engine/scripts/extract_deck_figures.py` MODELS; `longcat-2.5-free` reads images too. Daily free ceilings
   not yet measured: both run on held-store scan pages until they refuse, logged in the run ledger.
+  HY4 needs `reasoning_effort: "none"` (else it thinks through all 8,000 tokens and answers nothing; with it: 7.7 s,
+  122 rows on a c09 results page). LongCat's reasoning cannot be turned off: ~200 s and ~14k output tokens a page,
+  134 rows, so it needs many requests in flight. `beam-free` refuses image input (HTTP 400); it reads layout text only.
+  Iceman: not used for page reading (Shivam 18 Nov).
 - **Google**: per project and per model; Gemini Flash models have small daily caps (~20/day/project for 3.8 Flash).
 
 ## Idle (free, not used by ingestion)
