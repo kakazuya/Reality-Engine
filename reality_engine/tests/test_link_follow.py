@@ -832,3 +832,258 @@ def test_default_get_403_retries_with_browser_headers(monkeypatch):
     assert final_url == "https://www.esafbank.com/disclosures/"
     assert ctype == "text/html"
     assert body == b"<html>ok</html>"
+
+
+# --------------------------------------------------------------------------- T-223 Round 4 fixes
+def test_transcript_strict_accept_and_invitation_rejection():
+    names = ["MATRIMONY", "Matrimony.com Limited"]
+    invite_page1 = (
+        "Matrimony.com Limited\n"
+        "Intimation of schedule of Investor/Analyst conference call\n"
+        "Matrimony.com Limited is pleased to invite you to the Q1FY25 Results Conference Call.\n"
+        "Diamond Pass registration link: https://example.com/dp"
+    )
+    invite_3p = _make_pdf([invite_page1, "Dial-in numbers and Universal Access details.", "Thank you."])
+    invite_6p = _make_pdf([
+        "Matrimony.com Limited\nTranscript and Conference Call Schedule",
+        "Pleased to invite participants. Diamond Pass registration link and universal access dial-in.",
+        "Page 3",
+        "Page 4",
+        "Page 5",
+        "Page 6",
+    ])
+    tx_5p_no_mod = _make_pdf([
+        "Matrimony.com Limited\nQ1FY25 Earnings Call Transcript\nAugust 12, 2024",
+        "Management participants: CEO and CFO.",
+        "Opening remarks.",
+        "Discussion.",
+        "Closing remarks.",
+    ])
+    real_tx_3p = _make_pdf([
+        "Matrimony.com Limited\nQ1FY25 Results Call\nAugust 12, 2024\n"
+        "Moderator: Ladies and gentlemen, good day and welcome to the Matrimony.com Q1FY25 conference call.",
+        "CEO opening remarks.",
+        "Q&A and closing.",
+    ])
+
+    blobs = {
+        "https://x/invite3.pdf": invite_3p,
+        "https://x/invite6.pdf": invite_6p,
+        "https://x/tx5.pdf": tx_5p_no_mod,
+        "https://x/realtx.pdf": real_tx_3p,
+    }
+    fake_get = lambda u: (u, "application/pdf", blobs[u])
+
+    assert lf.resolve("https://x/invite3.pdf", "transcript", "2024-08-12", names, get=fake_get)["reason"] == "not_transcript"
+    assert lf.resolve("https://x/invite6.pdf", "transcript", "2024-08-12", names, get=fake_get)["reason"] == "not_transcript"
+
+    res_5p = lf.resolve("https://x/tx5.pdf", "transcript", "2024-08-12", names, get=fake_get)
+    assert res_5p["status"] == "resolved" and res_5p["kind"] == "transcript"
+
+    res_real = lf.resolve("https://x/realtx.pdf", "transcript", "2024-08-12", names, get=fake_get)
+    assert res_real["status"] == "resolved" and res_real["kind"] == "transcript"
+
+
+def test_group_company_page1_limited_check():
+    rane_names = ["RANEHOLDIN", "Rane Holdings Limited"]
+    rane_madras_deck = _make_pdf([
+        "Rane (Madras) Limited\nCIN: L65993TN2004PLC052856\nRML SE Earnings Presentation",
+        "Financial Highlights",
+        "Operational Metrics",
+        "Segment Mix",
+        "Thank you",
+    ])
+    rane_group_tx = _make_pdf([
+        "Rane Group Q1FY26 Earnings Conference Call\nAugust 8, 2025",
+        "Moderator: Ladies and gentlemen, good day and welcome to the Rane Group conference call.",
+        "Page 3",
+    ])
+
+    navkar_names = ["NAVKAR", "Navkar Corporation Limited"]
+    jsw_and_navkar_tx = _make_pdf([
+        "JSW Infrastructure Limited and Navkar Corporation Limited Q3 FY '25 Earnings Conference Call\nJanuary 28, 2025",
+        "Moderator: Ladies and gentlemen, good day.",
+        "Page 3",
+    ])
+    jsw_only_tx = _make_pdf([
+        "JSW Infrastructure Limited Q3 FY '25 Earnings Conference Call\nJanuary 28, 2025",
+        "Moderator: Good day. Navkar update mentioned on page 2.",
+        "Page 3",
+    ])
+
+    blobs = {
+        "https://x/rml.pdf": rane_madras_deck,
+        "https://x/ranegroup.pdf": rane_group_tx,
+        "https://x/jsw_navkar.pdf": jsw_and_navkar_tx,
+        "https://x/jsw_only.pdf": jsw_only_tx,
+    }
+    fake_get = lambda u: (u, "application/pdf", blobs[u])
+
+    res_rml = lf.resolve("https://x/rml.pdf", "deck", "2025-08-10", rane_names, get=fake_get)
+    assert res_rml["status"] == "failed"
+    assert res_rml["reason"] == "other_company"
+    assert res_rml["printed_company"] == "Rane (Madras) Limited"
+
+    res_rg = lf.resolve("https://x/ranegroup.pdf", "transcript", "2025-08-10", rane_names, get=fake_get)
+    assert res_rg["status"] == "resolved" and res_rg["kind"] == "transcript"
+
+    res_both = lf.resolve("https://x/jsw_navkar.pdf", "transcript", "2025-01-30", navkar_names, get=fake_get)
+    assert res_both["status"] == "resolved" and res_both["kind"] == "transcript"
+
+    res_jsw_only = lf.resolve("https://x/jsw_only.pdf", "transcript", "2025-01-30", navkar_names, get=fake_get)
+    assert res_jsw_only["status"] == "failed"
+    assert res_jsw_only["reason"] == "other_company"
+    assert res_jsw_only["printed_company"] == "JSW Infrastructure Limited"
+
+
+def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Path):
+    db_path = tmp_path / "res_ar.db"
+    conn = _init_store(db_path)
+
+    held_res_pdf = _make_pdf([
+        "Navkar Corporation Limited\nStatement of Audited Financial Results for the quarter ended March 31, 2024",
+        "Segment revenue and notes.",
+    ])
+    held_res_sha = hashlib.sha256(held_res_pdf).hexdigest()
+
+    # Held docs: results on 2025-05-15 (within 2d of 2025-05-16), annual_report on 2025-06-01 (within 120d of 2025-09-01),
+    # and a sha-matched results doc on 2024-05-20 (different filing date >2d from 2024-08-10 so fetched then sha-deduped)
+    conn.executemany(
+        "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        [
+            ("d_res_held", "NAVKAR", "INE278M01019", "results", "results", "Held Results",
+             "2025-05-15", "2025-05-15T18:00:00", 4, "sha_res_held", "pages.db", "res_held.pdf"),
+            ("d_ar_held", "NAVKAR", "INE278M01019", "annual_report", "annual_report", "Held AR",
+             "2025-06-01", "2025-06-01T18:00:00", 80, "sha_ar_held", "pages.db", "ar_held.pdf"),
+            ("d_res_sha", "NAVKAR", "INE278M01019", "results", "results", "Old Sha Results",
+             "2024-05-20", "2024-05-20T18:00:00", 2, held_res_sha, "pages.db", "res_sha.pdf"),
+        ],
+    )
+    conn.executemany(
+        "INSERT INTO filing VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        [
+            # Pre-window (< 2024-04-01) -> ignored
+            ("BSE", "r_pre", "NAVKAR", "INE278M01019", "2024-03-31T18:00:00", "Result", "Financial Results",
+             "Q3 Results", "pre.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            # skipped_notice by headline and by subcategory (no fetch)
+            ("BSE", "r_skip1", "NAVKAR", "INE278M01019", "2025-02-10T18:00:00", "Result", "Newspaper Publication",
+             "Publication of Results", "skip1.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            ("NSE", "r_skip2", "NAVKAR", "INE278M01019", "2025-02-11T18:00:00", "Result", "Other",
+             "Intimation of Board Meeting and Trading Window closure", "https://nse/skip2.pdf",
+             "results", None, None, None, None, None, None, "not_fetched"),
+            ("BSE", "ar_skip", "NAVKAR", "INE278M01019", "2025-07-01T10:00:00", "AGM", "Other",
+             "Corrigendum and Reasons for delay in filing", "ar_skip.pdf",
+             "annual_report", None, None, None, None, None, None, "not_fetched"),
+            # held_same_day: results within 2 days, AR within 120 days (no fetch)
+            ("BSE", "r_hsd", "NAVKAR", "INE278M01019", "2025-05-16T18:00:00", "Result", "Financial Results",
+             "Q4 Financial Results", "r_hsd.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            ("BSE", "ar_hsd", "NAVKAR", "INE278M01019", "2025-09-01T12:00:00", "AGM", "Annual Report",
+             "Annual Report FY25", "ar_hsd.pdf", "annual_report", None, None, None, None, None, None, "not_fetched"),
+            # Valid 2-page results (>2 days from held) -> resolved (even with old date inside text: no call-date check)
+            ("BSE", "r_ok", "NAVKAR", "INE278M01019", "2024-11-12T18:00:00", "Result", "Financial Results",
+             "Q2 FY25 Results", "r_ok.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            # Failed results: too_short (1p), not_results (2p), other_company (2p)
+            ("BSE", "r_short", "NAVKAR", "INE278M01019", "2024-11-20T18:00:00", "Result", "Financial Results",
+             "Short", "r_short.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            ("BSE", "r_bad", "NAVKAR", "INE278M01019", "2024-11-25T18:00:00", "Result", "Financial Results",
+             "Not results", "r_bad.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            ("BSE", "r_other", "NAVKAR", "INE278M01019", "2024-11-30T18:00:00", "Result", "Financial Results",
+             "Other Co", "r_other.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            # Same-sha dedupe for results (>2 days from held filing_date) -> outcome 'held'
+            ("BSE", "r_sha", "NAVKAR", "INE278M01019", "2024-08-10T18:00:00", "Result", "Financial Results",
+             "Duplicate copy", "r_sha.pdf", "results", None, None, None, None, None, None, "not_fetched"),
+            # Valid 40-page AR (>120 days from 2025-06-01) -> resolved
+            ("BSE", "ar_ok", "NAVKAR", "INE278M01019", "2024-08-15T12:00:00", "AGM", "Annual Report",
+             "Annual Report FY24", "ar_ok.pdf", "annual_report", None, None, None, None, None, None, "not_fetched"),
+            # Failed AR: too_short (39p) and not_annual_report (40p)
+            ("BSE", "ar_short", "NAVKAR", "INE278M01019", "2024-08-20T12:00:00", "AGM", "Annual Report",
+             "Short AR", "ar_short.pdf", "annual_report", None, None, None, None, None, None, "not_fetched"),
+            ("BSE", "ar_bad", "NAVKAR", "INE278M01019", "2024-08-25T12:00:00", "AGM", "Annual Report",
+             "Bad AR", "ar_bad.pdf", "annual_report", None, None, None, None, None, None, "not_fetched"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    res_ok_pdf = _make_pdf([
+        "Navkar Corporation Limited\nStatement of Unaudited Financial Results\nJanuary 15, 2020",
+        "Notes to Financial Results for the quarter ended September 30, 2024.",
+    ])
+    res_short_pdf = _make_pdf(["Navkar Corporation Limited\nStatement of Unaudited Financial Results"])
+    res_bad_pdf = _make_pdf(["Navkar Corporation Limited\nOutcome of Meeting", "Details of appointment."])
+    res_other_pdf = _make_pdf([
+        "JSW Infrastructure Limited\nStatement of Unaudited Financial Results",
+        "Notes referencing Navkar subsidiary.",
+    ])
+    ar_ok_pdf = _make_pdf(
+        ["Navkar Corporation Limited\nAnnual Report 2023-24", "Directors' Report"]
+        + [f"Annual report page {i}" for i in range(3, 41)]
+    )
+    ar_short_pdf = _make_pdf(
+        ["Navkar Corporation Limited\nAnnual Report 2023-24"] + [f"Page {i}" for i in range(2, 40)]
+    )
+    ar_bad_pdf = _make_pdf(
+        ["Navkar Corporation Limited\nBusiness Responsibility Filing"] + [f"Page {i}" for i in range(2, 41)]
+    )
+
+    bse_base = "https://www.bseindia.com/xml-data/corpfiling/AttachHis/"
+    blobs = {
+        f"{bse_base}r_ok.pdf": res_ok_pdf,
+        f"{bse_base}r_short.pdf": res_short_pdf,
+        f"{bse_base}r_bad.pdf": res_bad_pdf,
+        f"{bse_base}r_other.pdf": res_other_pdf,
+        f"{bse_base}r_sha.pdf": held_res_pdf,
+        f"{bse_base}ar_ok.pdf": ar_ok_pdf,
+        f"{bse_base}ar_short.pdf": ar_short_pdf,
+        f"{bse_base}ar_bad.pdf": ar_bad_pdf,
+    }
+    fetched: list[str] = []
+
+    def fake_get(url: str) -> tuple[str, str, bytes]:
+        fetched.append(url)
+        if url not in blobs:
+            raise AssertionError(f"should not have fetched {url}")
+        return url, "application/pdf", blobs[url]
+
+    items = lf.plan_store(db_path, get=fake_get)
+    by_fid = {it["filing_id"]: it for it in items}
+
+    assert "r_pre" not in by_fid
+    for skip_id in ("r_skip1", "r_skip2", "ar_skip"):
+        assert by_fid[skip_id]["outcome"] == "skipped_notice"
+    assert by_fid["r_hsd"]["outcome"] == "held_same_day" and by_fid["r_hsd"]["held_doc_key"] == "d_res_held"
+    assert by_fid["ar_hsd"]["outcome"] == "held_same_day" and by_fid["ar_hsd"]["held_doc_key"] == "d_ar_held"
+    assert not any(x in u for u in fetched for x in ("skip", "hsd", "pre"))
+
+    assert by_fid["r_ok"]["outcome"] == "resolved" and by_fid["r_ok"]["kind"] == "results"
+    assert by_fid["r_short"]["outcome"] == "failed" and by_fid["r_short"]["reason"] == "too_short"
+    assert by_fid["r_bad"]["outcome"] == "failed" and by_fid["r_bad"]["reason"] == "not_results"
+    assert by_fid["r_other"]["outcome"] == "failed" and by_fid["r_other"]["reason"] == "other_company"
+    assert by_fid["r_sha"]["outcome"] == "held" and by_fid["r_sha"]["sha256"] == held_res_sha
+
+    assert by_fid["ar_ok"]["outcome"] == "resolved" and by_fid["ar_ok"]["kind"] == "annual_report"
+    assert by_fid["ar_short"]["outcome"] == "failed" and by_fid["ar_short"]["reason"] == "too_short"
+    assert by_fid["ar_bad"]["outcome"] == "failed" and by_fid["ar_bad"]["reason"] == "not_annual_report"
+
+    store_dir = tmp_path / "store_out"
+    counts = lf.apply_plan(store_dir, items, raw_root=tmp_path / "raw_out")
+    assert counts["resolved"] == 2
+    assert counts["skipped_notice"] == 3
+    assert counts["held_same_day"] == 2
+    assert counts["held"] == 1
+
+    with (store_dir / "raw" / "manifest.csv").open("r", encoding="utf-8", newline="") as fh:
+        mrows = {r["newsid"]: r for r in csv.DictReader(fh)}
+    assert mrows["link:BSE:r_ok"]["bucket"] == "quarterly_results"
+    assert mrows["link:BSE:r_ok"]["subcat"] == "Financial Results"
+    assert mrows["link:BSE:ar_ok"]["bucket"] == "annual_report"
+    assert mrows["link:BSE:ar_ok"]["subcat"] == "Annual Report"
+
+    report = lf.format_report(items)
+    header_cols = [c.strip() for c in report.splitlines()[0].split("|")[1:-1]]
+    row_cols = [c.strip() for c in report.splitlines()[2].split("|")[1:-1]]
+    rmap = dict(zip(header_cols, row_cols))
+    assert rmap["results_resolved"] == "1"
+    assert rmap["ar_resolved"] == "1"
+    assert rmap["skipped_notice"] == "3"
+    assert rmap["held_same_day"] == "2"
