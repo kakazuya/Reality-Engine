@@ -854,6 +854,7 @@ class FaceCand:
     source: str
     doc_key: str
     is_xbrl: bool = False
+    xbrl_conflict: bool = False
 
 
 _BAD_REV_FACE = re.compile(r"\btotal\s+income\b|\btotal\s+revenue(?!\s+from\s+operations)\b", re.I)
@@ -963,22 +964,26 @@ def load_face_targets(store_db: str) -> dict[tuple[str, str, str], list[FaceCand
         except sqlite3.Error:
             pass
         try:
+            has_cd = any(r[1] == "check_detail" for r in conn.execute("PRAGMA table_info(fin_quarter_printed)"))
+            cd_col = "check_detail" if has_cd else "''"
             q2 = (
                 "SELECT fiscal_period, column_role, basis, statement, line_item, caption, quote, value, "
-                "unit, scale, raw_token, check_status, doc_key, known_at "
+                f"unit, scale, raw_token, check_status, {cd_col}, doc_key, known_at "
                 "FROM fin_quarter_printed WHERE lower(period_type)='fy' "
                 "AND column_role IN ('ytd', 'prior_ytd', 'last_fy') AND value IS NOT NULL "
                 "AND line_item IN ('revenue_from_operations', 'finance_cost', 'finance_costs')"
             )
-            for fp, role, basis, stmt, li, cap, qt, val, unit, scale, rtok, cs, dkey, ka in conn.execute(q2):
+            for fp, role, basis, stmt, li, cap, qt, val, unit, scale, rtok, cs, cd, dkey, ka in conn.execute(q2):
                 note = _FACE_LINE_TO_NOTE.get((stmt, li))
                 u = (unit or "").lower()
                 if not note or u not in _CURRENCY_UNITS or not scale or float(scale) <= 0:
                     continue
                 cs_s = (cs or "").lower()
+                cd_s = (cd or "").lower()
                 checked = cs_s in ("sum_ok", "xbrl_ok", "repeat_ok")
                 role_s = (role or "").lower()
-                if not checked and (float(val) == 0.0 or role_s == "last_fy"):
+                xbrl_conf = (not checked) and role_s == "last_fy" and "xbrl_conflict" in cd_s
+                if not checked and (float(val) == 0.0 or (role_s == "last_fy" and not xbrl_conf)):
                     continue
                 if _malformed_token(rtok, checked):
                     continue
@@ -991,7 +996,7 @@ def load_face_targets(store_db: str) -> dict[tuple[str, str, str], list[FaceCand
                     inr=float(val) * float(scale), scale=float(scale), unit=u,
                     checked=checked, own_filing=own_f, src_tier=tier,
                     known_at=ka or "", source=src_tag,
-                    doc_key=dkey or "", is_xbrl=False,
+                    doc_key=dkey or "", is_xbrl=False, xbrl_conflict=xbrl_conf,
                 ))
         except sqlite3.Error:
             pass
@@ -1033,7 +1038,10 @@ def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: flo
                           checked=True, own_filing=True, src_tier=4, known_at="",
                           source="face", doc_key="", is_xbrl=False)]
     else:
-        cands = sorted(face_entry, key=_cand_key)
+        filtered = [c for c in face_entry if not (c.source == "ar_face" and doc_key and c.doc_key != doc_key)]
+        if not filtered:
+            return "no_face", None
+        cands = sorted(filtered, key=_cand_key)
     note_inr = tot_val * note_scale
     c0 = cands[0]
     if _cand_matches(note_inr, tot_dec, note_unit, note_scale, c0):
@@ -1048,6 +1056,17 @@ def _tie_out_check(tot_val: float, tot_dec: int, note_unit: str, note_scale: flo
         if not contemp:
             return "no_face", None
         c0 = contemp[0]
+    elif not own:
+        # Restated comparatives in subsequent quarterly filings are flagged xbrl_conflict against the as-filed
+        # FY XBRL; tie when >=2 distinct later filings corroborate the restated figure.
+        later = [
+            c for c in cands[1:]
+            if not c.own_filing and c.xbrl_conflict and c.doc_key
+            and (not c0.known_at or not c.known_at or c.known_at[:10] > c0.known_at[:10])
+            and _cand_matches(note_inr, tot_dec, note_unit, note_scale, c)
+        ]
+        if len({c.doc_key for c in later}) >= 2:
+            return "tied", later[0]
     if (allow_differs and c0.is_xbrl and c0.doc_key and c0.doc_key != doc_key and c0.inr > 0
             and abs(note_inr - c0.inr) <= 0.01 * abs(c0.inr)):
         return "differs", c0
@@ -1076,12 +1095,135 @@ def _bs_section_above(words, lines: list[list[int]], first: int, x_left: float, 
     return doc_section
 
 
+_FACE_PL_TITLE = re.compile(r"statement\s+of\s+profit\s+(?:and|&)\s+loss", re.I)
+_FACE_BS_TITLE = re.compile(r"\bbalance\s+sheet\b", re.I)
+_FACE_NOTES_HDR = re.compile(
+    r"notes?\s+(?:forming\s+part\s+)?(?:to|of)\s+(?:the\s+)?(?:standalone|consolidated)?\s*financial", re.I,
+)
+_FACE_PL_REV = re.compile(r"^\W*(?:[ivx0-9a-z]{1,3}[.):]\s*)?revenue\s+from\s+operations\b", re.I)
+_FACE_PL_FIN = re.compile(r"^\W*(?:[ivx0-9a-z]{1,3}[.):]\s*)?finance\s+costs?\b", re.I)
+_FACE_BS_BORR = re.compile(
+    r"^\W*(?:[ivx0-9a-z]{1,3}[.):]\s*)?(?:(?:non\s*[-–]?\s*current|long[- ]term|current|short[- ]term)\s+)?"
+    r"(?:financial\s+liabilities\W*)?borrowings\b",
+    re.I,
+)
+
+
+def _split_face_blocks(words: list[tuple]) -> list[tuple[str, list[tuple]]]:
+    """Split a face statement page into horizontal blocks (e.g. two-up Balance Sheet | P&L)."""
+    lines = lines_of(words)
+    for ln in lines[:12]:
+        txt, spans = A._spans(words, ln)
+        hits = sorted(
+            [(m.start(), m.end(), "P&L") for m in _FACE_PL_TITLE.finditer(txt)]
+            + [(m.start(), m.end(), "BS") for m in _FACE_BS_TITLE.finditer(txt)]
+        )
+        if len(hits) >= 2:
+            j = next((n for n, (_a, b, _w) in enumerate(spans) if b > hits[1][0]), None)
+            e = next((n for n, (_a, b, _w) in enumerate(spans) if b >= hits[0][1]), None)
+            if j is not None and e is not None and j > e:
+                while j > e + 1 and words[ln[j]][0] - words[ln[j - 1]][2] < 15:
+                    j -= 1
+                if words[ln[j]][0] - words[ln[j - 1]][2] >= 15:
+                    x = words[ln[j]][0] - 6
+                    return [
+                        (hits[0][2], [w for w in words if w[0] < x]),
+                        (hits[1][2], [w for w in words if w[0] >= x]),
+                    ]
+        if len(hits) == 1:
+            return [(hits[0][2], words)]
+    return []
+
+
+def _extract_ar_face(
+    db_path: str, doc_key: str, known_at: str, pages: list[tuple[int, str]], any_cons: bool,
+) -> dict[tuple[str, str, str], list[FaceCand]]:
+    """Extract Revenue, Finance costs, and Borrowings from this AR's own P&L and Balance Sheet face pages."""
+    out: dict[tuple[str, str, str], list[FaceCand]] = defaultdict(list)
+    last_basis = None if any_cons else "standalone"
+    last_unit: tuple[str, float] | None = None
+    for page, text in pages:
+        if any_cons:
+            nxt = title_basis((text or "")[:400])
+            if nxt and nxt != last_basis:
+                last_basis = nxt
+                last_unit = None
+        last_unit = _page_declared_unit(text or "") or last_unit
+        if not text:
+            continue
+        head = "\n".join(text.splitlines()[:12])
+        if not (_FACE_PL_TITLE.search(head) or _FACE_BS_TITLE.search(head)):
+            continue
+        if _FACE_NOTES_HDR.search(head):
+            continue
+        pw = words_for(db_path, doc_key, page)
+        if not pw.words:
+            continue
+        words = A._norm(pw.words)
+        for kind, bwords in _split_face_blocks(words):
+            blines = lines_of(bwords)
+            bhead = " ".join(" ".join(bwords[i][4] for i in ln) for ln in blines[:8])
+            basis = "standalone" if not any_cons else (title_basis(bhead) or last_basis)
+            if basis not in ("standalone", "consolidated"):
+                continue
+            cols = _columns(bwords, blines[:15])
+            if not cols:
+                continue
+            centres, ends = cols
+            gap = abs(centres[1] - centres[0])
+            fig_idx = _first_figure_line(bwords, blines, centres)
+            unit = next(
+                (u for j in range(fig_idx - 1, -1, -1)
+                 if (u := _line_unit(" ".join(bwords[i][4] for i in blines[j])))),
+                None,
+            ) or last_unit
+            if not unit:
+                continue
+            bs_sec: str | None = None
+            seen_block: set[tuple[str, str, str]] = set()
+            for ln in blines:
+                label, vals, _dec, _quote, _n_nums = _parse_line_cols(bwords, ln, centres, gap)
+                lbl_clean = re.sub(r"\s+\d{1,3}(?:\([a-z0-9]+\))?$", "", label.strip(), flags=re.I).strip()
+                if kind == "BS":
+                    if _BS_RESET.match(lbl_clean):
+                        bs_sec = None
+                    elif (m := _BS_SECTION.match(lbl_clean)):
+                        bs_sec = "borrowings_noncurrent" if "non" in m.group(1).lower() else "borrowings_current"
+                if vals[0] is None and vals[1] is None:
+                    continue
+                note: str | None = None
+                if kind == "P&L":
+                    if _FACE_PL_REV.match(lbl_clean) and not _BAD_REV_FACE.search(lbl_clean) and not re.search(r"\bgross\b", lbl_clean, re.I):
+                        note = "revenue_from_operations"
+                    elif _FACE_PL_FIN.match(lbl_clean):
+                        note = "finance_costs"
+                elif kind == "BS" and bs_sec and _FACE_BS_BORR.match(lbl_clean):
+                    note = bs_sec
+                if not note:
+                    continue
+                for k in (0, 1):
+                    if vals[k] is None:
+                        continue
+                    fy = A.fiscal_label(ends[k])
+                    key = (fy, basis, note)
+                    if key in seen_block:
+                        continue
+                    seen_block.add(key)
+                    out[key].append(FaceCand(
+                        inr=float(vals[k]) * unit[1], scale=unit[1], unit=unit[0],
+                        checked=True, own_filing=(ends[k] == max(ends)), src_tier=3,
+                        known_at=known_at, source="ar_face", doc_key=doc_key, is_xbrl=False,
+                    ))
+    return dict(out)
+
+
 def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: str | None,
               doc_section: str | None = None,
-              face_targets: dict[tuple[str, str, str], tuple[float, float, str]] | None = None,
+              face_targets: dict[tuple[str, str, str], tuple[float, float, str] | list[FaceCand]] | None = None,
               force_standalone: bool = False,
               doc_unit: tuple[str, float] | None = None,
-              contd_notes: set[str] | None = None) -> tuple[list[Row], list[dict]]:
+              contd_notes: set[str] | None = None,
+              doc_face: dict[tuple[str, str, str], list[FaceCand]] | None = None) -> tuple[list[Row], list[dict]]:
     pw = words_for(store_db, doc_key, page)
     if not pw.words:
         return [], []
@@ -1257,8 +1399,20 @@ def read_page(store_db: str, doc_key: str, page: int, known_at: str, doc_basis: 
                         and nm not in contd_set
                         and note not in contd_set
                     )
+                    f_entry = face_targets.get((fy, basis, nm))
+                    d_entry = doc_face.get((fy, basis, nm)) if doc_face else None
+                    if d_entry:
+                        if isinstance(f_entry, tuple):
+                            f_entry = [
+                                FaceCand(inr=f_entry[0], scale=f_entry[1], unit=f_entry[2],
+                                         checked=True, own_filing=True, src_tier=4, known_at="",
+                                         source="face", doc_key="", is_xbrl=False),
+                                *d_entry,
+                            ]
+                        else:
+                            f_entry = [*(f_entry or ()), *d_entry]
                     status, m_cand = _tie_out_check(
-                        tot_rows[0].value, t_dec, unit[0], unit[1], face_targets.get((fy, basis, nm)), doc_key,
+                        tot_rows[0].value, t_dec, unit[0], unit[1], f_entry, doc_key,
                         allow_differs=allow_diff, own=own, note_known_at=known_at,
                     )
                     if status == "disagree":
@@ -1430,6 +1584,7 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
         # standalone and consolidated sections are contiguous); a report with no consolidated statement is standalone
         any_cons = any(re.search(r"consolidated\s+(balance\s+sheet|statement\s+of\s+profit|financial\s+statements)",
                                  t or "", re.I) for _, t in pages)
+        doc_face = _extract_ar_face(str(db), doc_key, known_at or filing_date or "", pages, any_cons)
         last = None if any_cons else "standalone"
         last_sec: str | None = None
         last_unit: tuple[str, float] | None = None
@@ -1446,7 +1601,7 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
                 contd_notes = _contd_notes_in(pages[idx + 1][1]) if idx + 1 < len(pages) and pages[idx + 1][0] == page + 1 else set()
                 rows, lg = read_page(str(db), doc_key, page, known_at or filing_date or "", last,
                                      doc_section=last_sec, face_targets=face_targets, force_standalone=not any_cons,
-                                     doc_unit=last_unit, contd_notes=contd_notes)
+                                     doc_unit=last_unit, contd_notes=contd_notes, doc_face=doc_face)
                 cand += rows
                 for x in lg:
                     log.append({"doc_key": doc_key, **x})

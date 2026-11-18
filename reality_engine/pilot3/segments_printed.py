@@ -98,11 +98,12 @@ def block_of(label: str) -> str | None:
 
 
 def segment_name(label: str) -> str:
-    """'a) Yarn' -> 'Yarn'; '(b) Retail Banking' -> 'Retail Banking'; OCR 'al Yarn' -> 'Yarn'; a word carrying
-    digits (an unread number left in the label, '275_76') is dropped."""
+    """'a) Yarn' -> 'Yarn'; '(b) Retail Banking' -> 'Retail Banking'; OCR 'al Yarn' / '(al Domestic' -> 'Yarn' /
+    'Domestic'; a word carrying digits (an unread number left in the label, '275_76') is dropped."""
     name = _PREFIX.sub("", label.strip())
     name = _PREFIX.sub("", name)
-    name = re.sub(r"^[a-h][l1|j]\s+(?=[A-Z])", "", name)
+    name = re.sub(r"^(?:[l1|I!]?\s*[(\[{/!|]|[!|/\[]\s*)[a-h][l1|j}\])]*\s+(?=[A-Z])", "", name)
+    name = re.sub(r"^[a-h][l1|j}\])]\s+(?=[A-Z])", "", name)
     name = re.sub(r"^segment\s*[-:–]\s*", "", name, flags=re.I)
     name = _STAMP.sub("", name)
     name = " ".join(_ocr_word(w) for w in name.split() if not re.search(r"\d", w) or ocr_damaged(w))
@@ -516,11 +517,20 @@ def _fallback_basis(conn, doc_key: str, page: int | None) -> str | None:
     return rows[0][0] if len(rows) == 1 else None
 
 
+_OTHERS_DIMS = frozenset({"others", "other", "other_segments", "all_other_segments"})
+
+
+def _ocr_sim(a: str, b: str) -> float:
+    norm = lambda s: s.replace("rn", "m").replace("vv", "w")
+    return max(SequenceMatcher(None, a, b).ratio(), SequenceMatcher(None, norm(a), norm(b)).ratio())
+
+
 def _swap_ocr(by_block: dict, mapping: dict[str, str], ratio: float = 0.5) -> dict[str, str]:
-    """A scan letter swap ('Yam' for Yarn, 'specrnltty polym is'): a name in a block whose other names are a set the
-    company prints in two or more other blocks (any filing) with exactly one name missing, and that is printed in
-    fewer blocks than the missing name, takes the missing name when the two spellings are alike (ratio >= 0.5).
-    Anything less certain keeps its printed name."""
+    """A scan letter swap ('Yam' for Yarn, 'specrnltty polym is', 'oornesllc' for domestic): a name in a block whose
+    other names are a set the company prints in two or more other blocks (any filing) with exactly one name missing,
+    and that is printed in fewer blocks than the missing name, takes the missing name when the two spellings are alike
+    (ratio >= 0.5, allowing rn<->m / vv<->w OCR merges).  When multiple candidate sets match, a uniquely dominant target
+    (>= 2x the next candidate's block count) still resolves."""
     canon = lambda n: mapping.get(n, n)
     sets = [(k, frozenset(canon(n) for n in v)) for k, v in by_block.items()]
     blocks_of: dict[str, int] = defaultdict(int)
@@ -537,12 +547,18 @@ def _swap_ocr(by_block: dict, mapping: dict[str, str], ratio: float = 0.5) -> di
                     if len(ks - {key}) >= 2 and len(t) == len(names) and rest < t}
             fits = {f for f in fits if f not in names and blocks_of[f] > blocks_of[r]
                     and not any(r in s and f in s for _k, s in sets)
-                    and SequenceMatcher(None, r, f).ratio() >= ratio}
+                    and _ocr_sim(r, f) >= ratio}
+            chosen_target = None
             if len(fits) == 1:
-                f = fits.pop()
+                chosen_target = fits.pop()
+            elif len(fits) > 1:
+                ranked = sorted(fits, key=lambda x: blocks_of[x], reverse=True)
+                if blocks_of[ranked[0]] >= 2 * blocks_of[ranked[1]]:
+                    chosen_target = ranked[0]
+            if chosen_target is not None:
                 for n, c in list(out.items()):
                     if c == r:
-                        out[n] = f
+                        out[n] = chosen_target
     for n, c in list(out.items()):
         seen = {n}
         while c in out and out[c] != c and out[c] not in seen:
@@ -550,6 +566,39 @@ def _swap_ocr(by_block: dict, mapping: dict[str, str], ratio: float = 0.5) -> di
             c = out[c]
         out[n] = c
     return out
+
+
+def _disaggregates_others(own_rows: list, other_rows: list, dim_of) -> bool:
+    """True when a later comparative source preserves every named segment of the period's own filing at the same
+    value and splits its 'others' bucket into newly named segments whose values (plus any remaining 'others') sum to
+    the own filing's 'others' figure within printed rounding."""
+    a_map: dict[str, float] = defaultdict(float)
+    b_map: dict[str, float] = defaultdict(float)
+    for r in own_rows:
+        a_map[dim_of(r)] += r[6]
+    for r in other_rows:
+        b_map[dim_of(r)] += r[6]
+    a_others = [d for d in a_map if d in _OTHERS_DIMS]
+    if len(a_others) != 1:
+        return False
+    a_other_val = a_map[a_others[0]]
+    a_keep = {d: v for d, v in a_map.items() if d not in _OTHERS_DIMS}
+    b_keep = {d: v for d, v in b_map.items() if d not in _OTHERS_DIMS}
+    if not a_keep:
+        return False
+    for d, va in a_keep.items():
+        if d not in b_keep:
+            if d == "unallocated" and abs(va) <= 1e5:
+                continue
+            return False
+        if abs(b_keep[d] - va) > 0.005 * max(abs(va), 1.0) + 2e5:
+            return False
+    new_dims = set(b_keep) - set(a_keep)
+    if not new_dims:
+        return False
+    b_other_val = sum(v for d, v in b_map.items() if d in _OTHERS_DIMS)
+    split_sum = sum(b_keep[d] for d in new_dims) + b_other_val
+    return abs(split_sum - a_other_val) <= 0.005 * max(abs(a_other_val), 1.0) + 2e5
 
 
 def run_store(db: Path, store: str, dry: bool = False) -> dict:
@@ -626,14 +675,22 @@ def run_store(db: Path, store: str, dry: bool = False) -> dict:
     # a repaired (scan-damaged) name is kept only when it lands on a name the company also prints cleanly
     clean = {mapping.get(normalise(r[1]), normalise(r[1])) for r in cand if not r[13]}
     cand = [r for r in cand if not r[13] or mapping.get(normalise(r[1]), normalise(r[1])) in clean]
-    # one source per (metric, period, basis): own current column first, then the latest filing
-    best = {}
+    # one source per (metric, period, basis): own current column first (unless a later comparative strictly
+    # disaggregates its 'others' bucket into newly named segments), then the latest filing
+    dim_of = lambda r: mapping.get(normalise(r[1]), normalise(r[1]))
+    by_key_src: dict[tuple, dict[tuple, list]] = defaultdict(lambda: defaultdict(list))
     for r in cand:
-        key = (r[0], r[2], r[5])
-        rank = (r[12], r[11], r[9], r[10])
-        if key not in best or rank > best[key]:
-            best[key] = rank
-    chosen = [r for r in cand if (r[12], r[11], r[9], r[10]) == best[(r[0], r[2], r[5])]]
+        by_key_src[(r[0], r[2], r[5])][(r[12], r[11], r[9], r[10])].append(r)
+    chosen = []
+    for _key, srcs in by_key_src.items():
+        win = max(srcs)
+        if win[0]:
+            later = [s for s in sorted(srcs, reverse=True) if not s[0] and s[1] > win[1]]
+            for alt in later:
+                if _disaggregates_others(srcs[win], srcs[alt], dim_of):
+                    win = alt
+                    break
+        chosen.extend(srcs[win])
     xbrl = defaultdict(dict)
     for metric, dim, fp, basis, value in conn.execute(
             "SELECT metric, dimension, fiscal_period, basis, value*coalesce(scale,1) FROM kpi_series "

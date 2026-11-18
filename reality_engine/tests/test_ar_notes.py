@@ -1,6 +1,8 @@
 """T-223 (2, 3): annual-report notes reader (``pilot3.ar_notes``): headings, blocks, totals, names."""
 from __future__ import annotations
 
+import sqlite3
+
 from reality_engine.pilot3 import ar_notes as N
 from reality_engine.pilot3.ar_statements import Line
 
@@ -980,6 +982,104 @@ def test_t223_own_note_ties_via_later_checked_comparative_when_contemp_ytd_disag
         ("ar24.pdf", "finance_costs:interest_on_lease_liability", 173.91, "tied"),
         ("ar24.pdf", "finance_costs_total", 1054.19, "tied"),
     ]
+
+
+def test_t223_restated_note_ties_to_ar_face_and_multi_conflict(tmp_path, monkeypatch):
+    """T-223: restated prior-year note ties to its own AR P&L face (and >=2 xbrl_conflict last_fy filings) while subtotals still fail."""
+    db = tmp_path / "t07.db"
+    conn = sqlite3.connect(db)
+    conn.executescript("""
+    CREATE TABLE company (symbol TEXT, isin TEXT);
+    CREATE TABLE doc (doc_key TEXT, doc_type TEXT, filing_date TEXT, known_at TEXT, title TEXT);
+    CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT);
+    CREATE TABLE fin_annual_line (
+        symbol TEXT, isin TEXT, fiscal_year TEXT, period_end TEXT, basis TEXT, statement TEXT,
+        line_item TEXT, caption TEXT, value REAL, unit TEXT, scale REAL, doc_key TEXT, page INTEGER,
+        quote TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT, known_at TEXT,
+        known_at_source TEXT, is_reported INTEGER, is_derived INTEGER, definition TEXT, period_type TEXT
+    );
+    CREATE TABLE fin_quarter_printed (
+        symbol TEXT, isin TEXT, period_end TEXT, fiscal_period TEXT, period_type TEXT, column_role TEXT,
+        basis TEXT, statement TEXT, line_item TEXT, caption TEXT, quote TEXT, value REAL, unit TEXT,
+        scale REAL, raw_token TEXT, check_status TEXT, check_detail TEXT, doc_key TEXT, page INTEGER, known_at TEXT
+    );
+    """)
+    conn.execute("INSERT INTO company VALUES ('TESTFIN', 'INE000000007')")
+    conn.execute("INSERT INTO doc VALUES ('ar25.pdf', 'annual_report', '2025-09-02', '2025-09-02T18:00:00', 'AR 2024-25')")
+    conn.execute("INSERT INTO doc VALUES ('ar26.pdf', 'annual_report', '2026-09-02', '2026-09-02T18:00:00', 'AR 2025-26')")
+    face_txt = "STANDALONE BALANCE SHEET    STANDALONE STATEMENT OF PROFIT AND LOSS\n(Rs. in Lakhs)"
+    conn.execute("INSERT INTO doc_page VALUES ('ar25.pdf', 161, '30 Finance costs')")
+    conn.execute("INSERT INTO doc_page VALUES ('ar26.pdf', 75, ?)", (face_txt,))
+    conn.execute("INSERT INTO doc_page VALUES ('ar26.pdf', 91, '30 Finance costs')")
+    conn.execute(
+        "INSERT INTO fin_annual_line VALUES "
+        "('TESTFIN','INE000000007','FY25','2025-03-31','standalone','P&L','finance_costs','Finance costs',"
+        "394308000.0,'inr',1.0,'xbrl25.xml',0,'','xbrl_db','xbrl','x1','2025-05-30T18:00:00','doc.known_at',1,0,'','FY')"
+    )
+    fqp_rows = [
+        ("FY25", "ytd", "finance_costs", "Finance costs", 394308000.0, "3,943.08", "sum_ok", "", "q4_25.pdf", "2025-05-30T18:00:00"),
+        ("FY25", "last_fy", "finance_costs", "Finance costs", 41489000.0, "414.89", "unchecked", "xbrl_conflict vs xbrl=394308000", "q2_26.pdf", "2025-11-13T18:00:00"),
+        ("FY25", "last_fy", "finance_costs", "Finance costs", 41489000.0, "414.89", "unchecked", "xbrl_conflict vs xbrl=394308000", "q3_26.pdf", "2026-02-12T18:00:00"),
+    ]
+    for fp, role, li, cap, val, rtok, cs, cd, dk, ka in fqp_rows:
+        conn.execute(
+            "INSERT INTO fin_quarter_printed VALUES "
+            "('TESTFIN','INE000000007','2025-03-31',?,'fy',?,'standalone','P&L',?,?,?,?,'inr',1.0,?,?,?,?,1,?)",
+            (fp, role, li, cap, cap, val, rtok, cs, cd, dk, ka),
+        )
+    conn.commit()
+    conn.close()
+
+    ft = N.load_face_targets(str(db))
+    fc_cands = ft[("FY25", "standalone", "finance_costs")]
+    assert sum(1 for c in fc_cands if c.xbrl_conflict) == 2
+
+    # Unit checks on _tie_out_check: >=2 xbrl_conflict last_fy ties when not own; single conflict or subtotal fails
+    st_two, _ = N._tie_out_check(414.89, 2, "inr_lakh", 1e5, fc_cands, doc_key="ar26.pdf", own=False, note_known_at="2026-09-02")
+    assert st_two == "tied"
+    one_conf = [c for c in fc_cands if not c.xbrl_conflict] + [c for c in fc_cands if c.xbrl_conflict][:1]
+    st_one, _ = N._tie_out_check(414.89, 2, "inr_lakh", 1e5, one_conf, doc_key="ar26.pdf", own=False, note_known_at="2026-09-02")
+    assert st_one == "disagree"
+    st_sub, _ = N._tie_out_check(100.00, 2, "inr_lakh", 1e5, fc_cands, doc_key="ar26.pdf", own=False, note_known_at="2026-09-02")
+    assert st_sub == "disagree"
+
+    pages = {
+        ("ar25.pdf", 161): (
+            _wline(20, (40, "Notes to Standalone Financial Statements"))
+            + _wline(40, (40, "30 Finance costs"), (440, "(Rs. in lakhs)"))
+            + _wline(54, (320, "31 March 2025"), (440, "31 March 2024"))
+            + _wline(68, (40, "Interest expenses"), (350, "3,900.00"), (470, "2,000.00"))
+            + _wline(82, (40, "Other borrowing costs"), (350, "43.08"), (470, "30.00"))
+            + _wline(96, (40, "Total"), (350, "3,943.08"), (470, "2,030.00"))
+        ),
+        ("ar26.pdf", 75): (
+            _wline(20, (40, "STANDALONE BALANCE SHEET"), (500, "STANDALONE STATEMENT OF PROFIT AND LOSS"))
+            + _wline(34, (500, "(Rs. in lakhs)"))
+            + _wline(48, (220, "31 March 2026"), (320, "31 March 2025"), (760, "31 March 2026"), (860, "31 March 2025"))
+            + _wline(64, (40, "EQUITY AND LIABILITIES"), (500, "Revenue from operations"), (780, "80,000.00"), (880, "77,705.56"))
+            + _wline(78, (500, "Finance costs 30"), (780, "500.00"), (880, "414.89"))
+        ),
+        ("ar26.pdf", 91): (
+            _wline(20, (40, "Notes to Standalone Financial Statements"))
+            + _wline(40, (40, "30 Finance costs"), (440, "(Rs. in lakhs)"))
+            + _wline(54, (320, "31 March 2026"), (440, "31 March 2025"))
+            + _wline(68, (40, "Interest expenses"), (350, "450.00"), (470, "379.10"))
+            + _wline(82, (40, "Other borrowing costs"), (350, "50.00"), (470, "35.79"))
+            + _wline(96, (40, "Finance cost on lease"), (350, "0.00"), (470, "0.00"))
+            + _wline(110, (40, "Total"), (350, "500.00"), (470, "414.89"))
+        ),
+    }
+    monkeypatch.setattr(N, "words_for", lambda _db, dk, pg: type("P", (), {"words": pages[(dk, pg)]})())
+    res = N.run_store(db, "t07")
+    fy25 = [(r.doc_key, r.line_item, r.value, r.tie_status)
+            for r in res["row_list"] if r.fiscal_year == "FY25" and r.basis == "standalone"]
+    assert ("ar25.pdf", "finance_costs_total", 3943.08, "tied") in fy25
+    assert ("ar26.pdf", "finance_costs:interest_expenses", 379.10, "tied") in fy25
+    assert ("ar26.pdf", "finance_costs:other_borrowing_costs", 35.79, "tied") in fy25
+    assert ("ar26.pdf", "finance_costs:finance_cost_on_lease", 0.00, "tied") in fy25
+    assert ("ar26.pdf", "finance_costs_total", 414.89, "tied") in fy25
+    restated_tot = [r for r in res["row_list"] if r.fiscal_year == "FY25" and r.doc_key == "ar26.pdf" and r.line_item == "finance_costs_total"][0]
+    assert "restated in ar26.pdf p91" in restated_tot.definition
 
 
 
