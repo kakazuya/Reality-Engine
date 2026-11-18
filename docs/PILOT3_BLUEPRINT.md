@@ -2043,4 +2043,13 @@ An empty store means not extracted, never "not held", until raw sources are chec
 
     python -m reality_engine.pilot3.link_follow --store-dir <dir> [--plan-only] [--site] [--site-all] [--symbols A,B] [--json out]
 
+### 9v. Annual-report notes reader (T-223, store-repair note R-015, 18 Nov 2026)
+
+`pilot3/ar_notes.py` (invoked by build part `ar_statements` after `ar_statements.run_store`) reads two-column annual-report notes (`borrowings_noncurrent`, `borrowings_current`, `borrowings_unclassified`, `revenue_from_operations`, `finance_costs`) into `fin_annual_line` (`statement='NOTE'`, `source_table='ar_note'`):
+
+- **Page & column reading:** crops two-up note regions horizontally to their heading block, skips internal sub-tables (`_SUBTABLE`) unless an outer lettered/roman section resumes, drops four-column notes and `(Contd.)` headings, reads units only from unit-phrase lines (with per-basis document unit fallback when unambiguous), checks every block's item add-up and whole-note sum-to-total invariant, and ties note totals against `load_face_targets` (`fin_annual_line` P&L/BS and `fin_quarter_printed` FY columns). When an `own=True` note has only future `own_filing=False` comparative face candidates (`known_at` later than the note's) and disagrees with them, it is kept as `no_face` rather than rejected so a later restatement never discards the year's own as-filed note.
+- **As-filed + restated source selection (`_select_sources`):** per `(fiscal_year, basis, note)`, keeps up to two single-page/column sources: (a) AS-FILED = best `own=True` source (tied first, latest report, lower page), and (b) RESTATED = best `own=False` source with `known_at` later than (a)'s whose figures differ from (a)'s on any line beyond printed rounding tolerance (ignoring omitted zero rows and pure caption-slug rewordings of identical amounts/kinds). Restated (b) rows carry `'restated in <later report> (as-filed <value> in <earlier report>)'` in `definition` (so `pilot3_fin` / `pilot3_fact` serve (a) for `as_of` before (b)'s `known_at` and (b) with `restated=True` and `(a)` in `alternatives` thereafter); when no `own=True` source exists, the best `own=False` source is kept alone.
+
+    python -m reality_engine.pilot3.ar_notes run --root D:/RealityEngine/tg_build/measure10 [--stores c59] [--dry --out <dir>]
+
 
