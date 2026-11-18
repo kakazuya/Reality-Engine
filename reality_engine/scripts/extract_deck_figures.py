@@ -102,6 +102,10 @@ MODELS = {
                                 "body": {"temperature": 0, "max_tokens": 16000}},
     "beam-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 32,
                   "body": {"temperature": 0, "max_tokens": 16000}},
+    # Tencent HY4 Flash, free on Go (18 Nov 2026: 60 reference pages, layout + image, 0 errors, ~8 s/page, 80% of
+    # cells placed right; T-225). Daily free ceiling not yet measured: run until 429 and log it (Shivam 18 Nov).
+    "hy4-flash-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                       "body": {"temperature": 0, "max_tokens": 8000}},
     "longcat-2.5-preview-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 35,
                                  "body": {"temperature": 0, "max_tokens": 8000, "thinking": {"type": "disabled"}}},
     # best labels on the 40-page test (96.3% identifiable, units 94%) but reasoning cannot be switched off:

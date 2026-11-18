@@ -8,6 +8,11 @@ tests) once ingestion is done. Sources: `reader_watch.json` (free lists, refresh
 - **Zen**: one daily allowance per machine/IP (~1,800 calls / ~35M tokens, reset 05:30 IST). Any Zen model used for
   other work eats the same allowance the annual-report Zen worker uses.
 - **Kilo**: free models go through Kilo's own OpenRouter account; every Kilo key shares one quota per model.
+  Dots on key 2: 11 Nov ran 389 pages / ~1.26M tokens / ~470 requests in one UTC day before "Free model usage limit
+  reached"; 18 Nov runs measure it again (T-225, Shivam: push until it refuses).
+- **Go page readers (18 Nov, T-225)**: `hy4-flash-free` (Tencent HY4 Flash, image) added to
+  `reality_engine/scripts/extract_deck_figures.py` MODELS; `longcat-2.5-free` reads images too. Daily free ceilings
+  not yet measured: both run on held-store scan pages until they refuse, logged in the run ledger.
 - **Google**: per project and per model; Gemini Flash models have small daily caps (~20/day/project for 3.8 Flash).
 
 ## Idle (free, not used by ingestion)
