@@ -1220,3 +1220,112 @@ def test_r013_ladder_repeat_ok_promotes_layer_disagreed_value():
     )
     ct = [r for r in _cells(rows, "current_tax", "current") if r[16] == "res.pdf"]
     assert len(ct) == 1 and ct[0][11] == 120 * 1e7 and ct[0][20] == "repeat_ok"
+
+
+def _run_june_annual_facts_case(tmp_path, annual_rows):
+    import pymupdf
+
+    dates = ("30.06.2026", "31.03.", "30.06.2025", "31.03.")
+    cols = (200.0, 270.0, 340.0, 410.0)
+    rows = _june_rows([
+        ("12,000.00", "13,000.00", "11,000.00", "50,167.28"),
+        ("100.00", "110.00", "90.00", "417.05"),
+        ("12,100.00", "13,110.00", "11,090.00", "50,584.33"),
+        ("10,500.00", "11,400.00", "9,700.00", "44,051.93"),
+        ("1,600.00", "1,710.00", "1,390.00", "6,532.40"),
+        ("400.00", "420.00", "350.00", "1,513.86"),
+        ("1,200.00", "1,290.00", "1,040.00", "5,018.54"),
+        ("11.90", "12.80", "10.30", "49.80"),
+    ])
+    pdf_path = tmp_path / "june_q1.pdf"
+    doc = pymupdf.open()
+    page = doc.new_page(width=800, height=600)
+    page.insert_text((40, 20), "Statement of Standalone Unaudited Financial Results for the Quarter Ended 30.06.2026", fontsize=8)
+    page.insert_text((40, 35), "Rs. in Lakhs", fontsize=8)
+    for anchor, dtext in zip(cols, dates):
+        w = pymupdf.get_text_length(dtext, fontsize=7)
+        page.insert_text((anchor - w, 50), dtext, fontsize=7)
+    for idx, (label, values) in enumerate(rows):
+        y = 70.0 + 14.0 * idx
+        page.insert_text((20, y), label, fontsize=7)
+        for anchor, val in zip(cols, values):
+            w = pymupdf.get_text_length(val, fontsize=7)
+            page.insert_text((anchor - w, y), val, fontsize=7)
+    doc.save(str(pdf_path))
+    doc.close()
+
+    conn = _conn()
+    conn.execute("""
+        CREATE TABLE fin_annual_line (symbol TEXT, isin TEXT, fiscal_year TEXT, period_end TEXT, basis TEXT,
+            statement TEXT, line_item TEXT, caption TEXT, value REAL, unit TEXT, scale REAL, doc_key TEXT,
+            page INTEGER, quote TEXT, source_db TEXT, source_table TEXT, source_rowid TEXT, known_at TEXT,
+            known_at_source TEXT, is_reported INTEGER, is_derived INTEGER, definition TEXT, period_type TEXT)
+    """)
+    for basis, period_end, item, value, source_table in annual_rows:
+        conn.execute(
+            "INSERT INTO fin_annual_line (symbol, isin, fiscal_year, period_end, basis, statement, line_item, "
+            "value, unit, scale, source_table, period_type) VALUES "
+            "('AAAA', 'INE000A01001', 'FY26', ?, ?, 'P&L', ?, ?, 'inr', 1.0, ?, 'FY')",
+            (period_end, basis, item, value, source_table),
+        )
+    conn.execute(
+        "INSERT INTO doc VALUES ('june_q1.pdf','AAAA','INE000A01001','results','results','Results',"
+        "'2026-08-14','2026-08-14T12:00:00',1,'sha_q1','nse',?)", (str(pdf_path),)
+    )
+    conn.commit()
+    cmp.run(conn, ["AAAA"])
+    out = conn.execute(
+        f"SELECT line_item, column_role, period_end, basis, value, check_status FROM {cmp.TABLE}"
+    ).fetchall()
+    conn.close()
+    return out
+
+
+def test_june_last_fy_confirmed_by_annual_facts_when_header_lacks_year(tmp_path):
+    """R-020 follow-up: annual XBRL facts (fin_annual_line source_table='facts') confirm June last_fy."""
+    stored = _run_june_annual_facts_case(
+        tmp_path,
+        [("standalone", "2026-03-31", "total_income", 50584.33 * 1e5, "facts")],
+    )
+    last_fy = [r for r in stored if r[1] == "last_fy"]
+    assert {r[0] for r in last_fy} >= {
+        "revenue_from_operations", "total_income", "total_expenses", "pbt_before_exceptional", "eps_basic",
+    }
+    ti = [r for r in last_fy if r[0] == "total_income"]
+    assert len(ti) == 1 and ti[0][2] == "2026-03-31" and ti[0][3] == "standalone"
+    assert ti[0][4] == pytest.approx(50584.33 * 1e5) and ti[0][5] == "sum_ok"
+
+
+def test_june_last_fy_not_stored_when_annual_facts_mismatches_or_wrong_source(tmp_path):
+    """R-020 follow-up: non-matching annual facts (or non-facts/non-vocab rows) do not confirm June last_fy."""
+    stored_mismatch = _run_june_annual_facts_case(
+        tmp_path,
+        [("standalone", "2026-03-31", "total_income", 99999.00 * 1e5, "facts")],
+    )
+    assert [r for r in stored_mismatch if r[1] == "last_fy"] == []
+    assert {r[1] for r in stored_mismatch} == {"current", "preceding", "year_ago"}
+
+    # Non-vocab item and non-facts source_table do not confirm last_fy either.
+    stored_other = _run_june_annual_facts_case(
+        tmp_path,
+        [
+            ("standalone", "2026-03-31", "ebitda", 50584.33 * 1e5, "facts"),
+            ("standalone", "2026-03-31", "total_income", 50584.33 * 1e5, "ar_facts"),
+        ],
+    )
+    assert [r for r in stored_other if r[1] == "last_fy"] == []
+
+
+def test_june_last_fy_eps_tolerance_uses_printed_decimals(tmp_path):
+    """EPS confirmation against annual facts uses EPS's own printed decimals, never table rupee scale."""
+    stored_ok = _run_june_annual_facts_case(
+        tmp_path,
+        [("standalone", "2026-03-31", "eps_basic", 49.81, "facts")],
+    )
+    assert any(r[1] == "last_fy" and r[0] == "eps_basic" for r in stored_ok)
+
+    stored_far = _run_june_annual_facts_case(
+        tmp_path,
+        [("standalone", "2026-03-31", "eps_basic", 50.10, "facts")],
+    )
+    assert [r for r in stored_far if r[1] == "last_fy"] == []

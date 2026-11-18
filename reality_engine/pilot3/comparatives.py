@@ -5,7 +5,7 @@ year-to-date and the last full year.  ``fin_quarter_xbrl`` holds only the window
 TTM cannot be computed from XBRL alone.  For a June period end, ``ytd``/``prior_ytd`` are never emitted (``_quarter``
 refuses them with ``None``): wide (>=7-col) June pages are read only when ``_side_by_side_ok`` confirms mirrored
 S/C halves, and a June ``last_fy`` column is stored only when its previous-March year is matched in the header
-(``_date_match(..., require_year=True)``) or its values match XBRL/prior store FY rows (never by default position;
+(``_date_match(..., require_year=True)``) or its values match XBRL, annual XBRL facts, or prior store FY rows (never by default position;
 see ``_role_set`` and ``_roles``).  This part rebuilds every P&L column from the page's **word boxes**
 (``page.get_text("words")``, rows by y-centre, columns by x) -- the stored page text scatters a table --
 maps each printed label to the canonical line item the XBRL store uses (``lexicon/results_lines.yaml``),
@@ -864,6 +864,20 @@ def xbrl_index(conn: sqlite3.Connection, symbol: str) -> dict:
     return values
 
 
+def annual_facts_index(conn: sqlite3.Connection, symbol: str) -> dict[tuple[str, str], dict[str, list[float]]]:
+    """``{(basis, period_end): {item: [value, ...]}}`` from ``fin_annual_line`` (``source_table='facts'``)."""
+    values: dict[tuple[str, str], dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    if not conn.execute("SELECT 1 FROM sqlite_master WHERE name='fin_annual_line'").fetchone():
+        return values
+    vocab = {item for _pattern, item in lexicon()}
+    for basis, end, item, value in conn.execute(
+            "SELECT basis, period_end, line_item, value FROM fin_annual_line "
+            "WHERE source_table='facts' AND symbol=? AND value IS NOT NULL", (symbol,)):
+        if item in vocab and basis in ("standalone", "consolidated") and end:
+            values[(basis, end)][item].append(float(value))
+    return values
+
+
 def _close(got: float, want: float, tol: float) -> bool:
     return abs(got - want) <= tol
 
@@ -1062,6 +1076,7 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
     isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
     isin = isin[0] if isin else None
     xbrl = xbrl_index(conn, symbol)
+    annual_facts = annual_facts_index(conn, symbol)
     docs = conn.execute(
         "SELECT doc_key, known_at, source_key, sha256 FROM doc WHERE symbol=? AND doc_type='results' "
         "AND source_key IS NOT NULL AND known_at IS NOT NULL ORDER BY known_at", (symbol,)).fetchall()
@@ -1133,14 +1148,16 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
                 page_review: list[dict] = []
                 new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, page_review,
                                   ocr=ocr_all, fill_table=fill_table, store_fy=store_fy, disagreed=disagreed,
-                                  layer_only=layer_only, layer_pending=layer_pending)
+                                  layer_only=layer_only, layer_pending=layer_pending,
+                                  annual_facts=annual_facts)
                 if not new and prev is not None:
                     cont = _continuation(ocr_rows if ocr_all else word_rows, prev)
                     if cont is not None:
                         cont_review: list[dict] = []
                         cont_rows = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, cont, xbrl,
                                                 cont_review, ocr=ocr_all, store_fy=store_fy, disagreed=disagreed,
-                                                layer_only=layer_only, layer_pending=layer_pending)
+                                                layer_only=layer_only, layer_pending=layer_pending,
+                                                annual_facts=annual_facts)
                         if cont_rows:
                             table = cont
                             previous = cont
@@ -1627,7 +1644,7 @@ def _build_row(symbol: str, isin: str | None, role: str, basis: str, item: str, 
 def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review, ocr: bool = False,
                 fill_table: dict | None = None, store_fy: dict | None = None,
                 disagreed: dict | None = None, layer_only: bool = False,
-                layer_pending: set | None = None) -> list[tuple]:
+                layer_pending: set | None = None, annual_facts: dict | None = None) -> list[tuple]:
     """Resolve this table's roles, parse its cells, run the checks, and return the rows to store.
 
     R-013 (18 Nov 2026): on a jumbled results page with OCR (``ocr=True``), OCR and the text layer (``fill_table``)
@@ -1645,7 +1662,8 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             fill_half = fill_halves[i] if fill_halves is not None else None
             out_rows.extend(_table_rows(conn, symbol, isin, doc_key, page_no, known_at, half_table, xbrl,
                                         review, ocr=ocr, fill_table=fill_half, store_fy=store_fy,
-                                        disagreed=disagreed, layer_only=layer_only, layer_pending=layer_pending))
+                                        disagreed=disagreed, layer_only=layer_only, layer_pending=layer_pending,
+                                        annual_facts=annual_facts))
         return out_rows
     anchors = table["anchors"]
     head_text = " ".join(w[4] for row in (table.get("header_rows") or []) for w in row)
@@ -1666,7 +1684,8 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             and len(fill_table["dates"]) == count:
         dates = fill_table["dates"]
     choice = _roles(dates, end, count, values, xbrl, basis_hint, table["scale"], decimals,
-                    table.get("hint"), header_rows=table.get("header_rows"), store_fy=store_fy)
+                    table.get("hint"), header_rows=table.get("header_rows"), store_fy=store_fy,
+                    annual_facts=annual_facts)
     if choice is None:
         review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
                        "column_role": None, "raw_token": None, "check": "no_scale_or_roles",
@@ -1697,7 +1716,8 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         fill_scale_in = (fill_table["scale"] or scale) if ocr else fill_table["scale"]
         fill_choice = _roles(fill_table.get("dates"), end, len(fill_table["anchors"]), fill_table["values"],
                              xbrl, basis_hint, fill_scale_in, fill_table["decimals"], fill_table.get("hint"),
-                             header_rows=fill_table.get("header_rows"), store_fy=store_fy)
+                             header_rows=fill_table.get("header_rows"), store_fy=store_fy,
+                             annual_facts=annual_facts)
         if fill_choice is not None and fill_choice["basis"] == basis and fill_choice["scale"] == scale \
                 and set(fill_choice["roles"]) == set(roles):
             fill_dec = fill_table["decimals"]
@@ -2068,14 +2088,17 @@ def _side_by_side_ok(header_rows, dates, count: int) -> bool:
     return True
 
 
-def _fy_refs(basis: str, period_end: str, xbrl: dict, store_fy: dict | None) -> dict[str, list[float]]:
-    """Known full-year values for ``period_end`` from XBRL and earlier store FY rows."""
+def _fy_refs(basis: str, period_end: str, xbrl: dict, store_fy: dict | None,
+             annual_facts: dict | None = None) -> dict[str, list[float]]:
+    """Known full-year values for ``period_end`` from XBRL, earlier store FY rows, and annual XBRL facts."""
     refs: dict[str, list[float]] = defaultdict(list)
     if basis in ("standalone", "consolidated"):
         for item, val in xbrl.get((basis, period_end), {}).items():
             refs[item].append(val)
-    if store_fy:
-        for (b, pe), items in store_fy.items():
+    for extra in (store_fy, annual_facts):
+        if not extra:
+            continue
+        for (b, pe), items in extra.items():
             if pe != period_end:
                 continue
             if basis in ("standalone", "consolidated") and b not in (basis, "unchecked"):
@@ -2086,12 +2109,13 @@ def _fy_refs(basis: str, period_end: str, xbrl: dict, store_fy: dict | None) -> 
 
 
 def _june_last_fy_confirmed(at: int, dates, end: str, values: dict, xbrl: dict, store_fy: dict | None,
-                             basis: str, scale: float, decimals: int) -> bool:
+                             basis: str, scale: float, decimals: int,
+                             annual_facts: dict | None = None) -> bool:
     """True when a June table's ``last_fy`` column has its March year matched or matches an FY value."""
     want_year = int(end[:4])
     if dates and at < len(dates) and _date_match(dates[at], (3, want_year), require_year=True):
         return True
-    refs = _fy_refs(basis, _last_fy_end(end), xbrl, store_fy)
+    refs = _fy_refs(basis, _last_fy_end(end), xbrl, store_fy, annual_facts)
     if not refs:
         return False
     eps_dec = _eps_decimals(values)
@@ -2112,7 +2136,8 @@ def _june_last_fy_confirmed(at: int, dates, end: str, values: dict, xbrl: dict, 
 
 def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: str | None,
            scale: float | None, decimals: int, hint: list[str] | None = None,
-           header_rows=None, store_fy: dict | None = None) -> dict | None:
+           header_rows=None, store_fy: dict | None = None,
+           annual_facts: dict | None = None) -> dict | None:
     """Column roles (header order first, a header layout hint second, layout by quarter last), basis and scale,
     checked against XBRL; the earlier candidate wins a tie."""
     if end[5:7] == "06" and count >= 7 and not _side_by_side_ok(header_rows, dates, count):
@@ -2153,10 +2178,12 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
             # declared one they do not (R-006: the unit line can be missing from the text layer)
             for sc in ([scale] if scale else []) + [s for s in (1e5, 1e6, 1e7) if s != scale]:
                 use_fy = store_fy if (scale is None or sc == scale) else None
-                if basis not in ("standalone", "consolidated") and not (end[5:7] == "06" and use_fy):
+                use_annual = annual_facts if (scale is None or sc == scale) else None
+                if basis not in ("standalone", "consolidated") and not (end[5:7] == "06" and (use_fy or use_annual)):
                     score = 0
                 else:
-                    score = _score_roles(roles, end, values, xbrl, basis, sc, decimals, store_fy=use_fy)
+                    score = _score_roles(roles, end, values, xbrl, basis, sc, decimals,
+                                         store_fy=use_fy, annual_facts=use_annual)
                 if best is None or score > best[0]:
                     best = (score, roles, basis, sc)
     if best is None or (best[0] == 0 and scale is None):
@@ -2167,7 +2194,8 @@ def _roles(dates, end: str, count: int, values: dict, xbrl: dict, basis_hint: st
     roles = list(roles)
     if end[5:7] == "06" and "last_fy" in roles:
         at = roles.index("last_fy")
-        if not _june_last_fy_confirmed(at, dates, end, values, xbrl, store_fy, basis, sc, decimals):
+        if not _june_last_fy_confirmed(at, dates, end, values, xbrl, store_fy, basis, sc, decimals,
+                                       annual_facts=annual_facts):
             roles[at] = None
     periods = {role: _role_period(role, end) for role in roles if role}
     return {"roles": roles, "basis": basis, "scale": sc, "periods": periods, "score": best[0],
@@ -2204,7 +2232,7 @@ def _roles_from_dates(dates, end: str, default: list[str | None], count: int) ->
 
 
 def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: int,
-                 store_fy: dict | None = None) -> int:
+                 store_fy: dict | None = None, annual_facts: dict | None = None) -> int:
     tol = _tol("total_income", decimals, scale)
     eps_dec = _eps_decimals(values)
     score = 0
@@ -2222,10 +2250,10 @@ def _score_roles(roles, end, values, xbrl, basis: str, scale: float, decimals: i
                     if _xbrl_ok(xbrl, basis, period_end, item, value,
                                 _tol(item, decimals, scale, token["text"], eps_dec)):
                         score += 10 if role == "current" else 5
-    if end[5:7] == "06" and "last_fy" in roles and store_fy:
+    if end[5:7] == "06" and "last_fy" in roles and (store_fy or annual_facts):
         at = roles.index("last_fy")
         lfy_end = _last_fy_end(end)
-        refs = _fy_refs(basis, lfy_end, {}, store_fy)
+        refs = _fy_refs(basis, lfy_end, {}, store_fy, annual_facts)
         for item, tokens in values.get(at, {}).items():
             wants = refs.get(item)
             if not wants:
