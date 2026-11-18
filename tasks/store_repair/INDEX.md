@@ -8,6 +8,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 |---|---|---|---|---|---|---|---|---|---|
 | R-013 | fix_written | corrupt | 69/91 (scan) | 2 |  | 138 | comparatives | general | c01, c02, c03, c04, c05, c07, c08, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c23, c24, c25, c26, c27, c28, c29, c30, c32, c33, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c89, c90, c91 |
 | R-015 | open | missed | 85/91 (scan) | 1 | 11 (11) | 96 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
+| R-025 | open | missed | 82/91 (scan) | 1 |  | 82 | ar_statements | general |  |
 | R-014 | fix_written | missed | 40/91 (scan) | 1 | 27 (18) | 67 | docs_collect | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-020 | fix_written | wrong | 20/91 (scan) | 3 |  | 60 | comparatives | general | c01, c02, c03, c04, c05, c07, c08, c09, c10, c11, c13, c14, c15, c16, c17, c18, c19, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c41, c42, c43, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c88, c89, c90, c91 |
 | R-019 | fix_written | wrong | 8/91 (trial) | 3 | 9 (8) | 51 | tools | general |  |
@@ -15,7 +16,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-016 | open | missed | 16/91 (trial) | 1 | 17 (16) | 33 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-021 | fix_written | wrong | 9/91 (scan) | 3 |  | 27 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c89, c90, c91 |
 | R-018 | open | missed | 9/91 (scan) | 1 | 1 (1) | 10 | holding | general |  |
-| R-023 | fix_written | wrong | 1/91 (suspect) | 3 |  | 3 | stores | general |  |
+| R-023 | fix_written | wrong | 1/91 (suspect) | 3 |  | 3 | stores | general | c07, c10, c14, c20, c22, c23, c28, c33, c34, c39, c41, c51, c54, c58, c59, c62, c63, c65, c70, c77, c84, c89 |
 | R-024 | open | wrong | 1/91 (scan) | 3 |  | 3 | guidance | general |  |
 | R-022 | fix_written | missed | 2/91 (scan) | 1 |  | 2 | segments | general |  |
 | R-001 | open | missed |  | 1 |  |  | guidance | general |  |
@@ -328,7 +329,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Code:** -
 - **Store tables touched:** fin_quarter_printed
 - **Tags:** eps, discontinued_ops; **scope:** general
-- **Stores repaired:** -; runs: -
+- **Stores repaired:** c07, c10, c14, c20, c22, c23, c28, c33, c34, c39, c41, c51, c54, c58, c59, c62, c63, c65, c70, c77, c84, c89; runs: 20261118T221813
 
 ## R-024 (open, part `guidance`, opened 2026-11-18)
 
@@ -341,4 +342,17 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Code:** -
 - **Store tables touched:** guidance, kpi_series
 - **Tags:** parent_company, deck, ruling_needed; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-025 (open, part `ar_statements`, opened 2026-11-18)
+
+1. **Why it had to be done** (question that exposed it, all): What was the company's closing cash balance / net change in cash for FY25?
+2. **What the problem was:** ar_statements.py:719 skips every ar_statement row for a (fiscal_year, basis) that XBRL CF facts already cover. XBRL CF facts never carry cash_at_beginning, cash_at_end, net_change_in_cash, fx_effect_on_cash or the printed cash-flow lines (cf_printed_line), so those are lost for every XBRL year. Seen on c75 RSYSTEMS FY25 (cash_at_end 555.67 / 3,084.49 mn, cash_at_beginning 387.15 / 1,900.89 mn gone once phase-2 fiscal let XBRL FY25 CF facts in). 82 of 91 stores hold XBRL CF years. **Root cause:** Precedence is per (year, basis), not per line item.
+3. **What was missing:** Per-line precedence: XBRL wins only on the lines it has; printed-only lines are kept.
+4. **How it was fixed:** Not written. Wolf to take after c75 (Eagle handed it over).
+5. **What can come next:** Gate (Eagle): zero change on lines XBRL holds; gain-only diff on printed-only lines; check cash_at_end = cash_at_beginning + net_change (+ fx) where all are present.
+- **Kind:** missed (closing/opening cash and printed cash-flow lines not stored for XBRL years); **severity:** 82/91 companies (scan); **criticality:** 1; **trial questions failed:** -; **priority:** 82
+- **Code:** -
+- **Store tables touched:** fin_annual_line
+- **Tags:** cash_flow, xbrl_precedence; **scope:** general
 - **Stores repaired:** -; runs: -
