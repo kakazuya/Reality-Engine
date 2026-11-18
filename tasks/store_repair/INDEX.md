@@ -15,6 +15,7 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 | R-016 | open | missed | 16/91 (trial) | 1 | 17 (16) | 33 | kpi | general | c01, c02, c03, c04, c05, c06, c07, c08, c09, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c31, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c61, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c75, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c87, c88, c89, c90, c91 |
 | R-021 | fix_written | wrong | 9/91 (scan) | 3 |  | 27 | comparatives | general | c01, c02, c03, c04, c05, c06, c07, c08, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19, c20, c21, c22, c23, c24, c25, c26, c27, c28, c29, c30, c32, c33, c34, c35, c36, c37, c38, c39, c40, c41, c42, c43, c44, c45, c46, c47, c48, c49, c50, c51, c52, c53, c54, c55, c56, c57, c58, c59, c60, c62, c63, c64, c65, c66, c67, c68, c69, c70, c71, c72, c73, c74, c76, c77, c78, c79, c80, c81, c82, c83, c84, c85, c86, c89, c90, c91 |
 | R-018 | open | missed | 9/91 (scan) | 1 | 1 (1) | 10 | holding | general |  |
+| R-023 | open | wrong | 1/91 (suspect) | 3 |  | 3 | stores | general |  |
 | R-022 | fix_written | missed | 2/91 (scan) | 1 |  | 2 | segments | general |  |
 | R-001 | open | missed |  | 1 |  |  | guidance | general |  |
 | R-002 | fix_written | missed |  | 1 |  |  | docs_collect | general | c08 |
@@ -313,4 +314,17 @@ Order of work (Shivam 17 Nov): **severity** = companies hit (of the stores count
 - **Code:** reality_engine/pilot3/segments_printed.py::segment_name, _ocr_sim, _swap_ocr, _disaggregates_others, run_store
 - **Store tables touched:** kpi_series
 - **Tags:** segments, ocr, disaggregation, T-223; **scope:** general
+- **Stores repaired:** -; runs: -
+
+## R-023 (open, part `stores`, opened 2026-11-18)
+
+1. **Why it had to be done** (question that exposed it, c08): What was NAVKARCORP's diluted EPS in Q4FY24 / FY23?
+2. **What the problem was:** c08 NAVKARCORP Q4FY24 results (doc 567375df p7, INR lakh, columns Q4FY24|Q3FY24|Q4FY23|FY24|FY23): eps_diluted is taken from the second '(b) Diluted' line, which is DISCONTINUED-operations EPS ((0.49) (0.22) (0.49) 1.30, blank in Q4FY24), and it is shifted one column left. Correct continuing diluted EPS is 0.48|(0.50)|0.44|0.37|4.85. Wrong both before and after run 20261118T211225 (found by Eagle reading the page). **Root cause:** The printed-results reader fills eps_basic/eps_diluted from any Basic/Diluted line; a second Basic/Diluted block under 'For Discontinued Operations' (or 'continuing and discontinued') overwrites or misaligns them, and a blank cell shifts values left.
+3. **What was missing:** A section rule: EPS lines under a 'Discontinued operations' heading belong to eps_*_discontinued (or are skipped), never eps_basic/eps_diluted; blank cells keep their column.
+4. **How it was fixed:** Not written. Owner of the printed-results reader to decide (Eagle/Wolf).
+5. **What can come next:** Write a structural rule plus a test from this page; scan all 91 stores for results pages with two Basic/Diluted blocks to count companies hit; until fixed, c08 eps_diluted is held.
+- **Kind:** wrong (a discontinued-ops EPS stored as the company's diluted EPS, one column off); **severity:** 1/91 companies (suspect); **criticality:** 3; **trial questions failed:** -; **priority:** 3
+- **Code:** -
+- **Store tables touched:** fin_quarter_printed
+- **Tags:** eps, discontinued_ops; **scope:** general
 - **Stores repaired:** -; runs: -
