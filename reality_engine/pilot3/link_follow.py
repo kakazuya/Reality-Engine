@@ -119,6 +119,7 @@ RUN_CSV_HEADER: tuple[str, ...] = (
     "reason",
     "held_doc_key",
     "printed_company",
+    "parent_company",
     "pages",
     "sha256",
     "url",
@@ -152,6 +153,9 @@ _AR_TEXT_RE = re.compile(
     re.I,
 )
 _COMPANY_SUFFIX_RE = re.compile(r"\b(?:Limited|Ltd)\b(?!\s+Review\b)", re.I)
+_PUBLIC_HOLDER_RE = re.compile(r"\b(?:limited|ltd)\b", re.I)
+_PRIVATE_HOLDER_RE = re.compile(r"\b(?:private|pvt)\b", re.I)
+_GROUP_TOKEN_STOP = frozenset({"THE", "SHRI", "SMT", "MR", "MRS", "M/S"})
 _MARKET_BODY_RE = re.compile(
     r"\b(?:BSE|National\s+Stock\s+Exchange|Stock\s+Exchange|Metropolitan\s+Stock|MSEI|NSDL|CDSL|"
     r"Central\s+Depository|National\s+Securities\s+Depository|Link\s+Intime|KFin|Kfintech|Bigshare|"
@@ -610,6 +614,7 @@ def _check_candidate(
     company_names: Iterable[str] | str | None,
     *,
     check_company: bool = True,
+    parent_names: Iterable[str] | str | None = None,
 ) -> dict[str, Any]:
     pages = len(texts)
     min_pages = {"deck": 5, "results": 2, "annual_report": 40}.get(intent, 3)
@@ -647,21 +652,39 @@ def _check_candidate(
         if kind == "deck" and pages < 5:
             return {"status": "failed", "reason": "too_short"}
 
+    parent_company: str | None = None
     if check_company:
         page1 = texts[0] if texts else ""
+        own_fail: dict[str, Any] | None = None
         if not _check_company(first2, company_names):
-            return {
+            own_fail = {
                 "status": "failed",
                 "reason": "other_company",
                 "printed_company": _printed_company_line(page1),
             }
-        mismatch_co = _group_company_mismatch(page1, company_names)
-        if mismatch_co is not None:
-            return {
-                "status": "failed",
-                "reason": "other_company",
-                "printed_company": mismatch_co,
-            }
+        else:
+            mismatch_co = _group_company_mismatch(page1, company_names)
+            if mismatch_co is not None:
+                own_fail = {
+                    "status": "failed",
+                    "reason": "other_company",
+                    "printed_company": mismatch_co,
+                }
+        if own_fail is not None:
+            parent_list = (
+                [parent_names.strip()]
+                if isinstance(parent_names, str)
+                else [str(p).strip() for p in (parent_names or ()) if str(p).strip()]
+            )
+            if kind == "transcript" and parent_list:
+                for p in parent_list:
+                    if _check_company(first2, [p]) and _group_company_mismatch(page1, [p]) is None:
+                        parent_company = p
+                        break
+                if parent_company is None:
+                    return own_fail
+            else:
+                return own_fail
 
     if anchor_date and kind in ("transcript", "deck"):
         try:
@@ -675,7 +698,17 @@ def _check_candidate(
                 if not (anchor_dt - timedelta(days=60) <= printed_dt <= anchor_dt + timedelta(days=5)):
                     return {"status": "failed", "reason": "date_mismatch"}
 
-    return {"status": "resolved", "url": url, "data": data, "pages": pages, "texts": texts, "kind": kind}
+    out: dict[str, Any] = {
+        "status": "resolved",
+        "url": url,
+        "data": data,
+        "pages": pages,
+        "texts": texts,
+        "kind": kind,
+    }
+    if parent_company is not None:
+        out["parent_company"] = parent_company
+    return out
 
 
 def _safe_fetch(get_fn: GetFn, url: str) -> tuple[tuple[str, str, bytes] | None, str]:
@@ -705,6 +738,7 @@ def _validate_pdf_bytes(
     get_fn: GetFn,
     *,
     check_company: bool = True,
+    parent_names: Iterable[str] | str | None = None,
 ) -> dict[str, Any]:
     try:
         texts, uris = linked_transcripts.pdf_info(data)
@@ -713,7 +747,9 @@ def _validate_pdf_bytes(
 
     direct: dict[str, Any] | None = None
     if intent == "results" and len(texts) == 2:
-        direct = _check_candidate(url, data, texts, intent, anchor_date, company_names, check_company=check_company)
+        direct = _check_candidate(
+            url, data, texts, intent, anchor_date, company_names, check_company=check_company, parent_names=parent_names
+        )
         if direct["status"] == "resolved":
             return direct
 
@@ -739,7 +775,14 @@ def _validate_pdf_bytes(
                 last_err = {"status": "failed", "reason": "not_pdf"}
                 continue
             res = _check_candidate(
-                nxt_url, nxt_data, nxt_texts, intent, anchor_date, company_names, check_company=check_company
+                nxt_url,
+                nxt_data,
+                nxt_texts,
+                intent,
+                anchor_date,
+                company_names,
+                check_company=check_company,
+                parent_names=parent_names,
             )
             if res["status"] == "resolved":
                 return res
@@ -748,7 +791,9 @@ def _validate_pdf_bytes(
             return direct
         return last_err if last_err and last_err["reason"] != "too_short" else {"status": "failed", "reason": "too_short"}
 
-    return _check_candidate(url, data, texts, intent, anchor_date, company_names, check_company=check_company)
+    return _check_candidate(
+        url, data, texts, intent, anchor_date, company_names, check_company=check_company, parent_names=parent_names
+    )
 
 
 def _is_html(ctype: str, data: bytes) -> bool:
@@ -766,6 +811,7 @@ def resolve(
     *,
     get: GetFn | None = None,
     check_company: bool = True,
+    parent_names: Iterable[str] | str | None = None,
 ) -> dict[str, Any]:
     """Fetch ``target`` (PDF, 1-2 page PDF cover, or HTML investor page) and validate the candidate document."""
     get_fn = get or default_get
@@ -775,7 +821,14 @@ def resolve(
     final_url, ctype, data = got
     if data[:5] == b"%PDF-":
         return _validate_pdf_bytes(
-            final_url, data, intent, anchor_date, company_names, get_fn, check_company=check_company
+            final_url,
+            data,
+            intent,
+            anchor_date,
+            company_names,
+            get_fn,
+            check_company=check_company,
+            parent_names=parent_names,
         )
     if not _is_html(ctype, data):
         return {"status": "failed", "reason": "not_pdf"}
@@ -811,7 +864,14 @@ def resolve(
             first_fail = first_fail or {"status": "failed", "reason": "not_pdf"}
             continue
         res = _validate_pdf_bytes(
-            c_url, c_data, intent, anchor_date, company_names, get_fn, check_company=check_company
+            c_url,
+            c_data,
+            intent,
+            anchor_date,
+            company_names,
+            get_fn,
+            check_company=check_company,
+            parent_names=parent_names,
         )
         if res["status"] == "resolved":
             return res
@@ -829,6 +889,68 @@ def _open_ro(store_db: Path | str | sqlite3.Connection) -> tuple[sqlite3.Connect
     return conn, True
 
 
+def _holder_first_word(name: str) -> str:
+    parts = name.split()
+    return parts[0].strip(".,;:").upper() if parts else ""
+
+
+def _parent_names(
+    conn: sqlite3.Connection,
+    symbol: str,
+    own_names: Iterable[str] | str | None,
+) -> list[str]:
+    has_shp = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='shp_holder'"
+    ).fetchone()
+    if not has_shp:
+        return []
+    sym_u = str(symbol or "").strip().upper()
+    qrow = conn.execute(
+        "SELECT MAX(quarter_end) FROM shp_holder WHERE symbol=? AND quarter_end IS NOT NULL",
+        (sym_u,),
+    ).fetchone()
+    if not qrow or not qrow[0]:
+        return []
+    rows = conn.execute(
+        "SELECT holder_name, pct FROM shp_holder WHERE symbol=? AND quarter_end=? ORDER BY rowid",
+        (sym_u, str(qrow[0])),
+    ).fetchall()
+
+    parsed: list[tuple[str, float]] = []
+    group_tokens: set[str] = set()
+    for raw_name, raw_pct in rows:
+        name = " ".join(str(raw_name or "").split())
+        if not name:
+            continue
+        try:
+            pct = float(raw_pct) if raw_pct is not None else 0.0
+        except (TypeError, ValueError):
+            pct = 0.0
+        parsed.append((name, pct))
+        if pct >= 50.0:
+            tok = _holder_first_word(name)
+            if len(tok) >= 3 and tok not in _GROUP_TOKEN_STOP:
+                group_tokens.add(tok)
+
+    own_tokens = set(_distinctive_name_tokens(own_names))
+    parents: list[str] = []
+    seen: set[str] = set()
+    for name, pct in parsed:
+        if not _PUBLIC_HOLDER_RE.search(name) or _PRIVATE_HOLDER_RE.search(name):
+            continue
+        if pct < 50.0 and _holder_first_word(name) not in group_tokens:
+            continue
+        if own_tokens:
+            cand_tokens = set(_distinctive_name_tokens(name))
+            if own_tokens.issubset(cand_tokens):
+                continue
+        key = name.lower()
+        if key not in seen:
+            seen.add(key)
+            parents.append(name)
+    return parents
+
+
 def _company_meta(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
     meta: dict[str, dict[str, Any]] = {}
     cols = {row[1] for row in conn.execute("PRAGMA table_info(company)")}
@@ -839,13 +961,18 @@ def _company_meta(conn: sqlite3.Connection) -> dict[str, dict[str, Any]]:
         sym_u = str(sym or "").strip().upper()
         if not sym_u:
             continue
-        entry = meta.setdefault(sym_u, {"isin": isin, "bse_code": str(bse_code) if bse_code else None, "names": [sym_u]})
+        entry = meta.setdefault(
+            sym_u,
+            {"isin": isin, "bse_code": str(bse_code) if bse_code else None, "names": [sym_u], "parents": []},
+        )
         if isin and not entry["isin"]:
             entry["isin"] = isin
         if bse_code and not entry["bse_code"]:
             entry["bse_code"] = str(bse_code)
         if name and str(name).strip() and str(name).strip() not in entry["names"]:
             entry["names"].append(str(name).strip())
+    for sym_u, entry in meta.items():
+        entry["parents"] = _parent_names(conn, sym_u, entry["names"])
     return meta
 
 
@@ -894,6 +1021,7 @@ def _base_item(
         "reason": "",
         "held_doc_key": None,
         "printed_company": None,
+        "parent_company": None,
         "pages": 0,
         "sha256": None,
         "url": None,
@@ -1037,9 +1165,18 @@ def _resolve_target_to_item(
     held_decks: dict[str, list[tuple[str, date]]],
     planned_calls: dict[tuple[str, str], list[date]],
     get_fn: GetFn,
+    parent_names: list[str] | None = None,
 ) -> dict[str, Any]:
     check_co = item.get("source") != "exchange"
-    res = resolve(target, intent, anchor_date, company_names, get=get_fn, check_company=check_co)
+    res = resolve(
+        target,
+        intent,
+        anchor_date,
+        company_names,
+        get=get_fn,
+        check_company=check_co,
+        parent_names=parent_names,
+    )
     if res["status"] != "resolved":
         return {
             **item,
@@ -1055,6 +1192,7 @@ def _resolve_target_to_item(
             "target": target,
             "kind": res["kind"],
             "outcome": "held",
+            "parent_company": res.get("parent_company"),
             "pages": res["pages"],
             "sha256": sha,
             "url": res["url"],
@@ -1074,6 +1212,7 @@ def _resolve_target_to_item(
         "kind": res["kind"],
         "outcome": outcome,
         "held_doc_key": held_doc_key,
+        "parent_company": res.get("parent_company"),
         "pages": res["pages"],
         "sha256": sha,
         "url": res["url"],
@@ -1128,7 +1267,7 @@ def plan_store(
             sym_u = str(symbol or "").strip().upper()
             if wanted is not None and sym_u not in wanted:
                 continue
-            info = meta.get(sym_u, {"isin": None, "bse_code": None, "names": [sym_u]})
+            info = meta.get(sym_u, {"isin": None, "bse_code": None, "names": [sym_u], "parents": []})
             use_isin = isin or info["isin"]
             bse_code = info["bse_code"]
             try:
@@ -1166,7 +1305,17 @@ def plan_store(
             for t in fresh_targets:
                 seen_targets.add((sym_u, t))
                 attempt = _resolve_target_to_item(
-                    base, t, intent, anchor, info["names"], held_shas, held_tx, held_decks, planned_calls, get_fn
+                    base,
+                    t,
+                    intent,
+                    anchor,
+                    info["names"],
+                    held_shas,
+                    held_tx,
+                    held_decks,
+                    planned_calls,
+                    get_fn,
+                    parent_names=info.get("parents"),
                 )
                 if attempt["outcome"] in ("resolved", "held", "held_same_call", "dup_in_plan"):
                     chosen = attempt
@@ -1183,7 +1332,7 @@ def plan_store(
             target = _exchange_target_url(str(exchange), attachment)
             if not target:
                 continue
-            info = meta.get(sym_u, {"isin": None, "bse_code": None, "names": [sym_u]})
+            info = meta.get(sym_u, {"isin": None, "bse_code": None, "names": [sym_u], "parents": []})
             use_isin = isin or info["isin"]
             intent = str(kind_hint)
             base = _base_item(
@@ -1211,7 +1360,17 @@ def plan_store(
             anchor = str(filed_at)[:10] if filed_at else None
             plan.append(
                 _resolve_target_to_item(
-                    base, target, intent, anchor, info["names"], held_shas, held_tx, held_decks, planned_calls, get_fn
+                    base,
+                    target,
+                    intent,
+                    anchor,
+                    info["names"],
+                    held_shas,
+                    held_tx,
+                    held_decks,
+                    planned_calls,
+                    get_fn,
+                    parent_names=info.get("parents"),
                 )
             )
 
@@ -1292,7 +1451,11 @@ def apply_plan(
         kind = str(item.get("kind") or item.get("intent") or "transcript")
         bucket, subcat = _KIND_BUCKET_SUBCAT.get(kind, ("concall_transcript", "Earnings Call Transcript"))
         label = linked_transcripts.call_label(url, subcat)
-        headline = f"{label} (linked from {exchange} filing {filing_id})"
+        parent_co = str(item.get("parent_company") or "").strip()
+        if parent_co:
+            headline = f"{label} - parent company call: {parent_co} (linked from {exchange} filing {filing_id})"
+        else:
+            headline = f"{label} (linked from {exchange} filing {filing_id})"
         texts = item.get("texts") or []
         mean_chars = (sum(len(t) for t in texts) / len(texts)) if texts else 0.0
         source = str(item.get("source") or "link_follow")
@@ -1478,7 +1641,7 @@ def find_site_docs(
         held_shas = {str(sha).lower() for (sha,) in conn.execute("SELECT sha256 FROM doc WHERE sha256 IS NOT NULL")}
         held_tx, held_decks = _load_held_call_index(conn)
         meta = _company_meta(conn)
-        info = meta.get(sym_u, {"isin": None, "bse_code": None, "names": [sym_u]})
+        info = meta.get(sym_u, {"isin": None, "bse_code": None, "names": [sym_u], "parents": []})
     finally:
         if should_close:
             conn.close()
@@ -1535,7 +1698,7 @@ def find_site_docs(
         if link_date < since:
             continue
 
-        res = resolve(pdf_url, intent, link_date, info["names"], get=get_fn)
+        res = resolve(pdf_url, intent, link_date, info["names"], get=get_fn, parent_names=info.get("parents"))
         if res["status"] != "resolved":
             fid = hashlib.sha256(pdf_url.encode("utf-8")).hexdigest()[:16]
             items.append({
@@ -1572,6 +1735,7 @@ def find_site_docs(
                 ),
                 "kind": res["kind"],
                 "outcome": "held",
+                "parent_company": res.get("parent_company"),
                 "pages": res["pages"],
                 "sha256": sha,
                 "url": res["url"],
@@ -1602,6 +1766,7 @@ def find_site_docs(
             "kind": res["kind"],
             "outcome": outcome,
             "held_doc_key": held_doc_key,
+            "parent_company": res.get("parent_company"),
             "pages": res["pages"],
             "sha256": sha,
             "url": res["url"],
@@ -1679,9 +1844,9 @@ def format_report(
 
     lines = [
         "| symbol | link_only | resolved | held | held_same_call | dup_in_plan | audio_only | invitation | "
-        "other_company | failed | exch_resolved | results_resolved | ar_resolved | skipped_notice | "
+        "other_company | parent_resolved | failed | exch_resolved | results_resolved | ar_resolved | skipped_notice | "
         "held_same_day | site_verdict | site_docs |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for sym in sorted(by_sym):
         mine = by_sym[sym]
@@ -1691,6 +1856,7 @@ def format_report(
         c_links = Counter(str(i.get("outcome") or "") for i in links)
         c_all = Counter(str(i.get("outcome") or "") for i in mine)
         other_co = sum(1 for i in mine if i.get("outcome") == "failed" and i.get("reason") == "other_company")
+        parent_res = sum(1 for i in mine if i.get("outcome") == "resolved" and i.get("parent_company"))
         failed_reasons = Counter(str(i.get("reason") or "unknown") for i in mine if i.get("outcome") == "failed")
         fail_str = (
             f"{sum(failed_reasons.values())} ({','.join(f'{k}:{v}' for k, v in sorted(failed_reasons.items()))})"
@@ -1706,7 +1872,7 @@ def format_report(
         lines.append(
             f"| {sym} | {len(links)} | {c_links['resolved']} | {c_links['held']} | {c_all['held_same_call']} | "
             f"{c_all['dup_in_plan']} | {c_links['audio_only']} | {c_links['invitation']} | {other_co} | "
-            f"{fail_str} | {exch_res} | {results_res} | {ar_res} | {c_all['skipped_notice']} | "
+            f"{parent_res} | {fail_str} | {exch_res} | {results_res} | {ar_res} | {c_all['skipped_notice']} | "
             f"{c_all['held_same_day']} | {site_verdict} | {site_docs} |"
         )
 

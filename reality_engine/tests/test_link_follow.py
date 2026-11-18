@@ -1122,3 +1122,179 @@ def test_plan_store_results_and_annual_reports_branches_and_report(tmp_path: Pat
     assert rmap["ar_resolved"] == "1"
     assert rmap["skipped_notice"] == "3"
     assert rmap["held_same_day"] == "2"
+
+
+# --------------------------------------------------------------------------- Parent calls (T-223, 18 Nov ruling)
+def test_parent_names_from_shp_holder(tmp_path: Path):
+    no_shp_db = tmp_path / "no_shp.db"
+    conn_no = _init_store(no_shp_db)
+    assert lf._parent_names(conn_no, "NAVKAR", ["NAVKAR", "Navkar Corporation Limited"]) == []
+    assert lf._company_meta(conn_no)["NAVKAR"]["parents"] == []
+    conn_no.close()
+
+    db_path = tmp_path / "shp.db"
+    conn = _init_store(db_path)
+    schema.create(conn, ("shp_holder",))
+    conn.execute(
+        "INSERT INTO company VALUES ('NAVKARCORP','INE278M01019','2020-01-01',NULL,'logistics','539332',"
+        "'Navkar Corporation Limited')"
+    )
+    conn.executemany(
+        "INSERT INTO shp_holder (symbol, quarter_end, category, holder_name, pct) VALUES (?,?,?,?,?)",
+        [
+            # Older quarter must be ignored
+            ("NAVKARCORP", "2026-06-30", "Promoter", "Older Quarter Group Limited", 75.0),
+            # Latest quarter (2026-09-30)
+            ("NAVKARCORP", "2026-09-30", "Promoter", "Jsw Port Logistics Private Limited", 70.37),
+            ("NAVKARCORP", "2026-09-30", "Promoter", "JSW Infrastructure Limited", 0.0),
+            ("NAVKARCORP", "2026-09-30", "Public", "Some Mutual Fund", 5.0),
+        ],
+    )
+    conn.commit()
+
+    own = ["NAVKARCORP", "Navkar Corporation Limited"]
+    assert lf._parent_names(conn, "NAVKARCORP", own) == ["JSW Infrastructure Limited"]
+    assert lf._company_meta(conn)["NAVKARCORP"]["parents"] == ["JSW Infrastructure Limited"]
+    conn.close()
+
+
+def test_check_candidate_and_apply_plan_parent_company_transcript(tmp_path: Path):
+    own_names = ["NAVKARCORP", "Navkar Corporation Limited"]
+    parent_names = ["JSW Infrastructure Limited"]
+
+    jsw_pages = [
+        "JSW Infrastructure Limited\nQ1 FY26 Earnings Conference Call\nJuly 22, 2025",
+        "Moderator: Ladies and gentlemen, good day and welcome to the JSW Infrastructure Q1 FY26 conference call.",
+        "Management opening remarks.",
+        "Operations and cargo update.",
+        "Questions and answers.",
+        "Thank you and closing remarks.",
+    ]
+    jsw_tx_pdf = _make_pdf(jsw_pages)
+    adani_pages = [
+        "Adani Ports and SEZ Limited\nQ1 FY26 Earnings Conference Call\nJuly 22, 2025",
+        "Moderator: Ladies and gentlemen, good day and welcome to the Adani Ports conference call.",
+        "Management opening remarks.",
+        "Operations update.",
+        "Questions and answers.",
+        "Closing remarks.",
+    ]
+    adani_tx_pdf = _make_pdf(adani_pages)
+    jsw_deck_pages = [
+        "JSW Infrastructure Limited\nInvestor Presentation Q1 FY26\nJuly 22, 2025",
+        "Key Financial Highlights",
+        "Port Capacity",
+        "Capital Expenditure",
+        "Thank You",
+    ]
+    jsw_deck_pdf = _make_pdf(jsw_deck_pages)
+
+    # (b) With parent_names -> resolved with parent_company; without -> other_company
+    res_parent = lf._check_candidate(
+        "https://navkarcorp.com/upload_data/Files/transcript-of-investor-conference-call-22-07-2025.pdf",
+        jsw_tx_pdf,
+        jsw_pages,
+        "transcript",
+        "2025-07-24",
+        own_names,
+        parent_names=parent_names,
+    )
+    assert res_parent["status"] == "resolved"
+    assert res_parent["kind"] == "transcript"
+    assert res_parent["parent_company"] == "JSW Infrastructure Limited"
+
+    res_no_parent = lf._check_candidate(
+        "https://navkarcorp.com/upload_data/Files/transcript-of-investor-conference-call-22-07-2025.pdf",
+        jsw_tx_pdf,
+        jsw_pages,
+        "transcript",
+        "2025-07-24",
+        own_names,
+    )
+    assert res_no_parent["status"] == "failed"
+    assert res_no_parent["reason"] == "other_company"
+
+    # (c) Unrelated company transcript -> still other_company
+    res_adani = lf._check_candidate(
+        "https://navkarcorp.com/upload_data/Files/adani.pdf",
+        adani_tx_pdf,
+        adani_pages,
+        "transcript",
+        "2025-07-24",
+        own_names,
+        parent_names=parent_names,
+    )
+    assert res_adani["status"] == "failed"
+    assert res_adani["reason"] == "other_company"
+
+    # (d) Parent deck -> still other_company
+    res_deck = lf._check_candidate(
+        "https://navkarcorp.com/upload_data/Files/deck.pdf",
+        jsw_deck_pdf,
+        jsw_deck_pages,
+        "deck",
+        "2025-07-24",
+        own_names,
+        parent_names=parent_names,
+    )
+    assert res_deck["status"] == "failed"
+    assert res_deck["reason"] == "other_company"
+
+    # (e) End-to-end plan_store + apply_plan + format_report
+    store_dir = tmp_path / "navkar_store"
+    store_dir.mkdir()
+    db_path = store_dir / "navkar_store.db"
+    conn = _init_store(db_path)
+    schema.create(conn, ("shp_holder",))
+    conn.execute(
+        "INSERT INTO company VALUES ('NAVKARCORP','INE278M01019','2020-01-01',NULL,'logistics','539332',"
+        "'Navkar Corporation Limited')"
+    )
+    conn.executemany(
+        "INSERT INTO shp_holder (symbol, quarter_end, category, holder_name, pct) VALUES (?,?,?,?,?)",
+        [
+            ("NAVKARCORP", "2026-09-30", "Promoter", "Jsw Port Logistics Private Limited", 70.37),
+            ("NAVKARCORP", "2026-09-30", "Promoter", "JSW Infrastructure Limited", 0.0),
+        ],
+    )
+    tx_url = "https://navkarcorp.com/upload_data/Files/transcript-of-investor-conference-call-22-07-2025.pdf"
+    conn.execute(
+        "INSERT INTO doc VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        ("d_cov", "NAVKARCORP", "INE278M01019", "announcement", "announcement", "Cover",
+         "2025-07-24", "2025-07-24T18:00:00", 1, "sha_cov", "pages.db", "cov.pdf"),
+    )
+    conn.execute(
+        "INSERT INTO doc_page VALUES (?,?,?,?,?,?,?,?)",
+        ("d_cov", "NAVKARCORP", 1, f"Transcript available at {tx_url}", "script_text", 40, "2025-07-24T18:00:00", None),
+    )
+    conn.execute(
+        "INSERT INTO filing VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        ("BSE", "f_jsw", "NAVKARCORP", "INE278M01019", "2025-07-24T18:00:00", "Company Update",
+         "Earnings Call Transcript", "Transcript link", "cov.pdf", "transcript",
+         "d_cov", "announcement", 1, json.dumps([tx_url]), None, None, "link_only"),
+    )
+    conn.commit()
+    conn.close()
+
+    items = lf.plan_store(
+        db_path,
+        symbols=["NAVKARCORP"],
+        get=lambda u: (u, "application/pdf", jsw_tx_pdf),
+    )
+    assert len(items) == 1
+    assert items[0]["outcome"] == "resolved"
+    assert items[0]["parent_company"] == "JSW Infrastructure Limited"
+
+    counts = lf.apply_plan(store_dir, items, raw_root=tmp_path / "raw_linked")
+    assert counts == {"resolved": 1}
+
+    with (store_dir / "raw" / "manifest.csv").open("r", encoding="utf-8", newline="") as fh:
+        mrows = list(csv.DictReader(fh))
+    assert len(mrows) == 1
+    assert "parent company call: JSW Infrastructure Limited" in mrows[0]["headline"]
+
+    report = lf.format_report(items)
+    header_cols = [c.strip() for c in report.splitlines()[0].split("|")[1:-1]]
+    row_cols = [c.strip() for c in report.splitlines()[2].split("|")[1:-1]]
+    rmap = dict(zip(header_cols, row_cols))
+    assert rmap["parent_resolved"] == "1"
