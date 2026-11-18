@@ -39,7 +39,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 
 # The order one company is built in (``build --part all`` order, with the two steps before it).
-ORDER = ("profile", "docs_collect", "registry", "ocr", "pages", "stores", "ar_statements", "comparatives", "preferred", "ratios",
+ORDER = ("profile", "docs_collect", "filings", "registry", "ocr", "pages", "stores", "ar_statements", "comparatives", "preferred", "ratios",
          "transcripts", "kpi", "segments", "guidance", "notes", "events", "checks", "atoms")
 # What the Telegram recipe runs for every company; ``ocr`` and ``atoms`` are stamped only where they were run.
 RECIPE = tuple(p for p in ORDER if p not in ("ocr", "atoms"))
@@ -48,6 +48,7 @@ PART_FILES: dict[str, tuple[str, ...]] = {
     "profile": ("make_profile.py", "sector_map.yaml", "lender.py"),
     "docs_collect": ("docs_collect.py", "doc_identity.py", "call_dates.py",
                      "../gap_loop/prepare.py::DOC_TYPES,MIN_PAGE_CHARS,_clean_page,_date_of,_title"),
+    "filings": ("filings.py", "linked_transcripts.py::urls_from_text,stub_urls"),
     "registry": ("registry.py", "doc_identity.py", "call_dates.py", "../gap_loop/prepare.py::_read_duckdb,_snapshot"),
     "ocr": ("ocr.py",),
     "pages": ("registry.py",),
@@ -72,6 +73,7 @@ PART_FILES: dict[str, tuple[str, ...]] = {
 # part -> the tables it writes; ``table-prefix*`` drops the columns with that prefix (written by a later part).
 PART_TABLES: dict[str, tuple[str, ...]] = {
     "profile": (), "docs_collect": (), "ocr": (),          # files outside the store: the runner gives the hash
+    "filings": ("filing",),
     "registry": ("company", "doc", "doc_alias"),
     "pages": ("doc_page",),
     "stores": ("fin_quarter_xbrl-preferred*", "fin_annual_line", "share_capital", "shp_category", "shp_holder",
@@ -95,6 +97,7 @@ PART_TABLES: dict[str, tuple[str, ...]] = {
 UPSTREAM: dict[str, tuple[str, ...]] = {
     "profile": (),
     "docs_collect": ("profile",),
+    "filings": ("profile", "docs_collect"),
     "registry": ("profile", "docs_collect"),
     "ocr": ("docs_collect",),
     "pages": ("registry", "docs_collect", "ocr"),
