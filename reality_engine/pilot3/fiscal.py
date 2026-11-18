@@ -29,10 +29,14 @@ _MONTHS: dict[str, int] = {
 }
 
 _YEAR_ENDED_RX = re.compile(
-    r"year\s+ended\s+(?:on\s+)?(?:the\s+)?"
+    r"year\s+(?:ended|ending)\s+(?:on\s+)?(?:the\s+)?"
     r"(?:(\d{1,2})(?:st|nd|rd|th)?[\s,]+)?"
     r"(January|February|March|April|May|June|July|August|September|October|November|December)"
     r"(?:[\s,]+(\d{1,2})(?:st|nd|rd|th)?)?",
+    re.IGNORECASE,
+)
+_NON_ANNUAL_PREFIX_RX = re.compile(
+    r"\b(?:ha[l1]f|nine\s+months?|quarter\s+and)\s*[-/,]?\s*$",
     re.IGNORECASE,
 )
 
@@ -114,6 +118,8 @@ def fy_end_month(conn: sqlite3.Connection | None, symbol: str) -> int:
         if not text:
             continue
         for match in _YEAR_ENDED_RX.finditer(text):
+            if _NON_ANNUAL_PREFIX_RX.search(text[max(0, match.start() - 16):match.start()]):
+                continue
             counts[_MONTHS[match.group(2).lower()]] += 1
 
     total = sum(counts.values())

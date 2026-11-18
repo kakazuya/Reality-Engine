@@ -384,6 +384,30 @@ def test_fy_end_month_rules_and_cache(tmp_path):
     c4.close()
 
 
+def test_fy_end_month_ignores_half_year_and_quarter_and_prefixes():
+    fiscal.clear_cache()
+
+    # 5x "quarter and half year ended September 30, 2025" + 2x "year ended March 31, 2025" -> 3
+    c_sep = _make_doc_db(":memory:", [
+        ("d1", "OCCLLTD", "results", 1, "Results for the quarter and half year ended September 30, 2025"),
+        ("d1", "OCCLLTD", "results", 2, "Unaudited quarter and half year ended September 30, 2025"),
+        ("d2", "OCCLLTD", "results", 1, "Quarter and half-year ended September 30, 2025"),
+        ("d2", "OCCLLTD", "results", 2, "Quarter and ha1f year ended September 30, 2025"),
+        ("d3", "OCCLLTD", "results", 1, "Quarter and half year ended September 30, 2025; nine months year ended September 30, 2025; quarter and year ended September 30, 2025"),
+        ("d4", "OCCLLTD", "annual_report", 1, "For the year ended March 31, 2025"),
+        ("d4", "OCCLLTD", "annual_report", 2, "Financial year ended March 31, 2025"),
+    ])
+    assert fiscal.fy_end_month(c_sep, "OCCLLTD") == 3
+
+    # RSYSTEMS texts still give 12 (including "financial year ended" and "year ending")
+    c_rsys = _make_doc_db(":memory:", [
+        ("d1", "RSYSTEMS", "annual_report", 1, "ANNUAL REPORT FOR THE FINANCIAL YEAR ENDED ON DECEMBER 31, 2025"),
+        ("d2", "RSYSTEMS", "results", 1, "For the year ending on December 31, 2025"),
+        ("d2", "RSYSTEMS", "results", 2, "Financial Results for the year ended December 31, 2025"),
+    ])
+    assert fiscal.fy_end_month(c_rsys, "RSYSTEMS") == 12
+
+
 def test_c75_and_c08_stores_readonly():
     c75_path = Path("D:/RealityEngine/tg_build/measure10/c75/c75.db")
     if not c75_path.is_file():
