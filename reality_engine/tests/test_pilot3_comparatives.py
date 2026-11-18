@@ -774,6 +774,12 @@ def test_side_by_side_eps_decimals_come_from_whole_table():
     stored = cmp._table_rows(_conn(), "C91", "INE000A01001", "doc1", 3, "2025-08-01T12:00:00", table, {}, [])
     sa = {r[6]: r[11] for r in stored if r[7] == "standalone" and r[9] == "eps_basic"}
     assert sa and all(v < 10 for v in sa.values()), sa
+    # review ac3eb3e4: every call site on a half (fill path, role scoring, June last_fy) sees the same count
+    assert all(cmp._eps_decimals(h["values"]) == 2 for h in halves)
+    fill_halves = cmp._split_side_by_side(cmp.read_page(_page_n(rows, dates,
+                                                             title="Financial Results STANDALONE CONSOLIDATED"),
+                                                     ocr=True))
+    assert fill_halves is not None and all(cmp._eps_decimals(h["values"]) == 2 for h in fill_halves)
 
 def test_fill_negative_cost_does_not_abort_text_layer_table():
     """GREENPOWER c1e7c4d2 p27: OCR fill reading '(228)' on a missing cost cell never rejects the clean table."""

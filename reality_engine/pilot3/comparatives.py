@@ -1234,9 +1234,19 @@ def _restatements(rows: list[tuple]) -> list[dict]:
     return out
 
 
+class _HalfValues(defaultdict):
+    """Column map of one half of a side-by-side S/C table: carries the whole table's EPS decimals, because one
+    half may print EPS with its points lost ('213 181') while the other keeps them ('2.15 1.90')."""
+    eps_decimals: int | None = None
+
+
 def _eps_decimals(values: dict) -> int:
     """Decimal places the table prints EPS to (the majority length of its last separator); a dash-printed
-    zero keeps that count, so a 0 against an XBRL 0.11 is not inside 2 units of the last printed decimal."""
+    zero keeps that count, so a 0 against an XBRL 0.11 is not inside 2 units of the last printed decimal.
+    A side-by-side half (``_HalfValues``) answers with the whole table's count at every call site."""
+    fixed = getattr(values, "eps_decimals", None)
+    if fixed is not None:
+        return fixed
     votes: dict[int, int] = defaultdict(int)
     for col in values.values():
         for item, tokens in col.items():
@@ -1754,9 +1764,11 @@ def _split_side_by_side(table: dict) -> list[dict] | None:
         half_table = dict(table)
         half_table["anchors"] = half_anchors
         # keep the build's default-empty columns: a half whose column holds no figure must read as empty
-        half_table["values"] = defaultdict(lambda: defaultdict(list),
-                                           {at - offset: col for at, col in table["values"].items()
-                                            if offset <= at < offset + half})
+        half_values = _HalfValues(lambda: defaultdict(list),
+                                  {at - offset: col for at, col in table["values"].items()
+                                   if offset <= at < offset + half})
+        half_values.eps_decimals = eps_dec
+        half_table["values"] = half_values
         half_table["dates"] = half_dates[i]
         half_table["hint"] = _layout_hint(table.get("header_rows") or [], half_anchors)
         half_table["basis"] = basis
