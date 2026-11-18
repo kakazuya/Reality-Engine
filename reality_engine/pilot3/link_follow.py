@@ -1,9 +1,9 @@
 """T-223 (R-012/R-014): turn a store's ``filing`` rows into fetch targets for missing documents.
 
-Reads ``filing`` (``link_only`` cover letters and ``not_fetched`` transcripts/decks), ``doc`` and ``doc_page``
-through a read-only connection, classifies cover letters, resolves PDFs or investor-page links through an
-injectable HTTP fetcher, and emits new documents only via ``<store_dir>/raw/manifest.csv`` (never writing the
-store SQLite database directly).
+Reads ``filing`` (``link_only`` cover letters and ``not_fetched`` transcripts/decks/results/annual reports),
+``doc`` and ``doc_page`` through a read-only connection, classifies cover letters, resolves PDFs or investor-page
+links through an injectable HTTP fetcher, and emits new documents only via ``<store_dir>/raw/manifest.csv``
+(never writing the store SQLite database directly).
 
 CLI: ``python -m reality_engine.pilot3.link_follow --store-dir <dir> [--plan-only] [--site] [--symbols A,B] [--json out]``
 """
@@ -131,9 +131,34 @@ _INVITE_TEXT_RE = re.compile(
     r"\b(?:is\s+scheduled|will\s+be\s+held|invite|invitation|registration|dial[- ]?in)\b",
     re.I,
 )
+_TX_INVITE_EXTRA_RE = re.compile(
+    r"\b(?:pleased\s+to\s+invite|registration\s+link|diamond\s*pass|dial[- ]?in|universal\s+access)\b",
+    re.I,
+)
 _FUTURE_TRANSCRIPT_RE = re.compile(r"\btranscripts?\b[^.\n]{0,40}\bwill\s+be\b", re.I)
 _TRANSCRIPT_WORD_RE = re.compile(r"\btranscripts?\b", re.I)
 _DECK_TEXT_RE = re.compile(r"\b(?:investor\s+presentation|earnings\s+presentation|presentation)\b", re.I)
+_NOTICE_SKIP_RE = re.compile(
+    r"newspaper|publication|advertis|corrigendum|reasons?\s+for\s+delay|non[- ]?submission|"
+    r"intimation\s+of\s+board\s+meeting|trading\s+window",
+    re.I,
+)
+_RESULTS_TEXT_RE = re.compile(
+    r"\b(?:statement\s+of\s+(?:un)?audited|financial\s+results|results\s+for\s+the\s+quarter)\b",
+    re.I,
+)
+_AR_TEXT_RE = re.compile(
+    r"\b(?:annual\s+report|directors['’]?\s*report|board['’]?s\s+report)\b",
+    re.I,
+)
+_COMPANY_SUFFIX_RE = re.compile(r"\b(?:Limited|Ltd)\b(?!\s+Review\b)", re.I)
+_MARKET_BODY_RE = re.compile(
+    r"\b(?:BSE|National\s+Stock\s+Exchange|Stock\s+Exchange|Metropolitan\s+Stock|MSEI|NSDL|CDSL|"
+    r"Central\s+Depository|National\s+Securities\s+Depository|Link\s+Intime|KFin|Kfintech|Bigshare|"
+    r"Registrar|SEBI|Securities\s+and\s+Exchange\s+Board|CRISIL|ICRA|CARE\s+Ratings|India\s+Ratings|"
+    r"Acuite|Brickwork|Infomerics)\b",
+    re.I,
+)
 
 _TX_LINK_RE = re.compile(r"transcript|con[-_ ]?call|earnings[-_ ]?call|conference[-_ ]?call", re.I)
 _DECK_LINK_RE = re.compile(r"presentation|investor[-_ ]?ppt|\bppt\b", re.I)
@@ -505,12 +530,75 @@ def _check_company(first2: str, company_names: Iterable[str] | str | None) -> bo
     return False
 
 
+def _distinctive_name_tokens(company_names: Iterable[str] | str | None) -> list[str]:
+    if company_names is None:
+        return []
+    items = [company_names] if isinstance(company_names, str) else list(company_names)
+    tokens: list[str] = []
+    seen: set[str] = set()
+    for raw in items:
+        s = str(raw or "").strip()
+        if not s:
+            continue
+        if " " not in s and s.isupper() and s.isalnum() and 2 <= len(s) <= 16:
+            continue
+        for word in re.findall(r"[A-Za-z0-9]{4,}", s):
+            lw = word.lower()
+            if lw in COMPANY_STOPWORDS or lw in seen:
+                continue
+            seen.add(lw)
+            tokens.append(lw)
+    return tokens
+
+
+def _page1_company_names(page1: str) -> list[str]:
+    names: list[str] = []
+    for line in (page1 or "").splitlines():
+        pos = 0
+        for m in _COMPANY_SUFFIX_RE.finditer(line):
+            prefix = line[pos : m.start()].strip(" ,.;:|/-")
+            pos = m.end()
+            words = prefix.split()[-6:]
+            if not words or not any(re.search(r"[A-Za-z0-9]", w) for w in words):
+                continue
+            cand = f"{' '.join(words)} {m.group(0)}"
+            if _MARKET_BODY_RE.search(cand):
+                continue
+            names.append(cand)
+    return names
+
+
+def _group_company_mismatch(page1: str, company_names: Iterable[str] | str | None) -> str | None:
+    printed_names = _page1_company_names(page1)
+    if not printed_names:
+        return None
+    distinctive = _distinctive_name_tokens(company_names)
+    if not distinctive:
+        return None
+    for name in printed_names:
+        if all(re.search(rf"\b{re.escape(tok)}\b", name, re.I) for tok in distinctive):
+            return None
+    return printed_names[0]
+
+
 def _printed_company_line(page1: str) -> str | None:
     for line in (page1 or "").splitlines():
         clean = " ".join(line.split())
         if clean and re.search(r"\b(?:limited|ltd)\b", clean, re.I):
             return clean[:120]
     return None
+
+
+def _has_tx_invite_wording(first2: str) -> bool:
+    return bool(_INVITE_TEXT_RE.search(first2) or _TX_INVITE_EXTRA_RE.search(first2))
+
+
+def _is_transcript_candidate(pages: int, first2: str, first3: str) -> bool:
+    if doc_identity.moderator_line(first3):
+        return True
+    if pages >= 5 and (_TRANSCRIPT_WORD_RE.search(first3) or doc_identity.moderator_line(first3)):
+        return not _has_tx_invite_wording(first2)
+    return False
 
 
 def _check_candidate(
@@ -520,9 +608,11 @@ def _check_candidate(
     intent: str,
     anchor_date: str | None,
     company_names: Iterable[str] | str | None,
+    *,
+    check_company: bool = True,
 ) -> dict[str, Any]:
     pages = len(texts)
-    min_pages = 5 if intent == "deck" else 3
+    min_pages = {"deck": 5, "results": 2, "annual_report": 40}.get(intent, 3)
     if pages < min_pages:
         return {"status": "failed", "reason": "too_short"}
 
@@ -531,7 +621,7 @@ def _check_candidate(
         return {"status": "failed", "reason": "needs_ocr"}
 
     first3 = "\n".join(texts[:3])
-    is_tx = bool(linked_transcripts.TRANSCRIPT_TEXT.search(first3) or doc_identity.moderator_line(first3))
+    is_tx = _is_transcript_candidate(pages, first2, first3)
     is_strict_tx = bool(doc_identity.moderator_line(first3) or _TRANSCRIPT_WORD_RE.search(first3))
 
     if intent == "transcript":
@@ -542,19 +632,38 @@ def _check_candidate(
         if is_strict_tx:
             return {"status": "failed", "reason": "not_transcript"}
         kind = "deck"
+    elif intent == "results":
+        first4 = "\n".join(texts[:4])
+        if not _RESULTS_TEXT_RE.search(first4):
+            return {"status": "failed", "reason": "not_results"}
+        kind = "results"
+    elif intent == "annual_report":
+        first10 = "\n".join(texts[:10])
+        if not _AR_TEXT_RE.search(first10):
+            return {"status": "failed", "reason": "not_annual_report"}
+        kind = "annual_report"
     else:
         kind = "transcript" if is_tx else "deck"
         if kind == "deck" and pages < 5:
             return {"status": "failed", "reason": "too_short"}
 
-    if not _check_company(first2, company_names):
-        return {
-            "status": "failed",
-            "reason": "other_company",
-            "printed_company": _printed_company_line(texts[0] if texts else ""),
-        }
+    if check_company:
+        page1 = texts[0] if texts else ""
+        if not _check_company(first2, company_names):
+            return {
+                "status": "failed",
+                "reason": "other_company",
+                "printed_company": _printed_company_line(page1),
+            }
+        mismatch_co = _group_company_mismatch(page1, company_names)
+        if mismatch_co is not None:
+            return {
+                "status": "failed",
+                "reason": "other_company",
+                "printed_company": mismatch_co,
+            }
 
-    if anchor_date:
+    if anchor_date and kind in ("transcript", "deck"):
         try:
             anchor_dt = date.fromisoformat(anchor_date[:10])
         except ValueError:
@@ -594,11 +703,19 @@ def _validate_pdf_bytes(
     anchor_date: str | None,
     company_names: Iterable[str] | str | None,
     get_fn: GetFn,
+    *,
+    check_company: bool = True,
 ) -> dict[str, Any]:
     try:
         texts, uris = linked_transcripts.pdf_info(data)
     except Exception:  # noqa: BLE001 - broken PDF
         return {"status": "failed", "reason": "not_pdf"}
+
+    direct: dict[str, Any] | None = None
+    if intent == "results" and len(texts) == 2:
+        direct = _check_candidate(url, data, texts, intent, anchor_date, company_names, check_company=check_company)
+        if direct["status"] == "resolved":
+            return direct
 
     if len(texts) <= 2:
         following = linked_transcripts.urls_from_links(uris) + [
@@ -621,13 +738,17 @@ def _validate_pdf_bytes(
             except Exception:  # noqa: BLE001
                 last_err = {"status": "failed", "reason": "not_pdf"}
                 continue
-            res = _check_candidate(nxt_url, nxt_data, nxt_texts, intent, anchor_date, company_names)
+            res = _check_candidate(
+                nxt_url, nxt_data, nxt_texts, intent, anchor_date, company_names, check_company=check_company
+            )
             if res["status"] == "resolved":
                 return res
             last_err = res
+        if direct is not None and last_err is None:
+            return direct
         return last_err if last_err and last_err["reason"] != "too_short" else {"status": "failed", "reason": "too_short"}
 
-    return _check_candidate(url, data, texts, intent, anchor_date, company_names)
+    return _check_candidate(url, data, texts, intent, anchor_date, company_names, check_company=check_company)
 
 
 def _is_html(ctype: str, data: bytes) -> bool:
@@ -644,6 +765,7 @@ def resolve(
     company_names: Iterable[str] | str | None,
     *,
     get: GetFn | None = None,
+    check_company: bool = True,
 ) -> dict[str, Any]:
     """Fetch ``target`` (PDF, 1-2 page PDF cover, or HTML investor page) and validate the candidate document."""
     get_fn = get or default_get
@@ -652,7 +774,9 @@ def resolve(
         return {"status": "failed", "reason": err}
     final_url, ctype, data = got
     if data[:5] == b"%PDF-":
-        return _validate_pdf_bytes(final_url, data, intent, anchor_date, company_names, get_fn)
+        return _validate_pdf_bytes(
+            final_url, data, intent, anchor_date, company_names, get_fn, check_company=check_company
+        )
     if not _is_html(ctype, data):
         return {"status": "failed", "reason": "not_pdf"}
 
@@ -686,7 +810,9 @@ def resolve(
         if c_data[:5] != b"%PDF-":
             first_fail = first_fail or {"status": "failed", "reason": "not_pdf"}
             continue
-        res = _validate_pdf_bytes(c_url, c_data, intent, anchor_date, company_names, get_fn)
+        res = _validate_pdf_bytes(
+            c_url, c_data, intent, anchor_date, company_names, get_fn, check_company=check_company
+        )
         if res["status"] == "resolved":
             return res
         first_fail = first_fail or res
@@ -762,7 +888,7 @@ def _base_item(
         "filed_at": filed_at,
         "source": source,
         "intent": intent,
-        "kind": intent if intent in ("transcript", "deck") else None,
+        "kind": intent if intent in ("transcript", "deck", "results", "annual_report") else None,
         "target": target,
         "outcome": None,
         "reason": "",
@@ -830,6 +956,39 @@ def _load_held_call_index(
     return held_tx, held_decks
 
 
+def _load_held_doc_dates(
+    conn: sqlite3.Connection, doc_types: tuple[str, ...]
+) -> dict[str, dict[str, list[tuple[str, date]]]]:
+    out: dict[str, dict[str, list[tuple[str, date]]]] = {dt: {} for dt in doc_types}
+    placeholders = ",".join("?" for _ in doc_types)
+    for sym, dk, dtype, fd, ka in conn.execute(
+        f"SELECT symbol, doc_key, doc_type, filing_date, known_at "
+        f"FROM doc WHERE doc_type IN ({placeholders}) ORDER BY symbol, doc_key",
+        doc_types,
+    ):
+        sym_u = str(sym or "").strip().upper()
+        f_dt = _parse_iso_date(fd or ka)
+        if f_dt is not None:
+            out.setdefault(str(dtype), {}).setdefault(sym_u, []).append((str(dk), f_dt))
+    return out
+
+
+def _held_same_day_doc(
+    symbol: str,
+    kind: str,
+    filed_at: str | None,
+    held_by_type: dict[str, dict[str, list[tuple[str, date]]]],
+) -> str | None:
+    filed_dt = _parse_iso_date(filed_at)
+    if filed_dt is None:
+        return None
+    window = 2 if kind == "results" else 120
+    for dk, hd in held_by_type.get(kind, {}).get(symbol, ()):
+        if abs((filed_dt - hd).days) <= window:
+            return dk
+    return None
+
+
 def _check_same_call_or_dup(
     symbol: str,
     kind: str,
@@ -846,17 +1005,22 @@ def _check_same_call_or_dup(
                 if any(abs((cand_call_dt - hd).days) <= 7 for hd in dts):
                     return "held_same_call", dk
         plan_dt = cand_call_dt or _parse_iso_date(anchor_date)
-    else:
+        dup_window = 7
+    elif kind == "deck":
         cand_anchor_dt = _parse_iso_date(anchor_date)
         if cand_anchor_dt is not None:
             for dk, hd in held_decks.get(symbol, ()):
                 if abs((cand_anchor_dt - hd).days) <= 10:
                     return "held_same_call", dk
         plan_dt = cand_anchor_dt
+        dup_window = 7
+    else:
+        plan_dt = _parse_iso_date(anchor_date)
+        dup_window = 2 if kind == "results" else 120
 
     if plan_dt is not None:
         existing = planned_calls.get((symbol, kind), [])
-        if any(abs((plan_dt - pd).days) <= 7 for pd in existing):
+        if any(abs((plan_dt - pd).days) <= dup_window for pd in existing):
             return "dup_in_plan", None
         planned_calls.setdefault((symbol, kind), []).append(plan_dt)
     return "resolved", None
@@ -874,7 +1038,8 @@ def _resolve_target_to_item(
     planned_calls: dict[tuple[str, str], list[date]],
     get_fn: GetFn,
 ) -> dict[str, Any]:
-    res = resolve(target, intent, anchor_date, company_names, get=get_fn)
+    check_co = item.get("source") != "exchange"
+    res = resolve(target, intent, anchor_date, company_names, get=get_fn, check_company=check_co)
     if res["status"] != "resolved":
         return {
             **item,
@@ -925,7 +1090,7 @@ def plan_store(
     get: GetFn | None = None,
     symbols: Iterable[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Build fetch plan items for ``link_only`` and ``not_fetched`` transcript/deck ``filing`` rows."""
+    """Build fetch plan items for ``link_only`` and ``not_fetched`` (transcript/deck/results/annual_report) rows."""
     get_fn = get or default_get
     wanted = {s.strip().upper() for s in symbols if s and s.strip()} if symbols is not None else None
     conn, should_close = _open_ro(store_db)
@@ -937,6 +1102,7 @@ def plan_store(
             return []
         held_shas = {str(sha).lower() for (sha,) in conn.execute("SELECT sha256 FROM doc WHERE sha256 IS NOT NULL")}
         held_tx, held_decks = _load_held_call_index(conn)
+        held_res_ar = _load_held_doc_dates(conn, ("results", "annual_report"))
         meta = _company_meta(conn)
 
         link_rows = conn.execute(
@@ -945,8 +1111,11 @@ def plan_store(
             "ORDER BY symbol, COALESCE(filed_at, ''), exchange, filing_id"
         ).fetchall()
         nf_rows = conn.execute(
-            "SELECT exchange, filing_id, symbol, isin, filed_at, kind_hint, attachment "
-            "FROM filing WHERE status='not_fetched' AND kind_hint IN ('transcript', 'deck') "
+            "SELECT exchange, filing_id, symbol, isin, filed_at, kind_hint, attachment, "
+            "exchange_subcategory, headline "
+            "FROM filing WHERE status='not_fetched' "
+            "AND (kind_hint IN ('transcript', 'deck') "
+            "OR (kind_hint IN ('results', 'annual_report') AND substr(COALESCE(filed_at, ''), 1, 10) >= '2024-04-01')) "
             "AND attachment IS NOT NULL AND attachment != '' "
             "ORDER BY symbol, COALESCE(filed_at, ''), exchange, filing_id"
         ).fetchall()
@@ -1007,14 +1176,13 @@ def plan_store(
             if chosen is not None:
                 plan.append(chosen)
 
-        for exchange, filing_id, symbol, isin, filed_at, kind_hint, attachment in nf_rows:
+        for exchange, filing_id, symbol, isin, filed_at, kind_hint, attachment, subcat, headline in nf_rows:
             sym_u = str(symbol or "").strip().upper()
             if wanted is not None and sym_u not in wanted:
                 continue
             target = _exchange_target_url(str(exchange), attachment)
-            if not target or (sym_u, target) in seen_targets:
+            if not target:
                 continue
-            seen_targets.add((sym_u, target))
             info = meta.get(sym_u, {"isin": None, "bse_code": None, "names": [sym_u]})
             use_isin = isin or info["isin"]
             intent = str(kind_hint)
@@ -1029,6 +1197,17 @@ def plan_store(
                 intent=intent,
                 target=target,
             )
+            if intent in ("results", "annual_report"):
+                if _NOTICE_SKIP_RE.search(f"{subcat or ''} {headline or ''}"):
+                    plan.append({**base, "outcome": "skipped_notice"})
+                    continue
+                held_dk = _held_same_day_doc(sym_u, intent, filed_at, held_res_ar)
+                if held_dk is not None:
+                    plan.append({**base, "outcome": "held_same_day", "held_doc_key": held_dk})
+                    continue
+            if (sym_u, target) in seen_targets:
+                continue
+            seen_targets.add((sym_u, target))
             anchor = str(filed_at)[:10] if filed_at else None
             plan.append(
                 _resolve_target_to_item(
@@ -1059,6 +1238,14 @@ def _existing_manifest_keys(manifest: Path) -> tuple[set[str], set[str], list[st
             if nid:
                 newsids.add(nid)
     return shas, newsids, fieldnames
+
+
+_KIND_BUCKET_SUBCAT: dict[str, tuple[str, str]] = {
+    "transcript": ("concall_transcript", "Earnings Call Transcript"),
+    "deck": ("investor_presentation", "Investor Presentation"),
+    "results": ("quarterly_results", "Financial Results"),
+    "annual_report": ("annual_report", "Annual Report"),
+}
 
 
 def apply_plan(
@@ -1103,10 +1290,8 @@ def apply_plan(
 
         url = str(item.get("url") or item.get("target") or "")
         kind = str(item.get("kind") or item.get("intent") or "transcript")
-        is_deck = kind == "deck"
-        bucket = "investor_presentation" if is_deck else "concall_transcript"
-        subcat = "Investor Presentation" if is_deck else "Earnings Call Transcript"
-        label = linked_transcripts.call_label(url, None)
+        bucket, subcat = _KIND_BUCKET_SUBCAT.get(kind, ("concall_transcript", "Earnings Call Transcript"))
+        label = linked_transcripts.call_label(url, subcat)
         headline = f"{label} (linked from {exchange} filing {filing_id})"
         texts = item.get("texts") or []
         mean_chars = (sum(len(t) for t in texts) / len(texts)) if texts else 0.0
@@ -1493,8 +1678,10 @@ def format_report(
         by_sym.setdefault(sym, [])
 
     lines = [
-        "| symbol | link_only | resolved | held | held_same_call | dup_in_plan | audio_only | invitation | other_company | failed | exch_resolved | site_verdict | site_docs |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| symbol | link_only | resolved | held | held_same_call | dup_in_plan | audio_only | invitation | "
+        "other_company | failed | exch_resolved | results_resolved | ar_resolved | skipped_notice | "
+        "held_same_day | site_verdict | site_docs |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for sym in sorted(by_sym):
         mine = by_sym[sym]
@@ -1511,13 +1698,16 @@ def format_report(
             else "0"
         )
         exch_res = sum(1 for i in exch if i.get("outcome") == "resolved")
+        results_res = sum(1 for i in mine if i.get("outcome") == "resolved" and i.get("kind") == "results")
+        ar_res = sum(1 for i in mine if i.get("outcome") == "resolved" and i.get("kind") == "annual_report")
         site_info = (site_results or {}).get(sym)
         site_verdict = str(site_info["verdict"]) if site_info else "-"
         site_docs = sum(1 for i in site_items if i.get("outcome") in ("resolved", "held")) if site_info else 0
         lines.append(
             f"| {sym} | {len(links)} | {c_links['resolved']} | {c_links['held']} | {c_all['held_same_call']} | "
             f"{c_all['dup_in_plan']} | {c_links['audio_only']} | {c_links['invitation']} | {other_co} | "
-            f"{fail_str} | {exch_res} | {site_verdict} | {site_docs} |"
+            f"{fail_str} | {exch_res} | {results_res} | {ar_res} | {c_all['skipped_notice']} | "
+            f"{c_all['held_same_day']} | {site_verdict} | {site_docs} |"
         )
 
     lines.append("")
