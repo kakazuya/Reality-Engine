@@ -18,6 +18,7 @@ from reality_engine.pilot3 import (
     notes,
     profile,
     ratios,
+    row_checks,
     schema,
     statements,
     stores,
@@ -676,3 +677,87 @@ def test_notes_and_rpt_under_fy_end_12():
         out = notes.related_party_rows("RSYSTEMS", "INE411H01032", "R Systems", dec_ar, 1, rpt_page, lex)
         assert out
         assert {(r["fiscal_year"], r["period_end"]) for r in out} == {("FY25", "2025-12-31"), ("FY24", "2024-12-31")}
+
+
+def test_fiscal_quarter_end_and_half_end():
+    assert fiscal.quarter_end("Q1FY26") == "2025-06-30"
+    assert fiscal.quarter_end("Q4FY26") == "2026-03-31"
+    assert fiscal.half_end("H1FY26") == "2025-09-30"
+    assert fiscal.half_end("H2FY26") == "2026-03-31"
+    assert fiscal.half_end("Q1FY26") is None
+
+    with fiscal.use(12):
+        assert fiscal.quarter_end("Q1FY26") == "2026-03-31"
+        assert fiscal.quarter_end("Q4FY25") == "2025-12-31"
+        assert fiscal.half_end("H1FY26") == "2026-06-30"
+        assert fiscal.half_end("H2FY25") == "2025-12-31"
+
+
+def test_row_checks_under_fy_end_12(tmp_path):
+    # March default unchanged
+    for lbl, expected in (
+        ("Q1FY26", "2025-06-30"), ("Q2FY26", "2025-09-30"), ("Q3FY26", "2025-12-31"),
+        ("Q4FY26", "2026-03-31"), ("H1FY26", "2025-09-30"), ("H2FY26", "2026-03-31"),
+        ("9MFY26", "2025-12-31"), ("FY26", "2026-03-31"),
+    ):
+        assert row_checks.period_end(lbl) == expected
+    assert row_checks.fiscal_ending_year("2026-05-01") == 2027
+    assert row_checks.fiscal_ending_year("2026-02-01") == 2026
+
+    with fiscal.use(12):
+        for lbl, expected in (
+            ("Q1FY26", "2026-03-31"), ("Q2FY26", "2026-06-30"), ("Q3FY26", "2026-09-30"),
+            ("Q4FY26", "2026-12-31"), ("H1FY26", "2026-06-30"), ("H2FY26", "2026-12-31"),
+            ("9MFY26", "2026-09-30"), ("FY26", "2026-12-31"),
+        ):
+            assert row_checks.period_end(lbl) == expected
+        assert row_checks.fiscal_ending_year("2026-05-01") == 2026
+        assert row_checks.fiscal_ending_year("2026-02-01") == 2026
+        assert row_checks.fiscal_ending_year("1999-12-01") == 1999
+
+    db = tmp_path / "rc.db"
+    out_db = tmp_path / "rc_out.db"
+    con = sqlite3.connect(db)
+    schema.create(con, ["company", "doc", "doc_page", "guidance"])
+    con.executescript(kpi.SCHEMA)
+    con.execute("INSERT INTO company (symbol, isin, name) VALUES ('RSYSTEMS', 'INE411H01032', 'R Systems')")
+    con.execute("INSERT INTO doc (doc_key, symbol, doc_type, known_at) "
+                "VALUES ('ar1', 'RSYSTEMS', 'annual_report', '2026-04-01')")
+    for pg in (1, 2, 3):
+        con.execute("INSERT INTO doc_page (doc_key, symbol, page, text) "
+                    "VALUES ('ar1', 'RSYSTEMS', ?, 'For the year ended December 31, 2025')", (pg,))
+    g_quote = "We expect Q2FY26 EBITDA margin of 18%."
+    k_quote = "EBITDA margin stood at 17% for Q1FY26."
+    con.execute("INSERT INTO doc (doc_key, symbol, doc_type, known_at) "
+                "VALUES ('tr1', 'RSYSTEMS', 'transcript', '2026-05-07T18:00:00')")
+    con.execute("INSERT INTO doc_page (doc_key, symbol, page, text) VALUES ('tr1', 'RSYSTEMS', 1, ?)",
+                (f"{g_quote} {k_quote}",))
+    con.execute(
+        "INSERT INTO guidance (id, symbol, metric, target_period, low, high, unit, direction, said_on, doc_key, page, quote, known_at, extractor_rule) "
+        "VALUES (1, 'RSYSTEMS', 'ebitda_margin', 'Q2FY26', 18.0, 18.0, 'pct', 'flat', '2026-05-07', 'tr1', 1, ?, '2026-05-07', 'guidance_cue_v1')",
+        (g_quote,),
+    )
+    con.execute(
+        "INSERT INTO kpi_series (id, symbol, metric, dimension, period_type, fiscal_period, basis, value, unit, scale, doc_key, page, quote, known_at, extractor_rule) "
+        "VALUES (1, 'RSYSTEMS', 'ebitda_margin', 'total', 'Q', 'Q1FY26', 'consolidated', 17.0, 'pct', 1.0, 'tr1', 1, ?, '2026-05-07', 'prose_v1')",
+        (k_quote,),
+    )
+    con.execute(
+        "INSERT INTO kpi_series (id, symbol, metric, dimension, period_type, fiscal_period, basis, value, unit, scale, doc_key, page, quote, known_at, extractor_rule) "
+        "VALUES (2, 'RSYSTEMS', 'ebitda_margin', 'total', 'Q', 'Q2FY26', 'consolidated', 18.0, 'pct', 1.0, 'tr1', 1, ?, '2026-05-07', 'prose_v1')",
+        (g_quote,),
+    )
+    con.commit()
+    con.close()
+
+    prof = tmp_path / "prof.json"
+    prof.write_text('{"companies": [{"symbol": "RSYSTEMS", "sector": "it_services"}]}', encoding="utf-8")
+    row_checks.run(str(db), str(out_db), profile=str(prof))
+    out = sqlite3.connect(out_db)
+    try:
+        fails = out.execute("SELECT tbl, row_id, check_name FROM row_check_fail").fetchall()
+        assert ("guidance", 1, "past_target") not in fails
+        assert ("kpi_series", 1, "future_period") not in fails
+        assert ("kpi_series", 2, "future_period") in fails
+    finally:
+        out.close()

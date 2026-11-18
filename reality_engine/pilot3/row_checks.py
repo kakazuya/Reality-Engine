@@ -105,7 +105,7 @@ from pathlib import Path
 
 import yaml
 
-from reality_engine.pilot3 import schema
+from reality_engine.pilot3 import fiscal, schema
 
 VERSION = "row_checks_v2"
 VOCAB_PATH = Path(__file__).with_name("row_checks_vocab.yaml")
@@ -233,21 +233,21 @@ def delta_hit(text: str, value: float | None, nums: list[tuple[float, int, int]]
 # ------------------------------------------------------------------------------------------------- periods
 
 def period_end(label: str | None) -> str | None:
-    """Last day of a fiscal period label (Indian April-March year): FY26, Q2FY27, H1FY26, 9MFY26."""
+    """Last day of a fiscal period label using ``fiscal.current()``: FY26, Q2FY27, H1FY26, 9MFY26."""
     if not label:
         return None
-    m = re.fullmatch(r"(?:(Q[1-4])|(H[12])|(9M))?FY(\d{2})", label.strip().upper())
+    canon = label.strip().upper()
+    m = re.fullmatch(r"(?:(Q[1-4])|(H[12])|(9M))?FY(\d{2})", canon)
     if not m:
         return None
-    yy = 2000 + int(m.group(4))
-    q, h, nine = m.group(1), m.group(2), m.group(3)
+    q, h, nine, yy = m.group(1), m.group(2), m.group(3), m.group(4)
     if q:
-        return {"Q1": f"{yy-1}-06-30", "Q2": f"{yy-1}-09-30", "Q3": f"{yy-1}-12-31", "Q4": f"{yy}-03-31"}[q]
+        return fiscal.quarter_end(canon)
     if h:
-        return f"{yy-1}-09-30" if h == "H1" else f"{yy}-03-31"
+        return fiscal.half_end(canon)
     if nine:
-        return f"{yy-1}-12-31"
-    return f"{yy}-03-31"
+        return fiscal.quarter_end(f"Q3FY{yy}")
+    return fiscal.fy_end_date(canon)
 
 
 # --------------------------------------------------------------------------------------------- vocabulary
@@ -791,14 +791,20 @@ def fiscal_years(text: str) -> set[str]:
 
 
 def fiscal_ending_year(date: str | None) -> int | None:
-    """Fiscal year end for a document date (Indian April-March): 2026-05-01 -> 2027."""
+    """Fiscal year end for a document date using ``fiscal.current()``: 2026-05-01 -> 2027 (March) / 2026 (Dec)."""
     if not date or len(date) < 7:
         return None
     try:
         year, month = int(date[0:4]), int(date[5:7])
     except ValueError:
         return None
-    return year + 1 if month >= 4 else year
+    if not 1 <= month <= 12:
+        return None
+    fy = int(fiscal.fy_label(f"{year:04d}-{month:02d}-01")[2:])
+    century = (year // 100) * 100
+    if fy == 0 and month > fiscal.current() and year % 100 == 99:
+        century += 100
+    return century + fy
 
 
 # "in FY23", "in fiscal 2026", "financial year 2025": a fiscal-year reference in words and digits, kept apart
@@ -939,6 +945,17 @@ class Checker:
         self._mgmt: dict[str, str] = {}
         self._witness_cache: dict[int, bool] = {}
         self._header: dict[tuple[str, int, str], list[str]] = {}
+        self._fy_ends: dict[str, int] = {}
+
+    def _fy_end(self, symbol: str | None) -> int:
+        if not symbol:
+            return 3
+        cache = getattr(self, "_fy_ends", None)
+        if cache is None:
+            cache = self._fy_ends = {}
+        if symbol not in cache:
+            cache[symbol] = fiscal.fy_end_month(getattr(self, "con", None), symbol)
+        return cache[symbol]
 
     # -- shared --
     def page_text(self, doc_key: str, page: int) -> str | None:
@@ -1621,7 +1638,8 @@ class Checker:
         if not plausible(m.kind if m else "any", r["metric"], value, value, r["unit"]):
             v.fail("plausible", "outside bounds")
         self.check_variant(v, m, text, pos)
-        end = period_end(r["fiscal_period"])
+        with fiscal.use(self._fy_end(r["symbol"])):
+            end = period_end(r["fiscal_period"])
         known = (r["known_at"] or "")[:10]
         if end and known and end > known:
             v.fail("future_period", "period had not ended")
@@ -1988,74 +2006,75 @@ class Checker:
     def check_guidance(self) -> list[Verdict]:
         out = []
         for r in self.con.execute("SELECT * FROM guidance"):
-            m = self.vocab.canon(r["metric"])
-            v = Verdict("guidance", r["id"], r["symbol"], r["metric"], m.name if m else "", self.sectors.get(r["symbol"], ""),
-                        self.doc_type.get(r["doc_key"], ""), r["extractor_rule"] or "")
-            quote = r["quote"] or ""
-            text = fold(quote)
-            self.check_quote(v, quote, r["doc_key"], r["page"])
-            self.check_sector(v, m)
-            lo, hi = r["low"], r["high"]
-            if lo is None and hi is None:
-                v.fail("null_value", "no number stored")
-                pos = None
-            else:
-                nums = numbers_in(text)
-                pos = None
-                for val in {x for x in (lo, hi) if x is not None}:
-                    how, p = find_value(val, nums)
-                    if how == "absent":
-                        v.fail("value_present", f"{val} not in the quote")
-                    elif how == "scaled":
-                        v.fail("value_scaled", f"{val} only after rescale")
-                    if p is not None and pos is None:
-                        pos = p
-                if lo is not None and hi is not None:
-                    if lo > hi:
-                        v.fail("range_order", f"low {lo} > high {hi}")
-                    elif lo > 0 and hi / lo > 3:
-                        v.fail("range_spread", f"high/low {hi / lo:.1f}")
-                kind = m.kind if m else "any"
-                if not plausible(kind, r["metric"], lo, hi, r["unit"]):
-                    v.fail("plausible", f"{lo}-{hi} {r['unit']} outside {kind} bounds")
-            context = self.context_before(r["doc_key"], r["page"], quote, 3000)
-            self.check_label(v, m, text, pos, context)
-            self.check_nearer_label(v, m, text, pos)
-            self.check_currency(v, m, text, pos, r["unit"] or "")
-            self.check_net_cash_sign(v, m, text, pos, lo if lo is not None else hi)
-            if pos is not None:
-                window = text[max(0, pos - 90): pos + 60]
-                hit = next((p.pattern for p in self.vocab.third_party if p.search(window)), None)
-                if hit:
-                    v.fail("third_party", f"third-party wording '{hit}' near the number")
-                past = _PAST_VERB.search(text[max(0, pos - 60):pos])
-                if past:
-                    v.fail("past_figure", f"the number follows a realised-figure verb '{past.group(0).strip()}'")
-                governed = _PAST_GOVERN.search(text[max(0, pos - 45):pos])
-                if governed:
-                    v.fail("past_figure", f"a past-tense verb '{governed.group(0)}' governs the number")
-                if m is None or m.kind != "growth_pct":
-                    # a growth target is worded "growth of 12%", so the delta test is for level/amount metrics
-                    for val in (lo, hi):
-                        delta = delta_hit(text, val, nums)
-                        if delta:
-                            v.fail("delta_value", f"the number is a change ('{delta}'), not the level")
-                            break
-            self.check_variant(v, m, text, pos)
-            self.check_target_frame(v, text, pos, r["target_period"])
-            self.check_target_year(v, text, pos, r["target_period"])
-            self.check_pinned(v, m, text, pos, r["target_period"],
-                              (r["said_on"] or r["known_at"] or "")[:10])
-            if not any(p.search(text) for p in self.vocab.forward):
-                if any(p.search(context[-250:]) for p in self.vocab.forward):
-                    v.fail("forward_context", "forward word only just before the quote")
+            with fiscal.use(self._fy_end(r["symbol"])):
+                m = self.vocab.canon(r["metric"])
+                v = Verdict("guidance", r["id"], r["symbol"], r["metric"], m.name if m else "", self.sectors.get(r["symbol"], ""),
+                            self.doc_type.get(r["doc_key"], ""), r["extractor_rule"] or "")
+                quote = r["quote"] or ""
+                text = fold(quote)
+                self.check_quote(v, quote, r["doc_key"], r["page"])
+                self.check_sector(v, m)
+                lo, hi = r["low"], r["high"]
+                if lo is None and hi is None:
+                    v.fail("null_value", "no number stored")
+                    pos = None
                 else:
-                    v.fail("forward_word", "no forward word in the quote or just before it")
-            end = period_end(r["target_period"])
-            said = (r["said_on"] or r["known_at"] or "")[:10]
-            if end and said and end < said and (r["target_period"] or "").startswith(("Q", "H", "9M")):
-                v.fail("past_target", f"target {r['target_period']} ended {end}, said {said}")
-            out.append(self.finish(v))
+                    nums = numbers_in(text)
+                    pos = None
+                    for val in {x for x in (lo, hi) if x is not None}:
+                        how, p = find_value(val, nums)
+                        if how == "absent":
+                            v.fail("value_present", f"{val} not in the quote")
+                        elif how == "scaled":
+                            v.fail("value_scaled", f"{val} only after rescale")
+                        if p is not None and pos is None:
+                            pos = p
+                    if lo is not None and hi is not None:
+                        if lo > hi:
+                            v.fail("range_order", f"low {lo} > high {hi}")
+                        elif lo > 0 and hi / lo > 3:
+                            v.fail("range_spread", f"high/low {hi / lo:.1f}")
+                    kind = m.kind if m else "any"
+                    if not plausible(kind, r["metric"], lo, hi, r["unit"]):
+                        v.fail("plausible", f"{lo}-{hi} {r['unit']} outside {kind} bounds")
+                context = self.context_before(r["doc_key"], r["page"], quote, 3000)
+                self.check_label(v, m, text, pos, context)
+                self.check_nearer_label(v, m, text, pos)
+                self.check_currency(v, m, text, pos, r["unit"] or "")
+                self.check_net_cash_sign(v, m, text, pos, lo if lo is not None else hi)
+                if pos is not None:
+                    window = text[max(0, pos - 90): pos + 60]
+                    hit = next((p.pattern for p in self.vocab.third_party if p.search(window)), None)
+                    if hit:
+                        v.fail("third_party", f"third-party wording '{hit}' near the number")
+                    past = _PAST_VERB.search(text[max(0, pos - 60):pos])
+                    if past:
+                        v.fail("past_figure", f"the number follows a realised-figure verb '{past.group(0).strip()}'")
+                    governed = _PAST_GOVERN.search(text[max(0, pos - 45):pos])
+                    if governed:
+                        v.fail("past_figure", f"a past-tense verb '{governed.group(0)}' governs the number")
+                    if m is None or m.kind != "growth_pct":
+                        # a growth target is worded "growth of 12%", so the delta test is for level/amount metrics
+                        for val in (lo, hi):
+                            delta = delta_hit(text, val, nums)
+                            if delta:
+                                v.fail("delta_value", f"the number is a change ('{delta}'), not the level")
+                                break
+                self.check_variant(v, m, text, pos)
+                self.check_target_frame(v, text, pos, r["target_period"])
+                self.check_target_year(v, text, pos, r["target_period"])
+                self.check_pinned(v, m, text, pos, r["target_period"],
+                                  (r["said_on"] or r["known_at"] or "")[:10])
+                if not any(p.search(text) for p in self.vocab.forward):
+                    if any(p.search(context[-250:]) for p in self.vocab.forward):
+                        v.fail("forward_context", "forward word only just before the quote")
+                    else:
+                        v.fail("forward_word", "no forward word in the quote or just before it")
+                end = period_end(r["target_period"])
+                said = (r["said_on"] or r["known_at"] or "")[:10]
+                if end and said and end < said and (r["target_period"] or "").startswith(("Q", "H", "9M")):
+                    v.fail("past_target", f"target {r['target_period']} ended {end}, said {said}")
+                out.append(self.finish(v))
         return out
 
     # -- kpi --
@@ -2142,113 +2161,114 @@ class Checker:
         out = []
         derived: list = []
         for r in rows:
-            m = self.vocab.canon(r["metric"])
-            v = Verdict("kpi_series", r["id"], r["symbol"], r["metric"], m.name if m else "", self.sectors.get(r["symbol"], ""),
-                        r["source_type"] or self.doc_type.get(r["doc_key"], ""), r["extractor_rule"] or "")
-            value = r["value"]
-            amount = (value or 0) * (r["scale"] or 1)
-            # corroboration first: another document with the same value, or the filed statements
-            key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"],
-                   r["basis"], definitions.get(r["id"], ""))
-            v.definition = key[-1]
-            # independent sources only: another document AND another wording (a deck table copied into the next
-            # quarter's deck is the same source twice, not a second witness), and the witness itself must pass
-            # every hard check and not be multi_number
-            peers = groups[key]
-            mine = squash(r["quote"] or "")[:80]
-            valid = [(a, q, single) for i, d, a, q, single in peers
-                     if d != r["doc_key"] and q != mine and self.witness_ok(by_id[i], fin, usd_rev, dim_words)]
-            # two multi-column quotes agreeing do not corroborate each other: only a single-valued source does
-            same = {q for a, q, single in valid if single and close(a, amount, 0.01)}
-            diff = [a for a, _, _ in valid if not close(a, amount, 0.015)]
-            if diff:
-                v.fail("cross_doc", f"{len(diff)} independent source(s) disagree by more than 1.5%")
-            canon = m.name if m else ""
-            if canon in ("revenue", "pat", "ebitda") and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"] \
-                    and (r["unit"] or "").startswith("inr"):
-                filed = fin.get((r["symbol"], r["fiscal_period"], canon))
-                if filed:
-                    if any(close(f, amount, 0.01) for f in filed):
-                        v.corroborated = True
-                    elif canon != "ebitda":
-                        v.fail("fin_conflict", f"filed {canon} for {r['fiscal_period']}: {sorted(set(round(f / 1e7, 1) for f in filed))} cr, row {round(amount / 1e7, 1)} cr")
-            if canon and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"]:
-                self.check_part(v, canon, amount, r["unit"] or "", r["symbol"], r["fiscal_period"], r["id"], fin, usd_rev)
-                if r["extractor_rule"] != "xbrl_segment":
-                    self.check_scale_doubt(v, canon, value, r["unit"] or "", r["dimension"],
-                                           r["entity"] or "", r["symbol"])
-                if r["extractor_rule"] != "xbrl_segment" and not v.corroborated:
-                    # a total amount with nothing filed and no second source is served only as unverified
-                    if canon in ("order_intake", "order_book"):
-                        v.fail("uncorroborated", f"total {canon} with no filed statement and no second source")
-                    elif canon in ("revenue", "pat", "ebitda") and not fin.get((r["symbol"], r["fiscal_period"], canon)):
-                        v.fail("uncorroborated", f"total {canon} with no filed statement and no second source")
-            if r["extractor_rule"] == "xbrl_segment":
-                # a structured filing: no quote; the segment value is the tagged figure
-                v.corroborated = True
+            with fiscal.use(self._fy_end(r["symbol"])):
+                m = self.vocab.canon(r["metric"])
+                v = Verdict("kpi_series", r["id"], r["symbol"], r["metric"], m.name if m else "", self.sectors.get(r["symbol"], ""),
+                            r["source_type"] or self.doc_type.get(r["doc_key"], ""), r["extractor_rule"] or "")
+                value = r["value"]
+                amount = (value or 0) * (r["scale"] or 1)
+                # corroboration first: another document with the same value, or the filed statements
+                key = (r["symbol"], r["metric"], r["dimension"], r["fiscal_period"], r["entity"] or r["symbol"],
+                       r["basis"], definitions.get(r["id"], ""))
+                v.definition = key[-1]
+                # independent sources only: another document AND another wording (a deck table copied into the next
+                # quarter's deck is the same source twice, not a second witness), and the witness itself must pass
+                # every hard check and not be multi_number
+                peers = groups[key]
+                mine = squash(r["quote"] or "")[:80]
+                valid = [(a, q, single) for i, d, a, q, single in peers
+                         if d != r["doc_key"] and q != mine and self.witness_ok(by_id[i], fin, usd_rev, dim_words)]
+                # two multi-column quotes agreeing do not corroborate each other: only a single-valued source does
+                same = {q for a, q, single in valid if single and close(a, amount, 0.01)}
+                diff = [a for a, _, _ in valid if not close(a, amount, 0.015)]
+                if diff:
+                    v.fail("cross_doc", f"{len(diff)} independent source(s) disagree by more than 1.5%")
+                canon = m.name if m else ""
+                if canon in ("revenue", "pat", "ebitda") and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"] \
+                        and (r["unit"] or "").startswith("inr"):
+                    filed = fin.get((r["symbol"], r["fiscal_period"], canon))
+                    if filed:
+                        if any(close(f, amount, 0.01) for f in filed):
+                            v.corroborated = True
+                        elif canon != "ebitda":
+                            v.fail("fin_conflict", f"filed {canon} for {r['fiscal_period']}: {sorted(set(round(f / 1e7, 1) for f in filed))} cr, row {round(amount / 1e7, 1)} cr")
+                if canon and r["dimension"] == "total" and (r["entity"] or r["symbol"]) == r["symbol"]:
+                    self.check_part(v, canon, amount, r["unit"] or "", r["symbol"], r["fiscal_period"], r["id"], fin, usd_rev)
+                    if r["extractor_rule"] != "xbrl_segment":
+                        self.check_scale_doubt(v, canon, value, r["unit"] or "", r["dimension"],
+                                               r["entity"] or "", r["symbol"])
+                    if r["extractor_rule"] != "xbrl_segment" and not v.corroborated:
+                        # a total amount with nothing filed and no second source is served only as unverified
+                        if canon in ("order_intake", "order_book"):
+                            v.fail("uncorroborated", f"total {canon} with no filed statement and no second source")
+                        elif canon in ("revenue", "pat", "ebitda") and not fin.get((r["symbol"], r["fiscal_period"], canon)):
+                            v.fail("uncorroborated", f"total {canon} with no filed statement and no second source")
+                if r["extractor_rule"] == "xbrl_segment":
+                    # a structured filing: no quote; the segment value is the tagged figure
+                    v.corroborated = True
+                    out.append(v)
+                    continue
+                if r["extractor_rule"] == "derived_cumulative_v1":
+                    derived.append((v, r))   # no page quote: judged by its two inputs once their verdicts exist
+                    continue
+                quote = r["quote"] or ""
+                text = fold(quote)
+                self.check_quote(v, quote, r["doc_key"], r["page"])
+                self.check_sector(v, m)
+                self.check_entity(v, r)
+                nums = numbers_in(text)
+                how, pos = find_value(value, nums)
+                if (r["unit"] or "") == "bps" and value is not None:
+                    # a bps row is printed as a percentage ("credit cost of 0.18%"): the percent reading pins the
+                    # number; the plain reading can land on an unrelated 18 (a growth rate) later in the quote
+                    how2, pos2 = find_value(value / 100, nums)
+                    if how2 == "exact":
+                        how, pos = how2, pos2
+                if how == "absent":
+                    v.fail("value_present", f"{value} not in the quote")
+                elif how == "scaled":
+                    v.fail("value_scaled", f"{value} only after rescale")
+                self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "",
+                                        r["doc_key"], r["page"], r["fiscal_period"], quote)
+                ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
+                self.check_label(v, m, text, pos, ctx)
+                self.check_nearer_label(v, m, text, pos, reach=10 ** 9, same_side=True, mask_denominators=True)
+                self.check_footnote(v, m, text, pos)
+                self.check_projection(v, m, text, pos, r["doc_key"], r["page"], r["fiscal_period"])
+                self.check_regulated_rate(v, m, text, pos, r["unit"] or "")
+                self.check_currency(v, m, text, pos, r["unit"] or "")
+                self.check_net_cash_sign(v, m, text, pos, value)
+                self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "",
+                                     _col(r, "raw_value"), _col(r, "value"))
+                self.check_company_speaker(v, text, pos, r["doc_key"], r["page"], quote)
+                self.check_speaker_turn(v, r["doc_key"], r["page"], quote, text, pos)
+                self.check_range(v, text, pos)
+                self.check_unit_kind(v, m, text, pos, r["unit"] or "")
+                if r["dimension"] == "total":
+                    self.check_dimension_word(v, m, quote, value, r["symbol"], dim_words)
+                    self.check_scope_word(v, m, text, pos, r["metric"])
+                    self.check_segment_scope(v, m, text, pos, r["symbol"], dim_words)
+                if how == "exact":
+                    # the list-order test needs the number the row actually took: a rescaled match (an OCR
+                    # "0. 77%") is a soft value_scaled, not evidence about the list
+                    self.check_list(v, m, text, pos, ctx)
+                self.check_period_word(v, text, pos, r["fiscal_period"], r["extractor_rule"] or "")
+                self.check_past_level(v, m, text, pos, r["fiscal_period"], r["extractor_rule"] or "")
+                if m is None or m.kind != "growth_pct":
+                    delta = delta_hit(text, value, nums)
+                    if delta:
+                        v.fail("delta_value", f"the number is a change ('{delta}'), not the level")
+                if not plausible(m.kind if m else "any", r["metric"], value, value, r["unit"]):
+                    v.fail("plausible", f"{value} {r['unit']} outside bounds")
+                self.check_variant(v, m, text, pos)
+                end = period_end(r["fiscal_period"])
+                known = (r["known_at"] or "")[:10]
+                if end and known and end > known:
+                    v.fail("future_period", f"{r['fiscal_period']} ends {end}, row known {known}")
+                # decided last: a history / scale-doubt row is only pinnable by a filed figure
+                if same and not v.filed_only:
+                    v.corroborated = True
                 out.append(v)
-                continue
-            if r["extractor_rule"] == "derived_cumulative_v1":
-                derived.append((v, r))   # no page quote: judged by its two inputs once their verdicts exist
-                continue
-            quote = r["quote"] or ""
-            text = fold(quote)
-            self.check_quote(v, quote, r["doc_key"], r["page"])
-            self.check_sector(v, m)
-            self.check_entity(v, r)
-            nums = numbers_in(text)
-            how, pos = find_value(value, nums)
-            if (r["unit"] or "") == "bps" and value is not None:
-                # a bps row is printed as a percentage ("credit cost of 0.18%"): the percent reading pins the
-                # number; the plain reading can land on an unrelated 18 (a growth rate) later in the quote
-                how2, pos2 = find_value(value / 100, nums)
-                if how2 == "exact":
-                    how, pos = how2, pos2
-            if how == "absent":
-                v.fail("value_present", f"{value} not in the quote")
-            elif how == "scaled":
-                v.fail("value_scaled", f"{value} only after rescale")
-            self.check_multi_number(v, m, text, pos, r["unit"] or "", r["extractor_rule"] or "",
-                                    r["doc_key"], r["page"], r["fiscal_period"], quote)
-            ctx = self.context_before(r["doc_key"], r["page"], quote, 300)
-            self.check_label(v, m, text, pos, ctx)
-            self.check_nearer_label(v, m, text, pos, reach=10 ** 9, same_side=True, mask_denominators=True)
-            self.check_footnote(v, m, text, pos)
-            self.check_projection(v, m, text, pos, r["doc_key"], r["page"], r["fiscal_period"])
-            self.check_regulated_rate(v, m, text, pos, r["unit"] or "")
-            self.check_currency(v, m, text, pos, r["unit"] or "")
-            self.check_net_cash_sign(v, m, text, pos, value)
-            self.check_page_unit(v, text, pos, r["doc_key"], r["page"], quote, r["unit"] or "",
-                                 _col(r, "raw_value"), _col(r, "value"))
-            self.check_company_speaker(v, text, pos, r["doc_key"], r["page"], quote)
-            self.check_speaker_turn(v, r["doc_key"], r["page"], quote, text, pos)
-            self.check_range(v, text, pos)
-            self.check_unit_kind(v, m, text, pos, r["unit"] or "")
-            if r["dimension"] == "total":
-                self.check_dimension_word(v, m, quote, value, r["symbol"], dim_words)
-                self.check_scope_word(v, m, text, pos, r["metric"])
-                self.check_segment_scope(v, m, text, pos, r["symbol"], dim_words)
-            if how == "exact":
-                # the list-order test needs the number the row actually took: a rescaled match (an OCR
-                # "0. 77%") is a soft value_scaled, not evidence about the list
-                self.check_list(v, m, text, pos, ctx)
-            self.check_period_word(v, text, pos, r["fiscal_period"], r["extractor_rule"] or "")
-            self.check_past_level(v, m, text, pos, r["fiscal_period"], r["extractor_rule"] or "")
-            if m is None or m.kind != "growth_pct":
-                delta = delta_hit(text, value, nums)
-                if delta:
-                    v.fail("delta_value", f"the number is a change ('{delta}'), not the level")
-            if not plausible(m.kind if m else "any", r["metric"], value, value, r["unit"]):
-                v.fail("plausible", f"{value} {r['unit']} outside bounds")
-            self.check_variant(v, m, text, pos)
-            end = period_end(r["fiscal_period"])
-            known = (r["known_at"] or "")[:10]
-            if end and known and end > known:
-                v.fail("future_period", f"{r['fiscal_period']} ends {end}, row known {known}")
-            # decided last: a history / scale-doubt row is only pinnable by a filed figure
-            if same and not v.filed_only:
-                v.corroborated = True
-            out.append(v)
         self.mark_same_doc_conflicts(out, by_id, same_doc, fin)
         done = [self.finish(v) for v in out]
         return done + [self.finish(v) for v in self.judge_derived(derived, rows, {v.row_id: v for v in done})]

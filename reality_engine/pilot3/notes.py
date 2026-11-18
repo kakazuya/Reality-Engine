@@ -783,7 +783,7 @@ def _category_columns(lines: list[str], i: int, lex: dict):
     for year in years:
         if year not in distinct:
             distinct.append(year)
-    return cats, [(f"FY{y % 100:02d}", fiscal.fy_end_date(y)) for y in distinct[:2]], j
+    return cats, [(fiscal.fy_label(end), end) for end in (fiscal.fy_end_date(y) for y in distinct[:2])], j
 
 
 def category_rows(symbol: str, isin: str, entity: str, doc, page: int, text: str, lex: dict) -> list[dict]:

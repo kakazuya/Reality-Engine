@@ -230,7 +230,7 @@ def last_fy_end(period_end: str, fy_end: int | None = None) -> str:
     return f"{lfy_year:04d}-{fe:02d}-{last_day:02d}"
 
 
-def quarter_end_date(label: str | None, fy_end: int | None = None) -> str | None:
+def quarter_end(label: str | None, fy_end: int | None = None) -> str | None:
     """Last day (``'YYYY-MM-DD'``) of the quarter named by ``label`` (e.g. ``'Q1FY26'``), or ``None``."""
     m = re.fullmatch(r"Q([1-4])FY(\d{2})", (label or "").strip().upper())
     if not m:
@@ -242,6 +242,20 @@ def quarter_end_date(label: str | None, fy_end: int | None = None) -> str | None
     ty, tm = divmod(start_year * 12 + (start_month - 1) + (q * 3 - 1), 12)
     tm += 1
     return f"{ty:04d}-{tm:02d}-{calendar.monthrange(ty, tm)[1]:02d}"
+
+
+def quarter_end_date(label: str | None, fy_end: int | None = None) -> str | None:
+    """Alias for :func:`quarter_end`."""
+    return quarter_end(label, fy_end)
+
+
+def half_end(label: str | None, fy_end: int | None = None) -> str | None:
+    """Last day (``'YYYY-MM-DD'``) of the half-year named by ``label`` (e.g. ``'H1FY26'``), or ``None``."""
+    m = re.fullmatch(r"H([12])FY(\d{2})", (label or "").strip().upper())
+    if not m:
+        return None
+    q = 2 if m.group(1) == "1" else 4
+    return quarter_end(f"Q{q}FY{m.group(2)}", fy_end)
 
 
 def filing_quarter(known_at: str | None, fy_end: int | None = None) -> str | None:
