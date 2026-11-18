@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+import reality_engine.pilot3.call_dates as call_dates
 import reality_engine.pilot3.transcripts as transcripts
 
 
@@ -349,3 +350,46 @@ def test_call_date_cue_wrapped_onto_the_next_line():
     assert transcripts.call_date_of(letter, "2024-02-15") == "2024-02-08"
     assert transcripts.call_date_of("February 15, 2024\nthe transcript of the call was conducted on February 08, 2024",
                                     None) == "2024-02-08"
+
+
+def test_call_date_skips_period_end_on_spmlinfra_cover_letter():
+    """T-223 / R-011: '3rd Quarter ended 31st December, 2025' is a period end, not the call date."""
+    cover = (
+        "Sub: Transcript of Earnings call for the 3rd Quarter ended 31st December, 2025 ... "
+        "please find attached herewith the transcript of Earnings Call organized by the Company on 17th February, 2026"
+    )
+    page2 = "SPML Infra Limited\nQ3 FY26 Earnings Conference Call\nFebruary 17, 2026"
+    assert call_dates.call_date([cover, page2]) == "2026-02-17"
+    assert transcripts.call_date_of(cover, None) == "2026-02-17"
+    # End-anchored check: 'ended' later in the line must not hide an earlier 'held on' call date
+    assert call_dates.call_date(
+        ["call held on 17th February, 2026 for the quarter ended 31st December, 2025"]
+    ) == "2026-02-17"
+
+
+def test_call_date_skips_period_end_page1_falls_back_to_page2():
+    """T-223 / R-011: a page-1 period end must not become the fallback first date when page 2 has the call."""
+    page1 = "Sub: Transcript of Earnings call for the quarter ended June 30, 2025"
+    page2 = "Earnings Conference Call\nAugust 12, 2025"
+    assert call_dates.call_date([page1, page2]) == "2025-08-12"
+
+
+def test_call_date_cosmofirst_prefers_cued_call_over_cover_date():
+    """T-223 / R-011: COSMOFIRST cover date is ignored when the call cue introduces February 12, 2026."""
+    cover = "February 19, 2026 ... the transcript of Analyst/Investor Earning Call held on February 12, 2026."
+    assert call_dates.call_date([cover]) == "2026-02-12"
+    assert transcripts.call_date_of(cover, None) == "2026-02-12"
+
+
+def test_call_date_skips_nine_months_ended_before_conference_call_date():
+    """T-223 / R-011: period-end date before the conference call sentence is skipped."""
+    text = "Results for the quarter and nine months ended December 31, 2025. The conference call was held on February 5, 2026"
+    assert call_dates.call_date([text]) == "2026-02-05"
+    assert transcripts.call_date_of(text, None) == "2026-02-05"
+
+
+def test_call_date_returns_none_when_only_period_end_printed():
+    """T-223 / R-011: a period-end date alone is neither a cued date nor a fallback first date."""
+    text = "for the year ended March 31, 2025"
+    assert call_dates.call_date([text]) is None
+    assert transcripts.call_date_of(text, None) is None
