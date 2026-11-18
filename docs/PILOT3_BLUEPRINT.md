@@ -1937,7 +1937,10 @@ of the parts it read. `stale()` then names the parts behind and why: never stamp
 changed`, or `after <part>`. A part whose code changed but whose re-run writes the same rows leaves its own readers
 fresh, so a repair stops where the change stops. `scripts/store_repair.py` runs a part and its readers under a
 before/after diff gate: a failed part, or any table that loses a row or a served row, puts the store back and keeps
-the refused result as `after.db` + `diff.json` for a hand-read `--accept`.
+the refused result as `after.db` + `diff.json` for a hand-read `--accept`.  On refusal it records a post-checkpoint
+SHA-256 (`live_fingerprint`) of the restored live store in `run.json`; `--accept` recomputes the live fingerprint and
+refuses if the live store changed or the run has no fingerprint (old runs require `--accept-stale` after a hand check,
+logged to `repair_log.jsonl`), preventing a stale `after.db` from overwriting an intervening repair.
 
 First use on the ten measured stores (baselined at their build commits): `--stale` listed exactly `profile` and
 `stores`, with their readers. On c02 the first attempt was REFUSED: `stores` rewrote 450 `fin_quarter_xbrl` rows while

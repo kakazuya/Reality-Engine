@@ -8,8 +8,9 @@
     re-run the part on each named store, then each part that reads from it, in build order, for as long as the
     rows it reads really changed (a part that wrote the same rows stops the chain).  ``--part stale`` re-runs
     whatever ``--stale`` lists for that store.  ``--no-dependants`` runs the named parts only.
-``python -m reality_engine.scripts.store_repair --accept <run id> --root <root> --stores c01``
-    put a refused result in place after its diff was read by hand.
+``python -m reality_engine.scripts.store_repair --accept <run id> --root <root> --stores c01 [--accept-stale]``
+    put a refused result in place after its diff was read by hand (refuses if the live store changed since the run,
+    or if the run has no ``live_fingerprint`` unless ``--accept-stale`` is given after a hand check).
 ``python -m reality_engine.scripts.store_repair note add|set|list ...``
     the store-repair notes: one entry per defect (``tasks/store_repair/notes.jsonl`` + generated ``INDEX.md``).
 
@@ -19,8 +20,12 @@ One repair, per store:
    ``tg_measure_build.run_step`` (the build finds its OCR database and review files by the store's own name);
 3. diff before against after with ``store_diff.diff_store``;
 4. **gate**: a part that failed, or a table that lost a row (``removed`` > 0, or a served row no longer served),
-   refuses the result: the store is put back as it was and the result is kept as ``after.db`` beside the diff, so a
+   refuses the result: the store is put back as it was, ``live_fingerprint`` (post-checkpoint SHA-256 of the
+   restored db) is recorded in ``run.json``, and the result is kept as ``after.db`` beside the diff, so a
    hand-read can ``--accept`` it without paying for the build again.  ``--approve-loss`` skips the row gate.
+5. **accept**: ``--accept`` re-checkpoints the live store, recomputes its SHA-256, and refuses if it differs from
+   ``live_fingerprint`` or ``run.json`` has none (old runs need ``--accept-stale`` after a hand check), so an accept
+   never silently undoes a repair that ran in between.
 A store is opened by one repair at a time (``repair.lock``).  Every run appends one line to ``<root>/repair_log.jsonl``.
 """
 from __future__ import annotations
@@ -288,6 +293,16 @@ def summary_of(diff: dict) -> dict:
             if t.get("removed") or t.get("added") or t.get("changed")}
 
 
+def _live_fingerprint(db: Path) -> str:
+    """SHA-256 of the live store file after a WAL checkpoint."""
+    store_diff._checkpoint(db)
+    digest = hashlib.sha256()
+    with open(db, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _restore(store: dict, run_dir: Path, keep_after: bool) -> None:
     """Put the store and its profile back as they were; keep the refused result as ``after.db`` when asked."""
     try:
@@ -362,6 +377,7 @@ def repair_store(store: dict, parts: list[str], run_id: str, approve_loss: bool 
         if _has_blocking_losses(record["losses"]) and not approve_loss:
             record.update(outcome="refused", detail=f"rows lost; read {run_dir / 'diff.json'}, then --accept {run_id}")
             _restore(store, run_dir, keep_after=True)
+            record["live_fingerprint"] = _live_fingerprint(store["db"])
         else:
             record["outcome"] = "repaired"
         return record
@@ -392,20 +408,49 @@ def _prune(repair_dir: Path, keep: str, backups: int = 2) -> None:
             (old / name).unlink(missing_ok=True)
 
 
-def accept(store: dict, run_id: str) -> dict:
-    """Put a refused run's ``after.db`` in place (after a hand-read of its diff)."""
+def accept(store: dict, run_id: str, accept_stale: bool = False) -> dict:
+    """Put a refused run's ``after.db`` in place (after a hand-read of its diff), if the live store is unchanged."""
     run_dir = store["dir"] / "repair" / run_id
     after = run_dir / "after.db"
     if not after.is_file():
         return {"store": store["name"], "run": run_id, "outcome": "nothing to accept", "detail": f"no {after}"}
+    run_json = run_dir / "run.json"
+    record = json.loads(run_json.read_text(encoding="utf-8")) if run_json.is_file() else {
+        "store": store["name"], "run": run_id
+    }
+    recorded_fp = record.get("live_fingerprint")
+    current_fp = _live_fingerprint(store["db"])
+    if not recorded_fp:
+        if not accept_stale:
+            return {
+                "store": store["name"],
+                "run": run_id,
+                "outcome": "refused",
+                "detail": (
+                    f"{store['name']} run {run_id}: no live_fingerprint in run.json (old run) — cannot verify "
+                    "whether the live store changed after this run (another repair or part ran); "
+                    "re-run the repair instead (or pass --accept-stale after a hand check)"
+                ),
+            }
+    elif current_fp != recorded_fp:
+        return {
+            "store": store["name"],
+            "run": run_id,
+            "outcome": "refused",
+            "detail": (
+                f"{store['name']} run {run_id}: the live store changed after this run "
+                "(another repair or part ran); re-run the repair instead"
+            ),
+        }
     for suffix in ("-wal", "-shm"):
         Path(f"{store['db']}{suffix}").unlink(missing_ok=True)
     shutil.copy2(after, store["db"])
     shutil.copy2(run_dir / "after_profile.json", store["profile"])
     after.unlink()
-    record = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
     record.update(outcome="repaired", accepted_at=time.strftime("%Y-%m-%dT%H:%M:%S"), accepted_by_hand=True)
-    (run_dir / "run.json").write_text(json.dumps(record, indent=1, default=str), encoding="utf-8")
+    if accept_stale and not recorded_fp:
+        record["accepted_stale"] = True
+    run_json.write_text(json.dumps(record, indent=1, default=str), encoding="utf-8")
     return record
 
 
@@ -698,6 +743,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--stale", action="store_true", help="list the parts built by older code")
     ap.add_argument("--part", default=None, help="comma list of parts to re-run, or 'stale'")
     ap.add_argument("--accept", default=None, metavar="RUN_ID", help="put a refused run's result in place")
+    ap.add_argument("--accept-stale", action="store_true",
+                    help="with --accept, override only for an old run without live_fingerprint after a hand check")
     ap.add_argument("--baseline", default=None, metavar="COMMIT|auto",
                     help="stamp stores built before stamps existed with that commit's code ('auto': the last "
                          "commit before the store file was written), so --stale lists only what changed since")
@@ -727,10 +774,12 @@ def main(argv: list[str] | None = None) -> int:
                 conn.close()
             print(f"{store['name']}: baseline {commit}, {len(done)} parts stamped")
         return 0
+    if args.accept_stale and not args.accept:
+        raise SystemExit("--accept-stale needs --accept")
     if args.accept:
         if not args.stores:
             raise SystemExit("--accept needs --stores")
-        records = [accept(store, args.accept) for store in pick(stores, args.stores)]
+        records = [accept(store, args.accept, accept_stale=args.accept_stale) for store in pick(stores, args.stores)]
     elif args.part:
         if not args.stores:
             raise SystemExit("--part needs --stores: one company at a time (ruling 15 Nov), name the stores")
