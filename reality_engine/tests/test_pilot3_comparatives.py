@@ -2240,3 +2240,121 @@ def test_probe_promotes_sum_ok_onto_agreed_partner_cells(tmp_path):
     assert len(oci_py) == 1 and oci_py[0][11] == pytest.approx(14.63 * 1e7) and oci_py[0][20] == "sum_ok"
 
 
+def test_eps_blocks_skip_discontinued_and_keep_continuing():
+    """R-023: read_page skips eps_basic/eps_diluted under a discontinued heading while keeping continuing/single EPS
+    blocks, resetting section on any non-EPS matched row, and preserving first-block precedence without XBRL."""
+    cols5 = (280.0, 360.0, 440.0, 520.0, 600.0)
+    dates_q4 = ("31.03.2024", "31.12.2023", "31.03.2023", "31.03.2024", "31.03.2023")
+
+    def _w5(x1: float, text: str, y: float) -> tuple:
+        return (x1 - 4.0 * len(text), y - 3.0, x1, y + 3.0, text, 0, 0, 0)
+
+    def _build_5col_page(body_rows):
+        words = [
+            (40.0, 5.0, 220.0, 13.0, "Statement of Standalone Audited Financial Results", 0, 0, 0),
+            (40.0, 15.0, 120.0, 23.0, "Rs. in Lakhs", 0, 0, 0),
+        ]
+        words += [_w5(cols5[i], dt, 30.0) for i, dt in enumerate(dates_q4)]
+        for idx, (lbl, vals, col_idxs) in enumerate(body_rows):
+            y, x = 50.0 + 10.0 * idx, 20.0
+            for word in lbl.split():
+                w = 4.0 * len(word)
+                words.append((x, y - 3.0, x + w, y + 3.0, word, 0, 0, 0))
+                x += w + 2.5
+            for col_i, val in zip(col_idxs, vals):
+                anchor = cols5[col_i]
+                parts = val.split()
+                if len(parts) == 1:
+                    words.append(_w5(anchor, parts[0], y))
+                else:
+                    rx = anchor
+                    for p in reversed(parts):
+                        pw = 4.0 * len(p)
+                        words.append((rx - pw, y - 3.0, rx, y + 3.0, p, 0, 0, 0))
+                        rx -= pw + 2.0
+        return cmp.rows_from_words(words)
+
+    pl_head = [
+        ("1 Revenue from operations", ("11,792.36", "11,684.25", "10,354.56", "43,487.12", "44,152.02"), range(5)),
+        ("2 Other income", ("55.43", "422.55", "285.97", "597.05", "815.56"), range(5)),
+        ("3 Total income", ("11,847.79", "12,106.80", "10,640.53", "44,084.17", "44,967.58"), range(5)),
+        ("4 Total expenses", ("11,645.80", "12,089.58", "9,644.28", "42,883.09", "40,051.49"), range(5)),
+        ("5 Profit before exceptional items and tax", ("201.99", "17.22", "996.25", "1,201.08", "4,916.09"), range(5)),
+        ("6 Total tax expense", ("(523.55)", "766.46", "331.58", "641.21", "(477.01)"), range(5)),
+        ("Discontinued Operations", (), ()),
+        ("7 Profit for the period", ("725.54", "(1,480.21)", "334.84", "(171.10)", "9,249.11"), range(5)),
+    ]
+
+    # (a) Mangled continuing Diluted ('(bl O1luted') + Discontinued block with 4 tokens at columns 2-5
+    rows_a = pl_head + [
+        ("Earnings Per Share (face value of Rs. 10 each)", (), ()),
+        ("For Con tin ulna Operations", (), ()),
+        ("(a) Basic", ("0 48", "(0 50)", "0 44", "0 37", "4 85"), range(5)),
+        ("(bl O1luted", ("048", "(0.50)", "044", "037", "485"), range(5)),
+        ("For Discontinued Operations", (), ()),
+        ("cal BBSIC", ("(049)", "(022)", "(049)", "130"), (1, 2, 3, 4)),
+        ("(b) Diluted", ("(049)", "(022)", "(049)", "130"), (1, 2, 3, 4)),
+    ]
+    conn = _conn()
+    conn_a = _conn()
+    _xbrl(conn_a, "2024-03-31", "eps_basic", 0.48, basis="standalone")
+    table_a = cmp.read_page(_build_5col_page(rows_a))
+    assert table_a is not None
+    # Discontinued 4-token row is skipped; continuing Basic is intact and Diluted is absent.
+    assert not any("eps_diluted" in col for col in table_a["values"].values())
+    stored_a = cmp._table_rows(
+        conn_a, "AAAA", "INE000A01001", "doc_a", 7, "2024-05-24T12:00:00", table_a,
+        cmp.xbrl_index(conn_a, "AAAA"), [],
+    )
+    conn_a.close()
+    assert _cells(stored_a, "eps_diluted", "current") == []
+    assert _cells(stored_a, "eps_diluted", "preceding") == []
+    assert [
+        _cells(stored_a, "eps_basic", role)[0][11]
+        for role in ("current", "preceding", "year_ago", "ytd", "prior_ytd")
+    ] == pytest.approx([0.48, -0.50, 0.44, 0.37, 4.85])
+
+    # (b) Clean continuing block + discontinued block -> both Basic and Diluted come from continuing block
+    rows_b = pl_head + [
+        ("For Continuing Operations", (), ()),
+        ("(a) Basic", ("0.48", "(0.50)", "0.44", "0.37", "4.85"), range(5)),
+        ("(b) Diluted", ("0.47", "(0.50)", "0.43", "0.36", "4.80"), range(5)),
+        ("For Discontinued Operations", (), ()),
+        ("(a) Basic", ("(0.49)", "(0.22)", "(0.49)", "1.30"), (1, 2, 3, 4)),
+        ("(b) Diluted", ("(0.49)", "(0.22)", "(0.49)", "1.30"), (1, 2, 3, 4)),
+    ]
+    table_b = cmp.read_page(_build_5col_page(rows_b))
+    stored_b = cmp._table_rows(conn, "AAAA", "INE000A01001", "doc_b", 7, "2024-05-24T12:00:00", table_b, {}, [])
+    assert [
+        _cells(stored_b, "eps_basic", role)[0][11]
+        for role in ("current", "preceding", "year_ago", "ytd", "prior_ytd")
+    ] == pytest.approx([0.48, -0.50, 0.44, 0.37, 4.85])
+    assert [
+        _cells(stored_b, "eps_diluted", role)[0][11]
+        for role in ("current", "preceding", "year_ago", "ytd", "prior_ytd")
+    ] == pytest.approx([0.47, -0.50, 0.43, 0.36, 4.80])
+
+    # Second unheaded EPS block without XBRL never overwrites the first block
+    rows_b2 = rows_b + [
+        ("For Continuing and Discontinued Operations", (), ()),
+        ("(a) Basic", ("(0.01)", "(0.72)", "0.22", "(0.12)", "6.15"), range(5)),
+        ("(b) Diluted", ("(0.01)", "(0.72)", "0.22", "(0.12)", "6.10"), range(5)),
+    ]
+    table_b2 = cmp.read_page(_build_5col_page(rows_b2))
+    stored_b2 = cmp._table_rows(conn, "AAAA", "INE000A01001", "doc_b2", 7, "2024-05-24T12:00:00", table_b2, {}, [])
+    assert _cells(stored_b2, "eps_basic", "current")[0][11] == pytest.approx(0.48)
+    assert _cells(stored_b2, "eps_diluted", "current")[0][11] == pytest.approx(0.47)
+
+    # (c) Single EPS block (no EPS headings; earlier Discontinued Operations in P&L reset by pat) -> unchanged
+    rows_c = pl_head + [
+        ("8 Basic EPS", ("0.48", "(0.50)", "0.44", "0.37", "4.85"), range(5)),
+        ("9 Diluted EPS", ("0.47", "(0.50)", "0.43", "0.36", "4.80"), range(5)),
+    ]
+    table_c = cmp.read_page(_build_5col_page(rows_c))
+    stored_c = cmp._table_rows(conn, "AAAA", "INE000A01001", "doc_c", 7, "2024-05-24T12:00:00", table_c, {}, [])
+    assert _cells(stored_c, "eps_basic", "current")[0][11] == pytest.approx(0.48)
+    assert _cells(stored_c, "eps_diluted", "current")[0][11] == pytest.approx(0.47)
+    conn.close()
+
+
+

@@ -460,7 +460,10 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
         found = rp._parse_rows(res.get("output") or "")
     parsed = _normalize_rows(found)
     all_rows = list(parsed)
-    cells, unread = rg.settle_page([all_rows], words)
+    # T-225: where the checker reads the text layer, OCR words (when stored) give a second look at a value the layer
+    # misprints; where it already reads OCR words, there is no second source
+    alt = page_words.ocr_words(ocr_dbs, doc_key, page_no) if words and pw.source == "script_text" else []
+    cells, unread = rg.settle_page([all_rows], words, alt_words=alt or None)
 
     seconds = float(res.get("seconds") or 0.0)
     in_tok = int(res.get("in_tok") or 0)
@@ -483,7 +486,7 @@ def read_page(store_db: Any, doc_key: str, page_no: int, reader: str, ocr_dbs: I
                 found2 = rp._parse_rows(res2.get("output") or "")
             new_rows = _normalize_rows(found2)
             all_rows = all_rows + new_rows
-            cells, unread = rg.settle_page([all_rows], words)
+            cells, unread = rg.settle_page([all_rows], words, alt_words=alt or None)
             passes = 2
             seconds += float(res2.get("seconds") or 0.0)
             in_tok += int(res2.get("in_tok") or 0)

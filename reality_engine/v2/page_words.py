@@ -165,8 +165,9 @@ def dictionary_score(words: list[Word]) -> dict | None:
     return {"share": clean / scored, "clean": clean, "scored": scored}
 
 
-def quality(words: list[Word]) -> tuple[str, str]:
-    """Verdict on a list of word boxes: ('none', reason) / ('jumbled', reason) / ('ok', '')."""
+def quality(words: list[Word], check_figures: bool = True) -> tuple[str, str]:
+    """Verdict on a list of word boxes: ('none', reason) / ('jumbled', reason) / ('ok', '').  ``check_figures``:
+    judge a text layer's figures too (T-225); OCR words are not judged on them, so a page cannot be sent to OCR twice."""
     text = " ".join(w[4] for w in words)
     non_space = len(text.replace(" ", ""))
     if non_space < MIN_NON_SPACE_CHARS:
@@ -185,6 +186,10 @@ def quality(words: list[Word]) -> tuple[str, str]:
     single_n = sum(1 for w in words if len(w[4]) == 1)
     if single_n / total > SINGLE_CHAR_SHARE_THRESHOLD:
         return "jumbled", "share of single-character words > 0.6"
+    from reality_engine.v2.reference_geom import GARBLED_SHARE, layer_garbled   # lazy: reference_geom imports us
+
+    if check_figures and layer_garbled(words):                    # figures misread by a scan layer ("18,527,91J"): OCR them (T-225)
+        return "jumbled", f"malformed figure share >= {GARBLED_SHARE}"
     verdict = dictionary_score(words)
     if verdict is not None and verdict["share"] < DICTIONARY_SCORE_THRESHOLD:
         return "jumbled", (f"label-dictionary share {verdict['share']:.2f} < {DICTIONARY_SCORE_THRESHOLD} "
@@ -299,7 +304,7 @@ def words_for(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] 
     ocr_list = ocr_words(ocr_dbs, doc_key, page_no)
     if text_q != "ok" and ocr_list:
         method = _ocr_method(ocr_dbs, doc_key, page_no)
-        oq, or_ = quality(ocr_list)
+        oq, or_ = quality(ocr_list, check_figures=False)
         return PageWords(source=method, words=ocr_list, quality=oq, reason=or_)
 
     if text_words:

@@ -65,7 +65,13 @@ _QTR = re.compile(r"^q[1-4](?:fy)?\d{0,4}$")
 _PERIOD = re.compile(r"^(?:fy|h[12](?:fy)?)\d{1,4}$")
 _DATE = re.compile(r"^(?:\d{1,2}[-./]\d{1,2}[-./]\d{2,4}|\d{1,2}(?:st|nd|rd|th)?[-./]?[a-z]{3,9}[-./]?\d{0,4}"
                    r"|(?:19|20)\d{2}|\d{1,2}[-./][a-z]{3,9})$")
-_DATE_TYPO = re.compile(r"^\d{1,2}[.,\-/]\d{1,2}[.,\-/]\d{2,4}$")
+# A date printed with odd separators ("31.03.2022", "31,03,22").  The last group is 2 or 4 digits: an Indian-grouped
+# number ("1,03,086") ends in a 3-digit group and is a value, not a date (T-225).
+_DATE_TYPO = re.compile(r"^(?:0?[1-9]|[12]\d|3[01])[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:\d{2}|(?:19|20)\d{2})$"
+                        r"|^(?:0?[1-9]|[12]\d|3[01]),(?:0?[1-9]|1[0-2]),(?:19|20)\d{2}$"
+                        r"|^(?:0?[1-9]|1[0-2])[.\-/](?:0?[1-9]|[12]\d|3[01])[.\-/](?:19|20)\d{2}$")
+# A month and year in one word: "Dec22", "Mar-23", "March2023", "Dec'22" (T-225).
+_MONTH_YEAR = re.compile(r"^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]{0,6}[-'.’/]?(?:\d{2}|(?:19|20)\d{2})$")
 
 
 def word_value(text: str) -> str:
@@ -75,6 +81,51 @@ def word_value(text: str) -> str:
 
 
 _BLANK = {"-", "--", "–", "—", "nil", "na", "n.a.", "n/a", "nm"}
+
+
+# A well-formed printed figure (T-225): western 1,234,567 or Indian 1,23,45,678 grouping or plain digits, optional
+# decimals, sign, brackets, %, x or a footnote star.  "206,61", "4,7t186", "1.24.285.61" are scan misreads.
+_WELL_FORMED = re.compile(r"^\(?[-+]?(?:\d{1,3}(?:,\d{3})+|\d{1,2}(?:,\d{2})*,\d{3}|\d+)(?:\.\d+)?[%x]?\)?[%x]?$")
+GARBLED_MIN_FIGURES = 20        # figure tokens a page must print before its layer can be judged (5 flagged a clean
+                                # page on one odd token)
+GARBLED_SHARE = 0.15            # malformed share at or above which the layer is a scan misread (dev pages: 0.04 vs 0.44)
+
+
+_GLUED_UNIT = re.compile(r"(?:crores?|cr|lakhs?|lacs?|mn|bn|millions?|billions?)\)?[.,;:]?$", re.I)
+
+
+def well_formed(value: str) -> bool:
+    """A printed figure in a valid grouping.  A unit glued to it ("₹2.40crore", "(₹0.00crore).") and closing
+    punctuation are dropped first."""
+    t = str(value or "").strip().replace(" ", "").casefold()
+    t = t.replace("{", "(").replace("}", ")").replace("[", "(").replace("]", ")")
+    t = re.sub(r"[–—−]", "-", t)                          # en/em dash and unicode minus print a negative
+    t = re.sub(r"[*†‡#^~]+", "", t)                       # footnote marks
+    t = re.sub(r"₹|\$|€|£|rs\.?|inr", "", t)              # currency anywhere ("-₹1,234", "(€1,234)", "Rs.1,234")
+    t = _GLUED_UNIT.sub(lambda m: ")" if ")" in m.group(0) else "", t).rstrip(".,;:")
+    return bool(_WELL_FORMED.match(t))
+
+
+_SECTION_NO = re.compile(r"^\d+(?:\.\d+){2,}$|^(?:19|20)\d{2}[.\-/]\d{1,2}[.\-/]\d{1,2}$")   # 2.1.1, 2022.01.31
+_RANGE = re.compile(r"^[\d,.]+[-–][\d,.]+[*+]?$")                                          # 10.5-12.3
+
+
+def _figure_token(t: str) -> bool:
+    """A printed word that should be a table figure: a separator, 3+ digits, not a date/period/time/code/clause
+    number/range.  A misread first digit ("l,234.56", "O,456.78") still counts, so that it counts as malformed."""
+    t = t.strip()
+    if not re.search(r"[.,]", t) or len(re.sub(r"\D", "", t)) < 3 or ":" in t or re.search(r"\d[.,]$", t):
+        return False
+    if _SECTION_NO.match(t) or _RANGE.match(t) or _is_header_word(t):
+        return False
+    return not re.match(r"^[A-Za-z]", t) or bool(re.match(r"^[lIOSBZ][.,\d]", t))
+
+
+def layer_garbled(words: list[tuple[float, float, float, float, str]] | None) -> bool:
+    """A text layer whose figures are scan misreads ("18,527,91J", "6rn.18"): confirming a reader's value against
+    it would confirm the misread, so such a page confirms nothing until OCR words replace the layer (T-175, T-225)."""
+    figs = [w[4] for w in words or [] if _figure_token(w[4])]
+    return len(figs) >= GARBLED_MIN_FIGURES and sum(1 for t in figs if not well_formed(t)) / len(figs) >= GARBLED_SHARE
 
 
 def _is_num(text: str) -> bool:
@@ -95,7 +146,8 @@ def _is_header_word(text: str) -> bool:
         return False
     if t in _HEADER_WORDS or t in _UNIT_WORDS or t in _MONTHS:
         return True
-    return bool(_QTR.match(t) or _PERIOD.match(t) or _DATE.match(t) or _DATE_TYPO.match(t))
+    return bool(_QTR.match(t) or _PERIOD.match(t) or _DATE.match(t) or _DATE_TYPO.match(t)
+                or _MONTH_YEAR.match(t))
 
 
 def _header_tokens(text: str) -> list[str]:
@@ -124,6 +176,11 @@ def _strong_header(words: list[tuple[float, float, float, float, str]]) -> bool:
     return hits >= 2 or (hits >= 1 and hits / len(toks) >= 0.34)
 
 
+# word headers ("No. of shares | Amount"): only function words are ignored; "amount", "no", "units" name columns
+_WORD_STOP = {"the", "of", "in", "as", "at", "and", "to", "for", "per", "on", "rs", "inr", "crore", "crores", "lakh",
+              "lakhs", "million", "mn"}
+
+
 _PERIOD_WORDS = {"quarter", "quarters", "month", "months", "year", "years", "ended", "ending", "yearended",
                  "quarterended", "halfyear"}
 
@@ -131,13 +188,26 @@ _PERIOD_WORDS = {"quarter", "quarters", "month", "months", "year", "years", "end
 def _is_period_word(text: str) -> bool:
     t = _tok(text)
     return bool(t) and bool(t in _PERIOD_WORDS or t in _MONTHS or _QTR.match(t) or _PERIOD.match(t)
-                        or _DATE.match(t) or _DATE_TYPO.match(t))
+                        or _DATE.match(t) or _DATE_TYPO.match(t) or _MONTH_YEAR.match(t))
+
+
+def _is_sub_period(text: str) -> bool:
+    return bool(re.fullmatch(r"q[1-4]|h[12]|\d{1,2}m", _tok(text)))
+
+
+def _is_year_part(text: str) -> bool:
+    t = str(text or "").strip().casefold().strip(".,;:()^*")
+    return bool(re.fullmatch(r"fy'?\d{2,4}[a-z]?|'\d{2}|(?:19|20)\d{2}|(?:19|20)\d{2}-\d{2,4}", t))
+
+
+def _is_period_part(text: str) -> bool:
+    return _is_sub_period(text) or _is_year_part(text)
 
 
 def _period_kind(text: str) -> str:
     """What kind of period a header phrase names: a bare year, a month/day date, a quarter or something else."""
     toks = _header_tokens(text)
-    if any(t in _MONTHS for t in toks) or any(_DATE_TYPO.match(t) for t in toks) \
+    if any(t in _MONTHS for t in toks) or any(_DATE_TYPO.match(t) or _MONTH_YEAR.match(t) for t in toks) \
             or sum(1 for t in toks if t.isdigit()) >= 2:
         return "date"
     if any(_QTR.match(t) or t in {"quarter", "quarters"} for t in toks):
@@ -331,6 +401,10 @@ class Page:
         n, x = self.line_of[i], self.words[i][0]
         own = self.text_left(n, x)
         above, below = self._wrapped(i)
+        own_key = label_key(own)
+        if re.search(r"[A-Za-z]{3}", own) and own_key and not any(
+                k and (own_key in k or k in own_key) for k in keys):
+            return False                                 # the own line names a different row (T-225 review r4)
         texts = []
         if above:
             texts.append(f"{above} {own}")
@@ -390,9 +464,20 @@ class Page:
         return _header_match(header, label)
 
     # -- header band and column model ---------------------------------------------------------------------------
+    def _blank_cell(self, j: int) -> bool:
+        """An empty-cell mark ("-", "nil") printed right of its line's row label (not the dash opening "- Owner")."""
+        if str(self.words[j][4]).strip().casefold() not in _BLANK:
+            return False
+        n = self.line_of[j]
+        letters = [k for k in self.lines[n] if re.search(r"[A-Za-z]{2}", self.words[k][4])]
+        return not letters or self.words[j][0] > max(self.words[k][2] for k in letters)
+
     def _value_x_band(self, n: int) -> tuple[float, float]:
-        nums = [j for j in self.lines[n]
-                if _is_num(self.words[j][4]) and _tok(self.words[j][4]) not in _BLANK]
+        nums = [j for j in self.lines[n]                # a digit is required: "- Owner" opens with a dash (T-225)
+                if _is_num(self.words[j][4]) and _tok(self.words[j][4]) not in _BLANK
+                and re.search(r"\d", self.words[j][4])]
+        if nums:                                         # empty-cell marks right of the label widen the band
+            nums += [j for j in self.lines[n] if self._blank_cell(j)]
         if not nums:
             nums = self.lines[n]
         return min(self.words[j][0] for j in nums), max(self.words[j][2] for j in nums)
@@ -408,13 +493,17 @@ class Page:
             self._bands[n] = []
             return []
         m = n - 1
+        vx0, vx1 = self._value_x_band(n)
+        pad = max(40.0, 3.0 * self.h)
         while m >= 0 and n - m <= 120:
             if m < n - 1 and min(self.words[j][1] for j in self.lines[m + 1]) \
                     - max(self.words[j][3] for j in self.lines[m]) > max(30.0, 5.0 * self.h):
                 m = -1
                 break
+            # a period word over the value columns: "year" ending a wrapped row label at the left is not a header
             if self.is_header_line(m) and _strong_header([self.words[j] for j in self.lines[m]]) \
-                    and any(_is_period_word(self.words[j][4]) for j in self.lines[m]):
+                    and any(_is_period_word(self.words[j][4]) and self.words[j][2] >= vx0 - pad
+                            and self.words[j][0] <= vx1 + pad for j in self.lines[m]):
                 break
             m -= 1
         if m < 0:
@@ -423,6 +512,17 @@ class Page:
         start = m
         while start - 1 >= 0 and self.is_header_line(start - 1) and m - start < 5:
             start -= 1
+        # a group row with no period word ("Consolidated | Standalone") right above, over the value columns and
+        # printing no figure, belongs to the band: a reader's group name must be checked against it (T-225)
+        groups = 0
+        while start - 1 >= 0 and groups < 2:
+            g = start - 1
+            gap = min(self.words[j][1] for j in self.lines[start]) - max(self.words[j][3] for j in self.lines[g])
+            over = [j for j in self.lines[g] if self.words[j][2] >= vx0 - pad and self.words[j][0] <= vx1 + pad]
+            if gap > 2.5 * self.h or not over or any(self._digit_figure(j) for j in self.lines[g]) \
+                    or len(self.line_letters(g)) > 8:
+                break
+            start, groups = g, groups + 1
         band = list(range(start, m + 1))
         x0, x1 = self._value_x_band(n)
         for h in range(m + 1, n):
@@ -474,7 +574,15 @@ class Page:
             col = min(range(len(cols)), key=lambda k: abs(centres[k] - centre)) if cols else None
             moved = col is not None and last_col is not None and col != last_col
             period = bool(re.search(r"\d", w[4])) or _tok(w[4]) in _MONTHS
-            if cur and (w[0] - self.words[cur[-1]][2] > gap or (moved and period)):
+            # a period prefix ("Q3", "9M", "H1") after a phrase that already names a year starts a new column's
+            # phrase: "Q3 FY21  Q3 FY20^" is two headers, not one (T-225)
+            restart = not str(w[4]).strip().startswith("(") and _is_period_part(w[4]) \
+                and any(_is_sub_period(self.words[k][4]) for k in cur) \
+                and any(_is_year_part(self.words[k][4]) for k in cur)
+            # two labels printed touching across a column change ("Standalone|Consolidated") are two phrases:
+            # words of one phrase are at least a space apart (T-225 review r3)
+            touching = moved and w[0] - self.words[cur[-1]][2] <= 0.15 * self.h if cur else False
+            if cur and (w[0] - self.words[cur[-1]][2] > gap or (moved and period) or restart or touching):
                 out.append(self._phrase(cur))
                 cur = []
             cur.append(j)
@@ -499,8 +607,15 @@ class Page:
         if band:
             nums = [j for m in self._block(n, band) for j in self.lines[m]
                     if _is_num(self.words[j][4]) and _tok(self.words[j][4]) not in _BLANK
-                    and not _is_header_word(self.words[j][4])]
+                    and re.search(r"\d", self.words[j][4]) and not _is_header_word(self.words[j][4])]
+            blanks = [j for m in self._block(n, band) for j in self.lines[m] if self._blank_cell(j)]
             cols = _cluster_columns(nums, self.words, max(8.0, 1.2 * self.h))
+            for j in blanks:                      # a dash counts toward the figure column it sits in, never widens it
+                bc = (self.words[j][0] + self.words[j][2]) / 2
+                for col in cols:
+                    if col["x0"] - 0.5 * self.h <= bc <= col["x1"] + 0.5 * self.h:
+                        col["n"] += 1
+                        break
             counted = [col for col in cols if col["n"] >= 2]
             if counted:
                 cols = counted
@@ -513,8 +628,10 @@ class Page:
                 lp = [(p[0] + p[1]) / 2 for p in low]
                 for ci, centre in enumerate(centres):
                     kinds[ci] = _period_kind(low[min(range(len(low)), key=lambda k: abs(lp[k] - centre))][2])
+            left = min((col["x0"] for col in cols), default=0.0) - self.h
             for m in band:
-                phrases = self._header_phrases(m, cols)
+                # a phrase wholly left of the number columns ("₹ Crores" over the labels) heads no column (T-225)
+                phrases = [p for p in self._header_phrases(m, cols) if p[1] >= left]
                 if not phrases:
                     continue
                 assign = self._assign_phrases(phrases, centres, kinds)
@@ -539,8 +656,21 @@ class Page:
             lo, hi = bounds[-1] + 1, len(centres) - (len(phrases) - k)
             best = min(max(default, lo), hi)
             changes = [b for b in range(lo, hi + 1) if 0 < b < len(kinds) and kinds[b] != kinds[b - 1]]
-            if changes:
-                best = min(changes, key=lambda b: abs(b - best))
+            if changes and len(centres) > 1:
+                # snap only to a kind change lying near the midpoint between the two group phrases (T-225 review
+                # r2: a far change moved "Consolidated > Q4FY24" under "Standalone")
+                # snap only to the ONE kind change of the range (years then dates); with two or more ("FY24 |
+                # Q4FY24 | Q3FY24 | FY23") the midpoint decides (T-225 review r2-r3)
+                # snap to the range's ONE kind change, unless a group phrase is printed over a column the snap
+                # would give to the other group ("Standalone" over Q4FY23 keeps Q4FY23 Standalone; review r4)
+                def contradicts(b: int) -> bool:
+                    a0, a1 = phrases[k - 1][0], phrases[k - 1][1]
+                    b0, b1 = phrases[k][0], phrases[k][1]
+                    tol = 0.25 * min(centres[q + 1] - centres[q] for q in range(len(centres) - 1))
+                    return any(b0 - tol <= centres[q] <= b1 + tol for q in range(b)) or                         any(a0 - tol <= centres[q] <= a1 + tol for q in range(b, len(centres)))
+                near_mid = [b for b in changes if len(changes) == 1 and not contradicts(b)]
+                if near_mid:
+                    best = min(near_mid, key=lambda b: abs(b - best))
             bounds.append(best)
         bounds.append(len(centres))
         assign: list[int] = []
@@ -564,15 +694,41 @@ class Page:
         return best[1] if best else None
 
     def column_state(self, i: int, header: str) -> bool | None:
+        """The band test; where it cannot decide, the word-header test may confirm.  A band test that refuses (a
+        reader header naming a number the band never prints) confirms nothing by any rule (T-225 review defect 1)."""
+        state = self._band_state(i, header)
+        if state == "blocked":
+            return None
+        if state is not None:
+            return bool(state)
+        # the band cannot decide (a merged or split column model): the stricter word-header test may confirm, but
+        # never calls the cell a reader error there
+        if self.word_header_state(i, header) is not True:
+            return None
+        band = self.header_band(self.line_of[i])
+        band_tokens = set(_header_tokens(" ".join(self.words[j][4] for m in band for j in self.lines[m])))
+        cols, ci = self._word_columns(i)
+        own = set(_header_tokens(" ".join(cols[ci]["stack"]))) if ci is not None else set()
+        needed = [t for t in _header_tokens(header) if t in band_tokens and t not in _WORD_STOP]
+        return True if all(t in own for t in needed) else None
+
+    def _band_state(self, i: int, header: str) -> bool | str | None:
         """Does the reader's column header name the stack over the value's column?  Every reader word that is
         printed in the band must sit in the value's own stack ("Nine months ended" is printed over the nine-month
         columns only, so it is not part of a quarter column); a reader word printed nowhere in the band (an
-        annotation the reader added) is ignored.  None: no header band, or nothing in the band to test against."""
+        annotation the reader added) is ignored.  None: no header band, or nothing in the band to test against;
+        "blocked": the reader header names a number the band does not print."""
         reader = _header_tokens(header)
         if not reader:
             return None
         band = self.header_band(self.line_of[i])
         if not band:
+            word = self.word_header_state(i, header)
+            if word is not None:
+                return word
+            cols, _ci = self._word_columns(i)
+            if any(col["stack"] for col in cols):
+                return None          # the table prints word headers and they do not decide: no looser rule may
             return self.header_above(i, header)
         cols = self._near_columns(i, self.columns_for(self.line_of[i]))
         ci = self._column_of(i, cols) if cols else None
@@ -580,6 +736,11 @@ class Page:
             return None
         stacks = [" ".join(col["stack"]) for col in cols]
         vocab = set(_header_tokens(" ".join(stacks)))
+        band_tokens = set(_header_tokens(" ".join(self.words[j][4] for m in band for j in self.lines[m])))
+        # a reader header naming a number printed nowhere in the band ("Mat 37,2020" copied from a misread layer,
+        # where only "2020" is printed) is not the printed header: confirm nothing, by any rule (T-225)
+        if any(t.isdigit() and t not in vocab and t not in band_tokens for t in reader):
+            return "blocked"
         required = [t for t in reader if t in vocab and t not in _GENERIC]
         if not required:
             return None
@@ -590,6 +751,162 @@ class Page:
             if k != ci and all(t in set(_header_tokens(other)) for t in required):
                 return False
         return None
+
+    # -- word headers (T-225): "No. of shares | Amount", no period word, so no header band ----------------------
+    def _digit_num(self, j: int) -> bool:
+        return _is_num(self.words[j][4]) and bool(re.search(r"\d", self.words[j][4]))
+
+    def _digit_figure(self, j: int) -> bool:
+        """A printed figure: a number with a digit that is not a header date/period word."""
+        return self._digit_num(j) and not _is_header_word(self.words[j][4])
+
+    def _num_column(self, i: int) -> tuple[float, float, int]:
+        """The printed number column holding word ``i``: its x-extent over the numbers of nearby lines that overlap
+        it, and the first line of the column (its top data row).  Lines where the column is blank but the table
+        prints other numbers do not end the column; two lines with no number at all do."""
+        x0, x1, n = self.words[i][0], self.words[i][2], self.line_of[i]
+        top = n
+        for step in (-1, 1):
+            m, misses = n + step, 0
+            prev = n
+            while 0 <= m < len(self.lines) and misses < 4 and abs(m - n) <= 60:
+                a, b = (m, prev) if step < 0 else (prev, m)
+                if min(self.words[j][1] for j in self.lines[b]) - max(self.words[j][3] for j in self.lines[a]) \
+                        > max(24.0, 3.0 * self.h):
+                    break                                # a blank gap: another table
+                prev = m
+                nums = [j for j in self.lines[m] if self._digit_num(j) and not _is_header_word(self.words[j][4])]
+                hit = [j for j in nums if self.words[j][0] <= x1 and self.words[j][2] >= x0]
+                if not nums and any(self.words[j][0] <= x1 and self.words[j][2] >= x0 for j in self.lines[m]):
+                    near = range(max(0, n - 6), min(len(self.lines), n + 7))
+                    spans = [(c["x0"], c["x1"]) for c in _cluster_columns(
+                        [j for q in near for j in self.lines[q] if self._digit_figure(j)], self.words,
+                        max(8.0, 1.2 * self.h))]
+                    covered = sum(1 for a0, a1 in spans if any(self.words[j][0] <= a1 + self.h
+                                                              and self.words[j][2] >= a0 - self.h
+                                                              for j in self.lines[m]))
+                    first = min(sp[0] for sp in spans) if spans else x0
+                    labelled = any(self.words[j][2] < first - 3.0 * self.h for j in self.lines[m])
+                    if covered >= 2 or not labelled:
+                        break                            # words over the columns on a figure-less line: a header
+                    misses += 1                          # a labelled sub-row inside the table
+                    m += step
+                    continue
+                if hit:
+                    misses = 0
+                    x0 = min(x0, *(self.words[j][0] for j in hit))
+                    x1 = max(x1, *(self.words[j][2] for j in hit))
+                    if step < 0:
+                        top = m
+                elif not nums:
+                    misses += 1
+                m += step
+        return x0, x1, top
+
+    def _word_columns(self, i: int) -> tuple[list[dict[str, Any]], int | None]:
+        """The number columns of the value's table block, each with the words printed over it.  A header word
+        belongs to the ONE column whose centre is nearest (never to two), and only header lines above the block's
+        top data row count (up to four, stopping at another table's data row)."""
+        n = self.line_of[i]
+        _x0, _x1, top = self._num_column(i)
+        lo, hi = top, n
+        while hi + 1 < len(self.lines) and hi - n < 8 and any(self._digit_num(j) for j in self.lines[hi + 1]):
+            hi += 1
+        nums = [j for m in range(lo, hi + 1) for j in self.lines[m]
+                if self._digit_num(j) and not _is_header_word(self.words[j][4])]
+        label_end = max((self.words[j][2] for j in self.lines[n] if re.search(r"[A-Za-z]{2}", self.words[j][4])
+                         and self.words[j][2] <= self.words[i][0]), default=-1e9)
+        nums = [j for j in nums if self.words[j][0] > label_end - 1]       # a number inside a row label is no column
+        cols = _cluster_columns(nums, self.words, max(8.0, 1.2 * self.h))
+        for col in cols:
+            col["stack"] = []
+        self._hdr_tokens: set[str] = set()
+        self._sibling_tokens: set[str] = set()
+        self._left_tokens: set[str] = set()
+        if not cols:
+            return [], None
+        centres = self._column_centres(cols)
+        left, right = cols[0]["x0"] - 3.0 * self.h, cols[-1]["x1"] + 3.0 * self.h
+        own_x0, own_x1, _top = self._num_column(i)
+        prev_y0 = min(self.words[j][1] for j in self.lines[top])
+        for m in range(top - 1, max(-1, top - 11), -1):
+            line = self.lines[m]
+            if prev_y0 - max(self.words[j][3] for j in line) > max(24.0, 3.0 * self.h):
+                break                                    # a blank gap ends the header
+            prev_y0 = min(self.words[j][1] for j in line)
+            if any(self._digit_figure(j) and self.words[j][0] <= own_x1 and self.words[j][2] >= own_x0
+                   for j in line):
+                break                                    # another table's data row over this column
+            line = [j for j in line if not self._digit_figure(j)]   # side prose figures head no column
+            self._hdr_tokens |= {t for j in line for t in _header_tokens(self.words[j][4])}
+            # whole phrases (words split at a wide gap) go to the nearest column, so a wrapped "Digital Health &
+            # Pharmacy Distribution" is not shared word by word with its neighbour
+            phrases: list[list[int]] = []
+            def nearest(j: int) -> int:
+                c = (self.words[j][0] + self.words[j][2]) / 2
+                return min(range(len(cols)), key=lambda q: abs(centres[q] - c))
+            for j in line:
+                gap = self.words[j][0] - self.words[phrases[-1][-1]][2] if phrases else 1e9
+                if phrases and (gap < 0 or gap <= max(6.0, 1.2 * self.h)
+                                and nearest(j) == nearest(phrases[-1][-1])):
+                    phrases[-1].append(j)
+                else:
+                    phrases.append([j])
+            for ph in phrases:
+                x0p, x1p = min(self.words[j][0] for j in ph), max(self.words[j][2] for j in ph)
+                c = (x0p + x1p) / 2
+                if not left <= c <= right:
+                    if len(phrases) > 1:                 # a shifted group label beside in-range phrases
+                        self._left_tokens |= set(_header_tokens(" ".join(self.words[j][4] for j in ph)))
+                    continue
+                text = " ".join(self.words[j][4] for j in ph)
+                pad = 0.5 * self.h
+                over = [q for q in range(len(cols)) if x0p <= cols[q]["x1"] + pad and x1p >= cols[q]["x0"] - pad]
+                if not over:                         # between columns: a spanning group over its two neighbours
+                    rightq = [q for q in range(len(cols)) if centres[q] >= c]
+                    leftq = [q for q in range(len(cols)) if centres[q] < c]
+                    over = ([leftq[-1]] if leftq else []) + ([rightq[0]] if rightq else [])
+                    sibling = any(ph2 is not ph for ph2 in phrases)
+                    if sibling or not over:      # a shifted sibling header ("Standalone  Consolidated"): no one's
+                        self._sibling_tokens |= set(_header_tokens(text))
+                        continue
+                for q in over:
+                    cols[q]["stack"].insert(0, text)
+        ci = self._column_of(i, cols)
+        return cols, ci
+
+    def word_header_state(self, i: int, header: str) -> bool | None:
+        """Does the reader's lowest header level ("No. of shares") name the words printed over this value's own
+        column and over no other column of the table?  Single letters and digits count ("Segment A", "Tier 2").
+        None when the level has no word to test, a number the reader names is not printed over the column, or an
+        upper level the reader names sits over another column and not this one."""
+        levels = [lv for lv in header.split(">") if lv.strip()]
+        if not levels:
+            return None
+        want = [t for t in _header_tokens(levels[-1]) if t not in _WORD_STOP]
+        if not want or not any(len(t) > 1 and not t.isdigit() for t in want):
+            return None
+        cols, ci = self._word_columns(i)
+        if ci is None:
+            return None
+        stacks = [set(_header_tokens(" ".join(col["stack"]))) for col in cols]
+        own = stacks[ci]
+        if not own:
+            return None
+        printed = set().union(*stacks) | getattr(self, "_hdr_tokens", set())   # a group heading no column too
+        upper = {t for lv in levels[:-1] for t in _header_tokens(lv) if t not in _WORD_STOP and t in printed}
+        rival_tokens = set().union(*(st for k, st in enumerate(stacks) if k != ci)) | getattr(self, "_sibling_tokens", set())
+        if any(t not in own and t in rival_tokens for t in upper):
+            return None                                  # the reader's group heads another column, not this one
+        own_groups = [ph for ph in cols[ci]["stack"] if not set(_header_tokens(ph)) & set(want)]
+        if own_groups and any(t not in own and t in getattr(self, "_left_tokens", set()) for t in upper):
+            return None      # a group label left of the columns, while this column prints a group of its own
+        if any(t.isdigit() and t not in own for t in _header_tokens(header)):
+            return None                                  # a number the reader names is not over this column
+        rival = any(k != ci and all(t in st for t in want) for k, st in enumerate(stacks))
+        if all(t in own for t in want):
+            return None if rival else True
+        return False if rival else None
 
     # -- old presence rule (fallback where no header band is found) ---------------------------------------------
     def header_above(self, i: int, header: str, below: bool = False) -> bool | None:
@@ -623,8 +940,9 @@ def _cluster_columns(nums: list[int], words: list[tuple[float, float, float, flo
             cols[-1]["x0"] = min(cols[-1]["x0"], x0)
             cols[-1]["x1"] = max(cols[-1]["x1"], x1)
             cols[-1]["n"] += 1
+            cols[-1].setdefault("members", []).append(j)
         else:
-            cols.append({"x0": x0, "x1": x1, "n": 1})
+            cols.append({"x0": x0, "x1": x1, "n": 1, "members": [j]})
     return cols
 
 
@@ -677,7 +995,11 @@ def place(page: Page, cell: dict[str, Any],
 
 
 def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, float, float, float, str]] | None,
-                text: str = "") -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+                text: str = "", alt_words: list[tuple[float, float, float, float, str]] | None = None
+                ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """``alt_words``: OCR word boxes of the same page.  A cell whose value the layer does not print (a scan layer's
+    "(359,72)" for 359.72) is placed again on them and confirmed only when they place both its row and column
+    (T-225); ``how`` is then ``ocr``."""
     per_reader = [cells_of(r) for r in readers]
     canon = unify_labels(per_reader)
     answering = sum(1 for c in per_reader if c)
@@ -776,6 +1098,26 @@ def settle_page(readers: list[list[dict[str, str]]], words: list[tuple[float, fl
                     "col_aliases": "", "line_text": "", "x0": "", "y0": "", "x1": "", "y1": "",
                     "section": pick["cell"].get("section", ""),
                     "label_repeated": len(label_lines.get(pick["cell"]["lk"], ())) > 1})
+    garbled = layer_garbled(words)
+    for rec in out:                                   # T-225: never confirm a misread layer or a malformed value
+        if rec["settled_by"] in ("position", "script+position", "script"):
+            if garbled:
+                rec["settled_by"], rec["conflict"], rec["verdict"] = "", "garbled_layer", "unplaced"
+            elif not well_formed(rec["value_text"]):
+                rec["settled_by"], rec["conflict"], rec["verdict"] = "", "malformed_value", "unplaced"
+    if alt_words and words and not garbled:
+        held = {(label_key(r["row_label"]), _norm_value(r["value_text"])) for r in out if r["settled_by"]}
+        redo = [rec for rec in out if not rec["settled_by"] and rec["conflict"] in ("value_not_printed",
+                                                                                  "lone_unlocated")
+                and (label_key(rec["row_label"]), _norm_value(rec["value_text"])) not in held]
+        if redo:
+            again, _ = settle_page([[{"table": r["table"], "row_label": r["row_label"], "col_header": r["col_header"],
+                                      "value": r["value_text"], "unit": r["unit_text"]} for r in redo]], alt_words)
+            ok = {(c["row_label"], c["col_header"], c["value_text"]) for c in again if c["settled_by"] == "position"}
+            for rec in redo:
+                if (rec["row_label"], rec["col_header"], rec["value_text"]) in ok and well_formed(rec["value_text"]):
+                    rec.update(settled_by="position", conflict="", verdict="confirmed", how="ocr", row_ok=True,
+                               col_ok=True)
     unread: list[dict[str, Any]] = []
     if page:
         nums_at = [(i, n) for n, line in enumerate(page.lines) for i in line if _is_num(page.words[i][4])]
