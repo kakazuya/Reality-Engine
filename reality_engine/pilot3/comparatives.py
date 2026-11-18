@@ -14,6 +14,13 @@ table's own identities (``sum_ok``).  Everything else is ``unchecked`` (stored, 
 dropped to ``<out>_comparatives_review.csv``.  A repaired token (an OCR letter read as a digit) enters only
 when a check confirms exactly that value.
 
+Jumbled-layer / OCR pages (R-013, 18 Nov 2026): when ``_ocr_page_rows`` returns OCR word boxes (text layer scored
+under the label dictionary), OCR leads as the primary table and the text layer fills missing items:
+(1) both agree -> keep; (2) they differ -> OCR leads (stored confirmed if in ``CHECK_OK``, else dropped as
+``ocr_unreconciled`` / ``disagreed``) and every disagreement is logged (``ocr_text_disagree``); (3) layer-only
+(or OCR table unreadable) -> kept only if in ``CHECK_OK`` (``xbrl_ok``, ``sum_ok``, ``repeat_ok``), else dropped
+and logged as ``layer_unconfirmed``.  Clean pages (no OCR rows) keep the existing behaviour unchanged.
+
 Point in time: ``known_at`` is the ``doc.known_at`` of the document that printed the cell -- never the XBRL
 time of another filing, so a past date only sees what that day had.
 
@@ -1060,6 +1067,7 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
     rows: list[tuple] = []
     store_fy: dict[tuple[str, str], dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     disagreed: dict[tuple[str, int, str, str, str], tuple[float, float]] = {}
+    layer_pending: set[tuple[str, int, str, str, str]] = set()
     seen: set[str] = set()
     duplicates: list[str] = []
     files: list[dict] = []
@@ -1090,22 +1098,30 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
                 table = None
                 fill_table = None
                 ocr_all = False
+                layer_only = False
                 ocr_rows = _ocr_page_rows(store_db, doc_key, page_no, ocr_dbs) if ocr_dbs else None
                 if ocr_rows:
                     base = read_page(word_rows) if word_rows else None
                     ocr_table = read_page(ocr_rows, ocr=True)
-                    if base is not None:
-                        table, fill_table = base, ocr_table      # the text layer leads; OCR fills what it lost
-                    elif ocr_table is not None:
-                        word_rows, table, ocr_all = ocr_rows, ocr_table, True
+                    if ocr_table is not None:
+                        word_rows, table, fill_table, ocr_all = ocr_rows, ocr_table, base, True
+                    elif base is not None:
+                        table, layer_only = base, True
                 if table is None and word_rows:
                     table = read_page(word_rows)
-                if not word_rows:
+                if not word_rows and not ocr_rows:
                     entry["empty_pages"].append(page_no)          # no text layer and no readable OCR
                     previous = None
                     continue
                 if table is None:
-                    table = _continuation(word_rows, previous)
+                    if ocr_rows:
+                        table = _continuation(ocr_rows, previous)
+                        if table is not None:
+                            word_rows, ocr_all = ocr_rows, True
+                    if table is None and word_rows:
+                        table = _continuation(word_rows, previous)
+                        if table is not None and ocr_rows:
+                            layer_only = True
                 if table is None:
                     previous = None
                     continue
@@ -1115,13 +1131,15 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
                 previous = table
                 page_review: list[dict] = []
                 new = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, page_review,
-                                  ocr=ocr_all, fill_table=fill_table, store_fy=store_fy, disagreed=disagreed)
+                                  ocr=ocr_all, fill_table=fill_table, store_fy=store_fy, disagreed=disagreed,
+                                  layer_only=layer_only, layer_pending=layer_pending)
                 if not new and prev is not None:
                     cont = _continuation(ocr_rows if ocr_all else word_rows, prev)
                     if cont is not None:
                         cont_review: list[dict] = []
                         cont_rows = _table_rows(conn, symbol, isin, doc_key, page_no, known_at, cont, xbrl,
-                                                cont_review, ocr=ocr_all, store_fy=store_fy, disagreed=disagreed)
+                                                cont_review, ocr=ocr_all, store_fy=store_fy, disagreed=disagreed,
+                                                layer_only=layer_only, layer_pending=layer_pending)
                         if cont_rows:
                             table = cont
                             previous = cont
@@ -1141,14 +1159,17 @@ def _extract_symbol(conn: sqlite3.Connection, symbol: str, review: list[dict], s
             files.append(entry)
             pdf.close()
     rows = _apply_repeats(rows)
-    if disagreed:
+    if disagreed or layer_pending:
         kept: list[tuple] = []
         for row in rows:
-            pair = disagreed.get((row[16], row[17], row[6], row[7], row[9]))
-            if pair is not None and row[20] not in CHECK_OK:
+            key = (row[16], row[17], row[6], row[7], row[9])
+            if key in layer_pending and row[20] not in CHECK_OK:
                 review.append({"symbol": symbol, "doc_key": row[16], "page": row[17], "line_item": row[9],
-                               "column_role": row[6], "raw_token": row[14], "check": "ocr_text_disagree",
-                               "detail": f"text={pair[0]} ocr={pair[1]}"})
+                               "column_role": row[6], "raw_token": row[14], "check": "layer_unconfirmed",
+                               "detail": ""})
+                continue
+            pair = disagreed.get(key)
+            if pair is not None and row[20] not in CHECK_OK:
                 continue
             kept.append(row)
         rows = kept
@@ -1397,9 +1418,16 @@ def _derive_tax(columns: dict) -> None:
         if "tax" in cells or "current_tax" not in cells or "deferred_tax" not in cells:
             continue
         cur, dfr = cells["current_tax"], cells["deferred_tax"]
-        cells["tax"] = {"value": cur["value"] + dfr["value"], "raw": f"{cur['raw']} {dfr['raw']}",
-                        "repaired": False, "caption": f"{cur['caption']} + {dfr['caption']}",
-                        "quote": f"{cur['quote']} | {dfr['quote']}", "item": "tax", "row": None, "derived": True}
+        tax = {"value": cur["value"] + dfr["value"], "raw": f"{cur['raw']} {dfr['raw']}",
+               "repaired": False, "caption": f"{cur['caption']} + {dfr['caption']}",
+               "quote": f"{cur['quote']} | {dfr['quote']}", "item": "tax", "row": None, "derived": True}
+        if cur.get("src") == "layer" or dfr.get("src") == "layer":
+            tax["src"] = "layer"
+        elif (cur.get("ocr") and not cur.get("agreed")) or (dfr.get("ocr") and not dfr.get("agreed")):
+            tax["ocr"] = True
+        elif cur.get("agreed") and dfr.get("agreed"):
+            tax["agreed"] = True
+        cells["tax"] = tax
 
 
 def _parsed_cells(values, roles, chosen, decimals, eps_dec, scale, captions, review, symbol, doc_key, page_no,
@@ -1473,13 +1501,15 @@ def _cross_column_marks(columns, end: str, rupee_tol: float) -> None:
 
 def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, review, ocr: bool = False,
                 fill_table: dict | None = None, store_fy: dict | None = None,
-                disagreed: dict | None = None) -> list[tuple]:
+                disagreed: dict | None = None, layer_only: bool = False,
+                layer_pending: set | None = None) -> list[tuple]:
     """Resolve this table's roles, parse its cells, run the checks, and return the rows to store.
 
-    T-208 round 3: on a results page whose text layer is garbled (``ocr``) the figures read from OCR words are
-    kept only when the page's own arithmetic or the XBRL confirms them; a clean text layer is read exactly as
-    before.  ``fill_table`` is the same page read from the text layer: its value replaces an OCR cell the checks
-    did not confirm, and it keeps the old rule (a printed figure may be stored unchecked)."""
+    R-013 (18 Nov 2026): on a jumbled results page with OCR (``ocr=True``), OCR is primary and ``fill_table``
+    (when given) is the text layer: cells both agree on are kept; cells that differ keep OCR and log the
+    disagreement; layer-only cells (or all cells when ``layer_only=True`` because OCR could not be read) are
+    kept only when confirmed in ``CHECK_OK``, else dropped as ``layer_unconfirmed``.  A clean text layer
+    (``ocr=False, layer_only=False``) keeps existing behaviour unchanged."""
     halves = _split_side_by_side(table)
     if halves is not None:
         count = len(table["anchors"])
@@ -1490,7 +1520,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             fill_half = fill_halves[i] if fill_halves is not None else None
             out_rows.extend(_table_rows(conn, symbol, isin, doc_key, page_no, known_at, half_table, xbrl,
                                         review, ocr=ocr, fill_table=fill_half, store_fy=store_fy,
-                                        disagreed=disagreed))
+                                        disagreed=disagreed, layer_only=layer_only, layer_pending=layer_pending))
         return out_rows
     anchors = table["anchors"]
     head_text = " ".join(w[4] for row in (table.get("header_rows") or []) for w in row)
@@ -1528,6 +1558,10 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
     chosen = _choose_rows(values, roles, end, xbrl, basis, scale, decimals, rupee_tol, eps_dec)
     columns = _parsed_cells(values, roles, chosen, decimals, eps_dec, scale, table["labels"], review,
                             symbol, doc_key, page_no, ocr=ocr)
+    if layer_only:
+        for cells in columns.values():
+            for cell in cells.values():
+                cell["src"] = "layer"
     bracketed = _debit_costs(columns)
     if bracketed is None:
         review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": None,
@@ -1536,8 +1570,9 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         return []
     fill: dict[str, dict] = {}
     if fill_table is not None:
+        fill_scale_in = (fill_table["scale"] or scale) if ocr else fill_table["scale"]
         fill_choice = _roles(fill_table.get("dates"), end, len(fill_table["anchors"]), fill_table["values"],
-                             xbrl, basis_hint, fill_table["scale"], fill_table["decimals"], fill_table.get("hint"),
+                             xbrl, basis_hint, fill_scale_in, fill_table["decimals"], fill_table.get("hint"),
                              header_rows=fill_table.get("header_rows"), store_fy=store_fy)
         if fill_choice is not None and fill_choice["basis"] == basis and fill_choice["scale"] == scale \
                 and set(fill_choice["roles"]) == set(roles):
@@ -1546,7 +1581,7 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
             fill_chosen = _choose_rows(fill_table["values"], fill_choice["roles"], end, xbrl, basis, scale,
                                        fill_dec, _tol("total_income", fill_dec, scale), fill_eps)
             fill = _parsed_cells(fill_table["values"], fill_choice["roles"], fill_chosen, fill_dec, fill_eps,
-                                 scale, fill_table["labels"], review, symbol, doc_key, page_no, ocr=True)
+                                 scale, fill_table["labels"], review, symbol, doc_key, page_no, ocr=(not ocr))
             for role in columns:
                 for item, cell in fill.get(role, {}).items():
                     if item in _COST_ITEMS and cell["value"] < 0:
@@ -1555,7 +1590,26 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                             cell["bracketed"] = True
                         else:
                             continue            # never let OCR noise like '(228)' inject a negative cost
-                    columns[role].setdefault(item, cell)
+                    if ocr:
+                        cell["src"] = "layer"
+                        existing = columns[role].get(item)
+                        if existing is not None:
+                            item_tol = _tol(item, decimals, scale, existing["raw"], eps_dec)
+                            if _close(existing["value"], cell["value"], item_tol):
+                                existing["agreed"] = True
+                            else:
+                                review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no,
+                                               "line_item": item, "column_role": role,
+                                               "raw_token": existing["raw"], "check": "ocr_text_disagree",
+                                               "detail": f"text={cell['value']} ocr={existing['value']}"})
+                                if disagreed is not None:
+                                    disagreed[(doc_key, page_no, role, basis, item)] = (cell["value"], existing["value"])
+                                else:
+                                    existing["disagreed"] = True
+                        else:
+                            columns[role][item] = cell
+                    else:
+                        columns[role].setdefault(item, cell)
     _derive_tax(columns)
     for cells in columns.values():
         cells["_fails"] = _check_column(cells, rupee_tol, ambiguous)
@@ -1588,13 +1642,12 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                                    "column_role": role, "raw_token": cell["raw"], "check": "repair_unconfirmed",
                                    "detail": ""})
                 del cells[item]
-    if ocr or fill:
-        # OCR cells never replace what the text layer printed, and an OCR figure the page's own arithmetic does
-        # not confirm is never stored ("no row beats a wrong row").  A wrong printed revenue is dropped first so
-        # the identity can confirm the value derived from the figures that do reconcile.
+    if ocr or fill or layer_only:
+        # An OCR or layer-only figure on a jumbled page is kept only when confirmed (or when both readings agree).
+        # A wrong printed revenue is dropped first so the identity can derive it from figures that reconcile.
         for role, cells in columns.items():
             stale = cells.get("revenue_from_operations")
-            if stale is not None and stale.get("ocr") and stale.get("status") not in CHECK_OK:
+            if stale is not None and stale.get("ocr") and not stale.get("agreed") and stale.get("status") not in CHECK_OK:
                 review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no,
                                "line_item": "revenue_from_operations", "column_role": role,
                                "raw_token": stale["raw"], "check": "ocr_unreconciled",
@@ -1607,13 +1660,28 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
         _assign_status(columns, end, xbrl, basis, decimals, scale, eps_dec)
         for role, cells in columns.items():
             for item, cell in list(cells.items()):
-                if item == "_fails" or not cell.get("ocr") or cell["status"] in CHECK_OK:
+                if item == "_fails" or cell["status"] in CHECK_OK:
                     continue
-                review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
-                               "column_role": role, "raw_token": cell["raw"], "check": "ocr_unreconciled",
-                               "detail": f"value={cell['value']}"})
-                del cells[item]
-        if end[5:7] == "06" and fill and "last_fy" in columns:
+                if cell.get("src") == "layer":
+                    if layer_pending is None:
+                        review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
+                                       "column_role": role, "raw_token": cell["raw"],
+                                       "check": "layer_unconfirmed", "detail": ""})
+                        del cells[item]
+                    else:
+                        layer_pending.add((doc_key, page_no, role, basis, item))
+                    continue
+                if cell.get("ocr") and not cell.get("agreed"):
+                    if cell.get("disagreed"):
+                        del cells[item]
+                    elif disagreed is not None and (doc_key, page_no, role, basis, item) in disagreed:
+                        continue
+                    else:
+                        review.append({"symbol": symbol, "doc_key": doc_key, "page": page_no, "line_item": item,
+                                       "column_role": role, "raw_token": cell["raw"], "check": "ocr_unreconciled",
+                                       "detail": f"value={cell['value']}"})
+                        del cells[item]
+        if not ocr and not layer_only and end[5:7] == "06" and fill and "last_fy" in columns:
             for item, cell in list(columns["last_fy"].items()):
                 if item == "_fails" or cell["status"] in CHECK_OK:
                     continue
@@ -1654,6 +1722,8 @@ def _table_rows(conn, symbol, isin, doc_key, page_no, known_at, table, xbrl, rev
                 detail.append("period from filing date")
             if choice.get("header_used"):
                 detail.append("header_used")
+            if cell.get("agreed"):
+                detail.append("agreed")
             out.append((symbol, isin, start, cell["period_end"], fiscal, ptype, role, basis, "P&L", item,
                         cell["caption"], cell["value"], unit, 1.0, cell["raw"], cell["quote"], doc_key, page_no,
                         known_at, "doc.known_at", cell["status"], "; ".join(detail) or None,

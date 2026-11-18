@@ -785,7 +785,9 @@ active one. Without a profile every command behaves exactly as before (the three
   `period_end`, `period_type` and item printed by a DIFFERENT filing (another date) at the same value within its printed tolerance --
   two independent readings agree, and each row keeps its own `known_at`. A failed check stores nothing (review CSV beside `--out`); a
   failure whose input or target row was printed more than once proves nothing and keeps the cells (`sum_ambiguous`); a repaired token
-  enters only behind a confirming check; everything else is `unchecked` (stored, never used by ratios). A cost line in brackets makes
+  enters only behind a confirming check; everything else is `unchecked` (stored, never used by ratios).
+  **Jumbled-layer / OCR pages (R-013, 18 Nov 2026):** when `_ocr_page_rows` returns OCR word boxes (text layer scored under the label dictionary), OCR leads as the primary table (`ocr=True` path) and the text layer fills missing items (`src='layer'`): (1) both readings give the same figure -> keep (`agreed` in `check_detail`); (2) they differ -> OCR leads (kept confirmed if in `CHECK_OK`, else dropped as `ocr_unreconciled`/`disagreed`) and every disagreement is logged (`ocr_text_disagree`); (3) layer-only (or when `read_page(ocr_rows, ocr=True)` is `None`) -> kept only if confirmed in `CHECK_OK` (`xbrl_ok`, `sum_ok`, `repeat_ok`), else dropped and logged as `layer_unconfirmed`. Clean pages without OCR rows keep existing behaviour unchanged. In `reality_engine/scripts/store_repair.py`, removing an `unchecked` `fin_quarter_printed` row on a `(doc_key, page)` with OCR rows counts as `losses[].unconfirmed_drops` without refusing; removing a `CHECK_OK` row still refuses unless an equal-value row for `(symbol, basis, line_item, period_end, period_type)` exists after.
+  A cost line in brackets makes
   the page a segment reconciliation unless every cost prints in brackets and an identity still holds. No row prints revenue
   (HINDUNILVR): `revenue_from_operations = total_income - other_income`, `is_reported` 0. Same period printed twice with different
   values: both rows kept, listed as restatements.
