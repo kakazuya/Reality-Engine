@@ -425,3 +425,49 @@ def test_wide_empty_mark_does_not_bridge_columns():
              _w(10, 55, "Row3"), _w(200, 55, "50"), _w(232, 55, "40")]
     cells, _ = rg.settle_page([[_cell("Row1", "FY24", "100")]], words)
     assert not _conf(cells, "100")
+
+
+# -- T-225 round 5: review round 4's inputs (agy 20261118T163526Z-72b4b21b) ------------------------------------
+
+def test_section_heading_never_wraps_onto_a_labelled_row():
+    """p023 shape: a reader copies the section heading onto each row; the row's own line names a city."""
+    words = [_w(200, 10, "Total"), _w(230, 10, "Beds"),
+             _w(10, 25, "Expected"), _w(60, 25, "commissioning"), _w(135, 25, ":"), _w(140, 25, "FY27"),
+             _w(10, 38, "Gurgaon,"), _w(55, 38, "NCR"), _w(205, 38, "480"),
+             _w(10, 52, "Lucknow"), _w(205, 52, "520")]
+    cells, _ = rg.settle_page([[_cell("Expected commissioning : FY27", "Total Beds", "480")]], words)
+    assert not _conf(cells, "480")
+
+
+def test_round4_layouts_confirm_nothing_wrong():
+    cases = [
+        ([_w(195, 10, "Consolidated"), _w(355, 10, "Standalone"),
+          _w(180, 25, "Q4FY24"), _w(260, 25, "Q3FY24"), _w(340, 25, "Q4FY23"), _w(420, 25, "FY24"),
+          _w(10, 40, "Revenue"), _w(185, 40, "100"), _w(265, 40, "90"), _w(345, 40, "80"), _w(425, 40, "300"),
+          _w(10, 55, "Cost"), _w(185, 55, "60"), _w(265, 55, "55"), _w(345, 55, "50"), _w(425, 55, "180")],
+         _cell("Revenue", "Consolidated > Q4FY23", "80"), "80"),
+        ([_w(200, 10, "Amount"), _w(280, 10, "Shares"),
+          _w(10, 25, "OldRow"), _w(205, 25, "99"), _w(285, 25, "9"),
+          _w(10, 40, "Particulars"), _w(200, 40, "Shares"), _w(280, 40, "Amount"),
+          _w(10, 55, "Bonus"), _w(205, 55, "-"), _w(285, 55, "10"),
+          _w(10, 70, "Closing"), _w(205, 70, "100"), _w(285, 70, "20")],
+         _cell("Bonus", "Shares", "10"), "10"),
+        ([_w(170, 10, "Q1"), _w(185, 10, "2024"), _w(210, 10, "(3M)"),
+          _w(260, 10, "Q2"), _w(275, 10, "2024"), _w(300, 10, "(3M)"),
+          _w(10, 25, "Revenue"), _w(210, 25, "100"), _w(300, 25, "120"),
+          _w(10, 40, "Cost"), _w(210, 40, "60"), _w(300, 40, "70")],
+         _cell("Revenue", "Q2 2024 (3M)", "100"), "100"),
+        ([_w(185, 10, "Standalone"), _w(335, 10, "Consolidated"),
+          _w(190, 25, "Shares"), _w(290, 25, "Amount"), _w(395, 25, "Total"),
+          _w(10, 40, "Equity"), _w(195, 40, "100"), _w(295, 40, "50"), _w(400, 40, "150"),
+          _w(10, 55, "Reserve"), _w(195, 55, "200"), _w(295, 55, "60"), _w(400, 55, "260")],
+         _cell("Equity", "Consolidated > Amount", "50"), "50"),
+        ([_w(100, 10, "Consolidated"), _w(290, 10, "Standalone"),
+          _w(190, 25, "Shares"), _w(295, 25, "Amount"),
+          _w(10, 40, "Equity"), _w(195, 40, "100"), _w(300, 40, "50"),
+          _w(10, 55, "Reserve"), _w(195, 55, "200"), _w(300, 55, "60")],
+         _cell("Equity", "Consolidated > Amount", "50"), "50"),
+    ]
+    for words, cell, value in cases:
+        cells, _ = rg.settle_page([[cell]], words)
+        assert not _conf(cells, value), cell

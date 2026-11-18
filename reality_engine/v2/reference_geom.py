@@ -401,6 +401,10 @@ class Page:
         n, x = self.line_of[i], self.words[i][0]
         own = self.text_left(n, x)
         above, below = self._wrapped(i)
+        own_key = label_key(own)
+        if re.search(r"[A-Za-z]{3}", own) and own_key and not any(
+                k and (own_key in k or k in own_key) for k in keys):
+            return False                                 # the own line names a different row (T-225 review r4)
         texts = []
         if above:
             texts.append(f"{above} {own}")
@@ -572,7 +576,8 @@ class Page:
             period = bool(re.search(r"\d", w[4])) or _tok(w[4]) in _MONTHS
             # a period prefix ("Q3", "9M", "H1") after a phrase that already names a year starts a new column's
             # phrase: "Q3 FY21  Q3 FY20^" is two headers, not one (T-225)
-            restart = _is_period_part(w[4]) and any(_is_sub_period(self.words[k][4]) for k in cur) \
+            restart = not str(w[4]).strip().startswith("(") and _is_period_part(w[4]) \
+                and any(_is_sub_period(self.words[k][4]) for k in cur) \
                 and any(_is_year_part(self.words[k][4]) for k in cur)
             # two labels printed touching across a column change ("Standalone|Consolidated") are two phrases:
             # words of one phrase are at least a space apart (T-225 review r3)
@@ -656,7 +661,14 @@ class Page:
                 # r2: a far change moved "Consolidated > Q4FY24" under "Standalone")
                 # snap only to the ONE kind change of the range (years then dates); with two or more ("FY24 |
                 # Q4FY24 | Q3FY24 | FY23") the midpoint decides (T-225 review r2-r3)
-                near_mid = changes if len(changes) == 1 else []
+                # snap to the range's ONE kind change, unless a group phrase is printed over a column the snap
+                # would give to the other group ("Standalone" over Q4FY23 keeps Q4FY23 Standalone; review r4)
+                def contradicts(b: int) -> bool:
+                    a0, a1 = phrases[k - 1][0], phrases[k - 1][1]
+                    b0, b1 = phrases[k][0], phrases[k][1]
+                    tol = 0.25 * min(centres[q + 1] - centres[q] for q in range(len(centres) - 1))
+                    return any(b0 - tol <= centres[q] <= b1 + tol for q in range(b)) or                         any(a0 - tol <= centres[q] <= a1 + tol for q in range(b, len(centres)))
+                near_mid = [b for b in changes if len(changes) == 1 and not contradicts(b)]
                 if near_mid:
                     best = min(near_mid, key=lambda b: abs(b - best))
             bounds.append(best)
@@ -766,7 +778,10 @@ class Page:
                 nums = [j for j in self.lines[m] if self._digit_num(j) and not _is_header_word(self.words[j][4])]
                 hit = [j for j in nums if self.words[j][0] <= x1 and self.words[j][2] >= x0]
                 if not nums and any(self.words[j][0] <= x1 and self.words[j][2] >= x0 for j in self.lines[m]):
-                    spans = [(self.words[j][0], self.words[j][2]) for j in self.lines[n] if self._digit_figure(j)]
+                    near = range(max(0, n - 6), min(len(self.lines), n + 7))
+                    spans = [(c["x0"], c["x1"]) for c in _cluster_columns(
+                        [j for q in near for j in self.lines[q] if self._digit_figure(j)], self.words,
+                        max(8.0, 1.2 * self.h))]
                     covered = sum(1 for a0, a1 in spans if any(self.words[j][0] <= a1 + self.h
                                                               and self.words[j][2] >= a0 - self.h
                                                               for j in self.lines[m]))
@@ -807,6 +822,7 @@ class Page:
             col["stack"] = []
         self._hdr_tokens: set[str] = set()
         self._sibling_tokens: set[str] = set()
+        self._left_tokens: set[str] = set()
         if not cols:
             return [], None
         centres = self._column_centres(cols)
@@ -840,6 +856,8 @@ class Page:
                 x0p, x1p = min(self.words[j][0] for j in ph), max(self.words[j][2] for j in ph)
                 c = (x0p + x1p) / 2
                 if not left <= c <= right:
+                    if len(phrases) > 1:                 # a shifted group label beside in-range phrases
+                        self._left_tokens |= set(_header_tokens(" ".join(self.words[j][4] for j in ph)))
                     continue
                 text = " ".join(self.words[j][4] for j in ph)
                 pad = 0.5 * self.h
@@ -848,10 +866,7 @@ class Page:
                     rightq = [q for q in range(len(cols)) if centres[q] >= c]
                     leftq = [q for q in range(len(cols)) if centres[q] < c]
                     over = ([leftq[-1]] if leftq else []) + ([rightq[0]] if rightq else [])
-                    sibling = any(ph2 is not ph and any(
-                        min(self.words[j][0] for j in ph2) <= cols[q]["x1"] + pad
-                        and max(self.words[j][2] for j in ph2) >= cols[q]["x0"] - pad for q in over)
-                        for ph2 in phrases)
+                    sibling = any(ph2 is not ph for ph2 in phrases)
                     if sibling or not over:      # a shifted sibling header ("Standalone  Consolidated"): no one's
                         self._sibling_tokens |= set(_header_tokens(text))
                         continue
@@ -883,6 +898,9 @@ class Page:
         rival_tokens = set().union(*(st for k, st in enumerate(stacks) if k != ci)) | getattr(self, "_sibling_tokens", set())
         if any(t not in own and t in rival_tokens for t in upper):
             return None                                  # the reader's group heads another column, not this one
+        own_groups = [ph for ph in cols[ci]["stack"] if not set(_header_tokens(ph)) & set(want)]
+        if own_groups and any(t not in own and t in getattr(self, "_left_tokens", set()) for t in upper):
+            return None      # a group label left of the columns, while this column prints a group of its own
         if any(t.isdigit() and t not in own for t in _header_tokens(header)):
             return None                                  # a number the reader names is not over this column
         rival = any(k != ci and all(t in st for t in want) for k, st in enumerate(stacks))
