@@ -1465,6 +1465,9 @@ _KIND_BUCKET_SUBCAT: dict[str, tuple[str, str]] = {
 }
 
 
+parent_call_title = linked_transcripts.parent_call_title
+
+
 def apply_plan(
     store_dir: Path | str,
     items: list[dict[str, Any]],
@@ -1509,11 +1512,7 @@ def apply_plan(
         kind = str(item.get("kind") or item.get("intent") or "transcript")
         bucket, subcat = _KIND_BUCKET_SUBCAT.get(kind, ("concall_transcript", "Earnings Call Transcript"))
         label = linked_transcripts.call_label(url, subcat)
-        parent_co = str(item.get("parent_company") or "").strip()
-        if parent_co:
-            headline = f"{label} - parent company call: {parent_co} (linked from {exchange} filing {filing_id})"
-        else:
-            headline = f"{label} (linked from {exchange} filing {filing_id})"
+        headline = parent_call_title(label, item.get("parent_company"), exchange, filing_id)
         texts = item.get("texts") or []
         mean_chars = (sum(len(t) for t in texts) / len(texts)) if texts else 0.0
         source = str(item.get("source") or "link_follow")

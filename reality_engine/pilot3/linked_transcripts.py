@@ -32,7 +32,7 @@ import time
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from reality_engine import raw_store
 from reality_engine.config import DEFAULT_HEADERS
@@ -48,6 +48,224 @@ CLUSTER_GAP_DAYS = 45
 BSE_PDF_URL = "https://www.bseindia.com/stockinfo/AnnPdfOpen.aspx?Pname={name}"
 MIN_INTERVAL_S = 1.0                      # <= one request a second per host
 LAST_REQUEST: dict[str, float] = {}
+_PARENT_CALL_RX = re.compile(r"parent company call:\s*(.+?)\s*\(linked from", re.I)
+_OWN_SUFFIX_RX = re.compile(r"(?:corporation|limited|ltd|corp|private|pvt|inc|llp)$")
+_BLANK_LINE_RX = re.compile(r"\n[ \t]*\n")
+_SPEAKER_TURN_RX = re.compile(r"(?m)^[ \t]*(?:•\s*)?([A-Z][A-Za-z.'’\-]+(?: [A-Za-z.'’\-]+){0,4}):(?=[ \t]+|\r?$)")
+_NOT_SPEAKER_LABELS = frozenset({
+    "corporate", "registered", "email", "website", "phone", "tel", "note", "disclaimer", "source", "cin",
+    "page", "symbol", "scrip", "sub", "date", "ref", "management", "to", "dear", "subject", "attention",
+    "fax", "encl", "bse", "nse",
+})
+_INCLUDING_PRE_RX = re.compile(r"\b(?:including|inclusive\s+of)\b([^.;:()]*)$", re.I)
+_CLAUSE_VERB_RX = re.compile(
+    r"\b(?:is|are|was|were|has|have|had|rose|stood|grew|fell|declined|generated|reported|delivered|"
+    r"recorded|posted|achieved|contributed|expects?|guided|will|would|shall|should)\b",
+    re.I,
+)
+_LEGAL_ENTITY_RX = re.compile(
+    r"\b([A-Z][A-Za-z0-9&.'\-]{1,40}(?:\s+[A-Z][A-Za-z0-9&.'\-]{1,40}){0,5})\s+"
+    r"(?:Limited|Ltd\.?|Private\s+Limited|Pvt\.?\s*Ltd\.?|Incorporated|Inc\.?|Corporation|Corp\.?|PLC|LLP)\b"
+)
+_MARKET_BODIES = frozenset({
+    "bse", "nse", "national stock exchange", "bombay stock exchange", "sebi", "nsdl", "cdsl",
+})
+
+
+def parent_call_title(label: str, parent: str | None, exchange: str, filing_id: str) -> str:
+    """Format a linked-doc headline, labelling a parent-company call so extractors credit the parent."""
+    parent_co = str(parent or "").strip()
+    if parent_co:
+        return f"{label} - parent company call: {parent_co} (linked from {exchange} filing {filing_id})"
+    return f"{label} (linked from {exchange} filing {filing_id})"
+
+
+def parent_company_of(title: str | None) -> str | None:
+    """Return the parent company name from a parent-call doc title, or None for any other document."""
+    if not title:
+        return None
+    match = _PARENT_CALL_RX.search(str(title))
+    if not match:
+        return None
+    name = match.group(1).strip()
+    return name or None
+
+
+def _strip_own_suffix(name: str) -> str:
+    cur = re.sub(r"[^a-z0-9]", "", name.lower())
+    while True:
+        nxt = _OWN_SUFFIX_RX.sub("", cur)
+        if nxt == cur or len(nxt) < 4:
+            return cur
+        cur = nxt
+
+
+def _subsidiary_patterns(symbol: str, company_names: Iterable[str], parent: str | None) -> list[tuple[str, int]]:
+    from . import link_follow
+
+    raw_names = [str(n).strip() for n in (symbol, *company_names) if n and str(n).strip()]
+    word_tokens = list(link_follow._distinctive_name_tokens(raw_names))
+    for raw in raw_names:
+        if " " in raw:
+            continue
+        stem = _strip_own_suffix(raw)
+        if len(stem) >= 4 and stem not in link_follow.COMPANY_STOPWORDS and stem not in word_tokens:
+            word_tokens.append(stem)
+    if parent:
+        parent_tokens = set(link_follow._distinctive_name_tokens(parent))
+        word_tokens = [tok for tok in word_tokens if tok not in parent_tokens]
+    patterns: list[tuple[str, int]] = [(rf"\b{re.escape(tok)}\b", re.I) for tok in word_tokens]
+    sym = str(symbol or "").strip()
+    if sym:
+        patterns.append((rf"\b{re.escape(sym)}\b", 0 if len(sym) < 4 else re.I))
+    return patterns
+
+
+def _company_patterns(names: Iterable[str] | str | None) -> list[tuple[str, int]]:
+    from . import link_follow
+
+    if names is None:
+        return []
+    raw_names = [names] if isinstance(names, str) else list(names)
+    cleaned = [str(n).strip() for n in raw_names if n and str(n).strip()]
+    patterns: list[tuple[str, int]] = [
+        (rf"\b{re.escape(tok)}\b", re.I)
+        for tok in link_follow._distinctive_name_tokens(cleaned)
+    ]
+    seen = {p[0].lower() for p in patterns}
+    for raw in cleaned:
+        for word in re.findall(r"\b[A-Z][A-Z0-9]{1,15}\b", raw):
+            rx = rf"\b{re.escape(word)}\b"
+            if rx.lower() not in seen:
+                seen.add(rx.lower())
+                patterns.append((rx, 0))
+    return patterns
+
+
+def _in_including_list(sentence: str, start: int) -> bool:
+    m = _INCLUDING_PRE_RX.search(sentence[:start])
+    return bool(m and not _CLAUSE_VERB_RX.search(m.group(1)))
+
+
+def _sentence_matches_patterns(sentence: str, patterns: list[tuple[str, int]],
+                               *, exclude_including: bool = False) -> bool:
+    for rx, flags in patterns:
+        for m in re.finditer(rx, sentence, flags):
+            if not exclude_including or not _in_including_list(sentence, m.start()):
+                return True
+    return False
+
+
+def _names_other_legal_entity(sentence: str, patterns: list[tuple[str, int]]) -> bool:
+    for m in _LEGAL_ENTITY_RX.finditer(sentence):
+        head = " ".join(m.group(1).split()).lower()
+        if head in _MARKET_BODIES:
+            continue
+        if not any(re.search(rx, m.group(0), flags) for rx, flags in patterns):
+            return True
+    return False
+
+
+def _names_parent_or_other_company(sentence: str, sub_patterns: list[tuple[str, int]],
+                                   parent: str | None) -> bool:
+    if parent:
+        bare_parent = _LEGAL_ENTITY_RX.sub(r"\1", parent).strip()
+        if len(bare_parent) >= 3 and re.search(rf"\b{re.escape(bare_parent)}\b", sentence, re.I):
+            return True
+        for word in re.findall(r"\b[A-Z][A-Z0-9]{1,15}\b", bare_parent):
+            if any(re.search(rx, word, flags) for rx, flags in sub_patterns):
+                continue
+            if re.search(rf"\b{re.escape(word)}\b", sentence):
+                return True
+    return _names_other_legal_entity(sentence, sub_patterns)
+
+
+def _paragraph_bounds(text: str, lo: int, hi: int) -> tuple[int, int]:
+    para_start, para_end = 0, len(text)
+    for m in _BLANK_LINE_RX.finditer(text):
+        if m.end() <= lo:
+            para_start = max(para_start, m.end())
+        elif m.start() >= hi:
+            para_end = min(para_end, m.start())
+            break
+    for m in _SPEAKER_TURN_RX.finditer(text):
+        if m.group(1).strip().lower() in _NOT_SPEAKER_LABELS:
+            continue
+        if m.start() <= lo:
+            para_start = max(para_start, m.end())
+        elif m.start() >= hi:
+            para_end = min(para_end, m.start())
+            break
+    return para_start, max(para_start, para_end)
+
+
+def _search_sentences_near(text: str | None, start: int, end: int, patterns: list[tuple[str, int]],
+                           lookback: int = 3, *, exclude_including: bool = False,
+                           stop_pred: Callable[[str], bool] | None = None) -> bool:
+    if not text or not patterns:
+        return False
+    n = len(text)
+    lo = max(0, min(start, n))
+    hi = max(lo, min(end, n))
+    para_start, para_end = _paragraph_bounds(text, lo, hi)
+    para = text[para_start:para_end]
+    rel_lo = max(0, lo - para_start)
+    rel_hi = max(rel_lo, hi - para_start)
+
+    from .transcripts import split_sentences
+
+    spans = split_sentences(para, 0) or [(0, len(para))]
+    hit_indices = [
+        i for i, (a, b) in enumerate(spans)
+        if (a < rel_hi and b > rel_lo) or (rel_lo == rel_hi and a <= rel_lo <= b)
+    ]
+    if not hit_indices:
+        hit_indices = [i for i, (a, b) in enumerate(spans) if a <= rel_lo <= b] or [0]
+    first_idx, last_idx = hit_indices[0], hit_indices[-1]
+    for i in range(first_idx, last_idx + 1):
+        a, b = spans[i]
+        if _sentence_matches_patterns(para[a:b], patterns, exclude_including=exclude_including):
+            return True
+    for i in range(first_idx - 1, max(-1, first_idx - 1 - lookback), -1):
+        a, b = spans[i]
+        sent = para[a:b]
+        if stop_pred is not None and stop_pred(sent):
+            break
+        if _sentence_matches_patterns(sent, patterns, exclude_including=exclude_including):
+            return True
+    return False
+
+
+def names_company_near(text: str | None, start: int, end: int, names: Iterable[str] | str | None,
+                       lookback: int = 3) -> bool:
+    """True when the sentence holding ``text[start:end]`` or up to ``lookback`` preceding sentences
+    in the same paragraph name a distinctive token of ``names``."""
+    patterns = _company_patterns(names)
+    return _search_sentences_near(
+        text, start, end, patterns, lookback=lookback,
+        stop_pred=lambda sent: _names_other_legal_entity(sent, patterns),
+    )
+
+
+def names_subsidiary_near(text: str | None, start: int, end: int, symbol: str,
+                          company_names: Iterable[str] = (), parent: str | None = None,
+                          lookback: int = 3) -> bool:
+    """True when the sentence holding ``text[start:end]`` or up to ``lookback`` preceding sentences
+    in the same paragraph name the store's own company (excluding ``including X`` lists)."""
+    patterns = _subsidiary_patterns(symbol, company_names, parent)
+    return _search_sentences_near(
+        text, start, end, patterns, lookback=lookback, exclude_including=True,
+        stop_pred=lambda sent: _names_parent_or_other_company(sent, patterns, parent),
+    )
+
+
+def mentions_company(text: str | None, symbol: str, company_names: Iterable[str] = (),
+                     parent: str | None = None) -> bool:
+    """True when ``text`` names the store company (outside an ``including ...`` list)."""
+    if not text:
+        return False
+    patterns = _subsidiary_patterns(symbol, company_names, parent)
+    return bool(patterns and _sentence_matches_patterns(text, patterns, exclude_including=True))
 
 
 # --------------------------------------------------------------------------- URLs

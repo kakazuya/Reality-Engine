@@ -36,7 +36,7 @@ from pathlib import Path
 import yaml
 
 from .. import config, raw_store
-from . import call_dates, profile, schema
+from . import call_dates, linked_transcripts, profile, schema
 
 LEX_DIR = Path(__file__).parent / "lexicon"
 SANDBOX_ROOT = Path("D:/RealityEngine/sandbox")
@@ -3370,6 +3370,34 @@ def _doc_sources(con: sqlite3.Connection | None, sym: str, sandbox: Path | None,
 
 
 
+def _store_company_names(sym: str, pages_db: Path | str | None) -> tuple[str, ...]:
+    """Raw names of the store company (symbol, active profile name, and ``company.name`` in ``pages_db``)."""
+    names: list[str] = [sym] if sym else []
+    prof = profile.active()
+    if sym and prof is not None:
+        try:
+            n = (prof.company(sym).name or "").strip()
+        except KeyError:
+            n = ""
+        if n and n not in names:
+            names.append(n)
+    if pages_db:
+        path = Path(pages_db)
+        if path.is_file():
+            try:
+                pg = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=30)
+                try:
+                    if pg.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='company'").fetchone():
+                        for (n,) in pg.execute("SELECT name FROM company WHERE symbol=?", (sym,)):
+                            if n and n not in names:
+                                names.append(n)
+                finally:
+                    pg.close()
+            except sqlite3.DatabaseError:
+                pass
+    return tuple(names)
+
+
 def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int | None = None, raw_root: Path | None = None,
                     ocr: dict | None = None, only_docs: list[str] | None = None, pages_db: Path | str | None = None):
     if sandbox is None or profile.under_profile():
@@ -3380,6 +3408,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
     entries, dims = load_lexicon()
     kind_of = {e.metric: e.kind for e in entries}
     entity_names = [(n.lower(), b) for n, b in _entity_names() if _is_entity_basis(b)]
+    company_names = _store_company_names(sym, pages_db)
     # a sector family's row must quote its own label; a common metric may take its label from the line above
     sector_only = ({e.metric for e in entries if e.sectors} - {e.metric for e in entries if not e.sectors}) \
         if profile.under_profile() else set()
@@ -3388,6 +3417,7 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                                                                           ocr, pages_db):
         if only_docs and not any(k in doc_key for k in only_docs):
             continue
+        parent = linked_transcripts.parent_company_of(title)
         if doc_type == "transcript" and known_at:   # a call cannot be known before it was held (call_dates)
             known_at = call_dates.clamp(None, known_at, [t for _, t in usable[:3]])[1]
         raw_pers = doc_default_period([t for _, t in usable],
@@ -3522,6 +3552,17 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
                     rank = max(1, rank - 2)
                 row_basis, row_dim = _row_basis(r.dimension, r.basis)
                 row_entity = _row_entity(sym, r.dimension, r.basis, basis, doc_basis, text, r.quote, name_on_page)
+                if parent:
+                    qpos = text.find(r.quote) if r.quote else -1
+                    if qpos >= 0:
+                        named = linked_transcripts.names_subsidiary_near(
+                            text, qpos, qpos + len(r.quote), sym, company_names, parent)
+                    else:
+                        named = linked_transcripts.names_subsidiary_near(
+                            r.quote or "", 0, len(r.quote or ""), sym, company_names, parent)
+                    if not named:
+                        # kpi_series has no entity_unsure flag, so a no-name sentence on a parent call takes the parent.
+                        row_entity = parent
                 yield dict(symbol=sym, metric=r.metric, dimension=row_dim, value=r.value, unit=r.unit, scale=r.scale,
                            period_type=r.period_type, fiscal_period=r.fiscal_period, as_of_date=r.as_of, basis=row_basis,
                            doc_key=doc_key, page=page, quote=r.quote, known_at=known_at, known_at_source=src,
