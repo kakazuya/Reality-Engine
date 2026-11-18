@@ -21,6 +21,7 @@ Shared helpers (periods, numbers, units, lexicon loader) are imported by transcr
 from __future__ import annotations
 
 import argparse
+import calendar
 import contextlib
 import csv
 import functools
@@ -36,7 +37,7 @@ from pathlib import Path
 import yaml
 
 from .. import config, raw_store
-from . import call_dates, linked_transcripts, profile, schema
+from . import call_dates, fiscal, linked_transcripts, profile, schema
 
 LEX_DIR = Path(__file__).parent / "lexicon"
 SANDBOX_ROOT = Path("D:/RealityEngine/sandbox")
@@ -159,25 +160,42 @@ class Period:
     as_of: str | None = None
 
 
+def _is_fy_end_date(as_of: str | None) -> bool:
+    if not as_of or len(as_of) < 10:
+        return False
+    fe = fiscal.current()
+    try:
+        y, m, d = int(as_of[:4]), int(as_of[5:7]), int(as_of[8:10])
+    except ValueError:
+        return False
+    return m == fe and d == calendar.monthrange(y, fe)[1]
+
+
 def _fiscal_of_date(y: int, m: int, d: int, force_end: bool = False):
-    """Fiscal period of a quarter-end date. 31 March closes the Indian fiscal year, so 2026-03-31 is FY26 (the
-    annual period), not Q4FY26: a stock figure dated at the year end is the year-end one, and an FY26 question
-    must find it. The date is kept in `as_of` either way."""
-    fy = y + 1 if m > 3 else y
-    if m == 3 and (force_end or d >= _QEND[3][1] - 1):
-        return f"FY{fy % 100:02d}", "FY", f"{y:04d}-{m:02d}-{d:02d}" if d else None
-    if m in _QEND and (force_end or d >= _QEND[m][1] - 1):
-        q = _QEND[m][0]
-        asof = f"{y:04d}-{m:02d}-{d:02d}" if d else None
-        return f"Q{q}FY{fy % 100:02d}", "Q", asof
-    return None
+    """Fiscal period of a quarter-end date using the active ``fiscal.current()`` year-end."""
+    if m not in _QEND:
+        return None
+    last_day = _QEND[m][1]
+    if not (force_end or d >= last_day - 1):
+        return None
+    asof = f"{y:04d}-{m:02d}-{d:02d}" if d else None
+    end_str = f"{y:04d}-{m:02d}-{last_day:02d}"
+    if m == fiscal.current():
+        return fiscal.fy_label(end_str), "FY", asof
+    q_label = fiscal.fiscal_quarter(end_str)
+    return (q_label, "Q", asof) if q_label else None
 
 
-_QUARTER_START = {"Q1": (4, 1), "Q2": (7, 1), "Q3": (10, 1), "Q4": (1, 1)}
-_MONTH_START = {"3M": (4, 1), "6M": (4, 1), "9M": (4, 1), "12M": (4, 1), "H1": (4, 1), "H2": (10, 1)}
-_YEAR_START = (4, 1)
-_QUARTER_END = {"Q1": (6, 30), "Q2": (9, 30), "Q3": (12, 31), "Q4": (3, 31)}
-_MONTH_END = {"3M": (6, 30), "6M": (9, 30), "9M": (12, 31), "12M": (3, 31), "H1": (9, 30), "H2": (3, 31)}
+_BOUNDS_OFFSET = {
+    "Q1": (0, 2), "3M": (0, 2),
+    "Q2": (3, 5),
+    "Q3": (6, 8),
+    "Q4": (9, 11),
+    "H1": (0, 5), "6M": (0, 5),
+    "9M": (0, 8),
+    "H2": (6, 11),
+    "": (0, 11), "FY": (0, 11), "12M": (0, 11),
+}
 
 
 def _period_bounds(period_type: str, fiscal_period: str | None, start: bool) -> str | None:
@@ -186,21 +204,16 @@ def _period_bounds(period_type: str, fiscal_period: str | None, start: bool) -> 
     if not m:
         return None
     ye, head = 2000 + int(m.group(1)), canon[: m.start()] or (period_type or "")
-    if head in _QUARTER_END:
-        month, day = (_QUARTER_START if start else _QUARTER_END)[head]
-        year = ye - 1 if head != "Q4" else ye
-    elif head in _MONTH_END:
-        if start:
-            month, day = _MONTH_START[head]
-            year = ye - 1
-        else:
-            month, day = _MONTH_END[head]
-            year = ye if head in ("12M", "H2") else ye - 1
-    elif head in ("", "FY"):
-        month, day, year = (*_YEAR_START, ye - 1) if start else (3, 31, ye)
-    else:
+    span = _BOUNDS_OFFSET.get(head)
+    if span is None:
         return None
-    return f"{year:04d}-{month:02d}-{day:02d}"
+    fe = fiscal.current()
+    fy_s = fiscal.fy_start(fiscal.fy_end_date(ye, fe), fe)
+    sy, sm = int(fy_s[:4]), int(fy_s[5:7])
+    ty, tm = divmod(sy * 12 + (sm - 1) + (span[0] if start else span[1]), 12)
+    tm += 1
+    day = 1 if start else calendar.monthrange(ty, tm)[1]
+    return f"{ty:04d}-{tm:02d}-{day:02d}"
 
 
 def period_start(period_type: str, fiscal_period: str | None) -> str | None:
@@ -1336,9 +1349,9 @@ def doc_default_period(texts: list[str], ytd: bool = True) -> list[Period]:
                and _yy(q.canon) == _yy(p.canon) + 1]
         if nxt:
             p = nxt[0]
-        # "Results for the quarter ended 31 March 2026" is the quarter, not the year; the 31 March date alone reads
-        # as the year end (the Q4 convention above applies only to an explicit "Q4" label).
-        q_ended = bool(p.as_of and p.as_of.endswith("-03-31") and re.search(
+        # "Results for the quarter ended 31 March 2026" is the quarter, not the year; the fiscal year-end date alone
+        # reads as the year end (the Q4 convention above applies only to an explicit "Q4" label).
+        q_ended = bool(_is_fy_end_date(p.as_of) and re.search(
             r"\b(?:quarter|three\s+months?)\s+ended\b", head[max(0, p.start - 50):p.start], re.I))
         if p.ptype == "Q" and p.canon.startswith("Q4") and not q_ended:
             return [Period(p.start, p.end, f"FY{p.canon[-2:]}", "FY", p.as_of)]
@@ -1693,9 +1706,9 @@ def q4_call_fallback(default_pers: list[Period], stated_pers: list[Period] | Non
 
 
 def _q4_twin(e: Entry, period: Period) -> Period | None:
-    """A stock figure dated 31 March is the year-end and also the Q4 point: GNPA at "31 March 2025" must answer
-    both FY25 and Q4FY25.  A flow (revenue, PAT, a margin, ROE) is annual only."""
-    if period.ptype == "FY" and period.as_of and period.as_of.endswith("-03-31") and e.metric in _STOCK_METRICS:
+    """A stock figure dated at the fiscal year end is the year-end and also the Q4 point: GNPA at "31 March 2025"
+    must answer both FY25 and Q4FY25.  A flow (revenue, PAT, a margin, ROE) is annual only."""
+    if period.ptype == "FY" and _is_fy_end_date(period.as_of) and e.metric in _STOCK_METRICS:
         return Period(period.start, period.end, "Q4" + period.canon, "Q", period.as_of)
     return None
 
@@ -2540,7 +2553,7 @@ def relabel_group_columns(rows, info) -> None:
             continue
         for x, pr in dated:
             kind = min(heads, key=lambda t: abs(t[0] - x))[1]
-            mo = int(pr.as_of[5:7])
+            mo = fiscal.march_equivalent_month(int(pr.as_of[5:7]))
             m = re.search(r"FY(\d\d)", pr.canon)
             if not m or kind == "quarter":
                 continue
@@ -2576,28 +2589,29 @@ def _headings(rows, h: int):
 
 
 def _date_fits(kind: str, month: int) -> bool:
-    """A column's own date must agree with its group heading: only Sep/Mar closes a half year, only March a year."""
+    """A column's own date must agree with its group heading: only H1/H2 ends close a half year, only FY end a year."""
     if kind == "quarter":
         return True
+    eq_m = fiscal.march_equivalent_month(month)
     if kind == "half":
-        return month in (9, 3)
-    return month == 12 if kind == "nine" else month == 3
+        return eq_m in (9, 3)
+    return eq_m == 12 if kind == "nine" else eq_m == 3
 
 
 def _set_column_kind(pr: Period, kind: str) -> None:
     if not pr.as_of:                      # only a dated column has a kind to set
         return
-    mo, y = int(pr.as_of[5:7]), int(pr.as_of[:4])
-    yy = y if mo == 3 else y + 1          # fiscal year of a period ending in month mo
+    eq_m = fiscal.march_equivalent_month(int(pr.as_of[5:7]))
+    fy_str = fiscal.fy_label(pr.as_of)
     if kind == "quarter":
-        if pr.ptype != "Q":               # a 31 March date reads as the year end; in a quarter column it is Q4
-            pr.canon, pr.ptype = f"Q4FY{yy % 100:02d}", "Q"
-    elif kind == "half" and mo in (9, 3):
-        pr.canon, pr.ptype = (f"H1FY{yy % 100:02d}" if mo == 9 else f"H2FY{yy % 100:02d}"), "H"
-    elif kind == "nine" and mo == 12:
-        pr.canon, pr.ptype = f"9MFY{yy % 100:02d}", "9M"
-    elif kind == "year" and mo == 3:
-        pr.canon, pr.ptype = f"FY{yy % 100:02d}", "FY"
+        if pr.ptype != "Q":               # the FY-end date reads as FY; in a quarter column it is Q4
+            pr.canon, pr.ptype = f"Q4{fy_str}", "Q"
+    elif kind == "half" and eq_m in (9, 3):
+        pr.canon, pr.ptype = (f"H1{fy_str}" if eq_m == 9 else f"H2{fy_str}"), "H"
+    elif kind == "nine" and eq_m == 12:
+        pr.canon, pr.ptype = f"9M{fy_str}", "9M"
+    elif kind == "year" and eq_m == 3:
+        pr.canon, pr.ptype = fy_str, "FY"
 
 
 def _relabel_columns(rows, info) -> None:
@@ -2626,7 +2640,7 @@ def _relabel_columns(rows, info) -> None:
             if len(heads) == 2:
                 groups = [list(range(0, rep)), list(range(rep, len(ps)))]
             else:
-                j = next((k for k in range(rep, len(ps)) if dates[k] and int(dates[k][5:7]) == 3), len(ps))
+                j = next((k for k in range(rep, len(ps)) if dates[k] and int(dates[k][5:7]) == fiscal.current()), len(ps))
                 groups = [list(range(0, rep)), list(range(rep, j)), list(range(j, len(ps)))]
             if any(not g for g in groups):
                 groups = None
@@ -3398,6 +3412,22 @@ def _store_company_names(sym: str, pages_db: Path | str | None) -> tuple[str, ..
     return tuple(names)
 
 
+def _pages_fy_end(sym: str, pages_db: Path | str | None) -> int | None:
+    if not pages_db:
+        return None
+    path = Path(pages_db)
+    if not path.is_file():
+        return None
+    try:
+        pg = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True, timeout=30)
+        try:
+            return fiscal.fy_end_month(pg, sym)
+        finally:
+            pg.close()
+    except sqlite3.DatabaseError:
+        return None
+
+
 def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int | None = None, raw_root: Path | None = None,
                     ocr: dict | None = None, only_docs: list[str] | None = None, pages_db: Path | str | None = None):
     if sandbox is None or profile.under_profile():
@@ -3405,6 +3435,15 @@ def extract_company(sym: str, sandbox: Path | None, stats: dict, limit_docs: int
     else:
         dbp = sandbox / f"{sym.lower()}_loop" / f"{sym.lower()}.db"
         con = sqlite3.connect(f"file:{dbp.as_posix()}?mode=ro", uri=True)
+    fy_end = _pages_fy_end(sym, pages_db)
+    ctx = fiscal.use(fy_end) if fy_end is not None else contextlib.nullcontext()
+    with ctx:
+        yield from _extract_company_body(con, sym, sandbox, stats, limit_docs, raw_root, ocr, only_docs, pages_db)
+
+
+def _extract_company_body(con: sqlite3.Connection | None, sym: str, sandbox: Path | None, stats: dict,
+                          limit_docs: int | None, raw_root: Path | None, ocr: dict | None,
+                          only_docs: list[str] | None, pages_db: Path | str | None):
     entries, dims = load_lexicon()
     kind_of = {e.metric: e.kind for e in entries}
     entity_names = [(n.lower(), b) for n, b in _entity_names() if _is_entity_basis(b)]
@@ -3745,38 +3784,42 @@ def run(out: str, symbols: list[str], sandbox: Path | None, limit_docs: int | No
     max_pct = {e.metric: e.max_pct for e in load_lexicon()[0]} if profile.under_profile() else {}
     sql = f"INSERT OR IGNORE INTO kpi_series({','.join(COLS)}) VALUES({','.join('?' * len(COLS))})"
     for sym in symbols:
-        con.execute("DELETE FROM kpi_series WHERE symbol=? AND source_type<>'xbrl_segment'", (sym,))
-        batch = []
-        ocr = None
-        if ocr_cons:
-            from reality_engine.pilot3.ocr import load_ocr
+        fy_end = _pages_fy_end(sym, pages_db)
+        if fy_end is None:
+            fy_end = fiscal.fy_end_month(con, sym)
+        with fiscal.use(fy_end):
+            con.execute("DELETE FROM kpi_series WHERE symbol=? AND source_type<>'xbrl_segment'", (sym,))
+            batch = []
+            ocr = None
+            if ocr_cons:
+                from reality_engine.pilot3.ocr import load_ocr
 
-            ocr = {}
-            for c in ocr_cons:
-                for doc_key, pages in load_ocr(c, sym).items():
-                    cur = ocr.setdefault(doc_key, {})
-                    for page, value in pages.items():
-                        # HP TextRecognizer beats MSI RapidOCR when both read the same page
-                        if page not in cur or OCR_METHOD_RANK.get(value[3], 0) >= OCR_METHOD_RANK.get(cur[page][3], 0):
-                            cur[page] = value
-            if con.execute("SELECT 1 FROM sqlite_master WHERE name='doc_alias'").fetchone():
-                for alias_key, doc_key in con.execute("SELECT alias_key, doc_key FROM doc_alias WHERE symbol=?", (sym,)):
-                    if doc_key in ocr and alias_key not in ocr:   # an OCR page under the pilot3 key serves its sandbox key
-                        ocr[alias_key] = ocr[doc_key]
-        for row in extract_company(sym, sandbox, stats, limit_docs, raw_root, ocr, only_docs, pages_db):
-            batch.append([row[c] for c in COLS])
-            if len(batch) >= 2000:
+                ocr = {}
+                for c in ocr_cons:
+                    for doc_key, pages in load_ocr(c, sym).items():
+                        cur = ocr.setdefault(doc_key, {})
+                        for page, value in pages.items():
+                            # HP TextRecognizer beats MSI RapidOCR when both read the same page
+                            if page not in cur or OCR_METHOD_RANK.get(value[3], 0) >= OCR_METHOD_RANK.get(cur[page][3], 0):
+                                cur[page] = value
+                if con.execute("SELECT 1 FROM sqlite_master WHERE name='doc_alias'").fetchone():
+                    for alias_key, doc_key in con.execute("SELECT alias_key, doc_key FROM doc_alias WHERE symbol=?", (sym,)):
+                        if doc_key in ocr and alias_key not in ocr:   # an OCR page under the pilot3 key serves its sandbox key
+                            ocr[alias_key] = ocr[doc_key]
+            for row in extract_company(sym, sandbox, stats, limit_docs, raw_root, ocr, only_docs, pages_db):
+                batch.append([row[c] for c in COLS])
+                if len(batch) >= 2000:
+                    con.executemany(sql, batch)
+                    batch = []
+            if batch:
                 con.executemany(sql, batch)
-                batch = []
-        if batch:
-            con.executemany(sql, batch)
-        con.commit()
-        if profile.under_profile():
-            _review_outliers(con, sym, max_pct, review, stats[sym])
             con.commit()
-        stats[sym]["derived"] = derive_quarters(con, sym)
-        con.commit()
-        stats[sym]["rows"] = con.execute("SELECT count(*) FROM kpi_series WHERE symbol=?", (sym,)).fetchone()[0]
+            if profile.under_profile():
+                _review_outliers(con, sym, max_pct, review, stats[sym])
+                con.commit()
+            stats[sym]["derived"] = derive_quarters(con, sym)
+            con.commit()
+            stats[sym]["rows"] = con.execute("SELECT count(*) FROM kpi_series WHERE symbol=?", (sym,)).fetchone()[0]
     if profile.under_profile():
         rp = _review_path(out)
         with rp.open("w", newline="", encoding="utf-8") as f:

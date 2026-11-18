@@ -12,7 +12,7 @@ from bisect import bisect_right
 from collections import defaultdict
 from datetime import date, timedelta
 
-from reality_engine.pilot3 import profile, schema
+from reality_engine.pilot3 import fiscal, profile, schema
 
 # formula_id, metric, expression, inputs, unit, note
 FORMULAS = [
@@ -153,22 +153,19 @@ def _put(out: list, symbol, isin, period, ptype, start, end, basis, metric, valu
 
 
 def _fy_of(end: str) -> str:
-    y, m = int(end[:4]), int(end[5:7])
-    return f"FY{str(y + 1 if m >= 4 else y)[2:]}"
-
-
-_FQ = {3: 4, 6: 1, 9: 2, 12: 3}
+    return fiscal.fy_label(end)
 
 
 def _fiscal_q(end: str) -> str:
-    """Q2FY26 for a quarter ending 2025-09-30 (Indian fiscal year: April to March)."""
-    y, m = int(end[:4]), int(end[5:7])
-    return f"Q{_FQ[m]}FY{str(y + 1 if m >= 4 else y)[2:]}"
+    """Q2FY26 for a quarter ending 2025-09-30 (or active ``fiscal.current()`` year-end)."""
+    q = fiscal.fiscal_quarter(end)
+    if q is None:
+        raise ValueError(f"not a quarter end: {end!r}")
+    return q
 
 
 def _last_fy_end(end: str) -> str:
-    y, m = int(end[:4]), int(end[5:7])
-    return f"{y - 1}-03-31" if m == 3 else f"{y}-03-31"
+    return fiscal.last_fy_end(end)
 
 
 def _prev_quarter(end: str) -> str:
@@ -377,7 +374,7 @@ def _panel(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -
         for fy, fy_ends in fys.items():
             if len(fy_ends) != 4:
                 continue
-            start = f"{int(fy_ends[-1][:4]) - 1}-04-01"
+            start = fiscal.fy_start(fy_ends[-1])
             agg = {}
             for item in FLOW_ITEMS + ("eps_basic",):
                 parts = [periods[e].get(item) for e in fy_ends]
@@ -423,7 +420,7 @@ def _panel(conn: sqlite3.Connection, symbol: str, isin: str | None, out: list) -
         for fy, items in _printed_fy(conn, symbol, basis).items():
             if len(fys.get(fy, [])) == 4:
                 continue
-            start, end = f"20{int(fy[2:]) - 1:02d}-04-01", f"20{int(fy[2:]):02d}-03-31"
+            start, end = fiscal.fy_bounds(fy)
             flat = {item: (value, known) for item, (value, known, _end, _start) in items.items()}
             comps = [flat.get(k) for k in ("pbt_before_exceptional", "finance_cost", "depreciation", "other_income")]
             if comps[0] and comps[1] and comps[2] and not profile.is_lender(symbol):
@@ -477,15 +474,16 @@ def build_ratios(conn: sqlite3.Connection) -> dict:
     views = _input_views(conn)
     try:
         for symbol in profile.symbols():
-            isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
-            isin = isin[0] if isin else None
-            out: list = []
-            _panel(conn, symbol, isin, out)
-            _payout_bvps(conn, symbol, isin, out)
-            _balance_ratios(conn, symbol, isin, out)
-            _lender_opex(conn, symbol, isin, out)
-            conn.executemany("INSERT INTO ratio_panel VALUES (" + ",".join("?" * 16) + ")", out)
-            counts[symbol] = {"ratio_panel": len(out), "valuation_daily": _valuation(conn, symbol, isin)}
+            with fiscal.use(fiscal.fy_end_month(conn, symbol)):
+                isin = conn.execute("SELECT isin FROM company WHERE symbol=? ORDER BY isin_from DESC LIMIT 1", (symbol,)).fetchone()
+                isin = isin[0] if isin else None
+                out: list = []
+                _panel(conn, symbol, isin, out)
+                _payout_bvps(conn, symbol, isin, out)
+                _balance_ratios(conn, symbol, isin, out)
+                _lender_opex(conn, symbol, isin, out)
+                conn.executemany("INSERT INTO ratio_panel VALUES (" + ",".join("?" * 16) + ")", out)
+                counts[symbol] = {"ratio_panel": len(out), "valuation_daily": _valuation(conn, symbol, isin)}
     finally:
         for view in views:
             conn.execute(f"DROP VIEW IF EXISTS temp.{view}")
@@ -517,7 +515,8 @@ def _payout_bvps(conn: sqlite3.Connection, symbol: str, isin: str | None, out: l
             found = [(fy, *rest) for fy, rest in chosen.items()]
         for fy, value, known, quote_id, _source in found:
             if fy in fy_eps and fy_eps[fy][0]:
-                _put(out, symbol, isin, fy, "FY", f"20{int(fy[2:]) - 1}-04-01", f"20{fy[2:]}-03-31", basis,
+                fy_s, fy_e = fiscal.fy_bounds(fy)
+                _put(out, symbol, isin, fy, "FY", fy_s, fy_e, basis,
                      "dividend_payout_pct", 100.0 * value / fy_eps[fy][0], "pct", "F_PAYOUT",
                      [f"fa:{symbol}:{fy}:{basis}:dividend_per_share#{quote_id}", f"ratio:{symbol}:{fy}:{basis}:eps_basic_fy"],
                      max(known or "", fy_eps[fy][1] or ""))
@@ -594,7 +593,7 @@ def _balance_ratios_rows(conn: sqlite3.Connection, symbol: str, isin: str | None
             parts = [quarters.get((basis, e), {}).get(item) for e in qends]
             if all(parts):
                 ltm[item] = (sum(p[0] for p in parts), max(p[1] for p in parts))
-        start = f"{int(end[:4]) - 1}-04-01" if end[5:7] == "03" else f"{end[:4]}-04-01"
+        start = fiscal.fy_start(end)
 
         def ref(item: str) -> str:
             return f"fa:{symbol}:{fy}:{basis}:{item}#{bs[item][2]}"
@@ -686,7 +685,7 @@ def _lender_opex(conn: sqlite3.Connection, symbol: str, isin: str | None, out: l
         nti = income[0] - finance[0]
         if not nti:
             continue
-        _put(out, symbol, isin, fy, "FY", f"{int(end[:4]) - 1}-04-01", end, basis, "opex_to_net_total_income_pct",
+        _put(out, symbol, isin, fy, "FY", fiscal.fy_start(end), end, basis, "opex_to_net_total_income_pct",
              100.0 * sum(part[0] for part in opex) / nti, "pct", "F_OPEX_NTI",
              [f"fa:{symbol}:{fy}:{basis}:{item}#{items[item][2]}" for item in OPEX_NTI_INPUTS],
              max(part[1] for part in [*opex, income, finance]))
