@@ -1786,7 +1786,10 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   column formed a conflict that refused the right 1,099.17 in two other filings, and inferred cells made 45 other
   cells "pass" -> `cross_gate` gives an inferred cell its own gate (`inferred`, or `xbrl_disagrees` on the veto).
   Round 22: verified 3,311 (+224 over round 20), unverified 1,712, none lost; of the 224, 13 have a model read and all
-  13 name the same date; a sample of 12 without one fits its damaged header. 64 tests.
+  13 name the same date; a sample of 12 without one fits its damaged header. 64 tests. Twelfth hand read (`.tmp/sf/handsample12.txt`, 30
+  cells verified since round 14 with no model read, read against page text): 27 right, 0 wrong, 1 doubtful (c01
+  cash-flow "Income Tax paid 1,280.50": the OCR text order does not show its column; XBRL agrees exactly at FY25),
+  2 not legible in the OCR text (XBRL witness only).
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round
