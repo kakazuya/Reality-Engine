@@ -316,8 +316,9 @@ def per_share_ok(label: str, value: str) -> bool:
 def _judge_title(c: dict[str, Any]) -> str:
     """The table title the XBRL judge gets: the page title with every basis word removed, then the cell's own basis,
     so the judge compares the figure with that basis's facts only (second witness review W2: with the page's
-    "Standalone ... Consolidated" title kept, the judge named no basis and agreed with the other statement)."""
-    t = re.sub(r"(?i)\b(standalone|consolidated)\b", " ", c.get("title", "") or "")
+    "Standalone ... Consolidated" title kept, the judge named no basis and agreed with the other statement; third
+    review F1: every spelling ``cell_judge.basis_of`` reads, "Stand Alone" and "Stand-alone" too)."""
+    t = re.sub(r"(?i)\b(stand[\s-]*alone|consolidated)\b", " ", c.get("title", "") or "")
     return f'{t} {c.get("basis", "")}'.strip()
 
 
@@ -471,8 +472,12 @@ def _xbrl_agrees(c: dict[str, Any], xbrl: Any) -> bool:
                   "unit_text": "", "table_title": title}, xbrl)
     if v.verdict != "agree" or v.sign_flip or v.printed is None:
         return False
-    if v.basis and v.basis != c.get("basis"):
-        return False                                # agreed with the other statement (standalone vs consolidated)
+    if v.basis != c.get("basis"):
+        return False                                # the judge must read the cell's own basis only: the other
+        #                                             statement, or none named (both bases mixed: third review F1)
+    if any(x > 0 for x in v.xbrl) and any(x < 0 for x in v.xbrl):
+        return False                                # the key is filed with both signs: a lost minus would agree
+        #                                             with the opposite-sign fact (third review F2)
     used = v.printed / p[0]
     if abs(used - unit) > 1e-9 * unit:
         return False

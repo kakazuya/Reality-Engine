@@ -1742,6 +1742,17 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   refuses any figure printing fewer decimals than its column's usual count. Round 14: verified 2,943 (1,054 equal a
   model cell, 18 disputed: OCR label typos, HY4 column shifts, share capital), unverified 1,636; eleventh fresh
   sample, 50 verified cells: 0 wrong (a printed depreciation of 1 lakh checked: right). 52 tests.
+- Third witness review (dsh 20261119T190937Z-43133070, 20 Nov), real-page attack scripts kept in
+  `.tmp/r3/` of the branch worktree, fixed with `test_t3_*`: F1 the title strip missed "Stand Alone" / "Stand-alone",
+  so the judge named no basis, read both statements' facts and verified a standalone figure under a consolidated
+  column (c01 other equity, +40.6 %) -> the strip takes every spelling `basis_of` reads, and `_xbrl_agrees` requires
+  the judge's basis to EQUAL the cell's (a judge naming none is no witness); F2 a key filed with both signs (c31
+  basic EPS 2025-06-30: 0.61, 0.61, -0.61) let a lost minus agree -> no XBRL witness when the key's facts hold both
+  signs. F3 (a figure rounded to the whole page unit in a whole-unit column agrees within half a unit) is kept: the
+  served figure is the printed one at its printed precision, not a wrong number. Refuted: identities across two
+  tables, a misdated column through a share-capital anchor; the three earlier attacks still refuse. Round 15 (both
+  fixes): verified 2,943, unverified 1,636, the same cells as round 14 (both classes latent in these 10 stores).
+  55 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round

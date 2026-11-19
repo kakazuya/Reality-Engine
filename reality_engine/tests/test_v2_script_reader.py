@@ -363,7 +363,8 @@ def _verdict_at_lakh(cell, agree_values):
 
     p = cj.number(cell["value_text"])
     if cell["value_text"] in agree_values:
-        return cj.Verdict("agree", printed=p[0] * 1e5, xbrl=[p[0] * 1e5])
+        return cj.Verdict("agree", basis=cj.basis_of(cell.get("table_title")), printed=p[0] * 1e5,
+                          xbrl=[p[0] * 1e5])
     return cj.Verdict("no_xbrl_line")
 
 
@@ -407,7 +408,8 @@ def test_w_f1_decimal_dropped_in_a_decimal_column_is_refused():
 def test_w_f2_xbrl_witness_is_exact(monkeypatch):
     from reality_engine.v2 import cell_judge as cj
 
-    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", printed=30843e5, xbrl=[30834e5]))
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", basis="consolidated", printed=30843e5,
+                                                                 xbrl=[30834e5]))
     assert not sr._xbrl_agrees(dict(_cell("q2fy25", "30,843"), unit_scale=1e5), _Xbrl())
 
 
@@ -489,3 +491,26 @@ def test_dropped_last_digit_is_refused():
     cells = [dict(row_label=f"r{k}", col_header="Q", value_text=v, box=(200, 50 + 12 * k, 240, 58 + 12 * k),
                   table_id=1) for k, v in enumerate(["239.02", "200.10", "532.27", "293.2"])]
     assert [c["value_text"] for c in sr._decimals_consistent(cells)] == ["239.02", "200.10", "532.27"]
+
+
+def test_t3_f1_stand_alone_spelling_is_stripped_too():
+    from reality_engine.v2 import cell_judge as cj
+
+    for title in ("STAND ALONE AND CONSOLIDATED RESULTS", "Stand-alone & Consolidated Statement"):
+        assert cj.basis_of(sr._judge_title({"title": title, "basis": "consolidated"})) == "consolidated"
+
+
+def test_t3_f1_judge_naming_no_basis_is_no_witness(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", basis=None, printed=70738.91e5,
+                                                                 xbrl=[50319.15e5, 70738.91e5]))
+    assert not sr._xbrl_agrees(dict(_cell("q2fy25", "70,738.91", label="Other equity"), unit_scale=1e5), _Xbrl())
+
+
+def test_t3_f2_key_filed_with_both_signs_gives_no_witness(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", basis="consolidated", printed=0.61,
+                                                                 xbrl=[0.61, 0.61, -0.61]))
+    assert not sr._xbrl_agrees(dict(_cell("q2fy25", "0.61", label="Basic EPS"), unit_scale=1e5), _Xbrl())
