@@ -358,26 +358,90 @@ def test_arith_identity_in_one_column_only_is_no_witness():
     assert not any(c["arith"] for c in cells)
 
 
+def _verdict_at_lakh(cell, agree_values):
+    from reality_engine.v2 import cell_judge as cj
+
+    p = cj.number(cell["value_text"])
+    if cell["value_text"] in agree_values:
+        return cj.Verdict("agree", printed=p[0] * 1e5, xbrl=[p[0] * 1e5])
+    return cj.Verdict("no_xbrl_line")
+
+
 def test_witness_gate_statuses(monkeypatch):
     from reality_engine.v2 import cell_judge as cj
 
-    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree" if cell["value_text"] == "7.00" else
-                                                                "no_xbrl_line"))
-    a = dict(_cell("q2fy25", "5.00"), arith=True, box=(200, 50, 240, 58), page=1)
-    a2 = dict(_cell("q2fy25", "7.00", label="Finance costs"), arith=False, box=(200, 62, 240, 70), page=1)
-    b = a2
+    monkeypatch.setattr(cj, "judge", lambda cell, x: _verdict_at_lakh(cell, {"7.00"}))
+    lakh = {"unit_scale": 1e5, "page": 1}
+    a = dict(_cell("q2fy25", "5.00"), arith=True, box=(200, 50, 240, 58), **lakh)
+    b = dict(_cell("q2fy25", "7.00", label="Finance costs"), arith=False, box=(200, 62, 240, 70), **lakh)
+    b2 = dict(_cell("q2fy25", "6.00", label="Finance costs", pend="2023-09-30"), arith=False,
+              box=(300, 62, 340, 70), **lakh)            # the row changes across columns: it can date its column
     c = dict(_cell("q2fy25", "9.00", label="Other expenses"), arith=False)
     d = dict(_cell("q2fy26", "9.00", label="Other expenses"), arith=False)
     e = dict(_cell("q2fy25", "3.00", label="Rent"), arith=False)
-    got = {(x["row_label"], x["doc_key"]): (x["status"], x["witness"])
-           for x in sr.witness_gate([a, b, c, d, e], FILED, xbrl=_Xbrl())}
-    assert got[("Revenue from operations", "q2fy25")] == ("verified", "arith")
-    assert got[("Finance costs", "q2fy25")] == ("verified", "xbrl")
-    assert got[("Other expenses", "q2fy25")] == ("unverified", "cross")
-    assert got[("Rent", "q2fy25")] == ("refused", "")
+    got = {(x["row_label"], x["doc_key"], x["period_end"]): (x["status"], x["witness"])
+           for x in sr.witness_gate([a, b, b2, c, d, e], FILED, xbrl=_Xbrl())}
+    assert got[("Revenue from operations", "q2fy25", "2024-09-30")] == ("verified", "arith")
+    assert got[("Finance costs", "q2fy25", "2024-09-30")] == ("verified", "xbrl")
+    assert got[("Other expenses", "q2fy25", "2024-09-30")] == ("unverified", "cross")
+    assert got[("Rent", "q2fy25", "2024-09-30")] == ("refused", "")
 
+
+def test_w_f1_no_printed_unit_no_xbrl_witness(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", printed=3419685e3, xbrl=[3419685e3]))
+    c = dict(_cell("q2fy25", "3419685"), unit_scale=None)
+    assert not sr._xbrl_agrees(c, _Xbrl())
+    c["unit_scale"] = 1e5                                     # agreement came at a scale the page does not print
+    assert not sr._xbrl_agrees(c, _Xbrl())
+
+
+def test_w_f1_decimal_dropped_in_a_decimal_column_is_refused():
+    cells = [dict(row_label=f"r{k}", col_header="Q", value_text=v, box=(200, 50 + 12 * k, 240, 58 + 12 * k),
+                  table_id=1) for k, v in enumerate(["1,200.50", "45.10", "1,245.60", "3419685"])]
+    assert [c["value_text"] for c in sr._decimals_consistent(cells)] == ["1,200.50", "45.10", "1,245.60"]
+
+
+def test_w_f2_xbrl_witness_is_exact(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", printed=30843e5, xbrl=[30834e5]))
+    assert not sr._xbrl_agrees(dict(_cell("q2fy25", "30,843"), unit_scale=1e5), _Xbrl())
+
+
+def test_w_f3_period_invariant_row_does_not_date_a_column(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: _verdict_at_lakh(cell, {"2,254.40"}))
+    lakh = {"unit_scale": 1e5, "page": 1, "table_id": 3}
+    share = dict(_cell("q2fy25", "2,254.40", label="Paid up equity capital"), arith=False, box=(200, 90, 240, 98), **lakh)
+    share2 = dict(_cell("q2fy25", "2,254.40", label="Paid up equity capital", pend="2023-09-30"), arith=False,
+                  box=(300, 90, 340, 98), **lakh)
+    other = dict(_cell("q2fy25", "50.38", label="Remeasurement"), arith=True, box=(200, 50, 240, 58), **lakh)
+    got = {x["row_label"]: x["status"] for x in sr.witness_gate([share, share2, other], FILED, xbrl=_Xbrl())}
+    assert got["Remeasurement"] == "refused"
 
 def test_arith_alone_needs_its_column_period_confirmed():
     lone = dict(_cell("q2fy25", "5.00"), arith=True, box=(200, 50, 240, 58), page=1)
     got = sr.witness_gate([lone], FILED)
     assert got[0]["status"] == "refused"                 # adds up, but nothing confirms the column's period
+
+
+def test_side_by_side_statements_take_basis_from_the_column(monkeypatch):
+    ws = [_w(10, 2, "Standalone"), _w(70, 2, "Standalone"), _w(130, 2, "&"), _w(140, 2, "&"),
+          _w(150, 2, "Consolidated"), _w(220, 2, "Consolidated"), _w(290, 2, "Statement")]
+    assert sr.page_basis(ws) == ""
+    assert sr.column_basis("Standalone As at 30th September, 2025") == "standalone"
+    assert sr.column_basis("As at 30th September, 2025") == ""
+
+
+def test_xbrl_agreement_with_the_other_basis_is_no_witness(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", basis="standalone", printed=72993.31e5,
+                                                                 xbrl=[72993.31e5]))
+    c = dict(_cell("q2fy25", "72,993.31", label="Total - Equity"), unit_scale=1e5)   # tagged consolidated
+    assert not sr._xbrl_agrees(c, _Xbrl())
+    c["basis"] = "standalone"
+    assert sr._xbrl_agrees(c, _Xbrl())

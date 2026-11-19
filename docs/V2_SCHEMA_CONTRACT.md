@@ -1704,7 +1704,8 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   difference of two rows above it, `ARITH_LOOKBACK` 15) that holds over the same printed rows in at least two
   columns of the page, AND its column's period is confirmed by one of the column's own cells through XBRL or a
   second filing (a sum still adds up under a wrong column date: c09 fe68b3 p2 showed the arithmetic alone cannot
-  prove the header); or XBRL, the judge finds the line and period and agrees exactly with the sign. Cross-filing
+  prove the header); or XBRL, the judge finds the line and period and agrees with the sign, at the page's printed
+  unit, equal up to the printed rounding, on the cell's own basis (see the witness-gate review below). Cross-filing
   agreement alone is `unverified` (served labelled); every refusal rule still refuses (`refused`). Each served cell
   carries `witness` (arith / xbrl / cross, joined).
 - Round 10 (witness gate, `.tmp/sf/eval3.py`): verified 3,587 (1,171 equal a model cell, 24 disputed, 2,392 no
@@ -1713,10 +1714,26 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   column. Seventh fresh sample, 54 verified cells no model read (`.tmp/sf/handsample7.txt`): 0 wrong values; one
   label is OCR debris ("Total atai Provision Provi for Taxes", XBRL-verified line). Coverage of model-verified
   cells: 1,171 of 12,158 (10%).
+- Witness-gate review (dsh 20261119T181113Z-57f37188), three wrong-verified classes reproduced on real cells and
+  fixed with tests: F1 the judge tried every scale when the page title lacked the unit, so a decimal-lost
+  "3419685" (34,196.85 lakh) agreed in thousands -> `page_unit` reads the one unit printed anywhere on the page,
+  no unit = no XBRL witness, the agreement must come at that unit (rupees on a per-share line), and
+  `_decimals_consistent` refuses a figure without decimals in a column whose other figures print them; F2 the
+  judge's 0.1 % tolerance verified transposed digits (30,843 for 30,834) -> `_xbrl_agrees` demands equality up to
+  the printed decimals' rounding; F3 a period-invariant row (share capital) confirmed any column date and
+  `_column_key` ignored the table -> only a row whose values change across columns confirms a column's period,
+  and keys carry `table_id` (the header band's first line). Hand read round 11 (54 verified cells) then found a
+  fourth: c01's side-by-side balance sheet ("Standalone Standalone & & Consolidated Consolidated") served the
+  standalone column as consolidated, XBRL-verified against the standalone fact -> `page_basis` is undecided when
+  both words appear on top, `column_basis` takes the basis a column header prints, and the XBRL witness needs the
+  agreeing fact's basis to equal the cell's. Round 12: verified 3,288 (1,091 equal a model cell, 24 disputed as
+  before), unverified 1,464; ninth fresh sample of 54 verified cells: 0 wrong (one quarter column under a header
+  that also names "Half" checked on word positions: right). 48 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round
-  10. The c61 "discontinued operations 19.59" counted wrong in the round-2 hand read was a misread by the reader
+  10, and the basis class (23 verified cells in rounds 9-11, from the basis-blind XBRL witness) fell to 0 in round 12.
+  The c61 "discontinued operations 19.59" counted wrong in the round-2 hand read was a misread by the reader
   of the stored text: the page prints 19.59 and (695.78) + 19.59 = (676.19). Losses: one filing only 13,094 cells,
   no period 7,368 (OCR-garbled dates, deck "FY24" columns, balance sheets without a printed kind), key conflicts
   2,815, year-kind doubt 970. Next lever measured: XBRL exact agreement as the second witness would pass 2,584 more

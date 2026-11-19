@@ -58,10 +58,19 @@ def page_basis(words: list[tuple[float, float, float, float, str]]) -> str:
     top = " ".join(w[4] for w in sorted(words, key=lambda w: (round(w[1]), w[0]))[:80]).lower()
     # only a statement phrase names the basis ("Consolidated Unaudited Financial Results", "Standalone Balance
     # Sheet"), never a company name ("Consolidated Finvest Limited": third review R3-5)
-    if re.search(r"\b(standalone|consolidated)\s+(and|&|/)\s+(standalone|consolidated)\b", top):
-        return ""
+    if "standalone" in top and "consolidated" in top:
+        return ""                                   # both named anywhere on top ("Standalone Standalone & & Consolidated"
+        #                                             Consolidated", side-by-side statements): a column header decides
     found = {m.group(1) for m in _BASIS_PHRASE.finditer(top)}
     return found.pop() if len(found) == 1 else ""   # both printed ("Standalone and Consolidated"): undecided (F3)
+
+
+def column_basis(col_header: str) -> str:
+    """The basis a column's own header stack prints ("Standalone As at 30th September, 2025"), when it prints
+    exactly one; '' otherwise.  It overrides the page basis (c01 side-by-side balance sheet, witness review)."""
+    h = (col_header or "").lower()
+    found = {b for b in ("standalone", "consolidated") if b in h}
+    return found.pop() if len(found) == 1 else ""
 
 
 _BASIS_PHRASE = re.compile(r"\b(consolidated|standalone)\s+(un-?audited|audited|financial|statement|results?|"
@@ -238,7 +247,8 @@ def read_page(words: list[tuple[float, float, float, float, str]]) -> list[dict[
             if len({d.lower() for d in _DATES.findall(head)}) > 1:
                 continue                                # two dates over one column: a merged neighbour header
             rows.append({"table": "", "row_label": label, "col_header": head, "value": words[i][4], "unit": "",
-                         "section": section, "box": tuple(round(v, 1) for v in words[i][:4])})
+                         "section": section, "table_id": band[0],
+                         "box": tuple(round(v, 1) for v in words[i][:4])})
     return rows
 
 
@@ -247,19 +257,23 @@ def settled(words: list[tuple[float, float, float, float, str]]) -> list[dict[st
     rows = read_page(words)
     if not rows:
         return []
-    out, _ = rg.settle_page([[{k: v for k, v in r.items() if k not in ("box", "section")} for r in rows]], words)
+    out, _ = rg.settle_page([[{k: v for k, v in r.items() if k not in ("box", "section", "table_id")} for r in rows]], words)
     basis = page_basis(words)
     title = page_title(words)
     section = {r["box"][:2]: r["section"] for r in rows}  # by printed box: a repeated label has one per line
+    table_of = {r["box"][:2]: r["table_id"] for r in rows}
+    unit = page_unit(words)
     cells = []
     for o in out:
         if o.get("settled_by") not in ("position", "script+position"):
             continue
         cells.append({"row_label": o["row_label"], "col_header": o["col_header"], "value_text": o["value_text"],
-                      "basis": basis, "title": title, "period_end": cj.period_end(o["col_header"]) or "",
+                      "basis": column_basis(o["col_header"]) or basis, "title": title,
+                      "period_end": cj.period_end(o["col_header"]) or "",
                       "kind": cj.column_kind(o["col_header"], title), "section": section.get((o["x0"], o["y0"]), ""),
-                      "repeated": bool(o.get("label_repeated")),
-                      "box": (o["x0"], o["y0"], o["x1"], o["y1"])})
+                      "repeated": bool(o.get("label_repeated")), "table_id": table_of.get((o["x0"], o["y0"])),
+                      "unit_scale": unit, "box": (o["x0"], o["y0"], o["x1"], o["y1"])})
+    cells = _decimals_consistent(cells)
     # a label printed on two lines of one column is two rows; when both carry the same section heading the rows
     # cannot be told apart (a cash-flow "Dividend received" under operating adjustments and under investing, with
     # a stale heading on both): refuse them all.
@@ -384,7 +398,7 @@ def arith_witness(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if _num(c["value_text"]) is None:
             continue
         xc = (c["box"][0] + c["box"][2]) / 2
-        cols[(c["col_header"], int(xc // 25))].append(c)
+        cols[(c.get("table_id"), c["col_header"], int(xc // 25))].append(c)
     found: dict[tuple, list[tuple[tuple[str, int], list[dict[str, Any]]]]] = defaultdict(list)
     for key, col in cols.items():
         col.sort(key=lambda c: c["box"][1])
@@ -430,16 +444,36 @@ _HARD_REFUSALS = {"no_period", "per_share_no_decimal", "year_kind_doubtful", "no
 
 
 def _xbrl_agrees(c: dict[str, Any], xbrl: Any) -> bool:
+    """XBRL witness: the judge agrees, at the page's OWN printed unit (or rupees on a per-share line), and the
+    printed figure equals an XBRL fact up to rounding of its printed decimals only (review F1: with no unit the judge
+    tries every scale, so "3419685" for 34,196.85 lakh agreed in thousands; F2: the judge's 0.1 % tolerance let
+    30,843 agree with 30,834).  A page with no printed unit gives no XBRL witness."""
+    p = cj.number(c["value_text"])
+    if p is None or p[0] == 0:
+        return False
+    per_share = bool(_PER_SHARE.search(f'{c.get("section", "")} {c["row_label"]}'))
+    unit = 1.0 if per_share else c.get("unit_scale")
+    if not unit:
+        return False
     title = f'{c.get("title", "")} {c.get("basis", "")}'.strip()
     v = cj.judge({"row_label": c["row_label"], "col_header": c.get("col_header", ""), "value_text": c["value_text"],
                   "unit_text": "", "table_title": title}, xbrl)
-    return v.verdict == "agree" and not v.sign_flip
+    if v.verdict != "agree" or v.sign_flip or v.printed is None:
+        return False
+    if v.basis and v.basis != c.get("basis"):
+        return False                                # agreed with the other statement (standalone vs consolidated)
+    used = v.printed / p[0]
+    if abs(used - unit) > 1e-9 * unit:
+        return False
+    tol = 0.5 * 10 ** -p[1] * unit + 1e-6
+    return any(abs(v.printed - x) <= tol for x in v.xbrl)
 
 
 def _column_key(c: dict[str, Any]) -> tuple:
     """One printed column of one page: document, page, header text and the figure's x position (25 pt bins)."""
     box = c.get("box") or (0, 0, 0, 0)
-    return (c.get("doc_key"), c.get("page"), c.get("col_header"), int(((box[0] + box[2]) / 2) // 25))
+    return (c.get("doc_key"), c.get("page"), c.get("table_id"), c.get("col_header"),
+            int(((box[0] + box[2]) / 2) // 25))
 
 
 def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
@@ -454,10 +488,15 @@ def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
     # own cells through XBRL or a second filing, and then holds for every cell printed in that column
     for c in cells:
         c["_xa"] = c["gate"] not in _HARD_REFUSALS and xbrl is not None and _xbrl_agrees(c, xbrl)
+    row_vals: dict[tuple, set[str]] = defaultdict(set)
+    for c in cells:
+        row_vals[(c.get("doc_key"), c.get("page"), c.get("table_id"), round(c["box"][1]) if c.get("box") else None)].add(
+            _norm_value(c["value_text"]))
     confirmed: set[tuple] = set()
     for c in cells:
-        if c["_xa"] or c["gate"] == "pass":
-            confirmed.add(_column_key(c))
+        row = (c.get("doc_key"), c.get("page"), c.get("table_id"), round(c["box"][1]) if c.get("box") else None)
+        if (c["_xa"] or c["gate"] == "pass") and len(row_vals[row]) > 1:
+            confirmed.add(_column_key(c))              # share capital, equal in every period, proves no date (F3)
     for c in cells:
         if c["gate"] in _HARD_REFUSALS:
             c["status"], c["witness"] = "refused", ""
@@ -477,3 +516,29 @@ def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         else:
             c["status"] = "refused"
     return cells
+
+
+def page_unit(words: list[tuple[float, float, float, float, str]]) -> float | None:
+    """The page's printed unit (lakh 1e5, crore 1e7, million 1e6, thousand 1e3) when exactly one is printed anywhere
+    on the page; None when none or several (review F1)."""
+    text = " ".join(w[4] for w in words)
+    found = {scale for rx, scale in cj._UNITS if scale != 1.0 and rx.search(text)}
+    return found.pop() if len(found) == 1 else None
+
+
+def _decimals_consistent(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A figure printed without decimals in a column whose other figures (three or more) print them is a scan layer
+    that dropped the point ("3419685" for 34,196.85): refused (review F1)."""
+    by_col: dict[tuple, list[dict[str, Any]]] = defaultdict(list)
+    for c in cells:
+        box = c["box"]
+        by_col[(c.get("table_id"), c["col_header"], int(((box[0] + box[2]) / 2) // 25))].append(c)
+    out = []
+    for col in by_col.values():
+        dec = [cj.number(c["value_text"]) for c in col]
+        with_dec = sum(1 for d in dec if d and d[1] > 0)
+        for c, d in zip(col, dec):
+            if d and d[1] == 0 and abs(d[0]) >= 10 and with_dec >= 3 and with_dec > len(col) / 2:
+                continue
+            out.append(c)
+    return out
