@@ -159,3 +159,16 @@ def test_decimal_point_lost_is_named():
     assert (v.verdict, v.reason) == ("disagree", "decimal_lost")
     v = cj.judge(cell("Earnings per share > Basic", "011"), X)        # -0.11 read as "011" (sign lost as well)
     assert (v.verdict, v.reason) == ("disagree", "decimal_lost")
+
+
+def test_value_of_another_period_names_the_misplaced_column():
+    xi = cj.XbrlIndex(ROWS + [("2024-12-31", "standalone", "revenue_from_operations", 802_000_000.0, 1.0)],
+                      [("P&L", "FY", "2025-03-31", "standalone", "revenue_from_operations", 3_500_000_000.0, 1.0)])
+    # the Q 31.12.2024 figure verified under the 31.12.2025 header (unit unprinted: every scale is tried)
+    v = cj.judge(cell("Revenue from operations", "8,020.00", unit=""), xi)
+    assert (v.verdict, v.reason) == ("disagree", "other_period")
+    assert v.elsewhere[0] == "Q:2024-12-31:standalone:revenue_from_operations"
+    assert v.printed == 802_000_000.0                         # shown at the scale that matched
+    # a full-year figure under a quarter header
+    v = cj.judge(cell("Revenue from operations", "35,000.00"), xi)
+    assert v.reason == "other_period" and v.elsewhere == ["FY:2025-03-31:standalone:revenue_from_operations"]
