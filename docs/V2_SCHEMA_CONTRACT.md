@@ -1658,7 +1658,24 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   numbers from a signature block x2, a half-year figure under "Year ended 30 Sep", a split-off minus sign); round 3,
   1 wrong section on a repeated cash-flow label; round 4 (`.tmp/sf/handsample3.txt`): 0 wrong of 60, three doubtful
   cells checked on word positions and right. Each wrong class is now a refusal rule with a test.
-- Coverage is the open problem: 1,247 of 12,158 model-verified cells (10%). Losses: one filing only 13,094 cells,
+- Review r5 (dsh 20261119T143028Z-6e23f738, adversarial, synthetic layouts; every class reproduced by Eagle, fixed,
+  and a test in `test_v2_script_reader.py`): F1/F2 a sign in a separate word ("- 19.59" tight to the figure,
+  "(Rs. 19.59") -> `_lone_bracket_beside` refuses an unclosed bracket or a tight minus beside the figure; F3 a title
+  naming both bases -> `page_basis` = '' and the gate refuses `basis_unknown`; F4 the XBRL veto never saw the
+  statement title -> `_xbrl_refuses` passes the page title, and an XBRL agreement only with the sign flipped also
+  refuses; F5 "Page 2", phone, fax, PIN under a value column -> wider `_ID_LABEL` and a figure line must be a data
+  line of its header band's table block (`Page._block`); F6 a wrapped label served as its last line ("Debts") ->
+  `_wrapped_above` refuses a line whose label continues the figure-less line above (full-width line, a line ending
+  in a comma or joining word, or a label opening "(Including ..."); F7 "Per equity share" escaped the decimal rule ->
+  wider `_PER_SHARE`. Honest negatives: a moving-date column misread always lands in `conflict`.
+- After the review (rounds 5-6): fourth fresh sample of 60, 1 wrong (a wrapped cash-flow label, c05 "(Including
+  Capital Work In Progress ...)", wider line spacing than the wrap rule allowed: now refused); fifth fresh sample of
+  60 (`.tmp/sf/handsample5.txt`), 0 wrong values, one bare "Total" whose section was header text (c88 note table) ->
+  `generic_unanchored` refuses Total/Others/Net/Less/Add without a real section. Round 6 gate: 3,310 cells passed
+  (1,050 equal a model cell, 26 model-disputed all traced to the model, 2,234 no model read); the stricter rules cost
+  526 passed cells against round 4. Hand-read wrong rate by round: 4/60, 1/60, 0/60, 1/60, 0/60 (each wrong class
+  closed by a rule before the next fresh sample).
+- Coverage is the open problem: 1,050 of 12,158 model-verified cells (9%). Losses: one filing only 13,094 cells,
   no period 7,368 (OCR-garbled dates, deck "FY24" columns, balance sheets without a printed kind), key conflicts
   2,815, year-kind doubt 970. Next lever measured: XBRL exact agreement as the second witness would pass 2,584 more
   single-filing cells (867 equal a model cell; 24 model-disputed, to be read before it is used).

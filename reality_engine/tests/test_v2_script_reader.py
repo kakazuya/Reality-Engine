@@ -132,3 +132,109 @@ def test_repeated_label_with_one_section_is_refused():
     got = {(c["row_label"], c["value_text"]) for c in sr.settled(page)}
     assert not any(label == "Other income" for label, _ in got)
     assert ("Total income", "1,245.60") in got
+
+
+# --- T-226 review r5 (dsh 20261119T143028Z-6e23f738): each reproduced wrong-served class is a test ---------------
+
+def _rows_page(dl, dr, rows):
+    ws = [_w(10, 2, "STATEMENT"), _w(70, 2, "OF"), _w(90, 2, "CONSOLIDATED"), _w(160, 2, "RESULTS"),
+          _w(200, 20, "Quarter"), _w(240, 20, "Ended"), _w(300, 20, "Quarter"), _w(340, 20, "Ended"),
+          _w(200, 30, dl), _w(300, 30, dr)]
+    y = 50
+    for lab, left, right in rows:
+        x = 10
+        for t in lab:
+            ws.append(_w(x, y, t))
+            x += 5 * len(t) + 4
+        for t in left:
+            ws.append(_w(190 if t in ("-", "(Rs.") and t == "-" else (178 if t == "(Rs." else 200), y, t))
+        for t in right:
+            ws.append(_w(300, y, t))
+        y += 12
+    return ws
+
+
+REV = [["Revenue", "from", "operations"], ["1,200.50"], ["1,100.25"]]
+
+
+def test_r5_f1_f2_detached_minus_or_currency_bracket_is_refused():
+    for sign in ("-", "(Rs."):
+        page = _rows_page("30.09.2024", "30.09.2023", [REV, (["Net", "loss"], [sign, "19.59"], ["12.62"])])
+        values = {c["value_text"] for c in sr.settled(page) if c["row_label"] == "Net loss"}
+        assert "19.59" not in values, sign
+
+
+def test_r5_f3_title_naming_both_bases_leaves_basis_undecided():
+    ws = [_w(10, 2, "STATEMENT"), _w(70, 2, "OF"), _w(90, 2, "STANDALONE"), _w(150, 2, "AND"),
+          _w(175, 2, "CONSOLIDATED"), _w(250, 2, "RESULTS")]
+    assert sr.page_basis(ws) == ""
+    c, d = _cell("q2fy25", "5.00"), _cell("q2fy26", "5.00")
+    c["basis"] = d["basis"] = ""
+    assert {x["gate"] for x in sr.cross_gate([c, d], FILED)} == {"basis_unknown"}
+
+
+def test_r5_f4_xbrl_judge_sees_the_page_title(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    seen = []
+
+    def judge(cell, x):
+        seen.append(cell["table_title"])
+        return cj.Verdict("disagree" if "BALANCE SHEET" in cell["table_title"] else "no_xbrl_line")
+
+    monkeypatch.setattr(cj, "judge", judge)
+    cells = [dict(_cell(d, "1,300.00"), title="BALANCE SHEET AS AT 31.03.2025") for d in ("q2fy25", "q2fy26")]
+    assert {x["gate"] for x in sr.cross_gate(cells, FILED, xbrl=_Xbrl())} == {"xbrl_disagrees"}
+    assert seen and "BALANCE SHEET" in seen[0]
+
+
+def test_r5_f4_sign_flip_agreement_is_refused(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", sign_flip=True))
+    cells = [_cell("q2fy25", "19.59"), _cell("q2fy26", "19.59")]
+    assert {x["gate"] for x in sr.cross_gate(cells, FILED, xbrl=_Xbrl())} == {"xbrl_disagrees"}
+
+
+def test_r5_f5_page_phone_fax_pin_lines_are_not_figures():
+    for lab, val in (("Page", "2"), ("Telephone:", "1234"), ("Fax:", "5678"), ("PIN", "400001")):
+        page = _rows_page("30.09.2024", "30.09.2023", [REV]) + [_w(10, 86, lab), _w(200, 86, val)]
+        assert not [c for c in sr.read_page(page) if c["value"] == val], lab
+
+
+def test_r5_f6_wrapped_label_fragment_is_refused():
+    page = _rows_page("30.09.2024", "30.09.2023", [REV]) + [
+        _w(10, 74, "Less:"), _w(45, 74, "Provision"), _w(95, 74, "for"), _w(115, 74, "doubtful"),
+        _w(10, 86, "Debts"), _w(200, 86, "123.40"), _w(300, 86, "98.00")]
+    assert not [c for c in sr.read_page(page) if c["row_label"] == "Debts"]
+
+
+def test_r5_f7_per_equity_share_wording_needs_a_decimal():
+    assert not sr.per_share_ok("Per equity share (in Rs.)", "154")
+    assert sr.per_share_ok("Per equity share (in Rs.)", "1.54")
+
+
+def test_cross_gate_cell_without_a_filing_date_is_refused():
+    assert sr.cross_gate([_cell("unknown_doc", "5.00")], FILED)[0]["gate"] == "no_filing_date"
+
+
+def test_line_with_no_header_band_is_skipped_not_an_error():
+    page = [_w(10, 10, "Revenue"), _w(60, 10, "from"), _w(90, 10, "operations"), _w(200, 10, "1,200.50")]
+    assert sr.read_page(page) == []
+
+
+def test_wrapped_label_with_wide_line_spacing_is_refused():
+    # c05 cash flow: "Acquisition of Property, Plant and Equipments," wraps to "(Including Capital ... ) (net)"
+    page = _rows_page("30.09.2024", "30.09.2023", [REV]) + [
+        _w(10, 74, "Acquisition"), _w(70, 74, "of"), _w(85, 74, "Property,"), _w(135, 74, "Plant"),
+        _w(10, 86 + 4, "(Including"), _w(65, 90, "Capital"), _w(105, 90, "(net)"), _w(200, 90, "(559.52)"),
+        _w(300, 90, "(802.98)")]
+    assert not [c for c in sr.read_page(page) if c["row_label"].startswith("(Including")]
+
+
+def test_generic_label_needs_a_real_section():
+    assert sr.generic_unanchored("Total", "")
+    assert sr.generic_unanchored("Total", "Quarter ended Nine months ended Year ended")
+    assert not sr.generic_unanchored("Total", "Segment Revenue")
+    assert not sr.generic_unanchored("Total Income", "")
+    assert sr.generic_unanchored("(ii) Others", "")

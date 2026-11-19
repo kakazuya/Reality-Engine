@@ -56,8 +56,8 @@ def good_label(label: str) -> bool:
 def page_basis(words: list[tuple[float, float, float, float, str]]) -> str:
     """consolidated / standalone from the page's top 80 words (titles); '' when neither is printed."""
     top = " ".join(w[4] for w in sorted(words, key=lambda w: (round(w[1]), w[0]))[:80]).lower()
-    found = [(top.find(b), b) for b in ("consolidated", "standalone") if b in top]
-    return min(found)[1] if found else ""
+    found = [b for b in ("consolidated", "standalone") if b in top]
+    return found[0] if len(found) == 1 else ""      # both printed ("Standalone and Consolidated"): undecided (T-226 F3)
 
 
 def page_title(words: list[tuple[float, float, float, float, str]]) -> str:
@@ -66,7 +66,8 @@ def page_title(words: list[tuple[float, float, float, float, str]]) -> str:
     return " ".join(w[4] for w in sorted(words, key=lambda w: (round(w[1]), w[0]))[:40])
 
 
-_ID_LABEL = re.compile(r"\b(din|cin|pan|gstin|membership|registration|frn|firm\s+reg|place|date)\b", re.I)
+_ID_LABEL = re.compile(r"\b(din|cin|pan|gstin|membership|registration|frn|firm\s+reg|place|date|page|tel|telephone|"
+                       r"phone|fax|mobile|pin|pincode|email|e-mail|website|isin|scrip|code)\b", re.I)
 
 
 def figure_ok(text: str) -> bool:
@@ -79,13 +80,62 @@ def figure_ok(text: str) -> bool:
     return not re.match(r"0\d", digits)
 
 
-def _lone_bracket_beside(words: list[tuple[float, float, float, float, str]], order: list[int], i: int) -> bool:
-    """A bare "(" just left of the figure or ")" just right of it: the sign sits in a separate word."""
+_MINUS = ("-", "–", "—", "−")
+
+
+def _lone_bracket_beside(words: list[tuple[float, float, float, float, str]], order: list[int], i: int,
+                         h: float = 8.0) -> bool:
+    """The figure's sign sits in a separate word: the word just left opens a bracket it does not close ("(",
+    "(Rs.", "(₹") or is a minus printed tight against the figure ("- 19.59"; an empty-cell dash sits in its
+    own column, further off), or the word just right closes one it did not open (T-226 F1, F2)."""
     k = order.index(i)
-    left = words[order[k - 1]][4].strip() if k > 0 else ""
-    right = words[order[k + 1]][4].strip() if k + 1 < len(order) else ""
-    return left.endswith("(") and not any(ch.isdigit() for ch in left) or right.startswith(")") and not any(
-        ch.isdigit() for ch in right)
+    left = words[order[k - 1]] if k > 0 else None
+    right = words[order[k + 1]] if k + 1 < len(order) else None
+    if left is not None:
+        t = left[4].strip()
+        if not any(ch.isdigit() for ch in t) and t.count("(") > t.count(")"):
+            return True
+        if t in _MINUS and words[i][0] - left[2] <= 0.8 * h:
+            return True
+    if right is not None:
+        t = right[4].strip()
+        if not any(ch.isdigit() for ch in t) and t.count(")") > t.count("("):
+            return True
+    return False
+
+
+def _wrapped_above(page: Any, n: int, label_right: float) -> bool:
+    """The label's first printed line is the figure-less line just above (T-226 F6: "Less: Provision for doubtful"
+    over "Debts 123.40"): that line starts where this label starts, does not end in a colon, and runs out to the
+    width of the table's longest label, which is where a long label wraps.  A short heading ("Segment Revenue")
+    does not reach that width."""
+    if n == 0:
+        return False
+    above, here = page.lines[n - 1], page.lines[n]
+    if any(page._digit_figure(j) for j in above):
+        return False
+    w = page.words
+    top_here = min(w[j][1] for j in here)
+    bottom_above = max(w[j][3] for j in above)
+    if top_here - bottom_above > 1.6 * page.h:        # c05 cash flow wraps with wider line spacing (round 5 read)
+        return False
+    x_here = min(w[j][0] for j in here)
+    x_above = min(w[j][0] for j in above)
+    if abs(x_here - x_above) > 1.5 * page.h:
+        return False
+    text = " ".join(w[j][4] for j in sorted(above, key=lambda j: w[j][0])).strip()
+    if not text or text.endswith(":"):
+        return False
+    if max(w[j][2] for j in above) >= 0.8 * label_right:
+        return True
+    if _JOINER_END.search(text):                       # "... Plant and Equipments," / "... for the"
+        return True
+    own = " ".join(w[j][4] for j in sorted(here, key=lambda j: w[j][0]))
+    return bool(_PAREN_START.match(own))               # "(Including Capital Work ...)" continues the line above
+
+
+_JOINER_END = re.compile(r"(,|\b(of|and|for|to|in|on|the|from|by|with|&|or|at|under|towards|including))\s*$", re.I)
+_PAREN_START = re.compile(r"^\(\s*(?![a-z]{1,4}\)|[ivx]{1,5}\)|\d{1,2}\))[A-Za-z]{3,}")
 
 
 def kind_ok(col_header: str, kind: str, period_end: str) -> bool:
@@ -104,6 +154,14 @@ def read_page(words: list[tuple[float, float, float, float, str]]) -> list[dict[
     page = rg.Page(words)
     rows: list[dict[str, Any]] = []
     section, seen_figures = "", False
+    label_right = 0.0                                   # right edge of the table's longest row label
+    for line in page.lines:
+        figs = [i for i in line if page._digit_figure(i)]
+        if figs:
+            x = min(words[i][0] for i in figs)
+            lab = [j for j in line if words[j][2] <= x and not rg._is_num(words[j][4])]
+            if lab:
+                label_right = max(label_right, max(words[j][2] for j in lab))
     for n, line in enumerate(page.lines):
         if page.title_line(n):
             continue
@@ -115,8 +173,11 @@ def read_page(words: list[tuple[float, float, float, float, str]]) -> list[dict[
             continue
         seen_figures = True
         label = page.text_left(n, words[figs[0]][0])
-        if not good_label(label) or _ID_LABEL.search(label):
+        if not good_label(label) or _ID_LABEL.search(label) or _wrapped_above(page, n, label_right):
             continue
+        band = page.header_band(n)
+        if not band or n not in page._block(n, band):
+            continue                                    # not a data line of the table under its header (T-226 F5)
         cols = page.columns_for(n)
         order = sorted(line, key=lambda j: words[j][0])
         homes = [next((k for k, c in enumerate(cols) if c["x0"] - 1 <= (words[i][0] + words[i][2]) / 2 <= c["x1"] + 1),
@@ -125,7 +186,7 @@ def read_page(words: list[tuple[float, float, float, float, str]]) -> list[dict[
         if len(placed_homes) != len(set(placed_homes)):
             continue                                    # two figures under one column: a split number ("20 971")
         for i in figs:
-            if not figure_ok(words[i][4]) or _lone_bracket_beside(words, order, i):
+            if not figure_ok(words[i][4]) or _lone_bracket_beside(words, order, i, page.h):
                 continue
             xc = (words[i][0] + words[i][2]) / 2
             col = next((c for c in cols if c["x0"] - 1 <= xc <= c["x1"] + 1), None)
@@ -153,7 +214,7 @@ def settled(words: list[tuple[float, float, float, float, str]]) -> list[dict[st
         if o.get("settled_by") not in ("position", "script+position"):
             continue
         cells.append({"row_label": o["row_label"], "col_header": o["col_header"], "value_text": o["value_text"],
-                      "basis": basis, "period_end": cj.period_end(o["col_header"]) or "",
+                      "basis": basis, "title": title, "period_end": cj.period_end(o["col_header"]) or "",
                       "kind": cj.column_kind(o["col_header"], title), "section": section.get((o["x0"], o["y0"]), ""),
                       "repeated": bool(o.get("label_repeated")),
                       "box": (o["x0"], o["y0"], o["x1"], o["y1"])})
@@ -163,7 +224,22 @@ def settled(words: list[tuple[float, float, float, float, str]]) -> list[dict[st
     seen: dict[tuple[str, str, str], int] = defaultdict(int)
     for c in cells:
         seen[(c["row_label"], c["col_header"], c["section"])] += 1
-    return [c for c in cells if seen[(c["row_label"], c["col_header"], c["section"])] == 1]
+    return [c for c in cells if seen[(c["row_label"], c["col_header"], c["section"])] == 1
+            and not generic_unanchored(c["row_label"], c["section"])]
+
+
+_GENERIC = re.compile(r"^(grand\s+|sub[\s-]*)?total|others?|net|less|add|balance|closing|opening$", re.I)
+_PERIODISH = re.compile(r"\b(ended|quarter|year|months?|half|audited|unaudited|particulars)\b", re.I)
+
+
+def generic_unanchored(label: str, section: str) -> bool:
+    """A bare "Total" / "Others" / "Net" says nothing about what it totals; served only under a section heading
+    that is not header text ("Quarter ended Nine months ended Year ended" names columns, not a line: c88 note
+    table, round 6 read)."""
+    core = re.sub(r"[^a-z\s-]", "", label_key(label)).strip()
+    if not _GENERIC.fullmatch(core):
+        return False
+    return not section.strip() or bool(_PERIODISH.search(section))
 
 
 def label_key(label: str) -> str:
@@ -171,13 +247,22 @@ def label_key(label: str) -> str:
     return re.sub(r"[^a-z]+", " ", _MARK.sub("", label.lower())).strip()
 
 
-_PER_SHARE = re.compile(r"\b(basic|diluted|eps|per\s+share|earnings\s+per)\b", re.I)
+_PER_SHARE = re.compile(r"\b(basic|diluted|eps|per\s+(equity\s+|ordinary\s+)?shares?|earnings\s+per)\b", re.I)
 
 
 def per_share_ok(label: str, value: str) -> bool:
     """A per-share line (EPS, basic, diluted) prints its decimals; "154" for 1.54 is a scan layer that dropped the
     point, and it drops it the same way in every filing (c31, 19 Nov), so agreement cannot catch it."""
     return not _PER_SHARE.search(label) or "." in value or value.strip("()-") in ("0", "")
+
+
+def _xbrl_refuses(c: dict[str, Any], xbrl: Any) -> bool:
+    """The XBRL judge, given the page title as the table title (statement type, basis, scale: T-226 F4), calls the
+    cell ``disagree``, or agrees only with the sign flipped (a lost minus: T-226 F1)."""
+    title = f'{c.get("title", "")} {c.get("basis", "")}'.strip()
+    v = cj.judge({"row_label": c["row_label"], "col_header": c.get("col_header", ""), "value_text": c["value_text"],
+                  "unit_text": "", "table_title": title}, xbrl)
+    return v.verdict == "disagree" or bool(v.sign_flip)
 
 
 def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
@@ -204,17 +289,20 @@ def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         if not figure_ok(c["value_text"]) or _ID_LABEL.search(c["row_label"]):
             c["gate"] = "not_a_figure"
             continue
+        if not c.get("basis"):
+            c["gate"] = "basis_unknown"                 # neither or both bases printed (T-226 F3)
+            continue
+        if c["doc_key"] not in filed:
+            c["gate"] = "no_filing_date"
+            continue
         label = f'{c.get("section", "")} {c["row_label"]}' if c.get("repeated") else c["row_label"]
-        groups[(c.get("basis", ""), label_key(label), c["period_end"], c["kind"])].append(c)
+        groups[(c["basis"], label_key(label), c["period_end"], c["kind"])].append(c)
     for group in groups.values():
         values = {_norm_value(c["value_text"]) for c in group}
         dates = sorted({filed[c["doc_key"]] for c in group})
         if len(values) > 1:
             gate = "conflict"
-        elif xbrl is not None and any(cj.judge({"row_label": c["row_label"], "col_header": c.get("col_header", ""),
-                                                "value_text": c["value_text"], "unit_text": "",
-                                                "table_title": c.get("basis", "")}, xbrl).verdict == "disagree"
-                                      for c in group):
+        elif xbrl is not None and any(_xbrl_refuses(c, xbrl) for c in group):
             gate = "xbrl_disagrees"
         elif (dates[-1] - dates[0]).days >= MIN_DAYS_APART:
             gate = "pass"
