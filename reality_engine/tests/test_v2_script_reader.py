@@ -554,3 +554,31 @@ def test_ocr_damaged_as_at_and_year_ended_give_the_kind():
     assert sr.column_kind("(in lakhs) ear ended March.2026", "") == "year"
     assert sr.column_kind("Months Ended December 31, 2024", "") == "unprinted"   # nine or three: undecided
     assert sr.column_kind("Measures at 2025", "") == "unprinted"
+
+
+def test_fiscal_labels_map_from_the_company_year_end():
+    assert sr.fiscal_label_period("Q4 FY24", 3) == ("2024-03-31", "quarter")
+    assert sr.fiscal_label_period("H1FY25", 3) == ("2024-09-30", "half")
+    assert sr.fiscal_label_period("9M FY26", 3) == ("2025-12-31", "nine")
+    assert sr.fiscal_label_period("FY24-25", 3) == ("2025-03-31", "year")
+    assert sr.fiscal_label_period("Q1 FY24", 12) == ("2024-03-31", "quarter")    # a December year end
+    assert sr.fiscal_label_period("FY23 FY24", 3) is None                         # two labels over one column
+    assert sr.fiscal_label_period("FY24-26", 3) is None
+
+
+def test_inferred_period_is_served_only_on_its_own_xbrl_witness(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    seen = []
+
+    def judge(cell, x):
+        seen.append(cell["col_header"])
+        return cj.Verdict("no_xbrl_line")
+
+    monkeypatch.setattr(cj, "judge", judge)
+    a = dict(_cell("q2fy25", "5.00"), period_inferred=True, judge_header="Quarter ended 30.09.2024", unit_scale=1e5,
+             box=(200, 50, 240, 58), page=1)
+    b = dict(a, doc_key="q2fy26")                        # a second filing printing the same "Q2 FY25" figure
+    got = sr.witness_gate([a, b], FILED, xbrl=_Xbrl())
+    assert {c["status"] for c in got} == {"refused"}    # cross-filing agreement alone does not serve a guessed date
+    assert "Quarter ended 30.09.2024" in seen

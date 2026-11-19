@@ -271,6 +271,49 @@ def column_kind(col_header: str, title: str) -> str:
     return kind
 
 
+_FY_LABEL = re.compile(r"(?<![a-z0-9])(?:(Q[1-4])|(H[12])|(9M))?\s*['’]?\s*FY\s*['’]?\s*(\d{2}|20\d{2})"
+                       r"(?:\s*[-–/]\s*(\d{2}))?(?![0-9])", re.I)
+
+
+def fiscal_label_period(col_header: str, fy_end: int) -> tuple[str, str] | None:
+    """A deck column named by fiscal label ("FY24", "Q2 FY25", "H1FY25", "9M FY26", "FY24-25") as (period end, kind),
+    from the company's own fiscal year-end month ``fy_end`` (the month every XBRL FY fact of the store ends in).
+    Exactly one label in the header, else None.  The date is inferred, not printed: ``witness_gate`` serves such a
+    cell only on an XBRL witness of its own (20 Nov: 875 deck cells lost to "no period")."""
+    found = list(_FY_LABEL.finditer(col_header or ""))
+    if len(found) != 1:
+        return None
+    q, h, nine, y, y2 = found[0].groups()
+    year = int(y2 or y)
+    year = year + 2000 if year < 100 else year
+    if y2 and int(y) % 100 + 1 != int(y2) % 100:
+        return None                                 # "FY24-26": not one fiscal year
+    months_back, kind = 0, "year"
+    if q:
+        months_back, kind = 3 * (4 - int(q[1])), "quarter"
+    elif h:
+        months_back, kind = (6 if h[1] == "1" else 0), "half"
+    elif nine:
+        months_back, kind = 3, "nine"
+    m = fy_end - months_back
+    while m <= 0:
+        m, year = m + 12, year - 1
+    return cj._month_end(year, m), kind
+
+
+def _canonical_header(end: str, kind: str) -> str:
+    """A printed-style header the XBRL judge parses, for a period inferred from a fiscal label."""
+    word = {"quarter": "Quarter ended", "half": "Half year ended", "nine": "Nine months ended",
+            "year": "Year ended"}[kind]
+    return f"{word} {end[8:10]}.{end[5:7]}.{end[:4]}"
+
+
+def fy_end_month(xbrl: Any) -> int | None:
+    """The one month every XBRL full-year fact of the store ends in; None when none or several."""
+    months = {end[5:7] for key, end in getattr(xbrl, "by_period", {}) if key == cj.FY and end}
+    return int(months.pop()) if len(months) == 1 else None
+
+
 def _cell_unit(table: float | None, page: float | None, doc: float | None = None) -> float | None:
     """The table's own unit; else the page's single unit; else the document's single unit (an OCR page of a filing
     whose other pages all print "lakh": c01, 20 Nov); None when the table prints several.  A wrong unit can only
@@ -288,7 +331,8 @@ def doc_unit(page_texts: Iterable[str]) -> float | None:
     return found.pop() if len(found) == 1 else None
 
 
-def settled(words: list[tuple[float, float, float, float, str]], doc_unit: float | None = None) -> list[dict[str, Any]]:
+def settled(words: list[tuple[float, float, float, float, str]], doc_unit: float | None = None,
+            fy_end: int | None = None) -> list[dict[str, Any]]:
     """``read_page`` cells the checker places (row and column), with basis, period end and period kind."""
     rows = read_page(words)
     if not rows:
@@ -312,6 +356,13 @@ def settled(words: list[tuple[float, float, float, float, str]], doc_unit: float
                       "repeated": bool(o.get("label_repeated")), "table_id": table_of.get((o["x0"], o["y0"])),
                       "unit_scale": _cell_unit(t_unit.get((o["x0"], o["y0"])), unit, doc_unit),
                       "box": (o["x0"], o["y0"], o["x1"], o["y1"])})
+    if fy_end:
+        for c in cells:
+            if not c["period_end"]:
+                got = fiscal_label_period(c["col_header"], fy_end)
+                if got and c["kind"] in ("unprinted", got[1]):
+                    c["period_end"], c["kind"], c["period_inferred"] = got[0], got[1], True
+                    c["judge_header"] = _canonical_header(got[0], got[1])
     cells = _decimals_consistent(cells)
     # a label printed on two lines of one column is two rows; when both carry the same section heading the rows
     # cannot be told apart (a cash-flow "Dividend received" under operating adjustments and under investing, with
@@ -365,8 +416,8 @@ def _xbrl_refuses(c: dict[str, Any], xbrl: Any) -> bool:
     """The XBRL judge, given the page title as the table title (statement type, basis, scale: T-226 F4), calls the
     cell ``disagree``, or agrees only with the sign flipped (a lost minus: T-226 F1)."""
     title = _judge_title(c)
-    v = cj.judge({"row_label": c["row_label"], "col_header": c.get("col_header", ""), "value_text": c["value_text"],
-                  "unit_text": "", "table_title": title}, xbrl)
+    v = cj.judge({"row_label": c["row_label"], "col_header": c.get("judge_header") or c.get("col_header", ""),
+                  "value_text": c["value_text"], "unit_text": "", "table_title": title}, xbrl)
     return v.verdict == "disagree" or bool(v.sign_flip)
 
 
@@ -507,8 +558,8 @@ def _xbrl_agrees(c: dict[str, Any], xbrl: Any) -> bool:
     if not unit:
         return False
     title = _judge_title(c)
-    v = cj.judge({"row_label": c["row_label"], "col_header": c.get("col_header", ""), "value_text": c["value_text"],
-                  "unit_text": "", "table_title": title}, xbrl)
+    v = cj.judge({"row_label": c["row_label"], "col_header": c.get("judge_header") or c.get("col_header", ""),
+                  "value_text": c["value_text"], "unit_text": "", "table_title": title}, xbrl)
     if v.verdict != "agree" or v.sign_flip or v.printed is None:
         return False
     if v.basis != c.get("basis"):
@@ -562,7 +613,7 @@ def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
     confirmed: set[tuple] = set()
     for c in cells:
         row = (c.get("doc_key"), c.get("page"), c.get("table_id"), round(c["box"][1]) if c.get("box") else None)
-        if (c["_xa"] or c["gate"] == "pass") and len(row_vals[row]) > 1:
+        if (c["_xa"] or (c["gate"] == "pass" and not c.get("period_inferred"))) and len(row_vals[row]) > 1:
             confirmed.add(_column_key(c))              # share capital, equal in every period, proves no date (F3)
     for c in cells:
         if c["gate"] in _HARD_REFUSALS:
@@ -577,7 +628,9 @@ def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         if c["gate"] == "pass":
             w.append("cross")
         c["witness"] = "+".join(w)
-        if "arith" in w or "xbrl" in w:
+        if c.get("period_inferred") and "xbrl" not in w:
+            c["status"] = "refused"                 # a date read from "FY24" is served only on its own XBRL witness
+        elif "arith" in w or "xbrl" in w:
             c["status"] = "verified"
         elif "cross" in w:
             c["status"] = "unverified"

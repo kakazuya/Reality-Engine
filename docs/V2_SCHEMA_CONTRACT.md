@@ -1771,6 +1771,12 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   unverified cells against the page text: 7 right, 2 not locatable by label, 0 wrong. 60 tests. Still open in "no
   period": 4,673 cells with a kind but no date (dates lost by OCR, "Year ended 31, 2024" without a month) and 875
   deck "FY24"/"Q2 FY25" columns; neither is mapped yet (a guessed date could pass two filings garbled alike).
+- Fiscal labels (20 Nov): a column named only by "FY24", "Q2 FY25", "H1FY25", "9M FY26" or "FY24-25" (exactly one
+  label) takes its period from the company's fiscal year-end month (`fy_end_month`: the one month every XBRL FY fact
+  of the store ends in; callers pass it to `settled(fy_end=...)`). Such a cell carries `period_inferred` and a
+  printed-style `judge_header` for the XBRL judge, and is served ONLY on its own XBRL witness: cross-filing agreement
+  alone refuses it, and it never confirms a column's date for an identity. Round 20: +24 verified (c88 deck results
+  slides, all xbrl or arith+xbrl), unverified unchanged, none lost: 3,087 verified. 62 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round
