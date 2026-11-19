@@ -1743,7 +1743,7 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   model cell, 18 disputed: OCR label typos, HY4 column shifts, share capital), unverified 1,636; eleventh fresh
   sample, 50 verified cells: 0 wrong (a printed depreciation of 1 lakh checked: right). 52 tests.
 - Third witness review (dsh 20261119T190937Z-43133070, 20 Nov), real-page attack scripts kept in
-  `.tmp/r3/` of the branch worktree, fixed with `test_t3_*`: F1 the title strip missed "Stand Alone" / "Stand-alone",
+  `.tmp/r3/` of the main checkout, fixed with `test_t3_*`: F1 the title strip missed "Stand Alone" / "Stand-alone",
   so the judge named no basis, read both statements' facts and verified a standalone figure under a consolidated
   column (c01 other equity, +40.6 %) -> the strip takes every spelling `basis_of` reads, and `_xbrl_agrees` requires
   the judge's basis to EQUAL the cell's (a judge naming none is no witness); F2 a key filed with both signs (c31
