@@ -172,3 +172,11 @@ def test_value_of_another_period_names_the_misplaced_column():
     # a full-year figure under a quarter header
     v = cj.judge(cell("Revenue from operations", "35,000.00"), xi)
     assert v.reason == "other_period" and v.elsewhere == ["FY:2025-03-31:standalone:revenue_from_operations"]
+
+
+def test_zero_figures_and_running_subtotals_name_nothing():
+    assert cj.cf_line("Cash flow after investing activities") is None
+    xi = cj.XbrlIndex(ROWS + [("2024-12-31", "standalone", "pat", 0.0, 1.0),
+                              ("2025-12-31", "standalone", "tax", 23_000_000.0, 1.0)])
+    v = cj.judge(cell("Tax expense", "0.00"), xi)
+    assert (v.verdict, v.reason, v.elsewhere) == ("disagree", "value_differs", [])
