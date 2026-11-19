@@ -1827,7 +1827,9 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   refuted; 20-cell hand read 20 right. F1 (reachable, 0 served): with no facts for the other basis, "none agrees"
   proved nothing and a standalone block over equal figures could be voted consolidated -> the vote also needs at
   least one cell refused by the other basis's own facts, and no section caption naming the other basis. F2 (loss
-  only, open): the 25 pt x-bin splits one printed column into several vote keys (c61 p10 total revenue). Round 26 =
+  only, open): the 25 pt x-bin splits one printed column into several vote keys (c61 p10 total revenue);
+  keying the vote by header text instead was measured worse (round 27: -16 +8, two date columns sharing one
+  damaged header tie), so the bin stays. Round 26 =
   round 25. 71 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
