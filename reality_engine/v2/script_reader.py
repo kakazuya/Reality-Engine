@@ -252,6 +252,25 @@ def read_page(words: list[tuple[float, float, float, float, str]]) -> list[dict[
     return rows
 
 
+_AS_AT_OCR = re.compile(r"(?<![a-z])as\s*-?\s*at", re.I)                # "As atatst", "Asat3ist", "As at30th"
+_YEAR_OCR = re.compile(r"(?<![a-z])[yv]?[ec]ar\s+ended", re.I)            # "ear ended", "ycar ended"
+_OTHER_KIND_OCR = re.compile(r"half|nine|six|months?|quarter|period", re.I)
+
+
+def column_kind(col_header: str, title: str) -> str:
+    """``cell_judge.column_kind``; when it finds none, an OCR-damaged "As at" (a balance-sheet date) or "Year ended"
+    in the header itself, never when the header names any other period word (20 Nov: 1,408 dated cells lost their
+    kind to "As atatst", "Asat3ist", "ear ended")."""
+    kind = cj.column_kind(col_header, title)
+    if kind != "unprinted" or _OTHER_KIND_OCR.search(col_header or ""):
+        return kind
+    if _AS_AT_OCR.search(col_header or ""):
+        return "as_at"
+    if _YEAR_OCR.search(col_header or ""):
+        return "year"
+    return kind
+
+
 def _cell_unit(table: float | None, page: float | None, doc: float | None = None) -> float | None:
     """The table's own unit; else the page's single unit; else the document's single unit (an OCR page of a filing
     whose other pages all print "lakh": c01, 20 Nov); None when the table prints several.  A wrong unit can only
@@ -289,7 +308,7 @@ def settled(words: list[tuple[float, float, float, float, str]], doc_unit: float
         cells.append({"row_label": o["row_label"], "col_header": o["col_header"], "value_text": o["value_text"],
                       "basis": column_basis(o["col_header"]) or basis, "title": title,
                       "period_end": cj.period_end(o["col_header"]) or "",
-                      "kind": cj.column_kind(o["col_header"], title), "section": section.get((o["x0"], o["y0"]), ""),
+                      "kind": column_kind(o["col_header"], title), "section": section.get((o["x0"], o["y0"]), ""),
                       "repeated": bool(o.get("label_repeated")), "table_id": table_of.get((o["x0"], o["y0"])),
                       "unit_scale": _cell_unit(t_unit.get((o["x0"], o["y0"])), unit, doc_unit),
                       "box": (o["x0"], o["y0"], o["x1"], o["y1"])})
@@ -595,6 +614,9 @@ def table_unit(page: Any, band: list[int]) -> float | None:
     return found.pop() if len(found) == 1 else 0.0
 
 
+_DOT_THOUSANDS = re.compile(r"\(?[-−]?\d{1,3}\.\d{3}\)?")
+
+
 def _decimals_consistent(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """A figure printed without decimals in a column whose other figures (three or more) print them is a scan layer
     that dropped the point ("3419685" for 34,196.85): refused (review F1)."""
@@ -611,6 +633,12 @@ def _decimals_consistent(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
             # fewer decimals than the column prints: a dropped point ("3419685") or a dropped last digit ("293.2"
             # for 293.25, an OCR page, round 13 read; the XBRL rounding tolerance of one decimal let it agree)
             if d and d[0] != 0 and d[1] < usual and n_usual >= 3 and n_usual > len(col) / 2:
+                continue
+            # "1.877" for 1,877: an OCR page read the thousands comma as a point, the same way in two filings, so
+            # cross-filing agreement passed it (c04 cash flow, 20 Nov). Three decimals in a column that does not
+            # usually print three, outside a per-share line, is that misread: refused.
+            if _DOT_THOUSANDS.fullmatch(c["value_text"].strip()) and usual != 3 \
+                    and not _PER_SHARE.search(f'{c.get("section", "")} {c["row_label"]}'):
                 continue
             out.append(c)
     return out

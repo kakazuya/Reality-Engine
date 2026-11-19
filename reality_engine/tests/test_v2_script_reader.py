@@ -537,3 +537,20 @@ def test_doc_unit_only_when_every_unit_naming_page_agrees():
     assert sr.doc_unit(["Rs. in lakh", "", "figures in Lakhs", "Note 3"]) == 1e5
     assert sr.doc_unit(["Rs. in lakh", "Rs. in crore"]) is None
     assert sr.doc_unit(["", "no unit"]) is None
+
+
+def test_ocr_thousands_comma_read_as_a_point_is_refused():
+    vals = ["1,279", "(77)", "1.877", "12.907", "433"]
+    cells = [dict(row_label=f"r{k}", col_header="Year ended", value_text=v, box=(200, 50 + 12 * k, 240, 58 + 12 * k),
+                  table_id=1) for k, v in enumerate(vals)]
+    assert [c["value_text"] for c in sr._decimals_consistent(cells)] == ["1,279", "(77)", "433"]
+    eps = [dict(row_label="Basic EPS", col_header="Q", value_text="1.877", box=(200, 50, 240, 58), table_id=1)]
+    assert len(sr._decimals_consistent(eps)) == 1           # a per-share figure may print three decimals
+
+
+def test_ocr_damaged_as_at_and_year_ended_give_the_kind():
+    assert sr.column_kind("Standalone As atatst March, 2025 | (Audited)", "") == "as_at"
+    assert sr.column_kind("Consolidated Asat3ist | March, 2025", "") == "as_at"
+    assert sr.column_kind("(in lakhs) ear ended March.2026", "") == "year"
+    assert sr.column_kind("Months Ended December 31, 2024", "") == "unprinted"   # nine or three: undecided
+    assert sr.column_kind("Measures at 2025", "") == "unprinted"
