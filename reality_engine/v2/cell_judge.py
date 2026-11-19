@@ -90,7 +90,8 @@ _DASH = {"", "-", "–", "—", "--", "nil", "na", "n.a.", "n/a"}
 
 # balance-sheet labels, matched WHOLE after normalising (enumerators, punctuation and a trailing "net" dropped).
 # A value names its line, or (current line, non-current line) when the printed block decides.
-_BS_LABELS: tuple[tuple[re.Pattern, object], ...] = tuple((re.compile(rf"^(?:{rx})$"), item) for rx, item in (
+_BsItem = str | tuple[str, ...]   # one line, or the (current, non-current[, undivided]) lines a block picks from
+_BS_LABELS: tuple[tuple[re.Pattern[str], _BsItem], ...] = tuple((re.compile(rf"^(?:{rx})$"), item) for rx, item in (
     (r"total assets", "total_assets"),
     (r"total equity and liabilities|equity and liabilities total|total liabilities and equity", "total_assets"),
     (r"total equity", "total_equity"),
