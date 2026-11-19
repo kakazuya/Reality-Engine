@@ -1,4 +1,4 @@
-# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-20 00:20 IST (Eagle)
+# STATE: the one live state. Max 4,000 characters, overwrite in place. Last updated 2026-11-20 01:40 IST (Eagle)
 History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `docs/PILOT3_BLUEPRINT.md`; v2 `docs/V2_SCHEMA_CONTRACT.md` (sections 12-15); Fable tests `tasks/FABLE_TESTS_2026-11-10.md`; run ledger `D:/RealityEngine/ledger/ledger.db`.
 
 ## Now (Shivam 11 Nov: settle extraction for every page; DeepSeek ~USD 100-200/month, free models first)
@@ -9,7 +9,7 @@ History `docs/state_history/` (previous: `STATE_2026-11-19_2005.md`); method `do
 - T-188 reader bake-off and T-189 answer test: `docs/V2_SCHEMA_CONTRACT.md` s14, `reports/2026-11-12_four_model_answer_test.html`.
 
 ## Next action (Shivam 15 Nov: Telegram companies first, on-demand build; fix known issues in 1-2 days, then build)
-00. 20 Nov 00:20 (Eagle; Shivam: rely less on models, a lost right cell is fine, a wrong one never; build arithmetic + XBRL gates): T-226 `v2/script_reader.py` on branch Eagle-script-first (e1aa4c16, not merged): verified only on an independent witness (printed identity in 2+ columns with the column period confirmed, or exact XBRL); V2 contract s16. Round 10: 3,587 verified, 0 wrong of 54 hand-read; patched mistake classes did not recur (`.tmp/sf/recur.py`). Witness-gate review dsh running; merge after it. Eval `.tmp/sf/`.
+00. 20 Nov 01:40 (Eagle; Shivam: rely less on models, a lost right cell is fine, a wrong one never; arithmetic + XBRL gates): T-226 `v2/script_reader.py` on branch Eagle-script-first (7d9ab78b, not merged): verified only on an independent witness (identity in 2+ columns with a period-varying confirmation, or exact XBRL at the page unit and basis); V2 contract s16. Witness review 1 + basis defect fixed (48 tests). Round 12: 3,288 verified, 0 wrong of 54 hand-read; no patched class recurred (`.tmp/sf/recur.py`). Witness review 2 dsh running; merge after it.
 0. 19 Nov 15:35 (Eagle; Shivam: all capacity on checker quality): MERGED `v2/cell_judge.py` v3.1 (Wolf) and `v2/silver_score.py`. Round 10 on branch Eagle-t225-r10 (27b004a8, worktree IDM-worktrees/Eagle-t225-r10; dsh review F1-F7 fixed): truth wrong 9 -> 0; store silver verified 18,563 -> 19,477, silver wrong 77 -> 66; NOT merged (293 right store cells lost; c31 p3 H1-under-Q wrong). Store A/B: `.tmp/t225/resettle_db.py` + silver_score + cell_judge. Dots kilo2 quota hit 19 Nov 15:07. Next: Shivam's call on merging round 10, then blend -> printed rows.
 0a. 18 Nov store repairs (R-020/R-013/R-021/R-022, held stores c09 c31 c61 c87 c88 c75, Wolf R-011/NAVKAR): `docs/state_history/STATE_2026-11-19_2005.md`. Then notes PP&E/CWIP, commitments, ratios; trial 2.
 0. Roles (16 Nov): Claude writes store design and code; DeepSeek and Flash 3.8 medium boilerplate only; agy runs the model Shivam names. Go key 1 only.
