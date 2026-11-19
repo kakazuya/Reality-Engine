@@ -331,3 +331,53 @@ def test_r3_5_company_name_is_not_a_basis():
     ws2 = [_w(10, 2, "STATEMENT"), _w(70, 2, "OF"), _w(90, 2, "STANDALONE"), _w(150, 2, "UNAUDITED"),
            _w(210, 2, "RESULTS")]
     assert sr.page_basis(ws2) == "standalone"
+
+
+# --- witnesses: arithmetic + XBRL (T-226 gates) -------------------------------------------------------------------
+
+def test_arith_total_of_rows_above_holds_in_two_columns():
+    cells = sr.settled(_page())                      # Revenue + Other income = Total income in both columns
+    sr.arith_witness(cells)
+    got = {(c["row_label"], c["value_text"]): c["arith"] for c in cells}
+    assert got[("Total income", "1,245.60")] and got[("Revenue from operations", "1,200.50")]
+    assert got[("Other income", "40.00")]
+
+
+def test_arith_lost_sign_breaks_the_identity():
+    page = [w if w[4] != "40.00" else _w(300, 62, "(40.00)") for w in _page()]   # printed sign flipped in col 2
+    cells = sr.settled(page)
+    sr.arith_witness(cells)
+    col2 = {c["row_label"]: c["arith"] for c in cells if "30.09.2024" in c["col_header"]}
+    assert not col2["Total income"] and not col2["Other income"]
+
+
+def test_arith_identity_in_one_column_only_is_no_witness():
+    page = [w for w in _page() if w[0] < 290 or w[1] < 40]                       # drop the second column
+    cells = sr.settled(page)
+    sr.arith_witness(cells)
+    assert not any(c["arith"] for c in cells)
+
+
+def test_witness_gate_statuses(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree" if cell["value_text"] == "7.00" else
+                                                                "no_xbrl_line"))
+    a = dict(_cell("q2fy25", "5.00"), arith=True, box=(200, 50, 240, 58), page=1)
+    a2 = dict(_cell("q2fy25", "7.00", label="Finance costs"), arith=False, box=(200, 62, 240, 70), page=1)
+    b = a2
+    c = dict(_cell("q2fy25", "9.00", label="Other expenses"), arith=False)
+    d = dict(_cell("q2fy26", "9.00", label="Other expenses"), arith=False)
+    e = dict(_cell("q2fy25", "3.00", label="Rent"), arith=False)
+    got = {(x["row_label"], x["doc_key"]): (x["status"], x["witness"])
+           for x in sr.witness_gate([a, b, c, d, e], FILED, xbrl=_Xbrl())}
+    assert got[("Revenue from operations", "q2fy25")] == ("verified", "arith")
+    assert got[("Finance costs", "q2fy25")] == ("verified", "xbrl")
+    assert got[("Other expenses", "q2fy25")] == ("unverified", "cross")
+    assert got[("Rent", "q2fy25")] == ("refused", "")
+
+
+def test_arith_alone_needs_its_column_period_confirmed():
+    lone = dict(_cell("q2fy25", "5.00"), arith=True, box=(200, 50, 240, 58), page=1)
+    got = sr.witness_gate([lone], FILED)
+    assert got[0]["status"] == "refused"                 # adds up, but nothing confirms the column's period

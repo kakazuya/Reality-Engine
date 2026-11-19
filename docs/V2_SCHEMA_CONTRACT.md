@@ -1698,9 +1698,26 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   line (right value, partial label); R3-6 the wrap rule refuses 424 model-verified right cells (0 of them
   mislabelled). The eval scores label and column by the printed box, not the sign. Round 8: 2,621 passed (822 equal
   a model cell, 20 model-disputed, 1,779 no model read); `basis_unknown` now holds 3,071 cells.
-- Coverage is the open problem: 822 of 12,158 model-verified cells (7%). Rule patching converges slowly (three
-  reviews, each finding new synthetic bypasses); the next design step is an independent arithmetic check (a cell
-  passes only inside a printed identity that adds up, or on exact XBRL agreement) rather than more refusal rules. Losses: one filing only 13,094 cells,
+- Rule patching converged slowly (three reviews, each finding new synthetic bypasses), so (Shivam 19 Nov) a cell
+  is now served VERIFIED only on an independent witness (`witness_gate`, after `arith_witness` per page):
+  arithmetic, the figure sits in a printed identity (a row = the sum of the rows just above it, or the sum or
+  difference of two rows above it, `ARITH_LOOKBACK` 15) that holds over the same printed rows in at least two
+  columns of the page, AND its column's period is confirmed by one of the column's own cells through XBRL or a
+  second filing (a sum still adds up under a wrong column date: c09 fe68b3 p2 showed the arithmetic alone cannot
+  prove the header); or XBRL, the judge finds the line and period and agrees exactly with the sign. Cross-filing
+  agreement alone is `unverified` (served labelled); every refusal rule still refuses (`refused`). Each served cell
+  carries `witness` (arith / xbrl / cross, joined).
+- Round 10 (witness gate, `.tmp/sf/eval3.py`): verified 3,587 (1,171 equal a model cell, 24 disputed, 2,392 no
+  model read); unverified 1,355. The 24 disputed were each read: OCR label typos ("Employce bencfits expensc"),
+  HY4 column shifts (XBRL or the printed page confirms the script), HY4 garbage labels, share capital equal in every
+  column. Seventh fresh sample, 54 verified cells no model read (`.tmp/sf/handsample7.txt`): 0 wrong values; one
+  label is OCR debris ("Total atai Provision Provi for Taxes", XBRL-verified line). Coverage of model-verified
+  cells: 1,171 of 12,158 (10%).
+- Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
+  numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
+  and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round
+  10. The c61 "discontinued operations 19.59" counted wrong in the round-2 hand read was a misread by the reader
+  of the stored text: the page prints 19.59 and (695.78) + 19.59 = (676.19). Losses: one filing only 13,094 cells,
   no period 7,368 (OCR-garbled dates, deck "FY24" columns, balance sheets without a printed kind), key conflicts
   2,815, year-kind doubt 970. Next lever measured: XBRL exact agreement as the second witness would pass 2,584 more
   single-filing cells (867 equal a model cell; 24 model-disputed, to be read before it is used).

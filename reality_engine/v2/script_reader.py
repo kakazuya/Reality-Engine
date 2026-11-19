@@ -354,3 +354,126 @@ def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         for c in group:
             c["gate"] = gate
     return cells
+
+
+# --- independent witnesses (T-226, Shivam 19 Nov: build the arithmetic and XBRL gates) ---------------------------
+#
+# The checker and the reader share one geometry, and a misreading repeated the same way in every filing agrees with
+# itself, so neither the checker nor cross-filing agreement can prove a figure.  A figure is served VERIFIED only when
+# a witness that does not depend on how the page was read agrees with it:
+#   arithmetic: the figure sits in a printed identity that adds up (a row equals the sum of the rows just above it,
+#     or the sum or difference of two rows above it) and the SAME identity over the same rows holds in at least two
+#     columns of the page, so a coincidence in one column cannot verify anything;
+#   XBRL: the XBRL judge finds the figure's line and period and agrees exactly, with the sign.
+# Cross-filing agreement alone serves the cell UNVERIFIED (labelled); every refusal rule above still refuses.
+
+ARITH_LOOKBACK = 15
+ARITH_MAX_RUN = 10
+
+
+def _num(text: str) -> tuple[float, int] | None:
+    return cj.number(text)
+
+
+def arith_witness(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Set ``arith`` (True/False) and ``arith_rel`` on the cells of ONE page (``settled`` output: needs ``box``,
+    ``col_header``, ``value_text``).  Rows are matched across columns by printed line (box top)."""
+    cols: dict[tuple[str, int], list[dict[str, Any]]] = defaultdict(list)
+    for c in cells:
+        c["arith"], c["arith_rel"] = False, ""
+        if _num(c["value_text"]) is None:
+            continue
+        xc = (c["box"][0] + c["box"][2]) / 2
+        cols[(c["col_header"], int(xc // 25))].append(c)
+    found: dict[tuple, list[tuple[tuple[str, int], list[dict[str, Any]]]]] = defaultdict(list)
+    for key, col in cols.items():
+        col.sort(key=lambda c: c["box"][1])
+        vals = [_num(c["value_text"]) for c in col]
+        rows = [round(c["box"][1]) for c in col]
+        for j in range(len(col)):
+            vj, dj = vals[j]  # type: ignore[misc]
+            if abs(vj) < 1 and dj == 0 or vj == 0:
+                continue
+            lo = max(0, j - ARITH_LOOKBACK)
+            for i in range(max(lo, j - ARITH_MAX_RUN), j - 1):          # contiguous run i..j-1 sums to j
+                terms = vals[i:j]
+                if sum(1 for t in terms if t and t[0] != 0) < 2:  # type: ignore[index]
+                    continue
+                dec = max([dj] + [t[1] for t in terms])  # type: ignore[index]
+                if abs(sum(t[0] for t in terms) - vj) <= 0.5 * 10 ** -dec * len(terms) + 1e-9:  # type: ignore[index]
+                    found[("run", tuple(rows[i:j + 1]))].append((key, col[i:j + 1]))
+            for a in range(lo, j):
+                va, da = vals[a]  # type: ignore[misc]
+                if va == 0:
+                    continue
+                for b in range(a + 1, j):
+                    vb, db = vals[b]  # type: ignore[misc]
+                    if vb == 0:
+                        continue
+                    tol = 0.5 * 10 ** -max(dj, da, db) * 2 + 1e-9
+                    if abs(va + vb - vj) <= tol:
+                        found[("sum", rows[a], rows[b], rows[j])].append((key, [col[a], col[b], col[j]]))
+                    elif abs(va - vb - vj) <= tol:
+                        found[("diff", rows[a], rows[b], rows[j])].append((key, [col[a], col[b], col[j]]))
+    for rel, hits in found.items():
+        if len({k for k, _ in hits}) < 2:
+            continue                                    # the same identity must hold in two or more columns
+        for _, members in hits:
+            for c in members:
+                c["arith"] = True
+                c["arith_rel"] = c["arith_rel"] or rel[0]
+    return cells
+
+
+_HARD_REFUSALS = {"no_period", "per_share_no_decimal", "year_kind_doubtful", "not_a_figure", "basis_unknown",
+                  "no_filing_date", "conflict", "xbrl_disagrees"}
+
+
+def _xbrl_agrees(c: dict[str, Any], xbrl: Any) -> bool:
+    title = f'{c.get("title", "")} {c.get("basis", "")}'.strip()
+    v = cj.judge({"row_label": c["row_label"], "col_header": c.get("col_header", ""), "value_text": c["value_text"],
+                  "unit_text": "", "table_title": title}, xbrl)
+    return v.verdict == "agree" and not v.sign_flip
+
+
+def _column_key(c: dict[str, Any]) -> tuple:
+    """One printed column of one page: document, page, header text and the figure's x position (25 pt bins)."""
+    box = c.get("box") or (0, 0, 0, 0)
+    return (c.get("doc_key"), c.get("page"), c.get("col_header"), int(((box[0] + box[2]) / 2) // 25))
+
+
+def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
+                 xbrl: Any = None) -> list[dict[str, Any]]:
+    """``cross_gate`` first (its refusal rules and the cross-filing key), then ``status`` per cell:
+    ``verified`` (an arithmetic or XBRL witness; ``witness`` names which, plus ``cross`` when filings also agree),
+    ``unverified`` (cross-filing agreement only, served labelled), ``refused``.  Cells need ``arith`` from
+    ``arith_witness`` (run per page before this)."""
+    cells = cross_gate(cells, filed, xbrl)
+    # an arithmetic identity proves the figures add up, not which period the column header names (a reader that
+    # put the wrong date over a whole column still adds up): the column's period must be confirmed by one of its
+    # own cells through XBRL or a second filing, and then holds for every cell printed in that column
+    for c in cells:
+        c["_xa"] = c["gate"] not in _HARD_REFUSALS and xbrl is not None and _xbrl_agrees(c, xbrl)
+    confirmed: set[tuple] = set()
+    for c in cells:
+        if c["_xa"] or c["gate"] == "pass":
+            confirmed.add(_column_key(c))
+    for c in cells:
+        if c["gate"] in _HARD_REFUSALS:
+            c["status"], c["witness"] = "refused", ""
+            continue
+        w = []
+        if c.get("arith") and _column_key(c) in confirmed:
+            w.append("arith")
+        if c.pop("_xa", False):
+            w.append("xbrl")
+        if c["gate"] == "pass":
+            w.append("cross")
+        c["witness"] = "+".join(w)
+        if "arith" in w or "xbrl" in w:
+            c["status"] = "verified"
+        elif "cross" in w:
+            c["status"] = "unverified"
+        else:
+            c["status"] = "refused"
+    return cells
