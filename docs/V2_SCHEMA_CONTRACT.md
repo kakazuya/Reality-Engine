@@ -1622,3 +1622,144 @@ hand-read routed pages print no table (cover letters, thank-you slides, notes pr
 with two numbers and a word as a table row. All 10 hand-read `no_figures` pages were right. The quarantine digit test
 is a substring of the page's concatenated digits, so `99` passes on a page printing `999`. `figures_in` reads the
 store text while `is_table_page` reads word boxes, so the two can disagree.
+
+## 16. Script-first page reading (T-226, 19 Nov 2026, Eagle)
+
+Shivam 19 Nov: model quota is finite, so parse as much as possible with scripts; losing a right cell is fine, serving
+a wrong one never is. Earlier "scripts 4 of 60" (`reports/2026-11-18_model_vs_script.html`) measured COVERAGE: no
+script handled 56 of those pages (no deck reader at all). It said nothing about what a geometry reader could do.
+
+`reality_engine/v2/script_reader.py` (tests `reality_engine/tests/test_v2_script_reader.py`), no model anywhere:
+- `read_page(words)`: label = printed text left of the line, header = the header stack
+  `reference_geom.Page.columns_for` prints over the figure's column, section = the last figure-less heading inside the
+  table. Refused at read: a label that does not start like a row or is OCR debris (`good_label`), an ID label
+  (DIN/CIN/PAN/membership/registration/place/date), an identifier figure (leading zero: a DIN "07027180") or one with
+  an unbalanced bracket or a lone "(" / ")" beside it (a sign split off: "(19.59)" read as 19.59), a column whose
+  header prints two dates, and a whole line with two figures under one column (a split number: "20 971").
+- `settled(words)`: `settle_page` places the cells as for a model read; adds basis (first of consolidated /
+  standalone in the page's top words), period end and kind (`cell_judge.period_end` / `column_kind` with the page
+  title); a label printed twice in one column with the same section is refused (rows cannot be told apart).
+- `cross_gate(cells, filed, xbrl)`: the checker shares the reader's geometry, so it cannot catch this reader's own
+  column errors. A cell passes only when filings at least 45 days apart (never the same results filed on NSE and BSE)
+  print the same value for the same (basis, label [+ section when repeated], period end, kind) and no filing prints
+  another value. Refused before grouping: no period, a per-share line without a decimal ("154" for 1.54: a scan
+  layer drops the point the same way in every filing), a `year` column naming half/nine/quarter or not ending in
+  March (December year-end firms lose these until their year end is known), not a figure. Refused after: any cell of
+  the key the XBRL judge calls `disagree` (a mislabel repeated in every filing agrees with itself: c88's
+  discontinued-operations "(691)" under a bare "Profit / (Loss) Before Tax").
+
+Measured on every results page (text over 400 chars) of the 10 T-225 blend companies (c01-c05, c09, c31, c61, c87,
+c88; 2,745 pages), scored against the model cells (Dots, HY4, Beam, LongCat) the checker verified on the same printed
+box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
+- Gate-passed cells: 3,836 (round 4). 1,247 equal a model-verified cell (label and period); 27 disagree with a model
+  and every one was traced to the model (c09 HY4 column shift, confirmed by XBRL for Sep-2025; HY4 "S.No." headers on
+  c61; Dots calling a nine-month figure a quarter); 2,562 sit where no model read.
+- Hand reads of gate-passed cells no model or XBRL covers, three fresh samples of 60: round 2 found 4 wrong (DIN
+  numbers from a signature block x2, a half-year figure under "Year ended 30 Sep", a split-off minus sign); round 3,
+  1 wrong section on a repeated cash-flow label; round 4 (`.tmp/sf/handsample3.txt`): 0 wrong of 60, three doubtful
+  cells checked on word positions and right. Each wrong class is now a refusal rule with a test.
+- Review r5 (dsh 20261119T143028Z-6e23f738, adversarial, synthetic layouts; every class reproduced by Eagle, fixed,
+  and a test in `test_v2_script_reader.py`): F1/F2 a sign in a separate word ("- 19.59" tight to the figure,
+  "(Rs. 19.59") -> `_lone_bracket_beside` refuses an unclosed bracket or a tight minus beside the figure; F3 a title
+  naming both bases -> `page_basis` = '' and the gate refuses `basis_unknown`; F4 the XBRL veto never saw the
+  statement title -> `_xbrl_refuses` passes the page title, and an XBRL agreement only with the sign flipped also
+  refuses; F5 "Page 2", phone, fax, PIN under a value column -> wider `_ID_LABEL` and a figure line must be a data
+  line of its header band's table block (`Page._block`); F6 a wrapped label served as its last line ("Debts") ->
+  `_wrapped_above` refuses a line whose label continues the figure-less line above (full-width line, a line ending
+  in a comma or joining word, or a label opening "(Including ..."); F7 "Per equity share" escaped the decimal rule ->
+  wider `_PER_SHARE`. Honest negatives: a moving-date column misread always lands in `conflict`.
+- After the review (rounds 5-6): fourth fresh sample of 60, 1 wrong (a wrapped cash-flow label, c05 "(Including
+  Capital Work In Progress ...)", wider line spacing than the wrap rule allowed; refused only after the re-review fix below); fifth fresh sample of
+  60 (`.tmp/sf/handsample5.txt`), 0 wrong values, one bare "Total" whose section was header text (c88 note table) ->
+  `generic_unanchored` refuses Total/Others/Net/Less/Add without a real section. Round 6 gate: 3,310 cells passed
+  (1,050 equal a model cell, 26 model-disputed all traced to the model, 2,234 no model read); the stricter rules cost
+  526 passed cells against round 4. Hand-read wrong rate by round: 4/60, 1/60, 0/60, 1/60, 0/60 (each wrong class
+  closed by a rule before the next fresh sample).
+- Re-review (dsh 20261119T150452Z-8f05257b) of those fixes: five bypasses reproduced, and it showed the round-5
+  wide-spacing test never exercised the branch it named and the old F1/F2/F6 "refused" evidence was vacuous. Fixed
+  structurally, layouts kept as `test_rr_*`: `_lone_bracket_beside` now reads EVERY word between the previous figure
+  (or the label) and the figure, and up to the next figure: an unclosed "(" anywhere ("( ₹ 19.59"), an unopened ")",
+  or a minus not centred inside another column's range (that column's blank cell) refuses; a dash followed by a
+  word is a bullet ("- Current Tax Expense" is kept). `_wrapped_above` allows up to 3 line heights and 3 heights of
+  indent, ignores a 1-2 digit note number on the first line, and besides the width / comma-or-joining-word /
+  "(Including" signals treats a figure-less first line as a wrap unless two or more figure rows follow it (a heading
+  heads several rows, a wrap one). `per_share_ok` reads section + label ("Per equity" / "Share (in Rs.)").
+  `generic_unanchored` drops list marks and roman numerals and refuses any label made only of total / net / others /
+  less / add / balance / opening / closing words ("Total (A)", "Net Total").
+- Round 7 (after the re-review fixes): 2,977 cells passed (964 equal a model cell, 26 model-disputed all traced to
+  the model, 1,987 no model read); sixth fresh sample of 60 (`.tmp/sf/handsample6.txt`): 0 wrong (one doubtful
+  cash-flow dividend checked on word positions: right; only its section heading was stale). Wrong per round of 60:
+  4, 1, 0, 1, 0, 0.
+- Third review (dsh 20261119T153807Z-302115b9): old repros dead; fixed with `test_r3_*`: a footnote mark between
+  a minus and the figure no longer stops the sign scan (`_FOOTNOTE`); a label ending "Note"/"Refer" refuses its line
+  (a note number in a value column); "Gross" is generic; `page_basis` reads only a statement phrase
+  ("Consolidated Unaudited Financial Results", `_BASIS_PHRASE`), never a company name, and "Standalone and
+  Consolidated" stays undecided. OPEN: R3-3 a wrapped label followed by two figure rows still passes as its last
+  line (right value, partial label); R3-6 the wrap rule refuses 424 model-verified right cells (0 of them
+  mislabelled). The eval scores label and column by the printed box, not the sign. Round 8: 2,621 passed (822 equal
+  a model cell, 20 model-disputed, 1,779 no model read); `basis_unknown` now holds 3,071 cells.
+- Rule patching converged slowly (three reviews, each finding new synthetic bypasses), so (Shivam 19 Nov) a cell
+  is now served VERIFIED only on an independent witness (`witness_gate`, after `arith_witness` per page):
+  arithmetic, the figure sits in a printed identity (a row = the sum of the rows just above it, or the sum or
+  difference of two rows above it, `ARITH_LOOKBACK` 15) that holds over the same printed rows in at least two
+  columns of the page, AND its column's period is confirmed by one of the column's own cells through XBRL or a
+  second filing (a sum still adds up under a wrong column date: c09 fe68b3 p2 showed the arithmetic alone cannot
+  prove the header); or XBRL, the judge finds the line and period and agrees with the sign, at the page's printed
+  unit, equal up to the printed rounding, judged on the cell's own basis only (see the two witness reviews below);
+  an arithmetic identity witnesses only when one member of it is XBRL-agreed (sign anchor). Cross-filing
+  agreement alone is `unverified` (served labelled); every refusal rule still refuses (`refused`). Each served cell
+  carries `witness` (arith / xbrl / cross, joined).
+- Round 10 (witness gate, `.tmp/sf/eval3.py`): verified 3,587 (1,171 equal a model cell, 24 disputed, 2,392 no
+  model read); unverified 1,355. The 24 disputed were each read: OCR label typos ("Employce bencfits expensc"),
+  HY4 column shifts (XBRL or the printed page confirms the script), HY4 garbage labels, share capital equal in every
+  column. Seventh fresh sample, 54 verified cells no model read (`.tmp/sf/handsample7.txt`): 0 wrong values; one
+  label is OCR debris ("Total atai Provision Provi for Taxes", XBRL-verified line). Coverage of model-verified
+  cells: 1,171 of 12,158 (10%).
+- Witness-gate review (dsh 20261119T181113Z-57f37188), three wrong-verified classes reproduced on real cells and
+  fixed with tests: F1 the judge tried every scale when the page title lacked the unit, so a decimal-lost
+  "3419685" (34,196.85 lakh) agreed in thousands -> `page_unit` reads the one unit printed anywhere on the page,
+  no unit = no XBRL witness, the agreement must come at that unit (rupees on a per-share line), and
+  `_decimals_consistent` refuses a figure without decimals in a column whose other figures print them; F2 the
+  judge's 0.1 % tolerance verified transposed digits (30,843 for 30,834) -> `_xbrl_agrees` demands equality up to
+  the printed decimals' rounding; F3 a period-invariant row (share capital) confirmed any column date and
+  `_column_key` ignored the table -> only a row whose values change across columns confirms a column's period,
+  and keys carry `table_id` (the header band's first line). Hand read round 11 (54 verified cells) then found a
+  fourth: c01's side-by-side balance sheet ("Standalone Standalone & & Consolidated Consolidated") served the
+  standalone column as consolidated, XBRL-verified against the standalone fact -> `page_basis` is undecided when
+  both words appear on top, `column_basis` takes the basis a column header prints, and the XBRL witness needs the
+  agreeing fact's basis to equal the cell's. Round 12: verified 3,288 (1,091 equal a model cell, 24 disputed as
+  before), unverified 1,464; ninth fresh sample of 54 verified cells: 0 wrong (one quarter column under a header
+  that also names "Half" checked on word positions: right). 48 tests.
+- Second witness review (dsh 20261119T183310Z-ddcf03dd), all reproduced on its real-page attack scripts and fixed
+  with `test_ww*`: W1 an identity is invariant under a sign flip of a whole block of rows (c03 p11 "Owners of the
+  Company", 7 cells whose brackets were dropped stayed verified) -> an identity instance witnesses its members only
+  when one member of that same instance is XBRL-agreed with its sign (`arith_groups`, anchored); W2 the XBRL basis
+  check above never fired (the cell's basis was appended to the judge's title, so the judge named no other basis;
+  the earlier test mocked a verdict the real judge cannot return) -> `_judge_title` strips every basis word from
+  the page title and adds only the cell's basis, in the witness and in the veto; W3 a refused misread made a flat
+  row look period-varying -> the row test skips hard-refused cells and compares numbers. Round 13's read then found
+  an OCR page's "293.2" for 293.25 XBRL-verified (one printed decimal allows 0.05) -> `_decimals_consistent` now
+  refuses any figure printing fewer decimals than its column's usual count. Round 14: verified 2,943 (1,054 equal a
+  model cell, 18 disputed: OCR label typos, HY4 column shifts, share capital), unverified 1,636; eleventh fresh
+  sample, 50 verified cells: 0 wrong (a printed depreciation of 1 lakh checked: right). 52 tests.
+- Third witness review (dsh 20261119T190937Z-43133070, 20 Nov), real-page attack scripts kept in
+  `.tmp/r3/` of the branch worktree, fixed with `test_t3_*`: F1 the title strip missed "Stand Alone" / "Stand-alone",
+  so the judge named no basis, read both statements' facts and verified a standalone figure under a consolidated
+  column (c01 other equity, +40.6 %) -> the strip takes every spelling `basis_of` reads, and `_xbrl_agrees` requires
+  the judge's basis to EQUAL the cell's (a judge naming none is no witness); F2 a key filed with both signs (c31
+  basic EPS 2025-06-30: 0.61, 0.61, -0.61) let a lost minus agree -> no XBRL witness when the key's facts hold both
+  signs. F3 (a figure rounded to the whole page unit in a whole-unit column agrees within half a unit) is kept: the
+  served figure is the printed one at its printed precision, not a wrong number. Refuted: identities across two
+  tables, a misdated column through a share-capital anchor; the three earlier attacks still refuse. Round 15 (both
+  fixes): verified 2,943, unverified 1,636, the same cells as round 14 (both classes latent in these 10 stores).
+  55 tests.
+- Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
+  numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
+  and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round
+  10, and the basis class (23 verified cells in rounds 9-11, from the basis-blind XBRL witness) fell to 0 in round 12;
+  the c05 dropped digit "293.2" (verified in rounds 9-13) fell to 0 in round 14.
+  The c61 "discontinued operations 19.59" counted wrong in the round-2 hand read was a misread by the reader
+  of the stored text: the page prints 19.59 and (695.78) + 19.59 = (676.19). Losses: one filing only 13,094 cells,
+  no period 7,368 (OCR-garbled dates, deck "FY24" columns, balance sheets without a printed kind), key conflicts
+  2,815, year-kind doubt 970. Next lever measured: XBRL exact agreement as the second witness would pass 2,584 more
+  single-filing cells (867 equal a model cell; 24 model-disputed, to be read before it is used).
