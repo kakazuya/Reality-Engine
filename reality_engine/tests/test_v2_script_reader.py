@@ -668,7 +668,7 @@ def test_r5_f3_title_basis_other_than_the_cell_basis_is_no_witness(monkeypatch):
     assert sr._xbrl_agrees(c, _Xbrl())
 
 
-def _basis_judge(facts):
+def _basis_judge(facts, contrary=()):
     from reality_engine.v2 import cell_judge as cj
 
     def judge(cell, x):
@@ -676,6 +676,8 @@ def _basis_judge(facts):
         p = cj.number(cell["value_text"])[0] * 1e5
         if (b, cell["value_text"]) in facts:
             return cj.Verdict("agree", basis=b, printed=p, xbrl=[p])
+        if (b, cell["value_text"]) in contrary:
+            return cj.Verdict("disagree", basis=b, printed=p, xbrl=[p + 1e5])
         return cj.Verdict("no_xbrl_line", basis=b)
     return judge
 
@@ -690,6 +692,13 @@ def test_xbrl_gives_a_column_a_basis_only_when_one_basis_wins(monkeypatch):
     from reality_engine.v2 import cell_judge as cj
 
     monkeypatch.setattr(cj, "judge", _basis_judge({("consolidated", "10.00"), ("consolidated", "20.00")}))
+    lone = _bcol(["10.00", "20.00", "30.00"])            # no standalone facts at all: "none agrees" proves nothing
+    assert sr.basis_columns_by_xbrl(lone, _Xbrl()) == 0
+    monkeypatch.setattr(cj, "judge", _basis_judge({("consolidated", "10.00"), ("consolidated", "20.00")},
+                                                   contrary={("standalone", "10.00")}))
+    caption = _bcol(["10.00", "20.00"])
+    caption[1]["section"] = "Standalone"                  # a caption naming the other basis: undecided
+    assert sr.basis_columns_by_xbrl(caption, _Xbrl()) == 0
     col = _bcol(["10.00", "20.00", "30.00"])
     assert sr.basis_columns_by_xbrl(col, _Xbrl()) == 1
     assert {c["basis"] for c in col} == {"consolidated"} and all(c["basis_inferred"] for c in col)

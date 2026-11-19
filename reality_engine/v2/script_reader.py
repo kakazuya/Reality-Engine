@@ -789,7 +789,12 @@ def basis_columns_by_xbrl(cells: list[dict[str, Any]], xbrl: Any) -> int:
     for col in cols.values():
         votes = {b: sum(_xbrl_agrees(dict(c, basis=b), xbrl) for c in col) for b in ("consolidated", "standalone")}
         won = [b for b, n in votes.items() if n >= 2]
-        if len(won) == 1 and votes[{"consolidated": "standalone", "standalone": "consolidated"}[won[0]]] == 0:
+        other = {"consolidated": "standalone", "standalone": "consolidated"}[won[0]] if len(won) == 1 else ""
+        # "none agrees as the other" proves nothing where the other statement has no facts: at least one cell must
+        # be refused by the other basis's own facts; and no cell's section caption may name the other basis
+        # (sixth review F1: a standalone block over equal figures, with no standalone facts, was voted consolidated)
+        if other and votes[other] == 0 and any(_xbrl_refuses(dict(c, basis=other), xbrl) for c in col) \
+                and not any(cj.basis_of(c.get("section", "")) == other for c in col):
             for c in col:
                 c["basis"], c["basis_inferred"] = won[0], True
             done += 1
