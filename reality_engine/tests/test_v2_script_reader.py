@@ -238,3 +238,71 @@ def test_generic_label_needs_a_real_section():
     assert not sr.generic_unanchored("Total", "Segment Revenue")
     assert not sr.generic_unanchored("Total Income", "")
     assert sr.generic_unanchored("(ii) Others", "")
+
+
+# --- T-226 re-review (dsh 20261119T150452Z-8f05257b): five bypasses of the r5 fixes, layouts as reproduced -------
+
+def _lw(y, words, x=10):
+    out = []
+    for t in words:
+        out.append(_w(x, y, t))
+        x += 5 * len(t) + 4
+    return out
+
+
+def _base():
+    return [_w(10, 2, "STATEMENT"), _w(70, 2, "OF"), _w(90, 2, "CONSOLIDATED"), _w(160, 2, "RESULTS"),
+            _w(200, 20, "Quarter"), _w(240, 20, "Ended"), _w(300, 20, "Quarter"), _w(340, 20, "Ended"),
+            _w(200, 30, "30.09.2024"), _w(300, 30, "30.09.2023")] + _lw(50, ["Revenue", "from", "operations"]) + [
+            _w(200, 50, "1,200.50"), _w(300, 50, "1,100.25")]
+
+
+_OTHER = _lw(62, ["Other", "income"]) + [_w(200, 62, "45.10"), _w(300, 62, "40.00")]
+
+
+def _passed(page):
+    cells = sr.settled(page)
+    filed = {"a": dt.date(2024, 11, 12), "b": dt.date(2025, 11, 12)}
+    gated = sr.cross_gate([dict(c, doc_key="a") for c in cells] + [dict(c, doc_key="b") for c in cells], filed)
+    return {(c["row_label"], c["value_text"]) for c in gated if c["gate"] == "pass"}
+
+
+def test_rr_fa_minus_far_left_in_the_cell_is_refused():
+    page = _base() + _lw(62, ["Net", "loss"]) + [_w(183, 62, "-"), _w(200, 62, "19.59"), _w(300, 62, "12.62")]
+    got = _passed(page)
+    assert ("Net loss", "19.59") not in got and ("Net loss", "12.62") in got
+
+
+def test_rr_fa_bracket_and_currency_two_words_away_is_refused():
+    page = _base() + _lw(62, ["Net", "loss", "after", "exceptional", "items"]) + [
+        _w(171, 62, "("), _w(180, 62, "₹"), _w(200, 62, "19.59"), _w(300, 62, "12.62")]
+    assert not any(v == "19.59" for _, v in _passed(page))
+
+
+def test_rr_fa_bullet_dash_before_a_label_is_not_a_minus():
+    page = _base() + _lw(62, ["-", "Current", "Tax", "Expense"]) + [_w(200, 62, "82.00"), _w(300, 62, "75.00")]
+    assert ("- Current Tax Expense", "82.00") in _passed(page)
+
+
+def test_rr_fb_wide_spaced_wrap_is_refused():
+    page = _base() + _OTHER + _lw(74, ["Acquisition", "of", "Property,", "Plant", "and", "Equipments,"]) + _lw(
+        98, ["(Including", "Capital", "Work", "In", "Progress"]) + [_w(200, 98, "(559.52)"), _w(300, 98, "(802.98)")]
+    assert not any(label.startswith("(Including") for label, _ in _passed(page))
+
+
+def test_rr_fc_wrap_whose_first_line_has_a_note_number_is_refused():
+    page = _base() + _OTHER + _lw(74, ["Less:", "Provision", "for", "doubtful"]) + [_w(180, 74, "5")] + _lw(
+        86, ["Debts"]) + [_w(200, 86, "123.40"), _w(300, 86, "98.00")]
+    assert not any(label == "Debts" for label, _ in _passed(page))
+
+
+def test_rr_fd_wrapped_per_share_label_is_refused():
+    page = _base() + _OTHER + _lw(74, ["Per", "equity"]) + _lw(86, ["Share", "(in", "Rs.)"]) + [
+        _w(200, 86, "154"), _w(300, 86, "138")]
+    assert not any(v in ("154", "138") for _, v in _passed(page))
+
+
+def test_rr_fe_generic_labels_with_markers_are_refused():
+    assert sr.generic_unanchored("Total (A)", "") and sr.generic_unanchored("Net Total", "")
+    page = _base() + _lw(62, ["Total", "(A)"]) + [_w(200, 62, "1,245.60"), _w(300, 62, "1,140.25")]
+    assert not any(label == "Total (A)" for label, _ in _passed(page))

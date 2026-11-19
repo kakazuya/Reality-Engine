@@ -84,24 +84,40 @@ _MINUS = ("-", "–", "—", "−")
 
 
 def _lone_bracket_beside(words: list[tuple[float, float, float, float, str]], order: list[int], i: int,
-                         h: float = 8.0) -> bool:
-    """The figure's sign sits in a separate word: the word just left opens a bracket it does not close ("(",
-    "(Rs.", "(₹") or is a minus printed tight against the figure ("- 19.59"; an empty-cell dash sits in its
-    own column, further off), or the word just right closes one it did not open (T-226 F1, F2)."""
+                         h: float = 8.0, cols: list[dict[str, Any]] | None = None) -> bool:
+    """The figure's sign may sit in other words of its cell (T-226 F1, F2, re-review F-A): every word between the
+    previous figure (or the label) and this figure is read, and every word up to the next figure.  Refused: an
+    opening bracket left unclosed on the left ("(", "(Rs.", "( ₹"), a closing bracket unopened on the right, or a
+    minus on the left that is not an empty-cell mark of ANOTHER column (a dash centred inside another column's
+    range is that column's blank cell; any other minus belongs to this figure)."""
     k = order.index(i)
-    left = words[order[k - 1]] if k > 0 else None
-    right = words[order[k + 1]] if k + 1 < len(order) else None
-    if left is not None:
-        t = left[4].strip()
-        if not any(ch.isdigit() for ch in t) and t.count("(") > t.count(")"):
-            return True
-        if t in _MINUS and words[i][0] - left[2] <= 0.8 * h:
-            return True
-    if right is not None:
-        t = right[4].strip()
-        if not any(ch.isdigit() for ch in t) and t.count(")") > t.count("("):
-            return True
-    return False
+    left_idx: list[int] = []
+    for j in reversed(order[:k]):
+        if any(ch.isdigit() for ch in words[j][4]):
+            break
+        left_idx.append(j)
+    opened = sum(words[j][4].count("(") - words[j][4].count(")") for j in left_idx)
+    if opened > 0:
+        return True
+    home = None
+    xc = (words[i][0] + words[i][2]) / 2
+    for c in cols or []:
+        if c["x0"] - 1 <= xc <= c["x1"] + 1:
+            home = c
+    for j in left_idx:
+        t = words[j]
+        nxt = order[order.index(j) + 1]
+        if t[4].strip() in _MINUS and not re.match(r"[A-Za-z]", words[nxt][4]):   # "- Current Tax" is a bullet
+            dc = (t[0] + t[2]) / 2
+            other = any(c is not home and c["x0"] - 0.5 * h <= dc <= c["x1"] + 0.5 * h for c in cols or [])
+            if not other:
+                return True
+    closed = 0
+    for j in order[k + 1:]:
+        if any(ch.isdigit() for ch in words[j][4]):
+            break
+        closed += words[j][4].count(")") - words[j][4].count("(")
+    return closed > 0
 
 
 def _wrapped_above(page: Any, n: int, label_right: float) -> bool:
@@ -111,19 +127,22 @@ def _wrapped_above(page: Any, n: int, label_right: float) -> bool:
     does not reach that width."""
     if n == 0:
         return False
-    above, here = page.lines[n - 1], page.lines[n]
-    if any(page._digit_figure(j) for j in above):
-        return False
     w = page.words
+    above, here = page.lines[n - 1], page.lines[n]
+    # a note number ("5") on the first line does not make it a figure row (re-review F-C): only a figure that is
+    # more than a 1-2 digit integer does
+    if any(page._digit_figure(j) and not re.fullmatch(r"\d{1,2}", w[j][4].strip()) for j in above):
+        return False
     top_here = min(w[j][1] for j in here)
     bottom_above = max(w[j][3] for j in above)
-    if top_here - bottom_above > 1.6 * page.h:        # c05 cash flow wraps with wider line spacing (round 5 read)
+    if top_here - bottom_above > 3.0 * page.h:        # wide line spacing still wraps (re-review F-B); a refusal
         return False
     x_here = min(w[j][0] for j in here)
     x_above = min(w[j][0] for j in above)
-    if abs(x_here - x_above) > 1.5 * page.h:
+    if abs(x_here - x_above) > 3.0 * page.h:
         return False
-    text = " ".join(w[j][4] for j in sorted(above, key=lambda j: w[j][0])).strip()
+    text = " ".join(w[j][4] for j in sorted(above, key=lambda j: w[j][0]) if not
+                    re.fullmatch(r"\d{1,2}", w[j][4].strip())).strip()
     if not text or text.endswith(":"):
         return False
     if max(w[j][2] for j in above) >= 0.8 * label_right:
@@ -131,7 +150,16 @@ def _wrapped_above(page: Any, n: int, label_right: float) -> bool:
     if _JOINER_END.search(text):                       # "... Plant and Equipments," / "... for the"
         return True
     own = " ".join(w[j][4] for j in sorted(here, key=lambda j: w[j][0]))
-    return bool(_PAREN_START.match(own))               # "(Including Capital Work ...)" continues the line above
+    if _PAREN_START.match(own):                        # "(Including Capital Work ...)" continues the line above
+        return True
+    # otherwise a heading heads two or more figure rows; a first line with one figure row under it is a wrap
+    rows = 0
+    for m in range(n, min(len(page.lines), n + 3)):
+        if any(page._digit_figure(j) and not re.fullmatch(r"\d{1,2}", w[j][4].strip()) for j in page.lines[m]):
+            rows += 1
+        else:
+            break
+    return rows < 2
 
 
 _JOINER_END = re.compile(r"(,|\b(of|and|for|to|in|on|the|from|by|with|&|or|at|under|towards|including))\s*$", re.I)
@@ -186,7 +214,7 @@ def read_page(words: list[tuple[float, float, float, float, str]]) -> list[dict[
         if len(placed_homes) != len(set(placed_homes)):
             continue                                    # two figures under one column: a split number ("20 971")
         for i in figs:
-            if not figure_ok(words[i][4]) or _lone_bracket_beside(words, order, i, page.h):
+            if not figure_ok(words[i][4]) or _lone_bracket_beside(words, order, i, page.h, cols):
                 continue
             xc = (words[i][0] + words[i][2]) / 2
             col = next((c for c in cols if c["x0"] - 1 <= xc <= c["x1"] + 1), None)
@@ -228,7 +256,8 @@ def settled(words: list[tuple[float, float, float, float, str]]) -> list[dict[st
             and not generic_unanchored(c["row_label"], c["section"])]
 
 
-_GENERIC = re.compile(r"^(grand\s+|sub[\s-]*)?total|others?|net|less|add|balance|closing|opening$", re.I)
+_GENERIC_WORDS = {"total", "grand", "sub", "subtotal", "others", "other", "net", "less", "add", "balance", "closing",
+                  "opening", "amount", "sum"}
 _PERIODISH = re.compile(r"\b(ended|quarter|year|months?|half|audited|unaudited|particulars)\b", re.I)
 
 
@@ -236,8 +265,8 @@ def generic_unanchored(label: str, section: str) -> bool:
     """A bare "Total" / "Others" / "Net" says nothing about what it totals; served only under a section heading
     that is not header text ("Quarter ended Nine months ended Year ended" names columns, not a line: c88 note
     table, round 6 read)."""
-    core = re.sub(r"[^a-z\s-]", "", label_key(label)).strip()
-    if not _GENERIC.fullmatch(core):
+    words = [t for t in label_key(label).split() if len(t) > 1 and not re.fullmatch(r"[ivx]+", t)]
+    if not words or not set(words) <= _GENERIC_WORDS:   # "Total (A)", "Net Total" (re-review F-E)
         return False
     return not section.strip() or bool(_PERIODISH.search(section))
 
@@ -280,7 +309,7 @@ def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         if not c.get("period_end") or c.get("kind") in ("", "unprinted"):
             c["gate"] = "no_period"
             continue
-        if not per_share_ok(c["row_label"], c["value_text"]):
+        if not per_share_ok(f'{c.get("section", "")} {c["row_label"]}', c["value_text"]):  # wrapped "Per equity"
             c["gate"] = "per_share_no_decimal"
             continue
         if not kind_ok(c.get("col_header", ""), c["kind"], c["period_end"]):

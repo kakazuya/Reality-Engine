@@ -1669,13 +1669,28 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   in a comma or joining word, or a label opening "(Including ..."); F7 "Per equity share" escaped the decimal rule ->
   wider `_PER_SHARE`. Honest negatives: a moving-date column misread always lands in `conflict`.
 - After the review (rounds 5-6): fourth fresh sample of 60, 1 wrong (a wrapped cash-flow label, c05 "(Including
-  Capital Work In Progress ...)", wider line spacing than the wrap rule allowed: now refused); fifth fresh sample of
+  Capital Work In Progress ...)", wider line spacing than the wrap rule allowed; refused only after the re-review fix below); fifth fresh sample of
   60 (`.tmp/sf/handsample5.txt`), 0 wrong values, one bare "Total" whose section was header text (c88 note table) ->
   `generic_unanchored` refuses Total/Others/Net/Less/Add without a real section. Round 6 gate: 3,310 cells passed
   (1,050 equal a model cell, 26 model-disputed all traced to the model, 2,234 no model read); the stricter rules cost
   526 passed cells against round 4. Hand-read wrong rate by round: 4/60, 1/60, 0/60, 1/60, 0/60 (each wrong class
   closed by a rule before the next fresh sample).
-- Coverage is the open problem: 1,050 of 12,158 model-verified cells (9%). Losses: one filing only 13,094 cells,
+- Re-review (dsh 20261119T150452Z-8f05257b) of those fixes: five bypasses reproduced, and it showed the round-5
+  wide-spacing test never exercised the branch it named and the old F1/F2/F6 "refused" evidence was vacuous. Fixed
+  structurally, layouts kept as `test_rr_*`: `_lone_bracket_beside` now reads EVERY word between the previous figure
+  (or the label) and the figure, and up to the next figure: an unclosed "(" anywhere ("( ₹ 19.59"), an unopened ")",
+  or a minus not centred inside another column's range (that column's blank cell) refuses; a dash followed by a
+  word is a bullet ("- Current Tax Expense" is kept). `_wrapped_above` allows up to 3 line heights and 3 heights of
+  indent, ignores a 1-2 digit note number on the first line, and besides the width / comma-or-joining-word /
+  "(Including" signals treats a figure-less first line as a wrap unless two or more figure rows follow it (a heading
+  heads several rows, a wrap one). `per_share_ok` reads section + label ("Per equity" / "Share (in Rs.)").
+  `generic_unanchored` drops list marks and roman numerals and refuses any label made only of total / net / others /
+  less / add / balance / opening / closing words ("Total (A)", "Net Total").
+- Round 7 (after the re-review fixes): 2,977 cells passed (964 equal a model cell, 26 model-disputed all traced to
+  the model, 1,987 no model read); sixth fresh sample of 60 (`.tmp/sf/handsample6.txt`): 0 wrong (one doubtful
+  cash-flow dividend checked on word positions: right; only its section heading was stale). Wrong per round of 60:
+  4, 1, 0, 1, 0, 0.
+- Coverage is the open problem: 964 of 12,158 model-verified cells (8%). Losses: one filing only 13,094 cells,
   no period 7,368 (OCR-garbled dates, deck "FY24" columns, balance sheets without a printed kind), key conflicts
   2,815, year-kind doubt 970. Next lever measured: XBRL exact agreement as the second witness would pass 2,584 more
   single-filing cells (867 equal a model cell; 24 model-disputed, to be read before it is used).
