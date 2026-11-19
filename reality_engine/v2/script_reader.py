@@ -459,7 +459,7 @@ def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         if c["doc_key"] not in filed:
             c["gate"] = "no_filing_date"
             continue
-        if c.get("period_inferred"):
+        if _inferred(c):
             # a date read from "FY24" or voted by XBRL neither confirms nor refuses another filing's cell (round 21:
             # an OCR misread "1,089.17" in an XBRL-dated column made a conflict that refused the right 1,099.17)
             if c["period_end"] >= filed[c["doc_key"]].isoformat():
@@ -634,7 +634,7 @@ def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
     confirmed: set[tuple] = set()
     for c in cells:
         row = (c.get("doc_key"), c.get("page"), c.get("table_id"), round(c["box"][1]) if c.get("box") else None)
-        if (c["_xa"] or (c["gate"] == "pass" and not c.get("period_inferred"))) and len(row_vals[row]) > 1:
+        if (c["_xa"] or (c["gate"] == "pass" and not _inferred(c))) and len(row_vals[row]) > 1:
             confirmed.add(_column_key(c))              # share capital, equal in every period, proves no date (F3)
     for c in cells:
         if c["gate"] in _HARD_REFUSALS:
@@ -649,7 +649,7 @@ def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         if c["gate"] == "pass":
             w.append("cross")
         c["witness"] = "+".join(w)
-        if c.get("period_inferred") and "xbrl" not in w:
+        if _inferred(c) and "xbrl" not in w:
             c["status"] = "refused"                 # a date read from "FY24" is served only on its own XBRL witness
         elif "arith" in w or "xbrl" in w:
             c["status"] = "verified"
@@ -765,3 +765,32 @@ def date_columns_by_xbrl(cells: list[dict[str, Any]], filed: Mapping[str, _dt.da
                 c["period_end"], c["period_inferred"], c["judge_header"] = e, True, hdr
             dated += 1
     return dated
+
+
+def _inferred(c: dict[str, Any]) -> bool:
+    """A cell whose period or basis was not printed but inferred (fiscal label, XBRL vote): served only on its own
+    XBRL witness, and kept out of cross-filing pairing."""
+    return bool(c.get("period_inferred") or c.get("basis_inferred"))
+
+
+def basis_columns_by_xbrl(cells: list[dict[str, Any]], xbrl: Any) -> int:
+    """A column whose page and header name neither basis, or both ("Standalone & Consolidated" over one column grid),
+    takes a basis only from XBRL: the column is consolidated (standalone) when two or more of its cells agree exactly
+    as consolidated (standalone) and none agrees as the other basis; a company whose two statements print equal
+    figures stays undecided.  Its cells are ``basis_inferred`` (served only on their own XBRL witness).  Run after
+    ``date_columns_by_xbrl``.  Returns columns given a basis (20 Nov: 2,336 cells refused as basis unknown)."""
+    if xbrl is None:
+        return 0
+    cols: dict[tuple, list[dict[str, Any]]] = defaultdict(list)
+    for c in cells:
+        if not c.get("basis") and c.get("period_end") and c.get("kind") not in ("", "unprinted"):
+            cols[_column_key(c)].append(c)
+    done = 0
+    for col in cols.values():
+        votes = {b: sum(_xbrl_agrees(dict(c, basis=b), xbrl) for c in col) for b in ("consolidated", "standalone")}
+        won = [b for b, n in votes.items() if n >= 2]
+        if len(won) == 1 and votes[{"consolidated": "standalone", "standalone": "consolidated"}[won[0]]] == 0:
+            for c in col:
+                c["basis"], c["basis_inferred"] = won[0], True
+            done += 1
+    return done

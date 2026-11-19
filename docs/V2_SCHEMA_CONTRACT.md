@@ -1815,6 +1815,13 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   lost 7 right c88 cells of a "Standalone" note table on a consolidated page); F4 nine-month columns can never be
   served (the judge holds no nine-month facts) -> neither rule infers them. Round 24: verified 3,316, unverified
   1,712, the same cells as round 23. 70 tests.
+- Basis by XBRL vote (20 Nov): `basis_columns_by_xbrl(cells, xbrl)` (after `date_columns_by_xbrl`, before
+  `witness_gate`) gives a column whose page and header name neither basis (OCR "Cansolldated", "C fidated") or both a
+  basis only when two or more of its cells agree exactly as that basis and none agrees as the other (equal figures in
+  both statements stay undecided). Its cells are `basis_inferred`; `_inferred(c)` (period or basis inferred) is served
+  only on its own XBRL witness and never pairs or conflicts across filings. Round 25: verified 3,544 (+228: c03, c05,
+  c61, c88), unverified 1,712, none lost; every inferred basis matches its page title on the 8 pages checked. 71 tests.
+  Not yet reviewed by an independent reviewer.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round

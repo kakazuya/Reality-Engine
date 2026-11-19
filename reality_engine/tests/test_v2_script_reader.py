@@ -666,3 +666,36 @@ def test_r5_f3_title_basis_other_than_the_cell_basis_is_no_witness(monkeypatch):
     assert not sr._xbrl_agrees(c, _Xbrl())
     c["title"] = "Statement of Results"
     assert sr._xbrl_agrees(c, _Xbrl())
+
+
+def _basis_judge(facts):
+    from reality_engine.v2 import cell_judge as cj
+
+    def judge(cell, x):
+        b = cj.basis_of(cell["table_title"])
+        p = cj.number(cell["value_text"])[0] * 1e5
+        if (b, cell["value_text"]) in facts:
+            return cj.Verdict("agree", basis=b, printed=p, xbrl=[p])
+        return cj.Verdict("no_xbrl_line", basis=b)
+    return judge
+
+
+def _bcol(values):
+    return [dict(_cell("q2fy25", v, label=f"r{k}"), basis="", unit_scale=1e5, page=1, table_id=1, title="",
+                 col_header="Quarter ended 30.09.2024", box=(200, 50 + 12 * k, 240, 58 + 12 * k))
+            for k, v in enumerate(values)]
+
+
+def test_xbrl_gives_a_column_a_basis_only_when_one_basis_wins(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", _basis_judge({("consolidated", "10.00"), ("consolidated", "20.00")}))
+    col = _bcol(["10.00", "20.00", "30.00"])
+    assert sr.basis_columns_by_xbrl(col, _Xbrl()) == 1
+    assert {c["basis"] for c in col} == {"consolidated"} and all(c["basis_inferred"] for c in col)
+    monkeypatch.setattr(cj, "judge", _basis_judge({("consolidated", "10.00"), ("consolidated", "20.00"),
+                                                    ("standalone", "20.00")}))
+    tie = _bcol(["10.00", "20.00"])                       # equal figures in both statements: undecided
+    assert sr.basis_columns_by_xbrl(tie, _Xbrl()) == 0 and {c["basis"] for c in tie} == {""}
+    got = sr.cross_gate([dict(col[0], doc_key="q2fy26")] + col[:1], FILED)
+    assert {c["gate"] for c in got} == {"inferred"}       # an inferred basis never pairs across filings
