@@ -372,8 +372,9 @@ def test_witness_gate_statuses(monkeypatch):
 
     monkeypatch.setattr(cj, "judge", lambda cell, x: _verdict_at_lakh(cell, {"7.00"}))
     lakh = {"unit_scale": 1e5, "page": 1}
-    a = dict(_cell("q2fy25", "5.00"), arith=True, box=(200, 50, 240, 58), **lakh)
-    b = dict(_cell("q2fy25", "7.00", label="Finance costs"), arith=False, box=(200, 62, 240, 70), **lakh)
+    a = dict(_cell("q2fy25", "5.00"), arith=True, arith_groups=[1], box=(200, 50, 240, 58), **lakh)
+    b = dict(_cell("q2fy25", "7.00", label="Finance costs"), arith=True, arith_groups=[1], box=(200, 62, 240, 70),
+             **lakh)                                   # XBRL-agreed member of the same identity: the sign anchor
     b2 = dict(_cell("q2fy25", "6.00", label="Finance costs", pend="2023-09-30"), arith=False,
               box=(300, 62, 340, 70), **lakh)            # the row changes across columns: it can date its column
     c = dict(_cell("q2fy25", "9.00", label="Other expenses"), arith=False)
@@ -382,7 +383,7 @@ def test_witness_gate_statuses(monkeypatch):
     got = {(x["row_label"], x["doc_key"], x["period_end"]): (x["status"], x["witness"])
            for x in sr.witness_gate([a, b, b2, c, d, e], FILED, xbrl=_Xbrl())}
     assert got[("Revenue from operations", "q2fy25", "2024-09-30")] == ("verified", "arith")
-    assert got[("Finance costs", "q2fy25", "2024-09-30")] == ("verified", "xbrl")
+    assert got[("Finance costs", "q2fy25", "2024-09-30")] == ("verified", "arith+xbrl")
     assert got[("Other expenses", "q2fy25", "2024-09-30")] == ("unverified", "cross")
     assert got[("Rent", "q2fy25", "2024-09-30")] == ("refused", "")
 
@@ -445,3 +446,46 @@ def test_xbrl_agreement_with_the_other_basis_is_no_witness(monkeypatch):
     assert not sr._xbrl_agrees(c, _Xbrl())
     c["basis"] = "standalone"
     assert sr._xbrl_agrees(c, _Xbrl())
+
+
+def test_ww1_identity_without_an_xbrl_anchor_is_no_witness(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: _verdict_at_lakh(cell, {"7.00"}))
+    lakh = {"unit_scale": 1e5, "page": 1}
+    conf = dict(_cell("q2fy25", "7.00", label="Finance costs"), arith=False, box=(200, 62, 240, 70), **lakh)
+    conf2 = dict(_cell("q2fy25", "6.00", label="Finance costs", pend="2023-09-30"), arith=False,
+                 box=(300, 62, 340, 70), **lakh)
+    # an identity among rows XBRL cannot see (a block that may have lost its brackets): column dated, no anchor
+    owners = dict(_cell("q2fy25", "10.04", label="Owners of the Company"), arith=True, arith_groups=[7],
+                  box=(200, 90, 240, 98), **lakh)
+    got = {x["row_label"]: x["status"] for x in sr.witness_gate([conf, conf2, owners], FILED, xbrl=_Xbrl())}
+    assert got["Owners of the Company"] == "refused"
+
+
+def test_ww2_judge_sees_only_the_cells_own_basis():
+    c = {"title": "Standalone Standalone & & Consolidated Consolidated Statement of Assets", "basis": "consolidated"}
+    t = sr._judge_title(c).lower()
+    assert "standalone" not in t and t.endswith("consolidated")
+
+
+def test_ww3_refused_misread_does_not_date_a_flat_row(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: _verdict_at_lakh(cell, {"2,554.40"}))
+    lakh = {"unit_scale": 1e5, "page": 1, "table_id": 2}
+    flat = [dict(_cell("q2fy25", "2,554.40", label="Paid up capital", pend=pe), arith=False,
+                 box=(x, 90, x + 40, 98), **lakh) for x, pe in ((200, "2024-12-31"), (300, "2024-09-30"))]
+    bad = dict(_cell("q2fy25", "999", label="Paid up capital", pend="2024-06-30"), arith=False,
+               box=(400, 90, 440, 98), kind="year", **lakh)        # refused by the year rule
+    rent = dict(_cell("q2fy25", "550.00", label="Rent paid", pend="2024-12-31"), arith=True, arith_groups=[3],
+                box=(200, 50, 240, 58), **lakh)
+    got = {(x["row_label"], x["period_end"]): x["status"] for x in
+           sr.witness_gate(flat + [bad, rent], FILED, xbrl=_Xbrl())}
+    assert got[("Rent paid", "2024-12-31")] == "refused"
+
+
+def test_dropped_last_digit_is_refused():
+    cells = [dict(row_label=f"r{k}", col_header="Q", value_text=v, box=(200, 50 + 12 * k, 240, 58 + 12 * k),
+                  table_id=1) for k, v in enumerate(["239.02", "200.10", "532.27", "293.2"])]
+    assert [c["value_text"] for c in sr._decimals_consistent(cells)] == ["239.02", "200.10", "532.27"]

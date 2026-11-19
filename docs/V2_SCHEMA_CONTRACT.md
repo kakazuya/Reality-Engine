@@ -1705,7 +1705,8 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   columns of the page, AND its column's period is confirmed by one of the column's own cells through XBRL or a
   second filing (a sum still adds up under a wrong column date: c09 fe68b3 p2 showed the arithmetic alone cannot
   prove the header); or XBRL, the judge finds the line and period and agrees with the sign, at the page's printed
-  unit, equal up to the printed rounding, on the cell's own basis (see the witness-gate review below). Cross-filing
+  unit, equal up to the printed rounding, judged on the cell's own basis only (see the two witness reviews below);
+  an arithmetic identity witnesses only when one member of it is XBRL-agreed (sign anchor). Cross-filing
   agreement alone is `unverified` (served labelled); every refusal rule still refuses (`refused`). Each served cell
   carries `witness` (arith / xbrl / cross, joined).
 - Round 10 (witness gate, `.tmp/sf/eval3.py`): verified 3,587 (1,171 equal a model cell, 24 disputed, 2,392 no
@@ -1729,10 +1730,23 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   agreeing fact's basis to equal the cell's. Round 12: verified 3,288 (1,091 equal a model cell, 24 disputed as
   before), unverified 1,464; ninth fresh sample of 54 verified cells: 0 wrong (one quarter column under a header
   that also names "Half" checked on word positions: right). 48 tests.
+- Second witness review (dsh 20261119T183310Z-ddcf03dd), all reproduced on its real-page attack scripts and fixed
+  with `test_ww*`: W1 an identity is invariant under a sign flip of a whole block of rows (c03 p11 "Owners of the
+  Company", 7 cells whose brackets were dropped stayed verified) -> an identity instance witnesses its members only
+  when one member of that same instance is XBRL-agreed with its sign (`arith_groups`, anchored); W2 the XBRL basis
+  check above never fired (the cell's basis was appended to the judge's title, so the judge named no other basis;
+  the earlier test mocked a verdict the real judge cannot return) -> `_judge_title` strips every basis word from
+  the page title and adds only the cell's basis, in the witness and in the veto; W3 a refused misread made a flat
+  row look period-varying -> the row test skips hard-refused cells and compares numbers. Round 13's read then found
+  an OCR page's "293.2" for 293.25 XBRL-verified (one printed decimal allows 0.05) -> `_decimals_consistent` now
+  refuses any figure printing fewer decimals than its column's usual count. Round 14: verified 2,943 (1,054 equal a
+  model cell, 18 disputed: OCR label typos, HY4 column shifts, share capital), unverified 1,636; eleventh fresh
+  sample, 50 verified cells: 0 wrong (a printed depreciation of 1 lakh checked: right). 52 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round
-  10, and the basis class (23 verified cells in rounds 9-11, from the basis-blind XBRL witness) fell to 0 in round 12.
+  10, and the basis class (23 verified cells in rounds 9-11, from the basis-blind XBRL witness) fell to 0 in round 12;
+  the c05 dropped digit "293.2" (verified in rounds 9-13) fell to 0 in round 14.
   The c61 "discontinued operations 19.59" counted wrong in the round-2 hand read was a misread by the reader
   of the stored text: the page prints 19.59 and (695.78) + 19.59 = (676.19). Losses: one filing only 13,094 cells,
   no period 7,368 (OCR-garbled dates, deck "FY24" columns, balance sheets without a printed kind), key conflicts

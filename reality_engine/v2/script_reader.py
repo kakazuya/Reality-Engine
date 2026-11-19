@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 from typing import Any
 
@@ -313,10 +313,18 @@ def per_share_ok(label: str, value: str) -> bool:
     return not _PER_SHARE.search(label) or "." in value or value.strip("()-") in ("0", "")
 
 
+def _judge_title(c: dict[str, Any]) -> str:
+    """The table title the XBRL judge gets: the page title with every basis word removed, then the cell's own basis,
+    so the judge compares the figure with that basis's facts only (second witness review W2: with the page's
+    "Standalone ... Consolidated" title kept, the judge named no basis and agreed with the other statement)."""
+    t = re.sub(r"(?i)\b(standalone|consolidated)\b", " ", c.get("title", "") or "")
+    return f'{t} {c.get("basis", "")}'.strip()
+
+
 def _xbrl_refuses(c: dict[str, Any], xbrl: Any) -> bool:
     """The XBRL judge, given the page title as the table title (statement type, basis, scale: T-226 F4), calls the
     cell ``disagree``, or agrees only with the sign flipped (a lost minus: T-226 F1)."""
-    title = f'{c.get("title", "")} {c.get("basis", "")}'.strip()
+    title = _judge_title(c)
     v = cj.judge({"row_label": c["row_label"], "col_header": c.get("col_header", ""), "value_text": c["value_text"],
                   "unit_text": "", "table_title": title}, xbrl)
     return v.verdict == "disagree" or bool(v.sign_flip)
@@ -429,13 +437,16 @@ def arith_witness(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
                         found[("sum", rows[a], rows[b], rows[j])].append((key, [col[a], col[b], col[j]]))
                     elif abs(va - vb - vj) <= tol:
                         found[("diff", rows[a], rows[b], rows[j])].append((key, [col[a], col[b], col[j]]))
+    gid = 0
     for rel, hits in found.items():
         if len({k for k, _ in hits}) < 2:
             continue                                    # the same identity must hold in two or more columns
         for _, members in hits:
+            gid += 1
             for c in members:
                 c["arith"] = True
                 c["arith_rel"] = c["arith_rel"] or rel[0]
+                c.setdefault("arith_groups", []).append(gid)
     return cells
 
 
@@ -455,7 +466,7 @@ def _xbrl_agrees(c: dict[str, Any], xbrl: Any) -> bool:
     unit = 1.0 if per_share else c.get("unit_scale")
     if not unit:
         return False
-    title = f'{c.get("title", "")} {c.get("basis", "")}'.strip()
+    title = _judge_title(c)
     v = cj.judge({"row_label": c["row_label"], "col_header": c.get("col_header", ""), "value_text": c["value_text"],
                   "unit_text": "", "table_title": title}, xbrl)
     if v.verdict != "agree" or v.sign_flip or v.printed is None:
@@ -488,10 +499,22 @@ def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
     # own cells through XBRL or a second filing, and then holds for every cell printed in that column
     for c in cells:
         c["_xa"] = c["gate"] not in _HARD_REFUSALS and xbrl is not None and _xbrl_agrees(c, xbrl)
-    row_vals: dict[tuple, set[str]] = defaultdict(set)
+    row_vals: dict[tuple, set[float]] = defaultdict(set)
     for c in cells:
+        if c["gate"] in _HARD_REFUSALS:
+            continue                                    # a refused misread must not make a flat row look dated (W3)
+        num = cj.number(c["value_text"])
+        if num is None:
+            continue
         row_vals[(c.get("doc_key"), c.get("page"), c.get("table_id"), round(c["box"][1]) if c.get("box") else None)].add(
-            _norm_value(c["value_text"]))
+            num[0])
+    # an identity is sign-blind (a whole block that lost its brackets still adds up: W1), so it witnesses its
+    # members only when one member of that same identity instance is XBRL-agreed with its sign
+    anchored: set[tuple] = set()
+    for c in cells:
+        if c["_xa"]:
+            for g in c.get("arith_groups", []):
+                anchored.add((c.get("doc_key"), c.get("page"), g))
     confirmed: set[tuple] = set()
     for c in cells:
         row = (c.get("doc_key"), c.get("page"), c.get("table_id"), round(c["box"][1]) if c.get("box") else None)
@@ -502,7 +525,8 @@ def witness_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
             c["status"], c["witness"] = "refused", ""
             continue
         w = []
-        if c.get("arith") and _column_key(c) in confirmed:
+        if c.get("arith") and _column_key(c) in confirmed and any(
+                (c.get("doc_key"), c.get("page"), g) in anchored for g in c.get("arith_groups", [])):
             w.append("arith")
         if c.pop("_xa", False):
             w.append("xbrl")
@@ -536,9 +560,12 @@ def _decimals_consistent(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
     out = []
     for col in by_col.values():
         dec = [cj.number(c["value_text"]) for c in col]
-        with_dec = sum(1 for d in dec if d and d[1] > 0)
+        counts = Counter(d[1] for d in dec if d)
+        usual, n_usual = counts.most_common(1)[0] if counts else (0, 0)
         for c, d in zip(col, dec):
-            if d and d[1] == 0 and abs(d[0]) >= 10 and with_dec >= 3 and with_dec > len(col) / 2:
+            # fewer decimals than the column prints: a dropped point ("3419685") or a dropped last digit ("293.2"
+            # for 293.25, an OCR page, round 13 read; the XBRL rounding tolerance of one decimal let it agree)
+            if d and d[0] != 0 and d[1] < usual and n_usual >= 3 and n_usual > len(col) / 2:
                 continue
             out.append(c)
     return out
