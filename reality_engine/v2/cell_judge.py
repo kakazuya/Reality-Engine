@@ -30,8 +30,11 @@ For one cell:
 
 Verdicts: ``agree``, ``disagree`` (XBRL holds the line for that period and basis, and no row matches; reason
 ``near_miss`` within 2%, ``decimal_lost`` when the figure agrees once a lost decimal point is put back -- a
-reader defect seen on HY4 OCR pages, "14277" for 1,427.7; ``elsewhere`` names the XBRL lines of the same period the value does match, which
-separates a wrong label from a wrong figure) and ``no_xbrl_line`` (``reason`` says why).  A P&L or cash-flow
+reader defect seen on HY4 OCR pages, "14277" for 1,427.7; ``other_period`` when the figure is the same line of
+another period (a misplaced column: c19 BODALCHEM's Q 30.06.2024 revenue verified under 30.06.2025); ``elsewhere``
+names the XBRL lines the value does match: ``basis:line`` in the same period, then
+``KEY:period_end:basis:line`` in other periods (up to ``ELSEWHERE_MAX``), which separates a wrong label, a wrong
+figure and a misplaced column) and ``no_xbrl_line`` (``reason`` says why).  A P&L or cash-flow
 column whose period type is unprinted is tried against the quarter, half and year facts and may only agree.
 
 CLI::
@@ -59,6 +62,7 @@ REL_TOL = 0.001
 CELL_ALARM_AGREE = 2
 NEAR_TOL = 0.02   # a disagreement within 2%: a restated filing or EPS rounding more often than a misread
 COLUMN_ALARM_DISAGREE = 3
+ELSEWHERE_MAX = 5   # other-period matches listed per disagreeing cell
 # XBRL period keys: quarter, half year, full year, balance-sheet date
 Q, H1, FY, BS = "Q", "H1", "FY", "BS"
 
@@ -408,14 +412,32 @@ def judge(cell: dict, xbrl: XbrlIndex) -> Verdict:
         # the period type is not printed: a half or nine-month figure under a bare date is not a wrong cell
         return Verdict(NO_LINE, "period_type_unprinted", item, end, basis, value * scales[0], candidates)
     key = keys[0]
-    elsewhere = sorted({f"{b}:{i}" for scale in scales for b, i, x in xbrl.by_period.get((key, end), [])
-                        if b in bases and i not in items and _close(value * scale, decimals, scale, x)[0]})
+    per_share = any(i in PER_SHARE for i in items)
+    same, other, scale_hit = set(), set(), None
+    for (k, e), facts in xbrl.by_period.items():
+        for b, i, x in facts:
+            if b not in bases or (i in PER_SHARE) != per_share or (k, e) == (key, end) and i in items:
+                continue
+            for scale in scales:
+                if _close(value * scale, decimals, scale, x)[0]:
+                    scale_hit = scale_hit or scale
+                    if (k, e) == (key, end):
+                        same.add(f"{b}:{i}")
+                    else:
+                        other.add((i in items, f"{k}:{e}:{b}:{i}"))
+    # same-period lines first ("basis:line"), then other periods ("KEY:period_end:basis:line"), the cell's own line
+    # first among those; a value that is the same line of another period means the column was misplaced
+    elsewhere = sorted(same) + [s for _own, s in sorted(other, key=lambda t: (not t[0], t[1]))][:ELSEWHERE_MAX]
+    own_other = any(own for own, _s in other)
     near = any(abs(abs(value * sc) - abs(x)) <= NEAR_TOL * max(abs(x), 1e-9) for sc in scales for x in candidates)
     # the printed figure with its decimal point lost ("14277" for 1,427.7, "016" for 0.16): a reader defect
     lost = decimals == 0 and any(_close(value * sc / 10 ** k, k, sc, x)[0] for k in (1, 2, 3) for sc in scales
                                  for x in candidates)
-    reason = "decimal_lost" if lost else "near_miss" if near else "value_differs"
-    return Verdict(DISAGREE, reason, item, end, basis, value * scales[0], candidates, elsewhere=elsewhere,
+    reason = ("decimal_lost" if lost else "other_period" if own_other else "near_miss" if near
+              else "value_differs")
+    shown = scale_hit or min(scales, key=lambda sc: min(abs(abs(value * sc) - abs(x)) / max(abs(x), 1e-9)
+                                                        for x in candidates))
+    return Verdict(DISAGREE, reason, item, end, basis, value * shown, candidates, elsewhere=elsewhere,
                    period_key=key)
 
 
@@ -472,6 +494,7 @@ def summary(records: list[dict]) -> dict:
             "disagree_value_elsewhere": sum(1 for r in records if r["verdict"] == DISAGREE and r["elsewhere"]),
             "near_miss": sum(1 for r in records if r.get("alarm") == "near"),
             "decimal_lost": sum(1 for r in records if r["reason"] == "decimal_lost"),
+            "other_period": sum(1 for r in records if r["reason"] == "other_period"),
             "cell_alarms": sum(1 for r in records if r.get("alarm") == "cell"),
             "column_alarms": sum(1 for r in records if r.get("alarm") == "column"),
             "by_period": dict(by_key), "no_line_reasons": dict(reasons)}
