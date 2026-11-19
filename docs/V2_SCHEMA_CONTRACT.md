@@ -1753,6 +1753,13 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   tables, a misdated column through a share-capital anchor; the three earlier attacks still refuse. Round 15 (both
   fixes): verified 2,943, unverified 1,636, the same cells as round 14 (both classes latent in these 10 stores).
   55 tests.
+- Units (20 Nov): a cell's unit is the table's own (`table_unit`: the header band and the figure-less lines up to six
+  above it; two units there = undecided, no fallback), else the page's single unit, else the document's single unit
+  (`doc_unit`: every unit-naming page of the filing names the same one; callers pass it to `settled`). A wrong unit
+  can only lose a witness (the XBRL witness needs exact equality at that unit; the veto ignores the unit). Round 16
+  (table unit) +10 verified, round 17 (document unit, mostly OCR pages whose own unit word is garbled, "MiIIion")
+  +55, none lost: 3,008 verified. Of 23,948 read cells 2,708 had no unit; on the pages checked the limit is XBRL
+  coverage (c01 FY24 balance sheet: no XBRL row, labels unmapped), not the unit. 58 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round

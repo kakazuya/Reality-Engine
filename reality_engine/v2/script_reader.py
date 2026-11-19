@@ -247,22 +247,41 @@ def read_page(words: list[tuple[float, float, float, float, str]]) -> list[dict[
             if len({d.lower() for d in _DATES.findall(head)}) > 1:
                 continue                                # two dates over one column: a merged neighbour header
             rows.append({"table": "", "row_label": label, "col_header": head, "value": words[i][4], "unit": "",
-                         "section": section, "table_id": band[0],
+                         "section": section, "table_id": band[0], "table_unit": table_unit(page, band),
                          "box": tuple(round(v, 1) for v in words[i][:4])})
     return rows
 
 
-def settled(words: list[tuple[float, float, float, float, str]]) -> list[dict[str, Any]]:
+def _cell_unit(table: float | None, page: float | None, doc: float | None = None) -> float | None:
+    """The table's own unit; else the page's single unit; else the document's single unit (an OCR page of a filing
+    whose other pages all print "lakh": c01, 20 Nov); None when the table prints several.  A wrong unit can only
+    lose a witness: the XBRL witness needs the figure at this unit to EQUAL a fact, and the veto ignores the unit."""
+    if table is None:
+        return page if page is not None else doc
+    return table or None
+
+
+def doc_unit(page_texts: Iterable[str]) -> float | None:
+    """The one unit every unit-naming page of a document names; None when none or several."""
+    found: set[float] = set()
+    for t in page_texts:
+        found |= _units_in(t or "")
+    return found.pop() if len(found) == 1 else None
+
+
+def settled(words: list[tuple[float, float, float, float, str]], doc_unit: float | None = None) -> list[dict[str, Any]]:
     """``read_page`` cells the checker places (row and column), with basis, period end and period kind."""
     rows = read_page(words)
     if not rows:
         return []
-    out, _ = rg.settle_page([[{k: v for k, v in r.items() if k not in ("box", "section", "table_id")} for r in rows]], words)
+    out, _ = rg.settle_page([[{k: v for k, v in r.items() if k not in ("box", "section", "table_id", "table_unit")}
+                              for r in rows]], words)
     basis = page_basis(words)
     title = page_title(words)
     section = {r["box"][:2]: r["section"] for r in rows}  # by printed box: a repeated label has one per line
     table_of = {r["box"][:2]: r["table_id"] for r in rows}
     unit = page_unit(words)
+    t_unit = {r["box"][:2]: r["table_unit"] for r in rows}
     cells = []
     for o in out:
         if o.get("settled_by") not in ("position", "script+position"):
@@ -272,7 +291,8 @@ def settled(words: list[tuple[float, float, float, float, str]]) -> list[dict[st
                       "period_end": cj.period_end(o["col_header"]) or "",
                       "kind": cj.column_kind(o["col_header"], title), "section": section.get((o["x0"], o["y0"]), ""),
                       "repeated": bool(o.get("label_repeated")), "table_id": table_of.get((o["x0"], o["y0"])),
-                      "unit_scale": unit, "box": (o["x0"], o["y0"], o["x1"], o["y1"])})
+                      "unit_scale": _cell_unit(t_unit.get((o["x0"], o["y0"])), unit, doc_unit),
+                      "box": (o["x0"], o["y0"], o["x1"], o["y1"])})
     cells = _decimals_consistent(cells)
     # a label printed on two lines of one column is two rows; when both carry the same section heading the rows
     # cannot be told apart (a cash-flow "Dividend received" under operating adjustments and under investing, with
@@ -551,8 +571,28 @@ def page_unit(words: list[tuple[float, float, float, float, str]]) -> float | No
     """The page's printed unit (lakh 1e5, crore 1e7, million 1e6, thousand 1e3) when exactly one is printed anywhere
     on the page; None when none or several (review F1)."""
     text = " ".join(w[4] for w in words)
-    found = {scale for rx, scale in cj._UNITS if scale != 1.0 and rx.search(text)}
+    found = _units_in(text)
     return found.pop() if len(found) == 1 else None
+
+
+def _units_in(text: str) -> set[float]:
+    return {scale for rx, scale in cj._UNITS if scale != 1.0 and rx.search(text)}
+
+
+def table_unit(page: Any, band: list[int]) -> float | None:
+    """The unit the table itself prints: in its header band or on the figure-less lines just above it (the title and
+    "(Rs. in lakh)" line), up to the previous table's last figure line or six lines up.  Exactly one unit there ->
+    that unit; none -> None (the caller falls back to the page's single unit); several -> 0.0 (undecided, no
+    fallback).  A page whose notes say "crore" while its table prints "lakh" lost every XBRL witness to the page
+    rule (round 14, c01)."""
+    m = band[0] - 1
+    while m >= 0 and band[0] - m <= 6 and not any(page._digit_figure(j) for j in page.lines[m]):
+        m -= 1
+    text = " ".join(page.words[j][4] for n in range(m + 1, band[-1] + 1) for j in page.lines[n])
+    found = _units_in(text)
+    if not found:
+        return None
+    return found.pop() if len(found) == 1 else 0.0
 
 
 def _decimals_consistent(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:

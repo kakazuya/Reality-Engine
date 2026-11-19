@@ -514,3 +514,26 @@ def test_t3_f2_key_filed_with_both_signs_gives_no_witness(monkeypatch):
     monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", basis="consolidated", printed=0.61,
                                                                  xbrl=[0.61, 0.61, -0.61]))
     assert not sr._xbrl_agrees(dict(_cell("q2fy25", "0.61", label="Basic EPS"), unit_scale=1e5), _Xbrl())
+
+
+def test_unit_table_line_wins_over_a_page_naming_two_units():
+    # the table prints "(Rs. in lakh)" over its header; a note lower on the page says "crore"
+    ws = _page()[:4] + [_w(200, 11, "(Rs."), _w(225, 11, "in"), _w(240, 11, "lakh)")] + _page()[4:] + [
+        _w(10, 120, "Note:"), _w(40, 120, "the"), _w(60, 120, "order"), _w(90, 120, "book"), _w(115, 120, "is"),
+        _w(130, 120, "500"), _w(150, 120, "crore")]
+    assert sr.page_unit(ws) is None
+    assert {c["table_unit"] for c in sr.read_page(ws)} == {1e5}
+    assert {c["unit_scale"] for c in sr.settled(ws)} == {1e5}
+
+
+def test_unit_fallback_order_table_page_document():
+    assert sr._cell_unit(1e5, 1e7, 1e6) == 1e5
+    assert sr._cell_unit(None, 1e7, 1e6) == 1e7
+    assert sr._cell_unit(None, None, 1e6) == 1e6
+    assert sr._cell_unit(0.0, 1e7, 1e6) is None          # the table names two units: undecided, no fallback
+
+
+def test_doc_unit_only_when_every_unit_naming_page_agrees():
+    assert sr.doc_unit(["Rs. in lakh", "", "figures in Lakhs", "Note 3"]) == 1e5
+    assert sr.doc_unit(["Rs. in lakh", "Rs. in crore"]) is None
+    assert sr.doc_unit(["", "no unit"]) is None
