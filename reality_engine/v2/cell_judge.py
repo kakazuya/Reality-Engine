@@ -291,7 +291,7 @@ def summary(records: list[dict]) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").splitlines()[0] if __doc__ else None)
     ap.add_argument("--read", required=True, help="reader output db with a page_cell table")
     ap.add_argument("--store", required=True, help="store db with fin_quarter_xbrl")
     ap.add_argument("--status", default="verified", help="page_cell status to judge; 'all' for every cell")
