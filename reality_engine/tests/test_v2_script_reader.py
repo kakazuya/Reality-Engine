@@ -559,7 +559,7 @@ def test_ocr_damaged_as_at_and_year_ended_give_the_kind():
 def test_fiscal_labels_map_from_the_company_year_end():
     assert sr.fiscal_label_period("Q4 FY24", 3) == ("2024-03-31", "quarter")
     assert sr.fiscal_label_period("H1FY25", 3) == ("2024-09-30", "half")
-    assert sr.fiscal_label_period("9M FY26", 3) == ("2025-12-31", "nine")
+    assert sr.fiscal_label_period("9M FY26", 3) is None                           # the judge holds no nine-month facts
     assert sr.fiscal_label_period("FY24-25", 3) == ("2025-03-31", "year")
     assert sr.fiscal_label_period("Q1 FY24", 12) == ("2024-03-31", "quarter")    # a December year end
     assert sr.fiscal_label_period("FY23 FY24", 3) is None                         # two labels over one column
@@ -642,3 +642,27 @@ def test_r4_f3_prose_does_not_give_a_kind():
     assert sr.column_kind("31.12.2025 Notes as attached", "") == "unprinted"
     assert sr.column_kind("Notes as attached", "") == "unprinted"
     assert sr.column_kind("As atatst March, 2025", "") == "as_at"
+
+
+def test_r5_f1_hy1_columns_are_half_years():
+    assert sr.fiscal_label_period("HY1 FY25", 3) == ("2024-09-30", "half")
+    assert sr.fiscal_label_period("1H FY25", 3) == ("2024-09-30", "half")
+    assert sr.fiscal_label_period("Half year FY25", 3) is None   # a period word beside the label: undecided
+
+
+def test_r5_f2_estimates_and_periods_after_the_filing_are_refused():
+    assert sr.fiscal_label_period("FY26E", 3) is None and sr.fiscal_label_period("FY27P", 3) is None
+    c = dict(_cell("q2fy25", "5.00", pend="2025-03-31", label="Revenue"), kind="year", period_inferred=True,
+             box=(200, 50, 240, 58), page=1)
+    assert sr.cross_gate([c], FILED)[0]["gate"] == "inferred_future"   # FY25 label in a November 2024 filing
+
+
+def test_r5_f3_title_basis_other_than_the_cell_basis_is_no_witness(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("agree", basis=cj.basis_of(cell["table_title"]),
+                                                                 printed=5e5, xbrl=[5e5]))
+    c = dict(_cell("q2fy25", "5.00"), unit_scale=1e5, title="Statement of Standalone Results")   # cell: consolidated
+    assert not sr._xbrl_agrees(c, _Xbrl())
+    c["title"] = "Statement of Results"
+    assert sr._xbrl_agrees(c, _Xbrl())

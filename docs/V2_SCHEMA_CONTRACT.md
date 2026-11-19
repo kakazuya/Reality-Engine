@@ -1803,6 +1803,18 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   columns; its 15-cell hand read: 13 right, 2 not locatable, 0 wrong. Open (pre-existing geometry, F4): c31 p3
   header groups snap one column off ("Half Year ended" over the third quarter column); a cell there is held back
   only by `single_filing`. Round 23: verified 3,316, unverified 1,712, none lost. 67 tests.
+- Fifth witness review (dsh 20261119T210332Z-e78fcc3d, 20 Nov, on the two date rules): no wrong cell served in the
+  10 stores (48 XBRL-dated columns, every legible header token agrees; 9 two-vote columns hand-read right; 29 fiscal
+  label cells each equal their own fact; inferred cells cannot confirm or anchor any other cell; 20-cell hand read 20
+  right). Fixed with `test_r5_*`: F1 "HY1 FY25" was read as the full year (c88 p2, 18 cells on the wrong period, 0
+  served; one coincident figure away) -> `HY1|HY2|1H|2H` are half-year labels, and a header carrying any other
+  period word beside the label is undecided; F2 a label could take a period at or after its own filing ("FY26-27" in a
+  May 2026 deck, 12 cells) -> gate `inferred_future` (hard refusal), and "FY26E"/"FY27P" are not labels; F3 the basis
+  check in `_xbrl_agrees` could not fire (the judge's title carries the cell's basis) -> the raw page title's single
+  basis must equal the cell's unless the column header names its own basis (a first version without that exception
+  lost 7 right c88 cells of a "Standalone" note table on a consolidated page); F4 nine-month columns can never be
+  served (the judge holds no nine-month facts) -> neither rule infers them. Round 24: verified 3,316, unverified
+  1,712, the same cells as round 23. 70 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round

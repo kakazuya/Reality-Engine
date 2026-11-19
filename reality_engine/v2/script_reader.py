@@ -271,8 +271,10 @@ def column_kind(col_header: str, title: str) -> str:
     return kind
 
 
-_FY_LABEL = re.compile(r"(?<![a-z0-9])(?:(Q[1-4])|(H[12])|(9M))?\s*['’]?\s*FY\s*['’]?\s*(\d{2}|20\d{2})"
-                       r"(?:\s*[-–/]\s*(\d{2}))?(?![0-9])", re.I)
+_FY_LABEL = re.compile(r"(?<![a-z0-9])(?:(Q[1-4])|(H[12]|HY[12]|[12]H)|(9M))?\s*['’]?\s*FY\s*['’]?\s*(\d{2}|20\d{2})"
+                       r"(?:\s*[-–/]\s*(\d{2}))?(?![0-9])(?!\s*[EP]\b)(?![EP])", re.I)  # "FY26E", "FY27P": estimates
+_PERIOD_TOKEN = re.compile(r"half|nine|six|months?|quarter|qtr|\bH[12]\b|\bHY[12]\b|\b[12]H\b|\b9M\b|\bQ[1-4]\b|"
+                           r"\bFY", re.I)
 
 
 def fiscal_label_period(col_header: str, fy_end: int) -> tuple[str, str] | None:
@@ -283,7 +285,12 @@ def fiscal_label_period(col_header: str, fy_end: int) -> tuple[str, str] | None:
     found = list(_FY_LABEL.finditer(col_header or ""))
     if len(found) != 1:
         return None
+    rest = col_header[:found[0].start()] + " " + col_header[found[0].end():]
+    if _PERIOD_TOKEN.search(rest):
+        return None                                 # "HY1 FY25" outside the label: the label's kind is not the column's
     q, h, nine, y, y2 = found[0].groups()
+    if nine:
+        return None                                 # the XBRL judge holds no nine-month facts: never served (F4)
     year = int(y2 or y)
     year = year + 2000 if year < 100 else year
     if y2 and int(y) % 100 + 1 != int(y2) % 100:
@@ -292,7 +299,7 @@ def fiscal_label_period(col_header: str, fy_end: int) -> tuple[str, str] | None:
     if q:
         months_back, kind = 3 * (4 - int(q[1])), "quarter"
     elif h:
-        months_back, kind = (6 if h[1] == "1" else 0), "half"
+        months_back, kind = (6 if "1" in h else 0), "half"
     elif nine:
         months_back, kind = 3, "nine"
     m = fy_end - months_back
@@ -455,7 +462,10 @@ def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         if c.get("period_inferred"):
             # a date read from "FY24" or voted by XBRL neither confirms nor refuses another filing's cell (round 21:
             # an OCR misread "1,089.17" in an XBRL-dated column made a conflict that refused the right 1,099.17)
-            c["gate"] = "xbrl_disagrees" if xbrl is not None and _xbrl_refuses(c, xbrl) else "inferred"
+            if c["period_end"] >= filed[c["doc_key"]].isoformat():
+                c["gate"] = "inferred_future"       # "FY26-27" in a May 2026 deck: guidance, not a reported period
+            else:                                   # (fifth review F2)
+                c["gate"] = "xbrl_disagrees" if xbrl is not None and _xbrl_refuses(c, xbrl) else "inferred"
             continue
         label =f'{c.get("section", "")} {c["row_label"]}' if c.get("repeated") else c["row_label"]
         groups[(c["basis"], label_key(label), c["period_end"], c["kind"])].append(c)
@@ -548,7 +558,7 @@ def arith_witness(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 _HARD_REFUSALS = {"no_period", "per_share_no_decimal", "year_kind_doubtful", "not_a_figure", "basis_unknown",
-                  "no_filing_date", "conflict", "xbrl_disagrees"}
+                  "no_filing_date", "conflict", "xbrl_disagrees", "inferred_future"}
 
 
 def _xbrl_agrees(c: dict[str, Any], xbrl: Any) -> bool:
@@ -571,6 +581,11 @@ def _xbrl_agrees(c: dict[str, Any], xbrl: Any) -> bool:
     if v.basis != c.get("basis"):
         return False                                # the judge must read the cell's own basis only: the other
         #                                             statement, or none named (both bases mixed: third review F1)
+    raw = cj.basis_of(c.get("title", ""))
+    if raw and raw != c.get("basis") and not column_basis(c.get("col_header", "")):
+        return False                                # the page title names one basis, the cell another (a header
+        #                                             snapped from a neighbour column): the check above cannot see
+        #                                             it, as the judge's title carries the cell's basis (fifth review F3)
     if any(x > 0 for x in v.xbrl) and any(x < 0 for x in v.xbrl):
         return False                                # the key is filed with both signs: a lost minus would agree
         #                                             with the opposite-sign fact (third review F2)
@@ -727,7 +742,7 @@ def date_columns_by_xbrl(cells: list[dict[str, Any]], filed: Mapping[str, _dt.da
     fy = fy_end_month(xbrl)
     allowed = {"quarter": None, "as_at": None}
     if fy:
-        allowed.update({"year": {fy}, "half": {fy, (fy - 7) % 12 + 1}, "nine": {(fy - 4) % 12 + 1}})
+        allowed.update({"year": {fy}, "half": {fy, (fy - 7) % 12 + 1}})   # no nine: the judge holds none (F4)
     cols: dict[tuple, list[dict[str, Any]]] = defaultdict(list)
     for c in cells:
         if not c.get("period_end") and c.get("kind") in allowed and c.get("doc_key") in filed:
