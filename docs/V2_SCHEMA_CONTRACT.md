@@ -1622,3 +1622,43 @@ hand-read routed pages print no table (cover letters, thank-you slides, notes pr
 with two numbers and a word as a table row. All 10 hand-read `no_figures` pages were right. The quarantine digit test
 is a substring of the page's concatenated digits, so `99` passes on a page printing `999`. `figures_in` reads the
 store text while `is_table_page` reads word boxes, so the two can disagree.
+
+## 16. Script-first page reading (T-226, 19 Nov 2026, Eagle)
+
+Shivam 19 Nov: model quota is finite, so parse as much as possible with scripts; losing a right cell is fine, serving
+a wrong one never is. Earlier "scripts 4 of 60" (`reports/2026-11-18_model_vs_script.html`) measured COVERAGE: no
+script handled 56 of those pages (no deck reader at all). It said nothing about what a geometry reader could do.
+
+`reality_engine/v2/script_reader.py` (tests `reality_engine/tests/test_v2_script_reader.py`), no model anywhere:
+- `read_page(words)`: label = printed text left of the line, header = the header stack
+  `reference_geom.Page.columns_for` prints over the figure's column, section = the last figure-less heading inside the
+  table. Refused at read: a label that does not start like a row or is OCR debris (`good_label`), an ID label
+  (DIN/CIN/PAN/membership/registration/place/date), an identifier figure (leading zero: a DIN "07027180") or one with
+  an unbalanced bracket or a lone "(" / ")" beside it (a sign split off: "(19.59)" read as 19.59), a column whose
+  header prints two dates, and a whole line with two figures under one column (a split number: "20 971").
+- `settled(words)`: `settle_page` places the cells as for a model read; adds basis (first of consolidated /
+  standalone in the page's top words), period end and kind (`cell_judge.period_end` / `column_kind` with the page
+  title); a label printed twice in one column with the same section is refused (rows cannot be told apart).
+- `cross_gate(cells, filed, xbrl)`: the checker shares the reader's geometry, so it cannot catch this reader's own
+  column errors. A cell passes only when filings at least 45 days apart (never the same results filed on NSE and BSE)
+  print the same value for the same (basis, label [+ section when repeated], period end, kind) and no filing prints
+  another value. Refused before grouping: no period, a per-share line without a decimal ("154" for 1.54: a scan
+  layer drops the point the same way in every filing), a `year` column naming half/nine/quarter or not ending in
+  March (December year-end firms lose these until their year end is known), not a figure. Refused after: any cell of
+  the key the XBRL judge calls `disagree` (a mislabel repeated in every filing agrees with itself: c88's
+  discontinued-operations "(691)" under a bare "Profit / (Loss) Before Tax").
+
+Measured on every results page (text over 400 chars) of the 10 T-225 blend companies (c01-c05, c09, c31, c61, c87,
+c88; 2,745 pages), scored against the model cells (Dots, HY4, Beam, LongCat) the checker verified on the same printed
+box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
+- Gate-passed cells: 3,836 (round 4). 1,247 equal a model-verified cell (label and period); 27 disagree with a model
+  and every one was traced to the model (c09 HY4 column shift, confirmed by XBRL for Sep-2025; HY4 "S.No." headers on
+  c61; Dots calling a nine-month figure a quarter); 2,562 sit where no model read.
+- Hand reads of gate-passed cells no model or XBRL covers, three fresh samples of 60: round 2 found 4 wrong (DIN
+  numbers from a signature block x2, a half-year figure under "Year ended 30 Sep", a split-off minus sign); round 3,
+  1 wrong section on a repeated cash-flow label; round 4 (`.tmp/sf/handsample3.txt`): 0 wrong of 60, three doubtful
+  cells checked on word positions and right. Each wrong class is now a refusal rule with a test.
+- Coverage is the open problem: 1,247 of 12,158 model-verified cells (10%). Losses: one filing only 13,094 cells,
+  no period 7,368 (OCR-garbled dates, deck "FY24" columns, balance sheets without a printed kind), key conflicts
+  2,815, year-kind doubt 970. Next lever measured: XBRL exact agreement as the second witness would pass 2,584 more
+  single-filing cells (867 equal a model cell; 24 model-disputed, to be read before it is used).

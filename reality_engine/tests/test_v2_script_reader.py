@@ -1,0 +1,134 @@
+import datetime as dt
+
+from reality_engine.v2 import script_reader as sr
+
+
+def _w(x0, y0, text, cw=5.0, h=8.0):
+    return (x0, y0, x0 + cw * len(text), y0 + h, text)
+
+
+def _page():
+    return [
+        _w(10, 2, "STATEMENT"), _w(70, 2, "OF"), _w(90, 2, "CONSOLIDATED"), _w(160, 2, "RESULTS"),
+        _w(200, 20, "Quarter"), _w(240, 20, "Ended"), _w(300, 20, "Quarter"), _w(340, 20, "Ended"),
+        _w(200, 30, "30.09.2025"), _w(300, 30, "30.09.2024"),
+        _w(10, 50, "Revenue"), _w(50, 50, "from"), _w(75, 50, "operations"), _w(200, 50, "1,200.50"),
+        _w(300, 50, "1,100.25"),
+        _w(10, 62, "Other"), _w(40, 62, "income"), _w(200, 62, "45.10"), _w(300, 62, "40.00"),
+        _w(10, 74, "Total"), _w(40, 74, "income"), _w(200, 74, "1,245.60"), _w(300, 74, "1,140.25"),
+    ]
+
+
+def test_good_label_refuses_debris_and_continuations():
+    assert sr.good_label("Revenue from operations")
+    assert sr.good_label("(a) Cost of materials consumed")
+    for bad in ("AAGA&A", "GA &", "[i)", "for the period (7-8)", "", "123"):
+        assert not sr.good_label(bad), bad
+
+
+def test_read_page_labels_and_columns_with_no_model():
+    cells = {(c["row_label"], c["value"]): c["col_header"] for c in sr.read_page(_page())}
+    assert "30.09.2025" in cells[("Revenue from operations", "1,200.50")]
+    assert "30.09.2024" in cells[("Revenue from operations", "1,100.25")]
+    assert "30.09.2024" not in cells[("Other income", "45.10")]
+
+
+def test_settled_cells_carry_period_kind_and_basis():
+    got = {(c["row_label"], c["value_text"]): c for c in sr.settled(_page())}
+    c = got[("Total income", "1,140.25")]
+    assert (c["period_end"], c["kind"], c["basis"]) == ("2024-09-30", "quarter", "consolidated")
+
+
+def _cell(doc, value, pend="2024-09-30", label="Revenue from operations"):
+    return {"doc_key": doc, "row_label": label, "value_text": value, "basis": "consolidated",
+            "period_end": pend, "kind": "quarter"}
+
+
+FILED = {"q2fy25": dt.date(2024, 11, 10), "q2fy26": dt.date(2025, 11, 12), "q2fy26_bse": dt.date(2025, 11, 12),
+         "q3fy25": dt.date(2025, 2, 10)}
+
+
+def test_cross_gate_passes_two_filings_apart_that_agree():
+    cells = sr.cross_gate([_cell("q2fy25", "1,100.25"), _cell("q2fy26", "1100.25")], FILED)
+    assert {c["gate"] for c in cells} == {"pass"}
+
+
+def test_cross_gate_same_results_filed_twice_is_not_a_second_witness():
+    cells = sr.cross_gate([_cell("q2fy26", "1,100.25"), _cell("q2fy26_bse", "1,100.25")], FILED)
+    assert {c["gate"] for c in cells} == {"single_filing"}
+
+
+def test_cross_gate_misread_column_conflicts_instead_of_passing():
+    # the Q2FY26 page's current-quarter figure misread under the year-ago date meets the true year-ago figure
+    cells = sr.cross_gate([_cell("q2fy25", "1,100.25"), _cell("q2fy26", "1,200.50")], FILED)
+    assert {c["gate"] for c in cells} == {"conflict"}
+
+
+def test_cross_gate_needs_a_period():
+    c = _cell("q2fy25", "5")
+    c["kind"] = "unprinted"
+    assert sr.cross_gate([c], FILED)[0]["gate"] == "no_period"
+
+
+def test_label_key_drops_list_marks():
+    assert sr.label_key("(a) Revenue from operations") == sr.label_key("Revenue from Operations")
+    assert sr.label_key("IV. Total income") == "total income"
+
+
+def test_per_share_line_without_decimal_is_refused():
+    c = _cell("q2fy25", "154", label="Basic (Rs)")
+    d = _cell("q2fy26", "154", label="Basic (Rs)")
+    assert {x["gate"] for x in sr.cross_gate([c, d], FILED)} == {"per_share_no_decimal"}
+    assert sr.per_share_ok("Diluted", "1.54") and sr.per_share_ok("Revenue", "154")
+
+
+class _Xbrl:
+    pass
+
+
+def test_xbrl_disagreement_refuses_the_whole_key(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    monkeypatch.setattr(cj, "judge", lambda cell, x: cj.Verdict("disagree" if cell["value_text"] == "(691)" else "agree"))
+    bad = sr.cross_gate([_cell("q2fy25", "(691)", label="Profit / (Loss) Before Tax"),
+                         _cell("q2fy26", "(691)", label="Profit / (Loss) Before Tax")], FILED, xbrl=_Xbrl())
+    assert {x["gate"] for x in bad} == {"xbrl_disagrees"}
+    good = sr.cross_gate([_cell("q2fy25", "1,100.25"), _cell("q2fy26", "1,100.25")], FILED, xbrl=_Xbrl())
+    assert {x["gate"] for x in good} == {"pass"}
+
+
+def test_identifiers_and_split_signs_are_not_figures():
+    assert not sr.figure_ok("07027180)")
+    assert not sr.figure_ok("00005573")
+    assert not sr.figure_ok("19.59)")
+    assert sr.figure_ok("(19.59)") and sr.figure_ok("0.00") and sr.figure_ok("1,234.50")
+    words = [_w(10, 50, "Net"), _w(40, 50, "loss"), _w(195, 50, "("), _w(200, 50, "19.59"), _w(300, 50, "12.62")]
+    order = sorted(range(len(words)), key=lambda j: words[j][0])
+    assert sr._lone_bracket_beside(words, order, 3)
+    assert not sr._lone_bracket_beside(words, order, 4)
+
+
+def test_year_column_naming_a_half_or_a_non_march_end_is_refused():
+    assert not sr.kind_ok("Year Ended Half September 30, 2025", "year", "2025-09-30")
+    assert not sr.kind_ok("Year Ended September 30, 2025", "year", "2025-09-30")
+    assert sr.kind_ok("Year Ended March 31, 2025", "year", "2025-03-31")
+    assert sr.kind_ok("Half Year Ended September 30, 2025", "half", "2025-09-30")
+
+
+def test_signature_block_ids_never_pass_the_gate():
+    c, d = _cell("q2fy25", "07027180", label="(DIN"), _cell("q2fy26", "07027180", label="(DIN")
+    assert {x["gate"] for x in sr.cross_gate([c, d], FILED)} == {"not_a_figure"}
+
+
+def test_split_number_line_is_refused():
+    page = _page() + [_w(10, 86, "Profit"), _w(45, 86, "after"), _w(75, 86, "tax"), _w(200, 86, "20"),
+                      _w(212, 86, "971"), _w(300, 86, "13"), _w(312, 86, "938")]
+    labels = {c["row_label"] for c in sr.read_page(page)}
+    assert "Profit after tax" not in labels and "Revenue from operations" in labels
+
+
+def test_repeated_label_with_one_section_is_refused():
+    page = _page() + [_w(10, 86, "Other"), _w(40, 86, "income"), _w(200, 86, "5.10"), _w(300, 86, "4.00")]
+    got = {(c["row_label"], c["value_text"]) for c in sr.settled(page)}
+    assert not any(label == "Other income" for label, _ in got)
+    assert ("Total income", "1,245.60") in got
