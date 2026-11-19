@@ -56,8 +56,16 @@ def good_label(label: str) -> bool:
 def page_basis(words: list[tuple[float, float, float, float, str]]) -> str:
     """consolidated / standalone from the page's top 80 words (titles); '' when neither is printed."""
     top = " ".join(w[4] for w in sorted(words, key=lambda w: (round(w[1]), w[0]))[:80]).lower()
-    found = [b for b in ("consolidated", "standalone") if b in top]
-    return found[0] if len(found) == 1 else ""      # both printed ("Standalone and Consolidated"): undecided (T-226 F3)
+    # only a statement phrase names the basis ("Consolidated Unaudited Financial Results", "Standalone Balance
+    # Sheet"), never a company name ("Consolidated Finvest Limited": third review R3-5)
+    if re.search(r"\b(standalone|consolidated)\s+(and|&|/)\s+(standalone|consolidated)\b", top):
+        return ""
+    found = {m.group(1) for m in _BASIS_PHRASE.finditer(top)}
+    return found.pop() if len(found) == 1 else ""   # both printed ("Standalone and Consolidated"): undecided (F3)
+
+
+_BASIS_PHRASE = re.compile(r"\b(consolidated|standalone)\s+(un-?audited|audited|financial|statement|results?|"
+                           r"balance|segment|cash|profit|statements?|assets|figures)\b")
 
 
 def page_title(words: list[tuple[float, float, float, float, str]]) -> str:
@@ -81,6 +89,8 @@ def figure_ok(text: str) -> bool:
 
 
 _MINUS = ("-", "–", "—", "−")
+_FOOTNOTE = re.compile(r"[*#†‡^]{1,3}|\d{1,2}|\(\d{1,2}\)|\d{1,2}[*#]")
+_NOTE_END = re.compile(r"\b(note|notes|note\s+no\.?|refer|ref\.?)\s*$", re.I)
 
 
 def _lone_bracket_beside(words: list[tuple[float, float, float, float, str]], order: list[int], i: int,
@@ -93,6 +103,8 @@ def _lone_bracket_beside(words: list[tuple[float, float, float, float, str]], or
     k = order.index(i)
     left_idx: list[int] = []
     for j in reversed(order[:k]):
+        if _FOOTNOTE.fullmatch(words[j][4].strip()):
+            continue                                    # a footnote mark between sign and figure (third review R3-1)
         if any(ch.isdigit() for ch in words[j][4]):
             break
         left_idx.append(j)
@@ -203,6 +215,8 @@ def read_page(words: list[tuple[float, float, float, float, str]]) -> list[dict[
         label = page.text_left(n, words[figs[0]][0])
         if not good_label(label) or _ID_LABEL.search(label) or _wrapped_above(page, n, label_right):
             continue
+        if _NOTE_END.search(label):
+            continue                                    # "... Note 12.3": the first figure is a note reference (R3-2)
         band = page.header_band(n)
         if not band or n not in page._block(n, band):
             continue                                    # not a data line of the table under its header (T-226 F5)
@@ -257,7 +271,7 @@ def settled(words: list[tuple[float, float, float, float, str]]) -> list[dict[st
 
 
 _GENERIC_WORDS = {"total", "grand", "sub", "subtotal", "others", "other", "net", "less", "add", "balance", "closing",
-                  "opening", "amount", "sum"}
+                  "opening", "amount", "sum", "gross"}
 _PERIODISH = re.compile(r"\b(ended|quarter|year|months?|half|audited|unaudited|particulars)\b", re.I)
 
 

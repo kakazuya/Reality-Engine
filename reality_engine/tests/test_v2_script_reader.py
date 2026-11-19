@@ -306,3 +306,28 @@ def test_rr_fe_generic_labels_with_markers_are_refused():
     assert sr.generic_unanchored("Total (A)", "") and sr.generic_unanchored("Net Total", "")
     page = _base() + _lw(62, ["Total", "(A)"]) + [_w(200, 62, "1,245.60"), _w(300, 62, "1,140.25")]
     assert not any(label == "Total (A)" for label, _ in _passed(page))
+
+
+# --- T-226 third review (dsh 20261119T153807Z-302115b9) ----------------------------------------------------------
+
+def test_r3_1_footnote_between_minus_and_figure_still_refuses():
+    page = _base() + _lw(62, ["Net", "loss"]) + [_w(176, 62, "-"), _w(186, 62, "1"), _w(200, 62, "19.59"),
+                                                 _w(300, 62, "12.62")]
+    assert ("Net loss", "19.59") not in _passed(page)
+
+
+def test_r3_2_note_reference_is_not_a_figure():
+    page = _base() + _OTHER + _lw(74, ["Provision", "for", "doubtful", "debts", "Note"]) + [_w(300, 74, "12.3")]
+    assert not any(v == "12.3" for _, v in _passed(page))
+
+
+def test_r3_4_gross_is_generic():
+    assert sr.generic_unanchored("Gross", "")
+
+
+def test_r3_5_company_name_is_not_a_basis():
+    ws = [_w(10, 2, "CONSOLIDATED"), _w(80, 2, "FINVEST"), _w(130, 2, "LIMITED"), _w(180, 2, "UNAUDITED")]
+    assert sr.page_basis(ws) == ""
+    ws2 = [_w(10, 2, "STATEMENT"), _w(70, 2, "OF"), _w(90, 2, "STANDALONE"), _w(150, 2, "UNAUDITED"),
+           _w(210, 2, "RESULTS")]
+    assert sr.page_basis(ws2) == "standalone"

@@ -1690,7 +1690,17 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   the model, 1,987 no model read); sixth fresh sample of 60 (`.tmp/sf/handsample6.txt`): 0 wrong (one doubtful
   cash-flow dividend checked on word positions: right; only its section heading was stale). Wrong per round of 60:
   4, 1, 0, 1, 0, 0.
-- Coverage is the open problem: 964 of 12,158 model-verified cells (8%). Losses: one filing only 13,094 cells,
+- Third review (dsh 20261119T153807Z-302115b9): old repros dead; fixed with `test_r3_*`: a footnote mark between
+  a minus and the figure no longer stops the sign scan (`_FOOTNOTE`); a label ending "Note"/"Refer" refuses its line
+  (a note number in a value column); "Gross" is generic; `page_basis` reads only a statement phrase
+  ("Consolidated Unaudited Financial Results", `_BASIS_PHRASE`), never a company name, and "Standalone and
+  Consolidated" stays undecided. OPEN: R3-3 a wrapped label followed by two figure rows still passes as its last
+  line (right value, partial label); R3-6 the wrap rule refuses 424 model-verified right cells (0 of them
+  mislabelled). The eval scores label and column by the printed box, not the sign. Round 8: 2,621 passed (822 equal
+  a model cell, 20 model-disputed, 1,779 no model read); `basis_unknown` now holds 3,071 cells.
+- Coverage is the open problem: 822 of 12,158 model-verified cells (7%). Rule patching converges slowly (three
+  reviews, each finding new synthetic bypasses); the next design step is an independent arithmetic check (a cell
+  passes only inside a printed identity that adds up, or on exact XBRL agreement) rather than more refusal rules. Losses: one filing only 13,094 cells,
   no period 7,368 (OCR-garbled dates, deck "FY24" columns, balance sheets without a printed kind), key conflicts
   2,815, year-kind doubt 970. Next lever measured: XBRL exact agreement as the second witness would pass 2,584 more
   single-filing cells (867 equal a model cell; 24 model-disputed, to be read before it is used).
