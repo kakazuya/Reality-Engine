@@ -1777,6 +1777,16 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   printed-style `judge_header` for the XBRL judge, and is served ONLY on its own XBRL witness: cross-filing agreement
   alone refuses it, and it never confirms a column's date for an identity. Round 20: +24 verified (c88 deck results
   slides, all xbrl or arith+xbrl), unverified unchanged, none lost: 3,087 verified. 62 tests.
+- Dates lost by OCR (20 Nov): `date_columns_by_xbrl(cells, filed, xbrl)` (call before `witness_gate`) dates a column
+  that prints its kind but no readable date ("Quarter Ended December 3 t,", "Year Ended Mmh 31, 2026", "Standalone
+  March,| As 2026"): every quarter end of the two years before the filing, limited to the months the kind allows from
+  the fiscal year end, is tried on each cell; the column takes a date only when two or more cells agree exactly at
+  ONE date and no cell agrees at another. Its cells are `period_inferred` (served on their own XBRL witness only).
+  Round 21 showed an inferred cell must not take part in cross-filing: an OCR misread "1,089.17" in an XBRL-dated
+  column formed a conflict that refused the right 1,099.17 in two other filings, and inferred cells made 45 other
+  cells "pass" -> `cross_gate` gives an inferred cell its own gate (`inferred`, or `xbrl_disagrees` on the veto).
+  Round 22: verified 3,311 (+224 over round 20), unverified 1,712, none lost; of the 224, 13 have a model read and all
+  13 name the same date; a sample of 12 without one fits its damaged header. 64 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round

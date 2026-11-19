@@ -582,3 +582,42 @@ def test_inferred_period_is_served_only_on_its_own_xbrl_witness(monkeypatch):
     got = sr.witness_gate([a, b], FILED, xbrl=_Xbrl())
     assert {c["status"] for c in got} == {"refused"}    # cross-filing agreement alone does not serve a guessed date
     assert "Quarter ended 30.09.2024" in seen
+
+
+class _XbrlFY:
+    by_period = {("FY", "2024-03-31"): [], ("FY", "2025-03-31"): []}
+
+
+def _col(values, label_prefix="r"):
+    return [dict(_cell("q2fy25", v, pend="", label=f"{label_prefix}{k}"), unit_scale=1e5, page=1, table_id=1,
+                 col_header="Quarter ended", box=(200, 50 + 12 * k, 240, 58 + 12 * k)) for k, v in enumerate(values)]
+
+
+def test_xbrl_dates_a_dateless_column_only_on_one_agreed_date(monkeypatch):
+    from reality_engine.v2 import cell_judge as cj
+
+    facts = {("Quarter ended 30.09.2024", "10.00"), ("Quarter ended 30.09.2024", "20.00")}
+
+    def judge(cell, x):
+        p = cj.number(cell["value_text"])[0] * 1e5
+        if (cell["col_header"], cell["value_text"]) in facts:
+            return cj.Verdict("agree", basis="consolidated", printed=p, xbrl=[p])
+        return cj.Verdict("no_xbrl_line")
+
+    monkeypatch.setattr(cj, "judge", judge)
+    col = _col(["10.00", "20.00", "30.00"])
+    assert sr.date_columns_by_xbrl(col, FILED, _XbrlFY()) == 1
+    assert {c["period_end"] for c in col} == {"2024-09-30"} and all(c["period_inferred"] for c in col)
+    one = _col(["10.00", "99.00"])                       # one agreeing cell is not a vote
+    assert sr.date_columns_by_xbrl(one, FILED, _XbrlFY()) == 0
+    facts.add(("Quarter ended 30.06.2024", "20.00"))     # a cell agreeing at a second date: undecided
+    two = _col(["10.00", "20.00"])
+    assert sr.date_columns_by_xbrl(two, FILED, _XbrlFY()) == 0
+
+
+def test_inferred_cells_never_pair_or_conflict_across_filings(monkeypatch):
+    real = dict(_cell("q2fy25", "1,099.17", label="Other Income"), page=2, box=(200, 50, 240, 58))
+    real2 = dict(real, doc_key="q2fy26")
+    misread = dict(real, doc_key="q3fy25", value_text="1,089.17", period_inferred=True)
+    got = sr.cross_gate([real, real2, misread], FILED)
+    assert [c["gate"] for c in got] == ["pass", "pass", "inferred"]

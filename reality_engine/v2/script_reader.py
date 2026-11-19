@@ -451,7 +451,12 @@ def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         if c["doc_key"] not in filed:
             c["gate"] = "no_filing_date"
             continue
-        label = f'{c.get("section", "")} {c["row_label"]}' if c.get("repeated") else c["row_label"]
+        if c.get("period_inferred"):
+            # a date read from "FY24" or voted by XBRL neither confirms nor refuses another filing's cell (round 21:
+            # an OCR misread "1,089.17" in an XBRL-dated column made a conflict that refused the right 1,099.17)
+            c["gate"] = "xbrl_disagrees" if xbrl is not None and _xbrl_refuses(c, xbrl) else "inferred"
+            continue
+        label =f'{c.get("section", "")} {c["row_label"]}' if c.get("repeated") else c["row_label"]
         groups[(c["basis"], label_key(label), c["period_end"], c["kind"])].append(c)
     for group in groups.values():
         values = {_norm_value(c["value_text"]) for c in group}
@@ -695,3 +700,51 @@ def _decimals_consistent(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 continue
             out.append(c)
     return out
+
+
+def _quarter_ends_before(day: _dt.date, months: int = 24) -> list[str]:
+    out, y, m = [], day.year, day.month
+    for _ in range(months + 3):
+        end = cj._month_end(y, m)
+        if m % 3 == 0 and end and end < day.isoformat():
+            out.append(end)
+        m -= 1
+        if m == 0:
+            y, m = y - 1, 12
+    return out
+
+
+def date_columns_by_xbrl(cells: list[dict[str, Any]], filed: Mapping[str, _dt.date], xbrl: Any) -> int:
+    """A column whose header prints its period type but lost its date (OCR: "Year ended 31, 2024", "Quarter ended")
+    takes a date only from XBRL agreement: each quarter end of the two years before the filing (of the months the
+    kind allows, from the company's fiscal year end) is tried on every cell of the column; the column is dated when
+    two or more of its cells agree exactly at ONE date and no cell agrees at another.  Its cells are then
+    ``period_inferred`` and served only on their own XBRL witness (as fiscal labels are).  Returns columns dated."""
+    if xbrl is None:
+        return 0
+    fy = fy_end_month(xbrl)
+    allowed = {"quarter": None, "as_at": None}
+    if fy:
+        allowed.update({"year": {fy}, "half": {fy, (fy - 7) % 12 + 1}, "nine": {(fy - 4) % 12 + 1}})
+    cols: dict[tuple, list[dict[str, Any]]] = defaultdict(list)
+    for c in cells:
+        if not c.get("period_end") and c.get("kind") in allowed and c.get("doc_key") in filed:
+            cols[_column_key(c)].append(c)
+    dated = 0
+    for col in cols.values():
+        kind, day = col[0]["kind"], filed[col[0]["doc_key"]]
+        months = allowed[kind]
+        cands = [e for e in _quarter_ends_before(day) if months is None or int(e[5:7]) in months]
+        votes: dict[str, int] = defaultdict(int)
+        for c in col:
+            for e in cands:
+                if _xbrl_agrees(dict(c, judge_header=_canonical_header(e, kind) if kind != "as_at"
+                                     else f"As at {e[8:10]}.{e[5:7]}.{e[:4]}"), xbrl):
+                    votes[e] += 1
+        if len(votes) == 1 and next(iter(votes.values())) >= 2:
+            e = next(iter(votes))
+            hdr = _canonical_header(e, kind) if kind != "as_at" else f"As at {e[8:10]}.{e[5:7]}.{e[:4]}"
+            for c in col:
+                c["period_end"], c["period_inferred"], c["judge_header"] = e, True, hdr
+            dated += 1
+    return dated
