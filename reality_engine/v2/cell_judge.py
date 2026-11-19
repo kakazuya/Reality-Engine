@@ -135,6 +135,8 @@ _CF_EXTRA = (
     ("lease_payments", re.compile(r"(payment|repayment)s?\s+(of|towards)\s+lease", re.I)),
 )
 _CF_SECTION = re.compile(r"operating|investing|financing", re.I)
+# a running subtotal ("Cash flow after investing activities" = operating + investing) is no activity total
+_CF_SUBTOTAL = re.compile(r"\bafter\s+(investing|financing)\b", re.I)
 # an operating adjustment ("(Profit)/loss on sale of PPE", "Impairment of asset held for sale") is not the
 # investing or financing cash line it names
 _CF_ADJUSTMENT = re.compile(r"\b(profit|loss|gain|impairment|write|provision|fair\s+value)", re.I)
@@ -287,6 +289,8 @@ def cf_line(row_label: str | None) -> str | None:
     if not parts:
         return None
     leaf = re.sub(r"\s+", " ", parts[-1]).strip()
+    if _CF_SUBTOTAL.search(leaf):
+        return None
     for item, rx in _CF_EXTRA:
         if rx.search(leaf):
             return item
@@ -414,9 +418,10 @@ def judge(cell: dict, xbrl: XbrlIndex) -> Verdict:
     key = keys[0]
     per_share = any(i in PER_SHARE for i in items)
     same, other, scale_hit = set(), set(), None
-    for (k, e), facts in xbrl.by_period.items():
+    # a zero (or nil) figure equals every zero XBRL fact: it names no line and no period
+    for (k, e), facts in ([] if value == 0 else xbrl.by_period.items()):
         for b, i, x in facts:
-            if b not in bases or (i in PER_SHARE) != per_share or (k, e) == (key, end) and i in items:
+            if b not in bases or (i in PER_SHARE) != per_share or (k, e) == (key, end) and i in items or x == 0:
                 continue
             for scale in scales:
                 if _close(value * scale, decimals, scale, x)[0]:
