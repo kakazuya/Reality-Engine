@@ -252,9 +252,9 @@ def read_page(words: list[tuple[float, float, float, float, str]]) -> list[dict[
     return rows
 
 
-_AS_AT_OCR = re.compile(r"(?<![a-z])as\s*-?\s*at", re.I)                # "As atatst", "Asat3ist", "As at30th"
-_YEAR_OCR = re.compile(r"(?<![a-z])[yv]?[ec]ar\s+ended", re.I)            # "ear ended", "ycar ended"
-_OTHER_KIND_OCR = re.compile(r"half|nine|six|months?|quarter|period", re.I)
+_AS_AT_OCR = re.compile(r"(?<![a-z])as\s*-?\s*at(?!tach)", re.I)                # "As atatst", "Asat3ist", "As at30th"
+_YEAR_OCR = re.compile(r"(?<![a-z])[yv]?[ec]ar\s+ended\b", re.I)            # "ear ended", "ycar ended"
+_OTHER_KIND_OCR = re.compile(r"half|nine|six|months?|quarter|qtr|period|\bH[12]\b|\bFY|\b9M\b|\bQ[1-4]\b", re.I)
 
 
 def column_kind(col_header: str, title: str) -> str:
@@ -262,7 +262,7 @@ def column_kind(col_header: str, title: str) -> str:
     in the header itself, never when the header names any other period word (20 Nov: 1,408 dated cells lost their
     kind to "As atatst", "Asat3ist", "ear ended")."""
     kind = cj.column_kind(col_header, title)
-    if kind != "unprinted" or _OTHER_KIND_OCR.search(col_header or ""):
+    if kind != "unprinted" or _OTHER_KIND_OCR.search(col_header or "") or not cj.period_end(col_header):
         return kind
     if _AS_AT_OCR.search(col_header or ""):
         return "as_at"
@@ -354,7 +354,8 @@ def settled(words: list[tuple[float, float, float, float, str]], doc_unit: float
                       "period_end": cj.period_end(o["col_header"]) or "",
                       "kind": column_kind(o["col_header"], title), "section": section.get((o["x0"], o["y0"]), ""),
                       "repeated": bool(o.get("label_repeated")), "table_id": table_of.get((o["x0"], o["y0"])),
-                      "unit_scale": _cell_unit(t_unit.get((o["x0"], o["y0"])), unit, doc_unit),
+                      "unit_scale": 1.0 if _PER_SHARE.search(f'{section.get((o["x0"], o["y0"]), "")} {o["row_label"]}')
+                      else _cell_unit(t_unit.get((o["x0"], o["y0"])), unit, doc_unit),
                       "box": (o["x0"], o["y0"], o["x1"], o["y1"])})
     if fy_end:
         for c in cells:
@@ -672,7 +673,7 @@ def table_unit(page: Any, band: list[int]) -> float | None:
     return found.pop() if len(found) == 1 else 0.0
 
 
-_DOT_THOUSANDS = re.compile(r"\(?[-−]?\d{1,3}\.\d{3}\)?")
+_DOT_THOUSANDS = re.compile(r"\(?[-−]?\d{1,3}\.\d{3,5}\)?")
 
 
 def _decimals_consistent(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -693,9 +694,10 @@ def _decimals_consistent(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
             if d and d[0] != 0 and d[1] < usual and n_usual >= 3 and n_usual > len(col) / 2:
                 continue
             # "1.877" for 1,877: an OCR page read the thousands comma as a point, the same way in two filings, so
-            # cross-filing agreement passed it (c04 cash flow, 20 Nov). Three decimals in a column that does not
-            # usually print three, outside a per-share line, is that misread: refused.
-            if _DOT_THOUSANDS.fullmatch(c["value_text"].strip()) and usual != 3 \
+            # cross-filing agreement passed it (c04 cash flow, 20 Nov). Three to five decimals behind at most three
+            # digits, outside a per-share line, is that misread: refused, also when the whole column is misread
+            # (usual 3: c04 p10) and in lakh grouping ("1.73403" for 1,73,403: c01 p2) (fourth review F1).
+            if _DOT_THOUSANDS.fullmatch(c["value_text"].strip()) \
                     and not _PER_SHARE.search(f'{c.get("section", "")} {c["row_label"]}'):
                 continue
             out.append(c)

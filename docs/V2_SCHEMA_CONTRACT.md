@@ -1767,7 +1767,8 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   found c04 cash-flow cells "1.877" / "12.907" for 1,877 / 12,907 (thousands comma read as a point the same way in
   two filings, so cross-filing passed them) -> `_decimals_consistent` refuses a three-decimal figure in a column whose
   usual decimals are not three, outside per-share lines. Round 19: verified 3,063, unverified 1,712, none lost (the
-  six misreads gone; 16 more cells verified once their conflicting misreads left the key). Hand read of 9 new
+  six misreads gone; 16 more cells verified once their conflicting misreads left the key; whole-column and
+  lakh-grouped misreads were not covered until the fourth review below). Hand read of 9 new
   unverified cells against the page text: 7 right, 2 not locatable by label, 0 wrong. 60 tests. Still open in "no
   period": 4,673 cells with a kind but no date (dates lost by OCR, "Year ended 31, 2024" without a month) and 875
   deck "FY24"/"Q2 FY25" columns; neither is mapped yet (a guessed date could pass two filings garbled alike).
@@ -1790,6 +1791,18 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   cells verified since round 14 with no model read, read against page text): 27 right, 0 wrong, 1 doubtful (c01
   cash-flow "Income Tax paid 1,280.50": the OCR text order does not show its column; XBRL agrees exactly at FY25),
   2 not legible in the OCR text (XBRL witness only).
+- Fourth witness review (dsh 20261119T202714Z-e766fc79, 20 Nov, on round 19's rules), fixed with `test_r4_*`: F1 the
+  comma-as-point rule missed a column misread whole (usual decimals 3: c04 p10 "8.702 7.727 18.310 64.708") and lakh
+  grouping ("1.73403" for 1,73,403: c01 p2); 111 such cells survived in the 10 stores, 0 served, 29 held back only
+  by `single_filing` -> any figure of at most three digits before three to five decimals, outside a per-share line,
+  is refused; F2 per-share cells carried the table's unit (386 of 477; 144 served) -> a per-share row's
+  `unit_scale` is 1.0 (rupees), the table unit applies to monetary rows only; F3 "as attached" matched the "As at"
+  fallback -> `(?!tach)`, a word end on "year ended", `qtr`/`H1`/`FY`/`9M`/`Q1` block the fallback, and it fires only
+  on a header that prints a date. Confirmed: a wrong unit can only lose a witness (forced-unit replay over every
+  served cell: 0 cells agree at another unit); 117 served fallback-kind cells sit on genuine "As at"/"Year ended"
+  columns; its 15-cell hand read: 13 right, 2 not locatable, 0 wrong. Open (pre-existing geometry, F4): c31 p3
+  header groups snap one column off ("Half Year ended" over the third quarter column); a cell there is held back
+  only by `single_filing`. Round 23: verified 3,316, unverified 1,712, none lost. 67 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
   and per-share figures without a decimal each fell to 0 from the run after their rule and stayed 0 through round

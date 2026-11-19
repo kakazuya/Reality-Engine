@@ -621,3 +621,24 @@ def test_inferred_cells_never_pair_or_conflict_across_filings(monkeypatch):
     misread = dict(real, doc_key="q3fy25", value_text="1,089.17", period_inferred=True)
     got = sr.cross_gate([real, real2, misread], FILED)
     assert [c["gate"] for c in got] == ["pass", "pass", "inferred"]
+
+
+def test_r4_f1_whole_column_and_lakh_grouped_point_misreads_are_refused():
+    col = [dict(row_label=f"r{k}", col_header="As at", value_text=v, box=(200, 50 + 12 * k, 240, 58 + 12 * k),
+                table_id=1) for k, v in enumerate(["8.702", "7.727", "18.310", "64.708"])]
+    assert sr._decimals_consistent(col) == []           # every comma of the column read as a point (c04 p10)
+    lakh = [dict(row_label="Total", col_header="Q", value_text="1.73403", box=(200, 50, 240, 58), table_id=1)]
+    assert sr._decimals_consistent(lakh) == []          # "1.73403" for 1,73,403 (c01 p2)
+
+
+def test_r4_f2_per_share_cells_are_in_rupees():
+    ws = _page() + [_w(10, 86, "Basic"), _w(40, 86, "EPS"), _w(200, 86, "1.54"), _w(300, 86, "1.20"),
+                    _w(200, 11, "(Rs."), _w(225, 11, "in"), _w(240, 11, "lakh)")]
+    units = {c["row_label"]: c["unit_scale"] for c in sr.settled(ws)}
+    assert units["Basic EPS"] == 1.0 and units["Total income"] == 1e5
+
+
+def test_r4_f3_prose_does_not_give_a_kind():
+    assert sr.column_kind("31.12.2025 Notes as attached", "") == "unprinted"
+    assert sr.column_kind("Notes as attached", "") == "unprinted"
+    assert sr.column_kind("As atatst March, 2025", "") == "as_at"
