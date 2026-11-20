@@ -217,3 +217,27 @@ Template:
 - Review trigger: stage `prediction`; review by 2026-11-27
 - Status: parked
 - History: 2026-11-13 moved from tickets by the board cut.
+
+## I-016: Observation atom for every visual (charts, maps, pies, bars), linked by shared measures and dimensions
+- Created: 2026-11-20 08:30 IST, by Shivam (discussion with Eagle, after the Unsiloed seed-round article of 18 Nov)
+- Context (what caused it): statement figures are covered (XBRL, results tables, T-226 script reader: 3,544 verified
+  cells, 0 wrong in 94 hand-read). Deck and note visuals are not: companies present facilities on maps, capacity as
+  bars, mix as pies, with their own axis names. Held today: `deck_figures.facts` (15.1M model-read rows: metric,
+  period, value, unit; no segment/geography/plant dimension, no verification, no link to statements) and
+  `deck_figures.chart_trends` (1,687 rows, a trend word only). Models describe a slide well but drop or invent rows when
+  asked for exact values; no public architecture is known that turns visuals into verified, linked, queryable numbers.
+- Purpose (what it is for): drill every visual down to quantities that join the financial statements (segment and
+  geographic revenue, volumes, capacity, utilisation, realisation) so forecasting can use them; nothing printed lost.
+- Idea: one `observation` row per printed quantity (company, measure, value, unit, scale, period, basis, dims{segment,
+  product, geography, plant, customer}, printed_label and printed_axis verbatim, source page and region, known_at,
+  status); a growing measure dictionary (a model proposes the mapping of a new axis name once, with its reason; scripts
+  apply it; unmapped kept verbatim, never dropped or guessed); shared dimension vocabularies (gazetteer, per-company
+  segment and product lists); verification by parts-sum-to-total, XBRL, the same measure in another document, the
+  same figure reprinted next quarter, and derived identities (volume x realisation ~ segment revenue). Overlaps I-014
+  (units at write, one fact many sources) and I-015 (T-132 table store, T-133 label dictionary, T-134 period engine,
+  T-163 segment table): those are this idea's parts.
+- Data: held (decks, ARs, concall transcripts, results notes in the 91 tg_build stores and raw on Drive; XBRL facts).
+- Hypothesis test: see the proposal in the 20 Nov session reply; to be written as a ticket only on Shivam's go.
+- Review trigger: stage `extraction-design`; review by 2026-11-27
+- Status: parked
+- History: 2026-11-20 created.
