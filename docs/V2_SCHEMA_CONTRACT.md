@@ -1840,7 +1840,20 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   labelled `reader: script` with witness and `inferred`; `period` (Q2FY26, H1FY26, FY26) maps to a March fiscal
   year end; `as_of` and `include_unverified` apply. Precedence over printed rows (option 2) waits for a frozen-set
   answer test. Written 20 Nov to the 10 measured stores: 5,256 rows (3,544 verified, 1,712 unverified, equal to
-  round 26). Tests `reality_engine/tests/test_v2_script_cells.py`, `plugins/reality-data/tests/test_lookups_pilot3.py`. Round 26 =
+  round 26). Tests `reality_engine/tests/test_v2_script_cells.py`, `plugins/reality-data/tests/test_lookups_pilot3.py`.
+- Unseen companies (20 Nov, T-227): a dry run on the 81 tg_build stores never measured (12,392 results pages,
+  141,121 cells, 0 errors) served 17,188 verified and 14,781 unverified; 23 stores served nothing. Cause: almost all
+  are standalone-only filers (quarterly XBRL has no consolidated fact) whose pages never print a basis, so every cell
+  was `basis_unknown` and the basis vote could not fire (no contrary facts) -> `single_basis_company`: when the
+  store's quarterly XBRL holds standalone facts only, a cell naming no basis is standalone unless its page title
+  carries a consolidated word (OCR forms too), `basis_inferred` (own XBRL witness only). Thirteenth hand read
+  (`.tmp/sf/handsample13.txt`, 15 verified + 15 unverified cells from 30 unseen companies): 25 right, 3 doubtful (OCR
+  order hides the column), 2 with the right value but the wrong period type, both unverified: Dhampur "3. Segment
+  Assets: Sugar 1,881.57" under a "Quarter Ended" column served as a quarter and a year, and a cash-flow line under an
+  "As at" header served as a balance -> gate `kind_section_mismatch` (hard refusal): a segment-assets, -liabilities or
+  capital-employed section under any column but "as at", and "as at" on a cash-flow page that is not also a balance
+  sheet. Round 29 on the measured 10: verified 3,544, unverified 1,701 (11 such segment balances gone), no verified
+  cell lost; the 10 stores were rewritten with rule set `t227-r29`. 76 tests. Round 26 =
   round 25. 71 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references

@@ -708,3 +708,25 @@ def test_xbrl_gives_a_column_a_basis_only_when_one_basis_wins(monkeypatch):
     assert sr.basis_columns_by_xbrl(tie, _Xbrl()) == 0 and {c["basis"] for c in tie} == {""}
     got = sr.cross_gate([dict(col[0], doc_key="q2fy26")] + col[:1], FILED)
     assert {c["gate"] for c in got} == {"inferred"}       # an inferred basis never pairs across filings
+
+
+def test_balance_section_under_a_flow_column_and_flow_under_as_at_on_cash_flow_are_refused():
+    seg = dict(_cell("q2fy25", "1,881.57", label="Sugar"), section="3. Segment Assets", kind="quarter",
+               box=(200, 50, 240, 58), page=1)
+    cf = dict(_cell("q2fy25", "626", label="Finance costs"), kind="as_at", title="AUDITED STANDALONE STATEMENT OF CASH FLOW",
+              box=(200, 70, 240, 78), page=1)
+    ok = dict(_cell("q2fy25", "443.43", label="Sugar"), section="1. Segment Revenue", box=(200, 90, 240, 98), page=1)
+    got = {c["value_text"]: c["gate"] for c in sr.cross_gate([seg, cf, ok], FILED)}
+    assert got["1,881.57"] == "kind_section_mismatch" and got["626"] == "kind_section_mismatch"
+    assert got["443.43"] != "kind_section_mismatch"
+
+
+def test_standalone_only_filer_gives_unnamed_columns_the_standalone_basis():
+    class X:
+        by_key = {("Q", "2025-09-30", "standalone", "revenue"): [1.0]}
+    cells = [dict(_cell("q2fy25", "1.00"), basis="", title="Statement of Financial Results"),
+             dict(_cell("q2fy25", "2.00"), basis="", title="Statement of Cansolldated Results")]
+    assert sr.single_basis_company(cells, X()) == 1
+    assert cells[0]["basis"] == "standalone" and cells[0]["basis_inferred"] and cells[1]["basis"] == ""
+    X.by_key[("Q", "2025-09-30", "consolidated", "revenue")] = [1.0]
+    assert sr.single_basis_company([dict(_cell("q2fy25", "1.00"), basis="", title="")], X()) == 0

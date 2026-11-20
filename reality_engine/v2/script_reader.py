@@ -450,6 +450,14 @@ def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         if not kind_ok(c.get("col_header", ""), c["kind"], c["period_end"]):
             c["gate"] = "year_kind_doubtful"
             continue
+        if (_BALANCE_SECTION.search(c.get("section", "") or "") and c["kind"] != "as_at") or \
+                (c["kind"] == "as_at" and cj._CF_TITLE.search(c.get("title", "") or "")
+                 and not cj._BS_TITLE.search(c.get("title", "") or "")):
+            # a balance under a flow column (Dhampur "3. Segment Assets: Sugar 1,881.57" under "Quarter Ended"),
+            # or a flow under an "As at" header on a cash-flow page: the value is right, its period type is not
+            # (20 Nov unseen-company hand read, #24 and #26)
+            c["gate"] = "kind_section_mismatch"
+            continue
         if not figure_ok(c["value_text"]) or _ID_LABEL.search(c["row_label"]):
             c["gate"] = "not_a_figure"
             continue
@@ -558,7 +566,8 @@ def arith_witness(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 _HARD_REFUSALS = {"no_period", "per_share_no_decimal", "year_kind_doubtful", "not_a_figure", "basis_unknown",
-                  "no_filing_date", "conflict", "xbrl_disagrees", "inferred_future"}
+                  "no_filing_date", "conflict", "xbrl_disagrees", "inferred_future",
+                  "kind_section_mismatch"}
 
 
 def _xbrl_agrees(c: dict[str, Any], xbrl: Any) -> bool:
@@ -797,5 +806,28 @@ def basis_columns_by_xbrl(cells: list[dict[str, Any]], xbrl: Any) -> int:
                 and not any(cj.basis_of(c.get("section", "")) == other for c in col):
             for c in col:
                 c["basis"], c["basis_inferred"] = won[0], True
+            done += 1
+    return done
+
+
+_BALANCE_SECTION = re.compile(r"segment\s+(assets|liabilit)|capital\s+employed", re.I)
+_CONSOLIDATED_WORD = re.compile(r"c[o0]ns[o0]l|\bc\s?\w{0,8}dated\b", re.I)    # "Cansolldated", "C fidated"
+
+
+def single_basis_company(cells: list[dict[str, Any]], xbrl: Any) -> int:
+    """A company whose quarterly XBRL holds standalone facts and no consolidated fact at all files no consolidated
+    results: a cell whose page and header name neither basis is standalone, unless its page title carries a
+    consolidated word (also OCR-damaged: "Cansolldated", "C fidated").  Cells are ``basis_inferred`` (served only on
+    their own XBRL witness).  20 Nov: 23 of 81 unmeasured stores served nothing, almost all standalone-only filers
+    whose pages never print "Standalone".  Run before ``basis_columns_by_xbrl``.  Returns cells given the basis."""
+    if xbrl is None:
+        return 0
+    bases = {basis for key, _end, basis, _item in getattr(xbrl, "by_key", {}) if key == cj.Q}
+    if bases != {"standalone"}:
+        return 0
+    done = 0
+    for c in cells:
+        if not c.get("basis") and not _CONSOLIDATED_WORD.search(c.get("title", "") or ""):
+            c["basis"], c["basis_inferred"] = "standalone", True
             done += 1
     return done
