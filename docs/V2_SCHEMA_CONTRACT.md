@@ -1829,7 +1829,18 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   least one cell refused by the other basis's own facts, and no section caption naming the other basis. F2 (loss
   only, open): the 25 pt x-bin splits one printed column into several vote keys (c61 p10 total revenue);
   keying the vote by header text instead was measured worse (round 27: -16 +8, two date columns sharing one
-  damaged header tie), so the bin stays. Round 26 =
+  damaged header tie), so the bin stays.
+- Store writer (T-227, Shivam 20 Nov: option 1). `reality_engine/v2/script_cells.py` reads every results page of
+  one store, runs the full gate (settled, arith, `date_columns_by_xbrl`, `basis_columns_by_xbrl`, `witness_gate`)
+  and replaces the store's own `script_cell` table with the served cells (verified, unverified; refused cells get no
+  row), keeping printed fields (row label, section, column header, value text, page box) and resolved ones (period
+  end and kind, basis, unit scale, value in rupees, `period_inferred` / `basis_inferred`, status, witness, gate,
+  rule-set `version`); one `script_cell_run` row per build. Nothing else in the store changes. `pilot3_cells`
+  (`plugins/reality-data/server/lookups_pilot3.py`) now returns `script_rows` beside its page_cell / page_atom rows,
+  labelled `reader: script` with witness and `inferred`; `period` (Q2FY26, H1FY26, FY26) maps to a March fiscal
+  year end; `as_of` and `include_unverified` apply. Precedence over printed rows (option 2) waits for a frozen-set
+  answer test. Written 20 Nov to the 10 measured stores: 5,256 rows (3,544 verified, 1,712 unverified, equal to
+  round 26). Tests `reality_engine/tests/test_v2_script_cells.py`, `plugins/reality-data/tests/test_lookups_pilot3.py`. Round 26 =
   round 25. 71 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references

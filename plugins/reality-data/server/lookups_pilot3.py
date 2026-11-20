@@ -930,6 +930,66 @@ def _cells_from_atoms(sym: str, terms: str | None, period: str | None, day: str 
 def cells(symbol: str, terms: str, period: str | None = None, as_of: str | None = None,
           include_unverified: bool = True, limit: int = 20, offset: int = 0,
           documents: str | None = None) -> dict[str, Any]:
+    """Figures read from table pages, plus (T-227) ``script_rows``: the model-free script reader's cells of the
+    store's results pages, each with its resolved period, basis, unit and the witness that verified it.  The two
+    sources are served side by side and labelled; neither replaces the other (Shivam 20 Nov, option 1)."""
+    reply = _cells_core(symbol, terms, period, as_of, include_unverified, limit, offset, documents)
+    try:
+        sym, day = resolve_symbol(symbol), _day(as_of, "as_of")
+        script = _script_cells(sym, terms, period, day, include_unverified, min(max(int(limit or 20), 1), 20))
+    except DataError:
+        script = None
+    if script is not None:
+        reply["script_rows"] = script
+        if script and reply.get("found") is False:
+            reply["found"] = True
+    return reply
+
+
+_SCRIPT_PERIOD = {"Q1": ("06-30", -1, "quarter"), "Q2": ("09-30", -1, "quarter"), "Q3": ("12-31", -1, "quarter"),
+                  "Q4": ("03-31", 0, "quarter"), "H1": ("09-30", -1, "half"), "H2": ("03-31", 0, "half"),
+                  "FY": ("03-31", 0, "year")}
+
+
+def _script_cells(sym: str, terms: str | None, period: str | None, day: str | None,
+                  include_unverified: bool, cap: int) -> list[dict[str, Any]] | None:
+    """``script_cell`` rows (T-227) matching every term in the row label or section; ``period`` (Q2FY26, H1FY26,
+    FY26) maps to the period end of a March fiscal year.  None when the store has no ``script_cell`` table."""
+    if not _has_table("script_cell"):
+        return None
+    words = [w for w in re.split(r"[^\w%]+", str(terms or "").lower()) if len(w) >= 2]
+    where, args = ["symbol=?"], [sym]
+    for word in words:
+        where.append("lower(COALESCE(row_label,'')||' '||COALESCE(section,'')||' '||COALESCE(table_title,'')) LIKE ?")
+        args.append(f"%{word}%")
+    if not include_unverified:
+        where.append("status='verified'")
+    if day:
+        where.append("substr(known_at,1,10) <= ?")
+        args.append(day)
+    _, label = norm_period(period)
+    m = re.fullmatch(r"(Q[1-4]|H[12]|FY)FY(\d{2})", label or "")
+    if m:
+        mmdd, shift, kind = _SCRIPT_PERIOD[m.group(1)]
+        where.append("period_end=? AND period_kind=?")
+        args += [f"{2000 + int(m.group(2)) + shift}-{mmdd}", kind]
+    rows = _q("SELECT doc_key, page, known_at, table_title, section, row_label, col_header, value_text, value, "
+              "unit_scale, period_end, period_kind, basis, period_inferred, basis_inferred, status, witness "
+              f"FROM script_cell WHERE {' AND '.join(where)} "
+              "ORDER BY CASE status WHEN 'verified' THEN 0 ELSE 1 END, known_at DESC, page LIMIT ?", (*args, cap))
+    return [{"value_text": r["value_text"], "value_rupees": r["value"], "unit_scale": r["unit_scale"],
+             "row_label": _trim(r["row_label"], 120), "section": _trim(r["section"], 60),
+             "col_header": _trim(r["col_header"], 80), "period_end": r["period_end"], "period_kind": r["period_kind"],
+             "basis": r["basis"], "status": r["status"], "witness": r["witness"],
+             "inferred": ",".join(k for k, v in (("period", r["period_inferred"]), ("basis", r["basis_inferred"]))
+                                  if v),
+             "doc_key": r["doc_key"], "page": r["page"], "known_at": r["known_at"], "reader": "script",
+             "provenance": _prov("script_cell", f"p{r['page']}", r["known_at"])} for r in rows]
+
+
+def _cells_core(symbol: str, terms: str, period: str | None = None, as_of: str | None = None,
+                include_unverified: bool = True, limit: int = 20, offset: int = 0,
+                documents: str | None = None) -> dict[str, Any]:
     """Figures read from table and chart pages (decks, results, annual reports) by the page reader: one cell per
     printed figure with its row label, column header, table title and status. ``verified`` means the position check
     settled the cell; ``unverified`` is served and labelled (that is how T-189 keeps recall); ``quarantined`` is

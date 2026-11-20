@@ -88,6 +88,16 @@ def build_fixture() -> None:
              "99,999", "Rs crore", "quarantined"),
             ("pdfs/KEC/deck2.pdf", 2, "KEC", "2026-08-10T17:00:00", "dots", "", "Gross written premium", "Q2FY27",
              "2,100", "Rs crore", "verified")])
+    # T-227: the script reader's cells, served beside page_cell as script_rows
+    from reality_engine.v2 import script_cells as _sc
+    c.executescript(_sc.SCHEMA)
+    c.executemany(f"INSERT INTO script_cell VALUES ({','.join('?' * 25)})", [
+        ("pdfs/KEC/res1.pdf", 2, "KEC", "2025-11-10", "script", "t", "Statement of results", "", "Revenue from operations",
+         "Quarter ended 30.09.2025", "5,120.40", 5120.40e7, 1e7, "2025-09-30", "quarter", "consolidated", 0, 0,
+         "verified", "xbrl", "single_filing", None, None, None, None),
+        ("pdfs/KEC/res2.pdf", 2, "KEC", "2026-05-10", "script", "t", "Statement of results", "", "Revenue from operations",
+         "Year ended 31.03.2026", "21,000.00", 21000e7, 1e7, "2026-03-31", "year", "consolidated", 0, 1,
+         "unverified", "cross", "pass", None, None, None, None)])
     c.executemany(
         "INSERT INTO guidance(id,symbol,isin,metric,target_period,low,high,unit,direction,said_on,doc_key,page,quote,"
         "speaker,known_at,known_at_source,revision_of,extractor_rule) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'t')", [
@@ -495,6 +505,20 @@ class Pilot3ToolTests(unittest.TestCase):
         self.assertProvenance(out["rows"])
         verified = p3.cells("KEC", "order book", include_unverified=False)
         self.assertEqual({r["status"] for r in verified["rows"]}, {"verified"})
+
+    def test_cells_serve_script_rows_beside_page_cells(self):
+        """T-227: script-read cells come back labelled, with resolved period, basis, unit and witness."""
+        out = p3.cells("KEC", "revenue from operations")
+        self.assertTrue(out["found"])
+        got = {r["period_end"]: r for r in out["script_rows"]}
+        self.assertEqual(got["2025-09-30"]["witness"], "xbrl")
+        self.assertEqual(got["2026-03-31"]["inferred"], "basis")
+        self.assertEqual({r["reader"] for r in out["script_rows"]}, {"script"})
+        self.assertEqual([r["value_text"] for r in p3.cells("KEC", "revenue from operations", period="Q2FY26")
+                          ["script_rows"]], ["5,120.40"])
+        self.assertEqual(len(p3.cells("KEC", "revenue from operations", as_of="2026-01-01")["script_rows"]), 1)
+        self.assertEqual({r["status"] for r in p3.cells("KEC", "revenue from operations",
+                                                         include_unverified=False)["script_rows"]}, {"verified"})
 
     def test_cells_are_point_in_time(self):
         out = p3.cells("KEC", "order book", as_of="2026-06-01")
