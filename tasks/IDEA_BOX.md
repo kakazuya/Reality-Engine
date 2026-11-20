@@ -239,5 +239,5 @@ Template:
 - Data: held (decks, ARs, concall transcripts, results notes in the 91 tg_build stores and raw on Drive; XBRL facts).
 - Hypothesis test: see the proposal in the 20 Nov session reply; to be written as a ticket only on Shivam's go.
 - Review trigger: stage `extraction-design`; review by 2026-11-27
-- Status: parked
-- History: 2026-11-20 created.
+- Status: promoted to T-230 (Shivam 21 Nov: a schema problem, not a reading one)
+- History: 2026-11-20 created; 2026-11-21 promoted to T-230.
