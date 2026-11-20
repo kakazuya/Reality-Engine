@@ -30,7 +30,7 @@ from reality_engine.v2 import page_words
 from reality_engine.v2 import script_reader as sr
 
 READER = "script"
-VERSION = "t227-r29"          # the rule set measured in round 29 (docs/V2_SCHEMA_CONTRACT.md s16)
+VERSION = "t227-r30"          # the rule set measured in round 30 (docs/V2_SCHEMA_CONTRACT.md s16)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS script_cell (

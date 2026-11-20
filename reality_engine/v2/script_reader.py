@@ -450,12 +450,15 @@ def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
         if not kind_ok(c.get("col_header", ""), c["kind"], c["period_end"]):
             c["gate"] = "year_kind_doubtful"
             continue
+        title = c.get("title", "") or ""
         if (_BALANCE_SECTION.search(c.get("section", "") or "") and c["kind"] != "as_at") or \
+                (c["kind"] != "as_at" and cj._BS_TITLE.search(title) and not _FLOW_TITLE.search(title)) or \
                 (c["kind"] == "as_at" and cj._CF_TITLE.search(c.get("title", "") or "")
                  and not cj._BS_TITLE.search(c.get("title", "") or "")):
             # a balance under a flow column (Dhampur "3. Segment Assets: Sugar 1,881.57" under "Quarter Ended"),
             # or a flow under an "As at" header on a cash-flow page: the value is right, its period type is not
-            # (20 Nov unseen-company hand read, #24 and #26)
+            # (20 Nov unseen-company hand reads 13 #24, #26 and 14 #20: a balance-sheet-only page under
+            # "Financial Year ended")
             c["gate"] = "kind_section_mismatch"
             continue
         if not figure_ok(c["value_text"]) or _ID_LABEL.search(c["row_label"]):
@@ -810,6 +813,7 @@ def basis_columns_by_xbrl(cells: list[dict[str, Any]], xbrl: Any) -> int:
     return done
 
 
+_FLOW_TITLE = re.compile(r"profit|loss|income|results|revenue|cash\s*-?\s*flow", re.I)  # a page holding flows too
 _BALANCE_SECTION = re.compile(r"segment\s+(assets|liabilit)|capital\s+employed", re.I)
 _CONSOLIDATED_WORD = re.compile(r"c[o0]ns[o0]l|\bc\s?\w{0,8}dated\b", re.I)    # "Cansolldated", "C fidated"
 

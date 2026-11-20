@@ -183,7 +183,7 @@ def test_r5_f4_xbrl_judge_sees_the_page_title(monkeypatch):
         return cj.Verdict("disagree" if "BALANCE SHEET" in cell["table_title"] else "no_xbrl_line")
 
     monkeypatch.setattr(cj, "judge", judge)
-    cells = [dict(_cell(d, "1,300.00"), title="BALANCE SHEET AS AT 31.03.2025") for d in ("q2fy25", "q2fy26")]
+    cells = [dict(_cell(d, "1,300.00"), title="BALANCE SHEET AS AT 31.03.2025", kind="as_at") for d in ("q2fy25", "q2fy26")]
     assert {x["gate"] for x in sr.cross_gate(cells, FILED, xbrl=_Xbrl())} == {"xbrl_disagrees"}
     assert seen and "BALANCE SHEET" in seen[0]
 
@@ -730,3 +730,12 @@ def test_standalone_only_filer_gives_unnamed_columns_the_standalone_basis():
     assert cells[0]["basis"] == "standalone" and cells[0]["basis_inferred"] and cells[1]["basis"] == ""
     X.by_key[("Q", "2025-09-30", "consolidated", "revenue")] = [1.0]
     assert sr.single_basis_company([dict(_cell("q2fy25", "1.00"), basis="", title="")], X()) == 0
+
+
+def test_balance_sheet_only_page_refuses_flow_kinds():
+    bs = dict(_cell("q2fy25", "67,108.62", label="Total non-current assets", pend="2024-03-31"), kind="year",
+              title="Standalone Balance Sheet (in Lakh) Half Year ended Financial Year ended", box=(200, 50, 240, 58),
+              page=1)
+    pl = dict(bs, title="Statement of Standalone Financial Results and Balance Sheet", value_text="5.00")
+    got = {c["value_text"]: c["gate"] for c in sr.cross_gate([bs, pl], FILED)}
+    assert got["67,108.62"] == "kind_section_mismatch" and got["5.00"] != "kind_section_mismatch"

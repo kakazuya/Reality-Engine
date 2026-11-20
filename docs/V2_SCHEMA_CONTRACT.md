@@ -1853,7 +1853,13 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   "As at" header served as a balance -> gate `kind_section_mismatch` (hard refusal): a segment-assets, -liabilities or
   capital-employed section under any column but "as at", and "as at" on a cash-flow page that is not also a balance
   sheet. Round 29 on the measured 10: verified 3,544, unverified 1,701 (11 such segment balances gone), no verified
-  cell lost; the 10 stores were rewritten with rule set `t227-r29`. 76 tests. Round 26 =
+  cell lost; the 10 stores were rewritten with rule set `t227-r29`. 76 tests. Rerun on the 81 with these rules: verified 20,262 (+3,074),
+  unverified 14,004; stores serving nothing 23 -> 7. Fourteenth hand read (`.tmp/sf/handsample14.txt`, 15 cells
+  verified through an inferred basis + 15 unverified, 30 unseen companies, word positions checked where the text
+  order misled): 27 right, 2 doubtful (OCR garbage), 1 right value with the wrong period type (c84 "Standalone
+  Balance Sheet" column "Financial Year ended 31.03.2024" typed year) -> `kind_section_mismatch` also refuses any
+  kind but "as at" on a page whose title is a balance sheet and names no flow (profit, loss, income, results,
+  revenue, cash flow). Round 30 on the measured 10 = round 29. Rule set `t227-r30`. 77 tests. Round 26 =
   round 25. 71 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references
