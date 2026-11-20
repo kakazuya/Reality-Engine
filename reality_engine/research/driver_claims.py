@@ -1,17 +1,28 @@
-"""T-228 stage 1a: turn verbatim management text into quantified claims on the driver tree.
+"""T-228: turn verbatim management text into quantified claims on the driver tree.
 
 Shivam 20 Nov 2026; stage 1a-fix 21 Nov (Wolf's review): claims now carry the two statements before them and
 the analyst question, carry script checks on unit/period/sign, and pass a second, independent judge
 (``beam-free``) before they may be called ``verified``.
 
+Stage 2a (21 Nov, brief T-228 stage 2): the sources widen past the call transcript.  ``doc_page`` paragraphs
+from annual reports, press releases and exchange announcements are added to the item builder (``doc_items``),
+with a paragraph-level forward-cue and number-with-unit filter.  Announcements also get a deterministic
+pre-parse (``announcement_claims``) for the three shapes exchanges print in full: an order win with its
+execution period (``revenue.order_book``), a board-approved capex amount (``capex.amount``) and a
+QIP/warrant/rights size with its issue price (``equity.shares``).  A row the script parses fully becomes a
+claim with ``method='script'``; every other row goes to the model.  Each claim now carries ``source_kind``
+(transcript, guidance, annual_report, press_release, announcement).
+
 A statement that ends in no tree node (revenue, operating cost, capex, debt, equity, working capital) is
 show, not data: it is dropped.  The output is one SQLite DB of claims, each carrying the exact quote it came
 from, its context and the source row's own ``known_at``.
 
-Two producers, three layers of check:
+Three producers, three layers of check:
 * **script**: a ``guidance`` row whose metric already names a node maps straight to a claim (no model call);
-  the mapping table is ``GUIDANCE_MAP``.  Unmapped guidance rows and forward-looking ``transcript_statement``
-  rows go to ``hy4-flash-free`` on OpenCode Go, <= 10 per request, JSON out.
+  the mapping table is ``GUIDANCE_MAP``.  An announcement paragraph whose order win, capex approval or fund
+  raise the deterministic parser reads in full is also a script claim.  Unmapped guidance rows and
+  forward-looking ``transcript_statement`` / ``doc_page`` rows go to ``hy4-flash-free`` on OpenCode Go,
+  <= 10 per request, JSON out.
 * **independent check 1 (script)**: ``quote_span`` must be a (whitespace-normalised) substring of the stored
   statement; every value must be a printed number inside the span; the unit word in the span must agree with
   the unit; a range stated as "plus or minus"/"+/-"/"±" forces sign 0; a claim needs an ``effective_period``
@@ -31,6 +42,7 @@ ledger.  No store, no page_reader DB, no spend DB is touched; both models are fr
     python -m reality_engine.research.driver_claims --stores c09 c11 c17 c61 c88 --pick 2 --pick-seed 7
     python -m reality_engine.research.driver_claims --stores ... --dry-run
     python -m reality_engine.research.driver_claims --unleashed            # stage 1b, not this stage
+    python -m reality_engine.research.driver_claims --stores ... --doc-types annual_report press_release
     python -m reality_engine.research.driver_claims --report --out .tmp/t228/claims.db --seed 29
 
 Tables: ``claim`` (one row per claim), ``read_log`` (one row per HTTP request, extract and judge),
@@ -72,6 +84,12 @@ JUDGE_BACKOFF_S = (2.0, 4.0)
 EMPTY_STOP_SHARE = 0.20   # stage 1a stop condition: >20% empty answers
 MAX_TEXT = 3000           # characters of a statement sent to the model (and verified against)
 MAX_CONTEXT = 1500        # characters of the 2 preceding statements + question
+
+# Stage 2a sources.  `doc`/`doc_page` are read-only store tables; a page whose text is empty in the main DB is
+# read from `<store>_ocr.db.ocr_page` (the OCR run writes there, never into the store).
+DOC_TYPES = ("annual_report", "press_release", "announcement")
+PARA_CHARS = 700          # a document paragraph is packed to about this many characters
+MAX_QUOTE = 160           # characters of context kept on each side of a script-parsed number
 
 NODES = (
     "revenue.volume", "revenue.price", "revenue.total", "revenue.order_book", "revenue.mix",
@@ -194,6 +212,94 @@ HORIZON = re.compile(
 # "10%-15% plus or minus" is a range around an unknown base: not a signed claim.  Wolf, 21 Nov.
 AMBIG_SIGN = re.compile(r"plus\s*or\s*minus|\+/-|±", re.I)
 
+# Stage 2a: the brief's document cue list (expect, target, plan, will, guidance, outlook, order, awarded,
+# commission, approve, capex, capacity, raise, allot).  It is deliberately NOT the transcript CUE: a results
+# table says "increase/(decrease)" and "growth" on every line, which is a past number, not a forward cue.
+DOC_CUE = re.compile(
+    r"\b(?:expect(?:s|ed|ing)?|target(?:s|ed|ing)?|plan(?:s|ned|ning)?|will|guidance|guid(?:e|ed|ing)"
+    r"|outlook|order(?:s|ed|ing)?|award(?:s|ed|ing)?|commission(?:s|ed|ing)?|approv\w+|capex"
+    r"|capital expenditure|capacity|raise|raising|allot\w*|intend(?:s|ed|ing)?|aim(?:s|ing)?"
+    r"|going forward)\b",
+    re.I,
+)
+
+# A number a claim can be built on: a currency amount, a per cent, or a named physical unit.
+DOC_NUMBER = re.compile(
+    r"(?<![A-Za-z])(?:Rs\.?|INR|₹|\$|USD)\s*\d[\d,]*(?:\.\d+)?"
+    r"|\d[\d,]*(?:\.\d+)?\s*(?:%|per\s?cent|percent|crores?|cr\.?|lakhs?|million|mn|billion|bn|bps?"
+    r"|basis points?|tonnes?|tons?|mt|mw|gw|gwh|mwh|kw|units?|kl|tpa|tpd|acres?|sq\.?\s?ft|sft|shares?)",
+    re.I,
+)
+
+# Section boilerplate an annual report repeats (CSR, BRSR, risk/governance lists, director bios).  The cue
+# filter would keep some of it (a CSR paragraph says "will spend Rs X crore"); this drops the paragraph and
+# counts the drop.
+BOILERPLATE = re.compile(
+    r"corporate social responsibility|\bCSR\b|business responsibility and sustainability|\bBRSR\b"
+    r"|principle\s+\d+\s*:?\s*businesses should|familiarisation programme|familiarization programme"
+    r"|secretarial audit|secretarial standards|annual return|dividend distribution policy"
+    r"|whistle ?blower|vigil mechanism|nomination and remuneration|stakeholder relationship"
+    r"|material subsidiary|related party transaction|risk management committee|internal financial control"
+    r"|code of conduct|code of ethics|listing fees|registrar and share transfer agent|board diversity",
+    re.I,
+)
+
+# A sentence boundary is a full stop followed by a capital: "Rs. 215" and "No. 5" are not sentence ends.
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z])")
+
+# Filings the store puts under `announcement` that are not an announcement of a driver event: an annual report
+# or AGM notice re-filed, an offering document, a voting/scrutinizer report, a BRSR, a creditor list.  Their
+# annual-report content is read from the `annual_report` doc type instead (one copy, no double counting).
+FILING_SKIP = re.compile(
+    r"annual report|annual general meeting|extra[-\s]?ordinary general meeting|postal ballot"
+    r"|letter of offer|prospectus|placement document|information memorandum"
+    r"|business responsibility|\bBRSR\b|voting result|scrutinizer|list of creditors"
+    r"|shareholding pattern|reconciliation of share capital|compliance certificate|certificate under"
+    r"|newspaper publication|share certificate|transmission of shares|demateriali[sz]ation",
+    re.I,
+)
+
+
+# Announcement script parse (deterministic).  The three shapes exchanges print in full, with the value word
+# the letter uses; anything the parser cannot fill completely falls through to the model.
+_ORDER_WORD = re.compile(r"\b(?:orders?|work orders?|contracts?|LOA|LOI|letter of award)\b", re.I)
+_ORDER_AWARD = re.compile(r"\b(?:secured|awarded|bagged|won|received|receipt of)\b", re.I)
+# A GST demand, a penalty, a court order or a notice is an "order" in the same word and is not revenue.
+_ORDER_BAD = re.compile(
+    r"\b(?:demand|penalty|fine|fines|gst|goods and services tax|customs|excise|income tax|tribunal|court"
+    r"|appeal|show[\s-]cause|notice|insolvency|nclt|arbitration)\b", re.I)
+_ORDER_VALUE = re.compile(
+    r"(?:orders?|work orders?|contracts?|LOA|LOI)[^.;]{0,120}?"
+    r"(?:worth|valued(?:\s+at)?|value|amounting\s+to|aggregating\s+to|of)\s*"
+    r"(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|million|mn|billion|bn)",
+    re.I,
+)
+_EXECUTION_PERIOD = re.compile(
+    r"(?:execut\w*|complet\w*|completion|time period|period of|duration of|within|delivery|delivered)"
+    r"[^.;]{0,60}?(?P<n>\d{1,2})\s*(?P<u>months?|years?)", re.I)
+_CAPEX_WORD = re.compile(r"\b(?:capital expenditure|capex)\b", re.I)
+_CAPEX_APPROVE = re.compile(r"\b(?:approved|approves|approval|sanctioned|sanction)\b", re.I)
+_CAPEX_FROM_TO = re.compile(
+    r"(?:capital expenditure|capex)[^.;]{0,120}?from\s*(?:Rs\.?|INR|₹)?\s*(?P<a>[\d,]+(?:\.\d+)?)\s*"
+    r"(?P<au>crores?|cr\.?|lakhs?|million|mn)[^.;]{0,40}?to\s*(?:Rs\.?|INR|₹)?\s*"
+    r"(?P<b>[\d,]+(?:\.\d+)?)\s*(?P<bu>crores?|cr\.?|lakhs?|million|mn)", re.I)
+_CAPEX_AMOUNT = re.compile(
+    r"(?:approved|approves|approval of|sanctioned|capital expenditure|capex)[^.;]{0,100}?"
+    r"(?:Rs\.?|INR|₹)\s*(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|million|mn|billion|bn)", re.I)
+_RAISE_CUE = re.compile(
+    r"\b(?:QIP|qualified institutions? placement|rights issue|preferential (?:issue|allotment)|warrants?"
+    r"|equity shares)\b", re.I)
+# A completed allotment is a past event: only a proposed or approved raise is a forward claim.  "for conversion
+# of loan" is consideration, not a completed share conversion, so it is not in this list.
+_RAISE_DONE = re.compile(
+    r"\b(?:allotted|allotment of|converted into|conversion of warrants?|exercised|exercise of rights"
+    r"|forfeited|subscribed)\b", re.I)
+_RAISE_SIZE = re.compile(
+    r"(?:aggregat\w*|amount\w*|raising|raise|up\s*to|upto|of)(?:\s+up\s*to)?\s*(?:Rs\.?|INR|₹)\s*"
+    r"(?P<v>[\d,]+(?:\.\d+)?)\s*(?P<u>crores?|cr\.?|lakhs?|million|mn|billion|bn)", re.I)
+_RAISE_PRICE = re.compile(
+    r"(?:issue price|price of|at\s+an?\s+price\s+of|at\s+price\s+of)\s*(?:Rs\.?|INR|₹)\s*"
+    r"(?P<v>[\d,]+(?:\.\d+)?)\s*(?:/-)?\s*(?:per|each)", re.I)
 # "come down from INR450 crores to INR100 crores": a target B with base A, not a range.  A plain
 # "INR 2,700 to 2,800 crores" (an aspiration/range, no from, no change verb) stays a range.  Wolf, round 4.
 _PRICE_PREFIX = r"(?:INR|Rs\.?|₹|\$|USD)?\s*"
@@ -687,6 +793,335 @@ def company_brief(store: str) -> str:
     return brief_from_text(name, corpus[:2_000_000])
 
 
+# ------------------------------------------------------------------ document items (stage 2a)
+DOC_PAGE_SQL = (
+    "SELECT d.doc_key, d.symbol, d.doc_type, d.title, d.filing_date, d.known_at, p.page, p.text"
+    " FROM doc d JOIN doc_page p ON p.doc_key = d.doc_key WHERE d.doc_type IN ({marks})"
+    " ORDER BY d.doc_type, d.doc_key, p.page")
+
+
+def split_paragraphs(text: Any, limit: int = PARA_CHARS) -> list[str]:
+    """Page text -> paragraph-sized chunks: real paragraphs where the PDF has them, else packed sentences."""
+    blocks = [block for block in re.split(r"\n\s*\n", str(text or "").replace("\r", "\n")) if block.strip()]
+    out: list[str] = []
+    for block in blocks:
+        out.extend(_pack_sentences(_SENTENCE_SPLIT.split(norm_ws(block)), limit))
+    return out
+
+
+def _pack_sentences(pieces: list[str], limit: int) -> list[str]:
+    out: list[str] = []
+    buf = ""
+    for piece in (norm_ws(p) for p in pieces):
+        if not piece:
+            continue
+        while len(piece) > limit:                 # a table row or a run-on cell: cut on a word boundary
+            cut = piece.rfind(" ", 0, limit)
+            cut = limit if cut <= 0 else cut
+            if buf:
+                out.append(buf)
+                buf = ""
+            out.append(piece[:cut].strip())
+            piece = piece[cut:].strip()
+        if not buf:
+            buf = piece
+        elif len(buf) + 1 + len(piece) <= limit:
+            buf = f"{buf} {piece}"
+        else:
+            out.append(buf)
+            buf = piece
+    if buf:
+        out.append(buf)
+    return [item for item in out if item]
+
+
+def doc_page_rows(store: str, doc_types: tuple[str, ...]) -> dict[str, dict[str, Any]]:
+    """One store's selected documents with their pages: {doc_key: {doc fields..., 'pages': {page: text}}}."""
+    types = [str(t) for t in doc_types]
+    marks = ",".join("?" * len(types))
+    con = open_store(store)
+    try:
+        rows = con.execute(DOC_PAGE_SQL.format(marks=marks), types).fetchall()
+    finally:
+        con.close()
+    docs: dict[str, dict[str, Any]] = {}
+    for r in rows:
+        doc = docs.setdefault(str(r["doc_key"]), {
+            "doc_key": r["doc_key"], "symbol": r["symbol"], "doc_type": r["doc_type"], "title": r["title"],
+            "filing_date": r["filing_date"], "known_at": r["known_at"], "pages": {}})
+        doc["pages"][int(r["page"])] = str(r["text"] or "")
+    return docs
+
+
+def ocr_page_texts(store: str, doc_types: tuple[str, ...]) -> dict[tuple[str, int], str]:
+    """The pages the OCR run stored in ``<store>_ocr.db.ocr_page`` (read-only; {} when the file is absent)."""
+    path = STORE_ROOT / store / f"{store}_ocr.db"
+    if not path.exists():
+        return {}
+    from reality_engine.db.readonly import connect_ro
+
+    try:
+        con = connect_ro(path, timeout_s=60)
+    except (OSError, sqlite3.Error):
+        return {}
+    try:
+        marks = ",".join("?" * len(doc_types))
+        cursor = con.cursor()
+        cursor.execute(f"SELECT doc_key, page, text FROM ocr_page WHERE doc_type IN ({marks})",
+                       [str(t) for t in doc_types])
+        rows = cursor.fetchall() or []
+    except sqlite3.Error:
+        return {}
+    finally:
+        con.close()
+    return {(str(r[0]), int(r[1])): str(r[2] or "") for r in rows}
+
+
+def doc_items_from_pages(store: str, docs: dict[str, dict[str, Any]],
+                         ocr: dict[tuple[str, int], str] | None = None) -> tuple[
+                             list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
+    """Filter document pages into model items, and parse the announcement shapes into script claims.
+
+    A page is cut into paragraphs and only a paragraph with a forward cue and a number with a unit is kept.
+    A short announcement or press-release page is sent whole (the exchange letter is one item).  An
+    announcement paragraph the deterministic parser reads completely becomes a claim and leaves the queue.
+    """
+    items: list[dict[str, Any]] = []
+    claims: list[dict[str, Any]] = []
+    counters: Counter[str] = Counter()
+    ocr = ocr or {}
+    for key in sorted(docs, key=lambda k: (str(docs[k].get("known_at") or ""), k)):
+        doc = docs[key]
+        dt = str(doc.get("doc_type") or "")
+        counters[f"doc_{dt}_docs"] += 1
+        title = norm_ws(doc.get("title"))[:300]
+        if dt == "announcement" and title and FILING_SKIP.search(title):
+            counters[f"doc_{dt}_drop_filing_type"] += 1
+            counters[f"doc_{dt}_pages_skipped_filing_type"] += len(doc.get("pages") or {})
+            continue
+        for page in sorted(doc.get("pages") or {}):
+            text = str(doc["pages"][page] or "")
+            if len(norm_ws(text)) < 40 and (key, int(page)) in ocr:
+                text = ocr[(key, int(page))]
+                counters[f"doc_{dt}_pages_ocr"] += 1
+            clean = norm_ws(text)
+            if len(clean) < 25:               # an empty page or a bare "Page 3" / signature strip
+                counters[f"doc_{dt}_drop_short"] += 1
+                continue
+            counters[f"doc_{dt}_pages"] += 1
+            if not DOC_CUE.search(clean):
+                counters[f"doc_{dt}_drop_no_cue"] += 1
+                continue
+            if not DOC_NUMBER.search(clean):
+                counters[f"doc_{dt}_drop_no_number"] += 1
+                continue
+            if dt == "annual_report":
+                chunks = split_paragraphs(text)
+            else:
+                chunks = [clean] if len(clean) <= MAX_TEXT else split_paragraphs(text)
+            for index, chunk in enumerate(chunks):
+                para = norm_ws(chunk)
+                if not para:
+                    continue
+                counters[f"doc_{dt}_paragraphs"] += 1
+                if dt == "annual_report" and BOILERPLATE.search(para):
+                    # an announcement mentions related-party or CSR boilerplate inside the real letter, so
+                    # the boilerplate drop is for the annual report only
+                    counters[f"doc_{dt}_para_boilerplate"] += 1
+                    continue
+                if not DOC_CUE.search(para):
+                    counters[f"doc_{dt}_para_no_cue"] += 1
+                    continue
+                if not DOC_NUMBER.search(para):
+                    counters[f"doc_{dt}_para_no_number"] += 1
+                    continue
+                context = f"DOC: {title}" if title else ""
+                if index and chunks[index - 1].strip():
+                    context = f"{context}\nP{index}: {norm_ws(chunks[index - 1])[:400]}".strip()
+                item: dict[str, Any] = {
+                    "key": f"{store}|doc_page|{key}|{page}|{index}", "store": store,
+                    "source_table": "doc_page", "source_id": None, "symbol": doc.get("symbol"),
+                    "doc_key": key, "page": page, "paragraph": index,
+                    "known_at": doc.get("known_at"), "event_date": doc.get("filing_date"),
+                    "source_kind": dt, "text": para[:MAX_TEXT], "context": context[:MAX_CONTEXT],
+                }
+                if dt == "announcement":
+                    parsed = announcement_claims(item)
+                    if parsed:
+                        claims.extend(parsed)
+                        counters[f"doc_{dt}_script"] += len(parsed)
+                        continue
+                items.append(item)
+                counters[f"doc_{dt}_kept"] += 1
+    return items, claims, dict(counters)
+
+
+def doc_items(store: str, doc_types: tuple[str, ...]) -> tuple[
+        list[dict[str, Any]], list[dict[str, Any]], dict[str, int]]:
+    """Read one store's document pages (main DB plus the OCR fallback) and build the stage-2a items."""
+    return doc_items_from_pages(store, doc_page_rows(store, doc_types), ocr_page_texts(store, doc_types))
+
+
+def stores_without_transcripts() -> list[str]:
+    """Stores with no transcript document and no transcript statement row (the stage-2a pilot pool)."""
+    out = []
+    for store in list_stores():
+        try:
+            con = open_store(store)
+            try:
+                n = int(con.execute(
+                    "SELECT (SELECT COUNT(*) FROM doc WHERE doc_type='transcript')"
+                    " + (SELECT COUNT(*) FROM transcript_statement)").fetchone()[0])
+            finally:
+                con.close()
+        except sqlite3.Error:
+            continue
+        if not n:
+            out.append(store)
+    return out
+
+
+# ------------------------------------------------------------------ announcement script parse
+def _money_parts(raw_value: Any, raw_unit: Any) -> tuple[float, str] | None:
+    unit = canon_unit(str(raw_unit or "").strip().rstrip("."))
+    if unit == "million":
+        unit = "mn"
+    if unit not in ("inr_cr", "inr_lakh", "mn"):
+        return None
+    try:
+        return float(str(raw_value or "").replace(",", "")), unit
+    except ValueError:
+        return None
+
+
+def _money_value(match: re.Match[str]) -> tuple[float, str] | None:
+    return _money_parts(match.group("v"), match.group("u"))
+
+
+def _span_around(text: str, match: re.Match[str], before: int = MAX_QUOTE,
+                 after: int = MAX_QUOTE) -> str:
+    """The shortest readable span carrying the matched number (always a substring of ``text``)."""
+    start = max(0, match.start() - before)
+    end = min(len(text), match.end() + after)
+    if start > 0:
+        cut = text.find(" ", start)
+        if 0 <= cut < match.start():
+            start = cut
+    if end < len(text):
+        cut = text.rfind(" ", end, min(len(text), end + 40))
+        if cut > match.end():
+            end = cut
+    return text[start:end].strip()
+
+
+def execution_period(text: str) -> str | None:
+    """The printed execution window of an order ('25 months', '2 years'), else None."""
+    match = _EXECUTION_PERIOD.search(norm_ws(text))
+    if match is None:
+        return None
+    unit = "months" if str(match.group("u") or "").lower().startswith("month") else "years"
+    return f"{int(match.group('n'))} {unit}"
+
+
+def horizon_period(text: str) -> str | None:
+    """A printed horizon ('next 2 years', 'per annum') for a capex or fund-raise claim, else None."""
+    match = HORIZON.search(norm_ws(text))
+    return norm_ws(match.group(0)) if match else None
+
+
+def _script_claim(item: dict[str, Any], node: str, value: float, unit: str, sign: str,
+                  period: str | None, base: str | None, span: str, extractor: str) -> dict[str, Any]:
+    claim: dict[str, Any] = {
+        "store": item["store"], "symbol": item.get("symbol"), "source_table": item["source_table"],
+        "source_id": None, "doc_key": item.get("doc_key"), "page": item.get("page"),
+        "known_at": item.get("known_at"), "event_date": item.get("event_date"),
+        "source_kind": item.get("source_kind"), "paragraph": item.get("paragraph"),
+        "node": node, "segment": "total", "sign": sign, "value_low": value, "value_high": None,
+        "unit": unit, "base": base, "effective_period": period, "conditional": 0,
+        "quote_span": span, "statement": item["text"], "context": item.get("context") or "",
+        "method": "script", "extractor": extractor,
+    }
+    return _finish(claim)
+
+
+def order_claim(sentence: str, item: dict[str, Any]) -> dict[str, Any] | None:
+    """'order worth Rs X crore ... to be executed over N months' -> revenue.order_book (script).
+
+    The exchange letter prints the value in the opening sentence and the execution period in a table row
+    further down, so the period falls back to the whole announcement (one letter, one order batch).
+    """
+    if not (_ORDER_WORD.search(sentence) and _ORDER_AWARD.search(sentence)) or _ORDER_BAD.search(sentence):
+        return None
+    match = _ORDER_VALUE.search(sentence)
+    if match is None:
+        return None
+    period = execution_period(sentence) or execution_period(str(item.get("text") or ""))
+    money = _money_value(match)
+    if period is None or money is None:
+        return None
+    value, unit = money
+    return _script_claim(item, "revenue.order_book", value, unit, "0", period, None,
+                         _span_around(sentence, match), "announcement:order")
+
+
+def capex_claim(sentence: str, item: dict[str, Any]) -> dict[str, Any] | None:
+    """'board approved capex of Rs X crore' / 'from Rs A crore to Rs B crore' -> capex.amount (script)."""
+    if not (_CAPEX_WORD.search(sentence) and _CAPEX_APPROVE.search(sentence)):
+        return None
+    base = None
+    sign = "0"
+    match: re.Match[str] | None = _CAPEX_FROM_TO.search(sentence)
+    if match is not None:
+        old = _money_parts(match.group("a"), match.group("au"))
+        new = _money_parts(match.group("b"), match.group("bu"))
+        if old is None or new is None or old[1] != new[1]:
+            return None
+        value, unit = new
+        base = norm_ws(f"{match.group('a')} {match.group('au')}")
+        sign = "+" if value > old[0] else "-"
+    else:
+        match = _CAPEX_AMOUNT.search(sentence)
+        if match is None:
+            return None
+        money = _money_value(match)
+        if money is None:
+            return None
+        value, unit = money
+    return _script_claim(item, "capex.amount", value, unit, sign, horizon_period(sentence), base,
+                         _span_around(sentence, match), "announcement:capex")
+
+
+def raise_claim(sentence: str, item: dict[str, Any]) -> dict[str, Any] | None:
+    """'QIP/warrant/rights of Rs X crore at an issue price of Rs Y' -> equity.shares (script)."""
+    if not _RAISE_CUE.search(sentence) or _RAISE_DONE.search(sentence):
+        return None
+    size = _RAISE_SIZE.search(sentence)
+    price = _RAISE_PRICE.search(sentence)
+    if size is None or price is None:
+        return None
+    money = _money_value(size)
+    if money is None:
+        return None
+    value, unit = money
+    base = norm_ws(price.group(0))[:200]
+    return _script_claim(item, "equity.shares", value, unit, "0", horizon_period(sentence), base,
+                         _span_around(sentence, size), "announcement:raise")
+
+
+def announcement_claims(item: dict[str, Any]) -> list[dict[str, Any]]:
+    """Script-parse one announcement paragraph: every shape the letter prints in full, no model call."""
+    text = norm_ws(item.get("text"))
+    if not text:
+        return []
+    claims: list[dict[str, Any]] = []
+    for sentence in _SENTENCE_SPLIT.split(text):
+        for parser in (order_claim, capex_claim, raise_claim):
+            claim = parser(sentence, item)
+            if claim is not None:
+                claims.append(claim)
+    return claims
+
+
 # ------------------------------------------------------------------ the script mapping
 def guidance_claim(store: str, row: dict[str, Any]) -> tuple[dict[str, Any] | None, str]:
     """One guidance row -> one claim, or (None, reason) when it cannot be a quantified tree claim."""
@@ -703,6 +1138,7 @@ def guidance_claim(store: str, row: dict[str, Any]) -> tuple[dict[str, Any] | No
     quote = str(row.get("quote") or row.get("statement") or "")
     claim = {
         "store": store, "symbol": row.get("symbol"), "source_table": "guidance", "source_id": row.get("id"),
+        "source_kind": "guidance", "paragraph": None,
         "doc_key": row.get("doc_key"), "page": row.get("page"), "known_at": row.get("known_at"),
         "event_date": row.get("said_on"), "node": node, "segment": segment,
         "sign": sign_of(row.get("direction")), "value_low": low, "value_high": high,
@@ -718,7 +1154,8 @@ def item_from_guidance(store: str, row: dict[str, Any]) -> dict[str, Any]:
     quote = str(row.get("quote") or "")
     return {
         "key": f"{store}|guidance|{row.get('id')}", "store": store, "source_table": "guidance",
-        "source_id": row.get("id"), "symbol": row.get("symbol"), "doc_key": row.get("doc_key"),
+        "source_id": row.get("id"), "source_kind": "guidance", "paragraph": None,
+        "symbol": row.get("symbol"), "doc_key": row.get("doc_key"),
         "page": row.get("page"), "known_at": row.get("known_at"), "event_date": row.get("said_on"),
         "text": quote[:MAX_TEXT], "context": "", "metric": row.get("metric"),
         "target_period": row.get("target_period"),
@@ -760,6 +1197,7 @@ def attach_context(rows: list[dict[str, Any]], questions: dict[tuple[str, int], 
             items.append({
                 "key": f"{row['_store']}|transcript_statement|{row.get('id')}", "store": row["_store"],
                 "source_table": "transcript_statement", "source_id": row.get("id"),
+                "source_kind": "transcript", "paragraph": None,
                 "symbol": row.get("symbol"), "doc_key": row.get("doc_key"), "page": row.get("page"),
                 "known_at": row.get("known_at"), "event_date": row.get("call_date"),
                 "text": text[:MAX_TEXT], "context": "\n".join(lines)[:MAX_CONTEXT],
@@ -770,7 +1208,7 @@ def attach_context(rows: list[dict[str, Any]], questions: dict[tuple[str, int], 
 
 
 # ------------------------------------------------------------------ the model contract
-SYSTEM = """You extract forward-looking, quantified claims about the financial drivers of Indian listed companies from management text (concall statements, guidance quotes, presentations).
+SYSTEM = """You extract forward-looking, quantified claims about the financial drivers of Indian listed companies from management text (concall statements, guidance quotes, annual-report pages, press releases, exchange announcements).
 
 Reply with JSON only, no markdown fences, no commentary.
 
@@ -778,6 +1216,11 @@ The driver tree has exactly these nodes; nothing else exists:
 revenue.volume | revenue.price | revenue.total | revenue.order_book | revenue.mix | cost.raw_material | cost.employee | cost.power_fuel | cost.other | margin.ebitda | margin.gross | capex.amount | capacity.add | debt.level | debt.cost | equity.shares | equity.dividend | working_capital.days
 
 A share, mix or contribution ("exports contributed 17% of total income", "exports are 20%-25% of sales") fills revenue.mix with the segment named (exports, domestic, a product), not revenue.total.
+
+Source rules:
+- An annual report is published months after the fiscal year it covers. Its own-year figures and growth rates ("FY25 revenue grew 20%", "the Company achieved revenue of Rs 679 crore in FY24") are past results, not claims, even on the MD&A or the directors' report page. Only an explicit outlook, target or plan for a later period is a claim.
+- An exchange announcement or press release that reports a completed event (an allotment made, a plant shut down, a meeting held) is not a claim. An order won today is forward-looking when execution lies ahead: its value fills revenue.order_book with the execution period as effective_period, never revenue.total. A board-approved capex fills capex.amount; a proposed or approved QIP, rights issue or preferential issue fills equity.shares, with the issue price in base.
+- A press release that only repeats the quarter just reported is past.
 
 Rules for every statement:
 - Output every forward-looking claim that fills one node. A statement may carry two claims; output both.
@@ -807,6 +1250,9 @@ Example answer: {"id":2,"drop":"past","claims":[]}
 Example statement: "During the quarter, CARE Rating of the company's long-term and short-term facilities at a stable A1 for a total amount of Rs. 21 crores."
 Example answer: {"id":3,"drop":"no_driver","claims":[]}
 
+Example announcement: "The Company has secured an order worth Rs. 200.02 Crores, to be executed over 25 months."
+Example answer: {"id":4,"drop":null,"claims":[{"node":"revenue.order_book","segment":"total","sign":"0","value_low":200.02,"value_high":null,"unit":"inr_cr","base":null,"effective_period":"25 months","conditional":false,"quote_span":"secured an order worth Rs. 200.02 Crores, to be executed over 25 months"}]}
+
 Output exactly:
 {"items":[{"id":1,"drop":null,"claims":[...]},{"id":2,"drop":"past","claims":[]}]}
 Every statement id must appear exactly once. Use "drop":"past" or "drop":"no_driver" with an empty claims array when nothing qualifies.
@@ -816,14 +1262,14 @@ JUDGE_SYSTEM = """You audit machine-extracted claims about a company's financial
 
 Reply with JSON only, no markdown fences, no commentary.
 
-Each block starts with CLAIM <id>, where <id> is the claim's own id, then the target STATEMENT, its CONTEXT (the two statements before it in the call and, when the statement answers an analyst, the question), and the extracted claim.
+Each block starts with CLAIM <id>, where <id> is the claim's own id, then the target STATEMENT, its SOURCE (transcript, guidance, annual_report, press_release or announcement), its CONTEXT (the statements before it in the call, or the document title and the paragraph before it, and when the statement answers an analyst, the question), and the extracted claim.
 
 Decide six booleans:
-- node_ok: the STATEMENT itself really supports this driver node (a receivables sentence is not revenue.volume; a credit-rating sentence is no driver at all; a geographic mix is not an order book; a price the company PAYS for an input is a cost, not revenue.price; a price it CHARGES for its own output is revenue.price; an EBITDA amount is not a margin).
+- node_ok: the STATEMENT itself really supports this driver node (a receivables sentence is not revenue.volume; a credit-rating sentence is no driver at all; a geographic mix is not an order book; a price the company PAYS for an input is a cost, not revenue.price; a price it CHARGES for its own output is revenue.price; an EBITDA amount is not a margin). An order won fills revenue.order_book, never revenue.total; a board-approved capex fills capex.amount; a QIP/warrants/rights size fills equity.shares.
 - sign_ok: "0" is right for an absolute level or range the company expects (revenue of Rs. 1,900 crore, utilisation of 60%-65%, margins around 30%) and for an ambiguous range; "+" or "-" is right only when the statement states a change from the current level (up 20%, down 5%, expands by 200 bp, cuts cost). A level target marked +/- fails.
 - unit_ok: the unit and magnitude agree with the words attached to the number in quote_span (days vs months vs years, % vs basis points, crore vs lakh vs million, MW vs tonnes vs units), and the unit can belong to the node at all (capacity.add is a size, never a waiting time; working_capital.days is days; a margin is % or bp).
 - period_ok: effective_period is a real period or horizon the claim applies to (FY26, Q3FY26, next 24 months, once fully operational). Null with no horizon in the statement fails; "post that" with no referent fails.
-- forward_ok: the claim is forward-looking (guidance, expectation, plan, target), not a past result ("we spent", "grew last quarter").
+- forward_ok: the claim is forward-looking (guidance, expectation, plan, target), not a past result ("we spent", "grew last quarter"). An annual report's own-year figures are past even in the MD&A or the directors' report; an announcement of a completed allotment or a completed event with no forward amount is past; an order won with execution still ahead, a board-approved capex, and a proposed or approved QIP/rights/preferential issue ARE forward.
 - company_ok: the claim is about this company's own figures, not the industry, the country, a customer, a supplier or a competitor (an industry acreage forecast, a customer's price, a sector number fails).
 
 Also return node_suggest: when node_ok is false, the tree node the claim really belongs to (node_ok against that one must be true) or null when no node fits. When the context or the analyst's question names the measure (gross margin, EBITDA margin, utilisation), the node follows it: gross margin -> margin.gross, EBITDA margin -> margin.ebitda, utilisation -> revenue.volume.
@@ -883,7 +1329,8 @@ def claim_from_reply(raw: dict[str, Any], item: dict[str, Any]) -> tuple[dict[st
         sign = "0"
     claim = {
         "store": item["store"], "symbol": item.get("symbol"), "source_table": item["source_table"],
-        "source_id": item.get("source_id"), "doc_key": item.get("doc_key"), "page": item.get("page"),
+        "source_id": item.get("source_id"), "source_kind": item.get("source_kind"),
+        "paragraph": item.get("paragraph"), "doc_key": item.get("doc_key"), "page": item.get("page"),
         "known_at": item.get("known_at"), "event_date": item.get("event_date"),
         "node": node, "segment": _clean(raw.get("segment"), 80) or "total", "sign": sign,
         "value_low": low, "value_high": high, "unit": canon_unit(raw.get("unit")) or "units",
@@ -911,6 +1358,7 @@ def judge_prompt(claims: list[dict[str, Any]], brief: str = "") -> str:
         high = "" if claim["value_high"] is None else f"-{float(claim['value_high']):g}"
         lines.append(f"\nCLAIM {claim['id']}")
         lines.append(f"STATEMENT: {norm_ws(claim['statement'])}")
+        lines.append(f"SOURCE: {claim.get('source_kind') or 'transcript'}")
         if claim.get("context"):
             lines.append("CONTEXT:")
             lines.extend(f"  {line}" for line in str(claim["context"]).splitlines())
@@ -1048,6 +1496,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS claim (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   run_id TEXT, store TEXT, symbol TEXT, source_table TEXT, source_id INTEGER,
+  source_kind TEXT, paragraph INTEGER,
   doc_key TEXT, page INTEGER, known_at TEXT, event_date TEXT,
   node TEXT, segment TEXT, sign TEXT, value_low REAL, value_high REAL, unit TEXT,
   base TEXT, effective_period TEXT, conditional INTEGER,
@@ -1074,12 +1523,13 @@ CREATE TABLE IF NOT EXISTS quota_event (
 );
 """
 
-CLAIM_COLS = ("run_id", "store", "symbol", "source_table", "source_id", "doc_key", "page", "known_at",
-              "event_date", "node", "segment", "sign", "value_low", "value_high", "unit", "base",
-              "effective_period", "conditional", "quote_span", "statement", "context", "method",
-              "extractor", "status", "status_reason", "created_at", "judge_ok", "judge_node",
-              "judge_sign", "judge_unit", "judge_period", "judge_forward", "judge_fail", "judge_why",
-              "judge_suggest")
+CLAIM_COLS = ("run_id", "store", "symbol", "source_table", "source_id", "source_kind", "paragraph",
+              "doc_key", "page", "known_at", "event_date", "node", "segment", "sign", "value_low",
+              "value_high", "unit", "base", "effective_period", "conditional", "quote_span", "statement",
+              "context", "method", "extractor", "status", "status_reason", "created_at", "judge_ok",
+              "judge_node", "judge_sign", "judge_unit", "judge_period", "judge_forward", "judge_fail",
+              "judge_why", "judge_suggest")
+
 
 
 class Writer:
@@ -1092,6 +1542,11 @@ class Writer:
         self.con.row_factory = sqlite3.Row
         self.con.execute("PRAGMA journal_mode=WAL")
         self.con.executescript(SCHEMA)
+        # additive migration: a DB written before stage 2a keeps its rows and gains the two new columns
+        have = {str(r[1]) for r in self.con.execute("PRAGMA table_info(claim)")}
+        for column, kind in (("source_kind", "TEXT"), ("paragraph", "INTEGER")):
+            if column not in have:
+                self.con.execute(f"ALTER TABLE claim ADD COLUMN {column} {kind}")
         self.con.commit()
 
     def insert_claims(self, run_id: str, claims: list[dict[str, Any]]) -> None:
@@ -1099,12 +1554,17 @@ class Writer:
             return
         with self.lock:
             for c in claims:
-                self.con.execute("DELETE FROM claim WHERE store=? AND source_table=? AND source_id=?",
-                                 (c["store"], c["source_table"], c["source_id"]))
+                # IS, not =: a document claim has no source_id row number and must still replace itself
+                self.con.execute(
+                    "DELETE FROM claim WHERE store=? AND source_table=? AND source_id IS ?"
+                    " AND doc_key IS ? AND page IS ? AND paragraph IS ?",
+                    (c["store"], c["source_table"], c.get("source_id"), c.get("doc_key"), c.get("page"),
+                     c.get("paragraph")))
             self.con.executemany(
                 f"INSERT INTO claim ({','.join(CLAIM_COLS)}) VALUES ({','.join('?' * len(CLAIM_COLS))})",
                 [[run_id, *(c.get(col) for col in CLAIM_COLS[1:])] for c in claims])
             self.con.commit()
+
 
     def clear_script(self, stores: list[str]) -> None:
         with self.lock:
@@ -1147,8 +1607,8 @@ class Writer:
     def claims_to_judge(self) -> list[dict[str, Any]]:
         with self.lock:
             rows = self.con.execute(
-                "SELECT id, store, symbol, node, segment, sign, value_low, value_high, unit, base,"
-                " effective_period, quote_span, statement, context FROM claim"
+                "SELECT id, store, symbol, source_kind, node, segment, sign, value_low, value_high, unit,"
+                " base, effective_period, quote_span, statement, context FROM claim"
                 " WHERE judge_ok IS NULL AND status='verified' ORDER BY store, id").fetchall()
         return [dict(r) for r in rows]
 
@@ -1281,6 +1741,7 @@ class Stats:
         self.drops: Counter[str] = Counter()
         self.by_node: Counter[str] = Counter()
         self.by_status: Counter[str] = Counter()
+        self.by_kind: Counter[str] = Counter()
         self.by_field: Counter[str] = Counter()
         self.judge_http_codes: Counter[str] = Counter()
         self.empty_samples: list[str] = []
@@ -1301,7 +1762,7 @@ class Stats:
                       "judge_requests", "judged", "judged_ok", "judge_errors", "judge_in_tok",
                       "judge_out_tok", "judge_seconds"):
                 setattr(self, k, getattr(self, k) + getattr(other, k))
-            for k in ("drops", "by_node", "by_status", "by_field", "judge_http_codes"):
+            for k in ("drops", "by_node", "by_status", "by_kind", "by_field", "judge_http_codes"):
                 getattr(self, k).update(getattr(other, k))
             self.empty_samples.extend(other.empty_samples)
 
@@ -1386,6 +1847,7 @@ def process_batch(batch: list[dict[str, Any]], client: Any, writer: Writer, limi
         outcomes: Counter[str] = Counter()
         by_node: Counter[str] = Counter()
         by_status: Counter[str] = Counter()
+        by_kind: Counter[str] = Counter()
         for raw in items:
             try:
                 rid = int(raw["id"]) if raw.get("id") is not None else -1
@@ -1414,6 +1876,7 @@ def process_batch(batch: list[dict[str, Any]], client: Any, writer: Writer, limi
                 claims.append(claim)
                 by_node[claim["node"]] += 1
                 by_status[claim["status"]] += 1
+                by_kind[str(claim.get("source_kind") or "")] += 1
                 got += 1
             outcomes["claims" if got else _drop_of(raw)] += 1
         done = sorted(it["key"] for it in batch)
@@ -1421,7 +1884,7 @@ def process_batch(batch: list[dict[str, Any]], client: Any, writer: Writer, limi
         _record_http(writer, run_id, "extract", store, started, ended, seconds, status, usage,
                      len(batch), len(claims), dict(outcomes), done, in_flight, transport + json_tries)
         stats.add(claims=len(claims), items_ok=len(batch), drops=outcomes, by_node=by_node,
-                  by_status=by_status)
+                  by_status=by_status, by_kind=by_kind)
         return stats
 
 
@@ -1527,11 +1990,13 @@ def dedupe_db(writer: Writer) -> int:
 
 
 # ------------------------------------------------------------------ run
-def build_items(stores: list[str]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Every candidate item across ``stores``: guidance rows (unmapped only) + forward transcript statements."""
+def build_items(stores: list[str], doc_types: tuple[str, ...] = ()) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Every candidate item across ``stores``: guidance rows (unmapped only) + forward transcript statements
+    + ``doc_page`` paragraphs of ``doc_types`` (stage 2a).  Fully script-parsed announcements become claims."""
     items: list[dict[str, Any]] = []
     counters: Counter[str] = Counter()
     guidance_claims: list[dict[str, Any]] = []
+    script_claims: list[dict[str, Any]] = []
     per_store: list[dict[str, Any]] = []
     for store in stores:
         if not store_path(store).exists():
@@ -1560,10 +2025,19 @@ def build_items(stores: list[str]) -> tuple[list[dict[str, Any]], dict[str, Any]
                     "statements_no_cue", "statements_sent"):
             pers[key] = sc.get(key, 0)
         counters.update(sc)
+        if doc_types:
+            doc_it, doc_claims, doc_counts = doc_items(store, tuple(doc_types))
+            items.extend(doc_it)
+            script_claims.extend(doc_claims)
+            counters.update(doc_counts)
+            pers.update(doc_counts)
         per_store.append(pers)
+    script_claims.extend(guidance_claims)
     for n, item in enumerate(items, 1):
         item["id"] = n
-    return items, {"counters": dict(counters), "guidance_claims": guidance_claims, "per_store": per_store}
+    return items, {"counters": dict(counters), "guidance_claims": guidance_claims,
+                   "script_claims": script_claims, "per_store": per_store}
+
 
 
 def batch_items(items: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]]:
@@ -1629,6 +2103,11 @@ def run(args: argparse.Namespace) -> int:
         extra = pick_stores([s for s in stores_with_statements() if s not in stores], args.pick, args.pick_seed)
         print(f"picked by seed {args.pick_seed}: {' '.join(extra)}")
         stores += extra
+    if args.pick_no_transcript:
+        extra = pick_stores([s for s in stores_without_transcripts() if s not in stores],
+                            args.pick_no_transcript, args.pick_seed)
+        print(f"picked without transcripts by seed {args.pick_seed}: {' '.join(extra)}")
+        stores += extra
     if not stores:
         stores = active_stores()
     out = Path(args.out)
@@ -1647,16 +2126,16 @@ def run(args: argparse.Namespace) -> int:
         _ledger(stores, judge_stats, started, f"judge-only: {dict(final)}")
         writer.close()
         return 0
-    items, built = build_items(stores)
+    items, built = build_items(stores, tuple(args.doc_types or ()))
     counters = built["counters"]
-    guidance_claims: list[dict[str, Any]] = built["guidance_claims"]
+    script_claims: list[dict[str, Any]] = built["script_claims"]
     briefs = {store: company_brief(store) for store in stores if store_path(store).exists()}
 
     out = Path(args.out)
     writer = Writer(out)
     run_id = f"t228-{datetime.now():%Y%m%dT%H%M%S}"
     writer.clear_script(stores)
-    writer.insert_claims(run_id, guidance_claims)
+    writer.insert_claims(run_id, script_claims)
     done = writer.done_keys()
     pending = pending_items(items, done)
     if args.max_items:
@@ -1667,8 +2146,15 @@ def run(args: argparse.Namespace) -> int:
     batches = [b for store in sorted(by_store_pending)
                for b in batch_items(by_store_pending[store], max(1, args.batch))]
 
-    print(f"stores: {len(stores)}  guidance claims: {len(guidance_claims)}  model items: {len(pending)}"
-          f" ({len(done)} already done)  batches: {len(batches)}")
+    build_file = out.with_suffix(".build.json")
+    build_file.parent.mkdir(parents=True, exist_ok=True)
+    build_file.write_text(json.dumps({"counters": counters, "per_store": built["per_store"],
+                                      "stores": stores, "model_items": len(pending)},
+                                     indent=1)[:4_000_000], encoding="utf-8")
+
+    print(f"stores: {len(stores)}  script claims: {len(script_claims)}  model items: {len(pending)}"
+          f" ({len(done)} already done)  batches: {len(batches)}  docs: {','.join(args.doc_types or ()) or 'none'}")
+    print(f"build counts: {build_file}")
     for store in sorted(briefs):
         print(f"  brief {store}: {briefs[store]}")
     for p in built["per_store"]:
@@ -1677,6 +2163,11 @@ def run(args: argparse.Namespace) -> int:
               f"{p['statements_with_numbers']} -> sent {p['statements_sent']} (fragment "
               f"{p['statements_fragment']}, no numbers {p['statements_no_numbers']}, "
               f"no cue {p['statements_no_cue']})")
+        doc_bits = [f"{dt} docs {p.get(f'doc_{dt}_docs', 0)} pages {p.get(f'doc_{dt}_pages', 0)} "
+                    f"kept {p.get(f'doc_{dt}_kept', 0)} script {p.get(f'doc_{dt}_script', 0)}"
+                    for dt in (args.doc_types or ())]
+        if doc_bits:
+            print(f"    docs {p['store']}: " + "; ".join(doc_bits))
     if args.dry_run:   # the filter counts with no model call (and the script claims still land in --out)
         print("dry run: no request sent")
         writer.close()
@@ -1718,12 +2209,14 @@ def run(args: argparse.Namespace) -> int:
         sample = out.parent / "empty_samples.json"
         sample.write_text(json.dumps(stats.empty_samples[:5], indent=1)[:8000], encoding="utf-8")
 
-    script_status = Counter(c["status"] for c in guidance_claims)
-    total_claims = len(guidance_claims) + stats.claims - removed
+    script_status = Counter(c["status"] for c in script_claims)
+    total_claims = len(script_claims) + stats.claims - removed
     statuses = Counter(script_status)
     statuses.update(stats.by_status)
-    nodes = Counter(c["node"] for c in guidance_claims)
+    nodes = Counter(c["node"] for c in script_claims)
     nodes.update(stats.by_node)
+    kinds = Counter(str(c.get("source_kind") or "guidance") for c in script_claims)
+    kinds.update(stats.by_kind)
     sent_items = len(pending)
     dropped = sum(stats.drops[k] for k in ("past", "no_driver"))
     outcome = (f"claims {total_claims} ({statuses.get('verified', 0)} pre-judge verified, "
@@ -1739,8 +2232,8 @@ def run(args: argparse.Namespace) -> int:
           f"{judge_stats.judged} claims judged, {judge_stats.judged_ok} passed, "
           f"errors {judge_stats.judge_errors}, http {dict(judge_stats.judge_http_codes)}, "
           f"fail fields {dict(judge_stats.by_field)}")
-    print(f"claims pre-judge: {len(guidance_claims) + stats.claims}  by status {dict(statuses)}  "
-          f"by node {dict(nodes)}  deduped {removed}")
+    print(f"claims pre-judge: {len(script_claims) + stats.claims}  by status {dict(statuses)}  "
+          f"by node {dict(nodes)}  by source {dict(kinds)}  deduped {removed}")
     print(f"claims after judge+dedupe: {sum(final_status.values())}  by status {final_status}")
     print(f"drops (model items): {dict(stats.drops)}  no_driver+past share "
           f"{(dropped / max(stats.items_ok, 1)):.1%} of {stats.items_ok} items")
@@ -1840,10 +2333,52 @@ def retag_existing(path: Path) -> int:
     return 0
 
 
-def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode_n: int = 15) -> list[str]:
-    """The full report as text lines: counts, judge agreement, seeded samples, then detail."""
-    con = sqlite3.connect(f"file:{Path(path).as_posix()}?mode=ro", uri=True)
+def _row_col(row: sqlite3.Row, name: str, default: Any = None) -> Any:
+    """A column that an older claims DB may not have yet (stage-2a additive columns)."""
+    try:
+        return row[name]
+    except (IndexError, KeyError):
+        return default
+
+
+def _coverage(rows: list[sqlite3.Row]) -> tuple[set[str], set[str], set[tuple[str, str]]]:
+    """Verified-claim coverage: companies, distinct calendar months and (company, month) pairs."""
+    symbols: set[str] = set()
+    months: set[str] = set()
+    pairs: set[tuple[str, str]] = set()
+    for r in rows:
+        if str(r["status"]) != "verified":
+            continue
+        symbol = str(r["symbol"] or "")
+        known = str(r["known_at"] or "")[:7]
+        symbols.add(symbol)
+        if known:
+            months.add(known)
+            pairs.add((symbol, known))
+    return symbols, months, pairs
+
+
+def open_readonly_db(path: Path) -> sqlite3.Connection:
+    """Open a finished claims DB read-only; a file the sandbox will not lock is opened with ``immutable=1``."""
+    uri = f"file:{Path(path).as_posix()}?mode=ro"
+    con = sqlite3.connect(uri, uri=True)
+    try:
+        con.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()
+    except sqlite3.OperationalError:
+        con.close()
+        con = sqlite3.connect(uri + "&immutable=1", uri=True)
     con.row_factory = sqlite3.Row
+    return con
+
+
+def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode_n: int = 15,
+           baseline: str = "", build_json: str = "") -> list[str]:
+    """The full report as text lines: counts, judge agreement, seeded samples, then detail.
+
+    ``baseline`` (another claims DB) adds the stage-2a coverage gain: companies and months with a verified
+    claim here that the baseline lacks.  ``build_json`` (written by ``run``) adds the item-builder counts.
+    """
+    con = open_readonly_db(Path(path))
     rows = con.execute("SELECT * FROM claim").fetchall()
     logs = con.execute("SELECT role, http_status, COUNT(*) n, SUM(error<>'') errs FROM read_log "
                        "GROUP BY 1,2 ORDER BY 1,2").fetchall()
@@ -1855,6 +2390,7 @@ def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode
     statuses = Counter(r["status"] for r in rows)
     nodes = Counter(r["node"] for r in rows)
     methods = Counter(r["method"] for r in rows)
+    kinds = Counter(str(_row_col(r, "source_kind") or "") for r in rows)
     judged = [r for r in rows if r["judge_ok"] is not None]
     agreed = [r for r in judged if r["judge_ok"] == 1]
     fails = Counter()
@@ -1867,6 +2403,8 @@ def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode
         store_counts.setdefault(str(r["store"]), {})[str(r["status"])] = int(r["n"])
     out: list[str] = [
         f"claims: {len(rows)}  status {dict(statuses)}  method {dict(methods)}",
+        f"source kinds: {dict(kinds)}",
+        f"unjudged (script check only, the judge did not run): {sum(1 for r in rows if r['judge_ok'] is None)}",
         f"judged {len(judged)}  judge agreed {len(agreed)} ({len(agreed) / max(len(judged), 1):.0%})  "
         f"judge fail fields {dict(fails)}",
         "read requests by role/status: " + "; ".join(
@@ -1877,10 +2415,51 @@ def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode
         "per store: " + "; ".join(
             f"{store} " + ",".join(f"{status[:4]}{n}" for status, n in sorted(counts.items()))
             for store, counts in sorted(store_counts.items())),
-        f"quota events: {len(quota)}",
+        f"quota events: {len(quota)} (HTTP 429: "
+        f"{sum(1 for q in quota if int(q['http_status'] or 0) == 429)})",
     ]
     out += [f"  quota {q['at_ist']} HTTP {q['http_status']} in_flight {q['in_flight']} body {q['body']}"
             for q in quota]
+
+    if build_json and Path(build_json).exists():
+        try:
+            build = json.loads(Path(build_json).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            build = {}
+        counters = build.get("counters") or {}
+        out.append("\nitems per doc type (from the builder; model item = a paragraph sent to the model):")
+        out.append(f"  transcript: statements sent {counters.get('statements_sent', 0)}")
+        out.append(f"  guidance: {counters.get('guidance_mapped', 0)} mapped script claims, "
+                   f"{counters.get('guidance_unmapped', 0)} unmapped -> model, "
+                   f"{counters.get('guidance_no_value', 0)} no value")
+        for dt in DOC_TYPES:
+            out.append(
+                f"  {dt}: docs {counters.get(f'doc_{dt}_docs', 0)}, pages {counters.get(f'doc_{dt}_pages', 0)} "
+                f"(ocr {counters.get(f'doc_{dt}_pages_ocr', 0)}), paragraphs {counters.get(f'doc_{dt}_paragraphs', 0)}, "
+                f"model items {counters.get(f'doc_{dt}_kept', 0)}, script claims {counters.get(f'doc_{dt}_script', 0)}; "
+                f"drops pages no-cue {counters.get(f'doc_{dt}_drop_no_cue', 0)} no-number "
+                f"{counters.get(f'doc_{dt}_drop_no_number', 0)} short {counters.get(f'doc_{dt}_drop_short', 0)}; "
+                f"paragraphs boilerplate {counters.get(f'doc_{dt}_para_boilerplate', 0)} no-cue "
+                f"{counters.get(f'doc_{dt}_para_no_cue', 0)} no-number {counters.get(f'doc_{dt}_para_no_number', 0)}")
+
+    pilot_symbols, pilot_months, pilot_pairs = _coverage(rows)
+    if baseline and Path(baseline).exists():
+        bcon = open_readonly_db(Path(baseline))
+        brows = bcon.execute("SELECT symbol, known_at, status FROM claim").fetchall()
+        bcon.close()
+        base_symbols, base_months, base_pairs = _coverage(brows)
+        gained = sorted(pilot_symbols - base_symbols)
+        per_symbol = Counter(str(r["symbol"] or "") for r in rows if r["status"] == "verified")
+        out.append(f"\ncoverage gain vs baseline {Path(baseline).name}:")
+        out.append(f"  companies with a verified claim: baseline {len(base_symbols)} -> pilot "
+                   f"{len(pilot_symbols)}; gained {len(gained)}")
+        out.append(f"  months gained: {len(pilot_months - base_months)} "
+                   f"({', '.join(sorted(pilot_months - base_months)) or 'none'})")
+        out.append(f"  company-months gained: {len(pilot_pairs - base_pairs)}")
+        out.append("  companies gained: " + (", ".join(f"{s} ({per_symbol[s]})" for s in gained) or "none"))
+    else:
+        out.append(f"\ncoverage: {len(pilot_symbols)} companies, {len(pilot_months)} months "
+                   f"({', '.join(sorted(pilot_months))}) with a verified claim")
 
     rng = random.Random(seed)
     by_node: dict[str, list[sqlite3.Row]] = {}
@@ -1896,13 +2475,16 @@ def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode
         for node in order:
             if by_node[node] and len(sample) < n:
                 sample.append(by_node[node].pop())
-    out.append(f"\n{n} random VERIFIED claims, seed {seed} (round-robin across nodes):")
+    out.append(f"\n{len(sample)} random VERIFIED claims, seed {seed} (round-robin across nodes; full paragraph; "
+               f"pre-judge where the judge did not run):")
     for r in sample:
         lo = f"{r['value_low']:g}" if r["value_low"] is not None else "?"
         hi = f"-{r['value_high']:g}" if r["value_high"] is not None else ""
         ctx = (" | CTX: " + " || ".join(str(r["context"]).splitlines())) if r["context"] else ""
-        out.append(f"[{r['store']}] {r['node']} {r['sign']} {lo}{hi} {r['unit']} "
-                   f"| period={r['effective_period']} | STATEMENT: {norm_ws(r['statement'])}{ctx}")
+        source = _row_col(r, "source_kind") or "?"
+        where = f" | {Path(str(r['doc_key'] or '')).name} p{r['page']}" if r["doc_key"] else ""
+        out.append(f"[{r['store']}] {r['node']} {r['sign']} {lo}{hi} {r['unit']} | source={source} "
+                   f"| period={r['effective_period']}{where} | STATEMENT: {norm_ws(r['statement'])}{ctx}")
 
     rej = [r for r in rows if r["judge_ok"] == 0 and (r["judge_fail"] or "")]
     rng.shuffle(rej)
@@ -1933,10 +2515,15 @@ def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="T-228 stage 1a: driver-tree claims from management text")
+    ap = argparse.ArgumentParser(description="T-228: driver-tree claims from management text")
     ap.add_argument("--stores", nargs="*", help="store names (default: every cNN store under the store root)")
     ap.add_argument("--pick", type=int, default=0, help="add N stores with statements, seeded (default seed 7)")
+    ap.add_argument("--pick-no-transcript", type=int, default=0,
+                    help="add N stores without transcripts (stage 2a pilot pool), same --pick-seed")
     ap.add_argument("--pick-seed", type=int, default=7)
+    ap.add_argument("--doc-types", nargs="*", default=list(DOC_TYPES),
+                    help="doc_page types to read (default: annual_report press_release announcement; "
+                         "give the flag with no value to read none, i.e. stage 1)")
     ap.add_argument("--out", default=str(DEFAULT_OUT))
     ap.add_argument("--start", type=int, default=30, help="requests in flight (default 30)")
     ap.add_argument("--judge-start", type=int, default=5, help="judge requests in flight (default 5)")
@@ -1952,12 +2539,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--report", action="store_true", help="build the DB report and the seeded samples")
     ap.add_argument("--retag", action="store_true", help="re-apply the revenue.mix and range rules to the existing DB")
     ap.add_argument("--report-file", default="", help="write the report here and print only its first two lines")
+    ap.add_argument("--baseline", default="", help="another claims DB: report the companies/months gained")
+    ap.add_argument("--build-json", default="", help="the builder counts file run wrote beside --out")
     ap.add_argument("--seed", type=int, default=53)
     args = ap.parse_args(argv)
     if args.retag:
         return retag_existing(Path(args.out))
     if args.report:
-        lines = report(Path(args.out), args.seed)
+        lines = report(Path(args.out), args.seed, baseline=args.baseline, build_json=args.build_json)
         if args.report_file:
             Path(args.report_file).parent.mkdir(parents=True, exist_ok=True)
             Path(args.report_file).write_text("\n".join(lines) + "\n", encoding="utf-8")
