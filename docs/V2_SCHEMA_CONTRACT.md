@@ -1868,7 +1868,20 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   replaces every printed row that differs from it by more than half its unit (`replaced_printed` keeps the old
   value and source), fills a quarter neither XBRL nor a printed row holds, and never touches an XBRL row; agreement
   with any printed row keeps the printed rows. Unset, the tool serves exactly what it served before. The frozen-set
-  answer test compares the two arms before the switch goes on by default. Round 26 =
+  answer test compares the two arms before the switch goes on by default. Measured before any test (10 stores, 20 Nov): every verified
+  script quarter that maps to a line item already has its XBRL row, and the 12 that overlap printed rows agree, so
+  arm B as built changes no answer. Of the 5,245 served cells, 3,468 equal an XBRL figure the store holds, 656 repeat
+  a held fin row, 183 are line-period pairs the fin tables lack and 921 have no canonical line (segments, notes,
+  balance sub-lines, nine months). Option 2 is re-aimed (pending Shivam): fill gaps, not replace; frozen questions
+  drawn from those lines.
+- Seventh witness review (dsh 20261120T100157Z-8fa41c0d, 20 Nov, on `t227-r30` over the 81 unseen stores): no
+  wrong value and no wrong basis; the standalone-only rule never met a company with consolidated annual facts and
+  served inferred cells only above a page's "consolidated" note; hand read 95 cells: 73 right, 3 doubtful, 19 with a
+  wrong period type, from two gaps of `kind_section_mismatch`, both unverified only: F1 a balance-sheet block whose
+  heading is in the column-header stack below a P&L (c39 Cosmo First "Total assets 3,916.15" served as a quarter,
+  36 cells) -> the balance-sheet test also reads the cell's column header; F2 "Segment Assets" printed as a row, not a
+  section (c44, 15 cells) -> the segment-balance test reads section and row label. Round 31 on the measured 10 =
+  round 30. Rule set `t227-r32`. 79 tests. Round 26 =
   round 25. 71 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references

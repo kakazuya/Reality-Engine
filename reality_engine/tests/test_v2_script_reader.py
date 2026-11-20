@@ -739,3 +739,14 @@ def test_balance_sheet_only_page_refuses_flow_kinds():
     pl = dict(bs, title="Statement of Standalone Financial Results and Balance Sheet", value_text="5.00")
     got = {c["value_text"]: c["gate"] for c in sr.cross_gate([bs, pl], FILED)}
     assert got["67,108.62"] == "kind_section_mismatch" and got["5.00"] != "kind_section_mismatch"
+
+
+def test_r7_balance_block_heading_in_the_column_and_segment_assets_as_a_row_are_refused():
+    bs = dict(_cell("q2fy25", "3,916.15", label="Total assets", pend="2025-03-31"), kind="quarter",
+              col_header="(not annualised for quarters) AUDITED STANDALONE STATEMENT OF ASSETS AND LIABILITIES As at "
+                         "31.03.2025", title="AUDITED STANDALONE FINANCIAL RESULTS 3 months ended",
+              box=(200, 50, 240, 58), page=1)
+    seg = dict(_cell("q2fy25", "0.00", label="Segment Assets", pend="2024-06-30"), section="",
+               box=(200, 70, 240, 78), page=1)
+    got = {c["value_text"]: c["gate"] for c in sr.cross_gate([bs, seg], FILED)}
+    assert got == {"3,916.15": "kind_section_mismatch", "0.00": "kind_section_mismatch"}

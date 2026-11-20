@@ -451,8 +451,10 @@ def cross_gate(cells: Iterable[dict[str, Any]], filed: Mapping[str, _dt.date],
             c["gate"] = "year_kind_doubtful"
             continue
         title = c.get("title", "") or ""
-        if (_BALANCE_SECTION.search(c.get("section", "") or "") and c["kind"] != "as_at") or \
+        head = c.get("col_header", "") or ""
+        if (_BALANCE_SECTION.search(f'{c.get("section", "")} {c["row_label"]}') and c["kind"] != "as_at") or \
                 (c["kind"] != "as_at" and cj._BS_TITLE.search(title) and not _FLOW_TITLE.search(title)) or \
+                (c["kind"] != "as_at" and cj._BS_TITLE.search(head) and not _FLOW_TITLE.search(head)) or \
                 (c["kind"] == "as_at" and cj._CF_TITLE.search(c.get("title", "") or "")
                  and not cj._BS_TITLE.search(c.get("title", "") or "")):
             # a balance under a flow column (Dhampur "3. Segment Assets: Sugar 1,881.57" under "Quarter Ended"),
