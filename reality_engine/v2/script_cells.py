@@ -30,7 +30,7 @@ from reality_engine.v2 import page_words
 from reality_engine.v2 import script_reader as sr
 
 READER = "script"
-VERSION = "t227-r30"          # the rule set measured in round 30 (docs/V2_SCHEMA_CONTRACT.md s16)
+VERSION = "t227-r31"          # the rule set measured in round 30, plus line_item / fiscal_period (docs/V2_SCHEMA_CONTRACT.md s16)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS script_cell (
@@ -39,9 +39,11 @@ CREATE TABLE IF NOT EXISTS script_cell (
     value REAL, unit_scale REAL, period_end TEXT, period_kind TEXT, basis TEXT,
     period_inferred INTEGER, basis_inferred INTEGER,
     status TEXT, witness TEXT, gate TEXT,
-    x0 REAL, y0 REAL, x1 REAL, y1 REAL
+    x0 REAL, y0 REAL, x1 REAL, y1 REAL,
+    line_item TEXT, line_source TEXT, fiscal_period TEXT
 );
 CREATE INDEX IF NOT EXISTS script_cell_lookup ON script_cell(symbol, period_end, basis);
+CREATE INDEX IF NOT EXISTS script_cell_line ON script_cell(symbol, line_item, fiscal_period, basis);
 CREATE TABLE IF NOT EXISTS script_cell_run (
     run_at TEXT, version TEXT, pages INTEGER, cells_read INTEGER, verified INTEGER, unverified INTEGER,
     refused INTEGER, seconds REAL, errors INTEGER, note TEXT
@@ -84,11 +86,38 @@ def read_store(store_db: str | Path, ocr_dbs: list[str] | None = None) -> tuple[
     sr.witness_gate(cells, filed, xbrl=xbrl)
     for c in cells:
         c["known_at"], c["symbol"] = docs.get(c["doc_key"], ("", ""))
+        c["fy_end"] = fy
     stats = {"pages": len(pages), "cells_read": len(cells), "errors": errors,
              "verified": sum(c["status"] == "verified" for c in cells),
              "unverified": sum(c["status"] == "unverified" for c in cells)}
     stats["refused"] = stats["cells_read"] - stats["verified"] - stats["unverified"]
     return cells, stats
+
+
+def fiscal_period(period_end: str, kind: str, fy_end: int | None) -> str:
+    """Q2FY26 / H1FY26 / FY26 for a period end and kind, from the company's fiscal year-end month (March when
+    unknown); "" for as_at, nine-month and unknown kinds."""
+    if not period_end or kind not in ("quarter", "half", "year"):
+        return ""
+    fy = fy_end or 3
+    y, m = int(period_end[:4]), int(period_end[5:7])
+    fy_year = y + (1 if m > fy else 0)
+    if kind == "year":
+        return f"FY{fy_year % 100:02d}" if m == fy else ""
+    months_in = (m - fy - 1) % 12 + 1                # 1..12 months into the fiscal year
+    if kind == "quarter" and months_in % 3 == 0:
+        return f"Q{months_in // 3}FY{fy_year % 100:02d}"
+    if kind == "half" and months_in in (6, 12):
+        return f"H{months_in // 6}FY{fy_year % 100:02d}"
+    return ""
+
+
+def _line(c: dict[str, Any]) -> tuple[str, str]:
+    """The canonical line item: the one the XBRL judge matched, else the results lexicon's P&L line."""
+    if c.get("_xline"):
+        return c["_xline"], "xbrl"
+    line = cj.line_of(c["row_label"]) if c.get("kind") in ("quarter", "half", "year") else None
+    return (line, "lexicon") if line else ("", "")
 
 
 def _row(c: dict[str, Any]) -> tuple:
@@ -100,7 +129,8 @@ def _row(c: dict[str, Any]) -> tuple:
             c.get("title", ""), c.get("section", ""), c["row_label"], c.get("col_header", ""), c["value_text"],
             value, scale, c.get("period_end") or "", c.get("kind") or "", c.get("basis") or "",
             int(bool(c.get("period_inferred"))), int(bool(c.get("basis_inferred"))),
-            c["status"], c.get("witness", ""), c.get("gate", ""), *box)
+            c["status"], c.get("witness", ""), c.get("gate", ""), *box, *_line(c),
+            fiscal_period(c.get("period_end") or "", c.get("kind") or "", c.get("fy_end")))
 
 
 def write_store(store_db: str | Path, cells: list[dict[str, Any]], stats: dict[str, Any], seconds: float) -> int:
@@ -108,10 +138,10 @@ def write_store(store_db: str | Path, cells: list[dict[str, Any]], stats: dict[s
     served = [c for c in cells if c["status"] in ("verified", "unverified")]
     con = sqlite3.connect(str(store_db))
     try:
+        con.execute("DROP TABLE IF EXISTS script_cell")        # the schema grows with the rule set: rebuild whole
         con.executescript(SCHEMA)
         with con:
-            con.execute("DELETE FROM script_cell")
-            con.executemany(f"INSERT INTO script_cell VALUES ({','.join('?' * 25)})", [_row(c) for c in served])
+            con.executemany(f"INSERT INTO script_cell VALUES ({','.join('?' * 28)})", [_row(c) for c in served])
             con.execute("INSERT INTO script_cell_run VALUES (?,?,?,?,?,?,?,?,?,?)",
                         (_dt.datetime.now().isoformat(timespec="seconds"), VERSION, stats["pages"],
                          stats["cells_read"], stats["verified"], stats["unverified"], stats["refused"],

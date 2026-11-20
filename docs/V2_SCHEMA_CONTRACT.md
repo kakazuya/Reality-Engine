@@ -1859,7 +1859,16 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   order misled): 27 right, 2 doubtful (OCR garbage), 1 right value with the wrong period type (c84 "Standalone
   Balance Sheet" column "Financial Year ended 31.03.2024" typed year) -> `kind_section_mismatch` also refuses any
   kind but "as at" on a page whose title is a balance sheet and names no flow (profit, loss, income, results,
-  revenue, cash flow). Round 30 on the measured 10 = round 29. Rule set `t227-r30`. 77 tests. Round 26 =
+  revenue, cash flow). Round 30 on the measured 10 = round 29. Rule set `t227-r30`. 77 tests.
+- Option 2 arm B (T-227, built 20 Nov, off by default): `script_cell` gains `line_item` (the XBRL line the judge
+  matched when XBRL agreed, `line_source` xbrl; else the results lexicon's P&L line, `lexicon`) and `fiscal_period`
+  (Q2FY26 / H1FY26 / FY26 from the store's fiscal year-end month; rule set `t227-r31`, the table is rebuilt whole on
+  each write). With `REALITY_SCRIPT_PRECEDENCE=1`, `pilot3_fin` quarters (`_script_quarters` in
+  `plugins/reality-data/server/lookups_pilot3.py`): a verified script cell of the same line, quarter and basis
+  replaces every printed row that differs from it by more than half its unit (`replaced_printed` keeps the old
+  value and source), fills a quarter neither XBRL nor a printed row holds, and never touches an XBRL row; agreement
+  with any printed row keeps the printed rows. Unset, the tool serves exactly what it served before. The frozen-set
+  answer test compares the two arms before the switch goes on by default. Round 26 =
   round 25. 71 tests.
 - Recurrence (`.tmp/sf/recur.py`, every run's passed/verified cells by the signature of each class found wrong): ID
   numbers, half-years as years, unbalanced brackets, wrapped "(Including" fragments, bare "Total", note references

@@ -32,13 +32,22 @@ def test_row_keeps_printed_and_resolved_fields():
     row = sc._row(_c("verified", value="(1,200.50)", period_inferred=True))
     cols = ("doc_key page symbol known_at reader version table_title section row_label col_header value_text value "
             "unit_scale period_end period_kind basis period_inferred basis_inferred status witness gate "
-            "x0 y0 x1 y1").split()
+            "x0 y0 x1 y1 line_item line_source fiscal_period").split()
     r = dict(zip(cols, row))
     assert r["value_text"] == "(1,200.50)" and r["value"] == -1200.50e5
     assert (r["period_end"], r["period_kind"], r["basis"]) == ("2025-09-30", "quarter", "consolidated")
     assert r["period_inferred"] == 1 and r["basis_inferred"] == 0 and r["reader"] == "script"
+    assert (r["line_item"], r["line_source"], r["fiscal_period"]) == ("revenue_from_operations", "lexicon", "Q2FY26")
+    xr = dict(zip(cols, sc._row(_c("verified", _xline="total_income"))))
+    assert (xr["line_item"], xr["line_source"]) == ("total_income", "xbrl")
 
 
 def test_no_unit_gives_no_numeric_value():
     r = sc._row(_c("unverified", unit_scale=None))
     assert r[11] is None
+
+
+def test_fiscal_period_labels():
+    f = sc.fiscal_period
+    assert [f("2025-09-30", "quarter", 3), f("2026-03-31", "year", 3), f("2025-09-30", "half", 3),
+            f("2025-12-31", "quarter", 12), f("2025-03-31", "as_at", 3)] == ["Q2FY26", "FY26", "H1FY26", "Q4FY25", ""]

@@ -91,13 +91,13 @@ def build_fixture() -> None:
     # T-227: the script reader's cells, served beside page_cell as script_rows
     from reality_engine.v2 import script_cells as _sc
     c.executescript(_sc.SCHEMA)
-    c.executemany(f"INSERT INTO script_cell VALUES ({','.join('?' * 25)})", [
+    c.executemany(f"INSERT INTO script_cell VALUES ({','.join('?' * 28)})", [
         ("pdfs/KEC/res1.pdf", 2, "KEC", "2025-11-10", "script", "t", "Statement of results", "", "Revenue from operations",
          "Quarter ended 30.09.2025", "5,120.40", 5120.40e7, 1e7, "2025-09-30", "quarter", "consolidated", 0, 0,
-         "verified", "xbrl", "single_filing", None, None, None, None),
+         "verified", "xbrl", "single_filing", None, None, None, None, "revenue_from_operations", "xbrl", "Q2FY26"),
         ("pdfs/KEC/res2.pdf", 2, "KEC", "2026-05-10", "script", "t", "Statement of results", "", "Revenue from operations",
          "Year ended 31.03.2026", "21,000.00", 21000e7, 1e7, "2026-03-31", "year", "consolidated", 0, 1,
-         "unverified", "cross", "pass", None, None, None, None)])
+         "unverified", "cross", "pass", None, None, None, None, "revenue_from_operations", "lexicon", "FY26")])
     c.executemany(
         "INSERT INTO guidance(id,symbol,isin,metric,target_period,low,high,unit,direction,said_on,doc_key,page,quote,"
         "speaker,known_at,known_at_source,revision_of,extractor_rule) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'t')", [
@@ -374,6 +374,41 @@ class Pilot3ToolTests(unittest.TestCase):
             early = p3.fin("KEC", "revenue", "Q2FY26", "consolidated", as_of="2025-10-01")
             self.assertFalse([r for r in early["rows"] if r["definition"] == "printed_comparative"])
         finally:
+            c = sqlite3.connect(DB)
+            c.execute("DELETE FROM fin_quarter_printed")
+            c.commit()
+            c.close()
+
+    def test_fin_arm_b_script_cell_replaces_a_differing_printed_quarter(self):
+        """T-227 option 2 arm B (REALITY_SCRIPT_PRECEDENCE=1): a verified script cell replaces a printed row that
+        differs and keeps one that agrees; the switch off serves exactly what it served before."""
+        c = sqlite3.connect(DB)
+        ins = ("INSERT INTO fin_quarter_printed (symbol, isin, period_start, period_end, fiscal_period, period_type, "
+               "column_role, basis, statement, line_item, caption, value, unit, scale, raw_token, quote, doc_key, "
+               "page, known_at, known_at_source, check_status, check_detail, is_reported) "
+               "VALUES ('KEC','INE389H01022','2025-07-01','2025-09-30','Q2FY26','quarter','current','consolidated',"
+               "'P&L','revenue_from_operations','Revenue from operations',?,'inr',1.0,'x','q','pdfs/KEC/results.pdf',"
+               "6,'2025-11-10T20:55:39','doc.known_at','sum_ok',NULL,1)")
+        c.execute(ins, (6.09156e10,))
+        c.commit()
+        c.close()
+        try:
+            off = p3.fin("KEC", "revenue_from_operations", "Q2FY26", "consolidated")
+            self.assertEqual(off["rows"][0]["provenance"]["table"], "fin_quarter_printed")
+            os.environ["REALITY_SCRIPT_PRECEDENCE"] = "1"
+            on = p3.fin("KEC", "revenue_from_operations", "Q2FY26", "consolidated")
+            row = on["rows"][0]
+            self.assertEqual((row["provenance"]["table"], row["definition"]), ("script_cell", "script_verified"))
+            self.assertEqual(row["value_inr"], 5120.40e7)
+            self.assertEqual(row["replaced_printed"]["value"], 6.09156e10)
+            c = sqlite3.connect(DB)
+            c.execute("UPDATE fin_quarter_printed SET value=?", (5120.40e7,))
+            c.commit()
+            c.close()
+            same = p3.fin("KEC", "revenue_from_operations", "Q2FY26", "consolidated")
+            self.assertEqual(same["rows"][0]["provenance"]["table"], "fin_quarter_printed")
+        finally:
+            os.environ.pop("REALITY_SCRIPT_PRECEDENCE", None)
             c = sqlite3.connect(DB)
             c.execute("DELETE FROM fin_quarter_printed")
             c.commit()

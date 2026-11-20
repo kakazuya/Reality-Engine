@@ -1173,6 +1173,8 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
                     continue
                 out.append(_fin_row(r, "fin_quarter_printed", r["fiscal_period"], "printed_comparative",
                                     _fin_source(r)))
+        if _script_precedence():
+            out = _script_quarters(sym, measure, label, bas, as_of, out, got, cap)
     out = _dedupe(p3_preferred.elect(out))
     for row in out:
         for alt in row.get("alternatives") or ():
@@ -1188,6 +1190,64 @@ def fin(symbol: str, measure: str, period: str | None = None, basis: str | None 
     out = out[:cap]
     return _reply(sym, out, "pilot3_fin", available=sorted(set(avail))[:50] if not out else None, measure_asked=measure,
                   basis_assumed=assumed, as_of=_day(as_of, "as_of"))
+
+
+def _script_precedence() -> bool:
+    """T-227 option 2, arm B of the frozen-set answer test: verified script cells take precedence over printed
+    comparative rows.  Off unless ``REALITY_SCRIPT_PRECEDENCE=1``; Shivam's go is needed before it is on by default."""
+    return os.environ.get("REALITY_SCRIPT_PRECEDENCE") == "1"
+
+
+def _script_quarters(sym: str, measure: str, label: str | None, bas: str | None, as_of: str | None,
+                     out: list[dict], xbrl_held: set, cap: int) -> list[dict]:
+    """Arm B: a verified ``script_cell`` quarter replaces a printed row of the same line, quarter and basis whose
+    value differs, and fills a quarter that neither XBRL nor a printed row holds.  An XBRL row always stays."""
+    if not _has_table("script_cell"):
+        return out
+    names, _ = _pick("script_cell", "line_item", sym, measure)
+    if not names:
+        return out
+    where, args = (f"symbol=? AND status='verified' AND fiscal_period LIKE 'Q%' "
+                   f"AND line_item IN ({','.join('?' * len(names))})"), [sym, *names]
+    for col, val in (("fiscal_period", label), ("basis", bas)):
+        if val:
+            where += f" AND {col}=?"
+            args.append(val)
+    day = _day(as_of, "as_of")
+    if day:
+        where += " AND substr(known_at,1,10) <= ?"
+        args.append(day)
+    rows = _q(f"SELECT rowid, * FROM script_cell WHERE {where} ORDER BY period_end DESC, known_at DESC LIMIT ?",
+              (*args, cap * 4))
+    printed: dict[tuple, list[dict]] = {}
+    for x in out:
+        if x.get("_table") == "fin_quarter_printed":
+            printed.setdefault((x["measure"], x["period"], x["basis"]), []).append(x)
+    seen: set = set()
+    for r in rows:
+        key = (r["line_item"], r["fiscal_period"], r["basis"])
+        if (r["line_item"], r["fiscal_period"]) in xbrl_held or key in seen or r["value"] is None:
+            continue
+        seen.add(key)
+        olds = printed.get(key, [])
+        tol = 0.5 * (r["unit_scale"] or 1.0)
+        if any(o.get("value") is not None and abs(o["value"] * (o.get("scale") or 1.0) - r["value"]) <= tol
+               for o in olds):
+            continue                                        # a printed row says the same: keep the printed rows
+        old = olds[0] if olds else None
+        if olds:
+            out = [x for x in out if not any(x is o for o in olds)]
+        row = _add_money({"measure": r["line_item"], "period": r["fiscal_period"], "basis": r["basis"],
+                          "definition": "script_verified", "value": r["value"], "unit": "inr", "scale": 1.0,
+                          "witness": r["witness"], "printed": r["value_text"],
+                          "provenance": _prov("script_cell", f"{r['doc_key']} p{r['page']}", r["known_at"],
+                                              row_id=r["rowid"], period_end=r["period_end"])},
+                         r["value"], "inr", 1.0)
+        if old is not None:
+            row["replaced_printed"] = {"value": old.get("value"), "source": old["provenance"].get("source")}
+        row["_table"], row["_known_at"], row["_rowid"] = "script_cell", r["known_at"], r["rowid"]
+        out.append(row)
+    return out
 
 
 def _fin_source(r: sqlite3.Row) -> str:

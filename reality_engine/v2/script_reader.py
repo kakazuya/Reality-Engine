@@ -605,7 +605,10 @@ def _xbrl_agrees(c: dict[str, Any], xbrl: Any) -> bool:
     if abs(used - unit) > 1e-9 * unit:
         return False
     tol = 0.5 * 10 ** -p[1] * unit + 1e-6
-    return any(abs(v.printed - x) <= tol for x in v.xbrl)
+    if any(abs(v.printed - x) <= tol for x in v.xbrl):
+        c["_xline"] = v.line_item                   # the XBRL line the figure equals (T-227: store line_item)
+        return True
+    return False
 
 
 def _column_key(c: dict[str, Any]) -> tuple:
