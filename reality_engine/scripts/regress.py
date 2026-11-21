@@ -314,6 +314,36 @@ def _load_golden(pipeline: str, golden_dir: str | Path = DEFAULT_GOLDEN) -> list
     return entries
 
 
+def _db_symbols(con: sqlite3.Connection, table: str) -> set[str]:
+    """The company symbols an output DB actually holds (empty when the table has none or no rows)."""
+    try:
+        rows = con.execute(f"SELECT DISTINCT symbol FROM {table}").fetchall()
+    except sqlite3.Error:
+        return set()
+    return {str(row[0]).strip().upper() for row in rows if row and row[0]}
+
+
+def _entry_symbol(entry: Mapping[str, Any]) -> str:
+    for part in ("key", "identity", "require", "forbid"):
+        value = (entry.get(part) or {}).get("symbol")
+        if value:
+            return str(value).strip().upper()
+    return ""
+
+
+def applicable_golden(entries: Sequence[Mapping[str, Any]], symbols: set[str]) -> tuple[list[Mapping[str, Any]],
+                                                                                        int]:
+    """Golden lines about companies this DB holds; one file then serves several disjoint DBs (stage J).
+
+    An empty symbol set (a fixture DB with no rows) or a line with no symbol keeps every line, so the gate
+    never goes quiet on an empty DB.
+    """
+    if not symbols:
+        return list(entries), 0
+    kept = [entry for entry in entries if not _entry_symbol(entry) or _entry_symbol(entry) in symbols]
+    return kept, len(entries) - len(kept)
+
+
 def run(pipeline_name: str, db: str | Path, baseline: str | Path | None = None,
         golden_dir: str | Path = DEFAULT_GOLDEN) -> dict[str, Any]:
     """Grade one DB and return the report dict (``newly_broken`` is the gate)."""
@@ -321,7 +351,9 @@ def run(pipeline_name: str, db: str | Path, baseline: str | Path | None = None,
     con = connect_ro(db, timeout_s=60)
     try:
         _require_table(con, pipeline.table, db)
-        golden = _load_golden(pipeline_name, golden_dir)
+        symbols = _db_symbols(con, pipeline.table)
+        loaded = _load_golden(pipeline_name, golden_dir)
+        golden, skipped = applicable_golden(loaded, symbols)
         verdicts = [grade_entry(con, pipeline, entry) for entry in golden]
         diff = diff_against(con, pipeline, baseline, golden) if baseline else None
     finally:
@@ -331,7 +363,8 @@ def run(pipeline_name: str, db: str | Path, baseline: str | Path | None = None,
         counts[verdict["verdict"]] = counts.get(verdict["verdict"], 0) + 1
     report = {
         "pipeline": pipeline_name, "db": str(db), "baseline": str(baseline) if baseline else None,
-        "golden": len(golden), "rows": sum(1 for entry in golden if entry.get("kind", "row") == "row"),
+        "golden": len(golden), "skipped_other_db": skipped,
+        "rows": sum(1 for entry in golden if entry.get("kind", "row") == "row"),
         "pages": sum(1 for entry in golden if entry.get("kind") == "page"),
         "counts": counts, "verdicts": verdicts, "diff": diff,
         "newly_broken": counts.get("newly_broken", 0),
@@ -342,7 +375,9 @@ def run(pipeline_name: str, db: str | Path, baseline: str | Path | None = None,
 def lines(report: Mapping[str, Any]) -> list[str]:
     counts = report["counts"]
     out = [f"T-233 regress: {report['pipeline']}  ({report['db']})",
-           f"golden: {report['rows']} rows + {report['pages']} pages from reality_engine/tests/golden"]
+           f"golden: {report['rows']} rows + {report['pages']} pages from reality_engine/tests/golden"
+           + (f"  ({report['skipped_other_db']} lines skipped: companies not in this DB)"
+              if report.get("skipped_other_db") else "")]
     order = ("still_right", "newly_broken", "fixed", "still_wrong", "changed", "gone", "ambiguous")
     out.append("  ".join(f"{name}: {counts.get(name, 0)}" for name in order if counts.get(name)))
     for verdict in report["verdicts"]:

@@ -39,9 +39,9 @@ def test_schema_has_every_contract_column_and_the_dictionary():
     assert {"observation", "measure_dict", "dim_vocab"} <= tables
     cols = {r[1] for r in con.execute("PRAGMA table_info(observation)")}
     assert {"symbol", "doc_key", "page", "region", "known_at", "measure", "printed_label", "printed_axis",
-            "value", "value_text", "unit", "scale", "adjusted", "period", "period_kind", "segment", "product",
-            "geography", "plant", "customer", "group_path", "group_source", "group_check", "stage", "series_id",
-            "entity_scope", "status", "status_reason"} <= cols
+            "value", "value_text", "unit", "scale", "adjusted", "value_kind", "is_total", "period", "period_kind",
+            "segment", "product", "geography", "plant", "customer", "group_path", "group_source", "group_check",
+            "stage", "series_id", "entity_scope", "status", "status_reason"} <= cols
     assert {"measure_proposal", "http_429", "measure_alias"} <= tables
     assert {r[1] for r in con.execute("PRAGMA table_info(measure_dict)")} == {"id", "name", "unit_family",
                                                                              "driver_node"}
@@ -586,6 +586,44 @@ def test_recheck_inherits_a_printed_unit_and_period_and_keeps_the_row_id():
         _cleanup_store()
 
 
+def test_recheck_restores_a_parts_sum_proof_from_the_stored_total():
+    page = "Revenue FY25 Total 100 North 60 South 40"
+    try:
+        _make_store(pages=(page,), first_page=14)
+        con = obs.create_db(":memory:")
+        rows = build([
+            reply(measure="revenue.value", value_text="100", printed_label="Total", printed_axis="FY25",
+                  period="FY25", unit="Rs Cr", is_total=True),
+            reply(measure="revenue.value", value_text="60", printed_label="North", printed_axis="FY25",
+                  period="FY25", unit="Rs Cr"),
+            reply(measure="revenue.value", value_text="40", printed_label="South", printed_axis="FY25",
+                  period="FY25", unit="Rs Cr"),
+        ], page_text=page)
+        assert all(row["status"] == "verified" for row in rows), [r["status_reason"] for r in rows]
+        # simulate a DB written before is_total was a column: the total flag is gone and every row lost its proof
+        for row in rows:
+            row.update({"is_total": 0, "entity_scope": "", "status": "unverified",
+                        "status_reason": "entity_scope not stated"})
+        obs.write_rows(con, rows)
+        stats = obs.recheck_db(con, [str(STORE)])
+        statuses = [r[0] for r in con.execute("SELECT status FROM observation ORDER BY observation_id")]
+        totals = [r[0] for r in con.execute("SELECT is_total FROM observation ORDER BY observation_id")]
+        assert statuses == ["verified", "verified", "verified"], statuses
+        assert totals == [1, 0, 0]
+        assert stats["parts_sum_restored"] == 3
+        con.close()
+    finally:
+        _cleanup_store()
+
+
+def test_recheck_never_turns_a_stored_total_on_without_a_printed_label():
+    assert obs.derive_is_total({"printed_label": "Total Revenue"})
+    assert obs.derive_is_total({"printed_label": "Overall"})
+    assert obs.derive_is_total({"printed_label": "Consolidated total"})
+    assert obs.derive_is_total({"printed_label": "North", "is_total": 1})
+    assert not obs.derive_is_total({"printed_label": "North"})
+
+
 def test_recheck_refuses_an_upgrade_without_a_new_printed_source():
     page = "Particulars (INR Mn) FY25 Total Equity 3.7"
     try:
@@ -743,6 +781,17 @@ def test_a_ladder_extracted_one_tick_per_line_still_cannot_verify():
                  page_text=page)
     assert rows[0]["status"] == "unverified"
     assert "axis_tick" in rows[0]["status_reason"]
+
+
+def test_a_four_value_run_is_not_an_axis_ladder():
+    assert not obs._tick_ladder([0.20, 0.21, 0.22, 0.23])
+    assert obs._tick_ladder([0.10, 0.30, 0.50, 0.70, 0.90, 1.10])
+    page = "VA Stability\n0.20\n0.21\n0.22\n0.23\nChina VA\n"
+    rows = build([reply(measure="value_addition_per_kg", value_text="0.23", unit="$/Kg",
+                        printed_label="China VA", series_title="VA Stability", period="Q1 16-17",
+                        entity_scope="industry")], page_text=page)
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    assert "axis_tick" not in rows[0]["status_reason"]
 
 # --------------------------------------------------------------------------- stage E (T-230)
 
@@ -1099,7 +1148,7 @@ T248_TREE = frozenset({
 
 
 def test_every_measure_has_a_driver_node_or_a_stated_none():
-    assert len(obs.MEASURES) == 259
+    assert len(obs.MEASURES) == 266
     assert len({m[0] for m in obs.MEASURES}) == len(obs.MEASURES)
     for mid, _name, _family, node in obs.MEASURES:
         assert node in T248_TREE or node.startswith("none: "), f"{mid}: {node!r}"
@@ -1195,3 +1244,127 @@ def test_create_db_seeds_the_stage_g_dictionary_aliases_and_nodes():
             == "count.outlets"
     finally:
         con.close()
+
+
+# --------------------------------------------------------------------------- stage I (new-company read)
+
+
+def test_a_per_unit_figure_never_takes_the_crore_scale():
+    page = "Financial Highlights\nEPS (INR)\n4.57\nH1-FY25\nPPA Realisation\n5.53\n₹/ kWh\nFY26\nRs Cr\n"
+    rows = build([
+        reply(measure="eps", value_text="4.57", unit="INR", printed_label="EPS (INR)", printed_axis="H1-FY25",
+              period="H1-FY25", scale=10000000),
+        reply(measure="revenue.price", value_text="5.53", unit="₹/ kWh", printed_label="PPA Realisation",
+              printed_axis="FY26", period="FY26", scale=10000000),
+    ], page_text=page)
+    assert [row["scale"] for row in rows] == [1, 1]
+
+
+def test_a_trillion_unit_is_1e12_and_not_a_missing_scale():
+    page = "Strong Construction Industry Outlook\nConstruction Industry (₹ tn)\n38.5\nFY28E\n"
+    rows = build([reply(measure="market.value", value_text="38.5", unit="₹ tn", printed_label="",
+                        printed_axis="Construction Industry (₹ tn)", period="FY28E", period_kind="estimate",
+                        entity_scope="industry")], page_text=page)
+    assert rows[0]["scale"] == 1e12
+
+
+def test_an_axis_tick_on_a_statement_table_is_not_a_tick():
+    table = ("Consolidated Balance Sheet\nParticulars (Rs. In Cr)\nMar-24\n0\n1\n2\n3\n4\n"
+             "Intangible assets\n3\n")
+    chart = "Mar-24\nIntangible assets\n0\n1\n2\n3\n4\n3\n"
+    row = reply(measure="other_intangible_assets", value_text="3", unit="Rs. In Cr", printed_label="Intangible assets",
+                printed_axis="Mar-24", period="Mar-24")
+    table_rows = build([row], page_text=table)
+    assert table_rows[0]["status"] == "verified", table_rows[0]["status_reason"]
+    chart_rows = build([row], page_text=chart)
+    assert chart_rows[0]["status"] == "unverified" and "axis_tick" in chart_rows[0]["status_reason"]
+
+
+def test_a_comparison_word_is_never_a_period():
+    page = "Segment Results of the Company (YOY)\nY-O-Y Growth (%)\n37.5%\n"
+    rows = build([reply(measure="revenue_growth_yoy", value_text="37.5%", unit="%",
+                        printed_label="Real Estates and Other Income", printed_axis="Y-O-Y Growth (%)",
+                        period="Y-O-Y")], page_text=page)
+    assert rows[0]["period"] == ""
+    assert rows[0]["status"] == "unverified" and "no_period" in rows[0]["status_reason"]
+    page2 = "Segment Results\nMar-25\n37.5%\n"
+    rows = build([reply(measure="revenue_growth_yoy", value_text="37.5%", unit="%",
+                        printed_label="Real Estates and Other Income", printed_axis="Mar-25",
+                        period="QoQ")], page_text=page2)
+    assert rows[0]["period"] == "Mar-25"
+
+
+def test_lakh_sq_ft_is_area_and_billion_units_is_energy():
+    assert obs.infer_unit_family("Lakhs sq ft") == "area"
+    assert obs.infer_unit_family("mn sq. ft.") == "area"
+    assert obs.infer_unit_family("Billion units") == "energy"
+    assert obs.infer_unit_family("BU") == "energy"
+    page = "Year wise Deliveries\nChennai Shubham\nUnsold Area (Lakhs sq ft)\n0.07\nFY26\n"
+    rows = build([reply(measure="area.unsold", value_text="0.07", unit="Lakhs sq ft",
+                        printed_label="Chennai Shubham", printed_axis="Unsold Area (Lakhs sq ft)",
+                        period="FY26")], page_text=page)
+    assert rows[0]["unit_family"] == "area"
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+
+
+def test_a_unicode_hyphen_matches_an_ascii_hyphen_in_a_label():
+    page = "Historical Consolidated Balance Sheet\nTotal Non \u2010 Current Liabilities\n2,421.8\nSept-25\n"
+    rows = build([reply(measure="total_non_current_liabilities", value_text="2,421.8", unit="Rs. Lacs.",
+                        printed_label="Total Non - Current Liabilities", printed_axis="Sept-25",
+                        period="Sept-25")], page_text=page)
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    assert obs.text_has("Total Non \u2013 Current Liabilities", "Total Non - Current Liabilities")
+
+
+def test_the_dictionary_covers_area_delivered_esg_intensity_and_peak_demand():
+    measures = obs.measure_index()
+    for mid in ("area.delivered", "area.under_construction", "water_intensity", "water_intensity_reduction",
+                "energy_intensity", "energy_intensity_reduction", "demand.peak"):
+        assert mid in measures, mid
+    assert obs.MEASURE_ALIASES["area_delivered_recognized_for_revenue"] == "area.delivered"
+    assert obs.MEASURE_ALIASES["water_consumption_intensity_reduction"] == "water_intensity_reduction"
+    assert obs.MEASURE_ALIASES["peak_demand"] == "demand.peak"
+    page = "Quarter wise Performance\nArea Delivered & Recognized for Revenue\n6.91\nQ3FY26\nTotal\n"
+    rows = build([reply(measure="area_delivered_recognized_for_revenue", value_text="6.91",
+                        unit="Lakhs Sq. ft.", printed_label="Total",
+                        printed_axis="Area Delivered & Recognized for Revenue", period="Q3FY26")],
+                 page_text=page)
+    assert rows[0]["measure"] == "area.delivered"
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+
+
+def test_a_crossed_threshold_is_a_lower_bound_never_the_actual_figure():
+    page = "Takyon Story: From Inception to Today\nCrossed revenue milestone of\n₹35 Crores\n2018-19\n"
+    rows = build([reply(measure="revenue.value", value_text="₹35 Crores", unit="Crores",
+                        printed_label="Crossed revenue milestone of", period="2018-19")], page_text=page)
+    assert rows[0]["value_kind"] == "lower_bound"
+    assert rows[0]["status"] == "unverified" and "lower_bound" in rows[0]["status_reason"]
+    count_row = reply(measure="count.employees", value_text="156", unit="",
+                      printed_label="Members with more than 5 years with us", period="FY24")
+    assert obs.lower_bound_kind(dict(count_row, value_text="156")) == ""
+
+
+def test_peak_demand_is_its_own_measure_and_a_country_figure():
+    page = "India Power Demand Growth\nPeak Demand (GW)\n243\n2023-24\n"
+    rows = build([reply(measure="capacity.total", value_text="243", unit="GW",
+                        printed_label="Peak Demand (GW)", printed_axis="Peak Demand (GW)",
+                        series_title="India Power Demand Growth", period="2023-24", entity_scope="industry")],
+                 page_text=page)
+    assert rows[0]["measure"] == "demand.peak"
+    assert rows[0]["entity_scope"] == "country"
+
+
+def test_a_footnote_basis_overrides_the_page_basis_for_its_period():
+    page = ("Particulars (Rs Cr.)\nFY23*\nFY24*\nFY25**\nExpenses\nEmployee benefit expenses\n21.28\n28.91\n47.28\n"
+            "* FY23 & FY24 financial numbers are on Standalone basis \n"
+            "** FY25 financial numbers are on consolidated basis on account of conversion of HKRP Innovations "
+            "Limited from a limited liability partnership to a public limited company.\n")
+    rows = build([
+        reply(measure="employee_benefits_expense", value_text="28.91", unit="Rs Cr.",
+              printed_label="Employee benefit expenses", printed_axis="FY24*", period="FY24",
+              group_path="Expenses", group_source="printed"),
+        reply(measure="employee_benefits_expense", value_text="47.28", unit="Rs Cr.",
+              printed_label="Employee benefit expenses", printed_axis="FY25**", period="FY25",
+              group_path="Expenses", group_source="printed"),
+    ], page_text=page)
+    assert [row["basis"] for row in rows] == ["standalone", "consolidated"]

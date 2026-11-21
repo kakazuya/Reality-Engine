@@ -2391,6 +2391,132 @@ stale step, stacked part + label, rank count, map call-out binding/unbinding, ma
 printed CAGR, count row without a unit). `reality_engine/tests/test_regress.py` 17 passed. Typecheck clean
 (`code-tools typecheck` on `observations.py` and `test_observations.py`).
 
+### Stage I (generalisation fixes from the first new-company read, 21 Nov 2026)
+
+Wolf's first independent read of the 394-company deck set (`D:/RealityEngine/t232/wolf_read_decks394_a.md`) graded
+50 verified rows (37 right / 7 minor / 6 wrong, 12%) plus 10 unverified (9 right values, 6 held by a check) and showed
+that the rules tuned on the 91 companies do not all generalise. Stage I is script-side only: no model call, every fix
+applied by `--recheck` and gated by the golden sets.
+
+- **I1 per-unit scale.** A measure whose dictionary family is `money_per_unit` (EPS, Rs/kWh, Rs/sq ft, per tonne,
+  book value per share ...) never takes a crore/lakh/million scale: `apply_per_unit_scale` resets it to 1 after the
+  scale is read, and the `scale_unread` gate now applies to `money` measures only (a per-unit unit's scale word belongs
+  to its numerator, not to the value). `tn`/`trillion` read as 1e12 (`SCALE_WORDS`, `MONEY_SCALE_RE`, `D_SCALE`,
+  `UNIT_SCALE`). Ids 974 (`revenue.price` 5.53 Rs/kWh) and 20613 (`eps` 4.57) come out scale 1; 22406
+  (`market.value` 38.5 Rs tn) comes out 1e12.
+- **I2 axis ticks only on charts.** `is_statement_table` (a statement page via `statement_page_reason`, or a
+  series/axis titled Balance Sheet / P&L / cash flow / "Particulars") suppresses the tick-ladder check, so a table
+  cell is never an axis tick (id 27274 ASTRAMICRO "Intangible assets 3" now verifies). `statement_page_reason` is
+  `lru_cache`d because every row of a page asks it.
+- **I3 a comparison word is not a period.** `NOT_A_PERIOD_RE` / `period_is_printed` reject "Y-O-Y", "YoY", "QoQ",
+  "YTD", "growth", "CAGR", "Present", "Current", "vs", "total". A stored comparison word is cleared and the period is
+  re-read from the printed axis/series/group/label (and, only for a cleared comparison column, the page header); else
+  it is `no_period`. A row with no period at all keeps the old rule, so a page header never invents one (id 12734
+  BRAHMINFRA comes out unverified `no_period`).
+- **I4 unit families.** `area` is matched before `money` ("lakh sq ft", "mn sq. ft." are area, not money) and `energy`
+  gains `BU`, `MU`, "million units", "billion units"; the recheck recomputes `unit_family` from the printed unit on
+  every row (previously only a row with no unit was inferred). Ids 18095/22215 (area) and 7916 (billion units,
+  generation) now verify.
+- **I5 Unicode dashes.** `norm_match` reads U+2010-U+2015 and U+2212 as "-" (NBSP already collapsed by `\s`); the
+  value and label/axis/group checks use it, so a model-written ASCII hyphen matches a printed Unicode one (id 527).
+- **I6 dictionary.** `area.delivered`, `area.under_construction`, `water_intensity`, `water_intensity_reduction`,
+  `energy_intensity`, `energy_intensity_reduction` (ESG and real-estate, driver node `none: ...`) and
+  `demand.peak` ("Peak demand (power)", capacity) -- 266 measures. Only the model ids observed in the two stores are
+  added as `MEASURE_ALIASES` (`area_delivered_recognized_for_revenue`, `area.carpet_delivered`,
+  `water_consumption_intensity_reduction`, `peak_demand`, ...), plus the observed printed labels "peak demand",
+  "area delivered", "area under construction", "water intensity", "energy intensity".
+- **I7 lower bound and entity scope.** A printed threshold sets the new column `value_kind='lower_bound'` and the row
+  never verifies as the actual figure: "crossed ..." anywhere on the row's label, or a label ending in
+  "more than / over / exceeds <number>" ("over Rs. 40,000 Cr"). A cue inside a longer sentence ("bank balances other
+  than above", "more than doubled to 816.89") is not a bound on this figure -- the first draft flagged 536 verified
+  rows on the 91 and was tightened to 67 (48 verified), the intended class. A market-size / peak-demand row whose own
+  printed words name India takes `entity_scope='country'` (geography alone does not: AFCONS' industry figure keeps
+  `industry`). Ids 18288 (TAKYON "Crossed revenue milestone of Rs 35 Crores") and 20160 (peak demand 243 GW ->
+  `demand.peak`) are fixed.
+- **I8 footnote basis.** `footnote_basis` reads a printed note such as "FY23 & FY24 financial numbers are on Standalone
+  basis" and overrides the page basis for that period only (id 20120 RAJESH FY24 -> standalone; 77 rows here).
+- **Schema:** `observation.value_kind TEXT NOT NULL DEFAULT ''` (SCHEMA + `MIGRATIONS`, so an old output DB migrates).
+  Golden lines may gate on it because `diff_fields` reads any row column.
+- **Build/recheck parity:** `build_observations` now takes `head = page_head(page_text)` from the raw page text; the
+  collapsed whole-page `page_head(text)` had made a fresh read and `--recheck` disagree about basis, subsidiary and
+  header scale for every row.
+
+Golden: the read's 60 graded rows are appended to `reality_engine/tests/golden/observations.jsonl` (241 lines: 230
+rows + 11 pages; RIGHT 159, MINOR 44, WRONG 27) keyed as T-233 does (`key` from the page's printed identity, `identity`
+without the fields a fix changes). The three right-to-hold unverified rows carry `status: "unverified"` and expect only
+the fields Wolf verified; SBCL's image-only CAGR row is a MINOR (period span), the other six unverified rows are MINOR
+false negatives the fixes above close. One pre-existing golden line was corrected: read B #26 (VIDHIING eps) was
+parsed with scale 1e7 although the same read prints scale 1 -- the line contradicted its own source, it was not
+re-keyed by a fix.
+
+Recheck (model-free, full DB -- every rule is global, so no page selector), baselines copied first:
+
+```bash
+python -m reality_engine.v2.observations --recheck --out .tmp/t230i/obs_decks394_i.db --stores <104 decks403 stores>
+python -m reality_engine.v2.observations --recheck --out .tmp/t230i/obs_91_i.db --stores <91 measure10 stores>
+python -m reality_engine.scripts.regress observations --db .tmp/t230i/obs_decks394_i.db \
+  --baseline <obs_decks394.db> --golden <the 60 new lines>
+python -m reality_engine.scripts.regress observations --db .tmp/t230i/obs_91_i.db \
+  --baseline D:/RealityEngine/t230/obs_91_h.db --golden <the 181 existing lines>
+```
+
+The two DBs hold disjoint companies, so each run is gated with its own golden subset (`regress --golden`); the
+shipped file holds both. New companies: 1,071 pages / 27,801 rows, **verified 16,284 -> 17,683**, unverified 11,480 ->
+10,081, quarantined 37, 1,808 upgrades / 409 downgrades, 0 unproven: 327 per-unit scales (+27 trillion), 838 table
+ticks kept, 145 comparison periods cleared, 1,432 unit families, 264 measures remapped, 142 dashed labels matched, 77
+footnote bases, 45 country scopes, 13 lower bounds. Gate: **still right 40, fixed 14, still wrong 6, newly broken 0**
+(baseline diff added 239 / removed 239 -- the measure renames -- status changed 1,792). The 91-company base: 4,453
+pages / 102,074 rows, verified 70,387 -> 69,926, unverified 29,760 -> 31,997, **quarantined 1,927 -> 151** (1,776 rows
+held by the superseded "value_text not in the layer" rule become `image_text` unverified, as stage H intended; the
+stage-H recheck was scoped and never re-evaluated them), 426 upgrades / 887 downgrades, 0 unproven: 908 per-unit
+scales (+201 trillion), 440 comparison periods cleared, 1,252 dashed labels, 632 unit families, 18 table ticks, 67
+lower bounds, 162 country scopes, 1 footnote base. Gate: **still right 118, fixed 18, still wrong 34, changed 11,
+newly broken 0**.
+
+Known effects of a full recheck (not stage-I regressions, no golden row moves): the axis-tick and parts-sum losses
+noted here are fixed by stage J below.
+
+### Stage J (the two review findings, 21 Nov 2026)
+
+Stage I's two remaining losses were rows that had been right: an axis-tick ladder read from only four evenly spaced
+data values, and parts-sum proofs dropped because the total flag lived only in the model reply. Both are fixed
+script-side:
+
+- **Axis-tick ladder (J1).** `TICK_LADDER_MIN = 5` (was 4) in `_tick_ladder` and `page_tick_values`: POLYPLEX p48's
+  0.20/0.21/0.22/0.23 run is not an axis. Two structural gates join it: `_is_table_rows` treats a page with three or
+  more runs of five-plus consecutive bare cells as a label-then-column table (FAZE3Q p13 "Key Ratios Summary"), and
+  `_label_beside_value` treats a printed text line directly above/below the value as its data label (FAZE3Q's
+  "11%" then "ROE^"), never an axis tick. On obs_91 **523 of the 543 verified rows stage I lost to axis_tick come
+  back**; the 20 that stay are values still inside a chart ladder with no label beside them.
+- **Parts-sum proof survives a recheck (J2).** `observation.is_total INTEGER NOT NULL DEFAULT 0` (SCHEMA +
+  `MIGRATIONS`, written by `write_rows`) records the model's printed-total flag at read time. `--recheck` now calls
+  `apply_parts_sum` (it never did) with `_is_total` derived by `derive_is_total`: the stored column, else a printed
+  label "Total"/"Overall"/"Consolidated total"/"... total", else the row the stacked-parts arithmetic picks. Rows the
+  parts sum re-proves get `_proof`, so they count as upgrades and survive the refusal gate. Restored: **129 of the 141
+  rows on decks394** and 86 on obs_91 -- **135 of the 144 known losses now verify**; the 9 SAIL "Total Sales" groups
+  stay unverified because unrelated sibling rows join their sum (and their unit is the ambiguous "MT"). A fresh read
+  persists the model's flag, so a future recheck needs no derivation at all.
+- **regress serves several DBs (J3).** `regress` grades only the golden lines about companies the DB holds (symbols
+  read from the DB's own `symbol` column) and reports the rest as `skipped_other_db`; an empty DB keeps every line.
+  Both gates now run the whole shipped golden file with no `--golden` subset: decks394 grades 60 lines (181 skipped)
+  and obs_91_h 181 (60 skipped).
+
+Recheck (same commands as stage I, holder store lists so the still-running deck build cannot move the company index):
+decks394 1,071 pages / 27,801 rows, **verified 16,284 -> 18,008**, unverified 11,480 -> 9,756, 2,004 up / 280 down /
+0 unproven, 1,106 tick flags cleared, 2,480 totals stored, 129 parts sums restored. Gate (whole golden file):
+**still right 40, fixed 14, still wrong 6, newly broken 0** (181 lines skipped). obs_91_h 4,453 pages / 102,074 rows,
+**verified 70,387 -> 70,578**, unverified 29,760 -> 31,345, quarantined 1,927 -> 151, 565 up / 374 down / 0 unproven,
+630 tick flags cleared, 8,632 totals stored, 86 parts sums restored. Gate: **still right 118, fixed 18, still wrong
+34, changed 11, newly broken 0** (60 lines skipped).
+
+The six still-wrong new-company rows are unchanged (NAZARA's Smaash/Funky Monkeys revenue scope, BRAHMINFRA's period
+text, VASCONEQ's lender line stored as borrowings, MALLCOM's under-construction floor, TVSSCS' sub-business mix, and
+SBCL's image-only CAGR span).
+
+Tests: `test_observations.py` 110 passed (stage-J: a four-value run is not a ladder, the stored total survives a
+recheck, the label derivation) and `test_regress.py` 18 passed (a golden line for another company is skipped, not
+broken). Typecheck clean on `observations.py`, `test_observations.py`, `scripts/regress.py`, `test_regress.py`.
+
 #### 17.x Wolf's independent reads (21 Nov 2026)
 Verified-row samples graded against page text and images by a separate Opus reader: stage B 40 rows 24 right / 10
 minor / 6 wrong (15%); stage C 50 rows 44/2/4 (8%); stage D 50 rows 42/6/2 (4%; scale, basis, bridge, subsidiary
