@@ -46,7 +46,7 @@ from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from reality_engine.pilot3 import order_wins
 from reality_engine.research.driver_claims import (
@@ -1859,6 +1859,20 @@ def run_model(pending: list[dict[str, Any]], workers: int,
 
 
 # ------------------------------------------------------------------ build + report
+def _insert(con: sqlite3.Connection, rows: list[dict[str, Any]], amends: list[dict[str, Any]],
+            meta: dict[str, Any] | None = None) -> None:
+    con.executemany(
+        f"INSERT INTO event ({','.join(COLUMNS)}) VALUES ({','.join('?' * len(COLUMNS))})",
+        [tuple(row.get(column) for column in COLUMNS) for row in rows])
+    con.executemany(
+        "INSERT INTO amend (doc_key, symbol, amends, filing_date, known_at, why) VALUES (?,?,?,?,?,?)",
+        [(a["doc_key"], a.get("symbol"), a["amends"], a.get("filing_date"), a.get("known_at"), a.get("why"))
+         for a in amends])
+    if meta is not None:
+        con.executemany("INSERT INTO run_meta (key, value) VALUES (?, ?)",
+                        [(key, json.dumps(value)) for key, value in meta.items()])
+
+
 def write_db(path: Path, rows: list[dict[str, Any]], amends: list[dict[str, Any]],
              meta: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1866,43 +1880,69 @@ def write_db(path: Path, rows: list[dict[str, Any]], amends: list[dict[str, Any]
     con = sqlite3.connect(path)
     try:
         con.executescript(SCHEMA)
-        con.executemany(
-            f"INSERT INTO event ({','.join(COLUMNS)}) VALUES ({','.join('?' * len(COLUMNS))})",
-            [tuple(row.get(column) for column in COLUMNS) for row in rows])
-        con.executemany(
-            "INSERT INTO amend (doc_key, symbol, amends, filing_date, known_at, why) VALUES (?,?,?,?,?,?)",
-            [(a["doc_key"], a.get("symbol"), a["amends"], a.get("filing_date"), a.get("known_at"), a.get("why"))
-             for a in amends])
-        con.executemany("INSERT INTO run_meta (key, value) VALUES (?, ?)",
-                        [(key, json.dumps(value)) for key, value in meta.items()])
+        _insert(con, rows, amends, meta)
+        con.commit()
+    finally:
+        con.close()
+
+
+def merge_db(path: Path, baseline: Path, rows: list[dict[str, Any]], amends: list[dict[str, Any]],
+             meta: dict[str, Any], doc_keys: Iterable[str]) -> None:
+    """T-233: copy ``baseline`` to ``path`` and replace only the filings this scoped run re-read."""
+    from reality_engine.research.selector import copy_db
+
+    copy_db(baseline, path)
+    con = sqlite3.connect(path)
+    try:
+        keys = list(dict.fromkeys(str(key) for key in doc_keys))
+        if keys:
+            marks = ",".join("?" * len(keys))
+            con.execute(f"DELETE FROM event WHERE doc_key IN ({marks})", keys)
+            con.execute(f"DELETE FROM amend WHERE doc_key IN ({marks})", keys)
+        _insert(con, rows, amends)
+        con.execute("DELETE FROM run_meta WHERE key='scoped_merge'")
+        con.execute("INSERT INTO run_meta (key, value) VALUES ('scoped_merge', ?)",
+                    (json.dumps({"baseline": str(baseline), "documents": len(keys),
+                                 "rows": len(rows), "seconds": meta.get("seconds")}),))
         con.commit()
     finally:
         con.close()
 
 
 def build(stores: list[str] | None = None, limit: int | None = None, use_model: bool = True,
-          workers: int = 4, out: Path = DEFAULT_OUT, cache: Path | None = DEFAULT_CACHE) -> dict[str, Any]:
-    """Scan every store's announcements and write the event DB. Returns the run counts."""
+          workers: int = 4, out: Path = DEFAULT_OUT, cache: Path | None = DEFAULT_CACHE,
+          only: Any = None, baseline: Path | str | None = None) -> dict[str, Any]:
+    """Scan every store's announcements and write the event DB. Returns the run counts.
+
+    T-233: ``only`` (a selector) limits the stores/documents re-read, and ``baseline`` makes the run
+    copy that DB to ``out`` and replace just those filings' rows.
+    """
     from reality_engine.research.driver_claims import list_stores
 
     chosen = stores or list_stores()
+    if only is not None:
+        chosen = [store for store in chosen if only.store(store)]
     rows: list[dict[str, Any]] = []
     amends: list[dict[str, Any]] = []
     pending: list[dict[str, Any]] = []
     by_class: Counter[str] = Counter()
     filings = 0
     docs_seen = 0
+    doc_keys: list[str] = []
     for store in chosen:
         try:
             docs = load_docs(store)
         except (OSError, sqlite3.Error) as exc:
             print(f"skip {store}: {exc}")
             continue
+        if only is not None:
+            docs = [doc for doc in docs if only.doc(store, doc["doc_key"])]
         subset: list[dict[str, Any]] = []
         for doc in docs:
             if limit is not None and docs_seen >= limit:
                 break
             docs_seen += 1
+            doc_keys.append(str(doc["doc_key"]))
             subset.append(doc)
         parsed: list[tuple[dict[str, Any], list[dict[str, Any]], list[str]]] = []
         classified_keys: set[str] = set()
@@ -1983,7 +2023,10 @@ def build(stores: list[str] | None = None, limit: int | None = None, use_model: 
     if rows and quarantined / len(rows) > QUARANTINE_STOP_SHARE:
         meta["stopped"] = (f"more than {QUARANTINE_STOP_SHARE:.0%} of events quarantined "
                            f"({quarantined}/{len(rows)})")
-    write_db(out, rows, amends, meta)
+    if baseline is not None:
+        merge_db(out, Path(baseline), rows, amends, meta, doc_keys)
+    else:
+        write_db(out, rows, amends, meta)
     return meta
 
 
@@ -2043,12 +2086,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--report", default=None, help="write the report for an existing --out DB and exit")
     ap.add_argument("--report-file", default=str(DEFAULT_REPORT))
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--only", default="",
+                    help="T-233 selector JSON: re-read only these stores/doc_keys (with --baseline, patch a copy)")
+    ap.add_argument("--baseline", default="", help="with --only: copy this DB to --out and replace those filings")
     args = ap.parse_args(argv)
     if args.report:
         lines = _report_lines(Path(args.report), args.seed)
     else:
+        only = None
+        if args.only:
+            from reality_engine.research.selector import Selector
+            only = Selector.load(args.only)
         meta = build(args.stores, args.limit, not args.no_model, args.workers, Path(args.out),
-                     Path(args.cache))
+                     Path(args.cache), only=only, baseline=args.baseline or None)
         print(json.dumps({k: v for k, v in meta.items() if k != "by_class"}, indent=2))
         lines = _report_lines(Path(args.out), args.seed)
     report = Path(args.report_file)

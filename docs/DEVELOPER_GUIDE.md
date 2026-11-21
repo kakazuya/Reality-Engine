@@ -1396,6 +1396,19 @@ CSV row (`table,<key columns>,value`) lost or changed; a table above `--max-chur
 38.2 s total (copies 0.5/0.6 s, guidance 13.8/12.3 s). Test `reality_engine/tests/test_store_diff.py` (6 tests,
 fixture stores and a fake builder; no real store, no git).
 
+**Fast fix loop (T-233, 21 Nov 2026).** A fix round is scoped to what broke, not a rebuild of all 91 stores:
+`--only <selector.json>` on `reality_engine/v2/observations.py` (with `--recheck`, or a page re-read), on
+`reality_engine/research/filing_events.py`, and on `reality_engine/research/driver_claims.py --repair`. The selector
+(`reality_engine/research/selector.py`) names `stores` / `doc_keys` (prefixes accepted) / `pages` and/or one SQL
+`where` predicate over the output row; `--baseline <old.db>` copies that DB to `--out` and replaces only the selected
+rows/pages/documents, so everything else stays byte-identical. `python -m reality_engine.scripts.regress <pipeline>
+--db <copy> [--baseline <old.db>]` then matches the DB against the hand-graded golden sets in
+`reality_engine/tests/golden/` (181 observations lines incl. 11 visual-audit page predicates, 146 claims, 69 events;
+keys are content, never DB ids) and prints still right / fixed / still wrong / changed / newly broken / gone, plus the
+global diff versus the baseline. It is model-free and takes 0.01-0.2 s; it exits 1 only when a RIGHT row vanished,
+changed a graded field or lost `verified`. Full loop and counts: `docs/FIX_LOOP.md`. Tests
+`reality_engine/tests/test_regress.py`.
+
 **Ruling intake (T-127).** `python -m reality_engine.scripts.ruling add --section "<section>"
 --text "<rule>" [--check "<gate tag>"] [--ticket-title "<gate to build>"]` appends
 `- <rule> [check: <tag>]` as the last bullet of that `## ` section of `tasks/RULINGS.md`, refuses

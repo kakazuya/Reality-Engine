@@ -260,6 +260,12 @@ python -m reality_engine.research.driver_claims --repair-report --out .tmp/t228/
   --report-file .tmp/t228/repair_91_s2c.md
 ```
 
+T-233 scopes `--repair`: `--only <selector.json>` re-repairs only the selected claims (stores/doc_keys/pages or a SQL
+row predicate) and folds only their events; the rest of the copied DB stays byte-identical
+(`reality_engine/research/selector.py`, `docs/FIX_LOOP.md`). The T-228 golden set is
+`reality_engine/tests/golden/claims.jsonl` (146 rows from `wolf_read_91_s2.md`, `wolf_read_91_s2c.md` and
+`wolf_read_s2a.md`; 13 stage-2a rows are not keyed because that pilot extraction was superseded).
+
 `--doc-types` defaults to `annual_report press_release announcement`; give the flag with no value to read no
 document pages (a stage-1 run). `--pick-no-transcript N` adds N stores from `stores_without_transcripts()`
 (no transcript document and no transcript statement row), seeded by `--pick-seed`. With no `--stores`,

@@ -133,7 +133,17 @@ python -m reality_engine.research.filing_events --workers 4 \
   --out .tmp/t231/events.db --report-file .tmp/t231/report_a.md
 python -m reality_engine.research.filing_events --no-model --limit 200 --stores c01 c08 \
   --out .tmp/t231/smoke.db --report-file .tmp/t231/smoke.md
+# T-233 scoped re-read: only the selected filings, merged into a copy of the baseline
+python -m reality_engine.research.filing_events --out .tmp/t231/events_fix.db \
+  --baseline D:/RealityEngine/t231/events.db --only .tmp/sel.json --workers 4
+python -m reality_engine.scripts.regress events --db .tmp/t231/events_fix.db \
+  --baseline D:/RealityEngine/t231/events.db
 ```
+
+T-233's golden set (`reality_engine/tests/golden/events.jsonl`, 69 rows from
+`t231_wolf_read_{a,b}.md`) keys events by content, not `event_id`: Wolf read the stage-A DB (440 events) and the
+current file is stage C (604), so 69 unique rows matched content, 11 were ambiguous and 20 rows changed or vanished
+between stages. Details: `docs/FIX_LOOP.md`.
 
 | measure | stage A | stage B | stage C |
 |---|---|---|---|

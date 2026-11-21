@@ -2095,7 +2095,10 @@ classes with script rules only (no new model trust):
   check to the stored rows: only an inherited printed unit/period, a measure mapping or the grown dictionary may
   upgrade a row; a row that would verify with no new printed source keeps its stage-B status and the pass stops.
   860 pages whose rows were hit by C3 or C5 were deleted and re-read with the new prompt (`--resume`, 1,157 pages
-  including the 297 empty ones), then rechecked. Results are in `.tmp/t230/report_c.md`.
+  including the 297 empty ones), then rechecked. Results are in `.tmp/t230/report_c.md`. T-233 scopes the pass:
+  `--only <selector.json>` (with `--baseline <db>`) rechecks or re-reads only the selected stores/doc_keys/pages or
+  SQL row predicate into a copy of the baseline; `reality_engine/scripts/regress.py` gates the copy against the
+  golden sets (`docs/FIX_LOOP.md`).
 
 Stage-C results (21 Nov 2026). Recheck on a copy of `.tmp/t230/obs_91.db`: 153 rows upgraded from a printed source
 (unit/period/measure), 9,648 downgraded, **0 unproven upgrades** (241 rows kept their stage-B status on a hard

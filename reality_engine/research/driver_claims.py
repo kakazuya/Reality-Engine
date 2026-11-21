@@ -2745,7 +2745,7 @@ def normalise_units(claim: dict[str, Any]) -> str:
     return ""
 
 
-def event_repair(con: sqlite3.Connection) -> dict[str, int]:
+def event_repair(con: sqlite3.Connection, where: str = "") -> dict[str, int]:
     """Fold same-value claims into one event, model-free, and record revisions.
 
     A row joins an event with every row that shares (symbol, node, ``segment_key``, unit, ``period_norm``)
@@ -2755,11 +2755,12 @@ def event_repair(con: sqlite3.Connection) -> dict[str, int]:
     known_at; rows after it become ``status='duplicate'`` with ``dup_of`` = the standing row's id, and an
     earlier unverified copy keeps its status with ``dup_of`` = the standing row.  When no member is verified
     the earliest row stands.  A later row whose value changed for the same key is a revision: it stays as its
-    own row and gets ``revises`` = the previous row's id.
+    own row and gets ``revises`` = the previous row's id.  ``where`` (T-233) limits the fold to one selector.
     """
+    extra = f" AND ({where})" if where else ""
     rows = [dict(row) for row in con.execute(
         "SELECT id, symbol, node, segment, unit, value_low, value_high, known_at, status, period_norm"
-        " FROM claim WHERE status IN ('verified', 'unverified') ORDER BY id").fetchall()]
+        f" FROM claim WHERE status IN ('verified', 'unverified'){extra} ORDER BY id").fetchall()]
     by_id = {int(row["id"]): row for row in rows}
     parent = {int(row["id"]): int(row["id"]) for row in rows}
 
@@ -2820,7 +2821,7 @@ def event_repair(con: sqlite3.Connection) -> dict[str, int]:
 
     survivors = [dict(row) for row in con.execute(
         "SELECT id, symbol, node, segment, value_low, value_high, period_norm FROM claim"
-        " WHERE status IN ('verified', 'unverified') ORDER BY known_at, id").fetchall()]
+        f" WHERE status IN ('verified', 'unverified'){extra} ORDER BY known_at, id").fetchall()]
     series: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
     for row in survivors:
         series[(row["symbol"] or "", row["node"] or "", segment_key(row["segment"]),
@@ -2842,12 +2843,13 @@ def event_repair(con: sqlite3.Connection) -> dict[str, int]:
             "linked_earlier": linked_earlier, "revised": revised}
 
 
-def repair_db(source: Path, out: Path, report_file: Path | None = None) -> int:
+def repair_db(source: Path, out: Path, report_file: Path | None = None, only: Any = None) -> int:
     """Copy a finished claims DB and apply every stage-2c repair that needs no model call.
 
     The source is read through SQLite's backup API and is never written; only ``out`` changes.  The rows
     whose segment the part-scope pass changed are put back in the judge queue (``judge_ok`` NULL), so a
-    following ``--judge-only`` re-reads exactly those, never the whole DB.
+    following ``--judge-only`` re-reads exactly those, never the whole DB.  ``only`` (a T-233 selector)
+    limits the repair and the event fold to the selected claims; everything else stays byte-identical.
     """
     source, out = Path(source), Path(out)
     if source.resolve() == out.resolve():
@@ -2864,12 +2866,15 @@ def repair_db(source: Path, out: Path, report_file: Path | None = None) -> int:
     con = writer.con
     counts: Counter[str] = Counter()
     rejudge: list[int] = []
+    row_filter = only.where_sql() if only is not None else "1=1"
     rows = con.execute(
         "SELECT id, store, source_kind, node, segment, sign, value_low, value_high, unit, base,"
         " effective_period, known_at, quote_span, statement, context, status, status_reason, judge_ok,"
-        " scope_part, doc_key, page FROM claim").fetchall()
+        f" scope_part, doc_key, page FROM claim WHERE ({row_filter})").fetchall()
     for row in rows:
         claim: dict[str, Any] = {key: row[key] for key in row.keys()}
+        if only is not None and not only.row(claim):
+            continue
         claim_id = int(claim["id"])
         was_verified = claim["status"] == "verified"
         if repair_collapsed_range(claim):
@@ -2907,7 +2912,7 @@ def repair_db(source: Path, out: Path, report_file: Path | None = None) -> int:
              claim.get("execution_months"), claim["period_norm"], kind, claim["scope_part"],
              claim["status"], claim.get("status_reason"), claim.get("judge_ok"), claim_id))
     con.commit()
-    events = event_repair(con)
+    events = event_repair(con, row_filter)
     con.commit()
     log = Counter(counts)
     log.update({f"event_{key}": int(value) for key, value in events.items()})
@@ -3607,6 +3612,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="the finished claims DB to copy and repair (read-only; never written)")
     ap.add_argument("--report-file", default="", help="write the report here and print only its first two lines")
     ap.add_argument("--baseline", default="", help="another claims DB: report the companies/months gained")
+    ap.add_argument("--only", default="",
+                    help="T-233 selector JSON for --repair: re-repair only these stores/doc_keys/pages/rows")
     ap.add_argument("--build-json", default="", help="the builder counts file run wrote beside --out")
     ap.add_argument("--seed", type=int, default=53)
     args = ap.parse_args(argv)
@@ -3615,7 +3622,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.repair:
         source = Path(args.repair_from or args.out)
         report_file = Path(args.report_file) if args.report_file else None
-        return repair_db(source, Path(args.out), report_file)
+        only = None
+        if args.only:
+            from reality_engine.research.selector import Selector
+            only = Selector.load(args.only)
+        return repair_db(source, Path(args.out), report_file, only=only)
     if args.repair_report:
         con = open_readonly_db(Path(args.out))
         counts, events = repair_log_read(con)

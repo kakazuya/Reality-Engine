@@ -2015,11 +2015,14 @@ def missing_pages(con: sqlite3.Connection, pages: list[dict[str, Any]]) -> list[
 
 
 def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
-               companies: dict[str, tuple[str, str]] | None = None) -> dict[str, Any]:
+               companies: dict[str, tuple[str, str]] | None = None,
+               only: Any = None) -> dict[str, Any]:
     """Stage C: re-apply every script check to an existing observation DB with no model call.
 
     Only checks that need a new printed source may upgrade an unverified row: an inherited unit or period, a
     measure alias/label mapping, or a stage read from a printed group.  Any other upgrade is refused and reported.
+    ``only`` (a :class:`reality_engine.research.selector.Selector`) restricts the pages and rows re-checked;
+    the rest of the DB is left untouched (T-233 scoped fix run).
     """
     store_dbs = list(store_dbs)
     companies = companies if companies is not None else company_index(store_dbs)
@@ -2048,6 +2051,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "subsidiary_rows": 0, "deck_periods": 0, "deck_period_cleared": 0,
                              "deck_period_fixed": 0, "cagr_rows": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
+    if only is not None:                      # T-233: a scoped recheck touches only the selected pages
+        pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
+    row_filter = only.where_sql() if only is not None else "1=1"
     con.row_factory = sqlite3.Row
     for doc_key, page in pages:
         store_db = doc_store.get(str(doc_key))
@@ -2067,8 +2073,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             owner = doc_owner(store_db, doc_key, companies, store_symbol.get(store_db, ""))
         except Exception:
             owner = ""
-        rows = [dict(r) for r in con.execute("SELECT * FROM observation WHERE doc_key=? AND page=?",
-                                             (doc_key, int(page)))]
+        rows = [dict(r) for r in con.execute(f"SELECT * FROM observation WHERE doc_key=? AND page=?"
+                                             f" AND ({row_filter})", (doc_key, int(page)))]
         updated: list[dict[str, Any]] = []
         for row in rows:
             stats["rows"] += 1
@@ -2220,13 +2226,20 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
 def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         doc_types: Iterable[str] = ("deck",), seed: int = 11,
         required: Iterable[tuple[str, int]] = (), propose_limit: int = 300,
-        resume: bool = False, skip_statements: bool = False) -> dict[str, Any]:
+        resume: bool = False, skip_statements: bool = False,
+        only: Any = None) -> dict[str, Any]:
     pages: list[dict[str, Any]] = []
     dropped_by_reason: dict[str, int] = {}
     for store_db in store_dbs:
+        if only is not None and not only.store(store_db):
+            continue
         pages.extend(pages_from_store(store_db, doc_types=doc_types, skip_statements=skip_statements,
                                       dropped=dropped_by_reason))
-    selected = select_pages(pages, limit, seed, required)
+    if only is not None:                      # T-233: a scoped re-read is exactly the selection, not a sample
+        pages = [p for p in pages if only.page(p["store"], p["doc_key"], p["page"])]
+        selected = pages
+    else:
+        selected = select_pages(pages, limit, seed, required)
     statement_filter = {"kept": len(pages), "dropped": sum(dropped_by_reason.values()),
                         "by_reason": dict(sorted(dropped_by_reason.items(), key=lambda kv: -kv[1]))}
     if skip_statements:
@@ -2237,6 +2250,10 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     with _QUOTA_LOCK:
         _QUOTA["seconds"] = 0.0
     con = create_db(out)
+    if only is not None:            # a scoped re-read replaces its pages in the --baseline copy, no duplicates
+        con.executemany("DELETE FROM observation WHERE doc_key=? AND page=?",
+                        [(str(p["doc_key"]), int(p["page"])) for p in selected])
+        con.commit()
     already_done = 0
     if resume:
         before = len(selected)
@@ -2339,7 +2356,18 @@ def main(argv: list[str] | None = None) -> int:
                         help="re-apply every script check to --out with no model call (stage C)")
     parser.add_argument("--skip-statements", action="store_true",
                         help="drop financial-statement/notes pages before any model call (stage F)")
+    parser.add_argument("--only", default="",
+                        help="T-233 selector JSON: re-process only these stores/doc_keys/pages")
+    parser.add_argument("--baseline", default="",
+                        help="with --only: copy this DB to --out first, then patch the copy")
     args = parser.parse_args(argv)
+
+    only = None
+    if args.only:
+        from reality_engine.research.selector import Selector, copy_db
+        only = Selector.load(args.only)
+        if args.baseline:
+            copy_db(args.baseline, args.out)
 
     store_dbs: list[str] = []
     doc_types = [t for t in args.doc_types.split(",") if t]
@@ -2363,7 +2391,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.recheck:
         back = create_db(args.out)
         try:
-            recheck_stats = recheck_db(back, store_dbs)
+            recheck_stats = recheck_db(back, store_dbs, only=only)
         finally:
             back.close()
         print(json.dumps(recheck_stats, indent=2))
@@ -2378,7 +2406,8 @@ def main(argv: list[str] | None = None) -> int:
             required.append((sub.strip(), int(page)))
     stats = run(store_dbs, args.limit, args.workers, args.out,
                 doc_types=doc_types, seed=args.seed, required=required,
-                propose_limit=args.propose_limit, resume=args.resume, skip_statements=args.skip_statements)
+                propose_limit=args.propose_limit, resume=args.resume, skip_statements=args.skip_statements,
+                only=only)
     print(json.dumps(stats, indent=2))
     if stats.get("stopped"):
         print(f"STOP: {stats['stopped']}", file=sys.stderr)
