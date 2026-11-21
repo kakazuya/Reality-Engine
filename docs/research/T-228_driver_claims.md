@@ -1,13 +1,16 @@
-# T-228 stage 1a/1b: driver-tree claims from management text
+# T-228 stage 1a/1b/2a: driver-tree claims from management text
 
 Built 20 Nov 2026 by a dsh worker for ticket T-228 (Shivam 20 Nov; review Wolf). Stage 1a-fix 21 Nov after
 Wolf's first hand read; round 3 after his second (28 right, 4 wrong, 3 doubtful of 35); **round 4** after his
-third (23 right, 1 wrong, 1 doubtful of 25). Stages B (forward estimate), C (management credibility) and the
+third (23 right, 1 wrong, 1 doubtful of 25). **Stage 2a** (21 Nov) widens the sources past the call transcript:
+annual-report MD&A / outlook pages, press releases and exchange announcements, a deterministic announcement
+pre-parse, and a `source_kind` on every claim. Stages B (forward estimate), C (management credibility) and the
 test that B+C add prediction over the T-210 hard-number panel are not built here.
 
 Code `reality_engine/research/driver_claims.py`, tests
-`reality_engine/tests/test_driver_claims.py` (52 tests, synthetic, no network). A statement that ends in no
-tree node is show, not data: it is dropped as `no_driver`.
+`reality_engine/tests/test_driver_claims.py` (77 tests, synthetic, no network; three real announcement texts
+are embedded as fixtures with the doc_key they came from). A statement that ends in no tree node is show, not
+data: it is dropped as `no_driver`.
 
 ## 1. The driver tree (fixed vocabulary)
 
@@ -32,9 +35,10 @@ source row and never invented.
 one paragraph: name, inferred sector (only when it scores 5+ hits and 1.5x the runner-up), what it sells and
 what it buys or uses, with the rule that an input price is a cost node and the company's own output price is
 revenue. Injected once into the extraction prompt and once per judge request. It is a hint, not a fact; c61
-still lists "pharmaceuticals" (a "formulations" hit).
+still lists "pharmaceuticals" (a "formulations" hit). A store with no transcripts gets a brief with the name
+only (stage 2a added no text source to it).
 
-**Script (no model).** A `guidance` row whose metric names a node maps straight to a claim:
+**Script, guidance (no model).** A `guidance` row whose metric names a node maps straight to a claim:
 `revenue_growth`->`revenue.total`, `ebitda_margin`->`margin.ebitda`, `capex`->`capex.amount`,
 `order_intake`->`revenue.order_book`, `aum_growth`->`revenue.volume` (segment aum), `nim`->`margin.ebitda`
 (net_interest_margin), `credit_cost`/`cost_of_production`/`opex_to_nti`->`cost.other`, `interest_cost`->
@@ -42,12 +46,46 @@ still lists "pharmaceuticals" (a "formulations" hit).
 the row's `quote`; context is empty. A row with no values is `no_value`. Unmapped metrics (`other`,
 `project_capital_spent`) go to the model: `project_capital_spent` covers CSR spend and historical capex.
 
-**Model.** Unmapped guidance rows plus `transcript_statement` rows with non-empty `numbers_json`, not
-fragments, passing the forward-cue regex `CUE`. Each statement is sent with the two statements before it in
-the same call (`seq` order within `doc_key`) and, when it answers an analyst (`answer_turn`), with the
-question from `transcript_question`. The quote is checked against the target statement only. Up to 10
-statements per request to `hy4-flash-free` on OpenCode Go (`reasoning_effort: "none"` is required). Strict
-JSON; a bad reply is retried once, then logged as an error.
+**Script, announcement (stage 2a, no model).** `announcement_claims(item)` reads an announcement paragraph and
+fills the three shapes an exchange letter prints in full:
+
+| shape | node | required in the letter | example |
+|---|---|---|---|
+| order win | `revenue.order_book` | an award verb + `order/contract/LOA/LOI` + a money value + an execution period | "has secured an order worth Rs. 200.02 Crores", "Time period ... is to be executed 25 months approx." |
+| capex approval | `capex.amount` | `capex/capital expenditure` + an approval verb + an amount (`from A to B` becomes target B, base A, sign by B-A) | "The Board has approved an increase in capital expenditure from Rs. 176.44 crore to Rs. 238.43 crore" |
+| fund raise | `equity.shares` | a raise cue (QIP, rights issue, preferential issue, warrants, equity shares) + an aggregate size + an issue price per share | "aggregating upto Rs. 139.50 crores on preferential basis ... issue price of Rs. 215/- per equity share" |
+
+A "demand order" (GST, customs, penalty, court) is excluded (`_ORDER_BAD`); a completed allotment, conversion
+or forfeiture is excluded (`_RAISE_DONE`), because only a proposed or approved raise is forward. The size is
+the claim value, the issue price is recorded in `base`. A period is set only when the letter prints one
+(`execution_period` for orders, `HORIZON` for capex and raises); an approved capex or QIP whose letter prints
+no horizon is kept as a script claim but is `unverified`/`no_period` under the same checks as every other claim.
+The order value and its execution period usually sit in different sentences (the opening line and a table row),
+so the period falls back to the whole announcement. A fully parsed paragraph leaves the model queue.
+
+**Model, transcript and guidance.** Unmapped guidance rows plus `transcript_statement` rows with non-empty
+`numbers_json`, not fragments, passing the forward-cue regex `CUE`. Each statement is sent with the two
+statements before it in the same call (`seq` order within `doc_key`) and, when it answers an analyst
+(`answer_turn`), with the question from `transcript_question`. The quote is checked against the target
+statement only. Up to 10 statements per request to `hy4-flash-free` on OpenCode Go (`reasoning_effort: "none"`
+is required). Strict JSON; a bad reply is retried once, then logged as an error.
+
+**Model, documents (stage 2a).** `doc_items(store, doc_types)` reads `doc` + `doc_page` (read-only) for
+`annual_report`, `press_release` and `announcement`, with `<store>_ocr.db.ocr_page` as the fallback for a page
+whose main text is empty. Each page is cut into paragraph-sized chunks (`split_paragraphs`: real paragraphs on
+blank lines, otherwise sentences packed to 700 characters); an announcement or press-release page of 3,000
+characters or less is sent whole, because the exchange letter is one item. A paragraph is kept only when it has
+a document cue from the brief's list (`DOC_CUE`: expect, target, plan, will, guidance, outlook, order, awarded,
+commission, approve, capex, capacity, raise, allot, plus intend/aim/going-forward) **and** a number with a unit
+(`DOC_NUMBER`). The transcript `CUE` is deliberately not reused: a results table says "increase/(decrease)" on
+every line. Annual-report paragraphs matching `BOILERPLATE` (CSR, BRSR, secretarial audit, risk/governance
+lists, related-party boilerplate, director bios) are dropped and counted; the boilerplate drop is not applied
+to announcements, where the same words are part of the real letter. An announcement whose **title** is a
+filing type rather than an event (`FILING_SKIP`: annual report or AGM notice re-filed, letter of offer,
+prospectus, placement document, voting/scrutinizer report, BRSR, creditor list, shareholding pattern) is
+skipped whole and counted, because its annual-report content is read once from the `annual_report` doc type.
+The context sent with a document paragraph is the document title and the previous paragraph. Item ids carry
+`(doc_key, page, paragraph index)` and the source table is `doc_page`.
 
 ## 3. Check 1, script (deterministic)
 
@@ -78,6 +116,10 @@ JSON; a bad reply is retried once, then logged as an error.
    already rewrote the claim.
 9. A claim needs an `effective_period` or a forward horizon in its own quote, else `no_period`.
 
+Stage 2a announcement claims go through exactly the same checks. An order win carries its printed execution
+period, so it verifies; a board-approved capex or fund raise whose letter prints no horizon is stored as
+`unverified`/`no_period` (never verified without a period), and the quarterly status counts say so.
+
 The number normaliser strips Indian/western digit grouping, reads `INR40` and `1.25x`, and strips period
 labels (`FY26`, `Q2FY26`, `H1FY26`, `9MFY26`, `CY2024`) before reading. A `pct` claim written 0.2 for 20%
 matches.
@@ -93,10 +135,18 @@ EBITDA margin -> margin.ebitda, utilisation -> revenue.volume. In both prompts.
 ## 4. Check 2, independent judge (`beam-free`)
 
 Every claim that passed check 1 is read again by `beam-free` on the same endpoint (free, stable session id
-`t228-judge`), batches of up to 5 claims of one store, with the company brief and the same context. Six
-booleans: `node_ok`, `sign_ok`, `unit_ok`, `period_ok`, `forward_ok`, `company_ok` (the claim is about this
-company's own figures, not the industry, the country, a customer, a supplier or a competitor). `verified`
-means check 1 passed AND all six are true.
+`t228-judge`), batches of up to 5 claims of one store, with the company brief, the claim's own context and its
+`SOURCE` (transcript, guidance, annual_report, press_release, announcement). Six booleans: `node_ok`,
+`sign_ok`, `unit_ok`, `period_ok`, `forward_ok`, `company_ok` (the claim is about this company's own figures,
+not the industry, the country, a customer, a supplier or a competitor). `verified` means check 1 passed AND all
+six are true.
+
+**Source rule (stage 2a, in both prompts).** An annual report is published months after the fiscal year it
+covers: its own-year figures and growth rates ("FY25 revenue grew 20%") are past even on the MD&A or the
+directors' report page, and only an explicit later-period outlook is a claim. An announcement of a completed
+event (an allotment made, a meeting held) is past; an order won with execution ahead is forward
+(`revenue.order_book`, execution period as `effective_period`), and so are a board-approved capex
+(`capex.amount`) and a proposed or approved QIP/rights/preferential issue (`equity.shares`).
 
 **`node_suggest` (round 4).** The judge also returns `node_suggest`: the tree node the claim really belongs
 to when `node_ok` is false, else null. When the number check passed and the suggestion is a tree node, the
@@ -126,12 +176,17 @@ as a transcript statement; the evidence rows differ, the claim is one.
 
 `--out` (default `.tmp/t228/claims.db`), three tables:
 
-- `claim` — one row per claim plus `method` (`script`/`model`), `extractor`, `status`, `status_reason`,
+- `claim` — one row per claim plus `source_table`, `source_kind` (transcript, guidance, annual_report,
+  press_release, announcement), `paragraph` (the doc_page paragraph index for a document claim, NULL for a
+  transcript or guidance claim), `method` (`script`/`model`), `extractor`, `status`, `status_reason`,
   `judge_ok`, the six `judge_*` booleans (`judge_company`), `judge_fail`, `judge_why`, `judge_suggest`,
-  `run_id`, `created_at`.
+  `run_id`, `created_at`. An older claims DB is migrated in place with the two additive columns.
 - `read_log` — one row per HTTP request: `role` (`extract`/`judge`), start, end, seconds, status, in/out
   tokens, items, claims, outcome counts, item keys finished, in-flight count, error text.
 - `quota_event` — every 429 / 5xx / timeout: UTC and IST time, status, in-flight count, body head.
+
+`run` also writes `<out>.build.json` (the builder counters and per-store counts) so the report can name the
+items per doc type and the drop reasons without re-reading the stores.
 
 Resume: extraction items whose keys are in a successful request's `items_done` are skipped; failed batches
 are retried. The judge picks up every script-verified claim with `judge_ok IS NULL`; `--judge-only`
@@ -154,13 +209,23 @@ python -m reality_engine.research.driver_claims --unleashed --start 30 --out .tm
 python -m reality_engine.research.driver_claims --judge-only --stores ...
 python -m reality_engine.research.driver_claims --report --seed 53 --report-file .tmp/t228/report_1b.md
 python -m pytest -q reality_engine/tests/test_driver_claims.py
+
+# stage 2a: the 7 stage-1 pilot stores plus 5 stores without transcripts (seed 31), documents included
+python -m reality_engine.research.driver_claims --stores c09 c11 c17 c61 c88 c19 c42 \
+  --pick-no-transcript 5 --pick-seed 31 --start 15 --out .tmp/t228/claims_s2_pilot.db
+python -m reality_engine.research.driver_claims --report --out .tmp/t228/claims_s2_pilot.db --seed 61 \
+  --baseline D:/RealityEngine/t228/claims_91.db --build-json .tmp/t228/claims_s2_pilot.build.json \
+  --report-file .tmp/t228/report_s2a.md
 ```
 
-With no `--stores`, `active_stores()` picks every store that holds at least one statement or guidance row
-(the rest are skipped). `--pick N --pick-seed 7` adds N stores with statements chosen by
-`random.Random(seed).sample` over the sorted list. The run writes one run-ledger row and skips the ledger
-under pytest; in this sandbox the ledger is outside the writable workspace, so it prints `run ledger not
-written` and continues (`run_ledger ingest-dsh` records the job).
+`--doc-types` defaults to `annual_report press_release announcement`; give the flag with no value to read no
+document pages (a stage-1 run). `--pick-no-transcript N` adds N stores from `stores_without_transcripts()`
+(no transcript document and no transcript statement row), seeded by `--pick-seed`. With no `--stores`,
+`active_stores()` picks every store that holds at least one statement or guidance row (the rest are skipped).
+`--pick N --pick-seed 7` adds N stores with statements chosen by `random.Random(seed).sample` over the sorted
+list. The run writes one run-ledger row and skips the ledger under pytest; in this sandbox the ledger is
+outside the writable workspace, so it prints `run ledger not written` and continues (`run_ledger ingest-dsh`
+records the job).
 
 ## 9. Stage 1b run (21 Nov 2026, all active stores, `--unleashed --start 30`)
 
@@ -222,7 +287,7 @@ company scope. It is about 90% right on meaning, not 100%: use it as labelled mo
 
 ## 10. Tests
 
-60 pass (`python -m pytest -q reality_engine/tests/test_driver_claims.py`). They cover the guidance map, the
+77 pass (`python -m pytest -q reality_engine/tests/test_driver_claims.py`). They cover the guidance map, the
 number normaliser, the three statuses, the unit-word rule, the node-unit table, the from-A-to-B target rule
 (both the change, percent and the plain-range case), the ambiguous-range sign rule, the period-or-horizon
 rule, the mix/share re-tag (pct only, pattern required, segment named) and the list-span rule (8-8
@@ -232,4 +297,86 @@ lookup (and that context numbers never satisfy the quote), the company brief (te
 judge (six-field parse, tolerant parse, id fallback, measure and node_suggest prompt rules, renode in the
 tree, suggestion outside the tree ignored, retry twice then accept, retry twice then `judge_error` with HTTP
 codes, `--judge-only` re-queue), dedupe, seeded store picking, resume skip, quota events, the extract batch
-with a fake client, and the limiter (raise/halve/stop/limit).
+with a fake client, and the limiter (raise/halve/stop/limit). Stage 2a adds the paragraph splitter, the
+document item builder (forward paragraph kept, boilerplate dropped, page without a cue dropped, OCR fallback,
+short announcement sent whole, filing-type title skipped for announcements only, a parsed announcement leaving
+the model queue), the three real announcement parses (order win 200.02 crore / 25 months; capex 176.44 ->
+238.43 crore plus a 7.16 crore preferential issue on the same page; two preferential issues 139.50 and 34.19
+crore at Rs. 215), the negative cases (a completed allotment and a GST demand order are not script claims),
+`source_kind` on every producer, the doc claim round trip and the additive-schema migration.
+
+## 11. Stage 2a: document sources and the pilot (21 Nov 2026)
+
+Stage 2a widens the sources so a factor study is not limited to 52 companies with transcripts. Code, tests,
+the item builder and a judged (but partial) pilot are done; the extraction could not finish because the
+shared hy4 key closed for 2.5 h mid-run (the judge model, on a separate limit, did).
+
+**The 12 pilot stores:** `c09 c11 c17 c61 c88 c19 c42` (stage 1's 7) plus `c01 c21 c23 c60 c78`, the last
+five picked without transcripts by `random.Random(31).sample` from the 37 stores that hold no transcript
+document and no transcript statement row.
+
+**Item builder, measured on the 12 stores (`--dry-run`, `claims_s2_pilot.build.json`):**
+
+| source | docs | pages read (OCR) | paragraphs | model items | script claims | dropped |
+|---|---|---|---|---|---|---|
+| annual_report | 41 | 6,856 (254) | 16,854 | 1,590 | 0 | 1,070 paragraphs boilerplate; 11,208 no cue; 2,986 no number; 2,529 pages no cue; 2,470 pages no number; 37 short pages |
+| announcement | 1,296 | 4,594 (387) | 7,084 | 1,808 | 13 | 219 documents / 4,817 pages by filing type; 4,026 paragraphs no cue; 1,237 no number; 1,487 pages no cue; 1,597 pages no number |
+| press_release | 17 | 59 (0) | 45 | 30 | 0 | 10 paragraphs no cue; 5 no number; 9 pages no cue; 21 pages no number |
+| transcript | - | - | 1,116 with numbers | 449 | 0 | 168 fragments, 641 no cue, 5,002 no numbers |
+| guidance | - | - | - | 19 unmapped | 27 mapped | 2 no value |
+
+**Total 3,896 model items** (under the brief's 5,000 stop) and **40 script claims** (27 guidance, 11 order
+wins in c01, 2 preferential-issue sizes in c11). The filing-type skip is what keeps the count down: the
+"announcement" doc type includes 219 filings that are an annual report/AGM notice re-filed, a letter of
+offer, a prospectus or a voting/scrutinizer report (4,817 pages); their annual-report content is read once
+from the `annual_report` doc type. c88's 342-page "Intimation under Regulation 30" is a prospectus and still
+contributes 658 items by itself.
+
+**The extraction that could not finish.** The run started 02:53:09 IST at `--start 15` (no `--unleashed`) and
+met **478 HTTP 429 "Rate limit exceeded" in six minutes**; the limiter halved to 1 and stayed there. Only 17
+requests succeeded (170 items, 38 model claims). A single-request probe then returned
+`Retry-After: 8832` seconds (2 h 27 min): the key was exhausted account-wide by the other hy4 jobs on it, not
+by this run's concurrency. The run was stopped at 02:58:56; the remaining 3,726 items were not sent. The same
+command in §8 resumes (the 17 finished batches are skipped by `items_done`) and must be retried after 05:30
+IST, or at `--start 2` while another hy4 job is running.
+
+**The judge did run.** The judge model (`beam-free`) has a separate limit and was serving: `--judge-only`
+judged all 66 script-verified claims in 16 requests (394 s, 0 errors, all HTTP 200). **31 passed (47%)**;
+fail fields `period_ok` 24, `node_ok` 15, `forward_ok` 9, `sign_ok` 8, `unit_ok` 2, `company_ok` 2 — the same
+`period_ok` dominance as stage 1b, because the judge is not given the claim's own date and reads a stale
+FY25 target period as past.
+
+**The judged pilot DB** `.tmp/t228/claims_s2_pilot.db`: **78 claims — 31 verified, 46 unverified,
+1 quarantined**. Verified by source: announcement 15 (10 script order wins + 5 model), annual_report 12
+(model), guidance 4 (script). Verified by node: `revenue.order_book` 19, `equity.dividend` 5,
+`capex.amount` 4, `margin.ebitda` 2, `cost.power_fuel` 1. Script claims after judging: 14 of 40 verified (10
+order wins, 2 guidance capex, 2 guidance margin); 23 guidance claims and 2 no-period fund-raise sizes were
+rejected, mostly on `period_ok`. Model claims: 17 of 38 verified (12 annual-report, 5 announcement), which is
+the first judged evidence that an annual-report paragraph can carry a driver claim
+("planned capital expenditure of Rs. 65 crore for FY2027" -> `capex.amount`, verified).
+
+**Coverage gain vs `claims_91.db` (judged claims only):** companies with a verified claim 52 -> pilot 3;
+**gained 1** — BLKASHYAP/c01 with 21 verified claims (10 script order wins, 5 model announcement claims,
+6 annual-report claims; c01 has no transcripts, so every one is new); **months gained 2** (2024-09,
+2026-09); 15 company-months. The 31 random verified claims (seed 61, full paragraphs) are in
+`.tmp/t228/report_s2a.md`. Verified is still not truth: the sample keeps a doubtful margin row ("go up by 10%
+Q-on-Q ... 10% to 15% next quarter" read as `margin.ebitda +15 pct`), and the 46 unverified rows must not be
+used.
+
+**Pitfall for the rerun:** an approved capex or QIP whose letter prints no horizon is `unverified`/`no_period`
+by design (2 of the 13 announcement script claims); the order wins verify because the letter prints the
+execution period. `Retry-After` is the only reliable signal for a closed key; the 429 body carries no reset
+time, and a full extraction needs about 1.5-2 h of a free key.
+
+### 11.x Pilot result and Wolf's hand read (21 Nov 2026, 05:40 IST re-run after the hy4 quota reset)
+
+- Re-run: 3,696 model items, 1,275 claims after judge and dedupe: 290 verified, 953 unverified, 32 quarantined (2.5%);
+  judge 118 requests, 0 errors, no 429. Sources: announcement 719, annual_report 238, transcript 261, guidance 38,
+  press_release 19. 72.6% of model items dropped as `past` or `no_driver`.
+- Independent read of 40 verified claims (seed 97, not the worker's seed; detail `.tmp/t228/wolf_read_s2a.md`):
+  23 right, 14 minor, 3 wrong. announcement 12/8/0 (order wins 11 of 12 right), transcript 7/5/3,
+  annual_report 3/0/0, guidance 1/1/0. No past fact stored as forward.
+- Known defects (stage 2b fixes): segment left "total" when the text names a unit or plant, and that unit's revenue
+  stored as company revenue.total (all 3 wrong are this class or a dropped range low end); "including GST" not in
+  `base`; rating-agency estimates (CRISIL/ICRA/CARE) stored as company claims; the same fact from two sources
+  (AR + board outcome, guidance + transcript) kept twice; sign 0 on dividends and repayments.

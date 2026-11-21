@@ -1,8 +1,10 @@
-"""T-228 stage 1a-fix: driver-tree claims from management text.  Synthetic only: no store, no network.
+"""T-228: driver-tree claims from management text.  Synthetic only: no store, no network.
 
 The contract under test: the script mapping, the number normaliser, the three-way quote/number check, the
 unit/period/sign script checks, the independent judge's verdict applied to a claim, context attachment,
 dedupe, known_at copied from the source row, resume skip, and the adaptive limiter raising and halving.
+Stage 2a adds the doc_page item builder, the announcement script parses (three real announcement texts quoted
+with their doc_key) and `source_kind`.
 """
 
 from __future__ import annotations
@@ -17,6 +19,246 @@ from typing import Any
 import pytest
 
 from reality_engine.research import driver_claims as dc
+
+# ---- stage 2a fixtures (real announcement page text, doc_key named)
+ORDER_WIN_DOC_KEY = 'D:/RealityEngine/raw/pilot60_history/BLKASHYAP/material_filing/fbcd0108-9673-4357-8af3-35750a2c9e0a.pdf'
+ORDER_WIN_TEXT = """The Manager, 
+ 
+ 
+ 
+ 16th October 2026 
+ 
+ 
+Department of Corporate Services,
+BSE Limited, 
+Phiroze Jeejeebhoy Towers, 
+Dalal Street, 
+Mumbai – 400 001 
+Listing Department, 
+National Stock Exchange of India Ltd, 
+Exchange Plaza, Plot No. C/1, G Block, 
+Bandra Kurla Complex, Bandra 
+(East),Mumbai – 400 051 
+ISIN Code 
+ 
+ 
+ : INE350H01032 
+Scrip Code : 532719 
+Trading Symbol : BLKASHYAP 
+ 
+Dear Sir, 
+ 
+Sub: Intimation of Work Order Received 
+ 
+Ref: Announcement under Regulation 30 of SEBI (LODR) Regulations, 2015 
+ 
+With reference to the above mentioned subject, we are pleased to intimate under 
+Regulation 30 of SEBI (Listing Obligations and Disclosure Requirements) Regulations, 
+2015 as amended that B.L. Kashyap and Sons Limited has secured an order worth 
+₹ 200.02 Crores as per details given below: 
+ 
+ 
+S.No.
+Particulars 
+Disclosure 
+A 
+Name of entity awarding the order(s)/ 
+contract(s) 
+Nourish Developers Private Limited 
+B 
+Significant terms and conditions of 
+order(s)/contract(s) awarded in brief 
+Commercial Building Civil Structure 
+Work (Phase 3) , One DXP, Sector 
+113, Gurugram, Haryana 
+C 
+Whether order(s)/contract(s) have been 
+awarded by domestic / international entity
+Domestic 
+D 
+Nature of order(s)/contract(s) 
+Civil 
+& 
+Structural 
+Works 
+for 
+Commercial Building 
+E 
+Whether domestic/international 
+Domestic 
+F 
+Time period by which the order(s)/ 
+contract(s) is to be executed 
+25 months approx. 
+G 
+Broad consideration or size of the 
+order(s)/contract(s) 
+₹ 200.02 Crores (Excl. GST) 
+H 
+Whether promoter /promoter group 
+companies have any interest in the entity 
+that awarded the order(s) /contract(s)? if 
+yes, nature of interest and details thereof 
+No 
+I 
+Whether order(s)/contract(s) would fall 
+within related party transactions? If yes 
+whether the same is done at “arm’s 
+length” 
+No 
+ 
+ 
+The LOA has been received/accepted on 16.10.2026 at 10:16 am 
+ 
+The above may kindly be taken on records. 
+ 
+For B. L. Kashyap And Sons Limited 
+ 
+ 
+ 
+Pushpak Kumar 
+VP & Company Secretary 
+F-6871 
+Pushpak 
+Kumar
+Digitally signed by Pushpak Kumar 
+DN: c=IN, o=Personal, 
+pseudonym=vco6l43gk2jz1ab0tqsxm5n7pirwf9yh, 
+2.5.4.20=986ed5a1057c85b598fd24eed0412d886d922cb
+caf666c763a1ab6fe61af0730, postalCode=201309, 
+st=Uttar Pradesh, 
+serialNumber=829981b81e1da69a9be5493f91b0749e36
+5517c8169663b476d491986fcc4e20, cn=Pushpak Kumar 
+Date: 2026.10.16 14:35:52 +05'30'"""
+
+CAPEX_DOC_KEY = 'D:/RealityEngine/raw/pilot60_history/SPMLINFRA/material_filing/73807300-d232-4447-9dbe-39f233944370.pdf'
+CAPEX_TEXT = """3. Issuance of up to 3,84,858. Equity Shares of face value of Rs. 2/- each at an issue price of Rs. 
+186/- per equity share (including a premium of Rs. 184/- per equity share) aggregating up to Rs. 
+7.16 crores on preferential basis, to National Asset Reconstruction Company Ltd being Non-
+promoter in accordance with the provisions of SEBI (Issue of Capital and Disclosures 
+Requirements) Regulations, 2018, as amended for conversion of loan. The Details as required 
+under 
+Regulation 
+30 
+of 
+the 
+Listing 
+Regulations 
+read 
+with 
+SEBI 
+Master 
+Circular 
+No.SEBI/HO/CFD/CFD-PoD-2/P/CIR/P/0155 dated November 11, 2024 with respect to the 
+proposed Preferential Issue is enclosed as Annexure A and B. 
+4. Issue of Notice for convening an Extra Ordinary General Meeting (“EGM”) of the shareholders of the 
+Company to be held on Saturday, May 16, 2026 at 12.30 p.m. through video conferencing or other 
+audio-visual means, to seek necessary approval of the shareholders for the above items. 
+ 
+5. The Board has approved an increase in capital expenditure from ₹176.44 crore to ₹238.43 crore to 
+support the expansion of BESS capacity from 2.5 GWh to 5 GWh. This includes the development of 
+allied facilities such as container manufacturing capacity of 600 units per annum, along with working 
+capital and general corporate purposes. 
+All the aforesaid allotments are subject to the approval of Members in General Meeting and the relevant 
+Stock Exchanges as applicable. 
+Kindly take the above on record. 
+Thanking you, 
+ 
+For SPML Infra Limited 
+ 
+ 
+Swati Agarwal 
+Company Secretary 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+SPAAL
+wati
+garwal
+Digitally signed
+by Swati Agarwal
+Date: 2026.04.23
+19:32:49 +05'30'
+SPML INFRA LIMITED
+CIN :
+L40106WBl98lPLC276372
+Regd. Oflice :22. Camac Street. BIod<-A. 3rd Floor, Kolkata 700016
+Ph : +91 334009 12001 1247
+E-mail : info@spml.co.in I Website : www.spmI.co.in
+Swati 
+Agarwal
+Digitally signed 
+by Swati Agarwal 
+Date: 2026.04.23 
+19:32:49 +05'30'"""
+
+FUND_RAISE_DOC_KEY = 'D:/RealityEngine/raw/pilot60_history/SPMLINFRA/material_filing/71a971f5-9d82-46f3-8b97-07ec754d16b5.pdf'
+FUND_RAISE_TEXT = """SPN(L 
+27t August, 2024 
+To, 
+National Stock Exchange 
+BSE Limited 
+Exchange Plaza, 
+Phiroze Jeejeebhoy Towers 
+PlotNo. C/1, G Block, 
+Dalal Street, 
+Bandra (E), Mumbai-400051 
+Mumbai-400001 
+(NSE Scrip Code: SPMLINFRA' 
+Sub: Outcome of Board Meeting 
+Dear Sirs, 
+With reference to the captioned subject and in terms of the Regulation 30 of the SEBI (Listing Obligations & Disclosure 
+Requirements) Regulations, 2015, we would like to inform you that Board of Directors in the Meeting held on 27% August, 
+2024, inter-alia, has considered and approved the following: 
+1. 
+Issuance of upto 6,618,645 Equity Shares of face value of Rs. 2/- each at an issue price of Rs. 215/- per equity share 
+(including a premium of Rs. 213/- per equity share) aggregating upto Rs. 139.50 crores on preferential basis, to 
+Promoters / promoter group and allottees being Non-promoter in accordance with the provisions of SEBI (Issue of 
+Capital and Disclosures Requirements) Regulations, 2018, as amended for Cash Consideration. 
+The Details as 
+required under Regulation 30 of the Listing Regulations read with SEBI Circular No. SEBI/HO/CFD/CFD-PoD- 
+1/P/CIR/2023/123 dated July 13, 2023, with respect to the proposed Preferential Issue is enclosed as Annexure A 
+and B. 
+2. 
+Issuance of upto 2,468,371 Equity Shares of face value of Rs. 2/- each at an issue price of Rs. 215/- per equity share 
+(including a premium of Rs. 213/- per equity share) aggregating upto Rs. 34.19 crores on preferential basis, to 
+Promoters / promoter group and allottees being Non-promoter in accordance with the provisions of SEBI (Issue of 
+Capital and Disclosures Requirements) Regulations, 2018, as amended for conversion of existing loan. The Details as 
+required under Regulation 30 of the Listing Regulations read with SEBI Circular No. SEBI/HO/CFD/CFD-PoD- 
+1/P/CIR/2023/123 dated July 13, 2023, with respect to the proposed Preferential Issue is enclosed as Annexure A 
+and B. 
+3. 
+Issuance of upto 7,334,844 Warrants on preferential basis to Promoters / promoter group and allottees being Non- 
+promoter in accordance with the provisions of SEBI (Issue of Capital and Disclosures Requirements) Regulations, 
+2018, as amended at an price of Rs. 215/- per warrants, each Warrant convertible into 1 Equity Share of face value of 
+Rs. 2/- each fully paid up ata premium of Rs. 213 /- each. The said Warrant shall be converted into equity shares of the 
+Company within 18 months of the allotment with receipt of the remaining amount as per the SEBI (ICDR) Regulations, 
+2018, The Details 
+as required under Regulation 30 
+of the Listing Regulations read with SEBI Circular No. 
+SEBI/HO/CFD/CFD-PoD-1/P/CIR/2023/123 dated July 13, 2023, with respect to the proposed Preferential Issue is 
+enclosed as Annexure A and B. 
+All the aforesaid allotments are subject to the approval of Members in General Meeting and the relevant Stock 
+Exchanges as applicable. 
+4. 
+Appointment of Mr. T V Rangaswami as a Nominee Director of India Debt Resolution Company Ltd (IDRCL) on the 
+Board of the Company with effect from 27% August, 2024. Disclosure under Regulation 30 of SEBI (Listing Obligations 
+& Disclosure Requirements) Regulations, 2015 and SEBI Circular CIR/CFD/4/2015 dated 09th September, 2015 is 
+enclosed as Annexure C. 
+SPML INFRA LIMITED 
+Regd. Office: 
+F-2 
+hia 
+Industrial 
+A"""
 
 
 @pytest.fixture()
@@ -50,6 +292,7 @@ def _item(**kw):
         "key": "c17|transcript_statement|250", "id": 1, "store": "c17", "source_table": "transcript_statement",
         "source_id": 250, "symbol": "BHAGERIA", "doc_key": "D:/raw/BHAGERIA.pdf", "page": 4,
         "known_at": "2025-10-30T13:19:49", "event_date": "2025-10-28",
+        "source_kind": "transcript", "paragraph": None,
         "text": "It will increase by approximately Rs. 55 crores annually, starting from Q4.",
         "context": "S1: Good afternoon. | S2: Thank you for joining.",
     }
@@ -850,3 +1093,208 @@ def test_limiter_gate_never_exceeds_the_limit():
     lim.stopped.set()
     with pytest.raises(dc.Stopped):
         lim.acquire()
+
+
+# ------------------------------------------------------------------ stage 2a: document items
+def _doc(key: str, doc_type: str, pages: dict[int, str], **kw: Any):
+    base = {"doc_key": key, "symbol": "TESTCO", "doc_type": doc_type, "title": "Outcome of Board Meeting",
+            "filing_date": "2026-09-01", "known_at": "2026-09-01T10:00:00", "pages": pages}
+    base.update(kw)
+    return {key: base}
+
+
+def _doc_item(doc_type: str, text: str, **kw: Any):
+    item = {"store": "c99", "source_table": "doc_page", "source_id": None, "source_kind": doc_type,
+            "paragraph": 0, "symbol": "TESTCO", "doc_key": "D:/raw/test.pdf", "page": 1,
+            "known_at": "2026-09-01T10:00:00", "event_date": "2026-09-01", "text": text, "context": ""}
+    item.update(kw)
+    return item
+
+
+def test_split_paragraphs_keeps_paragraphs_and_packs_long_blocks():
+    text = "Future Outlook:\n\nWe expect revenue to grow 20% in FY27. The new line will add Rs. 50 crores."
+    assert dc.split_paragraphs(text) == [
+        "Future Outlook:", "We expect revenue to grow 20% in FY27. The new line will add Rs. 50 crores."]
+    pieces = dc.split_paragraphs("One two three four five. Six seven eight nine ten.", limit=30)
+    assert " ".join(pieces) == "One two three four five. Six seven eight nine ten."
+    assert all(len(chunk) <= 30 for chunk in dc.split_paragraphs("x" * 80 + " " + "y" * 80, limit=30))
+
+
+def test_doc_items_keep_a_forward_paragraph_and_drop_boilerplate():
+    page = ("Corporate social responsibility: the Company will spend Rs. 2 crore on CSR activities.\n\n"
+            "Outlook: we expect revenue to grow 20% in FY27 on the new line.")
+    items, claims, counts = dc.doc_items_from_pages(
+        "c99", _doc("D:/raw/annual.pdf", "annual_report", {1: page}))
+    assert claims == [] and len(items) == 1
+    assert "expect revenue to grow" in items[0]["text"]
+    assert items[0]["source_kind"] == "annual_report"
+    assert (items[0]["doc_key"], items[0]["page"], items[0]["paragraph"]) == ("D:/raw/annual.pdf", 1, 1)
+    assert counts["doc_annual_report_kept"] == 1
+    assert counts["doc_annual_report_para_boilerplate"] == 1
+
+
+def test_doc_items_drop_a_page_without_a_cue():
+    items, claims, counts = dc.doc_items_from_pages(
+        "c99", _doc("D:/raw/board.pdf", "annual_report", {1: "The Board met on 1 April 2026."}))
+    assert items == [] and claims == []
+    assert counts.get("doc_annual_report_drop_no_cue") == 1
+
+
+def test_short_announcement_page_is_one_item():
+    text = ("Dear Sir, please find below the intimation.\n\nThe Company has approved an issue of up to "
+            "Rs. 500 crores by way of rights issue, at such price as may be decided later.")
+    items, claims, counts = dc.doc_items_from_pages(
+        "c99", _doc("D:/raw/rights.pdf", "announcement", {1: text}))
+    assert claims == [] and len(items) == 1
+    assert items[0]["text"].startswith("Dear Sir") and items[0]["paragraph"] == 0
+    assert counts["doc_announcement_kept"] == 1
+
+
+def test_ocr_page_fills_an_empty_main_page():
+    docs = _doc("D:/raw/scan.pdf", "annual_report", {7: ""})
+    ocr = {("D:/raw/scan.pdf", 7): "Outlook: we expect capex of Rs. 90 crore in FY27."}
+    items, _, counts = dc.doc_items_from_pages("c99", docs, ocr)
+    assert len(items) == 1 and counts["doc_annual_report_pages_ocr"] == 1
+
+
+def test_announcement_filing_types_are_skipped_by_title():
+    docs = _doc("D:/raw/agm.pdf", "announcement", {1: ORDER_WIN_TEXT},
+                title="Notice of 37th Annual General Meeting along with Annual Report")
+    items, claims, counts = dc.doc_items_from_pages("c99", docs)
+    assert items == [] and claims == []
+    assert counts["doc_announcement_drop_filing_type"] == 1
+    press = _doc("D:/raw/pr.pdf", "press_release", {1: ORDER_WIN_TEXT},
+                 title="Notice of the Annual General Meeting")
+    items, _, _ = dc.doc_items_from_pages("c99", press)
+    assert len(items) == 1                    # the skip list is for the announcement type only
+
+
+def test_build_items_keeps_the_doc_script_claims(db_path: Path, monkeypatch):
+    store_dir = db_path.parent / "c99"
+    store_dir.mkdir()
+    con = sqlite3.connect(store_dir / "c99.db")
+    con.executescript("""
+        CREATE TABLE doc (doc_key TEXT PRIMARY KEY, symbol TEXT, doc_type TEXT, title TEXT,
+                          filing_date TEXT, known_at TEXT, pages INTEGER);
+        CREATE TABLE doc_page (doc_key TEXT, symbol TEXT, page INTEGER, text TEXT);
+        CREATE TABLE guidance (id INTEGER PRIMARY KEY, symbol TEXT, metric TEXT, target_period TEXT,
+                               low REAL, high REAL, unit TEXT, direction TEXT, quote TEXT, doc_key TEXT,
+                               page INTEGER, known_at TEXT, said_on TEXT);
+        CREATE TABLE transcript_statement (id INTEGER PRIMARY KEY, symbol TEXT, doc_key TEXT, page INTEGER,
+                               call_date TEXT, known_at TEXT, is_fragment INTEGER, seq INTEGER,
+                               answer_turn INTEGER, statement TEXT, quote TEXT, numbers_json TEXT);
+        CREATE TABLE transcript_question (doc_key TEXT, answer_turn INTEGER, question TEXT);
+    """)
+    con.execute("INSERT INTO doc VALUES (?, 'TESTCO', 'announcement', 'Work order received', '2026-09-01',"
+                " '2026-09-01T10:00:00', 1)", (ORDER_WIN_DOC_KEY,))
+    con.execute("INSERT INTO doc_page VALUES (?, 'TESTCO', 1, ?)", (ORDER_WIN_DOC_KEY, ORDER_WIN_TEXT))
+    con.commit()
+    con.close()
+    monkeypatch.setattr(dc, "STORE_ROOT", db_path.parent)
+    items, built = dc.build_items(["c99"], ("announcement",))
+    assert items == []
+    assert [claim["extractor"] for claim in built["script_claims"]] == ["announcement:order"]
+    assert built["counters"]["doc_announcement_script"] == 1
+
+
+# ---- real announcement texts (page text as stored read-only in the pilot3 stores)
+def test_announcement_order_win_is_a_script_claim():
+    item = _doc_item("announcement", ORDER_WIN_TEXT, doc_key=ORDER_WIN_DOC_KEY)
+    claims = dc.announcement_claims(item)
+    assert len(claims) == 1
+    claim = claims[0]
+    assert (claim["node"], claim["unit"], claim["sign"]) == ("revenue.order_book", "inr_cr", "0")
+    assert claim["value_low"] == 200.02
+    assert claim["effective_period"] == "25 months"
+    assert claim["status"] == "verified"
+    assert claim["method"] == "script" and claim["extractor"] == "announcement:order"
+    assert claim["source_kind"] == "announcement" and claim["doc_key"] == ORDER_WIN_DOC_KEY
+    assert claim["quote_span"] in dc.norm_ws(claim["statement"])
+
+
+def test_a_parsed_announcement_leaves_the_model_queue():
+    items, claims, counts = dc.doc_items_from_pages(
+        "c99", _doc(ORDER_WIN_DOC_KEY, "announcement", {1: ORDER_WIN_TEXT}))
+    assert items == [] and len(claims) == 1
+    assert counts["doc_announcement_script"] == 1
+
+
+def test_announcement_capex_approval_parses_from_to_and_keeps_the_fund_raise():
+    item = _doc_item("announcement", CAPEX_TEXT, doc_key=CAPEX_DOC_KEY)
+    claims = {c["node"]: c for c in dc.announcement_claims(item)}
+    assert set(claims) == {"capex.amount", "equity.shares"}
+    capex = claims["capex.amount"]
+    assert capex["value_low"] == 238.43 and "176.44" in str(capex["base"]) and capex["sign"] == "+"
+    assert capex["status_reason"] == "no_period"           # the letter prints no capex horizon
+    assert claims["equity.shares"]["value_low"] == 7.16
+
+
+def test_announcement_fund_raise_needs_size_and_issue_price():
+    item = _doc_item("announcement", FUND_RAISE_TEXT, doc_key=FUND_RAISE_DOC_KEY)
+    claims = dc.announcement_claims(item)
+    assert len(claims) == 2                     # two preferential issues, each with size and price
+    first = claims[0]
+    assert first["node"] == "equity.shares" and first["unit"] == "inr_cr"
+    assert first["value_low"] == 139.5
+    assert "215" in str(first["base"]) and "per" in str(first["base"]).lower()
+    assert first["method"] == "script" and first["doc_key"] == FUND_RAISE_DOC_KEY
+
+
+def test_completed_allotment_is_not_a_script_claim():
+    text = ("The Company has allotted 5,00,000 equity shares at an issue price of Rs. 215 per share, "
+            "aggregating Rs. 10.75 crores.")
+    assert dc.announcement_claims(_doc_item("announcement", text)) == []
+
+
+def test_a_demand_order_is_not_an_order_win():
+    text = "The Company has received a GST demand order worth Rs. 4.50 crores, to be executed within 3 months."
+    assert dc.announcement_claims(_doc_item("announcement", text)) == []
+
+
+# ------------------------------------------------------------------ stage 2a: source_kind
+def test_source_kind_is_set_by_every_producer():
+    claim, _ = dc.guidance_claim("c17", _guidance_row())
+    assert claim is not None and claim["source_kind"] == "guidance"
+    items, _ = dc.attach_context(
+        [_row(id=3, seq=3, text="We will add Rs. 55 crores annually from Q4.",
+              numbers_json='[{"value":55}]')], {})
+    assert items[0]["source_kind"] == "transcript"
+    claim, _ = dc.claim_from_reply(
+        {"node": "capex.amount", "value_low": 55, "unit": "inr_cr",
+         "quote_span": "approximately Rs. 55 crores annually", "effective_period": "Q4"}, items[0])
+    assert claim is not None and claim["source_kind"] == "transcript" and claim["paragraph"] is None
+
+
+def test_doc_source_kind_and_paragraph_round_trip_the_writer(db_path: Path):
+    writer = dc.Writer(db_path)
+    claim = dc._finish(_claim(source_table="doc_page", source_id=None, source_kind="press_release",
+                              paragraph=4, doc_key="D:/raw/pr.pdf", page=2))
+    writer.insert_claims("run1", [claim])
+    writer.insert_claims("run1", [claim])             # the same item replaces itself, never duplicates
+    row = writer.con.execute("SELECT source_kind, paragraph, COUNT(*) FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("press_release", 4, 1)
+
+
+def test_writer_migrates_an_older_claims_db(db_path: Path):
+    old = dc.SCHEMA.replace("  source_kind TEXT, paragraph INTEGER,\n", "")
+    con = sqlite3.connect(db_path)
+    con.executescript(old)
+    con.commit()
+    con.close()
+    writer = dc.Writer(db_path)
+    columns = {str(r[1]) for r in writer.con.execute("PRAGMA table_info(claim)")}
+    writer.close()
+    assert {"source_kind", "paragraph"} <= columns
+
+
+def test_prompts_carry_the_stage2_source_rules():
+    prompt = dc.build_prompt([_item()])
+    assert "annual report is published months after" in prompt
+    assert "revenue.order_book" in prompt and "board-approved capex" in prompt
+    claim = dc._finish(_claim())
+    claim.update({"id": 1, "source_kind": "announcement"})
+    judge = dc.judge_prompt([claim])
+    assert "SOURCE: announcement" in judge
+    assert "order won fills revenue.order_book" in judge
+    assert "completed allotment" in judge
