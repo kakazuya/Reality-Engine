@@ -23,6 +23,19 @@ stay under ``D:/RealityEngine/tg_build``.
     python -m reality_engine.scripts.tg_measure_build --root D:/RealityEngine/tg_build/measure10
     python -m reality_engine.scripts.tg_measure_build --root <root> --only 1 --force   # one company again
 
+A doc-type build is the minimal deck store (T-232): only the parts the reader's contract needs, and only decks::
+
+    python -m reality_engine.scripts.tg_measure_build --root D:/RealityEngine/tg_build/decks403 \\
+        --universe <decks403>/universe.csv --doc-types deck --parts registry,pages
+
+It writes ``dNNN`` store folders (``cNN`` stays the T-214 recipe).  The company is resolved from the universe's
+ISIN (36 of the 560 symbol cells name a BSE code, not a symbol), and the per-company manifest is written from the
+company's ``deck_figures.deck_sources`` rows since ``--window-start``: "Intimation" letters are skipped, duplicate
+bytes are kept once, and each PDF stays on Drive - the RawStore cache holds it only while the build reads it.  The
+measure CSV records the deck bytes fetched (``raw_ok_mb``) and the store size (``store_mb``); the run prints the
+totals and the free space left on the root's drive, and ``--min-free-gb`` (default 50) stops the run before a
+company when it falls below.
+
 A company whose ``cNN_measure.json`` exists is read back, not rebuilt, unless ``--force`` is given, so a stopped
 run resumes where it stopped and the aggregate still holds every earlier row.
 """
@@ -31,6 +44,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import shutil
 import subprocess
 import sys
 import time
@@ -58,6 +72,13 @@ MEASURE_FIELDS = (
     "store_mb", "db_bytes", "fin_quarter_xbrl", "fin_quarter_printed", "kpi_series", "guidance",
     "transcript_statement", "shp_category", "price_delivery",
     "wall_s", "build_s", "route_s", "peak_rss_mb", "failed", "failed_tail5", "log_dir")
+# A per-company manifest row, in the column order of the T-214 ``manifest.csv`` (docs_collect reads it by name).
+MANIFEST_FIELDS = ("isin", "symbol_at_time", "scrip_code", "newsid", "bucket", "headline", "category", "subcat",
+                   "dissem_ts", "url", "source", "local_path", "bytes", "sha256", "http_status", "attempts", "is_pdf",
+                   "is_scanned_guess", "skip_reason", "fetched_at", "status", "error")
+DECK_BUCKET = "investor_presentation"          # the profile manifest bucket docs_collect types as a deck
+DECK_SKIP_TITLE = "intimation"                # BSE files "Analyst / Investor Meet - Intimation" under presentations
+ACCEPT_COPY_DEFAULT = "D:/RealityEngine/tg_build/pilot10_measure.csv"
 
 
 # ---------------------------------------------------------------------------- running one step
@@ -189,11 +210,15 @@ def measure_store(db: Path, routes: Path, profile_json: Path, raw_ok_files: int,
         docs = _count(con, "doc")
         pages = _count(con, "doc_page")
         counts = {table: _count(con, table) for table in COUNT_TABLES}
-        covered_cur = con.execute(
-            "SELECT d.doc_key FROM doc d WHERE d.doc_type='results' AND EXISTS ("
-            " SELECT 1 FROM fin_quarter_xbrl f WHERE f.symbol=d.symbol AND"
-            " CAST(julianday(substr(d.known_at,1,10)) - julianday(f.period_end) AS INT) BETWEEN 15 AND 100)")
-        covered_docs = {row[0] for row in ((covered_cur.fetchall() or []) if covered_cur is not None else [])}
+        covered_docs: set[str] = set()
+        probe = con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='fin_quarter_xbrl'")
+        if probe is not None and probe.fetchone() is not None:        # absent in a deck-only store
+            covered_cur = con.execute(
+                "SELECT d.doc_key FROM doc d WHERE d.doc_type='results' AND EXISTS ("
+                " SELECT 1 FROM fin_quarter_xbrl f WHERE f.symbol=d.symbol AND"
+                " CAST(julianday(substr(d.known_at,1,10)) - julianday(f.period_end) AS INT) BETWEEN 15 AND 100)")
+            covered_docs = {row[0] for row in ((covered_cur.fetchall() or [])
+                                               if covered_cur is not None else [])}
     finally:
         con.close()
     table_chart = by_route.get("table_or_chart", 0)
@@ -245,6 +270,76 @@ def _ok_counts(rows: list[dict]) -> tuple[int, int]:
     return len(ok), sum(int(r["bytes"]) for r in ok if str(r.get("bytes") or "").isdigit())
 
 
+def company_name(index: int, doc_types: str | None) -> str:
+    """``cNN`` for the T-214 recipe, ``dNNN`` for a doc-type (deck) build."""
+    return f"d{index:03d}" if doc_types else f"c{index:02d}"
+
+
+def selected_parts(text: str | None) -> tuple[str, ...]:
+    """The parts to run, in ``PARTS`` order; ``None`` is every part (the T-214 recipe unchanged)."""
+    if not text:
+        return PARTS
+    wanted = {part.strip() for part in text.split(",") if part.strip()}
+    unknown = wanted - set(PARTS)
+    if unknown:
+        raise ValueError(f"unknown parts {', '.join(sorted(unknown))}; choose from {', '.join(PARTS)}")
+    return tuple(part for part in PARTS if part in wanted)
+
+
+def free_gb(path: Path) -> float:
+    """Free space on the drive holding ``path`` (its nearest existing parent), in GiB; inf when unknown."""
+    probe = Path(path)
+    while not probe.exists() and probe.parent != probe:
+        probe = probe.parent
+    try:
+        return shutil.disk_usage(probe).free / 1024 ** 3
+    except OSError:
+        return float("inf")
+
+
+def deck_manifest_rows(profile_json: dict, data_root: Path, window_start: str) -> tuple[list[dict], int]:
+    """Manifest rows for a deck build: one per ``deck_figures.deck_sources`` row of the company since
+    ``window_start``, and the number of "Intimation" letters skipped.
+
+    The company's whole ISIN history is read (a deck filed under an older ISIN is the same company's).  A title
+    naming an intimation is a BSE letter, not a deck.  One file filed under several announcements is kept once,
+    dated by its earliest filing.  ``local_path`` is re-rooted with ``config.resolve_stored_path`` onto the folder
+    that holds it today; nothing is copied - the file is fetched only into the RawStore cache while it is read.
+    """
+    from reality_engine.config import resolve_stored_path
+    from reality_engine.db.readonly import connect_ro
+
+    companies = profile_json.get("companies") or [{}]
+    symbol = str(companies[0].get("symbol") or "")
+    isins = sorted({str(isin) for company in companies for isin in (company.get("isins") or []) if isin})
+    kept: dict[str, dict] = {}
+    skipped = 0
+    con = connect_ro(str(Path(data_root) / "deck_figures.db"))
+    try:
+        marks = ",".join("?" * len(isins))
+        found = con.execute(
+            "SELECT isin, sha256, known_at, title, local_path, url, source, source_id, size_bytes "
+            f"FROM deck_sources WHERE isin IN ({marks}) AND known_at >= ? AND status='ok' ORDER BY known_at",
+            (*isins, window_start))
+        for isin, sha, known_at, title, local_path, url, source, source_id, size in (
+                (found.fetchall() if found is not None else None) or []):
+            if DECK_SKIP_TITLE in str(title or "").lower():
+                skipped += 1
+                continue
+            key = str(sha or local_path)
+            if key in kept:
+                continue
+            row = {field: "" for field in MANIFEST_FIELDS}
+            row.update({"isin": isin, "symbol_at_time": symbol, "newsid": source_id or "", "bucket": DECK_BUCKET,
+                        "headline": title or "", "dissem_ts": known_at or "", "url": url or "",
+                        "source": source or "", "local_path": str(resolve_stored_path(local_path)),
+                        "bytes": str(size or ""), "sha256": sha or "", "is_pdf": "1", "status": "ok"})
+            kept[key] = row
+    finally:
+        con.close()
+    return list(kept.values()), skipped
+
+
 def _blank_row(name: str, symbol: str, ok_files: int, ok_bytes: int, parts: list[dict],
                failed: list[str], tails: list[str], wall0: float) -> dict:
     """A measure row for a company that stopped before the store could be measured."""
@@ -256,14 +351,21 @@ def _blank_row(name: str, symbol: str, ok_files: int, ok_bytes: int, parts: list
             "failed": ";".join(failed), "failed_tail5": " || ".join(tails)}
 
 
-def build_company(index: int, symbol: str, root: Path, manifest_rows: list[dict], fields: list[str],
+def build_company(index: int, symbol: str, key: str, root: Path, manifest_rows: list[dict], fields: list[str],
                   args: argparse.Namespace) -> tuple[dict, list[dict], str]:
-    """Run the recipe for one company; return (measure row, step rows, "" or the reason the run must stop)."""
-    name = f"c{index:02d}"
+    """Run the recipe for one company; return (measure row, step rows, "" or the reason the run must stop).
+
+    ``symbol`` is the universe row's symbol; ``key`` is what ``make_profile`` resolves (the row's ISIN for a deck
+    build, the symbol otherwise)."""
+    name = company_name(index, args.doc_types)
     base = root / name
     base.mkdir(parents=True, exist_ok=True)
-    mine = [row for row in manifest_rows if str(row.get("symbol_at_time") or "").strip().upper() == symbol]
-    _write_company_manifest(base / "raw" / "manifest.csv", mine, fields)
+    # A doc-type build has no global manifest: its per-company manifest is written from deck_sources after
+    # make_profile names the company (the universe symbol is not always the NSE symbol).
+    mine: list[dict] = []
+    if not args.doc_types:
+        mine = [row for row in manifest_rows if str(row.get("symbol_at_time") or "").strip().upper() == symbol]
+        _write_company_manifest(base / "raw" / "manifest.csv", mine, fields)
     profile_json = base / f"{name}_profile.json"
     db = base / f"{name}.db"
     ok_files, ok_bytes = _ok_counts(mine)
@@ -288,19 +390,37 @@ def build_company(index: int, symbol: str, root: Path, manifest_rows: list[dict]
         return row
 
     py = sys.executable
-    made = step("make_profile", [py, "-m", "reality_engine.pilot3.make_profile", symbol, "--name", name,
-                                 "--root", str(base), "--window-start", DATE, "--compute-start", COMPUTE_START,
-                                 "--out", str(profile_json)])
+    profile_cmd = [py, "-m", "reality_engine.pilot3.make_profile", key, "--name", name, "--root", str(base),
+                   "--window-start", DATE, "--compute-start", COMPUTE_START, "--out", str(profile_json)]
+    if args.doc_types:
+        # The decks stay in the raw store (only fetched into its cache while read), so the profile's raw root is
+        # the real one; <root>/raw still holds the profile's manifest.
+        from reality_engine.config import RAW_ROOT
+
+        profile_cmd += ["--raw-root", str(RAW_ROOT)]
+    made = step("make_profile", profile_cmd)
     if made["rc"] != 0 or not profile_json.is_file():
         return _blank_row(name, symbol, ok_files, ok_bytes, parts, failed, tails, wall0), parts, ""
-    collected = step("docs_collect", [py, "-m", "reality_engine.pilot3.docs_collect", "--profile",
-                                      str(profile_json)])
+    if args.doc_types:
+        from reality_engine.pilot3.docs_collect import default_data_root
+
+        prof_data = json.loads(profile_json.read_text(encoding="utf-8"))
+        symbol = str(((prof_data.get("companies") or [{}])[0]).get("symbol") or symbol)
+        mine, skipped = deck_manifest_rows(prof_data, default_data_root(), DATE)
+        _write_company_manifest(base / "raw" / "manifest.csv", mine, list(MANIFEST_FIELDS))
+        ok_files, ok_bytes = _ok_counts(mine)
+        print(f"  manifest       {len(mine)} decks, {skipped} intimation letters skipped, "
+              f"{round(ok_bytes / 1024 / 1024, 1)} MB", flush=True)
+    collect_cmd = [py, "-m", "reality_engine.pilot3.docs_collect", "--profile", str(profile_json)]
+    if args.doc_types:
+        collect_cmd += ["--doc-types", args.doc_types]
+    collected = step("docs_collect", collect_cmd)
     if collected["rc"] != 0:
         return (_blank_row(name, symbol, ok_files, ok_bytes, parts, failed, tails, wall0), parts,
                 "company 1 failed in docs_collect" if index == 1 else "")
 
     stop = ""
-    for part in PARTS:
+    for part in args.part_list:
         done = step(part, [py, "-m", "reality_engine.pilot3.build", "--profile", str(profile_json),
                            "--out", str(db), "--part", part])
         if done["timed_out"]:
@@ -310,8 +430,11 @@ def build_company(index: int, symbol: str, root: Path, manifest_rows: list[dict]
             stop = "company 1 failed in registry"
             break
 
-    route = run_step("route", [py, "-m", "reality_engine.v2.page_route", "--store", str(db),
-                               "--out", str(base / "routes.csv")], base / "b_route.log",
+    route_cmd = [py, "-m", "reality_engine.v2.page_route", "--store", str(db),
+                 "--out", str(base / "routes.csv")]
+    if args.doc_types:
+        route_cmd += ["--doc-types", args.doc_types]
+    route = run_step("route", route_cmd, base / "b_route.log",
                      interval_s=1.0, ram_gb=args.ram_gb, timeout_s=args.max_part_minutes * 60)
     print(f"  {'route':<14} {route['seconds']:>8.1f}s rc={route['rc']:<4}", flush=True)
     if route["rc"] != 0:
@@ -328,27 +451,47 @@ def build_company(index: int, symbol: str, root: Path, manifest_rows: list[dict]
 
 
 def run(args: argparse.Namespace) -> int:
-    root = Path(args.root)
+    root = Path(args.root).expanduser().resolve()   # the profile resolves its own paths against this folder
+    try:
+        wanted_parts = selected_parts(args.parts)
+    except ValueError as exc:
+        print(f"STOPPED {exc}", file=sys.stderr)
+        return 2
+    args.part_list = wanted_parts
+    doc_types = {part.strip().lower() for part in (args.doc_types or "").split(",") if part.strip()}
+    if doc_types - {"deck"}:
+        print("STOPPED --doc-types: this runner writes the manifest from deck_sources (deck) only; "
+              f"got {', '.join(sorted(doc_types))}", file=sys.stderr)
+        return 2
+    args.doc_types = ",".join(sorted(doc_types)) or None
     universe = Path(args.universe) if args.universe else root / "universe10.csv"
     manifest = Path(args.manifest) if args.manifest else root / "manifest.csv"
     with universe.open(encoding="utf-8", newline="") as fh:
         queue = [row for row in csv.DictReader(fh) if str(row.get("symbol") or "").strip()]
-    manifest_rows, fields = _read_manifest(manifest)
+    manifest_rows, fields = ([], []) if doc_types else _read_manifest(manifest)
     wanted = {int(x) for x in args.only.split(",")} if args.only else set(range(1, len(queue) + 1))
+    accept_copy = args.accept_copy
+    if accept_copy is None:                      # the T-214 accept path is never overwritten by a deck build
+        accept_copy = "" if doc_types else ACCEPT_COPY_DEFAULT
 
     stop_reason = ""
     for index, entry in enumerate(queue, start=1):
         if index not in wanted:
             continue
         symbol = str(entry["symbol"]).strip().upper()
-        name = f"c{index:02d}"
+        key = str(entry.get("isin") or symbol).strip().upper() if doc_types else symbol
+        name = company_name(index, args.doc_types)
         cached = root / name / f"{name}_measure.json"
         print(f"[{name}] {symbol}", flush=True)
         if cached.is_file() and not args.force:
             row = json.loads(cached.read_text(encoding="utf-8"))
             print(f"  cached: wall {row.get('wall_s')}s, store {row.get('store_mb')} MB", flush=True)
             continue
-        row, parts, stop = build_company(index, symbol, root, manifest_rows, fields, args)
+        if args.min_free_gb and free_gb(root) < args.min_free_gb:
+            stop_reason = f"free space on {root} fell under {args.min_free_gb:g} GB"
+            print(f"STOP: {stop_reason}", flush=True)
+            break
+        row, parts, stop = build_company(index, symbol, key, root, manifest_rows, fields, args)
         cached.write_text(json.dumps(row, indent=1), encoding="utf-8")
         write_parts_csv(parts, root / name / "parts.csv")
         print(f"  done: wall {row['wall_s']}s, store {row.get('store_mb') or 0} MB, "
@@ -362,21 +505,26 @@ def run(args: argparse.Namespace) -> int:
     rows: list[dict] = []
     all_parts: list[dict] = []
     for index in range(1, len(queue) + 1):
-        name = f"c{index:02d}"
+        name = company_name(index, args.doc_types)
         cached = root / name / f"{name}_measure.json"
         if cached.is_file():
             rows.append(json.loads(cached.read_text(encoding="utf-8")))
             company_parts = root / name / "parts.csv"
             if company_parts.is_file():
                 all_parts.extend(csv.DictReader(company_parts.open(encoding="utf-8")))
-    out_csv = Path(args.out_csv) if args.out_csv else root / "pilot10_measure.csv"
+    out_csv = Path(args.out_csv) if args.out_csv else root / (
+        "decks_measure.csv" if doc_types else "pilot10_measure.csv")
     write_measure_csv(rows, out_csv)
     parts_csv = out_csv.with_name("parts.csv")
     write_parts_csv(all_parts, parts_csv)
+    fetched_mb = sum(float(row.get("raw_ok_mb") or 0) for row in rows)
+    store_mb = sum(float(row.get("store_mb") or 0) for row in rows)
     print(f"{len(rows)} company rows -> {out_csv}\n{len(all_parts)} step rows -> {parts_csv}", flush=True)
-    if args.accept_copy and out_csv.resolve() != Path(args.accept_copy).resolve():
-        write_measure_csv(rows, Path(args.accept_copy))
-        print(f"copy -> {args.accept_copy}", flush=True)
+    print(f"totals: {fetched_mb:.1f} MB fetched, {store_mb:.1f} MB of stores on disk, "
+          f"{free_gb(root):.0f} GB free", flush=True)
+    if accept_copy and out_csv.resolve() != Path(accept_copy).resolve():
+        write_measure_csv(rows, Path(accept_copy))
+        print(f"copy -> {accept_copy}", flush=True)
     if stop_reason:
         print(f"run stopped: {stop_reason}", file=sys.stderr, flush=True)
         return 2
@@ -384,18 +532,30 @@ def run(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="T-214: build and measure one pilot3 store per queue company")
-    ap.add_argument("--root", default=str(ROOT_DEFAULT), help="folder of cNN subfolders (default %(default)s)")
-    ap.add_argument("--universe", default=None, help="default <root>/universe10.csv")
-    ap.add_argument("--manifest", default=None, help="default <root>/manifest.csv (status='ok' rows are read)")
+    ap = argparse.ArgumentParser(description="T-214/T-232: build and measure one pilot3 store per queue company")
+    ap.add_argument("--root", default=str(ROOT_DEFAULT), help="folder of company subfolders (default %(default)s)")
+    ap.add_argument("--universe", default=None, help="default <root>/universe10.csv (an isin column is used "
+                                                     "for a --doc-types build, where the symbol may be a BSE code)")
+    ap.add_argument("--manifest", default=None,
+                    help="default <root>/manifest.csv (status='ok' rows are read; not used with --doc-types)")
     ap.add_argument("--only", default=None, help="comma list of queue positions (1-based), e.g. 1,3")
     ap.add_argument("--force", action="store_true", help="rebuild a company whose measurement JSON exists")
-    ap.add_argument("--out-csv", default=None, help="default <root>/pilot10_measure.csv")
-    ap.add_argument("--accept-copy", default="D:/RealityEngine/tg_build/pilot10_measure.csv",
-                    help="also write the measure CSV here for the ticket's accept command ('' to skip)")
+    ap.add_argument("--parts", default=None,
+                    help=f"comma list of recipe parts, in build order (default all: {', '.join(PARTS)})")
+    ap.add_argument("--doc-types", default=None,
+                    help="a doc-type build (deck now): the per-company manifest is written from "
+                         "deck_figures.deck_sources, docs_collect fetches only these types and the route CSV holds "
+                         "only their pages; stores are dNNN")
+    ap.add_argument("--out-csv", default=None,
+                    help="default <root>/pilot10_measure.csv (decks_measure.csv for a --doc-types build)")
+    ap.add_argument("--accept-copy", default=None,
+                    help="also write the measure CSV here; default D:/RealityEngine/tg_build/pilot10_measure.csv, "
+                         "and nothing for a --doc-types build ('' to skip)")
     ap.add_argument("--ram-gb", type=float, default=4.0, help="kill a step whose child tree passes this (GiB)")
     ap.add_argument("--max-part-minutes", type=float, default=40.0,
                     help="kill a step past this and stop the run (default 40)")
+    ap.add_argument("--min-free-gb", type=float, default=50.0,
+                    help="stop before a company when the root's drive has less free space (0 = no check)")
     args = ap.parse_args(argv)
     return run(args)
 

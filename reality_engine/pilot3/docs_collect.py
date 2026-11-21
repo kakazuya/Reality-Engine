@@ -3,6 +3,9 @@
 ``python -m reality_engine.pilot3.docs_collect --out D:\\RealityEngine\\pilot3\\pages.db
 [--symbols KEC,BAJFINANCE,HINDALCO]``
 
+``--doc-types deck`` collects only the requested types: a deck build fetches no transcript, results or annual
+report at all (a ``concall_audio_link`` PDF is downloaded only when transcripts are asked for).
+
 1. Finds every held PDF of the companies: folders named by NSE symbol or BSE code anywhere under the
    raw store (``pilot60_history/<SYM>``, ``annual_report/<SYM>``, ``decks/bse/<code>``,
    ``nse_announcements/*/attachments/<SYM>``, ...), the same under the old ``reality_engine/data``
@@ -72,6 +75,23 @@ SUBCAT_TYPES = {"investor presentation": "deck", "earnings call transcript": "tr
 BUCKET_TYPES = {"annual_report": "annual_report", "investor_presentation": "deck", "concall_transcript": "transcript",
                 "quarterly_results": "results", "results_press_release": "press_release",
                 "material_filing": "announcement"}
+
+
+def candidate_rows(rows: list[dict], doc_types: set[str] | None) -> list[dict]:
+    """The manifest rows a collect opens: a bucket naming a requested document type.
+
+    ``concall_audio_link`` is kept only when transcripts are requested: its PDF must be downloaded to tell
+    whether it is a transcript, so a deck-only build never fetches it.  ``doc_types`` None keeps every row.
+    """
+    if doc_types is None:
+        return list(rows)
+    out = []
+    for row in rows:
+        bucket = str(row.get("bucket") or "").strip().lower()
+        kind = BUCKET_TYPES.get(bucket) or ("transcript" if bucket == "concall_audio_link" else None)
+        if kind in doc_types:
+            out.append(row)
+    return out
 # KEC files an order win as a Company Update / Press Release and only now and then under "Award of Order", so
 # the sub-category alone loses most of a year's order filings (T-049, 4 Nov 2026: 5 of FY26's 18 were typed
 # press_release with the generic title and no order question could find them).  The headline names the win.
@@ -625,11 +645,12 @@ def retype_agm(conn: sqlite3.Connection) -> int:
 
 
 def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print,
-            set_aside: set[str] | None = None) -> dict:
+            set_aside: set[str] | None = None, doc_types: set[str] | None = None) -> dict:
     """Run steps 1-3 for the symbols; returns counts per symbol.
 
     ``set_aside`` is the identity scan's set-aside sha256 values (``doc_identity.doc_key``): such a file is counted
-    and left out of pages.db, never deleted from the store."""
+    and left out of pages.db, never deleted from the store.  ``doc_types`` limits the collect to those types: a
+    file is fetched only when its folder or its record names one of them (``None`` collects every type)."""
     conn = connect_out(out)
     counts: dict[str, dict] = {}
     held_newsids: dict[str, set] = {}
@@ -641,6 +662,8 @@ def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print,
         isins = [h[0] for h in history] or list(company.isins)
         records = Records(cfg, company, isins, store)
         candidates = discover(cfg, company, records, store)
+        if doc_types is not None:
+            candidates = [candidate for candidate in candidates if candidate[2] in doc_types]
         stat = counts[symbol] = {"files": len(candidates), "docs": 0, "dupes": 0, "pages": 0,
                                  "needs_ocr": 0, "undated": 0, "errors": 0, "skipped": 0, "set_aside": 0,
                                  "redated": 0, "retyped": 0}
@@ -681,6 +704,8 @@ def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print,
                 known_at = (record or {}).get("known_at")
                 filing_date = (record or {}).get("filing_date")
                 doc_type = _refine_type(dir_type, record, records.sha_type(sha))
+                if doc_types is not None and doc_type not in doc_types:
+                    continue
                 old = conn.execute("SELECT pages FROM doc WHERE doc_key=? AND sha256=?", (key, sha)).fetchone()
                 if old is not None and conn.execute("SELECT COUNT(*) FROM doc_page WHERE doc_key=?", (key,)
                                                     ).fetchone()[0] >= (old[0] or 0):
@@ -696,6 +721,9 @@ def collect(cfg: Config, symbols: tuple[str, ...], out: Path, log=print,
                 # T-161/T-159: the document's own first pages correct the record's type and date.
                 doc_type, filing_date, known_at, notes = reconcile_doc(
                     doc_type, filing_date, known_at, pages, _printed_texts(conn, key))
+                if doc_types is not None and doc_type not in doc_types:
+                    conn.execute("DELETE FROM doc_page WHERE doc_key=?", (key,))
+                    continue
                 if notes.get("date_source"):            # the printed date is the page dates' date too
                     conn.execute("UPDATE doc_page SET known_at=? WHERE doc_key=?", (known_at, key))
                 stat["redated"] += 1 if notes.get("date_source") else 0
@@ -767,7 +795,7 @@ def _audio_link_is_transcript(path: Path) -> bool:
 
 
 def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path, log=print,
-                     store: raw_store.RawStore | None = None) -> dict:
+                     store: raw_store.RawStore | None = None, doc_types: set[str] | None = None) -> dict:
     """pages.db from a profile's raw manifest only: the ``status='ok'`` rows of the requested companies.
 
     No store lookup and no directory walk: the manifest names each filing, its local file, its dissemination
@@ -775,7 +803,8 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
     written (a document that cannot be dated cannot prove it was public).  A bucket with no document behind it
     (``skip``, and ``concall_audio_link`` unless its PDF has 3+ pages and reads as a transcript) and a row
     whose file is neither local nor on Drive do not become rows either.  A company is one ``prefetch``: every
-    file it needs is downloaded once and deleted after."""
+    file it needs is downloaded once and deleted after.  ``doc_types`` keeps only rows whose bucket names one of
+    those types, so a deck-only build never downloads anything else (``None`` collects every type)."""
     conn = connect_out(out)
     counts: dict[str, dict] = {}
     started = time.time()
@@ -789,9 +818,10 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
                                  "audio_link_transcripts": 0}
         seen: set[str] = set()
         mine = [r for r in rows if str(r.get("symbol_at_time") or "").strip().upper() == symbol]
-        with store.prefetch(_manifest_path(r, symbol, prof) for r in mine):
-            for row in sorted(mine, key=lambda r: str(r.get("dissem_ts") or "")):
-                stat["rows"] += 1
+        candidates = candidate_rows(mine, doc_types)
+        stat["rows"] = len(mine)
+        with store.prefetch(_manifest_path(r, symbol, prof) for r in candidates):
+            for row in sorted(candidates, key=lambda r: str(r.get("dissem_ts") or "")):
                 bucket = str(row.get("bucket") or "").strip().lower()
                 doc_type = BUCKET_TYPES.get(bucket)
                 from_audio_link = False
@@ -826,6 +856,9 @@ def collect_manifest(prof: profile.Profile, symbols: tuple[str, ...], out: Path,
                 # T-161/T-159: the document's own first pages correct the record's type and date.
                 doc_type, filing_date, known_at, notes = reconcile_doc(
                     doc_type, _date_of(known_at), known_at, pages, _printed_texts(conn, key))
+                if doc_types is not None and doc_type not in doc_types:
+                    conn.execute("DELETE FROM doc_page WHERE doc_key=?", (key,))
+                    continue
                 if notes.get("date_source"):            # the printed date is the page dates' date too
                     conn.execute("UPDATE doc_page SET known_at=? WHERE doc_key=?", (known_at, key))
                 stat["redated"] += 1 if notes.get("date_source") else 0
@@ -973,9 +1006,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--measure", action="store_true",
                         help="read-only (T-161/T-159): per stored pages.db, the docs the printed-page rules would "
                              "re-date and re-type, with the list; writes nothing")
+    parser.add_argument("--doc-types", default=None,
+                        help="comma list of document types to collect (e.g. deck): a file of another type is never "
+                             "fetched (default: every type)")
     parser.add_argument("--stores", default=None,
                         help="with --measure: comma-separated pages.db paths (default p20/u8/q12/pilot10)")
     args = parser.parse_args(argv)
+    doc_types = ({t.strip().lower() for t in args.doc_types.split(",") if t.strip()}
+                 if args.doc_types else None)
     if args.measure:
         measure(tuple(p.strip() for p in (args.stores or ",".join(MEASURE_STORES)).split(",") if p.strip()))
         return 0
@@ -988,7 +1026,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"STOPPED unknown symbols {unknown}: profile {prof.name} has {list(prof.symbols)}", file=sys.stderr)
             return 2
         out = args.out or prof.pages_db
-        counts = collect_manifest(prof, symbols, out)
+        counts = collect_manifest(prof, symbols, out, doc_types=doc_types)
         for symbol in symbols:
             s = counts[symbol]
             print(f"{symbol}: {s['docs']} docs, {s['pages']} pages ({s['undated']} undated, {s['missing']} files not held, "
@@ -1001,7 +1039,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"STOPPED unknown symbols {unknown}: choose from {list(known)}", file=sys.stderr)
         return 2
     cfg = Config(data_root=args.data_root or default_data_root())
-    counts = collect(cfg, symbols, args.out or DEFAULT_OUT)
+    counts = collect(cfg, symbols, args.out or DEFAULT_OUT, doc_types=doc_types)
     summary = coverage(cfg, symbols, args.out or DEFAULT_OUT,
                        args.coverage or (args.out or DEFAULT_OUT).parent / "DOC_COVERAGE.xlsx")
     for symbol in symbols:

@@ -39,3 +39,4 @@
 
 ## T-233 fast fix loop (21 Nov)
 - Golden sets 181/146/69 lines from all seven Wolf reads (89.7% keyed back), `scripts/regress.py` gate + baseline diff, common `--only` selector hooks in observations/filing_events/driver_claims repair. 17 new tests + 222 pipeline tests pass, typecheck 0. One real catch on the live observations DB: RSYSTEMS EBITDA stored `ebitda.delta` (read B #35).
+- T-232 (worker): --parts/--doc-types on tg_measure_build, deck manifest from deck_sources, docs_collect doc-type filter, --raw-root for deck builds, measure_store guard; 9 tests pass; pilot 10 building under .tmp/t232/pilot (D: root needs the controller: sandbox denies D: writes).
