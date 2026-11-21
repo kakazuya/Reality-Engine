@@ -1928,9 +1928,11 @@ Writer: `reality_engine/v2/observations.py` (DDL is its `SCHEMA` constant; tests
   `entity_scope` (`company` / `subsidiary` / `industry` / `country` / `customer` / `peer` / empty), `status`
   (`verified` / `unverified` / `quarantined`), `status_reason`, `reader`, `read_at`.
 - `measure_dict` -- `id`, `name`, `unit_family`, `driver_node` (the T-228 driver tree: `revenue.volume`,
-  `revenue.price`, `capacity.add`, `capacity.total`, `order.intake`, `revenue_from_operations`, `ebitda`, `pat`,
-  ...). Seeded with 69 measures; a new axis name is
-  kept in `observation.measure` and marked unverified until a dictionary row is approved.
+  `revenue.price`, `revenue.total`, `revenue.order_book`, `revenue.mix`, `cost.raw_material`, `cost.employee`,
+  `cost.power_fuel`, `cost.other`, `margin.ebitda`, `margin.gross`, `capex.amount`, `capacity.add`, `debt.level`,
+  `debt.cost`, `equity.shares`, `equity.dividend`, `working_capital.days`, or `none: <reason>` for a line with no
+  driver node). Seeded with 69 measures at stage A, 259 after stage G; a new axis name is kept in
+  `observation.measure` and marked unverified until a dictionary row is approved.
 - `dim_vocab` -- `kind`, `canonical`, `aliases`; seeded stage, geography and product aliases. A printed dimension is
   replaced by the canonical token only on an exact alias match (`Domestic` -> `India`); an unknown value stays
   verbatim, never guessed.
@@ -2047,7 +2049,7 @@ potential (292+30+33+45 = 400). Stage B adds/changes:
   when the components add up, collapsing the 85 box against its 85.3 parts.
 - `printed_axis` is checked verbatim like the label (rule 3).
 - The measure dictionary grew to 112 measures (standard P&L, balance-sheet, cash-flow, tax, ratio and ESG lines) plus
-  the 72-entry `SCRIPT_LABELS` table; labels still unmapped get one hy4 proposal each, stored with its reason and never
+  the then 72-entry `SCRIPT_LABELS` table (129 after stage G); labels still unmapped get one hy4 proposal each, stored with its reason and never
   applied.
 - The reader retries 429/5xx with exponential backoff and logs every 429 with its IST time to `http_429`; it honours
   the `Retry-After` header. A `Retry-After` over 300 s is the shared Go key's quota window, not a burst: the reader
@@ -2086,7 +2088,8 @@ classes with script rules only (no new model trust):
   verifies as stock); `adjusted=1` on a hypothetical/adjusted phrase ("would have been", "but for", "pro forma",
   "excluding one-offs", "adjusted") and such a row never verifies as the reported measure; a spindle count on a capex
   chart is `capacity.spindles`; `measure_alias` canonicalises near-duplicate ids (`order_book_growth_yoy` ->
-  `order.book_growth_yoy`) before the dictionary check. The dictionary now holds 120 measure ids and 18 aliases.
+  `order.book_growth_yoy`) before the dictionary check. At stage C the dictionary held 120 measure ids and 18 aliases (259 ids and 108
+  aliases after stage G).
 - **C4 stage.** `stage` is set from a printed stage phrase in `group_path`; a legend/colour group still makes the row
   unverified, so a stage read off a coloured box never verifies.
 - **C5 axis prompt.** The reader is asked for ONE printed axis line (no "Particulars (INR Mn) | FY22" joins); the
@@ -2231,6 +2234,69 @@ order / volume / production / mix, plant-outlet-customer counts, revenue with a 
 and no failed reply were logged; the quarantine gate held. The remaining 20,225 pages are resumable with the same
 command. Report `.tmp/t230ar/report_f.md` (30 random core-operating rows with their page excerpts, seed 51).
 
+
+
+
+### Stage G (dictionary expansion, applied 21 Nov 2026 after Wolf's review)
+
+Shivam: grow the KPI dictionary before more decks are read. Stage G mined `obs_91.db` and `deck_figures.facts`,
+wrote the proposal (`.tmp/t230g/dictionary_proposal.csv`), Wolf reviewed it with corrections, and it is now in
+`observations.py`; stage H keeps away from the dictionary tables.
+
+- Applied: **259 measures (128 + 131)**, **108 aliases (18 + 90)** and **129 label maps (72 + 57)**. Every measure
+  now carries a T-228 driver-tree node or `none: <reason>` -- the 131 new rows and the pre-existing 128, whose
+  `balance.assets`/`profit.pat`-style nodes were not the tree. Node counts over the 259: cost.other 25,
+  capacity.add 17, margin.ebitda 16, revenue.total 14, revenue.volume 13, debt.level 11, working_capital.days 11,
+  capex.amount 9, revenue.order_book 7, equity.shares 5, cost.raw_material 5, revenue.price 4, debt.cost 4,
+  cost.employee 4, margin.gross 3, revenue.mix 2, cost.power_fuel 1, equity.dividend 0 (no dividend measure yet),
+  `none:` 108. The `none:` reasons: 40 balance-sheet lines, 8 cash-flow lines, 7 accounting results, 7
+  non-financial metrics, 5 market-level metrics, 4 below-EBITDA profit lines, 4 tax lines, 4 balance-sheet totals,
+  3 lending flows, 3 accounting totals, 3 return ratios, 2 geographic footprint, 2 asset stocks, 2 efficiency
+  ratios, and one each for geography, loan ticket size, collection ratio, regulatory capital, regulatory filing,
+  regulatory approvals, regulatory registrations, cash collection, unsold inventory, accounting line, share of
+  associates, tax liability, working-capital stock, PAT margin.
+- Units: **two families added** -- `energy` (MU/MWh/GWh/kWh; `generation.volume` is energy, not count) and `bps`
+  (`ebitda_margin_change_bps`, `pat_margin_change_bps`, not percent). `percent` still accepts a printed bps unit
+  (`CONVERT_FAMILY`) so stage-C rows stored with `unit_family='percent'` do not regress, while a `bps` measure
+  does not accept `%`; `energy` requires a printed unit. The `*_days` ids are `time` (the family a printed `days`
+  resolves to), checked: working_capital_days, inventory_days, debtor_days, payable_days, cash_conversion_cycle.
+- Split-by-family routing (Wolf's correction): `gnpa`/`nnpa` are `gnpa_pct`/`nnpa_pct` (percent) beside
+  `gnpa.value`/`nnpa.value` (money); a mixed-family id is never aliased wholesale. `gross_npa` aliases to
+  gnpa.value and the label maps "gnpa"/"gross npa"/"gross npas at the end of period/year" route its percent rows
+  to gnpa_pct through the unit guard (same for nnpa and "net npa"). `net_debt_equity_ratio`, `debt_to_equity_ratio`
+  and `carpet_area` have no alias: their labels map only when the unit fits, so the money rows stay unmapped
+  ("not this measure"), never merged into a ratio.
+- The label-map unit guard (`_label_unit_fits` in `canonical_measure`) applies a label map only when the printed
+  unit's family fits the mapped measure; without it 63 verified percent rows labelled
+  "Net Profit"/"Sales Revenue" would be downgraded. `is_stock_measure` now covers `outlets|branches|atms|stores`
+  and both GNPA/NNPA ids (D5 deck period).
+- Coverage: rows whose measure names a dictionary id rise 83,487/102,398 (81.53%) -> 93,266 (91.08%). The 429
+  verified rows that changed measure (0.68% of 63,121, under the 5% stop line) are all alias/label reasons, checked
+  row by row with 0 unexplained: 271 Polyplex "Crude Oil - $/Barrel" (revenue.price -> crude_oil_price), ~126
+  deferred-tax-asset rows (deferred_tax/current_tax_assets_net -> deferred_tax_assets_net), 62 "Cost of revenues",
+  1 "Operating Revenue".
+- **Recheck** (`--recheck` into `.tmp/t230g/obs_91_g.db`, 122 stores holding the pages, no model call): **7,203
+  upgrades, 0 downgrades, 0 unproven upgrades**; verified **63,121 -> 70,324 (61.6% -> 68.7%)**, unverified 37,048
+  -> 29,845, quarantined 2,229 unchanged; 111 of the 131 new measures carry stored rows (7,364 verified on them);
+  4,786 rows had a measure mapped; 143 kept their stage-E status on a hard reason (parts-sum / scale).
+- **Regress gate** (`regress observations --db .tmp/t230g/obs_91_g.db --baseline obs_91.db`): 117 still right,
+  14 fixed, 41 still wrong, 8 changed (all intended: spindles, disbursement, outlet-count and GNPA ids) and **1
+  newly broken -- the known RSYSTEMS `ebitda.delta` row 118618, identical in the baseline, which stage H fixes**,
+  so the gate passes under its exception.
+- Evidence, unchanged: 102,398 observations on 4,453 pages (63,121 verified, 37,048 unverified, 2,229
+  quarantined), 2,870 distinct measure ids, 10,637 normalised labels; `deck_figures.facts` 13,569,583 facts /
+  1,578,040 distinct free-text metric strings; `measure_proposal` unusable (300 of 600 rows OSError, 279 with no
+  measure, 21 named); the sector field is "General Diversified" for 52 of 61 observed symbols and blank for 9, so
+  the proposal's `sector_set` is the measure's own sector meaning.
+- Not mapped on purpose (kept unverified): page/slide/section/letter references, tenure/years-of-experience, ESG
+  scores and reduction percentages, rankings/awards, shareholding percentages, real-estate unit counts printed
+  under a "Sub-total" label, packaging PCR wording, tariff rates.
+- `norm_label` fix applied with this change: the list-mark regex now requires a bracketed or space-terminated mark,
+  so the 15 previously dead `SCRIPT_LABELS` entries (cost of goods sold, inventories, cash generated from
+  operations, diluted eps, lease/direct-tax/deferred-tax lines, ...) fire and a bare leading letter is kept.
+- Tests: 83 in `test_observations.py`, 9 of them stage G (a node for every measure, aliases and label maps resolve
+  to a dictionary id, the family-split aliases, the label-map unit guard, `norm_label` list marks, energy/bps
+  families, outlets/atms/stores deck period, an energy row's unit gate, and the seeded dictionary/aliases).
 
 
 

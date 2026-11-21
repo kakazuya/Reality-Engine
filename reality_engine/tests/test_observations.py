@@ -910,3 +910,111 @@ def test_seed_stores_follows_the_doc_type():
         assert [Path(p).parent.name for p in picked] == ["b"]
     finally:
         shutil.rmtree(SEED_ROOT, ignore_errors=True)
+
+
+# ---------------------------------------------------------------- T-230 stage G dictionary expansion
+T248_TREE = frozenset({
+    "revenue.volume", "revenue.price", "revenue.total", "revenue.order_book", "revenue.mix",
+    "cost.raw_material", "cost.employee", "cost.power_fuel", "cost.other",
+    "margin.ebitda", "margin.gross", "capex.amount", "capacity.add",
+    "debt.level", "debt.cost", "equity.shares", "equity.dividend", "working_capital.days",
+})
+
+
+def test_every_measure_has_a_driver_node_or_a_stated_none():
+    assert len(obs.MEASURES) == 259
+    assert len({m[0] for m in obs.MEASURES}) == len(obs.MEASURES)
+    for mid, _name, _family, node in obs.MEASURES:
+        assert node in T248_TREE or node.startswith("none: "), f"{mid}: {node!r}"
+
+
+def test_stage_g_aliases_and_label_maps_point_at_a_dictionary_id():
+    families = {m[0]: m[2] for m in obs.MEASURES}
+    for alias, target in obs.MEASURE_ALIASES.items():
+        assert alias not in families, f"{alias} is both an alias and a dictionary id"
+        assert target in families, f"{alias} -> {target} is not a dictionary id"
+    for label, mid in obs.SCRIPT_LABELS.items():
+        assert mid in families, f"{label} -> {mid} is not a dictionary id"
+
+
+def test_stage_g_aliases_split_by_printed_unit_family():
+    assert obs.canonical_measure("return_on_equity", "", "", "", "%", "") == "roe"
+    assert obs.canonical_measure("count.banking_outlets", "", "", "", "", "") == "count.outlets"
+    assert obs.canonical_measure("gnpa_percent", "", "", "", "%", "") == "gnpa_pct"
+    assert obs.canonical_measure("gnpa", "GNPA", "", "", "%", "") == "gnpa_pct"
+    assert obs.canonical_measure("gnpa", "GNPA", "", "", "₹ Cr", "") == "gnpa.value"
+    assert obs.canonical_measure("gross_npa", "Gross NPAs at the end of period/year", "", "", "%", "") == \
+        "gnpa_pct"
+    assert obs.canonical_measure("gross_npa", "Gross NPAs at the end of period/year", "", "", "INR Cr", "") == \
+        "gnpa.value"
+    # a mixed-family id is not aliased wholesale: its money rows stay on the model's measure
+    assert obs.canonical_measure("net_debt_equity_ratio", "Net Debt Equity ratio", "", "", "INR crores", "") == \
+        "net_debt_equity_ratio"
+    assert obs.canonical_measure("net_debt_equity_ratio", "Net Debt Equity ratio", "", "", "", "") == \
+        "net_debt_equity"
+
+
+def test_a_label_map_applies_only_when_the_unit_family_fits():
+    assert obs.canonical_measure("mix.share", "Employee Cost", "", "", "%", "") == "mix.share"
+    assert obs.canonical_measure("mix.share", "Employee Cost", "", "", "Rs Crs", "") == "employee_benefits_expense"
+    assert obs.canonical_measure("tax_growth_yoy", "Tax", "", "", "%", "") == "tax_growth_yoy"
+    assert obs.canonical_measure("whatever", "Tax", "", "", "Rs Crs", "") == "total_tax_expense"
+
+
+def test_norm_label_keeps_a_leading_roman_letter_and_still_drops_list_marks():
+    assert obs.norm_label("Investments") == "investments"
+    assert obs.norm_label("Depreciation") == "depreciation"
+    assert obs.norm_label("Cost of goods sold") == "cost of goods sold"
+    assert obs.norm_label("i) Revenue") == "revenue"
+    assert obs.norm_label("(ii) Investments") == "investments"
+    assert obs.norm_label("3. Revenue") == "revenue"
+    assert obs.script_measure("Depreciation") == "depreciation_and_amortisation_expense"
+
+
+def test_unit_families_energy_and_bps():
+    assert obs.infer_unit_family("MU") == "energy"
+    assert obs.infer_unit_family("MWh") == "energy"
+    assert obs.infer_unit_family("GWh") == "energy"
+    assert obs.infer_unit_family("bps") == "bps"
+    assert obs.family_ok("percent", "bps")            # stage-C rows stored a bps unit under percent
+    assert not obs.family_ok("bps", "percent")
+    families = {m[0]: m[2] for m in obs.MEASURES}
+    assert families["generation.volume"] == "energy"
+    assert families["ebitda_margin_change_bps"] == "bps"
+    assert families["pat_margin_change_bps"] == "bps"
+    for mid in ("working_capital_days", "inventory_days", "debtor_days", "payable_days", "cash_conversion_cycle"):
+        assert families[mid] == "time"
+
+
+def test_outlets_atms_and_stores_take_the_deck_period():
+    for mid in ("count.outlets", "count.atms", "count.stores", "count.branches", "gnpa_pct", "gnpa.value"):
+        assert obs.is_stock_measure(mid), mid
+    assert not obs.is_stock_measure("capacity.utilisation")
+    assert not obs.is_stock_measure("count.countries")
+
+
+def test_an_energy_row_verifies_only_with_its_printed_unit():
+    measures = obs.measure_index()
+    page = obs.norm_space("Generation 1200 MU FY24")
+    row = {"measure": "generation.volume", "printed_label": "Generation", "value_text": "1200", "unit": "MU",
+           "unit_family": "energy", "period": "FY24", "entity_scope": "company", "scale": 1}
+    status, reasons = obs.evaluate_status(dict(row), page, measures)
+    assert status == "verified", reasons
+    row["unit"] = ""
+    row["unit_family"] = ""
+    status, reasons = obs.evaluate_status(dict(row), page, measures)
+    assert status == "unverified" and "no_unit" in "; ".join(reasons)
+
+
+def test_create_db_seeds_the_stage_g_dictionary_aliases_and_nodes():
+    con = obs.create_db(":memory:")
+    try:
+        assert con.execute("SELECT COUNT(*) FROM measure_dict").fetchone()[0] == len(obs.MEASURES)
+        assert con.execute("SELECT COUNT(*) FROM measure_alias").fetchone()[0] == len(obs.MEASURE_ALIASES)
+        assert con.execute("SELECT driver_node FROM measure_dict WHERE id='nim'").fetchone()[0] == "revenue.price"
+        assert con.execute("SELECT unit_family FROM measure_dict WHERE id='generation.volume'").fetchone()[0] == \
+            "energy"
+        assert con.execute("SELECT canonical FROM measure_alias WHERE alias='count.banking_outlets'").fetchone()[0] \
+            == "count.outlets"
+    finally:
+        con.close()
