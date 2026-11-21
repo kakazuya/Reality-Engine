@@ -2084,7 +2084,8 @@ classes with script rules only (no new model trust):
   verifies as stock); `adjusted=1` on a hypothetical/adjusted phrase ("would have been", "but for", "pro forma",
   "excluding one-offs", "adjusted") and such a row never verifies as the reported measure; a spindle count on a capex
   chart is `capacity.spindles`; `measure_alias` canonicalises near-duplicate ids (`order_book_growth_yoy` ->
-  `order.book_growth_yoy`) before the dictionary check. The dictionary now holds 120 measure ids and 18 aliases.
+  `order.book_growth_yoy`) before the dictionary check. At stage C the dictionary held 120 measure ids and 18
+  aliases (128 ids and the same 18 aliases after stages D-E).
 - **C4 stage.** `stage` is set from a printed stage phrase in `group_path`; a legend/colour group still makes the row
   unverified, so a stage read off a coloured box never verifies.
 - **C5 axis prompt.** The reader is asked for ONE printed axis line (no "Particulars (INR Mn) | FY22" joins); the
@@ -2174,6 +2175,60 @@ Wolf's seed-131 read: 42 right, 6 minor, 2 wrong of 50 verified (4%); the deck-p
 
 Recheck into `.tmp/t230/obs_91_e.db`: 56 upgrades, 1,150 downgrades. Final: 102,398 rows / 4,453 pages --
 **63,121 verified (61.6%), 37,048 unverified, 2,229 quarantined**. Report `.tmp/t230/report_e.md`; tests 68.
+
+### Stage G (dictionary expansion proposal, 21 Nov 2026, awaiting Wolf)
+
+Shivam: grow the KPI dictionary before more decks are read, so more printed figures get the right label. Stage G
+mines the stored observations and the old flat deck store and proposes the expansion; **it is not applied yet**
+(Wolf reviews `.tmp/t230g/dictionary_proposal.csv` first, and stage F edits `observations.py` in another worktree).
+
+- Evidence: `D:/RealityEngine/t230/obs_91.db` (the stage-E state: 102,398 observations on 4,453 pages, 2,870
+  distinct measure ids, 10,637 normalised printed labels) and `deck_figures.db` `facts` (13,569,583 facts,
+  1,578,040 distinct free-text metric strings). `measure_proposal` is not usable as evidence: 579 of its 600 rows
+  carry `OSError: [Errno 22] Invalid argument` (the proposal call never ran) and 21 name a measure.
+- **Sector drift.** The brief's sector source does not exist: `build_list_800_20000cr.csv` gives sector
+  "General Diversified" for 52 of the 61 observed symbols and blank for 9, `equity_intelligence.master_companies`
+  repeats it, and the 91 stores' `company` table holds symbol/isin/name only. `sector_set` in the proposal is the
+  measure's own sector meaning; the evidence is cited per observed measure id, printed label and symbol count.
+- **Label-normalisation bug (found here; the fix goes with the change).** `_SCRIPT_LABEL_MARK` strips the first
+  letter of a label starting i/v/x/l/c/d/m (`norm_label("Depreciation") == "epreciation"`), so **15 of the 72**
+  `SCRIPT_LABELS` entries can never fire: cost of goods sold, cost of services, depreciation and
+  amortisation/amortization expense, diluted eps, long-term borrowings, inventories, cash and cash equivalents,
+  cash & cash equivalents, cash generated from operations, changes in working capital, direct taxes paid, less:
+  direct taxes paid, deferred tax liabilities (net), current tax liabilities (net). Fix:
+  `^\s*(?:\([ivxlcdm]+\)|\([a-zA-Z]\)|[ivxlcdm]+\)|[a-zA-Z]\)|\d+[.)])\s+` -- a mark must be bracketed or
+  followed by a space, so a bare leading letter is kept.
+- **Proposal** (`.tmp/t230g/dictionary_proposal.csv`, one row per measure: id, name, unit family, stock/flow,
+  driver node, sector set, observed ids with counts, rows, rows the dictionary alone blocks, labels, note; and
+  `.tmp/t230g/label_map_proposal.csv`, one row per label: rows, deck facts, current measures, unit families):
+  **+131 measures (128 -> 259)**, 88 measure aliases and 44 label maps (45 label-map rows; "cost of goods sold"
+  was already listed and could never fire -- see the bug above). Row resolution rises from 83,487/102,398
+  (81.53%) to 93,104 (90.92%): labels covering 90% of the stored occurrences then name a dictionary measure. Every
+  sector set the brief names is present (banking gnpa/nnpa/pcr/casa/nim/cost_of_funds/credit_cost/crar/outlets/atms;
+  EPC order.bid_pipeline/order.executed; manufacturing capacity.under_construction/ebitda_per_tonne/value addition;
+  pharma anda/launches/rnd; retail stores/area/same-store/distributors; IT deal.tcv/count.employees/attrition;
+  power plf/generation; real estate pre-sales/collections/area). A label map applies only when the printed unit's
+  family fits the target measure (guard added with the change); without it 63 verified percent rows labelled
+  "Net Profit"/"Sales Revenue" would be downgraded.
+- **Stop-gate checks.** Aliases whose rows print another unit family are withheld, not merged: `gross_npa` (35
+  rows, 29% percent), `net_debt_equity_ratio` (95 rows, 19% money), `debt_to_equity_ratio` (10 rows, 40% percent),
+  `carpet_area` (18 rows, 33% money/capacity); four more carry 1-4 stray rows and are included with that noted.
+  **448 of 63,121 verified rows (0.71%) change measure -- under the 5% stop line** -- all by alias or label reason
+  (271 Polyplex "Crude Oil - $/Barrel" from revenue.price to the new crude_oil_price, 94 deferred-tax-asset rows
+  from deferred_tax to the balance measure, 62 "Cost of revenues", the rest small).
+- Not mapped on purpose (kept unverified): page/slide/section/letter references, tenure/years-of-experience, ESG
+  scores and reduction percentages, rankings/awards, shareholding percentages, real-estate unit counts printed
+  under a "Sub-total" label, packaging PCR wording, tariff rates. No driver node and no business quantity.
+- **Projected recheck** (in-memory dictionary/aliases/label maps, `observations.py` untouched): a copy of obs_91
+  rechecked by `recheck_projection.py` into `.tmp/t230g/obs_91_g_projected.db` in 556 s with **7,049 upgrades, 0
+  downgrades, 0 unproven upgrades** -- verified **63,121 -> 70,170 (61.6% -> 68.5%)**, unverified 37,048 ->
+  29,999; 110 of the 131 measures carry stored rows (verified on them 0 -> 7,256). Stats
+  `.tmp/t230g/recheck_projection.json`, before/after per measure `.tmp/t230g/verified_by_measure.csv`, report
+  `.tmp/t230g/report_g.md`. On Wolf's go the tables go into `observations.py` and the same pass runs as
+  `--recheck` into `.tmp/t230g/obs_91_g.db`. The 2,568 newly resolved rows that stay unverified are the C2/D5
+  gates (count rows with no printed unit, area rows with no period), not the dictionary.
+- Tests on apply: alias resolution, a label map with the unit guard, `norm_label` list marks, one dictionary row
+  per proposed id, and no verified row changing measure without an alias reason.
 
 
 
