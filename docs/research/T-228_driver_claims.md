@@ -669,3 +669,17 @@ unchanged: wrong node (4889, 10484), condition/sign/range (3924, 5934, 9428), a 
 stale `known_at` (12413), a maturity year read as a period (12015), and a USD amount with no FX table
 (2223). Two residuals of the rule itself: a model period label that disagrees with the fact ("next financial
 year" at 2026-08 is FY28, so WEBELSOLAR 5207 stays apart from 5117), and a level stored as an add (5117).
+
+### 13.x Wolf's independent reads of the 91-store claims (21 Nov 2026) - NOT factor-grade
+
+- Before repair (`claims_91_s2.db`, seed 149): 50 verified = 14 right / 14 minor / 22 wrong.
+- After repair (`claims_91_s2c.db`, seed 211): 50 verified = 17 right / 15 minor / 18 wrong; capex/order sample
+  (seed 212) 20 = 3 / 10 / 7. Detail `D:/RealityEngine/t228/wolf_read_91_s2c.md`.
+- Remaining systematic defects: verified twins whose unit/segment/period spelling differs (10251/10252 "Chaff's" vs
+  "Chaffs and Flares"); parent-company claims filed under a subsidiary store (NAVKARCORP holds JSW Infrastructure
+  calls/decks: 14715 Keni Port 4,119 cr as NAVKARCORP capex); named-person pay as cost.employee (9620); `revises`
+  links unrelated orders (164 of 251 verified inflow rows); `dup_of` on verified rows points at ids deleted by the
+  stage-2b dedupe; `value_inr_cr` empty; period_norm slips (4036 "FY02").
+- Use: these claims are NOT input to any factor study. The pipeline code is kept; the next design restricts factor
+  inputs to filing-level events (one event per announcement: order win, capex approval, fund raise) with the
+  store's parent label honoured.
