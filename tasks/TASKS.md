@@ -17,6 +17,7 @@ One row per line, kept in its section.
 - T-206 | OPEN | P2 | Gate for ruling: Journal (13 Nov): add a tasks/JOURNAL.md entry (work, what worked, what failed and why, fixes) at 400k context and at wr | accept: Shivam: standing_rules.xlsx shows a code gate for it | from: ruling intake | opened 2026-11-13
 - T-216 | OPEN Wolf | P2 | agy-worker runner: retry a run once on a transport/DNS error by resuming the same conversation; log the retry | accept: python -m pytest plugins/agy-worker/tests/test_agy_core.py -q | from: Wolf 15 Nov (T-210) | opened 2026-11-15
 - T-224 | OPEN Eagle | P1 | Model router: read OpenCode Go account-1 usage % (rolling 24 h) and send coding to agy Hydrogen high when DeepSeek is in peak hours or usage >10%; dsh start_worker reports the route | accept: Shivam: router reads the Go usage % with no manual step | from: Shivam 17 Nov | opened 2026-11-17
+- T-233 | OPEN Wolf | P1 | Fast fix loop: golden regression sets from every hand read + selector-scoped re-runs for observations, filing events and claims | accept: Shivam | from: Shivam 21 Nov | opened 2026-11-21
 
 ## Data
 
