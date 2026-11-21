@@ -25,6 +25,7 @@ Outputs under ``--out``: ``stage_c.md``, ``coverage_c.csv``, ``ic_c.csv``, ``pla
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import sqlite3
 from pathlib import Path
@@ -92,6 +93,25 @@ CLAIM_CRORE = {
     "inr_bn": 100.0,
     "inr_billion": 100.0,
 }
+# Filing / press-release boilerplate that carries no order identity; a shared token outside this
+# set is the "same customer / description" signal that collapses a re-announced order.
+ORDER_STOPWORDS = set("""
+a about above additional after again against agreed agreement all also an and announcement
+annexure any are as at attached available basis be been being below between both brief broad
+bse by can code company completion conditions consideration contract contracts corporate could
+crore crores cr date dear details disclosure do does doing done down during each enclosed entity
+exchange excluding find floor for form from further given gst has have hereby id if in including
+india indian inform information inr intimation into is issued it its just letter limited listing
+ltd m/s madam maharashtra make made may might month months more most must name nature no nor not
+obligations of office off on once only or order orders other our out over page per period phase
+please plot pursuant received ref regulation regulations requirements rs same scope sebi shall
+should significant sir size so some station sub subject such symbol tel terms testing than that
+the their them then there these they this those timeframe to too total under until up upon us
+value valued very was we website were what when where which while who will with within work
+worth would year years your
+""".split())
+ORDER_REPEAT_DAYS = 30
+ORDER_VALUE_TOLERANCE = 0.01
 LABEL = "91 companies picked in Nov 2026"
 
 
@@ -128,7 +148,8 @@ def load_claims(path: Path, sessions: pd.DatetimeIndex) -> tuple[pd.DataFrame, d
         optional = [name for name in ("source_kind", "source_table", "speaker_scope", "dup_of")
                     if name in columns]
         select = ", ".join(["id", "symbol", "known_at", "node", "sign", "value_low", "value_high",
-                            "unit", *optional])
+                            "unit", "segment", "effective_period", "statement", "quote_span",
+                            "context", *optional])
         raw = pd.read_sql_query(f"SELECT {select} FROM claim WHERE status = 'verified'", con)
         frame = cast(pd.DataFrame, raw)
         stats["verified"] = len(frame)
@@ -239,6 +260,59 @@ def _sum_crore(rows: pd.DataFrame, skipped: set[int]) -> tuple[float, int]:
     return float(np.nansum(crore.to_numpy(dtype=float)[~bad])), int(bad.sum())
 
 
+def _period_key(value: Any) -> str:
+    """Normalise a printed execution period so FY26 / FY '26 / fy26 are one key."""
+    return re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
+
+
+def _latest_per_key(rows: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
+    """Latest verified claim per key (a restated plan replaces its earlier value)."""
+    return rows.sort_values(["avail", "known_at"]).drop_duplicates(keys, keep="last")
+
+
+def _description_tokens(*texts: Any) -> set[str]:
+    tokens: set[str] = set()
+    for text in texts:
+        tokens.update(re.findall(r"[a-z][a-z0-9]+", str(text or "").lower()))
+    return {token for token in tokens if token not in ORDER_STOPWORDS}
+
+
+def _order_inflow(rows: pd.DataFrame, skipped: set[int]) -> float:
+    """Sum distinct order wins; the same order announced twice counts once.
+
+    Two rows are the same announcement when their availability sessions are within 30 days, their
+    values are within 1% and the customer/description texts share at least two non-boilerplate
+    tokens.  A shared filing boilerplate therefore cannot collapse two different orders.
+    """
+    if rows.empty:
+        return float("nan")
+    rows = rows.drop_duplicates(["row_id"]).sort_values(
+        ["avail", "known_at"]).reset_index(drop=True)
+    mid = _midpoint(pd.Series(np.asarray(rows["value_low"], dtype=object)),
+                    pd.Series(np.asarray(rows["value_high"], dtype=object)))
+    crore = _claim_crore(mid, pd.Series(np.asarray(rows["unit"], dtype=object))).to_numpy(
+        dtype=float)
+    bad = np.isnan(crore)
+    skipped.update(int(value) for value in np.asarray(rows["row_id"])[bad])
+    kept: list[tuple[pd.Timestamp, float, set[str]]] = []
+    total = 0.0
+    for position in np.flatnonzero(~bad):
+        claim = rows.iloc[int(position)]
+        value = float(crore[position])
+        tokens = _description_tokens(claim.get("statement"), claim.get("quote_span"),
+                                     claim.get("context"))
+        repeated = any(
+            abs((claim["avail"] - day).days) <= ORDER_REPEAT_DAYS
+            and abs(value - earlier) <= ORDER_VALUE_TOLERANCE * max(abs(value), abs(earlier))
+            and len(tokens & earlier_tokens) >= 2
+            for day, earlier, earlier_tokens in kept
+        )
+        if not repeated:
+            kept.append((claim["avail"], value, tokens))
+            total += value
+    return total if kept else float("nan")
+
+
 def claim_factors(panel: pd.DataFrame, claims: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
     """One row per (store, month-end) with the five claim factors, point in time."""
     empty = pd.DataFrame(columns=["store", "date", *CLAIM_FACTORS])
@@ -275,13 +349,17 @@ def claim_factors(panel: pd.DataFrame, claims: pd.DataFrame) -> tuple[pd.DataFra
 
             wins = window[(window["node"] == "revenue.order_book") & _announcement_mask(window)]
             if not wins.empty:
-                inflow, _ = _sum_crore(wins, skipped)
-                if pd.notna(ttm_rev) and ttm_rev > 0:
+                inflow = _order_inflow(wins, skipped)
+                if pd.notna(inflow) and pd.notna(ttm_rev) and ttm_rev > 0:
                     row["claim_order_inflow_12m"] = inflow * 1e7 / ttm_rev
 
-            capex = window[window["node"] == "capex.amount"]
+            capex = window[window["node"] == "capex.amount"].copy()
             if not capex.empty:
-                amount, _ = _sum_crore(capex, skipped)
+                capex["_segment_key"] = (capex["segment"].fillna("").astype(str).str.strip()
+                                         .str.lower())
+                capex["_period_key"] = capex["effective_period"].map(_period_key)
+                latest = _latest_per_key(capex, ["_segment_key", "_period_key"])
+                amount, _ = _sum_crore(latest, skipped)
                 if pd.notna(mcap) and mcap > 0:
                     row["claim_capex_12m"] = amount * 1e7 / mcap
 

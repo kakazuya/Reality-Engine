@@ -1,4 +1,5 @@
-"""T-229 stage C tests: claim PIT, deck filters, unit scaling and residualisation arithmetic.
+"""T-229 stage C tests: claim PIT, deck filters, unit scaling, restatement election, order repeats
+and residualisation arithmetic.
 
 Synthetic only; no store, snapshot, T-228 or T-230 database is opened.
 """
@@ -47,11 +48,14 @@ def _panel() -> pd.DataFrame:
     })
 
 
-def _claim(row_id, node, low, high, unit, avail, source_kind="announcement"):
+def _claim(row_id, node, low, high, unit, avail, source_kind="announcement",
+           segment="total", period="", statement="", quote="", context=""):
     return {
         "row_id": row_id, "symbol": "TESTCO", "known_at": str(avail), "node": node,
         "sign": "0", "value_low": low, "value_high": high, "unit": unit,
         "source_kind": source_kind, "source_table": source_kind,
+        "segment": segment, "effective_period": period, "statement": statement,
+        "quote_span": quote, "context": context,
         "avail": pd.Timestamp(avail),
     }
 
@@ -61,17 +65,18 @@ def test_load_claims_applies_the_stage2_scope_and_duplicate_filters(tmp_path):
     con = sqlite3.connect(db)
     con.execute("""CREATE TABLE claim(
         id INTEGER PRIMARY KEY, status TEXT, symbol TEXT, known_at TEXT, node TEXT, sign TEXT,
-        value_low REAL, value_high REAL, unit TEXT, source_kind TEXT, speaker_scope TEXT,
+        value_low REAL, value_high REAL, unit TEXT, segment TEXT, effective_period TEXT,
+        statement TEXT, quote_span TEXT, context TEXT, source_kind TEXT, speaker_scope TEXT,
         dup_of TEXT)""")
-    con.executemany("INSERT INTO claim VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", [
+    con.executemany("INSERT INTO claim VALUES (" + ",".join("?" * 17) + ")", [
         (1, "verified", "TESTCO", "2024-06-25T10:00:00", "capex.amount", "0", 10.0, None,
-         "inr_cr", "announcement", "company", ""),
+         "inr_cr", "total", "FY26", "plan", "", "", "announcement", "company", ""),
         (2, "verified", "TESTCO", "2024-06-25T10:00:00", "capex.amount", "0", 99.0, None,
-         "inr_cr", "announcement", "subsidiary", ""),
+         "inr_cr", "total", "FY26", "plan", "", "", "announcement", "subsidiary", ""),
         (3, "verified", "TESTCO", "2024-06-25T10:00:00", "capex.amount", "0", 77.0, None,
-         "inr_cr", "announcement", "company", "1"),
+         "inr_cr", "total", "FY26", "plan", "", "", "announcement", "company", "1"),
         (4, "unverified", "TESTCO", "2024-06-25T10:00:00", "capex.amount", "0", 55.0, None,
-         "inr_cr", "announcement", "company", ""),
+         "inr_cr", "total", "FY26", "plan", "", "", "announcement", "company", ""),
     ])
     con.commit()
     con.close()
@@ -109,6 +114,50 @@ def test_claim_factors_apply_the_1530_rule_scopes_and_unit_scaling():
     later = out.loc[pd.Timestamp("2024-07-01")]
     assert np.isclose(later["claim_capex_12m"], 100.0 * 1e7 / 2.0e10)
     assert later["claim_count_12m"] == 7
+
+
+def test_capex_takes_the_latest_claim_per_segment_and_period():
+    panel = pd.DataFrame({"store": ["c01"], "symbol": ["TESTCO"],
+                          "date": pd.to_datetime(["2026-06-30"]),
+                          "ttm_rev": [1.0e10], "mcap": [1.0e10], "ttm_rev_yoy": [0.10]})
+    claims = pd.DataFrame([
+        _claim(1, "capex.amount", 165.0, 170.0, "inr_cr", "2025-08-14", period="FY26"),
+        _claim(2, "capex.amount", 125.0, 130.0, "inr_cr", "2025-11-12", period="FY26"),
+        _claim(3, "capex.amount", 125.0, 130.0, "inr_cr", "2026-02-19", period="FY '26"),
+        _claim(4, "capex.amount", 50.0, None, "inr_cr", "2025-12-01", period="FY27"),
+    ])
+    out, _ = claim_factors(panel, claims)
+    row = out.set_index("date").loc[pd.Timestamp("2026-06-30")]
+
+    # FY26 is one plan at its latest value (127.5), FY27 is a second plan (50): 177.5 crore
+    assert np.isclose(row["claim_capex_12m"], 177.5 * 1e7 / 1.0e10)
+
+
+def test_order_inflow_counts_one_announcement_per_order():
+    panel = pd.DataFrame({"store": ["c01", "c01"], "symbol": ["TESTCO", "TESTCO"],
+                          "date": pd.to_datetime(["2024-06-28", "2024-07-31"]),
+                          "ttm_rev": [1.0e10, 1.0e10], "mcap": [2.0e10, 2.0e10],
+                          "ttm_rev_yoy": [0.10, 0.10]})
+    acme = "The company received an order from Acme Power Ltd for a 765 kV transmission line"
+    claims = pd.DataFrame([
+        _claim(1, "revenue.order_book", 100.0, None, "inr_cr", "2024-06-10", statement=acme),
+        _claim(2, "revenue.order_book", 100.5, None, "inr_cr", "2024-06-20", statement=acme),
+        _claim(3, "revenue.order_book", 100.0, None, "inr_cr", "2024-06-25",
+               statement="The company received an order from Beta Steel Ltd for a steel plant"),
+        _claim(4, "revenue.order_book", 100.0, None, "inr_cr", "2024-07-25", statement=acme),
+    ])
+    out, _ = claim_factors(panel, claims)
+    out = out.set_index("date")
+
+    at_june = out.loc[pd.Timestamp("2024-06-28")]
+    # Acme's 10-day repeat counts once; Beta's equal value is a different order
+    assert np.isclose(at_june["claim_order_inflow_12m"], 200.0 * 1e7 / 1.0e10)
+    assert at_june["claim_count_12m"] == 3
+
+    at_july = out.loc[pd.Timestamp("2024-07-31")]
+    # the 45-day repeat is outside the 30-day window and counts as a new announcement
+    assert np.isclose(at_july["claim_order_inflow_12m"], 300.0 * 1e7 / 1.0e10)
+    assert at_july["claim_count_12m"] == 4
 
 
 def _observation_db(path: Path) -> None:

@@ -12,11 +12,11 @@ picked in Nov 2026"; nothing here is a universe claim.**
 Code `reality_engine/research/factor_store91.py` (+ `factor_store91_stageb.py` for stage B,
 `factor_store91_stagec.py` for stage C), tests `reality_engine/tests/test_factor_store91.py`
 (6 synthetic tests), `test_factor_store91_stageb.py` (4) and `test_factor_store91_stagec.py`
-(4), output `.tmp/t229/`.
+(6), output `.tmp/t229/`.
 
 ```bash
 python -m pytest -q reality_engine/tests/test_factor_store91.py reality_engine/tests/test_factor_store91_stageb.py  # 10 passed
-python -m pytest -q reality_engine/tests/test_factor_store91_stagec.py    # 4 passed
+python -m pytest -q reality_engine/tests/test_factor_store91_stagec.py    # 6 passed
 python -m reality_engine.research.factor_store91 --out .tmp/t229          # stage A: panel + validation + coverage
 python -m reality_engine.research.factor_store91_stageb --out .tmp/t229   # stage B: targets, ICs, control, placebo, claims
 python -m reality_engine.research.factor_store91_stagec --out .tmp/t229   # stage C: text/deck coverage (+ ICs when the gate passes)
@@ -374,12 +374,12 @@ or capital, then tested for prediction **over** the hard numbers (6m/12m).  Two 
 are new since stage B: T-228 driver claims widened to annual reports, press releases and
 announcements, and T-230 deck observations stored with meaning.  Code
 `reality_engine/research/factor_store91_stagec.py`, tests
-`reality_engine/tests/test_factor_store91_stagec.py` (4 synthetic), machine-readable outputs
+`reality_engine/tests/test_factor_store91_stagec.py` (6 synthetic), machine-readable outputs
 `coverage_c.csv`, `ic_c.csv`, `placebo_c.csv`, `power_c.csv`, `incremental_c.csv`,
 `deck_agreement.csv` and full tables `stage_c.md` under `.tmp/t229/`.
 
 ```bash
-python -m pytest -q reality_engine/tests/test_factor_store91_stagec.py   # 4 passed
+python -m pytest -q reality_engine/tests/test_factor_store91_stagec.py   # 6 passed
 python -m reality_engine.research.factor_store91_stagec --out .tmp/t229  # claims_91 + obs_91
 python -m reality_engine.research.factor_store91_stagec --out .tmp/t229 \
     --claims D:/RealityEngine/t228/claims_91_s2.db                       # stage-2 widened claims
@@ -393,8 +393,8 @@ through a byte copy under `--out` (WAL side files cannot be created on the sourc
 
 | factor | definition | source |
 |---|---|---|
-| `claim_order_inflow_12m` | sum of verified **order-win** values announced in the trailing 365 days (midpoint of the printed range, crore) / store TTM revenue | T-228 claims |
-| `claim_capex_12m` | sum of verified `capex.amount` announced in the trailing 365 days (midpoint, crore) / market cap | T-228 claims |
+| `claim_order_inflow_12m` | sum of **distinct order wins** announced in the trailing 365 days (midpoint of the printed range, crore) / store TTM revenue; a repeat announcement of the same order counts once | T-228 claims |
+| `claim_capex_12m` | latest verified `capex.amount` known by the month-end per (symbol, segment, effective_period), summed across the distinct keys in the trailing 365 days (midpoint, crore) / market cap | T-228 claims |
 | `claim_dilution_12m` | sum of verified `equity.shares` money raises (QIP, warrants, preferential, rights; crore) announced in the trailing 365 days / market cap | T-228 claims |
 | `claim_rev_growth` | stage-B definition: latest `revenue.total` pct claim midpoint / 100 minus the store's `ttm_rev_yoy` | T-228 claims |
 | `claim_count_12m` | stage-B definition: verified claims usable in the trailing 365 days | T-228 claims |
@@ -408,6 +408,16 @@ transcript and guidance order-book levels and targets are excluded.  The stage-2
 must be `company` and the stage-2 `dup_of` losers are dropped when those columns exist.  For the
 sums, rows with the same symbol, availability session and printed value are counted once (the
 same fact re-filed twice); `claim_count_12m` keeps stage B's row count.
+
+**Restatements and repeat announcements.**  Capex is elected per (symbol, segment,
+effective_period): the newest claim known by the month-end replaces earlier values for the same
+plan, and the factor sums the surviving distinct keys in the window -- ALICON's FY26 Rs 125-130
+crore appears in three claims and counts once at Rs 127.5 crore.  Period keys are case- and
+punctuation-folded (`FY26` = `FY '26`); a blank period is its own key.  An order win announced
+twice is collapsed only when the two rows are at most 30 days apart, their crore values are within
+1%, and the statement/quote/context texts share at least two non-boilerplate tokens (the
+customer/description signal); filing boilerplate alone cannot collapse two different orders.  The
+earliest announcement of the pair is kept.
 
 **Unit handling.**  Claim amounts are converted only from `inr_cr`, `inr_lakh`, `inr_mn` and
 `inr_bn`; any other printed unit (`usd_mn`, `pct`, `tons`, ...) is skipped and counted, never
@@ -497,7 +507,10 @@ verified, 289 usable; `source_kind` present, `speaker_scope`/`dup_of` absent) ru
 and puts `claim_order_inflow_12m` on **2 companies / 25 months** (the announcement order wins of
 BLKASHYAP and JYOTISTRUC), `claim_capex_12m` on 4, `claim_rev_growth` on 3 and `claim_count_12m`
 on 11.  The source split works; 12 stores cannot form a 20-name cross-section, which is the
-expected pilot result, not a code failure.
+expected pilot result, not a code failure.  The repeat rule is visible on the pilot: JYOTISTRUC's
+order-win rows sum to Rs 8,810.34 crore but Rs 7,471.50 crore once each order counts once (the
+689.93 and 648.91 repeats collapse), while BLKASHYAP's 18 different orders stay at Rs 6,263.98
+crore; MICEL's announcement rows print `inr` (rupees) and are skipped by the unit rule.
 
 **Next step (waits for Wolf).**  The same command on the widened
 `--claims D:/RealityEngine/t228/claims_91_s2.db` is the run that can pass the gate: the stage-2
@@ -508,10 +521,15 @@ stage-B ICs (6m 0.0848, t 2.54; 12m 0.1138, t 1.67) are unchanged by this stage.
 
 ### 10.5 Limits
 
-- **The capex sum counts restatements.**  The brief defines the factor as the sum announced in the
-  trailing 12 months; a plan repeated in successive calls (ALICON's FY26 Rs 125-130 crore appears
-  four times) is therefore counted four times.  The level is an announcement-intensity measure as
-  much as a capex measure; the stage-2 `dup_of` removes cross-source duplicates, not restatements.
+- **Capex collapses distinct projects that share a key.**  The rule is per (symbol, segment,
+  effective_period), so a call that lists several projects under one period and segment
+  (NAVKARCORP's Q1FY26 bullets print 100 / 150 / 900 / 2,359 / 4,000 crore) keeps only the latest
+  row for that key.  The factor is the latest stated plan per key, not the sum of every project in
+  the announcement; a blank effective period is a single key.
+- **Order-repeat detection is textual.**  Two filings of the same order with no shared description
+  token (one prints only the value/period table) are counted twice; the 1% / 30-day / text rule is
+  conservative on purpose.  MICEL's announcement rows print `inr` (rupees), which the brief's unit
+  rule skips, so they never enter the sum.
 - **`deck_order_cover` is not the KPI series.**  Only 4 companies carry both; the 0.42 rank
   agreement and 48.5% within-10% share mean the deck total and the store's stated order-book cover
   are different quantities (period, segment or scope), so the factor is not a validation of the
