@@ -1,4 +1,4 @@
-# T-228 stage 1a/1b/2a/2b: driver-tree claims from management text
+# T-228 stage 1a/1b/2a/2b/2c: driver-tree claims from management text
 
 Built 20 Nov 2026 by a dsh worker for ticket T-228 (Shivam 20 Nov; review Wolf). Stage 1a-fix 21 Nov after
 Wolf's first hand read; round 3 after his second (28 right, 4 wrong, 3 doubtful of 35); **round 4** after his
@@ -175,18 +175,33 @@ After judging, claims are deduplicated by `(symbol, normalised quote_span, node)
 judge-agreed, verified, script over model, lowest id. The same quote can arrive both as a `guidance` row and
 as a transcript statement; the evidence rows differ, the claim is one.
 
+Stage 2c adds the event dedupe for a finished DB (`event_repair()`, §13): every verified and unverified row
+joins an event with the rows that share (symbol, node, segment, unit, `period_norm`) and a value within 1%
+and a `known_at` within 180 days — same source kind included. The earliest `known_at` row stands; the others
+become `status='duplicate'` with `dup_of` = the event id and are never served as a separate claim (nothing is
+deleted). A generic segment ("total", "that line") matches a named one, because the value, unit, period and
+window already pin the event. A later row whose value changed for the same key is a revision: it stays a
+claim and gets `revises` = the previous row's id.
+
 ## 6. Output
 
-`--out` (default `.tmp/t228/claims.db`), three tables:
+`--out` (default `.tmp/t228/claims.db`), three tables (the stage-2c repair adds a fourth, `repair_log`):
 
 - `claim` — one row per claim plus `source_table`, `source_kind` (transcript, guidance, annual_report,
   press_release, announcement), `paragraph` (the doc_page paragraph index for a document claim, NULL for a
   transcript or guidance claim), `method` (`script`/`model`), `extractor`, `status`, `status_reason`,
   `judge_ok`, the six `judge_*` booleans (`judge_company`), `judge_fail`, `judge_why`, `judge_suggest`,
-  `run_id`, `created_at`. An older claims DB is migrated in place with the two additive columns.
+  `run_id`, `created_at`. Stage 2c adds `period_norm` (a relative period resolved at `known_at`),
+  `order_kind` (`revenue.order_book` inflow/backlog/NULL), `execution_months` (an order's printed execution
+  time moved out of the value), `scope_part` (1 = the number is a named item, plant or person, never a
+  company total), `revises` and `value_inr_cr` (NULL: no pilot store holds an FX table). `status` is
+  `verified`, `unverified`, `quarantined` or, after the stage-2c repair, `duplicate`. An older claims DB is
+  migrated in place with the additive columns.
 - `read_log` — one row per HTTP request: `role` (`extract`/`judge`), start, end, seconds, status, in/out
   tokens, items, claims, outcome counts, item keys finished, in-flight count, error text.
 - `quota_event` — every 429 / 5xx / timeout: UTC and IST time, status, in-flight count, body head.
+- `repair_log` (stage 2c only) — the repair's move and event counts, so `--repair-report` can rebuild the
+  report after the re-judge without re-running the repair.
 
 `run` also writes `<out>.build.json` (the builder counters and per-store counts) so the report can name the
 items per doc type and the drop reasons without re-reading the stores.
@@ -231,6 +246,16 @@ python -m reality_engine.research.driver_claims --report --out .tmp/t228/claims_
 
 # step 10, only on Wolf's go: all 91 stores, including the 34 with no transcript and no guidance row
 python -m reality_engine.research.driver_claims --all-stores --out .tmp/t228/claims_91_s2.db --start 15 --unleashed
+
+# stage 2c: copy a finished DB and repair it with no model call (the source is never written); then
+# re-judge only the rows whose node/segment/period the repair changed, then rebuild the report
+python -m reality_engine.research.driver_claims --repair \
+  --repair-from D:/RealityEngine/t228/claims_91_s2.db --out .tmp/t228/claims_91_s2c.db \
+  --report-file .tmp/t228/repair_91_s2c.md
+python -m reality_engine.research.driver_claims --judge-only --out .tmp/t228/claims_91_s2c.db \
+  --judge-start 3
+python -m reality_engine.research.driver_claims --repair-report --out .tmp/t228/claims_91_s2c.db \
+  --report-file .tmp/t228/repair_91_s2c.md
 ```
 
 `--doc-types` defaults to `annual_report press_release announcement`; give the flag with no value to read no
@@ -304,7 +329,7 @@ company scope. It is about 90% right on meaning, not 100%: use it as labelled mo
 
 ## 10. Tests
 
-89 pass (`python -m pytest -q reality_engine/tests/test_driver_claims.py`). They cover the guidance map, the
+101 pass (`python -m pytest -q reality_engine/tests/test_driver_claims.py`). They cover the guidance map, the
 number normaliser, the three statuses, the unit-word rule, the node-unit table, the from-A-to-B target rule
 (both the change, percent and the plain-range case), the ambiguous-range sign rule, the period-or-horizon
 rule, the mix/share re-tag (pct only, pattern required, segment named) and the list-span rule (8-8
@@ -326,7 +351,15 @@ the "at least 20% to 25%" range (1342), the "target 30% to 35%" plain range, "in
 `scope_ok` (577/437/1130, kept unverified without it), the FILED date in the judge prompt, the debt-repayment
 and declared-dividend signs (522, 132/1003), cross-source dedupe with `dup_of` (132/1003, 735/1130) and the
 stage-2b migration, and the 429 `Retry-After` guard (a short wait is slept, a long one stops the run and
-leaves the item/claim for a resume).
+leaves the item/claim for a resume). Stage 2c adds the relative-period normaliser (`current year` is FY27 at a
+2026-08-02 filing, `next quarter` is Q4FY26 at 2025-11-04), the printed-label folds (`FY '26`, `FY 2026-27`,
+`financial year 2023-24`, `year ended 31st March 2024`, `June 2028`, `31.10.2025`, the `2024:25` typo), unit
+normalisation to `inr_cr` and the execution-months move (a per-share dividend or exercise price is left as
+printed; a USD amount keeps its unit because no FX table exists), the `order_kind` cues on the VIVIANA texts
+(backlog, new order, both, neither), the item/plant/person `scope_part` rule (and that an unrelated page
+mention does not re-scope a claim; a named person's pay is no_driver), the collapsed-range repair (KROSS
+45-50), the event repair (a twin marked duplicate with `dup_of`, a changed value linked with `revises`, a
+single value equal to its own range), the generic-segment match and the DB copy/report migration.
 
 ## 11. Stage 2a: document sources and the pilot (21 Nov 2026)
 
@@ -498,6 +531,132 @@ The 1126 class (a rating rationale's GCA days, PLF, margin corridor) is now caug
 become company claims. 573 remains unverified rather than wrong: the judge re-noded it to `revenue.total`
 but still rejects a signed level, and the rule was not loosened to make it pass.
 
-**Not run yet (step 10).** The 91-store, all-doc-source run (`--all-stores`, `--start 15 --unleashed`) waits
-for Wolf's go. It needs a dry-run first: if it would send more than 60,000 model items, that count is reported
-and the run stops.
+**Step 10 ran (21 Nov 2026).** The 91-store, all-doc-source run (`--all-stores`, `--start 15 --unleashed`)
+produced `D:/RealityEngine/t228/claims_91_s2.db`: 10,102 claims, 2,450 verified. Wolf's independent read of
+50 verified ids (seed 149) found 14 RIGHT / 14 MINOR / **22 WRONG**, and 14 of the 22 WRONG were duplicates;
+the factor study cannot use it until repaired. Stage 2c (§13) repairs that DB without re-reading a document.
+
+## 13. Stage 2c: repair of the 91-store run (21 Nov 2026)
+
+Evidence: `D:/RealityEngine/t228/wolf_read_91_s2.md` (per-claim grades). Repaired DB:
+`.tmp/t228/claims_91_s2c.db`; report: `.tmp/t228/repair_91_s2c.md`. The source
+`D:/RealityEngine/t228/claims_91_s2.db` is opened through SQLite's backup API and never written; the repaired
+DB is a copy. No document is re-read and no extraction request is made; only the rows whose node, segment or
+period the repair changed are sent to the judge again.
+
+**What changed** (code `reality_engine/research/driver_claims.py`, tests +12 = 101):
+
+1. **Period normaliser.** `period_norm()` resolves a relative period ("current year", "this year", "next
+   year", "current/next quarter", "H1/H2", "the financial year") to the fiscal label it meant at the claim's
+   `known_at` (Indian FY, April-March), and folds printed labels (`FY '26`, `FY 2026-27`, `financial year
+   2023-24`, `year ended 31st March, 2024`, `June 2028`, `31.10.2025`) to the same form. 3,212 rows carry a
+   `period_norm`; a text with no fiscal meaning ("next 24 months", "till completion") stays NULL and is never
+   period-folded with another row.
+2. **Units to `inr_cr`.** A money amount in `inr` / `inr_lakh` / `inr_mn` on an amount node is converted
+   (334 / 279 / 48 rows). A per-share dividend (642), an exercise price or a realisation (608) is left in its
+   printed unit — converting it would destroy the measure. A USD amount (152) keeps `usd`/`usd_mn` and
+   `value_inr_cr` stays NULL: no pilot store holds an FX table, so the count is reported and nothing is
+   guessed. An order book in `months` (9) moves the printed time to `execution_months` and nulls the value.
+3. **Order subtype.** `order_kind` on `revenue.order_book`: `backlog` for "order book", "order backlog",
+   "unexecuted", "pending orders", "outstanding orders", "order position"; `inflow` for "received", "bagged",
+   "awarded", "secured", "LoA", "letter of award", "work order", "purchase order", "won". Both cue sets or
+   neither give NULL (not usable as an inflow). VIVIANA 3361 (1,700 cr unexecuted book) is `backlog`; 3362
+   (9.74 cr new order) is `inflow`.
+4. **Part as whole.** A level claim whose own number clause (or, for a guidance row, the page section just
+   before its quote) names an item, plant, product, brand or person takes that as `segment` and
+   `scope_part=1`; such a claim never counts as a company total. GHCLTEXTIL 15093 is `knitting machines`
+   (7 cr, not the FY27 100-120 cr plan), DBOL 15038/15039 are `branded sale`, MATRIMONY 9720/8889 are
+   `gratuity fund`. A named officer's pay is `no_driver:person_remuneration` (SUDARSHAN 12554, 12552).
+5. **Collapsed range.** A printed "A to B" the model collapsed to B with A in `base` becomes the range A-B
+   with no base (KROSS 10052: 45-50 cr, not 50-50). 64 rows repaired.
+6. **Event dedupe, never a delete.** Every verified/unverified row joins an event with rows sharing
+   (symbol, node, segment, unit, `period_norm`) and a value within 1% with `known_at` within 180 days (same
+   source kind included); the earliest `known_at` row stands, the rest get `status='duplicate'` and
+   `dup_of` = the event id. A generic segment ("total", "that line") matches a named one. A later changed
+   value for the same key is a revision: kept, with `revises` = the previous id (3,420 links).
+7. **Narrow re-judge.** Only the 13 rows whose segment the repair changed were re-queued (`judge_ok` NULL);
+   `--judge-only` judged 13 in 7 requests (89 s, 0 errors): 12 passed, 1 failed `node_ok` (GANECOS 15362,
+   outside Wolf's 50). `--repair-report` rebuilds the report from the DB and its `repair_log`.
+
+Schema gains six additive columns (`period_norm`, `order_kind`, `execution_months`, `scope_part`, `revises`,
+`value_inr_cr`) and `repair_log`; an older claims DB migrates.
+
+**Counts, before (`claims_91_s2.db`) and after (`claims_91_s2c.db`):**
+
+| measure | before | after |
+|---|---|---|
+| claim rows | 10,102 | 10,102 (nothing deleted) |
+| status | verified 2,450 / unverified 7,484 / quarantined 168 | verified 1,954 / unverified 5,724 / duplicate 2,256 / quarantined 168 |
+| verified `capex.amount` by unit | inr_cr 210, usd_mn 7, usd 1, inr 1, inr_lakh 1 | inr_cr 186, usd_mn 7, usd 1 |
+| verified `revenue.order_book` by unit | inr_cr 264, inr 97, usd_mn 29, usd 10, months 2 | inr_cr 286, usd_mn 23, usd 6, months 1 |
+| verified `revenue.order_book` by `order_kind` | none | inflow 244, backlog 37, NULL 35 |
+| verified with `period_norm` | 0 | 1,139 |
+| verified `scope_part=1` | 0 | 11 |
+| factor coverage (verified inflow order or capex) | not usable (duplicates) | 58 companies, 32 months, 282 company-months; order 29, capex 40 |
+
+Stop condition: 494 of the 2,451 pre-repair verified rows became duplicate (20.2%; the run stops above 60%).
+The earliest-known_at rule means a verified copy can be shadowed by an earlier unverified one: 104 verified
+rows (judge_ok=1) now sit behind an unverified event row. That is the brief's rule, not a lost verdict.
+
+**How Wolf's 50 ids now come out** (grade is Wolf's; "now" is read from the repaired DB):
+
+| id | grade | defect | now |
+|---|---|---|---|
+| 1694 | RIGHT | — | verified, inflow; 1731 linked by `revises` |
+| 2042 | WRONG | duplicate | stands (2046 duplicate of 2042), order_kind backlog |
+| 2223 | MINOR | unit | verified, `usd` kept, `value_inr_cr` NULL (no FX table) |
+| 2299 | WRONG | duplicate | duplicate of 3397 |
+| 2511 | WRONG | node | verified `cost.other` 17 cr (node still wrong) |
+| 2760 | RIGHT | — | verified, `FY26`, inflow |
+| 2901 | MINOR | base | verified, `period_norm=FY26`; base still "excluding GST" |
+| 3033 | MINOR | restatement | duplicate of 2028 |
+| 3142 | MINOR | unit | verified 12.8358 `inr_cr`, inflow |
+| 3361 | MINOR | backlog vs inflow | duplicate of 3359 (backlog); 3362 stays a verified inflow |
+| 3715 | RIGHT | — | verified |
+| 3891 | RIGHT | — | verified |
+| 3924 | MINOR | conditional | verified; `conditional` still 0 |
+| 4668 | MINOR | twin not folded | verified; 6090 duplicate of 4668 |
+| 4889 | MINOR | node | verified `revenue.mix secured` (node still wrong) |
+| 4965 | WRONG | duplicate | duplicate of 3096 |
+| 4984 | WRONG | node | verified `equity.shares` ESOP (node still wrong) |
+| 5112 | WRONG | duplicate | stands; 5546 duplicate of 5112 |
+| 5117 | WRONG | duplicate + level | stands; 5632 duplicate of 5117; the value is still the level, not the add |
+| 5334 | WRONG | duplicate | stands; 5345 duplicate of 5334 |
+| 5430 | WRONG | duplicate/level | duplicate of 5633 |
+| 5670 | WRONG | duplicate | duplicate of 5519 |
+| 5848 | WRONG | duplicate | duplicate of 6634 |
+| 5916 | WRONG | duplicate | duplicate of 5793 |
+| 5934 | MINOR | range | verified 19-20 (still not the corrected 18-20) |
+| 7034 | RIGHT | — | verified |
+| 7102 | RIGHT | — | verified 100-120, `dup_of=15086` (stage 2b) |
+| 7321 | MINOR | measure | verified `inr_lakh` (per-share dividend rule leaves dividends unconverted) |
+| 7736 | RIGHT | — | verified |
+| 7849 | WRONG | duplicate | duplicate of 7848 |
+| 8318 | RIGHT | — | verified |
+| 9428 | MINOR | sign | verified, sign still 0 (a saving, should be -) |
+| 9504 | WRONG | duplicate | duplicate of 10431 (the 100 cr capex event; 10431 unverified) |
+| 9720 | WRONG | duplicate + scope | duplicate of 8889 (verified, segment `gratuity fund`, scope_part=1) |
+| 9746 | WRONG | duplicate | verified; 15219 duplicate of 9746 |
+| 9972 | WRONG | node | verified `revenue.mix brakes` (node still wrong) |
+| 10052 | WRONG | range | verified 45-50 `inr_cr`, base NULL |
+| 10167 | RIGHT | — | verified |
+| 10484 | MINOR | node | verified `cost.power_fuel` 70 pct (node still wrong) |
+| 10574 | RIGHT | — | verified |
+| 10769 | RIGHT | — | verified |
+| 12015 | MINOR | period | verified; `period_norm=FY29` read from the bond maturity "2029" |
+| 12413 | MINOR | stale known_at | verified (known_at unchanged; 13617 linked by `revises`) |
+| 12538 | RIGHT | — | verified |
+| 12554 | WRONG | scope | duplicate of 12552; the named-officer pay family is no longer a company claim |
+| 13053 | WRONG | stale/related-party | verified `revenue.order_book` 150 cr (unchanged) |
+| 13761 | RIGHT | — | verified |
+| 14161 | RIGHT | — | verified |
+| 15038 | WRONG | scope | verified, segment `branded sale`, scope_part=1 |
+| 15093 | WRONG | scope | verified, segment `knitting machines`, scope_part=1 |
+
+Result: 38 of the 50 are `verified` and 12 are `duplicate` (one row per event). Of the 22 WRONG, 18 are
+resolved (all 14 duplicates, the 45-50 range, the two part-as-whole rows, and the officer-pay row) and 4
+remain: the wrong-node trio 2511/4984/9972 and the related-party approval 13053. The MINOR class is mostly
+unchanged: wrong node (4889, 10484), condition/sign/range (3924, 5934, 9428), a per-share measure (7321), a
+stale `known_at` (12413), a maturity year read as a period (12015), and a USD amount with no FX table
+(2223). Two residuals of the rule itself: a model period label that disagrees with the fact ("next financial
+year" at 2026-08 is FY28, so WEBELSOLAR 5207 stays apart from 5117), and a level stored as an add (5117).

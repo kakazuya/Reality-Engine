@@ -22,6 +22,16 @@ company's claim; the same fact from two sources is folded into the earliest row 
 ``dup_of``; a debt repayment is sign ``-`` and a declared dividend ``+``; and the judge is given the claim's
 own ``known_at`` so a stale target period is judged against the document date.
 
+Stage 2c (21 Nov, Wolf's read of the 91-store run: 14 right / 14 minor / 22 wrong of 50) repairs the finished
+DB without re-reading a document: a relative period ("this year", "next quarter", "H2") is resolved to the
+fiscal label it meant at the claim's ``known_at`` (``period_norm``); money units are converted to ``inr_cr``
+and an order book's execution time moves from the value into ``execution_months``; an order-book claim is
+tagged ``order_kind`` inflow or backlog; a level claim whose own text names an item, plant or person takes
+that segment and ``scope_part=1`` (a named person's remuneration is no_driver); and a same-value twin within
+180 days - same source kind included - becomes one event row, the others ``status='duplicate'`` with
+``dup_of`` pointing at the row that stands, while a later changed value is kept and linked with ``revises``.
+Only the rows whose node, segment or period the repair changed are re-judged; nothing is re-extracted.
+
 A statement that ends in no tree node (revenue, operating cost, capex, debt, equity, working capital) is
 show, not data: it is dropped.  The output is one SQLite DB of claims, each carrying the exact quote it came
 from, its context and the source row's own ``known_at``.
@@ -506,6 +516,72 @@ BORROW_VERB = re.compile(
     r"|increase\s+(?:in\s+)?(?:debt|borrowings?))\b", re.I)
 DIVIDEND_VERB = re.compile(r"\b(?:declar\w*|recommend\w*|approv\w*|propos\w*|payable|paid)\b", re.I)
 
+# ---- stage 2c: period, order kind and part scope (all model-free)
+# "current year", "next quarter", "H2" are a fiscal label only relative to the day the claim became known
+# (Indian FY, April-March); the resolved label is stored as period_norm and is what the event dedupe matches.
+_CURRENT_YEAR = re.compile(
+    r"\b(?:current|this)\s+(?:full\s+|financial\s+|fiscal\s+)?(?:year|fy)\b"
+    r"|\b(?:the\s+)?financial\s+year\b", re.I)
+_NEXT_YEAR = re.compile(r"\b(?:next|coming)\s+(?:full\s+|financial\s+|fiscal\s+)?(?:year|fy)\b", re.I)
+_LAST_YEAR = re.compile(r"\b(?:last|previous|prior)\s+(?:full\s+|financial\s+|fiscal\s+)?(?:year|fy)\b", re.I)
+_CURRENT_QUARTER = re.compile(r"\b(?:current|this)\s+(?:quarter|qtr)\b", re.I)
+_NEXT_QUARTER = re.compile(r"\b(?:next|coming)\s+(?:quarter|qtr)\b", re.I)
+_HALF_BARE = re.compile(r"\b(?:this\s+|the\s+)?(?:h([12])|(first|second)\s+half)\b", re.I)
+_QUARTER_FY = re.compile(r"\bq([1-4])\s*['’]?\s*(?:fy\s*)?['’]?(\d{2,4})\b", re.I)
+_HALF_FY = re.compile(r"\b(?:h|half)\s*([12])\s*['’]?\s*(?:fy\s*)?['’]?(\d{2,4})\b", re.I)
+_FY_RANGE = re.compile(r"\bfy\s*['’]?\s*(\d{4})\s*[-–—:/]\s*(\d{2,4})\b", re.I)
+_FY_SINGLE = re.compile(r"\bfy\s*['’]?\s*(\d{4}|\d{2})\b", re.I)
+_YEAR_RANGE = re.compile(r"\b(20\d{2})\s*[-–—:/]\s*(\d{2,4})\b")
+_FY_ENDED = re.compile(
+    r"\b(?:ended|ending)\s+(?:on\s+)?(?:the\s+)?(?:31st\s+march|march\s+31|march)[,\s]+(20\d{2})\b", re.I)
+_MONTH_YEAR = re.compile(
+    r"\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?"
+    r"|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s*[-,]?\s*['’]?(\d{2,4})\b", re.I)
+_DATE_DMY = re.compile(r"\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b")
+_YEAR_ONLY = re.compile(r"\b(20\d{2})\b")
+_MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+           "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
+
+# An order-book claim is an inflow or a backlog level.  Both cue sets in one claim (a letter that reports a
+# new order and quotes the book) and neither cue set give None: not usable as an inflow in the factor study.
+ORDER_BACKLOG = re.compile(
+    r"\border\s*(?:book|backlog|position)\b|\bun-?executed\b|\bpending\s+orders?\b"
+    r"|\boutstanding\s+orders?\b|\bbacklog\b", re.I)
+ORDER_INFLOW = re.compile(
+    r"\b(?:secured|bagged|awarded|won|win|receiv(?:ed|es|ing)|receipt\s+of|loa|loi"
+    r"|letter\s+of\s+award|work\s+orders?|purchase\s+orders?)\b"
+    r"|\bnew\s+(?:order|contract|turnkey\s+contract)\b", re.I)
+
+# A level claim whose own text names the item it is about is that item's number, not the company total.
+PART_ITEM = re.compile(
+    r"\b(?:knitting\s+machines?|gratuity(?:\s+(?:fund|contribution|liability))?"
+    r"|branded\s+(?:sales?|sugar|products?|liquor|spirits?))\b", re.I)
+PART_NAMED = re.compile(
+    r"\b(?:for|at|of)\s+the\s+(?P<name>[A-Z][\w&.'-]*(?:\s+[A-Z&][\w&.'-]*){0,3})\s+"
+    r"(?P<noun>plant|unit|line|project|facility|machines?)\b")
+PERSON_ROLE = re.compile(
+    r"\b(?:jmd|joint\s+managing\s+director|managing\s+director|ceo|cfo|coo|whole[- ]time\s+director"
+    r"|director|company\s+secretary)\b", re.I)
+PERSON_PAY = re.compile(r"\b(?:basic\s+salary|salary|salaries|remuneration|perquisites?)\b", re.I)
+
+# Event repair: a same-value twin within this window is the same event (a restatement in a later call/AR).
+EVENT_DAYS = 180
+# Units that mean an amount, and the factor to crore.  A per-share dividend, an exercise price or a
+# realisation in `inr` is per unit, not an amount: converting it would destroy it.
+_INR_TO_CR = {"inr": 1e-7, "inr_lakh": 1e-2, "inr_mn": 1e-1}
+_AMOUNT_NODES = {"revenue.total", "revenue.order_book", "revenue.mix", "cost.raw_material", "cost.employee",
+                 "cost.power_fuel", "cost.other", "capex.amount", "capacity.add", "debt.level", "debt.cost"}
+_SEGMENT_FILLER = {"the", "that", "this", "our", "overall", "new", "existing", "capacity", "capacities",
+                   "line", "lines", "business", "segment", "division", "unit", "units", "project",
+                   "facility", "facilities", "plant"}
+# Wolf's 50-id verified sample (seed 149, D:/RealityEngine/t228/wolf_read_91_s2.md): re-read on the
+# repaired DB by --repair, so the before/after is one reproducible list.
+WOLF_READ_IDS = (
+    1694, 2042, 2223, 2299, 2511, 2760, 2901, 3033, 3142, 3361, 3715, 3891, 3924, 4668, 4889, 4965, 4984,
+    5112, 5117, 5334, 5430, 5670, 5848, 5916, 5934, 7034, 7102, 7321, 7736, 7849, 8318, 9428, 9504, 9720,
+    9746, 9972, 10052, 10167, 10484, 10574, 10769, 12015, 12413, 12538, 12554, 13053, 13761, 14161,
+    15038, 15093)
+
 
 
 def number_clause(claim: dict[str, Any]) -> str:
@@ -735,6 +811,220 @@ def has_period(claim: dict[str, Any]) -> bool:
     return bool(HORIZON.search(claim.get("quote_span") or ""))
 
 
+# ------------------------------------------------------------------ stage 2c: period / order kind / part scope
+def fiscal_year_of(day: Any) -> int | None:
+    """The Indian fiscal year (April-March) a calendar day falls in: 2026-02-03 is FY26, 2026-08-02 FY27."""
+    try:
+        value = datetime.strptime(norm_ws(day)[:10], "%Y-%m-%d")
+    except ValueError:
+        return None
+    return value.year + 1 if value.month >= 4 else value.year
+
+
+def _fy_label(value: Any) -> str | None:
+    digits = re.sub(r"\D", "", str(value or ""))
+    if not digits:
+        return None
+    number = int(digits)
+    if number >= 1900:
+        number %= 100
+    return f"FY{number:02d}"
+
+
+def _fiscal_label(day: Any, offset: int = 0) -> str | None:
+    year = fiscal_year_of(day)
+    if year is None:
+        return None
+    year += offset
+    return f"FY{year % 100:02d}"
+
+
+def _quarter_label(day: Any, offset: int = 0) -> str | None:
+    """Q1 is April-June ... Q4 is January-March; ``offset`` moves a whole quarter forward."""
+    year = fiscal_year_of(day)
+    if year is None:
+        return None
+    month = datetime.strptime(norm_ws(day)[:10], "%Y-%m-%d").month
+    quarter = (month - 4) % 12 // 3 + 1 + offset
+    while quarter <= 0:
+        quarter += 4
+        year -= 1
+    while quarter > 4:
+        quarter -= 4
+        year += 1
+    return f"Q{quarter}FY{year % 100:02d}"
+
+
+def _expand_year(raw: Any) -> int | None:
+    digits = re.sub(r"\D", "", str(raw or ""))
+    if not digits:
+        return None
+    number = int(digits)
+    return 2000 + number if number < 100 else number
+
+
+def period_norm(value: Any, known_at: Any = None) -> str | None:
+    """Resolve printed period text to a fiscal label; a relative label uses the filing date (Indian FY).
+
+    "current year" at 2026-08-02 is FY27, "next quarter" at 2025-11-04 is Q4FY26, "H2" at 2025-11 is
+    H2FY26; FY26, Q3FY26, H1FY26, "financial year 2023-24", "year ended March 31, 2025", "June 2028" and
+    "31.10.2025" all fold to the same labels.  Text with no fiscal meaning ("next 24 months", "till
+    completion") gives None and is never period-folded with another row.
+    """
+    text = norm_ws(value).lower()
+    if not text:
+        return None
+    day = norm_ws(known_at)[:10]
+    match = _QUARTER_FY.search(text)
+    if match:
+        label = _fy_label(match.group(2))
+        return f"Q{int(match.group(1))}{label}" if label else None
+    match = _HALF_FY.search(text)
+    if match:
+        label = _fy_label(match.group(2))
+        return f"H{int(match.group(1))}{label}" if label else None
+    match = _HALF_BARE.search(text)
+    if match:
+        half = int(match.group(1) or (1 if str(match.group(2) or "").startswith("first") else 2))
+        label = _fiscal_label(day)
+        return f"H{half}{label}" if label else None
+    match = _FY_RANGE.search(text)
+    if match:
+        return _fy_label(match.group(2))
+    match = _FY_ENDED.search(text)
+    if match:
+        return _fiscal_label(f"{match.group(1)}-03-31")
+    match = _FY_SINGLE.search(text)
+    if match:
+        return _fy_label(match.group(1))
+    match = _YEAR_RANGE.search(text)
+    if match:
+        return _fy_label(match.group(2))
+    match = _MONTH_YEAR.search(text)
+    if match:
+        month = _MONTHS[str(match.group(1))[:3].lower()]
+        year = _expand_year(match.group(2))
+        return _fiscal_label(f"{year:04d}-{month:02d}-01") if year else None
+    match = _DATE_DMY.search(text)
+    if match:
+        return _fiscal_label(f"{match.group(3)}-{int(match.group(2)):02d}-{int(match.group(1)):02d}")
+    match = _YEAR_ONLY.search(text)
+    if match:
+        return _fy_label(match.group(1))
+    if _LAST_YEAR.search(text):
+        return _fiscal_label(day, -1)
+    if _NEXT_YEAR.search(text):
+        return _fiscal_label(day, 1)
+    if _CURRENT_YEAR.search(text):
+        return _fiscal_label(day)
+    if _NEXT_QUARTER.search(text):
+        return _quarter_label(day, 1)
+    if _CURRENT_QUARTER.search(text):
+        return _quarter_label(day)
+    return None
+
+
+def order_kind(claim: dict[str, Any]) -> str | None:
+    """inflow / backlog / None for a revenue.order_book claim, from the words the claim prints.
+
+    Both cue sets (a letter that reports a new order and quotes the book) and neither cue set give None:
+    the row is then not usable as an inflow in the factor study.  The context is read only when the claim's
+    own text carries no cue at all.
+    """
+    if norm_ws(claim.get("node")) != "revenue.order_book":
+        return None
+    text = f"{norm_ws(claim.get('quote_span'))} {norm_ws(claim.get('statement'))}"
+    backlog, inflow = bool(ORDER_BACKLOG.search(text)), bool(ORDER_INFLOW.search(text))
+    if not (backlog or inflow):
+        text = norm_ws(claim.get("context"))
+        backlog, inflow = bool(ORDER_BACKLOG.search(text)), bool(ORDER_INFLOW.search(text))
+    if backlog == inflow:
+        return None
+    return "backlog" if backlog else "inflow"
+
+
+def part_item(text: Any) -> str | None:
+    """The named item/plant/brand a level sentence is really about, else None."""
+    text = norm_ws(text)
+    match = PART_ITEM.search(text)
+    if match is not None:
+        return norm_ws(match.group(0)).lower()
+    match = PART_NAMED.search(text)
+    if match is not None:
+        return norm_ws(f"{match.group('name')} {match.group('noun')}")
+    return None
+
+
+def person_remuneration(text: Any) -> bool:
+    """True when the text gives a named officer's pay: that is not a driver claim on the company."""
+    text = norm_ws(text)
+    for match in PERSON_PAY.finditer(text):
+        if PERSON_ROLE.search(text[max(0, match.start() - 120):match.end() + 120]):
+            return True
+    return False
+
+
+_PAGE_CACHE: dict[tuple[str, str, str, int], str] = {}
+
+
+def page_text(store: Any, doc_key: Any, page: Any) -> str:
+    """One ``doc_page`` row, read-only: the page a guidance quote sits on, for its scope words."""
+    if not store or not doc_key or page is None:
+        return ""
+    key = (str(STORE_ROOT), str(store), str(doc_key), int(page))
+    if key in _PAGE_CACHE:
+        return _PAGE_CACHE[key]
+    text = ""
+    try:
+        con = open_store(str(store))
+    except (OSError, sqlite3.Error):
+        _PAGE_CACHE[key] = text
+        return text
+    try:
+        row = con.execute("SELECT text FROM doc_page WHERE doc_key=? AND page=?",
+                          (str(doc_key), int(page))).fetchone()
+        text = str(row[0] or "") if row else ""
+    except sqlite3.Error:
+        text = ""
+    finally:
+        con.close()
+    _PAGE_CACHE[key] = text
+    return text
+
+
+def _quote_window(text: str, span: str, width: int = 220) -> str:
+    """The page text just before the quote: the section heading a bullet sits under is what scopes it.
+
+    Looking only back a short distance keeps a nearby but unrelated section from re-scoping the claim; a
+    quote not found on the page gives "" (no guess).
+    """
+    page, quote = norm_ws(text), norm_ws(span)
+    if not page or not quote:
+        return ""
+    index = page.find(quote)
+    if index < 0:
+        return ""
+    return page[max(0, index - width):index + len(quote)]
+
+
+def claim_part(claim: dict[str, Any], with_page: bool = False) -> tuple[str | None, bool]:
+    """The item a level claim is about (its own number clause first, else the guidance quote's page).
+
+    Only the quote and the clause the number sits in are read, never the whole page: an announcement
+    that also mentions a director's pay or a plant elsewhere must not re-scope an unrelated claim.
+    """
+    span = norm_ws(claim.get("quote_span"))
+    clause = number_clause(claim)
+    person = person_remuneration(span) or person_remuneration(clause)
+    item = part_item(span) or part_item(clause)
+    if item is None and with_page and norm_ws(claim.get("source_kind")) == "guidance":
+        page = page_text(claim.get("store"), claim.get("doc_key"), claim.get("page"))
+        window = _quote_window(page, span)
+        item = part_item(window)
+        person = person or person_remuneration(window)
+    return item, person
+
+
 def verify_claim(claim: dict[str, Any]) -> tuple[str, str]:
     """Script check: verified / unverified / quarantined, with the reason; forces sign 0 on an ambiguous range."""
     span = norm_ws(claim.get("quote_span"))
@@ -776,6 +1066,17 @@ def verify_claim(claim: dict[str, Any]) -> tuple[str, str]:
 
 def _finish(claim: dict[str, Any]) -> dict[str, Any]:
     claim["status"], claim["status_reason"] = verify_claim(claim)
+    item, person = claim_part(claim)
+    claim["scope_part"] = 0
+    if person:
+        claim["scope_part"] = 1
+        claim["segment"] = "person_remuneration"
+        claim["status"], claim["status_reason"] = "unverified", "no_driver:person_remuneration"
+    elif item and norm_ws(claim.get("segment")).lower() in ("", "total"):
+        claim["segment"] = item
+        claim["scope_part"] = 1
+    claim["period_norm"] = period_norm(claim.get("effective_period"), claim.get("known_at"))
+    claim["order_kind"] = order_kind(claim)
     claim["created_at"] = utc_now()
     claim["conditional"] = 1 if claim.get("conditional") else 0
     claim["judge_ok"] = None
@@ -1680,6 +1981,8 @@ CREATE TABLE IF NOT EXISTS claim (
   run_id TEXT, store TEXT, symbol TEXT, source_table TEXT, source_id INTEGER,
   source_kind TEXT, paragraph INTEGER,
   speaker_scope TEXT, dup_of TEXT,
+  period_norm TEXT, order_kind TEXT, execution_months TEXT, scope_part INTEGER, revises INTEGER,
+  value_inr_cr REAL,
   doc_key TEXT, page INTEGER, known_at TEXT, event_date TEXT,
   node TEXT, segment TEXT, sign TEXT, value_low REAL, value_high REAL, unit TEXT,
   base TEXT, effective_period TEXT, conditional INTEGER,
@@ -1711,7 +2014,8 @@ CLAIM_COLS = ("run_id", "store", "symbol", "source_table", "source_id", "source_
               "value_high", "unit", "base", "effective_period", "conditional", "quote_span", "statement",
               "context", "method", "extractor", "status", "status_reason", "created_at", "judge_ok",
               "judge_node", "judge_sign", "judge_unit", "judge_period", "judge_forward", "judge_fail",
-              "judge_why", "judge_suggest", "speaker_scope", "dup_of")
+              "judge_why", "judge_suggest", "speaker_scope", "dup_of", "period_norm", "order_kind",
+              "execution_months", "scope_part", "revises", "value_inr_cr")
 
 
 
@@ -1728,7 +2032,10 @@ class Writer:
         # additive migration: a DB written before stage 2a keeps its rows and gains the new columns
         have = {str(r[1]) for r in self.con.execute("PRAGMA table_info(claim)")}
         for column, kind in (("source_kind", "TEXT"), ("paragraph", "INTEGER"),
-                             ("speaker_scope", "TEXT"), ("dup_of", "TEXT")):
+                             ("speaker_scope", "TEXT"), ("dup_of", "TEXT"),
+                             ("period_norm", "TEXT"), ("order_kind", "TEXT"),
+                             ("execution_months", "TEXT"), ("scope_part", "INTEGER"),
+                             ("revises", "INTEGER"), ("value_inr_cr", "REAL")):
             if column not in have:
                 self.con.execute(f"ALTER TABLE claim ADD COLUMN {column} {kind}")
         self.con.commit()
@@ -2323,6 +2630,395 @@ def dedupe_db(writer: Writer) -> int:
     return writer.dedupe()
 
 
+# ------------------------------------------------------------------ stage 2c: repair of a finished claims DB
+def _segment_words(segment: Any) -> list[str]:
+    return [word for word in re.split(r"[^a-z0-9]+", norm_ws(segment).lower())
+            if word and word not in _SEGMENT_FILLER]
+
+
+def segment_key(segment: Any) -> str:
+    """Fold the ways two claims name the same segment: case, generic nouns, plurals.
+
+    "solar cell capacity", "solar cell line" and "solar cells" are one segment; "total" stays total.
+    """
+    text = norm_ws(segment).lower()
+    if text in ("", "total"):
+        return "total"
+    words = _segment_words(segment)
+    if not words:
+        return text
+    return " ".join(word[:-1] if len(word) > 3 and word.endswith("s") and not word.endswith("ss")
+                    else word for word in words)
+
+
+def _segments_match(first: Any, second: Any) -> bool:
+    """Two ways of naming the segment may describe one event; a generic side ("total", "that line") can
+    match a named one, because the value, unit, period and 180-day window already pin the event."""
+    first_key, second_key = segment_key(first), segment_key(second)
+    if first_key == second_key:
+        return True
+    if "total" in (first_key, second_key):
+        return True
+    return not _segment_words(first) or not _segment_words(second)
+
+
+def _close(a: Any, b: Any, tol: float = 0.01) -> bool:
+    if a is None or b is None:
+        return a is None and b is None
+    return math.isclose(float(a), float(b), rel_tol=tol, abs_tol=1e-9)
+
+
+def _ends(row: dict[str, Any]) -> tuple[Any, Any]:
+    """A claim's printed range as (low, high); a single value carries its own number as both ends."""
+    low, high = row.get("value_low"), row.get("value_high")
+    return (high if low is None else low), (low if high is None else high)
+
+
+def _days_between(a: Any, b: Any) -> float:
+    try:
+        return abs((datetime.strptime(norm_ws(a)[:10], "%Y-%m-%d")
+                    - datetime.strptime(norm_ws(b)[:10], "%Y-%m-%d")).days)
+    except ValueError:
+        return 1e9
+
+
+def repair_collapsed_range(claim: dict[str, Any]) -> bool:
+    """A printed range the model collapsed to its high end with the low end left in ``base``.
+
+    KROSS: "targeting revenues of approximately INR45 crores to INR50 crores" stored 50-50 with base
+    "INR45 crores"; the range is 45-50 and the base is not a base.
+    """
+    low, high = claim.get("value_low"), claim.get("value_high")
+    if low is None or high is None or not math.isclose(float(low), float(high), rel_tol=1e-9):
+        return False
+    span = norm_ws(claim.get("quote_span"))
+    if _FROM_TO_RE.search(span):
+        return False
+    match = _A_TO_B_RE.search(span)
+    if match is None:
+        return False
+    try:
+        first, second = _plain_number(match.group("a")), _plain_number(match.group("b"))
+    except ValueError:
+        return False
+    if not first < second or not math.isclose(float(low), second, rel_tol=1e-9):
+        return False
+    if not any(math.isclose(first, number, rel_tol=1e-9)
+               for number in find_numbers(norm_ws(claim.get("base")))):
+        return False
+    claim["value_low"], claim["value_high"], claim["base"] = first, second, None
+    return True
+
+
+def normalise_units(claim: dict[str, Any]) -> str:
+    """One row's unit -> inr_cr where it is an amount; a months order book -> execution_months.
+
+    Returns the label of what moved, or "" when the row is already normal.  A per-share dividend in
+    ``inr`` is not an amount and is left alone; no pilot store holds an FX table, so a USD amount keeps
+    its unit and ``value_inr_cr`` stays NULL (counted, never guessed).
+    """
+    unit = canon_unit(claim.get("unit"))
+    node = norm_ws(claim.get("node"))
+    factor = _INR_TO_CR.get(unit)
+    if factor is not None:
+        if node == "equity.dividend":
+            return "per_share_dividend_left"
+        if node not in _AMOUNT_NODES:
+            return "per_unit_left"
+        for column in ("value_low", "value_high"):
+            if claim.get(column) is not None:
+                claim[column] = float(claim[column]) * factor
+        claim["unit"] = "inr_cr"
+        return f"{unit}->inr_cr"
+    if node == "revenue.order_book" and unit == "months":
+        value = claim.get("value_low")
+        if value is not None:
+            span = norm_ws(claim.get("quote_span"))
+            if re.search(r"\b\d+\s*[- ]?\s*years?\b", span, re.I):
+                claim["execution_months"] = f"{float(value):g} years"
+            else:
+                claim["execution_months"] = f"{float(value):g} {'month' if float(value) == 1 else 'months'}"
+        claim["value_low"] = claim["value_high"] = None
+        return "months->execution_months"
+    if unit in ("usd", "usd_mn"):
+        return "usd_no_fx"
+    return ""
+
+
+def event_repair(con: sqlite3.Connection) -> dict[str, int]:
+    """Fold same-value claims into one event, model-free, and record revisions.
+
+    A row joins an event with every row that shares (symbol, node, ``segment_key``, unit, ``period_norm``)
+    and has a value within 1% and a ``known_at`` within :data:`EVENT_DAYS` days - the same source kind
+    included, because two copies in one document are one event (a later restatement too).  The earliest
+    ``known_at`` row stands; the others become ``status='duplicate'`` with ``dup_of`` = the standing row's
+    id, and are never served as a separate claim.  A later row whose value changed for the same key is a
+    revision: it stays as its own row and gets ``revises`` = the previous row's id.
+    """
+    rows = [dict(row) for row in con.execute(
+        "SELECT id, symbol, node, segment, unit, value_low, value_high, known_at, status, period_norm"
+        " FROM claim WHERE status IN ('verified', 'unverified') ORDER BY id").fetchall()]
+    by_id = {int(row["id"]): row for row in rows}
+    parent = {int(row["id"]): int(row["id"]) for row in rows}
+
+    def find(number: int) -> int:
+        while parent[number] != number:
+            parent[number] = parent[parent[number]]
+            number = parent[number]
+        return number
+
+    def union(left: int, right: int) -> None:
+        left_root, right_root = find(left), find(right)
+        if left_root != right_root:
+            parent[right_root] = left_root
+
+    buckets: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        buckets[(row["symbol"] or "", row["node"] or "", canon_unit(row["unit"]),
+                 row["period_norm"])].append(row)
+    for group in buckets.values():
+        for i in range(len(group)):
+            for j in range(i + 1, len(group)):
+                first, second = group[i], group[j]
+                if not _segments_match(first["segment"], second["segment"]):
+                    continue
+                if _days_between(first["known_at"], second["known_at"]) > EVENT_DAYS:
+                    continue
+                first_low, first_high = _ends(first)
+                second_low, second_high = _ends(second)
+                if _close(first_low, second_low) and _close(first_high, second_high):
+                    union(int(first["id"]), int(second["id"]))
+
+    components: dict[int, list[int]] = defaultdict(list)
+    for number in parent:
+        components[find(number)].append(number)
+    duplicates = verified_duplicates = 0
+    for ids in components.values():
+        if len(ids) < 2:
+            continue
+        ranked = sorted(ids, key=lambda number: (
+            str(by_id[number]["known_at"] or "9999"),
+            0 if by_id[number]["status"] == "verified" else 1, number))
+        standing, folded = ranked[0], ranked[1:]
+        con.executemany(
+            "UPDATE claim SET status='duplicate', status_reason='duplicate', dup_of=? WHERE id=?",
+            [(str(standing), number) for number in folded])
+        duplicates += len(folded)
+        verified_duplicates += sum(1 for number in folded if by_id[number]["status"] == "verified")
+
+    survivors = [dict(row) for row in con.execute(
+        "SELECT id, symbol, node, segment, value_low, value_high, period_norm FROM claim"
+        " WHERE status IN ('verified', 'unverified') ORDER BY known_at, id").fetchall()]
+    series: dict[tuple[Any, ...], list[dict[str, Any]]] = defaultdict(list)
+    for row in survivors:
+        series[(row["symbol"] or "", row["node"] or "", segment_key(row["segment"]),
+                row["period_norm"])].append(row)
+    revised = 0
+    for group in series.values():
+        previous: dict[str, Any] | None = None
+        for row in group:
+            if previous is not None:
+                previous_low, previous_high = _ends(previous)
+                row_low, row_high = _ends(row)
+                if not (_close(previous_low, row_low) and _close(previous_high, row_high)):
+                    con.execute("UPDATE claim SET revises=? WHERE id=?",
+                                (int(previous["id"]), int(row["id"])))
+                    revised += 1
+            previous = row
+    con.commit()
+    return {"duplicates": duplicates, "duplicates_verified": verified_duplicates, "revised": revised}
+
+
+def repair_db(source: Path, out: Path, report_file: Path | None = None) -> int:
+    """Copy a finished claims DB and apply every stage-2c repair that needs no model call.
+
+    The source is read through SQLite's backup API and is never written; only ``out`` changes.  The rows
+    whose segment the part-scope pass changed are put back in the judge queue (``judge_ok`` NULL), so a
+    following ``--judge-only`` re-reads exactly those, never the whole DB.
+    """
+    source, out = Path(source), Path(out)
+    if source.resolve() == out.resolve():
+        raise SystemExit("--repair needs --repair-from and a different --out (the source is never written)")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    src = sqlite3.connect(f"file:{source.as_posix()}?mode=ro", uri=True)
+    dst = sqlite3.connect(str(out))
+    with dst:
+        src.backup(dst)
+    src.close()
+    dst.close()
+
+    writer = Writer(out)
+    con = writer.con
+    counts: Counter[str] = Counter()
+    rejudge: list[int] = []
+    rows = con.execute(
+        "SELECT id, store, source_kind, node, segment, sign, value_low, value_high, unit, base,"
+        " effective_period, known_at, quote_span, statement, context, status, status_reason, judge_ok,"
+        " scope_part, doc_key, page FROM claim").fetchall()
+    for row in rows:
+        claim: dict[str, Any] = {key: row[key] for key in row.keys()}
+        claim_id = int(claim["id"])
+        was_verified = claim["status"] == "verified"
+        if repair_collapsed_range(claim):
+            counts["range_repaired"] += 1
+        moved = normalise_units(claim)
+        if moved:
+            counts[f"unit_{moved}"] += 1
+        kind = order_kind(claim)
+        claim["period_norm"] = period_norm(claim.get("effective_period"), claim.get("known_at"))
+        had_scope = int(claim.get("scope_part") or 0)
+        if claim["status"] in ("verified", "unverified") \
+                and norm_ws(claim.get("segment")).lower() in ("", "total"):
+            item, person = claim_part(claim, with_page=True)
+            if person:
+                claim["scope_part"] = 1
+                claim["segment"] = "person_remuneration"
+                claim["status"], claim["status_reason"] = "unverified", "no_driver:person_remuneration"
+                counts["person_remuneration"] += 1
+            elif item:
+                claim["scope_part"] = 1
+                claim["segment"] = item
+                counts["part_scope"] += 1
+        if claim["status"] in ("verified", "unverified") and claim["scope_part"] \
+                and int(claim["scope_part"]) != had_scope and claim["status"] == "verified":
+            claim["judge_ok"] = None
+            claim["status_reason"] = ""
+            rejudge.append(claim_id)
+        if was_verified and claim["status"] != "verified" and claim["status"] != "duplicate":
+            counts["verified_downgraded"] += 1
+        con.execute(
+            "UPDATE claim SET segment=?, unit=?, value_low=?, value_high=?, base=?, execution_months=?,"
+            " period_norm=?, order_kind=?, scope_part=?, status=?, status_reason=?, judge_ok=?"
+            " WHERE id=?",
+            (claim["segment"], claim["unit"], claim["value_low"], claim["value_high"], claim["base"],
+             claim.get("execution_months"), claim["period_norm"], kind, claim["scope_part"],
+             claim["status"], claim.get("status_reason"), claim.get("judge_ok"), claim_id))
+    con.commit()
+    events = event_repair(con)
+    con.commit()
+    log = Counter(counts)
+    log.update({f"event_{key}": int(value) for key, value in events.items()})
+    log["rejudge"] = len(rejudge)
+    con.execute("CREATE TABLE IF NOT EXISTS repair_log (name TEXT PRIMARY KEY, value INTEGER)")
+    con.execute("DELETE FROM repair_log")
+    con.executemany("INSERT INTO repair_log (name, value) VALUES (?, ?)", sorted(log.items()))
+    con.commit()
+    lines = repair_report(con, counts, events, len(rejudge))
+    print("\n".join(lines))
+    _write_report(lines, report_file)
+    writer.close()
+    return 0
+
+
+def _write_report(lines: list[str], report_file: Path | None) -> None:
+    if report_file is None:
+        return
+    report_file.parent.mkdir(parents=True, exist_ok=True)
+    report_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"report written: {report_file} ({len(lines)} lines)")
+
+
+def repair_log_read(con: sqlite3.Connection) -> tuple[Counter[str], dict[str, int]]:
+    """The moves and event counts ``--repair`` wrote, so a later ``--repair-report`` still shows them."""
+    counts: Counter[str] = Counter()
+    events: dict[str, int] = {}
+    try:
+        rows = con.execute("SELECT name, value FROM repair_log").fetchall()
+    except sqlite3.Error:
+        return counts, events
+    for name, value in rows:
+        if str(name).startswith("event_"):
+            events[str(name)[6:]] = int(value)
+        else:
+            counts[str(name)] = int(value)
+    return counts, events
+
+
+def _verified_rows(con: sqlite3.Connection) -> list[sqlite3.Row]:
+    return con.execute("SELECT * FROM claim WHERE status='verified'").fetchall()
+
+
+def repair_report(con: sqlite3.Connection, counts: Counter[str], events: dict[str, int],
+                  rejudge: int) -> list[str]:
+    """The stage-2c report: what moved, the factor-facing counts, and Wolf's 50 ids as they now stand."""
+    statuses = {str(row[0]): int(row[1]) for row in
+                con.execute("SELECT status, COUNT(*) FROM claim GROUP BY 1 ORDER BY 1")}
+    verified = _verified_rows(con)
+    by_node = Counter(str(row["node"]) for row in verified)
+    by_kind = Counter(str(row["source_kind"] or "") for row in verified)
+    by_unit: dict[str, Counter[str]] = defaultdict(Counter)
+    by_order_kind: dict[str, Counter[str]] = defaultdict(Counter)
+    for row in verified:
+        by_unit[str(row["node"])][str(row["unit"] or "")] += 1
+        if row["node"] == "revenue.order_book":
+            by_order_kind[str(row["node"])][str(row["order_kind"] or "null")] += 1
+    total_only = [row for row in verified if not int(row["scope_part"] or 0)]
+    order_symbols = {str(row["symbol"]) for row in verified
+                     if row["node"] == "revenue.order_book" and row["order_kind"] == "inflow"}
+    capex_symbols = {str(row["symbol"]) for row in verified if row["node"] == "capex.amount"}
+    factor_symbols = order_symbols | capex_symbols
+    factor_months = {str(row["known_at"] or "")[:7] for row in verified
+                     if (row["node"] == "revenue.order_book" and row["order_kind"] == "inflow")
+                     or row["node"] == "capex.amount"}
+    factor_pairs = {(str(row["symbol"]), str(row["known_at"] or "")[:7]) for row in verified
+                    if (row["node"] == "revenue.order_book" and row["order_kind"] == "inflow")
+                    or row["node"] == "capex.amount"}
+    period_norm_rows = sum(1 for row in con.execute("SELECT period_norm FROM claim")
+                           if row[0])
+    before_verified = len(verified) + events.get("duplicates_verified", 0) \
+        + int(counts.get("verified_downgraded", 0))
+    duplicate_share = events.get("duplicates_verified", 0) / max(before_verified, 1)
+    lines = [
+        "# T-228 stage 2c repair report",
+        "",
+        f"status: {statuses}",
+        f"verified by node: {dict(sorted(by_node.items()))}",
+        f"verified by source_kind: {dict(sorted(by_kind.items()))}",
+        f"verified rows with scope_part=1 (never a company total): "
+        f"{len(verified) - len(total_only)}; scope_part=0: {len(total_only)}",
+        f"period_norm set on {period_norm_rows} rows",
+    ]
+    if counts:
+        lines.append(f"unit/scope moves: {dict(sorted(counts.items()))}")
+    if events:
+        lines.append(
+            f"event repair: {events.get('duplicates', 0)} duplicate rows (status 'duplicate', dup_of = "
+            f"standing row), {events.get('revised', 0)} revision links (revises); re-judge queue {rejudge} rows")
+        lines.append(
+            f"stop condition: {events.get('duplicates_verified', 0)} of the {before_verified} pre-repair "
+            f"verified rows became duplicate ({duplicate_share:.1%}; the run stops above 60%)")
+    lines += [
+        f"verified capex.amount by unit: {dict(sorted(by_unit.get('capex.amount', {}).items()))}",
+        f"verified revenue.order_book by unit: {dict(sorted(by_unit.get('revenue.order_book', {}).items()))}",
+        f"verified revenue.order_book by order_kind: {dict(sorted(by_order_kind.get('revenue.order_book', {}).items()))}",
+        f"factor coverage: {len(factor_symbols)} companies, {len(factor_months)} months "
+        f"({', '.join(sorted(factor_months))}), {len(factor_pairs)} company-months with a verified "
+        f"inflow order or capex claim; order companies {len(order_symbols)}, capex companies {len(capex_symbols)}",
+        "",
+        "## Wolf's 50 verified ids, as they stand after the repair",
+        "",
+        "| id | store | symbol | source | node | segment | sign | low-high | unit | period_norm | "
+        "order_kind | scope_part | revises | status |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    rows = {int(row["id"]): row for row in
+            con.execute(f"SELECT * FROM claim WHERE id IN ({','.join(str(i) for i in WOLF_READ_IDS)})")}
+    for claim_id in WOLF_READ_IDS:
+        row = rows.get(claim_id)
+        if row is None:
+            lines.append(f"| {claim_id} | - | - | - | - | - | - | - | - | - | - | - | - | not in this DB |")
+            continue
+        low = "?" if row["value_low"] is None else f"{float(row['value_low']):g}"
+        high = "" if row["value_high"] is None else f"-{float(row['value_high']):g}"
+        standing = f"duplicate of {row['dup_of']}" if row["status"] == "duplicate" else str(row["status"])
+        lines.append(
+            f"| {claim_id} | {row['store']} | {row['symbol']} | {row['source_kind']} | {row['node']} | "
+            f"{row['segment']} | {row['sign']} | {low}{high} | {row['unit']} | "
+            f"{row['period_norm'] or ''} | {row['order_kind'] or ''} | {int(row['scope_part'] or 0)} | "
+            f"{row['revises'] or ''} | {standing} |")
+    return lines
+
+
 # ------------------------------------------------------------------ run
 def build_items(stores: list[str], doc_types: tuple[str, ...] = ()) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Every candidate item across ``stores``: guidance rows (unmapped only) + forward transcript statements
@@ -2444,12 +3140,15 @@ def run(args: argparse.Namespace) -> int:
                             args.pick_no_transcript, args.pick_seed)
         print(f"picked without transcripts by seed {args.pick_seed}: {' '.join(extra)}")
         stores += extra
-    if not stores:
+    if not stores and not args.judge_only:
         stores = active_stores()
     out = Path(args.out)
     if args.judge_only:
-        briefs = {store: company_brief(store) for store in stores if store_path(store).exists()}
         writer = Writer(out)
+        if not stores:      # the stores that hold claims, so a doc-only store still gets its brief
+            stores = sorted({str(row[0]) for row in
+                             writer.con.execute("SELECT DISTINCT store FROM claim WHERE store IS NOT NULL")})
+        briefs = {store: company_brief(store) for store in stores if store_path(store).exists()}
         reset = writer.reset_judge_errors()
         judge_stats = run_judge(writer, briefs, args, f"t228-judge-{datetime.now():%Y%m%dT%H%M%S}")
         final = {str(r[0]): int(r[1]) for r in
@@ -2886,6 +3585,12 @@ def main(argv: list[str] | None = None) -> int:
                     help="re-run only the judge phase on the existing DB (also re-queues judge_error claims)")
     ap.add_argument("--report", action="store_true", help="build the DB report and the seeded samples")
     ap.add_argument("--retag", action="store_true", help="re-apply the revenue.mix and range rules to the existing DB")
+    ap.add_argument("--repair", action="store_true",
+                    help="stage 2c: copy --repair-from to --out and apply the model-free repairs")
+    ap.add_argument("--repair-report", action="store_true",
+                    help="rebuild the stage-2c report from --out (e.g. after --judge-only)")
+    ap.add_argument("--repair-from", default="",
+                    help="the finished claims DB to copy and repair (read-only; never written)")
     ap.add_argument("--report-file", default="", help="write the report here and print only its first two lines")
     ap.add_argument("--baseline", default="", help="another claims DB: report the companies/months gained")
     ap.add_argument("--build-json", default="", help="the builder counts file run wrote beside --out")
@@ -2893,6 +3598,18 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.retag:
         return retag_existing(Path(args.out))
+    if args.repair:
+        source = Path(args.repair_from or args.out)
+        report_file = Path(args.report_file) if args.report_file else None
+        return repair_db(source, Path(args.out), report_file)
+    if args.repair_report:
+        con = open_readonly_db(Path(args.out))
+        counts, events = repair_log_read(con)
+        lines = repair_report(con, counts, events, int(counts.get("rejudge", 0)))
+        con.close()
+        print("\n".join(lines))
+        _write_report(lines, Path(args.report_file) if args.report_file else None)
+        return 0
     if args.report:
         lines = report(Path(args.out), args.seed, baseline=args.baseline, build_json=args.build_json)
         if args.report_file:

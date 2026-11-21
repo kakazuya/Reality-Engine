@@ -6,7 +6,10 @@ dedupe, known_at copied from the source row, resume skip, and the adaptive limit
 Stage 2a adds the doc_page item builder, the announcement script parses (three real announcement texts quoted
 with their doc_key) and `source_kind`.  Stage 2b adds the unit/plant scope rule and its judge confirmation,
 the "at least A to B" range, the GST basis in `base`, the rating-agency `speaker_scope`, cross-source
-`dup_of` folding, the debt-repayment/dividend sign rules and the judge's FILED date.
+`dup_of` folding, the debt-repayment/dividend sign rules and the judge's FILED date.  Stage 2c adds the
+relative-period normaliser (`period_norm`), unit normalisation to `inr_cr` and `execution_months`, the
+`order_kind` inflow/backlog tag, the item/plant/person `scope_part` rule, the collapsed-range repair and the
+event repair that marks duplicates instead of deleting them and links revisions with `revises`.
 """
 
 from __future__ import annotations
@@ -1544,3 +1547,233 @@ def test_writer_migrates_the_stage2b_columns(db_path: Path):
     columns = {str(r[1]) for r in writer.con.execute("PRAGMA table_info(claim)")}
     writer.close()
     assert {"speaker_scope", "dup_of"} <= columns
+
+
+# ------------------------------------------------------------------ stage 2c: period, units, order kind, scope
+def test_period_norm_resolves_a_relative_label_from_known_at():
+    assert dc.period_norm("current year", "2026-08-02T21:13:57") == "FY27"
+    assert dc.period_norm("this year", "2025-11-19T15:00:29") == "FY26"
+    assert dc.period_norm("next year", "2025-09-30T10:00:00") == "FY27"
+    assert dc.period_norm("current quarter", "2025-11-04T18:03:38") == "Q3FY26"
+    assert dc.period_norm("next quarter", "2025-11-04T18:03:38") == "Q4FY26"
+    assert dc.period_norm("H2", "2025-11-10T18:36:53") == "H2FY26"
+    assert dc.period_norm("this H2", "2026-01-15T10:00:00") == "H2FY26"
+    assert dc.period_norm("next 24 months", "2025-11-19") is None
+    assert dc.period_norm("till completion", "2025-11-19") is None
+    assert dc.period_norm("financial year", "2026-02-06T12:32:35") == "FY26"   # id 2901
+    assert dc.period_norm("this year") is None                 # no filing date, no resolution
+
+
+def test_period_norm_reads_printed_fiscal_labels():
+    assert dc.period_norm("FY27") == "FY27"
+    assert dc.period_norm("FY '26") == "FY26"
+    assert dc.period_norm("FY 2026-27") == "FY27"
+    assert dc.period_norm("financial year 2023-24") == "FY24"
+    assert dc.period_norm("year ended 31st March, 2024") == "FY24"
+    assert dc.period_norm("Financial Year 2024-2025") == "FY25"
+    assert dc.period_norm("Finanuial Year 2024:25") == "FY25"   # the AR's own typo (id 7848)
+    assert dc.period_norm("Q3 FY26") == "Q3FY26"
+    assert dc.period_norm("H1 FY26") == "H1FY26"
+    assert dc.period_norm("June 2028") == "FY29"
+    assert dc.period_norm("31.10.2025") == "FY26"
+
+
+def test_order_kind_separates_an_inflow_from_the_order_book():
+    backlog = _claim(node="revenue.order_book", unit="inr_cr", value_low=1700.0,
+                     quote_span="overall unexecuted order value stands at over Rs. 1,700.00 Crore",
+                     statement="overall unexecuted order value stands at over Rs. 1,700.00 Crore")
+    assert dc.order_kind(backlog) == "backlog"
+    inflow = _claim(node="revenue.order_book", unit="inr", value_low=97402648.0,
+                    quote_span="Receiving a new turnkey contract",
+                    statement="Viviana Power Tech Limited has informed the Exchange about Receiving a new "
+                              "turnkey contract amounting to Rs. 9,74,02,648.00")
+    assert dc.order_kind(inflow) == "inflow"
+    both = _claim(node="revenue.order_book", quote_span="order book of Rs. 100 crores after we secured an "
+                                                       "order of Rs. 20 crores",
+                  statement="order book of Rs. 100 crores after we secured an order of Rs. 20 crores")
+    assert dc.order_kind(both) is None
+    neither = _claim(node="revenue.order_book", quote_span="Estimated value of the transaction is 150 Crores",
+                     statement="Estimated value of the transaction is 150 Crores")
+    assert dc.order_kind(neither) is None
+    assert dc.order_kind(_claim(node="capex.amount", quote_span="order book")) is None
+
+
+def test_part_scope_names_the_item_and_person_pay_is_no_driver():
+    capex = dc._finish(_claim(node="capex.amount", unit="inr_cr", value_low=7.0, value_high=None,
+                              quote_span="Knitting machines capex will be Rs 7 Cr.",
+                              statement="Knitting machines capex will be Rs 7 Cr. by Q3 FY27.",
+                              segment="total", effective_period="FY27"))
+    assert capex["scope_part"] == 1 and capex["segment"] == "knitting machines"
+    pay = dc._finish(_claim(node="cost.employee", unit="inr", value_low=800000.0,
+                            quote_span="Basic salary of Rs.8,00,000/-",
+                            statement="Basic salary of Rs.8,00,000/- (Rupees Eight Lakhs only) to be paid "
+                                      "to the JMD on monthly basis.",
+                            segment="total", effective_period="monthly basis"))
+    assert pay["status"] == "unverified" and pay["status_reason"] == "no_driver:person_remuneration"
+    assert pay["scope_part"] == 1 and pay["segment"] == "person_remuneration"
+    # a page that also mentions pay and a plant elsewhere must not re-scope an unrelated claim
+    dividend = dc._finish(_claim(node="equity.dividend", unit="inr", value_low=10.0, sign="+",
+                                 quote_span="Dividend of 100% of the Face Value",
+                                 statement="The Board recommended a Dividend of 100% of the Face Value, "
+                                           "that is, Rs 10 per Equity Share. The remuneration of the JMD is "
+                                           "paid monthly; capacity at the Hargaon unit was increased.",
+                                 segment="total", effective_period="FY26"))
+    assert dividend["segment"] == "total" and dividend["scope_part"] == 0
+
+
+def test_part_scope_reads_the_guidance_page_around_the_quote(db_path: Path, monkeypatch):
+    folder = db_path.parent
+    store = folder / "c99"
+    store.mkdir(exist_ok=True)
+    con = sqlite3.connect(store / "c99.db")
+    con.executescript("CREATE TABLE doc_page (doc_key TEXT, symbol TEXT, page INTEGER, text TEXT);")
+    con.execute("INSERT INTO doc_page VALUES (?, 'TESTCO', 13, ?)", (
+        "D:/raw/deck.pdf",
+        "Knitting Machines • 19 machines by Q3 FY27, taking total capacity to 40 machines.\n"
+        "• Total capex will be Rs 7 Cr.\nSolar Energy • 11 MW ground-mounted solar."))
+    con.execute("INSERT INTO doc_page VALUES (?, 'TESTCO', 14, ?)", (
+        "D:/raw/deck.pdf",
+        "Knitting Machines • 19 machines by Q3 FY27. " + ("filler text. " * 40)
+        + "Solar Energy • 11 MW ground-mounted solar. Total capex will be Rs 32 Cr."))
+    con.commit()
+    con.close()
+    monkeypatch.setattr(dc, "STORE_ROOT", folder)
+    monkeypatch.setattr(dc, "_PAGE_CACHE", {})
+    claim = _claim(store="c99", source_kind="guidance", doc_key="D:/raw/deck.pdf", page=13,
+                   node="capex.amount", unit="inr_cr", value_low=7.0,
+                   quote_span="• Total capex will be Rs 7 Cr.", statement="• Total capex will be Rs 7 Cr.")
+    item, person = dc.claim_part(claim, with_page=True)
+    assert (item, person) == ("knitting machines", False)
+    far = _claim(store="c99", source_kind="guidance", doc_key="D:/raw/deck.pdf", page=14,
+                 node="capex.amount", unit="inr_cr", value_low=32.0,
+                 quote_span="Total capex will be Rs 32 Cr.", statement="Total capex will be Rs 32 Cr.")
+    assert dc.claim_part(far, with_page=True) == (None, False)   # a distant section must not re-scope it
+
+
+def test_normalise_units_converts_amounts_and_moves_an_execution_time():
+    rupees = _claim(node="revenue.order_book", unit="inr", value_low=128357670.39, value_high=None)
+    assert dc.normalise_units(rupees) == "inr->inr_cr"
+    assert rupees["unit"] == "inr_cr" and round(rupees["value_low"], 8) == 12.83576704
+    lakh = _claim(node="equity.dividend", unit="inr_lakh", value_low=679.015)
+    assert dc.normalise_units(lakh) == "per_share_dividend_left" and lakh["unit"] == "inr_lakh"
+    total_outgo = _claim(node="capex.amount", unit="inr_lakh", value_low=679.015)
+    assert dc.normalise_units(total_outgo) == "inr_lakh->inr_cr"
+    assert round(total_outgo["value_low"], 6) == 6.79015
+    millions = _claim(node="capex.amount", unit="inr_mn", value_low=100.0)
+    assert dc.normalise_units(millions) == "inr_mn->inr_cr" and millions["value_low"] == 10.0
+    exercise = _claim(node="equity.shares", unit="inr", value_low=56.35, base="exercise price")
+    assert dc.normalise_units(exercise) == "per_unit_left" and exercise["unit"] == "inr"
+    dollars = _claim(node="capex.amount", unit="usd", value_low=70000000.0)
+    assert dc.normalise_units(dollars) == "usd_no_fx"
+    assert dollars["unit"] == "usd" and dollars.get("value_inr_cr") is None
+    months = _claim(node="revenue.order_book", unit="months", value_low=30.0, value_high=None,
+                    quote_span="within 30 months")
+    assert dc.normalise_units(months) == "months->execution_months"
+    assert months["execution_months"] == "30 months" and months["value_low"] is None
+
+
+def test_repair_collapsed_range_restores_the_low_end():
+    claim = _claim(node="revenue.total", unit="inr_cr", value_low=50.0, value_high=50.0, sign="+",
+                   base="INR45 crores",
+                   quote_span="in FY '27, we are targeting revenues of approximately INR45 crores to "
+                              "INR50 crores",
+                   statement="in FY '27, we are targeting revenues of approximately INR45 crores to "
+                             "INR50 crores", segment="Tipping Jack", effective_period="FY '27")
+    assert dc.repair_collapsed_range(claim)
+    assert (claim["value_low"], claim["value_high"], claim["base"]) == (45.0, 50.0, None)
+    target = _claim(node="debt.level", unit="inr_cr", value_low=100.0, value_high=100.0,
+                    base="INR450 crores", quote_span="from INR450 crores to INR100 crores",
+                    statement="debt will come down from INR450 crores to INR100 crores")
+    assert not dc.repair_collapsed_range(target)
+
+
+def test_event_repair_marks_duplicates_and_revisions(db_path: Path):
+    def row(source_id: int, value: float, known: str, **kw):
+        claim = _claim(source_id=source_id, value_low=value, value_high=None, known_at=known, **kw)
+        claim.update({"status": "verified", "status_reason": "", "created_at": "x", "judge_ok": 1,
+                      "judge_fail": ""})
+        return claim
+
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [
+        row(1, 100.0, "2025-01-01T10:00:00"),
+        row(2, 100.5, "2025-03-01T10:00:00"),          # same event, within 180 days
+        row(3, 150.0, "2025-09-01T10:00:00"),          # a later changed value: a revision, not a duplicate
+    ])
+    events = dc.event_repair(writer.con)
+    rows = [tuple(r) for r in writer.con.execute(
+        "SELECT source_id, status, dup_of, revises FROM claim ORDER BY source_id").fetchall()]
+    writer.close()
+    assert events == {"duplicates": 1, "duplicates_verified": 1, "revised": 1}
+    assert rows == [(1, "verified", None, None), (2, "duplicate", "1", None), (3, "verified", None, 1)]
+
+
+def test_generic_segment_still_matches_a_named_line():
+    # Webbel 5117/5632: "that line" / "solar Mono PERC cell capacity", one 750 MW target
+    assert dc._segments_match("that line", "solar Mono PERC cell capacity")
+    assert dc._segments_match("total", "solar cells")
+    assert not dc._segments_match("solar cell line", "solar module line")
+
+
+def test_event_repair_folds_a_single_value_and_its_own_range(db_path: Path):
+    def row(source_id: int, low: float, high, known: str):
+        claim = _claim(source_id=source_id, value_low=low, value_high=high, known_at=known)
+        claim.update({"status": "verified", "status_reason": "", "created_at": "x", "judge_ok": 1,
+                      "judge_fail": ""})
+        return claim
+
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [row(1, 40.0, None, "2026-08-02T21:13:57"),
+                                  row(2, 40.0, 40.0, "2026-08-02T21:13:57")])
+    events = dc.event_repair(writer.con)
+    rows = [tuple(r) for r in writer.con.execute(
+        "SELECT id, status, dup_of FROM claim ORDER BY id").fetchall()]
+    writer.close()
+    assert events["duplicates"] == 1
+    assert rows == [(1, "verified", None), (2, "duplicate", "1")]
+
+
+def test_repair_db_copies_the_source_and_keeps_a_duplicate_marked(db_path: Path):
+    source = db_path.parent / "source.db"
+    out = db_path.parent / "repaired.db"
+    report = db_path.parent / "repair.md"
+
+    def row(source_id: int, value: float, known: str):
+        claim = _claim(source_id=source_id, value_low=value, value_high=None, known_at=known)
+        claim.update({"status": "verified", "status_reason": "", "created_at": "x", "judge_ok": 1,
+                      "judge_fail": ""})
+        return claim
+
+    writer = dc.Writer(source)
+    writer.insert_claims("run1", [row(1, 100.0, "2025-01-01T10:00:00"),
+                                  row(2, 100.0, "2025-02-01T10:00:00")])
+    writer.close()
+    dc.repair_db(source, out, report)
+    source_con = sqlite3.connect(source)
+    source_statuses = [r[0] for r in source_con.execute("SELECT status FROM claim ORDER BY id")]
+    source_con.close()
+    out_con = sqlite3.connect(out)
+    out_statuses = [tuple(r) for r in out_con.execute(
+        "SELECT status, dup_of FROM claim ORDER BY id")]
+    out_con.close()
+    assert source_statuses == ["verified", "verified"]          # the source is never written
+    assert out_statuses == [("verified", None), ("duplicate", "1")]
+    assert report.exists() and "T-228 stage 2c repair report" in report.read_text(encoding="utf-8")
+    out_con = sqlite3.connect(out)
+    counts, events = dc.repair_log_read(out_con)
+    out_con.close()
+    assert events["duplicates"] == 1 and "rejudge" in counts
+
+
+def test_writer_migrates_the_stage2c_columns(db_path: Path):
+    old = dc.SCHEMA.replace(
+        "  period_norm TEXT, order_kind TEXT, execution_months TEXT, scope_part INTEGER, revises INTEGER,\n"
+        "  value_inr_cr REAL,\n", "")
+    con = sqlite3.connect(db_path)
+    con.executescript(old)
+    con.commit()
+    con.close()
+    writer = dc.Writer(db_path)
+    columns = {str(r[1]) for r in writer.con.execute("PRAGMA table_info(claim)")}
+    writer.close()
+    assert {"period_norm", "order_kind", "execution_months", "scope_part", "revises", "value_inr_cr"} <= columns
