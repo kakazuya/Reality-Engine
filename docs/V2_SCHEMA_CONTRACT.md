@@ -1928,9 +1928,11 @@ Writer: `reality_engine/v2/observations.py` (DDL is its `SCHEMA` constant; tests
   `entity_scope` (`company` / `subsidiary` / `industry` / `country` / `customer` / `peer` / empty), `status`
   (`verified` / `unverified` / `quarantined`), `status_reason`, `reader`, `read_at`.
 - `measure_dict` -- `id`, `name`, `unit_family`, `driver_node` (the T-228 driver tree: `revenue.volume`,
-  `revenue.price`, `capacity.add`, `capacity.total`, `order.intake`, `revenue_from_operations`, `ebitda`, `pat`,
-  ...). Seeded with 69 measures; a new axis name is
-  kept in `observation.measure` and marked unverified until a dictionary row is approved.
+  `revenue.price`, `revenue.total`, `revenue.order_book`, `revenue.mix`, `cost.raw_material`, `cost.employee`,
+  `cost.power_fuel`, `cost.other`, `margin.ebitda`, `margin.gross`, `capex.amount`, `capacity.add`, `debt.level`,
+  `debt.cost`, `equity.shares`, `equity.dividend`, `working_capital.days`, or `none: <reason>` for a line with no
+  driver node). Seeded with 69 measures at stage A, 259 after stage G; a new axis name is kept in
+  `observation.measure` and marked unverified until a dictionary row is approved.
 - `dim_vocab` -- `kind`, `canonical`, `aliases`; seeded stage, geography and product aliases. A printed dimension is
   replaced by the canonical token only on an exact alias match (`Domestic` -> `India`); an unknown value stays
   verbatim, never guessed.
@@ -2014,8 +2016,9 @@ python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build
 `--stores` takes store names/dirs/`.db` paths, `--stores-root` + `--sample` + `--seed` + `--ensure` pick a
 reproducible sample, `--require doc_key-substring:page` forces evidence pages in, `--doc-types` defaults to `deck`,
 `--limit` caps pages, `--resume` skips pages already written to `--out`. A page that is rerun replaces its own rows.
-The run stops (exit 2) when more than 20% of pages give an empty/non-JSON reply, more than 10% of observations are
-quarantined, or the reader hits a quota window (after writing what it already read).
+`--skip-statements` drops an annual report's financial-statement and notes pages from the stored text layer before
+any model call (stage F, below). The run stops (exit 2) when more than 20% of pages give an empty/non-JSON reply,
+more than 10% of observations are quarantined, or the reader hits a quota window (after writing what it already read).
 
 Stage-A pilot (21 Nov 2026, under the stage-A rules before Wolf's review): the command above on c08, c26 and the
 seed-11 stores that hold routed deck pages (c47, c59, c85), 150 pages, 10 workers, 276 s: **3,001 observations --
@@ -2030,7 +2033,7 @@ them). c26 p20 gives two series (`s1` tractor, `s2` M&HCV), `entity_scope='indus
 verified. OPEN: on c08 the project-to-group assignment moved between pilot runs (Keni Port and Slurry Pipeline changed
 group), so a group heading is verbatim-checked but its assignment to a map marker is not yet verified -- the group is
 stored, never promoted to fact by a reader. Full detail `.tmp/t230/report_a.md`; tests
-`python -m pytest -q reality_engine/tests/test_observations.py` (68 pass after stage E).
+`python -m pytest -q reality_engine/tests/test_observations.py` (74 pass after stage F).
 
 ### Stage B (Wolf's review, 21 Nov 2026)
 
@@ -2046,7 +2049,7 @@ potential (292+30+33+45 = 400). Stage B adds/changes:
   when the components add up, collapsing the 85 box against its 85.3 parts.
 - `printed_axis` is checked verbatim like the label (rule 3).
 - The measure dictionary grew to 112 measures (standard P&L, balance-sheet, cash-flow, tax, ratio and ESG lines) plus
-  the 72-entry `SCRIPT_LABELS` table; labels still unmapped get one hy4 proposal each, stored with its reason and never
+  the then 72-entry `SCRIPT_LABELS` table (129 after stage G); labels still unmapped get one hy4 proposal each, stored with its reason and never
   applied.
 - The reader retries 429/5xx with exponential backoff and logs every 429 with its IST time to `http_429`; it honours
   the `Retry-After` header. A `Retry-After` over 300 s is the shared Go key's quota window, not a burst: the reader
@@ -2054,9 +2057,10 @@ potential (292+30+33+45 = 400). Stage B adds/changes:
   skips every page that already has observation rows in `--out`, so a stopped run continues where it stopped.
   Workers default to 20.
 - Scope: every routed `table_or_chart` page of doc_type `deck`/`investor_presentation` across all 91 stores is 4,702
-  pages; adding the routed annual-report pages (39,845) gives 44,547, above the 15,000 cap, so **decks only** were run.
-- Full run (21 Nov 2026): 4,702 routed deck pages of the 91 stores (decks only; decks + annual reports = 44,547,
-  above the 15,000 cap). The first pass stopped at **1,892 pages** when the shared key hit its quota window at 02:55
+  pages; adding the routed annual-report pages (39,845) gives 44,547, above the 15,000 cap, so stage B ran decks
+  only; stage F (below) filters the annual-report pages and reads those.
+- Full run (21 Nov 2026): 4,702 routed deck pages of the 91 stores (decks only; the routed annual reports were read
+  in stage F after the statement filter). The first pass stopped at **1,892 pages** when the shared key hit its quota window at 02:55
   IST (`Retry-After` 8,832 s) with 44,012 observations; at 05:35 IST the same command plus `--resume` read the
   remaining 2,810 pages in 2,000 s with **0 errors and 0 429s** after the reset (1,892 pages skipped as already
   written). Total: **101,849 observations on 4,405 pages -- 42,101 verified (41.3%), 57,568 unverified, 2,180
@@ -2084,8 +2088,8 @@ classes with script rules only (no new model trust):
   verifies as stock); `adjusted=1` on a hypothetical/adjusted phrase ("would have been", "but for", "pro forma",
   "excluding one-offs", "adjusted") and such a row never verifies as the reported measure; a spindle count on a capex
   chart is `capacity.spindles`; `measure_alias` canonicalises near-duplicate ids (`order_book_growth_yoy` ->
-  `order.book_growth_yoy`) before the dictionary check. At stage C the dictionary held 120 measure ids and 18
-  aliases (128 ids and the same 18 aliases after stages D-E).
+  `order.book_growth_yoy`) before the dictionary check. At stage C the dictionary held 120 measure ids and 18 aliases (259 ids and 108
+  aliases after stage G).
 - **C4 stage.** `stage` is set from a printed stage phrase in `group_path`; a legend/colour group still makes the row
   unverified, so a stage read off a coloured box never verifies.
 - **C5 axis prompt.** The reader is asked for ONE printed axis line (no "Particulars (INR Mn) | FY22" joins); the
@@ -2094,7 +2098,10 @@ classes with script rules only (no new model trust):
   check to the stored rows: only an inherited printed unit/period, a measure mapping or the grown dictionary may
   upgrade a row; a row that would verify with no new printed source keeps its stage-B status and the pass stops.
   860 pages whose rows were hit by C3 or C5 were deleted and re-read with the new prompt (`--resume`, 1,157 pages
-  including the 297 empty ones), then rechecked. Results are in `.tmp/t230/report_c.md`.
+  including the 297 empty ones), then rechecked. Results are in `.tmp/t230/report_c.md`. T-233 scopes the pass:
+  `--only <selector.json>` (with `--baseline <db>`) rechecks or re-reads only the selected stores/doc_keys/pages or
+  SQL row predicate into a copy of the baseline; `reality_engine/scripts/regress.py` gates the copy against the
+  golden sets (`docs/FIX_LOOP.md`).
 
 Stage-C results (21 Nov 2026). Recheck on a copy of `.tmp/t230/obs_91.db`: 153 rows upgraded from a printed source
 (unit/period/measure), 9,648 downgraded, **0 unproven upgrades** (241 rows kept their stage-B status on a hard
@@ -2176,65 +2183,120 @@ Wolf's seed-131 read: 42 right, 6 minor, 2 wrong of 50 verified (4%); the deck-p
 Recheck into `.tmp/t230/obs_91_e.db`: 56 upgrades, 1,150 downgrades. Final: 102,398 rows / 4,453 pages --
 **63,121 verified (61.6%), 37,048 unverified, 2,229 quarantined**. Report `.tmp/t230/report_e.md`; tests 68.
 
-### Stage G (dictionary expansion proposal, 21 Nov 2026, awaiting Wolf)
+### Stage F (annual-report pages kept: operating only, 21 Nov 2026)
 
-Shivam: grow the KPI dictionary before more decks are read, so more printed figures get the right label. Stage G
-mines the stored observations and the old flat deck store and proposes the expansion; **it is not applied yet**
-(Wolf reviews `.tmp/t230g/dictionary_proposal.csv` first, and stage F edits `observations.py` in another worktree).
+The goal: spend the spare hy4-flash-free quota on the annual-report visuals that hold capacity, plant, segment,
+volume and order figures, not on the statements the stores already hold from XBRL (of the 1,837 verified rows of the
+300-page pilot only 47 were operating measures). `--skip-statements` drops a page before any model call when its
+stored text layer prints a financial-statement or notes heading: Balance Sheet, Statement of Profit and Loss, Cash
+Flow Statement, Statement of Changes in Equity, Notes to (the) (Standalone|Consolidated) Financial Statements,
+Notes on Accounts, Schedules to the Financial Statements, Note No., Independent Auditor's Report (and its
+annexures), Form AOC-1, MGT-9 / extract of the annual return, Section 197(12) remuneration / particulars of
+employees, CSR spend, shareholding pattern, share price data, plus the sibling statutory-report headings the same
+pilot pages carry: notice / AGM / e-voting / explanatory statement, Secretarial Audit Report / Form MR-3, corporate
+governance report / code of conduct, related-party tables, and the BRSR section. Two carve-outs keep the operating
+pages: a notes page that prints a segment-reporting table (segment information, geographical segment, revenue by
+location/customer, customer concentration, sale of goods/services) and a BRSR page that prints the plant-location
+table. The test is line-based: a printed heading starts its line and is short (<= 14 words), so an MD&A sentence
+that mentions the balance sheet, a lowercase sentence fragment, or a line ending in a full stop is not a heading; a
+page with no text layer is kept. Code: `statement_page_reason`, `page_texts`, `filter_statement_pages`,
+`pages_from_store(..., skip_statements=True)`; the run reports kept/dropped counts and the reason mix as
+`statement_filter` in the stats JSON plus one stderr line.
 
-- Evidence: `D:/RealityEngine/t230/obs_91.db` (the stage-E state: 102,398 observations on 4,453 pages, 2,870
-  distinct measure ids, 10,637 normalised printed labels) and `deck_figures.db` `facts` (13,569,583 facts,
-  1,578,040 distinct free-text metric strings). `measure_proposal` is not usable as evidence: 300 of its 600 rows
-  died on `OSError: [Errno 22] Invalid argument` (the proposal call never ran), 279 give a reason and no measure,
-  and only 21 name one.
-- **Sector drift.** The brief's sector source does not exist: `build_list_800_20000cr.csv` gives sector
-  "General Diversified" for 52 of the 61 observed symbols and blank for 9, `equity_intelligence.master_companies`
-  repeats it, and the 91 stores' `company` table holds symbol/isin/name only. `sector_set` in the proposal is the
-  measure's own sector meaning; the evidence is cited per observed measure id, printed label and symbol count.
-- **Label-normalisation bug (found here; the fix goes with the change).** `_SCRIPT_LABEL_MARK` strips the first
-  letter of a label starting i/v/x/l/c/d/m (`norm_label("Depreciation") == "epreciation"`), so **15 of the 72**
-  `SCRIPT_LABELS` entries can never fire: cost of goods sold, cost of services, depreciation and
-  amortisation/amortization expense, diluted eps, long-term borrowings, inventories, cash and cash equivalents,
-  cash & cash equivalents, cash generated from operations, changes in working capital, direct taxes paid, less:
-  direct taxes paid, deferred tax liabilities (net), current tax liabilities (net). Fix:
-  `^\s*(?:\([ivxlcdm]+\)|\([a-zA-Z]\)|[ivxlcdm]+\)|[a-zA-Z]\)|\d+[.)])\s+` -- a mark must be bracketed or
-  followed by a space, so a bare leading letter is kept.
-- **Proposal** (`.tmp/t230g/dictionary_proposal.csv`, one row per measure: id, name, unit family, stock/flow,
-  driver node, sector set, observed ids with counts, rows, rows the dictionary alone blocks, labels, note; and
-  `.tmp/t230g/label_map_proposal.csv`, one row per label: rows, deck facts, current measures, unit families):
-  **+131 measures (128 -> 259)**, 88 measure aliases (74 to new measures, 14 to existing ones) and 44 label maps
-  (45 label-map rows; "cost of goods sold" was already listed and could never fire -- see the bug above). Row
-  resolution rises from 83,487/102,398
-  (81.53%) to 93,104 (90.92%): labels covering 90% of the stored occurrences then name a dictionary measure. Every
-  sector set the brief names is present (banking gnpa/nnpa/pcr/casa/nim/cost_of_funds/credit_cost/crar/outlets/atms;
-  EPC order.bid_pipeline/order.executed; manufacturing capacity.under_construction/ebitda_per_tonne/value addition;
-  pharma anda/launches/rnd; retail stores/area/same-store/distributors; IT deal.tcv/count.employees/attrition;
-  power plf/generation; real estate pre-sales/collections/area). A label map applies only when the printed unit's
-  family fits the target measure (guard added with the change); without it 63 verified percent rows labelled
-  "Net Profit"/"Sales Revenue" would be downgraded.
-- **Stop-gate checks.** Aliases whose rows print another unit family are withheld, not merged: `gross_npa` (35
-  rows, 29% percent), `net_debt_equity_ratio` (95 rows, 19% money), `debt_to_equity_ratio` (10 rows, 40% percent),
-  `carpet_area` (18 rows, 33% money/capacity); six more carry 1-4 stray rows and are included with that noted
-  (`gross_non_performing_assets`, `count.banking_outlets`, `count.branches`, `investment`, `debt_to_equity`,
-  `pbit`).
-  **429 of 63,121 verified rows (0.68%) change measure -- under the 5% stop line**, none loses verified status,
-  and every change is explained by an alias or label map (checked row by row: 0 unexplained): 271 Polyplex
-  "Crude Oil - $/Barrel" from revenue.price to the new crude_oil_price, ~126 deferred-tax-asset rows from
-  deferred_tax/current_tax_assets_net to the balance measure, 62 "Cost of revenues", 1 "Operating Revenue".
+`seed_stores` now receives `--doc-types`; it was seeded on decks before, so `--sample 91 --doc-types annual_report`
+picked only the 61 stores that hold routed deck pages. With the fix all 88 stores that hold routed annual-report
+pages are picked (91 store dirs, 3 with no routed annual-report page).
+
+Measured on the 290 pilot pages (`.tmp/t230ar/obs_ar_pilot.db`, the seed-11 300-page pilot): **kept 152, dropped
+138 (47.6%)** -- notes 81, governance 8, notice 6, profit_and_loss 5, note_no 5, changes_in_equity 5,
+secretarial_audit 5, audit_report 5, csr_spend 4, brsr 3, related_party 3, cash_flow 2, balance_sheet 2,
+share_price 1, aoc1 1, remuneration 1, shareholding 1. Pages with a verified operating row (capacity/order/volume/
+production/mix, plant/outlet/customer counts, revenue rows carrying a segment/product/geography) **17 of 18 kept
+(94%), rows 69 of 71 (97%)**; the one dropped page (MANINFRA p142) is a related-party note whose two `mix.share`
+rows are not operating measures. Under the brief's literal measure-name list (any `count.*`/`revenue.*` row,
+including board-meeting counts and statement revenue lines) 25 of 27 pages are kept (93%). The brief's 70% drop
+target is NOT met on this page set (47.6%): about half of the routed annual-report pages are BRSR/governance/notice/
+statutory tables (kept for their plant counts or not a statement) or notes continuation pages whose stored text
+carries no printed heading; a heading filter cannot identify those without dropping operating pages. On all 88
+stores' **39,845** routed annual-report pages the filter kept **22,586** and dropped **17,259 (43.3%)** (notes 9,744,
+note_no 1,242, governance 1,135, balance_sheet 714, profit_and_loss 622, notice 523, audit_report 480,
+changes_in_equity 468, brsr 463, cash_flow 430, secretarial_audit 361, csr_spend 328, related_party 282,
+remuneration 237, aoc1 123, shareholding 94, share_price 7, mgt9 6). Tests:
+`test_observations.py` 74 passed (6 new stage-F tests).
+
+Run (21 Nov 2026): `python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10
+--sample 91 --doc-types annual_report --skip-statements --limit 100000 --workers 20 --resume
+--out .tmp/t230ar/obs_ar_91.db` (`--limit` is raised from its 150 default; the kept pages are 22,586). The selection
+was 22,442 pages after `--resume` skipped the 144 already written by the 150-page smoke pass. The worker's time
+budget stopped the pass after **2,217 pages / 44,897 rows -- 8,518 verified (19.0%), 34,993 unverified, 1,386
+quarantined (3.1%)** from 271 documents: 1,235 verified operating rows, 1,068 of them core operating (capacity /
+order / volume / production / mix, plant-outlet-customer counts, revenue with a segment/product/geography). No 429
+and no failed reply were logged; the quarantine gate held. The remaining 20,225 pages are resumable with the same
+command. Report `.tmp/t230ar/report_f.md` (30 random core-operating rows with their page excerpts, seed 51).
+
+
+
+
+### Stage G (dictionary expansion, applied 21 Nov 2026 after Wolf's review)
+
+Shivam: grow the KPI dictionary before more decks are read. Stage G mined `obs_91.db` and `deck_figures.facts`,
+wrote the proposal (`.tmp/t230g/dictionary_proposal.csv`), Wolf reviewed it with corrections, and it is now in
+`observations.py`; stage H keeps away from the dictionary tables.
+
+- Applied: **259 measures (128 + 131)**, **108 aliases (18 + 90)** and **129 label maps (72 + 57)**. Every measure
+  now carries a T-228 driver-tree node or `none: <reason>` -- the 131 new rows and the pre-existing 128, whose
+  `balance.assets`/`profit.pat`-style nodes were not the tree. Node counts over the 259: cost.other 25,
+  capacity.add 17, margin.ebitda 16, revenue.total 14, revenue.volume 13, debt.level 11, working_capital.days 11,
+  capex.amount 9, revenue.order_book 7, equity.shares 5, cost.raw_material 5, revenue.price 4, debt.cost 4,
+  cost.employee 4, margin.gross 3, revenue.mix 2, cost.power_fuel 1, equity.dividend 0 (no dividend measure yet),
+  `none:` 108. The `none:` reasons: 40 balance-sheet lines, 8 cash-flow lines, 7 accounting results, 7
+  non-financial metrics, 5 market-level metrics, 4 below-EBITDA profit lines, 4 tax lines, 4 balance-sheet totals,
+  3 lending flows, 3 accounting totals, 3 return ratios, 2 geographic footprint, 2 asset stocks, 2 efficiency
+  ratios, and one each for geography, loan ticket size, collection ratio, regulatory capital, regulatory filing,
+  regulatory approvals, regulatory registrations, cash collection, unsold inventory, accounting line, share of
+  associates, tax liability, working-capital stock, PAT margin.
+- Units: **two families added** -- `energy` (MU/MWh/GWh/kWh; `generation.volume` is energy, not count) and `bps`
+  (`ebitda_margin_change_bps`, `pat_margin_change_bps`, not percent). `percent` still accepts a printed bps unit
+  (`CONVERT_FAMILY`) so stage-C rows stored with `unit_family='percent'` do not regress, while a `bps` measure
+  does not accept `%`; `energy` requires a printed unit. The `*_days` ids are `time` (the family a printed `days`
+  resolves to), checked: working_capital_days, inventory_days, debtor_days, payable_days, cash_conversion_cycle.
+- Split-by-family routing (Wolf's correction): `gnpa`/`nnpa` are `gnpa_pct`/`nnpa_pct` (percent) beside
+  `gnpa.value`/`nnpa.value` (money); a mixed-family id is never aliased wholesale. `gross_npa` aliases to
+  gnpa.value and the label maps "gnpa"/"gross npa"/"gross npas at the end of period/year" route its percent rows
+  to gnpa_pct through the unit guard (same for nnpa and "net npa"). `net_debt_equity_ratio`, `debt_to_equity_ratio`
+  and `carpet_area` have no alias: their labels map only when the unit fits, so the money rows stay unmapped
+  ("not this measure"), never merged into a ratio.
+- The label-map unit guard (`_label_unit_fits` in `canonical_measure`) applies a label map only when the printed
+  unit's family fits the mapped measure; without it 63 verified percent rows labelled
+  "Net Profit"/"Sales Revenue" would be downgraded. `is_stock_measure` now covers `outlets|branches|atms|stores`
+  and both GNPA/NNPA ids (D5 deck period).
+- Coverage: rows whose measure names a dictionary id rise 83,487/102,398 (81.53%) -> 93,266 (91.08%). The 429
+  verified rows that changed measure (0.68% of 63,121, under the 5% stop line) are all alias/label reasons, checked
+  row by row with 0 unexplained: 271 Polyplex "Crude Oil - $/Barrel" (revenue.price -> crude_oil_price), ~126
+  deferred-tax-asset rows (deferred_tax/current_tax_assets_net -> deferred_tax_assets_net), 62 "Cost of revenues",
+  1 "Operating Revenue".
+- **Recheck** (`--recheck` into `.tmp/t230g/obs_91_g.db`, 122 stores holding the pages, no model call): **7,203
+  upgrades, 0 downgrades, 0 unproven upgrades**; verified **63,121 -> 70,324 (61.6% -> 68.7%)**, unverified 37,048
+  -> 29,845, quarantined 2,229 unchanged; 111 of the 131 new measures carry stored rows (7,364 verified on them);
+  4,786 rows had a measure mapped; 143 kept their stage-E status on a hard reason (parts-sum / scale).
+- **Regress gate** (`regress observations --db .tmp/t230g/obs_91_g.db --baseline obs_91.db`): 117 still right,
+  14 fixed, 41 still wrong, 8 changed (all intended: spindles, disbursement, outlet-count and GNPA ids) and **1
+  newly broken -- the known RSYSTEMS `ebitda.delta` row 118618, identical in the baseline, which stage H fixes**,
+  so the gate passes under its exception.
+- Evidence, unchanged: 102,398 observations on 4,453 pages (63,121 verified, 37,048 unverified, 2,229
+  quarantined), 2,870 distinct measure ids, 10,637 normalised labels; `deck_figures.facts` 13,569,583 facts /
+  1,578,040 distinct free-text metric strings; `measure_proposal` unusable (300 of 600 rows OSError, 279 with no
+  measure, 21 named); the sector field is "General Diversified" for 52 of 61 observed symbols and blank for 9, so
+  the proposal's `sector_set` is the measure's own sector meaning.
 - Not mapped on purpose (kept unverified): page/slide/section/letter references, tenure/years-of-experience, ESG
   scores and reduction percentages, rankings/awards, shareholding percentages, real-estate unit counts printed
-  under a "Sub-total" label, packaging PCR wording, tariff rates. No driver node and no business quantity.
-- **Projected recheck** (in-memory dictionary/aliases/label maps, `observations.py` untouched): a copy of obs_91
-  rechecked by `recheck_projection.py` into `.tmp/t230g/obs_91_g_projected.db` in 523 s with **7,049 upgrades, 0
-  downgrades, 0 unproven upgrades** -- verified **63,121 -> 70,170 (61.6% -> 68.5%)**, unverified 37,048 ->
-  29,999; 110 of the 131 measures carry stored rows (verified on them 0 -> 7,210). Stats
-  `.tmp/t230g/recheck_projection.json`, before/after per measure `.tmp/t230g/verified_by_measure.csv`, report
-  `.tmp/t230g/report_g.md`. On Wolf's go the tables go into `observations.py` and the same pass runs as
-  `--recheck` into `.tmp/t230g/obs_91_g.db`. The 2,568 newly resolved rows that stay unverified are the C2/D5
-  gates (count rows with no printed unit, area rows with no period), not the dictionary.
-- Tests on apply: alias resolution, a label map with the unit guard, `norm_label` list marks, one dictionary row
-  per proposed id, and no verified row changing measure without an alias reason.
-
+  under a "Sub-total" label, packaging PCR wording, tariff rates.
+- `norm_label` fix applied with this change: the list-mark regex now requires a bracketed or space-terminated mark,
+  so the 15 previously dead `SCRIPT_LABELS` entries (cost of goods sold, inventories, cash generated from
+  operations, diluted eps, lease/direct-tax/deferred-tax lines, ...) fire and a bare leading letter is kept.
+- Tests: 83 in `test_observations.py`, 9 of them stage G (a node for every measure, aliases and label maps resolve
+  to a dictionary id, the family-split aliases, the label-map unit guard, `norm_label` list marks, energy/bps
+  families, outlets/atms/stores deck period, an energy row's unit gate, and the seeded dictionary/aliases).
 
 
 

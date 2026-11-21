@@ -14,6 +14,9 @@ shape, then checks them independently of the model:
 * ``known_at`` is copied from the store's ``doc`` row, never from the model; ``value`` is parsed by
   the script from ``value_text``, never taken from the model; ``region`` comes from the text-layer
   word boxes when the value is found there.
+* (stage F) ``--skip-statements`` drops an annual report's financial-statement and notes pages from
+  the stored text layer before any model call; a notes page printing a segment table (or a BRSR page
+  with the plant-location table) is kept.  The run reports kept/dropped counts by reason.
 
 Output is a separate SQLite file (``--out``, default ``.tmp/t230/obs.db``); a store is only ever
 read.  Tables: ``observation``, ``measure_dict``, ``dim_vocab``.
@@ -22,6 +25,9 @@ Usage:
     python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10 \
         --sample 5 --ensure c08,c26 --seed 11 --limit 150 --workers 10
     python -m reality_engine.v2.observations --stores c08,c26 --limit 20 --workers 10
+    python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10 \
+        --sample 91 --doc-types annual_report --skip-statements --workers 20 --resume \
+        --out .tmp/t230ar/obs_ar_91.db
 """
 from __future__ import annotations
 
@@ -145,135 +151,269 @@ MIGRATIONS = (("group_source", "TEXT NOT NULL DEFAULT ''"), ("group_check", "TEX
 
 # id, name, unit family, node in the T-228 driver tree
 MEASURES: tuple[tuple[str, str, str, str], ...] = (
-    ("capacity.total", "Total / operating capacity", "capacity", "capacity.total"),
+    ("capacity.total", "Total / operating capacity", "capacity", "capacity.add"),
     ("capacity.add", "Capacity added or planned", "capacity", "capacity.add"),
-    ("capacity.utilisation", "Capacity utilisation", "percent", "capacity.utilisation"),
+    ("capacity.utilisation", "Capacity utilisation", "percent", "revenue.volume"),
     ("capacity.growth_multiple", "Growth multiple (x) of capacity", "ratio", "capacity.add"),
     ("volume.sales", "Units or volume sold / handled", "count", "revenue.volume"),
-    ("volume.production", "Units or volume produced", "count", "cost.volume"),
-    ("revenue.value", "Revenue", "money", "revenue.value"),
+    ("volume.production", "Units or volume produced", "count", "revenue.volume"),
+    ("revenue.value", "Revenue", "money", "revenue.total"),
     ("revenue.price", "Realisation or price per unit", "money_per_unit", "revenue.price"),
     ("revenue.mix", "Revenue or volume split by segment / geography", "money", "revenue.mix"),
     ("mix.share", "Share of a mix (percent of revenue / volume)", "percent", "revenue.mix"),
-    ("revenue_from_operations", "Revenue from operations", "money", "revenue.value"),
-    ("total_income", "Total income", "money", "revenue.value"),
-    ("total_expenses", "Total expenses", "money", "cost.total"),
-    ("finance_cost", "Finance cost", "money", "cost.finance"),
-    ("ebitda", "EBITDA", "money", "profit.ebitda"),
-    ("profit_before_tax", "Profit before tax", "money", "profit.pbt"),
-    ("pat", "Profit after tax", "money", "profit.pat"),
-    ("total_assets", "Total assets", "money", "balance.assets"),
-    ("total_equity", "Total equity", "money", "balance.equity"),
-    ("borrowings", "Borrowings", "money", "balance.debt"),
-    ("cash_and_cash_equivalents", "Cash and cash equivalents", "money", "balance.cash"),
-    ("eps", "Earnings per share", "money_per_unit", "profit.eps"),
-    ("ebitda_margin", "EBITDA margin", "percent", "profit.ebitda"),
-    ("pat_margin", "PAT margin", "percent", "profit.pat"),
-    ("revenue_growth_yoy", "Revenue growth (YoY)", "percent", "revenue.value"),
-    ("ebitda_per_kg", "EBITDA per kg", "money_per_unit", "profit.ebitda"),
-    ("market.value", "Industry or market size (money)", "money", "market.size"),
-    ("capex", "Capex", "money", "capex.value"),
-    ("capex.estimated", "Estimated capex", "money", "capex.value"),
-    ("inventories", "Inventories", "money", "balance.working_capital"),
-    ("trade_receivables", "Trade receivables", "money", "balance.working_capital"),
-    ("trade_payables", "Trade payables", "money", "balance.working_capital"),
-    ("provisions", "Provisions", "money", "balance.provisions"),
-    ("other_income", "Other income", "money", "revenue.other"),
-    ("total_tax_expense", "Tax expense", "money", "profit.tax"),
-    ("ebit", "EBIT", "money", "profit.ebitda"),
-    ("lease_liabilities", "Lease liabilities", "money", "balance.lease"),
+    ("revenue_from_operations", "Revenue from operations", "money", "revenue.total"),
+    ("total_income", "Total income", "money", "revenue.total"),
+    ("total_expenses", "Total expenses", "money", "cost.other"),
+    ("finance_cost", "Finance cost", "money", "debt.cost"),
+    ("ebitda", "EBITDA", "money", "margin.ebitda"),
+    ("profit_before_tax", "Profit before tax", "money", "none: below-EBITDA profit line"),
+    ("pat", "Profit after tax", "money", "none: accounting result"),
+    ("total_assets", "Total assets", "money", "none: balance-sheet line"),
+    ("total_equity", "Total equity", "money", "none: balance-sheet line"),
+    ("borrowings", "Borrowings", "money", "debt.level"),
+    ("cash_and_cash_equivalents", "Cash and cash equivalents", "money", "none: balance-sheet line"),
+    ("eps", "Earnings per share", "money_per_unit", "equity.shares"),
+    ("ebitda_margin", "EBITDA margin", "percent", "margin.ebitda"),
+    ("pat_margin", "PAT margin", "percent", "none: accounting result"),
+    ("revenue_growth_yoy", "Revenue growth (YoY)", "percent", "revenue.total"),
+    ("ebitda_per_kg", "EBITDA per kg", "money_per_unit", "margin.ebitda"),
+    ("market.value", "Industry or market size (money)", "money", "none: market-level metric"),
+    ("capex", "Capex", "money", "capex.amount"),
+    ("capex.estimated", "Estimated capex", "money", "capex.amount"),
+    ("inventories", "Inventories", "money", "working_capital.days"),
+    ("trade_receivables", "Trade receivables", "money", "working_capital.days"),
+    ("trade_payables", "Trade payables", "money", "working_capital.days"),
+    ("provisions", "Provisions", "money", "none: balance-sheet line"),
+    ("other_income", "Other income", "money", "revenue.total"),
+    ("total_tax_expense", "Tax expense", "money", "none: tax line"),
+    ("ebit", "EBIT", "money", "margin.ebitda"),
+    ("lease_liabilities", "Lease liabilities", "money", "debt.level"),
     ("employee_benefits_expense", "Employee benefits expense", "money", "cost.employee"),
-    ("depreciation_and_amortisation_expense", "Depreciation and amortisation", "money", "cost.depreciation"),
+    ("depreciation_and_amortisation_expense", "Depreciation and amortisation", "money", "cost.other"),
     ("other_expenses", "Other expenses", "money", "cost.other"),
-    ("other_equity", "Other equity", "money", "balance.equity"),
-    ("equity_share_capital", "Equity share capital", "money", "balance.equity"),
-    ("other_financial_liabilities", "Other financial liabilities", "money", "balance.other_liabilities"),
-    ("other_current_liabilities", "Other current liabilities", "money", "balance.other_liabilities"),
-    ("other_non_current_assets", "Other non-current assets", "money", "balance.other_assets"),
-    ("other_current_assets", "Other current assets", "money", "balance.other_assets"),
-    ("total_current_assets", "Total current assets", "money", "balance.assets"),
-    ("total_non_current_assets", "Total non-current assets", "money", "balance.assets"),
-    ("total_current_liabilities", "Total current liabilities", "money", "balance.liabilities"),
-    ("total_non_current_liabilities", "Total non-current liabilities", "money", "balance.liabilities"),
-    ("total_equity_and_liabilities", "Total equity and liabilities", "money", "balance.total"),
-    ("property_plant_and_equipment", "Property, plant and equipment", "money", "balance.fixed_assets"),
-    ("capital_work_in_progress", "Capital work in progress", "money", "balance.fixed_assets"),
-    ("right_to_use", "Right-of-use assets", "money", "balance.fixed_assets"),
-    ("other_intangible_assets", "Other intangible assets", "money", "balance.fixed_assets"),
-    ("non_current_assets", "Non-current assets", "money", "balance.assets"),
-    ("current_assets", "Current assets", "money", "balance.assets"),
-    ("non_current_liabilities", "Non-current liabilities", "money", "balance.liabilities"),
-    ("current_liabilities", "Current liabilities", "money", "balance.liabilities"),
-    ("gross_profit", "Gross profit", "money", "profit.gross"),
+    ("other_equity", "Other equity", "money", "none: balance-sheet line"),
+    ("equity_share_capital", "Equity share capital", "money", "none: balance-sheet line"),
+    ("other_financial_liabilities", "Other financial liabilities", "money", "none: balance-sheet line"),
+    ("other_current_liabilities", "Other current liabilities", "money", "none: balance-sheet line"),
+    ("other_non_current_assets", "Other non-current assets", "money", "none: balance-sheet line"),
+    ("other_current_assets", "Other current assets", "money", "none: balance-sheet line"),
+    ("total_current_assets", "Total current assets", "money", "none: balance-sheet line"),
+    ("total_non_current_assets", "Total non-current assets", "money", "none: balance-sheet line"),
+    ("total_current_liabilities", "Total current liabilities", "money", "none: balance-sheet line"),
+    ("total_non_current_liabilities", "Total non-current liabilities", "money", "none: balance-sheet line"),
+    ("total_equity_and_liabilities", "Total equity and liabilities", "money", "none: balance-sheet total"),
+    ("property_plant_and_equipment", "Property, plant and equipment", "money", "capex.amount"),
+    ("capital_work_in_progress", "Capital work in progress", "money", "capex.amount"),
+    ("right_to_use", "Right-of-use assets", "money", "capex.amount"),
+    ("other_intangible_assets", "Other intangible assets", "money", "capex.amount"),
+    ("non_current_assets", "Non-current assets", "money", "none: balance-sheet line"),
+    ("current_assets", "Current assets", "money", "none: balance-sheet line"),
+    ("non_current_liabilities", "Non-current liabilities", "money", "none: balance-sheet line"),
+    ("current_liabilities", "Current liabilities", "money", "none: balance-sheet line"),
+    ("gross_profit", "Gross profit", "money", "margin.gross"),
     ("count.rakes", "Number of rakes", "count", "revenue.volume"),
     ("pipeline.length", "Pipeline length", "length", "capacity.add"),
-    ("order.intake", "Order intake / new orders", "money", "order.intake"),
-    ("order.book", "Order book", "money", "order.book"),
-    ("market.size", "Industry or market size", "count", "market.size"),
-    ("market.share", "Market share", "percent", "market.share"),
-    ("count.plants", "Number of plants / facilities / terminals", "count", "capex.site_count"),
-    ("count.customers", "Number of customers / subscribers", "count", "revenue.customer_count"),
-    ("logistics.throughput", "Port / logistics throughput", "count", "logistics.throughput"),
-    ("cash_flow.operating", "Net cash from operating activities", "money", "cash.operating"),
-    ("cash_flow.investing", "Net cash from investing activities", "money", "cash.investing"),
-    ("cash_flow.financing", "Net cash from financing activities", "money", "cash.financing"),
-    ("cash_flow.net_change", "Net change in cash", "money", "cash.net"),
-    ("cash_generated_from_operations", "Cash generated from operations", "money", "cash.operating"),
-    ("changes_in_working_capital", "Changes in working capital", "money", "cash.working_capital"),
-    ("adjustment_for_non_operating_items", "Adjustment for non-operating items", "money", "cash.operating"),
-    ("direct_taxes_paid", "Direct taxes paid", "money", "cash.tax"),
-    ("deferred_tax", "Deferred tax", "money", "profit.tax"),
-    ("current_tax", "Current tax", "money", "profit.tax"),
-    ("deferred_tax_liabilities_net", "Deferred tax liabilities (net)", "money", "balance.tax"),
-    ("current_tax_liabilities_net", "Current tax liabilities (net)", "money", "balance.tax"),
-    ("current_tax_assets_net", "Current tax assets (net)", "money", "balance.tax"),
-    ("other_bank_balances", "Other bank balances", "money", "balance.cash"),
-    ("other_financial_assets", "Other financial assets", "money", "balance.other_assets"),
-    ("loans", "Loans", "money", "balance.other_assets"),
-    ("cost_of_goods_sold", "Cost of goods sold", "money", "cost.total"),
-    ("cost_of_services", "Cost of services", "money", "cost.total"),
-    ("raw_material_cost", "Raw material cost", "money", "cost.total"),
-    ("exceptional_items", "Exceptional items", "money", "profit.other"),
-    ("gp_percent", "Gross profit margin", "percent", "profit.gross"),
-    ("gross_profit_margin", "Gross profit margin", "percent", "profit.gross"),
-    ("pbt_margin", "PBT margin", "percent", "profit.pbt"),
-    ("ebitda_growth_yoy", "EBITDA growth (YoY)", "percent", "profit.ebitda"),
-    ("profit_growth_yoy", "Profit growth (YoY)", "percent", "profit.pat"),
-    ("pat_growth_yoy", "PAT growth (YoY)", "percent", "profit.pat"),
-    ("goodwill", "Goodwill", "money", "balance.fixed_assets"),
+    ("order.intake", "Order intake / new orders", "money", "revenue.order_book"),
+    ("order.book", "Order book", "money", "revenue.order_book"),
+    ("market.size", "Industry or market size", "count", "none: market-level metric"),
+    ("market.share", "Market share", "percent", "none: market-level metric"),
+    ("count.plants", "Number of plants / facilities / terminals", "count", "capacity.add"),
+    ("count.customers", "Number of customers / subscribers", "count", "revenue.volume"),
+    ("logistics.throughput", "Port / logistics throughput", "count", "revenue.volume"),
+    ("cash_flow.operating", "Net cash from operating activities", "money", "none: cash-flow line"),
+    ("cash_flow.investing", "Net cash from investing activities", "money", "none: cash-flow line"),
+    ("cash_flow.financing", "Net cash from financing activities", "money", "none: cash-flow line"),
+    ("cash_flow.net_change", "Net change in cash", "money", "none: cash-flow line"),
+    ("cash_generated_from_operations", "Cash generated from operations", "money", "none: cash-flow line"),
+    ("changes_in_working_capital", "Changes in working capital", "money", "working_capital.days"),
+    ("adjustment_for_non_operating_items", "Adjustment for non-operating items", "money", "none: cash-flow line"),
+    ("direct_taxes_paid", "Direct taxes paid", "money", "none: cash-flow line"),
+    ("deferred_tax", "Deferred tax", "money", "none: tax line"),
+    ("current_tax", "Current tax", "money", "none: tax line"),
+    ("deferred_tax_liabilities_net", "Deferred tax liabilities (net)", "money", "none: balance-sheet line"),
+    ("current_tax_liabilities_net", "Current tax liabilities (net)", "money", "none: balance-sheet line"),
+    ("current_tax_assets_net", "Current tax assets (net)", "money", "none: balance-sheet line"),
+    ("other_bank_balances", "Other bank balances", "money", "none: balance-sheet line"),
+    ("other_financial_assets", "Other financial assets", "money", "none: balance-sheet line"),
+    ("loans", "Loans", "money", "none: balance-sheet line"),
+    ("cost_of_goods_sold", "Cost of goods sold", "money", "cost.other"),
+    ("cost_of_services", "Cost of services", "money", "cost.other"),
+    ("raw_material_cost", "Raw material cost", "money", "cost.other"),
+    ("exceptional_items", "Exceptional items", "money", "none: below-EBITDA profit line"),
+    ("gp_percent", "Gross profit margin", "percent", "margin.gross"),
+    ("gross_profit_margin", "Gross profit margin", "percent", "margin.gross"),
+    ("pbt_margin", "PBT margin", "percent", "none: below-EBITDA profit line"),
+    ("ebitda_growth_yoy", "EBITDA growth (YoY)", "percent", "margin.ebitda"),
+    ("profit_growth_yoy", "Profit growth (YoY)", "percent", "none: accounting result"),
+    ("pat_growth_yoy", "PAT growth (YoY)", "percent", "none: accounting result"),
+    ("goodwill", "Goodwill", "money", "capex.amount"),
     ("product_weight_range", "Product weight range", "count", "revenue.volume"),
-    ("distance_from_chennai", "Distance from Chennai", "length", "logistics.distance"),
-    ("count.beneficiaries", "Beneficiaries", "count", "other.people"),
-    ("health_consultations", "Health consultations", "count", "other.people"),
-    ("iso_certification", "ISO certification", "count", "other.compliance"),
-    ("freight_rebate", "Freight rebate", "percent", "cost.freight"),
-    ("freight_rebate_duration", "Freight rebate duration", "time", "cost.freight"),
-    ("launch_year", "Launch year", "count", "other.year"),
-    ("market.growth", "Market growth", "percent", "market.size"),
-    ("incremental_demand", "Incremental demand", "count", "market.size"),
-    ("count.states", "Number of states", "count", "other.geography"),
-    ("tree_plantations", "Trees planted", "count", "other.esg"),
-    ("water_managed", "Water managed", "count", "other.esg"),
-    ("gender_ratio", "Gender ratio", "ratio", "other.esg"),
-    ("capex.investment", "Capex investment", "money", "capex.value"),
-    ("count.manufacturing_sections", "Manufacturing sections", "count", "capex.site_count"),
-    ("loans.disbursement", "Loan disbursements (flow)", "money", "loans.disbursement"),
-    ("loans.disbursement_mix", "Disbursements by segment / geography", "money", "loans.disbursement"),
-    ("loans.disbursement_share", "Share of disbursements (percent)", "percent", "loans.disbursement"),
+    ("distance_from_chennai", "Distance from Chennai", "length", "none: geography"),
+    ("count.beneficiaries", "Beneficiaries", "count", "none: non-financial metric"),
+    ("health_consultations", "Health consultations", "count", "none: non-financial metric"),
+    ("iso_certification", "ISO certification", "count", "none: non-financial metric"),
+    ("freight_rebate", "Freight rebate", "percent", "cost.other"),
+    ("freight_rebate_duration", "Freight rebate duration", "time", "cost.other"),
+    ("launch_year", "Launch year", "count", "none: non-financial metric"),
+    ("market.growth", "Market growth", "percent", "none: market-level metric"),
+    ("incremental_demand", "Incremental demand", "count", "none: market-level metric"),
+    ("count.states", "Number of states", "count", "none: geographic footprint"),
+    ("tree_plantations", "Trees planted", "count", "none: non-financial metric"),
+    ("water_managed", "Water managed", "count", "none: non-financial metric"),
+    ("gender_ratio", "Gender ratio", "ratio", "none: non-financial metric"),
+    ("capex.investment", "Capex investment", "money", "capex.amount"),
+    ("count.manufacturing_sections", "Manufacturing sections", "count", "capacity.add"),
+    ("loans.disbursement", "Loan disbursements (flow)", "money", "none: lending flow"),
+    ("loans.disbursement_mix", "Disbursements by segment / geography", "money", "none: lending flow"),
+    ("loans.disbursement_share", "Share of disbursements (percent)", "percent", "none: lending flow"),
     ("capacity.spindles", "Spindles installed / planned", "count", "capacity.add"),
-    ("order.book_growth_yoy", "Order book growth (YoY)", "percent", "order.book"),
-    ("order.intake_growth_yoy", "Order intake growth (YoY)", "percent", "order.intake"),
-    ("aum.value", "Assets under management", "money", "aum.value"),
-    ("aum.growth_yoy", "AUM growth (YoY)", "percent", "aum.value"),
-    ("ebitda.delta", "EBITDA bridge step", "money", "profit.ebitda"),
-    ("ebitda_margin.delta", "EBITDA margin bridge step", "percent", "profit.ebitda"),
-    ("revenue.delta", "Revenue bridge step", "money", "revenue.value"),
-    ("pat.delta", "PAT bridge step", "money", "profit.pat"),
-    ("revenue_growth_cagr", "Revenue CAGR over a span", "percent", "revenue.value"),
-    ("ebitda_growth_cagr", "EBITDA CAGR over a span", "percent", "profit.ebitda"),
-    ("pat_growth_cagr", "PAT CAGR over a span", "percent", "profit.pat"),
-    ("profit_growth_cagr", "Profit CAGR over a span", "percent", "profit.pat"),
+    ("order.book_growth_yoy", "Order book growth (YoY)", "percent", "revenue.order_book"),
+    ("order.intake_growth_yoy", "Order intake growth (YoY)", "percent", "revenue.order_book"),
+    ("aum.value", "Assets under management", "money", "none: asset stock, no tree node"),
+    ("aum.growth_yoy", "AUM growth (YoY)", "percent", "none: asset stock, no tree node"),
+    ("ebitda.delta", "EBITDA bridge step", "money", "margin.ebitda"),
+    ("ebitda_margin.delta", "EBITDA margin bridge step", "percent", "margin.ebitda"),
+    ("revenue.delta", "Revenue bridge step", "money", "revenue.total"),
+    ("pat.delta", "PAT bridge step", "money", "none: accounting result"),
+    ("revenue_growth_cagr", "Revenue CAGR over a span", "percent", "revenue.total"),
+    ("ebitda_growth_cagr", "EBITDA CAGR over a span", "percent", "margin.ebitda"),
+    ("pat_growth_cagr", "PAT CAGR over a span", "percent", "none: accounting result"),
+    ("profit_growth_cagr", "Profit CAGR over a span", "percent", "none: accounting result"),
+    ("gnpa_pct", "Gross NPA ratio", "percent", "cost.other"),
+    ("gnpa.value", "Gross non-performing assets (amount)", "money", "cost.other"),
+    ("nnpa_pct", "Net NPA ratio", "percent", "cost.other"),
+    ("nnpa.value", "Net non-performing assets (amount)", "money", "cost.other"),
+    ("pcr", "Provision coverage ratio", "percent", "cost.other"),
+    ("casa", "CASA deposits", "money", "debt.level"),
+    ("deposits", "Deposits", "money", "debt.level"),
+    ("nim", "Net interest margin", "percent", "revenue.price"),
+    ("cost_of_funds", "Cost of funds", "percent", "debt.cost"),
+    ("yield_on_advances", "Yield on advances", "percent", "revenue.price"),
+    ("net_interest_income", "Net interest income", "money", "revenue.total"),
+    ("interest_income", "Interest income", "money", "revenue.total"),
+    ("finance_income", "Finance income", "money", "revenue.total"),
+    ("net_total_income", "Net total income", "money", "revenue.total"),
+    ("average_ticket_size", "Average ticket size", "money", "none: loan ticket size, no tree node"),
+    ("pre_provision_operating_profit", "Pre-provision operating profit", "money", "margin.ebitda"),
+    ("cash_profit_margin", "Cash profit margin", "percent", "margin.ebitda"),
+    ("cash_profit", "Cash profit", "money", "margin.ebitda"),
+    ("collection_efficiency", "Collection efficiency", "percent", "none: collection recovery ratio"),
+    ("credit_cost", "Credit cost", "percent", "cost.other"),
+    ("crar", "Capital adequacy ratio (CRAR)", "percent", "none: regulatory capital ratio"),
+    ("count.outlets", "Number of branches / outlets / touchpoints", "count", "capacity.add"),
+    ("count.atms", "Number of ATMs", "count", "capacity.add"),
+    ("sma_0", "SMA-0 book", "money", "cost.other"),
+    ("sma_1", "SMA-1 book", "money", "cost.other"),
+    ("sma_2", "SMA-2 book", "money", "cost.other"),
+    ("npa_additions", "NPA additions in the period", "money", "cost.other"),
+    ("opening_gross_npa_balance", "Opening gross NPA balance", "money", "cost.other"),
+    ("order.bid_pipeline", "Bid pipeline / pipeline of potential projects", "money", "revenue.order_book"),
+    ("order.executed", "Orders executed", "money", "revenue.order_book"),
+    ("count.projects", "Number of projects", "count", "capacity.add"),
+    ("count.projects_completed", "Projects completed (track record)", "count", "capacity.add"),
+    ("capacity.under_construction", "Capacity under construction / planned", "capacity", "capacity.add"),
+    ("ebitda_per_tonne", "EBITDA per tonne", "money_per_unit", "margin.ebitda"),
+    ("value_addition_per_kg", "Value addition per kg", "money_per_unit", "revenue.price"),
+    ("volume_growth_yoy", "Sales volume growth (YoY)", "percent", "revenue.volume"),
+    ("import_dependency", "Import dependency", "percent", "cost.raw_material"),
+    ("power_cost", "Power and fuel cost", "money", "cost.power_fuel"),
+    ("land_area", "Land area", "area", "capacity.add"),
+    ("crude_oil_price", "Crude oil price", "money_per_unit", "cost.raw_material"),
+    ("count.stores", "Number of stores", "count", "capacity.add"),
+    ("area.retail", "Retail / store area", "area", "capacity.add"),
+    ("same_store_sales_growth", "Same-store sales growth", "percent", "revenue.total"),
+    ("count.distributors", "Distributors / dealers / channel reach", "count", "capacity.add"),
+    ("occupancy", "Occupancy", "percent", "revenue.volume"),
+    ("deal.tcv", "Deal total contract value", "money", "revenue.order_book"),
+    ("count.employees", "Employees / headcount", "count", "cost.employee"),
+    ("attrition", "Attrition rate", "percent", "cost.employee"),
+    ("anda.filed", "ANDAs filed", "count", "none: regulatory filing pipeline"),
+    ("anda.approved", "ANDAs approved", "count", "none: regulatory approvals"),
+    ("product.launches", "Product launches", "count", "revenue.volume"),
+    ("rnd.expense", "R&D expense", "money", "cost.other"),
+    ("rnd.share", "R&D as a share of revenue", "percent", "cost.other"),
+    ("product.registrations", "Product registrations (MAs)", "count", "none: regulatory registrations"),
+    ("plf", "Plant load factor", "percent", "revenue.volume"),
+    ("generation.volume", "Power generation", "energy", "revenue.volume"),
+    ("realestate.presales", "Pre-sales / sales value", "money", "revenue.total"),
+    ("realestate.collections", "Collections", "money", "none: cash collection, no tree node"),
+    ("area.sold", "Area sold / booked", "area", "revenue.volume"),
+    ("area.unsold", "Area unsold", "area", "none: unsold inventory stock"),
+    ("area.carpet", "Carpet area", "area", "capacity.add"),
+    ("investments", "Investments", "money", "none: balance-sheet line"),
+    ("non_current_investments", "Non-current investments", "money", "none: balance-sheet line"),
+    ("current_investments", "Current investments", "money", "none: balance-sheet line"),
+    ("non_controlling_interest", "Non-controlling interest", "money", "none: accounting line"),
+    ("total_comprehensive_income", "Total comprehensive income", "money", "none: accounting total"),
+    ("other_comprehensive_income", "Other comprehensive income", "money", "none: accounting total"),
+    ("other_non_current_liabilities", "Other non-current liabilities", "money", "none: balance-sheet line"),
+    ("other_non_current_financial_assets", "Other non-current financial assets", "money", "none: balance-sheet line"),
+    ("other_liabilities_and_provisions", "Other liabilities and provisions", "money", "none: balance-sheet line"),
+    ("other_assets", "Other assets", "money", "none: balance-sheet line"),
+    ("total_liabilities", "Total liabilities", "money", "none: balance-sheet total"),
+    ("deferred_tax_assets_net", "Deferred tax assets (net)", "money", "none: balance-sheet line"),
+    ("long_term_provisions", "Long-term provisions", "money", "none: balance-sheet line"),
+    ("reserves_and_surplus", "Reserves and surplus", "money", "none: balance-sheet line"),
+    ("intangible_assets_under_development", "Intangible assets under development", "money", "capex.amount"),
+    ("long_term_loans_and_advances", "Long-term loans and advances", "money", "none: balance-sheet line"),
+    ("short_term_loans_and_advances", "Short-term loans and advances", "money", "none: balance-sheet line"),
+    ("changes_in_inventories", "Changes in inventories", "money", "cost.raw_material"),
+    ("purchase_of_finished_goods", "Purchases of stock-in-trade", "money", "cost.raw_material"),
+    ("excise_duty", "Excise duty", "money", "cost.other"),
+    ("share_of_profit_of_jv_and_associates", "Share of profit of JV / associates", "money", "none: share of associates, below EBITDA"),
+    ("employee_stock_option_outstanding", "Employee stock option outstanding", "money", "equity.shares"),
+    ("operating_profit_before_working_capital_changes", "Operating profit before working-capital changes", "money", "margin.ebitda"),
+    ("operating_expenses", "Operating expenses", "money", "cost.other"),
+    ("cost_of_revenue", "Cost of revenues", "money", "cost.raw_material"),
+    ("assets_held_for_sale", "Assets held for sale", "money", "none: balance-sheet line"),
+    ("liabilities_classified_as_held_for_sale", "Liabilities classified as held for sale", "money", "none: balance-sheet line"),
+    ("tax_provisions", "Tax provisions", "money", "none: tax liability"),
+    ("investment_in_property", "Investment in property", "money", "none: balance-sheet line"),
+    ("financial_asset", "Financial assets", "money", "none: balance-sheet line"),
+    ("contract_assets_unbilled_wip", "Contract assets (unbilled WIP)", "money", "none: working-capital stock"),
+    ("opening_cash_and_cash_equivalents", "Opening cash and cash equivalents", "money", "none: cash-flow line"),
+    ("profit_before_exceptional_items_and_tax", "Profit before exceptional items and tax", "money", "none: below-EBITDA profit line"),
+    ("tangible_net_worth", "Tangible net worth", "money", "none: balance-sheet total"),
+    ("capital_employed", "Capital employed", "money", "none: balance-sheet total"),
+    ("roe", "Return on equity", "percent", "none: return ratio"),
+    ("roce", "Return on capital employed", "percent", "none: return ratio"),
+    ("core_roce", "Core ROCE (company definition)", "percent", "none: return ratio"),
+    ("net_debt", "Net debt", "money", "debt.level"),
+    ("net_debt_equity", "Net debt to equity", "ratio", "debt.level"),
+    ("net_debt_to_ebitda", "Net debt to EBITDA", "ratio", "debt.level"),
+    ("debt_to_ebitda", "Debt to EBITDA (gross)", "ratio", "debt.level"),
+    ("debt_equity", "Debt to equity", "ratio", "debt.level"),
+    ("long_term_debt_equity", "Long-term debt to equity", "ratio", "debt.level"),
+    ("interest_coverage_ratio", "Interest coverage ratio", "ratio", "debt.cost"),
+    ("total_outside_liabilities_equity", "Total outside liabilities to total equity", "ratio", "debt.level"),
+    ("current_ratio", "Current ratio", "ratio", "working_capital.days"),
+    ("quick_ratio", "Quick ratio", "ratio", "working_capital.days"),
+    ("working_capital_days", "Working capital days", "time", "working_capital.days"),
+    ("inventory_days", "Inventory days", "time", "working_capital.days"),
+    ("debtor_days", "Debtor days", "time", "working_capital.days"),
+    ("payable_days", "Payable days", "time", "working_capital.days"),
+    ("cash_conversion_cycle", "Cash conversion cycle", "time", "working_capital.days"),
+    ("asset_turnover", "Asset turnover", "ratio", "none: efficiency ratio"),
+    ("fixed_asset_turnover", "Fixed-asset turnover", "ratio", "none: efficiency ratio"),
+    ("book_value_per_share", "Book value per share", "money_per_unit", "equity.shares"),
+    ("cash_eps", "Cash EPS", "money_per_unit", "equity.shares"),
+    ("ebit_margin", "EBIT margin", "percent", "margin.ebitda"),
+    ("ebit_growth_yoy", "EBIT growth (YoY)", "percent", "margin.ebitda"),
+    ("ebitda_margin_change_bps", "EBITDA margin change (bps)", "bps", "margin.ebitda"),
+    ("pat_margin_change_bps", "PAT margin change (bps)", "bps", "none: PAT margin, below the EBITDA margin node"),
+    ("eps_growth_yoy", "EPS growth (YoY)", "percent", "equity.shares"),
+    ("tax_growth_yoy", "Tax expense growth (YoY)", "percent", "none: tax line"),
+    ("depreciation_growth_yoy", "Depreciation growth (YoY)", "percent", "cost.other"),
+    ("employee_cost_growth_yoy", "Employee cost growth (YoY)", "percent", "cost.employee"),
+    ("finance_cost_growth_yoy", "Finance cost growth (YoY)", "percent", "debt.cost"),
+    ("total_expenses_growth_yoy", "Total expenses growth (YoY)", "percent", "cost.other"),
+    ("revenue_growth_qoq", "Revenue growth (QoQ)", "percent", "revenue.total"),
+    ("total_comprehensive_income_growth_yoy", "Total comprehensive income growth (YoY)", "percent", "none: accounting total"),
+    ("count.countries", "Number of countries", "count", "none: geographic footprint"),
 )
+
+# id -> unit family (stage G: the label-map unit guard reads this)
+_MEASURE_FAMILY: dict[str, str] = {m[0]: m[2] for m in MEASURES}
 
 # Near-duplicate model ids -> one dictionary id (T-230 stage C3). Applied before the dictionary check.
 MEASURE_ALIASES: dict[str, str] = {
@@ -295,11 +435,101 @@ MEASURE_ALIASES: dict[str, str] = {
     "spindles": "capacity.spindles",
     "number_of_spindles": "capacity.spindles",
     "installed_spindles": "capacity.spindles",
+    "advances": "loans",
+    "area.carpet_total": "area.carpet",
+    "area_sold": "area.sold",
+    "area_unsold": "area.unsold",
+    "asset_turnover_ratio": "asset_turnover",
+    "assets_classified_as_held_for_sale": "assets_held_for_sale",
+    "book_value_per_share_ratio": "book_value_per_share",
+    "cash_and_cash_equivalents_opening": "opening_cash_and_cash_equivalents",
+    "change_in_inventories": "changes_in_inventories",
+    "change_in_inventories_of_finished_goods_and_work_in_progress": "changes_in_inventories",
+    "core_capital_employed": "capital_employed",
+    "cost_of_deposits": "cost_of_funds",
+    "cost_of_material_consumed": "raw_material_cost",
+    "count.asset_focused_outlets": "count.outlets",
+    "count.banking_outlets": "count.outlets",
+    "count.banking_outlets_by_location": "count.outlets",
+    "count.banking_outlets_by_state": "count.outlets",
+    "count.branches": "count.outlets",
+    "count.csc": "count.outlets",
+    "count.liability_focused_outlets": "count.outlets",
+    "count.rural_centers": "count.outlets",
+    "creditors_days": "payable_days",
+    "crude_oil_price_per_barrel": "crude_oil_price",
+    "debt_equity_ratio": "debt_equity",
+    "debt_to_equity": "debt_equity",
+    "debtors_days_excluding_retention": "debtor_days",
+    "debtors_days_including_retention": "debtor_days",
+    "deferred_tax_assets": "deferred_tax_assets_net",
+    "deposits.casa": "casa",
+    "deposits.total": "deposits",
+    "depreciation_and_amortisation_expense_growth_yoy": "depreciation_growth_yoy",
+    "ebitda_margin_change_yoy": "ebitda_margin_change_bps",
+    "ebitda_margin_change_yoy_bps": "ebitda_margin_change_bps",
+    "employee_benefits_expense_growth_yoy": "employee_cost_growth_yoy",
+    "employee_count": "count.employees",
+    "employee_headcount": "count.employees",
+    "eps_growth": "eps_growth_yoy",
+    "fixed_asset_turnover_ratio": "fixed_asset_turnover",
+    "fixed_assets": "property_plant_and_equipment",
+    "gnpa": "gnpa.value",
+    "gnpa_percent": "gnpa_pct",
+    "gross_advances": "loans",
+    "gross_non_performing_assets": "gnpa.value",
+    "gross_npa": "gnpa.value",
+    "gross_npa_percent": "gnpa_pct",
+    "increase_decrease_in_stocks": "changes_in_inventories",
+    "interest_coverage": "interest_coverage_ratio",
+    "interest_expense": "finance_cost",
+    "investment": "investments",
+    "investments_accounted_for_using_the_equity_method": "investments",
+    "long_term_debt_equity_ratio": "long_term_debt_equity",
+    "minority_interest": "non_controlling_interest",
+    "net_debt_ebitda": "net_debt_to_ebitda",
+    "net_debt_to_equity": "net_debt_equity",
+    "net_non_performing_assets": "nnpa.value",
+    "net_profit": "pat",
+    "net_worth": "total_equity",
+    "nnpa": "nnpa.value",
+    "nnpa_percent": "nnpa_pct",
+    "non_controlling_interests": "non_controlling_interest",
+    "operating_expense": "operating_expenses",
+    "orders_executed": "order.executed",
+    "other_borrowings": "borrowings",
+    "other_current_financial_assets": "other_financial_assets",
+    "outside_liab_equity": "total_outside_liabilities_equity",
+    "pat_after_non_controlling_interest": "pat",
+    "pat_margin_change_yoy": "pat_margin_change_bps",
+    "pat_margin_change_yoy_bps": "pat_margin_change_bps",
+    "pbit": "ebit",
+    "product_registrations": "product.registrations",
+    "profit_before_extraordinary_items_and_tax": "profit_before_exceptional_items_and_tax",
+    "provision_coverage_ratio": "pcr",
+    "purchases_of_stock_in_trade": "purchase_of_finished_goods",
+    "return_on_capital_employed": "roce",
+    "return_on_equity": "roe",
+    "secured_borrowings": "borrowings",
+    "share_of_profit_loss_from_jv": "share_of_profit_of_jv_and_associates",
+    "share_of_profit_loss_from_jv_associates": "share_of_profit_of_jv_and_associates",
+    "share_of_profit_loss_of_associate": "share_of_profit_of_jv_and_associates",
+    "share_of_profit_loss_of_jce_net_of_tax": "share_of_profit_of_jv_and_associates",
+    "share_of_profit_loss_of_jv": "share_of_profit_of_jv_and_associates",
+    "share_of_profit_of_joint_venture": "share_of_profit_of_jv_and_associates",
+    "short_term_borrowings": "borrowings",
+    "tax_expense_growth_yoy": "tax_growth_yoy",
+    "total_asset_turnover": "asset_turnover",
+    "total_asset_turnover_ratio": "asset_turnover",
+    "total_carpet_area": "area.carpet",
+    "total_outside_liabilities_to_total_equity": "total_outside_liabilities_equity",
+    "valuation_rate": "revenue.price",
+    "volume.sales_growth_yoy": "volume_growth_yoy",
 }
 
 # Curated printed label -> measure id (T-230 stage B, Wolf): applied by the script before the dictionary check.
 # Exact match after lower-casing, whitespace collapsing and dropping a leading list mark ("(ii)", "a)", "3.").
-_SCRIPT_LABEL_MARK = re.compile(r"^\s*(?:\(?[ivxlcdm]+\)?|[a-zA-Z]\)|\d+[.)])\s*", re.I)
+_SCRIPT_LABEL_MARK = re.compile(r"^\s*(?:\([ivxlcdm]+\)|\([a-zA-Z]\)|[ivxlcdm]+\)|[a-zA-Z]\)|\d+[.)])\s+", re.I)
 SCRIPT_LABELS: dict[str, str] = {
     "revenue from operations": "revenue_from_operations",
     "total revenue": "revenue.value",
@@ -373,6 +603,63 @@ SCRIPT_LABELS: dict[str, str] = {
     "ebitda %": "ebitda_margin",
     "ebitda margin %": "ebitda_margin",
     "pat margin %": "pat_margin",
+    "aum": "aum.value",
+    "branches": "count.outlets",
+    "capital work in progress": "capital_work_in_progress",
+    "capital work-in-progress": "capital_work_in_progress",
+    "carpet area": "area.carpet",
+    "china va over index rm (on 12 mic) - $/kg": "value_addition_per_kg",
+    "cogs": "cost_of_goods_sold",
+    "cost of revenues": "cost_of_revenue",
+    "crar": "crar",
+    "credit cost": "credit_cost",
+    "crude oil - $/barrel": "crude_oil_price",
+    "debt to equity": "debt_equity",
+    "debt to equity ratio": "debt_equity",
+    "debt-to-equity ratio": "debt_equity",
+    "deferred tax assets": "deferred_tax_assets_net",
+    "deferred tax assets (net)": "deferred_tax_assets_net",
+    "depreciation": "depreciation_and_amortisation_expense",
+    "depreciation & amortization": "depreciation_and_amortisation_expense",
+    "depreciation and amortization": "depreciation_and_amortisation_expense",
+    "disbursement": "loans.disbursement",
+    "disbursements": "loans.disbursement",
+    "employee cost": "employee_benefits_expense",
+    "employee expenses": "employee_benefits_expense",
+    "employees": "count.employees",
+    "fixed assets": "property_plant_and_equipment",
+    "fixed assets(net)": "property_plant_and_equipment",
+    "gnpa": "gnpa_pct",
+    "gross debt": "borrowings",
+    "gross npa": "gnpa_pct",
+    "gross npas at the end of period/year": "gnpa_pct",
+    "gross revenue": "revenue.value",
+    "income from operations": "revenue_from_operations",
+    "inventory": "inventories",
+    "net debt equity ratio": "net_debt_equity",
+    "net debt/equity ratio (x)": "net_debt_equity",
+    "net npa": "nnpa_pct",
+    "net npas at the end of period/year": "nnpa_pct",
+    "net profit": "pat",
+    "net sales": "revenue.value",
+    "net worth": "total_equity",
+    "networth": "total_equity",
+    "nnpa": "nnpa_pct",
+    "occupancy": "occupancy",
+    "operating revenue": "revenue_from_operations",
+    "operational revenue": "revenue_from_operations",
+    "pcl va* (consol-all films) - $/kg": "value_addition_per_kg",
+    "production": "volume.production",
+    "reserves & surplus": "other_equity",
+    "reserves and surplus": "other_equity",
+    "revenues": "revenue.value",
+    "sales revenue": "revenue.value",
+    "share capital": "equity_share_capital",
+    "staff cost": "employee_benefits_expense",
+    "tax": "total_tax_expense",
+    "team strength": "count.employees",
+    "total expenditure": "total_expenses",
+    "with a carpet area of": "area.carpet",
 }
 
 
@@ -411,9 +698,11 @@ DIMS = ("segment", "product", "geography", "plant", "customer")
 
 # unit text -> family, first match wins
 UNIT_PATTERNS: tuple[tuple[str, str], ...] = (
-    ("percent", r"%|percent\b|pct\b|bps\b|basis points"),
+    ("bps", r"\bbps\b|\bbasis points?\b"),
+    ("percent", r"%|percent\b|pct\b"),
     ("money_per_unit", r"(?:rs|inr|\u20b9|\$|usd|us\$)[^a-z]*(?:per\b|/)|/ ?(?:tonne|ton|unit|km|kg|mt|share)\b|"
                        r"(?:^|\s)per (?:share|unit|tonne|ton|kg|km|mt)\b|arpu|arr\b|revpar|realis|realiz"),
+    ("energy", r"\bmus?\b|\bmwh\b|\bgwh\b|\bkwh\b"),
     ("count", r"\bunits?\b|\bnos\b|\bnumbers?\b|\bthousands?\b|\bteus?\b|\bvehicles?\b|\btractors?\b|"
               r"\bcustomers?\b|\bsubscribers?\b|\bplants?\b|\bterminals?\b|\binstances?\b|"
               r"\blitres?\b|\bliters?\b|\bltrs?\b"),
@@ -425,7 +714,8 @@ UNIT_PATTERNS: tuple[tuple[str, str], ...] = (
     ("time", r"\bdays?\b|\bmonths?\b|\byears?\b"),
     ("ratio", r"^x$|\btimes\b|\bmultiple\b"),
 )
-CONVERT_FAMILY = {"capacity": {"count"}, "count": {"capacity"}, "money_per_unit": {"money"}}
+CONVERT_FAMILY = {"capacity": {"count"}, "count": {"capacity"}, "money_per_unit": {"money"},
+                  "percent": {"bps"}}
 
 FOOTNOTE_LABEL = re.compile(r"^\s*(?:\*|#|note\b|source\b|footnote\b)", re.I)
 JUNK_MEASURE = re.compile(
@@ -752,12 +1042,19 @@ def infer_period(texts: Iterable[str]) -> str:
     return ""
 
 
+def _label_unit_fits(measure: str, unit: str) -> bool:
+    """Stage G: a printed-label map applies only when the printed unit's family fits the measure."""
+    family = _MEASURE_FAMILY.get(measure, "")
+    unit_family = infer_unit_family(unit)
+    return not unit_family or family_ok(family, unit_family)
+
+
 def canonical_measure(measure: str, label: str, axis: str, series_title: str, unit: str,
                       page_text: str) -> str:
     """Stage C3: near-duplicate ids, disbursement vs loans stock, spindle counts under capex."""
     measure = MEASURE_ALIASES.get(norm_space(measure), norm_space(measure))
     scripted = script_measure(label)
-    if scripted:
+    if scripted and _label_unit_fits(scripted, unit):
         measure = scripted
     context = " ".join([label, axis, series_title])
     if DISBURSEMENT_RE.search(context):
@@ -972,8 +1269,10 @@ def detect_subsidiary(texts: Iterable[str], companies: dict[str, tuple[str, str]
 
 def is_stock_measure(measure: str) -> bool:
     """A true stock a deck's as-of date can belong to (E1): not a rate, an addition or a plan."""
-    return re.search(r"^capacity\.(?:total|add)$|^count\.(?:.*(?:outlets?|branches?|plants?))$|"
-                     r"^(?:gnpa|nnpa|loans|order\.book)$|^aum\.", measure or "", re.I) is not None
+    return re.search(r"^capacity\.(?:total|add)$|"
+                     r"^count\.(?:.*(?:outlets?|branches?|atms?|stores?|plants?))$|"
+                     r"^(?:gnpa(?:\.value|_pct)?|nnpa(?:\.value|_pct)?|loans|order\.book)$|^aum\.", measure or "",
+                     re.I) is not None
 
 
 def capacity_deck_period_ok(row: dict[str, Any], page_text: str) -> bool:
@@ -1204,7 +1503,7 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
         status = "unverified"
         reasons.append("entity_scope not stated: the figure cannot be attributed")
     required_unit = measure is not None and measure["unit_family"] in (
-        "money", "money_per_unit", "capacity", "count", "length", "area", "time")
+        "money", "money_per_unit", "capacity", "count", "length", "area", "time", "energy")
     if required_unit and not row.get("unit"):
         status = "unverified"
         reasons.append("no_unit: no unit printed for this money/quantity row")
@@ -1832,8 +2131,126 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     return result
 
 
+# --------------------------------------------------------------------------- stage F annual-report page filter
+#
+# An annual report's routed table/chart pages are mostly financial statements and notes, whose lines the
+# stores already hold from XBRL: of 1,837 verified pilot rows only 47 were operating measures.  The filter
+# below drops those pages before any model call, on the stored text layer only.
+
+HEADING_WORDS = 14                     # a printed heading is short; a sentence that mentions a statement is not
+
+STATEMENT_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("balance_sheet", re.compile(r"^(?:consolidated\s+|standalone\s+)?balance\s+sheet\b", re.I)),
+    ("profit_and_loss", re.compile(r"^(?:consolidated\s+|standalone\s+)?(?:statement\s+of\s+)?"
+                                   r"profit\s*(?:and|&)\s*loss\b", re.I)),
+    ("cash_flow", re.compile(r"^(?:consolidated\s+|standalone\s+)?(?:statement\s+of\s+)?"
+                             r"cash\s*-?\s*flows?\s+statement\b|^statement\s+of\s+cash\s*-?\s*flows?\b", re.I)),
+    ("changes_in_equity", re.compile(r"^(?:consolidated\s+|standalone\s+)?statement\s+of\s+changes\s+"
+                                     r"in\s+equity\b", re.I)),
+    ("notes", re.compile(r"^(?:notes?|schedules?)\s+(?:forming\s+part\s+of\s+|to\s+)?(?:the\s+)?"
+                         r"(?:standalone\s+|consolidated\s+)?financial\s+statements?\b|"
+                         r"^notes?\s+on\s+accounts\b", re.I)),
+    ("note_no", re.compile(r"^note\s*(?:no\.|number\b)(?!\s*\d*\s*of\s+the\b)|^note\s+\d{1,2}\s*[:(.]", re.I)),
+    ("audit_report", re.compile(r"^(?:independent\s+)?auditor['\u2019]?s?\s+report\b|"
+                                r"^annexure\b.{0,80}?\bto\s+the\s+(?:independent\s+)?auditor['\u2019]?s?\s+"
+                                r"report\b", re.I)),
+    ("aoc1", re.compile(r"^form\s+(?:no\.?\s*)?aoc-?\s*1\b", re.I)),
+    ("mgt9", re.compile(r"^mgt-?\s*9\b|^extract\s+of\s+the\s+annual\s+return\b", re.I)),
+    ("remuneration", re.compile(r"^(?:details\s+(?:pertaining\s+to\s+)?)?(?:remuneration\s+"
+                                r"(?:to|of|paid\s+to)\s+(?:the\s+)?(?:directors?|key\s+managerial|managing)|"
+                                r"(?:details\s+)?(?:as\s+)?required\s+under\s+section\s+197\b)|"
+                                r"^particulars\s+of\s+(?:directors|employees)\b", re.I)),
+    ("csr_spend", re.compile(r"^(?:csr\s+(?:amount\s+spent|spend|spending|expenditure|expenses|projects?)|"
+                             r"annual\s+report\s+on\s+csr|annexure\b.{0,40}?\bcsr\b)", re.I)),
+    ("shareholding", re.compile(r"^shareholding\s+pattern\b", re.I)),
+    ("share_price", re.compile(r"^share\s+price\s+(?:data|movement|performance)\b|"
+                               r"^performance\s+comparison\b", re.I)),
+    ("notice", re.compile(r"^(?:notice\s+(?:to\s+)?(?:the\s+)?(?:shareholders|members)\b|"
+                          r"explanatory\s+statement\b|postal\s+ballot\b|remote\s+e-?voting\b|"
+                          r"instructions\s+for\s+.{0,20}voting\b|"
+                          r"details\s+of\s+directors\s+seeking\s+appointment|"
+                          r"annexure\s+to\s+the\s+notice)", re.I)),
+    ("secretarial_audit", re.compile(r"^secretarial\s+audit\s+report\b|^form\s+no\.?\s*mr-?3\b", re.I)),
+    ("governance", re.compile(r"^(?:report\s+on\s+corporate\s+governance\b|corporate\s+governance\s+report\b|"
+                              r"code\s+of\s+(?:conduct|ethics)\b)(?!\s*,\s*(?:which|that|and)\b)", re.I)),
+    ("related_party", re.compile(r"^related\s+party\s+(?:transactions?|disclosures?)\b", re.I)),
+    ("brsr", re.compile(r"^business\s+responsibility\s*(?:&|and)\s*sustainab", re.I)),
+)
+
+# A page with one of these headings can still carry the operating figures stage F exists for: keep it.
+STATEMENT_CARVE_OUT: dict[str, re.Pattern[str]] = {
+    "notes": re.compile(r"segment\s+(?:reporting|information)\b|geograph\w*\s+segment|"
+                        r"revenue\s+by\s+(?:location|customer)|"
+                        r"customers?\s+(?:represents?|account\s+for)\s+(?:10|ten)\s*%|"
+                        r"customer\s+\d\b|by\s+location\s+of\s+customers|"
+                        r"sale\s+of\s+(?:goods|services|products?)\b", re.I),
+    "brsr": re.compile(r"number\s+of\s+locations\s+where\s+plants|"
+                       r"plants\s+and\s*/\s*or\s+operations(?:\s*/\s*offices)?\s+of\s+the|"
+                       r"number\s+of\s+plants", re.I),
+}
+
+
+def statement_page_reason(text: str) -> str:
+    """Stage F: why a page is a financial-statement / notes page ('' when it is not).
+
+    Checked against the text layer's own lines: a printed heading starts its line and is short, so an MD&A
+    sentence that mentions the balance sheet is kept.  A page with no text layer has no headings and is kept.
+    A notes page printing a segment-reporting table (or a BRSR page printing the plant-location table) carries
+    the capacity/plant/segment figures stage F is after and is kept.
+    """
+    flat = norm_space(text)
+    for raw in text.splitlines():
+        line = norm_space(raw)
+        if not line or len(line.split()) > HEADING_WORDS:
+            continue
+        if line[0].islower() or line.endswith("."):
+            continue               # a sentence fragment that mentions a statement, not a printed heading
+        for name, pattern in STATEMENT_RULES:
+            if pattern.match(line):
+                carve = STATEMENT_CARVE_OUT.get(name)
+                if carve is not None and carve.search(flat):
+                    return ""
+                return name
+    return ""
+
+
+def page_texts(store_db: str | Path, pages: Iterable[dict[str, Any]]) -> dict[tuple[str, int], str]:
+    """The stored text layer of the given pages, one read per document (stage F filter input)."""
+    by_doc: dict[str, list[int]] = {}
+    for p in pages:
+        by_doc.setdefault(str(p["doc_key"]), []).append(int(p["page"]))
+    out: dict[tuple[str, int], str] = {}
+    con = connect_ro(store_db, timeout_s=60)
+    try:
+        for doc_key, numbers in by_doc.items():
+            marks = ",".join("?" * len(numbers))
+            _cur = con.execute(f"SELECT page, text FROM doc_page WHERE doc_key=? AND page IN ({marks})",
+                               (doc_key, *numbers))
+            if _cur is None:
+                continue
+            for row in (_cur.fetchall() or []):
+                out[(doc_key, int(row[0]))] = str(row[1] or "")
+    finally:
+        con.close()
+    return out
+
+
+def filter_statement_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, int], str],
+                           dropped: dict[str, int] | None = None) -> list[dict[str, Any]]:
+    """Stage F: drop the financial-statement and notes pages; ``dropped`` counts them by reason."""
+    kept: list[dict[str, Any]] = []
+    for p in pages:
+        reason = statement_page_reason(texts.get((str(p["doc_key"]), int(p["page"])), ""))
+        if not reason:
+            kept.append(p)
+        elif dropped is not None:
+            dropped[reason] = dropped.get(reason, 0) + 1
+    return kept
+
+
 def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
-                     routes: Iterable[str] = ("table_or_chart",)) -> list[dict[str, Any]]:
+                     routes: Iterable[str] = ("table_or_chart",), skip_statements: bool = False,
+                     dropped: dict[str, int] | None = None) -> list[dict[str, Any]]:
     routes_csv = Path(store_db).parent / "routes.csv"
     if not routes_csv.is_file():
         return []
@@ -1852,7 +2269,10 @@ def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
                 continue
             pages.setdefault((row["doc_key"], page), {"store": str(store_db), "doc_key": row["doc_key"],
                                                       "page": page})
-    return list(pages.values())
+    selected = list(pages.values())
+    if skip_statements:
+        selected = filter_statement_pages(selected, page_texts(store_db, selected), dropped)
+    return selected
 
 
 def seed_stores(root: str | Path, sample: int, seed: int, ensure: Iterable[str] = (),
@@ -1888,11 +2308,14 @@ def missing_pages(con: sqlite3.Connection, pages: list[dict[str, Any]]) -> list[
 
 
 def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
-               companies: dict[str, tuple[str, str]] | None = None) -> dict[str, Any]:
+               companies: dict[str, tuple[str, str]] | None = None,
+               only: Any = None) -> dict[str, Any]:
     """Stage C: re-apply every script check to an existing observation DB with no model call.
 
     Only checks that need a new printed source may upgrade an unverified row: an inherited unit or period, a
     measure alias/label mapping, or a stage read from a printed group.  Any other upgrade is refused and reported.
+    ``only`` (a :class:`reality_engine.research.selector.Selector`) restricts the pages and rows re-checked;
+    the rest of the DB is left untouched (T-233 scoped fix run).
     """
     store_dbs = list(store_dbs)
     companies = companies if companies is not None else company_index(store_dbs)
@@ -1921,6 +2344,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "subsidiary_rows": 0, "deck_periods": 0, "deck_period_cleared": 0,
                              "deck_period_fixed": 0, "cagr_rows": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
+    if only is not None:                      # T-233: a scoped recheck touches only the selected pages
+        pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
+    row_filter = only.where_sql() if only is not None else "1=1"
     con.row_factory = sqlite3.Row
     for doc_key, page in pages:
         store_db = doc_store.get(str(doc_key))
@@ -1940,8 +2366,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             owner = doc_owner(store_db, doc_key, companies, store_symbol.get(store_db, ""))
         except Exception:
             owner = ""
-        rows = [dict(r) for r in con.execute("SELECT * FROM observation WHERE doc_key=? AND page=?",
-                                             (doc_key, int(page)))]
+        rows = [dict(r) for r in con.execute(f"SELECT * FROM observation WHERE doc_key=? AND page=?"
+                                             f" AND ({row_filter})", (doc_key, int(page)))]
         updated: list[dict[str, Any]] = []
         for row in rows:
             stats["rows"] += 1
@@ -2093,16 +2519,34 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
 def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         doc_types: Iterable[str] = ("deck",), seed: int = 11,
         required: Iterable[tuple[str, int]] = (), propose_limit: int = 300,
-        resume: bool = False) -> dict[str, Any]:
+        resume: bool = False, skip_statements: bool = False,
+        only: Any = None) -> dict[str, Any]:
     pages: list[dict[str, Any]] = []
+    dropped_by_reason: dict[str, int] = {}
     for store_db in store_dbs:
-        pages.extend(pages_from_store(store_db, doc_types=doc_types))
-    selected = select_pages(pages, limit, seed, required)
+        if only is not None and not only.store(store_db):
+            continue
+        pages.extend(pages_from_store(store_db, doc_types=doc_types, skip_statements=skip_statements,
+                                      dropped=dropped_by_reason))
+    if only is not None:                      # T-233: a scoped re-read is exactly the selection, not a sample
+        pages = [p for p in pages if only.page(p["store"], p["doc_key"], p["page"])]
+        selected = pages
+    else:
+        selected = select_pages(pages, limit, seed, required)
+    statement_filter = {"kept": len(pages), "dropped": sum(dropped_by_reason.values()),
+                        "by_reason": dict(sorted(dropped_by_reason.items(), key=lambda kv: -kv[1]))}
+    if skip_statements:
+        print(f"statement filter: kept {statement_filter['kept']} dropped {statement_filter['dropped']} "
+              f"{statement_filter['by_reason']}", file=sys.stderr)
     with _RETRY_LOCK:
         _RETRY_EVENTS.clear()
     with _QUOTA_LOCK:
         _QUOTA["seconds"] = 0.0
     con = create_db(out)
+    if only is not None:            # a scoped re-read replaces its pages in the --baseline copy, no duplicates
+        con.executemany("DELETE FROM observation WHERE doc_key=? AND page=?",
+                        [(str(p["doc_key"]), int(p["page"])) for p in selected])
+        con.commit()
     already_done = 0
     if resume:
         before = len(selected)
@@ -2111,7 +2555,7 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     stats: dict[str, Any] = {"pages": len(selected), "already_done": already_done, "read": 0, "errors": 0,
                              "parse_failures": 0, "dropped_all": 0, "observations": 0, "quarantined": 0,
                              "skipped": 0, "quota_skipped": 0, "parent_rows": 0, "http_429": 0,
-                             "failed_replies": []}
+                             "statement_filter": statement_filter, "failed_replies": []}
     companies = company_index(store_dbs)
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
@@ -2203,12 +2647,26 @@ def main(argv: list[str] | None = None) -> int:
                         help="skip pages that already have observation rows in --out (after a stopped run)")
     parser.add_argument("--recheck", action="store_true",
                         help="re-apply every script check to --out with no model call (stage C)")
+    parser.add_argument("--skip-statements", action="store_true",
+                        help="drop financial-statement/notes pages before any model call (stage F)")
+    parser.add_argument("--only", default="",
+                        help="T-233 selector JSON: re-process only these stores/doc_keys/pages")
+    parser.add_argument("--baseline", default="",
+                        help="with --only: copy this DB to --out first, then patch the copy")
     args = parser.parse_args(argv)
 
+    only = None
+    if args.only:
+        from reality_engine.research.selector import Selector, copy_db
+        only = Selector.load(args.only)
+        if args.baseline:
+            copy_db(args.baseline, args.out)
+
     store_dbs: list[str] = []
+    doc_types = [t for t in args.doc_types.split(",") if t]
     if args.stores_root:
         store_dbs = seed_stores(args.stores_root, args.sample, args.seed,
-                                [s for s in args.ensure.split(",") if s])
+                                [s for s in args.ensure.split(",") if s], doc_types=doc_types)
     if args.stores:
         for item in args.stores.split(","):
             item = item.strip()
@@ -2226,7 +2684,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.recheck:
         back = create_db(args.out)
         try:
-            recheck_stats = recheck_db(back, store_dbs)
+            recheck_stats = recheck_db(back, store_dbs, only=only)
         finally:
             back.close()
         print(json.dumps(recheck_stats, indent=2))
@@ -2240,8 +2698,9 @@ def main(argv: list[str] | None = None) -> int:
             sub, page = item.rsplit(":", 1)
             required.append((sub.strip(), int(page)))
     stats = run(store_dbs, args.limit, args.workers, args.out,
-                doc_types=[t for t in args.doc_types.split(",") if t], seed=args.seed, required=required,
-                propose_limit=args.propose_limit, resume=args.resume)
+                doc_types=doc_types, seed=args.seed, required=required,
+                propose_limit=args.propose_limit, resume=args.resume, skip_statements=args.skip_statements,
+                only=only)
     print(json.dumps(stats, indent=2))
     if stats.get("stopped"):
         print(f"STOP: {stats['stopped']}", file=sys.stderr)
