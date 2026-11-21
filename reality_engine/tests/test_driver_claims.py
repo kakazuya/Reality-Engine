@@ -4,7 +4,9 @@ The contract under test: the script mapping, the number normaliser, the three-wa
 unit/period/sign script checks, the independent judge's verdict applied to a claim, context attachment,
 dedupe, known_at copied from the source row, resume skip, and the adaptive limiter raising and halving.
 Stage 2a adds the doc_page item builder, the announcement script parses (three real announcement texts quoted
-with their doc_key) and `source_kind`.
+with their doc_key) and `source_kind`.  Stage 2b adds the unit/plant scope rule and its judge confirmation,
+the "at least A to B" range, the GST basis in `base`, the rating-agency `speaker_scope`, cross-source
+`dup_of` folding, the debt-repayment/dividend sign rules and the judge's FILED date.
 """
 
 from __future__ import annotations
@@ -1298,3 +1300,184 @@ def test_prompts_carry_the_stage2_source_rules():
     assert "SOURCE: announcement" in judge
     assert "order won fills revenue.order_book" in judge
     assert "completed allotment" in judge
+
+
+# ------------------------------------------------------------------ stage 2b: Wolf's five defects
+RATING_STATEMENT = ("Revenue in fiscal 2025 is estimated to remain similar to that in fiscal 2024 at "
+                    "Rs 2400-2450 crore owing to continued full utilisation of capacity with healthy demand "
+                    "from downstream segments and stable cotton and cotton yarn prices.")
+RATING_CONTEXT = ("DOC: Intimation of Credit Rating\nP5: Although the company did not meet the rating "
+                  "sensitivity factors set by CRISIL Ratings due to the adverse impact on the industry last "
+                  "fiscal.")
+
+
+def test_at_least_a_to_b_keeps_both_ends():
+    statement = ("But going ahead, we see a healthy increase in revenue by at least 20% to 25% in this "
+                 "financial year.")
+    claim = _claim(node="revenue.total", unit="pct", value_low=25.0, value_high=25.0, sign="+",
+                   base="20%", quote_span="increase in revenue by at least 20% to 25% in this financial year",
+                   statement=statement, effective_period="this financial year")
+    assert dc.verify_claim(claim) == ("verified", "")
+    assert (claim["value_low"], claim["value_high"]) == (20.0, 25.0)
+    assert claim["base"] is None and claim["sign"] == "+"
+
+
+def test_plain_percent_range_is_not_collapsed_to_a_target():
+    claim = _claim(node="margin.ebitda", unit="pct", value_low=30.0, value_high=30.0, sign="0",
+                   quote_span="target 30% to 35%",
+                   statement="We target 30% to 35% EBITDA margins by FY27.", effective_period="FY27")
+    assert dc.verify_claim(claim) == ("verified", "")
+    assert (claim["value_low"], claim["value_high"]) == (30.0, 35.0)
+
+
+def test_including_or_excluding_gst_goes_into_base():
+    statement = "Value Rs. 117.74 Crores including GST (d) Completion Period 31.10.2025"
+    claim = _claim(node="revenue.order_book", unit="inr_cr", value_low=117.74,
+                   quote_span="Value Rs. 117.74 Crores including GST", statement=statement,
+                   base=None, effective_period="31.10.2025")
+    assert dc.verify_claim(claim) == ("verified", "")
+    assert claim["base"] == "including GST"
+    excl = _claim(node="revenue.order_book", unit="inr_cr", value_low=615.69,
+                  quote_span="order worth ₹ 615.69 Crores (Exclusive of GST)",
+                  statement="The Company has secured an order worth ₹ 615.69 Crores (Exclusive of GST).",
+                  effective_period="31 months")
+    assert dc.verify_claim(excl)[0] == "verified"
+    assert excl["base"] == "excluding GST"
+    kept = _claim(node="revenue.order_book", unit="inr_cr", value_low=117.74,
+                  quote_span="Value Rs. 117.74 Crores including GST", statement=statement,
+                  base="secured term loan", effective_period="31.10.2025")
+    dc.verify_claim(kept)
+    assert kept["base"] == "secured term loan; including GST"
+
+
+def test_rating_agency_estimate_is_third_party_and_never_verified(db_path: Path):
+    assert dc.speaker_scope(RATING_STATEMENT, RATING_CONTEXT) == "rating_agency"
+    assert dc.speaker_scope("We expect revenue to grow 20% next year.") == "company"
+    claim = dc._finish(_claim(
+        node="revenue.total", unit="inr_cr", value_low=2400.0, value_high=2450.0, sign="0",
+        base="fiscal 2024", quote_span="Revenue in fiscal 2025 is estimated to remain similar to that in "
+        "fiscal 2024 at Rs 2400-2450 crore", statement=RATING_STATEMENT, context=RATING_CONTEXT,
+        effective_period="fiscal 2025", source_kind="announcement", speaker_scope="rating_agency"))
+    assert claim["status"] == "unverified" and claim["status_reason"] == "third_party"
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [claim])
+    assert writer.claims_to_judge() == []      # a third party's estimate is never sent for company judging
+    writer.close()
+
+
+def test_scope_level_claim_needs_the_judges_scope_ok(db_path: Path):
+    claim = dc._finish(_claim(
+        node="revenue.total", unit="inr_cr", value_low=250.0, sign="0",
+        quote_span="around INR250 crores from next financial year",
+        statement="Unfortunately, it's taking a little more time than what we envisaged, but I think it maybe "
+                  "take another 1 quarter, and we expect the full impact start coming, which will be around "
+                  "INR250 crores from next financial year.",
+        context="S1: So there is no problem with Bangladesh demand.\nS2: Well, that is still under progress.",
+        effective_period="from next financial year"))
+    assert dc.scope_flagged(claim)
+    prompt = dc.judge_prompt([{**claim, "id": 1}])
+    assert "SCOPE:" in prompt and '"scope_ok":true' in prompt and "FILED:" in prompt
+    normal = dc._finish(_claim())
+    normal_prompt = dc.judge_prompt([{**normal, "id": 2}])
+    assert "SCOPE: the paragraph" not in normal_prompt and '"scope_ok":true' not in normal_prompt
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [claim])
+    cid = int(writer.con.execute("SELECT id FROM claim").fetchone()[0])
+    writer.apply_judge(cid, {f: True for f in dc.JUDGE_FIELDS})
+    row = writer.con.execute("SELECT status, status_reason, judge_fail FROM claim").fetchone()
+    assert tuple(row) == ("unverified", "judge:scope_ok", "scope_ok")
+    writer.apply_judge(cid, {**{f: True for f in dc.JUDGE_FIELDS}, "scope_ok": True})
+    row = writer.con.execute("SELECT status, status_reason FROM claim").fetchone()
+    writer.close()
+    assert tuple(row) == ("verified", "")
+
+
+def test_judge_is_given_the_claim_known_at(db_path: Path):
+    claim = {**dc._finish(_claim()), "id": 7, "known_at": "2025-05-01T16:47:43"}
+    prompt = dc.judge_prompt([claim])
+    assert "FILED: 2025-05-01" in prompt
+    assert "FY25" in dc.JUDGE_SYSTEM and "2025-05" in dc.JUDGE_SYSTEM
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim(known_at="2025-05-01T16:47:43"))])
+    queued = writer.claims_to_judge()
+    writer.close()
+    assert queued and queued[0]["known_at"] == "2025-05-01T16:47:43"
+
+
+def test_debt_repayment_and_declared_dividend_get_signs():
+    debt = _claim(node="debt.level", unit="inr_cr", value_low=135.06, sign="0",
+                  quote_span="pay an amount of X 135.06 crores within a period of three months",
+                  statement="As per the approved OTS the company has to pay an amount of X 135.06 crores "
+                            "within a period of three months.",
+                  effective_period="within a period of three months")
+    assert dc.verify_claim(debt)[0] == "verified"
+    assert debt["sign"] == "-"
+    dividend = _claim(node="equity.dividend", unit="inr", value_low=1.0, sign="0",
+                      quote_span="Final Dividend of Rs. 1/- per equity share",
+                      statement="The Board of Directors are pleased to recommend a Final Dividend of "
+                                "Rs. 1/- per equity share for FY 2024-25.",
+                      base="per equity share", effective_period="FY 2024-25")
+    assert dc.verify_claim(dividend)[0] == "verified"
+    assert dividend["sign"] == "+"
+
+
+def test_cross_source_dedupe_keeps_earliest_and_records_dup_of(db_path: Path):
+    def row(source_id: int, **kw):
+        claim = _claim(source_id=source_id, **kw)
+        claim.update({"status": "verified", "status_reason": "", "created_at": "x", "judge_ok": 1,
+                      "judge_fail": "", "judge_suggest": None})
+        return claim
+
+    same = "I think the day we start commissioning, it should take 6 months from there where we can fully - - "\
+           "when we can expect 97%, 98% utilization."
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [
+        row(1, source_kind="announcement", known_at="2025-05-01T16:47:43", node="equity.dividend",
+            unit="inr", value_low=1.0, value_high=None, effective_period="FY 2024-25",
+            quote_span="Final Dividend of Rs.1/- per equity share",
+            statement="Notes: The Board has recommended a Final Dividend of Rs.1/- per equity share."),
+        row(2, source_kind="annual_report", known_at="2025-08-05T16:15:57", node="equity.dividend",
+            unit="inr", value_low=1.0, value_high=None, effective_period="FY 2024-25",
+            quote_span="Final Dividend of Rs. 1/- per equity share",
+            statement="The Board of Directors are pleased to recommend a Final Dividend of Rs. 1/- per "
+                      "equity share."),
+        row(3, source_kind="guidance", known_at="2026-05-25T14:38:20", node="revenue.volume",
+            unit="pct", value_low=97.0, value_high=98.0, effective_period="6 months from commissioning",
+            quote_span="6 months from there where we can fully - - when we can expect 97%, 98% utilization",
+            statement=same, context=""),
+        row(4, source_kind="transcript", known_at="2026-05-25T14:38:20", node="revenue.volume",
+            unit="pct", value_low=97.0, value_high=98.0, effective_period="6 months",
+            quote_span="it should take 6 months from there where we can fully - - when we can expect "
+                       "97%, 98% utilization", statement=same,
+            context="Q: Regarding your greenfield spindle capacity of 150K, in what time frame post-"
+                    "commercialization can it achieve optimum utilization?"),
+        # same source kind with no third source carrying it: two announcements that print the same
+        # share count are not one fact
+        row(5, source_kind="announcement", known_at="2026-03-24T10:00:00", node="equity.shares",
+            unit="units", value_low=56873418.0, value_high=None, effective_period=None,
+            quote_span="5,68,73,418 equity shares", statement="The paid up equity share capital comprises "
+                                                              "5,68,73,418 equity shares."),
+        row(6, source_kind="announcement", known_at="2026-03-30T10:00:00", node="equity.shares",
+            unit="units", value_low=56873418.0, value_high=None, effective_period=None,
+            quote_span="5,68,73,418 equity shares", statement="The Company confirms 5,68,73,418 equity "
+                                                              "shares are in issue."),
+    ])
+    folded, winners = writer.dedupe_cross_source()
+    rows = [tuple(r) for r in writer.con.execute(
+        "SELECT source_kind, COALESCE(dup_of, '') FROM claim ORDER BY id").fetchall()]
+    writer.close()
+    assert (folded, winners) == (2, 2)
+    assert rows == [("announcement", "2"), ("transcript", "3"), ("announcement", ""),
+                    ("announcement", "")]
+
+
+def test_writer_migrates_the_stage2b_columns(db_path: Path):
+    old = dc.SCHEMA.replace("  speaker_scope TEXT, dup_of TEXT,\n", "")
+    con = sqlite3.connect(db_path)
+    con.executescript(old)
+    con.commit()
+    con.close()
+    writer = dc.Writer(db_path)
+    columns = {str(r[1]) for r in writer.con.execute("PRAGMA table_info(claim)")}
+    writer.close()
+    assert {"speaker_scope", "dup_of"} <= columns

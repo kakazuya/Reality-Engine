@@ -13,6 +13,15 @@ QIP/warrant/rights size with its issue price (``equity.shares``).  A row the scr
 claim with ``method='script'``; every other row goes to the model.  Each claim now carries ``source_kind``
 (transcript, guidance, annual_report, press_release, announcement).
 
+Stage 2b (21 Nov, Wolf's hand read of the 2a pilot): a level claim whose own paragraph names a unit, plant,
+product or new line is that unit's increment, not a company-wide level (prompt rule plus a judge-confirmed
+``scope_ok``); a printed range ("at least 20% to 25%") keeps both ends instead of becoming a target on the
+high end; "including/excluding GST" is copied into ``base``; a rating-agency rationale (CRISIL, ICRA, CARE,
+India Ratings, Acuite, Brickwork) is tagged ``speaker_scope='rating_agency'`` and never verified as the
+company's claim; the same fact from two sources is folded into the earliest row with the others' ids in
+``dup_of``; a debt repayment is sign ``-`` and a declared dividend ``+``; and the judge is given the claim's
+own ``known_at`` so a stale target period is judged against the document date.
+
 A statement that ends in no tree node (revenue, operating cost, capex, debt, equity, working capital) is
 show, not data: it is dropped.  The output is one SQLite DB of claims, each carrying the exact quote it came
 from, its context and the source row's own ``known_at``.
@@ -320,6 +329,112 @@ def _plain_number(token: str) -> float:
     return float(re.sub(r"[^\d.]", "", token))
 
 
+def _claim_text(claim: dict[str, Any]) -> str:
+    """The quote, its statement and the paragraph around it: where a scope word or a GST basis may live."""
+    return " ".join(norm_ws(claim.get(key)) for key in ("quote_span", "statement", "context"))
+
+
+def gst_basis(claim: dict[str, Any]) -> str | None:
+    """The printed GST basis ("including GST" / "excluding GST"), else None."""
+    match = GST_BASIS.search(_claim_text(claim))
+    if match is None:
+        return None
+    phrase = norm_ws(match.group(0)).lower()
+    return "excluding GST" if phrase.startswith(("excluding", "exclusive", "plus", "net")) else "including GST"
+
+
+def _fill_gst_base(claim: dict[str, Any]) -> None:
+    basis = gst_basis(claim)
+    if basis is None:
+        return
+    base = norm_ws(claim.get("base"))
+    if not base:
+        claim["base"] = basis
+    elif "gst" not in base.lower():
+        claim["base"] = f"{base}; {basis}"
+
+
+def scope_flagged(claim: dict[str, Any]) -> bool:
+    """A level claim on the whole company whose own paragraph names a unit, plant, product or new line.
+
+    The script cannot decide which unit the model meant, so such a claim is only verified when the judge
+    confirms it with ``scope_ok`` (``apply_judge``); otherwise it stays unverified (``judge:scope_ok``).
+    """
+    node = norm_ws(claim.get("node")).lower()
+    if node not in ("revenue.total", "revenue.volume"):
+        return False
+    if norm_ws(claim.get("segment")).lower() not in ("", "total"):
+        return False
+    if norm_ws(claim.get("sign")) != "0":
+        return False
+    text = _claim_text(claim)
+    return bool(SCOPE_WORD.search(text) or INCREMENT_WORD.search(text))
+
+
+def speaker_scope(statement: Any, context: Any = "") -> str:
+    """company / rating_agency: a rating rationale page carries a third party's estimate, not the company's."""
+    text = f"{norm_ws(statement)} {norm_ws(context)}"
+    if RATING_AGENCY.search(text) and RATING_ESTIMATE.search(text):
+        return "rating_agency"
+    return "company"
+
+
+def sign_from_verbs(claim: dict[str, Any]) -> None:
+    """Fill sign 0 from the node and the verbs: debt repaid is -, a declared dividend is +."""
+    if norm_ws(claim.get("sign")) != "0":
+        return
+    node = norm_ws(claim.get("node")).lower()
+    text = _claim_text(claim)
+    if node == "debt.level":
+        if REPAY_VERB.search(text):
+            claim["sign"] = "-"
+        elif BORROW_VERB.search(text):
+            claim["sign"] = "+"
+    elif node == "equity.dividend" and DIVIDEND_VERB.search(text):
+        claim["sign"] = "+"
+
+
+# "at least 20% to 25%" / "up 20%-25%" / "20% to 25%" is a range: both printed ends belong in the claim.
+# A "from A to B" statement stays a target (from_to_target).  Wolf, stage 2b (1342).
+_AT_LEAST_RANGE = re.compile(r"\b(?:at\s+least|at\s+most|between)\s*$", re.I)
+_BY_CHANGE = re.compile(
+    r"\b(?:increas\w*|grow\w*|ris(?:e|es|ing)|up|higher|decreas\w*|declin\w*|f(?:a|e)ll\w*|drop\w*"
+    r"|reduc\w*|lower|down)\b[^.;]{0,25}?\bby\s*$", re.I)
+_NEG_CHANGE = re.compile(r"\b(?:decreas\w*|declin\w*|f(?:a|e)ll\w*|drop\w*|reduc\w*|lower|down|cut\w*)\b", re.I)
+_POS_CHANGE = re.compile(r"\b(?:increas\w*|grow\w*|ris(?:e|es|ing)|up|higher|expand\w*|improv\w*)\b",
+                         re.I)
+
+
+def range_from_span(claim: dict[str, Any]) -> bool:
+    """Keep both ends of a printed range where the model collapsed it to one.  True when it rewrote."""
+    span = norm_ws(claim.get("quote_span"))
+    if not span or _FROM_TO_RE.search(span):
+        return False
+    match = _A_TO_B_RE.search(span)
+    if match is None:
+        return False
+    before = span[max(0, match.start() - 40):match.start()]
+    percent_pair = bool(re.search(r"%|percent|per\s?cent", match.group("aunit") or "", re.I))
+    if not (percent_pair or _AT_LEAST_RANGE.search(before) or _BY_CHANGE.search(before)):
+        return False
+    try:
+        a = _plain_number(match.group("a"))
+        b = _plain_number(match.group("b"))
+    except ValueError:
+        return False
+    if a == b:
+        return False
+    claim["value_low"], claim["value_high"] = min(a, b), max(a, b)
+    polarity = "-" if _NEG_CHANGE.search(before or span) else ("+" if _POS_CHANGE.search(span) else "0")
+    if polarity != "0":
+        claim["sign"] = polarity
+    base = norm_ws(claim.get("base"))
+    if not base or any(re.search(rf"(?<!\d){re.escape(token.strip())}(?!\d)", base) for token in
+                       (match.group("a"), match.group("b"))):
+        claim["base"] = None
+    return True
+
+
 def from_to_target(claim: dict[str, Any]) -> bool:
     """Rewrite a change statement 'from A to B' to target B (sign by B-A, base A).  True when it did."""
     span = str(claim.get("quote_span") or "")
@@ -356,6 +471,40 @@ MARGIN_WORD = re.compile(r"\b(?:margins?|EBIT|EBITDA|PAT|gross)\b", re.I)
 CHANGE_WORD = re.compile(r"\b(?:better|growth|grow|grows|growing|increases?|increased|increasing|higher|up)\b",
                          re.I)
 MIX_SEGMENTS = ("exports", "export", "domestic", "imports", "retail", "wholesale", "institutional")
+
+# Stage 2b scope words: a level claim whose paragraph names one of these is a unit/plant/product increment,
+# not a company-wide level.  Wolf's hand read, 21 Nov: 577 (new unit's Rs 250 crore), 573 (new unit's ramp),
+# 1130/735 (greenfield spindle utilisation), 437 (new product line).
+SCOPE_WORD = re.compile(
+    r"\b(?:plants?|units?|production\s+lines?|assembly\s+lines?|new\s+lines?|lines?\s+of\s+business"
+    r"|facilit(?:y|ies)|factor(?:y|ies)|mills?|works|subsidiar(?:y|ies)|greenfield|brownfield"
+    r"|verticals?|divisions?|solar\s+park|speciali[sz]ed\s+unit|products?)\b", re.I)
+# An increment phrased without naming the unit ("the full impact", "additional revenue").
+INCREMENT_WORD = re.compile(
+    r"\b(?:full\s+impact|incremental|additional|ramp(?:[\s-]?up)?|new\s+capacity|start(?:s|ing)?\s+coming)\b",
+    re.I)
+
+# GST basis: an order value in an exchange letter is sometimes incl. GST and sometimes excl., so the phrase
+# belongs in `base` (Wolf: 247 "Rs. 117.74 Crores including GST" while other orders are ex-GST).
+GST_BASIS = re.compile(
+    r"\b(?:including|inclusive\s+of|excluding|exclusive\s+of|plus|net\s+of)\s+(?:applicable\s+)?GST\b", re.I)
+
+# Rating-agency rationales are a third party's estimate, never the company's own claim (Wolf: 982, 1126).
+RATING_AGENCY = re.compile(
+    r"\b(?:CRISIL|ICRA|CARE\s+(?:Ratings|Ltd|Limited)|India\s+Ratings|Acuit[eé]|Brickwork|Infomerics"
+    r"|SMERA|BWR)\b", re.I)
+RATING_ESTIMATE = re.compile(
+    r"\b(?:estimat\w*|expect\w*|forecast\w*|project\w*|outlook|rating\w*|rationale)\b", re.I)
+
+# Sign from the node and its verbs (Wolf: 522 OTS repayment sign 0; dividends sign 0).
+REPAY_VERB = re.compile(
+    r"\b(?:pay(?:s|ing|ment)?|repay\w*|prepay\w*|settle\w*|settlement|clear\w*|retire\w*"
+    r"|reduc\w*|reduction|discharg\w*)\b", re.I)
+BORROW_VERB = re.compile(
+    r"\b(?:raise\s+(?:debt|funds|money)|draw(?:n|ing)?\s+down|avail\w*|additional\s+borrowing"
+    r"|increase\s+(?:in\s+)?(?:debt|borrowings?))\b", re.I)
+DIVIDEND_VERB = re.compile(r"\b(?:declar\w*|recommend\w*|approv\w*|propos\w*|payable|paid)\b", re.I)
+
 
 
 def number_clause(claim: dict[str, Any]) -> str:
@@ -590,13 +739,19 @@ def verify_claim(claim: dict[str, Any]) -> tuple[str, str]:
     span = norm_ws(claim.get("quote_span"))
     if not span:
         return "quarantined", "no_quote_span"
+    _fill_gst_base(claim)
+    sign_from_verbs(claim)
     if AMBIG_SIGN.search(span):
         claim["sign"] = "0"
-    rewritten = from_to_target(claim)
+    rewritten = range_from_span(claim)
+    if not rewritten:
+        rewritten = from_to_target(claim)
     if rewritten:
         span = norm_ws(claim.get("quote_span"))
     if span not in norm_ws(claim.get("statement")):
         return "quarantined", "quote_span_not_in_statement"
+    if norm_ws(claim.get("speaker_scope")) == "rating_agency":
+        return "unverified", "third_party"
     numbers = find_numbers(span)
     low, high = claim.get("value_low"), claim.get("value_high")
     if low is None and high is None:
@@ -944,6 +1099,7 @@ def doc_items_from_pages(store: str, docs: dict[str, dict[str, Any]],
                     "doc_key": key, "page": page, "paragraph": index,
                     "known_at": doc.get("known_at"), "event_date": doc.get("filing_date"),
                     "source_kind": dt, "text": para[:MAX_TEXT], "context": context[:MAX_CONTEXT],
+                    "speaker_scope": speaker_scope(para, context),
                 }
                 if dt == "announcement":
                     parsed = announcement_claims(item)
@@ -1040,6 +1196,8 @@ def _script_claim(item: dict[str, Any], node: str, value: float, unit: str, sign
         "unit": unit, "base": base, "effective_period": period, "conditional": 0,
         "quote_span": span, "statement": item["text"], "context": item.get("context") or "",
         "method": "script", "extractor": extractor,
+        "speaker_scope": item.get("speaker_scope")
+        or speaker_scope(item.get("text"), item.get("context") or ""),
     }
     return _finish(claim)
 
@@ -1145,7 +1303,7 @@ def guidance_claim(store: str, row: dict[str, Any]) -> tuple[dict[str, Any] | No
         "unit": canon_unit(row.get("unit")) or "units", "base": None,
         "effective_period": _clean(row.get("target_period"), 60), "conditional": 0,
         "quote_span": quote, "statement": quote, "context": "", "method": "script",
-        "extractor": f"guidance:{metric}",
+        "extractor": f"guidance:{metric}", "speaker_scope": speaker_scope(quote),
     }
     return _finish(claim), "mapped"
 
@@ -1158,7 +1316,7 @@ def item_from_guidance(store: str, row: dict[str, Any]) -> dict[str, Any]:
         "symbol": row.get("symbol"), "doc_key": row.get("doc_key"),
         "page": row.get("page"), "known_at": row.get("known_at"), "event_date": row.get("said_on"),
         "text": quote[:MAX_TEXT], "context": "", "metric": row.get("metric"),
-        "target_period": row.get("target_period"),
+        "target_period": row.get("target_period"), "speaker_scope": speaker_scope(quote),
     }
 
 
@@ -1201,6 +1359,7 @@ def attach_context(rows: list[dict[str, Any]], questions: dict[tuple[str, int], 
                 "symbol": row.get("symbol"), "doc_key": row.get("doc_key"), "page": row.get("page"),
                 "known_at": row.get("known_at"), "event_date": row.get("call_date"),
                 "text": text[:MAX_TEXT], "context": "\n".join(lines)[:MAX_CONTEXT],
+                "speaker_scope": speaker_scope(text, "\n".join(lines)),
             })
             counters["statements_sent"] += 1
         prev.setdefault(doc, deque(maxlen=2)).append(norm_ws(text))
@@ -1215,7 +1374,7 @@ Reply with JSON only, no markdown fences, no commentary.
 The driver tree has exactly these nodes; nothing else exists:
 revenue.volume | revenue.price | revenue.total | revenue.order_book | revenue.mix | cost.raw_material | cost.employee | cost.power_fuel | cost.other | margin.ebitda | margin.gross | capex.amount | capacity.add | debt.level | debt.cost | equity.shares | equity.dividend | working_capital.days
 
-A share, mix or contribution ("exports contributed 17% of total income", "exports are 20%-25% of sales") fills revenue.mix with the segment named (exports, domestic, a product), not revenue.total.
+A share, mix or contribution ("exports contributed 17% of total income", "exports are 20%-25% of sales") fills revenue.mix with the segment named (exports, domestic, a product), not revenue.total. A share of one unit's own potential or utilisation ("30% to 40% of the revenues of the total potential", "97% utilisation of the new unit") is that unit's ramp, not a company mix: revenue.total (pct) or revenue.volume, segment = the unit.
 
 Source rules:
 - An annual report is published months after the fiscal year it covers. Its own-year figures and growth rates ("FY25 revenue grew 20%", "the Company achieved revenue of Rs 679 crore in FY24") are past results, not claims, even on the MD&A or the directors' report page. Only an explicit outlook, target or plan for a later period is a claim.
@@ -1229,17 +1388,17 @@ Rules for every statement:
 - If a statement changes no node (a rating action, an award, praise, a policy aside), set drop to "no_driver".
 - Never add, subtract, convert, round, annualise or total a number. Copy the number exactly as printed, in the unit it is printed in. A number you computed is not allowed.
 - quote_span must be copied character for character from the target statement: the shortest span that carries the number(s). value_low and value_high must be numbers printed inside quote_span.
-- value_low/value_high: the printed numbers, low first. If one number, set value_high to null. A range such as "20%-22%" is 20 and 22.
+- value_low/value_high: the printed numbers, low first. If one number, set value_high to null. A range such as "20%-22%" is 20 and 22. A growth stated "at least 20% to 25%" or "up 20%-25%" is a range (20 and 25), not a single target.
 - unit: inr_cr, inr_lakh, inr, usd, usd_mn, pct, bp, months, days, or the printed unit word (tonnes, mt, mw, units, kl, tpa). Use the unit printed next to the number: "30 days" is days, "Rs 240 crore" is inr_cr, "20%" is pct.
-- base: what the number is measured against (e.g. "FY25 revenue", "annual revenue"), else null.
+- base: what the number is measured against (e.g. "FY25 revenue", "annual revenue"), else null. When the text says "including GST", "inclusive of GST" or "excluding GST", copy that phrase into base.
 - effective_period: the period the claim applies to, exactly as printed when present (FY26, Q3FY26, "next 24 months"), else null.
 - conditional: true only when the claim depends on an event that may not happen (approval, order win, commissioning).
-- sign: use "0" for an absolute level or range the company expects (revenue of Rs. 1,900 crore, utilisation of 60%-65%, margins around 30%) and for an ambiguous range; use "+" or "-" only when the statement states a change from the current level (up 20%, down 5%, expands by 200 basis points, cuts cost by Rs 10 crore).
+- sign: use "0" for an absolute level or range the company expects (revenue of Rs. 1,900 crore, utilisation of 60%-65%, margins around 30%) and for an ambiguous range; use "+" or "-" only when the statement states a change from the current level (up 20%, down 5%, expands by 200 basis points, cuts cost by Rs 10 crore). A debt repayment, OTS settlement or loan reduction is "-"; a dividend declared or recommended is "+".
 - A change from one number to another ("from INR450 crores to INR100 crores", "reduce to 8%") is a target: value_low = value_high = the destination number, base = the starting number, and the sign follows the destination against the start. A plain range with no change ("INR 2,700 to 2,800 crores") is a range: value_low and value_high as printed.
 - When the context or the analyst's question names the measure the statement is answering (gross margin, EBITDA margin, utilisation, realisation), the node follows that measure: gross margin -> margin.gross, EBITDA margin -> margin.ebitda, utilisation -> revenue.volume.
 - The claim must be about this company's own figures, not the industry, the country or a customer.
 - A price or number about an input the company buys (raw material, power, fuel) fills a cost node; a price it charges for its own output fills a revenue node. When a product and a raw material share a name (cotton, caustic soda), the company's purchase is the cost and its sale is the revenue.
-- segment: the segment, product or geography the claim belongs to, else "total".
+- segment: the segment, product, geography or unit the claim belongs to, else "total". When the quote or any line around it names a unit, plant, product, subsidiary or new line (including "that unit", "the new line", "full impact", "incremental revenue", "additional capacity"), the number is that unit's increment, never a company-wide level: set segment to it ("new unit" when it is not named), sign "+", and base "new unit".
 
 Example statement: "With the plant already operating at about 95% utilization, the incremental capacity is expected to generate Rs. 50-Rs. 75 crores additional annual revenue at present price, once fully operational."
 Example answer: {"id":1,"drop":null,"claims":[{"node":"revenue.volume","segment":"total","sign":"+","value_low":50,"value_high":75,"unit":"inr_cr","base":"annual revenue","effective_period":"once fully operational","conditional":true,"quote_span":"Rs. 50-Rs. 75 crores additional annual revenue"}]}
@@ -1253,6 +1412,12 @@ Example answer: {"id":3,"drop":"no_driver","claims":[]}
 Example announcement: "The Company has secured an order worth Rs. 200.02 Crores, to be executed over 25 months."
 Example answer: {"id":4,"drop":null,"claims":[{"node":"revenue.order_book","segment":"total","sign":"0","value_low":200.02,"value_high":null,"unit":"inr_cr","base":null,"effective_period":"25 months","conditional":false,"quote_span":"secured an order worth Rs. 200.02 Crores, to be executed over 25 months"}]}
 
+Example statement: "But in Q4, we expect almost 30% to 40% of the revenues of the total potential to kick in."
+Example answer: {"id":5,"drop":null,"claims":[{"node":"revenue.total","segment":"new unit","sign":"+","value_low":30,"value_high":40,"unit":"pct","base":"new unit","effective_period":"Q4","conditional":false,"quote_span":"almost 30% to 40% of the revenues of the total potential"}]}
+
+Example statement: "But going ahead, we see a healthy increase in revenue by at least 20% to 25% in this financial year."
+Example answer: {"id":6,"drop":null,"claims":[{"node":"revenue.total","segment":"total","sign":"+","value_low":20,"value_high":25,"unit":"pct","base":null,"effective_period":"this financial year","conditional":false,"quote_span":"increase in revenue by at least 20% to 25% in this financial year"}]}
+
 Output exactly:
 {"items":[{"id":1,"drop":null,"claims":[...]},{"id":2,"drop":"past","claims":[]}]}
 Every statement id must appear exactly once. Use "drop":"past" or "drop":"no_driver" with an empty claims array when nothing qualifies.
@@ -1262,15 +1427,16 @@ JUDGE_SYSTEM = """You audit machine-extracted claims about a company's financial
 
 Reply with JSON only, no markdown fences, no commentary.
 
-Each block starts with CLAIM <id>, where <id> is the claim's own id, then the target STATEMENT, its SOURCE (transcript, guidance, annual_report, press_release or announcement), its CONTEXT (the statements before it in the call, or the document title and the paragraph before it, and when the statement answers an analyst, the question), and the extracted claim.
+Each block starts with CLAIM <id>, where <id> is the claim's own id, then the target STATEMENT, its SOURCE (transcript, guidance, annual_report, press_release or announcement), its FILED date (the day the document became known), its CONTEXT (the statements before it in the call, or the document title and the paragraph before it, and when the statement answers an analyst, the question), and the extracted claim. A block whose paragraph names a unit, plant, product, new line or subsidiary for a whole-company level carries a SCOPE line.
 
-Decide six booleans:
-- node_ok: the STATEMENT itself really supports this driver node (a receivables sentence is not revenue.volume; a credit-rating sentence is no driver at all; a geographic mix is not an order book; a price the company PAYS for an input is a cost, not revenue.price; a price it CHARGES for its own output is revenue.price; an EBITDA amount is not a margin). An order won fills revenue.order_book, never revenue.total; a board-approved capex fills capex.amount; a QIP/warrants/rights size fills equity.shares.
-- sign_ok: "0" is right for an absolute level or range the company expects (revenue of Rs. 1,900 crore, utilisation of 60%-65%, margins around 30%) and for an ambiguous range; "+" or "-" is right only when the statement states a change from the current level (up 20%, down 5%, expands by 200 bp, cuts cost). A level target marked +/- fails.
+Decide six booleans, plus scope_ok only on a block that carries SCOPE:
+- node_ok: the STATEMENT itself really supports this driver node (a receivables sentence is not revenue.volume; a credit-rating sentence is no driver at all; a geographic mix is not an order book; a price the company PAYS for an input is a cost, not revenue.price; a price it CHARGES for its own output is revenue.price; an EBITDA amount is not a margin). An order won fills revenue.order_book, never revenue.total; a board-approved capex fills capex.amount; a QIP/warrants/rights size fills equity.shares. A single unit's own ramp or utilisation ("30%-40% of its potential", "97% utilisation of the new unit") is not revenue.mix and not a company-wide level.
+- sign_ok: "0" is right for an absolute level or range the company expects (revenue of Rs. 1,900 crore, utilisation of 60%-65%, margins around 30%) and for an ambiguous range; "+" or "-" is right only when the statement states a change from the current level (up 20%, down 5%, expands by 200 bp, cuts cost). A level target marked +/- fails, except a revenue amount the CLAIM labels segment/base "new unit" (the full impact or incremental revenue of a new unit, plant or line): that is an increment, so "+" is right. A debt repayment, OTS settlement or loan reduction on debt.level must be "-"; a dividend declared or recommended on equity.dividend must be "+".
 - unit_ok: the unit and magnitude agree with the words attached to the number in quote_span (days vs months vs years, % vs basis points, crore vs lakh vs million, MW vs tonnes vs units), and the unit can belong to the node at all (capacity.add is a size, never a waiting time; working_capital.days is days; a margin is % or bp).
-- period_ok: effective_period is a real period or horizon the claim applies to (FY26, Q3FY26, next 24 months, once fully operational). Null with no horizon in the statement fails; "post that" with no referent fails.
-- forward_ok: the claim is forward-looking (guidance, expectation, plan, target), not a past result ("we spent", "grew last quarter"). An annual report's own-year figures are past even in the MD&A or the directors' report; an announcement of a completed allotment or a completed event with no forward amount is past; an order won with execution still ahead, a board-approved capex, and a proposed or approved QIP/rights/preferential issue ARE forward.
-- company_ok: the claim is about this company's own figures, not the industry, the country, a customer, a supplier or a competitor (an industry acreage forecast, a customer's price, a sector number fails).
+- period_ok: effective_period is a real period or horizon the claim applies to (FY26, Q3FY26, next 24 months, once fully operational). Null with no horizon in the statement fails; "post that" with no referent fails. Judge it against FILED: a target period that had already ended on the FILED date is not a live claim.
+- forward_ok: the claim is forward-looking (guidance, expectation, plan, target) on the FILED date, not a past result ("we spent", "grew last quarter"). "FY25" in a document filed in 2025-05 is the year just gone (past), while the same words in a document filed in 2024-08 can still be forward. An annual report's own-year figures are past even in the MD&A or the directors' report; an announcement of a completed allotment or a completed event with no forward amount is past; an order won with execution still ahead, a board-approved capex, and a proposed or approved QIP/rights/preferential issue ARE forward.
+- company_ok: the claim is about this company's own figures, not the industry, the country, a customer, a supplier or a competitor (an industry acreage forecast, a customer's price, a sector number fails). A rating agency's estimate or outlook (CRISIL, ICRA, CARE, India Ratings, Acuite, Brickwork) is that agency's view, not the company's own claim.
+- scope_ok: asked only when the block carries SCOPE. True only when the value really is the whole company's figure and the paragraph's plant, unit, product, new line or subsidiary is mere background. False when the paragraph names that unit and the value is its increment, ramp, utilisation or share of its own potential.
 
 Also return node_suggest: when node_ok is false, the tree node the claim really belongs to (node_ok against that one must be true) or null when no node fits. When the context or the analyst's question names the measure (gross margin, EBITDA margin, utilisation), the node follows it: gross margin -> margin.gross, EBITDA margin -> margin.ebitda, utilisation -> revenue.volume.
 
@@ -1338,6 +1504,8 @@ def claim_from_reply(raw: dict[str, Any], item: dict[str, Any]) -> tuple[dict[st
         "conditional": bool(raw.get("conditional")), "quote_span": str(raw.get("quote_span") or ""),
         "statement": item["text"], "context": item.get("context") or "", "method": "model",
         "extractor": MODEL,
+        "speaker_scope": item.get("speaker_scope")
+        or speaker_scope(item.get("text"), item.get("context") or ""),
     }
     return _finish(claim), "claim"
 
@@ -1353,12 +1521,14 @@ def judge_prompt(claims: list[dict[str, Any]], brief: str = "") -> str:
     if brief:
         lines.append("COMPANY:")
         lines.append(brief)
+    needs_scope = any(scope_flagged(claim) for claim in claims)
     for claim in claims:
         low = "?" if claim["value_low"] is None else f"{float(claim['value_low']):g}"
         high = "" if claim["value_high"] is None else f"-{float(claim['value_high']):g}"
         lines.append(f"\nCLAIM {claim['id']}")
         lines.append(f"STATEMENT: {norm_ws(claim['statement'])}")
         lines.append(f"SOURCE: {claim.get('source_kind') or 'transcript'}")
+        lines.append(f"FILED: {norm_ws(claim.get('known_at'))[:10] or 'unknown'}")
         if claim.get("context"):
             lines.append("CONTEXT:")
             lines.extend(f"  {line}" for line in str(claim["context"]).splitlines())
@@ -1366,8 +1536,15 @@ def judge_prompt(claims: list[dict[str, Any]], brief: str = "") -> str:
                      f"value={low}{high} unit={claim['unit']} period={claim['effective_period'] or 'null'} "
                      f"base={claim['base'] or 'null'}")
         lines.append(f"quote_span: {norm_ws(claim['quote_span'])}")
+        if scope_flagged(claim):
+            lines.append("SCOPE: the paragraph names a unit, plant, product, new line or subsidiary for a "
+                         "whole-company level claim. Answer scope_ok: is this value really the whole "
+                         "company's figure, not that unit's increment or ramp?")
+    scope_field = ',"scope_ok":true' if needs_scope else ""
     lines.append('\nOutput exactly: {"items":[{"id":<same id>,"node_ok":true,"sign_ok":true,"unit_ok":true,'
-                 '"period_ok":true,"forward_ok":true,"company_ok":true,"node_suggest":null}]}')
+                 f'"period_ok":true,"forward_ok":true,"company_ok":true,"node_suggest":null{scope_field}}}]}}')
+    lines.append('Every claim id must appear exactly once. Add "scope_ok" only to a block that carries a SCOPE '
+                 "line, and never to a block without one.")
     return "\n".join(lines) + "\n"
 
 
@@ -1383,6 +1560,10 @@ def parse_judge_reply(text: str) -> list[dict[str, Any]]:
         for field in JUDGE_FIELDS:
             value = it.get(field)
             verdict[field] = bool(value) if isinstance(value, bool) else str(value).lower() in ("true", "yes", "1")
+        if "scope_ok" in it:
+            value = it.get("scope_ok")
+            verdict["scope_ok"] = bool(value) if isinstance(value, bool) else str(value).lower() in (
+                "true", "yes", "1")
         verdict["node_suggest"] = _clean(it.get("node_suggest"), 60)
         verdict["why"] = _clean(it.get("why"), 300) or ""
         out.append({"id": it.get("id"), **verdict})
@@ -1497,6 +1678,7 @@ CREATE TABLE IF NOT EXISTS claim (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   run_id TEXT, store TEXT, symbol TEXT, source_table TEXT, source_id INTEGER,
   source_kind TEXT, paragraph INTEGER,
+  speaker_scope TEXT, dup_of TEXT,
   doc_key TEXT, page INTEGER, known_at TEXT, event_date TEXT,
   node TEXT, segment TEXT, sign TEXT, value_low REAL, value_high REAL, unit TEXT,
   base TEXT, effective_period TEXT, conditional INTEGER,
@@ -1528,7 +1710,7 @@ CLAIM_COLS = ("run_id", "store", "symbol", "source_table", "source_id", "source_
               "value_high", "unit", "base", "effective_period", "conditional", "quote_span", "statement",
               "context", "method", "extractor", "status", "status_reason", "created_at", "judge_ok",
               "judge_node", "judge_sign", "judge_unit", "judge_period", "judge_forward", "judge_fail",
-              "judge_why", "judge_suggest")
+              "judge_why", "judge_suggest", "speaker_scope", "dup_of")
 
 
 
@@ -1542,9 +1724,10 @@ class Writer:
         self.con.row_factory = sqlite3.Row
         self.con.execute("PRAGMA journal_mode=WAL")
         self.con.executescript(SCHEMA)
-        # additive migration: a DB written before stage 2a keeps its rows and gains the two new columns
+        # additive migration: a DB written before stage 2a keeps its rows and gains the new columns
         have = {str(r[1]) for r in self.con.execute("PRAGMA table_info(claim)")}
-        for column, kind in (("source_kind", "TEXT"), ("paragraph", "INTEGER")):
+        for column, kind in (("source_kind", "TEXT"), ("paragraph", "INTEGER"),
+                             ("speaker_scope", "TEXT"), ("dup_of", "TEXT")):
             if column not in have:
                 self.con.execute(f"ALTER TABLE claim ADD COLUMN {column} {kind}")
         self.con.commit()
@@ -1608,21 +1791,29 @@ class Writer:
         with self.lock:
             rows = self.con.execute(
                 "SELECT id, store, symbol, source_kind, node, segment, sign, value_low, value_high, unit,"
-                " base, effective_period, quote_span, statement, context FROM claim"
+                " base, effective_period, quote_span, statement, context, known_at FROM claim"
                 " WHERE judge_ok IS NULL AND status='verified' ORDER BY store, id").fetchall()
         return [dict(r) for r in rows]
 
     def apply_judge(self, claim_id: int, verdict: dict[str, Any]) -> None:
         """Apply the six booleans; on a node_ok failure with a valid suggestion, keep the claim under
-        the suggested tree node as unverified (`judge_renode`) instead of losing it.  Never verified."""
+        the suggested tree node as unverified (`judge_renode`) instead of losing it.  Never verified.
+
+        A level claim on the whole company whose paragraph names a unit/plant/product/new line needs the
+        judge's explicit ``scope_ok``: without it the claim stays unverified even when all six pass.
+        """
         fails = [f for f in JUDGE_FIELDS if not verdict.get(f)]
-        status, reason = ("unverified", "judge:" + ",".join(fails)) if fails else ("verified", "")
-        suggestion = norm_ws(verdict.get("node_suggest")).lower() or None
-        if suggestion not in NODES:
-            suggestion = None
         with self.lock:
-            row = self.con.execute("SELECT node FROM claim WHERE id=?", (claim_id,)).fetchone()
+            row = self.con.execute(
+                "SELECT node, segment, sign, statement, context, quote_span FROM claim WHERE id=?",
+                (claim_id,)).fetchone()
             old_node = str(row["node"]) if row is not None else ""
+            if row is not None and scope_flagged(dict(row)) and verdict.get("scope_ok") is not True:
+                fails.append("scope_ok")
+            status, reason = ("unverified", "judge:" + ",".join(fails)) if fails else ("verified", "")
+            suggestion = norm_ws(verdict.get("node_suggest")).lower() or None
+            if suggestion not in NODES:
+                suggestion = None
             renode = bool("node_ok" in fails and suggestion and suggestion != old_node)
             if renode:
                 reason = "judge_renode"
@@ -1669,6 +1860,110 @@ class Writer:
             self.con.executemany("DELETE FROM claim WHERE id=?", [(i,) for i in losers])
             self.con.commit()
         return len(losers)
+
+    def dedupe_cross_source(self) -> tuple[int, int]:
+        """Fold the same fact from two *different sources* into the earliest ``known_at`` row.
+
+        Two equivalences: the exact same statement (a guidance row and the transcript statement it came
+        from) and the brief's key (symbol, node, segment, value_low, value_high, unit, effective_period),
+        where a period that starts with the same words is the same period ("6 months" and "6 months from
+        commissioning").  Only a pair of *different* source kinds can join two rows: a same-kind group is
+        folded only when another source carries the same fact (then its earliest copy survives); two
+        announcements that print the same share count with no third source are two rows, not one fact.
+        Quarantined rows are never folded.  Returns (folded claims, winners).
+        """
+        def period_key(value: Any) -> str:
+            return re.sub(r"[^a-z0-9]", "", norm_ws(value).lower())
+
+        def same_period(a: str, b: str) -> bool:
+            if a == b:
+                return True
+            shorter, longer = (a, b) if len(a) <= len(b) else (b, a)
+            return bool(shorter) and len(shorter) >= 6 and longer.startswith(shorter)
+
+        with self.lock:
+            rows = [dict(r) for r in self.con.execute(
+                "SELECT id, symbol, statement, node, segment, value_low, value_high, unit,"
+                " effective_period, known_at, status, method, context, source_kind FROM claim"
+                " WHERE status <> 'quarantined'").fetchall()]
+            if not rows:
+                return 0, 0
+            parent = {int(r["id"]): int(r["id"]) for r in rows}
+            kind = {int(r["id"]): norm_ws(r["source_kind"]) for r in rows}
+
+            def find(i: int) -> int:
+                while parent[i] != i:
+                    parent[i] = parent[parent[i]]
+                    i = parent[i]
+                return i
+
+            def union(a: int, b: int) -> None:
+                ra, rb = find(a), find(b)
+                if ra != rb:
+                    parent[rb] = ra
+
+            def union_cross(ids: list[int]) -> None:
+                """Fold only across source kinds: a cross-source fact, not a repeated same-source number."""
+                for i in range(len(ids)):
+                    for j in range(i + 1, len(ids)):
+                        if kind[ids[i]] != kind[ids[j]]:
+                            union(ids[i], ids[j])
+
+            # pass 1: the same text (a guidance row and its transcript statement)
+            stmt_keys = [((r["symbol"] or ""), norm_ws(r["statement"]), norm_ws(r["node"]),
+                          r["value_low"], r["value_high"], canon_unit(r["unit"])) for r in rows]
+            buckets: dict[tuple[Any, ...], list[int]] = defaultdict(list)
+            for key, row in zip(stmt_keys, rows):
+                buckets[key].append(int(row["id"]))
+            for ids in buckets.values():
+                union_cross(ids)
+            # pass 2: the brief's fact key, with the period prefix match
+            value_of = [((r["symbol"] or ""), r["node"] or "", norm_ws(r["segment"]).lower(),
+                         r["value_low"], r["value_high"], canon_unit(r["unit"])) for r in rows]
+            buckets = defaultdict(list)
+            for key, row in zip(value_of, rows):
+                buckets[key].append(int(row["id"]))
+            by_id = {int(r["id"]): r for r in rows}
+            for ids in buckets.values():
+                clusters: list[list[int]] = []
+                for cid in ids:
+                    pk = period_key(by_id[cid]["effective_period"])
+                    for cluster in clusters:
+                        if same_period(period_key(by_id[cluster[0]]["effective_period"]), pk):
+                            cluster.append(cid)
+                            break
+                    else:
+                        clusters.append([cid])
+                for cluster in clusters:
+                    union_cross(cluster)
+
+            components: dict[int, list[int]] = defaultdict(list)
+            for i in parent:
+                components[find(i)].append(i)
+            losers: list[int] = []
+            winners: dict[int, list[int]] = {}
+            for ids in components.values():
+                if len(ids) < 2:
+                    continue
+                ranked = sorted(ids, key=lambda i: (
+                    str(by_id[i]["known_at"] or "9999"),
+                    0 if by_id[i]["status"] == "verified" else 1,
+                    -len(str(by_id[i]["context"] or "")),
+                    0 if by_id[i]["method"] == "script" else 1,
+                    i))
+                keep, folded = ranked[0], sorted(ranked[1:])
+                winners[keep] = folded
+                losers.extend(folded)
+            if losers:
+                self.con.executemany("DELETE FROM claim WHERE id=?", [(i,) for i in losers])
+            for keep, folded in winners.items():
+                current = str(self.con.execute("SELECT dup_of FROM claim WHERE id=?", (keep,)).fetchone()[0]
+                              or "")
+                merged = sorted({int(x) for x in current.split(",") if x.strip().isdigit()} | set(folded))
+                self.con.execute("UPDATE claim SET dup_of=? WHERE id=?",
+                                 (",".join(str(i) for i in merged), keep))
+            self.con.commit()
+        return len(losers), len(winners)
 
     def close(self) -> None:
         with self.lock:
@@ -2099,6 +2394,8 @@ def run_judge(writer: Writer, briefs: dict[str, str], args: argparse.Namespace, 
 def run(args: argparse.Namespace) -> int:
     started = utc_now()
     stores = list(args.stores or [])
+    if getattr(args, "all_stores", False):
+        stores = list_stores()
     if args.pick:
         extra = pick_stores([s for s in stores_with_statements() if s not in stores], args.pick, args.pick_seed)
         print(f"picked by seed {args.pick_seed}: {' '.join(extra)}")
@@ -2201,6 +2498,7 @@ def run(args: argparse.Namespace) -> int:
     # judge: every claim that passed the script check is read again by an independent model
     judge_stats = run_judge(writer, briefs, args, run_id)
     removed = dedupe_db(writer)
+    folded, dup_rows = writer.dedupe_cross_source()
     final_rows = writer.con.execute("SELECT status, COUNT(*) FROM claim GROUP BY 1").fetchall()
     final_status = {str(r[0]): int(r[1]) for r in final_rows}
 
@@ -2210,7 +2508,7 @@ def run(args: argparse.Namespace) -> int:
         sample.write_text(json.dumps(stats.empty_samples[:5], indent=1)[:8000], encoding="utf-8")
 
     script_status = Counter(c["status"] for c in script_claims)
-    total_claims = len(script_claims) + stats.claims - removed
+    total_claims = len(script_claims) + stats.claims - removed - folded
     statuses = Counter(script_status)
     statuses.update(stats.by_status)
     nodes = Counter(c["node"] for c in script_claims)
@@ -2222,8 +2520,8 @@ def run(args: argparse.Namespace) -> int:
     outcome = (f"claims {total_claims} ({statuses.get('verified', 0)} pre-judge verified, "
                f"{statuses.get('unverified', 0)} pre-judge unverified, "
                f"{statuses.get('quarantined', 0)} quarantined); judged {judge_stats.judged} "
-               f"({judge_stats.judged_ok} passed); deduped {removed}; model items "
-               f"{stats.items_ok}/{sent_items}; drops {dict(stats.drops)}"
+               f"({judge_stats.judged_ok} passed); deduped {removed}; cross-source folded {folded}; "
+               f"model items {stats.items_ok}/{sent_items}; drops {dict(stats.drops)}"
                + (f"; {guard_reason}" if guard_reason else ""))
     print(f"\nextract: {stats.requests} requests, {stats.seconds:.0f} s, {stats.in_tok} in / "
           f"{stats.out_tok} out tokens, {stats.errors} errors, {stats.empty} empty")
@@ -2233,7 +2531,8 @@ def run(args: argparse.Namespace) -> int:
           f"errors {judge_stats.judge_errors}, http {dict(judge_stats.judge_http_codes)}, "
           f"fail fields {dict(judge_stats.by_field)}")
     print(f"claims pre-judge: {len(script_claims) + stats.claims}  by status {dict(statuses)}  "
-          f"by node {dict(nodes)}  by source {dict(kinds)}  deduped {removed}")
+          f"by node {dict(nodes)}  by source {dict(kinds)}  deduped {removed}  "
+          f"cross-source folded {folded} ({dup_rows} rows carry dup_of)")
     print(f"claims after judge+dedupe: {sum(final_status.values())}  by status {final_status}")
     print(f"drops (model items): {dict(stats.drops)}  no_driver+past share "
           f"{(dropped / max(stats.items_ok, 1)):.1%} of {stats.items_ok} items")
@@ -2391,6 +2690,11 @@ def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode
     nodes = Counter(r["node"] for r in rows)
     methods = Counter(r["method"] for r in rows)
     kinds = Counter(str(_row_col(r, "source_kind") or "") for r in rows)
+    scopes = Counter(str(_row_col(r, "speaker_scope") or "company") for r in rows)
+    third_party = sum(1 for r in rows if r["status_reason"] == "third_party")
+    folded = sum(len([part for part in str(_row_col(r, "dup_of") or "").split(",") if part.strip()])
+                 for r in rows)
+    scope_failed = sum(1 for r in rows if "scope_ok" in str(r["judge_fail"] or ""))
     judged = [r for r in rows if r["judge_ok"] is not None]
     agreed = [r for r in judged if r["judge_ok"] == 1]
     fails = Counter()
@@ -2404,6 +2708,9 @@ def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode
     out: list[str] = [
         f"claims: {len(rows)}  status {dict(statuses)}  method {dict(methods)}",
         f"source kinds: {dict(kinds)}",
+        f"speaker scope: {dict(scopes)}  third-party (unverified, never the company's claim): {third_party}",
+        f"cross-source folded: {folded} claims (earliest known_at row kept, others' ids in dup_of); "
+        f"scope_ok failures: {scope_failed}",
         f"unjudged (script check only, the judge did not run): {sum(1 for r in rows if r['judge_ok'] is None)}",
         f"judged {len(judged)}  judge agreed {len(agreed)} ({len(agreed) / max(len(judged), 1):.0%})  "
         f"judge fail fields {dict(fails)}",
@@ -2517,6 +2824,8 @@ def report(path: Path, seed: int = 53, n: int = 40, rejected_n: int = 10, renode
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="T-228: driver-tree claims from management text")
     ap.add_argument("--stores", nargs="*", help="store names (default: every cNN store under the store root)")
+    ap.add_argument("--all-stores", action="store_true",
+                    help="every cNN store, including stores with no transcript and no guidance row (stage 2b)")
     ap.add_argument("--pick", type=int, default=0, help="add N stores with statements, seeded (default seed 7)")
     ap.add_argument("--pick-no-transcript", type=int, default=0,
                     help="add N stores without transcripts (stage 2a pilot pool), same --pick-seed")
