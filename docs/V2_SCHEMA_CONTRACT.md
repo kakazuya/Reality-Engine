@@ -2201,8 +2201,9 @@ mines the stored observations and the old flat deck store and proposes the expan
 - **Proposal** (`.tmp/t230g/dictionary_proposal.csv`, one row per measure: id, name, unit family, stock/flow,
   driver node, sector set, observed ids with counts, rows, rows the dictionary alone blocks, labels, note; and
   `.tmp/t230g/label_map_proposal.csv`, one row per label: rows, deck facts, current measures, unit families):
-  **+131 measures (128 -> 259)**, 88 measure aliases and 44 label maps (45 label-map rows; "cost of goods sold"
-  was already listed and could never fire -- see the bug above). Row resolution rises from 83,487/102,398
+  **+131 measures (128 -> 259)**, 88 measure aliases (74 to new measures, 14 to existing ones) and 44 label maps
+  (45 label-map rows; "cost of goods sold" was already listed and could never fire -- see the bug above). Row
+  resolution rises from 83,487/102,398
   (81.53%) to 93,104 (90.92%): labels covering 90% of the stored occurrences then name a dictionary measure. Every
   sector set the brief names is present (banking gnpa/nnpa/pcr/casa/nim/cost_of_funds/credit_cost/crar/outlets/atms;
   EPC order.bid_pipeline/order.executed; manufacturing capacity.under_construction/ebitda_per_tonne/value addition;
@@ -2212,7 +2213,9 @@ mines the stored observations and the old flat deck store and proposes the expan
   "Net Profit"/"Sales Revenue" would be downgraded.
 - **Stop-gate checks.** Aliases whose rows print another unit family are withheld, not merged: `gross_npa` (35
   rows, 29% percent), `net_debt_equity_ratio` (95 rows, 19% money), `debt_to_equity_ratio` (10 rows, 40% percent),
-  `carpet_area` (18 rows, 33% money/capacity); four more carry 1-4 stray rows and are included with that noted.
+  `carpet_area` (18 rows, 33% money/capacity); six more carry 1-4 stray rows and are included with that noted
+  (`gross_non_performing_assets`, `count.banking_outlets`, `count.branches`, `investment`, `debt_to_equity`,
+  `pbit`).
   **429 of 63,121 verified rows (0.68%) change measure -- under the 5% stop line**, none loses verified status,
   and every change is explained by an alias or label map (checked row by row: 0 unexplained): 271 Polyplex
   "Crude Oil - $/Barrel" from revenue.price to the new crude_oil_price, ~126 deferred-tax-asset rows from
