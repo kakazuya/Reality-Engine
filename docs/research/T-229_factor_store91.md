@@ -543,3 +543,20 @@ stage-B ICs (6m 0.0848, t 2.54; 12m 0.1138, t 1.67) are unchanged by this stage.
 - **No IC is claimed on this run.**  A failed gate is the result; the second run on the widened
   claims database is where the incremental test is applied.
 
+
+### 10.x Runs on the widened claims (Wolf, 21 Nov 2026) - inconclusive
+
+`factor_store91_stagec` now reads stage-2c databases: `order_kind='inflow'` orders from any source (backlog and
+untyped never count), `scope_part=1` claims dropped, and `dup_of` ignored when the stage-2c `duplicate` status exists.
+
+| claims DB | capex 6m IC (placebo p) | capex residual 6m IC | claim_count 6m IC | order inflow |
+|---|---|---|---|---|
+| claims_91.db (transcripts) | gate fail | - | +0.085 (stage B) | no source |
+| claims_91_s2.db (all sources) | -0.051 (0.35) | +0.060 | -0.075 | 20 companies, gate fail |
+| claims_91_s2c.db (repaired) | -0.068 (0.21) | -0.011 | -0.058 | 23 companies, gate fail |
+
+- claim_count_12m changes sign with the source mix: it measures filing volume, not a driver. Dropped.
+- Capex carries no information beyond the stage-B survivors (residual IC about 0).
+- Wolf's hand read of the repaired claims found 18 of 50 verified rows wrong (T-228 doc 13.x), so no text factor
+  result here is evidence either way. Deck factors reach 11 / 8 companies: too thin.
+- Outputs: `D:/RealityEngine/t229/stage_c_s2c.md` and csvs.

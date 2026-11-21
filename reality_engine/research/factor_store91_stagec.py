@@ -145,8 +145,11 @@ def load_claims(path: Path, sessions: pd.DatetimeIndex) -> tuple[pd.DataFrame, d
     con = sqlite3.connect(f"file:{Path(path).resolve().as_posix()}?mode=ro", uri=True)
     try:
         columns = {row[1] for row in con.execute("PRAGMA table_info(claim)")}
-        optional = [name for name in ("source_kind", "source_table", "speaker_scope", "dup_of")
-                    if name in columns]
+        optional = [name for name in ("source_kind", "source_table", "speaker_scope", "dup_of",
+                                      "order_kind", "scope_part") if name in columns]
+        # Stage 2c marks folded copies status='duplicate' and leaves dup_of on standing rows too,
+        # so dup_of only means "loser" in a pre-2c database.
+        stats["stage2c"] = "order_kind" in columns
         select = ", ".join(["id", "symbol", "known_at", "node", "sign", "value_low", "value_high",
                             "unit", "segment", "effective_period", "statement", "quote_span",
                             "context", *optional])
@@ -166,7 +169,11 @@ def load_claims(path: Path, sessions: pd.DatetimeIndex) -> tuple[pd.DataFrame, d
         scope = frame["speaker_scope"].fillna("").astype(str)
         stats["dropped_scope"] = int((scope != "company").sum())
         frame = frame[scope == "company"]
-    if "dup_of" in frame.columns:
+    if "scope_part" in frame.columns:
+        part = frame["scope_part"].fillna(0).astype(int) == 1
+        stats["dropped_scope_part"] = int(part.sum())
+        frame = frame[~part]
+    if "dup_of" in frame.columns and not stats.get("stage2c"):
         duplicate = frame["dup_of"].fillna("").astype(str) != ""
         stats["dropped_duplicate"] = int(duplicate.sum())
         frame = frame[~duplicate]
@@ -347,7 +354,13 @@ def claim_factors(panel: pd.DataFrame, claims: pd.DataFrame) -> tuple[pd.DataFra
             row: dict[str, Any] = {"store": store, "date": day,
                                    **{factor: np.nan for factor in CLAIM_FACTORS}}
 
-            wins = window[(window["node"] == "revenue.order_book") & _announcement_mask(window)]
+            if "order_kind" in window.columns:
+                # Stage 2c: inflow orders from any source; backlog and untyped rows never count.
+                wins = window[(window["node"] == "revenue.order_book")
+                              & (window["order_kind"] == "inflow")]
+            else:
+                wins = window[(window["node"] == "revenue.order_book")
+                              & _announcement_mask(window)]
             if not wins.empty:
                 inflow = _order_inflow(wins, skipped)
                 if pd.notna(inflow) and pd.notna(ttm_rev) and ttm_rev > 0:
