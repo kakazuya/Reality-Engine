@@ -560,3 +560,84 @@ untyped never count), `scope_part=1` claims dropped, and `dup_of` ignored when t
 - Wolf's hand read of the repaired claims found 18 of 50 verified rows wrong (T-228 doc 13.x), so no text factor
   result here is evidence either way. Deck factors reach 11 / 8 companies: too thin.
 - Outputs: `D:/RealityEngine/t229/stage_c_s2c.md` and csvs.
+
+## 11. Stage D: filing-event factors (T-231 events)
+
+T-231's announcement-level event table is a third evidence source, filed once and dated: new orders,
+capex approvals and fund raises.  `factor_store91_stagec.py --events <db>` adds three factors; the
+stage-A/B/C definitions above are unchanged.
+
+```bash
+python -m reality_engine.research.factor_store91_stagec \
+  --events D:/RealityEngine/t231/events.db \
+  --obs D:/RealityEngine/t230/obs_91.db --claims D:/RealityEngine/t228/claims_91.db \
+  --out .tmp/t229d
+python -m pytest -q reality_engine/tests/test_factor_store91_stagec.py   # 9 passed
+```
+
+### 11.1 Definitions
+
+| factor | definition |
+|---|---|
+| `ev_order_inflow_12m` | verified, company-scope `order_win` new orders (`order_kind='new_order'`) in the trailing 365 days / store TTM revenue; an `order_amendment` adds only its printed increment (`amount_inr_cr` with `amount < value_total` or a detail saying "increment"), never its total and never an extension's full contract value; a consortium row's `amount_inr_cr` is already the company's share when `share_pct` is set |
+| `ev_capex_12m` | verified company-scope `capex_approval` amounts in the trailing 365 days / market cap |
+| `ev_raise_12m` | verified company-scope `fund_raise` rows with `raise_primary=1` in the trailing 365 days, one row per `raise_id` / market cap |
+
+Point in time is the same 15:30 IST rule as the claims: `known_at` at or before 15:30 on a trading day
+counts from that session, otherwise the next; a trailing-12-month sum uses the same availability
+session.  Only `status='verified'` and `entity_scope='company'` rows enter.  The three factors run
+through the same coverage gate, IC/Newey-West, 200-permutation placebo and BH 10% table, power, and
+the incremental regression on the six stage-B survivors.  The incremental table is also emitted for
+an event factor that fails the gate (the gate result stays in `coverage_c.csv`).
+
+### 11.2 Run 21 Nov 2026
+
+`D:/RealityEngine/t231/events.db` (604 events; 437 usable verified company rows, 0 missing
+`known_at`; 36 amendment totals skipped; 1,153 raise contributions = one per `raise_id` per
+month-end).  Two factors pass the gate overall (`claim_count_12m` and `ev_raise_12m`), so the IC
+machinery runs.
+
+| factor | companies | months | months >= 20 names | median / max names | 3m / 6m / 12m gate months | gate |
+|---|---:|---:|---:|---:|---:|---|
+| `ev_order_inflow_12m` | 27 | 27 | 7 | 14 / 21 | 4 / 1 / 0 | fail |
+| `ev_capex_12m` | 9 | 27 | 0 | 4 / 6 | 0 / 0 / 0 | fail |
+| `ev_raise_12m` | 37 | 30 | 15 | 19.5 / 22 | 12 / 10 / 6 | **pass** |
+
+ICs (mean Spearman, Newey-West t with horizon-1 lags):
+
+| factor | 3m | 6m | 12m |
+|---|---|---|---|
+| `ev_order_inflow_12m` | -0.2006 (t -2.74, 4 months) | -0.2090 (1 month) | - |
+| `ev_capex_12m` | - | - | - |
+| `ev_raise_12m` | **+0.1196 (t 2.06, 12)** | **+0.2040 (t 4.78, 10)** | **+0.4414 (t 10.47, 6)** |
+
+Placebo/BH: `ev_raise_12m` 3m p = 0.0547, `bh_reject_10=True`; its 6m/12m cells have only 10/6
+months, below the 12-month placebo floor, so p is NaN.  `ev_order_inflow_12m` and `ev_capex_12m`
+have too few months for a placebo p.  Power (80%, two-sided 5%): `ev_raise_12m` smallest detectable
+mean IC 0.470 at both 6m and 12m (1.67 and 0.5 effective non-overlapping windows), so the 6m IC is
+below the floor and the 12m IC sits at/above it only because six months is half a window.
+
+### 11.3 Incremental over the stage-B survivors
+
+`ev_raise_12m`, `ev_order_inflow_12m` and `ev_capex_12m` all have **0 residual-IC months**: the
+residual regression needs the factor plus the six stage-B survivors on the same date, and that
+intersection never reaches the 20-name monthly minimum (it peaks at 18 names; the event companies are
+a thin subset of the 91).  The residual rows are therefore NaN, not zero: no incremental claim is
+made for any event factor.  `claim_count_12m` keeps its stage-B/C incremental result because it
+covers 52 companies.
+
+### 11.4 Limits
+
+- Order inflow and capex fail the coverage gate: 4 / 1 / 0 and 0 / 0 / 0 months with 20 names at
+  3m / 6m / 12m.  The event table covers only 63 of the 91 stores' symbols and only the verified
+  company rows; an unverified amount cannot enter.
+- The raise factor covers 37 companies and passes, but its 6m power floor (0.470) is above the
+  observed 0.204, and 12m has six months (half an independent window); the 3m cell is the only one
+  BH-surviving (p 0.0547, just under 10%).
+- Event amounts are filing-level: a capex approval repeated in a later filing is not folded across
+  filings unless the event builder already did so; an amendment extension's full contract value is
+  skipped by the increment rule, so it contributes no inflow.
+- Selection remains stage B's: the events cover only the 91, so no matched-draw control exists for
+  any event factor; every number is conditional on "91 companies picked in Nov 2026".
+- Outputs: `.tmp/t229d/{coverage_c,ic_c,placebo_c,power_c,incremental_c}.csv` and
+  `.tmp/t229d/stage_c.md`.

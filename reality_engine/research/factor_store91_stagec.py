@@ -18,8 +18,11 @@ output.  Everything is conditional on "91 companies picked in Nov 2026".
 
     python -m reality_engine.research.factor_store91_stagec --out .tmp/t229
 
-Outputs under ``--out``: ``stage_c.md``, ``coverage_c.csv``, ``ic_c.csv``, ``placebo_c.csv``,
-``power_c.csv``, ``incremental_c.csv`` and ``deck_agreement.csv``.
+``--events <db>`` adds the T-231 filing-event factors (verified company-scope rows only): trailing
+12-month new-order inflow / TTM revenue, capex approvals / market cap and fund raises (one row per
+``raise_id``) / market cap.  Outputs under ``--out``: ``stage_c.md``, ``coverage_c.csv``,
+``ic_c.csv``, ``placebo_c.csv``, ``power_c.csv``, ``incremental_c.csv`` and
+``deck_agreement.csv``.
 """
 
 from __future__ import annotations
@@ -62,6 +65,7 @@ from reality_engine.research.factor_weights import (
 PANEL_DEFAULT = Path("D:/RealityEngine/t229/panel.parquet")
 CLAIMS_DEFAULT = Path("D:/RealityEngine/t228/claims_91.db")
 OBS_DEFAULT = Path("D:/RealityEngine/t230/obs_91.db")
+EVENTS_DEFAULT = Path("D:/RealityEngine/t231/events.db")
 OUT_DEFAULT = Path(".tmp/t229")
 STORE_ROOT = "D:/RealityEngine/tg_build/measure10"
 
@@ -73,7 +77,8 @@ CLAIM_FACTORS = [
     "claim_count_12m",
 ]
 DECK_FACTORS = ["deck_order_cover", "deck_capacity_growth"]
-STAGE_C_FACTORS = CLAIM_FACTORS + DECK_FACTORS
+EVENT_FACTORS = ["ev_order_inflow_12m", "ev_capex_12m", "ev_raise_12m"]
+STAGE_C_FACTORS = CLAIM_FACTORS + DECK_FACTORS + EVENT_FACTORS
 
 # the six stage-B survivors whose selection the incremental test controls for
 SURVIVORS = ["sales_yield", "earnings_yield", "promoter_chg_4q", "delivery_3m", "q_pat_yoy", "size"]
@@ -206,6 +211,35 @@ def load_observations(path: Path, sessions: pd.DatetimeIndex) -> tuple[pd.DataFr
         stats["missing_known_at"] = int(pd.read_sql_query(
             "SELECT COUNT(*) AS n FROM observation WHERE status = 'verified' "
             "AND (known_at IS NULL OR known_at = '')", con)["n"].iloc[0])
+    finally:
+        con.close()
+    if frame.empty:
+        return frame, stats
+    frame["avail"] = avail_sessions(frame["known_at"], sessions)
+    frame = frame[frame["avail"].notna()]
+    order = np.lexsort((frame["known_at"].to_numpy(), frame["avail"].to_numpy(),
+                        frame["symbol"].to_numpy()))
+    frame = cast(pd.DataFrame, frame.iloc[order])
+    stats["rows"] = len(frame)
+    return frame.reset_index(drop=True), stats
+
+
+def load_events(path: Path, sessions: pd.DatetimeIndex) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Verified, company-scope T-231 filing events with their PIT availability session."""
+    stats: dict[str, Any] = {"rows": 0, "missing_known_at": 0}
+    con = sqlite3.connect(f"file:{Path(path).resolve().as_posix()}?mode=ro", uri=True)
+    try:
+        raw = pd.read_sql_query(
+            """SELECT event_id, symbol, known_at, kind, order_kind, amount_inr_cr, share_pct,
+                      value_total, raise_id, raise_primary, detail
+               FROM event
+               WHERE status = 'verified' AND entity_scope = 'company'""",
+            con,
+        )
+        frame = cast(pd.DataFrame, raw)
+        stats["missing_known_at"] = int(pd.read_sql_query(
+            "SELECT COUNT(*) AS n FROM event WHERE status = 'verified' "
+            "AND entity_scope = 'company' AND (known_at IS NULL OR known_at = '')", con)["n"].iloc[0])
     finally:
         con.close()
     if frame.empty:
@@ -483,6 +517,86 @@ def deck_factors(panel: pd.DataFrame, obs: pd.DataFrame) -> tuple[pd.DataFrame, 
     return (pd.DataFrame(rows) if rows else empty), stats
 
 
+def event_factors(panel: pd.DataFrame, events: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """One row per (store, month-end) with the three filing-event factors, point in time.
+
+    ``ev_order_inflow_12m`` sums new orders (the stored ``amount_inr_cr`` is the company's
+    consortium share when ``share_pct`` is set) plus only an amendment's printed increment, never
+    an amendment total.  ``ev_capex_12m`` and ``ev_raise_12m`` divide the trailing-12-month sum by
+    market cap; the raise side keeps exactly one row per ``raise_id`` (``raise_primary=1``).
+    """
+    empty = pd.DataFrame(columns=["store", "date", *EVENT_FACTORS])
+    stats: dict[str, Any] = {"stores": 0, "unknown_symbol_events": 0, "amendments_skipped": 0,
+                             "raises_counted": 0}
+    if events.empty:
+        return empty, stats
+    store_of = dict(zip(panel.drop_duplicates("store")["symbol"],
+                        panel.drop_duplicates("store")["store"]))
+    snapshot: dict[tuple[str, pd.Timestamp], tuple[Any, Any]] = {}
+    for record in panel[["store", "date", "ttm_rev", "mcap"]].itertuples(index=False, name=None):
+        snapshot[(record[0], pd.Timestamp(record[1]))] = (record[2], record[3])
+    dates_of = {store: sorted(pd.Timestamp(day) for day in group["date"].unique())
+                for store, group in panel.groupby("store", sort=False)}
+    rows: list[dict[str, Any]] = []
+    for symbol, group in events.groupby("symbol", sort=False):
+        store = store_of.get(symbol)
+        if store is None:
+            stats["unknown_symbol_events"] += int(len(group))
+            continue
+        stats["stores"] += 1
+        group = pd.DataFrame(group).sort_values(["avail", "known_at"])
+        for day in dates_of.get(store, []):
+            seen = group[group["avail"] <= day]
+            if seen.empty:
+                continue
+            window = seen[seen["avail"] > day - pd.Timedelta(days=365)]
+            pair = snapshot.get((store, day))
+            ttm_rev, mcap = pair if pair is not None else (np.nan, np.nan)
+            row: dict[str, Any] = {"store": store, "date": day,
+                                   **{factor: np.nan for factor in EVENT_FACTORS}}
+
+            order_total = 0.0
+            orders = window[window["kind"] == "order_win"]
+            for record in orders.itertuples(index=False):
+                kind = str(getattr(record, "order_kind") or "new_order")
+                if kind != "new_order" or pd.isna(record.amount_inr_cr):
+                    continue
+                order_total += float(record.amount_inr_cr)
+            # an amendment contributes only its printed increment: amount < the new total, or a
+            # detail that says increment/variation; an extension's full contract value is skipped.
+            for record in window[window["kind"] == "order_amendment"].itertuples(index=False):
+                amount, total = record.amount_inr_cr, record.value_total
+                if pd.isna(amount):
+                    continue
+                increment = (pd.notna(total) and float(amount) < float(total) - 1e-9) \
+                    or "increment" in str(record.detail or "").lower()
+                if increment:
+                    order_total += float(amount)
+                else:
+                    stats["amendments_skipped"] += 1
+            if order_total > 0 and pd.notna(ttm_rev) and ttm_rev > 0:
+                row["ev_order_inflow_12m"] = order_total * 1e7 / ttm_rev
+
+            capex = window[window["kind"] == "capex_approval"]
+            capex_total = float(pd.to_numeric(capex["amount_inr_cr"], errors="coerce").sum())
+            if capex_total > 0 and pd.notna(mcap) and mcap > 0:
+                row["ev_capex_12m"] = capex_total * 1e7 / mcap
+
+            raises = window[(window["kind"] == "fund_raise")
+                            & (pd.to_numeric(window["raise_primary"], errors="coerce") == 1)].copy()
+            if not raises.empty:
+                raises["_raise_key"] = raises["raise_id"].fillna("").astype(str)
+                missing = raises["_raise_key"] == ""
+                raises.loc[missing, "_raise_key"] = ("event_" + raises.loc[missing, "event_id"].astype(str))
+                raises = raises.loc[~raises["_raise_key"].duplicated()]
+                raise_total = float(pd.to_numeric(raises["amount_inr_cr"], errors="coerce").sum())
+                stats["raises_counted"] += int(len(raises))
+                if raise_total > 0 and pd.notna(mcap) and mcap > 0:
+                    row["ev_raise_12m"] = raise_total * 1e7 / mcap
+            rows.append(row)
+    return pd.DataFrame(rows) if rows else empty, stats
+
+
 # --------------------------------------------------------------------------- #
 # Targets, coverage, ICs
 # --------------------------------------------------------------------------- #
@@ -665,6 +779,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--panel", default=str(PANEL_DEFAULT), help="stage-A panel.parquet")
     parser.add_argument("--claims", default=str(CLAIMS_DEFAULT), help="T-228 claims database")
     parser.add_argument("--obs", default=str(OBS_DEFAULT), help="T-230 deck observations database")
+    parser.add_argument("--events", default=None,
+                        help="T-231 filing events database (adds the ev_* factors when given)")
     parser.add_argument("--stores", default=STORE_ROOT)
     parser.add_argument("--out", default=str(OUT_DEFAULT))
     parser.add_argument("--permutations", type=int, default=200)
@@ -711,6 +827,21 @@ def main(argv: list[str] | None = None) -> int:
               f"{deck_stats['order_book_symbols']} companies with an order book, "
               f"{deck_stats['capacity_no_total']} companies with a capacity add and no "
               "same-unit total", flush=True)
+    event_stats: dict[str, Any] = {"rows": 0}
+    if args.events:
+        event_path = snapshot_copy(Path(args.events), out, "events_snapshot.db")
+        if event_path is not None:
+            events, event_stats = load_events(event_path, sessions)
+            if event_stats["rows"] and event_stats["missing_known_at"] > 0.05 * event_stats["rows"]:
+                print(f"STOP: {event_stats['missing_known_at']} of {event_stats['rows']} verified "
+                      "events have no known_at (>5%)", flush=True)
+                return 2
+            ev_df, ev_stats = event_factors(panel, events)
+            if not ev_df.empty:
+                frame = frame.merge(ev_df, on=["store", "date"], how="left")
+            print(f"filing events: {event_stats['rows']} usable rows, "
+                  f"{ev_stats['raises_counted']} raise contributions (one per raise_id per month-end), "
+                  f"{ev_stats['amendments_skipped']} amendment totals skipped", flush=True)
     for factor in STAGE_C_FACTORS:
         if factor not in frame.columns:
             frame[factor] = np.nan
@@ -743,7 +874,11 @@ def main(argv: list[str] | None = None) -> int:
     placebo.to_csv(out / "placebo_c.csv", index=False)
     power = power_table(frame, passes)
     power.to_csv(out / "power_c.csv", index=False)
-    incremental = incremental_table(frame, passes, permutations=args.permutations)
+    # report every event factor's incremental row even when its coverage gate fails (the gate
+    # result stays in coverage_c.csv); the stage-A/B definitions are untouched.
+    incremental_factors = passes + [factor for factor in EVENT_FACTORS
+                                     if factor in frame.columns and factor not in passes]
+    incremental = incremental_table(frame, incremental_factors, permutations=args.permutations)
     incremental.to_csv(out / "incremental_c.csv", index=False)
 
     headline = {
@@ -752,6 +887,7 @@ def main(argv: list[str] | None = None) -> int:
         "claims verified / usable": f"{claim_stats.get('verified', 0)} / {claim_stats.get('rows', 0)}",
         "claim rows skipped for unit": claim_stats.get("unsupported_unit_rows", 0),
         "deck observations usable": obs_stats.get("rows", 0),
+        "filing events usable": event_stats.get("rows", 0),
         "factors passing the gate": ", ".join(passes),
         "claim factors with no order-win source": (
             "yes" if frame["claim_order_inflow_12m"].notna().sum() == 0 else "no"),
