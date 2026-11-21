@@ -52,9 +52,13 @@ from every Wolf read and keyed by **what the document prints, never by a databas
 
 | pipeline | golden lines | RIGHT | MINOR | WRONG | sources |
 |---|---|---|---|---|---|
-| observations | 181 (170 rows + 11 pages) | 118 | 31 | 21 rows + 11 page lines | `t230/wolf_read_b.md`, `wolf_read_c.md` (incl. its 10 `no_period` rows), `wolf_read_d.md` (both tables), `wolf_visual_audit.md` (11 page predicates) |
+| observations | 241 (230 rows + 11 pages) | 159 | 44 | 27 rows + 11 page lines | `t230/wolf_read_b.md`, `wolf_read_c.md` (incl. its 10 `no_period` rows), `wolf_read_d.md` (both tables), `wolf_visual_audit.md` (11 page predicates), `t232/wolf_read_decks394_a.md` (60 new-company rows) |
 | claims | 146 | 50 | 48 | 48 | `t228/wolf_read_91_s2.md`, `wolf_read_91_s2c.md`, `t228/s2a/wolf_read_s2a.md` |
 | events | 69 | 60 | 8 | 1 | `t231/t231_wolf_read_a.md`, `wolf_read_b.md` |
+
+One golden file now serves several DBs: `regress` grades only the lines about companies the DB actually holds (the
+symbol set comes from the DB's own `symbol` column) and reports the rest as `skipped_other_db`. An empty DB keeps
+every line, so a vanished row is still caught.
 
 A row line carries `key` (the strict content key: symbol/store, full `doc_key`, page, measure/label/printed value or
 normalised quote, `known_at`), `identity` (the same without the fields a fix changes, so a corrected row is still
@@ -65,13 +69,14 @@ read states the fix, `expect` with the corrected value (`<nonempty>`, a list of 
 number). A page line (`kind:"page"`) forbids a defect row on one page with a `max`: the known defect may shrink to
 zero, never grow past the graded count.
 
-**89.7 % of the graded rows (385 of 429) key back to a row in the evidence DBs.** What does not: 13 stage-2a claims
+**91.0 % of the graded rows (445 of 489) key back to a row in the evidence DBs.** What does not: 13 stage-2a claims
 (their pilot DB was a superseded extraction; the same quote was re-extracted in stage 2 with different ids and 27 of
 40 matched, the rest are excluded rather than guessed), and 31 event rows (Wolf read the stage-A `events.db` with 440
 events; the current file is stage C with 604, so event ids and rows moved — 69 unique rows matched by content, 11 were
 ambiguous on symbol/kind/amount and 20 were absent or changed between stages). The observations read key 100 % because
 their ids and content survived in `obs_91.db`; 10 rows whose id did not were found by printed content (`symbol`,
-`doc_key` prefix, page, printed value).
+`doc_key` prefix, page, printed value), and the 60 new-company rows were keyed from the post-stage-I copy by the same
+printed content.
 
 `regress.py` classifies every line: **still_right** (RIGHT, every expected field holds), **newly_broken** (RIGHT row
 gone, a graded field changed, or it lost `verified`), **fixed** (WRONG/MINOR now meets the stated fix), **still_wrong**
@@ -84,7 +89,8 @@ Baseline runs on 21 Nov 2026 (read-only, no model):
 
 | command | result |
 |---|---|
-| `python -m reality_engine.scripts.regress observations --db D:/RealityEngine/t230/obs_91.db` | still right 117, fixed 13, still wrong 48, changed 2, **newly broken 1**, 0.1 s |
+| `python -m reality_engine.scripts.regress observations --db .tmp/t230i/obs_91_i.db` | still right 118, fixed 18, still wrong 34, changed 11, **newly broken 0**, 2 s (60 lines skipped: companies not in this DB) |
+| `python -m reality_engine.scripts.regress observations --db .tmp/t230i/obs_decks394_i.db` | still right 40, fixed 14, still wrong 6, **newly broken 0**, 0.5 s (181 lines skipped) |
 | `python -m reality_engine.scripts.regress claims --db D:/RealityEngine/t228/claims_91_s2c.db` | still right 50, fixed 14, still wrong 82, newly broken 0, 0.2 s |
 | `python -m reality_engine.scripts.regress events --db D:/RealityEngine/t231/events.db` | still right 60, fixed 1, still wrong 8, newly broken 0, 0.01 s |
 
@@ -100,12 +106,14 @@ past its page count exits 1.
 ## Costs and tests
 
 - The gate is model-free and reads one SQLite file: 0.03–0.2 s per pipeline on the 91-store outputs; adding
-  `--baseline` diffs every row (102,398 observations, 10,102 claims, 604 events) and takes about 2 s on observations.
+  `--baseline` diffs every row (102,074 observations on the 91 base and 27,801 on the decks394 base, 10,102 claims,
+  604 events) and takes about 2–3 s on observations.
 - A scoped observations re-read still calls the reader once per selected page; a `--recheck` round calls no model.
-- Tests: `python -m pytest reality_engine/tests/test_regress.py -q` → 17 passed (content-key match after an id change,
+- Tests: `python -m pytest reality_engine/tests/test_regress.py -q` → 18 passed (content-key match after an id change,
   newly-broken detection, fixed/still-wrong/changed, page growth, baseline diff, selector filtering, empty-selector
-  refusal, copy protection, the scoped observations recheck and event merge hooks, and that the shipped golden files
-  parse). The untouched pipeline suites also pass: `test_observations.py`, `test_filing_events.py`,
-  `test_driver_claims.py` → 245 passed (stage H added 14 observation tests).
+  refusal, copy protection, a golden line about another company skipped, the scoped observations recheck and event
+  merge hooks, and that the shipped golden files parse). The untouched pipeline suites also pass:
+  `test_observations.py`, `test_filing_events.py`, `test_driver_claims.py` → 272 passed (stage I added 10 observation
+  tests, stage J 3 more and 1 regress test).
 - A new hand read is added by appending its lines to the matching JSONL with the same fields; do not re-key a line
   because a fix changed a field — that change is exactly what the gate reports.

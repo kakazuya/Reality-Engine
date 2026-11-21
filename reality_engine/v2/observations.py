@@ -17,6 +17,15 @@ shape, then checks them independently of the model:
 * (stage F) ``--skip-statements`` drops an annual report's financial-statement and notes pages from
   the stored text layer before any model call; a notes page printing a segment table (or a BRSR page
   with the plant-location table) is kept.  The run reports kept/dropped counts by reason.
+* (stage I) a per-unit measure (EPS, Rs/kWh) never takes a crore/lakh scale and "tn" reads 1e12; a
+  statement/table page's bare cells are never an axis tick; "Y-O-Y"/"QoQ"/"growth" is not a period;
+  "lakh sq ft" is area and "billion units" is energy; a Unicode dash matches an ASCII hyphen; "crossed /
+  more than / exceeds" prints a lower bound (``value_kind``), never the actual figure; a footnote that
+  names one period's basis overrides the page basis for that period.
+* (stage J) an axis ladder needs five evenly spaced values, a table page (three or more label-then-column
+  rows) is never a chart ladder, and a printed text line beside the value is its data label; the printed
+  total flag is stored (``is_total``) and re-derived from the label ("Total", "Overall", "Consolidated
+  total") or the arithmetic, so a recheck keeps the parts-sum proof.
 
 Output is a separate SQLite file (``--out``, default ``.tmp/t230/obs.db``); a store is only ever
 read.  Tables: ``observation``, ``measure_dict``, ``dim_vocab``.
@@ -44,6 +53,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -83,6 +93,8 @@ CREATE TABLE IF NOT EXISTS observation (
     unit_family TEXT NOT NULL DEFAULT '',
     scale REAL NOT NULL DEFAULT 1,
     adjusted INTEGER NOT NULL DEFAULT 0,
+    value_kind TEXT NOT NULL DEFAULT '',
+    is_total INTEGER NOT NULL DEFAULT 0,
     period TEXT NOT NULL DEFAULT '',
     period_kind TEXT NOT NULL DEFAULT '',
     period_source TEXT NOT NULL DEFAULT '',
@@ -158,7 +170,8 @@ CREATE TABLE IF NOT EXISTS page_ocr (
 MIGRATIONS = (("group_source", "TEXT NOT NULL DEFAULT ''"), ("group_check", "TEXT NOT NULL DEFAULT ''"),
               ("adjusted", "INTEGER NOT NULL DEFAULT 0"), ("period_source", "TEXT NOT NULL DEFAULT ''"),
               ("basis", "TEXT NOT NULL DEFAULT ''"), ("series_kind", "TEXT NOT NULL DEFAULT ''"),
-              ("text_source", "TEXT NOT NULL DEFAULT ''"))
+              ("text_source", "TEXT NOT NULL DEFAULT ''"), ("value_kind", "TEXT NOT NULL DEFAULT ''"),
+              ("is_total", "INTEGER NOT NULL DEFAULT 0"))
 
 # id, name, unit family, node in the T-228 driver tree
 MEASURES: tuple[tuple[str, str, str, str], ...] = (
@@ -351,6 +364,13 @@ MEASURES: tuple[tuple[str, str, str, str], ...] = (
     ("area.sold", "Area sold / booked", "area", "revenue.volume"),
     ("area.unsold", "Area unsold", "area", "none: unsold inventory stock"),
     ("area.carpet", "Carpet area", "area", "capacity.add"),
+    ("area.delivered", "Area delivered / handed over", "area", "revenue.volume"),
+    ("area.under_construction", "Area under construction", "area", "capacity.add"),
+    ("demand.peak", "Peak demand (power)", "capacity", "none: country/industry demand, no tree node"),
+    ("water_intensity", "Water intensity", "ratio", "none: ESG intensity metric"),
+    ("water_intensity_reduction", "Water intensity reduction", "percent", "none: ESG intensity metric"),
+    ("energy_intensity", "Energy intensity", "ratio", "none: ESG intensity metric"),
+    ("energy_intensity_reduction", "Energy intensity reduction", "percent", "none: ESG intensity metric"),
     ("investments", "Investments", "money", "none: balance-sheet line"),
     ("non_current_investments", "Non-current investments", "money", "none: balance-sheet line"),
     ("current_investments", "Current investments", "money", "none: balance-sheet line"),
@@ -450,6 +470,18 @@ MEASURE_ALIASES: dict[str, str] = {
     "area.carpet_total": "area.carpet",
     "area_sold": "area.sold",
     "area_unsold": "area.unsold",
+    "area.carpet_delivered": "area.delivered",
+    "area.construction_scope": "area.under_construction",
+    "area.developed": "area.delivered",
+    "area.development": "area.delivered",
+    "area_construction_delivered": "area.delivered",
+    "area_construction_total": "area.under_construction",
+    "area_delivered": "area.delivered",
+    "area_delivered_recognized_for_revenue": "area.delivered",
+    "area_developed": "area.delivered",
+    "carpet_area_delivered": "area.delivered",
+    "construction_area": "area.under_construction",
+    "construction_area_delivered": "area.delivered",
     "asset_turnover_ratio": "asset_turnover",
     "assets_classified_as_held_for_sale": "assets_held_for_sale",
     "book_value_per_share_ratio": "book_value_per_share",
@@ -482,6 +514,8 @@ MEASURE_ALIASES: dict[str, str] = {
     "employee_benefits_expense_growth_yoy": "employee_cost_growth_yoy",
     "employee_count": "count.employees",
     "employee_headcount": "count.employees",
+    "energy_consumption_intensity_reduction": "energy_intensity_reduction",
+    "energy_consumption_intensity_reduction_target": "energy_intensity_reduction",
     "eps_growth": "eps_growth_yoy",
     "fixed_asset_turnover_ratio": "fixed_asset_turnover",
     "fixed_assets": "property_plant_and_equipment",
@@ -512,6 +546,7 @@ MEASURE_ALIASES: dict[str, str] = {
     "other_current_financial_assets": "other_financial_assets",
     "outside_liab_equity": "total_outside_liabilities_equity",
     "pat_after_non_controlling_interest": "pat",
+    "peak_demand": "demand.peak",
     "pat_margin_change_yoy": "pat_margin_change_bps",
     "pat_margin_change_yoy_bps": "pat_margin_change_bps",
     "pbit": "ebit",
@@ -536,6 +571,11 @@ MEASURE_ALIASES: dict[str, str] = {
     "total_outside_liabilities_to_total_equity": "total_outside_liabilities_equity",
     "valuation_rate": "revenue.price",
     "volume.sales_growth_yoy": "volume_growth_yoy",
+    "water_consumption_intensity_reduction": "water_intensity_reduction",
+    "water_consumption_intensity_reduction_target": "water_intensity_reduction",
+    "water_intensity_limit": "water_intensity",
+    "water_intensity_vs_statutory_limit": "water_intensity",
+    "statutory_water_intensity_limit": "water_intensity",
 }
 
 # Curated printed label -> measure id (T-230 stage B, Wolf): applied by the script before the dictionary check.
@@ -618,6 +658,8 @@ SCRIPT_LABELS: dict[str, str] = {
     "branches": "count.outlets",
     "capital work in progress": "capital_work_in_progress",
     "capital work-in-progress": "capital_work_in_progress",
+    "area delivered": "area.delivered",
+    "area under construction": "area.under_construction",
     "carpet area": "area.carpet",
     "china va over index rm (on 12 mic) - $/kg": "value_addition_per_kg",
     "cogs": "cost_of_goods_sold",
@@ -659,6 +701,9 @@ SCRIPT_LABELS: dict[str, str] = {
     "occupancy": "occupancy",
     "operating revenue": "revenue_from_operations",
     "operational revenue": "revenue_from_operations",
+    "peak demand": "demand.peak",
+    "peak demand (gw)": "demand.peak",
+    "peak demand (mw)": "demand.peak",
     "pcl va* (consol-all films) - $/kg": "value_addition_per_kg",
     "production": "volume.production",
     "reserves & surplus": "other_equity",
@@ -670,6 +715,8 @@ SCRIPT_LABELS: dict[str, str] = {
     "tax": "total_tax_expense",
     "team strength": "count.employees",
     "total expenditure": "total_expenses",
+    "water intensity": "water_intensity",
+    "energy intensity": "energy_intensity",
     "with a carpet area of": "area.carpet",
 }
 
@@ -713,15 +760,16 @@ UNIT_PATTERNS: tuple[tuple[str, str], ...] = (
     ("percent", r"%|percent\b|pct\b"),
     ("money_per_unit", r"(?:rs|inr|\u20b9|\$|usd|us\$)[^a-z]*(?:per\b|/)|/ ?(?:tonne|ton|unit|km|kg|mt|share)\b|"
                        r"(?:^|\s)per (?:share|unit|tonne|ton|kg|km|mt)\b|arpu|arr\b|revpar|realis|realiz"),
-    ("energy", r"\bmus?\b|\bmwh\b|\bgwh\b|\bkwh\b"),
+    ("energy", r"\bmus?\b|\bmwh\b|\bgwh\b|\bkwh\b|\bbu\b|\bmu\b|\bmn units?\b|\bmillion units?\b|"
+               r"\bbn units?\b|\bbillion units?\b"),
     ("count", r"\bunits?\b|\bnos\b|\bnumbers?\b|\bthousands?\b|\bteus?\b|\bvehicles?\b|\btractors?\b|"
               r"\bcustomers?\b|\bsubscribers?\b|\bplants?\b|\bterminals?\b|\binstances?\b|"
               r"\blitres?\b|\bliters?\b|\bltrs?\b"),
     ("capacity", r"\bmtpa\b|\bmmtpa\b|\btpa\b|\btpd\b|\btonnes?\b|\btons?\b|\bmt\b|\bmw\b|\bgw\b|\bkw\b"),
-    ("money", r"rs\b|inr\b|\u20b9|rupees?\b|crores?\b|\bcrs?\b|\bcr\b|lakhs?\b|lacs?\b|millions?\b|\bmn\b|"
-              r"billions?\b|\bbn\b|usd\b|us\$|\$|euros?\b|eur\b"),
     ("length", r"\bkm\b|kilomet(?:er|re)s?\b|\bmiles?\b"),
     ("area", r"\bsft\b|sq\.? ?ft|square feet|\bsqm\b|\bhectares?\b|\bacres?\b"),
+    ("money", r"rs\b|inr\b|\u20b9|rupees?\b|crores?\b|\bcrs?\b|\bcr\b|lakhs?\b|lacs?\b|millions?\b|\bmn\b|"
+              r"billions?\b|\bbn\b|usd\b|us\$|\$|euros?\b|eur\b"),
     ("time", r"\bdays?\b|\bmonths?\b|\byears?\b"),
     ("ratio", r"^x$|\btimes\b|\bmultiple\b"),
 )
@@ -735,7 +783,8 @@ JUNK_MEASURE = re.compile(
     r"(?:[._][a-z0-9]+)*$", re.I)
 SCALE_WORDS = ((r"thousands?", 1e3), (r"'000|000s", 1e3), (r"\blakhs?\b|\blacs?\b", 1e5),
                (r"\bcrores?\b|\bcrs?\b|\bcr\.", 1e7), (r"\bmillions?\b|\bmn\b|\bmm\b", 1e6),
-               (r"\bbillions?\b|\bbn\b", 1e9))
+               (r"\bbillions?\b|\bbn\b", 1e9),
+               (r"\btrillions?\b|(?:rs\.?|inr|\u20b9|\$|usd|us\$)\s*(?:in\s*)?\btn\b", 1e12))
 
 # columns that go into the observation row from one model reply object
 ROW_TEXT_KEYS = ("measure", "printed_label", "printed_axis", "unit", "period", "segment", "product",
@@ -746,12 +795,24 @@ def norm_space(text: Any) -> str:
     return re.sub(r"\s+", " ", str(text or "")).strip()
 
 
+UNICODE_DASH_RE = re.compile("[\u2010\u2011\u2012\u2013\u2014\u2015\u2212]")
+
+
+def norm_match(text: Any) -> str:
+    """Whitespace-collapsed text with every Unicode dash/hyphen read as '-', for printed-label matching.
+
+    Stage I: a PDF prints "Total Non‐Current Liabilities" with U+2010 while the model writes an ASCII hyphen
+    (id 527), so the verbatim-label gate never matched.  NBSP is already covered by ``\\s``.
+    """
+    return norm_space(UNICODE_DASH_RE.sub("-", str(text or "")))
+
+
 def text_has(text: str, needle: str) -> bool:
     """``needle`` occurs in ``text`` as a printed token, not inside a longer number ('30' is not in '2030')."""
-    n = norm_space(needle)
+    n = norm_match(needle)
     if not n:
         return False
-    return re.search(r"(?<![\d.,])" + re.escape(n) + r"(?![\d.,])", norm_space(text)) is not None
+    return re.search(r"(?<![\d.,])" + re.escape(n) + r"(?![\d.,])", norm_match(text)) is not None
 
 
 def infer_unit_family(unit: str) -> str:
@@ -891,8 +952,8 @@ def printed_scale(raw_scale: Any, row: dict[str, Any], page_text: str) -> tuple[
     factor = _scale_factor(row.get("unit", ""))
     if factor:
         return float(factor), []
-    if infer_unit_family(row.get("unit", "")) in ("percent", "ratio", "time"):
-        return 1.0, []               # a percentage / multiple / duration is never crore or thousand
+    if infer_unit_family(row.get("unit", "")) in ("percent", "ratio", "time", "money_per_unit"):
+        return 1.0, []               # a percentage / multiple / duration / per-unit price is never crore or thousand
     try:
         scale = float(raw_scale)
     except (TypeError, ValueError):
@@ -995,7 +1056,8 @@ CAPACITY_UNIT_RE = re.compile(r"\b(mtpa|mmtpa|mt|tonnes?|tons?|tpa|tpd|mw|gw|kw)
 COUNT_UNIT_RE = re.compile(r"\b(units?|nos|numbers?|cases?|pieces?|stations?|outlets?|spindles?|machines?|teus?|"
                            r"vehicles?|tractors?|customers?|subscribers?|litres?|liters?|ltrs?)\b", re.I)
 UNIT_SCALE = {"crore": 1e7, "crores": 1e7, "cr": 1e7, "crs": 1e7, "lakh": 1e5, "lakhs": 1e5, "lac": 1e5,
-              "lacs": 1e5, "million": 1e6, "mn": 1e6, "billion": 1e9, "bn": 1e9}
+              "lacs": 1e5, "million": 1e6, "mn": 1e6, "billion": 1e9, "bn": 1e9, "tn": 1e12,
+              "trillion": 1e12}
 PERIOD_PATTERNS = (
     re.compile(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{2,4}\b", re.I),
     re.compile(r"\b(?:Q[1-4]|H[12]|9M|FY)\s?-?\d{2,4}[A-Z]?\b", re.I),
@@ -1003,6 +1065,15 @@ PERIOD_PATTERNS = (
     re.compile(r"\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b"),
     re.compile(r"\b(?:19|20)\d{2}-\d{2}\b"),
 )
+# Stage I: words a column can be headed with that name a comparison, never a period (Wolf read 394, ids 12734).
+NOT_A_PERIOD_RE = re.compile(
+    r"^(?:y[- ]?o[- ]?y|q[- ]?o[- ]?q|y[- ]?t[- ]?d|yoy|qoq|ytd|cagr|growth|growth\s*%?|%|vs\.?|versus|"
+    r"present|current|previous|absolute|change|total)$", re.I)
+
+
+def period_is_printed(period: str) -> bool:
+    """False for a comparison word stored as a period ("Y-O-Y", "QoQ", "growth"); empty is no period at all."""
+    return NOT_A_PERIOD_RE.match(norm_space(period).strip(" .:;,")) is None
 
 
 def _money_unit(text: str, match: re.Match[str]) -> tuple[str, str, float]:
@@ -1185,13 +1256,13 @@ def doc_owner(store_db: str | Path, doc_key: str, index: dict[str, tuple[str, st
 
 MONEY_SCALE_RE = re.compile(
     r"(?:₹|Rs\.?|INR|USD|US\$|\$)\s*(?:in\s*)?"
-    r"(M|Mn|Mio|Million|MM|Cr|Crore|Crores|Crs|Lakh|Lakhs|Lac|Lacs|Bn|Billion|'000|Thousand)\b", re.I)
+    r"(M|Mn|Mio|Million|MM|Cr|Crore|Crores|Crs|Lakh|Lakhs|Lac|Lacs|Bn|Billion|Tn|Trillion|'000|Thousand)\b", re.I)
 IN_SCALE_RE = re.compile(
     r"\b(?:in|amount in|fig(?:ure)?s? in)\s+(?:₹|Rs\.?|INR|USD|US\$|\$)?\s*"
-    r"(M|Mn|Mio|Million|MM|Cr|Crore|Crores|Crs|Lakh|Lakhs|Lac|Lacs|Bn|Billion|'000|Thousand)\b", re.I)
+    r"(M|Mn|Mio|Million|MM|Cr|Crore|Crores|Crs|Lakh|Lakhs|Lac|Lacs|Bn|Billion|Tn|Trillion|'000|Thousand)\b", re.I)
 D_SCALE = {"m": 1e6, "mn": 1e6, "mio": 1e6, "million": 1e6, "mm": 1e6, "cr": 1e7, "crore": 1e7,
            "crores": 1e7, "crs": 1e7, "lakh": 1e5, "lakhs": 1e5, "lac": 1e5, "lacs": 1e5, "bn": 1e9,
-           "billion": 1e9, "'000": 1e3, "thousand": 1e3}
+           "billion": 1e9, "tn": 1e12, "trillion": 1e12, "'000": 1e3, "thousand": 1e3}
 STANDALONE_RE = re.compile(r"\bstandalone\b|\bstand-alone\b|\bstand alone\b", re.I)
 CONSOLIDATED_RE = re.compile(r"\bconsolidated\b|\bconsole\b|\bcons\b", re.I)
 SUBSIDIARY_RE = re.compile(r"([A-Z][A-Za-z0-9&.\-]{1,15})[’']s\s+standalone", re.I)
@@ -1234,6 +1305,128 @@ TOP_N_RE = re.compile(r"\btop\s+(\d+)\b", re.I)
 PERCENT_MEASURE_RE = re.compile(r"(?:^|\.)(?:share|mix)|_share$|_pct$|_margin$|margin$", re.I)
 CAGR_AFTER_VALUE_RE = r"[^\n]{0,4}\bCAGR\b"
 
+# --------------------------------------------------------------------------- stage I script rules
+#
+# Wolf's first read of the new-company decks (D:/RealityEngine/t232/wolf_read_decks394_a.md) graded 50 rows: the
+# stage-H rules do not all generalise.  A per-unit figure took the table's crore scale (974, 20613), the axis-tick
+# rule fired on statement tables (27274), a comparison word ("Y-O-Y") was stored as a period (12734), "lakh sq ft"
+# read as money and "billion units" as a count (18095, 7916), a Unicode hyphen broke the label gate (527), and a
+# threshold ("crossed Rs 35 Cr") verified as the reported figure (18288).
+
+STATEMENT_SERIES_RE = re.compile(
+    r"balance\s*-?\s*sheet|profit\s*(?:&|and)\s*loss|statement\s+of\s+(?:profit|cash|changes)|"
+    r"cash\s*-?\s*flow|financial\s+statements?|particulars", re.I)
+LOWER_BOUND_RE = re.compile(r"\bcrossed\b", re.I)
+LOWER_BOUND_TAIL_RE = re.compile(
+    r"(?:\bmore than|\bexceeds?|\bexceeding|\bin excess of|\bover|\babove)\s+"
+    r"(?:(?:rs\.?|inr|\u20b9|\$|usd|us\$)\s*)?[\d.,]+\s*(?:%|pp|cr|crores?|crs?|lakhs?|mn|bn|million|"
+    r"billion|gw|mw|mt|units?)?\s*$", re.I)
+FOOTNOTE_BASIS_RE = re.compile(
+    r"\b(?:figures?|numbers?|financials?|results?)\b[^.\n]{0,40}?\b(?:are|is|were|have\s+been)?\s*"
+    r"(?:on\s+)?(?:a\s+)?(standalone|consolidated)\b", re.I)
+MARKET_CAP_RE = re.compile(r"market\s*cap", re.I)
+
+
+def is_statement_table(row: dict[str, Any], text: str) -> bool:
+    """Stage I: a statement/table page or one of its rows is a printed label-and-columns table, not a chart axis."""
+    return bool(statement_page_reason(text)) or \
+        STATEMENT_SERIES_RE.search(" ".join([row.get("series_title") or "",
+                                             row.get("printed_axis") or ""])) is not None
+
+
+def lower_bound_kind(row: dict[str, Any]) -> str:
+    """Stage I: "crossed Rs X", "over Rs X", "more than", "exceeds" print a threshold, never the actual level.
+
+    The cue must be on the row's own label and bind to the value: "crossed ..." names a threshold, and
+    "more than / over / exceeds <number>" only when the value ends the label ("over Rs. 40,000 Cr"); a cue
+    inside a longer sentence ("bank balances other than above", "more than doubled to 816.89") is not a
+    bound on this figure.  The deck's "Crossed revenue milestone of ..." is the class Wolf flagged (id 18288).
+    """
+    label = row.get("printed_label") or ""
+    if LOWER_BOUND_RE.search(label) or LOWER_BOUND_TAIL_RE.search(label):
+        return "lower_bound"
+    return ""
+
+
+def footnote_basis(page_text: str, period: str) -> str:
+    """Stage I: a footnote naming one period's basis overrides the page basis for that period (id 20120).
+
+    "FY23 & FY24 financial numbers are on Standalone basis" applies to the FY24 column and not to FY25's
+    consolidated one, which a page-wide ``detect_basis`` cannot tell apart.
+    """
+    match = FY_LABEL_RE.search(period or "")
+    years = {int(match.group(1)) % 100} if match else set()
+    if not years:
+        month_year = re.search(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s-]?(\d{2,4})\b",
+                               period or "", re.I)
+        if month_year:
+            years = {int(month_year.group(1)) % 100}
+    if not years:
+        return ""
+    for line in str(page_text or "").splitlines():
+        found = FOOTNOTE_BASIS_RE.search(line)
+        if not found:
+            continue
+        line_years = {int(year) % 100 for year in FY_LABEL_RE.findall(line)}
+        line_years |= {int(year) % 100 for year in re.findall(r"\b(20\d{2})\b", line)}
+        if line_years & years:
+            return found.group(1).lower()
+    return ""
+
+
+def scope_cue(row: dict[str, Any]) -> str:
+    """Stage I: a market-size / peak-demand figure that names a country is country scope, never the company's."""
+    if measure_root(row.get("measure", "")) not in ("market", "demand"):
+        return ""
+    if MARKET_CAP_RE.search(row.get("printed_label") or ""):
+        return ""
+    hay = " ".join([row.get("printed_label") or "", row.get("printed_axis") or "",
+                    row.get("series_title") or ""])
+    return "country" if re.search(r"\bIndia\b|\bdomestic\b|\bBharat\b", hay, re.I) else ""
+
+
+def apply_per_unit_scale(row: dict[str, Any], measure_family: str) -> bool:
+    """Stage I: EPS, Rs/kWh, Rs/unit ... never take a crore/lakh/million scale (ids 974, 20613)."""
+    if measure_family != "money_per_unit":
+        return False
+    try:
+        scale = float(row.get("scale") or 1)
+    except (TypeError, ValueError):
+        scale = 1.0
+    if scale == 1:
+        return False
+    row["scale"] = 1.0
+    return True
+
+
+def labels_match(row: dict[str, Any], text: str, ocr_text: str = "") -> bool:
+    """The row's printed label/axis/group is in the page text once Unicode dashes read as '-' (stage I, id 527)."""
+    hay = norm_match(str(text or "") + "\n" + str(ocr_text or ""))
+    for field in ("printed_label", "printed_axis", "group_path"):
+        value = str(row.get(field) or "")
+        if not value:
+            continue
+        parts = value.split(" > ") if field == "group_path" else [value]
+        if any(part and norm_match(part) not in hay for part in parts):
+            return False
+    return True
+
+
+TOTAL_LABEL_RE = re.compile(r"^(?:(?:grand|overall|consolidated)\s+)?total\b|\btotal\s*$|^overall\b", re.I)
+
+
+def derive_is_total(row: dict[str, Any]) -> bool:
+    """Stage J: the stored total flag, else a printed "Total"/"Overall"/"Consolidated total" label.
+
+    ``apply_parts_sum`` can only prove a printed total it is told about; a recheck used to lose that proof
+    because the flag lived only in the model reply (144 rows).  The label derivation also re-marks the
+    totals of rows read before the column existed.
+    """
+    if row.get("is_total"):
+        return True
+    label = norm_space(row.get("printed_label"))
+    return bool(label) and TOTAL_LABEL_RE.search(label) is not None
+
 
 def _numbers_in(line: str) -> list[float]:
     numbers: list[float] = []
@@ -1245,9 +1438,12 @@ def _numbers_in(line: str) -> list[float]:
     return numbers
 
 
+TICK_LADDER_MIN = 5            # stage J: four adjacent data values can be a coincidence (0.20/0.21/0.22/0.23)
+
+
 def _tick_ladder(numbers: list[float]) -> bool:
-    """An evenly spaced axis ladder: >=4 numbers with a constant step (0, 1,000, 2,000, 3,000 ...)."""
-    if len(numbers) < 4:
+    """An evenly spaced axis ladder: >=5 numbers with a constant step (0, 1,000, 2,000, 3,000 ...)."""
+    if len(numbers) < TICK_LADDER_MIN:
         return False
     ordered = sorted(numbers)
     steps = [b - a for a, b in zip(ordered, ordered[1:])]
@@ -1421,6 +1617,7 @@ def apply_stacked_parts(rows: list[dict[str, Any]]) -> int:
                 continue
             for row in group:
                 if row is total:
+                    row["_is_total"] = True       # stage J: the arithmetic prints the total even when its label does not
                     continue
                 row["_part"] = True
                 marked += 1
@@ -1715,23 +1912,68 @@ def page_tick_values(text: str) -> set[float]:
     """The axis-tick numbers a page prints, read from its bare-number lines.
 
     A PDF often extracts each axis tick as its own word/line ("0", "1,000", "2,000" ...), so the ladder is only
-    visible across the page: the longest run of bare numbers whose step is constant (>=4 numbers) is the axis.
+    visible across the page: the longest run of bare numbers whose step is constant (>=5 numbers) is the axis.
     """
     values = sorted({_numbers_in(line)[0] for line in str(text or "").splitlines()
                      if _is_bare_number(line) and len(_numbers_in(line)) == 1})
     ticks: set[float] = set()
     index = 0
-    while index + 3 < len(values):
+    while index + TICK_LADDER_MIN - 1 < len(values):
         step = values[index + 1] - values[index]
         end = index + 1
         while end + 1 < len(values) and abs((values[end + 1] - values[end]) - step) <= max(1e-9, abs(step) * 0.01):
             end += 1
-        if end - index + 1 >= 4:
+        if end - index + 1 >= TICK_LADDER_MIN:
             ticks.update(values[index:end + 1])
             index = end + 1
         else:
             index += 1
     return ticks
+
+
+def _label_beside_value(text: str, needle: str) -> bool:
+    """Stage J: a printed text line directly above/below the value is its data label, not an axis tick.
+
+    FAZE3Q p13 prints ROE rows as "11%" then "ROE^": the value belongs to the label beside it even though a
+    ladder elsewhere on the page also contains 11.  An axis title can sit beside the top or bottom tick, so
+    only the value's immediate neighbours are read.
+    """
+    lines = [norm_space(line) for line in str(text or "").splitlines()]
+    for index, line in enumerate(lines):
+        if not text_has(line, needle):
+            continue
+        neighbours = []
+        if index:
+            neighbours.append(lines[index - 1])
+        if index + 1 < len(lines):
+            neighbours.append(lines[index + 1])
+        for neighbour in neighbours:
+            if neighbour and not _is_bare_number(neighbour) and not _numbers_in(neighbour) \
+                    and re.search(r"[A-Za-z]{2,}", neighbour):
+                return True
+    return False
+
+
+def _is_table_rows(text: str) -> bool:
+    """Stage J: a page of label-then-column-values rows is a table, never a chart's axis ladder.
+
+    FAZE3Q p13's "Key Ratios Summary" prints each row as a label followed by nine bare cells (7%, 8%, 11% ...),
+    so its 11% sits in a five-or-more run of evenly spaced bare numbers.  Three such runs on one page are a
+    table; a chart extracts at most the one ladder of its axis.
+    """
+    lines = [norm_space(line) for line in str(text or "").splitlines()]
+    runs = 0
+    run = 0
+    for line in lines:
+        if _is_bare_number(line):
+            run += 1
+            continue
+        if run >= TICK_LADDER_MIN:
+            runs += 1
+        run = 0
+    if run >= TICK_LADDER_MIN:
+        runs += 1
+    return runs >= 3
 
 
 def is_axis_tick(text: str, row: dict[str, Any]) -> bool:
@@ -1740,14 +1982,17 @@ def is_axis_tick(text: str, row: dict[str, Any]) -> bool:
     A bar's height estimated against the gridlines can land on an axis-tick number by chance (POLYPLEX 5,000/7,000/
     9,000, MANINFRA 2,500/1,000); the old rule only caught a bare tick line and a row with no label.  Now every line
     carrying the value must be a ladder line, or a bare number that belongs to the page's own tick ladder: one
-    printed data label anywhere on the page settles it as a value.
+    printed data label anywhere on the page settles it as a value.  Stage I: a statement/table page is never a chart
+    -- its bare cells (ASTRAMICRO's balance-sheet "3") are a table row, not an axis ladder (27274).
     """
     needle = norm_space(row.get("value_text"))
-    if not needle:
+    if not needle or is_statement_table(row, text) or _is_table_rows(text):
         return False
     hits = [norm_space(line) for line in str(text or "").splitlines() if text_has(line, needle)]
     if not hits:
         return False
+    if _label_beside_value(text, needle):
+        return False                   # stage J: the value's own data label sits next to it, not an axis tick
     if all(_tick_ladder(_numbers_in(line)) for line in hits):
         return True
     if not all(_is_bare_number(line) for line in hits):
@@ -1782,6 +2027,7 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     layer = str(text or "")
     ocr = str(ocr_text or "")
     hay = norm_space(layer + "\n" + ocr)
+    hay_match = norm_match(hay)
     if not hay:
         return "unverified", reasons + ["no text layer on this page; value not checkable"]
     in_layer = text_has(layer, row.get("value_text", ""))
@@ -1795,7 +2041,7 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
         if not row.get(field):
             continue
         parts = row[field].split(" > ") if field == "group_path" else [row[field]]
-        missing = [part for part in parts if part and norm_space(part) not in hay]
+        missing = [part for part in parts if part and norm_match(part) not in hay_match]
         if missing:
             status = "unverified"
             reasons.append(f"{field} is not in the page text layer: {' > '.join(missing)!r}")
@@ -1817,7 +2063,7 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
         status = "unverified"
         reasons.append(f"unit family {row['unit_family']!r} does not match measure {row['measure']!r} "
                        f"({measure['unit_family']!r})")
-    if measure is not None and measure["unit_family"] in ("money", "money_per_unit"):
+    if measure is not None and measure["unit_family"] == "money":
         hint = money_scale([row.get("unit", ""), row.get("printed_axis", ""), row.get("series_title", "")])
         if hint is not None and float(row.get("scale") or 1) == 1:
             status = "unverified"
@@ -1837,9 +2083,12 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     if required_unit and not row.get("unit") and not str(row.get("measure") or "").startswith("count."):
         status = "unverified"           # stage H: a count.* row is its own unit ("14 outlets"); the count is the unit
         reasons.append("no_unit: no unit printed for this money/quantity row")
-    if not row.get("period"):
+    if not row.get("period") or not period_is_printed(row.get("period", "")):
         status = "unverified"
         reasons.append("no_period: no period printed for this row")
+    if (row.get("value_kind") or "") == "lower_bound":
+        status = "unverified"
+        reasons.append("lower_bound: the page prints a threshold ('more than' / 'crossed'), not the actual figure")
     return status, reasons
 
 
@@ -1890,10 +2139,13 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             "group_source": canonical_group_source(raw.get("group_source", "")),
             "group_check": "",
             "adjusted": 0,
+            "value_kind": "",
             "text_source": "",
             "reader": READER, "read_at": datetime.now().isoformat(timespec="seconds"),
+            "is_total": 0,
             "_is_total": raw.get("is_total") is True or str(raw.get("is_total", "")).lower() in ("true", "yes", "1"),
         })
+        row["is_total"] = 1 if row["_is_total"] else 0
         for dim in DIMS:
             row[dim] = canonical_dim(vocab, dim, row.get(dim, ""))
         row["stage"] = canonical_stage(vocab, row.get("stage", "")) or stage_from_group(vocab, row["group_path"])
@@ -1902,7 +2154,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         elif any(part in legend_groups for part in row["group_path"].split(" > ")):
             row["group_source"] = "legend_inferred"
         row["entity_scope"] = canonical_scope(row["entity_scope"])
-        head = page_head(text)
+        head = page_head(page_text)          # the printed page head, not the collapsed whole page (recheck parity)
         if detect_subsidiary([row["printed_axis"], row["series_title"], head], companies or {}, symbol):
             if row["entity_scope"] in ("company", "parent", ""):
                 row["entity_scope"] = "subsidiary"
@@ -1926,7 +2178,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["unit"], row["unit_family"], row["scale"] = inferred
         row["scale"], scale_notes = printed_scale(raw.get("scale", 1), row, text)
         row["unit_family"] = infer_unit_family(row["unit"]) or row.get("unit_family", "")
-        if row["unit_family"] in ("money", "money_per_unit") and float(row["scale"] or 1) == 1:
+        if row["unit_family"] == "money" and float(row["scale"] or 1) == 1:
             factor = money_scale([row["unit"], row["printed_axis"], row["series_title"], head])
             if factor:
                 row["scale"] = factor
@@ -1934,6 +2186,9 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             resolved = resolve_mt_scale(page_text)
             if resolved:
                 row["scale"] = resolved
+        measure_family = measure["unit_family"] if measure else row["unit_family"]
+        if apply_per_unit_scale(row, measure_family):
+            scale_notes = []           # a crore scale on a per-unit price is never a printed scale
         if not row["period"]:
             row["period"] = infer_period([row["printed_axis"], row["series_title"], row["group_path"],
                                           row["printed_label"]])
@@ -1943,6 +2198,19 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             row["period"] = deck_asof
             row["period_source"] = "deck_period"
             row["period_kind"] = period_kind_for("", deck_asof)
+        if row["period"] and not period_is_printed(row["period"]):
+            row["period"] = ""
+            row["period_source"] = ""
+            row["period"] = infer_period([row["printed_axis"], row["series_title"], row["group_path"],
+                                          row["printed_label"], head])
+            row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"])
+        foot = footnote_basis(page_text, row["period"]) if row["period"] else ""
+        if foot:
+            row["basis"] = foot
+        cue = scope_cue(row)
+        if cue:
+            row["entity_scope"] = cue
+        row["value_kind"] = lower_bound_kind(row)
         row["adjusted"] = 1 if ADJUSTED_RE.search(" ".join(
             [row["printed_label"], row["printed_axis"], row["series_title"]])) else 0
         if doc_owner_symbol and row["entity_scope"] in ("company", "subsidiary", ""):
@@ -2110,10 +2378,10 @@ def create_db(path: str | Path) -> sqlite3.Connection:
 
 
 OBS_COLUMNS = ("symbol", "doc_key", "page", "region", "known_at", "measure", "printed_label", "printed_axis",
-               "value", "value_text", "unit", "unit_family", "scale", "adjusted", "period", "period_kind",
-               "period_source", "basis", "series_kind", "segment", "product", "geography", "plant", "customer",
-               "group_path", "group_source", "group_check", "stage", "series_id", "series_title", "entity_scope",
-               "text_source", "status", "status_reason", "reader", "read_at")
+               "value", "value_text", "unit", "unit_family", "scale", "adjusted", "value_kind", "is_total",
+               "period", "period_kind", "period_source", "basis", "series_kind", "segment", "product", "geography",
+               "plant", "customer", "group_path", "group_source", "group_check", "stage", "series_id",
+               "series_title", "entity_scope", "text_source", "status", "status_reason", "reader", "read_at")
 
 
 def write_rows(con: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
@@ -2598,6 +2866,7 @@ STATEMENT_CARVE_OUT: dict[str, re.Pattern[str]] = {
 }
 
 
+@lru_cache(maxsize=512)
 def statement_page_reason(text: str) -> str:
     """Stage F: why a page is a financial-statement / notes page ('' when it is not).
 
@@ -2752,7 +3021,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "subsidiary_rows": 0, "deck_periods": 0, "deck_period_cleared": 0,
                              "deck_period_fixed": 0, "cagr_rows": 0, "map_orphans": 0, "panels_split": 0,
                              "geography_cleared": 0, "stacked_parts": 0, "rank_counts": 0, "measure_fixed": 0,
-                             "text_source_ocr": 0}
+                             "text_source_ocr": 0, "per_unit_scales": 0, "period_cleared": 0, "ticks_cleared": 0,
+                             "footnote_basis": 0, "scope_cues": 0, "lower_bounds": 0, "dash_labels": 0,
+                             "unit_family_fixed": 0, "is_total_rows": 0, "parts_sum_restored": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -2808,6 +3079,11 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 cagr_set = True
                 stats["cagr_rows"] += 1
             measure = measures.get(row["measure"] or "")
+            old_unit_family = str(row["unit_family"] or "")
+            row["unit_family"] = infer_unit_family(row["unit"] or "") or old_unit_family
+            unit_family_fix = row["unit_family"] != old_unit_family
+            if unit_family_fix:
+                stats["unit_family_fixed"] += 1
             family = measure["unit_family"] if measure else (row["unit_family"] or "")
             unit_inherited = period_inherited = stage_set = scale_fixed = deck_period_used = False
             if not row["unit"]:
@@ -2817,7 +3093,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["unit"], row["unit_family"], row["scale"] = inferred
                     unit_inherited = True
                     stats["unit_inherited"] += 1
-            if family in ("money", "money_per_unit") and float(row["scale"] or 1) == 1:
+            if family == "money" and float(row["scale"] or 1) == 1:
                 factor = money_scale([row["unit"] or "", row["printed_axis"] or "",
                                       row["series_title"] or "", head])
                 if factor:
@@ -2830,6 +3106,11 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["scale"] = resolved
                     scale_fixed = True
                     stats["scale_fixed"] += 1
+            per_unit_fix = family == "money_per_unit" and (
+                "scale " in old_reason or "scale_unread" in old_reason)
+            if apply_per_unit_scale(row, family):
+                scale_fixed = True
+                stats["per_unit_scales"] += 1
             if row["period_source"] == "deck_period":
                 if not is_stock_measure(row["measure"] or "") or not capacity_deck_period_ok(row, raw_text) \
                         or not deck_asof:
@@ -2841,9 +3122,18 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["period"] = deck_asof
                     row["period_kind"] = period_kind_for("", deck_asof)
                     stats["deck_period_fixed"] += 1
+            fake_period = bool(row["period"]) and not period_is_printed(row["period"])
+            if fake_period:
+                row["period"] = ""           # stage I: "Y-O-Y" / "QoQ" / "growth" is a comparison, not a period
+                row["period_source"] = ""
+                row["period_kind"] = ""
+                stats["period_cleared"] += 1
             if not row["period"]:
-                period = infer_period([row["printed_axis"] or "", row["series_title"] or "",
-                                       row["group_path"] or "", row["printed_label"] or ""])
+                texts = [row["printed_axis"] or "", row["series_title"] or "",
+                         row["group_path"] or "", row["printed_label"] or ""]
+                if fake_period:
+                    texts.append(head)       # the column header or page header may carry the real period
+                period = infer_period(texts)
                 if period:
                     row["period"] = period
                     row["period_kind"] = period_kind_for("", period)
@@ -2874,7 +3164,26 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             old_basis = str(row["basis"] or "")
             row["basis"] = detect_basis(row["printed_axis"] or "", row["series_title"] or "", head,
                                         words, row["region"] or "", row["group_path"] or "", raw_text)
+            foot = footnote_basis(raw_text, row["period"] or "")
+            if foot and row["basis"] != foot:
+                row["basis"] = foot          # a footnote names this period's basis (id 20120)
+                stats["footnote_basis"] += 1
             basis_changed = bool(row["basis"]) and row["basis"] != old_basis
+            cue = scope_cue(row)
+            if cue and row["entity_scope"] != cue:
+                row["entity_scope"] = cue
+                stats["scope_cues"] += 1
+            row["value_kind"] = lower_bound_kind(row)
+            if row["value_kind"]:
+                stats["lower_bounds"] += 1
+            tick_fix = "axis_tick" in old_reason and not is_axis_tick(raw_text, row)
+            if tick_fix:
+                stats["ticks_cleared"] += 1
+            dash_label = "is not in the page text layer" in old_reason and labels_match(row, text, ocr_text)
+            if dash_label:
+                stats["dash_labels"] += 1
+            value_text_fix = "image_text" in old_reason and (
+                text_has(text, row["value_text"] or "") or text_has(ocr_text, row["value_text"] or ""))
             if owner and row["entity_scope"] in ("company", "subsidiary", ""):
                 row["entity_scope"] = "parent"
                 stats["parent_rows"] += 1
@@ -2887,7 +3196,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             row["_old_status"] = old_status
             row["_old_reason"] = old_reason
             row["_proof"] = (unit_inherited or period_inherited or mapped or stage_set or dictionary_fix
-                             or scale_fixed or deck_period_used or cagr_set or basis_changed or count_unit_fix)
+                             or scale_fixed or deck_period_used or cagr_set or basis_changed or count_unit_fix
+                             or per_unit_fix or tick_fix or dash_label or value_text_fix or unit_family_fix)
             row["status"] = status
             row["status_reason"] = "; ".join(reasons)
             updated.append(row)
@@ -2898,10 +3208,20 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 con.execute("DELETE FROM observation WHERE observation_id=?", (int(row["observation_id"]),))
                 stats["map_orphans"] += 1
         updated = kept
+        for row in updated:
+            row["_is_total"] = derive_is_total(row)
         stats["panels_split"] += split_panels(updated)
         stats["geography_cleared"] += apply_geography(updated, words)
         stats["stacked_parts"] += apply_stacked_parts(updated)
         stats["rank_counts"] += apply_rank_count(updated)
+        stats["is_total_rows"] += sum(1 for r in updated if r["_is_total"])
+        before_parts = {int(r["observation_id"]): str(r["status"]) for r in updated}
+        apply_parts_sum(updated)
+        for row in updated:
+            if "parts sum to the printed total" in str(row.get("status_reason") or ""):
+                row["_proof"] = True        # the printed total and its parts are a proof (stage J)
+                if before_parts.get(int(row["observation_id"])) != "verified" and row["status"] == "verified":
+                    stats["parts_sum_restored"] += 1
         apply_series_kind(updated, raw_text)
         for row in updated:
             if str(row["measure"]) != before_measure.get(int(row["observation_id"]), ""):
@@ -2915,7 +3235,8 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             status = str(row["status"])
             reason = str(row["status_reason"] or "")
             if status == "verified" and old_status != "verified":
-                hard_old = "parts sum to" in old_reason or ("scale " in old_reason and not row["_proof"])
+                hard_old = "parts sum to" in old_reason or "geography_not_printed" in old_reason or \
+                    ("scale " in old_reason and not row["_proof"])
                 if hard_old:
                     stats["kept_hard_reason"] = int(stats.get("kept_hard_reason", 0)) + 1
                     status, reason = old_status, old_reason
@@ -2933,13 +3254,15 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 elif old_status == "verified":
                     stats["downgraded"] += 1
             con.execute("UPDATE observation SET measure=?, printed_label=?, geography=?, series_id=?, unit=?, "
-                        "unit_family=?, scale=?, period=?, period_kind=?, period_source=?, basis=?, series_kind=?, "
-                        "adjusted=?, stage=?, entity_scope=?, text_source=?, status=?, status_reason=? "
-                        "WHERE observation_id=?",
+                        "unit_family=?, scale=?, value_kind=?, is_total=?, period=?, period_kind=?, period_source=?, "
+                        "basis=?, series_kind=?, adjusted=?, stage=?, entity_scope=?, text_source=?, status=?, "
+                        "status_reason=? WHERE observation_id=?",
                         (row["measure"], row["printed_label"], row["geography"], row["series_id"], row["unit"],
-                         row["unit_family"], row["scale"], row["period"], row["period_kind"], row["period_source"],
-                         row["basis"], row["series_kind"], row["adjusted"], row["stage"], row["entity_scope"],
-                         row.get("text_source") or "", status, reason, row["observation_id"]))
+                         row["unit_family"], row["scale"], row.get("value_kind") or "",
+                         1 if row.get("_is_total") else 0, row["period"],
+                         row["period_kind"], row["period_source"], row["basis"], row["series_kind"], row["adjusted"],
+                         row["stage"], row["entity_scope"], row.get("text_source") or "", status, reason,
+                         row["observation_id"]))
             stats["changed"] += 1
             if (row.get("text_source") or "") == "ocr":
                 stats["text_source_ocr"] += 1

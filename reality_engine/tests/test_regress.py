@@ -107,6 +107,17 @@ def test_a_right_row_matches_by_content_not_by_id(tmp_path):
     assert report["newly_broken"] == 0
 
 
+def test_a_golden_line_for_another_company_is_skipped_not_broken(tmp_path):
+    # One golden file serves two disjoint DBs: a line about a company this DB does not hold is not "missing".
+    other = golden_line("RIGHT")
+    other["key"] = {**other["key"], "symbol": "BBB"}
+    other["identity"] = {**other["identity"], "symbol": "BBB"}
+    report = counts(tmp_path, [ROW], [golden_line("RIGHT"), other])
+    assert report["counts"] == {"still_right": 1}
+    assert report["skipped_other_db"] == 1
+    assert report["newly_broken"] == 0
+
+
 def test_a_changed_right_row_is_newly_broken(tmp_path):
     report = counts(tmp_path, [{**ROW, "unit": "USD mn"}], [golden_line("RIGHT")])
     assert report["counts"]["newly_broken"] == 1
