@@ -2523,3 +2523,37 @@ minor / 6 wrong (15%); stage C 50 rows 44/2/4 (8%); stage D 50 rows 42/6/2 (4%; 
 rules hold). Stage D deck_period rows were 3/2/5 of 10, which stage E narrowed to true operating stocks (1,193 -> 404
 verified). Detail: `D:/RealityEngine/t230/wolf_read_{b,c,d}.md`. Treat verified rows as model-read input with a
 known ~4% error, labelled as such in any factor study.
+
+#### 17.y T-234 reader option and the free-model bake-off (22 Nov 2026)
+
+`reality_engine/v2/observations.py` reads with another MODELS entry: `--reader <name>` (default
+`hy4-flash-free`, behaviour unchanged; a recheck of 5 pages reproduced every stored status). It creates
+`<name>@obs` from the registry entry's own body with `max_tokens` 16000, and the entry's optional `timeout` is
+honoured in `post_once` (Gemma needs 900 s). `--text-only` sends the stored text layer and no page image. A run's
+stats now carry `in_tok`, `out_tok`, `latencies` (per successful call), `median_seconds` and `p90_seconds`; the
+`reader` column and every `measure_proposal.source` name the reader actually used.
+
+Registry entries added to `reality_engine/scripts/extract_deck_figures.py` (MODELS): `google/gemma-4-31b-it`
+(Google AI Studio OpenAI-compatible endpoint, `GEMINI_API_KEY`; its compat route puts the thought text inside
+`content` and cannot switch thinking off), `inclusionai/ling-3.2-flash:free`, `particle-ai/particle-1:free`,
+`baidu/ernie-5.5-flash-preview:free`, plus `@kilo2` clones of the five Kilo candidates (`KILO_API_KEY_2`; on 22 Nov
+the first Kilo key answered 429 "Free model usage limit reached" on every free model while key 2 still served).
+
+`reality_engine/scripts/reader_bakeoff.py` (`pages` -> `run` -> `score` -> `report`; tests
+`reality_engine/tests/test_reader_bakeoff.py`) drives the bake-off: the 228 golden pages (`--only`-style selection
+uses its own exact `(doc_key, page)` `PageSet`, because a T-233 `Selector` would take the document x page cross
+product) and a 60-page annual-report text set (`hy4 >= 3 rows`, good text layer, seed 234, saved as
+`text_pages.json`). The run disables the Dots OCR fallback (the bake-off measures one reader); `score` reuses
+`regress`'s golden grading, compares with hy4 on `(measure, period, value within 0.5%)`, measures the share of rows
+whose `value_text` is printed in the page text layer, and writes 40 seeded disagreement rows per model (model-only +
+mismatched) for Wolf's hand-read.
+
+Measured 22 Nov (Kilo free tier exhausted mid-run; artifacts `.tmp/t234/`, D: writes denied to the sandbox):
+Nemotron 3.5 VL read **120 of 228 golden pages**: golden RIGHT **54/86** reproduced, accuracy **71/130 (55%)**,
+WRONG/MINOR fixed 17/44 while 6/44 stay wrong; vs hy4 on those pages **5,163/6,786 (76%)** rows matched, 1,623
+model-only, 1,925 hy4-only; status **5,558 verified / 1,228 unverified / 0 quarantined** (46.3 verified rows/page);
+text-layer match **6,772/6,786**; **20.9 pages/min** at 16 workers, median 55.2 s, p90 97.3 s, 195 429s and 108 failed
+calls; **7,969 input / 8,808 output tokens per page** (956,315 / 1,057,001 total). Gemma 4 31B completed 1 page
+(240-300 s/page, then Google free-tier 429). Ling, Particle, ERNIE and Nemotron Ultra were unavailable (Kilo 429
+before their first page). The text set did not run.
+

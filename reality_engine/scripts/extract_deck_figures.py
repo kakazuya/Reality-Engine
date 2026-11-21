@@ -149,6 +149,31 @@ MODELS = {
     "nvidia/nemotron-3.5-lightning:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
                                            "price": (0.0, 0.0), "capped": False, "ceiling": 30,
                                            "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    # T-234 (22 Nov 2026) free-reader bake-off.  Gemma 4 31B now answers Google's OpenAI-compatible endpoint
+    # (the 10-11 note below said Gemma's compat route 500s; a 22 Nov probe got 200 with the thought text inside
+    # `content`).  The Kilo entries mirror the Dots shape above.  The text-only Baidu ERNIE and the already-listed
+    # Nemotron Ultra are read with the observations --text-only mode.
+    "google/gemma-4-31b-it": {"api": "chat", "id": "gemma-4-31b-it", "base": "https://generativelanguage.googleapis.com/v1beta/openai",
+                              "key_env": "GEMINI_API_KEY", "price": (0.0, 0.0), "capped": False, "ceiling": 12,
+                              "timeout": 900,
+                              "body": {"temperature": 0, "max_tokens": 16000}},
+    "inclusionai/ling-3.2-flash:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
+                                        "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                                        "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    "particle-ai/particle-1:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
+                                    "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                                    "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    "baidu/ernie-5.5-flash-preview:free": {"api": "chat", "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY",
+                                           "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                                           "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}},
+    # Second Kilo account (KILO_API_KEY_2): 22 Nov the first key's free-model quota answered 429 on every model while
+    # this key still served, so the bake-off rows below re-read on it (same shape as dots @kilo2).
+    **{f"{_m}@kilo2": {"api": "chat", "id": _m, "base": "https://api.kilo.ai/api/gateway", "key_env": "KILO_API_KEY_2",
+                       "price": (0.0, 0.0), "capped": False, "ceiling": 30,
+                       "body": {"temperature": 0, "max_tokens": 8000, "reasoning": {"enabled": False}}}
+       for _m in ("nvidia/nemotron-3.5-super-vl:free", "inclusionai/ling-3.2-flash:free",
+                  "particle-ai/particle-1:free", "baidu/ernie-5.5-flash-preview:free",
+                  "nvidia/nemotron-3-ultra-550b-a55b:free")},
     # "Space Bunny" (free, OpenCode Zen; the only Zen free model the API accepts: the others answer "free tier can only be
     # used from within OpenCode"). 2026-10-11, 40-page test vs Haiku with reasoning_effort low: 40/40 answered, ~97%
     # identifiable, ~99.7% of Haiku's numbers, no unsupported numbers, median ~6 s; with the default effort 13/40 came

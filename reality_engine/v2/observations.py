@@ -48,6 +48,7 @@ import os
 import random
 import re
 import sqlite3
+import statistics
 import sys
 import threading
 import time
@@ -70,9 +71,26 @@ TEXT_LAYER_CHARS = 6000
 PARSE_STOP = 0.20                      # brief: stop when >20% of pilot pages give empty / non-JSON
 QUARANTINE_STOP = 0.10                 # brief: stop when >10% of observations are quarantined
 
-if OBS_READER not in rp.MODELS:        # do not mutate another job's reader: this is our own entry
-    rp.MODELS[OBS_READER] = {**rp.MODELS["hy4-flash-free"], "id": "hy4-flash-free",
-                             "body": {**rp.MODELS["hy4-flash-free"]["body"], "max_tokens": 16000}}
+
+def reader_entry(name: str) -> str:
+    """T-234: the ``@obs`` MODELS entry for reader ``name``; KeyError when the registry has no such model."""
+    if name not in rp.MODELS:
+        raise KeyError(name)
+    entry = f"{name}@obs"
+    if entry not in rp.MODELS:         # do not mutate another job's reader: this is our own entry
+        base = rp.MODELS[name]
+        rp.MODELS[entry] = {**base, "id": base.get("id", name),
+                            "body": {**base.get("body", {}), "max_tokens": 16000}}
+    return entry
+
+
+def set_reader(name: str) -> None:
+    """T-234 ``--reader``: read with another MODELS entry; the default (hy4-flash-free) is unchanged."""
+    global READER, OBS_READER
+    READER, OBS_READER = name, reader_entry(name)
+
+
+set_reader(READER)
 
 # --------------------------------------------------------------------------- schema
 
@@ -2623,7 +2641,7 @@ def post_once(prompt: str, image_b64: str | None) -> dict[str, Any]:
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
                      "x-opencode-session": rp._session_id("observations", OBS_READER, "", 0),
                      "User-Agent": "reality-engine/1.0"},
-            json=body, timeout=300)
+            json=body, timeout=float(cfg.get("timeout", 300)))
     except Exception as exc:
         return {"output": "", "error": f"{type(exc).__name__}: {exc}", "retry_after": None,
                 "seconds": time.time() - t0, "in_tok": 0, "out_tok": 0}
@@ -2708,7 +2726,7 @@ def propose_one(dictionary: str, label: str, unit: str, value: str, doc_key: str
 
 
 def propose_measures(con: sqlite3.Connection, limit: int = 300, workers: int = 20) -> dict[str, int]:
-    """One hy4 proposal per distinct unmapped label, stored with its reason; never applied to a row."""
+    """One reader proposal per distinct unmapped label, stored with its reason; never applied to a row."""
     if limit <= 0:
         return {"labels": 0, "proposed": 0, "quota": False}
     measures = measure_index()
@@ -2740,15 +2758,19 @@ def propose_measures(con: sqlite3.Connection, limit: int = 300, workers: int = 2
                 continue
             measure, reason = answer
             con.execute("INSERT OR REPLACE INTO measure_proposal VALUES (?,?,?,?,?)",
-                        (label, measure, reason[:500], "hy4", ist_now()))
+                        (label, measure, reason[:500], READER, ist_now()))
             written += 1
     con.commit()
     return {"labels": len(todo), "proposed": written, "quota": quota_hit}
 
 
 def process_page(store_db: str | Path, doc_key: str, page: int,
-                 companies: dict[str, tuple[str, str]] | None = None) -> dict[str, Any]:
-    """One page: image + text layer -> model reply -> checked observation rows."""
+                 companies: dict[str, tuple[str, str]] | None = None,
+                 text_only: bool = False) -> dict[str, Any]:
+    """One page: image + text layer -> model reply -> checked observation rows.
+
+    ``text_only`` (T-234) sends the stored text layer without the page image, for a text-only reader.
+    """
     stop = quota_seconds()
     if stop > 0:                     # the shared key is in its quota window: leave the page for the resume run
         return {"store": str(store_db), "doc_key": doc_key, "page": page, "quota": stop}
@@ -2768,16 +2790,19 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
         words = []
     layout = page_layout.layout_text(words) if words else norm_space(text)
     image_b64 = None
-    try:
-        data, _scale = page_reader._page_image(store_db, doc_key, page)
-        image_b64 = base64.b64encode(data).decode("ascii")
-    except Exception as exc:
-        image_note = f"no page image: {type(exc).__name__}: {exc}"[:200]
-    else:
+    if text_only:
         image_note = ""
+    else:
+        try:
+            data, _scale = page_reader._page_image(store_db, doc_key, page)
+            image_b64 = base64.b64encode(data).decode("ascii")
+        except Exception as exc:
+            image_note = f"no page image: {type(exc).__name__}: {exc}"[:200]
+        else:
+            image_note = ""
     result: dict[str, Any] = {"store": str(store_db), "doc_key": doc_key, "page": page, "symbol": meta["symbol"],
                               "owner": owner, "raw": "", "error": "", "rows": [], "bad_lines": 0,
-                              "parsed": 0, "seconds": 0.0, "image_note": image_note}
+                              "parsed": 0, "seconds": 0.0, "in_tok": 0, "out_tok": 0, "image_note": image_note}
     if not image_b64 and not layout.strip():
         result["skip"] = "no image and no text"
         return result
@@ -2787,6 +2812,8 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
         result["quota"] = call["quota"]
         return result
     result["seconds"] = float(call.get("seconds") or 0.0)
+    result["in_tok"] = int(call.get("in_tok") or 0)
+    result["out_tok"] = int(call.get("out_tok") or 0)
     result["raw"] = str(call.get("output") or "")
     if call.get("error"):
         result["error"] = str(call.get("error") or "")
@@ -3277,7 +3304,7 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         doc_types: Iterable[str] = ("deck",), seed: int = 11,
         required: Iterable[tuple[str, int]] = (), propose_limit: int = 300,
         resume: bool = False, skip_statements: bool = False,
-        only: Any = None) -> dict[str, Any]:
+        only: Any = None, text_only: bool = False) -> dict[str, Any]:
     pages: list[dict[str, Any]] = []
     dropped_by_reason: dict[str, int] = {}
     for store_db in store_dbs:
@@ -3313,11 +3340,13 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                              "parse_failures": 0, "dropped_all": 0, "observations": 0, "quarantined": 0,
                              "skipped": 0, "quota_skipped": 0, "parent_rows": 0, "http_429": 0,
                              "ocr_pages": 0, "ocr_rows": 0, "image_text_rows": 0,
+                             "in_tok": 0, "out_tok": 0, "latencies": [],
                              "statement_filter": statement_filter, "failed_replies": []}
     companies = company_index(store_dbs)
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-        futures = {pool.submit(process_page, p["store"], p["doc_key"], p["page"], companies): p for p in selected}
+        futures = {pool.submit(process_page, p["store"], p["doc_key"], p["page"], companies, text_only): p
+                   for p in selected}
         done = 0
         for future in as_completed(futures):
             done += 1
@@ -3327,6 +3356,10 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 stats["errors"] += 1
                 stats["failed_replies"].append({"error": f"{type(exc).__name__}: {exc}"})
                 continue
+            stats["in_tok"] += int(result.get("in_tok") or 0)
+            stats["out_tok"] += int(result.get("out_tok") or 0)
+            if result.get("seconds"):
+                stats["latencies"].append(round(float(result["seconds"]), 2))
             if result.get("quota"):
                 stats["quota_skipped"] += 1
                 continue
@@ -3378,6 +3411,10 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     con.close()
     stats["seconds"] = round(time.time() - t0, 1)
     stats["out"] = str(out)
+    latencies = sorted(float(s) for s in stats["latencies"])
+    if latencies:
+        stats["median_seconds"] = round(statistics.median(latencies), 2)
+        stats["p90_seconds"] = round(latencies[int(round(0.9 * (len(latencies) - 1)))], 2)
     done_pages = max(1, stats["pages"] - stats["quota_skipped"])
     reply_fail_share = (stats["parse_failures"] + stats["errors"]) / done_pages
     quarantine_share = stats["quarantined"] / max(1, stats["observations"])
@@ -3417,7 +3454,15 @@ def main(argv: list[str] | None = None) -> int:
                         help="T-233 selector JSON: re-process only these stores/doc_keys/pages")
     parser.add_argument("--baseline", default="",
                         help="with --only: copy this DB to --out first, then patch the copy")
+    parser.add_argument("--reader", default=READER,
+                        help="MODELS registry entry to read with (default hy4-flash-free; T-234 bake-off)")
+    parser.add_argument("--text-only", action="store_true",
+                        help="send the stored text layer only, no page image (T-234 text readers)")
     args = parser.parse_args(argv)
+    try:
+        set_reader(args.reader)
+    except KeyError:
+        parser.error(f"unknown --reader {args.reader!r}; known: {', '.join(sorted(rp.MODELS))}")
 
     only = None
     if args.only:
@@ -3464,7 +3509,7 @@ def main(argv: list[str] | None = None) -> int:
     stats = run(store_dbs, args.limit, args.workers, args.out,
                 doc_types=doc_types, seed=args.seed, required=required,
                 propose_limit=args.propose_limit, resume=args.resume, skip_statements=args.skip_statements,
-                only=only)
+                only=only, text_only=args.text_only)
     print(json.dumps(stats, indent=2))
     if stats.get("stopped"):
         print(f"STOP: {stats['stopped']}", file=sys.stderr)

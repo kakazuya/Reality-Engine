@@ -4,6 +4,8 @@ import shutil
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from reality_engine.v2 import observations as obs
 
 STORE = Path(".tmp/t230/test_c_store.db")

@@ -2262,6 +2262,20 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   `mkdtemp` folder (mode 0o700), and the RawStore downloads each company's PDFs into one. The pilot therefore
   ran with `PYTHONPATH` pointing at `.tmp/t232/shim`, whose `sitecustomize` creates the folder `0o777`; run the
   real build on D: outside the workspace sandbox (a normal console) and no shim is needed.
+- **T-234: free-model reader bake-off vs hy4 (22 Nov 2026).** The observation reader is selectable:
+  `python -m reality_engine.v2.observations --reader <MODELS name>` (default `hy4-flash-free`, unchanged) and
+  `--text-only` for a text-only model; the run stats carry input/output tokens and per-call latencies (median,
+  p90). Registry entries live in `reality_engine/scripts/extract_deck_figures.py` MODELS: Gemma 4 31B on Google AI
+  Studio's OpenAI-compatible endpoint (`GEMINI_API_KEY`, `timeout` 900), Kilo `ling-3.2-flash`, `particle-1`,
+  `ernie-5.5-flash-preview`, the already-listed Nemotron VL / Ultra, and `@kilo2` clones on `KILO_API_KEY_2`.
+  `reality_engine/scripts/reader_bakeoff.py` (`pages|run|score|report`) reads the 228 golden pages and a 60-page
+  annual-report text set with one reader, scores against the golden file (`regress`), hy4 on the same pages
+  `(measure, period, value within 0.5%)`, the page text layer and the run's tokens, and writes
+  `bakeoff.csv` / `bakeoff.md` plus `disagree_<model>.jsonl`. On 22 Nov the Kilo free tier ran out mid-bake-off:
+  Nemotron 3.5 VL read 120/228 pages (golden RIGHT 54/86, accuracy 71/130, 76% hy4 agreement, 20.9 pages/min,
+  7,969/8,808 tokens per page), Gemma 1 page (240-300 s/page), and Ling, Particle, ERNIE and Ultra got 429 before
+  their first page; the text set did not run. Details in `docs/V2_SCHEMA_CONTRACT.md` section 17.y; artifacts
+  `.tmp/t234/`.
 
 ## Modular store repair (T-218, 16 Nov 2026)
 
