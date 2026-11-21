@@ -1,5 +1,6 @@
-"""T-230 stage A-C: observation schema, independent checks and the writer (synthetic, no network)."""
+"""T-230 stage A-F: observation schema, independent checks and the writer (synthetic, no network)."""
 import json
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -795,3 +796,117 @@ def test_bare_mt_is_ambiguous_until_the_page_resolves_it():
                         period="Q4 FY25")], page_text=page_mtpa)
     assert rows[0]["scale"] == 1e6
     assert "scale_ambiguous" not in rows[0]["status_reason"]
+
+# --------------------------------------------------------------------------- stage F (T-230 annual-report pages)
+
+STATEMENT_PAGES = {
+    "balance_sheet": "BALANCE SHEET AS AT 31ST MARCH, 2026\nEquity and liabilities\n1,000",
+    "profit_and_loss": "STATEMENT OF PROFIT AND LOSS for the year ended March 31, 2026\nRevenue\n1,000",
+    "cash_flow": "CASH FLOW STATEMENT FOR THE YEAR ENDED MARCH 31, 2026\nOperating activities\n500",
+    "changes_in_equity": "STATEMENT OF CHANGES IN EQUITY FOR THE YEAR ENDED MARCH 31, 2026\nBalance\n500",
+    "notes": "NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS FOR THE YEAR ENDED MARCH 31, 2026\nTrade payables 5",
+    "note_no": "Note No. 3: Property, Plant and Equipment\nGross block 1,000",
+    "audit_report": "INDEPENDENT AUDITOR'S REPORT\nTo the Members of the Company\nOpinion",
+    "aoc1": "FORM AOC-1\nStatement containing salient features of the financial statements",
+    "mgt9": "MGT-9\nEXTRACT OF THE ANNUAL RETURN AS ON THE FINANCIAL YEAR ENDED 31ST MARCH, 2026",
+    "remuneration": "PARTICULARS OF EMPLOYEES FOR THE FINANCIAL YEAR ENDED 31ST MARCH, 2025\nSalary 50",
+    "csr_spend": "CSR amount spent or unspent for the financial year:\nTotal Amount Spent 22,336",
+    "shareholding": "Shareholding Pattern as at 31st March, 2026\nPromoter 55.1",
+    "share_price": "Share Price Data\nMonth High Low Close",
+    "notice": "NOTICE TO THE SHAREHOLDERS\nAnnual General Meeting",
+    "secretarial_audit": "SECRETARIAL AUDIT REPORT FOR THE FINANCIAL YEAR ENDED 31ST MARCH, 2026",
+    "governance": "REPORT ON CORPORATE GOVERNANCE\nBoard of Directors",
+    "related_party": "RELATED PARTY TRANSACTIONS\nName of the related party 2026 2025",
+    "brsr": "BUSINESS RESPONSIBILITY AND SUSTAINABILITY REPORT\nSECTION A: GENERAL DISCLOSURES",
+}
+
+
+def test_each_statement_heading_drops_its_page():
+    for reason, page in STATEMENT_PAGES.items():
+        assert obs.statement_page_reason(page) == reason
+
+
+def test_an_mda_page_and_a_sentence_mentioning_a_statement_are_kept():
+    assert obs.statement_page_reason(
+        "Management Discussion and Analysis\nInstalled capacity rose from 12,000 TPA to 40,000 TPA.") == ""
+    assert obs.statement_page_reason(
+        "The balance sheet remains strong and our net debt is low. Revenue grew 15%.") == ""
+    assert obs.statement_page_reason("balance sheet date. We, however, state that this is not an adjustment") == ""
+    assert obs.statement_page_reason("Note No. 18 of the Standalone Financial Statements for the year") == ""
+    assert obs.statement_page_reason("") == ""
+
+
+def test_a_segment_note_and_a_plant_brsr_page_are_kept():
+    segment = ("NOTES TO THE CONSOLIDATED FINANCIAL STATEMENTS\n38. SEGMENT REPORTING UNDER IND AS 108\n"
+               "The following are the information relating to geographical segment:\nIndia Others Total\n93,384.25")
+    assert obs.statement_page_reason(segment) == ""
+    brsr = ("BUSINESS RESPONSIBILITY AND SUSTAINABILITY REPORT\n"
+            "Number of locations where plants and/or operations/offices of the entity are situated: 12")
+    assert obs.statement_page_reason(brsr) == ""
+
+
+def test_filter_statement_pages_keeps_the_operating_pages_and_counts_the_reasons():
+    pages = [{"doc_key": "d", "page": 1}, {"doc_key": "d", "page": 2}, {"doc_key": "d", "page": 3},
+             {"doc_key": "d", "page": 4}]
+    texts = {("d", 1): "BALANCE SHEET AS AT 31ST MARCH, 2026",
+             ("d", 2): "Business Overview\nNumber of plants 12 in India and 0 outside",
+             ("d", 3): "NOTES TO FINANCIAL STATEMENTS FOR THE YEAR ENDED 31ST MARCH, 2024",
+             ("d", 5): "never printed"}                       # page 4 has no stored text: kept
+    dropped = {}
+    kept = obs.filter_statement_pages(pages, texts, dropped)
+    assert [p["page"] for p in kept] == [2, 4]
+    assert dropped == {"balance_sheet": 1, "notes": 1}
+
+
+STORE_F = Path(".tmp/t230/test_f_store.db")
+
+
+def _make_ar_store(pages):
+    STORE_F.parent.mkdir(parents=True, exist_ok=True)
+    STORE_F.unlink(missing_ok=True)
+    con = sqlite3.connect(STORE_F)
+    con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT)")
+    for number, text in enumerate(pages, 1):
+        con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("ar.pdf", number, text))
+    con.commit()
+    con.close()
+    with (STORE_F.parent / "routes.csv").open("w", newline="", encoding="utf-8") as fh:
+        fh.write("doc_key,page,route,doc_type\n")
+        for number in range(1, len(pages) + 1):
+            fh.write(f"ar.pdf,{number},table_or_chart,annual_report\n")
+
+
+def test_pages_from_store_skips_statement_pages_only_with_the_flag():
+    _make_ar_store(["BALANCE SHEET AS AT 31ST MARCH, 2026",
+                    "Management Discussion and Analysis\nCapacity rose to 30 mtpa"])
+    try:
+        assert len(obs.pages_from_store(STORE_F, doc_types=("annual_report",))) == 2
+        dropped = {}
+        kept = obs.pages_from_store(STORE_F, doc_types=("annual_report",), skip_statements=True, dropped=dropped)
+        assert [p["page"] for p in kept] == [2]
+        assert dropped == {"balance_sheet": 1}
+    finally:
+        STORE_F.unlink(missing_ok=True)
+        (STORE_F.parent / "routes.csv").unlink(missing_ok=True)
+
+
+SEED_ROOT = Path(".tmp/t230/seed_root")
+
+
+def _make_route_store(name, doc_type):
+    store = SEED_ROOT / name
+    store.mkdir(parents=True, exist_ok=True)
+    (store / f"{name}.db").write_bytes(b"")
+    with (store / "routes.csv").open("w", newline="", encoding="utf-8") as fh:
+        fh.write("doc_key,page,route,doc_type\n")
+        fh.write(f"{name}.pdf,1,table_or_chart,{doc_type}\n")
+
+
+def test_seed_stores_follows_the_doc_type():
+    _make_route_store("a", "deck")
+    _make_route_store("b", "annual_report")
+    try:
+        picked = obs.seed_stores(SEED_ROOT, 5, 11, doc_types=("annual_report",))
+        assert [Path(p).parent.name for p in picked] == ["b"]
+    finally:
+        shutil.rmtree(SEED_ROOT, ignore_errors=True)
