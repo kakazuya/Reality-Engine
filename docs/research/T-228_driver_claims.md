@@ -367,3 +367,16 @@ used.
 by design (2 of the 13 announcement script claims); the order wins verify because the letter prints the
 execution period. `Retry-After` is the only reliable signal for a closed key; the 429 body carries no reset
 time, and a full extraction needs about 1.5-2 h of a free key.
+
+### 11.x Pilot result and Wolf's hand read (21 Nov 2026, 05:40 IST re-run after the hy4 quota reset)
+
+- Re-run: 3,696 model items, 1,275 claims after judge and dedupe: 290 verified, 953 unverified, 32 quarantined (2.5%);
+  judge 118 requests, 0 errors, no 429. Sources: announcement 719, annual_report 238, transcript 261, guidance 38,
+  press_release 19. 72.6% of model items dropped as `past` or `no_driver`.
+- Independent read of 40 verified claims (seed 97, not the worker's seed; detail `.tmp/t228/wolf_read_s2a.md`):
+  23 right, 14 minor, 3 wrong. announcement 12/8/0 (order wins 11 of 12 right), transcript 7/5/3,
+  annual_report 3/0/0, guidance 1/1/0. No past fact stored as forward.
+- Known defects (stage 2b fixes): segment left "total" when the text names a unit or plant, and that unit's revenue
+  stored as company revenue.total (all 3 wrong are this class or a dropped range low end); "including GST" not in
+  `base`; rating-agency estimates (CRISIL/ICRA/CARE) stored as company claims; the same fact from two sources
+  (AR + board outcome, guidance + transcript) kept twice; sign 0 on dividends and repayments.
