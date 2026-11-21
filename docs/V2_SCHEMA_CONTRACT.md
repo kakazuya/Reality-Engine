@@ -1954,8 +1954,9 @@ supplies the retry/backoff and the stable Go session id
 Script checks, independent of the model:
 1. `known_at` is copied from the store's `doc` row and `value` is parsed by `parse_number` from `value_text`; a
    `value` or `known_at` in the model reply is ignored.
-2. On a page with a text layer, `value_text` must occur as a number **token** (`30` is not found in `2030`), else the
-   row is `quarantined` ("value_text is not in the page text layer"). A page with no text layer is `unverified`
+2. `value_text` must occur as a number **token** (`30` is not found in `2030`) in the page's text layer or in the
+   OCR of its image (stage H). A value found only in the OCR verifies with `text_source='ocr'`; a value neither
+   source carries is `unverified` reason `image_text`, never quarantined; a page with neither is `unverified`
    (nothing to check against).
 3. `printed_label`, `printed_axis` and `group_path` must be verbatim substrings of the page text (whitespace
    normalised), and each `' > '`-joined heading of a `group_path` is checked as its own heading; a value with no
@@ -1991,7 +1992,8 @@ Script checks, independent of the model:
     `group_check='path_sum'`; the status is never changed by this check.
 11. (C2) A money/quantity row with no unit inherits the unit printed in its `printed_axis`, `series_title` or label
     (`Particulars (INR Mn)` -> `INR mn`, `Rs in Crs` -> `Rs crs`, `spindles` -> count); with no printed unit it is
-    `unverified` reason `no_unit`. A row with no period inherits a fiscal label, month-year or date printed in those
+    `unverified` reason `no_unit`. A `count.*` row is the exception (stage H): the count is the unit, so it never
+    fails this gate. A row with no period inherits a fiscal label, month-year or date printed in those
     same fields; else it is `unverified` reason `no_period`.
 12. (C1) A deck whose filing letter or cover names another listed company than the store's company (e.g. NAVKARCORP's
     filing letter: "released by the Ultimate Holding Company of Navkar Corporation Limited i.e. JSW Infrastructure
@@ -2145,8 +2147,11 @@ Wolf's seed-113 read: 44 right, 2 minor, 4 wrong of 50 verified (8%, from 15%). 
   `order.book`, `count.*` outlets/plants/branches) an empty period takes the period printed in the page header, deck
   title or cover (`period_source='deck_period'`), never the filing date; flows stay `no_period`. 3,130 stock rows got
   the deck period; `capacity.*` verified 1,072 -> 1,886. Director/tenure rows are `quarantined` `not_a_measure`, and a
-  value that only appears on an axis-tick line is `unverified` `axis_tick` (the line's numbers must all be multiples
-  of 1000, so a real data value on a labelled chart line is not caught).
+  value that only appears on an axis-tick line is `unverified` `axis_tick`. Stage H replaces stage D's
+  multiple-of-1000 test (which missed a labelled value that happened to equal a tick) with the page's own tick
+  ladder: the longest run of bare-number lines with a constant step (>=4 numbers), and any value that is one of
+  those ticks and appears nowhere else is a tick, while one printed data label settles it as a value. A
+  `count.plants` row stated in a sentence ("All 3 plants are within ...") no longer takes the deck period.
 
 Recheck into `.tmp/t230/obs_91_d.db`: 1,484 upgrades, 2,969 downgrades, 0 unproven, 148 kept on a hard stage-C
 reason. Final: 102,398 rows / 4,453 pages -- **64,215 verified (62.7%), 35,954 unverified, 2,229 quarantined**. Report
@@ -2299,6 +2304,92 @@ wrote the proposal (`.tmp/t230g/dictionary_proposal.csv`), Wolf reviewed it with
   families, outlets/atms/stores deck period, an energy row's unit gate, and the seeded dictionary/aliases).
 
 
+
+### Stage H (picture-reading fixes, 21 Nov 2026)
+
+Wolf's visual audit (`D:/RealityEngine/t230/wolf_visual_audit.md`) graded 24 deck pages by picture type: recall is
+93-98% on every type, precision is not -- maps 61/131 correct (47%; 71% without CONFIPET's three-map page),
+unlabelled/sparse charts 68/112 (61%), diagrams 48/51 (94%), labelled bars 110/116 (95%) -- and 3 of 11 graded page
+defects (22 rows) were invented values. Stage H fixes the reader before the 403-company deck reading (T-232):
+
+- **Prompt** (`PROMPT`): never estimate a value that is not printed (a bar/line/slice with no number is left out, never
+  read off the gridlines; axis ticks, legend years and scale-line numbers are not data); a forecast/guidance case
+  (E/F suffix, "Guidance"/"Target"/"Est.", shaded/hatched bar) keeps its printed number with `period_kind`
+  `estimate`/`target`, never `actual`; one `series_id` per map panel with that panel's printed title as `series_title`,
+  and a map value gets a `geography` only from the place name printed next to it (a pin with no printed name has
+  neither); a stacked bar's segment label is the part's `printed_label`/`segment` and never the total (`is_total` only
+  for a printed "Total"); a waterfall's first and last bars are levels; a rank ("top 10 customers") is a count, not a
+  share; text inside an image is copied where readable, never estimated.
+- **Axis ticks (H2, `page_tick_values`, `is_axis_tick`)**: a value whose only text-layer match is a tick ladder cannot
+  verify. A PDF often extracts each tick as its own word/line ("0", "1,000", "2,000" ...), so the ladder is read
+  across the page: the longest run of bare-number lines with a constant step (>=4 numbers) is the axis; a value that
+  is one of those ticks and appears nowhere else on the page is `unverified` reason `axis_tick` (POLYPLEX p51's seven
+  "verified" bar-height estimates, MANINFRA p94, AFCOM p25). One printed data label anywhere on the page settles it.
+- **Image-only text (H5)**: `evaluate_status(row, text, measures, raw_text, ocr_text)` checks the text layer first and
+  the page image's OCR second; a value found only in the OCR verifies with the new column
+  `observation.text_source='ocr'` (otherwise `text_layer`). A value neither source carries is `unverified` reason
+  `image_text`, **never quarantined** (CONFIPET p34: 37 correct rows had been quarantined). OCR comes from the store's
+  own `<store>_ocr.db` words first (`page_words.ocr_words`, no call); otherwise one Dots call per page, cached in the
+  new `page_ocr(doc_key, page, text, reader, read_at)` table and reused by `--recheck`. The Dots model id
+  `dots-studio/dots-3-note-preview:free` answered HTTP 404 on the Kilo gateway on 21 Nov (the id no longer exists), so
+  every such page fell back to `image_text`; `T230_OCR_READER` names a replacement when one is available.
+- **Maps (H3)**: `split_panels` makes each printed panel title its own `series_id` (and its `segment`) on a map-like
+  series (>=5 distinct places among `count.*` rows), so three maps on one slide stop being one series.
+  `apply_geography` re-reads each map pin's place from the text-layer word boxes: the nearest printed place name within
+  the call-out gap (14 pt, `reference_geom`'s label gap) wins -- which also un-swaps neighbouring call-outs -- and a
+  pin whose place is not printed next to it loses its geography and is `unverified` (`geography_not_printed`).
+  `apply_map_orphans` drops a `count.*`/`capacity.*` value with no printed label, axis or place that sits in a bare
+  list of >=5 such rows (ESAF p28's 25 state-less pins; POLYPLEX's unlabelled bar heights).
+- **Waterfall (H4, `apply_series_kind`)**: the bridge cue must be printed on **this series** (title or first label),
+  never anywhere on the page -- RSYSTEMS p7 has an "Adj. EBITDA Bridge" panel beside its revenue trend, and the
+  page-wide word had turned every multi-row series into a bridge (row 118618, a level, became `ebitda.delta`). Only
+  the middle bars become `*.delta`; the first and last bars stay levels of the walked measure, and a step the old rule
+  stored on a series that no longer qualifies goes back to its level measure.
+- **Stacked bars (H4, `apply_stacked_parts`)**: in one series/period/unit/scale the row equal to the sum of the others
+  is the printed total and every other row is a part (`_part`); a part with no label takes its `segment` as the label
+  and a part carrying the total's own `*.total` measure is `unverified` (`stacked_part`). A rank is a count
+  (`apply_rank_count`): a percent measure whose label says "top N" and whose value is that N (no % printed) becomes
+  `count.customers` and never verifies as a share.
+- **CAGR (H4)**: a growth row whose printed phrase is "<value> CAGR" (e.g. "27.8% CAGR") is a CAGR, not a YoY.
+- **Counts (Wolf, 21 Nov)**: a `count.*` row needs no printed unit -- the count is the unit -- so it no longer fails
+  the C2 `no_unit` gate (1,161 `count.outlets` rows; 115 verified). A `count.plants` row stated in a sentence ("All 3
+  plants are within 15-110KM ...") does not take the deck's as-of period: it is not a dated stock row.
+
+T-233 fix loop: one selector of the audit pages plus every page with the same defect signature (SQL on the baseline:
+bridge steps, stacked `capacity.total`+`capacity.add`, per-state pins, top-N shares, >=5-place map pages, verified
+bare-number capacity rows) -- 359 (document, page) pairs over 234 documents; the recheck iterated 1,932 pages / 8,127
+rows. Commands, baseline `D:/RealityEngine/t230/obs_91_g.db` (stage G):
+
+```bash
+python -m reality_engine.v2.observations --recheck --out .tmp/t230h/obs_91_h.db \
+  --baseline D:/RealityEngine/t230/obs_91_g.db --only .tmp/t230h/sel_script.json --stores <the 91 stores>
+python -m reality_engine.scripts.regress observations --db .tmp/t230h/obs_91_h.db \
+  --baseline D:/RealityEngine/t230/obs_91_g.db
+```
+
+Scoped recheck: 1,932 pages / 8,127 rows, 196 verified upgrades, 106 downgrades, 262 map orphans dropped, 1,209
+geographies re-read/cleared, 267 stacked parts, 1 rank count, 212 bridge measures corrected, 39 deck periods
+cleared from plant counts stated in a sentence, 0 unproven upgrades, 6 rows kept behind a hard reason. Gate:
+**still right 118, newly broken 0, fixed 18, still wrong 37, changed 8** (baseline diff added 204 / removed 410 /
+status changed 462). Scoped re-read of the 24 audit pages (the selector's document x page product is 90 pages,
+400 s, 1,738 observations, 0 errors): **still right 118, newly broken 0, fixed 18, still wrong 36, changed 9**.
+
+The 11 graded audit page lines: **7 fixed** -- ESAF p28 (25 state-less pins gone), POLYPLEX p51 (7 verified bar-height
+estimates -> 0), POLYPLEX p31 (top-10 rank no longer a 10% share), POLYPLEX p11 (waterfall closing 24.5 a level),
+TCC p17 (blueprint 100 MW no longer carries an unprinted FY27), OCCLLTD p26 (stacked segments no longer a bare
+`capacity.total` list), NELCAST p17 (plant count no longer takes the deck period). **4 still wrong**: POLYPLEX p56
+(an unlabelled guidance bar stored as `ebitda` 26 -- the prompt now omits unlabelled bars; the row is from the old
+read), AFCOM p25 (9 y-axis ticks still stored, now `unverified` as the brief requires, not dropped), JGCHEM p4
+(99.25% still bound to India: the page has fewer than five count places, so the map rule does not fire), KROSS p13
+(27.8% is a CAGR but the word is only in the arrow image; the text layer prints the number alone). Audit pages in
+all: rows 417 -> 380, verified 110 -> 104, with the map pages' wrong bindings cleared rather than kept, and 108
+rows flagged `image_text` instead of quarantined.
+
+Tests: `reality_engine/tests/test_observations.py` -- 97 passed (15 stage-H tests: tick ladder, one tick per line,
+image_text + OCR verify, waterfall opening/closing levels, a page bridge not leaking to another series, un-converting a
+stale step, stacked part + label, rank count, map call-out binding/unbinding, map orphan drop, three panels split,
+printed CAGR, count row without a unit). `reality_engine/tests/test_regress.py` 17 passed. Typecheck clean
+(`code-tools typecheck` on `observations.py` and `test_observations.py`).
 
 #### 17.x Wolf's independent reads (21 Nov 2026)
 Verified-row samples graded against page text and images by a separate Opus reader: stage B 40 rows 24 right / 10

@@ -88,11 +88,14 @@ Baseline runs on 21 Nov 2026 (read-only, no model):
 | `python -m reality_engine.scripts.regress claims --db D:/RealityEngine/t228/claims_91_s2c.db` | still right 50, fixed 14, still wrong 82, newly broken 0, 0.2 s |
 | `python -m reality_engine.scripts.regress events --db D:/RealityEngine/t231/events.db` | still right 60, fixed 1, still wrong 8, newly broken 0, 0.01 s |
 
-The one newly broken row is the first real catch, not a tool error: Wolf graded RSYSTEMS "EBITDA for Year 2024 is
-Rs. 2,611 mn" RIGHT as `ebitda` (read B #35, id 39223); the current `obs_91.db` stores it as `ebitda.delta`
-(row 118618), the same level-as-delta defect the visual audit flags on POLYPLEX. It stays red until the observations
-worker fixes or re-grades it. `test_regress.py` keeps the gate honest with a synthetic DB: a RIGHT row changed or
-vanished exits 1, a stated fix prints `fixed`, a defect that grows past its page count exits 1.
+The one newly broken row was the first real catch, not a tool error: Wolf graded RSYSTEMS "EBITDA for Year 2024 is
+Rs. 2,611 mn" RIGHT as `ebitda` (read B #35, id 39223); `obs_91.db` stored it as `ebitda.delta` (row 118618), the same
+level-as-delta defect the visual audit flags on POLYPLEX. **T-230 stage H fixed it** (the bridge cue must be printed on
+that series, and only a waterfall's middle bars are steps): the scoped recheck
+`.tmp/t230h/obs_91_h.db` against `D:/RealityEngine/t230/obs_91_g.db` gates at still right 118, newly broken 0, fixed 18,
+still wrong 37, changed 8 (details: `docs/V2_SCHEMA_CONTRACT.md` section 17, stage H). `test_regress.py` keeps the gate
+honest with a synthetic DB: a RIGHT row changed or vanished exits 1, a stated fix prints `fixed`, a defect that grows
+past its page count exits 1.
 
 ## Costs and tests
 
@@ -103,6 +106,6 @@ vanished exits 1, a stated fix prints `fixed`, a defect that grows past its page
   newly-broken detection, fixed/still-wrong/changed, page growth, baseline diff, selector filtering, empty-selector
   refusal, copy protection, the scoped observations recheck and event merge hooks, and that the shipped golden files
   parse). The untouched pipeline suites also pass: `test_observations.py`, `test_filing_events.py`,
-  `test_driver_claims.py` → 222 passed.
+  `test_driver_claims.py` → 245 passed (stage H added 14 observation tests).
 - A new hand read is added by appending its lines to the matching JSONL with the same fields; do not re-key a line
   because a fix changed a field — that change is exactly what the gate reports.

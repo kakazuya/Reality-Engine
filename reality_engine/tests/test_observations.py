@@ -65,10 +65,20 @@ def test_value_label_group_and_region_are_checked_and_kept():
     assert row["known_at"] == KNOWN_AT
 
 
-def test_value_not_printed_on_the_page_is_quarantined():
+def test_value_printed_only_in_the_page_image_is_unverified_never_quarantined():
     rows = build([reply(value_text="99")])
-    assert rows[0]["status"] == "quarantined"
-    assert "not in the page text layer" in rows[0]["status_reason"]
+    assert rows[0]["status"] == "unverified"
+    assert "image_text" in rows[0]["status_reason"]
+
+
+def test_ocr_text_of_the_page_image_verifies_a_value_the_layer_lacks():
+    page = "Dealer network (an image, its numbers are not in this text layer)"
+    rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=14, known_at=KNOWN_AT,
+                                  page_text=page,
+                                  reply_rows=[reply(value_text="37", period="FY25", series_title="Dealer network")],
+                                  ocr_text="Industrial Supply Dealers 37 FY25")
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    assert rows[0]["text_source"] == "ocr"
 
 
 def test_page_with_no_text_layer_is_unverified():
@@ -709,10 +719,28 @@ def test_director_experience_is_quarantined():
 
 
 def test_an_axis_tick_value_is_unverified():
-    page = "Global Capacity (KTPA) 1,000 3,000 5,000 6,000 9,000"
+    page = "Global Capacity (KTPA) 1,000 2,000 3,000 4,000 5,000 6,000"
     rows = build([reply(measure="capacity.total", printed_label="Global Capacity (KTPA)",
                         series_title="Global Capacity (KTPA)", value_text="6,000", unit="KTPA",
                         period="2024")], page_text=page)
+    assert rows[0]["status"] == "unverified"
+    assert "axis_tick" in rows[0]["status_reason"]
+
+
+def test_a_data_label_off_the_tick_ladder_is_not_a_tick():
+    page = "Axis 0 1,000 2,000 3,000 4,000\nGlobal Capacity (KTPA) 4,500"
+    rows = build([reply(measure="capacity.total", printed_label="Global Capacity (KTPA)",
+                        series_title="Global Capacity (KTPA)", value_text="4,500", unit="KTPA",
+                        period="2024")], page_text=page)
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    assert "axis_tick" not in rows[0]["status_reason"]
+
+
+def test_a_ladder_extracted_one_tick_per_line_still_cannot_verify():
+    page = ("Expected Capacity\n0\n1,000\n2,000\n3,000\n4,000\n5,000\n6,000\n7,000\n8,000\n9,000\n2019\n2020\n")
+    rows = build([reply(measure="capacity.total", printed_label="Global Capacity (KTPA)",
+                        series_title="Expected Capacity", value_text="7,000", unit="KTPA", period="2023")],
+                 page_text=page)
     assert rows[0]["status"] == "unverified"
     assert "axis_tick" in rows[0]["status_reason"]
 
@@ -910,6 +938,155 @@ def test_seed_stores_follows_the_doc_type():
         assert [Path(p).parent.name for p in picked] == ["b"]
     finally:
         shutil.rmtree(SEED_ROOT, ignore_errors=True)
+
+
+# --------------------------------------------------------------------------- stage H (T-230): picture reading
+
+def test_a_waterfall_keeps_its_opening_and_closing_bars_as_levels():
+    page = ("Normalized EBITDA Bridge Q4 23-24 to Q1 24-25 USD million Normalised EBITDA - Q4 23-24 16.4 "
+            "Volume VA variance ( 1.5 ) Rate VA variance 1.6 Other Film & Chips Contribution 4.2 "
+            "Other Variable Cost ( 0.1 ) Fixed Cost 4.0 Other Income ( 0.1 ) Normalised EBITDA - Q1 24-25 24.5")
+    rows = build([
+        reply(measure="ebitda", printed_label="Normalised EBITDA - Q4 23-24", value_text="16.4",
+              unit="USD million", period="Q4 23-24", series_title="Normalized EBITDA Bridge"),
+        reply(measure="ebitda", printed_label="Volume VA variance", value_text="( 1.5 )", unit="USD million",
+              period="Q1 24-25", series_title="Normalized EBITDA Bridge"),
+        reply(measure="ebitda", printed_label="Fixed Cost", value_text="4.0", unit="USD million",
+              period="Q1 24-25", series_title="Normalized EBITDA Bridge"),
+        reply(measure="ebitda.delta", printed_label="Normalised EBITDA - Q1 24-25", value_text="24.5",
+              unit="USD million", period="Q1 24-25", series_title="Normalized EBITDA Bridge"),
+    ], page_text=page)
+    assert rows[0]["series_kind"] == "bridge"
+    assert rows[0]["measure"] == "ebitda"            # the opening level stays a level
+    assert rows[1]["measure"] == "ebitda.delta"      # the middle step is a delta
+    assert "bridge step" in rows[1]["status_reason"]
+    assert rows[3]["measure"] == "ebitda"            # the closing level is a level, not a step
+
+
+def test_a_bridge_on_the_page_does_not_turn_another_series_into_a_bridge():
+    page = ("Adj. EBITDA Bridge (Rs. in M) CY 23 Adj. EBITDA 2,452 Improved Utilisation 444 CY 24 Adj. EBITDA 2,910 "
+            "Financials Trend Revenue 4,163 4,166 4,320")
+    rows = build([
+        reply(measure="revenue.value", printed_label="Revenue", value_text="4,163", unit="Rs. M",
+              period="Q4 23", series_id="s1", series_title="Financials Trend"),
+        reply(measure="revenue.value", printed_label="Revenue", value_text="4,166", unit="Rs. M",
+              period="Q1 24", series_id="s1", series_title="Financials Trend"),
+        reply(measure="revenue.value", printed_label="Revenue", value_text="4,320", unit="Rs. M",
+              period="Q2 24", series_id="s1", series_title="Financials Trend"),
+    ], page_text=page)
+    assert all(r["series_kind"] == "level" for r in rows)
+    assert all(r["measure"] == "revenue.value" for r in rows)
+
+
+def test_a_series_that_is_no_longer_a_bridge_gives_its_steps_back_to_levels():
+    rows = [{"measure": "ebitda.delta", "series_kind": "bridge", "series_id": "s2", "series_title": "Adj. EBITDA",
+             "value_text": "Rs. 2,611 mn", "printed_label": "the EBITDA for Year 2024", "value": 2611.0,
+             "status": "unverified", "status_reason": "", "group_path": ""},
+            {"measure": "ebitda", "series_kind": "bridge", "series_id": "s2", "series_title": "Adj. EBITDA",
+             "value_text": "₹2,910M", "printed_label": "Adj. EBITDA", "value": 2910.0,
+             "status": "verified", "status_reason": "", "group_path": ""},
+            {"measure": "ebitda", "series_kind": "bridge", "series_id": "s2", "series_title": "Adj. EBITDA",
+             "value_text": "₹ 2,451mn", "printed_label": "EBITDA of", "value": 2451.0,
+             "status": "unverified", "status_reason": "", "group_path": ""}]
+    obs.apply_series_kind(rows, "no bridge word on the page")
+    assert rows[0]["measure"] == "ebitda" and rows[0]["series_kind"] == "level"
+
+
+def test_a_stacked_segment_is_a_part_with_its_own_label_never_the_total():
+    page = ("Capacity Expansion Ready for Future Growth Existing Addition Total 2012 12,000 5,500 17,500")
+    rows = build([
+        reply(measure="capacity.total", value_text="12,000", segment="Existing", period="2012"),
+        reply(measure="capacity.add", value_text="5,500", segment="Addition", period="2012"),
+        reply(measure="capacity.total", value_text="17,500", printed_label="Total", period="2012", is_total=True),
+    ], page_text=page)
+    existing = [r for r in rows if r["value_text"] == "12,000"][0]
+    total = [r for r in rows if r["value_text"] == "17,500"][0]
+    assert existing["printed_label"] == "Existing"          # the segment's printed name, not an empty total label
+    assert "stacked_part" in existing["status_reason"]
+    assert total["printed_label"] == "Total"
+
+
+def test_a_rank_is_a_count_not_a_share():
+    page = ("Low customer concentration risk with top 10 film customers accounting for 26% of total FY26 turnover")
+    rows = build([
+        reply(measure="mix.share", printed_label="top 10 film customers", value_text="10", unit="%", period="FY26"),
+        reply(measure="mix.share", printed_label="top 10 film customers", value_text="26%", unit="%", period="FY26",
+              series_id="s2"),
+    ], page_text=page)
+    rank = [r for r in rows if r["value_text"] == "10"][0]
+    share = [r for r in rows if r["value_text"] == "26%"][0]
+    assert rank["measure"] == "count.customers"
+    assert "rank_count" in rank["status_reason"]
+    assert share["measure"] == "mix.share"
+
+
+MAP_WORDS = [
+    (10.0, 10.0, 40.0, 20.0, "Punjab"), (45.0, 10.0, 55.0, 20.0, "12"),
+    (10.0, 30.0, 45.0, 40.0, "Haryana"), (50.0, 30.0, 60.0, 40.0, "03"),
+    (10.0, 50.0, 30.0, 60.0, "Goa"), (35.0, 50.0, 45.0, 60.0, "21"),
+    (10.0, 70.0, 45.0, 80.0, "Kerala"), (50.0, 70.0, 60.0, 80.0, "01"),
+    (10.0, 90.0, 35.0, 100.0, "Bihar"), (40.0, 90.0, 50.0, 100.0, "73"),
+    (10.0, 110.0, 50.0, 120.0, "Rajasthan"), (55.0, 110.0, 65.0, 120.0, "07"),
+    (10.0, 130.0, 40.0, 140.0, "Assam"), (45.0, 130.0, 55.0, 140.0, "45"),
+    (300.0, 300.0, 320.0, 310.0, "99"),
+    (10.0, 150.0, 80.0, 160.0, "Industrial Supply"),
+]
+MAP_PAGE = ("Industrial Supply Punjab 12 Haryana 03 Goa 21 Kerala 01 Bihar 73 Rajasthan 07 Assam 45 99 "
+            "Total 310")
+
+
+def _pin(value_text, geography, series_title="Industrial Supply", series_id="s1"):
+    return reply(measure="count.customers", value_text=value_text, unit="customers", geography=geography,
+                 series_title=series_title, series_id=series_id)
+
+
+def test_a_map_callout_is_bound_to_the_place_printed_next_to_it():
+    rows = build([_pin("12", "Punjab"), _pin("03", "Haryana"), _pin("21", "Goa"), _pin("01", "Kerala"),
+                  _pin("73", "Bihar"), _pin("07", "Assam"), _pin("45", "Rajasthan")],
+                 page_text=MAP_PAGE, words=MAP_WORDS)
+    by_value = {r["value_text"]: r for r in rows}
+    assert by_value["45"]["geography"] == "Assam"        # the nearest printed name wins, not the model's neighbour
+    assert by_value["07"]["geography"] == "Rajasthan"
+
+
+def test_a_map_pin_with_no_printed_place_loses_its_geography():
+    rows = build([_pin("12", "Punjab"), _pin("03", "Haryana"), _pin("21", "Goa"), _pin("01", "Kerala"),
+                  _pin("73", "Bihar"), _pin("45", "Assam"), _pin("99", "Rajasthan")],
+                 page_text=MAP_PAGE, words=MAP_WORDS)
+    unbound = [r for r in rows if r["value_text"] == "99"][0]
+    assert unbound["geography"] == ""
+    assert "geography_not_printed" in unbound["status_reason"]
+
+
+def test_a_map_panel_with_no_place_name_is_dropped_not_stored_unbound():
+    rows = build([reply(measure="count.banking_outlets_by_state", value_text=value, unit="",
+                        series_title="Pan India Presence") for value in ("12", "6", "15", "3", "2")],
+                 page_text="Pan India Presence 12 6 15 3 2")
+    assert rows == []
+
+
+def test_a_count_row_needs_no_printed_unit():
+    page = "Pan India Presence Banking Outlets 831"
+    rows = build([reply(measure="count.outlets", printed_label="Banking Outlets", value_text="831", unit="",
+                        series_title="Pan India Presence", period="FY26")], page_text=page)
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    assert "no_unit" not in rows[0]["status_reason"]
+
+
+def test_three_maps_on_one_page_become_three_series():
+    rows = build([_pin("12", "Punjab", "Industrial Supply", "s1"), _pin("03", "Haryana", "Industrial Supply", "s1"),
+                  _pin("21", "Goa", "HoReCa", "s1"), _pin("01", "Kerala", "HoReCa", "s1"),
+                  _pin("73", "Bihar", "Dealers", "s1"), _pin("45", "Assam", "Dealers", "s1")],
+                 page_text=MAP_PAGE + " HoReCa Dealers", words=MAP_WORDS)
+    assert len({r["series_id"] for r in rows}) == 3
+    assert {r["segment"] for r in rows} == {"Industrial Supply", "HoReCa", "Dealers"}
+
+
+def test_a_cagr_printed_right_after_its_value_is_a_cagr():
+    page = ("Revenue from Operations (INR Crores) FY22 FY23 FY24 FY25 297.5 488.6 620.3 620.4 27.8% CAGR")
+    rows = build([reply(measure="revenue_growth_yoy", value_text="27.8%", unit="%",
+                        series_title="Revenue from Operations (INR Crores)")], page_text=page)
+    assert rows[0]["measure"] == "revenue_growth_cagr"
 
 
 # ---------------------------------------------------------------- T-230 stage G dictionary expansion

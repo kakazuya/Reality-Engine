@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS observation (
     series_id TEXT NOT NULL DEFAULT '',
     series_title TEXT NOT NULL DEFAULT '',
     entity_scope TEXT NOT NULL DEFAULT '',
+    text_source TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL CHECK (status IN ('verified', 'unverified', 'quarantined')),
     status_reason TEXT NOT NULL DEFAULT '',
     reader TEXT NOT NULL DEFAULT '',
@@ -143,11 +144,21 @@ CREATE TABLE IF NOT EXISTS measure_alias (
     alias TEXT PRIMARY KEY,
     canonical TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS page_ocr (
+    doc_key TEXT NOT NULL,
+    page INTEGER NOT NULL,
+    text TEXT NOT NULL DEFAULT '',
+    reader TEXT NOT NULL DEFAULT '',
+    read_at TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (doc_key, page)
+);
 """
 
 MIGRATIONS = (("group_source", "TEXT NOT NULL DEFAULT ''"), ("group_check", "TEXT NOT NULL DEFAULT ''"),
               ("adjusted", "INTEGER NOT NULL DEFAULT 0"), ("period_source", "TEXT NOT NULL DEFAULT ''"),
-              ("basis", "TEXT NOT NULL DEFAULT ''"), ("series_kind", "TEXT NOT NULL DEFAULT ''"))
+              ("basis", "TEXT NOT NULL DEFAULT ''"), ("series_kind", "TEXT NOT NULL DEFAULT ''"),
+              ("text_source", "TEXT NOT NULL DEFAULT ''"))
 
 # id, name, unit family, node in the T-228 driver tree
 MEASURES: tuple[tuple[str, str, str, str], ...] = (
@@ -1208,6 +1219,256 @@ FY_LABEL_RE = re.compile(r"\bFY\s?-?(\d{2,4})\b", re.I)
 GROWTH_YOY_RE = re.compile(r"growth_yoy$", re.I)
 FILING_LETTER_RE = re.compile(r"\bBSE Limited\b|\bDear Sir\b|\bSub\s*:|\bRegulation 30\b|^\s*To,", re.I | re.M)
 
+# --------------------------------------------------------------------------- stage H script rules
+#
+# Wolf's visual audit (D:/RealityEngine/t230/wolf_visual_audit.md) graded 24 deck pages by picture type: recall is
+# 93-98% on every type, precision is not.  The rules below are the script half of the fix; the prompt carries the
+# other half (never estimate an unprinted bar, one series per map panel, a stack segment is a part, a rank is not a %).
+
+DELTA_TO_LEVEL = {"ebitda.delta": "ebitda", "ebitda_margin.delta": "ebitda_margin",
+                  "revenue.delta": "revenue.value", "pat.delta": "pat"}
+MAP_MIN_PLACES = 5              # rows with >=5 distinct geographies on one page are a map call-out list
+MAP_CALLOUT_GAP = 14.0          # points; reference_geom's label gap: max(14.0, 1.5 * word height)
+BY_PLACE_RE = re.compile(r"by_(?:state|states|location|locations|geography|region|district)$", re.I)
+TOP_N_RE = re.compile(r"\btop\s+(\d+)\b", re.I)
+PERCENT_MEASURE_RE = re.compile(r"(?:^|\.)(?:share|mix)|_share$|_pct$|_margin$|margin$", re.I)
+CAGR_AFTER_VALUE_RE = r"[^\n]{0,4}\bCAGR\b"
+
+
+def _numbers_in(line: str) -> list[float]:
+    numbers: list[float] = []
+    for token in re.findall(r"(?<![\w.])\(?\d[\d,]*\.?\d*\)?%?", line):
+        try:
+            numbers.append(float(token.replace(",", "").strip("()%").rstrip(".")))
+        except ValueError:
+            continue
+    return numbers
+
+
+def _tick_ladder(numbers: list[float]) -> bool:
+    """An evenly spaced axis ladder: >=4 numbers with a constant step (0, 1,000, 2,000, 3,000 ...)."""
+    if len(numbers) < 4:
+        return False
+    ordered = sorted(numbers)
+    steps = [b - a for a, b in zip(ordered, ordered[1:])]
+    if not steps or steps[0] <= 0:
+        return False
+    return all(abs(step - steps[0]) <= max(1e-9, abs(steps[0]) * 0.01) for step in steps)
+
+
+def _box_gap(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+    """Distance between two printed boxes in points: 0 when they touch, else the largest axis gap."""
+    dx = max(0.0, b[0] - a[2], a[0] - b[2])
+    dy = max(0.0, b[1] - a[3], a[1] - b[3])
+    return max(dx, dy)
+
+
+def region_box(region: str) -> tuple[float, float, float, float] | None:
+    parts = [p for p in str(region or "").split(",") if p.strip()]
+    if len(parts) != 4:
+        return None
+    try:
+        return (float(parts[0]), float(parts[1]), float(parts[2]), float(parts[3]))
+    except ValueError:
+        return None
+
+
+def nearest_geography(words: Iterable[tuple[float, float, float, float, str]], region: str,
+                      names: Iterable[str], gap: float = MAP_CALLOUT_GAP) -> str:
+    """The printed place name closest to the value's box, when that name sits within the call-out gap.
+
+    The map's own call-outs are the only evidence a number belongs to a state: a name printed far away (the deck
+    title, a neighbouring panel) never binds it, and a value the text layer does not carry binds to nothing.
+    """
+    value_box = region_box(region)
+    if value_box is None:
+        return ""
+    best: tuple[float, str] | None = None
+    for name in dict.fromkeys(norm_space(n) for n in names if norm_space(n)):
+        box = phrase_bbox(words, name)
+        if box is None:
+            continue
+        distance = _box_gap(value_box, box)
+        if distance <= gap and (best is None or distance < best[0]):
+            best = (distance, name)
+    return best[1] if best else ""
+
+
+def is_map_pin(row: dict[str, Any]) -> bool:
+    """A count of places (outlets, dealers, customers, plants) placed on a map; a volume/price table is not one."""
+    return str(row.get("measure") or "").startswith("count.")
+
+
+def apply_geography(rows: list[dict[str, Any]], words: Iterable[tuple[float, float, float, float, str]]) -> int:
+    """Stage H: a map call-out's geography must be printed next to its value; else the geography is cleared.
+
+    A page whose count rows name MAP_MIN_PLACES or more distinct places is a map page.  On it the place of every
+    count row is re-read from the text-layer word boxes: the nearest printed place name within the call-out gap wins
+    (this also un-swaps neighbouring call-outs), and a value whose state name is not printed next to it carries no
+    geography.  A page with fewer places is left alone, and a volume/price table that happens to name its rows by
+    plant is never treated as a map: its geography is the row's printed label, not a call-out.
+    """
+    word_list = list(words)
+    pinned = [r for r in rows if is_map_pin(r)]
+    places = {norm_space(r.get("geography")) for r in pinned if norm_space(r.get("geography"))}
+    if len(places) < MAP_MIN_PLACES or not word_list:
+        return 0
+    cleared = 0
+    for row in pinned:
+        if not norm_space(row.get("geography")):
+            continue
+        found = nearest_geography(word_list, row.get("region") or "", places)
+        if found:
+            row["geography"] = found
+            continue
+        row["geography"] = ""
+        cleared += 1
+        row["status"] = "unverified"
+        row["status_reason"] = (row["status_reason"] + "; " if row.get("status_reason") else "") + \
+            "geography_not_printed: no place name printed next to the value (map call-out unbound)"
+    return cleared
+
+
+def split_panels(rows: list[dict[str, Any]]) -> int:
+    """Stage H: one series per map panel.  Rows of a map series carrying different printed panel titles are split.
+
+    The three maps of CONFIPET's dealer slide are one series with no segment in obs_91.db, so Punjab returns 12, 07
+    and 41 with nothing to tell them apart.  The model now prints each panel's title; the script makes each title its
+    own series and, where a place is printed, its own segment.  Only a map-like series (>=MAP_MIN_PLACES distinct
+    geographies) is split, so a normal chart whose title the model paraphrases per row is never broken up.
+    """
+    by_series: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        by_series.setdefault(row.get("series_id") or "s1", []).append(row)
+    split = 0
+    for series_id, group in by_series.items():
+        places = {norm_space(r.get("geography")) for r in group if is_map_pin(r) and norm_space(r.get("geography"))}
+        if len(places) < MAP_MIN_PLACES:
+            continue
+        titles: list[str] = []
+        for row in group:
+            title = norm_space(row.get("series_title"))
+            if title and title not in titles:
+                titles.append(title)
+        if len(titles) < 2:
+            continue
+        for row in group:
+            title = norm_space(row.get("series_title"))
+            if not title:
+                continue
+            row["series_id"] = f"{series_id}#{titles.index(title) + 1}"
+            if not norm_space(row.get("segment")) and norm_space(row.get("geography")):
+                row["segment"] = title
+            split += 1
+    return split
+
+
+def apply_map_orphans(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Stage H: a value with no printed label, axis or place that sits in a bare list is not an observation.
+
+    ESAF's 25 map pins carry only their number (no state name printed anywhere in the text layer), so the row can
+    never be attributed to a state; Wolf graded all 25 wrong ("nothing says which state each belongs to").  The same
+    shape is an unlabelled bar list (POLYPLEX's estimated capacity heights): a count/capacity value with none of its
+    own printed context is dropped, never stored as an unattributable row.
+    """
+    by_series: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        by_series.setdefault(row.get("series_id") or "s1", []).append(row)
+
+    def bare(row: dict[str, Any]) -> bool:
+        return not (norm_space(row.get("printed_label")) or norm_space(row.get("printed_axis"))
+                    or norm_space(row.get("geography")))
+
+    kept: list[dict[str, Any]] = []
+    for row in rows:
+        measure = row.get("measure") or ""
+        group = by_series.get(row.get("series_id") or "s1", [])
+        listing = sum(1 for other in group if other.get("measure") == measure and bare(other))
+        orphan = bare(row) and (BY_PLACE_RE.search(measure) is not None
+                                or (measure.startswith(("count.", "capacity.")) and listing >= MAP_MIN_PLACES))
+        if not orphan:
+            kept.append(row)
+    return kept
+
+
+def apply_stacked_parts(rows: list[dict[str, Any]]) -> int:
+    """Stage H: a segment inside a stacked bar is a part, never the total, and keeps its own label.
+
+    Same series, period, unit and scale: the one row whose value equals the sum of the others (within rounding) is
+    the printed total; every other row is a part.  A part with no label takes its segment name as the label, and a
+    part carrying the total's own measure is unverified: it cannot be read as a second total for the year.
+    """
+    groups: dict[tuple, list[dict[str, Any]]] = {}
+    for row in rows:
+        if row.get("value") is None:
+            continue
+        key = (row.get("series_id") or "s1", row.get("period") or "", row.get("unit") or "",
+               float(row.get("scale") or 1))
+        groups.setdefault(key, []).append(row)
+    marked = 0
+    for group in groups.values():
+        if not 2 <= len(group) <= 12:
+            continue
+        values = [float(r["value"]) for r in group if r.get("value") is not None]
+        if len(values) != len(group):
+            continue
+        for index, total in enumerate(group):
+            rest = values[:index] + values[index + 1:]
+            if min(rest) < 0:
+                continue
+            tolerance = max(0.51, abs(values[index]) * 0.005)
+            if abs(sum(rest) - values[index]) > tolerance:
+                continue
+            for row in group:
+                if row is total:
+                    continue
+                row["_part"] = True
+                marked += 1
+                if not norm_space(row.get("printed_label")) and norm_space(row.get("segment")):
+                    row["printed_label"] = norm_space(row.get("segment"))
+                if row.get("measure") and row.get("measure") == total.get("measure") \
+                        and str(row.get("measure")).endswith(".total"):
+                    row["status"] = "unverified"
+                    row["status_reason"] = (row["status_reason"] + "; " if row.get("status_reason") else "") + \
+                        "stacked_part: a segment of the stack, not the year's total"
+            break
+    return marked
+
+
+def apply_rank_count(rows: list[dict[str, Any]]) -> int:
+    """Stage H: a rank is a count, not a share.  "top 10 film customers ... 26%" prints a count of 10 and a 26% share.
+
+    A percent measure whose label says "top N" and whose value is that N (no % printed) is the rank count: it becomes
+    a customer count and never verifies as a percentage.
+    """
+    fixed = 0
+    for row in rows:
+        measure = row.get("measure") or ""
+        label = row.get("printed_label") or ""
+        match = TOP_N_RE.search(label)
+        if not match or not PERCENT_MEASURE_RE.search(measure):
+            continue
+        value_text = norm_space(row.get("value_text"))
+        if "%" in value_text:
+            continue                 # the share itself is printed with a % sign; only the bare rank is remapped
+        value = row.get("value")
+        if value is None:
+            continue
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            continue
+        if abs(number - float(match.group(1))) > 1e-6:
+            continue
+        row["measure"] = "count.customers"
+        row["unit"] = "customers"
+        row["unit_family"] = "count"
+        row["status"] = "unverified"
+        row["status_reason"] = (row["status_reason"] + "; " if row.get("status_reason") else "") + \
+            f"rank_count: 'top {match.group(1)}' prints a count, not a share"
+        fixed += 1
+    return fixed
+
 
 def money_scale(texts: Iterable[str]) -> float | None:
     """A scale named in a money unit/header: 'in M', 'Mn', 'Mio', 'Million' -> 1e6, 'Cr' -> 1e7, etc."""
@@ -1278,6 +1539,8 @@ def is_stock_measure(measure: str) -> bool:
 def capacity_deck_period_ok(row: dict[str, Any], page_text: str) -> bool:
     """E1: capacity takes the deck period only for an operating/installed stock, never a plan, a rate or EPC work."""
     measure = row.get("measure") or ""
+    if measure == "count.plants" and len(norm_space(row.get("printed_label")).split()) >= 4:
+        return False        # stage H: "All 3 plants are within 15-110KM ..." is a sentence, not a dated stock row
     if not measure.startswith("capacity."):
         return True
     if measure in ("capacity.utilisation", "capacity.growth_multiple"):
@@ -1296,12 +1559,14 @@ def capacity_deck_period_ok(row: dict[str, Any], page_text: str) -> bool:
 
 
 def cagr_measure(measure: str, label: str, axis: str, series: str,
-                 page_text: str) -> tuple[str, str] | None:
+                 page_text: str, value_text: str = "") -> tuple[str, str] | None:
     """E4: a CAGR / two-point span on a growth row becomes *_growth_cagr with period_kind span, never *_yoy."""
     if not GROWTH_YOY_RE.search(measure or ""):
         return None
     text = " ".join([label, axis, series])
     cue = CAGR_RE.search(text) is not None or CAGR_RE.search(page_head(page_text, 6)) is not None
+    if not cue and value_text:          # stage H: the value's own printed phrase says CAGR ("27.8% CAGR")
+        cue = re.search(re.escape(norm_space(value_text)) + CAGR_AFTER_VALUE_RE, page_text or "", re.I) is not None
     years = sorted({int(m.group(1)) for m in FY_LABEL_RE.finditer(page_text or "")})
     two_point = len(years) == 2 and (years[1] - years[0]) >= 2
     if not cue and not (two_point and not norm_space(label)):
@@ -1363,30 +1628,52 @@ def deck_period(store_db: str | Path, doc_key: str, page_text: str) -> str:
 
 
 def apply_series_kind(rows: list[dict[str, Any]], page_text: str) -> None:
-    """D3: a bridge/waterfall's middle bars are steps of the walked measure, never a segment's level."""
+    """D3/H4: a waterfall's first and last bars are levels of the walked measure; only the middle bars are steps.
+
+    The bridge must be printed on THIS series (its title or first label), not anywhere on the page: RSYSTEMS p7 has
+    an "Adj. EBITDA Bridge" panel beside its revenue trend, and the page-wide word turned every multi-row series into
+    a bridge (row 118618, a level, became ebitda.delta).  Where the series no longer qualifies, a step stored by the
+    old rule goes back to its level measure.
+    """
     by_series: dict[str, list[dict[str, Any]]] = {}
     for row in rows:
+        row["_series_kind_before"] = row.get("series_kind") or ""
         by_series.setdefault(row.get("series_id") or "s1", []).append(row)
     for series, group in by_series.items():
         for row in group:
-            row["series_kind"] = row.get("series_kind") or "level"
+            row["series_kind"] = "level"
         if len(group) < 3:
+            for row in group:
+                row.pop("_series_kind_before", None)
             continue
         first = group[0]
-        bridge = BRIDGE_TEXT_RE.search(page_text or "") is not None or \
+        title = " ".join(sorted({norm_space(r.get("series_title")) for r in group
+                                 if norm_space(r.get("series_title"))}))
+        bridge = BRIDGE_TEXT_RE.search(title) is not None or \
             re.search(r"\breported\b", first.get("printed_label") or "", re.I) is not None
         if not bridge:
+            for row in group:
+                old_kind = row.pop("_series_kind_before", "")
+                if old_kind == "bridge":
+                    row["_proof"] = True   # the page-wide bridge rule demoted a level; a recheck may verify it
+                    if row.get("measure") in DELTA_TO_LEVEL:
+                        row["measure"] = DELTA_TO_LEVEL[row["measure"]]
             continue
-        base = first.get("measure") or ""
+        base = DELTA_TO_LEVEL.get(first.get("measure") or "", first.get("measure") or "")
         delta = DELTA_OF.get(base) or (base + ".delta" if base else "")
         for row in group:
             row["series_kind"] = "bridge"
-        for row in group[1:]:
+            row.pop("_series_kind_before", None)
+        for row in group[1:-1]:                 # only the middle bars are steps
             if delta and delta in measure_index():
                 row["measure"] = delta
             row["status"] = "unverified"
             row["status_reason"] = (row["status_reason"] + "; " if row["status_reason"] else "") + \
                 f"bridge step of {base or 'the walked measure'}, not a level"
+        for row in (group[0], group[-1]):       # the opening and closing bars are levels of the walked measure
+            if row.get("measure") in DELTA_TO_LEVEL:
+                row["measure"] = DELTA_TO_LEVEL[row["measure"]]
+                row["_proof"] = True
 
 
 def apply_basis_conflicts(rows: list[dict[str, Any]]) -> int:
@@ -1419,28 +1706,58 @@ def apply_basis_conflicts(rows: list[dict[str, Any]]) -> int:
     return conflicts
 
 
+def _is_bare_number(line: str) -> bool:
+    """A text-layer line that is only a number ('5,000', '(1.5)', '81%'): a tick, a data label or a lone value."""
+    return re.fullmatch(r"\(?[-+]?\d[\d,]*(?:\.\d+)?\)?%?", norm_space(line)) is not None
+
+
+def page_tick_values(text: str) -> set[float]:
+    """The axis-tick numbers a page prints, read from its bare-number lines.
+
+    A PDF often extracts each axis tick as its own word/line ("0", "1,000", "2,000" ...), so the ladder is only
+    visible across the page: the longest run of bare numbers whose step is constant (>=4 numbers) is the axis.
+    """
+    values = sorted({_numbers_in(line)[0] for line in str(text or "").splitlines()
+                     if _is_bare_number(line) and len(_numbers_in(line)) == 1})
+    ticks: set[float] = set()
+    index = 0
+    while index + 3 < len(values):
+        step = values[index + 1] - values[index]
+        end = index + 1
+        while end + 1 < len(values) and abs((values[end + 1] - values[end]) - step) <= max(1e-9, abs(step) * 0.01):
+            end += 1
+        if end - index + 1 >= 4:
+            ticks.update(values[index:end + 1])
+            index = end + 1
+        else:
+            index += 1
+    return ticks
+
+
 def is_axis_tick(text: str, row: dict[str, Any]) -> bool:
-    """D5: a value that only appears on an axis-tick line (several bare numbers) has no data label."""
-    label = norm_space(row.get("printed_label"))
-    if label and label != norm_space(row.get("series_title")):
-        return False
+    """D5/H2: a value whose only text-layer match is a tick ladder (0, 1,000, 2,000 ...) has no data label.
+
+    A bar's height estimated against the gridlines can land on an axis-tick number by chance (POLYPLEX 5,000/7,000/
+    9,000, MANINFRA 2,500/1,000); the old rule only caught a bare tick line and a row with no label.  Now every line
+    carrying the value must be a ladder line, or a bare number that belongs to the page's own tick ladder: one
+    printed data label anywhere on the page settles it as a value.
+    """
     needle = norm_space(row.get("value_text"))
     if not needle:
         return False
-    for line in str(text or "").splitlines():
-        line = norm_space(line)
-        if needle not in line:
-            continue
-        raw_numbers = re.findall(r"(?<![\w.])\(?\d[\d,]*\.?\d*\)?%?", line)
-        numbers: list[float] = []
-        for token in raw_numbers:
-            try:
-                numbers.append(float(token.replace(",", "").strip("()%").rstrip(".")))
-            except ValueError:
-                continue
-        if len(numbers) >= 3 and all(n % 1000 == 0 for n in numbers):
-            return True
-    return False
+    hits = [norm_space(line) for line in str(text or "").splitlines() if text_has(line, needle)]
+    if not hits:
+        return False
+    if all(_tick_ladder(_numbers_in(line)) for line in hits):
+        return True
+    if not all(_is_bare_number(line) for line in hits):
+        return False                   # the value sits inside a printed label or sentence: a data value, not a tick
+    try:
+        raw_value = row.get("value")
+        number = float(raw_value) if raw_value is not None else _numbers_in(needle)[0]
+    except (TypeError, ValueError, IndexError):
+        return False
+    return any(abs(number - tick) <= max(1e-9, abs(tick) * 1e-6) for tick in page_tick_values(text))
 
 
 def is_not_a_measure(row: dict[str, Any]) -> bool:
@@ -1449,23 +1766,36 @@ def is_not_a_measure(row: dict[str, Any]) -> bool:
 
 
 def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str, str]],
-                    raw_text: str = "") -> tuple[str, list[str]]:
-    """Re-apply every script check to one row (used by the reader and by --recheck)."""
+                    raw_text: str = "", ocr_text: str = "") -> tuple[str, list[str]]:
+    """Re-apply every script check to one row (used by the reader and by --recheck).
+
+    Stage H: the text layer is the first check and the OCR of the page image the second, so a value printed only
+    inside a chart image verifies with ``text_source='ocr'``; a value neither source carries is unverified
+    (``image_text``), never quarantined -- Wolf's audit had 37 correct image-only rows sitting in quarantine.
+    """
     reasons = list(row.pop("_scale_notes", []))
+    row["text_source"] = ""
     if is_not_a_measure(row):
         return "quarantined", reasons + ["not_a_measure: director/tenure row, not a business quantity"]
     if row.get("adjusted"):
         reasons.append("adjusted/hypothetical figure, not the reported measure")
-    if not text:
+    layer = str(text or "")
+    ocr = str(ocr_text or "")
+    hay = norm_space(layer + "\n" + ocr)
+    if not hay:
         return "unverified", reasons + ["no text layer on this page; value not checkable"]
-    if not text_has(text, row.get("value_text", "")):
-        return "quarantined", reasons + ["value_text is not in the page text layer"]
+    in_layer = text_has(layer, row.get("value_text", ""))
+    in_ocr = text_has(ocr, row.get("value_text", ""))
+    if not in_layer and not in_ocr:
+        return "unverified", reasons + [
+            "image_text: the value is printed in the page image, not in its text layer or OCR"]
+    row["text_source"] = "text_layer" if in_layer else "ocr"
     status = "unverified" if reasons else "verified"
     for field in ("printed_label", "printed_axis", "group_path"):
         if not row.get(field):
             continue
         parts = row[field].split(" > ") if field == "group_path" else [row[field]]
-        missing = [part for part in parts if part and norm_space(part) not in text]
+        missing = [part for part in parts if part and norm_space(part) not in hay]
         if missing:
             status = "unverified"
             reasons.append(f"{field} is not in the page text layer: {' > '.join(missing)!r}")
@@ -1504,8 +1834,8 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
         reasons.append("entity_scope not stated: the figure cannot be attributed")
     required_unit = measure is not None and measure["unit_family"] in (
         "money", "money_per_unit", "capacity", "count", "length", "area", "time", "energy")
-    if required_unit and not row.get("unit"):
-        status = "unverified"
+    if required_unit and not row.get("unit") and not str(row.get("measure") or "").startswith("count."):
+        status = "unverified"           # stage H: a count.* row is its own unit ("14 outlets"); the count is the unit
         reasons.append("no_unit: no unit printed for this money/quantity row")
     if not row.get("period"):
         status = "unverified"
@@ -1520,7 +1850,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                        vocab: dict[tuple[str, str], str] | None = None,
                        doc_owner_symbol: str = "",
                        companies: dict[str, tuple[str, str]] | None = None,
-                       deck_asof: str = "") -> list[dict[str, Any]]:
+                       deck_asof: str = "", ocr_text: str = "") -> list[dict[str, Any]]:
     """Model reply objects -> checked observation rows (status and status_reason set here)."""
     measures = measures if measures is not None else measure_index()
     vocab = vocab if vocab is not None else vocab_index()
@@ -1560,6 +1890,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             "group_source": canonical_group_source(raw.get("group_source", "")),
             "group_check": "",
             "adjusted": 0,
+            "text_source": "",
             "reader": READER, "read_at": datetime.now().isoformat(timespec="seconds"),
             "_is_total": raw.get("is_total") is True or str(raw.get("is_total", "")).lower() in ("true", "yes", "1"),
         })
@@ -1579,7 +1910,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                                     row["group_path"], page_text)
         row["measure"] = canonical_measure(row["measure"], row["printed_label"], row["printed_axis"],
                                            row["series_title"], row["unit"], text)
-        cagr = cagr_measure(row["measure"], row["printed_label"], row["printed_axis"], row["series_title"], page_text)
+        cagr = cagr_measure(row["measure"], row["printed_label"], row["printed_axis"], row["series_title"], page_text,
+                            value_text)
         if cagr:
             row["measure"], span = cagr
             if span:
@@ -1616,9 +1948,14 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         if doc_owner_symbol and row["entity_scope"] in ("company", "subsidiary", ""):
             row["entity_scope"] = "parent"
         row["_scale_notes"] = scale_notes
-        row["status"], reasons = evaluate_status(row, text, measures, page_text)
+        row["status"], reasons = evaluate_status(row, text, measures, page_text, ocr_text)
         row["status_reason"] = "; ".join(reasons)
         out.append(row)
+    out = apply_map_orphans(out)
+    split_panels(out)
+    apply_geography(out, word_list)
+    apply_stacked_parts(out)
+    apply_rank_count(out)
     apply_parts_sum(out)
     apply_path_sum(out)
     apply_series_kind(out, text)
@@ -1661,7 +1998,8 @@ def apply_parts_sum(rows: list[dict[str, Any]]) -> None:
         if abs(part_sum - total_value) <= tolerance:
             for row in parts + totals:
                 if "no_unit:" in row["status_reason"] or "no_period:" in row["status_reason"] or \
-                        "adjusted/hypothetical" in row["status_reason"]:
+                        "adjusted/hypothetical" in row["status_reason"] or "image_text" in row["status_reason"] or \
+                        "geography_not_printed" in row["status_reason"] or "stacked_part" in row["status_reason"]:
                     continue         # a parts sum never overrides a hard gate
                 row["status"] = "verified"
                 row["status_reason"] = (row["status_reason"] + "; " if row["status_reason"] else "") + \
@@ -1775,7 +2113,7 @@ OBS_COLUMNS = ("symbol", "doc_key", "page", "region", "known_at", "measure", "pr
                "value", "value_text", "unit", "unit_family", "scale", "adjusted", "period", "period_kind",
                "period_source", "basis", "series_kind", "segment", "product", "geography", "plant", "customer",
                "group_path", "group_source", "group_check", "stage", "series_id", "series_title", "entity_scope",
-               "status", "status_reason", "reader", "read_at")
+               "text_source", "status", "status_reason", "reader", "read_at")
 
 
 def write_rows(con: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
@@ -1847,6 +2185,21 @@ Rules:
 - is_total: true only when this printed value is the total of the other printed values in the same series and group
   (a "Total" bar, row or slice label); its measure is the parts' measure. Otherwise false.
 - Do not invent a value, a group, a stage or a unit the page does not print. A wrong row is worse than a missing row.
+- Never estimate a value that is not printed. A bar, line point or slice with no printed number has NO value: leave it
+  out (never read it off the gridlines). Axis ticks (0, 1,000 ... 9,000), legend years and a scale line's numbers are
+  not data. A chart labelled "E"/"F"/"Guidance"/"Target"/"Est.", or drawn shaded/hatched, is a forecast or a guidance
+  case: keep its printed number only, with period_kind "estimate" (E/F/forecast) or "target" (guidance), never "actual".
+- A map: one series_id per map panel, with that panel's printed title as series_title (three maps = s1, s2, s3), even
+  when the slide gives one overall title. A value on a map gets geography only when the place name is printed next to
+  that value in that panel; a pin with no printed place name has empty geography and an empty label. Never move a
+  value to a neighbouring state, and never guess a call-out's place from its position on the slide.
+- A stacked bar: each segment's printed label is that part's printed_label (and its segment when it names a business
+  segment); a segment is never the total. is_total is true only for a bar/row/slice printed with "Total" or the
+  printed total's own label.
+- A waterfall / bridge: the first and last bars are levels of the walked measure; only the middle bars are steps.
+- A count or a rank is not a percentage: "top 10 customers", "10 countries", "3 plants" are counts; a share row's
+  value must be printed with a % sign.
+- Chart text may sit inside the image: copy what you can read and leave the rest out; never fill a gap by estimation.
 
 Measure dictionary (id -- name -- unit family -- driver node):
 {dictionary}
@@ -1895,6 +2248,55 @@ def page_text_of(store_db: str | Path, doc_key: str, page: int) -> str:
     finally:
         con.close()
     return str(row[0] or "") if row else ""
+
+
+# --------------------------------------------------------------------------- stage H image-only text (OCR)
+
+OCR_READER = os.environ.get("T230_OCR_READER", "dots-studio/dots-3-note-preview:free")   # Kilo Dots, T-225's reader
+OCR_PROMPT = (
+    "Transcribe ONLY the numbers printed as data labels on this page image. One line per number: the number exactly "
+    "as printed, then the words printed next to it. Never estimate a value from a bar's height or from the gridlines, "
+    "never compute, sum or convert, and never transcribe axis ticks, chart years or page numbers. If the page prints "
+    "no data label, output nothing."
+)
+_OCR_LOCK = threading.Lock()
+_OCR_CACHE: dict[tuple[str, str, int], str] = {}
+
+
+def ocr_page_text(store_db: str | Path, doc_key: str, page: int, image_b64: str | None) -> str:
+    """The page image's printed data labels, read by Dots (one call per page); '' when the reader is unavailable.
+
+    Stage H: a chart whose numbers sit inside the image has an empty text layer at exactly those values (CONFIPET
+    p34: 37 correct rows were quarantined).  This gives the check a second printed source; the value's status then
+    verifies with ``text_source='ocr'``.  The store's own OCR database (``<store>_ocr.db``, the RapidOCR/TextRecognizer
+    pass) is used first: it is already on disk and costs no call.  A failed or quota-blocked call returns '' and the
+    row stays unverified (``image_text``), never quarantined.
+    """
+    key = (str(store_db), str(doc_key), int(page))
+    with _OCR_LOCK:
+        if key in _OCR_CACHE:
+            return _OCR_CACHE[key]
+    text = ""
+    stored = Path(str(store_db)).with_name(Path(str(store_db)).stem + "_ocr.db")
+    if stored.is_file():
+        try:
+            text = norm_space(" ".join(w[4] for w in page_words.ocr_words([stored], doc_key, int(page))))
+        except Exception:
+            text = ""
+    if not text and image_b64 and quota_seconds() <= 0:
+        try:
+            result = rp._model_call(OCR_READER, OCR_PROMPT, image_b64)
+        except Exception as exc:
+            result = {"output": "", "error": f"{type(exc).__name__}: {exc}"}
+        if result.get("error"):
+            print(f"OCR unavailable for {doc_key} p{page}: {str(result['error'])[:160]}", file=sys.stderr)
+        else:
+            text = str(result.get("output") or "")
+    if text:
+        with _OCR_LOCK:
+            _OCR_CACHE[key] = text
+    return text
+
 
 
 # --------------------------------------------------------------------------- reader call and 429 handling
@@ -2124,10 +2526,16 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     reply_rows, bad = parse_reply(result["raw"])
     result["bad_lines"] = bad
     result["parsed"] = len(reply_rows)
+    text_flat = norm_space(text)
+    image_values = [norm_space(r.get("value_text")) for r in reply_rows if isinstance(r, dict)]
+    result["ocr_text"] = ""
+    if any(v and re.search(r"\d", v) and not text_has(text_flat, v) for v in image_values):
+        result["ocr_text"] = ocr_page_text(store_db, doc_key, page, image_b64)
     result["rows"] = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=page,
                                         known_at=meta["known_at"], page_text=text, words=words,
                                         reply_rows=reply_rows, doc_owner_symbol=owner,
-                                        companies=companies, deck_asof=deck_period(store_db, doc_key, text))
+                                        companies=companies, deck_asof=deck_period(store_db, doc_key, text),
+                                        ocr_text=result["ocr_text"])
     return result
 
 
@@ -2342,7 +2750,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "parent_rows": 0, "stage_set": 0, "unproven_upgrades": 0, "kept_hard_reason": 0,
                              "scale_fixed": 0, "basis_set": 0, "basis_conflicts": 0, "bridge_rows": 0,
                              "subsidiary_rows": 0, "deck_periods": 0, "deck_period_cleared": 0,
-                             "deck_period_fixed": 0, "cagr_rows": 0}
+                             "deck_period_fixed": 0, "cagr_rows": 0, "map_orphans": 0, "panels_split": 0,
+                             "geography_cleared": 0, "stacked_parts": 0, "rank_counts": 0, "measure_fixed": 0,
+                             "text_source_ocr": 0}
     pages = list(con.execute("SELECT DISTINCT doc_key, page FROM observation ORDER BY doc_key, page"))
     if only is not None:                      # T-233: a scoped recheck touches only the selected pages
         pages = [p for p in pages if only.page(doc_store.get(str(p[0])), str(p[0]), int(p[1]))]
@@ -2368,6 +2778,11 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             owner = ""
         rows = [dict(r) for r in con.execute(f"SELECT * FROM observation WHERE doc_key=? AND page=?"
                                              f" AND ({row_filter})", (doc_key, int(page)))]
+        ocr_row = con.execute("SELECT text FROM page_ocr WHERE doc_key=? AND page=?",
+                              (str(doc_key), int(page))).fetchone()
+        ocr_text = str(ocr_row[0] or "") if ocr_row else ""
+        if not ocr_text and any(norm_space(r["value_text"]) and not text_has(text, r["value_text"]) for r in rows):
+            ocr_text = ocr_page_text(store_db, doc_key, int(page), None)   # stored OCR words only, no model call
         updated: list[dict[str, Any]] = []
         for row in rows:
             stats["rows"] += 1
@@ -2383,7 +2798,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 stats["measure_mapped"] += 1
             cagr_set = False
             cagr = cagr_measure(row["measure"], row["printed_label"] or "", row["printed_axis"] or "",
-                                row["series_title"] or "", raw_text)
+                                row["series_title"] or "", raw_text, row["value_text"] or "")
             if cagr:
                 row["measure"], span = cagr
                 if span:
@@ -2464,17 +2879,33 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 row["entity_scope"] = "parent"
                 stats["parent_rows"] += 1
             row.pop("_scale_notes", None)
-            status, reasons = evaluate_status(dict(row), text, measures, raw_text)
+            status, reasons = evaluate_status(dict(row), text, measures, raw_text, ocr_text)
             dictionary_fix = ("measure is not in the dictionary" in old_reason
                               and (row["measure"] or "") in measures)
+            count_unit_fix = ("no_unit:" in old_reason and str(row["measure"] or "").startswith("count.")
+                              and not row["unit"])      # stage H: a count.* row's count is its unit
             row["_old_status"] = old_status
             row["_old_reason"] = old_reason
             row["_proof"] = (unit_inherited or period_inherited or mapped or stage_set or dictionary_fix
-                             or scale_fixed or deck_period_used or cagr_set or basis_changed)
+                             or scale_fixed or deck_period_used or cagr_set or basis_changed or count_unit_fix)
             row["status"] = status
             row["status_reason"] = "; ".join(reasons)
             updated.append(row)
+        before_measure = {int(r["observation_id"]): str(r["measure"]) for r in updated}
+        kept = apply_map_orphans(updated)
+        for row in updated:
+            if all(row is not k for k in kept):
+                con.execute("DELETE FROM observation WHERE observation_id=?", (int(row["observation_id"]),))
+                stats["map_orphans"] += 1
+        updated = kept
+        stats["panels_split"] += split_panels(updated)
+        stats["geography_cleared"] += apply_geography(updated, words)
+        stats["stacked_parts"] += apply_stacked_parts(updated)
+        stats["rank_counts"] += apply_rank_count(updated)
         apply_series_kind(updated, raw_text)
+        for row in updated:
+            if str(row["measure"]) != before_measure.get(int(row["observation_id"]), ""):
+                stats["measure_fixed"] += 1
         stats["bridge_rows"] += sum(1 for r in updated if r["series_kind"] == "bridge")
         stats["basis_set"] += sum(1 for r in updated if r["basis"])
         stats["basis_conflicts"] += apply_basis_conflicts(updated)
@@ -2501,14 +2932,17 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     stats["upgraded"] += 1
                 elif old_status == "verified":
                     stats["downgraded"] += 1
-            con.execute("UPDATE observation SET measure=?, unit=?, unit_family=?, scale=?, period=?, period_kind=?, "
-                        "period_source=?, basis=?, series_kind=?, adjusted=?, stage=?, entity_scope=?, status=?, "
-                        "status_reason=? WHERE observation_id=?",
-                        (row["measure"], row["unit"], row["unit_family"], row["scale"], row["period"],
-                         row["period_kind"], row["period_source"], row["basis"], row["series_kind"],
-                         row["adjusted"], row["stage"], row["entity_scope"], status, reason,
-                         row["observation_id"]))
+            con.execute("UPDATE observation SET measure=?, printed_label=?, geography=?, series_id=?, unit=?, "
+                        "unit_family=?, scale=?, period=?, period_kind=?, period_source=?, basis=?, series_kind=?, "
+                        "adjusted=?, stage=?, entity_scope=?, text_source=?, status=?, status_reason=? "
+                        "WHERE observation_id=?",
+                        (row["measure"], row["printed_label"], row["geography"], row["series_id"], row["unit"],
+                         row["unit_family"], row["scale"], row["period"], row["period_kind"], row["period_source"],
+                         row["basis"], row["series_kind"], row["adjusted"], row["stage"], row["entity_scope"],
+                         row.get("text_source") or "", status, reason, row["observation_id"]))
             stats["changed"] += 1
+            if (row.get("text_source") or "") == "ocr":
+                stats["text_source_ocr"] += 1
     con.commit()
     if stats["unproven_upgrades"]:
         stats["stopped"] = (f"{stats['unproven_upgrades']} rows would verify without a new printed source; "
@@ -2555,6 +2989,7 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     stats: dict[str, Any] = {"pages": len(selected), "already_done": already_done, "read": 0, "errors": 0,
                              "parse_failures": 0, "dropped_all": 0, "observations": 0, "quarantined": 0,
                              "skipped": 0, "quota_skipped": 0, "parent_rows": 0, "http_429": 0,
+                             "ocr_pages": 0, "ocr_rows": 0, "image_text_rows": 0,
                              "statement_filter": statement_filter, "failed_replies": []}
     companies = company_index(store_dbs)
     t0 = time.time()
@@ -2594,6 +3029,12 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 else:
                     stats["dropped_all"] += 1      # a letterhead / cover page whose every row the script dropped
             write_rows(con, rows)
+            if result.get("ocr_text"):
+                con.execute("INSERT OR REPLACE INTO page_ocr VALUES (?,?,?,?,?)",
+                            (result["doc_key"], int(result["page"]), result["ocr_text"], OCR_READER, ist_now()))
+                stats["ocr_pages"] += 1
+            stats["ocr_rows"] += sum(1 for r in rows if r.get("text_source") == "ocr")
+            stats["image_text_rows"] += sum(1 for r in rows if "image_text" in str(r.get("status_reason") or ""))
             stats["observations"] += len(rows)
             stats["quarantined"] += sum(1 for r in rows if r["status"] == "quarantined")
             stats["parent_rows"] += sum(1 for r in rows if r["entity_scope"] == "parent")
