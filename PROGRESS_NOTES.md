@@ -10,3 +10,24 @@
   re-judged (10 passed). Verified capex 200; verified inflow orders 251. Tests 102, typecheck clean.
 - Docs: `docs/research/T-228_driver_claims.md` §5, §6, §8, §10, §12 end and §13 reflect the verified-event rule
   and the final counts.
+
+# T-231 — progress notes
+
+- 21 Nov, worktree 20261121T075651Z-f3c13226: `reality_engine/research/filing_events.py` built and run over the 91
+  stores (11,330 announcements). Stage A: 467 classified filings, 440 events (order_win 289 filings, fund_raise
+  149, capex 21, capacity 8), 246 verified / 194 unverified / 0 quarantined, 81 model-needed (17.3%), 13 model rows,
+  3 amend links. Tests `test_filing_events.py` 16 passed; typecheck 0 errors. Docs:
+  `docs/research/T-231_filing_events.md`. `tasks/STATE.md` not touched (brief forbids it). Brief drift: the store's
+  parent label is only on linked transcripts, not announcements; c08's JSW material is a transcript/deck, so no
+  parent-scope event rows exist.
+- 21 Nov stage B (Wolf read A): B1-B9 fixed (dedupe cover+annexure value, same-order twin fold + amend link,
+  order_amendment class with increment/extension, annual vs total, consortium share, court/tax/ESOP/open-offer
+  vetoes, bundled filing per class, new-order vs order-book, GST veto recall fix + loose order letter). Final run
+  670 classified / 603 events, 340 verified / 263 unverified / 0 quarantined, 125 model-needed (18.7%), 19 model
+  rows, 28 amend links. Tests 32 passed; typecheck 0 errors. Reports `.tmp/t231/report_b.md`,
+  `.tmp/t231/recall_b.md`. Docs `docs/research/T-231_filing_events.md` updated.
+- 21 Nov stage C (Wolf read B): C1 raise_stage/raise_id/raise_primary (157 raise ids, 157 primaries), C2 120-day
+  recap fold, C3 buyer/exploring/completion/borrowing vetoes, C4 restatement drop + event_date, C5 customer/shares
+  hygiene + multi-order seq rows. Final run 691 classified / 604 events, 439 verified / 165 unverified / 0
+  quarantined, 106 model-needed (15.3%), 14 model rows, 36 amend links. Tests 46 passed; typecheck 0 errors.
+  Reports `.tmp/t231/report_c.md`, `.tmp/t231/recall_c.md`; docs updated. Commit requested.
