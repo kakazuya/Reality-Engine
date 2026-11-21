@@ -41,8 +41,9 @@ enough), `pages` (page numbers) and `where` (one SQL predicate over the output t
 is optional, a row must satisfy all that are present, and an **empty selector is refused**: a scoped run that is
 not scoped is the waste this exists to remove. `--baseline` copies that DB to `--out` first (`copy_db`; the copy is
 byte-identical outside the selection) and a scoped re-read replaces only its own pages/documents, so nothing else
-moves. The observations `--recheck` path filters both pages and rows (the `where` goes into the row query); a
-re-read re-processes exactly the selection (no seeded sampling) and deletes those pages' old rows before reading.
+moves. The observations `--recheck` path filters both pages and rows (the `where` goes into the row query); a re-read
+re-processes exactly the selection (no seeded sampling, no `--limit` cap) and deletes those pages' old rows before
+reading.
 
 ## The golden sets
 
@@ -95,7 +96,8 @@ vanished exits 1, a stated fix prints `fixed`, a defect that grows past its page
 
 ## Costs and tests
 
-- The gate is model-free and reads one SQLite file: 0.01–0.2 s per pipeline on the 91-store outputs.
+- The gate is model-free and reads one SQLite file: 0.03–0.2 s per pipeline on the 91-store outputs; adding
+  `--baseline` diffs every row (102,398 observations, 10,102 claims, 604 events) and takes about 2 s on observations.
 - A scoped observations re-read still calls the reader once per selected page; a `--recheck` round calls no model.
 - Tests: `python -m pytest reality_engine/tests/test_regress.py -q` → 17 passed (content-key match after an id change,
   newly-broken detection, fixed/still-wrong/changed, page growth, baseline diff, selector filtering, empty-selector
