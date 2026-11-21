@@ -2236,7 +2236,8 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   of the 560 companies are not fetched in this ticket (the scout's 273 for 258 had already grown).
   Pilot, 10 companies seeded from the ticket CSV (first ten with a deck: RAILTEL, SOLEX, GPTINFRA, OMPOWER,
   RAJESH, MARINE, VASCONEQ, TRANSRAILL, BRAHMINFRA, CAPACITE), `--parts registry,pages`, run under
-  `.tmp/t232/pilot` because the worker sandbox denies D: writes (the controller runs the 394 on D:): all 40 recipe
+  `.tmp/t232/pilot` because the worker sandbox denies D: writes (the controller runs the 394 on D:; the
+  `decks403` folder keeps the ticket's name): all 40 recipe
   steps and 10 route steps rc=0, no `ram_stop`, no timeout; 58 decks and 1,838 pages, 294.3 MB fetched and 4.46 MB
   of stores; wall 1,475 s total, median 145 s (max 249 s), peak child RSS 395 MB. Every store opens with
   `company`, `doc` (deck type only) and `doc_page`, and its `routes.csv` has exactly one row per `doc_page` row
