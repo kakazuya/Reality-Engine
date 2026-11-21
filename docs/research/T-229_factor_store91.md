@@ -5,17 +5,21 @@ Ticket T-229 (Shivam, 21 Nov 2026).  The universe factor study
 Stage A rebuilds the same monthly factor panel from the 91 company stores we built properly
 (`D:/RealityEngine/tg_build/measure10/cNN/cNN.db`), point in time, and validates it against the
 T-207 panel; stage B measures factor ICs on it, controls the Nov-2026 selection and adds the
-T-228 claim factors.  **Every stage-B number is conditional on "91 companies picked in Nov 2026";
-nothing here is a universe claim.**
+T-228 claim factors; stage C (§10) quantifies the widened text claims and the deck observations
+and tests them over the hard numbers.  **Every stage-B/C number is conditional on "91 companies
+picked in Nov 2026"; nothing here is a universe claim.**
 
-Code `reality_engine/research/factor_store91.py` (+ `factor_store91_stageb.py` for stage B), tests
-`reality_engine/tests/test_factor_store91.py` (6 synthetic tests) and
-`reality_engine/tests/test_factor_store91_stageb.py` (4 synthetic tests), output `.tmp/t229/`.
+Code `reality_engine/research/factor_store91.py` (+ `factor_store91_stageb.py` for stage B,
+`factor_store91_stagec.py` for stage C), tests `reality_engine/tests/test_factor_store91.py`
+(6 synthetic tests), `test_factor_store91_stageb.py` (4) and `test_factor_store91_stagec.py`
+(4), output `.tmp/t229/`.
 
 ```bash
 python -m pytest -q reality_engine/tests/test_factor_store91.py reality_engine/tests/test_factor_store91_stageb.py  # 10 passed
+python -m pytest -q reality_engine/tests/test_factor_store91_stagec.py    # 4 passed
 python -m reality_engine.research.factor_store91 --out .tmp/t229          # stage A: panel + validation + coverage
 python -m reality_engine.research.factor_store91_stageb --out .tmp/t229   # stage B: targets, ICs, control, placebo, claims
+python -m reality_engine.research.factor_store91_stagec --out .tmp/t229   # stage C: text/deck coverage (+ ICs when the gate passes)
 ```
 
 The stores, the truth snapshot (`truth_2026-11-04.duckdb`) and the T-228 claims database are
@@ -360,6 +364,164 @@ required, but only 11 / 8 / 2 months remain once the target window has closed.
 
 ## 9. Docs updated
 
-`docs/research/T-229_factor_store91.md` (this report, stages A and B).  No other documentation
+`docs/research/T-229_factor_store91.md` (this report, stages A, B and C).  No other documentation
 file was changed by this ticket; `tasks/STATE.md` is Wolf's.
+
+## 10. Stage C: text and deck factors, and what they add to the hard numbers
+
+Plan step 2 (Shivam, 21 Nov 2026): text-derived facts must be quantified onto revenue, cost, debt
+or capital, then tested for prediction **over** the hard numbers (6m/12m).  Two evidence sources
+are new since stage B: T-228 driver claims widened to annual reports, press releases and
+announcements, and T-230 deck observations stored with meaning.  Code
+`reality_engine/research/factor_store91_stagec.py`, tests
+`reality_engine/tests/test_factor_store91_stagec.py` (4 synthetic), machine-readable outputs
+`coverage_c.csv`, `ic_c.csv`, `placebo_c.csv`, `power_c.csv`, `incremental_c.csv`,
+`deck_agreement.csv` and full tables `stage_c.md` under `.tmp/t229/`.
+
+```bash
+python -m pytest -q reality_engine/tests/test_factor_store91_stagec.py   # 4 passed
+python -m reality_engine.research.factor_store91_stagec --out .tmp/t229  # claims_91 + obs_91
+python -m reality_engine.research.factor_store91_stagec --out .tmp/t229 \
+    --claims D:/RealityEngine/t228/claims_91_s2.db                       # stage-2 widened claims
+```
+
+The panel (`D:/RealityEngine/t229/panel.parquet`, stage A), the truth snapshot targets and the IC
+arithmetic are stage B's; no stage-A/B output is changed.  Both evidence databases are opened
+through a byte copy under `--out` (WAL side files cannot be created on the source drive).
+
+### 10.1 Factors (definitions written before any IC was computed)
+
+| factor | definition | source |
+|---|---|---|
+| `claim_order_inflow_12m` | sum of verified **order-win** values announced in the trailing 365 days (midpoint of the printed range, crore) / store TTM revenue | T-228 claims |
+| `claim_capex_12m` | sum of verified `capex.amount` announced in the trailing 365 days (midpoint, crore) / market cap | T-228 claims |
+| `claim_dilution_12m` | sum of verified `equity.shares` money raises (QIP, warrants, preferential, rights; crore) announced in the trailing 365 days / market cap | T-228 claims |
+| `claim_rev_growth` | stage-B definition: latest `revenue.total` pct claim midpoint / 100 minus the store's `ttm_rev_yoy` | T-228 claims |
+| `claim_count_12m` | stage-B definition: verified claims usable in the trailing 365 days | T-228 claims |
+| `deck_order_cover` | latest verified company-scope deck `order.book` (value x the stored scale, crore) / store TTM revenue | T-230 observations |
+| `deck_capacity_growth` | latest verified company-scope `capacity.add` / the latest `capacity.total` with the **same normalised unit and segment**; no same-key total means NaN, never a cross-unit ratio | T-230 observations |
+
+**Order wins are flows, a deck order book is a stock: they are never added.**  A T-228
+`revenue.order_book` claim is an order win only when its source is an announcement or press
+release (the driver tree stores a won order and a stated order-book level under the same node);
+transcript and guidance order-book levels and targets are excluded.  The stage-2 `speaker_scope`
+must be `company` and the stage-2 `dup_of` losers are dropped when those columns exist.  For the
+sums, rows with the same symbol, availability session and printed value are counted once (the
+same fact re-filed twice); `claim_count_12m` keeps stage B's row count.
+
+**Unit handling.**  Claim amounts are converted only from `inr_cr`, `inr_lakh`, `inr_mn` and
+`inr_bn`; any other printed unit (`usd_mn`, `pct`, `tons`, ...) is skipped and counted, never
+treated as rupees.  Deck money rows are scaled by the observation's stored `scale` (so
+`INR Mn` x 1e6 and `Rs Cr` x 1e7 both become rupees).  Capacity growth divides
+`value x scale` by `value x scale` for the same unit key; a unit that has no same-key total is
+skipped and counted.
+
+**Deck filters.**  `status='verified'`, `entity_scope='company'`, never `adjusted=1`, never
+`series_kind='bridge'`.  At the latest availability the empty-segment order-book row (the printed
+total) is preferred, else the largest printed value.  For `capacity.add`, a blank stage counts
+(the store leaves it unlabelled in most decks) together with `operating`, `under_construction`
+and `approved`; `under_review` and `potential` pipeline rows are excluded as speculative.
+
+### 10.2 Point in time and the gate
+
+A claim or observation's availability session is its `known_at` through
+`factor_weights.pit_sessions`: at or before 15:30 IST on a trading day it counts from that session,
+otherwise the next one; a date-only `known_at` means midnight.  A month-end sees only rows whose
+availability session is at or before it; trailing-12-month sums use the same availability session.
+`known_at` is present on **0 of 1,159 verified claims (claims_91; 4,070 rows in the table)** and
+**0 of 102,398 observations**, so the brief's 5% stop rule does not trigger.  Claims filed after
+the panel's last session (2026-11-09) get no availability session and are dropped: 84 of the
+1,159, leaving **1,075 usable verified claims**.
+
+The coverage gate is stage B's: a factor passes when at least one horizon has >= 12 month-ends
+carrying >= 20 names **and** a realised target.  A failed gate is a result and is reported, not
+tuned away.
+
+### 10.3 Incremental test
+
+Each passing factor is residualised cross-sectionally at every month-end by OLS on the six stage-B
+survivors -- `sales_yield`, `earnings_yield`, `promoter_chg_4q`, `delivery_3m`, `q_pat_yoy`,
+`size`.  The factor and every control are rank-standardised across that month's names first (so a
+fat-tailed ratio cannot set the slope and the residual is scored on the same rank scale as the
+Spearman IC); a month needs at least controls + 3 names.  Raw IC and residual IC are computed on
+the same pairwise-complete company-months, with Newey-West t (lags = horizon months - 1) and the
+stage-B placebo (200 within-date target permutations, seed 229).  The matched random control of
+stage B **cannot be computed for these factors**: claims and deck observations exist only for the
+91, so a matched draw has no text/deck value to measure.  The selection control therefore carries
+over from stage B unchanged; every stage-C number remains conditional on "91 companies picked in
+Nov 2026".
+
+### 10.4 Results on the stage-1 claims database
+
+Run 21 Nov 2026: `claims_91.db` (1,159 verified, 1,075 usable) and `obs_91.db` (860 usable verified
+company-scope rows).  Coverage, per the gate of §10.2 (`months_ge20_<h>` counts month-ends with
+>= 20 names **and** a realised h-month target):
+
+| factor | companies | months with value | months >= 20 names | median / max names | 3m / 6m / 12m | gate |
+|---|---:|---:|---:|---:|---:|---|
+| `claim_order_inflow_12m` | 0 | 0 | 0 | 0 / 0 | 0 / 0 / 0 | fail |
+| `claim_capex_12m` | 28 | 30 | 7 | 14 / 24 | 2 / 0 / 0 | fail |
+| `claim_dilution_12m` | 2 | 25 | 0 | 1 / 1 | 0 / 0 / 0 | fail |
+| `claim_rev_growth` | 27 | 26 | 11 | 17.5 / 27 | 6 / 3 / 0 | fail |
+| `claim_count_12m` | 52 | 30 | 30 | 41 / 52 | 25 / 22 / 16 | **pass** |
+| `deck_order_cover` | 11 | 25 | 0 | 7 / 11 | 0 / 0 / 0 | fail |
+| `deck_capacity_growth` | 8 | 30 | 0 | 3 / 8 | 0 / 0 / 0 | fail |
+
+**Only `claim_count_12m` passes, so the brief's stop rule fires (fewer than 2 factors): coverage
+is reported and no stage-C IC, placebo, power or incremental table is computed on `claims_91`.**  
+This is a coverage result, not a null result:
+
+- **Order inflow is empty by construction.**  `claims_91.db` is stage 1 (transcripts and guidance):
+  all 60 verified `revenue.order_book` claims are order-book *levels* or targets, and a factor that
+  sums order wins correctly excludes them.  The first statement it can see is the widened
+  announcement/AR/press-release database.
+- **Capex reaches a 20-name cross-section only at the very end.**  28 companies have an announced
+  capex, but the 20-name months run from 2026-05 onward, where only 2 month-ends still have a
+  realised 3m target and none has 6m or 12m.
+- **Revenue-growth guidance misses the per-horizon gate.**  11 month-ends have >= 20 names before
+  a target is required (stage B measured the same 11 against its 12), and the late clustering of
+  claim coverage leaves 6 / 3 / 0 after the 3m / 6m / 12m window closes.
+- **Dilution is 2 companies** (ESTER, SPMLINFRA); the other `equity.shares` rows are stake
+  percentages or acquisition-stake sizes, correctly not money raised.
+- **The two deck factors cannot form 20-name cross-sections on the 91.**  14 companies hold a
+  verified company-scope order book and 11 of those also have a store TTM revenue; 13 companies
+  hold a capacity add, and only 8 ever meet a same-unit total (11 hit a month-end with no
+  same-unit total at all).  The deck order-book definition was
+  checked against the store KPI `order_cover` anyway: **68 pairs on 4 companies, pooled Spearman
+  0.423, 48.5% within 10%** (no month has 3 such pairs, so no monthly median).  The two sources
+  disagree on level often enough that `deck_order_cover` should be treated as a different measure
+  from `order_cover`, not a second print of it.
+
+**Stage-2a pilot (schema smoke check):** `D:/RealityEngine/t228/s2a/claims_s2_pilot.db` (290
+verified, 289 usable; `source_kind` present, `speaker_scope`/`dup_of` absent) runs the same command
+and puts `claim_order_inflow_12m` on **2 companies / 25 months** (the announcement order wins of
+BLKASHYAP and JYOTISTRUC), `claim_capex_12m` on 4, `claim_rev_growth` on 3 and `claim_count_12m`
+on 11.  The source split works; 12 stores cannot form a 20-name cross-section, which is the
+expected pilot result, not a code failure.
+
+**Next step (waits for Wolf).**  The same command on the widened
+`--claims D:/RealityEngine/t228/claims_91_s2.db` is the run that can pass the gate: the stage-2
+database carries announcements, annual reports and press releases for the 91 and the new
+`speaker_scope`/`dup_of` columns (applied automatically when present).  Until Wolf copies and
+reviews it, no stage-C IC is claimed.  The one passing factor is stage B's `claim_count_12m`; its
+stage-B ICs (6m 0.0848, t 2.54; 12m 0.1138, t 1.67) are unchanged by this stage.
+
+### 10.5 Limits
+
+- **The capex sum counts restatements.**  The brief defines the factor as the sum announced in the
+  trailing 12 months; a plan repeated in successive calls (ALICON's FY26 Rs 125-130 crore appears
+  four times) is therefore counted four times.  The level is an announcement-intensity measure as
+  much as a capex measure; the stage-2 `dup_of` removes cross-source duplicates, not restatements.
+- **`deck_order_cover` is not the KPI series.**  Only 4 companies carry both; the 0.42 rank
+  agreement and 48.5% within-10% share mean the deck total and the store's stated order-book cover
+  are different quantities (period, segment or scope), so the factor is not a validation of the
+  KPI line.
+- **Deck verification is not truth.**  Wolf's hand read put ~4% of verified rows wrong; the
+  order-book and capacity rows used here share that error rate, and the capacity total is often
+  unlabelled by stage.
+- **Selection is unchanged.**  No control draw can be computed for the text/deck factors (the
+  sources cover only the 91); every number here remains conditional on "91 companies picked in
+  Nov 2026", with stage B's matched control as the only selection measure.
+- **No IC is claimed on this run.**  A failed gate is the result; the second run on the widened
+  claims database is where the incremental test is applied.
 
