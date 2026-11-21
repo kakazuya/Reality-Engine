@@ -2213,16 +2213,17 @@ mines the stored observations and the old flat deck store and proposes the expan
 - **Stop-gate checks.** Aliases whose rows print another unit family are withheld, not merged: `gross_npa` (35
   rows, 29% percent), `net_debt_equity_ratio` (95 rows, 19% money), `debt_to_equity_ratio` (10 rows, 40% percent),
   `carpet_area` (18 rows, 33% money/capacity); four more carry 1-4 stray rows and are included with that noted.
-  **448 of 63,121 verified rows (0.71%) change measure -- under the 5% stop line** -- all by alias or label reason
-  (271 Polyplex "Crude Oil - $/Barrel" from revenue.price to the new crude_oil_price, 94 deferred-tax-asset rows
-  from deferred_tax to the balance measure, 62 "Cost of revenues", the rest small).
+  **429 of 63,121 verified rows (0.68%) change measure -- under the 5% stop line**, none loses verified status,
+  and every change is explained by an alias or label map (checked row by row: 0 unexplained): 271 Polyplex
+  "Crude Oil - $/Barrel" from revenue.price to the new crude_oil_price, ~126 deferred-tax-asset rows from
+  deferred_tax/current_tax_assets_net to the balance measure, 62 "Cost of revenues", 1 "Operating Revenue".
 - Not mapped on purpose (kept unverified): page/slide/section/letter references, tenure/years-of-experience, ESG
   scores and reduction percentages, rankings/awards, shareholding percentages, real-estate unit counts printed
   under a "Sub-total" label, packaging PCR wording, tariff rates. No driver node and no business quantity.
 - **Projected recheck** (in-memory dictionary/aliases/label maps, `observations.py` untouched): a copy of obs_91
-  rechecked by `recheck_projection.py` into `.tmp/t230g/obs_91_g_projected.db` in 556 s with **7,049 upgrades, 0
+  rechecked by `recheck_projection.py` into `.tmp/t230g/obs_91_g_projected.db` in 523 s with **7,049 upgrades, 0
   downgrades, 0 unproven upgrades** -- verified **63,121 -> 70,170 (61.6% -> 68.5%)**, unverified 37,048 ->
-  29,999; 110 of the 131 measures carry stored rows (verified on them 0 -> 7,256). Stats
+  29,999; 110 of the 131 measures carry stored rows (verified on them 0 -> 7,210). Stats
   `.tmp/t230g/recheck_projection.json`, before/after per measure `.tmp/t230g/verified_by_measure.csv`, report
   `.tmp/t230g/report_g.md`. On Wolf's go the tables go into `observations.py` and the same pass runs as
   `--recheck` into `.tmp/t230g/obs_91_g.db`. The 2,568 newly resolved rows that stay unverified are the C2/D5
