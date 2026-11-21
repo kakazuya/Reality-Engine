@@ -2184,8 +2184,9 @@ mines the stored observations and the old flat deck store and proposes the expan
 
 - Evidence: `D:/RealityEngine/t230/obs_91.db` (the stage-E state: 102,398 observations on 4,453 pages, 2,870
   distinct measure ids, 10,637 normalised printed labels) and `deck_figures.db` `facts` (13,569,583 facts,
-  1,578,040 distinct free-text metric strings). `measure_proposal` is not usable as evidence: 579 of its 600 rows
-  carry `OSError: [Errno 22] Invalid argument` (the proposal call never ran) and 21 name a measure.
+  1,578,040 distinct free-text metric strings). `measure_proposal` is not usable as evidence: 300 of its 600 rows
+  died on `OSError: [Errno 22] Invalid argument` (the proposal call never ran), 279 give a reason and no measure,
+  and only 21 name one.
 - **Sector drift.** The brief's sector source does not exist: `build_list_800_20000cr.csv` gives sector
   "General Diversified" for 52 of the 61 observed symbols and blank for 9, `equity_intelligence.master_companies`
   repeats it, and the 91 stores' `company` table holds symbol/isin/name only. `sector_set` in the proposal is the
