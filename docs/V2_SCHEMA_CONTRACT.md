@@ -1893,3 +1893,294 @@ box, eval scripts `.tmp/sf/eval2.py` + `.tmp/sf/regate.py` (Eagle's checkout):
   no period 7,368 (OCR-garbled dates, deck "FY24" columns, balance sheets without a printed kind), key conflicts
   2,815, year-kind doubt 970. Next lever measured: XBRL exact agreement as the second witness would pass 2,584 more
   single-filing cells (867 equal a model cell; 24 model-disputed, to be read before it is used).
+
+## 17. Observation schema for visuals (T-230 stage A, 21 Nov 2026, Wolf)
+
+Shivam's T-230 (promotes I-016): deck and annual-report visuals (maps of plants/ports, capacity bars, revenue-mix pies,
+plant lists) must be stored so their figures can feed a factor study: **one row per printed quantity WITH its
+meaning**. The flat `page_cell` (`row_label`, `col_header`, `value_text`) loses the slide's groups, the chart a number
+belongs to, and whether a figure is the company's or the industry's; it also carries no period kind, stage or scope.
+
+The two evidence pages, checked in the stores: c08 NAVKARCORP deck
+`D:/RealityEngine/raw/pilot60_history/NAVKARCORP/investor_presentation/20792b21-8723-4898-8e7c-16788527e1a0.pdf` p14 is
+JSW Infrastructure's 2030 road map: project capacities in mtpa under **Projects Approved / Projects Under Review /
+Pipeline of Potential Projects**, plus a FY25 177 -> FY28E 292 -> FY30E 400 capacity path. The flat hy4 read got 12 of
+14 values right but swapped LPG at Jaigarh 2.0 / Container (New Mangalore) 1.8 and kept no group. c26 NELCAST deck
+`.../f95278f2-78d1-4c6d-9322-6c1cc9d23785.pdf` p20 prints two industry charts (Indian Tractor Industry 705, 899, 842,
+945, 874; Indian M&HCV Industry 2.2, 1.6, 2.4, 3.6, 3.7); the flat store has one label "Sale units (in Thousands)" for
+both charts, no series identity and no scope. (Both are industry figures, not Nelcast's.)
+
+Writer: `reality_engine/v2/observations.py` (DDL is its `SCHEMA` constant; tests
+`reality_engine/tests/test_observations.py`). It writes a **separate output DB** (`--out`, default
+`.tmp/t230/obs.db`), never a store:
+
+- `observation` -- one row per printed quantity: `observation_id`, `symbol`, `doc_key`, `page`, `region`
+  (`x0,y0,x1,y1` in PDF points when the value's own text-layer word box is unambiguous; empty otherwise), `known_at`,
+  `measure` (id in `measure_dict`; an unmapped id is kept, never dropped), `printed_label` and `printed_axis`
+  (verbatim), `value` (parsed by the script from `value_text`), `value_text`, `unit`, `unit_family`, `scale`,
+  `adjusted` (1 = hypothetical/adjusted figure, never the reported measure), `period` and `period_kind` (`actual` /
+  `estimate` / `target`), `period_source` (`deck_period` when the period came from the deck header, else empty),
+  `basis` (`standalone` / `consolidated` / empty), `series_kind` (`level` / `bridge`), `segment`, `product`,
+  `geography`, `plant`,
+  `customer`, `group_path` (verbatim, e.g. "Projects Under Review"), `group_source` (`printed` / `legend_inferred` /
+  empty), `group_check` (`path_sum` when the running-path check passed), `stage` (`operating` / `under_construction` /
+  `approved` / `under_review` / `potential` / empty), `series_id` and `series_title` (which chart/panel on the page),
+  `entity_scope` (`company` / `subsidiary` / `industry` / `country` / `customer` / `peer` / empty), `status`
+  (`verified` / `unverified` / `quarantined`), `status_reason`, `reader`, `read_at`.
+- `measure_dict` -- `id`, `name`, `unit_family`, `driver_node` (the T-228 driver tree: `revenue.volume`,
+  `revenue.price`, `capacity.add`, `capacity.total`, `order.intake`, `revenue_from_operations`, `ebitda`, `pat`,
+  ...). Seeded with 69 measures; a new axis name is
+  kept in `observation.measure` and marked unverified until a dictionary row is approved.
+- `dim_vocab` -- `kind`, `canonical`, `aliases`; seeded stage, geography and product aliases. A printed dimension is
+  replaced by the canonical token only on an exact alias match (`Domestic` -> `India`); an unknown value stays
+  verbatim, never guessed.
+- `measure_proposal` -- one hy4 proposal per distinct unmapped printed label: `printed_label`, `measure`, `reason`,
+  `source`, `proposed_at`. Stored for review and never applied automatically; an unmapped row stays verbatim and
+  unverified. Curated mappings live in the script table `observations.SCRIPT_LABELS` (label -> measure id, applied
+  before the dictionary check).
+- `http_429` -- every rate-limit reply with its IST time, doc_key, page and message; the reader retries 429/5xx with
+  exponential backoff (up to 6 retries) and the run reports the count.
+- `measure_alias` -- near-duplicate model ids -> one dictionary id (seeded from `observations.MEASURE_ALIASES`); applied
+  before the dictionary check so `order_book_growth_yoy` and `order.book_growth_yoy` are one measure.
+
+One reader call (`hy4-flash-free`, free on Go; `reasoning_effort: "none"`, `max_tokens` 16000) gets the page image
+(long side 1280 px via `page_reader._page_image`) and the page's text layer laid out as printed, and returns JSON Lines
+with exactly the fields above plus `is_total` (used only by the parts-sum check, not stored). `page_reader._call`
+supplies the retry/backoff and the stable Go session id
+(`go_session.session_id`); the model-table entry `hy4-flash-free@obs` sends the model id `hy4-flash-free`.
+
+Script checks, independent of the model:
+1. `known_at` is copied from the store's `doc` row and `value` is parsed by `parse_number` from `value_text`; a
+   `value` or `known_at` in the model reply is ignored.
+2. On a page with a text layer, `value_text` must occur as a number **token** (`30` is not found in `2030`), else the
+   row is `quarantined` ("value_text is not in the page text layer"). A page with no text layer is `unverified`
+   (nothing to check against).
+3. `printed_label`, `printed_axis` and `group_path` must be verbatim substrings of the page text (whitespace
+   normalised), and each `' > '`-joined heading of a `group_path` is checked as its own heading; a value with no
+   label, axis or series title is `unverified`. A printed sentence (>=4 words ending in `.`) is a footnote, not a
+   label, and is dropped; page numbers, phones, addresses, PINs, CIN/DIN, signature dates and other letterhead data
+   are dropped by measure id.
+4. The unit must map to a family (`capacity`, `count`, `money`, `money_per_unit`, `percent`, `length`, `area`,
+   `time`, `ratio`) and that family must agree with `measure_dict.unit_family` (a physical quantity's `count` /
+   `capacity` may swap; a money-per-unit accepts money). The scale is the factor the unit itself prints (`Rs in Crs`
+   is crore, `thousand units` is 1000, `Cr Ltrs.` is a crore of litres); a percentage, multiple or duration is never
+   scaled. A model scale is kept only when the page prints that scale word, else it is reset to 1 and the row is
+   `unverified`.
+5. `entity_scope` must be stated and must be one of the six scopes; an industry or country figure is kept with its
+   scope and never looks like the company's.
+6. `stage` is taken from the model only when it names a stage; else derived from a printed group heading
+   ("Projects Approved" -> `approved`, "Under Review" -> `under_review`, "Pipeline of Potential Projects" ->
+   `potential`). It is never inferred from outside knowledge.
+7. A series group (`series_id`, `group_path`, `period`, `unit`, `scale`) with exactly one value the reply marks as a
+   printed total (`is_total`) and 2-10 printed parts must sum to it within 0.5% (or 0.51 absolute): pass -> those
+   parts `verified` with the reason; a mismatch -> `unverified`, never repaired and never quarantined. A part must
+   share the total's measure root (`capacity.total` with `capacity.add`, `revenue.value` with `revenue.mix`), so a
+   financial-highlights chart holding revenue, EBITDA and PAT in one series never fires; an unmarked or multi-total
+   group never fires either.
+8. `region` comes from the text-layer word boxes, never from the model; when the same number is printed more than once
+   it is left empty.
+9. `group_source` is `printed` only when the group heading is printed as text beside/above the value and
+   `legend_inferred` when it comes from a bar/box colour or a legend. A script check overrides a model `printed`
+   claim when two or more group names are left-aligned and stacked as a legend list. A `legend_inferred` group (and
+   the stage derived from it) never makes a row `verified`.
+10. A printed running path (177 -> 292 -> 400) is checked against the component rows: in one series/unit/scale/
+    measure root the non-path rows must sum to end - start; when a printed box total sits beside its parts (85 over
+    seven projects adding to 85.3), the subset that double-counts the box is collapsed first. Passing rows get
+    `group_check='path_sum'`; the status is never changed by this check.
+11. (C2) A money/quantity row with no unit inherits the unit printed in its `printed_axis`, `series_title` or label
+    (`Particulars (INR Mn)` -> `INR mn`, `Rs in Crs` -> `Rs crs`, `spindles` -> count); with no printed unit it is
+    `unverified` reason `no_unit`. A row with no period inherits a fiscal label, month-year or date printed in those
+    same fields; else it is `unverified` reason `no_period`.
+12. (C1) A deck whose filing letter or cover names another listed company than the store's company (e.g. NAVKARCORP's
+    filing letter: "released by the Ultimate Holding Company of Navkar Corporation Limited i.e. JSW Infrastructure
+    Limited") gets `entity_scope='parent'` on every company/subsidiary row; it is never presented as the store
+    company's. Industry/country/customer/peer rows keep their scope.
+13. (C3) Disbursement rows are `loans.disbursement*`, not the `loans` stock; a hypothetical/adjusted phrase ("would
+    have been", "but for", "pro forma", "excluding one-offs", "adjusted") sets `adjusted=1` and never verifies as the
+    reported measure; a spindle count on a capex chart is `capacity.spindles`; near-duplicate ids are canonicalised
+    through the `measure_alias` table (`order_book_growth_yoy` -> `order.book_growth_yoy`) before the dictionary check.
+
+Faithful to the T-230 stop line: a model-computed number (a sum, a share the slide did not print) is never verified;
+an industry/country figure keeps `entity_scope`; an unmapped measure is kept and marked, never guessed.
+
+Stage-A CLI:
+
+```bash
+python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10 \
+    --sample 5 --ensure c08,c26 --seed 11 --limit 150 --workers 10 \
+    --require "20792b21:14,f95278f2:20" --out .tmp/t230/obs.db
+```
+
+`--stores` takes store names/dirs/`.db` paths, `--stores-root` + `--sample` + `--seed` + `--ensure` pick a
+reproducible sample, `--require doc_key-substring:page` forces evidence pages in, `--doc-types` defaults to `deck`,
+`--limit` caps pages, `--resume` skips pages already written to `--out`. A page that is rerun replaces its own rows.
+The run stops (exit 2) when more than 20% of pages give an empty/non-JSON reply, more than 10% of observations are
+quarantined, or the reader hits a quota window (after writing what it already read).
+
+Stage-A pilot (21 Nov 2026, under the stage-A rules before Wolf's review): the command above on c08, c26 and the
+seed-11 stores that hold routed deck pages (c47, c59, c85), 150 pages, 10 workers, 276 s: **3,001 observations --
+2,397 verified (79.9%), 589 unverified, 15 quarantined (0.5%)**; 0 empty/non-JSON replies; 20 pages (cover letters)
+had every row dropped as letterhead.
+53 rows were verified by parts-sum. Still unverified: 534 unmapped measure ids (cash-flow, tax and ESG lines), 30
+unit-family mismatches, 21 labels the model composed instead of copying. Evidence pages: c08 p14 holds the three
+groups ("Projects Approved / Projects Under Review / Pipeline of Potential Projects") with `stage` set
+(approved / under_review / potential), the FY25 177 -> FY28E 292 -> FY30E 400 path with `period_kind='estimate'`, and
+all 16 values verified; LPG at Jaigarh 2.0 and Container (New Mangalore) 1.8 are now right (the flat read swapped
+them). c26 p20 gives two series (`s1` tractor, `s2` M&HCV), `entity_scope='industry'`, FY20-FY24, all 10 values
+verified. OPEN: on c08 the project-to-group assignment moved between pilot runs (Keni Port and Slurry Pipeline changed
+group), so a group heading is verbatim-checked but its assignment to a map marker is not yet verified -- the group is
+stored, never promoted to fact by a reader. Full detail `.tmp/t230/report_a.md`; tests
+`python -m pytest -q reality_engine/tests/test_observations.py` (68 pass after stage E).
+
+### Stage B (Wolf's review, 21 Nov 2026)
+
+Wolf checked c08 p14 against the image: Container (New Mangalore) 1.8 and LPG at Jaigarh 2.0 are right (the earlier
+"swap" note was wrong) and the box adds to 85.3 ~ 85. The groups come from **bar colour**: the 85 box and Jatadhar 30
+are approved (177+30+85 = 292), Keni 30 is approved, Murbe 33 is under review and "Potential Projects 45" is
+potential (292+30+33+45 = 400). Stage B adds/changes:
+
+- `group_source` and `group_check` columns (above). The model must say whether a group is `printed` or
+  `legend_inferred`; a script legend detector (two or more group names left-aligned and stacked within 140 pt) forces
+  `legend_inferred` even when the model says `printed`, and a legend-inferred group or stage never verifies.
+- The running-path check (rule 10): on c08 it flags the path rows and the stage components with `group_check='path_sum'`
+  when the components add up, collapsing the 85 box against its 85.3 parts.
+- `printed_axis` is checked verbatim like the label (rule 3).
+- The measure dictionary grew to 112 measures (standard P&L, balance-sheet, cash-flow, tax, ratio and ESG lines) plus
+  the 72-entry `SCRIPT_LABELS` table; labels still unmapped get one hy4 proposal each, stored with its reason and never
+  applied.
+- The reader retries 429/5xx with exponential backoff and logs every 429 with its IST time to `http_429`; it honours
+  the `Retry-After` header. A `Retry-After` over 300 s is the shared Go key's quota window, not a burst: the reader
+  stops, the page is not counted as a failure, and the run reports `stopped` with the seconds left. `--resume`
+  skips every page that already has observation rows in `--out`, so a stopped run continues where it stopped.
+  Workers default to 20.
+- Scope: every routed `table_or_chart` page of doc_type `deck`/`investor_presentation` across all 91 stores is 4,702
+  pages; adding the routed annual-report pages (39,845) gives 44,547, above the 15,000 cap, so **decks only** were run.
+- Full run (21 Nov 2026): 4,702 routed deck pages of the 91 stores (decks only; decks + annual reports = 44,547,
+  above the 15,000 cap). The first pass stopped at **1,892 pages** when the shared key hit its quota window at 02:55
+  IST (`Retry-After` 8,832 s) with 44,012 observations; at 05:35 IST the same command plus `--resume` read the
+  remaining 2,810 pages in 2,000 s with **0 errors and 0 429s** after the reset (1,892 pages skipped as already
+  written). Total: **101,849 observations on 4,405 pages -- 42,101 verified (41.3%), 57,568 unverified, 2,180
+  quarantined (2.1%)**; 297 pages gave no row (letterhead/cover). `group_source`: 28,248 printed, 715
+  legend_inferred, 72,886 no group; `group_check='path_sum'`: 162 rows on 27 pages; 599 rows verified by parts-sum.
+  The 3,218 logged 429s are all from the quota window; the resume logged none. 600 distinct unmapped labels got an
+  hy4 proposal (21 with a measure), none applied. Report `.tmp/t230/report_b.md`.
+
+### Stage C (Wolf's independent read B, 21 Nov 2026)
+
+Wolf's seed-71 read of the stage-B verified sample: 24 right, 10 minor, 6 wrong (15% wrong). Stage C closes those
+classes with script rules only (no new model trust):
+
+- **C1 parent deck.** A subsidiary's store can hold the parent's deck (NAVKARCORP files "JSW Infrastructure Investor
+  Presentation" under its own store; its filing letter says "released by the Ultimate Holding Company of Navkar
+  Corporation Limited i.e. JSW Infrastructure Limited"). `doc_owner` reads three printed sources -- the filing letter's
+  holding-company phrase, the cover line "<Company> Investor Presentation ...", and company names from the stores'
+  `company` tables -- and sets `entity_scope='parent'` on the company/subsidiary rows of that document; such a row is
+  never presented as the store company's. Industry/country/customer/peer keep their scope.
+- **C2 unit and period gates.** A money/quantity row with no unit inherits it from `printed_axis`/`series_title`/label
+  (`Particulars (INR Mn)` -> `INR mn`, `Rs in Crs` -> `Rs crs`, `spindles` -> count) or is `unverified` `no_unit`; a
+  row with no period inherits a fiscal label/month-year/date from those same printed fields or is `unverified`
+  `no_period`. A percentage/multiple/duration is never given a crore scale.
+- **C3 measures.** `loans.disbursement*` is split from the `loans`/AUM stock (a "Disbursements Mix" axis no longer
+  verifies as stock); `adjusted=1` on a hypothetical/adjusted phrase ("would have been", "but for", "pro forma",
+  "excluding one-offs", "adjusted") and such a row never verifies as the reported measure; a spindle count on a capex
+  chart is `capacity.spindles`; `measure_alias` canonicalises near-duplicate ids (`order_book_growth_yoy` ->
+  `order.book_growth_yoy`) before the dictionary check. The dictionary now holds 120 measure ids and 18 aliases.
+- **C4 stage.** `stage` is set from a printed stage phrase in `group_path`; a legend/colour group still makes the row
+  unverified, so a stage read off a coloured box never verifies.
+- **C5 axis prompt.** The reader is asked for ONE printed axis line (no "Particulars (INR Mn) | FY22" joins); the
+  period stays in its own field. `printed_axis` remains a verbatim check.
+- **C6 `--recheck`.** A model-free pass over an existing DB re-applies C1-C3, the unit/period gates and every earlier
+  check to the stored rows: only an inherited printed unit/period, a measure mapping or the grown dictionary may
+  upgrade a row; a row that would verify with no new printed source keeps its stage-B status and the pass stops.
+  860 pages whose rows were hit by C3 or C5 were deleted and re-read with the new prompt (`--resume`, 1,157 pages
+  including the 297 empty ones), then rechecked. Results are in `.tmp/t230/report_c.md`.
+
+Stage-C results (21 Nov 2026). Recheck on a copy of `.tmp/t230/obs_91.db`: 153 rows upgraded from a printed source
+(unit/period/measure), 9,648 downgraded, **0 unproven upgrades** (241 rows kept their stage-B status on a hard
+reason: parts-sum or scale), 2,124 parent rows. The 860 C3/C5 hit pages were deleted and re-read with the new prompt
+(1,157 pages including the 297 empty ones): 45,115 observations, 0 errors, 0 429s, then a second recheck (0 upgrades,
+49 downgrades). Final `.tmp/t230/obs_91_c.db`: **102,398 observations on 4,453 pages -- 65,700 verified (64.2%),
+34,489 unverified, 2,209 quarantined (2.2%)**; before stage C the same DB had 42,101 verified of 101,849. The axis
+failure class fell from 39,474 rows to 1,179; 16 verified rows keep a printed line containing "|" because the page
+prints that line verbatim. C1:
+2,116 rows across 20 NAVKARCORP documents set `parent` (no other store changed). C2: 5,600 rows unverified `no_unit`,
+12,554 `no_period`. C3: 536 rows `adjusted=1`; 611 rows had their measure remapped; disbursements now
+`loans.disbursement*` (475 verified).
+Verified share before -> after: capacity.* 2,428/3,055 -> 1,072/3,051 (the C2 gates take map values with no period);
+order.* 408/659 -> 335/666; revenue.* 3,480/4,693 -> 3,525/4,661; loans* 1,386/1,846 -> 1,657/2,051; mix.*
+2,198/2,467 -> 1,466/2,394. The cited rows: 27237 parent/verified; 94503 and 42244 parent/unverified `no_period`
+(their group is a coloured box, no printed `group_path`, so no stage is invented); 59840's page re-read gives
+`loans.disbursement_mix` Agricultural loans 185 Q2FY24 (id 112041) verified; 52167's page re-read gives the
+hypothetical 7.1% as `adjusted=1`, unverified (id 125001); 13600 `capacity.spindles`, unverified `no_unit`/`no_period`;
+4329 unverified `no_unit`/`no_period`. Tests: 51 in `test_observations.py`.
+
+### Stage D (Wolf's independent read C, 21 Nov 2026)
+
+Wolf's seed-113 read: 44 right, 2 minor, 4 wrong of 50 verified (8%, from 15%). Stage D:
+
+- **D1 scale from the unit text.** 'in M', 'Mn', 'Mio', 'Million' -> 1e6; 'Cr'/'Crore' -> 1e7; 'Lakh'/'Lac' -> 1e5;
+  'Bn' -> 1e9; `'000`/'thousand' -> 1e3, read from the unit, `printed_axis`, series title and the page header line. A
+  money row whose unit names a scale but whose stored scale is 1 is `unverified` `scale_unread`. 388 rows with "in M"
+  (1,933 money rows in all) had their scale fixed; id 16451 (₹ in M) is ₹20.0 M and verified.
+- **D2 basis.** `basis` is standalone/consolidated from the column header, series title or page title; when both words
+  are printed it is read from the header x-position against the value's word box. Two values with the same
+  measure/label/period/series must differ in basis or all are unverified `basis_conflict`. 40,324 rows got a basis
+  (10,328 standalone, 29,996 consolidated); 2,378 conflict groups (6,036 rows) downgraded; ids 137487 (660.65
+  standalone) and 137489 (678.70 consolidated) are both verified.
+- **D3 bridge/waterfall.** `series_kind='bridge'` when the page prints a bridge/walk cue (or the first row is a
+  "Reported" level); the steps are stored as `<base>.delta` (`ebitda.delta`, `ebitda_margin.delta`, `revenue.delta`,
+  `pat.delta`) and unverified "bridge step of <base>, not a level". 622 bridge rows, 564 unverified; id 77964 is
+  `ebitda_margin.delta`, not a segment's margin.
+- **D4 subsidiary.** A page/series title naming a subsidiary ("AGPL's Standalone P&L") or another known company sets
+  `entity_scope='subsidiary'`; 748 rows changed, 1,457 subsidiary rows in total, id 7731 is subsidiary and verified.
+- **D5 stock as-of period.** For stock measures only (`capacity.*`, `aum.*`, `gnpa`/`nnpa`, `loans` stock,
+  `order.book`, `count.*` outlets/plants/branches) an empty period takes the period printed in the page header, deck
+  title or cover (`period_source='deck_period'`), never the filing date; flows stay `no_period`. 3,130 stock rows got
+  the deck period; `capacity.*` verified 1,072 -> 1,886. Director/tenure rows are `quarantined` `not_a_measure`, and a
+  value that only appears on an axis-tick line is `unverified` `axis_tick` (the line's numbers must all be multiples
+  of 1000, so a real data value on a labelled chart line is not caught).
+
+Recheck into `.tmp/t230/obs_91_d.db`: 1,484 upgrades, 2,969 downgrades, 0 unproven, 148 kept on a hard stage-C
+reason. Final: 102,398 rows / 4,453 pages -- **64,215 verified (62.7%), 35,954 unverified, 2,229 quarantined**. Report
+`.tmp/t230/report_d.md`; tests 61.
+
+### Stage E (Wolf's independent read D, 21 Nov 2026)
+
+Wolf's seed-131 read: 42 right, 6 minor, 2 wrong of 50 verified (4%); the deck-period sample was 3 right, 2 minor,
+5 wrong. Stage E narrows and corrects the deck-period/basis/CAGR classes:
+
+- **E1 deck-period scope.** A row takes the deck period only for a true stock (`capacity.total`/`add`,
+  `count.*` outlets/branches/plants, `gnpa`/`nnpa`, `loans` stock, `order.book`, `aum.*`) and a `capacity.*` row only
+  when its stage is operating, or its stage is empty and the page prints installed/existing/current/commissioned; a
+  potential/approved/under-construction/planned/"can be further enhanced"/"being set up"/"under progress" row, a
+  capacity.utilisation/growth_multiple (a rate) or an EPC track-record row ("executed/commissioned for", "projects
+  completed", "qualification") gets no deck period. **123 of the 865 verified deck-period capacity rows with an
+  empty stage survive**; 1,294 deck-period rows were cleared.
+- **E2 deck-period source.** The presentation's own cover/title page (pages 2-6, filing letters skipped by their
+  "BSE Limited / Dear Sir / Sub: / Regulation 30 / To," lines) or the page header, never the filing letter date;
+  1,434 rows were re-dated from the cover and 1,294 cleared. Since the change, `deck_period` verified falls
+  1,193 -> 404.
+- **E3 basis from a heading/footer line.** `basis` also reads a group heading or a page footer line with the word
+  ("Consolidated (in INR Cr.)", "Standalone- (Figures in Crores)"); 43,847 rows now carry a basis (1,293 more), 2,342
+  conflict groups remain unverified. A10 (NELCAST "Consolidated (in INR Cr.)" in group_path) is consolidated and
+  verified.
+- **E4 CAGR.** A growth row on a two-point multi-year span (or a printed "CAGR") becomes `*_growth_cagr` with
+  `period_kind='span'` and the printed span (`FY21-FY24`), never `*_yoy`; 194 rows converted. A12 (DIVGIITTS +12%
+  FY21-FY24) is `revenue_growth_cagr`, span, verified.
+- **E5 `MT` scale.** A bare `MT` verifies only when the page prints million tonnes/MMT/MTPA (-> 1e6) or
+  tonnes/metric tonnes (-> 1); otherwise `unverified` `scale_ambiguous`. 174 MT rows resolved, 399 remain ambiguous
+  (A46 NAVKARCORP 1.8 MT is unverified). The rules' stop gate held: 0 rows verified without a printed source
+  (143 kept on a hard reason).
+
+Recheck into `.tmp/t230/obs_91_e.db`: 56 upgrades, 1,150 downgrades. Final: 102,398 rows / 4,453 pages --
+**63,121 verified (61.6%), 37,048 unverified, 2,229 quarantined**. Report `.tmp/t230/report_e.md`; tests 68.
+
+
+
+
+#### 17.x Wolf's independent reads (21 Nov 2026)
+Verified-row samples graded against page text and images by a separate Opus reader: stage B 40 rows 24 right / 10
+minor / 6 wrong (15%); stage C 50 rows 44/2/4 (8%); stage D 50 rows 42/6/2 (4%; scale, basis, bridge, subsidiary
+rules hold). Stage D deck_period rows were 3/2/5 of 10, which stage E narrowed to true operating stocks (1,193 -> 404
+verified). Detail: `D:/RealityEngine/t230/wolf_read_{b,c,d}.md`. Treat verified rows as model-read input with a
+known ~4% error, labelled as such in any factor study.
