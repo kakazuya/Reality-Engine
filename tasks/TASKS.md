@@ -41,6 +41,7 @@ One row per line, kept in its section.
 - T-225 | OPEN Eagle | P1 | Model + script blend for page figures: rebuild the figure checker first, then Dots reads pages and the checker settles rows; first test on held stores c09 c31 c61 c87 c88 | accept: Shivam: on a frozen hand-read page set the checker keeps >=95% of right cells and verifies zero wrong cells; 5 held stores repaired with zero right rows lost | from: Shivam 18 Nov | opened 2026-11-18
 - T-226 | DOING Eagle | P1 | Script-first page reading: model-free table reader + cross-filing gate (two filings 45+ days apart print the same value for the same line and period), measured against model-verified cells | accept: python -m pytest reality_engine/tests/test_v2_script_reader.py -q | from: Shivam 2026-11-19 | opened 2026-11-19
 - T-227 | DOING Eagle | P1 | Store writer for script-read cells: script_cell table in each company store, served by pilot3_cells beside existing rows (option 1); precedence over printed rows only after a frozen-set answer test (option 2) | accept: python -m pytest reality_engine/tests/test_v2_script_cells.py reality_engine/tests/test_v2_script_reader.py -q | from: Shivam 2026-11-20 | opened 2026-11-20
+- T-234 | OPEN Wolf | P1 | Free-model reader bake-off: Gemma 4 31B, Nemotron VL, Ling, Particle (image pages); ERNIE 5.5, Nemotron Ultra (text pages) vs hy4 on quality, precision, accuracy, speed, tokens | accept: Shivam | from: Shivam 22 Nov | opened 2026-11-22
 
 ## Schema and question map
 
