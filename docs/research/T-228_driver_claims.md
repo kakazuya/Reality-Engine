@@ -11,7 +11,7 @@ claim's own `known_at` as a FILED date. Stages B (forward estimate), C (manageme
 test that B+C add prediction over the T-210 hard-number panel are not built here.
 
 Code `reality_engine/research/driver_claims.py`, tests
-`reality_engine/tests/test_driver_claims.py` (86 tests, synthetic, no network; three real announcement texts
+`reality_engine/tests/test_driver_claims.py` (89 tests, synthetic, no network; three real announcement texts
 are embedded as fixtures with the doc_key they came from). A statement that ends in no tree node is show, not
 data: it is dropped as `no_driver`.
 
@@ -200,9 +200,11 @@ re-queues `judge_error` claims and re-runs just the judge. No store is ever open
 
 `--start N` (default 30) extraction requests in flight, `--judge-start N` (default 5) judge requests.
 `--unleashed`: every 5 minutes the extraction limit rises by 10 while the error rate over the last 5
-minutes is under 2%, no upper cap; a 429 logs a quota event, halves the limit (floor 1) and the request is
-retried after 5 s; the run stops only after 30 consecutive minutes of failures or when the work is done.
-Stage 1a also stops extraction when more than 20% of answers are empty.
+minutes is under 2%, no upper cap; a 429 logs a quota event, halves the limit (floor 1) and is retried
+after the header's `Retry-After` (5 s when absent). A `Retry-After` over 15 minutes stops the run and
+leaves that batch unmarked, so the same command resumes after the window; it is never hammered. The run
+stops only after 30 consecutive minutes of failures or when the work is done. Stage 1a also stops extraction
+when more than 20% of answers are empty.
 
 ## 8. How to run
 
@@ -302,7 +304,7 @@ company scope. It is about 90% right on meaning, not 100%: use it as labelled mo
 
 ## 10. Tests
 
-86 pass (`python -m pytest -q reality_engine/tests/test_driver_claims.py`). They cover the guidance map, the
+89 pass (`python -m pytest -q reality_engine/tests/test_driver_claims.py`). They cover the guidance map, the
 number normaliser, the three statuses, the unit-word rule, the node-unit table, the from-A-to-B target rule
 (both the change, percent and the plain-range case), the ambiguous-range sign rule, the period-or-horizon
 rule, the mix/share re-tag (pct only, pattern required, segment named) and the list-span rule (8-8
@@ -323,7 +325,8 @@ the "at least 20% to 25%" range (1342), the "target 30% to 35%" plain range, "in
 `base` (247), the rating-agency `speaker_scope`/`third_party` rule (982), the scope flag and the judge's
 `scope_ok` (577/437/1130, kept unverified without it), the FILED date in the judge prompt, the debt-repayment
 and declared-dividend signs (522, 132/1003), cross-source dedupe with `dup_of` (132/1003, 735/1130) and the
-stage-2b migration.
+stage-2b migration, and the 429 `Retry-After` guard (a short wait is slept, a long one stops the run and
+leaves the item/claim for a resume).
 
 ## 11. Stage 2a: document sources and the pilot (21 Nov 2026)
 
@@ -413,7 +416,7 @@ same-kind groups with no third source); it was narrowed so that only a pair of *
 join two rows, which cut it to 164 (a same-kind group still folds when another source carries the same fact —
 the MICEL share count is one row, from 30 announcements plus 3 annual reports).
 
-**What changed** (code `reality_engine/research/driver_claims.py`, tests +9 = 86):
+**What changed** (code `reality_engine/research/driver_claims.py`, tests +12 = 89):
 
 1. **Scope (a).** The prompt and judge rule: a level claim whose quote or paragraph names a unit, plant,
    product, subsidiary or new line is that unit's increment, never a company-wide level — `segment` named,
@@ -438,6 +441,9 @@ the MICEL share count is one row, from 30 announcements plus 3 annual reports).
    and `equity.dividend` `+` for declared/recommended (132/1003).
 7. **Judge date.** `judge_prompt` prints `FILED: known_at[:10]`; `period_ok`/`forward_ok` judge the target
    against the document date, so an FY25 target in a 2025-05 filing is past.
+8. **Quota (step 10).** `Client` reads a 429's `Retry-After`; a wait over 15 minutes stops the run and leaves
+   the batch/claims unmarked, so the same command resumes after the window; a shorter wait is slept exactly.
+   The quota event carries `Retry-After Ns` in its body.
 
 Schema gains two additive columns, `speaker_scope` and `dup_of`; an older DB migrates. `--all-stores` was added
 for the 91-store run: `active_stores()` covers 57 of the 91, the other 34 have documents but no transcript or

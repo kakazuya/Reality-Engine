@@ -91,6 +91,7 @@ MAX_TRANSPORT_TRIES = 4
 MAX_JUDGE_TRIES = 3        # the judge: first attempt + two retries with backoff (Wolf, round 3)
 JUDGE_BACKOFF_S = (2.0, 4.0)
 EMPTY_STOP_SHARE = 0.20   # stage 1a stop condition: >20% empty answers
+QUOTA_STOP_S = 900.0      # a 429 Retry-After over this stops the run (resume after the window; never hammer)
 MAX_TEXT = 3000           # characters of a statement sent to the model (and verified against)
 MAX_CONTEXT = 1500        # characters of the 2 preceding statements + question
 
@@ -1992,6 +1993,13 @@ class Client:
         self.http.mount("https://", HTTPAdapter(pool_connections=8, pool_maxsize=512))
         self.key = key
         self.timeout = timeout
+        self._retry_after = 0.0
+        self._retry_lock = threading.Lock()
+
+    def retry_after(self) -> float:
+        """The last 429's Retry-After seconds (0 when the header was absent)."""
+        with self._retry_lock:
+            return self._retry_after
 
     def chat(self, prompt: str) -> tuple[int, str, tuple[int, int]]:
         body = {"model": self.model, **self.body, "messages": [{"role": "user", "content": prompt}]}
@@ -2002,6 +2010,13 @@ class Client:
         except Exception as e:  # requests.RequestException, but a socket error must not kill the batch
             return -1, f"{type(e).__name__}: {e}"[:300], (0, 0)
         if r.status_code != 200:
+            try:
+                wait = float(r.headers.get("Retry-After") or 0)
+            except (TypeError, ValueError):
+                wait = 0.0
+            if wait > 0:
+                with self._retry_lock:
+                    self._retry_after = wait
             return r.status_code, r.text[:600], (0, 0)
         try:
             j = r.json()
@@ -2070,6 +2085,18 @@ def _record_http(writer: Writer, run_id: str, role: str, store: str, started: st
                     claims, outcomes, items_done, in_flight, error=error, role=role)
 
 
+def retry_after_of(client: Any) -> float:
+    """The client's last 429 Retry-After seconds; a fake client without the method means 5 s."""
+    getter = getattr(client, "retry_after", None)
+    if not callable(getter):
+        return 5.0
+    try:
+        wait = float(str(getter()))
+    except (TypeError, ValueError):
+        return 5.0
+    return wait if wait > 0 else 5.0
+
+
 def process_batch(batch: list[dict[str, Any]], client: Any, writer: Writer, limiter: Adaptive,
                   run_id: str, brief: str = "") -> Stats:
     """One extraction batch: one successful request (plus retries).  Never raises on a bad reply."""
@@ -2107,8 +2134,10 @@ def process_batch(batch: list[dict[str, Any]], client: Any, writer: Writer, limi
             except (ValueError, TypeError) as e:
                 parse_err = f"{type(e).__name__}: {e}"[:300]
 
+        wait = 5.0
         if status == 429:
-            writer.quota_event(run_id, store, status, in_flight, text)
+            wait = retry_after_of(client)
+            writer.quota_event(run_id, store, status, in_flight, f"Retry-After {wait:.0f}s | {text}")
             limiter.halve()
         elif status == -1 or status >= 500:
             writer.quota_event(run_id, store, status, in_flight, text)
@@ -2119,7 +2148,11 @@ def process_batch(batch: list[dict[str, Any]], client: Any, writer: Writer, limi
             _record_http(writer, run_id, "extract", store, started, ended, seconds, status, usage,
                          len(batch), 0, None, None, in_flight, transport, error=text[:300])
             if status == 429:
-                time.sleep(5.0)
+                if wait > QUOTA_STOP_S:
+                    limiter.stopped.set()
+                    stats.add(errors=1)
+                    return stats
+                time.sleep(wait)
             if transport >= MAX_TRANSPORT_TRIES:
                 stats.add(errors=1)
                 return stats
@@ -2225,8 +2258,10 @@ def judge_batch(batch: list[dict[str, Any]], client: Any, writer: Writer, limite
                 exhausted = True
                 text = "no judge verdicts in reply: " + text[:280]
 
+        wait = 5.0
         if status == 429:
-            writer.quota_event(run_id, store, status, in_flight, text)
+            wait = retry_after_of(client)
+            writer.quota_event(run_id, store, status, in_flight, f"Retry-After {wait:.0f}s | {text}")
             limiter.halve()
         elif status == -1 or status >= 500:
             writer.quota_event(run_id, store, status, in_flight, text)
@@ -2235,11 +2270,15 @@ def judge_batch(batch: list[dict[str, Any]], client: Any, writer: Writer, limite
             limiter.saw(False)
             _record_http(writer, run_id, "judge", store, started, ended, seconds, status, usage,
                          len(batch), 0, None, None, in_flight, attempt, error=text[:300])
+            if status == 429 and wait > QUOTA_STOP_S:
+                limiter.stopped.set()
+                stats.add(judge_errors=len(ids))
+                return stats
             if attempt >= MAX_JUDGE_TRIES:
                 writer.mark_judge_failed(list(ids))
                 stats.add(judge_errors=len(ids), judged=len(ids), by_field=Counter({"judge_error": len(ids)}))
                 return stats
-            time.sleep(5.0 if status == 429
+            time.sleep(wait if status == 429
                        else JUDGE_BACKOFF_S[min(attempt - 1, len(JUDGE_BACKOFF_S) - 1)])
             continue
 

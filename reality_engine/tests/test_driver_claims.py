@@ -924,6 +924,69 @@ def test_batch_retries_a_bad_json_reply_once_then_logs_an_error(db_path: Path):
     assert tuple(rows) == (2, 2)
 
 
+def test_a_long_retry_after_stops_the_batch_without_marking_it_done(db_path: Path):
+    writer = dc.Writer(db_path)
+
+    class QuotaClient:
+        def chat(self, prompt):
+            return 429, "rate limited", (0, 0)
+
+        def retry_after(self):
+            return 3600.0
+
+    limiter = dc.Adaptive(start=2)
+    stats = dc.process_batch([_item()], QuotaClient(), writer, limiter, "run1")
+    body = writer.con.execute("SELECT body FROM quota_event").fetchone()[0]
+    done = writer.done_keys()
+    writer.close()
+    assert stats.errors == 1 and limiter.stopped.is_set() and not done
+    assert "Retry-After 3600s" in body
+
+
+def test_a_short_retry_after_is_slept_then_the_batch_succeeds(db_path: Path, monkeypatch):
+    reply = ('{"items":[{"id":1,"drop":null,"claims":[{"node":"capex.amount","sign":"+","value_low":55,'
+             '"value_high":null,"unit":"inr_cr","effective_period":"Q4","conditional":false,'
+             '"quote_span":"approximately Rs. 55 crores annually"}]}]}')
+
+    class OnceQuota:
+        calls = 0
+
+        def chat(self, prompt):
+            self.calls += 1
+            return (429, "rate limited", (0, 0)) if self.calls == 1 else (200, reply, (10, 5))
+
+        def retry_after(self):
+            return 2.0
+
+    sleeps: list[float] = []
+    monkeypatch.setattr(dc.time, "sleep", lambda seconds: sleeps.append(seconds))
+    writer = dc.Writer(db_path)
+    limiter = dc.Adaptive(start=2)
+    stats = dc.process_batch([_item()], OnceQuota(), writer, limiter, "run1")
+    writer.close()
+    assert stats.claims == 1 and 2.0 in sleeps and not limiter.stopped.is_set()
+
+
+def test_judge_long_retry_after_leaves_the_claim_for_a_resume(db_path: Path):
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [dc._finish(_claim())])
+    claims = writer.claims_to_judge()
+
+    class QuotaJudge:
+        def chat(self, prompt):
+            return 429, "rate limited", (0, 0)
+
+        def retry_after(self):
+            return 3600.0
+
+    limiter = dc.Adaptive(start=2)
+    stats = dc.judge_batch(claims, QuotaJudge(), writer, limiter, "run1")
+    row = writer.con.execute("SELECT status, judge_ok FROM claim").fetchone()
+    writer.close()
+    assert limiter.stopped.is_set() and stats.judged == 0
+    assert tuple(row) == ("verified", None)
+
+
 def test_judge_batch_applies_verdicts_and_logs_a_judge_row(db_path: Path):
     writer = dc.Writer(db_path)
     writer.insert_claims("run1", [dc._finish(_claim(source_id=1)), dc._finish(_claim(source_id=2))])
