@@ -31,3 +31,8 @@
   hygiene + multi-order seq rows. Final run 691 classified / 604 events, 439 verified / 165 unverified / 0
   quarantined, 106 model-needed (15.3%), 14 model rows, 36 amend links. Tests 46 passed; typecheck 0 errors.
   Reports `.tmp/t231/report_c.md`, `.tmp/t231/recall_c.md`; docs updated. Commit requested.
+- 21 Nov stage D (T-229, factor study): `factor_store91_stagec.py --events` adds ev_order_inflow_12m,
+  ev_capex_12m, ev_raise_12m (verified/company/PIT 15:30, amendments only increments, raises one per
+  raise_id). Run on `.tmp/t229d`: ev_raise passes the gate (37 companies, 15 month-ends >=20; 3m IC
+  +0.120 t 2.06, 6m +0.204, 12m +0.441); order inflow/capex fail coverage; all three have 0 residual
+  months (residual cross-section peaks at 18 < 20). Tests 9 passed; typecheck clean. Doc section 11 added.

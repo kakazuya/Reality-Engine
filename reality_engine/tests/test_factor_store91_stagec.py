@@ -18,7 +18,9 @@ import pytest
 from reality_engine.research.factor_store91_stagec import (
     claim_factors,
     deck_factors,
+    event_factors,
     load_claims,
+    load_events,
     load_observations,
     rank_residual,
 )
@@ -216,6 +218,78 @@ def test_deck_factors_keep_company_level_rows_and_skip_mismatched_units(tmp_path
     assert np.isclose(out.loc["c01", "deck_capacity_growth"], 100.0 / 400.0)
     assert np.isnan(out.loc["c02", "deck_capacity_growth"])  # MTPA add, MW total
     assert stats["capacity_no_total"] == 1
+
+
+def _events_db(path: Path, rows: list[tuple]) -> None:
+    con = sqlite3.connect(path)
+    con.execute("""CREATE TABLE event(
+        event_id INTEGER PRIMARY KEY, symbol TEXT, known_at TEXT, kind TEXT, order_kind TEXT,
+        amount_inr_cr REAL, share_pct REAL, value_total REAL, raise_id TEXT, raise_primary INTEGER,
+        detail TEXT, status TEXT, entity_scope TEXT)""")
+    con.executemany("INSERT INTO event VALUES (" + ",".join("?" * 13) + ")", rows)
+    con.commit()
+    con.close()
+
+
+def _event(event_id, kind, amount, known_at="2024-06-10T10:00:00", order_kind: str | None = "new_order",
+           share_pct=None, value_total=None, raise_id=None, raise_primary=None, detail=""):
+    return (event_id, "TESTCO", known_at, kind, order_kind, amount, share_pct, value_total,
+            raise_id, raise_primary, detail, "verified", "company")
+
+
+def test_events_are_point_in_time_at_1530_and_the_next_session(tmp_path):
+    db = tmp_path / "events.db"
+    _events_db(db, [_event(1, "order_win", 100.0, known_at="2024-06-28T16:00:00")])
+    sessions = pd.DatetimeIndex(pd.to_datetime(["2024-06-28", "2024-07-01"]))
+    events, _ = load_events(db, sessions)
+    panel = pd.DataFrame({"store": ["c01", "c01"], "symbol": ["TESTCO", "TESTCO"],
+                          "date": pd.to_datetime(["2024-06-28", "2024-07-01"]),
+                          "ttm_rev": [1.0e10, 1.0e10], "mcap": [2.0e10, 2.0e10]})
+    out, _ = event_factors(panel, events)
+    out = out.set_index("date")
+    # the 16:00 filing is not available at the June month-end: no row, so the merge leaves NaN
+    assert pd.Timestamp("2024-06-28") not in out.index
+    assert np.isclose(out.loc[pd.Timestamp("2024-07-01"), "ev_order_inflow_12m"],
+                      100.0 * 1e7 / 1.0e10)
+
+
+def test_events_raise_counts_once_per_raise_id_and_skips_non_primary(tmp_path):
+    db = tmp_path / "events.db"
+    _events_db(db, [
+        _event(1, "fund_raise", 100.0, raise_id="r1", raise_primary=1),
+        _event(2, "fund_raise", 100.0, raise_id="r1", raise_primary=1),
+        _event(3, "fund_raise", 300.0, raise_id="r2", raise_primary=1),
+        _event(4, "fund_raise", 999.0, raise_id="r3", raise_primary=0),
+    ])
+    sessions = pd.DatetimeIndex(pd.to_datetime(["2024-06-28"]))
+    events, _ = load_events(db, sessions)
+    panel = pd.DataFrame({"store": ["c01"], "symbol": ["TESTCO"],
+                          "date": pd.to_datetime(["2024-06-28"]),
+                          "ttm_rev": [1.0e10], "mcap": [2.0e10]})
+    out, stats = event_factors(panel, events)
+    assert np.isclose(out.loc[0, "ev_raise_12m"], 400.0 * 1e7 / 2.0e10)
+    assert stats["raises_counted"] == 2      # r1 once, r2 once; r3 not a primary
+
+
+def test_events_order_inflow_uses_the_share_and_amendment_increment_only(tmp_path):
+    db = tmp_path / "events.db"
+    _events_db(db, [
+        # the stored amount is the company's 40% consortium share; value_total is the total
+        _event(1, "order_win", 296.0, share_pct=40.0, value_total=740.0),
+        # an amendment contributes its printed increment (20 of a new 120), never its total
+        _event(2, "order_amendment", 20.0, order_kind=None, value_total=120.0,
+               detail="amendment increment = new total - old total (computed)"),
+        # an extension's full contract value is not an increment and must not be added
+        _event(3, "order_amendment", 50.0, order_kind=None, value_total=50.0),
+    ])
+    sessions = pd.DatetimeIndex(pd.to_datetime(["2024-06-28"]))
+    events, _ = load_events(db, sessions)
+    panel = pd.DataFrame({"store": ["c01"], "symbol": ["TESTCO"],
+                          "date": pd.to_datetime(["2024-06-28"]),
+                          "ttm_rev": [1.0e10], "mcap": [2.0e10]})
+    out, stats = event_factors(panel, events)
+    assert np.isclose(out.loc[0, "ev_order_inflow_12m"], (296.0 + 20.0) * 1e7 / 1.0e10)
+    assert stats["amendments_skipped"] == 1
 
 
 def test_rank_residual_is_orthogonal_to_the_controls_on_every_date():
