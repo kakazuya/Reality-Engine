@@ -180,3 +180,11 @@ python plugins/code-tools/ct.py typecheck reality_engine/research/filing_events.
 * Parent/subsidiary dedupe across stores is not built (no announcement in the 91 carried a parent label); the 3
   parent-labelled capex rows are kept with `entity_scope='parent'`.
 * `tasks/STATE.md` is not edited: the brief forbids it; the controller should add the T-231 status/accept line.
+
+## Wolf's independent reads (21 Nov 2026)
+Stage A (seed 311): verified 40 = 28 right / 8 minor / 4 wrong; recall 3/5. Stage B (seed 411): verified 50 = 37 / 9 / 4
+(order_win 29 / 5 / 1). Every cited defect checked in stage C (fund-raise raise_id/primary, 120-day press-release fold,
+buyer/exploring/completion vetoes, restated dates, field hygiene). Detail `D:/RealityEngine/t231/wolf_read_{a,b}.md`;
+final DB `D:/RealityEngine/t231/events.db` (604 events, 439 verified). Factor use: one row per raise_id
+(raise_primary=1); order_win only with order_kind new order; companies with a verified order win in the trailing 12
+months: median 25 of 91 over 2025-06..2026-10.
