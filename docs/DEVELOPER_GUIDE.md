@@ -2230,9 +2230,10 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   Verified against the stores (21 Nov): the ticket's 560 ISINs are all in `master_companies`, 394 have a deck since
   2024-04-01 and 166 have none. `deck_sources` has 3,497 `ok` rows since that date (16.8 GB): 54 are "Intimation"
   letters and 39 repeat another row's sha256 -> 3,404 decks (16.4 GB), 0 held locally and all 3,404 in the Drive
-  manifest (`raw_to_drive.db` holds 25,844 rows under `decks/`), so no deck is missing. `deck_sources` stops at
-  2026-10-25; checked 21 Nov, 291 later "Investor Presentation" BSE filings for 274 of the 560 companies are not
-  fetched in this ticket (the scout's 273 for 258 had already grown).
+  manifest (`raw_to_drive.db` holds 25,844 rows under `decks/`), so no deck is missing. The build's universe is the
+  ticket CSV filtered to those 394 ISINs (an `isin,symbol` CSV; a company with no deck would only build an empty
+  store). `deck_sources` stops at 2026-10-25; checked 21 Nov, 291 later "Investor Presentation" BSE filings for 274
+  of the 560 companies are not fetched in this ticket (the scout's 273 for 258 had already grown).
   Pilot, 10 companies seeded from the ticket CSV (first ten with a deck: RAILTEL, SOLEX, GPTINFRA, OMPOWER,
   RAJESH, MARINE, VASCONEQ, TRANSRAILL, BRAHMINFRA, CAPACITE), `--parts registry,pages`, run under
   `.tmp/t232/pilot` because the worker sandbox denies D: writes (the controller runs the 394 on D:): all 40 recipe
@@ -2240,8 +2241,9 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   of stores; wall 1,475 s total, median 145 s (max 249 s), peak child RSS 395 MB. Every store opens with
   `company`, `doc` (deck type only) and `doc_page`, and its `routes.csv` has exactly one row per `doc_page` row
   (0 incomplete; 928 `no_figures`, 468 `table_or_chart`, 418 `needs_ocr`, 24 `text_ok`). The T-230 smoke test
-  (`v2.observations --stores d001,d003,d007 --doc-types deck --limit 30`) read 30 pages: 760 observations, 2
-  quarantined (0.3 %), 0 errors, 0 parse failures, 62 label proposals, 155 s.
+  (`python -m reality_engine.v2.observations --stores-root .tmp/t232/pilot --stores d001,d003,d007 --doc-types
+  deck --limit 30`) read 30 pages: 760 observations, 2 quarantined (0.3 %), 0 errors, 0 parse failures, 62 label
+  proposals, 155 s.
   Sandbox note: this dsh Windows profile runs Python as an identity that cannot write into a Python 3.14
   `mkdtemp` folder (mode 0o700), and the RawStore downloads each company's PDFs into one. The pilot therefore
   ran with `PYTHONPATH` pointing at `.tmp/t232/shim`, whose `sitecustomize` creates the folder `0o777`; run the
