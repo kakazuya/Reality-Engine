@@ -2203,8 +2203,49 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   `make_profile` picked are recorded, not fixed: four companies `unknown`, the other six in a family. Findings for
   the batch (not build failures): one store holds no `fin_quarter_xbrl` row at all (printed comparatives only) and
   five have no `guidance` row.
-  Test: `python -m pytest -q reality_engine/tests/test_tg_measure_build.py` -> 6 passed (peak-RSS sampler on a fake
-  part, `ram_stop`, timeout, last-5-lines on failure, a `parts.csv` and a `pilot10_measure.csv` row).
+  Test: `python -m pytest -q reality_engine/tests/test_tg_measure_build.py` -> 9 passed (the peak-RSS sampler on a
+  fake part, `ram_stop`, timeout, last-5-lines on failure, a `parts.csv` and a `pilot10_measure.csv` row, plus the
+  T-232 part/doc-type filters and the deck manifest below).
+
+- **T-232: minimal deck stores for the non-91 Telegram companies (21 Nov 2026).** The deck-observation reader
+  (`v2/observations.py`, T-230) reads `company`, `doc`, `doc_page` and `routes.csv` beside a store, and nothing
+  else; a Telegram-list company the 91-store build does not cover gets exactly that from its investor
+  presentations:
+  ```
+  python -m reality_engine.scripts.tg_measure_build --root D:/RealityEngine/tg_build/decks403 \
+      --universe D:/RealityEngine/tg_build/decks403/universe.csv --doc-types deck --parts registry,pages
+  ```
+  `--parts` names recipe parts in build order (default: all 13, the T-214 recipe unchanged). With `--doc-types
+  deck` the run is a deck build: store folders are `dNNN` (the T-214 recipe keeps `cNN`), it reads no T-214
+  manifest and writes no T-214 accept copy; the company is resolved by the universe's `isin` column (36 of the
+  ticket's 560 `symbol` cells are BSE codes, not symbols), and the per-company manifest is written from
+  `deck_figures.deck_sources` for the company's whole ISIN history since 2024-04-01 - "Intimation" letters skipped
+  (BSE files "Analyst / Investor Meet - Intimation" under the presentation category), one row per sha256,
+  `local_path` re-rooted with `config.resolve_stored_path`. `make_profile` gets `--raw-root D:/RealityEngine/raw`:
+  the PDFs stay on Drive and are fetched only into the RawStore cache while read, so a store keeps no PDF.
+  `docs_collect --doc-types deck` prefetches no other type (a `concall_audio_link` PDF is read only when
+  transcripts are asked for), and the route pass also gets `--doc-types deck`. The measure CSV keeps its T-214
+  columns: `raw_ok_files`/`raw_ok_mb` are the decks fetched and `store_mb` the store on disk; the run prints both
+  totals and the free space and stops before a company below `--min-free-gb` (default 50).
+  Verified against the stores (21 Nov): the ticket's 560 ISINs are all in `master_companies`, 394 have a deck since
+  2024-04-01 and 166 have none. `deck_sources` has 3,497 `ok` rows since that date (16.8 GB): 54 are "Intimation"
+  letters and 39 repeat another row's sha256 -> 3,404 decks (16.4 GB), 0 held locally and all 3,404 in the Drive
+  manifest (`raw_to_drive.db` holds 25,844 rows under `decks/`), so no deck is missing. `deck_sources` stops at
+  2026-10-25; checked 21 Nov, 291 later "Investor Presentation" BSE filings for 274 of the 560 companies are not
+  fetched in this ticket (the scout's 273 for 258 had already grown).
+  Pilot, 10 companies seeded from the ticket CSV (first ten with a deck: RAILTEL, SOLEX, GPTINFRA, OMPOWER,
+  RAJESH, MARINE, VASCONEQ, TRANSRAILL, BRAHMINFRA, CAPACITE), `--parts registry,pages`, run under
+  `.tmp/t232/pilot` because the worker sandbox denies D: writes (the controller runs the 394 on D:): all 40 recipe
+  steps and 10 route steps rc=0, no `ram_stop`, no timeout; 58 decks and 1,838 pages, 294.3 MB fetched and 4.46 MB
+  of stores; wall 1,475 s total, median 145 s (max 249 s), peak child RSS 395 MB. Every store opens with
+  `company`, `doc` (deck type only) and `doc_page`, and its `routes.csv` has exactly one row per `doc_page` row
+  (0 incomplete; 928 `no_figures`, 468 `table_or_chart`, 418 `needs_ocr`, 24 `text_ok`). The T-230 smoke test
+  (`v2.observations --stores d001,d003,d007 --doc-types deck --limit 30`) read 30 pages: 760 observations, 2
+  quarantined (0.3 %), 0 errors, 0 parse failures, 62 label proposals, 155 s.
+  Sandbox note: this dsh Windows profile runs Python as an identity that cannot write into a Python 3.14
+  `mkdtemp` folder (mode 0o700), and the RawStore downloads each company's PDFs into one. The pilot therefore
+  ran with `PYTHONPATH` pointing at `.tmp/t232/shim`, whose `sitecustomize` creates the folder `0o777`; run the
+  real build on D: outside the workspace sandbox (a normal console) and no shim is needed.
 
 ## Modular store repair (T-218, 16 Nov 2026)
 
