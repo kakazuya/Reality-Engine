@@ -2014,8 +2014,9 @@ python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build
 `--stores` takes store names/dirs/`.db` paths, `--stores-root` + `--sample` + `--seed` + `--ensure` pick a
 reproducible sample, `--require doc_key-substring:page` forces evidence pages in, `--doc-types` defaults to `deck`,
 `--limit` caps pages, `--resume` skips pages already written to `--out`. A page that is rerun replaces its own rows.
-The run stops (exit 2) when more than 20% of pages give an empty/non-JSON reply, more than 10% of observations are
-quarantined, or the reader hits a quota window (after writing what it already read).
+`--skip-statements` drops an annual report's financial-statement and notes pages from the stored text layer before
+any model call (stage F, below). The run stops (exit 2) when more than 20% of pages give an empty/non-JSON reply,
+more than 10% of observations are quarantined, or the reader hits a quota window (after writing what it already read).
 
 Stage-A pilot (21 Nov 2026, under the stage-A rules before Wolf's review): the command above on c08, c26 and the
 seed-11 stores that hold routed deck pages (c47, c59, c85), 150 pages, 10 workers, 276 s: **3,001 observations --
@@ -2030,7 +2031,7 @@ them). c26 p20 gives two series (`s1` tractor, `s2` M&HCV), `entity_scope='indus
 verified. OPEN: on c08 the project-to-group assignment moved between pilot runs (Keni Port and Slurry Pipeline changed
 group), so a group heading is verbatim-checked but its assignment to a map marker is not yet verified -- the group is
 stored, never promoted to fact by a reader. Full detail `.tmp/t230/report_a.md`; tests
-`python -m pytest -q reality_engine/tests/test_observations.py` (68 pass after stage E).
+`python -m pytest -q reality_engine/tests/test_observations.py` (74 pass after stage F).
 
 ### Stage B (Wolf's review, 21 Nov 2026)
 
@@ -2054,9 +2055,10 @@ potential (292+30+33+45 = 400). Stage B adds/changes:
   skips every page that already has observation rows in `--out`, so a stopped run continues where it stopped.
   Workers default to 20.
 - Scope: every routed `table_or_chart` page of doc_type `deck`/`investor_presentation` across all 91 stores is 4,702
-  pages; adding the routed annual-report pages (39,845) gives 44,547, above the 15,000 cap, so **decks only** were run.
-- Full run (21 Nov 2026): 4,702 routed deck pages of the 91 stores (decks only; decks + annual reports = 44,547,
-  above the 15,000 cap). The first pass stopped at **1,892 pages** when the shared key hit its quota window at 02:55
+  pages; adding the routed annual-report pages (39,845) gives 44,547, above the 15,000 cap, so stage B ran decks
+  only; stage F (below) filters the annual-report pages and reads those.
+- Full run (21 Nov 2026): 4,702 routed deck pages of the 91 stores (decks only; the routed annual reports were read
+  in stage F after the statement filter). The first pass stopped at **1,892 pages** when the shared key hit its quota window at 02:55
   IST (`Retry-After` 8,832 s) with 44,012 observations; at 05:35 IST the same command plus `--resume` read the
   remaining 2,810 pages in 2,000 s with **0 errors and 0 429s** after the reset (1,892 pages skipped as already
   written). Total: **101,849 observations on 4,405 pages -- 42,101 verified (41.3%), 57,568 unverified, 2,180
@@ -2174,6 +2176,57 @@ Wolf's seed-131 read: 42 right, 6 minor, 2 wrong of 50 verified (4%); the deck-p
 
 Recheck into `.tmp/t230/obs_91_e.db`: 56 upgrades, 1,150 downgrades. Final: 102,398 rows / 4,453 pages --
 **63,121 verified (61.6%), 37,048 unverified, 2,229 quarantined**. Report `.tmp/t230/report_e.md`; tests 68.
+
+### Stage F (annual-report pages kept: operating only, 21 Nov 2026)
+
+The goal: spend the spare hy4-flash-free quota on the annual-report visuals that hold capacity, plant, segment,
+volume and order figures, not on the statements the stores already hold from XBRL (of the 1,837 verified rows of the
+300-page pilot only 47 were operating measures). `--skip-statements` drops a page before any model call when its
+stored text layer prints a financial-statement or notes heading: Balance Sheet, Statement of Profit and Loss, Cash
+Flow Statement, Statement of Changes in Equity, Notes to (the) (Standalone|Consolidated) Financial Statements,
+Notes on Accounts, Schedules to the Financial Statements, Note No., Independent Auditor's Report (and its
+annexures), Form AOC-1, MGT-9 / extract of the annual return, Section 197(12) remuneration / particulars of
+employees, CSR spend, shareholding pattern, share price data, plus the sibling statutory-report headings the same
+pilot pages carry: notice / AGM / e-voting / explanatory statement, Secretarial Audit Report / Form MR-3, corporate
+governance report / code of conduct, related-party tables, and the BRSR section. Two carve-outs keep the operating
+pages: a notes page that prints a segment-reporting table (segment information, geographical segment, revenue by
+location/customer, customer concentration, sale of goods/services) and a BRSR page that prints the plant-location
+table. The test is line-based: a printed heading starts its line and is short (<= 14 words), so an MD&A sentence
+that mentions the balance sheet, a lowercase sentence fragment, or a line ending in a full stop is not a heading; a
+page with no text layer is kept. Code: `statement_page_reason`, `page_texts`, `filter_statement_pages`,
+`pages_from_store(..., skip_statements=True)`; the run reports kept/dropped counts and the reason mix as
+`statement_filter` in the stats JSON plus one stderr line.
+
+`seed_stores` now receives `--doc-types`; it was seeded on decks before, so `--sample 91 --doc-types annual_report`
+picked only the 61 stores that hold routed deck pages. With the fix all 88 stores that hold routed annual-report
+pages are picked (91 store dirs, 3 with no routed annual-report page).
+
+Measured on the 290 pilot pages (`.tmp/t230ar/obs_ar_pilot.db`, the seed-11 300-page pilot): **kept 152, dropped
+138 (47.6%)** -- notes 81, governance 8, notice 6, profit_and_loss 5, note_no 5, changes_in_equity 5,
+secretarial_audit 5, audit_report 5, csr_spend 4, brsr 3, related_party 3, cash_flow 2, balance_sheet 2,
+share_price 1, aoc1 1, remuneration 1, shareholding 1. Pages with a verified operating row (capacity/order/volume/
+production/mix, plant/outlet/customer counts, revenue rows carrying a segment/product/geography) **17 of 18 kept
+(94%), rows 69 of 71 (97%)**; the one dropped page (MANINFRA p142) is a related-party note whose two `mix.share`
+rows are not operating measures. Under the brief's literal measure-name list (any `count.*`/`revenue.*` row,
+including board-meeting counts and statement revenue lines) 25 of 27 pages are kept (93%). The brief's 70% drop
+target is NOT met on this page set (47.6%): about half of the routed annual-report pages are BRSR/governance/notice/
+statutory tables (kept for their plant counts or not a statement) or notes continuation pages whose stored text
+carries no printed heading; a heading filter cannot identify those without dropping operating pages. On all 88
+stores' **39,845** routed annual-report pages the filter kept **22,586** and dropped **17,259 (43.3%)** (notes 9,744,
+note_no 1,242, governance 1,135, balance_sheet 714, profit_and_loss 622, notice 523, audit_report 480,
+changes_in_equity 468, brsr 463, cash_flow 430, secretarial_audit 361, csr_spend 328, related_party 282,
+remuneration 237, aoc1 123, shareholding 94, share_price 7, mgt9 6). Tests:
+`test_observations.py` 74 passed (6 new stage-F tests).
+
+Run (21 Nov 2026): `python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10
+--sample 91 --doc-types annual_report --skip-statements --limit 100000 --workers 20 --resume
+--out .tmp/t230ar/obs_ar_91.db` (`--limit` is raised from its 150 default; the kept pages are 22,586). The selection
+was 22,442 pages after `--resume` skipped the 144 already written by the 150-page smoke pass. The worker's time
+budget stopped the pass after **2,217 pages / 44,897 rows -- 8,518 verified (19.0%), 34,993 unverified, 1,386
+quarantined (3.1%)** from 271 documents: 1,235 verified operating rows, 1,068 of them core operating (capacity /
+order / volume / production / mix, plant-outlet-customer counts, revenue with a segment/product/geography). No 429
+and no failed reply were logged; the quarantine gate held. The remaining 20,225 pages are resumable with the same
+command. Report `.tmp/t230ar/report_f.md` (30 random core-operating rows with their page excerpts, seed 51).
 
 
 

@@ -14,6 +14,9 @@ shape, then checks them independently of the model:
 * ``known_at`` is copied from the store's ``doc`` row, never from the model; ``value`` is parsed by
   the script from ``value_text``, never taken from the model; ``region`` comes from the text-layer
   word boxes when the value is found there.
+* (stage F) ``--skip-statements`` drops an annual report's financial-statement and notes pages from
+  the stored text layer before any model call; a notes page printing a segment table (or a BRSR page
+  with the plant-location table) is kept.  The run reports kept/dropped counts by reason.
 
 Output is a separate SQLite file (``--out``, default ``.tmp/t230/obs.db``); a store is only ever
 read.  Tables: ``observation``, ``measure_dict``, ``dim_vocab``.
@@ -22,6 +25,9 @@ Usage:
     python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10 \
         --sample 5 --ensure c08,c26 --seed 11 --limit 150 --workers 10
     python -m reality_engine.v2.observations --stores c08,c26 --limit 20 --workers 10
+    python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10 \
+        --sample 91 --doc-types annual_report --skip-statements --workers 20 --resume \
+        --out .tmp/t230ar/obs_ar_91.db
 """
 from __future__ import annotations
 
@@ -1832,8 +1838,126 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     return result
 
 
+# --------------------------------------------------------------------------- stage F annual-report page filter
+#
+# An annual report's routed table/chart pages are mostly financial statements and notes, whose lines the
+# stores already hold from XBRL: of 1,837 verified pilot rows only 47 were operating measures.  The filter
+# below drops those pages before any model call, on the stored text layer only.
+
+HEADING_WORDS = 14                     # a printed heading is short; a sentence that mentions a statement is not
+
+STATEMENT_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("balance_sheet", re.compile(r"^(?:consolidated\s+|standalone\s+)?balance\s+sheet\b", re.I)),
+    ("profit_and_loss", re.compile(r"^(?:consolidated\s+|standalone\s+)?(?:statement\s+of\s+)?"
+                                   r"profit\s*(?:and|&)\s*loss\b", re.I)),
+    ("cash_flow", re.compile(r"^(?:consolidated\s+|standalone\s+)?(?:statement\s+of\s+)?"
+                             r"cash\s*-?\s*flows?\s+statement\b|^statement\s+of\s+cash\s*-?\s*flows?\b", re.I)),
+    ("changes_in_equity", re.compile(r"^(?:consolidated\s+|standalone\s+)?statement\s+of\s+changes\s+"
+                                     r"in\s+equity\b", re.I)),
+    ("notes", re.compile(r"^(?:notes?|schedules?)\s+(?:forming\s+part\s+of\s+|to\s+)?(?:the\s+)?"
+                         r"(?:standalone\s+|consolidated\s+)?financial\s+statements?\b|"
+                         r"^notes?\s+on\s+accounts\b", re.I)),
+    ("note_no", re.compile(r"^note\s*(?:no\.|number\b)(?!\s*\d*\s*of\s+the\b)|^note\s+\d{1,2}\s*[:(.]", re.I)),
+    ("audit_report", re.compile(r"^(?:independent\s+)?auditor['\u2019]?s?\s+report\b|"
+                                r"^annexure\b.{0,80}?\bto\s+the\s+(?:independent\s+)?auditor['\u2019]?s?\s+"
+                                r"report\b", re.I)),
+    ("aoc1", re.compile(r"^form\s+(?:no\.?\s*)?aoc-?\s*1\b", re.I)),
+    ("mgt9", re.compile(r"^mgt-?\s*9\b|^extract\s+of\s+the\s+annual\s+return\b", re.I)),
+    ("remuneration", re.compile(r"^(?:details\s+(?:pertaining\s+to\s+)?)?(?:remuneration\s+"
+                                r"(?:to|of|paid\s+to)\s+(?:the\s+)?(?:directors?|key\s+managerial|managing)|"
+                                r"(?:details\s+)?(?:as\s+)?required\s+under\s+section\s+197\b)|"
+                                r"^particulars\s+of\s+(?:directors|employees)\b", re.I)),
+    ("csr_spend", re.compile(r"^(?:csr\s+(?:amount\s+spent|spend|spending|expenditure|expenses|projects?)|"
+                             r"annual\s+report\s+on\s+csr|annexure\b.{0,40}?\bcsr\b)", re.I)),
+    ("shareholding", re.compile(r"^shareholding\s+pattern\b", re.I)),
+    ("share_price", re.compile(r"^share\s+price\s+(?:data|movement|performance)\b|"
+                               r"^performance\s+comparison\b", re.I)),
+    ("notice", re.compile(r"^(?:notice\s+(?:to\s+)?(?:the\s+)?(?:shareholders|members)\b|"
+                          r"explanatory\s+statement\b|postal\s+ballot\b|remote\s+e-?voting\b|"
+                          r"instructions\s+for\s+.{0,20}voting\b|"
+                          r"details\s+of\s+directors\s+seeking\s+appointment|"
+                          r"annexure\s+to\s+the\s+notice)", re.I)),
+    ("secretarial_audit", re.compile(r"^secretarial\s+audit\s+report\b|^form\s+no\.?\s*mr-?3\b", re.I)),
+    ("governance", re.compile(r"^(?:report\s+on\s+corporate\s+governance\b|corporate\s+governance\s+report\b|"
+                              r"code\s+of\s+(?:conduct|ethics)\b)(?!\s*,\s*(?:which|that|and)\b)", re.I)),
+    ("related_party", re.compile(r"^related\s+party\s+(?:transactions?|disclosures?)\b", re.I)),
+    ("brsr", re.compile(r"^business\s+responsibility\s*(?:&|and)\s*sustainab", re.I)),
+)
+
+# A page with one of these headings can still carry the operating figures stage F exists for: keep it.
+STATEMENT_CARVE_OUT: dict[str, re.Pattern[str]] = {
+    "notes": re.compile(r"segment\s+(?:reporting|information)\b|geograph\w*\s+segment|"
+                        r"revenue\s+by\s+(?:location|customer)|"
+                        r"customers?\s+(?:represents?|account\s+for)\s+(?:10|ten)\s*%|"
+                        r"customer\s+\d\b|by\s+location\s+of\s+customers|"
+                        r"sale\s+of\s+(?:goods|services|products?)\b", re.I),
+    "brsr": re.compile(r"number\s+of\s+locations\s+where\s+plants|"
+                       r"plants\s+and\s*/\s*or\s+operations(?:\s*/\s*offices)?\s+of\s+the|"
+                       r"number\s+of\s+plants", re.I),
+}
+
+
+def statement_page_reason(text: str) -> str:
+    """Stage F: why a page is a financial-statement / notes page ('' when it is not).
+
+    Checked against the text layer's own lines: a printed heading starts its line and is short, so an MD&A
+    sentence that mentions the balance sheet is kept.  A page with no text layer has no headings and is kept.
+    A notes page printing a segment-reporting table (or a BRSR page printing the plant-location table) carries
+    the capacity/plant/segment figures stage F is after and is kept.
+    """
+    flat = norm_space(text)
+    for raw in text.splitlines():
+        line = norm_space(raw)
+        if not line or len(line.split()) > HEADING_WORDS:
+            continue
+        if line[0].islower() or line.endswith("."):
+            continue               # a sentence fragment that mentions a statement, not a printed heading
+        for name, pattern in STATEMENT_RULES:
+            if pattern.match(line):
+                carve = STATEMENT_CARVE_OUT.get(name)
+                if carve is not None and carve.search(flat):
+                    return ""
+                return name
+    return ""
+
+
+def page_texts(store_db: str | Path, pages: Iterable[dict[str, Any]]) -> dict[tuple[str, int], str]:
+    """The stored text layer of the given pages, one read per document (stage F filter input)."""
+    by_doc: dict[str, list[int]] = {}
+    for p in pages:
+        by_doc.setdefault(str(p["doc_key"]), []).append(int(p["page"]))
+    out: dict[tuple[str, int], str] = {}
+    con = connect_ro(store_db, timeout_s=60)
+    try:
+        for doc_key, numbers in by_doc.items():
+            marks = ",".join("?" * len(numbers))
+            _cur = con.execute(f"SELECT page, text FROM doc_page WHERE doc_key=? AND page IN ({marks})",
+                               (doc_key, *numbers))
+            if _cur is None:
+                continue
+            for row in (_cur.fetchall() or []):
+                out[(doc_key, int(row[0]))] = str(row[1] or "")
+    finally:
+        con.close()
+    return out
+
+
+def filter_statement_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, int], str],
+                           dropped: dict[str, int] | None = None) -> list[dict[str, Any]]:
+    """Stage F: drop the financial-statement and notes pages; ``dropped`` counts them by reason."""
+    kept: list[dict[str, Any]] = []
+    for p in pages:
+        reason = statement_page_reason(texts.get((str(p["doc_key"]), int(p["page"])), ""))
+        if not reason:
+            kept.append(p)
+        elif dropped is not None:
+            dropped[reason] = dropped.get(reason, 0) + 1
+    return kept
+
+
 def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
-                     routes: Iterable[str] = ("table_or_chart",)) -> list[dict[str, Any]]:
+                     routes: Iterable[str] = ("table_or_chart",), skip_statements: bool = False,
+                     dropped: dict[str, int] | None = None) -> list[dict[str, Any]]:
     routes_csv = Path(store_db).parent / "routes.csv"
     if not routes_csv.is_file():
         return []
@@ -1852,7 +1976,10 @@ def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
                 continue
             pages.setdefault((row["doc_key"], page), {"store": str(store_db), "doc_key": row["doc_key"],
                                                       "page": page})
-    return list(pages.values())
+    selected = list(pages.values())
+    if skip_statements:
+        selected = filter_statement_pages(selected, page_texts(store_db, selected), dropped)
+    return selected
 
 
 def seed_stores(root: str | Path, sample: int, seed: int, ensure: Iterable[str] = (),
@@ -2093,11 +2220,18 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
 def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         doc_types: Iterable[str] = ("deck",), seed: int = 11,
         required: Iterable[tuple[str, int]] = (), propose_limit: int = 300,
-        resume: bool = False) -> dict[str, Any]:
+        resume: bool = False, skip_statements: bool = False) -> dict[str, Any]:
     pages: list[dict[str, Any]] = []
+    dropped_by_reason: dict[str, int] = {}
     for store_db in store_dbs:
-        pages.extend(pages_from_store(store_db, doc_types=doc_types))
+        pages.extend(pages_from_store(store_db, doc_types=doc_types, skip_statements=skip_statements,
+                                      dropped=dropped_by_reason))
     selected = select_pages(pages, limit, seed, required)
+    statement_filter = {"kept": len(pages), "dropped": sum(dropped_by_reason.values()),
+                        "by_reason": dict(sorted(dropped_by_reason.items(), key=lambda kv: -kv[1]))}
+    if skip_statements:
+        print(f"statement filter: kept {statement_filter['kept']} dropped {statement_filter['dropped']} "
+              f"{statement_filter['by_reason']}", file=sys.stderr)
     with _RETRY_LOCK:
         _RETRY_EVENTS.clear()
     with _QUOTA_LOCK:
@@ -2111,7 +2245,7 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     stats: dict[str, Any] = {"pages": len(selected), "already_done": already_done, "read": 0, "errors": 0,
                              "parse_failures": 0, "dropped_all": 0, "observations": 0, "quarantined": 0,
                              "skipped": 0, "quota_skipped": 0, "parent_rows": 0, "http_429": 0,
-                             "failed_replies": []}
+                             "statement_filter": statement_filter, "failed_replies": []}
     companies = company_index(store_dbs)
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
@@ -2203,12 +2337,15 @@ def main(argv: list[str] | None = None) -> int:
                         help="skip pages that already have observation rows in --out (after a stopped run)")
     parser.add_argument("--recheck", action="store_true",
                         help="re-apply every script check to --out with no model call (stage C)")
+    parser.add_argument("--skip-statements", action="store_true",
+                        help="drop financial-statement/notes pages before any model call (stage F)")
     args = parser.parse_args(argv)
 
     store_dbs: list[str] = []
+    doc_types = [t for t in args.doc_types.split(",") if t]
     if args.stores_root:
         store_dbs = seed_stores(args.stores_root, args.sample, args.seed,
-                                [s for s in args.ensure.split(",") if s])
+                                [s for s in args.ensure.split(",") if s], doc_types=doc_types)
     if args.stores:
         for item in args.stores.split(","):
             item = item.strip()
@@ -2240,8 +2377,8 @@ def main(argv: list[str] | None = None) -> int:
             sub, page = item.rsplit(":", 1)
             required.append((sub.strip(), int(page)))
     stats = run(store_dbs, args.limit, args.workers, args.out,
-                doc_types=[t for t in args.doc_types.split(",") if t], seed=args.seed, required=required,
-                propose_limit=args.propose_limit, resume=args.resume)
+                doc_types=doc_types, seed=args.seed, required=required,
+                propose_limit=args.propose_limit, resume=args.resume, skip_statements=args.skip_statements)
     print(json.dumps(stats, indent=2))
     if stats.get("stopped"):
         print(f"STOP: {stats['stopped']}", file=sys.stderr)
