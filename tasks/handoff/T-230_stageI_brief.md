@@ -8,6 +8,9 @@ checkout, 1,071 pages / 57 companies so far, a job may still append to it after 
 verified = 37 right / 7 minor / 6 wrong (12%) and 10 unverified = 9 correct values, 6 of them blocked by a check.
 Detail (read it): `D:/RealityEngine/t232/wolf_read_decks394_a.md`. Rules tuned on the 91 do not all generalise.
 
+Evidence: the read above (cited ids per fix below), `.tmp/t232read/obs_decks394.db`, `D:/RealityEngine/t230/obs_91_h.db`,
+stores `D:/RealityEngine/tg_build/decks403/dNNN/dNNN.db` (read-only).
+
 Fixes (each with a selector, a scoped recheck, tests):
 1. Per-unit measures never take a crore/lakh/million scale: EPS, DPS, book value per share, Rs/kWh, Rs/unit,
    INR/sq ft, per tonne, per kg, per MW... (ids 974 ADANIPOWER 5.53 Rs/kWh at 1e7; 20613 IRCON EPS 4.57 at 1e7);
