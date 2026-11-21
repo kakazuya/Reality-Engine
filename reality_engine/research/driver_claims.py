@@ -2751,9 +2751,11 @@ def event_repair(con: sqlite3.Connection) -> dict[str, int]:
     A row joins an event with every row that shares (symbol, node, ``segment_key``, unit, ``period_norm``)
     and has a value within 1% and a ``known_at`` within :data:`EVENT_DAYS` days - the same source kind
     included, because two copies in one document are one event (a later restatement too).  The earliest
-    ``known_at`` row stands; the others become ``status='duplicate'`` with ``dup_of`` = the standing row's
-    id, and are never served as a separate claim.  A later row whose value changed for the same key is a
-    revision: it stays as its own row and gets ``revises`` = the previous row's id.
+    ``known_at`` row among the group's *verified* members stands, so the fact is only ever used from its own
+    known_at; rows after it become ``status='duplicate'`` with ``dup_of`` = the standing row's id, and an
+    earlier unverified copy keeps its status with ``dup_of`` = the standing row.  When no member is verified
+    the earliest row stands.  A later row whose value changed for the same key is a revision: it stays as its
+    own row and gets ``revises`` = the previous row's id.
     """
     rows = [dict(row) for row in con.execute(
         "SELECT id, symbol, node, segment, unit, value_low, value_high, known_at, status, period_norm"
@@ -2792,14 +2794,24 @@ def event_repair(con: sqlite3.Connection) -> dict[str, int]:
     components: dict[int, list[int]] = defaultdict(list)
     for number in parent:
         components[find(number)].append(number)
-    duplicates = verified_duplicates = 0
+    duplicates = verified_duplicates = linked_earlier = 0
     for ids in components.values():
         if len(ids) < 2:
             continue
-        ranked = sorted(ids, key=lambda number: (
-            str(by_id[number]["known_at"] or "9999"),
-            0 if by_id[number]["status"] == "verified" else 1, number))
-        standing, folded = ranked[0], ranked[1:]
+        ranked = sorted(ids, key=lambda number: (str(by_id[number]["known_at"] or "9999"), number))
+        verified_rows = [number for number in ranked if by_id[number]["status"] == "verified"]
+        standing = verified_rows[0] if verified_rows else ranked[0]
+        standing_key = (str(by_id[standing]["known_at"] or "9999"), standing)
+        folded: list[int] = []
+        for number in ranked:
+            if number == standing:
+                continue
+            if (str(by_id[number]["known_at"] or "9999"), number) < standing_key:
+                # an unverified copy before the event keeps its status but points at the fact it belongs to
+                con.execute("UPDATE claim SET dup_of=? WHERE id=?", (str(standing), number))
+                linked_earlier += 1
+            else:
+                folded.append(number)
         con.executemany(
             "UPDATE claim SET status='duplicate', status_reason='duplicate', dup_of=? WHERE id=?",
             [(str(standing), number) for number in folded])
@@ -2826,7 +2838,8 @@ def event_repair(con: sqlite3.Connection) -> dict[str, int]:
                     revised += 1
             previous = row
     con.commit()
-    return {"duplicates": duplicates, "duplicates_verified": verified_duplicates, "revised": revised}
+    return {"duplicates": duplicates, "duplicates_verified": verified_duplicates,
+            "linked_earlier": linked_earlier, "revised": revised}
 
 
 def repair_db(source: Path, out: Path, report_file: Path | None = None) -> int:
@@ -2983,7 +2996,8 @@ def repair_report(con: sqlite3.Connection, counts: Counter[str], events: dict[st
     if events:
         lines.append(
             f"event repair: {events.get('duplicates', 0)} duplicate rows (status 'duplicate', dup_of = "
-            f"standing row), {events.get('revised', 0)} revision links (revises); re-judge queue {rejudge} rows")
+            f"standing row), {events.get('linked_earlier', 0)} earlier unverified rows linked by dup_of, "
+            f"{events.get('revised', 0)} revision links (revises); re-judge queue {rejudge} rows")
         lines.append(
             f"stop condition: {events.get('duplicates_verified', 0)} of the {before_verified} pre-repair "
             f"verified rows became duplicate ({duplicate_share:.1%}; the run stops above 60%)")

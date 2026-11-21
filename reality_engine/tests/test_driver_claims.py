@@ -1704,7 +1704,7 @@ def test_event_repair_marks_duplicates_and_revisions(db_path: Path):
     rows = [tuple(r) for r in writer.con.execute(
         "SELECT source_id, status, dup_of, revises FROM claim ORDER BY source_id").fetchall()]
     writer.close()
-    assert events == {"duplicates": 1, "duplicates_verified": 1, "revised": 1}
+    assert events == {"duplicates": 1, "duplicates_verified": 1, "linked_earlier": 0, "revised": 1}
     assert rows == [(1, "verified", None, None), (2, "duplicate", "1", None), (3, "verified", None, 1)]
 
 
@@ -1731,6 +1731,32 @@ def test_event_repair_folds_a_single_value_and_its_own_range(db_path: Path):
     writer.close()
     assert events["duplicates"] == 1
     assert rows == [(1, "verified", None), (2, "duplicate", "1")]
+
+
+def test_event_repair_takes_the_earliest_verified_row_not_the_earliest_row(db_path: Path):
+    def row(source_id: int, value: float, known: str, status: str, **kw):
+        claim = _claim(source_id=source_id, value_low=value, value_high=None, known_at=known, **kw)
+        claim.update({"status": status,
+                      "status_reason": "" if status == "verified" else "judge:period_ok",
+                      "created_at": "x", "judge_ok": 1 if status == "verified" else 0,
+                      "judge_fail": "" if status == "verified" else "period_ok"})
+        return claim
+
+    writer = dc.Writer(db_path)
+    writer.insert_claims("run1", [
+        row(1, 100.0, "2025-01-01T10:00:00", "unverified"),
+        row(2, 100.0, "2025-03-01T10:00:00", "verified"),
+        row(3, 100.0, "2025-05-01T10:00:00", "verified"),
+        row(4, 50.0, "2025-01-01T10:00:00", "unverified", symbol="OTHERCO"),
+        row(5, 50.0, "2025-03-01T10:00:00", "unverified", symbol="OTHERCO"),
+    ])
+    events = dc.event_repair(writer.con)
+    rows = [tuple(r) for r in writer.con.execute(
+        "SELECT id, status, dup_of FROM claim ORDER BY id").fetchall()]
+    writer.close()
+    assert events == {"duplicates": 2, "duplicates_verified": 1, "linked_earlier": 1, "revised": 0}
+    assert rows == [(1, "unverified", "2"), (2, "verified", None), (3, "duplicate", "2"),
+                    (4, "unverified", None), (5, "duplicate", "4")]
 
 
 def test_repair_db_copies_the_source_and_keeps_a_duplicate_marked(db_path: Path):

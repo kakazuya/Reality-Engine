@@ -177,11 +177,13 @@ as a transcript statement; the evidence rows differ, the claim is one.
 
 Stage 2c adds the event dedupe for a finished DB (`event_repair()`, §13): every verified and unverified row
 joins an event with the rows that share (symbol, node, segment, unit, `period_norm`) and a value within 1%
-and a `known_at` within 180 days — same source kind included. The earliest `known_at` row stands; the others
-become `status='duplicate'` with `dup_of` = the event id and are never served as a separate claim (nothing is
-deleted). A generic segment ("total", "that line") matches a named one, because the value, unit, period and
-window already pin the event. A later row whose value changed for the same key is a revision: it stays a
-claim and gets `revises` = the previous row's id.
+and a `known_at` within 180 days — same source kind included. The earliest `known_at` row among the group's
+**verified** members stands (the factor only ever uses the fact from its own known_at); rows after it become
+`status='duplicate'` with `dup_of` = the event id and are never served as a separate claim, while an earlier
+unverified copy keeps its status with `dup_of` = the event. When no member is verified the earliest row
+stands. Nothing is deleted. A generic segment ("total", "that line") matches a named one, because the value,
+unit, period and window already pin the event. A later row whose value changed for the same key is a
+revision: it stays a claim and gets `revises` = the previous row's id.
 
 ## 6. Output
 
@@ -329,7 +331,7 @@ company scope. It is about 90% right on meaning, not 100%: use it as labelled mo
 
 ## 10. Tests
 
-101 pass (`python -m pytest -q reality_engine/tests/test_driver_claims.py`). They cover the guidance map, the
+102 pass (`python -m pytest -q reality_engine/tests/test_driver_claims.py`). They cover the guidance map, the
 number normaliser, the three statuses, the unit-word rule, the node-unit table, the from-A-to-B target rule
 (both the change, percent and the plain-range case), the ambiguous-range sign rule, the period-or-horizon
 rule, the mix/share re-tag (pct only, pattern required, segment named) and the list-span rule (8-8
@@ -359,7 +361,9 @@ printed; a USD amount keeps its unit because no FX table exists), the `order_kin
 (backlog, new order, both, neither), the item/plant/person `scope_part` rule (and that an unrelated page
 mention does not re-scope a claim; a named person's pay is no_driver), the collapsed-range repair (KROSS
 45-50), the event repair (a twin marked duplicate with `dup_of`, a changed value linked with `revises`, a
-single value equal to its own range), the generic-segment match and the DB copy/report migration.
+single value equal to its own range), the generic-segment match, the earliest-verified event row (an earlier
+unverified copy keeps its status with `dup_of`; no verified member falls back to the earliest row) and the DB
+copy/report migration.
 
 ## 11. Stage 2a: document sources and the pilot (21 Nov 2026)
 
@@ -571,12 +575,15 @@ period the repair changed are sent to the judge again.
    with no base (KROSS 10052: 45-50 cr, not 50-50). 64 rows repaired.
 6. **Event dedupe, never a delete.** Every verified/unverified row joins an event with rows sharing
    (symbol, node, segment, unit, `period_norm`) and a value within 1% with `known_at` within 180 days (same
-   source kind included); the earliest `known_at` row stands, the rest get `status='duplicate'` and
-   `dup_of` = the event id. A generic segment ("total", "that line") matches a named one. A later changed
-   value for the same key is a revision: kept, with `revises` = the previous id (3,420 links).
+   source kind included). The earliest `known_at` row among the group's **verified** members stands — the
+   factor only ever uses the fact from its own known_at — and the rest become `status='duplicate'` with
+   `dup_of` = the event id; an earlier unverified copy keeps its status with `dup_of` = the event, and when
+   no member is verified the earliest row stands. A generic segment ("total", "that line") matches a named
+   one. A later changed value for the same key is a revision: kept, with `revises` = the previous id
+   (3,483 links).
 7. **Narrow re-judge.** Only the 13 rows whose segment the repair changed were re-queued (`judge_ok` NULL);
-   `--judge-only` judged 13 in 7 requests (89 s, 0 errors): 12 passed, 1 failed `node_ok` (GANECOS 15362,
-   outside Wolf's 50). `--repair-report` rebuilds the report from the DB and its `repair_log`.
+   `--judge-only` judged 13 in 7 requests (72 s, 0 errors): 10 passed, 3 failed `node_ok` (DBOL 15038/15039
+   and GANECOS 15362). `--repair-report` rebuilds the report from the DB and its `repair_log`.
 
 Schema gains six additive columns (`period_norm`, `order_kind`, `execution_months`, `scope_part`, `revises`,
 `value_inr_cr`) and `repair_log`; an older claims DB migrates.
@@ -586,17 +593,18 @@ Schema gains six additive columns (`period_norm`, `order_kind`, `execution_month
 | measure | before | after |
 |---|---|---|
 | claim rows | 10,102 | 10,102 (nothing deleted) |
-| status | verified 2,450 / unverified 7,484 / quarantined 168 | verified 1,954 / unverified 5,724 / duplicate 2,256 / quarantined 168 |
-| verified `capex.amount` by unit | inr_cr 210, usd_mn 7, usd 1, inr 1, inr_lakh 1 | inr_cr 186, usd_mn 7, usd 1 |
-| verified `revenue.order_book` by unit | inr_cr 264, inr 97, usd_mn 29, usd 10, months 2 | inr_cr 286, usd_mn 23, usd 6, months 1 |
-| verified `revenue.order_book` by `order_kind` | none | inflow 244, backlog 37, NULL 35 |
-| verified with `period_norm` | 0 | 1,139 |
-| verified `scope_part=1` | 0 | 11 |
-| factor coverage (verified inflow order or capex) | not usable (duplicates) | 58 companies, 32 months, 282 company-months; order 29, capex 40 |
+| status | verified 2,450 / unverified 7,484 / quarantined 168 | verified 2,036 / unverified 5,853 / duplicate 2,045 / quarantined 168 |
+| verified `capex.amount` by unit | inr_cr 210, usd_mn 7, usd 1, inr 1, inr_lakh 1 | inr_cr 192, usd_mn 7, usd 1 |
+| verified `revenue.order_book` by unit | inr_cr 264, inr 97, usd_mn 29, usd 10, months 2 | inr_cr 295, usd_mn 24, usd 6, months 1 |
+| verified `revenue.order_book` by `order_kind` | none | inflow 251, backlog 39, NULL 36 |
+| verified with `period_norm` | 0 | 1,173 |
+| verified `scope_part=1` | 0 | 9 |
+| factor coverage (verified inflow order or capex) | not usable (duplicates) | 59 companies, 32 months, 291 company-months; order 29, capex 42 |
 
-Stop condition: 494 of the 2,451 pre-repair verified rows became duplicate (20.2%; the run stops above 60%).
-The earliest-known_at rule means a verified copy can be shadowed by an earlier unverified one: 104 verified
-rows (judge_ok=1) now sit behind an unverified event row. That is the brief's rule, not a lost verdict.
+Stop condition: 410 of the 2,449 pre-repair verified rows became duplicate (16.7%; the run stops above 60%).
+211 earlier unverified copies now carry `dup_of` to a later verified event and keep their own status, so a
+verified fact is never placed behind an unverified event row; the reverse (an unverified copy folded after a
+verified event) is a `duplicate`.
 
 **How Wolf's 50 ids now come out** (grade is Wolf's; "now" is read from the repaired DB):
 
@@ -611,7 +619,7 @@ rows (judge_ok=1) now sit behind an unverified event row. That is the brief's ru
 | 2901 | MINOR | base | verified, `period_norm=FY26`; base still "excluding GST" |
 | 3033 | MINOR | restatement | duplicate of 2028 |
 | 3142 | MINOR | unit | verified 12.8358 `inr_cr`, inflow |
-| 3361 | MINOR | backlog vs inflow | duplicate of 3359 (backlog); 3362 stays a verified inflow |
+| 3361 | MINOR | backlog vs inflow | verified; 3359 (earlier unverified) linked by `dup_of`; 3362 stays a verified inflow |
 | 3715 | RIGHT | — | verified |
 | 3891 | RIGHT | — | verified |
 | 3924 | MINOR | conditional | verified; `conditional` still 0 |
@@ -634,7 +642,7 @@ rows (judge_ok=1) now sit behind an unverified event row. That is the brief's ru
 | 7849 | WRONG | duplicate | duplicate of 7848 |
 | 8318 | RIGHT | — | verified |
 | 9428 | MINOR | sign | verified, sign still 0 (a saving, should be -) |
-| 9504 | WRONG | duplicate | duplicate of 10431 (the 100 cr capex event; 10431 unverified) |
+| 9504 | WRONG | duplicate | duplicate of 9503 (the earliest verified 100 cr capex row; 10431 unverified copy linked to it) |
 | 9720 | WRONG | duplicate + scope | duplicate of 8889 (verified, segment `gratuity fund`, scope_part=1) |
 | 9746 | WRONG | duplicate | verified; 15219 duplicate of 9746 |
 | 9972 | WRONG | node | verified `revenue.mix brakes` (node still wrong) |
@@ -650,11 +658,12 @@ rows (judge_ok=1) now sit behind an unverified event row. That is the brief's ru
 | 13053 | WRONG | stale/related-party | verified `revenue.order_book` 150 cr (unchanged) |
 | 13761 | RIGHT | — | verified |
 | 14161 | RIGHT | — | verified |
-| 15038 | WRONG | scope | verified, segment `branded sale`, scope_part=1 |
+| 15038 | WRONG | scope | unverified/`judge:node_ok`, segment `branded sale`, scope_part=1 (never a company total) |
 | 15093 | WRONG | scope | verified, segment `knitting machines`, scope_part=1 |
 
-Result: 38 of the 50 are `verified` and 12 are `duplicate` (one row per event). Of the 22 WRONG, 18 are
-resolved (all 14 duplicates, the 45-50 range, the two part-as-whole rows, and the officer-pay row) and 4
+Result: 38 of the 50 are `verified`, 11 are `duplicate` (one row per event) and 1 (`15038`) is unverified,
+scoped but held by the judge. Of the 22 WRONG, 18 are resolved (all 14 duplicates, the 45-50 range, both
+part-as-whole rows now scoped — 15038 held unverified, 15093 verified — and the officer-pay row) and 4
 remain: the wrong-node trio 2511/4984/9972 and the related-party approval 13053. The MINOR class is mostly
 unchanged: wrong node (4889, 10484), condition/sign/range (3924, 5934, 9428), a per-share measure (7321), a
 stale `known_at` (12413), a maturity year read as a period (12015), and a USD amount with no FX table
