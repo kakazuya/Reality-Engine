@@ -34,6 +34,8 @@ Open tickets are in `tasks/TASKS.md`; the session card is `python -m reality_eng
 
 Finish one step per session. Commit it and write the next action into `tasks/STATE.md`. Sessions have no context limit (9 Nov); keep `tasks/STATE.md` notes current with what is done and what is pending. Scripts print summaries; details go in files.
 
+**Fast fix loop (T-233).** A fix round is scoped, never a full rebuild: `--only selector.json` on `v2.observations`, `research.filing_events` and `research.driver_claims --repair` re-processes just the selected stores/doc_keys/pages into a copy of `--baseline`, and `python -m reality_engine.scripts.regress <pipeline> --db <copy> --baseline <old>` gates it against the hand-graded golden sets in `reality_engine/tests/golden/` (model-free, seconds; exit 1 on any newly broken RIGHT row). Merge only at zero newly broken; read only the changed rows. Details and commands: `docs/FIX_LOOP.md`.
+
 Reference, only when needed: `docs/PILOT3_BLUEPRINT.md` (pilot schema, methods, results; read before schema or extractor work), `docs/DB_BUILD_GUIDELINES.md` (build rules), `docs/DEVELOPER_GUIDE.md`, `docs/RAW_DATA_FAMILIES.md`, `machines/README.md`, `tasks/DATA_INVENTORY.md`.
 
 A new rule here needs a repeat failure and a check that enforces it. Once a check enforces a rule, shorten its text here.
