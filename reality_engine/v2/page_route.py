@@ -12,7 +12,10 @@ Routes (exactly one per page):
                         page (a marker such as "Dear Sir/Madam", "Sub:", "Pursuant to Regulation", "Table of
                         Contents", "Independent Auditor's Report") with low number density.  No reader.
 * ``needs_ocr``       - the text layer gives no usable words (``page_words.quality`` none/jumbled) and no OCR
-                        words exist yet.  Rerun the CLI with ``--ocr-db`` once the OCR arrives.
+                        words exist yet.  Rerun the CLI once the OCR arrives (T-238: the store's own
+                        ``<stem>_ocr.db`` is found beside it and ``--ocr-db`` stays available for another path).
+                        A page whose OCR words exist is re-routed on them (``table_or_chart`` / ``no_figures`` /
+                        ``text_ok``); its reason keeps why it needed OCR and ``word_source`` names the OCR pass.
 * ``table_or_chart``  - ``page_reader.is_table_page`` or ``page_reader._chart_like`` is true, or the page holds a
                         picture (5%+ of the page area) and prints figures.  The page image is the reader's input.
 * ``text_ok``         - everything else: prose with a clean text layer, keep the text layer.
@@ -136,19 +139,30 @@ def _page_meta(store_db: Any, doc_key: str, page_no: int) -> tuple[str, str, str
 
 def route_detail(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] = (),
                  words: page_words.PageWords | None = None) -> dict[str, str]:
-    """One page's route with its reason and the word source behind it."""
+    """One page's route with its reason and the word source behind it.
+
+    T-238: a ``needs_ocr`` page whose OCR database holds usable words is re-routed on those words with the same
+    rules as a text-layer page; the CSV keeps the original reason (the page needed OCR) and names the OCR
+    ``word_source`` so the route stays auditable.
+    """
     _symbol, _doc_type, text, method, pdf_path = _page_meta(store_db, doc_key, page_no)
     pw = words
     quality = "ok"
     word_source = "store_text"
+    ocr_reroute = False
+    prior = ""
 
     if method == "needs_ocr" or not text.strip():
         if pw is None:
             pw = page_words.words_for(store_db, doc_key, page_no, ocr_dbs)
         quality = pw.quality
         word_source = pw.source
-        if pw.source.startswith("ocr") and pw.quality == "ok" and pw.words:
-            text = page_layout.layout_text(pw.words)          # the OCR words are the page's text
+        if pw.source.startswith("ocr") and pw.words:
+            # T-238: the OCR pass is this page's only source; route on its words even when their own dictionary
+            # score is low (the reader gets the page image too).  Keep why the page needed OCR in the reason.
+            text = page_layout.layout_text(pw.words)
+            ocr_reroute = True
+            prior = f"needs_ocr: text layer unusable, OCR words {pw.quality}"
         elif pw.quality in ("none", "jumbled"):
             return {"route": "needs_ocr", "word_source": pw.source, "quality": pw.quality,
                     "reason": f"text layer {pw.quality}: {pw.reason or 'no usable words'}"
@@ -156,18 +170,25 @@ def route_detail(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[An
                                  "; no OCR words yet")}
 
     figs = figures_in(text)
+
+    def reason_for(reason: str) -> str:
+        return f"{prior}; re-routed on OCR words ({word_source}): {reason}" if ocr_reroute else reason
+
     if _has_marker(text) and len(figs) < MARKER_MAX_FIGURES:
         return {"route": "no_figures", "word_source": word_source, "quality": quality,
-                "reason": f"cover/intimation/contents/auditor words with {len(figs)} figures"}
+                "reason": reason_for(f"cover/intimation/contents/auditor words with {len(figs)} figures")}
     if len(figs) < MIN_FIGURES:
         return {"route": "no_figures", "word_source": word_source, "quality": quality,
-                "reason": f"{len(figs)} printed figures (fewer than {MIN_FIGURES})"}
+                "reason": reason_for(f"{len(figs)} printed figures (fewer than {MIN_FIGURES})")}
 
     if pw is None:
         pw = page_words.words_for(store_db, doc_key, page_no, ocr_dbs)
     quality = pw.quality
     word_source = pw.source
-    if pw.quality in ("none", "jumbled"):
+    if pw.source.startswith("ocr") and pw.words:
+        if not ocr_reroute:                     # a jumbled layer whose page has OCR words
+            ocr_reroute, prior = True, f"text layer unusable, OCR words {pw.quality}"
+    elif pw.quality in ("none", "jumbled"):
         if pw.source.startswith("ocr"):
             return {"route": "needs_ocr", "word_source": pw.source, "quality": pw.quality,
                     "reason": f"OCR words are {pw.quality}: {pw.reason}"}
@@ -175,16 +196,16 @@ def route_detail(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[An
                 "reason": f"text layer {pw.quality}: {pw.reason or 'no usable words'}; OCR pending"}
     if page_reader.is_table_page(pw.words):
         return {"route": "table_or_chart", "word_source": word_source, "quality": quality,
-                "reason": "table: labeled lines of printed figures"}
+                "reason": reason_for("table: labeled lines of printed figures")}
     if page_reader._chart_like(pw.words):
         return {"route": "table_or_chart", "word_source": word_source, "quality": quality,
-                "reason": "chart-like: figures printed without labels"}
+                "reason": reason_for("chart-like: figures printed without labels")}
     share = _images_share(pdf_path, page_no)
     if share >= IMAGE_AREA_SHARE:
         return {"route": "table_or_chart", "word_source": word_source, "quality": quality,
-                "reason": f"picture covering {share:.0%} of the page with {len(figs)} figures"}
+                "reason": reason_for(f"picture covering {share:.0%} of the page with {len(figs)} figures")}
     return {"route": "text_ok", "word_source": word_source, "quality": quality,
-            "reason": f"prose with a clean text layer, {len(figs)} figures and no table or chart"}
+            "reason": reason_for(f"prose with a clean text layer, {len(figs)} figures and no table or chart")}
 
 
 def route_page(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] = ()) -> tuple[str, str]:

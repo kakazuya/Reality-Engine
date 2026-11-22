@@ -272,8 +272,20 @@ def ocr_words(ocr_dbs: Iterable[Any], doc_key: str, page_no: int) -> list[Word]:
     return out
 
 
+def sibling_ocr_db(store_db: Any) -> Path:
+    """The OCR database a store keeps beside itself: ``<stem>_ocr.db`` (T-238).
+
+    ``pilot3 build --part ocr`` writes it next to its build (``<out dir>/<stem>_ocr.db``) and ``hp_ocr.py`` puts
+    the TextRecognizer pass at the same path, so every caller of :func:`words_for` (route, reader, recheck) finds a
+    page's OCR words without an explicit ``--ocr-db`` argument."""
+    path = Path(str(store_db))
+    return path.with_name(f"{path.stem}_ocr.db")
+
+
 def words_for(store_db: Any, doc_key: str, page_no: int, ocr_dbs: Iterable[Any] = ()) -> PageWords:
     store = raw_store.default_store()
+    own = sibling_ocr_db(store_db)
+    ocr_dbs = tuple(ocr_dbs or ()) + ((own,) if own.is_file() else ())
     source_key = None
     con: Any = connect_ro(store_db)          # a missing store or doc table is an error, not an empty page
     try:

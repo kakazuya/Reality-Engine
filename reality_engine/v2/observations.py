@@ -2351,12 +2351,14 @@ def is_not_a_measure(row: dict[str, Any]) -> bool:
 
 
 def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str, str]],
-                    raw_text: str = "", ocr_text: str = "") -> tuple[str, list[str]]:
+                    raw_text: str = "", ocr_text: str = "", ocr_page: bool = False) -> tuple[str, list[str]]:
     """Re-apply every script check to one row (used by the reader and by --recheck).
 
     Stage H: the text layer is the first check and the OCR of the page image the second, so a value printed only
     inside a chart image verifies with ``text_source='ocr'``; a value neither source carries is unverified
     (``image_text``), never quarantined -- Wolf's audit had 37 correct image-only rows sitting in quarantine.
+    T-238: ``ocr_page`` marks a page whose reading input IS the stored OCR words (the text layer was unusable):
+    every printed check has run against those words and the row carries ``text_source='ocr'``.
     """
     reasons = list(row.pop("_scale_notes", []))
     row["text_source"] = ""
@@ -2375,7 +2377,7 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     if not in_layer and not in_ocr:
         return "unverified", reasons + [
             "image_text: the value is printed in the page image, not in its text layer or OCR"]
-    row["text_source"] = "text_layer" if in_layer else "ocr"
+    row["text_source"] = "ocr" if (ocr_page or not in_layer) else "text_layer"
     status = "unverified" if reasons else "verified"
     for field in ("printed_label", "printed_axis", "group_path"):
         if not row.get(field):
@@ -2443,7 +2445,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                        vocab: dict[tuple[str, str], str] | None = None,
                        doc_owner_symbol: str = "",
                        companies: dict[str, tuple[str, str]] | None = None,
-                       deck_asof: str = "", ocr_text: str = "") -> list[dict[str, Any]]:
+                       deck_asof: str = "", ocr_text: str = "", ocr_page: bool = False) -> list[dict[str, Any]]:
     """Model reply objects -> checked observation rows (status and status_reason set here)."""
     measures = measures if measures is not None else measure_index()
     vocab = vocab if vocab is not None else vocab_index()
@@ -2578,7 +2580,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         if doc_owner_symbol and row["entity_scope"] in ("company", "subsidiary", ""):
             row["entity_scope"] = "parent"
         row["_scale_notes"] = scale_notes
-        row["status"], reasons = evaluate_status(row, text, measures, page_text, ocr_text)
+        row["status"], reasons = evaluate_status(row, text, measures, page_text, ocr_text, ocr_page)
         row["status_reason"] = "; ".join(reasons)
         out.append(row)
     out = apply_map_orphans(out)
@@ -2894,7 +2896,7 @@ def page_text_of(store_db: str | Path, doc_key: str, page: int) -> str:
 
 # --------------------------------------------------------------------------- stage H image-only text (OCR)
 
-OCR_READER = os.environ.get("T230_OCR_READER", "dots-studio/dots-3-note-preview:free")   # Kilo Dots, T-225's reader
+OCR_READER = os.environ.get("T230_OCR_READER", "")   # T-238: the Kilo Dots default is gone (404); the env hook stays
 OCR_PROMPT = (
     "Transcribe ONLY the numbers printed as data labels on this page image. One line per number: the number exactly "
     "as printed, then the words printed next to it. Never estimate a value from a bar's height or from the gridlines, "
@@ -2906,13 +2908,14 @@ _OCR_CACHE: dict[tuple[str, str, int], str] = {}
 
 
 def ocr_page_text(store_db: str | Path, doc_key: str, page: int, image_b64: str | None) -> str:
-    """The page image's printed data labels, read by Dots (one call per page); '' when the reader is unavailable.
+    """The page image's printed data labels, read from the stored OCR words; '' when no OCR words exist.
 
     Stage H: a chart whose numbers sit inside the image has an empty text layer at exactly those values (CONFIPET
     p34: 37 correct rows were quarantined).  This gives the check a second printed source; the value's status then
     verifies with ``text_source='ocr'``.  The store's own OCR database (``<store>_ocr.db``, the RapidOCR/TextRecognizer
-    pass) is used first: it is already on disk and costs no call.  A failed or quota-blocked call returns '' and the
-    row stays unverified (``image_text``), never quarantined.
+    pass) is used first: it is already on disk and costs no call.  T-238: Kilo Dots is gone (404), so no OCR model is
+    called by default; ``T230_OCR_READER`` names another reader and a failed or quota-blocked call returns '' (the
+    row stays unverified ``image_text``, never quarantined).
     """
     key = (str(store_db), str(doc_key), int(page))
     with _OCR_LOCK:
@@ -2925,7 +2928,7 @@ def ocr_page_text(store_db: str | Path, doc_key: str, page: int, image_b64: str 
             text = norm_space(" ".join(w[4] for w in page_words.ocr_words([stored], doc_key, int(page))))
         except Exception:
             text = ""
-    if not text and image_b64 and quota_seconds() <= 0:
+    if not text and image_b64 and OCR_READER and quota_seconds() <= 0:
         try:
             result = rp._model_call(OCR_READER, OCR_PROMPT, image_b64)
         except Exception as exc:
@@ -3140,11 +3143,18 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
         except Exception:
             owner = ""
     text = page_text_of(store_db, doc_key, page)
+    pw = None
     try:
-        words = page_words.words_for(store_db, doc_key, page).words
+        pw = page_words.words_for(store_db, doc_key, page)
     except Exception:
-        words = []
+        pw = None
+    # T-238: the page's own OCR words are the reading input when the text layer is unusable (the route sends such
+    # a page here only when its <stem>_ocr.db holds words).  The prompt gets their layout as the text layer and
+    # every printed check (label/axis/period/basis) runs on those words; the rows carry text_source='ocr'.
+    ocr_read = bool(pw and pw.words and pw.source.startswith("ocr"))
+    words = pw.words if pw else []
     layout = page_layout.layout_text(words) if words else norm_space(text)
+    check_text = layout if ocr_read else text
     image_b64 = None
     if text_only:
         image_note = ""
@@ -3177,16 +3187,17 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     reply_rows, bad = parse_reply(result["raw"])
     result["bad_lines"] = bad
     result["parsed"] = len(reply_rows)
-    text_flat = norm_space(text)
+    text_flat = norm_space(check_text)
     image_values = [norm_space(r.get("value_text")) for r in reply_rows if isinstance(r, dict)]
     result["ocr_text"] = ""
-    if any(v and re.search(r"\d", v) and not text_has(text_flat, v) for v in image_values):
+    result["ocr_read"] = ocr_read
+    if not ocr_read and any(v and re.search(r"\d", v) and not text_has(text_flat, v) for v in image_values):
         result["ocr_text"] = ocr_page_text(store_db, doc_key, page, image_b64)
     result["rows"] = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=page,
-                                        known_at=meta["known_at"], page_text=text, words=words,
+                                        known_at=meta["known_at"], page_text=check_text, words=words,
                                         reply_rows=reply_rows, doc_owner_symbol=owner,
-                                        companies=companies, deck_asof=deck_period(store_db, doc_key, text),
-                                        ocr_text=result["ocr_text"])
+                                        companies=companies, deck_asof=deck_period(store_db, doc_key, check_text),
+                                        ocr_text=result["ocr_text"], ocr_page=ocr_read)
     return result
 
 
@@ -3308,14 +3319,37 @@ def filter_statement_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, i
     return kept
 
 
+@lru_cache(maxsize=256)
+def _ocr_pages(store_db: str) -> frozenset[tuple[str, int]]:
+    """The (doc_key, page) pairs the store's own ``<stem>_ocr.db`` holds words for (T-238)."""
+    path = page_words.sibling_ocr_db(store_db)
+    if not path.is_file():
+        return frozenset()
+    try:
+        con = sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
+        try:
+            return frozenset((str(row[0]), int(row[1])) for row in con.execute("SELECT doc_key, page FROM ocr_page"))
+        finally:
+            con.close()
+    except sqlite3.Error:
+        return frozenset()
+
+
 def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
-                     routes: Iterable[str] = ("table_or_chart",), skip_statements: bool = False,
+                     routes: Iterable[str] = ("table_or_chart", "needs_ocr"), skip_statements: bool = False,
                      dropped: dict[str, int] | None = None) -> list[dict[str, Any]]:
+    """The routed pages a reader may read, from the ``routes.csv`` beside the store.
+
+    T-238: a ``needs_ocr`` row is readable once the store's ``<stem>_ocr.db`` holds words for it -- the reader gets
+    the OCR text layer and the checks run on the OCR words (``text_source='ocr'``).  A ``needs_ocr`` row with no
+    OCR words yet is still skipped.
+    """
     routes_csv = Path(store_db).parent / "routes.csv"
     if not routes_csv.is_file():
         return []
     wanted_types = {rp._doc_type_norm(t) for t in doc_types}
     wanted_routes = set(routes)
+    have_ocr: frozenset[tuple[str, int]] | None = None
     pages: dict[tuple[str, int], dict[str, Any]] = {}
     with routes_csv.open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
@@ -3327,6 +3361,11 @@ def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
                 page = int(row["page"])
             except (KeyError, ValueError):
                 continue
+            if row.get("route") == "needs_ocr":
+                if have_ocr is None:
+                    have_ocr = _ocr_pages(str(store_db))
+                if (str(row["doc_key"]), page) not in have_ocr:
+                    continue
             pages.setdefault((row["doc_key"], page), {"store": str(store_db), "doc_key": row["doc_key"],
                                                       "page": page})
     selected = list(pages.values())
@@ -3421,13 +3460,17 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             continue
         stats["pages"] += 1
         raw_text = page_text_of(store_db, doc_key, int(page))
+        try:
+            pw = page_words.words_for(store_db, doc_key, int(page))
+            words = pw.words
+        except Exception:
+            pw, words = None, []
+        ocr_page = bool(pw and words and pw.source.startswith("ocr"))
+        if ocr_page:            # T-238: a recheck re-applies the checks on the OCR words the reader used
+            raw_text = page_layout.layout_text(words)
         text = norm_space(raw_text)
         head = page_head(raw_text)
         deck_asof = deck_period(store_db, doc_key, raw_text)
-        try:
-            words = page_words.words_for(store_db, doc_key, int(page)).words
-        except Exception:
-            words = []
         owner = ""
         try:
             owner = doc_owner(store_db, doc_key, companies, store_symbol.get(store_db, ""))
@@ -3435,11 +3478,14 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             owner = ""
         rows = [dict(r) for r in con.execute(f"SELECT * FROM observation WHERE doc_key=? AND page=?"
                                              f" AND ({row_filter})", (doc_key, int(page)))]
-        ocr_row = con.execute("SELECT text FROM page_ocr WHERE doc_key=? AND page=?",
-                              (str(doc_key), int(page))).fetchone()
-        ocr_text = str(ocr_row[0] or "") if ocr_row else ""
-        if not ocr_text and any(norm_space(r["value_text"]) and not text_has(text, r["value_text"]) for r in rows):
-            ocr_text = ocr_page_text(store_db, doc_key, int(page), None)   # stored OCR words only, no model call
+        ocr_text = ""
+        if not ocr_page:
+            ocr_row = con.execute("SELECT text FROM page_ocr WHERE doc_key=? AND page=?",
+                                  (str(doc_key), int(page))).fetchone()
+            ocr_text = str(ocr_row[0] or "") if ocr_row else ""
+            if not ocr_text and any(norm_space(r["value_text"]) and not text_has(text, r["value_text"])
+                                    for r in rows):
+                ocr_text = ocr_page_text(store_db, doc_key, int(page), None)   # stored OCR words only, no call
         updated: list[dict[str, Any]] = []
         for row in rows:
             stats["rows"] += 1
@@ -3599,7 +3645,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 stats["parent_rows"] += 1
             row.pop("_scale_notes", None)
             row["_is_total"] = derive_is_total(row)   # stage L: a printed "Total" label is known before the checks
-            status, reasons = evaluate_status(dict(row), text, measures, raw_text, ocr_text)
+            status, reasons = evaluate_status(dict(row), text, measures, raw_text, ocr_text, ocr_page)
             if any("generic_label" in reason for reason in reasons):
                 stats["generic_labels"] += 1
             dictionary_fix = ("measure is not in the dictionary" in old_reason
@@ -3726,7 +3772,7 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
     stats: dict[str, Any] = {"pages": len(selected), "already_done": already_done, "read": 0, "errors": 0,
                              "parse_failures": 0, "dropped_all": 0, "observations": 0, "quarantined": 0,
                              "skipped": 0, "quota_skipped": 0, "parent_rows": 0, "http_429": 0,
-                             "ocr_pages": 0, "ocr_rows": 0, "image_text_rows": 0,
+                             "ocr_pages": 0, "ocr_rows": 0, "ocr_read_pages": 0, "image_text_rows": 0,
                              "in_tok": 0, "out_tok": 0, "latencies": [],
                              "statement_filter": statement_filter, "failed_replies": []}
     companies = company_index(store_dbs)
@@ -3763,6 +3809,8 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 continue
             rows = result["rows"]
             stats["read"] += 1
+            if result.get("ocr_read"):
+                stats["ocr_read_pages"] += 1
             if not rows:
                 if not result["raw"].strip() or result["parsed"] == 0:
                     stats["parse_failures"] += 1

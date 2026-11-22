@@ -92,6 +92,7 @@ Baseline runs on 21 Nov 2026 (read-only, no model):
 | command | result |
 |---|---|
 | `python -m reality_engine.scripts.regress observations --db .tmp/t230i/obs_91_i.db` | still right 118, fixed 18, still wrong 34, changed 11, **newly broken 0**, 2 s (60 lines skipped: companies not in this DB) |
+| `python -m reality_engine.scripts.regress observations --db .tmp/t238/obs_ocr_read.db --baseline D:/RealityEngine/t230/obs_91_i.db` | T-238 scoped OCR read (372 pages added to a copy of `obs_91_i.db`): **newly broken 0**, added 7,174, removed 0, status changed 0, 5 s |
 | `python -m reality_engine.scripts.regress observations --db .tmp/t230i/obs_decks394_i.db` | still right 40, fixed 14, still wrong 6, **newly broken 0**, 0.5 s (181 lines skipped) |
 | `python -m reality_engine.scripts.regress claims --db D:/RealityEngine/t228/claims_91_s2c.db` | still right 50, fixed 14, still wrong 82, newly broken 0, 0.2 s |
 | `python -m reality_engine.scripts.regress events --db D:/RealityEngine/t231/events.db` | still right 60, fixed 1, still wrong 8, newly broken 0, 0.01 s |
