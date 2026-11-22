@@ -79,6 +79,7 @@ One row per line, kept in its section.
 - T-228 | DOING Wolf | P1 | Driver-tree claims: turn verbatim management text (call statements, guidance) into quantified claims on revenue (volume x price), operating cost, capex/capacity, debt and equity, read by hy4-flash-free on Go (free, run unleashed to measure its real quota); then our forward estimate (B) and management credibility (C), and test whether B+C add prediction over the hard-number factors (T-210 panel) | accept: Shivam | from: Shivam 20 Nov | opened 2026-11-20
 - T-229 | DOING Wolf | P1 | Factor study on the 91 Telegram stores: store-derived point-in-time factors (financial lines, margins, valuation, debt, holdings, guidance, order book) against 3/6/12-month forward excess returns, with a store-vs-XBRL-panel check and a matched random control set to measure the selection bias of the 91 | accept: Shivam | from: Shivam 21 Nov | opened 2026-11-21
 - T-235 | OPEN Wolf | P1 | Capital-flow early warning: daily per-stock flow signals (delivery, insider/promoter, bulk/block, ownership, earnings, red flags) + event study (after-signal returns, before-big-move look-back, combinations), back-test 2010+ | accept: Shivam | from: Shivam 22 Nov | opened 2026-11-22
+- T-237 | OPEN Wolf | P1 | Opus deep-read case study: 2 companies (SOMANYCERA, RSWM) - ARs, transcripts, decks, ratings into dictionary facts (NEW ids allowed), then query with technicals: are fundamental factors recoverable? | accept: Shivam | from: Shivam 22 Nov | opened 2026-11-22
 
 ## Machines
 
