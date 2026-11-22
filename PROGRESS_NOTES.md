@@ -42,3 +42,26 @@
 - T-232 (worker): --parts/--doc-types on tg_measure_build, deck manifest from deck_sources, docs_collect doc-type filter, --raw-root for deck builds, measure_store guard; 9 tests pass; pilot 10 building under .tmp/t232/pilot (D: root needs the controller: sandbox denies D: writes).
 - 2026-11-21 T-230I (stage I of T-230, model-free): per-unit/trillion scale, table-vs-chart axis ticks, comparison-word periods, area/energy units, Unicode dashes, area-delivered/ESG/peak-demand dictionary, lower bounds (`value_kind`), footnote basis, entity-scope cue. 394 recheck: verified 16,284 -> 17,683, gate 40 right / 14 fixed / 6 still wrong / 0 newly broken. 91 recheck: verified 70,387 -> 69,926, quarantined 1,927 -> 151, gate 118 right / 18 fixed / 34 still wrong / 11 changed / 0 newly broken. 272 tests, typecheck 0; golden set 181 -> 241 lines (60 graded rows from Wolf's decks394 read A).
 - 2026-11-21 T-230J (stage J, after Wolf's review): axis ladder needs 5 values + not a table page + no printed label beside the value (523 of the 543 obs_91 rows stage I lost come back); `is_total` column persisted and re-derived on recheck, parts-sum pass restored (135 of 144 known losses); `regress` skips golden lines for companies a DB does not hold. 394 verified 16,284 -> 18,008; obs_91 70,387 -> 70,578 (quarantined 1,927 -> 151); gates 40/14/6/0 and 118/18/34/11/0; 128 tests, typecheck 0.
+
+## T-235 capital-flow signals (22 Nov)
+
+- Data probes done. Truth snapshot `truth_2026-11-04.duckdb` (69 tables) is the study input; the
+  `truth_2026-11-09.duckdb` snapshot is partial (19 tables) and the reality-data `truth_duckdb`
+  catalog points at it, so the modules name 11-04. Delivery uses `px_nse` only (BSE delivery in
+  `px_daily` is corrupt: avg 88%, 100% on Rs 100 turnover). Insider PIT only from `nse_insider`
+  (`bse_insider.known_at_utc` all null). FPI/MF/insurance categories from T-209
+  `D:/RealityEngine/structured/structured_universe.db` (2024-04+); the snapshot `shp_index` has
+  promoter % only. Promoter filings before 2022 carry the 2022 backfill `known_at`.
+- `flow_signals.py` built 222,949 signals 2019-2026-11-03: market 187,555; insider/pledge 4,634;
+  bulk/block 2,246; promoter 2,974; FPI/MF/insurance 9,593; earnings 16,029.
+- `flow_events.py` smoke run on 2023-2024 passes; 13 tests in `test_flow_signals.py` pass.
+- Full study run complete: 219,779 events, 3,791 return cells, 1,201 BH passes. Finding:
+  only short-horizon delivery-spike / insider-buy effects (and `bad quarter` as a 5-session
+  underperformance) beat the same-stock, same-year placebo after BH; `delivery trend up`
+  is marginal at 60/250; nothing else survives. Doc `docs/research/T-235_capital_flow.md`,
+  `DEVELOPER_GUIDE.md` O19e. Typecheck: 110 pandas-3 stub-class errors (the accepted
+  pandas-heavy research modules carry the same class: factor_weights 171, factor_deep 193).
+- Next: final report; commit to be requested by the controller (not done here).
+- Full suite attempted once: 3,995 passed / 523 failed / 263 errors in 14.3 min, dominated by
+  the sandbox denying temp-dir cleanup (PermissionError under `.tmp`) in unrelated modules;
+  the T-235 narrowed file is 13 passed. No new failure is traceable to this change.
