@@ -111,6 +111,14 @@ MODELS = {
     # Same model with low reasoning and room to think (Shivam 18 Nov: test whether reasoning improves its figures).
     "hy4-flash-free@low": {"api": "chat", "id": "hy4-flash-free", "price": (0.0, 0.0), "capped": False, "ceiling": 30,
                            "body": {"temperature": 0, "max_tokens": 32000, "reasoning_effort": "low"}},
+    # T-238 (22 Nov 2026, Shivam): DeepSeek V4.1 Flash as the transcript second reader on the same Go base.
+    # Go model id deepseek-v4.1-flash, OPENCODE_GO_API_KEY only (the default key env for BASE), paid per Go's
+    # sheet ($0.15/$0.60 per M tokens, $80/month cap); read text-only by
+    # `v2.observations --reader deepseek-v4.1-flash --text-only`.  effort "none" is required: with thinking on
+    # (default or "low") a 6k-token transcript prompt returns reasoning_content only and an empty content (probe
+    # 22 Nov: 2,548 completion tokens, 0 chars of content); "none" answers in 544 tokens.
+    "deepseek-v4.1-flash": {"api": "chat", "price": (0.15, 0.60), "capped": False, "ceiling": 30,
+                            "body": {"temperature": 0, "max_tokens": 16000, "reasoning_effort": "none"}},
     "longcat-2.5-preview-free": {"api": "chat", "price": (0.0, 0.0), "capped": False, "ceiling": 35,
                                  "body": {"temperature": 0, "max_tokens": 8000, "thinking": {"type": "disabled"}}},
     # best labels on the 40-page test (96.3% identifiable, units 94%) but reasoning cannot be switched off:

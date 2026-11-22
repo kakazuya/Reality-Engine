@@ -2698,3 +2698,158 @@ Nemotron VL 5,156/6,786). On `KILO_API_KEY_2` (`@kilo2` entries): Particle-1 on 
 pages) matched hy4 on only 335/1,170 rows. ERNIE needs reasoning on (Kilo 400 "Reasoning is mandatory"): its entries
 no longer send `reasoning: {enabled: false}`.
 
+#### 17.w Stage M: call transcripts and the dictionary-or-NEW measure contract (T-238, 22 Nov 2026)
+
+Shivam 22 Nov: the reader must put every fact into the dictionary, and create a labelled new measure only when
+nothing fits. T-237's Opus deep read found both holes: the reader never read a call transcript (SOMANYCERA's 122
+transcript pages gave Opus 1,197 numbers and 589 verbatim management statements), and a bare invented measure id was
+accepted with no definition (the annual-report read coined 23,250 names). `reality_engine/v2/observations.py` now
+enforces the contract and reads transcripts.
+
+**The contract.** A reply row's `measure` is a dictionary id, or `NEW:<snake_case>` **with** `new_definition` (one
+line) and `new_driver_node` (`revenue|cost|margin|capex|capacity|debt|equity|working_capital|none`). A bare id that is
+not in the dictionary is kept verbatim and made `unverified` reason `undeclared_new`; a NEW id without its
+definition/node is `new_definition_missing` / `new_driver_node_missing`; a non-id is `new_id_bad`; a letterhead id
+(`postal_code`, `page_number`, `digital_signature_date`, ...) is dropped as junk at build and never verifies
+(`junk_measure`). The reader often copies the prompt's placeholder brackets, so `NEW:<id>` is normalised to `NEW:id`
+(`canonical_new_measure`) rather than rejected. `observation` carries `new_definition`/`new_driver_node`; the new
+`measure_new` table holds one row per declared id (`new_id`, `definition`, `driver_node`, `observations`, `pages`,
+`examples`, `first_known_at`) and is rebuilt after every run (`index_new_measures`).
+
+**The measure-choice prompt.** The old rule ("pick the closest id; else a snake_case id") let hy4 force-fit: on the
+40 T-237 cases where both readers took the same number, hy4 mislabelled about half (13 RIGHT, 7 synonym, 11 loose, 9
+wrong) while Opus was 39 RIGHT / 1 synonym. Both prompts now state the rule from the Opus instructions -- "pick a
+dictionary id only when the meaning is the same; never force-fit; else `NEW:<id>` with a definition and a driver
+node" -- and name the traps the grading found: a segment slice is `revenue.mix` not `revenue.value`; a "Total
+Liabilities" that includes equity is `total_equity_and_liabilities`; a pre-exceptional "Profit Before Tax" row is
+`profit_before_exceptional_items_and_tax`; a cash-flow change in trade payables is not the `trade_payables` stock; a
+combined "Loans & Investments" line is neither `loans` nor `investments`; an industry export growth % is not
+`volume.sales`; "cash profit" is `cash_profit`; a JV's PBT is not the company's `profit_before_tax`; "PAT -
+Controlling Interest" is not `pat`.
+
+**Record types.** `observation.record_type` is `number` (every earlier check unchanged), `statement` or `guidance`;
+statements/guidance skip the number path's unit/period/axis gates and are never touched by the parts-sum, path-sum,
+map, panel or basis-conflict passes. New columns: `statement` (verbatim sentence), `speaker`, `direction`
+(`up|down|flat`), `value_high`.
+
+- **Statement** (management's own sentence(s), speaker, direction): verifies when the sentence is in the page text
+  (whitespace-normalised) and its measure is a dictionary id or a declared NEW id; the reason otherwise is
+  `statement_not_printed` / the contract reason. Greetings, safe-harbour text, operator notes and a question are not
+  statements.
+- **Guidance** (period, low/high, unit, direction, the sentence that states it): verifies when the sentence is
+  printed, every printed value token (low/high) is in that sentence, and the period's own words are in it
+  (`period_in_text`: "FY27" also reads "2027"/"FY 27"). Worded guidance without a number is stored as a statement.
+  `period_kind` defaults to `target`.
+- A transcript's prose period ("currently", "this quarter", "corresponding quarter last year") is not a period
+  (`NOT_A_PERIOD_RE` extended); a value printed with a currency/`%`/`+` marker ("₹85.50", "246.97%", "850-plus")
+  verifies against the page's bare number token (`value_forms`), which lifted the transcript `image_text` rows.
+
+**Transcript doc type.** `--doc-types transcript` selects every text-bearing page of the store's `doc_type
+='transcript'` documents straight from `doc_page` (routes.csv is not consulted: a call page routed `no_figures` still
+holds management statements), the statement filter never drops a transcript page, `process_page` sends the text
+layer only (no image, no Dots OCR) with `PROMPT_TRANSCRIPT`, and `deck_asof` is not read for them.
+
+**NEW-id merge proposals.** `new_measure_clusters` is model-free: two `NEW:<id>`s are proposed as one when their
+normalised names are equal, their definition tokens overlap by 0.6 (Jaccard), or they share a name token with
+definition overlap 0.4 and the same unit family; `write_new_merges` writes a review CSV beside `--out`
+(`<out>.new_merges.csv`) and nothing is applied.
+
+Runs (22 Nov, `D:/RealityEngine/tg_build/measure10`, hy4 cap 300 pages; artifacts `.tmp/t238/`):
+
+```bash
+python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10 \
+  --stores c48,c77,c87 --doc-types transcript --only .tmp/t238/sel_transcripts.json \
+  --out .tmp/t238/obs_transcripts_m.db --workers 12 --propose-limit 0
+python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10 \
+  --stores c48 --doc-types transcript --only .tmp/t238/sel_somanycera.json \
+  --reader deepseek-v4.1-flash --text-only --out .tmp/t238/obs_ds_transcripts.db --workers 8 --propose-limit 0
+python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10 \
+  --stores c48 --doc-types deck,annual_report --require "<the 23 graded pages>" --limit 23 \
+  --out .tmp/t238/obs_measure_m.db --workers 8 --propose-limit 0
+```
+
+| run | pages | numbers / statements / guidance | NEW ids / merge clusters | status | tokens per page (in/out) | time |
+|---|---|---|---|---|---|---|
+| hy4, transcripts (c48 166 + c77 74 + c87 74 pages, 15 calls) | 240 | 2,190 / 1,969 / 149 | 1,102 / 94 clusters (288 ids) | 4,308 rows: 1,578 verified (464 numbers, 1,043 statements, 71 guidance), 2,730 unverified, 0 quarantined; 3 undeclared_new; 0 errors, 0 parse failures, 0 429 | 6,440 / 1,518 | 175.4 s, median 7.5 s/page |
+| DeepSeek V4.1 Flash (`deepseek-v4.1-flash`, text-only) | 166 (SOMANYCERA only) | 1,138 / 945 / 91 | 323 / 31 clusters (87 ids) | 2,174 rows: 1,302 verified (426 numbers, 832 statements, 44 guidance), 872 unverified, 0 quarantined; 1 undeclared_new; 6 letterhead pages fully dropped; 0 errors; 7 short 429s retried | 6,470 / 1,348 | 232.6 s, median 9.43 s/page |
+
+Versus Opus on SOMANYCERA's transcript pages (Opus: 741 numbers, 456 statements, 118 target-typed numbers on 144
+pages; same page for a value match, within 0.5%):
+
+| reader | numbers found | Opus numbers reproduced | of ours matched | measure agrees on matched | statement sentences found (Opus side) | guidance rows (matched to Opus targets) | undeclared_new |
+|---|---|---|---|---|---|---|---|
+| hy4 | 1,578 | 644 (86.9%) | 40.8% | 266 (41.3%) | 275 of 456 (60.3%) | 105 (88) | 2 |
+| DeepSeek | 1,138 | 623 (84.1%) | 54.7% | 302 (48.5%) | 291 of 456 (63.8%) | 91 (75) | 1 |
+
+Both readers reproduce four fifths of Opus's numbers and 60%+ of his statement sentences (the T-238 stop line was
+under 40%). Measure agreement is exact id equality against Opus's own names, many of which are his coinages, so the
+per-reader NEW ids (1,102 hy4 / 323 DeepSeek for the transcript corpus) are not errors: they are the declared ids the
+clustering step proposes to merge, and DeepSeek's smaller, cleaner set (64 junk ids in hy4's first run vs 4) is the
+strictest honouring of the contract. The hy4 transcript run predates the bracket/junk/value normalisations (1,501
+measures stored as `NEW:<...>`); the DeepSeek run is the first with all of them, and a `--recheck` of the hy4 DB is
+the cheap way to re-apply the number-row checks.
+
+**The 40 graded measure cases, re-read with the new prompt** (23 pages, hy4; every printed value was found; the
+matching rows on the page are listed, since both cells of a value collision are legitimately read):
+
+Counts: **12 keep Opus's exact measure, 7 declare a NEW id equal to Opus's coinage, 9 declare a NEW synonym of it
+(70% of the 40 now carry Opus's graded meaning), 7 keep the old hy4 id (3 receivables/payables swaps and 4
+pre-exceptional PBT rows, still loose/wrong), 5 carry a new id that is still loose or wrong (RPT purchase without the
+related-party scope, industry export growth without the industry scope, ESOP balance for the P&L expense, payable
+days for the trade-payable stock, a whole working-capital change for the trade-payables change), 0 values not
+found.** Opus was 39 RIGHT / 1 synonym on the same 40; the old hy4 read was 13 RIGHT / 7 synonym / 11 loose / 9
+wrong.
+
+| # | page | value | opus_measure (graded RIGHT) | new label | verdict |
+|---|---|---|---|---|---|
+| 1 | c1b66894 p7 | 141.94 | revenue.mix | revenue.mix | opus_measure_kept |
+| 2 | 5d070fbf p11 | 8 | loans_and_investments | new:loans_and_investments / equity_share_capital | declared_new_equivalent |
+| 3 | da994ca8 p11 | 1545 | total_equity_and_liabilities | total_assets / total_equity_and_liabilities | opus_measure_kept |
+| 4 | aec64964 p381 | 4.18 | rpt_purchase_of_goods | new:purchase_of_goods_and_other_transactions | other |
+| 5 | aec64964 p88 | 2.1 | macro.real_gdp_growth | new:gdp_growth_rate | other |
+| 6 | d6399f5f p12 | 8 | loans_and_investments | new:loans_and_investments / equity_share_capital | declared_new_equivalent |
+| 7 | 5d070fbf p11 | 8 | loans_and_investments | new:loans_and_investments / equity_share_capital | declared_new_equivalent |
+| 8 | c1b66894 p8 | 0.39 | net_debt_equity | net_debt_equity | opus_measure_kept |
+| 9 | d6399f5f p12 | 108 | other_non_current_liabilities | non_controlling_interest / other_non_current_liabilities | opus_measure_kept |
+| 10 | 23277d3b p15 | 3 | loans_and_investments | new:loans_and_investments | declared_new_equivalent |
+| 11 | c1b66894 p8 | 262 | trade_receivables | trade_payables | old_hy4_measure_kept |
+| 12 | d02438bc p8 | 230 | trade_payables | trade_receivables | old_hy4_measure_kept |
+| 13 | fb9c06b1 p7 | 296 | trade_payables | trade_receivables | old_hy4_measure_kept |
+| 14 | 22fcece3 p3 | 51 | industry_export_volume_growth_yoy | volume_growth_yoy | other |
+| 15 | 22fcece3 p11 | 48 | debtor_days | debtor_days | opus_measure_kept |
+| 16 | da994ca8 p11 | 8 | loans_and_investments | new:loans_and_investments / equity_share_capital | declared_new_equivalent |
+| 17 | 23277d3b p15 | 108 | other_non_current_liabilities | non_controlling_interest / other_non_current_liabilities | opus_measure_kept |
+| 18 | da994ca8 p13 | 1130 | ppe_incl_cwip | new:property_plant_and_equipment_including_cwip | other |
+| 19 | 23277d3b p14 | 95 | profit_before_exceptional_items_and_tax | profit_before_tax | old_hy4_measure_kept |
+| 20 | 402bd65c p13 | 1967 | total_equity_and_liabilities | total_assets / total_equity_and_liabilities | opus_measure_kept |
+| 21 | 22fcece3 p11 | 139 | cash_profit | cash_profit | opus_measure_kept |
+| 22 | da994ca8 p13 | 1984 | total_equity_and_liabilities | total_assets / total_equity_and_liabilities | opus_measure_kept |
+| 23 | 23277d3b p14 | 126 | profit_before_exceptional_items_and_tax | profit_before_tax | old_hy4_measure_kept |
+| 24 | aec64964 p227 | 297.85 | esop_expense | employee_stock_option_outstanding | other |
+| 25 | 22fcece3 p7 | -5 | jv_pbt | new:jv_profit_before_tax | other |
+| 26 | c1b66894 p8 | -0.03 | net_debt_equity | net_debt_equity | opus_measure_kept |
+| 27 | 03ddcfca p10 | 126 | profit_before_exceptional_items_and_tax | profit_before_tax | old_hy4_measure_kept |
+| 28 | d6399f5f p12 | 2011 | total_equity_and_liabilities | total_assets / total_equity_and_liabilities | opus_measure_kept |
+| 29 | da994ca8 p8 | 334 | trade_payables | payable_days | other |
+| 30 | 03ddcfca p10 | 145 | profit_before_exceptional_items_and_tax | profit_before_tax | old_hy4_measure_kept |
+| 31 | 402bd65c p11 | 251 | total_debt | new:total_debt | declared_new_equivalent |
+| 32 | 5d070fbf p11 | 108 | other_non_current_liabilities | non_controlling_interest / other_non_current_liabilities | opus_measure_kept |
+| 33 | aec64964 p107 | 6.5 | macro.real_gdp_growth | new:real_gdp_growth | other |
+| 34 | aec64964 p303 | 450.2 | interest_received_cf | new:interest_received | other |
+| 35 | aec64964 p303 | -195.06 | profit_on_sale_of_ppe | new:loss_on_sale_of_property_plant_and_equipment_net | other |
+| 36 | 4ae724d7 p305 | -525 | intercorporate_deposits_given | new:inter_corporate_deposits_given | other |
+| 37 | aec64964 p227 | -190.56 | profit_on_sale_of_ppe | new:profit_loss_on_sale_of_property_plant_and_equipment_net | other |
+| 38 | aec64964 p303 | 1989.53 | change_in_trade_payables_cf | changes_in_working_capital | other |
+| 39 | 5d070fbf p11 | 8 | loans_and_investments | new:loans_and_investments / equity_share_capital | declared_new_equivalent |
+| 40 | 03ddcfca p10 | 89 | pat_attributable_to_owners | new:pat_controlling_interest | other |
+
+Regression: `--recheck` of the stage-L `.tmp/t238/obs_91_m.db` copy (4,453 pages, 102,074 rows; 58 upgraded, 12
+downgraded, model-free) gated with `python -m reality_engine.scripts.regress observations --db
+.tmp/t238/obs_91_m.db --baseline D:/RealityEngine/t230/obs_91_i.db`: **still right 118, fixed 18, still wrong 34,
+changed 11, newly broken 0 -- gate pass**. Tests: `python -m pytest reality_engine/tests/test_observations.py -q`
+**136 passed** (8 stage-M tests: the declared-NEW contract, the statement and guidance checks, the bracket/junk
+normalisation, the value-token markers, the prose period, the measure_new index and the cluster CSV, and transcript
+page selection from `doc_page`); `typecheck` clean on `observations.py` and `test_observations.py`
+(`extract_deck_figures.py` carries its 8 pre-existing stub-class errors at lines 720, 778, 817, 818, 908, 1169; the
+only change there is the `deepseek-v4.1-flash` MODELS entry).
+

@@ -111,5 +111,21 @@
   builder adds pandas-heavy code) and no logic-class error.
 - Final report written; controller to commit (no direct git commit from the sandbox).
 
+## T-238 gap 2 — transcripts + strict dictionary-or-NEW contract (22 Nov)
+
+- 23:05: `observations.py` stage M implemented (record_type/statement/speaker/direction/value_high/new_definition/
+  new_driver_node columns, `measure_new` table, `declared_measure` contract, statement/guidance builders and checks,
+  transcript prompt + doc_page page selection, NEW-id clustering CSV, recheck skips prose rows). 5 stage-M tests
+  added, test_observations.py 133 pass. Next: hy4 transcript run (c48 166 + c77/c87 74 pages), 40-case measure
+  re-read (23 pages), recheck obs_91_i + regress, docs.
+- 23:5x: all runs done. hy4 transcripts 240 pages -> 4,308 rows (2,190 numbers/1,969 statements/149 guidance; 3
+  undeclared_new; 1,102 NEW ids, 94 merge clusters; 175 s). DeepSeek entry added (`deepseek-v4.1-flash`, effort
+  "none") and run on the 166 SOMANYCERA pages -> 2,174 rows, 233 s. vs Opus: hy4 86.9% of his numbers / 60.3% of his
+  statements, DeepSeek 84.1% / 63.8%. 40 graded measure cases re-read: 12 exact + 7 declared-NEW equal + 9 NEW
+  synonym = 28/40 now carry Opus's graded meaning (old hy4: 13 exact). obs_91 recheck gate: 118 right / 18 fixed /
+  0 newly broken, pass. Tests 136 passed, typecheck clean on observations.py + tests. Docs: V2_SCHEMA_CONTRACT 17.w,
+  DEVELOPER_GUIDE T-238 bullet, machines/MSI_LAPTOP.md. No STATE.md (brief forbids).
+
+
 
 
