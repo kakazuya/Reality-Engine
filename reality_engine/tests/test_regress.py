@@ -118,6 +118,17 @@ def test_a_golden_line_for_another_company_is_skipped_not_broken(tmp_path):
     assert report["newly_broken"] == 0
 
 
+def test_a_golden_line_for_another_document_is_skipped_not_broken(tmp_path):
+    # The deck and annual-report reads share the company symbol; a line about the other document is skipped too.
+    other = golden_line("RIGHT")
+    other["key"] = {**other["key"], "doc_key": "D:/elsewhere/annual_report/other.pdf"}
+    other["identity"] = {**other["identity"], "doc_key": "D:/elsewhere/annual_report/other.pdf"}
+    report = counts(tmp_path, [ROW], [golden_line("RIGHT"), other])
+    assert report["counts"] == {"still_right": 1}
+    assert report["skipped_other_db"] == 1
+    assert report["newly_broken"] == 0
+
+
 def test_a_changed_right_row_is_newly_broken(tmp_path):
     report = counts(tmp_path, [{**ROW, "unit": "USD mn"}], [golden_line("RIGHT")])
     assert report["counts"]["newly_broken"] == 1

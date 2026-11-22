@@ -2443,7 +2443,9 @@ applied by `--recheck` and gated by the golden sets.
 
 Golden: the read's 60 graded rows are appended to `reality_engine/tests/golden/observations.jsonl` (241 lines: 230
 rows + 11 pages; RIGHT 159, MINOR 44, WRONG 27) keyed as T-233 does (`key` from the page's printed identity, `identity`
-without the fields a fix changes). The three right-to-hold unverified rows carry `status: "unverified"` and expect only
+without the fields a fix changes). Stage L appended 24 annual-report rows (`t230/stageK_read/grade{1,2,3}.md`), so the
+file now holds **265 lines: 254 rows + 11 pages; RIGHT 170, MINOR 53, WRONG 31**. The three right-to-hold unverified
+rows carry `status: "unverified"` and expect only
 the fields Wolf verified; SBCL's image-only CAGR row is a MINOR (period span), the other six unverified rows are MINOR
 false negatives the fixes above close. One pre-existing golden line was corrected: read B #26 (VIDHIING eps) was
 parsed with scale 1e7 although the same read prints scale 1 -- the line contradicted its own source, it was not
@@ -2562,19 +2564,90 @@ reason (the parts-sum proof overrides the dictionary failure), and with its sibl
 could not be re-made, so **35 verified rows fell back to unverified**. Measured on that 10-store scoped run
 (`c01`-`c10` into `.tmp/t230k/obs_ar_10.db`, 2,021 pages / 25,688 rows selected): **verified 98,624 -> 99,769 on the
 copy, +1,180 upgrades** (alias 280, stale dictionary / restored parts / dash labels 616, column-basis 261, column
-period 11, mixed 12). The 91-store run of the same selector was started twice on the loaded MSI and stopped at the
-worker time limit (4,037 s CPU after 93 min, no committed output): `.tmp/t230k/obs_ar_91_k.db` is only the baseline
-copy, not a result. Next action: rerun it (about 100 min with the day's deck job competing) and `regress` it against
-`obs_ar_91_rc.db`; the AR baseline gate is already red by construction (newly broken 117, fixed 11, gone 51 -- the
-golden reads are deck pages this DB does not hold), so the pass condition is newly broken <= 117 and no verified row
-downgraded. The decks gate is green: `regress observations --db D:/RealityEngine/t230/obs_91_i.db` still right 118,
-fixed 18, still wrong 34, changed 11, **newly broken 0**.
+period 11, mixed 12). The 91-store run completed later as `.tmp/t230k/obs_ar_91_k.db`: **105,008 verified / 6,384
+stage-K upgrades** (`.tmp/t230k/recheck91.log`). With the stage-L per-document golden skip (17.z) `regress` on it
+grades its own 24 annual-report rows: **still right 11, still wrong 13, newly broken 0** (241 deck lines skipped as
+documents this DB does not hold). Stage L rechecked the copied DB (section 17.z). The decks gate is green: `regress
+observations --db D:/RealityEngine/t230/obs_91_i.db` still right 118, fixed 18, still wrong 34, changed 11, **newly
+broken 0**.
 
 Tests: `python -m pytest reality_engine/tests/test_observations.py -q` **120 passed** (10 stage-K tests: the new
 measures and nodes, same-meaning aliases only and governance left alone, the column basis per column and under one
 section heading, no header above the value is no basis, the column period, a paragraph is not a header, the FY span
 keeps both years, and the two build-integration rows), `test_regress.py` 18 passed, `test_typecheck` clean on
 `observations.py` and `test_observations.py`.
+
+### Stage L (proof and label gates after the annual-report read, 22 Nov 2026)
+
+Wolf's independent read of 24 random stage-K annual-report upgrades (`t230/stageK_read/grade{1,2,3}.md`, rows in
+`batch{1,2,3}.jsonl`) graded **11 RIGHT / 9 MINOR / 4 WRONG** against the page images. The four wrong rows were all
+verified through defects the stage-K script checks did not catch, and the fix is model-free: `build_observations`
+and `--recheck` share every rule below, no new model call.
+
+- **L1 a parts-sum proof is not degenerate.** A printed total may prove its parts only when the group has at least
+  two non-zero parts, at least two distinct part values, and a total that is not itself one of the parts. An all-zero
+  group (DIVGIITTS p125 "Other" = 0, MANINFRA p111 complaints 0, NELCAST p61), an all-equal group, or a "total" that
+  is one of its own rows is no proof: the rows keep their other reasons (`parts_degenerate` in the recheck stats).
+- **L2 a generic label is not the measure.** A printed label that is only a category word ("Male", "Female", "Other",
+  "Total", "Total Employees", "Wages", "Interest Cost") verifies only when every category word in it is one the
+  measure names and every measure word is printed in the row's `group_path` or `printed_axis`; otherwise the reason is
+  `generic_label` and the row stays unverified. A gratuity/defined-benefit "Interest Cost" never verifies as
+  `finance_cost` even under a named group. A valid parts-sum proof still verifies the bare printed "Total" row (the
+  arithmetic is its proof) but never a generic *part*. Counted as `generic_labels`.
+- **L3 the page heading names the basis.** When `detect_basis` and `column_basis` find none, `page_basis` reads a
+  section heading anywhere on the page: "Notes to Consolidated Financial Statements"/"the Group" -> consolidated,
+  "Standalone Financial Statements" -> standalone. A page that prints both bases proves neither (KRYSTAL p185 and
+  COSMOFIRST notes). Counted as `basis_page`.
+- **L4 comparative dates and as-at periods.** A period printed only inside an inline comparative bracket
+  ("(31 March 2024 : NIL)", ESTER p196) is dropped and the remaining headers are read again (`comparative_periods`);
+  `apply_instant_period` turns a closing "as at <date>" row whose stored period is the year's flow (BLKASHYAP p55)
+  into the printed date with `period_kind='instant'` -- a new value in `PERIOD_KINDS` and the reader prompt
+  (`instant_periods`).
+
+The 24 graded rows are appended to the observations golden file (see the golden paragraph above), so the annual-report
+path now has hand-graded coverage for the first time. Effects of the scoped recheck and the gate are in section 17.z.
+
+#### 17.z Stage L scoped recheck and gates (22 Nov 2026)
+
+Model-free rechecks ran on copies with a selector over the target page set (the rows of the stage-K upgrades and of
+every verified parts-sum row, plus their sibling rows on the same pages); the baselines were never written. Rule
+counters are the recheck's `parts_degenerate`, `generic_labels`, `basis_page`, `comparative_periods`,
+`instant_periods` and `parts_sum_restored`.
+
+| copy | pages / rows rechecked | verified before -> after | rule counts | gate |
+|---|---|---|---|---|
+| `.tmp/t230l/obs_ar_91_l.db` (copy of `.tmp/t230k/obs_ar_91_k.db`) | 21,401 / 98,661 | **105,008 -> 101,468** (287 up / 3,827 down) | parts_degenerate 764, generic_labels 10,848, basis_page 7,546, comparative_periods 92, instant_periods 38, parts_sum_restored 5,601 | 24 AR rows: **still right 10, fixed 10 (all 4 WRONG), still wrong 2, changed 1, newly broken 1** |
+| `.tmp/t230l/obs_91_full_l.db` (copy of `D:/RealityEngine/t230/obs_91_i.db`) | 4,453 / 2,037 | **70,578 -> 70,574** (0 up / 4 down) | parts_degenerate 8, generic_labels 2, basis_page 18, parts_sum_restored 83 | still right 118, fixed 18, still wrong 34, changed 11, **newly broken 0** |
+| `.tmp/t230l/obs_decks394_l.db` (copy of `.tmp/t232read/obs_decks394.db`) | 46,746 rows on the parts-sum pages selected; the full page loop did not finish in the worker window (see the command below) | not finished | not finished | not run to completion |
+
+The 24 AR rows: the four WRONG rows (KITEX "Male" workers, MANINFRA "Total Workers" training headcount, DIVGIITTS
+"Other" = 0, NAVKARCORP gratuity "Interest Cost") are all now unverified; six MINOR rows are fixed (BLKASHYAP
+instant, KRYSTAL/COSMOFIRST basis, AVADHSUGAR/RANEHOLDIN/MANINFRA generic labels); ESTER's wrong comparative period
+is cleared but the column header did not recover "31 March 2025", so it is a MINOR still open. RSYSTEMS (unit glyph)
+and SURYODAY (cost of deposits) are MINOR unchanged. NELCAST is the one RIGHT row that moves: its 0 was verified
+only by the all-zero parts sum L1 removes, and its measure `complaints_filed` is still absent from the dictionary
+(the grade note itself says the proof was trivial). The row keeps its graded measure/period/value; adding
+`count.complaints_filed` to the dictionary is the one-line follow-up if it should verify on its own label.
+
+One row in the AR copy (`DHANBANK` `provisions`) would have upgraded through a bridge-step reason without a new
+printed source; the recheck stopped it and kept its old status (`unproven_upgrades: 1`), so the stats above are the
+committed state.
+
+The decks394 copy did not finish inside the worker window; run it (model-free, about 2 h on the loaded MSI with the
+day's deck reader competing) and gate it with:
+
+```bash
+python -m reality_engine.v2.observations --recheck --out .tmp/t230l/obs_decks394_l.db \
+  --stores <the 394 decks403 stores> --only .tmp/t230l/sel_394.json
+python -m reality_engine.scripts.regress observations --db .tmp/t230l/obs_decks394_l.db \
+  --baseline .tmp/t232read/obs_decks394.db
+```
+
+Tests: `python -m pytest reality_engine/tests/test_observations.py -q` **128 passed** (8 stage-L tests: the
+degenerate parts sum, the generic label under a named/un-named heading, the gratuity interest cost, the page basis,
+the inline comparative and the as-at instant period, and the recheck downgrade), `test_regress.py` **19 passed**
+(the new per-document golden skip), `test_filing_events.py` + `test_driver_claims.py` 148 passed;
+`typecheck` clean on `observations.py` and `test_observations.py`.
 
 #### 17.x Wolf's independent reads (21 Nov 2026)
 Verified-row samples graded against page text and images by a separate Opus reader: stage B 40 rows 24 right / 10

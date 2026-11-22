@@ -331,16 +331,33 @@ def _entry_symbol(entry: Mapping[str, Any]) -> str:
     return ""
 
 
-def applicable_golden(entries: Sequence[Mapping[str, Any]], symbols: set[str]) -> tuple[list[Mapping[str, Any]],
-                                                                                        int]:
-    """Golden lines about companies this DB holds; one file then serves several disjoint DBs (stage J).
+def _db_documents(con: sqlite3.Connection, pipeline: Pipeline) -> set[tuple[str, str]]:
+    """Every (symbol, doc_key) the DB actually holds: the annual-report and deck reads share the 91 symbols."""
+    return {(str(symbol), str(doc)) for symbol, doc in
+            con.execute(f"SELECT DISTINCT symbol, doc_key FROM {pipeline.table}")}
 
-    An empty symbol set (a fixture DB with no rows) or a line with no symbol keeps every line, so the gate
-    never goes quiet on an empty DB.
+
+def applicable_golden(entries: Sequence[Mapping[str, Any]], symbols: set[str],
+                      documents: set[tuple[str, str]] | None = None) -> tuple[list[Mapping[str, Any]], int]:
+    """Golden lines about companies (and documents) this DB holds; one file then serves several disjoint DBs.
+
+    An empty symbol set (a fixture DB with no rows) or a line with no symbol keeps every line, so the gate never
+    goes quiet on an empty DB.  ``documents`` adds the per-document skip (stage L): two reads of the same company
+    (deck and annual report) share its symbol, and a line about the other read's document is not "missing" here.
     """
     if not symbols:
         return list(entries), 0
-    kept = [entry for entry in entries if not _entry_symbol(entry) or _entry_symbol(entry) in symbols]
+    kept: list[Mapping[str, Any]] = []
+    for entry in entries:
+        symbol = _entry_symbol(entry)
+        if symbol and symbol not in symbols:
+            continue
+        if documents is not None and symbol:
+            key = entry.get("key") or entry.get("identity") or {}
+            doc_key = str(key.get("doc_key") or "")
+            if doc_key and (symbol, doc_key) not in documents:
+                continue
+        kept.append(entry)
     return kept, len(entries) - len(kept)
 
 
@@ -352,8 +369,9 @@ def run(pipeline_name: str, db: str | Path, baseline: str | Path | None = None,
     try:
         _require_table(con, pipeline.table, db)
         symbols = _db_symbols(con, pipeline.table)
+        documents = _db_documents(con, pipeline)
         loaded = _load_golden(pipeline_name, golden_dir)
-        golden, skipped = applicable_golden(loaded, symbols)
+        golden, skipped = applicable_golden(loaded, symbols, documents)
         verdicts = [grade_entry(con, pipeline, entry) for entry in golden]
         diff = diff_against(con, pipeline, baseline, golden) if baseline else None
     finally:
@@ -376,7 +394,7 @@ def lines(report: Mapping[str, Any]) -> list[str]:
     counts = report["counts"]
     out = [f"T-233 regress: {report['pipeline']}  ({report['db']})",
            f"golden: {report['rows']} rows + {report['pages']} pages from reality_engine/tests/golden"
-           + (f"  ({report['skipped_other_db']} lines skipped: companies not in this DB)"
+           + (f"  ({report['skipped_other_db']} lines skipped: companies/documents not in this DB)"
               if report.get("skipped_other_db") else "")]
     order = ("still_right", "newly_broken", "fixed", "still_wrong", "changed", "gone", "ambiguous")
     out.append("  ".join(f"{name}: {counts.get(name, 0)}" for name in order if counts.get(name)))
