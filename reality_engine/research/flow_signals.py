@@ -31,7 +31,12 @@ Signals (all thresholds are fixed here, before any outcome is seen):
 
 Every signal is emitted at the first session on which its inputs were usable:
 market data after the close of the observation day (next session), filings by
-the 15:30 IST rule, shareholding on its filing/broadcast date.
+the 15:30 IST rule, shareholding on its filing/broadcast date. A company/signal
+fires at most once per 30 sessions, so a delivery-% state that lasts for weeks is
+one event, not one event per session. A shareholding filing is used only when it
+was published within 120 days of its own quarter end: the snapshot's known_at for
+old quarters is the 2022 backfill crawl date, and without this filter thousands of
+2015-2021 filings would fire on a handful of 2022 sessions.
 
 Run (read-only snapshot; writes only under --out):
 
@@ -92,6 +97,10 @@ PEAK_WINDOW_QUARTERS = 20
 PEAK_MIN_QUARTERS = 12
 CLUSTER_WINDOW_DAYS = 30
 COOLDOWN_SESSIONS = 30
+# A shareholding filing is usable only when it was published for its own quarter: the
+# snapshot's known_at for older quarters is the 2022 backfill crawl date, so thousands
+# of 2015-2021 filings would otherwise fire on a handful of 2022 sessions.
+MAX_FILING_LAG_DAYS = 120
 STRUCTURED_DEFAULT = r"D:/RealityEngine/structured/structured_universe.db"
 
 SIGNAL_LABELS = {
@@ -410,6 +419,7 @@ def market_events(con: duckdb.DuckDBPyConnection, start: str, end: str) -> tuple
     con.execute("DROP TABLE IF EXISTS t235_mkt")
     con.execute("DROP TABLE IF EXISTS t235_daily")
     con.execute("DROP TABLE IF EXISTS t235_cal")
+    rows = apply_cooldown(rows, ("company", "signal"))
     rows["date_known"] = pd.to_datetime(rows["date_known"])
     return rows, observed
 
@@ -602,7 +612,8 @@ def deal_events(con: duckdb.DuckDBPyConnection, cal: pd.DataFrame) -> pd.DataFra
 # Ownership: promoter % (snapshot) and FPI/MF/insurance (structured store)
 # --------------------------------------------------------------------------- #
 def _quarterly_changes(frame: pd.DataFrame, value: str, isin: str, known: str,
-                       min_days: int = 60, max_days: int = 120) -> pd.DataFrame:
+                       min_days: int = 60, max_days: int = 120,
+                       max_known_lag_days: int = MAX_FILING_LAG_DAYS) -> pd.DataFrame:
     frame = frame.dropna(subset=[isin, "quarter_end", value, known]).copy()
     frame = frame.sort_values([isin, "quarter_end", known]).drop_duplicates(
         [isin, "quarter_end"], keep="last")
@@ -611,7 +622,11 @@ def _quarterly_changes(frame: pd.DataFrame, value: str, isin: str, known: str,
     frame["prev_q"] = frame.groupby(isin)["quarter_end"].shift(1)
     frame["chg"] = frame[value] - frame["prev"]
     frame["gap"] = (frame["quarter_end"] - frame["prev_q"]).dt.days
-    return frame[(frame["gap"].between(min_days, max_days)) & frame["chg"].notna()]
+    known_ist = (pd.to_datetime(frame[known], utc=True).dt.tz_convert(IST)
+                 .dt.tz_localize(None).dt.normalize())
+    frame["known_lag_days"] = (known_ist - frame["quarter_end"]).dt.days
+    timely = frame["known_lag_days"].between(0, max_known_lag_days)
+    return frame[(frame["gap"].between(min_days, max_days)) & frame["chg"].notna() & timely]
 
 
 def promoter_events(con: duckdb.DuckDBPyConnection, cal: pd.DataFrame) -> pd.DataFrame:

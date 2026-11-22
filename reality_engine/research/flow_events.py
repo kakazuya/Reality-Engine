@@ -86,8 +86,8 @@ def bh_adjust(pvalues) -> np.ndarray:
 
 
 def cell_stats(frame: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
-    """Per (keys, horizon): n, mean, median, hit, Newey-West t and normal p."""
-    columns = [*keys, "horizon", "n", "mean", "median", "hit", "nw_t", "p_nw"]
+    """Per (keys, horizon): n, n stocks, mean, median, hit, Newey-West t and normal p."""
+    columns = [*keys, "horizon", "n", "n_stocks", "mean", "median", "hit", "nw_t", "p_nw"]
     if frame.empty:
         return pd.DataFrame(columns=columns)
     rows: list[dict] = []
@@ -95,9 +95,10 @@ def cell_stats(frame: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
         name_tuple = name if isinstance(name, tuple) else (name,)
         group = group.sort_values("date_known")
         for horizon in HORIZONS:
-            values = (group[f"exc_{horizon}"].to_numpy(dtype=float)
-                      * group["sign"].to_numpy(dtype=float))
-            values = values[np.isfinite(values)]
+            raw = (group[f"exc_{horizon}"].to_numpy(dtype=float)
+                   * group["sign"].to_numpy(dtype=float))
+            finite = np.isfinite(raw)
+            values = raw[finite]
             if len(values) < MIN_CELL_N:
                 continue
             t_stat = newey_west_tstat(values, lags=horizon - 1)
@@ -105,6 +106,7 @@ def cell_stats(frame: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
                 **dict(zip(keys, name_tuple)),
                 "horizon": horizon,
                 "n": int(len(values)),
+                "n_stocks": int(group.loc[finite, "company"].nunique()),
                 "mean": float(values.mean()),
                 "median": float(np.median(values)),
                 "hit": float((values > 0).mean()),
@@ -202,31 +204,44 @@ def event_returns(con: duckdb.DuckDBPyConnection, signals: pd.DataFrame) -> tupl
 
 
 def placebo_frame(con: duckdb.DuckDBPyConnection, events: pd.DataFrame,
-                  horizon: int, seeds: int = PLACEBO_SEEDS) -> pd.DataFrame:
+                  horizon: int, seeds: int = PLACEBO_SEEDS,
+                  match_month: bool = False) -> pd.DataFrame:
     """Per (signal, seed) mean signed excess at ``horizon`` on random same-stock,
-    same-calendar-year dates (the null keeps the event's market regime)."""
+    same-calendar-year dates (the null keeps the event's market regime). With
+    ``match_month`` the draw also stays inside the event's calendar month, which
+    tests whether a signal only picks bad months for its own stock."""
     columns = ["signal", "seed", "placebo_mean", "n"]
     if events.empty:
         return pd.DataFrame(columns=columns)
     sub = events[["company", "signal", "direction", "date_known"]].drop_duplicates().copy()
     sub["year"] = pd.to_datetime(sub["date_known"]).dt.year
-    con.register("t235_ev_df", sub[["company", "signal", "direction", "year"]])
+    sub["month"] = pd.to_datetime(sub["date_known"]).dt.month
+    con.register("t235_ev_df", sub[["company", "signal", "direction", "year", "month"]])
+    if match_month:
+        list_sql = "SELECT entity_id, year, month, count(*) AS n FROM t235_sess GROUP BY 1, 2, 3"
+        list_join = "s.entity_id = e.company AND s.year = e.year AND s.month = e.month"
+        month_key = "AND ss.month = p.month"
+        partition = "r.entity_id, year(c.date), month(c.date)"
+    else:
+        list_sql = "SELECT entity_id, year, count(*) AS n FROM t235_sess GROUP BY 1, 2"
+        list_join = "s.entity_id = e.company AND s.year = e.year"
+        month_key = ""
+        partition = "r.entity_id, year(c.date)"
     try:
         con.execute(
             f"""CREATE OR REPLACE TEMP TABLE t235_sess AS
-                SELECT r.entity_id, r.i, c.date, year(c.date) AS year,
-                       CAST(row_number() OVER (PARTITION BY r.entity_id, year(c.date)
-                                               ORDER BY r.i) AS BIGINT) AS rn
+                SELECT r.entity_id, r.i, c.date, year(c.date) AS year, month(c.date) AS month,
+                       CAST(row_number() OVER (PARTITION BY {partition} ORDER BY r.i) AS BIGINT) AS rn
                 FROM t235_ret r JOIN t235_cal c ON c.i = r.i
                 WHERE r.exc_{horizon} IS NOT NULL"""
         )
+        con.execute(f"CREATE OR REPLACE TEMP TABLE t235_list AS {list_sql}")
         con.execute(
             f"""CREATE OR REPLACE TEMP TABLE t235_pos AS
-                SELECT e.company, e.signal, e.direction, e.year, r.seed,
+                SELECT e.company, e.signal, e.direction, e.year, e.month, r.seed,
                        1 + CAST(floor(random() * s.n) AS BIGINT) AS rn
                 FROM t235_ev_df e
-                JOIN (SELECT entity_id, year, count(*) AS n FROM t235_sess GROUP BY 1, 2) s
-                  ON s.entity_id = e.company AND s.year = e.year
+                JOIN t235_list s ON {list_join}
                 CROSS JOIN (SELECT range AS seed FROM range({int(seeds)})) r"""
         )
         out = con.execute(
@@ -235,31 +250,35 @@ def placebo_frame(con: duckdb.DuckDBPyConnection, events: pd.DataFrame,
                                 ELSE r.exc_{horizon} END) AS placebo_mean,
                        count(*) AS n
                 FROM t235_pos p
-                JOIN t235_sess ss ON ss.entity_id = p.company AND ss.year = p.year AND ss.rn = p.rn
+                JOIN t235_sess ss ON ss.entity_id = p.company AND ss.year = p.year
+                                 {month_key} AND ss.rn = p.rn
                 JOIN t235_ret r ON r.entity_id = p.company AND r.i = ss.i
                 GROUP BY 1, 2"""
         ).df()
     finally:
         con.unregister("t235_ev_df")
         con.execute("DROP TABLE IF EXISTS t235_sess")
+        con.execute("DROP TABLE IF EXISTS t235_list")
         con.execute("DROP TABLE IF EXISTS t235_pos")
     return out
 
 
 def attach_placebo(main: pd.DataFrame, con: duckdb.DuckDBPyConnection,
-                   events: pd.DataFrame, seeds: int) -> pd.DataFrame:
+                   events: pd.DataFrame, seeds: int, match_month: bool = False,
+                   suffix: str = "") -> pd.DataFrame:
     """Add placebo mean and one-sided empirical p to every main-table cell."""
     if main.empty:
         return main
     out = main.copy()
-    out["placebo_mean"] = np.nan
-    out["placebo_diff"] = np.nan
-    out["placebo_p"] = np.nan
-    out["placebo_seeds"] = np.nan
+    out[f"placebo_mean{suffix}"] = np.nan
+    out[f"placebo_diff{suffix}"] = np.nan
+    out[f"placebo_p{suffix}"] = np.nan
+    out[f"placebo_seeds{suffix}"] = np.nan
     for horizon in HORIZONS:
         if not out["horizon"].eq(horizon).any():
             continue
-        placebo = placebo_frame(con, events[np.isfinite(events[f"exc_{horizon}"])], horizon, seeds)
+        placebo = placebo_frame(con, events[np.isfinite(events[f"exc_{horizon}"])], horizon, seeds,
+                                match_month=match_month)
         if placebo.empty:
             continue
         grouped = placebo.groupby("signal")["placebo_mean"]
@@ -268,10 +287,10 @@ def attach_placebo(main: pd.DataFrame, con: duckdb.DuckDBPyConnection,
                 continue
             means = grouped.get_group(signal).to_numpy()
             observed = float(out.loc[row_index, "mean"].iloc[0])
-            out.loc[row_index, "placebo_mean"] = float(means.mean())
-            out.loc[row_index, "placebo_diff"] = observed - float(means.mean())
-            out.loc[row_index, "placebo_p"] = float((1 + np.sum(means >= observed)) / (len(means) + 1))
-            out.loc[row_index, "placebo_seeds"] = int(len(means))
+            out.loc[row_index, f"placebo_mean{suffix}"] = float(means.mean())
+            out.loc[row_index, f"placebo_diff{suffix}"] = observed - float(means.mean())
+            out.loc[row_index, f"placebo_p{suffix}"] = float((1 + np.sum(means >= observed)) / (len(means) + 1))
+            out.loc[row_index, f"placebo_seeds{suffix}"] = int(len(means))
     return out
 
 
@@ -354,8 +373,12 @@ def attach_groups(events: pd.DataFrame, con: duckdb.DuckDBPyConnection,
         "phase_200dma": np.where(tri["tri"] > mean200, "above", "below"),
         "phase_12m": np.where(ret12 > 0, "up", "down"),
     }, index=tri.index).reset_index()
-    return out.merge(phase, left_on="date_known", right_on="date", how="left").drop(
+    out = out.merge(phase, left_on="date_known", right_on="date", how="left").drop(
         columns=["date"], errors="ignore")
+    # The crossed regime the brief asks for: index above/below its 200-session mean x
+    # 12-month return sign.
+    out["phase_4"] = (out["phase_200dma"].fillna("na") + "_" + out["phase_12m"].fillna("na"))
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -553,16 +576,23 @@ def run(out_dir: Path, signals_path: Path, snapshot: Path, start: str, end: str,
         main = cell_stats(enriched, ["signal"])
         main["direction"] = main["signal"].map(enriched.groupby("signal")["direction"].first())
         main = attach_placebo(main, con, enriched, seeds)
+        main = attach_placebo(main, con, enriched, seeds, match_month=True, suffix="_month")
         print(f"  after-signal cells: {len(main):,}")
 
         groups: list[pd.DataFrame] = []
         for group_type, column in (("size", "size"), ("sector", "sector"),
                                    ("phase_200dma", "phase_200dma"),
-                                   ("phase_12m", "phase_12m")):
+                                   ("phase_12m", "phase_12m"), ("phase_4", "phase_4")):
             part = cell_stats(enriched, ["signal", column])
             if part.empty:
                 continue
             part = part.rename(columns={column: "group"})
+            if column == "size":
+                # results_key starts in 2017-06, so events before the first share count
+                # have no market cap; their "unknown" cells would duplicate the signal cell.
+                part = part[part["group"].ne("unknown")]
+                if part.empty:
+                    continue
             part.insert(0, "group_type", group_type)
             groups.append(part)
         by_group = pd.concat(groups, ignore_index=True) if groups else pd.DataFrame()

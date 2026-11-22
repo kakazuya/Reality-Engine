@@ -86,6 +86,40 @@ def test_cooldown_keeps_the_first_firing_per_company_and_signal():
     assert list(kept["row"]) == [0, 2, 3, 4]
 
 
+def test_market_signals_apply_the_cooldown_to_state_firings():
+    """A delivery-% state that holds for weeks is one event, not one per session."""
+    con = duckdb.connect()
+    dates = pd.bdate_range("2024-01-01", periods=220)
+    close = np.full(len(dates), 100.0)
+    dp = np.full(len(dates), 25.0)
+    dp[[80, 100, 140]] = 60.0  # two firings 20 sessions apart, one 60 sessions later
+    con.execute("CREATE TABLE px_daily(entity_id VARCHAR, date DATE, exch VARCHAR, close DOUBLE,"
+                " adj_close DOUBLE, volume BIGINT, value_inr DOUBLE)")
+    con.execute("CREATE TABLE px_nse(entity_id VARCHAR, date DATE, delivery_pct DOUBLE)")
+    con.executemany("INSERT INTO px_daily VALUES ('INE123A', ?, 'NSE', ?, ?, 1000000, 10000000)",
+                    [(d.date(), c, c) for d, c in zip(dates, close)])
+    con.executemany("INSERT INTO px_nse VALUES ('INE123A', ?, ?)", [(d.date(), v) for d, v in zip(dates, dp)])
+    rows, _ = fs.market_events(con, dates[0].date().isoformat(), dates[-1].date().isoformat())
+    con.close()
+    spikes = rows[rows["signal"].eq("delivery_spike_up")].sort_values("date_known")
+    assert len(spikes) == 2  # sessions 80 and 140; the 100 firing is inside the cooldown
+    assert list(spikes["date_known"]) == [pd.Timestamp(dates[81]), pd.Timestamp(dates[141])]
+
+
+def test_stale_shareholding_filing_does_not_fire():
+    """A 2022 backfill of a 2019 quarter must not become a 2022 event."""
+    frame = pd.DataFrame({
+        "isin": ["INE123A01011"] * 3,
+        "quarter_end": pd.to_datetime(["2019-09-30", "2019-12-31", "2020-03-31"]),
+        "promoter_pct": [50.0, 50.0, 45.0],
+        "known_at_utc": pd.to_datetime(["2019-10-20", "2022-01-06", "2020-04-20"], utc=True),
+    })
+    out = fs._quarterly_changes(frame, "promoter_pct", "isin", "known_at_utc")
+    assert len(out) == 1
+    assert out.iloc[0]["quarter_end"] == pd.Timestamp("2020-03-31")
+    assert out.iloc[0]["chg"] == -5.0
+
+
 # --------------------------------------------------------------------------- #
 # Point-in-time: a filing is usable only from the session its inputs were public
 # --------------------------------------------------------------------------- #
@@ -185,6 +219,26 @@ def test_placebo_draws_same_stock_dates_for_every_seed():
     assert out["n"].min() == 50
     assert abs(out["placebo_mean"].mean()) < 0.01  # random dates: no forward drift
     assert out["placebo_mean"].nunique() > 1
+
+
+def test_month_matched_placebo_stays_in_the_event_month():
+    """Same-year draws can land in another month; the month-matched null cannot."""
+    con = duckdb.connect()
+    con.execute("CREATE TABLE t235_cal(date DATE, i BIGINT)")
+    con.execute("CREATE TABLE t235_ret(entity_id VARCHAR, date DATE, i BIGINT, exc_5 DOUBLE)")
+    dates = pd.bdate_range("2024-01-01", periods=120)
+    con.executemany("INSERT INTO t235_cal VALUES (?, ?)", [(d.date(), i) for i, d in enumerate(dates)])
+    con.executemany(
+        "INSERT INTO t235_ret VALUES (?, ?, ?, ?)",
+        [("A", d.date(), i, 0.10 if d.month == 2 else 0.0) for i, d in enumerate(dates)],
+    )
+    events = pd.DataFrame({"company": ["A"] * 20, "signal": ["s"] * 20,
+                           "direction": ["up"] * 20, "date_known": dates[:20]})
+    year_mean = ev.placebo_frame(con, events, 5, seeds=20).placebo_mean.mean()
+    month_mean = ev.placebo_frame(con, events, 5, seeds=20, match_month=True).placebo_mean.mean()
+    con.close()
+    assert year_mean > 0.005  # some draws land in February
+    assert abs(month_mean) < 1e-12  # January draws only
 
 
 # --------------------------------------------------------------------------- #
