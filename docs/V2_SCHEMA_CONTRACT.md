@@ -2912,3 +2912,49 @@ clean on `observations.py` and `test_observations.py`
 (`extract_deck_figures.py` carries its 8 pre-existing stub-class errors at lines 720, 778, 817, 818, 908, 1169; the
 only change there is the `deepseek-v4.1-flash` MODELS entry).
 
+**Stage O: statements as whole management passages (T-238, 23 Nov 2026).** The T-238 gap doc matched 340 of 456 Opus
+statements on SOMANYCERA's transcripts at row level (the stage-O scorer reproduces 342 under the same 60% rule), but
+79 of the 116 misses were the same sentences split over 2-3 hy4 rows and sentence-level matching put 92.3% of Opus's
+sentences in hy4 rows: the row was the wrong unit, not the reading. A
+statement is now one management speaker's continuous passage on one topic, verbatim from its first word to its last
+full stop -- normally 2-5 sentences, never split into single sentences, never cut at a PDF line break or mid-sentence,
+and when the page itself ends mid-sentence the statement stops at its last complete sentence. A passage that crosses a
+page is stored on the page where it starts. Management speakers only: the analyst's question, the operator and another
+speaker's words are never spliced in; when the answer alone needs its question ("Yes. 2.5%", "It's going to be about
+the same.") the answer stays verbatim and the topic goes in the new `observation.question_context` column (migration,
+additive). Every guidance row, and every number row whose sentence says what will happen or why (will, should, expect,
+guidance, target, because, due to, continue, next N months/quarters), must also emit that same sentence as a statement
+row.
+
+Script checks: a statement with no terminal punctuation or ending on and/the/of/to/in is **quarantined**
+(`statement_cut`); a passage with no noun anywhere beyond pronouns/function words and no measure is **unverified**
+`no_subject` (the diagnosis's "It's going to be about the same."; a whole passage that names anything, even with a
+pronoun opening, is not flagged); a guidance row whose value no statement row on its page carries is **flagged**
+`guidance_without_statement` in its reason for a re-read -- its own printed check still decides its status. The
+sentence-level scorer (`.tmp/t238/score_statements.py`) counts an Opus sentence as matched when one hy4 statement on
+the same document and page +/-1 holds >= 80% of its word tokens, and drops Opus statements whose speaker is an analyst
+(derived from the call's question turns, plus the `(analyst)` marker). On this gold set all 456 Opus statements are
+management-spoken, so none are dropped.
+
+Scoped re-read of the 166 SOMANYCERA transcript pages (hy4, `.tmp/t238/obs_somanycera_o.db`, command as stage M with
+`--only .tmp/t238/sel_somanycera.json`): 2,356 rows -- 1,336 numbers, 912 statements, 108 guidance; 31 quarantined
+(1.3%), 0 errors, 0 parse failures, 0 429; 241 s, median 7.9 s/page; 6,709 input / 1,532 output tokens per page
+(stage M: 6,440 / 1,518).
+
+| metric (SOMANYCERA, 456 Opus statements, 1,201 sentences) | stage M | stage O |
+|---|---|---|
+| sentence recall (80% of an Opus sentence in one row, page +/-1) | 1,108/1,201 = 92.3% | **1,170/1,201 = 97.4%** |
+| statement recall (every sentence of the Opus statement covered) | 398/456 = 87.3% | **438/456 = 96.1%** |
+| row recall (gap-doc rule: 60% on the same page) | 342/456 = 75.0% | **434/456 = 95.2%** |
+| statement rows / pages | 1,484 / 144 = 10.3 | 912 / 144 = 6.3 |
+| fragments (statement_cut + no_subject) | not checked | 33/912 = 3.6% (31 cut, 2 no_subject) |
+| guidance_without_statement | not checked | 6/108 |
+
+Tests: `python -m pytest reality_engine/tests/test_observations.py -q` **142 passed** (4 stage-O tests: a whole
+passage verifies while a line-break cut and a function-word ending are quarantined; a pronoun-only passage with no
+measure is `no_subject` while a named or measured passage verifies; a guidance row is flagged until its statement row
+is on the page; `question_context` is stored and in the prompt). Regress gate: `python -m
+reality_engine.scripts.regress observations --db D:/RealityEngine/t230/obs_91_i.db` -- still right 118, fixed 18, still
+wrong 34, changed 11, **newly broken 0, gate pass**. `typecheck` clean on `observations.py` and
+`test_observations.py`. Artifacts: `.tmp/t238/obs_somanycera_o.db`, `score_statements.py`, `sel_somanycera.json`.
+
