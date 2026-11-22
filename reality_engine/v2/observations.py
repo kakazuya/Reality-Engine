@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS observation (
     period_kind TEXT NOT NULL DEFAULT '',
     period_source TEXT NOT NULL DEFAULT '',
     basis TEXT NOT NULL DEFAULT '',
+    basis_source TEXT NOT NULL DEFAULT '',
     series_kind TEXT NOT NULL DEFAULT '',
     segment TEXT NOT NULL DEFAULT '',
     product TEXT NOT NULL DEFAULT '',
@@ -231,7 +232,8 @@ CREATE TABLE IF NOT EXISTS measure_new (
 
 MIGRATIONS = (("group_source", "TEXT NOT NULL DEFAULT ''"), ("group_check", "TEXT NOT NULL DEFAULT ''"),
               ("adjusted", "INTEGER NOT NULL DEFAULT 0"), ("period_source", "TEXT NOT NULL DEFAULT ''"),
-              ("basis", "TEXT NOT NULL DEFAULT ''"), ("series_kind", "TEXT NOT NULL DEFAULT ''"),
+              ("basis", "TEXT NOT NULL DEFAULT ''"), ("basis_source", "TEXT NOT NULL DEFAULT ''"),
+              ("series_kind", "TEXT NOT NULL DEFAULT ''"),
               ("text_source", "TEXT NOT NULL DEFAULT ''"), ("value_kind", "TEXT NOT NULL DEFAULT ''"),
               ("is_total", "INTEGER NOT NULL DEFAULT 0"),
               # T-238 stage M: record types, declared new measures and the transcript fields
@@ -520,6 +522,39 @@ MEASURES: tuple[tuple[str, str, str, str], ...] = (
     ("receivable_turnover", "Receivables turnover (x)", "ratio", "working_capital.days"),
     ("payable_turnover", "Payables turnover (x)", "ratio", "working_capital.days"),
     ("net_capital_turnover", "Net capital turnover (x)", "ratio", "none: efficiency ratio"),
+    # T-238 stage N: the deck read's coined ids that name a real quantity, clustered by normalised name and kept
+    # apart by the review guards (a level never merges with a change, a percent with money, a stock with a flow, a
+    # value with a volume, yoy with qoq; different entities and share bases stay apart).  Governance / metadata names
+    # (experience, rank, reference numbers, dates, ESG scores) stay unmapped -- see .tmp/t238n/stageN_aliases.csv.
+    ("roa", "Return on assets", "percent", "none: return ratio"),
+    ("other_income_growth_yoy", "Other income growth (YoY)", "percent", "revenue.total"),
+    ("other_expenses_growth_yoy", "Other expenses growth (YoY)", "percent", "cost.other"),
+    ("total_income_growth_yoy", "Total income growth (YoY)", "percent", "revenue.total"),
+    ("gross_profit_growth_yoy", "Gross profit growth (YoY)", "percent", "margin.gross"),
+    ("profit_before_tax_growth_yoy", "Profit before tax growth (YoY)", "percent", "none: below-EBITDA profit line"),
+    ("pat_growth_qoq", "PAT growth (QoQ)", "percent", "none: accounting result"),
+    ("ebitda_growth_qoq", "EBITDA growth (QoQ)", "percent", "margin.ebitda"),
+    ("profit_before_tax_growth_qoq", "Profit before tax growth (QoQ)", "percent", "none: below-EBITDA profit line"),
+    ("volume_growth_qoq", "Sales volume growth (QoQ)", "percent", "revenue.volume"),
+    ("other_income_growth_qoq", "Other income growth (QoQ)", "percent", "revenue.total"),
+    ("total_income_growth_qoq", "Total income growth (QoQ)", "percent", "revenue.total"),
+    ("finance_cost_growth_qoq", "Finance cost growth (QoQ)", "percent", "debt.cost"),
+    ("gross_margin_change_bps", "Gross margin change (bps)", "bps", "margin.gross"),
+    ("shareholding_pct", "Shareholding pattern (share of equity capital)", "percent", "equity.shares"),
+    ("ownership_stake_pct", "Ownership stake in a JV / associate / subsidiary", "percent", "none: investments"),
+    ("dividend_payout_ratio", "Dividend payout ratio", "percent", "equity.shares"),
+    ("dividend_paid", "Dividend paid", "money", "equity.shares"),
+    ("face_value_per_share", "Face value per share", "money_per_unit", "equity.shares"),
+    ("share_price", "Share price", "money_per_unit", "equity.shares"),
+    ("count.cities", "Number of cities", "count", "none: geographic footprint"),
+    ("count.districts", "Number of districts", "count", "none: geographic footprint"),
+    ("count.villages", "Number of villages", "count", "none: geographic footprint"),
+    ("count.schools", "Number of schools", "count", "none: geographic footprint"),
+    ("count.products", "Number of products / SKUs", "count", "revenue.volume"),
+    ("changes_in_receivables", "Changes in trade receivables (cash-flow change)", "money", "working_capital.days"),
+    ("changes_in_payables", "Changes in trade payables (cash-flow change)", "money", "working_capital.days"),
+    ("contract_duration", "Contract duration", "time", "revenue.order_book"),
+    ("growth_multiple", "Growth over a printed span (x)", "ratio", "none: growth"),
 )
 
 # id -> unit family (stage G: the label-map unit guard reads this)
@@ -674,6 +709,43 @@ MEASURE_ALIASES: dict[str, str] = {
     "equity_shares_outstanding": "count.shares",
     "count_of_shares": "count.shares",
     "count.permanent_employees": "count.employees",
+    # T-238 stage N: the deck read's coined ids that name a dictionary measure (guards: a percent id is never
+    # mapped into a money measure and vice versa; a change id never into its stock; the base of a share is kept).
+    "equity_shares": "count.shares",
+    "equity.shares": "count.shares",
+    "equity.shares_outstanding": "count.shares",
+    "equity.shares.outstanding": "count.shares",
+    "shares_outstanding": "count.shares",
+    "count_of_equity_shares": "count.shares",
+    "revenue_mix": "revenue.mix",
+    "revenue.mix_share": "revenue.mix",
+    "roa_pct": "roa",
+    "return_on_assets": "roa",
+    "return_on_assets_pct": "roa",
+    "pbt_growth_yoy": "profit_before_tax_growth_yoy",
+    "profit_before_tax_growth": "profit_before_tax_growth_yoy",
+    "pbt_growth_qoq": "profit_before_tax_growth_qoq",
+    "profit_growth_qoq": "profit_before_tax_growth_qoq",
+    "pat_growth_qoq_pct": "pat_growth_qoq",
+    "ebitda_growth_qoq_pct": "ebitda_growth_qoq",
+    "volume_growth_qoq_pct": "volume_growth_qoq",
+    "other_income_growth": "other_income_growth_yoy",
+    "other_expenses_growth": "other_expenses_growth_yoy",
+    "total_income_growth": "total_income_growth_yoy",
+    "gross_profit_growth": "gross_profit_growth_yoy",
+    "gross_profit_margin_change_bps": "gross_margin_change_bps",
+    "shareholding_percentage": "shareholding_pct",
+    "shareholding_share": "shareholding_pct",
+    "shareholding.share": "shareholding_pct",
+    "shareholding": "shareholding_pct",
+    "ownership_stake": "ownership_stake_pct",
+    "ownership_share": "ownership_stake_pct",
+    "ownership.share": "ownership_stake_pct",
+    "dividend.payout_ratio": "dividend_payout_ratio",
+    "dividend_payout_pct": "dividend_payout_ratio",
+    "equity_share_face_value": "face_value_per_share",
+    "face_value": "face_value_per_share",
+    "contract.duration": "contract_duration",
 }
 
 # Curated printed label -> measure id (T-230 stage B, Wolf): applied by the script before the dictionary check.
@@ -1271,6 +1343,31 @@ def _label_unit_fits(measure: str, unit: str) -> bool:
     return not unit_family or family_ok(family, unit_family)
 
 
+EXCEPTIONAL_RE = re.compile(r"\b(?:exceptional|extraordinary|one[- ]?off)\b", re.I)
+CASHFLOW_CHANGE_RE = re.compile(r"\b(?:change[sd]?|increase|decrease|movement|addition|additions)\b", re.I)
+RECEIVABLE_WORD_RE = re.compile(r"receivable|debtors?\b", re.I)
+PAYABLE_WORD_RE = re.compile(r"payable|creditors?\b", re.I)
+
+
+def force_fit_veto(measure: str, label: str, axis: str, series_title: str) -> str:
+    """T-238 stage N: a pre-exceptional profit is never plain PBT; a cash-flow change is never the balance.
+
+    Wolf's hand grade (D:/RealityEngine/t237/measure_grade) caught hy4 force-fitting "Profit before exceptional
+    items" into ``profit_before_tax`` (4 rows) and a cash-flow "change in trade receivables/payables" into the
+    balance-sheet stock (3 rows, receivables/payables swapped).  The printed words say which line it is, so the
+    script rewrites the id; the dictionary carries both the level and the change.
+    """
+    text = " ".join([label, axis, series_title])
+    if measure == "profit_before_tax" and EXCEPTIONAL_RE.search(text):
+        return "profit_before_exceptional_items_and_tax"
+    if measure in ("trade_receivables", "trade_payables") and CASHFLOW_CHANGE_RE.search(text):
+        if RECEIVABLE_WORD_RE.search(text):
+            return "changes_in_receivables"
+        if PAYABLE_WORD_RE.search(text):
+            return "changes_in_payables"
+    return measure
+
+
 def canonical_measure(measure: str, label: str, axis: str, series_title: str, unit: str,
                       page_text: str) -> str:
     """Stage C3: near-duplicate ids, disbursement vs loans stock, spindle counts under capex."""
@@ -1287,7 +1384,7 @@ def canonical_measure(measure: str, label: str, axis: str, series_title: str, un
             measure = "loans.disbursement_mix" if "mix" in context.lower() else "loans.disbursement"
     if measure_root(measure) == "capex" and not unit and SPINDLE_RE.search(page_text or ""):
         measure = "capacity.spindles"
-    return measure
+    return force_fit_veto(measure, label, axis, series_title)
 
 
 def normalize_name(name: str) -> str:
@@ -2147,9 +2244,9 @@ def detect_subsidiary(texts: Iterable[str], companies: dict[str, tuple[str, str]
 def is_stock_measure(measure: str) -> bool:
     """A true stock a deck's as-of date can belong to (E1): not a rate, an addition or a plan."""
     return re.search(r"^capacity\.(?:total|add)$|"
-                     r"^count\.(?:.*(?:outlets?|branches?|atms?|stores?|plants?))$|"
-                     r"^(?:gnpa(?:\.value|_pct)?|nnpa(?:\.value|_pct)?|loans|order\.book)$|^aum\.", measure or "",
-                     re.I) is not None
+                     r"^count\.(?:.*(?:outlets?|branches?|atms?|stores?|plants?)|shares)$|"
+                     r"^(?:gnpa(?:\.value|_pct)?|nnpa(?:\.value|_pct)?|loans|order\.book|shareholding_pct)$|^aum\.",
+                     measure or "", re.I) is not None
 
 
 def capacity_deck_period_ok(row: dict[str, Any], page_text: str) -> bool:
@@ -2207,6 +2304,9 @@ def _period_token(text: str) -> str:
         period = infer_period([match.group(1)])
         if period:
             return period
+    periods = fiscal_periods(text)          # T-238 stage N: keep the printed quarter ("Q2 FY26", not "FY26")
+    if periods:
+        return periods[0]
     return infer_period([text])
 
 
@@ -2241,6 +2341,63 @@ def deck_period(store_db: str | Path, doc_key: str, page_text: str) -> str:
         if period:
             return period
     return ""
+
+
+# T-238 stage N: a fiscal label as a deck title prints it ("Q2 FY26", "H1FY26", "9M FY26", "FY25").
+FISCAL_PERIOD_RE = re.compile(
+    r"\b(?:Q[1-4]|H[12]|9M)\s*-?\s*(?:FY)?\s*-?\s*\d{2,4}[A-Z]?\b|\bFY\s?-?\d{2,4}[A-Z]?\b", re.I)
+BASIS_WORD_RE = re.compile(r"\b(standalone|consolidated)\b", re.I)
+BASIS_NEGATED_RE = re.compile(r"\b(?:not|non|ex)[- ](?:standalone|consolidated)\b", re.I)
+
+
+def fiscal_periods(text: str) -> list[str]:
+    """Every fiscal period label printed in the text, in order and as written ('Q2 FY26', 'H1FY26', 'FY25')."""
+    return [norm_space(match.group(0)) for match in FISCAL_PERIOD_RE.finditer(str(text or ""))]
+
+
+def _period_key(period: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", norm_space(period).lower())
+
+
+def slide_period(page_text: str) -> str:
+    """Stage N: the fiscal period printed in the page's own title/header line.
+
+    A value with no period printed beside it takes the period the slide's title names ("Q2 FY26 Investor
+    Update", "H1FY26 Performance") -- but only when the page prints that one fiscal label and no second one:
+    a multi-period chart has no single period any number on it belongs to, so its flow rows stay no_period.
+    """
+    lines = [norm_space(line) for line in str(page_text or "").splitlines() if norm_space(line)]
+    if not lines:
+        return ""
+    labels = {_period_key(period) for line in lines for period in fiscal_periods(line)}
+    if len(labels) != 1:
+        return ""
+    for line in lines[:3]:
+        periods = fiscal_periods(line)
+        if periods:
+            return periods[0]
+    return ""
+
+
+@lru_cache(maxsize=512)
+def deck_basis(store_db: str | Path, doc_key: str) -> str:
+    """Stage N: the one basis every basis word printed in the deck names; '' when it prints none or both.
+
+    A deck whose every "Standalone"/"Consolidated" word says the same basis dates all its unlabelled financial
+    rows to that basis; a deck printing both leaves an unlabelled row unbased (a conflict, never a guess).
+    """
+    try:
+        con = connect_ro(store_db, timeout_s=60)
+        try:
+            _cur = con.execute("SELECT text FROM doc_page WHERE doc_key=?", (doc_key,))
+            texts = [str(row[0] or "") for row in _cur if row is not None] if _cur is not None else []
+        finally:
+            con.close()
+    except Exception:
+        return ""
+    found = {match.group(1).lower() for text in texts
+             for match in BASIS_WORD_RE.finditer(BASIS_NEGATED_RE.sub("", text))}
+    return next(iter(found)) if len(found) == 1 else ""
 
 
 def apply_series_kind(rows: list[dict[str, Any]], page_text: str) -> None:
@@ -2527,7 +2684,7 @@ def _record_row(*, symbol: str, doc_key: str, page: int, known_at: str, record_t
         "measure": norm_space(raw.get("measure")), "printed_label": "", "printed_axis": "", "value": None,
         "value_text": "", "unit": norm_space(raw.get("unit")), "unit_family": "", "scale": 1.0,
         "adjusted": 0, "value_kind": "", "is_total": 0, "period": norm_space(raw.get("period")),
-        "period_kind": "", "period_source": "", "basis": "", "series_kind": "", "segment": "",
+        "period_kind": "", "period_source": "", "basis": "", "basis_source": "", "series_kind": "", "segment": "",
         "product": "", "geography": "", "plant": "", "customer": "", "group_path": "", "group_source": "",
         "group_check": "", "stage": "", "series_id": "", "series_title": "",
         "entity_scope": canonical_scope(norm_space(raw.get("entity_scope"))), "text_source": "",
@@ -2675,7 +2832,8 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                        vocab: dict[tuple[str, str], str] | None = None,
                        doc_owner_symbol: str = "",
                        companies: dict[str, tuple[str, str]] | None = None,
-                       deck_asof: str = "", ocr_text: str = "", ocr_page: bool = False) -> list[dict[str, Any]]:
+                       deck_asof: str = "", deck_basis: str = "",
+                       ocr_text: str = "", ocr_page: bool = False) -> list[dict[str, Any]]:
     """Model reply objects -> checked observation rows (status and status_reason set here)."""
     measures = measures if measures is not None else measure_index()
     vocab = vocab if vocab is not None else vocab_index()
@@ -2721,6 +2879,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             "period_kind": period_kind_for(raw.get("period_kind", ""), row["period"]),
             "period_source": "",
             "basis": "",
+            "basis_source": "",
             "series_kind": "level",
             "series_id": row["series_id"] or "s1",
             "region": region_for(word_list, value_text),
@@ -2766,6 +2925,9 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["period_source"] = ""
                 row["period_kind"] = "span"
         measure = measures.get(row["measure"])
+        if not row["basis"] and deck_basis and measure and measure["unit_family"] == "money":
+            row["basis"] = deck_basis              # stage N: the deck prints one basis only
+            row["basis_source"] = "deck"
         if not row["unit"]:
             inferred = infer_unit([row["printed_axis"], row["series_title"], row["printed_label"]],
                                   measure["unit_family"] if measure else "")
@@ -2800,10 +2962,17 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                 row["period"] = header_period
                 row["period_source"] = "column_header"
                 row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"])
+        if not row["period"]:                     # stage N: the period the slide's own title names
+            title_period = slide_period(page_text)
+            stock_ok = (not is_stock_measure(row["measure"])) or capacity_deck_period_ok(row, page_text)
+            if title_period and stock_ok:
+                row["period"] = title_period
+                row["period_source"] = "slide_title"
+                row["period_kind"] = period_kind_for(raw.get("period_kind", ""), title_period)
         if not row["period"] and deck_asof and is_stock_measure(row["measure"]) \
                 and capacity_deck_period_ok(row, page_text):
             row["period"] = deck_asof
-            row["period_source"] = "deck_period"
+            row["period_source"] = "deck_asof"
             row["period_kind"] = period_kind_for("", deck_asof)
         if row["period"] and not period_is_printed(row["period"]):
             row["period"] = ""
@@ -2816,6 +2985,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         foot = footnote_basis(page_text, row["period"]) if row["period"] else ""
         if foot:
             row["basis"] = foot
+            row["basis_source"] = ""
         cue = scope_cue(row)
         if cue:
             row["entity_scope"] = cue
@@ -2999,7 +3169,8 @@ def create_db(path: str | Path) -> sqlite3.Connection:
 
 OBS_COLUMNS = ("symbol", "doc_key", "page", "region", "known_at", "measure", "printed_label", "printed_axis",
                "value", "value_text", "unit", "unit_family", "scale", "adjusted", "value_kind", "is_total",
-               "period", "period_kind", "period_source", "basis", "series_kind", "segment", "product", "geography",
+               "period", "period_kind", "period_source", "basis", "basis_source", "series_kind", "segment", "product",
+               "geography",
                "plant", "customer", "group_path", "group_source", "group_check", "stage", "series_id",
                "series_title", "entity_scope", "text_source", "record_type", "statement", "speaker", "direction",
                "value_high", "new_definition", "new_driver_node", "status", "status_reason", "reader", "read_at")
@@ -3650,6 +3821,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
                                         reply_rows=reply_rows, doc_owner_symbol=owner,
                                         companies=companies,
                                         deck_asof="" if transcript else deck_period(store_db, doc_key, check_text),
+                                        deck_basis="" if transcript else deck_basis(str(store_db), str(doc_key)),
                                         ocr_text=result["ocr_text"], ocr_page=ocr_read)
     return result
 
@@ -3920,8 +4092,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                              "unit_inherited": 0, "period_inherited": 0, "measure_mapped": 0, "adjusted": 0,
                              "parent_rows": 0, "stage_set": 0, "unproven_upgrades": 0, "kept_hard_reason": 0,
                              "scale_fixed": 0, "basis_set": 0, "basis_conflicts": 0, "bridge_rows": 0,
-                             "subsidiary_rows": 0, "deck_periods": 0, "deck_period_cleared": 0,
-                             "deck_period_fixed": 0, "cagr_rows": 0, "map_orphans": 0, "panels_split": 0,
+                             "subsidiary_rows": 0, "deck_asof": 0, "deck_asof_cleared": 0,
+                             "deck_asof_fixed": 0, "deck_asof_renamed": 0, "slide_title_periods": 0,
+                             "basis_deck": 0, "cagr_rows": 0, "map_orphans": 0, "panels_split": 0,
                              "geography_cleared": 0, "stacked_parts": 0, "rank_counts": 0, "measure_fixed": 0,
                              "text_source_ocr": 0, "per_unit_scales": 0, "period_cleared": 0, "ticks_cleared": 0,
                              "footnote_basis": 0, "scope_cues": 0, "lower_bounds": 0, "dash_labels": 0,
@@ -3951,6 +4124,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
         text = norm_space(raw_text)
         head = page_head(raw_text)
         deck_asof = deck_period(store_db, doc_key, raw_text)
+        page_deck_basis = deck_basis(str(store_db), str(doc_key))
         owner = ""
         try:
             owner = doc_owner(store_db, doc_key, companies, store_symbol.get(store_db, ""))
@@ -4027,17 +4201,17 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             if apply_per_unit_scale(row, family):
                 scale_fixed = True
                 stats["per_unit_scales"] += 1
-            if row["period_source"] == "deck_period":
+            if row["period_source"] == "deck_asof":
                 if not is_stock_measure(row["measure"] or "") or not capacity_deck_period_ok(row, raw_text) \
                         or not deck_asof:
                     row["period"] = ""
                     row["period_source"] = ""
                     row["period_kind"] = ""
-                    stats["deck_period_cleared"] += 1
+                    stats["deck_asof_cleared"] += 1
                 elif row["period"] != deck_asof:
                     row["period"] = deck_asof
                     row["period_kind"] = period_kind_for("", deck_asof)
-                    stats["deck_period_fixed"] += 1
+                    stats["deck_asof_fixed"] += 1
             comparative = bool(row["period"]) and comparative_period(
                 row["period"], raw_text, " ".join([row["printed_label"] or "", row["printed_axis"] or ""]))
             if comparative:
@@ -4067,13 +4241,20 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["period_kind"] = period_kind_for("", period)
                     period_inherited = True
                     stats["period_inherited"] += 1
+                elif (title_period := slide_period(raw_text)) and (
+                        not is_stock_measure(row["measure"] or "") or capacity_deck_period_ok(row, raw_text)):
+                    row["period"] = title_period        # stage N: the period the slide's own title names
+                    row["period_kind"] = period_kind_for("", title_period)
+                    row["period_source"] = "slide_title"
+                    period_inherited = True
+                    stats["slide_title_periods"] += 1
                 elif deck_asof and is_stock_measure(row["measure"] or "") \
                         and capacity_deck_period_ok(row, raw_text):
                     row["period"] = deck_asof
                     row["period_kind"] = period_kind_for("", deck_asof)
-                    row["period_source"] = "deck_period"
+                    row["period_source"] = "deck_asof"
                     deck_period_used = True
-                    stats["deck_periods"] += 1
+                    stats["deck_asof"] += 1
             if apply_instant_period(row):        # stage L: "Closing as on <date>" is a point in time
                 instant_used = True
                 stats["instant_periods"] += 1
@@ -4093,6 +4274,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     row["entity_scope"] = "subsidiary"
                     stats["subsidiary_rows"] += 1
             old_basis = str(row["basis"] or "")
+            row["basis_source"] = ""
             row["basis"] = detect_basis(row["printed_axis"] or "", row["series_title"] or "", head,
                                         words, row["region"] or "", row["group_path"] or "", raw_text)
             if not row["basis"]:                 # stage K: the standalone/consolidated header over the value
@@ -4103,9 +4285,14 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                 row["basis"] = page_basis(raw_text)
                 if row["basis"]:
                     stats["basis_page"] += 1
+            if not row["basis"] and page_deck_basis and family == "money":
+                row["basis"] = page_deck_basis    # stage N: every basis word the deck prints says this one
+                row["basis_source"] = "deck"
+                stats["basis_deck"] += 1
             foot = footnote_basis(raw_text, row["period"] or "")
             if foot and row["basis"] != foot:
                 row["basis"] = foot          # a footnote names this period's basis (id 20120)
+                row["basis_source"] = ""
                 stats["footnote_basis"] += 1
             basis_changed = bool(row["basis"]) and row["basis"] != old_basis
             cue = scope_cue(row)
@@ -4122,7 +4309,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             if dash_label:
                 stats["dash_labels"] += 1
             value_text_fix = "image_text" in old_reason and (
-                text_has(text, row["value_text"] or "") or text_has(ocr_text, row["value_text"] or ""))
+                value_printed(text, row["value_text"] or "") or value_printed(ocr_text, row["value_text"] or ""))
             if owner and row["entity_scope"] in ("company", "subsidiary", ""):
                 row["entity_scope"] = "parent"
                 stats["parent_rows"] += 1
@@ -4198,17 +4385,22 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
                     stats["downgraded"] += 1
             con.execute("UPDATE observation SET measure=?, printed_label=?, geography=?, series_id=?, unit=?, "
                         "unit_family=?, scale=?, value_kind=?, is_total=?, period=?, period_kind=?, period_source=?, "
-                        "basis=?, series_kind=?, adjusted=?, stage=?, entity_scope=?, text_source=?, status=?, "
-                        "status_reason=? WHERE observation_id=?",
+                        "basis=?, basis_source=?, series_kind=?, adjusted=?, stage=?, entity_scope=?, text_source=?, "
+                        "status=?, status_reason=? WHERE observation_id=?",
                         (row["measure"], row["printed_label"], row["geography"], row["series_id"], row["unit"],
                          row["unit_family"], row["scale"], row.get("value_kind") or "",
                          1 if row.get("_is_total") else 0, row["period"],
-                         row["period_kind"], row["period_source"], row["basis"], row["series_kind"], row["adjusted"],
-                         row["stage"], row["entity_scope"], row.get("text_source") or "", status, reason,
-                         row["observation_id"]))
+                         row["period_kind"], row["period_source"], row["basis"], row.get("basis_source") or "",
+                         row["series_kind"], row["adjusted"], row["stage"], row["entity_scope"],
+                         row.get("text_source") or "", status, reason, row["observation_id"]))
             stats["changed"] += 1
             if (row.get("text_source") or "") == "ocr":
                 stats["text_source_ocr"] += 1
+    # T-238 stage N: one name for one source -- rows written before the rename carried 'deck_period'.
+    stale = con.execute("SELECT COUNT(*) FROM observation WHERE period_source='deck_period'").fetchone()[0]
+    if stale:
+        con.execute("UPDATE observation SET period_source='deck_asof' WHERE period_source='deck_period'")
+        stats["deck_asof_renamed"] = int(stale)
     con.commit()
     if stats["unproven_upgrades"]:
         stats["stopped"] = (f"{stats['unproven_upgrades']} rows would verify without a new printed source; "

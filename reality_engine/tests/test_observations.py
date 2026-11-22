@@ -533,6 +533,7 @@ def _make_store(symbol="NAVKARCORP", name="Navkar Corporation Limited",
                 first_page=1):
     STORE.parent.mkdir(parents=True, exist_ok=True)
     STORE.unlink(missing_ok=True)
+    obs.deck_basis.cache_clear()       # the store file is rewritten: a cached deck census is stale
     con = sqlite3.connect(STORE)
     con.execute("CREATE TABLE company (symbol TEXT, name TEXT)")
     con.execute("CREATE TABLE doc (doc_key TEXT, title TEXT, symbol TEXT, known_at TEXT)")
@@ -821,7 +822,7 @@ def test_stock_row_takes_the_deck_period_and_flow_stays_no_period():
                                        measure="gnpa", printed_label="Mortgage (Total) GNPA",
                                        value_text="66.9", unit="₹Cr")], deck_asof="March 31, 2026")
     assert stock[0]["period"] == "March 31, 2026"
-    assert stock[0]["period_source"] == "deck_period"
+    assert stock[0]["period_source"] == "deck_asof"
     flow = obs.build_observations(symbol="SURYODAY", doc_key=DECK, page=25, known_at=KNOWN_AT,
                                   page_text=page, reply_rows=[reply(
                                       measure="revenue.value", printed_label="Mortgage (Total) GNPA",
@@ -1255,7 +1256,7 @@ T248_TREE = frozenset({
 
 
 def test_every_measure_has_a_driver_node_or_a_stated_none():
-    assert len(obs.MEASURES) == 276
+    assert len(obs.MEASURES) == 305        # 276 before T-238 stage N's 29 deck driver measures
     assert len({m[0] for m in obs.MEASURES}) == len(obs.MEASURES)
     for mid, _name, _family, node in obs.MEASURES:
         assert node in T248_TREE or node.startswith("none: "), f"{mid}: {node!r}"
@@ -1510,9 +1511,12 @@ def test_stage_k_aliases_map_only_same_meaning_names_and_leave_governance_alone(
     assert obs.canonical_measure("dividend_per_share", "Dividend per share (₹)", "", "", "₹", "") == \
         "dividend_per_share"
     # a governance / compliance name is never mapped onto a driver measure
-    for name in ("shareholding_percentage", "sitting_fees", "csr_amount_spent", "count.workers",
+    for name in ("sitting_fees", "csr_amount_spent", "count.workers",
                  "statutory_dues_disputed", "annual_general_meeting_number", "section_reference"):
         assert obs.canonical_measure(name, "", "", "", "", "") == name
+    # T-238 stage N: the shareholding pattern is a percent of equity (a stock), so it now maps to shareholding_pct;
+    # the stage-K ruling above still stands for the governance names.
+    assert obs.canonical_measure("shareholding_percentage", "Promoters", "", "", "%", "") == "shareholding_pct"
 
 
 def test_stage_k_basis_comes_from_the_column_header_over_the_value():
@@ -1863,5 +1867,122 @@ def test_stage_m_a_prose_period_is_not_a_period():
     assert obs.period_is_printed("this quarter") is False
     assert obs.period_is_printed("corresponding quarter last year") is False
     assert obs.period_is_printed("FY27") is True
+
+# --------------------------------------------------------------------------- T-238 stage N (deck pages)
+
+
+def test_stage_n_a_slide_title_dates_a_flow_row_only_when_the_page_prints_one_period():
+    page = "Q2 FY26 Investor Update\nEBITDA margin 18.2%"
+    rows = build([reply(measure="ebitda_margin", printed_label="EBITDA margin", value_text="18.2%",
+                        unit="%")], page_text=page)
+    assert rows[0]["period"] == "Q2 FY26"
+    assert rows[0]["period_source"] == "slide_title"
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    # a multi-period chart has no single period its numbers belong to: the title must not date them
+    multi = "Q2 FY26 Investor Update\nEBITDA margin 18.2% Q2 FY25 15.0%"
+    rows = build([reply(measure="ebitda_margin", printed_label="EBITDA margin", value_text="18.2%",
+                        unit="%")], page_text=multi)
+    assert rows[0]["period"] == ""
+    assert "no_period" in rows[0]["status_reason"]
+    # a title that carries no fiscal label dates nothing either
+    no_title = "Investor Presentation\nEBITDA margin 18.2%"
+    rows = build([reply(measure="ebitda_margin", printed_label="EBITDA margin", value_text="18.2%",
+                        unit="%")], page_text=no_title)
+    assert rows[0]["period"] == ""
+
+
+def test_stage_n_shareholding_and_share_count_take_the_deck_asof():
+    page = "Shareholding Pattern Promoter & Promoter Group 52.3%"
+    rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
+                                  page_text=page,
+                                  reply_rows=[reply(measure="shareholding_pct",
+                                                    printed_label="Promoter & Promoter Group",
+                                                    value_text="52.3", unit="%")], deck_asof="Q2 FY26")
+    assert rows[0]["period"] == "Q2 FY26"
+    assert rows[0]["period_source"] == "deck_asof"
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    shares = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
+                                    page_text="Shares Outstanding 12,34,56,789",
+                                    reply_rows=[reply(measure="count.shares", printed_label="Shares Outstanding",
+                                                      value_text="12,34,56,789", unit="")], deck_asof="Q2 FY26")
+    assert shares[0]["period_source"] == "deck_asof"
+    assert shares[0]["status"] == "verified", shares[0]["status_reason"]
+    flow = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=7, known_at=KNOWN_AT,
+                                  page_text="Revenue 1,234",
+                                  reply_rows=[reply(measure="revenue.value", printed_label="Revenue",
+                                                    value_text="1,234", unit="Rs Cr")], deck_asof="Q2 FY26")
+    assert flow[0]["period"] == "" and "no_period" in flow[0]["status_reason"]
+
+
+def test_stage_n_a_deck_printing_one_basis_dates_its_unlabelled_money_rows():
+    page = "Financial Highlights FY25 Revenue 100"
+    rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=8, known_at=KNOWN_AT,
+                                  page_text=page,
+                                  reply_rows=[reply(measure="revenue.value", printed_label="Revenue",
+                                                    value_text="100", unit="Rs Cr", period="FY25")],
+                                  deck_basis="consolidated")
+    assert rows[0]["basis"] == "consolidated"
+    assert rows[0]["basis_source"] == "deck"
+    rows = obs.build_observations(symbol="NAVKARCORP", doc_key=DECK, page=8, known_at=KNOWN_AT,
+                                  page_text=page,
+                                  reply_rows=[reply(measure="revenue.value", printed_label="Revenue",
+                                                    value_text="100", unit="Rs Cr", period="FY25")],
+                                  deck_basis="")
+    assert rows[0]["basis"] == "" and rows[0]["basis_source"] == ""
+
+
+def test_stage_n_a_pre_exceptional_profit_is_never_profit_before_tax():
+    page = "H1FY26 Profit before exceptional items and tax 4.39 Rs Cr"
+    rows = build([reply(measure="profit_before_tax", printed_label="Profit before exceptional items and tax",
+                        value_text="4.39", unit="Rs Cr", period="H1FY26")], page_text=page)
+    assert rows[0]["measure"] == "profit_before_exceptional_items_and_tax"
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    assert obs.canonical_measure("profit_before_tax", "Profit before tax", "", "", "Rs Cr",
+                                 page) == "profit_before_tax"
+
+
+def test_stage_n_a_cashflow_change_is_never_the_balance():
+    assert obs.canonical_measure("trade_payables", "(Increase)/Decrease in Trade Payables", "", "", "Rs Cr",
+                                 "") == "changes_in_payables"
+    assert obs.canonical_measure("trade_receivables", "Change in trade receivables", "", "", "Rs Cr",
+                                 "") == "changes_in_receivables"
+    assert obs.canonical_measure("trade_receivables", "Trade receivables", "", "", "Rs Cr",
+                                 "") == "trade_receivables"
+
+
+def test_stage_n_coined_ids_map_only_to_a_same_meaning_dictionary_id():
+    measures = obs.measure_index()
+    assert measures["roa"]["unit_family"] == "percent"
+    assert measures["changes_in_receivables"]["unit_family"] == "money"
+    assert obs.canonical_measure("equity_shares", "", "", "", "", "") == "count.shares"
+    assert obs.canonical_measure("return_on_assets", "", "", "", "", "") == "roa"
+    assert obs.canonical_measure("revenue_mix", "", "", "", "", "") == "revenue.mix"
+    assert obs.canonical_measure("pbt_growth_yoy", "", "", "", "", "") == "profit_before_tax_growth_yoy"
+    assert obs.canonical_measure("gross_profit_margin_change_bps", "", "", "", "", "") == "gross_margin_change_bps"
+    # a level never merges with its change and a percent never with money: these stay apart
+    assert obs.canonical_measure("pat_growth_qoq", "", "", "", "", "") == "pat_growth_qoq"
+    assert obs.canonical_measure("dividend_payout", "", "", "", "", "") == "dividend_payout"
+
+
+def test_stage_n_recheck_applies_the_deck_basis_and_renames_the_period_source():
+    page = "Financial Highlights Revenue 100 FY25"
+    try:
+        _make_store(title="Q2 FY26 Investor Update", pages=(page, "Consolidated Balance Sheet"), first_page=14)
+        con = obs.create_db(":memory:")
+        rows = build([reply(measure="revenue.value", printed_label="Revenue", value_text="100",
+                            unit="Rs Cr", period="FY25")], page_text=page)
+        assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+        rows[0].update({"period": "Q2 FY26", "period_source": "deck_period", "basis": "", "basis_source": ""})
+        obs.write_rows(con, rows)
+        stats = obs.recheck_db(con, [str(STORE)])
+        cursor = con.execute("SELECT period, period_source, basis, basis_source, status FROM observation")
+        period, source, basis, basis_source, status = cursor.fetchone()
+        assert (period, source) == ("Q2 FY26", "deck_asof")
+        assert (basis, basis_source) == ("consolidated", "deck")
+        assert status == "verified"
+        assert stats["deck_asof_renamed"] == 1 and stats["basis_deck"] == 1
+        con.close()
+    finally:
+        _cleanup_store()
 
 

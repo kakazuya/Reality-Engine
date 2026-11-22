@@ -1922,8 +1922,11 @@ Writer: `reality_engine/v2/observations.py` (DDL is its `SCHEMA` constant; tests
   `measure` (id in `measure_dict`; an unmapped id is kept, never dropped), `printed_label` and `printed_axis`
   (verbatim), `value` (parsed by the script from `value_text`), `value_text`, `unit`, `unit_family`, `scale`,
   `adjusted` (1 = hypothetical/adjusted figure, never the reported measure), `period` and `period_kind` (`actual` /
-  `estimate` / `target`), `period_source` (`deck_period` when the period came from the deck header, else empty),
-  `basis` (`standalone` / `consolidated` / empty), `series_kind` (`level` / `bridge`), `segment`, `product`,
+  `estimate` / `target`), `period_source` (`deck_asof` when the period is the deck's own as-of quarter, `slide_title`
+  when the page's title line names it, `column_header` when the printed header over the value does, `label_instant`
+  for an "as at <date>" label, else empty), `basis` (`standalone` / `consolidated` / empty), `basis_source`
+  (`deck` when every basis word the deck prints names that one basis, else empty), `series_kind` (`level` / `bridge`),
+  `segment`, `product`,
   `geography`, `plant`,
   `customer`, `group_path` (verbatim, e.g. "Projects Under Review"), `group_source` (`printed` / `legend_inferred` /
   empty), `group_check` (`path_sum` when the running-path check passed), `stage` (`operating` / `under_construction` /
@@ -1934,7 +1937,9 @@ Writer: `reality_engine/v2/observations.py` (DDL is its `SCHEMA` constant; tests
   `revenue.price`, `revenue.total`, `revenue.order_book`, `revenue.mix`, `cost.raw_material`, `cost.employee`,
   `cost.power_fuel`, `cost.other`, `margin.ebitda`, `margin.gross`, `capex.amount`, `capacity.add`, `debt.level`,
   `debt.cost`, `equity.shares`, `equity.dividend`, `working_capital.days`, or `none: <reason>` for a line with no
-  driver node). Seeded with 69 measures at stage A, 259 after stage G; a new axis name is kept in
+  driver node). Seeded with 69 measures at stage A, 259 after stage G, 276 after stage K, **305 after T-238 stage N**
+  (29 deck driver measures: return on assets, the yoy/qoq growth lines, shareholding and ownership stake, payout and
+  per-share levels, footprint counts, the receivables/payables cash-flow changes); a new axis name is kept in
   `observation.measure` and marked unverified until a dictionary row is approved.
 - `dim_vocab` -- `kind`, `canonical`, `aliases`; seeded stage, geography and product aliases. A printed dimension is
   replaced by the canonical token only on an exact alias match (`Domestic` -> `India`); an unknown value stays
@@ -2148,7 +2153,8 @@ Wolf's seed-113 read: 44 right, 2 minor, 4 wrong of 50 verified (8%, from 15%). 
   `entity_scope='subsidiary'`; 748 rows changed, 1,457 subsidiary rows in total, id 7731 is subsidiary and verified.
 - **D5 stock as-of period.** For stock measures only (`capacity.*`, `aum.*`, `gnpa`/`nnpa`, `loans` stock,
   `order.book`, `count.*` outlets/plants/branches) an empty period takes the period printed in the page header, deck
-  title or cover (`period_source='deck_period'`), never the filing date; flows stay `no_period`. 3,130 stock rows got
+  title or cover (`period_source='deck_period'`; renamed `deck_asof` by T-238 stage N), never the filing date; flows
+  stay `no_period`. 3,130 stock rows got
   the deck period; `capacity.*` verified 1,072 -> 1,886. Director/tenure rows are `quarantined` `not_a_measure`, and a
   value that only appears on an axis-tick line is `unverified` `axis_tick`. Stage H replaces stage D's
   multiple-of-1000 test (which missed a labelled value that happened to equal a tick) with the page's own tick
@@ -2175,7 +2181,7 @@ Wolf's seed-131 read: 42 right, 6 minor, 2 wrong of 50 verified (4%); the deck-p
 - **E2 deck-period source.** The presentation's own cover/title page (pages 2-6, filing letters skipped by their
   "BSE Limited / Dear Sir / Sub: / Regulation 30 / To," lines) or the page header, never the filing letter date;
   1,434 rows were re-dated from the cover and 1,294 cleared. Since the change, `deck_period` verified falls
-  1,193 -> 404.
+  1,193 -> 404. (T-238 stage N renamed the stored value to `deck_asof` and recheck renames old rows.)
 - **E3 basis from a heading/footer line.** `basis` also reads a group heading or a page footer line with the word
   ("Consolidated (in INR Cr.)", "Standalone- (Figures in Crores)"); 43,847 rows now carry a basis (1,293 more), 2,342
   conflict groups remain unverified. A10 (NELCAST "Consolidated (in INR Cr.)" in group_path) is consolidated and
@@ -2911,4 +2917,64 @@ page selection from `doc_page`; the two T-238 gap-1 OCR tests of section 17.w ar
 clean on `observations.py` and `test_observations.py`
 (`extract_deck_figures.py` carries its 8 pre-existing stub-class errors at lines 720, 778, 817, 818, 908, 1169; the
 only change there is the `deepseek-v4.1-flash` MODELS entry).
+
+### Stage N (T-238: the deck read's coined measures, slide-title period, deck basis, force-fit vetoes, 23 Nov 2026)
+
+The 394-company deck read (`.tmp/t232read/obs_decks394.db`) was written before stage M, so most of its unverified
+rows carry a free-coined measure id: 761,306 rows -- 480,459 verified (63.1%), 279,488 unverified (of which 112,622
+carry a non-dictionary id), 1,359 quarantined. Stage N recovers the right rows by rules and never loosens a check.
+
+- **N1 the coined-id map.** `.tmp/t238n/stageN_aliases.csv` (17,206 ids, 124,850 rows over this copy and
+  `D:/RealityEngine/t230/obs_91_i.db`) records, per id, its rows, companies, sample printed labels, action, target
+  and reason: 22 ids alias to an existing dictionary measure (3,187 rows, 239 companies), 26 clusters add a stage-N
+  driver measure (4,678 rows, 302 companies; the dictionary goes 276 -> 305), and the rest stay unmapped
+  (experience/rank/ESG/award names -- the stage-K governance ruling) or drop as document metadata (reference
+  numbers, letter/quarter dates, CIN/SEBI citations). Wolf's guards bind every mapping: a level never merges with
+  its change, a percent never with money (`dividend_payout` prints both and stays unmapped), a share of revenue
+  never with a share of cost (the base is kept), different entities stay apart (JV/subsidiary vs company), a stock
+  never with a flow (debt vs debt maturity), value never with volume, a yoy change never with a from-peak change.
+  14 candidate pairs were rejected: value-vs-volume 4, level-identity 3, percent-vs-money 2, stock-vs-flow 2,
+  level-vs-change 1, share-base 1, governance 1 (the entity and yoy-vs-from-peak guards had no candidate here).
+- **N2 period from the slide title / the deck's as-of.** `slide_period` takes the fiscal label printed in the page's
+  own title line ("Q2 FY26 Investor Update", "H1FY26 Performance") for a row with no printed period, and only when
+  the page prints that one fiscal label: a multi-period chart has no single period its numbers belong to, so its
+  flows stay `no_period` (`period_source='slide_title'`). The deck-as-of rule (E1/D5) now also covers a share count
+  and the shareholding pattern (a stock), and its stored value is renamed `deck_asof` (recheck renames the old
+  `deck_period` rows in the same pass).
+- **N3 basis from the deck.** `deck_basis` reads every printed basis word in the document; when they all name one
+  basis, a money row with no printed basis takes it with `basis_source='deck'` (new column). A deck printing both
+  keeps its unlabelled rows unbased -- a conflict, never a guess.
+- **N4 force-fit vetoes (T-237's hand grade).** `force_fit_veto` rewrites a printed pre-exceptional profit
+  ("Profit before exceptional items" stored as `profit_before_tax`) to `profit_before_exceptional_items_and_tax`,
+  and a cash-flow "change/increase/decrease in trade receivables/payables" stored as the balance to
+  `changes_in_receivables` / `changes_in_payables` (both new dictionary ids); a plain trade-receivables level stays
+  put.
+- **N5 scoped recheck and gates.** `--recheck --only <selector>` over the rows carrying the seven reasons above
+  (`no_period`, `measure not in the dictionary`/`undeclared_new`, `basis_conflict`, `no_unit`, `image_text`,
+  `printed_label/axis not in the page text layer`), run as four store shards (29,048 pages, 249,992 rows) and
+  merged back into `.tmp/t238n/deck_n.db`:
+
+  | | before | after |
+  |---|---|---|
+  | deck copy verified | 480,459 (63.1%) | **490,408 (64.4%)** |
+  | deck copy unverified | 279,488 | 269,508 |
+  | deck copy quarantined | 1,359 | 1,359 (unchanged) |
+
+  9,949 upgraded, **0 downgraded, 0 upgrades without a new printed source**; 81 further upgrades kept their old
+  hard reason (`parts sum to`/`geography_not_printed`/`scale`). By the reason that blocked each row: measure
+  6,398, period 1,857, printed text/OCR source 1,327, basis 367. After the pass 8,133 rows carry
+  `period_source='deck_asof'`, 3,910 `slide_title`, 20,104 `basis_source='deck'`; **zero verified rows changed
+  measure** (the 2% stop rule). The stop-rule sample: 300 random upgraded rows, every value printed in the page
+  text (or on an OCR-routed page) and every stored `slide_title` period printed on its page.
+
+  Regression: `--recheck` of `D:/RealityEngine/t230/obs_91_i.db` into `.tmp/t238n/obs_91_n.db` (4,453 pages,
+  27,606 selected rows: 461 upgraded, 0 downgraded, 0 unproven) gated with `python -m reality_engine.scripts.regress
+  observations --db .tmp/t238n/obs_91_n.db --baseline D:/RealityEngine/t230/obs_91_i.db`: **still right 118, fixed
+  18, still wrong 34, changed 11, newly broken 0 -- gate pass**. That copy's stats: `slide_title_periods` 154,
+  `deck_asof` 20, `basis_deck` 1,914, `measure_mapped` 177, `deck_asof_renamed` 2,078. Tests:
+  `python -m pytest reality_engine/tests/test_observations.py -q` **145 passed** (6 stage-N tests: the slide-title
+  period and its multi-period refusal, the shareholding/share-count deck as-of, the deck basis and its recheck
+  rename, both force-fit vetoes, and the coined-id aliases/guards); `typecheck` clean on `observations.py` and
+  `test_observations.py`.
+
 
