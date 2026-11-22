@@ -83,6 +83,87 @@ def test_ocr_text_of_the_page_image_verifies_a_value_the_layer_lacks():
     assert rows[0]["text_source"] == "ocr"
 
 
+# --------------------------------------------------------------------------- T-238: an OCR-routed page
+OCR_STORE = Path(".tmp/t230/test_c_ocr_store.db")
+OCR_DECK = "D:/RealityEngine/raw/pilot60_history/SOMANYCERA/investor_presentation/deck.pdf"
+OCR_PAGE = ["Particulars INR Cr FY25 FY24 FY23",
+            "Revenue from operations 1,268 1,150 1,020",
+            "EBITDA 178 165 140", "Profit after tax 90 84 70"]
+JUMBLED_LAYER = "XKCDQW RTYPSD MNBVCZ WQRTPS KLMNZ BDFGH 999 888"
+
+
+def _ocr_words(lines):
+    words, y = [], 72.0
+    for line in lines:
+        x = 72.0
+        for token in line.split():
+            words.append([round(x, 2), y, round(x + 6.0 * len(token), 2), y + 10.0, token, 0.95])
+            x += 6.0 * len(token) + 4.0
+        y += 16.0
+    return words
+
+
+def _make_ocr_store():
+    """A store whose page text layer is jumbled, with the page's OCR words in the sibling ``_ocr.db``."""
+    OCR_STORE.parent.mkdir(parents=True, exist_ok=True)
+    for path in (OCR_STORE, OCR_STORE.with_name(OCR_STORE.stem + "_ocr.db")):
+        path.unlink(missing_ok=True)
+    con = sqlite3.connect(OCR_STORE)
+    con.execute("CREATE TABLE company (symbol TEXT, name TEXT)")
+    con.execute("CREATE TABLE doc (doc_key TEXT, title TEXT, symbol TEXT, doc_type TEXT, known_at TEXT, "
+                "pages INTEGER, source_key TEXT)")
+    con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT, method TEXT, "
+                "PRIMARY KEY (doc_key, page))")
+    con.execute("INSERT INTO company VALUES ('SOMANYCERA','Somany Ceramics Limited')")
+    con.execute("INSERT INTO doc VALUES (?,?,?,?,?,?,?)",
+                (OCR_DECK, "Somany Investor Presentation", "SOMANYCERA", "deck", KNOWN_AT, 1, "missing/deck.pdf"))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?,?)", (OCR_DECK, 1, JUMBLED_LAYER, "needs_ocr"))
+    con.commit()
+    con.close()
+    words = _ocr_words(OCR_PAGE)
+    ocon = sqlite3.connect(OCR_STORE.with_name(OCR_STORE.stem + "_ocr.db"))
+    ocon.execute("CREATE TABLE ocr_page (symbol TEXT, doc_key TEXT, page INTEGER, doc_type TEXT, known_at TEXT, "
+                 "text TEXT, words_json TEXT, ocr_conf REAL, n_boxes INTEGER, dpi INTEGER, seconds REAL, "
+                 "method TEXT, PRIMARY KEY (symbol, doc_key, page))")
+    ocon.execute("INSERT INTO ocr_page VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                 ("SOMANYCERA", OCR_DECK, 1, "deck", KNOWN_AT, " ".join(OCR_PAGE), json.dumps(words), 0.95,
+                  len(words), 300, 1.0, "ocr_rapid"))
+    ocon.commit()
+    ocon.close()
+
+
+def test_an_ocr_routed_page_reads_and_checks_the_ocr_words(monkeypatch):
+    """T-238: the reader gets the OCR text layer (not the jumbled one) and the row carries text_source='ocr'."""
+    try:
+        _make_ocr_store()
+        seen = {}
+
+        def fake_reader(prompt, image_b64, doc_key="", page=0):
+            seen["prompt"] = prompt
+            return {"output": json.dumps({
+                "series_id": "s1", "series_title": "", "measure": "revenue_from_operations",
+                "printed_label": "Revenue from operations", "printed_axis": "Particulars INR Cr FY25",
+                "value_text": "1,268", "unit": "INR Cr", "scale": 1e7, "period": "FY25",
+                "period_kind": "actual", "segment": "", "product": "", "geography": "", "plant": "",
+                "customer": "", "group_path": "", "group_source": "", "stage": "",
+                "entity_scope": "company", "is_total": False}), "error": None, "seconds": 1.0,
+                "in_tok": 1, "out_tok": 1}
+
+        monkeypatch.setattr(obs, "call_reader", fake_reader)
+        monkeypatch.setattr(obs.page_reader, "_page_image", lambda *args, **kwargs: (b"image", 1.0))
+        result = obs.process_page(str(OCR_STORE), OCR_DECK, 1)
+        assert result["ocr_read"] is True
+        assert "Revenue from operations 1,268" in seen["prompt"]      # the OCR text layer
+        assert "XKCDQW" not in seen["prompt"]                          # never the jumbled layer
+        assert len(result["rows"]) == 1
+        row = result["rows"][0]
+        assert row["text_source"] == "ocr"
+        assert row["status"] == "verified", row["status_reason"]
+    finally:
+        for path in (OCR_STORE, OCR_STORE.with_name(OCR_STORE.stem + "_ocr.db")):
+            path.unlink(missing_ok=True)
+
+
 def test_page_with_no_text_layer_is_unverified():
     rows = build([reply()], page_text="")
     assert rows[0]["status"] == "unverified"
@@ -967,6 +1048,30 @@ def test_pages_from_store_skips_statement_pages_only_with_the_flag():
     finally:
         STORE_F.unlink(missing_ok=True)
         (STORE_F.parent / "routes.csv").unlink(missing_ok=True)
+
+
+def test_pages_from_store_reads_a_needs_ocr_page_only_when_its_ocr_words_exist():
+    """T-238: a `needs_ocr` row is readable once the store's own `<stem>_ocr.db` holds the page."""
+    _make_ar_store(["Revenue 100", "Profit 50"])
+    with (STORE_F.parent / "routes.csv").open("w", newline="", encoding="utf-8") as fh:
+        fh.write("doc_key,page,route,doc_type\n")
+        fh.write("ar.pdf,1,needs_ocr,annual_report\n")
+        fh.write("ar.pdf,2,needs_ocr,annual_report\n")
+    ocr = obs.page_words.sibling_ocr_db(STORE_F)
+    try:
+        assert obs.pages_from_store(STORE_F, doc_types=("annual_report",)) == []      # no OCR words yet
+        con = sqlite3.connect(ocr)
+        con.execute("CREATE TABLE ocr_page (doc_key TEXT, page INTEGER, words_json TEXT, method TEXT)")
+        con.execute("INSERT INTO ocr_page VALUES (?,?,?,?)", ("ar.pdf", 1, "[]", "ocr_rapid"))
+        con.commit()
+        con.close()
+        obs._ocr_pages.cache_clear()          # the store's OCR db arrived after the first look
+        pages = obs.pages_from_store(STORE_F, doc_types=("annual_report",))
+        assert [p["page"] for p in pages] == [1]
+    finally:
+        for path in (STORE_F, ocr, STORE_F.parent / "routes.csv"):
+            path.unlink(missing_ok=True)
+        obs._ocr_pages.cache_clear()
 
 
 SEED_ROOT = Path(".tmp/t230/seed_root")

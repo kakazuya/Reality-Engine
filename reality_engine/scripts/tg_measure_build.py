@@ -61,6 +61,11 @@ COMPUTE_START = "2019-01-01"
 # before the first one and are measured the same way (they are most of a small build's wall time).
 PARTS = ("registry", "pages", "transcripts", "kpi", "guidance", "stores", "comparatives", "preferred",
          "ratios", "segments", "notes", "checks", "events")
+# T-238: local OCR (``pilot3 build --part ocr``, RapidOCR on CPU) writes ``<stem>_ocr.db`` beside the store.  It is
+# never part of the default recipe (CPU-heavy: a 35k-page deck set takes hours), only of an explicit ``--parts ocr``;
+# in the build order it sits right after ``pages`` so the route and the extractors can read its words.
+EXTRA_PARTS = ("ocr",)
+BUILD_ORDER = PARTS[:2] + EXTRA_PARTS + PARTS[2:]
 COUNT_TABLES = ("fin_quarter_xbrl", "fin_quarter_printed", "kpi_series", "guidance", "transcript_statement",
                 "shp_category", "price_delivery")
 
@@ -276,14 +281,15 @@ def company_name(index: int, doc_types: str | None) -> str:
 
 
 def selected_parts(text: str | None) -> tuple[str, ...]:
-    """The parts to run, in ``PARTS`` order; ``None`` is every part (the T-214 recipe unchanged)."""
+    """The parts to run, in build order; ``None`` is every default part (the T-214 recipe unchanged)."""
     if not text:
         return PARTS
     wanted = {part.strip() for part in text.split(",") if part.strip()}
-    unknown = wanted - set(PARTS)
+    known = set(PARTS) | set(EXTRA_PARTS)
+    unknown = wanted - known
     if unknown:
-        raise ValueError(f"unknown parts {', '.join(sorted(unknown))}; choose from {', '.join(PARTS)}")
-    return tuple(part for part in PARTS if part in wanted)
+        raise ValueError(f"unknown parts {', '.join(sorted(unknown))}; choose from {', '.join(sorted(known))}")
+    return tuple(part for part in BUILD_ORDER if part in wanted)
 
 
 def free_gb(path: Path) -> float:
@@ -421,8 +427,11 @@ def build_company(index: int, symbol: str, key: str, root: Path, manifest_rows: 
 
     stop = ""
     for part in args.part_list:
-        done = step(part, [py, "-m", "reality_engine.pilot3.build", "--profile", str(profile_json),
-                           "--out", str(db), "--part", part])
+        build_cmd = [py, "-m", "reality_engine.pilot3.build", "--profile", str(profile_json),
+                     "--out", str(db), "--part", part]
+        if part == "ocr":                       # T-238: the OCR pass stops cleanly and resumes on the next run
+            build_cmd += ["--ocr-max-seconds", f"{args.ocr_max_seconds:g}"]
+        done = step(part, build_cmd)
         if done["timed_out"]:
             stop = f"{name} {part} ran past {args.max_part_minutes:g} minutes"
             break
@@ -432,6 +441,9 @@ def build_company(index: int, symbol: str, key: str, root: Path, manifest_rows: 
 
     route_cmd = [py, "-m", "reality_engine.v2.page_route", "--store", str(db),
                  "--out", str(base / "routes.csv")]
+    ocr_db = db.with_name(f"{db.stem}_ocr.db")
+    if ocr_db.is_file():                        # T-238: re-route needs_ocr pages on their OCR words
+        route_cmd += ["--ocr-db", str(ocr_db)]
     if args.doc_types:
         route_cmd += ["--doc-types", args.doc_types]
     route = run_step("route", route_cmd, base / "b_route.log",
@@ -541,7 +553,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--only", default=None, help="comma list of queue positions (1-based), e.g. 1,3")
     ap.add_argument("--force", action="store_true", help="rebuild a company whose measurement JSON exists")
     ap.add_argument("--parts", default=None,
-                    help=f"comma list of recipe parts, in build order (default all: {', '.join(PARTS)})")
+                    help=f"comma list of recipe parts, in build order (default all: {', '.join(PARTS)}; "
+                         f"T-238 adds the on-request part(s) {', '.join(EXTRA_PARTS)})")
     ap.add_argument("--doc-types", default=None,
                     help="a doc-type build (deck now): the per-company manifest is written from "
                          "deck_figures.deck_sources, docs_collect fetches only these types and the route CSV holds "
@@ -554,6 +567,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--ram-gb", type=float, default=4.0, help="kill a step whose child tree passes this (GiB)")
     ap.add_argument("--max-part-minutes", type=float, default=40.0,
                     help="kill a step past this and stop the run (default 40)")
+    ap.add_argument("--ocr-max-seconds", type=float, default=540.0,
+                    help="with --parts ocr: the OCR pass stops cleanly after this and resumes on the next run "
+                         "(pilot3 build --ocr-max-seconds, default 540)")
     ap.add_argument("--min-free-gb", type=float, default=50.0,
                     help="stop before a company when the root's drive has less free space (0 = no check)")
     args = ap.parse_args(argv)
