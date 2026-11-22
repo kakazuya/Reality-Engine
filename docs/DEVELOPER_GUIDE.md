@@ -2350,6 +2350,27 @@ are in `tasks/handoff/T-214_TG_BUILD_PLAN.md`.
   matched rows verify; `regress` newly broken 0. RapidOCR on CPU measured 6.47 s/page (20 pages), so 35,311 deck
   pages at 4 processes take ~15.9 h ideal. Details and the measure-code mismatch note: `docs/V2_SCHEMA_CONTRACT.md`
   section 17.w; artifacts `.tmp/t238/`.
+- **T-238 stage M: call transcripts and the dictionary-or-NEW measure contract (22 Nov 2026).** `v2/observations.py` reads
+  transcripts and refuses silent measure invention. A reply row's measure is a dictionary id or `NEW:<snake_case>`
+  WITH `new_definition` and `new_driver_node`; a bare non-dictionary id is kept but `unverified` reason
+  `undeclared_new`, a NEW id without its definition/node is unverified, letterhead ids (`postal_code`, `page_number`,
+  date ids) are dropped as junk, and `NEW:<id>` brackets are normalised. `measure_new` holds one row per declared id
+  (counts, pages, definitions) and `<out>.new_merges.csv` holds model-free merge proposals for review (name tokens +
+  definition Jaccard + unit family; nothing applied). `--doc-types transcript` reads every text page of a store's call
+  transcripts from `doc_page` (not routes.csv), text-only, through `PROMPT_TRANSCRIPT`, and stores `record_type`
+  `statement` (verbatim sentence, speaker, direction) and `guidance` (period, low/high, unit, direction; verifies when
+  its value tokens and period words are in the printed sentence) beside the numbers. The measure-choice rule now
+  spells out T-237's force-fit traps (segment slice vs total, Total Liabilities incl. equity, pre-exceptional PBT,
+  cash-flow change vs stock, combined Loans & Investments, industry growth vs volume, cash profit, JV PBT, PAT to
+  owners). DeepSeek V4.1 Flash is the transcript second reader (`--reader deepseek-v4.1-flash --text-only`; MODELS
+  entry on the Go base, `OPENCODE_GO_API_KEY`, `reasoning_effort: "none"` is required or its reply is reasoning-only).
+  Measured 22 Nov: hy4 240 transcript pages, 4,308 rows (2,190 numbers, 1,969 statements, 149 guidance), 175 s;
+  DeepSeek 166 SOMANYCERA pages, 2,174 rows, 233 s; vs Opus's SOMANYCERA read hy4 reproduced 86.9% of his numbers and
+  60.3% of his statements, DeepSeek 84.1% / 63.8%; on the 40 graded measure cases the new prompt keeps Opus's graded
+  meaning in 28 of 40 (12 exact, 7 declared NEW equal, 9 NEW synonym) against the old 13 exact. Recheck gate on
+  `.tmp/t230/obs_91_i.db`: 118 still right, 18 fixed, 0 newly broken. Tests
+  `reality_engine/tests/test_observations.py` 138 passed. Details and the 40-case table: `docs/V2_SCHEMA_CONTRACT.md`
+  section 17.v; artifacts `.tmp/t238/`.
 
 ## Modular store repair (T-218, 16 Nov 2026)
 

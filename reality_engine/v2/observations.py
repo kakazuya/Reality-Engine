@@ -39,9 +39,15 @@ shape, then checks them independently of the model:
   "Standalone"); a date inside an inline comparative bracket is not the row's period, and a printed
   "as at/as on <date>" on a closing balance is a point-in-time period (``period_kind='instant'``), not the
   year's flow.
+* (stage M) the measure is a dictionary id or a DECLARED ``NEW:<snake_case>`` with its definition and driver node; a
+  bare non-dictionary id is ``undeclared_new`` and never verifies, and every NEW id is indexed in ``measure_new``
+  (counts, pages, definitions) with model-free merge proposals in a review CSV.  ``--doc-types transcript`` reads
+  call pages text-only through the transcript prompt and stores ``statement`` (verbatim sentence, speaker,
+  direction) and ``guidance`` (period, low/high, unit, direction) records beside the numbers; a statement verifies
+  when its sentence is in the page text, a guidance row when its value tokens and period words are in the sentence.
 
 Output is a separate SQLite file (``--out``, default ``.tmp/t230/obs.db``); a store is only ever
-read.  Tables: ``observation``, ``measure_dict``, ``dim_vocab``.
+read.  Tables: ``observation``, ``measure_dict``, ``measure_new``, ``dim_vocab``.
 
 Usage:
     python -m reality_engine.v2.observations --stores-root D:/RealityEngine/tg_build/measure10 \
@@ -83,6 +89,14 @@ OBS_READER = "hy4-flash-free@obs"      # same model, more room for a page of JSO
 TEXT_LAYER_CHARS = 6000
 PARSE_STOP = 0.20                      # brief: stop when >20% of pilot pages give empty / non-JSON
 QUARANTINE_STOP = 0.10                 # brief: stop when >10% of observations are quarantined
+
+# T-238 stage M: the output contract.  A fact's measure is a dictionary id or, when nothing in the dictionary means
+# the same thing, a DECLARED new one: "NEW:<snake_case id>" plus its definition and driver node.  A bare id that is
+# neither is rejected as ``undeclared_new`` and never verifies.
+NEW_PREFIX = "NEW:"
+NEW_ID_RE = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)*$")
+NEW_NODES = ("revenue", "cost", "margin", "capex", "capacity", "debt", "equity", "working_capital", "none")
+RECORD_TYPES = ("number", "statement", "guidance")
 
 
 def reader_entry(name: str) -> str:
@@ -144,6 +158,13 @@ CREATE TABLE IF NOT EXISTS observation (
     series_title TEXT NOT NULL DEFAULT '',
     entity_scope TEXT NOT NULL DEFAULT '',
     text_source TEXT NOT NULL DEFAULT '',
+    record_type TEXT NOT NULL DEFAULT 'number',
+    statement TEXT NOT NULL DEFAULT '',
+    speaker TEXT NOT NULL DEFAULT '',
+    direction TEXT NOT NULL DEFAULT '',
+    value_high REAL,
+    new_definition TEXT NOT NULL DEFAULT '',
+    new_driver_node TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL CHECK (status IN ('verified', 'unverified', 'quarantined')),
     status_reason TEXT NOT NULL DEFAULT '',
     reader TEXT NOT NULL DEFAULT '',
@@ -196,13 +217,28 @@ CREATE TABLE IF NOT EXISTS page_ocr (
     read_at TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (doc_key, page)
 );
+
+CREATE TABLE IF NOT EXISTS measure_new (
+    new_id TEXT PRIMARY KEY,
+    definition TEXT NOT NULL DEFAULT '',
+    driver_node TEXT NOT NULL DEFAULT '',
+    observations INTEGER NOT NULL DEFAULT 0,
+    pages INTEGER NOT NULL DEFAULT 0,
+    examples TEXT NOT NULL DEFAULT '',
+    first_known_at TEXT NOT NULL DEFAULT ''
+);
 """
 
 MIGRATIONS = (("group_source", "TEXT NOT NULL DEFAULT ''"), ("group_check", "TEXT NOT NULL DEFAULT ''"),
               ("adjusted", "INTEGER NOT NULL DEFAULT 0"), ("period_source", "TEXT NOT NULL DEFAULT ''"),
               ("basis", "TEXT NOT NULL DEFAULT ''"), ("series_kind", "TEXT NOT NULL DEFAULT ''"),
               ("text_source", "TEXT NOT NULL DEFAULT ''"), ("value_kind", "TEXT NOT NULL DEFAULT ''"),
-              ("is_total", "INTEGER NOT NULL DEFAULT 0"))
+              ("is_total", "INTEGER NOT NULL DEFAULT 0"),
+              # T-238 stage M: record types, declared new measures and the transcript fields
+              ("record_type", "TEXT NOT NULL DEFAULT 'number'"), ("statement", "TEXT NOT NULL DEFAULT ''"),
+              ("speaker", "TEXT NOT NULL DEFAULT ''"), ("direction", "TEXT NOT NULL DEFAULT ''"),
+              ("value_high", "REAL"), ("new_definition", "TEXT NOT NULL DEFAULT ''"),
+              ("new_driver_node", "TEXT NOT NULL DEFAULT ''"))
 
 # id, name, unit family, node in the T-228 driver tree
 MEASURES: tuple[tuple[str, str, str, str], ...] = (
@@ -841,7 +877,10 @@ CONVERT_FAMILY = {"capacity": {"count"}, "count": {"capacity"}, "money_per_unit"
 FOOTNOTE_LABEL = re.compile(r"^\s*(?:\*|#|note\b|source\b|footnote\b)", re.I)
 JUNK_MEASURE = re.compile(
     r"^(?:page|phone|telephone|mobile|fax|postal|pin|address|street|floor|tower|sector|plot|registration|"
-    r"regulation|cin|din|scrip|signature|date|award|certification|website|email|gst|pan|reporting)"
+    r"regulation|cin|din|scrip|signature|date|award|certification|website|email|gst|pan|reporting|"
+    # T-238 stage M: the letterhead/date span the transcript reader coins as NEW ids
+    r"digital|letter|call|meeting|document|calendar|time|period|quarter|year|financial|fy|q[1-4]|ref|"
+    r"registered|corporate|membership|stock)"
     r"(?:[._][a-z0-9]+)*$", re.I)
 SCALE_WORDS = ((r"thousands?", 1e3), (r"'000|000s", 1e3), (r"\blakhs?\b|\blacs?\b", 1e5),
                (r"\bcrores?\b|\bcrs?\b|\bcr\.", 1e7), (r"\bmillions?\b|\bmn\b|\bmm\b", 1e6),
@@ -875,6 +914,42 @@ def text_has(text: str, needle: str) -> bool:
     if not n:
         return False
     return re.search(r"(?<![\d.,])" + re.escape(n) + r"(?![\d.,])", norm_match(text)) is not None
+
+
+def canonical_new_measure(measure: str) -> str:
+    """``NEW:<id>`` / ``NEW: <ID>`` -> ``NEW:id``: the reader often copies the prompt's placeholder brackets."""
+    measure = norm_space(measure)
+    if not measure.lower().startswith(NEW_PREFIX.lower()):
+        return measure
+    new_id = measure[len(NEW_PREFIX):].strip().strip("<>").strip().lower()
+    new_id = re.sub(r"[^a-z0-9_.]+", "_", new_id).strip("_.")
+    return NEW_PREFIX + new_id
+
+
+def junk_measure(measure: str) -> bool:
+    """True for a letterhead/contact/date id (a NEW id is judged on its bare name, never on the NEW: prefix)."""
+    bare = canonical_new_measure(measure)
+    if bare.startswith(NEW_PREFIX):
+        bare = bare[len(NEW_PREFIX):]
+    return JUNK_MEASURE.match(bare) is not None
+
+
+VALUE_HEAD_RE = re.compile(r"^(?:₹|rs\.?|inr|usd|us\$|\$|€)\s*", re.I)
+VALUE_TAIL_RE = re.compile(r"\s*(?:%|\+|plus|-plus|bps)$", re.I)
+
+
+def value_forms(value_text: str) -> list[str]:
+    """The forms of a printed value a page may carry: as written, and without its currency / % / '+' marker."""
+    text = norm_space(value_text)
+    forms = [text]
+    bare = VALUE_TAIL_RE.sub("", VALUE_HEAD_RE.sub("", text)).strip()
+    if bare and bare != text:
+        forms.append(bare)
+    return forms
+
+
+def value_printed(text: str, value_text: str) -> bool:
+    return any(text_has(text, form) for form in value_forms(value_text))
 
 
 def infer_unit_family(unit: str) -> str:
@@ -1128,9 +1203,12 @@ PERIOD_PATTERNS = (
     re.compile(r"\b(?:19|20)\d{2}-\d{2}\b"),
 )
 # Stage I: words a column can be headed with that name a comparison, never a period (Wolf read 394, ids 12734).
+# Stage M: a transcript's prose ("currently", "this quarter", "corresponding quarter last year") is not a period either.
 NOT_A_PERIOD_RE = re.compile(
     r"^(?:y[- ]?o[- ]?y|q[- ]?o[- ]?q|y[- ]?t[- ]?d|yoy|qoq|ytd|cagr|growth|growth\s*%?|%|vs\.?|versus|"
-    r"present|current|previous|absolute|change|total)$", re.I)
+    r"present|current|currently|previous|prior|absolute|change|total|this|next|last|sequential|today|now|"
+    r"later|early|recently|year[- ]on[- ]year|quarter[- ]on[- ]quarter|"
+    r"(?:this|last|next|previous|current|corresponding|prior|same)\s+(?:year|quarter|month|period)\b.*)$", re.I)
 
 
 def period_is_printed(period: str) -> bool:
@@ -1196,7 +1274,8 @@ def _label_unit_fits(measure: str, unit: str) -> bool:
 def canonical_measure(measure: str, label: str, axis: str, series_title: str, unit: str,
                       page_text: str) -> str:
     """Stage C3: near-duplicate ids, disbursement vs loans stock, spindle counts under capex."""
-    measure = MEASURE_ALIASES.get(norm_space(measure), norm_space(measure))
+    measure = canonical_new_measure(norm_space(measure))       # T-238: NEW:<id> -> NEW:id
+    measure = MEASURE_ALIASES.get(measure, measure)
     scripted = script_measure(label)
     if scripted and _label_unit_fits(scripted, unit):
         measure = scripted
@@ -2345,6 +2424,153 @@ def is_axis_tick(text: str, row: dict[str, Any]) -> bool:
     return any(abs(number - tick) <= max(1e-9, abs(tick) * 1e-6) for tick in page_tick_values(text))
 
 
+def declared_measure(measure: str, definition: str, node: str,
+                     measures: dict[str, dict[str, str]]) -> tuple[str, str]:
+    """(stored measure, verdict) -- '' verdict when the measure is usable (T-238 stage M).
+
+    A dictionary id is usable.  So is ``NEW:<snake_case>`` WITH a one-line definition and one of the driver nodes; it
+    is stored as-is (the row may verify, the id is indexed in ``measure_new``).  A bare id that is neither is
+    ``undeclared_new`` and never verifies: the reader may not invent measure names silently.
+    """
+    measure = canonical_new_measure(measure)
+    if not measure:
+        return "", "measure_missing: no dictionary id and no NEW:<id>"
+    if measure in measures:
+        return measure, ""
+    if not measure.startswith(NEW_PREFIX):
+        return measure, f"undeclared_new: {measure!r} is neither a dictionary id nor NEW:<id>"
+    if junk_measure(measure):
+        return measure, f"junk_measure: {measure} is letterhead/date data, not a business quantity"
+    new_id = measure[len(NEW_PREFIX):]
+    if not NEW_ID_RE.match(new_id):
+        return measure, f"new_id_bad: {new_id!r} is not a lower-case snake_case id"
+    if not norm_space(definition):
+        return measure, "new_definition_missing: a NEW:<id> needs one line saying what the printed quantity is"
+    if norm_space(node).lower() not in NEW_NODES:
+        return measure, (f"new_driver_node_missing: {norm_space(node)!r} is not one of "
+                         f"{'/'.join(NEW_NODES)}")
+    return measure, ""
+
+
+def is_declared_new(row: dict[str, Any]) -> bool:
+    return bool(norm_space(row.get("measure")).startswith(NEW_PREFIX)
+                and norm_space(row.get("new_definition")) and norm_space(row.get("new_driver_node")))
+
+
+def period_in_text(period: str, sentence: str) -> bool:
+    """True when the guidance period's own words are printed in the sentence ('FY27' also reads '2027')."""
+    period_s = norm_space(period)
+    if not period_s:
+        return False
+    flat_period = re.sub(r"[^a-z0-9]", "", period_s.lower())
+    flat_sentence = re.sub(r"[^a-z0-9]", "", norm_space(sentence).lower())
+    if flat_period and flat_period in flat_sentence:
+        return True
+    for year in re.findall(r"(?:19|20)\d{2}", period_s):
+        if year in sentence:
+            return True
+    for short in re.findall(r"\bFY\s?-?(\d{2})\b", period_s, re.I):
+        for year in ("20" + short, "20" + str(int(short) + 1)):
+            if year in sentence:
+                return True
+    return False
+
+
+def evaluate_statement(row: dict[str, Any], hay_match: str,
+                       measures: dict[str, dict[str, str]]) -> tuple[str, list[str]]:
+    """T-238 stage M: a statement verifies when its verbatim sentence is in the page text and its measure is usable."""
+    reasons: list[str] = []
+    _measure, why = declared_measure(row.get("measure", ""), row.get("new_definition", ""),
+                                     row.get("new_driver_node", ""), measures)
+    if why:
+        reasons.append(why)
+    sentence = norm_space(row.get("statement"))
+    if not sentence:
+        reasons.append("statement_missing: no verbatim sentence")
+    elif norm_match(sentence) not in hay_match:
+        reasons.append("statement_not_printed: the sentence is not in the page text")
+    return ("unverified" if reasons else "verified"), reasons
+
+
+def evaluate_guidance(row: dict[str, Any], hay_match: str,
+                      measures: dict[str, dict[str, str]]) -> tuple[str, list[str]]:
+    """T-238 stage M: guidance verifies when its sentence is printed and its value and period words are in it."""
+    reasons: list[str] = []
+    _measure, why = declared_measure(row.get("measure", ""), row.get("new_definition", ""),
+                                     row.get("new_driver_node", ""), measures)
+    if why:
+        reasons.append(why)
+    sentence = norm_space(row.get("statement"))
+    if not sentence:
+        reasons.append("statement_missing: no verbatim sentence")
+    elif norm_match(sentence) not in hay_match:
+        reasons.append("statement_not_printed: the sentence is not in the page text")
+    tokens = re.findall(r"\d[\d,.]*", norm_space(row.get("value_text")))
+    if not tokens:
+        reasons.append("guidance_value_missing: no printed low/high value")
+    missing = [token for token in tokens if not text_has(sentence, token)]
+    if missing:
+        reasons.append(f"guidance_value_not_in_sentence: {', '.join(missing)}")
+    if not row.get("period"):
+        reasons.append("no_period: guidance needs its target period as printed")
+    elif not period_in_text(row.get("period", ""), sentence):
+        reasons.append(f"guidance_period_not_in_sentence: {row.get('period')!r}")
+    return ("unverified" if reasons else "verified"), reasons
+
+
+def _record_row(*, symbol: str, doc_key: str, page: int, known_at: str, record_type: str,
+                raw: dict[str, Any]) -> dict[str, Any]:
+    """Every OBS_COLUMNS key for a statement / guidance record (the number path builds its own row)."""
+    direction = norm_space(raw.get("direction")).lower()
+    return {
+        "symbol": symbol, "doc_key": doc_key, "page": int(page), "region": "", "known_at": known_at,
+        "measure": norm_space(raw.get("measure")), "printed_label": "", "printed_axis": "", "value": None,
+        "value_text": "", "unit": norm_space(raw.get("unit")), "unit_family": "", "scale": 1.0,
+        "adjusted": 0, "value_kind": "", "is_total": 0, "period": norm_space(raw.get("period")),
+        "period_kind": "", "period_source": "", "basis": "", "series_kind": "", "segment": "",
+        "product": "", "geography": "", "plant": "", "customer": "", "group_path": "", "group_source": "",
+        "group_check": "", "stage": "", "series_id": "", "series_title": "",
+        "entity_scope": canonical_scope(norm_space(raw.get("entity_scope"))), "text_source": "",
+        "record_type": record_type, "statement": norm_space(raw.get("text") or raw.get("statement")),
+        "speaker": norm_space(raw.get("speaker"))[:200],
+        "direction": direction if direction in ("up", "down", "flat") else "",
+        "value_high": None, "new_definition": norm_space(raw.get("new_definition")),
+        "new_driver_node": norm_space(raw.get("new_driver_node")).lower(),
+        "status": "unverified", "status_reason": "",
+        "reader": READER, "read_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+def statement_observation(*, symbol: str, doc_key: str, page: int, known_at: str, raw: dict[str, Any],
+                          hay_match: str, measures: dict[str, dict[str, str]]) -> dict[str, Any] | None:
+    if len(norm_space(raw.get("text") or raw.get("statement")).split()) < 3:
+        return None                      # a greeting, a speaker tag or a heading is not a statement
+    row = _record_row(symbol=symbol, doc_key=doc_key, page=page, known_at=known_at,
+                      record_type="statement", raw=raw)
+    row["status"], reasons = evaluate_statement(row, hay_match, measures)
+    row["status_reason"] = "; ".join(reasons)
+    return row
+
+
+def guidance_observation(*, symbol: str, doc_key: str, page: int, known_at: str, raw: dict[str, Any],
+                         hay_match: str, measures: dict[str, dict[str, str]]) -> dict[str, Any] | None:
+    low_text = norm_space(raw.get("low") or raw.get("value_text"))
+    high_text = norm_space(raw.get("high"))
+    low, high = parse_number(low_text), parse_number(high_text)
+    if low is None and high is None:
+        return None                      # worded guidance without a number stays a statement
+    row = _record_row(symbol=symbol, doc_key=doc_key, page=page, known_at=known_at,
+                      record_type="guidance", raw=raw)
+    row["value"] = low if low is not None else high
+    row["value_high"] = high
+    row["value_text"] = low_text if high_text in ("", low_text) else f"{low_text}-{high_text}"
+    row["period_kind"] = period_kind_for(raw.get("period_kind", ""), row["period"]) or "target"
+    row["statement"] = norm_space(raw.get("text") or raw.get("statement"))
+    row["status"], reasons = evaluate_guidance(row, hay_match, measures)
+    row["status_reason"] = "; ".join(reasons)
+    return row
+
+
 def is_not_a_measure(row: dict[str, Any]) -> bool:
     text = " ".join([row.get("printed_label") or "", row.get("measure") or "", row.get("printed_axis") or ""])
     return NOT_A_MEASURE_RE.search(text) is not None
@@ -2372,8 +2598,8 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
     hay_match = norm_match(hay)
     if not hay:
         return "unverified", reasons + ["no text layer on this page; value not checkable"]
-    in_layer = text_has(layer, row.get("value_text", ""))
-    in_ocr = text_has(ocr, row.get("value_text", ""))
+    in_layer = value_printed(layer, row.get("value_text", ""))
+    in_ocr = value_printed(ocr, row.get("value_text", ""))
     if not in_layer and not in_ocr:
         return "unverified", reasons + [
             "image_text: the value is printed in the page image, not in its text layer or OCR"]
@@ -2398,9 +2624,13 @@ def evaluate_status(row: dict[str, Any], text: str, measures: dict[str, dict[str
             status = "unverified"
             reasons.append("group source not stated (printed or legend_inferred)")
     measure = measures.get(row.get("measure", ""))
-    if measure is None:
+    _stored, measure_verdict = declared_measure(row.get("measure", ""), row.get("new_definition", ""),
+                                                row.get("new_driver_node", ""), measures)
+    if measure_verdict:
         status = "unverified"
-        reasons.append(f"measure is not in the dictionary: {row.get('measure')!r}")
+        reasons.append(measure_verdict)
+    elif measure is None:
+        row["new_measure"] = 1            # a DECLARED NEW id: allowed, indexed in measure_new
     elif row.get("unit_family") and not family_ok(measure["unit_family"], row["unit_family"]):
         status = "unverified"
         reasons.append(f"unit family {row['unit_family']!r} does not match measure {row['measure']!r} "
@@ -2456,8 +2686,20 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
                    for part in norm_space(raw.get("group_path")).split(" > ") if part}
     legend_groups = detect_legend(word_list, page_groups)
     out: list[dict[str, Any]] = []
+    prose: list[dict[str, Any]] = []          # stage M: statement / guidance records, never number-checked
+    hay_match = norm_match(norm_space(text + "\n" + ocr_text))
     for raw in reply_rows:
         if not isinstance(raw, dict):
+            continue
+        record_type = norm_space(raw.get("type") or "number").lower()
+        if record_type not in RECORD_TYPES:
+            record_type = "number"
+        if record_type in ("statement", "guidance"):
+            build_prose = statement_observation if record_type == "statement" else guidance_observation
+            record = build_prose(symbol=symbol, doc_key=doc_key, page=page, known_at=known_at, raw=raw,
+                                 hay_match=hay_match, measures=measures)
+            if record is not None:
+                prose.append(record)
             continue
         value_text = norm_space(raw.get("value_text"))
         if not value_text or not re.search(r"\d", value_text):
@@ -2471,7 +2713,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
         if value is None:            # the model's own "value" is never trusted, and value_text is not a number
             continue
         row: dict[str, Any] = {key: norm_space(raw.get(key)) for key in ROW_TEXT_KEYS}
-        if JUNK_MEASURE.match(row["measure"]):
+        if junk_measure(row["measure"]):
             continue                 # page number, phone, address, PIN, CIN/DIN, signature date: not a quantity
         row.update({
             "symbol": symbol, "doc_key": doc_key, "page": int(page), "known_at": known_at,
@@ -2490,6 +2732,9 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
             "reader": READER, "read_at": datetime.now().isoformat(timespec="seconds"),
             "is_total": 0,
             "_is_total": raw.get("is_total") is True or str(raw.get("is_total", "")).lower() in ("true", "yes", "1"),
+            "record_type": "number", "statement": "", "speaker": "", "direction": "", "value_high": None,
+            "new_definition": norm_space(raw.get("new_definition")),
+            "new_driver_node": norm_space(raw.get("new_driver_node")).lower(),
         })
         row["is_total"] = 1 if row["_is_total"] else 0
         for dim in DIMS:
@@ -2592,7 +2837,7 @@ def build_observations(*, symbol: str, doc_key: str, page: int, known_at: str, p
     apply_path_sum(out)
     apply_series_kind(out, text)
     apply_basis_conflicts(out)
-    return out
+    return out + prose
 
 
 def measure_root(measure_id: str) -> str:
@@ -2756,7 +3001,8 @@ OBS_COLUMNS = ("symbol", "doc_key", "page", "region", "known_at", "measure", "pr
                "value", "value_text", "unit", "unit_family", "scale", "adjusted", "value_kind", "is_total",
                "period", "period_kind", "period_source", "basis", "series_kind", "segment", "product", "geography",
                "plant", "customer", "group_path", "group_source", "group_check", "stage", "series_id",
-               "series_title", "entity_scope", "text_source", "status", "status_reason", "reader", "read_at")
+               "series_title", "entity_scope", "text_source", "record_type", "statement", "speaker", "direction",
+               "value_high", "new_definition", "new_driver_node", "status", "status_reason", "reader", "read_at")
 
 
 def write_rows(con: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
@@ -2769,6 +3015,152 @@ def write_rows(con: sqlite3.Connection, rows: Iterable[dict[str, Any]]) -> int:
                     [[row.get(col) for col in OBS_COLUMNS] for row in rows])
     con.commit()
     return len(rows)
+
+
+# --------------------------------------------------------------------------- stage M: NEW measures and their merges
+
+NEW_NAME_STOP = {"the", "and", "of", "for", "per", "from", "with", "total", "value", "amount", "count",
+                 "number", "in", "on", "to", "a", "is", "as", "by", "its", "this", "that", "company",
+                 "other", "net", "gross", "including", "incl", "current", "non", "year", "period",
+                 "financial", "statement", "standalone", "consolidated"}
+
+
+def _merge_tokens(text: str) -> set[str]:
+    return {word for word in re.findall(r"[a-z0-9]+", norm_space(text).lower())
+            if len(word) >= 3 and word not in NEW_NAME_STOP}
+
+
+def new_measure_index(con: sqlite3.Connection) -> dict[str, dict[str, Any]]:
+    """Every declared ``NEW:<id>`` in the DB with its definitions, driver nodes, units, pages and counts."""
+    index: dict[str, dict[str, Any]] = {}
+    for measure, definition, node, doc_key, page, known_at, family in con.execute(
+            "SELECT measure, new_definition, new_driver_node, doc_key, page, known_at, unit_family "
+            "FROM observation WHERE measure LIKE ? ORDER BY observation_id", (NEW_PREFIX + "%",)):
+        new_id = str(measure)[len(NEW_PREFIX):]
+        item = index.setdefault(new_id, {"definitions": [], "nodes": {}, "units": {}, "pages": set(),
+                                         "observations": 0, "first_known_at": str(known_at or ""),
+                                         "examples": []})
+        item["observations"] += 1
+        key = (str(doc_key), int(page))
+        if key not in item["pages"]:
+            item["pages"].add(key)
+            if len(item["examples"]) < 3:
+                item["examples"].append(f"{Path(str(doc_key)).stem[:20]}:{int(page)}")
+        definition = norm_space(definition)
+        if definition and definition not in item["definitions"] and len(item["definitions"]) < 5:
+            item["definitions"].append(definition)
+        if node:
+            item["nodes"][str(node)] = item["nodes"].get(str(node), 0) + 1
+        if family:
+            item["units"][str(family)] = item["units"].get(str(family), 0) + 1
+    return index
+
+
+def index_new_measures(con: sqlite3.Connection) -> int:
+    """Write the ``measure_new`` summary: one row per declared id with its definition, counts and pages."""
+    index = new_measure_index(con)
+    con.execute("DELETE FROM measure_new")
+    for new_id, item in index.items():
+        definition = max(item["definitions"], key=len) if item["definitions"] else ""
+        node = max(item["nodes"], key=lambda k: item["nodes"][k]) if item["nodes"] else ""
+        con.execute("INSERT OR REPLACE INTO measure_new VALUES (?,?,?,?,?,?,?)",
+                    (new_id, definition, node, item["observations"], len(item["pages"]),
+                     ", ".join(item["examples"]), item["first_known_at"]))
+    con.commit()
+    return len(index)
+
+
+def new_measure_clusters(con: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Model-free proposals that several ``NEW:<id>``s name one quantity (T-238 stage M, review only).
+
+    Two ids merge when their normalised names are equal, when their definition tokens overlap by 0.6 (Jaccard), or
+    when they share a name token AND their definitions overlap by 0.4 AND they print the same unit family.  Nothing is
+    applied: the run writes the proposals to a CSV for Wolf.
+    """
+    index = new_measure_index(con)
+    ids = sorted(index)
+    parent = {new_id: new_id for new_id in ids}
+
+    def find(item: str) -> str:
+        while parent[item] != item:
+            parent[item] = parent[parent[item]]
+            item = parent[item]
+        return item
+
+    def union(left: str, right: str) -> None:
+        left_root, right_root = find(left), find(right)
+        if left_root != right_root:
+            parent[right_root] = left_root
+
+    names = {new_id: _merge_tokens(new_id.replace(".", " ")) for new_id in ids}
+    definitions = {new_id: _merge_tokens(" ".join(index[new_id]["definitions"])) for new_id in ids}
+    families = {new_id: (max(index[new_id]["units"], key=lambda k: index[new_id]["units"][k])
+                         if index[new_id]["units"] else "") for new_id in ids}
+    postings: dict[str, list[str]] = {}
+    for new_id in ids:
+        for token in names[new_id] | definitions[new_id]:
+            bucket = postings.setdefault(token, [])
+            if len(bucket) < 40:              # ponytail: cap postings; a token shared by 40+ ids is generic
+                bucket.append(new_id)
+    reasons: dict[frozenset[str], str] = {}
+
+    def ratio(left: set[str], right: set[str]) -> float:
+        return len(left & right) / len(left | right) if left | right else 0.0
+
+    for bucket in postings.values():
+        for i, left in enumerate(bucket):
+            for right in bucket[i + 1:]:
+                if left == right:
+                    continue
+                pair = frozenset((left, right))
+                if pair in reasons:
+                    continue
+                def_jaccard = ratio(definitions[left], definitions[right])
+                name_overlap = names[left] & names[right]
+                if names[left] == names[right] and names[left]:
+                    reasons[pair] = "same_name"
+                elif def_jaccard >= 0.6:
+                    reasons[pair] = "definition_overlap"
+                elif name_overlap and def_jaccard >= 0.4 and families[left] == families[right]:
+                    reasons[pair] = "name_and_definition"
+                else:
+                    continue
+                union(left, right)
+    groups: dict[str, list[str]] = {}
+    for new_id in ids:
+        groups.setdefault(find(new_id), []).append(new_id)
+    clusters: list[dict[str, Any]] = []
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        members.sort(key=lambda m: (-index[m]["observations"], m))
+        cluster_reasons = sorted({reason for pair, reason in reasons.items() if set(members) >= pair})
+        clusters.append({
+            "proposed": members[0], "ids": members,
+            "unit_family": families[members[0]],
+            "observations": sum(index[m]["observations"] for m in members),
+            "pages": sum(len(index[m]["pages"]) for m in members),
+            "reasons": cluster_reasons,
+            "definitions": " | ".join(next((d for d in index[m]["definitions"] if d), m) for m in members)[:800],
+        })
+    clusters.sort(key=lambda cluster: (-cluster["observations"], cluster["proposed"]))
+    return clusters
+
+
+def write_new_merges(con: sqlite3.Connection, path: str | Path) -> dict[str, int | str]:
+    """Write the proposed NEW-id merges to a review CSV; nothing is applied to any row."""
+    clusters = new_measure_clusters(con)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["cluster", "proposed_merge_into", "new_ids", "unit_family", "observations", "pages",
+                         "reasons", "definitions"])
+        for number, cluster in enumerate(clusters, start=1):
+            writer.writerow([number, cluster["proposed"], "|".join(cluster["ids"]), cluster["unit_family"],
+                             cluster["observations"], cluster["pages"], "+".join(cluster["reasons"]),
+                             cluster["definitions"]])
+    return {"clusters": len(clusters), "ids": sum(len(cluster["ids"]) for cluster in clusters), "csv": str(path)}
 
 
 # --------------------------------------------------------------------------- store reading
@@ -2784,7 +3176,8 @@ prose. Every object has exactly these keys:
  "segment": "", "product": "", "geography": "", "plant": "", "customer": "",
  "group_path": "heading(s) that group the value, joined with ' > '", "group_source": "printed|legend_inferred",
  "stage": "",
- "entity_scope": "company|subsidiary|industry|country|customer|peer", "is_total": false}}
+ "entity_scope": "company|subsidiary|industry|country|customer|peer", "is_total": false,
+ "new_definition": "", "new_driver_node": ""}}
 
 Rules:
 - One object per quantity actually printed (bar, pie slice, table cell, map label, call-out). Never compute, sum,
@@ -2806,8 +3199,17 @@ Rules:
   period_kind: "actual" for a printed past or current period, "instant" for a point-in-time closing balance
   ("as at 31 March 2025"), "estimate" for an E suffix / forecast / projected,
   "target" for a management target or guidance; empty if no period.
-- measure: pick the closest id from the dictionary; if none fits, write a snake_case id naming what the printed
-  label says. Never guess a different number to fit a measure.
+- measure: EXACTLY the printed quantity. Pick a dictionary id only when the meaning is the same: a segment slice of
+  revenue is revenue.mix, not revenue.value (the total); a printed "Total Liabilities" that includes equity is
+  total_equity_and_liabilities, not total_assets; a pre-exceptional "Profit Before Tax" row is
+  profit_before_exceptional_items_and_tax, not profit_before_tax; a cash-flow "change in trade payables" is not the
+  trade_payables stock; a combined "Loans & Investments" line is neither loans nor investments; an industry's export
+  growth in % is not a sold volume; "cash profit" is cash_profit, not cash_generated_from_operations; a JV's PBT is not
+  the company's profit_before_tax; "PAT - Controlling Interest" is not pat. Never force-fit a broader, narrower or
+  different-entity id. When no dictionary id means exactly this quantity, write "NEW:<snake_case_id>" with
+  "new_definition" (one line: what the printed quantity is, with its entity and scope) and "new_driver_node"
+  (revenue|cost|margin|capex|capacity|debt|equity|working_capital|none). A bare non-dictionary id is rejected.
+  Never guess a different number to fit a measure.
 - group_path: only the grouping heading(s) printed directly above or around the value, joined with " > " (e.g.
   "Projects Under Review"); never the slide title or the chart title (series_title carries those); empty when no
   group is printed.
@@ -2862,6 +3264,52 @@ Example of a value in a printed group:
  "group_source": "printed", "stage": "approved", "entity_scope": "company", "is_total": false}}
 
 Page text layer (verbatim, may be empty):
+<<<
+{text}
+>>>"""
+
+PROMPT_TRANSCRIPT = """Read one page of an Indian company's earnings-call transcript (its text layer only, no image)
+and return every printed number, every management statement and every guidance target. Output ONE JSON object per
+line (JSON Lines): no array, no markdown, no prose. Every object names its "type" and holds these keys:
+
+Number: {{"type": "number", "measure": "one id from the dictionary below", "printed_label": "the words printed
+immediately before the number, verbatim", "value_text": "the number exactly as printed", "unit": "unit as printed",
+"period": "the period printed against it", "period_kind": "actual|estimate|target",
+"basis": "standalone|consolidated|", "entity_scope": "company|subsidiary|industry|country|customer|peer",
+"segment": "", "product": "", "geography": "", "new_definition": "", "new_driver_node": ""}}
+Statement: {{"type": "statement", "measure": "one id from the dictionary below", "text": "management's sentence(s),
+verbatim", "speaker": "the speaker name printed for it", "direction": "up|down|flat|",
+"new_definition": "", "new_driver_node": ""}}
+Guidance: {{"type": "guidance", "measure": "one id from the dictionary below", "period": "the future period as
+printed", "low": "the lower or only printed number", "high": "the upper printed number, or empty",
+"unit": "unit as printed", "direction": "up|down|flat|", "text": "the sentence that states the target, verbatim",
+"new_definition": "", "new_driver_node": ""}}
+
+Rules:
+- The page text is the only source. Copy every number and every sentence exactly as printed; never compute, round,
+  convert, paraphrase or complete a sentence the page does not print. Skip greetings, vote of thanks, safe-harbour
+  text, operator notes, analyst small talk and page headers.
+- measure: EXACTLY the printed quantity. Pick a dictionary id only when the meaning is the same (a call's "cash profit"
+  is cash_profit, not cash_generated_from_operations; a segment's revenue is revenue.mix, not revenue.value; a
+  pre-exceptional "profit before tax" row is profit_before_exceptional_items_and_tax; a flow "change in trade
+  payables" is not the trade_payables stock; a JV's result is not the company's). Never force-fit a broader, narrower
+  or different-entity id. When nothing in the dictionary means exactly this quantity, write
+  "NEW:<snake_case_id>" with "new_definition" (one line: what it is) and "new_driver_node"
+  (revenue|cost|margin|capex|capacity|debt|equity|working_capital|none). A bare non-dictionary id is rejected.
+- statement: management commentary that says something about the future or explains a change (demand, pricing, costs,
+  capacity plans, debt plans, risks, guidance in words). One or two complete sentences copied verbatim, with the
+  printed speaker. A reported actual is a number, not a target; a question is not management's statement.
+- direction: "up" when the statement says the item rises or improves, "down" when it falls or worsens, "flat" when it
+  stays unchanged; empty when it says none of the three.
+- guidance: only a forward target management gives ("we expect 10-12% revenue growth in FY27"). low/high are the range
+  printed in the sentence (high empty for a single number), unit and period as printed, and the sentence itself goes
+  in "text". A reported actual, a hypothetical ("if gas prices fall") or an outside forecast is never guidance.
+- A number with no printed period stays a number without a period; never give it the call's quarter.
+
+Measure dictionary (id -- name -- unit family -- driver node):
+{dictionary}
+
+Transcript page text (verbatim):
 <<<
 {text}
 >>>"""
@@ -3094,7 +3542,7 @@ def propose_measures(con: sqlite3.Connection, limit: int = 300, workers: int = 2
     for label, measure, unit, value, doc_key, page in con.execute(
             "SELECT printed_label, measure, unit, value_text, doc_key, page FROM observation"):
         label = str(label or "")
-        if not label or measure in measures or script_measure(label):
+        if not label or measure in measures or script_measure(label) or str(measure or "").startswith(NEW_PREFIX):
             continue
         counts[label] = counts.get(label, 0) + 1
         samples.setdefault(label, (str(unit or ""), str(value or ""), str(doc_key or ""), int(page or 0)))
@@ -3143,6 +3591,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
         except Exception:
             owner = ""
     text = page_text_of(store_db, doc_key, page)
+    transcript = meta["doc_type"] == "transcript"
     pw = None
     try:
         pw = page_words.words_for(store_db, doc_key, page)
@@ -3156,7 +3605,7 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     layout = page_layout.layout_text(words) if words else norm_space(text)
     check_text = layout if ocr_read else text
     image_b64 = None
-    if text_only:
+    if text_only or transcript:              # T-238: a transcript page is text; no image is read for it
         image_note = ""
     else:
         try:
@@ -3168,11 +3617,13 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
             image_note = ""
     result: dict[str, Any] = {"store": str(store_db), "doc_key": doc_key, "page": page, "symbol": meta["symbol"],
                               "owner": owner, "raw": "", "error": "", "rows": [], "bad_lines": 0,
-                              "parsed": 0, "seconds": 0.0, "in_tok": 0, "out_tok": 0, "image_note": image_note}
+                              "parsed": 0, "seconds": 0.0, "in_tok": 0, "out_tok": 0, "image_note": image_note,
+                              "doc_type": meta["doc_type"]}
     if not image_b64 and not layout.strip():
         result["skip"] = "no image and no text"
         return result
-    prompt = PROMPT.format(dictionary=dictionary_text(measure_index()), text=layout[:TEXT_LAYER_CHARS])
+    template = PROMPT_TRANSCRIPT if transcript else PROMPT
+    prompt = template.format(dictionary=dictionary_text(measure_index()), text=layout[:TEXT_LAYER_CHARS])
     call = call_reader(prompt, image_b64, doc_key, page)
     if call.get("quota"):
         result["quota"] = call["quota"]
@@ -3191,12 +3642,14 @@ def process_page(store_db: str | Path, doc_key: str, page: int,
     image_values = [norm_space(r.get("value_text")) for r in reply_rows if isinstance(r, dict)]
     result["ocr_text"] = ""
     result["ocr_read"] = ocr_read
-    if not ocr_read and any(v and re.search(r"\d", v) and not text_has(text_flat, v) for v in image_values):
+    if not ocr_read and not transcript and any(v and re.search(r"\d", v) and not text_has(text_flat, v)
+                                               for v in image_values):
         result["ocr_text"] = ocr_page_text(store_db, doc_key, page, image_b64)
     result["rows"] = build_observations(symbol=meta["symbol"], doc_key=doc_key, page=page,
                                         known_at=meta["known_at"], page_text=check_text, words=words,
                                         reply_rows=reply_rows, doc_owner_symbol=owner,
-                                        companies=companies, deck_asof=deck_period(store_db, doc_key, check_text),
+                                        companies=companies,
+                                        deck_asof="" if transcript else deck_period(store_db, doc_key, check_text),
                                         ocr_text=result["ocr_text"], ocr_page=ocr_read)
     return result
 
@@ -3311,12 +3764,37 @@ def filter_statement_pages(pages: list[dict[str, Any]], texts: dict[tuple[str, i
     """Stage F: drop the financial-statement and notes pages; ``dropped`` counts them by reason."""
     kept: list[dict[str, Any]] = []
     for p in pages:
+        if p.get("doc_type") == "transcript":
+            kept.append(p)               # T-238: a call transcript page is speech, never a statement table
+            continue
         reason = statement_page_reason(texts.get((str(p["doc_key"]), int(p["page"])), ""))
         if not reason:
             kept.append(p)
         elif dropped is not None:
             dropped[reason] = dropped.get(reason, 0) + 1
     return kept
+
+
+def transcript_pages(store_db: str | Path) -> list[dict[str, Any]]:
+    """T-238 stage M: every routed or unrouted page of the store's call transcripts that prints text."""
+    try:
+        con = connect_ro(store_db, timeout_s=60)
+    except Exception:
+        return []
+    rows: list[Any] = []
+    try:
+        _cur = con.execute(
+            "SELECT p.doc_key, p.page FROM doc_page p JOIN doc d ON d.doc_key = p.doc_key "
+            "WHERE LOWER(d.doc_type) = 'transcript' AND COALESCE(p.text, '') <> '' "
+            "ORDER BY p.doc_key, p.page")
+        fetched = _cur.fetchall() if _cur is not None else None
+        rows = [row for row in (fetched or [])]
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+    return [{"store": str(store_db), "doc_key": str(row[0]), "page": int(row[1]), "doc_type": "transcript"}
+            for row in rows]
 
 
 @lru_cache(maxsize=256)
@@ -3344,30 +3822,32 @@ def pages_from_store(store_db: str | Path, doc_types: Iterable[str] = ("deck",),
     the OCR text layer and the checks run on the OCR words (``text_source='ocr'``).  A ``needs_ocr`` row with no
     OCR words yet is still skipped.
     """
-    routes_csv = Path(store_db).parent / "routes.csv"
-    if not routes_csv.is_file():
-        return []
     wanted_types = {rp._doc_type_norm(t) for t in doc_types}
     wanted_routes = set(routes)
     have_ocr: frozenset[tuple[str, int]] | None = None
     pages: dict[tuple[str, int], dict[str, Any]] = {}
-    with routes_csv.open(newline="", encoding="utf-8") as fh:
-        for row in csv.DictReader(fh):
-            if row.get("route") not in wanted_routes:
-                continue
-            if rp._doc_type_norm(row.get("doc_type", "")) not in wanted_types:
-                continue
-            try:
-                page = int(row["page"])
-            except (KeyError, ValueError):
-                continue
-            if row.get("route") == "needs_ocr":
-                if have_ocr is None:
-                    have_ocr = _ocr_pages(str(store_db))
-                if (str(row["doc_key"]), page) not in have_ocr:
+    if "transcript" in wanted_types:
+        pages.update(((p["doc_key"], p["page"]), p) for p in transcript_pages(store_db))
+    routes_csv = Path(store_db).parent / "routes.csv"
+    if routes_csv.is_file():
+        with routes_csv.open(newline="", encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                if row.get("route") not in wanted_routes:
                     continue
-            pages.setdefault((row["doc_key"], page), {"store": str(store_db), "doc_key": row["doc_key"],
-                                                      "page": page})
+                doc_type = rp._doc_type_norm(row.get("doc_type", ""))
+                if doc_type not in wanted_types or doc_type == "transcript":
+                    continue
+                try:
+                    page = int(row["page"])
+                except (KeyError, ValueError):
+                    continue
+                if row.get("route") == "needs_ocr":
+                    if have_ocr is None:
+                        have_ocr = _ocr_pages(str(store_db))
+                    if (str(row["doc_key"]), page) not in have_ocr:
+                        continue
+                pages.setdefault((row["doc_key"], page), {"store": str(store_db), "doc_key": row["doc_key"],
+                                                          "page": page})
     selected = list(pages.values())
     if skip_statements:
         selected = filter_statement_pages(selected, page_texts(store_db, selected), dropped)
@@ -3478,6 +3958,9 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             owner = ""
         rows = [dict(r) for r in con.execute(f"SELECT * FROM observation WHERE doc_key=? AND page=?"
                                              f" AND ({row_filter})", (doc_key, int(page)))]
+        rows = [row for row in rows if str(row.get("record_type") or "number") == "number"]
+        if not rows:
+            continue                     # T-238 stage M: statement/guidance records are not number-checked
         ocr_text = ""
         if not ocr_page:
             ocr_row = con.execute("SELECT text FROM page_ocr WHERE doc_key=? AND page=?",
@@ -3648,7 +4131,7 @@ def recheck_db(con: sqlite3.Connection, store_dbs: Iterable[str | Path],
             status, reasons = evaluate_status(dict(row), text, measures, raw_text, ocr_text, ocr_page)
             if any("generic_label" in reason for reason in reasons):
                 stats["generic_labels"] += 1
-            dictionary_fix = ("measure is not in the dictionary" in old_reason
+            dictionary_fix = (("measure is not in the dictionary" in old_reason or "undeclared_new" in old_reason)
                               and (row["measure"] or "") in measures)
             count_unit_fix = ("no_unit:" in old_reason and str(row["measure"] or "").startswith("count.")
                               and not row["unit"])      # stage H: a count.* row's count is its unit
@@ -3773,6 +4256,7 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                              "parse_failures": 0, "dropped_all": 0, "observations": 0, "quarantined": 0,
                              "skipped": 0, "quota_skipped": 0, "parent_rows": 0, "http_429": 0,
                              "ocr_pages": 0, "ocr_rows": 0, "ocr_read_pages": 0, "image_text_rows": 0,
+                             "numbers": 0, "statements": 0, "guidance_rows": 0, "undeclared_new": 0,
                              "in_tok": 0, "out_tok": 0, "latencies": [],
                              "statement_filter": statement_filter, "failed_replies": []}
     companies = company_index(store_dbs)
@@ -3826,6 +4310,10 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
                 stats["ocr_pages"] += 1
             stats["ocr_rows"] += sum(1 for r in rows if r.get("text_source") == "ocr")
             stats["image_text_rows"] += sum(1 for r in rows if "image_text" in str(r.get("status_reason") or ""))
+            stats["numbers"] += sum(1 for r in rows if str(r.get("record_type") or "number") == "number")
+            stats["statements"] += sum(1 for r in rows if r.get("record_type") == "statement")
+            stats["guidance_rows"] += sum(1 for r in rows if r.get("record_type") == "guidance")
+            stats["undeclared_new"] += sum(1 for r in rows if "undeclared_new" in str(r.get("status_reason") or ""))
             stats["observations"] += len(rows)
             stats["quarantined"] += sum(1 for r in rows if r["status"] == "quarantined")
             stats["parent_rows"] += sum(1 for r in rows if r["entity_scope"] == "parent")
@@ -3843,6 +4331,8 @@ def run(store_dbs: list[str], limit: int, workers: int, out: str | Path,
         stats["proposals"] = {"labels": 0, "proposed": 0, "quota": True}
     else:
         stats["proposals"] = propose_measures(con, propose_limit, workers)
+    stats["new_measures"] = index_new_measures(con)      # T-238 stage M: counts, pages, definitions by NEW id
+    stats["new_merges"] = write_new_merges(con, Path(str(out)).with_suffix(".new_merges.csv"))
     con.close()
     stats["seconds"] = round(time.time() - t0, 1)
     stats["out"] = str(out)
@@ -3875,7 +4365,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--limit", type=int, default=150, help="pages read at most")
     parser.add_argument("--workers", type=int, default=20)
     parser.add_argument("--out", default=".tmp/t230/obs.db")
-    parser.add_argument("--doc-types", default="deck")
+    parser.add_argument("--doc-types", default="deck",
+                        help="comma list: deck, annual_report, transcript (a transcript page is always text-only)")
     parser.add_argument("--propose-limit", type=int, default=300,
                         help="hy4 label->measure proposals at most (0 turns the pass off)")
     parser.add_argument("--require", default="", help="doc_key-substring:page to force into the sample")
@@ -3892,7 +4383,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reader", default=READER,
                         help="MODELS registry entry to read with (default hy4-flash-free; T-234 bake-off)")
     parser.add_argument("--text-only", action="store_true",
-                        help="send the stored text layer only, no page image (T-234 text readers)")
+                        help="send the stored text layer only, no page image (T-234 text readers; transcript "
+                             "pages are text-only already)")
     args = parser.parse_args(argv)
     try:
         set_reader(args.reader)

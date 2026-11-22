@@ -111,5 +111,41 @@
   builder adds pandas-heavy code) and no logic-class error.
 - Final report written; controller to commit (no direct git commit from the sandbox).
 
+## T-238 gap 2 — transcripts + strict dictionary-or-NEW contract (22 Nov)
+
+- 23:05: `observations.py` stage M implemented (record_type/statement/speaker/direction/value_high/new_definition/
+  new_driver_node columns, `measure_new` table, `declared_measure` contract, statement/guidance builders and checks,
+  transcript prompt + doc_page page selection, NEW-id clustering CSV, recheck skips prose rows). 5 stage-M tests
+  added, test_observations.py 133 pass. Next: hy4 transcript run (c48 166 + c77/c87 74 pages), 40-case measure
+  re-read (23 pages), recheck obs_91_i + regress, docs.
+- 23:5x: all runs done. hy4 transcripts 240 pages -> 4,308 rows (2,190 numbers/1,969 statements/149 guidance; 3
+  undeclared_new; 1,102 NEW ids, 94 merge clusters; 175 s). DeepSeek entry added (`deepseek-v4.1-flash`, effort
+  "none") and run on the 166 SOMANYCERA pages -> 2,174 rows, 233 s. vs Opus: hy4 86.9% of his numbers / 60.3% of his
+  statements, DeepSeek 84.1% / 63.8%. 40 graded measure cases re-read: 12 exact + 7 declared-NEW equal + 9 NEW
+  synonym = 28/40 now carry Opus's graded meaning (old hy4: 13 exact). obs_91 recheck gate: 118 right / 18 fixed /
+  0 newly broken, pass. Tests 136 passed, typecheck clean on observations.py + tests. Docs: V2_SCHEMA_CONTRACT 17.v
+  (renumbered from 17.w when main's gap-1 section took 17.w), DEVELOPER_GUIDE T-238 bullet, machines/MSI_LAPTOP.md.
+  No STATE.md (brief forbids).
+
+## T-238 merge: main (gap 1, OCR-routed pages) into stage M (22 Nov)
+
+- 23:5x: `git merge` cannot run from the worker sandbox (the worktree index/refs live in the main checkout's
+  `.git/worktrees/...`, outside the writable root; no approval channel), so the merge tree was built in place:
+  main's diff applied over this branch's files with `git apply --reject`, the 7 rejected hunks resolved by hand
+  (process_page, pages_from_store, recheck_db, run), main-only files copied with `git archive main`, docs sections
+  split (main 17.w, stage M 17.v). Both behave: OCR pages read/check the OCR words (`text_source='ocr'`,
+  `ocr_read_pages`) while transcript pages stay text-only with `PROMPT_TRANSCRIPT`; a page can be either.
+  Acceptance suite 174 passed, 1 environmental error (`tmp_path` basetemp ACL-locked in this sandbox), typecheck
+  clean; test_observations.py 138 passed. The supervisor commit is the only commit path (9906698a).
+- 23:5x: that commit has one parent, so it is the merge *result*, not a merge commit: `git merge-tree` of main into
+  HEAD still conflicts on the 4 files (our side already holds the resolved content). The controller must record the
+  merge outside the sandbox, which is conflict-free with this tree (the merge exits 1 on those 4 files, expected):
+  `git merge --no-commit main`; then `git checkout 9906698a -- reality_engine/v2/observations.py
+  docs/V2_SCHEMA_CONTRACT.md docs/DEVELOPER_GUIDE.md reality_engine/tests/test_observations.py`; then
+  `git add -A && git commit` (then `git diff 9906698a` is empty and main is a parent). A detached `git` launch was
+  refused (`launch_detached_requires_write_scope_data_or_full`).
+
+
+
 
 

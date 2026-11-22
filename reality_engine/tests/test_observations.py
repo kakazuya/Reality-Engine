@@ -221,10 +221,10 @@ def test_unit_family_must_match_the_measure_dictionary():
     assert "unit family" in rows[0]["status_reason"]
 
 
-def test_measure_must_be_in_the_dictionary():
+def test_measure_must_be_in_the_dictionary_or_declared_new():
     rows = build([reply(measure="made.up")])
     assert rows[0]["status"] == "unverified"
-    assert "measure is not in the dictionary" in rows[0]["status_reason"]
+    assert "undeclared_new" in rows[0]["status_reason"]
 
 
 def test_scale_kept_only_when_printed():
@@ -1723,5 +1723,145 @@ def test_stage_l_recheck_downgrades_a_stage_k_generic_label_and_a_degenerate_pro
         con.close()
     finally:
         _cleanup_store()
+
+
+# --------------------------------------------------------------------------- stage M: declared new measures, transcripts
+
+
+def test_stage_m_a_new_measure_needs_its_definition_and_driver_node():
+    rows = build([reply(measure="NEW:jv_pbt", new_definition="Profit before tax of the joint venture",
+                        new_driver_node="margin", printed_label="Jatadhar Port, Odisha",
+                        printed_axis="FY28E", period="FY28E")])
+    assert rows[0]["measure"] == "NEW:jv_pbt"
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    for raw, reason in ((dict(measure="NEW:jv_pbt", new_driver_node="margin"), "new_definition_missing"),
+                        (dict(measure="NEW:jv_pbt", new_definition="JV PBT"), "new_driver_node_missing"),
+                        (dict(measure="NEW:123", new_definition="JV PBT", new_driver_node="margin"),
+                         "new_id_bad"),
+                        (dict(measure="jv_pbt", new_definition="JV PBT", new_driver_node="margin"),
+                         "undeclared_new")):
+        bad = build([reply(**raw)])
+        assert bad[0]["status"] == "unverified", raw
+        assert reason in bad[0]["status_reason"], (raw, bad[0]["status_reason"])
+
+
+def test_stage_m_statement_verifies_only_when_its_sentence_is_printed():
+    page = ("S. Sharma: We expect 10-12% revenue growth in FY27. Demand is improving in the north. "
+            "Operator: Thank you.")
+    good = build([{"type": "statement", "measure": "revenue_growth_yoy",
+                   "text": "We expect 10-12% revenue growth in FY27.", "speaker": "S. Sharma",
+                   "direction": "up"}], page_text=page)
+    assert good[0]["record_type"] == "statement"
+    assert good[0]["status"] == "verified", good[0]["status_reason"]
+    assert good[0]["speaker"] == "S. Sharma" and good[0]["direction"] == "up"
+    bad = build([{"type": "statement", "measure": "revenue_growth_yoy",
+                  "text": "Margins will expand by 200 basis points.", "speaker": "S. Sharma"}], page_text=page)
+    assert bad[0]["status"] == "unverified"
+    assert "statement_not_printed" in bad[0]["status_reason"]
+    undeclared = build([{"type": "statement", "measure": "margin_surprise",
+                         "text": "Demand is improving in the north."}], page_text=page)
+    assert "undeclared_new" in undeclared[0]["status_reason"]
+
+
+def test_stage_m_guidance_verifies_on_its_value_and_period_words():
+    page = "We expect 10-12% revenue growth in FY27. Next year will be better."
+    good = build([{"type": "guidance", "measure": "revenue_growth_yoy", "period": "FY27",
+                   "low": "10", "high": "12", "unit": "%", "direction": "up",
+                   "text": "We expect 10-12% revenue growth in FY27."}], page_text=page)
+    assert good[0]["record_type"] == "guidance"
+    assert good[0]["status"] == "verified", good[0]["status_reason"]
+    assert good[0]["value"] == 10 and good[0]["value_high"] == 12
+    assert good[0]["period_kind"] == "target"
+    wrong_period = build([{"type": "guidance", "measure": "revenue_growth_yoy", "period": "FY28",
+                           "low": "10", "high": "12", "unit": "%",
+                           "text": "We expect 10-12% revenue growth in FY27."}], page_text=page)
+    assert "guidance_period_not_in_sentence" in wrong_period[0]["status_reason"]
+    wrong_value = build([{"type": "guidance", "measure": "revenue_growth_yoy", "period": "FY27",
+                          "low": "15", "unit": "%",
+                          "text": "We expect 10-12% revenue growth in FY27."}], page_text=page)
+    assert "guidance_value_not_in_sentence" in wrong_value[0]["status_reason"]
+    worded = build([{"type": "guidance", "measure": "revenue_growth_yoy", "period": "FY27",
+                     "text": "We expect high single-digit growth in FY27."}], page_text=page)
+    assert worded == []                  # no printed number: a statement, not a guidance row
+
+
+def test_stage_m_index_new_measures_and_cluster_proposed_merges():
+    con = obs.create_db(":memory:")
+    rows = (("NEW:jv_pbt", "profit before tax of the joint venture", "margin", "money"),
+            ("NEW:jv_profit_before_tax", "profit before tax of the joint venture", "margin", "money"),
+            ("NEW:order_book_growth", "growth of the order book", "revenue", "percent"))
+    for number, (measure, definition, node, family) in enumerate(rows, start=1):
+        con.execute("INSERT INTO observation (symbol, doc_key, page, known_at, measure, new_definition, "
+                    "new_driver_node, unit_family, status) VALUES (?,?,?,?,?,?,?,?,?)",
+                    ("X", "d", number, "2025-01-01", measure, definition, node, family, "verified"))
+    con.commit()
+    assert obs.index_new_measures(con) == 3
+    jv = con.execute("SELECT observations, pages, definition, driver_node FROM measure_new "
+                     "WHERE new_id='jv_pbt'").fetchone()
+    assert jv[0] == 1 and jv[1] == 1 and "joint venture" in jv[2] and jv[3] == "margin"
+    clusters = obs.new_measure_clusters(con)
+    assert len(clusters) == 1, clusters
+    assert set(clusters[0]["ids"]) == {"jv_pbt", "jv_profit_before_tax"}
+    csv_path = Path(".tmp/t230/new_merges_test.csv")
+    stats = obs.write_new_merges(con, csv_path)
+    try:
+        assert stats == {"clusters": 1, "ids": 2, "csv": str(csv_path)}
+        text = csv_path.read_text(encoding="utf-8")
+        assert text.splitlines()[0].startswith("cluster,")
+        assert "jv_profit_before_tax" in text
+    finally:
+        csv_path.unlink(missing_ok=True)
+    con.close()
+
+
+def test_stage_m_transcript_pages_are_selected_from_doc_page_not_routes():
+    store = Path(".tmp/t230/transcript_store.db")
+    store.parent.mkdir(parents=True, exist_ok=True)
+    store.unlink(missing_ok=True)
+    con = sqlite3.connect(store)
+    con.execute("CREATE TABLE doc (doc_key TEXT, title TEXT, symbol TEXT, known_at TEXT, doc_type TEXT)")
+    con.execute("CREATE TABLE doc_page (doc_key TEXT, page INTEGER, text TEXT)")
+    con.execute("INSERT INTO doc VALUES (?,?,?,?,?)", ("t1", "call", "SOMANYCERA", KNOWN_AT, "transcript"))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t1", 1, "Management said demand is improving."))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t1", 2, "Notes to Financial Statements. "
+                                                               "We expect 10-12% growth in FY27."))
+    con.execute("INSERT INTO doc_page VALUES (?,?,?)", ("t1", 3, ""))
+    con.commit()
+    con.close()
+    try:
+        pages = obs.pages_from_store(str(store), doc_types=("transcript",), skip_statements=True)
+        assert [(p["doc_key"], p["page"]) for p in pages] == [("t1", 1), ("t1", 2)]
+        assert all(p["doc_type"] == "transcript" for p in pages)
+    finally:
+        store.unlink(missing_ok=True)
+
+
+def test_stage_m_placeholder_brackets_are_not_part_of_the_id_and_junk_ids_are_dropped():
+    rows = build([reply(measure="NEW:<jv_pbt>", new_definition="Profit before tax of the joint venture",
+                        new_driver_node="margin", printed_label="Jatadhar Port, Odisha",
+                        printed_axis="FY28E", period="FY28E")])
+    assert rows[0]["measure"] == "NEW:jv_pbt"
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    junk = build([reply(measure="NEW:<postal_code>", new_definition="the pin code printed in the letterhead",
+                        new_driver_node="none", printed_label="Regd. Office, Mumbai")],
+                 page_text="Regd. Office, Mumbai 400026")
+    assert junk == []
+
+
+def test_stage_m_a_currency_or_percent_marker_is_not_part_of_the_value_token():
+    page = "Interest expense ₹ in M FY25 85.50 246.97 2,100"
+    rows = build([reply(measure="finance_cost", printed_label="Interest expense", value_text="₹85.50",
+                        unit="₹ in M", printed_axis="₹ in M", period="FY25"),
+                  reply(measure="revenue_growth_yoy", printed_label="Interest expense", value_text="246.97%",
+                        unit="%", printed_axis="₹ in M", period="FY25")], page_text=page)
+    assert rows[0]["status"] == "verified", rows[0]["status_reason"]
+    assert rows[1]["status"] == "verified", rows[1]["status_reason"]
+
+
+def test_stage_m_a_prose_period_is_not_a_period():
+    assert obs.period_is_printed("currently") is False
+    assert obs.period_is_printed("this quarter") is False
+    assert obs.period_is_printed("corresponding quarter last year") is False
+    assert obs.period_is_printed("FY27") is True
 
 
